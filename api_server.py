@@ -595,6 +595,11 @@ async def health_check():
         "generator_ready": video_generator is not None
     }
 
+@app.get("/healthz", tags=["General"])
+async def healthz_check():
+    """Kubernetes/Render health check endpoint"""
+    return {"status": "ok"}
+
 @app.get("/stats", response_model=StatsResponse, tags=["General"])
 async def get_stats():
     """Get system statistics"""
