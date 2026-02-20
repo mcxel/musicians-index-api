@@ -3,6 +3,7 @@ import './globals.css';
 import AudioProvider from '@/components/AudioProvider';
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://berntoutglobal.com'),
   title: "The Musician's Index - 80s Neon Magazine",
   description: 'Live music magazine with streaming rooms, articles, and fan economy',
   keywords: 'music, magazine, live streaming, 80s, neon, musicians',
