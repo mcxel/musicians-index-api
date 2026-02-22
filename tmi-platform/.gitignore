@@ -41,3 +41,7 @@ coverage/
 # =============================
 *.pack
 *.pack.gz
+
+# ignore npm lockfile in pnpm repo
+apps/web/package-lock.json
+**/package-lock.json
