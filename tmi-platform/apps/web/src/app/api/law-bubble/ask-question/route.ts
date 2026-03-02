@@ -111,7 +111,7 @@ function isHighStakes(question: string, topic: string): boolean {
 // ============================================================================
 
 export async function POST(request: NextRequest) {
-  const { questionId, questionText, userId, jurisdiction } = await request.json();
+  const { questionText, jurisdiction } = await request.json();
 
   if (!questionText || questionText.trim().length === 0) {
     return new Response(JSON.stringify({ error: 'Question required' }), {
@@ -153,7 +153,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Generate answer (streaming simulation - replace with real AI)
-        const answer = await generateAnswer(questionText, topic, jurisdiction);
+        const answer = await generateAnswer(questionText, topic);
 
         // Cache it
         cacheAnswer(questionHash, answer);
@@ -192,8 +192,7 @@ export async function POST(request: NextRequest) {
 
 async function generateAnswer(
   question: string,
-  topic: string,
-  jurisdiction?: { country: string; state?: string }
+  topic: string
 ): Promise<AnswerContract> {
   const highStakes = isHighStakes(question, topic);
 
@@ -291,7 +290,7 @@ async function generateAnswer(
     },
   };
 
-  let answer = mockAnswers[topic] || mockAnswers.TRAFFIC;
+  const answer = mockAnswers[topic] || mockAnswers.TRAFFIC;
 
   // Add stronger disclaimer for high-stakes
   if (highStakes) {

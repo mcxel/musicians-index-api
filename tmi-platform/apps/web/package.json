@@ -4,15 +4,26 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:socket": "ts-node socket-server.ts",
+    "prebuild": "pnpm -C ../../packages/db prisma:generate",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "mobile:init": "cap init",
+    "mobile:sync": "cap sync",
+    "mobile:open:android": "cap open android",
+    "mobile:open:ios": "cap open ios"
   },
   "dependencies": {
+    "@capacitor/android": "^6.0.0",
+    "@capacitor/core": "^6.0.0",
+    "@capacitor/ios": "^6.0.0",
     "@heroicons/react": "^2.0.0",
+    "@next/third-parties": "^14.2.3",
     "autoprefixer": "^10.4.0",
     "framer-motion": "^10.0.0",
-    "next": "15.5.2",
+    "next": "14.2.3",
     "postcss": "^8.4.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
@@ -20,11 +31,12 @@
     "tailwindcss": "^3.3.0"
   },
   "devDependencies": {
-    "@types/node": "^20.0.0",
-    "@types/react": "^18.2.0",
-    "@types/react-dom": "^18.2.0",
+    "@capacitor/cli": "^6.0.0",
+    "@types/node": "^20.11.24",
+    "@types/react": "^18.2.61",
+    "@types/react-dom": "^18.2.19",
     "eslint": "^8.0.0",
-    "eslint-config-next": "14.0.0",
+    "eslint-config-next": "14.2.3",
     "ts-loader": "^9.5.4",
     "typescript": "^5.0.0"
   }

@@ -1,0 +1,14 @@
+{
+  "name": "db",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate deploy"
+  },
+  "dependencies": {
+    "prisma": "^7.4.2",
+    "@prisma/client": "^7.4.2",
+    "graceful-fs": "^4.2.11"
+  }
+}
