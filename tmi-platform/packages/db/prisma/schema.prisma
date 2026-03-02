@@ -1,0 +1,320 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+datasource db {
+  provider = "postgresql" // Using PostgreSQL, a robust choice for production
+}
+
+generator client {
+  provider = "prisma-client-js"
+  // place client in a more accessible location for the monorepo
+  output   = "../../../node_modules/.prisma/client"
+}
+
+// ==============================================================================
+// AUTHENTICATION & USER MODELS
+// Based on NextAuth.js schema for easy integration
+// ==============================================================================
+
+// User roles for implementing Role-Based Access Control (RBAC)
+enum Role {
+  USER // Standard user, can consume content
+  ARTIST // An artist with a public profile
+  STAFF // Can manage content, but not system settings
+  ADMIN // Full administrative access
+  JUDGE // A judge for competitions
+  SPONSOR // A sponsor with access to specific dashboards
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  role          Role      @default(USER)
+  accounts      Account[]
+  sessions      Session[]
+
+  // A user can be associated with an artist profile
+  artistProfile Artist?
+
+  // Stripe-related fields
+  stripeCustomerId       String?   @unique @map("stripe_customer_id")
+  stripeSubscriptionId   String?   @unique @map("stripe_subscription_id")
+  stripePriceId          String?   @map("stripe_price_id")
+  stripeCurrentPeriodEnd DateTime? @map("stripe_current_period_end")
+
+  // Ledger
+  ledgerEntries LedgerEntry[]
+
+  // Relations added for schema additions
+  musicLinksAdded   MusicLink[]    @relation("MusicLinkAddedBy")
+  createdPromoCodes PromoCode[]    @relation("CreatedPromoCodes")
+  usedPromoCodes    PromoCode[]    @relation("UsedPromoCodes")
+  subscriptions     Subscription[] @relation("UserSubscriptions")
+  auditLogs         AuditLog[]     @relation("UserAuditLogs")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ==============================================================================
+// APPLICATION-SPECIFIC MODELS
+// ==============================================================================
+
+model Artist {
+  id   String  @id @default(cuid())
+  name String
+  bio  String? @db.Text
+
+  // Link back to the user account
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id])
+
+  // An artist can have multiple official music links
+  musicLinks MusicLink[]
+}
+
+model MusicLink {
+  id       String @id @default(cuid())
+  platform String // e.g., "Spotify", "Apple Music", "SoundCloud"
+  url      String
+
+  // The artist this link belongs to
+  artistId String
+  artist   Artist @relation(fields: [artistId], references: [id], onDelete: Cascade)
+
+  // Who added this link? For auditing purposes.
+  // This helps enforce the rule about who can add links.
+  addedById String
+  addedBy   User   @relation("MusicLinkAddedBy", fields: [addedById], references: [id])
+}
+
+// ==============================================================================
+// PAYMENTS & SUBSCRIPTIONS (STRIPE)
+// ==============================================================================
+
+enum SubscriptionStatus {
+  active
+  trialing
+  past_due
+  canceled
+  unpaid
+}
+
+model Product {
+  id          String  @id @map("id") // Stripe Product ID
+  active      Boolean
+  name        String
+  description String?
+  image       String?
+  metadata    Json?
+  prices      Price[]
+}
+
+model Price {
+  id            String         @id @map("id") // Stripe Price ID
+  productId     String         @map("product_id")
+  product       Product        @relation(fields: [productId], references: [id])
+  active        Boolean
+  description   String?
+  unitAmount    Int?           @map("unit_amount")
+  currency      String
+  type          String // "one_time" or "recurring"
+  interval      String? // "day", "week", "month", "year"
+  metadata      Json?
+  subscriptions Subscription[] @relation("PriceSubscriptions")
+}
+
+model Subscription {
+  id                 String             @id @map("id") // Stripe Subscription ID
+  userId             String             @unique
+  user               User               @relation("UserSubscriptions", fields: [userId], references: [id])
+  status             SubscriptionStatus
+  metadata           Json?
+  priceId            String             @map("price_id")
+  price              Price              @relation("PriceSubscriptions", fields: [priceId], references: [id])
+  cancelAtPeriodEnd  Boolean            @map("cancel_at_period_end")
+  created            DateTime
+  currentPeriodStart DateTime           @map("current_period_start")
+  currentPeriodEnd   DateTime           @map("current_period_end")
+}
+
+// ==============================================================================
+// LEDGER / VIRTUAL CURRENCY
+// ==============================================================================
+enum LedgerEntryType {
+  CREDIT // Adding currency to a user's balance
+  DEBIT // Spending currency from a user's balance
+}
+
+model LedgerEntry {
+  id          String          @id @default(cuid())
+  userId      String
+  user        User            @relation(fields: [userId], references: [id])
+  type        LedgerEntryType
+  amount      Int // The amount of virtual currency
+  description String
+  relatedId   String? // ID of a related object (e.g., Tip, Vote, Purchase)
+  createdAt   DateTime        @default(now())
+
+  @@index([userId])
+}
+
+// ==============================================================================
+// PROMOTIONS & MARKETING
+// ==============================================================================
+
+enum PromoCodeStatus {
+  ACTIVE
+  EXPIRED
+  USED
+  REVOKED
+}
+
+enum PromoCodeType {
+  FREE_TRIAL_DAYS
+  PERCENTAGE_DISCOUNT
+  FIXED_AMOUNT_CREDIT
+  FEATURE_UNLOCK
+}
+
+model PromoCode {
+  id          String          @id @default(cuid())
+  codeHash    String          @unique // The hashed promo code, for security
+  description String
+  type        PromoCodeType
+  value       Float // e.g., 90 (days), 25 (percent), 5000 (cents)
+  status      PromoCodeStatus @default(ACTIVE)
+
+  maxUses   Int @default(1)
+  usedCount Int @default(0)
+
+  validFrom DateTime
+  expiresAt DateTime
+
+  // Who created this code?
+  createdBy   User   @relation("CreatedPromoCodes", fields: [createdById], references: [id])
+  createdById String
+
+  // Who used this code?
+  usedBy   User?   @relation("UsedPromoCodes", fields: [usedById], references: [id])
+  usedById String?
+
+  // Audit trail for this specific code
+  auditHistory AuditLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ==============================================================================
+// AUDITING & LOGGING
+// ==============================================================================
+
+enum AuditLogAction {
+  // Promo Actions
+  PROMO_CODE_CREATED
+  PROMO_CODE_REDEEMED
+  PROMO_CODE_REVOKED
+  PROMO_CODE_EXPIRED
+
+  // Admin Actions
+  USER_ROLE_CHANGED
+  OFFICIAL_LINK_ADDED
+  OFFICIAL_LINK_REMOVED
+}
+
+model AuditLog {
+  id        String         @id @default(cuid())
+  action    AuditLogAction
+  timestamp DateTime       @default(now())
+
+  // The user who performed the action
+  actor   User   @relation("UserAuditLogs", fields: [actorId], references: [id])
+  actorId String
+
+  // Optional: The entity that was acted upon
+  targetId String?
+  details  Json? // Store extra context as JSON
+
+  // Can be linked to a promo code
+  promoCode   PromoCode? @relation(fields: [promoCodeId], references: [id])
+  promoCodeId String?
+
+  @@index([actorId])
+  @@index([targetId])
+}
+
+// ==============================================================================
+// HUB & MODULE REGISTRY
+// ==============================================================================
+
+enum HubStatus {
+  ONLINE
+  OFFLINE
+  DEGRADED
+}
+
+model Hub {
+  id          String    @id @default(cuid())
+  name        String    @unique
+  baseUrl     String
+  description String?
+  status      HubStatus @default(OFFLINE)
+  iconUrl     String?
+
+  lastSeenAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+// Feature flags for gradual rollouts and safe toggles
+model FeatureFlag {
+  id          String  @id @default(cuid())
+  key         String  @unique
+  description String?
+  enabled     Boolean @default(false)
+  notes       String?
+
+  // Stored as JSON to avoid enum-array portability issues across providers
+  targeting Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([enabled])
+}
