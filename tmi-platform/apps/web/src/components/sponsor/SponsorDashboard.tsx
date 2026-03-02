@@ -55,7 +55,7 @@ interface SponsorDashboardProps {
   tier: 'FREE' | 'PREMIUM' | 'VIP' | 'SPONSOR' | 'OVERSEER';
 }
 
-export function SponsorDashboard({ artistId, artistName, tier }: SponsorDashboardProps) {
+export function SponsorDashboard({ artistId: _artistId, artistName, tier }: SponsorDashboardProps) {
   const [timeframe, setTimeframe] = useState<'today' | 'week' | 'month' | 'all'>('month');
 
   // Mock data - would be fetched from API
@@ -248,3 +248,20 @@ export function SponsorDashboard({ artistId, artistName, tier }: SponsorDashboar
     </div>
   );
 }
+
+// Lightweight compatibility exports so existing pages can import SponsorTile/SponsorStrip/SponsorBadge
+export const SponsorTile = (props: any) => {
+  return (
+    <div className={props.className} style={{ border: '1px dashed #FF6B00', padding: '0.5rem', color: '#FF6B00', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: props.style?.minHeight || '56px' }}>
+      {props.fallbackLabel || 'Sponsor'}
+    </div>
+  )
+}
+
+export const SponsorStrip = (props: any) => <SponsorTile {...props} />
+
+export const SponsorBadge = (props: any) => (
+  <div style={{ border: '1px solid #FF6B00', padding: '0.25rem 0.5rem', color: '#FF6B00', fontSize: '0.8rem' }}>
+    {props.presentedByText || 'Presented by'}
+  </div>
+)
