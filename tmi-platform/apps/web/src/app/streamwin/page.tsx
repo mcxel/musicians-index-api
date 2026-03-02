@@ -15,9 +15,9 @@ import {
   PuzzlePieceIcon,
   ChartBarIcon
 } from '@heroicons/react/24/outline'
-import { SponsorTile, SponsorBadge, SponsorStrip } from '@/../../program/modules/sponsors/components'
-import { STREAMWIN_PLACEMENTS } from '@/../../program/modules/sponsors/placements/streamwin'
-import { VideoFrameFX, NeonPulse } from '@/../../program/modules/animations'
+import { SponsorTile, SponsorBadge, SponsorStrip } from '@/components/sponsor/SponsorDashboard'
+import { STREAMWIN_PLACEMENTS } from '@program/sponsors/placements/streamwin'
+import { VideoFrameFX, NeonPulse } from '@program/animations'
 import { LawBubbleWidget } from '@/components/law-bubble/LawBubbleWidget'
 
 interface PlaylistItem {
@@ -433,7 +433,7 @@ export default function StreamWinPage() {
       <LawBubbleWidget userId="demo-user-streamwin" position="bottom-left" />
 
       {/* Starfield CSS */}
-      <style jsx>{`
+      <style>{`
         @keyframes stars-float {
           from { transform: translateY(0px); }
           to { transform: translateY(-2000px); }
