@@ -19,7 +19,6 @@
 'use client';
 
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { EmoteCarousel } from './EmoteCarousel';
 
 export type EmoteType = 
@@ -50,7 +49,7 @@ interface ActionIcon {
 }
 
 export function PlayWidget({
-  userId,
+  userId: _userId,
   userTier,
   dockPosition = 'bottom',
   ownedEmotes = ['clap', 'heart'],
@@ -59,7 +58,6 @@ export function PlayWidget({
   onSettingsClick,
 }: PlayWidgetProps) {
   const [showEmoteCarousel, setShowEmoteCarousel] = useState(false);
-  const [isDocked, setIsDocked] = useState(true);
 
   // Define available action icons by tier
   const actionIcons: ActionIcon[] = [
@@ -130,66 +128,53 @@ export function PlayWidget({
   return (
     <>
       {/* Main Play Widget */}
-      <motion.div
-        className={`${dockClasses[dockPosition]} z-40`}
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
+      <div
+        className={`${dockClasses[dockPosition]} z-40 opacity-100 translate-y-0 transition-all duration-300`}
       >
         <div className="bg-gradient-to-r from-yellow-400 via-orange-500 to-burgundy-600 rounded-full shadow-2xl p-3 flex gap-3">
           {availableIcons.map(icon => (
-            <motion.button
+            <button
               key={icon.id}
               onClick={icon.action}
-              className="w-12 h-12 rounded-full bg-white hover:bg-gray-100 flex items-center justify-center text-2xl shadow-lg transition-all"
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.95 }}
+              className="w-12 h-12 rounded-full bg-white hover:bg-gray-100 flex items-center justify-center text-2xl shadow-lg transition-all hover:scale-110 active:scale-95"
               title={icon.label}
             >
               {icon.icon}
-            </motion.button>
+            </button>
           ))}
         </div>
-      </motion.div>
+      </div>
 
       {/* Emote Carousel Popup */}
-      <AnimatePresence>
-        {showEmoteCarousel && (
-          <motion.div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setShowEmoteCarousel(false)}
+      {showEmoteCarousel && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 opacity-100 transition-opacity"
+          onClick={() => setShowEmoteCarousel(false)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl p-6 max-w-2xl scale-100 transition-transform"
+            onClick={e => e.stopPropagation()}
           >
-            <motion.div
-              className="bg-white rounded-2xl shadow-2xl p-6 max-w-2xl"
-              initial={{ scale: 0.8, y: 50 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.8, y: 50 }}
-              onClick={e => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-2xl font-bold">Your Emotes</h3>
-                <button
-                  onClick={() => setShowEmoteCarousel(false)}
-                  className="text-2xl hover:text-red-500"
-                >
-                  ✕
-                </button>
-              </div>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-2xl font-bold">Your Emotes</h3>
+              <button
+                onClick={() => setShowEmoteCarousel(false)}
+                className="text-2xl hover:text-red-500"
+              >
+                ✕
+              </button>
+            </div>
 
-              <EmoteCarousel
-                ownedEmotes={ownedEmotes}
-                onEmoteSelect={(emote) => {
-                  onEmoteSelect?.(emote);
-                  setShowEmoteCarousel(false);
-                }}
-              />
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            <EmoteCarousel
+              ownedEmotes={ownedEmotes}
+              onEmoteSelect={(emote) => {
+                onEmoteSelect?.(emote);
+                setShowEmoteCarousel(false);
+              }}
+            />
+          </div>
+        </div>
+      )}
     </>
   );
 }
