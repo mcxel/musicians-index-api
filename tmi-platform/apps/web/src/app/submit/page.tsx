@@ -1,16 +1,15 @@
 'use client'
 
-import { motion } from 'framer-motion'
-import {
-  MicrophoneIcon,
-  UserGroupIcon,
-  StarIcon,
-  FireIcon,
-  MusicalNoteIcon,
-  FaceSmileIcon,
-  SparklesIcon,
-  TvIcon
-} from '@heroicons/react/24/outline'
+import React from 'react'
+
+// Minimal inline icon used as a replacement for heroicons in CI
+function Icon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
+      <path d="M5 12h14" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" />
+    </svg>
+  )
+}
 
 interface SubmissionTile {
   id: string
@@ -27,7 +26,7 @@ const submissionTypes: SubmissionTile[] = [
     id: 'join-game',
     title: 'Join Game',
     description: 'Register as an artist and start your journey',
-    icon: MicrophoneIcon,
+    icon: Icon,
     gradient: 'from-purple-600 to-purple-800',
     requiresArtist: false
   },
@@ -35,7 +34,7 @@ const submissionTypes: SubmissionTile[] = [
     id: 'audience',
     title: 'Audience Member',
     description: 'Join as a fan and support your favorite artists',
-    icon: UserGroupIcon,
+    icon: Icon,
     gradient: 'from-blue-600 to-blue-800',
     requiresArtist: false
   },
@@ -43,7 +42,7 @@ const submissionTypes: SubmissionTile[] = [
     id: 'monthly-idol',
     title: 'Monthly Idol',
     description: 'Compete to become this month\'s featured idol',
-    icon: StarIcon,
+    icon: Icon,
     gradient: 'from-yellow-600 to-orange-800',
     requiresArtist: true
   },
@@ -51,7 +50,7 @@ const submissionTypes: SubmissionTile[] = [
     id: 'battle',
     title: 'Battle Arena',
     description: 'Challenge another artist to a head-to-head battle',
-    icon: FireIcon,
+    icon: Icon,
     gradient: 'from-red-600 to-red-800',
     requiresArtist: true
   },
@@ -59,7 +58,7 @@ const submissionTypes: SubmissionTile[] = [
     id: 'cypher',
     title: 'Cypher Circle',
     description: 'Join collaborative cypher sessions with other artists',
-    icon: MusicalNoteIcon,
+    icon: Icon,
     gradient: 'from-green-600 to-green-800',
     requiresArtist: true
   },
@@ -67,7 +66,7 @@ const submissionTypes: SubmissionTile[] = [
     id: 'comedy',
     title: 'Saturday Night Stand-Up',
     description: 'Submit your comedy set for Saturday night showcase',
-    icon: FaceSmileIcon,
+    icon: Icon,
     gradient: 'from-pink-600 to-pink-800',
     requiresArtist: true
   },
@@ -75,7 +74,7 @@ const submissionTypes: SubmissionTile[] = [
     id: 'dance',
     title: 'Dance Showcase',
     description: 'Show off your dance moves in our weekly showcase',
-    icon: SparklesIcon,
+    icon: Icon,
     gradient: 'from-cyan-600 to-cyan-800',
     requiresArtist: true
   },
@@ -83,7 +82,7 @@ const submissionTypes: SubmissionTile[] = [
     id: 'shows',
     title: 'Live Shows',
     description: 'Apply to host your own live show',
-    icon: TvIcon,
+    icon: Icon,
     gradient: 'from-indigo-600 to-indigo-800',
     requiresArtist: true,
     comingSoon: true
@@ -136,27 +135,20 @@ export default function SubmitPage() {
     <div className="min-h-screen bg-gradient-to-b from-gray-900 to-black pt-24 pb-12 px-4">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-12"
-        >
+        <div className="text-center mb-12">
           <h1 className="text-5xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent mb-4">
             Submit & Participate
           </h1>
           <p className="text-gray-400 text-lg max-w-2xl mx-auto">
             Choose how you want to participate in The Musicians Index. Artists, comedians, dancers, and fans all welcome!
           </p>
-        </motion.div>
+        </div>
 
         {/* Submission Type Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {submissionTypes.map((submission, index) => (
-            <motion.button
+            <button
               key={submission.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
               onClick={() => handleSubmissionClick(submission)}
               className="relative group"
             >
@@ -193,29 +185,20 @@ export default function SubmitPage() {
                 </div>
 
                 {/* Hover Indicator */}
-                <motion.div
-                  className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity"
-                  initial={{ x: -10 }}
-                  whileHover={{ x: 0 }}
-                >
+                <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
                   <div className="bg-white/20 backdrop-blur-sm rounded-full p-2">
                     <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                     </svg>
                   </div>
-                </motion.div>
+                </div>
               </div>
-            </motion.button>
+            </button>
           ))}
         </div>
 
         {/* Info Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.8 }}
-          className="mt-16 bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-8"
-        >
+        <div className="mt-16 bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-8">
           <h2 className="text-2xl font-bold text-white mb-4">How It Works</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
@@ -237,7 +220,7 @@ export default function SubmitPage() {
               </p>
             </div>
           </div>
-        </motion.div>
+        </div>
       </div>
     </div>
   )
