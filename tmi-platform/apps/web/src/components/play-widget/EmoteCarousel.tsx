@@ -14,8 +14,7 @@
 
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState } from 'react';
 import type { EmoteType } from './PlayWidget';
 
 interface EmoteCarouselProps {
@@ -49,11 +48,8 @@ export function EmoteCarousel({ ownedEmotes, onEmoteSelect }: EmoteCarouselProps
     if (isAnimating) return;
 
     if (currentIndex >= maxIndex) {
-      // At the end - reverse direction
       setDirection('reverse');
       setIsAnimating(true);
-      
-      // Animate back to start
       setTimeout(() => {
         setCurrentIndex(0);
         setIsAnimating(false);
@@ -68,10 +64,8 @@ export function EmoteCarousel({ ownedEmotes, onEmoteSelect }: EmoteCarouselProps
     if (isAnimating) return;
 
     if (currentIndex <= 0) {
-      // At the start - reverse to end
       setDirection('reverse');
       setIsAnimating(true);
-      
       setTimeout(() => {
         setCurrentIndex(maxIndex);
         setIsAnimating(false);
@@ -87,77 +81,59 @@ export function EmoteCarousel({ ownedEmotes, onEmoteSelect }: EmoteCarouselProps
   return (
     <div className="flex items-center gap-4">
       {/* Left Chevron */}
-      <motion.button
+      <button
         onClick={handlePrev}
-        className="w-12 h-12 rounded-full bg-gradient-to-r from-yellow-400 to-orange-500 text-white flex items-center justify-center shadow-lg hover:shadow-xl"
-        whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.9 }}
+        className="w-12 h-12 rounded-full bg-gradient-to-r from-yellow-400 to-orange-500 text-white flex items-center justify-center shadow-lg hover:shadow-xl hover:scale-110 active:scale-90 transition-all disabled:opacity-50"
         disabled={isAnimating}
       >
         <span className="text-2xl">◀</span>
-      </motion.button>
+      </button>
 
       {/* Emote Display */}
       <div className="flex gap-3 overflow-hidden">
-        <AnimatePresence mode="wait">
-          {visibleEmotes.map((emote, idx) => {
-            const isOwned = ownedEmotes.includes(emote.type);
+        {visibleEmotes.map((emote, idx) => {
+          const isOwned = ownedEmotes.includes(emote.type);
 
-            return (
-              <motion.div
-                key={`${emote.type}-${currentIndex}-${idx}`}
-                initial={{ 
-                  x: direction === 'forward' ? 100 : -100, 
-                  opacity: 0,
-                  rotate: direction === 'forward' ? 45 : -45,
-                }}
-                animate={{ x: 0, opacity: 1, rotate: 0 }}
-                exit={{ 
-                  x: direction === 'forward' ? -100 : 100, 
-                  opacity: 0,
-                  rotate: direction === 'forward' ? -45 : 45,
-                }}
-                transition={{ duration: 0.3, delay: idx * 0.05 }}
-                className="relative"
+          return (
+            <div
+              key={`${emote.type}-${currentIndex}-${idx}`}
+              className="relative transition-all duration-300"
+            >
+              <button
+                onClick={() => isOwned && onEmoteSelect(emote.type)}
+                disabled={!isOwned}
+                className={`
+                  w-20 h-20 rounded-xl flex flex-col items-center justify-center
+                  ${isOwned 
+                    ? 'bg-gradient-to-br from-white to-gray-100 hover:shadow-2xl cursor-pointer' 
+                    : 'bg-gray-200 cursor-not-allowed opacity-50'
+                  }
+                  shadow-lg transition-all hover:scale-105
+                `}
+                title={isOwned ? emote.name : `${emote.name} - ${emote.tier}`}
               >
-                <button
-                  onClick={() => isOwned && onEmoteSelect(emote.type)}
-                  disabled={!isOwned}
-                  className={`
-                    w-20 h-20 rounded-xl flex flex-col items-center justify-center
-                    ${isOwned 
-                      ? 'bg-gradient-to-br from-white to-gray-100 hover:shadow-2xl cursor-pointer' 
-                      : 'bg-gray-200 cursor-not-allowed opacity-50'
-                    }
-                    shadow-lg transition-all
-                  `}
-                  title={isOwned ? emote.name : `${emote.name} - ${emote.tier}`}
-                >
-                  <span className="text-3xl">{emote.icon}</span>
-                  <span className="text-xs font-semibold mt-1">{emote.name}</span>
-                  
-                  {!isOwned && (
-                    <div className="absolute inset-0 bg-black/40 backdrop-blur-sm rounded-xl flex items-center justify-center">
-                      <span className="text-white text-xl">🔒</span>
-                    </div>
-                  )}
-                </button>
-              </motion.div>
-            );
-          })}
-        </AnimatePresence>
+                <span className="text-3xl">{emote.icon}</span>
+                <span className="text-xs font-semibold mt-1">{emote.name}</span>
+                
+                {!isOwned && (
+                  <div className="absolute inset-0 bg-black/40 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                    <span className="text-xl">🔒</span>
+                  </div>
+                )}
+              </button>
+            </div>
+          );
+        })}
       </div>
 
       {/* Right Chevron */}
-      <motion.button
+      <button
         onClick={handleNext}
-        className="w-12 h-12 rounded-full bg-gradient-to-r from-orange-500 to-burgundy-600 text-white flex items-center justify-center shadow-lg hover:shadow-xl"
-        whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.9 }}
+        className="w-12 h-12 rounded-full bg-gradient-to-r from-orange-500 to-burgundy-600 text-white flex items-center justify-center shadow-lg hover:shadow-xl hover:scale-110 active:scale-90 transition-all disabled:opacity-50"
         disabled={isAnimating}
       >
         <span className="text-2xl">▶</span>
-      </motion.button>
+      </button>
     </div>
   );
 }
