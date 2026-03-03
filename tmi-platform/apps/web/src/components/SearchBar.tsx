@@ -1,7 +1,26 @@
 'use client'
 
 import { useState } from 'react'
-import { MagnifyingGlassIcon, MicrophoneIcon } from '@heroicons/react/24/solid'
+
+// Simple inline SVG icons (no external deps)
+function SearchIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
+      <circle cx="11" cy="11" r="8" />
+      <path d="m21 21-4.35-4.35" />
+    </svg>
+  )
+}
+
+function MicIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
+      <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
+      <path d="M19 10v2a7 7 0 0 1-14 0v-2" fill="none" stroke="currentColor" strokeWidth="2" />
+      <line x1="12" y1="19" x2="12" y2="22" stroke="currentColor" strokeWidth="2" />
+    </svg>
+  )
+}
 
 export default function SearchBar() {
   const [query, setQuery] = useState('')
@@ -25,7 +44,7 @@ export default function SearchBar() {
     <div className="max-w-4xl mx-auto">
       <form onSubmit={handleSearch} className="relative">
         <div className="relative flex items-center">
-          <MagnifyingGlassIcon className="absolute left-4 w-6 h-6 text-gray-400" />
+          <SearchIcon className="absolute left-4 w-6 h-6 text-gray-400" />
           <input
             type="text"
             value={query}
@@ -42,7 +61,7 @@ export default function SearchBar() {
                 : 'text-gray-400 hover:text-white hover:bg-purple-600/20'
             }`}
           >
-            <MicrophoneIcon className="w-5 h-5" />
+            <MicIcon className="w-5 h-5" />
           </button>
         </div>
 
