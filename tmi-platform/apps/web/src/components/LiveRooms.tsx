@@ -1,8 +1,41 @@
 'use client'
 
-import { motion } from 'framer-motion'
-import { UsersIcon, MicrophoneIcon, PlayIcon, ChatBubbleLeftIcon } from '@heroicons/react/24/solid'
 import Image from 'next/image'
+
+// Inline SVG icons (no external deps)
+function UsersIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
+      <path d="M7.5 6.75V4.5a4.5 4.5 0 0 1 9 0v2.25M16.5 6.75V4.5a4.5 4.5 0 0 0-9 0v2.25m9 0A2.25 2.25 0 0 1 21.75 9v.75m-9 0A2.25 2.25 0 0 0 10.5 9v.75m9 0c0 1.657-1.75 3-3.75 3H10.5c-1.657 0-3-1.343-3-3h9.75" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  )
+}
+
+function MicrophoneIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
+      <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+      <path d="M19 10v2a7 7 0 0 1-14 0v-2" fill="none" stroke="currentColor" strokeWidth="1.5"/>
+      <line x1="12" y1="19" x2="12" y2="22" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+    </svg>
+  )
+}
+
+function PlayIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
+      <path d="M8 5.14v14l11-7-11-7Z"/>
+    </svg>
+  )
+}
+
+function ChatIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
+      <path d="M10 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm6 2a9 9 0 0 1-9 9H7l-3.462 2.58A1 1 0 0 1 3 20.396V6a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v10.232a1 1 0 0 1-1.742.678l-2.916-2.14h-2.2a9 9 0 0 1-8.142-8.142Z" fill="none" stroke="currentColor" strokeWidth="1.5"/>
+    </svg>
+  )
+}
 
 interface LiveRoom {
   id: string
@@ -90,11 +123,7 @@ export default function LiveRooms() {
     <section className="py-16">
       <div className="max-w-7xl mx-auto px-4">
         {/* Section Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          viewport={{ once: true }}
+        <div
           className="text-center mb-12"
         >
           <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
@@ -108,12 +137,8 @@ export default function LiveRooms() {
         {/* Live Rooms Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {liveRooms.map((room, index) => (
-            <motion.div
+            <div
               key={room.id}
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: index * 0.1 }}
-              viewport={{ once: true }}
               className="group relative bg-white/5 backdrop-blur-md rounded-2xl overflow-hidden border border-purple-400/20 hover:border-purple-400/40 transition-all duration-300"
             >
               {/* Thumbnail */}
@@ -182,7 +207,7 @@ export default function LiveRooms() {
                     Join Room
                   </button>
                   <button className="flex-1 bg-white/10 hover:bg-white/20 text-white font-semibold py-2 px-4 rounded-lg transition-all duration-300 flex items-center justify-center gap-2">
-                    <ChatBubbleLeftIcon className="w-4 h-4" />
+                    <ChatIcon className="w-4 h-4" />
                     Chat
                   </button>
                 </div>
@@ -195,11 +220,7 @@ export default function LiveRooms() {
         </div>
 
         {/* Create Room CTA */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.8 }}
-          viewport={{ once: true }}
+        <div
           className="text-center mt-12"
         >
           <div className="bg-gradient-to-r from-purple-900/50 to-pink-900/50 rounded-3xl p-8 max-w-2xl mx-auto border border-purple-400/30">
