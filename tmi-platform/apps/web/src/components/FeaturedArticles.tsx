@@ -1,10 +1,39 @@
 'use client'
 
-import { motion } from 'framer-motion'
-import { ClockIcon, EyeIcon, UserIcon } from '@heroicons/react/24/outline'
+import React from 'react'
 import Image from 'next/image'
-import { SponsorTile, SponsorStrip } from '@/../../program/modules/sponsors/components'
-import { TMI_PLACEMENTS } from '@/../../program/modules/sponsors/placements/tmi'
+import { SponsorTile, SponsorStrip } from '@/components/sponsor/SponsorDashboard'
+
+// Lightweight inline icons to avoid external heroicons dependency in CI
+function UserIconSVG({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} aria-hidden>
+      <path d="M12 12a4 4 0 100-8 4 4 0 000 8zM4 20a8 8 0 0116 0" fill="currentColor" />
+    </svg>
+  )
+}
+function ClockIconSVG({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} aria-hidden>
+      <path d="M12 2a10 10 0 100 20 10 10 0 000-20zm1 11h4v-2h-3V6h-2v7z" fill="currentColor" />
+    </svg>
+  )
+}
+function EyeIconSVG({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} aria-hidden>
+      <path d="M12 5c-7 0-11 6-11 7s4 7 11 7 11-6 11-7-4-7-11-7zm0 11a4 4 0 110-8 4 4 0 010 8z" fill="currentColor" />
+    </svg>
+  )
+}
+
+// Local placements used to avoid out-of-root imports in CI
+const TMI_PLACEMENTS = {
+  ARTICLES_GRID_TILE_SPONSOR_TOP: 'articles_grid_top',
+  ARTICLES_GRID_TILE_SPONSOR_RIGHT: 'articles_grid_right',
+  ARTICLES_GRID_TILE_SPONSOR_INLINE: 'articles_grid_inline',
+  ARTICLES_FOOTER_ADVERTISE_STRIP: 'articles_footer_strip'
+}
 
 interface Article {
   id: string
@@ -72,31 +101,18 @@ export default function FeaturedArticles() {
     <section className="py-16 bg-black/20">
       <div className="max-w-7xl mx-auto px-4">
         {/* Section Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          viewport={{ once: true }}
-          className="text-center mb-12"
-        >
+        <div className="text-center mb-12">
           <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
             Featured <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">Articles</span>
           </h2>
           <p className="text-xl text-gray-300 max-w-2xl mx-auto">
             Exclusive interviews, industry insights, and expert advice from the world of music
           </p>
-        </motion.div>
+        </div>
 
         {/* Featured Article */}
         {featuredArticles.filter(article => article.featured).map((article) => (
-          <motion.div
-            key={article.id}
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            viewport={{ once: true }}
-            className="mb-12"
-          >
+          <div key={article.id} className="mb-12">
             <div className="bg-gradient-to-r from-purple-900/50 to-pink-900/50 rounded-3xl overflow-hidden border border-purple-400/30">
               <div className="grid md:grid-cols-2 gap-0">
                 {/* Image */}
@@ -132,19 +148,19 @@ export default function FeaturedArticles() {
                   {/* Meta Info */}
                   <div className="flex items-center justify-between text-sm text-gray-400 mb-6">
                     <div className="flex items-center gap-4">
-                      <div className="flex items-center gap-1">
-                        <UserIcon className="w-4 h-4" />
-                        <span>{article.author}</span>
+                        <div className="flex items-center gap-1">
+                          <UserIconSVG className="w-4 h-4" />
+                          <span>{article.author}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <ClockIconSVG className="w-4 h-4" />
+                          <span>{article.readTime}</span>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1">
-                        <ClockIcon className="w-4 h-4" />
-                        <span>{article.readTime}</span>
-                      </div>
-                    </div>
                     <div className="flex items-center gap-1">
-                      <EyeIcon className="w-4 h-4" />
-                      <span>{article.views}</span>
-                    </div>
+                    <EyeIconSVG className="w-4 h-4" />
+                    <span>{article.views}</span>
+                  </div>
                   </div>
 
                   <button className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold py-3 px-6 rounded-full transition-all duration-300 self-start">
@@ -153,35 +169,23 @@ export default function FeaturedArticles() {
                 </div>
               </div>
             </div>
-          </motion.div>
+          </div>
         ))}
 
         {/* Article Grid with Sponsor Placements */}
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
           {/* Sponsor Tile - Top Placement */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            viewport={{ once: true }}
-          >
+          <div>
             <SponsorTile
               productId="tmi"
               placementId={TMI_PLACEMENTS.ARTICLES_GRID_TILE_SPONSOR_TOP}
               className="h-full"
               fallbackLabel="Sponsor"
             />
-          </motion.div>
+          </div>
 
           {featuredArticles.filter(article => !article.featured).map((article, index) => (
-            <motion.div
-              key={article.id}
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: (index + 1) * 0.1 }}
-              viewport={{ once: true }}
-              className="group bg-white/5 backdrop-blur-md rounded-2xl overflow-hidden border border-purple-400/20 hover:border-purple-400/40 transition-all duration-300"
-            >
+            <div key={article.id} className="group bg-white/5 backdrop-blur-md rounded-2xl overflow-hidden border border-purple-400/20 hover:border-purple-400/40 transition-all duration-300">
               {/* Image */}
               <div className="relative h-48 overflow-hidden">
                 <Image
@@ -223,67 +227,45 @@ export default function FeaturedArticles() {
                   Read Article
                 </button>
               </div>
-            </motion.div>
+            </div>
           ))}
 
           {/* Sponsor Tile - Right Placement */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.4 }}
-            viewport={{ once: true }}
-          >
+          <div>
             <SponsorTile
               productId="tmi"
               placementId={TMI_PLACEMENTS.ARTICLES_GRID_TILE_SPONSOR_RIGHT}
               className="h-full"
               fallbackLabel="Sponsor"
             />
-          </motion.div>
+          </div>
 
           {/* Sponsor Tile - Inline Placement */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.5 }}
-            viewport={{ once: true }}
-          >
+          <div>
             <SponsorTile
               productId="tmi"
               placementId={TMI_PLACEMENTS.ARTICLES_GRID_TILE_SPONSOR_INLINE}
               className="h-full"
               fallbackLabel="Sponsor"
             />
-          </motion.div>
+          </div>
         </div>
 
         {/* View All Articles Button */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.8 }}
-          viewport={{ once: true }}
-          className="text-center mt-12"
-        >
+        <div className="text-center mt-12">
           <button className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 px-8 py-4 rounded-full text-white font-semibold text-lg transition-all duration-300 shadow-lg hover:shadow-purple-500/25">
             View All Articles
           </button>
-        </motion.div>
+        </div>
 
         {/* Footer Sponsor Strip */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 1.0 }}
-          viewport={{ once: true }}
-          className="mt-12"
-        >
+        <div className="mt-12">
           <SponsorStrip
             productId="tmi"
             placementId={TMI_PLACEMENTS.ARTICLES_FOOTER_ADVERTISE_STRIP}
             fallbackLabel="Advertise with us"
           />
-        </motion.div>
+        </div>
       </div>
     </section>
   )
