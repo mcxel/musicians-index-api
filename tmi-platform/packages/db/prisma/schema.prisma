@@ -318,3 +318,184 @@ model FeatureFlag {
 
   @@index([enabled])
 }
+
+// ======================================================================
+// TICKETING CORE (Phase 1)
+// Minimal models to support Event, TicketType, Ticket, CheckIn, Order
+// Refund-ready fields are included but payment processing is out of scope
+// ======================================================================
+
+enum EventStatus {
+  DRAFT
+  PUBLISHED
+  ON_SALE
+  DOORS_OPEN
+  STARTED
+  ENDED
+  CANCELED
+  RESCHEDULED
+}
+
+enum TicketStatus {
+  ACTIVE
+  CANCELED
+  REFUND_PENDING
+  REFUNDED
+  USED
+}
+
+model Event {
+  id           String      @id @default(cuid())
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  title        String
+  description  String?     @db.Text
+  startsAt     DateTime
+  endsAt       DateTime?
+  timezone     String?
+  venueName    String?
+  venueCity    String?
+  venueState   String?
+  venueCountry String?
+
+  // ownership / organizer hooks
+  artistUserId String?
+  venueUserId  String?
+
+  status       EventStatus @default(PUBLISHED)
+  cancelReason String?
+  canceledAt   DateTime?
+
+  // optional lightweight refund policy JSON for MVP
+  refundPolicy Json?
+
+  ticketTypes  TicketType[]
+  tickets      Ticket[]
+}
+
+model TicketType {
+  id         String   @id @default(cuid())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  eventId    String
+  event      Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  name       String   // e.g., "GA", "VIP"
+  priceCents Int      @default(0)
+  currency   String   @default("USD")
+  quantity   Int      @default(0)
+
+  tickets    Ticket[]
+}
+
+model Order {
+  id                 String   @id @default(cuid())
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  buyerUserId        String?
+  provider           String?  // e.g. STRIPE
+  providerPaymentId  String?  // e.g. stripe payment intent / charge id
+  currency           String?
+  amountCents        Int?
+  status             String?  // PAID | REFUND_PENDING | REFUNDED
+
+  tickets            Ticket[]
+  refunds            Refund[]
+}
+
+model Ticket {
+  id           String       @id @default(cuid())
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  eventId      String
+  event        Event        @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  ticketTypeId String
+  ticketType   TicketType   @relation(fields: [ticketTypeId], references: [id])
+
+  orderId      String?
+  order        Order?       @relation(fields: [orderId], references: [id])
+
+  ownerUserId  String?
+  status       TicketStatus @default(ACTIVE)
+
+  // store only a hash of the ticket token
+  tokenHash    String       @unique
+  issuedAt     DateTime     @default(now())
+
+  checkedInAt  DateTime?
+  checkIns     CheckIn[]
+  refunds      Refund[]
+}
+
+model CheckIn {
+  id               String   @id @default(cuid())
+  createdAt        DateTime @default(now())
+
+  ticketId         String
+  ticket           Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  checkedInByUserId String?
+  note             String?
+}
+
+// ======================================================================
+// REFUNDS & POLICIES
+// Keep these models ready for Prisma migrations and later wiring to Stripe
+// ======================================================================
+
+enum RefundReason {
+  CUSTOMER_REQUEST
+  EVENT_CANCELLED
+  EVENT_POSTPONED
+  FRAUD
+  DUPLICATE
+  OTHER
+}
+
+enum RefundStatus {
+  REQUESTED
+  APPROVED
+  REJECTED
+  PROCESSING
+  SUCCEEDED
+  FAILED
+}
+
+enum RefundProcessor {
+  STRIPE
+  ESCROW
+}
+
+model RefundPolicy {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  // JSON rules: refundableUntilHours, refundableFees, partialAllowed, tierRules, etc
+  rules       Json
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Refund {
+  id                 String         @id @default(cuid())
+  orderId            String
+  order              Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  ticketId           String?
+  ticket             Ticket?        @relation(fields: [ticketId], references: [id])
+  amountCents        Int
+  currency           String         @default("USD")
+  reason             RefundReason
+  status             RefundStatus   @default(REQUESTED)
+  processor          RefundProcessor?
+  processorRefundId  String?
+  idempotencyKey     String?         @unique
+  createdAt          DateTime        @default(now())
+  processedAt        DateTime?
+  metadata           Json?
+}
+
