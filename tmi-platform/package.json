@@ -35,8 +35,9 @@
 
     "ci:verify": "pnpm -w lint && pnpm -w typecheck && pnpm -w build",
     "ci": "pnpm -w install --frozen-lockfile && pnpm run snapshot:verify && pnpm run db:validate && pnpm run db:migrate:status && pnpm run ci:verify && pnpm run smoke",
+    "build:web": "pnpm -C apps/web exec next build",
 
-    "ship": "pnpm -w install --frozen-lockfile && pnpm -w -F @tmi/contracts build && pnpm -w -F @tmi/hud-core build && pnpm -w -F @tmi/hud-runtime build && pnpm -w -F @tmi/hud-theme build && pnpm -w -F @tmi/hud-tmi build && pnpm run snapshot:verify && pnpm run db:validate && pnpm run gates && pnpm -w lint && pnpm -w typecheck && pnpm -C apps/api build && pnpm -C apps/web build && pnpm run smoke",
+    "ship": "pnpm -w install --frozen-lockfile && pnpm -w -F @tmi/contracts build && pnpm -w -F @tmi/hud-core build && pnpm -w -F @tmi/hud-runtime build && pnpm -w -F @tmi/hud-theme build && pnpm -w -F @tmi/hud-tmi build && pnpm run snapshot:verify && pnpm run db:validate && pnpm run gates && pnpm -w lint && pnpm -w typecheck && pnpm -C apps/api build && pnpm run build:web && pnpm run smoke",
 
     "release:tag": "powershell -NoProfile -File ./scripts/release-tag.ps1",
     "release:notes": "node ./scripts/release-notes.js",
