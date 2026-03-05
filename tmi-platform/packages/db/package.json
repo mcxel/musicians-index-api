@@ -11,4 +11,12 @@
     "@prisma/client": "^7.4.2",
     "graceful-fs": "^4.2.11"
   }
+  ,
+  "prisma": {
+    "seed": "ts-node --transpile-only prisma/seed.ts"
+  },
+  "devDependencies": {
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  }
 }

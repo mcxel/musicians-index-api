@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "pnpm"
+
+      - name: Install
+        run: pnpm -w install --frozen-lockfile
+
+      - name: Lint (workspace)
+        run: pnpm -w lint
+
+      - name: Typecheck (web)
+        run: pnpm -C apps/web exec tsc -p tsconfig.json --noEmit
+
+      - name: Build (web)
+        run: pnpm -C apps/web build
+
+      # Optional: if you have API build/test commands, append:
+      # - name: Build (api)
+      #   run: pnpm -C apps/api build
