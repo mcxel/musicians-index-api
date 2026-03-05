@@ -1,65 +1,84 @@
 {
-	"scripts": {
-		"lint": "pnpm -r --if-present run lint",
-		"typecheck": "pnpm -r --if-present run typecheck",
-		"build": "pnpm -r --if-present run build",
-		"test": "pnpm -r --if-present run test",
-		"ci:verify": "pnpm -w lint && pnpm -w typecheck && pnpm -w build",
-		"prisma:generate": "pnpm -r exec prisma generate",
-		"gates:web": "pnpm run check:imports && pnpm -C apps/web exec tsc -p tsconfig.json --noEmit --pretty false && pnpm -C apps/web build && pnpm -C apps/web lint",
-		"check:imports": "powershell -NoProfile -File ./scripts/check-import-boundaries.ps1",
-		"gates:db": "pnpm -C packages/db exec tsc --noEmit",
-		"gates": "pnpm run gates:web && pnpm run gates:db",
-		"dev:tickets-api": "node apps/api/dev-tickets-server.cjs",
-		"test:e2e": "playwright test"
-	},
-	"devDependencies": {
-		"@typescript-eslint/eslint-plugin": "^8.56.1",
-		"prisma": "^7.4.2",
-		"ts-node": "^10.9.2",
-		"typescript": "^5.9.3",
-		"husky": "^8.0.0",
-		"lint-staged": "^13.0.0",
-		"prettier": "^2.8.8",
-		"@playwright/test": "^1.38.0"
-	},
-	"packageManager": "pnpm@10.30.2+sha512.36cdc707e7b7940a988c9c1ecf88d084f8514b5c3f085f53a2e244c2921d3b2545bc20dd4ebe1fc245feec463bb298aecea7a63ed1f7680b877dc6379d8d0cb4",
-	"dependencies": {
-		"@next-auth/prisma-adapter": "^1.0.7",
-		"@prisma/client": "^7.4.2",
-		"@stripe/stripe-js": "^8.8.0",
-		"dotenv": "^17.3.1",
-		"graceful-fs": "^4.2.11",
-		"next": "14.2.3",
-		"next-auth": "^4.24.13",
-		"react": "18.3.1",
-		"react-dom": "18.3.1",
-		"socket.io": "^4.8.3",
-		"socket.io-client": "^4.8.3",
-		"stripe": "^20.4.0"
-	},
-	"pnpm": {
-		"overrides": {
-			"react": "18.3.1",
-			"react-dom": "18.3.1",
-			"@types/react": "18.3.3",
-			"@types/react-dom": "18.3.0",
-			"next": "14.2.3"
-		},
-		"ignoredBuiltDependencies": [
-			"@prisma/engines",
-			"prisma",
-			"unrs-resolver"
-		]
-	}
-	,
-	"lint-staged": {
-		"*.{ts,tsx,js,jsx,json,md,yml,yaml}": [
-			"prettier --write"
-		]
-	},
-	"scripts": {
-		"test:e2e": "playwright test"
-	}
-}
+  "name": "tmi-platform",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "lint": "pnpm -r --if-present run lint",
+    "typecheck": "pnpm -r --if-present run typecheck",
+    "build": "pnpm -r --if-present run build",
+    "test": "pnpm -r --if-present run test",
+    "test:e2e": "playwright test",
 
+    "check:imports": "powershell -NoProfile -File ./scripts/check-import-boundaries.ps1",
+    "gates:web": "pnpm run check:imports && pnpm -C apps/web exec tsc -p tsconfig.json --noEmit --pretty false && pnpm -C apps/web build && pnpm -C apps/web lint",
+    "gates:db": "pnpm -C packages/db exec tsc --noEmit",
+    "gates": "pnpm run gates:web && pnpm run gates:db",
+
+    "prisma:generate": "pnpm -r exec prisma generate",
+    "db:validate": "pnpm -C packages/db exec prisma validate",
+    "db:migrate:status": "pnpm -C packages/db exec prisma migrate status",
+    "db:migrate:deploy": "pnpm -C packages/db exec prisma migrate deploy",
+    "db:migrate:dryrun": "node ./scripts/db-migrate-dryrun.js",
+
+    "snapshot:api": "node ./scripts/generate-api-snapshots.js",
+    "snapshot:verify": "node ./scripts/snapshot-verify.js",
+
+    "health:api": "node ./scripts/healthcheck-api.js",
+    "health:web": "node ./scripts/healthcheck-web.js",
+    "health": "pnpm run health:api && pnpm run health:web",
+
+    "smoke:api": "node ./scripts/smoke-api.js",
+    "smoke:web": "node ./scripts/smoke-web.js",
+    "smoke": "pnpm run smoke:api && pnpm run smoke:web",
+
+    "snapshot:generate": "node ./scripts/generate-api-snapshots.js",
+
+    "ci:verify": "pnpm -w lint && pnpm -w typecheck && pnpm -w build",
+    "ci": "pnpm -w install --frozen-lockfile && pnpm run snapshot:verify && pnpm run db:validate && pnpm run db:migrate:status && pnpm run ci:verify && pnpm run smoke",
+
+    "ship": "pnpm -w install --frozen-lockfile && pnpm -w -F @tmi/contracts build && pnpm -w -F @tmi/hud-core build && pnpm -w -F @tmi/hud-runtime build && pnpm -w -F @tmi/hud-theme build && pnpm -w -F @tmi/hud-tmi build && pnpm run snapshot:verify && pnpm run db:validate && pnpm run gates && pnpm -w lint && pnpm -w typecheck && pnpm -w build && pnpm run smoke",
+
+    "release:tag": "powershell -NoProfile -File ./scripts/release-tag.ps1",
+    "release:notes": "node ./scripts/release-notes.js",
+    "rollback:to-tag": "powershell -NoProfile -File ./scripts/rollback-to-tag.ps1",
+
+    "dev:tickets-api": "node apps/api/dev-tickets-server.cjs",
+
+    "bot:monitor": "node ./scripts/bot-monitor.js",
+    "bot:triage": "node ./scripts/bot-triage.js"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.56.1",
+    "prisma": "^7.4.2",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3",
+    "husky": "^8.0.0",
+    "lint-staged": "^13.0.0",
+    "prettier": "^2.8.8",
+    "@playwright/test": "^1.38.0"
+  },
+  "packageManager": "pnpm@10.30.2",
+  "dependencies": {
+    "@next-auth/prisma-adapter": "^1.0.7",
+    "@prisma/client": "^7.4.2",
+    "@stripe/stripe-js": "^8.8.0",
+    "dotenv": "^17.3.1",
+    "graceful-fs": "^4.2.11",
+    "next": "14.2.3",
+    "next-auth": "^4.24.13",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "socket.io": "^4.8.3",
+    "socket.io-client": "^4.8.3",
+    "stripe": "^20.4.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "react": "18.3.1",
+      "react-dom": "18.3.1",
+      "@types/react": "18.3.3",
+      "@types/react-dom": "18.3.0",
+      "next": "14.2.3"
+    }
+  }
+}
