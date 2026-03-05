@@ -1,14 +1,17 @@
 {
 	"scripts": {
-		"typecheck": "pnpm -r exec tsc --noEmit",
-		"lint": "pnpm -r lint",
-		"build": "pnpm -r build",
+		"lint": "pnpm -r --if-present run lint",
+		"typecheck": "pnpm -r --if-present run typecheck",
+		"build": "pnpm -r --if-present run build",
+		"test": "pnpm -r --if-present run test",
+		"ci:verify": "pnpm -w lint && pnpm -w typecheck && pnpm -w build",
 		"prisma:generate": "pnpm -r exec prisma generate",
 		"gates:web": "pnpm run check:imports && pnpm -C apps/web exec tsc -p tsconfig.json --noEmit --pretty false && pnpm -C apps/web build && pnpm -C apps/web lint",
 		"check:imports": "powershell -NoProfile -File ./scripts/check-import-boundaries.ps1",
 		"gates:db": "pnpm -C packages/db exec tsc --noEmit",
 		"gates": "pnpm run gates:web && pnpm run gates:db",
-		"dev:tickets-api": "node apps/api/dev-tickets-server.cjs"
+		"dev:tickets-api": "node apps/api/dev-tickets-server.cjs",
+		"test:e2e": "playwright test"
 	},
 	"devDependencies": {
 		"@typescript-eslint/eslint-plugin": "^8.56.1",
