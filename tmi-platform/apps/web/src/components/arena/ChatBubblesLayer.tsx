@@ -104,7 +104,7 @@ export const ChatBubblesLayer: React.FC<ChatBubblesLayerProps> = ({
       grouped.get(key)?.push(b);
     });
 
-    grouped.forEach((group, key) => {
+    grouped.forEach((group, _key) => {
       group.forEach((b, i) => {
         stacks.set(b.id, i);
       });

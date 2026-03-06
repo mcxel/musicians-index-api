@@ -9,17 +9,17 @@
 import React from 'react';
 
 interface SpotlightItem {
-  id: string;
-  title: string;
-  subtitle?: string;
-  image?: string;
-  badge?: string;
-  link?: string;
+  readonly id: string;
+  readonly title: string;
+  readonly subtitle?: string;
+  readonly image?: string;
+  readonly badge?: string | null;
+  readonly link?: string;
 }
 
 interface SpotlightRailProps {
-  title?: string;
-  items?: SpotlightItem[];
+  readonly title?: string;
+  readonly items?: readonly SpotlightItem[];
 }
 
 const DEFAULT_ITEMS: SpotlightItem[] = [
@@ -33,7 +33,7 @@ const DEFAULT_ITEMS: SpotlightItem[] = [
 export function SpotlightRail({ 
   title = 'Featured', 
   items = DEFAULT_ITEMS 
-}: SpotlightRailProps) {
+}: Readonly<SpotlightRailProps>) {
   return (
     <div className="w-full py-8">
       <div className="flex items-center justify-between mb-6">
@@ -45,7 +45,16 @@ export function SpotlightRail({
       
       {/* Horizontal scroll container */}
       <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
-        {items.map((item) => (
+        {items.map((item) => {
+          let badgeClass = '';
+          if (item.badge) {
+            if (item.badge === 'NEW') badgeClass = 'bg-blue-500';
+            else if (item.badge === 'HOT') badgeClass = 'bg-red-500';
+            else if (item.badge === 'LIVE') badgeClass = 'bg-green-500';
+            else badgeClass = 'bg-orange-500';
+          }
+
+          return (
           <a
             key={item.id}
             href={item.link || '#'}
@@ -67,12 +76,7 @@ export function SpotlightRail({
               {/* Badge */}
               {item.badge && (
                 <div className="absolute top-3 left-3">
-                  <span className={`px-2 py-1 text-xs font-bold rounded ${
-                    item.badge === 'NEW' ? 'bg-blue-500' :
-                    item.badge === 'HOT' ? 'bg-red-500' :
-                    item.badge === 'LIVE' ? 'bg-green-500' :
-                    'bg-orange-500'
-                  } text-white`}>
+                  <span className={`px-2 py-1 text-xs font-bold rounded ${badgeClass} text-white`}>
                     {item.badge}
                   </span>
                 </div>
@@ -86,8 +90,9 @@ export function SpotlightRail({
             {item.subtitle && (
               <p className="text-sm text-gray-400 truncate">{item.subtitle}</p>
             )}
-          </a>
-        ))}
+            </a>
+          );
+        })}
       </div>
     </div>
   );

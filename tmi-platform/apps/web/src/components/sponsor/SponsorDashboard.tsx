@@ -19,7 +19,6 @@
 'use client';
 
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
 import { RevenueChart } from './RevenueChart';
 
 export interface RevenueSources {
@@ -50,22 +49,21 @@ export interface PaymentRecord {
 }
 
 interface SponsorDashboardProps {
-  artistId: string;
-  artistName: string;
-  tier: 'FREE' | 'PREMIUM' | 'VIP' | 'SPONSOR' | 'OVERSEER';
+  readonly artistName: string;
+  readonly tier: 'FREE' | 'PREMIUM' | 'VIP' | 'SPONSOR' | 'OVERSEER';
 }
 
-export function SponsorDashboard({ artistId: _artistId, artistName, tier }: SponsorDashboardProps) {
+export function SponsorDashboard({ artistName, tier }: SponsorDashboardProps) {
   const [timeframe, setTimeframe] = useState<'today' | 'week' | 'month' | 'all'>('month');
 
   // Mock data - would be fetched from API
   const mockRevenue: RevenueSources = {
-    arena: 2450.50,
-    emotes: 1200.00,
+    arena: 2450.5,
+    emotes: 1200,
     accessories: 850.75,
-    sponsorAds: 5600.00,
+    sponsorAds: 5600,
     directTips: 380.25,
-    playlistShare: 1850.00,
+    playlistShare: 1850,
   };
 
   const totalRevenue = Object.values(mockRevenue).reduce((sum, val) => sum + val, 0);
@@ -78,7 +76,7 @@ export function SponsorDashboard({ artistId: _artistId, artistName, tier }: Spon
       impressions: 45678,
       clicks: 1234,
       ctr: 2.7,
-      revenue: 2800.00,
+      revenue: 2800,
     },
     {
       id: 'sp_002',
@@ -87,7 +85,7 @@ export function SponsorDashboard({ artistId: _artistId, artistName, tier }: Spon
       impressions: 32100,
       clicks: 890,
       ctr: 2.8,
-      revenue: 2800.00,
+      revenue: 2800,
     },
   ];
 
@@ -95,14 +93,14 @@ export function SponsorDashboard({ artistId: _artistId, artistName, tier }: Spon
     {
       id: 'pay_001',
       date: new Date('2026-02-01'),
-      amount: 5600.00,
+      amount: 5600,
       type: 'Monthly Sponsor Revenue',
       status: 'completed',
     },
     {
       id: 'pay_002',
       date: new Date('2026-01-15'),
-      amount: 2450.50,
+      amount: 2450.5,
       type: 'Arena Performance',
       status: 'completed',
     },
@@ -140,41 +138,37 @@ export function SponsorDashboard({ artistId: _artistId, artistName, tier }: Spon
 
         {/* Earnings Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <motion.div
-            className="bg-gradient-to-br from-blue-500 to-blue-700 rounded-2xl shadow-xl p-6 text-white"
-            whileHover={{ scale: 1.02 }}
+          <div
+            className="bg-gradient-to-br from-blue-500 to-blue-700 rounded-2xl shadow-xl p-6 text-white hover:scale-[1.02] transition-transform cursor-pointer"
           >
             <div className="text-sm font-medium mb-2 opacity-90">Total Revenue</div>
             <div className="text-4xl font-bold mb-1">${totalRevenue.toFixed(2)}</div>
             <div className="text-sm opacity-75">This Month</div>
-          </motion.div>
+          </div>
 
-          <motion.div
-            className="bg-white rounded-2xl shadow-lg p-6"
-            whileHover={{ scale: 1.02 }}
+          <div
+            className="bg-white rounded-2xl shadow-lg p-6 hover:scale-[1.02] transition-transform cursor-pointer"
           >
             <div className="text-sm font-medium text-gray-600 mb-2">Sponsor Ads</div>
             <div className="text-3xl font-bold text-yellow-600">${mockRevenue.sponsorAds.toFixed(2)}</div>
             <div className="text-sm text-gray-500 mt-1">+12% vs last month</div>
-          </motion.div>
+          </div>
 
-          <motion.div
-            className="bg-white rounded-2xl shadow-lg p-6"
-            whileHover={{ scale: 1.02 }}
+          <div
+            className="bg-white rounded-2xl shadow-lg p-6 hover:scale-[1.02] transition-transform cursor-pointer"
           >
             <div className="text-sm font-medium text-gray-600 mb-2">Arena Revenue</div>
             <div className="text-3xl font-bold text-green-600">${mockRevenue.arena.toFixed(2)}</div>
             <div className="text-sm text-gray-500 mt-1">8 performances</div>
-          </motion.div>
+          </div>
 
-          <motion.div
-            className="bg-white rounded-2xl shadow-lg p-6"
-            whileHover={{ scale: 1.02 }}
+          <div
+            className="bg-white rounded-2xl shadow-lg p-6 hover:scale-[1.02] transition-transform cursor-pointer"
           >
             <div className="text-sm font-medium text-gray-600 mb-2">Playlist Share</div>
             <div className="text-3xl font-bold text-purple-600">${mockRevenue.playlistShare.toFixed(2)}</div>
             <div className="text-sm text-gray-500 mt-1">12 URLs ranked</div>
-          </motion.div>
+          </div>
         </div>
 
         {/* Revenue Chart */}
@@ -225,22 +219,23 @@ export function SponsorDashboard({ artistId: _artistId, artistName, tier }: Spon
               </tr>
             </thead>
             <tbody className="divide-y">
-              {mockPayments.map(payment => (
+              {mockPayments.map(payment => {
+                const statusClass = payment.status === 'completed' ? 'bg-green-100 text-green-800' :
+                  payment.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                  'bg-red-100 text-red-800';
+
+                return (
                 <tr key={payment.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3">{payment.date.toLocaleDateString()}</td>
                   <td className="px-4 py-3">{payment.type}</td>
                   <td className="px-4 py-3 font-bold">${payment.amount.toFixed(2)}</td>
                   <td className="px-4 py-3">
-                    <span className={`px-2 py-1 rounded text-xs font-semibold ${
-                      payment.status === 'completed' ? 'bg-green-100 text-green-800' :
-                      payment.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-red-100 text-red-800'
-                    }`}>
+                    <span className={`px-2 py-1 rounded text-xs font-semibold ${statusClass}`}>
                       {payment.status}
                     </span>
                   </td>
                 </tr>
-              ))}
+              )})}
             </tbody>
           </table>
         </div>
@@ -250,7 +245,15 @@ export function SponsorDashboard({ artistId: _artistId, artistName, tier }: Spon
 }
 
 // Lightweight compatibility exports so existing pages can import SponsorTile/SponsorStrip/SponsorBadge
-export const SponsorTile = (props: any) => {
+type SponsorTileProps = {
+  className?: string;
+  style?: React.CSSProperties;
+  fallbackLabel?: string;
+  productId?: string;
+  placementId?: string;
+}
+
+export const SponsorTile = (props: SponsorTileProps) => {
   return (
     <div className={props.className} style={{ border: '1px dashed #FF6B00', padding: '0.5rem', color: '#FF6B00', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: props.style?.minHeight || '56px' }}>
       {props.fallbackLabel || 'Sponsor'}
@@ -258,10 +261,20 @@ export const SponsorTile = (props: any) => {
   )
 }
 
-export const SponsorStrip = (props: any) => <SponsorTile {...props} />
+export const SponsorStrip = (props: SponsorTileProps) => <SponsorTile {...props} />
 
-export const SponsorBadge = (props: any) => (
-  <div style={{ border: '1px solid #FF6B00', padding: '0.25rem 0.5rem', color: '#FF6B00', fontSize: '0.8rem' }}>
-    {props.presentedByText || 'Presented by'}
-  </div>
-)
+type SponsorBadgeProps = {
+  className?: string;
+  style?: React.CSSProperties;
+  presentedByText?: string;
+  productId?: string;
+  placementId?: string;
+}
+
+export const SponsorBadge = (props: SponsorBadgeProps) => {
+  return (
+    <div className={props.className} style={{ border: '1px solid #FF6B00', padding: '0.25rem 0.5rem', color: '#FF6B00', fontSize: '0.8rem', ...props.style }}>
+      {props.presentedByText || 'Presented by'}
+    </div>
+  )
+}

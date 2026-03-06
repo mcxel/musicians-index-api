@@ -1,26 +1,25 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import React from 'react'
 
-// Inline icons to avoid framer-motion/heroicons dependencies in CI
-function PlayIconSVG({ className }: { className?: string }) {
+// Inline icons to avoid external dependencies in CI
+function PlayIconSVG({ className }: { readonly className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={className} aria-hidden>
+    <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
       <path d="M5 3v18l15-9L5 3z" fill="currentColor" />
     </svg>
   )
 }
-function MicrophoneIconSVG({ className }: { className?: string }) {
+function MicrophoneIconSVG({ className }: { readonly className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={className} aria-hidden>
+    <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
       <path d="M12 1a3 3 0 00-3 3v7a3 3 0 006 0V4a3 3 0 00-3-3zM5 11a7 7 0 0014 0" fill="currentColor" />
     </svg>
   )
 }
-function MusicalNoteIconSVG({ className }: { className?: string }) {
+function MusicalNoteIconSVG({ className }: { readonly className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={className} aria-hidden>
+    <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
       <path d="M9 17V5l10-2v12" stroke="currentColor" strokeWidth={1.5} fill="none" strokeLinecap="round" strokeLinejoin="round" />
       <circle cx="6" cy="18" r="2" fill="currentColor" />
     </svg>

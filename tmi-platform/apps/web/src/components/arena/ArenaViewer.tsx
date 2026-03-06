@@ -7,14 +7,15 @@
 'use client';
 
 import React, { useEffect, useState, useRef } from 'react';
+import { logger } from '@/lib/logger';
 import type { AvatarState } from '@/types/shared';
 import { EngineClient } from '@/lib/client/EngineClient';
-import { generateAudienceSeatsWithTiers, generateStageSeats, type EnhancedSeatState, findNearestAvailableSeat } from './SeatMap';
+import { generateAudienceSeatsWithTiers, generateStageSeats, type EnhancedSeatState } from './SeatMap';
 import { AvatarSprite } from './AvatarSprite';
 import { EmoteOverlay, type EmoteInstance } from './EmoteOverlay';
 import { ChatBubblesLayer, type ChatMessage } from './ChatBubblesLayer';
 import { CameraRig, startCameraLoop, type CameraState } from './CameraRig';
-import { animateToSeat, animatePopIn, type WalkInState } from './AvatarWalkIn';
+import { animateToSeat, type WalkInState } from './AvatarWalkIn';
 
 export interface ArenaViewerProps {
   roomId: string;
@@ -30,13 +31,13 @@ interface AvatarRenderState {
   walkState?: WalkInState; // During walk-in animation
 }
 
-export const ArenaViewer: React.FC<ArenaViewerProps> = ({ roomId, userId, username, role, avatarAssetId = 'default-front.png', className = '' }) => {
+export const ArenaViewer: React.FC<ArenaViewerProps> = ({ roomId, userId: _userId, username, role, avatarAssetId = 'default-front.png', className = '' }) => {
   const [engineClient] = useState(() => new EngineClient({ url: 'ws://localhost:3001' }));
   const [connected, setConnected] = useState(false);
   const [seats, setSeats] = useState<EnhancedSeatState[]>([]);
   const [avatars, setAvatars] = useState<Map<string, AvatarRenderState>>(new Map());
-  const [emotes, setEmotes] = useState<EmoteInstance[]>([]);
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [emotes] = useState<EmoteInstance[]>([]);
+  const [chatMessages] = useState<ChatMessage[]>([]);
   const [cameraState, setCameraState] = useState<CameraState | null>(null);
   const cameraRigRef = useRef<CameraRig | null>(null);
   const walkAnimationsRef = useRef<Map<string, () => void>>(new Map()); // Cancel functions
@@ -93,7 +94,7 @@ export const ArenaViewer: React.FC<ArenaViewerProps> = ({ roomId, userId, userna
         const preferredTier = role === 'ARTIST' ? 'STAGE' : 'LOWER';
         await engineClient.requestSeat(preferredTier);
       } catch (err) {
-        console.error('[ArenaViewer] Connection error:', err);
+        logger.error('[ArenaViewer] Connection error:', err);
       }
     };
 
@@ -111,28 +112,35 @@ export const ArenaViewer: React.FC<ArenaViewerProps> = ({ roomId, userId, userna
     const unsubAvatars = engineClient.onAvatarUpdate?.((updatedAvatars) => {
       const newAvatars = new Map<string, AvatarRenderState>();
 
-      updatedAvatars.forEach((avatar) => {
-        const existing = avatars.get(avatar.userId);
+      const typedAvatars = (updatedAvatars as unknown as AvatarState[]) ?? [];
+
+      // local helper type for positions
+      type Vec2 = { x: number; y: number; z?: number };
+
+      typedAvatars.forEach((avatar: AvatarState) => {
+        const id = String(avatar.userId ?? '');
+        const existing = avatars.get(id);
 
         // If avatar just got a seat, animate walk-in
         if (!existing?.avatar.seatId && avatar.seatId) {
           const seat = seats.find((s) => s.id === avatar.seatId);
           if (seat) {
             // Cancel existing animation
-            const cancel = walkAnimationsRef.current.get(avatar.userId);
+            const cancel = walkAnimationsRef.current.get(id);
             if (cancel) cancel();
 
             // Start walk animation
-            const walkState: WalkInState = { x: avatar.position.x, y: avatar.position.y, tilt: 0, scale: 1, progress: 0 };
-            newAvatars.set(avatar.userId, { avatar, walkState });
+            const pos = (avatar.position as unknown as Vec2) ?? { x: 0, y: 0 };
+            const walkState: WalkInState = { x: pos.x, y: pos.y, tilt: 0, scale: 1, progress: 0 };
+            newAvatars.set(id, { avatar: avatar, walkState });
 
             const cancelWalk = animateToSeat(
-              { x: avatar.position.x, y: avatar.position.y },
+              { x: pos.x, y: pos.y },
               { x: seat.position.x, y: seat.position.y },
               (state) => {
                 setAvatars((prev) => {
                   const updated = new Map(prev);
-                  updated.set(avatar.userId, { avatar, walkState: state });
+                  updated.set(id, { avatar: avatar, walkState: state });
                   return updated;
                 });
               },
@@ -140,17 +148,17 @@ export const ArenaViewer: React.FC<ArenaViewerProps> = ({ roomId, userId, userna
                 // Animation done
                 setAvatars((prev) => {
                   const updated = new Map(prev);
-                  updated.set(avatar.userId, { avatar, walkState: undefined });
+                  updated.set(id, { avatar: avatar, walkState: undefined });
                   return updated;
                 });
-                walkAnimationsRef.current.delete(avatar.userId);
+                walkAnimationsRef.current.delete(id);
               }
             );
 
-            walkAnimationsRef.current.set(avatar.userId, cancelWalk);
+            walkAnimationsRef.current.set(id, cancelWalk);
           }
         } else {
-          newAvatars.set(avatar.userId, { avatar, walkState: existing?.walkState });
+          newAvatars.set(id, { avatar: avatar, walkState: existing?.walkState });
         }
       });
 
@@ -159,7 +167,7 @@ export const ArenaViewer: React.FC<ArenaViewerProps> = ({ roomId, userId, userna
 
     const unsubSeats = engineClient.onSeatUpdate?.((updatedSeats) => {
       // Seat updates handled via avatar seat assignments
-      console.log('[ArenaViewer] Seats updated:', updatedSeats.length);
+      logger.log('[ArenaViewer] Seats updated:', updatedSeats.length);
     });
 
     return () => {
@@ -172,31 +180,7 @@ export const ArenaViewer: React.FC<ArenaViewerProps> = ({ roomId, userId, userna
   useEffect(() => {
     if (!engineClient) return;
 
-    const handleEmote = (data: { userId: string; emoteType: string }) => {
-      const avatar = avatars.get(data.userId);
-      if (!avatar) return;
-
-      const emote: EmoteInstance = {
-        id: `emote-${Date.now()}-${data.userId}`,
-        userId: data.userId,
-        emoteType: data.emoteType as any,
-        position: { x: avatar.avatar.position.x, y: avatar.avatar.position.y - 60 },
-        startTime: Date.now(),
-        duration: 1500,
-      };
-
-      setEmotes((prev) => [...prev, emote]);
-
-      // Track activity for camera heat
-      if (cameraRigRef.current && avatar.avatar.seatId) {
-        cameraRigRef.current.trackActivity(avatar.avatar.seatId, 'EMOTE');
-      }
-
-      // Auto-remove after duration
-      setTimeout(() => {
-        setEmotes((prev) => prev.filter((e) => e.id !== emote.id));
-      }, emote.duration + 100);
-    };
+    // emote handler placeholder removed (not wired yet)
 
     // Note: Real socket event would be like engineClient.on('avatar:emote', handleEmote)
     // For now, this is a placeholder showing the intent
@@ -220,7 +204,7 @@ export const ArenaViewer: React.FC<ArenaViewerProps> = ({ roomId, userId, userna
 
       return (
         <div
-          key={avatar.userId}
+          key={String(avatar.userId)}
           style={{
             position: 'absolute',
             left: x,

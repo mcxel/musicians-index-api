@@ -17,7 +17,7 @@ import { NextRequest, NextResponse } from 'next/server';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { amount, currency, questionPreview } = body;
+    const { amount, currency } = body;
 
     // Validate amount ($1.00 = 100 cents)
     if (amount !== 100) {
@@ -47,10 +47,12 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(mockPaymentIntent, { status: 200 });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : String(error);
+    // eslint-disable-next-line no-console
     console.error('[Law Bubble Payment Error]', error);
     return NextResponse.json(
-      { error: 'Payment processing failed', details: error.message },
+      { error: 'Payment processing failed', details: msg },
       { status: 500 }
     );
   }

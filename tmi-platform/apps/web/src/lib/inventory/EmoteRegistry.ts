@@ -9,8 +9,9 @@
  * ==================================================================================
  */
 
-import type { EmoteType } from '@/components/play-widget/PlayWidget';
+import type { EmoteType } from '@/types/playWidget.contracts';
 import { InventoryManager } from './InventoryManager';
+import { logger } from '@/lib/logger';
 
 export interface EmoteDefinition {
   type: EmoteType;
@@ -31,7 +32,7 @@ export class EmoteRegistry {
    */
   static registerEmote(definition: EmoteDefinition): void {
     if (this.emotes.has(definition.type)) {
-      console.warn(`[EmoteRegistry] Emote ${definition.type} already registered. Overwriting.`);
+      logger.warn(`[EmoteRegistry] Emote ${definition.type} already registered. Overwriting.`);
     }
 
     this.emotes.set(definition.type, definition);

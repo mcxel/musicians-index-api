@@ -16,7 +16,8 @@
  * ==================================================================================
  */
 
-import type { EmoteType, UserTier } from '@/components/play-widget/PlayWidget';
+import type { EmoteType, UserTier } from '@/types/playWidget.contracts';
+import { logger } from '@/lib/logger';
 
 export type InventoryItemType = 
   | 'emote' 
@@ -35,7 +36,7 @@ export interface InventoryItem {
   tier: UserTier;
   cost: number; // in platform currency
   rarity: 'common' | 'rare' | 'epic' | 'legendary';
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface UserInventory {
@@ -55,7 +56,7 @@ export class InventoryManager {
    */
   static registerItem(item: InventoryItem): void {
     if (this.registeredItems.has(item.id)) {
-      console.warn(`[InventoryManager] Item ${item.id} already registered. Overwriting.`);
+      logger.warn(`[InventoryManager] Item ${item.id} already registered. Overwriting.`);
     }
     this.registeredItems.set(item.id, item);
   }

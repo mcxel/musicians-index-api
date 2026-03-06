@@ -1,8 +1,33 @@
-'use client'
+ 'use client'
 
-import { motion } from 'framer-motion'
-import { PlayIcon, MicrophoneIcon, MusicalNoteIcon } from '@heroicons/react/24/solid'
+// Inline fallback icons to avoid external dependencies in CI
+function IconPlay(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" {...props}>
+      <path d="M8 5v14l11-7-11-7z" />
+    </svg>
+  )
+}
 
+function IconMic(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" {...props}>
+      <path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v5a3 3 0 0 0 3 3z" />
+      <path d="M19 11a1 1 0 1 0-2 0 5 5 0 0 1-10 0 1 1 0 1 0-2 0 7 7 0 0 0 6 6.93V20H9a1 1 0 1 0 0 2h6a1 1 0 1 0 0-2h-2v-2.07A7 7 0 0 0 19 11z" />
+    </svg>
+  )
+}
+
+function IconMusic(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" {...props}>
+      <path d="M19 3v12.26A3 3 0 1 0 21 18V7h-6V3h4z" />
+      <path d="M11 5v10.26A3 3 0 1 0 13 18V9h-6V5h4z" />
+    </svg>
+  )
+}
+
+import React from 'react'
 export default function HeroSection() {
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
@@ -13,42 +38,21 @@ export default function HeroSection() {
         }}></div>
       </div>
 
-      {/* Floating Music Notes Animation */}
+      {/* Floating Music Notes (static placeholders for CI builds) */}
       <div className="absolute inset-0 pointer-events-none">
-        {[...Array(8)].map((_, i) => (
-          <motion.div
-            key={i}
-            className="absolute text-purple-400/30"
-            initial={{
-              x: typeof window !== 'undefined' ? Math.random() * window.innerWidth : Math.random() * 1920,
-              y: typeof window !== 'undefined' ? window.innerHeight + 100 : 1100,
-              rotate: 0,
-              scale: 0.5 + Math.random() * 0.5
-            }}
-            animate={{
-              y: -100,
-              rotate: 360,
-              x: typeof window !== 'undefined' ? Math.random() * window.innerWidth : Math.random() * 1920
-            }}
-            transition={{
-              duration: 10 + Math.random() * 10,
-              repeat: Infinity,
-              delay: Math.random() * 5
-            }}
-          >
-            <MusicalNoteIcon className="w-8 h-8" />
-          </motion.div>
-        ))}
+        {(() => {
+          const STAR_IDS = Array.from({ length: 8 }, (_, i) => i + 1)
+          return STAR_IDS.map((id) => (
+            <div key={`star-${id}`} className="absolute text-purple-400/30" style={{ left: `${Math.floor(Math.random() * 90)}%`, top: `${60 + Math.floor(Math.random() * 30)}%` }}>
+              <IconMusic className="w-8 h-8" />
+            </div>
+          ))
+        })()}
       </div>
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 text-center">
         {/* Main Headline */}
-        <motion.div
-          initial={{ opacity: 0, y: 50 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-          className="mb-8"
-        >
+        <div className="mb-8">
           <h1 className="text-6xl md:text-8xl font-bold mb-6">
             <span className="bg-gradient-to-r from-purple-400 via-pink-400 to-red-400 bg-clip-text text-transparent">
               The Musicians
@@ -62,32 +66,22 @@ export default function HeroSection() {
             Where Music Meets Opportunity. Discover trending artists, join live cypher sessions,
             read exclusive interviews, and connect with the global music community.
           </p>
-        </motion.div>
+        </div>
 
         {/* CTA Buttons */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.3 }}
-          className="flex flex-col sm:flex-row gap-4 justify-center mb-12"
-        >
-          <button className="group bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 px-8 py-4 rounded-full text-white font-semibold text-lg transition-all duration-300 flex items-center justify-center gap-2 shadow-lg hover:shadow-purple-500/25">
-            <PlayIcon className="w-6 h-6 group-hover:scale-110 transition-transform" />
+        <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
+          <button className="group bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 px-8 py-4 rounded-full text-white font-semibold text-lg transition-all duration-300 flex items-center justify-center gap-2 shadow-lg hover:shadow-purple-500/25" type="button">
+            <IconPlay className="w-6 h-6 group-hover:scale-110 transition-transform" />
             Start Exploring
           </button>
-          <button className="group bg-white/10 backdrop-blur-md border border-purple-400/30 hover:border-purple-400/60 px-8 py-4 rounded-full text-white font-semibold text-lg transition-all duration-300 flex items-center justify-center gap-2">
-            <MicrophoneIcon className="w-6 h-6 group-hover:scale-110 transition-transform" />
+          <button className="group bg-white/10 backdrop-blur-md border border-purple-400/30 hover:border-purple-400/60 px-8 py-4 rounded-full text-white font-semibold text-lg transition-all duration-300 flex items-center justify-center gap-2" type="button">
+            <IconMic className="w-6 h-6 group-hover:scale-110 transition-transform" />
             Join Live Session
           </button>
-        </motion.div>
+        </div>
 
         {/* Stats */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.6 }}
-          className="grid grid-cols-2 md:grid-cols-4 gap-8 max-w-4xl mx-auto"
-        >
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 max-w-4xl mx-auto">
           <div className="text-center">
             <div className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
               50K+
@@ -112,23 +106,14 @@ export default function HeroSection() {
             </div>
             <div className="text-gray-400 text-sm">Countries</div>
           </div>
-        </motion.div>
+        </div>
 
-        {/* Scroll Indicator */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.8, delay: 1 }}
-          className="absolute bottom-8 left-1/2 transform -translate-x-1/2"
-        >
+        {/* Scroll Indicator (static for CI) */}
+        <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2">
           <div className="w-6 h-10 border-2 border-purple-400/50 rounded-full flex justify-center">
-            <motion.div
-              animate={{ y: [0, 12, 0] }}
-              transition={{ duration: 2, repeat: Infinity }}
-              className="w-1 h-3 bg-purple-400 rounded-full mt-2"
-            />
+            <div className="w-1 h-3 bg-purple-400 rounded-full mt-2" />
           </div>
-        </motion.div>
+        </div>
       </div>
     </section>
   )

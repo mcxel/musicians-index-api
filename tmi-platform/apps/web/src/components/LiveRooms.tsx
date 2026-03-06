@@ -27,7 +27,7 @@ const DEFAULT_ROOMS: LiveRoom[] = [
   { id: '3', title: 'Producer Beats', streamer: 'BeatMakerPro', viewers: 89, category: 'Beats' },
 ];
 
-export function LiveRooms({ rooms = DEFAULT_ROOMS }: LiveRoomsProps) {
+export function LiveRooms({ rooms = DEFAULT_ROOMS }: Readonly<LiveRoomsProps>) {
   return (
     <div className="w-full">
       <h2 className="text-2xl font-bold mb-4">Live Now</h2>

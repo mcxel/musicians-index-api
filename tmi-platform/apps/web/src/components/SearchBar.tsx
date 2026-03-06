@@ -18,7 +18,7 @@ export function SearchBar({
   onSearch, 
   placeholder = 'Search artists, tracks, playlists...',
   className = ''
-}: SearchBarProps) {
+}: Readonly<SearchBarProps>) {
   const [query, setQuery] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {

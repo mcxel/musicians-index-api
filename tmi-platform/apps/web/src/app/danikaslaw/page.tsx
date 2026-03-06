@@ -34,7 +34,7 @@ export default function DanikasLawHomePage() {
           <div className="flex items-center gap-4 mb-6">
             <span className="text-6xl">⚖️</span>
             <div>
-              <h1 className="text-5xl font-bold mb-2">Danika's Law</h1>
+              <h1 className="text-5xl font-bold mb-2">Danika&apos;s Law</h1>
               <p className="text-xl text-blue-200">Professional Legal Case Management Platform</p>
             </div>
           </div>
@@ -106,8 +106,8 @@ export default function DanikasLawHomePage() {
             <div className="bg-gradient-to-br from-yellow-100 to-orange-100 rounded-xl shadow-lg p-6 hover:shadow-2xl transition border-2 border-orange-300 hover:border-orange-500">
               <div className="text-4xl mb-4">💬</div>
               <h3 className="text-xl font-bold mb-2 group-hover:text-orange-600">Law Bubble</h3>
-              <p className="text-gray-600 text-sm">
-                Quick legal Q&A widget - $1 per question. Embeddable on any page.
+                <p className="text-gray-600 text-sm">
+                Quick legal Q&amp;A widget - $1 per question. Embeddable on any page.
               </p>
             </div>
           </Link>
@@ -186,7 +186,7 @@ export default function DanikasLawHomePage() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             {/* Main Content */}
             <div className="md:col-span-3 bg-white rounded-lg p-6">
-              <h3 className="text-2xl font-bold mb-4">Why Choose Danika's Law?</h3>
+              <h3 className="text-2xl font-bold mb-4">Why Choose Danika&apos;s Law?</h3>
               <ul className="space-y-3">
                 <li className="flex items-start gap-3">
                   <span className="text-green-500 text-xl">✓</span>
@@ -236,7 +236,7 @@ export default function DanikasLawHomePage() {
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-4xl font-bold mb-4">Ready to Transform Your Legal Workflow?</h2>
           <p className="text-xl mb-8 text-blue-200">
-            Join thousands of legal professionals using Danika's Law platform.
+            Join thousands of legal professionals using Danika&apos;s Law platform.
           </p>
           <div className="flex gap-4 justify-center">
             <button className="bg-white text-blue-900 px-8 py-4 rounded-lg font-bold text-lg hover:bg-blue-50 transition">
@@ -264,37 +264,37 @@ export default function DanikasLawHomePage() {
 
           <div>
             <h4 className="font-bold mb-4">Resources</h4>
-            <ul className="space-y-2 text-sm text-gray-400">
-              <li><a href="#" className="hover:text-white">Documentation</a></li>
-              <li><a href="#" className="hover:text-white">API Reference</a></li>
-              <li><a href="#" className="hover:text-white">Training</a></li>
-              <li><a href="#" className="hover:text-white">Support</a></li>
+              <ul className="space-y-2 text-sm text-gray-400">
+              <li><button type="button" className="hover:text-white">Documentation</button></li>
+              <li><button type="button" className="hover:text-white">API Reference</button></li>
+              <li><button type="button" className="hover:text-white">Training</button></li>
+              <li><button type="button" className="hover:text-white">Support</button></li>
             </ul>
           </div>
 
           <div>
             <h4 className="font-bold mb-4">Company</h4>
             <ul className="space-y-2 text-sm text-gray-400">
-              <li><a href="#" className="hover:text-white">About Us</a></li>
-              <li><a href="#" className="hover:text-white">Careers</a></li>
-              <li><a href="#" className="hover:text-white">Press</a></li>
-              <li><a href="#" className="hover:text-white">Contact</a></li>
+              <li><button type="button" className="hover:text-white">About Us</button></li>
+              <li><button type="button" className="hover:text-white">Careers</button></li>
+              <li><button type="button" className="hover:text-white">Press</button></li>
+              <li><button type="button" className="hover:text-white">Contact</button></li>
             </ul>
           </div>
 
           <div>
             <h4 className="font-bold mb-4">Legal</h4>
             <ul className="space-y-2 text-sm text-gray-400">
-              <li><a href="#" className="hover:text-white">Privacy Policy</a></li>
-              <li><a href="#" className="hover:text-white">Terms of Service</a></li>
-              <li><a href="#" className="hover:text-white">Security</a></li>
-              <li><a href="#" className="hover:text-white">Compliance</a></li>
+              <li><button type="button" className="hover:text-white">Privacy Policy</button></li>
+              <li><button type="button" className="hover:text-white">Terms of Service</button></li>
+              <li><button type="button" className="hover:text-white">Security</button></li>
+              <li><button type="button" className="hover:text-white">Compliance</button></li>
             </ul>
           </div>
         </div>
 
-        <div className="max-w-7xl mx-auto mt-8 pt-8 border-t border-gray-800 text-center text-sm text-gray-500">
-          <p>© 2026 Danika's Law. All rights reserved. SOC 2 Type II Certified.</p>
+          <div className="max-w-7xl mx-auto mt-8 pt-8 border-t border-gray-800 text-center text-sm text-gray-500">
+          <p>© 2026 Danika&apos;s Law. All rights reserved. SOC 2 Type II Certified.</p>
         </div>
       </footer>
     </div>

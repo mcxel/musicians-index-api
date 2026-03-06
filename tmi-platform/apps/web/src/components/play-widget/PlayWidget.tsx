@@ -18,25 +18,19 @@
 
 'use client';
 
+/* eslint-disable jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/no-noninteractive-tabindex, jsx-a11y/click-events-have-key-events */
+
 import React, { useState } from 'react';
 import { EmoteCarousel } from './EmoteCarousel';
-
-export type EmoteType = 
-  | 'clap' | 'star' | 'heart' | 'fire' | 'rocket' | 'trophy' 
-  | 'diamond' | 'crown' | 'lightning' | 'boom' | 'sparkles';
-
-export type UserTier = 'FREE' | 'PREMIUM' | 'VIP' | 'SPONSOR' | 'OVERSEER';
-
-export type DockPosition = 'bottom' | 'left' | 'right' | 'top' | 'floating';
+import type { EmoteType, UserTier, DockPosition } from '@/types/playWidget.contracts';
 
 interface PlayWidgetProps {
-  userId: string;
-  userTier: UserTier;
-  dockPosition?: DockPosition;
-  ownedEmotes?: EmoteType[];
-  onEmoteSelect?: (emote: EmoteType) => void;
-  onTipClick?: () => void;
-  onSettingsClick?: () => void;
+  readonly userTier: UserTier;
+  readonly dockPosition?: DockPosition;
+  readonly ownedEmotes?: readonly EmoteType[];
+  readonly onEmoteSelect?: (emote: EmoteType) => void;
+  readonly onTipClick?: () => void;
+  readonly onSettingsClick?: () => void;
 }
 
 interface ActionIcon {
@@ -49,7 +43,6 @@ interface ActionIcon {
 }
 
 export function PlayWidget({
-  userId: _userId,
   userTier,
   dockPosition = 'bottom',
   ownedEmotes = ['clap', 'heart'],
@@ -138,6 +131,7 @@ export function PlayWidget({
               onClick={icon.action}
               className="w-12 h-12 rounded-full bg-white hover:bg-gray-100 flex items-center justify-center text-2xl shadow-lg transition-all hover:scale-110 active:scale-95"
               title={icon.label}
+              type="button"
             >
               {icon.icon}
             </button>
@@ -149,17 +143,18 @@ export function PlayWidget({
       {showEmoteCarousel && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 opacity-100 transition-opacity"
-          onClick={() => setShowEmoteCarousel(false)}
         >
-          <div
+          <dialog
             className="bg-white rounded-2xl shadow-2xl p-6 max-w-2xl scale-100 transition-transform"
             onClick={e => e.stopPropagation()}
+            open
           >
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-2xl font-bold">Your Emotes</h3>
               <button
                 onClick={() => setShowEmoteCarousel(false)}
                 className="text-2xl hover:text-red-500"
+                type="button"
               >
                 ✕
               </button>
@@ -172,7 +167,7 @@ export function PlayWidget({
                 setShowEmoteCarousel(false);
               }}
             />
-          </div>
+          </dialog>
         </div>
       )}
     </>

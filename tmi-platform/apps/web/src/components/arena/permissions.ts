@@ -30,7 +30,7 @@ export interface UserPermissions {
  * FREE tier: Yes (public only)
  * PAID+: Yes (all types)
  */
-export function canSendMessage(tier: UserTier): boolean {
+export function canSendMessage(_tier: UserTier): boolean {
   return true; // All tiers can send public messages
 }
 
