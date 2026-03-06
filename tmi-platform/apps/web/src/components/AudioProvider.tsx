@@ -1,6 +1,7 @@
-'use client'
+"use client"
 
-import { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react'
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback, ReactNode } from 'react'
+import { logger } from '@/lib/logger'
 
 interface AudioTrack {
   id: string
@@ -36,9 +37,7 @@ const AudioContext = createContext<AudioContextType | undefined>(undefined)
 
 export const useAudio = () => {
   const context = useContext(AudioContext)
-  if (!context) {
-    throw new Error('useAudio must be used within an AudioProvider')
-  }
+  if (!context) throw new Error('useAudio must be used within an AudioProvider')
   return context
 }
 
@@ -56,30 +55,79 @@ export default function AudioProvider({ children }: AudioProviderProps) {
   const [playlist, setPlaylist] = useState<AudioTrack[]>([])
 
   const audioRef = useRef<HTMLAudioElement | null>(null)
+  const [isMounted, setIsMounted] = useState(false)
 
-  // Initialize audio element
+  // Hoist controls so effects can reference them
+  const play = useCallback(async (track?: AudioTrack) => {
+    if (track) {
+      setCurrentTrack(track)
+      if (audioRef.current) {
+        audioRef.current.src = track.url
+        try {
+          await audioRef.current.play()
+          setIsPlaying(true)
+        } catch (error) {
+          logger.error('Failed to play audio:', error)
+        }
+      }
+    } else if (audioRef.current && currentTrack) {
+      try {
+        await audioRef.current.play()
+        setIsPlaying(true)
+      } catch (error) {
+        logger.error('Failed to play audio:', error)
+      }
+    }
+  }, [currentTrack])
+
+  const pause = useCallback(() => {
+    if (audioRef.current) {
+      audioRef.current.pause()
+      setIsPlaying(false)
+    }
+  }, [])
+
+  const stop = useCallback(() => {
+    if (audioRef.current) {
+      audioRef.current.pause()
+      audioRef.current.currentTime = 0
+      setIsPlaying(false)
+      setCurrentTime(0)
+    }
+  }, [])
+
+  const next = useCallback(() => {
+    if (playlist.length > 0 && currentTrack) {
+      const currentIndex = playlist.findIndex(t => t.id === currentTrack.id)
+      const nextIndex = (currentIndex + 1) % playlist.length
+      play(playlist[nextIndex])
+    }
+  }, [playlist, currentTrack, play])
+
+  const previous = useCallback(() => {
+    if (playlist.length > 0 && currentTrack) {
+      const currentIndex = playlist.findIndex(t => t.id === currentTrack.id)
+      const prevIndex = currentIndex === 0 ? playlist.length - 1 : currentIndex - 1
+      play(playlist[prevIndex])
+    }
+  }, [playlist, currentTrack, play])
+
+  // Initialize audio element on client
   useEffect(() => {
-    if (!audioRef.current) {
+    setIsMounted(true)
+    if (typeof window !== 'undefined' && !audioRef.current) {
       audioRef.current = new Audio()
       audioRef.current.volume = volume
     }
 
     const audio = audioRef.current
+    if (!audio) return
 
-    const handleLoadedMetadata = () => {
-      setDuration(audio.duration)
-    }
-
-    const handleTimeUpdate = () => {
-      setCurrentTime(audio.currentTime)
-    }
-
-    const handleEnded = () => {
-      next()
-    }
-
+    const handleLoadedMetadata = () => setDuration(audio.duration)
+    const handleTimeUpdate = () => setCurrentTime(audio.currentTime)
+    const handleEnded = () => next()
     const handleError = () => {
-      console.error('Audio playback error')
+      logger.error('Audio playback error')
       setIsPlaying(false)
     }
 
@@ -94,68 +142,12 @@ export default function AudioProvider({ children }: AudioProviderProps) {
       audio.removeEventListener('ended', handleEnded)
       audio.removeEventListener('error', handleError)
     }
-  }, [])
+  }, [volume, next])
 
   // Update volume
   useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.volume = isMuted ? 0 : volume
-    }
+    if (audioRef.current) audioRef.current.volume = isMuted ? 0 : volume
   }, [volume, isMuted])
-
-  const play = async (track?: AudioTrack) => {
-    if (track) {
-      setCurrentTrack(track)
-      if (audioRef.current) {
-        audioRef.current.src = track.url
-        try {
-          await audioRef.current.play()
-          setIsPlaying(true)
-        } catch (error) {
-          console.error('Failed to play audio:', error)
-        }
-      }
-    } else if (audioRef.current && currentTrack) {
-      try {
-        await audioRef.current.play()
-        setIsPlaying(true)
-      } catch (error) {
-        console.error('Failed to play audio:', error)
-      }
-    }
-  }
-
-  const pause = () => {
-    if (audioRef.current) {
-      audioRef.current.pause()
-      setIsPlaying(false)
-    }
-  }
-
-  const stop = () => {
-    if (audioRef.current) {
-      audioRef.current.pause()
-      audioRef.current.currentTime = 0
-      setIsPlaying(false)
-      setCurrentTime(0)
-    }
-  }
-
-  const next = () => {
-    if (playlist.length > 0 && currentTrack) {
-      const currentIndex = playlist.findIndex(track => track.id === currentTrack.id)
-      const nextIndex = (currentIndex + 1) % playlist.length
-      play(playlist[nextIndex])
-    }
-  }
-
-  const previous = () => {
-    if (playlist.length > 0 && currentTrack) {
-      const currentIndex = playlist.findIndex(track => track.id === currentTrack.id)
-      const prevIndex = currentIndex === 0 ? playlist.length - 1 : currentIndex - 1
-      play(playlist[prevIndex])
-    }
-  }
 
   const seek = (time: number) => {
     if (audioRef.current) {
@@ -165,30 +157,19 @@ export default function AudioProvider({ children }: AudioProviderProps) {
   }
 
   const setVolume = (newVolume: number) => {
-    const clampedVolume = Math.max(0, Math.min(1, newVolume))
-    setVolumeState(clampedVolume)
+    const clamped = Math.max(0, Math.min(1, newVolume))
+    setVolumeState(clamped)
   }
 
-  const toggleMute = () => {
-    setIsMuted(!isMuted)
-  }
+  const toggleMute = () => setIsMuted(prev => !prev)
 
   const addToPlaylist = (track: AudioTrack) => {
-    setPlaylist(prev => {
-      if (!prev.find(t => t.id === track.id)) {
-        return [...prev, track]
-      }
-      return prev
-    })
+    setPlaylist(prev => (prev.find(t => t.id === track.id) ? prev : [...prev, track]))
   }
 
-  const removeFromPlaylist = (track: AudioTrack) => {
-    setPlaylist(prev => prev.filter(t => t.id !== track.id))
-  }
+  const removeFromPlaylist = (track: AudioTrack) => setPlaylist(prev => prev.filter(t => t.id !== track.id))
 
-  const clearPlaylist = () => {
-    setPlaylist([])
-  }
+  const clearPlaylist = () => setPlaylist([])
 
   const value: AudioContextType = {
     currentTrack,
@@ -208,12 +189,10 @@ export default function AudioProvider({ children }: AudioProviderProps) {
     toggleMute,
     addToPlaylist,
     removeFromPlaylist,
-    clearPlaylist
+    clearPlaylist,
   }
 
-  return (
-    <AudioContext.Provider value={value}>
-      {children}
-    </AudioContext.Provider>
-  )
+  if (!isMounted) return null
+
+  return <AudioContext.Provider value={value}>{children}</AudioContext.Provider>
 }

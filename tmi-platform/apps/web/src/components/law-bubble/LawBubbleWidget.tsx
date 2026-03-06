@@ -1,6 +1,6 @@
 /**
  * ==================================================================================
- * LAW BUBBLE WIDGET - "THE CHEAPEST LAWYER YOU TRY FIRST"
+ * LAW BUBBLE WIDGET - "YOUR OWN PERSONAL LAWYER FOR A DOLLAR"
  * ==================================================================================
  * 
  * $1 per question • Faster than Google • Action-based answers
@@ -16,7 +16,8 @@
 
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useCallback, useState, useRef, useEffect } from 'react';
+import { logger } from '@/lib/logger';
 
 // ============================================================================
 // TYPES
@@ -50,10 +51,10 @@ interface Message {
 // MAIN COMPONENT
 // ============================================================================
 
-export const LawBubbleWidget: React.FC<LawBubbleProps> = ({
-  userId = 'guest',
-  position = 'bottom-right',
-}) => {
+export function LawBubbleWidget({ 
+  userId = 'guest', 
+  position = 'bottom-right' 
+}: LawBubbleProps): JSX.Element {
   const [isOpen, setIsOpen] = useState(false);
   const [question, setQuestion] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
@@ -62,24 +63,26 @@ export const LawBubbleWidget: React.FC<LawBubbleProps> = ({
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Fetch balance on mount
+  const fetchBalance = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/law-bubble/wallet?userId=${userId}`);
+      const data = await res.json();
+      setCredits(data.credits || 0);
+    } catch (e) {
+      logger.error('Wallet fetch failed:', e);
+    }
+  }, [userId]);
+
   useEffect(() => {
     fetchBalance();
-  }, [userId]);
+  }, [fetchBalance]);
 
   // Auto-scroll
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const fetchBalance = async () => {
-    try {
-      const res = await fetch(`/api/law-bubble/wallet?userId=${userId}`);
-      const data = await res.json();
-      setCredits(data.credits || 0);
-    } catch (e) {
-      console.error('Wallet fetch failed:', e);
-    }
-  };
+  
 
   const purchaseCredits = async (amount: 5 | 10 | 20) => {
     try {
@@ -94,7 +97,7 @@ export const LawBubbleWidget: React.FC<LawBubbleProps> = ({
         setShowBuyCredits(false);
       }
     } catch (e) {
-      console.error('Purchase failed:', e);
+      logger.error('Purchase failed:', e);
     }
   };
 
@@ -114,7 +117,7 @@ export const LawBubbleWidget: React.FC<LawBubbleProps> = ({
         return false;
       }
     } catch (e) {
-      console.error('Deduct failed:', e);
+      logger.error('Deduct failed:', e);
     }
     return false;
   };
@@ -152,6 +155,7 @@ export const LawBubbleWidget: React.FC<LawBubbleProps> = ({
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
 
+      /* eslint-disable no-constant-condition */
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -179,15 +183,16 @@ export const LawBubbleWidget: React.FC<LawBubbleProps> = ({
           }
         }
       }
+      /* eslint-enable no-constant-condition */
     } catch (e) {
-      console.error('Ask failed:', e);
+      logger.error('Ask failed:', e);
       setMessages((prev) =>
         prev.map((m) => (m.id === msgId ? { ...m, status: 'error' } : m))
       );
     }
   };
 
-  const positionClasses = {
+  const positionClasses: Record<string, string> = {
     'bottom-right': 'bottom-4 right-4',
     'bottom-left': 'bottom-4 left-4',
     'top-right': 'top-4 right-4',
@@ -200,6 +205,7 @@ export const LawBubbleWidget: React.FC<LawBubbleProps> = ({
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
+          title="The Law Bubble — your own personal lawyer for a dollar. What’s your question?"
           className={`fixed ${positionClasses[position]} z-50 w-16 h-16 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full shadow-lg hover:scale-110 transition-transform flex items-center justify-center`}
         >
           <span className="text-2xl">⚖️</span>
@@ -221,7 +227,7 @@ export const LawBubbleWidget: React.FC<LawBubbleProps> = ({
               <span className="text-2xl">⚖️</span>
               <div>
                 <h3 className="font-bold text-gray-900">The Law Bubble</h3>
-                <p className="text-xs text-gray-600">$1 legal info in plain English</p>
+                <p className="text-xs text-gray-600">Your own personal lawyer for a dollar</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -403,6 +409,6 @@ export const LawBubbleWidget: React.FC<LawBubbleProps> = ({
       )}
     </>
   );
-};
+}
 
 export default LawBubbleWidget;

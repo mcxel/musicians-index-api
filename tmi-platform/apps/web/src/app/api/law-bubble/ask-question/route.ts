@@ -167,10 +167,11 @@ export async function POST(request: NextRequest) {
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'done' })}\n\n`));
         controller.close();
 
-      } catch (error: any) {
+      } catch (error: unknown) {
+        const msg = error instanceof Error ? error.message : String(error);
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({
           type: 'error',
-          message: error.message,
+          message: msg,
         })}\n\n`));
         controller.close();
       }

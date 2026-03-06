@@ -1,10 +1,46 @@
-'use client'
+ 'use client'
 
-import { motion } from 'framer-motion'
-import { CalendarDaysIcon, UserGroupIcon, EyeIcon } from '@heroicons/react/24/outline'
+// Replace external animation/icons with small inline icons for CI builds
+function IconCalendar(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true" {...props}>
+      <path d="M8 3v3M16 3v3" />
+      <path d="M4 8h16" />
+      <rect x="4" y="6" width="16" height="15" rx="2" />
+    </svg>
+  )
+}
+
+function IconUsers(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true" {...props}>
+      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="3" />
+      <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+      <path d="M16 3.13a3 3 0 0 1 0 5.74" />
+    </svg>
+  )
+}
+
+function IconEye(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true" {...props}>
+      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  )
+}
+
+import React from 'react'
 import Image from 'next/image'
-import { SponsorTile, SponsorBadge, SponsorStrip } from '@/../../program/modules/sponsors/components'
-import { TMI_PLACEMENTS } from '@/../../program/modules/sponsors/placements/tmi'
+import { SponsorTile, SponsorBadge, SponsorStrip } from '@/components/sponsor/SponsorDashboard'
+
+// Local placements used to avoid out-of-root imports in CI
+const TMI_PLACEMENTS = {
+  WEEKLY_CYPHERS_HERO_PRESENTED_BY: 'weekly_cyphers_hero_presented_by',
+  WEEKLY_CYPHERS_CARD_SPONSOR: 'weekly_cyphers_card_sponsor',
+  WEEKLY_CYPHERS_FOOTER_SPONSORS: 'weekly_cyphers_footer_sponsors'
+}
 
 interface MagazineIssue {
   id: string
@@ -61,30 +97,20 @@ export default function MagazineCover() {
     <section className="py-16 bg-gradient-to-br from-purple-900/20 via-blue-900/20 to-indigo-900/20">
       <div className="max-w-7xl mx-auto px-4">
         {/* Section Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          viewport={{ once: true }}
-          className="text-center mb-12"
-        >
+        <div className="text-center mb-12">
           <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
             Latest <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">Magazine</span>
           </h2>
           <p className="text-xl text-gray-300 max-w-2xl mx-auto">
             Exclusive interviews, industry insights, and in-depth features from the world of music
           </p>
-        </motion.div>
+          </div>
 
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Latest Issue - Featured */}
           {magazineIssues.filter(issue => issue.isLatest).map((issue) => (
-            <motion.div
+            <div
               key={issue.id}
-              initial={{ opacity: 0, scale: 0.9 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.6 }}
-              viewport={{ once: true }}
               className="lg:col-span-2"
             >
               <div className="relative group">
@@ -119,7 +145,7 @@ export default function MagazineCover() {
                     <div className="p-8 flex flex-col justify-center">
                       <div className="mb-4">
                         <div className="flex items-center gap-2 text-purple-400 text-sm mb-2">
-                          <CalendarDaysIcon className="w-4 h-4" />
+                          <IconCalendar className="w-4 h-4" />
                           <span>{issue.publishDate}</span>
                         </div>
 
@@ -147,11 +173,11 @@ export default function MagazineCover() {
                       {/* Stats */}
                       <div className="flex items-center gap-6 mb-6 text-sm text-gray-400">
                         <div className="flex items-center gap-1">
-                          <UserGroupIcon className="w-4 h-4" />
+                          <IconUsers className="w-4 h-4" />
                           <span>{issue.articleCount} articles</span>
                         </div>
                         <div className="flex items-center gap-1">
-                          <EyeIcon className="w-4 h-4" />
+                          <IconEye className="w-4 h-4" />
                           <span>{issue.views} views</span>
                         </div>
                       </div>
@@ -169,18 +195,14 @@ export default function MagazineCover() {
                   </div>
                 </div>
               </div>
-            </motion.div>
+            </div>
           ))}
 
           {/* Previous Issues */}
           <div className="space-y-6">
-            {magazineIssues.filter(issue => !issue.isLatest).map((issue, index) => (
-              <motion.div
+            {magazineIssues.filter(issue => !issue.isLatest).map((issue) => (
+              <div
                 key={issue.id}
-                initial={{ opacity: 0, x: 30 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.6, delay: index * 0.2 }}
-                viewport={{ once: true }}
                 className="group bg-white/5 backdrop-blur-md rounded-2xl overflow-hidden border border-purple-400/20 hover:border-purple-400/40 transition-all duration-300"
               >
                 <div className="flex">
@@ -222,46 +244,31 @@ export default function MagazineCover() {
                     Read Issue
                   </button>
                 </div>
-              </motion.div>
+              </div>
             ))}
 
             {/* Sponsor Tile */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.5 }}
-              viewport={{ once: true }}
+            <div
+              // animation props removed for CI (no framer-motion)
             >
               <SponsorTile
                 productId="tmi"
                 placementId={TMI_PLACEMENTS.WEEKLY_CYPHERS_CARD_SPONSOR}
                 fallbackLabel="Sponsor"
               />
-            </motion.div>
+            </div>
 
             {/* Archive Button */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.6 }}
-              viewport={{ once: true }}
-              className="text-center pt-4"
-            >
+            <div className="text-center pt-4">
               <button className="w-full bg-gradient-to-r from-purple-600/20 to-pink-600/20 hover:from-purple-600/40 hover:to-pink-600/40 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-300 border border-purple-400/30 hover:border-purple-400/60">
                 View Magazine Archive
               </button>
-            </motion.div>
+            </div>
           </div>
         </div>
 
         {/* Newsletter Signup */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.8 }}
-          viewport={{ once: true }}
-          className="mt-16 text-center"
-        >
+        <div className="mt-16 text-center">
           <div className="bg-gradient-to-r from-purple-900/30 to-pink-900/30 backdrop-blur-md rounded-3xl p-8 max-w-2xl mx-auto border border-purple-400/30">
             <h3 className="text-2xl font-bold text-white mb-4">Never Miss an Issue</h3>
             <p className="text-gray-300 mb-6">
@@ -278,22 +285,16 @@ export default function MagazineCover() {
               </button>
             </div>
           </div>
-        </motion.div>
+        </div>
 
         {/* Footer Sponsor Strip */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 1.0 }}
-          viewport={{ once: true }}
-          className="mt-12"
-        >
+        <div className="mt-12">
           <SponsorStrip
             productId="tmi"
             placementId={TMI_PLACEMENTS.WEEKLY_CYPHERS_FOOTER_SPONSORS}
             fallbackLabel="Advertise with us"
           />
-        </motion.div>
+        </div>
       </div>
     </section>
   )

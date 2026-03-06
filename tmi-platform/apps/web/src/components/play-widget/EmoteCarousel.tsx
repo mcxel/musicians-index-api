@@ -15,11 +15,11 @@
 'use client';
 
 import React, { useState } from 'react';
-import type { EmoteType } from './PlayWidget';
+import type { EmoteType } from './types';
 
 interface EmoteCarouselProps {
-  ownedEmotes: EmoteType[];
-  onEmoteSelect: (emote: EmoteType) => void;
+  readonly ownedEmotes: readonly EmoteType[];
+  readonly onEmoteSelect: (emote: EmoteType) => void;
 }
 
 const ALL_EMOTES: Array<{ type: EmoteType; icon: string; name: string; tier: string }> = [
@@ -38,7 +38,6 @@ const ALL_EMOTES: Array<{ type: EmoteType; icon: string; name: string; tier: str
 
 export function EmoteCarousel({ ownedEmotes, onEmoteSelect }: EmoteCarouselProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [direction, setDirection] = useState<'forward' | 'reverse'>('forward');
   const [isAnimating, setIsAnimating] = useState(false);
 
   const visibleCount = 5;
@@ -48,14 +47,12 @@ export function EmoteCarousel({ ownedEmotes, onEmoteSelect }: EmoteCarouselProps
     if (isAnimating) return;
 
     if (currentIndex >= maxIndex) {
-      setDirection('reverse');
       setIsAnimating(true);
       setTimeout(() => {
         setCurrentIndex(0);
         setIsAnimating(false);
       }, 500);
     } else {
-      setDirection('forward');
       setCurrentIndex(prev => Math.min(maxIndex, prev + 1));
     }
   };
@@ -64,14 +61,12 @@ export function EmoteCarousel({ ownedEmotes, onEmoteSelect }: EmoteCarouselProps
     if (isAnimating) return;
 
     if (currentIndex <= 0) {
-      setDirection('reverse');
       setIsAnimating(true);
       setTimeout(() => {
         setCurrentIndex(maxIndex);
         setIsAnimating(false);
       }, 500);
     } else {
-      setDirection('forward');
       setCurrentIndex(prev => Math.max(0, prev - 1));
     }
   };

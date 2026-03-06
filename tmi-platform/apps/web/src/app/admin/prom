@@ -1,0 +1,190 @@
+import { useState } from 'react';
+import { useSession } from 'next-auth/react';
+
+interface PromoCode {
+  id: string;
+  codeHash: string;
+  type: string;
+  value: number;
+  status: string;
+  maxUses: number;
+  usedCount: number;
+  validFrom: string;
+  expiresAt: string;
+  createdAt: string;
+}
+
+export default function PromoCodesPage() {
+  const { data: session } = useSession();
+  const [promos, setPromos] = useState<PromoCode[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [showCreate, setShowCreate] = useState(false);
+
+  // Demo data for UI preview
+  const demoPromos: PromoCode[] = [
+    { id: '1', codeHash: 'FRIEND-MARCEL-2024', type: 'FREE_TRIAL_DAYS', value: 90, status: 'ACTIVE', maxUses: 1, usedCount: 0, validFrom: '2024-01-01', expiresAt: '2024-04-01', createdAt: '2024-01-01' },
+    { id: '2', codeHash: 'SUMMER-VIP', type: 'PERCENTAGE_DISCOUNT', value: 25, status: 'ACTIVE', maxUses: 100, usedCount: 45, validFrom: '2024-06-01', expiresAt: '2024-09-01', createdAt: '2024-06-01' },
+    { id: '3', codeHash: 'EARLY-ADOPTER', type: 'FIXED_AMOUNT_CREDIT', value: 5000, status: 'USED', maxUses: 1, usedCount: 1, validFrom: '2023-01-01', expiresAt: '2023-06-01', createdAt: '2023-01-01' },
+    { id: '4', codeHash: 'EXPIRED-TEST', type: 'FREE_TRIAL_DAYS', value: 30, status: 'EXPIRED', maxUses: 1, usedCount: 0, validFrom: '2023-01-01', expiresAt: '2023-02-01', createdAt: '2023-01-01' },
+  ];
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'ACTIVE': return 'bg-green-500/20 text-green-400 border-green-500/30';
+      case 'USED': return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
+      case 'EXPIRED': return 'bg-red-500/20 text-red-400 border-red-500/30';
+      case 'REVOKED': return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
+      default: return 'bg-gray-500/20 text-gray-400';
+    }
+  };
+
+  const getTypeLabel = (type: string) => {
+    switch (type) {
+      case 'FREE_TRIAL_DAYS': return 'Free Trial';
+      case 'PERCENTAGE_DISCOUNT': return '% Off';
+      case 'FIXED_AMOUNT_CREDIT': return '$ Credit';
+      case 'FEATURE_UNLOCK': return 'Feature';
+      default: return type;
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-950 text-white p-6">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+              Promo Codes
+            </h1>
+            <p className="text-gray-400 mt-1">Manage promotional codes and discounts</p>
+          </div>
+          <button
+            onClick={() => setShowCreate(true)}
+            className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg font-semibold hover:from-purple-500 hover:to-pink-500 transition-all"
+          >
+            + Generate Code
+          </button>
+        </div>
+
+        {/* Stats */}
+        <div className="grid grid-cols-4 gap-4 mb-8">
+          <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-4">
+            <div className="text-2xl font-bold text-green-400">{demoPromos.filter(p => p.status === 'ACTIVE').length}</div>
+            <div className="text-gray-400 text-sm">Active</div>
+          </div>
+          <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-4">
+            <div className="text-2xl font-bold text-blue-400">{demoPromos.filter(p => p.status === 'USED').length}</div>
+            <div className="text-gray-400 text-sm">Used</div>
+          </div>
+          <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-4">
+            <div className="text-2xl font-bold text-red-400">{demoPromos.filter(p => p.status === 'EXPIRED').length}</div>
+            <div className="text-gray-400 text-sm">Expired</div>
+          </div>
+          <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-4">
+            <div className="text-2xl font-bold text-purple-400">{demoPromos.reduce((acc, p) => acc + p.usedCount, 0)}</div>
+            <div className="text-gray-400 text-sm">Total Redemptions</div>
+          </div>
+        </div>
+
+        {/* Table */}
+        <div className="bg-gray-900/50 border border-gray-800 rounded-xl overflow-hidden">
+          <table className="w-full">
+            <thead className="bg-gray-800/50">
+              <tr>
+                <th className="text-left p-4 text-gray-400 font-medium">Code</th>
+                <th className="text-left p-4 text-gray-400 font-medium">Type</th>
+                <th className="text-left p-4 text-gray-400 font-medium">Value</th>
+                <th className="text-left p-4 text-gray-400 font-medium">Usage</th>
+                <th className="text-left p-4 text-gray-400 font-medium">Status</th>
+                <th className="text-left p-4 text-gray-400 font-medium">Expires</th>
+                <th className="text-right p-4 text-gray-400 font-medium">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {demoPromos.map((promo) => (
+                <tr key={promo.id} className="border-t border-gray-800 hover:bg-gray-800/30">
+                  <td className="p-4 font-mono">{promo.codeHash}</td>
+                  <td className="p-4">
+                    <span className="px-2 py-1 bg-purple-500/20 text-purple-400 rounded text-sm">
+                      {getTypeLabel(promo.type)}
+                    </span>
+                  </td>
+                  <td className="p-4 font-semibold">
+                    {promo.type === 'PERCENTAGE_DISCOUNT' ? `${promo.value}%` : 
+                     promo.type === 'FIXED_AMOUNT_CREDIT' ? `$${(promo.value / 100).toFixed(2)}` :
+                     `${promo.value} days`}
+                  </td>
+                  <td className="p-4">
+                    <div className="flex items-center gap-2">
+                      <div className="w-24 h-2 bg-gray-700 rounded-full overflow-hidden">
+                        <div 
+                          className="h-full bg-purple-500 rounded-full"
+                          style={{ width: `${(promo.usedCount / promo.maxUses) * 100}%` }}
+                        />
+                      </div>
+                      <span className="text-sm text-gray-400">{promo.usedCount}/{promo.maxUses}</span>
+                    </div>
+                  </td>
+                  <td className="p-4">
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(promo.status)}`}>
+                      {promo.status}
+                    </span>
+                  </td>
+                  <td className="p-4 text-gray-400">
+                    {new Date(promo.expiresAt).toLocaleDateString()}
+                  </td>
+                  <td className="p-4 text-right">
+                    <button className="text-gray-400 hover:text-white transition-colors">
+                      ⋮
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Create Modal */}
+      {showCreate && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
+          <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 w-full max-w-md">
+            <h2 className="text-xl font-bold mb-4">Generate Promo Code</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-gray-400 text-sm mb-2">Type</label>
+                <select className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white">
+                  <option>Free Trial (Days)</option>
+                  <option>Percentage Discount</option>
+                  <option>Fixed Credit</option>
+                  <option>Feature Unlock</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-gray-400 text-sm mb-2">Value</label>
+                <input type="number" placeholder="90" className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white" />
+              </div>
+              <div>
+                <label className="block text-gray-400 text-sm mb-2">Max Uses</label>
+                <input type="number" placeholder="1" defaultValue="1" className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white" />
+              </div>
+              <div>
+                <label className="block text-gray-400 text-sm mb-2">Expires</label>
+                <input type="date" className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white" />
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button onClick={() => setShowCreate(false)} className="flex-1 py-3 border border-gray-700 rounded-lg hover:bg-gray-800 transition-colors">
+                Cancel
+              </button>
+              <button onClick={() => setShowCreate(false)} className="flex-1 py-3 bg-purple-600 rounded-lg hover:bg-purple-500 transition-colors">
+                Generate
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

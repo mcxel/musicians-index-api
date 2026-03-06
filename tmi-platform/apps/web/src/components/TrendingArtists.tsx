@@ -1,7 +1,5 @@
 'use client'
 
-import { motion } from 'framer-motion'
-import { PlayIcon, HeartIcon, UserGroupIcon } from '@heroicons/react/24/solid'
 import Image from 'next/image'
 
 interface Artist {
@@ -67,38 +65,50 @@ const trendingArtists: Artist[] = [
   }
 ]
 
+// Simple SVG icons
+function PlayIcon({ className }: Readonly<{ className?: string }>) {
+  return (
+    <svg className={className} fill="currentColor" viewBox="0 0 24 24">
+      <path d="M8 5v14l11-7z"/>
+    </svg>
+  )
+}
+
+function HeartIcon({ className }: Readonly<{ className?: string }>) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
+    </svg>
+  )
+}
+
+function UsersIcon({ className }: Readonly<{ className?: string }>) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
+    </svg>
+  )
+}
+
 export default function TrendingArtists() {
   return (
     <section className="py-16">
       <div className="max-w-7xl mx-auto px-4">
-        {/* Section Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          viewport={{ once: true }}
-          className="text-center mb-12"
-        >
+        <div className="text-center mb-12">
           <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
             Trending <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">Artists</span>
           </h2>
           <p className="text-xl text-gray-300 max-w-2xl mx-auto">
             Discover the hottest artists making waves in the music industry right now
           </p>
-        </motion.div>
+        </div>
 
-        {/* Artists Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {trendingArtists.map((artist, index) => (
-            <motion.div
+          {trendingArtists.map((artist) => (
+            <div
               key={artist.id}
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: index * 0.1 }}
-              viewport={{ once: true }}
               className="group relative bg-white/5 backdrop-blur-md rounded-2xl overflow-hidden border border-purple-400/20 hover:border-purple-400/40 transition-all duration-300"
             >
-              {/* Artist Image */}
               <div className="relative h-64 overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent z-10" />
                 <Image
@@ -108,7 +118,6 @@ export default function TrendingArtists() {
                   className="object-cover group-hover:scale-105 transition-transform duration-500"
                 />
 
-                {/* Live Badge */}
                 {artist.isLive && (
                   <div className="absolute top-4 left-4 bg-red-500 text-white px-3 py-1 rounded-full text-sm font-semibold flex items-center gap-2 z-20">
                     <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
@@ -116,7 +125,6 @@ export default function TrendingArtists() {
                   </div>
                 )}
 
-                {/* Play Button Overlay */}
                 <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20">
                   <button className="bg-purple-600 hover:bg-purple-700 text-white p-4 rounded-full shadow-lg transform scale-75 group-hover:scale-100 transition-all duration-300">
                     <PlayIcon className="w-8 h-8" />
@@ -124,7 +132,6 @@ export default function TrendingArtists() {
                 </div>
               </div>
 
-              {/* Artist Info */}
               <div className="p-6">
                 <div className="flex items-start justify-between mb-3">
                   <div>
@@ -138,13 +145,12 @@ export default function TrendingArtists() {
 
                 <div className="flex items-center justify-between text-sm text-gray-400 mb-4">
                   <div className="flex items-center gap-1">
-                    <UserGroupIcon className="w-4 h-4" />
+                    <UsersIcon className="w-4 h-4" />
                     <span>{artist.followers} followers</span>
                   </div>
                   <span>{artist.monthlyListeners} monthly listeners</span>
                 </div>
 
-                {/* Action Buttons */}
                 <div className="flex gap-3">
                   <button className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold py-2 px-4 rounded-lg transition-all duration-300 flex items-center justify-center gap-2">
                     <PlayIcon className="w-4 h-4" />
@@ -156,24 +162,16 @@ export default function TrendingArtists() {
                 </div>
               </div>
 
-              {/* Hover Glow Effect */}
               <div className="absolute inset-0 bg-gradient-to-r from-purple-600/20 to-pink-600/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none rounded-2xl" />
-            </motion.div>
+            </div>
           ))}
         </div>
 
-        {/* View All Button */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.8 }}
-          viewport={{ once: true }}
-          className="text-center mt-12"
-        >
+        <div className="text-center mt-12">
           <button className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 px-8 py-4 rounded-full text-white font-semibold text-lg transition-all duration-300 shadow-lg hover:shadow-purple-500/25">
             View All Artists
           </button>
-        </motion.div>
+        </div>
       </div>
     </section>
   )

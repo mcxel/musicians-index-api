@@ -10,20 +10,20 @@ export interface EnhancedSeatState {
   occupiedBy?: string;
   isReserved?: boolean;
   sponsorBadge?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
-export interface SeatState extends EnhancedSeatState {}
+export type SeatState = EnhancedSeatState;
 
 export interface AvatarState {
   id: string;
   seatId?: string;
   position: Vec2;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface EquippedItems {
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export type EmoteType = string;

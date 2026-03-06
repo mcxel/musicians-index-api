@@ -1,6 +1,7 @@
 'use client'
 
 import React from 'react'
+import { logger } from '@/lib/logger'
 
 // Minimal inline icon used as a replacement for heroicons in CI
 function Icon({ className }: { className?: string }) {
@@ -104,8 +105,7 @@ export default function SubmitPage() {
       if (!hasArtistProfile) {
         if (confirm('This requires an artist profile. Would you like to create one now?')) {
           // TODO: Navigate to artist profile creation
-          // eslint-disable-next-line no-console
-          console.log('Navigate to create artist profile')
+          logger.log('Navigate to create artist profile')
         }
         return
       }
@@ -118,16 +118,14 @@ export default function SubmitPage() {
       if (!hasFanProfile) {
         if (confirm('This requires a fan profile. Would you like to create one now?')) {
           // TODO: Navigate to fan profile creation
-          // eslint-disable-next-line no-console
-          console.log('Navigate to create fan profile')
+          logger.log('Navigate to create fan profile')
         }
         return
       }
     }
 
     // TODO: Navigate to submission form for this type
-    // eslint-disable-next-line no-console
-    console.log('Open submission form for:', submission.id)
+    logger.log('Open submission form for:', submission.id)
     alert(`${submission.title} submission coming soon!`)
   }
 
@@ -146,7 +144,7 @@ export default function SubmitPage() {
 
         {/* Submission Type Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {submissionTypes.map((submission, index) => (
+          {submissionTypes.map((submission, _index) => (
             <button
               key={submission.id}
               onClick={() => handleSubmissionClick(submission)}

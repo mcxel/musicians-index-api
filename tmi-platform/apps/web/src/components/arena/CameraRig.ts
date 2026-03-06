@@ -4,6 +4,8 @@
  * Heat targeting: tracks emotes/tips/chat per seat → auto-focus hot seats
  */
 
+import { logger } from '@/lib/logger';
+
 export type CameraMode = 'STAGE_WIDE' | 'ARTIST_CLOSEUP' | 'CROWD_REACTION' | 'HOT_SEAT_FOCUS' | 'SWEEP' | 'MANUAL';
 
 export interface CameraState {
@@ -145,7 +147,7 @@ export class CameraRig {
    * Update camera position (interpolate toward target)
    * Call this every frame (via requestAnimationFrame)
    */
-  update(deltaTime: number): CameraState {
+  update(_deltaTime: number): CameraState {
     if (this.config.reducedMotion) {
       // Instant snap (no interpolation)
       this.state.currentX = this.state.targetX;
@@ -177,10 +179,10 @@ export class CameraRig {
 
       // Find hottest seat and focus it
       const hottest = this.getHottestSeat();
-      if (hottest) {
+        if (hottest) {
         // Would need seat position lookup here (passed from parent)
         // For now, just demonstrate the heat system works
-        console.log(`[CameraRig] Auto-scan focusing seat ${hottest.seatId} (heat: ${hottest.score.toFixed(1)})`);
+        logger.log(`[CameraRig] Auto-scan focusing seat ${hottest.seatId} (heat: ${hottest.score.toFixed(1)})`);
       }
     }, this.config.scanInterval);
   }

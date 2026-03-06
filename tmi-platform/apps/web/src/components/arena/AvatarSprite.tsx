@@ -4,10 +4,13 @@
  */
 
 'use client';
+/* eslint-disable @next/next/no-img-element */
 
 import React, { useEffect, useState } from 'react';
-import type { AvatarState, EquippedItems } from '@/types/shared';
+import type { AvatarState } from '@/types/shared';
 import { isBackFacingCamera } from './SeatMap';
+
+type Vec2 = { x: number; y: number; z?: number };
 
 export interface AvatarSpriteProps {
   avatar: AvatarState;
@@ -68,6 +71,21 @@ export const AvatarSprite: React.FC<AvatarSpriteProps> = ({
 }) => {
   const [currentEmote, setCurrentEmote] = useState<string | null>(null);
 
+  // Narrow `avatar` (was indexed with unknown) into a local typed view for safe access
+  const av = avatar as unknown as {
+    avatarAssetId?: string;
+    emoteState?: { emoteId?: string; duration?: number } | null;
+    animationState?: string | null;
+    equippedItems?: Record<string, string> | null;
+    position?: Vec2;
+    scale?: number | undefined;
+    isVisible?: boolean | undefined;
+    username?: string | undefined;
+    seatId?: string | undefined;
+  };
+
+  const equipped = (av.equippedItems as unknown as Record<string, string>) ?? {};
+
   // Determine if we show back sprite
   const shouldShowBack =
     showBack !== undefined
@@ -75,21 +93,21 @@ export const AvatarSprite: React.FC<AvatarSpriteProps> = ({
       : isBackFacingCamera(seatYaw, cameraYaw);
 
   // Avatar asset (default to bobblehead-default if not set)
-  const frontAsset = avatar.avatarAssetId || '/assets/bobbleheads/default-front.png';
-  const backAsset = avatar.avatarAssetId
-    ? avatar.avatarAssetId.replace('.png', '-back.png')
+  const frontAsset = av.avatarAssetId || '/assets/bobbleheads/default-front.png';
+  const backAsset = av.avatarAssetId
+    ? av.avatarAssetId.replace('.png', '-back.png')
     : '/assets/bobbleheads/default-back.png';
 
   const spriteUrl = shouldShowBack ? backAsset : frontAsset;
 
   // Handle emote display
   useEffect(() => {
-    if (avatar.emoteState && showEmote) {
-      const emoteType = avatar.emoteState.emoteId?.toUpperCase() || '';
+    if (av.emoteState && showEmote) {
+      const emoteType = av.emoteState.emoteId?.toUpperCase() || '';
       setCurrentEmote(emoteType);
 
       // Auto-clear after duration
-      const duration = avatar.emoteState.duration || 2000;
+      const duration = typeof av.emoteState.duration === 'number' ? av.emoteState.duration : 2000;
       const timeout = setTimeout(() => {
         setCurrentEmote(null);
       }, duration);
@@ -98,35 +116,35 @@ export const AvatarSprite: React.FC<AvatarSpriteProps> = ({
     } else {
       setCurrentEmote(null);
     }
-  }, [avatar.emoteState, showEmote]);
+  }, [av.emoteState, showEmote]);
 
   // Animation classes
-  const isWalking = avatar.animationState === 'WALKING' || avatar.animationState === 'walking';
-  const isSitting = avatar.animationState === 'SITTING' || avatar.animationState === 'sitting' || avatar.seatId;
+  const isWalking = av.animationState === 'WALKING' || av.animationState === 'walking';
 
   return (
     <div
       className={`avatar-sprite-container ${className}`}
       style={{
         position: 'absolute',
-        left: avatar.position?.x || 0,
-        top: avatar.position?.y || 0,
+        left: av.position?.x || 0,
+        top: av.position?.y || 0,
         transform: `
-          translate(-50%, -50%)
-          scale(${scale * (avatar.scale || 1)})
-          rotate(${tilt}deg)
-        `,
-        opacity: avatar.isVisible ? opacity : 0,
-        pointerEvents: 'none',
-        zIndex: Math.floor((avatar.position?.z || 0) * 10 + 100),
+              translate(-50%, -50%)
+              scale(${scale * (av.scale || 1)})
+              rotate(${tilt}deg)
+            `,
+            opacity: av.isVisible ? opacity : 0,
+            pointerEvents: 'none',
+            zIndex: Math.floor(((av.position?.z as number) || 0) * 10 + 100),
         transition: isWalking ? 'none' : 'left 0.3s ease, top 0.3s ease',
       }}
     >
       {/* Main sprite */}
       <div className="avatar-sprite-body" style={{ position: 'relative', width: 64, height: 64 }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={spriteUrl}
-          alt={avatar.username}
+          alt={av.username}
           style={{
             width: '100%',
             height: '100%',
@@ -139,22 +157,23 @@ export const AvatarSprite: React.FC<AvatarSpriteProps> = ({
               ? '/assets/bobbleheads/default-back.png'
               : '/assets/bobbleheads/default-front.png';
           }}
-        />
+            />
 
         {/* Accessories (only show if not back view or if accessory is visible from back) */}
-        {showAccessories && avatar.equippedItems && !shouldShowBack && (
+        {showAccessories && Object.keys(equipped).length > 0 && !shouldShowBack && (
           <div className="avatar-accessories" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}>
             {/* Hat */}
-            {avatar.equippedItems.hat && ACCESSORY_ASSETS[avatar.equippedItems.hat] && (
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            {equipped.hat && ACCESSORY_ASSETS[equipped.hat] && (
               <img
-                src={ACCESSORY_ASSETS[avatar.equippedItems.hat].url}
+                src={ACCESSORY_ASSETS[equipped.hat].url}
                 alt="Hat"
                 style={{
                   position: 'absolute',
-                  left: `calc(50% + ${ACCESSORY_ASSETS[avatar.equippedItems.hat].offsetX}px)`,
-                  top: `calc(0% + ${ACCESSORY_ASSETS[avatar.equippedItems.hat].offsetY}px)`,
+                  left: `calc(50% + ${ACCESSORY_ASSETS[equipped.hat].offsetX}px)`,
+                  top: `calc(0% + ${ACCESSORY_ASSETS[equipped.hat].offsetY}px)`,
                   transform: 'translateX(-50%)',
-                  width: `${64 * ACCESSORY_ASSETS[avatar.equippedItems.hat].scale}px`,
+                  width: `${64 * ACCESSORY_ASSETS[equipped.hat].scale}px`,
                   height: 'auto',
                   zIndex: 10,
                 }}
@@ -162,16 +181,17 @@ export const AvatarSprite: React.FC<AvatarSpriteProps> = ({
             )}
 
             {/* Shirt */}
-            {avatar.equippedItems.shirt && ACCESSORY_ASSETS[avatar.equippedItems.shirt] && (
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            {equipped.shirt && ACCESSORY_ASSETS[equipped.shirt] && (
               <img
-                src={ACCESSORY_ASSETS[avatar.equippedItems.shirt].url}
+                src={ACCESSORY_ASSETS[equipped.shirt].url}
                 alt="Shirt"
                 style={{
                   position: 'absolute',
-                  left: `calc(50% + ${ACCESSORY_ASSETS[avatar.equippedItems.shirt].offsetX}px)`,
-                  top: `calc(50% + ${ACCESSORY_ASSETS[avatar.equippedItems.shirt].offsetY}px)`,
+                  left: `calc(50% + ${ACCESSORY_ASSETS[equipped.shirt].offsetX}px)`,
+                  top: `calc(50% + ${ACCESSORY_ASSETS[equipped.shirt].offsetY}px)`,
                   transform: 'translate(-50%, -50%)',
-                  width: `${64 * ACCESSORY_ASSETS[avatar.equippedItems.shirt].scale}px`,
+                  width: `${64 * ACCESSORY_ASSETS[equipped.shirt].scale}px`,
                   height: 'auto',
                   zIndex: 5,
                 }}
@@ -179,16 +199,17 @@ export const AvatarSprite: React.FC<AvatarSpriteProps> = ({
             )}
 
             {/* Accessory */}
-            {avatar.equippedItems.accessory && ACCESSORY_ASSETS[avatar.equippedItems.accessory] && (
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            {equipped.accessory && ACCESSORY_ASSETS[equipped.accessory] && (
               <img
-                src={ACCESSORY_ASSETS[avatar.equippedItems.accessory].url}
+                src={ACCESSORY_ASSETS[equipped.accessory].url}
                 alt="Accessory"
                 style={{
                   position: 'absolute',
-                  left: `calc(50% + ${ACCESSORY_ASSETS[avatar.equippedItems.accessory].offsetX}px)`,
-                  top: `calc(50% + ${ACCESSORY_ASSETS[avatar.equippedItems.accessory].offsetY}px)`,
+                  left: `calc(50% + ${ACCESSORY_ASSETS[equipped.accessory].offsetX}px)`,
+                  top: `calc(50% + ${ACCESSORY_ASSETS[equipped.accessory].offsetY}px)`,
                   transform: 'translate(-50%, -50%)',
-                  width: `${64 * ACCESSORY_ASSETS[avatar.equippedItems.accessory].scale}px`,
+                  width: `${64 * ACCESSORY_ASSETS[equipped.accessory].scale}px`,
                   height: 'auto',
                   zIndex: 8,
                 }}
@@ -196,17 +217,18 @@ export const AvatarSprite: React.FC<AvatarSpriteProps> = ({
             )}
 
             {/* Effect (aura/glow) */}
-            {avatar.equippedItems.effect && ACCESSORY_ASSETS[avatar.equippedItems.effect] && (
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            {equipped.effect && ACCESSORY_ASSETS[equipped.effect] && (
               <img
-                src={ACCESSORY_ASSETS[avatar.equippedItems.effect].url}
+                src={ACCESSORY_ASSETS[equipped.effect].url}
                 alt="Effect"
                 className="animate-pulse"
                 style={{
                   position: 'absolute',
-                  left: `calc(50% + ${ACCESSORY_ASSETS[avatar.equippedItems.effect].offsetX}px)`,
-                  top: `calc(50% + ${ACCESSORY_ASSETS[avatar.equippedItems.effect].offsetY}px)`,
+                  left: `calc(50% + ${ACCESSORY_ASSETS[equipped.effect].offsetX}px)`,
+                  top: `calc(50% + ${ACCESSORY_ASSETS[equipped.effect].offsetY}px)`,
                   transform: 'translate(-50%, -50%)',
-                  width: `${64 * ACCESSORY_ASSETS[avatar.equippedItems.effect].scale}px`,
+                  width: `${64 * ACCESSORY_ASSETS[equipped.effect].scale}px`,
                   height: 'auto',
                   zIndex: 1,
                   opacity: 0.7,
@@ -234,7 +256,7 @@ export const AvatarSprite: React.FC<AvatarSpriteProps> = ({
             borderRadius: 4,
           }}
         >
-          {avatar.username}
+          {av.username}
         </div>
 
         {/* Emote overlay */}
@@ -257,14 +279,14 @@ export const AvatarSprite: React.FC<AvatarSpriteProps> = ({
         )}
 
         {/* Sponsor badge (if VIP seat with sponsor) */}
-        {avatar.seatId && (
+        {av.seatId && (
           <div className="avatar-sponsor-badge" style={{ position: 'absolute', top: -10, right: -10, zIndex: 15 }}>
             {/* Badge will be injected by parent if seat has sponsorBadge */}
           </div>
         )}
       </div>
 
-      <style jsx>{`
+      <style>{`
         @keyframes float {
           from {
             transform: translateX(-50%) translateY(0);

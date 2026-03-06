@@ -5,21 +5,21 @@ import Image from 'next/image'
 import { SponsorTile, SponsorStrip } from '@/components/sponsor/SponsorDashboard'
 
 // Lightweight inline icons to avoid external heroicons dependency in CI
-function UserIconSVG({ className }: { className?: string }) {
+function UserIconSVG({ className }: Readonly<{ className?: string }>) {
   return (
     <svg viewBox="0 0 24 24" className={className} aria-hidden>
       <path d="M12 12a4 4 0 100-8 4 4 0 000 8zM4 20a8 8 0 0116 0" fill="currentColor" />
     </svg>
   )
 }
-function ClockIconSVG({ className }: { className?: string }) {
+function ClockIconSVG({ className }: Readonly<{ className?: string }>) {
   return (
     <svg viewBox="0 0 24 24" className={className} aria-hidden>
       <path d="M12 2a10 10 0 100 20 10 10 0 000-20zm1 11h4v-2h-3V6h-2v7z" fill="currentColor" />
     </svg>
   )
 }
-function EyeIconSVG({ className }: { className?: string }) {
+function EyeIconSVG({ className }: Readonly<{ className?: string }>) {
   return (
     <svg viewBox="0 0 24 24" className={className} aria-hidden>
       <path d="M12 5c-7 0-11 6-11 7s4 7 11 7 11-6 11-7-4-7-11-7zm0 11a4 4 0 110-8 4 4 0 010 8z" fill="currentColor" />
@@ -184,7 +184,7 @@ export default function FeaturedArticles() {
             />
           </div>
 
-          {featuredArticles.filter(article => !article.featured).map((article, index) => (
+          {featuredArticles.filter(article => !article.featured).map((article) => (
             <div key={article.id} className="group bg-white/5 backdrop-blur-md rounded-2xl overflow-hidden border border-purple-400/20 hover:border-purple-400/40 transition-all duration-300">
               {/* Image */}
               <div className="relative h-48 overflow-hidden">
@@ -218,7 +218,7 @@ export default function FeaturedArticles() {
                     <span>{article.readTime}</span>
                   </div>
                   <div className="flex items-center gap-1">
-                    <EyeIcon className="w-3 h-3" />
+                    <EyeIconSVG className="w-3 h-3" />
                     <span>{article.views}</span>
                   </div>
                 </div>

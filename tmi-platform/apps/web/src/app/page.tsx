@@ -1,10 +1,10 @@
 import { Metadata } from 'next'
 import HeroSection from '@/components/HeroSection'
-import SpotlightRail from '@/components/SpotlightRail'
+import { SpotlightRail } from '@/components/SpotlightRail'
 import FeaturedArticles from '@/components/FeaturedArticles'
-import LiveRooms from '@/components/LiveRooms'
+import { LiveRooms } from '@/components/LiveRooms'
 import AudioPlayer from '@/components/AudioPlayer'
-import SearchBar from '@/components/SearchBar'
+import { SearchBar } from '@/components/SearchBar'
 
 export const metadata: Metadata = {
   title: 'The Musicians Index - Where Music Meets Opportunity',
@@ -114,9 +114,9 @@ export default function HomePage() {
             © 2024 The Musicians Index. Powered by BerntoutGlobal XXL.
           </p>
           <div className="flex justify-center space-x-6 mt-4">
-            <a href="#" className="text-gray-400 hover:text-white transition-colors">Privacy</a>
-            <a href="#" className="text-gray-400 hover:text-white transition-colors">Terms</a>
-            <a href="#" className="text-gray-400 hover:text-white transition-colors">Contact</a>
+            <button type="button" className="text-gray-400 hover:text-white transition-colors">Privacy</button>
+            <button type="button" className="text-gray-400 hover:text-white transition-colors">Terms</button>
+            <button type="button" className="text-gray-400 hover:text-white transition-colors">Contact</button>
           </div>
         </div>
       </footer>
