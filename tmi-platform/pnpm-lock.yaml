@@ -200,7 +200,16 @@ importers:
       '@tmi/hud-core':
         specifier: workspace:*
         version: link:../hud-core
+      react:
+        specifier: 18.3.1
+        version: 18.3.1
     devDependencies:
+      '@types/react':
+        specifier: 18.3.3
+        version: 18.3.3
+      '@types/react-dom':
+        specifier: 18.3.0
+        version: 18.3.0
       rimraf:
         specifier: ^6.0.0
         version: 6.1.3
@@ -213,7 +222,16 @@ importers:
       '@tmi/hud-core':
         specifier: workspace:*
         version: link:../hud-core
+      react:
+        specifier: 18.3.1
+        version: 18.3.1
     devDependencies:
+      '@types/react':
+        specifier: 18.3.3
+        version: 18.3.3
+      '@types/react-dom':
+        specifier: 18.3.0
+        version: 18.3.0
       rimraf:
         specifier: ^6.0.0
         version: 6.1.3
@@ -229,7 +247,16 @@ importers:
       '@tmi/hud-runtime':
         specifier: workspace:*
         version: link:../hud-runtime
+      react:
+        specifier: 18.3.1
+        version: 18.3.1
     devDependencies:
+      '@types/react':
+        specifier: 18.3.3
+        version: 18.3.3
+      '@types/react-dom':
+        specifier: 18.3.0
+        version: 18.3.0
       rimraf:
         specifier: ^6.0.0
         version: 6.1.3
