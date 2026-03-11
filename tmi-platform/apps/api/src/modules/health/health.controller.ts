@@ -4,14 +4,24 @@ import { PrismaService } from "../prisma/prisma.service";
 import { Socket } from "node:net";
 import { URL } from "node:url";
 import {
+  CACHE_CONNECT_TIMEOUT_MS,
   buildReadinessResponse,
   findMissingEnv,
+  isReadinessDegradedForAlert,
+  probeOptionalUpstreams,
   REQUIRED_BOOT_ENV,
   type ReadinessChecks,
 } from "./readiness";
 
 @Controller()
 export class HealthController {
+  private consecutiveDegradedCount = 0;
+  private lastAlertAtMs = 0;
+
+  private readonly alertThreshold = Number(process.env.READYZ_ALERT_THRESHOLD || 3);
+  private readonly alertCooldownMs = Number(process.env.READYZ_ALERT_COOLDOWN_MS || 300_000);
+  private readonly alertWebhookUrl = process.env.READYZ_ALERT_WEBHOOK_URL?.trim();
+
   constructor(private readonly prisma: PrismaService) {}
 
   @Get("healthz")
@@ -52,7 +62,7 @@ export class HealthController {
 
       await new Promise<void>((resolve, reject) => {
         const socket = new Socket();
-        const timeoutMs = 500;
+        const timeoutMs = CACHE_CONNECT_TIMEOUT_MS;
 
         socket.setTimeout(timeoutMs);
         socket.once("connect", () => {
@@ -88,45 +98,55 @@ export class HealthController {
 
   private async runOptionalUpstreamChecks() {
     const raw = process.env.READYZ_OPTIONAL_UPSTREAMS || "";
-    const targets = raw
-      .split(",")
-      .map((v) => v.trim())
-      .filter(Boolean);
+    return probeOptionalUpstreams(raw);
+  }
 
-    const results = await Promise.all(
-      targets.map(async (url) => {
-        const started = Date.now();
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 700);
-
-        try {
-          const response = await fetch(url, {
-            method: "GET",
-            signal: controller.signal,
-          });
-          clearTimeout(timeout);
-          return {
-            url,
-            ok: response.ok,
-            latencyMs: Date.now() - started,
-            error: response.ok ? undefined : `status ${response.status}`,
-          };
-        } catch (error) {
-          clearTimeout(timeout);
-          return {
-            url,
-            ok: false,
-            latencyMs: Date.now() - started,
-            error: error instanceof Error ? error.message : "upstream check failed",
-          };
-        }
-      }),
+  private async emitReadinessAlert(reasons: string[], payload: ReturnType<typeof buildReadinessResponse>) {
+    // eslint-disable-next-line no-console
+    console.error(
+      `[readyz-alert] consecutive=${this.consecutiveDegradedCount} reasons=${reasons.join(",")} blockers=${payload.blockers.join(",")}`,
     );
 
-    return {
-      ok: results.every((target) => target.ok),
-      targets: results,
-    };
+    if (!this.alertWebhookUrl) {
+      return;
+    }
+
+    try {
+      await fetch(this.alertWebhookUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          service: payload.service,
+          consecutiveDegradedCount: this.consecutiveDegradedCount,
+          reasons,
+          blockers: payload.blockers,
+          timestamp: payload.timestamp,
+        }),
+      });
+    } catch {
+      // Alert delivery must not affect readiness endpoint behavior.
+    }
+  }
+
+  private async maybeEmitReadinessAlert(payload: ReturnType<typeof buildReadinessResponse>) {
+    const degraded = isReadinessDegradedForAlert(payload.checks, payload.ok);
+    if (!degraded.degraded) {
+      this.consecutiveDegradedCount = 0;
+      return;
+    }
+
+    this.consecutiveDegradedCount += 1;
+    if (this.consecutiveDegradedCount < this.alertThreshold) {
+      return;
+    }
+
+    const now = Date.now();
+    if (now - this.lastAlertAtMs < this.alertCooldownMs) {
+      return;
+    }
+
+    this.lastAlertAtMs = now;
+    await this.emitReadinessAlert(degraded.reasons, payload);
   }
 
   @Get("readyz")
@@ -152,6 +172,7 @@ export class HealthController {
     checks.upstreams = await this.runOptionalUpstreamChecks();
 
     const payload = buildReadinessResponse(checks);
+    await this.maybeEmitReadinessAlert(payload);
 
     return res.status(payload.ok ? 200 : 503).json(payload);
   }
