@@ -9,7 +9,7 @@ import {
   shouldEmitReadinessAlert,
   type ReadinessChecks,
 } from "../src/modules/health/readiness";
-import { isValidReadyzGatePayload } from "./readyz-rollout-gate";
+import { isAliveHealthzPayload, isValidReadyzGatePayload } from "./readyz-rollout-gate";
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) {
@@ -201,6 +201,7 @@ async function run() {
   assert(
     isValidReadyzGatePayload({
       ok: true,
+      blockers: [],
       contract: {
         name: READYZ_CONTRACT_NAME,
         version: READYZ_CONTRACT_VERSION,
@@ -211,12 +212,32 @@ async function run() {
   assert(
     !isValidReadyzGatePayload({
       ok: true,
+      blockers: ["policy-blocked"],
+      contract: {
+        name: READYZ_CONTRACT_NAME,
+        version: READYZ_CONTRACT_VERSION,
+      },
+    }),
+    "expected blocker-bearing readiness payload to fail promotion validation",
+  );
+  assert(
+    !isValidReadyzGatePayload({
+      ok: true,
+      blockers: [],
       contract: {
         name: READYZ_CONTRACT_NAME,
         version: "9.9",
       },
     }),
     "expected readiness contract version drift to fail gate payload validation",
+  );
+  assert(
+    isAliveHealthzPayload(200, { ok: true }),
+    "expected healthz payload to be considered alive only when status=200 and ok=true",
+  );
+  assert(
+    !isAliveHealthzPayload(503, { ok: true }),
+    "expected non-200 healthz response to fail alive check",
   );
 
   // eslint-disable-next-line no-console

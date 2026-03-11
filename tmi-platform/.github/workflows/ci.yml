@@ -58,11 +58,15 @@ jobs:
       - name: Promotion Gate (api readyz)
         env:
           READYZ_GATE_URL: http://127.0.0.1:4011/api/readyz
+          HEALTHZ_GATE_URL: http://127.0.0.1:4011/api/healthz
           READYZ_GATE_MAX_ATTEMPTS: "3"
           READYZ_GATE_RETRY_DELAY_MS: "200"
           READYZ_GATE_TIMEOUT_MS: "1000"
           READYZ_GATE_CONTRACT_NAME: "tmi-platform-readyz"
           READYZ_GATE_CONTRACT_VERSION: "1.0"
+          PROMOTION_CANARY_MIN_SUCCESS_RATE: "1"
+          PROMOTION_CANARY_REQUIRED_CONSECUTIVE_SUCCESSES: "1"
+          PROMOTION_CANARY_MAX_FAILURES: "0"
         run: pnpm -C apps/api run gate:readyz
 
       - name: Stop Readyz Fixture
@@ -85,11 +89,15 @@ jobs:
       - name: Proof (Degraded-But-200 Passes Gate)
         env:
           READYZ_GATE_URL: http://127.0.0.1:4011/api/readyz
+          HEALTHZ_GATE_URL: http://127.0.0.1:4011/api/healthz
           READYZ_GATE_MAX_ATTEMPTS: "1"
           READYZ_GATE_RETRY_DELAY_MS: "100"
           READYZ_GATE_TIMEOUT_MS: "1000"
           READYZ_GATE_CONTRACT_NAME: "tmi-platform-readyz"
           READYZ_GATE_CONTRACT_VERSION: "1.0"
+          PROMOTION_CANARY_MIN_SUCCESS_RATE: "1"
+          PROMOTION_CANARY_REQUIRED_CONSECUTIVE_SUCCESSES: "1"
+          PROMOTION_CANARY_MAX_FAILURES: "0"
         run: pnpm -C apps/api run gate:readyz
 
       - name: Stop Readyz Fixture (Degraded-But-200)
@@ -112,15 +120,54 @@ jobs:
       - name: Negative Proof (Non-200 Fails Gate)
         env:
           READYZ_GATE_URL: http://127.0.0.1:4011/api/readyz
+          HEALTHZ_GATE_URL: http://127.0.0.1:4011/api/healthz
           READYZ_GATE_MAX_ATTEMPTS: "1"
           READYZ_GATE_RETRY_DELAY_MS: "100"
           READYZ_GATE_TIMEOUT_MS: "1000"
           READYZ_GATE_CONTRACT_NAME: "tmi-platform-readyz"
           READYZ_GATE_CONTRACT_VERSION: "1.0"
+          PROMOTION_CANARY_MIN_SUCCESS_RATE: "1"
+          PROMOTION_CANARY_REQUIRED_CONSECUTIVE_SUCCESSES: "1"
+          PROMOTION_CANARY_MAX_FAILURES: "0"
         run: |
           if pnpm -C apps/api run gate:readyz; then
             echo "expected gate:readyz to fail on non-200 response"
             exit 1
+          fi
+
+      - name: Start Readyz Fixture (Blocked Payload)
+        env:
+          READYZ_FIXTURE_MODE: "blocked"
+          READYZ_FIXTURE_CONTRACT_NAME: "tmi-platform-readyz"
+          READYZ_FIXTURE_CONTRACT_VERSION: "1.0"
+        run: |
+          node apps/api/scripts/readyz-ci-fixture.js > /tmp/readyz-fixture.log 2>&1 &
+          echo $! > /tmp/readyz-fixture.pid
+          sleep 1
+
+      - name: Negative Proof (Blocked Payload Fails Gate)
+        env:
+          READYZ_GATE_URL: http://127.0.0.1:4011/api/readyz
+          HEALTHZ_GATE_URL: http://127.0.0.1:4011/api/healthz
+          READYZ_GATE_MAX_ATTEMPTS: "1"
+          READYZ_GATE_RETRY_DELAY_MS: "100"
+          READYZ_GATE_TIMEOUT_MS: "1000"
+          READYZ_GATE_CONTRACT_NAME: "tmi-platform-readyz"
+          READYZ_GATE_CONTRACT_VERSION: "1.0"
+          PROMOTION_CANARY_MIN_SUCCESS_RATE: "1"
+          PROMOTION_CANARY_REQUIRED_CONSECUTIVE_SUCCESSES: "1"
+          PROMOTION_CANARY_MAX_FAILURES: "0"
+        run: |
+          if pnpm -C apps/api run gate:readyz; then
+            echo "expected gate:readyz to fail on contract-valid payload with blockers"
+            exit 1
+          fi
+
+      - name: Stop Readyz Fixture (Blocked Payload)
+        if: always()
+        run: |
+          if [ -f /tmp/readyz-fixture.pid ]; then
+            kill "$(cat /tmp/readyz-fixture.pid)" || true
           fi
 
       - name: Stop Readyz Fixture (Non-200)
@@ -145,11 +192,15 @@ jobs:
       - name: Negative Proof (Invalid Payload Fails Gate)
         env:
           READYZ_GATE_URL: http://127.0.0.1:4011/api/readyz
+          HEALTHZ_GATE_URL: http://127.0.0.1:4011/api/healthz
           READYZ_GATE_MAX_ATTEMPTS: "1"
           READYZ_GATE_RETRY_DELAY_MS: "100"
           READYZ_GATE_TIMEOUT_MS: "1000"
           READYZ_GATE_CONTRACT_NAME: "tmi-platform-readyz"
           READYZ_GATE_CONTRACT_VERSION: "1.0"
+          PROMOTION_CANARY_MIN_SUCCESS_RATE: "1"
+          PROMOTION_CANARY_REQUIRED_CONSECUTIVE_SUCCESSES: "1"
+          PROMOTION_CANARY_MAX_FAILURES: "0"
         run: |
           if pnpm -C apps/api run gate:readyz; then
             echo "expected gate:readyz to fail on invalid readiness payload"
@@ -179,11 +230,15 @@ jobs:
       - name: Negative Proof (Contract Drift Fails Gate)
         env:
           READYZ_GATE_URL: http://127.0.0.1:4011/api/readyz
+          HEALTHZ_GATE_URL: http://127.0.0.1:4011/api/healthz
           READYZ_GATE_MAX_ATTEMPTS: "1"
           READYZ_GATE_RETRY_DELAY_MS: "100"
           READYZ_GATE_TIMEOUT_MS: "1000"
           READYZ_GATE_CONTRACT_NAME: "tmi-platform-readyz"
           READYZ_GATE_CONTRACT_VERSION: "1.0"
+          PROMOTION_CANARY_MIN_SUCCESS_RATE: "1"
+          PROMOTION_CANARY_REQUIRED_CONSECUTIVE_SUCCESSES: "1"
+          PROMOTION_CANARY_MAX_FAILURES: "0"
         run: |
           if pnpm -C apps/api run gate:readyz; then
             echo "expected gate:readyz to fail on readiness contract version drift"
