@@ -1,5 +1,8 @@
 import {
   buildReadinessResponse,
+  isReadinessDegradedForAlert,
+  probeOptionalUpstreams,
+  OPTIONAL_UPSTREAM_TIMEOUT_MS,
   type ReadinessChecks,
 } from "../src/modules/health/readiness";
 
@@ -18,7 +21,7 @@ function healthyChecks(): ReadinessChecks {
   };
 }
 
-function run() {
+async function run() {
   const okPayload = buildReadinessResponse(healthyChecks());
   assert(okPayload.ok === true, "expected healthy payload to be ready");
   assert(okPayload.service === "tmi-platform-api", "expected service identifier");
@@ -36,8 +39,37 @@ function run() {
   const missingEnvPayload = buildReadinessResponse(missingEnv);
   assert(missingEnvPayload.ok === false, "expected missing env to fail closed");
 
+  const skippedUpstreams = await probeOptionalUpstreams("");
+  assert(skippedUpstreams.ok === true, "expected empty optional upstream list to be skipped/ok");
+  assert(skippedUpstreams.skipped === true, "expected empty optional upstream list to be marked skipped");
+
+  const timeoutProbeCalls: Array<{ url: string; timeoutMs: number }> = [];
+  const degradedUpstreams = await probeOptionalUpstreams(
+    "https://a.invalid/readyz,https://b.invalid/readyz",
+    async (url, timeoutMs) => {
+      timeoutProbeCalls.push({ url, timeoutMs });
+      if (url.includes("a.invalid")) {
+        return { ok: false, latencyMs: timeoutMs, error: "timeout" };
+      }
+      return { ok: true, latencyMs: 5 };
+    },
+  );
+  assert(degradedUpstreams.ok === false, "expected one failed optional upstream to mark upstream checks degraded");
+  assert(
+    timeoutProbeCalls.every((call) => call.timeoutMs === OPTIONAL_UPSTREAM_TIMEOUT_MS),
+    "expected strict optional upstream timeout policy to be applied",
+  );
+
+  const degradedChecks = healthyChecks();
+  degradedChecks.upstreams = degradedUpstreams;
+  const degradedPayload = buildReadinessResponse(degradedChecks);
+  assert(degradedPayload.ok === true, "expected optional upstream degradation to not fail readiness");
+
+  const degradedAlertView = isReadinessDegradedForAlert(degradedPayload.checks, degradedPayload.ok);
+  assert(degradedAlertView.degraded === true, "expected degraded upstreams to trigger alert classification");
+
   // eslint-disable-next-line no-console
   console.log("readiness contract check passed");
 }
 
-run();
+void run();
