@@ -44,9 +44,12 @@ jobs:
 
       - name: Start Readyz Fixture
         env:
+          READYZ_FIXTURE_MODE: "legacy"
           READYZ_FIXTURE_STATUS: "200"
           READYZ_FIXTURE_OK: "true"
           READYZ_FIXTURE_INVALID_PAYLOAD: "false"
+          READYZ_FIXTURE_CONTRACT_NAME: "tmi-platform-readyz"
+          READYZ_FIXTURE_CONTRACT_VERSION: "1.0"
         run: |
           node apps/api/scripts/readyz-ci-fixture.js > /tmp/readyz-fixture.log 2>&1 &
           echo $! > /tmp/readyz-fixture.pid
@@ -58,6 +61,8 @@ jobs:
           READYZ_GATE_MAX_ATTEMPTS: "3"
           READYZ_GATE_RETRY_DELAY_MS: "200"
           READYZ_GATE_TIMEOUT_MS: "1000"
+          READYZ_GATE_CONTRACT_NAME: "tmi-platform-readyz"
+          READYZ_GATE_CONTRACT_VERSION: "1.0"
         run: pnpm -C apps/api run gate:readyz
 
       - name: Stop Readyz Fixture
@@ -67,11 +72,38 @@ jobs:
             kill "$(cat /tmp/readyz-fixture.pid)" || true
           fi
 
+      - name: Start Readyz Fixture (Degraded-But-200)
+        env:
+          READYZ_FIXTURE_MODE: "degraded"
+          READYZ_FIXTURE_CONTRACT_NAME: "tmi-platform-readyz"
+          READYZ_FIXTURE_CONTRACT_VERSION: "1.0"
+        run: |
+          node apps/api/scripts/readyz-ci-fixture.js > /tmp/readyz-fixture.log 2>&1 &
+          echo $! > /tmp/readyz-fixture.pid
+          sleep 1
+
+      - name: Proof (Degraded-But-200 Passes Gate)
+        env:
+          READYZ_GATE_URL: http://127.0.0.1:4011/api/readyz
+          READYZ_GATE_MAX_ATTEMPTS: "1"
+          READYZ_GATE_RETRY_DELAY_MS: "100"
+          READYZ_GATE_TIMEOUT_MS: "1000"
+          READYZ_GATE_CONTRACT_NAME: "tmi-platform-readyz"
+          READYZ_GATE_CONTRACT_VERSION: "1.0"
+        run: pnpm -C apps/api run gate:readyz
+
+      - name: Stop Readyz Fixture (Degraded-But-200)
+        if: always()
+        run: |
+          if [ -f /tmp/readyz-fixture.pid ]; then
+            kill "$(cat /tmp/readyz-fixture.pid)" || true
+          fi
+
       - name: Start Readyz Fixture (Non-200)
         env:
-          READYZ_FIXTURE_STATUS: "503"
-          READYZ_FIXTURE_OK: "false"
-          READYZ_FIXTURE_INVALID_PAYLOAD: "false"
+          READYZ_FIXTURE_MODE: "failclosed"
+          READYZ_FIXTURE_CONTRACT_NAME: "tmi-platform-readyz"
+          READYZ_FIXTURE_CONTRACT_VERSION: "1.0"
         run: |
           node apps/api/scripts/readyz-ci-fixture.js > /tmp/readyz-fixture.log 2>&1 &
           echo $! > /tmp/readyz-fixture.pid
@@ -83,6 +115,8 @@ jobs:
           READYZ_GATE_MAX_ATTEMPTS: "1"
           READYZ_GATE_RETRY_DELAY_MS: "100"
           READYZ_GATE_TIMEOUT_MS: "1000"
+          READYZ_GATE_CONTRACT_NAME: "tmi-platform-readyz"
+          READYZ_GATE_CONTRACT_VERSION: "1.0"
         run: |
           if pnpm -C apps/api run gate:readyz; then
             echo "expected gate:readyz to fail on non-200 response"
@@ -98,9 +132,11 @@ jobs:
 
       - name: Start Readyz Fixture (Invalid Payload)
         env:
+          READYZ_FIXTURE_MODE: "invalid"
           READYZ_FIXTURE_STATUS: "200"
-          READYZ_FIXTURE_OK: "true"
           READYZ_FIXTURE_INVALID_PAYLOAD: "true"
+          READYZ_FIXTURE_CONTRACT_NAME: "tmi-platform-readyz"
+          READYZ_FIXTURE_CONTRACT_VERSION: "1.0"
         run: |
           node apps/api/scripts/readyz-ci-fixture.js > /tmp/readyz-fixture.log 2>&1 &
           echo $! > /tmp/readyz-fixture.pid
@@ -112,6 +148,8 @@ jobs:
           READYZ_GATE_MAX_ATTEMPTS: "1"
           READYZ_GATE_RETRY_DELAY_MS: "100"
           READYZ_GATE_TIMEOUT_MS: "1000"
+          READYZ_GATE_CONTRACT_NAME: "tmi-platform-readyz"
+          READYZ_GATE_CONTRACT_VERSION: "1.0"
         run: |
           if pnpm -C apps/api run gate:readyz; then
             echo "expected gate:readyz to fail on invalid readiness payload"
@@ -119,6 +157,40 @@ jobs:
           fi
 
       - name: Stop Readyz Fixture (Invalid Payload)
+        if: always()
+        run: |
+          if [ -f /tmp/readyz-fixture.pid ]; then
+            kill "$(cat /tmp/readyz-fixture.pid)" || true
+          fi
+
+      - name: Start Readyz Fixture (Contract Drift)
+        env:
+          READYZ_FIXTURE_MODE: "legacy"
+          READYZ_FIXTURE_STATUS: "200"
+          READYZ_FIXTURE_OK: "true"
+          READYZ_FIXTURE_INVALID_PAYLOAD: "false"
+          READYZ_FIXTURE_CONTRACT_NAME: "tmi-platform-readyz"
+          READYZ_FIXTURE_CONTRACT_VERSION: "2.0"
+        run: |
+          node apps/api/scripts/readyz-ci-fixture.js > /tmp/readyz-fixture.log 2>&1 &
+          echo $! > /tmp/readyz-fixture.pid
+          sleep 1
+
+      - name: Negative Proof (Contract Drift Fails Gate)
+        env:
+          READYZ_GATE_URL: http://127.0.0.1:4011/api/readyz
+          READYZ_GATE_MAX_ATTEMPTS: "1"
+          READYZ_GATE_RETRY_DELAY_MS: "100"
+          READYZ_GATE_TIMEOUT_MS: "1000"
+          READYZ_GATE_CONTRACT_NAME: "tmi-platform-readyz"
+          READYZ_GATE_CONTRACT_VERSION: "1.0"
+        run: |
+          if pnpm -C apps/api run gate:readyz; then
+            echo "expected gate:readyz to fail on readiness contract version drift"
+            exit 1
+          fi
+
+      - name: Stop Readyz Fixture (Contract Drift)
         if: always()
         run: |
           if [ -f /tmp/readyz-fixture.pid ]; then

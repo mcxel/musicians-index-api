@@ -2,9 +2,12 @@ const http = require("http");
 
 const host = process.env.READYZ_FIXTURE_HOST || "127.0.0.1";
 const port = Number(process.env.READYZ_FIXTURE_PORT || "4011");
+const mode = (process.env.READYZ_FIXTURE_MODE || "legacy").toLowerCase();
 const status = Number(process.env.READYZ_FIXTURE_STATUS || "200");
 const ok = (process.env.READYZ_FIXTURE_OK || "true").toLowerCase() === "true";
 const invalidPayload = (process.env.READYZ_FIXTURE_INVALID_PAYLOAD || "false").toLowerCase() === "true";
+const contractName = process.env.READYZ_FIXTURE_CONTRACT_NAME || "tmi-platform-readyz";
+const contractVersion = process.env.READYZ_FIXTURE_CONTRACT_VERSION || "1.0";
 
 const server = http.createServer((req, res) => {
   if (req.url !== "/api/readyz") {
@@ -13,9 +16,43 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  if (invalidPayload) {
+  if (invalidPayload || mode === "invalid") {
     res.writeHead(status, { "content-type": "text/plain" });
     res.end("invalid-readiness-payload");
+    return;
+  }
+
+  if (mode === "degraded") {
+    res.writeHead(200, { "content-type": "application/json" });
+    res.end(
+      JSON.stringify({
+        ok: true,
+        blockers: [],
+        contract: {
+          name: contractName,
+          version: contractVersion,
+        },
+        degraded: true,
+        reasons: ["upstream_degraded"],
+        fixture: true,
+      }),
+    );
+    return;
+  }
+
+  if (mode === "failclosed") {
+    res.writeHead(503, { "content-type": "application/json" });
+    res.end(
+      JSON.stringify({
+        ok: false,
+        blockers: ["fixture-unready"],
+        contract: {
+          name: contractName,
+          version: contractVersion,
+        },
+        fixture: true,
+      }),
+    );
     return;
   }
 
@@ -24,6 +61,10 @@ const server = http.createServer((req, res) => {
     JSON.stringify({
       ok,
       blockers: ok ? [] : ["fixture-unready"],
+      contract: {
+        name: contractName,
+        version: contractVersion,
+      },
       fixture: true,
     }),
   );
@@ -32,7 +73,7 @@ const server = http.createServer((req, res) => {
 server.listen(port, host, () => {
   // eslint-disable-next-line no-console
   console.log(
-    `[readyz-fixture] listening http://${host}:${port}/api/readyz status=${status} ok=${ok} invalidPayload=${invalidPayload}`,
+    `[readyz-fixture] listening http://${host}:${port}/api/readyz mode=${mode} status=${status} ok=${ok} invalidPayload=${invalidPayload} contract=${contractName}@${contractVersion}`,
   );
 });
 

@@ -23,11 +23,17 @@ export type ReadinessChecks = {
 export type ReadinessResponse = {
   ok: boolean;
   service: "tmi-platform-api";
+  contract: {
+    name: string;
+    version: string;
+  };
   checks: ReadinessChecks;
   blockers: string[];
   timestamp: string;
 };
 
+export const READYZ_CONTRACT_NAME = "tmi-platform-readyz";
+export const READYZ_CONTRACT_VERSION = "1.0";
 export const REQUIRED_BOOT_ENV = ["DATABASE_URL"] as const;
 export const CACHE_CONNECT_TIMEOUT_MS = 500;
 export const OPTIONAL_UPSTREAM_TIMEOUT_MS = 700;
@@ -254,6 +260,10 @@ export function buildReadinessResponse(checks: ReadinessChecks): ReadinessRespon
   return {
     ok,
     service: "tmi-platform-api",
+    contract: {
+      name: READYZ_CONTRACT_NAME,
+      version: READYZ_CONTRACT_VERSION,
+    },
     checks,
     blockers,
     timestamp: new Date().toISOString(),
