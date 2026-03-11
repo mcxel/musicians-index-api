@@ -8,8 +8,11 @@ import {
   buildReadinessResponse,
   findMissingEnv,
   isReadinessDegradedForAlert,
+  parseOptionalUpstreamTimeoutOverrides,
   probeOptionalUpstreams,
+  shouldEmitReadinessAlert,
   REQUIRED_BOOT_ENV,
+  type ReadinessReasonKey,
   type ReadinessChecks,
 } from "./readiness";
 
@@ -17,10 +20,14 @@ import {
 export class HealthController {
   private consecutiveDegradedCount = 0;
   private lastAlertAtMs = 0;
+  private lastAlertReasonSetKey = "";
 
   private readonly alertThreshold = Number(process.env.READYZ_ALERT_THRESHOLD || 3);
   private readonly alertCooldownMs = Number(process.env.READYZ_ALERT_COOLDOWN_MS || 300_000);
   private readonly alertWebhookUrl = process.env.READYZ_ALERT_WEBHOOK_URL?.trim();
+  private readonly optionalUpstreamTimeoutOverrides = parseOptionalUpstreamTimeoutOverrides(
+    process.env.READYZ_OPTIONAL_UPSTREAM_TIMEOUT_OVERRIDES,
+  );
 
   constructor(private readonly prisma: PrismaService) {}
 
@@ -98,10 +105,13 @@ export class HealthController {
 
   private async runOptionalUpstreamChecks() {
     const raw = process.env.READYZ_OPTIONAL_UPSTREAMS || "";
-    return probeOptionalUpstreams(raw);
+    return probeOptionalUpstreams(raw, undefined, this.optionalUpstreamTimeoutOverrides);
   }
 
-  private async emitReadinessAlert(reasons: string[], payload: ReturnType<typeof buildReadinessResponse>) {
+  private async emitReadinessAlert(
+    reasons: ReadinessReasonKey[],
+    payload: ReturnType<typeof buildReadinessResponse>,
+  ) {
     // eslint-disable-next-line no-console
     console.error(
       `[readyz-alert] consecutive=${this.consecutiveDegradedCount} reasons=${reasons.join(",")} blockers=${payload.blockers.join(",")}`,
@@ -132,20 +142,29 @@ export class HealthController {
     const degraded = isReadinessDegradedForAlert(payload.checks, payload.ok);
     if (!degraded.degraded) {
       this.consecutiveDegradedCount = 0;
+      this.lastAlertReasonSetKey = "";
       return;
     }
 
     this.consecutiveDegradedCount += 1;
-    if (this.consecutiveDegradedCount < this.alertThreshold) {
-      return;
-    }
-
     const now = Date.now();
-    if (now - this.lastAlertAtMs < this.alertCooldownMs) {
+    const decision = shouldEmitReadinessAlert({
+      degraded: degraded.degraded,
+      reasons: degraded.reasons,
+      consecutiveDegradedCount: this.consecutiveDegradedCount,
+      alertThreshold: this.alertThreshold,
+      alertCooldownMs: this.alertCooldownMs,
+      nowMs: now,
+      lastAlertAtMs: this.lastAlertAtMs,
+      lastAlertReasonSetKey: this.lastAlertReasonSetKey,
+    });
+
+    if (!decision.shouldEmit) {
       return;
     }
 
     this.lastAlertAtMs = now;
+    this.lastAlertReasonSetKey = decision.reasonSetKey;
     await this.emitReadinessAlert(degraded.reasons, payload);
   }
 
