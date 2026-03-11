@@ -111,15 +111,27 @@ async function run() {
     "expected cache_unready normalized reason",
   );
 
-  const unchangedSetDuringCooldown = shouldEmitReadinessAlert({
+  const firstSetShouldEmit = shouldEmitReadinessAlert({
     degraded: true,
     reasons: ["upstream_degraded"],
     consecutiveDegradedCount: 3,
     alertThreshold: 3,
     alertCooldownMs: 300_000,
     nowMs: 1_000,
-    lastAlertAtMs: 900,
-    lastAlertReasonSetKey: "upstream_degraded",
+    lastAlertAtMs: 0,
+    lastAlertReasonSetKey: "",
+  });
+  assert(firstSetShouldEmit.shouldEmit === true, "expected first degraded reason-set to emit");
+
+  const unchangedSetDuringCooldown = shouldEmitReadinessAlert({
+    degraded: true,
+    reasons: ["upstream_degraded"],
+    consecutiveDegradedCount: 3,
+    alertThreshold: 3,
+    alertCooldownMs: 300_000,
+    nowMs: 1_100,
+    lastAlertAtMs: 1_000,
+    lastAlertReasonSetKey: firstSetShouldEmit.reasonSetKey,
   });
   assert(
     unchangedSetDuringCooldown.shouldEmit === false,
@@ -132,9 +144,9 @@ async function run() {
     consecutiveDegradedCount: 3,
     alertThreshold: 3,
     alertCooldownMs: 300_000,
-    nowMs: 1_000,
-    lastAlertAtMs: 900,
-    lastAlertReasonSetKey: "upstream_degraded",
+    nowMs: 1_200,
+    lastAlertAtMs: 1_000,
+    lastAlertReasonSetKey: firstSetShouldEmit.reasonSetKey,
   });
   assert(
     changedSetDuringCooldown.shouldEmit === true,
@@ -168,6 +180,14 @@ async function run() {
         call.timeoutMs === OPTIONAL_UPSTREAM_TIMEOUT_MS,
     ),
     "expected global default timeout to remain unchanged for non-overridden targets",
+  );
+  assert(
+    !overrideProbeCalls.some(
+      (call) =>
+        call.url !== "https://a.invalid/readyz" &&
+        call.timeoutMs === 1200,
+    ),
+    "expected per-target override to not leak to other upstream targets",
   );
 
   // eslint-disable-next-line no-console

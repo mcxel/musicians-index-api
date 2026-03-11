@@ -37,3 +37,23 @@ jobs:
 
       - name: Build (api)
         run: pnpm -C apps/api build
+
+      - name: Start Readyz Fixture
+        run: |
+          node -e "const http=require('http');http.createServer((req,res)=>{if(req.url==='/api/readyz'){res.writeHead(200,{'content-type':'application/json'});res.end(JSON.stringify({ok:true,blockers:[]}));return;}res.writeHead(404);res.end();}).listen(4011,'127.0.0.1');" > /tmp/readyz-fixture.log 2>&1 &
+          echo $! > /tmp/readyz-fixture.pid
+
+      - name: Promotion Gate (api readyz)
+        env:
+          READYZ_GATE_URL: http://127.0.0.1:4011/api/readyz
+          READYZ_GATE_MAX_ATTEMPTS: "3"
+          READYZ_GATE_RETRY_DELAY_MS: "200"
+          READYZ_GATE_TIMEOUT_MS: "1000"
+        run: pnpm -C apps/api run gate:readyz
+
+      - name: Stop Readyz Fixture
+        if: always()
+        run: |
+          if [ -f /tmp/readyz-fixture.pid ]; then
+            kill "$(cat /tmp/readyz-fixture.pid)" || true
+          fi
