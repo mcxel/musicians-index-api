@@ -4,9 +4,12 @@ import {
   parseOptionalUpstreamTimeoutOverrides,
   probeOptionalUpstreams,
   OPTIONAL_UPSTREAM_TIMEOUT_MS,
+  READYZ_CONTRACT_NAME,
+  READYZ_CONTRACT_VERSION,
   shouldEmitReadinessAlert,
   type ReadinessChecks,
 } from "../src/modules/health/readiness";
+import { isValidReadyzGatePayload } from "./readyz-rollout-gate";
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) {
@@ -27,6 +30,11 @@ async function run() {
   const okPayload = buildReadinessResponse(healthyChecks());
   assert(okPayload.ok === true, "expected healthy payload to be ready");
   assert(okPayload.service === "tmi-platform-api", "expected service identifier");
+  assert(okPayload.contract.name === READYZ_CONTRACT_NAME, "expected explicit readiness contract name");
+  assert(
+    okPayload.contract.version === READYZ_CONTRACT_VERSION,
+    "expected explicit readiness contract version",
+  );
   assert(typeof okPayload.timestamp === "string", "expected timestamp string");
   assert(okPayload.checks.database.ok === true, "expected database check to be present");
   assert(Array.isArray(okPayload.blockers), "expected blockers array");
@@ -188,6 +196,27 @@ async function run() {
         call.timeoutMs === 1200,
     ),
     "expected per-target override to not leak to other upstream targets",
+  );
+
+  assert(
+    isValidReadyzGatePayload({
+      ok: true,
+      contract: {
+        name: READYZ_CONTRACT_NAME,
+        version: READYZ_CONTRACT_VERSION,
+      },
+    }),
+    "expected gate payload validation to accept current readiness contract",
+  );
+  assert(
+    !isValidReadyzGatePayload({
+      ok: true,
+      contract: {
+        name: READYZ_CONTRACT_NAME,
+        version: "9.9",
+      },
+    }),
+    "expected readiness contract version drift to fail gate payload validation",
   );
 
   // eslint-disable-next-line no-console

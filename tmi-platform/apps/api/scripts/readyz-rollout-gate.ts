@@ -1,12 +1,32 @@
+import {
+  READYZ_CONTRACT_NAME,
+  READYZ_CONTRACT_VERSION,
+} from "../src/modules/health/readiness";
+
 const READYZ_URL = process.env.READYZ_GATE_URL || "http://localhost:4000/api/readyz";
 const MAX_ATTEMPTS = Number(process.env.READYZ_GATE_MAX_ATTEMPTS || 5);
 const RETRY_DELAY_MS = Number(process.env.READYZ_GATE_RETRY_DELAY_MS || 1000);
 const REQUEST_TIMEOUT_MS = Number(process.env.READYZ_GATE_TIMEOUT_MS || 1500);
+const EXPECTED_CONTRACT_NAME = process.env.READYZ_GATE_CONTRACT_NAME || READYZ_CONTRACT_NAME;
+const EXPECTED_CONTRACT_VERSION =
+  process.env.READYZ_GATE_CONTRACT_VERSION || READYZ_CONTRACT_VERSION;
 
 type ReadyzPayload = {
   ok?: boolean;
   blockers?: string[];
+  contract?: {
+    name?: string;
+    version?: string;
+  };
 };
+
+export function isValidReadyzGatePayload(payload?: ReadyzPayload) {
+  return (
+    payload?.ok === true &&
+    payload?.contract?.name === EXPECTED_CONTRACT_NAME &&
+    payload?.contract?.version === EXPECTED_CONTRACT_VERSION
+  );
+}
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -30,12 +50,14 @@ async function checkOnce(url: string) {
       payload = undefined;
     }
 
-    const ok = response.status === 200 && payload?.ok === true;
+    const ok = response.status === 200 && isValidReadyzGatePayload(payload);
     return {
       ok,
       status: response.status,
       blockers: payload?.blockers || [],
-      reason: ok ? undefined : "non-200 or invalid readiness payload",
+      reason: ok
+        ? undefined
+        : `non-200 or invalid readiness payload/contract expected=${EXPECTED_CONTRACT_NAME}@${EXPECTED_CONTRACT_VERSION}`,
     };
   } catch (error) {
     clearTimeout(timeout);
@@ -70,4 +92,6 @@ async function run() {
   process.exitCode = 1;
 }
 
-run();
+if (require.main === module) {
+  run();
+}
