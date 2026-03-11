@@ -1,8 +1,10 @@
 import {
   buildReadinessResponse,
   isReadinessDegradedForAlert,
+  parseOptionalUpstreamTimeoutOverrides,
   probeOptionalUpstreams,
   OPTIONAL_UPSTREAM_TIMEOUT_MS,
+  shouldEmitReadinessAlert,
   type ReadinessChecks,
 } from "../src/modules/health/readiness";
 
@@ -67,6 +69,106 @@ async function run() {
 
   const degradedAlertView = isReadinessDegradedForAlert(degradedPayload.checks, degradedPayload.ok);
   assert(degradedAlertView.degraded === true, "expected degraded upstreams to trigger alert classification");
+  assert(
+    degradedAlertView.reasons.includes("upstream_degraded"),
+    "expected upstream_degraded normalized reason",
+  );
+  assert(
+    degradedAlertView.reasons.includes("upstream_timeout"),
+    "expected upstream_timeout normalized reason",
+  );
+
+  const envInvalidChecks = healthyChecks();
+  envInvalidChecks.env = { ok: false, missing: ["DATABASE_URL"] };
+  const envInvalidAlertView = isReadinessDegradedForAlert(
+    envInvalidChecks,
+    buildReadinessResponse(envInvalidChecks).ok,
+  );
+  assert(
+    envInvalidAlertView.reasons.includes("env_invalid"),
+    "expected env_invalid normalized reason",
+  );
+
+  const dbInvalidChecks = healthyChecks();
+  dbInvalidChecks.database = { ok: false, error: "db down" };
+  const dbInvalidAlertView = isReadinessDegradedForAlert(
+    dbInvalidChecks,
+    buildReadinessResponse(dbInvalidChecks).ok,
+  );
+  assert(
+    dbInvalidAlertView.reasons.includes("database_unready"),
+    "expected database_unready normalized reason",
+  );
+
+  const cacheInvalidChecks = healthyChecks();
+  cacheInvalidChecks.cache = { ok: false, configured: true, error: "cache down" };
+  const cacheInvalidAlertView = isReadinessDegradedForAlert(
+    cacheInvalidChecks,
+    buildReadinessResponse(cacheInvalidChecks).ok,
+  );
+  assert(
+    cacheInvalidAlertView.reasons.includes("cache_unready"),
+    "expected cache_unready normalized reason",
+  );
+
+  const unchangedSetDuringCooldown = shouldEmitReadinessAlert({
+    degraded: true,
+    reasons: ["upstream_degraded"],
+    consecutiveDegradedCount: 3,
+    alertThreshold: 3,
+    alertCooldownMs: 300_000,
+    nowMs: 1_000,
+    lastAlertAtMs: 900,
+    lastAlertReasonSetKey: "upstream_degraded",
+  });
+  assert(
+    unchangedSetDuringCooldown.shouldEmit === false,
+    "expected identical degraded reason-set to be deduped during cooldown",
+  );
+
+  const changedSetDuringCooldown = shouldEmitReadinessAlert({
+    degraded: true,
+    reasons: ["database_unready"],
+    consecutiveDegradedCount: 3,
+    alertThreshold: 3,
+    alertCooldownMs: 300_000,
+    nowMs: 1_000,
+    lastAlertAtMs: 900,
+    lastAlertReasonSetKey: "upstream_degraded",
+  });
+  assert(
+    changedSetDuringCooldown.shouldEmit === true,
+    "expected changed degraded reason-set to emit a fresh alert during cooldown",
+  );
+
+  const timeoutOverrides = parseOptionalUpstreamTimeoutOverrides(
+    JSON.stringify({
+      "https://a.invalid/readyz": { timeoutMs: 1200 },
+    }),
+  );
+  const overrideProbeCalls: Array<{ url: string; timeoutMs: number }> = [];
+  await probeOptionalUpstreams(
+    "https://a.invalid/readyz,https://b.invalid/readyz",
+    async (url, timeoutMs) => {
+      overrideProbeCalls.push({ url, timeoutMs });
+      return { ok: true, latencyMs: 1 };
+    },
+    timeoutOverrides,
+  );
+  assert(
+    overrideProbeCalls.some(
+      (call) => call.url === "https://a.invalid/readyz" && call.timeoutMs === 1200,
+    ),
+    "expected per-target timeout override to apply only to configured target",
+  );
+  assert(
+    overrideProbeCalls.some(
+      (call) =>
+        call.url === "https://b.invalid/readyz" &&
+        call.timeoutMs === OPTIONAL_UPSTREAM_TIMEOUT_MS,
+    ),
+    "expected global default timeout to remain unchanged for non-overridden targets",
+  );
 
   // eslint-disable-next-line no-console
   console.log("readiness contract check passed");
