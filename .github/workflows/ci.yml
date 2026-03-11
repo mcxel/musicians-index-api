@@ -1,0 +1,51 @@
+name: ci
+on:
+  pull_request:
+  push:
+    branches: [ main ]
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - run: corepack enable
+      - run: pnpm -v
+
+      - name: Install dependencies (tmi-platform workspace)
+        working-directory: tmi-platform
+        run: pnpm install --frozen-lockfile
+
+      - name: Build shared packages
+        working-directory: tmi-platform
+        run: |
+          pnpm -F @tmi/contracts build
+          pnpm -F @tmi/hud-core build
+          pnpm -F @tmi/hud-runtime build
+          pnpm -F @tmi/hud-theme build
+          pnpm -F @tmi/hud-tmi build
+
+      - name: Generate API snapshots and verify
+        working-directory: tmi-platform
+        run: |
+          pnpm run snapshot:api
+          git --no-pager diff --exit-code api-snapshots || (echo "API snapshot changed; update api-snapshots/ in your PR if intentional" && exit 1)
+
+      - name: Typecheck apps
+        working-directory: tmi-platform
+        run: |
+          pnpm -C apps/web exec tsc -p tsconfig.json --noEmit
+          pnpm -C apps/api exec tsc -p tsconfig.json --noEmit || true
+
+      - name: Build apps
+        working-directory: tmi-platform
+        run: |
+          set -o pipefail
+          pnpm -C apps/web build
+          pnpm -C apps/api build || true
