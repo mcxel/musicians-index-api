@@ -32,6 +32,8 @@ jobs:
       - name: Build (web)
         run: pnpm -C apps/web build
 
-      # Optional: if you have API build/test commands, append:
-      # - name: Build (api)
-      #   run: pnpm -C apps/api build
+      - name: Readiness Contract (api)
+        run: pnpm -C apps/api run test:readiness-contract
+
+      - name: Build (api)
+        run: pnpm -C apps/api build
