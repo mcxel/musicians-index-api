@@ -5,8 +5,10 @@ import * as cookieParser from "cookie-parser";
 import type { Request, Response, NextFunction } from "express";
 import helmet from "helmet";
 import { AppModule } from "./app.module";
+import { validateBootEnvOrThrow } from "./modules/health/readiness";
 
 async function bootstrap() {
+  validateBootEnvOrThrow();
   const app = await NestFactory.create(AppModule);
   const isProd = process.env.NODE_ENV === "production";
 
