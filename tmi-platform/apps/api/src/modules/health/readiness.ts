@@ -23,6 +23,12 @@ export type ReadinessChecks = {
 export type ReadinessResponse = {
   ok: boolean;
   service: "tmi-platform-api";
+  identity: {
+    commitSha: string | null;
+    releaseTag: string | null;
+    appVersion: string | null;
+    revision: string;
+  };
   contract: {
     name: string;
     version: string;
@@ -66,6 +72,25 @@ export type ReadinessReasonKey =
   | "upstream_degraded"
   | "upstream_timeout"
   | "unknown_dependency_failure";
+
+function normalizeIdentityValue(value: string | undefined): string | null {
+  const normalized = value?.trim() || "";
+  return normalized.length > 0 ? normalized : null;
+}
+
+export function resolveBuildIdentity(env: NodeJS.ProcessEnv = process.env) {
+  const commitSha = normalizeIdentityValue(env.BUILD_COMMIT_SHA);
+  const releaseTag = normalizeIdentityValue(env.BUILD_RELEASE_TAG);
+  const appVersion = normalizeIdentityValue(env.BUILD_APP_VERSION);
+  const revision = commitSha || releaseTag || appVersion || "unknown";
+
+  return {
+    commitSha,
+    releaseTag,
+    appVersion,
+    revision,
+  };
+}
 
 export function findMissingEnv(required: readonly string[]): string[] {
   return required.filter((name) => !process.env[name]?.trim());
@@ -376,6 +401,7 @@ export function buildReadinessResponse(checks: ReadinessChecks): ReadinessRespon
   return {
     ok,
     service: "tmi-platform-api",
+    identity: resolveBuildIdentity(),
     contract: {
       name: READYZ_CONTRACT_NAME,
       version: READYZ_CONTRACT_VERSION,

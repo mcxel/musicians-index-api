@@ -6,6 +6,7 @@ import {
   OPTIONAL_UPSTREAM_TIMEOUT_MS,
   READYZ_CONTRACT_NAME,
   READYZ_CONTRACT_VERSION,
+  resolveBuildIdentity,
   shouldEmitReadinessAlert,
   type ReadinessChecks,
 } from "../src/modules/health/readiness";
@@ -35,6 +36,10 @@ async function run() {
   const okPayload = buildReadinessResponse(healthyChecks());
   assert(okPayload.ok === true, "expected healthy payload to be ready");
   assert(okPayload.service === "tmi-platform-api", "expected service identifier");
+  assert(okPayload.identity.revision.length > 0, "expected non-empty identity revision field");
+  assert(typeof okPayload.identity.commitSha !== "undefined", "expected identity commitSha field");
+  assert(typeof okPayload.identity.releaseTag !== "undefined", "expected identity releaseTag field");
+  assert(typeof okPayload.identity.appVersion !== "undefined", "expected identity appVersion field");
   assert(okPayload.contract.name === READYZ_CONTRACT_NAME, "expected explicit readiness contract name");
   assert(
     okPayload.contract.version === READYZ_CONTRACT_VERSION,
@@ -43,6 +48,26 @@ async function run() {
   assert(typeof okPayload.timestamp === "string", "expected timestamp string");
   assert(okPayload.checks.database.ok === true, "expected database check to be present");
   assert(Array.isArray(okPayload.blockers), "expected blockers array");
+
+  const emptyIdentity = resolveBuildIdentity({
+    BUILD_COMMIT_SHA: "",
+    BUILD_RELEASE_TAG: "",
+    BUILD_APP_VERSION: "",
+  } as NodeJS.ProcessEnv);
+  assert(emptyIdentity.revision === "unknown", "expected unknown revision fallback when env is absent");
+  assert(emptyIdentity.commitSha === null, "expected null commit sha when env is absent");
+  assert(emptyIdentity.releaseTag === null, "expected null release tag when env is absent");
+  assert(emptyIdentity.appVersion === null, "expected null app version when env is absent");
+
+  const populatedIdentity = resolveBuildIdentity({
+    BUILD_COMMIT_SHA: "abc123",
+    BUILD_RELEASE_TAG: "phase17_5-test",
+    BUILD_APP_VERSION: "1.2.3",
+  } as NodeJS.ProcessEnv);
+  assert(populatedIdentity.revision === "abc123", "expected commit sha precedence for revision");
+  assert(populatedIdentity.commitSha === "abc123", "expected commit sha capture");
+  assert(populatedIdentity.releaseTag === "phase17_5-test", "expected release tag capture");
+  assert(populatedIdentity.appVersion === "1.2.3", "expected app version capture");
 
   const badDb = healthyChecks();
   badDb.database = { ok: false, error: "db down" };
