@@ -10,6 +10,62 @@ const contractName = process.env.READYZ_FIXTURE_CONTRACT_NAME || "tmi-platform-r
 const contractVersion = process.env.READYZ_FIXTURE_CONTRACT_VERSION || "1.0";
 const healthOk = (process.env.READYZ_FIXTURE_HEALTH_OK || "true").toLowerCase() === "true";
 const healthStatus = Number(process.env.READYZ_FIXTURE_HEALTH_STATUS || "200");
+const metricsMode = (process.env.READYZ_FIXTURE_METRICS_MODE || "pass").toLowerCase();
+const metricsContractName =
+  process.env.READYZ_FIXTURE_METRICS_CONTRACT_NAME || "tmi-platform-promotion-metrics";
+const metricsContractVersion = process.env.READYZ_FIXTURE_METRICS_CONTRACT_VERSION || "1.0";
+
+function buildMetricsPayload() {
+  if (metricsMode === "invalid") {
+    return { invalid: true };
+  }
+
+  if (metricsMode === "abort") {
+    return {
+      contract: {
+        name: metricsContractName,
+        version: metricsContractVersion,
+      },
+      canary: {
+        attempts: 3,
+        successes: 0,
+        consecutiveSuccesses: 0,
+        failures: 3,
+      },
+      fixture: true,
+    };
+  }
+
+  if (metricsMode === "miss") {
+    return {
+      contract: {
+        name: metricsContractName,
+        version: metricsContractVersion,
+      },
+      canary: {
+        attempts: 3,
+        successes: 3,
+        consecutiveSuccesses: 1,
+        failures: 0,
+      },
+      fixture: true,
+    };
+  }
+
+  return {
+    contract: {
+      name: metricsContractName,
+      version: metricsContractVersion,
+    },
+    canary: {
+      attempts: 3,
+      successes: 3,
+      consecutiveSuccesses: 3,
+      failures: 0,
+    },
+    fixture: true,
+  };
+}
 
 const server = http.createServer((req, res) => {
   if (req.url === "/api/healthz") {
@@ -20,6 +76,18 @@ const server = http.createServer((req, res) => {
         fixture: true,
       }),
     );
+    return;
+  }
+
+  if (req.url === "/api/metrics/promotion") {
+    if (metricsMode === "invalid") {
+      res.writeHead(200, { "content-type": "text/plain" });
+      res.end("invalid-metrics-payload");
+      return;
+    }
+
+    res.writeHead(200, { "content-type": "application/json" });
+    res.end(JSON.stringify(buildMetricsPayload()));
     return;
   }
 
@@ -102,7 +170,7 @@ const server = http.createServer((req, res) => {
 server.listen(port, host, () => {
   // eslint-disable-next-line no-console
   console.log(
-    `[readyz-fixture] listening http://${host}:${port} mode=${mode} status=${status} ok=${ok} health=${healthOk}/${healthStatus} invalidPayload=${invalidPayload} contract=${contractName}@${contractVersion}`,
+    `[readyz-fixture] listening http://${host}:${port} mode=${mode} status=${status} ok=${ok} health=${healthOk}/${healthStatus} invalidPayload=${invalidPayload} contract=${contractName}@${contractVersion} metricsMode=${metricsMode} metricsContract=${metricsContractName}@${metricsContractVersion}`,
   );
 });
 
