@@ -8,6 +8,7 @@
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/main.js",
     "start:dev": "ts-node src/main.ts",
+    "test:env-contract": "ts-node scripts/env-contract-proof.ts",
     "test:readiness-contract": "ts-node scripts/readiness-contract-check.ts",
     "test:readyz-metrics-contract": "ts-node scripts/readyz-metrics-contract-proof.ts",
     "gate:readyz": "ts-node scripts/readyz-rollout-gate.ts"
