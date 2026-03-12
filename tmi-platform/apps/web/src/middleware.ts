@@ -55,6 +55,11 @@ export async function middleware(request: NextRequest) {
   }
 
   if (pathname.startsWith("/onboarding")) {
+    const isOnboardingLeaf = pathname.startsWith("/onboarding/");
+    if (!routingState && isOnboardingLeaf) {
+      return redirectIfNeeded(request, "/onboarding");
+    }
+
     if (routingState && destination.startsWith("/dashboard")) {
       return redirectIfNeeded(request, destination);
     }
