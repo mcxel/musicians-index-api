@@ -1,9 +1,9 @@
-name: CI
+name: CI (reference/manual)
 
+# Authoritative deploy-safety workflow for this repository is:
+# .github/workflows/ci.yml
 on:
-  pull_request:
-  push:
-    branches: [main]
+  workflow_dispatch:
 
 jobs:
   ci:
