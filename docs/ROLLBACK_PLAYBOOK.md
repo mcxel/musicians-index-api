@@ -110,3 +110,24 @@ Supported deterministic overrides
 Use
 - Local proof runs and deterministic incident replay only.
 - Do not use override mode for production promotion decisions.
+
+## 7) Operator Env Contract (Minimum)
+
+Set these env vars in controlled deploy environments so promotion/rollback behavior is reproducible.
+
+Build identity (surfaced by `/api/healthz` and `/api/readyz`)
+- `BUILD_COMMIT_SHA`
+- `BUILD_RELEASE_TAG`
+- `BUILD_APP_VERSION`
+
+Promotion metrics inputs (consumed by `apps/api/scripts/readyz-rollout-gate.ts`)
+- `PROMOTION_METRICS_REQUIRED`
+- `PROMOTION_METRICS_URL`
+- `PROMOTION_METRICS_FILE`
+- `PROMOTION_METRICS_JSON`
+- `PROMOTION_METRICS_CONTRACT_NAME`
+- `PROMOTION_METRICS_CONTRACT_VERSION`
+
+Canonical pipeline rollback inputs (consumed by `scripts/pipeline-promotion-gate.js`)
+- `PIPELINE_ROLLBACK_CMD`
+- `PIPELINE_ROLLBACK_RESULT` (proof/override only)
