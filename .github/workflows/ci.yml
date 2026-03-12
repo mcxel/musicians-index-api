@@ -49,3 +49,63 @@ jobs:
           set -o pipefail
           pnpm -C apps/web build
           pnpm -C apps/api build || true
+
+      - name: Promotion gate metrics pass proof
+        working-directory: tmi-platform
+        run: |
+          node apps/api/scripts/readyz-ci-fixture.js &
+          FIXTURE_PID=$!
+          trap "kill ${FIXTURE_PID}" EXIT
+          sleep 1
+          READYZ_GATE_URL=http://127.0.0.1:4011/api/readyz \
+          HEALTHZ_GATE_URL=http://127.0.0.1:4011/api/healthz \
+          PROMOTION_METRICS_URL=http://127.0.0.1:4011/api/metrics/promotion \
+          PROMOTION_METRICS_REQUIRED=true \
+          READYZ_FIXTURE_MODE=degraded \
+          READYZ_FIXTURE_METRICS_MODE=pass \
+          PROMOTION_CANARY_MIN_SUCCESS_RATE=1.0 \
+          PROMOTION_CANARY_REQUIRED_CONSECUTIVE_SUCCESSES=1 \
+          PROMOTION_CANARY_MAX_FAILURES=0 \
+          pnpm -C apps/api run gate:readyz
+
+      - name: Promotion gate metrics threshold miss proof
+        working-directory: tmi-platform
+        run: |
+          node apps/api/scripts/readyz-ci-fixture.js &
+          FIXTURE_PID=$!
+          trap "kill ${FIXTURE_PID}" EXIT
+          sleep 1
+          if READYZ_GATE_URL=http://127.0.0.1:4011/api/readyz \
+             HEALTHZ_GATE_URL=http://127.0.0.1:4011/api/healthz \
+             PROMOTION_METRICS_URL=http://127.0.0.1:4011/api/metrics/promotion \
+             PROMOTION_METRICS_REQUIRED=true \
+             READYZ_FIXTURE_MODE=degraded \
+             READYZ_FIXTURE_METRICS_MODE=miss \
+             PROMOTION_CANARY_MIN_SUCCESS_RATE=1.0 \
+             PROMOTION_CANARY_REQUIRED_CONSECUTIVE_SUCCESSES=4 \
+             PROMOTION_CANARY_MAX_FAILURES=0 \
+             pnpm -C apps/api run gate:readyz; then
+            echo "expected threshold miss to fail closed"
+            exit 1
+          fi
+
+      - name: Promotion gate metrics invalid payload proof
+        working-directory: tmi-platform
+        run: |
+          node apps/api/scripts/readyz-ci-fixture.js &
+          FIXTURE_PID=$!
+          trap "kill ${FIXTURE_PID}" EXIT
+          sleep 1
+          if READYZ_GATE_URL=http://127.0.0.1:4011/api/readyz \
+             HEALTHZ_GATE_URL=http://127.0.0.1:4011/api/healthz \
+             PROMOTION_METRICS_URL=http://127.0.0.1:4011/api/metrics/promotion \
+             PROMOTION_METRICS_REQUIRED=true \
+             READYZ_FIXTURE_MODE=degraded \
+             READYZ_FIXTURE_METRICS_MODE=invalid \
+             PROMOTION_CANARY_MIN_SUCCESS_RATE=1.0 \
+             PROMOTION_CANARY_REQUIRED_CONSECUTIVE_SUCCESSES=1 \
+             PROMOTION_CANARY_MAX_FAILURES=0 \
+             pnpm -C apps/api run gate:readyz; then
+            echo "expected invalid metrics payload to fail closed"
+            exit 1
+          fi

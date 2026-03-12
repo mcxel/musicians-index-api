@@ -9,7 +9,12 @@ import {
   shouldEmitReadinessAlert,
   type ReadinessChecks,
 } from "../src/modules/health/readiness";
-import { isAliveHealthzPayload, isValidReadyzGatePayload } from "./readyz-rollout-gate";
+import {
+  evaluateMetricsPolicy,
+  isAliveHealthzPayload,
+  isValidReadyzGatePayload,
+  parsePromotionMetricsPayload,
+} from "./readyz-rollout-gate";
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) {
@@ -239,6 +244,57 @@ async function run() {
     !isAliveHealthzPayload(503, { ok: true }),
     "expected non-200 healthz response to fail alive check",
   );
+
+  const validMetrics = parsePromotionMetricsPayload({
+    contract: {
+      name: "tmi-platform-promotion-metrics",
+      version: "1.0",
+    },
+    canary: {
+      attempts: 3,
+      successes: 3,
+      consecutiveSuccesses: 3,
+      failures: 0,
+    },
+  });
+  assert(validMetrics.ok === true, "expected promotion metrics payload contract to validate");
+  if (!validMetrics.ok) {
+    throw new Error("expected valid metrics payload");
+  }
+
+  const invalidMetrics = parsePromotionMetricsPayload({
+    contract: {
+      name: "tmi-platform-promotion-metrics",
+      version: "1.0",
+    },
+    canary: {
+      attempts: 2,
+      successes: 2,
+      consecutiveSuccesses: 2,
+      failures: 1,
+    },
+  });
+  assert(
+    invalidMetrics.ok === false,
+    "expected invalid promotion metrics payload to fail closed",
+  );
+
+  const metricsPass = evaluateMetricsPolicy(validMetrics.payload);
+  assert(metricsPass.decision === "PASS", "expected metrics policy pass decision");
+
+  const metricsAbort = evaluateMetricsPolicy({
+    contract: {
+      name: "tmi-platform-promotion-metrics",
+      version: "1.0",
+    },
+    canary: {
+      attempts: 3,
+      successes: 0,
+      consecutiveSuccesses: 0,
+      failures: 3,
+    },
+  });
+  assert(metricsAbort.decision === "ABORT", "expected metrics policy abort decision");
 
   // eslint-disable-next-line no-console
   console.log("readiness contract check passed");
