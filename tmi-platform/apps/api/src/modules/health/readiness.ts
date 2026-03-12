@@ -35,9 +35,24 @@ export type ReadinessResponse = {
 export const READYZ_CONTRACT_NAME = "tmi-platform-readyz";
 export const READYZ_CONTRACT_VERSION = "1.0";
 export const REQUIRED_BOOT_ENV = ["DATABASE_URL"] as const;
+export const OPTIONAL_BOOT_ENV = [
+  "NODE_ENV",
+  "PORT",
+  "CORS_ORIGINS",
+  "REDIS_URL",
+  "READYZ_OPTIONAL_UPSTREAMS",
+  "READYZ_OPTIONAL_UPSTREAM_TIMEOUT_OVERRIDES",
+] as const;
 export const CACHE_CONNECT_TIMEOUT_MS = 500;
 export const OPTIONAL_UPSTREAM_TIMEOUT_MS = 700;
 const MAX_OPTIONAL_UPSTREAM_TIMEOUT_MS = 10_000;
+const ALLOWED_NODE_ENVS = new Set(["development", "test", "production"]);
+const ALLOWED_DB_URL_PREFIXES = [
+  "postgresql://",
+  "postgres://",
+  "prisma://",
+  "prisma+postgres://",
+] as const;
 
 export type UpstreamProbeFn = (
   url: string,
@@ -56,10 +71,111 @@ export function findMissingEnv(required: readonly string[]): string[] {
   return required.filter((name) => !process.env[name]?.trim());
 }
 
+function isValidIntegerInRange(value: string, min: number, max: number) {
+  if (!/^\d+$/.test(value)) return false;
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed >= min && parsed <= max;
+}
+
+function validateDatabaseUrl(raw: string | undefined): string | undefined {
+  const value = raw?.trim() || "";
+  if (!value) {
+    return "DATABASE_URL is required";
+  }
+
+  const supportedPrefix = ALLOWED_DB_URL_PREFIXES.some((prefix) => value.startsWith(prefix));
+  if (!supportedPrefix) {
+    return "DATABASE_URL must use a supported PostgreSQL/Prisma URL scheme";
+  }
+
+  try {
+    // Enforces deterministic malformed-url rejection.
+    // eslint-disable-next-line no-new
+    new URL(value);
+  } catch {
+    return "DATABASE_URL must be a valid URL";
+  }
+
+  return undefined;
+}
+
+function validateCorsOrigins(raw: string | undefined): string | undefined {
+  const value = raw?.trim() || "";
+  if (!value) return undefined;
+
+  const origins = value
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+
+  for (const origin of origins) {
+    try {
+      const parsed = new URL(origin);
+      if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+        return `CORS_ORIGINS contains unsupported protocol for origin: ${origin}`;
+      }
+    } catch {
+      return `CORS_ORIGINS contains invalid origin URL: ${origin}`;
+    }
+  }
+
+  return undefined;
+}
+
+function validateOptionalUpstreams(raw: string | undefined): string | undefined {
+  const value = raw?.trim() || "";
+  if (!value) return undefined;
+
+  const targets = parseOptionalUpstreamTargets(value);
+  for (const target of targets) {
+    try {
+      const parsed = new URL(target);
+      if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+        return `READYZ_OPTIONAL_UPSTREAMS contains unsupported protocol: ${target}`;
+      }
+    } catch {
+      return `READYZ_OPTIONAL_UPSTREAMS contains invalid URL: ${target}`;
+    }
+  }
+
+  return undefined;
+}
+
+export function getBootEnvValidationErrors(env: NodeJS.ProcessEnv = process.env): string[] {
+  const errors: string[] = [];
+
+  const databaseUrlError = validateDatabaseUrl(env.DATABASE_URL);
+  if (databaseUrlError) {
+    errors.push(databaseUrlError);
+  }
+
+  const nodeEnv = env.NODE_ENV?.trim();
+  if (nodeEnv && !ALLOWED_NODE_ENVS.has(nodeEnv)) {
+    errors.push(`NODE_ENV must be one of: ${Array.from(ALLOWED_NODE_ENVS).join(", ")}`);
+  }
+
+  const port = env.PORT?.trim();
+  if (port && !isValidIntegerInRange(port, 1, 65535)) {
+    errors.push("PORT must be an integer between 1 and 65535");
+  }
+
+  const corsOriginsError = validateCorsOrigins(env.CORS_ORIGINS);
+  if (corsOriginsError) {
+    errors.push(corsOriginsError);
+  }
+
+  const optionalUpstreamsError = validateOptionalUpstreams(env.READYZ_OPTIONAL_UPSTREAMS);
+  if (optionalUpstreamsError) {
+    errors.push(optionalUpstreamsError);
+  }
+
+  return errors;
+}
+
 export function validateBootEnvOrThrow() {
-  const missing = findMissingEnv(REQUIRED_BOOT_ENV);
-  if (missing.length > 0) {
-    throw new Error(`Missing required environment variable(s): ${missing.join(", ")}`);
+  const errors = getBootEnvValidationErrors(process.env);
+  if (errors.length > 0) {
+    throw new Error(`Invalid boot environment: ${errors.join("; ")}`);
   }
 }
 
