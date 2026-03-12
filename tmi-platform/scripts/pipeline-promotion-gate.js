@@ -45,6 +45,18 @@ function runStage(stageName, command) {
   return runCommand(command);
 }
 
+function runRollback(trigger) {
+  const rollbackOverride = stageOutcomeFromOverride("rollback");
+  const rollbackCommand = process.env.PIPELINE_ROLLBACK_CMD;
+
+  if (rollbackOverride === undefined && !rollbackCommand) {
+    return { attempted: false, exitCode: null, trigger };
+  }
+
+  const exitCode = runStage("rollback", rollbackCommand || "node -e \"process.exit(0)\"");
+  return { attempted: true, exitCode, trigger };
+}
+
 function runPipelineGate() {
   const buildCommand = process.env.PIPELINE_BUILD_CMD || "pnpm -C apps/api build";
   const readinessCommand =
@@ -53,33 +65,42 @@ function runPipelineGate() {
 
   const buildExit = runStage("build", buildCommand);
   if (buildExit !== 0) {
+    const rollback = runRollback("build_failed");
     emitDecision({
       decision: "BLOCKED",
       stage: "build",
       rollbackTrigger: "build_failed",
       exitCode: buildExit,
+      rollbackAttempted: rollback.attempted,
+      rollbackExitCode: rollback.exitCode,
     });
     return 1;
   }
 
   const readinessExit = runStage("readiness", readinessCommand);
   if (readinessExit !== 0) {
+    const rollback = runRollback("readiness_failed");
     emitDecision({
       decision: "BLOCKED",
       stage: "readiness",
       rollbackTrigger: "readiness_failed",
       exitCode: readinessExit,
+      rollbackAttempted: rollback.attempted,
+      rollbackExitCode: rollback.exitCode,
     });
     return 1;
   }
 
   const promotionExit = runStage("promotion", promotionCommand);
   if (promotionExit !== 0) {
+    const rollback = runRollback("promotion_gate_failed");
     emitDecision({
       decision: "ABORT",
       stage: "promotion",
       rollbackTrigger: "promotion_gate_failed",
       exitCode: promotionExit,
+      rollbackAttempted: rollback.attempted,
+      rollbackExitCode: rollback.exitCode,
     });
     return 1;
   }
@@ -89,6 +110,8 @@ function runPipelineGate() {
     stage: "promotion",
     rollbackTrigger: null,
     exitCode: 0,
+    rollbackAttempted: false,
+    rollbackExitCode: null,
   });
   return 0;
 }
