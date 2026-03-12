@@ -155,11 +155,11 @@ if ($InnoSetup) {
     }
 }
 
-# Step 6: Mandatory promotion gate on API readiness
-Write-Step "Promotion Gate (API Readyz)"
-$readyzGatePassed = Run-Command "gate-readyz" "pnpm -C apps/api run gate:readyz" (Join-Path $PSScriptRoot "..")
-if (-not $readyzGatePassed) {
-    Write-Host "`n❌ PROMOTION GATE FAILED - Cannot proceed with release promotion!" -ForegroundColor Red
+# Step 6: Mandatory canonical pipeline promotion gate (build/readiness/promotion + decision contract)
+Write-Step "Promotion Gate (Canonical Pipeline Decision Contract)"
+$pipelineGatePassed = Run-Command "pipeline-promotion-gate" "node scripts/pipeline-promotion-gate.js" (Join-Path $PSScriptRoot "..")
+if (-not $pipelineGatePassed) {
+    Write-Host "`n❌ CANONICAL PIPELINE GATE FAILED - Cannot proceed with release promotion!" -ForegroundColor Red
     exit 1
 }
 
