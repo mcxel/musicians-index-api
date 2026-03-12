@@ -10,6 +10,7 @@ import {
   isReadinessDegradedForAlert,
   parseOptionalUpstreamTimeoutOverrides,
   probeOptionalUpstreams,
+  resolveBuildIdentity,
   shouldEmitReadinessAlert,
   REQUIRED_BOOT_ENV,
   type ReadinessReasonKey,
@@ -36,6 +37,7 @@ export class HealthController {
     return {
       ok: true,
       service: "tmi-platform-api",
+      identity: resolveBuildIdentity(),
       uptimeSeconds: Math.floor(process.uptime()),
       timestamp: new Date().toISOString(),
     };
