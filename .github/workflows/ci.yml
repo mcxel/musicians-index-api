@@ -41,14 +41,14 @@ jobs:
         working-directory: tmi-platform
         run: |
           pnpm -C apps/web exec tsc -p tsconfig.json --noEmit
-          pnpm -C apps/api exec tsc -p tsconfig.json --noEmit || true
+          pnpm -C apps/api exec tsc -p tsconfig.json --noEmit
 
       - name: Build apps
         working-directory: tmi-platform
         run: |
           set -o pipefail
           pnpm -C apps/web build
-          pnpm -C apps/api build || true
+          pnpm -C apps/api build
 
       - name: Promotion gate metrics pass proof
         working-directory: tmi-platform
