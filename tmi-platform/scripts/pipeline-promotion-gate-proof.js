@@ -55,6 +55,8 @@ function run() {
   assert(buildFail.exitCode === 1, "expected build-fail scenario exit=1");
   assert(buildFail.decision.decision === "BLOCKED", "expected build-fail decision=BLOCKED");
   assert(buildFail.decision.rollbackTrigger === "build_failed", "expected build rollback trigger");
+  assert(buildFail.decision.rollbackAttempted === false, "expected no rollback attempt by default");
+  assert(buildFail.decision.rollbackExitCode === null, "expected null rollback exit when not attempted");
   assert(buildFail.stages.join(",") === "build", "expected only build stage to execute");
 
   const readinessFail = runScenario("readiness failure blocks promotion", {
@@ -68,6 +70,8 @@ function run() {
     readinessFail.decision.rollbackTrigger === "readiness_failed",
     "expected readiness rollback trigger",
   );
+  assert(readinessFail.decision.rollbackAttempted === false, "expected no rollback attempt by default");
+  assert(readinessFail.decision.rollbackExitCode === null, "expected null rollback exit when not attempted");
   assert(
     readinessFail.stages.join(",") === "build,readiness",
     "expected build then readiness stages only",
@@ -81,6 +85,8 @@ function run() {
   assert(validPath.exitCode === 0, "expected valid-path scenario exit=0");
   assert(validPath.decision.decision === "PROMOTE", "expected valid-path decision=PROMOTE");
   assert(validPath.decision.rollbackTrigger === null, "expected no rollback trigger on promote");
+  assert(validPath.decision.rollbackAttempted === false, "expected no rollback on promote");
+  assert(validPath.decision.rollbackExitCode === null, "expected null rollback exit on promote");
   assert(
     validPath.stages.join(",") === "build,readiness,promotion",
     "expected ordered stage execution for valid path",
@@ -97,9 +103,26 @@ function run() {
     abortPath.decision.rollbackTrigger === "promotion_gate_failed",
     "expected explicit abort rollback trigger",
   );
+  assert(abortPath.decision.rollbackAttempted === false, "expected no rollback attempt by default");
+  assert(abortPath.decision.rollbackExitCode === null, "expected null rollback exit when not attempted");
   assert(
     abortPath.stages.join(",") === "build,readiness,promotion",
     "expected ordered stage execution for abort path",
+  );
+
+  const abortWithRollback = runScenario("abort executes rollback when configured", {
+    PIPELINE_BUILD_RESULT: "0",
+    PIPELINE_READINESS_RESULT: "0",
+    PIPELINE_PROMOTION_RESULT: "5",
+    PIPELINE_ROLLBACK_RESULT: "0",
+  });
+  assert(abortWithRollback.exitCode === 1, "expected abort-with-rollback scenario exit=1");
+  assert(abortWithRollback.decision.decision === "ABORT", "expected abort-with-rollback decision");
+  assert(abortWithRollback.decision.rollbackAttempted === true, "expected rollback execution when configured");
+  assert(abortWithRollback.decision.rollbackExitCode === 0, "expected rollback exit=0");
+  assert(
+    abortWithRollback.stages.join(",") === "build,readiness,promotion,rollback",
+    "expected rollback stage after promotion failure",
   );
 
   console.log("pipeline promotion gate proof passed");
