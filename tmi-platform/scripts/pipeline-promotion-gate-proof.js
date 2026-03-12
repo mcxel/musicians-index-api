@@ -11,8 +11,9 @@ function assert(condition, message) {
 
 function parseDecision(output) {
   const lines = output.split(/\r?\n/);
-  const decisionLine = lines.find((line) => line.startsWith("[pipeline-gate][decision] "));
-  assert(decisionLine, "missing pipeline decision output line");
+  const decisionLines = lines.filter((line) => line.startsWith("[pipeline-gate][decision] "));
+  assert(decisionLines.length === 1, "expected exactly one pipeline decision output line");
+  const decisionLine = decisionLines[0];
   return JSON.parse(decisionLine.replace("[pipeline-gate][decision] ", ""));
 }
 
@@ -123,6 +124,30 @@ function run() {
   assert(
     abortWithRollback.stages.join(",") === "build,readiness,promotion,rollback",
     "expected rollback stage after promotion failure",
+  );
+
+  const abortWithRollbackCommand = runScenario("abort executes rollback command when configured", {
+    PIPELINE_BUILD_RESULT: "0",
+    PIPELINE_READINESS_RESULT: "0",
+    PIPELINE_PROMOTION_RESULT: "5",
+    PIPELINE_ROLLBACK_CMD: "node -e \"process.exit(7)\"",
+  });
+  assert(abortWithRollbackCommand.exitCode === 1, "expected abort-with-rollback-command scenario exit=1");
+  assert(
+    abortWithRollbackCommand.decision.decision === "ABORT",
+    "expected abort-with-rollback-command decision",
+  );
+  assert(
+    abortWithRollbackCommand.decision.rollbackAttempted === true,
+    "expected rollback execution when rollback command is configured",
+  );
+  assert(
+    abortWithRollbackCommand.decision.rollbackExitCode === 7,
+    "expected rollback command exit code to be surfaced",
+  );
+  assert(
+    abortWithRollbackCommand.stages.join(",") === "build,readiness,promotion,rollback",
+    "expected rollback stage after promotion failure with rollback command",
   );
 
   console.log("pipeline promotion gate proof passed");
