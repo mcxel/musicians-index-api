@@ -38,9 +38,12 @@ jobs:
       - name: Build (api)
         run: pnpm -C apps/api build
 
+      - name: Pipeline Promotion Gate Proof
+        run: node scripts/pipeline-promotion-gate-proof.js
+
       - name: Assert Main Path Enforces gate:readyz
         run: |
-          node -e "const fs=require('fs'); const lines=fs.readFileSync('.github/workflows/ci.yml','utf8').split(/\r?\n/); const idx=lines.findIndex((line)=>line.includes('- name: Promotion Gate (api readyz)')); if(idx<0){throw new Error('Missing Promotion Gate (api readyz) step');} let hasRun=false; for(let i=idx+1;i<lines.length;i+=1){const line=lines[i]; if(line.startsWith('      - name:')) break; const trimmed=line.trim(); if(trimmed.startsWith('if:')){throw new Error('Promotion gate must not be conditionally skipped');} if(trimmed==='run: pnpm -C apps/api run gate:readyz'){hasRun=true;} } if(!hasRun){throw new Error('Promotion gate run command missing in main CI path');} console.log('main path gate assertion passed');"
+          node -e "const fs=require('fs'); const lines=fs.readFileSync('.github/workflows/ci.yml','utf8').split(/\r?\n/); const idx=lines.findIndex((line)=>line.includes('- name: Promotion Gate (api readyz)')); if(idx<0){throw new Error('Missing Promotion Gate (api readyz) step');} let hasRun=false; for(let i=idx+1;i<lines.length;i+=1){const line=lines[i]; if(line.startsWith('      - name:')) break; const trimmed=line.trim(); if(trimmed.startsWith('if:')){throw new Error('Promotion gate must not be conditionally skipped');} if(trimmed==='run: node scripts/pipeline-promotion-gate.js'){hasRun=true;} } if(!hasRun){throw new Error('Promotion gate run command missing in main CI path');} console.log('main path gate assertion passed');"
 
       - name: Start Readyz Fixture
         env:
@@ -67,7 +70,7 @@ jobs:
           PROMOTION_CANARY_MIN_SUCCESS_RATE: "1"
           PROMOTION_CANARY_REQUIRED_CONSECUTIVE_SUCCESSES: "1"
           PROMOTION_CANARY_MAX_FAILURES: "0"
-        run: pnpm -C apps/api run gate:readyz
+        run: node scripts/pipeline-promotion-gate.js
 
       - name: Stop Readyz Fixture
         if: always()
