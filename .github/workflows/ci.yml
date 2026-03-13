@@ -7,6 +7,20 @@ on:
 jobs:
   build-test:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: tmi_platform
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d tmi_platform"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v4
 
@@ -108,4 +122,71 @@ jobs:
              pnpm -C apps/api run gate:readyz; then
             echo "expected invalid metrics payload to fail closed"
             exit 1
+          fi
+
+      - name: Install Playwright Browser (chromium)
+        working-directory: tmi-platform
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Apply DB Migrations (e2e)
+        working-directory: tmi-platform
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/tmi_platform
+        run: pnpm -C packages/db exec prisma migrate deploy
+
+      - name: Start API (e2e)
+        working-directory: tmi-platform
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/tmi_platform
+          PORT: "4000"
+          CORS_ORIGINS: http://localhost:3000,http://localhost:3001
+        run: |
+          pnpm --filter tmi-platform-api start:dev > /tmp/api-e2e.log 2>&1 &
+          echo $! > /tmp/api-e2e.pid
+
+      - name: Start Web (e2e)
+        working-directory: tmi-platform
+        env:
+          NEXTAUTH_SECRET: ci-nextauth-secret
+          ROUTING_STATE_SECRET: ci-routing-secret
+          API_BASE_URL: http://localhost:4000
+        run: |
+          pnpm -C apps/web dev -- -p 3001 > /tmp/web-e2e.log 2>&1 &
+          echo $! > /tmp/web-e2e.pid
+
+      - name: Wait E2E Runtime
+        run: |
+          for i in {1..60}; do
+            if curl -fsS http://localhost:3001/auth >/dev/null && curl -fsS http://localhost:4000/api/healthz >/dev/null && curl -fsS http://localhost:4000/api/readyz >/dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "e2e runtime failed to become ready"
+          echo "--- api log ---"
+          if [ -f /tmp/api-e2e.log ]; then cat /tmp/api-e2e.log; fi
+          echo "--- web log ---"
+          if [ -f /tmp/web-e2e.log ]; then cat /tmp/web-e2e.log; fi
+          exit 1
+
+      - name: E2E Proof (phase17.3 onboarding recovery)
+        working-directory: tmi-platform
+        env:
+          E2E_BASE_URL: http://localhost:3001
+        run: pnpm exec playwright test tests/e2e/phase17_3_onboarding_recovery.spec.ts
+
+      - name: E2E Regression (phase13.5 browser flows)
+        working-directory: tmi-platform
+        env:
+          E2E_BASE_URL: http://localhost:3001
+        run: pnpm exec playwright test tests/e2e/phase13_5.spec.ts
+
+      - name: Stop E2E Runtime
+        if: always()
+        run: |
+          if [ -f /tmp/web-e2e.pid ]; then
+            kill "$(cat /tmp/web-e2e.pid)" || true
+          fi
+          if [ -f /tmp/api-e2e.pid ]; then
+            kill "$(cat /tmp/api-e2e.pid)" || true
           fi
