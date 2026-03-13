@@ -56,16 +56,26 @@ export async function middleware(request: NextRequest) {
 
   if (pathname.startsWith("/onboarding")) {
     const isOnboardingLeaf = pathname.startsWith("/onboarding/");
-    if (!routingState && isOnboardingLeaf) {
+    const hasRecoverableOnboardingLeafState =
+      routingState?.onboardingState === "incomplete" &&
+      (routingState.role === "fan" || routingState.role === "artist");
+    const expectedOnboardingLeaf =
+      routingState?.role === "artist" ? "/onboarding/artist" : "/onboarding/fan";
+
+    if (isOnboardingLeaf && !hasRecoverableOnboardingLeafState) {
       return redirectIfNeeded(request, "/onboarding");
+    }
+
+    if (isOnboardingLeaf && hasRecoverableOnboardingLeafState && pathname !== expectedOnboardingLeaf) {
+      return redirectIfNeeded(request, expectedOnboardingLeaf);
     }
 
     if (routingState && destination.startsWith("/dashboard")) {
       return redirectIfNeeded(request, destination);
     }
 
-    if (routingState && pathname === "/onboarding" && destination.startsWith("/onboarding/")) {
-      return redirectIfNeeded(request, destination);
+    if (pathname === "/onboarding" && hasRecoverableOnboardingLeafState) {
+      return redirectIfNeeded(request, expectedOnboardingLeaf);
     }
   }
 
