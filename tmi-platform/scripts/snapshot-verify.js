@@ -9,7 +9,7 @@ function gitDirty() {
   // Scope to api-snapshots only — untracked root-level files must not
   // trigger a false-positive snapshot-drift failure.
   // Path is relative to tmi-platform/ (the cwd when this script runs via pre-push hook).
-  const out = execSync('git status --porcelain -- apps/api/api-snapshots/', { encoding: 'utf8' }).trim();
+  const out = execSync('git status --porcelain -- api-snapshots/', { encoding: 'utf8' }).trim();
   return out.length > 0;
 }
 
