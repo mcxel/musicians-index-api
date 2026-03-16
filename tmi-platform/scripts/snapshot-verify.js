@@ -6,7 +6,9 @@ function run(cmd) {
 }
 
 function gitDirty() {
-  const out = execSync('git status --porcelain', { encoding: 'utf8' }).trim();
+  // Scope to api-snapshots only — untracked root-level files must not
+  // trigger a false-positive snapshot-drift failure.
+  const out = execSync('git status --porcelain -- api-snapshots/', { encoding: 'utf8' }).trim();
   return out.length > 0;
 }
 
