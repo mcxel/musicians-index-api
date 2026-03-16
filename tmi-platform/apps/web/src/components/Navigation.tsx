@@ -1,7 +1,6 @@
 'use client'
 
-import { useState } from 'react'
-import { useSession, signIn, signOut } from 'next-auth/react'
+import { useEffect, useState } from 'react'
 import Image from 'next/image'
 
 // Simple inline placeholder icon to replace heroicons in CI
@@ -26,8 +25,50 @@ const navigationItems = [
 
 export default function Navigation() {
   const [isOpen, setIsOpen] = useState(false)
-  const { data: session, status } = useSession()
-  const isAuthenticated = status === 'authenticated'
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [displayName, setDisplayName] = useState<string | null>(null)
+  const [avatar, setAvatar] = useState<string | null>(null)
+  const [csrfToken, setCsrfToken] = useState<string | null>(null)
+
+  useEffect(() => {
+    const loadSession = async () => {
+      try {
+        const res = await fetch('/api/auth/session', { cache: 'no-store' })
+        if (!res.ok) return
+        const data = (await res.json()) as {
+          authenticated?: boolean
+          csrfToken?: string
+          user?: { email?: string; image?: string; name?: string }
+        }
+        setIsAuthenticated(Boolean(data.authenticated))
+        setCsrfToken(data.csrfToken || null)
+        setDisplayName(data.user?.name || data.user?.email || null)
+        setAvatar(data.user?.image || null)
+      } catch {
+        setIsAuthenticated(false)
+      }
+    }
+
+    void loadSession()
+  }, [])
+
+  const logout = async () => {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+    if (csrfToken) {
+      headers['X-CSRF-Token'] = csrfToken
+    }
+
+    await fetch('/api/auth/logout', {
+      method: 'POST',
+      headers,
+      body: '{}',
+    })
+
+    setIsAuthenticated(false)
+    setDisplayName(null)
+    setAvatar(null)
+    window.location.href = '/'
+  }
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-md border-b border-purple-400/20">
@@ -71,18 +112,20 @@ export default function Navigation() {
           <div className="flex items-center space-x-4">
             {isAuthenticated ? (
               <div className="flex items-center space-x-4">
-                  <span className="text-white text-sm hidden sm:block">{session.user?.name}</span>
-                  {session.user?.image && (
+                  <span className="text-white text-sm hidden sm:block">{displayName ?? 'Member'}</span>
+                  {avatar && (
                     <Image
-                      src={session.user.image}
-                      alt={session.user.name || 'User Avatar'}
+                      src={avatar}
+                      alt={displayName || 'User Avatar'}
                       width={32}
                       height={32}
                       className="rounded-full"
                     />
                   )}
                   <button
-                    onClick={() => signOut()}
+                    onClick={() => {
+                      void logout()
+                    }}
                     className="flex items-center space-x-2 bg-white/10 hover:bg-white/20 px-3 py-2 rounded-full border border-purple-400/30 transition-all"
                     title="Sign Out"
                     type="button"
@@ -94,7 +137,9 @@ export default function Navigation() {
               <div className="flex items-center space-x-4">
                 <button
                   className="flex items-center space-x-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 px-6 py-2 rounded-full text-white font-semibold transition-all duration-300"
-                  onClick={() => signIn('github')}
+                  onClick={() => {
+                    window.location.href = '/auth'
+                  }}
                   type="button"
                 >
                   <IconPlaceholder className="w-5 h-5" />
@@ -148,7 +193,7 @@ export default function Navigation() {
                   <button
                     className="w-full flex items-center justify-center space-x-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 px-4 py-2 rounded-lg text-white font-semibold transition-all duration-300"
                     onClick={() => {
-                      signIn('github');
+                      window.location.href = '/auth';
                       setIsOpen(false);
                     }}
                     type="button"
