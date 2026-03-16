@@ -32,3 +32,17 @@ yarn-error.log*
 /public/config/runtime.local.json
 /public/runtime.local.json
 /public/ui/config.runtime.local.json
+
+# Cleanup / generated artifacts
+tmi-platform/_logs/
+tmi-platform/_tmp_*
+**/.next/
+**/dist/
+**/build/
+coverage/
+node_modules/
+*.log
+*.tmp
+
+# Lockfiles managed by pnpm — keep pnpm-lock.yaml in repo, ignore others if your workspace uses pnpm
+package-lock.json

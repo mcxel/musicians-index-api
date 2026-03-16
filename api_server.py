@@ -3,7 +3,7 @@ BERNOUTSTUDIO AI - API SERVER
 FastAPI REST API for video generation
 """
 
-from fastapi import FastAPI, File, UploadFile, BackgroundTasks, HTTPException
+from fastapi import FastAPI, File, UploadFile, BackgroundTasks, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import FileResponse
@@ -18,8 +18,28 @@ import uuid
 import json
 from datetime import datetime
 import logging
+import structlog
+import time
 from contextlib import suppress
 import os
+
+# ============================================================================
+# LOGGING CONFIGURATION
+# ============================================================================
+structlog.configure(
+    processors=[
+        structlog.contextvars.merge_contextvars,
+        structlog.processors.add_log_level,
+        structlog.processors.format_exc_info,
+        structlog.processors.TimeStamper(fmt="iso", utc=True),
+        structlog.processors.JSONRenderer(),
+    ],
+    wrapper_class=structlog.make_filtering_bound_logger(logging.INFO),
+    context_class=dict,
+    logger_factory=structlog.PrintLoggerFactory(),
+    cache_logger_on_first_use=True,
+)
+logger = structlog.get_logger()
 
 # Optional imports with graceful fallback
 try:
@@ -51,9 +71,12 @@ except ImportError:
     TORCH_AVAILABLE = False
     torch = None
 
-# Setup logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+try:
+    import psutil
+    PSUTIL_AVAILABLE = True
+except Exception:
+    PSUTIL_AVAILABLE = False
+    psutil = None
 
 # ============================================================================
 # CONFIGURATION
@@ -94,10 +117,29 @@ class Settings:
 
 settings = Settings()
 
+# Attempt to get the current git commit hash
+def get_git_commit() -> Optional[str]:
+    """Attempt to get the current git commit hash."""
+    try:
+        import subprocess
+        commit_hash = subprocess.check_output(
+            ["git", "rev-parse", "--short", "HEAD"],
+            stderr=subprocess.PIPE,
+            text=True
+        ).strip()
+        return commit_hash
+    except (subprocess.SubprocessError, FileNotFoundError):
+        return None
+
+GIT_COMMIT = get_git_commit()
+
 # Create directories
 settings.UPLOAD_DIR.mkdir(exist_ok=True)
 settings.OUTPUT_DIR.mkdir(exist_ok=True)
 settings.MODELS_DIR.mkdir(exist_ok=True)
+
+# Record process start time for uptime reporting
+START_TIME = datetime.utcnow()
 
 # Initialize Redis
 redis_client = None
@@ -203,6 +245,40 @@ app = FastAPI(
     version=settings.API_VERSION
 )
 
+@app.middleware("http")
+async def logging_middleware(request: Request, call_next):
+    """
+    Middleware for structured request logging.
+    - Clears context variables at the start of each request.
+    - Generates a unique request ID and binds it to the logger context.
+    - Logs the start and end of each request with timing information.
+    - Catches and logs unhandled exceptions.
+    """
+    structlog.contextvars.clear_contextvars()
+    request_id = str(uuid.uuid4())
+    structlog.contextvars.bind_contextvars(request_id=request_id)
+
+    start_time = time.monotonic()
+    
+    logger.info("request_started", method=request.method, url=str(request.url))
+    
+    try:
+        response = await call_next(request)
+        process_time = (time.monotonic() - start_time) * 1000
+        logger.info(
+            "request_finished",
+            method=request.method,
+            url=str(request.url),
+            status_code=response.status_code,
+            process_time_ms=round(process_time, 2),
+        )
+    except Exception as e:
+        logger.exception("unhandled_exception", exc_info=e)
+        # Re-raise the exception to be handled by FastAPI's default exception handling
+        raise e
+    
+    return response
+
 # Hosting/proxy configuration for Cloudflare/GitHub frontends
 allowed_origins = ["*"] if settings.ALLOWED_ORIGINS == "*" else [o.strip() for o in settings.ALLOWED_ORIGINS.split(",") if o.strip()]
 if not allowed_origins:
@@ -262,7 +338,7 @@ async def startup_event():
     """Initialize video generator on startup"""
     global video_generator
     
-    logger.info("Initializing BerntoutStudio AI Video Generator...")
+    logger.info("generator.initializing", message="Initializing BerntoutStudio AI Video Generator...")
     
     if VIDEO_GENERATOR_AVAILABLE and VideoConfig is not None:
         try:
@@ -273,11 +349,11 @@ async def startup_event():
                 style="cinematic"
             )
             video_generator = VideoGenerator(config)
-            logger.info("Video generator ready!")
+            logger.info("generator.ready", message="Video generator ready!")
         except Exception as err:
-            logger.warning("Video generator initialization failed: %s", str(err))
+            logger.warning("generator.init_failed", error=str(err))
     else:
-        logger.warning("Video generator not available")
+        logger.warning("generator.unavailable", message="Video generator module not found")
 
 # ============================================================================
 # HELPER FUNCTIONS
@@ -303,7 +379,7 @@ def create_job(job_type: str, params: Dict) -> str:
             redis_client.hset(f"job:{job_id}", mapping=job_data)
             redis_client.lpush("job_queue", job_id)
         except (ConnectionError, OSError, AttributeError, TypeError) as err:
-            logger.warning("Redis unavailable, storing job in memory: %s", err)
+            logger.warning("redis.unavailable", operation="create_job", error=str(err), fallback="local_memory")
             store_job_locally(job_id, job_data)
     else:
         store_job_locally(job_id, job_data)
@@ -318,7 +394,7 @@ def get_job_status(job_id: str) -> Optional[Dict]:
         try:
             job_data = redis_client.hgetall(f"job:{job_id}")
         except (ConnectionError, OSError, AttributeError, TypeError):
-            logger.warning("Redis unavailable while fetching job %s; checking memory store", job_id)
+            logger.warning("redis.unavailable", operation="get_job", job_id=job_id, fallback="local_memory")
             job_data = None
 
     if not job_data:
@@ -357,7 +433,7 @@ def update_job_status(job_id: str, status: str, progress: float = None, **kwargs
         try:
             redis_client.hset(f"job:{job_id}", mapping=updates)
         except (ConnectionError, OSError, AttributeError, TypeError) as err:
-            logger.warning("Failed to update job status in Redis, keeping memory copy: %s", err)
+            logger.warning("redis.unavailable", operation="update_job", error=str(err), fallback="local_memory")
 
     existing_local = read_job_locally(job_id) or {}
     merged = {**existing_local, **updates}
@@ -372,14 +448,14 @@ def register_job_task(job_id: str, coro: Awaitable):
             async with semaphore:
                 await asyncio.wait_for(coro, timeout=settings.JOB_TIMEOUT)
         except asyncio.TimeoutError:
-            logger.error(f"Job {job_id} timed out")
+            logger.error("job.timeout", job_id=job_id)
             update_job_status(job_id, GenerationStatus.FAILED.value, error="Job timed out")
         except asyncio.CancelledError:
-            logger.info(f"Job {job_id} was cancelled")
+            logger.info("job.cancelled", job_id=job_id)
             update_job_status(job_id, GenerationStatus.CANCELLED.value)
             raise
         except Exception as e:
-            logger.error(f"Job {job_id} failed: {e}")
+            logger.error("job.failed", job_id=job_id, error=str(e))
             update_job_status(job_id, GenerationStatus.FAILED.value, error=str(e))
         finally:
             active_tasks.pop(job_id, None)
@@ -485,10 +561,10 @@ async def process_text_to_video(job_id: str, params: Dict):
             }
         )
         
-        logger.info("Job %s completed successfully", job_id)
+        logger.info("job.completed", job_id=job_id)
         
     except Exception as err:
-        logger.error("Job %s failed: %s", job_id, str(err))
+        logger.error("job.failed", job_id=job_id, error=str(err))
         update_job_status(
             job_id,
             GenerationStatus.FAILED.value,
@@ -532,7 +608,7 @@ async def process_music_video(job_id: str, params: Dict, audio_path: Path):
                 cv2.imwrite(str(thumbnail_path), thumbnail_frame)
                 thumbnail_url = f"/videos/{job_id}_thumb.jpg"
             except Exception as e:
-                logger.warning(f"Failed to generate thumbnail with cv2: {e}")
+                logger.warning("thumbnail.failed", job_id=job_id, error=str(e))
                 thumbnail_url = None
         
         # Update job with results
@@ -550,10 +626,10 @@ async def process_music_video(job_id: str, params: Dict, audio_path: Path):
             }
         )
         
-        logger.info("Music video job %s completed successfully", job_id)
+        logger.info("job.completed", job_id=job_id, job_type="music_video")
         
     except Exception as err:
-        logger.error("Music video job %s failed: %s", job_id, str(err))
+        logger.error("job.failed", job_id=job_id, job_type="music_video", error=str(err))
         update_job_status(
             job_id,
             GenerationStatus.FAILED.value,
@@ -589,6 +665,7 @@ async def health_check():
     return {
         "status": "healthy",
         "version": settings.API_VERSION,
+        "commit": GIT_COMMIT,
         "gpu_available": gpu_available,
         "gpu_count": gpu_count,
         "redis_connected": safe_redis_ping(),
@@ -597,8 +674,34 @@ async def health_check():
 
 @app.get("/healthz", tags=["General"])
 async def healthz_check():
-    """Kubernetes/Render health check endpoint"""
-    return {"status": "ok"}
+    """Liveness probe (livenessz). Returns 200 OK if the server is running."""
+    return {"status": "ok", "version": settings.API_VERSION, "commit": GIT_COMMIT}
+
+@app.get("/readyz", tags=["General"])
+async def readyz_check():
+    """Readiness probe (readyz). Checks if the service is ready to accept traffic."""
+    redis_ok = safe_redis_ping()
+    
+    if not redis_ok:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "status": "unavailable",
+                "message": "Service is not ready to accept traffic.",
+                "checks": {
+                    "redis_connected": redis_ok,
+                    "generator_ready": video_generator is not None,
+                }
+            }
+        )
+        
+    return {
+        "status": "ready",
+        "checks": {
+            "redis_connected": redis_ok,
+            "generator_ready": video_generator is not None,
+        }
+    }
 
 @app.get("/stats", response_model=StatsResponse, tags=["General"])
 async def get_stats():
@@ -617,7 +720,7 @@ async def get_stats():
                 elif status == GenerationStatus.FAILED.value:
                     failed_jobs += 1
         except (ConnectionError, OSError):
-            logger.warning("Failed to read stats from Redis")
+            logger.warning("redis.unavailable", operation="get_stats")
     
     # GPU stats
     gpu_memory_used = None
@@ -641,6 +744,63 @@ async def get_stats():
         gpu_memory_used=gpu_memory_used,
         gpu_memory_total=gpu_memory_total
     )
+
+
+@app.get("/internal/runtime/status", tags=["Internal"])
+async def runtime_status():
+    """Runtime snapshot consumed by HUD dashboards. Lightweight and safe."""
+    # Minimal module registry (expand later or load from config)
+    module_registry = [
+        {"id": "tmi", "label": "Musician's Index", "status": "BUILDING", "nodes": 1, "uptime": "94.2%"},
+        {"id": "xxl", "label": "BerntoutGlobal XXL", "status": "ONLINE", "nodes": 4, "uptime": "99.97%"},
+        {"id": "streamwin", "label": "Stream & Win Radio", "status": "ONLINE", "nodes": 2, "uptime": "99.1%"},
+        {"id": "hotscreens", "label": "HotScreens", "status": "ONLINE", "nodes": 2, "uptime": "97.8%"},
+    ]
+
+    # Queue depth: prefer Redis list if available, otherwise in-memory queue count
+    queue_depth = 0
+    if safe_redis_ping() and redis_client is not None:
+        try:
+            queue_depth = int(redis_client.llen("job_queue") or 0)
+        except Exception:
+            queue_depth = 0
+    else:
+        queue_depth = len(local_job_store)
+
+    # Build gates (placeholder state)
+    build_gates = {
+        "gateA": "typecheck",
+        "gateB": "api_build",
+        "gateC": "web_build",
+        "gateD": "lint"
+    }
+
+    # Memory / uptime
+    mem_rss = None
+    mem_total = None
+    if PSUTIL_AVAILABLE and psutil is not None:
+        try:
+            p = psutil.Process()
+            mem_info = p.memory_info()
+            mem_rss = mem_info.rss
+            mem_total = psutil.virtual_memory().total
+        except Exception:
+            mem_rss = None
+            mem_total = None
+
+    uptime_seconds = (datetime.utcnow() - START_TIME).total_seconds()
+
+    return {
+        "version": settings.API_VERSION,
+        "commit": GIT_COMMIT,
+        "uptime_seconds": int(uptime_seconds),
+        "memory_rss": mem_rss,
+        "memory_total": mem_total,
+        "queue_depth": queue_depth,
+        "modules": module_registry,
+        "build_gates": build_gates,
+        "redis_connected": safe_redis_ping(),
+    }
 
 @app.post("/generate/text", response_model=JobResponse, tags=["Generation"])
 async def generate_from_text(
@@ -871,14 +1031,11 @@ if __name__ == "__main__":
             host="0.0.0.0",
             port=8000,
             reload=False,  # Disable reload in production
-            log_level="info",
             proxy_headers=settings.BEHIND_PROXY,
-            forwarded_allow_ips=settings.FORWARDED_ALLOW_IPS,
-            access_log=True,
-            use_colors=True
+            forwarded_allow_ips=settings.FORWARDED_ALLOW_IPS
         )
     except KeyboardInterrupt:
-        logger.info("Server shutdown requested by user")
+        logger.info("server.shutdown", reason="user_request")
     except Exception as e:
-        logger.error(f"Server error: {e}", exc_info=True)
+        logger.error("server.fatal_error", error=str(e), exc_info=True)
         exit(1)
