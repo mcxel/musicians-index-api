@@ -1,6 +1,4 @@
 /** @type {import('next').NextConfig} */
-const path = require('path');
-
 const nextConfig = {
   output: 'standalone',
   reactStrictMode: true,
@@ -22,26 +20,6 @@ const nextConfig = {
   env: {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000',
     NEXT_PUBLIC_WS_URL: process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:4000',
-  },
-  webpack: (config, { isServer }) => {
-    // Allow importing TypeScript files from program/modules
-    config.module.rules.push({
-      test: /\.(ts|tsx)$/,
-      include: [
-        path.resolve(__dirname, '../../../program/modules'),
-      ],
-      use: [
-        {
-          loader: 'ts-loader',
-          options: {
-            transpileOnly: true,
-            configFile: path.resolve(__dirname, '../../../tsconfig.json'),
-          },
-        },
-      ],
-    });
-
-    return config;
   },
 };
 

@@ -2,20 +2,21 @@ import { NextResponse } from 'next/server';
 
 export async function GET() {
   try {
-    const runtimeUrl = process.env.RUNTIME_API_URL || 'http://localhost:8000/status';
-    const res = await fetch(runtimeUrl);
+    const baseUrl = process.env.API_BASE_URL || 'http://localhost:4000';
+    const backendHealthUrl = new URL('/api/healthz', baseUrl).toString();
+    const res = await fetch(backendHealthUrl);
     if (!res.ok) {
-      throw new Error(`Runtime API at ${runtimeUrl} not ready: ${res.statusText}`);
+      throw new Error(`Backend health check at ${backendHealthUrl} failed: ${res.status}`);
     }
     const data = await res.json();
     return NextResponse.json({
       status: 'ready',
       timestamp: new Date().toISOString(),
       dependencies: {
-        runtimeApi: {
+        backendApi: {
           status: 'ready',
-          url: runtimeUrl,
-          data: data,
+          url: backendHealthUrl,
+          data,
         },
       },
     });
@@ -26,7 +27,7 @@ export async function GET() {
         status: 'not_ready',
         timestamp: new Date().toISOString(),
         dependencies: {
-          runtimeApi: {
+          backendApi: {
             status: 'not_ready',
             error: msg,
           },

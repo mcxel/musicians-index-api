@@ -56,6 +56,12 @@ export async function middleware(request: NextRequest) {
 
   if (pathname.startsWith("/onboarding")) {
     const isOnboardingLeaf = pathname.startsWith("/onboarding/");
+
+    // Explicitly handle stale/invalid state first for any leaf page.
+    if (isOnboardingLeaf && !routingState) {
+      return redirectIfNeeded(request, "/onboarding");
+    }
+
     const hasRecoverableOnboardingLeafState =
       routingState?.onboardingState === "incomplete" &&
       (routingState.role === "fan" || routingState.role === "artist");

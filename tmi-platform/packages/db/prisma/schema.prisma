@@ -26,13 +26,23 @@ enum Role {
   SPONSOR // A sponsor with access to specific dashboards
 }
 
+enum OnboardingState {
+  NO_ROLE_SELECTED
+  INCOMPLETE
+  COMPLETE
+}
+
 model User {
   id            String    @id @default(cuid())
   name          String?
   email         String?   @unique
+  passwordHash  String?   @map("password_hash")
   emailVerified DateTime?
   image         String?
   role          Role      @default(USER)
+  onboardingState      OnboardingState @default(NO_ROLE_SELECTED)
+  onboardingCompletedAt DateTime?
+  canSubmitOfficialPlatformLinks Boolean @default(false)
   accounts      Account[]
   sessions      Session[]
 
@@ -499,3 +509,278 @@ model Refund {
   metadata           Json?
 }
 
+// Contest System (appended by install-contest-system.ps1)
+// ═══════════════════════════════════════════════════════════════════════════
+// PRISMA SCHEMA ADDITIONS — TMI Grand Platform Contest System
+// BerntoutGlobal XXL
+//
+// Repo path: prisma/schema.prisma
+// Action: ADD these models to your existing schema.prisma file
+//         Do NOT replace existing models — append only
+//
+// After adding, run:
+//   npx prisma generate
+//   npx prisma migrate dev --name add_contest_system
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ─── Contest Season ──────────────────────────────────────────────────────────
+
+model ContestSeason {
+  id          String   @id @default(cuid())
+  name        String   // "Grand Platform Contest — Season 1"
+  status      String   @default("upcoming") // upcoming | active | completed | archived
+
+  // Contest open gate (must enforce Aug 8 policy)
+  startDate             DateTime
+  registrationOpen      DateTime
+  registrationClose     DateTime
+
+  // Key dates
+  registrationStartDate      DateTime
+  registrationEndDate        DateTime
+  sponsorCollectionEndDate   DateTime
+  regionalsStartDate         DateTime
+  regionalsEndDate           DateTime
+  semiFinalsStartDate        DateTime
+  semiFinalsEndDate          DateTime
+  finalsDate                 DateTime
+
+  prizePool    Float?
+  description  String?
+
+  // Relations
+  entries  ContestEntry[]
+  rounds   ContestRound[]
+  prizes   ContestPrize[]
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("contest_seasons")
+}
+
+// ─── Contest Entry ───────────────────────────────────────────────────────────
+
+model ContestEntry {
+  id          String   @id @default(cuid())
+
+  // Artist reference — update this foreign key to match your User/Artist model
+  artistId    String
+  // artist   User   @relation(fields: [artistId], references: [id])
+
+  seasonId    String
+  season      ContestSeason @relation(fields: [seasonId], references: [id])
+
+  category    String   // singers | rappers | comedians | dancers | djs | bands | beatmakers | magicians | influencers | freestyle | other
+  stageName   String?
+  performanceDescription  String?
+
+  status      String   @default("pending")
+  // pending | qualified | regional | semi_finals | finals | winner | eliminated | disqualified
+
+  // Cached sponsor counts (updated via trigger/hook)
+  localSponsorCount  Int @default(0)
+  majorSponsorCount  Int @default(0)
+
+  // Relations
+  sponsorContributions  SponsorContribution[]
+  votes                 ContestVote[]
+  round                 ContestRound?  @relation(fields: [roundId], references: [id])
+  roundId               String?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([artistId, seasonId])  // one entry per artist per season
+  @@map("contest_entries")
+}
+
+// ─── Sponsor Contribution ────────────────────────────────────────────────────
+
+model SponsorContribution {
+  id       String @id @default(cuid())
+
+  entryId  String
+  entry    ContestEntry @relation(fields: [entryId], references: [id])
+
+  // Sponsor reference — update to match your Sponsor/User model
+  sponsorId  String
+  // sponsor  Sponsor @relation(fields: [sponsorId], references: [id])
+
+  packageId    String  // 'local-bronze' | 'local-silver' | 'local-gold' | 'major-bronze' | 'major-silver' | 'major-gold' | 'title'
+  packageLabel String
+  packageType  String  // 'local' | 'major'
+  amount       Float
+
+  message   String?
+  adminNote String?
+
+  status  String @default("invited")
+  // invited | pending_payment | payment_received | verified | rejected
+
+  // Payment tracking
+  paymentReference  String?
+  paymentVerifiedAt DateTime?
+  verifiedById      String?
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([entryId, sponsorId])  // one contribution per sponsor per entry
+  @@map("sponsor_contributions")
+}
+
+// ─── Sponsor Package (static/config, but storing for flexibility) ────────────
+
+model SponsorPackage {
+  id          String  @id
+  label       String
+  packageType String  // 'local' | 'major'
+  tier        String  // 'bronze' | 'silver' | 'gold' | 'title'
+  price       Float
+  description String?
+  benefits    Json?   // array of benefit strings
+  isActive    Boolean @default(true)
+
+  @@map("sponsor_packages")
+}
+
+// ─── Contest Round ───────────────────────────────────────────────────────────
+
+model ContestRound {
+  id        String @id @default(cuid())
+
+  seasonId  String
+  season    ContestSeason @relation(fields: [seasonId], references: [id])
+
+  name       String  // "Qualification" | "Regional Round" | "Semi-Finals" | "Grand Finals"
+  roundType  String  // "qualification" | "regional" | "semi_finals" | "finals"
+  order      Int
+
+  startDate  DateTime
+  endDate    DateTime
+  status     String @default("upcoming") // upcoming | active | voting | completed
+
+  category   String?  // optional per-category round
+
+  entries    ContestEntry[]
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("contest_rounds")
+}
+
+// ─── Contest Vote ────────────────────────────────────────────────────────────
+
+model ContestVote {
+  id       String @id @default(cuid())
+
+  entryId  String
+  entry    ContestEntry @relation(fields: [entryId], references: [id])
+
+  roundId  String
+  // round  ContestRound @relation(...)
+
+  // Voter reference — update to match your User model
+  voterId  String
+
+  // Sponsor vote weight (major sponsors may get weighted vote)
+  weight   Float @default(1.0)
+
+  createdAt  DateTime @default(now())
+
+  @@unique([entryId, voterId, roundId])  // one vote per user per entry per round
+  @@map("contest_votes")
+}
+
+// ─── Contest Prize ───────────────────────────────────────────────────────────
+
+model ContestPrize {
+  id        String @id @default(cuid())
+
+  seasonId  String
+  season    ContestSeason @relation(fields: [seasonId], references: [id])
+
+  name        String  // "Grand Prize" | "Runner Up" | "Sponsor Deal" etc
+  description String?
+  prizeType   String  // 'cash' | 'deal' | 'equipment' | 'tour' | 'recording' | 'brand_partnership'
+
+  cashValue   Float?
+  otherValue  String?   // description if non-cash
+
+  placement   Int   // 1 = first place, 2 = second, etc.
+  category    String?   // null = all categories
+
+  // Fulfillment
+  fulfillments  PrizeFulfillment[]
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("contest_prizes")
+}
+
+// ─── Prize Fulfillment ───────────────────────────────────────────────────────
+
+model PrizeFulfillment {
+  id       String @id @default(cuid())
+
+  prizeId  String
+  prize    ContestPrize @relation(fields: [prizeId], references: [id])
+
+  // Winner reference
+  artistId  String
+  entryId   String
+
+  status  String @default("pending")
+  // pending | processing | delivered | verified | disputed
+
+  notes           String?
+  deliveredAt     DateTime?
+  verifiedAt      DateTime?
+  adminId         String?
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("prize_fulfillments")
+}
+
+// ─── Ray Journey Script Library ──────────────────────────────────────────────
+
+model RayJourneyScript {
+  id      String @id @default(cuid())
+
+  type    String
+  // contestant_intro | sponsor_shoutout | prize_reveal | round_transition | winner_announce | crowd_hype | co_host_handoff
+
+  text    String
+  emotion String  @default("neutral")
+  // neutral | excited | announcing | revealing | crowd | sponsor
+
+  variables  Json?   // template variables like {{contestantName}}, {{sponsorName}}
+  order      Int     @default(0)
+  isActive   Boolean @default(true)
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("ray_journey_scripts")
+}
+
+// ─── Host Cue Log ────────────────────────────────────────────────────────────
+
+model HostCue {
+  id        String @id @default(cuid())
+
+  scriptId  String
+  // script  RayJourneyScript @relation(...)
+
+  triggeredBy  String  // admin/host userId
+  context      Json?   // resolved variables used
+
+  createdAt  DateTime @default(now())
+
+  @@map("host_cues")
+}
