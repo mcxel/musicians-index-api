@@ -16,7 +16,8 @@ async function bootstrap() {
     .split(",")
     .map((v) => v.trim())
     .filter(Boolean);
-  if (allowedOrigins.length === 0) {
+  const allowAnyOrigin = allowedOrigins.includes("*");
+  if (!allowAnyOrigin && allowedOrigins.length === 0) {
     allowedOrigins.push("http://localhost:3000", "http://localhost:3001");
   }
 
@@ -43,7 +44,7 @@ async function bootstrap() {
   });
   app.enableCors({
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
+      if (allowAnyOrigin || !origin || allowedOrigins.includes(origin)) {
         callback(null, true);
         return;
       }
