@@ -123,6 +123,20 @@ Docs to keep updated
 - docs/ASSET_IMAGE_CODE_RULES.md
 - docs/AVATAR_LIPSYNC_RULES.md
 - docs/BUILD_ORDER.md
+- docs/VALIDATION_MATRIX.md
+- docs/ENGINE_MAP.md
+- docs/BOT_CHAIN_MAP.md
+- docs/SCENE_REGISTRY.md
+- docs/SCRIPT_REGISTRY.md
+- docs/AVATAR_PIPELINE.md
+- docs/MODULE_ENGINE_MATRIX.md
+- docs/PAGE_FLOW_MAP.md
+- docs/FALLBACK_STATE_MATRIX.md
+- docs/BOT_PERMISSION_MATRIX.md
+- docs/ROUTE_REGISTRY.md
+- docs/SCENE_SCRIPT_MODULE_CONTRACTS.md
+- docs/REWARD_INVENTORY_CHAIN.md
+- docs/SPONSOR_CAMPAIGN_CHAIN.md
 
 Next actions (suggested)
 1. Create core engine package skeletons for lip-sync/asset/animation/sprite/expression.
