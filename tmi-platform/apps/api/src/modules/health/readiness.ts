@@ -127,6 +127,7 @@ function validateDatabaseUrl(raw: string | undefined): string | undefined {
 function validateCorsOrigins(raw: string | undefined): string | undefined {
   const value = raw?.trim() || "";
   if (!value) return undefined;
+  if (value === "*") return undefined;
 
   const origins = value
     .split(",")
