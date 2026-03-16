@@ -16,7 +16,15 @@ export class PrismaService
       throw new Error("DATABASE_URL is required for PrismaService");
     }
 
-    const pool = new Pool({ connectionString });
+    const pool = new Pool({
+      connectionString,
+      // Render Postgres (both internal and external) may require SSL;
+      // rejectUnauthorized:false lets self-signed certs through while still
+      // encrypting the connection.  Disable entirely only on localhost.
+      ssl: connectionString.includes("localhost") || connectionString.includes("127.0.0.1")
+        ? false
+        : { rejectUnauthorized: false },
+    });
     const adapter = new PrismaPg(pool);
 
     super({
