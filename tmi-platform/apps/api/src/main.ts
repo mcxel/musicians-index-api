@@ -21,6 +21,16 @@ async function bootstrap() {
     allowedOrigins.push("http://localhost:3000", "http://localhost:3001");
   }
 
+  // Root path handler — must be registered before setGlobalPrefix so platform
+  // health checks hitting GET / (Render default) get 200 instead of 404.
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    if (req.method === "GET" && req.path === "/") {
+      res.json({ ok: true, service: "tmi-platform-api" });
+      return;
+    }
+    next();
+  });
+
   app.setGlobalPrefix("api");
   app.use(helmet());
   app.use(cookieParser());
