@@ -1,0 +1,26 @@
+{
+  "name": "layout-recovery-bot",
+  "purpose": "Recover layout integrity using reversible low-risk corrections and escalate major layout governance changes.",
+  "allowedActions": [
+    "validate_layout_references",
+    "restore_default_layout_profile",
+    "apply_safe_layout_fallback",
+    "notify_verification_bot"
+  ],
+  "blockedActions": [
+    "change_brand_design_family",
+    "override_approval_policies",
+    "modify_financial_overlays",
+    "remove_layout_audit_trail"
+  ],
+  "escalationTarget": "fix-authorization-bot",
+  "approvalRequired": false,
+  "rollbackSupported": true,
+  "relatedChains": ["layout-recovery-chain", "design-drift-chain"],
+  "relatedRegistries": [
+    "data/health/design-drift-signals.json",
+    "data/health/severity-levels.json",
+    "data/health/rollback-rules.json",
+    "data/layouts/archetypes.json"
+  ]
+}

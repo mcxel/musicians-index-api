@@ -1,0 +1,41 @@
+{
+  "severityLevels": [
+    {
+      "level": "A",
+      "label": "low-risk",
+      "description": "Cosmetic or low-impact issue. Auto-fix allowed if reversible and verification passes.",
+      "autoFixAllowed": true,
+      "approvalRequired": false,
+      "safeModeRequired": false
+    },
+    {
+      "level": "B",
+      "label": "medium-risk",
+      "description": "Experience risk. Recommend-and-wait by default; only constrained mitigation allowed.",
+      "autoFixAllowed": false,
+      "approvalRequired": false,
+      "safeModeRequired": false
+    },
+    {
+      "level": "C",
+      "label": "high-risk",
+      "description": "Business/trust risk. Approval required before fix execution.",
+      "autoFixAllowed": false,
+      "approvalRequired": true,
+      "safeModeRequired": false
+    },
+    {
+      "level": "D",
+      "label": "critical",
+      "description": "Critical incident. Immediate safe-mode and human authorization required for major changes.",
+      "autoFixAllowed": false,
+      "approvalRequired": true,
+      "safeModeRequired": true
+    }
+  ],
+  "authorizationAuthorities": ["Marcel", "Big Ace", "Head Sentinel Bot"],
+  "policy": {
+    "majorFixRequiresAuthorizationFrom": ["Marcel", "Big Ace"],
+    "reversibleAutoFixOnly": true
+  }
+}

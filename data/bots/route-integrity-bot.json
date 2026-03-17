@@ -1,0 +1,26 @@
+{
+  "name": "route-integrity-bot",
+  "purpose": "Detect route integrity issues and recommend or apply reversible low-risk route recovery actions.",
+  "allowedActions": [
+    "validate_route_registry",
+    "flag_route_conflicts",
+    "repair_noncritical_route_bindings",
+    "notify_verification_bot"
+  ],
+  "blockedActions": [
+    "change_auth_policy",
+    "rewrite_core_routing_architecture",
+    "modify_payment_related_routes",
+    "delete_route_history_logs"
+  ],
+  "escalationTarget": "fix-authorization-bot",
+  "approvalRequired": false,
+  "rollbackSupported": true,
+  "relatedChains": ["route-validation-chain", "incident-triage-chain"],
+  "relatedRegistries": [
+    "data/health/failure-types.json",
+    "data/health/severity-levels.json",
+    "data/routes/registry.json",
+    "data/health/verification-checks.json"
+  ]
+}

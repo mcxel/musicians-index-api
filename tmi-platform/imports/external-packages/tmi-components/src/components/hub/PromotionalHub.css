@@ -1,0 +1,279 @@
+/* ============================================
+   TMI — PROMOTIONAL HUB  (matches PDF page 1)
+   Purple gradient, LIVE artist cards 2×2 grid
+   ============================================ */
+@import '../styles/globals.css';
+
+.promo-hub {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #2D1B69 0%, #1A0A3A 40%, #0a0d1a 100%);
+  position: relative;
+  overflow: hidden;
+  font-family: var(--font-body);
+}
+
+/* ── BG EFFECTS ── */
+.promo-hub__bg-glow {
+  position: absolute;
+  width: 600px; height: 600px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(180,0,255,0.15) 0%, transparent 70%);
+  top: -100px; left: 50%; transform: translateX(-50%);
+  pointer-events: none;
+}
+
+/* ── NAV ── */
+.promo-hub__nav {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: var(--space-4) var(--space-6);
+  position: sticky; top: 0; z-index: var(--z-hud);
+  background: rgba(45,27,105,0.9);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.promo-hub__nav-links {
+  display: flex; gap: var(--space-8);
+  list-style: none;
+}
+.promo-hub__nav-links a {
+  color: white; text-decoration: none;
+  font-family: var(--font-heading);
+  font-weight: 600; font-size: 15px;
+  transition: color var(--ease-fast);
+}
+.promo-hub__nav-links a:hover { color: var(--neon-cyan); }
+.promo-hub__nav-right {
+  display: flex; align-items: center; gap: var(--space-3);
+}
+.promo-hub__nav-wallet {
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.2);
+  color: white;
+  font-family: var(--font-label);
+  font-size: 13px;
+  padding: 6px 14px;
+  border-radius: var(--radius-md);
+}
+.promo-hub__nav-icon {
+  width: 36px; height: 36px;
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: var(--radius-sm);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; cursor: pointer;
+  transition: all var(--ease-fast);
+}
+.promo-hub__nav-icon:hover { background: rgba(255,255,255,0.2); }
+
+/* ── TITLE ── */
+.promo-hub__title {
+  text-align: center;
+  padding: var(--space-8) var(--space-6) var(--space-4);
+  font-family: var(--font-display);
+  font-size: clamp(36px, 8vw, 60px);
+  color: var(--neon-gold);
+  text-shadow: var(--glow-gold);
+  letter-spacing: 0.05em;
+  animation: neon-flicker 8s ease-in-out infinite;
+}
+
+/* ── ARTIST CARDS GRID ── */
+.promo-hub__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+  padding: var(--space-2) var(--space-4) var(--space-8);
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+/* ── SINGLE ARTIST CARD ── */
+.artist-card {
+  background: var(--bg-card);
+  border: 1px solid rgba(180,0,255,0.3);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  transition: all var(--ease-normal);
+  cursor: pointer;
+  position: relative;
+}
+.artist-card:hover {
+  border-color: var(--neon-pink);
+  box-shadow: var(--glow-pink);
+  transform: translateY(-4px) scale(1.01);
+}
+
+/* ── CARD IMAGE ZONE ── */
+.artist-card__media {
+  position: relative;
+  aspect-ratio: 4/3;
+  overflow: hidden;
+  background: linear-gradient(135deg, #1a0a3a, #2d1b69);
+}
+.artist-card__media-img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  transition: transform var(--ease-slow);
+}
+.artist-card:hover .artist-card__media-img {
+  transform: scale(1.06);
+}
+/* Live photo overlay shimmer */
+.artist-card__media::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(180deg, transparent 60%, rgba(10,13,26,0.8) 100%);
+  pointer-events: none;
+}
+.artist-card__live-badge {
+  position: absolute;
+  top: var(--space-2); left: var(--space-2);
+  z-index: 2;
+}
+.artist-card__viewer-count {
+  font-family: var(--font-label);
+  font-size: 11px;
+  font-weight: 700;
+}
+.artist-card__reactions {
+  position: absolute;
+  bottom: var(--space-2); right: var(--space-2);
+  font-size: 16px;
+  z-index: 2;
+  animation: float 3s ease-in-out infinite;
+}
+
+/* ── CARD BODY ── */
+.artist-card__body {
+  padding: var(--space-3) var(--space-4);
+  background: var(--bg-panel);
+}
+.artist-card__name {
+  font-family: var(--font-heading);
+  font-weight: 800;
+  font-size: 17px;
+  color: white;
+  margin-bottom: 2px;
+}
+.artist-card__show-name {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: var(--space-2);
+}
+.artist-card__meta {
+  display: flex; justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-3);
+}
+.artist-card__reacts {
+  font-size: 12px; color: var(--text-muted);
+  display: flex; align-items: center; gap: 4px;
+}
+.artist-card__status {
+  font-size: 11px;
+  font-family: var(--font-label);
+  color: var(--neon-cyan);
+}
+.artist-card__offline .artist-card__status { color: var(--text-muted); }
+
+/* ── CARD BUTTONS ── */
+.artist-card__actions {
+  display: flex; gap: var(--space-2);
+  flex-direction: column;
+}
+.artist-card__join-btn {
+  width: 100%;
+  padding: 10px;
+  background: var(--neon-pink);
+  color: white;
+  font-family: var(--font-label);
+  font-size: 13px; font-weight: 700;
+  border: none; border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--ease-fast);
+  letter-spacing: 0.04em;
+}
+.artist-card__join-btn:hover {
+  background: #ff4db8;
+  box-shadow: var(--glow-pink);
+  transform: scale(1.02);
+}
+.artist-card__sub-actions {
+  display: flex; gap: var(--space-2);
+}
+.artist-card__sub-btn {
+  flex: 1;
+  padding: 7px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-label);
+  font-size: 11px; font-weight: 600;
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--ease-fast);
+  display: flex; align-items: center; justify-content: center; gap: 4px;
+}
+.artist-card__sub-btn:hover {
+  border-color: var(--neon-cyan);
+  color: var(--neon-cyan);
+  background: rgba(0,212,255,0.08);
+}
+.artist-card__hype-btn {
+  border-color: rgba(255,107,0,0.4);
+  color: var(--neon-orange);
+}
+.artist-card__hype-btn:hover {
+  border-color: var(--neon-orange);
+  background: rgba(255,107,0,0.1);
+  box-shadow: var(--glow-orange);
+}
+
+/* ── OFFLINE STATE ── */
+.artist-card.is-offline .artist-card__media::before {
+  content: 'OFFLINE';
+  position: absolute; top: var(--space-2); left: var(--space-2);
+  background: rgba(0,0,0,0.7);
+  color: var(--text-muted);
+  font-family: var(--font-label);
+  font-size: 10px; font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 4px;
+  z-index: 2;
+}
+.artist-card.is-offline .artist-card__media-img {
+  filter: grayscale(0.4) brightness(0.7);
+}
+
+/* ── LIVE PHOTO ANIMATION (3-second loop) ── */
+.live-photo-container {
+  position: relative;
+  overflow: hidden;
+}
+.live-photo-container .live-photo-anim {
+  animation: live-photo-move var(--livephoto-duration) var(--livephoto-ease) infinite;
+}
+@keyframes live-photo-move {
+  0%   { transform: scale(1.05) translate(0,0) rotate(0deg); }
+  20%  { transform: scale(1.06) translate(-2px,-2px) rotate(-0.5deg); }
+  50%  { transform: scale(1.07) translate(0,0) rotate(0deg); }
+  70%  { transform: scale(1.06) translate(2px,1px) rotate(0.3deg); }
+  85%  { transform: scale(1.05) translate(-1px,2px) rotate(-0.2deg); }
+  100% { transform: scale(1.05) translate(0,0) rotate(0deg); }
+}
+
+/* ── FOOTER SCAN EFFECT ── */
+.promo-hub::after {
+  content: '';
+  position: fixed; top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, transparent, var(--neon-cyan), transparent);
+  animation: scan-line 8s linear infinite;
+  opacity: 0.3;
+  pointer-events: none;
+  z-index: var(--z-max);
+}
+
+/* ── RESPONSIVE ── */
+@media (max-width: 480px) {
+  .promo-hub__grid { grid-template-columns: 1fr; }
+}

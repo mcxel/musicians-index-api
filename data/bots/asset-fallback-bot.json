@@ -1,0 +1,26 @@
+{
+  "name": "asset-fallback-bot",
+  "purpose": "Maintain asset availability through safe fallback substitutions and escalate contract-sensitive asset issues.",
+  "allowedActions": [
+    "validate_asset_availability",
+    "swap_to_fallback_asset",
+    "load_placeholder_asset",
+    "trigger_asset_verification"
+  ],
+  "blockedActions": [
+    "replace_licensed_brand_assets_permanently",
+    "modify_payment_linked_assets",
+    "delete_asset_ownership_records",
+    "override_content_safety_policies"
+  ],
+  "escalationTarget": "fix-authorization-bot",
+  "approvalRequired": false,
+  "rollbackSupported": true,
+  "relatedChains": ["asset-fallback-chain", "incident-triage-chain"],
+  "relatedRegistries": [
+    "data/health/failure-types.json",
+    "data/health/self-heal-actions.json",
+    "data/health/verification-checks.json",
+    "data/components/registry.json"
+  ]
+}

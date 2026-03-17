@@ -1,0 +1,26 @@
+{
+  "name": "rollback-bot",
+  "purpose": "Revert failed or harmful fixes using predefined rollback rules and escalate if rollback is blocked.",
+  "allowedActions": [
+    "execute_reversible_rollback",
+    "restore_previous_known_good_state",
+    "log_rollback_outcome",
+    "notify_verification_bot_after_rollback"
+  ],
+  "blockedActions": [
+    "rollback_without_traceability",
+    "delete_rollback_audit_entries",
+    "override_high_risk_approval_requirements",
+    "perform_irreversible_data_mutations"
+  ],
+  "escalationTarget": "fix-authorization-bot",
+  "approvalRequired": false,
+  "rollbackSupported": true,
+  "relatedChains": ["rollback-chain", "change-audit-chain"],
+  "relatedRegistries": [
+    "data/health/rollback-rules.json",
+    "data/health/verification-checks.json",
+    "data/health/fix-memory.json",
+    "data/health/escalation-paths.json"
+  ]
+}

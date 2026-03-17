@@ -1,0 +1,14 @@
+{
+  "routes": [
+    {
+      "path": "/avatar-center",
+      "name": "Avatar Creation Center",
+      "type": "ui"
+    },
+    {
+      "path": "/room/bar-stage",
+      "name": "Bar Stage (demo room)",
+      "type": "room"
+    }
+  ]
+}

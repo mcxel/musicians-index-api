@@ -1,0 +1,54 @@
+{
+  "approvalRules": [
+    {
+      "action": "monetary_changes",
+      "requiresApproval": true,
+      "approvers": ["Marcel", "Big Ace"]
+    },
+    {
+      "action": "fairness_scoring_changes",
+      "requiresApproval": true,
+      "approvers": ["Marcel", "Big Ace"]
+    },
+    {
+      "action": "safety_policy_changes",
+      "requiresApproval": true,
+      "approvers": ["Marcel", "Big Ace"]
+    },
+    {
+      "action": "core_venue_design",
+      "requiresApproval": true,
+      "approvers": ["Big Ace"]
+    },
+    {
+      "action": "module_removal",
+      "requiresApproval": true,
+      "approvers": ["Marcel", "Big Ace"]
+    },
+    {
+      "action": "sponsor_density_rules",
+      "requiresApproval": true,
+      "approvers": ["Big Ace"]
+    },
+    {
+      "action": "major_host_script_rewrite",
+      "requiresApproval": true,
+      "approvers": ["Big Ace"]
+    },
+    {
+      "action": "route_architecture_changes",
+      "requiresApproval": true,
+      "approvers": ["Marcel", "Big Ace"]
+    },
+    {
+      "action": "permanent_content_deletion",
+      "requiresApproval": true,
+      "approvers": ["Marcel"]
+    },
+    {
+      "action": "sponsor_contract_sensitive",
+      "requiresApproval": true,
+      "approvers": ["Big Ace"]
+    }
+  ]
+}

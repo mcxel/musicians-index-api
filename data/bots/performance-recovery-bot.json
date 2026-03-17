@@ -1,0 +1,26 @@
+{
+  "name": "performance-recovery-bot",
+  "purpose": "Stabilize degraded performance with reversible mitigations and escalate high-risk changes requiring authorization.",
+  "allowedActions": [
+    "enable_safe_performance_mode",
+    "reduce_noncritical_render_load",
+    "clear_transient_queues",
+    "trigger_post_fix_verification"
+  ],
+  "blockedActions": [
+    "change_billing_or_payment_processing",
+    "disable_core_safety_controls",
+    "perform_irreversible_infrastructure_changes",
+    "remove_performance_audit_records"
+  ],
+  "escalationTarget": "fix-authorization-bot",
+  "approvalRequired": false,
+  "rollbackSupported": true,
+  "relatedChains": ["performance-recovery-chain", "health-monitoring-chain"],
+  "relatedRegistries": [
+    "data/health/failure-types.json",
+    "data/health/self-heal-actions.json",
+    "data/health/rollback-rules.json",
+    "data/health/verification-checks.json"
+  ]
+}

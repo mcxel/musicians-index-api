@@ -1,0 +1,42 @@
+{
+  "stagingAreas": [
+    "green-room",
+    "dressing-room",
+    "artist-lounge",
+    "host-prep",
+    "judge-holding",
+    "contestant-waiting",
+    "crew-room",
+    "tech-booth",
+    "admin-desk",
+    "security-station",
+    "medical-bay",
+    "press-room",
+    "sponsor-suite",
+    "vip-lounge",
+    "media-center"
+  ],
+  "areaFeatures": {
+    "green-room": {
+      "capacity": 20,
+      "amenities": ["catering", "makeup-mirror", "monitor-feed", "warm-up-space"],
+      "connectsTo": ["stage", "dressing-room"]
+    },
+    "artist-lounge": {
+      "capacity": 50,
+      "amenities": ["seating", "tv-feed", "refreshments", "charging-stations"],
+      "connectsTo": ["green-room", "contestant-waiting"]
+    },
+    "host-prep": {
+      "capacity": 5,
+      "amenities": ["script-display", "ear-piece", "timer", "notes-tablet"],
+      "connectsTo": ["stage", "tech-booth"]
+    }
+  },
+  "transitionPaths": {
+    "entry-to-stage": ["entry-gate", "contestant-waiting", "green-room", "stage"],
+    "judge-path": ["judge-holding", "judge-zone", "stage"],
+    "host-path": ["host-prep", "host-zone", "stage"],
+    "backstage-crew": ["crew-room", "tech-booth", "stage-side"]
+  }
+}

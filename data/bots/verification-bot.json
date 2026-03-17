@@ -1,0 +1,26 @@
+{
+  "name": "verification-bot",
+  "purpose": "Verify post-fix integrity and determine whether fixes pass, fail, or require rollback/escalation.",
+  "allowedActions": [
+    "run_verification_checks",
+    "compare_pre_and_post_fix_state",
+    "flag_verification_failure",
+    "trigger_rollback_bot_on_failed_checks"
+  ],
+  "blockedActions": [
+    "apply_unapproved_major_fixes",
+    "suppress_failed_verification_results",
+    "modify_authorization_policies",
+    "remove_verification_history"
+  ],
+  "escalationTarget": "fix-authorization-bot",
+  "approvalRequired": false,
+  "rollbackSupported": true,
+  "relatedChains": ["verification-chain", "rollback-chain"],
+  "relatedRegistries": [
+    "data/health/verification-checks.json",
+    "data/health/rollback-rules.json",
+    "data/health/severity-levels.json",
+    "data/health/fix-memory.json"
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "fallbacks": [
+    {
+      "tool": "runway",
+      "fallback": "kling",
+      "fallbackFallback": "genmo"
+    },
+    {
+      "tool": "kling",
+      "fallback": "genmo",
+      "fallbackFallback": "pika"
+    },
+    {
+      "tool": "gemini",
+      "fallback": "perplexity",
+      "fallbackFallback": "chatgpt"
+    },
+    {
+      "tool": "perplexity",
+      "fallback": "claude",
+      "fallbackFallback": "chatgpt"
+    },
+    {
+      "tool": "liveportrait",
+      "fallback": "d-id",
+      "fallbackFallback": "heygen"
+    },
+    {
+      "tool": "elevenlabs",
+      "fallback": "mubert",
+      "fallbackFallback": "soundraw"
+    },
+    {
+      "tool": "playwright",
+      "fallback": "puppeteer",
+      "fallbackFallback": null
+    }
+  ]
+}

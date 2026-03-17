@@ -1,0 +1,15 @@
+{
+  "name": "@tmi/tool-orchestrator",
+  "version": "0.1.0",
+  "description": "Central tool orchestration layer for bots to access approved external tools",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "test": "echo \"No tests yet\" && exit 0"
+  },
+  "dependencies": {},
+  "devDependencies": {},
+  "keywords": ["tool", "orchestration", "bot", "automation"],
+  "author": "BerntoutGlobal XXL",
+  "license": "MIT"
+}

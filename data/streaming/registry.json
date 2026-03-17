@@ -1,0 +1,56 @@
+{
+  "streaming": {
+    "quality_tiers": [
+      {
+        "id": "auto",
+        "name": "Auto",
+        "bitrate": "adaptive",
+        "resolution": "adaptive"
+      },
+      {
+        "id": "low",
+        "name": "Low (480p)",
+        "bitrate": "1500k",
+        "resolution": "854x480"
+      },
+      {
+        "id": "medium",
+        "name": "Medium (720p)",
+        "bitrate": "3000k",
+        "resolution": "1280x720"
+      },
+      {
+        "id": "high",
+        "name": "High (1080p)",
+        "bitrate": "6000k",
+        "resolution": "1920x1080"
+      }
+    ],
+    "latency_modes": [
+      {
+        "id": "ultra-low",
+        "name": "Ultra Low",
+        "delay_seconds": 2,
+        "description": "Real-time interaction"
+      },
+      {
+        "id": "low",
+        "name": "Low",
+        "delay_seconds": 5,
+        "description": "Slight delay for stability"
+      },
+      {
+        "id": "standard",
+        "name": "Standard",
+        "delay_seconds": 10,
+        "description": "Balanced quality and delay"
+      },
+      {
+        "id": "high",
+        "name": "High Quality",
+        "delay_seconds": 30,
+        "description": "Best quality, higher delay"
+      }
+    ]
+  }
+}

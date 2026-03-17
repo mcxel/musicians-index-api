@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Resolve monorepo root relative to git top-level
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+MONOREPO_ROOT="$REPO_ROOT/tmi-platform"
+
+echo "🧱 pre-push gates: snapshot verify + typecheck"
+cd "$MONOREPO_ROOT"
+pnpm run snapshot:verify
+pnpm -w typecheck
+echo "✅ pre-push passed"

@@ -1,0 +1,22 @@
+{
+  "filters": [
+    {
+      "name": "safe-image-filter",
+      "type": "image",
+      "rules": ["no-nsfw", "no-gore", "approved-formats-only"],
+      "enabled": true
+    },
+    {
+      "name": "safe-video-filter",
+      "type": "video", 
+      "rules": ["no-nsfw", "no-gore", "max-duration-300", "approved-codecs"],
+      "enabled": true
+    },
+    {
+      "name": "text-content-filter",
+      "type": "text",
+      "rules": ["no-hate-speech", "no-personal-data", "no-ips"],
+      "enabled": true
+    }
+  ]
+}

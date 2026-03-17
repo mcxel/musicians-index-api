@@ -1,0 +1,20 @@
+{
+  "archetypes": [
+    "promo-grid",
+    "article-mosaic",
+    "admin-command-center",
+    "booking-map",
+    "billboard-board",
+    "audience-room",
+    "premium-front-row",
+    "winner-hall",
+    "game-board",
+    "show-host-board",
+    "watch-party",
+    "cypher-stage",
+    "live-room",
+    "battle-stage",
+    "artist-dashboard",
+    "magazine-cover"
+  ]
+}

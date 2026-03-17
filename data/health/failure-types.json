@@ -1,0 +1,21 @@
+{
+  "failureTypes": [
+    { "id": "module_crash", "class": "D", "autoFixable": false },
+    { "id": "layout_distortion", "class": "A", "autoFixable": true },
+    { "id": "dead_route", "class": "B", "autoFixable": true },
+    { "id": "stalled_queue", "class": "B", "autoFixable": true },
+    { "id": "bad_sponsor_overlay", "class": "A", "autoFixable": true },
+    { "id": "missing_asset", "class": "A", "autoFixable": true },
+    { "id": "script_failure", "class": "B", "autoFixable": true },
+    { "id": "repeated_error", "class": "C", "autoFixable": false },
+    { "id": "crowd_collision", "class": "A", "autoFixable": true },
+    { "id": "widget_overload", "class": "A", "autoFixable": true },
+    { "id": "tip_chain_failure", "class": "C", "autoFixable": false },
+    { "id": "social_share_failure", "class": "B", "autoFixable": true },
+    { "id": "moderation_failure", "class": "C", "autoFixable": false },
+    { "id": "venue_mismatch", "class": "B", "autoFixable": true },
+    { "id": "performance_drop", "class": "B", "autoFixable": true },
+    { "id": "stale_room", "class": "B", "autoFixable": true },
+    { "id": "bot_chain_broken", "class": "C", "autoFixable": false }
+  ]
+}

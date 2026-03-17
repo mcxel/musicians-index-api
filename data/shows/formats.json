@@ -1,0 +1,14 @@
+{
+  "formats": [
+    "cypher-battle",
+    "rap-battle",
+    "dance-crew-battle",
+    "game-night",
+    "deal-or-feud",
+    "name-that-tune",
+    "watch-party",
+    "interview-session",
+    "fan-qa",
+    "sponsor-showcase"
+  ]
+}

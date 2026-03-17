@@ -1,0 +1,74 @@
+{
+  "props": [],
+  "propCategories": [
+    "basic",
+    "celebration",
+    "music",
+    "battle",
+    "seasonal"
+  ],
+  "propClasses": {
+    "basic": {
+      "items": [
+        "candle",
+        "lighter",
+        "flashlight",
+        "phone-flashlight",
+        "glow-stick",
+        "led-wand",
+        "mini-flag",
+        "foam-finger",
+        "confetti-popper"
+      ]
+    },
+    "celebration": {
+      "items": [
+        "fireworks-stick",
+        "champagne-spray",
+        "party-horn",
+        "glitter-cannon",
+        "heart-wand",
+        "rose-toss",
+        "balloon-launcher",
+        "streamer-launcher",
+        "disco-ball-stick",
+        "neon-rave-stick"
+      ]
+    },
+    "music": {
+      "items": [
+        "microphone-prop",
+        "record-vinyl",
+        "mini-boombox",
+        "dj-scratch-pad",
+        "beat-pad",
+        "tambourine",
+        "cowbell",
+        "air-guitar",
+        "rhythm-shaker",
+        "drumstick"
+      ]
+    },
+    "battle": {
+      "items": [
+        "roast-card",
+        "clap-meter",
+        "burn-meter",
+        "crowd-vote-torch",
+        "score-flag",
+        "challenger-bell",
+        "knockout-buzzer"
+      ]
+    }
+  },
+  "propBehavior": {
+    "idleAnimation": true,
+    "raiseAnimation": true,
+    "waveAnimation": true,
+    "directionalControl": ["flashlight", "phone-flashlight"],
+    "colorVariants": true,
+    "seasonPassVariant": true,
+    "crowdSafe": true,
+    "mobileFallback": true
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "tipEvents": [
+    "win-round",
+    "lose-round",
+    "good-performance",
+    "emotional-moment",
+    "funny-moment",
+    "fan-loyalty",
+    "sponsor-challenge"
+  ],
+  "tipActions": [
+    "quick-tip",
+    "custom-tip",
+    "save-artist",
+    "applause-tip",
+    "super-tip"
+  ],
+  "tipEffects": {
+    "spark": true,
+    "applause": true,
+    "confetti": true,
+    "coin-sparkle": true,
+    "heart-burst": true,
+    "glow-wave": true
+  },
+  "tipAmounts": {
+    "quick": [1, 5, 10],
+    "custom": "any",
+    "super": [25, 50, 100]
+  }
+}

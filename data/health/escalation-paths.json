@@ -1,0 +1,22 @@
+{
+  "escalationPaths": [
+    {
+      "severity": "medium",
+      "path": "recommend_and_wait",
+      "approver": "Big Ace",
+      "approvalRequired": true
+    },
+    {
+      "severity": "high",
+      "path": "approval_only",
+      "approver": "Marcel_or_Big_Ace",
+      "approvalRequired": true
+    },
+    {
+      "severity": "critical",
+      "path": "safe_mode_then_approval",
+      "approver": "Marcel_or_Big_Ace",
+      "approvalRequired": true
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "name": "queue-recovery-bot",
+  "purpose": "Recover stuck or degraded queue flow using low-risk reversible actions.",
+  "allowedActions": [
+    "reset_queue_timer",
+    "clear_noncritical_stale_entries",
+    "switch_queue_to_safe_mode",
+    "trigger_requeue_for_retryable_items"
+  ],
+  "blockedActions": [
+    "modify_payment_routing",
+    "change_fairness_rules",
+    "delete_user_data",
+    "irreversible_queue_purge"
+  ],
+  "escalationTarget": "fix-authorization-bot",
+  "approvalRequired": false,
+  "rollbackSupported": true,
+  "relatedChains": ["queue-processing-chain", "event-dispatch-chain"],
+  "relatedRegistries": [
+    "data/health/failure-types.json",
+    "data/health/self-heal-actions.json",
+    "data/health/rollback-rules.json",
+    "data/health/verification-checks.json"
+  ]
+}

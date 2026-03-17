@@ -1,0 +1,44 @@
+{
+  "categories": [
+    {
+      "name": "video_generation",
+      "description": "AI-powered video generation and editing",
+      "tools": ["runway", "luma_dream_machine", "kling", "genmo", "pika"]
+    },
+    {
+      "name": "image_generation",
+      "description": "AI-powered image creation",
+      "tools": ["midjourney", "krea", "imagen"]
+    },
+    {
+      "name": "avatar_animation",
+      "description": "Avatar face animation and lip sync",
+      "tools": ["liveportrait", "sadtalker", "d-id", "heygen", "kaiber"]
+    },
+    {
+      "name": "voice_generation",
+      "description": "AI voice synthesis and music generation",
+      "tools": ["elevenlabs", "mubert", "soundraw"]
+    },
+    {
+      "name": "research",
+      "description": "AI research and content analysis",
+      "tools": ["gemini", "perplexity", "notebooklm", "claude", "chatgpt"]
+    },
+    {
+      "name": "browser_automation",
+      "description": "Browser control and automation",
+      "tools": ["playwright", "puppeteer"]
+    },
+    {
+      "name": "workflow_automation",
+      "description": "Workflow orchestration and automation",
+      "tools": ["n8n", "zapier", "axiom"]
+    },
+    {
+      "name": "security",
+      "description": "Security and protection services",
+      "tools": ["cloudflare"]
+    }
+  ]
+}

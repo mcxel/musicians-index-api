@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  # Python Runtime Server
+  runtime:
+    build:
+      context: ..
+      dockerfile: deploy/dockerfiles/runtime.dockerfile
+    container_name: berntout-runtime
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=redis://redis:6379
+      - NODE_ENV=production
+    volumes:
+      - runtime-logs:/app/logs
+    depends_on:
+      - redis
+    networks:
+      - berntout-network
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: berntout-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    networks:
+      - berntout-network
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: berntout-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - nginx-ssl:/etc/nginx/ssl:ro
+      - nginx-logs:/var/log/nginx
+    depends_on:
+      - runtime
+    networks:
+      - berntout-network
+
+volumes:
+  runtime-logs:
+  redis-data:
+  nginx-ssl:
+  nginx-logs:
+
+networks:
+  berntout-network:
+    driver: bridge

@@ -1,0 +1,65 @@
+{
+  "rules": [
+    {
+      "id": "spam",
+      "name": "Spam Detection",
+      "severity": "low",
+      "action": "delete",
+      "threshold": 3,
+      "window_seconds": 10
+    },
+    {
+      "id": "profanity",
+      "name": "Profanity Filter",
+      "severity": "medium",
+      "action": "warn",
+      "threshold": 1,
+      "window_seconds": 0
+    },
+    {
+      "id": "caps",
+      "name": "Caps Lock Spam",
+      "severity": "low",
+      "action": "delete",
+      "threshold": 70,
+      "window_seconds": 5
+    },
+    {
+      "id": "links",
+      "name": "Link Filtering",
+      "severity": "medium",
+      "action": "delete",
+      "threshold": 50,
+      "window_seconds": 0
+    },
+    {
+      "id": "mention-spam",
+      "name": "Mention Spam",
+      "severity": "medium",
+      "action": "mute",
+      "threshold": 5,
+      "window_seconds": 30
+    },
+    {
+      "id": "rapid-fire",
+      "name": "Rapid Messaging",
+      "severity": "low",
+      "action": "slow_mode",
+      "threshold": 5,
+      "window_seconds": 1
+    }
+  ],
+  "actions": [
+    { "id": "delete", "description": "Delete message" },
+    { "id": "warn", "description": "Warn user" },
+    { "id": "mute", "description": "Mute user temporarily" },
+    { "id": "ban", "description": "Permanently ban user" },
+    { "id": "slow_mode", "description": "Enable slow mode" }
+  ],
+  "severity_levels": [
+    "low",
+    "medium",
+    "high",
+    "critical"
+  ]
+}

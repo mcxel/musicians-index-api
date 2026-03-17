@@ -1,0 +1,64 @@
+{
+  "actions": [
+    {
+      "id": "swap_backup_layout",
+      "severity": "low",
+      "reversible": true,
+      "approvalRequired": false
+    },
+    {
+      "id": "swap_backup_scene",
+      "severity": "low",
+      "reversible": true,
+      "approvalRequired": false
+    },
+    {
+      "id": "reduce_crowd_load",
+      "severity": "low",
+      "reversible": true,
+      "approvalRequired": false
+    },
+    {
+      "id": "disable_prop_effect",
+      "severity": "low",
+      "reversible": true,
+      "approvalRequired": false
+    },
+    {
+      "id": "restore_widget_defaults",
+      "severity": "low",
+      "reversible": true,
+      "approvalRequired": false
+    },
+    {
+      "id": "reset_room_timers",
+      "severity": "low",
+      "reversible": true,
+      "approvalRequired": false
+    },
+    {
+      "id": "fallback_safe_mode",
+      "severity": "critical",
+      "reversible": true,
+      "approvalRequired": true
+    },
+    {
+      "id": "low_performance_mode",
+      "severity": "low",
+      "reversible": true,
+      "approvalRequired": false
+    },
+    {
+      "id": "restore_chat_mode",
+      "severity": "medium",
+      "reversible": true,
+      "approvalRequired": false
+    },
+    {
+      "id": "swap_fallback_asset",
+      "severity": "low",
+      "reversible": true,
+      "approvalRequired": false
+    }
+  ]
+}

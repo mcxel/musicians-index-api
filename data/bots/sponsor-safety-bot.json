@@ -1,0 +1,26 @@
+{
+  "name": "sponsor-safety-bot",
+  "purpose": "Protect sponsor compliance and brand safety while enforcing approval gates for high-risk sponsor decisions.",
+  "allowedActions": [
+    "scan_sponsor_content_for_policy_risk",
+    "flag_noncompliant_sponsor_assets",
+    "apply_reversible_sponsor_visibility_mitigation",
+    "notify_change_audit_bot"
+  ],
+  "blockedActions": [
+    "modify_signed_sponsor_contract_terms",
+    "permanently_remove_sponsor_inventory_without_approval",
+    "change_revenue_routing",
+    "override_legal_escalation_requirements"
+  ],
+  "escalationTarget": "fix-authorization-bot",
+  "approvalRequired": true,
+  "rollbackSupported": true,
+  "relatedChains": ["sponsor-compliance-chain", "business-risk-chain"],
+  "relatedRegistries": [
+    "data/health/approval-rules.json",
+    "data/health/escalation-paths.json",
+    "data/health/failure-types.json",
+    "data/sponsors/slot-map.json"
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "costControl": {
+    "maxDailyCost": 500,
+    "maxTaskCost": 5,
+    "priorityTools": ["runway", "elevenlabs", "gemini"],
+    "fallbackTools": ["playwright", "open-source"],
+    "alertThreshold": 0.8,
+    "shutdownThreshold": 1.0
+  }
+}

@@ -1,0 +1,29 @@
+# Tool Orchestrator Tests
+
+This directory contains tests for the tool orchestrator package.
+
+## Test Categories
+
+- **Unit Tests**: Individual tool adapter and runner tests
+- **Integration Tests**: End-to-end tool execution flow tests
+- **Permission Tests**: Bot tool access control validation
+- **Health Tests**: Tool health monitoring tests
+- **Fallback Tests**: Tool fallback and recovery tests
+
+## Running Tests
+
+```
+bash
+npm test
+npm run test:watch
+npm run test:coverage
+```
+
+## Test Organization
+
+- `tool-runner.test.ts` - Tool execution tests
+- `tool-registry.test.ts` - Registry lookup tests
+- `tool-permissions.test.ts` - Permission validation tests
+- `tool-health.test.ts` - Health monitoring tests
+- `tool-fallback.test.ts` - Fallback chain tests
+- `e2e/tool-execution.test.ts` - End-to-end tests

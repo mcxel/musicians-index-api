@@ -1,0 +1,26 @@
+{
+  "name": "scene-repair-bot",
+  "purpose": "Repair broken scene references with reversible actions and escalate major design-impacting fixes.",
+  "allowedActions": [
+    "validate_scene_references",
+    "swap_to_fallback_scene",
+    "repair_noncritical_scene_links",
+    "trigger_verification_check"
+  ],
+  "blockedActions": [
+    "modify_sponsor_contract_assets",
+    "change_core_visual_policy",
+    "alter_authority_permissions",
+    "delete_scene_history"
+  ],
+  "escalationTarget": "fix-authorization-bot",
+  "approvalRequired": false,
+  "rollbackSupported": true,
+  "relatedChains": ["scene-recovery-chain", "design-drift-chain"],
+  "relatedRegistries": [
+    "data/health/failure-types.json",
+    "data/health/self-heal-actions.json",
+    "data/health/rollback-rules.json",
+    "data/health/verification-checks.json"
+  ]
+}

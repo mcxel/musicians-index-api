@@ -1,0 +1,26 @@
+{
+  "name": "fix-authorization-bot",
+  "purpose": "Enforce approval gates for medium/high-risk fixes and route major changes to authorized approvers.",
+  "allowedActions": [
+    "evaluate_fix_risk_classification",
+    "build_approval_packet",
+    "route_approval_request_to_authority",
+    "record_authorization_decision"
+  ],
+  "blockedActions": [
+    "self_approve_high_risk_fixes",
+    "execute_unapproved_major_changes",
+    "alter_authority_identity_records",
+    "suppress_audit_entries"
+  ],
+  "escalationTarget": "Head Sentinel Bot",
+  "approvalRequired": true,
+  "rollbackSupported": true,
+  "relatedChains": ["fix-authorization-chain", "change-audit-chain"],
+  "relatedRegistries": [
+    "data/health/approval-rules.json",
+    "data/health/severity-levels.json",
+    "data/health/escalation-paths.json",
+    "data/health/fix-memory.json"
+  ]
+}

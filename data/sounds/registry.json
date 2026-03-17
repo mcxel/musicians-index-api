@@ -1,0 +1,15 @@
+{
+  "sounds": [
+    "page-flip",
+    "neon-swipe",
+    "crowd-cheer",
+    "battle-intro",
+    "winner-reveal",
+    "reward-unlock",
+    "sponsor-segment",
+    "menu-select",
+    "room-join",
+    "room-leave",
+    "intermission-loop"
+  ]
+}

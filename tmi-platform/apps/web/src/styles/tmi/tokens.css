@@ -1,0 +1,89 @@
+/* ============================================
+   TMI / BERNTOUTGLOBAL — MASTER DESIGN TOKENS
+   The Musician's Index Live Magazine System
+   ============================================ */
+
+:root {
+  /* ── CORE COLORS ── */
+  --bg-void:       #050810;
+  --bg-deep:       #070b18;
+  --bg-dark:       #0a0d1a;
+  --bg-panel:      #0d1128;
+  --bg-card:       #111428;
+  --bg-elevated:   #161a30;
+  --bg-glass:      rgba(10,13,26,0.85);
+
+  /* ── NEON PALETTE ── */
+  --neon-orange:   #FF6B00;
+  --neon-amber:    #FFB800;
+  --neon-cyan:     #00D4FF;
+  --neon-pink:     #FF1493;
+  --neon-magenta:  #D400FF;
+  --neon-green:    #00FF88;
+  --neon-red:      #FF2244;
+  --neon-gold:     #FFD700;
+
+  /* ── TIER COLORS ── */
+  --tier-free:     #00BFFF;
+  --tier-bronze:   #CD7F32;
+  --tier-silver:   #C0C0C0;
+  --tier-gold:     #FFD700;
+  --tier-platinum: #E5E4E2;
+  --tier-diamond:  #B9F2FF;
+
+  /* ── TEXT ── */
+  --text-primary:  #FFFFFF;
+  --text-secondary:#B4BEFF;
+  --text-muted:    #5A6080;
+  --text-orange:   #FF6B00;
+  --text-cyan:     #00D4FF;
+  --text-gold:     #FFB800;
+
+  /* ── BORDERS / GLOWS ── */
+  --border-subtle:  rgba(0,212,255,0.15);
+  --border-active:  rgba(0,212,255,0.5);
+  --border-orange:  rgba(255,107,0,0.5);
+  --border-pink:    rgba(255,20,147,0.5);
+
+  --glow-cyan:    0 0 20px rgba(0,212,255,0.4), 0 0 40px rgba(0,212,255,0.2);
+  --glow-orange:  0 0 20px rgba(255,107,0,0.5), 0 0 40px rgba(255,107,0,0.25);
+  --glow-pink:    0 0 20px rgba(255,20,147,0.4), 0 0 40px rgba(255,20,147,0.2);
+  --glow-gold:    0 0 20px rgba(255,215,0,0.4), 0 0 40px rgba(255,215,0,0.2);
+  --glow-magenta: 0 0 20px rgba(212,0,255,0.4), 0 0 40px rgba(212,0,255,0.2);
+
+  /* ── TYPOGRAPHY ── */
+  --font-display: 'Black Ops One', 'Impact', sans-serif;
+  --font-heading: 'Exo 2', 'Rajdhani', sans-serif;
+  --font-body:    'Exo 2', 'Rajdhani', sans-serif;
+  --font-mono:    'Share Tech Mono', monospace;
+  --font-label:   'Orbitron', sans-serif;
+
+  /* ── SPACING ── */
+  --space-1: 4px;  --space-2: 8px;  --space-3: 12px;
+  --space-4: 16px; --space-5: 20px; --space-6: 24px;
+  --space-8: 32px; --space-10: 40px; --space-12: 48px;
+  --space-16: 64px; --space-20: 80px;
+
+  /* ── RADIUS ── */
+  --radius-sm:   6px;
+  --radius-md:   10px;
+  --radius-lg:   16px;
+  --radius-xl:   20px;
+  --radius-full: 9999px;
+
+  /* ── TRANSITIONS ── */
+  --ease-fast:   0.15s cubic-bezier(0.4,0,0.2,1);
+  --ease-normal: 0.3s cubic-bezier(0.4,0,0.2,1);
+  --ease-slow:   0.6s cubic-bezier(0.4,0,0.2,1);
+  --ease-spring: 0.4s cubic-bezier(0.34,1.56,0.64,1);
+
+  /* ── Z-INDEX STACK ── */
+  --z-base:    1; --z-card:   10; --z-modal: 100;
+  --z-hud:   200; --z-toast: 300; --z-max:   999;
+}
+
+/* ── LIVE PHOTO / 3-SECOND ANIMATION TOKEN ── */
+:root {
+  --livephoto-duration: 3s;
+  --livephoto-ease: cubic-bezier(0.4,0,0.2,1);
+}

@@ -1,0 +1,10 @@
+{
+  "compilerOptions": {
+    "module": "esnext",
+    "target": "ES2020",
+    "jsx": "react-jsx",
+    "ignoreDeprecations": "6.0"
+  },
+  "include": ["tmi-platform/**/*", "apps/**/*", "server/**/*"],
+  "exclude": ["node_modules"]
+}

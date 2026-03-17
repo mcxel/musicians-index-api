@@ -1,0 +1,192 @@
+{
+  "tools": [
+    {
+      "name": "runway",
+      "category": "video_generation",
+      "enabled": true,
+      "authType": "api_key",
+      "requiresApiKey": true,
+      "capabilities": ["video_generation", "video_editing", "video_enhancement"]
+    },
+    {
+      "name": "luma_dream_machine",
+      "category": "video_generation",
+      "enabled": true,
+      "authType": "api_key",
+      "requiresApiKey": true,
+      "capabilities": ["video_generation", "motion"]
+    },
+    {
+      "name": "kling",
+      "category": "video_generation",
+      "enabled": true,
+      "authType": "api_key",
+      "requiresApiKey": true,
+      "fallback": "genmo"
+    },
+    {
+      "name": "genmo",
+      "category": "video_generation",
+      "enabled": true,
+      "authType": "api_key",
+      "requiresApiKey": true
+    },
+    {
+      "name": "pika",
+      "category": "video_generation",
+      "enabled": true,
+      "authType": "api_key",
+      "requiresApiKey": true
+    },
+    {
+      "name": "midjourney",
+      "category": "image_generation",
+      "enabled": true,
+      "authType": "api_key",
+      "requiresApiKey": true
+    },
+    {
+      "name": "krea",
+      "category": "image_generation",
+      "enabled": true,
+      "authType": "api_key",
+      "requiresApiKey": true
+    },
+    {
+      "name": "imagen",
+      "category": "image_generation",
+      "enabled": true,
+      "authType": "api_key",
+      "requiresApiKey": true
+    },
+    {
+      "name": "liveportrait",
+      "category": "avatar_animation",
+      "enabled": true,
+      "authType": "api_key",
+      "requiresApiKey": true,
+      "capabilities": ["face_animation", "lip_sync"]
+    },
+    {
+      "name": "sadtalker",
+      "category": "avatar_animation",
+      "enabled": true,
+      "authType": "none",
+      "requiresApiKey": false
+    },
+    {
+      "name": "d-id",
+      "category": "avatar_animation",
+      "enabled": true,
+      "authType": "api_key",
+      "requiresApiKey": true
+    },
+    {
+      "name": "heygen",
+      "category": "avatar_animation",
+      "enabled": true,
+      "authType": "api_key",
+      "requiresApiKey": true
+    },
+    {
+      "name": "elevenlabs",
+      "category": "voice_generation",
+      "enabled": true,
+      "authType": "api_key",
+      "requiresApiKey": true
+    },
+    {
+      "name": "mubert",
+      "category": "voice_generation",
+      "enabled": true,
+      "authType": "api_key",
+      "requiresApiKey": true
+    },
+    {
+      "name": "soundraw",
+      "category": "voice_generation",
+      "enabled": true,
+      "authType": "api_key",
+      "requiresApiKey": true
+    },
+    {
+      "name": "gemini",
+      "category": "research",
+      "enabled": true,
+      "authType": "api_key",
+      "requiresApiKey": true
+    },
+    {
+      "name": "perplexity",
+      "category": "research",
+      "enabled": true,
+      "authType": "api_key",
+      "requiresApiKey": true
+    },
+    {
+      "name": "notebooklm",
+      "category": "research",
+      "enabled": true,
+      "authType": "oauth",
+      "requiresApiKey": false,
+      "requiresManualAuth": true
+    },
+    {
+      "name": "claude",
+      "category": "research",
+      "enabled": true,
+      "authType": "api_key",
+      "requiresApiKey": true
+    },
+    {
+      "name": "chatgpt",
+      "category": "research",
+      "enabled": true,
+      "authType": "api_key",
+      "requiresApiKey": true
+    },
+    {
+      "name": "playwright",
+      "category": "browser_automation",
+      "enabled": true,
+      "authType": "none",
+      "requiresApiKey": false,
+      "capabilities": ["browser_control", "web_testing", "screenshot"]
+    },
+    {
+      "name": "puppeteer",
+      "category": "browser_automation",
+      "enabled": true,
+      "authType": "none",
+      "requiresApiKey": false
+    },
+    {
+      "name": "axiom",
+      "category": "workflow_automation",
+      "enabled": true,
+      "authType": "oauth",
+      "requiresManualAuth": true
+    },
+    {
+      "name": "n8n",
+      "category": "workflow_automation",
+      "enabled": true,
+      "authType": "api_key",
+      "requiresApiKey": true
+    },
+    {
+      "name": "zapier",
+      "category": "workflow_automation",
+      "enabled": true,
+      "authType": "oauth",
+      "requiresManualAuth": true
+    },
+    {
+      "name": "cloudflare",
+      "category": "security",
+      "enabled": true,
+      "authType": "api_key",
+      "requiresApiKey": true
+    }
+  ]
+}

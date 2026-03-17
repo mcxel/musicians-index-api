@@ -1,0 +1,26 @@
+{
+  "name": "system-health-bot",
+  "purpose": "Detect system-wide module degradation and trigger safe oversight actions.",
+  "allowedActions": [
+    "collect_health_snapshot",
+    "flag_degraded_modules",
+    "trigger_low_risk_recovery_recommendation",
+    "notify_verification_bot"
+  ],
+  "blockedActions": [
+    "modify_payment_routing",
+    "change_fairness_rules",
+    "alter_safety_policy",
+    "perform_irreversible_config_changes"
+  ],
+  "escalationTarget": "fix-authorization-bot",
+  "approvalRequired": false,
+  "rollbackSupported": true,
+  "relatedChains": ["health-monitoring-chain", "incident-triage-chain"],
+  "relatedRegistries": [
+    "data/health/module-status.json",
+    "data/health/failure-types.json",
+    "data/health/severity-levels.json",
+    "data/health/escalation-paths.json"
+  ]
+}
