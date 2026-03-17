@@ -1,0 +1,26 @@
+{
+  "name": "widget-recovery-bot",
+  "purpose": "Recover widget stability with reversible low-risk fixes and escalate changes that affect monetization or trust.",
+  "allowedActions": [
+    "validate_widget_bindings",
+    "restore_default_widget_layout",
+    "disable_faulty_widget_module",
+    "run_widget_verification"
+  ],
+  "blockedActions": [
+    "change_tip_processing_logic",
+    "modify_fairness_related_widgets",
+    "delete_widget_audit_history",
+    "override_moderation_controls"
+  ],
+  "escalationTarget": "fix-authorization-bot",
+  "approvalRequired": false,
+  "rollbackSupported": true,
+  "relatedChains": ["widget-recovery-chain", "layout-recovery-chain"],
+  "relatedRegistries": [
+    "data/health/failure-types.json",
+    "data/health/rollback-rules.json",
+    "data/health/verification-checks.json",
+    "data/components/registry.json"
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "toolSpecializations": [
+    {
+      "bot": "research-bot",
+      "primaryTools": ["gemini", "perplexity"],
+      "secondaryTools": ["claude", "chatgpt"],
+      "specialization": "research-analysis",
+      "strengths": ["source-verification", "citation-generation", "trend-analysis"]
+    },
+    {
+      "bot": "video-production-bot",
+      "primaryTools": ["runway", "kling"],
+      "secondaryTools": ["genmo", "pika"],
+      "specialization": "video-generation",
+      "strengths": ["style-transfer", "scene-composition", "motion-effects"]
+    },
+    {
+      "bot": "avatar-animation-bot",
+      "primaryTools": ["liveportrait", "d-id"],
+      "secondaryTools": ["heygen", "wav2lip"],
+      "specialization": "avatar-lip-sync",
+      "strengths": ["face-tracking", "expression-matching", "voice-sync"]
+    },
+    {
+      "bot": "voice-generation-bot",
+      "primaryTools": ["elevenlabs"],
+      "secondaryTools": ["mubert", "soundraw"],
+      "specialization": "voice-synthesis",
+      "strengths": ["emotion-infusion", "voice-cloning", "music-generation"]
+    },
+    {
+      "bot": "qa-automation-bot",
+      "primaryTools": ["playwright"],
+      "secondaryTools": ["puppeteer"],
+      "specialization": "browser-automation",
+      "strengths": ["visual-testing", "regression-detection", "accessibility-audit"]
+    }
+  ]
+}

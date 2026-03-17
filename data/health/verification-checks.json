@@ -1,0 +1,32 @@
+{
+  "checks": [
+    {
+      "id": "issue_resolved",
+      "required": true
+    },
+    {
+      "id": "no_new_errors",
+      "required": true
+    },
+    {
+      "id": "related_systems_ok",
+      "required": true
+    },
+    {
+      "id": "fallback_works",
+      "required": true
+    },
+    {
+      "id": "performance_ok",
+      "required": true
+    },
+    {
+      "id": "policy_integrity_ok",
+      "required": true
+    },
+    {
+      "id": "audit_log_written",
+      "required": true
+    }
+  ]
+}

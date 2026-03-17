@@ -1,0 +1,149 @@
+/* TMI — MASTER APP SHELL */
+@import './styles/globals.css';
+
+/* ── APP WRAPPER ── */
+.tmi-app {
+  min-height: 100vh;
+  display: flex; flex-direction: column;
+  background: var(--bg-void);
+  position: relative;
+}
+
+/* ── TOPBAR ── */
+.tmi-app__topbar {
+  position: sticky; top: 0; z-index: var(--z-hud);
+  display: flex; align-items: center; gap: var(--space-4);
+  padding: 10px var(--space-4);
+  background: rgba(5,8,16,0.95);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(0,212,255,0.15);
+  box-shadow: 0 4px 30px rgba(0,0,0,0.5);
+  flex-wrap: wrap;
+}
+
+/* ── BRAND ── */
+.tmi-app__brand {
+  display: flex; align-items: center; gap: var(--space-2);
+  flex-shrink: 0;
+}
+.tmi-app__brand-icon { font-size: 22px; }
+.tmi-app__brand-name {
+  font-family: var(--font-display);
+  font-size: 22px; color: var(--neon-orange);
+  text-shadow: var(--glow-orange);
+  letter-spacing: 0.1em;
+}
+.tmi-app__brand-sub {
+  font-family: var(--font-label); font-size: 9px;
+  letter-spacing: 0.15em; color: var(--text-muted);
+  text-transform: uppercase; align-self: flex-end;
+  margin-bottom: 2px; display: none;
+}
+@media (min-width: 640px) { .tmi-app__brand-sub { display: block; } }
+
+/* ── HAMBURGER ── */
+.tmi-app__menu-toggle {
+  display: none;
+  background: transparent; border: 1px solid rgba(255,255,255,0.15);
+  color: white; font-size: 18px;
+  width: 36px; height: 36px;
+  border-radius: var(--radius-sm); cursor: pointer;
+  transition: all var(--ease-fast);
+  margin-left: auto;
+}
+.tmi-app__menu-toggle:hover { border-color: var(--neon-cyan); color: var(--neon-cyan); }
+@media (max-width: 900px) { .tmi-app__menu-toggle { display: flex; align-items: center; justify-content: center; } }
+
+/* ── NAV ── */
+.tmi-app__nav {
+  display: flex; align-items: center; gap: 4px;
+  flex-wrap: nowrap; overflow-x: auto;
+  scrollbar-width: none; flex: 1;
+}
+.tmi-app__nav::-webkit-scrollbar { display: none; }
+
+@media (max-width: 900px) {
+  .tmi-app__nav {
+    display: none; width: 100%;
+    flex-direction: column; gap: 2px;
+    background: var(--bg-panel);
+    border: 1px solid rgba(0,212,255,0.15);
+    border-radius: var(--radius-lg);
+    padding: var(--space-2);
+    order: 10;
+  }
+  .tmi-app__nav.is-open { display: flex; }
+}
+
+.tmi-app__nav-btn {
+  display: flex; align-items: center; gap: 6px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-muted);
+  font-family: var(--font-label); font-size: 11px;
+  font-weight: 600; letter-spacing: 0.05em;
+  padding: 6px 10px; border-radius: var(--radius-md);
+  cursor: pointer; white-space: nowrap;
+  transition: all var(--ease-fast);
+}
+.tmi-app__nav-btn:hover {
+  color: white; background: rgba(255,255,255,0.06);
+  border-color: rgba(255,255,255,0.1);
+}
+.tmi-app__nav-btn.is-active {
+  color: var(--neon-orange);
+  background: rgba(255,107,0,0.1);
+  border-color: rgba(255,107,0,0.3);
+  box-shadow: 0 0 10px rgba(255,107,0,0.2);
+}
+.tmi-app__nav-icon { font-size: 14px; }
+@media (max-width: 900px) {
+  .tmi-app__nav-btn {
+    width: 100%; justify-content: flex-start;
+    padding: var(--space-3) var(--space-4);
+    font-size: 14px;
+  }
+}
+
+/* ── CONTENT AREA ── */
+.tmi-app__content {
+  flex: 1;
+  animation: slide-up 0.3s var(--ease-spring) both;
+}
+
+/* ── BOTTOM PAGE BAR ── */
+.tmi-app__pagebar {
+  position: sticky; bottom: 0; z-index: var(--z-hud);
+  display: flex; align-items: center; justify-content: center;
+  gap: 4px; padding: var(--space-2) var(--space-4);
+  background: rgba(5,8,16,0.95);
+  backdrop-filter: blur(12px);
+  border-top: 1px solid rgba(0,212,255,0.1);
+  flex-wrap: wrap;
+}
+.tmi-app__pagebar-dot {
+  width: 36px; height: 36px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 50%; cursor: pointer;
+  font-size: 14px;
+  transition: all var(--ease-fast);
+  display: flex; align-items: center; justify-content: center;
+}
+.tmi-app__pagebar-dot:hover {
+  background: rgba(255,255,255,0.1);
+  border-color: var(--neon-cyan);
+  transform: scale(1.15);
+}
+.tmi-app__pagebar-dot.is-active {
+  background: rgba(255,107,0,0.15);
+  border-color: var(--neon-orange);
+  box-shadow: var(--glow-orange);
+  transform: scale(1.2);
+}
+
+/* ── PAGE TRANSITION ── */
+@keyframes page-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}

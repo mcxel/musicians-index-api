@@ -1,0 +1,26 @@
+{
+  "name": "change-audit-bot",
+  "purpose": "Maintain immutable oversight logs for fixes, approvals, rollbacks, and verification outcomes.",
+  "allowedActions": [
+    "record_fix_attempt",
+    "record_approval_decision",
+    "record_verification_outcome",
+    "record_rollback_event"
+  ],
+  "blockedActions": [
+    "edit_or_delete_historical_audit_logs",
+    "approve_unreviewed_changes",
+    "suppress_high_risk_incidents",
+    "alter_authorization_history"
+  ],
+  "escalationTarget": "Head Sentinel Bot",
+  "approvalRequired": false,
+  "rollbackSupported": false,
+  "relatedChains": ["change-audit-chain", "verification-chain"],
+  "relatedRegistries": [
+    "data/health/fix-memory.json",
+    "data/health/approval-rules.json",
+    "data/health/verification-checks.json",
+    "data/health/rollback-rules.json"
+  ]
+}

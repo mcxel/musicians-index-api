@@ -1,0 +1,47 @@
+{
+  "permissions": [
+    {
+      "botFamily": "research-bots",
+      "allowedTools": ["gemini", "perplexity", "notebooklm", "claude", "chatgpt"],
+      "maxCallsPerHour": 500,
+      "requiresApproval": false
+    },
+    {
+      "botFamily": "video-bots",
+      "allowedTools": ["runway", "luma_dream_machine", "kling", "genmo", "pika"],
+      "maxCallsPerHour": 100,
+      "requiresApproval": true
+    },
+    {
+      "botFamily": "avatar-bots",
+      "allowedTools": ["liveportrait", "sadtalker", "d-id", "heygen"],
+      "maxCallsPerHour": 200,
+      "requiresApproval": false
+    },
+    {
+      "botFamily": "audio-bots",
+      "allowedTools": ["elevenlabs", "mubert", "soundraw"],
+      "maxCallsPerHour": 300,
+      "requiresApproval": false
+    },
+    {
+      "botFamily": "workflow-bots",
+      "allowedTools": ["n8n", "zapier", "axiom"],
+      "maxCallsPerHour": 1000,
+      "requiresApproval": false
+    },
+    {
+      "botFamily": "browser-bots",
+      "allowedTools": ["playwright", "puppeteer"],
+      "maxCallsPerHour": 500,
+      "requiresApproval": false,
+      "targetRestriction": "own_properties_only"
+    },
+    {
+      "botFamily": "security-bots",
+      "allowedTools": ["cloudflare"],
+      "maxCallsPerHour": 10000,
+      "requiresApproval": false
+    }
+  ]
+}

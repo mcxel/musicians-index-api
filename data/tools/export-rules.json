@@ -1,0 +1,32 @@
+{
+  "exportRules": [
+    {
+      "tool": "runway",
+      "exportFormats": ["mp4", "webm"],
+      "maxDuration": 300,
+      "watermarkRequired": false,
+      "requiresApproval": false
+    },
+    {
+      "tool": "gemini",
+      "exportFormats": ["json", "text", "markdown"],
+      "maxTokens": 100000,
+      "watermarkRequired": false,
+      "requiresApproval": false
+    },
+    {
+      "tool": "perplexity",
+      "exportFormats": ["json", "text", "html"],
+      "maxSources": 50,
+      "watermarkRequired": false,
+      "requiresApproval": false
+    },
+    {
+      "tool": "playwright",
+      "exportFormats": ["png", "jpg", "pdf", "har"],
+      "maxScreenshots": 100,
+      "watermarkRequired": false,
+      "requiresApproval": true
+    }
+  ]
+}

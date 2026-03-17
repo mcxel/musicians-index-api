@@ -1,0 +1,47 @@
+{
+  "reactionModes": [
+    "muted",
+    "silent-visual",
+    "cheers-only",
+    "emoji-only",
+    "vote-only",
+    "selected-mic",
+    "host-called",
+    "open-crowd",
+    "invite-only",
+    "judge-only"
+  ],
+  "reactions": [
+    "cheer",
+    "clap",
+    "wave",
+    "heart",
+    "fire",
+    "laugh",
+    "cry",
+    "hype",
+    "boo",
+    "roar",
+    "dance",
+    "love",
+    "firework",
+    "sparkle"
+  ],
+  "crowdEnergyLevels": [
+    "calm",
+    "warmed",
+    "hyped",
+    "explosive",
+    "emotional",
+    "battle-tension",
+    "celebration"
+  ],
+  "reactionEffects": {
+    "cheer": { "type": "audio", "particles": "wave" },
+    "clap": { "type": "audio", "particles": "none" },
+    "heart": { "type": "visual", "particles": "hearts" },
+    "fire": { "type": "visual", "particles": "flames" },
+    "hype": { "type": "audio-visual", "particles": "burst" },
+    "dance": { "type": "visual", "particles": "rhythm" }
+  }
+}

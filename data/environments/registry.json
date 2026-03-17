@@ -1,0 +1,17 @@
+{
+  "environments": [],
+  "venueClasses": [
+    "underground",
+    "local",
+    "premium",
+    "festival",
+    "arena",
+    "world-stage",
+    "social-lounge",
+    "watch-party",
+    "battle-arena",
+    "game-show",
+    "backstage"
+  ],
+  "venueTypes": []
+}

@@ -1,0 +1,26 @@
+{
+  "zones": [
+    "stage",
+    "front-row",
+    "standing-floor",
+    "seated-floor",
+    "booths",
+    "balcony",
+    "vip",
+    "sponsor-zone",
+    "host-zone",
+    "judge-zone",
+    "merch-zone",
+    "backstage",
+    "green-room",
+    "entry-gate",
+    "exit-path",
+    "camera-lane",
+    "dance-floor",
+    "meet-greet-corner",
+    "photo-wall",
+    "winner-chamber",
+    "judges-lounge",
+    "queue-lobby"
+  ]
+}

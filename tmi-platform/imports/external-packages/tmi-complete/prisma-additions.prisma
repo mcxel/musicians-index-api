@@ -1,0 +1,389 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// PRISMA SCHEMA ADDITIONS — tmi-platform/apps/api/prisma/schema.prisma
+// These models support all 9 canonical engines.
+// ADD these models to your existing schema.prisma file.
+// Run: pnpm -C apps/api prisma migrate dev --name add-engines
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ─── Points Ledger ────────────────────────────────────────────────────────────
+
+model PointsTransaction {
+  id            String   @id @default(cuid())
+  userId        String
+  amount        Int      // positive=earn, negative=spend
+  reason        String   // PointsEarnReason | PointsSpendReason
+  referenceId   String?
+  timestamp     DateTime @default(now())
+  balanceAfter  Int
+  tier          String
+  createdAt     DateTime @default(now())
+
+  @@index([userId])
+  @@index([timestamp])
+  @@map("points_transactions")
+}
+
+model PointsLedger {
+  userId         String   @id
+  currentBalance Int      @default(0)
+  lifetimeEarned Int      @default(0)
+  lifetimeSpent  Int      @default(0)
+  todayEarned    Int      @default(0)
+  lastEarnDate   String?
+  updatedAt      DateTime @updatedAt
+
+  @@map("points_ledgers")
+}
+
+// ─── Revenue Ledger ───────────────────────────────────────────────────────────
+
+model RevenueEvent {
+  id           String   @id @default(cuid())
+  source       String   // RevenueSource enum
+  grossAmount  Int      // cents
+  platformPct  Float
+  artistPct    Float
+  groupPct     Float
+  sponsorPct   Float
+  reservePct   Float
+  artistId     String?
+  sponsorId    String?
+  eventId      String?
+  timestamp    DateTime @default(now())
+  status       String   @default("PENDING")
+  entries      LedgerEntry[]
+
+  @@index([artistId])
+  @@index([sponsorId])
+  @@map("revenue_events")
+}
+
+model LedgerEntry {
+  id              String       @id @default(cuid())
+  revenueEventId  String
+  recipientType   String
+  recipientId     String
+  amount          Int          // cents
+  pct             Float
+  revenueEvent    RevenueEvent @relation(fields: [revenueEventId], references: [id])
+
+  @@index([recipientId])
+  @@map("ledger_entries")
+}
+
+model PayoutRecord {
+  id                String   @id @default(cuid())
+  recipientId       String
+  amount            Int      // cents
+  currency          String   @default("USD")
+  method            String
+  status            String   @default("QUEUED")
+  createdAt         DateTime @default(now())
+  settledAt         DateTime?
+  revenueEventIds   String[]
+
+  @@index([recipientId])
+  @@map("payout_records")
+}
+
+// ─── Ad Engine ────────────────────────────────────────────────────────────────
+
+model Ad {
+  id                  String   @id @default(cuid())
+  sponsorId           String
+  format              String
+  creativeUrl         String
+  clickThroughUrl     String
+  durationSeconds     Int?
+  allowedContexts     String[]
+  tierMinimum         String   @default("FREE")
+  priority            Int      @default(50)
+  campaignId          String
+  impressionsCap      Int?
+  impressionsDelivered Int     @default(0)
+  isActive            Boolean  @default(true)
+  createdAt           DateTime @default(now())
+
+  @@index([sponsorId])
+  @@index([campaignId])
+  @@map("ads")
+}
+
+model AdSession {
+  id                         String   @id @default(cuid())
+  userId                     String
+  tier                       String
+  sessionStartAt             DateTime @default(now())
+  adsShownCount              Int      @default(0)
+  lastAdShownAt              DateTime?
+  preRollEventCount          Int      @default(0)
+  midRollMinutesSinceLastAd  Float    @default(0)
+  adsDismissed               String[]
+  updatedAt                  DateTime @updatedAt
+
+  @@index([userId])
+  @@map("ad_sessions")
+}
+
+// ─── Sponsor Engine ───────────────────────────────────────────────────────────
+
+model SponsorContract {
+  id                  String             @id @default(cuid())
+  sponsorId           String
+  sponsorName         String
+  sponsorTier         String
+  startDate           DateTime
+  endDate             DateTime
+  totalBudgetCents    Int
+  spentCents          Int                @default(0)
+  isActive            Boolean            @default(true)
+  requiresModeration  Boolean            @default(true)
+  moderationStatus    String             @default("PENDING")
+  createdAt           DateTime           @default(now())
+  placements          SponsorPlacement[]
+  prizes              SponsorPrize[]
+
+  @@index([sponsorId])
+  @@map("sponsor_contracts")
+}
+
+model SponsorPlacement {
+  id                   String          @id @default(cuid())
+  contractId           String
+  type                 String
+  priority             Int             @default(50)
+  targetArtistId       String?
+  targetEventType      String?
+  targetGenres         String[]
+  creativeAssetUrl     String
+  clickUrl             String?
+  impressionsCap       Int?
+  impressionsDelivered Int             @default(0)
+  isActive             Boolean         @default(true)
+  contract             SponsorContract @relation(fields: [contractId], references: [id])
+
+  @@index([contractId])
+  @@index([targetArtistId])
+  @@map("sponsor_placements")
+}
+
+model SponsorPrize {
+  id                    String          @id @default(cuid())
+  contractId            String
+  description           String
+  estimatedValueCents   Int
+  quantityAvailable     Int
+  quantityClaimed       Int             @default(0)
+  shipsDirectlyFromSponsor Boolean      @default(true)
+  claimWindowDays       Int             @default(14)
+  contract              SponsorContract @relation(fields: [contractId], references: [id])
+  claims                PrizeClaim[]
+
+  @@index([contractId])
+  @@map("sponsor_prizes")
+}
+
+model PrizeClaim {
+  id              String       @id @default(cuid())
+  prizeId         String
+  winnerId        String
+  winnerEventId   String
+  shippingAddress Json
+  status          String       @default("WINNER_NOTIFIED")
+  sponsorPacketSentAt DateTime?
+  trackingNumber  String?
+  trackingCarrier String?
+  claimedAt       DateTime     @default(now())
+  expiresAt       DateTime
+  deliveredAt     DateTime?
+  timeline        Json         @default("[]")
+  prize           SponsorPrize @relation(fields: [prizeId], references: [id])
+
+  @@index([winnerId])
+  @@index([prizeId])
+  @@map("prize_claims")
+}
+
+// ─── Event Orchestrator ───────────────────────────────────────────────────────
+
+model LiveEvent {
+  id                   String   @id @default(cuid())
+  type                 String
+  title                String
+  status               String   @default("SCHEDULED")
+  scheduledAt          DateTime
+  goLiveAt             DateTime?
+  endedAt              DateTime?
+  durationMinutes      Int
+  submissionDeadline   DateTime
+  maxParticipants      Int      @default(20)
+  currentPerformerIndex Int     @default(0)
+  beatId               String?
+  roomId               String
+  sponsorContractIds   String[]
+  prizeIds             String[]
+  viewerCount          Int      @default(0)
+  replayUrl            String?
+  adminOverrideBy      String?
+  createdAt            DateTime @default(now())
+  participants         EventParticipant[]
+
+  @@index([scheduledAt])
+  @@index([status])
+  @@map("live_events")
+}
+
+model EventParticipant {
+  id             String    @id @default(cuid())
+  eventId        String
+  userId         String
+  groupId        String?
+  queuePosition  Int
+  status         String    @default("SUBMITTED")
+  score          Int       @default(0)
+  votes          Int       @default(0)
+  judgeScore     Int?
+  performedAt    DateTime?
+  prizeClaimId   String?
+  event          LiveEvent @relation(fields: [eventId], references: [id])
+
+  @@unique([eventId, userId])
+  @@index([eventId])
+  @@map("event_participants")
+}
+
+// ─── Inventory ────────────────────────────────────────────────────────────────
+
+model InventoryItem {
+  id                    String   @id @default(cuid())
+  name                  String
+  description           String
+  slot                  String
+  rarity                String
+  iconUrl               String
+  animationUrl          String?
+  animationStyle        String?
+  pointsCost            Int
+  tierRequired          String   @default("FREE")
+  isSeasonal            Boolean  @default(false)
+  seasonId              String?
+  isSponsorItem         Boolean  @default(false)
+  sponsorId             String?
+  isLimitedEdition      Boolean  @default(false)
+  totalSupply           Int?
+  currentSupply         Int?
+  unlockedByAchievement String?
+  tags                  String[]
+  isActive              Boolean  @default(true)
+  createdAt             DateTime @default(now())
+
+  @@index([slot])
+  @@index([rarity])
+  @@map("inventory_items")
+}
+
+model UserInventory {
+  userId          String   @id
+  tier            String   @default("FREE")
+  ownedItemIds    String[]
+  equippedLoadout Json     @default("{}")
+  seasonPasses    Json     @default("[]")
+  lastUpdated     DateTime @updatedAt
+
+  @@map("user_inventories")
+}
+
+// ─── Voting ───────────────────────────────────────────────────────────────────
+
+model Vote {
+  id                String   @id @default(cuid())
+  eventId           String
+  voterId           String
+  targetId          String
+  voteType          String
+  weight            Int      @default(1)
+  timestamp         DateTime @default(now())
+  sessionId         String
+  deviceFingerprint String
+  ipHash            String
+  tier              String
+  isDiscarded       Boolean  @default(false)
+  fraudFlags        String[]
+
+  @@index([eventId])
+  @@index([voterId])
+  @@map("votes")
+}
+
+model VoterProfile {
+  userId              String   @id
+  tier                String   @default("FREE")
+  accountAgeDays      Int      @default(0)
+  deviceFingerprints  String[]
+  ipHashes            String[]
+  totalVotesCast      Int      @default(0)
+  votesThisEvent      Int      @default(0)
+  lastVoteAt          DateTime?
+  fraudScore          Int      @default(0)
+  isSuspended         Boolean  @default(false)
+  suspensionReason    String?
+  updatedAt           DateTime @updatedAt
+
+  @@map("voter_profiles")
+}
+
+// ─── Articles ─────────────────────────────────────────────────────────────────
+
+model Article {
+  id                  String   @id @default(cuid())
+  type                String
+  title               String
+  slug                String   @unique
+  subjectId           String?
+  authorId            String
+  isAiAuthored        Boolean  @default(false)
+  content             Json     @default("[]")
+  coverImageUrl       String?
+  tags                String[]
+  genres              String[]
+  publishedAt         DateTime?
+  scheduledPublishAt  DateTime?
+  status              String   @default("DRAFT")
+  magazinePage        Int?
+  magazineIssue       String?
+  viewCount           Int      @default(0)
+  rankingNumber       Int?
+  isSponsoredContent  Boolean  @default(false)
+  sponsorId           String?
+  seoTitle            String?
+  seoDescription      String?
+  createdAt           DateTime @default(now())
+
+  @@index([subjectId])
+  @@index([status])
+  @@index([magazineIssue])
+  @@map("articles")
+}
+
+model Interview {
+  id              String   @id @default(cuid())
+  subjectId       String
+  subjectName     String
+  subjectType     String
+  botId           String
+  status          String   @default("SCHEDULED")
+  scheduledAt     DateTime
+  startedAt       DateTime?
+  completedAt     DateTime?
+  questions       Json     @default("[]")
+  answers         Json     @default("[]")
+  moderationNotes String?
+  moderatedBy     String?
+  publishedArticleId String?
+  magazineIssue   String?
+  createdAt       DateTime @default(now())
+
+  @@index([subjectId])
+  @@index([status])
+  @@map("interviews")
+}

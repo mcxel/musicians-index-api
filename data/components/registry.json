@@ -1,0 +1,18 @@
+{
+  "components": [
+    "neon-title-bar",
+    "glow-panel",
+    "capsule-counter",
+    "action-button",
+    "sponsor-strip",
+    "crowd-avatar-grid",
+    "scoreboard-panel",
+    "map-card",
+    "host-console",
+    "battle-meter",
+    "reward-card",
+    "carousel-panel",
+    "live-indicator",
+    "status-ticker"
+  ]
+}

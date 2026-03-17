@@ -1,0 +1,30 @@
+{
+  "health": [
+    { "tool": "runway", "status": "healthy", "lastTest": "", "failureRate": 0.0 },
+    { "tool": "luma_dream_machine", "status": "healthy", "lastTest": "", "failureRate": 0.0 },
+    { "tool": "kling", "status": "healthy", "lastTest": "", "failureRate": 0.0 },
+    { "tool": "genmo", "status": "healthy", "lastTest": "", "failureRate": 0.0 },
+    { "tool": "pika", "status": "healthy", "lastTest": "", "failureRate": 0.0 },
+    { "tool": "midjourney", "status": "healthy", "lastTest": "", "failureRate": 0.0 },
+    { "tool": "krea", "status": "healthy", "lastTest": "", "failureRate": 0.0 },
+    { "tool": "imagen", "status": "experimental", "lastTest": "", "failureRate": 0.0 },
+    { "tool": "liveportrait", "status": "healthy", "lastTest": "", "failureRate": 0.0 },
+    { "tool": "sadtalker", "status": "healthy", "lastTest": "", "failureRate": 0.0 },
+    { "tool": "d-id", "status": "healthy", "lastTest": "", "failureRate": 0.0 },
+    { "tool": "heygen", "status": "healthy", "lastTest": "", "failureRate": 0.0 },
+    { "tool": "elevenlabs", "status": "healthy", "lastTest": "", "failureRate": 0.0 },
+    { "tool": "mubert", "status": "healthy", "lastTest": "", "failureRate": 0.0 },
+    { "tool": "soundraw", "status": "healthy", "lastTest": "", "failureRate": 0.0 },
+    { "tool": "gemini", "status": "healthy", "lastTest": "", "failureRate": 0.0 },
+    { "tool": "perplexity", "status": "healthy", "lastTest": "", "failureRate": 0.0 },
+    { "tool": "notebooklm", "status": "healthy", "lastTest": "", "failureRate": 0.0 },
+    { "tool": "claude", "status": "healthy", "lastTest": "", "failureRate": 0.0 },
+    { "tool": "chatgpt", "status": "healthy", "lastTest": "", "failureRate": 0.0 },
+    { "tool": "playwright", "status": "healthy", "lastTest": "", "failureRate": 0.0 },
+    { "tool": "puppeteer", "status": "healthy", "lastTest": "", "failureRate": 0.0 },
+    { "tool": "axiom", "status": "healthy", "lastTest": "", "failureRate": 0.0 },
+    { "tool": "n8n", "status": "healthy", "lastTest": "", "failureRate": 0.0 },
+    { "tool": "zapier", "status": "healthy", "lastTest": "", "failureRate": 0.0 },
+    { "tool": "cloudflare", "status": "healthy", "lastTest": "", "failureRate": 0.0 }
+  ]
+}

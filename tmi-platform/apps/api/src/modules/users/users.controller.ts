@@ -30,4 +30,12 @@ export class UsersController {
   async createOfficialLink(@Req() req: Request, @Body() dto: CreateOfficialLinkDto) {
     return this.usersService.createOfficialLink(req.cookies?.[UsersService.sessionCookieName()], dto);
   }
+
+  @Post("users/me/accept-originality")
+  @HttpCode(200)
+  async acceptOriginality(@Req() req: Request) {
+    return this.usersService.acceptOriginalityAgreement(
+      req.cookies?.[UsersService.sessionCookieName()],
+    );
+  }
 }

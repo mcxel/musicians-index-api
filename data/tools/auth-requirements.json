@@ -1,0 +1,28 @@
+{
+  "authRequirements": [
+    {
+      "tool": "runway",
+      "authType": "api-key",
+      "requiredScopes": ["video:generate", "video:edit"],
+      "refreshEnabled": true
+    },
+    {
+      "tool": "kling", 
+      "authType": "api-key",
+      "requiredScopes": ["video:generate"],
+      "refreshEnabled": true
+    },
+    {
+      "tool": "gemini",
+      "authType": "oauth",
+      "requiredScopes": ["generative-content"],
+      "refreshEnabled": true
+    },
+    {
+      "tool": "playwright",
+      "authType": "none",
+      "requiredScopes": [],
+      "refreshEnabled": false
+    }
+  ]
+}

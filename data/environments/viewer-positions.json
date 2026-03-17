@@ -1,0 +1,64 @@
+{
+  "viewerPositions": [
+    "standing-floor",
+    "seated-chair",
+    "booth-seating",
+    "bar-stool",
+    "couch-lounge",
+    "rail-front-row",
+    "vip-balcony",
+    "sponsor-suite",
+    "side-stage-pass",
+    "backstage-observer",
+    "dance-floor",
+    "judge-table",
+    "host-desk"
+  ],
+  "positions": {
+    "standing-floor": {
+      "capacity": "unlimited",
+      "type": "standing",
+      "mobility": "high",
+      "props": true,
+      "reactions": true
+    },
+    "seated-chair": {
+      "capacity": 50,
+      "type": "seated",
+      "mobility": "low",
+      "props": true,
+      "reactions": true
+    },
+    "booth-seating": {
+      "capacity": 8,
+      "type": "seated",
+      "mobility": "none",
+      "props": true,
+      "reactions": true
+    },
+    "vip-balcony": {
+      "capacity": 20,
+      "type": "seated",
+      "mobility": "none",
+      "props": true,
+      "reactions": true,
+      "premium": true
+    },
+    "judge-table": {
+      "capacity": 5,
+      "type": "stationary",
+      "mobility": "none",
+      "props": false,
+      "reactions": true,
+      "role": "judge"
+    },
+    "host-desk": {
+      "capacity": 2,
+      "type": "stationary",
+      "mobility": "none",
+      "props": false,
+      "reactions": true,
+      "role": "host"
+    }
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "driftSignals": [
+    {
+      "signal": "design_drift",
+      "severity": "medium",
+      "approvalRequired": false
+    },
+    {
+      "signal": "venue_stale",
+      "severity": "medium",
+      "approvalRequired": false
+    },
+    {
+      "signal": "script_repetition",
+      "severity": "medium",
+      "approvalRequired": false
+    },
+    {
+      "signal": "crowd_energy_drop",
+      "severity": "medium",
+      "approvalRequired": false
+    },
+    {
+      "signal": "sponsor_clutter",
+      "severity": "low",
+      "approvalRequired": false
+    },
+    {
+      "signal": "mobile_congestion",
+      "severity": "medium",
+      "approvalRequired": false
+    },
+    {
+      "signal": "prop_noise",
+      "severity": "low",
+      "approvalRequired": false
+    },
+    {
+      "signal": "widget_overload",
+      "severity": "medium",
+      "approvalRequired": false
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "workflows": [
+    {
+      "name": "avatar_animation_pipeline",
+      "steps": ["generate_image", "animate_face", "sync_voice", "render_video"]
+    },
+    {
+      "name": "video_highlight_pipeline",
+      "steps": ["extract_clip", "enhance_video", "generate_caption", "export_share_card"]
+    },
+    {
+      "name": "research_pipeline",
+      "steps": ["gather_sources", "analyze_content", "summarize_findings", "format_output"]
+    },
+    {
+      "name": "content_generation_pipeline",
+      "steps": ["ideate", "generate_draft", "review_quality", "export_final"]
+    },
+    {
+      "name": "browser_qa_pipeline",
+      "steps": ["launch_browser", "navigate_route", "capture_screenshot", "compare_regression"]
+    }
+  ]
+}

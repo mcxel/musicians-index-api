@@ -1,0 +1,46 @@
+{
+  "toolAccessMatrix": [
+    {
+      "botFamily": "research-bots",
+      "allowedTools": ["gemini", "perplexity", "claude", "chatgpt"],
+      "maxConcurrent": 3,
+      "requiresApproval": false
+    },
+    {
+      "botFamily": "video-bots",
+      "allowedTools": ["runway", "kling", "genmo", "pika"],
+      "maxConcurrent": 2,
+      "requiresApproval": true
+    },
+    {
+      "botFamily": "avatar-bots",
+      "allowedTools": ["liveportrait", "d-id", "heygen", "wav2lip"],
+      "maxConcurrent": 1,
+      "requiresApproval": true
+    },
+    {
+      "botFamily": "audio-bots",
+      "allowedTools": ["elevenlabs", "mubert", "soundraw"],
+      "maxConcurrent": 2,
+      "requiresApproval": false
+    },
+    {
+      "botFamily": "browser-bots",
+      "allowedTools": ["playwright", "puppeteer"],
+      "maxConcurrent": 5,
+      "requiresApproval": true
+    },
+    {
+      "botFamily": "workflow-bots",
+      "allowedTools": ["zapier", "make", "n8n"],
+      "maxConcurrent": 10,
+      "requiresApproval": false
+    },
+    {
+      "botFamily": "security-bots",
+      "allowedTools": ["all"],
+      "maxConcurrent": 20,
+      "requiresApproval": false
+    }
+  ]
+}

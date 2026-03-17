@@ -1,0 +1,40 @@
+{
+  "rollbackRules": [
+    {
+      "action": "auto_fix_layout",
+      "revertTo": "default_layout",
+      "reversible": true,
+      "approvalRequired": false
+    },
+    {
+      "action": "auto_fix_scene",
+      "revertTo": "safe_scene",
+      "reversible": true,
+      "approvalRequired": false
+    },
+    {
+      "action": "auto_fix_widget",
+      "revertTo": "default_widget_profile",
+      "reversible": true,
+      "approvalRequired": false
+    },
+    {
+      "action": "reduce_crowd_density",
+      "revertTo": "full_density",
+      "reversible": true,
+      "approvalRequired": false
+    },
+    {
+      "action": "disable_sponsor_slot",
+      "revertTo": "enabled",
+      "reversible": true,
+      "approvalRequired": true
+    },
+    {
+      "action": "switch_low_bandwidth",
+      "revertTo": "high_bandwidth",
+      "reversible": true,
+      "approvalRequired": false
+    }
+  ]
+}

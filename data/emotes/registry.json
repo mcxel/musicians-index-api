@@ -1,0 +1,70 @@
+{
+  "emotes": [
+    {
+      "id": "emote-heart",
+      "name": "Heart",
+      "emoji": "❤️",
+      "category": "basic",
+      "animation": "float-up",
+      "sound": false,
+      "tier": "free"
+    },
+    {
+      "id": "emote-fire",
+      "name": "Fire",
+      "emoji": "🔥",
+      "category": "celebration",
+      "animation": "burn",
+      "sound": true,
+      "tier": "free"
+    },
+    {
+      "id": "emote-clap",
+      "name": "Clap",
+      "emoji": "👏",
+      "category": "reaction",
+      "animation": "clap",
+      "sound": true,
+      "tier": "free"
+    },
+    {
+      "id": "emote-100",
+      "name": "100",
+      "emoji": "💯",
+      "category": "reaction",
+      "animation": "burst",
+      "sound": false,
+      "tier": "free"
+    },
+    {
+      "id": "emote-crown",
+      "name": "Crown",
+      "emoji": "👑",
+      "category": "celebration",
+      "animation": "glow",
+      "sound": true,
+      "tier": "premium"
+    },
+    {
+      "id": "emote-star",
+      "name": "Star",
+      "emoji": "⭐",
+      "category": "basic",
+      "animation": "twinkle",
+      "sound": false,
+      "tier": "free"
+    }
+  ],
+  "categories": [
+    "basic",
+    "celebration",
+    "reaction",
+    "music",
+    "battle"
+  ],
+  "tiers": [
+    "free",
+    "premium",
+    "vip"
+  ]
+}

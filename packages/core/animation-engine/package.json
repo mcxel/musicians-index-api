@@ -1,0 +1,13 @@
+{
+  "name": "@tmi/animation-engine",
+  "version": "0.0.1",
+  "description": "Animation Engine - Animation management",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "test": "echo 'Tests not implemented yet'"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}

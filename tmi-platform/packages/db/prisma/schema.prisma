@@ -42,7 +42,9 @@ model User {
   role          Role      @default(USER)
   onboardingState      OnboardingState @default(NO_ROLE_SELECTED)
   onboardingCompletedAt DateTime?
+  acceptedOriginalityAgreementAt DateTime?
   canSubmitOfficialPlatformLinks Boolean @default(false)
+  lastSeenAt    DateTime?
   accounts      Account[]
   sessions      Session[]
 
@@ -64,6 +66,7 @@ model User {
   usedPromoCodes    PromoCode[]    @relation("UsedPromoCodes")
   subscriptions     Subscription[] @relation("UserSubscriptions")
   auditLogs         AuditLog[]     @relation("UserAuditLogs")
+  authoredArticles  Article[]      @relation("ArticleAuthor")
 }
 
 model Account {
@@ -116,6 +119,10 @@ model Artist {
 
   // An artist can have multiple official music links
   musicLinks MusicLink[]
+
+  // Profile article — auto-created on onboarding completion (Phase C)
+  profileArticleId String?  @unique
+  profileArticle   Article? @relation("ArtistProfileArticle", fields: [profileArticleId], references: [id])
 }
 
 model MusicLink {
@@ -664,6 +671,7 @@ model ContestRound {
   category   String?  // optional per-category round
 
   entries    ContestEntry[]
+  pollSnapshot   PollSnapshot?
 
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
@@ -783,4 +791,56 @@ model HostCue {
   createdAt  DateTime @default(now())
 
   @@map("host_cues")
+}
+
+// ==============================================================================
+// EDITORIAL & ARTICLE MODELS
+// ==============================================================================
+
+enum ArticleStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+model Article {
+  id          String        @id @default(cuid())
+  title       String
+  slug        String        @unique
+  subtitle    String?
+  content     Json // Storing content as JSON (e.g., from a rich text editor)
+  status      ArticleStatus @default(DRAFT)
+  authorId    String? // The admin/staff user who wrote/edited the article
+  author      User?         @relation("ArticleAuthor", fields: [authorId], references: [id])
+  publishedAt DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  // An article can be generated from a poll snapshot
+  pollSnapshot PollSnapshot?
+
+  // Back-relation: this article may be an artist's profile article
+  artistProfile Artist? @relation("ArtistProfileArticle")
+
+  @@map("articles")
+}
+
+model PollSnapshot {
+  id String @id @default(cuid())
+
+  // The poll (ContestRound) this snapshot is for
+  contestRoundId String       @unique
+  contestRound   ContestRound @relation(fields: [contestRoundId], references: [id])
+
+  // The article generated from this snapshot
+  articleId String?  @unique
+  article   Article? @relation(fields: [articleId], references: [id])
+
+  // The captured results
+  results    Json // e.g., [{"entryId": "cuid", "entryName": "Artist A", "voteCount": 123}, ...]
+  winnerInfo Json? // e.g., {"entryId": "cuid", "entryName": "Artist A"}
+
+  createdAt DateTime @default(now())
+
+  @@map("poll_snapshots")
 }

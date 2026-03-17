@@ -1,0 +1,68 @@
+{
+  "layouts": [
+    {
+      "id": "full-preview",
+      "name": "Full Preview",
+      "description": "360-degree avatar preview",
+      "components": [
+        "avatar-canvas",
+        "rotation-controls",
+        "zoom-controls",
+        "animation-selector",
+        "expression-selector"
+      ],
+      "responsive": {
+        "mobile": "stacked",
+        "tablet": "stacked",
+        "desktop": "side-by-side"
+      }
+    },
+    {
+      "id": "thumbnail",
+      "name": "Thumbnail",
+      "description": "Small avatar preview for cards",
+      "components": [
+        "avatar-canvas",
+        "name-badge"
+      ],
+      "responsive": {
+        "mobile": "full-width",
+        "tablet": "full-width",
+        "desktop": "full-width"
+      }
+    },
+    {
+      "id": "editor",
+      "name": "Avatar Editor",
+      "description": "Full editing interface",
+      "components": [
+        "avatar-canvas",
+        "toolbar",
+        "color-picker",
+        "outfit-selector",
+        "accessory-selector",
+        "save-button",
+        "preview-toggle"
+      ],
+      "responsive": {
+        "mobile": "stacked",
+        "tablet": "stacked",
+        "desktop": "side-by-side"
+      }
+    }
+  ],
+  "components": [
+    "avatar-canvas",
+    "rotation-controls",
+    "zoom-controls",
+    "animation-selector",
+    "expression-selector",
+    "toolbar",
+    "color-picker",
+    "outfit-selector",
+    "accessory-selector",
+    "save-button",
+    "preview-toggle",
+    "name-badge"
+  ]
+}

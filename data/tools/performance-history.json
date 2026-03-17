@@ -1,0 +1,28 @@
+{
+  "performanceHistory": [
+    {
+      "tool": "runway",
+      "avgResponseTime": 45000,
+      "successRate": 0.98,
+      "lastUpdated": "2025-01-15T00:00:00Z"
+    },
+    {
+      "tool": "kling",
+      "avgResponseTime": 38000,
+      "successRate": 0.97,
+      "lastUpdated": "2025-01-15T00:00:00Z"
+    },
+    {
+      "tool": "gemini",
+      "avgResponseTime": 2500,
+      "successRate": 0.995,
+      "lastUpdated": "2025-01-15T00:00:00Z"
+    },
+    {
+      "tool": "playwright",
+      "avgResponseTime": 8000,
+      "successRate": 0.99,
+      "lastUpdated": "2025-01-15T00:00:00Z"
+    }
+  ]
+}

@@ -1,19 +1,14 @@
-import { MetadataRoute } from "next";
+import { MetadataRoute } from 'next';
 
 export default function robots(): MetadataRoute.Robots {
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://themusiciansindex.com';
+
   return {
-    rules: [
-      {
-        userAgent: "*",
-        allow: "/",
-        disallow: [
-          "/admin",
-          "/api",
-          "/_next",
-          "/boardroom", // extra safety: explicitly disallow
-        ],
-      },
-    ],
-    sitemap: "https://berntoutglobal.com/sitemap.xml",
+    rules: {
+      userAgent: '*',
+      allow: '/',
+      disallow: ['/admin/', '/dashboard/', '/api/', '/internal/'],
+    },
+    sitemap: `${baseUrl}/sitemap.xml`,
   };
 }
