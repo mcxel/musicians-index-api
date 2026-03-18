@@ -108,8 +108,15 @@ export class AuthController {
       if (err instanceof HttpException) {
         throw err;
       }
-      console.error("AUTH_REGISTER_ERROR", err);
-      throw new InternalServerErrorException("Internal server error");
+      const errorObj = err as { message?: string; code?: string; name?: string };
+      const debug = {
+        step: "register",
+        message: errorObj?.message ?? String(err),
+        code: errorObj?.code ?? null,
+        name: errorObj?.name ?? null,
+      };
+      console.error("AUTH_REGISTER_ERROR", debug, err);
+      throw new InternalServerErrorException({ message: "Internal server error", _debug: debug });
     }
   }
 
@@ -129,8 +136,15 @@ export class AuthController {
       if (err instanceof HttpException) {
         throw err;
       }
-      console.error("AUTH_LOGIN_ERROR", err);
-      throw new InternalServerErrorException("Internal server error");
+      const errorObj = err as { message?: string; code?: string; name?: string };
+      const debug = {
+        step: "login",
+        message: errorObj?.message ?? String(err),
+        code: errorObj?.code ?? null,
+        name: errorObj?.name ?? null,
+      };
+      console.error("AUTH_LOGIN_ERROR", debug, err);
+      throw new InternalServerErrorException({ message: "Internal server error", _debug: debug });
     }
     res.cookie(SESSION_COOKIE, result.sessionToken, sessionCookieOptions());
     res.cookie(CSRF_COOKIE, csrfToken, csrfCookieOptions());
