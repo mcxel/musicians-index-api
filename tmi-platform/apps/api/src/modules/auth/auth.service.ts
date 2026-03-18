@@ -203,8 +203,6 @@ export class AuthService {
           passwordHash: true,
           role: true,
           onboardingState: true,
-          createdAt: true,
-          updatedAt: true,
         },
       });
 
@@ -240,8 +238,6 @@ export class AuthService {
           email: true,
           role: true,
           onboardingState: true,
-          createdAt: true,
-          updatedAt: true,
         },
       });
 

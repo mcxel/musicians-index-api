@@ -62,11 +62,9 @@ async function main() {
     }
   }
 
-  console.log('
-✅ Admin bootstrap script finished successfully.');
+  console.log('\n✅ Admin bootstrap script finished successfully.');
   console.log(
-    '
-NEXT STEP: The admins should now go to the login page and use the "Forgot Password" feature to set their initial password.',
+    '\nNEXT STEP: The admins should now go to the login page and use the "Forgot Password" feature to set their initial password.',
   );
 }
 
