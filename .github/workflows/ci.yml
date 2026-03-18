@@ -169,12 +169,13 @@ jobs:
           if [ ! -f apps/web/.next/BUILD_ID ]; then
             pnpm -C apps/web build
           fi
-          pnpm -C apps/web start -- -H 127.0.0.1 -p 3001 > /tmp/web-e2e.log 2>&1 &
+          pnpm -C apps/web run start -- --port 3001 > /tmp/web-e2e.log 2>&1 &
           echo $! > /tmp/web-e2e.pid
           sleep 2
           if ! kill -0 "$(cat /tmp/web-e2e.pid)" 2>/dev/null; then
-            echo "web runtime process not alive after bootstrap (continuing to readiness gate)"
+            echo "web runtime exited immediately"
             cat /tmp/web-e2e.log || true
+            exit 1
           fi
 
       - name: Wait E2E Runtime
