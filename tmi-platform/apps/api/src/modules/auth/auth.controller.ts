@@ -8,6 +8,7 @@ import {
   Req,
   Res,
 } from "@nestjs/common";
+import { HttpException } from "@nestjs/common";
 import type { Request, Response } from "express";
 import { IsEmail, IsString, MinLength } from "class-validator";
 import { AuthService } from "./auth.service";
@@ -83,7 +84,13 @@ export class AuthController {
   ) {
     this.requireCsrf(req);
     this.ensureCsrfCookie(req, res);
-    return this.authService.register(body.email, body.password);
+    try {
+      return await this.authService.register(body.email, body.password);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("AUTH_REGISTER_ERROR", msg, err);
+      throw new HttpException({ statusCode: 500, message: "Internal server error", _debug: msg }, 500);
+    }
   }
 
   @Post("login")
@@ -95,7 +102,14 @@ export class AuthController {
   ) {
     this.requireCsrf(req);
     const csrfToken = this.ensureCsrfCookie(req, res);
-    const result = await this.authService.login(body.email, body.password);
+    let result: Awaited<ReturnType<typeof this.authService.login>>;
+    try {
+      result = await this.authService.login(body.email, body.password);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("AUTH_LOGIN_ERROR", msg, err);
+      throw new HttpException({ statusCode: 500, message: "Internal server error", _debug: msg }, 500);
+    }
     res.cookie(SESSION_COOKIE, result.sessionToken, sessionCookieOptions());
     res.cookie(CSRF_COOKIE, csrfToken, csrfCookieOptions());
     return { ok: true, authenticated: true, user: result.user };
