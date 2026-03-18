@@ -1,36 +1,47 @@
 // tmi-platform/apps/web/src/components/editorial/JsonContentRenderer.tsx
 'use client';
 
+import type { ReactNode } from 'react';
+
 // This is a simplified renderer for the JSON content format from the backend.
 // A production app might use a library or a more extensive switch statement.
 
-type Node = {
+type JsonContentNode = {
   type: string;
-  attrs?: { level?: number; [key: string]: any };
-  content?: Node[];
+  attrs?: { level?: number; start?: number; [key: string]: unknown };
+  content?: JsonContentNode[];
   text?: string;
 };
 
-const renderNode = (node: Node, index: number): React.ReactNode => {
+function renderChildren(content: JsonContentNode[] | undefined): ReactNode {
+  if (!content || content.length === 0) {
+    return null;
+  }
+
+  return content.map((child, index) => renderNode(child, index));
+}
+
+const renderNode = (node: JsonContentNode, index: number): ReactNode => {
   switch (node.type) {
     case 'doc':
-      return node.content?.map(renderNode);
+      return renderChildren(node.content);
 
-    case 'heading':
+    case 'heading': {
       const Tag = `h${node.attrs?.level || 1}` as keyof JSX.IntrinsicElements;
-      return <Tag key={index}>{node.content?.map(renderNode)}</Tag>;
+      return <Tag key={index}>{renderChildren(node.content)}</Tag>;
+    }
 
     case 'paragraph':
-      return <p key={index}>{node.content?.map(renderNode)}</p>;
-    
+      return <p key={index}>{renderChildren(node.content)}</p>;
+
     case 'orderedList':
-      return <ol key={index} start={node.attrs?.start || 1}>{node.content?.map(renderNode)}</ol>;
+      return <ol key={index} start={typeof node.attrs?.start === 'number' ? node.attrs.start : 1}>{renderChildren(node.content)}</ol>;
 
     case 'listItem':
-      return <li key={index}>{node.content?.map(renderNode)}</li>;
+      return <li key={index}>{renderChildren(node.content)}</li>;
 
     case 'text':
-      return node.text;
+      return node.text ?? null;
 
     default:
       console.warn('Unknown node type in JSON content:', node.type);
@@ -38,7 +49,7 @@ const renderNode = (node: Node, index: number): React.ReactNode => {
   }
 };
 
-export function JsonContentRenderer({ content }: { content: Node }) {
+export function JsonContentRenderer({ content }: { content: JsonContentNode }) {
   if (!content || !content.type) {
     return null;
   }

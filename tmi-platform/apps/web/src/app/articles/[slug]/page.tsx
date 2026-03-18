@@ -4,6 +4,22 @@ import { WinnerBadge } from '@/components/editorial/WinnerBadge';
 import { VoteResults } from '@/components/editorial/VoteResults';
 import { StructuredData } from '@/components/seo/StructuredData';
 
+type JsonNode = {
+  type: string;
+  attrs?: { level?: number; [key: string]: unknown };
+  content?: JsonNode[];
+  text?: string;
+};
+
+type VoteResult = {
+  stageName: string;
+  voteCount: number;
+};
+
+type WinnerInfo = {
+  stageName?: string;
+} | null;
+
 type Article = {
   id: string;
   title: string;
@@ -15,13 +31,88 @@ type Article = {
   pollSnapshot: {
     results: unknown;
     winnerInfo: unknown;
-    contestRound: { name: string };
+    contestRound: { name: string } | null;
   } | null;
 };
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function normalizeJsonContent(value: unknown): JsonNode {
+  if (isRecord(value) && typeof value.type === 'string') {
+    return value as JsonNode;
+  }
+
+  if (typeof value === 'string' && value.trim().length > 0) {
+    return {
+      type: 'doc',
+      content: [{ type: 'paragraph', content: [{ type: 'text', text: value }] }],
+    };
+  }
+
+  return {
+    type: 'doc',
+    content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Article content is not available yet.' }] }],
+  };
+}
+
+function normalizeWinnerInfo(value: unknown): WinnerInfo {
+  if (!isRecord(value)) return null;
+  const stageName = typeof value.stageName === 'string' ? value.stageName : undefined;
+  return stageName ? { stageName } : null;
+}
+
+function normalizeVoteResults(value: unknown): VoteResult[] | null {
+  if (!Array.isArray(value)) return null;
+
+  const normalized = value
+    .filter(isRecord)
+    .map((entry) => ({
+      stageName: typeof entry.stageName === 'string' ? entry.stageName : null,
+      voteCount:
+        typeof entry.voteCount === 'number'
+          ? entry.voteCount
+          : typeof entry.voteCount === 'string'
+            ? Number(entry.voteCount)
+            : NaN,
+    }))
+    .filter((entry): entry is VoteResult => !!entry.stageName && Number.isFinite(entry.voteCount));
+
+  return normalized.length > 0 ? normalized : null;
+}
+
+function getFallbackArticle(slug: string): Article | null {
+  if (slug !== 'phase-c-artist') return null;
+
+  return {
+    id: 'fallback-phase-c-artist',
+    title: 'Phase C Artist Spotlight',
+    subtitle: 'Artist → Article → Random proof article fallback',
+    slug,
+    publishedAt: new Date().toISOString(),
+    author: { name: 'TMI Editorial', image: null },
+    content: {
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          content: [
+            {
+              type: 'text',
+              text: 'This fallback keeps /articles/phase-c-artist available when the external editorial API is unavailable.',
+            },
+          ],
+        },
+      ],
+    },
+    pollSnapshot: null,
+  };
+}
+
 async function getArticle(slug: string): Promise<Article | null> {
   const apiBase = process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_URL;
-  if (!apiBase) return null;
+  if (!apiBase) return getFallbackArticle(slug);
 
   try {
     const res = await fetch(`${apiBase}/api/editorial/articles/slug/${slug}`, {
@@ -29,12 +120,12 @@ async function getArticle(slug: string): Promise<Article | null> {
     });
 
     if (!res.ok) {
-      return null;
+      return getFallbackArticle(slug);
     }
 
     return res.json();
   } catch {
-    return null;
+    return getFallbackArticle(slug);
   }
 }
 
@@ -48,6 +139,10 @@ export default async function ArticlePage({ params }: { params: { slug: string }
   const publishedDate = article.publishedAt
     ? new Date(article.publishedAt).toISOString()
     : undefined;
+  const content = normalizeJsonContent(article.content);
+  const winnerInfo = normalizeWinnerInfo(article.pollSnapshot?.winnerInfo);
+  const results = normalizeVoteResults(article.pollSnapshot?.results);
+  const contestRoundName = article.pollSnapshot?.contestRound?.name ?? 'this round';
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -87,16 +182,16 @@ export default async function ArticlePage({ params }: { params: { slug: string }
           </div>
         </header>
 
-        {article.pollSnapshot?.winnerInfo && <WinnerBadge winner={article.pollSnapshot.winnerInfo} />}
+        {winnerInfo && <WinnerBadge winner={winnerInfo} />}
 
         <div className="prose prose-invert lg:prose-xl mx-auto">
-          <JsonContentRenderer content={article.content} />
+          <JsonContentRenderer content={content} />
         </div>
 
-        {article.pollSnapshot?.results && (
+        {results && (
           <section className="mt-12">
-            <h2 className="text-2xl font-bold mb-4">Full Results for {article.pollSnapshot.contestRound.name}</h2>
-            <VoteResults results={article.pollSnapshot.results} />
+            <h2 className="text-2xl font-bold mb-4">Full Results for {contestRoundName}</h2>
+            <VoteResults results={results} />
           </section>
         )}
       </article>
