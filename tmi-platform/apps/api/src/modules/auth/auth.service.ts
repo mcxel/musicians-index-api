@@ -190,4 +190,75 @@ export class AuthService {
       },
     };
   }
+
+  async debugUserLookup(email: string) {
+    const normalized = this.normalizeEmail(email);
+
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: { email: normalized },
+        select: {
+          id: true,
+          email: true,
+          passwordHash: true,
+          role: true,
+          onboardingState: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      });
+
+      return {
+        ok: true,
+        step: "findUnique(user)",
+        normalized,
+        user,
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return {
+        ok: false,
+        step: "findUnique(user)",
+        normalized,
+        error: message,
+      };
+    }
+  }
+
+  async debugCreateUser(email: string, password: string) {
+    const normalized = this.normalizeEmail(email);
+
+    try {
+      const passwordHash = await this.hashPassword(password);
+      const created = await this.prisma.user.create({
+        data: {
+          email: normalized,
+          passwordHash,
+        },
+        select: {
+          id: true,
+          email: true,
+          role: true,
+          onboardingState: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      });
+
+      return {
+        ok: true,
+        step: "create(user)",
+        normalized,
+        created,
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return {
+        ok: false,
+        step: "create(user)",
+        normalized,
+        error: message,
+      };
+    }
+  }
 }

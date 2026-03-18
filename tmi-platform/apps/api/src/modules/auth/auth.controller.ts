@@ -6,7 +6,9 @@ import {
   HttpCode,
   HttpException,
   InternalServerErrorException,
+  NotFoundException,
   Post,
+  Query,
   Req,
   Res,
 } from "@nestjs/common";
@@ -57,9 +59,24 @@ class LoginDto {
   password!: string;
 }
 
+class DebugCreateDto {
+  @IsEmail()
+  email!: string;
+
+  @IsString()
+  @MinLength(8)
+  password!: string;
+}
+
 @Controller("auth")
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
+
+  private assertDebugEnabled() {
+    if (process.env.AUTH_DEBUG_ENABLED !== "true") {
+      throw new NotFoundException();
+    }
+  }
 
   private requireCsrf(req: Request) {
     const tokenFromHeader = req.header("x-csrf-token");
@@ -162,5 +179,26 @@ export class AuthController {
       authenticated: true,
       csrfToken,
     };
+  }
+
+  @Get("debug-user")
+  async debugUser(@Query("email") email?: string) {
+    this.assertDebugEnabled();
+    if (!email) {
+      return { ok: false, step: "input", error: "email query param is required" };
+    }
+    return this.authService.debugUserLookup(email);
+  }
+
+  @Post("debug-create")
+  async debugCreate(
+    @Body() body: DebugCreateDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    this.assertDebugEnabled();
+    this.requireCsrf(req);
+    this.ensureCsrfCookie(req, res);
+    return this.authService.debugCreateUser(body.email, body.password);
   }
 }

@@ -28,6 +28,7 @@ jobs:
         with:
           node-version: '20'
           cache: 'pnpm'
+          cache-dependency-path: tmi-platform/pnpm-lock.yaml
 
       - run: corepack enable
       - run: pnpm -v
