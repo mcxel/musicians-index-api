@@ -146,7 +146,7 @@ jobs:
           PORT: "4000"
           CORS_ORIGINS: http://localhost:3000,http://localhost:3001
         run: |
-          pnpm --filter tmi-platform-api start:dev > /tmp/api-e2e.log 2>&1 &
+          pnpm --filter tmi-platform-api start > /tmp/api-e2e.log 2>&1 &
           echo $! > /tmp/api-e2e.pid
 
       - name: Start Web (e2e)
@@ -156,12 +156,12 @@ jobs:
           ROUTING_STATE_SECRET: ci-routing-secret
           API_BASE_URL: http://localhost:4000
         run: |
-          pnpm -C apps/web dev -- -p 3001 > /tmp/web-e2e.log 2>&1 &
+          pnpm -C apps/web start -- -p 3001 > /tmp/web-e2e.log 2>&1 &
           echo $! > /tmp/web-e2e.pid
 
       - name: Wait E2E Runtime
         run: |
-          for i in {1..60}; do
+          for i in {1..90}; do
             if curl -fsS http://localhost:3001/auth >/dev/null && curl -fsS http://localhost:4000/api/healthz >/dev/null && curl -fsS http://localhost:4000/api/readyz >/dev/null; then
               exit 0
             fi
