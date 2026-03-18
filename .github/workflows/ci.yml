@@ -173,9 +173,8 @@ jobs:
           echo $! > /tmp/web-e2e.pid
           sleep 2
           if ! kill -0 "$(cat /tmp/web-e2e.pid)" 2>/dev/null; then
-            echo "web runtime exited immediately"
+            echo "web runtime process not alive after bootstrap (continuing to readiness gate)"
             cat /tmp/web-e2e.log || true
-            exit 1
           fi
 
       - name: Wait E2E Runtime
