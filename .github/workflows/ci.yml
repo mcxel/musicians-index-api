@@ -144,7 +144,7 @@ jobs:
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/tmi_platform
           PORT: "4000"
-          CORS_ORIGINS: http://localhost:3000,http://localhost:3001
+          CORS_ORIGINS: http://localhost:3000,http://localhost:3001,http://127.0.0.1:3001
         run: |
           pnpm --filter tmi-platform-api start > /tmp/api-e2e.log 2>&1 &
           echo $! > /tmp/api-e2e.pid
@@ -160,16 +160,17 @@ jobs:
         env:
           NODE_ENV: production
           NEXTAUTH_SECRET: ci-nextauth-secret
-          NEXTAUTH_URL: http://localhost:3001
+          NEXTAUTH_URL: http://127.0.0.1:3001
           GITHUB_CLIENT_ID: ci-github-client-id
           GITHUB_CLIENT_SECRET: ci-github-client-secret
           ROUTING_STATE_SECRET: ci-routing-secret
           API_BASE_URL: http://localhost:4000
+          PORT: "3001"
         run: |
           if [ ! -f apps/web/.next/BUILD_ID ]; then
             pnpm -C apps/web build
           fi
-          pnpm -C apps/web run start -- --port 3001 > /tmp/web-e2e.log 2>&1 &
+          pnpm -C apps/web start > /tmp/web-e2e.log 2>&1 &
           echo $! > /tmp/web-e2e.pid
           sleep 2
           if ! kill -0 "$(cat /tmp/web-e2e.pid)" 2>/dev/null; then
@@ -181,7 +182,7 @@ jobs:
       - name: Wait E2E Runtime
         run: |
           for i in {1..90}; do
-            if curl -fsS --max-time 3 http://127.0.0.1:3001/auth >/dev/null && curl -fsS --max-time 3 http://127.0.0.1:4000/api/healthz >/dev/null; then
+            if curl -fsS --max-time 3 http://localhost:3001/auth >/dev/null && curl -fsS --max-time 3 http://localhost:4000/api/healthz >/dev/null && curl -fsS --max-time 3 http://localhost:4000/api/readyz >/dev/null; then
               exit 0
             fi
             sleep 2
