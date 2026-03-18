@@ -148,6 +148,12 @@ jobs:
         run: |
           pnpm --filter tmi-platform-api start > /tmp/api-e2e.log 2>&1 &
           echo $! > /tmp/api-e2e.pid
+          sleep 2
+          if ! kill -0 "$(cat /tmp/api-e2e.pid)" 2>/dev/null; then
+            echo "api runtime exited immediately"
+            cat /tmp/api-e2e.log || true
+            exit 1
+          fi
 
       - name: Start Web (e2e)
         working-directory: tmi-platform
@@ -156,8 +162,17 @@ jobs:
           ROUTING_STATE_SECRET: ci-routing-secret
           API_BASE_URL: http://localhost:4000
         run: |
+          if [ ! -f apps/web/.next/BUILD_ID ]; then
+            pnpm -C apps/web build
+          fi
           pnpm -C apps/web start -- -p 3001 > /tmp/web-e2e.log 2>&1 &
           echo $! > /tmp/web-e2e.pid
+          sleep 2
+          if ! kill -0 "$(cat /tmp/web-e2e.pid)" 2>/dev/null; then
+            echo "web runtime exited immediately"
+            cat /tmp/web-e2e.log || true
+            exit 1
+          fi
 
       - name: Wait E2E Runtime
         run: |
