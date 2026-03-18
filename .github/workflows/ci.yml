@@ -72,6 +72,8 @@ jobs:
       - name: Promotion gate metrics pass proof
         working-directory: tmi-platform
         run: |
+          READYZ_FIXTURE_MODE=degraded \
+          READYZ_FIXTURE_METRICS_MODE=pass \
           node apps/api/scripts/readyz-ci-fixture.js &
           FIXTURE_PID=$!
           trap "kill ${FIXTURE_PID}" EXIT
@@ -80,8 +82,6 @@ jobs:
           HEALTHZ_GATE_URL=http://127.0.0.1:4011/api/healthz \
           PROMOTION_METRICS_URL=http://127.0.0.1:4011/api/metrics/promotion \
           PROMOTION_METRICS_REQUIRED=true \
-          READYZ_FIXTURE_MODE=degraded \
-          READYZ_FIXTURE_METRICS_MODE=pass \
           PROMOTION_CANARY_MIN_SUCCESS_RATE=1.0 \
           PROMOTION_CANARY_REQUIRED_CONSECUTIVE_SUCCESSES=1 \
           PROMOTION_CANARY_MAX_FAILURES=0 \
@@ -90,6 +90,8 @@ jobs:
       - name: Promotion gate metrics threshold miss proof
         working-directory: tmi-platform
         run: |
+          READYZ_FIXTURE_MODE=degraded \
+          READYZ_FIXTURE_METRICS_MODE=miss \
           node apps/api/scripts/readyz-ci-fixture.js &
           FIXTURE_PID=$!
           trap "kill ${FIXTURE_PID}" EXIT
@@ -98,8 +100,6 @@ jobs:
              HEALTHZ_GATE_URL=http://127.0.0.1:4011/api/healthz \
              PROMOTION_METRICS_URL=http://127.0.0.1:4011/api/metrics/promotion \
              PROMOTION_METRICS_REQUIRED=true \
-             READYZ_FIXTURE_MODE=degraded \
-             READYZ_FIXTURE_METRICS_MODE=miss \
              PROMOTION_CANARY_MIN_SUCCESS_RATE=1.0 \
              PROMOTION_CANARY_REQUIRED_CONSECUTIVE_SUCCESSES=4 \
              PROMOTION_CANARY_MAX_FAILURES=0 \
@@ -111,6 +111,8 @@ jobs:
       - name: Promotion gate metrics invalid payload proof
         working-directory: tmi-platform
         run: |
+          READYZ_FIXTURE_MODE=degraded \
+          READYZ_FIXTURE_METRICS_MODE=invalid \
           node apps/api/scripts/readyz-ci-fixture.js &
           FIXTURE_PID=$!
           trap "kill ${FIXTURE_PID}" EXIT
@@ -119,8 +121,6 @@ jobs:
              HEALTHZ_GATE_URL=http://127.0.0.1:4011/api/healthz \
              PROMOTION_METRICS_URL=http://127.0.0.1:4011/api/metrics/promotion \
              PROMOTION_METRICS_REQUIRED=true \
-             READYZ_FIXTURE_MODE=degraded \
-             READYZ_FIXTURE_METRICS_MODE=invalid \
              PROMOTION_CANARY_MIN_SUCCESS_RATE=1.0 \
              PROMOTION_CANARY_REQUIRED_CONSECUTIVE_SUCCESSES=1 \
              PROMOTION_CANARY_MAX_FAILURES=0 \
