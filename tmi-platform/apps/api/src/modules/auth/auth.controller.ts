@@ -4,11 +4,12 @@ import {
   ForbiddenException,
   Get,
   HttpCode,
+  HttpException,
+  InternalServerErrorException,
   Post,
   Req,
   Res,
 } from "@nestjs/common";
-import { HttpException } from "@nestjs/common";
 import type { Request, Response } from "express";
 import { IsEmail, IsString, MinLength } from "class-validator";
 import { AuthService } from "./auth.service";
@@ -87,9 +88,11 @@ export class AuthController {
     try {
       return await this.authService.register(body.email, body.password);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.error("AUTH_REGISTER_ERROR", msg, err);
-      throw new HttpException({ statusCode: 500, message: "Internal server error", _debug: msg }, 500);
+      if (err instanceof HttpException) {
+        throw err;
+      }
+      console.error("AUTH_REGISTER_ERROR", err);
+      throw new InternalServerErrorException("Internal server error");
     }
   }
 
@@ -106,9 +109,11 @@ export class AuthController {
     try {
       result = await this.authService.login(body.email, body.password);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.error("AUTH_LOGIN_ERROR", msg, err);
-      throw new HttpException({ statusCode: 500, message: "Internal server error", _debug: msg }, 500);
+      if (err instanceof HttpException) {
+        throw err;
+      }
+      console.error("AUTH_LOGIN_ERROR", err);
+      throw new InternalServerErrorException("Internal server error");
     }
     res.cookie(SESSION_COOKIE, result.sessionToken, sessionCookieOptions());
     res.cookie(CSRF_COOKIE, csrfToken, csrfCookieOptions());
