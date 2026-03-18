@@ -1,5 +1,5 @@
 import { BadRequestException, ForbiddenException, Injectable, UnauthorizedException } from "@nestjs/common";
-import { OnboardingState, Role } from "@prisma/client";
+import { OnboardingState, Role } from ".prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { AuthService } from "../auth/auth.service";
 import { EditorialService } from "../editorial/editorial.service";

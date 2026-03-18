@@ -6,7 +6,7 @@ import {
 import { randomBytes, randomUUID } from "node:crypto";
 import { compare, hash } from "bcryptjs";
 import { PrismaService } from "../prisma/prisma.service";
-import { OnboardingState, Role } from "@prisma/client";
+import { OnboardingState, Role } from ".prisma/client";
 
 export type SessionRole = "fan" | "artist" | "admin" | null;
 export type SessionOnboardingState = "no_role_selected" | "incomplete" | "complete";
