@@ -4,11 +4,12 @@
     "module": "commonjs",
     "noEmit": true,
     "skipLibCheck": true,
-    "moduleResolution": "node",
+    "moduleResolution": "node16",
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
+    "ignoreDeprecations": "5.0",
     "types": ["node"]
   },
-  "include": ["src/**/*","prisma/**/*"],
+  "include": ["src/**/*", "prisma/**/*"],
   "exclude": ["node_modules"]
 }

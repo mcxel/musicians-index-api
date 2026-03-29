@@ -1,28 +1,17 @@
+// apps/web/src/app/sitemap.ts
+// Dynamic sitemap — crawlers index artists, venues, events, articles, beats
+// Copilot wires: fetch all published entity slugs from API
+// VS Code proves: /sitemap.xml returns valid XML with correct URLs
 import { MetadataRoute } from 'next';
-
-export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://themusiciansindex.com';
-
-  // Note for Copilot: In the future, fetch dynamic slugs (artists, articles) from Prisma here.
-  // For now, we lock in the core static and priority routes.
-  return [
-    {
-      url: baseUrl,
-      lastModified: new Date(),
-      changeFrequency: 'daily',
-      priority: 1,
-    },
-    {
-      url: `${baseUrl}/contest`,
-      lastModified: new Date(),
-      changeFrequency: 'weekly',
-      priority: 0.9,
-    },
-    {
-      url: `${baseUrl}/articles`,
-      lastModified: new Date(),
-      changeFrequency: 'daily',
-      priority: 0.8,
-    },
-  ];
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const base = 'https://themusiciansindex.com';
+  // Copilot: fetch slugs from API here
+  const staticPages = [
+    '/', '/features', '/how-it-works', '/for-artists',
+    '/for-producers', '/for-venues', '/for-sponsors',
+    '/press', '/partners', '/downloads', '/beats',
+    '/discover', '/rankings', '/hall-of-fame',
+  ].map(url => ({ url: base + url, changeFrequency: 'weekly' as const, priority: 0.8 }));
+  return staticPages;
+  // Copilot: add dynamic artist/venue/event/article slugs
 }

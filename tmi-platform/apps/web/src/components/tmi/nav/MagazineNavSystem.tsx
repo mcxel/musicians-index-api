@@ -2,6 +2,12 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
+import {
+  getRecentPages,
+  recordRecentPage,
+  type PageKind,
+  type RecentPageEntry,
+} from '@/systems/magazine';
 
 type NavSection = {
   id: string;
@@ -16,6 +22,7 @@ type MemoryItem = {
   label: string;
   path: string;
   visitedAt: number;
+  kind: PageKind;
 };
 
 const SECTIONS: NavSection[] = [
@@ -51,11 +58,49 @@ function readMemory(key: string): MemoryItem[] {
   try {
     const raw = globalThis.sessionStorage.getItem(key) ?? globalThis.localStorage.getItem(key);
     if (!raw) return [];
-    const parsed = JSON.parse(raw) as MemoryItem[];
-    return Array.isArray(parsed) ? parsed : [];
+    const parsed = JSON.parse(raw) as Array<Partial<MemoryItem>>;
+    if (!Array.isArray(parsed)) return [];
+
+    return parsed
+      .filter((item): item is Partial<MemoryItem> & { id: string; label: string; path: string; visitedAt: number } => {
+        return !!item?.id && !!item?.label && !!item?.path && typeof item?.visitedAt === 'number';
+      })
+      .map((item) => ({
+        id: item.id,
+        label: item.label,
+        path: item.path,
+        visitedAt: item.visitedAt,
+        kind: item.kind ?? inferPageKind(item.path),
+      }));
   } catch {
     return [];
   }
+}
+
+function inferPageKind(path: string): PageKind {
+  if (path.startsWith('/articles')) return 'article';
+  if (path.startsWith('/artists') || path.includes('section=artists')) return 'artist';
+  return 'random';
+}
+
+function toRecentPageEntry(item: MemoryItem): RecentPageEntry {
+  return {
+    id: item.id,
+    route: item.path,
+    title: item.label,
+    kind: item.kind,
+    visitedAt: item.visitedAt,
+  };
+}
+
+function toMemoryItem(entry: RecentPageEntry): MemoryItem {
+  return {
+    id: entry.id,
+    label: entry.title,
+    path: entry.route,
+    visitedAt: entry.visitedAt,
+    kind: entry.kind,
+  };
 }
 
 function writeRecent(items: MemoryItem[]) {
@@ -95,11 +140,20 @@ export function MagazineNavSystem() {
       label: currentSection?.label ?? pathname,
       path: pathname,
       visitedAt: Date.now(),
+      kind: inferPageKind(pathname),
     };
 
     setRecent((previous) => {
-      const filtered = previous.filter((memory) => memory.path !== pathname);
-      const next = [item, ...filtered].slice(0, 20);
+      const recentEntries = previous.map(toRecentPageEntry);
+      const nextEntries = getRecentPages(
+        recordRecentPage(recentEntries, {
+          id: item.id,
+          route: item.path,
+          title: item.label,
+          kind: item.kind,
+        })
+      );
+      const next = nextEntries.map(toMemoryItem);
       writeRecent(next);
       return next;
     });
@@ -148,6 +202,7 @@ export function MagazineNavSystem() {
       label: section?.label ?? pathname,
       path: pathname,
       visitedAt: Date.now(),
+      kind: inferPageKind(pathname),
     };
     const next = [nextItem, ...bookmarks].slice(0, 100);
     setBookmarks(next);

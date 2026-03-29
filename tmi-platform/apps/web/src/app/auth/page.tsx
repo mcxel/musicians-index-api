@@ -26,6 +26,7 @@ function toSessionPayload(data: unknown): SessionPayload {
   };
 }
 
+
 export default function AuthPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -34,6 +35,11 @@ export default function AuthPage() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [dateOfBirth, setDateOfBirth] = useState("");
+  const [parentEmail, setParentEmail] = useState("");
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [originalityAccepted, setOriginalityAccepted] = useState(false);
+  const [isMinor, setIsMinor] = useState(false);
   const [session, setSession] = useState<SessionPayload>({
     authenticated: false,
     csrfToken: null,
@@ -44,12 +50,16 @@ export default function AuthPage() {
   const [busy, setBusy] = useState(false);
 
   const loadSession = async (): Promise<SessionPayload> => {
-    const res = await fetch("/api/auth/session", { cache: "no-store" });
+    const res = await fetch("/api/auth/session", { cache: "no-store", credentials: "include" });
     const data = await res.json();
     const parsed = toSessionPayload(data);
     setSession(parsed);
     return parsed;
   };
+  // Always load session/CSRF on page load
+  useEffect(() => {
+    void loadSession();
+  }, []);
 
   const waitForCsrfCookie = async (): Promise<boolean> => {
     for (let attempt = 0; attempt < 8; attempt += 1) {
@@ -130,14 +140,45 @@ export default function AuthPage() {
     setBusy(true);
     setMessage("");
     try {
-      const res = await postWithCsrfRetry("/api/auth/register", JSON.stringify({ email, password }));
+      // Always refresh session/CSRF before register
+      const freshSession = await loadSession();
+      // Calculate age and minor status
+      let minor = false;
+      if (dateOfBirth) {
+        const dob = new Date(dateOfBirth);
+        const now = new Date();
+        let age = now.getFullYear() - dob.getFullYear();
+        const m = now.getMonth() - dob.getMonth();
+        if (m < 0 || (m === 0 && now.getDate() < dob.getDate())) {
+          age--;
+        }
+        minor = age < 18;
+      }
+      setIsMinor(minor);
+      const payload: any = {
+        email,
+        password,
+        dateOfBirth,
+        termsAccepted,
+      };
+      if (minor && parentEmail) {
+        payload.parentEmail = parentEmail;
+      }
+      // Optionally send originalityAccepted (not enforced backend)
+      payload.originalityAccepted = originalityAccepted;
 
-      if (res.status === 201) {
+      // Debug log CSRF token and cookies before POST
+      console.log("[Register] CSRF token:", freshSession.csrfToken, "Cookies:", document.cookie);
+
+      const res = await postWithCsrfRetry("/api/auth/register", JSON.stringify(payload));
+
+      if (res.status === 201 || res.status === 200) {
         setMessage("Registration succeeded.");
       } else if (res.status === 409) {
         setMessage("User already exists.");
       } else {
-        setMessage(`Register failed (${res.status}).`);
+        const err = await res.json().catch(() => ({}));
+        setMessage(`Register failed (${res.status})${err?.message ? ": " + err.message : ""}`);
       }
     } finally {
       await loadSession();
@@ -149,6 +190,11 @@ export default function AuthPage() {
     setBusy(true);
     setMessage("");
     try {
+      // Always refresh session/CSRF before login
+      const freshSession = await loadSession();
+      // Debug log CSRF token and cookies before POST
+      console.log("[Login] CSRF token:", freshSession.csrfToken, "Cookies:", document.cookie);
+
       const res = await postWithCsrfRetry("/api/auth/login", JSON.stringify({ email, password }));
 
       if (res.status === 200) {
@@ -191,7 +237,8 @@ export default function AuthPage() {
     <main className="min-h-screen bg-black text-white px-4 py-16">
       <div className="max-w-xl mx-auto space-y-6">
         <h1 className="text-3xl font-bold">Account Access</h1>
-        <p className="text-white/70">Frontend auth now uses backend `/api/auth/*` as source of truth.</p>
+        <p className="text-white/70">This screen uses backend credentials auth via `/api/auth/*`.</p>
+        <p className="text-xs text-white/50">GitHub OAuth is not active on this route in the current runtime path.</p>
 
         <form
           className="space-y-3 bg-white/5 border border-white/10 rounded-xl p-4"
@@ -221,18 +268,87 @@ export default function AuthPage() {
             minLength={8}
             required
           />
+          <label htmlFor="auth-dob" className="block text-sm">Date of Birth</label>
+          <input
+            id="auth-dob"
+            className="w-full rounded-md bg-black/40 border border-white/20 px-3 py-2"
+            value={dateOfBirth}
+            onChange={(e) => setDateOfBirth(e.target.value)}
+            type="date"
+            required
+          />
+          {/* Show parent email if under 18 */}
+          {(() => {
+            let minor = false;
+            if (dateOfBirth) {
+              const dob = new Date(dateOfBirth);
+              const now = new Date();
+              let age = now.getFullYear() - dob.getFullYear();
+              const m = now.getMonth() - dob.getMonth();
+              if (m < 0 || (m === 0 && now.getDate() < dob.getDate())) {
+                age--;
+              }
+              minor = age < 18;
+            }
+            if (minor) {
+              return (
+                <>
+                  <label htmlFor="auth-parent-email" className="block text-sm">Parent/Guardian Email (required if under 18)</label>
+                  <input
+                    id="auth-parent-email"
+                    className="w-full rounded-md bg-black/40 border border-white/20 px-3 py-2"
+                    value={parentEmail}
+                    onChange={(e) => setParentEmail(e.target.value)}
+                    type="email"
+                    required={minor}
+                  />
+                </>
+              );
+            }
+            return null;
+          })()}
+          <div className="flex items-center gap-2">
+            <input
+              id="auth-terms"
+              type="checkbox"
+              checked={termsAccepted}
+              onChange={(e) => setTermsAccepted(e.target.checked)}
+              required
+            />
+            <label htmlFor="auth-terms" className="text-sm">I agree to the <a href="/terms" className="underline">Terms of Service</a></label>
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              id="auth-originality"
+              type="checkbox"
+              checked={originalityAccepted}
+              onChange={(e) => setOriginalityAccepted(e.target.checked)}
+            />
+            <label htmlFor="auth-originality" className="text-sm">I agree to the <a href="/originality-policy" className="underline">Originality Policy</a></label>
+          </div>
           <div className="flex gap-3">
             <button className="px-4 py-2 rounded-md bg-blue-600 disabled:opacity-50" type="submit" disabled={busy}>
-              Login
+              Sign in (Credentials)
             </button>
             <button className="px-4 py-2 rounded-md bg-emerald-600 disabled:opacity-50" type="button" onClick={() => void register()} disabled={busy}>
               Register
             </button>
             <button className="px-4 py-2 rounded-md bg-zinc-700 disabled:opacity-50" type="button" onClick={() => void logout()} disabled={busy}>
-              Logout
+              Sign out
             </button>
           </div>
         </form>
+
+        {/* Legal text block */}
+        <div className="mt-6 p-4 bg-white/10 border border-white/20 rounded-xl text-sm">
+          <strong>AGE & CONTENT AGREEMENT</strong>
+          <ul className="list-disc pl-5 mt-2 space-y-1">
+            <li>You are at least 16 years old.</li>
+            <li>If you are under 18, you have permission from a parent or guardian.</li>
+            <li>All content you upload is your original work or you have rights to use it.</li>
+            <li>You agree to the <a href="/terms" className="underline">Terms of Service</a>, <a href="/privacy" className="underline">Privacy Policy</a>, and <a href="/guidelines" className="underline">Community Guidelines</a>.</li>
+          </ul>
+        </div>
 
         <div className="bg-white/5 border border-white/10 rounded-xl p-4">
           <p>Status: {session.authenticated ? "authenticated" : "unauthenticated"}</p>

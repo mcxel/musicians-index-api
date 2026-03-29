@@ -1,0 +1,278 @@
+// ============================================================
+// AVATAR POSE REGISTRY
+// TMI Platform — The Musicians Index
+// ============================================================
+
+import type { AvatarPoseState, AvatarRole } from './types';
+
+export interface PoseDefinition {
+  id: AvatarPoseState;
+  label: string;
+  category: 'idle' | 'reaction' | 'movement' | 'performance' | 'social';
+  durationMs: number;
+  loopable: boolean;
+  allowedRoles: AvatarRole[];
+  transitionsTo: AvatarPoseState[];
+  priority: number; // higher = overrides lower
+}
+
+export const POSE_REGISTRY: Record<AvatarPoseState, PoseDefinition> = {
+  idle: {
+    id: 'idle',
+    label: 'Idle',
+    category: 'idle',
+    durationMs: 0,
+    loopable: true,
+    allowedRoles: ['host', 'cohost', 'guest', 'artist', 'fan', 'vip', 'audience', 'npc'],
+    transitionsTo: ['watching', 'listening-left', 'listening-right', 'crowd-sway'],
+    priority: 0,
+  },
+  watching: {
+    id: 'watching',
+    label: 'Watching',
+    category: 'idle',
+    durationMs: 0,
+    loopable: true,
+    allowedRoles: ['fan', 'audience', 'vip', 'npc'],
+    transitionsTo: ['clapping', 'cheering', 'reacting', 'leaning-in'],
+    priority: 1,
+  },
+  'listening-left': {
+    id: 'listening-left',
+    label: 'Listening Left',
+    category: 'social',
+    durationMs: 3000,
+    loopable: false,
+    allowedRoles: ['host', 'cohost', 'guest', 'fan', 'audience', 'vip'],
+    transitionsTo: ['idle', 'reacting'],
+    priority: 2,
+  },
+  'listening-right': {
+    id: 'listening-right',
+    label: 'Listening Right',
+    category: 'social',
+    durationMs: 3000,
+    loopable: false,
+    allowedRoles: ['host', 'cohost', 'guest', 'fan', 'audience', 'vip'],
+    transitionsTo: ['idle', 'reacting'],
+    priority: 2,
+  },
+  'leaning-in': {
+    id: 'leaning-in',
+    label: 'Leaning In',
+    category: 'social',
+    durationMs: 2000,
+    loopable: false,
+    allowedRoles: ['host', 'cohost', 'guest', 'fan', 'vip'],
+    transitionsTo: ['talking', 'whispering', 'idle'],
+    priority: 3,
+  },
+  reacting: {
+    id: 'reacting',
+    label: 'Reacting',
+    category: 'reaction',
+    durationMs: 1500,
+    loopable: false,
+    allowedRoles: ['host', 'cohost', 'guest', 'artist', 'fan', 'vip', 'audience', 'npc'],
+    transitionsTo: ['idle', 'clapping', 'cheering', 'laughing'],
+    priority: 5,
+  },
+  clapping: {
+    id: 'clapping',
+    label: 'Clapping',
+    category: 'reaction',
+    durationMs: 2500,
+    loopable: true,
+    allowedRoles: ['fan', 'audience', 'vip', 'npc'],
+    transitionsTo: ['cheering', 'idle', 'crowd-sway'],
+    priority: 4,
+  },
+  laughing: {
+    id: 'laughing',
+    label: 'Laughing',
+    category: 'reaction',
+    durationMs: 2000,
+    loopable: false,
+    allowedRoles: ['host', 'cohost', 'guest', 'fan', 'vip', 'audience'],
+    transitionsTo: ['idle', 'watching'],
+    priority: 4,
+  },
+  surprised: {
+    id: 'surprised',
+    label: 'Surprised',
+    category: 'reaction',
+    durationMs: 1200,
+    loopable: false,
+    allowedRoles: ['host', 'cohost', 'guest', 'fan', 'vip', 'audience', 'npc'],
+    transitionsTo: ['reacting', 'idle'],
+    priority: 6,
+  },
+  talking: {
+    id: 'talking',
+    label: 'Talking',
+    category: 'performance',
+    durationMs: 0,
+    loopable: true,
+    allowedRoles: ['host', 'cohost', 'guest', 'artist'],
+    transitionsTo: ['idle', 'mic-hold', 'camera-look'],
+    priority: 7,
+  },
+  whispering: {
+    id: 'whispering',
+    label: 'Whispering',
+    category: 'social',
+    durationMs: 2000,
+    loopable: false,
+    allowedRoles: ['host', 'cohost', 'guest', 'fan', 'vip'],
+    transitionsTo: ['idle', 'leaning-in'],
+    priority: 3,
+  },
+  cheering: {
+    id: 'cheering',
+    label: 'Cheering',
+    category: 'reaction',
+    durationMs: 3000,
+    loopable: false,
+    allowedRoles: ['fan', 'audience', 'vip', 'npc'],
+    transitionsTo: ['clapping', 'idle', 'crowd-sway'],
+    priority: 5,
+  },
+  booing: {
+    id: 'booing',
+    label: 'Booing',
+    category: 'reaction',
+    durationMs: 2000,
+    loopable: false,
+    allowedRoles: ['fan', 'audience', 'npc'],
+    transitionsTo: ['idle', 'watching'],
+    priority: 5,
+  },
+  'host-speaking': {
+    id: 'host-speaking',
+    label: 'Host Speaking',
+    category: 'performance',
+    durationMs: 0,
+    loopable: true,
+    allowedRoles: ['host'],
+    transitionsTo: ['idle', 'camera-look', 'mic-hold'],
+    priority: 9,
+  },
+  'cohost-speaking': {
+    id: 'cohost-speaking',
+    label: 'Co-Host Speaking',
+    category: 'performance',
+    durationMs: 0,
+    loopable: true,
+    allowedRoles: ['cohost'],
+    transitionsTo: ['idle', 'listening-left', 'camera-look'],
+    priority: 8,
+  },
+  'intro-walk': {
+    id: 'intro-walk',
+    label: 'Intro Walk',
+    category: 'movement',
+    durationMs: 3000,
+    loopable: false,
+    allowedRoles: ['host', 'cohost', 'guest', 'artist'],
+    transitionsTo: ['stage-entry', 'idle', 'host-speaking'],
+    priority: 10,
+  },
+  'stage-entry': {
+    id: 'stage-entry',
+    label: 'Stage Entry',
+    category: 'movement',
+    durationMs: 2000,
+    loopable: false,
+    allowedRoles: ['host', 'cohost', 'guest', 'artist'],
+    transitionsTo: ['host-speaking', 'mic-hold', 'idle'],
+    priority: 10,
+  },
+  'seat-settle': {
+    id: 'seat-settle',
+    label: 'Seat Settle',
+    category: 'movement',
+    durationMs: 1500,
+    loopable: false,
+    allowedRoles: ['fan', 'audience', 'vip', 'npc'],
+    transitionsTo: ['watching', 'idle'],
+    priority: 3,
+  },
+  'dance-loop': {
+    id: 'dance-loop',
+    label: 'Dance Loop',
+    category: 'reaction',
+    durationMs: 0,
+    loopable: true,
+    allowedRoles: ['fan', 'audience', 'vip', 'npc'],
+    transitionsTo: ['crowd-sway', 'idle', 'clapping'],
+    priority: 4,
+  },
+  'crowd-sway': {
+    id: 'crowd-sway',
+    label: 'Crowd Sway',
+    category: 'idle',
+    durationMs: 0,
+    loopable: true,
+    allowedRoles: ['fan', 'audience', 'npc'],
+    transitionsTo: ['clapping', 'cheering', 'dance-loop'],
+    priority: 1,
+  },
+  'mic-hold': {
+    id: 'mic-hold',
+    label: 'Mic Hold',
+    category: 'performance',
+    durationMs: 0,
+    loopable: true,
+    allowedRoles: ['host', 'cohost', 'guest', 'artist'],
+    transitionsTo: ['talking', 'host-speaking', 'idle'],
+    priority: 8,
+  },
+  'camera-look': {
+    id: 'camera-look',
+    label: 'Camera Look',
+    category: 'performance',
+    durationMs: 2000,
+    loopable: false,
+    allowedRoles: ['host', 'cohost', 'guest', 'artist'],
+    transitionsTo: ['talking', 'idle'],
+    priority: 7,
+  },
+  'audience-look-left': {
+    id: 'audience-look-left',
+    label: 'Audience Look Left',
+    category: 'social',
+    durationMs: 1500,
+    loopable: false,
+    allowedRoles: ['host', 'cohost', 'guest', 'artist'],
+    transitionsTo: ['idle', 'talking'],
+    priority: 3,
+  },
+  'audience-look-right': {
+    id: 'audience-look-right',
+    label: 'Audience Look Right',
+    category: 'social',
+    durationMs: 1500,
+    loopable: false,
+    allowedRoles: ['host', 'cohost', 'guest', 'artist'],
+    transitionsTo: ['idle', 'talking'],
+    priority: 3,
+  },
+};
+
+export function getPosesForRole(role: AvatarRole): PoseDefinition[] {
+  return Object.values(POSE_REGISTRY).filter((p) => p.allowedRoles.includes(role));
+}
+
+export function getDefaultPoseForRole(role: AvatarRole): AvatarPoseState {
+  const roleDefaults: Record<AvatarRole, AvatarPoseState> = {
+    host: 'host-speaking',
+    cohost: 'cohost-speaking',
+    guest: 'idle',
+    artist: 'mic-hold',
+    fan: 'watching',
+    vip: 'watching',
+    audience: 'crowd-sway',
+    npc: 'crowd-sway',
+  };
+  return roleDefaults[role] ?? 'idle';
+}

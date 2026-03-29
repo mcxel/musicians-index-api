@@ -26,6 +26,7 @@ function sessionCookieOptions() {
     sameSite: "lax" as const,
     secure: isProd,
     path: "/",
+    domain: "localhost",
     maxAge: 1000 * 60 * 60 * 24,
   };
 }
@@ -34,12 +35,16 @@ function csrfCookieOptions() {
   const isProd = process.env.NODE_ENV === "production";
   return {
     httpOnly: false as const,
-    sameSite: "strict" as const,
-    secure: isProd,
+    sameSite: "lax" as const,
+    secure: false, // Always false for localhost
     path: "/",
+    // domain removed for localhost
     maxAge: 1000 * 60 * 60 * 24,
   };
 }
+
+
+import { IsBoolean, IsDateString, IsOptional, ValidateIf } from "class-validator";
 
 class RegisterDto {
   @IsEmail()
@@ -48,6 +53,23 @@ class RegisterDto {
   @IsString()
   @MinLength(8)
   password!: string;
+
+  @IsDateString()
+  dateOfBirth!: string; // ISO date string
+
+  @IsBoolean()
+  originalityAccepted!: boolean;
+
+  @IsBoolean()
+  termsAccepted!: boolean;
+
+  @ValidateIf((o) => o.isMinor)
+  @IsEmail()
+  @IsOptional()
+  parentEmail?: string;
+
+  // Helper property, not sent by client
+  isMinor?: boolean;
 }
 
 class LoginDto {
@@ -103,7 +125,34 @@ export class AuthController {
     this.requireCsrf(req);
     this.ensureCsrfCookie(req, res);
     try {
-      return await this.authService.register(body.email, body.password);
+      // Age validation
+      const dob = new Date(body.dateOfBirth);
+      if (isNaN(dob.getTime())) {
+        throw new ForbiddenException("Invalid date of birth");
+      }
+      const today = new Date();
+      let age = today.getFullYear() - dob.getFullYear();
+      const m = today.getMonth() - dob.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) {
+        age--;
+      }
+      const isMinor = age < 16;
+      body.isMinor = isMinor;
+      if (!body.termsAccepted) {
+        throw new ForbiddenException("Terms must be accepted");
+      }
+      if (isMinor && !body.parentEmail) {
+        throw new ForbiddenException("Parent email required for minors");
+      }
+      return await this.authService.register(
+        body.email,
+        body.password,
+        dob,
+        age,
+        isMinor,
+        body.parentEmail,
+        body.termsAccepted
+      );
     } catch (err: unknown) {
       if (err instanceof HttpException) {
         throw err;
@@ -176,7 +225,9 @@ export class AuthController {
 
   @Get("session")
   async session(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
-    const csrfToken = this.ensureCsrfCookie(req, res);
+    // Always set a fresh CSRF cookie so browser receives Set-Cookie header
+    const csrfToken = this.authService.issueCsrfToken();
+    res.cookie(CSRF_COOKIE, csrfToken, csrfCookieOptions());
     const token = req.cookies?.[SESSION_COOKIE];
     if (!token) {
       return { user: null, expires: null, authenticated: false, csrfToken };

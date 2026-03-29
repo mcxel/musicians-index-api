@@ -33,29 +33,31 @@ enum OnboardingState {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String?   @unique
-  passwordHash  String?   @map("password_hash")
-  emailVerified DateTime?
-  image         String?
-  role          Role      @default(USER)
-  onboardingState      OnboardingState @default(NO_ROLE_SELECTED)
-  onboardingCompletedAt DateTime?
+  id                             String          @id @default(cuid())
+  name                           String?
+  email                          String?         @unique
+  passwordHash                   String?         @map("password_hash")
+  emailVerified                  DateTime?
+  image                          String?
+  role                           Role            @default(USER)
+  onboardingState                OnboardingState @default(NO_ROLE_SELECTED)
+  onboardingCompletedAt          DateTime?
   acceptedOriginalityAgreementAt DateTime?
-  canSubmitOfficialPlatformLinks Boolean @default(false)
-  lastSeenAt    DateTime?
-  accounts      Account[]
-  sessions      Session[]
+  canSubmitOfficialPlatformLinks Boolean         @default(false)
+  lastSeenAt                     DateTime?
+  accounts                       Account[]
+  sessions                       Session[]
 
   // A user can be associated with an artist profile
-  artistProfile Artist?
-
+  userProfile            UserProfile?
+  artistProfile          ArtistProfile?
+  fanProfile             FanProfile?
+  artist                 Artist?
   // Stripe-related fields
-  stripeCustomerId       String?   @unique @map("stripe_customer_id")
-  stripeSubscriptionId   String?   @unique @map("stripe_subscription_id")
-  stripePriceId          String?   @map("stripe_price_id")
-  stripeCurrentPeriodEnd DateTime? @map("stripe_current_period_end")
+  stripeCustomerId       String?        @unique @map("stripe_customer_id")
+  stripeSubscriptionId   String?        @unique @map("stripe_subscription_id")
+  stripePriceId          String?        @map("stripe_price_id")
+  stripeCurrentPeriodEnd DateTime?      @map("stripe_current_period_end")
 
   // Ledger
   ledgerEntries LedgerEntry[]
@@ -67,6 +69,22 @@ model User {
   subscriptions     Subscription[] @relation("UserSubscriptions")
   auditLogs         AuditLog[]     @relation("UserAuditLogs")
   authoredArticles  Article[]      @relation("ArticleAuthor")
+
+  // Pack25-26 delta relations
+  notifications           Notification[]
+  notificationPreferences NotificationPreference[]
+  feedItems               FeedItem[]
+  wallet                  Wallet?
+  userSettings            UserSettings?
+  familyAccount           FamilyAccount?
+  childAccount            ChildAccount?
+  pushSubscriptions       PushSubscription[]
+  // Legal compliance and age gating fields
+  dateOfBirth             DateTime?
+  age                     Int?
+  isMinor                 Boolean?                 @default(false)
+  parentEmail             String?
+  termsAccepted           Boolean                  @default(false)
 }
 
 model Account {
@@ -362,12 +380,12 @@ enum TicketStatus {
 }
 
 model Event {
-  id           String      @id @default(cuid())
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   title        String
-  description  String?     @db.Text
+  description  String?   @db.Text
   startsAt     DateTime
   endsAt       DateTime?
   timezone     String?
@@ -387,77 +405,77 @@ model Event {
   // optional lightweight refund policy JSON for MVP
   refundPolicy Json?
 
-  ticketTypes  TicketType[]
-  tickets      Ticket[]
+  ticketTypes TicketType[]
+  tickets     Ticket[]
 }
 
 model TicketType {
-  id         String   @id @default(cuid())
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  eventId    String
-  event      Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
-  name       String   // e.g., "GA", "VIP"
-  priceCents Int      @default(0)
-  currency   String   @default("USD")
-  quantity   Int      @default(0)
+  name       String // e.g., "GA", "VIP"
+  priceCents Int    @default(0)
+  currency   String @default("USD")
+  quantity   Int    @default(0)
 
-  tickets    Ticket[]
+  tickets Ticket[]
 }
 
 model Order {
-  id                 String   @id @default(cuid())
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  buyerUserId        String?
-  provider           String?  // e.g. STRIPE
-  providerPaymentId  String?  // e.g. stripe payment intent / charge id
-  currency           String?
-  amountCents        Int?
-  status             String?  // PAID | REFUND_PENDING | REFUNDED
+  buyerUserId       String?
+  provider          String? // e.g. STRIPE
+  providerPaymentId String? // e.g. stripe payment intent / charge id
+  currency          String?
+  amountCents       Int?
+  status            String? // PAID | REFUND_PENDING | REFUNDED
 
-  tickets            Ticket[]
-  refunds            Refund[]
+  tickets Ticket[]
+  refunds Refund[]
 }
 
 model Ticket {
-  id           String       @id @default(cuid())
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  eventId      String
-  event        Event        @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
   ticketTypeId String
-  ticketType   TicketType   @relation(fields: [ticketTypeId], references: [id])
+  ticketType   TicketType @relation(fields: [ticketTypeId], references: [id])
 
-  orderId      String?
-  order        Order?       @relation(fields: [orderId], references: [id])
+  orderId String?
+  order   Order?  @relation(fields: [orderId], references: [id])
 
-  ownerUserId  String?
-  status       TicketStatus @default(ACTIVE)
+  ownerUserId String?
+  status      TicketStatus @default(ACTIVE)
 
   // store only a hash of the ticket token
-  tokenHash    String       @unique
-  issuedAt     DateTime     @default(now())
+  tokenHash String   @unique
+  issuedAt  DateTime @default(now())
 
-  checkedInAt  DateTime?
-  checkIns     CheckIn[]
-  refunds      Refund[]
+  checkedInAt DateTime?
+  checkIns    CheckIn[]
+  refunds     Refund[]
 }
 
 model CheckIn {
-  id               String   @id @default(cuid())
-  createdAt        DateTime @default(now())
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
 
-  ticketId         String
-  ticket           Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  ticketId String
+  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
 
   checkedInByUserId String?
-  note             String?
+  note              String?
 }
 
 // ======================================================================
@@ -499,21 +517,21 @@ model RefundPolicy {
 }
 
 model Refund {
-  id                 String         @id @default(cuid())
-  orderId            String
-  order              Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  ticketId           String?
-  ticket             Ticket?        @relation(fields: [ticketId], references: [id])
-  amountCents        Int
-  currency           String         @default("USD")
-  reason             RefundReason
-  status             RefundStatus   @default(REQUESTED)
-  processor          RefundProcessor?
-  processorRefundId  String?
-  idempotencyKey     String?         @unique
-  createdAt          DateTime        @default(now())
-  processedAt        DateTime?
-  metadata           Json?
+  id                String           @id @default(cuid())
+  orderId           String
+  order             Order            @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  ticketId          String?
+  ticket            Ticket?          @relation(fields: [ticketId], references: [id])
+  amountCents       Int
+  currency          String           @default("USD")
+  reason            RefundReason
+  status            RefundStatus     @default(REQUESTED)
+  processor         RefundProcessor?
+  processorRefundId String?
+  idempotencyKey    String?          @unique
+  createdAt         DateTime         @default(now())
+  processedAt       DateTime?
+  metadata          Json?
 }
 
 // Contest System (appended by install-contest-system.ps1)
@@ -533,35 +551,35 @@ model Refund {
 // ─── Contest Season ──────────────────────────────────────────────────────────
 
 model ContestSeason {
-  id          String   @id @default(cuid())
-  name        String   // "Grand Platform Contest — Season 1"
-  status      String   @default("upcoming") // upcoming | active | completed | archived
+  id     String @id @default(cuid())
+  name   String // "Grand Platform Contest — Season 1"
+  status String @default("upcoming") // upcoming | active | completed | archived
 
   // Contest open gate (must enforce Aug 8 policy)
-  startDate             DateTime
-  registrationOpen      DateTime
-  registrationClose     DateTime
+  startDate         DateTime
+  registrationOpen  DateTime
+  registrationClose DateTime
 
   // Key dates
-  registrationStartDate      DateTime
-  registrationEndDate        DateTime
-  sponsorCollectionEndDate   DateTime
-  regionalsStartDate         DateTime
-  regionalsEndDate           DateTime
-  semiFinalsStartDate        DateTime
-  semiFinalsEndDate          DateTime
-  finalsDate                 DateTime
+  registrationStartDate    DateTime
+  registrationEndDate      DateTime
+  sponsorCollectionEndDate DateTime
+  regionalsStartDate       DateTime
+  regionalsEndDate         DateTime
+  semiFinalsStartDate      DateTime
+  semiFinalsEndDate        DateTime
+  finalsDate               DateTime
 
-  prizePool    Float?
-  description  String?
+  prizePool   Float?
+  description String?
 
   // Relations
-  entries  ContestEntry[]
-  rounds   ContestRound[]
-  prizes   ContestPrize[]
+  entries ContestEntry[]
+  rounds  ContestRound[]
+  prizes  ContestPrize[]
 
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("contest_seasons")
 }
@@ -569,60 +587,60 @@ model ContestSeason {
 // ─── Contest Entry ───────────────────────────────────────────────────────────
 
 model ContestEntry {
-  id          String   @id @default(cuid())
+  id String @id @default(cuid())
 
   // Artist reference — update this foreign key to match your User/Artist model
-  artistId    String
+  artistId String
   // artist   User   @relation(fields: [artistId], references: [id])
 
-  seasonId    String
-  season      ContestSeason @relation(fields: [seasonId], references: [id])
+  seasonId String
+  season   ContestSeason @relation(fields: [seasonId], references: [id])
 
-  category    String   // singers | rappers | comedians | dancers | djs | bands | beatmakers | magicians | influencers | freestyle | other
-  stageName   String?
-  performanceDescription  String?
+  category               String // singers | rappers | comedians | dancers | djs | bands | beatmakers | magicians | influencers | freestyle | other
+  stageName              String?
+  performanceDescription String?
 
-  status      String   @default("pending")
+  status String @default("pending")
   // pending | qualified | regional | semi_finals | finals | winner | eliminated | disqualified
 
   // Cached sponsor counts (updated via trigger/hook)
-  localSponsorCount  Int @default(0)
-  majorSponsorCount  Int @default(0)
+  localSponsorCount Int @default(0)
+  majorSponsorCount Int @default(0)
 
   // Relations
-  sponsorContributions  SponsorContribution[]
-  votes                 ContestVote[]
-  round                 ContestRound?  @relation(fields: [roundId], references: [id])
-  roundId               String?
+  sponsorContributions SponsorContribution[]
+  votes                ContestVote[]
+  round                ContestRound?         @relation(fields: [roundId], references: [id])
+  roundId              String?
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  @@unique([artistId, seasonId])  // one entry per artist per season
+  @@unique([artistId, seasonId]) // one entry per artist per season
   @@map("contest_entries")
 }
 
 // ─── Sponsor Contribution ────────────────────────────────────────────────────
 
 model SponsorContribution {
-  id       String @id @default(cuid())
+  id String @id @default(cuid())
 
-  entryId  String
-  entry    ContestEntry @relation(fields: [entryId], references: [id])
+  entryId String
+  entry   ContestEntry @relation(fields: [entryId], references: [id])
 
   // Sponsor reference — update to match your Sponsor/User model
-  sponsorId  String
+  sponsorId String
   // sponsor  Sponsor @relation(fields: [sponsorId], references: [id])
 
-  packageId    String  // 'local-bronze' | 'local-silver' | 'local-gold' | 'major-bronze' | 'major-silver' | 'major-gold' | 'title'
+  packageId    String // 'local-bronze' | 'local-silver' | 'local-gold' | 'major-bronze' | 'major-silver' | 'major-gold' | 'title'
   packageLabel String
-  packageType  String  // 'local' | 'major'
+  packageType  String // 'local' | 'major'
   amount       Float
 
   message   String?
   adminNote String?
 
-  status  String @default("invited")
+  status String @default("invited")
   // invited | pending_payment | payment_received | verified | rejected
 
   // Payment tracking
@@ -630,10 +648,10 @@ model SponsorContribution {
   paymentVerifiedAt DateTime?
   verifiedById      String?
 
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  @@unique([entryId, sponsorId])  // one contribution per sponsor per entry
+  @@unique([entryId, sponsorId]) // one contribution per sponsor per entry
   @@map("sponsor_contributions")
 }
 
@@ -642,11 +660,11 @@ model SponsorContribution {
 model SponsorPackage {
   id          String  @id
   label       String
-  packageType String  // 'local' | 'major'
-  tier        String  // 'bronze' | 'silver' | 'gold' | 'title'
+  packageType String // 'local' | 'major'
+  tier        String // 'bronze' | 'silver' | 'gold' | 'title'
   price       Float
   description String?
-  benefits    Json?   // array of benefit strings
+  benefits    Json? // array of benefit strings
   isActive    Boolean @default(true)
 
   @@map("sponsor_packages")
@@ -655,26 +673,26 @@ model SponsorPackage {
 // ─── Contest Round ───────────────────────────────────────────────────────────
 
 model ContestRound {
-  id        String @id @default(cuid())
+  id String @id @default(cuid())
 
-  seasonId  String
-  season    ContestSeason @relation(fields: [seasonId], references: [id])
+  seasonId String
+  season   ContestSeason @relation(fields: [seasonId], references: [id])
 
-  name       String  // "Qualification" | "Regional Round" | "Semi-Finals" | "Grand Finals"
-  roundType  String  // "qualification" | "regional" | "semi_finals" | "finals"
-  order      Int
+  name      String // "Qualification" | "Regional Round" | "Semi-Finals" | "Grand Finals"
+  roundType String // "qualification" | "regional" | "semi_finals" | "finals"
+  order     Int
 
-  startDate  DateTime
-  endDate    DateTime
-  status     String @default("upcoming") // upcoming | active | voting | completed
+  startDate DateTime
+  endDate   DateTime
+  status    String   @default("upcoming") // upcoming | active | voting | completed
 
-  category   String?  // optional per-category round
+  category String? // optional per-category round
 
-  entries    ContestEntry[]
-  pollSnapshot   PollSnapshot?
+  entries      ContestEntry[]
+  pollSnapshot PollSnapshot?
 
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("contest_rounds")
 }
@@ -682,49 +700,49 @@ model ContestRound {
 // ─── Contest Vote ────────────────────────────────────────────────────────────
 
 model ContestVote {
-  id       String @id @default(cuid())
+  id String @id @default(cuid())
 
-  entryId  String
-  entry    ContestEntry @relation(fields: [entryId], references: [id])
+  entryId String
+  entry   ContestEntry @relation(fields: [entryId], references: [id])
 
-  roundId  String
+  roundId String
   // round  ContestRound @relation(...)
 
   // Voter reference — update to match your User model
-  voterId  String
+  voterId String
 
   // Sponsor vote weight (major sponsors may get weighted vote)
-  weight   Float @default(1.0)
+  weight Float @default(1.0)
 
-  createdAt  DateTime @default(now())
+  createdAt DateTime @default(now())
 
-  @@unique([entryId, voterId, roundId])  // one vote per user per entry per round
+  @@unique([entryId, voterId, roundId]) // one vote per user per entry per round
   @@map("contest_votes")
 }
 
 // ─── Contest Prize ───────────────────────────────────────────────────────────
 
 model ContestPrize {
-  id        String @id @default(cuid())
+  id String @id @default(cuid())
 
-  seasonId  String
-  season    ContestSeason @relation(fields: [seasonId], references: [id])
+  seasonId String
+  season   ContestSeason @relation(fields: [seasonId], references: [id])
 
-  name        String  // "Grand Prize" | "Runner Up" | "Sponsor Deal" etc
+  name        String // "Grand Prize" | "Runner Up" | "Sponsor Deal" etc
   description String?
-  prizeType   String  // 'cash' | 'deal' | 'equipment' | 'tour' | 'recording' | 'brand_partnership'
+  prizeType   String // 'cash' | 'deal' | 'equipment' | 'tour' | 'recording' | 'brand_partnership'
 
-  cashValue   Float?
-  otherValue  String?   // description if non-cash
+  cashValue  Float?
+  otherValue String? // description if non-cash
 
-  placement   Int   // 1 = first place, 2 = second, etc.
-  category    String?   // null = all categories
+  placement Int // 1 = first place, 2 = second, etc.
+  category  String? // null = all categories
 
   // Fulfillment
-  fulfillments  PrizeFulfillment[]
+  fulfillments PrizeFulfillment[]
 
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("contest_prizes")
 }
@@ -732,25 +750,25 @@ model ContestPrize {
 // ─── Prize Fulfillment ───────────────────────────────────────────────────────
 
 model PrizeFulfillment {
-  id       String @id @default(cuid())
+  id String @id @default(cuid())
 
-  prizeId  String
-  prize    ContestPrize @relation(fields: [prizeId], references: [id])
+  prizeId String
+  prize   ContestPrize @relation(fields: [prizeId], references: [id])
 
   // Winner reference
-  artistId  String
-  entryId   String
+  artistId String
+  entryId  String
 
-  status  String @default("pending")
+  status String @default("pending")
   // pending | processing | delivered | verified | disputed
 
-  notes           String?
-  deliveredAt     DateTime?
-  verifiedAt      DateTime?
-  adminId         String?
+  notes       String?
+  deliveredAt DateTime?
+  verifiedAt  DateTime?
+  adminId     String?
 
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("prize_fulfillments")
 }
@@ -758,21 +776,21 @@ model PrizeFulfillment {
 // ─── Ray Journey Script Library ──────────────────────────────────────────────
 
 model RayJourneyScript {
-  id      String @id @default(cuid())
+  id String @id @default(cuid())
 
-  type    String
+  type String
   // contestant_intro | sponsor_shoutout | prize_reveal | round_transition | winner_announce | crowd_hype | co_host_handoff
 
   text    String
-  emotion String  @default("neutral")
+  emotion String @default("neutral")
   // neutral | excited | announcing | revealing | crowd | sponsor
 
-  variables  Json?   // template variables like {{contestantName}}, {{sponsorName}}
-  order      Int     @default(0)
-  isActive   Boolean @default(true)
+  variables Json? // template variables like {{contestantName}}, {{sponsorName}}
+  order     Int     @default(0)
+  isActive  Boolean @default(true)
 
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("ray_journey_scripts")
 }
@@ -780,15 +798,15 @@ model RayJourneyScript {
 // ─── Host Cue Log ────────────────────────────────────────────────────────────
 
 model HostCue {
-  id        String @id @default(cuid())
+  id String @id @default(cuid())
 
-  scriptId  String
+  scriptId String
   // script  RayJourneyScript @relation(...)
 
-  triggeredBy  String  // admin/host userId
-  context      Json?   // resolved variables used
+  triggeredBy String // admin/host userId
+  context     Json? // resolved variables used
 
-  createdAt  DateTime @default(now())
+  createdAt DateTime @default(now())
 
   @@map("host_cues")
 }
@@ -843,4 +861,455 @@ model PollSnapshot {
   createdAt DateTime @default(now())
 
   @@map("poll_snapshots")
+}
+
+// =============================================================================
+// PACK25-26 DELTA MODELS
+// =============================================================================
+
+// -- NOTIFICATIONS -------------------------------------------------------------
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String
+  title     String
+  body      String
+  href      String?
+  isRead    Boolean  @default(false)
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@index([userId, isRead])
+  @@index([userId, createdAt])
+}
+
+model NotificationPreference {
+  id      String  @id @default(cuid())
+  userId  String
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type    String
+  channel String
+  enabled Boolean @default(true)
+
+  @@unique([userId, type, channel])
+}
+
+// -- FEED ----------------------------------------------------------------------
+
+model FeedItem {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type       String
+  weight     Int      @default(5)
+  entityId   String?
+  entityType String?
+  data       Json
+  createdAt  DateTime @default(now())
+  expiresAt  DateTime
+
+  @@index([userId, createdAt])
+}
+
+// -- WALLET & ECONOMY ----------------------------------------------------------
+
+model Wallet {
+  id               String        @id @default(cuid())
+  userId           String        @unique
+  user             User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  availableBalance Int           @default(0)
+  pendingBalance   Int           @default(0)
+  lifetimeEarnings Int           @default(0)
+  stripeAccountId  String?
+  stripeOnboarded  Boolean       @default(false)
+  fanCredits       Int           @default(0)
+  transactions     Transaction[]
+  payouts          Payout[]
+}
+
+model Transaction {
+  id          String   @id @default(cuid())
+  walletId    String
+  wallet      Wallet   @relation(fields: [walletId], references: [id])
+  type        String
+  amount      Int
+  fee         Int      @default(0)
+  netAmount   Int
+  status      String
+  stripeId    String?
+  referenceId String?
+  note        String?
+  createdAt   DateTime @default(now())
+
+  @@index([walletId, createdAt])
+}
+
+model Payout {
+  id             String    @id @default(cuid())
+  walletId       String
+  wallet         Wallet    @relation(fields: [walletId], references: [id])
+  amount         Int
+  status         String
+  stripePayoutId String?
+  createdAt      DateTime  @default(now())
+  processedAt    DateTime?
+  failureReason  String?
+}
+
+model Tip {
+  id          String    @id @default(cuid())
+  fromUserId  String
+  toArtistId  String
+  roomId      String?
+  amount      Int
+  artistShare Int
+  platformFee Int
+  status      String
+  heldUntil   DateTime?
+  stripeId    String
+  createdAt   DateTime  @default(now())
+
+  @@index([toArtistId, createdAt])
+  @@index([fromUserId, createdAt])
+}
+
+// -- FAN CLUBS -----------------------------------------------------------------
+
+model FanClub {
+  id          String              @id @default(cuid())
+  artistId    String              @unique
+  description String?
+  tiers       FanClubTier[]
+  memberships FanClubMembership[]
+  posts       FanClubPost[]
+  createdAt   DateTime            @default(now())
+}
+
+model FanClubTier {
+  id            String   @id @default(cuid())
+  fanClubId     String
+  fanClub       FanClub  @relation(fields: [fanClubId], references: [id])
+  name          String
+  priceMonthly  Int
+  perks         String[]
+  stripePriceId String?
+}
+
+model FanClubMembership {
+  id          String    @id @default(cuid())
+  fanClubId   String
+  fanClub     FanClub   @relation(fields: [fanClubId], references: [id])
+  userId      String
+  tier        String
+  status      String
+  stripeSubId String?
+  startedAt   DateTime  @default(now())
+  cancelledAt DateTime?
+
+  @@unique([fanClubId, userId])
+  @@index([fanClubId, tier])
+}
+
+model FanClubPost {
+  id        String   @id @default(cuid())
+  fanClubId String
+  fanClub   FanClub  @relation(fields: [fanClubId], references: [id])
+  content   String
+  mediaUrl  String?
+  minTier   String   @default("supporter")
+  createdAt DateTime @default(now())
+}
+
+// -- BEAT MARKETPLACE ----------------------------------------------------------
+
+model Beat {
+  id             String        @id @default(cuid())
+  producerId     String
+  slug           String        @unique
+  title          String
+  genre          String
+  bpm            Int
+  key            String?
+  tags           String[]
+  previewUrl     String
+  taggedUrl      String
+  basicPrice     Int
+  premiumPrice   Int
+  exclusivePrice Int?
+  status         String        @default("draft")
+  playCount      Int           @default(0)
+  licenses       BeatLicense[]
+  createdAt      DateTime      @default(now())
+
+  @@index([genre, status])
+  @@index([status, createdAt])
+}
+
+model BeatLicense {
+  id          String   @id @default(cuid())
+  beatId      String
+  beat        Beat     @relation(fields: [beatId], references: [id])
+  buyerId     String
+  type        String
+  price       Int
+  stripeId    String
+  downloadUrl String?
+  createdAt   DateTime @default(now())
+
+  @@unique([beatId, buyerId, type])
+}
+
+// -- COMPETITIONS & SEASONS ----------------------------------------------------
+
+model Season {
+  id           String        @id @default(cuid())
+  slug         String        @unique
+  name         String
+  status       String
+  startDate    DateTime
+  endDate      DateTime
+  rankEntries  RankEntry[]
+  competitions Competition[]
+  awards       SeasonAward[]
+  createdAt    DateTime      @default(now())
+}
+
+model Competition {
+  id            String                    @id @default(cuid())
+  slug          String                    @unique
+  seasonId      String?
+  season        Season?                   @relation(fields: [seasonId], references: [id])
+  name          String
+  type          String
+  bracketType   String
+  status        String
+  maxEntrants   Int?
+  registrations CompetitionRegistration[]
+  battles       Battle[]
+  createdAt     DateTime                  @default(now())
+}
+
+model CompetitionRegistration {
+  id            String      @id @default(cuid())
+  competitionId String
+  competition   Competition @relation(fields: [competitionId], references: [id])
+  artistId      String
+  seed          Int?
+  status        String
+
+  @@unique([competitionId, artistId])
+}
+
+model Battle {
+  id            String       @id @default(cuid())
+  competitionId String?
+  competition   Competition? @relation(fields: [competitionId], references: [id])
+  roomId        String?
+  artist1Id     String
+  artist2Id     String
+  winnerId      String?
+  round         Int?
+  status        String
+  voteCount1    Int          @default(0)
+  voteCount2    Int          @default(0)
+  createdAt     DateTime     @default(now())
+}
+
+model RankEntry {
+  id        String   @id @default(cuid())
+  seasonId  String
+  season    Season   @relation(fields: [seasonId], references: [id])
+  artistId  String
+  points    Int      @default(0)
+  rank      Int?
+  updatedAt DateTime @updatedAt
+
+  @@unique([seasonId, artistId])
+  @@index([seasonId, points])
+}
+
+model SeasonAward {
+  id        String   @id @default(cuid())
+  seasonId  String
+  season    Season   @relation(fields: [seasonId], references: [id])
+  artistId  String
+  awardType String
+  awardedAt DateTime @default(now())
+}
+
+// -- USER SETTINGS -------------------------------------------------------------
+
+model UserSettings {
+  id                  String    @id @default(cuid())
+  userId              String    @unique
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  profileVisibility   String    @default("public")
+  showOnlineStatus    Boolean   @default(true)
+  allowMessages       String    @default("followers")
+  allowFriendRequests Boolean   @default(true)
+  reducedMotion       Boolean   @default(false)
+  highContrast        Boolean   @default(false)
+  deletionRequestedAt DateTime?
+  deletionScheduledAt DateTime?
+  exportRequestedAt   DateTime?
+  exportDownloadUrl   String?
+  exportExpiresAt     DateTime?
+}
+
+// -- MODERATION ----------------------------------------------------------------
+
+model Report {
+  id         String    @id @default(cuid())
+  reporterId String
+  targetType String
+  targetId   String
+  category   String
+  detail     String?
+  status     String    @default("pending")
+  severity   String    @default("p3")
+  reviewedBy String?
+  createdAt  DateTime  @default(now())
+  reviewedAt DateTime?
+
+  @@index([status, severity])
+  @@index([targetType, targetId])
+}
+
+model ModerationAction {
+  id           String    @id @default(cuid())
+  targetUserId String
+  actionType   String
+  reason       String
+  duration     Int?
+  performedBy  String
+  reportId     String?
+  createdAt    DateTime  @default(now())
+  expiresAt    DateTime?
+
+  @@index([targetUserId])
+}
+
+// -- FAMILY / KID ACCOUNTS -----------------------------------------------------
+
+model FamilyAccount {
+  id        String         @id @default(cuid())
+  parentId  String         @unique
+  parent    User           @relation(fields: [parentId], references: [id])
+  children  ChildAccount[]
+  createdAt DateTime       @default(now())
+}
+
+model ChildAccount {
+  id                 String        @id @default(cuid())
+  familyAccountId    String
+  familyAccount      FamilyAccount @relation(fields: [familyAccountId], references: [id])
+  userId             String        @unique
+  user               User          @relation(fields: [userId], references: [id])
+  birthYear          Int
+  performerStatus    String        @default("not_requested")
+  canUploadMedia     Boolean       @default(false)
+  canBePublic        Boolean       @default(false)
+  canReceiveMessages Boolean       @default(false)
+  canJoinEvents      Boolean       @default(false)
+  canMakePurchases   Boolean       @default(false)
+  spendingLimitCents Int?
+  parentApprovedAt   DateTime?
+  createdAt          DateTime      @default(now())
+}
+
+model ParentApproval {
+  id          String    @id @default(cuid())
+  parentId    String
+  childId     String
+  actionType  String
+  status      String    @default("pending")
+  requestData Json?
+  createdAt   DateTime  @default(now())
+  decidedAt   DateTime?
+
+  @@index([parentId, status])
+  @@index([childId])
+}
+
+// -- BLOCK / MUTE --------------------------------------------------------------
+
+model UserBlock {
+  id        String   @id @default(cuid())
+  blockerId String
+  blockedId String
+  createdAt DateTime @default(now())
+
+  @@unique([blockerId, blockedId])
+}
+
+model UserMute {
+  id        String    @id @default(cuid())
+  muterId   String
+  mutedId   String
+  expiresAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@unique([muterId, mutedId])
+}
+
+// -- PUSH SUBSCRIPTIONS --------------------------------------------------------
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  platform  String
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// ===================== PROFILE SYSTEM MODELS =====================
+
+model UserProfile {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  displayName String?
+  username    String?  @unique
+  bio         String?
+  location    String?
+  website     String?
+  avatarUrl   String?
+  bannerUrl   String?
+  socialLinks Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model ArtistProfile {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  stageName String?
+  slug      String?  @unique
+  genres    String[]
+  skills    String[]
+  label     String?
+  manager   String?
+  verified  Boolean  @default(false)
+  followers Int      @default(0)
+  views     Int      @default(0)
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model FanProfile {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  favoriteGenres String[]
+  bio            String?
+  followers      Int      @default(0)
+
+  user User @relation(fields: [userId], references: [id])
 }

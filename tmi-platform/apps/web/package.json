@@ -1,11 +1,11 @@
 {
-  "name": "tmi-platform-web",
+  "name": "web",
   "version": "1.0.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "dev:socket": "ts-node socket-server.ts",
-    "prebuild": "pnpm -C ../../packages/db prisma:generate",
+    "prebuild": "pnpm -C ../.. -r --filter @tmi/contracts --filter @tmi/hud-core --filter @tmi/hud-runtime --filter @tmi/hud-theme --filter @tmi/hud-tmi build && pnpm -C ../../packages/db prisma:generate",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
@@ -24,8 +24,6 @@
     "@tmi/contracts": "workspace:*",
     "@tmi/hud-core": "workspace:*",
     "@tmi/hud-runtime": "workspace:*",
-    "@tmi/hud-theme": "workspace:*",
-    "@tmi/hud-tmi": "workspace:*",
     "autoprefixer": "^10.4.0",
     "framer-motion": "^10.0.0",
     "lucide-react": "^0.577.0",
