@@ -72,7 +72,15 @@ export class AuthService {
     return "no_role_selected";
   }
 
-  async register(email: string, password: string) {
+  async register(
+    email: string,
+    password: string,
+    dateOfBirth: Date,
+    age: number,
+    isMinor: boolean,
+    parentEmail: string | undefined,
+    termsAccepted: boolean
+  ) {
     const normalized = this.normalizeEmail(email);
 
     const existing = await this.prisma.user.findUnique({
@@ -88,10 +96,20 @@ export class AuthService {
       data: {
         email: normalized,
         passwordHash: await this.hashPassword(password),
+        dateOfBirth,
+        age,
+        isMinor,
+        parentEmail,
+        termsAccepted,
       },
       select: {
         id: true,
         email: true,
+        dateOfBirth: true,
+        age: true,
+        isMinor: true,
+        parentEmail: true,
+        termsAccepted: true,
       },
     });
 
@@ -100,6 +118,11 @@ export class AuthService {
       user: {
         id: user.id,
         email: user.email,
+        dateOfBirth: user.dateOfBirth,
+        age: user.age,
+        isMinor: user.isMinor,
+        parentEmail: user.parentEmail,
+        termsAccepted: user.termsAccepted,
       },
     };
   }

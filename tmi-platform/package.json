@@ -67,6 +67,9 @@
     "socket.io-client": "^4.8.3",
     "stripe": "^20.4.0"
   },
+  "prisma": {
+    "schema": "packages/db/prisma/schema.prisma"
+  },
   "pnpm": {
     "onlyBuiltDependencies": [
       "@prisma/engines",

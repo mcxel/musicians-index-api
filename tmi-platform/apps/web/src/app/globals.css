@@ -1,61 +1,8 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-@import '../styles/tmi/tokens.css';
-@import '../styles/tmi/globals.css';
-@import '../components/tmi/nav/MagazineNavSystem.css';
-
-/* Custom 80s Neon Theme */
-@import url('https://fonts.googleapis.com/css2?family=Audiowide&display=swap');
-
-@layer base {
-  :root {
-    --neon-pink: #FF2DAA;
-    --neon-blue: #2DAAFF;
-    --neon-purple: #AA2DFF;
-    --neon-green: #2DFFAA;
-    --dark-900: #0A0A0F;
-    --dark-800: #131318;
-    --dark-700: #1C1C24;
-  }
-
-  body {
-    @apply bg-dark-900 text-white antialiased;
-    font-family: 'Audiowide', cursive;
-  }
-
-  * {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-  }
-}
-
-/* Neon Glow Effects */
-.neon-text {
-  text-shadow: 
-    0 0 10px var(--neon-pink),
-    0 0 20px var(--neon-pink),
-    0 0 30px var(--neon-pink),
-    0 0 40px var(--neon-pink);
-}
-
-.neon-border {
-  border: 2px solid var(--neon-pink);
-  box-shadow: 
-    0 0 5px var(--neon-pink),
-    inset 0 0 5px var(--neon-pink),
-    0 0 10px var(--neon-pink),
-    inset 0 0 10px var(--neon-pink);
-}
-
-.neon-box {
-  background: linear-gradient(135deg, rgba(255, 45, 170, 0.1) 0%, rgba(170, 45, 255, 0.1) 100%);
-  border: 1px solid rgba(255, 45, 170, 0.3);
-  box-shadow: 
-    0 0 20px rgba(255, 45, 170, 0.2),
-    inset 0 0 20px rgba(255, 45, 170, 0.1);
+body {
+  background: black;
+  color: white;
+  margin: 0;
+  padding: 0;
 }
 
 /* Scanline Overlay */

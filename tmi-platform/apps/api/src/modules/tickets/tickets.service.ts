@@ -18,6 +18,7 @@ export class TicketsService {
 
   // simple in-memory store used when DEV_TICKETS=true
   private tickets = new Map<string, TicketRecord>();
+  private purchaseAttempts = new Map<string, { count: number; windowStart: number }>();
 
   constructor() {
     if (this.dev) {
@@ -80,6 +81,45 @@ export class TicketsService {
     }
 
     return { ok: false, reason: 'NOT_IMPLEMENTED' };
+  }
+
+  async purchaseCheck(userId: string, eventId: string, quantity: number, turnstileToken: string) {
+    if (!eventId || quantity <= 0) {
+      return { error: 'bot_detected' as const };
+    }
+
+    if (!turnstileToken || turnstileToken.trim().length < 5) {
+      return { error: 'bot_detected' as const };
+    }
+
+    const maxTickets = 8;
+    if (quantity > maxTickets) {
+      return { error: 'limit_exceeded' as const, max: maxTickets, current: quantity };
+    }
+
+    const key = `${userId}:${eventId}`;
+    const now = Date.now();
+    const windowMs = 60_000;
+    const record = this.purchaseAttempts.get(key);
+    if (!record || now - record.windowStart > windowMs) {
+      this.purchaseAttempts.set(key, { count: 1, windowStart: now });
+    } else {
+      record.count += 1;
+      this.purchaseAttempts.set(key, record);
+      if (record.count > 5) {
+        return { error: 'velocity_exceeded' as const };
+      }
+    }
+
+    const reservationToken = `res_${createHash('sha256')
+      .update(`${userId}:${eventId}:${quantity}:${now}`)
+      .digest('hex')
+      .slice(0, 24)}`;
+    return {
+      allowed: true,
+      reservationToken,
+      expiresAt: new Date(now + 5 * 60 * 1000).toISOString(),
+    };
   }
 
   // dev-only helper to mint a ticket token (stores hashed token)

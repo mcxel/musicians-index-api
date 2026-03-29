@@ -1,14 +1,19 @@
+// apps/web/src/app/robots.ts
+// Robots.txt — tells crawlers what to index
 import { MetadataRoute } from 'next';
-
 export default function robots(): MetadataRoute.Robots {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://themusiciansindex.com';
-
   return {
-    rules: {
-      userAgent: '*',
-      allow: '/',
-      disallow: ['/admin/', '/dashboard/', '/api/', '/internal/'],
-    },
-    sitemap: `${baseUrl}/sitemap.xml`,
+    rules: [
+      {
+        userAgent: '*',
+        allow: '/',
+        disallow: [
+          '/admin/', '/dashboard/', '/backstage', '/green-room',
+          '/soundcheck', '/arena', '/battle', '/cypher',
+          '/api/', '/settings/', '/(auth)/',
+        ],
+      },
+    ],
+    sitemap: 'https://themusiciansindex.com/sitemap.xml',
   };
 }

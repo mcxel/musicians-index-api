@@ -1,0 +1,212 @@
+/* TMI — DEAL OR FEUD 1000 STYLES */
+
+
+.deal-or-feud {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #050B18 0%, #0a1030 50%, #050B18 100%);
+  padding: 0 var(--space-4) var(--space-8);
+  overflow: hidden; position: relative;
+}
+.deal-or-feud::before {
+  content: '';
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(rgba(255,20,147,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,212,255,0.04) 1px, transparent 1px);
+  background-size: 40px 40px; pointer-events: none;
+}
+
+/* ── SPONSOR BAR ── */
+.deal-or-feud__sponsor-bar {
+  display: flex; align-items: center; justify-content: center;
+  gap: var(--space-6); padding: var(--space-2) var(--space-4);
+  background: rgba(0,0,0,0.5);
+  border-bottom: 2px solid var(--neon-orange);
+  margin: 0 calc(-1 * var(--space-4)) var(--space-4);
+}
+.deal-or-feud__sponsor {
+  font-family: var(--font-heading); font-weight: 800;
+  font-size: 16px; color: white;
+  opacity: 0.7; cursor: pointer;
+  transition: opacity var(--ease-fast);
+}
+.deal-or-feud__sponsor:hover { opacity: 1; color: var(--neon-gold); }
+
+/* ── TITLE ── */
+.deal-or-feud__title {
+  display: flex; align-items: baseline; justify-content: center;
+  gap: var(--space-2); flex-wrap: wrap;
+  text-align: center; margin-bottom: var(--space-2);
+}
+.deal-or-feud__title-deal {
+  font-family: var(--font-display);
+  font-size: clamp(40px,10vw,72px);
+  color: var(--neon-orange); text-shadow: var(--glow-orange);
+}
+.deal-or-feud__title-or {
+  font-family: var(--font-heading); font-size: 20px;
+  color: var(--text-secondary); align-self: center;
+}
+.deal-or-feud__title-feud {
+  font-family: var(--font-display);
+  font-size: clamp(40px,10vw,72px);
+  color: var(--neon-cyan); text-shadow: var(--glow-cyan);
+}
+.deal-or-feud__title-num {
+  font-family: var(--font-display);
+  font-size: clamp(36px,9vw,64px);
+  color: var(--neon-gold); text-shadow: var(--glow-gold);
+  width: 100%; text-align: center;
+}
+.deal-or-feud__hosted {
+  text-align: center; font-family: var(--font-label);
+  font-size: 13px; letter-spacing: 0.12em;
+  color: var(--text-muted); margin-bottom: var(--space-4);
+}
+.deal-or-feud__host-name {
+  color: var(--neon-gold); font-size: 16px; font-weight: 700;
+}
+
+/* ── STAGE ── */
+.deal-or-feud__stage {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: var(--space-4); align-items: end;
+  max-width: 800px; margin: 0 auto var(--space-4);
+  padding: var(--space-4) 0;
+}
+
+/* ── DEAL ZONE ── */
+.deal-zone {
+  display: flex; flex-direction: column; align-items: center; gap: var(--space-2);
+}
+.deal-zone__label {
+  font-family: var(--font-display); font-size: 20px;
+  color: var(--neon-cyan); text-shadow: var(--glow-cyan);
+}
+.deal-zone__door {
+  width: 120px; height: 180px;
+  background: linear-gradient(180deg, rgba(0,180,220,0.15), rgba(0,100,180,0.1));
+  border: 2px solid var(--neon-cyan);
+  border-radius: 8px 8px 0 0;
+  box-shadow: var(--glow-cyan);
+  position: relative; display: flex; overflow: hidden;
+  cursor: pointer;
+}
+.deal-zone__door-panel {
+  flex: 1; background: linear-gradient(180deg, rgba(0,212,255,0.08), transparent);
+  transition: transform 0.4s ease;
+}
+.deal-zone__door-panel--left  { border-right: 1px solid rgba(0,212,255,0.2); }
+.deal-zone__door-panel--right { border-left:  1px solid rgba(0,212,255,0.2); }
+.deal-zone__door-open {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 52px; animation: bounce-in 0.3s ease;
+}
+
+/* ── HOST ── */
+.deal-or-feud__host {
+  display: flex; flex-direction: column; align-items: center;
+  cursor: pointer;
+}
+.deal-or-feud__host-avatar {
+  width: 100px; height: 100px;
+  background: linear-gradient(135deg, #1a0a3a, #2d1b69);
+  border: 2px solid var(--neon-gold);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: var(--glow-gold);
+  margin-bottom: 4px;
+  animation: float 4s ease-in-out infinite;
+}
+.deal-or-feud__podium {
+  width: 140px; height: 40px;
+  background: linear-gradient(90deg, rgba(255,107,0,0.4), rgba(255,184,0,0.3), rgba(255,107,0,0.4));
+  border: 1px solid var(--neon-orange);
+  border-radius: 6px;
+  box-shadow: var(--glow-orange);
+}
+.deal-or-feud__podium-glow {
+  width: 200px; height: 20px;
+  background: radial-gradient(ellipse at center, rgba(255,107,0,0.4) 0%, transparent 70%);
+  margin-top: -10px;
+}
+
+/* ── FEUD BOARD ── */
+.feud-board {
+  display: flex; flex-direction: column; align-items: center; gap: var(--space-2);
+}
+.feud-board__label {
+  font-family: var(--font-display); font-size: 20px;
+  color: var(--neon-pink); text-shadow: var(--glow-pink);
+}
+.feud-board__rows { display: flex; flex-direction: column; gap: 4px; width: 180px; }
+.feud-board__row {
+  display: flex; align-items: center; gap: 8px;
+  background: rgba(0,50,120,0.4);
+  border: 1px solid rgba(0,212,255,0.2);
+  border-radius: 4px; padding: 8px 12px;
+  cursor: pointer; transition: all var(--ease-fast);
+  min-height: 36px;
+}
+.feud-board__row:hover {
+  border-color: var(--neon-cyan); background: rgba(0,100,180,0.3);
+}
+.feud-board__row.is-revealed {
+  background: rgba(255,184,0,0.15); border-color: var(--neon-gold);
+}
+.feud-board__row-num {
+  font-family: var(--font-label); font-size: 12px; color: var(--neon-cyan);
+  font-weight: 700; min-width: 16px;
+}
+.feud-board__row-fill { flex: 1; height: 16px; background: rgba(255,255,255,0.05); border-radius: 2px; }
+.feud-board__answer {
+  font-family: var(--font-label); font-size: 12px;
+  color: var(--neon-gold); font-weight: 700;
+  animation: bounce-in 0.2s ease;
+}
+
+/* ── AUDIENCE WALL ── */
+.audience-wall {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 2px;
+  max-width: 800px; margin: 0 auto var(--space-4);
+  background: rgba(0,0,0,0.3);
+  border-radius: var(--radius-md);
+  padding: var(--space-2);
+}
+.audience-wall__face {
+  aspect-ratio: 1;
+  background: var(--bg-card);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: var(--radius-sm);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; cursor: pointer;
+  transition: all var(--ease-fast);
+  animation: bounce-in 0.3s var(--ease-spring) both;
+}
+.audience-wall__face:hover {
+  transform: scale(1.3); z-index: 2; border-color: var(--neon-pink);
+}
+
+/* ── BOTTOM SPONSOR ── */
+.deal-or-feud__bottom-sponsors {
+  display: flex; gap: var(--space-6); justify-content: center;
+  padding: var(--space-3);
+  border-top: 1px solid rgba(255,255,255,0.08);
+}
+.deal-or-feud__bottom-sponsor {
+  font-family: var(--font-heading); font-weight: 900; font-size: 20px;
+  color: rgba(255,255,255,0.5); cursor: pointer;
+  transition: all var(--ease-fast);
+}
+.deal-or-feud__bottom-sponsor:hover { color: white; text-shadow: var(--glow-cyan); }
+
+@media (max-width: 600px) {
+  .deal-or-feud__stage { grid-template-columns: 1fr; text-align: center; }
+  .deal-zone, .feud-board { align-items: center; }
+  .feud-board__rows { width: 100%; max-width: 280px; }
+  .audience-wall { grid-template-columns: repeat(8, 1fr); }
+}

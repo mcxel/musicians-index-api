@@ -1,21 +1,8 @@
-// tmi-platform/apps/web/src/app/not-found.tsx
-import Link from 'next/link';
-
+// apps/web/src/app/not-found.tsx
+// Custom 404 page — no auth needed
+// Copilot wires: NotFoundShell component
+// VS Code proves: navigating to /anything-invalid shows this page
+import { NotFoundShell } from '@/components/error/NotFoundShell';
 export default function NotFound() {
-  return (
-    <div style={{
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      height: '100vh',
-      fontFamily: 'sans-serif'
-    }}>
-      <h2>404 - Not Found</h2>
-      <p>Could not find the requested page.</p>
-      <Link href="/" style={{ marginTop: '1rem', color: 'blue' }}>
-        Return Home
-      </Link>
-    </div>
-  );
+  return <NotFoundShell />;
 }

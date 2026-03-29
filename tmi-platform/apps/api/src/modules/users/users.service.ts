@@ -129,8 +129,8 @@ export class UsersService {
         where: { id: user.id },
         data: {
           role: Role.ARTIST,
-          onboardingState: OnboardingState.INCOMPLETE,
-          onboardingCompletedAt: null,
+          onboardingState: OnboardingState.COMPLETE,
+          onboardingCompletedAt: new Date(),
         },
         select: {
           id: true,
@@ -146,8 +146,8 @@ export class UsersService {
       where: { id: user.id },
       data: {
         role: Role.USER,
-        onboardingState: OnboardingState.INCOMPLETE,
-        onboardingCompletedAt: null,
+        onboardingState: OnboardingState.COMPLETE,
+        onboardingCompletedAt: new Date(),
       },
       select: {
         id: true,
@@ -176,7 +176,7 @@ export class UsersService {
         image: dto.image,
         onboardingState,
         onboardingCompletedAt: onboardingState === OnboardingState.COMPLETE ? new Date() : null,
-        artistProfile:
+        artist:
           user.role === Role.ARTIST
             ? {
                 upsert: {
@@ -197,13 +197,13 @@ export class UsersService {
         email: true,
         role: true,
         onboardingState: true,
-        artistProfile: { select: { id: true } },
+        artist: { select: { id: true } },
       },
     });
 
     let profileArticleSlug: string | null = null;
     if (onboardingState === OnboardingState.COMPLETE && user.role === Role.ARTIST) {
-      const artistId = updated.artistProfile?.id;
+      const artistId = updated.artist?.id;
       if (artistId) {
         const articleInfo = await this.editorialService.ensureArtistProfileArticle(
           artistId,
