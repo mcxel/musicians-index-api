@@ -44,6 +44,20 @@ async function bootstrap() {
       return;
     }
 
+    const allowedOrigin = process.env.ALLOWED_ORIGIN?.trim();
+    if (allowedOrigin) {
+      const origin = req.header("origin");
+      const referer = req.header("referer");
+
+      const originOk = !!origin && origin === allowedOrigin;
+      const refererOk = !!referer && referer.startsWith(allowedOrigin);
+
+      if (!originOk && !refererOk) {
+        res.status(403).json({ message: "Origin/Referer validation failed", statusCode: 403 });
+        return;
+      }
+    }
+
     const csrfFromHeader = req.header("x-csrf-token");
     const csrfFromCookie = req.cookies?.phase11_csrf as string | undefined;
     if (!csrfFromHeader || !csrfFromCookie || csrfFromHeader !== csrfFromCookie) {
