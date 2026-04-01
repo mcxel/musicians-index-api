@@ -1,4 +1,5 @@
-export default function Card({ children }) {
+import React from 'react';
+export default function Card({ children }: { children: React.ReactNode }) {
   return (
     <div
       style={{
