@@ -7,12 +7,13 @@ services:
     rootDir: .
     buildCommand: pnpm install && pnpm --filter api... build
     startCommand: pnpm --filter api start
-    healthCheckPath: /health
+    # GET / is handled before setGlobalPrefix("api") — returns { ok: true }
+    # All NestJS routes live under /api (e.g. /api/healthz, /api/readyz)
+    healthCheckPath: /
     envVars:
       - key: NODE_ENV
         value: production
-      - key: PORT
-        value: "4000"
+      # DATABASE_URL is the only REQUIRED_BOOT_ENV — app throws without it
       - key: DATABASE_URL
         sync: false
       - key: JWT_SECRET
@@ -22,4 +23,12 @@ services:
       - key: CORS_ORIGINS
         sync: false
       - key: REDIS_URL
+        sync: false
+      - key: MEILISEARCH_URL
+        sync: false
+      - key: MEILISEARCH_KEY
+        sync: false
+      - key: MUX_TOKEN_ID
+        sync: false
+      - key: MUX_TOKEN_SECRET
         sync: false
