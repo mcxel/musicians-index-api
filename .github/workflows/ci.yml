@@ -146,7 +146,7 @@ jobs:
           PORT: "4000"
           CORS_ORIGINS: http://localhost:3000,http://localhost:3001,http://127.0.0.1:3001
         run: |
-          pnpm --filter tmi-platform-api start > /tmp/api-e2e.log 2>&1 &
+          pnpm --filter api start > /tmp/api-e2e.log 2>&1 &
           echo $! > /tmp/api-e2e.pid
           sleep 2
           if ! kill -0 "$(cat /tmp/api-e2e.pid)" 2>/dev/null; then
