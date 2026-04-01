@@ -21,24 +21,26 @@ const CSRF_COOKIE = "phase11_csrf";
 
 function sessionCookieOptions() {
   const isProd = process.env.NODE_ENV === "production";
+  const cookieDomain = process.env.COOKIE_DOMAIN?.trim();
   return {
     httpOnly: true as const,
     sameSite: "lax" as const,
     secure: isProd,
     path: "/",
-    domain: "localhost",
+    ...(cookieDomain ? { domain: cookieDomain } : {}),
     maxAge: 1000 * 60 * 60 * 24,
   };
 }
 
 function csrfCookieOptions() {
   const isProd = process.env.NODE_ENV === "production";
+  const cookieDomain = process.env.COOKIE_DOMAIN?.trim();
   return {
     httpOnly: false as const,
     sameSite: "lax" as const,
-    secure: false, // Always false for localhost
+    secure: isProd,
     path: "/",
-    // domain removed for localhost
+    ...(cookieDomain ? { domain: cookieDomain } : {}),
     maxAge: 1000 * 60 * 60 * 24,
   };
 }
@@ -116,6 +118,13 @@ export class AuthController {
     return token;
   }
 
+  @Get("csrf")
+  getCsrf(@Res({ passthrough: true }) res: Response) {
+    const csrfToken = this.authService.issueCsrfToken();
+    res.cookie(CSRF_COOKIE, csrfToken, csrfCookieOptions());
+    return { csrfToken };
+  }
+
   @Post("register")
   async register(
     @Body() body: RegisterDto,
@@ -165,7 +174,7 @@ export class AuthController {
         name: errorObj?.name ?? null,
       };
       console.error("AUTH_REGISTER_ERROR", debug, err);
-      throw new InternalServerErrorException({ message: "Internal server error", _debug: debug });
+      throw new InternalServerErrorException({ message: "Internal server error" });
     }
   }
 
@@ -193,7 +202,7 @@ export class AuthController {
         name: errorObj?.name ?? null,
       };
       console.error("AUTH_LOGIN_ERROR", debug, err);
-      throw new InternalServerErrorException({ message: "Internal server error", _debug: debug });
+      throw new InternalServerErrorException({ message: "Internal server error" });
     }
     res.cookie(SESSION_COOKIE, result.sessionToken, sessionCookieOptions());
     res.cookie(CSRF_COOKIE, csrfToken, csrfCookieOptions());

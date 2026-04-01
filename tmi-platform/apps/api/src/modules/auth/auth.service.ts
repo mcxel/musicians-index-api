@@ -96,20 +96,11 @@ export class AuthService {
       data: {
         email: normalized,
         passwordHash: await this.hashPassword(password),
-        dateOfBirth,
-        age,
-        isMinor,
-        parentEmail,
-        termsAccepted,
+        ...(termsAccepted ? { acceptedOriginalityAgreementAt: new Date() } : {}),
       },
       select: {
         id: true,
         email: true,
-        dateOfBirth: true,
-        age: true,
-        isMinor: true,
-        parentEmail: true,
-        termsAccepted: true,
       },
     });
 
@@ -118,11 +109,10 @@ export class AuthService {
       user: {
         id: user.id,
         email: user.email,
-        dateOfBirth: user.dateOfBirth,
-        age: user.age,
-        isMinor: user.isMinor,
-        parentEmail: user.parentEmail,
-        termsAccepted: user.termsAccepted,
+        // age/isMinor/dateOfBirth validated in controller but not stored (schema v1)
+        age,
+        isMinor,
+        termsAccepted,
       },
     };
   }
@@ -175,43 +165,49 @@ export class AuthService {
   }
 
   async getSession(token: string): Promise<SessionRecord | null> {
-    const session = await this.prisma.session.findUnique({
-      where: { sessionToken: token },
-      select: {
-        sessionToken: true,
-        expires: true,
-        user: {
-          select: {
-            id: true,
-            email: true,
-            role: true,
-            onboardingState: true,
+    try {
+      const session = await this.prisma.session.findUnique({
+        where: { sessionToken: token },
+        select: {
+          sessionToken: true,
+          expires: true,
+          user: {
+            select: {
+              id: true,
+              email: true,
+              role: true,
+              onboardingState: true,
+            },
           },
         },
-      },
-    });
+      });
 
-    if (!session) return null;
+      if (!session) return null;
 
-    if (!session.user.email) {
+      if (!session.user.email) {
+        return null;
+      }
+
+      if (session.expires.getTime() < Date.now()) {
+        await this.prisma.session.deleteMany({ where: { sessionToken: token } });
+        return null;
+      }
+
+      return {
+        token: session.sessionToken,
+        expires: session.expires.toISOString(),
+        user: {
+          id: session.user.id,
+          email: session.user.email,
+          role: this.mapRole(session.user.role, session.user.onboardingState),
+          onboardingState: this.mapOnboardingState(session.user.onboardingState),
+        },
+      };
+    } catch {
+      // Invalid token format (e.g. not a valid UUID) or transient DB error.
+      // Treat as no session so callers receive 401 instead of 500.
       return null;
     }
-
-    if (session.expires.getTime() < Date.now()) {
-      await this.prisma.session.deleteMany({ where: { sessionToken: token } });
-      return null;
-    }
-
-    return {
-      token: session.sessionToken,
-      expires: session.expires.toISOString(),
-      user: {
-        id: session.user.id,
-        email: session.user.email,
-        role: this.mapRole(session.user.role, session.user.onboardingState),
-        onboardingState: this.mapOnboardingState(session.user.onboardingState),
-      },
-    };
   }
 
   async debugUserLookup(email: string) {
