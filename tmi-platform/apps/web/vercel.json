@@ -1,5 +1,5 @@
 {
   "buildCommand": "pnpm run build",
-  "installCommand": "pnpm install --frozen-lockfile",
+  "installCommand": "cd tmi-platform && pnpm install --frozen-lockfile",
   "outputDirectory": ".next"
 }
