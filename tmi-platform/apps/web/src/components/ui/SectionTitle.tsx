@@ -1,4 +1,4 @@
-export default function SectionTitle({ title }) {
+export default function SectionTitle({ title }: { title: string }) {
   return (
     <h2
       style={{

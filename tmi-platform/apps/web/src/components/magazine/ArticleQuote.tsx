@@ -1,4 +1,4 @@
-export default function ArticleQuote({ text }) {
+export default function ArticleQuote({ text }: { text: string }) {
   return (
     <div
       style={{

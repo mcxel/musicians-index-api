@@ -1,4 +1,4 @@
-export default function ArticleHero({ title }) {
+export default function ArticleHero({ title }: { title: string }) {
   return (
     <div style={{ marginBottom: "30px" }}>
       <h1 style={{ fontSize: "40px", marginBottom: "15px" }}>{title}</h1>
