@@ -4,7 +4,13 @@ import { useState, useEffect } from "react";
 import SectionTitle from "@/components/ui/SectionTitle";
 import Link from "next/link";
 
-const CONTEST_END_MS = Date.now() + 7 * 24 * 60 * 60 * 1000;
+const DEFAULT_END_MS = Date.now() + 7 * 24 * 60 * 60 * 1000;
+
+const DEFAULT_PRIZES = [
+  { place: "1st", prize: "Featured Artist Spotlight + $500 Studio Credit" },
+  { place: "2nd", prize: "Magazine Feature + Distribution Deal" },
+  { place: "3rd", prize: "Crown Badge + Community Boost" },
+];
 
 function useCountdown(targetMs: number) {
   const [rem, setRem] = useState({ d: 0, h: 0, m: 0, s: 0 });
@@ -48,14 +54,29 @@ function Digit({ value, label }: { value: number; label: string }) {
   );
 }
 
-const PRIZES = [
-  { place: "1st", prize: "Featured Artist Spotlight + $500 Studio Credit" },
-  { place: "2nd", prize: "Magazine Feature + Distribution Deal" },
-  { place: "3rd", prize: "Crown Badge + Community Boost" },
-];
-
 export default function ContestBanner() {
-  const { d, h, m, s } = useCountdown(CONTEST_END_MS);
+  const [endMs, setEndMs] = useState(DEFAULT_END_MS);
+  const [title, setTitle] = useState("Weekly Crown Contest");
+  const [prizes, setPrizes] = useState(DEFAULT_PRIZES);
+
+  useEffect(() => {
+    fetch("/api/homepage/contest")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: unknown) => {
+        if (!data || typeof data !== "object") return;
+        const d = data as {
+          title?: string;
+          endDate?: string | null;
+          prizes?: Array<{ place: string; prize: string }>;
+        };
+        if (d.title) setTitle(d.title);
+        if (d.endDate) setEndMs(new Date(d.endDate).getTime());
+        if (Array.isArray(d.prizes) && d.prizes.length > 0) setPrizes(d.prizes);
+      })
+      .catch(() => {});
+  }, []);
+
+  const { d, h, m, s } = useCountdown(endMs);
 
   return (
     <div style={{
@@ -74,7 +95,7 @@ export default function ContestBanner() {
       <div style={{ position: "absolute", bottom: 0, right: 0, width: 18, height: 18, borderBottom: "2px solid #FFD700", borderRight: "2px solid #FFD700" }} />
       <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: 400, height: 200, borderRadius: "50%", background: "radial-gradient(ellipse, rgba(255,215,0,0.07) 0%, transparent 70%)", pointerEvents: "none" }} />
 
-      <SectionTitle title="Weekly Crown Contest" subtitle="Compete, win, get crowned" accent="gold" badge="OPEN NOW" />
+      <SectionTitle title={title} subtitle="Compete, win, get crowned" accent="gold" badge="OPEN NOW" />
 
       <div style={{ display: "flex", alignItems: "center", gap: 40, flexWrap: "wrap" }}>
         <div>
@@ -96,7 +117,7 @@ export default function ContestBanner() {
           <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: "0.2em", color: "rgba(255,215,0,0.5)", textTransform: "uppercase", marginBottom: 10 }}>
             PRIZE POOL
           </div>
-          {PRIZES.map(({ place, prize }) => (
+          {prizes.map(({ place, prize }) => (
             <div key={place} style={{ display: "flex", gap: 10, marginBottom: 6 }}>
               <span style={{ fontSize: 9, fontWeight: 800, color: "#FFD700", minWidth: 24 }}>{place}</span>
               <span style={{ fontSize: 9, color: "rgba(255,255,255,0.6)" }}>{prize}</span>

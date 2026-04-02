@@ -1,10 +1,21 @@
 "use client";
 import { motion, AnimatePresence } from "framer-motion";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import SectionTitle from "@/components/ui/SectionTitle";
 import Link from "next/link";
 
-const LIVE_ROOMS = [
+const SHOW_COLORS = ["#FFD700", "#FF2DAA", "#00FFFF", "#AA2DFF"];
+
+interface ShowRow {
+  id: string;
+  name: string;
+  host: string;
+  viewers: number;
+  genre: string;
+  color: string;
+}
+
+const STUBS: ShowRow[] = [
   { id: "1", name: "CROWN CYPHER ARENA", host: "JAYLEN CROSS", viewers: 1842, genre: "Hip-Hop / Cypher", color: "#FFD700" },
   { id: "2", name: "NEO-SOUL LOUNGE", host: "NOVA REIGN", viewers: 924, genre: "Neo-Soul / R&B", color: "#FF2DAA" },
   { id: "3", name: "BEATLAB OPEN MIC", host: "BEATLAB STUDIOS", viewers: 567, genre: "Open Genre", color: "#00FFFF" },
@@ -25,8 +36,32 @@ function PulseDot({ color }: { color: string }) {
 }
 
 export default function LiveShows() {
+  const [rooms, setRooms] = useState<ShowRow[]>(STUBS);
   const [activeRoom, setActiveRoom] = useState<string | null>(null);
-  const totalViewers = LIVE_ROOMS.reduce((s, r) => s + r.viewers, 0);
+
+  useEffect(() => {
+    fetch("/api/homepage/events?limit=4")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: unknown) => {
+        if (!Array.isArray(data) || data.length === 0) return;
+        setRooms(
+          (data as Array<{
+            id: string; title: string; hostName?: string | null;
+            eventType?: string | null; description?: string | null;
+          }>).map((e, i) => ({
+            id: e.id,
+            name: (e.title ?? "SHOW").toUpperCase(),
+            host: (e.hostName ?? "TMI HOST").toUpperCase(),
+            viewers: 0,
+            genre: e.eventType ?? e.description?.slice(0, 20) ?? "Live Event",
+            color: SHOW_COLORS[i % SHOW_COLORS.length],
+          }))
+        );
+      })
+      .catch(() => {});
+  }, []);
+
+  const totalViewers = rooms.reduce((s, r) => s + r.viewers, 0);
 
   return (
     <div style={{
@@ -41,7 +76,7 @@ export default function LiveShows() {
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
         <AnimatePresence>
-          {LIVE_ROOMS.map((room, i) => (
+          {rooms.map((room, i) => (
             <motion.div
               key={room.id}
               initial={{ opacity: 0, scale: 0.95 }}
