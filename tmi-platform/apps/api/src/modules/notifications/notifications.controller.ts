@@ -1,6 +1,8 @@
-import { Body, Controller, Get, HttpCode, Param, Post, Put, Query, Req } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Param, Post, Put, Query, Req, ValidationPipe } from '@nestjs/common';
 import type { Request } from 'express';
 import { NotificationsService } from './notifications.service';
+import { GetNotificationsDto } from './dto/get-notifications.dto';
+import { UpdateNotificationPreferencesDto } from './dto/update-notification-preferences.dto';
 
 const SESSION_COOKIE = 'phase11_session';
 
@@ -11,10 +13,9 @@ export class NotificationsController {
   @Get()
   getNotifications(
     @Req() req: Request,
-    @Query('limit') limit = '20',
-    @Query('cursor') cursor?: string,
+    @Query(new ValidationPipe({ transform: true })) query: GetNotificationsDto,
   ) {
-    return this.notificationsService.getNotifications(req.cookies?.[SESSION_COOKIE], parseInt(limit, 10) || 20, cursor);
+    return this.notificationsService.getNotifications(req.cookies?.[SESSION_COOKIE], query.limit, query.cursor);
   }
 
   @Post('read-all')
@@ -38,8 +39,8 @@ export class NotificationsController {
   @HttpCode(200)
   updatePreferences(
     @Req() req: Request,
-    @Body() body: Array<{ type: string; channel: string; enabled: boolean }>,
+    @Body(new ValidationPipe()) body: UpdateNotificationPreferencesDto,
   ) {
-    return this.notificationsService.updatePreferences(req.cookies?.[SESSION_COOKIE], body);
+    return this.notificationsService.updatePreferences(req.cookies?.[SESSION_COOKIE], body.preferences);
   }
 }

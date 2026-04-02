@@ -1,0 +1,22 @@
+{
+  "name": "@tmi/workers",
+  "version": "0.1.0",
+  "description": "TMI Platform BullMQ workers — rewards, search, media, fulfillment, recommendation",
+  "private": true,
+  "main": "index.ts",
+  "scripts": {
+    "start": "ts-node index.ts",
+    "dev": "ts-node-dev --respawn index.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "bullmq": "^5.71.1",
+    "ioredis": "^5.10.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "ts-node": "^10.9.2",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.0.0"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "id": "moderation-sentinel-bot",
+  "name": "Moderation Sentinel Bot",
+  "description": "Continuously monitors content, chat, and user behavior for policy violations.",
+  "triggers": [
+    "content-flagged",
+    "chat-violation",
+    "abuse-report"
+  ],
+  "actions": [
+    "flag-content",
+    "mute-user",
+    "escalate-to-moderator",
+    "auto-remove-content"
+  ],
+  "priority": "critical",
+  "schedule": "continuous",
+  "enabled": true
+}

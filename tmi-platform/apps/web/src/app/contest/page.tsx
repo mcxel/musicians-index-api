@@ -1,3 +1,4 @@
+'use client';
 /**
  * contest/page.tsx
  * TMI Grand Platform Contest — Home / Discovery Hub

@@ -1,0 +1,18 @@
+{
+  "id": "search-indexing-bot",
+  "name": "Search Indexing Bot",
+  "description": "Keeps the search index up to date with new artists, articles, rooms, and events.",
+  "triggers": [
+    "content-published",
+    "profile-updated",
+    "room-created"
+  ],
+  "actions": [
+    "index-content",
+    "update-search-index",
+    "invalidate-cache"
+  ],
+  "priority": "high",
+  "schedule": "every-15-minutes",
+  "enabled": true
+}

@@ -1,0 +1,19 @@
+{
+  "id": "booking-assistant-bot",
+  "name": "Booking Assistant Bot",
+  "description": "Assists with booking requests, availability checks, and confirmation workflows.",
+  "triggers": [
+    "booking-request",
+    "booking-pending-timeout",
+    "booking-confirmed"
+  ],
+  "actions": [
+    "check-availability",
+    "send-booking-confirmation",
+    "notify-artist",
+    "update-calendar"
+  ],
+  "priority": "high",
+  "schedule": "continuous",
+  "enabled": true
+}

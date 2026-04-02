@@ -1,0 +1,26 @@
+(node:30420) Warning: SECURITY WARNING: The SSL modes 'prefer', 'require', and 'verify-ca' are treated as aliases for 'verify-full'.
+In the next major version (pg-connection-string v3.0.0 and pg v9.0.0), these modes will adopt standard libpq semantics, which have weaker security guarantees.
+
+To prepare for this change:
+- If you want the current behavior, explicitly use 'sslmode=verify-full'
+- If you want libpq compatibility now, use 'uselibpqcompat=true&sslmode=require'
+
+See https://www.postgresql.org/docs/current/libpq-ssl.html for libpq SSL mode definitions.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[31m[Nest] 30420  - [39m03/31/2026, 3:48:19 PM [31m  ERROR[39m [38;5;3m[ExceptionsHandler] [39mTypeError: Cannot read properties of undefined (reading 'id')
+    at EconomyController.getBalance [90m(C:\Users\Admin\Documents\BerntoutGlobal XXL\tmi-platform\apps\api\[39mdist\modules\economy\economy.controller.js:25:56[90m)[39m
+    at C:\Users\Admin\Documents\BerntoutGlobal XXL\tmi-platform\node_modules\[4m@nestjs\core[24m\router\router-execution-context.js:38:29
+[90m    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)[39m
+    at async C:\Users\Admin\Documents\BerntoutGlobal XXL\tmi-platform\node_modules\[4m@nestjs\core[24m\router\router-execution-context.js:46:28
+    at async C:\Users\Admin\Documents\BerntoutGlobal XXL\tmi-platform\node_modules\[4m@nestjs\core[24m\router\router-proxy.js:9:17
+[31m[Nest] 30420  - [39m03/31/2026, 4:00:00 PM [31m  ERROR[39m [38;5;3m[Scheduler] [39mTypeError: Cannot read properties of undefined (reading 'groupBy')
+    at AnalyticsEngine.calculateCharts [90m(C:\Users\Admin\Documents\BerntoutGlobal XXL\tmi-platform\apps\api\[39mdist\modules\analytics\analytics.engine.js:29:61[90m)[39m
+    at CronJob.<anonymous> (C:\Users\Admin\Documents\BerntoutGlobal XXL\tmi-platform\node_modules\[4m@nestjs\schedule[24m\dist\schedule.explorer.js:119:33)
+    at CronJob.<anonymous> (C:\Users\Admin\Documents\BerntoutGlobal XXL\tmi-platform\node_modules\[4mcron[24m\dist\job.js:126:45)
+    at Generator.next (<anonymous>)
+    at C:\Users\Admin\Documents\BerntoutGlobal XXL\tmi-platform\node_modules\[4mcron[24m\dist\job.js:8:71
+    at new Promise (<anonymous>)
+    at __awaiter (C:\Users\Admin\Documents\BerntoutGlobal XXL\tmi-platform\node_modules\[4mcron[24m\dist\job.js:4:12)
+    at CronJob.fireOnTick (C:\Users\Admin\Documents\BerntoutGlobal XXL\tmi-platform\node_modules\[4mcron[24m\dist\job.js:120:16)
+    at CronJob.fireOnTick (C:\Users\Admin\Documents\BerntoutGlobal XXL\tmi-platform\node_modules\[4m@nestjs\schedule[24m\dist\scheduler.registry.js:102:33)
+    at Timeout.callbackWrapper [as _onTimeout] (C:\Users\Admin\Documents\BerntoutGlobal XXL\tmi-platform\node_modules\[4mcron[24m\dist\job.js:198:27)

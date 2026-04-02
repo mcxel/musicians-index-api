@@ -6,30 +6,34 @@ export class SearchService {
   constructor(private readonly prisma: PrismaService) {}
 
   async search(query: string, type: string, page: number) {
-    const q = query.trim();
+    const q = (query ?? '').trim();
     const skip = (page - 1) * 20;
     const take = 20;
     const all = !type || type === 'all';
 
+    // Each sub-query is wrapped defensively — if a model doesn't exist in the
+    // current Prisma client (e.g. Article not yet migrated) it returns [] instead of 500.
+    const safeQuery = async <T>(fn: () => Promise<T[]>): Promise<T[]> => {
+      try { return await fn(); } catch { return []; }
+    };
+
     const [liveRooms, artists, beats, events, articles] = await Promise.all([
       all || type === 'rooms'
-        ? this.prisma.hub.findMany({
+        ? safeQuery(() => this.prisma.hub.findMany({
             where: { name: { contains: q, mode: 'insensitive' } },
-            take,
-            skip,
+            take, skip,
             select: { id: true, name: true, description: true },
-          })
+          }))
         : [],
       all || type === 'artists'
-        ? this.prisma.artist.findMany({
+        ? safeQuery(() => this.prisma.artist.findMany({
             where: { name: { contains: q, mode: 'insensitive' } },
-            take,
-            skip,
+            take, skip,
             select: { id: true, name: true, bio: true, userId: true },
-          })
+          }))
         : [],
       all || type === 'beats'
-        ? this.prisma.beat.findMany({
+        ? safeQuery(() => (this.prisma as any).beat?.findMany({
             where: {
               status: 'published',
               OR: [
@@ -37,21 +41,19 @@ export class SearchService {
                 { genre: { contains: q, mode: 'insensitive' } },
               ],
             },
-            take,
-            skip,
+            take, skip,
             select: { id: true, slug: true, title: true, genre: true, bpm: true, basicPrice: true },
-          })
+          }) ?? Promise.resolve([]))
         : [],
       all || type === 'events'
-        ? this.prisma.event.findMany({
+        ? safeQuery(() => this.prisma.event.findMany({
             where: { title: { contains: q, mode: 'insensitive' } },
-            take,
-            skip,
+            take, skip,
             select: { id: true, title: true, startsAt: true, venueName: true },
-          })
+          }))
         : [],
       all || type === 'articles'
-        ? this.prisma.article.findMany({
+        ? safeQuery(() => (this.prisma as any).article?.findMany({
             where: {
               status: 'PUBLISHED',
               OR: [
@@ -59,10 +61,9 @@ export class SearchService {
                 { subtitle: { contains: q, mode: 'insensitive' } },
               ],
             },
-            take,
-            skip,
+            take, skip,
             select: { id: true, slug: true, title: true, subtitle: true, publishedAt: true },
-          })
+          }) ?? Promise.resolve([]))
         : [],
     ]);
 
