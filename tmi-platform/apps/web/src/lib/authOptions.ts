@@ -1,12 +1,8 @@
 import type { NextAuthOptions } from "next-auth";
 import GitHubProvider from "next-auth/providers/github";
 import type { Role } from "@tmi/contracts";
-import { getAdapter } from "./auth/adapter";
 
 export const authOptions: NextAuthOptions = {
-  // Use lazy adapter resolver which returns undefined during build/collection
-  // but constructs the real PrismaAdapter at runtime when envs are present.
-  adapter: getAdapter(),
   providers: [
     GitHubProvider({
       clientId: process.env.GITHUB_CLIENT_ID!,

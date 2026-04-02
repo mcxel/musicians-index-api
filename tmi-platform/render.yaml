@@ -5,7 +5,7 @@ services:
     region: oregon
     plan: free
     rootDir: .
-    buildCommand: pnpm install && pnpm --filter api... build
+    buildCommand: pnpm install --frozen-lockfile && pnpm --filter db exec prisma generate && pnpm --filter api... build
     startCommand: pnpm --filter api start
     # GET / is handled before setGlobalPrefix("api") — returns { ok: true }
     # All NestJS routes live under /api (e.g. /api/healthz, /api/readyz)

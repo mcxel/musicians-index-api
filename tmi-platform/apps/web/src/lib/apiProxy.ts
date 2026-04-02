@@ -1,3 +1,23 @@
+const ALLOWED_FORWARD_HEADERS = new Set([
+  "content-type",
+  "authorization",
+  "x-csrf-token",
+  "accept",
+  "user-agent",
+  "cookie",
+]);
+
+function buildForwardHeaders(source: Headers): Headers {
+  const forwarded = new Headers();
+  for (const [key, value] of source.entries()) {
+    const normalized = key.toLowerCase();
+    if (ALLOWED_FORWARD_HEADERS.has(normalized)) {
+      forwarded.set(key, value);
+    }
+  }
+  return forwarded;
+}
+
 export async function proxyToApi(req: Request, path: string) {
   const base = process.env.API_BASE_URL;
   if (!base) {
@@ -11,7 +31,7 @@ export async function proxyToApi(req: Request, path: string) {
     const url = new URL(path, base);
     const res = await fetch(url.toString(), {
       method: req.method,
-      headers: req.headers,
+      headers: buildForwardHeaders(req.headers),
       body: ["GET", "HEAD"].includes(req.method) ? undefined : await req.arrayBuffer(),
       redirect: "manual",
     });
