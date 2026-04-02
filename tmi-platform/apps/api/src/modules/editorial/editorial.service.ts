@@ -287,4 +287,23 @@ export class EditorialService {
 
     return article;
   }
+
+  async getLatestArticles(limit = 10) {
+    return this.prisma.article.findMany({
+      where: { status: 'PUBLISHED' },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+      select: {
+        id: true,
+        slug: true,
+        title: true,
+        excerpt: true,
+        coverImage: true,
+        createdAt: true,
+        author: {
+          select: { id: true, name: true, image: true },
+        },
+      },
+    });
+  }
 }

@@ -1,20 +1,54 @@
 "use client";
 import { motion } from "framer-motion";
+import { useState, useEffect } from "react";
 import SectionTitle from "@/components/ui/SectionTitle";
 import Link from "next/link";
+import { formatCount } from "@/lib/api/homepage";
 
-const ARTISTS = [
-  { rank: 1, name: "NOVA REIGN", genre: "Neo-Soul", change: 12, streams: "2.4M" },
-  { rank: 2, name: "JAYLEN CROSS", genre: "Hip-Hop", change: 5, streams: "1.9M" },
-  { rank: 3, name: "AMIRAH WELLS", genre: "R&B / Soul", change: 8, streams: "1.7M" },
-  { rank: 4, name: "CYPHER KINGS", genre: "Trap", change: -1, streams: "1.4M" },
-  { rank: 5, name: "DIANA CROSS", genre: "R&B", change: 3, streams: "1.2M" },
-  { rank: 6, name: "DESTINED", genre: "Neo-Soul", change: 2, streams: "1.1M" },
-  { rank: 7, name: "AXIS THEORY", genre: "Jazz Fusion", change: 6, streams: "980K" },
-  { rank: 8, name: "LUNAR ECHO", genre: "Lo-Fi", change: -2, streams: "870K" },
+interface ArtistRow {
+  rank: number;
+  name: string;
+  genre: string;
+  change: number;
+  streams: string;
+  slug: string | null;
+}
+
+const STUBS: ArtistRow[] = [
+  { rank: 1, name: "NOVA REIGN", genre: "Neo-Soul", change: 12, streams: "2.4M", slug: null },
+  { rank: 2, name: "JAYLEN CROSS", genre: "Hip-Hop", change: 5, streams: "1.9M", slug: null },
+  { rank: 3, name: "AMIRAH WELLS", genre: "R&B / Soul", change: 8, streams: "1.7M", slug: null },
+  { rank: 4, name: "CYPHER KINGS", genre: "Trap", change: -1, streams: "1.4M", slug: null },
+  { rank: 5, name: "DIANA CROSS", genre: "R&B", change: 3, streams: "1.2M", slug: null },
+  { rank: 6, name: "DESTINED", genre: "Neo-Soul", change: 2, streams: "1.1M", slug: null },
+  { rank: 7, name: "AXIS THEORY", genre: "Jazz Fusion", change: 6, streams: "980K", slug: null },
+  { rank: 8, name: "LUNAR ECHO", genre: "Lo-Fi", change: -2, streams: "870K", slug: null },
 ];
 
 export default function TrendingArtists() {
+  const [artists, setArtists] = useState<ArtistRow[]>(STUBS);
+
+  useEffect(() => {
+    fetch("/api/homepage/trending-artists?limit=8")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: unknown) => {
+        if (!Array.isArray(data) || data.length === 0) return;
+        setArtists(
+          (data as Array<{
+            id: string; slug: string | null; stageName: string;
+            genres: string[]; followers: number;
+          }>).map((a, i) => ({
+            rank: i + 1,
+            name: (a.stageName ?? "Unknown").toUpperCase(),
+            genre: a.genres?.[0] ?? "Music",
+            change: 0,
+            streams: a.followers ? formatCount(a.followers) : "—",
+            slug: a.slug ?? null,
+          }))
+        );
+      })
+      .catch(() => {});
+  }, []);
   return (
     <div style={{
       background: "linear-gradient(135deg, #080A18 0%, #0A0A18 100%)",
@@ -26,7 +60,7 @@ export default function TrendingArtists() {
       <SectionTitle title="Trending Artists" subtitle="Based on streams & engagement" accent="cyan" badge="LIVE RANK" />
 
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        {ARTISTS.map((a, i) => (
+        {artists.map((a, i) => (
           <motion.div
             key={a.rank}
             initial={{ opacity: 0, x: -16 }}
@@ -56,7 +90,9 @@ export default function TrendingArtists() {
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 11, fontWeight: 800, color: i === 0 ? "#FFD700" : "white", letterSpacing: "0.08em", textTransform: "uppercase", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {a.name}
+                {a.slug ? (
+                  <Link href={`/artist/${a.slug}`} style={{ color: "inherit", textDecoration: "none" }}>{a.name}</Link>
+                ) : a.name}
               </div>
               <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", letterSpacing: "0.05em" }}>{a.genre}</div>
             </div>

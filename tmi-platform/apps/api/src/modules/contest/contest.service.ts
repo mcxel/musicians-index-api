@@ -58,17 +58,17 @@ export class ContestService {
   }
 
   async getActiveSeason() {
-    // TODO:
-    // return this.prisma.contestSeason.findFirst({
-    //   where: { status: 'active' },
-    //   include: { rounds: true, prizes: true },
-    // });
-    return null;
+    return this.prisma.contestSeason.findFirst({
+      where: { status: 'active' },
+      include: {
+        rounds: { orderBy: { createdAt: 'asc' }, take: 5 },
+        prizes: { orderBy: { rank: 'asc' } },
+      },
+    });
   }
 
   async getSeasonById(id: string) {
-    // TODO: return this.prisma.contestSeason.findUnique({ where: { id }, include: { rounds: true } });
-    return null;
+    return this.prisma.contestSeason.findUnique({ where: { id }, include: { rounds: true } });
   }
 
   async createSeason(dto: CreateSeasonDto) {

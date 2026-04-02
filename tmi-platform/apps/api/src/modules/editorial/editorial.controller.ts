@@ -1,11 +1,16 @@
 // tmi-platform/apps/api/src/modules/editorial/editorial.controller.ts
-import { Controller, Get, HttpCode, Param, Post, UseGuards } from '@nestjs/common';
+import { Controller, Get, HttpCode, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { AdminGuard } from '../auth/guards/admin.guard';
 import { EditorialService } from './editorial.service';
 
 @Controller('editorial')
 export class EditorialController {
   constructor(private readonly editorialService: EditorialService) {}
+
+  @Get('articles/latest')
+  getLatest(@Query('limit') limit?: string) {
+    return this.editorialService.getLatestArticles(limit ? parseInt(limit, 10) : 10);
+  }
 
   @Get('articles/:articleId')
   async getArticle(@Param('articleId') articleId: string) {

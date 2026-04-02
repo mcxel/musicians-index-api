@@ -1,11 +1,20 @@
-import { Injectable } from '@nestjs/common';
+﻿import { Injectable } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
 
-/**
- * SponsorsService
- * SCAFFOLD: Manages sponsor campaigns and placements.
- * Wire to Prisma and business logic in Copilot wiring phase.
- */
 @Injectable()
 export class SponsorsService {
-  // SCAFFOLD: Add service methods here
+  constructor(private readonly prisma: PrismaService) {}
+
+  async getActivePackages() {
+    return this.prisma.sponsorPackage.findMany({
+      where: { isActive: true },
+      orderBy: { price: 'desc' },
+    });
+  }
+
+  async getAll() {
+    return this.prisma.sponsorPackage.findMany({
+      orderBy: { tier: 'asc' },
+    });
+  }
 }

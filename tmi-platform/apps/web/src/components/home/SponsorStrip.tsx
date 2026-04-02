@@ -1,8 +1,11 @@
 "use client";
 import { motion } from "framer-motion";
+import { useState, useEffect } from "react";
 import SectionTitle from "@/components/ui/SectionTitle";
 
-const SPONSORS = [
+interface SponsorRow { name: string; tier: string; }
+
+const STUBS: SponsorRow[] = [
   { name: "AMPLIFY RECORDS", tier: "PLATINUM" },
   { name: "BEATLAB STUDIOS", tier: "GOLD" },
   { name: "VELOCITY AUDIO", tier: "GOLD" },
@@ -21,7 +24,24 @@ const TIER_COLOR: Record<string, string> = {
 };
 
 export default function SponsorStrip() {
-  const doubled = [...SPONSORS, ...SPONSORS];
+  const [sponsors, setSponsors] = useState<SponsorRow[]>(STUBS);
+
+  useEffect(() => {
+    fetch("/api/homepage/sponsors")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: unknown) => {
+        if (!Array.isArray(data) || data.length === 0) return;
+        setSponsors(
+          (data as Array<{ name: string; tier?: string | null }>).map((s) => ({
+            name: (s.name ?? "SPONSOR").toUpperCase(),
+            tier: (s.tier ?? "BRONZE").toUpperCase(),
+          }))
+        );
+      })
+      .catch(() => {});
+  }, []);
+
+  const doubled = [...sponsors, ...sponsors];
   return (
     <div style={{
       background: "linear-gradient(135deg, #080816 0%, #0A0A12 100%)",
