@@ -2,14 +2,19 @@
 import PageShell from "@/components/layout/PageShell";
 import HUDFrame from "@/components/hud/HUDFrame";
 import FooterHUD from "@/components/hud/FooterHUD";
-import PageSwitcher from "@/components/hud/PageSwitcher";
+import HomeNavigator from "@/components/home/HomeNavigator";
+import HeroBanner from "@/components/home/HeroBanner";
+import WeeklyCrownBelt from "@/components/home/WeeklyCrownBelt";
+import HomepageCanvas from "@/components/home/HomepageCanvas";
 
 export default function Home2Page() {
   return (
     <PageShell>
       <HUDFrame>
-        <div>HOME 2</div>
-        <PageSwitcher />
+        <HomeNavigator />
+        <HeroBanner />
+        <WeeklyCrownBelt />
+        <HomepageCanvas />
         <FooterHUD />
       </HUDFrame>
     </PageShell>
