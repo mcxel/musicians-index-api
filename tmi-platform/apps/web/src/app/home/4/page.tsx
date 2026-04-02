@@ -3,6 +3,10 @@
 import React, { useEffect, useState } from 'react';
 import AdPlacementCard from '@/components/placement/AdPlacementCard';
 import type { AdPlacement } from '@/components/placement/types';
+import PageShell from '@/components/layout/PageShell';
+import HUDFrame from '@/components/hud/HUDFrame';
+import FooterHUD from '@/components/hud/FooterHUD';
+import HomeNavigator from '@/components/home/HomeNavigator';
 
 const BELTS = ["A", "B", "C", "D", "E"];
 
@@ -61,13 +65,24 @@ function BeltSection({ belt }: { belt: string }) {
 
 export default function Home4SponsorsWorld() {
   return (
-    <main className="min-h-screen bg-gray-50 p-4">
-      <h1 className="text-3xl font-bold mb-6">Sponsors & Advertisers World</h1>
-      <div className="space-y-8">
-        {BELTS.map((belt) => (
-          <BeltSection key={belt} belt={belt} />
-        ))}
-      </div>
-    </main>
+    <PageShell>
+      <HUDFrame>
+        <HomeNavigator />
+        <main style={{ minHeight: '100vh', background: '#050510', padding: '0 0 48px' }}>
+          <div style={{ padding: '32px 24px 0', borderBottom: '1px solid #FFD70033', marginBottom: 32 }}>
+            <h1 style={{ color: '#FFD700', fontSize: 28, fontWeight: 800, letterSpacing: 2, textTransform: 'uppercase', margin: 0 }}>
+              Sponsors &amp; Advertisers World
+            </h1>
+            <p style={{ color: '#888', fontSize: 14, marginTop: 6 }}>Premium placement belts · Real-time inventory</p>
+          </div>
+          <div style={{ padding: '0 24px', display: 'flex', flexDirection: 'column', gap: 32 }}>
+            {BELTS.map((belt) => (
+              <BeltSection key={belt} belt={belt} />
+            ))}
+          </div>
+        </main>
+        <FooterHUD />
+      </HUDFrame>
+    </PageShell>
   );
 }
