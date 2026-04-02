@@ -1,0 +1,18 @@
+{
+  "id": "sponsor-outreach-bot",
+  "name": "Sponsor Outreach Bot",
+  "description": "Identifies potential sponsors and advertisers and queues outreach campaigns.",
+  "triggers": [
+    "new-artist-milestone",
+    "high-traffic-room",
+    "contest-winner"
+  ],
+  "actions": [
+    "queue-outreach",
+    "generate-sponsor-pitch",
+    "notify-sales-team"
+  ],
+  "priority": "low",
+  "schedule": "weekly",
+  "enabled": true
+}

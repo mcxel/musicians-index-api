@@ -1,0 +1,18 @@
+{
+  "id": "avatar-behavior-bot",
+  "name": "Avatar Behavior Bot",
+  "description": "Monitors avatar behavior states and triggers corrective actions when avatars get stuck or behave incorrectly.",
+  "triggers": [
+    "avatar-stuck",
+    "pose-timeout",
+    "zone-mismatch"
+  ],
+  "actions": [
+    "reset-avatar-pose",
+    "reassign-zone",
+    "reload-behavior-preset"
+  ],
+  "priority": "medium",
+  "schedule": "continuous",
+  "enabled": true
+}

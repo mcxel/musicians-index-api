@@ -1,0 +1,393 @@
+{
+  "timestamp": "2026-03-31T02:58:16.762Z",
+  "passed": 64,
+  "failed": 0,
+  "total": 64,
+  "status": "GREEN",
+  "results": [
+    {
+      "name": "GET / root",
+      "status": "PASS",
+      "detail": "service=tmi-platform-api",
+      "statusCode": 200
+    },
+    {
+      "name": "GET /api/healthz",
+      "status": "PASS",
+      "detail": "{\"ok\":true,\"service\":\"tmi-platform-api\",\"identity\":{\"commitS",
+      "statusCode": 200
+    },
+    {
+      "name": "GET /api/readyz",
+      "status": "PASS",
+      "detail": "ok=true blockers=[]",
+      "statusCode": 200
+    },
+    {
+      "name": "GET /api/unknown (404 guard)",
+      "status": "PASS",
+      "detail": "expected 404",
+      "statusCode": 404
+    },
+    {
+      "name": "GET /api/auth/csrf",
+      "status": "PASS",
+      "detail": "token=dffb28ec...",
+      "statusCode": 200
+    },
+    {
+      "name": "GET /api/auth/session (unauth)",
+      "status": "PASS",
+      "detail": "authenticated=false csrfSynced=yes",
+      "statusCode": 200
+    },
+    {
+      "name": "POST /api/auth/register (happy path)",
+      "status": "PASS",
+      "detail": "{\"ok\":true,\"user\":{\"id\":\"cmne11pmi0000icuju02d1dby\",\"email\":\"thorough_1774925884079@tmi-test.com\",\"age\":30,\"isMinor\":fal",
+      "statusCode": 201
+    },
+    {
+      "name": "POST /api/auth/register (duplicate)",
+      "status": "PASS",
+      "detail": "expected 409/400/422",
+      "statusCode": 409
+    },
+    {
+      "name": "POST /api/auth/register (invalid email)",
+      "status": "PASS",
+      "detail": "expected 400/422",
+      "statusCode": 400
+    },
+    {
+      "name": "POST /api/auth/register (missing fields)",
+      "status": "PASS",
+      "detail": "expected 400/422",
+      "statusCode": 400
+    },
+    {
+      "name": "POST /api/auth/register (short password)",
+      "status": "PASS",
+      "detail": "expected 400/422",
+      "statusCode": 400
+    },
+    {
+      "name": "POST /api/auth/login (happy path)",
+      "status": "PASS",
+      "detail": "cookie=yes body={\"ok\":true,\"authenticated\":true,\"user\":{\"id\":\"cmne11pmi0000i",
+      "statusCode": 200
+    },
+    {
+      "name": "POST /api/auth/login (wrong password)",
+      "status": "PASS",
+      "detail": "expected 401/400/403",
+      "statusCode": 401
+    },
+    {
+      "name": "POST /api/auth/login (non-existent user)",
+      "status": "PASS",
+      "detail": "expected 401/404/400",
+      "statusCode": 401
+    },
+    {
+      "name": "POST /api/auth/login (empty body)",
+      "status": "PASS",
+      "detail": "expected 400/422/401",
+      "statusCode": 400
+    },
+    {
+      "name": "POST /api/auth/login (no CSRF header)",
+      "status": "PASS",
+      "detail": "expected 403 CSRF rejection",
+      "statusCode": 403
+    },
+    {
+      "name": "GET /api/auth/session (authenticated)",
+      "status": "PASS",
+      "detail": "authenticated=true",
+      "statusCode": 200
+    },
+    {
+      "name": "GET /api/users/me (auth)",
+      "status": "PASS",
+      "detail": "id=present",
+      "statusCode": 200
+    },
+    {
+      "name": "GET /api/users/me (unauth)",
+      "status": "PASS",
+      "detail": "expected 401/403",
+      "statusCode": 401
+    },
+    {
+      "name": "PATCH /api/users/me",
+      "status": "PASS",
+      "detail": "HTTP 400 {\"message\":[\"property displayName should not exist\"],\"error\"",
+      "statusCode": 400
+    },
+    {
+      "name": "GET /api/wallet (auth)",
+      "status": "PASS",
+      "detail": "balance=undefined",
+      "statusCode": 200
+    },
+    {
+      "name": "GET /api/wallet (unauth)",
+      "status": "PASS",
+      "detail": "expected 401/403",
+      "statusCode": 401
+    },
+    {
+      "name": "GET /api/wallet/transactions",
+      "status": "PASS",
+      "detail": "",
+      "statusCode": 200
+    },
+    {
+      "name": "POST /api/wallet/payout-request (invalid amount)",
+      "status": "PASS",
+      "detail": "handled",
+      "statusCode": 400
+    },
+    {
+      "name": "POST /api/wallet/payout-request (missing amount)",
+      "status": "PASS",
+      "detail": "handled",
+      "statusCode": 400
+    },
+    {
+      "name": "GET /api/notifications (auth)",
+      "status": "PASS",
+      "detail": "",
+      "statusCode": 200
+    },
+    {
+      "name": "GET /api/notifications (unauth)",
+      "status": "PASS",
+      "detail": "expected 401/403",
+      "statusCode": 401
+    },
+    {
+      "name": "POST /api/notifications/read-all",
+      "status": "PASS",
+      "detail": "",
+      "statusCode": 200
+    },
+    {
+      "name": "POST /api/notifications/:id/read (invalid id)",
+      "status": "PASS",
+      "detail": "handled",
+      "statusCode": 200
+    },
+    {
+      "name": "GET /api/search?q=music",
+      "status": "PASS",
+      "detail": "total=0",
+      "statusCode": 200
+    },
+    {
+      "name": "GET /api/search (empty query)",
+      "status": "PASS",
+      "detail": "handled",
+      "statusCode": 200
+    },
+    {
+      "name": "GET /api/search (no results)",
+      "status": "PASS",
+      "detail": "total=0",
+      "statusCode": 200
+    },
+    {
+      "name": "GET /api/search?type=artists",
+      "status": "PASS",
+      "detail": "",
+      "statusCode": 200
+    },
+    {
+      "name": "Pack 43 /api/rewards",
+      "status": "PASS",
+      "detail": "route responding 200",
+      "statusCode": 200
+    },
+    {
+      "name": "Pack 45 /api/media",
+      "status": "PASS",
+      "detail": "route responding 200",
+      "statusCode": 200
+    },
+    {
+      "name": "Pack 46 /api/admin",
+      "status": "PASS",
+      "detail": "route responding 200",
+      "statusCode": 200
+    },
+    {
+      "name": "GET /api/rewards (with session)",
+      "status": "PASS",
+      "detail": "HTTP 200",
+      "statusCode": 200
+    },
+    {
+      "name": "GET /api/media/health",
+      "status": "PASS",
+      "detail": "HTTP 200",
+      "statusCode": 200
+    },
+    {
+      "name": "Large payload (5KB)",
+      "status": "PASS",
+      "detail": "handled",
+      "statusCode": 400
+    },
+    {
+      "name": "SQL injection attempt",
+      "status": "PASS",
+      "detail": "rejected",
+      "statusCode": 400
+    },
+    {
+      "name": "XSS payload in body",
+      "status": "PASS",
+      "detail": "handled",
+      "statusCode": 400
+    },
+    {
+      "name": "DELETE /api/auth/session (method not allowed)",
+      "status": "PASS",
+      "detail": "expected 404/405",
+      "statusCode": 404
+    },
+    {
+      "name": "Fake Bearer token on /api/wallet",
+      "status": "PASS",
+      "detail": "handled",
+      "statusCode": 401
+    },
+    {
+      "name": "POST mutation without CSRF token",
+      "status": "PASS",
+      "detail": "expected 403",
+      "statusCode": 403
+    },
+    {
+      "name": "POST /api/auth/logout",
+      "status": "PASS",
+      "detail": "",
+      "statusCode": 200
+    },
+    {
+      "name": "GET /api/auth/session (after logout)",
+      "status": "PASS",
+      "detail": "authenticated=false",
+      "statusCode": 200
+    },
+    {
+      "name": "GET /api/users/me (after logout)",
+      "status": "PASS",
+      "detail": "expected 401/403",
+      "statusCode": 401
+    },
+    {
+      "name": "workers/rewards.worker.ts",
+      "status": "PASS",
+      "detail": "3207 bytes",
+      "statusCode": null
+    },
+    {
+      "name": "workers/search.worker.ts",
+      "status": "PASS",
+      "detail": "2072 bytes",
+      "statusCode": null
+    },
+    {
+      "name": "workers/media.worker.ts",
+      "status": "PASS",
+      "detail": "2595 bytes",
+      "statusCode": null
+    },
+    {
+      "name": "workers/fulfillment.worker.ts",
+      "status": "PASS",
+      "detail": "2660 bytes",
+      "statusCode": null
+    },
+    {
+      "name": "workers/recommendation.worker.ts",
+      "status": "PASS",
+      "detail": "2259 bytes",
+      "statusCode": null
+    },
+    {
+      "name": "workers/index.ts",
+      "status": "PASS",
+      "detail": "1220 bytes",
+      "statusCode": null
+    },
+    {
+      "name": "workers/package.json",
+      "status": "PASS",
+      "detail": "563 bytes",
+      "statusCode": null
+    },
+    {
+      "name": "Queue names in rewards.worker.ts",
+      "status": "PASS",
+      "detail": "all queues present",
+      "statusCode": null
+    },
+    {
+      "name": "Queue names in search.worker.ts",
+      "status": "PASS",
+      "detail": "all queues present",
+      "statusCode": null
+    },
+    {
+      "name": "Queue names in media.worker.ts",
+      "status": "PASS",
+      "detail": "all queues present",
+      "statusCode": null
+    },
+    {
+      "name": "Queue names in fulfillment.worker.ts",
+      "status": "PASS",
+      "detail": "all queues present",
+      "statusCode": null
+    },
+    {
+      "name": "Queue names in recommendation.worker.ts",
+      "status": "PASS",
+      "detail": "all queues present",
+      "statusCode": null
+    },
+    {
+      "name": "workers/package.json deps",
+      "status": "PASS",
+      "detail": "bullmq=true ioredis=true",
+      "statusCode": null
+    },
+    {
+      "name": ".env file exists",
+      "status": "PASS",
+      "detail": "C:\\Users\\Admin\\Documents\\BerntoutGlobal XXL\\tmi-platform\\apps\\api\\.env",
+      "statusCode": null
+    },
+    {
+      "name": "ENV DATABASE_URL (required)",
+      "status": "PASS",
+      "detail": "set (scheme: postgresql)",
+      "statusCode": null
+    },
+    {
+      "name": "ENV PORT (optional)",
+      "status": "PASS",
+      "detail": "set=4000",
+      "statusCode": null
+    },
+    {
+      "name": ".env.example exists",
+      "status": "PASS",
+      "detail": "C:\\Users\\Admin\\Documents\\BerntoutGlobal XXL\\tmi-platform\\apps\\api\\.env.example",
+      "statusCode": null
+    }
+  ]
+}

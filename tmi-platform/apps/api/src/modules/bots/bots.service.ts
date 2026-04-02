@@ -1,11 +1,21 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 
-/**
- * BotsService
- * SCAFFOLD: Manages bot tasks and automation scheduling.
- * Wire to Prisma and business logic in Copilot wiring phase.
- */
 @Injectable()
 export class BotsService {
-  // SCAFFOLD: Add service methods here
+  private readonly logger = new Logger(BotsService.name);
+
+  constructor(
+    // Example of injecting a specific queue to add jobs to it.
+    // This service can be expanded to include methods for all queues.
+    @InjectQueue('recommendation-generation')
+    private readonly recommendationQueue: Queue,
+  ) {}
+
+  async triggerArtistRecommendation(payload: { userId: string }) {
+    this.logger.log(`Adding artist recommendation job for user ${payload.userId}...`);
+    await this.recommendationQueue.add('generate-for-user', payload);
+    return { success: true, message: 'Artist recommendation job queued.' };
+  }
 }

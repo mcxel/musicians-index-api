@@ -1,0 +1,18 @@
+{
+  "id": "onboarding-recovery-bot",
+  "name": "Onboarding Recovery Bot",
+  "description": "Detects incomplete onboarding flows and sends recovery prompts to users who dropped off.",
+  "triggers": [
+    "onboarding-incomplete",
+    "profile-missing",
+    "role-not-selected"
+  ],
+  "actions": [
+    "send-recovery-email",
+    "flag-incomplete-profile",
+    "trigger-onboarding-resume"
+  ],
+  "priority": "high",
+  "schedule": "every-6-hours",
+  "enabled": true
+}

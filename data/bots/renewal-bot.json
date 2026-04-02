@@ -1,0 +1,18 @@
+{
+  "id": "renewal-bot",
+  "name": "Renewal Bot",
+  "description": "Monitors subscription and sponsor contract renewals and sends reminders.",
+  "triggers": [
+    "subscription-expiring",
+    "contract-expiring",
+    "payment-failed"
+  ],
+  "actions": [
+    "send-renewal-reminder",
+    "flag-expiring-account",
+    "notify-admin"
+  ],
+  "priority": "high",
+  "schedule": "daily",
+  "enabled": true
+}

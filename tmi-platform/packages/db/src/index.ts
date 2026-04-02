@@ -2,11 +2,15 @@
  * packages/db/src/index.ts
  * PrismaClient singleton + Prisma type re-exports for the TMI monorepo.
  *
- * noEmit: true — consumed via TypeScript path resolution, not compiled output.
+ * Prisma v7 requires a driver adapter — connection URL is NOT in schema.prisma.
+ * Uses @prisma/adapter-pg with pg Pool for PostgreSQL.
+ *
  * Import from "db" in any workspace package (api, web) to get the shared client.
  */
 
 import { PrismaClient } from "@prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { Pool } from "pg";
 
 // ---------------------------------------------------------------------------
 // Global singleton — prevents multiple PrismaClient instances in dev (Next.js
@@ -17,14 +21,24 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
-export const prisma: PrismaClient =
-  globalForPrisma.prisma ??
-  new PrismaClient({
+function createPrismaClient(): PrismaClient {
+  const connectionString = process.env["DATABASE_URL"];
+  if (!connectionString) {
+    throw new Error("[db] DATABASE_URL environment variable is not set");
+  }
+  const pool = new Pool({ connectionString });
+  const adapter = new PrismaPg(pool);
+  return new PrismaClient({
+    adapter,
     log:
       process.env["NODE_ENV"] === "development"
         ? ["query", "error", "warn"]
         : ["error"],
   });
+}
+
+export const prisma: PrismaClient =
+  globalForPrisma.prisma ?? createPrismaClient();
 
 if (process.env["NODE_ENV"] !== "production") {
   globalForPrisma.prisma = prisma;

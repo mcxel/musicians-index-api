@@ -1,7 +1,3 @@
 packages:
   - apps/*
   - packages/*
-
-nodeLinker: node-modules
-
-packageImportMethod: copy

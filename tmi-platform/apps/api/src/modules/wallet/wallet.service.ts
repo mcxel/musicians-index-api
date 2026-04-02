@@ -7,10 +7,16 @@ export class WalletService {
 
   private async resolveUserId(token: string | undefined): Promise<string> {
     if (!token) throw new UnauthorizedException();
-    const session = await this.prisma.session.findUnique({
-      where: { sessionToken: token },
-      select: { userId: true, expires: true },
-    });
+    let session: { userId: string; expires: Date } | null = null;
+    try {
+      session = await this.prisma.session.findUnique({
+        where: { sessionToken: token },
+        select: { userId: true, expires: true },
+      });
+    } catch {
+      // Prisma error (e.g. schema mismatch, DB unavailable) → treat as invalid session
+      throw new UnauthorizedException();
+    }
     if (!session || session.expires < new Date()) throw new UnauthorizedException();
     return session.userId;
   }

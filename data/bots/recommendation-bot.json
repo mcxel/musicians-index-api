@@ -1,0 +1,18 @@
+{
+  "id": "recommendation-bot",
+  "name": "Recommendation Bot",
+  "description": "Generates personalized artist, room, and content recommendations for each user.",
+  "triggers": [
+    "user-login",
+    "profile-updated",
+    "activity-recorded"
+  ],
+  "actions": [
+    "compute-recommendations",
+    "update-feed",
+    "notify-user"
+  ],
+  "priority": "medium",
+  "schedule": "every-hour",
+  "enabled": true
+}
