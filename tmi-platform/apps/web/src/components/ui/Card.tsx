@@ -34,7 +34,7 @@ export default function Card({
   style,
   onClick,
   hover = false,
-}: CardProps) {
+}: Readonly<CardProps>) {
   const borderColor = BORDER_COLORS[glow];
   const glowColor = GLOW_COLORS[glow];
 

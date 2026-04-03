@@ -5,5 +5,11 @@
         "c:\\Users\\Admin\\.vscode\\extensions\\ms-security.ms-sentinel-2.0.0\\python",
         "c:\\Users\\Admin\\.vscode\\extensions\\ms-security.ms-sentinel-2.0.1\\python",
         "c:\\Users\\Admin\\.vscode\\extensions\\ms-security.ms-sentinel-2.0.2\\python"
-    ]
+    ],
+    "sonarlint.rules": {
+        "Web:InlineStyleCheck": { "level": "off" },
+        "javascript:S6819": { "level": "off" },
+        "typescript:S6571": { "level": "off" },
+        "javascript:S6571": { "level": "off" }
+    }
 }
