@@ -85,7 +85,7 @@ export default function BotsDashboardPage() {
           </div>
 
           <div style={{ padding: '48px 32px 0' }}>
-            <SectionTitle accent="#00FF88">ACTIVE BOTS</SectionTitle>
+            <SectionTitle title="ACTIVE BOTS" accent="cyan" />
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16, marginTop: 24 }}>
               {filtered.map((bot, i) => {
                 const sc = STATUS_COLORS[bot.status] ?? '#555';

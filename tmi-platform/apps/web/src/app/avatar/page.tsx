@@ -36,7 +36,7 @@ export default function AvatarHubPage() {
           </div>
 
           <div style={{ padding: '48px 32px 0' }}>
-            <SectionTitle accent="#AA2DFF">AVATAR MODULES</SectionTitle>
+            <SectionTitle title="AVATAR MODULES" accent="purple" />
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 18, marginTop: 24 }}>
               {AVATAR_MODULES.map((mod, i) => (
                 <motion.div key={mod.href} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}>

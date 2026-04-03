@@ -77,7 +77,7 @@ export default function StorePage() {
           </div>
 
           <div style={{ padding: '48px 32px 0' }}>
-            <SectionTitle accent="#FF2DAA">{filter === 'ALL' ? 'ALL ITEMS' : filter}</SectionTitle>
+            <SectionTitle title={filter === 'ALL' ? 'ALL ITEMS' : filter} accent="pink" />
             {loading && <div style={{ color: '#555', padding: '40px 0' }}>Loading store…</div>}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 20, marginTop: 24 }}>
               {filtered.map((item, i) => {

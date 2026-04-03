@@ -38,7 +38,7 @@ export default function AvatarInventoryPage() {
 
           <div style={{ padding: '48px 32px 0' }}>
             {/* Equipped */}
-            <SectionTitle accent="#00FFFF">EQUIPPED ({equipped.length})</SectionTitle>
+            <SectionTitle title={`EQUIPPED (${equipped.length})`} accent="cyan" />
             <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginTop: 16, marginBottom: 40 }}>
               {equipped.length === 0 && <div style={{ color: '#555', fontSize: 13 }}>Nothing equipped — equip items below.</div>}
               {equipped.map((item, i) => (
@@ -52,7 +52,7 @@ export default function AvatarInventoryPage() {
             </div>
 
             {/* Unequipped */}
-            <SectionTitle accent="#555">UNEQUIPPED ({unequipped.length})</SectionTitle>
+            <SectionTitle title={`UNEQUIPPED (${unequipped.length})`} accent="cyan" />
             <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginTop: 16 }}>
               {unequipped.length === 0 && <div style={{ color: '#555', fontSize: 13 }}>All items equipped!</div>}
               {unequipped.map((item, i) => {

@@ -41,7 +41,7 @@ export default function AvatarCreatePage() {
           <div style={{ padding: '48px 32px 0', display: 'grid', gridTemplateColumns: '1fr 360px', gap: 48, alignItems: 'start' }}>
             {/* Preview */}
             <div>
-              <SectionTitle accent="#AA2DFF">PREVIEW</SectionTitle>
+              <SectionTitle title="PREVIEW" accent="purple" />
               <motion.div animate={{ scale: [1, 1.02, 1] }} transition={{ repeat: Infinity, duration: 3 }} style={{ marginTop: 24, background: '#0a0a1a', border: '1px solid #AA2DFF33', borderRadius: 20, padding: '48px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0 }}>
                 {/* Bobblehead SVG-style preview */}
                 <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -66,7 +66,7 @@ export default function AvatarCreatePage() {
 
             {/* Controls */}
             <div>
-              <SectionTitle accent="#FF2DAA">CUSTOMIZE</SectionTitle>
+              <SectionTitle title="CUSTOMIZE" accent="pink" />
               <div style={{ marginTop: 24, display: 'flex', flexDirection: 'column', gap: 24 }}>
                 {/* Name */}
                 <div>

@@ -71,7 +71,7 @@ export default function AvatarShopPage() {
           </div>
 
           <div style={{ padding: '48px 32px 0' }}>
-            <SectionTitle accent="#FFD700">SHOP ITEMS</SectionTitle>
+            <SectionTitle title="SHOP ITEMS" accent="gold" />
             {loading && <div style={{ color: '#555', padding: '40px 0' }}>Loading shop…</div>}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 16, marginTop: 24 }}>
               {filtered.map((item, i) => {
