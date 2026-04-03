@@ -1,4 +1,4 @@
-export default function ArticleQuote({ text }: { text: string }) {
+export default function ArticleQuote({ text }: Readonly<{ text: string }>) {
   return (
     <div
       style={{
