@@ -1,7 +1,8 @@
 "use client";
 import { motion } from "framer-motion";
+import { useState, useEffect } from "react";
 
-const HEADLINES = [
+const FALLBACK_HEADLINES = [
   "🏆 Crown Season enters Week 14 — voting closes Friday midnight",
   "🎙️ Nova Reign drops surprise visual for \"Frequencies\" — 2M views overnight",
   "🎮 Game Night: Name That Tune tournament kicks off at 9PM EST",
@@ -12,8 +13,27 @@ const HEADLINES = [
   "🌍 Platform now live in 24 countries worldwide",
 ];
 
+interface NewsArticle { id: string; title: string; excerpt?: string; }
+
+const HEADLINE_EMOJIS = ["🏆", "🎙️", "🔥", "📢", "🎤", "💰", "🌍", "⭐", "🎶", "🎬", "🎯", "🚀"];
+
 export default function NewsStrip() {
-  const ticker = [...HEADLINES, ...HEADLINES];
+  const [headlines, setHeadlines] = useState<string[]>(FALLBACK_HEADLINES);
+
+  useEffect(() => {
+    fetch("/api/homepage/belt-feed?belt=news&limit=12")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: unknown) => {
+        if (!Array.isArray(data) || data.length === 0) return;
+        const live = (data as NewsArticle[]).map(
+          (a, i) => `${HEADLINE_EMOJIS[i % HEADLINE_EMOJIS.length]} ${a.title}`,
+        );
+        setHeadlines(live);
+      })
+      .catch(() => {});
+  }, []);
+
+  const ticker = [...headlines, ...headlines];
   return (
     <div style={{
       background: "rgba(0,255,255,0.04)", border: "1px solid rgba(0,255,255,0.15)",

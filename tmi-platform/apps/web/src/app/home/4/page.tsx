@@ -7,6 +7,7 @@ import PageShell from '@/components/layout/PageShell';
 import HUDFrame from '@/components/hud/HUDFrame';
 import FooterHUD from '@/components/hud/FooterHUD';
 import HomeNavigator from '@/components/home/HomeNavigator';
+import BotConsole from '@/components/bots/BotConsole';
 
 const BELTS = ["A", "B", "C", "D", "E"];
 
@@ -79,6 +80,7 @@ export default function Home4SponsorsWorld() {
             {BELTS.map((belt) => (
               <BeltSection key={belt} belt={belt} />
             ))}
+            <BotConsole surface="home4" />
           </div>
         </main>
         <FooterHUD />
