@@ -2,14 +2,43 @@
 import { motion } from "framer-motion";
 import SectionTitle from "@/components/ui/SectionTitle";
 import Link from "next/link";
+import { useState, useEffect } from "react";
 
-const INTERVIEWS = [
+interface InterviewItem {
+  name: string; topic: string; genre: string; duration: string; type: string; color: string;
+}
+
+const FALLBACK_INTERVIEWS: InterviewItem[] = [
   { name: "Amirah Wells", topic: "Touring, healing, and the next album era", genre: "R&B", duration: "42 min", type: "Video", color: "#FF2DAA" },
   { name: "Traxx Monroe", topic: "Trap production secrets from the studio", genre: "Trap", duration: "28 min", type: "Audio", color: "#00FFFF" },
   { name: "Nova Reign", topic: "How \"Frequencies\" almost didn't get made", genre: "Neo-Soul", duration: "35 min", type: "Written", color: "#AA2DFF" },
 ];
 
+const COLORS = ["#FF2DAA", "#00FFFF", "#AA2DFF", "#FFD700"];
+const TYPES = ["Video", "Audio", "Written"];
+
+interface ArticleRaw { id: string; title: string; excerpt?: string; author?: { name?: string }; }
+
 export default function Interviews() {
+  const [items, setItems] = useState<InterviewItem[]>(FALLBACK_INTERVIEWS);
+
+  useEffect(() => {
+    fetch("/api/homepage/belt-feed?belt=interviews&limit=6")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: unknown) => {
+        if (!Array.isArray(data) || data.length === 0) return;
+        const mapped = (data as ArticleRaw[]).slice(0, 6).map((a, i) => ({
+          name: a.author?.name ?? "TMI Staff",
+          topic: a.title,
+          genre: "Interview",
+          duration: `${20 + (i * 7)}min`,
+          type: TYPES[i % TYPES.length],
+          color: COLORS[i % COLORS.length],
+        }));
+        setItems(mapped);
+      })
+      .catch(() => {});
+  }, []);
   return (
     <div style={{
       background: "linear-gradient(135deg, #0A0A12 0%, #0D0D1C 100%)",
@@ -18,7 +47,7 @@ export default function Interviews() {
     }}>
       <SectionTitle title="Interviews" accent="cyan" badge="New" />
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        {INTERVIEWS.map((iv, i) => (
+        {items.map((iv, i) => (
           <motion.div key={i}
             whileHover={{ x: 4 }}
             style={{

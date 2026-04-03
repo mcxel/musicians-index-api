@@ -26,14 +26,14 @@ export default function MagazineCoverScreen() {
   const [articles, setArticles] = useState<CoverArticle[]>(STUB_ARTICLES);
 
   useEffect(() => {
-    fetch("/api/homepage/latest-articles?limit=4")
+    fetch("/api/homepage/belt-feed?belt=cover&limit=4")
       .then((r) => (r.ok ? r.json() : null))
       .then((data: unknown) => {
         if (!Array.isArray(data) || data.length === 0) return;
         setArticles(
           (data as Array<{ id: string; title: string; category: string; slug: string }>)
             .slice(0, 4)
-            .map((a) => ({ id: a.id, title: a.title, category: (a.category ?? "FEATURE").toUpperCase(), slug: a.slug ?? "" }))
+            .map((a) => ({ id: a.id, title: a.title, category: (a.category ?? "FEATURED").toUpperCase(), slug: a.slug ?? "" }))
         );
       })
       .catch(() => {});
