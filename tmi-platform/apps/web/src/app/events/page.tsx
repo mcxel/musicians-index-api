@@ -69,7 +69,7 @@ export default function EventsPage() {
           </div>
 
           <div style={{ padding: '48px 32px 0' }}>
-            <SectionTitle accent="#AA2DFF">UPCOMING EVENTS</SectionTitle>
+            <SectionTitle title="UPCOMING EVENTS" accent="purple" />
             {loading && <div style={{ color: '#555', padding: '40px 0' }}>Loading events…</div>}
             <AnimatePresence mode="popLayout">
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 24 }}>

@@ -77,7 +77,7 @@ export default function ArticlesPage() {
 
           {/* Grid */}
           <div style={{ padding: '48px 32px 0' }}>
-            <SectionTitle accent="#FF2DAA">{filter === 'ALL' ? 'ALL ARTICLES' : filter}</SectionTitle>
+            <SectionTitle title={filter === 'ALL' ? 'ALL ARTICLES' : filter} accent="pink" />
             {loading && <div style={{ color: '#555', padding: '40px 0' }}>Loading articles…</div>}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 24, marginTop: 24 }}>
               {filtered.map((article, i) => {
