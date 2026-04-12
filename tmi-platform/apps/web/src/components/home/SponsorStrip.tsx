@@ -2,19 +2,7 @@
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
 import SectionTitle from "@/components/ui/SectionTitle";
-
-interface SponsorRow { name: string; tier: string; }
-
-const STUBS: SponsorRow[] = [
-  { name: "AMPLIFY RECORDS", tier: "PLATINUM" },
-  { name: "BEATLAB STUDIOS", tier: "GOLD" },
-  { name: "VELOCITY AUDIO", tier: "GOLD" },
-  { name: "NOVA MEDIA GROUP", tier: "SILVER" },
-  { name: "CROWN & CO.", tier: "SILVER" },
-  { name: "FREQUENCY LABS", tier: "BRONZE" },
-  { name: "THE VAULT COLLECTIVE", tier: "BRONZE" },
-  { name: "SONIC AXIS", tier: "BRONZE" },
-];
+import { getHomeSponsors, type HomeSponsorRow } from "@/components/home/data/getHomeSponsors";
 
 const TIER_COLOR: Record<string, string> = {
   PLATINUM: "#E0E0FF",
@@ -24,19 +12,14 @@ const TIER_COLOR: Record<string, string> = {
 };
 
 export default function SponsorStrip() {
-  const [sponsors, setSponsors] = useState<SponsorRow[]>(STUBS);
+  const [sponsors, setSponsors] = useState<HomeSponsorRow[]>([]);
+  const [source, setSource] = useState<"live" | "fallback">("fallback");
 
   useEffect(() => {
-    fetch("/api/homepage/sponsors")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data: unknown) => {
-        if (!Array.isArray(data) || data.length === 0) return;
-        setSponsors(
-          (data as Array<{ name: string; tier?: string | null }>).map((s) => ({
-            name: (s.name ?? "SPONSOR").toUpperCase(),
-            tier: (s.tier ?? "BRONZE").toUpperCase(),
-          }))
-        );
+    getHomeSponsors()
+      .then((result) => {
+        setSponsors(result.data);
+        setSource(result.source);
       })
       .catch(() => {});
   }, []);
@@ -55,7 +38,7 @@ export default function SponsorStrip() {
       <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 60, background: "linear-gradient(to right, #080816, transparent)", zIndex: 2, pointerEvents: "none" }} />
       <div style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: 60, background: "linear-gradient(to left, #080816, transparent)", zIndex: 2, pointerEvents: "none" }} />
 
-      <SectionTitle title="Powered By" subtitle="Official platform sponsors" accent="cyan" />
+      <SectionTitle title="Powered By" subtitle="Official platform sponsors" accent="cyan" badge={source === "live" ? "Live" : "Fallback"} />
 
       <div style={{ overflow: "hidden", position: "relative" }}>
         <motion.div

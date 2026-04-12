@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import SectionTitle from "@/components/ui/SectionTitle";
 import Link from "next/link";
 import { useState, useEffect } from "react";
+import { getHomeEditorial } from "@/components/home/data/getHomeEditorial";
 
 interface InterviewItem {
   name: string; topic: string; genre: string; duration: string; type: string; color: string;
@@ -17,25 +18,23 @@ const FALLBACK_INTERVIEWS: InterviewItem[] = [
 const COLORS = ["#FF2DAA", "#00FFFF", "#AA2DFF", "#FFD700"];
 const TYPES = ["Video", "Audio", "Written"];
 
-interface ArticleRaw { id: string; title: string; excerpt?: string; author?: { name?: string }; }
-
 export default function Interviews() {
   const [items, setItems] = useState<InterviewItem[]>(FALLBACK_INTERVIEWS);
+  const [source, setSource] = useState<"live" | "fallback">("fallback");
 
   useEffect(() => {
-    fetch("/api/homepage/belt-feed?belt=interviews&limit=6")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data: unknown) => {
-        if (!Array.isArray(data) || data.length === 0) return;
-        const mapped = (data as ArticleRaw[]).slice(0, 6).map((a, i) => ({
-          name: a.author?.name ?? "TMI Staff",
-          topic: a.title,
+    getHomeEditorial()
+      .then((result) => {
+        const mapped = result.data.interviews.slice(0, 6).map((article, i) => ({
+          name: article.authorName ?? "TMI Staff",
+          topic: article.title,
           genre: "Interview",
           duration: `${20 + (i * 7)}min`,
           type: TYPES[i % TYPES.length],
           color: COLORS[i % COLORS.length],
         }));
         setItems(mapped);
+        setSource(result.source);
       })
       .catch(() => {});
   }, []);
@@ -45,7 +44,7 @@ export default function Interviews() {
       border: "1px solid rgba(0,255,255,0.15)",
       borderRadius: 12, padding: "24px",
     }}>
-      <SectionTitle title="Interviews" accent="cyan" badge="New" />
+      <SectionTitle title="Interviews" accent="cyan" badge={`New · ${source === "live" ? "Live" : "Fallback"}`} />
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         {items.map((iv, i) => (
           <motion.div key={i}

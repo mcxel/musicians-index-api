@@ -1,0 +1,316 @@
+/* ============================================================
+   TMI HOME — ROOMS / GAMES / SPONSOR / ADMIN STYLES
+   ============================================================ */
+
+/* ── SPONSOR STYLES ── */
+.sponsorStyles {}
+
+.billboardCard {
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+  background: linear-gradient(145deg, #120a00, #1e1000);
+  border: 1px solid rgba(255,138,31,0.5);
+  box-shadow: 0 0 18px rgba(255,138,31,.38), 0 0 50px rgba(255,138,31,.18);
+  min-height: 240px;
+  display: flex;
+  flex-direction: column;
+}
+
+.carouselCard {
+  border-radius: 16px;
+  background: linear-gradient(145deg, #020617, #0d1528);
+  border: 1px solid rgba(40,240,255,0.32);
+  min-height: 200px;
+  overflow: hidden;
+  position: relative;
+}
+
+.metricCard {
+  border-radius: 12px;
+  background: linear-gradient(145deg, #070d1c, #0d1530);
+  border: 1px solid rgba(47,125,255,0.32);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.metricValue {
+  font-size: clamp(24px, 3vw, 36px);
+  font-weight: 900;
+  font-family: var(--font-label, 'Orbitron', monospace);
+  letter-spacing: 0.04em;
+  color: #f5f7ff;
+}
+
+.metricLabel {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: #8fa1d9;
+  font-weight: 700;
+}
+
+.metricDelta {
+  font-size: 11px;
+  font-weight: 700;
+}
+.metricDeltaUp   { color: #31f7a6; }
+.metricDeltaDown { color: #ff4db8; }
+
+/* ── ADMIN STYLES ── */
+.commandPanel {
+  border-radius: 16px;
+  background: linear-gradient(145deg, #050a14, #0c1428);
+  border: 1px solid rgba(255,77,184,0.32);
+  padding: 16px;
+}
+
+.mapContainer {
+  border-radius: 12px;
+  overflow: hidden;
+  background: linear-gradient(135deg, #070e1c, #0d1b38);
+  border: 1px solid rgba(40,240,255,0.28);
+  min-height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  color: #8fa1d9;
+  position: relative;
+}
+
+.statusRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.06);
+  background: rgba(255,255,255,0.02);
+}
+
+.statusDot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.statusOnline { background: #31f7a6; box-shadow: 0 0 6px #31f7a6; }
+.statusWarn   { background: #ffc94a; box-shadow: 0 0 6px #ffc94a; animation: blink 1s ease-in-out infinite; }
+.statusOffline{ background: #ff4db8; box-shadow: 0 0 6px #ff4db8; }
+
+/* ── GAME STYLES ── */
+.gamePanel {
+  border-radius: 16px;
+  background: linear-gradient(145deg, #100824, #1e0c3a);
+  border: 1px solid rgba(255,77,184,0.45);
+  box-shadow: 0 0 16px rgba(255,77,184,.3);
+  overflow: hidden;
+}
+
+.gameBoard {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  padding: 12px;
+}
+
+.gameCell {
+  border-radius: 10px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  cursor: pointer;
+}
+.gameCell:hover {
+  border-color: rgba(255,138,31,0.55);
+  box-shadow: 0 0 12px rgba(255,138,31,0.25);
+}
+
+.countdownDisplay {
+  font-size: clamp(32px, 5vw, 56px);
+  font-weight: 900;
+  font-family: var(--font-label, 'Orbitron', monospace);
+  color: #28f0ff;
+  text-align: center;
+  text-shadow: 0 0 20px rgba(40,240,255,0.6);
+  letter-spacing: 0.08em;
+}
+
+.voteBar {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.08);
+  overflow: hidden;
+  position: relative;
+}
+.voteBarFill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #28f0ff, #a84dff);
+  transition: width 0.5s ease;
+}
+
+/* ── BOOKING STYLES ── */
+.bookingPanel {
+  border-radius: 16px;
+  background: linear-gradient(145deg, #050a14, #0d1628);
+  border: 1px solid rgba(255,138,31,0.35);
+  padding: 16px;
+}
+
+.offerCard {
+  border-radius: 10px;
+  background: rgba(255,138,31,0.06);
+  border: 1px solid rgba(255,138,31,0.2);
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+}
+.offerCard:hover {
+  border-color: rgba(255,138,31,0.55);
+  background: rgba(255,138,31,0.1);
+}
+
+.payoutRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  font-size: 13px;
+}
+.payoutAmount {
+  font-weight: 800;
+  color: #31f7a6;
+  font-family: var(--font-label, monospace);
+}
+
+/* ── WINNER STYLES ── */
+.podiumRow {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 0;
+}
+
+.podiumItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.podiumBase {
+  border-radius: 6px 6px 0 0;
+  background: rgba(255,201,74,0.14);
+  border: 1px solid rgba(255,201,74,0.38);
+  width: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-weight: 900;
+  font-family: var(--font-label, monospace);
+  color: #ffc94a;
+}
+.podiumBase.first  { height: 72px; background: rgba(255,201,74,0.22); }
+.podiumBase.second { height: 54px; }
+.podiumBase.third  { height: 42px; }
+
+.trophyIcon {
+  font-size: 28px;
+  animation: trophyGlow 2.5s ease-in-out infinite;
+}
+@keyframes trophyGlow {
+  0%, 100% { filter: drop-shadow(0 0 6px rgba(255,201,74,0.4)); }
+  50%       { filter: drop-shadow(0 0 14px rgba(255,201,74,0.8)); }
+}
+
+/* ── SHARED HELPERS ── */
+.divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+  margin: 8px 0;
+}
+
+.label {
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: #8fa1d9;
+  font-family: var(--font-label, monospace);
+}
+
+.value {
+  font-size: 14px;
+  font-weight: 700;
+  color: #f5f7ff;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.ctaButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: 8px;
+  padding: 8px 18px;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  border: none;
+}
+.ctaButton:hover { transform: translateY(-2px); }
+.ctaButton.cyan {
+  background: rgba(40,240,255,0.16);
+  color: #28f0ff;
+  border: 1px solid rgba(40,240,255,0.5);
+  box-shadow: 0 0 14px rgba(40,240,255,0.25);
+}
+.ctaButton.orange {
+  background: rgba(255,138,31,0.16);
+  color: #ff8a1f;
+  border: 1px solid rgba(255,138,31,0.5);
+  box-shadow: 0 0 14px rgba(255,138,31,0.25);
+}
+.ctaButton.pink {
+  background: rgba(255,77,184,0.16);
+  color: #ff4db8;
+  border: 1px solid rgba(255,77,184,0.5);
+  box-shadow: 0 0 14px rgba(255,77,184,0.25);
+}
+.ctaButton.green {
+  background: rgba(49,247,166,0.16);
+  color: #31f7a6;
+  border: 1px solid rgba(49,247,166,0.5);
+  box-shadow: 0 0 14px rgba(49,247,166,0.25);
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}

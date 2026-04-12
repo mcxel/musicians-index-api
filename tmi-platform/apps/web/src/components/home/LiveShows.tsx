@@ -3,24 +3,13 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
 import SectionTitle from "@/components/ui/SectionTitle";
 import Link from "next/link";
+import { getHomeLive, type HomeLiveRoom } from "@/components/home/data/getHomeLive";
 
 const SHOW_COLORS = ["#FFD700", "#FF2DAA", "#00FFFF", "#AA2DFF"];
 
-interface ShowRow {
-  id: string;
-  name: string;
-  host: string;
-  viewers: number;
-  genre: string;
+interface ShowRow extends HomeLiveRoom {
   color: string;
 }
-
-const STUBS: ShowRow[] = [
-  { id: "1", name: "CROWN CYPHER ARENA", host: "JAYLEN CROSS", viewers: 1842, genre: "Hip-Hop / Cypher", color: "#FFD700" },
-  { id: "2", name: "NEO-SOUL LOUNGE", host: "NOVA REIGN", viewers: 924, genre: "Neo-Soul / R&B", color: "#FF2DAA" },
-  { id: "3", name: "BEATLAB OPEN MIC", host: "BEATLAB STUDIOS", viewers: 567, genre: "Open Genre", color: "#00FFFF" },
-  { id: "4", name: "UNDERGROUND VAULT", host: "CYPHER KINGS", viewers: 412, genre: "Trap / Rap", color: "#AA2DFF" },
-];
 
 function PulseDot({ color }: { color: string }) {
   return (
@@ -36,27 +25,22 @@ function PulseDot({ color }: { color: string }) {
 }
 
 export default function LiveShows() {
-  const [rooms, setRooms] = useState<ShowRow[]>(STUBS);
+  const [rooms, setRooms] = useState<ShowRow[]>([]);
   const [activeRoom, setActiveRoom] = useState<string | null>(null);
+  const [source, setSource] = useState<"live" | "fallback">("fallback");
 
   useEffect(() => {
-    fetch("/api/homepage/events?limit=4")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data: unknown) => {
-        if (!Array.isArray(data) || data.length === 0) return;
+    getHomeLive(4, 3)
+      .then((result) => {
         setRooms(
-          (data as Array<{
-            id: string; title: string; hostName?: string | null;
-            eventType?: string | null; description?: string | null;
-          }>).map((e, i) => ({
-            id: e.id,
-            name: (e.title ?? "SHOW").toUpperCase(),
-            host: (e.hostName ?? "TMI HOST").toUpperCase(),
-            viewers: 0,
-            genre: e.eventType ?? e.description?.slice(0, 20) ?? "Live Event",
-            color: SHOW_COLORS[i % SHOW_COLORS.length],
+          result.data.rooms.map((room, index) => ({
+            ...room,
+            name: room.name.toUpperCase(),
+            host: room.host.toUpperCase(),
+            color: SHOW_COLORS[index % SHOW_COLORS.length],
           }))
         );
+        setSource(result.source);
       })
       .catch(() => {});
   }, []);
@@ -72,7 +56,7 @@ export default function LiveShows() {
       marginBottom: 20,
       boxShadow: "0 0 40px rgba(255,45,45,0.04)",
     }}>
-      <SectionTitle title="Live Now" subtitle="Active rooms across the platform" accent="pink" badge="🔴 LIVE" />
+      <SectionTitle title="Live Now" subtitle="Active rooms across the platform" accent="pink" badge={`🔴 ${source === "live" ? "LIVE" : "FALLBACK"}`} />
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
         <AnimatePresence>
@@ -108,7 +92,7 @@ export default function LiveShows() {
                 {room.host} · {room.genre}
               </div>
               <Link
-                href={`/live/room/${room.id}`}
+                href={`/live/${room.id}`}
                 onClick={e => e.stopPropagation()}
                 style={{
                   display: "inline-block", fontSize: 9, fontWeight: 800,

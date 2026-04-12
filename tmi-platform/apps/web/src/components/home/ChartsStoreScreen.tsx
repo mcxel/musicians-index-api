@@ -3,16 +3,7 @@ import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import SectionTitle from "@/components/ui/SectionTitle";
-import { formatCount } from "@/lib/api/homepage";
-
-interface ChartArtist {
-  rank: number;
-  name: string;
-  genre: string;
-  followers: number;
-  slug: string | null;
-  change: "up" | "down" | "same" | "new";
-}
+import { getHomeCharts } from "@/components/home/data/getHomeCharts";
 
 interface StoreItem {
   id: string;
@@ -22,18 +13,14 @@ interface StoreItem {
   color: string;
 }
 
-const CHART_STUBS: ChartArtist[] = [
-  { rank: 1, name: "Jaylen Cross", genre: "Hip-Hop", followers: 84200, slug: null, change: "up" },
-  { rank: 2, name: "Amirah Wells", genre: "R&B", followers: 71500, slug: null, change: "up" },
-  { rank: 3, name: "DESTINED", genre: "Neo-Soul", followers: 63800, slug: null, change: "same" },
-  { rank: 4, name: "Traxx Monroe", genre: "Trap", followers: 58200, slug: null, change: "up" },
-  { rank: 5, name: "Nova Reign", genre: "Afrobeats", followers: 49700, slug: null, change: "down" },
-  { rank: 6, name: "Savannah J.", genre: "Soul", followers: 44100, slug: null, change: "up" },
-  { rank: 7, name: "The Cyphers", genre: "Rap", followers: 39600, slug: null, change: "new" },
-  { rank: 8, name: "Static & Bloom", genre: "Electronic", followers: 36200, slug: null, change: "down" },
-  { rank: 9, name: "Khalil B.", genre: "Lo-Fi", followers: 31800, slug: null, change: "up" },
-  { rank: 10, name: "Diana Cross", genre: "Pop", followers: 28900, slug: null, change: "same" },
-];
+interface ChartArtist {
+  rank: number;
+  name: string;
+  genre: string;
+  followers: number;
+  slug: string | null;
+  change: "up" | "down" | "same" | "new";
+}
 
 const STORE_STUBS: StoreItem[] = [
   { id: "1", name: "Crown Season Vol. 3 Hoodie", price: 5499, type: "MERCH", color: "#FF2DAA" },
@@ -46,24 +33,29 @@ const CHANGE_ICON: Record<string, string> = { up: "▲", down: "▼", same: "–
 const CHANGE_COLOR: Record<string, string> = { up: "#00FF99", down: "#FF4466", same: "rgba(255,255,255,0.3)", new: "#FFD700" };
 
 export default function ChartsStoreScreen() {
-  const [chart, setChart] = useState<ChartArtist[]>(CHART_STUBS);
+  const [chart, setChart] = useState<ChartArtist[]>([]);
+  const [source, setSource] = useState<"live" | "fallback">("fallback");
+
+  const formatCount = (value: number) => {
+    if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
+    if (value >= 1000) return `${Math.round(value / 1000)}K`;
+    return `${value}`;
+  };
 
   useEffect(() => {
-    fetch("/api/homepage/top10?limit=10")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data: unknown) => {
-        if (!Array.isArray(data) || data.length === 0) return;
+    getHomeCharts(10)
+      .then((result) => {
         setChart(
-          (data as Array<{ id: string; rank: number; stageName: string; genres: string[]; followers: number; slug: string | null }>)
-            .map((a, i) => ({
-              rank: a.rank ?? i + 1,
-              name: a.stageName,
-              genre: a.genres?.[0] ?? "Music",
-              followers: a.followers ?? 0,
-              slug: a.slug,
-              change: "up" as const,
-            }))
+          result.data.map((artist) => ({
+            rank: artist.rank,
+            name: artist.artist,
+            genre: artist.genre,
+            followers: artist.followers,
+            slug: artist.slug,
+            change: artist.change,
+          }))
         );
+        setSource(result.source);
       })
       .catch(() => {});
   }, []);
@@ -76,7 +68,7 @@ export default function ChartsStoreScreen() {
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
           {/* Artist Chart */}
           <div>
-            <SectionTitle title="Top Artists" accent="purple" badge="This Week" />
+            <SectionTitle title="Top Artists" accent="purple" badge={`This Week · ${source === "live" ? "Live" : "Fallback"}`} />
             <div style={{
               background: "linear-gradient(135deg, #0A0812 0%, #0D0A18 100%)",
               border: "1px solid rgba(170,45,255,0.15)",
