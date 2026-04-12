@@ -5,21 +5,21 @@ import { useEffect } from "react";
 import Link from "next/link";
 
 export const HOME_SCREENS = [
-  { n: 1, path: "/home/1", label: "MAGAZINE COVER", short: "Magazine", accent: "#FF2DAA" },
-  { n: 2, path: "/home/2", label: "DASHBOARD", short: "Dashboard", accent: "#00FFFF" },
+  { n: 1, path: "/home/1", label: "MAGAZINE COVER", short: "Cover", accent: "#FF2DAA" },
+  { n: 2, path: "/home/2", label: "MAGAZINE DASHBOARD", short: "Dashboard", accent: "#00FFFF" },
   { n: 3, path: "/home/3", label: "LIVE WORLD", short: "Live", accent: "#FF4444" },
-  { n: 4, path: "/home/4", label: "SPONSORS", short: "Sponsors", accent: "#FFD700" },
-  { n: 5, path: "/home/5", label: "CHARTS & STORE", short: "Charts", accent: "#AA2DFF" },
+  { n: 4, path: "/home/4", label: "SOCIAL HUB", short: "Social", accent: "#FFD700" },
+  { n: 5, path: "/home/5", label: "CONTROL + JULIUS", short: "Control", accent: "#AA2DFF" },
 ];
 
 function getActiveIdx(pathname: string): number {
-  if (pathname === "/" || pathname === "/home/2") return 1;
+  if (pathname === "/") return 0;
   const m = pathname.match(/^\/home\/(\d)/);
   if (m) {
     const n = parseInt(m[1]);
     if (n >= 1 && n <= 5) return n - 1;
   }
-  return 1;
+  return 0;
 }
 
 export default function HomeNavigator() {
@@ -77,7 +77,7 @@ export default function HomeNavigator() {
       </div>
 
       {/* Center: dots + current label */}
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
         <AnimatePresence mode="wait">
           <motion.div
             key={current.n}
@@ -93,6 +93,36 @@ export default function HomeNavigator() {
             HOME {current.n} · {current.label}
           </motion.div>
         </AnimatePresence>
+
+        <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", justifyContent: "center" }}>
+          {HOME_SCREENS.map((s) => {
+            const isActive = s.n === current.n;
+            return (
+              <Link
+                key={`tab-${s.n}`}
+                href={s.path}
+                title={s.label}
+                style={{
+                  textDecoration: "none",
+                  borderRadius: 999,
+                  padding: "5px 10px",
+                  border: `1px solid ${isActive ? `${s.accent}99` : "rgba(255,255,255,0.16)"}`,
+                  background: isActive
+                    ? `linear-gradient(90deg, ${s.accent}33, rgba(5,5,12,0.82))`
+                    : "rgba(255,255,255,0.03)",
+                  color: isActive ? s.accent : "rgba(255,255,255,0.72)",
+                  fontSize: 9,
+                  fontWeight: 900,
+                  letterSpacing: "0.12em",
+                  textTransform: "uppercase",
+                  boxShadow: isActive ? `0 0 10px ${s.accent}44` : "none",
+                }}
+              >
+                Home {s.n}
+              </Link>
+            );
+          })}
+        </div>
 
         <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
           {HOME_SCREENS.map((s) => (

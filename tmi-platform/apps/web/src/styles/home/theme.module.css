@@ -1,0 +1,79 @@
+/* ============================================================
+   TMI HOME — MASTER THEME TOKENS
+   The Musician's Index Live Magazine System
+   ============================================================ */
+
+.root {
+  --bg-deep:    #050816;
+  --bg-panel:   #0a1024;
+  --bg-panel2:  #111935;
+  --bg-card:    #0d1228;
+  --bg-glass:   rgba(10,16,36,0.88);
+
+  --grid-line:  rgba(0,255,255,0.07);
+
+  --neon-cyan:    #28f0ff;
+  --neon-blue:    #2f7dff;
+  --neon-purple:  #a84dff;
+  --neon-magenta: #ff4db8;
+  --neon-pink:    #ff4f8f;
+  --neon-orange:  #ff8a1f;
+  --neon-gold:    #ffc94a;
+  --neon-lime:    #9dff4a;
+  --neon-green:   #31f7a6;
+
+  --text-main:  #f5f7ff;
+  --text-soft:  #c6d0ff;
+  --text-muted: #8fa1d9;
+
+  --border-soft: rgba(255,255,255,0.10);
+  --glass:       rgba(255,255,255,0.04);
+
+  --radius-card: 16px;
+  --radius-badge: 999px;
+
+  --font-display: 'Black Ops One','Impact',system-ui,sans-serif;
+  --font-heading: 'Exo 2','Rajdhani',system-ui,sans-serif;
+  --font-label:   'Orbitron','Share Tech Mono',monospace;
+  --font-body:    'Exo 2',system-ui,sans-serif;
+}
+
+/* Belt gradient backgrounds */
+.beltEditorial {
+  background: linear-gradient(135deg, #0a1024 0%, #131d3c 100%);
+}
+.beltDiscovery {
+  background: linear-gradient(135deg, #18112d 0%, #3a1f41 100%);
+}
+.beltLive {
+  background: linear-gradient(135deg, #07131e 0%, #10343c 100%);
+}
+.beltSponsor {
+  background: linear-gradient(135deg, #17383c 0%, #6b2766 100%);
+}
+.beltGame {
+  background: linear-gradient(135deg, #130e25 0%, #2e1647 100%);
+}
+.beltAdmin {
+  background: linear-gradient(135deg, #060d1e 0%, #101a33 100%);
+}
+.beltBooking {
+  background: linear-gradient(135deg, #091121 0%, #162b4a 100%);
+}
+.beltWinners {
+  background: linear-gradient(135deg, #1a1305 0%, #2e2408 100%);
+}
+.beltMarketplace {
+  background: linear-gradient(135deg, #0f1a0a 0%, #1a2e10 100%);
+}
+.beltCypher {
+  background: linear-gradient(135deg, #110720 0%, #2a0d3f 100%);
+}
+
+/* Glow helpers */
+.glowCyan  { box-shadow: 0 0 10px rgba(40,240,255,.35), 0 0 30px rgba(40,240,255,.18); }
+.glowPink  { box-shadow: 0 0 10px rgba(255,77,184,.35), 0 0 30px rgba(255,77,184,.18); }
+.glowGold  { box-shadow: 0 0 10px rgba(255,201,74,.35), 0 0 30px rgba(255,201,74,.18); }
+.glowOrange{ box-shadow: 0 0 10px rgba(255,138,31,.35), 0 0 30px rgba(255,138,31,.18); }
+.glowGreen { box-shadow: 0 0 10px rgba(49,247,166,.35), 0 0 30px rgba(49,247,166,.18); }
+.glowPurple{ box-shadow: 0 0 10px rgba(168,77,255,.35), 0 0 30px rgba(168,77,255,.18); }

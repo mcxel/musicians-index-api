@@ -1,0 +1,137 @@
+/* ============================================================
+   TMI HOME — BELT STYLES
+   Full-width section containers with neon accents
+   ============================================================ */
+
+.belt {
+  width: 100%;
+  padding: 16px;
+  border-radius: 20px;
+  overflow: hidden;
+  position: relative;
+  margin-bottom: 12px;
+  border: 1px solid rgba(255,255,255,0.06);
+}
+
+.beltBare {
+  width: 100%;
+}
+
+.beltInner {
+  padding: 20px;
+}
+
+/* ── BELT HEADER ── */
+.beltHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+}
+
+.beltTitle {
+  margin: 0;
+  font-size: clamp(22px, 3vw, 32px);
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1;
+  font-family: var(--font-display, 'Black Ops One', 'Impact', sans-serif);
+}
+
+.beltSubtitle {
+  margin: 4px 0 0;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  opacity: 0.76;
+}
+
+.beltBadge {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  border-radius: 999px;
+  padding: 4px 12px;
+  white-space: nowrap;
+  font-weight: 700;
+}
+
+/* ── BELT TYPE ACCENTS ── */
+.editorial .beltTitle   { color: #28f0ff; }
+.editorial .beltHeader  { border-bottom: 1px solid rgba(40,240,255,0.28); }
+.editorial .beltBadge   { color: #28f0ff; border: 1px solid rgba(40,240,255,0.4); }
+
+.discovery .beltTitle   { color: #ffc94a; }
+.discovery .beltHeader  { border-bottom: 1px solid rgba(255,201,74,0.28); }
+.discovery .beltBadge   { color: #ffc94a; border: 1px solid rgba(255,201,74,0.4); }
+
+.live .beltTitle        { color: #31f7a6; }
+.live .beltHeader       { border-bottom: 1px solid rgba(49,247,166,0.28); }
+.live .beltBadge        { color: #31f7a6; border: 1px solid rgba(49,247,166,0.4); }
+
+.sponsor .beltTitle     { color: #ff8a1f; }
+.sponsor .beltHeader    { border-bottom: 1px solid rgba(255,138,31,0.28); }
+.sponsor .beltBadge     { color: #ff8a1f; border: 1px solid rgba(255,138,31,0.4); }
+
+.game .beltTitle        { color: #ff4db8; }
+.game .beltHeader       { border-bottom: 1px solid rgba(255,77,184,0.28); }
+.game .beltBadge        { color: #ff8a1f; border: 1px solid rgba(255,138,31,0.4); }
+
+.admin .beltTitle       { color: #ff4db8; }
+.admin .beltHeader      { border-bottom: 1px solid rgba(255,77,184,0.28); }
+.admin .beltBadge       { color: #ff4db8; border: 1px solid rgba(255,77,184,0.4); }
+
+.winners .beltTitle     { color: #ffc94a; }
+.winners .beltHeader    { border-bottom: 1px solid rgba(255,201,74,0.28); }
+.winners .beltBadge     { color: #ffc94a; border: 1px solid rgba(255,201,74,0.4); }
+
+.marketplace .beltTitle { color: #9dff4a; }
+.marketplace .beltHeader{ border-bottom: 1px solid rgba(157,255,74,0.28); }
+.marketplace .beltBadge { color: #9dff4a; border: 1px solid rgba(157,255,74,0.4); }
+
+.cypher .beltTitle      { color: #a84dff; }
+.cypher .beltHeader     { border-bottom: 1px solid rgba(168,77,255,0.28); }
+.cypher .beltBadge      { color: #a84dff; border: 1px solid rgba(168,77,255,0.4); }
+
+.booking .beltTitle     { color: #ff8a1f; }
+.booking .beltHeader    { border-bottom: 1px solid rgba(255,138,31,0.28); }
+.booking .beltBadge     { color: #ff8a1f; border: 1px solid rgba(255,138,31,0.4); }
+
+/* ── GRID LINE OVERLAY ── */
+.belt::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(0,255,255,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,255,255,0.04) 1px, transparent 1px);
+  background-size: 48px 48px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.belt > * { position: relative; z-index: 1; }
+
+/* ── CORNER ACCENT BRACKETS ── */
+.belt::after {
+  content: '';
+  position: absolute;
+  top: 8px; left: 8px;
+  width: 24px; height: 24px;
+  border-top: 2px solid;
+  border-left: 2px solid;
+  opacity: 0.55;
+  pointer-events: none;
+}
+.editorial::after { border-color: #28f0ff; }
+.discovery::after { border-color: #ffc94a; }
+.live::after      { border-color: #31f7a6; }
+.sponsor::after   { border-color: #ff8a1f; }
+.game::after      { border-color: #ff4db8; }
+.admin::after     { border-color: #ff4db8; }
+.winners::after   { border-color: #ffc94a; }
+.marketplace::after{ border-color: #9dff4a; }
+.cypher::after    { border-color: #a84dff; }
+.booking::after   { border-color: #ff8a1f; }

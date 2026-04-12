@@ -1,6 +1,7 @@
 "use client";
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
+import { getHomeEditorial } from "@/components/home/data/getHomeEditorial";
 
 const FALLBACK_HEADLINES = [
   "🏆 Crown Season enters Week 14 — voting closes Friday midnight",
@@ -13,22 +14,18 @@ const FALLBACK_HEADLINES = [
   "🌍 Platform now live in 24 countries worldwide",
 ];
 
-interface NewsArticle { id: string; title: string; excerpt?: string; }
-
 const HEADLINE_EMOJIS = ["🏆", "🎙️", "🔥", "📢", "🎤", "💰", "🌍", "⭐", "🎶", "🎬", "🎯", "🚀"];
 
 export default function NewsStrip() {
   const [headlines, setHeadlines] = useState<string[]>(FALLBACK_HEADLINES);
+  const [source, setSource] = useState<"live" | "fallback">("fallback");
 
   useEffect(() => {
-    fetch("/api/homepage/belt-feed?belt=news&limit=12")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data: unknown) => {
-        if (!Array.isArray(data) || data.length === 0) return;
-        const live = (data as NewsArticle[]).map(
-          (a, i) => `${HEADLINE_EMOJIS[i % HEADLINE_EMOJIS.length]} ${a.title}`,
-        );
+    getHomeEditorial()
+      .then((result) => {
+        const live = result.data.news.map((headline, index) => `${HEADLINE_EMOJIS[index % HEADLINE_EMOJIS.length]} ${headline}`);
         setHeadlines(live);
+        setSource(result.source);
       })
       .catch(() => {});
   }, []);
@@ -47,7 +44,7 @@ export default function NewsStrip() {
         display: "flex", alignItems: "center", gap: 6,
       }}>
         <motion.span animate={{ opacity: [1, 0, 1] }} transition={{ duration: 1, repeat: Infinity }}>●</motion.span>
-        BREAKING
+        BREAKING {source === "live" ? "LIVE" : "FALLBACK"}
       </div>
       <div style={{ flex: 1, overflow: "hidden" }}>
         <motion.div
