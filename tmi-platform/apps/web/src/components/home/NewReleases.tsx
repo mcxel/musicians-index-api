@@ -3,50 +3,13 @@ import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
 import SectionTitle from "@/components/ui/SectionTitle";
 import Link from "next/link";
-
-const GENRE_COLORS: Record<string, string> = {
-  "hip-hop": "#00FFFF", "rap": "#00FFFF", "trap": "#FFD700",
-  "r&b": "#FF2DAA", "soul": "#FF2DAA", "neo-soul": "#AA2DFF",
-  "afrobeats": "#2DFFAA", "pop": "#FF6B2D", "electronic": "#00FFFF",
-};
-function genreColor(g: string) {
-  return GENRE_COLORS[g.toLowerCase()] ?? "#AA2DFF";
-}
-
-interface ReleaseRow {
-  id: string;
-  slug: string;
-  title: string;
-  genre: string;
-  bpm: number;
-  playCount: number;
-  createdAt: string;
-  color: string;
-}
-
-const STUBS: ReleaseRow[] = [
-  { id: "1", slug: "", title: "Frequencies", genre: "Neo-Soul", bpm: 90, playCount: 0, createdAt: "", color: "#FF2DAA" },
-  { id: "2", slug: "", title: "Crown Season Vol. 3", genre: "Hip-Hop", bpm: 96, playCount: 0, createdAt: "", color: "#00FFFF" },
-  { id: "3", slug: "", title: "Mirror Language", genre: "R&B", bpm: 82, playCount: 0, createdAt: "", color: "#AA2DFF" },
-  { id: "4", slug: "", title: "Underground Atlas", genre: "Trap", bpm: 140, playCount: 0, createdAt: "", color: "#FFD700" },
-  { id: "5", slug: "", title: "Midnight Frequencies", genre: "R&B / Soul", bpm: 88, playCount: 0, createdAt: "", color: "#2DFFAA" },
-  { id: "6", slug: "", title: "Unwritten Maps", genre: "Neo-Soul", bpm: 95, playCount: 0, createdAt: "", color: "#FF6B2D" },
-];
+import { getHomeReleases, type HomeReleaseRow } from "@/components/home/data/getHomeReleases";
 
 export default function NewReleases() {
-  const [releases, setReleases] = useState<ReleaseRow[]>(STUBS);
+  const [releases, setReleases] = useState<HomeReleaseRow[]>([]);
 
   useEffect(() => {
-    fetch("/api/homepage/new-releases?limit=6")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data: unknown) => {
-        if (!Array.isArray(data) || data.length === 0) return;
-        setReleases(
-          (data as Array<{ id: string; slug: string; title: string; genre: string; bpm: number; playCount: number; createdAt: string }>)
-            .map((b) => ({ ...b, color: genreColor(b.genre) }))
-        );
-      })
-      .catch(() => {});
+    getHomeReleases(6).then(setReleases).catch(() => {});
   }, []);
 
   return (

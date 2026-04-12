@@ -1,0 +1,225 @@
+/* ============================================================
+   TMI HOME — SCENE STYLES
+   Full-screen immersive room/stage wrappers
+   ============================================================ */
+
+/* ── BASE SCENE ── */
+.scene {
+  position: relative;
+  width: 100%;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #050816;
+  display: flex;
+  flex-direction: column;
+}
+
+.sceneHeader {
+  padding: 12px 14px 8px;
+}
+
+.sceneTitle {
+  margin: 0;
+  color: #f5f7ff;
+  font-size: clamp(18px, 2vw, 24px);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.sceneSubtitle {
+  margin: 4px 0 0;
+  color: #c6d0ff;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+}
+
+.sceneBody {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+}
+
+/* ── AUDIENCE ROOM ── */
+.audienceRoom {
+  min-height: 460px;
+  background:
+    radial-gradient(ellipse at 50% 110%, rgba(40,240,255,0.14) 0%, transparent 55%),
+    linear-gradient(180deg, #07131e 0%, #050810 100%);
+  border: 1px solid rgba(40,240,255,0.28);
+  box-shadow: 0 0 40px rgba(40,240,255,0.12);
+}
+
+/* ── FRONT ROW ── */
+.frontRow {
+  min-height: 480px;
+  background:
+    radial-gradient(ellipse at 50% 120%, rgba(255,201,74,0.16) 0%, transparent 50%),
+    linear-gradient(180deg, #0a0800 0%, #050510 100%);
+  border: 1px solid rgba(255,201,74,0.32);
+  box-shadow: 0 0 40px rgba(255,201,74,0.14);
+}
+
+/* ── WATCH PARTY ── */
+.watchParty {
+  min-height: 420px;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(49,247,166,0.12) 0%, transparent 45%),
+    linear-gradient(180deg, #051a10 0%, #050816 100%);
+  border: 1px solid rgba(49,247,166,0.28);
+}
+
+/* ── CYPHER ROOM ── */
+.cypherRoom {
+  min-height: 400px;
+  background:
+    radial-gradient(ellipse at 50% 50%, rgba(168,77,255,0.14) 0%, transparent 55%),
+    linear-gradient(180deg, #0b0418 0%, #050816 100%);
+  border: 1px solid rgba(168,77,255,0.4);
+  box-shadow: 0 0 40px rgba(168,77,255,0.14);
+}
+
+/* ── LIVE STAGE ── */
+.liveStage {
+  min-height: 500px;
+  background:
+    radial-gradient(ellipse at 50% 40%, rgba(168,77,255,0.22) 0%, transparent 55%),
+    radial-gradient(ellipse at 20% 80%, rgba(40,240,255,0.12) 0%, transparent 40%),
+    linear-gradient(180deg, #0a0418 0%, #050816 100%);
+  border: 1px solid rgba(168,77,255,0.45);
+  box-shadow: 0 0 60px rgba(168,77,255,0.18);
+}
+
+/* ── LOBBY WALL ── */
+.lobbyWall {
+  min-height: 400px;
+  background: linear-gradient(135deg, #07131e 0%, #10343c 100%);
+  border: 1px solid rgba(40,240,255,0.28);
+}
+
+/* ── STAGE LIGHTING GRID ── */
+.lightGrid {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 60%;
+  background:
+    radial-gradient(circle at 20% 0%, rgba(255,77,184,0.2), transparent 35%),
+    radial-gradient(circle at 50% 0%, rgba(168,77,255,0.25), transparent 40%),
+    radial-gradient(circle at 80% 0%, rgba(40,240,255,0.2), transparent 35%);
+  pointer-events: none;
+}
+
+/* ── STAGE FLOOR ── */
+.stageFloor {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 35%;
+  background: linear-gradient(0deg, rgba(0,0,0,0.7), transparent);
+  pointer-events: none;
+}
+
+/* ── CROWD TILES GRID ── */
+.crowdGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(56px, 1fr));
+  gap: 6px;
+  padding: 12px;
+}
+
+.crowdTile {
+  border-radius: 10px;
+  background: linear-gradient(145deg, rgba(10,16,36,0.9), rgba(20,28,52,0.9));
+  border: 1px solid rgba(255,255,255,0.1);
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.2s ease;
+}
+
+.crowdTile.speaking {
+  border-color: rgba(49,247,166,0.7);
+  box-shadow: 0 0 10px rgba(49,247,166,0.35);
+  animation: speakPulse 1.5s ease-in-out infinite;
+}
+
+.crowdTile.tipping {
+  border-color: rgba(255,201,74,0.7);
+  animation: tipFlash 0.4s ease;
+}
+
+/* ── ROOM INFO BAR ── */
+.roomBar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(8px);
+  border-top: 1px solid rgba(255,255,255,0.08);
+}
+
+.roomTitle {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: #f5f7ff;
+}
+
+/* ── EQUALIZER BARS ── */
+.eqBars {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 24px;
+}
+
+.eqBar {
+  width: 4px;
+  background: #28f0ff;
+  border-radius: 2px;
+  transform-origin: bottom;
+  animation: eqAnim 0.8s ease-in-out infinite alternate;
+}
+.eqBar:nth-child(2) { animation-duration: 0.6s; background: #ff4db8; }
+.eqBar:nth-child(3) { animation-duration: 1.0s; background: #ffc94a; }
+.eqBar:nth-child(4) { animation-duration: 0.7s; background: #31f7a6; }
+.eqBar:nth-child(5) { animation-duration: 0.9s; background: #a84dff; }
+
+/* ── WAVEFORM ── */
+.waveform {
+  height: 32px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  overflow: hidden;
+}
+
+.waveBar {
+  width: 3px;
+  background: linear-gradient(180deg, #28f0ff, #a84dff);
+  border-radius: 2px;
+  transform-origin: center;
+  animation: wave 1.2s ease-in-out infinite alternate;
+}
+
+/* ── KEYFRAMES ── */
+@keyframes speakPulse {
+  0%, 100% { box-shadow: 0 0 8px rgba(49,247,166,.35); }
+  50%       { box-shadow: 0 0 16px rgba(49,247,166,.65); }
+}
+@keyframes tipFlash {
+  0%   { background: rgba(255,201,74,0.3); }
+  100% { background: transparent; }
+}
+@keyframes eqAnim {
+  from { transform: scaleY(0.3); }
+  to   { transform: scaleY(1); }
+}
+@keyframes wave {
+  from { transform: scaleY(0.2); }
+  to   { transform: scaleY(1); }
+}

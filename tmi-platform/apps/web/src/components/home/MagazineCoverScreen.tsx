@@ -3,38 +3,21 @@ import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import SectionTitle from "@/components/ui/SectionTitle";
-
-interface CoverArticle {
-  id: string;
-  title: string;
-  category: string;
-  slug: string;
-}
-
-const STUB_ARTICLES: CoverArticle[] = [
-  { id: "1", title: "The New Wave: How Gen Z Is Reshaping Hip-Hop", category: "FEATURE", slug: "" },
-  { id: "2", title: "Crown Season: Inside the Most Competitive Week Yet", category: "EXCLUSIVE", slug: "" },
-  { id: "3", title: "Rising Voices: 10 Artists You Need to Hear Now", category: "SPOTLIGHT", slug: "" },
-  { id: "4", title: "The Business of Beats: Monetizing in the Digital Age", category: "INDUSTRY", slug: "" },
-];
+import { getHomeEditorial, type HomeEditorialArticle } from "@/components/home/data/getHomeEditorial";
 
 const CAT_COLORS: Record<string, string> = {
   FEATURE: "#FF2DAA", EXCLUSIVE: "#FFD700", SPOTLIGHT: "#00FFFF", INDUSTRY: "#AA2DFF",
 };
 
 export default function MagazineCoverScreen() {
-  const [articles, setArticles] = useState<CoverArticle[]>(STUB_ARTICLES);
+  const [articles, setArticles] = useState<HomeEditorialArticle[]>([]);
+  const [source, setSource] = useState<"live" | "fallback">("fallback");
 
   useEffect(() => {
-    fetch("/api/homepage/belt-feed?belt=cover&limit=4")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data: unknown) => {
-        if (!Array.isArray(data) || data.length === 0) return;
-        setArticles(
-          (data as Array<{ id: string; title: string; category: string; slug: string }>)
-            .slice(0, 4)
-            .map((a) => ({ id: a.id, title: a.title, category: (a.category ?? "FEATURED").toUpperCase(), slug: a.slug ?? "" }))
-        );
+    getHomeEditorial()
+      .then((result) => {
+        setArticles(result.data.cover);
+        setSource(result.source);
       })
       .catch(() => {});
   }, []);
@@ -148,7 +131,7 @@ export default function MagazineCoverScreen() {
 
       {/* ── ARTICLE TEASERS ── */}
       <div style={{ padding: "28px 24px 40px", maxWidth: 1200, margin: "0 auto" }}>
-        <SectionTitle title="Inside This Issue" accent="pink" badge="April 2026" />
+        <SectionTitle title="Inside This Issue" accent="pink" badge={`April 2026 · ${source === "live" ? "Live" : "Fallback"}`} />
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 16 }}>
           {articles.map((a, i) => (
             <motion.div

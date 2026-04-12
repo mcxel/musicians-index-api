@@ -3,56 +3,20 @@ import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
 import SectionTitle from "@/components/ui/SectionTitle";
 import Link from "next/link";
-import { formatCount } from "@/lib/api/homepage";
-
-interface ChartRow {
-  rank: number;
-  title: string;
-  artist: string;
-  genre: string;
-  change: string;
-  plays: string;
-  slug: string | null;
-}
-
-const STUBS: ChartRow[] = [
-  { rank: 1, title: "Crown Season Vol. 3", artist: "Jaylen Cross", genre: "Hip-Hop", change: "up", plays: "1.2M", slug: null },
-  { rank: 2, title: "Midnight Frequencies", artist: "Amirah Wells", genre: "R&B", change: "up", plays: "980K", slug: null },
-  { rank: 3, title: "Neon Cathedral", artist: "DESTINED", genre: "Neo-Soul", change: "same", plays: "876K", slug: null },
-  { rank: 4, title: "Velocity", artist: "Traxx Monroe", genre: "Trap", change: "up", plays: "742K", slug: null },
-  { rank: 5, title: "Golden Years", artist: "Savannah J.", genre: "Soul", change: "down", plays: "690K", slug: null },
-  { rank: 6, title: "Unwritten Maps", artist: "Nova Reign", genre: "Afrobeats", change: "up", plays: "644K", slug: null },
-  { rank: 7, title: "Mirror Language", artist: "Diana Cross", genre: "Pop", change: "down", plays: "590K", slug: null },
-  { rank: 8, title: "Deep Cuts", artist: "The Cyphers", genre: "Rap", change: "same", plays: "541K", slug: null },
-  { rank: 9, title: "Late Night Studio", artist: "Khalil B.", genre: "Lo-Fi", change: "up", plays: "488K", slug: null },
-  { rank: 10, title: "Frequency Wars", artist: "Static & Bloom", genre: "Electronic", change: "new", plays: "412K", slug: null },
-];
+import { getHomeCharts, type HomeChartRow } from "@/components/home/data/getHomeCharts";
 
 const CHANGE_COLORS: Record<string, string> = { up: "#00FF99", down: "#FF4466", same: "rgba(255,255,255,0.3)", new: "#FFD700" };
 const CHANGE_ICONS: Record<string, string> = { up: "▲", down: "▼", same: "–", new: "★" };
 
 export default function Top10Chart() {
-  const [chart, setChart] = useState<ChartRow[]>(STUBS);
+  const [chart, setChart] = useState<HomeChartRow[]>([]);
+  const [source, setSource] = useState<"live" | "fallback">("fallback");
 
   useEffect(() => {
-    fetch("/api/homepage/top10?limit=10")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data: unknown) => {
-        if (!Array.isArray(data) || data.length === 0) return;
-        setChart(
-          (data as Array<{
-            id: string; rank: number; slug: string | null; stageName: string;
-            genres: string[]; followers: number;
-          }>).map((a) => ({
-            rank: a.rank,
-            title: a.stageName,
-            artist: a.stageName,
-            genre: a.genres?.[0] ?? "Music",
-            change: "up",
-            plays: a.followers ? formatCount(a.followers) : "",
-            slug: a.slug,
-          }))
-        );
+    getHomeCharts(10)
+      .then((result) => {
+        setChart(result.data);
+        setSource(result.source);
       })
       .catch(() => {});
   }, []);
@@ -65,7 +29,7 @@ export default function Top10Chart() {
       padding: "24px 24px 20px",
       boxShadow: "0 0 30px rgba(255,45,170,0.06)",
     }}>
-      <SectionTitle title="Top 10 Chart" accent="pink" badge="This Week" />
+      <SectionTitle title="Top 10 Chart" accent="pink" badge={`This Week · ${source === "live" ? "Live" : "Fallback"}`} />
       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
         {chart.map((song, i) => (
           <motion.div
