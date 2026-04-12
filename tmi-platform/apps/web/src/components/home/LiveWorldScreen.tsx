@@ -3,57 +3,21 @@ import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import SectionTitle from "@/components/ui/SectionTitle";
-
-interface LiveRoom {
-  id: string;
-  name: string;
-  host: string;
-  viewers: number;
-  genre: string;
-  type: string;
-}
-
-interface UpcomingShow {
-  id: string;
-  title: string;
-  artist: string;
-  date: string;
-  venue: string;
-  ticketsLeft: number;
-}
-
-const LIVE_STUBS: LiveRoom[] = [
-  { id: "1", name: "Midnight Cypher Session", host: "Jaylen Cross", viewers: 842, genre: "Hip-Hop", type: "CYPHER" },
-  { id: "2", name: "R&B Vibes After Dark", host: "Amirah Wells", viewers: 1204, genre: "R&B", type: "LIVE" },
-  { id: "3", name: "Trap Producers Arena", host: "Traxx Monroe", viewers: 609, genre: "Trap", type: "ARENA" },
-  { id: "4", name: "Neo-Soul Collective", host: "DESTINED", viewers: 477, genre: "Neo-Soul", type: "SHOWCASE" },
-];
-
-const SHOW_STUBS: UpcomingShow[] = [
-  { id: "1", title: "Crown Season Finale", artist: "Jaylen Cross", date: "Apr 12", venue: "TMI Live Arena", ticketsLeft: 43 },
-  { id: "2", title: "Midnight Sessions Vol. 6", artist: "Amirah Wells", date: "Apr 19", venue: "Studio Stage", ticketsLeft: 112 },
-  { id: "3", title: "Underground Battle Night", artist: "Various Artists", date: "Apr 26", venue: "Cypher Arena", ticketsLeft: 7 },
-];
+import { getHomeLive, type HomeLiveRoom, type HomeLiveShow } from "@/components/home/data/getHomeLive";
 
 const TYPE_COLORS: Record<string, string> = { CYPHER: "#AA2DFF", LIVE: "#FF4444", ARENA: "#FFD700", SHOWCASE: "#00FFFF" };
 
 export default function LiveWorldScreen() {
-  const [rooms, setRooms] = useState<LiveRoom[]>(LIVE_STUBS);
-  const [shows, setShows] = useState<UpcomingShow[]>(SHOW_STUBS);
+  const [rooms, setRooms] = useState<HomeLiveRoom[]>([]);
+  const [shows, setShows] = useState<HomeLiveShow[]>([]);
+  const [source, setSource] = useState<"live" | "fallback">("fallback");
 
   useEffect(() => {
-    fetch("/api/homepage/events?limit=3")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data: unknown) => {
-        if (!Array.isArray(data) || data.length === 0) return;
-        setShows(
-          (data as Array<{ id: string; title: string; artistName: string; date: string; venue: string; ticketsAvailable: number }>)
-            .slice(0, 3).map((e) => ({
-              id: e.id, title: e.title, artist: e.artistName ?? "TBA",
-              date: e.date ? new Date(e.date).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "TBA",
-              venue: e.venue ?? "TMI Arena", ticketsLeft: e.ticketsAvailable ?? 0,
-            }))
-        );
+    getHomeLive(4, 3)
+      .then((result) => {
+        setRooms(result.data.rooms);
+        setShows(result.data.shows);
+        setSource(result.source);
       })
       .catch(() => {});
   }, []);
@@ -74,7 +38,7 @@ export default function LiveWorldScreen() {
             style={{ width: 10, height: 10, borderRadius: "50%", background: "#FF4444", boxShadow: "0 0 10px #FF4444" }}
           />
           <span style={{ fontSize: 11, fontWeight: 900, color: "#FF4444", letterSpacing: "0.2em" }}>
-            LIVE NOW — {rooms.length} ACTIVE ROOMS
+            LIVE NOW — {rooms.length} ACTIVE ROOMS · {source === "live" ? "LIVE" : "FALLBACK"}
           </span>
         </div>
         <h2 style={{ fontSize: 22, fontWeight: 900, color: "white", margin: 0 }}>

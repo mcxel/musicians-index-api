@@ -1,0 +1,64 @@
+/* ============================================================
+   TMI HOME — GRID SYSTEM
+   12-column dense magazine grid, responsive
+   ============================================================ */
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  grid-auto-flow: row dense;
+  gap: 10px;
+  width: 100%;
+}
+
+/* Span helpers */
+.span1  { grid-column: span 1; }
+.span2  { grid-column: span 2; }
+.span3  { grid-column: span 3; }
+.span4  { grid-column: span 4; }
+.span5  { grid-column: span 5; }
+.span6  { grid-column: span 6; }
+.span7  { grid-column: span 7; }
+.span8  { grid-column: span 8; }
+.span9  { grid-column: span 9; }
+.span10 { grid-column: span 10; }
+.span11 { grid-column: span 11; }
+.span12 { grid-column: span 12; }
+
+/* Row spans */
+.rowSpan2 { grid-row: span 2; }
+.rowSpan3 { grid-row: span 3; }
+
+/* Tight variant */
+.gridTight { gap: 6px; }
+
+/* Wide gap variant */
+.gridLoose { gap: 16px; }
+
+/* Responsive: tablet → 6-col */
+@media (max-width: 960px) {
+  .grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+  .span7, .span8, .span9, .span10, .span11, .span12 {
+    grid-column: span 6;
+  }
+  .span5, .span6 {
+    grid-column: span 6;
+  }
+  .span3, .span4 {
+    grid-column: span 3;
+  }
+}
+
+/* Responsive: mobile → 2-col */
+@media (max-width: 600px) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .span1, .span2, .span3, .span4, .span5, .span6,
+  .span7, .span8, .span9, .span10, .span11, .span12 {
+    grid-column: span 2;
+  }
+}
