@@ -34,8 +34,10 @@ type Props = {
 
 type BubbleState = {
   id: string;
-  x: number;
+  x: number;       // current render position (clamped, wave-offset from base)
   y: number;
+  baseX: number;   // initial anchor — drift is relative to this, never accumulates
+  baseY: number;
   scale: number;
   opacity: number;
   drift: number;
@@ -55,6 +57,11 @@ type ConfettiParticle = {
   spin: number;
 };
 
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+// At most 3 sponsors run motion loops — remainder render static.
+const MAX_ANIMATED = 3;
+
 const CONFETTI_COLORS = ["#00f5ff", "#ff2daa", "#facc15", "#a78bfa", "#4ade80", "#fb923c"];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -64,11 +71,25 @@ function seedRandom(seed: number): number {
   return x - Math.floor(x);
 }
 
+// Deterministic Fisher-Yates shuffle — no Math.random().
+function buildPlayOrder(len: number, seed: number): number[] {
+  const arr = Array.from({ length: len }, (_, i) => i);
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(seedRandom(seed + i * 31) * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
 function initBubbleState(bubble: SponsorBubble, idx: number): BubbleState {
+  const bx = 5 + seedRandom(idx * 13 + 7) * 80;
+  const by = 10 + seedRandom(idx * 17 + 3) * 70;
   return {
     id: bubble.id,
-    x: 5 + seedRandom(idx * 13 + 7) * 80,
-    y: 10 + seedRandom(idx * 17 + 3) * 70,
+    x: bx,
+    y: by,
+    baseX: bx,
+    baseY: by,
     scale: 0.85 + seedRandom(idx * 5) * 0.3,
     opacity: 0,
     drift: seedRandom(idx * 7) * Math.PI * 2,
@@ -104,26 +125,29 @@ export default function SponsorMotionLayer({
     bubbles.map((b, i) => initBubbleState(b, i)),
   );
   const [confetti, setConfetti] = useState<ConfettiParticle[]>([]);
-  // Version counter — increments each burst, drives confetti physics effect.
   const [confettiVersion, setConfettiVersion] = useState(0);
   const [activeGift, setActiveGift] = useState<{ bubble: SponsorBubble } | null>(null);
-  // swap: which bubble is currently active
   const [swapIndex, setSwapIndex] = useState(0);
-  // flash: current flash state
   const [flashOn, setFlashOn] = useState(false);
-  // scrollTicker: horizontal scroll offset %
   const [tickerOffset, setTickerOffset] = useState(0);
-  // giftDrop: set of bubble ids that have finished dropping
   const [droppedIds, setDroppedIds] = useState<Set<string>>(new Set());
 
-  const animFrameRef = useRef<number | null>(null);
+  const animFrameRef   = useRef<number | null>(null);
   const confettiFrameRef = useRef<number | null>(null);
   const tickerFrameRef = useRef<number | null>(null);
-  const swapIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const swapIntervalRef  = useRef<ReturnType<typeof setInterval> | null>(null);
   const flashIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const tickRef = useRef(0);
-  const burstSeedRef = useRef(1);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const tickRef        = useRef(0);
+  const burstSeedRef   = useRef(1);
+  const swapSeedRef    = useRef(100);
+  const containerRef   = useRef<HTMLDivElement>(null);
+
+  // Hover freeze — ref (not state) so flipping it never triggers re-render.
+  const hoveredRef = useRef(false);
+
+  // Swap play order — deterministic shuffle, no immediate duplicate across cycles.
+  const playOrderRef  = useRef<number[]>([]);
+  const playCursorRef = useRef(0);
 
   // ── Stagger fade-in (once on mount) ───────────────────────────────────────
   useEffect(() => {
@@ -148,16 +172,26 @@ export default function SponsorMotionLayer({
 
     function tick() {
       if (!running) return;
+      // Hover freeze: keep loop alive but skip position updates.
+      if (hoveredRef.current) {
+        animFrameRef.current = requestAnimationFrame(tick);
+        return;
+      }
       tickRef.current++;
       const t = tickRef.current * 0.012;
       setBubbleStates(prev =>
-        prev.map(s => ({
-          ...s,
-          opacity: Math.min(1, s.opacity + 0.008),
-          revealed: s.opacity > 0.5,
-          y: s.y + Math.sin(t * s.speed + s.drift) * 0.15,
-          x: s.x + Math.cos(t * s.speed * 0.6 + s.drift * 1.3) * 0.1,
-        })),
+        prev.map((s, i) => {
+          // Budget: only MAX_ANIMATED bubbles get motion updates.
+          if (i >= MAX_ANIMATED) return { ...s, opacity: Math.min(0.6, s.opacity + 0.005), revealed: s.opacity > 0.4 };
+          return {
+            ...s,
+            opacity: Math.min(1, s.opacity + 0.008),
+            revealed: s.opacity > 0.5,
+            // Bounded wave offset from anchor — never accumulates.
+            x: s.baseX + Math.cos(t * s.speed * 0.6 + s.drift * 1.3) * 6,
+            y: s.baseY + Math.sin(t * s.speed + s.drift) * 5,
+          };
+        }),
       );
       animFrameRef.current = requestAnimationFrame(tick);
     }
@@ -169,30 +203,49 @@ export default function SponsorMotionLayer({
     };
   }, [mode]);
 
-  // ── Mode scheduling — one active mode at a time, full drain on change ─────
+  // ── Mode scheduling — drain previous loops, then activate new mode ────────
   useEffect(() => {
-    // Drain all previous mode loops before activating new mode.
-    if (swapIntervalRef.current) { clearInterval(swapIntervalRef.current); swapIntervalRef.current = null; }
-    if (flashIntervalRef.current) { clearInterval(flashIntervalRef.current); flashIntervalRef.current = null; }
-    if (tickerFrameRef.current) { cancelAnimationFrame(tickerFrameRef.current); tickerFrameRef.current = null; }
+    if (swapIntervalRef.current)  { clearInterval(swapIntervalRef.current);      swapIntervalRef.current  = null; }
+    if (flashIntervalRef.current) { clearInterval(flashIntervalRef.current);     flashIntervalRef.current = null; }
+    if (tickerFrameRef.current)   { cancelAnimationFrame(tickerFrameRef.current); tickerFrameRef.current   = null; }
     setFlashOn(false);
     setTickerOffset(0);
-    setSwapIndex(0);
     setDroppedIds(new Set());
 
     switch (mode) {
       case "swap": {
-        if (bubbles.length > 1) {
-          swapIntervalRef.current = setInterval(() => {
-            setSwapIndex(prev => (prev + 1) % bubbles.length);
-          }, 2000);
-        }
+        if (bubbles.length <= 1) break;
+        // Build fresh shuffled play order; prevent immediate duplicate from any previous cycle.
+        const newOrder = buildPlayOrder(bubbles.length, ++swapSeedRef.current);
+        playOrderRef.current  = newOrder;
+        playCursorRef.current = 0;
+        setSwapIndex(newOrder[0]);
+
+        swapIntervalRef.current = setInterval(() => {
+          if (hoveredRef.current) return; // freeze on hover, preserve current slot
+
+          playCursorRef.current++;
+
+          // End of cycle: reshuffle, guarding against immediate duplicate.
+          if (playCursorRef.current >= playOrderRef.current.length) {
+            const lastShown = playOrderRef.current[playOrderRef.current.length - 1];
+            const next = buildPlayOrder(bubbles.length, ++swapSeedRef.current);
+            if (next.length > 1 && next[0] === lastShown) {
+              [next[0], next[1]] = [next[1], next[0]]; // swap to avoid repeat
+            }
+            playOrderRef.current  = next;
+            playCursorRef.current = 0;
+          }
+
+          setSwapIndex(playOrderRef.current[playCursorRef.current]);
+        }, 2000);
         break;
       }
 
       case "flash": {
         let step = 0;
         flashIntervalRef.current = setInterval(() => {
+          if (hoveredRef.current) return; // freeze on hover
           step++;
           setFlashOn(step % 2 === 1);
           if (step >= 6) {
@@ -208,7 +261,9 @@ export default function SponsorMotionLayer({
         let running = true;
         function tickTicker() {
           if (!running) return;
-          setTickerOffset(prev => (prev + 0.35) % 110);
+          if (!hoveredRef.current) {
+            setTickerOffset(prev => (prev + 0.35) % 110);
+          }
           tickerFrameRef.current = requestAnimationFrame(tickTicker);
         }
         tickerFrameRef.current = requestAnimationFrame(tickTicker);
@@ -236,9 +291,9 @@ export default function SponsorMotionLayer({
     }
 
     return () => {
-      if (swapIntervalRef.current) { clearInterval(swapIntervalRef.current); swapIntervalRef.current = null; }
-      if (flashIntervalRef.current) { clearInterval(flashIntervalRef.current); flashIntervalRef.current = null; }
-      if (tickerFrameRef.current) { cancelAnimationFrame(tickerFrameRef.current); tickerFrameRef.current = null; }
+      if (swapIntervalRef.current)  { clearInterval(swapIntervalRef.current);      swapIntervalRef.current  = null; }
+      if (flashIntervalRef.current) { clearInterval(flashIntervalRef.current);     flashIntervalRef.current = null; }
+      if (tickerFrameRef.current)   { cancelAnimationFrame(tickerFrameRef.current); tickerFrameRef.current   = null; }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, bubbles.length]);
@@ -265,16 +320,15 @@ export default function SponsorMotionLayer({
       running = false;
       if (confettiFrameRef.current) cancelAnimationFrame(confettiFrameRef.current);
     };
-  // confettiVersion increments per burst; physics updates don't change it.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [confettiVersion]);
 
   // ── Unmount cleanup ───────────────────────────────────────────────────────
   useEffect(() => () => {
-    if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+    if (animFrameRef.current)    cancelAnimationFrame(animFrameRef.current);
     if (confettiFrameRef.current) cancelAnimationFrame(confettiFrameRef.current);
-    if (tickerFrameRef.current) cancelAnimationFrame(tickerFrameRef.current);
-    if (swapIntervalRef.current) clearInterval(swapIntervalRef.current);
+    if (tickerFrameRef.current)  cancelAnimationFrame(tickerFrameRef.current);
+    if (swapIntervalRef.current)  clearInterval(swapIntervalRef.current);
     if (flashIntervalRef.current) clearInterval(flashIntervalRef.current);
   }, []);
 
@@ -307,6 +361,11 @@ export default function SponsorMotionLayer({
       pointerEvents: "auto",
       zIndex: 2,
     };
+
+    // Budget guard: beyond MAX_ANIMATED in floating modes → static, dimmed.
+    if (idx >= MAX_ANIMATED && (mode === "idle" || mode === "pulse" || mode === "giftDrop")) {
+      return { ...base, opacity: state.revealed ? 0.55 : 0, transition: "opacity 0.6s ease" };
+    }
 
     switch (mode) {
       case "pulse": {
@@ -365,6 +424,8 @@ export default function SponsorMotionLayer({
       ref={containerRef}
       aria-hidden="true"
       style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex, overflow: "hidden" }}
+      onMouseEnter={() => { hoveredRef.current = true; }}
+      onMouseLeave={() => { hoveredRef.current = false; }}
     >
       {/* Sponsor bubbles */}
       {bubbles.map((bubble, idx) => {
