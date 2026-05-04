@@ -37,6 +37,7 @@ import LobbyStageViewport from "@/components/lobbies/LobbyStageViewport";
 import LobbyTipRail from "@/components/lobbies/LobbyTipRail";
 import { getLobbyIdleInteraction, summarizeLobbyIdleInteractions } from "@/lib/lobby/LobbyIdleInteractionEngine";
 import LobbyBillboardSurface from "@/components/lobbies/LobbyBillboardSurface";
+import LobbyMainBillboard from "@/components/lobbies/LobbyMainBillboard";
 import { emitLobbyFeedState, type LobbyBillboardStatus } from "@/lib/lobby/LobbyFeedBus";
 
 type LobbyTheaterShellProps = {
@@ -311,8 +312,12 @@ export default function LobbyTheaterShell({ slug, mode = "room" }: LobbyTheaterS
           {mode === "room" ? <span style={{ color: "#dbcdf2", fontSize: 12 }}>Room: {roomName}</span> : null}
           <span style={{ color: "#dbcdf2", fontSize: 12 }}>Viewer: {VIEWER_ID}</span>
         </div>
-        {/* Billboard: entrance — mirrors live state across full header width */}
+        {/* Main billboard — rotates: featured article / live cypher / performer / sponsor */}
         <div style={{ marginTop: 8 }}>
+          <LobbyMainBillboard />
+        </div>
+        {/* Billboard: entrance — mirrors live room state across full header width */}
+        <div style={{ marginTop: 6 }}>
           <LobbyBillboardSurface variant="entrance" slug={slug} />
         </div>
       </header>
