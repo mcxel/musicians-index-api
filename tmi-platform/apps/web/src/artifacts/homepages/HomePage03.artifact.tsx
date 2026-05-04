@@ -1,18 +1,17 @@
 "use client";
 
 import { motion } from "framer-motion";
-import Link from "next/link";
 import NeonRouteTile from "@/components/home/NeonRouteTile";
-import LiveLobbyWall from "@/components/home/LiveLobbyWall";
 import VerticalNewsTicker from "@/components/home/VerticalNewsTicker";
 import CountdownPremiereCard from "@/components/home/CountdownPremiereCard";
+import ArtistSpotlightTile from "@/components/editorial/ArtistSpotlightTile";
 import { useHomeVerticalFlowEngine } from "@/lib/home/HomeVerticalFlowEngine";
 
 const sections = ["This Week", "Events", "Trending"];
 
-// ── Layer 1 — Color Background Engine (news/editorial — cyan + fuchsia) ────────
-const C1 = "#00FFFF";
-const C2 = "#FF2DAA";
+// ── Layer 1 — Color Background Engine (weekly magazine — magenta + red) ────────
+const C1 = "#FF2DAA";
+const C2 = "#FF4444";
 
 // ── Layer 2 — Underlay A (depth: gradients, fog, light beams) ────────────────
 function UnderlayA() {
@@ -264,11 +263,12 @@ export default function HomePage03Artifact() {
                   <div className="mag-page-content">
                     <div className="homev2-belt homev2-belt--live">
                       <div className="homev2-belt__header">
-                        <span className="homev2-belt__kicker">Live Now</span>
-                        <h2 className="homev2-belt__title">Active Rooms</h2>
+                        <span className="homev2-belt__kicker">Rising Artists</span>
+                        <h2 className="homev2-belt__title">Artist Spotlight</h2>
                       </div>
-                      <div className="homev2-belt__content">
-                        <LiveLobbyWall />
+                      <div className="homev2-belt__content" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                        <ArtistSpotlightTile artistName="Wavetek" blurb="Houston's independent crown holder" statLabel="Monthly Listeners" statValue="2.1M" accent="#FF2DAA" />
+                        <ArtistSpotlightTile artistName="Neon Vibe" blurb="Monday Stage resident DJ" statLabel="Sets This Month" statValue="12" accent="#00FFFF" />
                       </div>
                     </div>
                     <div ref={bindSectionRef(2)} className="homev2-belt homev2-belt--events">

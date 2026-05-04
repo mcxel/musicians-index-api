@@ -7,11 +7,11 @@ import FanPredictionPoll from "@/components/home/FanPredictionPoll";
 import CountdownPremiereCard from "@/components/home/CountdownPremiereCard";
 import { useHomeVerticalFlowEngine } from "@/lib/home/HomeVerticalFlowEngine";
 
-const sections = ["Games", "Contests", "Events"];
+const sections = ["Games", "Challenge", "Vote"];
 
-// ── Layer 1 — Color Background Engine (games/prizes — gold + purple) ──────────
+// ── Layer 1 — Color Background Engine (games/prizes — gold + lime) ──────────
 const C1 = "#FFD700";
-const C2 = "#AA2DFF";
+const C2 = "#84CC16";
 
 // ── Layer 2 — Underlay A (depth: gold grid, prize glow orbs) ─────────────────
 function UnderlayA() {
@@ -226,7 +226,7 @@ export default function HomePage04Artifact() {
 
             <div className="mag-shell__spread">
               <div className="mag-spread">
-                {/* Left page — Game hub + Vote now */}
+                {/* Left page — Game Hub → Weekly Challenge */}
                 <div ref={bindSectionRef(0)} className="mag-spread__page mag-left" style={{ overflow: "auto" }}>
                   <div className="mag-page-content">
                     <div className="homev2-belt homev2-belt--marketplace">
@@ -243,7 +243,23 @@ export default function HomePage04Artifact() {
                         </div>
                       </div>
                     </div>
-                    <div ref={bindSectionRef(1)} className="homev2-belt homev2-belt--ranking">
+                    <div ref={bindSectionRef(1)} className="homev2-belt homev2-belt--events">
+                      <div className="homev2-belt__header">
+                        <span className="homev2-belt__kicker">Compete Now</span>
+                        <h2 className="homev2-belt__title">Weekly Challenge</h2>
+                      </div>
+                      <div className="homev2-belt__content">
+                        <CountdownPremiereCard label="Challenge Round Opens" minutesFromNow={8} />
+                        <CountdownPremiereCard label="Giveaway Draw" minutesFromNow={5} />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right page — Voting → Prize Vault */}
+                <div ref={bindSectionRef(2)} className="mag-spread__page mag-right" style={{ overflow: "auto" }}>
+                  <div className="mag-page-content">
+                    <div className="homev2-belt homev2-belt--ranking">
                       <div className="homev2-belt__header">
                         <span className="homev2-belt__kicker">Cast Your Vote</span>
                         <h2 className="homev2-belt__title">Fan Prediction</h2>
@@ -252,31 +268,15 @@ export default function HomePage04Artifact() {
                         <FanPredictionPoll />
                       </div>
                     </div>
-                  </div>
-                </div>
-
-                {/* Right page — Weekly prizes + Events & giveaways */}
-                <div ref={bindSectionRef(2)} className="mag-spread__page mag-right" style={{ overflow: "auto" }}>
-                  <div className="mag-page-content">
                     <div className="homev2-belt homev2-belt--marketplace">
                       <div className="homev2-belt__header">
-                        <span className="homev2-belt__kicker">Prize Vault</span>
-                        <h2 className="homev2-belt__title">Weekly Prizes</h2>
+                        <span className="homev2-belt__kicker">Win Big</span>
+                        <h2 className="homev2-belt__title">Prize Vault</h2>
                       </div>
                       <div className="homev2-belt__content">
                         <PrizeVaultTile title="Weekly Champion Prize" amount="$10,000" />
                         <PrizeVaultTile title="Fan Giveaway Pool" amount="$2,500" showStoreRotation />
                         <PrizeVaultTile title="Contest Runner-Up" amount="$1,000" />
-                      </div>
-                    </div>
-                    <div className="homev2-belt homev2-belt--events">
-                      <div className="homev2-belt__header">
-                        <span className="homev2-belt__kicker">Calendar</span>
-                        <h2 className="homev2-belt__title">Events &amp; Giveaways</h2>
-                      </div>
-                      <div className="homev2-belt__content">
-                        <CountdownPremiereCard label="Contest Round Opens" minutesFromNow={8} />
-                        <CountdownPremiereCard label="Giveaway Draw" minutesFromNow={5} />
                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--tmi-gutter)", marginTop: 8 }}>
                           <NeonRouteTile title="← News" subtitle="This week" href="/home/3" accent="#00FFFF" />
                           <NeonRouteTile title="Cyphers →" subtitle="Weekly battles" href="/home/5" accent={C2} />
