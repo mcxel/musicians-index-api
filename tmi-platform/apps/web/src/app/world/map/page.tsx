@@ -3,8 +3,8 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import PageShell from '@/components/layout/PageShell';
-import HUDFrame from '@/components/layout/HUDFrame';
-import FooterHUD from '@/components/layout/FooterHUD';
+import HUDFrame from '@/components/hud/HUDFrame';
+import FooterHUD from '@/components/hud/FooterHUD';
 
 type Zone = {
   id: string;
@@ -29,7 +29,7 @@ const ZONES: Zone[] = [
     icon: '🎧',
     rooms: [
       { name: 'Neon Underground', href: '/rooms/neon-underground', online: 112 },
-      { name: 'Beat Lab', href: '/rooms/beat-lab', online: 48 },
+      { name: 'Beat Lab', href: '/lobbies/beat-lab', online: 48 },
       { name: 'Cypher Alley', href: '/rooms/cypher-room', online: 67 },
     ],
   },
@@ -233,3 +233,4 @@ export default function WorldMapPage() {
     </PageShell>
   );
 }
+
