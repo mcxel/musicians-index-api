@@ -6,7 +6,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import MagazinePaperTexture from "@/components/magazine/MagazinePaperTexture";
 
-// ── Orbit ring seed data ──────────────────────────────────────────────────────
+// ── Seed data ─────────────────────────────────────────────────────────────────
 
 const ORBIT_ARTISTS = [
   { rank: 2,  initials: "KR", color: "#00FFFF", label: "Krypt" },
@@ -22,7 +22,364 @@ const ORBIT_ARTISTS = [
 
 const GENRES = ["Hip-Hop", "Afrobeats", "Electronic", "R&B", "Battle Rap", "Drill", "Pop", "Jazz"];
 
-// ── Orbit ring ────────────────────────────────────────────────────────────────
+const NAV_ARTIFACTS = [
+  { label: "Read Magazine", href: "/home/1-2",        accent: "#00FFFF" },
+  { label: "Live World",    href: "/lobbies/live-world", accent: "#FF2DAA" },
+  { label: "Play Games",   href: "/cypher",            accent: "#AA2DFF" },
+  { label: "Marketplace",  href: "/shop",              accent: "#FFD700" },
+  { label: "About Us",     href: "/about",             accent: "rgba(255,255,255,0.55)" },
+];
+
+// ── Layer 2: Animated neon underlay ──────────────────────────────────────────
+
+function CoverUnderlay() {
+  return (
+    <div
+      aria-hidden="true"
+      style={{
+        position: "absolute",
+        inset: 0,
+        zIndex: 1,
+        background: "#04020a",
+        overflow: "hidden",
+      }}
+    >
+      {/* Base deep-space gradient */}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          background:
+            "radial-gradient(ellipse 80% 60% at 50% 20%, rgba(0,255,255,0.07) 0%, transparent 70%)," +
+            "radial-gradient(ellipse 60% 80% at 20% 80%, rgba(255,45,170,0.07) 0%, transparent 60%)," +
+            "radial-gradient(ellipse 50% 50% at 80% 50%, rgba(170,45,255,0.05) 0%, transparent 60%)," +
+            "linear-gradient(160deg, #08040f 0%, #020614 50%, #0a0516 100%)",
+        }}
+      />
+
+      {/* Animated pulse glow — cyan */}
+      <motion.div
+        animate={{ opacity: [0.12, 0.28, 0.12], scale: [1, 1.08, 1] }}
+        transition={{ duration: 4.2, repeat: Infinity, ease: "easeInOut" }}
+        style={{
+          position: "absolute",
+          top: "10%",
+          left: "50%",
+          width: 340,
+          height: 340,
+          borderRadius: "50%",
+          transform: "translateX(-50%)",
+          background: "radial-gradient(circle, rgba(0,255,255,0.18) 0%, transparent 70%)",
+          pointerEvents: "none",
+        }}
+      />
+
+      {/* Animated pulse glow — fuchsia */}
+      <motion.div
+        animate={{ opacity: [0.08, 0.22, 0.08], scale: [1.05, 1, 1.05] }}
+        transition={{ duration: 5.5, repeat: Infinity, ease: "easeInOut", delay: 1.2 }}
+        style={{
+          position: "absolute",
+          bottom: "15%",
+          left: "30%",
+          width: 280,
+          height: 280,
+          borderRadius: "50%",
+          background: "radial-gradient(circle, rgba(255,45,170,0.16) 0%, transparent 70%)",
+          pointerEvents: "none",
+        }}
+      />
+
+      {/* Geometric shards — top-right */}
+      <div
+        style={{
+          position: "absolute",
+          top: 48,
+          right: 24,
+          width: 90,
+          height: 90,
+          opacity: 0.06,
+          border: "1px solid #00FFFF",
+          transform: "rotate(22deg)",
+        }}
+      />
+      <div
+        style={{
+          position: "absolute",
+          top: 72,
+          right: 40,
+          width: 56,
+          height: 56,
+          opacity: 0.05,
+          border: "1px solid #FF2DAA",
+          transform: "rotate(44deg)",
+        }}
+      />
+
+      {/* Geometric shards — bottom-left */}
+      <div
+        style={{
+          position: "absolute",
+          bottom: 110,
+          left: 16,
+          width: 70,
+          height: 70,
+          opacity: 0.05,
+          border: "1px solid #AA2DFF",
+          transform: "rotate(-18deg)",
+        }}
+      />
+
+      {/* Scan-line texture */}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          backgroundImage:
+            "repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,255,255,0.012) 3px, rgba(0,255,255,0.012) 4px)",
+          pointerEvents: "none",
+        }}
+      />
+
+      {/* Genre color band — bottom pulse */}
+      <motion.div
+        animate={{ opacity: [0.04, 0.09, 0.04] }}
+        transition={{ duration: 3.8, repeat: Infinity, ease: "easeInOut", delay: 0.7 }}
+        style={{
+          position: "absolute",
+          bottom: 0,
+          left: 0,
+          right: 0,
+          height: 180,
+          background:
+            "linear-gradient(0deg, rgba(255,215,0,0.06) 0%, rgba(255,45,170,0.04) 40%, transparent 100%)",
+          pointerEvents: "none",
+        }}
+      />
+    </div>
+  );
+}
+
+// ── Layer 2 top: paper texture + vignette ─────────────────────────────────────
+
+function CoverVignette() {
+  return (
+    <>
+      <MagazinePaperTexture intensity={0.18} tone="neutral" />
+      <div
+        aria-hidden="true"
+        style={{
+          position: "absolute",
+          inset: 0,
+          zIndex: 3,
+          pointerEvents: "none",
+          borderRadius: 14,
+          background:
+            "linear-gradient(180deg, rgba(4,2,10,0.65) 0%, rgba(4,2,10,0.04) 30%, rgba(4,2,10,0.18) 60%, rgba(4,2,10,0.94) 100%)",
+        }}
+      />
+      <div
+        aria-hidden="true"
+        style={{
+          position: "absolute",
+          inset: 0,
+          zIndex: 4,
+          pointerEvents: "none",
+          borderRadius: 14,
+          boxShadow:
+            "inset 0 0 60px rgba(0,255,255,0.04), inset 0 0 120px rgba(255,45,170,0.03)",
+        }}
+      />
+    </>
+  );
+}
+
+// ── Layer 2 debug: flat reference image (opacity < 8%) ────────────────────────
+
+function CoverDebugImage() {
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src="/tmi-curated/home1.jpg"
+      alt=""
+      aria-hidden="true"
+      style={{
+        position: "absolute",
+        inset: 0,
+        width: "100%",
+        height: "100%",
+        objectFit: "cover",
+        objectPosition: "center top",
+        zIndex: 2,
+        borderRadius: 14,
+        opacity: 0.05,
+        pointerEvents: "none",
+      }}
+      draggable={false}
+    />
+  );
+}
+
+// ── Layer 3: Masthead ─────────────────────────────────────────────────────────
+
+function CoverMasthead() {
+  return (
+    <div
+      style={{
+        position: "absolute",
+        top: 0,
+        left: 0,
+        right: 0,
+        zIndex: 10,
+        padding: "18px 22px 0",
+        display: "flex",
+        alignItems: "flex-start",
+        justifyContent: "space-between",
+      }}
+    >
+      <div>
+        <div
+          style={{
+            fontSize: 9,
+            fontWeight: 900,
+            letterSpacing: "0.32em",
+            textTransform: "uppercase",
+            color: "#00FFFF",
+            textShadow: "0 0 12px rgba(0,255,255,0.7)",
+            marginBottom: 3,
+          }}
+        >
+          THE MUSICIAN&apos;S INDEX
+        </div>
+        <div
+          style={{
+            fontSize: 34,
+            fontWeight: 900,
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            color: "#fff",
+            lineHeight: 1,
+            textShadow: "0 2px 24px rgba(0,0,0,0.9)",
+          }}
+        >
+          TMI
+        </div>
+      </div>
+
+      <motion.div
+        animate={{ opacity: [1, 0.55, 1] }}
+        transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 5,
+          padding: "3px 10px",
+          borderRadius: 999,
+          border: "1px solid rgba(0,255,255,0.4)",
+          background: "rgba(0,255,255,0.09)",
+          marginTop: 4,
+        }}
+      >
+        <span
+          style={{
+            width: 5,
+            height: 5,
+            borderRadius: "50%",
+            background: "#00FFFF",
+            boxShadow: "0 0 6px #00FFFF",
+            flexShrink: 0,
+          }}
+        />
+        <span
+          style={{
+            fontSize: 8,
+            fontWeight: 900,
+            letterSpacing: "0.2em",
+            color: "#00FFFF",
+            textTransform: "uppercase",
+          }}
+        >
+          ISSUE 01
+        </span>
+      </motion.div>
+    </div>
+  );
+}
+
+// ── Layer 3: Crown center — #1 artist ─────────────────────────────────────────
+
+function CoverCrownCenter() {
+  return (
+    <div
+      style={{
+        position: "absolute",
+        top: "50%",
+        left: "50%",
+        transform: "translate(-50%, -50%)",
+        zIndex: 8,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        gap: 5,
+        pointerEvents: "none",
+      }}
+    >
+      <motion.div
+        animate={{
+          filter: [
+            "drop-shadow(0 0 8px #FFD700)",
+            "drop-shadow(0 0 26px #FFD700) drop-shadow(0 0 52px #FFD70055)",
+            "drop-shadow(0 0 8px #FFD700)",
+          ],
+        }}
+        transition={{ duration: 2.8, repeat: Infinity, ease: "easeInOut" }}
+        style={{ fontSize: 40, lineHeight: 1 }}
+      >
+        👑
+      </motion.div>
+
+      <div
+        style={{
+          fontSize: 9,
+          fontWeight: 900,
+          letterSpacing: "0.24em",
+          textTransform: "uppercase",
+          color: "#FFD700",
+          textShadow: "0 0 12px rgba(255,215,0,0.65)",
+        }}
+      >
+        #1 THIS WEEK
+      </div>
+
+      {/* Winner name card */}
+      <motion.div
+        animate={{ boxShadow: ["0 0 14px rgba(255,45,170,0.35)", "0 0 32px rgba(255,45,170,0.55)", "0 0 14px rgba(255,45,170,0.35)"] }}
+        transition={{ duration: 3.2, repeat: Infinity, ease: "easeInOut" }}
+        style={{
+          padding: "6px 18px",
+          borderRadius: 8,
+          border: "1px solid rgba(255,45,170,0.38)",
+          background: "rgba(255,45,170,0.08)",
+        }}
+      >
+        <div
+          style={{
+            fontSize: 16,
+            fontWeight: 900,
+            letterSpacing: "0.12em",
+            textTransform: "uppercase",
+            color: "#fff",
+            textShadow: "0 0 22px rgba(255,45,170,0.55)",
+          }}
+        >
+          WAVETEK
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
+// ── Layer 3: Orbit ring — ranks 2–10 ─────────────────────────────────────────
 
 function OrbitRing() {
   const count = ORBIT_ARTISTS.length;
@@ -41,14 +398,13 @@ function OrbitRing() {
         pointerEvents: "none",
       }}
     >
-      {/* Orbit circle trace */}
       <div
         style={{
           position: "absolute",
           width: r * 2,
           height: r * 2,
           borderRadius: "50%",
-          border: "1px solid rgba(0,255,255,0.10)",
+          border: "1px solid rgba(0,255,255,0.08)",
           transform: `translate(-${r}px, -${r}px)`,
         }}
       />
@@ -93,7 +449,7 @@ function OrbitRing() {
   );
 }
 
-// ── Genre burst ───────────────────────────────────────────────────────────────
+// ── Layer 3: Genre burst ──────────────────────────────────────────────────────
 
 function GenreBurst() {
   return (
@@ -101,7 +457,7 @@ function GenreBurst() {
       aria-hidden="true"
       style={{
         position: "absolute",
-        bottom: 88,
+        bottom: 138,
         left: 0,
         right: 0,
         display: "flex",
@@ -138,6 +494,257 @@ function GenreBurst() {
   );
 }
 
+// ── Layer 4: Nav artifact buttons ─────────────────────────────────────────────
+
+function CoverNavArtifacts() {
+  return (
+    <div
+      style={{
+        position: "absolute",
+        bottom: 0,
+        left: 0,
+        right: 0,
+        zIndex: 10,
+        padding: "0 18px 22px",
+      }}
+    >
+      <div
+        style={{
+          fontSize: 11,
+          fontWeight: 900,
+          letterSpacing: "0.18em",
+          textTransform: "uppercase",
+          color: "#FF2DAA",
+          textShadow: "0 0 14px rgba(255,45,170,0.6)",
+          marginBottom: 8,
+        }}
+      >
+        Battle Season 1 · Crown Duel
+      </div>
+
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+        {NAV_ARTIFACTS.map((item) => (
+          <Link
+            key={item.href}
+            href={item.href}
+            style={{
+              flex: item.label === "Read Magazine" ? "1 1 auto" : "0 0 auto",
+              textAlign: "center",
+              textDecoration: "none",
+              padding: "9px 12px",
+              borderRadius: 9,
+              border: `1px solid ${item.accent}55`,
+              color: item.accent,
+              fontSize: 9,
+              fontWeight: 900,
+              letterSpacing: "0.16em",
+              textTransform: "uppercase",
+              background: `${item.accent === "rgba(255,255,255,0.55)" ? "rgba(255,255,255,0.04)" : item.accent + "0f"}`,
+              boxShadow: item.label === "Read Magazine" ? `0 0 18px ${item.accent}22` : undefined,
+              whiteSpace: "nowrap",
+            }}
+          >
+            {item.label === "Read Magazine" && "▶ "}
+            {item.label}
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Layer 5: Status overlays ──────────────────────────────────────────────────
+
+function CoverStatusOverlays() {
+  return (
+    <>
+      {/* Voting Live badge — top-left below masthead */}
+      <motion.div
+        initial={{ opacity: 0, x: -10 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ delay: 0.9, duration: 0.38 }}
+        style={{
+          position: "absolute",
+          top: 74,
+          left: 22,
+          zIndex: 12,
+          display: "flex",
+          alignItems: "center",
+          gap: 5,
+          padding: "3px 10px",
+          borderRadius: 999,
+          border: "1px solid rgba(255,45,170,0.5)",
+          background: "rgba(255,45,170,0.1)",
+        }}
+      >
+        <motion.span
+          animate={{ opacity: [1, 0.3, 1] }}
+          transition={{ duration: 1.1, repeat: Infinity, ease: "easeInOut" }}
+          style={{
+            width: 5,
+            height: 5,
+            borderRadius: "50%",
+            background: "#FF2DAA",
+            boxShadow: "0 0 6px #FF2DAA",
+            flexShrink: 0,
+          }}
+        />
+        <span
+          style={{
+            fontSize: 7,
+            fontWeight: 900,
+            letterSpacing: "0.18em",
+            color: "#FF2DAA",
+            textTransform: "uppercase",
+          }}
+        >
+          Voting Live
+        </span>
+      </motion.div>
+
+      {/* Crown Updating badge */}
+      <motion.div
+        initial={{ opacity: 0, x: -10 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ delay: 1.1, duration: 0.38 }}
+        style={{
+          position: "absolute",
+          top: 100,
+          left: 22,
+          zIndex: 12,
+          display: "flex",
+          alignItems: "center",
+          gap: 5,
+          padding: "3px 10px",
+          borderRadius: 999,
+          border: "1px solid rgba(255,215,0,0.4)",
+          background: "rgba(255,215,0,0.07)",
+        }}
+      >
+        <span style={{ fontSize: 8 }}>👑</span>
+        <span
+          style={{
+            fontSize: 7,
+            fontWeight: 900,
+            letterSpacing: "0.16em",
+            color: "#FFD700",
+            textTransform: "uppercase",
+          }}
+        >
+          Crown Updating
+        </span>
+      </motion.div>
+
+      {/* Trending indicator — top-right below issue badge */}
+      <motion.div
+        initial={{ opacity: 0, x: 10 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ delay: 1.3, duration: 0.38 }}
+        style={{
+          position: "absolute",
+          top: 74,
+          right: 18,
+          zIndex: 12,
+          display: "flex",
+          alignItems: "center",
+          gap: 5,
+          padding: "3px 10px",
+          borderRadius: 999,
+          border: "1px solid rgba(170,45,255,0.4)",
+          background: "rgba(170,45,255,0.08)",
+        }}
+      >
+        <span
+          style={{
+            fontSize: 7,
+            fontWeight: 900,
+            letterSpacing: "0.16em",
+            color: "#AA2DFF",
+            textTransform: "uppercase",
+          }}
+        >
+          ↑ Trending
+        </span>
+      </motion.div>
+
+      {/* Genre Battle — center-right */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.85 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ delay: 1.5, duration: 0.38, ease: "easeOut" }}
+        style={{
+          position: "absolute",
+          top: "50%",
+          right: 14,
+          transform: "translateY(-50%)",
+          zIndex: 12,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: 3,
+          padding: "8px 10px",
+          borderRadius: 10,
+          border: "1px solid rgba(0,255,136,0.3)",
+          background: "rgba(0,255,136,0.06)",
+        }}
+      >
+        <span style={{ fontSize: 7, fontWeight: 900, letterSpacing: "0.18em", color: "#00FF88", textTransform: "uppercase" }}>
+          Genre
+        </span>
+        <span style={{ fontSize: 7, fontWeight: 900, letterSpacing: "0.18em", color: "#00FF88", textTransform: "uppercase" }}>
+          Battle
+        </span>
+        <span style={{ fontSize: 14, lineHeight: 1 }}>⚔️</span>
+      </motion.div>
+    </>
+  );
+}
+
+// ── Page-turn flash overlay ───────────────────────────────────────────────────
+
+function PageTurnFlash() {
+  return (
+    <div
+      style={{
+        position: "absolute",
+        inset: 0,
+        pointerEvents: "none",
+        zIndex: 30,
+        overflow: "hidden",
+      }}
+    >
+      <motion.div
+        initial={{ rotateY: 0, opacity: 1 }}
+        animate={{ rotateY: -92, opacity: 0.08 }}
+        transition={{ duration: 0.54, ease: [0.34, 1, 0.64, 1] }}
+        style={{
+          position: "absolute",
+          inset: 0,
+          transformOrigin: "left center",
+          background: "linear-gradient(100deg, rgba(245,238,220,0.92), rgba(208,190,160,0.72))",
+          borderRadius: 14,
+          boxShadow: "0 20px 50px rgba(0,0,0,0.42)",
+        }}
+      >
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            background: "radial-gradient(circle at 80% 50%, rgba(0,0,0,0.32), transparent 52%)",
+          }}
+        />
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            background: "linear-gradient(120deg, transparent 34%, rgba(255,255,255,0.22) 50%, transparent 68%)",
+          }}
+        />
+      </motion.div>
+    </div>
+  );
+}
+
 // ── Main artifact ─────────────────────────────────────────────────────────────
 
 type HomePageCoverArtifactProps = {
@@ -145,7 +752,7 @@ type HomePageCoverArtifactProps = {
 };
 
 export default function HomePageCoverArtifact({ onRequestOpen }: HomePageCoverArtifactProps) {
-  const router  = useRouter();
+  const router = useRouter();
   const [openingCover, setOpeningCover] = useState(false);
 
   const onOpenMagazine = (event: React.MouseEvent<HTMLAnchorElement>) => {
@@ -163,199 +770,30 @@ export default function HomePageCoverArtifact({ onRequestOpen }: HomePageCoverAr
         inset: 0,
         overflow: "hidden",
         borderRadius: 14,
-        background: "#04020a",
       }}
     >
-      {/* ── Full-bleed cover image ── */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src="/tmi-curated/home1.jpg"
-        alt="The Musician's Index — Issue 01"
-        style={{
-          position: "absolute",
-          inset: 0,
-          width: "100%",
-          height: "100%",
-          objectFit: "cover",
-          objectPosition: "center top",
-          zIndex: 1,
-          borderRadius: 14,
-        }}
-        draggable={false}
-      />
+      {/* Layer 2: Animated neon underlay */}
+      <CoverUnderlay />
 
-      <MagazinePaperTexture intensity={0.32} tone="neutral" />
+      {/* Layer 2 debug: flat reference image — opacity 5%, not visible */}
+      <CoverDebugImage />
 
-      {/* ── Gradient vignette — heavier at top and bottom ── */}
-      <div
-        aria-hidden="true"
-        style={{
-          position: "absolute",
-          inset: 0,
-          zIndex: 3,
-          pointerEvents: "none",
-          borderRadius: 14,
-          background:
-            "linear-gradient(180deg, rgba(4,2,10,0.78) 0%, rgba(4,2,10,0.10) 28%, rgba(4,2,10,0.30) 58%, rgba(4,2,10,0.96) 100%)",
-        }}
-      />
+      {/* Layer 2 top: vignette + paper texture */}
+      <CoverVignette />
 
-      {/* ── Cyan/fuchsia neon glow ── */}
-      <div
-        aria-hidden="true"
-        style={{
-          position: "absolute",
-          inset: 0,
-          zIndex: 4,
-          pointerEvents: "none",
-          borderRadius: 14,
-          boxShadow:
-            "inset 0 0 60px rgba(0,255,255,0.06), inset 0 0 120px rgba(255,45,170,0.04)",
-        }}
-      />
+      {/* Layer 3: Live content — masthead */}
+      <CoverMasthead />
 
-      {/* ── Masthead ── */}
-      <div
-        style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          right: 0,
-          zIndex: 10,
-          padding: "18px 22px 0",
-          display: "flex",
-          alignItems: "flex-start",
-          justifyContent: "space-between",
-        }}
-      >
-        <div>
-          <div
-            style={{
-              fontSize: 9,
-              fontWeight: 900,
-              letterSpacing: "0.32em",
-              textTransform: "uppercase",
-              color: "#00FFFF",
-              textShadow: "0 0 12px rgba(0,255,255,0.7)",
-              marginBottom: 3,
-            }}
-          >
-            THE MUSICIAN&apos;S INDEX
-          </div>
-          <div
-            style={{
-              fontSize: 34,
-              fontWeight: 900,
-              letterSpacing: "0.08em",
-              textTransform: "uppercase",
-              color: "#fff",
-              lineHeight: 1,
-              textShadow: "0 2px 24px rgba(0,0,0,0.9)",
-            }}
-          >
-            TMI
-          </div>
-        </div>
-
-        <motion.div
-          animate={{ opacity: [1, 0.55, 1] }}
-          transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 5,
-            padding: "3px 10px",
-            borderRadius: 999,
-            border: "1px solid rgba(0,255,255,0.4)",
-            background: "rgba(0,255,255,0.09)",
-            marginTop: 4,
-          }}
-        >
-          <span
-            style={{
-              width: 5,
-              height: 5,
-              borderRadius: "50%",
-              background: "#00FFFF",
-              boxShadow: "0 0 6px #00FFFF",
-              flexShrink: 0,
-            }}
-          />
-          <span
-            style={{
-              fontSize: 8,
-              fontWeight: 900,
-              letterSpacing: "0.2em",
-              color: "#00FFFF",
-              textTransform: "uppercase",
-            }}
-          >
-            ISSUE 01
-          </span>
-        </motion.div>
-      </div>
-
-      {/* ── Crown center — #1 artist ── */}
-      <div
-        style={{
-          position: "absolute",
-          top: "50%",
-          left: "50%",
-          transform: "translate(-50%, -50%)",
-          zIndex: 8,
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          gap: 5,
-          pointerEvents: "none",
-        }}
-      >
-        <motion.div
-          animate={{
-            filter: [
-              "drop-shadow(0 0 8px #FFD700)",
-              "drop-shadow(0 0 26px #FFD700) drop-shadow(0 0 52px #FFD70055)",
-              "drop-shadow(0 0 8px #FFD700)",
-            ],
-          }}
-          transition={{ duration: 2.8, repeat: Infinity, ease: "easeInOut" }}
-          style={{ fontSize: 40, lineHeight: 1 }}
-        >
-          👑
-        </motion.div>
-        <div
-          style={{
-            fontSize: 9,
-            fontWeight: 900,
-            letterSpacing: "0.24em",
-            textTransform: "uppercase",
-            color: "#FFD700",
-            textShadow: "0 0 12px rgba(255,215,0,0.65)",
-          }}
-        >
-          #1 THIS WEEK
-        </div>
-        <div
-          style={{
-            fontSize: 16,
-            fontWeight: 900,
-            letterSpacing: "0.12em",
-            textTransform: "uppercase",
-            color: "#fff",
-            textShadow: "0 0 22px rgba(255,45,170,0.55)",
-          }}
-        >
-          WAVETEK
-        </div>
-      </div>
-
-      {/* ── Top 10 orbit ring ── */}
+      {/* Layer 3: Live content — orbit ring */}
       <OrbitRing />
 
-      {/* ── Genre burst ── */}
+      {/* Layer 3: Live content — crown center #1 winner */}
+      <CoverCrownCenter />
+
+      {/* Layer 3: Live content — genre burst tags */}
       <GenreBurst />
 
-      {/* ── Bottom CTA bar ── */}
+      {/* Layer 4: Nav artifact buttons (Read Magazine is the primary open trigger) */}
       <div
         style={{
           position: "absolute",
@@ -380,13 +818,12 @@ export default function HomePageCoverArtifact({ onRequestOpen }: HomePageCoverAr
           Battle Season 1 · Crown Duel
         </div>
 
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
           <Link
             onClick={onOpenMagazine}
             href="/home/1-2"
             style={{
-              flex: 1,
-              minWidth: 100,
+              flex: "1 1 auto",
               textAlign: "center",
               textDecoration: "none",
               padding: "10px 14px",
@@ -403,70 +840,36 @@ export default function HomePageCoverArtifact({ onRequestOpen }: HomePageCoverAr
           >
             ▶ Open Magazine
           </Link>
-          <Link
-            href="/account"
-            style={{
-              textDecoration: "none",
-              padding: "10px 14px",
-              borderRadius: 10,
-              border: "1px solid rgba(255,255,255,0.18)",
-              color: "rgba(255,255,255,0.7)",
-              fontSize: 10,
-              fontWeight: 900,
-              letterSpacing: "0.14em",
-              textTransform: "uppercase",
-              background: "rgba(255,255,255,0.05)",
-            }}
-          >
-            My Account
-          </Link>
+
+          {NAV_ARTIFACTS.slice(1).map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              style={{
+                textDecoration: "none",
+                padding: "10px 11px",
+                borderRadius: 10,
+                border: `1px solid ${item.accent}44`,
+                color: item.accent,
+                fontSize: 9,
+                fontWeight: 900,
+                letterSpacing: "0.14em",
+                textTransform: "uppercase",
+                background: `rgba(255,255,255,0.04)`,
+                whiteSpace: "nowrap",
+              }}
+            >
+              {item.label}
+            </Link>
+          ))}
         </div>
       </div>
 
-      {/* ── Page-turn flash on open ── */}
-      {openingCover && (
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            pointerEvents: "none",
-            zIndex: 30,
-            overflow: "hidden",
-          }}
-        >
-          <motion.div
-            initial={{ rotateY: 0, opacity: 1 }}
-            animate={{ rotateY: -92, opacity: 0.08 }}
-            transition={{ duration: 0.54, ease: [0.34, 1, 0.64, 1] }}
-            style={{
-              position: "absolute",
-              inset: 0,
-              transformOrigin: "left center",
-              background:
-                "linear-gradient(100deg, rgba(245,238,220,0.92), rgba(208,190,160,0.72))",
-              borderRadius: 14,
-              boxShadow: "0 20px 50px rgba(0,0,0,0.42)",
-            }}
-          >
-            <div
-              style={{
-                position: "absolute",
-                inset: 0,
-                background:
-                  "radial-gradient(circle at 80% 50%, rgba(0,0,0,0.32), transparent 52%)",
-              }}
-            />
-            <div
-              style={{
-                position: "absolute",
-                inset: 0,
-                background:
-                  "linear-gradient(120deg, transparent 34%, rgba(255,255,255,0.22) 50%, transparent 68%)",
-              }}
-            />
-          </motion.div>
-        </div>
-      )}
+      {/* Layer 5: Status overlays */}
+      <CoverStatusOverlays />
+
+      {/* Page-turn flash on open */}
+      {openingCover && <PageTurnFlash />}
     </div>
   );
 }
