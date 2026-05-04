@@ -11,9 +11,9 @@
 // Layer 6: Overlay B (engagement telemetry — read count, reactions)
 // Layer 7: Overlay C (power badge — featured/trending/editor)
 
-import { type ReactNode } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import Link from "next/link";
-import { motion } from "framer-motion";
+import { motion, animate } from "framer-motion";
 
 // ── Layer 1 — Dynamic Color Engine ────────────────────────────────────────────
 
@@ -85,6 +85,12 @@ function UnderlayA({ c1, c2 }: { c1: string; c2: string }) {
         transition={{ duration: 8, repeat: Infinity, ease: "easeInOut", delay: 2.2 }}
         style={{ position: "absolute", bottom: "12%", left: "6%", width: 240, height: 240, borderRadius: "50%", background: `radial-gradient(circle, ${c2}16 0%, transparent 70%)` }}
       />
+      {/* Motion F — Section glow drift: slow lateral drift behind article body */}
+      <motion.div
+        animate={{ x: ["-8%", "8%", "-8%"], y: ["0%", "3%", "0%"], opacity: [0.05, 0.12, 0.05] }}
+        transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
+        style={{ position: "absolute", top: "38%", left: "28%", width: 420, height: 260, borderRadius: "50%", background: `radial-gradient(ellipse, ${c1}14 0%, transparent 65%)`, pointerEvents: "none" }}
+      />
     </div>
   );
 }
@@ -142,6 +148,64 @@ function UnderlayB({ c1, c2 }: { c1: string; c2: string }) {
   );
 }
 
+// ── Motion E — Read ticker: count-up from 0 to live value on mount ────────────
+
+function useCountUp(target: string, delay: number) {
+  const [display, setDisplay] = useState<string>("—");
+
+  useEffect(() => {
+    const isKilo = target.endsWith("K");
+    const num = isKilo ? parseFloat(target) * 1000 : parseInt(target, 10);
+    if (isNaN(num)) { setDisplay(target); return; }
+
+    const controls = animate(0, num, {
+      duration: 1.5,
+      ease: "easeOut",
+      delay,
+      onUpdate(v) {
+        setDisplay(isKilo ? `${(v / 1000).toFixed(1)}K` : String(Math.round(v)));
+      },
+      onComplete() { setDisplay(target); },
+    });
+    return controls.stop;
+  }, [target, delay]);
+
+  return display;
+}
+
+// ── Motion D — Reaction glow: pulse live-indicator on the reactions stat ───────
+
+function TickerStat({
+  icon, label, title, c1, index, isReaction,
+}: {
+  icon: string; label: string; title: string; c1: string; index: number; isReaction?: boolean;
+}) {
+  const display = useCountUp(label, index * 0.22);
+
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+      <span style={{ fontSize: 9, lineHeight: 1 }}>{icon}</span>
+      <motion.span
+        animate={{ opacity: [0.7, 1, 0.7] }}
+        transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut", delay: index * 0.8 }}
+        style={{ fontSize: 9, fontWeight: 900, color: c1, letterSpacing: "0.06em", minWidth: 32 }}
+      >
+        {display}
+      </motion.span>
+      <span style={{ fontSize: 7, color: "rgba(255,255,255,0.25)", letterSpacing: "0.1em", textTransform: "uppercase" as const }}>
+        {title}
+      </span>
+      {isReaction && (
+        <motion.span
+          animate={{ scale: [1, 1.8, 1], opacity: [0.55, 0.1, 0.55] }}
+          transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
+          style={{ width: 4, height: 4, borderRadius: "50%", background: c1, display: "inline-block" }}
+        />
+      )}
+    </div>
+  );
+}
+
 // ── Layer 6 — Overlay B (engagement telemetry) ────────────────────────────────
 
 function EngagementOverlay({
@@ -151,6 +215,13 @@ function EngagementOverlay({
   c1: string;
   stats: { reads: string; reactions: string; comments: string; shares: string };
 }) {
+  const items = [
+    { icon: "👁", label: stats.reads,     title: "reads",     isReaction: false },
+    { icon: "❤",  label: stats.reactions, title: "reactions", isReaction: true  },
+    { icon: "💬", label: stats.comments,  title: "comments",  isReaction: false },
+    { icon: "↗",  label: stats.shares,    title: "shares",    isReaction: false },
+  ];
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -172,25 +243,16 @@ function EngagementOverlay({
         pointerEvents: "none",
       }}
     >
-      {[
-        { icon: "👁", label: stats.reads, title: "reads" },
-        { icon: "❤", label: stats.reactions, title: "reactions" },
-        { icon: "💬", label: stats.comments, title: "comments" },
-        { icon: "↗", label: stats.shares, title: "shares" },
-      ].map((item) => (
-        <div key={item.title} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <span style={{ fontSize: 9, lineHeight: 1 }}>{item.icon}</span>
-          <motion.span
-            animate={{ opacity: [0.7, 1, 0.7] }}
-            transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut", delay: Math.random() * 2 }}
-            style={{ fontSize: 9, fontWeight: 900, color: c1, letterSpacing: "0.06em", minWidth: 32 }}
-          >
-            {item.label}
-          </motion.span>
-          <span style={{ fontSize: 7, color: "rgba(255,255,255,0.25)", letterSpacing: "0.1em", textTransform: "uppercase" as const }}>
-            {item.title}
-          </span>
-        </div>
+      {items.map((item, i) => (
+        <TickerStat
+          key={item.title}
+          icon={item.icon}
+          label={item.label}
+          title={item.title}
+          c1={c1}
+          index={i}
+          isReaction={item.isReaction}
+        />
       ))}
     </motion.div>
   );
@@ -284,7 +346,12 @@ export default function EditorialMagazineShell({
       <UnderlayB c1={c1} c2={c2} />
 
       {/* Layer 0 — Magazine shell base (page stack + page surface) */}
-      <div style={{ position: "relative", zIndex: 2, maxWidth: 980, margin: "0 auto" }}>
+      {/* Motion A — Page breathing: very slow scale pulse makes article feel alive */}
+      <motion.div
+        animate={{ scale: [1, 1.0014, 1] }}
+        transition={{ duration: 11, repeat: Infinity, ease: "easeInOut" }}
+        style={{ position: "relative", zIndex: 2, maxWidth: 980, margin: "0 auto", transformOrigin: "top center" }}
+      >
         {/* Page stack depth effect */}
         <div className="mag-page-stack" aria-hidden="true">
           <span /><span /><span /><span /><span />
@@ -428,7 +495,7 @@ export default function EditorialMagazineShell({
             </div>
           </footer>
         </div>
-      </div>
+      </motion.div>
 
       {/* Layer 6 — Engagement telemetry overlay */}
       <EngagementOverlay c1={c1} stats={stats} />
