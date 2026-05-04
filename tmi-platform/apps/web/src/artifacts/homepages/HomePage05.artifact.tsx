@@ -11,9 +11,9 @@ import { useHomeVerticalFlowEngine } from "@/lib/home/HomeVerticalFlowEngine";
 
 const sections = ["Battles", "Winners", "Vote"];
 
-// ── Layer 1 — Color Background Engine (cypher energy — purple + cyan) ─────────
+// ── Layer 1 — Color Background Engine (cypher energy — purple + blood-red) ─────
 const C1 = "#AA2DFF";
-const C2 = "#00FFFF";
+const C2 = "#CC0000";
 
 // ── Layer 2 — Underlay A (depth: battle shards, cypher glow) ─────────────────
 function UnderlayA() {
