@@ -1,9 +1,13 @@
-import { redirect } from "next/navigation";
+import LobbyTheaterShell from "@/components/lobbies/LobbyTheaterShell";
 
-export default function LegacyRoomRedirect({
+export default function RoomPage({
   params,
 }: {
   params: { slug: string };
 }) {
-  redirect(`/lobbies/${params.slug}`);
+  return (
+    <main data-testid="room-page">
+      <LobbyTheaterShell slug={params.slug} mode="room" />
+    </main>
+  );
 }
