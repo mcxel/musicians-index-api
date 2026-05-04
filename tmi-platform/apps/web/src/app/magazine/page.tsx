@@ -6,6 +6,7 @@ import MagazineArticleRotationRail from "@/components/editorial/MagazineArticleR
 export const metadata = {
   title: "The Musician's Index Magazine | TMI",
   description: "Features, interviews, reviews, and news from the forefront of the music industry. Powered by TMI.",
+  alternates: { canonical: "/magazine" },
   openGraph: {
     title: "TMI Magazine — Issue 1",
     description: "The Musician's Index: the magazine arm of the TMI platform.",

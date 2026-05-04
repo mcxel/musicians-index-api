@@ -1,6 +1,19 @@
 import { Suspense } from "react";
 import Link from "next/link";
+import type { Metadata } from "next";
 import VenueWorldShell from "@/components/venues/VenueWorldShell";
+
+export function generateMetadata({ params }: { params: { slug: string } }): Metadata {
+  const venueName = params.slug
+    .split("-")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+  return {
+    title: `${venueName} | Venue | The Musician's Index`,
+    description: `${venueName} on The Musician's Index — stage schedule, bookings, and live access.`,
+    alternates: { canonical: `/venues/${params.slug}` },
+  };
+}
 
 export default function VenueProfilePage({ params }: { params: { slug: string } }) {
   const venueName = params.slug
