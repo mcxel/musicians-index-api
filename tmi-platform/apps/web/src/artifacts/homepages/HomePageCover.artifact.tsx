@@ -194,32 +194,6 @@ function CoverVignette() {
   );
 }
 
-// ── Layer 2 debug: flat reference image (opacity < 8%) ────────────────────────
-
-function CoverDebugImage() {
-  return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src="/tmi-curated/home1.jpg"
-      alt=""
-      aria-hidden="true"
-      style={{
-        position: "absolute",
-        inset: 0,
-        width: "100%",
-        height: "100%",
-        objectFit: "cover",
-        objectPosition: "center top",
-        zIndex: 2,
-        borderRadius: 14,
-        opacity: 0.05,
-        pointerEvents: "none",
-      }}
-      draggable={false}
-    />
-  );
-}
-
 // ── Layer 3: Masthead ─────────────────────────────────────────────────────────
 
 function CoverMasthead() {
@@ -774,9 +748,6 @@ export default function HomePageCoverArtifact({ onRequestOpen }: HomePageCoverAr
     >
       {/* Layer 2: Animated neon underlay */}
       <CoverUnderlay />
-
-      {/* Layer 2 debug: flat reference image — opacity 5%, not visible */}
-      <CoverDebugImage />
 
       {/* Layer 2 top: vignette + paper texture */}
       <CoverVignette />
