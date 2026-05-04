@@ -16,6 +16,25 @@ export interface LobbyMonitorSlot {
   status: "LIVE" | "STANDBY" | "NEXT";
 }
 
+// B3: One rotating venue ad slot.
+export interface VenueAdSlot {
+  id: string;
+  type: "sponsor" | "promo" | "event" | "contest";
+  title: string;
+  subtitle: string;
+  ctaLabel: string;
+  ctaRoute: string;
+  accent: string;
+}
+
+// B3: Venue ranking summary.
+export interface VenueRankings {
+  room: number;
+  performer: number;
+  venue: number;
+  contest: number;
+}
+
 export interface LobbyFeedState {
   slug: string;
   title: string;
@@ -29,6 +48,11 @@ export interface LobbyFeedState {
   roomType: string;
   heat: number;
   battleHeat: number;      // B2: battle intensity — used by stage monitor heat bar
+  // B3: Venue surface sync fields
+  activeSponsor: { name: string; campaign: string; ctaRoute: string };
+  venuePromo: { title: string; ctaRoute: string };
+  upcomingEvent: { title: string; countdownSeconds: number; ticketsAvailable: boolean; lineup: string[] };
+  rankings: VenueRankings;
   updatedAt: number;
 }
 
@@ -45,6 +69,10 @@ const DEFAULT_STATE: LobbyFeedState = {
   roomType: "lobby",
   heat: 0,
   battleHeat: 0,
+  activeSponsor: { name: "—", campaign: "—", ctaRoute: "/sponsor" },
+  venuePromo: { title: "—", ctaRoute: "/venue" },
+  upcomingEvent: { title: "—", countdownSeconds: 0, ticketsAvailable: false, lineup: [] },
+  rankings: { room: 0, performer: 0, venue: 0, contest: 0 },
   updatedAt: 0,
 };
 
@@ -117,4 +145,59 @@ export function deriveMonitorSlots(s: LobbyFeedState): LobbyMonitorSlot[] {
       status: s.roomType === "cypher" && isLive ? "LIVE" : "STANDBY",
     },
   ];
+}
+
+// B3: Derive 4 rotating venue ad slots from bus state.
+// Pure function — sponsor, venue promo, event, contest all from feed.
+export function deriveVenueAdSlots(s: LobbyFeedState): VenueAdSlot[] {
+  return [
+    {
+      id: "ad-sponsor",
+      type: "sponsor",
+      title: s.activeSponsor.name !== "—" ? s.activeSponsor.name : "Sponsor Campaign",
+      subtitle: s.activeSponsor.campaign !== "—" ? s.activeSponsor.campaign : "Active partnership",
+      ctaLabel: "View Campaign",
+      ctaRoute: s.activeSponsor.ctaRoute,
+      accent: "#FFD700",
+    },
+    {
+      id: "ad-promo",
+      type: "promo",
+      title: s.venuePromo.title !== "—" ? s.venuePromo.title : s.title !== "—" ? s.title : "Venue Promo",
+      subtitle: `${s.occupancy} attending · ${s.occupancyPct}%`,
+      ctaLabel: "Enter Venue",
+      ctaRoute: s.venuePromo.ctaRoute,
+      accent: "#c4b5fd",
+    },
+    {
+      id: "ad-event",
+      type: "event",
+      title: s.upcomingEvent.title !== "—" ? s.upcomingEvent.title : s.currentEvent !== "—" ? s.currentEvent : "Upcoming Event",
+      subtitle: s.upcomingEvent.lineup.length > 0
+        ? s.upcomingEvent.lineup.slice(0, 2).join(" · ")
+        : s.performer !== "—" ? s.performer : "Lineup TBA",
+      ctaLabel: s.upcomingEvent.ticketsAvailable ? "Get Tickets" : "View Event",
+      ctaRoute: s.slug ? `/lobbies/${s.slug}` : "/live/stages",
+      accent: "#fb923c",
+    },
+    {
+      id: "ad-contest",
+      type: "contest",
+      title: "Arena Clash",
+      subtitle: `Heat ${Math.round(s.battleHeat || s.heat * 0.7)} · Rank #${s.rankings.contest || s.ranking || "—"}`,
+      ctaLabel: "Join Battle",
+      ctaRoute: "/cypher",
+      accent: "#f87171",
+    },
+  ];
+}
+
+// B3: Extract venue ranking summary from bus state.
+export function deriveVenueRankings(s: LobbyFeedState): VenueRankings {
+  return {
+    room: s.rankings.room || s.ranking,
+    performer: s.rankings.performer || s.ranking,
+    venue: s.rankings.venue,
+    contest: s.rankings.contest,
+  };
 }
