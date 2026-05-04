@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-export default async function ArtistProfilePage({
+export default async function ArtistStorePage({
   params,
 }: {
   params: Promise<{ slug: string }>;
