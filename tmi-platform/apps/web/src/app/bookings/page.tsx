@@ -1,4 +1,11 @@
 import Link from "next/link";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Bookings | The Musician's Index",
+  description: "Booking operations hub — venue and performer scheduling, ticket runtime, and event directory.",
+  alternates: { canonical: "/bookings" },
+};
 
 const ENTRYPOINTS = [
   {
