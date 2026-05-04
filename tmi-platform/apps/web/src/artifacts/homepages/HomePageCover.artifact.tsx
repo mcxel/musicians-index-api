@@ -390,33 +390,40 @@ function OrbitRing() {
         const y     = Math.sin(rad) * r;
 
         return (
-          <motion.div
+          <div
             key={a.rank}
-            initial={{ opacity: 0, scale: 0 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.28 + i * 0.07, duration: 0.38, ease: "easeOut" }}
             style={{
               position: "absolute",
               width: 34,
               height: 34,
-              borderRadius: "50%",
-              border: `1.5px solid ${a.color}55`,
-              background: `${a.color}12`,
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
               transform: `translate(calc(${x}px - 17px), calc(${y}px - 17px))`,
-              boxShadow: `0 0 10px ${a.color}28`,
             }}
           >
-            <span style={{ fontSize: 8, fontWeight: 900, color: a.color, letterSpacing: "0.04em" }}>
-              {a.initials}
-            </span>
-            <span style={{ fontSize: 6, fontWeight: 800, color: "rgba(255,255,255,0.3)", letterSpacing: "0.08em" }}>
-              #{a.rank}
-            </span>
-          </motion.div>
+            <motion.div
+              initial={{ opacity: 0, scale: 0 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.28 + i * 0.07, duration: 0.38, ease: "easeOut" }}
+              style={{
+                width: "100%",
+                height: "100%",
+                borderRadius: "50%",
+                border: `1.5px solid ${a.color}55`,
+                background: `${a.color}12`,
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                boxShadow: `0 0 10px ${a.color}28`,
+              }}
+            >
+              <span style={{ fontSize: 8, fontWeight: 900, color: a.color, letterSpacing: "0.04em" }}>
+                {a.initials}
+              </span>
+              <span style={{ fontSize: 6, fontWeight: 800, color: "rgba(255,255,255,0.3)", letterSpacing: "0.08em" }}>
+                #{a.rank}
+              </span>
+            </motion.div>
+          </div>
         );
       })}
     </div>
@@ -468,64 +475,6 @@ function GenreBurst() {
   );
 }
 
-// ── Layer 4: Nav artifact buttons ─────────────────────────────────────────────
-
-function CoverNavArtifacts() {
-  return (
-    <div
-      style={{
-        position: "absolute",
-        bottom: 0,
-        left: 0,
-        right: 0,
-        zIndex: 10,
-        padding: "0 18px 22px",
-      }}
-    >
-      <div
-        style={{
-          fontSize: 11,
-          fontWeight: 900,
-          letterSpacing: "0.18em",
-          textTransform: "uppercase",
-          color: "#FF2DAA",
-          textShadow: "0 0 14px rgba(255,45,170,0.6)",
-          marginBottom: 8,
-        }}
-      >
-        Battle Season 1 · Crown Duel
-      </div>
-
-      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-        {NAV_ARTIFACTS.map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            style={{
-              flex: item.label === "Read Magazine" ? "1 1 auto" : "0 0 auto",
-              textAlign: "center",
-              textDecoration: "none",
-              padding: "9px 12px",
-              borderRadius: 9,
-              border: `1px solid ${item.accent}55`,
-              color: item.accent,
-              fontSize: 9,
-              fontWeight: 900,
-              letterSpacing: "0.16em",
-              textTransform: "uppercase",
-              background: `${item.accent === "rgba(255,255,255,0.55)" ? "rgba(255,255,255,0.04)" : item.accent + "0f"}`,
-              boxShadow: item.label === "Read Magazine" ? `0 0 18px ${item.accent}22` : undefined,
-              whiteSpace: "nowrap",
-            }}
-          >
-            {item.label === "Read Magazine" && "▶ "}
-            {item.label}
-          </Link>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 // ── Layer 5: Status overlays ──────────────────────────────────────────────────
 
