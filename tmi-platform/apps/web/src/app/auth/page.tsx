@@ -1,4 +1,3 @@
-'use client';
 "use client";
 
 import { useEffect, useState } from "react";
@@ -31,8 +30,8 @@ function toSessionPayload(data: unknown): SessionPayload {
 export default function AuthPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const nextParam = searchParams.get("next") || "/dashboard";
-  const nextRoute = nextParam.startsWith("/") ? nextParam : "/dashboard";
+  const nextParam = searchParams?.get("next") || "/rooms/world-dance-party";
+  const nextRoute = nextParam.startsWith("/") && !nextParam.startsWith("//") ? nextParam : "/rooms/world-dance-party";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -57,9 +56,14 @@ export default function AuthPage() {
     setSession(parsed);
     return parsed;
   };
-  // Always load session/CSRF on page load
+  // Load session once on mount — redirect if already authenticated
   useEffect(() => {
-    void loadSession();
+    let active = true;
+    loadSession().then((s) => {
+      if (active && s.authenticated) router.replace(nextRoute);
+    });
+    return () => { active = false; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const waitForCsrfCookie = async (): Promise<boolean> => {
@@ -123,26 +127,12 @@ export default function AuthPage() {
     return false;
   };
 
-  useEffect(() => {
-    let active = true;
-    const init = async () => {
-      const s = await loadSession();
-      if (active && s.authenticated) {
-        router.replace(nextRoute);
-      }
-    };
-    void init();
-    return () => {
-      active = false;
-    };
-  }, [nextRoute, router]);
-
   const register = async () => {
     setBusy(true);
     setMessage("");
     try {
       // Always refresh session/CSRF before register
-      const freshSession = await loadSession();
+      await loadSession();
       // Calculate age and minor status
       let minor = false;
       if (dateOfBirth) {
@@ -156,25 +146,31 @@ export default function AuthPage() {
         minor = age < 18;
       }
       setIsMinor(minor);
-      const payload: any = {
+      const payload: Record<string, unknown> = {
         email,
         password,
         dateOfBirth,
         termsAccepted,
+        originalityAccepted,
       };
       if (minor && parentEmail) {
         payload.parentEmail = parentEmail;
       }
-      // Optionally send originalityAccepted (not enforced backend)
-      payload.originalityAccepted = originalityAccepted;
-
-      // Debug log CSRF token and cookies before POST
-      console.log("[Register] CSRF token:", freshSession.csrfToken, "Cookies:", document.cookie);
 
       const res = await postWithCsrfRetry("/api/auth/register", JSON.stringify(payload));
 
       if (res.status === 201 || res.status === 200) {
-        setMessage("Registration succeeded.");
+        // Auto-provision the new account (wallet, avatar, onboarding bots, role workspace)
+        const regData = await res.json().catch(() => ({}) as Record<string, unknown>);
+        const userId: string | undefined = typeof regData?.userId === "string" ? regData.userId : undefined;
+        if (userId) {
+          await fetch("/api/auth/provision", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ userId, accountType: "MEMBER" }),
+          }).catch(() => {});
+        }
+        setMessage("Registration succeeded. You can now sign in.");
       } else if (res.status === 409) {
         setMessage("User already exists.");
       } else {
@@ -192,11 +188,9 @@ export default function AuthPage() {
     setMessage("");
     try {
       // Always refresh session/CSRF before login
-      const freshSession = await loadSession();
-      // Debug log CSRF token and cookies before POST
-      console.log("[Login] CSRF token:", freshSession.csrfToken, "Cookies:", document.cookie);
+      await loadSession();
 
-      const res = await postWithCsrfRetry("/api/auth/login", JSON.stringify({ email, password }));
+      const res = await postWithCsrfRetry("/api/auth/signin", JSON.stringify({ email, password }));
 
       if (res.status === 200) {
         const authenticated = await waitForAuthenticatedSession();

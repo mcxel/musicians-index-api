@@ -1,10 +1,29 @@
 "use client";
-import { useState } from "framer-motion";
+import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import PageShell from "@/components/layout/PageShell";
 import HUDFrame from "@/components/hud/HUDFrame";
 import FooterHUD from "@/components/hud/FooterHUD";
 import Link from "next/link";
+import {
+  createSeatingMesh,
+  claimSeat,
+  releaseFanSeat,
+  checkInFan,
+  getFanSeat,
+  getSeatGrid,
+  getOccupancyRate,
+  autoAssignSeat,
+  seatToAvatarPosition,
+  type SeatingMeshState,
+  type MeshSeat,
+} from "@/lib/seats/SeatingMeshEngine";
+import { useSeatSession } from "@/lib/seats/useSeatSession";
+
+const ROOM_ID = "world-concert";
+const SESSION_ID = "session-live-001";
+const SEAT_ROWS = 6;
+const SEAT_COLS = 10;
 
 const SET_LIST = [
   { num: 1, title: "Opening Fire", duration: "3:42", status: "DONE" },
@@ -17,6 +36,72 @@ const SET_LIST = [
 export default function WorldConcertPage() {
   const [encoreVotes, setEncoreVotes] = useState(1247);
   const [tipped, setTipped] = useState(false);
+
+  // ── Seating Mesh ────────────────────────────────────────────────────
+  const FAN_ID = "guest-fan"; // placeholder; replace with real auth session id
+
+  const { seatId: persistedSeatId, claim: persistClaim, release: persistRelease } =
+    useSeatSession(ROOM_ID, FAN_ID);
+
+  const [mesh, setMesh] = useState<SeatingMeshState>(() =>
+    createSeatingMesh(ROOM_ID, SESSION_ID, SEAT_ROWS, SEAT_COLS),
+  );
+
+  // On mount: restore prior seat via return-loop, then auto-assign if still empty
+  useEffect(() => {
+    setMesh((prev) => {
+      // 1. If fan has a prior seat in session storage, try to reclaim it
+      if (persistedSeatId) {
+        const seeded: SeatingMeshState = {
+          ...prev,
+          fanSeatIndex: { ...prev.fanSeatIndex, [FAN_ID]: persistedSeatId },
+        };
+        const { state: restored, seat } = checkInFan(seeded, FAN_ID, null);
+        if (seat) return restored;
+      }
+      // 2. No prior seat — auto-assign the best available seat
+      const assigned = autoAssignSeat(prev, FAN_ID, null);
+      if (assigned) {
+        persistClaim(assigned.seat.seatId);
+        return assigned.state;
+      }
+      return prev;
+    });
+  // persistedSeatId and persistClaim are stable across renders
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const fanSeat: MeshSeat | null = useMemo(() => getFanSeat(mesh, FAN_ID), [mesh]);
+  const seatGrid = useMemo(() => getSeatGrid(mesh), [mesh]);
+  const occupancy = useMemo(() => Math.round(getOccupancyRate(mesh) * 100), [mesh]);
+  const avatarPos = useMemo(
+    () => (fanSeat ? seatToAvatarPosition(fanSeat, SEAT_COLS) : null),
+    [fanSeat],
+  );
+
+  function handleClaimSeat(seatId: string) {
+    setMesh((prev) => {
+      const next = claimSeat(prev, FAN_ID, seatId);
+      if (!next) return prev;
+      persistClaim(seatId);
+      return next;
+    });
+  }
+
+  function handleReleaseSeat() {
+    setMesh((prev) => {
+      persistRelease();
+      return releaseFanSeat(prev, FAN_ID);
+    });
+  }
+
+  const TIER_COLOR: Record<string, string> = {
+    FRONT_ROW: "#FFD700",
+    STAGE_SIDE: "#FF2DAA",
+    VIP: "#AA2DFF",
+    PREMIUM: "#00FFFF",
+    GENERAL: "#334",
+  };
 
   return (
     <PageShell>
@@ -101,7 +186,7 @@ export default function WorldConcertPage() {
                 <div style={{ fontSize: 9, letterSpacing: 4, color: "#FFD700", fontWeight: 800, marginBottom: 8 }}>🔁 VOTE FOR ENCORE</div>
                 <div style={{ fontSize: 28, fontWeight: 900, color: "#FFD700", marginBottom: 12 }}>{encoreVotes.toLocaleString()}</div>
                 <motion.button whileTap={{ scale: 0.95 }}
-                  onClick={() => setEncoreVotes(v => v + 1)}
+                  onClick={() => setEncoreVotes((v: number) => v + 1)}
                   style={{
                     padding: "10px 36px", borderRadius: 25,
                     background: "rgba(255,215,0,0.15)", border: "1px solid #FFD700",
@@ -145,6 +230,92 @@ export default function WorldConcertPage() {
                     style={{ height: "100%", background: "#00FFFF", borderRadius: 2 }} />
                 </div>
                 <div style={{ fontSize: 9, color: "#666", marginTop: 6 }}>72% arena capacity</div>
+              </div>
+
+              {/* Seating Mesh */}
+              <div style={{
+                background: "rgba(0,255,136,0.03)", border: "1px solid rgba(0,255,136,0.15)",
+                borderRadius: 12, padding: 16,
+              }}>
+                <div style={{ fontSize: 9, letterSpacing: 4, color: "#00FF88", fontWeight: 800, marginBottom: 10 }}>
+                  🪑 YOUR SEAT
+                </div>
+
+                {fanSeat ? (
+                  <div style={{ marginBottom: 10 }}>
+                    <div style={{ fontSize: 11, color: "#fff", fontWeight: 700 }}>
+                      Row {fanSeat.row + 1} · Seat {fanSeat.col + 1}
+                    </div>
+                    <div style={{
+                      fontSize: 9, fontWeight: 800, letterSpacing: 2,
+                      color: TIER_COLOR[fanSeat.tier] ?? "#fff", marginBottom: 4,
+                    }}>{fanSeat.tier.replace("_", " ")}</div>
+                    {avatarPos && (
+                      <div style={{ fontSize: 8, color: "#555", marginBottom: 8, fontFamily: "monospace" }}>
+                        x:{avatarPos.x.toFixed(1)} y:{avatarPos.y.toFixed(1)} z:{avatarPos.z.toFixed(1)}
+                      </div>
+                    )}
+                    <motion.button whileTap={{ scale: 0.95 }} onClick={handleReleaseSeat} style={{
+                      width: "100%", padding: "7px 0", borderRadius: 20,
+                      background: "rgba(255,45,170,0.08)", border: "1px solid rgba(255,45,170,0.3)",
+                      color: "#FF2DAA", fontSize: 9, fontWeight: 700, letterSpacing: 2, cursor: "pointer",
+                    }}>LEAVE SEAT</motion.button>
+                  </div>
+                ) : (
+                  <div style={{ fontSize: 10, color: "#555", marginBottom: 10 }}>
+                    Assigning seat…
+                  </div>
+                )}
+
+                {/* Mini seat grid */}
+                <div style={{ fontSize: 8, color: "#555", marginBottom: 6 }}>
+                  STAGE ▲ — {occupancy}% occupied
+                </div>
+                <div style={{
+                  display: "grid",
+                  gridTemplateColumns: `repeat(${SEAT_COLS}, 1fr)`,
+                  gap: 2,
+                }}>
+                  {seatGrid.map((seat) => {
+                    const isMyeat = seat.seatId === fanSeat?.seatId;
+                    const isTaken = seat.status !== "open";
+                    return (
+                      <motion.button
+                        key={seat.seatId}
+                        whileTap={{ scale: 0.85 }}
+                        disabled={isTaken && !isMyeat}
+                        onClick={() => !isTaken && handleClaimSeat(seat.seatId)}
+                        style={{
+                          width: "100%", aspectRatio: "1",
+                          borderRadius: 2,
+                          border: isMyeat ? "1px solid #00FF88" : "none",
+                          background: isMyeat
+                            ? "#00FF88"
+                            : isTaken
+                            ? "rgba(255,45,170,0.35)"
+                            : TIER_COLOR[seat.tier] ?? "#334",
+                          cursor: isTaken && !isMyeat ? "not-allowed" : "pointer",
+                          padding: 0,
+                        }}
+                        title={`Row ${seat.row + 1} Seat ${seat.col + 1} (${seat.tier})`}
+                      />
+                    );
+                  })}
+                </div>
+                <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
+                  {[
+                    { color: "#FFD700", label: "Front Row" },
+                    { color: "#FF2DAA", label: "Stage Side" },
+                    { color: "#AA2DFF", label: "VIP" },
+                    { color: "#00FFFF", label: "Premium" },
+                    { color: "#334", label: "General" },
+                  ].map(({ color, label }) => (
+                    <div key={label} style={{ display: "flex", alignItems: "center", gap: 3 }}>
+                      <div style={{ width: 6, height: 6, borderRadius: 1, background: color }} />
+                      <span style={{ fontSize: 7, color: "#666" }}>{label}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
 
               {/* Light modes */}
