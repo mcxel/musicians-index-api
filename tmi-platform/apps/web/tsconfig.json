@@ -16,7 +16,11 @@
     "incremental": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@tmi/contracts": ["./src/stubs/tmi-contracts.ts"],
+      "@tmi/hud-core": ["./src/stubs/tmi-hud-core.ts"],
+      "@tmi/hud-runtime": ["./src/stubs/tmi-hud-runtime.ts"],
+      "@tmi/module-runtime": ["./src/stubs/tmi-module-runtime.ts"]
     },
     "plugins": [{ "name": "next" }]
   },
@@ -34,6 +38,12 @@
     "dist",
     "build",
     "out",
-    "../../packages/**"
+    "../../packages/**",
+    "config/**",
+    "environment/**",
+    "events/**",
+    "infrastructure/**",
+    "runtime/**",
+    "stimulation/**"
   ]
 }

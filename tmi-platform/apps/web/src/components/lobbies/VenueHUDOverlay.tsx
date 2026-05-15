@@ -32,7 +32,7 @@ export const VenueHUDOverlay = () => {
         <div className="pointer-events-auto w-64 flex flex-col gap-4 max-h-full">
           <div className="bg-black/60 backdrop-blur-md border border-white/5 rounded-xl overflow-hidden shrink-0 flex flex-col max-h-[50%]">
              <LobbyQueueRail
-              entries={MOCK_QUEUE}
+              entries={[] as LobbyQueueEntry[]}
               onJoinQueue={() => undefined}
               onLeaveQueue={() => undefined}
               onNextPerformer={() => undefined}
@@ -45,7 +45,7 @@ export const VenueHUDOverlay = () => {
                <h3 className="text-[10px] font-black tracking-[0.2em] text-zinc-500 uppercase">Seat Grid Map (Admin/Fallback)</h3>
              </div>
              <div className="p-4 overflow-y-auto flex-1">
-               <LobbySeatGrid seats={MOCK_SEATS} selectedSeatId={null} onSelectSeat={() => undefined} />
+               <LobbySeatGrid seats={SCAFFOLD_SEATS} selectedSeatId={null} onSelectSeat={() => undefined} />
              </div>
           </div>
 

@@ -289,7 +289,7 @@ export class EditorialService {
   }
 
   async getLatestArticles(limit = 10) {
-    return this.prisma.article.findMany({
+    const articles = await this.prisma.article.findMany({
       where: { status: 'PUBLISHED' },
       orderBy: { createdAt: 'desc' },
       take: limit,
@@ -297,13 +297,30 @@ export class EditorialService {
         id: true,
         slug: true,
         title: true,
-        excerpt: true,
-        coverImage: true,
+        subtitle: true,
+        content: true,
         createdAt: true,
         author: {
           select: { id: true, name: true, image: true },
         },
       },
+    });
+
+    return articles.map((article) => {
+      const content = article.content as Record<string, unknown> | null;
+      const contentCoverImage = content && typeof content === 'object'
+        ? (content.coverImage ?? content.thumbnail ?? null)
+        : null;
+
+      return {
+        id: article.id,
+        slug: article.slug,
+        title: article.title,
+        excerpt: article.subtitle ?? null,
+        coverImage: typeof contentCoverImage === 'string' ? contentCoverImage : null,
+        createdAt: article.createdAt,
+        author: article.author,
+      };
     });
   }
 }

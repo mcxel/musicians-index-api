@@ -1,3 +1,4 @@
+import { ImageSlotWrapper } from '@/components/visual-enforcement';
 import { notFound } from 'next/navigation';
 import { JsonContentRenderer } from '@/components/editorial/JsonContentRenderer';
 import { WinnerBadge } from '@/components/editorial/WinnerBadge';
@@ -165,7 +166,15 @@ export default async function ArticlePage({ params }: { params: { slug: string }
           {article.subtitle && <p className="mt-4 text-xl text-gray-400">{article.subtitle}</p>}
           <div className="mt-6 flex items-center justify-center gap-4">
             {article.author?.image && (
-              <img src={article.author.image} alt={article.author.name || ''} className="h-10 w-10 rounded-full" />
+              <ImageSlotWrapper
+                imageId={`article-author-${article.id}`}
+                roomId={`article-${article.slug}`}
+                priority="normal"
+                fallbackUrl={article.author.image}
+                className="w-full h-full object-cover rounded-full"
+                altText={`${article.author?.name || 'TMI Staff'} avatar`}
+                containerStyle={{ width: 40, height: 40 }}
+              />
             )}
             <div>
               <p className="text-sm font-medium text-white">{article.author?.name || 'TMI Staff'}</p>

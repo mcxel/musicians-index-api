@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { SAFE_STROBE_MAX } from "@/lib/lighting/lightingEngine";
+const SAFE_STROBE_MAX = 3;
 
 interface StrobeControllerProps {
   hz: number;

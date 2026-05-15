@@ -2,19 +2,9 @@
  * src/lib/hooks/useVisualAuthority.ts
  *
  * React hooks for authority-enforced visual rendering.
- * Wraps all 5 authority-aware generators for component usage.
- *
- * Every public visual slot must use one of these hooks:
- * - useMagazineSlot() → Magazine covers, articles, sponsor inserts
- * - useImageSlot() → Generic image hydration  
- * - usePerformerPortrait() → Motion portraits, avatars
- * - useVenueReconstruction() → Venue 3D, environment themes
- * - useVisualRouting() → Generic visual replacement
- *
- * No bypass rendering allowed - all visuals must claim authority first.
  */
 
-import { useCallback, useState, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   resolveMagazineSlotWithAuthority,
   hydrateImageWithAuthority,
@@ -22,20 +12,28 @@ import {
   reconstructVenueWithAuthority,
   routeVisualReplacementWithAuthority,
 } from '@/lib/ai-visuals/AuthorityAwareVisualGenerators';
+import type { ChatRoomId } from '@/lib/chat/RoomChatEngine';
 
-/**
- * useImageSlot - Generic image hydration with authority
- *
- * @param imageId - Unique image identifier
- * @param roomId - Chat room context
- * @param priority - 'high' | 'normal' | 'low'
- * @returns { assetId, blocked, fallback, isLoading, error }
- */
-export function useImageSlot(imageId: string, roomId: string, priority: 'high' | 'normal' | 'low' = 'normal') {
+type FallbackState = string | null;
+
+const VALID_ROOM_IDS: readonly ChatRoomId[] = [
+  "monthly-idol", "monday-night-stage", "deal-or-feud",
+  "name-that-tune", "circle-squares", "cypher-arena", "venue-room",
+];
+
+function toChatRoomId(id: string): ChatRoomId | undefined {
+  return VALID_ROOM_IDS.includes(id as ChatRoomId) ? (id as ChatRoomId) : undefined;
+}
+
+export function useImageSlot(
+  imageId: string,
+  roomId: string,
+  priority: 'critical' | 'high' | 'normal' | 'deferred' = 'normal'
+) {
   const [state, setState] = useState({
     assetId: null as string | null,
     blocked: false,
-    fallback: null as string | null,
+    fallback: null as FallbackState,
     isLoading: true,
     error: null as string | null,
   });
@@ -43,21 +41,21 @@ export function useImageSlot(imageId: string, roomId: string, priority: 'high' |
   useEffect(() => {
     (async () => {
       try {
-        const result = await hydrateImageWithAuthority(imageId, roomId, priority);
+        const result = await hydrateImageWithAuthority(imageId, toChatRoomId(roomId), priority);
         setState({
-          assetId: result.assetId || null,
-          blocked: result.blocked || false,
-          fallback: result.fallback || null,
+          assetId: result.jobId ?? null,
+          blocked: Boolean(result.blocked),
+          fallback: result.blocked ? 'authority-fallback' : null,
           isLoading: false,
-          error: null,
+          error: 'error' in result ? (result.error ?? null) : null,
         });
-      } catch (e: any) {
+      } catch (e) {
         setState({
           assetId: null,
           blocked: false,
           fallback: null,
           isLoading: false,
-          error: e.message || 'Failed to hydrate image',
+          error: e instanceof Error ? e.message : 'Failed to hydrate image',
         });
       }
     })();
@@ -66,23 +64,11 @@ export function useImageSlot(imageId: string, roomId: string, priority: 'high' |
   return state;
 }
 
-/**
- * useMagazineSlot - Magazine image authority enforcement
- *
- * @param slotId - Magazine slot ID (e.g., 'cover_001', 'article_hero_023')
- * @param roomId - Chat room context
- * @param context - Additional context { articleId, pageNumber, etc }
- * @returns { assetId, blocked, fallback, isLoading, error, recoveryAction }
- */
-export function useMagazineSlot(
-  slotId: string,
-  roomId: string,
-  context?: Record<string, any>
-) {
+export function useMagazineSlot(slotId: string, roomId: string, context?: Record<string, unknown>) {
   const [state, setState] = useState({
     assetId: null as string | null,
     blocked: false,
-    fallback: null as string | null,
+    fallback: null as FallbackState,
     isLoading: true,
     error: null as string | null,
     recoveryAction: null as string | null,
@@ -91,20 +77,24 @@ export function useMagazineSlot(
   useEffect(() => {
     (async () => {
       try {
-        const result = await resolveMagazineSlotWithAuthority(slotId, roomId, context);
+        const result = await resolveMagazineSlotWithAuthority(
+          slotId,
+          toChatRoomId(roomId),
+          context ? JSON.stringify(context) : undefined
+        );
         setState({
-          assetId: result.assetId || null,
-          blocked: result.blocked || false,
-          fallback: result.fallback || null,
+          assetId: result.assetId ?? null,
+          blocked: Boolean(result.blocked),
+          fallback: result.fallback ? 'fallback-active' : null,
           isLoading: false,
-          error: null,
-          recoveryAction: result.recoveryAction || null,
+          error: 'error' in result ? (result.error ?? null) : null,
+          recoveryAction: 'recoveryAction' in result ? (result.recoveryAction ?? null) : null,
         });
-      } catch (e: any) {
+      } catch (e) {
         setState((prev) => ({
           ...prev,
           isLoading: false,
-          error: e.message || 'Magazine slot resolution failed',
+          error: e instanceof Error ? e.message : 'Magazine slot resolution failed',
         }));
       }
     })();
@@ -113,15 +103,6 @@ export function useMagazineSlot(
   return state;
 }
 
-/**
- * usePerformerPortrait - Motion portrait with authority
- *
- * @param performerId - Artist/performer ID
- * @param roomId - Chat room context
- * @param displayName - Display name for portrait
- * @param kind - 'artist' | 'host' | 'dj'
- * @returns { portraitId, blocked, fallback, isLoading, error, animationState }
- */
 export function usePerformerPortrait(
   performerId: string,
   roomId: string,
@@ -131,10 +112,10 @@ export function usePerformerPortrait(
   const [state, setState] = useState({
     portraitId: null as string | null,
     blocked: false,
-    fallback: null as string | null,
+    fallback: null as FallbackState,
     isLoading: true,
     error: null as string | null,
-    animationState: 'idle' as string,
+    animationState: 'idle' as 'idle' | 'ready',
   });
 
   useEffect(() => {
@@ -142,23 +123,23 @@ export function usePerformerPortrait(
       try {
         const result = await resolvePerformerPortraitWithAuthority(
           performerId,
-          roomId,
+          toChatRoomId(roomId),
           displayName,
           kind
         );
         setState({
-          portraitId: result.portraitId || result.assetId || null,
-          blocked: result.blocked || false,
-          fallback: result.fallback || null,
+          portraitId: result.portraitId ?? null,
+          blocked: Boolean(result.blocked),
+          fallback: 'fallback' in result ? (result.fallback ? 'fallback-active' : null) : null,
           isLoading: false,
-          error: null,
-          animationState: result.animationState || 'idle',
+          error: 'error' in result ? (result.error ?? null) : null,
+          animationState: result.generated ? 'ready' : 'idle',
         });
-      } catch (e: any) {
+      } catch (e) {
         setState((prev) => ({
           ...prev,
           isLoading: false,
-          error: e.message || 'Portrait resolution failed',
+          error: e instanceof Error ? e.message : 'Portrait resolution failed',
         }));
       }
     })();
@@ -167,28 +148,19 @@ export function usePerformerPortrait(
   return state;
 }
 
-/**
- * useVenueReconstruction - Venue 3D/environment with authority
- *
- * @param venueId - Venue identifier
- * @param roomId - Chat room context
- * @param venueName - Venue display name
- * @param venueType - 'intimate' | 'theater' | 'arena' | 'festival'
- * @returns { reconstructedAssetId, blocked, fallback, isLoading, error, environmentState }
- */
 export function useVenueReconstruction(
   venueId: string,
   roomId: string,
   venueName: string,
-  venueType: string = 'theater'
+  venueType: 'club' | 'arena' | 'battle-hall' | 'lounge' = 'club'
 ) {
   const [state, setState] = useState({
     reconstructedAssetId: null as string | null,
     blocked: false,
-    fallback: null as string | null,
+    fallback: null as FallbackState,
     isLoading: true,
     error: null as string | null,
-    environmentState: 'initializing' as string,
+    environmentState: 'initializing' as 'initializing' | 'ready',
   });
 
   useEffect(() => {
@@ -196,23 +168,23 @@ export function useVenueReconstruction(
       try {
         const result = await reconstructVenueWithAuthority(
           venueId,
-          roomId,
+          toChatRoomId(roomId),
           venueName,
           venueType
         );
         setState({
-          reconstructedAssetId: result.reconstructedAssetId || result.assetId || null,
-          blocked: result.blocked || false,
-          fallback: result.fallback || null,
+          reconstructedAssetId: result.reconstructedAssetId ?? null,
+          blocked: Boolean(result.blocked),
+          fallback: 'fallback' in result ? (result.fallback ? 'fallback-active' : null) : null,
           isLoading: false,
-          error: null,
-          environmentState: result.environmentState || 'ready',
+          error: 'error' in result ? (result.error ?? null) : null,
+          environmentState: result.reconstructed ? 'ready' : 'initializing',
         });
-      } catch (e: any) {
+      } catch (e) {
         setState((prev) => ({
           ...prev,
           isLoading: false,
-          error: e.message || 'Venue reconstruction failed',
+          error: e instanceof Error ? e.message : 'Venue reconstruction failed',
         }));
       }
     })();
@@ -221,54 +193,50 @@ export function useVenueReconstruction(
   return state;
 }
 
-/**
- * useVisualRouting - Generic visual replacement router
- *
- * Routes any visual entity type through authority enforcement.
- *
- * @param entityId - Entity identifier
- * @param entityType - 'magazine' | 'sponsor' | 'venue' | 'ticket' | 'nft' | etc
- * @param roomId - Chat room context
- * @param metadata - Additional metadata { artistId, articleId, etc }
- * @returns { assetId, blocked, fallback, isLoading, error, resolvedType }
- */
 export function useVisualRouting(
   entityId: string,
   entityType: string,
   roomId: string,
-  metadata?: Record<string, any>
+  metadata?: Record<string, unknown>
 ) {
   const [state, setState] = useState({
     assetId: null as string | null,
     blocked: false,
-    fallback: null as string | null,
+    fallback: null as FallbackState,
     isLoading: true,
     error: null as string | null,
-    resolvedType: entityType as string,
+    resolvedType: entityType,
   });
 
   useEffect(() => {
     (async () => {
       try {
+        const meta = metadata ?? {};
         const result = await routeVisualReplacementWithAuthority(
           entityId,
           entityType,
-          roomId,
-          metadata
+          toChatRoomId(roomId),
+          String(meta.displayName ?? entityType),
+          String(meta.sourceRoute ?? 'unknown-source'),
+          String(meta.targetSlot ?? 'unknown-slot'),
+          meta.context !== undefined ? String(meta.context) : undefined,
+          Object.fromEntries(
+            Object.entries(meta).map(([k, v]) => [k, String(v)])
+          )
         );
         setState({
-          assetId: result.assetId || result.jobId || result.portraitId || null,
-          blocked: result.blocked || false,
-          fallback: result.fallback || null,
+          assetId: result.jobId ?? null,
+          blocked: Boolean(result.blocked),
+          fallback: 'fallback' in result ? (result.fallback ? 'fallback-active' : null) : null,
           isLoading: false,
-          error: null,
-          resolvedType: result.resolvedType || entityType,
+          error: 'error' in result ? (result.error ?? null) : null,
+          resolvedType: entityType,
         });
-      } catch (e: any) {
+      } catch (e) {
         setState((prev) => ({
           ...prev,
           isLoading: false,
-          error: e.message || 'Visual routing failed',
+          error: e instanceof Error ? e.message : 'Visual routing failed',
         }));
       }
     })();
@@ -277,21 +245,7 @@ export function useVisualRouting(
   return state;
 }
 
-/**
- * useVisualRetry - Manually retry a blocked visual
- *
- * Used by recovery center to manually trigger visual recovery.
- *
- * @param entityId - Visual entity ID
- * @param generatorType - Which generator to use for retry
- * @param roomId - Chat room context
- * @returns { isRetrying, retryCount, lastError, triggerRetry }
- */
-export function useVisualRetry(
-  entityId: string,
-  generatorType: string,
-  roomId: string
-) {
+export function useVisualRetry(entityId: string, generatorType: string, roomId: string) {
   const [isRetrying, setIsRetrying] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
   const [lastError, setLastError] = useState<string | null>(null);
@@ -299,27 +253,23 @@ export function useVisualRetry(
   const triggerRetry = useCallback(async () => {
     setIsRetrying(true);
     try {
-      // Import recovery coordinator
-      const { VisualRecoveryCoordinator } = await import(
-        '@/lib/ai-visuals/VisualRecoveryCoordinator'
-      );
+      const dynamic = await import('@/lib/ai-visuals/VisualRecoveryCoordinator');
+      const attempt = (dynamic as Record<string, unknown>)['attemptVisualRecovery'];
+      if (typeof attempt !== 'function') {
+        throw new Error('attemptVisualRecovery is unavailable');
+      }
 
-      const coordinator = new VisualRecoveryCoordinator();
-      const result = await coordinator.attemptVisualRecovery(
-        entityId,
-        generatorType,
-        roomId,
-        {}
+      const result = await (attempt as (a: string, b: string, c: string) => Promise<unknown>)(
+        entityId, generatorType, roomId
       );
-
       if (!result) {
         setLastError('Recovery attempt returned null result');
       } else {
         setRetryCount((prev) => prev + 1);
         setLastError(null);
       }
-    } catch (e: any) {
-      setLastError(e.message || 'Retry failed');
+    } catch (e) {
+      setLastError(e instanceof Error ? e.message : 'Retry failed');
     } finally {
       setIsRetrying(false);
     }

@@ -5,6 +5,8 @@
  */
 'use client';
 
+import { ImageSlotWrapper } from '@/components/visual-enforcement/ImageSlotWrapper';
+
 import React, { useState } from 'react';
 import './BillboardBoard.css';
 
@@ -70,11 +72,7 @@ function BillboardCard({ entry, isFeature = false }) {
       <div className="billboard-card__frame">
         {/* Photo */}
         <div className="billboard-card__photo-wrap live-photo-container">
-          <img
-            src={entry.img}
-            alt={entry.name}
-            className={`billboard-card__photo ${hovered ? 'live-photo-anim' : ''}`}
-          />
+          <ImageSlotWrapper imageId="img-f7p8aq" roomId="runtime-surface" priority="normal" className="w-full h-full object-cover" altText="Content image" containerStyle={{ width: '100%', height: '100%' }} />
           <div className="billboard-card__photo-overlay" />
         </div>
 
@@ -158,7 +156,7 @@ export default function BillboardBoard({ rankings = DEMO_RANKINGS, mode = 'found
           <div key={entry.rank} className="billboard-list-row">
             <RankBadge rank={entry.rank} />
             <div className="billboard-list-row__photo-sm">
-              <img src={entry.img} alt={entry.name} />
+              <ImageSlotWrapper imageId="img-r55iht" roomId="runtime-surface" priority="normal" className="w-full h-full object-cover" altText="Content image" containerStyle={{ width: '100%', height: '100%' }} />
             </div>
             <div className="billboard-list-row__info">
               <div className="billboard-list-row__name">{entry.name}</div>

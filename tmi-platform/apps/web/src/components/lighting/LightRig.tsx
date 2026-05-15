@@ -2,7 +2,9 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { LightMode, LightCue } from "@/lib/lighting/lightingEngine";
-import { ROOM_LIGHT_PRESETS, SAFE_STROBE_MAX } from "@/lib/lighting/lightingEngine";
+import { ROOM_PRESETS as ROOM_LIGHT_PRESETS } from "@/lib/lighting/lightingEngine";
+
+const SAFE_STROBE_MAX = 3;
 
 interface LightRigProps {
   room: string;
@@ -13,7 +15,7 @@ interface LightRigProps {
 
 export default function LightRig({ room, mode, children, safeMode = false }: LightRigProps) {
   const preset = ROOM_LIGHT_PRESETS[room];
-  const cue: LightCue | null = preset && mode ? (preset[mode] ?? null) : null;
+  const cue: LightCue | null = preset && mode ? (preset.cues[mode] ?? null) : null;
 
   const safeCue: LightCue | null = cue
     ? { ...cue, strobeHz: safeMode ? 0 : Math.min(cue.strobeHz, SAFE_STROBE_MAX) }

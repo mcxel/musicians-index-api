@@ -10,6 +10,8 @@
  * August 8 contest season rule applies to any season-linked reveal.
  */
 'use client';
+
+import { ImageSlotWrapper } from '@/components/visual-enforcement/ImageSlotWrapper';
 import { useState, useEffect, useRef } from 'react';
 import { Trophy, Volume2, VolumeX, X, Star, ChevronRight } from 'lucide-react';
 
@@ -241,7 +243,7 @@ export function WinnerRevealPanel({
                   <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: color }} />
                   <div style={{ fontSize: 28, marginBottom: 8 }}>{rankEmojis[winner.rank] || `#${winner.rank}`}</div>
                   <div style={{ width: 56, height: 56, borderRadius: '50%', border: `3px solid ${color}`, margin: '0 auto 10px', overflow: 'hidden', background: `${color}22`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, fontWeight: 700, color }}>
-                    {winner.artistAvatar ? <img src={winner.artistAvatar} alt={winner.artistName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : winner.artistName[0]}
+                    {winner.artistAvatar ? <ImageSlotWrapper imageId="img-x4erm4e" roomId="runtime-surface" priority="normal" className="w-full h-full object-cover" altText="Content image" containerStyle={{ width: '100%', height: '100%' }} /> : winner.artistName[0]}
                   </div>
                   <div style={{ fontSize: 14, fontWeight: 700, color: '#fff' }}>{winner.artistName}</div>
                   {winner.category && <div style={{ fontSize: 11, color: 'rgba(255,255,255,.4)', marginTop: 3 }}>{winner.category}</div>}
@@ -278,7 +280,7 @@ export function WinnerRevealPanel({
             boxShadow: '0 0 60px rgba(255,215,0,.5), 0 0 120px rgba(255,215,0,.2)',
           }}>
             {featuredWinner.artistAvatar ? (
-              <img src={featuredWinner.artistAvatar} alt={featuredWinner.artistName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <ImageSlotWrapper imageId="img-0fkl8u" roomId="runtime-surface" priority="normal" className="w-full h-full object-cover" altText="Content image" containerStyle={{ width: '100%', height: '100%' }} />
             ) : (
               featuredWinner.artistName[0]
             )}
@@ -307,7 +309,7 @@ export function WinnerRevealPanel({
               {displayedWinners.filter(w => w.rank !== config.featuredWinnerRank).slice(0, 4).map(w => (
                 <div key={w.artistId} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, opacity: .65 }}>
                   <div style={{ width: 36, height: 36, borderRadius: '50%', border: `2px solid ${rankColors[w.rank] || 'rgba(255,255,255,.3)'}`, overflow: 'hidden', background: 'rgba(255,255,255,.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700 }}>
-                    {w.artistAvatar ? <img src={w.artistAvatar} alt={w.artistName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : w.artistName[0]}
+                    {w.artistAvatar ? <ImageSlotWrapper imageId="img-zovh1n" roomId="runtime-surface" priority="normal" className="w-full h-full object-cover" altText="Content image" containerStyle={{ width: '100%', height: '100%' }} /> : w.artistName[0]}
                   </div>
                   <span style={{ fontSize: 9, color: rankColors[w.rank] || 'rgba(255,255,255,.4)', fontWeight: 700 }}>#{w.rank}</span>
                 </div>

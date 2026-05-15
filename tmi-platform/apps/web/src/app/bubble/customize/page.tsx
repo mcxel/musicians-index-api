@@ -49,7 +49,7 @@ export default function BubbleCustomizePage() {
   async function handleSave() {
     if (!bubble) return;
     const { saveBubble } = await import('@/lib/avatar/bubbleEngine');
-    await saveBubble(bubble, 'me');
+    await saveBubble(bubble);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   }

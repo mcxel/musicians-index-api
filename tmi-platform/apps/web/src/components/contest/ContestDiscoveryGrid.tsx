@@ -4,6 +4,7 @@
  * Action: CREATE | Wave: W2
  */
 'use client';
+import { ImageSlotWrapper } from '@/components/visual-enforcement/ImageSlotWrapper';
 import { useState } from 'react';
 import { Search } from 'lucide-react';
 
@@ -100,7 +101,7 @@ export function ContestDiscoveryGrid({ entries = PLACEHOLDER, onVote }: ContestD
                   fontSize: 18, fontWeight: 700, color: '#ff6b1a', flexShrink: 0, overflow: 'hidden',
                 }}>
                   {entry.artistAvatar
-                    ? <img src={entry.artistAvatar} alt={entry.artistName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ? <ImageSlotWrapper imageId="img-auw6k7" roomId="runtime-surface" priority="normal" className="w-full h-full object-cover" altText="Content image" containerStyle={{ width: '100%', height: '100%' }} />
                     : entry.artistName[0]}
                 </div>
                 <div style={{ flex: 1 }}>

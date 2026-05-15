@@ -123,26 +123,36 @@ export default function HomeSurfacePage({ surfaceId }: Readonly<{ surfaceId: Hom
           style={{
             minHeight: '100vh',
             background: surface.background,
-            padding: '12px 24px 24px',
+            padding: surface.id === 1 ? '0' : '12px 24px 24px',
           }}
         >
           <MotionWrapper>
-            <div style={{ marginBottom: 12 }}>
-              <StatusRibbon label={`Home ${surface.id} • ${surface.sceneId}`} live={surface.id === 3} />
-            </div>
+            {surface.id !== 1 ? (
+              <div style={{ marginBottom: 12 }}>
+                <StatusRibbon label={`Home ${surface.id} • ${surface.sceneId}`} live={surface.id === 3} />
+              </div>
+            ) : null}
           </MotionWrapper>
-          <CardCanvas>
+          {surface.id === 1 ? (
             <HomeDraggableBelts
               surfaceId={surface.id}
               belts={surface.belts}
               layoutOrder={surface.layoutOrder}
             />
-            {surface.id === 5 ? (
-              <div style={{ marginTop: 14 }}>
-                <JuliusPanel />
-              </div>
-            ) : null}
-          </CardCanvas>
+          ) : (
+            <CardCanvas showGrid>
+              <HomeDraggableBelts
+                surfaceId={surface.id}
+                belts={surface.belts}
+                layoutOrder={surface.layoutOrder}
+              />
+              {surface.id === 5 ? (
+                <div style={{ marginTop: 14 }}>
+                  <JuliusPanel />
+                </div>
+              ) : null}
+            </CardCanvas>
+          )}
           <div style={{ paddingTop: 20 }}>
             <BotConsole surface={`home${surfaceId}`} />
           </div>

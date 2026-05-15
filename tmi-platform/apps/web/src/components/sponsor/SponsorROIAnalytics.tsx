@@ -4,6 +4,7 @@
  * Purpose: Sponsor analytics + ROI dashboard widget
  */
 'use client';
+import { ImageSlotWrapper } from '@/components/visual-enforcement/ImageSlotWrapper';
 import { TrendingUp, Eye, Mic2, BarChart2, DollarSign } from 'lucide-react';
 
 interface SponsorROIAnalyticsProps {
@@ -111,7 +112,7 @@ export function SponsorLeaderboard({ entries = [], title = 'Top Sponsors This Se
               }}>
                 <span style={{ fontSize:18, fontWeight:900, color:rankColor, width:28, textAlign:'center', flexShrink:0 }}>#{entry.rank}</span>
                 <div style={{ width:36, height:36, borderRadius:8, background:rgba(255,255,255,.08), display:'flex', alignItems:'center', justifyContent:'center', fontSize:16, fontWeight:700, color:rankColor, overflow:'hidden', flexShrink:0 }}>
-                  {entry.sponsorLogo ? <img src={entry.sponsorLogo} alt={entry.sponsorName} style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : entry.sponsorName[0]}
+                  {entry.sponsorLogo ? <ImageSlotWrapper imageId="img-s7ar5k" roomId="runtime-surface" priority="normal" className="w-full h-full object-cover" altText="Content image" containerStyle={{ width: '100%', height: '100%' }} /> : entry.sponsorName[0]}
                 </div>
                 <div style={{ flex:1 }}>
                   <div style={{ fontSize:14, fontWeight:600 }}>{entry.sponsorName}</div>

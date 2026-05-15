@@ -29,11 +29,11 @@ export default function HomeShell() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const activePage = toSurfaceId(searchParams.get('page'));
+  const activePage = toSurfaceId(searchParams?.get('page') ?? null);
 
   const handlePageChange = useCallback(
     (page: HomeSurfaceId) => {
-      const params = new URLSearchParams(searchParams.toString());
+      const params = new URLSearchParams(searchParams?.toString() ?? "");
       params.set('page', String(page));
       router.replace(`${pathname}?${params.toString()}`);
     },

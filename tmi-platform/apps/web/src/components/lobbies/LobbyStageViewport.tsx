@@ -1,205 +1,267 @@
-"use client";
+'use client';
 
-import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
-import {
-  getLobbyFeedSnapshot,
-  subscribeLobbyFeed,
-  deriveMonitorSlots,
-  type LobbyMonitorSlot,
-} from "@/lib/lobby/LobbyFeedBus";
-
-const SOURCE_ACCENT: Record<LobbyMonitorSlot["source"], string> = {
-  room:      "#00FFFF",
-  stage:     "#9B2DFF",
-  battle:    "#FF6600",
-  cypher:    "#FF2DAA",
-  performer: "#00CC44",
-  sponsor:   "#FFD700",
-};
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { motion } from 'framer-motion';
 
 type LobbyStageViewportProps = {
-  roomName: string;
-  countdownSeconds: number;
-  activeUsers: number;
-  vipUsers: number;
-  queueDepth: number;
-  occupancyPercent: number;
+  title?: string;
+  roomName?: string;
+  countdownSeconds?: number;
+  activeUsers?: number;
+  vipUsers?: number;
+  queueDepth?: number;
+  occupancyPercent?: number;
+  performerName?: string;
+  countryFlag?: string;
+  membershipTier?: 'DIAMOND' | 'PLATINUM' | 'GOLD' | 'STANDARD';
+  fanCount?: number;
+  isLive?: boolean;
+  videoSrc?: string;
+  accentColor?: string;
+  reactionPulseId?: number;
+  hypePulseId?: number;
 };
 
-function formatCountdown(seconds: number): string {
-  const mins = Math.floor(seconds / 60);
-  const secs = seconds % 60;
-  return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+function tierStyle(tier: LobbyStageViewportProps['membershipTier']): { border: string; glow: string } {
+  if (tier === 'DIAMOND') {
+    return {
+      border: '1px solid rgba(0,255,255,0.85)',
+      glow: '0 0 30px rgba(0,255,255,0.45), inset 0 0 28px rgba(0,255,255,0.1)',
+    };
+  }
+  if (tier === 'PLATINUM') {
+    return {
+      border: '1px solid rgba(255,215,0,0.85)',
+      glow: '0 0 30px rgba(255,215,0,0.45), inset 0 0 28px rgba(255,215,0,0.1)',
+    };
+  }
+  return {
+    border: '1px solid rgba(255,255,255,0.22)',
+    glow: '0 0 16px rgba(0,0,0,0.45)',
+  };
 }
 
 export default function LobbyStageViewport({
+  title,
   roomName,
   countdownSeconds,
   activeUsers,
   vipUsers,
   queueDepth,
   occupancyPercent,
+  performerName,
+  countryFlag = '🌐',
+  membershipTier = 'STANDARD',
+  fanCount,
+  isLive = true,
+  videoSrc,
+  accentColor = '#FF2DAA',
+  reactionPulseId = 0,
+  hypePulseId = 0,
 }: LobbyStageViewportProps) {
-  // B2: Subscribe to LobbyFeedBus — stage monitors mirror live bus state
-  const [feed, setFeed] = useState(() => getLobbyFeedSnapshot());
-  useEffect(() => subscribeLobbyFeed(setFeed), []);
+  const [tipBurst, setTipBurst] = useState(false);
+  const [hypeRipple, setHypeRipple] = useState(false);
+  const [fanPulse, setFanPulse] = useState(false);
 
-  // Derive monitor panels from live feed — real routes, no static labels
-  const feedPanels = useMemo(() => deriveMonitorSlots(feed), [feed]);
+  const resolvedTitle = title ?? roomName ?? 'Stage';
+  const resolvedPerformer = performerName ?? 'Live Performer';
+  const watchers = fanCount ?? activeUsers ?? 0;
+  const visualTier = useMemo(() => tierStyle(membershipTier), [membershipTier]);
+  const previousFanCount = useRef<number>(watchers);
+
+  useEffect(() => {
+    if (reactionPulseId === 0) return;
+    setTipBurst(true);
+    const t = window.setTimeout(() => setTipBurst(false), 1200);
+    return () => window.clearTimeout(t);
+  }, [reactionPulseId]);
+
+  useEffect(() => {
+    if (hypePulseId === 0) return;
+    setHypeRipple(true);
+    const t = window.setTimeout(() => setHypeRipple(false), 700);
+    return () => window.clearTimeout(t);
+  }, [hypePulseId]);
+
+  useEffect(() => {
+    if (watchers > previousFanCount.current) {
+      setFanPulse(true);
+      const t = window.setTimeout(() => setFanPulse(false), 900);
+      previousFanCount.current = watchers;
+      return () => window.clearTimeout(t);
+    }
+    previousFanCount.current = watchers;
+  }, [watchers]);
 
   return (
     <section
+      aria-label="Lobby stage viewport"
+      role="region"
+      tabIndex={0}
+      data-runtime="lobby-stage-viewport"
+      data-telemetry="lobby.stage.render"
       style={{
-        borderRadius: 16,
-        border: "1px solid #6f4aa5",
-        background: "linear-gradient(160deg, #1a1030 0%, #0e081a 100%)",
-        padding: 16,
+        position: 'relative',
+        width: '100%',
+        aspectRatio: '16 / 9',
+        minHeight: 260,
+        borderRadius: 14,
+        overflow: 'hidden',
+        background: 'linear-gradient(180deg, #010108 0%, #06040e 60%, #0a060e 100%)',
+        border: visualTier.border,
+        boxShadow: visualTier.glow,
       }}
     >
-      <style>{`
-        @keyframes stageGlow {
-          0%, 100% { box-shadow: 0 0 14px rgba(145, 98, 206, 0.25); }
-          50% { box-shadow: 0 0 24px rgba(145, 98, 206, 0.45); }
-        }
-      `}</style>
-      <div style={{ color: "#9f7dd6", fontSize: 11, letterSpacing: 1.4, textTransform: "uppercase" }}>
-        Lobby Stage
-      </div>
-      <h2 style={{ margin: "6px 0 12px", color: "#f3e9ff", fontSize: 24 }}>{roomName}</h2>
+      {videoSrc ? (
+        <video
+          src={videoSrc}
+          autoPlay
+          muted
+          loop
+          playsInline
+          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 1 }}
+        />
+      ) : (
+        <div style={{ position: 'absolute', inset: 0, zIndex: 1 }}>
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              background: `radial-gradient(ellipse at 50% 0%, ${accentColor}18 0%, transparent 60%), linear-gradient(180deg, #050310 0%, #080410 100%)`,
+            }}
+          />
+          <motion.div
+            animate={tipBurst ? { opacity: [0.8, 1, 0.8] } : { opacity: [0.52, 0.8, 0.52] }}
+            transition={{ duration: tipBurst ? 0.5 : 3.2, repeat: tipBurst ? 0 : Infinity }}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              width: hypeRipple ? 300 : 250,
+              height: '100%',
+              background: `radial-gradient(ellipse at 50% 0%, ${accentColor}30 0%, transparent 65%)`,
+            }}
+          />
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              display: 'grid',
+              placeItems: 'center',
+              textAlign: 'center',
+              padding: 20,
+            }}
+          >
+            {isLive ? (
+              <>
+                <div style={{ fontSize: 36, marginBottom: 10, filter: `drop-shadow(0 0 12px ${accentColor})` }}>🎤</div>
+                <div style={{ fontSize: 16, fontWeight: 900, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#fff' }}>
+                  {resolvedPerformer}
+                </div>
+                <div style={{ fontSize: 10, marginTop: 4, color: 'rgba(255,255,255,0.56)', textTransform: 'uppercase', letterSpacing: '0.14em' }}>
+                  {resolvedTitle}
+                </div>
+              </>
+            ) : (
+              <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.78)', fontWeight: 800, letterSpacing: '0.09em', textTransform: 'uppercase' }}>
+                Live performance starting soon
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       <div
         style={{
-          borderRadius: 14,
-          border: "1px solid #8b62c7",
-          minHeight: 210,
-          background:
-            "radial-gradient(circle at 50% 30%, rgba(140, 95, 191, 0.45), rgba(20, 12, 35, 0.9) 58%), linear-gradient(180deg, #170d2b, #0a0712)",
-          display: "grid",
-          placeItems: "center",
-          animation: "stageGlow 3.2s ease-in-out infinite",
-          position: "relative",
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          zIndex: 10,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          padding: '8px 12px',
+          background: 'linear-gradient(180deg, rgba(0,0,0,0.68), transparent)',
         }}
       >
-        <div style={{ textAlign: "center", position: "relative", zIndex: 1 }}>
-          <div style={{ color: "#f8eeff", fontSize: 28, fontWeight: 800, letterSpacing: 1.2 }}>MAIN SCREEN</div>
-          <div style={{ color: "#d5c3ee", fontSize: 12, marginTop: 6 }}>Live camera + host feed viewport</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 18, lineHeight: 1 }}>{countryFlag}</span>
+          <span
+            style={{
+              fontSize: 9,
+              fontWeight: 900,
+              letterSpacing: '0.16em',
+              textTransform: 'uppercase',
+              color: membershipTier === 'DIAMOND' ? '#00FFFF' : membershipTier === 'PLATINUM' ? '#FFD700' : 'rgba(255,255,255,0.72)',
+            }}
+          >
+            {membershipTier}
+          </span>
+          {isLive ? (
+            <>
+              <motion.div
+                animate={{ opacity: [1, 0.3, 1] }}
+                transition={{ duration: 1.1, repeat: Infinity }}
+                style={{ width: 6, height: 6, borderRadius: '50%', background: '#FF3333' }}
+              />
+              <span style={{ fontSize: 9, fontWeight: 900, color: '#FF3333', letterSpacing: '0.2em', textTransform: 'uppercase' }}>LIVE</span>
+            </>
+          ) : (
+            <span style={{ fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.15em', textTransform: 'uppercase' }}>PRE-SHOW</span>
+          )}
+          {typeof countdownSeconds === 'number' && countdownSeconds > 0 && (
+            <span style={{ fontSize: 9, color: accentColor, fontFamily: 'monospace' }}>
+              {String(Math.floor(countdownSeconds / 60)).padStart(2, '0')}:{String(countdownSeconds % 60).padStart(2, '0')}
+            </span>
+          )}
         </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span
+            style={{
+              fontSize: 10,
+              fontWeight: 800,
+              letterSpacing: '0.08em',
+              color: fanPulse ? '#00FFFF' : 'rgba(255,255,255,0.78)',
+              textShadow: fanPulse ? '0 0 12px rgba(0,255,255,0.8)' : 'none',
+              transition: 'color 0.2s ease, text-shadow 0.2s ease',
+            }}
+          >
+            {watchers.toLocaleString()} fans watching
+          </span>
+          {typeof vipUsers === 'number' && vipUsers > 0 && (
+            <span style={{ fontSize: 9, color: accentColor }}>⭐ {vipUsers} VIP</span>
+          )}
+          {typeof occupancyPercent === 'number' && (
+            <span style={{ fontSize: 9, color: occupancyPercent >= 80 ? '#FF3333' : 'rgba(255,255,255,0.45)' }}>
+              {occupancyPercent}% full
+            </span>
+          )}
+        </div>
+      </div>
+
+      {typeof queueDepth === 'number' && queueDepth > 0 && (
         <div
           style={{
-            position: "absolute",
-            right: 14,
-            top: 14,
-            width: 158,
-            borderRadius: 14,
-            border: "1px solid rgba(255,255,255,0.14)",
-            background: "rgba(5,7,12,0.78)",
-            padding: 10,
-            boxShadow: "0 18px 36px rgba(0,0,0,0.35)",
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            zIndex: 10,
+            padding: '6px 12px',
+            background: 'linear-gradient(0deg, rgba(0,0,0,0.75), transparent)',
+            fontSize: 9,
+            color: 'rgba(255,255,255,0.45)',
+            letterSpacing: '0.12em',
+            textTransform: 'uppercase',
+            textAlign: 'center',
           }}
         >
-          <div style={{ color: "#b8e4ff", fontSize: 9, fontWeight: 900, letterSpacing: 1.1, textTransform: "uppercase" }}>Pinned Video Feed</div>
-          <div style={{ marginTop: 8, borderRadius: 12, border: "1px solid rgba(125,211,252,0.25)", background: "linear-gradient(180deg, rgba(125,211,252,0.22), rgba(6,12,18,0.92))", minHeight: 96, display: "flex", alignItems: "flex-end", justifyContent: "space-between", padding: 10 }}>
-            <div>
-              <div style={{ color: "#f8eeff", fontSize: 12, fontWeight: 800 }}>HOST PANEL</div>
-              <div style={{ color: "#cfe7ff", fontSize: 10, marginTop: 3 }}>Pinned while speaking</div>
-            </div>
-            <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#34d399", boxShadow: "0 0 10px rgba(52,211,153,0.9)" }} />
-          </div>
+          {queueDepth} performer{queueDepth !== 1 ? 's' : ''} in queue
         </div>
-      </div>
-
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 10, marginTop: 12 }}>
-        {feedPanels.map((panel) => {
-          const isLive = panel.status === "LIVE";
-          const accent = SOURCE_ACCENT[panel.source];
-          return (
-            <Link key={panel.id} href={panel.route} style={{ textDecoration: "none" }}>
-              <div
-                style={{
-                  borderRadius: 12,
-                  border: `1px solid ${isLive ? accent + "55" : accent + "22"}`,
-                  background: "linear-gradient(180deg, rgba(20,15,34,0.96), rgba(9,8,16,0.98))",
-                  minHeight: 112, padding: 10, position: "relative", overflow: "hidden",
-                }}
-              >
-                <div
-                  style={{
-                    position: "absolute", inset: 0,
-                    background: isLive ? `radial-gradient(circle at top right, ${accent}18, transparent 42%)` : "none",
-                  }}
-                />
-                <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-                  <div style={{ fontSize: 11, fontWeight: 800, color: "#f3e9ff" }}>{panel.label}</div>
-                  <div
-                    style={{
-                      fontSize: 8, fontWeight: 900, letterSpacing: "0.1em",
-                      color: isLive ? accent : "#c4b5fd",
-                      textTransform: "uppercase",
-                    }}
-                  >
-                    {panel.status}
-                  </div>
-                </div>
-                <div style={{ position: "relative", marginTop: 8 }}>
-                  <div
-                    style={{
-                      fontSize: 10, fontWeight: 700, marginBottom: 3,
-                      color: isLive ? accent : "rgba(255,255,255,0.55)",
-                      overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                    }}
-                  >
-                    {panel.title}
-                  </div>
-                  <div style={{ fontSize: 9, color: "rgba(255,255,255,0.32)", lineHeight: 1.3 }}>
-                    {panel.subtitle}
-                  </div>
-                </div>
-                {panel.heat > 0 && (
-                  <div style={{ position: "relative", marginTop: 10 }}>
-                    <div style={{ height: 2, borderRadius: 1, background: "rgba(255,255,255,0.08)" }}>
-                      <div
-                        style={{
-                          height: "100%", width: `${Math.min(100, panel.heat)}%`,
-                          background: accent, borderRadius: 1, transition: "width 0.8s ease",
-                        }}
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-            </Link>
-          );
-        })}
-      </div>
-
-      <div
-        style={{
-          marginTop: 12,
-          display: "grid",
-          gridTemplateColumns: "repeat(4, minmax(110px, 1fr))",
-          gap: 10,
-        }}
-      >
-        <div style={{ borderRadius: 10, border: "1px solid #61458e", background: "#130b20", padding: 10 }}>
-          <div style={{ color: "#9984bc", fontSize: 10, textTransform: "uppercase", letterSpacing: 1 }}>Countdown</div>
-          <div style={{ color: "#ffdf9f", fontWeight: 800, marginTop: 3 }}>{formatCountdown(countdownSeconds)}</div>
-        </div>
-        <div style={{ borderRadius: 10, border: "1px solid #61458e", background: "#130b20", padding: 10 }}>
-          <div style={{ color: "#9984bc", fontSize: 10, textTransform: "uppercase", letterSpacing: 1 }}>Audience</div>
-          <div style={{ color: "#c7f7ff", fontWeight: 800, marginTop: 3 }}>{activeUsers}</div>
-        </div>
-        <div style={{ borderRadius: 10, border: "1px solid #61458e", background: "#130b20", padding: 10 }}>
-          <div style={{ color: "#9984bc", fontSize: 10, textTransform: "uppercase", letterSpacing: 1 }}>VIP Seats</div>
-          <div style={{ color: "#ffd79c", fontWeight: 800, marginTop: 3 }}>{vipUsers}</div>
-        </div>
-        <div style={{ borderRadius: 10, border: "1px solid #61458e", background: "#130b20", padding: 10 }}>
-          <div style={{ color: "#9984bc", fontSize: 10, textTransform: "uppercase", letterSpacing: 1 }}>Room Stats</div>
-          <div style={{ color: "#d0f2cc", fontWeight: 800, marginTop: 3 }}>
-            Q {queueDepth} | O {occupancyPercent}%
-          </div>
-        </div>
-      </div>
+      )}
     </section>
   );
 }

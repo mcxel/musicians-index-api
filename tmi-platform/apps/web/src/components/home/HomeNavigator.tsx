@@ -25,7 +25,7 @@ function getActiveIdx(pathname: string): number {
 export default function HomeNavigator() {
   const router = useRouter();
   const pathname = usePathname();
-  const activeIdx = getActiveIdx(pathname);
+  const activeIdx = getActiveIdx(pathname ?? "/");
   const current = HOME_SCREENS[activeIdx];
   const prev = HOME_SCREENS[activeIdx - 1];
   const next = HOME_SCREENS[activeIdx + 1];

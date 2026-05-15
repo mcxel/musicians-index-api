@@ -1,3 +1,4 @@
+import { ImageSlotWrapper } from '@/components/visual-enforcement';
 // AdPlacementCard component for displaying a sponsor/ad placement
 import React, { useEffect, useCallback } from 'react';
 import type { AdPlacement } from '@/components/placement/types';
@@ -30,11 +31,7 @@ export default function AdPlacementCard({ placement }: { placement: AdPlacement 
       onClick={handleClick}
     >
       <div className="flex items-center space-x-4 p-4">
-        <img
-          src={placement.image}
-          alt={placement.title}
-          className="w-16 h-16 object-contain bg-gray-100 rounded"
-        />
+        <ImageSlotWrapper imageId="img-282m4o" roomId="runtime-surface" priority="normal" className="w-full h-full object-cover" altText="Content image" containerStyle={{ width: '100%', height: '100%' }} />
         <div>
           <div className="font-semibold text-lg">{placement.title}</div>
           <div className="text-xs text-gray-500 capitalize">{placement.type}</div>

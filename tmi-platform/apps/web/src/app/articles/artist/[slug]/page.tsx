@@ -1,10 +1,7 @@
 import { notFound } from "next/navigation";
-import EditorialMagazineShell from "@/components/editorial/EditorialMagazineShell";
-import EditorialPageFrame from "@/components/editorial/EditorialPageFrame";
 import { getEditorialArticleBySlug } from "@/lib/editorial/NewsArticleModel";
-import { injectAds } from "@/lib/editorial/editorialAdInjector";
-import { articleToProfileRoute, categoryToSectionLabel } from "@/lib/editorial/editorialRoutingResolver";
-import { resolveTemplate } from "@/lib/editorial/editorialPageEngine";
+import PerformerCanvasMaster from "@/components/performer/PerformerCanvasMaster";
+import type { PerformerCanvasData } from "@/components/performer/PerformerCanvasMaster";
 
 interface Props {
   params: { slug: string };
@@ -14,26 +11,26 @@ export default function ArtistArticlePage({ params }: Props) {
   const article = getEditorialArticleBySlug(params.slug);
   if (!article || article.category !== "artist") notFound();
 
-  const accentColor = "#00FFFF";
-  const ads = injectAds(article.sponsorPlacementIds, article.advertiserPlacementIds);
-  const profileRoute = articleToProfileRoute("artist", article.relatedArtistSlug);
-  const template = resolveTemplate(article.category, article.templateType);
+  const slug = article.relatedArtistSlug ?? params.slug;
+  const displayName = article.title.replace(/:.+/, "").trim();
 
-  return (
-    <EditorialMagazineShell
-      accentColor={accentColor}
-      sectionLabel={categoryToSectionLabel("artist")}
-      backRoute="/artists"
-      backLabel="← Artists"
-      category="artist"
-    >
-      <EditorialPageFrame
-        article={article}
-        templateType={template}
-        accentColor={accentColor}
-        profileRoute={profileRoute}
-        ads={ads}
-      />
-    </EditorialMagazineShell>
-  );
+  const canvasData: PerformerCanvasData = {
+    displayName,
+    slug,
+    tagline:        article.headline,
+    genre:          article.tags.find((t) => !["artist", "spotlight", "crown", "battle", "interview"].includes(t)) ?? "R&B",
+    rank:           7,
+    xp:             11240,
+    crownProgress:  54,
+    tippingHeat:    61,
+    battleRecord:   { wins: 8, losses: 4 },
+    bio:            article.snippet,
+    accentColor:    "#00FFFF",
+    secondaryColor: "#FF2DAA",
+    isLive:         false,
+    isVerified:     true,
+    category:       "artist",
+  };
+
+  return <PerformerCanvasMaster {...canvasData} />;
 }

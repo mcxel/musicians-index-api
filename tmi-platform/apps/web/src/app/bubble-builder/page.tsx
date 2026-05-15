@@ -10,18 +10,19 @@ import type { BubbleCharacter } from '@/lib/avatar/bubbleEngine';
 import type { DanceMove, EmoteType } from '@/lib/avatar/bubbleEngine';
 
 const DANCE_MOVES: DanceMove[] = [
-  'bounce','head-nod','two-step','sway','spin','wave','hype','dab','woah','freeze',
+  'bounce','two-step','wave','snap','dab','bankroll','running-man','hit-dem-folks','wobble','moonwalk',
 ];
 const EMOTE_TYPES: EmoteType[] = [
-  'fire','hype','laugh','shocked','heart','clap','wave','thumbs-up','100','crown',
+  'fire','clap','point-up','laugh','sunglasses','crown','mic-drop','money-rain','heart','skull',
 ];
 const EMOTE_LABELS: Record<EmoteType, string> = {
-  fire: '🔥', hype: '🙌', laugh: '😂', shocked: '😱', heart: '❤️',
-  clap: '👏', wave: '👋', 'thumbs-up': '👍', '100': '💯', crown: '👑',
+  fire: '🔥', clap: '👏', 'point-up': '☝️', laugh: '😂', sunglasses: '😎',
+  crown: '👑', 'mic-drop': '🎤', 'money-rain': '💸', heart: '❤️', skull: '💀',
 };
 const DANCE_LABELS: Record<DanceMove, string> = {
-  bounce: '⬆️ Bounce', 'head-nod': '🎧 Nod', 'two-step': '👟 2-Step', sway: '〰️ Sway',
-  spin: '🔄 Spin', wave: '🌊 Wave', hype: '🙌 Hype', dab: '✊ Dab', woah: '🤙 Woah', freeze: '❄️ Freeze',
+  bounce: '⬆️ Bounce', 'two-step': '👟 2-Step', wave: '🌊 Wave', snap: '👌 Snap',
+  dab: '✊ Dab', bankroll: '💰 Bankroll', 'running-man': '🏃 Running Man',
+  'hit-dem-folks': '🕺 Hit Dem Folks', wobble: '〰️ Wobble', moonwalk: '🌙 Moonwalk',
 };
 
 export default function BubbleBuilderPage() {
@@ -50,7 +51,7 @@ export default function BubbleBuilderPage() {
 
   function setDance(move: DanceMove) {
     if (!bubble) return;
-    setBubble({ ...bubble, currentDance: move, avatar: { ...bubble.avatar, animation: move === 'bounce' ? 'bounce' : move === 'spin' ? 'wave' : 'sway' } });
+    setBubble({ ...bubble, currentDance: move, avatar: { ...bubble.avatar, animation: move === 'bounce' ? 'idle-bounce' : move === 'wobble' ? 'sway' : 'vibe' } });
   }
 
   function fireEmote(emote: EmoteType) {
@@ -62,7 +63,7 @@ export default function BubbleBuilderPage() {
   async function handleSave() {
     if (!bubble) return;
     const { saveBubble } = await import('@/lib/avatar/bubbleEngine');
-    await saveBubble(bubble, 'me');
+    await saveBubble(bubble);
     setSaved(true);
     setTimeout(() => router.push('/world'), 1400);
   }

@@ -2,6 +2,7 @@
 
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 import ChartBelt from '@/components/home/belts/ChartBelt';
+import CypherBelt from '@/components/home/belts/CypherBelt';
 import CrownBelt from '@/components/home/belts/CrownBelt';
 import HeroBelt from '@/components/home/belts/HeroBelt';
 import InterviewBelt from '@/components/home/belts/InterviewBelt';
@@ -10,10 +11,12 @@ import NewsBelt from '@/components/home/belts/NewsBelt';
 import ReleasesBelt from '@/components/home/belts/ReleasesBelt';
 import SponsorBelt from '@/components/home/belts/SponsorBelt';
 import StoreBelt from '@/components/home/belts/StoreBelt';
+import Home1MagazineCoverComposition from '@/components/home/Home1MagazineCoverComposition';
 import HomepageBelt from './HomepageBelt';
 import type { HomeBeltComponentMap, HomeBeltDefinition } from './types';
 
 const BELT_COMPONENTS: HomeBeltComponentMap = {
+  MAGAZINE_COVER_BELT: Home1MagazineCoverComposition,
   HERO_BELT: HeroBelt,
   CROWN_BELT: CrownBelt,
   NEWS_BELT: NewsBelt,
@@ -23,6 +26,7 @@ const BELT_COMPONENTS: HomeBeltComponentMap = {
   RELEASES_BELT: ReleasesBelt,
   LIVE_SHOWS_BELT: LiveShowsBelt,
   STORE_BELT: StoreBelt,
+  CYPHER_BELT: CypherBelt,
 };
 
 function BeltFallback({ title }: Readonly<{ title: string }>) {

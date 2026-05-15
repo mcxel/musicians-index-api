@@ -121,7 +121,7 @@ function writeBookmarks(items: MemoryItem[]) {
 
 export function MagazineNavSystem() {
   const router = useRouter();
-  const pathname = usePathname();
+  const pathname = usePathname() ?? "/";
 
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');

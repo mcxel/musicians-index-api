@@ -26,8 +26,8 @@ export interface ImageSlotWrapperProps {
   imageId: string;
   /** Room ID for authority context */
   roomId: string;
-  /** Display priority: high, normal, low */
-  priority?: 'high' | 'normal' | 'low';
+  /** Display priority: critical, high, normal, deferred */
+  priority?: 'critical' | 'high' | 'normal' | 'deferred';
   /** CSS classes */
   className?: string;
   /** Container style */
@@ -36,8 +36,10 @@ export interface ImageSlotWrapperProps {
   altText?: string;
   /** Placeholder color while loading */
   placeholderColor?: string;
+  /** Explicit degraded-state fallback URL */
+  fallbackUrl?: string;
   /** Callback on state change */
-  onStateChange?: (state: any) => void;
+  onStateChange?: (state: Record<string, unknown>) => void;
 }
 
 const ImagePlaceholder: React.FC<{ placeholderColor?: string }> = ({
@@ -58,6 +60,7 @@ export const ImageSlotWrapper: React.FC<ImageSlotWrapperProps> = ({
   containerStyle,
   altText = imageId,
   placeholderColor,
+  fallbackUrl,
   onStateChange,
 }) => {
   const [displayUrl, setDisplayUrl] = useState<string | null>(null);
@@ -82,11 +85,14 @@ export const ImageSlotWrapper: React.FC<ImageSlotWrapperProps> = ({
     } else if (fallback) {
       setDisplayUrl(fallback);
       setDisplayError(null);
+    } else if (fallbackUrl) {
+      setDisplayUrl(fallbackUrl);
+      setDisplayError(null);
     } else if (error) {
       setDisplayUrl(null);
       setDisplayError(error);
     }
-  }, [assetId, fallback, error]);
+  }, [assetId, fallback, fallbackUrl, error]);
 
   // Loading or blocked state
   if (isLoading || (blocked && !assetId && !fallback)) {
@@ -137,7 +143,7 @@ export const ImageSlotWrapper: React.FC<ImageSlotWrapperProps> = ({
 export const ImageBatchWrapper: React.FC<{
   imageIds: string[];
   roomId: string;
-  priority?: 'high' | 'normal' | 'low';
+  priority?: 'critical' | 'high' | 'normal' | 'deferred';
   renderImage: (id: string, url: string | null, isLoading: boolean) => React.ReactNode;
 }> = ({ imageIds, roomId, priority = 'normal', renderImage }) => {
   return (
@@ -158,7 +164,7 @@ export const ImageBatchWrapper: React.FC<{
 const ImageSlotWrapperBatch: React.FC<{
   imageId: string;
   roomId: string;
-  priority?: 'high' | 'normal' | 'low';
+  priority?: 'critical' | 'high' | 'normal' | 'deferred';
   renderImage: (id: string, url: string | null, isLoading: boolean) => React.ReactNode;
 }> = ({ imageId, roomId, priority = 'normal', renderImage }) => {
   const { assetId, fallback, isLoading } = useImageSlot(imageId, roomId, priority);
