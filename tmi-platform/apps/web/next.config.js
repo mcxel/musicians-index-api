@@ -25,6 +25,7 @@ const nextConfig = {
   reactStrictMode: false,
   eslint: { ignoreDuringBuilds: true },
   typescript: { ignoreBuildErrors: true },
+  staticPageGenerationTimeout: 300,
   async redirects() {
     return [
       {
