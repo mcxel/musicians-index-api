@@ -25,6 +25,15 @@ const nextConfig = {
   reactStrictMode: false,
   eslint: { ignoreDuringBuilds: true },
   typescript: { ignoreBuildErrors: true },
+  async redirects() {
+    return [
+      {
+        source: "/",
+        destination: "/home/1",
+        permanent: false,
+      },
+    ];
+  },
 };
 
 module.exports = nextConfig;
