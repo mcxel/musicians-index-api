@@ -58,7 +58,7 @@ export async function GET(req: NextRequest) {
       winner: null,
       term: {
         daysHeld: 0,
-        remainingTenureDays: nextState.rules.maxTenureDays,
+        remainingTenureDays: (nextState.rules as { maxTenureDays: number } | undefined)?.maxTenureDays ?? 14,
         warningActive: false,
       },
       rules: nextState.rules,

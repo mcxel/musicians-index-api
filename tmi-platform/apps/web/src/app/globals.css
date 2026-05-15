@@ -306,6 +306,33 @@ body {
   letter-spacing: 1px;
 }
 
+/* Missing animation keyframes referenced across components */
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.6; transform: scale(1.04); }
+}
+
+@keyframes scanline {
+  0%   { transform: translateY(-100%); }
+  100% { transform: translateY(100vh); }
+}
+
+@keyframes shimmerLoading {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+
+@keyframes shimmerMove {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+
+@keyframes tmi-star-burst {
+  0%   { transform: scale(0); opacity: 1; }
+  60%  { opacity: 0.75; }
+  100% { transform: scale(2.8); opacity: 0; }
+}
+
 @keyframes neonPulse {
   0%, 100% {
     filter: drop-shadow(0 0 calc(var(--neon-intensity) * 5px) var(--neon-color));

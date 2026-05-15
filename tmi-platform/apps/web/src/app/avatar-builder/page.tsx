@@ -25,7 +25,7 @@ export default function AvatarBuilderPage() {
   async function handleSave() {
     if (!avatar) return;
     const { saveAvatar } = await import('@/lib/avatar/avatarEngine');
-    await saveAvatar(avatar, avatar.id);
+    await saveAvatar(avatar);
     setSaved(true);
     setTimeout(() => router.push('/bubble-builder'), 1200);
   }

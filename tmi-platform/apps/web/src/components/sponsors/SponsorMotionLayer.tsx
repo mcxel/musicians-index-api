@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { ImageSlotWrapper } from '@/components/visual-enforcement/ImageSlotWrapper';
 import Link from "next/link";
 import type { SponsorGift } from "@/lib/commerce/SponsorGiftCommerceEngine";
 
@@ -453,10 +454,14 @@ export default function SponsorMotionLayer({
                 }}
               >
                 {bubble.logoUrl ? (
-                  <img
-                    src={bubble.logoUrl}
-                    alt={bubble.sponsorName}
-                    style={{ width: 22, height: 22, borderRadius: "50%", objectFit: "cover" }}
+                  <ImageSlotWrapper
+                    imageId={`sponsor-logo-${bubble.id}`}
+                    roomId="sponsor-motion-layer"
+                    priority="normal"
+                    fallbackUrl={bubble.logoUrl}
+                    altText={`${bubble.sponsorName} logo`}
+                    className="rounded-full object-contain"
+                    containerStyle={{ width: 22, height: 22, borderRadius: '50%' }}
                   />
                 ) : (
                   <div

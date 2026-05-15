@@ -18,7 +18,9 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import Home1MagazineCoverComposition from '@/components/home/Home1MagazineCoverComposition';
 import ChartBelt from '@/components/home/belts/ChartBelt';
+import CypherBelt from '@/components/home/belts/CypherBelt';
 import CrownBelt from '@/components/home/belts/CrownBelt';
 import HeroBelt from '@/components/home/belts/HeroBelt';
 import InterviewBelt from '@/components/home/belts/InterviewBelt';
@@ -32,6 +34,7 @@ import type { HomeBeltComponentMap, HomeBeltDefinition, HomeSurfaceId } from './
 import { clearSlotLayout, loadSlotLayout, saveSlotLayout } from '@/lib/homepage/engines/slotPersistence.engine';
 
 const BELT_COMPONENTS: HomeBeltComponentMap = {
+  MAGAZINE_COVER_BELT: Home1MagazineCoverComposition,
   HERO_BELT: HeroBelt,
   CROWN_BELT: CrownBelt,
   NEWS_BELT: NewsBelt,
@@ -41,6 +44,7 @@ const BELT_COMPONENTS: HomeBeltComponentMap = {
   RELEASES_BELT: ReleasesBelt,
   LIVE_SHOWS_BELT: LiveShowsBelt,
   STORE_BELT: StoreBelt,
+  CYPHER_BELT: CypherBelt,
 };
 
 function orderBelts(belts: HomeBeltDefinition[], layoutOrder: string[]): HomeBeltDefinition[] {
@@ -149,48 +153,31 @@ export default function HomeDraggableBelts({
   }
 
   return (
-    <section style={{ display: 'grid', gap: 12 }}>
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          gap: 10,
-          alignItems: 'center',
-          border: '1px solid rgba(255,255,255,0.12)',
-          borderRadius: 10,
-          padding: '8px 10px',
-          background: 'rgba(8,12,22,0.55)',
-        }}
-      >
-        <div style={{ fontSize: 11, color: '#bfdbfe', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 800 }}>
-          Surface {surfaceId} canvas {editable ? 'edit mode' : 'preview mode'}
-        </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button
-            type="button"
-            onClick={() => setEditable((value) => !value)}
-            style={{
-              border: '1px solid rgba(56,189,248,0.45)',
-              background: editable ? 'rgba(56,189,248,0.18)' : 'rgba(2,6,23,0.78)',
-              color: editable ? '#7dd3fc' : '#cbd5e1',
-              borderRadius: 999,
-              padding: '6px 10px',
-              fontSize: 11,
-              fontWeight: 700,
-              textTransform: 'uppercase',
-              letterSpacing: '0.09em',
-            }}
-          >
-            {editable ? 'Finish' : 'Customize'}
-          </button>
-          {editable ? (
+    <section style={{ display: 'grid', gap: surfaceId === 1 ? 0 : 12 }}>
+      {surfaceId !== 1 ? (
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            gap: 10,
+            alignItems: 'center',
+            border: '1px solid rgba(255,255,255,0.12)',
+            borderRadius: 10,
+            padding: '8px 10px',
+            background: 'rgba(8,12,22,0.55)',
+          }}
+        >
+          <div style={{ fontSize: 11, color: '#bfdbfe', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 800 }}>
+            Surface {surfaceId} canvas {editable ? 'edit mode' : 'preview mode'}
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
             <button
               type="button"
-              onClick={resetOrder}
+              onClick={() => setEditable((value) => !value)}
               style={{
-                border: '1px solid rgba(250,204,21,0.4)',
-                background: 'rgba(120,53,15,0.42)',
-                color: '#fde68a',
+                border: '1px solid rgba(56,189,248,0.45)',
+                background: editable ? 'rgba(56,189,248,0.18)' : 'rgba(2,6,23,0.78)',
+                color: editable ? '#7dd3fc' : '#cbd5e1',
                 borderRadius: 999,
                 padding: '6px 10px',
                 fontSize: 11,
@@ -199,18 +186,55 @@ export default function HomeDraggableBelts({
                 letterSpacing: '0.09em',
               }}
             >
-              Reset
+              {editable ? 'Finish' : 'Customize'}
             </button>
-          ) : null}
+            {editable ? (
+              <button
+                type="button"
+                onClick={resetOrder}
+                style={{
+                  border: '1px solid rgba(250,204,21,0.4)',
+                  background: 'rgba(120,53,15,0.42)',
+                  color: '#fde68a',
+                  borderRadius: 999,
+                  padding: '6px 10px',
+                  fontSize: 11,
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.09em',
+                }}
+              >
+                Reset
+              </button>
+            ) : null}
+          </div>
         </div>
-      </div>
+      ) : null}
 
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={orderedBelts.map((belt) => belt.id)} strategy={verticalListSortingStrategy}>
-          <div style={{ display: 'grid', gap: 18 }}>
-            {orderedBelts.map((belt) => (
-              <SortableBelt key={belt.id} belt={belt} editable={editable} />
-            ))}
+          <div
+            style={
+              surfaceId === 1
+                ? {
+                    display: 'grid',
+                    gap: 18,
+                    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                  }
+                : { display: 'grid', gap: 18 }
+            }
+          >
+            {orderedBelts.map((belt) => {
+              const fullWidth =
+                surfaceId === 1 &&
+                (belt.id === 'magazine-cover-belt' || belt.id === 'sponsor-belt-home-1');
+
+              return (
+                <div key={belt.id} style={fullWidth ? { gridColumn: '1 / -1' } : undefined}>
+                  <SortableBelt belt={belt} editable={editable} />
+                </div>
+              );
+            })}
           </div>
         </SortableContext>
       </DndContext>

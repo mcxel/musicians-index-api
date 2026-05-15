@@ -1,3 +1,4 @@
+import { ImageSlotWrapper } from '@/components/visual-enforcement';
 // ArticleCard — Slice 0 placeholder
 // Magazine article card component, dark theme, PDF-style layout
 // Non-obstructive sponsor/ad slot at bottom edge only
@@ -65,12 +66,7 @@ export default function ArticleCard({
             flexShrink: 0,
           }}
         >
-          <img
-            src={imageUrl}
-            alt={title}
-            style={{ width: "100%", height: "100%", objectFit: "cover" }}
-            loading="lazy"
-          />
+          <ImageSlotWrapper imageId="img-qk0vjd" roomId="runtime-surface" priority="normal" className="w-full h-full object-cover" altText="Content image" containerStyle={{ width: '100%', height: '100%' }} />
         </div>
       )}
 

@@ -7,6 +7,8 @@
 
 'use client';
 
+import { ImageSlotWrapper } from '@/components/visual-enforcement/ImageSlotWrapper';
+
 import React, { useState } from 'react';
 
 export type SponsorTileVariant = 'PROFILE_RAIL' | 'EVENT_BANNER' | 'MAGAZINE_INSERT' | 'CONTEST_PRIZE' | 'BUMPER';
@@ -242,7 +244,7 @@ export const SponsorTile: React.FC<SponsorTileProps> = ({
           onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}>
           {isSponsoredContent && <div className="st-sponsored-badge">Sponsored</div>}
           <div className="st-rail-logo">
-            {logoUrl ? <img src={logoUrl} alt={sponsorName} style={{ width: '100%', height: '100%', objectFit: 'contain' }} /> : '🏢'}
+            {logoUrl ? <ImageSlotWrapper imageId="img-cy2p1i" roomId="runtime-surface" priority="normal" className="w-full h-full object-cover" altText="Content image" containerStyle={{ width: '100%', height: '100%' }} /> : '🏢'}
           </div>
           <div className="st-rail-text">
             <div className="st-rail-name">{sponsorName}</div>
@@ -255,7 +257,7 @@ export const SponsorTile: React.FC<SponsorTileProps> = ({
       {variant === 'EVENT_BANNER' && (
         <div className={`st-root st-event-banner ${className}`} onClick={handleClick}>
           <span className="st-sponsor-label">POWERED BY</span>
-          {logoUrl && <img src={logoUrl} alt={sponsorName} style={{ height: 20, objectFit: 'contain' }} />}
+          {logoUrl && <ImageSlotWrapper imageId="img-mh3n2e" roomId="runtime-surface" priority="normal" className="w-full h-full object-cover" altText="Content image" containerStyle={{ width: '100%', height: '100%' }} />}
           <span className="st-sponsor-name">{sponsorName}</span>
           {tagline && <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)' }}>— {tagline}</span>}
         </div>
@@ -265,7 +267,7 @@ export const SponsorTile: React.FC<SponsorTileProps> = ({
         <div className={`st-root st-magazine-insert ${className}`} onClick={handleClick}>
           {isSponsoredContent && <div className="st-sponsored-badge">Advertisement</div>}
           {logoUrl
-            ? <img className="st-mag-logo" src={logoUrl} alt={sponsorName} />
+            ? <ImageSlotWrapper imageId="img-rnjuee" roomId="runtime-surface" priority="normal" className="st-mag-logo" altText="Content image" containerStyle={{ width: '100%', height: '100%' }} />
             : <div style={{ fontSize: 48, marginBottom: 12 }}>🏢</div>
           }
           <div style={{ fontFamily: 'Courier New, monospace', fontSize: 16, fontWeight: 700, color: '#FFD700', marginBottom: 8, letterSpacing: 2 }}>
@@ -289,7 +291,7 @@ export const SponsorTile: React.FC<SponsorTileProps> = ({
 
       {variant === 'BUMPER' && (
         <div className={`st-root st-bumper ${className}`}>
-          {logoUrl && <img src={logoUrl} alt={sponsorName} style={{ height: 18, objectFit: 'contain' }} />}
+          {logoUrl && <ImageSlotWrapper imageId="img-faad78" roomId="runtime-surface" priority="normal" className="w-full h-full object-cover" altText="Content image" containerStyle={{ width: '100%', height: '100%' }} />}
           <span className="st-bumper-text">Sponsored by</span>
           <span className="st-bumper-name">{sponsorName}</span>
           {tagline && <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)' }}>· {tagline}</span>}

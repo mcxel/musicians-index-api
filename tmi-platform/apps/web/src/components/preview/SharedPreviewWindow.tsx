@@ -2,6 +2,7 @@
 
 import React from "react";
 import { useSharedPreview } from "@/components/preview/SharedPreviewProvider";
+import { ImageSlotWrapper } from '@/components/visual-enforcement';
 
 function getStatusTone(status: string) {
   if (status === "live") return "text-emerald-300";
@@ -38,7 +39,7 @@ export default function SharedPreviewWindow() {
       <div className="p-3">
         <div className="relative mb-2 flex h-40 items-center justify-center overflow-hidden rounded-lg border border-white/10 bg-slate-950">
           {content.thumbnailUrl ? (
-            <img src={content.thumbnailUrl} alt={content.title} className="h-full w-full object-cover" />
+            <ImageSlotWrapper imageId="img-uv1he" roomId="runtime-surface" priority="normal" className="w-full h-full object-cover" altText="Content image" containerStyle={{ width: '100%', height: '100%' }} />
           ) : (
             <div className="text-center text-xs text-slate-300">
               <p>Preview Dock Region</p>

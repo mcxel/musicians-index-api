@@ -13,6 +13,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { usePerformerPortrait } from '@/lib/hooks/useVisualAuthority';
+import { ImageSlotWrapper } from '@/components/visual-enforcement/ImageSlotWrapper';
 
 export interface PerformerPortraitWrapperProps {
   performerId: string;
@@ -21,7 +22,7 @@ export interface PerformerPortraitWrapperProps {
   kind?: 'artist' | 'host' | 'dj';
   className?: string;
   containerStyle?: React.CSSProperties;
-  onStateChange?: (state: any) => void;
+  onStateChange?: (state: Record<string, unknown>) => void;
 }
 
 const PortraitPlaceholder: React.FC<{ displayName: string }> = ({ displayName }) => (
@@ -83,13 +84,16 @@ export const PerformerPortraitWrapper: React.FC<PerformerPortraitWrapperProps> =
   if (displayUrl) {
     return (
       <div className={className} style={containerStyle}>
-        <img
-          src={displayUrl}
-          alt={displayName}
+        <ImageSlotWrapper
+          imageId={`performer-portrait-${performerId}`}
+          roomId={roomId}
+          priority="high"
+          fallbackUrl={displayUrl}
           className="w-full h-full object-cover rounded-lg"
-          loading="lazy"
+          altText={`${displayName} portrait`}
+          containerStyle={{ width: '100%', height: '100%' }}
         />
-        {animationState === 'playing' && (
+        {animationState !== 'idle' && (
           <div className="absolute inset-0 pointer-events-none border border-cyan-500/40 rounded-lg animate-pulse" />
         )}
       </div>

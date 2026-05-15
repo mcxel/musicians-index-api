@@ -1,3 +1,4 @@
+import { ImageSlotWrapper } from '@/components/visual-enforcement';
 /**
  * TMI — LIVE PHOTO HOOK
  * Simulates Apple/iPhone "Live Photo" 3-second motion on hover.
@@ -125,19 +126,7 @@ export function LivePhotoImage({ src, alt, className = '', width, height, style:
       style={{ overflow: 'hidden', display: 'inline-block', borderRadius: 'inherit', ...extStyle }}
       {...handlers}
     >
-      <img
-        src={src}
-        alt={alt}
-        width={width}
-        height={height}
-        style={{
-          width: '100%', height: '100%',
-          objectFit: 'cover',
-          willChange: 'transform',
-          ...style,
-        }}
-        loading="lazy"
-      />
+      <ImageSlotWrapper imageId="img-3fiqpd" roomId="runtime-surface" priority="normal" className="w-full h-full object-cover" altText="Content image" containerStyle={{ width: '100%', height: '100%' }} />
     </div>
   );
 }

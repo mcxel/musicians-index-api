@@ -4,6 +4,7 @@
  * Action: CREATE | Wave: W2
  */
 'use client';
+import { ImageSlotWrapper } from '@/components/visual-enforcement/ImageSlotWrapper';
 
 interface ScoreEntry {
   rank: number;
@@ -73,7 +74,7 @@ export function ScoreboardOverlay({
                   fontSize: 14, fontWeight: 700, color: '#ff6b1a', overflow: 'hidden', flexShrink: 0,
                 }}>
                   {entry.artistAvatar
-                    ? <img src={entry.artistAvatar} alt={entry.artistName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ? <ImageSlotWrapper imageId="img-hko4de" roomId="runtime-surface" priority="normal" className="w-full h-full object-cover" altText="Content image" containerStyle={{ width: '100%', height: '100%' }} />
                     : entry.artistName[0]}
                 </div>
               )}

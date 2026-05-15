@@ -88,7 +88,7 @@ export function DraggableGrid({ modules, onSelect, selectedId }: Props) {
             ) : null}
 
             <div className="mt-3 rounded-xl border border-white/10 bg-black/30 p-3">
-              {mod.render({})}
+              {React.createElement(mod.render)}
             </div>
           </div>
         )

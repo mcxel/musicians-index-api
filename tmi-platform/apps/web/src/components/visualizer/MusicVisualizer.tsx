@@ -218,7 +218,8 @@ function renderFrame(ctx: CanvasRenderingContext2D, w: number, h: number, frame:
     case 'tunnel': {
       const rings = 10;
       for (let i = rings; i > 0; i--) {
-        const r = (i / rings + (frame.tick * 0.02 * frame.config?.speed ?? 0.02)) % 1;
+        const frameSpeed = ((frame as unknown as { config?: { speed?: number } }).config?.speed) ?? 0.02;
+        const r = (i / rings + frame.tick * 0.02 * frameSpeed) % 1;
         const radius = r * Math.min(w, h) * 0.5;
         const alpha = (1 - r) * 0.7 * frame.intensity;
         ctx.beginPath();

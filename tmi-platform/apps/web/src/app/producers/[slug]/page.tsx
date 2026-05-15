@@ -1,8 +1,21 @@
-export default function Page({ params }: { params: { slug: string } }) {
+'use client';
+import Link from 'next/link';
+
+export default function ProducerDashboardPage({ params }: { params: { slug: string } }) {
   return (
-    <main className="min-h-screen bg-[#0a0a0f] text-white px-6 py-10">
-      <h1 className="text-3xl font-bold text-[#ff6b35] mb-4">{params.slug}</h1>
-      <p className="text-gray-400">Loading profile...</p>
-    </main>
+    <div className="min-h-screen bg-black text-white p-8 font-mono">
+      <h1 className="text-3xl text-emerald-400 font-black mb-6">PRODUCER DASHBOARD: {params.slug}</h1>
+      
+      <div className="border border-zinc-800 p-6 rounded-xl bg-zinc-900 mb-6">
+        <h2 className="text-xl mb-4">Beat Upload & Minting</h2>
+        <button className="px-6 py-3 bg-emerald-500 text-black rounded font-bold uppercase">Upload New Instrumental</button>
+      </div>
+
+      <div className="border-t border-zinc-800 pt-6">
+        <Link href={`/producers/${params.slug}`}>
+          <button className="text-cyan-400 underline">Return to Public Profile</button>
+        </Link>
+      </div>
+    </div>
   );
 }

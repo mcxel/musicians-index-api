@@ -58,12 +58,7 @@ function ArtistCard({ artist }) {
     >
       {/* ── MEDIA ZONE ── */}
       <div className="artist-card__media live-photo-container">
-        <img
-          className={`artist-card__media-img ${hovered ? 'live-photo-anim' : ''}`}
-          src={artist.img}
-          alt={artist.name}
-          loading="lazy"
-        />
+        <ImageSlotWrapper imageId="img-rn5hjj" roomId="runtime-surface" priority="normal" className="w-full h-full object-cover" altText="Content image" containerStyle={{ width: '100%', height: '100%' }} />
         {artist.isLive && <LiveBadge viewers={artist.viewers} />}
         <div className="artist-card__reactions">🔥 👀 ✨</div>
       </div>

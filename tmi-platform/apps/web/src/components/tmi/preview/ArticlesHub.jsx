@@ -68,7 +68,7 @@ function ArticleCard({ article }) {
     <div className="articles-hub__card" style={{ '--accent': accentColor }}>
       {article.img && (
         <div className="articles-hub__card-thumb">
-          <img src={article.img} alt={article.title} />
+          <ImageSlotWrapper imageId="img-buig1o" roomId="runtime-surface" priority="normal" className="w-full h-full object-cover" altText="Content image" containerStyle={{ width: '100%', height: '100%' }} />
         </div>
       )}
       <div className="articles-hub__card-body">

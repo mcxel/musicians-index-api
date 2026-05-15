@@ -4,6 +4,7 @@
  * Purpose: Sponsor's view of all contests they've backed + active invitations
  */
 'use client';
+import { ImageSlotWrapper } from '@/components/visual-enforcement/ImageSlotWrapper';
 import { useState } from 'react';
 import { Trophy, Star, TrendingUp, Eye, ChevronRight, CheckCircle, Clock } from 'lucide-react';
 
@@ -119,7 +120,7 @@ export function SponsorContestPanel({
         ) : filtered.map(entry => (
           <div key={entry.id} className="entry-card">
             <div className="entry-avatar">
-              {entry.artistAvatar ? <img src={entry.artistAvatar} alt={entry.artistName} /> : <span>{entry.artistName[0]}</span>}
+              {entry.artistAvatar ? <ImageSlotWrapper imageId="img-dsim7" roomId="runtime-surface" priority="normal" className="w-full h-full object-cover" altText="Content image" containerStyle={{ width: '100%', height: '100%' }} /> : <span>{entry.artistName[0]}</span>}
             </div>
             <div className="entry-info">
               <div className="entry-top">

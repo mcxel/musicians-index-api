@@ -13,14 +13,15 @@
 
 import React, { useEffect, useState } from 'react';
 import { useVenueReconstruction } from '@/lib/hooks/useVisualAuthority';
+import { ImageSlotWrapper } from '@/components/visual-enforcement/ImageSlotWrapper';
 
 export interface VenueReconstructionWrapperProps {
   venueId: string;
   roomId: string;
   venueName: string;
-  venueType?: 'intimate' | 'theater' | 'arena' | 'festival';
+  venueType?: 'club' | 'arena' | 'battle-hall' | 'lounge';
   className?: string;
-  onStateChange?: (state: any) => void;
+  onStateChange?: (state: Record<string, unknown>) => void;
 }
 
 const VenuePlaceholder: React.FC<{ venueName: string }> = ({ venueName }) => (
@@ -38,7 +39,7 @@ export const VenueReconstructionWrapper: React.FC<VenueReconstructionWrapperProp
     venueId,
     roomId,
     venueName,
-    venueType = 'theater',
+    venueType = 'club',
     className = '',
     onStateChange,
   }) => {
@@ -98,11 +99,14 @@ export const VenueReconstructionWrapper: React.FC<VenueReconstructionWrapperProp
     if (displayUrl) {
       return (
         <div className={className}>
-          <img
-            src={displayUrl}
-            alt={venueName}
-            className="w-full h-full object-cover rounded-lg"
-            loading="lazy"
+          <ImageSlotWrapper
+            imageId={`venue-reconstruction-${venueId}`}
+            roomId={roomId}
+            priority="high"
+            fallbackUrl={displayUrl}
+            className="w-full h-full object-cover"
+            altText={`${venueName} reconstruction`}
+            containerStyle={{ width: '100%', height: '100%' }}
           />
           <div className="absolute inset-0 pointer-events-none border border-purple-500/30 rounded-lg" />
         </div>

@@ -1,3 +1,4 @@
+import { ImageSlotWrapper } from '@/components/visual-enforcement';
 // SponsorCard — Slice 2 placeholder
 // Individual sponsor display card, non-obstructive, dark theme aligned
 // Wired by Copilot in Slice 2 (AdRenderer/sponsors)
@@ -35,13 +36,7 @@ export default function SponsorCard({
       aria-label={`Sponsor: ${name}`}
     >
       {logoUrl && (
-        <img
-          src={logoUrl}
-          alt={name}
-          width={32}
-          height={32}
-          style={{ borderRadius: 4, objectFit: "contain", flexShrink: 0 }}
-        />
+        <ImageSlotWrapper imageId="img-b735to" roomId="runtime-surface" priority="normal" className="w-full h-full object-cover" altText="Content image" containerStyle={{ width: '100%', height: '100%' }} />
       )}
       <div style={{ minWidth: 0 }}>
         <div

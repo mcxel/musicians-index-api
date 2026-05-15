@@ -1,4 +1,5 @@
 'use client';
+import { ImageSlotWrapper } from '@/components/visual-enforcement';
 // SearchResultCard.tsx — Single result row: avatar + name + type + meta
 // Copilot wires: rendered by GlobalSearchBar and /search page results
 // Proof: all result types render, LIVE badge shows on active rooms
@@ -9,7 +10,7 @@ export function SearchResultCard({ type, title, subtitle, href, isLive, imageUrl
 }) {
   return (
     <a href={href} className={`tmi-search-result tmi-search-result--${type}`}>
-      {imageUrl && <img src={imageUrl} alt={title} className="tmi-search-result__img" />}
+      {imageUrl && <ImageSlotWrapper imageId="img-prw2ur" roomId="runtime-surface" priority="normal" className="w-full h-full object-cover" altText="Content image" containerStyle={{ width: '100%', height: '100%' }} />}
       <div className="tmi-search-result__info">
         <span className="tmi-search-result__title">{title}</span>
         {subtitle && <span className="tmi-search-result__sub">{subtitle}</span>}

@@ -27,7 +27,7 @@ export default function AvatarCustomizePage() {
   async function handleSave() {
     if (!avatar) return;
     const { saveAvatar } = await import('@/lib/avatar/avatarEngine');
-    await saveAvatar(avatar, 'me');
+    await saveAvatar(avatar);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   }

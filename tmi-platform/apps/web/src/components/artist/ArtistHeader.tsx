@@ -1,5 +1,6 @@
 "use client";
 import { motion } from "framer-motion";
+import { ImageSlotWrapper } from '@/components/visual-enforcement';
 
 interface ArtistHeaderProps {
   artist: {
@@ -74,7 +75,7 @@ export default function ArtistHeader({ artist }: ArtistHeaderProps) {
           >
             {avatar ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={avatar} alt={name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              <ImageSlotWrapper imageId="img-1jw3a" roomId="runtime-surface" priority="normal" className="w-full h-full object-cover" altText="Content image" containerStyle={{ width: '100%', height: '100%' }} />
             ) : (
               <div style={{ fontSize: 36, fontWeight: 900, color: primaryColor, opacity: 0.6 }}>
                 {name.charAt(0)}

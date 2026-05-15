@@ -7,6 +7,8 @@
 
 'use client';
 
+import { ImageSlotWrapper } from '@/components/visual-enforcement/ImageSlotWrapper';
+
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 
 export type PageType =
@@ -372,7 +374,7 @@ const PageRenderer: React.FC<{ page: MagazinePage }> = ({ page }) => {
     return (
       <div className="ml-cover">
         {page.coverImageUrl && (
-          <img src={page.coverImageUrl} alt="cover" style={{ width: 120, height: 120, borderRadius: '50%', objectFit: 'cover', marginBottom: 20, border: '2px solid #FF2DAA', boxShadow: '0 0 20px rgba(255,45,170,0.4)' }} />
+          <ImageSlotWrapper imageId="img-l7xzud" roomId="runtime-surface" priority="normal" className="w-full h-full object-cover" altText="Content image" containerStyle={{ width: '100%', height: '100%' }} />
         )}
         <div className="ml-cover-title">THE MUSICIAN'S<br />INDEX</div>
         <div style={{ fontFamily: 'Courier New, monospace', fontSize: 12, color: 'rgba(255,255,255,0.4)', letterSpacing: 3, marginTop: 8 }}>
@@ -408,7 +410,7 @@ const PageRenderer: React.FC<{ page: MagazinePage }> = ({ page }) => {
           <div className="ml-article-ranking">#{page.rankingNumber} · {page.artistName}</div>
         )}
         {page.coverImageUrl && (
-          <img className="ml-article-hero" src={page.coverImageUrl} alt={page.title} />
+          <ImageSlotWrapper imageId="img-ydo09n" roomId="runtime-surface" priority="normal" className="ml-article-hero" altText="Content image" containerStyle={{ width: '100%', height: '100%' }} />
         )}
         <div className="ml-article-title">{page.title}</div>
         {page.content}
@@ -421,7 +423,7 @@ const PageRenderer: React.FC<{ page: MagazinePage }> = ({ page }) => {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
         <div style={{ width: '100%', maxWidth: 400, textAlign: 'center', padding: 32 }}>
           {page.sponsorLogoUrl
-            ? <img src={page.sponsorLogoUrl} alt={page.sponsorName} style={{ maxHeight: 80, objectFit: 'contain', marginBottom: 16 }} />
+            ? <ImageSlotWrapper imageId="img-b5mu59" roomId="runtime-surface" priority="normal" className="w-full h-full object-cover" altText="Content image" containerStyle={{ width: '100%', height: '100%' }} />
             : <div style={{ fontSize: 64, marginBottom: 16 }}>🏢</div>
           }
           <div style={{ fontFamily: 'Courier New, monospace', fontSize: 20, fontWeight: 700, color: '#FFD700', letterSpacing: 2, textTransform: 'uppercase' }}>

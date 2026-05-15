@@ -1,5 +1,11 @@
-import HomeSurfacePage from '@/components/home/system/HomeSurfacePage';
+import { MagazinePageFlipRuntime } from '@/components/magazine/MagazinePageFlipRuntime';
+import { MAGAZINE_FULL_ROTATION_SCENES } from '../1/page';
 
-export default function HomeLiveWorldPage() {
-  return <HomeSurfacePage surfaceId={3} />;
+export default function HomeLivePage() {
+  return (
+    <MagazinePageFlipRuntime
+      scenes={MAGAZINE_FULL_ROTATION_SCENES}
+      initialIndex={0}
+    />
+  );
 }

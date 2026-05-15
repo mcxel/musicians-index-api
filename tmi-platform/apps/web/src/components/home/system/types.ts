@@ -5,6 +5,7 @@ export type HomeSurfaceId = 1 | 2 | 3 | 4 | 5;
 export type HomeBeltAccent = 'cyan' | 'pink' | 'purple' | 'gold';
 
 export type HomeBeltComponentKey =
+  | 'MAGAZINE_COVER_BELT'
   | 'HERO_BELT'
   | 'CROWN_BELT'
   | 'NEWS_BELT'
@@ -13,7 +14,8 @@ export type HomeBeltComponentKey =
   | 'SPONSOR_BELT'
   | 'RELEASES_BELT'
   | 'LIVE_SHOWS_BELT'
-  | 'STORE_BELT';
+  | 'STORE_BELT'
+  | 'CYPHER_BELT';
 
 export interface HomeBeltDefinition {
   id: string;

@@ -9,7 +9,7 @@
  */
 
 'use client';
-
+import { ImageSlotWrapper } from '@/components/visual-enforcement/ImageSlotWrapper';
 import { useState } from 'react';
 import { Search, Star, Users, Send, ChevronDown, CheckCircle } from 'lucide-react';
 
@@ -139,7 +139,7 @@ export function SponsorInvitePanel({
             >
               <div className="sponsor-avatar">
                 {sponsor.logo ? (
-                  <img src={sponsor.logo} alt={sponsor.name} />
+                  <ImageSlotWrapper imageId="img-d7zfr" roomId="runtime-surface" priority="normal" className="w-full h-full object-cover" altText="Content image" containerStyle={{ width: '100%', height: '100%' }} />
                 ) : (
                   <span>{sponsor.name[0]}</span>
                 )}

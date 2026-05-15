@@ -8,7 +8,7 @@ import type {
 const HOME_SURFACE_IDS: HomeSurfaceId[] = [1, 2, 3, 4, 5];
 
 const HOME_1: HomeBeltDefinition[] = [
-  { id: 'hero-belt', componentKey: 'HERO_BELT', chrome: false },
+  { id: 'magazine-cover-belt', componentKey: 'MAGAZINE_COVER_BELT', chrome: false },
   { id: 'news-belt', componentKey: 'NEWS_BELT', chrome: false },
   { id: 'interview-belt', componentKey: 'INTERVIEW_BELT', chrome: false },
   { id: 'sponsor-belt-home-1', componentKey: 'SPONSOR_BELT', chrome: false },
@@ -35,6 +35,7 @@ const HOME_4: HomeBeltDefinition[] = [
 ];
 
 const HOME_5: HomeBeltDefinition[] = [
+  { id: 'cypher-belt-home-5', componentKey: 'CYPHER_BELT', chrome: false },
   { id: 'chart-belt-home-5', componentKey: 'CHART_BELT', chrome: false },
   { id: 'releases-belt-home-5', componentKey: 'RELEASES_BELT', chrome: false },
   { id: 'store-belt-home-5', componentKey: 'STORE_BELT', chrome: false },
@@ -47,7 +48,8 @@ const HOME_SURFACES: Record<HomeSurfaceId, HomeSurfaceDefinition> = {
     belts: HOME_1,
     layoutOrder: HOME_1.map((belt) => belt.id),
     sceneId: 'magazine-cover',
-    background: 'radial-gradient(circle at top left, rgba(0,255,255,0.08), transparent 28%), linear-gradient(180deg, #050510 0%, #07081a 55%, #04040d 100%)',
+    // Crown Cover — deep cosmic purple, cyan edge light, fuchsia floor bounce
+    background: 'radial-gradient(ellipse at 50% 0%,   rgba(170,45,255,0.30) 0%, transparent 52%), radial-gradient(ellipse at 15% 20%,  rgba(170,45,255,0.18) 0%, transparent 42%), radial-gradient(ellipse at 85% 75%, rgba(0,255,255,0.16) 0%, transparent 45%), radial-gradient(ellipse at 50% 100%, rgba(255,45,170,0.12) 0%, transparent 38%), linear-gradient(160deg, #060212 0%, #0a0420 45%, #050210 100%)',
     audioTheme: 'home-1-editorial',
     animationPreset: 'magazine-glow',
   },
@@ -56,7 +58,8 @@ const HOME_SURFACES: Record<HomeSurfaceId, HomeSurfaceDefinition> = {
     belts: HOME_2,
     layoutOrder: HOME_2.map((belt) => belt.id),
     sceneId: 'dashboard-core',
-    background: 'radial-gradient(circle at 20% 0%, rgba(255,45,170,0.08), transparent 24%), linear-gradient(180deg, #050510 0%, #080515 52%, #04040d 100%)',
+    // Editorial Discovery — deep indigo press, crown purple overhead, ink-black depth
+    background: 'radial-gradient(ellipse at 50% 0%,   rgba(100,0,255,0.22) 0%, transparent 50%), radial-gradient(ellipse at 90% 85%, rgba(0,200,255,0.14) 0%, transparent 45%), radial-gradient(ellipse at 10% 85%, rgba(255,45,170,0.10) 0%, transparent 40%), radial-gradient(ellipse at 50% 50%, rgba(60,0,120,0.12) 0%, transparent 60%), linear-gradient(170deg, #040118 0%, #080322 50%, #020012 100%)',
     audioTheme: 'home-2-dashboard',
     animationPreset: 'pulse-stagger',
   },
@@ -65,7 +68,8 @@ const HOME_SURFACES: Record<HomeSurfaceId, HomeSurfaceDefinition> = {
     belts: HOME_3,
     layoutOrder: HOME_3.map((belt) => belt.id),
     sceneId: 'live-world',
-    background: 'radial-gradient(circle at top, rgba(255,68,68,0.08), transparent 22%), linear-gradient(180deg, #050510 0%, #120914 50%, #04040d 100%)',
+    // Live World — stage amber overhead, warm red side fill, heat rising from floor
+    background: 'radial-gradient(ellipse at 50% 0%,   rgba(255,110,20,0.20) 0%, transparent 50%), radial-gradient(ellipse at 20% 60%, rgba(220,40,20,0.14) 0%, transparent 40%), radial-gradient(ellipse at 80% 60%, rgba(255,140,0,0.12) 0%, transparent 40%), radial-gradient(ellipse at 50% 100%, rgba(180,30,0,0.10) 0%, transparent 35%), linear-gradient(160deg, #080308 0%, #160708 50%, #060206 100%)',
     audioTheme: 'home-3-live',
     animationPreset: 'live-sweep',
   },
@@ -74,7 +78,8 @@ const HOME_SURFACES: Record<HomeSurfaceId, HomeSurfaceDefinition> = {
     belts: HOME_4,
     layoutOrder: HOME_4.map((belt) => belt.id),
     sceneId: 'sponsor-world',
-    background: 'radial-gradient(circle at top right, rgba(255,215,0,0.08), transparent 24%), linear-gradient(180deg, #050510 0%, #0b0a1b 52%, #04040d 100%)',
+    // Sponsor World — gold billboard wash, luxury amber columns, premium brand light
+    background: 'radial-gradient(ellipse at 70% 0%,   rgba(255,210,0,0.18) 0%, transparent 48%), radial-gradient(ellipse at 30% 90%, rgba(180,120,0,0.14) 0%, transparent 42%), radial-gradient(ellipse at 0%  50%,  rgba(255,160,0,0.10) 0%, transparent 35%), radial-gradient(ellipse at 100% 50%, rgba(200,140,0,0.10) 0%, transparent 35%), linear-gradient(155deg, #07060a 0%, #0e0b04 50%, #040400 100%)',
     audioTheme: 'home-4-sponsor',
     animationPreset: 'ticker-drift',
   },
@@ -83,7 +88,8 @@ const HOME_SURFACES: Record<HomeSurfaceId, HomeSurfaceDefinition> = {
     belts: HOME_5,
     layoutOrder: HOME_5.map((belt) => belt.id),
     sceneId: 'charts-store',
-    background: 'radial-gradient(circle at 80% 0%, rgba(170,45,255,0.08), transparent 24%), linear-gradient(180deg, #050510 0%, #07081a 52%, #04040d 100%)',
+    // Battle Arena — crimson arena light, purple side tunnels, fire from below
+    background: 'radial-gradient(ellipse at 50% 0%,   rgba(200,0,50,0.26) 0%, transparent 52%), radial-gradient(ellipse at 10% 70%, rgba(140,0,220,0.14) 0%, transparent 40%), radial-gradient(ellipse at 90% 70%, rgba(220,40,0,0.14) 0%, transparent 40%), radial-gradient(ellipse at 50% 100%, rgba(160,0,30,0.18) 0%, transparent 38%), linear-gradient(165deg, #080209 0%, #100206 50%, #060108 100%)',
     audioTheme: 'home-5-charts-store',
     animationPreset: 'chart-rise',
   },

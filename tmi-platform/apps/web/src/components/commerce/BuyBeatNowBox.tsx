@@ -6,12 +6,12 @@ interface BuyBeatNowBoxProps {
   beatTitle: string;
   artist: string;
   bpm: number;
-  key?: string;
+  beatKey?: string;
   prices: { label: string; price: number; features: string[] }[];
   onPurchase?: (tier: string) => void;
 }
 
-export default function BuyBeatNowBox({ beatTitle, artist, bpm, key: beatKey, prices, onPurchase }: BuyBeatNowBoxProps) {
+export default function BuyBeatNowBox({ beatTitle, artist, bpm, beatKey, prices, onPurchase }: BuyBeatNowBoxProps) {
   const [selected, setSelected] = useState(0);
   const [purchasing, setPurchasing] = useState(false);
   const [done, setDone] = useState(false);

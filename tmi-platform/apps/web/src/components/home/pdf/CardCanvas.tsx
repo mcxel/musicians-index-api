@@ -1,6 +1,9 @@
 import type { ReactNode } from 'react';
 
-export default function CardCanvas({ children }: Readonly<{ children: ReactNode }>) {
+export default function CardCanvas({
+  children,
+  showGrid = false,
+}: Readonly<{ children: ReactNode; showGrid?: boolean }>) {
   return (
     <section
       style={{
@@ -12,16 +15,18 @@ export default function CardCanvas({ children }: Readonly<{ children: ReactNode 
         overflow: 'hidden',
       }}
     >
-      <div
-        aria-hidden
-        style={{
-          position: 'absolute',
-          inset: 0,
-          backgroundImage: 'linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px)',
-          backgroundSize: '24px 24px',
-          pointerEvents: 'none',
-        }}
-      />
+      {showGrid ? (
+        <div
+          aria-hidden
+          style={{
+            position: 'absolute',
+            inset: 0,
+            backgroundImage: 'linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px)',
+            backgroundSize: '24px 24px',
+            pointerEvents: 'none',
+          }}
+        />
+      ) : null}
       <div style={{ position: 'relative' }}>{children}</div>
     </section>
   );
