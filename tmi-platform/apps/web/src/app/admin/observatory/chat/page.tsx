@@ -4,10 +4,36 @@ import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 // AdminObservatoryChat → RuntimeConductorEngine → node:crypto — not usable in client bundles
 type RoomAlertSeverity = "info" | "warn" | "critical";
-type RoomAlert = { id: string; roomId: string; message: string; severity: RoomAlertSeverity; createdAt: number; resolved: boolean };
-type ObservatoryRoomView = { roomId: string; presenceCount: number; botCount: number; messageCount: number; avgSentiment: number; alerts: RoomAlert[] };
-type ObservatorySnapshot = { rooms: ObservatoryRoomView[]; totalPresence: number; totalMessages: number; criticalAlerts: number; capturedAt: number };
-function getObservatorySnapshot(): ObservatorySnapshot { return { rooms: [], totalPresence: 0, totalMessages: 0, criticalAlerts: 0, capturedAt: Date.now() }; }
+type RoomAlert = { id: string; roomId: string; message: string; severity: RoomAlertSeverity; timestampMs: number; resolved: boolean };
+type SponsorGift = { id: string; title: string; valueDisplay: string; sponsorName: string; claimedCount: number; totalSupply: number };
+type BillboardHoverState = { slotId: string; roomId?: string; previewContent?: { type: string; title: string } | null };
+type ObservatoryRoomView = {
+  roomId: string;
+  population: { heatLevel: number };
+  intentSummary: { distribution: Record<string, number>; windowMs: number; dominantIntent: string; engagementScore: number; hypeScore: number; booScore: number };
+  cameraFocus: { mode: string; intensityScore: number; shotDirective?: string; triggerIntent?: string };
+  momentumHypeLevel: number;
+  runtimeConflictCount: number;
+  runtimeBlocked: boolean;
+  runtimeRecoveryActions: string[];
+  cameraAuthorityGranted: boolean;
+  alerts: RoomAlert[];
+};
+type ObservatorySnapshot = {
+  rooms: ObservatoryRoomView[];
+  totalOccupancy: number;
+  hottest: string | null;
+  systemMessages: { id: string; text: string; authorId: string; timestampMs: number }[];
+  activeGifts: SponsorGift[];
+  totalActiveGifts: number;
+  activeBillboards: BillboardHoverState[];
+  totalRuntimeConflicts: number;
+  blockedRuntimeRooms: string[];
+  capturedAt: number;
+};
+function getObservatorySnapshot(): ObservatorySnapshot {
+  return { rooms: [], totalOccupancy: 0, hottest: null, systemMessages: [], activeGifts: [], totalActiveGifts: 0, activeBillboards: [], totalRuntimeConflicts: 0, blockedRuntimeRooms: [], capturedAt: Date.now() };
+}
 function getAllAlerts(): RoomAlert[] { return []; }
 
 function fmtTime(ts: number): string {
