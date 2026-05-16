@@ -1,3 +1,4 @@
+'use client';
 // Global AdSlot component for serving ads by placement
 import React, { useEffect, useState } from 'react';
 import AdPlacementCard from '@/components/placement/AdPlacementCard';

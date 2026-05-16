@@ -1,3 +1,4 @@
+'use client';
 import React, { useState } from 'react';
 import { SceneGraphNode } from '@/lib/lobby/lobbyMetadataLoader';
 import { SeatContextMenu } from './SeatContextMenu';
