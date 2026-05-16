@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { type NextRequest, NextResponse } from "next/server";
 
 async function loadJson(req: NextRequest, path: string): Promise<any> {

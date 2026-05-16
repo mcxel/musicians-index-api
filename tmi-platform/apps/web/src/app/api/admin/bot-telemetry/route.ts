@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getRecentBotEvents, getBotEventsByType, getBotSummary, type BotEventType } from '@/lib/bots/bot-telemetry-store';
 

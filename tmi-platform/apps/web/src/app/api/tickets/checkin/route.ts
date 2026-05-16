@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { proxyToApi } from "@/lib/apiProxy";
 
 export async function POST(req: Request) {

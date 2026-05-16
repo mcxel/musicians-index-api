@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getRecentEmailEvents, getEmailEventsByStatus, getEmailSummary, type DeliveryStatus } from '@/lib/email/email-telemetry-store';
 

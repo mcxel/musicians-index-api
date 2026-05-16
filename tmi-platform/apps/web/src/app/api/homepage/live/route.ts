@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { proxyToApi } from "@/lib/apiProxy";
 import { liveRooms } from "@/lib/placeholders/liveRooms";
 import { type NextRequest, NextResponse } from "next/server";

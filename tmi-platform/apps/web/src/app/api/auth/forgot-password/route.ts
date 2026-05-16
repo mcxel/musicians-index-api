@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { requestPasswordReset } from "@/lib/auth/PasswordResetRequestEngine";
 import { buildPasswordResetMail } from "@/lib/auth/PasswordResetMailEngine";
 import { EmailProviderEngine } from "@/lib/email/EmailProviderEngine";

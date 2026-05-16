@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from "next/server";
 
 // Feed snapshot endpoint — returns seed-backed live snapshot per source.
