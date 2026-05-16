@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { getToken } from 'next-auth/jwt';
 
 // ── Route protection tiers ───────────────────────────────────────────────────
 
@@ -69,34 +68,15 @@ export async function middleware(req: NextRequest) {
     return securityHeaders(NextResponse.next());
   }
 
-  // 4. Admin + protected path enforcement
+  // 4. Admin + protected path enforcement (cookie-only, Edge-safe)
   const isAdmin     = matchesAny(pathname, ADMIN_PATHS);
   const isProtected = matchesAny(pathname, PROTECTED_PATHS);
 
   if (isAdmin || isProtected) {
-    let tokenRole  = '';
-    let tokenValid = false;
+    const sessionCookie = req.cookies.get('tmi_session')?.value;
+    const tokenRole     = (req.cookies.get('tmi_role')?.value ?? '').toUpperCase();
 
-    try {
-      const jwt = await getToken({
-        req: req as Parameters<typeof getToken>[0]['req'],
-        secret: process.env.NEXTAUTH_SECRET,
-      });
-      if (jwt) {
-        tokenRole  = ((jwt.role as string) || '').toUpperCase();
-        tokenValid = true;
-      }
-    } catch {
-      // fall through to cookie check
-    }
-
-    // Fallback: custom session cookie from /api/auth/signin
-    if (!tokenValid && req.cookies.get('tmi_session')?.value) {
-      tokenRole  = (req.cookies.get('tmi_role')?.value ?? '').toUpperCase();
-      tokenValid = true;
-    }
-
-    if (!tokenValid) {
+    if (!sessionCookie) {
       if (pathname.startsWith('/api/')) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
       }
