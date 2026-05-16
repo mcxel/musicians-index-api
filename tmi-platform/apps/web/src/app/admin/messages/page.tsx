@@ -1,4 +1,3 @@
-'use client';
 import type { Metadata } from "next";
 import Link from "next/link";
 import { MAGAZINE_ISSUE_1 } from "@/lib/magazine/magazineIssueData";
