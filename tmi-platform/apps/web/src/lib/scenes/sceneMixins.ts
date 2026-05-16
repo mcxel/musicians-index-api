@@ -1,0 +1,16 @@
+export type SceneId =
+  | "audienceRoom"
+  | "frontRow"
+  | "watchParty"
+  | "cypherRoom"
+  | "liveStage"
+  | "lobbyWall"
+  | "gameNight"
+  | "nameThatTune"
+  | "dealOrFeud"
+  | "promotionalHub"
+  | "adminCommand"
+  | "bookingDashboard"
+  | "winnersHall"
+  | "articles"
+  | "sponsorHub";

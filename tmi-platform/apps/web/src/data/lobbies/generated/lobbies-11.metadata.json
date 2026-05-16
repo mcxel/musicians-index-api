@@ -1,0 +1,134 @@
+{
+  "lobbyId": "lobbies-11",
+  "theme": "discovery_lobby",
+  "themeLabel": "Discovery Lobby Skin",
+  "roomType": "discovery_hub",
+  "capacity": 210,
+  "seatCount": 72,
+  "walkZones": 3,
+  "queueZone": true,
+  "mainScreen": true,
+  "hostStage": true,
+  "sourceAssetPath": "Tmi PDF's/Lobbies/Lobbies 11.jpg",
+  "segmentation": {
+    "image": "Lobbies 11.jpg",
+    "themeKey": "discovery_lobby",
+    "zones": [
+      {
+        "id": "zone-hub",
+        "label": "Discovery Hub",
+        "zone_type": "hub",
+        "bounds": {
+          "x": 0.5,
+          "y": 0.2,
+          "w": 0.62,
+          "h": 0.18
+        },
+        "walkable": true
+      },
+      {
+        "id": "zone-lanes",
+        "label": "Room Lanes",
+        "zone_type": "lane",
+        "bounds": {
+          "x": 0.5,
+          "y": 0.52,
+          "w": 0.82,
+          "h": 0.28
+        },
+        "walkable": true
+      },
+      {
+        "id": "zone-preview",
+        "label": "Billboard Preview",
+        "zone_type": "billboard",
+        "bounds": {
+          "x": 0.84,
+          "y": 0.18,
+          "w": 0.16,
+          "h": 0.12
+        },
+        "walkable": false
+      },
+      {
+        "id": "zone-queue",
+        "label": "Access Queue",
+        "zone_type": "queue",
+        "bounds": {
+          "x": 0.16,
+          "y": 0.54,
+          "w": 0.12,
+          "h": 0.2
+        },
+        "walkable": true
+      }
+    ],
+    "layerCount": 4
+  },
+  "depth": {
+    "ceilingHeight": 8.8,
+    "roomDepth": 24.0,
+    "stageDepth": 5.2,
+    "verticality": "mid",
+    "layers": [
+      "hub-foreground",
+      "lane-surface",
+      "billboard-backline"
+    ],
+    "image": "Lobbies 11.jpg"
+  },
+  "objects": [
+    "room-card-wall",
+    "billboard",
+    "portal",
+    "concierge-desk",
+    "queue-arch",
+    "social-pod"
+  ],
+  "seatTypes": [
+    "LOW_SEAT",
+    "SOFA_SEAT",
+    "QUEUE_NODE",
+    "HOST_NODE"
+  ],
+  "navmesh": [
+    "spawn",
+    "browse",
+    "queue",
+    "social",
+    "portal"
+  ],
+  "portals": [
+    {
+      "id": "portal-main",
+      "target": "venue-stage",
+      "enabled": true
+    }
+  ],
+  "lights": [
+    {
+      "id": "light-key",
+      "kind": "spot",
+      "intensity": 0.82
+    },
+    {
+      "id": "light-fill",
+      "kind": "ambient",
+      "intensity": 0.46
+    }
+  ],
+  "sceneGraph": {
+    "nodes": [
+      "walls",
+      "floor",
+      "seats",
+      "bar",
+      "stage",
+      "screens",
+      "lighting",
+      "spawn-points",
+      "queue-points",
+      "portal"
+    ]
+  }
+}

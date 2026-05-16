@@ -1,0 +1,279 @@
+{
+  "approved": true,
+  "status": "Approved",
+  "engine": "Venue Intelligence Engine V1",
+  "venueId": "download-(7)",
+  "venueClass": "LOBBY",
+  "sourceAssetPath": "apps/web/public/tmi-source/Venue Skins Plus Seating/download (7).jpg",
+  "sourceAssetType": ".jpg",
+  "scanner": {
+    "version": "v1",
+    "pipeline": [
+      "scan",
+      "segment",
+      "classify",
+      "extract",
+      "metadata",
+      "reconstruct",
+      "store"
+    ]
+  },
+  "segmentation": {
+    "asset": "download (7).jpg",
+    "venueClass": "LOBBY",
+    "layers": [
+      "hero-surface",
+      "traffic-lanes",
+      "social-zones",
+      "commerce-zones",
+      "safety-overlays"
+    ],
+    "zoneCount": 10
+  },
+  "depth": {
+    "asset": "download (7).jpg",
+    "ceilingHeight": 6.0,
+    "roomDepth": 24.0,
+    "stageDepth": 8.0,
+    "levels": [
+      "floor",
+      "mid",
+      "upper"
+    ]
+  },
+  "structural": {
+    "walls": [
+      "stage"
+    ],
+    "floors": [
+      "main-floor"
+    ],
+    "doors": [
+      "entry-door",
+      "service-door"
+    ],
+    "stairs": [
+      "upper-stair"
+    ],
+    "platforms": [
+      "stage-platform"
+    ]
+  },
+  "seating": {
+    "seats": [
+      "seat-1",
+      "seat-2",
+      "seat-3",
+      "seat-4",
+      "seat-5",
+      "seat-6",
+      "seat-7",
+      "seat-8",
+      "seat-9",
+      "seat-10",
+      "seat-11",
+      "seat-12",
+      "seat-13",
+      "seat-14",
+      "seat-15",
+      "seat-16",
+      "seat-17",
+      "seat-18",
+      "seat-19",
+      "seat-20",
+      "seat-21",
+      "seat-22",
+      "seat-23",
+      "seat-24"
+    ],
+    "vipSeats": [
+      "vip-seat-1",
+      "vip-seat-2",
+      "vip-seat-3"
+    ],
+    "hostSeats": [
+      "host-seat-main"
+    ],
+    "crowdSeats": [
+      "crowd-seat-1",
+      "crowd-seat-2",
+      "crowd-seat-3",
+      "crowd-seat-4",
+      "crowd-seat-5",
+      "crowd-seat-6",
+      "crowd-seat-7",
+      "crowd-seat-8",
+      "crowd-seat-9",
+      "crowd-seat-10",
+      "crowd-seat-11",
+      "crowd-seat-12"
+    ]
+  },
+  "movement": {
+    "walkPaths": [
+      "walk-main-loop",
+      "walk-vip-loop"
+    ],
+    "queuePaths": [
+      "queue-entry-line"
+    ],
+    "entryPaths": [
+      "entry-front",
+      "entry-side"
+    ],
+    "exitPaths": [
+      "exit-front",
+      "exit-emergency"
+    ]
+  },
+  "social": {
+    "hangZones": [
+      "hang-main",
+      "hang-side"
+    ],
+    "danceZones": [
+      "dance-floor-main"
+    ],
+    "reactionZones": [
+      "reaction-rail"
+    ],
+    "tipZones": [
+      "tip-rail"
+    ]
+  },
+  "performance": {
+    "stageZones": [
+      "stage-main"
+    ],
+    "micZones": [
+      "mic-center",
+      "mic-left"
+    ],
+    "djZones": [
+      "dj-booth-main"
+    ],
+    "battleZones": [
+      "battle-ring"
+    ]
+  },
+  "audio": {
+    "speakerZones": [
+      "speaker-front-left",
+      "speaker-front-right"
+    ],
+    "echoZones": [
+      "rear-reflection-zone"
+    ],
+    "musicZones": [
+      "music-main-zone"
+    ]
+  },
+  "cameras": {
+    "cameraNodes": [
+      "cam-front",
+      "cam-side",
+      "cam-wide"
+    ],
+    "cinematicNodes": [
+      "cine-dolly",
+      "cine-overhead"
+    ]
+  },
+  "ads": {
+    "billboards": [
+      {
+        "id": "board-main",
+        "surface": "led"
+      },
+      {
+        "id": "board-secondary",
+        "surface": "projection"
+      }
+    ],
+    "sponsorSlots": [
+      {
+        "id": "sponsor-slot-a",
+        "kind": "banner"
+      },
+      {
+        "id": "sponsor-slot-b",
+        "kind": "booth"
+      }
+    ]
+  },
+  "commerce": {
+    "shops": [
+      "shop-lane-a"
+    ],
+    "merchTables": [
+      "merch-table-main"
+    ],
+    "ticketBooths": [
+      "ticket-booth-main"
+    ]
+  },
+  "security": {
+    "securityRoutes": [
+      "security-loop-main",
+      "security-loop-vip"
+    ],
+    "emergencyRoutes": [
+      "emergency-north",
+      "emergency-south"
+    ]
+  },
+  "portals": {
+    "entryPortals": [
+      "entry-main",
+      "entry-side"
+    ],
+    "transitionPortals": [
+      "portal-lobby-to-stage"
+    ],
+    "exitPortals": [
+      "exit-main",
+      "exit-emergency"
+    ]
+  },
+  "heat": {
+    "hottestBattleSpots": [
+      "stage-front"
+    ],
+    "strongestSocialZones": [
+      "social-ring"
+    ],
+    "bestMerchZones": [
+      "merch-corner"
+    ],
+    "bestAdZones": [
+      "billboard-lane"
+    ]
+  },
+  "lighting": {
+    "keyLights": [
+      "key-main"
+    ],
+    "fillLights": [
+      "fill-left",
+      "fill-right"
+    ],
+    "effectLights": [
+      "fx-beam-1",
+      "fx-beam-2"
+    ]
+  },
+  "objects": {
+    "asset": "download (7).jpg",
+    "venueClass": "LOBBY",
+    "objects": [
+      "stage",
+      "screen",
+      "seat-cluster",
+      "entry-gate",
+      "portal",
+      "billboard",
+      "sponsor-booth",
+      "ticket-booth"
+    ]
+  }
+}

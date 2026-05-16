@@ -1,0 +1,135 @@
+{
+  "lobbyId": "lobbies-1",
+  "theme": "vip_lounge",
+  "themeLabel": "VIP Lounge Skin",
+  "roomType": "vip_club",
+  "capacity": 120,
+  "seatCount": 46,
+  "walkZones": 3,
+  "queueZone": true,
+  "mainScreen": true,
+  "hostStage": true,
+  "sourceAssetPath": "Tmi PDF's/Lobbies/Lobbies 1.jpg",
+  "segmentation": {
+    "image": "Lobbies 1.jpg",
+    "themeKey": "vip_lounge",
+    "zones": [
+      {
+        "id": "zone-stage",
+        "label": "Host Stage",
+        "zone_type": "stage",
+        "bounds": {
+          "x": 0.5,
+          "y": 0.16,
+          "w": 0.34,
+          "h": 0.18
+        },
+        "walkable": false
+      },
+      {
+        "id": "zone-seating",
+        "label": "VIP Seating",
+        "zone_type": "seating",
+        "bounds": {
+          "x": 0.5,
+          "y": 0.58,
+          "w": 0.56,
+          "h": 0.26
+        },
+        "walkable": true
+      },
+      {
+        "id": "zone-bar",
+        "label": "Bottle Service Bar",
+        "zone_type": "bar",
+        "bounds": {
+          "x": 0.15,
+          "y": 0.44,
+          "w": 0.18,
+          "h": 0.22
+        },
+        "walkable": true
+      },
+      {
+        "id": "zone-queue",
+        "label": "Premium Queue",
+        "zone_type": "queue",
+        "bounds": {
+          "x": 0.85,
+          "y": 0.52,
+          "w": 0.12,
+          "h": 0.2
+        },
+        "walkable": true
+      }
+    ],
+    "layerCount": 4
+  },
+  "depth": {
+    "ceilingHeight": 4.4,
+    "roomDepth": 17.5,
+    "stageDepth": 4.8,
+    "verticality": "low",
+    "layers": [
+      "foreground-seating",
+      "mid-social",
+      "rear-stage"
+    ],
+    "image": "Lobbies 1.jpg"
+  },
+  "objects": [
+    "sofa",
+    "table",
+    "bar",
+    "host-stage",
+    "premium-screen",
+    "planter",
+    "light-rig"
+  ],
+  "seatTypes": [
+    "SOFA_SEAT",
+    "VIP_SEAT",
+    "HOST_NODE",
+    "SPECTATOR_NODE"
+  ],
+  "navmesh": [
+    "spawn",
+    "social",
+    "queue",
+    "sit",
+    "portal"
+  ],
+  "portals": [
+    {
+      "id": "portal-main",
+      "target": "venue-stage",
+      "enabled": true
+    }
+  ],
+  "lights": [
+    {
+      "id": "light-key",
+      "kind": "spot",
+      "intensity": 0.82
+    },
+    {
+      "id": "light-fill",
+      "kind": "ambient",
+      "intensity": 0.46
+    }
+  ],
+  "sceneGraph": {
+    "nodes": [
+      "walls",
+      "floor",
+      "seats",
+      "bar",
+      "stage",
+      "screens",
+      "lighting",
+      "spawn-points",
+      "queue-points",
+      "portal"
+    ]
+  }
+}

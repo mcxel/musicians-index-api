@@ -1,0 +1,64 @@
+@import url('https://fonts.googleapis.com/css2?family=Anton&family=Bungee&family=Orbitron:wght@400..900&family=Oswald:wght@200..700&family=Rajdhani:wght@300..700&display=swap');
+
+:root {
+  --font-tmi-anton: 'Anton', sans-serif;
+  --font-tmi-bungee: 'Bungee', display;
+  --font-tmi-orbitron: 'Orbitron', monospace;
+  --font-tmi-oswald: 'Oswald', sans-serif;
+  --font-tmi-rajdhani: 'Rajdhani', sans-serif;
+}
+
+.tmi-masthead {
+  font-family: var(--font-tmi-anton);
+  text-transform: uppercase;
+  font-weight: 400;
+  color: #fff;
+  text-shadow: 3px 3px 0px #aa2dff, -1px -1px 8px rgba(0, 255, 255, 0.4);
+}
+
+.tmi-promo-title {
+  font-family: var(--font-tmi-bungee);
+  text-transform: uppercase;
+  font-weight: 400;
+  color: #ffd700;
+  -webkit-text-stroke: 1px #aa2dff;
+  text-shadow: 2px 2px 0px #050510;
+}
+
+.tmi-hud-label {
+  font-family: var(--font-tmi-rajdhani);
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.tmi-body-copy {
+  font-family: var(--font-tmi-oswald);
+  font-weight: 400;
+  letter-spacing: 0.02em;
+}
+
+.tmi-counter {
+  font-family: var(--font-tmi-orbitron);
+  font-weight: 700;
+  color: #00ffff;
+  text-shadow: 0 0 10px rgba(0, 255, 255, 0.6);
+  text-transform: uppercase;
+}
+
+.tmi-sticker-text {
+  font-family: var(--font-tmi-bungee);
+  text-transform: uppercase;
+  color: #050510;
+  background-color: #ffd700;
+  padding: 2px 6px;
+  border: 2px solid #050510;
+  box-shadow: 2px 2px 0px #ff2daa;
+}
+
+.tmi-button-text {
+  font-family: var(--font-tmi-rajdhani);
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}

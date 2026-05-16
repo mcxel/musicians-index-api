@@ -1,6 +1,7 @@
 'use client'
 
 import React from 'react'
+import { useRouter } from 'next/navigation'
 import { logger } from '@/lib/logger'
 
 // Minimal inline icon used as a replacement for heroicons in CI
@@ -69,7 +70,8 @@ const submissionTypes: SubmissionTile[] = [
     description: 'Submit your comedy set for Saturday night showcase',
     icon: Icon,
     gradient: 'from-pink-600 to-pink-800',
-    requiresArtist: true
+    requiresArtist: true,
+    comingSoon: true
   },
   {
     id: 'dance',
@@ -77,7 +79,8 @@ const submissionTypes: SubmissionTile[] = [
     description: 'Show off your dance moves in our weekly showcase',
     icon: Icon,
     gradient: 'from-cyan-600 to-cyan-800',
-    requiresArtist: true
+    requiresArtist: true,
+    comingSoon: true
   },
   {
     id: 'shows',
@@ -91,42 +94,24 @@ const submissionTypes: SubmissionTile[] = [
 ]
 
 export default function SubmitPage() {
+  const router = useRouter()
+
+  const ROUTE_MAP: Record<string, string> = {
+    'join-game': '/signup/performer',
+    'audience': '/signup/fan',
+    'monthly-idol': '/signup/performer',
+    'battle': '/signup/performer',
+    'cypher': '/signup/performer',
+  }
+
   const handleSubmissionClick = (submission: SubmissionTile) => {
-    if (submission.comingSoon) {
-      alert('Coming soon! Stay tuned for updates.')
-      return
-    }
+    if (submission.comingSoon) return
 
-    if (submission.requiresArtist) {
-      // TODO: Check if user has artist profile
-      // For now, just show placeholder
-      const hasArtistProfile = false // Replace with actual check
-      
-      if (!hasArtistProfile) {
-        if (confirm('This requires an artist profile. Would you like to create one now?')) {
-          // TODO: Navigate to artist profile creation
-          logger.log('Navigate to create artist profile')
-        }
-        return
-      }
+    const destination = ROUTE_MAP[submission.id]
+    if (destination) {
+      logger.log('Routing to:', destination)
+      router.push(destination)
     }
-
-    if (submission.id === 'audience') {
-      // TODO: Check if user has fan profile
-      const hasFanProfile = false // Replace with actual check
-      
-      if (!hasFanProfile) {
-        if (confirm('This requires a fan profile. Would you like to create one now?')) {
-          // TODO: Navigate to fan profile creation
-          logger.log('Navigate to create fan profile')
-        }
-        return
-      }
-    }
-
-    // TODO: Navigate to submission form for this type
-    logger.log('Open submission form for:', submission.id)
-    alert(`${submission.title} submission coming soon!`)
   }
 
   return (
