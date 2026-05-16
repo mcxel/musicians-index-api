@@ -3,6 +3,8 @@
  * GET endpoint returning real-time visual system metrics
  */
 
+export const dynamic = 'force-dynamic';
+
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { getVisualRecoveryDiagnostics } from '@/lib/ai-visuals/VisualRecoveryCoordinator';
