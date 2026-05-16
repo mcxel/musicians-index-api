@@ -164,7 +164,7 @@ export async function middleware(req: NextRequest) {
       if (pathname.startsWith('/api/')) {
         return NextResponse.json({ error: 'Forbidden: admin role required' }, { status: 403 });
       }
-      return NextResponse.redirect(new URL('/auth?error=unauthorized', req.url), 307);
+      return NextResponse.redirect(new URL('/home/1', req.url), 307);
     }
   }
 
