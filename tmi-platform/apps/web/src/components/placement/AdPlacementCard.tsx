@@ -1,3 +1,4 @@
+'use client';
 import { ImageSlotWrapper } from '@/components/visual-enforcement';
 // AdPlacementCard component for displaying a sponsor/ad placement
 import React, { useEffect, useCallback } from 'react';
