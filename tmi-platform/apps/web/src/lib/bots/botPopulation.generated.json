@@ -1,0 +1,3784 @@
+{
+  "generated": "2026-04-23T19:21:02.238Z",
+  "total": 115,
+  "byRole": {
+    "fan": 50,
+    "artist": 20,
+    "performer": 15,
+    "sponsor": 10,
+    "advertiser": 10,
+    "host": 5,
+    "admin": 5
+  },
+  "population": [
+    {
+      "id": "fan-001",
+      "displayName": "Aria M",
+      "role": "fan",
+      "personaType": "hype-follower",
+      "activityLevel": "medium",
+      "goals": [
+        "vote",
+        "watch-streams",
+        "earn-rewards",
+        "follow-artists"
+      ],
+      "homeSurface": "/home/10",
+      "favoriteGenre": "Neo-Soul",
+      "allowedActions": [
+        "vote",
+        "react",
+        "tip",
+        "join-room",
+        "claim-reward",
+        "browse-charts"
+      ],
+      "timeAllocation": {
+        "streaming": 30,
+        "socialEngagement": 23,
+        "browsing": 12,
+        "passive": 35
+      },
+      "styleProfile": {
+        "vibe": "loyal"
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "fan-002",
+      "displayName": "Dex K",
+      "role": "fan",
+      "personaType": "newcomer",
+      "activityLevel": "medium",
+      "goals": [
+        "vote",
+        "watch-streams",
+        "earn-rewards",
+        "follow-artists"
+      ],
+      "homeSurface": "/home/9",
+      "favoriteGenre": "Drill",
+      "allowedActions": [
+        "vote",
+        "react",
+        "tip",
+        "join-room",
+        "claim-reward",
+        "browse-charts"
+      ],
+      "timeAllocation": {
+        "streaming": 31,
+        "socialEngagement": 27,
+        "browsing": 13,
+        "passive": 29
+      },
+      "styleProfile": {
+        "vibe": "hype"
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "fan-003",
+      "displayName": "Kira J",
+      "role": "fan",
+      "personaType": "newcomer",
+      "activityLevel": "high",
+      "goals": [
+        "vote",
+        "watch-streams",
+        "earn-rewards",
+        "follow-artists"
+      ],
+      "homeSurface": "/home/1",
+      "favoriteGenre": "R&B",
+      "allowedActions": [
+        "vote",
+        "react",
+        "tip",
+        "join-room",
+        "claim-reward",
+        "browse-charts"
+      ],
+      "timeAllocation": {
+        "streaming": 42,
+        "socialEngagement": 24,
+        "browsing": 18,
+        "passive": 16
+      },
+      "styleProfile": {
+        "vibe": "analytical"
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "fan-004",
+      "displayName": "Leo B",
+      "role": "fan",
+      "personaType": "casual",
+      "activityLevel": "low",
+      "goals": [
+        "vote",
+        "watch-streams",
+        "earn-rewards",
+        "follow-artists"
+      ],
+      "homeSurface": "/home/9",
+      "favoriteGenre": "Hip Hop",
+      "allowedActions": [
+        "vote",
+        "react",
+        "tip",
+        "join-room",
+        "claim-reward",
+        "browse-charts"
+      ],
+      "timeAllocation": {
+        "streaming": 36,
+        "socialEngagement": 30,
+        "browsing": 18,
+        "passive": 16
+      },
+      "styleProfile": {
+        "vibe": "loyal"
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "fan-005",
+      "displayName": "Oryn T",
+      "role": "fan",
+      "personaType": "casual",
+      "activityLevel": "very-high",
+      "goals": [
+        "vote",
+        "watch-streams",
+        "earn-rewards",
+        "follow-artists"
+      ],
+      "homeSurface": "/home/6",
+      "favoriteGenre": "Afrobeats",
+      "allowedActions": [
+        "vote",
+        "react",
+        "tip",
+        "join-room",
+        "claim-reward",
+        "browse-charts"
+      ],
+      "timeAllocation": {
+        "streaming": 30,
+        "socialEngagement": 21,
+        "browsing": 13,
+        "passive": 36
+      },
+      "styleProfile": {
+        "vibe": "analytical"
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "fan-006",
+      "displayName": "Vex S",
+      "role": "fan",
+      "personaType": "casual",
+      "activityLevel": "high",
+      "goals": [
+        "vote",
+        "watch-streams",
+        "earn-rewards",
+        "follow-artists"
+      ],
+      "homeSurface": "/home/9",
+      "favoriteGenre": "Soul",
+      "allowedActions": [
+        "vote",
+        "react",
+        "tip",
+        "join-room",
+        "claim-reward",
+        "browse-charts"
+      ],
+      "timeAllocation": {
+        "streaming": 36,
+        "socialEngagement": 24,
+        "browsing": 19,
+        "passive": 21
+      },
+      "styleProfile": {
+        "vibe": "hype"
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "fan-007",
+      "displayName": "Zael W",
+      "role": "fan",
+      "personaType": "casual",
+      "activityLevel": "very-high",
+      "goals": [
+        "vote",
+        "watch-streams",
+        "earn-rewards",
+        "follow-artists"
+      ],
+      "homeSurface": "/home/1",
+      "favoriteGenre": "Afrobeats",
+      "allowedActions": [
+        "vote",
+        "react",
+        "tip",
+        "join-room",
+        "claim-reward",
+        "browse-charts"
+      ],
+      "timeAllocation": {
+        "streaming": 41,
+        "socialEngagement": 26,
+        "browsing": 17,
+        "passive": 16
+      },
+      "styleProfile": {
+        "vibe": "hype"
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "fan-008",
+      "displayName": "Pyre L",
+      "role": "fan",
+      "personaType": "chart-watcher",
+      "activityLevel": "very-high",
+      "goals": [
+        "vote",
+        "watch-streams",
+        "earn-rewards",
+        "follow-artists"
+      ],
+      "homeSurface": "/home/6",
+      "favoriteGenre": "Drill",
+      "allowedActions": [
+        "vote",
+        "react",
+        "tip",
+        "join-room",
+        "claim-reward",
+        "browse-charts"
+      ],
+      "timeAllocation": {
+        "streaming": 42,
+        "socialEngagement": 29,
+        "browsing": 11,
+        "passive": 18
+      },
+      "styleProfile": {
+        "vibe": "hype"
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "fan-009",
+      "displayName": "Nyx C",
+      "role": "fan",
+      "personaType": "newcomer",
+      "activityLevel": "high",
+      "goals": [
+        "vote",
+        "watch-streams",
+        "earn-rewards",
+        "follow-artists"
+      ],
+      "homeSurface": "/home/7",
+      "favoriteGenre": "EDM",
+      "allowedActions": [
+        "vote",
+        "react",
+        "tip",
+        "join-room",
+        "claim-reward",
+        "browse-charts"
+      ],
+      "timeAllocation": {
+        "streaming": 45,
+        "socialEngagement": 25,
+        "browsing": 20,
+        "passive": 10
+      },
+      "styleProfile": {
+        "vibe": "loyal"
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "fan-010",
+      "displayName": "Coda F",
+      "role": "fan",
+      "personaType": "newcomer",
+      "activityLevel": "high",
+      "goals": [
+        "vote",
+        "watch-streams",
+        "earn-rewards",
+        "follow-artists"
+      ],
+      "homeSurface": "/home/10",
+      "favoriteGenre": "Latin",
+      "allowedActions": [
+        "vote",
+        "react",
+        "tip",
+        "join-room",
+        "claim-reward",
+        "browse-charts"
+      ],
+      "timeAllocation": {
+        "streaming": 32,
+        "socialEngagement": 22,
+        "browsing": 18,
+        "passive": 28
+      },
+      "styleProfile": {
+        "vibe": "loyal"
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "fan-011",
+      "displayName": "Remi D",
+      "role": "fan",
+      "personaType": "chart-watcher",
+      "activityLevel": "very-high",
+      "goals": [
+        "vote",
+        "watch-streams",
+        "earn-rewards",
+        "follow-artists"
+      ],
+      "homeSurface": "/home/6",
+      "favoriteGenre": "Neo-Soul",
+      "allowedActions": [
+        "vote",
+        "react",
+        "tip",
+        "join-room",
+        "claim-reward",
+        "browse-charts"
+      ],
+      "timeAllocation": {
+        "streaming": 42,
+        "socialEngagement": 26,
+        "browsing": 15,
+        "passive": 17
+      },
+      "styleProfile": {
+        "vibe": "analytical"
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "fan-012",
+      "displayName": "Silo P",
+      "role": "fan",
+      "personaType": "newcomer",
+      "activityLevel": "very-high",
+      "goals": [
+        "vote",
+        "watch-streams",
+        "earn-rewards",
+        "follow-artists"
+      ],
+      "homeSurface": "/home/10",
+      "favoriteGenre": "Hip Hop",
+      "allowedActions": [
+        "vote",
+        "react",
+        "tip",
+        "join-room",
+        "claim-reward",
+        "browse-charts"
+      ],
+      "timeAllocation": {
+        "streaming": 40,
+        "socialEngagement": 27,
+        "browsing": 13,
+        "passive": 20
+      },
+      "styleProfile": {
+        "vibe": "analytical"
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "fan-013",
+      "displayName": "Tane H",
+      "role": "fan",
+      "personaType": "casual",
+      "activityLevel": "high",
+      "goals": [
+        "vote",
+        "watch-streams",
+        "earn-rewards",
+        "follow-artists"
+      ],
+      "homeSurface": "/home/10",
+      "favoriteGenre": "Pop",
+      "allowedActions": [
+        "vote",
+        "react",
+        "tip",
+        "join-room",
+        "claim-reward",
+        "browse-charts"
+      ],
+      "timeAllocation": {
+        "streaming": 45,
+        "socialEngagement": 22,
+        "browsing": 11,
+        "passive": 22
+      },
+      "styleProfile": {
+        "vibe": "analytical"
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "fan-014",
+      "displayName": "Ula V",
+      "role": "fan",
+      "personaType": "chart-watcher",
+      "activityLevel": "low",
+      "goals": [
+        "vote",
+        "watch-streams",
+        "earn-rewards",
+        "follow-artists"
+      ],
+      "homeSurface": "/home/3",
+      "favoriteGenre": "Hip Hop",
+      "allowedActions": [
+        "vote",
+        "react",
+        "tip",
+        "join-room",
+        "claim-reward",
+        "browse-charts"
+      ],
+      "timeAllocation": {
+        "streaming": 42,
+        "socialEngagement": 26,
+        "browsing": 17,
+        "passive": 15
+      },
+      "styleProfile": {
+        "vibe": "chill"
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "fan-015",
+      "displayName": "Wave R",
+      "role": "fan",
+      "personaType": "superfan",
+      "activityLevel": "high",
+      "goals": [
+        "vote",
+        "watch-streams",
+        "earn-rewards",
+        "follow-artists"
+      ],
+      "homeSurface": "/home/3",
+      "favoriteGenre": "R&B",
+      "allowedActions": [
+        "vote",
+        "react",
+        "tip",
+        "join-room",
+        "claim-reward",
+        "browse-charts"
+      ],
+      "timeAllocation": {
+        "streaming": 40,
+        "socialEngagement": 28,
+        "browsing": 16,
+        "passive": 16
+      },
+      "styleProfile": {
+        "vibe": "loyal"
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "fan-016",
+      "displayName": "Xen A",
+      "role": "fan",
+      "personaType": "casual",
+      "activityLevel": "low",
+      "goals": [
+        "vote",
+        "watch-streams",
+        "earn-rewards",
+        "follow-artists"
+      ],
+      "homeSurface": "/home/9",
+      "favoriteGenre": "Soul",
+      "allowedActions": [
+        "vote",
+        "react",
+        "tip",
+        "join-room",
+        "claim-reward",
+        "browse-charts"
+      ],
+      "timeAllocation": {
+        "streaming": 37,
+        "socialEngagement": 23,
+        "browsing": 14,
+        "passive": 26
+      },
+      "styleProfile": {
+        "vibe": "chill"
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "fan-017",
+      "displayName": "Yara G",
+      "role": "fan",
+      "personaType": "chart-watcher",
+      "activityLevel": "low",
+      "goals": [
+        "vote",
+        "watch-streams",
+        "earn-rewards",
+        "follow-artists"
+      ],
+      "homeSurface": "/home/9",
+      "favoriteGenre": "Afrobeats",
+      "allowedActions": [
+        "vote",
+        "react",
+        "tip",
+        "join-room",
+        "claim-reward",
+        "browse-charts"
+      ],
+      "timeAllocation": {
+        "streaming": 36,
+        "socialEngagement": 26,
+        "browsing": 12,
+        "passive": 26
+      },
+      "styleProfile": {
+        "vibe": "loyal"
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "fan-018",
+      "displayName": "Zion Q",
+      "role": "fan",
+      "personaType": "superfan",
+      "activityLevel": "very-high",
+      "goals": [
+        "vote",
+        "watch-streams",
+        "earn-rewards",
+        "follow-artists"
+      ],
+      "homeSurface": "/home/4",
+      "favoriteGenre": "Pop",
+      "allowedActions": [
+        "vote",
+        "react",
+        "tip",
+        "join-room",
+        "claim-reward",
+        "browse-charts"
+      ],
+      "timeAllocation": {
+        "streaming": 44,
+        "socialEngagement": 28,
+        "browsing": 10,
+        "passive": 18
+      },
+      "styleProfile": {
+        "vibe": "chill"
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "fan-019",
+      "displayName": "Fen O",
+      "role": "fan",
+      "personaType": "hype-follower",
+      "activityLevel": "low",
+      "goals": [
+        "vote",
+        "watch-streams",
+        "earn-rewards",
+        "follow-artists"
+      ],
+      "homeSurface": "/home/10",
+      "favoriteGenre": "Gospel",
+      "allowedActions": [
+        "vote",
+        "react",
+        "tip",
+        "join-room",
+        "claim-reward",
+        "browse-charts"
+      ],
+      "timeAllocation": {
+        "streaming": 37,
+        "socialEngagement": 20,
+        "browsing": 20,
+        "passive": 23
+      },
+      "styleProfile": {
+        "vibe": "hype"
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "fan-020",
+      "displayName": "Glow I",
+      "role": "fan",
+      "personaType": "superfan",
+      "activityLevel": "high",
+      "goals": [
+        "vote",
+        "watch-streams",
+        "earn-rewards",
+        "follow-artists"
+      ],
+      "homeSurface": "/home/3",
+      "favoriteGenre": "Latin",
+      "allowedActions": [
+        "vote",
+        "react",
+        "tip",
+        "join-room",
+        "claim-reward",
+        "browse-charts"
+      ],
+      "timeAllocation": {
+        "streaming": 31,
+        "socialEngagement": 28,
+        "browsing": 12,
+        "passive": 29
+      },
+      "styleProfile": {
+        "vibe": "hype"
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "fan-021",
+      "displayName": "Haze U",
+      "role": "fan",
+      "personaType": "chart-watcher",
+      "activityLevel": "very-high",
+      "goals": [
+        "vote",
+        "watch-streams",
+        "earn-rewards",
+        "follow-artists"
+      ],
+      "homeSurface": "/home/7",
+      "favoriteGenre": "Gospel",
+      "allowedActions": [
+        "vote",
+        "react",
+        "tip",
+        "join-room",
+        "claim-reward",
+        "browse-charts"
+      ],
+      "timeAllocation": {
+        "streaming": 44,
+        "socialEngagement": 24,
+        "browsing": 16,
+        "passive": 16
+      },
+      "styleProfile": {
+        "vibe": "analytical"
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "fan-022",
+      "displayName": "Idra N",
+      "role": "fan",
+      "personaType": "newcomer",
+      "activityLevel": "high",
+      "goals": [
+        "vote",
+        "watch-streams",
+        "earn-rewards",
+        "follow-artists"
+      ],
+      "homeSurface": "/home/6",
+      "favoriteGenre": "EDM",
+      "allowedActions": [
+        "vote",
+        "react",
+        "tip",
+        "join-room",
+        "claim-reward",
+        "browse-charts"
+      ],
+      "timeAllocation": {
+        "streaming": 36,
+        "socialEngagement": 22,
+        "browsing": 13,
+        "passive": 29
+      },
+      "styleProfile": {
+        "vibe": "loyal"
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "fan-023",
+      "displayName": "Jolt E",
+      "role": "fan",
+      "personaType": "chart-watcher",
+      "activityLevel": "high",
+      "goals": [
+        "vote",
+        "watch-streams",
+        "earn-rewards",
+        "follow-artists"
+      ],
+      "homeSurface": "/home/3",
+      "favoriteGenre": "Hip Hop",
+      "allowedActions": [
+        "vote",
+        "react",
+        "tip",
+        "join-room",
+        "claim-reward",
+        "browse-charts"
+      ],
+      "timeAllocation": {
+        "streaming": 34,
+        "socialEngagement": 24,
+        "browsing": 19,
+        "passive": 23
+      },
+      "styleProfile": {
+        "vibe": "analytical"
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "fan-024",
+      "displayName": "Keel Y",
+      "role": "fan",
+      "personaType": "superfan",
+      "activityLevel": "very-high",
+      "goals": [
+        "vote",
+        "watch-streams",
+        "earn-rewards",
+        "follow-artists"
+      ],
+      "homeSurface": "/home/4",
+      "favoriteGenre": "Gospel",
+      "allowedActions": [
+        "vote",
+        "react",
+        "tip",
+        "join-room",
+        "claim-reward",
+        "browse-charts"
+      ],
+      "timeAllocation": {
+        "streaming": 37,
+        "socialEngagement": 28,
+        "browsing": 11,
+        "passive": 24
+      },
+      "styleProfile": {
+        "vibe": "analytical"
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "fan-025",
+      "displayName": "Luma Z",
+      "role": "fan",
+      "personaType": "casual",
+      "activityLevel": "very-high",
+      "goals": [
+        "vote",
+        "watch-streams",
+        "earn-rewards",
+        "follow-artists"
+      ],
+      "homeSurface": "/home/3",
+      "favoriteGenre": "Pop",
+      "allowedActions": [
+        "vote",
+        "react",
+        "tip",
+        "join-room",
+        "claim-reward",
+        "browse-charts"
+      ],
+      "timeAllocation": {
+        "streaming": 32,
+        "socialEngagement": 26,
+        "browsing": 11,
+        "passive": 31
+      },
+      "styleProfile": {
+        "vibe": "loyal"
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "fan-026",
+      "displayName": "Mach X",
+      "role": "fan",
+      "personaType": "newcomer",
+      "activityLevel": "low",
+      "goals": [
+        "vote",
+        "watch-streams",
+        "earn-rewards",
+        "follow-artists"
+      ],
+      "homeSurface": "/home/9",
+      "favoriteGenre": "Soul",
+      "allowedActions": [
+        "vote",
+        "react",
+        "tip",
+        "join-room",
+        "claim-reward",
+        "browse-charts"
+      ],
+      "timeAllocation": {
+        "streaming": 31,
+        "socialEngagement": 30,
+        "browsing": 16,
+        "passive": 23
+      },
+      "styleProfile": {
+        "vibe": "loyal"
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "fan-027",
+      "displayName": "Nara B",
+      "role": "fan",
+      "personaType": "hype-follower",
+      "activityLevel": "low",
+      "goals": [
+        "vote",
+        "watch-streams",
+        "earn-rewards",
+        "follow-artists"
+      ],
+      "homeSurface": "/home/3",
+      "favoriteGenre": "Latin",
+      "allowedActions": [
+        "vote",
+        "react",
+        "tip",
+        "join-room",
+        "claim-reward",
+        "browse-charts"
+      ],
+      "timeAllocation": {
+        "streaming": 43,
+        "socialEngagement": 22,
+        "browsing": 20,
+        "passive": 15
+      },
+      "styleProfile": {
+        "vibe": "analytical"
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "fan-028",
+      "displayName": "Opal M",
+      "role": "fan",
+      "personaType": "casual",
+      "activityLevel": "low",
+      "goals": [
+        "vote",
+        "watch-streams",
+        "earn-rewards",
+        "follow-artists"
+      ],
+      "homeSurface": "/home/10",
+      "favoriteGenre": "EDM",
+      "allowedActions": [
+        "vote",
+        "react",
+        "tip",
+        "join-room",
+        "claim-reward",
+        "browse-charts"
+      ],
+      "timeAllocation": {
+        "streaming": 32,
+        "socialEngagement": 25,
+        "browsing": 15,
+        "passive": 28
+      },
+      "styleProfile": {
+        "vibe": "hype"
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "fan-029",
+      "displayName": "Pike K",
+      "role": "fan",
+      "personaType": "chart-watcher",
+      "activityLevel": "low",
+      "goals": [
+        "vote",
+        "watch-streams",
+        "earn-rewards",
+        "follow-artists"
+      ],
+      "homeSurface": "/home/1",
+      "favoriteGenre": "Afrobeats",
+      "allowedActions": [
+        "vote",
+        "react",
+        "tip",
+        "join-room",
+        "claim-reward",
+        "browse-charts"
+      ],
+      "timeAllocation": {
+        "streaming": 40,
+        "socialEngagement": 27,
+        "browsing": 19,
+        "passive": 14
+      },
+      "styleProfile": {
+        "vibe": "chill"
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "fan-030",
+      "displayName": "Quin J",
+      "role": "fan",
+      "personaType": "casual",
+      "activityLevel": "very-high",
+      "goals": [
+        "vote",
+        "watch-streams",
+        "earn-rewards",
+        "follow-artists"
+      ],
+      "homeSurface": "/home/8",
+      "favoriteGenre": "R&B",
+      "allowedActions": [
+        "vote",
+        "react",
+        "tip",
+        "join-room",
+        "claim-reward",
+        "browse-charts"
+      ],
+      "timeAllocation": {
+        "streaming": 36,
+        "socialEngagement": 26,
+        "browsing": 19,
+        "passive": 19
+      },
+      "styleProfile": {
+        "vibe": "chill"
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "fan-031",
+      "displayName": "Rave T",
+      "role": "fan",
+      "personaType": "chart-watcher",
+      "activityLevel": "low",
+      "goals": [
+        "vote",
+        "watch-streams",
+        "earn-rewards",
+        "follow-artists"
+      ],
+      "homeSurface": "/home/2",
+      "favoriteGenre": "Hip Hop",
+      "allowedActions": [
+        "vote",
+        "react",
+        "tip",
+        "join-room",
+        "claim-reward",
+        "browse-charts"
+      ],
+      "timeAllocation": {
+        "streaming": 37,
+        "socialEngagement": 28,
+        "browsing": 18,
+        "passive": 17
+      },
+      "styleProfile": {
+        "vibe": "hype"
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "fan-032",
+      "displayName": "Swirl S",
+      "role": "fan",
+      "personaType": "superfan",
+      "activityLevel": "medium",
+      "goals": [
+        "vote",
+        "watch-streams",
+        "earn-rewards",
+        "follow-artists"
+      ],
+      "homeSurface": "/home/8",
+      "favoriteGenre": "R&B",
+      "allowedActions": [
+        "vote",
+        "react",
+        "tip",
+        "join-room",
+        "claim-reward",
+        "browse-charts"
+      ],
+      "timeAllocation": {
+        "streaming": 38,
+        "socialEngagement": 25,
+        "browsing": 16,
+        "passive": 21
+      },
+      "styleProfile": {
+        "vibe": "hype"
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "fan-033",
+      "displayName": "Tide W",
+      "role": "fan",
+      "personaType": "casual",
+      "activityLevel": "high",
+      "goals": [
+        "vote",
+        "watch-streams",
+        "earn-rewards",
+        "follow-artists"
+      ],
+      "homeSurface": "/home/3",
+      "favoriteGenre": "Neo-Soul",
+      "allowedActions": [
+        "vote",
+        "react",
+        "tip",
+        "join-room",
+        "claim-reward",
+        "browse-charts"
+      ],
+      "timeAllocation": {
+        "streaming": 32,
+        "socialEngagement": 29,
+        "browsing": 15,
+        "passive": 24
+      },
+      "styleProfile": {
+        "vibe": "hype"
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "fan-034",
+      "displayName": "Una L",
+      "role": "fan",
+      "personaType": "newcomer",
+      "activityLevel": "very-high",
+      "goals": [
+        "vote",
+        "watch-streams",
+        "earn-rewards",
+        "follow-artists"
+      ],
+      "homeSurface": "/home/6",
+      "favoriteGenre": "Drill",
+      "allowedActions": [
+        "vote",
+        "react",
+        "tip",
+        "join-room",
+        "claim-reward",
+        "browse-charts"
+      ],
+      "timeAllocation": {
+        "streaming": 33,
+        "socialEngagement": 23,
+        "browsing": 16,
+        "passive": 28
+      },
+      "styleProfile": {
+        "vibe": "analytical"
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "fan-035",
+      "displayName": "Vane C",
+      "role": "fan",
+      "personaType": "casual",
+      "activityLevel": "very-high",
+      "goals": [
+        "vote",
+        "watch-streams",
+        "earn-rewards",
+        "follow-artists"
+      ],
+      "homeSurface": "/home/5",
+      "favoriteGenre": "Pop",
+      "allowedActions": [
+        "vote",
+        "react",
+        "tip",
+        "join-room",
+        "claim-reward",
+        "browse-charts"
+      ],
+      "timeAllocation": {
+        "streaming": 38,
+        "socialEngagement": 25,
+        "browsing": 13,
+        "passive": 24
+      },
+      "styleProfile": {
+        "vibe": "hype"
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "fan-036",
+      "displayName": "Wisp F",
+      "role": "fan",
+      "personaType": "casual",
+      "activityLevel": "medium",
+      "goals": [
+        "vote",
+        "watch-streams",
+        "earn-rewards",
+        "follow-artists"
+      ],
+      "homeSurface": "/home/5",
+      "favoriteGenre": "Gospel",
+      "allowedActions": [
+        "vote",
+        "react",
+        "tip",
+        "join-room",
+        "claim-reward",
+        "browse-charts"
+      ],
+      "timeAllocation": {
+        "streaming": 36,
+        "socialEngagement": 23,
+        "browsing": 11,
+        "passive": 30
+      },
+      "styleProfile": {
+        "vibe": "hype"
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "fan-037",
+      "displayName": "Xyla D",
+      "role": "fan",
+      "personaType": "chart-watcher",
+      "activityLevel": "low",
+      "goals": [
+        "vote",
+        "watch-streams",
+        "earn-rewards",
+        "follow-artists"
+      ],
+      "homeSurface": "/home/4",
+      "favoriteGenre": "Drill",
+      "allowedActions": [
+        "vote",
+        "react",
+        "tip",
+        "join-room",
+        "claim-reward",
+        "browse-charts"
+      ],
+      "timeAllocation": {
+        "streaming": 44,
+        "socialEngagement": 24,
+        "browsing": 14,
+        "passive": 18
+      },
+      "styleProfile": {
+        "vibe": "hype"
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "fan-038",
+      "displayName": "Yule P",
+      "role": "fan",
+      "personaType": "newcomer",
+      "activityLevel": "high",
+      "goals": [
+        "vote",
+        "watch-streams",
+        "earn-rewards",
+        "follow-artists"
+      ],
+      "homeSurface": "/home/1",
+      "favoriteGenre": "Afrobeats",
+      "allowedActions": [
+        "vote",
+        "react",
+        "tip",
+        "join-room",
+        "claim-reward",
+        "browse-charts"
+      ],
+      "timeAllocation": {
+        "streaming": 36,
+        "socialEngagement": 21,
+        "browsing": 19,
+        "passive": 24
+      },
+      "styleProfile": {
+        "vibe": "loyal"
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "fan-039",
+      "displayName": "Zest H",
+      "role": "fan",
+      "personaType": "newcomer",
+      "activityLevel": "medium",
+      "goals": [
+        "vote",
+        "watch-streams",
+        "earn-rewards",
+        "follow-artists"
+      ],
+      "homeSurface": "/home/1",
+      "favoriteGenre": "Latin",
+      "allowedActions": [
+        "vote",
+        "react",
+        "tip",
+        "join-room",
+        "claim-reward",
+        "browse-charts"
+      ],
+      "timeAllocation": {
+        "streaming": 37,
+        "socialEngagement": 23,
+        "browsing": 18,
+        "passive": 22
+      },
+      "styleProfile": {
+        "vibe": "chill"
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "fan-040",
+      "displayName": "Aero V",
+      "role": "fan",
+      "personaType": "superfan",
+      "activityLevel": "very-high",
+      "goals": [
+        "vote",
+        "watch-streams",
+        "earn-rewards",
+        "follow-artists"
+      ],
+      "homeSurface": "/home/4",
+      "favoriteGenre": "R&B",
+      "allowedActions": [
+        "vote",
+        "react",
+        "tip",
+        "join-room",
+        "claim-reward",
+        "browse-charts"
+      ],
+      "timeAllocation": {
+        "streaming": 37,
+        "socialEngagement": 29,
+        "browsing": 19,
+        "passive": 15
+      },
+      "styleProfile": {
+        "vibe": "loyal"
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "fan-041",
+      "displayName": "Blaze R",
+      "role": "fan",
+      "personaType": "superfan",
+      "activityLevel": "low",
+      "goals": [
+        "vote",
+        "watch-streams",
+        "earn-rewards",
+        "follow-artists"
+      ],
+      "homeSurface": "/home/10",
+      "favoriteGenre": "R&B",
+      "allowedActions": [
+        "vote",
+        "react",
+        "tip",
+        "join-room",
+        "claim-reward",
+        "browse-charts"
+      ],
+      "timeAllocation": {
+        "streaming": 44,
+        "socialEngagement": 28,
+        "browsing": 16,
+        "passive": 12
+      },
+      "styleProfile": {
+        "vibe": "hype"
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "fan-042",
+      "displayName": "Crest A",
+      "role": "fan",
+      "personaType": "casual",
+      "activityLevel": "low",
+      "goals": [
+        "vote",
+        "watch-streams",
+        "earn-rewards",
+        "follow-artists"
+      ],
+      "homeSurface": "/home/10",
+      "favoriteGenre": "Gospel",
+      "allowedActions": [
+        "vote",
+        "react",
+        "tip",
+        "join-room",
+        "claim-reward",
+        "browse-charts"
+      ],
+      "timeAllocation": {
+        "streaming": 32,
+        "socialEngagement": 29,
+        "browsing": 13,
+        "passive": 26
+      },
+      "styleProfile": {
+        "vibe": "analytical"
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "fan-043",
+      "displayName": "Drift G",
+      "role": "fan",
+      "personaType": "hype-follower",
+      "activityLevel": "high",
+      "goals": [
+        "vote",
+        "watch-streams",
+        "earn-rewards",
+        "follow-artists"
+      ],
+      "homeSurface": "/home/6",
+      "favoriteGenre": "Neo-Soul",
+      "allowedActions": [
+        "vote",
+        "react",
+        "tip",
+        "join-room",
+        "claim-reward",
+        "browse-charts"
+      ],
+      "timeAllocation": {
+        "streaming": 31,
+        "socialEngagement": 24,
+        "browsing": 18,
+        "passive": 27
+      },
+      "styleProfile": {
+        "vibe": "loyal"
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "fan-044",
+      "displayName": "Edge Q",
+      "role": "fan",
+      "personaType": "chart-watcher",
+      "activityLevel": "low",
+      "goals": [
+        "vote",
+        "watch-streams",
+        "earn-rewards",
+        "follow-artists"
+      ],
+      "homeSurface": "/home/9",
+      "favoriteGenre": "Gospel",
+      "allowedActions": [
+        "vote",
+        "react",
+        "tip",
+        "join-room",
+        "claim-reward",
+        "browse-charts"
+      ],
+      "timeAllocation": {
+        "streaming": 42,
+        "socialEngagement": 27,
+        "browsing": 17,
+        "passive": 14
+      },
+      "styleProfile": {
+        "vibe": "loyal"
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "fan-045",
+      "displayName": "Flux E",
+      "role": "fan",
+      "personaType": "hype-follower",
+      "activityLevel": "low",
+      "goals": [
+        "vote",
+        "watch-streams",
+        "earn-rewards",
+        "follow-artists"
+      ],
+      "homeSurface": "/home/6",
+      "favoriteGenre": "Neo-Soul",
+      "allowedActions": [
+        "vote",
+        "react",
+        "tip",
+        "join-room",
+        "claim-reward",
+        "browse-charts"
+      ],
+      "timeAllocation": {
+        "streaming": 42,
+        "socialEngagement": 23,
+        "browsing": 11,
+        "passive": 24
+      },
+      "styleProfile": {
+        "vibe": "analytical"
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "fan-046",
+      "displayName": "Gust Y",
+      "role": "fan",
+      "personaType": "superfan",
+      "activityLevel": "low",
+      "goals": [
+        "vote",
+        "watch-streams",
+        "earn-rewards",
+        "follow-artists"
+      ],
+      "homeSurface": "/home/10",
+      "favoriteGenre": "Soul",
+      "allowedActions": [
+        "vote",
+        "react",
+        "tip",
+        "join-room",
+        "claim-reward",
+        "browse-charts"
+      ],
+      "timeAllocation": {
+        "streaming": 42,
+        "socialEngagement": 25,
+        "browsing": 12,
+        "passive": 21
+      },
+      "styleProfile": {
+        "vibe": "analytical"
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "fan-047",
+      "displayName": "Halo Z",
+      "role": "fan",
+      "personaType": "casual",
+      "activityLevel": "low",
+      "goals": [
+        "vote",
+        "watch-streams",
+        "earn-rewards",
+        "follow-artists"
+      ],
+      "homeSurface": "/home/6",
+      "favoriteGenre": "Neo-Soul",
+      "allowedActions": [
+        "vote",
+        "react",
+        "tip",
+        "join-room",
+        "claim-reward",
+        "browse-charts"
+      ],
+      "timeAllocation": {
+        "streaming": 32,
+        "socialEngagement": 22,
+        "browsing": 12,
+        "passive": 34
+      },
+      "styleProfile": {
+        "vibe": "analytical"
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "fan-048",
+      "displayName": "Iris B",
+      "role": "fan",
+      "personaType": "superfan",
+      "activityLevel": "medium",
+      "goals": [
+        "vote",
+        "watch-streams",
+        "earn-rewards",
+        "follow-artists"
+      ],
+      "homeSurface": "/home/2",
+      "favoriteGenre": "Drill",
+      "allowedActions": [
+        "vote",
+        "react",
+        "tip",
+        "join-room",
+        "claim-reward",
+        "browse-charts"
+      ],
+      "timeAllocation": {
+        "streaming": 35,
+        "socialEngagement": 20,
+        "browsing": 19,
+        "passive": 26
+      },
+      "styleProfile": {
+        "vibe": "loyal"
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "fan-049",
+      "displayName": "Jade M",
+      "role": "fan",
+      "personaType": "hype-follower",
+      "activityLevel": "very-high",
+      "goals": [
+        "vote",
+        "watch-streams",
+        "earn-rewards",
+        "follow-artists"
+      ],
+      "homeSurface": "/home/7",
+      "favoriteGenre": "Hip Hop",
+      "allowedActions": [
+        "vote",
+        "react",
+        "tip",
+        "join-room",
+        "claim-reward",
+        "browse-charts"
+      ],
+      "timeAllocation": {
+        "streaming": 40,
+        "socialEngagement": 26,
+        "browsing": 15,
+        "passive": 19
+      },
+      "styleProfile": {
+        "vibe": "chill"
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "fan-050",
+      "displayName": "Koi K",
+      "role": "fan",
+      "personaType": "hype-follower",
+      "activityLevel": "low",
+      "goals": [
+        "vote",
+        "watch-streams",
+        "earn-rewards",
+        "follow-artists"
+      ],
+      "homeSurface": "/home/7",
+      "favoriteGenre": "Gospel",
+      "allowedActions": [
+        "vote",
+        "react",
+        "tip",
+        "join-room",
+        "claim-reward",
+        "browse-charts"
+      ],
+      "timeAllocation": {
+        "streaming": 36,
+        "socialEngagement": 30,
+        "browsing": 13,
+        "passive": 21
+      },
+      "styleProfile": {
+        "vibe": "loyal"
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "artist-001",
+      "displayName": "Nova Kane",
+      "role": "artist",
+      "personaType": "mainstream-contender",
+      "activityLevel": "low",
+      "goals": [
+        "climb-top10",
+        "release-music",
+        "earn-crown",
+        "collaborate"
+      ],
+      "homeSurface": "/home/9",
+      "genre": "R&B",
+      "allowedActions": [
+        "post-track",
+        "go-live",
+        "enter-cypher",
+        "join-battle",
+        "sponsor-deal",
+        "accept-booking"
+      ],
+      "timeAllocation": {
+        "streaming": 38,
+        "socialEngagement": 25,
+        "marketplace": 12,
+        "passive": 25
+      },
+      "streamingProfile": {
+        "avgSessionLength": 83,
+        "peakHours": "weekend-afternoon"
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "artist-002",
+      "displayName": "Ari Volt",
+      "role": "artist",
+      "personaType": "underground",
+      "activityLevel": "medium",
+      "goals": [
+        "climb-top10",
+        "release-music",
+        "earn-crown",
+        "collaborate"
+      ],
+      "homeSurface": "/home/7",
+      "genre": "Gospel",
+      "allowedActions": [
+        "post-track",
+        "go-live",
+        "enter-cypher",
+        "join-battle",
+        "sponsor-deal",
+        "accept-booking"
+      ],
+      "timeAllocation": {
+        "streaming": 39,
+        "socialEngagement": 27,
+        "marketplace": 10,
+        "passive": 24
+      },
+      "streamingProfile": {
+        "avgSessionLength": 90,
+        "peakHours": "weekend-afternoon"
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "artist-003",
+      "displayName": "Rhyme Lane",
+      "role": "artist",
+      "personaType": "mainstream-contender",
+      "activityLevel": "low",
+      "goals": [
+        "climb-top10",
+        "release-music",
+        "earn-crown",
+        "collaborate"
+      ],
+      "homeSurface": "/home/7",
+      "genre": "R&B",
+      "allowedActions": [
+        "post-track",
+        "go-live",
+        "enter-cypher",
+        "join-battle",
+        "sponsor-deal",
+        "accept-booking"
+      ],
+      "timeAllocation": {
+        "streaming": 35,
+        "socialEngagement": 26,
+        "marketplace": 12,
+        "passive": 27
+      },
+      "streamingProfile": {
+        "avgSessionLength": 24,
+        "peakHours": "weekend-afternoon"
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "artist-004",
+      "displayName": "Echo Vee",
+      "role": "artist",
+      "personaType": "legacy",
+      "activityLevel": "high",
+      "goals": [
+        "climb-top10",
+        "release-music",
+        "earn-crown",
+        "collaborate"
+      ],
+      "homeSurface": "/home/7",
+      "genre": "Neo-Soul",
+      "allowedActions": [
+        "post-track",
+        "go-live",
+        "enter-cypher",
+        "join-battle",
+        "sponsor-deal",
+        "accept-booking"
+      ],
+      "timeAllocation": {
+        "streaming": 37,
+        "socialEngagement": 26,
+        "marketplace": 14,
+        "passive": 23
+      },
+      "streamingProfile": {
+        "avgSessionLength": 44,
+        "peakHours": "evening"
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "artist-005",
+      "displayName": "Lex Royal",
+      "role": "artist",
+      "personaType": "mainstream-contender",
+      "activityLevel": "medium",
+      "goals": [
+        "climb-top10",
+        "release-music",
+        "earn-crown",
+        "collaborate"
+      ],
+      "homeSurface": "/home/6",
+      "genre": "R&B",
+      "allowedActions": [
+        "post-track",
+        "go-live",
+        "enter-cypher",
+        "join-battle",
+        "sponsor-deal",
+        "accept-booking"
+      ],
+      "timeAllocation": {
+        "streaming": 37,
+        "socialEngagement": 30,
+        "marketplace": 14,
+        "passive": 19
+      },
+      "streamingProfile": {
+        "avgSessionLength": 69,
+        "peakHours": "weekend-afternoon"
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "artist-006",
+      "displayName": "Kato Drift",
+      "role": "artist",
+      "personaType": "underground",
+      "activityLevel": "very-high",
+      "goals": [
+        "climb-top10",
+        "release-music",
+        "earn-crown",
+        "collaborate"
+      ],
+      "homeSurface": "/home/12",
+      "genre": "Soul",
+      "allowedActions": [
+        "post-track",
+        "go-live",
+        "enter-cypher",
+        "join-battle",
+        "sponsor-deal",
+        "accept-booking"
+      ],
+      "timeAllocation": {
+        "streaming": 31,
+        "socialEngagement": 25,
+        "marketplace": 11,
+        "passive": 33
+      },
+      "streamingProfile": {
+        "avgSessionLength": 29,
+        "peakHours": "weekend-afternoon"
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "artist-007",
+      "displayName": "Juno Arc",
+      "role": "artist",
+      "personaType": "legacy",
+      "activityLevel": "high",
+      "goals": [
+        "climb-top10",
+        "release-music",
+        "earn-crown",
+        "collaborate"
+      ],
+      "homeSurface": "/home/12",
+      "genre": "Afrobeats",
+      "allowedActions": [
+        "post-track",
+        "go-live",
+        "enter-cypher",
+        "join-battle",
+        "sponsor-deal",
+        "accept-booking"
+      ],
+      "timeAllocation": {
+        "streaming": 30,
+        "socialEngagement": 28,
+        "marketplace": 13,
+        "passive": 29
+      },
+      "streamingProfile": {
+        "avgSessionLength": 44,
+        "peakHours": "evening"
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "artist-008",
+      "displayName": "Pulse Ray",
+      "role": "artist",
+      "personaType": "digital-native",
+      "activityLevel": "high",
+      "goals": [
+        "climb-top10",
+        "release-music",
+        "earn-crown",
+        "collaborate"
+      ],
+      "homeSurface": "/home/7",
+      "genre": "Neo-Soul",
+      "allowedActions": [
+        "post-track",
+        "go-live",
+        "enter-cypher",
+        "join-battle",
+        "sponsor-deal",
+        "accept-booking"
+      ],
+      "timeAllocation": {
+        "streaming": 33,
+        "socialEngagement": 26,
+        "marketplace": 14,
+        "passive": 27
+      },
+      "streamingProfile": {
+        "avgSessionLength": 67,
+        "peakHours": "weekend-afternoon"
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "artist-009",
+      "displayName": "Vera Cross",
+      "role": "artist",
+      "personaType": "emerging",
+      "activityLevel": "low",
+      "goals": [
+        "climb-top10",
+        "release-music",
+        "earn-crown",
+        "collaborate"
+      ],
+      "homeSurface": "/home/7",
+      "genre": "Hip Hop",
+      "allowedActions": [
+        "post-track",
+        "go-live",
+        "enter-cypher",
+        "join-battle",
+        "sponsor-deal",
+        "accept-booking"
+      ],
+      "timeAllocation": {
+        "streaming": 35,
+        "socialEngagement": 28,
+        "marketplace": 11,
+        "passive": 26
+      },
+      "streamingProfile": {
+        "avgSessionLength": 64,
+        "peakHours": "weekend-afternoon"
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "artist-010",
+      "displayName": "Dex Milo",
+      "role": "artist",
+      "personaType": "digital-native",
+      "activityLevel": "high",
+      "goals": [
+        "climb-top10",
+        "release-music",
+        "earn-crown",
+        "collaborate"
+      ],
+      "homeSurface": "/home/6",
+      "genre": "Latin",
+      "allowedActions": [
+        "post-track",
+        "go-live",
+        "enter-cypher",
+        "join-battle",
+        "sponsor-deal",
+        "accept-booking"
+      ],
+      "timeAllocation": {
+        "streaming": 39,
+        "socialEngagement": 29,
+        "marketplace": 12,
+        "passive": 20
+      },
+      "streamingProfile": {
+        "avgSessionLength": 82,
+        "peakHours": "evening"
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "artist-011",
+      "displayName": "Mox Fire",
+      "role": "artist",
+      "personaType": "emerging",
+      "activityLevel": "very-high",
+      "goals": [
+        "climb-top10",
+        "release-music",
+        "earn-crown",
+        "collaborate"
+      ],
+      "homeSurface": "/home/12",
+      "genre": "Hip Hop",
+      "allowedActions": [
+        "post-track",
+        "go-live",
+        "enter-cypher",
+        "join-battle",
+        "sponsor-deal",
+        "accept-booking"
+      ],
+      "timeAllocation": {
+        "streaming": 35,
+        "socialEngagement": 30,
+        "marketplace": 11,
+        "passive": 24
+      },
+      "streamingProfile": {
+        "avgSessionLength": 88,
+        "peakHours": "weekend-afternoon"
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "artist-012",
+      "displayName": "Rina Sky",
+      "role": "artist",
+      "personaType": "emerging",
+      "activityLevel": "low",
+      "goals": [
+        "climb-top10",
+        "release-music",
+        "earn-crown",
+        "collaborate"
+      ],
+      "homeSurface": "/home/7",
+      "genre": "Pop",
+      "allowedActions": [
+        "post-track",
+        "go-live",
+        "enter-cypher",
+        "join-battle",
+        "sponsor-deal",
+        "accept-booking"
+      ],
+      "timeAllocation": {
+        "streaming": 32,
+        "socialEngagement": 28,
+        "marketplace": 14,
+        "passive": 26
+      },
+      "streamingProfile": {
+        "avgSessionLength": 80,
+        "peakHours": "evening"
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "artist-013",
+      "displayName": "Levi Tone",
+      "role": "artist",
+      "personaType": "underground",
+      "activityLevel": "medium",
+      "goals": [
+        "climb-top10",
+        "release-music",
+        "earn-crown",
+        "collaborate"
+      ],
+      "homeSurface": "/home/12",
+      "genre": "Afrobeats",
+      "allowedActions": [
+        "post-track",
+        "go-live",
+        "enter-cypher",
+        "join-battle",
+        "sponsor-deal",
+        "accept-booking"
+      ],
+      "timeAllocation": {
+        "streaming": 32,
+        "socialEngagement": 26,
+        "marketplace": 12,
+        "passive": 30
+      },
+      "streamingProfile": {
+        "avgSessionLength": 36,
+        "peakHours": "late-night"
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "artist-014",
+      "displayName": "Axel Boom",
+      "role": "artist",
+      "personaType": "legacy",
+      "activityLevel": "low",
+      "goals": [
+        "climb-top10",
+        "release-music",
+        "earn-crown",
+        "collaborate"
+      ],
+      "homeSurface": "/home/12",
+      "genre": "Hip Hop",
+      "allowedActions": [
+        "post-track",
+        "go-live",
+        "enter-cypher",
+        "join-battle",
+        "sponsor-deal",
+        "accept-booking"
+      ],
+      "timeAllocation": {
+        "streaming": 31,
+        "socialEngagement": 29,
+        "marketplace": 13,
+        "passive": 27
+      },
+      "streamingProfile": {
+        "avgSessionLength": 52,
+        "peakHours": "evening"
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "artist-015",
+      "displayName": "Cleo Verse",
+      "role": "artist",
+      "personaType": "emerging",
+      "activityLevel": "high",
+      "goals": [
+        "climb-top10",
+        "release-music",
+        "earn-crown",
+        "collaborate"
+      ],
+      "homeSurface": "/home/7",
+      "genre": "Gospel",
+      "allowedActions": [
+        "post-track",
+        "go-live",
+        "enter-cypher",
+        "join-battle",
+        "sponsor-deal",
+        "accept-booking"
+      ],
+      "timeAllocation": {
+        "streaming": 32,
+        "socialEngagement": 26,
+        "marketplace": 15,
+        "passive": 27
+      },
+      "streamingProfile": {
+        "avgSessionLength": 87,
+        "peakHours": "late-night"
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "artist-016",
+      "displayName": "Sand Trap",
+      "role": "artist",
+      "personaType": "legacy",
+      "activityLevel": "very-high",
+      "goals": [
+        "climb-top10",
+        "release-music",
+        "earn-crown",
+        "collaborate"
+      ],
+      "homeSurface": "/home/9",
+      "genre": "Hip Hop",
+      "allowedActions": [
+        "post-track",
+        "go-live",
+        "enter-cypher",
+        "join-battle",
+        "sponsor-deal",
+        "accept-booking"
+      ],
+      "timeAllocation": {
+        "streaming": 40,
+        "socialEngagement": 27,
+        "marketplace": 11,
+        "passive": 22
+      },
+      "streamingProfile": {
+        "avgSessionLength": 89,
+        "peakHours": "evening"
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "artist-017",
+      "displayName": "Neon Fist",
+      "role": "artist",
+      "personaType": "digital-native",
+      "activityLevel": "very-high",
+      "goals": [
+        "climb-top10",
+        "release-music",
+        "earn-crown",
+        "collaborate"
+      ],
+      "homeSurface": "/home/12",
+      "genre": "Afrobeats",
+      "allowedActions": [
+        "post-track",
+        "go-live",
+        "enter-cypher",
+        "join-battle",
+        "sponsor-deal",
+        "accept-booking"
+      ],
+      "timeAllocation": {
+        "streaming": 36,
+        "socialEngagement": 26,
+        "marketplace": 12,
+        "passive": 26
+      },
+      "streamingProfile": {
+        "avgSessionLength": 84,
+        "peakHours": "weekend-afternoon"
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "artist-018",
+      "displayName": "Vibe Rez",
+      "role": "artist",
+      "personaType": "digital-native",
+      "activityLevel": "high",
+      "goals": [
+        "climb-top10",
+        "release-music",
+        "earn-crown",
+        "collaborate"
+      ],
+      "homeSurface": "/home/6",
+      "genre": "Soul",
+      "allowedActions": [
+        "post-track",
+        "go-live",
+        "enter-cypher",
+        "join-battle",
+        "sponsor-deal",
+        "accept-booking"
+      ],
+      "timeAllocation": {
+        "streaming": 39,
+        "socialEngagement": 26,
+        "marketplace": 12,
+        "passive": 23
+      },
+      "streamingProfile": {
+        "avgSessionLength": 74,
+        "peakHours": "weekend-afternoon"
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "artist-019",
+      "displayName": "Haze Lord",
+      "role": "artist",
+      "personaType": "underground",
+      "activityLevel": "high",
+      "goals": [
+        "climb-top10",
+        "release-music",
+        "earn-crown",
+        "collaborate"
+      ],
+      "homeSurface": "/home/7",
+      "genre": "Soul",
+      "allowedActions": [
+        "post-track",
+        "go-live",
+        "enter-cypher",
+        "join-battle",
+        "sponsor-deal",
+        "accept-booking"
+      ],
+      "timeAllocation": {
+        "streaming": 35,
+        "socialEngagement": 25,
+        "marketplace": 14,
+        "passive": 26
+      },
+      "streamingProfile": {
+        "avgSessionLength": 42,
+        "peakHours": "evening"
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "artist-020",
+      "displayName": "Drift Wave",
+      "role": "artist",
+      "personaType": "underground",
+      "activityLevel": "medium",
+      "goals": [
+        "climb-top10",
+        "release-music",
+        "earn-crown",
+        "collaborate"
+      ],
+      "homeSurface": "/home/9",
+      "genre": "Hip Hop",
+      "allowedActions": [
+        "post-track",
+        "go-live",
+        "enter-cypher",
+        "join-battle",
+        "sponsor-deal",
+        "accept-booking"
+      ],
+      "timeAllocation": {
+        "streaming": 30,
+        "socialEngagement": 25,
+        "marketplace": 10,
+        "passive": 35
+      },
+      "streamingProfile": {
+        "avgSessionLength": 73,
+        "peakHours": "weekend-afternoon"
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "performer-001",
+      "displayName": "Step One",
+      "role": "performer",
+      "personaType": "hypeman",
+      "activityLevel": "medium",
+      "goals": [
+        "get-booked",
+        "perform-live",
+        "gain-followers",
+        "win-battle"
+      ],
+      "homeSurface": "/home/9",
+      "specialty": "live-improv",
+      "allowedActions": [
+        "accept-booking",
+        "go-live",
+        "enter-battle",
+        "post-performance-clip"
+      ],
+      "timeAllocation": {
+        "streaming": 50,
+        "socialEngagement": 23,
+        "marketplace": 7,
+        "passive": 11
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "performer-002",
+      "displayName": "Flex T",
+      "role": "performer",
+      "personaType": "visual-artist",
+      "activityLevel": "high",
+      "goals": [
+        "get-booked",
+        "perform-live",
+        "gain-followers",
+        "win-battle"
+      ],
+      "homeSurface": "/home/3",
+      "specialty": "choreography",
+      "allowedActions": [
+        "accept-booking",
+        "go-live",
+        "enter-battle",
+        "post-performance-clip"
+      ],
+      "timeAllocation": {
+        "streaming": 44,
+        "socialEngagement": 26,
+        "marketplace": 7,
+        "passive": 11
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "performer-003",
+      "displayName": "Cypher K",
+      "role": "performer",
+      "personaType": "visual-artist",
+      "activityLevel": "medium",
+      "goals": [
+        "get-booked",
+        "perform-live",
+        "gain-followers",
+        "win-battle"
+      ],
+      "homeSurface": "/home/8",
+      "specialty": "beatbox",
+      "allowedActions": [
+        "accept-booking",
+        "go-live",
+        "enter-battle",
+        "post-performance-clip"
+      ],
+      "timeAllocation": {
+        "streaming": 54,
+        "socialEngagement": 27,
+        "marketplace": 7,
+        "passive": 17
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "performer-004",
+      "displayName": "Break Ray",
+      "role": "performer",
+      "personaType": "vocalist",
+      "activityLevel": "high",
+      "goals": [
+        "get-booked",
+        "perform-live",
+        "gain-followers",
+        "win-battle"
+      ],
+      "homeSurface": "/home/3",
+      "specialty": "freestyle",
+      "allowedActions": [
+        "accept-booking",
+        "go-live",
+        "enter-battle",
+        "post-performance-clip"
+      ],
+      "timeAllocation": {
+        "streaming": 59,
+        "socialEngagement": 21,
+        "marketplace": 7,
+        "passive": 15
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "performer-005",
+      "displayName": "Pop Lock D",
+      "role": "performer",
+      "personaType": "hypeman",
+      "activityLevel": "medium",
+      "goals": [
+        "get-booked",
+        "perform-live",
+        "gain-followers",
+        "win-battle"
+      ],
+      "homeSurface": "/home/8",
+      "specialty": "beatbox",
+      "allowedActions": [
+        "accept-booking",
+        "go-live",
+        "enter-battle",
+        "post-performance-clip"
+      ],
+      "timeAllocation": {
+        "streaming": 53,
+        "socialEngagement": 28,
+        "marketplace": 8,
+        "passive": 15
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "performer-006",
+      "displayName": "Groove V",
+      "role": "performer",
+      "personaType": "instrumentalist",
+      "activityLevel": "medium",
+      "goals": [
+        "get-booked",
+        "perform-live",
+        "gain-followers",
+        "win-battle"
+      ],
+      "homeSurface": "/home/3",
+      "specialty": "spoken-word",
+      "allowedActions": [
+        "accept-booking",
+        "go-live",
+        "enter-battle",
+        "post-performance-clip"
+      ],
+      "timeAllocation": {
+        "streaming": 46,
+        "socialEngagement": 29,
+        "marketplace": 5,
+        "passive": 13
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "performer-007",
+      "displayName": "Drift C",
+      "role": "performer",
+      "personaType": "dancer",
+      "activityLevel": "very-high",
+      "goals": [
+        "get-booked",
+        "perform-live",
+        "gain-followers",
+        "win-battle"
+      ],
+      "homeSurface": "/home/3",
+      "specialty": "spoken-word",
+      "allowedActions": [
+        "accept-booking",
+        "go-live",
+        "enter-battle",
+        "post-performance-clip"
+      ],
+      "timeAllocation": {
+        "streaming": 58,
+        "socialEngagement": 29,
+        "marketplace": 10,
+        "passive": 16
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "performer-008",
+      "displayName": "Wave Rider",
+      "role": "performer",
+      "personaType": "vocalist",
+      "activityLevel": "high",
+      "goals": [
+        "get-booked",
+        "perform-live",
+        "gain-followers",
+        "win-battle"
+      ],
+      "homeSurface": "/home/3",
+      "specialty": "live-improv",
+      "allowedActions": [
+        "accept-booking",
+        "go-live",
+        "enter-battle",
+        "post-performance-clip"
+      ],
+      "timeAllocation": {
+        "streaming": 44,
+        "socialEngagement": 20,
+        "marketplace": 5,
+        "passive": 15
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "performer-009",
+      "displayName": "Spin Mox",
+      "role": "performer",
+      "personaType": "dancer",
+      "activityLevel": "high",
+      "goals": [
+        "get-booked",
+        "perform-live",
+        "gain-followers",
+        "win-battle"
+      ],
+      "homeSurface": "/home/9",
+      "specialty": "live-improv",
+      "allowedActions": [
+        "accept-booking",
+        "go-live",
+        "enter-battle",
+        "post-performance-clip"
+      ],
+      "timeAllocation": {
+        "streaming": 46,
+        "socialEngagement": 22,
+        "marketplace": 6,
+        "passive": 17
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "performer-010",
+      "displayName": "Flow State",
+      "role": "performer",
+      "personaType": "hypeman",
+      "activityLevel": "high",
+      "goals": [
+        "get-booked",
+        "perform-live",
+        "gain-followers",
+        "win-battle"
+      ],
+      "homeSurface": "/home/9",
+      "specialty": "live-improv",
+      "allowedActions": [
+        "accept-booking",
+        "go-live",
+        "enter-battle",
+        "post-performance-clip"
+      ],
+      "timeAllocation": {
+        "streaming": 50,
+        "socialEngagement": 28,
+        "marketplace": 8,
+        "passive": 15
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "performer-011",
+      "displayName": "Bounce L",
+      "role": "performer",
+      "personaType": "visual-artist",
+      "activityLevel": "very-high",
+      "goals": [
+        "get-booked",
+        "perform-live",
+        "gain-followers",
+        "win-battle"
+      ],
+      "homeSurface": "/home/9",
+      "specialty": "choreography",
+      "allowedActions": [
+        "accept-booking",
+        "go-live",
+        "enter-battle",
+        "post-performance-clip"
+      ],
+      "timeAllocation": {
+        "streaming": 49,
+        "socialEngagement": 20,
+        "marketplace": 7,
+        "passive": 15
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "performer-012",
+      "displayName": "Slide P",
+      "role": "performer",
+      "personaType": "dancer",
+      "activityLevel": "medium",
+      "goals": [
+        "get-booked",
+        "perform-live",
+        "gain-followers",
+        "win-battle"
+      ],
+      "homeSurface": "/home/3",
+      "specialty": "beatbox",
+      "allowedActions": [
+        "accept-booking",
+        "go-live",
+        "enter-battle",
+        "post-performance-clip"
+      ],
+      "timeAllocation": {
+        "streaming": 53,
+        "socialEngagement": 25,
+        "marketplace": 9,
+        "passive": 15
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "performer-013",
+      "displayName": "Turn Q",
+      "role": "performer",
+      "personaType": "dancer",
+      "activityLevel": "high",
+      "goals": [
+        "get-booked",
+        "perform-live",
+        "gain-followers",
+        "win-battle"
+      ],
+      "homeSurface": "/home/9",
+      "specialty": "spoken-word",
+      "allowedActions": [
+        "accept-booking",
+        "go-live",
+        "enter-battle",
+        "post-performance-clip"
+      ],
+      "timeAllocation": {
+        "streaming": 41,
+        "socialEngagement": 29,
+        "marketplace": 10,
+        "passive": 17
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "performer-014",
+      "displayName": "Glide S",
+      "role": "performer",
+      "personaType": "instrumentalist",
+      "activityLevel": "medium",
+      "goals": [
+        "get-booked",
+        "perform-live",
+        "gain-followers",
+        "win-battle"
+      ],
+      "homeSurface": "/home/9",
+      "specialty": "spoken-word",
+      "allowedActions": [
+        "accept-booking",
+        "go-live",
+        "enter-battle",
+        "post-performance-clip"
+      ],
+      "timeAllocation": {
+        "streaming": 41,
+        "socialEngagement": 29,
+        "marketplace": 9,
+        "passive": 15
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "performer-015",
+      "displayName": "Snap W",
+      "role": "performer",
+      "personaType": "visual-artist",
+      "activityLevel": "medium",
+      "goals": [
+        "get-booked",
+        "perform-live",
+        "gain-followers",
+        "win-battle"
+      ],
+      "homeSurface": "/home/3",
+      "specialty": "live-improv",
+      "allowedActions": [
+        "accept-booking",
+        "go-live",
+        "enter-battle",
+        "post-performance-clip"
+      ],
+      "timeAllocation": {
+        "streaming": 50,
+        "socialEngagement": 21,
+        "marketplace": 8,
+        "passive": 18
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "sponsor-001",
+      "displayName": "SoundWave Audio",
+      "role": "sponsor",
+      "personaType": "merch-sponsor",
+      "activityLevel": "low",
+      "goals": [
+        "run-campaign",
+        "get-impressions",
+        "activate-drops",
+        "measure-ctr"
+      ],
+      "homeSurface": "/home/5",
+      "allowedActions": [
+        "create-campaign",
+        "upload-creative",
+        "view-analytics",
+        "request-placement"
+      ],
+      "timeAllocation": {
+        "streaming": 0,
+        "socialEngagement": 15,
+        "marketplace": 41,
+        "passive": 35
+      },
+      "marketingProfile": {
+        "campaignBudget": 7089,
+        "preferredSlots": [
+          "billboard-hero"
+        ]
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "sponsor-002",
+      "displayName": "BeatBox Pro",
+      "role": "sponsor",
+      "personaType": "media-sponsor",
+      "activityLevel": "medium",
+      "goals": [
+        "run-campaign",
+        "get-impressions",
+        "activate-drops",
+        "measure-ctr"
+      ],
+      "homeSurface": "/home/5",
+      "allowedActions": [
+        "create-campaign",
+        "upload-creative",
+        "view-analytics",
+        "request-placement"
+      ],
+      "timeAllocation": {
+        "streaming": 0,
+        "socialEngagement": 12,
+        "marketplace": 42,
+        "passive": 39
+      },
+      "marketingProfile": {
+        "campaignBudget": 9874,
+        "preferredSlots": [
+          "billboard-hero"
+        ]
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "sponsor-003",
+      "displayName": "Urban Pulse Records",
+      "role": "sponsor",
+      "personaType": "brand-sponsor",
+      "activityLevel": "low",
+      "goals": [
+        "run-campaign",
+        "get-impressions",
+        "activate-drops",
+        "measure-ctr"
+      ],
+      "homeSurface": "/home/5",
+      "allowedActions": [
+        "create-campaign",
+        "upload-creative",
+        "view-analytics",
+        "request-placement"
+      ],
+      "timeAllocation": {
+        "streaming": 0,
+        "socialEngagement": 20,
+        "marketplace": 43,
+        "passive": 28
+      },
+      "marketingProfile": {
+        "campaignBudget": 3818,
+        "preferredSlots": [
+          "cypher-banner"
+        ]
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "sponsor-004",
+      "displayName": "Crown Energy",
+      "role": "sponsor",
+      "personaType": "merch-sponsor",
+      "activityLevel": "medium",
+      "goals": [
+        "run-campaign",
+        "get-impressions",
+        "activate-drops",
+        "measure-ctr"
+      ],
+      "homeSurface": "/home/5",
+      "allowedActions": [
+        "create-campaign",
+        "upload-creative",
+        "view-analytics",
+        "request-placement"
+      ],
+      "timeAllocation": {
+        "streaming": 0,
+        "socialEngagement": 17,
+        "marketplace": 47,
+        "passive": 36
+      },
+      "marketingProfile": {
+        "campaignBudget": 4760,
+        "preferredSlots": [
+          "billboard-hero",
+          "lobby-wall"
+        ]
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "sponsor-005",
+      "displayName": "Mic Drop Media",
+      "role": "sponsor",
+      "personaType": "label-sponsor",
+      "activityLevel": "low",
+      "goals": [
+        "run-campaign",
+        "get-impressions",
+        "activate-drops",
+        "measure-ctr"
+      ],
+      "homeSurface": "/home/5",
+      "allowedActions": [
+        "create-campaign",
+        "upload-creative",
+        "view-analytics",
+        "request-placement"
+      ],
+      "timeAllocation": {
+        "streaming": 0,
+        "socialEngagement": 19,
+        "marketplace": 43,
+        "passive": 28
+      },
+      "marketingProfile": {
+        "campaignBudget": 1433,
+        "preferredSlots": [
+          "billboard-hero",
+          "lobby-wall"
+        ]
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "sponsor-006",
+      "displayName": "Wave Label",
+      "role": "sponsor",
+      "personaType": "merch-sponsor",
+      "activityLevel": "low",
+      "goals": [
+        "run-campaign",
+        "get-impressions",
+        "activate-drops",
+        "measure-ctr"
+      ],
+      "homeSurface": "/home/5",
+      "allowedActions": [
+        "create-campaign",
+        "upload-creative",
+        "view-analytics",
+        "request-placement"
+      ],
+      "timeAllocation": {
+        "streaming": 0,
+        "socialEngagement": 11,
+        "marketplace": 51,
+        "passive": 25
+      },
+      "marketingProfile": {
+        "campaignBudget": 3511,
+        "preferredSlots": [
+          "billboard-hero",
+          "lobby-wall"
+        ]
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "sponsor-007",
+      "displayName": "Studio X",
+      "role": "sponsor",
+      "personaType": "label-sponsor",
+      "activityLevel": "medium",
+      "goals": [
+        "run-campaign",
+        "get-impressions",
+        "activate-drops",
+        "measure-ctr"
+      ],
+      "homeSurface": "/home/5",
+      "allowedActions": [
+        "create-campaign",
+        "upload-creative",
+        "view-analytics",
+        "request-placement"
+      ],
+      "timeAllocation": {
+        "streaming": 0,
+        "socialEngagement": 13,
+        "marketplace": 57,
+        "passive": 30
+      },
+      "marketingProfile": {
+        "campaignBudget": 3537,
+        "preferredSlots": [
+          "cypher-banner"
+        ]
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "sponsor-008",
+      "displayName": "Neon Ink",
+      "role": "sponsor",
+      "personaType": "brand-sponsor",
+      "activityLevel": "medium",
+      "goals": [
+        "run-campaign",
+        "get-impressions",
+        "activate-drops",
+        "measure-ctr"
+      ],
+      "homeSurface": "/home/5",
+      "allowedActions": [
+        "create-campaign",
+        "upload-creative",
+        "view-analytics",
+        "request-placement"
+      ],
+      "timeAllocation": {
+        "streaming": 0,
+        "socialEngagement": 19,
+        "marketplace": 58,
+        "passive": 29
+      },
+      "marketingProfile": {
+        "campaignBudget": 8608,
+        "preferredSlots": [
+          "billboard-hero",
+          "lobby-wall"
+        ]
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "sponsor-009",
+      "displayName": "Bass Forge",
+      "role": "sponsor",
+      "personaType": "merch-sponsor",
+      "activityLevel": "low",
+      "goals": [
+        "run-campaign",
+        "get-impressions",
+        "activate-drops",
+        "measure-ctr"
+      ],
+      "homeSurface": "/home/5",
+      "allowedActions": [
+        "create-campaign",
+        "upload-creative",
+        "view-analytics",
+        "request-placement"
+      ],
+      "timeAllocation": {
+        "streaming": 0,
+        "socialEngagement": 16,
+        "marketplace": 48,
+        "passive": 30
+      },
+      "marketingProfile": {
+        "campaignBudget": 1311,
+        "preferredSlots": [
+          "billboard-hero"
+        ]
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "sponsor-010",
+      "displayName": "Loop Corp",
+      "role": "sponsor",
+      "personaType": "label-sponsor",
+      "activityLevel": "low",
+      "goals": [
+        "run-campaign",
+        "get-impressions",
+        "activate-drops",
+        "measure-ctr"
+      ],
+      "homeSurface": "/home/5",
+      "allowedActions": [
+        "create-campaign",
+        "upload-creative",
+        "view-analytics",
+        "request-placement"
+      ],
+      "timeAllocation": {
+        "streaming": 0,
+        "socialEngagement": 12,
+        "marketplace": 44,
+        "passive": 32
+      },
+      "marketingProfile": {
+        "campaignBudget": 7256,
+        "preferredSlots": [
+          "billboard-hero"
+        ]
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "advertiser-001",
+      "displayName": "AdPulse Co",
+      "role": "advertiser",
+      "personaType": "brand-awareness",
+      "activityLevel": "high",
+      "goals": [
+        "drive-clicks",
+        "grow-reach",
+        "promote-events",
+        "A/B-test-creatives"
+      ],
+      "homeSurface": "/home/5",
+      "allowedActions": [
+        "create-ad",
+        "set-targeting",
+        "view-report",
+        "pause-campaign",
+        "request-slot"
+      ],
+      "timeAllocation": {
+        "streaming": 0,
+        "socialEngagement": 12,
+        "marketplace": 68,
+        "passive": 33
+      },
+      "marketingProfile": {
+        "dailyBudget": 1955,
+        "preferredFormats": [
+          "banner"
+        ]
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "advertiser-002",
+      "displayName": "Reach Media",
+      "role": "advertiser",
+      "personaType": "brand-awareness",
+      "activityLevel": "medium",
+      "goals": [
+        "drive-clicks",
+        "grow-reach",
+        "promote-events",
+        "A/B-test-creatives"
+      ],
+      "homeSurface": "/home/5",
+      "allowedActions": [
+        "create-ad",
+        "set-targeting",
+        "view-report",
+        "pause-campaign",
+        "request-slot"
+      ],
+      "timeAllocation": {
+        "streaming": 0,
+        "socialEngagement": 9,
+        "marketplace": 57,
+        "passive": 32
+      },
+      "marketingProfile": {
+        "dailyBudget": 1403,
+        "preferredFormats": [
+          "banner",
+          "video"
+        ]
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "advertiser-003",
+      "displayName": "Click Surge",
+      "role": "advertiser",
+      "personaType": "event-promoter",
+      "activityLevel": "high",
+      "goals": [
+        "drive-clicks",
+        "grow-reach",
+        "promote-events",
+        "A/B-test-creatives"
+      ],
+      "homeSurface": "/home/5",
+      "allowedActions": [
+        "create-ad",
+        "set-targeting",
+        "view-report",
+        "pause-campaign",
+        "request-slot"
+      ],
+      "timeAllocation": {
+        "streaming": 0,
+        "socialEngagement": 9,
+        "marketplace": 60,
+        "passive": 24
+      },
+      "marketingProfile": {
+        "dailyBudget": 84,
+        "preferredFormats": [
+          "banner",
+          "video"
+        ]
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "advertiser-004",
+      "displayName": "Impression Lab",
+      "role": "advertiser",
+      "personaType": "event-promoter",
+      "activityLevel": "medium",
+      "goals": [
+        "drive-clicks",
+        "grow-reach",
+        "promote-events",
+        "A/B-test-creatives"
+      ],
+      "homeSurface": "/home/5",
+      "allowedActions": [
+        "create-ad",
+        "set-targeting",
+        "view-report",
+        "pause-campaign",
+        "request-slot"
+      ],
+      "timeAllocation": {
+        "streaming": 0,
+        "socialEngagement": 13,
+        "marketplace": 61,
+        "passive": 32
+      },
+      "marketingProfile": {
+        "dailyBudget": 846,
+        "preferredFormats": [
+          "video"
+        ]
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "advertiser-005",
+      "displayName": "Spot Brand",
+      "role": "advertiser",
+      "personaType": "performance-advertiser",
+      "activityLevel": "high",
+      "goals": [
+        "drive-clicks",
+        "grow-reach",
+        "promote-events",
+        "A/B-test-creatives"
+      ],
+      "homeSurface": "/home/5",
+      "allowedActions": [
+        "create-ad",
+        "set-targeting",
+        "view-report",
+        "pause-campaign",
+        "request-slot"
+      ],
+      "timeAllocation": {
+        "streaming": 0,
+        "socialEngagement": 8,
+        "marketplace": 66,
+        "passive": 28
+      },
+      "marketingProfile": {
+        "dailyBudget": 244,
+        "preferredFormats": [
+          "banner",
+          "video"
+        ]
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "advertiser-006",
+      "displayName": "Target Arc",
+      "role": "advertiser",
+      "personaType": "event-promoter",
+      "activityLevel": "medium",
+      "goals": [
+        "drive-clicks",
+        "grow-reach",
+        "promote-events",
+        "A/B-test-creatives"
+      ],
+      "homeSurface": "/home/5",
+      "allowedActions": [
+        "create-ad",
+        "set-targeting",
+        "view-report",
+        "pause-campaign",
+        "request-slot"
+      ],
+      "timeAllocation": {
+        "streaming": 0,
+        "socialEngagement": 11,
+        "marketplace": 64,
+        "passive": 27
+      },
+      "marketingProfile": {
+        "dailyBudget": 876,
+        "preferredFormats": [
+          "banner",
+          "video"
+        ]
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "advertiser-007",
+      "displayName": "Promo Flux",
+      "role": "advertiser",
+      "personaType": "brand-awareness",
+      "activityLevel": "high",
+      "goals": [
+        "drive-clicks",
+        "grow-reach",
+        "promote-events",
+        "A/B-test-creatives"
+      ],
+      "homeSurface": "/home/5",
+      "allowedActions": [
+        "create-ad",
+        "set-targeting",
+        "view-report",
+        "pause-campaign",
+        "request-slot"
+      ],
+      "timeAllocation": {
+        "streaming": 0,
+        "socialEngagement": 12,
+        "marketplace": 66,
+        "passive": 20
+      },
+      "marketingProfile": {
+        "dailyBudget": 1237,
+        "preferredFormats": [
+          "banner",
+          "video"
+        ]
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "advertiser-008",
+      "displayName": "BrandDrift",
+      "role": "advertiser",
+      "personaType": "event-promoter",
+      "activityLevel": "high",
+      "goals": [
+        "drive-clicks",
+        "grow-reach",
+        "promote-events",
+        "A/B-test-creatives"
+      ],
+      "homeSurface": "/home/5",
+      "allowedActions": [
+        "create-ad",
+        "set-targeting",
+        "view-report",
+        "pause-campaign",
+        "request-slot"
+      ],
+      "timeAllocation": {
+        "streaming": 0,
+        "socialEngagement": 6,
+        "marketplace": 54,
+        "passive": 28
+      },
+      "marketingProfile": {
+        "dailyBudget": 630,
+        "preferredFormats": [
+          "video"
+        ]
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "advertiser-009",
+      "displayName": "Campaign Pro",
+      "role": "advertiser",
+      "personaType": "performance-advertiser",
+      "activityLevel": "high",
+      "goals": [
+        "drive-clicks",
+        "grow-reach",
+        "promote-events",
+        "A/B-test-creatives"
+      ],
+      "homeSurface": "/home/5",
+      "allowedActions": [
+        "create-ad",
+        "set-targeting",
+        "view-report",
+        "pause-campaign",
+        "request-slot"
+      ],
+      "timeAllocation": {
+        "streaming": 0,
+        "socialEngagement": 12,
+        "marketplace": 55,
+        "passive": 30
+      },
+      "marketingProfile": {
+        "dailyBudget": 483,
+        "preferredFormats": [
+          "video"
+        ]
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "advertiser-010",
+      "displayName": "VibeSell",
+      "role": "advertiser",
+      "personaType": "retargeting",
+      "activityLevel": "medium",
+      "goals": [
+        "drive-clicks",
+        "grow-reach",
+        "promote-events",
+        "A/B-test-creatives"
+      ],
+      "homeSurface": "/home/5",
+      "allowedActions": [
+        "create-ad",
+        "set-targeting",
+        "view-report",
+        "pause-campaign",
+        "request-slot"
+      ],
+      "timeAllocation": {
+        "streaming": 0,
+        "socialEngagement": 7,
+        "marketplace": 54,
+        "passive": 27
+      },
+      "marketingProfile": {
+        "dailyBudget": 1394,
+        "preferredFormats": [
+          "video"
+        ]
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "host-001",
+      "displayName": "Tiara",
+      "role": "host",
+      "personaType": "professional-host",
+      "activityLevel": "high",
+      "goals": [
+        "run-show",
+        "engage-crowd",
+        "maintain-energy",
+        "transition-scenes"
+      ],
+      "homeSurface": "/home/3",
+      "primaryShows": [
+        "monday-night-stage",
+        "yearly-contest",
+        "crown-reveal"
+      ],
+      "allowedActions": [
+        "open-show",
+        "call-act",
+        "announce-winner",
+        "trigger-transition",
+        "call-crowd-calm"
+      ],
+      "timeAllocation": {
+        "streaming": 77,
+        "socialEngagement": 24,
+        "marketplace": 0,
+        "passive": 10
+      },
+      "scheduleProfile": {
+        "preferredDays": [
+          "thursday",
+          "saturday"
+        ],
+        "avgShowLength": 88
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "host-002",
+      "displayName": "Michael Gregory",
+      "role": "host",
+      "personaType": "professional-host",
+      "activityLevel": "high",
+      "goals": [
+        "run-show",
+        "engage-crowd",
+        "maintain-energy",
+        "transition-scenes"
+      ],
+      "homeSurface": "/home/3",
+      "primaryShows": [
+        "battle-of-the-bands"
+      ],
+      "allowedActions": [
+        "open-show",
+        "call-act",
+        "announce-winner",
+        "trigger-transition",
+        "call-crowd-calm"
+      ],
+      "timeAllocation": {
+        "streaming": 73,
+        "socialEngagement": 24,
+        "marketplace": 0,
+        "passive": 6
+      },
+      "scheduleProfile": {
+        "preferredDays": [
+          "monday",
+          "wednesday"
+        ],
+        "avgShowLength": 93
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "host-003",
+      "displayName": "Gregory Marcel",
+      "role": "host",
+      "personaType": "professional-host",
+      "activityLevel": "high",
+      "goals": [
+        "run-show",
+        "engage-crowd",
+        "maintain-energy",
+        "transition-scenes"
+      ],
+      "homeSurface": "/home/3",
+      "primaryShows": [
+        "cypher-arena",
+        "dirty-dozens"
+      ],
+      "allowedActions": [
+        "open-show",
+        "call-act",
+        "announce-winner",
+        "trigger-transition",
+        "call-crowd-calm"
+      ],
+      "timeAllocation": {
+        "streaming": 68,
+        "socialEngagement": 23,
+        "marketplace": 0,
+        "passive": 14
+      },
+      "scheduleProfile": {
+        "preferredDays": [
+          "monday"
+        ],
+        "avgShowLength": 85
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "host-004",
+      "displayName": "Ray Journey",
+      "role": "host",
+      "personaType": "professional-host",
+      "activityLevel": "high",
+      "goals": [
+        "run-show",
+        "engage-crowd",
+        "maintain-energy",
+        "transition-scenes"
+      ],
+      "homeSurface": "/home/3",
+      "primaryShows": [
+        "monthly-idol",
+        "deal-or-feud"
+      ],
+      "allowedActions": [
+        "open-show",
+        "call-act",
+        "announce-winner",
+        "trigger-transition",
+        "call-crowd-calm"
+      ],
+      "timeAllocation": {
+        "streaming": 73,
+        "socialEngagement": 19,
+        "marketplace": 0,
+        "passive": 9
+      },
+      "scheduleProfile": {
+        "preferredDays": [
+          "monday",
+          "wednesday"
+        ],
+        "avgShowLength": 89
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "host-005",
+      "displayName": "Finny Maxwell",
+      "role": "host",
+      "personaType": "professional-host",
+      "activityLevel": "high",
+      "goals": [
+        "run-show",
+        "engage-crowd",
+        "maintain-energy",
+        "transition-scenes"
+      ],
+      "homeSurface": "/home/3",
+      "primaryShows": [
+        "world-dance-party",
+        "name-that-tune",
+        "circles-squares"
+      ],
+      "allowedActions": [
+        "open-show",
+        "call-act",
+        "announce-winner",
+        "trigger-transition",
+        "call-crowd-calm"
+      ],
+      "timeAllocation": {
+        "streaming": 77,
+        "socialEngagement": 20,
+        "marketplace": 0,
+        "passive": 10
+      },
+      "scheduleProfile": {
+        "preferredDays": [
+          "monday",
+          "wednesday"
+        ],
+        "avgShowLength": 82
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "admin-001",
+      "displayName": "Mod-Alpha",
+      "role": "moderator",
+      "personaType": "admin-bot",
+      "activityLevel": "very-high",
+      "goals": [
+        "enforce-rules",
+        "detect-dead-routes",
+        "catch-behavior-anomalies",
+        "monitor-fallbacks"
+      ],
+      "homeSurface": "/admin/observatory",
+      "allowedActions": [
+        "ban-user",
+        "mute-user",
+        "remove-content",
+        "escalate",
+        "trigger-fallback",
+        "patch-route"
+      ],
+      "timeAllocation": {
+        "streaming": 0,
+        "socialEngagement": 0,
+        "monitoring": 70,
+        "enforcement": 30
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "admin-002",
+      "displayName": "Mod-Beta",
+      "role": "moderator",
+      "personaType": "admin-bot",
+      "activityLevel": "very-high",
+      "goals": [
+        "enforce-rules",
+        "detect-dead-routes",
+        "catch-behavior-anomalies",
+        "monitor-fallbacks"
+      ],
+      "homeSurface": "/admin/observatory",
+      "allowedActions": [
+        "ban-user",
+        "mute-user",
+        "remove-content",
+        "escalate",
+        "trigger-fallback",
+        "patch-route"
+      ],
+      "timeAllocation": {
+        "streaming": 0,
+        "socialEngagement": 0,
+        "monitoring": 70,
+        "enforcement": 30
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "admin-003",
+      "displayName": "Sentinel-1",
+      "role": "admin",
+      "personaType": "sentinel-bot",
+      "activityLevel": "very-high",
+      "goals": [
+        "enforce-rules",
+        "detect-dead-routes",
+        "catch-behavior-anomalies",
+        "monitor-fallbacks"
+      ],
+      "homeSurface": "/admin/observatory",
+      "allowedActions": [
+        "ban-user",
+        "mute-user",
+        "remove-content",
+        "escalate",
+        "trigger-fallback",
+        "patch-route"
+      ],
+      "timeAllocation": {
+        "streaming": 0,
+        "socialEngagement": 0,
+        "monitoring": 70,
+        "enforcement": 30
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "admin-004",
+      "displayName": "Sentinel-2",
+      "role": "admin",
+      "personaType": "sentinel-bot",
+      "activityLevel": "very-high",
+      "goals": [
+        "enforce-rules",
+        "detect-dead-routes",
+        "catch-behavior-anomalies",
+        "monitor-fallbacks"
+      ],
+      "homeSurface": "/admin/observatory",
+      "allowedActions": [
+        "ban-user",
+        "mute-user",
+        "remove-content",
+        "escalate",
+        "trigger-fallback",
+        "patch-route"
+      ],
+      "timeAllocation": {
+        "streaming": 0,
+        "socialEngagement": 0,
+        "monitoring": 70,
+        "enforcement": 30
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "id": "admin-005",
+      "displayName": "Admin-Root",
+      "role": "admin",
+      "personaType": "admin-bot",
+      "activityLevel": "very-high",
+      "goals": [
+        "enforce-rules",
+        "detect-dead-routes",
+        "catch-behavior-anomalies",
+        "monitor-fallbacks"
+      ],
+      "homeSurface": "/admin/observatory",
+      "allowedActions": [
+        "ban-user",
+        "mute-user",
+        "remove-content",
+        "escalate",
+        "trigger-fallback",
+        "patch-route"
+      ],
+      "timeAllocation": {
+        "streaming": 0,
+        "socialEngagement": 0,
+        "monitoring": 70,
+        "enforcement": 30
+      },
+      "status": "ACTIVE"
+    }
+  ]
+}

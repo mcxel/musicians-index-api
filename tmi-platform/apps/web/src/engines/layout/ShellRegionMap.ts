@@ -1,0 +1,22 @@
+export type CanonShellRegion =
+  | "HEADER_ZONE"
+  | "STAGE_ZONE"
+  | "REACTION_ZONE"
+  | "TIP_ZONE"
+  | "PLAYLIST_ZONE"
+  | "BOT_STRIP_ZONE"
+  | "RIGHT_TOWER_ZONE"
+  | "BOTTOM_ACTION_ZONE"
+  | "ENGINE_LOG_ZONE";
+
+export const CANON_PROFILE_REGION_ORDER: CanonShellRegion[] = [
+  "HEADER_ZONE",
+  "STAGE_ZONE",
+  "REACTION_ZONE",
+  "TIP_ZONE",
+  "PLAYLIST_ZONE",
+  "BOT_STRIP_ZONE",
+  "RIGHT_TOWER_ZONE",
+  "BOTTOM_ACTION_ZONE",
+  "ENGINE_LOG_ZONE",
+];

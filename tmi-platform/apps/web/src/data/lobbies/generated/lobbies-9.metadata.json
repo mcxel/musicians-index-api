@@ -1,0 +1,135 @@
+{
+  "lobbyId": "lobbies-9",
+  "theme": "arena_tower",
+  "themeLabel": "Arena Tower Skin",
+  "roomType": "premium_arena",
+  "capacity": 280,
+  "seatCount": 136,
+  "walkZones": 3,
+  "queueZone": true,
+  "mainScreen": true,
+  "hostStage": true,
+  "sourceAssetPath": "Tmi PDF's/Lobbies/Lobbies 9.jpg",
+  "segmentation": {
+    "image": "Lobbies 9.jpg",
+    "themeKey": "arena_tower",
+    "zones": [
+      {
+        "id": "zone-stage",
+        "label": "Arena Core",
+        "zone_type": "stage",
+        "bounds": {
+          "x": 0.5,
+          "y": 0.2,
+          "w": 0.4,
+          "h": 0.18
+        },
+        "walkable": false
+      },
+      {
+        "id": "zone-lower",
+        "label": "Lower Bowl",
+        "zone_type": "seating",
+        "bounds": {
+          "x": 0.5,
+          "y": 0.54,
+          "w": 0.72,
+          "h": 0.26
+        },
+        "walkable": true
+      },
+      {
+        "id": "zone-upper",
+        "label": "Upper Tower Seating",
+        "zone_type": "seating",
+        "bounds": {
+          "x": 0.5,
+          "y": 0.34,
+          "w": 0.84,
+          "h": 0.18
+        },
+        "walkable": true
+      },
+      {
+        "id": "zone-portal",
+        "label": "Vertical Portal",
+        "zone_type": "portal",
+        "bounds": {
+          "x": 0.9,
+          "y": 0.3,
+          "w": 0.08,
+          "h": 0.14
+        },
+        "walkable": true
+      }
+    ],
+    "layerCount": 4
+  },
+  "depth": {
+    "ceilingHeight": 16.0,
+    "roomDepth": 42.0,
+    "stageDepth": 10.5,
+    "verticality": "high",
+    "layers": [
+      "lower-bowl",
+      "mid-bowl",
+      "upper-bowl",
+      "tower-rig"
+    ],
+    "image": "Lobbies 9.jpg"
+  },
+  "objects": [
+    "arena-seat",
+    "tower-light",
+    "jumbotron",
+    "portal",
+    "stage-platform",
+    "vip-box"
+  ],
+  "seatTypes": [
+    "HIGH_SEAT",
+    "VIP_SEAT",
+    "SPECTATOR_NODE",
+    "QUEUE_NODE"
+  ],
+  "navmesh": [
+    "spawn",
+    "stairs",
+    "queue",
+    "sit",
+    "transition"
+  ],
+  "portals": [
+    {
+      "id": "portal-main",
+      "target": "venue-stage",
+      "enabled": true
+    }
+  ],
+  "lights": [
+    {
+      "id": "light-key",
+      "kind": "spot",
+      "intensity": 0.82
+    },
+    {
+      "id": "light-fill",
+      "kind": "ambient",
+      "intensity": 0.46
+    }
+  ],
+  "sceneGraph": {
+    "nodes": [
+      "walls",
+      "floor",
+      "seats",
+      "bar",
+      "stage",
+      "screens",
+      "lighting",
+      "spawn-points",
+      "queue-points",
+      "portal"
+    ]
+  }
+}

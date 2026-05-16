@@ -1,0 +1,136 @@
+{
+  "lobbyId": "lobbies-5",
+  "theme": "stage_theater",
+  "themeLabel": "Stage Theater Skin",
+  "roomType": "performance_theater",
+  "capacity": 180,
+  "seatCount": 84,
+  "walkZones": 2,
+  "queueZone": true,
+  "mainScreen": true,
+  "hostStage": true,
+  "sourceAssetPath": "Tmi PDF's/Lobbies/Lobbies 5.jpg",
+  "segmentation": {
+    "image": "Lobbies 5.jpg",
+    "themeKey": "stage_theater",
+    "zones": [
+      {
+        "id": "zone-stage",
+        "label": "Performance Stage",
+        "zone_type": "stage",
+        "bounds": {
+          "x": 0.5,
+          "y": 0.12,
+          "w": 0.44,
+          "h": 0.2
+        },
+        "walkable": false
+      },
+      {
+        "id": "zone-floor",
+        "label": "Audience Floor",
+        "zone_type": "seating",
+        "bounds": {
+          "x": 0.5,
+          "y": 0.58,
+          "w": 0.7,
+          "h": 0.32
+        },
+        "walkable": true
+      },
+      {
+        "id": "zone-wings",
+        "label": "Backstage Wings",
+        "zone_type": "backstage",
+        "bounds": {
+          "x": 0.14,
+          "y": 0.18,
+          "w": 0.18,
+          "h": 0.16
+        },
+        "walkable": false
+      },
+      {
+        "id": "zone-queue",
+        "label": "Performer Queue",
+        "zone_type": "queue",
+        "bounds": {
+          "x": 0.82,
+          "y": 0.42,
+          "w": 0.14,
+          "h": 0.22
+        },
+        "walkable": true
+      }
+    ],
+    "layerCount": 4
+  },
+  "depth": {
+    "ceilingHeight": 7.2,
+    "roomDepth": 26.0,
+    "stageDepth": 7.6,
+    "verticality": "mid",
+    "layers": [
+      "foreground-seating",
+      "mid-queue",
+      "rear-stage",
+      "ceiling-rig"
+    ],
+    "image": "Lobbies 5.jpg"
+  },
+  "objects": [
+    "theater-chair",
+    "light-rig",
+    "screen",
+    "speaker-stack",
+    "host-stage",
+    "mic-stand"
+  ],
+  "seatTypes": [
+    "LOW_SEAT",
+    "VIP_SEAT",
+    "QUEUE_NODE",
+    "HOST_NODE",
+    "SPECTATOR_NODE"
+  ],
+  "navmesh": [
+    "spawn",
+    "walk",
+    "queue",
+    "sit",
+    "transition"
+  ],
+  "portals": [
+    {
+      "id": "portal-main",
+      "target": "venue-stage",
+      "enabled": true
+    }
+  ],
+  "lights": [
+    {
+      "id": "light-key",
+      "kind": "spot",
+      "intensity": 0.82
+    },
+    {
+      "id": "light-fill",
+      "kind": "ambient",
+      "intensity": 0.46
+    }
+  ],
+  "sceneGraph": {
+    "nodes": [
+      "walls",
+      "floor",
+      "seats",
+      "bar",
+      "stage",
+      "screens",
+      "lighting",
+      "spawn-points",
+      "queue-points",
+      "portal"
+    ]
+  }
+}
