@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 
 const MOCK_FRIENDS = [
   { id: '1', name: 'DJ Kenzo', role: 'ARTIST', status: 'online', avatar: null },
@@ -19,9 +20,10 @@ type Tab = 'friends' | 'requests' | 'find';
 export default function FriendsPage() {
   const [tab, setTab] = useState<Tab>('friends');
   const [search, setSearch] = useState('');
+  const [removed, setRemoved] = useState<Set<string>>(new Set());
 
   const filtered = MOCK_FRIENDS.filter((f) =>
-    f.name.toLowerCase().includes(search.toLowerCase())
+    !removed.has(f.id) && f.name.toLowerCase().includes(search.toLowerCase())
   );
 
   return (
@@ -83,10 +85,22 @@ export default function FriendsPage() {
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <button className="text-xs px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg transition-colors">
+                  <Link
+                    href={`/messages/new?recipientId=${friend.id}&name=${encodeURIComponent(friend.name)}`}
+                    className="text-xs px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg transition-colors"
+                  >
                     Message
-                  </button>
-                  <button className="text-xs px-3 py-1.5 bg-white/5 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors">
+                  </Link>
+                  <Link
+                    href={`/video/rooms/new?inviteId=${friend.id}&name=${encodeURIComponent(friend.name)}`}
+                    className="text-xs px-3 py-1.5 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 rounded-lg transition-colors"
+                  >
+                    Video
+                  </Link>
+                  <button
+                    onClick={() => setRemoved(prev => new Set([...prev, friend.id]))}
+                    className="text-xs px-3 py-1.5 bg-white/5 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors"
+                  >
                     Remove
                   </button>
                 </div>
