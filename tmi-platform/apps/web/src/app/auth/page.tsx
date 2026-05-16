@@ -30,8 +30,8 @@ function toSessionPayload(data: unknown): SessionPayload {
 export default function AuthPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const nextParam = searchParams?.get("next") || "/rooms/world-dance-party";
-  const nextRoute = nextParam.startsWith("/") && !nextParam.startsWith("//") ? nextParam : "/rooms/world-dance-party";
+  const nextParam = searchParams?.get("next") || "";
+  const nextRoute = nextParam.startsWith("/") && !nextParam.startsWith("//") ? nextParam : "";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -193,10 +193,12 @@ export default function AuthPage() {
       const res = await postWithCsrfRetry("/api/auth/signin", JSON.stringify({ email, password }));
 
       if (res.status === 200) {
+        const data = await res.json().catch(() => ({} as { role?: string }));
         const authenticated = await waitForAuthenticatedSession();
         if (authenticated) {
-          setMessage(`Login succeeded. Redirecting to ${nextRoute}.`);
-          router.replace(nextRoute);
+          const dest = data.role === 'admin' ? '/admin/live' : (nextRoute || '/home/1');
+          setMessage(`Login succeeded. Redirecting...`);
+          router.replace(dest);
         } else {
           setMessage("Login completed but session was not restored. Please retry.");
         }
