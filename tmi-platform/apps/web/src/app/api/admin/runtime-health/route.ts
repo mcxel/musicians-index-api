@@ -3,6 +3,8 @@
  * GET endpoint returning conductor and system health metrics
  */
 
+export const dynamic = 'force-dynamic';
+
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { getConductorDiagnostics } from '@/lib/runtime/ConductorLeaseManager';

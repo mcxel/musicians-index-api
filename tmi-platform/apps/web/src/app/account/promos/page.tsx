@@ -1,3 +1,4 @@
+'use client';
 // /account/promos: User's promo code and temporary membership history
 import { TemporaryMembershipEngine } from '@/lib/subscriptions/TemporaryMembershipEngine';
 import { useSession } from 'next-auth/react';
