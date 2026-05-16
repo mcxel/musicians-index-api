@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { EmailProviderEngine } from "@/lib/email/EmailProviderEngine";
 
 const ALLOWED_FORWARD_HEADERS = new Set([

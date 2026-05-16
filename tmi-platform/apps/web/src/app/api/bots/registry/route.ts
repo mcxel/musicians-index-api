@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { type NextRequest, NextResponse } from "next/server";
 import { getSurfaceBots, getVisibleBots, getSurfaceBotCount, type SurfaceKey } from "@/lib/botRegistry";
 

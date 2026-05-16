@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 /**
  * Stage Status API
  * GET /api/stage/status?roomId=monday-stage

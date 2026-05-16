@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 /**
  * Belt Feed API — Homepage article auto-placement
  * Returns articles grouped by belt, or filtered to a single belt.

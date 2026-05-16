@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from "next/server";
 import { buildPhase1Batch } from "@/lib/email/Phase1OnboardingEmail";
 import EmailProviderEngine from "@/lib/email/EmailProviderEngine";

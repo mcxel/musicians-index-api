@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 // Mock API route for ad placements (per belt)
 import { NextResponse } from 'next/server';
 

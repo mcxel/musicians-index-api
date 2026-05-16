@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from "next/server";
 import { listCommerceItems, type CommerceCategory } from "@/lib/commerce/commerceEngine";
 

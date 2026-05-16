@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from "next/server";
 import { getAvatarInventory, saveAvatarInventory } from "@/lib/avatar/avatarPersistence";
 import type { AvatarInventoryItem } from "@/lib/avatar/avatarInventoryEngine";

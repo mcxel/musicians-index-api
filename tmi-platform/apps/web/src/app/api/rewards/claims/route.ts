@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { type NextRequest, NextResponse } from "next/server";
 import { proxyToApi } from "@/lib/apiProxy";
 import { buildBundle } from "@/lib/rewardBundle";

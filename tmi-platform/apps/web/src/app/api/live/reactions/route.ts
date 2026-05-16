@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from "next/server";
 import { submitReaction, getRecentReactions, getCrowdMeter, resetMeter } from "@/lib/live/reactionEngine";
 import type { ReactionType } from "@/lib/live/reactionEngine";
