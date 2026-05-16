@@ -1,3 +1,4 @@
+'use client';
 import Link from "next/link";
 import RecoveryStatusCard from "@/components/auth/RecoveryStatusCard";
 import LoginAlertCard from "@/components/auth/LoginAlertCard";
