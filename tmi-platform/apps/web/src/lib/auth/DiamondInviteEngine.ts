@@ -62,6 +62,14 @@ export class DiamondInviteEngine {
       isFounder: true,
       status: 'active',
     }],
+
+    // Sheila Hernandez — Lifetime diamond fan
+    ['VIP-SHEILA-2026', {
+      token: 'VIP-SHEILA-2026',
+      email: 'mystictrinity@yahoo.com',
+      assignedRole: 'fan',
+      status: 'active',
+    }],
   ]);
 
   static getInvite(token: string): InvitePayload | undefined {
