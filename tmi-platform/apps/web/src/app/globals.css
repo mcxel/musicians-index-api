@@ -3,6 +3,14 @@ body {
   color: white;
   margin: 0;
   padding: 0;
+  font-family: var(--font-tmi-oswald, 'Oswald', sans-serif);
+}
+
+@keyframes confettiFloat {
+  0%   { opacity: 0;   transform: translateY(0)    rotate(0deg);   }
+  10%  { opacity: 0.7; transform: translateY(-8px) rotate(45deg);  }
+  85%  { opacity: 0.7; transform: translateY(-80px) rotate(270deg); }
+  100% { opacity: 0;   transform: translateY(-100px) rotate(360deg); }
 }
 
 /* Scanline Overlay */

@@ -344,44 +344,25 @@ function CenterAuthorityPortrait({ holder, accent, size }: { holder: CrownConten
 
 // ─── CONFETTI SPARK ──────────────────────────────────────────────────────────
 function ConfettiSpark({ x, y, color, index, containerSize: cs }: { x: number; y: number; color: string; index: number; containerSize: number }) {
-  const [offsetY, setOffsetY] = useState(0);
-  const duration = 4000 + (index * 373) % 4000; // 4–8s per particle, deterministic spread
-
-  useEffect(() => {
-    let start: number | null = null;
-    let raf: ReturnType<typeof requestAnimationFrame>;
-
-    function tick(ts: number) {
-      if (!start) start = ts - ((index * 373) % duration); // stagger start
-      const elapsed = (ts - start) % duration;
-      setOffsetY((elapsed / duration) * (cs + 40));
-      raf = requestAnimationFrame(tick);
-    }
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [duration, cs, index]);
-
-  const progress = offsetY / (cs + 40);
-  const opacity  = progress < 0.1 ? progress * 7 : progress > 0.85 ? (1 - progress) * 6.7 : 0.7;
-  const rotation = (offsetY * 1.2 + index * 45) % 360;
-  const size     = 3 + (index % 3);
+  const duration = (4 + (index * 373) % 4) + "s";
+  const delay = "-" + ((index * 373) % 4000) / 1000 + "s";
+  const size = 3 + (index % 3);
 
   return (
     <div
       aria-hidden="true"
       style={{
-        position:  "absolute",
-        left:      x,
-        top:       y - 20 + offsetY,
-        width:     size,
-        height:    size,
+        position: "absolute",
+        left: x,
+        top: y,
+        width: size,
+        height: size,
         borderRadius: index % 3 === 0 ? "50%" : "2px",
         background: color,
-        opacity,
-        boxShadow:  `0 0 6px ${color}`,
-        transform:  `rotate(${rotation}deg)`,
+        boxShadow: `0 0 6px ${color}`,
         pointerEvents: "none",
-        willChange: "transform, top, opacity",
+        willChange: "transform, opacity",
+        animation: `confettiFloat ${duration} linear ${delay} infinite`,
       }}
     />
   );
@@ -406,14 +387,21 @@ export default function OrbitBattleAnimationLayer({
   // B3 scale patch: support elliptical orbit (+220% X, +180% Y vs original 180px)
   const effectiveRadiusX = orbitRadiusX ?? orbitRadiusPx;
   const effectiveRadiusY = orbitRadiusY ?? Math.round(orbitRadiusPx * 0.818);
-  // Orbit tick via rAF — smooth continuous rotation
+  // Orbit tick via rAF — throttled to 100ms to avoid 60fps setState flicker
   useEffect(() => {
     let last = performance.now();
+    let lastUpdate = performance.now();
+    let accumulated = 0;
     function frame(now: number) {
       const dt = now - last;
       last = now;
-      // ~0.4 deg/100ms = slow gentle orbit
-      setContenders((prev) => tickOrbit(prev, 0.004 * dt));
+      accumulated += 0.004 * dt;
+      if (now - lastUpdate >= 100) {
+        const angle = accumulated;
+        accumulated = 0;
+        lastUpdate = now;
+        setContenders((prev) => tickOrbit(prev, angle));
+      }
       frameRef.current = requestAnimationFrame(frame);
     }
     frameRef.current = requestAnimationFrame(frame);
@@ -456,6 +444,7 @@ export default function OrbitBattleAnimationLayer({
         width:  containerSize,
         height: containerSize,
         maxWidth: "100%",
+        overflow: "hidden",
         margin: "0 auto",
         flexShrink: 0,
       }}
