@@ -1,8 +1,11 @@
 "use client";
 
+import { useState, useCallback } from "react";
 import LobbyStageViewport from "@/components/lobbies/LobbyStageViewport";
 import JuliusMascot from "@/components/mascot/JuliusMascot";
 import { useJulius } from "@/hooks/useJulius";
+import PerformerActivityGrid from "@/components/live/PerformerActivityGrid";
+import AdminSceneMonitor from "@/components/live/AdminSceneMonitor";
 import type { SharedStageRoomData } from "./useSharedStageRoomData";
 
 type PerformerStageConsoleProps = {
@@ -13,6 +16,25 @@ type PerformerStageConsoleProps = {
 export default function PerformerStageConsole({ roomId, data }: PerformerStageConsoleProps) {
   const { juliusState, triggerJulius, dismissJulius } = useJulius();
   const performerName = roomId.replace(/-/g, " ").toUpperCase();
+
+  const [activityScores, setActivityScores] = useState<Record<string, number>>({});
+  const [liveFlócusId, setLiveFocusId] = useState<string | null>(null);
+  const [overrideFocusId, setOverrideFocusId] = useState<string | null | undefined>(undefined);
+
+  const handleStateSnapshot = useCallback(
+    (scores: Record<string, number>, focusId: string | null) => {
+      setActivityScores(scores);
+      setLiveFocusId(focusId);
+    },
+    [],
+  );
+
+  const handleForceFocus = useCallback((id: string | null) => {
+    // null = clear override (restore auto-focus), any id = force that performer
+    setOverrideFocusId(id === null ? undefined : id);
+  }, []);
+
+  const performers = data.members.slice(0, 8).map((m) => ({ userId: m.userId }));
 
   return (
     <section style={{ display: "grid", gap: 12 }} aria-label="Performer Stage Console">
@@ -77,17 +99,22 @@ export default function PerformerStageConsole({ roomId, data }: PerformerStageCo
       />
 
       <div style={{ border: "1px solid rgba(255,255,255,0.16)", borderRadius: 12, padding: 12, background: "rgba(255,255,255,0.04)" }}>
-        <div style={{ fontSize: 10, color: "rgba(255,255,255,0.6)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 8 }}>
-          Audience Mesh Preview
+        <div style={{ fontSize: 10, color: "rgba(255,255,255,0.6)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10 }}>
+          Performer Activity
         </div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          {data.members.slice(0, 8).map((member) => (
-            <span key={member.userId} style={{ padding: "4px 8px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.22)", fontSize: 11 }}>
-              {member.userId.startsWith("viewer-") ? "Guest" : member.userId}
-            </span>
-          ))}
-          {data.members.length === 0 ? <span style={{ color: "rgba(255,255,255,0.62)", fontSize: 12 }}>No audience seated yet.</span> : null}
-        </div>
+        <PerformerActivityGrid
+          performers={performers}
+          roomId={roomId}
+          overrideFocusId={overrideFocusId}
+          onStateSnapshot={handleStateSnapshot}
+        />
+        <AdminSceneMonitor
+          performers={performers}
+          scores={activityScores}
+          focusId={liveFlócusId}
+          overrideFocusId={overrideFocusId ?? null}
+          onForceFocus={handleForceFocus}
+        />
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px,1fr))", gap: 10 }}>

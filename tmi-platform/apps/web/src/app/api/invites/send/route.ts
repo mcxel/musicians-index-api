@@ -4,8 +4,8 @@ import { DiamondInviteEngine } from "@/lib/auth/DiamondInviteEngine";
 
 const ALLOWED_ADMIN_EMAILS = [
   "berntmusic33@gmail.com",
-  "leeanncoats.79@gmail.com",
-  "nacoleelmer143@gmail.com",
+  "bjmtherapper1@gmail.com",
+  "rjking42@icloud.com",
 ];
 
 function buildDiamondInviteHtml(name: string, inviteUrl: string): string {

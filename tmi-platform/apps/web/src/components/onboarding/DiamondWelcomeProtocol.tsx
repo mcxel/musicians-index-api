@@ -4,28 +4,48 @@ import { motion } from 'framer-motion';
 import IgnitionBurstConfetti from '@/components/home/effects/IgnitionBurstConfetti';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 
-export default function DiamondWelcomeProtocol({ inviteeName }: { inviteeName: string }) {
+type InviteRole = 'performer' | 'fan' | 'promoter' | 'admin';
+
+function hubForRole(role: InviteRole): string {
+  if (role === 'admin') return '/admin/live';
+  if (role === 'fan') return '/home/1';
+  if (role === 'promoter') return '/home/3';
+  return '/hub/performer';
+}
+
+export default function DiamondWelcomeProtocol({
+  inviteeName,
+  role = 'performer',
+}: {
+  inviteeName: string;
+  role?: InviteRole;
+}) {
   const [isSealed, setIsSealed] = useState(false);
+  const router = useRouter();
+  const hubRoute = hubForRole(role);
 
   useEffect(() => {
-    // Auto-dismiss the welcome protocol after 8 seconds to drop them into the hub
-    const timer = setTimeout(() => setIsSealed(true), 8000);
+    const timer = setTimeout(() => {
+      setIsSealed(true);
+      router.push(hubRoute);
+    }, 8000);
     return () => clearTimeout(timer);
-  }, []);
+  }, [hubRoute, router]);
 
   if (isSealed) return null;
 
   return (
-    <motion.div 
-      initial={{ opacity: 0 }} 
-      animate={{ opacity: 1 }} 
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
       exit={{ opacity: 0, scale: 1.05 }}
       className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black/95 backdrop-blur-md"
     >
       <IgnitionBurstConfetti zIndex={99} assetCategory="hipHop" burstDurationMs={3000} cycleMs={10000} burstCount={60} />
-      
-      <motion.div 
+
+      <motion.div
         initial={{ y: 40, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 0.5, duration: 0.8 }}
@@ -39,9 +59,12 @@ export default function DiamondWelcomeProtocol({ inviteeName }: { inviteeName: s
           Welcome to the<br />New Main Stage.
         </h1>
         <p className="text-white/60 text-sm leading-relaxed mb-8">
-          {inviteeName}, the monopoly is dead. Your Diamond profile is active, your wallet is seeded, and the ghost force is armed. 
+          {inviteeName}, the monopoly is dead. Your Diamond profile is active, your wallet is seeded, and the ghost force is armed.
         </p>
-        <Link href="/hub/performer" className="inline-block w-full py-4 bg-[#00FFFF] text-black font-black uppercase tracking-widest text-xs rounded-full hover:bg-white transition-colors">
+        <Link
+          href={hubRoute}
+          className="inline-block w-full py-4 bg-[#00FFFF] text-black font-black uppercase tracking-widest text-xs rounded-full hover:bg-white transition-colors"
+        >
           Enter The Index
         </Link>
       </motion.div>
