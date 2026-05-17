@@ -78,7 +78,7 @@ const NUMBER_SHARDS = Array.from({ length: 8 }, (_, i) => ({
   val: String(i + 1),
   x: `${8 + i * 11}%`,
   y: `${10 + ((i * 17) % 80)}%`,
-  opacity: 0.04 + (i % 3) * 0.018,
+  opacity: 0.09 + (i % 3) * 0.038,
   size: 40 + (i % 4) * 30,
 }));
 
@@ -100,6 +100,7 @@ export default function Home1MagazineCoverComposition() {
   const [burstSeed, setBurstSeed] = useState(() => Date.now());
   const [starburstTrigger, setStarburstTrigger] = useState(false);
   const [isHydrated, setIsHydrated] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const router = useRouter();
   const motionSignals = useHome1CoverMotionEngine();
 
@@ -125,6 +126,14 @@ export default function Home1MagazineCoverComposition() {
   }, []);
 
   useEffect(() => {
+    const mq = window.matchMedia('(max-width: 639px)');
+    setIsMobile(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+
+  useEffect(() => {
     setBurstSeed(Date.now());
     setStarburstTrigger((t) => !t);
   }, [genre.id]);
@@ -136,9 +145,10 @@ export default function Home1MagazineCoverComposition() {
     <section
       style={{
         position: "relative",
-        width: "min(1120px, 100%)",
-        margin: "0 auto",
-        padding: "24px 20px 32px",
+        width: "100%",
+        maxWidth: isMobile ? "none" : 1120,
+        margin: isMobile ? "0" : "0 auto",
+        padding: isMobile ? "0" : "24px 20px 32px",
       }}
     >
       {/* ─── Layer 0: World background ─── */}
@@ -165,25 +175,17 @@ export default function Home1MagazineCoverComposition() {
         style={{
           position: "relative",
           zIndex: 2,
-          borderRadius: 16,
+          borderRadius: isMobile ? 0 : 16,
           overflow: "hidden",
-          transform: "translateX(-8px) rotate(-1deg)",
+          transform: isMobile ? "none" : "translateX(-8px) rotate(-1deg)",
           cursor: "pointer",
           transition: "transform 260ms ease, box-shadow 260ms ease",
-          // Physical page stack + magazine heft
-          boxShadow: `
-            4px 0 0 #ddd,
-            8px 0 0 #ccc,
-            12px 0 0 #bbb,
-            24px 26px 50px rgba(0,0,0,0.55),
-            0 0 60px ${primary}20,
-            inset 0 0 20px rgba(255,255,255,0.08),
-            inset 4px 0 10px rgba(0,0,0,0.5)
-          `,
-          // Spine: physical binding edge
-          borderLeft: `10px solid ${primary}`,
+          boxShadow: isMobile
+            ? `0 0 40px ${primary}28, inset 0 0 20px rgba(255,255,255,0.04)`
+            : `4px 0 0 #ddd, 8px 0 0 #ccc, 12px 0 0 #bbb, 24px 26px 50px rgba(0,0,0,0.55), 0 0 60px ${primary}20, inset 0 0 20px rgba(255,255,255,0.08), inset 4px 0 10px rgba(0,0,0,0.5)`,
+          borderLeft: `${isMobile ? 4 : 10}px solid ${primary}`,
           border: `1px solid ${primary}33`,
-          borderLeftWidth: 10,
+          borderLeftWidth: isMobile ? 4 : 10,
         }}
       >
         {/* ─── Layer 2: Cover background engine ─── */}
@@ -226,6 +228,14 @@ export default function Home1MagazineCoverComposition() {
             <line key={i} x1={l.x1} y1={l.y1} x2={l.x2} y2={l.y2} stroke={primary} strokeWidth={0.6} opacity={l.opacity} />
           ))}
         </svg>
+
+        {/* Hard-shape triangle underlays */}
+        <div style={{ position: "absolute", inset: 0, zIndex: 2, pointerEvents: "none", overflow: "hidden", transition: "all 2.5s ease" }}>
+          <div style={{ position: "absolute", top: 0, left: 0, width: "26%", height: "26%", background: primary, opacity: 0.08, clipPath: "polygon(0 0, 100% 0, 0 100%)" }} />
+          <div style={{ position: "absolute", top: 0, right: 0, width: "20%", height: "20%", background: secondary, opacity: 0.06, clipPath: "polygon(100% 0, 100% 100%, 0 0)" }} />
+          <div style={{ position: "absolute", bottom: 0, left: 0, width: "18%", height: "18%", background: secondary, opacity: 0.05, clipPath: "polygon(0 0, 100% 100%, 0 100%)" }} />
+          <div style={{ position: "absolute", bottom: 0, right: 0, width: "16%", height: "16%", background: primary, opacity: 0.05, clipPath: "polygon(100% 0, 100% 100%, 0 100%)" }} />
+        </div>
 
         {/* Number scatter layer */}
         {NUMBER_SHARDS.map((s, i) => (
@@ -283,7 +293,7 @@ export default function Home1MagazineCoverComposition() {
           style={{
             position: "relative",
             zIndex: 10,
-            minHeight: 760,
+            minHeight: isMobile ? "calc(100svh - 48px)" : 760,
           }}
         >
           {/* ─── Layer 6 (top): Live ribbon ─── */}
@@ -339,10 +349,34 @@ export default function Home1MagazineCoverComposition() {
           <div
             style={{
               position: "relative",
-              height: 520,
-              margin: "0 8px",
+              height: isMobile ? "calc(100svh - 260px)" : 560,
+              margin: isMobile ? 0 : "0 8px",
             }}
           >
+            {/* Ghost "TOP 10" underlay */}
+            <div
+              style={{
+                position: "absolute",
+                top: "50%",
+                left: "50%",
+                transform: "translate(-50%, -50%) rotate(-5deg)",
+                fontSize: 110,
+                fontWeight: 900,
+                color: primary,
+                opacity: 0.028,
+                pointerEvents: "none",
+                zIndex: 1,
+                lineHeight: 1,
+                fontFamily: "var(--font-tmi-bebas, 'Bebas Neue', Impact, sans-serif)",
+                userSelect: "none",
+                letterSpacing: "0.02em",
+                whiteSpace: "nowrap",
+                transition: "color 2s ease",
+              }}
+            >
+              TOP 10
+            </div>
+
             {/* Rank 2–10 orbit cards — absolutely positioned */}
             <OrbitRankingGrid artists={TOP_10} accentColor={primary} rankShiftPulse={rankShiftActive} />
 
@@ -356,6 +390,24 @@ export default function Home1MagazineCoverComposition() {
                 zIndex: 6,
               }}
             >
+              {/* Outer halo ring */}
+              <motion.div
+                animate={{ scale: [0.95, 1.06, 0.95], opacity: [0.10, 0.22, 0.10] }}
+                transition={{ duration: 3.8, repeat: Infinity }}
+                style={{
+                  position: "absolute",
+                  left: "50%",
+                  top: "50%",
+                  transform: "translate(-50%, -50%)",
+                  width: 520,
+                  height: 520,
+                  borderRadius: 999,
+                  background: `radial-gradient(circle, ${primary}44 0%, transparent 64%)`,
+                  filter: "blur(2px)",
+                  pointerEvents: "none",
+                  zIndex: 0,
+                }}
+              />
               <motion.div
                 animate={{ scale: [0.9, 1.08, 0.9], opacity: [0.24, 0.52, 0.24] }}
                 transition={{ duration: 2.2, repeat: Infinity }}
@@ -464,7 +516,7 @@ export default function Home1MagazineCoverComposition() {
           </div>
 
           {/* ─── Mini live rooms (embedded inside bottom quarter) ─── */}
-          <div style={{ position: "absolute", left: 14, right: 14, bottom: 78, zIndex: 11 }}>
+          <div style={{ position: "absolute", left: isMobile ? 8 : 14, right: isMobile ? 8 : 14, bottom: 78, zIndex: 11 }}>
             <div
               style={{
                 fontSize: 9,
