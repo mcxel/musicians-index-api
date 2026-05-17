@@ -112,6 +112,31 @@ export default function HomeSurfacePage({ surfaceId }: Readonly<{ surfaceId: Hom
     };
   }, [surfaceId]);
 
+  // Surface 1 (magazine cover) is full-bleed — no PageShell padding/max-width
+  if (surface.id === 1) {
+    return (
+      <HUDFrame>
+        <HomeNavigator />
+        <main
+          data-home-scene={surface.sceneId}
+          data-home-audio-theme={surface.audioTheme ?? ''}
+          data-home-animation-preset={surface.animationPreset ?? ''}
+          style={{ minHeight: '100vh', background: surface.background }}
+        >
+          <HomeDraggableBelts
+            surfaceId={surface.id}
+            belts={surface.belts}
+            layoutOrder={surface.layoutOrder}
+          />
+          <div style={{ paddingTop: 20 }}>
+            <BotConsole surface={`home${surfaceId}`} />
+          </div>
+        </main>
+        <FooterHUD />
+      </HUDFrame>
+    );
+  }
+
   return (
     <PageShell>
       <HUDFrame>
@@ -123,36 +148,26 @@ export default function HomeSurfacePage({ surfaceId }: Readonly<{ surfaceId: Hom
           style={{
             minHeight: '100vh',
             background: surface.background,
-            padding: surface.id === 1 ? '0' : '12px 24px 24px',
+            padding: '12px 24px 24px',
           }}
         >
           <MotionWrapper>
-            {surface.id !== 1 ? (
-              <div style={{ marginBottom: 12 }}>
-                <StatusRibbon label={`Home ${surface.id} • ${surface.sceneId}`} live={surface.id === 3} />
-              </div>
-            ) : null}
+            <div style={{ marginBottom: 12 }}>
+              <StatusRibbon label={`Home ${surface.id} • ${surface.sceneId}`} live={surface.id === 3} />
+            </div>
           </MotionWrapper>
-          {surface.id === 1 ? (
+          <CardCanvas showGrid>
             <HomeDraggableBelts
               surfaceId={surface.id}
               belts={surface.belts}
               layoutOrder={surface.layoutOrder}
             />
-          ) : (
-            <CardCanvas showGrid>
-              <HomeDraggableBelts
-                surfaceId={surface.id}
-                belts={surface.belts}
-                layoutOrder={surface.layoutOrder}
-              />
-              {surface.id === 5 ? (
-                <div style={{ marginTop: 14 }}>
-                  <JuliusPanel />
-                </div>
-              ) : null}
-            </CardCanvas>
-          )}
+            {surface.id === 5 ? (
+              <div style={{ marginTop: 14 }}>
+                <JuliusPanel />
+              </div>
+            ) : null}
+          </CardCanvas>
           <div style={{ paddingTop: 20 }}>
             <BotConsole surface={`home${surfaceId}`} />
           </div>
