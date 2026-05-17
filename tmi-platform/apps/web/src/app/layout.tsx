@@ -3,6 +3,7 @@ import AppProviders from "@/components/providers";
 import "./globals.css";
 import "@/styles/tmiTypography.css";
 import "@/styles/tmi/globals.css";
+import { TmiSessionProvider } from "@/hooks/SessionContext";
 
 export const metadata: Metadata = {
   title: "The Musician's Index",
@@ -37,6 +38,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <AppProviders>
           {children}
+          <TmiSessionProvider>
+            {children}
+          </TmiSessionProvider>
         </AppProviders>
       </body>
     </html>

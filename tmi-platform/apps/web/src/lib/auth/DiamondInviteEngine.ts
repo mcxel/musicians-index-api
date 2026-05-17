@@ -12,6 +12,8 @@ export interface InvitePayload {
   isFounder?: boolean;
   /** Trial duration in days (undefined = lifetime) */
   trialDays?: number;
+  /** Unix ms — undefined means lifetime (founder tokens never expire) */
+  expiresAt?: number;
   status: 'active' | 'redeemed' | 'revoked';
 }
 
@@ -100,19 +102,33 @@ export class DiamondInviteEngine {
     return this.activeInvites.get(token);
   }
 
-  static registerInvite(token: string, email: string, role: 'performer' | 'fan' | 'promoter' = 'performer'): void {
-    this.activeInvites.set(token, { token, email, assignedRole: role, status: 'active' });
-    console.log(`[DIAMOND_INVITE] Registered new invite token: ${token} for ${email}`);
+  static registerInvite(
+    token: string,
+    email: string,
+    role: 'performer' | 'fan' | 'promoter' = 'performer',
+    expiryDays = 7,
+  ): void {
+    const expiresAt = Date.now() + expiryDays * 24 * 60 * 60 * 1000;
+    this.activeInvites.set(token, { token, email, assignedRole: role, expiresAt, status: 'active' });
+    console.log(`[DIAMOND_INVITE] Registered new invite token: ${token} for ${email} (expires in ${expiryDays}d)`);
   }
 
   static async validateAndRedeem(token: string, masterAccountId: string): Promise<boolean> {
     console.log(`[DIAMOND_INVITE] Validating secure token: ${token}`);
-    
+
     const invite = this.activeInvites.get(token);
-    
+
     if (!invite || invite.status !== 'active') {
       console.warn(`[DIAMOND_INVITE] Token invalid or already redeemed: ${token}`);
-      return false; // Fallback safety: degrades to standard free flow
+      return false;
+    }
+
+    // Expiry check — founder tokens (no expiresAt) never expire
+    if (invite.expiresAt !== undefined && Date.now() > invite.expiresAt) {
+      console.warn(`[DIAMOND_INVITE] Token expired: ${token}`);
+      invite.status = 'revoked';
+      this.activeInvites.set(token, invite);
+      return false;
     }
 
     // 1. Mark as redeemed
