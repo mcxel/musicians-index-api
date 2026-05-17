@@ -132,7 +132,7 @@ export default function OrbitRankingGrid({ artists, accentColor = "#00FFFF", ran
                   roomId="home-orbit-ranking"
                   priority="high"
                   fallbackUrl={artist.image}
-                  altText={`${artist.name} portrait`}
+                  altText={artist.name}
                   className="w-full h-full object-cover"
                   containerStyle={{ position: "absolute", inset: 0 }}
                 />

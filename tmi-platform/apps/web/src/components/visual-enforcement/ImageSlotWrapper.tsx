@@ -52,6 +52,23 @@ const ImagePlaceholder: React.FC<{ placeholderColor?: string }> = ({
   />
 );
 
+function ImgWithFallback({ src, alt, className, containerStyle, placeholderColor }: {
+  src: string; alt: string; className?: string; containerStyle?: React.CSSProperties; placeholderColor?: string;
+}) {
+  const [errored, setErrored] = React.useState(false);
+  if (errored) return <div style={containerStyle}><ImagePlaceholder placeholderColor={placeholderColor} /></div>;
+  return (
+    <img
+      src={src}
+      alt={alt}
+      className={className}
+      style={containerStyle}
+      loading="lazy"
+      onError={() => setErrored(true)}
+    />
+  );
+}
+
 export const ImageSlotWrapper: React.FC<ImageSlotWrapperProps> = ({
   imageId,
   roomId,
@@ -115,15 +132,15 @@ export const ImageSlotWrapper: React.FC<ImageSlotWrapperProps> = ({
     );
   }
 
-  // Success state
+  // Success state — onError degrades to gradient if the resolved URL is a 404
   if (displayUrl) {
     return (
-      <img
+      <ImgWithFallback
         src={displayUrl}
         alt={altText}
         className={className}
-        style={containerStyle}
-        loading="lazy"
+        containerStyle={containerStyle}
+        placeholderColor={placeholderColor}
       />
     );
   }
