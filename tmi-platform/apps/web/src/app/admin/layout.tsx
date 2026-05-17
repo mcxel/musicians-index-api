@@ -19,9 +19,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       .then(r => r.json())
       .then((d: unknown) => {
         if (!active) return;
-        const data = d as { authenticated?: boolean; user?: { role?: string } | null };
+        const data = d as { authenticated?: boolean; role?: string; user?: { role?: string } | null };
         const authed = Boolean(data?.authenticated);
-        const role   = data?.user?.role ?? "";
+        const role   = data?.role ?? data?.user?.role ?? "";
         setStatus(authed && ADMIN_ROLES.has(role) ? "authorized" : "denied");
       })
       .catch(() => {
@@ -33,7 +33,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   useEffect(() => {
     if (status === "denied") {
-      router.replace("/login?redirect=/admin");
+      router.replace("/auth?next=/admin/live");
     }
   }, [status, router]);
 
