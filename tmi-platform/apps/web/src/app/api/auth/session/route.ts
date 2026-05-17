@@ -10,6 +10,7 @@ export async function GET(req: NextRequest) {
   const sessionId    = req.cookies.get('tmi_session_id')?.value;
   const sessionToken = req.cookies.get('tmi_session')?.value;
   const role         = req.cookies.get('tmi_role')?.value ?? 'user';
+  const tier         = req.cookies.get('tmi_tier')?.value ?? 'FREE';
   const email        = req.cookies.get('tmi_user_email')?.value ?? '';
 
   // Stable CSRF — auth routes are CSRF-exempt in middleware, this is informational only
@@ -24,6 +25,7 @@ export async function GET(req: NextRequest) {
     csrfToken,
     user: { id: sessionId.substring(0, 8), email: email || sessionId.substring(0, 8) },
     role,
+    tier,
     expires: new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString(),
   });
 }

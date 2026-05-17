@@ -70,6 +70,30 @@ export class DiamondInviteEngine {
       assignedRole: 'fan',
       status: 'active',
     }],
+
+    // Skeet — Lifetime diamond fan (0% rake)
+    ['VIP-SKEET-2026', {
+      token: 'VIP-SKEET-2026',
+      email: 'facethebully916@gmail.com',
+      assignedRole: 'fan',
+      status: 'active',
+    }],
+
+    // Keven Fobbs — Lifetime diamond performer
+    ['VIP-KEVEN-2026', {
+      token: 'VIP-KEVEN-2026',
+      email: 'kevenfobbsgrip@gmail.com',
+      assignedRole: 'performer',
+      status: 'active',
+    }],
+
+    // Paris Cooper — Lifetime diamond fan/performer
+    ['VIP-PARIS-2026', {
+      token: 'VIP-PARIS-2026',
+      email: 'parisdcooper91@gmail.com',
+      assignedRole: 'performer',
+      status: 'active',
+    }],
   ]);
 
   static getInvite(token: string): InvitePayload | undefined {
