@@ -100,7 +100,6 @@ export default function Home1MagazineCoverComposition() {
   const [burstSeed, setBurstSeed] = useState(() => Date.now());
   const [starburstTrigger, setStarburstTrigger] = useState(false);
   const [isHydrated, setIsHydrated] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
   const router = useRouter();
   const motionSignals = useHome1CoverMotionEngine();
 
@@ -126,14 +125,6 @@ export default function Home1MagazineCoverComposition() {
   }, []);
 
   useEffect(() => {
-    const mq = window.matchMedia('(max-width: 639px)');
-    setIsMobile(mq.matches);
-    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
-    mq.addEventListener('change', handler);
-    return () => mq.removeEventListener('change', handler);
-  }, []);
-
-  useEffect(() => {
     setBurstSeed(Date.now());
     setStarburstTrigger((t) => !t);
   }, [genre.id]);
@@ -142,13 +133,42 @@ export default function Home1MagazineCoverComposition() {
   const secondary = genre.secondary;
 
   return (
+    <>
+    {/* Mobile stage-mode overrides — CSS beats inline styles on mobile with !important */}
+    <style>{`
+      @media (max-width: 639px) {
+        [data-tmi-cover-section] {
+          max-width: none !important;
+          margin: 0 !important;
+          padding: 0 !important;
+        }
+        [data-tmi-cover-shell] {
+          transform: none !important;
+          border-radius: 0 !important;
+          border-left-width: 4px !important;
+          box-shadow: 0 0 40px var(--cover-primary,#AA2DFF)28, inset 0 0 20px rgba(255,255,255,0.04) !important;
+        }
+        [data-tmi-cover-content] {
+          min-height: calc(100svh - 48px) !important;
+        }
+        [data-tmi-orbit-canvas] {
+          height: calc(100svh - 260px) !important;
+          margin: 0 !important;
+        }
+        [data-tmi-rooms-rail] {
+          left: 8px !important;
+          right: 8px !important;
+        }
+      }
+    `}</style>
     <section
+      data-tmi-cover-section
       style={{
         position: "relative",
         width: "100%",
-        maxWidth: isMobile ? "none" : 1120,
-        margin: isMobile ? "0" : "0 auto",
-        padding: isMobile ? "0" : "24px 20px 32px",
+        maxWidth: 1120,
+        margin: "0 auto",
+        padding: "24px 20px 32px",
       }}
     >
       {/* ─── Layer 0: World background ─── */}
@@ -172,20 +192,19 @@ export default function Home1MagazineCoverComposition() {
         aria-label="Open TMI Magazine"
         onClick={() => router.push("/home/magazine")}
         onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") router.push("/home/magazine"); }}
+        data-tmi-cover-shell
         style={{
           position: "relative",
           zIndex: 2,
-          borderRadius: isMobile ? 0 : 16,
+          borderRadius: 16,
           overflow: "hidden",
-          transform: isMobile ? "none" : "translateX(-8px) rotate(-1deg)",
+          transform: "translateX(-8px) rotate(-1deg)",
           cursor: "pointer",
           transition: "transform 260ms ease, box-shadow 260ms ease",
-          boxShadow: isMobile
-            ? `0 0 40px ${primary}28, inset 0 0 20px rgba(255,255,255,0.04)`
-            : `4px 0 0 #ddd, 8px 0 0 #ccc, 12px 0 0 #bbb, 24px 26px 50px rgba(0,0,0,0.55), 0 0 60px ${primary}20, inset 0 0 20px rgba(255,255,255,0.08), inset 4px 0 10px rgba(0,0,0,0.5)`,
-          borderLeft: `${isMobile ? 4 : 10}px solid ${primary}`,
+          boxShadow: `4px 0 0 #ddd, 8px 0 0 #ccc, 12px 0 0 #bbb, 24px 26px 50px rgba(0,0,0,0.55), 0 0 60px ${primary}20, inset 0 0 20px rgba(255,255,255,0.08), inset 4px 0 10px rgba(0,0,0,0.5)`,
+          borderLeft: `10px solid ${primary}`,
           border: `1px solid ${primary}33`,
-          borderLeftWidth: isMobile ? 4 : 10,
+          borderLeftWidth: 10,
         }}
       >
         {/* ─── Layer 2: Cover background engine ─── */}
@@ -290,10 +309,11 @@ export default function Home1MagazineCoverComposition() {
 
         {/* ─── Main content container ─── */}
         <div
+          data-tmi-cover-content
           style={{
             position: "relative",
             zIndex: 10,
-            minHeight: isMobile ? "calc(100svh - 48px)" : 760,
+            minHeight: 760,
           }}
         >
           {/* ─── Layer 6 (top): Live ribbon ─── */}
@@ -347,10 +367,11 @@ export default function Home1MagazineCoverComposition() {
 
           {/* ─── Cover canvas: orbit + crown ─── */}
           <div
+            data-tmi-orbit-canvas
             style={{
               position: "relative",
-              height: isMobile ? "calc(100svh - 260px)" : 560,
-              margin: isMobile ? 0 : "0 8px",
+              height: 560,
+              margin: "0 8px",
             }}
           >
             {/* Ghost "TOP 10" underlay */}
@@ -516,7 +537,7 @@ export default function Home1MagazineCoverComposition() {
           </div>
 
           {/* ─── Mini live rooms (embedded inside bottom quarter) ─── */}
-          <div style={{ position: "absolute", left: isMobile ? 8 : 14, right: isMobile ? 8 : 14, bottom: 78, zIndex: 11 }}>
+          <div data-tmi-rooms-rail style={{ position: "absolute", left: 14, right: 14, bottom: 78, zIndex: 11 }}>
             <div
               style={{
                 fontSize: 9,
@@ -572,5 +593,6 @@ export default function Home1MagazineCoverComposition() {
         }}
       />
     </section>
+    </>
   );
 }
