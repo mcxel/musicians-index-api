@@ -31,16 +31,34 @@ type ColumnDef = {
 };
 
 const COLUMNS: readonly ColumnDef[] = [
-  { key: "best_song", title: "Best Song", accent: "#00FFFF", shadow: "rgba(0,255,255,0.55)", speedSec: 40 },
-  { key: "best_hooks", title: "Best Hooks", accent: "#FF2DAA", shadow: "rgba(255,45,170,0.55)", speedSec: 44 },
-  { key: "best_horns", title: "Best Horns", accent: "#FFD700", shadow: "rgba(255,215,0,0.55)", speedSec: 48 },
-  { key: "best_battle", title: "Best Battle", accent: "#AA2DFF", shadow: "rgba(170,45,255,0.55)", speedSec: 42 },
-  { key: "fan_crown", title: "Fan Crown", accent: "#00FF88", shadow: "rgba(0,255,136,0.5)", speedSec: 46 },
-  { key: "rising_performer", title: "Rising Performer", accent: "#5EE1FF", shadow: "rgba(94,225,255,0.5)", speedSec: 50 },
+  { key: "best_song",          title: "Legacy Era",          accent: "#00FFFF", shadow: "rgba(0,255,255,0.55)",   speedSec: 40 },
+  { key: "best_hooks",         title: "Next Wave",           accent: "#FF2DAA", shadow: "rgba(255,45,170,0.55)", speedSec: 44 },
+  { key: "best_horns",         title: "Brass Division",      accent: "#FFD700", shadow: "rgba(255,215,0,0.55)",  speedSec: 48 },
+  { key: "best_battle",        title: "Keys Division",       accent: "#AA2DFF", shadow: "rgba(170,45,255,0.55)", speedSec: 42 },
+  { key: "fan_crown",          title: "Comedy Stage",        accent: "#00FF88", shadow: "rgba(0,255,136,0.5)",   speedSec: 46 },
+  { key: "rising_performer",   title: "Motion Division",     accent: "#5EE1FF", shadow: "rgba(94,225,255,0.5)",  speedSec: 50 },
 ] as const;
 
+// Country flags cycle by artist index so each name gets a consistent flag
+const FLAGS = ["🇺🇸", "🇯🇲", "🇬🇧", "🇨🇦", "🇧🇷", "🇳🇬", "🇿🇦", "🇲🇽", "🇫🇷", "🇯🇵", "🇩🇪", "🇦🇺"];
+
+// Gradient colors for avatar chips
+const AVATAR_GRADIENTS = [
+  "from-cyan-600 to-indigo-800",
+  "from-rose-600 to-purple-800",
+  "from-amber-500 to-orange-700",
+  "from-emerald-600 to-teal-800",
+  "from-fuchsia-600 to-pink-800",
+  "from-blue-600 to-cyan-800",
+  "from-red-600 to-rose-800",
+  "from-violet-600 to-purple-800",
+  "from-lime-600 to-green-800",
+  "from-yellow-500 to-amber-700",
+  "from-sky-500 to-blue-700",
+  "from-pink-500 to-rose-700",
+];
+
 const NAMES = [
-  "Nova Cipher",
   "Wave Tek",
   "Echo Vale",
   "Kira Bloom",
@@ -114,9 +132,9 @@ function makeRows(seed: number): RankRow[] {
       name: NAMES[(seed + i) % NAMES.length]!,
       movement: "flat",
       fanTruth: base,
-      completionRate: Math.max(45, Math.min(99, 55 + base / 2)),
-      likeRate: Math.max(20, Math.min(95, 24 + base / 1.3)),
-      newFanConversion: Math.max(4, Math.min(55, 6 + base / 2.4)),
+      completionRate: Math.round(Math.max(45, Math.min(99, 55 + base / 2)) * 10) / 10,
+      likeRate: Math.round(Math.max(20, Math.min(95, 24 + base / 1.3)) * 10) / 10,
+      newFanConversion: Math.round(Math.max(4, Math.min(55, 6 + base / 2.4)) * 10) / 10,
       movementReason: "Seeded chart position",
     };
   });
@@ -401,8 +419,19 @@ function BillboardColumn({ config, active }: { config: ColumnDef; active: boolea
                   ["--h12-glow" as string]: config.shadow,
                 }}
               >
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
                   <span style={{ fontSize: 10, fontWeight: 900, color: config.accent, minWidth: 14 }}>{(i % rows.length) + 1}</span>
+                  {/* Avatar chip with gradient fallback */}
+                  <div
+                    className={`bg-gradient-to-br ${AVATAR_GRADIENTS[(i % rows.length) % AVATAR_GRADIENTS.length]}`}
+                    style={{
+                      width: 20, height: 20, borderRadius: 4, flexShrink: 0,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      fontSize: 7, fontWeight: 900, color: "rgba(255,255,255,0.9)",
+                    }}
+                  >
+                    {row.name.substring(0, 2).toUpperCase()}
+                  </div>
                   <span
                     style={{
                       fontSize: 10,
@@ -416,16 +445,17 @@ function BillboardColumn({ config, active }: { config: ColumnDef; active: boolea
                   >
                     {row.name}
                   </span>
-                  <span style={{ fontSize: 8, fontWeight: 800, color: config.accent }}>{row.fanTruth}</span>
+                  <span style={{ fontSize: 8, flexShrink: 0 }}>{FLAGS[(i % rows.length) % FLAGS.length]}</span>
+                  <span style={{ fontSize: 8, fontWeight: 800, color: config.accent, flexShrink: 0 }}>{row.fanTruth}</span>
                   <MovementGlyph movement={row.movement} color={config.accent} />
                 </div>
                 <div style={{ marginTop: 3, fontSize: 7, color: "rgba(255,255,255,0.62)", letterSpacing: "0.05em" }}>
                   {row.movementReason}
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6, marginTop: 4 }}>
-                  <span style={{ fontSize: 7, color: "rgba(255,255,255,0.48)" }}>C {row.completionRate}%</span>
-                  <span style={{ fontSize: 7, color: "rgba(255,255,255,0.48)" }}>L {row.likeRate}%</span>
-                  <span style={{ fontSize: 7, color: "rgba(255,255,255,0.48)" }}>N {row.newFanConversion}%</span>
+                  <span style={{ fontSize: 7, color: "rgba(255,255,255,0.48)" }}>C {Number(row.completionRate).toFixed(1)}%</span>
+                  <span style={{ fontSize: 7, color: "rgba(255,255,255,0.48)" }}>L {Number(row.likeRate).toFixed(1)}%</span>
+                  <span style={{ fontSize: 7, color: "rgba(255,255,255,0.48)" }}>N {Number(row.newFanConversion).toFixed(1)}%</span>
                 </div>
               </div>
             );
