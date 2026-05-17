@@ -22,8 +22,30 @@ export async function POST(req: NextRequest) {
     const userAgent = req.headers.get('user-agent') || '';
 
     const userId = email;
-    const adminEmails = (process.env.ADMIN_EMAILS ?? '').toLowerCase().split(',').map((e) => e.trim()).filter(Boolean);
-    const role = adminEmails.includes(email.toLowerCase()) ? 'admin' : 'user';
+    const emailLower = email.toLowerCase();
+
+    // Hardcoded admin fallback — covers Jay, Justin, Marcel even before ADMIN_EMAILS env var is set
+    const HARDCODED_ADMINS = new Set([
+      'berntmusic33@gmail.com',
+      'bjmtherapper1@gmail.com',
+      'rjking42@icloud.com',
+    ]);
+
+    // Diamond lifetime accounts — 0% rake, DIAMOND tier cookie
+    const DIAMOND_EMAILS = new Set([
+      't.muse82@icloud.com',
+      'facethebully916@gmail.com',
+      'kevenfobbsgrip@gmail.com',
+      'parisdcooper91@gmail.com',
+      'mystictrinity@yahoo.com',
+      'sharingmyblessing1978@gmail.com',
+      'blackstargoldpr@gmail.com',
+    ]);
+
+    const envAdminEmails = (process.env.ADMIN_EMAILS ?? '').toLowerCase().split(',').map((e) => e.trim()).filter(Boolean);
+    const isAdmin = HARDCODED_ADMINS.has(emailLower) || envAdminEmails.includes(emailLower);
+    const role = isAdmin ? 'admin' : 'user';
+    const tier = isAdmin ? 'ADMIN' : DIAMOND_EMAILS.has(emailLower) ? 'DIAMOND' : 'FREE';
 
     // Create session
     const { sessionId, sessionToken } = createSession(userId, role, clientIp, userAgent);
@@ -35,35 +57,25 @@ export async function POST(req: NextRequest) {
         message: 'Session created',
         userId,
         role,
+        tier,
       },
       { status: 200 }
     );
 
-    response.cookies.set('tmi_session_id', sessionId, {
+    const cookieOpts = {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 12 * 60 * 60, // 12 hours
-      path: '/',
-    });
-
-    response.cookies.set('tmi_session', sessionToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 12 * 60 * 60, // 12 hours
-      path: '/',
-    });
-
-    response.cookies.set('tmi_role', role, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      sameSite: 'lax' as const,
       maxAge: 12 * 60 * 60,
       path: '/',
-    });
+    };
 
-    response.cookies.set('tmi_user_email', email.toLowerCase(), {
+    response.cookies.set('tmi_session_id', sessionId, cookieOpts);
+    response.cookies.set('tmi_session', sessionToken, cookieOpts);
+    response.cookies.set('tmi_role', role, cookieOpts);
+    response.cookies.set('tmi_tier', tier, cookieOpts);
+
+    response.cookies.set('tmi_user_email', emailLower, {
       httpOnly: false,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
