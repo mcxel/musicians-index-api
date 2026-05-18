@@ -13,6 +13,7 @@ import Home3PremiereRail from './Home3PremiereRail';
 import Home3LiveDensityRail from './Home3LiveDensityRail';
 import GlobalLiveBelt from './GlobalLiveBelt';
 import AudienceField from '@/components/live/AudienceField';
+import AvatarMiniPreview from '@/components/avatar/AvatarMiniPreview';
 import { enforceRouteOwnership } from '@/lib/routes/TmiVisualRouteMap';
 import { getVisualSlot } from '@/lib/visuals/TmiVisualSlotRegistry';
 
@@ -85,6 +86,10 @@ export default function Home3LiveWorldSurface() {
 
       <section style={{ maxWidth: 1100, margin: '0 auto', padding: '0 24px 12px' }}>
         <AudienceField />
+      </section>
+
+      <section style={{ maxWidth: 1100, margin: '0 auto', padding: '0 24px 24px' }}>
+        <AvatarMiniPreview variant="mini" accentColor="#00FFFF" />
       </section>
 
       {/* Main preview lobby */}

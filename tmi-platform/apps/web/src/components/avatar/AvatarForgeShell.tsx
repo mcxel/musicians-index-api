@@ -173,13 +173,23 @@ export default function AvatarForgeShell() {
       });
       if (saveResponse.ok) {
         const payload = await saveResponse.json();
-        setSavedAt(payload?.AvatarProfile?.updatedAt ?? sync.syncedAt);
+        const ts = payload?.AvatarProfile?.updatedAt ?? sync.syncedAt;
+        setSavedAt(ts);
+        const snapshot = { displayName: profileName, skin, hair, outfit, bodyHeight, bodyMass };
+        localStorage.setItem('tmi_avatar_snapshot', JSON.stringify(snapshot));
+        window.dispatchEvent(new CustomEvent('tmi:avatar-changed', { detail: snapshot }));
         return;
       }
     } catch {
       // Fall back to local sync timestamp.
     }
     setSavedAt(sync.syncedAt);
+    // Broadcast snapshot so AvatarMiniPreview updates everywhere
+    try {
+      const snapshot = { displayName: profileName, skin, hair, outfit, bodyHeight, bodyMass };
+      localStorage.setItem('tmi_avatar_snapshot', JSON.stringify(snapshot));
+      window.dispatchEvent(new CustomEvent('tmi:avatar-changed', { detail: snapshot }));
+    } catch { /* localStorage unavailable */ }
   };
 
   const handleMint = async () => {

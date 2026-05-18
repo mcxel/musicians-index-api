@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect } from "react";
 import Link from "next/link";
+import AvatarMiniPreview from "@/components/avatar/AvatarMiniPreview";
 
 export const HOME_SCREENS = [
   { n: 1, path: "/home/1", label: "MAGAZINE COVER", short: "Cover", accent: "#FF2DAA" },
@@ -170,6 +171,11 @@ export default function HomeNavigator() {
             <span style={{ fontSize: 14 }}>▶</span>
           </button>
         ) : <div />}
+      </div>
+
+      {/* Avatar mini chip — top-right corner */}
+      <div style={{ position: "absolute", top: "50%", right: 8, transform: "translateY(-50%)" }}>
+        <AvatarMiniPreview variant="mini" accentColor={current?.accent ?? "#00FFFF"} />
       </div>
     </div>
     </>
