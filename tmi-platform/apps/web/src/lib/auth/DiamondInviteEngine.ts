@@ -96,6 +96,16 @@ export class DiamondInviteEngine {
       assignedRole: 'performer',
       status: 'active',
     }],
+
+    // Lorenzo McCoy — Grandfathered lifetime Diamond VIP (permanent, hardcoded)
+    ['VIP-LORENZO-2026', {
+      token: 'VIP-LORENZO-2026',
+      email: 'lorenzomccoy@themusiciansindex.com',
+      assignedRole: 'performer',
+      isFounder: true,
+      isDiamondProducer: true,
+      status: 'active',
+    }],
   ]);
 
   static getInvite(token: string): InvitePayload | undefined {
