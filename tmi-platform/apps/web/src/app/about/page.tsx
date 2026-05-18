@@ -105,9 +105,15 @@ export default function AboutPage() {
         <p style={P}>
           The Musician&apos;s Index hosts live hip-hop battles, vocal cyphers, freestyle sessions, and
           producer showcases in a digital venue environment. Events are streamed in real time to a
-          live audience that interacts through voting, reactions, and tipping. The World Concert stage
+          live audience that interacts through voting, reactions, and tipping. The{" "}
+          <Link href="/home/3" style={{ color: "#FF4444", textDecoration: "underline" }}>
+            Live World stage
+          </Link>{" "}
           brings artists and fans together from anywhere in the world, making TMI the most interactive
-          online music venue available.
+          online music venue available. Learn more about the{" "}
+          <Link href="/music-platform" style={{ color: "#00FFFF", textDecoration: "underline" }}>
+            live music platform
+          </Link>.
         </p>
 
         <h2 style={H2}>The TMI Billboard</h2>
