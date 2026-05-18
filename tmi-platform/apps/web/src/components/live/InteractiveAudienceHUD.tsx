@@ -1,8 +1,15 @@
 "use client";
 
+import { useState, useCallback } from "react";
 import Link from "next/link";
 import LobbyStageViewport from "@/components/lobbies/LobbyStageViewport";
 import type { SharedStageRoomData } from "./useSharedStageRoomData";
+
+const TIP_AMOUNTS = [
+  { label: "$1", cents: 100 },
+  { label: "$5", cents: 500 },
+  { label: "$10", cents: 1000 },
+];
 
 type InteractiveAudienceHUDProps = {
   roomId: string;
@@ -18,6 +25,16 @@ function roomRules(type: SharedStageRoomData["roomType"]): string {
 
 export default function InteractiveAudienceHUD({ roomId, data }: InteractiveAudienceHUDProps) {
   const performerName = roomId.replace(/-/g, " ").toUpperCase();
+  const [sentAmount, setSentAmount] = useState<number | null>(null);
+
+  const handleTip = useCallback(
+    (cents: number) => {
+      data.triggerTip(cents);
+      setSentAmount(cents / 100);
+      setTimeout(() => setSentAmount(null), 2000);
+    },
+    [data],
+  );
 
   return (
     <section style={{ display: "grid", gap: 12 }} aria-label="Interactive Audience HUD">
@@ -62,7 +79,41 @@ export default function InteractiveAudienceHUD({ roomId, data }: InteractiveAudi
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <button type="button" onClick={data.triggerHype} style={{ padding: "8px 11px", borderRadius: 8, border: "1px solid rgba(0,255,255,0.5)", background: "rgba(0,255,255,0.12)", color: "#BFFFFF", fontWeight: 700, cursor: "pointer" }}>Throw Hype</button>
-          <button type="button" onClick={data.triggerTip} style={{ padding: "8px 11px", borderRadius: 8, border: "1px solid rgba(255,215,0,0.5)", background: "rgba(255,215,0,0.12)", color: "#FFE28B", fontWeight: 700, cursor: "pointer" }}>Send Tip</button>
+          <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+            {TIP_AMOUNTS.map(({ label, cents }) => (
+              <button
+                key={cents}
+                type="button"
+                onClick={() => handleTip(cents)}
+                style={{
+                  padding: "8px 11px",
+                  borderRadius: 8,
+                  border: "1px solid rgba(255,215,0,0.5)",
+                  background: "rgba(255,215,0,0.12)",
+                  color: "#FFE28B",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  fontSize: 11,
+                }}
+              >
+                💸 {label}
+              </button>
+            ))}
+            {sentAmount !== null && (
+              <span
+                style={{
+                  fontSize: 11,
+                  fontWeight: 800,
+                  color: "#FFD700",
+                  animation: "fadeOut 2s forwards",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                Sent ${sentAmount}!
+              </span>
+            )}
+          </div>
+          <style>{`@keyframes fadeOut { 0%{opacity:1} 70%{opacity:1} 100%{opacity:0} }`}</style>
           <button type="button" style={{ padding: "8px 11px", borderRadius: 8, border: "1px solid rgba(255,45,170,0.5)", background: "rgba(255,45,170,0.12)", color: "#FFB8E6", fontWeight: 700, cursor: "pointer" }}>Open Magazine</button>
           <button type="button" style={{ padding: "8px 11px", borderRadius: 8, border: "1px solid rgba(170,45,255,0.5)", background: "rgba(170,45,255,0.12)", color: "#D6B8FF", fontWeight: 700, cursor: "pointer" }}>After-show Discussion</button>
         </div>
