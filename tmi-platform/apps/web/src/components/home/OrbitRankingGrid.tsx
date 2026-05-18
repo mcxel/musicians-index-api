@@ -86,6 +86,7 @@ export default function OrbitRankingGrid({ artists, accentColor = "#00FFFF", ran
           >
             <motion.div
               data-tmi-orbit-card
+              initial={{ rotate: pos.rotate }}
               animate={
                 isFlashing
                   ? { scale: [1, 1.12, 1], borderColor: ["#FF2DAA", "#FFD700", accentColor] }
@@ -98,7 +99,6 @@ export default function OrbitRankingGrid({ artists, accentColor = "#00FFFF", ran
               }
               style={{
                 width: 96,
-                transform: `rotate(${pos.rotate}deg)`,
                 borderRadius: 10,
                 border: `1px solid ${isFlashing ? "#FFD700" : accentColor}44`,
                 overflow: "hidden",
@@ -108,6 +108,9 @@ export default function OrbitRankingGrid({ artists, accentColor = "#00FFFF", ran
                 boxShadow: isFlashing
                   ? `0 6px 22px rgba(0,0,0,0.65), 0 0 18px #FFD70088`
                   : `0 6px 22px rgba(0,0,0,0.65), 0 0 6px ${accentColor}22`,
+                willChange: "transform",
+                backfaceVisibility: "hidden",
+                WebkitBackfaceVisibility: "hidden",
               }}
             >
               {rankShiftPulse && (

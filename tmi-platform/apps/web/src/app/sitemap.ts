@@ -34,9 +34,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // Platform info
     { url: `${base}/about`,          lastModified: now, changeFrequency: 'monthly', priority: 0.80 },
     { url: `${base}/music-platform`, lastModified: now, changeFrequency: 'monthly', priority: 0.80 },
-    { url: `${base}/for-artists`,    lastModified: now, changeFrequency: 'monthly', priority: 0.70 },
-    { url: `${base}/for-producers`, lastModified: now, changeFrequency: 'monthly', priority: 0.68 },
-    { url: `${base}/for-sponsors`,  lastModified: now, changeFrequency: 'monthly', priority: 0.65 },
     { url: `${base}/discover`,      lastModified: now, changeFrequency: 'daily',   priority: 0.75 },
   ];
 
