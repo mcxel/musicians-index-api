@@ -28,6 +28,13 @@ const nextConfig = {
   staticPageGenerationTimeout: 300,
   async redirects() {
     return [
+      // www → apex canonical (301 permanent — consolidates all link authority)
+      {
+        source: '/:path*',
+        has: [{ type: 'host', value: 'www.themusiciansindex.com' }],
+        destination: 'https://themusiciansindex.com/:path*',
+        permanent: true,
+      },
       {
         source: "/",
         destination: "/home/1",
