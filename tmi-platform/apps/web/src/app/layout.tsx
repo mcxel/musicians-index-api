@@ -15,8 +15,21 @@ export const metadata: Metadata = {
     "artist discovery", "music magazine", "online music venue",
     "live music shows", "music competitions", "performers", "fans",
   ],
-  robots: { index: true, follow: true },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
   alternates: { canonical: "https://themusiciansindex.com" },
+  authors: [{ name: "The Musician's Index Magazine" }],
+  creator: "The Musician's Index",
+  publisher: "BernoutGlobal",
   openGraph: {
     title: "The Musician's Index Magazine",
     description: "The Musician's Index Magazine — a live interactive platform where artists, performers, and fans connect through music, shows, competitions, and real-time audience experiences.",
