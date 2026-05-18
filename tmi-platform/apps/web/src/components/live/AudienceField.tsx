@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useEffect, useCallback } from 'react';
+import { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 
 type AudienceSeat = {
   id: string;
@@ -28,6 +28,8 @@ export default function AudienceField({ isMobile }: { isMobile?: boolean }) {
   const base = useMemo(() => buildSeats(isMobile ? 24 : 48), [isMobile]);
   const [seats, setSeats] = useState<AudienceSeat[]>(base);
   const [occupancy, setOccupancy] = useState(84);
+  const [joinBurst, setJoinBurst] = useState<number | null>(null);
+  const prevOccupancyRef = useRef(84);
 
   // Breathing occupancy — drifts ±1 every 2.5 s, clamped 78–92
   useEffect(() => {
@@ -39,6 +41,18 @@ export default function AudienceField({ isMobile }: { isMobile?: boolean }) {
     }, 2500);
     return () => clearInterval(id);
   }, []);
+
+  // Join burst — fires when occupancy ticks up
+  useEffect(() => {
+    if (occupancy > prevOccupancyRef.current) {
+      const count = Math.floor(Math.random() * 4) + 1;
+      setJoinBurst(count);
+      const t = setTimeout(() => setJoinBurst(null), 1400);
+      prevOccupancyRef.current = occupancy;
+      return () => clearTimeout(t);
+    }
+    prevOccupancyRef.current = occupancy;
+  }, [occupancy]);
 
   // Seat flux — randomly flip one seat's active state every 4 s so the grid shifts
   const flipSeat = useCallback(() => {
@@ -76,6 +90,12 @@ export default function AudienceField({ isMobile }: { isMobile?: boolean }) {
           70% { opacity: 1; transform: translateY(-1px) scale(1.03) translateZ(0); }
           100% { opacity: 0; transform: translateY(-3px) scale(0.95) translateZ(0); }
         }
+        @keyframes joinBurstFloat {
+          0%   { opacity: 0; transform: translateY(4px) scale(0.9) translateZ(0); }
+          20%  { opacity: 1; transform: translateY(0)   scale(1)   translateZ(0); }
+          70%  { opacity: 1; transform: translateY(-4px) scale(1)  translateZ(0); }
+          100% { opacity: 0; transform: translateY(-9px) scale(0.95) translateZ(0); }
+        }
       `}</style>
 
       <div
@@ -89,19 +109,41 @@ export default function AudienceField({ isMobile }: { isMobile?: boolean }) {
         <div style={{ fontSize: 9, letterSpacing: '0.16em', color: '#00FFFF', fontWeight: 800 }}>
           LIVE AUDIENCE
         </div>
-        <div
-          style={{
-            fontSize: 11,
-            fontWeight: 900,
-            color: occupancy >= 88 ? '#FFD700' : '#00FFFF',
-            letterSpacing: '0.08em',
-            transition: 'color 0.6s ease',
-            fontFamily: "var(--font-tmi-orbitron, 'Orbitron', monospace)",
-          }}
-          aria-live="polite"
-          aria-label={`Audience occupancy ${occupancy} percent`}
-        >
-          {occupancy}% <span style={{ opacity: 0.55, fontSize: 8, fontWeight: 700 }}>OCCUPIED</span>
+        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 8 }}>
+          {joinBurst !== null && (
+            <span
+              aria-hidden
+              style={{
+                position: 'absolute',
+                right: '100%',
+                marginRight: 6,
+                whiteSpace: 'nowrap',
+                fontSize: 10,
+                fontWeight: 900,
+                color: '#00FF88',
+                letterSpacing: '0.06em',
+                animation: 'joinBurstFloat 1.4s ease-out forwards',
+                pointerEvents: 'none',
+                fontFamily: "var(--font-tmi-orbitron, 'Orbitron', monospace)",
+              }}
+            >
+              +{joinBurst} JOINED
+            </span>
+          )}
+          <div
+            style={{
+              fontSize: 11,
+              fontWeight: 900,
+              color: occupancy >= 88 ? '#FFD700' : '#00FFFF',
+              letterSpacing: '0.08em',
+              transition: 'color 0.6s ease',
+              fontFamily: "var(--font-tmi-orbitron, 'Orbitron', monospace)",
+            }}
+            aria-live="polite"
+            aria-label={`Audience occupancy ${occupancy} percent`}
+          >
+            {occupancy}% <span style={{ opacity: 0.55, fontSize: 8, fontWeight: 700 }}>OCCUPIED</span>
+          </div>
         </div>
       </div>
 
