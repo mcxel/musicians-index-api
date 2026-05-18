@@ -187,12 +187,35 @@ export default function MagazineFlipPage() {
         </button>
       </div>
 
+      {/* Billboard Index entry */}
+      <Link
+        href="/magazine/billboards"
+        style={{
+          marginTop: 20,
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 8,
+          background: "rgba(0,255,255,0.06)",
+          border: "1px solid rgba(0,255,255,0.22)",
+          borderRadius: 8,
+          padding: "8px 18px",
+          fontSize: 9,
+          fontWeight: 800,
+          letterSpacing: "0.16em",
+          color: "#00FFFF",
+          textTransform: "uppercase",
+          textDecoration: "none",
+        }}
+      >
+        📊 Billboard Index — All Rankings
+      </Link>
+
       {/* Exit */}
       <button
         type="button"
         onClick={() => router.push("/home/1")}
         style={{
-          marginTop: 20,
+          marginTop: 12,
           background: "none",
           border: "none",
           color: "rgba(255,255,255,0.4)",
