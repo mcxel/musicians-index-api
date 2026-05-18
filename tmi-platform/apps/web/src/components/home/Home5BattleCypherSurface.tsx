@@ -222,6 +222,8 @@ export default function Home5BattleCypherSurface() {
         </p>
       </header>
 
+      <Home5BattleDensityRail />
+
       <section
         style={{
           border: "1px solid rgba(255,45,170,0.42)",

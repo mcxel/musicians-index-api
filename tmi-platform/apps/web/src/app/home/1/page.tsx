@@ -115,7 +115,7 @@ export const MAGAZINE_FULL_ROTATION_SCENES = [
     id: 'home-2' as const,
     durationMs: 60000,
     content: (
-      <main role="main" tabIndex={-1} data-telemetry="home.2.render" style={{ position: 'relative', height: '100%', minHeight: '100%' }}>
+      <main role="main" tabIndex={-1} data-telemetry="home.2.render" style={{ position: 'relative', minHeight: '100%', overflowY: 'auto' }}>
         <HomeSurfacePage surfaceId={2} />
         <div aria-hidden="true" style={ATMO['home-2']} />
         <div aria-hidden="true" style={SCANLINE} />
@@ -126,7 +126,7 @@ export const MAGAZINE_FULL_ROTATION_SCENES = [
     id: 'home-3' as const,
     durationMs: 60000,
     content: (
-      <main role="main" tabIndex={-1} data-telemetry="home.3.render" style={{ position: 'relative', minHeight: '100%', overflowX: 'hidden' }}>
+      <main role="main" tabIndex={-1} data-telemetry="home.3.render" style={{ position: 'relative', minHeight: '100%', overflowX: 'hidden', overflowY: 'auto' }}>
         <Home3LiveWorldSurface />
         <div aria-hidden="true" style={ATMO['home-3']} />
         <div aria-hidden="true" style={SCANLINE} />
@@ -137,7 +137,7 @@ export const MAGAZINE_FULL_ROTATION_SCENES = [
     id: 'home-4' as const,
     durationMs: 60000,
     content: (
-      <main role="main" tabIndex={-1} data-telemetry="home.4.render" style={{ position: 'relative', minHeight: '100%', overflowX: 'hidden' }}>
+      <main role="main" tabIndex={-1} data-telemetry="home.4.render" style={{ position: 'relative', minHeight: '100%', overflowX: 'hidden', overflowY: 'auto' }}>
         <Home4SponsorSurface />
         <div aria-hidden="true" style={ATMO['home-4']} />
         <div aria-hidden="true" style={SCANLINE} />
@@ -148,7 +148,7 @@ export const MAGAZINE_FULL_ROTATION_SCENES = [
     id: 'home-5' as const,
     durationMs: 60000,
     content: (
-      <main role="main" tabIndex={-1} data-telemetry="home.5.render" style={{ position: 'relative', minHeight: '100%', overflowX: 'hidden' }}>
+      <main role="main" tabIndex={-1} data-telemetry="home.5.render" style={{ position: 'relative', minHeight: '100%', overflowX: 'hidden', overflowY: 'auto' }}>
         <Home5BattleCypherSurface />
         <div aria-hidden="true" style={ATMO['home-5']} />
         <div aria-hidden="true" style={SCANLINE} />

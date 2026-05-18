@@ -170,6 +170,7 @@ export default function Home1MagazineCoverComposition() {
         [data-tmi-rooms-rail] {
           left: 8px !important;
           right: 8px !important;
+          bottom: 162px !important;
         }
         [data-tmi-cta-rail] {
           bottom: max(env(safe-area-inset-bottom, 0px), 0px) !important;
