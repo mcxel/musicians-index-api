@@ -1,8 +1,26 @@
 import type { ReactNode } from "react";
+import Link from "next/link";
 
 export default function RoomsLayout({ children }: { children: ReactNode }) {
   return (
     <>
+      {/* ── Leave Room button — fixed top-left ── */}
+      <div style={{ position: "fixed", top: 16, left: 12, zIndex: 9999 }}>
+        <Link
+          href="/profile"
+          style={{
+            display: "inline-flex", alignItems: "center", gap: 5,
+            padding: "6px 12px", borderRadius: 20,
+            background: "rgba(6,4,16,0.85)", backdropFilter: "blur(8px)",
+            border: "1px solid rgba(255,255,255,0.12)",
+            color: "rgba(255,255,255,0.65)", fontSize: 10, fontWeight: 700,
+            letterSpacing: "0.08em", textDecoration: "none",
+          }}
+        >
+          ← MY HUB
+        </Link>
+      </div>
+
       {/* ── 80s neon stage environment frame ── fixed overlay, pointer-events: none ── */}
       <div
         aria-hidden
