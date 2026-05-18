@@ -143,7 +143,7 @@ export default function Home1MagazineCoverComposition() {
           padding: 0 !important;
         }
         [data-tmi-cover-shell] {
-          transform: none !important;
+          transform: translateZ(0) !important;
           border-radius: 0 !important;
           border-left-width: 4px !important;
           box-shadow: 0 0 40px var(--cover-primary,#AA2DFF)28, inset 0 0 20px rgba(255,255,255,0.04) !important;
@@ -175,6 +175,8 @@ export default function Home1MagazineCoverComposition() {
           bottom: max(env(safe-area-inset-bottom, 0px), 0px) !important;
           padding-bottom: 8px !important;
         }
+        [data-tmi-halo-outer] { filter: none !important; }
+        [data-tmi-halo-inner] { filter: none !important; }
       }
     `}</style>
     <section
@@ -265,7 +267,7 @@ export default function Home1MagazineCoverComposition() {
         </svg>
 
         {/* Hard-shape triangle underlays */}
-        <div style={{ position: "absolute", inset: 0, zIndex: 2, pointerEvents: "none", overflow: "hidden", transition: "all 2.5s ease" }}>
+        <div style={{ position: "absolute", inset: 0, zIndex: 2, pointerEvents: "none", overflow: "hidden", transition: "opacity 2.5s ease" }}>
           <div style={{ position: "absolute", top: 0, left: 0, width: "26%", height: "26%", background: primary, opacity: 0.08, clipPath: "polygon(0 0, 100% 0, 0 100%)" }} />
           <div style={{ position: "absolute", top: 0, right: 0, width: "20%", height: "20%", background: secondary, opacity: 0.06, clipPath: "polygon(100% 0, 100% 100%, 0 0)" }} />
           <div style={{ position: "absolute", bottom: 0, left: 0, width: "18%", height: "18%", background: secondary, opacity: 0.05, clipPath: "polygon(0 0, 100% 100%, 0 100%)" }} />
@@ -430,6 +432,7 @@ export default function Home1MagazineCoverComposition() {
             >
               {/* Outer halo ring */}
               <motion.div
+                data-tmi-halo-outer
                 animate={{ scale: [0.95, 1.06, 0.95], opacity: [0.10, 0.22, 0.10] }}
                 transition={{ duration: 3.8, repeat: Infinity }}
                 style={{
@@ -444,9 +447,11 @@ export default function Home1MagazineCoverComposition() {
                   filter: "blur(2px)",
                   pointerEvents: "none",
                   zIndex: 0,
+                  willChange: "transform, opacity",
                 }}
               />
               <motion.div
+                data-tmi-halo-inner
                 animate={{ scale: [0.9, 1.08, 0.9], opacity: [0.24, 0.52, 0.24] }}
                 transition={{ duration: 2.2, repeat: Infinity }}
                 style={{
@@ -461,6 +466,7 @@ export default function Home1MagazineCoverComposition() {
                   filter: "blur(1.5px)",
                   pointerEvents: "none",
                   zIndex: 0,
+                  willChange: "transform, opacity",
                 }}
               />
 
@@ -497,6 +503,7 @@ export default function Home1MagazineCoverComposition() {
                   textShadow: "0 0 10px rgba(255,45,170,0.8)",
                   zIndex: 9,
                   pointerEvents: "none",
+                  willChange: "transform, opacity",
                 }}
               >
                 LIVE
@@ -516,6 +523,7 @@ export default function Home1MagazineCoverComposition() {
                   textTransform: "uppercase",
                   zIndex: 9,
                   pointerEvents: "none",
+                  willChange: "transform, opacity",
                 }}
               >
                 VOTE OPEN
@@ -547,6 +555,7 @@ export default function Home1MagazineCoverComposition() {
                 textShadow: `0 0 14px ${primary}80`,
                 zIndex: 5,
                 transition: "color 2s ease",
+                willChange: "opacity",
               }}
             >
               {genre.icon} {genre.label}

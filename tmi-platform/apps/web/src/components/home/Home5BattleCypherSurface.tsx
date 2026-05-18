@@ -192,19 +192,22 @@ export default function Home5BattleCypherSurface() {
         minHeight: "100vh",
         padding: "16px clamp(12px, 3vw, 28px) 28px",
         display: "grid",
-        gap: 12,
+        gap: 16,
         background:
           "radial-gradient(circle at 0% 0%, rgba(255,45,170,0.16), transparent 35%), radial-gradient(circle at 100% 100%, rgba(0,255,255,0.12), transparent 40%), linear-gradient(170deg, #050510, #0c0618)",
       }}
     >
       <GlobalTopNavRail />
-      <BreakingNewsTicker />
-      <SponsorTickerRail />
-      <Home5BattleDensityRail />
+
+      {/* Compact ticker strip — collapsed to minimize vertical footprint */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+        <BreakingNewsTicker />
+        <SponsorTickerRail />
+      </div>
 
       <header style={{ display: "grid", gap: 6 }}>
         <TmiBadgeLabel color="#ff2daa">Competition + Contest Economy</TmiBadgeLabel>
-        <TmiHeadline as="h1" style={{ fontSize: "clamp(34px, 6vw, 64px)" }}>
+        <TmiHeadline as="h1" style={{ fontSize: "clamp(22px, 5vw, 56px)" }}>
           Games, Battles, Cyphers, Contests
         </TmiHeadline>
         <p
@@ -218,16 +221,6 @@ export default function Home5BattleCypherSurface() {
           Battle of the Day, Cypher of the Week, Monday Night Stage, Monthly & Yearly Contests, and integrated sponsor rewards.
         </p>
       </header>
-
-      <section style={{ display: "grid", gap: 8 }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
-          <TmiBadgeLabel color="#00ffff">Execute Director</TmiBadgeLabel>
-          <span style={{ fontSize: 11, opacity: 0.82, letterSpacing: "0.08em" }}>
-            DROP → ENGAGE → REACTION cinematic sequencing
-          </span>
-        </div>
-        <SmartCameraDirector />
-      </section>
 
       <section
         style={{
@@ -653,6 +646,17 @@ export default function Home5BattleCypherSurface() {
         >
           View All Sponsors
         </Link>
+      </section>
+
+      {/* CAMERA DIRECTOR — cinematic sequencing tool */}
+      <section style={{ display: "grid", gap: 8 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+          <TmiBadgeLabel color="#00ffff">Execute Director</TmiBadgeLabel>
+          <span style={{ fontSize: 11, opacity: 0.82, letterSpacing: "0.08em" }}>
+            DROP → ENGAGE → REACTION cinematic sequencing
+          </span>
+        </div>
+        <SmartCameraDirector />
       </section>
 
       {/* ORIGINAL BELTS */}
