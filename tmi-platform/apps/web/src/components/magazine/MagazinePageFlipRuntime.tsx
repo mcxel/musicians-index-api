@@ -116,7 +116,7 @@ function SingleSceneRuntime({
       aria-label="Magazine runtime scene"
       data-runtime-scene={sceneId}
       data-runtime-phase={phase}
-      style={{ position: "relative", minHeight: "100vh", overflow: "hidden", touchAction: "pan-y" }}
+      style={{ position: "relative", minHeight: "100svh", overflow: "hidden", touchAction: "pan-y" }}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
@@ -124,7 +124,7 @@ function SingleSceneRuntime({
     >
       <div aria-hidden="true" style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at 12% 24%, rgba(0, 255, 255, 0.14) 0%, transparent 58%), radial-gradient(ellipse at 84% 76%, rgba(255, 45, 170, 0.14) 0%, transparent 58%)", pointerEvents: "none", zIndex: 1 }} />
       <div style={{ position: "absolute", left: "50%", top: "5%", width: "min(1200px, 96vw)", height: "90%", transform: "translateX(-50%)", borderRadius: 22, background: "linear-gradient(140deg, rgba(8, 6, 24, 0.9), rgba(5, 5, 16, 0.94))", boxShadow: "0 24px 60px rgba(0,0,0,0.45), inset 18px 0 22px rgba(255,255,255,0.04), inset -18px 0 20px rgba(0,0,0,0.3)", zIndex: 2, pointerEvents: "none" }} />
-      <div style={{ position: "relative", zIndex: 3, minHeight: "100vh", transformOrigin: "left center", transform: getRuntimeTransform(phase, dragX), transition: getRuntimeTransition(phase), filter: phase === "starburst" ? "brightness(1.2) saturate(1.22)" : "none", boxShadow: phase === "flipping" ? "-22px 0 38px rgba(0, 0, 0, 0.4), 0 18px 40px rgba(0, 0, 0, 0.34)" : "none" }}>
+      <div style={{ position: "relative", zIndex: 3, minHeight: "100svh", transformOrigin: "left center", transform: getRuntimeTransform(phase, dragX), transition: getRuntimeTransition(phase), filter: phase === "starburst" ? "brightness(1.2) saturate(1.22)" : "none", boxShadow: phase === "flipping" ? "-22px 0 38px rgba(0, 0, 0, 0.4), 0 18px 40px rgba(0, 0, 0, 0.34)" : "none" }}>
         {children}
       </div>
       <MagazineStarburstTransition active={phase !== "holding"} phase={phase} />
@@ -248,7 +248,7 @@ function MultiSceneRuntime({ scenes, initialIndex = 0, onSceneEnter, onSceneExit
     <section
       aria-label="Magazine full rotation"
       data-runtime-phase={phase}
-      style={{ position: "relative", minHeight: "100vh", overflow: "hidden" }}
+      style={{ position: "relative", minHeight: "100svh", overflow: "hidden" }}
       onPointerEnter={handlePointerEnter}
       onPointerMove={handlePointerMove}
       onPointerLeave={handlePointerLeave}
@@ -293,7 +293,8 @@ function MultiSceneRuntime({ scenes, initialIndex = 0, onSceneEnter, onSceneExit
                   pointerEvents: isActive ? "auto" : "none",
                   transition: "opacity 220ms ease",
                   zIndex: isActive ? 2 : 1,
-                  overflow: "hidden",
+                  overflowX: "hidden",
+                  overflowY: "auto",
                 }}
               >
                 <SceneVisibilityContext.Provider value={isActive}>

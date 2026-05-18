@@ -5,6 +5,7 @@ import BillboardColumnPulse from '../../../components/home/BillboardColumnPulse'
 import Home3LiveWorldSurface from '@/components/home/Home3LiveWorldSurface';
 import Home4SponsorSurface from '@/components/home/Home4SponsorSurface';
 import Home5BattleCypherSurface from '@/components/home/Home5BattleCypherSurface';
+import LiveRibbonSystem from '@/components/home/LiveRibbonSystem';
 
 // ─── Scene atmosphere constants ───────────────────────────────────────────────
 
@@ -79,7 +80,7 @@ export const MAGAZINE_FULL_ROTATION_SCENES = [
           height: '100%',
           minHeight: '100%',
           background:
-            'radial-gradient(ellipse at 20% 30%, #1a0830 0%, transparent 55%), radial-gradient(ellipse at 80% 70%, #0d1a2e 0%, transparent 55%), linear-gradient(160deg, #060412 0%, #080614 40%, #050510 100%)',
+            'radial-gradient(ellipse at 20% 25%, rgba(120,0,255,0.55) 0%, transparent 50%), radial-gradient(ellipse at 80% 75%, rgba(0,200,180,0.45) 0%, transparent 50%), radial-gradient(ellipse at 50% 100%, rgba(255,0,150,0.35) 0%, transparent 50%), radial-gradient(ellipse at 10% 80%, rgba(255,180,0,0.2) 0%, transparent 40%), linear-gradient(160deg, #12043a 0%, #080c2a 45%, #061018 100%)',
         }}
       >
         <HomeSurfacePage surfaceId={1} />
@@ -90,6 +91,10 @@ export const MAGAZINE_FULL_ROTATION_SCENES = [
           cycleMs={14000}
           burstCount={44}
         />
+        {/* Live status ribbon — "VOTING LIVE", "CROWN UPDATING", etc. */}
+        <div aria-live="polite" style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 60, pointerEvents: 'none' }}>
+          <LiveRibbonSystem accent="#FF2DAA" />
+        </div>
         {/* Cover vignette — frames the stage */}
         <div aria-hidden="true" style={atmosphere('rgba(6,2,18,0.36)', 'rgba(120,0,255,0.08)', 'rgba(0,255,255,0.03)')} />
         <div aria-hidden="true" style={SCANLINE} />
@@ -121,7 +126,7 @@ export const MAGAZINE_FULL_ROTATION_SCENES = [
     id: 'home-3' as const,
     durationMs: 60000,
     content: (
-      <main role="main" tabIndex={-1} data-telemetry="home.3.render" style={{ position: 'relative', height: '100%', minHeight: '100%', overflow: 'hidden' }}>
+      <main role="main" tabIndex={-1} data-telemetry="home.3.render" style={{ position: 'relative', minHeight: '100%', overflowX: 'hidden' }}>
         <Home3LiveWorldSurface />
         <div aria-hidden="true" style={ATMO['home-3']} />
         <div aria-hidden="true" style={SCANLINE} />
@@ -132,7 +137,7 @@ export const MAGAZINE_FULL_ROTATION_SCENES = [
     id: 'home-4' as const,
     durationMs: 60000,
     content: (
-      <main role="main" tabIndex={-1} data-telemetry="home.4.render" style={{ position: 'relative', height: '100%', minHeight: '100%', overflow: 'hidden' }}>
+      <main role="main" tabIndex={-1} data-telemetry="home.4.render" style={{ position: 'relative', minHeight: '100%', overflowX: 'hidden' }}>
         <Home4SponsorSurface />
         <div aria-hidden="true" style={ATMO['home-4']} />
         <div aria-hidden="true" style={SCANLINE} />
@@ -143,7 +148,7 @@ export const MAGAZINE_FULL_ROTATION_SCENES = [
     id: 'home-5' as const,
     durationMs: 60000,
     content: (
-      <main role="main" tabIndex={-1} data-telemetry="home.5.render" style={{ position: 'relative', height: '100%', minHeight: '100%', overflow: 'hidden' }}>
+      <main role="main" tabIndex={-1} data-telemetry="home.5.render" style={{ position: 'relative', minHeight: '100%', overflowX: 'hidden' }}>
         <Home5BattleCypherSurface />
         <div aria-hidden="true" style={ATMO['home-5']} />
         <div aria-hidden="true" style={SCANLINE} />

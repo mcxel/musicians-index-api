@@ -5,7 +5,6 @@ import BotConsole from '@/components/bots/BotConsole';
 import FooterHUD from '@/components/hud/FooterHUD';
 import HUDFrame from '@/components/hud/HUDFrame';
 import HomeNavigator from '@/components/home/HomeNavigator';
-import PageShell from '@/components/layout/PageShell';
 import {
   applyHomepageBeltConfig,
   applyHomepageSettings,
@@ -137,43 +136,42 @@ export default function HomeSurfacePage({ surfaceId }: Readonly<{ surfaceId: Hom
     );
   }
 
+  // Surfaces 2-5: no PageShell — let content scroll naturally on mobile
   return (
-    <PageShell>
-      <HUDFrame>
-        <HomeNavigator />
-        <main
-          data-home-scene={surface.sceneId}
-          data-home-audio-theme={surface.audioTheme ?? ''}
-          data-home-animation-preset={surface.animationPreset ?? ''}
-          style={{
-            minHeight: '100vh',
-            background: surface.background,
-            padding: '12px 24px 24px',
-          }}
-        >
-          <MotionWrapper>
-            <div style={{ marginBottom: 12 }}>
-              <StatusRibbon label={`Home ${surface.id} • ${surface.sceneId}`} live={surface.id === 3} />
-            </div>
-          </MotionWrapper>
-          <CardCanvas showGrid>
-            <HomeDraggableBelts
-              surfaceId={surface.id}
-              belts={surface.belts}
-              layoutOrder={surface.layoutOrder}
-            />
-            {surface.id === 5 ? (
-              <div style={{ marginTop: 14 }}>
-                <JuliusPanel />
-              </div>
-            ) : null}
-          </CardCanvas>
-          <div style={{ paddingTop: 20 }}>
-            <BotConsole surface={`home${surfaceId}`} />
+    <HUDFrame>
+      <HomeNavigator />
+      <main
+        data-home-scene={surface.sceneId}
+        data-home-audio-theme={surface.audioTheme ?? ''}
+        data-home-animation-preset={surface.animationPreset ?? ''}
+        style={{
+          minHeight: '100vh',
+          background: surface.background,
+          padding: '12px 24px 24px',
+        }}
+      >
+        <MotionWrapper>
+          <div style={{ marginBottom: 12 }}>
+            <StatusRibbon label={`Home ${surface.id} • ${surface.sceneId}`} live={surface.id === 3} />
           </div>
-        </main>
-        <FooterHUD />
-      </HUDFrame>
-    </PageShell>
+        </MotionWrapper>
+        <CardCanvas showGrid>
+          <HomeDraggableBelts
+            surfaceId={surface.id}
+            belts={surface.belts}
+            layoutOrder={surface.layoutOrder}
+          />
+          {surface.id === 5 ? (
+            <div style={{ marginTop: 14 }}>
+              <JuliusPanel />
+            </div>
+          ) : null}
+        </CardCanvas>
+        <div style={{ paddingTop: 20 }}>
+          <BotConsole surface={`home${surfaceId}`} />
+        </div>
+      </main>
+      <FooterHUD />
+    </HUDFrame>
   );
 }
