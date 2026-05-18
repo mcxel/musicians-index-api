@@ -22,6 +22,16 @@ export default function Home2NewsDeskSurface() {
 
   return (
     <main style={{ minHeight: '100vh', background: 'radial-gradient(circle at 50% 0%, rgba(170,45,255,0.15), transparent 50%), #050510', color: '#fff', paddingBottom: 80 }}>
+      <style>{`
+        @media (max-width: 639px) {
+          [data-tmi-home2-feature-grid] {
+            grid-template-columns: 1fr !important;
+          }
+          [data-tmi-home2-feature-grid] > a > div {
+            min-height: 120px !important;
+          }
+        }
+      `}</style>
       <GlobalTopNavRail />
       <BreakingNewsTicker />
       <SponsorTickerRail />
@@ -32,6 +42,7 @@ export default function Home2NewsDeskSurface() {
           ARTICLES · DISCOVERY · MARKETPLACE
         </div>
         <div
+          data-tmi-home2-feature-grid
           style={{
             display: 'grid',
             gridTemplateColumns: '2fr 1fr 1fr',
