@@ -2,205 +2,108 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Live Music Platform for Artists and Fans",
-  description:
-    "The Musician's Index Magazine is a live music platform where artists perform, compete, and connect with fans in real time through battles, cyphers, shows, and ranked music discovery.",
-  keywords: [
-    "live music platform", "music performance app", "perform music online",
-    "online music venue", "music battle platform", "live music app",
-    "hip hop battle app", "music competition platform", "artist ranking platform",
-    "live cypher online", "music streaming platform for artists",
-  ],
+  title: "Live Music Platform",
+  description: "TMI is a live music platform for artists, performers, producers, fans, sponsors, and promoters. Battles, cyphers, ranked discovery, and real-time audience experiences.",
   alternates: { canonical: "https://themusiciansindex.com/music-platform" },
 };
 
-const P: React.CSSProperties = {
-  fontSize: 16,
-  lineHeight: 1.8,
-  color: "rgba(255,255,255,0.80)",
-  marginBottom: 18,
-};
-
-const H2: React.CSSProperties = {
-  fontSize: "clamp(16px, 2.5vw, 22px)",
-  fontWeight: 800,
-  color: "#00FFFF",
-  marginTop: 44,
-  marginBottom: 10,
-  letterSpacing: "0.04em",
-  textTransform: "uppercase",
-};
-
 export default function MusicPlatformPage() {
+  const roles = [
+    { label: "Artists",    accent: "#FF2DAA", desc: "Build your profile, submit tracks, climb the index rankings." },
+    { label: "Performers", accent: "#00FFFF", desc: "Step into live battle rounds and cypher sessions." },
+    { label: "Producers",  accent: "#AA2DFF", desc: "Upload beats, license tracks, earn from every placement." },
+    { label: "Fans",       accent: "#FFD700", desc: "Vote, react, and tip your favorite acts in real time." },
+    { label: "Sponsors",   accent: "#FF8C00", desc: "Reach an engaged live music audience with branded placements." },
+    { label: "Promoters",  accent: "#00FF88", desc: "Book artists, organize events, grow your network." },
+  ];
+
   return (
     <main
       style={{
-        minHeight: "100vh",
-        background: "linear-gradient(170deg, #06030f 0%, #080c20 60%, #050816 100%)",
+        minHeight: "100svh",
+        background: "linear-gradient(170deg, #06030f 0%, #080c20 55%, #050816 100%)",
         color: "#fff",
-        paddingBottom: 80,
+        fontFamily: "var(--font-tmi-rajdhani, 'Rajdhani', sans-serif)",
+        padding: "0 0 80px",
       }}
     >
-      <div style={{ padding: "16px 24px", borderBottom: "1px solid rgba(0,255,255,0.1)" }}>
-        <Link
-          href="/home/1"
-          style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.15em", color: "rgba(255,255,255,0.4)", textDecoration: "none", textTransform: "uppercase" }}
-        >
-          ← The Musician&apos;s Index Magazine
+      <div
+        style={{
+          borderBottom: "1px solid rgba(0,255,255,0.1)",
+          padding: "20px 24px",
+          display: "flex",
+          alignItems: "center",
+          gap: 16,
+          background: "rgba(6,3,15,0.96)",
+          backdropFilter: "blur(12px)",
+          position: "sticky",
+          top: 0,
+          zIndex: 100,
+        }}
+      >
+        <Link href="/home/1" style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.15em", color: "rgba(255,255,255,0.35)", textDecoration: "none" }}>
+          ← HOME
         </Link>
+        <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: "0.25em", color: "#00FFFF", textTransform: "uppercase" }}>
+          THE PLATFORM
+        </span>
       </div>
 
-      <div style={{ maxWidth: 760, margin: "0 auto", padding: "0 24px" }}>
+      <div style={{ maxWidth: 860, margin: "0 auto", padding: "48px 24px 0" }}>
+        <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.3em", color: "#FF2DAA", textTransform: "uppercase", marginBottom: 16 }}>
+          LIVE MUSIC PLATFORM
+        </div>
+
         <h1
           style={{
-            fontSize: "clamp(26px, 5vw, 50px)",
+            fontSize: "clamp(28px, 6vw, 60px)",
             fontWeight: 900,
-            lineHeight: 1.1,
-            marginTop: 56,
-            marginBottom: 24,
             letterSpacing: "0.02em",
+            lineHeight: 1.1,
             textTransform: "uppercase",
-            background: "linear-gradient(90deg, #00FFFF, #FF2DAA)",
+            fontFamily: "var(--font-tmi-bungee, 'Bungee', sans-serif)",
+            marginBottom: 24,
+            background: "linear-gradient(135deg, #fff 0%, #FF2DAA 50%, #00FFFF 100%)",
             WebkitBackgroundClip: "text",
             WebkitTextFillColor: "transparent",
+            backgroundClip: "text",
           }}
         >
-          Live Music Platform for Artists and Fans
+          The Musician&apos;s Index
         </h1>
 
-        <p style={{ ...P, fontSize: 18, color: "rgba(255,255,255,0.92)" }}>
-          The Musician&apos;s Index Magazine is a live music platform where artists perform, compete,
-          and connect with fans in real time. Whether you&apos;re an independent rapper, singer,
-          producer, or music fan, TMI gives you a live stage, a real audience, and a ranking system
-          that reflects actual community support.
+        <div style={{ width: 48, height: 3, background: "#FF2DAA", borderRadius: 2, marginBottom: 32 }} />
+
+        <p style={{ fontSize: 16, lineHeight: 1.7, opacity: 0.8, maxWidth: 640, marginBottom: 48 }}>
+          A live interactive music platform where artists compete, fans vote, producers earn, and sponsors reach a real engaged audience. Six distinct roles. One live stage.
         </p>
 
-        <h2 style={H2}>The Live Music Platform Built for Independence</h2>
-        <p style={P}>
-          Most music platforms are passive — you upload, you wait, you hope. The Musician&apos;s Index
-          is different. It is a live performance venue, a competition arena, and a fan community
-          running 24/7. Artists compete in real time. Fans vote. Rankings update live. Every
-          interaction is visible, public, and tied directly to your profile on the platform.
-        </p>
-        <p style={P}>
-          No label. No agent. No gatekeeping. Just your music, a live audience, and a system that
-          lets the community decide who rises.
-        </p>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 16 }}>
+          {roles.map((r) => (
+            <div
+              key={r.label}
+              style={{
+                background: "rgba(255,255,255,0.03)",
+                border: `1px solid ${r.accent}33`,
+                borderRadius: 12,
+                padding: "24px 20px",
+                borderLeft: `3px solid ${r.accent}`,
+              }}
+            >
+              <div style={{ fontSize: 13, fontWeight: 800, letterSpacing: "0.1em", color: r.accent, textTransform: "uppercase", marginBottom: 8, fontFamily: "var(--font-tmi-orbitron,'Orbitron',monospace)" }}>
+                {r.label}
+              </div>
+              <div style={{ fontSize: 14, lineHeight: 1.6, opacity: 0.7 }}>{r.desc}</div>
+            </div>
+          ))}
+        </div>
 
-        <h2 style={H2}>Perform Music Online — In Front of a Live Audience</h2>
-        <p style={P}>
-          The TMI World Concert stage lets artists perform live in front of a real audience from
-          anywhere in the world. Fans watch, react, tip, and vote in real time. Performances are
-          ranked by audience engagement score — the more the crowd responds, the higher you climb
-          on the TMI Billboard.
-        </p>
-        <p style={P}>
-          <Link href="/home/3" style={{ color: "#00FFFF", textDecoration: "underline" }}>
-            See the Live World stage →
+        <div style={{ marginTop: 48, display: "flex", gap: 16, flexWrap: "wrap" }}>
+          <Link href="/auth" style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "#FF2DAA", color: "#fff", borderRadius: 999, padding: "12px 28px", fontSize: 11, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", textDecoration: "none", fontFamily: "var(--font-tmi-orbitron,'Orbitron',monospace)" }}>
+            Get Started
           </Link>
-        </p>
-
-        <h2 style={H2}>Music Battle Platform — Hip Hop Battles &amp; Cyphers</h2>
-        <p style={P}>
-          The Musician&apos;s Index is one of the only live music apps where artists can battle head
-          to head in front of a judging audience. Hip-hop battles, vocal cyphers, freestyle sessions,
-          and producer showcases run on a rotating schedule. Winners earn ranking points, battle badges,
-          and featured placement on the TMI Billboard Index.
-        </p>
-
-        <h2 style={H2}>Artist Ranking Platform — The TMI Billboard</h2>
-        <p style={P}>
-          Every artist on TMI has a public ranking score updated in real time. Rankings are calculated
-          from fan votes, battle results, tip volume, and engagement metrics — not streams or
-          algorithmic plays. The TMI Billboard Index is the most transparent music ranking system
-          available to independent artists.
-        </p>
-        <p style={P}>
-          <Link href="/magazine/billboards" style={{ color: "#FFD700", textDecoration: "underline" }}>
-            View live Billboard rankings →
-          </Link>
-        </p>
-
-        <h2 style={H2}>For Fans — Vote, Tip, and Influence the Rankings</h2>
-        <p style={P}>
-          TMI fans are active participants, not passive viewers. Fan accounts come with a digital
-          wallet, tip history, voting power, and an achievement system. Your votes directly move
-          artists up and down the Billboard. Your tips go directly to performers. On TMI, being a
-          fan means having real influence over the music you support.
-        </p>
-
-        <h2 style={H2}>Get Started on the Live Music Platform</h2>
-        <p style={P}>
-          The Musician&apos;s Index Magazine is free to join for fans. Performers and producers can
-          apply for a verified account. Diamond-tier members get priority stage access, sponsored
-          event slots, and featured Billboard placement. Learn more on the{" "}
-          <Link href="/about" style={{ color: "#00FFFF", textDecoration: "underline" }}>
-            About page
-          </Link>{" "}
-          or enter the platform now.
-        </p>
-
-        <div
-          style={{
-            marginTop: 52,
-            display: "flex",
-            gap: 12,
-            flexWrap: "wrap",
-          }}
-        >
-          <Link
-            href="/home/1"
-            style={{
-              display: "inline-block",
-              background: "rgba(0,255,255,0.15)",
-              border: "1px solid rgba(0,255,255,0.4)",
-              color: "#00FFFF",
-              borderRadius: 8,
-              padding: "12px 24px",
-              fontSize: 12,
-              fontWeight: 800,
-              letterSpacing: "0.12em",
-              textTransform: "uppercase",
-              textDecoration: "none",
-            }}
-          >
-            Enter the Platform →
-          </Link>
-          <Link
-            href="/home/3"
-            style={{
-              display: "inline-block",
-              background: "rgba(255,68,68,0.1)",
-              border: "1px solid rgba(255,68,68,0.3)",
-              color: "#FF4444",
-              borderRadius: 8,
-              padding: "12px 24px",
-              fontSize: 12,
-              fontWeight: 800,
-              letterSpacing: "0.12em",
-              textTransform: "uppercase",
-              textDecoration: "none",
-            }}
-          >
-            Live World Stage →
-          </Link>
-          <Link
-            href="/about"
-            style={{
-              display: "inline-block",
-              background: "rgba(255,255,255,0.05)",
-              border: "1px solid rgba(255,255,255,0.15)",
-              color: "rgba(255,255,255,0.6)",
-              borderRadius: 8,
-              padding: "12px 24px",
-              fontSize: 12,
-              fontWeight: 800,
-              letterSpacing: "0.12em",
-              textTransform: "uppercase",
-              textDecoration: "none",
-            }}
-          >
-            About TMI
+          <Link href="/home/1" style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.18)", color: "#fff", borderRadius: 999, padding: "12px 28px", fontSize: 11, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", textDecoration: "none", fontFamily: "var(--font-tmi-orbitron,'Orbitron',monospace)" }}>
+            See It Live
           </Link>
         </div>
       </div>
