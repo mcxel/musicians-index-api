@@ -197,15 +197,22 @@ export default function Home5BattleCypherSurface() {
           "radial-gradient(circle at 0% 0%, rgba(255,45,170,0.16), transparent 35%), radial-gradient(circle at 100% 100%, rgba(0,255,255,0.12), transparent 40%), linear-gradient(170deg, #050510, #0c0618)",
       }}
     >
+      <style>{`
+        @media (max-width: 639px) {
+          [data-tmi-home5-tickers] { display: none !important; }
+          [data-tmi-home5-header] { gap: 4px !important; }
+          [data-tmi-home5-header] p { display: none !important; }
+        }
+      `}</style>
       <GlobalTopNavRail />
 
       {/* Compact ticker strip — collapsed to minimize vertical footprint */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+      <div data-tmi-home5-tickers style={{ display: "flex", flexDirection: "column", gap: 4 }}>
         <BreakingNewsTicker />
         <SponsorTickerRail />
       </div>
 
-      <header style={{ display: "grid", gap: 6 }}>
+      <header data-tmi-home5-header style={{ display: "grid", gap: 6 }}>
         <TmiBadgeLabel color="#ff2daa">Competition + Contest Economy</TmiBadgeLabel>
         <TmiHeadline as="h1" style={{ fontSize: "clamp(22px, 5vw, 56px)" }}>
           Games, Battles, Cyphers, Contests

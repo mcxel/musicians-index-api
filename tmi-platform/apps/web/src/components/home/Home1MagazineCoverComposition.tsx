@@ -140,7 +140,7 @@ export default function Home1MagazineCoverComposition() {
         [data-tmi-cover-section] {
           max-width: none !important;
           margin: 0 !important;
-          padding: 0 !important;
+          padding: 48px 0 0 !important;
         }
         [data-tmi-cover-shell] {
           transform: translateZ(0) !important;
