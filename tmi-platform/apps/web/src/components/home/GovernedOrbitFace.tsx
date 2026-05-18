@@ -30,20 +30,29 @@ export default function GovernedOrbitFace({
   delayIndex = 0,
 }: GovernedOrbitFaceProps) {
   return (
-    <motion.div
-      animate={{ scale: [1, 1.04, 1] }}
-      transition={{ duration: 2.8, repeat: Infinity, delay: delayIndex * 0.12 }}
+    // Positioning wrapper — static transform so Framer Motion doesn't fight it
+    <div
       style={{
         position: 'absolute',
         left: '50%',
         top: '52%',
-        transform: `translate(-50%, -50%) translate(${x}px, ${y}px)`,
+        transform: `translate(-50%, -50%) translate(${x}px, ${y}px) translateZ(0)`,
+        willChange: 'transform',
+      }}
+    >
+    <motion.div
+      animate={{ scale: [1, 1.04, 1] }}
+      transition={{ duration: 2.8, repeat: Infinity, delay: delayIndex * 0.12 }}
+      style={{
         width: 106,
         borderRadius: 12,
         overflow: 'hidden',
         border: '1px solid rgba(0,255,255,0.4)',
         boxShadow: '0 0 16px rgba(0,255,255,0.18)',
         background: 'rgba(10,10,20,0.9)',
+        willChange: 'transform',
+        backfaceVisibility: 'hidden',
+        WebkitBackfaceVisibility: 'hidden',
       }}
     >
       {/* Governed performer portrait (replaces direct backgroundImage) */}
@@ -130,5 +139,6 @@ export default function GovernedOrbitFace({
         ✓
       </div>
     </motion.div>
+    </div>
   );
 }

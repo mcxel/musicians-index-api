@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import AvatarAccessoryGrid from "@/components/avatar/AvatarAccessoryGrid";
 import AvatarActionRail from "@/components/avatar/AvatarActionRail";
 import AvatarBackgroundSelector from "@/components/avatar/AvatarBackgroundSelector";
@@ -21,7 +21,12 @@ import {
   type AvatarInventoryItem,
 } from "@/lib/avatar/avatarInventoryEngine";
 
-const skinOptions = ["#f8d4c0", "#ddaa85", "#c0865e", "#8c5a3f", "#5b3827"];
+// 12 globally inclusive skin tones — light → olive → tan → brown → dark brown → deep
+const skinOptions = [
+  "#fde9d9", "#f5cdb0", "#e8b48a", "#d4956a",
+  "#c07848", "#a05e34", "#7a4028", "#5e2d18",
+  "#f5c9a0", "#d4a574", "#b8896a", "#3d1c0e",
+];
 const hairOptions = ["Fade", "Locs", "Braids", "Afro", "Bald"];
 const eyeOptions = ["Neon Blue", "Emerald", "Amber", "Platinum"];
 const accessories = ["Gold Chain", "Retro Glasses", "Face Stripe", "Ear Monitors"];
@@ -37,7 +42,7 @@ function randomOf<T>(items: T[]): T {
 export default function AvatarForgeShell() {
   const userId = "demo-user";
   const [profileName, setProfileName] = useState("MC Charlie");
-  const [skin, setSkin] = useState(skinOptions[2]);
+  const [skin, setSkin] = useState(skinOptions[4]);
   const [hair, setHair] = useState(hairOptions[0]);
   const [eyes, setEyes] = useState(eyeOptions[0]);
   const [selectedAccessories, setSelectedAccessories] = useState<string[]>(["Gold Chain"]);
@@ -46,9 +51,34 @@ export default function AvatarForgeShell() {
   const [background, setBackground] = useState(backgrounds[0]);
   const [lighting, setLighting] = useState(lightingPresets[0]);
   const [pose, setPose] = useState("Idle");
+  const [bodyHeight, setBodyHeight] = useState(50); // 0-100
+  const [bodyMass, setBodyMass] = useState(50);     // 0-100
   const [inventory, setInventory] = useState<AvatarInventoryItem[]>(getStarterInventory());
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [mintResult, setMintResult] = useState<AvatarMintResult | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+
+  // Web Audio UI chime — quick pluck on any selection change
+  const playChime = useCallback((freq = 880) => {
+    try {
+      if (!audioCtxRef.current) {
+        audioCtxRef.current = new AudioContext();
+      }
+      const ctx = audioCtxRef.current;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.setValueAtTime(freq, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(freq * 0.5, ctx.currentTime + 0.18);
+      gain.gain.setValueAtTime(0.18, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.22);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.22);
+    } catch {
+      // Audio blocked by browser policy — silently skip
+    }
+  }, []);
 
   useEffect(() => {
     async function hydrateFromApi() {
@@ -87,10 +117,13 @@ export default function AvatarForgeShell() {
     setBackground(randomOf(backgrounds));
     setLighting(randomOf(lightingPresets));
     setPose(randomOf(["Idle", "Wave", "Mic Up", "Dance", "Champion"]));
+    setBodyHeight(Math.floor(Math.random() * 100));
+    setBodyMass(Math.floor(Math.random() * 100));
+    playChime(660);
   };
 
   const handleReset = () => {
-    setSkin(skinOptions[2]);
+    setSkin(skinOptions[4]);
     setHair(hairOptions[0]);
     setEyes(eyeOptions[0]);
     setSelectedAccessories(["Gold Chain"]);
@@ -99,6 +132,9 @@ export default function AvatarForgeShell() {
     setBackground(backgrounds[0]);
     setLighting(lightingPresets[0]);
     setPose("Idle");
+    setBodyHeight(50);
+    setBodyMass(50);
+    playChime(440);
   };
 
   const handleSave = async () => {
@@ -176,8 +212,8 @@ export default function AvatarForgeShell() {
   return (
     <main style={{ minHeight: "100vh", background: "linear-gradient(165deg, #08040f, #1a1030 42%, #07050f)", padding: 20 }}>
       <header style={{ maxWidth: 1300, margin: "0 auto 16px", color: "#f3e9ff" }}>
-        <div style={{ fontSize: 11, letterSpacing: 2, color: "#9f7dd6" }}>Phase C1</div>
-        <h1 style={{ margin: "4px 0 0", fontSize: 30 }}>Avatar Forge Shell</h1>
+        <div style={{ fontSize: 11, letterSpacing: 2, color: "#9f7dd6" }}>Avatar Creation Center</div>
+        <h1 style={{ margin: "4px 0 0", fontSize: 30 }}>Avatar Forge</h1>
       </header>
       <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: 16, maxWidth: 1300, margin: "0 auto" }}>
         <div style={{ display: "grid", gap: 12 }}>
@@ -192,30 +228,62 @@ export default function AvatarForgeShell() {
             lighting={lighting}
             pose={pose}
             accessories={selectedAccessories}
+            bodyHeight={bodyHeight}
+            bodyMass={bodyMass}
           />
-          <AvatarActionRail pose={pose} onPoseChange={setPose} onRandomize={handleRandomize} onReset={handleReset} />
+          <AvatarActionRail pose={pose} onPoseChange={(p) => { setPose(p); playChime(880); }} onRandomize={handleRandomize} onReset={handleReset} />
           <AvatarSaveRail profileName={profileName} onNameChange={setProfileName} onSave={handleSave} savedAt={savedAt} />
         </div>
         <aside style={{ display: "grid", gap: 10 }}>
-          <AvatarSkinSelector skinOptions={skinOptions} selectedSkin={skin} onSelect={setSkin} />
-          <AvatarHairSelector hairOptions={hairOptions} selectedHair={hair} onSelect={setHair} />
-          <AvatarEyeSelector eyeOptions={eyeOptions} selectedEye={eyes} onSelect={setEyes} />
+          <AvatarSkinSelector skinOptions={skinOptions} selectedSkin={skin} onSelect={(s) => { setSkin(s); playChime(1046); }} />
+
+          {/* Body Shape Controls */}
+          <section style={{ background: "#120a1f", border: "1px solid #3f1f62", borderRadius: 14, padding: 16 }}>
+            <h3 style={{ color: "#e6d4ff", fontSize: 13, letterSpacing: 1, marginTop: 0, marginBottom: 12 }}>Body Shape</h3>
+            <div style={{ display: "grid", gap: 14 }}>
+              <label style={{ display: "grid", gap: 6 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "#cab4eb" }}>
+                  <span>HEIGHT</span>
+                  <span style={{ color: "#6ff2ff" }}>{bodyHeight < 33 ? "Short" : bodyHeight < 66 ? "Average" : "Tall"}</span>
+                </div>
+                <input
+                  type="range" min={0} max={100} value={bodyHeight}
+                  onChange={(e) => { setBodyHeight(Number(e.target.value)); playChime(700 + Number(e.target.value) * 3); }}
+                  style={{ width: "100%", accentColor: "#6ff2ff" }}
+                />
+              </label>
+              <label style={{ display: "grid", gap: 6 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "#cab4eb" }}>
+                  <span>BUILD</span>
+                  <span style={{ color: "#ff9de2" }}>{bodyMass < 25 ? "Slim" : bodyMass < 50 ? "Athletic" : bodyMass < 75 ? "Average" : "Solid"}</span>
+                </div>
+                <input
+                  type="range" min={0} max={100} value={bodyMass}
+                  onChange={(e) => { setBodyMass(Number(e.target.value)); playChime(500 + Number(e.target.value) * 2); }}
+                  style={{ width: "100%", accentColor: "#ff9de2" }}
+                />
+              </label>
+            </div>
+          </section>
+
+          <AvatarHairSelector hairOptions={hairOptions} selectedHair={hair} onSelect={(h) => { setHair(h); playChime(990); }} />
+          <AvatarEyeSelector eyeOptions={eyeOptions} selectedEye={eyes} onSelect={(e) => { setEyes(e); playChime(1100); }} />
           <AvatarAccessoryGrid
             accessories={accessories}
             selectedAccessories={selectedAccessories}
-            onToggle={toggleAccessory}
+            onToggle={(a) => { toggleAccessory(a); playChime(770); }}
           />
-          <AvatarOutfitRail outfits={outfits} selectedOutfit={outfit} onSelect={setOutfit} />
-          <AvatarPropRail propsList={propsList} selectedProp={propName} onSelect={setPropName} />
+          <AvatarOutfitRail outfits={outfits} selectedOutfit={outfit} onSelect={(o) => { setOutfit(o); playChime(830); }} />
+          <AvatarPropRail propsList={propsList} selectedProp={propName} onSelect={(p) => { setPropName(p); playChime(920); }} />
           <AvatarBackgroundSelector
             backgrounds={backgrounds}
             selectedBackground={background}
-            onSelect={setBackground}
+            onSelect={(b) => { setBackground(b); playChime(660); }}
           />
           <AvatarLightingSelector
             lightingPresets={lightingPresets}
             selectedLighting={lighting}
-            onSelect={setLighting}
+            onSelect={(l) => { setLighting(l); playChime(740); }}
           />
           <AvatarNFTGenerator draft={draft} mintResult={mintResult} onMint={handleMint} />
         </aside>
