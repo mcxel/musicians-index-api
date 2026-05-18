@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { useOverseerDeck } from '@/hooks/useOverseerDeck';
 import OverseerDock from '@/components/admin/overseer/OverseerDock';
+import AvatarMiniPreview from '@/components/avatar/AvatarMiniPreview';
 import type { RoleType } from '@/types/avatar';
 
 const ROLE_META: Record<RoleType, { color: string; bg: string; label: string; emoji: string }> = {
@@ -161,6 +162,13 @@ export default function OverseerPage() {
             </div>
           ))}
         </section>
+
+        {/* Avatar Preview */}
+        <AvatarMiniPreview
+          variant="card"
+          role={meta.label}
+          accentColor={meta.color}
+        />
 
         {/* Debug Panel */}
         <section style={{
