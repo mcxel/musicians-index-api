@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { enforceAdultTeenContactBlock } from "@/lib/safety/AdultTeenContactBlocker";
-import type { SafetyAgeClass } from "@/lib/safety/TeenMessagingPolicyEngine";
 
 type Msg = { id: string; from: string; text: string; mine: boolean; ts: number };
 
@@ -71,11 +70,9 @@ export default function MessageThreadPage({ params }: { params: { threadId: stri
 
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input,    setInput]    = useState("");
-  const [typing,   setTyping]   = useState(false);
-  const [ready,    setReady]    = useState(false);
-  const [apiMode,  setApiMode]  = useState(false);
-  const [actorAgeClass, setActorAgeClass] = useState<SafetyAgeClass>("unknown");
-  const [targetAgeClass, setTargetAgeClass] = useState<SafetyAgeClass>("unknown");
+  const [typing,      setTyping]      = useState(false);
+  const [ready,       setReady]       = useState(false);
+  const [apiMode,     setApiMode]     = useState(false);
   const [safetyReason, setSafetyReason] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -129,18 +126,8 @@ export default function MessageThreadPage({ params }: { params: { threadId: stri
     const decision = enforceAdultTeenContactBlock({
       source: "messages:thread",
       channel: "dm",
-      actor: {
-        userId: "local-user",
-        ageClass: actorAgeClass,
-        familyVerified: true,
-        guardianApproved: true,
-      },
-      target: {
-        userId: threadId,
-        ageClass: targetAgeClass,
-        familyMember: true,
-        guardianLink: true,
-      },
+      actor:  { userId: "local-user", ageClass: "unknown", familyVerified: true, guardianApproved: true },
+      target: { userId: threadId,     ageClass: "unknown", familyMember: true,   guardianLink: true    },
     });
 
     if (!decision.allowed) {
@@ -260,23 +247,7 @@ export default function MessageThreadPage({ params }: { params: { threadId: stri
 
       {/* Compose */}
       <div style={{ padding: "12px 20px 20px", borderTop: "1px solid rgba(255,255,255,0.06)", background: "rgba(5,5,16,0.97)", flexShrink: 0, maxWidth: 760, width: "100%", margin: "0 auto" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
-          <select value={actorAgeClass} onChange={(e) => setActorAgeClass(e.target.value as SafetyAgeClass)} style={{ borderRadius: 8, border: "1px solid rgba(255,255,255,0.16)", background: "rgba(255,255,255,0.04)", color: "#fff", padding: "8px 10px", fontSize: 12 }}>
-            <option value="unknown">Sender age: unknown</option>
-            <option value="minor">Sender age: minor</option>
-            <option value="adult">Sender age: adult</option>
-            <option value="test_minor">Sender age: test_minor</option>
-            <option value="test_adult">Sender age: test_adult</option>
-          </select>
-          <select value={targetAgeClass} onChange={(e) => setTargetAgeClass(e.target.value as SafetyAgeClass)} style={{ borderRadius: 8, border: "1px solid rgba(255,255,255,0.16)", background: "rgba(255,255,255,0.04)", color: "#fff", padding: "8px 10px", fontSize: 12 }}>
-            <option value="unknown">Target age: unknown</option>
-            <option value="minor">Target age: minor</option>
-            <option value="adult">Target age: adult</option>
-            <option value="test_minor">Target age: test_minor</option>
-            <option value="test_adult">Target age: test_adult</option>
-          </select>
-        </div>
-        {safetyReason ? <div style={{ marginBottom: 8, fontSize: 11, color: "#fca5a5" }}>Blocked by P0 teen safety: {safetyReason}</div> : null}
+        {safetyReason ? <div style={{ marginBottom: 8, fontSize: 11, color: "#fca5a5", padding: "6px 10px", borderRadius: 6, background: "rgba(252,165,165,0.08)" }}>⚠️ {safetyReason}</div> : null}
         <div style={{ display: "flex", gap: 10, alignItems: "flex-end" }}>
           <textarea
             value={input}
