@@ -25,10 +25,11 @@ export default function PhysicalMagazineViewport({ children, phase, sceneId }: P
       }}
     >
       <div
+        className="tmi-magazine-frame"
         style={{
-          width: "min(1220px, 94vw)",
-          height: "min(820px, 88vh)",
-          borderRadius: 28,
+          width: "min(1220px, 100vw)",
+          height: "min(820px, 100svh)",
+          borderRadius: "clamp(0px, calc((100vw - 480px) * 0.2), 28px)",
           position: "relative",
           background: "linear-gradient(145deg, rgba(7, 6, 22, 0.94), rgba(4, 4, 14, 0.96))",
           boxShadow:

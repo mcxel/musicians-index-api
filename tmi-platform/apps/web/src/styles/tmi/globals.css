@@ -251,3 +251,38 @@ body {
 @media (max-width: 768px) {
   :root { --space-6: 16px; --space-8: 24px; }
 }
+
+/* ── DESKTOP ATMOSPHERE — recover color density on wide viewports ── */
+@media (min-width: 1024px) {
+  /*
+   * On desktop the body void (050810) surrounds the magazine card on all sides.
+   * Add subtle ambient neon bloom to the outer section so the dark surround
+   * feels intentional instead of empty. Targets only the runtime shell.
+   */
+  [data-runtime-phase] {
+    background:
+      radial-gradient(ellipse at 18% 28%, rgba(0, 255, 255, 0.06) 0%, transparent 48%),
+      radial-gradient(ellipse at 82% 72%, rgba(255, 45, 170, 0.07) 0%, transparent 48%),
+      #050810;
+  }
+
+  /*
+   * The magazine card overlay sits at 0.94/0.96 alpha — correct for mobile
+   * (full-screen, high-density displays) but too heavy on desktop monitors.
+   * Dropping to 0.82/0.88 lets scene color gradients punch through.
+   */
+  .tmi-magazine-frame {
+    background: linear-gradient(
+      145deg,
+      rgba(7, 6, 22, 0.82),
+      rgba(4, 4, 14, 0.88)
+    ) !important;
+  }
+
+  /* Neon glow stabilization — keeps titles crisp at wider render widths */
+  .tmi-neon-title {
+    text-shadow:
+      0 0 8px rgba(0, 255, 255, 0.70),
+      0 0 18px rgba(0, 255, 255, 0.35);
+  }
+}
