@@ -105,8 +105,8 @@ export const MAGAZINE_FULL_ROTATION_SCENES = [
     id: 'home-1-2' as const,
     durationMs: 30000,
     content: (
-      // BillboardColumnPulse manages its own atmosphere
-      <main role="main" tabIndex={-1} data-telemetry="home.1-2.render" style={{ height: '100%', minHeight: '100%' }}>
+      // BillboardColumnPulse manages its own atmosphere; overflowY allows second section below fold
+      <main role="main" tabIndex={-1} data-telemetry="home.1-2.render" style={{ minHeight: '100%', overflowY: 'auto' }}>
         <BillboardColumnPulse />
       </main>
     ),

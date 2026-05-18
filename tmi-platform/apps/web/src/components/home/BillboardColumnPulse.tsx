@@ -2,6 +2,8 @@
 
 import { useSceneVisible } from "@/components/magazine/MagazinePageFlipRuntime";
 import { useEffect, useMemo, useRef, useState } from "react";
+import Home2EditorialRail from "./Home2EditorialRail";
+import Home2TrendingIssueRail from "./Home2TrendingIssueRail";
 
 type ColumnKey =
   | "best_song"
@@ -472,76 +474,89 @@ export default function BillboardColumnPulse() {
   return (
     <div
       style={{
-        height: "100%",
-        minHeight: "100%",
+        minHeight: "100svh",
         background:
           "radial-gradient(ellipse at 18% 24%, rgba(0,255,255,0.08) 0%, transparent 55%), radial-gradient(ellipse at 84% 76%, rgba(255,45,170,0.08) 0%, transparent 56%), linear-gradient(165deg, #050510 0%, #060718 48%, #040412 100%)",
         display: "flex",
         flexDirection: "column",
-        overflow: "hidden",
+        color: "#fff",
       }}
     >
-      <div
-        style={{
-          padding: "11px 14px 9px",
-          borderBottom: "1px solid rgba(0,255,255,0.16)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 10,
-        }}
-      >
-        <div>
-          <div style={{ fontSize: 10, fontWeight: 900, color: "#FFFFFF", letterSpacing: "0.14em", textTransform: "uppercase" }}>
-            TMI Fan-Truth Billboard
-          </div>
-          <div style={{ fontSize: 7, color: "rgba(0,255,255,0.65)", letterSpacing: "0.16em", textTransform: "uppercase", marginTop: 2 }}>
-            Cover Spread · Live Rank Motion
-          </div>
-        </div>
-        <div style={{ fontSize: 7, color: "rgba(255,255,255,0.34)", letterSpacing: "0.12em", textTransform: "uppercase" }}>
-          Issue 47 · Week 28
-        </div>
-      </div>
-
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(6, minmax(0, 1fr))",
-          gap: 0,
-          flex: 1,
-          minHeight: 0,
-        }}
-      >
-        {COLUMNS.map((column, idx) => (
-          <div key={column.key} style={{ borderRight: idx < COLUMNS.length - 1 ? "1px solid rgba(255,255,255,0.07)" : "none", minWidth: 0 }}>
-            <BillboardColumn config={column} active={isVisible} />
-          </div>
-        ))}
-      </div>
-
-      <div
-        style={{
-          borderTop: "1px solid rgba(255,255,255,0.07)",
-          padding: "8px 12px",
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-        }}
-      >
+      {/* ── Rankings viewport — fills first screen ── */}
+      <div style={{ height: "100svh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
         <div
           style={{
-            width: 5,
-            height: 5,
-            borderRadius: "50%",
-            background: "#00FFFF",
-            boxShadow: "0 0 8px rgba(0,255,255,0.8)",
-            animation: isVisible ? "h12Flicker 1.8s ease-in-out infinite" : "none",
+            padding: "11px 14px 9px",
+            borderBottom: "1px solid rgba(0,255,255,0.16)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 10,
+            flexShrink: 0,
           }}
-        />
-        <span style={{ fontSize: 7, color: "rgba(0,255,255,0.62)", letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 800 }}>
-          Scores react to completion, likes, and new-fan conversion
-        </span>
+        >
+          <div>
+            <div style={{ fontSize: 10, fontWeight: 900, color: "#FFFFFF", letterSpacing: "0.14em", textTransform: "uppercase" }}>
+              TMI Fan-Truth Billboard
+            </div>
+            <div style={{ fontSize: 7, color: "rgba(0,255,255,0.65)", letterSpacing: "0.16em", textTransform: "uppercase", marginTop: 2 }}>
+              Cover Spread · Live Rank Motion
+            </div>
+          </div>
+          <div style={{ fontSize: 7, color: "rgba(255,255,255,0.34)", letterSpacing: "0.12em", textTransform: "uppercase" }}>
+            Issue 47 · Week 28
+          </div>
+        </div>
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(6, minmax(0, 1fr))",
+            gap: 0,
+            flex: 1,
+            minHeight: 0,
+          }}
+        >
+          {COLUMNS.map((column, idx) => (
+            <div key={column.key} style={{ borderRight: idx < COLUMNS.length - 1 ? "1px solid rgba(255,255,255,0.07)" : "none", minWidth: 0 }}>
+              <BillboardColumn config={column} active={isVisible} />
+            </div>
+          ))}
+        </div>
+
+        <div
+          style={{
+            borderTop: "1px solid rgba(255,255,255,0.07)",
+            padding: "8px 12px",
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            flexShrink: 0,
+          }}
+        >
+          <div
+            style={{
+              width: 5,
+              height: 5,
+              borderRadius: "50%",
+              background: "#00FFFF",
+              boxShadow: "0 0 8px rgba(0,255,255,0.8)",
+              animation: isVisible ? "h12Flicker 1.8s ease-in-out infinite" : "none",
+            }}
+          />
+          <span style={{ fontSize: 7, color: "rgba(0,255,255,0.62)", letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 800 }}>
+            Scores react to completion, likes, and new-fan conversion
+          </span>
+          <span style={{ marginLeft: "auto", fontSize: 7, color: "rgba(255,255,255,0.2)", letterSpacing: "0.1em" }}>
+            ↓ scroll for editorial
+          </span>
+        </div>
+      </div>
+
+      {/* ── Second section — below the fold ── */}
+      <div style={{ borderTop: "1px solid rgba(0,255,255,0.1)", background: "rgba(0,0,0,0.3)" }}>
+        <Home2EditorialRail title="FEATURED EDITORIAL" accentColor="#00FFFF" />
+        <Home2TrendingIssueRail />
       </div>
     </div>
   );
