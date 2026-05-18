@@ -154,6 +154,7 @@ function OrbitFaceRail({
 export default function Home1MagazineCoverHero({ heroImageRef }: Home1MagazineCoverHeroProps) {
   const [frame, setFrame] = useState(0);
   const [orbitRadius, setOrbitRadius] = useState(190);
+  const [maxOrbitCount, setMaxOrbitCount] = useState(9);
 
   const cover = useMemo(() => composeLiveMagazineCover(), []);
   const fallbackWinner = useMemo(() => getCrownArtistPayload(), []);
@@ -200,7 +201,7 @@ export default function Home1MagazineCoverHero({ heroImageRef }: Home1MagazineCo
       }));
 
   const orbitContenders = useMemo(() => {
-    return orbitArtists.slice(0, 9).map((artist, index) => ({
+    return orbitArtists.slice(0, maxOrbitCount).map((artist, index) => ({
       performerId: artist.artistId,
       name: artist.name,
       avatarUrl: artist.media.posterFrameUrl,
@@ -215,7 +216,7 @@ export default function Home1MagazineCoverHero({ heroImageRef }: Home1MagazineCo
       xpRoute: '/xp',
       battleRoute: '/battles',
     }));
-  }, [orbitArtists, orbitRadius]);
+  }, [orbitArtists, orbitRadius, maxOrbitCount]);
 
   useEffect(() => {
     // Keep the orbit visibly alive; slow ticks made the cover appear frozen.
@@ -226,10 +227,10 @@ export default function Home1MagazineCoverHero({ heroImageRef }: Home1MagazineCo
   useEffect(() => {
     const update = () => {
       const w = window.innerWidth;
-      if (w < 480) setOrbitRadius(102);
-      else if (w < 768) setOrbitRadius(132);
-      else if (w < 1024) setOrbitRadius(166);
-      else setOrbitRadius(206);
+      if (w < 480) { setOrbitRadius(102); setMaxOrbitCount(5); }
+      else if (w < 768) { setOrbitRadius(132); setMaxOrbitCount(7); }
+      else if (w < 1024) { setOrbitRadius(166); setMaxOrbitCount(9); }
+      else { setOrbitRadius(206); setMaxOrbitCount(9); }
     };
     update();
     window.addEventListener('resize', update);
@@ -282,7 +283,7 @@ export default function Home1MagazineCoverHero({ heroImageRef }: Home1MagazineCo
             </div>
 
             <div style={{ position: 'relative', width: '100%', flex: 1, minHeight: 420 }}>
-              <OrbitFaceRail orbitArtists={orbitArtists} orbitRadius={orbitRadius} frame={frame} />
+              <OrbitFaceRail orbitArtists={orbitArtists.slice(0, maxOrbitCount)} orbitRadius={orbitRadius} frame={frame} />
 
               <div style={{ position: 'absolute', inset: 0, zIndex: 4, pointerEvents: 'none', opacity: 0.7 }}>
                 <OrbitBattleAnimationLayer
