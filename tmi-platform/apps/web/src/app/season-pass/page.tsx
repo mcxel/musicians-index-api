@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import TmiSeasonPassEngine from "@/components/pass/TmiSeasonPassEngine";
 
 export const metadata: Metadata = {
   title: "Season Pass | TMI",
@@ -101,6 +102,11 @@ export default function SeasonPassPage() {
             </Link>
           </div>
         ))}
+      </section>
+
+      <section style={{ maxWidth: 960, margin: "40px auto 0", padding: "0 24px" }}>
+        <div style={{ fontSize: 9, color: "#FFD700", letterSpacing: "0.3em", fontWeight: 800, marginBottom: 14 }}>🎸 SEASON 1 REWARDS</div>
+        <TmiSeasonPassEngine />
       </section>
 
       <section style={{ maxWidth: 680, margin: "48px auto 0", padding: "0 24px", textAlign: "center" }}>
