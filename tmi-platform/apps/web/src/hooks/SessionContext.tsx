@@ -28,7 +28,7 @@ interface SessionContextType {
   incrementPoints: (amount: number) => void;
 }
 
-const SessionContext = createContext<SessionContextType | undefined>(undefined);
+export const SessionContext = createContext<SessionContextType | undefined>(undefined);
 
 export function TmiSessionProvider({ children }: { children: React.ReactNode }) {
   const [styleConfig, setStyleConfig] = useState<UserStyleConfig>({
