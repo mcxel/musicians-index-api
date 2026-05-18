@@ -7,6 +7,7 @@ import HUDFrame from "@/components/hud/HUDFrame";
 import FooterHUD from "@/components/hud/FooterHUD";
 import Link from "next/link";
 import ShareButton from "@/components/rooms/ShareButton";
+import LocalCameraFeed from "@/components/live/LocalCameraFeed";
 import { RecordRalphEngine, type RalphAnimState } from "@/lib/dj/RecordRalphEngine";
 import { activatePhase1Bots } from "@/lib/bots/Phase1BotActivator";
 import {
@@ -477,6 +478,7 @@ export default function WorldDancePartyPage() {
 
         </div>
         <FooterHUD />
+        <LocalCameraFeed />
       </HUDFrame>
     </PageShell>
   );
