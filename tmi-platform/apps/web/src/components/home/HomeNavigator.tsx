@@ -41,6 +41,13 @@ export default function HomeNavigator() {
   }, [prev, next, router]);
 
   return (
+    <>
+    <style>{`
+      @media (max-width: 639px) {
+        [data-tmi-hnav-pills] { display: none !important; }
+        [data-tmi-hnav-dots]  { display: none !important; }
+      }
+    `}</style>
     <div style={{
       position: "sticky", top: 0, zIndex: 100,
       background: "rgba(5,5,12,0.92)",
@@ -94,7 +101,7 @@ export default function HomeNavigator() {
           </motion.div>
         </AnimatePresence>
 
-        <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", justifyContent: "center" }}>
+        <div data-tmi-hnav-pills style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", justifyContent: "center" }}>
           {HOME_SCREENS.map((s) => {
             const isActive = s.n === current.n;
             return (
@@ -124,7 +131,7 @@ export default function HomeNavigator() {
           })}
         </div>
 
-        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+        <div data-tmi-hnav-dots style={{ display: "flex", gap: 6, alignItems: "center" }}>
           {HOME_SCREENS.map((s) => (
             <Link key={s.n} href={s.path} title={s.label} style={{ display: "flex", alignItems: "center" }}>
               <motion.div
@@ -165,5 +172,6 @@ export default function HomeNavigator() {
         ) : <div />}
       </div>
     </div>
+    </>
   );
 }
