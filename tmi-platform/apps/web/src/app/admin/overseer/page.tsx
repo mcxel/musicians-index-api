@@ -3,15 +3,39 @@
 import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { useOverseerDeck } from '@/hooks/useOverseerDeck';
+import { useFamilyConsensus } from '@/hooks/useFamilyConsensus';
 import OverseerDock from '@/components/admin/overseer/OverseerDock';
 import AvatarMiniPreview from '@/components/avatar/AvatarMiniPreview';
 import type { RoleType } from '@/types/avatar';
+import type { AgeTier, FamilyGroup } from '@/types/security';
 
 const ROLE_META: Record<RoleType, { color: string; bg: string; label: string; emoji: string }> = {
   FAN:       { color: '#00FFFF', bg: 'rgba(0,255,255,0.08)',  label: 'Fan',       emoji: '🎧' },
   PERFORMER: { color: '#FF2DAA', bg: 'rgba(255,45,170,0.08)', label: 'Performer', emoji: '🎤' },
   ADMIN:     { color: '#FFD700', bg: 'rgba(255,215,0,0.08)',  label: 'Admin',     emoji: '👑' },
 };
+
+const AGE_TIER_BY_ROLE: Record<RoleType, AgeTier> = {
+  FAN:       'YOUTH',  // FAN = youth context for demo
+  PERFORMER: 'ADULT',
+  ADMIN:     'ADULT',
+};
+
+const DEMO_FAMILY: FamilyGroup = {
+  id: 'family-demo-01',
+  custodians:        ['parent_mom', 'parent_dad', 'guardian_3'],
+  youthMembers:      ['youth_demo_01'],
+  approvalThreshold: 2,
+};
+
+const CUSTODIAN_LABELS: Record<string, string> = {
+  parent_mom:  'Parent (Mom)',
+  parent_dad:  'Parent (Dad)',
+  guardian_3:  'Guardian',
+};
+
+const DEMO_ADULT_ID = 'DEMO_ADULT_01';
+const DEMO_YOUTH_ID = 'youth_demo_01';
 
 function useHydrated() {
   const [hydrated, setHydrated] = useState(false);
@@ -28,7 +52,12 @@ export default function OverseerPage() {
   const [localStorageRaw, setLocalStorageRaw] = useState<string | null>(null);
   const [sessionPresent, setSessionPresent] = useState<boolean | null>(null);
 
-  // Read debug values client-side only
+  const { state: consensus, submitRequest, castVote, clearRequest, allowConnection } =
+    useFamilyConsensus(DEMO_FAMILY);
+
+  const ageTier = AGE_TIER_BY_ROLE[currentRole];
+  const canConnect = allowConnection(DEMO_ADULT_ID, DEMO_YOUTH_ID);
+
   useEffect(() => {
     if (!hydrated) return;
     setLocalStorageRaw(localStorage.getItem('tmi_role') ?? '(not set)');
@@ -57,7 +86,7 @@ export default function OverseerPage() {
           </h1>
         </div>
 
-        {/* Active Role — large cockpit display */}
+        {/* Active Role */}
         <section style={{
           borderRadius: 16,
           border: `2px solid ${meta.color}44`,
@@ -82,8 +111,6 @@ export default function OverseerPage() {
               </div>
             )}
           </div>
-
-          {/* Live pulse dot */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
             <div style={{
               width: 18, height: 18, borderRadius: '50%',
@@ -102,7 +129,7 @@ export default function OverseerPage() {
           }
         `}</style>
 
-        {/* Role Switch Buttons */}
+        {/* Role Switch */}
         <section style={{
           borderRadius: 12,
           border: '1px solid rgba(255,255,255,0.08)',
@@ -152,9 +179,9 @@ export default function OverseerPage() {
           </div>
           {[
             ['currentRole', currentRole],
-            ['isFan', String(isFan)],
-            ['isPerformer', String(isPerformer)],
-            ['isAdmin', String(isAdmin)],
+            ['isFan',        String(isFan)],
+            ['isPerformer',  String(isPerformer)],
+            ['isAdmin',      String(isAdmin)],
           ].map(([k, v]) => (
             <div key={k} style={{ fontSize: 11, display: 'flex', gap: 6, alignItems: 'baseline' }}>
               <span style={{ color: 'rgba(255,255,255,0.35)', fontFamily: 'monospace' }}>{k}</span>
@@ -164,11 +191,224 @@ export default function OverseerPage() {
         </section>
 
         {/* Avatar Preview */}
-        <AvatarMiniPreview
-          variant="card"
-          role={meta.label}
-          accentColor={meta.color}
-        />
+        <div style={{ marginBottom: 20 }}>
+          <AvatarMiniPreview variant="card" role={meta.label} accentColor={meta.color} />
+        </div>
+
+        {/* ── Security / Trust Panel ─────────────────────────────────────────── */}
+        <section style={{
+          borderRadius: 14,
+          border: '1px solid rgba(255,68,68,0.3)',
+          background: 'rgba(255,68,68,0.04)',
+          padding: '20px 22px',
+          marginBottom: 20,
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
+            <div>
+              <div style={{ fontSize: 9, letterSpacing: '0.22em', color: '#FF4444', fontWeight: 800 }}>
+                SECURITY / TRUST
+              </div>
+              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 3 }}>
+                Family consensus · 16+ youth account gating
+              </div>
+            </div>
+            {/* AgeTier badge */}
+            <div style={{
+              padding: '5px 14px',
+              borderRadius: 20,
+              border: `1px solid ${ageTier === 'YOUTH' ? '#00FFFF88' : '#FFD70088'}`,
+              background: ageTier === 'YOUTH' ? 'rgba(0,255,255,0.1)' : 'rgba(255,215,0,0.1)',
+              fontSize: 10,
+              fontWeight: 900,
+              letterSpacing: '0.12em',
+              color: ageTier === 'YOUTH' ? '#00FFFF' : '#FFD700',
+            }}>
+              {ageTier === 'YOUTH' ? '16+ YOUTH' : 'ADULT'}
+            </div>
+          </div>
+
+          {/* Connection status */}
+          <div style={{
+            padding: '10px 14px',
+            borderRadius: 8,
+            border: `1px solid ${canConnect ? '#00FF8844' : 'rgba(255,255,255,0.08)'}`,
+            background: canConnect ? 'rgba(0,255,136,0.06)' : 'rgba(255,255,255,0.02)',
+            marginBottom: 16,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+          }}>
+            <div style={{
+              width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
+              background: canConnect ? '#00FF88' : '#FF4444',
+              boxShadow: canConnect ? '0 0 6px #00FF88' : 'none',
+            }} />
+            <div style={{ fontSize: 10, color: canConnect ? '#00FF88' : 'rgba(255,255,255,0.4)' }}>
+              allowConnection(ADULT, YOUTH) ={' '}
+              <span style={{ fontFamily: 'monospace', fontWeight: 900 }}>
+                {String(canConnect)}
+              </span>
+            </div>
+          </div>
+
+          {/* No request state */}
+          {!consensus.request && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)' }}>
+                Family group: <span style={{ color: '#fff' }}>3 custodians</span> · approval threshold:{' '}
+                <span style={{ color: '#FFD700' }}>{DEMO_FAMILY.approvalThreshold}/{DEMO_FAMILY.custodians.length}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => submitRequest(DEMO_ADULT_ID, DEMO_YOUTH_ID)}
+                style={{
+                  padding: '10px 20px', borderRadius: 8,
+                  border: '1px solid rgba(255,215,0,0.4)', background: 'rgba(255,215,0,0.08)',
+                  color: '#FFD700', fontSize: 11, fontWeight: 900, letterSpacing: '0.1em',
+                  cursor: 'pointer', alignSelf: 'flex-start',
+                }}
+              >
+                SIMULATE LINK REQUEST →
+              </button>
+            </div>
+          )}
+
+          {/* Active consensus request */}
+          {consensus.request && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)' }}>
+                  Request ID: <span style={{ fontFamily: 'monospace', color: '#fff', fontSize: 9 }}>
+                    {consensus.request.requestId.slice(0, 16)}…
+                  </span>
+                </div>
+                <div style={{
+                  padding: '3px 10px', borderRadius: 20,
+                  fontSize: 9, fontWeight: 900, letterSpacing: '0.12em',
+                  background: consensus.request.status === 'APPROVED'  ? 'rgba(0,255,136,0.15)'
+                            : consensus.request.status === 'DECLINED'  ? 'rgba(255,68,68,0.15)'
+                            : 'rgba(255,215,0,0.12)',
+                  color:      consensus.request.status === 'APPROVED'  ? '#00FF88'
+                            : consensus.request.status === 'DECLINED'  ? '#FF4444'
+                            : '#FFD700',
+                  border: `1px solid ${
+                    consensus.request.status === 'APPROVED' ? '#00FF8844'
+                    : consensus.request.status === 'DECLINED' ? '#FF444444'
+                    : '#FFD70044'
+                  }`,
+                }}>
+                  {consensus.request.status}
+                </div>
+              </div>
+
+              {/* Custodian vote rows */}
+              {DEMO_FAMILY.custodians.map((custodianId) => {
+                const vote = consensus.request!.approvals[custodianId];
+                const done = vote !== 'PENDING';
+                return (
+                  <div key={custodianId} style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: '10px 14px', borderRadius: 8,
+                    border: `1px solid ${
+                      vote === 'APPROVED' ? '#00FF8833'
+                      : vote === 'DECLINED' ? '#FF444433'
+                      : 'rgba(255,255,255,0.08)'
+                    }`,
+                    background: vote === 'APPROVED' ? 'rgba(0,255,136,0.04)'
+                              : vote === 'DECLINED' ? 'rgba(255,68,68,0.04)'
+                              : 'rgba(255,255,255,0.02)',
+                  }}>
+                    <div style={{ fontSize: 11, color: '#fff', fontWeight: 700 }}>
+                      {CUSTODIAN_LABELS[custodianId] ?? custodianId}
+                    </div>
+                    {done ? (
+                      <div style={{
+                        fontSize: 10, fontWeight: 900, letterSpacing: '0.1em',
+                        color: vote === 'APPROVED' ? '#00FF88' : '#FF4444',
+                      }}>
+                        {vote === 'APPROVED' ? '✓ APPROVED' : '✗ DECLINED'}
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button
+                          type="button"
+                          onClick={() => castVote(custodianId, 'APPROVED')}
+                          disabled={consensus.request?.status !== 'PENDING'}
+                          style={{
+                            padding: '5px 12px', borderRadius: 6, fontSize: 10, fontWeight: 900,
+                            border: '1px solid #00FF8866', background: 'rgba(0,255,136,0.1)',
+                            color: '#00FF88', cursor: 'pointer', letterSpacing: '0.08em',
+                          }}
+                        >
+                          APPROVE
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => castVote(custodianId, 'DECLINED')}
+                          disabled={consensus.request?.status !== 'PENDING'}
+                          style={{
+                            padding: '5px 12px', borderRadius: 6, fontSize: 10, fontWeight: 900,
+                            border: '1px solid #FF444466', background: 'rgba(255,68,68,0.1)',
+                            color: '#FF4444', cursor: 'pointer', letterSpacing: '0.08em',
+                          }}
+                        >
+                          DECLINE
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+
+              {/* Threshold progress */}
+              {consensus.request.status === 'PENDING' && (
+                <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', marginTop: 4 }}>
+                  {Object.values(consensus.request.approvals).filter(v => v === 'APPROVED').length}/
+                  {consensus.request.threshold} approvals needed
+                  {' · '}any decline kills this request
+                </div>
+              )}
+
+              {/* Clear button after terminal state */}
+              {(consensus.request.status === 'APPROVED' || consensus.request.status === 'DECLINED') && (
+                <button
+                  type="button"
+                  onClick={clearRequest}
+                  style={{
+                    padding: '8px 16px', borderRadius: 6,
+                    border: '1px solid rgba(255,255,255,0.15)',
+                    background: 'transparent', color: 'rgba(255,255,255,0.4)',
+                    fontSize: 10, fontWeight: 700, letterSpacing: '0.1em',
+                    cursor: 'pointer', alignSelf: 'flex-start',
+                  }}
+                >
+                  RESET SIMULATION
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Trust links */}
+          {consensus.trustLinks.length > 0 && (
+            <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+              <div style={{ fontSize: 9, letterSpacing: '0.18em', color: '#00FF88', fontWeight: 800, marginBottom: 8 }}>
+                ACTIVE TRUST LINKS
+              </div>
+              {consensus.trustLinks.map((link) => (
+                <div key={link.id} style={{
+                  fontSize: 10, color: 'rgba(255,255,255,0.6)', fontFamily: 'monospace',
+                  lineHeight: 1.9,
+                }}>
+                  <span style={{ color: '#FFD700' }}>{link.adultId}</span>
+                  {' ↔ '}
+                  <span style={{ color: '#00FFFF' }}>{link.youthId}</span>
+                  {' · approved by '}
+                  <span style={{ color: '#00FF88' }}>{link.approvedBy.length} custodians</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
 
         {/* Debug Panel */}
         <section style={{
@@ -186,6 +426,7 @@ export default function OverseerPage() {
               ['localStorage', hydrated ? (localStorageRaw ?? '…') : '(server render)'],
               ['session',      hydrated ? (sessionPresent ? '✓ present' : '✗ not found') : '(server render)'],
               ['hydration',    hydrated ? 'mounted' : 'pending'],
+              ['ageTier',      ageTier],
             ].map(([label, value]) => (
               <div key={label} style={{
                 display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
@@ -197,6 +438,8 @@ export default function OverseerPage() {
                   color: label === 'session' && value === '✗ not found' ? '#FF4444'
                        : label === 'session' && typeof value === 'string' && value.startsWith('✓') ? '#00FF88'
                        : label === 'hydration' && value === 'mounted' ? '#00FF88'
+                       : label === 'ageTier' && value === 'YOUTH' ? '#00FFFF'
+                       : label === 'ageTier' && value === 'ADULT' ? '#FFD700'
                        : '#fff',
                   fontWeight: 700,
                 }}>{value}</span>
