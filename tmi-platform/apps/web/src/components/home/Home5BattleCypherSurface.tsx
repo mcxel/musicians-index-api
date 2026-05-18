@@ -36,6 +36,7 @@ import { battleBillboardLobbyWallEngine } from "@/lib/competition/BattleBillboar
 import { battleMatchLifecycleEngine, UNIVERSAL_BATTLE_WINDOW_SECONDS } from "@/lib/competition/BattleMatchLifecycleEngine";
 import GlobalLiveBelt from "@/components/home/GlobalLiveBelt";
 import SmartCameraDirector from "@/components/stage/SmartCameraDirector";
+import AudienceField from "@/components/live/AudienceField";
 
 type ActionCard = {
   title: string;
@@ -230,6 +231,10 @@ export default function Home5BattleCypherSurface() {
       </header>
 
       <Home5BattleDensityRail />
+
+      <section style={{ maxWidth: 1100, margin: '0 auto', padding: '0 24px 12px', width: '100%' }}>
+        <AudienceField />
+      </section>
 
       <section
         style={{
