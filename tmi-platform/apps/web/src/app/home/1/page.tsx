@@ -6,6 +6,7 @@ import Home3LiveWorldSurface from '@/components/home/Home3LiveWorldSurface';
 import Home4SponsorSurface from '@/components/home/Home4SponsorSurface';
 import Home5BattleCypherSurface from '@/components/home/Home5BattleCypherSurface';
 import LiveRibbonSystem from '@/components/home/LiveRibbonSystem';
+import AvatarMiniPreview from '@/components/avatar/AvatarMiniPreview';
 
 // ─── Scene atmosphere constants ───────────────────────────────────────────────
 
@@ -94,6 +95,10 @@ export const MAGAZINE_FULL_ROTATION_SCENES = [
         {/* Live status ribbon — "VOTING LIVE", "CROWN UPDATING", etc. */}
         <div aria-live="polite" style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 60, pointerEvents: 'none' }}>
           <LiveRibbonSystem accent="#FF2DAA" />
+        </div>
+        {/* Avatar identity badge — bottom-right, above overlays */}
+        <div style={{ position: 'absolute', bottom: 16, right: 16, zIndex: 65, pointerEvents: 'auto' }}>
+          <AvatarMiniPreview variant="mini" accentColor="#00FFFF" />
         </div>
         {/* Cover vignette — frames the stage */}
         <div aria-hidden="true" style={atmosphere('rgba(6,2,18,0.36)', 'rgba(120,0,255,0.08)', 'rgba(0,255,255,0.03)')} />
