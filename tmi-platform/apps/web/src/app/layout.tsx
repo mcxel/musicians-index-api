@@ -6,8 +6,11 @@ import "@/styles/tmi/globals.css";
 import { TmiSessionProvider } from "@/hooks/SessionContext";
 
 export const metadata: Metadata = {
-  title: "The Musician's Index Magazine",
-  description: "The Musician's Index Magazine — a live interactive platform where artists, performers, and fans connect through music, shows, competitions, and real-time audience experiences.",
+  title: {
+    default: "The Musician's Index Magazine | Official Live Music Platform",
+    template: "%s | The Musician's Index Magazine",
+  },
+  description: "The Musician's Index Magazine is a live interactive music platform where artists, performers, and fans connect, compete, and perform in real time through shows, battles, cyphers, and ranked music discovery.",
   metadataBase: new URL("https://themusiciansindex.com"),
   keywords: [
     "The Musician's Index", "TMI", "live music platform", "music battles",
