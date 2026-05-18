@@ -63,6 +63,12 @@ export default function OrbitRankingGrid({ artists, accentColor = "#00FFFF", ran
         @media (max-width: 639px) {
           [data-tmi-orbit-card] { width: 68px !important; }
           [data-tmi-orbit-card-image] { height: 42px !important; }
+          /* Kill backdrop-filter on mobile — it forces per-frame blur recomputation
+             on every compositing layer, causing the top-of-Home1 flicker on Android */
+          [data-tmi-orbit-card] {
+            -webkit-backdrop-filter: none !important;
+            backdrop-filter: none !important;
+          }
         }
       `}</style>
       {orbiting.map((artist, idx) => {
@@ -109,6 +115,7 @@ export default function OrbitRankingGrid({ artists, accentColor = "#00FFFF", ran
                   ? `0 6px 22px rgba(0,0,0,0.65), 0 0 18px #FFD70088`
                   : `0 6px 22px rgba(0,0,0,0.65), 0 0 6px ${accentColor}22`,
                 willChange: "transform",
+                transform: "translateZ(0)",
                 backfaceVisibility: "hidden",
                 WebkitBackfaceVisibility: "hidden",
               }}
