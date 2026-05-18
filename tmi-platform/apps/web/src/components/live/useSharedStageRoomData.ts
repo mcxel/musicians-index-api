@@ -28,7 +28,7 @@ export type SharedStageRoomData = {
   emojiTrail: string[];
   sentinel: { label: string; color: string };
   triggerHype: () => void;
-  triggerTip: () => void;
+  triggerTip: (amountCents?: number) => void;
 };
 
 const CHAT_ROOM_MAP: Record<string, ChatRoomId> = {
@@ -141,14 +141,14 @@ export function useSharedStageRoomData(roomId: string): SharedStageRoomData {
     setPopulation(getRoomPopulation(normalizedRoomId));
   }
 
-  function triggerTip(): void {
+  function triggerTip(amountCents = 100): void {
     sendLiveTip({
       roomId: normalizedRoomId,
       fromFanId: viewerIdRef.current,
       fromDisplayName: "You",
       toPerformerId: `performer-${normalizedRoomId}`,
       toDisplayName: "Live Performer",
-      amountCents: 100,
+      amountCents,
       message: "Keep going",
     });
     pushIntentEvent(normalizedRoomId, viewerIdRef.current, "tip", 80, Date.now());

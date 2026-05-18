@@ -12,6 +12,7 @@ import SponsorTickerRail from './SponsorTickerRail';
 import Home3PremiereRail from './Home3PremiereRail';
 import Home3LiveDensityRail from './Home3LiveDensityRail';
 import GlobalLiveBelt from './GlobalLiveBelt';
+import AudienceField from '@/components/live/AudienceField';
 import { enforceRouteOwnership } from '@/lib/routes/TmiVisualRouteMap';
 import { getVisualSlot } from '@/lib/visuals/TmiVisualSlotRegistry';
 
@@ -80,6 +81,10 @@ export default function Home3LiveWorldSurface() {
             ))}
           </div>
         </div>
+      </section>
+
+      <section style={{ maxWidth: 1100, margin: '0 auto', padding: '0 24px 12px' }}>
+        <AudienceField />
       </section>
 
       {/* Main preview lobby */}
