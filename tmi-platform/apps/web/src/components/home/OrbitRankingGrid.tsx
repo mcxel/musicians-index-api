@@ -59,6 +59,12 @@ export default function OrbitRankingGrid({ artists, accentColor = "#00FFFF", ran
 
   return (
     <>
+      <style>{`
+        @media (max-width: 639px) {
+          [data-tmi-orbit-card] { width: 68px !important; }
+          [data-tmi-orbit-card-image] { height: 42px !important; }
+        }
+      `}</style>
       {orbiting.map((artist, idx) => {
         const pos = ORBIT_POSITIONS[idx];
         if (!pos) return null;
@@ -79,6 +85,7 @@ export default function OrbitRankingGrid({ artists, accentColor = "#00FFFF", ran
             }}
           >
             <motion.div
+              data-tmi-orbit-card
               animate={
                 isFlashing
                   ? { scale: [1, 1.12, 1], borderColor: ["#FF2DAA", "#FFD700", accentColor] }
@@ -90,7 +97,7 @@ export default function OrbitRankingGrid({ artists, accentColor = "#00FFFF", ran
                   : { duration: 3.5 + idx * 0.3, repeat: Infinity, delay: idx * 0.15 }
               }
               style={{
-                width: 88,
+                width: 96,
                 transform: `rotate(${pos.rotate}deg)`,
                 borderRadius: 10,
                 border: `1px solid ${isFlashing ? "#FFD700" : accentColor}44`,
@@ -98,6 +105,9 @@ export default function OrbitRankingGrid({ artists, accentColor = "#00FFFF", ran
                 background: "rgba(5,5,16,0.92)",
                 cursor: "pointer",
                 backdropFilter: "blur(4px)",
+                boxShadow: isFlashing
+                  ? `0 6px 22px rgba(0,0,0,0.65), 0 0 18px #FFD70088`
+                  : `0 6px 22px rgba(0,0,0,0.65), 0 0 6px ${accentColor}22`,
               }}
             >
               {rankShiftPulse && (
@@ -120,8 +130,21 @@ export default function OrbitRankingGrid({ artists, accentColor = "#00FFFF", ran
                   RANK SHIFT {"->"}
                 </motion.div>
               )}
+              {/* Top color stripe */}
+              <div
+                style={{
+                  position: "absolute",
+                  top: 0, left: 0, right: 0, height: 2,
+                  background: isFlashing ? "#FFD700" : accentColor,
+                  opacity: isFlashing ? 1 : 0.7,
+                  zIndex: 7,
+                  transition: "all 0.3s ease",
+                  pointerEvents: "none",
+                }}
+              />
               {/* Artist image */}
               <div
+                data-tmi-orbit-card-image
                 style={{
                   height: 60,
                   position: "relative",

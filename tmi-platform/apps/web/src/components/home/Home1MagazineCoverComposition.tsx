@@ -149,15 +149,23 @@ export default function Home1MagazineCoverComposition() {
           box-shadow: 0 0 40px var(--cover-primary,#AA2DFF)28, inset 0 0 20px rgba(255,255,255,0.04) !important;
         }
         [data-tmi-cover-content] {
-          min-height: calc(100svh - 48px) !important;
+          min-height: calc(100svh - 100px) !important;
+          display: flex !important;
+          flex-direction: column !important;
         }
         [data-tmi-orbit-canvas] {
-          height: calc(100svh - 260px) !important;
+          flex: 1 1 auto !important;
+          height: auto !important;
+          min-height: 220px !important;
           margin: 0 !important;
         }
         [data-tmi-rooms-rail] {
           left: 8px !important;
           right: 8px !important;
+        }
+        [data-tmi-cta-rail] {
+          bottom: max(env(safe-area-inset-bottom, 0px), 0px) !important;
+          padding-bottom: 8px !important;
         }
       }
     `}</style>
@@ -555,7 +563,7 @@ export default function Home1MagazineCoverComposition() {
           </div>
 
           {/* ─── Bottom CTA rail ─── */}
-          <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, zIndex: 11 }}>
+          <div data-tmi-cta-rail style={{ position: "absolute", left: 0, right: 0, bottom: 0, zIndex: 11 }}>
             <BottomActionRail />
           </div>
         </div>
