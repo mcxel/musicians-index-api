@@ -158,6 +158,14 @@ export default function Home1MagazineCoverComposition() {
           height: auto !important;
           min-height: 220px !important;
           margin: 0 !important;
+          overflow: hidden !important;
+        }
+        [data-tmi-orbit-fade] {
+          display: block !important;
+        }
+        [data-tmi-crown-center] {
+          transform: translate(-50%, -50%) scale(0.72) !important;
+          transform-origin: center center !important;
         }
         [data-tmi-rooms-rail] {
           left: 8px !important;
@@ -411,6 +419,7 @@ export default function Home1MagazineCoverComposition() {
 
             {/* Crown center — absolute centered */}
             <div
+              data-tmi-crown-center
               style={{
                 position: "absolute",
                 left: "50%",
@@ -542,6 +551,20 @@ export default function Home1MagazineCoverComposition() {
             >
               {genre.icon} {genre.label}
             </motion.div>
+
+            {/* Mobile: gradient fade clips bottom orbit cards cleanly */}
+            <div
+              data-tmi-orbit-fade
+              style={{
+                position: "absolute",
+                bottom: 0, left: 0, right: 0,
+                height: 72,
+                background: "linear-gradient(to bottom, transparent, #070010)",
+                pointerEvents: "none",
+                zIndex: 8,
+                display: "none",
+              }}
+            />
           </div>
 
           {/* ─── Mini live rooms (embedded inside bottom quarter) ─── */}
