@@ -13,6 +13,7 @@ interface LiveStageVideoOverlayProps {
   streamState: 'VIDEO' | 'AVATAR_ONLY';
   /** Remote MediaStream from useWebRtcSignaling. Passed through to VideoChatWidget. */
   stream?: MediaStream | null;
+  hasDeclinedVote?: boolean;
 }
 
 export default function LiveStageVideoOverlay({
@@ -21,21 +22,25 @@ export default function LiveStageVideoOverlay({
   peerTier,
   streamState,
   stream,
+  hasDeclinedVote = false,
 }: LiveStageVideoOverlayProps) {
   const [isStreamLive, setIsStreamLive] = useState(false);
 
   const shouldBlock = !allowConnection;
   const showAvatarFallback = allowConnection && streamState === 'AVATAR_ONLY';
 
-  const blockReason = useMemo(() => {
+  const { blockTitle, blockReason } = useMemo(() => {
     if (!allowConnection) {
-      if (userTier === 'YOUTH_16' && peerTier === 'ADULT') {
-        return 'UNVERIFIED ADULT LINK — STREAM DISCONNECTED';
+      if (hasDeclinedVote) {
+        return { blockTitle: 'ACCESS DENIED', blockReason: 'ACCESS DENIED BY CUSTODIAN' };
       }
-      return 'CONSENSUS REQUIREMENTS NOT MET';
+      if (userTier === 'YOUTH_16' && peerTier === 'ADULT') {
+        return { blockTitle: 'SECURITY ISOLATION ACTIVE', blockReason: 'RESTRICTED BY ACCOUNT TIER' };
+      }
+      return { blockTitle: 'SECURITY ISOLATION ACTIVE', blockReason: 'CUSTODIAN CONSENSUS PENDING' };
     }
-    return '';
-  }, [allowConnection, peerTier, userTier]);
+    return { blockTitle: '', blockReason: '' };
+  }, [allowConnection, hasDeclinedVote, peerTier, userTier]);
 
   return (
     <section
@@ -89,7 +94,7 @@ export default function LiveStageVideoOverlay({
       )}
 
       {shouldBlock && (
-        <SecurityShieldMask title="SECURITY ISOLATION ACTIVE" reason={blockReason || 'STREAM BLOCKED'} />
+        <SecurityShieldMask title={blockTitle} reason={blockReason} />
       )}
     </section>
   );

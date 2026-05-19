@@ -3,6 +3,7 @@
 import { useCallback, useState } from 'react';
 import DailyIframe, { DailyCall } from '@daily-co/daily-js';
 import { DailyProvider, useParticipantIds, useLocalParticipant, useDailyEvent } from '@daily-co/daily-react';
+import SecurityShieldMask from '@/components/stage/SecurityShieldMask';
 import VideoTile from './VideoTile';
 
 interface VideoRoomProps {
@@ -10,6 +11,7 @@ interface VideoRoomProps {
   token?: string;
   userName?: string;
   onLeave?: () => void;
+  allowConnection?: boolean;
 }
 
 function RoomContent({ onLeave }: { onLeave?: () => void }) {
@@ -173,9 +175,17 @@ function VideoTileById({ id, activeSpeakerId }: { id: string; activeSpeakerId: s
   );
 }
 
-export default function VideoRoom({ roomUrl, token, userName, onLeave }: VideoRoomProps) {
+export default function VideoRoom({ roomUrl, token, userName, onLeave, allowConnection = true }: VideoRoomProps) {
   const [callObject, setCallObject] = useState<DailyCall | null>(null);
   const [joined, setJoined] = useState(false);
+
+  if (!allowConnection) {
+    return (
+      <div style={{ position: 'relative', minHeight: '100vh', background: '#060410' }}>
+        <SecurityShieldMask title="VIDEO ACCESS BLOCKED" reason="CUSTODIAN CONSENSUS REQUIRED" />
+      </div>
+    );
+  }
 
   const joinCall = useCallback(async () => {
     const call = DailyIframe.createCallObject({ url: roomUrl, token });
