@@ -1,21 +1,39 @@
-import type { UserPublic, ArtistPublic } from "@tmi/contracts";
-import { UserManagement } from "@/components/admin/UserManagement";
+'use client';
+import { useEffect, useState } from 'react';
+import type { UserPublic, ArtistPublic } from '@tmi/contracts';
+import { UserManagement } from '@/components/admin/UserManagement';
 
-async function AdminDashboard() {
-  // Server-side auth checks have been moved to apps/api. Web should call the
-  // API for privileged actions. During build and local checks we avoid
-  // initializing auth adapters that may import Prisma.
+export default function AdminDashboard() {
+  const [users, setUsers]     = useState<UserPublic[]>([]);
+  const [artists, setArtists] = useState<ArtistPublic[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Placeholder DTOs when API is not available during build/time-checks.
-  const users = [] as UserPublic[];
-  const artists = [] as ArtistPublic[];
+  useEffect(() => {
+    fetch('/api/admin/users')
+      .then(r => r.json())
+      .then(d => {
+        if (d.users)   setUsers(d.users);
+        if (d.artists) setArtists(d.artists);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
 
   return (
     <div className="p-8 text-white">
-      <h1 className="text-3xl font-bold text-purple-400 mb-8">Admin Dashboard</h1>
+      <h1 className="text-3xl font-bold text-purple-400 mb-2">Admin Dashboard</h1>
+      {loading && (
+        <p className="text-sm text-gray-400 mb-6">Loading users…</p>
+      )}
+      {!loading && users.length === 0 && (
+        <p className="text-sm text-yellow-400 mb-6">
+          No users returned — ensure you are logged in as ADMIN (tmi_role=ADMIN cookie required).
+        </p>
+      )}
+      {!loading && users.length > 0 && (
+        <p className="text-sm text-green-400 mb-6">{users.length} user{users.length !== 1 ? 's' : ''} loaded</p>
+      )}
       <UserManagement users={users} artists={artists} />
     </div>
   );
 }
-
-export default AdminDashboard;

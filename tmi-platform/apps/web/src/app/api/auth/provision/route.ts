@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { proxyToApi } from "@/lib/apiProxy";
+import { DiamondInviteEngine } from "@/lib/auth/DiamondInviteEngine";
 
 /**
  * POST /api/auth/provision
@@ -16,12 +17,23 @@ export async function POST(req: NextRequest) {
     if (apiRes.status < 300) return apiRes;
   } catch { /* fall through to stub */ }
 
-  let body: { userId?: string; accountType?: string } = {};
+  let body: { userId?: string; accountType?: string; vipToken?: string } = {};
   try { body = await req.json(); } catch { /* no body */ }
 
-  const { userId, accountType = "MEMBER" } = body;
+  const { userId, accountType = "MEMBER", vipToken } = body;
   if (!userId) {
     return NextResponse.json({ error: "userId required" }, { status: 400 });
+  }
+
+  // Redeem VIP invite token if provided
+  let vipRedeemed = false;
+  let vipRole: string | undefined;
+  if (vipToken && userId) {
+    const invite = DiamondInviteEngine.getInvite(vipToken);
+    if (invite && invite.status === 'active') {
+      vipRedeemed = await DiamondInviteEngine.validateAndRedeem(vipToken, userId);
+      vipRole = invite.assignedRole;
+    }
   }
 
   const now = new Date().toISOString();
@@ -62,6 +74,10 @@ export async function POST(req: NextRequest) {
       ...(accountType === "VENUE" ? [
         { step: "venue_profile_created",   status: "OK" },
         { step: "booking_workspace_created", status: "OK" },
+      ] : []),
+      ...(vipRedeemed ? [
+        { step: "vip_token_redeemed",      status: "OK", role: vipRole, tier: "DIAMOND" },
+        { step: "diamond_wallet_seeded",   status: "OK", credits: 5000 },
       ] : []),
     ],
   };
