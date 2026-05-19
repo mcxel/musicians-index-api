@@ -7,6 +7,12 @@ import { enforceAdultTeenContactBlock } from "@/lib/safety/AdultTeenContactBlock
 type Msg = { id: string; from: string; text: string; mine: boolean; ts: number };
 
 const CONTACTS: Record<string, { name: string; role: string; icon: string; color: string; online: boolean }> = {
+  // Early access VIP cohort
+  kreach: { name: "Kreach",      role: "ARTIST",   icon: "🎵", color: "#AA2DFF", online: true  },
+  kg:     { name: "KG",          role: "PRODUCER", icon: "🎹", color: "#FFD700", online: true  },
+  savage: { name: "Savage Guns", role: "ARTIST",   icon: "🔥", color: "#FF2DAA", online: false },
+  jason:  { name: "Jason Smith", role: "PROMOTER", icon: "⭐", color: "#00FF88", online: true  },
+  // General contacts
   c1: { name: "Wavetek",     role: "ARTIST",  icon: "🎤", color: "#FF2DAA", online: true  },
   c2: { name: "TMI Support", role: "SUPPORT", icon: "🛡️", color: "#00FFFF", online: true  },
   c3: { name: "Zuri Bloom",  role: "ARTIST",  icon: "🌍", color: "#00FF88", online: false },
@@ -16,6 +22,20 @@ const CONTACTS: Record<string, { name: string; role: string; icon: string; color
 };
 
 const SEED: Record<string, Msg[]> = {
+  kreach: [
+    { id: "s1", from: "Kreach", text: "Yo, I got the VIP token — platform looking clean 🔥", mine: false, ts: Date.now() - 360000 },
+    { id: "s2", from: "Kreach", text: "Let me know when you ready to lock in the collab 🎵",  mine: false, ts: Date.now() - 60000  },
+  ],
+  kg: [
+    { id: "s1", from: "KG", text: "New beat pack just dropped. You want the stems?", mine: false, ts: Date.now() - 540000 },
+  ],
+  savage: [
+    { id: "s1", from: "Savage Guns", text: "Check the new freestyle I just posted on the feed", mine: false, ts: Date.now() - 3600000 },
+  ],
+  jason: [
+    { id: "s1", from: "Jason Smith", text: "We're live on TMI. Let's get the booking locked in.", mine: false, ts: Date.now() - 10800000 },
+    { id: "s2", from: "Jason Smith", text: "Reach out when you have the date — I'm on both accounts ⭐", mine: false, ts: Date.now() - 9000000 },
+  ],
   c1: [
     { id: "s1", from: "Wavetek",     text: "Yo, you coming to the cypher tonight?",          mine: false, ts: Date.now() - 120000   },
     { id: "s2", from: "You",         text: "For sure, what time does it start?",              mine: true,  ts: Date.now() - 115000   },
@@ -37,6 +57,10 @@ const SEED: Record<string, Msg[]> = {
 };
 
 const AUTO_REPLIES: Record<string, string[]> = {
+  kreach: ["say less 🎵", "on the way 💜", "I'm in the lab rn", "bet, let's get it"],
+  kg:     ["🎹🔥", "stems coming tonight", "new pack just dropped bro", "feel that 💛"],
+  savage: ["🔥", "we got hits bro", "in the booth rn", "facts"],
+  jason:  ["Confirmed ✅", "Let's make it happen", "Reaching out now", "Booking on deck ⭐"],
   c1: ["fire 🔥", "say less", "bet, see you there 🎤", "you know how we do 💯"],
   c2: ["Got it! Anything else we can help with?", "Happy to help. Let us know.", "We'll follow up shortly."],
   c3: ["Yes! Let's set something up 🌍", "DM me your schedule", "When are you free this week?"],
