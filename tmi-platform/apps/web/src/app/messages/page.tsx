@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
@@ -17,12 +17,18 @@ interface ConversationPreview {
 }
 
 const SEED_CONVERSATIONS: ConversationPreview[] = [
-  { id: 'c1', name: 'Wavetek', role: 'ARTIST', icon: '🎤', accentColor: '#FF2DAA', lastMessage: 'Yo, you heard that new drop?', timeAgo: '2m', unread: 3, isOnline: true },
-  { id: 'c2', name: 'Zuri Bloom', role: 'ARTIST', icon: '🌍', accentColor: '#00FF88', lastMessage: 'The cypher starts at 10pm', timeAgo: '14m', unread: 1, isOnline: true },
-  { id: 'c3', name: 'Neon Vibe', role: 'DJ', icon: '🎧', accentColor: '#00FFFF', lastMessage: 'I got beats for the session', timeAgo: '1h', unread: 0, isOnline: false },
-  { id: 'c4', name: 'Krypt', role: 'ARTIST', icon: '🔒', accentColor: '#AA2DFF', lastMessage: 'Check this verse I wrote', timeAgo: '3h', unread: 0, isOnline: true },
-  { id: 'c5', name: 'TMI Support', role: 'SUPPORT', icon: '🛡️', accentColor: '#00FFFF', lastMessage: 'Your account is fully verified.', timeAgo: '1d', unread: 0, isOnline: true },
-  { id: 'c6', name: 'TMI Booking', role: 'SYSTEM', icon: '📋', accentColor: '#FFD700', lastMessage: 'New booking request received', timeAgo: '2d', unread: 1, isOnline: true },
+  // Early access VIP cohort — pinned at top
+  { id: 'kreach', name: 'Kreach',       role: 'ARTIST',   icon: '🎵', accentColor: '#AA2DFF', lastMessage: 'Yo, I\'m live on the platform — let\'s run this', timeAgo: '2m',  unread: 2, isOnline: true  },
+  { id: 'kg',     name: 'KG',           role: 'PRODUCER', icon: '🎹', accentColor: '#FFD700', lastMessage: 'New beat pack just dropped, check it out',       timeAgo: '9m',  unread: 1, isOnline: true  },
+  { id: 'savage', name: 'Savage Guns',  role: 'ARTIST',   icon: '🔥', accentColor: '#FF2DAA', lastMessage: 'Check the new freestyle I just posted',           timeAgo: '1h',  unread: 0, isOnline: false },
+  { id: 'jason',  name: 'Jason Smith',  role: 'PROMOTER', icon: '⭐', accentColor: '#00FF88', lastMessage: 'Booking confirmed — let\'s get this locked in',   timeAgo: '3h',  unread: 0, isOnline: true  },
+  // General contacts
+  { id: 'c1', name: 'Wavetek',     role: 'ARTIST',  icon: '🎤', accentColor: '#FF2DAA', lastMessage: 'Yo, you heard that new drop?',       timeAgo: '2m',  unread: 3, isOnline: true  },
+  { id: 'c2', name: 'Zuri Bloom',  role: 'ARTIST',  icon: '🌍', accentColor: '#00FF88', lastMessage: 'The cypher starts at 10pm',           timeAgo: '14m', unread: 1, isOnline: true  },
+  { id: 'c3', name: 'Neon Vibe',   role: 'DJ',      icon: '🎧', accentColor: '#00FFFF', lastMessage: 'I got beats for the session',         timeAgo: '1h',  unread: 0, isOnline: false },
+  { id: 'c4', name: 'Krypt',       role: 'ARTIST',  icon: '🔒', accentColor: '#AA2DFF', lastMessage: 'Check this verse I wrote',            timeAgo: '3h',  unread: 0, isOnline: true  },
+  { id: 'c5', name: 'TMI Support', role: 'SUPPORT', icon: '🛡️', accentColor: '#00FFFF', lastMessage: 'Your account is fully verified.',    timeAgo: '1d',  unread: 0, isOnline: true  },
+  { id: 'c6', name: 'TMI Booking', role: 'SYSTEM',  icon: '📋', accentColor: '#FFD700', lastMessage: 'New booking request received',        timeAgo: '2d',  unread: 1, isOnline: true  },
 ];
 
 export default function MessagesPage() {
@@ -30,10 +36,6 @@ export default function MessagesPage() {
   const [search, setSearch] = useState('');
   const [conversations, setConversations] = useState<ConversationPreview[]>(SEED_CONVERSATIONS);
 
-  useEffect(() => {
-    // Future: fetch real conversations from /api/messages/conversations
-    // For now, seed data drives the inbox
-  }, []);
 
   const filtered = conversations.filter(c =>
     c.name.toLowerCase().includes(search.toLowerCase()) ||

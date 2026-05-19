@@ -6,6 +6,12 @@ import Link from "next/link";
 import { enforceAdultTeenContactBlock } from "@/lib/safety/AdultTeenContactBlocker";
 
 const SUGGESTED = [
+  // Early access VIP cohort
+  { id: "kreach", name: "Kreach",      role: "ARTIST",   icon: "🎵", color: "#AA2DFF" },
+  { id: "kg",     name: "KG",          role: "PRODUCER", icon: "🎹", color: "#FFD700" },
+  { id: "savage", name: "Savage Guns", role: "ARTIST",   icon: "🔥", color: "#FF2DAA" },
+  { id: "jason",  name: "Jason Smith", role: "PROMOTER", icon: "⭐", color: "#00FF88" },
+  // General contacts
   { id: "c1", name: "Wavetek",     role: "ARTIST",  icon: "🎤", color: "#FF2DAA" },
   { id: "c2", name: "Zuri Bloom",  role: "ARTIST",  icon: "🌍", color: "#00FF88" },
   { id: "c3", name: "Neon Vibe",   role: "DJ",      icon: "🎧", color: "#00FFFF" },
