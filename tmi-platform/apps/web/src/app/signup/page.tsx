@@ -3,6 +3,8 @@ import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
+import { setSession } from "@/lib/auth/session";
+import type { TMIRole } from "@/lib/auth/roles";
 
 type AccountType = "MEMBER" | "ARTIST" | "ADVERTISER" | "SPONSOR" | "VENUE";
 type Step = "TYPE" | "DETAILS" | "PROVISIONING" | "DONE";
@@ -59,6 +61,9 @@ export default function SignupPage() {
       setProvSteps(
         ((prov as { steps?: Array<{ step: string }> }).steps ?? []).map((s: { step: string }) => s.step)
       );
+      // Write session cookies so /dashboard doesn't bounce the new user back to /auth
+      const sessionToken = (regData as { token?: string }).token ?? userId;
+      setSession(sessionToken, accountType as TMIRole);
       setStep("DONE");
     } catch {
       setError("Signup failed — please try again.");
@@ -169,7 +174,7 @@ export default function SignupPage() {
               )}
               <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
                 <Link href="/dashboard" style={{ padding: "11px 22px", fontSize: 10, fontWeight: 800, letterSpacing: "0.15em", background: `linear-gradient(135deg, ${sel.color}, ${sel.color}88)`, color: "#050510", borderRadius: 6, textDecoration: "none" }}>GO TO DASHBOARD</Link>
-                <Link href={`/onboarding/${accountType.toLowerCase()}`} style={{ padding: "11px 22px", fontSize: 10, fontWeight: 800, letterSpacing: "0.15em", background: "rgba(255,255,255,0.06)", color: "#fff", borderRadius: 6, textDecoration: "none" }}>START TUTORIAL</Link>
+                <Link href={`/onboarding/${accountType === "MEMBER" ? "fan" : accountType === "ARTIST" ? "artist" : accountType.toLowerCase()}`} style={{ padding: "11px 22px", fontSize: 10, fontWeight: 800, letterSpacing: "0.15em", background: "rgba(255,255,255,0.06)", color: "#fff", borderRadius: 6, textDecoration: "none" }}>START TUTORIAL</Link>
               </div>
             </motion.div>
           )}
