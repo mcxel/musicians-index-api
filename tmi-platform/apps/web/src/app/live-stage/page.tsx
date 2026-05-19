@@ -5,6 +5,7 @@ import LiveStageVideoOverlay from '@/components/stage/LiveStageVideoOverlay';
 import { useFamilyConsensus } from '@/hooks/useFamilyConsensus';
 import { useOverseerDeck } from '@/hooks/useOverseerDeck';
 import { useWebRtcSignaling } from '@/hooks/useWebRtcSignaling';
+import { useGamificationEngine } from '@/hooks/useGamificationEngine';
 import type { AccountTier, FamilyGroup } from '@/types/security';
 
 const ACCOUNT_TIER_BY_ROLE: Record<'FAN' | 'PERFORMER' | 'ADMIN', AccountTier> = {
@@ -26,7 +27,12 @@ const DEMO_FAMILY: FamilyGroup = {
 };
 
 export default function LiveStagePage() {
+  const { trackAction } = useGamificationEngine();
   const { currentRole } = useOverseerDeck();
+
+  useEffect(() => {
+    trackAction('JOIN_STAGE');
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const accountTier = ACCOUNT_TIER_BY_ROLE[currentRole];
 
   const [streamState, setStreamState] = useState<'VIDEO' | 'AVATAR_ONLY'>('VIDEO');
