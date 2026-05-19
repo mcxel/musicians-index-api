@@ -4,6 +4,7 @@ import "./globals.css";
 import "@/styles/tmiTypography.css";
 import "@/styles/tmi/globals.css";
 import { TmiSessionProvider } from "@/hooks/SessionContext";
+import GamificationHUD from "@/components/hud/GamificationHUD";
 
 export const metadata: Metadata = {
   title: {
@@ -105,6 +106,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <AppProviders>
           <TmiSessionProvider>
             {children}
+            <GamificationHUD />
           </TmiSessionProvider>
         </AppProviders>
       </body>
