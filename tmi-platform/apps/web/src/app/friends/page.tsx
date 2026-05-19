@@ -1,4 +1,5 @@
 'use client';
+import { useGamificationEngine } from "@/hooks/useGamificationEngine";
 
 import { useState } from 'react';
 import Link from 'next/link';
@@ -34,6 +35,7 @@ type RequestRecord = typeof INITIAL_REQUESTS[number];
 
 export default function FriendsPage() {
   const [tab, setTab] = useState<Tab>('friends');
+  const { trackAction } = useGamificationEngine();
   const [search, setSearch] = useState('');
   const [friends, setFriends] = useState<FriendRecord[]>(INITIAL_FRIENDS);
   const [requests, setRequests] = useState<RequestRecord[]>(INITIAL_REQUESTS);
@@ -217,7 +219,9 @@ export default function FriendsPage() {
                   <button
                     onClick={() => setFollowed((prev) => {
                       const next = new Set(prev);
-                      next.has(user.id) ? next.delete(user.id) : next.add(user.id);
+                      const wasFollowing = next.has(user.id);
+                      wasFollowing ? next.delete(user.id) : next.add(user.id);
+                      if (!wasFollowing) trackAction('VOTE_BATTLE');
                       return next;
                     })}
                     className={`text-xs px-3 py-1.5 rounded-lg transition-colors font-semibold ${
