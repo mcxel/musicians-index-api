@@ -1,111 +1,136 @@
 'use client';
 
-import { useCallback, useState } from 'react';
-import type {
-  ConsensusRequest,
-  FamilyGroup,
-  TrustLink,
-  VoteValue,
+import { useCallback, useMemo, useState } from 'react';
+import {
+  hasDecline,
+  isConsensusApproved,
+  type ConsensusRequest,
+  type FamilyGroup,
+  type TrustLink,
+  type VoteStatus,
 } from '@/types/security';
 
-interface FamilyConsensusState {
-  request: ConsensusRequest | null;
-  trustLinks: TrustLink[];
+function makeId(): string {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID();
+  return `req_${Date.now()}_${Math.random().toString(36).slice(2)}`;
 }
 
 interface UseFamilyConsensusReturn {
-  state: FamilyConsensusState;
-  submitRequest: (adultId: string, youthId: string) => void;
-  castVote: (custodianId: string, vote: 'APPROVED' | 'DECLINED') => void;
-  allowConnection: (adultId: string, youthId: string) => boolean;
-  clearRequest: () => void;
-}
-
-function makeId(): string {
-  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
-    return crypto.randomUUID();
-  }
-  return `id_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+  activeRequest: ConsensusRequest | null;
+  trustLinks: TrustLink[];
+  allowConnection: boolean;
+  approvedVotes: number;
+  hasDeclinedVote: boolean;
+  createRequest: (targetAdultId: string, targetAdultName: string, targetYouthId: string) => void;
+  approveRequest: (requestId: string, custodianId: string) => void;
+  declineRequest: (requestId: string, custodianId: string) => void;
+  resetRequest: () => void;
 }
 
 export function useFamilyConsensus(familyGroup: FamilyGroup): UseFamilyConsensusReturn {
-  const [state, setState] = useState<FamilyConsensusState>({
-    request: null,
-    trustLinks: [],
-  });
+  const [activeRequest, setActiveRequest] = useState<ConsensusRequest | null>(null);
+  const [trustLinks, setTrustLinks] = useState<TrustLink[]>([]);
 
-  const submitRequest = useCallback((adultId: string, youthId: string) => {
-    const approvals: Record<string, VoteValue> = {};
-    for (const id of familyGroup.custodians) {
-      approvals[id] = 'PENDING';
-    }
+  const custodians = useMemo(
+    () => familyGroup.members.filter((m) => m.isVerifiedCustodian),
+    [familyGroup.members],
+  );
+  const custodianIds = useMemo(() => custodians.map((c) => c.id), [custodians]);
 
-    const request: ConsensusRequest = {
-      requestId: makeId(),
-      targetAdultId: adultId,
-      targetYouthId: youthId,
-      familyGroupId: familyGroup.id,
-      approvals,
-      threshold: familyGroup.approvalThreshold,
-      status: 'PENDING',
-      createdAt: Date.now(),
-      expiresAt: Date.now() + 24 * 60 * 60 * 1000,
-    };
+  const approvedVotes = useMemo(() => {
+    if (!activeRequest) return 0;
+    return Object.values(activeRequest.votes).filter((v) => v === 'APPROVED').length;
+  }, [activeRequest]);
 
-    setState((prev) => ({ ...prev, request }));
-  }, [familyGroup]);
+  const hasDeclinedVote = useMemo(
+    () => (activeRequest ? hasDecline(activeRequest) : false),
+    [activeRequest],
+  );
 
-  const castVote = useCallback((custodianId: string, vote: 'APPROVED' | 'DECLINED') => {
-    setState((prev) => {
-      if (!prev.request || prev.request.status !== 'PENDING') return prev;
+  const allowConnection = useMemo(
+    () => Boolean(activeRequest && activeRequest.status === 'FULLY_APPROVED' && !hasDeclinedVote),
+    [activeRequest, hasDeclinedVote],
+  );
 
-      const approvals = { ...prev.request.approvals, [custodianId]: vote };
+  const createRequest = useCallback(
+    (targetAdultId: string, targetAdultName: string, targetYouthId: string) => {
+      const votes: Record<string, VoteStatus> = {};
+      for (const id of custodianIds) votes[id] = 'PENDING';
 
-      // Kill-switch: any single decline immediately destroys the request
-      if (vote === 'DECLINED') {
-        return {
+      const req: ConsensusRequest = {
+        requestId: makeId(),
+        targetAdultId,
+        targetAdultName,
+        targetYouthId,
+        votes,
+        status: 'PENDING',
+        threshold: familyGroup.approvalThreshold,
+        createdAt: Date.now(),
+        expiresAt: Date.now() + 24 * 60 * 60 * 1000,
+      };
+
+      setActiveRequest(req);
+    },
+    [custodianIds, familyGroup.approvalThreshold],
+  );
+
+  const approveRequest = useCallback(
+    (requestId: string, custodianId: string) => {
+      setActiveRequest((prev) => {
+        if (!prev || prev.requestId !== requestId || prev.status !== 'PENDING') return prev;
+        const votes = { ...prev.votes, [custodianId]: 'APPROVED' as VoteStatus };
+        const approved = isConsensusApproved({ ...prev, votes }, custodianIds);
+        const next: ConsensusRequest = {
           ...prev,
-          request: { ...prev.request, approvals, status: 'DECLINED' },
+          votes,
+          status: approved ? 'FULLY_APPROVED' : 'PENDING',
         };
-      }
 
-      const approvedCount = Object.values(approvals).filter((v) => v === 'APPROVED').length;
-      const status: 'PENDING' | 'APPROVED' = approvedCount >= prev.request.threshold
-        ? 'APPROVED'
-        : 'PENDING';
+        if (next.status === 'FULLY_APPROVED') {
+          setTrustLinks((current) => {
+            const exists = current.some(
+              (l) => l.adultId === next.targetAdultId && l.youthId === next.targetYouthId,
+            );
+            if (exists) return current;
+            return [
+              ...current,
+              {
+                id: makeId(),
+                adultId: next.targetAdultId,
+                youthId: next.targetYouthId,
+                approvedBy: custodianIds.filter((id) => next.votes[id] === 'APPROVED'),
+                status: 'APPROVED',
+                createdAt: Date.now(),
+              },
+            ];
+          });
+        }
 
-      if (status === 'APPROVED') {
-        const link: TrustLink = {
-          id: makeId(),
-          adultId: prev.request.targetAdultId,
-          youthId: prev.request.targetYouthId,
-          approvedBy: Object.keys(approvals).filter((k) => approvals[k] === 'APPROVED'),
-          declinedBy: [],
-          status: 'APPROVED',
-          createdAt: Date.now(),
-        };
-        return {
-          request: { ...prev.request, approvals, status },
-          trustLinks: [...prev.trustLinks, link],
-        };
-      }
+        return next;
+      });
+    },
+    [custodianIds],
+  );
 
-      return { ...prev, request: { ...prev.request, approvals, status } };
+  const declineRequest = useCallback((requestId: string, custodianId: string) => {
+    setActiveRequest((prev) => {
+      if (!prev || prev.requestId !== requestId || prev.status !== 'PENDING') return prev;
+      const votes = { ...prev.votes, [custodianId]: 'DECLINED' as VoteStatus };
+      return { ...prev, votes, status: 'REJECTED_WIPED' };
     });
   }, []);
 
-  const allowConnection = useCallback((adultId: string, youthId: string): boolean => {
-    return state.trustLinks.some(
-      (link) =>
-        link.adultId === adultId &&
-        link.youthId === youthId &&
-        link.status === 'APPROVED',
-    );
-  }, [state.trustLinks]);
+  const resetRequest = useCallback(() => setActiveRequest(null), []);
 
-  const clearRequest = useCallback(() => {
-    setState((prev) => ({ ...prev, request: null }));
-  }, []);
-
-  return { state, submitRequest, castVote, allowConnection, clearRequest };
+  return {
+    activeRequest,
+    trustLinks,
+    allowConnection,
+    approvedVotes,
+    hasDeclinedVote,
+    createRequest,
+    approveRequest,
+    declineRequest,
+    resetRequest,
+  };
 }
