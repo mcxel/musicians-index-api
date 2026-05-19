@@ -1,11 +1,8 @@
+'use client';
+import { useEffect } from "react";
 import Link from "next/link";
-import type { Metadata } from "next";
 import TmiSeasonPassEngine from "@/components/pass/TmiSeasonPassEngine";
-
-export const metadata: Metadata = {
-  title: "Season Pass | TMI",
-  description: "Unlock full access to TMI Season 1. Fan Pass, Artist Pass, and VIP Pass — all the perks, none of the limits.",
-};
+import { useGamificationEngine } from "@/hooks/useGamificationEngine";
 
 const TIERS = [
   {
@@ -65,6 +62,10 @@ const TIERS = [
 ];
 
 export default function SeasonPassPage() {
+  const { totalXp, walletCredits, trackAction } = useGamificationEngine();
+
+  useEffect(() => { trackAction('LOGIN_DAILY'); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
     <main style={{ minHeight: "100vh", background: "#050510", color: "#fff", paddingBottom: 80 }}>
       <section style={{ textAlign: "center", padding: "56px 24px 40px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
@@ -73,6 +74,11 @@ export default function SeasonPassPage() {
         <p style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", maxWidth: 460, margin: "0 auto" }}>
           Unlock the full TMI experience — exclusive rooms, upload access, analytics, and priority everything.
         </p>
+        <div style={{ display: "inline-flex", gap: 16, marginTop: 20, padding: "10px 20px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 30 }}>
+          <span style={{ fontSize: 10, color: "#FFD700", fontWeight: 700 }}>{totalXp.toLocaleString()} XP</span>
+          <span style={{ fontSize: 10, color: "rgba(255,255,255,0.2)" }}>·</span>
+          <span style={{ fontSize: 10, color: "#00FF88", fontWeight: 700 }}>{walletCredits.toLocaleString()} TM Credits</span>
+        </div>
       </section>
 
       <section style={{ maxWidth: 960, margin: "0 auto", padding: "48px 24px 0", display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))", gap: 20 }}>
@@ -106,7 +112,7 @@ export default function SeasonPassPage() {
 
       <section style={{ maxWidth: 960, margin: "40px auto 0", padding: "0 24px" }}>
         <div style={{ fontSize: 9, color: "#FFD700", letterSpacing: "0.3em", fontWeight: 800, marginBottom: 14 }}>🎸 SEASON 1 REWARDS</div>
-        <TmiSeasonPassEngine />
+        <TmiSeasonPassEngine userXpFan={totalXp} userXpArtist={Math.floor(totalXp * 0.6)} />
       </section>
 
       <section style={{ maxWidth: 680, margin: "48px auto 0", padding: "0 24px", textAlign: "center" }}>

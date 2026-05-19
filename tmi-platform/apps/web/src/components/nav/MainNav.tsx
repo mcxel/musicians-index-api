@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { routes } from "@/lib/routes";
 import UserAvatar from "@/components/user/UserAvatar";
+import WalletBalance from "@/components/common/WalletBalance";
 
 type SessionRole = "fan" | "artist" | "performer" | "venue" | "sponsor" | "advertiser" | "admin" | "superadmin" | "owner";
 
@@ -146,6 +147,7 @@ export default function MainNav() {
               </Link>
             ) : (
               <>
+                <WalletBalance compact />
                 <Link href={routes.notifications} className="rounded-full border border-white/10 px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-white/78 transition hover:border-cyan-300/40 hover:text-cyan-200">
                   Alerts
                 </Link>
