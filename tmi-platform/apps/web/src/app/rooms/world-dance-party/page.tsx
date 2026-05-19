@@ -51,6 +51,7 @@ const RALPH_ANIM_COLOR: Record<RalphAnimState, string> = {
   "crowd-scan":   "#AA2DFF",
 };
 
+const DANCER_COLORS = ["#FF2DAA", "#00FFFF", "#AA2DFF", "#FFD700"];
 const FAN_ID = "guest-fan";
 const ROOM_ID = "world-dance-party";
 const SEAT_ROWS = 4;
@@ -329,8 +330,9 @@ export default function WorldDancePartyPage() {
                   <div style={{ fontSize: 9, letterSpacing: 4, color: "#00FFFF", fontWeight: 800, marginBottom: 14 }}>🎥 DANCE CAM</div>
                   <div style={{ background: "#0a0a1a", borderRadius: 8, aspectRatio: "4/3", display: "flex", alignItems: "center", justifyContent: "center" }}>
                     <div style={{ textAlign: "center" }}>
-                      <div style={{ fontSize: 32, marginBottom: 8 }}>💃</div>
-                      <div style={{ fontSize: 10, color: "#666" }}>Dance cams loading…</div>
+                      <div style={{ fontSize: 28, marginBottom: 8 }}>📷</div>
+                      <div style={{ fontSize: 10, color: "#00FFFF", fontWeight: 800, letterSpacing: "0.08em", marginBottom: 4 }}>YOUR CAM</div>
+                      <div style={{ fontSize: 9, color: "#555" }}>Tap GO LIVE → bottom right</div>
                     </div>
                   </div>
                 </div>
@@ -340,9 +342,9 @@ export default function WorldDancePartyPage() {
                   borderRadius: 12, padding: 20,
                 }}>
                   <div style={{ fontSize: 9, letterSpacing: 4, color: "#AA2DFF", fontWeight: 800, marginBottom: 14 }}>🏆 VOTE BEST DANCER</div>
-                  {["CrownQueen44", "SmooveStyles", "NeonKing_X", "MidnightMover"].map(dancer => (
+                  {["CrownQueen44", "SmooveStyles", "NeonKing_X", "MidnightMover"].map((dancer, i) => (
                     <div key={dancer} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-                      <div style={{ width: 24, height: 24, borderRadius: "50%", background: "rgba(170,45,255,0.2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11 }}>👤</div>
+                      <div style={{ width: 24, height: 24, borderRadius: "50%", background: `linear-gradient(135deg, ${DANCER_COLORS[i % DANCER_COLORS.length]}, rgba(5,5,16,0.6))`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 900, color: "#fff", flexShrink: 0 }}>{dancer.slice(0, 1)}</div>
                       <div style={{ flex: 1, fontSize: 11, color: "#ccc" }}>{dancer}</div>
                       <motion.button whileTap={{ scale: 0.93 }} onClick={trackInteraction} style={{
                         padding: "4px 12px", borderRadius: 20,
