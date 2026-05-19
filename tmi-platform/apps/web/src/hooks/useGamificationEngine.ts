@@ -28,12 +28,13 @@ function persist(s: GamificationState) {
 
 export type GamificationAction = 'READ_ARTICLE' | 'VOTE_BATTLE' | 'JOIN_STAGE' | 'SEND_MESSAGE' | 'LOGIN_DAILY';
 
-const ACTION_XP: Record<GamificationAction, number> = {
-  READ_ARTICLE: XP_VALUES.article_read,
-  VOTE_BATTLE:  XP_VALUES.vote_cast,
-  JOIN_STAGE:   XP_VALUES.room_attend,
-  SEND_MESSAGE: XP_VALUES.comment_posted,
-  LOGIN_DAILY:  XP_VALUES.login_daily,
+// Variable XP ranges — [min, max] per action
+const ACTION_XP_RANGE: Record<GamificationAction, [number, number]> = {
+  READ_ARTICLE: [10, 40],
+  VOTE_BATTLE:  [5,  25],
+  JOIN_STAGE:   [30, 80],
+  SEND_MESSAGE: [5,  15],
+  LOGIN_DAILY:  [20, 35],
 };
 
 const ACTION_CREDITS: Record<GamificationAction, number> = {
@@ -44,6 +45,16 @@ const ACTION_CREDITS: Record<GamificationAction, number> = {
   LOGIN_DAILY:  25,
 };
 
+// 5% chance of rare 3× XP multiplier per action
+const RARE_MULTIPLIER_CHANCE = 0.05;
+
+function rollXp(action: GamificationAction): { xp: number; rare: boolean } {
+  const [min, max] = ACTION_XP_RANGE[action];
+  const base = Math.floor(Math.random() * (max - min + 1)) + min;
+  const rare = Math.random() < RARE_MULTIPLIER_CHANCE;
+  return { xp: rare ? base * 3 : base, rare };
+}
+
 export function useGamificationEngine() {
   const [state, setState] = useState<GamificationState>(INITIAL);
 
@@ -52,14 +63,22 @@ export function useGamificationEngine() {
   const trackAction = useCallback((action: GamificationAction) => {
     setState(prev => {
       const prevLevel = getLevelForXP(prev.totalXp).level;
+      const { xp, rare } = rollXp(action);
+      const credits = ACTION_CREDITS[action];
       const next: GamificationState = {
         ...prev,
-        totalXp: prev.totalXp + ACTION_XP[action],
-        walletCredits: prev.walletCredits + ACTION_CREDITS[action],
+        totalXp: prev.totalXp + xp,
+        walletCredits: prev.walletCredits + credits,
       };
-      if (getLevelForXP(next.totalXp).level > prevLevel && typeof window !== 'undefined') {
+      const nextLevelObj = getLevelForXP(next.totalXp);
+      if (nextLevelObj.level > prevLevel && typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('tmi:level-up', {
-          detail: { level: getLevelForXP(next.totalXp).level, xp: next.totalXp },
+          detail: { level: nextLevelObj.level, xp: next.totalXp },
+        }));
+      }
+      if (rare && typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('tmi:rare-drop', {
+          detail: { xp, credits, action },
         }));
       }
       persist(next);
