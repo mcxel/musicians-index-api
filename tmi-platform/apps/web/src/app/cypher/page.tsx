@@ -1,5 +1,6 @@
 import Link from "next/link";
 import JuliusHudDock from "@/components/julius/JuliusHudDock";
+import XPTrigger from "@/components/common/XPTrigger";
 
 export const metadata = { title: "Monday Cypher | TMI", description: "The most competitive freestyle session in music. 90-second bars. Real-time judging. Live every Monday 8PM." };
 
@@ -30,6 +31,7 @@ const PAST_WINNERS = [
 export default function CypherPage() {
   return (
     <main style={{ minHeight: "100vh", background: "#050510", color: "#fff", paddingBottom: 80 }}>
+      <XPTrigger action="VOTE_BATTLE" delayMs={5000} />
       <section style={{ textAlign: "center", padding: "72px 24px 56px", borderBottom: "1px solid rgba(255,255,255,0.06)", background: "radial-gradient(ellipse at top, rgba(255,45,170,0.07) 0%, transparent 70%)" }}>
         <div style={{ fontSize: 9, letterSpacing: "0.4em", color: "#FF2DAA", fontWeight: 800, marginBottom: 12 }}>EVERY MONDAY — 8PM</div>
         <h1 style={{ fontSize: "clamp(2rem,6vw,4rem)", fontWeight: 900, letterSpacing: -1, lineHeight: 1.1, marginBottom: 14 }}>MONDAY CYPHER</h1>

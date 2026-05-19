@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { enforceAdultTeenContactBlock } from "@/lib/safety/AdultTeenContactBlocker";
+import { useGamificationEngine } from "@/hooks/useGamificationEngine";
 
 type Msg = { id: string; from: string; text: string; mine: boolean; ts: number };
 
@@ -91,6 +92,7 @@ function fmt(ts: number): string {
 export default function MessageThreadPage({ params }: { params: { threadId: string } }) {
   const { threadId } = params;
   const contact = CONTACTS[threadId] ?? { name: threadId, role: "USER", icon: "💬", color: "#00FFFF", online: false };
+  const { trackAction } = useGamificationEngine();
 
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input,    setInput]    = useState("");
@@ -164,6 +166,7 @@ export default function MessageThreadPage({ params }: { params: { threadId: stri
     const outgoing: Msg = { id: `u${Date.now()}`, from: "You", text, mine: true, ts: Date.now() };
     setMessages(prev => [...prev, outgoing]);
     setInput("");
+    trackAction('SEND_MESSAGE');
 
     // Send via API (optimistic — message already shown)
     if (apiMode) {

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
+import { useGamificationEngine } from "@/hooks/useGamificationEngine";
 
 type Seat    = { id: number; taken: boolean; name?: string; icon?: string };
 type LobbyMsg= { id: string; user: string; text: string };
@@ -67,6 +68,7 @@ function normalizeMembers(data: unknown): Seat[] {
 }
 
 export default function LiveRoomPage({ params }: { params: { slug: string } }) {
+  const { trackAction } = useGamificationEngine();
   const { slug } = params;
   const room = ROOMS[slug];
 
@@ -154,7 +156,8 @@ export default function LiveRoomPage({ params }: { params: { slug: string } }) {
       return s;
     }));
     setMySeat(isLeaving ? null : id);
-  }, [seats, mySeat]);
+    if (!isLeaving) trackAction('JOIN_STAGE');
+  }, [seats, mySeat, trackAction]);
 
   const sendChat = useCallback(async () => {
     const text = chatInput.trim();

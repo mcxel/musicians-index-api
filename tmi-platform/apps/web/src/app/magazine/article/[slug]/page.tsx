@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { getArticleBySlug, MAGAZINE_ISSUE_1 } from "@/lib/magazine/magazineIssueData";
 import MagazineSpreadRenderer from "@/components/editorial/MagazineSpreadRenderer";
+import XPTrigger from "@/components/common/XPTrigger";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -26,5 +27,10 @@ export default async function ArticlePage({ params }: Props) {
 
   const relatedArticles = MAGAZINE_ISSUE_1.filter((a) => a.slug !== slug);
 
-  return <MagazineSpreadRenderer article={article} issueNumber={1} related={relatedArticles} />;
+  return (
+    <>
+      <XPTrigger action="READ_ARTICLE" delayMs={8000} />
+      <MagazineSpreadRenderer article={article} issueNumber={1} related={relatedArticles} />
+    </>
+  );
 }
