@@ -159,6 +159,7 @@ export default function LiveStagePage() {
           peerTier={selectedPeer}
           streamState={streamState}
           stream={remoteStream}
+          hasDeclinedVote={hasDeclinedVote}
         />
         {localStream && (
           <div
