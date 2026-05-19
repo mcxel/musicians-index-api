@@ -21,30 +21,45 @@ const FEATURED = [
   { name: "TMI Stage Background", type: "BG",       credits: 399,  color: "#AA2DFF", icon: "🌠", hot: false },
 ];
 
+interface ShortfallNotice { type: 'shortfall'; item: string; short: number }
+interface SuccessNotice  { type: 'success';   item: string }
+type ShopNotice = ShortfallNotice | SuccessNotice | null;
+
 export default function ShopPage() {
   const { walletCredits, spendCredits, trackAction } = useGamificationEngine();
   const [owned, setOwned] = useState<Set<string>>(new Set());
-  const [notice, setNotice] = useState<string | null>(null);
+  const [notice, setNotice] = useState<ShopNotice>(null);
 
   function handleBuy(name: string, credits: number) {
     if (owned.has(name)) return;
     if (walletCredits < credits) {
-      setNotice(`Need ${credits} credits — you have ${walletCredits}. Earn more by reading, voting, and joining rooms.`);
-      setTimeout(() => setNotice(null), 4000);
+      setNotice({ type: 'shortfall', item: name, short: credits - walletCredits });
+      setTimeout(() => setNotice(null), 5000);
       return;
     }
     spendCredits(credits);
     trackAction('READ_ARTICLE');
     setOwned(prev => new Set([...prev, name]));
-    setNotice(`${name} added to your inventory!`);
+    setNotice({ type: 'success', item: name });
     setTimeout(() => setNotice(null), 3000);
   }
 
   return (
     <main style={{ minHeight: "100vh", background: "#050510", color: "#fff", paddingBottom: 80 }}>
-      {notice && (
-        <div style={{ position: "fixed", top: 20, left: "50%", transform: "translateX(-50%)", zIndex: 9999, background: "#0a0a1a", border: "1px solid #FF2DAA44", borderRadius: 10, padding: "12px 24px", fontSize: 11, color: "#fff", whiteSpace: "nowrap" }}>
-          {notice}
+      {notice?.type === 'shortfall' && (
+        <div style={{ position: "fixed", top: 20, left: "50%", transform: "translateX(-50%)", zIndex: 9999, background: "#0a0a1a", border: "1px solid #FF2DAA55", borderRadius: 12, padding: "14px 20px", display: "flex", flexDirection: "column", gap: 8, alignItems: "center", minWidth: 280 }}>
+          <div style={{ fontSize: 11, fontWeight: 800, color: "#fff" }}>
+            ⚡ You&apos;re <span style={{ color: "#FF2DAA" }}>{notice.short} credits short</span> for {notice.item}
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <Link href="/articles" style={{ padding: "5px 12px", background: "#FF2DAA22", border: "1px solid #FF2DAA44", borderRadius: 6, color: "#FF2DAA", fontSize: 9, fontWeight: 800, letterSpacing: "0.1em", textDecoration: "none" }}>READ ARTICLE +XP</Link>
+            <Link href="/live-stage" style={{ padding: "5px 12px", background: "#00FF8822", border: "1px solid #00FF8844", borderRadius: 6, color: "#00FF88", fontSize: 9, fontWeight: 800, letterSpacing: "0.1em", textDecoration: "none" }}>JOIN STAGE +10cr</Link>
+          </div>
+        </div>
+      )}
+      {notice?.type === 'success' && (
+        <div style={{ position: "fixed", top: 20, left: "50%", transform: "translateX(-50%)", zIndex: 9999, background: "#0a0a1a", border: "1px solid #00FF8844", borderRadius: 10, padding: "12px 24px", fontSize: 11, color: "#00FF88", fontWeight: 700, whiteSpace: "nowrap" }}>
+          ✓ {notice.item} added to your inventory
         </div>
       )}
 
