@@ -1,5 +1,39 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
+import { getStripe } from '@/lib/stripe/client';
+
+// GET /api/stripe/checkout?priceId=...&mode=subscription|payment
+// Used by season pass and credits CTA links — creates a session and redirects
+export async function GET(req: NextRequest) {
+  const { searchParams, origin } = req.nextUrl;
+  const priceId = searchParams.get('priceId');
+  const mode = (searchParams.get('mode') ?? 'subscription') as 'subscription' | 'payment';
+
+  if (!priceId) {
+    return NextResponse.redirect(new URL('/season-pass', req.url));
+  }
+
+  const stripe = getStripe();
+  if (!stripe) {
+    // STRIPE_SECRET_KEY not set — send back with a banner notice
+    return NextResponse.redirect(new URL('/season-pass?notice=stripe-pending', req.url));
+  }
+
+  try {
+    const session = await stripe.checkout.sessions.create({
+      mode,
+      line_items: [{ price: priceId, quantity: 1 }],
+      success_url: `${origin}/payment-success?session_id={CHECKOUT_SESSION_ID}&priceId=${priceId}&mode=${mode}`,
+      cancel_url: `${origin}/season-pass`,
+      allow_promotion_codes: true,
+    });
+    if (!session.url) throw new Error('No session URL returned');
+    return NextResponse.redirect(session.url, 303);
+  } catch (err) {
+    console.error('[stripe/checkout:GET]', err);
+    return NextResponse.redirect(new URL('/season-pass?notice=checkout-error', req.url));
+  }
+}
 
 const CHECKOUT_TIMEOUT_MS = 10_000;
 const TRUSTED_HOSTS = new Set([
