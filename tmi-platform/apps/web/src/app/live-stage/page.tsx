@@ -1,213 +1,189 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import LiveStageVideoOverlay from '@/components/stage/LiveStageVideoOverlay';
 import { useFamilyConsensus } from '@/hooks/useFamilyConsensus';
-import LiveStageVideoOverlay, { type StreamState } from '@/components/stage/LiveStageVideoOverlay';
-import type { FamilyGroup } from '@/types/security';
+import { useOverseerDeck } from '@/hooks/useOverseerDeck';
+import { useWebRtcSignaling } from '@/hooks/useWebRtcSignaling';
+import type { AccountTier, FamilyGroup } from '@/types/security';
 
-const DEMO_FAMILY: FamilyGroup = {
-  id: 'family-stage-demo',
-  familyName: 'Stage Demo Family',
-  members: [
-    { id: 'parent_mom', userName: 'Parent (Mom)', tier: 'ADULT',    isVerifiedCustodian: true },
-    { id: 'parent_dad', userName: 'Parent (Dad)', tier: 'ADULT',    isVerifiedCustodian: true },
-    { id: 'guardian_3', userName: 'Guardian',     tier: 'ADULT',    isVerifiedCustodian: true },
-    { id: 'youth_01',   userName: 'Youth (16)',   tier: 'YOUTH_16', isVerifiedCustodian: false },
-  ],
-  approvalThreshold: 2,
+const ACCOUNT_TIER_BY_ROLE: Record<'FAN' | 'PERFORMER' | 'ADMIN', AccountTier> = {
+  FAN: 'YOUTH_16',
+  PERFORMER: 'ADULT',
+  ADMIN: 'ADULT',
 };
 
-const DEMO_ADULT_ID = 'STAGE_ADULT_01';
-const DEMO_YOUTH_ID = 'youth_01';
-
-const BTN: React.CSSProperties = {
-  padding: '6px 14px',
-  borderRadius: 4,
-  border: '1px solid rgba(255,255,255,0.15)',
-  background: 'rgba(255,255,255,0.05)',
-  color: '#fff',
-  fontFamily: 'monospace',
-  fontSize: 11,
-  letterSpacing: '0.08em',
-  cursor: 'pointer',
-  textTransform: 'uppercase' as const,
+const DEMO_FAMILY: FamilyGroup = {
+  id: 'family_demo_001',
+  familyName: 'Demo Family',
+  approvalThreshold: 2,
+  members: [
+    { id: 'adult_custodian_1', userName: 'Custodian A', tier: 'ADULT', isVerifiedCustodian: true },
+    { id: 'adult_custodian_2', userName: 'Custodian B', tier: 'ADULT', isVerifiedCustodian: true },
+    { id: 'adult_guest_1', userName: 'Unverified Adult', tier: 'ADULT', isVerifiedCustodian: false },
+    { id: 'youth_1', userName: 'Youth Member', tier: 'YOUTH_16', isVerifiedCustodian: false },
+  ],
 };
 
 export default function LiveStagePage() {
+  const { currentRole } = useOverseerDeck();
+  const accountTier = ACCOUNT_TIER_BY_ROLE[currentRole];
+
+  const [streamState, setStreamState] = useState<'VIDEO' | 'AVATAR_ONLY'>('VIDEO');
+  const [selectedPeer, setSelectedPeer] = useState<'ADULT' | 'YOUTH_16'>('ADULT');
+
   const {
     activeRequest,
     allowConnection,
-    approvedVotes,
-    hasDeclinedVote,
-    trustLinks,
     createRequest,
     approveRequest,
     declineRequest,
     resetRequest,
+    approvedVotes,
+    hasDeclinedVote,
   } = useFamilyConsensus(DEMO_FAMILY);
 
-  const [streamState, setStreamState] = useState<StreamState>('VIDEO');
-  const custodians = DEMO_FAMILY.members.filter((m) => m.isVerifiedCustodian);
+  const { localStream, remoteStream, signalingState } = useWebRtcSignaling(allowConnection);
+
+  // Attach local stream to the PiP preview video element
+  const localVideoRef = useRef<HTMLVideoElement>(null);
+  useEffect(() => {
+    const el = localVideoRef.current;
+    if (!el) return;
+    el.srcObject = localStream;
+  }, [localStream]);
+
+  const verifiedFamily = useMemo(() => allowConnection, [allowConnection]);
 
   return (
     <main
       style={{
         minHeight: '100vh',
-        background: '#060410',
+        background: 'linear-gradient(145deg, #070010, #0d081b)',
         color: '#fff',
-        fontFamily: 'monospace',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        padding: '40px 24px',
-        gap: 32,
+        padding: 20,
+        display: 'grid',
+        gap: 14,
       }}
     >
-      <div style={{ textAlign: 'center' }}>
-        <div style={{ fontSize: 11, letterSpacing: '0.2em', color: '#00FFFF', textTransform: 'uppercase', marginBottom: 4 }}>
-          TMI LIVE STAGE
+      <header style={{ display: 'grid', gap: 6 }}>
+        <div style={{ fontSize: 10, letterSpacing: '0.2em', color: '#00ffff', fontWeight: 800 }}>
+          LIVE STAGE ROUTE
         </div>
-        <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: '0.05em' }}>Video Overlay Enforcement</div>
-      </div>
+        <h1 style={{ margin: 0, fontSize: 'clamp(1.25rem, 2.5vw, 1.9rem)' }}>
+          Gated Video Overlay Sandbox
+        </h1>
+      </header>
 
-      {/* Stage viewport */}
-      <div
+      <section
         style={{
-          position: 'relative',
-          width: '100%',
-          maxWidth: 520,
-          height: 320,
-          borderRadius: 6,
-          overflow: 'hidden',
-          border: '1px solid rgba(0,255,255,0.15)',
+          border: '1px solid rgba(255,255,255,0.15)',
+          borderRadius: 10,
+          background: 'rgba(0,0,0,0.26)',
+          padding: 12,
+          display: 'grid',
+          gap: 8,
         }}
       >
+        <div style={{ fontSize: 10, letterSpacing: '0.14em', color: '#ffd700', fontWeight: 800 }}>
+          CONTROL PANEL
+        </div>
+
+        <div style={{ fontSize: 11 }}>Current role: <strong>{currentRole}</strong> ({accountTier})</div>
+        <div style={{ fontSize: 11 }}>Peer tier: <strong>{selectedPeer}</strong></div>
+
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button type="button" onClick={() => setSelectedPeer('ADULT')}>Peer Adult</button>
+          <button type="button" onClick={() => setSelectedPeer('YOUTH_16')}>Peer Youth</button>
+          <button type="button" onClick={() => setStreamState('VIDEO')}>VIDEO</button>
+          <button type="button" onClick={() => setStreamState('AVATAR_ONLY')}>AVATAR_ONLY</button>
+        </div>
+
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            onClick={() => createRequest('adult_custodian_1', 'Custodian A', 'youth_1')}
+          >
+            Create Request
+          </button>
+          <button
+            type="button"
+            disabled={!activeRequest}
+            onClick={() => activeRequest && approveRequest(activeRequest.requestId, 'adult_custodian_1')}
+          >
+            Approve A
+          </button>
+          <button
+            type="button"
+            disabled={!activeRequest}
+            onClick={() => activeRequest && approveRequest(activeRequest.requestId, 'adult_custodian_2')}
+          >
+            Approve B
+          </button>
+          <button
+            type="button"
+            disabled={!activeRequest}
+            onClick={() => activeRequest && declineRequest(activeRequest.requestId, 'adult_custodian_2')}
+          >
+            Decline
+          </button>
+          <button type="button" onClick={resetRequest}>Reset</button>
+        </div>
+
+        <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.8)' }}>
+          status: <strong>{activeRequest?.status ?? 'NONE'}</strong> | approvals: <strong>{approvedVotes}</strong> | declined: <strong>{String(hasDeclinedVote)}</strong>
+        </div>
+      </section>
+
+      {/* Signaling state badge */}
+      <div
+        style={{
+          fontSize: 10,
+          letterSpacing: '0.15em',
+          fontFamily: 'monospace',
+          color:
+            signalingState === 'CONNECTED'  ? '#00FF88' :
+            signalingState === 'CONNECTING' ? '#FFD700' :
+            signalingState === 'DESTROYED'  ? 'rgba(220,0,60,0.9)' :
+                                              'rgba(255,255,255,0.3)',
+        }}
+      >
+        RTC: {signalingState}
+      </div>
+
+      {/* Stage viewport — local PiP overlaid bottom-right when stream is live */}
+      <div style={{ position: 'relative', width: '100%', maxWidth: 640 }}>
         <LiveStageVideoOverlay
-          allowConnection={allowConnection}
-          userTier="YOUTH_16"
-          peerTier="ADULT"
-          peerId={DEMO_ADULT_ID}
-          peerName="Stage Host"
+          allowConnection={verifiedFamily}
+          userTier={accountTier}
+          peerTier={selectedPeer}
           streamState={streamState}
-          stream={null}
-          accentColor="#00FFFF"
+          stream={remoteStream}
         />
-      </div>
-
-      {/* Status strip */}
-      <div
-        style={{
-          display: 'flex',
-          gap: 16,
-          fontSize: 11,
-          letterSpacing: '0.1em',
-          textTransform: 'uppercase',
-        }}
-      >
-        <span style={{ color: allowConnection ? '#00FFFF' : 'rgba(220,0,60,0.9)' }}>
-          {allowConnection ? '✓ CONNECTION ALLOWED' : '✗ STREAM BLOCKED'}
-        </span>
-        <span style={{ color: '#888' }}>|</span>
-        <span style={{ color: '#888' }}>APPROVALS: {approvedVotes} / {DEMO_FAMILY.approvalThreshold}</span>
-        {hasDeclinedVote && <span style={{ color: 'rgba(220,0,60,0.9)' }}>DECLINED</span>}
-        {trustLinks.length > 0 && <span style={{ color: '#FFD700' }}>TRUST LINKS: {trustLinks.length}</span>}
-      </div>
-
-      {/* Controls */}
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 16,
-          width: '100%',
-          maxWidth: 520,
-        }}
-      >
-        {/* Stream mode toggle */}
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <span style={{ fontSize: 11, color: '#888', letterSpacing: '0.1em', textTransform: 'uppercase', width: 100 }}>Mode:</span>
-          {(['VIDEO', 'AVATAR_ONLY'] as StreamState[]).map((m) => (
-            <button
-              key={m}
-              onClick={() => setStreamState(m)}
-              style={{
-                ...BTN,
-                borderColor: streamState === m ? '#00FFFF' : 'rgba(255,255,255,0.15)',
-                color: streamState === m ? '#00FFFF' : '#888',
-              }}
-            >
-              {m}
-            </button>
-          ))}
-        </div>
-
-        {/* Consensus controls */}
-        <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 16 }}>
-          <div style={{ fontSize: 11, color: '#888', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 10 }}>
-            Custodian Consensus Sim
+        {localStream && (
+          <div
+            style={{
+              position: 'absolute',
+              bottom: 8,
+              right: 8,
+              width: 96,
+              height: 72,
+              borderRadius: 4,
+              overflow: 'hidden',
+              border: '1px solid rgba(0,255,255,0.4)',
+              zIndex: 20,
+            }}
+          >
+            <video
+              ref={localVideoRef}
+              autoPlay
+              playsInline
+              muted
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              aria-label="Local camera preview"
+            />
           </div>
-
-          {!activeRequest && !allowConnection && (
-            <button
-              style={{ ...BTN, borderColor: '#00FFFF', color: '#00FFFF' }}
-              onClick={() => createRequest(DEMO_ADULT_ID, 'Stage Host', DEMO_YOUTH_ID)}
-            >
-              Request Adult Connection
-            </button>
-          )}
-
-          {activeRequest && activeRequest.status === 'PENDING' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {custodians.map((c) => (
-                <div key={c.id} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  <span style={{ fontSize: 11, color: '#aaa', width: 130 }}>{c.userName}</span>
-                  <button
-                    style={{ ...BTN, borderColor: '#00FF88', color: '#00FF88' }}
-                    onClick={() => approveRequest(activeRequest.requestId, c.id)}
-                    disabled={activeRequest.votes[c.id] !== 'PENDING'}
-                  >
-                    Approve
-                  </button>
-                  <button
-                    style={{ ...BTN, borderColor: 'rgba(220,0,60,0.7)', color: 'rgba(220,0,60,0.9)' }}
-                    onClick={() => declineRequest(activeRequest.requestId, c.id)}
-                    disabled={activeRequest.votes[c.id] !== 'PENDING'}
-                  >
-                    Decline
-                  </button>
-                  <span style={{ fontSize: 10, color: '#555', textTransform: 'uppercase' }}>
-                    {activeRequest.votes[c.id]}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {activeRequest && activeRequest.status !== 'PENDING' && (
-            <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-              <span
-                style={{
-                  fontSize: 11,
-                  letterSpacing: '0.12em',
-                  color: activeRequest.status === 'FULLY_APPROVED' ? '#00FFFF' : 'rgba(220,0,60,0.9)',
-                  textTransform: 'uppercase',
-                }}
-              >
-                {activeRequest.status === 'FULLY_APPROVED' ? '✓ FULLY APPROVED' : '✗ REJECTED / WIPED'}
-              </span>
-              <button style={{ ...BTN }} onClick={resetRequest}>Reset Sim</button>
-            </div>
-          )}
-
-          {allowConnection && !activeRequest && (
-            <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-              <span style={{ fontSize: 11, color: '#00FFFF', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
-                ✓ TRUST LINK ACTIVE
-              </span>
-              <button style={{ ...BTN }} onClick={resetRequest}>Reset Sim</button>
-            </div>
-          )}
-        </div>
+        )}
       </div>
     </main>
   );
