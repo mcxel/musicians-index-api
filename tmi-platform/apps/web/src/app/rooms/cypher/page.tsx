@@ -5,6 +5,7 @@ import Link from 'next/link';
 import PageShell from '@/components/layout/PageShell';
 import HUDFrame from '@/components/hud/HUDFrame';
 import FooterHUD from '@/components/hud/FooterHUD';
+import LocalCameraFeed from '@/components/live/LocalCameraFeed';
 
 type BattlePhase = 'QUEUE' | 'COUNTDOWN' | 'ROUND' | 'VOTE' | 'RESULT';
 
@@ -304,6 +305,7 @@ export default function CypherRoomPage() {
         </div>
       </HUDFrame>
       <FooterHUD />
+      <LocalCameraFeed />
     </PageShell>
   );
 }
