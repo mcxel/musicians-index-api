@@ -7,7 +7,9 @@ import { useFamilyConsensus } from '@/hooks/useFamilyConsensus';
 import OverseerDock from '@/components/admin/overseer/OverseerDock';
 import AvatarMiniPreview from '@/components/avatar/AvatarMiniPreview';
 import type { RoleType } from '@/types/avatar';
-import type { AgeTier, FamilyGroup } from '@/types/security';
+import type { AccountTier, FamilyGroup } from '@/types/security';
+
+// ─── Static config ─────────────────────────────────────────────────────────────
 
 const ROLE_META: Record<RoleType, { color: string; bg: string; label: string; emoji: string }> = {
   FAN:       { color: '#00FFFF', bg: 'rgba(0,255,255,0.08)',  label: 'Fan',       emoji: '🎧' },
@@ -15,33 +17,40 @@ const ROLE_META: Record<RoleType, { color: string; bg: string; label: string; em
   ADMIN:     { color: '#FFD700', bg: 'rgba(255,215,0,0.08)',  label: 'Admin',     emoji: '👑' },
 };
 
-const AGE_TIER_BY_ROLE: Record<RoleType, AgeTier> = {
-  FAN:       'YOUTH',  // FAN = youth context for demo
+const ACCOUNT_TIER_BY_ROLE: Record<RoleType, AccountTier> = {
+  FAN:       'YOUTH_16',
   PERFORMER: 'ADULT',
   ADMIN:     'ADULT',
 };
 
 const DEMO_FAMILY: FamilyGroup = {
   id: 'family-demo-01',
-  custodians:        ['parent_mom', 'parent_dad', 'guardian_3'],
-  youthMembers:      ['youth_demo_01'],
+  familyName: 'Demo Family',
+  members: [
+    { id: 'parent_mom',   userName: 'Parent (Mom)',  tier: 'ADULT',    isVerifiedCustodian: true },
+    { id: 'parent_dad',   userName: 'Parent (Dad)',  tier: 'ADULT',    isVerifiedCustodian: true },
+    { id: 'guardian_3',   userName: 'Guardian',      tier: 'ADULT',    isVerifiedCustodian: true },
+    { id: 'youth_demo_01',userName: 'Youth Account', tier: 'YOUTH_16', isVerifiedCustodian: false },
+  ],
   approvalThreshold: 2,
-};
-
-const CUSTODIAN_LABELS: Record<string, string> = {
-  parent_mom:  'Parent (Mom)',
-  parent_dad:  'Parent (Dad)',
-  guardian_3:  'Guardian',
 };
 
 const DEMO_ADULT_ID = 'DEMO_ADULT_01';
 const DEMO_YOUTH_ID = 'youth_demo_01';
+
+const DEMO_ADULT_NAME = 'Demo Adult';
+
+const custodians = DEMO_FAMILY.members.filter((m) => m.isVerifiedCustodian);
+
+// ─── Hydration helper ─────────────────────────────────────────────────────────
 
 function useHydrated() {
   const [hydrated, setHydrated] = useState(false);
   useEffect(() => setHydrated(true), []);
   return hydrated;
 }
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function OverseerPage() {
   const { currentRole, setRole, isAdmin, isPerformer, isFan } = useOverseerDeck();
@@ -52,11 +61,17 @@ export default function OverseerPage() {
   const [localStorageRaw, setLocalStorageRaw] = useState<string | null>(null);
   const [sessionPresent, setSessionPresent] = useState<boolean | null>(null);
 
-  const { state: consensus, submitRequest, castVote, clearRequest, allowConnection } =
-    useFamilyConsensus(DEMO_FAMILY);
+  const {
+    activeRequest,
+    trustLinks,
+    allowConnection,
+    createRequest,
+    approveRequest,
+    declineRequest,
+    resetRequest,
+  } = useFamilyConsensus(DEMO_FAMILY);
 
-  const ageTier = AGE_TIER_BY_ROLE[currentRole];
-  const canConnect = allowConnection(DEMO_ADULT_ID, DEMO_YOUTH_ID);
+  const accountTier = ACCOUNT_TIER_BY_ROLE[currentRole];
 
   useEffect(() => {
     if (!hydrated) return;
@@ -86,7 +101,7 @@ export default function OverseerPage() {
           </h1>
         </div>
 
-        {/* Active Role */}
+        {/* Active Role display */}
         <section style={{
           borderRadius: 16,
           border: `2px solid ${meta.color}44`,
@@ -129,7 +144,7 @@ export default function OverseerPage() {
           }
         `}</style>
 
-        {/* Role Switch */}
+        {/* Role switcher */}
         <section style={{
           borderRadius: 12,
           border: '1px solid rgba(255,255,255,0.08)',
@@ -163,7 +178,7 @@ export default function OverseerPage() {
           </div>
         </section>
 
-        {/* State Inspector */}
+        {/* State inspector */}
         <section style={{
           borderRadius: 12,
           border: '1px solid rgba(255,255,255,0.08)',
@@ -177,12 +192,12 @@ export default function OverseerPage() {
           <div style={{ fontSize: 9, letterSpacing: '0.2em', color: 'rgba(255,255,255,0.4)', gridColumn: '1/-1', marginBottom: 4 }}>
             STATE INSPECTOR
           </div>
-          {[
+          {([
             ['currentRole', currentRole],
             ['isFan',        String(isFan)],
             ['isPerformer',  String(isPerformer)],
             ['isAdmin',      String(isAdmin)],
-          ].map(([k, v]) => (
+          ] as const).map(([k, v]) => (
             <div key={k} style={{ fontSize: 11, display: 'flex', gap: 6, alignItems: 'baseline' }}>
               <span style={{ color: 'rgba(255,255,255,0.35)', fontFamily: 'monospace' }}>{k}</span>
               <span style={{ color: '#00FF88', fontWeight: 700, fontFamily: 'monospace' }}>{v}</span>
@@ -190,19 +205,20 @@ export default function OverseerPage() {
           ))}
         </section>
 
-        {/* Avatar Preview */}
+        {/* Avatar preview */}
         <div style={{ marginBottom: 20 }}>
           <AvatarMiniPreview variant="card" role={meta.label} accentColor={meta.color} />
         </div>
 
-        {/* ── Security / Trust Panel ─────────────────────────────────────────── */}
+        {/* ── Security / Trust Panel ────────────────────────────────────────────── */}
         <section style={{
           borderRadius: 14,
-          border: '1px solid rgba(255,68,68,0.3)',
-          background: 'rgba(255,68,68,0.04)',
+          border: '1px solid rgba(255,68,68,0.28)',
+          background: 'rgba(255,68,68,0.03)',
           padding: '20px 22px',
           marginBottom: 20,
         }}>
+          {/* Header row */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
             <div>
               <div style={{ fontSize: 9, letterSpacing: '0.22em', color: '#FF4444', fontWeight: 800 }}>
@@ -212,60 +228,52 @@ export default function OverseerPage() {
                 Family consensus · 16+ youth account gating
               </div>
             </div>
-            {/* AgeTier badge */}
             <div style={{
               padding: '5px 14px',
               borderRadius: 20,
-              border: `1px solid ${ageTier === 'YOUTH' ? '#00FFFF88' : '#FFD70088'}`,
-              background: ageTier === 'YOUTH' ? 'rgba(0,255,255,0.1)' : 'rgba(255,215,0,0.1)',
-              fontSize: 10,
-              fontWeight: 900,
-              letterSpacing: '0.12em',
-              color: ageTier === 'YOUTH' ? '#00FFFF' : '#FFD700',
+              border: `1px solid ${accountTier === 'YOUTH_16' ? '#00FFFF88' : '#FFD70088'}`,
+              background: accountTier === 'YOUTH_16' ? 'rgba(0,255,255,0.1)' : 'rgba(255,215,0,0.1)',
+              fontSize: 10, fontWeight: 900, letterSpacing: '0.12em',
+              color: accountTier === 'YOUTH_16' ? '#00FFFF' : '#FFD700',
             }}>
-              {ageTier === 'YOUTH' ? '16+ YOUTH' : 'ADULT'}
+              {accountTier === 'YOUTH_16' ? '16+ YOUTH' : 'ADULT'}
             </div>
           </div>
 
-          {/* Connection status */}
+          {/* allowConnection boolean indicator */}
           <div style={{
             padding: '10px 14px',
             borderRadius: 8,
-            border: `1px solid ${canConnect ? '#00FF8844' : 'rgba(255,255,255,0.08)'}`,
-            background: canConnect ? 'rgba(0,255,136,0.06)' : 'rgba(255,255,255,0.02)',
+            border: `1px solid ${allowConnection ? '#00FF8844' : 'rgba(255,255,255,0.08)'}`,
+            background: allowConnection ? 'rgba(0,255,136,0.06)' : 'rgba(255,255,255,0.02)',
             marginBottom: 16,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
+            display: 'flex', alignItems: 'center', gap: 10,
           }}>
             <div style={{
               width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
-              background: canConnect ? '#00FF88' : '#FF4444',
-              boxShadow: canConnect ? '0 0 6px #00FF88' : 'none',
+              background: allowConnection ? '#00FF88' : '#FF4444',
+              boxShadow: allowConnection ? '0 0 6px #00FF88' : 'none',
             }} />
-            <div style={{ fontSize: 10, color: canConnect ? '#00FF88' : 'rgba(255,255,255,0.4)' }}>
-              allowConnection(ADULT, YOUTH) ={' '}
-              <span style={{ fontFamily: 'monospace', fontWeight: 900 }}>
-                {String(canConnect)}
-              </span>
+            <div style={{ fontSize: 10, color: allowConnection ? '#00FF88' : 'rgba(255,255,255,0.4)', fontFamily: 'monospace' }}>
+              allowConnection = <strong>{String(allowConnection)}</strong>
             </div>
           </div>
 
-          {/* No request state */}
-          {!consensus.request && (
+          {/* No active request */}
+          {!activeRequest && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)' }}>
-                Family group: <span style={{ color: '#fff' }}>3 custodians</span> · approval threshold:{' '}
-                <span style={{ color: '#FFD700' }}>{DEMO_FAMILY.approvalThreshold}/{DEMO_FAMILY.custodians.length}</span>
+                Family: <span style={{ color: '#fff' }}>{custodians.length} custodians</span>
+                {' · '}threshold: <span style={{ color: '#FFD700' }}>{DEMO_FAMILY.approvalThreshold}/{custodians.length}</span>
               </div>
               <button
                 type="button"
-                onClick={() => submitRequest(DEMO_ADULT_ID, DEMO_YOUTH_ID)}
+                onClick={() => createRequest(DEMO_ADULT_ID, DEMO_ADULT_NAME, DEMO_YOUTH_ID)}
                 style={{
-                  padding: '10px 20px', borderRadius: 8,
+                  padding: '10px 20px', borderRadius: 8, cursor: 'pointer',
                   border: '1px solid rgba(255,215,0,0.4)', background: 'rgba(255,215,0,0.08)',
                   color: '#FFD700', fontSize: 11, fontWeight: 900, letterSpacing: '0.1em',
-                  cursor: 'pointer', alignSelf: 'flex-start',
+                  alignSelf: 'flex-start',
                 }}
               >
                 SIMULATE LINK REQUEST →
@@ -274,39 +282,40 @@ export default function OverseerPage() {
           )}
 
           {/* Active consensus request */}
-          {consensus.request && (
+          {activeRequest && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
                 <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)' }}>
-                  Request ID: <span style={{ fontFamily: 'monospace', color: '#fff', fontSize: 9 }}>
-                    {consensus.request.requestId.slice(0, 16)}…
+                  Request:{' '}
+                  <span style={{ fontFamily: 'monospace', color: '#fff', fontSize: 9 }}>
+                    {activeRequest.requestId.slice(0, 18)}…
                   </span>
                 </div>
                 <div style={{
                   padding: '3px 10px', borderRadius: 20,
                   fontSize: 9, fontWeight: 900, letterSpacing: '0.12em',
-                  background: consensus.request.status === 'APPROVED'  ? 'rgba(0,255,136,0.15)'
-                            : consensus.request.status === 'DECLINED'  ? 'rgba(255,68,68,0.15)'
+                  background: activeRequest.status === 'FULLY_APPROVED' ? 'rgba(0,255,136,0.15)'
+                            : activeRequest.status === 'REJECTED_WIPED' ? 'rgba(255,68,68,0.15)'
                             : 'rgba(255,215,0,0.12)',
-                  color:      consensus.request.status === 'APPROVED'  ? '#00FF88'
-                            : consensus.request.status === 'DECLINED'  ? '#FF4444'
+                  color:      activeRequest.status === 'FULLY_APPROVED' ? '#00FF88'
+                            : activeRequest.status === 'REJECTED_WIPED' ? '#FF4444'
                             : '#FFD700',
                   border: `1px solid ${
-                    consensus.request.status === 'APPROVED' ? '#00FF8844'
-                    : consensus.request.status === 'DECLINED' ? '#FF444444'
+                    activeRequest.status === 'FULLY_APPROVED' ? '#00FF8844'
+                    : activeRequest.status === 'REJECTED_WIPED' ? '#FF444444'
                     : '#FFD70044'
                   }`,
                 }}>
-                  {consensus.request.status}
+                  {activeRequest.status}
                 </div>
               </div>
 
-              {/* Custodian vote rows */}
-              {DEMO_FAMILY.custodians.map((custodianId) => {
-                const vote = consensus.request!.approvals[custodianId];
-                const done = vote !== 'PENDING';
+              {/* Per-custodian vote rows */}
+              {custodians.map((custodian) => {
+                const vote = activeRequest.votes[custodian.id] ?? 'PENDING';
+                const settled = vote !== 'PENDING';
                 return (
-                  <div key={custodianId} style={{
+                  <div key={custodian.id} style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                     padding: '10px 14px', borderRadius: 8,
                     border: `1px solid ${
@@ -319,9 +328,9 @@ export default function OverseerPage() {
                               : 'rgba(255,255,255,0.02)',
                   }}>
                     <div style={{ fontSize: 11, color: '#fff', fontWeight: 700 }}>
-                      {CUSTODIAN_LABELS[custodianId] ?? custodianId}
+                      {custodian.userName}
                     </div>
-                    {done ? (
+                    {settled ? (
                       <div style={{
                         fontSize: 10, fontWeight: 900, letterSpacing: '0.1em',
                         color: vote === 'APPROVED' ? '#00FF88' : '#FF4444',
@@ -332,8 +341,8 @@ export default function OverseerPage() {
                       <div style={{ display: 'flex', gap: 6 }}>
                         <button
                           type="button"
-                          onClick={() => castVote(custodianId, 'APPROVED')}
-                          disabled={consensus.request?.status !== 'PENDING'}
+                          onClick={() => approveRequest(activeRequest.requestId, custodian.id)}
+                          disabled={activeRequest.status !== 'PENDING'}
                           style={{
                             padding: '5px 12px', borderRadius: 6, fontSize: 10, fontWeight: 900,
                             border: '1px solid #00FF8866', background: 'rgba(0,255,136,0.1)',
@@ -344,8 +353,8 @@ export default function OverseerPage() {
                         </button>
                         <button
                           type="button"
-                          onClick={() => castVote(custodianId, 'DECLINED')}
-                          disabled={consensus.request?.status !== 'PENDING'}
+                          onClick={() => declineRequest(activeRequest.requestId, custodian.id)}
+                          disabled={activeRequest.status !== 'PENDING'}
                           style={{
                             padding: '5px 12px', borderRadius: 6, fontSize: 10, fontWeight: 900,
                             border: '1px solid #FF444466', background: 'rgba(255,68,68,0.1)',
@@ -361,25 +370,25 @@ export default function OverseerPage() {
               })}
 
               {/* Threshold progress */}
-              {consensus.request.status === 'PENDING' && (
+              {activeRequest.status === 'PENDING' && (
                 <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', marginTop: 4 }}>
-                  {Object.values(consensus.request.approvals).filter(v => v === 'APPROVED').length}/
-                  {consensus.request.threshold} approvals needed
-                  {' · '}any decline kills this request
+                  {Object.values(activeRequest.votes).filter((v) => v === 'APPROVED').length}/
+                  {activeRequest.threshold} approvals needed
+                  {' · '}any decline instantly kills this request
                 </div>
               )}
 
-              {/* Clear button after terminal state */}
-              {(consensus.request.status === 'APPROVED' || consensus.request.status === 'DECLINED') && (
+              {/* Reset after terminal state */}
+              {(activeRequest.status === 'FULLY_APPROVED' || activeRequest.status === 'REJECTED_WIPED') && (
                 <button
                   type="button"
-                  onClick={clearRequest}
+                  onClick={resetRequest}
                   style={{
-                    padding: '8px 16px', borderRadius: 6,
+                    padding: '8px 16px', borderRadius: 6, cursor: 'pointer',
                     border: '1px solid rgba(255,255,255,0.15)',
                     background: 'transparent', color: 'rgba(255,255,255,0.4)',
                     fontSize: 10, fontWeight: 700, letterSpacing: '0.1em',
-                    cursor: 'pointer', alignSelf: 'flex-start',
+                    alignSelf: 'flex-start',
                   }}
                 >
                   RESET SIMULATION
@@ -388,29 +397,26 @@ export default function OverseerPage() {
             </div>
           )}
 
-          {/* Trust links */}
-          {consensus.trustLinks.length > 0 && (
+          {/* Active trust links */}
+          {trustLinks.length > 0 && (
             <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
               <div style={{ fontSize: 9, letterSpacing: '0.18em', color: '#00FF88', fontWeight: 800, marginBottom: 8 }}>
                 ACTIVE TRUST LINKS
               </div>
-              {consensus.trustLinks.map((link) => (
-                <div key={link.id} style={{
-                  fontSize: 10, color: 'rgba(255,255,255,0.6)', fontFamily: 'monospace',
-                  lineHeight: 1.9,
-                }}>
+              {trustLinks.map((link) => (
+                <div key={link.id} style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)', fontFamily: 'monospace', lineHeight: 1.9 }}>
                   <span style={{ color: '#FFD700' }}>{link.adultId}</span>
                   {' ↔ '}
                   <span style={{ color: '#00FFFF' }}>{link.youthId}</span>
-                  {' · approved by '}
-                  <span style={{ color: '#00FF88' }}>{link.approvedBy.length} custodians</span>
+                  {' · '}
+                  <span style={{ color: '#00FF88' }}>approved by {link.approvedBy.length} custodians</span>
                 </div>
               ))}
             </div>
           )}
         </section>
 
-        {/* Debug Panel */}
+        {/* Debug panel */}
         <section style={{
           borderRadius: 12,
           border: '1px solid rgba(255,215,0,0.15)',
@@ -421,13 +427,14 @@ export default function OverseerPage() {
             DEBUG PANEL
           </div>
           <div style={{ display: 'grid', gap: 8 }}>
-            {[
+            {([
               ['route',        pathname ?? '(unknown)'],
               ['localStorage', hydrated ? (localStorageRaw ?? '…') : '(server render)'],
               ['session',      hydrated ? (sessionPresent ? '✓ present' : '✗ not found') : '(server render)'],
               ['hydration',    hydrated ? 'mounted' : 'pending'],
-              ['ageTier',      ageTier],
-            ].map(([label, value]) => (
+              ['accountTier',  accountTier],
+              ['allowConnection', String(allowConnection)],
+            ] as const).map(([label, value]) => (
               <div key={label} style={{
                 display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
                 fontSize: 11, fontFamily: 'monospace',
@@ -435,11 +442,13 @@ export default function OverseerPage() {
               }}>
                 <span style={{ color: 'rgba(255,255,255,0.35)' }}>{label}</span>
                 <span style={{
-                  color: label === 'session' && value === '✗ not found' ? '#FF4444'
-                       : label === 'session' && typeof value === 'string' && value.startsWith('✓') ? '#00FF88'
-                       : label === 'hydration' && value === 'mounted' ? '#00FF88'
-                       : label === 'ageTier' && value === 'YOUTH' ? '#00FFFF'
-                       : label === 'ageTier' && value === 'ADULT' ? '#FFD700'
+                  color: label === 'session'          && value === '✗ not found' ? '#FF4444'
+                       : label === 'session'          && (value as string).startsWith('✓') ? '#00FF88'
+                       : label === 'hydration'        && value === 'mounted'     ? '#00FF88'
+                       : label === 'accountTier'      && value === 'YOUTH_16'    ? '#00FFFF'
+                       : label === 'accountTier'      && value === 'ADULT'       ? '#FFD700'
+                       : label === 'allowConnection'  && value === 'true'        ? '#00FF88'
+                       : label === 'allowConnection'  && value === 'false'       ? '#FF4444'
                        : '#fff',
                   fontWeight: 700,
                 }}>{value}</span>
