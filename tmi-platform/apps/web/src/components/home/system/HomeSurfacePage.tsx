@@ -57,6 +57,9 @@ export default function HomeSurfacePage({ surfaceId }: Readonly<{ surfaceId: Hom
           fetch('/api/admin/homepage/schedule', { cache: 'no-store' }),
         ]);
 
+        // Non-admin visitors get 401 — nothing to apply, avoid a re-render
+        if (beltsRes.status === 401) return;
+
         const beltConfig = beltsRes.ok
           ? ((await beltsRes.json()) as HomepageBeltConfig[])
           : [];
@@ -104,7 +107,6 @@ export default function HomeSurfacePage({ surfaceId }: Readonly<{ surfaceId: Hom
 
     setSurface(getHomeSurface(surfaceId));
     void loadRuntimeConfig();
-
     return () => {
       cancelled = true;
       clearHomepageRuntimeOverrides();
