@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import RouteVisualShell from "@/components/routes/RouteVisualShell";
+import ArticleReadTracker from "@/components/tracking/ArticleReadTracker";
 
 export default function ArticlesLayout({ children }: { children: ReactNode }) {
   return (
@@ -19,6 +20,7 @@ export default function ArticlesLayout({ children }: { children: ReactNode }) {
         { label: "Performer", href: "/articles/performer" },
       ]}
     >
+      <ArticleReadTracker />
       {children}
     </RouteVisualShell>
   );
