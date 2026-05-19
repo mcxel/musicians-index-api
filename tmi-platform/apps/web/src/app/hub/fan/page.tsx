@@ -1,3 +1,4 @@
+'use client';
 import { PersonaSwitcher } from '@/components/hud/PersonaSwitcher';
 import FanHubShell from "@/components/fan/FanHubShell";
 import FanRewardsRail from "@/components/fan/FanRewardsRail";
@@ -6,6 +7,7 @@ import FanWalletRail from "@/components/fan/FanWalletRail";
 import { SeasonPassProgress } from "@/components/fan/SeasonPassProgress";
 import type { UserSeasonPass, SeasonPassReward } from "@/lib/gamification/SeasonPassEngine";
 import Link from "next/link";
+import { useGamificationEngine } from "@/hooks/useGamificationEngine";
 
 const SEED_BADGES = [
   { id: "b1", label: "Season 1 OG",     icon: "🏆", earnedAt: "Jan 2026" },
@@ -44,7 +46,7 @@ const SEED_SEASON_PASS: UserSeasonPass = {
   userId: "demo-fan",
   seasonId: "season-2",
   tier: "VIP_PASS",
-  xpEarned: 4200,
+  xpEarned: 4200,    // overridden at runtime via totalXp below
   xpGoal: 12000,
   claimedRewardIds: ["sp-emote-1"],
   activatedAtMs: Date.now() - 30 * 24 * 60 * 60 * 1000,
@@ -96,6 +98,7 @@ const QUESTS = [
 ];
 
 export default function FanHubPage() {
+  const { totalXp, walletCredits, currentLevel } = useGamificationEngine();
   return (
     <div style={{ fontFamily: "'Inter', sans-serif", background: "#07071a", color: "#e2e8f0", minHeight: "100vh" }}>
 
@@ -111,7 +114,7 @@ export default function FanHubPage() {
         displayName="Fan"
         tier="gold-platinum"
         tagline="Gold tier member · 3 seasons · TMI OG"
-        startingPoints={4200}
+        startingPoints={totalXp || 4200}
       />
 
       {/* Extended Hub Sections */}
@@ -136,7 +139,7 @@ export default function FanHubPage() {
         {/* Season Pass Progress */}
         <section style={{ marginBottom: 32 }}>
           <SectionLabel>Season Pass</SectionLabel>
-          <SeasonPassProgress pass={SEED_SEASON_PASS} claimableRewards={CLAIMABLE_REWARDS} />
+          <SeasonPassProgress pass={{ ...SEED_SEASON_PASS, xpEarned: totalXp || SEED_SEASON_PASS.xpEarned }} claimableRewards={CLAIMABLE_REWARDS} />
         </section>
 
         {/* Collectible Showcase */}
@@ -241,7 +244,7 @@ export default function FanHubPage() {
         <FanRewardsRail badges={SEED_BADGES} rewards={SEED_REWARDS} currentStreak={7} totalVotesCast={34} fanSlug="demo-fan" />
 
         {/* Wallet */}
-        <FanWalletRail tipBalance={42.50} voteCredits={18} transactions={SEED_TRANSACTIONS} fanSlug="demo-fan" />
+        <FanWalletRail tipBalance={walletCredits / 100} voteCredits={currentLevel.level * 3} transactions={SEED_TRANSACTIONS} fanSlug="demo-fan" />
 
       </div>
     </div>
