@@ -1,3 +1,2 @@
-﻿export default function StreamWinPage() {
-  return <main>StreamWin coming soon.</main>;
-}
+import { redirect } from "next/navigation";
+export default function StreamWinPage() { redirect("/rooms/live-concert"); }
