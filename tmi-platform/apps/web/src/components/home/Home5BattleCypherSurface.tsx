@@ -379,7 +379,8 @@ export default function Home5BattleCypherSurface() {
           </div>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 8 }}>
-          <button
+          <Link
+            href="/battles/today"
             style={{
               background: "linear-gradient(135deg, #ff6b35 0%, #ff4500 100%)",
               color: "#fff",
@@ -389,10 +390,12 @@ export default function Home5BattleCypherSurface() {
               fontWeight: 600,
               cursor: "pointer",
               fontSize: 14,
+              textAlign: "center",
+              textDecoration: "none",
             }}
           >
             Vote Now
-          </button>
+          </Link>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
             <div style={{ background: "rgba(255,107,53,0.1)", border: "1px solid rgba(255,107,53,0.3)", borderRadius: 6, padding: 10, textAlign: "center" }}>
               <span style={{ fontSize: 10, opacity: 0.7 }}>Prize</span>
