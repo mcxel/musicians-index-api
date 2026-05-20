@@ -54,6 +54,7 @@ const actionCards: ActionCard[] = [
   { title: "XP Ladder", route: "/xp", detail: "Season climb and levels", accent: "#00ff88" },
   { title: "Season Pass", route: "/season-pass", detail: "Track unlock progression", accent: "#ffd700" },
   { title: "Play Now", route: "/games", detail: "Jump into game modes", accent: "#00ffff" },
+  { title: "Song Challenges", route: "/challenges", detail: "Submit your music, no live needed", accent: "#aa2dff" },
 ];
 
 const challengeTargets: BattleActor[] = [
