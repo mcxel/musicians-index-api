@@ -6,8 +6,12 @@ import PageShell from '@/components/layout/PageShell';
 import HUDFrame from '@/components/layout/HUDFrame';
 import FooterHUD from '@/components/layout/FooterHUD';
 import { getVenueSkin, applyVenueSkin, type VenueSkin } from '@/lib/venue/venueSkinEngine';
+import {
+  listGeometryProfiles, type VenueGeometryProfile, type GeometryMode,
+} from '@/lib/venue/VenueGeometryEngine';
 
 const BASE_SKINS = ['neon-club', 'red-theater', 'festival', 'warehouse', 'beach', 'tv-studio'];
+const GEOMETRY_PROFILES = listGeometryProfiles();
 
 const COLOR_SLOTS = [
   { key: 'primary', label: 'Primary', desc: 'Main accent color' },
@@ -34,6 +38,7 @@ export default function VenueDesignerPage() {
   const [skinName, setSkinName] = useState('My Custom Skin');
   const [activeSlot, setActiveSlot] = useState<string>('primary');
   const [saved, setSaved] = useState(false);
+  const [geometryMode, setGeometryMode] = useState<GeometryMode>('RECTANGULAR_CLUB_FLOOR');
 
   function loadBase(id: string) {
     setBaseSkinId(id);
@@ -133,6 +138,49 @@ export default function VenueDesignerPage() {
                 </div>
               </div>
 
+              {/* Geometry profile picker */}
+              <div style={{ marginBottom: 24 }}>
+                <label style={{ color: '#555', fontSize: 11, letterSpacing: 3, display: 'block', marginBottom: 10 }}>
+                  FLOOR GEOMETRY
+                </label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {GEOMETRY_PROFILES.map(profile => (
+                    <motion.button
+                      key={profile.id}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => setGeometryMode(profile.id)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 12,
+                        padding: '10px 12px', textAlign: 'left',
+                        background: geometryMode === profile.id ? 'rgba(0,255,255,0.08)' : 'rgba(255,255,255,0.03)',
+                        border: `1px solid ${geometryMode === profile.id ? '#00FFFF55' : '#1a1a1a'}`,
+                        borderRadius: 8, cursor: 'pointer',
+                      }}
+                    >
+                      <svg width={44} height={36} viewBox={profile.svgViewBox} style={{ flexShrink: 0 }}>
+                        <path d={profile.svgAudiencePath} fill={geometryMode === profile.id ? 'rgba(0,255,255,0.15)' : 'rgba(255,255,255,0.06)'} stroke={geometryMode === profile.id ? '#00FFFF' : '#333'} strokeWidth={2} fillRule="evenodd" />
+                        <path d={profile.svgStagePath} fill={geometryMode === profile.id ? 'rgba(255,45,170,0.4)' : 'rgba(255,255,255,0.1)'} stroke={geometryMode === profile.id ? '#FF2DAA' : '#444'} strokeWidth={1.5} />
+                      </svg>
+                      <div>
+                        <div style={{ color: geometryMode === profile.id ? '#00FFFF' : '#666', fontSize: 11, fontWeight: 700, letterSpacing: 1 }}>
+                          {profile.name.toUpperCase()}
+                        </div>
+                        <div style={{ color: '#333', fontSize: 10, marginTop: 2, lineHeight: 1.4 }}>
+                          {profile.description}
+                        </div>
+                        <div style={{ display: 'flex', gap: 4, marginTop: 4, flexWrap: 'wrap' }}>
+                          {profile.seatZones.map(z => (
+                            <span key={z.id} style={{ fontSize: 9, color: '#444', background: 'rgba(255,255,255,0.04)', border: '1px solid #1a1a1a', borderRadius: 3, padding: '1px 5px', letterSpacing: 0.5 }}>
+                              {z.label} ({z.capacity})
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </motion.button>
+                  ))}
+                </div>
+              </div>
+
               {/* Color customizer */}
               <div style={{ marginBottom: 24 }}>
                 <label style={{ color: '#555', fontSize: 11, letterSpacing: 3, display: 'block', marginBottom: 10 }}>
@@ -201,6 +249,22 @@ export default function VenueDesignerPage() {
             {/* Right: preview panel */}
             <div style={{ flex: '0 0 240px', minWidth: 200 }}>
               <div style={{ color: '#333', fontSize: 10, letterSpacing: 3, marginBottom: 12 }}>PREVIEW</div>
+              {/* Geometry preview */}
+              {(() => {
+                const gp = GEOMETRY_PROFILES.find(p => p.id === geometryMode);
+                return gp ? (
+                  <div style={{ marginBottom: 10, background: 'rgba(255,255,255,0.03)', borderRadius: 8, padding: 10, border: '1px solid #1a1a1a' }}>
+                    <div style={{ color: '#333', fontSize: 9, letterSpacing: 2, marginBottom: 6 }}>FLOOR PLAN</div>
+                    <svg width="100%" viewBox={gp.svgViewBox} style={{ display: 'block' }}>
+                      <path d={gp.svgAudiencePath} fill={`${colors.crowd}55`} stroke={colors.primary} strokeWidth={2} fillRule="evenodd" />
+                      <path d={gp.svgStagePath} fill={`${colors.primary}66`} stroke={colors.accent} strokeWidth={1.5} />
+                    </svg>
+                    <div style={{ color: '#444', fontSize: 10, textAlign: 'center', marginTop: 6, letterSpacing: 1 }}>
+                      {gp.name}
+                    </div>
+                  </div>
+                ) : null;
+              })()}
               {/* Simulated venue */}
               <div style={{
                 background: colors.floor,
