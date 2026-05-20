@@ -32,12 +32,14 @@ export const useSceneVisible = () => useContext(SceneVisibilityContext);
 
 // ─── Shared phase helpers ─────────────────────────────────────────────────────
 
-function getRuntimeTransform(phase: MagazineRuntimePhase, dragX = 0): string {
+function getRuntimeTransform(phase: MagazineRuntimePhase, dragX = 0, mobile = false): string {
   const dragTilt = Math.max(-12, Math.min(12, dragX / 20));
-  if (phase === "holding")   return `perspective(1800px) rotateY(${dragTilt}deg) translateZ(0)`;
-  if (phase === "starburst") return "perspective(1800px) rotateY(-6deg) scale(0.986) translateX(-8px)";
-  if (phase === "flipping")  return "perspective(1800px) rotateY(-19deg) rotateX(1deg) translateX(-26px) scale(0.975)";
-  return "perspective(1800px) rotateY(8deg) translateX(10px) scale(0.994)";
+  // On mobile reduce rotateY to ~30% of desktop values to prevent 3D bleed past viewport edge
+  const s = mobile ? 0.3 : 1;
+  if (phase === "holding")   return `perspective(1800px) rotateY(${dragTilt * s}deg) translateZ(0)`;
+  if (phase === "starburst") return `perspective(1800px) rotateY(${-6 * s}deg) scale(0.986) translateX(${-8 * s}px)`;
+  if (phase === "flipping")  return `perspective(1800px) rotateY(${-19 * s}deg) rotateX(${s}deg) translateX(${-26 * s}px) scale(0.975)`;
+  return `perspective(1800px) rotateY(${8 * s}deg) translateX(${10 * s}px) scale(0.994)`;
 }
 
 function getRuntimeTransition(phase: MagazineRuntimePhase, flipMs = 820): string {
@@ -116,7 +118,7 @@ function SingleSceneRuntime({
       aria-label="Magazine runtime scene"
       data-runtime-scene={sceneId}
       data-runtime-phase={phase}
-      style={{ position: "relative", minHeight: "100svh", overflow: "hidden", touchAction: "pan-y" }}
+      style={{ position: "relative", minHeight: "100svh", overflow: "clip", maxWidth: "100vw", touchAction: "pan-y" }}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
@@ -151,11 +153,20 @@ function MultiSceneRuntime({ scenes, initialIndex = 0, onSceneEnter, onSceneExit
   const [sceneIndex, setSceneIndex] = useState<number>(() => initialIndex);
   const [phase, setPhase] = useState<MagazineRuntimePhase>("holding");
   const [paused, setPaused] = useState(false);
+  const [mobile, setMobile] = useState(false);
   const advancedRef = useRef(false);
   const pausedRef = useRef(false);
   const pauseTimerRef = useRef<number | null>(null);
   const pointerInsideRef = useRef(false);
   const currentIdRef = useRef<MagazineSceneId>(scenes[initialIndex]?.id ?? scenes[0]!.id);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    setMobile(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setMobile(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
 
   const scene = scenes[sceneIndex]!;
   // Master reset: fires during transition FROM the last scene back to first
@@ -248,7 +259,7 @@ function MultiSceneRuntime({ scenes, initialIndex = 0, onSceneEnter, onSceneExit
     <section
       aria-label="Magazine full rotation"
       data-runtime-phase={phase}
-      style={{ position: "relative", minHeight: "100svh", overflow: "hidden" }}
+      style={{ position: "relative", minHeight: "100svh", overflow: "clip", maxWidth: "100vw" }}
       onPointerEnter={handlePointerEnter}
       onPointerMove={handlePointerMove}
       onPointerLeave={handlePointerLeave}
@@ -273,7 +284,7 @@ function MultiSceneRuntime({ scenes, initialIndex = 0, onSceneEnter, onSceneExit
           style={{
             position: "absolute", inset: 0,
             transformOrigin: "left center",
-            transform: getRuntimeTransform(phase),
+            transform: getRuntimeTransform(phase, 0, mobile),
             transition: getRuntimeTransition(phase, flipMs),
             filter: phase === "starburst" ? "brightness(1.2) saturate(1.22)" : "none",
             boxShadow: phase === "flipping" ? "-22px 0 38px rgba(0,0,0,0.4), 0 18px 40px rgba(0,0,0,0.34)" : "none",

@@ -40,6 +40,7 @@ export default function PhysicalMagazineViewport({ children, phase, sceneId }: P
               ? "perspective(1700px) rotateX(1.5deg) rotateY(-2deg)"
               : "perspective(1700px) rotateX(1.2deg) rotateY(-1deg)",
           transition: "transform 420ms ease",
+          contain: "layout",
         }}
       >
         <div
