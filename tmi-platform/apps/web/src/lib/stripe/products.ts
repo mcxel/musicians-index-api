@@ -5,7 +5,7 @@ export const STRIPE_PRODUCTS = {
   // ── Subscriptions ────────────────────────────────────────────────────────
   MEMBER_PRO_MONTHLY: {
     productId: "prod_member_pro",
-    priceId:   "price_member_pro_monthly",
+    priceId:   "price_1TUWI4EL7B8tMf4NHs74ydgc",
     name:      "TMI Member Pro",
     price:     999,  // $9.99/mo
     interval:  "month" as const,
@@ -38,7 +38,7 @@ export const STRIPE_PRODUCTS = {
 
   // ── Tips ─────────────────────────────────────────────────────────────────
   TIP_SMALL:  { productId: "prod_tip", priceId: "price_tip_small",  name: "Tip $1",   price: 100  },
-  TIP_MEDIUM: { productId: "prod_tip", priceId: "price_tip_medium", name: "Tip $5",   price: 500  },
+  TIP_MEDIUM: { productId: "prod_tip", priceId: "price_1TUWKrEL7B8tMf4NVceVcW4i", name: "Tip $5",   price: 500  },
   TIP_LARGE:  { productId: "prod_tip", priceId: "price_tip_large",  name: "Tip $10",  price: 1000 },
   TIP_XL:     { productId: "prod_tip", priceId: "price_tip_xl",     name: "Tip $25",  price: 2500 },
   TIP_XXL:    { productId: "prod_tip", priceId: "price_tip_xxl",    name: "Tip $50",  price: 5000 },
@@ -117,14 +117,14 @@ export const STRIPE_PRODUCTS = {
   // ── Meet & Greet / Shoutouts ──────────────────────────────────────────────
   MEET_GREET: {
     productId: "prod_meet_greet",
-    priceId:   "price_meet_greet",
+    priceId:   "price_1TUWSaEL7B8tMf4N74LrAyG",
     name:      "Artist Meet & Greet",
     price:     2500, // $25
     interval:  "one_time" as const,
   },
   SHOUTOUT: {
     productId: "prod_shoutout",
-    priceId:   "price_shoutout",
+    priceId:   "price_1TUWvpEL7B8tMf4Ns2TE2uX4",
     name:      "Personalized Artist Shoutout",
     price:     1500, // $15
     interval:  "one_time" as const,
