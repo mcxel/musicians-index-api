@@ -18,6 +18,19 @@ const ROOMS = [
   { label: "VIP Lounge",           href: "/rooms/vip-lounge",         desc: "Exclusive access for TMI Premium members — private sessions and events.",     emoji: "💎", accent: "#FFD700", badge: "VIP",      live: false },
   { label: "Fan Meet-Up",          href: "/rooms/fan-meetup",         desc: "Artist fan meet-ups — chat directly with your favorite artists.",             emoji: "🤝", accent: "#AA2DFF", badge: "MEET",     live: false },
   { label: "Collaboration Room",   href: "/rooms/collaboration",      desc: "Connect with other artists and creatives to build something together.",        emoji: "✨", accent: "#00FFFF", badge: "COLLAB",   live: false },
+  { label: "Band Room",            href: "/rooms/band",               desc: "Multi-stream room for full bands — each member captures live from their rig.",  emoji: "🎸", accent: "#FF2DAA", badge: "BANDS",    live: false },
+  { label: "Producer Suite",       href: "/rooms/producer",           desc: "Beat-making sessions — producers showcase production live as it happens.",       emoji: "🎛️", accent: "#AA2DFF", badge: "BEATS",    live: false },
+  { label: "Front Row",            href: "/rooms/front-row",          desc: "Premium seats closest to the stage — exclusive view for Diamond members.",      emoji: "🪑", accent: "#FFD700", badge: "VIP",      live: false },
+  { label: "Backstage Pass",       href: "/rooms/backstage",          desc: "Go behind the scenes before, during, and after a performance.",                  emoji: "🎭", accent: "#AA2DFF", badge: "BACKSTAGE",live: false },
+  { label: "Audience Chamber",     href: "/rooms/audience",           desc: "General crowd room — react, tip, and cheer for your favorite artist.",           emoji: "🙌", accent: "#00FF88", badge: "CROWD",    live: false },
+  { label: "Sponsor Event",        href: "/rooms/sponsor-event",      desc: "Brand-sponsored performances and activations — exclusive sponsored shows.",     emoji: "🏆", accent: "#FFD700", badge: "BRANDED",  live: false },
+  { label: "Party Lobby",          href: "/rooms/party-lobby",        desc: "Pre-show lobby — mix, mingle, and hype each other before the main event.",      emoji: "🥂", accent: "#FF2DAA", badge: "LOBBY",    live: false },
+  { label: "Name That Tune",       href: "/rooms/name-that-tune",     desc: "Competitive music trivia — identify the track before anyone else.",              emoji: "🎵", accent: "#00FFFF", badge: "TRIVIA",   live: false },
+  { label: "Lyric Fill",           href: "/rooms/lyric-fill",         desc: "Complete the lyrics challenge — test your knowledge against the crowd.",         emoji: "📝", accent: "#AA2DFF", badge: "GAME",     live: false },
+  { label: "Deal or Feud",         href: "/rooms/deal-or-feud",       desc: "Music industry deal negotiation game — artists and labels face off.",            emoji: "🤝", accent: "#FFD700", badge: "GAME",     live: false },
+  { label: "Game Room",            href: "/rooms/game",               desc: "Music-themed mini-games — earn XP and compete for leaderboard glory.",          emoji: "🎮", accent: "#00FF88", badge: "GAMES",    live: false },
+  { label: "Interview Stage",      href: "/rooms/interview",          desc: "Artist deep-dives — intimate one-on-one or panel interviews.",                   emoji: "🎙️", accent: "#00FFFF", badge: "TALK",     live: false },
+  { label: "Cover Art Zoom",       href: "/rooms/cover-art-zoom",     desc: "Reveal and discuss cover art — artists walk fans through visual concepts.",     emoji: "🖼️", accent: "#FF2DAA", badge: "ART",      live: false },
 ];
 
 export default function RoomsPage() {
