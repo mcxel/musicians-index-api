@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import TMIVideoMonitor from "@/components/hud/TMIVideoMonitor";
 
 // Roles that may access /admin/* — checked against live session before any child renders
 const ADMIN_ROLES = new Set(["admin", "superadmin", "owner", "ADMIN"]);
@@ -33,7 +34,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   useEffect(() => {
     if (status === "denied") {
-      router.replace("/auth?next=/admin/live");
+      router.replace("/auth");
     }
   }, [status, router]);
 
@@ -56,5 +57,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   // "denied" — null render; redirect fires in the effect above
   if (status === "denied") return null;
 
-  return <>{children}</>;
+  return (
+    <>
+      {children}
+      <TMIVideoMonitor label="ADMIN CAM" position="bottom-right" />
+    </>
+  );
 }
