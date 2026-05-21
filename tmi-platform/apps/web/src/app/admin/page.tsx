@@ -12,12 +12,13 @@ export default function AdminDashboard() {
   useEffect(() => {
     fetch('/api/admin/users')
       .then(r => {
-        if (!r.ok) return r.json().then(d => { throw new Error(d.error || `HTTP ${r.status}`); });
+        if (!r.ok) return r.json().then(d => { throw new Error(`HTTP ${r.status}: ${d.error || 'unknown'}`); });
         return r.json();
       })
       .then(d => {
         if (d.users)   setUsers(d.users);
         if (d.artists) setArtists(d.artists);
+        if (!d.users)  setError(`200 OK but no users field — response keys: ${Object.keys(d).join(', ') || 'empty'}`);
       })
       .catch((e: Error) => setError(e.message))
       .finally(() => setLoading(false));
