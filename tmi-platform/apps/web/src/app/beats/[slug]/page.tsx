@@ -1,18 +1,49 @@
-// apps/web/src/app/beats/[slug]/page.tsx
-// Beat Detail | Auth: none
-// Copilot wires: useBeat(slug), useLicenseBeat(beatId)
-// VS Code proves: beat loads, license purchase works
-import { Metadata } from 'next';
+import Link from "next/link";
+import type { Metadata } from "next";
 export const metadata: Metadata = { title: "Beat Detail · The Musician's Index" };
-export default function Page({ params, searchParams }: any) {
-  // Auth: none — public
+
+const LICENSE_TIERS = [
+  { id: "basic", label: "Basic License", price: 29.99, uses: "Non-commercial, streaming only", limit: "500k streams" },
+  { id: "premium", label: "Premium License", price: 79.99, uses: "Commercial, all platforms", limit: "Unlimited" },
+  { id: "exclusive", label: "Exclusive", price: 499.00, uses: "Full ownership, beat removed from store", limit: "Yours forever" },
+];
+
+interface Props { params: Promise<{ slug: string }> }
+
+export default async function BeatDetailPage({ params }: Props) {
+  const { slug } = await params;
+  const title = slug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+
   return (
-    <main className="tmi-page">
-      <div className="tmi-page__inner">
-        {/* BeatDetailPanel, BeatCard — Copilot wires here */}
-        <div className="tmi-page-placeholder">
-          <h1>Beat Detail</h1>
-          <p>Shell ready — Copilot wires data</p>
+    <main style={{ minHeight: "100vh", background: "#05060c", color: "#fff", padding: "32px 24px 80px", fontFamily: "'Inter', sans-serif" }}>
+      <div style={{ maxWidth: 860, margin: "0 auto" }}>
+        <div style={{ marginBottom: 28 }}>
+          <Link href="/beats" style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", textDecoration: "none" }}>← Beat Marketplace</Link>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 28, marginBottom: 32 }}>
+          <div>
+            <div style={{ width: "100%", aspectRatio: "1", background: "linear-gradient(135deg, rgba(170,45,255,0.2), rgba(255,45,170,0.1))", borderRadius: 16, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 64, marginBottom: 20 }}>🎶</div>
+            <button style={{ width: "100%", padding: "14px", borderRadius: 10, background: "rgba(170,45,255,0.15)", border: "1px solid rgba(170,45,255,0.3)", color: "#AA2DFF", fontWeight: 800, fontSize: 14, cursor: "pointer" }}>▶ Preview Beat</button>
+          </div>
+          <div>
+            <div style={{ fontSize: 10, letterSpacing: 5, color: "#AA2DFF", fontWeight: 800, marginBottom: 8 }}>BEAT</div>
+            <h1 style={{ fontSize: "clamp(20px,3vw,32px)", fontWeight: 900, margin: "0 0 8px" }}>{title}</h1>
+            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", marginBottom: 24 }}>by Mako Beats · Trap · 140 BPM · Key: Am</div>
+            <div style={{ display: "grid", gap: 10 }}>
+              {LICENSE_TIERS.map((t) => (
+                <div key={t.id} style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: "16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: 13 }}>{t.label}</div>
+                    <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", marginTop: 2 }}>{t.uses} · {t.limit}</div>
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    <div style={{ fontWeight: 900, color: "#AA2DFF" }}>${t.price}</div>
+                    <button style={{ marginTop: 6, padding: "6px 14px", borderRadius: 7, background: "#AA2DFF", color: "#fff", border: "none", fontSize: 11, cursor: "pointer", fontWeight: 700 }}>Buy</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     </main>

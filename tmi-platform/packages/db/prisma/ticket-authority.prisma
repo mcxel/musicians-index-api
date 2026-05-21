@@ -1,0 +1,69 @@
+model TicketTemplate {
+  id            String       @id @default(uuid())
+  eventId       String
+  tierName      String
+  price         Float
+  currency      String       @default("USD")
+  capacity      Int
+  brandingUrl   String?
+  seatRegion    String?
+  tickets       EventTicket[]
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+}
+
+model EventTicket {
+  id            String             @id @default(uuid())
+  templateId    String
+  template      TicketTemplate     @relation(fields: [templateId], references: [id])
+  ownerId       String
+  eventId       String
+  venueId       String
+  qrHash        String             @unique
+  status        String             @default("VALID") // VALID, USED, EXPIRED, REFUNDED, TRANSFERRED
+  purchaseDate  DateTime           @default(now())
+  eventDate     DateTime
+  validations   TicketValidation[]
+  scanEvents    TicketScanEvent[]
+  transfers     TicketTransfer[]
+  claims        TicketClaim[]
+}
+
+model TicketValidation {
+  id            String     @id @default(uuid())
+  ticketId      String
+  ticket        EventTicket @relation(fields: [ticketId], references: [id])
+  validatorId   String
+  validatedAt   DateTime   @default(now())
+  status        String     // SUCCESS, FAILED
+  reason        String?
+}
+
+model TicketScanEvent {
+  id            String     @id @default(uuid())
+  ticketId      String
+  ticket        EventTicket @relation(fields: [ticketId], references: [id])
+  scannerId     String
+  scannedAt     DateTime   @default(now())
+  result        String     // SUCCESS, WRONG_VENUE, WRONG_DATE, ALREADY_USED, EXPIRED
+  deviceInfo    String?
+}
+
+model TicketTransfer {
+  id            String     @id @default(uuid())
+  ticketId      String
+  ticket        EventTicket @relation(fields: [ticketId], references: [id])
+  fromUserId    String
+  toUserId      String
+  transferDate  DateTime   @default(now())
+  status        String     @default("COMPLETED") // PENDING, COMPLETED, REJECTED
+}
+
+model TicketClaim {
+  id            String     @id @default(uuid())
+  ticketId      String
+  ticket        EventTicket @relation(fields: [ticketId], references: [id])
+  claimedById   String
+  claimedAt     DateTime   @default(now())
+  status        String     @default("CLAIMED")
+}

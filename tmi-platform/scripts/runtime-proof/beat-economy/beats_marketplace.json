@@ -1,0 +1,11 @@
+{
+  "route": "/beats/marketplace",
+  "timestamp": "2026-05-09T03:03:47.255Z",
+  "screenshotPath": "scripts\\runtime-proof\\beat-economy\\beats_marketplace.png",
+  "consoleErrorCount": 0,
+  "networkErrorCount": 0,
+  "crashDetected": false,
+  "crashes": [],
+  "consoleErrors": [],
+  "networkErrors": []
+}

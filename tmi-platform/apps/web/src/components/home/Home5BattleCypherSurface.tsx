@@ -700,6 +700,44 @@ export default function Home5BattleCypherSurface() {
         </div>
       </LiveBelt>
 
+      {/* ── CHALLENGES — Third Pillar ── */}
+      <section
+        style={{
+          border: "1px solid rgba(170,45,255,0.4)",
+          borderRadius: 10,
+          background: "linear-gradient(135deg, rgba(170,45,255,0.12) 0%, rgba(0,255,255,0.06) 100%)",
+          padding: 16,
+          display: "grid",
+          gap: 12,
+        }}
+      >
+        <TmiBadgeLabel color="#aa2dff">No Live Needed</TmiBadgeLabel>
+        <TmiHeadline as="h2" style={{ fontSize: 28 }}>Song Challenges</TmiHeadline>
+        <p style={{ margin: 0, color: "rgba(255,255,255,0.8)" }}>
+          Submit your track, cover, or freestyle async — no live performance required. Community votes decide the winner each week.
+        </p>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
+          {[
+            { label: "Active Challenges", value: "12", color: "#aa2dff" },
+            { label: "Submissions Open", value: "3",  color: "#00FFFF" },
+            { label: "Prize Pool",        value: "$400", color: "#FFD700" },
+          ].map((m) => (
+            <div key={m.label} style={{ background: "rgba(0,0,0,0.3)", border: `1px solid ${m.color}33`, borderRadius: 8, padding: 12, textAlign: "center" }}>
+              <div style={{ fontSize: 22, fontWeight: 900, color: m.color }}>{m.value}</div>
+              <div style={{ fontSize: 11, opacity: 0.6, marginTop: 4 }}>{m.label}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 8 }}>
+          <Link href="/challenges" style={{ background: "linear-gradient(135deg, #aa2dff 0%, #7700ff 100%)", color: "#fff", border: "none", borderRadius: 6, padding: "10px 16px", fontWeight: 700, cursor: "pointer", fontSize: 14, textAlign: "center", textDecoration: "none" }}>
+            Browse Challenges →
+          </Link>
+          <Link href="/challenges" style={{ background: "rgba(170,45,255,0.15)", color: "#aa2dff", border: "1px solid rgba(170,45,255,0.4)", borderRadius: 6, padding: "10px 16px", fontWeight: 700, cursor: "pointer", fontSize: 14, textAlign: "center", textDecoration: "none" }}>
+            Submit a Track
+          </Link>
+        </div>
+      </section>
+
       <DiscoveryBelt title="Games Belt">
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 8 }}>
           <RouteCard card={actionCards[7]!} />

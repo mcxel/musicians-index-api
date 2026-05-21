@@ -6,8 +6,6 @@
 
 import {
   getPaletteByGenre,
-  getPrimaryColorByGenre,
-  getGradientByGenre,
   type GenrePalette,
   type GenreKey,
 } from "./genre-colors";
@@ -67,8 +65,7 @@ export function generateMagazineTheme(genre: GenreKey | string): MagazineTheme {
  * CSS class generator for magazine cards
  * Output can be used directly in Tailwind or custom styles
  */
-export function getMagazineCardClasses(genre: GenreKey | string): string {
-  const palette = getPaletteByGenre(genre);
+export function getMagazineCardClasses(_genre: GenreKey | string): string {
   return `
     border-2 border-opacity-40 rounded-lg
     transition-all duration-300

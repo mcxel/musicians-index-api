@@ -1,0 +1,4 @@
+﻿LEGACY MODULE SPLIT
+Public company responsibilities now belong under apps/bernoutglobal-llc.
+Do not add new business logic here.
+Migration target: apps/bernoutglobal-llc/app/(public) and related company-owned directories.

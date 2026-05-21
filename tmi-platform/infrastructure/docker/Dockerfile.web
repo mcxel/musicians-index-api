@@ -1,0 +1,48 @@
+FROM node:20-alpine AS base
+WORKDIR /app
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+# ── Dependencies ──────────────────────────────────────────────────────────────
+FROM base AS deps
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+COPY apps/web/package.json ./apps/web/
+COPY packages/contracts/package.json ./packages/contracts/
+COPY packages/hud-core/package.json ./packages/hud-core/
+COPY packages/hud-runtime/package.json ./packages/hud-runtime/
+COPY packages/hud-theme/package.json ./packages/hud-theme/
+COPY packages/hud-tmi/package.json ./packages/hud-tmi/
+RUN pnpm install --frozen-lockfile --filter @tmi/web... --filter @tmi/contracts --filter @tmi/hud-core --filter @tmi/hud-runtime --filter @tmi/hud-theme --filter @tmi/hud-tmi
+
+# ── Build (produces .next/standalone) ─────────────────────────────────────────
+FROM deps AS builder
+ENV NEXT_TELEMETRY_DISABLED=1
+COPY apps/web ./apps/web/
+COPY packages/contracts/src ./packages/contracts/src/
+COPY packages/hud-core/src ./packages/hud-core/src/
+COPY packages/hud-runtime/src ./packages/hud-runtime/src/
+COPY packages/hud-theme/src ./packages/hud-theme/src/
+COPY packages/hud-tmi/src ./packages/hud-tmi/src/
+# NEXT_PUBLIC_* vars are baked in at build time
+ARG NEXTAUTH_URL
+ARG NEXT_PUBLIC_APP_URL
+ARG NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+ENV NEXTAUTH_URL=$NEXTAUTH_URL
+ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
+ENV NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=$NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+RUN NEXT_TELEMETRY_DISABLED=1 node apps/web/scripts/guard-build-env.mjs
+
+# ── Production image — standalone server ──────────────────────────────────────
+FROM node:20-alpine AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+
+# Standalone bundle is fully self-contained
+COPY --from=builder /app/apps/web/.next/standalone ./
+COPY --from=builder /app/apps/web/.next/static ./apps/web/.next/static
+COPY --from=builder /app/apps/web/public ./apps/web/public
+
+EXPOSE 3000
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
+CMD ["node", "apps/web/server.js"]

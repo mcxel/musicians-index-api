@@ -1,0 +1,69 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// PRISMA SCHEMA ADDITION — WinnerRevealConfig
+// APPEND THIS TO THE END OF packages/db/prisma/schema.prisma
+// After all Drop 1 contest models are already appended.
+// Action: APPEND ONLY | Wave: W6
+// ═══════════════════════════════════════════════════════════════════════════
+
+model WinnerRevealConfig {
+  id         String  @id @default(cuid())
+  seasonId   String? @unique
+  contestEntryId String?
+
+  // Winner count
+  revealMode        String  @default("single")   // single | small_game | big_contest
+  minWinnersToShow  Int     @default(1)
+  maxWinnersToShow  Int     @default(1)
+  featuredWinnerRank Int    @default(1)
+
+  // Timing
+  groupHoldSeconds  Int     @default(3)
+
+  // Audio
+  allowVoiceChatter Boolean @default(false)
+  audioMode         String  @default("balanced")  // chaotic | balanced | broadcast_safe
+  maxSimultaneousMics Int   @default(3)
+
+  // Camera
+  cameraPresetPool    Json   // string[] of preset IDs
+  transitionWeights   Json   // Record<string, number>
+  weightingEnabled    Boolean @default(true)
+  seasonLocked        Boolean @default(false)
+
+  // Control
+  hostControlled          Boolean @default(false)
+  fallbackSingleWinnerMode Boolean @default(true)
+
+  // Audit
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdBy   String
+  lastResetBy String?
+
+  @@map("winner_reveal_configs")
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// REVEAL ANALYTICS MODEL — also append after WinnerRevealConfig
+// ═══════════════════════════════════════════════════════════════════════════
+
+model RevealAnalytics {
+  id                  String   @id @default(cuid())
+  seasonId            String
+  entryId             String?
+  transitionUsed      String
+  cameraPresetUsed    String
+  winnerCount         Int
+  revealMode          String
+  watchCompletionRate Float?   // 0.0 – 1.0
+  replayCount         Int      @default(0)
+  adminRating         Int?     // 1–5
+  audienceFavoriteTag String?
+  groupHoldSeconds    Int
+  voiceChatActive     Boolean  @default(false)
+  audioMode           String
+
+  createdAt DateTime @default(now())
+
+  @@map("reveal_analytics")
+}

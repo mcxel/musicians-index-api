@@ -1,0 +1,282 @@
+[
+  {
+    "id": "campaign-001",
+    "name": "Pulse Audio Campaign",
+    "sponsorId": "pulse-audio",
+    "advertiserAccount": "advertiser01",
+    "mode": "TEST"
+  },
+  {
+    "id": "campaign-002",
+    "name": "Neon Drip Campaign",
+    "sponsorId": "neon-drip",
+    "advertiserAccount": "advertiser02",
+    "mode": "TEST"
+  },
+  {
+    "id": "campaign-003",
+    "name": "Volt Energy Campaign",
+    "sponsorId": "volt-energy",
+    "advertiserAccount": "advertiser03",
+    "mode": "TEST"
+  },
+  {
+    "id": "campaign-004",
+    "name": "Skyline Tech Campaign",
+    "sponsorId": "skyline-tech",
+    "advertiserAccount": "advertiser04",
+    "mode": "TEST"
+  },
+  {
+    "id": "campaign-005",
+    "name": "Luxora Campaign",
+    "sponsorId": "luxora",
+    "advertiserAccount": "advertiser05",
+    "mode": "TEST"
+  },
+  {
+    "id": "campaign-006",
+    "name": "BeatForge Campaign",
+    "sponsorId": "beatforge",
+    "advertiserAccount": "advertiser06",
+    "mode": "TEST"
+  },
+  {
+    "id": "campaign-007",
+    "name": "Nova Wear Campaign",
+    "sponsorId": "nova-wear",
+    "advertiserAccount": "advertiser07",
+    "mode": "TEST"
+  },
+  {
+    "id": "campaign-008",
+    "name": "HyperFuel Campaign",
+    "sponsorId": "hyperfuel",
+    "advertiserAccount": "advertiser08",
+    "mode": "TEST"
+  },
+  {
+    "id": "campaign-009",
+    "name": "SonicGrid Campaign",
+    "sponsorId": "sonicgrid",
+    "advertiserAccount": "advertiser09",
+    "mode": "TEST"
+  },
+  {
+    "id": "campaign-010",
+    "name": "VelourX Campaign",
+    "sponsorId": "velourx",
+    "advertiserAccount": "advertiser10",
+    "mode": "TEST"
+  },
+  {
+    "id": "campaign-011",
+    "name": "UrbanPhase Campaign",
+    "sponsorId": "urbanphase",
+    "advertiserAccount": "advertiser11",
+    "mode": "TEST"
+  },
+  {
+    "id": "campaign-012",
+    "name": "Aether Tech Campaign",
+    "sponsorId": "aether-tech",
+    "advertiserAccount": "advertiser12",
+    "mode": "TEST"
+  },
+  {
+    "id": "campaign-013",
+    "name": "Echo Labs Campaign",
+    "sponsorId": "echo-labs",
+    "advertiserAccount": "advertiser13",
+    "mode": "TEST"
+  },
+  {
+    "id": "campaign-014",
+    "name": "Flare Energy Campaign",
+    "sponsorId": "flare-energy",
+    "advertiserAccount": "advertiser14",
+    "mode": "TEST"
+  },
+  {
+    "id": "campaign-015",
+    "name": "ZenWear Campaign",
+    "sponsorId": "zenwear",
+    "advertiserAccount": "advertiser15",
+    "mode": "TEST"
+  },
+  {
+    "id": "campaign-016",
+    "name": "Drift Motors Campaign",
+    "sponsorId": "drift-motors",
+    "advertiserAccount": "advertiser16",
+    "mode": "TEST"
+  },
+  {
+    "id": "campaign-017",
+    "name": "Halo Beats Campaign",
+    "sponsorId": "halo-beats",
+    "advertiserAccount": "advertiser17",
+    "mode": "TEST"
+  },
+  {
+    "id": "campaign-018",
+    "name": "FusionCore Campaign",
+    "sponsorId": "fusioncore",
+    "advertiserAccount": "advertiser18",
+    "mode": "TEST"
+  },
+  {
+    "id": "campaign-019",
+    "name": "GlowClub Campaign",
+    "sponsorId": "glowclub",
+    "advertiserAccount": "advertiser19",
+    "mode": "TEST"
+  },
+  {
+    "id": "campaign-020",
+    "name": "PrimeKicks Campaign",
+    "sponsorId": "primekicks",
+    "advertiserAccount": "advertiser20",
+    "mode": "TEST"
+  },
+  {
+    "id": "campaign-021",
+    "name": "NexusGear Campaign",
+    "sponsorId": "nexusgear",
+    "advertiserAccount": "advertiser21",
+    "mode": "TEST"
+  },
+  {
+    "id": "campaign-022",
+    "name": "UrbanVibe Campaign",
+    "sponsorId": "urbanvibe",
+    "advertiserAccount": "advertiser22",
+    "mode": "TEST"
+  },
+  {
+    "id": "campaign-023",
+    "name": "Lume Energy Campaign",
+    "sponsorId": "lume-energy",
+    "advertiserAccount": "advertiser23",
+    "mode": "TEST"
+  },
+  {
+    "id": "campaign-024",
+    "name": "AudioLux Campaign",
+    "sponsorId": "audiolux",
+    "advertiserAccount": "advertiser24",
+    "mode": "TEST"
+  },
+  {
+    "id": "campaign-025",
+    "name": "NextWave Campaign",
+    "sponsorId": "nextwave",
+    "advertiserAccount": "advertiser25",
+    "mode": "TEST"
+  },
+  {
+    "id": "campaign-026",
+    "name": "StreetNova Campaign",
+    "sponsorId": "streetnova",
+    "advertiserAccount": "advertiser26",
+    "mode": "TEST"
+  },
+  {
+    "id": "campaign-027",
+    "name": "HyperBeats Campaign",
+    "sponsorId": "hyperbeats",
+    "advertiserAccount": "advertiser27",
+    "mode": "TEST"
+  },
+  {
+    "id": "campaign-028",
+    "name": "ZenithWear Campaign",
+    "sponsorId": "zenithwear",
+    "advertiserAccount": "advertiser28",
+    "mode": "TEST"
+  },
+  {
+    "id": "campaign-029",
+    "name": "VoltGear Campaign",
+    "sponsorId": "voltgear",
+    "advertiserAccount": "advertiser29",
+    "mode": "TEST"
+  },
+  {
+    "id": "campaign-030",
+    "name": "Aura Labs Campaign",
+    "sponsorId": "aura-labs",
+    "advertiserAccount": "advertiser30",
+    "mode": "TEST"
+  },
+  {
+    "id": "campaign-031",
+    "name": "PulseFit Campaign",
+    "sponsorId": "pulsefit",
+    "advertiserAccount": "advertiser31",
+    "mode": "TEST"
+  },
+  {
+    "id": "campaign-032",
+    "name": "NightCore Campaign",
+    "sponsorId": "nightcore",
+    "advertiserAccount": "advertiser32",
+    "mode": "TEST"
+  },
+  {
+    "id": "campaign-033",
+    "name": "Echo Street Campaign",
+    "sponsorId": "echo-street",
+    "advertiserAccount": "advertiser33",
+    "mode": "TEST"
+  },
+  {
+    "id": "campaign-034",
+    "name": "Nova Auto Campaign",
+    "sponsorId": "nova-auto",
+    "advertiserAccount": "advertiser34",
+    "mode": "TEST"
+  },
+  {
+    "id": "campaign-035",
+    "name": "LuxBeats Campaign",
+    "sponsorId": "luxbeats",
+    "advertiserAccount": "advertiser35",
+    "mode": "TEST"
+  },
+  {
+    "id": "campaign-036",
+    "name": "AetherWear Campaign",
+    "sponsorId": "aetherwear",
+    "advertiserAccount": "advertiser36",
+    "mode": "TEST"
+  },
+  {
+    "id": "campaign-037",
+    "name": "Vortex Energy Campaign",
+    "sponsorId": "vortex-energy",
+    "advertiserAccount": "advertiser37",
+    "mode": "TEST"
+  },
+  {
+    "id": "campaign-038",
+    "name": "GridTech Campaign",
+    "sponsorId": "gridtech",
+    "advertiserAccount": "advertiser38",
+    "mode": "TEST"
+  },
+  {
+    "id": "campaign-039",
+    "name": "UrbanHalo Campaign",
+    "sponsorId": "urbanhalo",
+    "advertiserAccount": "advertiser39",
+    "mode": "TEST"
+  },
+  {
+    "id": "campaign-040",
+    "name": "PrimeAudio Campaign",
+    "sponsorId": "primeaudio",
+    "advertiserAccount": "advertiser40",
+    "mode": "TEST"
+  }
+]

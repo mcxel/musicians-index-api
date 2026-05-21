@@ -1,0 +1,361 @@
+﻿
+> web@1.0.0 prebuild C:\Users\Admin\Documents\BerntoutGlobal XXL\tmi-platform\apps\web
+> node scripts/prebuild-web.mjs
+
+Scope: 5 of 25 workspace projects
+packages/contracts build$ pnpm exec tsc -p tsconfig.json
+packages/hud-core build$ pnpm exec tsc -p tsconfig.json
+packages/hud-core build: Done
+packages/contracts build: Done
+packages/hud-runtime build$ tsc -p tsconfig.json
+packages/hud-theme build$ tsc -p tsconfig.json
+packages/hud-theme build: Done
+packages/hud-runtime build: Done
+packages/hud-tmi build$ tsc -p tsconfig.json
+packages/hud-tmi build: Done
+
+> db@1.0.0 prisma:generate C:\Users\Admin\Documents\BerntoutGlobal XXL\tmi-platform\packages\db
+> pnpm -C ../.. exec prisma generate --schema packages/db/prisma/schema.prisma
+
+node.exe : Prisma schema loaded from packages\db\prisma\schema.prisma.
+At C:\nvm4w\nodejs\pnpm.ps1:16 char:5
++     & "$basedir/node$exe"  "$basedir/node_modules/pnpm/bin/pnpm.cjs"  ...
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Prisma schema l...\schema.prisma.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+
+✔ Generated Prisma Client (v7.6.0) to .\node_modules\.prisma\client in 4.20s
+
+Start by importing your Prisma Client (See: https://pris.ly/d/importing-client)
+
+
+
+> web@1.0.0 build C:\Users\Admin\Documents\BerntoutGlobal XXL\tmi-platform\apps\web
+> pnpm run routes:check && pnpm run registry:check && node scripts/guard-build-env.mjs
+
+
+> web@1.0.0 routes:check C:\Users\Admin\Documents\BerntoutGlobal XXL\tmi-platform\apps\web
+> node scripts/check-dynamic-segments.mjs
+
+Dynamic segment naming check passed.
+Required home issue routes check passed.
+
+> web@1.0.0 registry:check C:\Users\Admin\Documents\BerntoutGlobal XXL\tmi-platform\apps\web
+> node scripts/check-registry-integrity.mjs
+
+
+=== REGISTRY INTEGRITY CHECK ===
+
+  ✓  issueRegistry mapId "home1" exists in zoneMaps
+  ✓  issueRegistry mapId "home2" exists in zoneMaps
+  ✓  issueRegistry mapId "home3" exists in zoneMaps
+  ✓  issueRegistry mapId "home4" exists in zoneMaps
+  ✓  issueRegistry mapId "home5" exists in zoneMaps
+  ✓  issueRegistry mapId "home6" exists in zoneMaps
+  ✓  issueRegistry mapId "home7" exists in zoneMaps
+  ✓  issueRegistry mapId "home8" exists in zoneMaps
+  ✓  issueRegistry mapId "home9" exists in zoneMaps
+  ✓  issueRegistry mapId "home10" exists in zoneMaps
+  ✓  issueRegistry mapId "home11" exists in zoneMaps
+  ✓  issueRegistry mapId "home12" exists in zoneMaps
+  ✓  issueRegistry mapId "home13" exists in zoneMaps
+  ✓  issueRegistry mapId "home14" exists in zoneMaps
+  ✓  issueRegistry mapId "home15" exists in zoneMaps
+  ✓  zone "coverFront" from zoneMaps → contentRegistry
+  ✓  zone "topTenLoop" from zoneMaps → contentRegistry
+  ✓  zone "editorial" from zoneMaps → contentRegistry
+  ✓  zone "discovery" from zoneMaps → contentRegistry
+  ✓  zone "charts" from zoneMaps → contentRegistry
+  ✓  zone "liveRooms" from zoneMaps → contentRegistry
+  ✓  zone "events" from zoneMaps → contentRegistry
+  ✓  zone "cyphers" from zoneMaps → contentRegistry
+  ✓  zone "featuredGame" from zoneMaps → contentRegistry
+  ✓  zone "gameSelector" from zoneMaps → contentRegistry
+  ✓  zone "eventTracker" from zoneMaps → contentRegistry
+  ✓  zone "prizePool" from zoneMaps → contentRegistry
+  ✓  zone "sponsorSpotlight" from zoneMaps → contentRegistry
+  ✓  zone "adMarketplace" from zoneMaps → contentRegistry
+  ✓  zone "analyticsDash" from zoneMaps → contentRegistry
+  ✓  zone "globalRankLoop" from zoneMaps → contentRegistry
+  ✓  zone "risingStars" from zoneMaps → contentRegistry
+  ✓  zone "genreLeaderboards" from zoneMaps → contentRegistry
+  ✓  zone "idolStage" from zoneMaps → contentRegistry
+  ✓  zone "idolJudges" from zoneMaps → contentRegistry
+  ✓  zone "idolAudience" from zoneMaps → contentRegistry
+  ✓  zone "danceFloor" from zoneMaps → contentRegistry
+  ✓  zone "djBooth" from zoneMaps → contentRegistry
+  ✓  zone "producerSpotlight" from zoneMaps → contentRegistry
+  ✓  zone "battleRing" from zoneMaps → contentRegistry
+  ✓  zone "cypherHost" from zoneMaps → contentRegistry
+  ✓  zone "challengerQueue" from zoneMaps → contentRegistry
+  ✓  zone "feudBoard" from zoneMaps → contentRegistry
+  ✓  zone "feudPodiums" from zoneMaps → contentRegistry
+  ✓  zone "feudCrowd" from zoneMaps → contentRegistry
+  ✓  zone "squaresGrid" from zoneMaps → contentRegistry
+  ✓  zone "squaresHost" from zoneMaps → contentRegistry
+  ✓  zone "squaresContestants" from zoneMaps → contentRegistry
+  ✓  zone "roastStage" from zoneMaps → contentRegistry
+  ✓  zone "roastScore" from zoneMaps → contentRegistry
+  ✓  zone "roastCrowd" from zoneMaps → contentRegistry
+  ✓  zone "rewardsLedger" from zoneMaps → contentRegistry
+  ✓  zone "storeShowcase" from zoneMaps → contentRegistry
+  ✓  zone "seasonPass" from zoneMaps → contentRegistry
+  ✓  zone "sponsorGiveaways" from zoneMaps → contentRegistry
+  ✓  zone "sponsorLeaderboard" from zoneMaps → contentRegistry
+  ✓  zone "dropCountdown" from zoneMaps → contentRegistry
+  ✓  zone "hallOfFame" from zoneMaps → contentRegistry
+  ✓  zone "classicReplays" from zoneMaps → contentRegistry
+  ✓  zone "vaultArchive" from zoneMaps → contentRegistry
+  ✓  adapter "getGlobalRanking" exported from dataAdapters.ts
+  ✓  adapter "getCrownLeader" exported from dataAdapters.ts
+  ✓  adapter "getTop10" exported from dataAdapters.ts
+  ✓  adapter "getGenreRanking" exported from dataAdapters.ts
+  ✓  adapter "getRisingArtists" exported from dataAdapters.ts
+  ✓  adapter "getGenres" exported from dataAdapters.ts
+  ✓  adapter "getPlaylists" exported from dataAdapters.ts
+  ✓  adapter "getLiveRooms" exported from dataAdapters.ts
+  ✓  adapter "getLiveCyphers" exported from dataAdapters.ts
+  ✓  adapter "getUpcomingEvents" exported from dataAdapters.ts
+  ✓  adapter "getSponsors" exported from dataAdapters.ts
+  ✓  adapter "getAdPlacements" exported from dataAdapters.ts
+  ✓  adapter "getNewsAlerts" exported from dataAdapters.ts
+  ✓  adapter "getDiscoveryBundle" exported from dataAdapters.ts
+  ✓  visual "NeonFrame" in visualRegistry
+  ✓  visual "MagazineFrame" in visualRegistry
+  ✓  visual "StageFrame" in visualRegistry
+  ✓  visual "BillboardFrame" in visualRegistry
+  ✓  visual "VenueSkinShell" in visualRegistry
+  ✓  visual "LiveVideoShell" in visualRegistry
+  ✓  visual "ReactionBar" in visualRegistry
+  ✓  visual "SponsorSpotlightFrame" in visualRegistry
+  ✓  visual "ArticleFeatureCard" in visualRegistry
+  ✓  visual "NameThatTuneBoard" in visualRegistry
+  ✓  visual "HexCluster" in visualRegistry
+  ✓  visual "AngledPanel" in visualRegistry
+  ✓  visual "ReactionOverlayCanvas" in visualRegistry
+  ✓  zone "coverFront" has visual binding
+  ✓  zone "topTenLoop" has visual binding
+  ✓  zone "editorial" has visual binding
+  ✓  zone "discovery" has visual binding
+  ✓  zone "charts" has visual binding
+  ✓  zone "liveRooms" has visual binding
+  ✓  zone "events" has visual binding
+  ✓  zone "cyphers" has visual binding
+  ✓  zone "featuredGame" has visual binding
+  ✓  zone "gameSelector" has visual binding
+  ✓  zone "eventTracker" has visual binding
+  ✓  zone "prizePool" has visual binding
+  ✓  zone "sponsorSpotlight" has visual binding
+  ✓  zone "adMarketplace" has visual binding
+  ✓  zone "analyticsDash" has visual binding
+  ✓  zone "globalRankLoop" has visual binding
+  ✓  zone "risingStars" has visual binding
+  ✓  zone "genreLeaderboards" has visual binding
+  ✓  zone "idolStage" has visual binding
+  ✓  zone "idolJudges" has visual binding
+  ✓  zone "idolAudience" has visual binding
+  ✓  zone "danceFloor" has visual binding
+  ✓  zone "djBooth" has visual binding
+  ✓  zone "producerSpotlight" has visual binding
+  ✓  zone "battleRing" has visual binding
+  ✓  zone "cypherHost" has visual binding
+  ✓  zone "challengerQueue" has visual binding
+  ✓  zone "feudBoard" has visual binding
+  ✓  zone "feudPodiums" has visual binding
+  ✓  zone "feudCrowd" has visual binding
+  ✓  zone "squaresGrid" has visual binding
+  ✓  zone "squaresHost" has visual binding
+  ✓  zone "squaresContestants" has visual binding
+  ✓  zone "roastStage" has visual binding
+  ✓  zone "roastScore" has visual binding
+  ✓  zone "roastCrowd" has visual binding
+  ✓  zone "rewardsLedger" has visual binding
+  ✓  zone "storeShowcase" has visual binding
+  ✓  zone "seasonPass" has visual binding
+  ✓  zone "sponsorGiveaways" has visual binding
+  ✓  zone "sponsorLeaderboard" has visual binding
+  ✓  zone "dropCountdown" has visual binding
+  ✓  zone "hallOfFame" has visual binding
+  ✓  zone "classicReplays" has visual binding
+  ✓  zone "vaultArchive" has visual binding
+
+ALL CHECKS PASSED ✓
+
+[TMI BUILD GUARD] Cleared foreign Next build environment contamination.
+  ▲ Next.js 14.2.3
+  - Environments: .env.local
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully
+   Skipping validation of types
+   Skipping linting
+   Collecting page data ...
+   Generating static pages (0/113) ...
+   Generating static pages (28/113) 
+   Generating static pages (56/113) 
+   Generating static pages (84/113) 
+ ✓ Generating static pages (113/113)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                                       Size     First Load JS
+┌ ○ /                                             162 B          87.2 kB
+├ ○ /_not-found                                   162 B          87.2 kB
+├ ƒ /admin                                        3.87 kB        97.7 kB
+├ ƒ /admin/big-ace                                1.78 kB         102 kB
+├ ○ /admin/jay                                    3.38 kB         104 kB
+├ ○ /admin/jay-paul                               199 B           105 kB
+├ ○ /admin/justin                                 202 B           100 kB
+├ ○ /admin/marcel                                 1.28 kB         113 kB
+├ ƒ /admin/mc-michael-charlie                     2.67 kB         103 kB
+├ ○ /admin/role-previews                          2.12 kB        89.2 kB
+├ ƒ /advertisers/[slug]/analytics                 1.15 kB          95 kB
+├ ƒ /advertisers/[slug]/billing                   1.2 kB           95 kB
+├ ƒ /advertisers/[slug]/campaigns                 2.03 kB        95.9 kB
+├ ƒ /advertisers/[slug]/placements                1.29 kB        95.1 kB
+├ ƒ /api/auth/session                             0 B                0 B
+├ ƒ /api/avatar/equip                             0 B                0 B
+├ ƒ /api/avatar/inventory                         0 B                0 B
+├ ƒ /api/avatar/load                              0 B                0 B
+├ ƒ /api/avatar/mint                              0 B                0 B
+├ ƒ /api/avatar/save                              0 B                0 B
+├ ○ /api/booking/profitability                    0 B                0 B
+├ ƒ /api/booking/requests                         0 B                0 B
+├ ƒ /api/live/audience                            0 B                0 B
+├ ƒ /api/live/billboards                          0 B                0 B
+├ ƒ /api/live/host                                0 B                0 B
+├ ƒ /api/live/queue                               0 B                0 B
+├ ƒ /api/live/reactions                           0 B                0 B
+├ ƒ /api/live/stage                               0 B                0 B
+├ ƒ /api/media/access/[token]                     0 B                0 B
+├ ƒ /api/media/audit-logs                         0 B                0 B
+├ ƒ /api/media/convert                            0 B                0 B
+├ ƒ /api/media/library                            0 B                0 B
+├ ƒ /api/media/secure-link                        0 B                0 B
+├ ƒ /api/media/upload                             0 B                0 B
+├ ƒ /api/media/watermark                          0 B                0 B
+├ ƒ /api/store/checkout                           0 B                0 B
+├ ƒ /api/store/items                              0 B                0 B
+├ ƒ /api/tickets/[id]/print                       0 B                0 B
+├ ƒ /api/tickets/create                           0 B                0 B
+├ ƒ /api/tickets/history                          0 B                0 B
+├ ƒ /api/tickets/scan                             0 B                0 B
+├ ƒ /api/tickets/validate                         0 B                0 B
+├ ○ /articles/news                                255 B          94.1 kB
+├ ƒ /articles/news/[slug]                         255 B          94.1 kB
+├ ○ /artists                                      1.76 kB         121 kB
+├ ƒ /artists/[slug]                               722 B          94.6 kB
+├ ○ /avatar                                       255 B          94.1 kB
+├ ○ /avatar/build                                 4.5 kB         91.5 kB
+├ ƒ /avatar/inventory                             3.8 kB         90.8 kB
+├ ƒ /avatar/nft                                   1.79 kB        88.8 kB
+├ ƒ /avatar/scan                                  2.53 kB        96.4 kB
+├ ƒ /avatar/scan/build                            4.69 kB         131 kB
+├ ƒ /avatar/scan/verify                           2.52 kB        96.3 kB
+├ ƒ /avatar/scan/wardrobe                         2.53 kB        96.4 kB
+├ ○ /avatar/showcase                              255 B          94.1 kB
+├ ○ /booking                                      2.11 kB        95.9 kB
+├ ○ /booking/artists                              255 B          94.1 kB
+├ ○ /booking/contracts                            162 B          87.2 kB
+├ ƒ /booking/offers                               938 B            88 kB
+├ ○ /booking/venues                               255 B          94.1 kB
+├ ƒ /fan/[slug]/tickets                           2.4 kB          106 kB
+├ ƒ /fan/[slug]/tickets/active                    190 B           104 kB
+├ ƒ /fan/[slug]/tickets/history                   255 B          94.1 kB
+├ ƒ /fan/[slug]/tickets/nft                       256 B          94.1 kB
+├ ƒ /games/circle-squares                         1.9 kB          101 kB
+├ ○ /games/deal-or-feud                           255 B          94.1 kB
+├ ○ /games/name-that-tune                         255 B          94.1 kB
+├ ○ /home/1                                       4.87 kB         134 kB
+├ ○ /home/1-2                                     11.6 kB         141 kB
+├ ○ /home/2                                       4.05 kB        97.9 kB
+├ ○ /home/3                                       3.67 kB        97.5 kB
+├ ○ /home/4                                       2.66 kB         101 kB
+├ ○ /home/5                                       2.95 kB         101 kB
+├ ○ /inventory                                    255 B          94.1 kB
+├ ○ /inventory/cosmetics                          255 B          94.1 kB
+├ ○ /inventory/emotes                             253 B          94.1 kB
+├ ○ /inventory/nfts                               255 B          94.1 kB
+├ ○ /inventory/props                              255 B          94.1 kB
+├ ○ /inventory/tickets                            255 B          94.1 kB
+├ ○ /legal/content-rights                         255 B          94.1 kB
+├ ○ /legal/contractor                             255 B          94.1 kB
+├ ○ /legal/tax-policy                             255 B          94.1 kB
+├ ○ /legal/venue-policy                           255 B          94.1 kB
+├ ○ /live                                         255 B          94.1 kB
+├ ƒ /live/audience                                2.05 kB        95.9 kB
+├ ƒ /live/backstage                               1.97 kB        95.8 kB
+├ ƒ /live/billboards                              2.17 kB          96 kB
+├ ƒ /live/chat                                    1.79 kB        95.6 kB
+├ ƒ /live/green-room                              1.62 kB        95.5 kB
+├ ƒ /live/hosts                                   2.24 kB        96.1 kB
+├ ○ /live/lobbies                                 253 B          94.1 kB
+├ ƒ /live/queue                                   2.21 kB          96 kB
+├ ƒ /live/reactions                               2.1 kB         95.9 kB
+├ ƒ /live/stages                                  1.73 kB        95.6 kB
+├ ○ /lobbies                                      189 B           102 kB
+├ ƒ /lobbies/[slug]                               182 B           102 kB
+├ ○ /magazine                                     147 B           110 kB
+├ ● /magazine/article/[slug]                      147 B           110 kB
+├   ├ /magazine/article/wavetek-rise-billboard
+├   ├ /magazine/article/neon-vibe-monday-stage
+├   ├ /magazine/article/beat-marketplace-economy
+├   └ [+7 more paths]
+├ ○ /messages                                     253 B          94.1 kB
+├ ƒ /messages/[threadId]                          255 B          94.1 kB
+├ ○ /platform-status                              162 B          87.2 kB
+├ ƒ /profile/artist/[slug]                        10.4 kB         140 kB
+├ ƒ /profile/fan/[slug]                           9.52 kB         106 kB
+├ ƒ /profile/performer/[slug]                     2.05 kB        95.9 kB
+├ ƒ /shows/monday-night-stage                     5.47 kB         105 kB
+├ ƒ /shows/monthly-idol                           4.26 kB         104 kB
+├ ƒ /sponsors/[slug]/deals                        2 kB           95.8 kB
+├ ƒ /sponsors/[slug]/gifts                        2.16 kB          96 kB
+├ ƒ /sponsors/[slug]/placements                   1.56 kB        95.4 kB
+├ ƒ /store                                        1.52 kB        95.3 kB
+├ ○ /store/beats                                  1.13 kB        88.2 kB
+├ ○ /store/bundles                                1.13 kB        88.2 kB
+├ ○ /store/giveaways                              1.13 kB        88.2 kB
+├ ○ /store/instrumentals                          1.13 kB        88.2 kB
+├ ○ /store/merch                                  1.13 kB        88.2 kB
+├ ○ /store/nfts                                   1.13 kB        88.2 kB
+├ ○ /store/prizes                                 1.13 kB        88.2 kB
+├ ○ /tickets                                      1.22 kB          95 kB
+├ ƒ /tickets/create                               1.16 kB        88.2 kB
+├ ƒ /tickets/history                              780 B          87.8 kB
+├ ƒ /tickets/print                                904 B          87.9 kB
+├ ƒ /tickets/scan                                 849 B          87.9 kB
+├ ƒ /tickets/validate                             828 B          87.9 kB
+├ ○ /venues                                       5.01 kB         131 kB
+├ ƒ /venues/[slug]                                187 B          98.6 kB
+├ ƒ /venues/[slug]/audience                       2.04 kB        95.9 kB
+├ ƒ /venues/[slug]/backstage                      185 B          91.8 kB
+├ ƒ /venues/[slug]/green-room                     185 B          91.8 kB
+├ ƒ /venues/[slug]/host                           2.2 kB           96 kB
+├ ƒ /venues/[slug]/live                           2.35 kB        96.2 kB
+├ ƒ /venues/[slug]/lobby                          182 B           102 kB
+├ ƒ /venues/[slug]/queue                          2.02 kB        95.8 kB
+├ ƒ /venues/[slug]/stage                          185 B          91.8 kB
+├ ƒ /venues/[slug]/tickets                        185 B          91.8 kB
+├ ƒ /venues/[slug]/tickets/create                 2.15 kB         100 kB
+├ ƒ /venues/[slug]/tickets/print                  1.08 kB          99 kB
+└ ƒ /venues/[slug]/tickets/validate               1.77 kB        88.8 kB
++ First Load JS shared by all                     87 kB
+  ├ chunks/1dd3208c-012bc71f078bb48a.js           53.6 kB
+  ├ chunks/286-977802e3994116a3.js                31.4 kB
+  └ other shared chunks (total)                   1.96 kB
+
+Route (pages)                                     Size     First Load JS
+─   /_app                                         0 B            80.1 kB
++ First Load JS shared by all                     80.1 kB
+  ├ chunks/framework-95b6afa6f7cb70e1.js          45.2 kB
+  ├ chunks/main-42b87ad6a4be2777.js               32.9 kB
+  └ other shared chunks (total)                   2.02 kB
+
+ƒ Middleware                                      28.9 kB
+
+○  (Static)   prerendered as static content
+●  (SSG)      prerendered as static HTML (uses getStaticProps)
+ƒ  (Dynamic)  server-rendered on demand
+

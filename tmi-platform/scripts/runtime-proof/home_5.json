@@ -1,0 +1,13 @@
+{
+  "route": "/home/5",
+  "timestamp": "2026-05-09T03:02:01.478Z",
+  "httpStatus": 200,
+  "screenshotPath": "scripts\\runtime-proof\\home_5.png",
+  "consoleErrorCount": 0,
+  "networkErrorCount": 0,
+  "framerCrashDetected": false,
+  "frameCrashes": [],
+  "consoleErrors": [],
+  "networkErrors": [],
+  "allConsole": []
+}

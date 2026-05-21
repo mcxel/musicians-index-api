@@ -1,0 +1,32 @@
+﻿src/modules/friends/friends.service.ts(2,10): error TS2305: Module '"@prisma/client"' has no exported member 'FriendRequestStatus'.
+src/modules/friends/friends.service.ts(2,31): error TS2305: Module '"@prisma/client"' has no exported member 'FriendshipStatus'.
+src/modules/friends/friends.service.ts(14,36): error TS2339: Property 'friendship' does not exist on type 'PrismaService'.
+src/modules/friends/friends.service.ts(39,24): error TS2339: Property 'friendRequest' does not exist on type 'PrismaService'.
+src/modules/friends/friends.service.ts(54,50): error TS2339: Property 'friendship' does not exist on type 'PrismaService'.
+src/modules/friends/friends.service.ts(62,47): error TS2339: Property 'friendRequest' does not exist on type 'PrismaService'.
+src/modules/friends/friends.service.ts(76,23): error TS2339: Property 'friendRequest' does not exist on type 'PrismaService'.
+src/modules/friends/friends.service.ts(93,39): error TS2339: Property 'friendRequest' does not exist on type 'PrismaService'.
+src/modules/friends/friends.service.ts(108,19): error TS2339: Property 'friendRequest' does not exist on type 'PrismaService'.
+src/modules/friends/friends.service.ts(115,19): error TS2339: Property 'friendship' does not exist on type 'PrismaService'.
+src/modules/friends/friends.service.ts(133,39): error TS2339: Property 'friendRequest' does not exist on type 'PrismaService'.
+src/modules/friends/friends.service.ts(145,23): error TS2339: Property 'friendRequest' does not exist on type 'PrismaService'.
+src/modules/friends/friends.service.ts(158,42): error TS2339: Property 'friendship' does not exist on type 'PrismaService'.
+src/modules/friends/friends.service.ts(166,23): error TS2339: Property 'friendship' does not exist on type 'PrismaService'.
+src/modules/friends/friends.service.ts(179,42): error TS2339: Property 'friendship' does not exist on type 'PrismaService'.
+src/modules/messages/messages.service.ts(2,10): error TS2305: Module '"@prisma/client"' has no exported member 'ConversationType'.
+src/modules/messages/messages.service.ts(2,28): error TS2305: Module '"@prisma/client"' has no exported member 'MessageStatus'.
+src/modules/messages/messages.service.ts(2,43): error TS2305: Module '"@prisma/client"' has no exported member 'MessageType'.
+src/modules/messages/messages.service.ts(10,38): error TS2339: Property 'conversationMember' does not exist on type 'PrismaService'.
+src/modules/messages/messages.service.ts(23,40): error TS2339: Property 'conversation' does not exist on type 'PrismaService'.
+src/modules/messages/messages.service.ts(47,39): error TS2339: Property 'conversation' does not exist on type 'PrismaService'.
+src/modules/messages/messages.service.ts(65,43): error TS2339: Property 'conversationMember' does not exist on type 'PrismaService'.
+src/modules/messages/messages.service.ts(112,24): error TS2339: Property 'message' does not exist on type 'PrismaService'.
+src/modules/messages/messages.service.ts(132,39): error TS2339: Property 'message' does not exist on type 'PrismaService'.
+src/modules/messages/messages.service.ts(149,23): error TS2339: Property 'conversation' does not exist on type 'PrismaService'.
+src/modules/messages/messages.service.ts(161,38): error TS2339: Property 'message' does not exist on type 'PrismaService'.
+src/modules/messages/messages.service.ts(173,25): error TS2339: Property 'messageReadReceipt' does not exist on type 'PrismaService'.
+src/modules/messages/messages.service.ts(179,23): error TS2339: Property 'conversationMember' does not exist on type 'PrismaService'.
+src/modules/messages/messages.service.ts(190,40): error TS2339: Property 'message' does not exist on type 'PrismaService'.
+src/modules/messages/messages.service.ts(203,23): error TS2339: Property 'message' does not exist on type 'PrismaService'.
+src/modules/messages/messages.service.ts(216,43): error TS2339: Property 'conversationMember' does not exist on type 'PrismaService'.
+src/modules/messages/messages.service.ts(224,24): error TS2339: Property 'message' does not exist on type 'PrismaService'.

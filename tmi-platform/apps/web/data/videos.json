@@ -1,0 +1,402 @@
+[
+  {
+    "id": "video-001",
+    "title": "Pulse Audio Ad",
+    "sponsorId": "pulse-audio",
+    "type": "pre-roll",
+    "thumbnail": "/ads/video-001.svg",
+    "videoUrl": "/ads/video-001.mp4",
+    "duration": 10,
+    "mode": "TEST"
+  },
+  {
+    "id": "video-002",
+    "title": "Neon Drip Ad",
+    "sponsorId": "neon-drip",
+    "type": "mid-roll",
+    "thumbnail": "/ads/video-002.svg",
+    "videoUrl": "/ads/video-002.mp4",
+    "duration": 15,
+    "mode": "TEST"
+  },
+  {
+    "id": "video-003",
+    "title": "Volt Energy Ad",
+    "sponsorId": "volt-energy",
+    "type": "billboard",
+    "thumbnail": "/ads/video-003.svg",
+    "videoUrl": "/ads/video-003.mp4",
+    "duration": 20,
+    "mode": "TEST"
+  },
+  {
+    "id": "video-004",
+    "title": "Skyline Tech Ad",
+    "sponsorId": "skyline-tech",
+    "type": "pre-roll",
+    "thumbnail": "/ads/video-004.svg",
+    "videoUrl": "/ads/video-004.mp4",
+    "duration": 10,
+    "mode": "TEST"
+  },
+  {
+    "id": "video-005",
+    "title": "Luxora Ad",
+    "sponsorId": "luxora",
+    "type": "mid-roll",
+    "thumbnail": "/ads/video-005.svg",
+    "videoUrl": "/ads/video-005.mp4",
+    "duration": 15,
+    "mode": "TEST"
+  },
+  {
+    "id": "video-006",
+    "title": "BeatForge Ad",
+    "sponsorId": "beatforge",
+    "type": "billboard",
+    "thumbnail": "/ads/video-006.svg",
+    "videoUrl": "/ads/video-006.mp4",
+    "duration": 20,
+    "mode": "TEST"
+  },
+  {
+    "id": "video-007",
+    "title": "Nova Wear Ad",
+    "sponsorId": "nova-wear",
+    "type": "pre-roll",
+    "thumbnail": "/ads/video-007.svg",
+    "videoUrl": "/ads/video-007.mp4",
+    "duration": 10,
+    "mode": "TEST"
+  },
+  {
+    "id": "video-008",
+    "title": "HyperFuel Ad",
+    "sponsorId": "hyperfuel",
+    "type": "mid-roll",
+    "thumbnail": "/ads/video-008.svg",
+    "videoUrl": "/ads/video-008.mp4",
+    "duration": 15,
+    "mode": "TEST"
+  },
+  {
+    "id": "video-009",
+    "title": "SonicGrid Ad",
+    "sponsorId": "sonicgrid",
+    "type": "billboard",
+    "thumbnail": "/ads/video-009.svg",
+    "videoUrl": "/ads/video-009.mp4",
+    "duration": 20,
+    "mode": "TEST"
+  },
+  {
+    "id": "video-010",
+    "title": "VelourX Ad",
+    "sponsorId": "velourx",
+    "type": "pre-roll",
+    "thumbnail": "/ads/video-010.svg",
+    "videoUrl": "/ads/video-010.mp4",
+    "duration": 10,
+    "mode": "TEST"
+  },
+  {
+    "id": "video-011",
+    "title": "UrbanPhase Ad",
+    "sponsorId": "urbanphase",
+    "type": "mid-roll",
+    "thumbnail": "/ads/video-011.svg",
+    "videoUrl": "/ads/video-011.mp4",
+    "duration": 15,
+    "mode": "TEST"
+  },
+  {
+    "id": "video-012",
+    "title": "Aether Tech Ad",
+    "sponsorId": "aether-tech",
+    "type": "billboard",
+    "thumbnail": "/ads/video-012.svg",
+    "videoUrl": "/ads/video-012.mp4",
+    "duration": 20,
+    "mode": "TEST"
+  },
+  {
+    "id": "video-013",
+    "title": "Echo Labs Ad",
+    "sponsorId": "echo-labs",
+    "type": "pre-roll",
+    "thumbnail": "/ads/video-013.svg",
+    "videoUrl": "/ads/video-013.mp4",
+    "duration": 10,
+    "mode": "TEST"
+  },
+  {
+    "id": "video-014",
+    "title": "Flare Energy Ad",
+    "sponsorId": "flare-energy",
+    "type": "mid-roll",
+    "thumbnail": "/ads/video-014.svg",
+    "videoUrl": "/ads/video-014.mp4",
+    "duration": 15,
+    "mode": "TEST"
+  },
+  {
+    "id": "video-015",
+    "title": "ZenWear Ad",
+    "sponsorId": "zenwear",
+    "type": "billboard",
+    "thumbnail": "/ads/video-015.svg",
+    "videoUrl": "/ads/video-015.mp4",
+    "duration": 20,
+    "mode": "TEST"
+  },
+  {
+    "id": "video-016",
+    "title": "Drift Motors Ad",
+    "sponsorId": "drift-motors",
+    "type": "pre-roll",
+    "thumbnail": "/ads/video-016.svg",
+    "videoUrl": "/ads/video-016.mp4",
+    "duration": 10,
+    "mode": "TEST"
+  },
+  {
+    "id": "video-017",
+    "title": "Halo Beats Ad",
+    "sponsorId": "halo-beats",
+    "type": "mid-roll",
+    "thumbnail": "/ads/video-017.svg",
+    "videoUrl": "/ads/video-017.mp4",
+    "duration": 15,
+    "mode": "TEST"
+  },
+  {
+    "id": "video-018",
+    "title": "FusionCore Ad",
+    "sponsorId": "fusioncore",
+    "type": "billboard",
+    "thumbnail": "/ads/video-018.svg",
+    "videoUrl": "/ads/video-018.mp4",
+    "duration": 20,
+    "mode": "TEST"
+  },
+  {
+    "id": "video-019",
+    "title": "GlowClub Ad",
+    "sponsorId": "glowclub",
+    "type": "pre-roll",
+    "thumbnail": "/ads/video-019.svg",
+    "videoUrl": "/ads/video-019.mp4",
+    "duration": 10,
+    "mode": "TEST"
+  },
+  {
+    "id": "video-020",
+    "title": "PrimeKicks Ad",
+    "sponsorId": "primekicks",
+    "type": "mid-roll",
+    "thumbnail": "/ads/video-020.svg",
+    "videoUrl": "/ads/video-020.mp4",
+    "duration": 15,
+    "mode": "TEST"
+  },
+  {
+    "id": "video-021",
+    "title": "NexusGear Ad",
+    "sponsorId": "nexusgear",
+    "type": "billboard",
+    "thumbnail": "/ads/video-021.svg",
+    "videoUrl": "/ads/video-021.mp4",
+    "duration": 20,
+    "mode": "TEST"
+  },
+  {
+    "id": "video-022",
+    "title": "UrbanVibe Ad",
+    "sponsorId": "urbanvibe",
+    "type": "pre-roll",
+    "thumbnail": "/ads/video-022.svg",
+    "videoUrl": "/ads/video-022.mp4",
+    "duration": 10,
+    "mode": "TEST"
+  },
+  {
+    "id": "video-023",
+    "title": "Lume Energy Ad",
+    "sponsorId": "lume-energy",
+    "type": "mid-roll",
+    "thumbnail": "/ads/video-023.svg",
+    "videoUrl": "/ads/video-023.mp4",
+    "duration": 15,
+    "mode": "TEST"
+  },
+  {
+    "id": "video-024",
+    "title": "AudioLux Ad",
+    "sponsorId": "audiolux",
+    "type": "billboard",
+    "thumbnail": "/ads/video-024.svg",
+    "videoUrl": "/ads/video-024.mp4",
+    "duration": 20,
+    "mode": "TEST"
+  },
+  {
+    "id": "video-025",
+    "title": "NextWave Ad",
+    "sponsorId": "nextwave",
+    "type": "pre-roll",
+    "thumbnail": "/ads/video-025.svg",
+    "videoUrl": "/ads/video-025.mp4",
+    "duration": 10,
+    "mode": "TEST"
+  },
+  {
+    "id": "video-026",
+    "title": "StreetNova Ad",
+    "sponsorId": "streetnova",
+    "type": "mid-roll",
+    "thumbnail": "/ads/video-026.svg",
+    "videoUrl": "/ads/video-026.mp4",
+    "duration": 15,
+    "mode": "TEST"
+  },
+  {
+    "id": "video-027",
+    "title": "HyperBeats Ad",
+    "sponsorId": "hyperbeats",
+    "type": "billboard",
+    "thumbnail": "/ads/video-027.svg",
+    "videoUrl": "/ads/video-027.mp4",
+    "duration": 20,
+    "mode": "TEST"
+  },
+  {
+    "id": "video-028",
+    "title": "ZenithWear Ad",
+    "sponsorId": "zenithwear",
+    "type": "pre-roll",
+    "thumbnail": "/ads/video-028.svg",
+    "videoUrl": "/ads/video-028.mp4",
+    "duration": 10,
+    "mode": "TEST"
+  },
+  {
+    "id": "video-029",
+    "title": "VoltGear Ad",
+    "sponsorId": "voltgear",
+    "type": "mid-roll",
+    "thumbnail": "/ads/video-029.svg",
+    "videoUrl": "/ads/video-029.mp4",
+    "duration": 15,
+    "mode": "TEST"
+  },
+  {
+    "id": "video-030",
+    "title": "Aura Labs Ad",
+    "sponsorId": "aura-labs",
+    "type": "billboard",
+    "thumbnail": "/ads/video-030.svg",
+    "videoUrl": "/ads/video-030.mp4",
+    "duration": 20,
+    "mode": "TEST"
+  },
+  {
+    "id": "video-031",
+    "title": "PulseFit Ad",
+    "sponsorId": "pulsefit",
+    "type": "pre-roll",
+    "thumbnail": "/ads/video-031.svg",
+    "videoUrl": "/ads/video-031.mp4",
+    "duration": 10,
+    "mode": "TEST"
+  },
+  {
+    "id": "video-032",
+    "title": "NightCore Ad",
+    "sponsorId": "nightcore",
+    "type": "mid-roll",
+    "thumbnail": "/ads/video-032.svg",
+    "videoUrl": "/ads/video-032.mp4",
+    "duration": 15,
+    "mode": "TEST"
+  },
+  {
+    "id": "video-033",
+    "title": "Echo Street Ad",
+    "sponsorId": "echo-street",
+    "type": "billboard",
+    "thumbnail": "/ads/video-033.svg",
+    "videoUrl": "/ads/video-033.mp4",
+    "duration": 20,
+    "mode": "TEST"
+  },
+  {
+    "id": "video-034",
+    "title": "Nova Auto Ad",
+    "sponsorId": "nova-auto",
+    "type": "pre-roll",
+    "thumbnail": "/ads/video-034.svg",
+    "videoUrl": "/ads/video-034.mp4",
+    "duration": 10,
+    "mode": "TEST"
+  },
+  {
+    "id": "video-035",
+    "title": "LuxBeats Ad",
+    "sponsorId": "luxbeats",
+    "type": "mid-roll",
+    "thumbnail": "/ads/video-035.svg",
+    "videoUrl": "/ads/video-035.mp4",
+    "duration": 15,
+    "mode": "TEST"
+  },
+  {
+    "id": "video-036",
+    "title": "AetherWear Ad",
+    "sponsorId": "aetherwear",
+    "type": "billboard",
+    "thumbnail": "/ads/video-036.svg",
+    "videoUrl": "/ads/video-036.mp4",
+    "duration": 20,
+    "mode": "TEST"
+  },
+  {
+    "id": "video-037",
+    "title": "Vortex Energy Ad",
+    "sponsorId": "vortex-energy",
+    "type": "pre-roll",
+    "thumbnail": "/ads/video-037.svg",
+    "videoUrl": "/ads/video-037.mp4",
+    "duration": 10,
+    "mode": "TEST"
+  },
+  {
+    "id": "video-038",
+    "title": "GridTech Ad",
+    "sponsorId": "gridtech",
+    "type": "mid-roll",
+    "thumbnail": "/ads/video-038.svg",
+    "videoUrl": "/ads/video-038.mp4",
+    "duration": 15,
+    "mode": "TEST"
+  },
+  {
+    "id": "video-039",
+    "title": "UrbanHalo Ad",
+    "sponsorId": "urbanhalo",
+    "type": "billboard",
+    "thumbnail": "/ads/video-039.svg",
+    "videoUrl": "/ads/video-039.mp4",
+    "duration": 20,
+    "mode": "TEST"
+  },
+  {
+    "id": "video-040",
+    "title": "PrimeAudio Ad",
+    "sponsorId": "primeaudio",
+    "type": "pre-roll",
+    "thumbnail": "/ads/video-040.svg",
+    "videoUrl": "/ads/video-040.mp4",
+    "duration": 10,
+    "mode": "TEST"
+  }
+]

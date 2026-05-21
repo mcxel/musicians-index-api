@@ -1,0 +1,14 @@
+﻿[
+    {
+        "type":  "COMPONENT",
+        "name":  "Slider",
+        "status":  "MISSING",
+        "priority":  "P1"
+    },
+    {
+        "type":  "COMPONENT",
+        "name":  "Chevron",
+        "status":  "MISSING",
+        "priority":  "P1"
+    }
+]

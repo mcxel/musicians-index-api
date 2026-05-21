@@ -6,7 +6,6 @@
 
 import {
   getPaletteByGenre,
-  getAllGenres,
   type GenreKey,
   type GenrePalette,
 } from "./genre-colors";
@@ -141,7 +140,7 @@ export function getNextIssueInSchedule(currentIssue: number): MagazineIssue {
 /**
  * Get issue for a specific date (in production, would be based on magazine calendar)
  */
-export function getIssueForDate(date: Date = new Date()): MagazineIssue {
+export function getIssueForDate(_date: Date = new Date()): MagazineIssue {
   // For now: just use current issue
   // In production: calculate based on publish schedule
   return CURRENT_ISSUE;

@@ -34,7 +34,7 @@ export default function ArtistDashboardPage() {
   useEffect(() => {
     const load = async () => {
       try {
-        const res = await fetch("/api/users/me", { cache: "no-store", credentials: "include" });
+        const res = await fetch("/api/auth/session", { cache: "no-store", credentials: "include" });
         if (res.status === 401 || res.status === 403) {
           router.replace("/auth");
           return;

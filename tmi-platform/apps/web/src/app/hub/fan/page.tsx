@@ -6,6 +6,7 @@ import FanSocialRail from "@/components/fan/FanSocialRail";
 import FanWalletRail from "@/components/fan/FanWalletRail";
 import { SeasonPassProgress } from "@/components/fan/SeasonPassProgress";
 import type { UserSeasonPass, SeasonPassReward } from "@/lib/gamification/SeasonPassEngine";
+import TMIVideoMonitor from "@/components/hud/TMIVideoMonitor";
 import Link from "next/link";
 import { useGamificationEngine } from "@/hooks/useGamificationEngine";
 
@@ -247,6 +248,7 @@ export default function FanHubPage() {
         <FanWalletRail tipBalance={walletCredits / 100} voteCredits={currentLevel.level * 3} transactions={SEED_TRANSACTIONS} fanSlug="demo-fan" />
 
       </div>
+      <TMIVideoMonitor label="FAN CAM" position="bottom-right" />
     </div>
   );
 }

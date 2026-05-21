@@ -1,0 +1,4 @@
+// ARCHIVED STUB — This file is NOT the source of truth.
+// Source of truth: tmi-platform/packages/db/prisma/schema.prisma
+// This file was an orphaned stub that only had 4 tables and caused P2022 errors.
+// Do NOT run prisma commands from apps/api — always run from packages/db.

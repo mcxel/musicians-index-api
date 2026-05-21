@@ -11,7 +11,7 @@ export default function OnboardingPage() {
   useEffect(() => {
     const run = async () => {
       try {
-        const res = await fetch("/api/users/me", { cache: "no-store" });
+        const res = await fetch("/api/auth/session", { cache: "no-store" });
 
         if (!res.ok) {
           router.replace("/auth?next=%2Fonboarding");

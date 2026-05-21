@@ -1,0 +1,37 @@
+{
+  "name": "The Musician's Index",
+  "short_name": "TMI",
+  "description": "This is your stage, be original. Live music magazine + streaming + games.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0D0520",
+  "theme_color": "#FFB800",
+  "orientation": "portrait-primary",
+  "lang": "en-US",
+  "categories": ["music", "entertainment", "social"],
+  "icons": [
+    { "src": "/icons/icon-72.png",   "sizes": "72x72",   "type": "image/png" },
+    { "src": "/icons/icon-96.png",   "sizes": "96x96",   "type": "image/png" },
+    { "src": "/icons/icon-128.png",  "sizes": "128x128", "type": "image/png" },
+    { "src": "/icons/icon-144.png",  "sizes": "144x144", "type": "image/png" },
+    { "src": "/icons/icon-192.png",  "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/icon-384.png",  "sizes": "384x384", "type": "image/png" },
+    { "src": "/icons/icon-512.png",  "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ],
+  "screenshots": [
+    { "src": "/screenshots/home-mobile.png",   "sizes": "390x844",  "type": "image/png", "form_factor": "narrow",  "label": "Magazine Cover" },
+    { "src": "/screenshots/lobby-mobile.png",  "sizes": "390x844",  "type": "image/png", "form_factor": "narrow",  "label": "Live World" },
+    { "src": "/screenshots/home-desktop.png",  "sizes": "1280x720", "type": "image/png", "form_factor": "wide",    "label": "Desktop Magazine" }
+  ],
+  "shortcuts": [
+    { "name": "Live Now",   "short_name": "Live",   "url": "/lobby",       "icons": [{ "src": "/icons/shortcut-live.png",   "sizes": "96x96" }] },
+    { "name": "Games",      "short_name": "Games",  "url": "/games",       "icons": [{ "src": "/icons/shortcut-games.png",  "sizes": "96x96" }] },
+    { "name": "My Profile", "short_name": "Profile","url": "/profile",     "icons": [{ "src": "/icons/shortcut-profile.png","sizes": "96x96" }] },
+    { "name": "Shop",       "short_name": "Shop",   "url": "/shop",        "icons": [{ "src": "/icons/shortcut-shop.png",   "sizes": "96x96" }] }
+  ],
+  "related_applications": [
+    { "platform": "play",    "url": "https://play.google.com/store/apps/details?id=com.themusiciansindex" },
+    { "platform": "itunes",  "url": "https://apps.apple.com/app/the-musicians-index" }
+  ],
+  "prefer_related_applications": false
+}

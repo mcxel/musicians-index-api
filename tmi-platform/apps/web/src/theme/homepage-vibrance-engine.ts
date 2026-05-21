@@ -8,13 +8,6 @@ import {
   getCurrentIssueTheme,
   type IssueColorTheme,
 } from "./issue-color-engine";
-import {
-  getMagazineCardStyle,
-  getHeroGradient,
-  getAccentBarStyle,
-  getBadgeStyle,
-  type MagazineTheme,
-} from "./magazine-palette-engine";
 import { getPaletteByGenre, type GenreKey } from "./genre-colors";
 
 export interface HomepageSectionColors {
@@ -240,7 +233,7 @@ export function getVibranceCSSVariables(pageNumber: number): Record<string, stri
  * Tailwind class generator for vibrant cards
  * Can be injected into className strings
  */
-export function getVibranceCardClasses(pageNumber: number): string {
+export function getVibranceCardClasses(_pageNumber: number): string {
   return `
     border-2 rounded-xl
     bg-opacity-5 backdrop-blur-md

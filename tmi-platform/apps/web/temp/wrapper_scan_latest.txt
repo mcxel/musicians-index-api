@@ -1,0 +1,390 @@
+=== Runtime Wrapper Authenticity Scan ===
+Files scanned: 4127
+
+Required wrapper/engine symbol presence:
+- VisualAuthorityGateway: FOUND
+- AIVisualReplacementRouter: FOUND
+- RuntimeImageHydrationQueue: FOUND
+- DynamicMagazineImageResolver: FOUND
+- PerformerMotionPortraitEngine: FOUND
+- VenueAssetReconstructionPipeline: FOUND
+- AvatarAssetGenerationEngine: FOUND
+
+Findings:
+
+[HIGH] 30
+- src\components\magazine\ArticleCard.tsx: Possible direct PDF-derived asset reference in visual path.
+- src\components\MagazineCover.tsx: Possible direct PDF-derived asset reference in visual path.
+- src\components\tmi\homepage\PromotionalHub.jsx: Possible direct PDF-derived asset reference in visual path.
+- src\components\tmi\preview\ArticlesHub.jsx: Possible direct PDF-derived asset reference in visual path.
+- src\components\tmi\shared\AudienceRoom.jsx: Possible direct PDF-derived asset reference in visual path.
+- src\components\tmi\sponsor\BillboardBoard.jsx: Possible direct PDF-derived asset reference in visual path.
+- src\data\lobbies\lobbyAssets.ts: Possible direct PDF-derived asset reference in visual path.
+- src\lib\assets\beatAssetRegistry.ts: Possible direct PDF-derived asset reference in visual path.
+- src\lib\assets\sponsorAssetRegistry.ts: Possible direct PDF-derived asset reference in visual path.
+- src\lib\assets\venueAssetRegistry.ts: Possible direct PDF-derived asset reference in visual path.
+- src\lib\media\TmiImageSourceMap.ts: Possible direct PDF-derived asset reference in visual path.
+- src\lib\messages\DirectMessageEngine.ts: Possible direct PDF-derived asset reference in visual path.
+- src\lib\pdf\InteractiveSurfaceGenerator.ts: Possible direct PDF-derived asset reference in visual path.
+- src\lib\pdf\MagazineLayoutExtractor.ts: Possible direct PDF-derived asset reference in visual path.
+- src\lib\pdf\PdfVisualDecompiler.ts: Possible direct PDF-derived asset reference in visual path.
+- src\lib\pdf\ShardTopologyAnalyzer.ts: Possible direct PDF-derived asset reference in visual path.
+- src\lib\runtime\governor\AIVisionRuntimePriority.ts: Possible direct PDF-derived asset reference in visual path.
+- src\lib\tickets\ticketCore.ts: Possible direct PDF-derived asset reference in visual path.
+- src\lib\tickets\ticketEngine.ts: Possible direct PDF-derived asset reference in visual path.
+- src\lib\tickets\TicketPrintEngine.ts: Possible direct PDF-derived asset reference in visual path.
+- src\lib\tickets\TicketPrinterEngine.ts: Possible direct PDF-derived asset reference in visual path.
+- src\lib\vision\AssetIngestionGateway.ts: Possible direct PDF-derived asset reference in visual path.
+- src\lib\vision\UniversalFileDecomposer.ts: Possible direct PDF-derived asset reference in visual path.
+- src\lib\vision\VisionAuthorityBridge.ts: Possible direct PDF-derived asset reference in visual path.
+- src\packages\foundation-visual\ArtistProfileHub.tsx: Possible direct PDF-derived asset reference in visual path.
+- src\packages\magazine-engine\assetPlacementManifest.ts: Possible direct PDF-derived asset reference in visual path.
+- src\packages\magazine-engine\CinematicNewsArticle.tsx: Possible direct PDF-derived asset reference in visual path.
+- src\packages\magazine-engine\contentRegistry.tsx: Possible direct PDF-derived asset reference in visual path.
+- src\packages\magazine-engine\Home2ArtifactSystem.tsx: Possible direct PDF-derived asset reference in visual path.
+- src\packages\magazine-engine\Home5ArtifactSystem.tsx: Possible direct PDF-derived asset reference in visual path.
+
+[MEDIUM] 8
+- src\app\admin\seo\page.tsx: Raw <img> tag detected; verify governed wrapper is used for public surfaces.
+- src\components\visual-enforcement\ImageSlotWrapper.tsx: Raw <img> tag detected; verify governed wrapper is used for public surfaces.
+- src\components\visual-enforcement\index.ts: Raw <img> tag detected; verify governed wrapper is used for public surfaces.
+- src\hooks\useLivePhoto.js: Raw <img> tag detected; verify governed wrapper is used for public surfaces.
+- src\hooks\useLivePhoto.js: Static src= literal detected; verify authority routing + hydration queue.
+- src\lib\vision\scan-authority-wrapper-integrity.ts: Raw <img> tag detected; verify governed wrapper is used for public surfaces.
+- src\lib\vision\scan-authority-wrapper-integrity.ts: Static src= literal detected; verify authority routing + hydration queue.
+- src\lib\vision\scan-no-static-bypass.ts: Raw <img> tag detected; verify governed wrapper is used for public surfaces.
+
+[LOW] 333
+- src\app\admin\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\admin\promos\create\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\admin\recovery-center\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\admin\style-debug\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\admin\visual-coverage\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\admin\visual-creator\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\api\admin\provision-tester\route.ts: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\api\homepage\charts\route.ts: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\api\homepage\contest\route.ts: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\api\homepage\live\route.ts: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\api\homepage\new-releases\route.ts: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\api\homepage\sponsors\route.ts: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\articles\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\articles\[slug]\page.tsx: Governed wrapper usage without obvious telemetry hook.
+- src\app\audio\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\auth\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\auth\session-recovery\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\avatar\create\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\avatar\nft\page.tsx: Governed wrapper usage without obvious telemetry hook.
+- src\app\battles\create\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\beats\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\beats\submit\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\beats\[slug]\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\checkout\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\competitions\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\competitions\[slug]\bracket\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\competitions\[slug]\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\competitions\[slug]\register\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\credits\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\cypher\create\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\dance-party\submit\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\danikaslaw\law-bubble\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\dashboard\beats\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\dashboard\fan-clubs\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\dirty-dozens\create\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\discover\[id]\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\editorial\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\editorial\[slug]\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\email-verification\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\fan\feed\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\fan\[slug]\tickets\nft\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\fan\[slug]\tickets\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\fan-club\[artistSlug]\feed\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\fan-club\[artistSlug]\join\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\fan-club\[artistSlug]\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\friends\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\gift\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\go-live\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\groups\[id]\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\hub\artist\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\live\audience\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\live\billboards\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\live\chat\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\live\green-room\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\live\hosts\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\live\queue\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\live\[slug]\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\lobby\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\magazine\archive\page.tsx: Governed wrapper usage without obvious telemetry hook.
+- src\app\memories\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\messages\new\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\messages\[threadId]\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\nft-lab\mint\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\notifications\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\onboarding\admin\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\onboarding\advertiser\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\onboarding\artist\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\onboarding\fan\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\onboarding\sponsor\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\party\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\password-reset\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\promo\[code]\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\recaps\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\rooms\cypher\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\rooms\monday-stage\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\search\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\seasons\[slug]\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\session-recovery\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\settings\account\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\settings\billing\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\settings\notifications\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\settings\privacy\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\settings\profile\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\shoutout\[artistSlug]\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\shows\monday-night-stage\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\shows\monthly-idol\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\shows\name-that-tune\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\signup\advertiser\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\signup\fan\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\signup\host\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\signup\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\signup\performer\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\signup\sponsor\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\signup\teen\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\submit\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\ticketing\create\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\tickets\print\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\tickets\scanner\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\tickets\validate\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\tip\[artistSlug]\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\venues\designer\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\venues\[slug]\audience\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\venues\[slug]\host\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\venues\[slug]\queue\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\waitlist\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\wallet\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\writers\signup\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\app\writers\submit\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\admin\AdminTextCommandConsole.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\admin\AdminVisualCommandSummaryCard.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\admin\AdminVisualCommandWindow.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\admin\BotOperationsWall.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\admin\overseer\FeedExplorer.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\admin\UserManagement.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\ads\AdRenderer.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\ads\AdSlotRotator.tsx: Governed wrapper usage without obvious telemetry hook.
+- src\components\advertisers\CampaignBuilder.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\ai-visuals\AssetPlacementPicker.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\ai-visuals\PlaceholderReplacementPanel.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\arena\ArenaViewer.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\arena\AvatarSprite.tsx: Governed wrapper usage without obvious telemetry hook.
+- src\components\artist\ArtistHeader.tsx: Governed wrapper usage without obvious telemetry hook.
+- src\components\artists\ArtistFaceCard.tsx: Governed wrapper usage without obvious telemetry hook.
+- src\components\auth\DeviceTrustPanel.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\auth\ForgotPasswordForm.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\avatar\AvatarSaveRail.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\billboards\TmiHoverPreviewCard.tsx: Governed wrapper usage without obvious telemetry hook.
+- src\components\camera\CameraDirectorPanel.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\cards\MediaCardShell.tsx: Governed wrapper usage without obvious telemetry hook.
+- src\components\cards\MotionPortraitCard.tsx: Governed wrapper usage without obvious telemetry hook.
+- src\components\charts\ChartStrip.tsx: Governed wrapper usage without obvious telemetry hook.
+- src\components\chat\ChatWidgetSettingsMenu.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\ChatBubbleArea.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\commerce\TipArtistBox.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\contest\ContestDiscoveryGrid.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\contest\ContestDiscoveryGrid.tsx: Governed wrapper usage without obvious telemetry hook.
+- src\components\contest\ScoreboardOverlay.tsx: Governed wrapper usage without obvious telemetry hook.
+- src\components\contest\WinnerRevealPanel.tsx: Governed wrapper usage without obvious telemetry hook.
+- src\components\environment\TmiVenueBackground.tsx: Governed wrapper usage without obvious telemetry hook.
+- src\components\environments\SponsorSlotWall.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\face\FaceRecovery.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\fan\FanPointsPanel.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\fan\FanProfileShell.tsx: Governed wrapper usage without obvious telemetry hook.
+- src\components\frames\SlotRotationEngine.ts: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\global\CountryArtistRail.tsx: Governed wrapper usage without obvious telemetry hook.
+- src\components\HeroSectionFixed.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\HeroSectionFixed.tsx: Governed wrapper usage without obvious telemetry hook.
+- src\components\home\CrownCenterFeature.tsx: Governed wrapper usage without obvious telemetry hook.
+- src\components\home\FeaturedArtist.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\home\GovernedOrbitFace.tsx: Governed wrapper usage without obvious telemetry hook.
+- src\components\home\Home12SpreadSurface.tsx: Governed wrapper usage without obvious telemetry hook.
+- src\components\home\Home1Top10DoubleSpreaded.tsx: Governed wrapper usage without obvious telemetry hook.
+- src\components\home\Home3WorldPremiereCard.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\home\HomePage05LiveAdInventory.tsx: Governed wrapper usage without obvious telemetry hook.
+- src\components\home\HomePage05PlacementMarketplace.tsx: Governed wrapper usage without obvious telemetry hook.
+- src\components\home\HomePage05SponsorSpotlight.tsx: Governed wrapper usage without obvious telemetry hook.
+- src\components\home\MagazineCarousel.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\home\MagazineCoverScreen.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\home\MiniLiveRoomsStrip.tsx: Governed wrapper usage without obvious telemetry hook.
+- src\components\home\NeonAdTile.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\home\OrbitBattleAnimationLayer.tsx: Governed wrapper usage without obvious telemetry hook.
+- src\components\home\OrbitRankingGrid.tsx: Governed wrapper usage without obvious telemetry hook.
+- src\components\home\RankEditorialBlock.tsx: Governed wrapper usage without obvious telemetry hook.
+- src\components\home\RankStackRiseLayer.tsx: Governed wrapper usage without obvious telemetry hook.
+- src\components\home\system\HomeCard.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\host\PrizeRevealControlPanel.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\host\RayJourneyHost.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\hosts\HostMotionAvatar.tsx: Governed wrapper usage without obvious telemetry hook.
+- src\components\hosts\HostPortraitCard.tsx: Governed wrapper usage without obvious telemetry hook.
+- src\components\hosts\HostRosterPanel.tsx: Governed wrapper usage without obvious telemetry hook.
+- src\components\hud\RefundBatchCard.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\investor\InvestorPreviewSurface.tsx: Governed wrapper usage without obvious telemetry hook.
+- src\components\law-bubble\LawBubbleWidget.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\layers\MagazinePageShell.tsx: Governed wrapper usage without obvious telemetry hook.
+- src\components\layout\Footer.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\layout\Header.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\layout\OriginalityNote.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\LiveRooms.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\lobbies\LobbyInviteQueue.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\lobbies\LobbyMainBillboard.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\lobbies\LobbyTheaterShell.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\lobby\ArtistOpportunityPanel.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\lobby\CountdownCard.tsx: Governed wrapper usage without obvious telemetry hook.
+- src\components\lobby\LobbyChatRail.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\lobby\SponsorSpotlightPanel.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\lobby\WorldPremierePanel.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\magazine\ArticleCard.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\magazine\ArticleCard.tsx: Governed wrapper usage without obvious telemetry hook.
+- src\components\magazine\buildMagazineIssuePages.tsx: Governed wrapper usage without obvious telemetry hook.
+- src\components\magazine\Headline.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\magazine\MagazineArticleSurface.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\magazine\MagazineLandingLobby.tsx: Governed wrapper usage without obvious telemetry hook.
+- src\components\magazine\MagazineMarketplaceBelt.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\magazine\Top10Flame.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\MagazineCover.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\messaging\InboxPanel.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\messaging\RoomChatPanel.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\monitors\GovernedMonitorSlot.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\monitors\GovernedMonitorSlot.tsx: Governed wrapper usage without obvious telemetry hook.
+- src\components\monitors\LivePreviewMonitor.tsx: Governed wrapper usage without obvious telemetry hook.
+- src\components\monitors\MonitorSlot.tsx: Governed wrapper usage without obvious telemetry hook.
+- src\components\Navigation.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\notifications\NotificationPanel.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\onboarding\AvatarQuickPick.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\onboarding\OnboardingShell.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\performer\PerformerMediaRail.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\performer\PerformerProfileShell.tsx: Governed wrapper usage without obvious telemetry hook.
+- src\components\placement\AdPlacementCard.tsx: Governed wrapper usage without obvious telemetry hook.
+- src\components\placement\SponsorSlot.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\preview\CompareModePanel.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\preview\PreviewMetadataCard.tsx: Governed wrapper usage without obvious telemetry hook.
+- src\components\preview\SharedPreviewStagePanel.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\preview\SharedPreviewStagePanel.tsx: Governed wrapper usage without obvious telemetry hook.
+- src\components\preview\SharedPreviewWindow.tsx: Governed wrapper usage without obvious telemetry hook.
+- src\components\producer\ProducerBeatLocker.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\producer\ProducerInvitePanel.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\profile\ArtistArticleRail.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\profile\ArtistHeroPanel.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\profile\ArtistMediaLockerPanel.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\profile\ProfileShell.tsx: Governed wrapper usage without obvious telemetry hook.
+- src\components\ranking\Top10ReactionLayer.tsx: Governed wrapper usage without obvious telemetry hook.
+- src\components\RecapCard.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\recovery\SessionRecoveryProvider.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\results\HighlightRail.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\results\WinnerCard.tsx: Governed wrapper usage without obvious telemetry hook.
+- src\components\room\ArenaRoomShell.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\room\BattleRoomShell.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\room\CypherRoomShell.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\RoomHealthCard.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\safety\FamilyMemberRequestPanel.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\safety\FamilyVerificationPrompt.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\scenes\RoomSceneBackground.tsx: Governed wrapper usage without obvious telemetry hook.
+- src\components\scenes\ScenePickerPanel.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\search\GlobalSearchBar.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\search\SearchResultCard.tsx: Governed wrapper usage without obvious telemetry hook.
+- src\components\SearchBar.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\ShareCard.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\sponsor\SponsorContestPanel.tsx: Governed wrapper usage without obvious telemetry hook.
+- src\components\sponsor\SponsorContractsRail.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\sponsor\SponsorPrizeRail.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\sponsor\SponsorROIAnalytics.tsx: Governed wrapper usage without obvious telemetry hook.
+- src\components\sponsors\DealsRail.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\sponsors\GiftsRail.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\sponsors\SponsorCard.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\sponsors\SponsorCard.tsx: Governed wrapper usage without obvious telemetry hook.
+- src\components\sponsors\SponsorMotionLayer.tsx: Governed wrapper usage without obvious telemetry hook.
+- src\components\sponsors\SponsorRail.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\SpotlightRail.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\tickets\PrintableVenueTicket.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\tickets\TicketBatchPrintPanel.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\tickets\TicketTransferModal.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\tickets\VenueTicketPrintLoader.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\tmi\animations\index.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\tmi\games\DealVsFeud1000.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\tmi\homepage\PromotionalHub.jsx: Governed wrapper usage without obvious telemetry hook.
+- src\components\tmi\magazine\MagazineLayout.tsx: Governed wrapper usage without obvious telemetry hook.
+- src\components\tmi\magazine\MagazinePage2.jsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\tmi\nav\MagazineNavSystem.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\tmi\preview\ArticlesHub.jsx: Governed wrapper usage without obvious telemetry hook.
+- src\components\tmi\shared\AuctionWidget.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\tmi\sponsor\BillboardBoard.jsx: Governed wrapper usage without obvious telemetry hook.
+- src\components\tmi\sponsor\index.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\tmi\sponsor\placements.ts: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\tmi\sponsor\SponsorInvitePanel.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\tmi\sponsor\SponsorInvitePanel.tsx: Governed wrapper usage without obvious telemetry hook.
+- src\components\tmi\sponsor\SponsorTile.tsx: Governed wrapper usage without obvious telemetry hook.
+- src\components\user\UserAvatar.tsx: Governed wrapper usage without obvious telemetry hook.
+- src\components\venue\DigitalVenueTwinShell.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\venue\VenueScreenSystem.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\venue\VenueSponsorBoard.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\venues\TicketPrintEngine.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\venues\TicketScannerRail.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\venues\VenueLiveChatShell.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\venues\VenueTicketShell.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\venues\VenueWorldShell.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\visual-enforcement\ImageSlotWrapper.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\visual-enforcement\index.ts: Governed wrapper usage without obvious telemetry hook.
+- src\components\visual-enforcement\PerformerPortraitWrapper.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\visual-enforcement\VenueReconstructionWrapper.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\voice\RoomVoiceControlPanel.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\components\world\CityMapPanel.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\hooks\useLivePhoto.js: Governed wrapper usage without obvious telemetry hook.
+- src\lib\ai-visuals\AIVisualReplacementRouter.ts: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\lib\ai-visuals\AuthorityAwareVisualGenerators.ts: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\lib\ai-visuals\CreativeProductionHealthEngine.ts: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\lib\ai-visuals\DynamicMagazineImageResolver.ts: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\lib\ai-visuals\FaceConsistencyEngine.ts: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\lib\ai-visuals\GlobalImageScannerEngine.ts: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\lib\ai-visuals\StubDetectionEngine.ts: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\lib\ai-visuals\VisualAuthorityGateway.ts: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\lib\ai-visuals\VisualAutoFillRuntime.ts: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\lib\ai-visuals\VisualMissingAssetDetector.ts: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\lib\ai-visuals\VisualQueueDiagnosticsEngine.ts: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\lib\auth\PasswordResetMailEngine.ts: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\lib\avatar\AvatarReconstructionEngine.ts: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\lib\avatar\AvatarRecoveryCoordinator.ts: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\lib\ceremony\CeremonyPhraseEvolutionEngine.ts: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\lib\chat\RoomChatModerationEngine.ts: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\lib\content-replacement\AssetTruthRegistry.ts: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\lib\content-replacement\ContentReplacementPipeline.ts: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\lib\content-replacement\index.ts: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\lib\content-replacement\PlaceholderScanner.ts: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\lib\editorial\EditorialValidationEngine.ts: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\lib\environments\SponsorPlacementEngine.ts: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\lib\live\LiveIdentitySurfaceEngine.ts: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\lib\magazine\magazineRotationSeeder.ts: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\lib\ops\tmiBlockerRegistry.ts: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\lib\profile\ProfileCameraFallbackEngine.ts: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\lib\promos\PromoCodeEngine.ts: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\lib\safety\tmiSafetyRules.ts: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\lib\stripe\products.ts: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\lib\tickets\TicketPrintEngine.ts: Governed wrapper usage without obvious telemetry hook.
+- src\lib\vision\scan-no-static-bypass.ts: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\lib\vision\scan-no-static-bypass.ts: Governed wrapper usage without obvious telemetry hook.
+- src\lib\visuals\TmiVisualSlotRegistry.ts: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\packages\artists\ArtistPortalFace.tsx: Governed wrapper usage without obvious telemetry hook.
+- src\packages\foundation-visual\ArticleFeatureCard.tsx: Governed wrapper usage without obvious telemetry hook.
+- src\packages\foundation-visual\SponsorSpotlightFrame.tsx: Governed wrapper usage without obvious telemetry hook.
+- src\packages\home\experience\ArtistFaceCard.tsx: Governed wrapper usage without obvious telemetry hook.
+- src\packages\home\experience\GenreOrbitFaceCard.tsx: Governed wrapper usage without obvious telemetry hook.
+- src\packages\home\experience\TopArtistMotionPortrait.tsx: Governed wrapper usage without obvious telemetry hook.
+- src\packages\home\tmi\TmiReferenceZone.tsx: Governed wrapper usage without obvious telemetry hook.
+- src\packages\magazine-engine\ArtistArticleTemplateMixer.tsx: Governed wrapper usage without obvious telemetry hook.
+- src\packages\magazine-engine\assetPlacementManifest.ts: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\packages\magazine-engine\Home1OpenSpreadOverlay.tsx: Governed wrapper usage without obvious telemetry hook.
+- src\packages\magazine-engine\Home2ArtifactSystem.tsx: Governed wrapper usage without obvious telemetry hook.
+- src\packages\magazine-engine\Home5ArtifactSystem.tsx: Governed wrapper usage without obvious telemetry hook.
+- src\packages\magazine-engine\liveZones.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\packages\magazine-engine\MagazineShellSystem.tsx: Governed wrapper usage without obvious telemetry hook.
+- src\packages\magazine-engine\NewsArticleGrid.tsx: Governed wrapper usage without obvious telemetry hook.
+- src\packages\magazine-engine\page.tsx: Fallback/placeholder wording found; validate fallback is recoverable and temporary.
+- src\packages\magazine-engine\SponsorAdSlotGrid.tsx: Governed wrapper usage without obvious telemetry hook.
+- src\packages\motion\VerticalGenreScroller.tsx: Governed wrapper usage without obvious telemetry hook.

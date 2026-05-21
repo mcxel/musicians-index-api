@@ -1,0 +1,131 @@
+# .github/workflows/deploy.yml
+# TMI Platform CI/CD — Test → Build → Deploy
+# Triggers: push to main (production) or staging branch
+
+name: TMI Deploy Pipeline
+
+on:
+  push:
+    branches: [main, staging]
+  pull_request:
+    branches: [main]
+
+env:
+  NODE_VERSION: "20"
+  PNPM_VERSION: "9"
+
+jobs:
+  # ── JOB 1: TYPE CHECK + LINT ────────────────────────────
+  check:
+    name: Type Check & Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v3
+        with: { version: "${{ env.PNPM_VERSION }}" }
+      - uses: actions/setup-node@v4
+        with: { node-version: "${{ env.NODE_VERSION }}", cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter web tsc --noEmit
+      - run: pnpm --filter api tsc --noEmit
+
+  # ── JOB 2: UNIT TESTS ─────────────────────────────────
+  test:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    needs: check
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env: { POSTGRES_USER: postgres, POSTGRES_PASSWORD: postgres, POSTGRES_DB: tmi_test }
+        ports: ["5432:5432"]
+        options: --health-cmd="pg_isready -U postgres" --health-interval=5s
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+    env:
+      DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/tmi_test"
+      REDIS_URL: "redis://localhost:6379"
+      JWT_SECRET: "test-jwt-secret-do-not-use-in-prod"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v3
+        with: { version: "${{ env.PNPM_VERSION }}" }
+      - uses: actions/setup-node@v4
+        with: { node-version: "${{ env.NODE_VERSION }}", cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: cd packages/db && pnpm prisma migrate deploy
+      - run: pnpm --filter api test:unit
+      # CRITICAL GATE — Platform Law #1
+      - name: Discovery Sort Test (CRITICAL — must pass before any deploy)
+        run: pnpm test:discovery
+
+  # ── JOB 3: BUILD ──────────────────────────────────────
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v3
+        with: { version: "${{ env.PNPM_VERSION }}" }
+      - uses: actions/setup-node@v4
+        with: { node-version: "${{ env.NODE_VERSION }}", cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter web build
+      - run: pnpm --filter api build
+      - name: Upload API build artifact
+        uses: actions/upload-artifact@v4
+        with: { name: api-dist, path: apps/api/dist }
+
+  # ── JOB 4: DEPLOY API (Render) ─────────────────────────
+  deploy-api:
+    name: Deploy API to Render
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Trigger Render Deploy
+        run: |
+          curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_API }}" \
+            -H "Content-Type: application/json"
+      - name: Wait for API health
+        run: |
+          for i in {1..30}; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://api.themusiciansindex.com/api/healthz)
+            if [ "$STATUS" = "200" ]; then echo "API healthy"; exit 0; fi
+            sleep 10
+          done
+          echo "API health check failed"; exit 1
+
+  # ── JOB 5: DEPLOY WEB (Vercel) ─────────────────────────
+  deploy-web:
+    name: Deploy Web to Vercel
+    runs-on: ubuntu-latest
+    needs: deploy-api
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy to Vercel
+        run: npx vercel --prod --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+  # ── JOB 6: SMOKE TEST POST-DEPLOY ────────────────────
+  smoke-test:
+    name: Post-Deploy Smoke Test
+    runs-on: ubuntu-latest
+    needs: [deploy-api, deploy-web]
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Smoke tests
+        run: |
+          # Homepage
+          curl -f https://themusiciansindex.com || exit 1
+          # API health
+          curl -f https://api.themusiciansindex.com/api/healthz || exit 1
+          curl -f https://api.themusiciansindex.com/api/readyz || exit 1
+          # Ads always 200 — Platform Law #7
+          curl -f https://api.themusiciansindex.com/api/ads/slot/HOME1_HERO || exit 1
+          echo "All smoke tests passed"
