@@ -123,7 +123,7 @@ export const MAGAZINE_FULL_ROTATION_SCENES = [
     id: 'home-2' as const,
     durationMs: 60000,
     content: (
-      <main role="main" tabIndex={-1} data-telemetry="home.2.render" style={{ position: 'relative', minHeight: '100%', overflowY: 'auto' }}>
+      <main role="main" tabIndex={-1} data-telemetry="home.2.render" style={{ position: 'relative', minHeight: '100%', overflowX: 'hidden', overflowY: 'auto' }}>
         <HomeSurfacePage surfaceId={2} />
         <div aria-hidden="true" style={ATMO['home-2']} />
         <div aria-hidden="true" style={SCANLINE} />
