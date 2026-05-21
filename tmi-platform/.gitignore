@@ -24,6 +24,7 @@ out/
 # BUILD OUTPUTS
 # =============================
 build/
+!apps/web/src/**/build/
 dist/
 coverage/
 .tmp/
