@@ -10,10 +10,10 @@ export function requireAdmin(request: NextRequest): NextResponse | null {
     cookieHeader.includes('tmi_role=admin') ||
     cookieHeader.includes('tmi_role=ADMIN');
 
-  console.log('[requireAdmin]', { isAdmin, cookieKeys: cookieHeader.split(';').map(c => c.trim().split('=')[0]) });
+  console.log('[requireAdmin]', { isAdmin, cookieHeader });
 
   if (!isAdmin) {
-    return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
+    return NextResponse.json({ error: 'Admin access required', cookieHeader }, { status: 403 });
   }
 
   return null;
