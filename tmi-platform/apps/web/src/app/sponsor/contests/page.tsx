@@ -1,3 +1,4 @@
+"use client";
 import Link from "next/link";
 import { SponsorContestPanel } from "@/components/sponsor/SponsorContestPanel";
 
