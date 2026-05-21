@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Musician's Index — Design Preview</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Oswald:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  :root{
+    --void:#0D0520;--deep:#150830;--card:#1E0D3E;--raised:#2A1452;
+    --cyan:#00E5FF;--gold:#FFB800;--pink:#FF2D78;--purple:#7B2FBE;--teal:#00C896;
+    --text:#FFFFFF;--text2:#C8A8E8;--text3:#7A5F9A;
+    --border-card:1px solid rgba(0,229,255,0.25);
+    --border-active:1px solid rgba(0,229,255,0.8);
+    --border-gold:1px solid rgba(255,184,0,0.6);
+    --glow-cyan:0 0 12px rgba(0,229,255,0.35);
+    --glow-gold:0 0 14px rgba(255,184,0,0.45);
+    --glow-pink:0 0 12px rgba(255,45,120,0.4);
+    --display:'Bebas Neue',Impact,sans-serif;
+    --heading:'Oswald','Arial Narrow',sans-serif;
+    --body:'Inter',sans-serif;
+  }
+  body{background:var(--void);color:var(--text);font-family:var(--body);min-height:100vh}
+
+  /* NAV */
+  nav{background:var(--deep);border-bottom:1px solid rgba(255,184,0,0.3);padding:10px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+  .logo{font-family:var(--display);color:var(--gold);line-height:1}
+  .logo span{display:block;font-size:11px;color:var(--cyan);letter-spacing:2px;font-family:var(--heading)}
+  .logo strong{font-size:22px}
+  .nav-center{display:flex;align-items:center;gap:16px;font-family:var(--heading);font-size:12px;color:var(--text2)}
+  .issue-badge{color:var(--cyan);font-weight:600;letter-spacing:1px}
+  .crown-badge{background:var(--gold);color:var(--void);font-weight:700;font-size:10px;padding:2px 10px;border-radius:20px;animation:crown-pulse 2s infinite}
+  @keyframes crown-pulse{0%,100%{box-shadow:0 0 6px var(--gold)}50%{box-shadow:0 0 20px var(--gold),0 0 40px rgba(255,184,0,0.3)}}
+  .nav-icons{display:flex;gap:16px;color:var(--text2);cursor:pointer}
+  .nav-icons span{font-size:16px}
+
+  /* BELT HEADER */
+  .belt{padding:24px 20px;border-bottom:1px solid rgba(255,255,255,0.05)}
+  .belt-header{display:flex;align-items:center;gap:12px;margin-bottom:20px}
+  .belt-label{font-family:var(--display);font-size:20px;color:var(--gold);letter-spacing:2px;white-space:nowrap}
+  .belt-sub{font-family:var(--heading);font-size:12px;color:var(--text3);letter-spacing:1px}
+  .belt-line{flex:1;height:1px;background:linear-gradient(to right,rgba(255,184,0,0.5) 0%,transparent 100%)}
+  .bolt{color:var(--gold);font-size:14px;animation:bolt-flicker 3s infinite}
+  @keyframes bolt-flicker{0%,90%,100%{opacity:1}92%{opacity:0.3}96%{opacity:1}98%{opacity:0.5}}
+
+  /* COVER BELT */
+  .cover-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;border-radius:12px;overflow:hidden;max-height:340px}
+  .cover-cell{position:relative;background:var(--raised);aspect-ratio:3/4;overflow:hidden;cursor:pointer}
+  .cover-cell:hover{z-index:2;transform:scale(1.03);transition:transform 0.2s}
+  .cover-cell img,.cover-cell .photo-fill{width:100%;height:100%;object-fit:cover}
+  .cover-cell.center{grid-row:span 2;aspect-ratio:auto}
+  .rank-num{position:absolute;bottom:6px;left:8px;font-family:var(--display);font-size:28px;color:var(--gold);text-shadow:2px 2px 0 #0D0520,-1px -1px 0 #0D0520;line-height:1}
+  .cover-cell .photo-fill{display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--text3);background:var(--raised)}
+  .cover-banner{background:var(--purple);padding:10px 20px;text-align:center;margin-top:4px;border-radius:8px}
+  .cover-banner-text{font-family:var(--display);font-size:22px;color:var(--gold);letter-spacing:2px}
+  .cover-banner-sub{font-family:var(--heading);font-size:13px;color:var(--cyan)}
+
+  /* CARD BASE */
+  .card{background:var(--card);border:var(--border-card);border-radius:12px;overflow:hidden;transition:all 0.2s}
+  .card:hover{border:var(--border-active);box-shadow:var(--glow-cyan)}
+  .card-gold{border:var(--border-gold);box-shadow:var(--glow-gold)}
+  .card-pad{padding:14px}
+  .card-img{width:100%;aspect-ratio:16/9;object-fit:cover;background:var(--raised);display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:11px;font-family:var(--heading)}
+  .card-img.tall{aspect-ratio:4/5}
+  .tag{display:inline-block;background:var(--cyan);color:var(--void);font-family:var(--heading);font-size:10px;font-weight:700;letter-spacing:1.5px;padding:2px 8px;border-radius:4px;text-transform:uppercase;margin-bottom:8px}
+  .tag-gold{background:var(--gold);color:var(--void)}
+  .tag-pink{background:var(--pink);color:white}
+  .tag-purple{background:var(--purple);color:white}
+  .card-title{font-family:var(--heading);font-size:16px;color:var(--text);font-weight:700;line-height:1.3;margin-bottom:6px}
+  .card-sub{font-size:12px;color:var(--text2);line-height:1.5}
+
+  /* LIVE WORLD */
+  .live-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .live-preview{background:var(--card);border:2px solid var(--cyan);box-shadow:var(--glow-cyan);border-radius:12px;overflow:hidden;position:relative}
+  .live-preview-img{width:100%;aspect-ratio:16/10;background:linear-gradient(135deg,#1E0D3E 0%,#150830 100%);display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:12px;font-family:var(--heading)}
+  .live-preview-label{background:var(--raised);padding:10px 14px;display:flex;align-items:center;gap:8px}
+  .live-badge{background:#FF2020;color:white;font-family:var(--heading);font-size:10px;font-weight:700;letter-spacing:1px;padding:2px 7px;border-radius:4px;animation:live-pulse 1.5s infinite}
+  @keyframes live-pulse{0%,100%{opacity:1}50%{opacity:0.7}}
+  .live-name{font-family:var(--heading);font-size:14px;font-weight:700}
+  .lobby-wall{background:var(--card);border:var(--border-card);border-radius:12px;padding:12px}
+  .lobby-wall-title{font-family:var(--heading);font-size:12px;color:var(--gold);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px}
+  .lobby-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
+  .lobby-tile{position:relative;border-radius:6px;overflow:hidden;aspect-ratio:1;background:var(--raised);cursor:pointer}
+  .lobby-tile:hover{border:1px solid var(--cyan)}
+  .lobby-tile-img{width:100%;height:100%;object-fit:cover;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:9px;background:var(--raised)}
+  .lobby-live{position:absolute;top:3px;left:3px;background:#FF2020;color:white;font-size:8px;font-weight:700;padding:1px 4px;border-radius:2px;font-family:var(--heading)}
+  .star-cta{background:linear-gradient(135deg,var(--pink) 0%,var(--purple) 100%);border:2px solid var(--pink);box-shadow:var(--glow-pink);clip-path:polygon(50% 0%,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%);width:100px;height:100px;display:flex;align-items:center;justify-content:center;flex-direction:column;font-family:var(--display);font-size:13px;color:white;cursor:pointer;text-align:center;margin:auto;line-height:1.1;animation:star-spin 6s infinite linear}
+  @keyframes star-spin{0%,100%{transform:rotate(-3deg)}50%{transform:rotate(3deg)}}
+
+  /* EDITORIAL */
+  .editorial-grid{display:grid;grid-template-columns:2fr 1fr 1fr;gap:14px}
+  .news-ticker{background:var(--card);border:var(--border-card);border-radius:12px;padding:12px;overflow:hidden}
+  .ticker-label{font-family:var(--heading);font-size:10px;color:var(--pink);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px}
+  .ticker-item{border-bottom:1px solid rgba(255,255,255,0.06);padding:7px 0;font-size:12px;color:var(--text2)}
+  .ticker-item .time{color:var(--cyan);font-size:10px;font-family:var(--heading);margin-bottom:2px}
+
+  /* DISCOVERY */
+  .discovery-grid{display:grid;grid-template-columns:1.5fr 1fr 1fr;gap:14px}
+  .hex-grid{display:flex;flex-wrap:wrap;gap:6px;padding:8px}
+  .hex{width:80px;height:88px;clip-path:polygon(25% 0%,75% 0%,100% 50%,75% 100%,25% 100%,0% 50%);display:flex;align-items:center;justify-content:center;font-family:var(--display);font-size:13px;color:white;cursor:pointer;transition:all 0.2s;letter-spacing:1px;text-align:center;line-height:1.1}
+  .hex:hover{transform:scale(1.1)}
+  .hex-purple{background:var(--purple)}
+  .hex-teal{background:var(--teal)}
+  .hex-cyan{background:rgba(0,229,255,0.7)}
+  .hex-pink{background:var(--pink)}
+  .chart-list{background:var(--card);border:var(--border-card);border-radius:12px;padding:12px}
+  .chart-title{font-family:var(--display);font-size:15px;color:var(--gold);letter-spacing:1px;margin-bottom:10px}
+  .chart-item{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.06)}
+  .chart-num{font-family:var(--display);font-size:18px;color:var(--gold);width:22px;line-height:1}
+  .chart-info{}
+  .chart-artist{font-family:var(--heading);font-size:12px;font-weight:600}
+  .chart-genre{font-size:10px;color:var(--text3)}
+  .weekly-picks{background:var(--raised);border:var(--border-gold);box-shadow:var(--glow-gold);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:4px}
+  .picks-sub{font-family:var(--heading);font-size:11px;color:var(--text3);letter-spacing:1px;text-transform:uppercase}
+  .picks-title{font-family:var(--display);font-size:26px;color:var(--gold);letter-spacing:2px;line-height:1.1}
+  .picks-link{font-family:var(--heading);font-size:11px;color:var(--cyan);text-decoration:underline;margin-top:auto}
+
+  /* TRENDS */
+  .trends-grid{display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr;gap:14px}
+  .countdown-card{background:var(--card);border:var(--border-gold);box-shadow:var(--glow-gold);border-radius:12px;padding:16px}
+  .countdown-label{font-family:var(--heading);font-size:10px;color:var(--gold);letter-spacing:2px;text-transform:uppercase;margin-bottom:6px}
+  .countdown-title{font-family:var(--heading);font-size:13px;color:var(--text2);margin-bottom:10px}
+  .countdown-time{font-family:var(--display);font-size:36px;color:var(--cyan);letter-spacing:4px;line-height:1}
+  .event-cal{background:var(--card);border:var(--border-card);border-radius:12px;padding:12px}
+  .cal-label{font-family:var(--heading);font-size:10px;color:var(--gold);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px}
+  .cal-item{display:flex;align-items:center;gap:8px;padding:5px 0}
+  .cal-dot{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+  .cal-text{font-size:11px;color:var(--text2)}
+  .undiscovered{background:var(--card);border:var(--border-card);border-radius:12px;overflow:hidden}
+  .undiscovered-label{background:var(--teal);padding:4px 10px;font-family:var(--heading);font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--void)}
+  .undiscovered-body{padding:10px}
+  .undiscovered-name{font-family:var(--heading);font-size:14px;font-weight:700}
+  .undiscovered-sub{font-size:11px;color:var(--text3)}
+  .gateway{background:var(--raised);border:var(--border-active);border-radius:12px;padding:14px;text-align:center}
+  .gateway-icon{font-size:28px;margin-bottom:6px}
+  .gateway-title{font-family:var(--display);font-size:18px;color:var(--cyan);letter-spacing:1px}
+  .gateway-sub{font-size:11px;color:var(--text2)}
+
+  /* MARKETPLACE */
+  .marketplace-grid{display:grid;grid-template-columns:1fr 2fr 1fr 1fr;gap:14px}
+  .merch-card{background:var(--card);border:var(--border-card);border-radius:12px;overflow:hidden}
+  .merch-label{background:var(--gold);color:var(--void);font-family:var(--heading);font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;padding:4px 10px}
+  .merch-img{aspect-ratio:1;background:var(--raised);display:flex;align-items:center;justify-content:center;font-size:32px;padding:14px}
+  .merch-title{font-family:var(--heading);font-size:11px;font-weight:700;color:var(--gold);padding:8px 10px;text-transform:uppercase;letter-spacing:1px}
+  .booking-card{background:var(--card);border:var(--border-active);box-shadow:var(--glow-cyan);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:6px}
+  .booking-label{font-family:var(--display);font-size:20px;color:var(--cyan);letter-spacing:1px}
+  .booking-sub{font-size:12px;color:var(--text2)}
+  .achievements{background:var(--raised);border:var(--border-gold);border-radius:12px;padding:14px;text-align:center}
+  .ach-label{font-family:var(--heading);font-size:10px;color:var(--text3);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px}
+  .ach-score{font-family:var(--display);font-size:30px;color:var(--gold)}
+  .ach-sub{font-size:11px;color:var(--text3)}
+  .sponsor-spot{background:linear-gradient(135deg,var(--raised) 0%,var(--deep) 100%);border:var(--border-gold);border-radius:12px;padding:14px;text-align:center}
+  .sponsor-label{font-family:var(--heading);font-size:10px;color:var(--gold);letter-spacing:2px;text-transform:uppercase;margin-bottom:6px}
+  .powered-by{font-family:var(--heading);font-size:11px;color:var(--text3);margin-top:6px}
+
+  /* STREAM WIN */
+  .stream-win{background:var(--card);border:var(--border-cyan);border:1px solid var(--cyan);border-radius:12px;padding:12px;display:flex;align-items:center;gap:12px}
+  .sw-label{font-family:var(--display);font-size:14px;color:var(--gold);letter-spacing:1px}
+  .sw-score{font-family:var(--display);font-size:28px;color:var(--cyan)}
+
+  /* ADVERTISER BELT */
+  .ad-belt{background:var(--deep);border:1px solid rgba(255,184,0,0.2);border-radius:12px;padding:16px}
+  .ad-belt-top{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+  .ad-disclosure{font-family:var(--heading);font-size:10px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;background:rgba(255,255,255,0.05);padding:2px 8px;border-radius:3px}
+  .ad-grid{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:12px}
+  .ad-card{background:var(--raised);border:var(--border-gold);border-radius:10px;padding:14px;position:relative;cursor:pointer}
+  .ad-card:hover{box-shadow:var(--glow-gold)}
+  .ad-tag{position:absolute;top:6px;right:6px;background:rgba(13,5,32,0.8);color:var(--text3);font-size:9px;padding:2px 5px;border-radius:2px;font-family:var(--heading)}
+  .ad-brand{font-family:var(--heading);font-size:14px;font-weight:700;color:var(--gold);margin-bottom:4px}
+  .ad-text{font-size:11px;color:var(--text2)}
+  .ad-cta{display:inline-block;margin-top:8px;background:var(--gold);color:var(--void);font-family:var(--heading);font-size:10px;font-weight:700;padding:3px 10px;border-radius:4px}
+  .house-ad{background:var(--deep);border:1px dashed rgba(255,184,0,0.3);border-radius:10px;padding:14px;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}
+  .house-cta-text{font-family:var(--heading);font-size:12px;color:var(--text3)}
+  .house-cta-link{font-family:var(--heading);font-size:11px;color:var(--cyan);text-decoration:underline}
+
+  /* MOBILE NAV */
+  .mobile-nav{position:fixed;bottom:0;left:0;right:0;background:var(--deep);border-top:1px solid rgba(0,229,255,0.2);display:flex;z-index:100}
+  .mobile-nav-tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 4px;cursor:pointer;font-family:var(--heading);font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--text3)}
+  .mobile-nav-tab.active{color:var(--cyan)}
+  .mobile-nav-tab span.icon{font-size:18px}
+
+  .confetti{position:absolute;pointer-events:none;width:8px;height:8px}
+  .tri{clip-path:polygon(50% 0%,100% 100%,0% 100%)}
+
+  .page-wrap{padding-bottom:64px;max-width:900px;margin:0 auto}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="logo">
+    <span>THE</span>
+    <strong>MUSICIAN'S</strong>
+    <span>INDEX</span>
+  </div>
+  <div class="nav-center">
+    <span>ISSUE: <span class="issue-badge">CURRENT WEEK</span></span>
+    <span>|</span>
+    <span>WEEKLY CROWN: <span class="crown-badge">👑 CROWN</span></span>
+  </div>
+  <div class="nav-icons">
+    <span title="Search">🔍</span>
+    <span title="Notifications">🔔</span>
+    <span title="Profile">👤</span>
+  </div>
+</nav>
+
+<div class="page-wrap">
+
+<!-- COVER BELT -->
+<div class="belt">
+  <div class="belt-header">
+    <span class="bolt">⚡</span>
+    <span class="belt-label">WHO TOOK THE CROWN?</span>
+    <div class="belt-line"></div>
+    <span class="belt-sub">WEEKLY CYPHERS</span>
+    <span class="bolt">⚡</span>
+  </div>
+  <div class="cover-grid">
+    <div class="cover-cell" style="background:linear-gradient(135deg,#2A1452,#150830)">
+      <div class="photo-fill" style="font-size:28px">👤</div>
+      <div class="rank-num">2</div>
+    </div>
+    <div class="cover-cell" style="background:linear-gradient(135deg,#7B2FBE,#0D0520)">
+      <div class="photo-fill" style="font-size:28px">👤</div>
+      <div class="rank-num" style="left:auto;right:8px">6</div>
+    </div>
+    <div class="cover-cell" style="background:linear-gradient(135deg,#00C896,#0D0520)">
+      <div class="photo-fill" style="font-size:28px">👤</div>
+      <div class="rank-num">5</div>
+    </div>
+    <div class="cover-cell center" style="background:linear-gradient(135deg,#FF2D78,#7B2FBE,#0D0520);grid-column:2;grid-row:1/3">
+      <div class="photo-fill" style="font-size:48px">👑</div>
+      <div class="rank-num" style="font-size:48px;bottom:12px">1</div>
+    </div>
+    <div class="cover-cell" style="background:linear-gradient(135deg,#1E0D3E,#3D1E78)">
+      <div class="photo-fill" style="font-size:28px">👤</div>
+      <div class="rank-num">4</div>
+    </div>
+    <div class="cover-cell" style="background:linear-gradient(135deg,#150830,#2A1452)">
+      <div class="photo-fill" style="font-size:28px">👤</div>
+      <div class="rank-num" style="left:auto;right:8px">7</div>
+    </div>
+  </div>
+  <div class="cover-banner">
+    <div class="cover-banner-text">⚡ WEEKLY CYPHERS! ⚡</div>
+    <div class="cover-banner-sub">Who took the crown this week?</div>
+  </div>
+</div>
+
+<!-- LIVE WORLD BELT -->
+<div class="belt">
+  <div class="belt-header">
+    <span class="bolt">⚡</span>
+    <span class="belt-label">LIVE WORLD</span>
+    <div class="belt-line"></div>
+    <span class="belt-sub">ACTIVITY BELT</span>
+  </div>
+  <div class="live-grid">
+    <div class="live-preview">
+      <div class="live-preview-img" style="font-size:40px">🎤</div>
+      <div class="live-preview-label">
+        <div class="live-badge">● LIVE</div>
+        <div class="live-name">MAIN PREVIEW LOBBY</div>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div class="lobby-wall">
+        <div class="lobby-wall-title">LOBBY WALL</div>
+        <div class="lobby-grid">
+          <div class="lobby-tile"><div class="lobby-tile-img" style="font-size:20px">👤</div><div class="lobby-live">LIVE</div></div>
+          <div class="lobby-tile"><div class="lobby-tile-img" style="font-size:20px">👤</div><div class="lobby-live">LIVE</div></div>
+          <div class="lobby-tile"><div class="lobby-tile-img" style="font-size:20px">👤</div><div class="lobby-live">LIVE</div></div>
+          <div class="lobby-tile"><div class="lobby-tile-img" style="font-size:20px">👤</div><div class="lobby-live">LIVE</div></div>
+          <div class="lobby-tile"><div class="lobby-tile-img" style="font-size:20px">👤</div><div class="lobby-live">LIVE</div></div>
+          <div class="lobby-tile"><div class="lobby-tile-img" style="font-size:20px">👤</div><div class="lobby-live">LIVE</div></div>
+          <div class="lobby-tile"><div class="lobby-tile-img" style="font-size:20px">👤</div><div class="lobby-live">LIVE</div></div>
+          <div class="lobby-tile"><div class="lobby-tile-img" style="font-size:20px">👤</div><div class="lobby-live">LIVE</div></div>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:center;align-items:center;padding:8px">
+        <div class="star-cta">JOIN<br>RANDOM<br>ROOM</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- EDITORIAL BELT -->
+<div class="belt">
+  <div class="belt-header">
+    <span class="bolt">⚡</span>
+    <span class="belt-label">EDITORIAL BELT</span>
+    <div class="belt-line"></div>
+    <span class="belt-sub">CONTENT</span>
+  </div>
+  <div class="editorial-grid">
+    <div class="card">
+      <div class="card-img tall" style="background:linear-gradient(135deg,#1E0D3E,#3D1E78);font-size:32px">🎸</div>
+      <div class="card-pad">
+        <div class="tag tag-gold">ARTICLE FEATURE</div>
+        <div class="card-title">A Deep Dive into Indie Rock</div>
+        <div class="card-sub">How underground scenes are reshaping the mainstream sound in 2026</div>
+      </div>
+    </div>
+    <div class="news-ticker">
+      <div class="ticker-label">● LAST HOUR</div>
+      <div class="ticker-item"><div class="time">2 MIN AGO</div>Headline 1, breaking music news story here...</div>
+      <div class="ticker-item"><div class="time">15 MIN AGO</div>Headline 2, artist release and announcement...</div>
+      <div class="ticker-item"><div class="time">32 MIN AGO</div>Headline 3, industry news and platform update...</div>
+      <div class="ticker-item"><div class="time">47 MIN AGO</div>Headline 4, local scene and upcoming events...</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div class="card">
+        <div class="card-img" style="background:linear-gradient(135deg,#2A1452,#0D0520);font-size:24px">🎙</div>
+        <div class="card-pad">
+          <div class="tag tag-purple">INTERVIEWS</div>
+          <div class="card-title" style="font-size:13px">THE INDEX SPEAKS: Interview with...</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-img" style="background:linear-gradient(135deg,#1E0D3E,#150830);font-size:24px">🎤</div>
+        <div class="card-pad">
+          <div class="tag tag-pink">STUDIO RECAPS</div>
+          <div class="card-title" style="font-size:13px">CYPHER HIGHLIGHTS: Weekly Wrap-Up</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DISCOVERY BELT -->
+<div class="belt">
+  <div class="belt-header">
+    <span class="bolt">⚡</span>
+    <span class="belt-label">DISCOVERY BELT</span>
+    <div class="belt-line"></div>
+    <span class="belt-sub">CURATION</span>
+  </div>
+  <div class="discovery-grid">
+    <div class="card card-pad">
+      <div class="tag">GENRE CLUSTER</div>
+      <div class="hex-grid">
+        <div class="hex hex-purple">HIP HOP</div>
+        <div class="hex hex-teal">POP</div>
+        <div class="hex hex-pink">R&B</div>
+        <div class="hex hex-cyan" style="color:var(--void)">ROCK</div>
+        <div class="hex hex-purple" style="background:#1D9E75">JAZZ</div>
+        <div class="hex hex-pink">ELEC-TRONIC</div>
+      </div>
+    </div>
+    <div class="chart-list">
+      <div class="chart-title">TOP 10 CHARTS</div>
+      <div class="chart-item"><span class="chart-num">1</span><div class="chart-info"><div class="chart-artist" style="color:var(--cyan)">Artist Headline</div><div class="chart-genre">Hip Hop</div></div></div>
+      <div class="chart-item"><span class="chart-num">2</span><div class="chart-info"><div class="chart-artist">Artist Headline</div><div class="chart-genre">R&B</div></div></div>
+      <div class="chart-item"><span class="chart-num">3</span><div class="chart-info"><div class="chart-artist">Artist Headline</div><div class="chart-genre">Pop</div></div></div>
+      <div class="chart-item"><span class="chart-num">4</span><div class="chart-info"><div class="chart-artist">Artist Headline</div><div class="chart-genre">Rock</div></div></div>
+      <div class="chart-item"><span class="chart-num">5</span><div class="chart-info"><div class="chart-artist">Artist Headline</div><div class="chart-genre">Electronic</div></div></div>
+    </div>
+    <div class="weekly-picks">
+      <div class="picks-sub">WEEKLY PLAYLISTS</div>
+      <div class="picks-title">INDEX PICKS</div>
+      <div style="margin-top:12px;font-size:11px;color:var(--text2)">Curated by the TMI editorial team</div>
+      <div class="picks-link" style="margin-top:8px">A-Z Artist Directory →</div>
+    </div>
+  </div>
+</div>
+
+<!-- TRENDS + EVENTS BELT -->
+<div class="belt">
+  <div class="belt-header">
+    <span class="bolt">⚡</span>
+    <span class="belt-label">DISCOVERY BELT</span>
+    <div class="belt-line"></div>
+    <span class="belt-sub">TRENDS & EVENTS</span>
+  </div>
+  <div class="trends-grid">
+    <div class="countdown-card">
+      <div class="countdown-label">WORLD PREMIERES</div>
+      <div class="countdown-title">An upcoming exclusive drop</div>
+      <div class="countdown-time" id="timer">01:14:32:05</div>
+      <div style="margin-top:10px;font-size:11px;color:var(--text3)">NEW TRACK — Most Anticipated</div>
+    </div>
+    <div class="event-cal">
+      <div class="cal-label">EVENT CALENDAR</div>
+      <div class="cal-item"><span class="cal-dot" style="background:var(--pink)"></span><span class="cal-text">Concerts this week</span></div>
+      <div class="cal-item"><span class="cal-dot" style="background:var(--cyan)"></span><span class="cal-text">Saturday cypher battle</span></div>
+      <div class="cal-item"><span class="cal-dot" style="background:var(--gold)"></span><span class="cal-text">Wednesday listening party</span></div>
+    </div>
+    <div class="undiscovered">
+      <div class="undiscovered-label">UNDISCOVERED BOOST</div>
+      <div class="undiscovered-body">
+        <div class="undiscovered-name">New Artist of the Day!</div>
+        <div class="undiscovered-sub">0 viewers → Position #1 always</div>
+      </div>
+    </div>
+    <div class="gateway">
+      <div class="gateway-icon">🎤</div>
+      <div class="gateway-title">CYPHER ARENA</div>
+      <div class="gateway-sub">Go to active 1v1 battle rooms</div>
+    </div>
+  </div>
+  <div style="margin-top:12px">
+    <div class="stream-win">
+      <div><div class="sw-label">STREAM & WIN</div><div style="font-size:11px;color:var(--text3)">Score</div></div>
+      <div class="sw-score">0:50</div>
+    </div>
+  </div>
+</div>
+
+<!-- MARKETPLACE BELT -->
+<div class="belt">
+  <div class="belt-header">
+    <span class="bolt">⚡</span>
+    <span class="belt-label">PLATFORM & MARKETPLACE</span>
+    <div class="belt-line"></div>
+  </div>
+  <div class="marketplace-grid">
+    <div class="merch-card">
+      <div class="merch-label">THE STORE</div>
+      <div class="merch-img">👕</div>
+      <div class="merch-title">FEATURED MERCH</div>
+    </div>
+    <div class="booking-card">
+      <div class="booking-label">BOOKING PORTAL</div>
+      <div class="booking-sub">Venues seeking talent • Submit your set</div>
+      <div style="margin-top:auto;font-family:var(--heading);font-size:11px;color:var(--gold)">6 venues available this week →</div>
+    </div>
+    <div class="achievements">
+      <div class="ach-label">MY ACHIEVEMENTS</div>
+      <div style="font-size:10px;color:var(--text3);margin-bottom:4px">CURRENT SCORE</div>
+      <div class="ach-score">850 pts</div>
+      <div class="ach-sub">Top 12% this season</div>
+    </div>
+    <div class="sponsor-spot">
+      <div class="sponsor-label">SPONSOR SPOTLIGHT</div>
+      <div style="font-family:var(--display);font-size:18px;color:var(--gold)">High-end Ad</div>
+      <div class="powered-by">POWERED BY: [RETRO LOGO]</div>
+    </div>
+  </div>
+</div>
+
+<!-- ADVERTISER BELT -->
+<div class="belt">
+  <div class="belt-header">
+    <span class="bolt">⚡</span>
+    <span class="belt-label">FEATURED</span>
+    <div class="belt-line"></div>
+    <div class="ad-disclosure">Advertising</div>
+  </div>
+  <div class="ad-grid">
+    <div class="ad-card">
+      <div class="ad-tag">Ad</div>
+      <div style="font-size:36px;margin-bottom:8px">🎧</div>
+      <div class="ad-brand">Studio Pro Gear</div>
+      <div class="ad-text">Professional studio equipment for serious artists. Upgrade your sound today.</div>
+      <div class="ad-cta">SHOP NOW</div>
+    </div>
+    <div class="ad-card">
+      <div class="ad-tag">Ad</div>
+      <div style="font-size:28px;margin-bottom:8px">🎵</div>
+      <div class="ad-brand">Beat Lab</div>
+      <div class="ad-text">Exclusive beat packs from top producers</div>
+      <div class="ad-cta">EXPLORE</div>
+    </div>
+    <div class="ad-card">
+      <div class="ad-tag">Ad</div>
+      <div style="font-size:28px;margin-bottom:8px">🎤</div>
+      <div class="ad-brand">LiveSound Co</div>
+      <div class="ad-text">PA systems for live performers</div>
+      <div class="ad-cta">LEARN MORE</div>
+    </div>
+    <div class="house-ad">
+      <div style="font-size:24px">✨</div>
+      <div class="house-cta-text">Advertise here</div>
+      <div class="house-cta-link">from $9.99/week</div>
+    </div>
+  </div>
+</div>
+
+</div><!-- end page-wrap -->
+
+<!-- MOBILE NAV -->
+<div class="mobile-nav">
+  <div class="mobile-nav-tab active"><span class="icon">🔴</span>LIVE</div>
+  <div class="mobile-nav-tab"><span class="icon">🎤</span>LOBBY</div>
+  <div class="mobile-nav-tab"><span class="icon">🔍</span>FIND</div>
+  <div class="mobile-nav-tab"><span class="icon">📰</span>FEED</div>
+  <div class="mobile-nav-tab"><span class="icon">👤</span>ME</div>
+</div>
+
+<script>
+  function tick() {
+    const el = document.getElementById('timer');
+    if (!el) return;
+    const parts = el.textContent.split(':').map(Number);
+    let [h,m,s,f] = parts;
+    f--;
+    if(f<0){f=99;s--;}
+    if(s<0){s=59;m--;}
+    if(m<0){m=59;h--;}
+    if(h<0){h=0;m=0;s=0;f=0;}
+    el.textContent=[h,m,s,f].map(n=>String(n).padStart(2,'0')).join(':');
+  }
+  setInterval(tick,10);
+</script>
+</body>
+</html>

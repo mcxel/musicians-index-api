@@ -1,0 +1,202 @@
+[
+  {
+    "id": "pulse-audio",
+    "name": "Pulse Audio",
+    "category": "Audio"
+  },
+  {
+    "id": "neon-drip",
+    "name": "Neon Drip",
+    "category": "Fashion"
+  },
+  {
+    "id": "volt-energy",
+    "name": "Volt Energy",
+    "category": "Energy"
+  },
+  {
+    "id": "skyline-tech",
+    "name": "Skyline Tech",
+    "category": "Tech"
+  },
+  {
+    "id": "luxora",
+    "name": "Luxora",
+    "category": "Luxury"
+  },
+  {
+    "id": "beatforge",
+    "name": "BeatForge",
+    "category": "Music Gear"
+  },
+  {
+    "id": "nova-wear",
+    "name": "Nova Wear",
+    "category": "Streetwear"
+  },
+  {
+    "id": "hyperfuel",
+    "name": "HyperFuel",
+    "category": "Energy"
+  },
+  {
+    "id": "sonicgrid",
+    "name": "SonicGrid",
+    "category": "Audio"
+  },
+  {
+    "id": "velourx",
+    "name": "VelourX",
+    "category": "Luxury"
+  },
+  {
+    "id": "urbanphase",
+    "name": "UrbanPhase",
+    "category": "Fashion"
+  },
+  {
+    "id": "aether-tech",
+    "name": "Aether Tech",
+    "category": "Tech"
+  },
+  {
+    "id": "echo-labs",
+    "name": "Echo Labs",
+    "category": "Audio"
+  },
+  {
+    "id": "flare-energy",
+    "name": "Flare Energy",
+    "category": "Energy"
+  },
+  {
+    "id": "zenwear",
+    "name": "ZenWear",
+    "category": "Lifestyle"
+  },
+  {
+    "id": "drift-motors",
+    "name": "Drift Motors",
+    "category": "Automotive"
+  },
+  {
+    "id": "halo-beats",
+    "name": "Halo Beats",
+    "category": "Audio"
+  },
+  {
+    "id": "fusioncore",
+    "name": "FusionCore",
+    "category": "Tech"
+  },
+  {
+    "id": "glowclub",
+    "name": "GlowClub",
+    "category": "Lifestyle"
+  },
+  {
+    "id": "primekicks",
+    "name": "PrimeKicks",
+    "category": "Footwear"
+  },
+  {
+    "id": "nexusgear",
+    "name": "NexusGear",
+    "category": "Tech"
+  },
+  {
+    "id": "urbanvibe",
+    "name": "UrbanVibe",
+    "category": "Streetwear"
+  },
+  {
+    "id": "lume-energy",
+    "name": "Lume Energy",
+    "category": "Energy"
+  },
+  {
+    "id": "audiolux",
+    "name": "AudioLux",
+    "category": "Audio"
+  },
+  {
+    "id": "nextwave",
+    "name": "NextWave",
+    "category": "Tech"
+  },
+  {
+    "id": "streetnova",
+    "name": "StreetNova",
+    "category": "Fashion"
+  },
+  {
+    "id": "hyperbeats",
+    "name": "HyperBeats",
+    "category": "Audio"
+  },
+  {
+    "id": "zenithwear",
+    "name": "ZenithWear",
+    "category": "Fashion"
+  },
+  {
+    "id": "voltgear",
+    "name": "VoltGear",
+    "category": "Tech"
+  },
+  {
+    "id": "aura-labs",
+    "name": "Aura Labs",
+    "category": "Tech"
+  },
+  {
+    "id": "pulsefit",
+    "name": "PulseFit",
+    "category": "Fitness"
+  },
+  {
+    "id": "nightcore",
+    "name": "NightCore",
+    "category": "Audio"
+  },
+  {
+    "id": "echo-street",
+    "name": "Echo Street",
+    "category": "Streetwear"
+  },
+  {
+    "id": "nova-auto",
+    "name": "Nova Auto",
+    "category": "Automotive"
+  },
+  {
+    "id": "luxbeats",
+    "name": "LuxBeats",
+    "category": "Audio"
+  },
+  {
+    "id": "aetherwear",
+    "name": "AetherWear",
+    "category": "Fashion"
+  },
+  {
+    "id": "vortex-energy",
+    "name": "Vortex Energy",
+    "category": "Energy"
+  },
+  {
+    "id": "gridtech",
+    "name": "GridTech",
+    "category": "Tech"
+  },
+  {
+    "id": "urbanhalo",
+    "name": "UrbanHalo",
+    "category": "Lifestyle"
+  },
+  {
+    "id": "primeaudio",
+    "name": "PrimeAudio",
+    "category": "Audio"
+  }
+]

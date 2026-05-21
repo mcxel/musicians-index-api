@@ -1,0 +1,22 @@
+model ParticipationSession {
+  id          String      @id @default(uuid())
+  userId      String
+  eventId     String
+  status      String      @default("ACTIVE") // ACTIVE, IDLE, EXPIRED, CLOSED
+  joinedAt    DateTime    @default(now())
+  lastPingAt  DateTime    @default(now())
+  leftAt      DateTime?
+  deviceInfo  String?
+  heartbeats  Heartbeat[]
+}
+
+model Heartbeat {
+  id          String               @id @default(uuid())
+  sessionId   String
+  session     ParticipationSession @relation(fields: [sessionId], references: [id])
+  userId      String
+  eventId     String
+  timestamp   DateTime             @default(now())
+  state       String               @default("ACTIVE") // ACTIVE, BACKGROUND, IDLE
+  clientIp    String?
+}

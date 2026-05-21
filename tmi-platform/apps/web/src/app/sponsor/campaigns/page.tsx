@@ -1,8 +1,22 @@
-export default function Page() {
+import Link from "next/link";
+import SponsorCampaignRail from "@/components/sponsor/SponsorCampaignRail";
+
+export default function SponsorCampaignsPage() {
   return (
-    <main className="min-h-screen bg-[#0a0a0f] text-white px-6 py-10">
-      <h1 className="text-3xl font-bold text-[#ff6b35] mb-4">Campaigns</h1>
-      <p className="text-gray-400">Coming soon.</p>
+    <main style={{ minHeight: "100vh", background: "#05060c", color: "#fff", padding: "32px 24px 80px", fontFamily: "'Inter', sans-serif" }}>
+      <div style={{ maxWidth: 1000, margin: "0 auto" }}>
+        <div style={{ marginBottom: 28 }}>
+          <Link href="/hub/sponsor" style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", textDecoration: "none" }}>← Sponsor Hub</Link>
+        </div>
+        <div style={{ fontSize: 10, letterSpacing: 5, color: "#FFD700", fontWeight: 800, marginBottom: 4 }}>SPONSOR CAMPAIGNS</div>
+        <h1 style={{ fontSize: "clamp(22px,4vw,36px)", fontWeight: 900, margin: "0 0 8px" }}>Campaign Manager</h1>
+        <p style={{ fontSize: 13, color: "rgba(255,255,255,0.45)", margin: "0 0 28px" }}>Create, track, and manage all active sponsorship campaigns across TMI surfaces.</p>
+        <SponsorCampaignRail />
+        <div style={{ marginTop: 24, display: "flex", gap: 12, flexWrap: "wrap" }}>
+          <Link href="/sponsor/placements" style={{ padding: "11px 22px", borderRadius: 8, background: "#FFD700", color: "#05060c", fontWeight: 800, fontSize: 12, textDecoration: "none" }}>Manage Placements →</Link>
+          <Link href="/sponsor/analytics" style={{ padding: "11px 22px", borderRadius: 8, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.7)", fontWeight: 700, fontSize: 12, textDecoration: "none" }}>View Analytics →</Link>
+        </div>
+      </div>
     </main>
   );
 }

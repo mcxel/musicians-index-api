@@ -7,6 +7,7 @@ import Home4SponsorSurface from '@/components/home/Home4SponsorSurface';
 import Home5BattleCypherSurface from '@/components/home/Home5BattleCypherSurface';
 import LiveRibbonSystem from '@/components/home/LiveRibbonSystem';
 import AvatarMiniPreview from '@/components/avatar/AvatarMiniPreview';
+import TMIPricingPulse from '@/components/system/TMIPricingPulse';
 
 // ─── Scene atmosphere constants ───────────────────────────────────────────────
 
@@ -100,6 +101,8 @@ export const MAGAZINE_FULL_ROTATION_SCENES = [
         <div style={{ position: 'absolute', bottom: 16, right: 16, zIndex: 65, pointerEvents: 'auto' }}>
           <AvatarMiniPreview variant="mini" accentColor="#00FFFF" />
         </div>
+        {/* Pricing pulse — fades out after 5 s */}
+        <TMIPricingPulse />
         {/* Cover vignette — frames the stage */}
         <div aria-hidden="true" style={atmosphere('rgba(6,2,18,0.36)', 'rgba(120,0,255,0.08)', 'rgba(0,255,255,0.03)')} />
         <div aria-hidden="true" style={SCANLINE} />

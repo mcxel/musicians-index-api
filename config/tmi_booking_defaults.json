@@ -1,0 +1,92 @@
+{
+  "concert_access": {
+    "default_rule": "Gold free, others $1",
+    "artist_overrides_allowed": true,
+    "tier_pricing": {
+      "free": 1.00,
+      "bronze": 1.00,
+      "pro": 1.00,
+      "gold": 0.00,
+      "platinum": 0.00,
+      "diamond": 0.00
+    },
+    "revenue_splits": {
+      "paid_join_1_dollar": {
+        "performer": 0.70,
+        "platform": 0.20,
+        "reserve_fees": 0.10
+      }
+    },
+    "premium_participation_credits": {
+      "gold_join": 0.35,
+      "platinum_join": 0.50,
+      "diamond_join": 0.75
+    }
+  },
+  "venue_ticket_fees": {
+    "ultra_low": { "max_ticket_price": 0.75, "service_fee": 0.75 },
+    "low": { "max_ticket_price": 1.49, "service_fee": 1.49 },
+    "standard": { "max_ticket_price": 2.99, "service_fee": 2.99 },
+    "mid": { "max_ticket_price": 4.99, "service_fee": 4.99 },
+    "premium": { "max_ticket_price": 7.99, "service_fee": 7.99 },
+    "high_touch": { "max_ticket_price": 9.99, "service_fee": 9.99 }
+  },
+  "venue_revenue_split_preset": {
+    "venue": 0.50,
+    "artist": 0.25,
+    "platform": 0.20,
+    "reserve_fees": 0.05
+  },
+  "upsell_presets": {
+    "concert_upsells": [
+      { "name": "general_join", "price": 1.00 },
+      { "name": "replay_access", "price": 2.00 },
+      { "name": "front_row_badge", "price": 3.00 },
+      { "name": "premium_seat_upgrade", "price": 5.00 },
+      { "name": "backstage_text_chat", "price": 3.00 },
+      { "name": "supporter_spotlight", "price": 5.00 },
+      { "name": "collectible_drop", "price": 2.00 },
+      { "name": "fan_wall_placement", "price": 1.00 },
+      { "name": "song_request", "price": 3.00 },
+      { "name": "private_aftershow", "price": 5.00 }
+    ],
+    "venue_upsells": [
+      "reserved_seating",
+      "fast_lane_entry",
+      "vip_lounge_access",
+      "sponsor_gift_bag",
+      "merch_bundle",
+      "replay_bundle",
+      "meet_and_greet",
+      "premium_screen_shoutout"
+    ]
+  },
+  "booking_logistics": {
+    "platform_booking_assist_fee": "low_flat_fee",
+    "travel_mode": "optional_addon",
+    "hotel_mode": "optional_addon",
+    "ride_mode": "optional_addon"
+  },
+  "ledger_events": [
+    "ticket_purchase",
+    "premium_bypass_entry",
+    "venue_booking_created",
+    "talent_offer_sent",
+    "talent_offer_accepted",
+    "upsell_purchase",
+    "payout_triggered",
+    "refund_issued"
+  ],
+  "fair_rotation_engine": {
+    "max_repeat_surfacing": 3,
+    "cooldown_period_hours": 48,
+    "ranking_weights": {
+      "proximity": 0.20,
+      "fan_rating": 0.25,
+      "stream_engagement": 0.15,
+      "genre_fit": 0.15,
+      "budget_fit": 0.10,
+      "fairness_score": 0.15
+    }
+  }
+}

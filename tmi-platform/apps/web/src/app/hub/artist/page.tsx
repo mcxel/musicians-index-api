@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { PersonaSwitcher } from '@/components/hud/PersonaSwitcher';
+import TMIVideoMonitor from '@/components/hud/TMIVideoMonitor';
 import ArtistStats from '@/components/artist/ArtistStats';
 import ArtistCurtainShell, { type ArtistShowState, nextShowState } from '@/components/artist/ArtistCurtainShell';
 import ArtistCommandRail from '@/components/artist/ArtistCommandRail';
@@ -21,7 +22,7 @@ const NAV_LINKS = [
   { href: '/beat-vault',                        label: 'Beat Vault' },
   { href: '/nft',                               label: 'NFT Studio' },
   { href: '/settings',                          label: 'Settings' },
-  { href: '/auth/logout',                       label: 'Logout' },
+  { href: '/api/auth/logout',                    label: 'Logout' },
 ];
 
 export default function ArtistHubPage() {
@@ -154,6 +155,7 @@ export default function ArtistHubPage() {
           </div>
         </div>
       </div>
+      <TMIVideoMonitor label="ARTIST CAM" position="bottom-right" />
     </div>
   );
 }

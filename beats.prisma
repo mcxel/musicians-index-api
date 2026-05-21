@@ -1,0 +1,55 @@
+model BeatAsset {
+  id          String         @id @default(uuid())
+  producerId  String
+  title       String
+  genre       String
+  bpm         Int
+  key         String?
+  storageUrl  String // Secure link to the audio file
+  licenses    BeatLicense[]
+  purchases   BeatPurchase[]
+  downloads   BeatDownload[]
+  bids        BeatBid[]
+  createdAt   DateTime       @default(now())
+}
+
+model BeatLicense {
+  id           String   @id @default(uuid())
+  beatId       String
+  beat         BeatAsset @relation(fields: [beatId], references: [id])
+  licenseType  String // LEASE, EXCLUSIVE, COMMERCIAL, PREMIUM
+  price        Float
+  currency     String   @default("USD")
+  terms        String // Text describing the rights granted
+  isAvailable  Boolean  @default(true)
+  purchases    BeatPurchase[]
+}
+
+model BeatPurchase {
+  id         String      @id @default(uuid())
+  beatId     String
+  beat       BeatAsset   @relation(fields: [beatId], references: [id])
+  licenseId  String
+  license    BeatLicense @relation(fields: [licenseId], references: [id])
+  buyerId    String
+  purchaseAt DateTime    @default(now())
+  txId       String      @unique
+}
+
+model BeatDownload {
+  id         String    @id @default(uuid())
+  beatId     String
+  beat       BeatAsset @relation(fields: [beatId], references: [id])
+  userId     String
+  downloadAt DateTime  @default(now())
+}
+
+model BeatBid {
+  id        String    @id @default(uuid())
+  beatId    String
+  beat      BeatAsset @relation(fields: [beatId], references: [id])
+  bidderId  String
+  amount    Float
+  timestamp DateTime  @default(now())
+  status    String    @default("ACTIVE") // ACTIVE, REJECTED, ACCEPTED
+}

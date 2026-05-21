@@ -1,0 +1,59 @@
+model PointLedger {
+  id                 String   @id @default(cuid())
+  userId             String
+  action             String
+  xpEarned           Int
+  rewardPointsEarned Int
+  bonusPointsEarned  Int      @default(0)
+  seasonPointsEarned Int      @default(0)
+  contextId          String?
+  metadata           Json?
+  createdAt          DateTime @default(now())
+
+  @@index([userId])
+  @@index([userId, createdAt])
+}
+
+model PointSnapshot {
+  userId            String   @id
+  totalXp           Int
+  totalRewardPoints Int
+  bonusPoints       Int      @default(0)
+  seasonPoints      Int      @default(0)
+  level             Int      @default(1)
+  actionTotals      Json?
+  currentStreak     Int      @default(0)
+  dailyStreak       Int      @default(0)
+  weeklyStreak      Int      @default(0)
+  rankMovement      Int      @default(0)
+  nextUnlock        String?
+  lastAwardedAt     DateTime?
+  lastSnapshotAt    DateTime @default(now())
+}
+
+model TriviaSession {
+  id                 String   @id @default(cuid())
+  roomId             String
+  question           String
+  options            String[]
+  correctAnswerIndex Int
+  timeLimitMs        Int
+  basePayout         Int
+  active             Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  expiresAt          DateTime
+  submissions        TriviaSubmission[]
+}
+
+model TriviaSubmission {
+  id          String   @id @default(cuid())
+  sessionId   String
+  userId      String
+  answerIndex Int
+  createdAt   DateTime @default(now())
+  session     TriviaSession @relation(fields: [sessionId], references: [id])
+
+  @@unique([sessionId, userId])
+}
+
+// Add PollSession, PollVote, QuizSession, QuizAnswer similarly

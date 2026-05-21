@@ -1,0 +1,287 @@
+{
+  "bot_manifest_collection": {
+    "version": "1.0",
+    "owner": "BerntoutGlobal LLC",
+    "platform": "The Musician's Index",
+    "total_bots": 20,
+    "governance_law": "Every bot must define: trigger, allowed_actions, forbidden_actions, fallback, escalation, logs, proof_gate, rollback"
+  },
+
+  "stage_director_bot": {
+    "id": "stage-director-bot",
+    "description": "Controls live room flow: announces turns, manages round transitions, fires countdown cues, introduces performers",
+    "schedule": "event-driven: triggers on room state changes",
+    "owner": "framework",
+    "permissions": {
+      "reads": ["room_state", "queue_state", "event_schedule", "performer_roster"],
+      "writes": ["room_announcements", "room_state_transitions", "timer_signals"],
+      "cannot_touch": ["user_data", "billing", "crown_state", "rankings"]
+    },
+    "trigger_events": [
+      "room.status.changed",
+      "queue.turn.advanced",
+      "round.started",
+      "round.ended",
+      "event.started",
+      "event.countdown.triggered"
+    ],
+    "announcement_templates": [
+      "{artist_name} is up next",
+      "Round {round_num} begins now",
+      "Battle starts in 3... 2... 1...",
+      "The floor is yours, {artist_name}",
+      "And the crowd reacts with {reaction_count} reactions",
+      "Beat drop incoming from {producer_name}",
+      "We are LIVE — welcome to {venue_name}"
+    ],
+    "fallback": {
+      "on_failure": "continue_room_silently",
+      "notify": "framework",
+      "retry_after_minutes": 1
+    },
+    "logging": {
+      "channel": "bot-logs:stage-director",
+      "level": "info",
+      "persist_days": 30
+    }
+  },
+
+  "scene_transition_bot": {
+    "id": "scene-transition-bot",
+    "description": "Manages preview window transitions — open, dock, close, restore scene",
+    "schedule": "event-driven: triggers on preview state changes",
+    "owner": "framework",
+    "permissions": {
+      "reads": ["preview_state", "room_layout", "performer_positions"],
+      "writes": ["preview_dock_position", "scene_restore_signals"],
+      "cannot_touch": ["preview_content", "user_data", "billing"]
+    },
+    "actions": {
+      "may_auto_optimize": [
+        "dock_position_based_on_performer_layout",
+        "transition_timing",
+        "fallback_poster_on_media_fail"
+      ],
+      "must_ask_first": [
+        "change_default_dock_position_for_venue",
+        "override_non_interference_rules"
+      ],
+      "cannot_touch": [
+        "preview_content_source",
+        "turn_ownership",
+        "sponsor_placement_rules"
+      ]
+    },
+    "fallback": {
+      "on_failure": "use_default_dock_position",
+      "notify": "framework"
+    },
+    "logging": {
+      "channel": "bot-logs:scene-transition",
+      "level": "info"
+    }
+  },
+
+  "matchmaking_bot": {
+    "id": "matchmaking-bot",
+    "description": "Routes users to best-fit rooms when they click Random Join. Considers role, genre, room capacity, and activity level",
+    "schedule": "event-driven: triggers on random_room.join.requested",
+    "owner": "algorithm",
+    "permissions": {
+      "reads": ["active_rooms", "room_capacity", "user_genre_prefs", "user_role", "room_type"],
+      "writes": ["room_join_redirect"],
+      "cannot_touch": ["room_state", "user_data", "billing", "rankings"]
+    },
+    "routing_algorithm": {
+      "step_1": "filter by user role (artist/fan/producer)",
+      "step_2": "filter by genre preferences if set",
+      "step_3": "filter by open rooms (capacity not full)",
+      "step_4": "prefer rooms with 0-5 viewers (discovery-first)",
+      "step_5": "if no match: route to most recently opened room",
+      "step_6": "if no rooms open: show 'No rooms open' state"
+    },
+    "fallback": {
+      "on_failure": "show_room_list_for_manual_selection",
+      "notify": "framework"
+    },
+    "logging": {
+      "channel": "bot-logs:matchmaking",
+      "level": "info"
+    }
+  },
+
+  "highlight_capture_bot": {
+    "id": "highlight-capture-bot",
+    "description": "Monitors live rooms for highlight-worthy moments — crowd spikes, high tips, battle votes, cypher wins",
+    "schedule": "continuous during active rooms",
+    "owner": "framework",
+    "permissions": {
+      "reads": ["room_reactions", "tip_events", "vote_events", "hype_meter"],
+      "writes": ["highlight_moments", "clip_timestamps"],
+      "cannot_touch": ["stream_source", "user_data", "billing"]
+    },
+    "trigger_thresholds": {
+      "reaction_spike": "50+ reactions in 10 seconds",
+      "tip_milestone": "$100+ tip in single event",
+      "vote_landslide": "80%+ vote in one direction",
+      "crowd_wave": "hype meter > 90%",
+      "cypher_win": "performer completes clean round"
+    },
+    "fallback": {
+      "on_failure": "skip_clip_for_this_moment",
+      "notify": "framework"
+    },
+    "logging": {
+      "channel": "bot-logs:highlight-capture",
+      "level": "info"
+    }
+  },
+
+  "results_recap_bot": {
+    "id": "results-recap-bot",
+    "description": "Generates battle/event/cypher results pages and sends recap to all participants",
+    "schedule": "event-driven: triggers on room.closed or event.ended",
+    "owner": "algorithm",
+    "permissions": {
+      "reads": ["room_history", "vote_records", "tip_records", "battle_results", "performer_roster"],
+      "writes": ["event_recap_page", "results_record", "participant_notifications"],
+      "cannot_touch": ["ongoing_rooms", "billing", "crown_state"]
+    },
+    "generates": {
+      "results_page": "/events/[slug]/results",
+      "highlight_reel": "/events/[slug]/highlights",
+      "article_seed": "If event had > 50 viewers, create editorial article seed",
+      "winner_card": "WinnerCard component data",
+      "stat_update": "Update artist profiles with battle record"
+    },
+    "fallback": {
+      "on_failure": "create_basic_results_page_with_available_data",
+      "notify": "framework"
+    },
+    "logging": {
+      "channel": "bot-logs:results-recap",
+      "level": "info"
+    }
+  },
+
+  "ranking_update_bot": {
+    "id": "ranking-update-bot",
+    "description": "Updates leaderboards after battles, events, and weekly crown cycles",
+    "schedule": "After events + Sunday midnight (post-crown-bot)",
+    "owner": "algorithm",
+    "permissions": {
+      "reads": ["battle_results", "cypher_records", "stream_stats", "tip_totals", "fan_votes"],
+      "writes": ["rankings_table", "artist_rank_field", "leaderboard_display"],
+      "cannot_touch": ["crown_state", "user_data", "billing"]
+    },
+    "fallback": {
+      "on_failure": "preserve_last_known_rankings",
+      "notify": "big-ace"
+    },
+    "logging": {
+      "channel": "bot-logs:ranking-update",
+      "level": "info",
+      "persist_days": 365
+    }
+  },
+
+  "safety_escalation_bot": {
+    "id": "safety-escalation-bot",
+    "description": "Monitors for safety violations and escalates to moderation or Big Ace based on severity",
+    "schedule": "continuous",
+    "owner": "big-ace",
+    "permissions": {
+      "reads": ["chat_messages", "report_queue", "user_flags"],
+      "writes": ["mute_events", "room_flags", "moderation_queue", "escalation_alerts"],
+      "cannot_touch": ["user_accounts", "billing", "crown_state", "rankings"]
+    },
+    "severity_matrix": {
+      "P0_auto_escalate": ["CSAM", "doxxing", "credible_threats"],
+      "P1_mute_and_flag": ["slurs_harmful_context", "coordinated_harassment"],
+      "P2_flag_for_review": ["spam", "off_topic_flooding", "minor_violations"],
+      "P3_log_only": ["first_offense_mild_language"]
+    },
+    "fallback": {
+      "on_failure": "queue_for_manual_review",
+      "notify": "big-ace"
+    },
+    "logging": {
+      "channel": "bot-logs:safety-escalation",
+      "level": "warn",
+      "persist_days": 365
+    }
+  },
+
+  "billing_integrity_bot": {
+    "id": "billing-integrity-bot",
+    "description": "Audits subscription events to catch duplicate charges, failed webhooks, and entitlement drift",
+    "schedule": "Every 4 hours",
+    "owner": "big-ace",
+    "permissions": {
+      "reads": ["subscription_records", "stripe_events", "entitlement_table"],
+      "writes": ["billing_audit_log", "entitlement_corrections"],
+      "cannot_touch": ["payment_processing", "user_data", "content"]
+    },
+    "checks": [
+      "Stripe event received but not processed",
+      "Subscription active in Stripe but not in DB",
+      "Subscription cancelled in Stripe but still active in DB",
+      "Duplicate entitlement grants",
+      "Marcel and BJ.M always have Diamond — verify on each run"
+    ],
+    "fallback": {
+      "on_failure": "log_and_alert_big_ace",
+      "notify": "big-ace"
+    },
+    "logging": {
+      "channel": "bot-logs:billing-integrity",
+      "level": "warn",
+      "persist_days": 365
+    }
+  },
+
+  "world_simulation_bot": {
+    "id": "world-simulation-bot",
+    "description": "Manages world-level population signals — trending rooms, active venues, city activity",
+    "schedule": "Every 5 minutes",
+    "owner": "algorithm",
+    "permissions": {
+      "reads": ["active_rooms", "viewer_counts", "artist_activity", "venue_activity"],
+      "writes": ["world_activity_state", "trending_signals", "city_activity_scores"],
+      "cannot_touch": ["user_data", "billing", "crown_state", "rankings"]
+    },
+    "fallback": {
+      "on_failure": "preserve_last_known_world_state",
+      "notify": "framework"
+    },
+    "logging": {
+      "channel": "bot-logs:world-simulation",
+      "level": "info"
+    }
+  },
+
+  "load_spike_bot": {
+    "id": "load-spike-bot",
+    "description": "Monitors for traffic spikes and alerts before they become outages",
+    "schedule": "Every 1 minute",
+    "owner": "framework",
+    "permissions": {
+      "reads": ["request_rates", "api_response_times", "room_join_rates"],
+      "writes": ["alert_events", "capacity_signals"],
+      "cannot_touch": ["user_data", "content", "billing"]
+    },
+    "thresholds": {
+      "warning": "Response time > 500ms for 2 consecutive minutes",
+      "critical": "Response time > 1000ms or error rate > 1%",
+      "emergency": "Error rate > 5% — auto-enable read-only mode option for Big Ace"
+    },
+    "fallback": {
+      "on_failure": "log_only",
+      "notify": "framework"
+    },
+    "logging": {
+      "channel": "bot-logs:load-spike",
+      "level": "warn"
+    }
+  }
+}

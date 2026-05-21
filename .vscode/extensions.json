@@ -1,0 +1,17 @@
+{
+  "recommendations": [
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "eamodio.gitlens",
+    "rangav.vscode-thunder-client",
+    "GitHub.copilot",
+    "Prisma.prisma",
+    "Blackbox-ai.blackbox"
+  ],
+  "unwantedRecommendations": [
+    "random.video-player",
+    "webm.preview",
+    "avi.player",
+    "browser.launcher"
+  ]
+}

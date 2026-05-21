@@ -1,0 +1,37 @@
+FROM node:20-alpine AS base
+WORKDIR /app
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+# ── Dependencies ──────────────────────────────────────────────────────────────
+FROM base AS deps
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+COPY apps/api/package.json ./apps/api/
+COPY packages/db/package.json ./packages/db/
+COPY packages/contracts/package.json ./packages/contracts/
+RUN pnpm install --frozen-lockfile --filter @tmi/api... --filter @tmi/db
+
+# ── Prisma generate ───────────────────────────────────────────────────────────
+FROM deps AS prisma
+COPY packages/db/prisma ./packages/db/prisma/
+RUN pnpm -C packages/db exec prisma generate
+
+# ── Build ─────────────────────────────────────────────────────────────────────
+FROM prisma AS builder
+COPY apps/api ./apps/api/
+COPY packages/contracts ./packages/contracts/
+RUN pnpm -C apps/api build
+
+# ── Production image ──────────────────────────────────────────────────────────
+FROM node:20-alpine AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+COPY --from=builder /app/apps/api/dist ./dist
+COPY --from=builder /app/apps/api/package.json ./package.json
+COPY --from=prisma  /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=prisma  /app/node_modules/@prisma ./node_modules/@prisma
+COPY --from=deps    /app/node_modules ./node_modules
+
+EXPOSE 4000
+CMD ["node", "dist/main.js"]

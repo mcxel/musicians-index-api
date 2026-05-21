@@ -1,0 +1,23 @@
+﻿{
+    "P1":  [
+               "Route: /video",
+               "Route: /audio",
+               "Component: Slider",
+               "Component: Chevron",
+               "Engine: nft",
+               "Engine: reward",
+               "Engine: xp"
+           ],
+    "P0":  [
+               "Route: /ticketing",
+               "Engine: game",
+               "Engine: ranking",
+               "Engine: cypher",
+               "Engine: feed",
+               "Engine: ticketing"
+           ],
+    "P2":  [
+               "Route: /production",
+               "Engine: production"
+           ]
+}

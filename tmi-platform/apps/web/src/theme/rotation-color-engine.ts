@@ -7,7 +7,6 @@
 import {
   getAllGenres,
   getPaletteByGenre,
-  getRandomGenrePalette,
   type GenreKey,
   type GenrePalette,
 } from "./genre-colors";

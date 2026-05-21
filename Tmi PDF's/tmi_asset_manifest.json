@@ -1,0 +1,2607 @@
+{
+  "timestamp": "1777085205.961",
+  "total_images": 370,
+  "total_converted": 370,
+  "total_errors": 0,
+  "category_stats": {
+    "homepages": 12,
+    "venues": 72,
+    "hosts": 22,
+    "profiles": 14,
+    "magazine": 176,
+    "seating": 74
+  },
+  "assets": [
+    {
+      "original_path": "Tmi Homepage 1-2.jpg",
+      "converted_path": "_converted_webp_all\\Tmi Homepage 1-2.webp",
+      "category": "homepages",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "Tmi Homepage 1.jpg",
+      "converted_path": "_converted_webp_all\\Tmi Homepage 1.webp",
+      "category": "homepages",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "Tmi Homepage 2.png",
+      "converted_path": "_converted_webp_all\\Tmi Homepage 2.webp",
+      "category": "homepages",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "Tmi Homepage 3.png",
+      "converted_path": "_converted_webp_all\\Tmi Homepage 3.webp",
+      "category": "homepages",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "Tmi Homepage 4.png",
+      "converted_path": "_converted_webp_all\\Tmi Homepage 4.webp",
+      "category": "homepages",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "Tmi Homepage 5.png",
+      "converted_path": "_converted_webp_all\\Tmi Homepage 5.webp",
+      "category": "homepages",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "game show and venue skins\\BobbleHead Avatar extras 1.jpg",
+      "converted_path": "_converted_webp_all\\game show and venue skins\\BobbleHead Avatar extras 1.webp",
+      "category": "venues",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "game show and venue skins\\BobbleHead Avatar extras 2.jpg",
+      "converted_path": "_converted_webp_all\\game show and venue skins\\BobbleHead Avatar extras 2.webp",
+      "category": "venues",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "game show and venue skins\\BobbleHead Avatar extras 3.jpg",
+      "converted_path": "_converted_webp_all\\game show and venue skins\\BobbleHead Avatar extras 3.webp",
+      "category": "venues",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "game show and venue skins\\download (23).jpg",
+      "converted_path": "_converted_webp_all\\game show and venue skins\\download (23).webp",
+      "category": "venues",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "game show and venue skins\\download (24).jpg",
+      "converted_path": "_converted_webp_all\\game show and venue skins\\download (24).webp",
+      "category": "venues",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "game show and venue skins\\download (25).jpg",
+      "converted_path": "_converted_webp_all\\game show and venue skins\\download (25).webp",
+      "category": "venues",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "game show and venue skins\\download (26).jpg",
+      "converted_path": "_converted_webp_all\\game show and venue skins\\download (26).webp",
+      "category": "venues",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "game show and venue skins\\download (27).jpg",
+      "converted_path": "_converted_webp_all\\game show and venue skins\\download (27).webp",
+      "category": "venues",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "game show and venue skins\\download (28).jpg",
+      "converted_path": "_converted_webp_all\\game show and venue skins\\download (28).webp",
+      "category": "venues",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "game show and venue skins\\download (29).jpg",
+      "converted_path": "_converted_webp_all\\game show and venue skins\\download (29).webp",
+      "category": "venues",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "game show and venue skins\\download (30).jpg",
+      "converted_path": "_converted_webp_all\\game show and venue skins\\download (30).webp",
+      "category": "venues",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "game show and venue skins\\download (31).jpg",
+      "converted_path": "_converted_webp_all\\game show and venue skins\\download (31).webp",
+      "category": "venues",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "game show and venue skins\\download (32).jpg",
+      "converted_path": "_converted_webp_all\\game show and venue skins\\download (32).webp",
+      "category": "venues",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "game show and venue skins\\download (33).jpg",
+      "converted_path": "_converted_webp_all\\game show and venue skins\\download (33).webp",
+      "category": "venues",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "game show and venue skins\\download (34).jpg",
+      "converted_path": "_converted_webp_all\\game show and venue skins\\download (34).webp",
+      "category": "venues",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "game show and venue skins\\download (35).jpg",
+      "converted_path": "_converted_webp_all\\game show and venue skins\\download (35).webp",
+      "category": "venues",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "game show and venue skins\\download (36).jpg",
+      "converted_path": "_converted_webp_all\\game show and venue skins\\download (36).webp",
+      "category": "venues",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "game show and venue skins\\download (37).jpg",
+      "converted_path": "_converted_webp_all\\game show and venue skins\\download (37).webp",
+      "category": "venues",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "game show and venue skins\\Host 1.png",
+      "converted_path": "_converted_webp_all\\game show and venue skins\\Host 1.webp",
+      "category": "venues",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "game show and venue skins\\Host 2.png",
+      "converted_path": "_converted_webp_all\\game show and venue skins\\Host 2.webp",
+      "category": "venues",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "game show and venue skins\\Host 3.png",
+      "converted_path": "_converted_webp_all\\game show and venue skins\\Host 3.webp",
+      "category": "venues",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "game show and venue skins\\Host 4.png",
+      "converted_path": "_converted_webp_all\\game show and venue skins\\Host 4.webp",
+      "category": "venues",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "game show and venue skins\\images (23).jpg",
+      "converted_path": "_converted_webp_all\\game show and venue skins\\images (23).webp",
+      "category": "venues",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "game show and venue skins\\images (24).jpg",
+      "converted_path": "_converted_webp_all\\game show and venue skins\\images (24).webp",
+      "category": "venues",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "game show and venue skins\\images (25).jpg",
+      "converted_path": "_converted_webp_all\\game show and venue skins\\images (25).webp",
+      "category": "venues",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "game show and venue skins\\images (26).jpg",
+      "converted_path": "_converted_webp_all\\game show and venue skins\\images (26).webp",
+      "category": "venues",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "game show and venue skins\\images (27).jpg",
+      "converted_path": "_converted_webp_all\\game show and venue skins\\images (27).webp",
+      "category": "venues",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "game show and venue skins\\images (28).jpg",
+      "converted_path": "_converted_webp_all\\game show and venue skins\\images (28).webp",
+      "category": "venues",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "game show and venue skins\\images (29).jpg",
+      "converted_path": "_converted_webp_all\\game show and venue skins\\images (29).webp",
+      "category": "venues",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "game show and venue skins\\images (30).jpg",
+      "converted_path": "_converted_webp_all\\game show and venue skins\\images (30).webp",
+      "category": "venues",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "game show and venue skins\\images (31).jpg",
+      "converted_path": "_converted_webp_all\\game show and venue skins\\images (31).webp",
+      "category": "venues",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "game show and venue skins\\images (32).jpg",
+      "converted_path": "_converted_webp_all\\game show and venue skins\\images (32).webp",
+      "category": "venues",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "game show and venue skins\\images (33).jpg",
+      "converted_path": "_converted_webp_all\\game show and venue skins\\images (33).webp",
+      "category": "venues",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "game show and venue skins\\images (34).jpg",
+      "converted_path": "_converted_webp_all\\game show and venue skins\\images (34).webp",
+      "category": "venues",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "game show and venue skins\\images (35).jpg",
+      "converted_path": "_converted_webp_all\\game show and venue skins\\images (35).webp",
+      "category": "venues",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "game show and venue skins\\Julius.png",
+      "converted_path": "_converted_webp_all\\game show and venue skins\\Julius.webp",
+      "category": "venues",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "Host , Julius , and extra\\Bebo.jpg",
+      "converted_path": "_converted_webp_all\\Host , Julius , and extra\\Bebo.webp",
+      "category": "hosts",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "Host , Julius , and extra\\BobbleHead Avatar extras 1.jpg",
+      "converted_path": "_converted_webp_all\\Host , Julius , and extra\\BobbleHead Avatar extras 1.webp",
+      "category": "hosts",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "Host , Julius , and extra\\BobbleHead Avatar extras 2.jpg",
+      "converted_path": "_converted_webp_all\\Host , Julius , and extra\\BobbleHead Avatar extras 2.webp",
+      "category": "hosts",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "Host , Julius , and extra\\BobbleHead Avatar extras 3.jpg",
+      "converted_path": "_converted_webp_all\\Host , Julius , and extra\\BobbleHead Avatar extras 3.webp",
+      "category": "hosts",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "Host , Julius , and extra\\Host 2.png",
+      "converted_path": "_converted_webp_all\\Host , Julius , and extra\\Host 2.webp",
+      "category": "hosts",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "Host , Julius , and extra\\Host 3.png",
+      "converted_path": "_converted_webp_all\\Host , Julius , and extra\\Host 3.webp",
+      "category": "hosts",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "Host , Julius , and extra\\Host 4.png",
+      "converted_path": "_converted_webp_all\\Host , Julius , and extra\\Host 4.webp",
+      "category": "hosts",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "Host , Julius , and extra\\Host.png",
+      "converted_path": "_converted_webp_all\\Host , Julius , and extra\\Host.webp",
+      "category": "hosts",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "Host , Julius , and extra\\Julius.png",
+      "converted_path": "_converted_webp_all\\Host , Julius , and extra\\Julius.webp",
+      "category": "hosts",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "Host , Julius , and extra\\Record Ralph.jpg",
+      "converted_path": "_converted_webp_all\\Host , Julius , and extra\\Record Ralph.webp",
+      "category": "hosts",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "Host , Julius , and extra\\Tiana monday night stage host.jpg",
+      "converted_path": "_converted_webp_all\\Host , Julius , and extra\\Tiana monday night stage host.webp",
+      "category": "hosts",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "Profiles\\Adminisratation Hub.jpg",
+      "converted_path": "_converted_webp_all\\Profiles\\Adminisratation Hub.webp",
+      "category": "profiles",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "Profiles\\Advertiser and sponser hub.jpg",
+      "converted_path": "_converted_webp_all\\Profiles\\Advertiser and sponser hub.webp",
+      "category": "profiles",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "Profiles\\Advertiser Sign up.png",
+      "converted_path": "_converted_webp_all\\Profiles\\Advertiser Sign up.webp",
+      "category": "profiles",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "Profiles\\Fan Sign up.png",
+      "converted_path": "_converted_webp_all\\Profiles\\Fan Sign up.webp",
+      "category": "profiles",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "Profiles\\Performer Sign up.png",
+      "converted_path": "_converted_webp_all\\Profiles\\Performer Sign up.webp",
+      "category": "profiles",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "Profiles\\season Pass.jpg",
+      "converted_path": "_converted_webp_all\\Profiles\\season Pass.webp",
+      "category": "profiles",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "Profiles\\Sponsor Sign up.png",
+      "converted_path": "_converted_webp_all\\Profiles\\Sponsor Sign up.webp",
+      "category": "profiles",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00001.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00001.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00002.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00002.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00003.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00003.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00004.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00004.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00005.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00005.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00006.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00006.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00007.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00007.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00008.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00008.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00009.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00009.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00010.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00010.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00011.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00011.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00012.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00012.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00013.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00013.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00014.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00014.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00015.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00015.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00016.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00016.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00017.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00017.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00018.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00018.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00019.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00019.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00020.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00020.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00021.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00021.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00022.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00022.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00023.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00023.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00024.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00024.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00025.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00025.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00026.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00026.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00027.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00027.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00028.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00028.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00029.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00029.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00030.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00030.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00031.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00031.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00032.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00032.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00033.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00033.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00034.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00034.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00035.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00035.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00036.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00036.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00037.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00037.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00038.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00038.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00039.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00039.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00040.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00040.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00041.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00041.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00042.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00042.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00043.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00043.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00044.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00044.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00045.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00045.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00046.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00046.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00047.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00047.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00048.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00048.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00049.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00049.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00050.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00050.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00051.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00051.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00052.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00052.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00053.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00053.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00054.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00054.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00055.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00055.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00056.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00056.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00057.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00057.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00058.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00058.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00059.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00059.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00060.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00060.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00061.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00061.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00062.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00062.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00063.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00063.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00064.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00064.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00065.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00065.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00066.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00066.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00067.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00067.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00068.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00068.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00069.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00069.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00070.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00070.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00071.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00071.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00072.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00072.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00073.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00073.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00074.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00074.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00075.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00075.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00076.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00076.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00077.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00077.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00078.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00078.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00079.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00079.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00080.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00080.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00081.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00081.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00082.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00082.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00083.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00083.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00084.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00084.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00085.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00085.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00086.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00086.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00087.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00087.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "The Musician's Index Magazine images\\img00088.jpg",
+      "converted_path": "_converted_webp_all\\The Musician's Index Magazine images\\img00088.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "Venue Skins Plus Seating\\download (10).jpg",
+      "converted_path": "_converted_webp_all\\Venue Skins Plus Seating\\download (10).webp",
+      "category": "seating",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "Venue Skins Plus Seating\\download (11).jpg",
+      "converted_path": "_converted_webp_all\\Venue Skins Plus Seating\\download (11).webp",
+      "category": "seating",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "Venue Skins Plus Seating\\download (12).jpg",
+      "converted_path": "_converted_webp_all\\Venue Skins Plus Seating\\download (12).webp",
+      "category": "seating",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "Venue Skins Plus Seating\\download (13).jpg",
+      "converted_path": "_converted_webp_all\\Venue Skins Plus Seating\\download (13).webp",
+      "category": "seating",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "Venue Skins Plus Seating\\download (14).jpg",
+      "converted_path": "_converted_webp_all\\Venue Skins Plus Seating\\download (14).webp",
+      "category": "seating",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "Venue Skins Plus Seating\\download (15).jpg",
+      "converted_path": "_converted_webp_all\\Venue Skins Plus Seating\\download (15).webp",
+      "category": "seating",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "Venue Skins Plus Seating\\download (16).jpg",
+      "converted_path": "_converted_webp_all\\Venue Skins Plus Seating\\download (16).webp",
+      "category": "seating",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "Venue Skins Plus Seating\\download (17).jpg",
+      "converted_path": "_converted_webp_all\\Venue Skins Plus Seating\\download (17).webp",
+      "category": "seating",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "Venue Skins Plus Seating\\download (18).jpg",
+      "converted_path": "_converted_webp_all\\Venue Skins Plus Seating\\download (18).webp",
+      "category": "seating",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "Venue Skins Plus Seating\\download (19).jpg",
+      "converted_path": "_converted_webp_all\\Venue Skins Plus Seating\\download (19).webp",
+      "category": "seating",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "Venue Skins Plus Seating\\download (20).jpg",
+      "converted_path": "_converted_webp_all\\Venue Skins Plus Seating\\download (20).webp",
+      "category": "seating",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "Venue Skins Plus Seating\\download (21).jpg",
+      "converted_path": "_converted_webp_all\\Venue Skins Plus Seating\\download (21).webp",
+      "category": "seating",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "Venue Skins Plus Seating\\download (22).jpg",
+      "converted_path": "_converted_webp_all\\Venue Skins Plus Seating\\download (22).webp",
+      "category": "seating",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "Venue Skins Plus Seating\\download (7).jpg",
+      "converted_path": "_converted_webp_all\\Venue Skins Plus Seating\\download (7).webp",
+      "category": "seating",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "Venue Skins Plus Seating\\download (8).jpg",
+      "converted_path": "_converted_webp_all\\Venue Skins Plus Seating\\download (8).webp",
+      "category": "seating",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "Venue Skins Plus Seating\\download (9).jpg",
+      "converted_path": "_converted_webp_all\\Venue Skins Plus Seating\\download (9).webp",
+      "category": "seating",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "Venue Skins Plus Seating\\images (10).jpg",
+      "converted_path": "_converted_webp_all\\Venue Skins Plus Seating\\images (10).webp",
+      "category": "seating",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "Venue Skins Plus Seating\\images (11).jpg",
+      "converted_path": "_converted_webp_all\\Venue Skins Plus Seating\\images (11).webp",
+      "category": "seating",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "Venue Skins Plus Seating\\images (12).jpg",
+      "converted_path": "_converted_webp_all\\Venue Skins Plus Seating\\images (12).webp",
+      "category": "seating",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "Venue Skins Plus Seating\\images (13).jpg",
+      "converted_path": "_converted_webp_all\\Venue Skins Plus Seating\\images (13).webp",
+      "category": "seating",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "Venue Skins Plus Seating\\images (14).jpg",
+      "converted_path": "_converted_webp_all\\Venue Skins Plus Seating\\images (14).webp",
+      "category": "seating",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "Venue Skins Plus Seating\\images (15).jpg",
+      "converted_path": "_converted_webp_all\\Venue Skins Plus Seating\\images (15).webp",
+      "category": "seating",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "Venue Skins Plus Seating\\images (16).jpg",
+      "converted_path": "_converted_webp_all\\Venue Skins Plus Seating\\images (16).webp",
+      "category": "seating",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "Venue Skins Plus Seating\\images (17).jpg",
+      "converted_path": "_converted_webp_all\\Venue Skins Plus Seating\\images (17).webp",
+      "category": "seating",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "Venue Skins Plus Seating\\images (18).jpg",
+      "converted_path": "_converted_webp_all\\Venue Skins Plus Seating\\images (18).webp",
+      "category": "seating",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "Venue Skins Plus Seating\\images (19).jpg",
+      "converted_path": "_converted_webp_all\\Venue Skins Plus Seating\\images (19).webp",
+      "category": "seating",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "Venue Skins Plus Seating\\images (2).jpg",
+      "converted_path": "_converted_webp_all\\Venue Skins Plus Seating\\images (2).webp",
+      "category": "seating",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "Venue Skins Plus Seating\\images (20).jpg",
+      "converted_path": "_converted_webp_all\\Venue Skins Plus Seating\\images (20).webp",
+      "category": "seating",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "Venue Skins Plus Seating\\images (21).jpg",
+      "converted_path": "_converted_webp_all\\Venue Skins Plus Seating\\images (21).webp",
+      "category": "seating",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "Venue Skins Plus Seating\\images (22).jpg",
+      "converted_path": "_converted_webp_all\\Venue Skins Plus Seating\\images (22).webp",
+      "category": "seating",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "Venue Skins Plus Seating\\images (3).jpg",
+      "converted_path": "_converted_webp_all\\Venue Skins Plus Seating\\images (3).webp",
+      "category": "seating",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "Venue Skins Plus Seating\\images (4).jpg",
+      "converted_path": "_converted_webp_all\\Venue Skins Plus Seating\\images (4).webp",
+      "category": "seating",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "Venue Skins Plus Seating\\images (5).jpg",
+      "converted_path": "_converted_webp_all\\Venue Skins Plus Seating\\images (5).webp",
+      "category": "seating",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "Venue Skins Plus Seating\\images (6).jpg",
+      "converted_path": "_converted_webp_all\\Venue Skins Plus Seating\\images (6).webp",
+      "category": "seating",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "Venue Skins Plus Seating\\images (7).jpg",
+      "converted_path": "_converted_webp_all\\Venue Skins Plus Seating\\images (7).webp",
+      "category": "seating",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "Venue Skins Plus Seating\\images (8).jpg",
+      "converted_path": "_converted_webp_all\\Venue Skins Plus Seating\\images (8).webp",
+      "category": "seating",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "Venue Skins Plus Seating\\images (9).jpg",
+      "converted_path": "_converted_webp_all\\Venue Skins Plus Seating\\images (9).webp",
+      "category": "seating",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\Tmi Homepage 1-2.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\Tmi Homepage 1-2.webp",
+      "category": "homepages",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\Tmi Homepage 1.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\Tmi Homepage 1.webp",
+      "category": "homepages",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\Tmi Homepage 2.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\Tmi Homepage 2.webp",
+      "category": "homepages",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\Tmi Homepage 3.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\Tmi Homepage 3.webp",
+      "category": "homepages",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\Tmi Homepage 4.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\Tmi Homepage 4.webp",
+      "category": "homepages",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\Tmi Homepage 5.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\Tmi Homepage 5.webp",
+      "category": "homepages",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\game show and venue skins\\BobbleHead Avatar extras 1.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\game show and venue skins\\BobbleHead Avatar extras 1.webp",
+      "category": "venues",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\game show and venue skins\\BobbleHead Avatar extras 2.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\game show and venue skins\\BobbleHead Avatar extras 2.webp",
+      "category": "venues",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\game show and venue skins\\BobbleHead Avatar extras 3.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\game show and venue skins\\BobbleHead Avatar extras 3.webp",
+      "category": "venues",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\game show and venue skins\\download (23).webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\game show and venue skins\\download (23).webp",
+      "category": "venues",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\game show and venue skins\\download (24).webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\game show and venue skins\\download (24).webp",
+      "category": "venues",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\game show and venue skins\\download (25).webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\game show and venue skins\\download (25).webp",
+      "category": "venues",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\game show and venue skins\\download (26).webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\game show and venue skins\\download (26).webp",
+      "category": "venues",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\game show and venue skins\\download (27).webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\game show and venue skins\\download (27).webp",
+      "category": "venues",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\game show and venue skins\\download (28).webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\game show and venue skins\\download (28).webp",
+      "category": "venues",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\game show and venue skins\\download (29).webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\game show and venue skins\\download (29).webp",
+      "category": "venues",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\game show and venue skins\\download (30).webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\game show and venue skins\\download (30).webp",
+      "category": "venues",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\game show and venue skins\\download (31).webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\game show and venue skins\\download (31).webp",
+      "category": "venues",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\game show and venue skins\\download (32).webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\game show and venue skins\\download (32).webp",
+      "category": "venues",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\game show and venue skins\\download (33).webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\game show and venue skins\\download (33).webp",
+      "category": "venues",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\game show and venue skins\\download (34).webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\game show and venue skins\\download (34).webp",
+      "category": "venues",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\game show and venue skins\\download (35).webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\game show and venue skins\\download (35).webp",
+      "category": "venues",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\game show and venue skins\\download (36).webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\game show and venue skins\\download (36).webp",
+      "category": "venues",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\game show and venue skins\\download (37).webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\game show and venue skins\\download (37).webp",
+      "category": "venues",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\game show and venue skins\\Host 1.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\game show and venue skins\\Host 1.webp",
+      "category": "venues",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\game show and venue skins\\Host 2.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\game show and venue skins\\Host 2.webp",
+      "category": "venues",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\game show and venue skins\\Host 3.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\game show and venue skins\\Host 3.webp",
+      "category": "venues",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\game show and venue skins\\Host 4.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\game show and venue skins\\Host 4.webp",
+      "category": "venues",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\game show and venue skins\\images (23).webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\game show and venue skins\\images (23).webp",
+      "category": "venues",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\game show and venue skins\\images (24).webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\game show and venue skins\\images (24).webp",
+      "category": "venues",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\game show and venue skins\\images (25).webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\game show and venue skins\\images (25).webp",
+      "category": "venues",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\game show and venue skins\\images (26).webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\game show and venue skins\\images (26).webp",
+      "category": "venues",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\game show and venue skins\\images (27).webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\game show and venue skins\\images (27).webp",
+      "category": "venues",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\game show and venue skins\\images (28).webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\game show and venue skins\\images (28).webp",
+      "category": "venues",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\game show and venue skins\\images (29).webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\game show and venue skins\\images (29).webp",
+      "category": "venues",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\game show and venue skins\\images (30).webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\game show and venue skins\\images (30).webp",
+      "category": "venues",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\game show and venue skins\\images (31).webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\game show and venue skins\\images (31).webp",
+      "category": "venues",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\game show and venue skins\\images (32).webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\game show and venue skins\\images (32).webp",
+      "category": "venues",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\game show and venue skins\\images (33).webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\game show and venue skins\\images (33).webp",
+      "category": "venues",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\game show and venue skins\\images (34).webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\game show and venue skins\\images (34).webp",
+      "category": "venues",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\game show and venue skins\\images (35).webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\game show and venue skins\\images (35).webp",
+      "category": "venues",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\game show and venue skins\\Julius.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\game show and venue skins\\Julius.webp",
+      "category": "venues",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\Host , Julius , and extra\\Bebo.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\Host , Julius , and extra\\Bebo.webp",
+      "category": "hosts",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\Host , Julius , and extra\\BobbleHead Avatar extras 1.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\Host , Julius , and extra\\BobbleHead Avatar extras 1.webp",
+      "category": "hosts",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\Host , Julius , and extra\\BobbleHead Avatar extras 2.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\Host , Julius , and extra\\BobbleHead Avatar extras 2.webp",
+      "category": "hosts",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\Host , Julius , and extra\\BobbleHead Avatar extras 3.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\Host , Julius , and extra\\BobbleHead Avatar extras 3.webp",
+      "category": "hosts",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\Host , Julius , and extra\\Host 2.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\Host , Julius , and extra\\Host 2.webp",
+      "category": "hosts",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\Host , Julius , and extra\\Host 3.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\Host , Julius , and extra\\Host 3.webp",
+      "category": "hosts",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\Host , Julius , and extra\\Host 4.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\Host , Julius , and extra\\Host 4.webp",
+      "category": "hosts",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\Host , Julius , and extra\\Host.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\Host , Julius , and extra\\Host.webp",
+      "category": "hosts",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\Host , Julius , and extra\\Julius.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\Host , Julius , and extra\\Julius.webp",
+      "category": "hosts",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\Host , Julius , and extra\\Record Ralph.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\Host , Julius , and extra\\Record Ralph.webp",
+      "category": "hosts",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\Host , Julius , and extra\\Tiana monday night stage host.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\Host , Julius , and extra\\Tiana monday night stage host.webp",
+      "category": "hosts",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\Profiles\\Adminisratation Hub.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\Profiles\\Adminisratation Hub.webp",
+      "category": "profiles",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\Profiles\\Advertiser and sponser hub.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\Profiles\\Advertiser and sponser hub.webp",
+      "category": "profiles",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\Profiles\\Advertiser Sign up.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\Profiles\\Advertiser Sign up.webp",
+      "category": "profiles",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\Profiles\\Fan Sign up.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\Profiles\\Fan Sign up.webp",
+      "category": "profiles",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\Profiles\\Performer Sign up.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\Profiles\\Performer Sign up.webp",
+      "category": "profiles",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\Profiles\\season Pass.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\Profiles\\season Pass.webp",
+      "category": "profiles",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\Profiles\\Sponsor Sign up.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\Profiles\\Sponsor Sign up.webp",
+      "category": "profiles",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00001.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00001.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00002.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00002.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00003.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00003.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00004.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00004.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00005.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00005.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00006.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00006.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00007.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00007.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00008.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00008.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00009.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00009.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00010.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00010.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00011.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00011.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00012.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00012.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00013.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00013.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00014.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00014.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00015.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00015.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00016.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00016.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00017.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00017.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00018.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00018.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00019.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00019.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00020.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00020.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00021.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00021.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00022.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00022.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00023.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00023.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00024.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00024.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00025.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00025.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00026.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00026.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00027.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00027.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00028.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00028.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00029.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00029.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00030.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00030.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00031.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00031.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00032.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00032.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00033.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00033.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00034.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00034.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00035.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00035.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00036.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00036.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00037.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00037.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00038.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00038.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00039.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00039.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00040.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00040.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00041.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00041.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00042.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00042.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00043.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00043.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00044.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00044.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00045.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00045.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00046.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00046.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00047.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00047.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00048.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00048.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00049.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00049.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00050.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00050.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00051.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00051.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00052.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00052.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00053.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00053.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00054.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00054.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00055.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00055.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00056.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00056.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00057.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00057.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00058.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00058.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00059.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00059.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00060.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00060.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00061.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00061.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00062.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00062.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00063.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00063.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00064.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00064.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00065.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00065.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00066.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00066.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00067.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00067.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00068.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00068.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00069.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00069.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00070.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00070.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00071.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00071.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00072.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00072.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00073.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00073.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00074.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00074.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00075.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00075.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00076.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00076.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00077.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00077.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00078.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00078.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00079.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00079.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00080.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00080.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00081.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00081.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00082.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00082.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00083.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00083.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00084.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00084.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00085.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00085.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00086.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00086.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00087.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00087.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\The Musician's Index Magazine images\\img00088.webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\The Musician's Index Magazine images\\img00088.webp",
+      "category": "magazine",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\Venue Skins Plus Seating\\download (10).webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\Venue Skins Plus Seating\\download (10).webp",
+      "category": "seating",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\Venue Skins Plus Seating\\download (11).webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\Venue Skins Plus Seating\\download (11).webp",
+      "category": "seating",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\Venue Skins Plus Seating\\download (12).webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\Venue Skins Plus Seating\\download (12).webp",
+      "category": "seating",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\Venue Skins Plus Seating\\download (13).webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\Venue Skins Plus Seating\\download (13).webp",
+      "category": "seating",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\Venue Skins Plus Seating\\download (14).webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\Venue Skins Plus Seating\\download (14).webp",
+      "category": "seating",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\Venue Skins Plus Seating\\download (15).webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\Venue Skins Plus Seating\\download (15).webp",
+      "category": "seating",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\Venue Skins Plus Seating\\download (16).webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\Venue Skins Plus Seating\\download (16).webp",
+      "category": "seating",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\Venue Skins Plus Seating\\download (17).webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\Venue Skins Plus Seating\\download (17).webp",
+      "category": "seating",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\Venue Skins Plus Seating\\download (18).webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\Venue Skins Plus Seating\\download (18).webp",
+      "category": "seating",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\Venue Skins Plus Seating\\download (19).webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\Venue Skins Plus Seating\\download (19).webp",
+      "category": "seating",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\Venue Skins Plus Seating\\download (20).webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\Venue Skins Plus Seating\\download (20).webp",
+      "category": "seating",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\Venue Skins Plus Seating\\download (21).webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\Venue Skins Plus Seating\\download (21).webp",
+      "category": "seating",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\Venue Skins Plus Seating\\download (22).webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\Venue Skins Plus Seating\\download (22).webp",
+      "category": "seating",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\Venue Skins Plus Seating\\download (7).webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\Venue Skins Plus Seating\\download (7).webp",
+      "category": "seating",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\Venue Skins Plus Seating\\download (8).webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\Venue Skins Plus Seating\\download (8).webp",
+      "category": "seating",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\Venue Skins Plus Seating\\download (9).webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\Venue Skins Plus Seating\\download (9).webp",
+      "category": "seating",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\Venue Skins Plus Seating\\images (10).webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\Venue Skins Plus Seating\\images (10).webp",
+      "category": "seating",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\Venue Skins Plus Seating\\images (11).webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\Venue Skins Plus Seating\\images (11).webp",
+      "category": "seating",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\Venue Skins Plus Seating\\images (12).webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\Venue Skins Plus Seating\\images (12).webp",
+      "category": "seating",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\Venue Skins Plus Seating\\images (13).webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\Venue Skins Plus Seating\\images (13).webp",
+      "category": "seating",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\Venue Skins Plus Seating\\images (14).webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\Venue Skins Plus Seating\\images (14).webp",
+      "category": "seating",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\Venue Skins Plus Seating\\images (15).webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\Venue Skins Plus Seating\\images (15).webp",
+      "category": "seating",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\Venue Skins Plus Seating\\images (16).webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\Venue Skins Plus Seating\\images (16).webp",
+      "category": "seating",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\Venue Skins Plus Seating\\images (17).webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\Venue Skins Plus Seating\\images (17).webp",
+      "category": "seating",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\Venue Skins Plus Seating\\images (18).webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\Venue Skins Plus Seating\\images (18).webp",
+      "category": "seating",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\Venue Skins Plus Seating\\images (19).webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\Venue Skins Plus Seating\\images (19).webp",
+      "category": "seating",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\Venue Skins Plus Seating\\images (2).webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\Venue Skins Plus Seating\\images (2).webp",
+      "category": "seating",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\Venue Skins Plus Seating\\images (20).webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\Venue Skins Plus Seating\\images (20).webp",
+      "category": "seating",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\Venue Skins Plus Seating\\images (21).webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\Venue Skins Plus Seating\\images (21).webp",
+      "category": "seating",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\Venue Skins Plus Seating\\images (22).webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\Venue Skins Plus Seating\\images (22).webp",
+      "category": "seating",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\Venue Skins Plus Seating\\images (3).webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\Venue Skins Plus Seating\\images (3).webp",
+      "category": "seating",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\Venue Skins Plus Seating\\images (4).webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\Venue Skins Plus Seating\\images (4).webp",
+      "category": "seating",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\Venue Skins Plus Seating\\images (5).webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\Venue Skins Plus Seating\\images (5).webp",
+      "category": "seating",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\Venue Skins Plus Seating\\images (6).webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\Venue Skins Plus Seating\\images (6).webp",
+      "category": "seating",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\Venue Skins Plus Seating\\images (7).webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\Venue Skins Plus Seating\\images (7).webp",
+      "category": "seating",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\Venue Skins Plus Seating\\images (8).webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\Venue Skins Plus Seating\\images (8).webp",
+      "category": "seating",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    },
+    {
+      "original_path": "_converted_webp\\Venue Skins Plus Seating\\images (9).webp",
+      "converted_path": "_converted_webp_all\\_converted_webp\\Venue Skins Plus Seating\\images (9).webp",
+      "category": "seating",
+      "build_status": "needs_review",
+      "admin_proof": "missing"
+    }
+  ],
+  "errors": []
+}

@@ -1,0 +1,1329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TMI Artist Profiles — BerntoutGlobal</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:ital,wght@0,400;0,700;1,400&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,500;0,9..40,700;1,9..40,300&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --neon-orange: #FF5E00;
+    --neon-cyan: #00F5D4;
+    --neon-gold: #FFD000;
+    --neon-magenta: #E040FB;
+    --deep-navy: #06090F;
+    --panel-bg: #0C1117;
+    --panel-border: rgba(255,94,0,0.25);
+    --panel-border-cyan: rgba(0,245,212,0.25);
+    --text-primary: #F0EDE8;
+    --text-dim: rgba(240,237,232,0.55);
+    --text-muted: rgba(240,237,232,0.3);
+    --grid-line: rgba(255,255,255,0.04);
+  }
+
+  body {
+    background: var(--deep-navy);
+    color: var(--text-primary);
+    font-family: 'DM Sans', sans-serif;
+    overflow-x: hidden;
+  }
+
+  /* BACKGROUND GRID */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size: 48px 48px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* NAV */
+  nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    background: rgba(6,9,15,0.92);
+    border-bottom: 1px solid var(--panel-border);
+    backdrop-filter: blur(12px);
+    padding: 0 32px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .nav-logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    letter-spacing: 3px;
+    color: var(--neon-orange);
+  }
+
+  .nav-logo span { color: var(--text-dim); font-size: 12px; letter-spacing: 2px; margin-left: 12px; font-family: 'Space Mono', monospace; }
+
+  .nav-tabs {
+    display: flex;
+    gap: 4px;
+  }
+
+  .nav-tab {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    padding: 6px 14px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: var(--text-dim);
+    background: transparent;
+  }
+
+  .nav-tab.active, .nav-tab:hover {
+    border-color: var(--neon-orange);
+    color: var(--neon-orange);
+    background: rgba(255,94,0,0.08);
+  }
+
+  /* MAIN LAYOUT */
+  main {
+    position: relative;
+    z-index: 1;
+    padding-top: 56px;
+  }
+
+  .profile-section {
+    min-height: 100vh;
+    display: none;
+    padding: 48px 32px 80px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .profile-section.visible { display: block; }
+
+  /* PROFILE HERO */
+  .profile-hero {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 40px;
+    margin-bottom: 48px;
+    align-items: start;
+  }
+
+  .artist-avatar-wrap {
+    position: relative;
+  }
+
+  .artist-avatar {
+    width: 280px;
+    height: 280px;
+    border: 2px solid var(--neon-orange);
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(135deg, #1a0a00 0%, #0C1117 50%, #001a0f 100%);
+  }
+
+  .artist-avatar.cyan-border { border-color: var(--neon-cyan); }
+  .artist-avatar.gold-border { border-color: var(--neon-gold); }
+  .artist-avatar.magenta-border { border-color: var(--neon-magenta); }
+
+  .avatar-initials {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 96px;
+    letter-spacing: -4px;
+  }
+
+  .avatar-corner {
+    position: absolute;
+    width: 24px; height: 24px;
+    border-color: var(--neon-orange);
+    border-style: solid;
+  }
+  .avatar-corner.tl { top: -1px; left: -1px; border-width: 2px 0 0 2px; }
+  .avatar-corner.tr { top: -1px; right: -1px; border-width: 2px 2px 0 0; }
+  .avatar-corner.bl { bottom: -1px; left: -1px; border-width: 0 0 2px 2px; }
+  .avatar-corner.br { bottom: -1px; right: -1px; border-width: 0 2px 2px 0; }
+
+  .avatar-corner.cyan { border-color: var(--neon-cyan); }
+  .avatar-corner.gold { border-color: var(--neon-gold); }
+  .avatar-corner.magenta { border-color: var(--neon-magenta); }
+
+  .status-badge {
+    position: absolute;
+    bottom: 12px; left: 12px;
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 2px;
+    padding: 4px 10px;
+    border: 1px solid var(--neon-orange);
+    color: var(--neon-orange);
+    background: rgba(6,9,15,0.9);
+    text-transform: uppercase;
+  }
+
+  .status-badge.live { animation: pulse-border 1.5s ease-in-out infinite; }
+  @keyframes pulse-border {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+
+  .upload-btn {
+    display: block;
+    width: 100%;
+    margin-top: 12px;
+    padding: 10px;
+    background: transparent;
+    border: 1px solid var(--panel-border);
+    color: var(--text-dim);
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.2s;
+  }
+  .upload-btn:hover { border-color: var(--neon-orange); color: var(--neon-orange); }
+
+  /* PROFILE DETAILS */
+  .profile-details { padding-top: 8px; }
+
+  .profile-type-tag {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--neon-orange);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .profile-type-tag::before {
+    content: '';
+    display: block;
+    width: 24px; height: 1px;
+    background: var(--neon-orange);
+  }
+  .profile-type-tag.cyan { color: var(--neon-cyan); }
+  .profile-type-tag.cyan::before { background: var(--neon-cyan); }
+  .profile-type-tag.gold { color: var(--neon-gold); }
+  .profile-type-tag.gold::before { background: var(--neon-gold); }
+  .profile-type-tag.magenta { color: var(--neon-magenta); }
+  .profile-type-tag.magenta::before { background: var(--neon-magenta); }
+
+  .profile-name {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 72px;
+    line-height: 0.9;
+    letter-spacing: 2px;
+    margin-bottom: 8px;
+    color: var(--text-primary);
+  }
+
+  .profile-handle {
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+    margin-bottom: 24px;
+  }
+
+  .profile-bio {
+    font-size: 15px;
+    line-height: 1.7;
+    color: var(--text-dim);
+    max-width: 560px;
+    margin-bottom: 28px;
+    border-left: 2px solid var(--neon-orange);
+    padding-left: 16px;
+  }
+  .profile-bio.cyan-accent { border-left-color: var(--neon-cyan); }
+  .profile-bio.gold-accent { border-left-color: var(--neon-gold); }
+  .profile-bio.magenta-accent { border-left-color: var(--neon-magenta); }
+
+  /* STATS ROW */
+  .stats-row {
+    display: flex;
+    gap: 24px;
+    margin-bottom: 28px;
+    flex-wrap: wrap;
+  }
+
+  .stat-block {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .stat-number {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 32px;
+    letter-spacing: 1px;
+    line-height: 1;
+    color: var(--neon-orange);
+  }
+  .stat-number.cyan { color: var(--neon-cyan); }
+  .stat-number.gold { color: var(--neon-gold); }
+  .stat-number.magenta { color: var(--neon-magenta); }
+
+  .stat-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  /* ACTION BUTTONS */
+  .action-row {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .btn-primary {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 12px 28px;
+    background: var(--neon-orange);
+    color: #000;
+    border: none;
+    cursor: pointer;
+    font-weight: 700;
+    transition: all 0.2s;
+  }
+  .btn-primary:hover { background: #FF7A2A; }
+  .btn-primary.cyan { background: var(--neon-cyan); color: #000; }
+  .btn-primary.gold { background: var(--neon-gold); color: #000; }
+  .btn-primary.magenta { background: var(--neon-magenta); color: #000; }
+
+  .btn-outline {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 11px 24px;
+    background: transparent;
+    color: var(--neon-orange);
+    border: 1px solid var(--neon-orange);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-outline:hover { background: rgba(255,94,0,0.1); }
+  .btn-outline.cyan { color: var(--neon-cyan); border-color: var(--neon-cyan); }
+  .btn-outline.cyan:hover { background: rgba(0,245,212,0.08); }
+  .btn-outline.gold { color: var(--neon-gold); border-color: var(--neon-gold); }
+  .btn-outline.magenta { color: var(--neon-magenta); border-color: var(--neon-magenta); }
+
+  /* GENRE TAGS */
+  .genre-tags {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 24px;
+  }
+
+  .genre-tag {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 5px 12px;
+    border: 1px solid rgba(255,94,0,0.4);
+    color: var(--neon-orange);
+    background: rgba(255,94,0,0.06);
+  }
+  .genre-tag.cyan { border-color: rgba(0,245,212,0.4); color: var(--neon-cyan); background: rgba(0,245,212,0.06); }
+  .genre-tag.gold { border-color: rgba(255,208,0,0.4); color: var(--neon-gold); background: rgba(255,208,0,0.06); }
+  .genre-tag.magenta { border-color: rgba(224,64,251,0.4); color: var(--neon-magenta); background: rgba(224,64,251,0.06); }
+
+  /* CONTENT GRID */
+  .content-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin-bottom: 32px;
+  }
+
+  .content-grid.three-col { grid-template-columns: 1fr 1fr 1fr; }
+
+  .panel {
+    background: var(--panel-bg);
+    border: 1px solid var(--panel-border);
+    padding: 24px;
+  }
+
+  .panel.cyan-panel { border-color: var(--panel-border-cyan); }
+  .panel.gold-panel { border-color: rgba(255,208,0,0.2); }
+  .panel.magenta-panel { border-color: rgba(224,64,251,0.2); }
+
+  .panel-title {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--neon-orange);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .panel-title.cyan { color: var(--neon-cyan); }
+  .panel-title.gold { color: var(--neon-gold); }
+  .panel-title.magenta { color: var(--neon-magenta); }
+
+  .panel-divider {
+    height: 1px;
+    background: var(--panel-border);
+    margin: 16px 0;
+  }
+
+  /* TRACK LIST */
+  .track-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .track-item:last-child { border-bottom: none; }
+  .track-item:hover { padding-left: 8px; }
+
+  .track-num {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 18px;
+    color: var(--text-muted);
+    width: 28px;
+    text-align: center;
+  }
+
+  .track-info { flex: 1; }
+  .track-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-primary);
+    margin-bottom: 2px;
+  }
+  .track-meta {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    color: var(--text-muted);
+    letter-spacing: 1px;
+  }
+
+  .track-duration {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  .play-btn {
+    width: 28px; height: 28px;
+    border: 1px solid var(--neon-orange);
+    background: transparent;
+    color: var(--neon-orange);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+  .track-item:hover .play-btn { opacity: 1; }
+
+  /* MEMBER LIST (Group profile) */
+  .member-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+  .member-card:last-child { border-bottom: none; }
+
+  .member-avatar {
+    width: 44px; height: 44px;
+    border: 1px solid var(--neon-magenta);
+    background: rgba(224,64,251,0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 20px;
+    color: var(--neon-magenta);
+    flex-shrink: 0;
+  }
+
+  .member-info { flex: 1; }
+  .member-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary);
+    margin-bottom: 2px;
+  }
+  .member-role {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    color: var(--text-muted);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+  }
+
+  .member-badge {
+    font-family: 'Space Mono', monospace;
+    font-size: 8px;
+    padding: 3px 8px;
+    border: 1px solid var(--neon-magenta);
+    color: var(--neon-magenta);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .add-member-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 0;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    color: var(--text-muted);
+    cursor: pointer;
+    border: 1px dashed rgba(255,255,255,0.1);
+    justify-content: center;
+    margin-top: 12px;
+    transition: all 0.2s;
+    background: transparent;
+    width: 100%;
+    text-transform: uppercase;
+  }
+  .add-member-btn:hover { border-color: var(--neon-magenta); color: var(--neon-magenta); }
+
+  /* FEATURED WORKS CARD */
+  .work-card {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.06);
+    padding: 16px;
+    cursor: pointer;
+    transition: border-color 0.2s;
+  }
+  .work-card:hover { border-color: var(--neon-orange); }
+  .work-card.cyan:hover { border-color: var(--neon-cyan); }
+
+  .work-card-cover {
+    width: 100%;
+    aspect-ratio: 1;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 48px;
+    letter-spacing: 2px;
+    background: linear-gradient(135deg, rgba(255,94,0,0.15) 0%, rgba(0,245,212,0.08) 100%);
+  }
+
+  .work-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+  }
+  .work-meta {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    color: var(--text-muted);
+    letter-spacing: 1px;
+  }
+
+  /* SECTION DIVIDER */
+  .section-divider {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin: 40px 0 32px;
+  }
+
+  .section-divider-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 28px;
+    letter-spacing: 3px;
+    color: var(--text-dim);
+    white-space: nowrap;
+  }
+
+  .section-divider-line {
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, var(--panel-border), transparent);
+  }
+
+  /* HUD STRIP */
+  .hud-strip {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    height: 36px;
+    background: rgba(6,9,15,0.95);
+    border-top: 1px solid var(--panel-border);
+    display: flex;
+    align-items: center;
+    padding: 0 24px;
+    gap: 24px;
+    z-index: 100;
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+  }
+
+  .hud-live { color: var(--neon-orange); animation: pulse-border 2s infinite; }
+  .hud-sep { color: rgba(255,255,255,0.1); }
+
+  /* PRODUCTION HOUSE card (for Berntout Perductions) */
+  .perductions-crest {
+    width: 280px;
+    height: 280px;
+    background: linear-gradient(135deg, #0a1500 0%, #0C1117 60%, #00100a 100%);
+    border: 2px solid var(--neon-cyan);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    position: relative;
+  }
+
+  .crest-logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 52px;
+    letter-spacing: 6px;
+    color: var(--neon-cyan);
+    line-height: 1;
+    text-align: center;
+  }
+  .crest-sub {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 4px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    text-align: center;
+  }
+
+  .crest-ring {
+    position: absolute;
+    width: 160px; height: 160px;
+    border: 1px solid rgba(0,245,212,0.2);
+    border-radius: 50%;
+  }
+
+  /* FULL WIDTH PANEL */
+  .full-panel {
+    background: var(--panel-bg);
+    border: 1px solid var(--panel-border);
+    padding: 24px;
+    margin-bottom: 24px;
+  }
+  .full-panel.cyan-panel { border-color: var(--panel-border-cyan); }
+
+  /* SCROLL REVEAL */
+  .fade-up {
+    opacity: 0;
+    transform: translateY(16px);
+    animation: fadeUp 0.5s ease forwards;
+  }
+  @keyframes fadeUp {
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .fade-up:nth-child(1) { animation-delay: 0.05s; }
+  .fade-up:nth-child(2) { animation-delay: 0.1s; }
+  .fade-up:nth-child(3) { animation-delay: 0.15s; }
+  .fade-up:nth-child(4) { animation-delay: 0.2s; }
+  .fade-up:nth-child(5) { animation-delay: 0.25s; }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo">TMI <span>THE MUSICIAN'S INDEX</span></div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="showProfile('perductions')">Berntout Perductions</button>
+    <button class="nav-tab" onclick="showProfile('bjmbeats')">B.J. M Beat's</button>
+    <button class="nav-tab" onclick="showProfile('bigkazhdog')">Big Kazhdog</button>
+    <button class="nav-tab" onclick="showProfile('berntout')">Berntout (Group)</button>
+  </div>
+</nav>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- PROFILE 1: BERNTOUT PERDUCTIONS           -->
+<!-- ══════════════════════════════════════════ -->
+<section class="profile-section visible" id="perductions">
+  <div class="profile-hero fade-up">
+    <!-- AVATAR -->
+    <div class="artist-avatar-wrap">
+      <div class="perductions-crest">
+        <div class="crest-ring"></div>
+        <div class="crest-logo">BP</div>
+        <div class="crest-sub">Berntout<br>Perductions</div>
+      </div>
+      <div class="avatar-corner tl cyan"></div>
+      <div class="avatar-corner tr cyan"></div>
+      <div class="avatar-corner bl cyan"></div>
+      <div class="avatar-corner br cyan"></div>
+      <div class="upload-btn">+ Upload Label Logo</div>
+    </div>
+
+    <!-- DETAILS -->
+    <div class="profile-details">
+      <div class="profile-type-tag cyan">● Production House · BerntoutGlobal</div>
+      <div class="profile-name">BERNTOUT<br>PERDUCTIONS</div>
+      <div class="profile-handle">@berntoutperductions · Est. 2026</div>
+
+      <div class="genre-tags">
+        <span class="genre-tag cyan">Hip Hop</span>
+        <span class="genre-tag cyan">R&B</span>
+        <span class="genre-tag cyan">Trap</span>
+        <span class="genre-tag cyan">Soul</span>
+        <span class="genre-tag cyan">Production House</span>
+      </div>
+
+      <div class="profile-bio cyan-accent">
+        A Berntout Perductions production. The creative and production arm of BerntoutGlobal — where tracks get built, artists get developed, and the sound stays original. This is the house that Berntout built. Every project that comes out of here carries the mark.
+      </div>
+
+      <div class="stats-row">
+        <div class="stat-block">
+          <span class="stat-number cyan">24</span>
+          <span class="stat-label">Artists Signed</span>
+        </div>
+        <div class="stat-block">
+          <span class="stat-number cyan">187</span>
+          <span class="stat-label">Productions</span>
+        </div>
+        <div class="stat-block">
+          <span class="stat-number cyan">4.2K</span>
+          <span class="stat-label">Followers</span>
+        </div>
+        <div class="stat-block">
+          <span class="stat-number cyan">3</span>
+          <span class="stat-label">Years Active</span>
+        </div>
+      </div>
+
+      <div class="action-row">
+        <button class="btn-primary cyan">Follow Berntout Perductions</button>
+        <button class="btn-outline cyan">Submit Your Demo</button>
+        <button class="btn-outline cyan">Press Kit</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONTENT -->
+  <div class="content-grid fade-up">
+    <div class="panel cyan-panel">
+      <div class="panel-title cyan">Featured Projects</div>
+      <div class="track-item">
+        <div class="track-num">01</div>
+        <div class="track-info">
+          <div class="track-name">The Crown Sessions</div>
+          <div class="track-meta">Vol. 1 · 12 tracks · 2026</div>
+        </div>
+        <button class="play-btn">▶</button>
+      </div>
+      <div class="track-item">
+        <div class="track-num">02</div>
+        <div class="track-info">
+          <div class="track-name">Underground Rising</div>
+          <div class="track-meta">TMI Issue 1 Soundtrack · 2026</div>
+        </div>
+        <button class="play-btn">▶</button>
+      </div>
+      <div class="track-item">
+        <div class="track-num">03</div>
+        <div class="track-info">
+          <div class="track-name">Cypher Season</div>
+          <div class="track-meta">Compilation · 8 artists · 2026</div>
+        </div>
+        <button class="play-btn">▶</button>
+      </div>
+      <div class="track-item">
+        <div class="track-num">04</div>
+        <div class="track-info">
+          <div class="track-name">Monday Night Stage Live</div>
+          <div class="track-meta">Live Recordings · Marcel's Stage · 2026</div>
+        </div>
+        <button class="play-btn">▶</button>
+      </div>
+    </div>
+
+    <div class="panel cyan-panel">
+      <div class="panel-title cyan">Production Services</div>
+      <div style="display:flex;flex-direction:column;gap:12px;margin-top:4px;">
+        <div style="padding:14px;background:rgba(0,245,212,0.04);border:1px solid rgba(0,245,212,0.15);">
+          <div style="font-size:13px;font-weight:500;margin-bottom:4px;">Beat Production</div>
+          <div style="font-family:'Space Mono',monospace;font-size:9px;color:var(--text-muted);letter-spacing:1px;">Custom beats, full production, mixing</div>
+        </div>
+        <div style="padding:14px;background:rgba(0,245,212,0.04);border:1px solid rgba(0,245,212,0.15);">
+          <div style="font-size:13px;font-weight:500;margin-bottom:4px;">Artist Development</div>
+          <div style="font-family:'Space Mono',monospace;font-size:9px;color:var(--text-muted);letter-spacing:1px;">Sound identity, branding, TMI positioning</div>
+        </div>
+        <div style="padding:14px;background:rgba(0,245,212,0.04);border:1px solid rgba(0,245,212,0.15);">
+          <div style="font-size:13px;font-weight:500;margin-bottom:4px;">Show Scoring</div>
+          <div style="font-family:'Space Mono',monospace;font-size:9px;color:var(--text-muted);letter-spacing:1px;">Themes for TMI shows and live events</div>
+        </div>
+        <div style="padding:14px;background:rgba(0,245,212,0.04);border:1px solid rgba(0,245,212,0.15);">
+          <div style="font-size:13px;font-weight:500;margin-bottom:4px;">Distribution & Licensing</div>
+          <div style="font-family:'Space Mono',monospace;font-size:9px;color:var(--text-muted);letter-spacing:1px;">TMI platform placement and sync licensing</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="full-panel cyan-panel fade-up">
+    <div class="panel-title cyan">Roster Spotlight</div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;">
+      <div style="text-align:center;padding:16px;background:rgba(0,245,212,0.03);border:1px solid rgba(0,245,212,0.1);">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:32px;color:var(--neon-cyan);margin-bottom:4px;">BJ</div>
+        <div style="font-size:12px;font-weight:500;">B.J. M Beat's</div>
+        <div style="font-family:'Space Mono',monospace;font-size:8px;color:var(--text-muted);letter-spacing:1px;margin-top:2px;">Producer · Beatmaker</div>
+      </div>
+      <div style="text-align:center;padding:16px;background:rgba(0,245,212,0.03);border:1px solid rgba(0,245,212,0.1);">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:32px;color:var(--neon-cyan);margin-bottom:4px;">BK</div>
+        <div style="font-size:12px;font-weight:500;">Big Kazhdog</div>
+        <div style="font-family:'Space Mono',monospace;font-size:8px;color:var(--text-muted);letter-spacing:1px;margin-top:2px;">Rapper · MC</div>
+      </div>
+      <div style="text-align:center;padding:16px;background:rgba(0,245,212,0.03);border:1px solid rgba(0,245,212,0.1);">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:32px;color:var(--neon-cyan);margin-bottom:4px;">MD</div>
+        <div style="font-size:12px;font-weight:500;">Marcel Dickens</div>
+        <div style="font-family:'Space Mono',monospace;font-size:8px;color:var(--text-muted);letter-spacing:1px;margin-top:2px;">Artist · Founder</div>
+      </div>
+      <div style="text-align:center;padding:16px;border:1px dashed rgba(0,245,212,0.15);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:32px;color:var(--text-muted);">+</div>
+        <div style="font-family:'Space Mono',monospace;font-size:8px;color:var(--text-muted);letter-spacing:1px;text-transform:uppercase;">Add Artist</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- PROFILE 2: B.J. M BEAT'S                  -->
+<!-- ══════════════════════════════════════════ -->
+<section class="profile-section" id="bjmbeats">
+  <div class="profile-hero fade-up">
+    <div class="artist-avatar-wrap">
+      <div class="artist-avatar gold-border">
+        <div class="avatar-initials" style="color:var(--neon-gold);">BJ</div>
+        <div class="status-badge" style="border-color:var(--neon-gold);color:var(--neon-gold);">Producer</div>
+      </div>
+      <div class="avatar-corner tl gold"></div>
+      <div class="avatar-corner tr gold"></div>
+      <div class="avatar-corner bl gold"></div>
+      <div class="avatar-corner br gold"></div>
+      <div class="upload-btn">+ Upload Photo</div>
+    </div>
+
+    <div class="profile-details">
+      <div class="profile-type-tag gold">● Producer · Beatmaker · TMI Artist</div>
+      <div class="profile-name">B.J.<br>M BEAT'S</div>
+      <div class="profile-handle">@bjmbeats · Berntout Perductions</div>
+
+      <div class="genre-tags">
+        <span class="genre-tag gold">Hip Hop Beats</span>
+        <span class="genre-tag gold">Trap</span>
+        <span class="genre-tag gold">Boom Bap</span>
+        <span class="genre-tag gold">R&B Production</span>
+        <span class="genre-tag gold">Lo-Fi</span>
+      </div>
+
+      <div class="profile-bio gold-accent">
+        B.J. M Beat's — the producer behind the sound. Jay Paul Sanchez bringing the heat on the boards. Every beat is a conversation, every track a statement. Part of the BerntoutGlobal family. The beats don't lie.
+      </div>
+
+      <div class="stats-row">
+        <div class="stat-block">
+          <span class="stat-number gold">312</span>
+          <span class="stat-label">Beats Made</span>
+        </div>
+        <div class="stat-block">
+          <span class="stat-number gold">1.4K</span>
+          <span class="stat-label">Followers</span>
+        </div>
+        <div class="stat-block">
+          <span class="stat-number gold">89</span>
+          <span class="stat-label">Placements</span>
+        </div>
+        <div class="stat-block">
+          <span class="stat-number gold">#47</span>
+          <span class="stat-label">TMI Rank</span>
+        </div>
+      </div>
+
+      <div class="action-row">
+        <button class="btn-primary gold">Follow B.J. M Beat's</button>
+        <button class="btn-outline gold">License a Beat</button>
+        <button class="btn-outline gold">Book a Session</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="content-grid fade-up">
+    <div class="panel gold-panel">
+      <div class="panel-title gold">Latest Beats</div>
+      <div class="track-item">
+        <div class="track-num" style="color:var(--neon-gold);">01</div>
+        <div class="track-info">
+          <div class="track-name">Crown Material</div>
+          <div class="track-meta">Trap · 140 BPM · 2026</div>
+        </div>
+        <div class="track-duration">2:54</div>
+        <button class="play-btn" style="border-color:var(--neon-gold);color:var(--neon-gold);">▶</button>
+      </div>
+      <div class="track-item">
+        <div class="track-num" style="color:var(--neon-gold);">02</div>
+        <div class="track-info">
+          <div class="track-name">Monday Night Vibes</div>
+          <div class="track-meta">Boom Bap · 92 BPM · 2026</div>
+        </div>
+        <div class="track-duration">3:12</div>
+        <button class="play-btn" style="border-color:var(--neon-gold);color:var(--neon-gold);">▶</button>
+      </div>
+      <div class="track-item">
+        <div class="track-num" style="color:var(--neon-gold);">03</div>
+        <div class="track-info">
+          <div class="track-name">Cypher Ready</div>
+          <div class="track-meta">Hip Hop · 88 BPM · 2026</div>
+        </div>
+        <div class="track-duration">2:37</div>
+        <button class="play-btn" style="border-color:var(--neon-gold);color:var(--neon-gold);">▶</button>
+      </div>
+      <div class="track-item">
+        <div class="track-num" style="color:var(--neon-gold);">04</div>
+        <div class="track-info">
+          <div class="track-name">Late Night Outro</div>
+          <div class="track-meta">Lo-Fi R&B · 76 BPM · 2026</div>
+        </div>
+        <div class="track-duration">4:01</div>
+        <button class="play-btn" style="border-color:var(--neon-gold);color:var(--neon-gold);">▶</button>
+      </div>
+      <div class="track-item">
+        <div class="track-num" style="color:var(--neon-gold);">05</div>
+        <div class="track-info">
+          <div class="track-name">Berntout Season</div>
+          <div class="track-meta">Trap Soul · 130 BPM · 2026</div>
+        </div>
+        <div class="track-duration">3:28</div>
+        <button class="play-btn" style="border-color:var(--neon-gold);color:var(--neon-gold);">▶</button>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:24px;">
+      <div class="panel gold-panel">
+        <div class="panel-title gold">Equipment & Style</div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+            <span style="font-size:12px;color:var(--text-dim);">DAW</span>
+            <span style="font-family:'Space Mono',monospace;font-size:11px;color:var(--neon-gold);">FL Studio</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+            <span style="font-size:12px;color:var(--text-dim);">Primary Style</span>
+            <span style="font-family:'Space Mono',monospace;font-size:11px;color:var(--neon-gold);">Trap / Boom Bap</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+            <span style="font-size:12px;color:var(--text-dim);">Label</span>
+            <span style="font-family:'Space Mono',monospace;font-size:11px;color:var(--neon-gold);">Berntout Perductions</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:8px 0;">
+            <span style="font-size:12px;color:var(--text-dim);">Available For</span>
+            <span style="font-family:'Space Mono',monospace;font-size:11px;color:var(--neon-gold);">Collabs · Licensing</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel gold-panel">
+        <div class="panel-title gold">Upcoming</div>
+        <div style="padding:14px;background:rgba(255,208,0,0.04);border:1px solid rgba(255,208,0,0.15);">
+          <div style="font-family:'Space Mono',monospace;font-size:9px;color:var(--neon-gold);letter-spacing:2px;margin-bottom:8px;">LIVE SESSION</div>
+          <div style="font-size:14px;font-weight:500;margin-bottom:4px;">Beat Making Live</div>
+          <div style="font-family:'Space Mono',monospace;font-size:9px;color:var(--text-muted);">Creator Studio · Fri 10PM EST</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- PROFILE 3: BIG KAZHDOG                    -->
+<!-- ══════════════════════════════════════════ -->
+<section class="profile-section" id="bigkazhdog">
+  <div class="profile-hero fade-up">
+    <div class="artist-avatar-wrap">
+      <div class="artist-avatar" style="border-color:var(--neon-orange);">
+        <div class="avatar-initials" style="color:var(--neon-orange);">BK</div>
+        <div class="status-badge" style="border-color:var(--neon-orange);color:var(--neon-orange);">MC · Rapper</div>
+      </div>
+      <div class="avatar-corner tl"></div>
+      <div class="avatar-corner tr"></div>
+      <div class="avatar-corner bl"></div>
+      <div class="avatar-corner br"></div>
+      <div class="upload-btn">+ Upload Photo</div>
+    </div>
+
+    <div class="profile-details">
+      <div class="profile-type-tag">● Rapper · MC · TMI Artist</div>
+      <div class="profile-name">BIG<br>KAZHDOG</div>
+      <div class="profile-handle">@bigkazhdog · Berntout Perductions</div>
+
+      <div class="genre-tags">
+        <span class="genre-tag">Hip Hop</span>
+        <span class="genre-tag">Trap</span>
+        <span class="genre-tag">Battle Rap</span>
+        <span class="genre-tag">Freestyle</span>
+        <span class="genre-tag">Cypher</span>
+      </div>
+
+      <div class="profile-bio">
+        Big Kazhdog. The name says it. Heavy in the booth, heavy on the mic, heavy in the cypher. BerntoutGlobal artist. Not here to fit in — here to stand out. Every session on TMI is a statement. Watch what happens when the undiscovered get discovered.
+      </div>
+
+      <div class="stats-row">
+        <div class="stat-block">
+          <span class="stat-number">28</span>
+          <span class="stat-label">Tracks</span>
+        </div>
+        <div class="stat-block">
+          <span class="stat-number">743</span>
+          <span class="stat-label">Followers</span>
+        </div>
+        <div class="stat-block">
+          <span class="stat-number">12</span>
+          <span class="stat-label">Cypher Wins</span>
+        </div>
+        <div class="stat-block">
+          <span class="stat-number">#112</span>
+          <span class="stat-label">TMI Rank</span>
+        </div>
+      </div>
+
+      <div class="action-row">
+        <button class="btn-primary">Follow Big Kazhdog</button>
+        <button class="btn-outline">Join Live Session</button>
+        <button class="btn-outline">Book for Cypher</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="content-grid fade-up">
+    <div class="panel">
+      <div class="panel-title">Discography</div>
+      <div class="track-item">
+        <div class="track-num">01</div>
+        <div class="track-info">
+          <div class="track-name">Kazhdog Season</div>
+          <div class="track-meta">Trap · 2026</div>
+        </div>
+        <div class="track-duration">3:44</div>
+        <button class="play-btn">▶</button>
+      </div>
+      <div class="track-item">
+        <div class="track-num">02</div>
+        <div class="track-info">
+          <div class="track-name">On Sight (Cypher Cut)</div>
+          <div class="track-meta">Battle · Feat. B.J. M Beat's · 2026</div>
+        </div>
+        <div class="track-duration">2:58</div>
+        <button class="play-btn">▶</button>
+      </div>
+      <div class="track-item">
+        <div class="track-num">03</div>
+        <div class="track-info">
+          <div class="track-name">Undiscovered No More</div>
+          <div class="track-meta">Hip Hop · 2026</div>
+        </div>
+        <div class="track-duration">3:17</div>
+        <button class="play-btn">▶</button>
+      </div>
+      <div class="track-item">
+        <div class="track-num">04</div>
+        <div class="track-info">
+          <div class="track-name">Berntout Freestyle</div>
+          <div class="track-meta">Freestyle · Live · 2026</div>
+        </div>
+        <div class="track-duration">4:22</div>
+        <button class="play-btn">▶</button>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:24px;">
+      <div class="panel">
+        <div class="panel-title">Cypher Record</div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div style="display:flex;align-items:center;gap:12px;padding:10px;background:rgba(255,94,0,0.05);border:1px solid rgba(255,94,0,0.15);">
+            <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--neon-orange);">W</div>
+            <div>
+              <div style="font-size:12px;font-weight:500;">Monday Night Cypher #8</div>
+              <div style="font-family:'Space Mono',monospace;font-size:9px;color:var(--text-muted);">Voted winner · 47 viewers</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;padding:10px;background:rgba(255,94,0,0.05);border:1px solid rgba(255,94,0,0.15);">
+            <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--neon-orange);">W</div>
+            <div>
+              <div style="font-size:12px;font-weight:500;">Friday Cypher Arena · Round 2</div>
+              <div style="font-family:'Space Mono',monospace;font-size:9px;color:var(--text-muted);">Eliminated opponent · 33 viewers</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;padding:10px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);">
+            <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--text-muted);">L</div>
+            <div>
+              <div style="font-size:12px;font-weight:500;">Championship Cypher · Grand Final</div>
+              <div style="font-family:'Space Mono',monospace;font-size:9px;color:var(--text-muted);">Runner-up · 112 viewers</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">Next Live</div>
+        <div style="padding:14px;background:rgba(255,94,0,0.04);border:1px solid rgba(255,94,0,0.15);">
+          <div style="font-family:'Space Mono',monospace;font-size:9px;color:var(--neon-orange);letter-spacing:2px;margin-bottom:8px;">CYPHER ARENA</div>
+          <div style="font-size:14px;font-weight:500;margin-bottom:4px;">Open Battle Night</div>
+          <div style="font-family:'Space Mono',monospace;font-size:9px;color:var(--text-muted);">Wed 9PM EST · The Circle</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- PROFILE 4: BERNTOUT (GROUP / MARCEL)       -->
+<!-- ══════════════════════════════════════════ -->
+<section class="profile-section" id="berntout">
+  <div class="profile-hero fade-up">
+    <div class="artist-avatar-wrap">
+      <div class="artist-avatar magenta-border" style="background:linear-gradient(135deg,#1a0020 0%,#0C1117 50%,#001520 100%);">
+        <div class="avatar-initials" style="color:var(--neon-magenta);">BG</div>
+        <div class="status-badge" style="border-color:var(--neon-magenta);color:var(--neon-magenta);">Group · Collective</div>
+      </div>
+      <div class="avatar-corner tl magenta"></div>
+      <div class="avatar-corner tr magenta"></div>
+      <div class="avatar-corner bl magenta"></div>
+      <div class="avatar-corner br magenta"></div>
+      <div class="upload-btn">+ Upload Group Photo</div>
+    </div>
+
+    <div class="profile-details">
+      <div class="profile-type-tag magenta">● Group · Collective · BerntoutGlobal</div>
+      <div class="profile-name">BERNTOUT</div>
+      <div class="profile-handle">@berntout · Led by Marcel Dickens · BerntoutGlobal</div>
+
+      <div class="genre-tags">
+        <span class="genre-tag magenta">Hip Hop</span>
+        <span class="genre-tag magenta">R&B</span>
+        <span class="genre-tag magenta">Collective</span>
+        <span class="genre-tag magenta">Multi-Genre</span>
+        <span class="genre-tag magenta">Live Performance</span>
+      </div>
+
+      <div class="profile-bio magenta-accent">
+        Berntout — the collective. Marcel Dickens and the BerntoutGlobal family moving as one unit. Not burnt out — Berntout. The Ebonic way. The cultural way. The original way. This is the group profile: add members, build the roster, let the world know who we are.
+      </div>
+
+      <div class="stats-row">
+        <div class="stat-block">
+          <span class="stat-number magenta">3</span>
+          <span class="stat-label">Members</span>
+        </div>
+        <div class="stat-block">
+          <span class="stat-number magenta">2.8K</span>
+          <span class="stat-label">Group Followers</span>
+        </div>
+        <div class="stat-block">
+          <span class="stat-number magenta">41</span>
+          <span class="stat-label">Collective Tracks</span>
+        </div>
+        <div class="stat-block">
+          <span class="stat-number magenta">#18</span>
+          <span class="stat-label">TMI Group Rank</span>
+        </div>
+      </div>
+
+      <div class="action-row">
+        <button class="btn-primary magenta">Follow Berntout</button>
+        <button class="btn-outline magenta">Watch Us Live</button>
+        <button class="btn-outline magenta">Group Booking</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MEMBER MANAGEMENT -->
+  <div class="content-grid fade-up">
+    <div class="panel magenta-panel">
+      <div class="panel-title magenta" style="justify-content:space-between;">
+        <span>Group Members</span>
+        <span style="font-size:9px;color:var(--text-muted);">3 / 12 max</span>
+      </div>
+
+      <div class="member-card">
+        <div class="member-avatar" style="border-color:var(--neon-orange);background:rgba(255,94,0,0.1);color:var(--neon-orange);">MD</div>
+        <div class="member-info">
+          <div class="member-name">Marcel Dickens</div>
+          <div class="member-role">Founder · Group Leader</div>
+        </div>
+        <div class="member-badge" style="border-color:var(--neon-orange);color:var(--neon-orange);">Leader</div>
+      </div>
+
+      <div class="member-card">
+        <div class="member-avatar" style="border-color:var(--neon-gold);background:rgba(255,208,0,0.1);color:var(--neon-gold);">BJ</div>
+        <div class="member-info">
+          <div class="member-name">B.J. M Beat's</div>
+          <div class="member-role">Producer · Beatmaker</div>
+        </div>
+        <div class="member-badge">Member</div>
+      </div>
+
+      <div class="member-card">
+        <div class="member-avatar" style="border-color:var(--neon-cyan);background:rgba(0,245,212,0.1);color:var(--neon-cyan);">BK</div>
+        <div class="member-info">
+          <div class="member-name">Big Kazhdog</div>
+          <div class="member-role">MC · Rapper</div>
+        </div>
+        <div class="member-badge">Member</div>
+      </div>
+
+      <button class="add-member-btn">+ Add Member to Berntout</button>
+
+      <div style="margin-top:16px;padding:12px;background:rgba(224,64,251,0.04);border:1px solid rgba(224,64,251,0.15);">
+        <div style="font-family:'Space Mono',monospace;font-size:9px;color:var(--neon-magenta);letter-spacing:2px;margin-bottom:6px;">Invite by TMI Handle</div>
+        <div style="display:flex;gap:8px;">
+          <input placeholder="@artisthandle" style="flex:1;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);padding:8px 12px;color:var(--text-primary);font-family:'Space Mono',monospace;font-size:11px;outline:none;" />
+          <button style="padding:8px 16px;background:var(--neon-magenta);color:#000;border:none;font-family:'Space Mono',monospace;font-size:9px;letter-spacing:1px;cursor:pointer;text-transform:uppercase;">Invite</button>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:24px;">
+      <div class="panel magenta-panel">
+        <div class="panel-title magenta">Group Discography</div>
+        <div class="track-item">
+          <div class="track-num" style="color:var(--neon-magenta);">01</div>
+          <div class="track-info">
+            <div class="track-name">Berntout Anthem</div>
+            <div class="track-meta">Group · All members · 2026</div>
+          </div>
+          <div class="track-duration">4:12</div>
+          <button class="play-btn" style="border-color:var(--neon-magenta);color:var(--neon-magenta);">▶</button>
+        </div>
+        <div class="track-item">
+          <div class="track-num" style="color:var(--neon-magenta);">02</div>
+          <div class="track-info">
+            <div class="track-name">Berntout Season (Collective)</div>
+            <div class="track-meta">Marcel D. + Big Kazhdog · Prod. B.J. · 2026</div>
+          </div>
+          <div class="track-duration">3:50</div>
+          <button class="play-btn" style="border-color:var(--neon-magenta);color:var(--neon-magenta);">▶</button>
+        </div>
+        <div class="track-item">
+          <div class="track-num" style="color:var(--neon-magenta);">03</div>
+          <div class="track-info">
+            <div class="track-name">We Berntout (Live at TMI)</div>
+            <div class="track-meta">Live · Monday Night Stage · 2026</div>
+          </div>
+          <div class="track-duration">6:28</div>
+          <button class="play-btn" style="border-color:var(--neon-magenta);color:var(--neon-magenta);">▶</button>
+        </div>
+      </div>
+
+      <div class="panel magenta-panel">
+        <div class="panel-title magenta">Group Settings</div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+            <span style="font-size:13px;color:var(--text-dim);">Group Visibility</span>
+            <span style="font-family:'Space Mono',monospace;font-size:10px;color:var(--neon-magenta);">Public ▸</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+            <span style="font-size:13px;color:var(--text-dim);">New Member Approval</span>
+            <span style="font-family:'Space Mono',monospace;font-size:10px;color:var(--neon-magenta);">Leader Only ▸</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+            <span style="font-size:13px;color:var(--text-dim);">Label Affiliation</span>
+            <span style="font-family:'Space Mono',monospace;font-size:10px;color:var(--neon-magenta);">Berntout Perductions ▸</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;">
+            <span style="font-size:13px;color:var(--text-dim);">Max Members</span>
+            <span style="font-family:'Space Mono',monospace;font-size:10px;color:var(--neon-magenta);">12 ▸</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- GROUP UPCOMING -->
+  <div class="full-panel magenta-panel fade-up">
+    <div class="panel-title magenta">Upcoming Group Events</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;">
+      <div style="padding:16px;background:rgba(224,64,251,0.04);border:1px solid rgba(224,64,251,0.15);">
+        <div style="font-family:'Space Mono',monospace;font-size:8px;color:var(--neon-magenta);letter-spacing:2px;margin-bottom:8px;">LIVE SHOW</div>
+        <div style="font-size:14px;font-weight:500;margin-bottom:4px;">Berntout Group Cypher</div>
+        <div style="font-family:'Space Mono',monospace;font-size:9px;color:var(--text-muted);">Monday 10PM · Concert Hall</div>
+      </div>
+      <div style="padding:16px;background:rgba(224,64,251,0.04);border:1px solid rgba(224,64,251,0.15);">
+        <div style="font-family:'Space Mono',monospace;font-size:8px;color:var(--neon-magenta);letter-spacing:2px;margin-bottom:8px;">PREMIERE</div>
+        <div style="font-size:14px;font-weight:500;margin-bottom:4px;">New Group Single Drop</div>
+        <div style="font-family:'Space Mono',monospace;font-size:9px;color:var(--text-muted);">Fri Midnight · World Premiere</div>
+      </div>
+      <div style="padding:16px;border:1px dashed rgba(224,64,251,0.2);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-direction:column;gap:6px;">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--text-muted);">+</div>
+        <div style="font-family:'Space Mono',monospace;font-size:8px;color:var(--text-muted);letter-spacing:1px;text-transform:uppercase;">Schedule Event</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HUD STRIP -->
+<div class="hud-strip">
+  <span class="hud-live">● LIVE: 3 artists on TMI now</span>
+  <span class="hud-sep">|</span>
+  <span>BerntoutGlobal</span>
+  <span class="hud-sep">|</span>
+  <span>The Musician's Index</span>
+  <span class="hud-sep">|</span>
+  <span style="margin-left:auto;">© 2026 BerntoutGlobal LLC · A Berntout Perductions Production</span>
+</div>
+
+<script>
+function showProfile(id) {
+  document.querySelectorAll('.profile-section').forEach(s => s.classList.remove('visible'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(id).classList.add('visible');
+  event.currentTarget.classList.add('active');
+  
+  // Restart fade animations
+  const section = document.getElementById(id);
+  section.querySelectorAll('.fade-up').forEach(el => {
+    el.style.animation = 'none';
+    el.offsetHeight;
+    el.style.animation = '';
+  });
+}
+</script>
+</body>
+</html>

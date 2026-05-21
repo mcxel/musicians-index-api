@@ -1,8 +1,30 @@
+import Link from "next/link";
+const BOTS = [
+  { id: "hype-bot", name: "HypeBot", status: "active", trigger: "New battle started", action: "Post to Discord #battles" },
+  { id: "tip-notify", name: "TipNotifier", status: "active", trigger: "Tip received > $5", action: "DM artist + post feed" },
+  { id: "rank-alert", name: "RankAlert", status: "paused", trigger: "Rank change in top 10", action: "Announce in chat" },
+];
 export default function Page() {
   return (
     <main className="min-h-screen bg-[#0a0a0f] text-white px-6 py-10">
-      <h1 className="text-3xl font-bold text-[#ff6b35] mb-4">Bots</h1>
-      <p className="text-gray-400">Coming soon.</p>
+      <div style={{ maxWidth: 860, margin: "0 auto" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 28 }}>
+          <h1 className="text-3xl font-bold text-[#ff6b35]">Bots & Automations</h1>
+          <button style={{ padding: "10px 20px", borderRadius: 8, background: "#ff6b35", color: "#fff", fontWeight: 800, fontSize: 13, cursor: "pointer", border: "none" }}>+ New Bot</button>
+        </div>
+        <div style={{ display: "grid", gap: 10 }}>
+          {BOTS.map((b) => (
+            <div key={b.id} style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, padding: "16px 20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 14 }}>{b.name}</div>
+                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginTop: 3 }}>Trigger: {b.trigger} → {b.action}</div>
+              </div>
+              <span style={{ fontSize: 9, fontWeight: 900, color: b.status === "active" ? "#22c55e" : "#FFD700", letterSpacing: "0.15em" }}>{b.status.toUpperCase()}</span>
+            </div>
+          ))}
+        </div>
+        <div style={{ marginTop: 20 }}><Link href="/dashboard" style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", textDecoration: "none" }}>← Dashboard</Link></div>
+      </div>
     </main>
   );
 }

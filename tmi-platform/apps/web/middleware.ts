@@ -3,6 +3,8 @@ import type { NextRequest } from 'next/server';
 
 const ADMIN_PATHS = ['/admin', '/api/admin'];
 const PROTECTED_PATHS = [
+  '/hub',
+  '/dashboard',
   '/api/payments',
   '/api/rewards',
   '/api/tickets',
@@ -80,6 +82,8 @@ export function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
+    '/hub/:path*',
+    '/dashboard/:path*',
     '/admin/:path*',
     '/api/admin/:path*',
     '/api/payments/:path*',

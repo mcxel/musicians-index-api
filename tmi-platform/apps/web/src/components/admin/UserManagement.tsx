@@ -3,6 +3,11 @@
 import { useState } from 'react';
 import type { UserPublic, ArtistPublic } from '@tmi/contracts';
 
+const MUSIC_PLATFORMS = [
+  "Spotify", "Apple Music", "YouTube", "YouTube Music",
+  "Pandora", "Tidal", "Amazon Music", "SoundCloud", "Audiomack",
+] as const;
+
 type Props = {
   users: UserPublic[];
   artists: ArtistPublic[];
@@ -11,7 +16,7 @@ type Props = {
 export function UserManagement({ users, artists }: Props) {
   // State for Add Music Link form
   const [linkArtistId, setLinkArtistId] = useState<string>(artists[0]?.id || '');
-  const [platform, setPlatform] = useState<string>('');
+  const [platform, setPlatform] = useState<string>(MUSIC_PLATFORMS[0]);
   const [url, setUrl] = useState<string>('');
   const [linkMessage, setLinkMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -24,6 +29,10 @@ export function UserManagement({ users, artists }: Props) {
   const handleLinkSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLinkMessage(null);
+    if (!url.startsWith('http')) {
+      alert('Enter a valid link starting with http');
+      return;
+    }
 
     const response = await fetch('/api/music-links', {
       method: 'POST',
@@ -134,14 +143,16 @@ export function UserManagement({ users, artists }: Props) {
           </div>
           <div className="md:col-span-1">
             <label htmlFor="platform" className="block text-sm font-medium text-gray-300 mb-1">Platform</label>
-            <input
-              type="text"
+            <select
               id="platform"
               value={platform}
               onChange={(e) => setPlatform(e.target.value)}
-              placeholder="e.g., Spotify"
               className="w-full bg-white/10 p-2 rounded-md border border-purple-400/30"
-            />
+            >
+              {MUSIC_PLATFORMS.map((p) => (
+                <option key={p} value={p}>{p}</option>
+              ))}
+            </select>
           </div>
           <div className="md:col-span-2">
             <label htmlFor="url" className="block text-sm font-medium text-gray-300 mb-1">URL</label>

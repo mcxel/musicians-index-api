@@ -1,0 +1,17 @@
+{
+  "route": "/home/2",
+  "timestamp": "2026-05-09T03:00:42.109Z",
+  "httpStatus": 200,
+  "screenshotPath": "scripts\\runtime-proof\\home_2.png",
+  "consoleErrorCount": 0,
+  "networkErrorCount": 0,
+  "framerCrashDetected": false,
+  "frameCrashes": [],
+  "consoleErrors": [],
+  "networkErrors": [],
+  "allConsole": [
+    "[INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold",
+    "[INFO] [MainNav] homepage route using guest session fallback",
+    "[INFO] [AudioProvider] mount"
+  ]
+}

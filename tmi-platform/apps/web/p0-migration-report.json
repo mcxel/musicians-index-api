@@ -1,0 +1,91 @@
+{
+  "surfaces": [
+    {
+      "id": "home-1-orbit",
+      "name": "Home 1 Orbit Faces",
+      "filePath": "src/components/home/Home1MagazineCoverHero.tsx",
+      "priority": "critical",
+      "imagePattern": "orbitArtists.map",
+      "wrapperType": "PerformerPortraitWrapper",
+      "roomId": "home-1",
+      "description": "Rotating artist portraits in crown orbit - highest visibility"
+    },
+    {
+      "id": "home-1-crown",
+      "name": "Crown Center Portrait",
+      "filePath": "src/components/home/CrownCenterFeature.tsx",
+      "priority": "critical",
+      "imagePattern": "artist.images.map",
+      "wrapperType": "PerformerPortraitWrapper",
+      "roomId": "home-1",
+      "description": "Main crown winner portrait - center of page"
+    },
+    {
+      "id": "home-4-sponsor",
+      "name": "Sponsor Billboards",
+      "filePath": "src/components/home/Home4SponsorBillboard.tsx",
+      "priority": "high",
+      "imagePattern": "SAMPLE_IMAGES",
+      "wrapperType": "GovernedMonitorSlot",
+      "roomId": "home-4",
+      "description": "Sponsor advertising carousel - revenue critical"
+    },
+    {
+      "id": "home-3-live",
+      "name": "Home 3 Live World",
+      "filePath": "src/components/home/Home3LiveWorldSurface.tsx",
+      "priority": "high",
+      "imagePattern": "backgroundImage",
+      "wrapperType": "ImageSlotWrapper",
+      "roomId": "home-3",
+      "description": "Live room previews and occupancy cards"
+    },
+    {
+      "id": "home-5-rooms",
+      "name": "Home 5 Room Cards",
+      "filePath": "src/components/home/Home5OpenRoomsGrid.tsx",
+      "priority": "high",
+      "imagePattern": "thumbnail",
+      "wrapperType": "ImageSlotWrapper",
+      "roomId": "home-5",
+      "description": "Battle/cypher/contest room thumbnails"
+    }
+  ],
+  "results": [
+    {
+      "surfaceId": "home-1-orbit",
+      "status": "partial",
+      "message": "Requires wrapping of 2 patterns",
+      "wrappersApplied": 2,
+      "importAdded": false
+    },
+    {
+      "surfaceId": "home-1-crown",
+      "status": "success",
+      "message": "Already wrapped with governance",
+      "wrappersApplied": 0,
+      "importAdded": false
+    },
+    {
+      "surfaceId": "home-4-sponsor",
+      "status": "success",
+      "message": "Already wrapped with governance",
+      "wrappersApplied": 0,
+      "importAdded": false
+    },
+    {
+      "surfaceId": "home-3-live",
+      "status": "success",
+      "message": "No direct rendering found",
+      "wrappersApplied": 0,
+      "importAdded": false
+    },
+    {
+      "surfaceId": "home-5-rooms",
+      "status": "success",
+      "message": "No direct rendering found",
+      "wrappersApplied": 0,
+      "importAdded": false
+    }
+  ]
+}

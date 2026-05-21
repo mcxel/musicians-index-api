@@ -1,0 +1,89 @@
+model NFTCollection {
+  id          String     @id @default(uuid())
+  name        String
+  description String?
+  symbol      String     @unique
+  creatorId   String // User ID of the collection creator
+  assets      NFTAsset[]
+  createdAt   DateTime   @default(now())
+}
+
+model NFTAsset {
+  id              String         @id @default(uuid())
+  collectionId    String
+  collection      NFTCollection  @relation(fields: [collectionId], references: [id])
+  tokenId         Int
+  metadataUrl     String // Link to IPFS or other metadata store
+  royaltyPercentage Float?         @default(0) // Royalty percentage for the creator on secondary sales
+  assetType       String // TICKET, BEAT, ART, TROPHY, MAGAZINE_COLLECTIBLE
+  originalAssetId String? // e.g., the ID of the EventTicket or BeatAsset
+  owner           NFTOwnership?
+  transactions    NFTTransaction[]
+  listings        NFTListing[]
+  bids            NFTBid[]
+  claims          NFTClaim[]
+  saleHash        String?
+  ownershipHash   String?
+  authenticityHash String?
+  royaltyPaid     Float?         @default(0)
+  transferCount   Int            @default(0)
+  createdAt       DateTime       @default(now())
+
+  @@unique([collectionId, tokenId])
+}
+
+model NFTOwnership {
+  id        String   @id @default(uuid())
+  assetId   String   @unique
+  asset     NFTAsset @relation(fields: [assetId], references: [id])
+  userId    String
+  ownedAt   DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model NFTTransaction {
+  id              String   @id @default(uuid())
+  assetId         String
+  asset           NFTAsset @relation(fields: [assetId], references: [id])
+  transactionType String // MINT, TRANSFER, SALE, BURN, GIFT
+  fromUserId      String?
+  toUserId        String?
+  price           Float?
+  currency        String?
+  txHash          String   @unique
+  timestamp       DateTime @default(now())
+}
+
+model NFTListing {
+  id          String   @id @default(uuid())
+  assetId     String
+  asset       NFTAsset @relation(fields: [assetId], references: [id])
+  sellerId    String
+  price       Float
+  currency    String   @default("USD")
+  status      String   @default("ACTIVE") // ACTIVE, SOLD, CANCELLED
+  listedAt    DateTime @default(now())
+  expiresAt   DateTime
+  bids        NFTBid[]
+}
+
+model NFTBid {
+  id         String     @id @default(uuid())
+  listingId  String
+  listing    NFTListing @relation(fields: [listingId], references: [id])
+  assetId    String
+  asset      NFTAsset   @relation(fields: [assetId], references: [id])
+  bidderId   String
+  amount     Float
+  timestamp  DateTime   @default(now())
+  status     String     @default("ACTIVE") // ACTIVE, REJECTED, ACCEPTED
+}
+
+model NFTClaim {
+  id        String   @id @default(uuid())
+  assetId   String
+  asset     NFTAsset @relation(fields: [assetId], references: [id])
+  userId    String
+  claimType String // SPONSOR_PRIZE, ACHIEVEMENT_AWARD
+  claimedAt DateTime @default(now())
+}

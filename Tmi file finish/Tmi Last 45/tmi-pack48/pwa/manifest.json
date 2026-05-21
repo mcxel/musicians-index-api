@@ -1,0 +1,37 @@
+{
+  "name": "The Musician's Index",
+  "short_name": "TMI",
+  "description": "The live digital music magazine. This is your stage.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0D0520",
+  "theme_color": "#FFB800",
+  "orientation": "portrait-primary",
+  "categories": ["music", "entertainment", "social"],
+  "icons": [
+    { "src": "/icons/icon-72.png",  "sizes": "72x72",   "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icons/icon-96.png",  "sizes": "96x96",   "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icons/icon-128.png", "sizes": "128x128", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icons/icon-144.png", "sizes": "144x144", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icons/icon-152.png", "sizes": "152x152", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icons/icon-384.png", "sizes": "384x384", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Live World",  "url": "/lobby",     "icons": [{"src":"/icons/live-96.png","sizes":"96x96"}]   },
+    { "name": "Magazine",    "url": "/",          "icons": [{"src":"/icons/mag-96.png", "sizes":"96x96"}]   },
+    { "name": "My Wallet",   "url": "/wallet",    "icons": [{"src":"/icons/wallet-96.png","sizes":"96x96"}] },
+    { "name": "My Tickets",  "url": "/tickets",   "icons": [{"src":"/icons/ticket-96.png","sizes":"96x96"}] }
+  ],
+  "screenshots": [
+    { "src": "/screenshots/home1.png", "sizes": "390x844", "type": "image/png", "form_factor": "narrow",  "label": "Magazine Cover" },
+    { "src": "/screenshots/home3.png", "sizes": "390x844", "type": "image/png", "form_factor": "narrow",  "label": "Live World" },
+    { "src": "/screenshots/home1-desk.png", "sizes":"1280x800","type":"image/png","form_factor":"wide","label":"Desktop Home" }
+  ],
+  "related_applications": [
+    { "platform": "play",    "url": "https://play.google.com/store/apps/details?id=com.tmi.app" },
+    { "platform": "itunes",  "url": "https://apps.apple.com/app/the-musicians-index/id0000000000" }
+  ],
+  "prefer_related_applications": false
+}

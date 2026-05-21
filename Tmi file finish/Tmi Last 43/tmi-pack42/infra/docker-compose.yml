@@ -1,0 +1,102 @@
+# docker-compose.yml — TMI Platform Full Local Dev Stack
+# Run: docker-compose up -d
+# Starts: PostgreSQL, Redis, Meilisearch, MailHog (email dev), MinIO (S3-compatible)
+
+version: "3.9"
+
+services:
+
+  # ── DATABASE ──────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: tmi-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: tmi
+    ports:
+      - "5432:5432"
+    volumes:
+      - tmi_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ── REDIS (cache + queue + sessions + rate-limit) ─────
+  redis:
+    image: redis:7-alpine
+    container_name: tmi-redis
+    restart: unless-stopped
+    command: redis-server --requirepass redispassword --maxmemory 512mb --maxmemory-policy allkeys-lru
+    ports:
+      - "6379:6379"
+    volumes:
+      - tmi_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "--pass", "redispassword", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ── SEARCH ENGINE (Meilisearch) ───────────────────────
+  meilisearch:
+    image: getmeili/meilisearch:v1.6
+    container_name: tmi-search
+    restart: unless-stopped
+    environment:
+      MEILI_MASTER_KEY: meili-master-key-change-in-prod
+      MEILI_ENV: development
+    ports:
+      - "7700:7700"
+    volumes:
+      - tmi_meili_data:/meili_data
+
+  # ── OBJECT STORAGE (MinIO — S3-compatible local) ─────
+  minio:
+    image: minio/minio:latest
+    container_name: tmi-storage
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin123
+    ports:
+      - "9000:9000"
+      - "9001:9001"  # Console at http://localhost:9001
+    volumes:
+      - tmi_minio_data:/data
+
+  # ── EMAIL DEV SERVER (MailHog) ────────────────────────
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: tmi-mailhog
+    restart: unless-stopped
+    ports:
+      - "1025:1025"  # SMTP
+      - "8025:8025"  # Web UI at http://localhost:8025
+
+  # ── QUEUE MONITOR (Bull Board) ───────────────────────
+  # Uncomment when BullMQ is set up
+  # bull-board:
+  #   image: deadly0/bull-board:latest
+  #   container_name: tmi-bull-board
+  #   ports:
+  #     - "3030:3000"
+  #   environment:
+  #     REDIS_HOST: redis
+  #     REDIS_PASSWORD: redispassword
+  #   depends_on:
+  #     - redis
+
+volumes:
+  tmi_postgres_data:
+  tmi_redis_data:
+  tmi_meili_data:
+  tmi_minio_data:
+
+networks:
+  default:
+    name: tmi-network

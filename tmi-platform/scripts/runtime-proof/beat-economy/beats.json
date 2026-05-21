@@ -1,0 +1,11 @@
+{
+  "route": "/beats",
+  "timestamp": "2026-05-09T03:02:59.479Z",
+  "screenshotPath": "scripts\\runtime-proof\\beat-economy\\beats.png",
+  "consoleErrorCount": 0,
+  "networkErrorCount": 0,
+  "crashDetected": false,
+  "crashes": [],
+  "consoleErrors": [],
+  "networkErrors": []
+}
