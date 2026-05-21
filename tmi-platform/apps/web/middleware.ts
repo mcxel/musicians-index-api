@@ -21,6 +21,7 @@ const AUTH_WHITELIST = [
   '/health',
   '/support/account-recovery',
   '/api/admin/phase1-invite',
+  '/api/admin/debug',
 ];
 
 function matchesAny(pathname: string, prefixes: string[]): boolean {
