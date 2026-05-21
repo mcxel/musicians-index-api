@@ -9,7 +9,7 @@ import { useRouter } from 'next/navigation';
 type InviteRole = 'performer' | 'fan' | 'promoter' | 'admin';
 
 function hubForRole(role: InviteRole): string {
-  if (role === 'admin') return '/admin/live';
+  if (role === 'admin') return '/admin';
   if (role === 'fan') return '/home/1';
   if (role === 'promoter') return '/home/3';
   return '/hub/performer';

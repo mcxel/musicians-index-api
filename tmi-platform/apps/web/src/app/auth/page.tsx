@@ -27,6 +27,17 @@ function toSessionPayload(data: unknown): SessionPayload {
 }
 
 
+function roleToHub(role?: string): string {
+  const r = (role ?? "").toUpperCase();
+  if (r === "ADMIN" || r === "STAFF") return "/admin";
+  if (r === "ARTIST")     return "/hub/artist";
+  if (r === "PERFORMER")  return "/hub/performer";
+  if (r === "SPONSOR")    return "/hub/sponsor";
+  if (r === "ADVERTISER") return "/hub/advertiser";
+  if (r === "VENUE")      return "/hub/venue";
+  return "/hub/fan";
+}
+
 export default function AuthPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -60,7 +71,7 @@ export default function AuthPage() {
   useEffect(() => {
     let active = true;
     loadSession().then((s) => {
-      if (active && s.authenticated) router.replace(nextRoute);
+      if (active && s.authenticated) router.replace(nextRoute || '/hub');
     });
     return () => { active = false; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -171,6 +182,16 @@ export default function AuthPage() {
           }).catch(() => {});
         }
         setMessage("Registration succeeded. You can now sign in.");
+        // Auto-login after registration
+        const loginRes = await postWithCsrfRetry("/api/auth/signin", JSON.stringify({ email, password }));
+        if (loginRes.status === 200) {
+          const loginData = await loginRes.json().catch(() => ({} as { role?: string }));
+          const authenticated = await waitForAuthenticatedSession();
+          if (authenticated) {
+            const dest = nextRoute || roleToHub(loginData.role);
+            router.replace(dest);
+          }
+        }
       } else if (res.status === 409) {
         setMessage("User already exists.");
       } else {
@@ -196,7 +217,7 @@ export default function AuthPage() {
         const data = await res.json().catch(() => ({} as { role?: string }));
         const authenticated = await waitForAuthenticatedSession();
         if (authenticated) {
-          const dest = data.role === 'admin' ? '/admin/live' : (nextRoute || '/home/1');
+          const dest = nextRoute || roleToHub(data.role);
           setMessage(`Login succeeded. Redirecting...`);
           router.replace(dest);
         } else {
