@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { memo, useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { ImageSlotWrapper, PerformerPortraitWrapper } from '@/components/visual-enforcement';
@@ -13,6 +13,12 @@ import type { MusicGenre } from "@/engines/home/CoverGenreRotationAuthority";
 import { GENRE_ACCENT } from "@/engines/home/CoverGenreRotationAuthority";
 import { getClipPathCSS, type IrregularShape } from "@/engines/home/ShapeOverlayEngine";
 import { buildCrownCenterMotion, buildCrownOrbiterMotion } from "@/lib/home/CrownCenterMotionEngine";
+
+// Keyframes injected once at module load — not re-inserted on every render
+const ORBIT_KEYFRAMES = `
+  @keyframes tmi-orbit-cw  { from { transform: translateZ(0) rotate(0deg);   } to { transform: translateZ(0) rotate(360deg);  } }
+  @keyframes tmi-orbit-ccw { from { transform: rotate(0deg);  } to { transform: rotate(-360deg); } }
+`;
 
 // ─── PROPS ───────────────────────────────────────────────────────────────────
 interface OrbitBattleAnimationLayerProps {
@@ -368,7 +374,10 @@ function ConfettiSpark({ x, y, color, index, containerSize: cs }: { x: number; y
 }
 
 // ─── MAIN COMPONENT ──────────────────────────────────────────────────────────
-export default function OrbitBattleAnimationLayer({
+// memo: parent (Home1MagazineCoverHero) re-renders every 90ms for OrbitFaceRail;
+// orbitContenders is already useMemo-ized there, so this component only re-renders
+// when contenders actually change (vote ticks every 5s).
+const OrbitBattleAnimationLayer = memo(function OrbitBattleAnimationLayer({
   contenders: initialContenders,
   genre,
   orbitRadiusPx = 396,
@@ -425,11 +434,8 @@ export default function OrbitBattleAnimationLayer({
         flexShrink: 0,
       }}
     >
-      {/* GPU-accelerated CSS keyframes for orbit rotation */}
-      <style>{`
-        @keyframes tmi-orbit-cw  { from { transform: translateZ(0) rotate(0deg);   } to { transform: translateZ(0) rotate(360deg);  } }
-        @keyframes tmi-orbit-ccw { from { transform: rotate(0deg);  } to { transform: rotate(-360deg); } }
-      `}</style>
+      {/* Keyframes — stable string, React keeps this style node alive */}
+      <style suppressHydrationWarning>{ORBIT_KEYFRAMES}</style>
 
       {/* Background orbit ring */}
       <div
@@ -461,8 +467,10 @@ export default function OrbitBattleAnimationLayer({
       <CrownPulseCenter genre={genre} holder={holder} size={containerSize} shapeIdentity={shapeIdentity} />
       {holder ? <CenterAuthorityPortrait holder={holder} accent={accent} size={containerSize} /> : null}
 
-      {/* Orbit ring — CSS-animated clockwise, GPU-accelerated, 60fps continuous */}
+      {/* Orbit ring — CSS-animated clockwise, GPU-accelerated, 60fps continuous.
+          key="orbit-ring-static" prevents React from unmounting on parent re-render. */}
       <div
+        key="orbit-ring-static"
         aria-hidden="false"
         style={{
           position: "absolute",
@@ -516,4 +524,6 @@ export default function OrbitBattleAnimationLayer({
       </div>
     </div>
   );
-}
+});
+
+export default OrbitBattleAnimationLayer;
