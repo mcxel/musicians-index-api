@@ -137,3 +137,18 @@ export function getUserById(id: string): StoredUser | null {
 export function getUserCount(): number {
   return STORE.size;
 }
+
+export type PublicUserProfile = {
+  id: string;
+  displayName: string;
+  tier: UserTier;
+  createdAt: number;
+};
+
+export function getAllUsers(limit = 50): PublicUserProfile[] {
+  const users: PublicUserProfile[] = [];
+  for (const u of STORE.values()) {
+    users.push({ id: u.id, displayName: u.displayName, tier: u.tier, createdAt: u.createdAt });
+  }
+  return users.sort((a, b) => b.createdAt - a.createdAt).slice(0, limit);
+}

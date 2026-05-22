@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import TmiBadgeOverlay from '@/components/overlays/TmiBadgeOverlay';
@@ -10,6 +10,7 @@ import GovernedOrbitFace from '@/components/home/GovernedOrbitFace';
 import { composeLiveMagazineCover } from '@/lib/home/LiveMagazineCoverComposer';
 import { getCrownArtistPayload, getOrbitArtistPayloads } from '@/lib/home/OrbitArtistPayloadEngine';
 import type { MusicGenre } from '@/engines/home/CoverGenreRotationAuthority';
+import type { PublicPerformer } from '@/app/api/public/performers/route';
 
 type Home1MagazineCoverHeroProps = {
   heroImageRef?: string | null;
@@ -157,6 +158,7 @@ export default function Home1MagazineCoverHero({ heroImageRef }: Home1MagazineCo
   const [frame, setFrame] = useState(0);
   const [orbitRadius, setOrbitRadius] = useState(190);
   const [maxOrbitCount, setMaxOrbitCount] = useState(9);
+  const [livePerformers, setLivePerformers] = useState<PublicPerformer[]>([]);
 
   const cover = useMemo(() => composeLiveMagazineCover(), []);
   const fallbackWinner = useMemo(() => getCrownArtistPayload(), []);
@@ -182,7 +184,8 @@ export default function Home1MagazineCoverHero({ heroImageRef }: Home1MagazineCo
     },
   };
 
-  const orbitArtists = cover.orbitArtists.length
+  // Merge live registered users (prepend) with seeded fallback (pad to 9)
+  const baseOrbitArtists = cover.orbitArtists.length
     ? cover.orbitArtists
     : fallbackOrbit.map((entry, index) => ({
         artistId: entry.artistId,
@@ -201,6 +204,29 @@ export default function Home1MagazineCoverHero({ heroImageRef }: Home1MagazineCo
           status: entry.liveStatus,
         },
       }));
+
+  const liveOrbitAddons = livePerformers.slice(0, 4).map((u, i) => ({
+    artistId: u.id,
+    name: u.name,
+    rank: i + 2,
+    genre: 'Hip-Hop',
+    score: u.score,
+    delta: 5,
+    movement: 'rising' as const,
+    badge: 'NEW' as const,
+    route: u.route,
+    articleRoute: u.route,
+    voteRoute: `/vote/${u.id}`,
+    media: { posterFrameUrl: u.avatarUrl, status: 'LIVE' as const },
+  }));
+
+  // Live users first, then seeded — dedup by artistId
+  const seen = new Set<string>();
+  const orbitArtists = [...liveOrbitAddons, ...baseOrbitArtists].filter((a) => {
+    if (seen.has(a.artistId)) return false;
+    seen.add(a.artistId);
+    return true;
+  });
 
   const orbitContenders = useMemo(() => {
     return orbitArtists.slice(0, maxOrbitCount).map((artist, index) => ({
@@ -221,9 +247,23 @@ export default function Home1MagazineCoverHero({ heroImageRef }: Home1MagazineCo
   }, [orbitArtists, orbitRadius, maxOrbitCount]);
 
   useEffect(() => {
-    // Keep the orbit visibly alive; slow ticks made the cover appear frozen.
-    const t = setInterval(() => setFrame((p) => p + 1), 90);
+    // Keep the orbit visibly alive; 300ms is plenty for the GovernedOrbitFace rail.
+    // OrbitBattleAnimationLayer is memo'd + CSS-driven, so this doesn't affect it.
+    const t = setInterval(() => setFrame((p) => p + 1), 300);
     return () => clearInterval(t);
+  }, []);
+
+  // Fetch real registered users for the orbit — auto-refreshes every 60s
+  useEffect(() => {
+    const load = () => {
+      fetch('/api/public/performers?limit=20', { cache: 'no-store' })
+        .then((r) => r.ok ? r.json() : null)
+        .then((data: PublicPerformer[] | null) => { if (data?.length) setLivePerformers(data); })
+        .catch(() => null);
+    };
+    load();
+    const id = setInterval(load, 60_000);
+    return () => clearInterval(id);
   }, []);
 
   useEffect(() => {
