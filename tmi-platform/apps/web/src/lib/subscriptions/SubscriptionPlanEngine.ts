@@ -36,7 +36,7 @@ export type SubscriptionPlan = {
 
 // ─── Plan data ────────────────────────────────────────────────────────────────
 
-const TIERS: SubscriptionTier[] = ["free", "pro", "bronze", "gold", "platinum", "diamond"];
+const TIERS: SubscriptionTier[] = ["free", "pro", "bronze", "silver", "gold", "platinum", "diamond"];
 
 const TIER_META: Record<SubscriptionTier, {
   name: string;
@@ -94,13 +94,29 @@ const TIER_META: Record<SubscriptionTier, {
     platformRevenueShare: 0.20,
     badge: "BRONZE",
     badgeColor: "#CD7F32",
-    fanBenefits: ["All Pro benefits", "Game perks unlock", "Private feeds"],
-    artistBenefits: ["All Pro benefits", "50 local sponsor slots", "25 major sponsor slots", "Game perks", "Early ticket access", "Exclusive giveaways"],
+    fanBenefits: ["All Pro benefits", "Private feeds"],
+    artistBenefits: ["All Pro benefits", "50 local sponsor slots", "25 major sponsor slots", "Early ticket access", "Exclusive giveaways"],
     venueBenefits: ["All Pro benefits", "Ticket tier customization"],
     sponsorBenefits: ["All Pro benefits", "6 ad placements", "Analytics dashboard"],
     advertiserBenefits: ["6 article ad placements", "Category targeting"],
     marketplaceBenefits: ["Priority beat listing", "Sponsored listing slot"],
     articlePlacementBenefits: ["6 article listings", "Category placements"],
+  },
+  silver: {
+    name: "Silver",
+    localSponsorSlots: 75,
+    majorSponsorSlots: 35,
+    imageSlots: 8,
+    platformRevenueShare: 0.175,
+    badge: "SILVER",
+    badgeColor: "#C0C0C0",
+    fanBenefits: ["All Bronze benefits", "Vote multiplier ×1.8", "Bonus XP ×1.5"],
+    artistBenefits: ["All Bronze benefits", "75 local sponsor slots", "35 major sponsor slots", "Vote multiplier ×1.8", "Meet & greet 7 slots"],
+    venueBenefits: ["All Bronze benefits", "Silver venue badge"],
+    sponsorBenefits: ["All Bronze benefits", "8 ad placements"],
+    advertiserBenefits: ["8 article ad placements", "Inline banner slots"],
+    marketplaceBenefits: ["Silver beat badge", "Priority listing"],
+    articlePlacementBenefits: ["8 article listings", "Featured article slot"],
   },
   gold: {
     name: "Gold",
