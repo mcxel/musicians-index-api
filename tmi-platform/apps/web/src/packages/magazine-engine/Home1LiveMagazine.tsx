@@ -22,7 +22,7 @@ import RankNumberPop from "./RankNumberPop";
 import NewsArticleGrid from "./NewsArticleGrid";
 import SponsorAdSlotGrid from "./SponsorAdSlotGrid";
 
-const SPIN_MS = 3000;
+const SPIN_MS = 45000;  // 45s per genre — broadcast timing
 const STARBURST_MS = 900;
 const ENTER_MS = 1080;
 const IMPACT_DELAY_MS = 220;
@@ -316,13 +316,15 @@ export default function Home1LiveMagazine() {
     const tick = (now: number) => {
       const delta = now - last;
       last = now;
-      setRotation((previous) => previous + delta * orbitSpeed);
+      // Freeze orbit during the starburst flash — creates the "broadcast switch" moment
+      const speed = phase === "starburst" ? 0 : orbitSpeed;
+      setRotation((previous) => previous + delta * speed);
       frame = window.requestAnimationFrame(tick);
     };
 
     frame = window.requestAnimationFrame(tick);
     return () => window.cancelAnimationFrame(frame);
-  }, [orbitSpeed]);
+  }, [orbitSpeed, phase]);
 
   useEffect(() => {
     if (phase !== "rotate") {
