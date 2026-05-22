@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect, useCallback } from "react";
+import LiveMagazineVoiceTicker from "./LiveMagazineVoiceTicker";
 
 // ─── Sponsor sticker chaos — race car jacket layout ───────────────────────────
 
@@ -59,7 +60,7 @@ const VENUES = [
   { id: "v1", name: "CYPHER FEST 2026",        date: "JUN 14 · ATLANTA",         price: "$45",  sold: 72,  href: "/events/cypher-fest",            accent: "#00FFFF", icon: "🎤" },
   { id: "v2", name: "MONDAY NIGHT STAGE",      date: "EVERY MON · ONLINE",       price: "FREE", sold: 91,  href: "/events/monday-night-stage",     accent: "#FF2DAA", icon: "🎶" },
   { id: "v3", name: "WORLD DANCE PARTY",       date: "JUN 22 · GLOBAL STREAM",   price: "$12",  sold: 58,  href: "/events/world-dance-party",      accent: "#AA2DFF", icon: "💃" },
-  { id: "v4", name: "DEALER FEUD 2000 FINALS", date: "JUL 5 · ONLINE",           price: "$8",   sold: 44,  href: "/events/dealer-feud-finals",     accent: "#FFD700", icon: "🎯" },
+  { id: "v4", name: "DEALER FEUD 1000 FINALS", date: "JUL 5 · ONLINE",           price: "$8",   sold: 44,  href: "/events/dealer-feud-finals",     accent: "#FFD700", icon: "🎯" },
   { id: "v5", name: "MONTHLY IDOL SHOWCASE",   date: "LAST SAT · ONLINE",        price: "FREE", sold: 83,  href: "/events/monthly-idol",           accent: "#FF6B35", icon: "⭐" },
   { id: "v6", name: "NAME THAT TUNE — LIVE",   date: "FRI NIGHTS · ONLINE",      price: "$5",   sold: 67,  href: "/events/name-that-tune",         accent: "#00FFFF", icon: "🎵" },
 ];
@@ -387,7 +388,7 @@ const MARQUEE_ITEMS = [
   "🎶 MONDAY NIGHT STAGE — EVERY WEEK",
   "🏆 VOTE LIVE FOR YOUR FAVORITE ARTIST",
   "💃 WORLD DANCE PARTY — JOIN 3,000+ FANS",
-  "🎯 DEALER FEUD 2000 FINALS — BUY TICKETS",
+  "🎯 DEALER FEUD 1000 FINALS — BUY TICKETS",
   "🎵 ADVERTISE ON TMI — FROM $199/MO",
 ];
 
@@ -466,6 +467,7 @@ export default function Home4AdMagazine() {
         </div>
 
         <MarqueeStrip />
+        <LiveMagazineVoiceTicker pageId="home-4" accent="#FFD700" />
         <BillboardHero />
         <StickerChaosWall />
         <VenueTicketRail />

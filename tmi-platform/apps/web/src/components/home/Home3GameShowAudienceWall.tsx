@@ -9,18 +9,18 @@ import TMILiveMediaWidget from "@/components/media/TMILiveMediaWidget";
 
 const GAME_SHOWS = [
   {
-    id: "dealer-feud-2000",
-    name: "Dealer Feud 2000",
+    id: "dealer-feud-1000",
+    name: "Dealer Feud 1000",
     tagline: "Survey Says — Beat the Board!",
-    href: "/live/rooms/dealer-feud-2000",
+    href: "/live/rooms/dealer-feud-1000",
     accent: "#FFD700",
     icon: "🎯",
     audienceSize: 2400,
-    prizePool: "$2,000",
+    prizePool: "$1,000",
     status: "LIVE",
-    roomId: "dealer-feud-2000",
+    roomId: "dealer-feud-1000",
     performerId: "gameshow-dealer-feud",
-    performerName: "Dealer Feud 2000",
+    performerName: "Dealer Feud 1000",
     emotes: ["🔥", "💰", "🎯", "👑", "🎉"],
   },
   {

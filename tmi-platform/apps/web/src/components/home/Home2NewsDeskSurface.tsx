@@ -13,6 +13,7 @@ import Home2TrendingIssueRail from './Home2TrendingIssueRail';
 import Home2NewsDensityRail from './Home2NewsDensityRail';
 import Home2LiveLobbyStrip from './Home2LiveLobbyStrip';
 import WorldTrendingBelt from './WorldTrendingBelt';
+import LiveMagazineVoiceTicker from './LiveMagazineVoiceTicker';
 import { enforceRouteOwnership } from '@/lib/routes/TmiVisualRouteMap';
 import { getVisualSlot } from '@/lib/visuals/TmiVisualSlotRegistry';
 import "@/styles/tmiTypography.css";
@@ -36,6 +37,7 @@ export default function Home2NewsDeskSurface() {
       <GlobalTopNavRail />
       <BreakingNewsTicker />
       <SponsorTickerRail />
+      <LiveMagazineVoiceTicker pageId="home-2" accent="#AA2DFF" />
       <Home2NewsDensityRail />
 
       <section style={{ maxWidth: 1100, margin: '0 auto', padding: '34px 24px 24px' }}>

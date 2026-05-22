@@ -33,7 +33,7 @@ export type SubscriptionEntitlement = {
 };
 
 const TIER_INDEX: Record<SubscriptionTier, number> = {
-  free: 0, pro: 1, bronze: 2, gold: 3, platinum: 4, diamond: 5,
+  free: 0, pro: 1, bronze: 2, silver: 3, gold: 4, platinum: 5, diamond: 6,
 };
 
 export function resolveEntitlement(accountType: AccountType, tier: SubscriptionTier): SubscriptionEntitlement {
@@ -45,7 +45,7 @@ export function resolveEntitlement(accountType: AccountType, tier: SubscriptionT
     accountType,
     localSponsorSlots:       getPlanLocalSponsorSlots(tier),
     majorSponsorSlots:       getPlanMajorSponsorSlots(tier),
-    imageSlots:              [1, 3, 6, 10, 15, 20][idx],
+    imageSlots:              [1, 3, 6, 8, 10, 15, 20][idx],
     platformRevenueShare:    getPlanPlatformRevenueShare(tier),
 
     // marketplace
@@ -53,9 +53,9 @@ export function resolveEntitlement(accountType: AccountType, tier: SubscriptionT
       idx >= 1 ? "Beat listing" : null,
       idx >= 1 ? "NFT listing" : null,
       idx >= 2 ? "Priority listing" : null,
-      idx >= 3 ? "Homepage beat feature" : null,
-      idx >= 4 ? "Pinned listing" : null,
-      idx >= 5 ? "Hero placement" : null,
+      idx >= 4 ? "Homepage beat feature" : null,
+      idx >= 5 ? "Pinned listing" : null,
+      idx >= 6 ? "Hero placement" : null,
     ].filter((b): b is string => b !== null),
 
     // article
@@ -63,27 +63,26 @@ export function resolveEntitlement(accountType: AccountType, tier: SubscriptionT
       "Article listing",
       idx >= 1 ? "Featured article slot" : null,
       idx >= 2 ? "Category placement" : null,
-      idx >= 3 ? "Homepage article feature" : null,
-      idx >= 4 ? "Magazine article feature" : null,
-      idx >= 5 ? "Editorial feature" : null,
+      idx >= 4 ? "Homepage article feature" : null,
+      idx >= 5 ? "Magazine article feature" : null,
+      idx >= 6 ? "Editorial feature" : null,
     ].filter((b): b is string => b !== null),
 
     badgeTier: tier.toUpperCase(),
 
-    // feature gates (creator-gated)
     liveRoomsEnabled:    isCreator ? idx >= 1 : true,
     beatSellingEnabled:  isCreator ? idx >= 1 : false,
-    nftSellingEnabled:   isCreator ? idx >= 1 : idx >= 5,
+    nftSellingEnabled:   isCreator ? idx >= 1 : idx >= 6,
     bookingEnabled:      isCreator ? idx >= 1 : false,
     tipsEnabled:         idx >= 1,
     earlyTicketAccess:   idx >= 2,
     exclusiveGiveaways:  idx >= 2,
-    gamePerks:           idx >= 3,
+    gamePerks:           idx >= 4, // gold+
     privateFeeds:        idx >= 1,
 
-    voteMultiplier:   [1, 1.2, 1.5, 2, 3, 5][idx],
-    bonusPoints:      [0, 5, 10, 20, 40, 100][idx],
-    meetGreetSlots:   isCreator ? [0, 2, 5, 10, 20, 50][idx] : 0,
+    voteMultiplier:   [1, 1.2, 1.5, 1.8, 2, 3, 5][idx],
+    bonusPoints:      [0, 5, 10, 15, 20, 40, 100][idx],
+    meetGreetSlots:   isCreator ? [0, 2, 5, 7, 10, 20, 50][idx] : 0,
     articlePageEnabled: isCreator ? idx >= 1 : false,
   };
 }

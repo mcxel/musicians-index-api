@@ -2,13 +2,13 @@
 
 export type AccountType = "artist" | "performer" | "fan";
 
-export type SubscriptionTier = "free" | "pro" | "bronze" | "gold" | "platinum" | "diamond";
+export type SubscriptionTier = "free" | "pro" | "bronze" | "silver" | "gold" | "platinum" | "diamond";
 
 export type TierPrice = {
   tier: SubscriptionTier;
   usdCents: number;         // base price in cents (pre-tax)
-  usdDisplay: string;       // "$2.49"
-  annualUsdCents?: number;  // annual option if available
+  usdDisplay: string;       // "$2.99"
+  annualUsdCents?: number;
   annualUsdDisplay?: string;
 };
 
@@ -23,9 +23,9 @@ export type TierBenefits = {
   beatSelling: boolean;
   bookingEligible: boolean;
   articlePage: boolean;
-  meetGreetSlots: number;       // 0 = no access
-  voteMultiplier: number;       // 1.0 = baseline
-  bonusPoints: number;          // per interaction
+  meetGreetSlots: number;
+  voteMultiplier: number;
+  bonusPoints: number;
   earlyTicketAccess: boolean;
   exclusiveGiveaways: boolean;
   gamePerks: boolean;
@@ -33,28 +33,45 @@ export type TierBenefits = {
 };
 
 // ─── Price tables ─────────────────────────────────────────────────────────────
+// Fan:      Free $0 / Pro $4.99 / Bronze $9.99 / Silver $14.99 / Gold $24.99 / Platinum $39.99 / Diamond $49.99
+// Performer: Free $0 / Pro $2.99 / Bronze $7.99 / Silver $14.99 / Gold $29.99 / Platinum $39.99 / Diamond $69.99
 
 const CREATOR_PRICES: Record<SubscriptionTier, { cents: number; display: string }> = {
   free:     { cents:    0, display: "$0.00"  },
-  pro:      { cents:  249, display: "$2.49"  },
-  bronze:   { cents:  599, display: "$5.99"  },
-  gold:     { cents: 1199, display: "$11.99" },
-  platinum: { cents: 2499, display: "$24.99" },
-  diamond:  { cents: 4999, display: "$49.99" },
+  pro:      { cents:  299, display: "$2.99"  },
+  bronze:   { cents:  799, display: "$7.99"  },
+  silver:   { cents: 1499, display: "$14.99" },
+  gold:     { cents: 2999, display: "$29.99" },
+  platinum: { cents: 3999, display: "$39.99" },
+  diamond:  { cents: 6999, display: "$69.99" },
 };
 
 const FAN_PRICES: Record<SubscriptionTier, { cents: number; display: string }> = {
   free:     { cents:    0, display: "$0.00"  },
   pro:      { cents:  499, display: "$4.99"  },
   bronze:   { cents:  999, display: "$9.99"  },
-  gold:     { cents: 1999, display: "$19.99" },
+  silver:   { cents: 1499, display: "$14.99" },
+  gold:     { cents: 2499, display: "$24.99" },
   platinum: { cents: 3999, display: "$39.99" },
-  diamond:  { cents: 7999, display: "$79.99" },
+  diamond:  { cents: 4999, display: "$49.99" },
 };
+
+// Season Pass pricing (separate from membership tiers)
+// Base $9.99 / Pro $19.99 / Elite $29.99
+export const SEASON_PASS_PRICES = {
+  base:  { cents:  999, display: "$9.99"  },
+  pro:   { cents: 1999, display: "$19.99" },
+  elite: { cents: 2999, display: "$29.99" },
+} as const;
+export type SeasonPassTier = keyof typeof SEASON_PASS_PRICES;
 
 function priceTable(accountType: AccountType) {
   return accountType === "fan" ? FAN_PRICES : CREATOR_PRICES;
 }
+
+// ─── Tier order ───────────────────────────────────────────────────────────────
+
+const TIER_ORDER: SubscriptionTier[] = ["free", "pro", "bronze", "silver", "gold", "platinum", "diamond"];
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 
@@ -78,32 +95,31 @@ export function getTierPrice(accountType: AccountType, tier: SubscriptionTier): 
 }
 
 export function getAllTierPrices(accountType: AccountType): TierPrice[] {
-  const tiers: SubscriptionTier[] = ["free", "pro", "bronze", "gold", "platinum", "diamond"];
-  return tiers.map(t => getTierPrice(accountType, t));
+  return TIER_ORDER.map(t => getTierPrice(accountType, t));
 }
 
 export function getTierBenefits(accountType: AccountType, tier: SubscriptionTier): TierBenefits {
   const isCreator = accountType !== "fan";
-  const tierIndex = ["free", "pro", "bronze", "gold", "platinum", "diamond"].indexOf(tier);
+  const tierIndex = TIER_ORDER.indexOf(tier);
 
   if (isCreator) {
     return {
       tier,
       accountType,
-      profileImages:      [1, 3, 6, 10, 15, 20][tierIndex],
-      uploadLimitMb:      [100, 500, 1000, 2000, 5000, 10000][tierIndex],
+      profileImages:      [1, 3, 6, 8, 10, 15, 20][tierIndex]!,
+      uploadLimitMb:      [100, 500, 1000, 1500, 2000, 5000, 10000][tierIndex]!,
       liveRooms:          tierIndex >= 1,
       tipsEnabled:        tierIndex >= 1,
       nftSelling:         tierIndex >= 1,
       beatSelling:        tierIndex >= 1,
       bookingEligible:    tierIndex >= 1,
       articlePage:        tierIndex >= 1,
-      meetGreetSlots:     [0, 2, 5, 10, 20, 50][tierIndex],
-      voteMultiplier:     [1, 1.2, 1.5, 2, 3, 5][tierIndex],
-      bonusPoints:        [0, 5, 10, 20, 40, 100][tierIndex],
+      meetGreetSlots:     [0, 2, 5, 7, 10, 20, 50][tierIndex]!,
+      voteMultiplier:     [1, 1.2, 1.5, 1.8, 2, 3, 5][tierIndex]!,
+      bonusPoints:        [0, 5, 10, 15, 20, 40, 100][tierIndex]!,
       earlyTicketAccess:  tierIndex >= 2,
       exclusiveGiveaways: tierIndex >= 2,
-      gamePerks:          tierIndex >= 3,
+      gamePerks:          tierIndex >= 4, // gold+
       privateFeeds:       tierIndex >= 1,
     };
   }
@@ -111,17 +127,17 @@ export function getTierBenefits(accountType: AccountType, tier: SubscriptionTier
   return {
     tier,
     accountType,
-    profileImages:      [1, 10, 20, 30, 50, 100][tierIndex],
-    uploadLimitMb:      [50, 200, 500, 1000, 2000, 5000][tierIndex],
+    profileImages:      [1, 10, 20, 25, 30, 50, 100][tierIndex]!,
+    uploadLimitMb:      [50, 200, 500, 700, 1000, 2000, 5000][tierIndex]!,
     liveRooms:          true,
     tipsEnabled:        tierIndex >= 1,
     nftSelling:         false,
     beatSelling:        false,
     bookingEligible:    false,
     articlePage:        false,
-    meetGreetSlots:     [0, 3, 8, 15, 30, 100][tierIndex],
-    voteMultiplier:     [1, 1.5, 2, 3, 5, 10][tierIndex],
-    bonusPoints:        [0, 10, 25, 50, 100, 250][tierIndex],
+    meetGreetSlots:     [0, 3, 8, 12, 15, 30, 100][tierIndex]!,
+    voteMultiplier:     [1, 1.5, 2, 2.5, 3, 5, 10][tierIndex]!,
+    bonusPoints:        [0, 10, 25, 35, 50, 100, 250][tierIndex]!,
     earlyTicketAccess:  tierIndex >= 1,
     exclusiveGiveaways: tierIndex >= 1,
     gamePerks:          tierIndex >= 1,

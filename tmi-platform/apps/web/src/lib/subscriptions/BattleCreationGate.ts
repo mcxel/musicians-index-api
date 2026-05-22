@@ -7,7 +7,7 @@ import type { SubscriptionTier } from "./SubscriptionPricingEngine";
 
 // ── Tier index mirrors SubscriptionGateEngine ─────────────────────────────────
 
-const TIER_ORDER: SubscriptionTier[] = ["free", "pro", "bronze", "gold", "platinum", "diamond"];
+const TIER_ORDER: SubscriptionTier[] = ["free", "pro", "bronze", "silver", "gold", "platinum", "diamond"];
 
 function tierIndex(t: SubscriptionTier): number {
   return TIER_ORDER.indexOf(t);
@@ -22,6 +22,7 @@ const MAX_CONCURRENT_BY_TIER: Record<SubscriptionTier, number> = {
   free:     0,
   pro:      0,
   bronze:   0,
+  silver:   0,
   gold:     3,
   platinum: 6,
   diamond:  Infinity,

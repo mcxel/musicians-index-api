@@ -15,6 +15,9 @@ import Home3GameShowAudienceWall from './Home3GameShowAudienceWall';
 import GlobalLiveBelt from './GlobalLiveBelt';
 import AudienceField from '@/components/live/AudienceField';
 import AvatarMiniPreview from '@/components/avatar/AvatarMiniPreview';
+import WeeklyContestRail from './WeeklyContestRail';
+import WinnerReplayWall from './WinnerReplayWall';
+import LiveMagazineVoiceTicker from './LiveMagazineVoiceTicker';
 import { enforceRouteOwnership } from '@/lib/routes/TmiVisualRouteMap';
 import { getVisualSlot } from '@/lib/visuals/TmiVisualSlotRegistry';
 
@@ -39,6 +42,7 @@ export default function Home3LiveWorldSurface() {
       <GlobalTopNavRail />
       <BreakingNewsTicker />
       <SponsorTickerRail />
+      <LiveMagazineVoiceTicker pageId="home-3" accent="#00FFFF" />
       <Home3LiveDensityRail />
 
       {/* Game show audience wall — 6 shows, live audience view, emotes, prizes */}
@@ -119,6 +123,10 @@ export default function Home3LiveWorldSurface() {
 
       {/* Host rail */}
       <Home3HostRail />
+
+      {/* Weekly contests + winner replays */}
+      <WeeklyContestRail />
+      <WinnerReplayWall />
 
       {/* Global live belt */}
       <GlobalLiveBelt />

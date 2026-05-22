@@ -51,8 +51,8 @@ export type TierFeatures = {
 
 const TIER_PRICES_USD: Record<SubscriptionTier, Record<BillingInterval, number>> = {
   free: { monthly: 0, annual: 0 },
-  fan_pro: { monthly: 9.99, annual: 89.99 },
-  performer_pro: { monthly: 19.99, annual: 179.99 },
+  fan_pro: { monthly: 4.99, annual: 49.90 },
+  performer_pro: { monthly: 2.99, annual: 29.90 },
   venue_pro: { monthly: 49.99, annual: 449.99 },
   sponsor_pro: { monthly: 99.99, annual: 899.99 },
   platform_vip: { monthly: 199.99, annual: 1799.99 },
