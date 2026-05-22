@@ -1,13 +1,15 @@
-'use client';
+"use client";
 
-import { MagazinePageFlipRuntime } from '@/components/magazine/MagazinePageFlipRuntime';
-import { MAGAZINE_FULL_ROTATION_SCENES } from '../1/page';
+import LiveDiscoverySurface from "@/components/home/LiveDiscoverySurface";
 
 export default function Home5Page() {
   return (
-    <MagazinePageFlipRuntime
-      scenes={MAGAZINE_FULL_ROTATION_SCENES}
-      initialIndex={5}
+    <LiveDiscoverySurface
+      title="Battle Arena"
+      subtitle="Battles · Cyphers · Challenges"
+      genres={["battle", "cypher", "challenge"]}
+      accent="#AA2DFF"
+      backHref="/home/1"
     />
   );
 }
