@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import SoftLaunchReadinessPanel from "@/components/admin/SoftLaunchReadinessPanel";
 
 interface FeedItem {
   id: string;
@@ -40,9 +41,13 @@ export default function OwnerDashboardClient() {
   const emptyText = useMemo(() => (loading ? "Loading live feed..." : "No events recorded yet."), [loading]);
 
   return (
-    <main style={{ maxWidth: 1040, margin: "0 auto", padding: "2rem 1.25rem" }}>
-      <h1 style={{ marginTop: 0 }}>Owner Dashboard</h1>
-      <p style={{ color: "#5f6080" }}>Live shared service alerts and isolation protection timeline.</p>
+    <main style={{ maxWidth: 1040, margin: "0 auto", padding: "2rem 1.25rem", background: '#050510', minHeight: '100vh', color: '#fff' }}>
+      <h1 style={{ marginTop: 0, color: '#fff' }}>Owner Dashboard</h1>
+      <p style={{ color: "#888" }}>Live shared service alerts and isolation protection timeline.</p>
+
+      <div style={{ marginBottom: 32 }}>
+        <SoftLaunchReadinessPanel />
+      </div>
       {feed.length === 0 ? (
         <p>{emptyText}</p>
       ) : (

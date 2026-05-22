@@ -11,6 +11,7 @@ import GlobalTopNavRail from './GlobalTopNavRail';
 import BreakingNewsTicker from './BreakingNewsTicker';
 import SponsorTickerRail from './SponsorTickerRail';
 import Home1CrownDensityRail from './Home1CrownDensityRail';
+import Home1ChartsBillboard from './Home1ChartsBillboard';
 import TmiPaperNoise from '@/components/underlays/TmiPaperNoise';
 import TmiGridFog from '@/components/underlays/TmiGridFog';
 import { enforceRouteOwnership } from '@/lib/routes/TmiVisualRouteMap';
@@ -64,6 +65,9 @@ export default function Home1DiscoverySurface() {
 
       {/* Top 10 double spread */}
       <Home1Top10DoubleSpreaded />
+
+      {/* Charts Billboard — genre rotation */}
+      <Home1ChartsBillboard />
 
       {/* Quick entry rail (secondary) */}
       <Home1CoverCompressionLayer />

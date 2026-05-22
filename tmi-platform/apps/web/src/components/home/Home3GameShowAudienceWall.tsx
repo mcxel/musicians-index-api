@@ -56,7 +56,7 @@ const GAME_SHOWS = [
   {
     id: "monday-night-stage",
     name: "Monday Night Stage",
-    tagline: "The Weekly Live Showcase",
+    tagline: "Any talent. Any skill. If you can do it, the stage is yours — the audience votes from home.",
     href: "/live/rooms/monday-night-stage",
     accent: "#00FFFF",
     icon: "🎶",
