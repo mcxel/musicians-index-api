@@ -44,6 +44,11 @@ import {
   useCallback,
   type MouseEvent,
 } from "react";
+import {
+  canActivateStream,
+  registerActiveStream,
+  releaseActiveStream,
+} from "@/lib/media/LiveStateRegistry";
 
 /* ─── Types ─────────────────────────────────────────────────────────────── */
 export type WidgetVariant = "billboard" | "homepage" | "profile" | "magazine" | "news";
@@ -146,11 +151,18 @@ function BrandGradient({
 }
 
 /* ─── Motion poster (WebM loop) ──────────────────────────────────────────── */
-function MotionPoster({ src, thumbnail }: { src: string; thumbnail?: string }) {
-  const ref = useRef<HTMLVideoElement>(null);
+function MotionPoster({
+  src,
+  thumbnail,
+  videoRef,
+}: {
+  src: string;
+  thumbnail?: string;
+  videoRef?: React.RefObject<HTMLVideoElement>;
+}) {
   return (
     <video
-      ref={ref}
+      ref={videoRef}
       src={src}
       poster={thumbnail}
       autoPlay
@@ -191,6 +203,7 @@ export default function TMILiveMediaWidget({
   const [audioOn,     setAudioOn]     = useState(false);
   const [streamReady, setStreamReady] = useState(false);
   const [expandCard,  setExpandCard]  = useState(false);
+  const [streamAllowed, setStreamAllowed] = useState(false);
 
   const accent = accentColor ?? TIER_GLOW[performerTier] ?? "rgba(6,182,212,0.5)";
   const accentHex = accentColor ?? "#06b6d4";
@@ -207,15 +220,32 @@ export default function TMILiveMediaWidget({
     return () => observer.disconnect();
   }, []);
 
-  /* Hover audio preview */
+  /* Stream budget — register/release when entering/leaving viewport */
+  useEffect(() => {
+    if (!isLive || !inViewport) {
+      setStreamAllowed(false);
+      releaseActiveStream(performerId);
+      return;
+    }
+    const granted = registerActiveStream(performerId);
+    setStreamAllowed(granted);
+    return () => releaseActiveStream(performerId);
+  }, [isLive, inViewport, performerId]);
+
+  /* Audio: hover = preview (15%), leave = mute, click = full (handled in lobby) */
   function handleMouseEnter() {
     setIsHovered(true);
     onHover?.();
+    if (videoRef.current) {
+      videoRef.current.muted = false;
+      videoRef.current.volume = 0.15;
+    }
   }
   function handleMouseLeave() {
     setIsHovered(false);
-    if (!audioOn) {
-      if (videoRef.current) videoRef.current.volume = 0;
+    if (videoRef.current && !audioOn) {
+      videoRef.current.volume = 0;
+      videoRef.current.muted = true;
     }
   }
 
@@ -259,7 +289,7 @@ export default function TMILiveMediaWidget({
       >
         {/* ── Media layer ── */}
         <div className="absolute inset-0">
-          {isLive && inViewport && roomId ? (
+          {isLive && streamAllowed && roomId ? (
             /* WebRTC placeholder — swap for DailyIframe when room is ready */
             <div
               className="w-full h-full flex items-center justify-center"
@@ -270,8 +300,11 @@ export default function TMILiveMediaWidget({
               {/* Replace this div with <TMIVideoRoom> for real WebRTC */}
               <div className="text-white/10 text-5xl">🎤</div>
             </div>
+          ) : isLive && !streamAllowed && motionPosterUrl && inViewport ? (
+            /* At stream cap — show motion poster instead of WebRTC */
+            <MotionPoster src={motionPosterUrl} thumbnail={thumbnailUrl} videoRef={videoRef} />
           ) : motionPosterUrl && inViewport ? (
-            <MotionPoster src={motionPosterUrl} thumbnail={thumbnailUrl} />
+            <MotionPoster src={motionPosterUrl} thumbnail={thumbnailUrl} videoRef={videoRef} />
           ) : thumbnailUrl ? (
             <img
               src={thumbnailUrl}
