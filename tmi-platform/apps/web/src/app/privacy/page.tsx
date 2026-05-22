@@ -18,6 +18,14 @@ export default function PrivacyPage() {
             body: "We collect account information (name, email, role), usage data (pages visited, features used), payment information processed securely through Stripe, and optional profile information you provide during onboarding.",
           },
           {
+            title: "Camera & Microphone Access",
+            body: "TMI is a live performance platform. When you perform, host a room, or join a live session, the app requests access to your device camera and microphone solely to enable real-time video and audio streaming. We do not record, store, or transmit your camera or microphone data beyond the live session itself. Camera and microphone access is always initiated by your explicit action (tapping 'Go Live' or 'Join Room') and can be revoked at any time through your device settings.",
+          },
+          {
+            title: "Live Streaming & User-Generated Content",
+            body: "TMI enables live audio and video broadcasts between performers and audience members. Live sessions are transmitted in real time using WebRTC technology and are not stored on our servers unless you explicitly enable recording. User-generated content (chat messages, reactions, tip comments) is subject to our Community Guidelines. We reserve the right to moderate and remove content that violates those guidelines. If you choose to broadcast, your video and audio are visible to others in the same room in real time.",
+          },
+          {
             title: "How We Use Your Information",
             body: "We use your information to provide the TMI platform services, process payments, send transactional emails, personalize your experience, and improve the platform. We do not sell your personal data to third parties.",
           },
