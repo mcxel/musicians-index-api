@@ -298,10 +298,6 @@ export default function Home1LiveMagazine() {
   }, [effectiveFeaturedArtistId, ringArtistSignature]);
 
   useEffect(() => {
-    if (phase !== "rotate") {
-      return;
-    }
-
     let frame = 0;
     let last = performance.now();
     const tick = (now: number) => {
@@ -313,7 +309,7 @@ export default function Home1LiveMagazine() {
 
     frame = window.requestAnimationFrame(tick);
     return () => window.cancelAnimationFrame(frame);
-  }, [phase, orbitSpeed]);
+  }, [orbitSpeed]);
 
   useEffect(() => {
     if (phase !== "rotate") {

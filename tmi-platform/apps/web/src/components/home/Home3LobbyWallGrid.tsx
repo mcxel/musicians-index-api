@@ -1,56 +1,81 @@
 "use client";
 
-import Link from "next/link";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import TmiBadgeLabel from "@/components/typography/TmiBadgeLabel";
 import TmiCardTitle from "@/components/typography/TmiCardTitle";
-import TripleImageCarousel from "@/lib/media/TripleImageCarousel";
+import TMILiveMediaWidget from "@/components/media/TMILiveMediaWidget";
+import { useLiveSync } from "@/lib/media/useLiveSync";
+import type { LiveFeedItem, LobbyGenre } from "@/components/billboard/TMIBillboardLiveWall";
 
-type LobbyTile = {
-  roomId: string;
-  roomName: string;
-  genre: string;
-  host: string;
-  occupancy: string;
-  accent: string;
-  previewLabels: [string, string, string];
-};
-
-const LOBBY_TILES: LobbyTile[] = [
+const LOBBY_CONFIG = [
   {
-    roomId: "north-atrium",
-    roomName: "Lobby A",
-    genre: "R&B Stage",
-    host: "Host Kova",
-    occupancy: "54 / 80",
-    accent: "#ff2daa",
-    previewLabels: ["/tmi-curated/mag-58.jpg", "/tmi-curated/mag-66.jpg", "/tmi-curated/mag-74.jpg"],
+    id:      "lobby-a",
+    label:   "Lobby A",
+    genres:  ["live", "concert"] as LobbyGenre[],
+    accent:  "#FF2DAA",
+    fallbackRoomId: "north-atrium",
+    fallbackName:   "R&B Stage",
   },
   {
-    roomId: "midnight-pit",
-    roomName: "Lobby B",
-    genre: "Trap Arena",
-    host: "Host Nero",
-    occupancy: "68 / 80",
-    accent: "#00ffff",
-    previewLabels: ["/tmi-curated/gameshow-35.jpg", "/tmi-curated/mag-58.jpg", "/tmi-curated/venue-22.jpg"],
+    id:      "lobby-b",
+    label:   "Lobby B",
+    genres:  ["battle", "cypher"] as LobbyGenre[],
+    accent:  "#00FFFF",
+    fallbackRoomId: "midnight-pit",
+    fallbackName:   "Battle Arena",
   },
   {
-    roomId: "golden-hall",
-    roomName: "Lobby C",
-    genre: "Open Cypher",
-    host: "Host Sol",
-    occupancy: "39 / 80",
-    accent: "#ffd700",
-    previewLabels: ["/tmi-curated/venue-10.jpg", "/tmi-curated/venue-14.jpg", "/tmi-curated/venue-18.jpg"],
+    id:      "lobby-c",
+    label:   "Lobby C",
+    genres:  ["challenge", "game"] as LobbyGenre[],
+    accent:  "#FFD700",
+    fallbackRoomId: "golden-hall",
+    fallbackName:   "Open Cypher",
   },
-];
+] as const;
 
-function LiveTile({ tile }: { tile: LobbyTile }) {
+const ROTATE_INTERVAL_MS = 4500;
+
+/** Pick the highest-scored live room matching given genres from the feed */
+function pickRoom(feed: LiveFeedItem[], genres: LobbyGenre[], skip: string[]): LiveFeedItem | null {
+  const candidates = feed
+    .filter((f) => f.isLive && genres.includes(f.genre) && !skip.includes(f.performerId))
+    .sort((a, b) => (b.viewers * 2 + b.tips * 3 + b.activityLevel) - (a.viewers * 2 + a.tips * 3 + a.activityLevel));
+  return candidates[0] ?? null;
+}
+
+function LiveLobbyTile({
+  config,
+  feed,
+}: {
+  config: typeof LOBBY_CONFIG[number];
+  feed: LiveFeedItem[];
+}) {
+  const router = useRouter();
+  const [activeIdx, setActiveIdx] = useState(0);
+
+  // Rotate through matching rooms every ROTATE_INTERVAL_MS
+  const matches = feed
+    .filter((f) => f.isLive && config.genres.includes(f.genre))
+    .sort((a, b) => (b.viewers * 2 + b.tips * 3) - (a.viewers * 2 + a.tips * 3))
+    .slice(0, 6);
+
+  useEffect(() => {
+    if (matches.length <= 1) return;
+    const t = setInterval(() => {
+      setActiveIdx((i) => (i + 1) % matches.length);
+    }, ROTATE_INTERVAL_MS);
+    return () => clearInterval(t);
+  }, [matches.length]);
+
+  const active = matches[activeIdx] ?? null;
+
   return (
     <article
       style={{
         borderRadius: 10,
-        border: `1px solid ${tile.accent}66`,
+        border: `1px solid ${config.accent}66`,
         background: "rgba(8,8,20,0.82)",
         padding: 8,
         display: "grid",
@@ -58,86 +83,114 @@ function LiveTile({ tile }: { tile: LobbyTile }) {
       }}
     >
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 6 }}>
-        <TmiBadgeLabel color={tile.accent}>Live</TmiBadgeLabel>
-        <span
-          style={{
-            fontFamily: "var(--font-tmi-orbitron), 'Orbitron', sans-serif",
-            fontSize: 10,
-            color: tile.accent,
-          }}
-        >
-          {tile.occupancy}
-        </span>
+        <TmiBadgeLabel color={config.accent}>{active ? "Live" : "Loading"}</TmiBadgeLabel>
+        {active && (
+          <span style={{ fontFamily: "var(--font-tmi-orbitron), 'Orbitron', sans-serif", fontSize: 10, color: config.accent }}>
+            {active.viewers.toLocaleString()} watching
+          </span>
+        )}
       </div>
 
-      <TripleImageCarousel images={tile.previewLabels} borderColor={tile.accent} height={92} intervalMs={8200} />
+      {/* Live media widget — auto-switches, hover audio preview */}
+      <div style={{ height: 92, borderRadius: 6, overflow: "hidden" }}>
+        {active ? (
+          <TMILiveMediaWidget
+            performerId={active.performerId}
+            performerName={active.performerName}
+            performerTier={active.performerTier}
+            genre={active.genre}
+            isLive={active.isLive}
+            roomId={active.roomId}
+            liveViewerCount={active.viewers}
+            accentColor={config.accent}
+            variant="homepage"
+            size="full"
+            showOverlay={false}
+            onEnterLobby={() => router.push(`/live/rooms/${active.roomId}`)}
+          />
+        ) : (
+          <div
+            style={{
+              width: "100%", height: "100%",
+              background: `radial-gradient(circle at 50% 50%, ${config.accent}18 0%, #050510 70%)`,
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}
+          >
+            <span style={{ fontSize: 9, color: config.accent, letterSpacing: "0.14em", fontWeight: 800 }}>
+              CONNECTING...
+            </span>
+          </div>
+        )}
+      </div>
 
       <div style={{ display: "grid", gap: 3 }}>
-        <TmiCardTitle style={{ fontSize: 20 }}>{tile.roomName}</TmiCardTitle>
-        <span
-          style={{
-            fontFamily: "var(--font-tmi-rajdhani), 'Rajdhani', sans-serif",
-            fontSize: 12,
-            color: "rgba(255,255,255,0.82)",
-          }}
-        >
-          {tile.genre}
-        </span>
-        <span
-          style={{
-            fontFamily: "var(--font-tmi-rajdhani), 'Rajdhani', sans-serif",
-            fontSize: 11,
-            color: "rgba(255,255,255,0.72)",
-          }}
-        >
-          {tile.host}
+        <TmiCardTitle style={{ fontSize: 18 }}>
+          {active ? active.performerName : config.label}
+        </TmiCardTitle>
+        <span style={{ fontFamily: "var(--font-tmi-rajdhani), 'Rajdhani', sans-serif", fontSize: 11, color: "rgba(255,255,255,0.55)" }}>
+          {active ? active.genre.toUpperCase() : config.genres.join(" / ").toUpperCase()}
         </span>
       </div>
 
-      <Link
-        href={`/rooms/${tile.roomId}`}
+      <button
+        onClick={() => {
+          const target = active ? `/live/rooms/${active.roomId}` : `/live/${config.fallbackRoomId}`;
+          router.push(target);
+        }}
         style={{
-          display: "inline-flex",
-          alignItems: "center",
-          justifyContent: "center",
-          textDecoration: "none",
-          borderRadius: 8,
-          border: `1px solid ${tile.accent}77`,
-          background: `${tile.accent}22`,
-          color: tile.accent,
-          minHeight: 30,
+          display: "inline-flex", alignItems: "center", justifyContent: "center",
+          textDecoration: "none", borderRadius: 8, border: `1px solid ${config.accent}77`,
+          background: `${config.accent}22`, color: config.accent, minHeight: 30,
           fontFamily: "var(--font-tmi-anton), 'Anton', sans-serif",
-          letterSpacing: "0.1em",
-          textTransform: "uppercase",
-          fontSize: 11,
+          letterSpacing: "0.1em", textTransform: "uppercase", fontSize: 11,
+          cursor: "pointer",
         }}
       >
         Join Room
-      </Link>
+      </button>
+
+      {/* Room rotation dots */}
+      {matches.length > 1 && (
+        <div style={{ display: "flex", gap: 4, justifyContent: "center", paddingTop: 2 }}>
+          {matches.map((_, i) => (
+            <span
+              key={i}
+              onClick={() => setActiveIdx(i)}
+              style={{
+                width: i === activeIdx ? 16 : 6,
+                height: 6, borderRadius: 999,
+                background: i === activeIdx ? config.accent : `${config.accent}40`,
+                cursor: "pointer",
+                transition: "all 0.3s ease",
+              }}
+            />
+          ))}
+        </div>
+      )}
     </article>
   );
 }
 
 export default function Home3LobbyWallGrid() {
+  const { feed } = useLiveSync();
+
   return (
     <div style={{ display: "grid", gap: 8 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <span
-          style={{
-            fontFamily: "var(--font-tmi-anton), 'Anton', sans-serif",
-            fontSize: 10,
-            letterSpacing: "0.16em",
-            textTransform: "uppercase",
-            color: "rgba(255,255,255,0.72)",
-          }}
-        >
+        <span style={{
+          fontFamily: "var(--font-tmi-anton), 'Anton', sans-serif",
+          fontSize: 10, letterSpacing: "0.16em",
+          textTransform: "uppercase", color: "rgba(255,255,255,0.72)",
+        }}>
           Lobby Wall Grid
         </span>
-        <TmiBadgeLabel color="#00ff88">3 Live Tiles</TmiBadgeLabel>
+        <TmiBadgeLabel color="#00ff88">
+          {feed.filter(f => f.isLive).length} Live
+        </TmiBadgeLabel>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8 }}>
-        {LOBBY_TILES.map((tile) => (
-          <LiveTile key={tile.roomId} tile={tile} />
+        {LOBBY_CONFIG.map((config) => (
+          <LiveLobbyTile key={config.id} config={config} feed={feed} />
         ))}
       </div>
     </div>
