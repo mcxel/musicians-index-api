@@ -6,6 +6,7 @@ import "@/styles/tmi/globals.css";
 import { TmiSessionProvider } from "@/hooks/SessionContext";
 import GamificationHUD from "@/components/hud/GamificationHUD";
 import LiveSyncProvider from "@/components/media/LiveSyncProvider";
+import FirstRunExperienceOverlay from "@/components/onboarding/FirstRunExperienceOverlay";
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -116,6 +117,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             {children}
             <GamificationHUD />
             <LiveSyncProvider />
+            <FirstRunExperienceOverlay />
           </TmiSessionProvider>
         </AppProviders>
       </body>

@@ -127,7 +127,9 @@ function OrbitFaceRail({
   return (
     <>
       {orbitArtists.map((artist, idx) => {
-        const angle = ((idx / Math.max(orbitArtists.length, 1)) * Math.PI * 2) + frame * 0.02;
+        // Clockwise in CSS screen coords: positive angle increment → right→down→left→up
+        // Speed: ~14s per revolution (2π / (0.045 × 10fps))
+        const angle = ((idx / Math.max(orbitArtists.length, 1)) * Math.PI * 2) + frame * 0.045;
         const x = Math.cos(angle) * orbitRadius;
         const y = Math.sin(angle) * (orbitRadius * 0.65);
 

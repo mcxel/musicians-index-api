@@ -143,6 +143,41 @@ export default function Home5BattleCypherSurface() {
         </p>
       </div>
 
+      {/* ── CBC Lobby Wall Quick-Jump ── */}
+      <section style={{ maxWidth: 1100, margin: "0 auto", padding: "20px 24px 0" }}>
+        <div style={{ fontSize: 9, letterSpacing: "0.35em", color: "rgba(255,255,255,0.4)", fontWeight: 800, marginBottom: 12 }}>
+          JUMP TO LIVE LOBBY WALL
+        </div>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          {[
+            { label: "⚔️ BATTLES WALL",   href: "/battles/lobby-wall",    accent: "#FF2DAA" },
+            { label: "🎤 CIPHERS WALL",   href: "/cypher/lobby-wall",     accent: "#AA2DFF" },
+            { label: "🏆 CHALLENGES WALL",href: "/challenges/lobby-wall", accent: "#00FFFF" },
+            { label: "🎮 GAMES WALL",     href: "/games/lobby-wall",      accent: "#FFD700" },
+          ].map((w) => (
+            <Link
+              key={w.href}
+              href={w.href}
+              style={{
+                padding: "11px 20px",
+                background: `${w.accent}18`,
+                color: w.accent,
+                border: `1.5px solid ${w.accent}50`,
+                borderRadius: 9,
+                fontWeight: 900,
+                fontSize: 12,
+                textDecoration: "none",
+                letterSpacing: "0.08em",
+                display: "flex", alignItems: "center", gap: 6,
+              }}
+            >
+              {w.label}
+              <span style={{ fontSize: 9, opacity: 0.65 }}>BRADY BUNCH →</span>
+            </Link>
+          ))}
+        </div>
+      </section>
+
       <Home5BattleDensityRail />
 
       {/* ── CHALLENGES — "put your song against theirs" ── */}
