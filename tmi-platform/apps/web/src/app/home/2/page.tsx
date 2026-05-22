@@ -1,11 +1,13 @@
-import { MagazinePageFlipRuntime } from '@/components/magazine/MagazinePageFlipRuntime';
-import { MAGAZINE_FULL_ROTATION_SCENES } from '../1/page';
+import LiveDiscoverySurface from "@/components/home/LiveDiscoverySurface";
 
 export default function Home2Page() {
   return (
-    <MagazinePageFlipRuntime
-      scenes={MAGAZINE_FULL_ROTATION_SCENES}
-      initialIndex={2}
+    <LiveDiscoverySurface
+      title="Concert Wall"
+      subtitle="Shows & Live Performances"
+      genres={["concert", "live"]}
+      accent="#FF2DAA"
+      backHref="/home/1"
     />
   );
 }

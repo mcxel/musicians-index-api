@@ -7,7 +7,7 @@ import ArtistPortalFace from "@/packages/artists/ArtistPortalFace";
 import type { FrameVariant } from "@/components/frames/FrameShell";
 import { ARTIST_SEED } from "@/lib/artists/artistSeed";
 import type { LiveArtist } from "@/lib/data/artistPool";
-import { getCurrentGenre, getNextGenre } from "@/packages/genre-system/genreRotationEngine";
+import { getCurrentGenre, getNextGenre, getWeeklyGenre, getWeeklyOrbitVariant } from "@/packages/genre-system/genreRotationEngine";
 import { genreMatches, normalizeGenreLabel } from "@/packages/genre-system/genreRegistry";
 import { publishHomeFeed, type Home1Feed } from "@/packages/magazine-engine/liveFeedBus";
 import {
@@ -118,10 +118,12 @@ export default function Home1LiveMagazine() {
     return true;
   });
 
-  const [genre, setGenre] = useState(getCurrentGenre());
+  const weeklyVariant = useMemo(() => getWeeklyOrbitVariant(), []);
+
+  const [genre, setGenre] = useState(() => getWeeklyGenre());
   const [phase, setPhase] = useState<"rotate" | "starburst" | "enter">("rotate");
   const [rotation, setRotation] = useState(0);
-  const [orbitSpeed, setOrbitSpeed] = useState(ROTATION_SPEED);
+  const [orbitSpeed, setOrbitSpeed] = useState(ROTATION_SPEED * weeklyVariant.speedMult);
   const [featuredArtistId, setFeaturedArtistId] = useState<string | null>(null);
   const [forcedFeatureArtistId, setForcedFeatureArtistId] = useState<string | null>(null);
   const [featureCursor, setFeatureCursor] = useState(0);
@@ -152,8 +154,8 @@ export default function Home1LiveMagazine() {
   const crownLayout = HOME1_SLOT_LAYOUT[crownArtifact?.artifactId ?? ""];
   const orbitCenterX = crownLayout?.x ?? 50;
   const orbitCenterY = (crownLayout?.y ?? 58) + 1;
-  const orbitRadiusX = 24;
-  const orbitRadiusY = 24;
+  const orbitRadiusX = weeklyVariant.radX;
+  const orbitRadiusY = weeklyVariant.radY;
 
   const artists = useMemo<LiveArtist[]>(() => {
     const selected: LiveArtist[] = [];
