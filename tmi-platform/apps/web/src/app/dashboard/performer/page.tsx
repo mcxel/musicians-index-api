@@ -14,6 +14,7 @@ const STATS = [
 ];
 
 const NAV = [
+  { label: "Invite & Earn XP",  href: "/account/referrals" },
   { label: "Live Control Room", href: "/hub/performer" },
   { label: "Battle History",    href: "/battles" },
   { label: "Bookings",          href: "/booking" },

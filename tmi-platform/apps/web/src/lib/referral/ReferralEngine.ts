@@ -1,10 +1,12 @@
 /**
- * ReferralEngine — engagement-gated referral tracking for TMI Phase 1.
- * Points: 500pts per qualified invite, 5000pts bonus at 5 qualified invites.
+ * ReferralEngine — engagement-gated referral tracking for TMI.
+ * Tiered XP: free join = 500pts, paid tiers scale to 2500pts.
+ * Launch bonus: double XP for invites that join during launch window (until 2026-08-31).
  * Qualification: invitee must stay ≥30s AND perform ≥1 action.
  * Anti-spam: max 10 pending per owner, tokens expire after 7 days.
- * Server-side singleton (module-level maps, no external DB required for Phase 1).
  */
+
+export type InviteeTier = 'free' | 'pro' | 'bronze' | 'silver' | 'gold' | 'platinum' | 'diamond';
 
 export interface ReferralLink {
   token: string;
@@ -18,6 +20,7 @@ export interface ReferralRecord {
   token: string;
   ownerId: string;
   invitedId: string;
+  inviteeTier: InviteeTier;
   arrivedAt: number;
   qualifiedAt: number | null;
   pointsAwarded: number;
@@ -31,13 +34,35 @@ export interface ReferralStats {
   milestoneUnlocked: boolean;
 }
 
-const POINTS_PER_INVITE = 500;
+// XP per qualified invite by invitee's subscription tier
+export const TIER_XP: Record<InviteeTier, number> = {
+  free:     500,
+  pro:      750,
+  bronze:  1_000,
+  silver:  1_250,
+  gold:    1_500,
+  platinum: 2_000,
+  diamond: 2_500,
+};
+
 const MILESTONE_BONUS = 5_000;
 const MILESTONE_THRESHOLD = 5;
 const TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1_000;
 const MAX_PENDING_PER_OWNER = 10;
 const MIN_STAY_SECONDS = 30;
 const MIN_ACTIONS = 1;
+
+// Launch window: double XP until 2026-08-31
+const LAUNCH_WINDOW_END = new Date('2026-09-01T00:00:00Z').getTime();
+
+export function isLaunchWindow(nowMs = Date.now()): boolean {
+  return nowMs < LAUNCH_WINDOW_END;
+}
+
+export function getPointsForTier(tier: InviteeTier, nowMs = Date.now()): number {
+  const base = TIER_XP[tier] ?? TIER_XP.free;
+  return isLaunchWindow(nowMs) ? base * 2 : base;
+}
 
 // Server-side in-memory stores
 const linkStore = new Map<string, ReferralLink>();
@@ -60,13 +85,7 @@ export function getOrCreateLink(ownerId: string, roomId: string): ReferralLink {
     }
   }
   const token = genToken();
-  const link: ReferralLink = {
-    token,
-    ownerId,
-    roomId,
-    createdAt: now,
-    expiresAt: now + TOKEN_TTL_MS,
-  };
+  const link: ReferralLink = { token, ownerId, roomId, createdAt: now, expiresAt: now + TOKEN_TTL_MS };
   linkStore.set(token, link);
   return link;
 }
@@ -83,30 +102,29 @@ export function registerArrival(
   nowMs = Date.now(),
 ): { ok: boolean; reason: string } {
   const link = resolveToken(token);
-  if (!link) return { ok: false, reason: "Invalid or expired token" };
+  if (!link) return { ok: false, reason: 'Invalid or expired token' };
 
   const records = getOwnerRecords(link.ownerId);
-
   if (records.find((r) => r.token === token && r.invitedId === invitedId)) {
-    return { ok: false, reason: "Already registered" };
+    return { ok: false, reason: 'Already registered' };
   }
-
   const pending = records.filter((r) => r.qualifiedAt === null);
   if (pending.length >= MAX_PENDING_PER_OWNER) {
-    return { ok: false, reason: "Too many pending referrals" };
+    return { ok: false, reason: 'Too many pending referrals' };
   }
 
   records.push({
     token,
     ownerId: link.ownerId,
     invitedId,
+    inviteeTier: 'free',
     arrivedAt: nowMs,
     qualifiedAt: null,
     pointsAwarded: 0,
     milestonePaid: false,
   });
 
-  return { ok: true, reason: "Arrival registered" };
+  return { ok: true, reason: 'Arrival registered' };
 }
 
 export function qualifyReferral(
@@ -114,43 +132,46 @@ export function qualifyReferral(
   invitedId: string,
   staySeconds: number,
   actionCount: number,
+  inviteeTier: InviteeTier = 'free',
   nowMs = Date.now(),
-): { qualified: boolean; pointsAwarded: number; milestoneBonus: number; reason: string } {
+): { qualified: boolean; pointsAwarded: number; milestoneBonus: number; launchBonus: boolean; reason: string } {
   const link = resolveToken(token);
   if (!link) {
-    return { qualified: false, pointsAwarded: 0, milestoneBonus: 0, reason: "Invalid or expired token" };
+    return { qualified: false, pointsAwarded: 0, milestoneBonus: 0, launchBonus: false, reason: 'Invalid or expired token' };
   }
 
   const records = getOwnerRecords(link.ownerId);
   const record = records.find((r) => r.token === token && r.invitedId === invitedId);
 
   if (!record) {
-    return { qualified: false, pointsAwarded: 0, milestoneBonus: 0, reason: "No arrival record found" };
+    return { qualified: false, pointsAwarded: 0, milestoneBonus: 0, launchBonus: false, reason: 'No arrival record found' };
   }
   if (record.qualifiedAt !== null) {
-    return { qualified: true, pointsAwarded: 0, milestoneBonus: 0, reason: "Already qualified" };
+    return { qualified: true, pointsAwarded: 0, milestoneBonus: 0, launchBonus: false, reason: 'Already qualified' };
   }
   if (staySeconds < MIN_STAY_SECONDS) {
-    return {
-      qualified: false, pointsAwarded: 0, milestoneBonus: 0,
-      reason: `Must stay at least ${MIN_STAY_SECONDS}s (stayed ${staySeconds}s)`,
-    };
+    return { qualified: false, pointsAwarded: 0, milestoneBonus: 0, launchBonus: false, reason: `Must stay at least ${MIN_STAY_SECONDS}s` };
   }
   if (actionCount < MIN_ACTIONS) {
-    return { qualified: false, pointsAwarded: 0, milestoneBonus: 0, reason: "Must perform at least 1 action" };
+    return { qualified: false, pointsAwarded: 0, milestoneBonus: 0, launchBonus: false, reason: 'Must perform at least 1 action' };
   }
 
+  record.inviteeTier = inviteeTier;
   record.qualifiedAt = nowMs;
-  record.pointsAwarded = POINTS_PER_INVITE;
+
+  const launch = isLaunchWindow(nowMs);
+  const base = TIER_XP[inviteeTier] ?? TIER_XP.free;
+  const points = launch ? base * 2 : base;
+  record.pointsAwarded = points;
 
   const totalQualified = records.filter((r) => r.qualifiedAt !== null).length;
   let milestoneBonus = 0;
   if (totalQualified >= MILESTONE_THRESHOLD && !records.some((r) => r.milestonePaid)) {
-    milestoneBonus = MILESTONE_BONUS;
+    milestoneBonus = launch ? MILESTONE_BONUS * 2 : MILESTONE_BONUS;
     record.milestonePaid = true;
   }
 
-  return { qualified: true, pointsAwarded: POINTS_PER_INVITE, milestoneBonus, reason: "Qualified" };
+  return { qualified: true, pointsAwarded: points, milestoneBonus, launchBonus: launch, reason: 'Qualified' };
 }
 
 export function getReferralStats(ownerId: string): ReferralStats {

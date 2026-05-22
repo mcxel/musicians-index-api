@@ -62,6 +62,17 @@ const SECTIONS = [
     ],
   },
   {
+    label: "Invite & Earn",
+    color: "#FFD700",
+    icon: "🎁",
+    links: [
+      { label: "Invite Friends — Earn XP",  href: "/account/referrals" },
+      { label: "View Referral Stats",        href: "/account/referrals" },
+      { label: "Copy Your Invite Link",      href: "/account/referrals" },
+      { label: "Earn XP Leaderboard",        href: "/leaderboard"       },
+    ],
+  },
+  {
     label: "Help",
     color: "#FF9500",
     icon: "❓",

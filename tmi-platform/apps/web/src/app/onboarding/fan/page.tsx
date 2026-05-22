@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import AutoFanWelcomeMessage from "@/components/onboarding/AutoFanWelcomeMessage";
 
 export default function OnboardingFanPage() {
   const router = useRouter();
@@ -9,6 +10,7 @@ export default function OnboardingFanPage() {
   const [bio, setBio] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const [done, setDone] = useState(false);
 
   const getCsrfToken = async (): Promise<string | null> => {
     try {
@@ -37,7 +39,7 @@ export default function OnboardingFanPage() {
       });
 
       if (res.ok) {
-        router.replace("/dashboard/fan");
+        setDone(true);
       } else {
         const err = (await res.json().catch(() => ({}))) as { message?: string };
         setMessage(`Setup failed (${res.status})${err?.message ? ": " + err.message : ""}`);
@@ -68,6 +70,19 @@ export default function OnboardingFanPage() {
     color: "rgba(255,255,255,0.7)",
     fontWeight: 500,
   };
+
+  if (done) {
+    return (
+      <main style={{ minHeight: '100vh', background: '#0a0a0f', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 20px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20, alignItems: 'center' }}>
+          <AutoFanWelcomeMessage displayName="" />
+          <button onClick={() => router.replace('/dashboard/fan')} style={{ padding: '10px 24px', background: 'rgba(0,255,255,0.12)', color: '#00FFFF', border: '1px solid rgba(0,255,255,0.3)', borderRadius: 8, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>
+            Go to My Dashboard →
+          </button>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main
@@ -119,6 +134,16 @@ export default function OnboardingFanPage() {
                 lineHeight: 1.5,
               }}
             />
+          </div>
+
+          <div style={{ background: 'rgba(255,215,0,0.08)', border: '1px solid rgba(255,215,0,0.25)', borderRadius: 10, padding: '12px 16px' }}>
+            <div style={{ fontSize: 10, letterSpacing: '0.2em', color: '#FFD700', fontWeight: 800, marginBottom: 6 }}>
+              🚀 LAUNCH BONUS — DOUBLE XP ON ALL INVITES
+            </div>
+            <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.75)', lineHeight: 1.6 }}>
+              Invite a fan or performer who joins free → <strong style={{ color: '#FFD700' }}>1,000 XP</strong><br />
+              They upgrade to a paid tier → up to <strong style={{ color: '#FFD700' }}>5,000 XP</strong> per invite
+            </div>
           </div>
 
           <button
