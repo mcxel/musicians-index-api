@@ -1,12 +1,11 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { ImageSlotWrapper, PerformerPortraitWrapper } from '@/components/visual-enforcement';
 import {
   type CrownContender,
-  tickOrbit,
   simulateVoteTick,
   resolveCrownHolder,
 } from "@/engines/home/CrownCycleEngine";
@@ -380,35 +379,12 @@ export default function OrbitBattleAnimationLayer({
   renderMode = "circle",
 }: OrbitBattleAnimationLayerProps) {
   const [contenders, setContenders] = useState(initialContenders);
-  const frameRef   = useRef<ReturnType<typeof requestAnimationFrame>>();
   const accent     = GENRE_ACCENT[genre];
   const half       = containerSize / 2;
-  const clipPath   = getClipPathCSS(shapeIdentity);
-  // B3 scale patch: support elliptical orbit (+220% X, +180% Y vs original 180px)
   const effectiveRadiusX = orbitRadiusX ?? orbitRadiusPx;
   const effectiveRadiusY = orbitRadiusY ?? Math.round(orbitRadiusPx * 0.818);
-  // Orbit tick via rAF — throttled to 100ms to avoid 60fps setState flicker
-  useEffect(() => {
-    let last = performance.now();
-    let lastUpdate = performance.now();
-    let accumulated = 0;
-    function frame(now: number) {
-      const dt = now - last;
-      last = now;
-      accumulated += 0.004 * dt;
-      if (now - lastUpdate >= 100) {
-        const angle = accumulated;
-        accumulated = 0;
-        lastUpdate = now;
-        setContenders((prev) => tickOrbit(prev, angle));
-      }
-      frameRef.current = requestAnimationFrame(frame);
-    }
-    frameRef.current = requestAnimationFrame(frame);
-    return () => { if (frameRef.current) cancelAnimationFrame(frameRef.current); };
-  }, []);
 
-  // Vote tick every 5s
+  // Vote tick every 5s — keeps crown logic alive without touching rotation
   useEffect(() => {
     const id = setInterval(() => {
       setContenders((prev) => simulateVoteTick(prev));
@@ -449,6 +425,12 @@ export default function OrbitBattleAnimationLayer({
         flexShrink: 0,
       }}
     >
+      {/* GPU-accelerated CSS keyframes for orbit rotation */}
+      <style>{`
+        @keyframes tmi-orbit-cw  { from { transform: translateZ(0) rotate(0deg);   } to { transform: translateZ(0) rotate(360deg);  } }
+        @keyframes tmi-orbit-ccw { from { transform: rotate(0deg);  } to { transform: rotate(-360deg); } }
+      `}</style>
+
       {/* Background orbit ring */}
       <div
         aria-hidden="true"
@@ -479,25 +461,59 @@ export default function OrbitBattleAnimationLayer({
       <CrownPulseCenter genre={genre} holder={holder} size={containerSize} shapeIdentity={shapeIdentity} />
       {holder ? <CenterAuthorityPortrait holder={holder} accent={accent} size={containerSize} /> : null}
 
-      {/* Orbit cards */}
-      {orbiters.map((c, orbitIndex) => {
-        const rad = (c.orbitAngle * Math.PI) / 180;
-        const x   = half + Math.cos(rad) * effectiveRadiusX;
-        const y   = half + Math.sin(rad) * effectiveRadiusY;
-        return (
-          <OrbitCard
-            key={c.performerId}
-            contender={c}
-            x={x}
-            y={y}
-            accent={accent}
-            isCrown={false}
-            orbitIndex={orbitIndex}
-            shapeIdentity={shapeIdentity}
-            renderMode={renderMode}
-          />
-        );
-      })}
+      {/* Orbit ring — CSS-animated clockwise, GPU-accelerated, 60fps continuous */}
+      <div
+        aria-hidden="false"
+        style={{
+          position: "absolute",
+          left: 0,
+          top: 0,
+          width: containerSize,
+          height: containerSize,
+          transformOrigin: `${half}px ${half}px`,
+          animation: "tmi-orbit-cw 60s linear infinite",
+          willChange: "transform",
+          backfaceVisibility: "hidden",
+        }}
+      >
+        {orbiters.map((c, orbitIndex) => {
+          // Static base angle — evenly distributed, never changes
+          const baseAngle = (360 / Math.max(1, orbiters.length)) * orbitIndex;
+          const rad = (baseAngle * Math.PI) / 180;
+          const x   = half + Math.cos(rad) * effectiveRadiusX;
+          const y   = half + Math.sin(rad) * effectiveRadiusY;
+          const cardW = getPortraitDiameter();
+          return (
+            <div
+              key={c.performerId}
+              style={{
+                position: "absolute",
+                left: x - cardW / 2,
+                top:  y - cardW / 2,
+              }}
+            >
+              {/* Counter-rotate card content so it stays upright */}
+              <div
+                style={{
+                  animation: "tmi-orbit-ccw 60s linear infinite",
+                  willChange: "transform",
+                }}
+              >
+                <OrbitCard
+                  contender={c}
+                  x={cardW / 2}
+                  y={cardW / 2}
+                  accent={accent}
+                  isCrown={false}
+                  orbitIndex={orbitIndex}
+                  shapeIdentity={shapeIdentity}
+                  renderMode={renderMode}
+                />
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
