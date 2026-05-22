@@ -469,6 +469,19 @@ export default function Home1LiveMagazine() {
           </div>
         ) : null}
 
+        {/* Orbit ring — perspective tilt gives 3D planet-orbit look, changes weekly */}
+        <div
+          aria-hidden="true"
+          style={{
+            position: "absolute",
+            inset: 0,
+            perspective: "900px",
+            perspectiveOrigin: `${orbitCenterX}% ${orbitCenterY}%`,
+            transform: `rotateX(${weeklyVariant.tiltDeg}deg)`,
+            transformStyle: "preserve-3d",
+            pointerEvents: "none",
+          }}
+        >
         {ringArtifacts.map((slotArtifact, slotIndex) => {
           const artistIndex = slotIndex;
           const artist = ringArtists[artistIndex];
@@ -534,6 +547,7 @@ export default function Home1LiveMagazine() {
             />
           );
         })}
+        </div>
       </div>
 
       {home1ArtifactMap

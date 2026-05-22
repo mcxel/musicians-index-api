@@ -100,15 +100,16 @@ export type OrbitVariant = {
   radX: number;      // orbit ellipse radius X (% of stage)
   radY: number;      // orbit ellipse radius Y (% of stage)
   speedMult: number; // multiplier on base ROTATION_SPEED
+  tiltDeg: number;   // 3D perspective tilt of the ring (rotateX degrees)
 };
 
 const ORBIT_VARIANTS: OrbitVariant[] = [
-  { name: "galaxy",      radX: 24, radY: 24, speedMult: 1.0 },
-  { name: "wide-sweep",  radX: 32, radY: 16, speedMult: 0.9 },
-  { name: "tall-tower",  radX: 16, radY: 30, speedMult: 1.1 },
-  { name: "tight-crown", radX: 18, radY: 18, speedMult: 1.3 },
-  { name: "grand-sweep", radX: 36, radY: 26, speedMult: 0.8 },
-  { name: "wide-diamond",radX: 28, radY: 20, speedMult: 1.2 },
+  { name: "galaxy",      radX: 24, radY: 24, speedMult: 1.0, tiltDeg: 55 },
+  { name: "wide-sweep",  radX: 32, radY: 16, speedMult: 0.9, tiltDeg: 45 },
+  { name: "tall-tower",  radX: 16, radY: 30, speedMult: 1.1, tiltDeg: 65 },
+  { name: "tight-crown", radX: 18, radY: 18, speedMult: 1.3, tiltDeg: 70 },
+  { name: "grand-sweep", radX: 36, radY: 26, speedMult: 0.8, tiltDeg: 40 },
+  { name: "wide-diamond",radX: 28, radY: 20, speedMult: 1.2, tiltDeg: 50 },
 ];
 
 /**

@@ -1,11 +1,5 @@
-import { MagazinePageFlipRuntime } from '@/components/magazine/MagazinePageFlipRuntime';
-import { MAGAZINE_FULL_ROTATION_SCENES } from '../1/page';
+import Home3LiveWorldSurface from "@/components/home/Home3LiveWorldSurface";
 
 export default function Home3Page() {
-  return (
-    <MagazinePageFlipRuntime
-      scenes={MAGAZINE_FULL_ROTATION_SCENES}
-      initialIndex={3}
-    />
-  );
+  return <Home3LiveWorldSurface />;
 }
