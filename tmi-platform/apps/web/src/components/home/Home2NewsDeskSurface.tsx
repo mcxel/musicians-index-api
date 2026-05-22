@@ -11,6 +11,7 @@ import Home2SponsorArticleStrip from './Home2SponsorArticleStrip';
 import Home2ReadNextRail from './Home2ReadNextRail';
 import Home2TrendingIssueRail from './Home2TrendingIssueRail';
 import Home2NewsDensityRail from './Home2NewsDensityRail';
+import Home2LiveLobbyStrip from './Home2LiveLobbyStrip';
 import WorldTrendingBelt from './WorldTrendingBelt';
 import { enforceRouteOwnership } from '@/lib/routes/TmiVisualRouteMap';
 import { getVisualSlot } from '@/lib/visuals/TmiVisualSlotRegistry';
@@ -74,6 +75,9 @@ export default function Home2NewsDeskSurface() {
           ))}
         </div>
       </section>
+
+      {/* Live lobby windows — rotating live rooms above editorial */}
+      <Home2LiveLobbyStrip />
 
       {/* Editorial rail */}
       <Home2EditorialRail />

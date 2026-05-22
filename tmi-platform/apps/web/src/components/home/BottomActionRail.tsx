@@ -15,8 +15,8 @@ const CTA_INTERVAL_MS = 4500;
 
 const ACTIONS = [
   { id: "join",          href: "/auth",           bg: "#FF2DAA", fg: "#fff", glow: "#FF2DAA" },
-  { id: "magazine",      href: "/home/magazine",  bg: "#00FFFF", fg: "#000", glow: "#00FFFF",  label: "Read Magazine" },
-  { id: "vote",          href: "/rankings/crown", bg: "#FFD700", fg: "#000", glow: "#FFD700",  label: "Vote Live"     },
+  { id: "magazine",      href: "/home/2",          bg: "#00FFFF", fg: "#000", glow: "#00FFFF",  label: "Read Magazine" },
+  { id: "vote",          href: "/rankings",       bg: "#FFD700", fg: "#000", glow: "#FFD700",  label: "Vote Live"     },
   { id: "battle",        href: "/home/5",         bg: "#AA2DFF", fg: "#fff", glow: "#AA2DFF",  label: "Join Battle"   },
   { id: "rooms",         href: "/live",           bg: "#FF6B35", fg: "#fff", glow: "#FF6B35",  label: "See Rooms"     },
 ];

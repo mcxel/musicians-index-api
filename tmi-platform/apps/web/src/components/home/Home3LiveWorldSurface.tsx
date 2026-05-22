@@ -11,6 +11,7 @@ import BreakingNewsTicker from './BreakingNewsTicker';
 import SponsorTickerRail from './SponsorTickerRail';
 import Home3PremiereRail from './Home3PremiereRail';
 import Home3LiveDensityRail from './Home3LiveDensityRail';
+import Home3GameShowAudienceWall from './Home3GameShowAudienceWall';
 import GlobalLiveBelt from './GlobalLiveBelt';
 import AudienceField from '@/components/live/AudienceField';
 import AvatarMiniPreview from '@/components/avatar/AvatarMiniPreview';
@@ -39,6 +40,9 @@ export default function Home3LiveWorldSurface() {
       <BreakingNewsTicker />
       <SponsorTickerRail />
       <Home3LiveDensityRail />
+
+      {/* Game show audience wall — 6 shows, live audience view, emotes, prizes */}
+      <Home3GameShowAudienceWall />
 
       <section style={{ maxWidth: 1100, margin: '0 auto', padding: '34px 24px 24px' }}>
         <div style={{ fontSize: 9, letterSpacing: '0.35em', color: '#00FFFF', fontWeight: 800, marginBottom: 14 }}>
