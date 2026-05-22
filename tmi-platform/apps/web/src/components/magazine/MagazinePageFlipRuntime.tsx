@@ -33,13 +33,13 @@ export const useSceneVisible = () => useContext(SceneVisibilityContext);
 // ─── Shared phase helpers ─────────────────────────────────────────────────────
 
 function getRuntimeTransform(phase: MagazineRuntimePhase, dragX = 0, mobile = false): string {
+  // On mobile: completely flat — no perspective, no rotateY. Content is always accessible.
+  if (mobile) return "translateZ(0)";
   const dragTilt = Math.max(-12, Math.min(12, dragX / 20));
-  // On mobile reduce rotateY to ~30% of desktop values to prevent 3D bleed past viewport edge
-  const s = mobile ? 0.3 : 1;
-  if (phase === "holding")   return `perspective(1800px) rotateY(${dragTilt * s}deg) translateZ(0)`;
-  if (phase === "starburst") return `perspective(1800px) rotateY(${-6 * s}deg) scale(0.986) translateX(${-8 * s}px)`;
-  if (phase === "flipping")  return `perspective(1800px) rotateY(${-19 * s}deg) rotateX(${s}deg) translateX(${-26 * s}px) scale(0.975)`;
-  return `perspective(1800px) rotateY(${8 * s}deg) translateX(${10 * s}px) scale(0.994)`;
+  if (phase === "holding")   return `perspective(1800px) rotateY(${dragTilt}deg) translateZ(0)`;
+  if (phase === "starburst") return `perspective(1800px) rotateY(${-6}deg) scale(0.986) translateX(${-8}px)`;
+  if (phase === "flipping")  return `perspective(1800px) rotateY(${-19}deg) rotateX(1deg) translateX(${-26}px) scale(0.975)`;
+  return `perspective(1800px) rotateY(${8}deg) translateX(${10}px) scale(0.994)`;
 }
 
 function getRuntimeTransition(phase: MagazineRuntimePhase, flipMs = 820): string {
