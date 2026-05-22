@@ -9,6 +9,7 @@ import { ARTIST_SEED } from "@/lib/artists/artistSeed";
 import type { LiveArtist } from "@/lib/data/artistPool";
 import { getCurrentGenre, getNextGenre, getWeeklyGenre, getWeeklyOrbitVariant } from "@/packages/genre-system/genreRotationEngine";
 import { genreMatches, normalizeGenreLabel } from "@/packages/genre-system/genreRegistry";
+import { recordTopPerformer, getEligibleTopId } from "@/lib/performance/RankingFreshnessEngine";
 import { publishHomeFeed, type Home1Feed } from "@/packages/magazine-engine/liveFeedBus";
 import {
   home1ArtifactMap,
@@ -200,7 +201,17 @@ export default function Home1LiveMagazine() {
     return selected;
   }, [genre]);
 
-  const crownArtist = artists[0];
+  // Freshness-aware crown: skip performers that have held #1 for > 60 days
+  const crownArtist = useMemo(() => {
+    const eligibleId = getEligibleTopId(genre, artists.map(a => a.id));
+    return artists.find(a => a.id === eligibleId) ?? artists[0];
+  }, [artists, genre]);
+
+  // Record crown tenure so the freshness engine can track it
+  useEffect(() => {
+    if (crownArtist) recordTopPerformer(genre, crownArtist.id);
+  }, [genre, crownArtist?.id]);
+
   const ringArtists = useMemo(
     () => artists.slice(1, ringArtifacts.length + 1),
     [artists, ringArtifacts.length],

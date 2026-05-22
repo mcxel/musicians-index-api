@@ -13,6 +13,7 @@ import { useRouter } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import MagazineStarburstTransition from "./MagazineStarburstTransition";
+import FeatherRuffleOverlay from "./FeatherRuffleOverlay";
 
 // ─── Shared types ────────────────────────────────────────────────────────────
 
@@ -130,6 +131,7 @@ function SingleSceneRuntime({
         {children}
       </div>
       <MagazineStarburstTransition active={phase !== "holding"} phase={phase} />
+      <FeatherRuffleOverlay phase={phase} />
     </section>
   );
 }
@@ -318,6 +320,7 @@ function MultiSceneRuntime({ scenes, initialIndex = 0, onSceneEnter, onSceneExit
       </PhysicalMagazineViewport>
 
       <MagazineStarburstTransition active={phase !== "holding"} phase={phase} />
+      <FeatherRuffleOverlay phase={phase} />
 
       {/* Scene nav dots */}
       <nav
