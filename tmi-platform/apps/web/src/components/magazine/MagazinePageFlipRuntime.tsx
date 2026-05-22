@@ -36,18 +36,23 @@ export const useSceneVisible = () => useContext(SceneVisibilityContext);
 function getRuntimeTransform(phase: MagazineRuntimePhase, dragX = 0, mobile = false): string {
   // On mobile: completely flat — no perspective, no rotateY. Content is always accessible.
   if (mobile) return "translateZ(0)";
-  const dragTilt = Math.max(-12, Math.min(12, dragX / 20));
-  if (phase === "holding")   return `perspective(1800px) rotateY(${dragTilt}deg) translateZ(0)`;
-  if (phase === "starburst") return `perspective(1800px) rotateY(${-6}deg) scale(0.986) translateX(${-8}px)`;
-  if (phase === "flipping")  return `perspective(1800px) rotateY(${-19}deg) rotateX(1deg) translateX(${-26}px) scale(0.975)`;
-  return `perspective(1800px) rotateY(${8}deg) translateX(${10}px) scale(0.994)`;
+  // Lighter drag tilt — capped at ±5° so holding feels stable
+  const dragTilt = Math.max(-5, Math.min(5, dragX / 36));
+  if (phase === "holding")   return `perspective(2400px) rotateY(${dragTilt}deg) translateZ(0)`;
+  // Starburst: very subtle pull-back — just enough to signal something is coming
+  if (phase === "starburst") return `perspective(2400px) rotateY(-2deg) scale(0.993) translateX(-4px)`;
+  // Flip: tight, controlled — 10° is enough to read as a page turn without flopping
+  if (phase === "flipping")  return `perspective(2400px) rotateY(-10deg) translateX(-18px) scale(0.980)`;
+  // Re-enter / snap back: mirror at 3° so the settle feels symmetrical
+  return `perspective(2400px) rotateY(3deg) translateX(5px) scale(0.997)`;
 }
 
-function getRuntimeTransition(phase: MagazineRuntimePhase, flipMs = 820): string {
-  if (phase === "holding")   return "transform 140ms ease";
-  if (phase === "starburst") return "transform 420ms cubic-bezier(0.18, 0.82, 0.22, 1), filter 420ms ease";
-  if (phase === "flipping")  return `transform ${flipMs}ms cubic-bezier(0.33, 0.06, 0.08, 1), box-shadow ${flipMs}ms ease`;
-  return "transform 420ms cubic-bezier(0.08, 0.82, 0.2, 1), box-shadow 420ms ease";
+function getRuntimeTransition(phase: MagazineRuntimePhase, flipMs = 700): string {
+  if (phase === "holding")   return "transform 90ms ease";
+  // Expo.Out easing — snaps to position without overshooting
+  if (phase === "starburst") return "transform 360ms cubic-bezier(0.16, 1, 0.3, 1), filter 360ms ease";
+  if (phase === "flipping")  return `transform ${flipMs}ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow ${flipMs}ms ease`;
+  return `transform 340ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 340ms ease`;
 }
 
 // ─── Single-scene mode (original behavior, preserved) ────────────────────────
@@ -127,7 +132,7 @@ function SingleSceneRuntime({
     >
       <div aria-hidden="true" style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at 12% 24%, rgba(0, 255, 255, 0.14) 0%, transparent 58%), radial-gradient(ellipse at 84% 76%, rgba(255, 45, 170, 0.14) 0%, transparent 58%)", pointerEvents: "none", zIndex: 1 }} />
       <div style={{ position: "absolute", left: "50%", top: "5%", width: "min(1200px, 96vw)", height: "90%", transform: "translateX(-50%)", borderRadius: 22, background: "linear-gradient(140deg, rgba(8, 6, 24, 0.9), rgba(5, 5, 16, 0.94))", boxShadow: "0 24px 60px rgba(0,0,0,0.45), inset 18px 0 22px rgba(255,255,255,0.04), inset -18px 0 20px rgba(0,0,0,0.3)", zIndex: 2, pointerEvents: "none" }} />
-      <div style={{ position: "relative", zIndex: 3, minHeight: "100svh", transformOrigin: "left center", transform: getRuntimeTransform(phase, dragX), transition: getRuntimeTransition(phase), filter: phase === "starburst" ? "brightness(1.2) saturate(1.22)" : "none", boxShadow: phase === "flipping" ? "-22px 0 38px rgba(0, 0, 0, 0.4), 0 18px 40px rgba(0, 0, 0, 0.34)" : "none" }}>
+      <div style={{ position: "relative", zIndex: 3, minHeight: "100svh", transformOrigin: "left center", transform: getRuntimeTransform(phase, dragX), transition: getRuntimeTransition(phase), filter: phase === "starburst" ? "brightness(1.18) saturate(1.18)" : "none", boxShadow: phase === "flipping" ? "-14px 0 28px rgba(0,0,0,0.32), 0 10px 24px rgba(0,0,0,0.26)" : "none" }}>
         {children}
       </div>
       <MagazineStarburstTransition active={phase !== "holding"} phase={phase} />
@@ -289,7 +294,7 @@ function MultiSceneRuntime({ scenes, initialIndex = 0, onSceneEnter, onSceneExit
             transform: getRuntimeTransform(phase, 0, mobile),
             transition: getRuntimeTransition(phase, flipMs),
             filter: phase === "starburst" ? "brightness(1.2) saturate(1.22)" : "none",
-            boxShadow: phase === "flipping" ? "-22px 0 38px rgba(0,0,0,0.4), 0 18px 40px rgba(0,0,0,0.34)" : "none",
+            boxShadow: phase === "flipping" ? "-14px 0 28px rgba(0,0,0,0.32), 0 10px 24px rgba(0,0,0,0.26)" : "none",
             zIndex: 3,
           }}
         >

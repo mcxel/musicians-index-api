@@ -1,13 +1,5 @@
-import LiveDiscoverySurface from "@/components/home/LiveDiscoverySurface";
+import Home2NewsDeskSurface from "@/components/home/Home2NewsDeskSurface";
 
 export default function Home2Page() {
-  return (
-    <LiveDiscoverySurface
-      title="Concert Wall"
-      subtitle="Shows & Live Performances"
-      genres={["concert", "live"]}
-      accent="#FF2DAA"
-      backHref="/home/1"
-    />
-  );
+  return <Home2NewsDeskSurface />;
 }

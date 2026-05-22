@@ -1,15 +1,5 @@
-"use client";
-
-import LiveDiscoverySurface from "@/components/home/LiveDiscoverySurface";
+import Home5BattleCypherSurface from "@/components/home/Home5BattleCypherSurface";
 
 export default function Home5Page() {
-  return (
-    <LiveDiscoverySurface
-      title="Battle Arena"
-      subtitle="Battles · Cyphers · Challenges"
-      genres={["battle", "cypher", "challenge"]}
-      accent="#AA2DFF"
-      backHref="/home/1"
-    />
-  );
+  return <Home5BattleCypherSurface />;
 }
