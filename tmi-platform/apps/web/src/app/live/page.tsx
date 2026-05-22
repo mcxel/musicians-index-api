@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import LiveDiscoveryWall from "@/components/home/LiveDiscoveryWall";
 
 export const metadata: Metadata = {
   title: "Live | TMI",
@@ -102,6 +103,15 @@ export default function LiveIndexPage() {
           <Link href="/cypher" style={{ padding: "9px 20px", fontSize: 9, fontWeight: 800, letterSpacing: "0.12em", color: "#FF2DAA", border: "1px solid rgba(255,45,170,0.3)", borderRadius: 8, textDecoration: "none" }}>CYPHER</Link>
           <Link href="/dirty-dozens" style={{ padding: "9px 20px", fontSize: 9, fontWeight: 800, letterSpacing: "0.12em", color: "#FFD700", border: "1px solid rgba(255,215,0,0.3)", borderRadius: 8, textDecoration: "none" }}>DIRTY DOZENS</Link>
         </div>
+      </section>
+
+      {/* ─── Live Discovery Wall ─── */}
+      <section style={{ padding: "48px 0 0" }}>
+        <div style={{ padding: "0 24px 20px", display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#00FFFF", display: "inline-block", boxShadow: "0 0 8px #00FFFF" }} />
+          <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.2em", color: "#00FFFF" }}>LIVE DISCOVERY</span>
+        </div>
+        <LiveDiscoveryWall />
       </section>
     </main>
   );
