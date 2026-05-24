@@ -1,150 +1,161 @@
-import Link from "next/link";
-import { InviteGrantEngine } from "@/lib/invites/InviteGrantEngine";
-import { InviteRecoveryEngine } from "@/lib/invites/InviteRecoveryEngine";
-import type { GiftAccountRole, GiftSource, GiftTier } from "@/lib/subscriptions/GiftMembershipEngine";
+'use client';
 
-type AdminInvitesPageProps = {
-  searchParams: Promise<{
-    action?: string;
-    email?: string;
-    role?: string;
-    tier?: string;
-    source?: string;
-    inviteId?: string;
-    relation?: string;
-  }>;
+import { useState } from 'react';
+import Link from 'next/link';
+
+const ROLES = ['performer', 'fan', 'promoter', 'advertiser', 'sponsor', 'venue'] as const;
+type Role = typeof ROLES[number];
+
+const VIP_TOKENS: Record<string, { email: string; name: string; role: Role }> = {
+  'VIP-KREACH-2026':  { email: 'kreach@themusiciansindex.com',  name: 'Kreach',       role: 'performer' },
+  'VIP-KG-2026':      { email: 'kg@themusiciansindex.com',      name: 'KG',           role: 'performer' },
+  'VIP-SAVAGE-2026':  { email: 'savageguns@themusiciansindex.com', name: 'Savage Guns', role: 'performer' },
+  'VIP-JASON-2026':   { email: 'sharingmyblessing1978@gmail.com', name: 'Jason Smith', role: 'promoter' },
+  'VIP-SHEILA-2026':  { email: 'mystictrinity@yahoo.com',       name: 'Sheila',       role: 'fan'       },
+  'VIP-SKEET-2026':   { email: 'facethebully916@gmail.com',     name: 'Skeet',        role: 'fan'       },
+  'VIP-KEVEN-2026':   { email: 'kevenfobbsgrip@gmail.com',      name: 'Keven Fobbs',  role: 'performer' },
+  'VIP-PARIS-2026':   { email: 'parisdcooper91@gmail.com',      name: 'Paris Cooper', role: 'performer' },
 };
 
-const ROLES: GiftAccountRole[] = ["artist", "fan", "venue", "producer", "sponsor", "advertiser"];
-const TIERS: GiftTier[] = ["free", "pro", "bronze", "gold", "platinum", "diamond"];
-const SOURCES: GiftSource[] = ["admin", "friend", "family"];
+const ACCENT = '#FFD700';
 
-function safeRole(value?: string): GiftAccountRole {
-  return ROLES.includes((value ?? "").toLowerCase() as GiftAccountRole)
-    ? ((value ?? "").toLowerCase() as GiftAccountRole)
-    : "artist";
-}
+export default function AdminInvitesPage() {
+  const [email, setEmail]         = useState('');
+  const [name, setName]           = useState('');
+  const [role, setRole]           = useState<Role>('performer');
+  const [inviteCode, setInviteCode] = useState('');
+  const [busy, setBusy]           = useState(false);
+  const [result, setResult]       = useState<{ ok: boolean; msg: string } | null>(null);
 
-function safeTier(value?: string): GiftTier {
-  return TIERS.includes((value ?? "").toLowerCase() as GiftTier)
-    ? ((value ?? "").toLowerCase() as GiftTier)
-    : "diamond";
-}
-
-function safeSource(value?: string): GiftSource {
-  return SOURCES.includes((value ?? "").toLowerCase() as GiftSource)
-    ? ((value ?? "").toLowerCase() as GiftSource)
-    : "admin";
-}
-
-export default async function AdminInvitesPage({ searchParams }: AdminInvitesPageProps) {
-  const query = await searchParams;
-  let actionMessage = "";
-
-  if (query.action === "send" && query.email) {
+  const send = async () => {
+    if (!email || !name) return;
+    setBusy(true);
+    setResult(null);
     try {
-      const source = safeSource(query.source);
-      const result = InviteGrantEngine.grantAndSendInvite({
-        recipientEmail: query.email,
-        inviterId: "admin-system",
-        role: safeRole(query.role),
-        tier: safeTier(query.tier),
-        source,
-        friendInvite: query.relation === "friend" || source === "friend",
-        familyInvite: query.relation === "family" || source === "family",
+      const code = inviteCode.trim() || `VIP-${name.toUpperCase().replace(/\s+/g, '-')}-${new Date().getFullYear()}`;
+      const res = await fetch('/api/invites/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ to: email, name, inviteCode: code, role }),
       });
-      actionMessage = `Invite sent (${result.invite.inviteId}) with gifted ${result.invite.tier} ${result.invite.role} tier.`;
-    } catch (error) {
-      actionMessage = error instanceof Error ? error.message : "Failed to send invite";
+      const data = await res.json() as { success?: boolean; inviteUrl?: string; error?: string };
+      if (data.success) {
+        setResult({ ok: true, msg: `Sent! Invite URL: ${data.inviteUrl ?? ''}` });
+        setEmail(''); setName(''); setInviteCode('');
+      } else {
+        setResult({ ok: false, msg: data.error ?? 'Send failed' });
+      }
+    } catch (e) {
+      setResult({ ok: false, msg: String(e) });
+    } finally {
+      setBusy(false);
     }
-  }
+  };
 
-  if (query.action === "resend" && query.inviteId) {
+  const quickSend = async (token: string) => {
+    const p = VIP_TOKENS[token];
+    if (!p) return;
+    setBusy(true);
+    setResult(null);
     try {
-      const result = InviteRecoveryEngine.resendInvite(query.inviteId, "admin-system");
-      actionMessage = result.resent
-        ? `Invite reissued and resent (${result.invite.inviteId}).`
-        : `Unable to resend (${result.reason}).`;
-    } catch (error) {
-      actionMessage = error instanceof Error ? error.message : "Failed to resend invite";
+      const res = await fetch('/api/invites/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ to: p.email, name: p.name, inviteCode: token, role: p.role }),
+      });
+      const data = await res.json() as { success?: boolean; inviteUrl?: string; error?: string };
+      setResult(data.success
+        ? { ok: true, msg: `Sent to ${p.name} (${p.email}) — ${data.inviteUrl ?? ''}` }
+        : { ok: false, msg: data.error ?? 'Failed' });
+    } catch (e) {
+      setResult({ ok: false, msg: String(e) });
+    } finally {
+      setBusy(false);
     }
-  }
-
-  const { pending, accepted } = InviteGrantEngine.listPendingAndAccepted();
+  };
 
   return (
-    <main style={{ minHeight: "100vh", background: "#050510", color: "#fff", padding: "28px 16px" }}>
-      <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-        <h1 style={{ margin: 0, fontSize: 42 }}>Admin Invites</h1>
-        <p style={{ color: "#bdbdd3", marginTop: 8 }}>
-          Send, resend, and track secure invite links with gifted membership attachment.
-        </p>
+    <main style={{ minHeight: '100vh', background: '#050510', color: '#fff', padding: '28px 20px', fontFamily: "'Inter', sans-serif" }}>
+      <div style={{ maxWidth: 680, margin: '0 auto' }}>
 
-        {actionMessage && <div style={{ marginTop: 12, color: "#8fffcf" }}>{actionMessage}</div>}
+        {/* Header */}
+        <div style={{ marginBottom: 28 }}>
+          <div style={{ fontSize: 9, letterSpacing: '0.35em', color: ACCENT, fontWeight: 800, marginBottom: 6 }}>ADMIN</div>
+          <h1 style={{ fontSize: 26, fontWeight: 900, margin: 0 }}>VIP Invite Center</h1>
+          <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', marginTop: 6 }}>Send invite links directly to people. They land on /auth?code= which auto-shows the signup flow.</p>
+        </div>
 
-        <section style={{ marginTop: 16, border: "1px solid rgba(255,215,0,0.34)", borderRadius: 10, padding: 12, background: "rgba(255,215,0,0.08)" }}>
-          <strong>Quick Send Templates</strong>
-          <div style={{ marginTop: 8, display: "grid", gap: 8 }}>
-            <Link href="/admin/invites?action=send&email=sample-artist@example.com&role=artist&tier=diamond&source=admin" style={{ color: "#ffe6a0", textDecoration: "none" }}>
-              Send Diamond Artist Invite
-            </Link>
-            <Link href="/admin/invites?action=send&email=sample-friend@example.com&role=fan&tier=pro&source=friend&relation=friend" style={{ color: "#ffe6a0", textDecoration: "none" }}>
-              Send Friend Invite
-            </Link>
-            <Link href="/admin/invites?action=send&email=sample-family@example.com&role=fan&tier=gold&source=family&relation=family" style={{ color: "#ffe6a0", textDecoration: "none" }}>
-              Send Family Invite
-            </Link>
+        {/* Result */}
+        {result && (
+          <div style={{ padding: '12px 16px', borderRadius: 8, marginBottom: 20, background: result.ok ? 'rgba(0,255,136,0.08)' : 'rgba(255,68,68,0.08)', border: `1px solid ${result.ok ? 'rgba(0,255,136,0.3)' : 'rgba(255,68,68,0.3)'}`, fontSize: 12, color: result.ok ? '#00FF88' : '#FF4444', wordBreak: 'break-all' }}>
+            {result.msg}
           </div>
-        </section>
+        )}
 
-        <section style={{ marginTop: 16 }}>
-          <h2 style={{ margin: 0, fontSize: 24, color: "#00FFFF" }}>Pending / Recoverable</h2>
-          <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
-            {pending.length === 0 ? (
-              <div style={{ border: "1px solid rgba(255,255,255,0.15)", borderRadius: 10, padding: 12, background: "rgba(255,255,255,0.04)" }}>
-                No pending invites.
+        {/* Custom invite form */}
+        <div style={{ background: 'rgba(255,215,0,0.05)', border: '1px solid rgba(255,215,0,0.2)', borderRadius: 14, padding: '20px 22px', marginBottom: 28 }}>
+          <div style={{ fontSize: 9, letterSpacing: '0.3em', color: ACCENT, fontWeight: 800, marginBottom: 16 }}>SEND NEW INVITE</div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: 8, letterSpacing: '0.15em', color: 'rgba(255,255,255,0.4)', fontWeight: 700, marginBottom: 5 }}>FULL NAME</label>
+                <input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Micah Jones"
+                  style={{ width: '100%', padding: '10px 12px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: '#fff', fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
               </div>
-            ) : (
-              pending.map((invite) => (
-                <div key={invite.inviteId} style={{ border: "1px solid rgba(0,255,255,0.34)", borderRadius: 10, padding: 12, background: "rgba(0,255,255,0.06)" }}>
-                  <strong>{invite.inviteId}</strong>
-                  <div style={{ marginTop: 4, color: "#dff" }}>
-                    {invite.recipientEmail} · {invite.role} · {invite.tier} · {invite.status}
-                  </div>
-                  <div style={{ marginTop: 8 }}>
-                    <Link href={`/admin/invites?action=resend&inviteId=${invite.inviteId}`} style={{ color: "#FFD700", textDecoration: "none" }}>
-                      Resend / Reissue Link
-                    </Link>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </section>
-
-        <section style={{ marginTop: 16 }}>
-          <h2 style={{ margin: 0, fontSize: 24, color: "#FF2DAA" }}>Accepted</h2>
-          <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
-            {accepted.length === 0 ? (
-              <div style={{ border: "1px solid rgba(255,255,255,0.15)", borderRadius: 10, padding: 12, background: "rgba(255,255,255,0.04)" }}>
-                No accepted invites yet.
+              <div>
+                <label style={{ display: 'block', fontSize: 8, letterSpacing: '0.15em', color: 'rgba(255,255,255,0.4)', fontWeight: 700, marginBottom: 5 }}>EMAIL</label>
+                <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="micah@example.com"
+                  style={{ width: '100%', padding: '10px 12px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: '#fff', fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
               </div>
-            ) : (
-              accepted.map((invite) => (
-                <div key={invite.inviteId} style={{ border: "1px solid rgba(255,45,170,0.34)", borderRadius: 10, padding: 12, background: "rgba(255,45,170,0.08)" }}>
-                  <strong>{invite.inviteId}</strong>
-                  <div style={{ marginTop: 4, color: "#f8d3ea" }}>
-                    {invite.recipientEmail} · account {invite.accountId ?? "unknown"}
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </section>
+            </div>
 
-        <div style={{ marginTop: 18, display: "flex", gap: 12, flexWrap: "wrap" }}>
-          <Link href="/admin/gifts" style={{ color: "#00FFFF", textDecoration: "none" }}>Gift Memberships</Link>
-          <Link href="/account/invites" style={{ color: "#FFD700", textDecoration: "none" }}>Account Invites</Link>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: 8, letterSpacing: '0.15em', color: 'rgba(255,255,255,0.4)', fontWeight: 700, marginBottom: 5 }}>ROLE</label>
+                <select value={role} onChange={e => setRole(e.target.value as Role)}
+                  style={{ width: '100%', padding: '10px 12px', background: '#0a0a1a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: '#fff', fontSize: 13, outline: 'none' }}>
+                  {ROLES.map(r => <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 8, letterSpacing: '0.15em', color: 'rgba(255,255,255,0.4)', fontWeight: 700, marginBottom: 5 }}>INVITE CODE (optional)</label>
+                <input value={inviteCode} onChange={e => setInviteCode(e.target.value)} placeholder="VIP-NAME-2026 (auto-generated)"
+                  style={{ width: '100%', padding: '10px 12px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: '#fff', fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
+              </div>
+            </div>
+
+            <button onClick={() => void send()} disabled={busy || !email || !name}
+              style={{ padding: '13px', fontSize: 11, fontWeight: 900, letterSpacing: '0.15em', background: (!email || !name || busy) ? 'rgba(255,215,0,0.2)' : `linear-gradient(135deg,${ACCENT},#FF9500)`, color: '#050510', border: 'none', borderRadius: 9, cursor: (!email || !name || busy) ? 'not-allowed' : 'pointer' }}>
+              {busy ? 'SENDING...' : '💎 SEND VIP INVITE'}
+            </button>
+          </div>
+        </div>
+
+        {/* Quick resend — registered VIPs */}
+        <div style={{ background: 'rgba(170,45,255,0.05)', border: '1px solid rgba(170,45,255,0.2)', borderRadius: 14, padding: '20px 22px' }}>
+          <div style={{ fontSize: 9, letterSpacing: '0.3em', color: '#AA2DFF', fontWeight: 800, marginBottom: 16 }}>RESEND TO REGISTERED VIPs</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {Object.entries(VIP_TOKENS).map(([token, p]) => (
+              <div key={token} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 9 }}>
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 800, color: '#fff' }}>{p.name}</div>
+                  <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', marginTop: 1 }}>{p.email} · {p.role} · <span style={{ color: ACCENT }}>{token}</span></div>
+                </div>
+                <button onClick={() => void quickSend(token)} disabled={busy}
+                  style={{ padding: '6px 14px', fontSize: 9, fontWeight: 800, letterSpacing: '0.1em', background: 'rgba(255,215,0,0.1)', border: '1px solid rgba(255,215,0,0.3)', borderRadius: 6, color: ACCENT, cursor: busy ? 'wait' : 'pointer' }}>
+                  RESEND
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ marginTop: 20, display: 'flex', gap: 12 }}>
+          <Link href="/admin/owner-dashboard" style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', textDecoration: 'none' }}>← Owner Dashboard</Link>
+          <Link href="/admin/users/grants" style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', textDecoration: 'none' }}>User Grants</Link>
         </div>
       </div>
     </main>
