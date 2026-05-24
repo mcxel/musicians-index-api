@@ -9,6 +9,7 @@ import PerformanceVotePanel from '@/components/arena/PerformanceVotePanel';
 import { battleBillboardLobbyWallEngine } from '@/lib/competition/BattleBillboardLobbyWallEngine';
 import { battleMatchLifecycleEngine, UNIVERSAL_BATTLE_WINDOW_SECONDS } from '@/lib/competition/BattleMatchLifecycleEngine';
 import type { BattleVoteTally, VoteOption } from '@/lib/competition/BattleVoteClosureEngine';
+import SponsorBattleOverlay from '@/components/arena/SponsorBattleOverlay';
 
 const DEMO_BATTLES = [
   { battleId: 'arena-001', challengerName: 'Astra Nova',  targetName: 'Neon Verse',   format: 'Dirty Dozens', accentA: '#00FFFF', accentB: '#FF2DAA', status: 'live' as const },
@@ -86,6 +87,10 @@ export default function BattlesLivePage() {
       </div>
 
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: '24px 24px 0' }}>
+
+        {/* Sponsor strip */}
+        <SponsorBattleOverlay battleId={activeBattle.battleId} accentColor={activeBattle.accentA} compact />
+        <div style={{ marginBottom: 16 }} />
 
         {/* Battle selector */}
         <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>

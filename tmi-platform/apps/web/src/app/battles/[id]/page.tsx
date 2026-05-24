@@ -19,6 +19,7 @@ import RoomChatPanel from "@/components/messaging/RoomChatPanel";
 import WinnerCeremonyOverlay from "@/components/ceremony/WinnerCeremonyOverlay";
 import ProfileStreakRail from "@/components/streaks/ProfileStreakRail";
 import LiveQualityBadge from "@/components/video/LiveQualityBadge";
+import SponsorBattleOverlay from "@/components/arena/SponsorBattleOverlay";
 
 const BATTLE_DATA: Record<string, {
   title: string; type: string; prize: string; status: string;
@@ -233,6 +234,9 @@ export default function BattleRoomPage({ params }: { params: { id: string } }) {
       </header>
 
       <div style={{ maxWidth: 900, margin: "0 auto", padding: "36px 24px" }}>
+        {/* Sponsor overlay */}
+        <SponsorBattleOverlay battleId={params.id} accentColor={battle.color} />
+
         {/* Artist cards */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: 16, alignItems: "center", marginBottom: 32 }}>
           <div style={{ background: voted === "a" ? `${battle.color}15` : "rgba(255,255,255,0.02)", border: `1px solid ${voted === "a" ? battle.color + "40" : "rgba(255,255,255,0.07)"}`, borderRadius: 16, padding: "28px 24px", textAlign: "center" }}>
