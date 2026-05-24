@@ -3,8 +3,6 @@ import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
-import { setSession } from "@/lib/auth/session";
-import type { TMIRole } from "@/lib/auth/roles";
 
 type AccountType = "MEMBER" | "ARTIST" | "ADVERTISER" | "SPONSOR" | "VENUE";
 type Step = "TYPE" | "DETAILS" | "PROVISIONING" | "DONE";
@@ -65,9 +63,6 @@ export default function SignupPage() {
       });
       const prov = await provRes.json() as { steps?: Array<{ step: string }> };
       setProvSteps((prov.steps ?? []).map((s) => s.step));
-      // Write session cookies so /dashboard doesn't bounce the new user back to /auth
-      const sessionToken = regData.token ?? userId;
-      setSession(sessionToken, accountType as TMIRole);
       setStep("DONE");
     } catch {
       setError("Signup failed — please try again.");
