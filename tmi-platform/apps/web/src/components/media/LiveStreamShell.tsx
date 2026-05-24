@@ -6,21 +6,28 @@ import { motion } from 'framer-motion';
 export type StreamMode = 'viewer' | 'participant' | 'spotlight' | 'admin-monitor' | 'ad' | 'preview';
 export type StreamState = 'CONNECTING' | 'LIVE' | 'OFFLINE' | 'CAMERA_OFF' | 'AD' | 'AVATAR';
 
+const TIP_AMOUNTS = [1, 5, 10];
+
 interface LiveStreamShellProps {
-  mode?:           StreamMode;
-  roomId?:         string;
-  channelId?:      string;
-  userId?:         string;
-  title?:          string;
-  fallbackAvatar?: string;       // emoji or image URL
+  mode?:            StreamMode;
+  roomId?:          string;
+  channelId?:       string;
+  userId?:          string;
+  performerId?:     string;
+  performerName?:   string;
+  title?:           string;
+  fallbackAvatar?:  string;
   sponsorAssetUrl?: string;
-  accentColor?:    string;
-  muted?:          boolean;
-  autoplay?:       boolean;
-  compact?:        boolean;      // small admin-monitor tile
-  onClick?:        () => void;
-  onJoinCamera?:   (stream: MediaStream) => void;
-  onLeave?:        () => void;
+  accentColor?:     string;
+  muted?:           boolean;
+  autoplay?:        boolean;
+  compact?:         boolean;
+  showTipButton?:   boolean;
+  showBattleButton?: boolean;
+  enterHref?:       string;
+  onClick?:         () => void;
+  onJoinCamera?:    (stream: MediaStream) => void;
+  onLeave?:         () => void;
 }
 
 const STATE_LABELS: Record<StreamState, string> = {
@@ -36,12 +43,17 @@ const STATE_COLORS: Record<StreamState, string> = {
 export default function LiveStreamShell({
   mode = 'viewer',
   roomId = 'room-1',
+  performerId,
+  performerName,
   title = 'Live Room',
   fallbackAvatar = '🎤',
   sponsorAssetUrl,
   accentColor = '#00FFFF',
   muted = true,
   compact = false,
+  showTipButton = false,
+  showBattleButton = false,
+  enterHref,
   onClick,
   onJoinCamera,
   onLeave,
@@ -51,6 +63,20 @@ export default function LiveStreamShell({
   const [streamState, setStreamState] = useState<StreamState>('AVATAR');
   const [isMuted, setIsMuted]         = useState(muted);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showTipPanel, setShowTipPanel] = useState(false);
+  const [tipSent, setTipSent]           = useState<number | null>(null);
+
+  const sendTip = useCallback(async (amount: number) => {
+    setShowTipPanel(false);
+    setTipSent(amount);
+    await fetch('/api/tips', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ recipientId: performerId ?? roomId, amount, roomId }),
+    }).catch(() => {});
+    setTimeout(() => setTipSent(null), 2500);
+  }, [performerId, roomId]);
 
   const joinCamera = useCallback(async () => {
     if (streamState === 'LIVE') return;
@@ -144,10 +170,32 @@ export default function LiveStreamShell({
         </div>
       )}
 
+      {/* Tip success flash */}
+      {tipSent !== null && (
+        <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', background: 'rgba(0,255,136,0.92)', color: '#000', fontWeight: 900, fontSize: 15, padding: '10px 22px', borderRadius: 12, zIndex: 10, letterSpacing: '0.08em' }}>
+          💸 ${tipSent} SENT!
+        </div>
+      )}
+
+      {/* Tip panel */}
+      {showTipPanel && (
+        <div style={{ position: 'absolute', bottom: 50, left: 10, background: 'rgba(5,5,16,0.97)', border: '1px solid rgba(0,255,136,0.4)', borderRadius: 10, padding: '10px 12px', zIndex: 10 }}>
+          <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.12em', color: '#00FF88', marginBottom: 8 }}>TIP {performerName ?? 'PERFORMER'}</div>
+          <div style={{ display: 'flex', gap: 6 }}>
+            {TIP_AMOUNTS.map(amt => (
+              <button key={amt} onClick={(e) => { e.stopPropagation(); void sendTip(amt); }}
+                style={{ padding: '7px 14px', fontSize: 11, fontWeight: 800, background: 'rgba(0,255,136,0.18)', color: '#00FF88', border: '1px solid rgba(0,255,136,0.4)', borderRadius: 7, cursor: 'pointer' }}>
+                ${amt}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Controls bar */}
       {!compact && (
         <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '8px 10px', background: 'linear-gradient(transparent, rgba(0,0,0,0.85))', display: 'flex', gap: 6, alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', gap: 6 }}>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {mode === 'viewer' && streamState !== 'LIVE' && (
               <button onClick={(e) => { e.stopPropagation(); void joinCamera(); }}
                 style={{ padding: '5px 10px', fontSize: 9, fontWeight: 800, letterSpacing: '0.1em', background: accentColor, color: '#050510', border: 'none', borderRadius: 20, cursor: 'pointer' }}>
@@ -159,6 +207,24 @@ export default function LiveStreamShell({
                 style={{ padding: '5px 10px', fontSize: 9, fontWeight: 700, background: 'rgba(255,68,68,0.2)', color: '#FF4444', border: '1px solid rgba(255,68,68,0.3)', borderRadius: 20, cursor: 'pointer' }}>
                 LEAVE
               </button>
+            )}
+            {showTipButton && (
+              <button onClick={(e) => { e.stopPropagation(); setShowTipPanel(p => !p); }}
+                style={{ padding: '5px 10px', fontSize: 9, fontWeight: 800, background: 'rgba(0,255,136,0.2)', color: '#00FF88', border: '1px solid rgba(0,255,136,0.4)', borderRadius: 20, cursor: 'pointer' }}>
+                💸 TIP
+              </button>
+            )}
+            {showBattleButton && (
+              <a href="/battles/live" onClick={(e) => e.stopPropagation()}
+                style={{ padding: '5px 10px', fontSize: 9, fontWeight: 800, background: 'rgba(255,45,170,0.2)', color: '#FF2DAA', border: '1px solid rgba(255,45,170,0.4)', borderRadius: 20, cursor: 'pointer', textDecoration: 'none' }}>
+                ⚔️ BATTLE
+              </a>
+            )}
+            {enterHref && (
+              <a href={enterHref} onClick={(e) => e.stopPropagation()}
+                style={{ padding: '5px 10px', fontSize: 9, fontWeight: 800, background: 'rgba(255,255,255,0.08)', color: '#fff', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 20, cursor: 'pointer', textDecoration: 'none' }}>
+                ENTER →
+              </a>
             )}
           </div>
           <div style={{ display: 'flex', gap: 6 }}>
