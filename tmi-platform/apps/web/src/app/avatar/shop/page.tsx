@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import PageShell from '@/components/layout/PageShell';
@@ -36,23 +37,38 @@ const STUB_SHOP: ShopItem[] = [
 const CATS = ['ALL', 'CLOTHING', 'PROP', 'EMOTE', 'BACKGROUND', 'EFFECT'];
 
 export default function AvatarShopPage() {
+  const router = useRouter();
   const [items, setItems] = useState<ShopItem[]>(STUB_SHOP);
   const [filter, setFilter] = useState('ALL');
   const [owned, setOwned] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [purchasing, setPurchasing] = useState<string | null>(null);
 
   useEffect(() => {
     fetch('/api/avatar/shop')
       .then((r) => r.json())
-      .then((data) => { if (Array.isArray(data) && data.length) setItems(data); })
+      .then((data: unknown) => { if (Array.isArray(data) && data.length) setItems(data as ShopItem[]); })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
 
   const filtered = filter === 'ALL' ? items : items.filter((i) => i.category === filter);
-  const purchase = (id: string) => {
-    // TODO: Stripe checkout
-    setOwned((prev) => [...prev, id]);
+
+  const purchase = async (item: ShopItem) => {
+    if (owned.includes(item.id) || purchasing) return;
+    setPurchasing(item.id);
+    try {
+      const res = await fetch('/api/avatar/purchase', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ itemId: item.id, itemName: item.name, price: item.price }),
+      });
+      const data = await res.json() as { url?: string };
+      if (data.url) router.push(data.url);
+      else setPurchasing(null);
+    } catch {
+      setPurchasing(null);
+    }
   };
 
   return (
@@ -87,8 +103,8 @@ export default function AvatarShopPage() {
                       <div style={{ color: '#fff', fontSize: 13, fontWeight: 700, marginBottom: 4 }}>{item.name}</div>
                       <div style={{ color: '#555', fontSize: 10, marginBottom: 12 }}>{item.category}</div>
                       <div style={{ color: '#fff', fontWeight: 900, fontSize: 16, marginBottom: 10 }}>${item.price.toFixed(2)}</div>
-                      <button onClick={() => purchase(item.id)} disabled={isOwned} style={{ width: '100%', background: isOwned ? '#222' : '#FFD700', color: isOwned ? '#555' : '#000', fontWeight: 800, fontSize: 11, letterSpacing: 1, padding: '8px', borderRadius: 6, border: 'none', cursor: isOwned ? 'default' : 'pointer' }}>
-                        {isOwned ? 'OWNED' : 'BUY'}
+                      <button onClick={() => purchase(item)} disabled={isOwned || purchasing === item.id} style={{ width: '100%', background: isOwned ? '#222' : purchasing === item.id ? '#b8a000' : '#FFD700', color: isOwned ? '#555' : '#000', fontWeight: 800, fontSize: 11, letterSpacing: 1, padding: '8px', borderRadius: 6, border: 'none', cursor: isOwned || purchasing === item.id ? 'default' : 'pointer' }}>
+                        {isOwned ? 'OWNED' : purchasing === item.id ? '...' : 'BUY'}
                       </button>
                     </div>
                   </motion.div>

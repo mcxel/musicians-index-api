@@ -1,4 +1,4 @@
-﻿import type { ModuleConfig } from '@tmi/module-runtime';
+import type { ModuleConfig } from '@tmi/module-runtime';
 
 export const MODULE_CONFIG: ModuleConfig = {
   id: 'transistor-hut',

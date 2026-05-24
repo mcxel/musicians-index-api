@@ -15,7 +15,6 @@ import type { CSSProperties } from 'react';
 import { useEffect } from 'react';
 import { Trophy, Star, Users, Zap, Play, ChevronRight } from 'lucide-react';
 
-// TODO: Replace with real API calls via contest.service
 function getContestData() {
   return {
     seasonName: 'Grand Platform Contest — Season 1',

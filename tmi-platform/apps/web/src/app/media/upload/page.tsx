@@ -1,15 +1,19 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 const ACCEPTED_TYPES = ["Video (MP4, MOV)", "Audio (MP3, WAV, FLAC)", "Image (JPG, PNG, WebP)", "Beat Pack (ZIP)"];
 
 export default function MediaUploadPage() {
+  const router = useRouter();
   const [dragging, setDragging] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [title, setTitle] = useState("");
   const [type, setType] = useState("Video");
   const [uploaded, setUploaded] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState("");
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
@@ -85,9 +89,31 @@ export default function MediaUploadPage() {
           </div>
         </div>
 
-        <button onClick={() => { if (file && title) setUploaded(true); }} disabled={!file || !title}
-          style={{ width: "100%", padding: "14px", borderRadius: 12, background: file && title ? "#00FFAA" : "rgba(255,255,255,0.08)", color: file && title ? "#060410" : "rgba(255,255,255,0.3)", fontWeight: 900, fontSize: 15, cursor: file && title ? "pointer" : "not-allowed", border: "none" }}>
-          Upload {type} →
+        {error && (
+          <div style={{ marginBottom: 12, padding: "10px 14px", background: "rgba(255,80,80,0.1)", border: "1px solid rgba(255,80,80,0.3)", borderRadius: 8, fontSize: 12, color: "#FF5555" }}>{error}</div>
+        )}
+        <button
+          disabled={!file || !title || uploading}
+          onClick={async () => {
+            if (!file || !title) return;
+            setUploading(true);
+            setError("");
+            try {
+              const fd = new FormData();
+              fd.append("file", file);
+              fd.append("title", title);
+              fd.append("type", type);
+              const res = await fetch("/api/media/upload", { method: "POST", body: fd });
+              if (!res.ok) throw new Error("Upload failed");
+              setUploaded(true);
+            } catch {
+              setError("Upload failed. Please try again.");
+            } finally {
+              setUploading(false);
+            }
+          }}
+          style={{ width: "100%", padding: "14px", borderRadius: 12, background: file && title && !uploading ? "#00FFAA" : "rgba(255,255,255,0.08)", color: file && title && !uploading ? "#060410" : "rgba(255,255,255,0.3)", fontWeight: 900, fontSize: 15, cursor: file && title && !uploading ? "pointer" : "not-allowed", border: "none" }}>
+          {uploading ? "Uploading..." : `Upload ${type} →`}
         </button>
       </div>
     </main>

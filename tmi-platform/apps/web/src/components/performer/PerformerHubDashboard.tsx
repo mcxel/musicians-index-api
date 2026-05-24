@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
 import {
   initStageControl, switchCamera, setLightingScene, setVoiceFx,
   toggleAICoHost, startMeetGreetTimer, tickMeetGreetTimer, setMicHot,
@@ -448,6 +449,30 @@ export default function PerformerHubDashboard({ performerId, displayName }: Perf
         ))}
 
       </div>
+
+      {/* Beat Producer Section — always visible, full-width */}
+      <div style={{ margin: "0 24px 32px", background: "rgba(255,45,170,0.04)", border: "1px solid rgba(255,45,170,0.2)", borderRadius: 14, padding: 24 }}>
+        <div style={{ fontSize: 9, letterSpacing: "0.35em", color: "#FF2DAA", fontWeight: 800, marginBottom: 14 }}>🎵 BEAT PRODUCER</div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 10 }}>
+          {[
+            { label: "SUBMIT BEAT",          icon: "🎵", href: "/beats/submit",          color: "#FF2DAA",  desc: "Upload to beat locker" },
+            { label: "BEAT LOCKER",          icon: "🔐", href: "/beats/locker",          color: "#00FFFF",  desc: "Live queue & votes" },
+            { label: "→ DANCE PARTY",        icon: "🌍", href: "/beats/locker",          color: "#AA2DFF",  desc: "Submit to dance party" },
+            { label: "→ CYPHER STAGE",       icon: "🎤", href: "/beats/locker",          color: "#FFD700",  desc: "Submit to cypher" },
+            { label: "BEAT MARKETPLACE",     icon: "🛒", href: "/beats/marketplace",     color: "#00FF88",  desc: "Sell beats + NFT" },
+            { label: "MY BEAT VAULT",        icon: "💿", href: "/beat-vault",            color: "#FF9500",  desc: "Personal library" },
+          ].map((a) => (
+            <Link key={a.label} href={a.href} style={{ display: "flex", flexDirection: "column", gap: 6, padding: "14px", background: `${a.color}08`, border: `1px solid ${a.color}25`, borderRadius: 10, textDecoration: "none" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: 18 }}>{a.icon}</span>
+                <span style={{ fontSize: 10, fontWeight: 800, color: a.color, letterSpacing: "0.08em" }}>{a.label}</span>
+              </div>
+              <span style={{ fontSize: 10, color: "rgba(255,255,255,0.3)" }}>{a.desc}</span>
+            </Link>
+          ))}
+        </div>
+      </div>
+
     </div>
   );
 }

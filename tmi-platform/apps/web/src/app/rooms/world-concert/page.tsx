@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
+import { useRouter } from "next/navigation";
 import PageShell from "@/components/layout/PageShell";
 import HUDFrame from "@/components/hud/HUDFrame";
 import FooterHUD from "@/components/hud/FooterHUD";
@@ -34,8 +35,11 @@ const SET_LIST = [
 ];
 
 export default function WorldConcertPage() {
+  const router = useRouter();
   const [encoreVotes, setEncoreVotes] = useState(1247);
   const [tipped, setTipped] = useState(false);
+  const [tipPicking, setTipPicking] = useState(false);
+  const [activeLight, setActiveLight] = useState<string | null>(null);
 
   // ── Seating Mesh ────────────────────────────────────────────────────
   const FAN_ID = "guest-fan"; // placeholder; replace with real auth session id
@@ -207,15 +211,31 @@ export default function WorldConcertPage() {
                 <div style={{ fontSize: 44, marginBottom: 8 }}>🎤</div>
                 <div style={{ fontSize: 14, fontWeight: 800, marginBottom: 4 }}>Tonight's Artist</div>
                 <div style={{ fontSize: 10, color: "#888", marginBottom: 12 }}>R&B / Hip-Hop / Soul</div>
-                <motion.button whileTap={{ scale: 0.96 }} onClick={() => setTipped(true)} style={{
-                  width: "100%", padding: "10px 0", borderRadius: 25,
-                  background: tipped ? "rgba(0,255,136,0.15)" : "rgba(255,215,0,0.1)",
-                  border: `1px solid ${tipped ? "#00FF88" : "rgba(255,215,0,0.3)"}`,
-                  color: tipped ? "#00FF88" : "#FFD700",
-                  fontWeight: 700, fontSize: 11, letterSpacing: 2, cursor: "pointer",
-                }}>
-                  {tipped ? "✓ TIPPED!" : "💰 TIP ARTIST"}
-                </motion.button>
+                {!tipPicking ? (
+                  <motion.button whileTap={{ scale: 0.96 }} onClick={() => setTipPicking(true)} style={{
+                    width: "100%", padding: "10px 0", borderRadius: 25,
+                    background: tipped ? "rgba(0,255,136,0.15)" : "rgba(255,215,0,0.1)",
+                    border: `1px solid ${tipped ? "#00FF88" : "rgba(255,215,0,0.3)"}`,
+                    color: tipped ? "#00FF88" : "#FFD700",
+                    fontWeight: 700, fontSize: 11, letterSpacing: 2, cursor: "pointer",
+                  }}>
+                    {tipped ? "✓ TIPPED!" : "💰 TIP ARTIST"}
+                  </motion.button>
+                ) : (
+                  <div>
+                    <div style={{ fontSize: 9, color: "#FFD700", fontWeight: 700, marginBottom: 8, letterSpacing: 2 }}>CHOOSE TIP AMOUNT</div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6, justifyContent: "center" }}>
+                      {[1, 5, 10, 25].map((amt) => (
+                        <motion.button key={amt} whileTap={{ scale: 0.95 }}
+                          onClick={() => router.push(`/api/stripe/checkout?priceId=price_tip_${amt * 100}&mode=payment&type=tip&roomId=${ROOM_ID}`)}
+                          style={{ padding: "7px 14px", borderRadius: 12, border: "1px solid #FFD70044", background: "#FFD70018", color: "#FFD700", fontSize: 12, fontWeight: 800, cursor: "pointer" }}>
+                          ${amt}
+                        </motion.button>
+                      ))}
+                    </div>
+                    <button onClick={() => setTipPicking(false)} style={{ marginTop: 8, fontSize: 9, color: "#555", background: "none", border: "none", cursor: "pointer", width: "100%" }}>cancel</button>
+                  </div>
+                )}
               </div>
 
               {/* Crowd size */}
@@ -325,11 +345,12 @@ export default function WorldConcertPage() {
               }}>
                 <div style={{ fontSize: 9, letterSpacing: 4, color: "#AA2DFF", fontWeight: 800, marginBottom: 12 }}>💡 CROWD LIGHTS</div>
                 {["🌊 CROWD WASH", "⚡ STROBE (SAFE)", "🔦 BEAM SWEEP", "🎨 COLOR SHIFT"].map(l => (
-                  <motion.button key={l} whileTap={{ scale: 0.96 }} style={{
+                  <motion.button key={l} whileTap={{ scale: 0.96 }} onClick={() => setActiveLight(activeLight === l ? null : l)} style={{
                     display: "block", width: "100%", padding: "8px 12px", borderRadius: 8, marginBottom: 5,
-                    background: "rgba(170,45,255,0.08)", border: "1px solid rgba(170,45,255,0.15)",
-                    color: "#AA2DFF", fontSize: 10, fontWeight: 600, cursor: "pointer", textAlign: "left",
-                  }}>{l}</motion.button>
+                    background: activeLight === l ? "rgba(170,45,255,0.22)" : "rgba(170,45,255,0.08)",
+                    border: `1px solid ${activeLight === l ? "rgba(170,45,255,0.6)" : "rgba(170,45,255,0.15)"}`,
+                    color: activeLight === l ? "#CC60FF" : "#AA2DFF", fontSize: 10, fontWeight: activeLight === l ? 800 : 600, cursor: "pointer", textAlign: "left",
+                  }}>{l}{activeLight === l ? " ●" : ""}</motion.button>
                 ))}
               </div>
             </div>

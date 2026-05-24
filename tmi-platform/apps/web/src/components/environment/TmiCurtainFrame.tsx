@@ -1,6 +1,7 @@
 "use client";
 
 import { type ReactNode } from "react";
+import { motion } from "framer-motion";
 
 export type CurtainColor = "red" | "purple" | "gold" | "navy" | "emerald";
 
@@ -12,25 +13,35 @@ const CURTAIN_PALETTE: Record<CurtainColor, { main: string; shadow: string; tass
   emerald: { main: "#005030", shadow: "#002018", tassel: "#4ade80" },
 };
 
+const CURTAIN_SPRING = { type: "spring" as const, stiffness: 60, damping: 18, mass: 1.1 };
+
 interface TmiCurtainFrameProps {
   children?: ReactNode;
   color?: CurtainColor;
+  /** When true, curtains slide apart (open). When false, curtains close to center. */
   open?: boolean;
+  isOpen?: boolean;
   width?: number | string;
   height?: number | string;
   label?: string;
   showTassels?: boolean;
+  /** Called when the curtain animation completes */
+  onComplete?: () => void;
 }
 
 export default function TmiCurtainFrame({
   children,
   color = "red",
-  open = true,
+  open,
+  isOpen,
   width = "100%",
   height = "100%",
   label,
   showTassels = true,
+  onComplete,
 }: TmiCurtainFrameProps) {
+  // Support both `open` and `isOpen` prop names
+  const curtainOpen = isOpen ?? open ?? true;
   const p = CURTAIN_PALETTE[color];
 
   return (
@@ -76,34 +87,36 @@ export default function TmiCurtainFrame({
         )}
       </div>
 
-      {/* ── Left curtain panel ── */}
-      <div
+      {/* ── Left curtain panel (slides to -100% when open) ── */}
+      <motion.div
+        animate={{ x: curtainOpen ? "-88%" : "0%" }}
+        transition={CURTAIN_SPRING}
+        onAnimationComplete={onComplete}
         style={{
           position: "absolute", top: 0, left: 0, bottom: 0,
-          width: open ? "12%" : "50%",
+          width: "50%",
           zIndex: 15, pointerEvents: "none",
           background: `linear-gradient(to right, ${p.main} 0%, ${p.shadow} 70%, transparent 100%)`,
-          transition: "width 1200ms cubic-bezier(.22,.8,.2,1)",
           boxShadow: `inset -8px 0 20px rgba(0,0,0,0.4)`,
         }}
       >
-        {/* Fabric fold lines */}
         <FoldLines color={p.tassel} side="left" />
-      </div>
+      </motion.div>
 
-      {/* ── Right curtain panel ── */}
-      <div
+      {/* ── Right curtain panel (slides to 100% when open) ── */}
+      <motion.div
+        animate={{ x: curtainOpen ? "88%" : "0%" }}
+        transition={CURTAIN_SPRING}
         style={{
           position: "absolute", top: 0, right: 0, bottom: 0,
-          width: open ? "12%" : "50%",
+          width: "50%",
           zIndex: 15, pointerEvents: "none",
           background: `linear-gradient(to left, ${p.main} 0%, ${p.shadow} 70%, transparent 100%)`,
-          transition: "width 1200ms cubic-bezier(.22,.8,.2,1)",
           boxShadow: `inset 8px 0 20px rgba(0,0,0,0.4)`,
         }}
       >
         <FoldLines color={p.tassel} side="right" />
-      </div>
+      </motion.div>
 
       {/* ── Label ── */}
       {label && (

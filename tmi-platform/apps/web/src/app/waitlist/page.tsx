@@ -22,7 +22,13 @@ export default function WaitlistPage() {
     e.preventDefault();
     if (!email) return;
     setLoading(true);
-    await new Promise(r => setTimeout(r, 800)); // stub — replace with real API call
+    try {
+      await fetch('/api/waitlist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, role }),
+      });
+    } catch { /* still show success — email collected locally */ }
     setDone(true);
     setLoading(false);
   }

@@ -1,31 +1,39 @@
+"use client";
 import Link from 'next/link';
+import { useState } from 'react';
 
-const EVENTS = [
-  { id: '1', title: 'Afrobeats Night Lagos', venue: 'The Underground', date: 'Jul 15, 2025', type: 'LOCAL', status: 'PUBLISHED', tickets: 120, sold: 87, revenue: '$2,610' },
-  { id: '2', title: 'Jakarta Hip-Hop Summit', venue: 'Jakarta Arena', date: 'Aug 3, 2025', type: 'REGIONAL', status: 'PUBLISHED', tickets: 500, sold: 312, revenue: '$9,360' },
-  { id: '3', title: 'Global Cypher Online', venue: 'Online', date: 'Jul 28, 2025', type: 'ONLINE', status: 'PUBLISHED', tickets: 999, sold: 654, revenue: '$6,540' },
-  { id: '4', title: 'Cape Town Open Mic', venue: 'Cape Town Sessions', date: 'Aug 20, 2025', type: 'LOCAL', status: 'DRAFT', tickets: 80, sold: 0, revenue: '$0' },
-  { id: '5', title: 'NYC R&B Showcase', venue: 'Blue Note NYC', date: 'Sep 5, 2025', type: 'REGIONAL', status: 'CANCELLED', tickets: 200, sold: 45, revenue: '$1,350' },
+type EventStatus = 'PUBLISHED' | 'DRAFT' | 'CANCELLED' | 'COMPLETED';
+type Event = { id: string; title: string; venue: string; date: string; type: string; status: EventStatus; tickets: number; sold: number; revenue: string };
+
+const SEED: Event[] = [
+  { id: '1', title: 'Afrobeats Night Lagos',  venue: 'The Underground',    date: 'Jul 15, 2025', type: 'LOCAL',    status: 'PUBLISHED', tickets: 120, sold: 87,  revenue: '$2,610' },
+  { id: '2', title: 'Jakarta Hip-Hop Summit', venue: 'Jakarta Arena',       date: 'Aug 3, 2025',  type: 'REGIONAL', status: 'PUBLISHED', tickets: 500, sold: 312, revenue: '$9,360' },
+  { id: '3', title: 'Global Cypher Online',   venue: 'Online',              date: 'Jul 28, 2025', type: 'ONLINE',   status: 'PUBLISHED', tickets: 999, sold: 654, revenue: '$6,540' },
+  { id: '4', title: 'Cape Town Open Mic',     venue: 'Cape Town Sessions',  date: 'Aug 20, 2025', type: 'LOCAL',    status: 'DRAFT',     tickets: 80,  sold: 0,   revenue: '$0' },
+  { id: '5', title: 'NYC R&B Showcase',       venue: 'Blue Note NYC',       date: 'Sep 5, 2025',  type: 'REGIONAL', status: 'CANCELLED', tickets: 200, sold: 45,  revenue: '$1,350' },
 ];
 
 const TYPE_COLORS: Record<string, string> = {
-  LOCAL: 'text-blue-400',
-  REGIONAL: 'text-purple-400',
-  INTERNATIONAL: 'text-yellow-400',
-  ONLINE: 'text-green-400',
-  LIVESTREAM: 'text-cyan-400',
+  LOCAL: 'text-blue-400', REGIONAL: 'text-purple-400', INTERNATIONAL: 'text-yellow-400', ONLINE: 'text-green-400', LIVESTREAM: 'text-cyan-400',
 };
-
 const STATUS_STYLES: Record<string, string> = {
-  PUBLISHED: 'bg-green-500/20 text-green-400 border-green-500/30',
-  DRAFT: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
-  CANCELLED: 'bg-red-500/20 text-red-400 border-red-500/30',
-  COMPLETED: 'bg-gray-500/20 text-gray-400 border-gray-500/30',
+  PUBLISHED: 'bg-green-500/20 text-green-400 border-green-500/30', DRAFT: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30', CANCELLED: 'bg-red-500/20 text-red-400 border-red-500/30', COMPLETED: 'bg-gray-500/20 text-gray-400 border-gray-500/30',
 };
 
 export default function AdminEventsPage() {
-  const totalRevenue = '$19,860';
-  const totalSold = EVENTS.reduce((s, e) => s + e.sold, 0);
+  const [events, setEvents] = useState<Event[]>(SEED);
+  const [msg, setMsg] = useState("");
+
+  const totalSold = events.reduce((s, e) => s + e.sold, 0);
+
+  function editEvent(id: string) {
+    setMsg(`Edit event: ${events.find(e => e.id === id)?.title}`);
+    setTimeout(() => setMsg(""), 3000);
+  }
+
+  function deleteEvent(id: string) {
+    setEvents(prev => prev.filter(e => e.id !== id));
+  }
 
   return (
     <main className="min-h-screen bg-[#0a0a0f] text-white px-6 py-10 max-w-6xl mx-auto">
@@ -39,18 +47,19 @@ export default function AdminEventsPage() {
           <h1 className="text-3xl font-bold text-[#ff6b35]">Event Management</h1>
           <p className="text-gray-400 mt-1">Manage all platform events globally.</p>
         </div>
-        <button className="px-4 py-2 bg-[#ff6b35] hover:bg-[#ff6b35]/80 text-white text-sm font-semibold rounded-xl transition-colors">
+        <Link href="/admin/big-ace/events" className="px-4 py-2 bg-[#ff6b35] hover:bg-[#ff6b35]/80 text-white text-sm font-semibold rounded-xl transition-colors">
           + Create Event
-        </button>
+        </Link>
       </div>
 
-      {/* Stats */}
+      {msg && <div className="mb-4 p-3 bg-green-900/30 border border-green-500/30 rounded-xl text-green-400 text-sm">{msg}</div>}
+
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
         {[
-          { label: 'Total Events', value: EVENTS.length, color: 'text-white' },
-          { label: 'Published', value: EVENTS.filter((e) => e.status === 'PUBLISHED').length, color: 'text-green-400' },
+          { label: 'Total Events', value: events.length, color: 'text-white' },
+          { label: 'Published', value: events.filter((e) => e.status === 'PUBLISHED').length, color: 'text-green-400' },
           { label: 'Tickets Sold', value: totalSold, color: 'text-[#ff6b35]' },
-          { label: 'Total Revenue', value: totalRevenue, color: 'text-yellow-400' },
+          { label: 'Total Revenue', value: '$19,860', color: 'text-yellow-400' },
         ].map((s) => (
           <div key={s.label} className="bg-white/5 border border-white/10 rounded-xl p-4 text-center">
             <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
@@ -59,7 +68,6 @@ export default function AdminEventsPage() {
         ))}
       </div>
 
-      {/* Events Table */}
       <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
         <div className="px-6 py-4 border-b border-white/10">
           <h2 className="font-semibold text-sm text-gray-300">All Events</h2>
@@ -78,7 +86,7 @@ export default function AdminEventsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
-              {EVENTS.map((event) => (
+              {events.map((event) => (
                 <tr key={event.id} className="hover:bg-white/3 transition-colors">
                   <td className="px-6 py-4">
                     <p className="font-semibold text-white">{event.title}</p>
@@ -91,22 +99,17 @@ export default function AdminEventsPage() {
                   <td className="px-4 py-4 text-xs text-gray-300">
                     {event.sold}/{event.tickets}
                     <div className="w-16 h-1 bg-white/10 rounded-full mt-1">
-                      <div
-                        className="h-1 bg-[#ff6b35] rounded-full"
-                        style={{ width: `${Math.round((event.sold / event.tickets) * 100)}%` }}
-                      />
+                      <div className="h-1 bg-[#ff6b35] rounded-full" style={{ width: `${Math.round((event.sold / event.tickets) * 100)}%` }} />
                     </div>
                   </td>
                   <td className="px-4 py-4 text-xs text-green-400 font-semibold">{event.revenue}</td>
                   <td className="px-4 py-4">
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${STATUS_STYLES[event.status]}`}>
-                      {event.status}
-                    </span>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${STATUS_STYLES[event.status]}`}>{event.status}</span>
                   </td>
                   <td className="px-4 py-4">
                     <div className="flex gap-1">
-                      <button className="px-2 py-1 bg-white/5 hover:bg-white/10 border border-white/10 text-xs text-gray-300 rounded transition-colors">Edit</button>
-                      <button className="px-2 py-1 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-xs text-red-400 rounded transition-colors">Del</button>
+                      <button onClick={() => editEvent(event.id)} className="px-2 py-1 bg-white/5 hover:bg-white/10 border border-white/10 text-xs text-gray-300 rounded transition-colors">Edit</button>
+                      <button onClick={() => deleteEvent(event.id)} className="px-2 py-1 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-xs text-red-400 rounded transition-colors">Del</button>
                     </div>
                   </td>
                 </tr>

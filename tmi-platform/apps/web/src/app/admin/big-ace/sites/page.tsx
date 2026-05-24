@@ -20,6 +20,18 @@ const sites: Site[] = [
 
 export default function BigAceSitesPage() {
   const [activeSite, setActiveSite] = useState<Site | null>(sites[0]);
+  const [monitor, setMonitor] = useState<string | null>(null);
+  const [actionMsg, setActionMsg] = useState("");
+
+  function monitorSite(metric: string) {
+    setMonitor(metric);
+  }
+
+  function actOnSite(action: string) {
+    if (!activeSite) return;
+    setActionMsg(`${action}: ${activeSite.name}`);
+    setTimeout(() => setActionMsg(""), 3000);
+  }
 
   return (
     <div className="min-h-screen bg-black p-8">
@@ -80,22 +92,24 @@ export default function BigAceSitesPage() {
             {/* Monitoring Section */}
             <div className="mb-8">
               <h3 className="text-green-400 font-mono text-sm mb-4">MONITOR</h3>
+              {monitor && <div className="mb-3 p-2 bg-gray-800 border border-green-500 rounded text-green-400 text-xs font-mono">Monitoring: {monitor} — {activeSite.name}</div>}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <button className="px-4 py-2 bg-green-600 hover:bg-green-500 text-white rounded font-mono text-xs">Live Users</button>
-                <button className="px-4 py-2 bg-green-600 hover:bg-green-500 text-white rounded font-mono text-xs">Rooms</button>
-                <button className="px-4 py-2 bg-green-600 hover:bg-green-500 text-white rounded font-mono text-xs">Latency</button>
-                <button className="px-4 py-2 bg-green-600 hover:bg-green-500 text-white rounded font-mono text-xs">Errors</button>
+                <button onClick={() => monitorSite("Live Users")} className="px-4 py-2 bg-green-600 hover:bg-green-500 text-white rounded font-mono text-xs">Live Users</button>
+                <button onClick={() => monitorSite("Rooms")} className="px-4 py-2 bg-green-600 hover:bg-green-500 text-white rounded font-mono text-xs">Rooms</button>
+                <button onClick={() => monitorSite("Latency")} className="px-4 py-2 bg-green-600 hover:bg-green-500 text-white rounded font-mono text-xs">Latency</button>
+                <button onClick={() => monitorSite("Errors")} className="px-4 py-2 bg-green-600 hover:bg-green-500 text-white rounded font-mono text-xs">Errors</button>
               </div>
             </div>
 
             {/* Control Actions */}
             <div className="mb-8">
               <h3 className="text-yellow-400 font-mono text-sm mb-4">ACTIONS</h3>
+              {actionMsg && <div className="mb-3 p-2 bg-green-900 border border-green-500 rounded text-green-400 text-xs font-mono">{actionMsg}</div>}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <button className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-black rounded font-mono text-xs font-bold">Travel To</button>
-                <button className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-black rounded font-mono text-xs font-bold">Switch Control</button>
-                <button className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-black rounded font-mono text-xs font-bold">Observe</button>
-                <button className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-black rounded font-mono text-xs font-bold">Broadcast</button>
+                <button onClick={() => actOnSite("Travel To")} className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-black rounded font-mono text-xs font-bold">Travel To</button>
+                <button onClick={() => actOnSite("Switch Control")} className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-black rounded font-mono text-xs font-bold">Switch Control</button>
+                <button onClick={() => actOnSite("Observe")} className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-black rounded font-mono text-xs font-bold">Observe</button>
+                <button onClick={() => actOnSite("Broadcast")} className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-black rounded font-mono text-xs font-bold">Broadcast</button>
               </div>
             </div>
 

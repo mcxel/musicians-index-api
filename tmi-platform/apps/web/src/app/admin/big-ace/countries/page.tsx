@@ -1,19 +1,9 @@
-/**
- * /admin/big-ace/countries/page.tsx
- *
- * Country-level administration dashboard
- * Manage country parity, balance, and growth
- */
-
-import React from 'react';
-import { Metadata } from 'next';
-
-export const metadata: Metadata = {
-  title: 'Countries Dashboard | Big Ace Admin | BernoutGlobal',
-  description: 'Country management and parity tracking',
-};
+'use client';
+import { useState } from 'react';
 
 export default function CountriesAdminPage() {
+  const [actionMsg, setActionMsg] = useState("");
+
   const countries = [
     { code: '🇺🇸 US', artists: 420, venues: 85, rooms: 14, users: 2400, status: 'optimal' },
     { code: '🇳🇬 NG', artists: 280, venues: 50, rooms: 9, users: 1800, status: 'optimal' },
@@ -23,12 +13,17 @@ export default function CountriesAdminPage() {
     { code: '🇯🇲 JM', artists: 120, venues: 30, rooms: 4, users: 650, status: 'growing' },
   ];
 
-  const statusColors = {
+  const statusColors: Record<string, string> = {
     optimal: '#00FF88',
     healthy: '#00FFFF',
     growing: '#FFD700',
     needsHelp: '#FF2DAA',
   };
+
+  function runAction(title: string) {
+    setActionMsg(`${title} initiated`);
+    setTimeout(() => setActionMsg(""), 3000);
+  }
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-gray-950 via-black to-gray-950 text-white">
@@ -40,7 +35,6 @@ export default function CountriesAdminPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-12">
-        {/* Parity Overview */}
         <section className="mb-12">
           <h2 className="text-2xl font-bold text-cyan-300 mb-6">📊 Country Parity Index</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -59,7 +53,6 @@ export default function CountriesAdminPage() {
           </div>
         </section>
 
-        {/* Country Table */}
         <section>
           <h2 className="text-2xl font-bold text-cyan-300 mb-6">🌍 Country Details</h2>
           <div className="overflow-x-auto">
@@ -87,15 +80,18 @@ export default function CountriesAdminPage() {
                       <span
                         className="inline-block px-3 py-1 rounded text-xs font-semibold"
                         style={{
-                          background: `${statusColors[country.status as keyof typeof statusColors]}20`,
-                          color: statusColors[country.status as keyof typeof statusColors],
+                          background: `${statusColors[country.status]}20`,
+                          color: statusColors[country.status],
                         }}
                       >
                         {country.status}
                       </span>
                     </td>
                     <td className="py-3 px-4">
-                      <button className="text-cyan-400 hover:text-cyan-300 text-sm font-medium">
+                      <button
+                        onClick={() => runAction(`Manage ${country.code}`)}
+                        className="text-cyan-400 hover:text-cyan-300 text-sm font-medium"
+                      >
                         Manage →
                       </button>
                     </td>
@@ -106,9 +102,9 @@ export default function CountriesAdminPage() {
           </div>
         </section>
 
-        {/* Balance Actions */}
         <section className="mt-12">
           <h2 className="text-2xl font-bold text-cyan-300 mb-6">⚙️ Balance Actions</h2>
+          {actionMsg && <div className="mb-4 p-3 bg-cyan-900/50 border border-cyan-500/50 rounded text-cyan-400 text-sm font-mono">{actionMsg}</div>}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {[
               { title: 'Promote Emerging Scenes', desc: 'Boost visibility for growing countries', icon: '📈' },
@@ -118,6 +114,7 @@ export default function CountriesAdminPage() {
             ].map((action) => (
               <button
                 key={action.title}
+                onClick={() => runAction(action.title)}
                 className="p-4 rounded-lg bg-gray-900/50 border border-gray-800 hover:border-cyan-500/50 hover:bg-gray-800/50 transition-all text-left group"
               >
                 <div className="text-2xl mb-2">{action.icon}</div>

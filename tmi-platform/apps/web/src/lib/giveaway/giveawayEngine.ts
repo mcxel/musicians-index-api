@@ -1,138 +1,234 @@
-export type GiveawayStatus = "upcoming" | "active" | "ended" | "cancelled";
-export type GiveawayPrizeType = "cash" | "merch" | "ticket" | "shoutout" | "beat-license" | "fan-club" | "xp-bonus";
+/**
+ * GiveawayEngine — canonical giveaway/prize pipeline for TMI.
+ * Unified engine covering both sponsor giveaways and event-based drops.
+ */
 
-export interface GiveawayEntry {
-  eventId: string;
-  userId: string;
-  enteredAt: number;
-}
+// ─── New canonical types ─────────────────────────────────────────────────────
 
-export interface GiveawayPrize {
-  type: GiveawayPrizeType;
-  label: string;
-  value?: string;
-  icon: string;
-}
+export type GiveawayStatus = 'active' | 'ended' | 'drawing' | 'announced';
+export type GiveawayTier   = 'open'   | 'member' | 'diamond';
 
 export interface Giveaway {
   id: string;
-  eventId: string;
   title: string;
-  description: string;
-  prizes: GiveawayPrize[];
+  sponsorId: string;
+  sponsorName: string;
+  prize: string;
+  prizeValueCents: number;
+  entryDeadline: number; // unix ms
   status: GiveawayStatus;
-  startAt: number;
-  endAt: number;
-  maxEntries?: number;
-  entryCount: number;
-  sponsorName?: string;
-  roomId?: string;
-  requiresAuth: boolean;
-  requiresTicket: boolean;
-  freeToEnter: boolean;
+  tier: GiveawayTier;
+  totalEntries: number;
+  winnerId?: string;
+  winnerName?: string;
+  imageUrl?: string;
+  contestId?: string;
 }
 
-const GIVEAWAY_STORE: Map<string, Giveaway> = new Map();
-const ENTRY_STORE: Map<string, Set<string>> = new Map();
+export interface GiveawayEntry {
+  userId: string;
+  giveawayId: string;
+  enteredAt: number;
+  source: 'organic' | 'sponsor-gift' | 'contest-win' | 'achievement';
+}
+
+export interface RecentWinner {
+  winnerName: string;
+  prize: string;
+  sponsorName: string;
+  announcedAt: number;
+  giveawayId: string;
+}
+
+// ─── In-memory stores ────────────────────────────────────────────────────────
+
+const _giveaways = new Map<string, Giveaway>();
+const _entries   = new Map<string, GiveawayEntry[]>(); // keyed by giveawayId
+const _byUser    = new Map<string, GiveawayEntry[]>(); // keyed by userId
+
+// ─── Seed data ───────────────────────────────────────────────────────────────
 
 export const SEED_GIVEAWAYS: Giveaway[] = [
   {
-    id: "gw-001",
-    eventId: "monday-cypher-s1-ep12",
-    title: "Monday Cypher Episode 12 — Grand Drop",
-    description: "Enter for a chance to win merch, beat licenses, and a shoutout from this week's Cypher champion.",
-    prizes: [
-      { type: "merch",        label: "TMI Hoodie Bundle",     value: "3 pieces",      icon: "👕" },
-      { type: "beat-license", label: "Premium Beat License",  value: "1 exclusive",   icon: "🎵" },
-      { type: "shoutout",     label: "Artist Shoutout",       value: "from Wavetek",  icon: "🎤" },
-      { type: "xp-bonus",     label: "XP Bonus",              value: "500 XP",        icon: "⭐" },
-    ],
-    status: "active",
-    startAt: Date.now() - 1000 * 60 * 30,
-    endAt:   Date.now() + 1000 * 60 * 90,
-    maxEntries: 5000,
-    entryCount: 1247,
-    sponsorName: "BeatGear Co",
-    roomId: "monday-cypher",
-    requiresAuth: true,
-    requiresTicket: false,
-    freeToEnter: true,
+    id: 'gw-2025-001',
+    title: 'BeatGear Pro Studio Bundle',
+    sponsorId: 'sponsor-beatgear',
+    sponsorName: 'BeatGear Co',
+    prize: 'Pro Studio Bundle — Interface + Headphones + 12-Month Beat License',
+    prizeValueCents: 89900,
+    entryDeadline: Date.now() + 1000 * 60 * 60 * 47,
+    status: 'active',
+    tier: 'open',
+    totalEntries: 1247,
+    contestId: 'monday-cypher-s1-ep12',
   },
   {
-    id: "gw-002",
-    eventId: "monday-stage-apr-21",
-    title: "Monday Stage Live Drop — April 21",
-    description: "Neon Vibe is giving away a VIP season pass and exclusive digital collectibles to three lucky fans.",
-    prizes: [
-      { type: "ticket",    label: "Season Pass",    value: "VIP tier",       icon: "🎟️" },
-      { type: "fan-club",  label: "Fan Club — Gold", value: "3 months free", icon: "👑" },
-      { type: "xp-bonus",  label: "XP Drop",         value: "1,000 XP",     icon: "⭐" },
-    ],
-    status: "upcoming",
-    startAt: Date.now() + 1000 * 60 * 60 * 24,
-    endAt:   Date.now() + 1000 * 60 * 60 * 48,
-    maxEntries: 10000,
-    entryCount: 0,
-    sponsorName: "FreshThreads NYC",
-    roomId: "monday-stage",
-    requiresAuth: true,
-    requiresTicket: false,
-    freeToEnter: true,
+    id: 'gw-2025-002',
+    title: 'TMI VIP Season Pass + $500 Cash',
+    sponsorId: 'sponsor-primewave',
+    sponsorName: 'Prime Wave',
+    prize: 'VIP Season Pass + $500 Sponsor Gift Card',
+    prizeValueCents: 149900,
+    entryDeadline: Date.now() + 1000 * 60 * 60 * 72,
+    status: 'active',
+    tier: 'member',
+    totalEntries: 3812,
+  },
+  {
+    id: 'gw-2025-003',
+    title: 'Diamond Fan Club Lifetime Access',
+    sponsorId: 'sponsor-freshthreads',
+    sponsorName: 'FreshThreads NYC',
+    prize: 'Lifetime Diamond Fan Club + Exclusive Merch Drop',
+    prizeValueCents: 49900,
+    entryDeadline: Date.now() + 1000 * 60 * 60 * 120,
+    status: 'active',
+    tier: 'diamond',
+    totalEntries: 588,
   },
 ];
 
+export const RECENT_WINNERS: RecentWinner[] = [
+  {
+    winnerName: 'KingWave_95',
+    prize: 'Exclusive Beat Pack — 20 Tracks',
+    sponsorName: 'Neon Vibe Records',
+    announcedAt: Date.now() - 1000 * 60 * 60 * 24 * 2,
+    giveawayId: 'gw-2025-000',
+  },
+  {
+    winnerName: 'TiaMelody',
+    prize: '$250 Studio Session Credit',
+    sponsorName: 'AudioForge Labs',
+    announcedAt: Date.now() - 1000 * 60 * 60 * 24 * 5,
+    giveawayId: 'gw-2025-prev-2',
+  },
+  {
+    winnerName: 'FluxDrummer',
+    prize: 'Roland TR-8S Drum Machine',
+    sponsorName: 'BeatGear Co',
+    announcedAt: Date.now() - 1000 * 60 * 60 * 24 * 9,
+    giveawayId: 'gw-2025-prev-3',
+  },
+];
+
+// Prime stores with seed data
 for (const g of SEED_GIVEAWAYS) {
-  GIVEAWAY_STORE.set(g.eventId, g);
-  ENTRY_STORE.set(g.eventId, new Set());
+  _giveaways.set(g.id, { ...g });
+  _entries.set(g.id, []);
 }
 
-export function getGiveaway(eventId: string): Giveaway | undefined {
-  return GIVEAWAY_STORE.get(eventId) ?? SEED_GIVEAWAYS.find(g => g.id === eventId);
+// ─── Public API ──────────────────────────────────────────────────────────────
+
+/** Create and store a new giveaway. */
+export function createGiveaway(
+  data: Omit<Giveaway, 'totalEntries'> & { totalEntries?: number }
+): Giveaway {
+  const giveaway: Giveaway = { totalEntries: 0, ...data };
+  _giveaways.set(giveaway.id, giveaway);
+  if (!_entries.has(giveaway.id)) _entries.set(giveaway.id, []);
+  return giveaway;
 }
 
+/** Enter a user into a giveaway. Prevents duplicate entries. */
+export function enterGiveaway(
+  userId: string,
+  giveawayId: string,
+  source: GiveawayEntry['source'] = 'organic'
+): { success: boolean; error?: string } {
+  const g = _giveaways.get(giveawayId);
+  if (!g) return { success: false, error: 'Giveaway not found.' };
+  if (g.status !== 'active') return { success: false, error: 'Giveaway is not currently active.' };
+  if (Date.now() > g.entryDeadline) return { success: false, error: 'Entry deadline has passed.' };
+
+  const gEntries = _entries.get(giveawayId) ?? [];
+  if (gEntries.some(e => e.userId === userId)) {
+    return { success: false, error: 'You have already entered this giveaway.' };
+  }
+
+  const entry: GiveawayEntry = { userId, giveawayId, enteredAt: Date.now(), source };
+  gEntries.push(entry);
+  _entries.set(giveawayId, gEntries);
+
+  const uEntries = _byUser.get(userId) ?? [];
+  uEntries.push(entry);
+  _byUser.set(userId, uEntries);
+
+  g.totalEntries += 1;
+  return { success: true };
+}
+
+/** Randomly draw a winner from all entries. Updates status to 'announced'. */
+export function drawWinner(giveawayId: string): { winnerId: string } | { error: string } {
+  const g = _giveaways.get(giveawayId);
+  if (!g) return { error: 'Giveaway not found.' };
+  if (g.status === 'announced') return { error: 'Winner already announced.' };
+
+  const entries = _entries.get(giveawayId) ?? [];
+  if (entries.length === 0) return { error: 'No entries to draw from.' };
+
+  g.status = 'drawing';
+  const winner = entries[Math.floor(Math.random() * entries.length)];
+  g.winnerId = winner.userId;
+  g.status = 'announced';
+  return { winnerId: winner.userId };
+}
+
+/** Return all giveaways currently active and before deadline. */
 export function getActiveGiveaways(): Giveaway[] {
-  return SEED_GIVEAWAYS.filter(g => g.status === "active");
+  const now = Date.now();
+  return [..._giveaways.values()].filter(
+    g => g.status === 'active' && g.entryDeadline > now
+  );
 }
 
+/** Return all entries for a user across all giveaways. */
+export function getUserEntries(userId: string): GiveawayEntry[] {
+  return _byUser.get(userId) ?? [];
+}
+
+/** Check if a user has already entered a specific giveaway. */
+export function hasEnteredGiveaway(userId: string, giveawayId: string): boolean {
+  return (_entries.get(giveawayId) ?? []).some(e => e.userId === userId);
+}
+
+/** Return all giveaways. */
 export function getAllGiveaways(): Giveaway[] {
-  return SEED_GIVEAWAYS;
+  return [..._giveaways.values()];
 }
 
-export type EnterResult =
-  | { success: true; message: string }
-  | { success: false; error: string };
-
-export function enterGiveaway(eventId: string, userId: string): EnterResult {
-  const giveaway = getGiveaway(eventId);
-  if (!giveaway) return { success: false, error: "Giveaway not found." };
-  if (giveaway.status !== "active") return { success: false, error: "This giveaway is not currently active." };
-  if (giveaway.maxEntries && giveaway.entryCount >= giveaway.maxEntries) {
-    return { success: false, error: "This giveaway has reached maximum entries." };
-  }
-
-  let entries = ENTRY_STORE.get(eventId);
-  if (!entries) {
-    entries = new Set();
-    ENTRY_STORE.set(eventId, entries);
-  }
-  if (entries.has(userId)) return { success: false, error: "You have already entered this giveaway." };
-
-  entries.add(userId);
-  giveaway.entryCount += 1;
-  return { success: true, message: "You're in! Good luck 🎉" };
+/** Lookup a single giveaway by id. */
+export function getGiveaway(id: string): Giveaway | undefined {
+  return _giveaways.get(id);
 }
 
-export function hasEntered(eventId: string, userId: string): boolean {
-  return ENTRY_STORE.get(eventId)?.has(userId) ?? false;
+// ─── Formatting helpers ───────────────────────────────────────────────────────
+
+/** Format cents to a dollar display string. */
+export function formatPrizeValue(cents: number): string {
+  return '$' + (cents / 100).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 }
 
+/** Return ms remaining until deadline (floor 0). */
+export function getDeadlineMs(entryDeadline: number): number {
+  return Math.max(0, entryDeadline - Date.now());
+}
+
+/** Format a ms duration into a human-readable countdown string. */
+export function formatCountdown(ms: number): string {
+  if (ms <= 0) return 'Ended';
+  const totalSec = Math.floor(ms / 1000);
+  const d = Math.floor(totalSec / 86400);
+  const h = Math.floor((totalSec % 86400) / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  if (d > 0) return d + 'd ' + h + 'h ' + m + 'm';
+  if (h > 0) return h + 'h ' + m + 'm ' + s + 's';
+  if (m > 0) return m + 'm ' + s + 's';
+  return s + 's';
+}
+
+/** Format time remaining from an endAt timestamp (legacy compat). */
 export function getTimeRemaining(endAt: number): string {
-  const diff = endAt - Date.now();
-  if (diff <= 0) return "Ended";
-  const h = Math.floor(diff / (1000 * 60 * 60));
-  const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-  const s = Math.floor((diff % (1000 * 60)) / 1000);
-  if (h > 0) return `${h}h ${m}m remaining`;
-  if (m > 0) return `${m}m ${s}s remaining`;
-  return `${s}s remaining`;
+  return formatCountdown(getDeadlineMs(endAt));
 }

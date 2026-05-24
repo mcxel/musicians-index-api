@@ -1,18 +1,25 @@
+'use client';
 import Link from "next/link";
-import type { Metadata } from "next";
-export const metadata: Metadata = { title: "Beat Detail · The Musician's Index" };
+import { useParams, useRouter } from "next/navigation";
+import { useState } from "react";
 
 const LICENSE_TIERS = [
-  { id: "basic", label: "Basic License", price: 29.99, uses: "Non-commercial, streaming only", limit: "500k streams" },
-  { id: "premium", label: "Premium License", price: 79.99, uses: "Commercial, all platforms", limit: "Unlimited" },
-  { id: "exclusive", label: "Exclusive", price: 499.00, uses: "Full ownership, beat removed from store", limit: "Yours forever" },
+  { id: "basic",     label: "Basic License",   price: 29.99,  uses: "Non-commercial, streaming only",          limit: "500k streams" },
+  { id: "premium",   label: "Premium License", price: 79.99,  uses: "Commercial, all platforms",               limit: "Unlimited" },
+  { id: "exclusive", label: "Exclusive",        price: 499.00, uses: "Full ownership, beat removed from store", limit: "Yours forever" },
 ];
 
-interface Props { params: Promise<{ slug: string }> }
-
-export default async function BeatDetailPage({ params }: Props) {
-  const { slug } = await params;
+export default function BeatDetailPage() {
+  const params = useParams();
+  const router = useRouter();
+  const rawSlug = params?.slug;
+  const slug = typeof rawSlug === 'string' ? rawSlug : Array.isArray(rawSlug) ? rawSlug[0] : '';
   const title = slug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  const [previewing, setPreviewing] = useState(false);
+
+  function buyTier(tier: typeof LICENSE_TIERS[0]) {
+    router.push(`/api/stripe/checkout?priceId=price_beat_${tier.id}&mode=payment&name=${encodeURIComponent(title + ' - ' + tier.label)}`);
+  }
 
   return (
     <main style={{ minHeight: "100vh", background: "#05060c", color: "#fff", padding: "32px 24px 80px", fontFamily: "'Inter', sans-serif" }}>
@@ -22,8 +29,15 @@ export default async function BeatDetailPage({ params }: Props) {
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 28, marginBottom: 32 }}>
           <div>
-            <div style={{ width: "100%", aspectRatio: "1", background: "linear-gradient(135deg, rgba(170,45,255,0.2), rgba(255,45,170,0.1))", borderRadius: 16, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 64, marginBottom: 20 }}>🎶</div>
-            <button style={{ width: "100%", padding: "14px", borderRadius: 10, background: "rgba(170,45,255,0.15)", border: "1px solid rgba(170,45,255,0.3)", color: "#AA2DFF", fontWeight: 800, fontSize: 14, cursor: "pointer" }}>▶ Preview Beat</button>
+            <div style={{ width: "100%", aspectRatio: "1", background: previewing ? "linear-gradient(135deg, rgba(170,45,255,0.35), rgba(255,45,170,0.2))" : "linear-gradient(135deg, rgba(170,45,255,0.2), rgba(255,45,170,0.1))", borderRadius: 16, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 64, marginBottom: 20, transition: "background 0.3s" }}>
+              {previewing ? "⏸" : "🎶"}
+            </div>
+            <button
+              onClick={() => setPreviewing(p => !p)}
+              style={{ width: "100%", padding: "14px", borderRadius: 10, background: previewing ? "rgba(170,45,255,0.3)" : "rgba(170,45,255,0.15)", border: "1px solid rgba(170,45,255,0.3)", color: "#AA2DFF", fontWeight: 800, fontSize: 14, cursor: "pointer" }}
+            >
+              {previewing ? "⏸ Pause Preview" : "▶ Preview Beat"}
+            </button>
           </div>
           <div>
             <div style={{ fontSize: 10, letterSpacing: 5, color: "#AA2DFF", fontWeight: 800, marginBottom: 8 }}>BEAT</div>
@@ -38,7 +52,7 @@ export default async function BeatDetailPage({ params }: Props) {
                   </div>
                   <div style={{ textAlign: "right" }}>
                     <div style={{ fontWeight: 900, color: "#AA2DFF" }}>${t.price}</div>
-                    <button style={{ marginTop: 6, padding: "6px 14px", borderRadius: 7, background: "#AA2DFF", color: "#fff", border: "none", fontSize: 11, cursor: "pointer", fontWeight: 700 }}>Buy</button>
+                    <button onClick={() => buyTier(t)} style={{ marginTop: 6, padding: "6px 14px", borderRadius: 7, background: "#AA2DFF", color: "#fff", border: "none", fontSize: 11, cursor: "pointer", fontWeight: 700 }}>Buy</button>
                   </div>
                 </div>
               ))}

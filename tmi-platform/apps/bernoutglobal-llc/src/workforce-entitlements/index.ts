@@ -1,4 +1,4 @@
-﻿export type WorkforceQuantityMode =
+export type WorkforceQuantityMode =
   | 'SINGLE_WORKER'
   | 'DUAL_WORKERS'
   | 'SMALL_CREW'

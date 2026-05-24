@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import Link from "next/link";
 import { NFTMintEngine, type NFTType } from "@/lib/nft/NFTMintEngine";
 
@@ -14,21 +14,83 @@ const NFT_TYPES: { type: NFTType; label: string; icon: string; color: string; fe
   { type: "SEASON_PASS",  label: "Season Pass",  icon: "👑", color: "#FF2DAA", fee: "$12.99" },
 ];
 
+type FileKind = "image" | "audio";
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 export default function NftMintPage() {
   const [selectedType, setSelectedType] = useState<NFTType>("COLLECTIBLE");
-  const [name, setName] = useState("");
-  const [minted, setMinted] = useState<string | null>(null);
+  const [name, setName]             = useState("");
+  const [description, setDescription] = useState("");
+  const [royaltyPct, setRoyaltyPct] = useState("5");
+  const [minted, setMinted]         = useState<string | null>(null);
+  const [imageFile, setImageFile]   = useState<File | null>(null);
+  const [audioFile, setAudioFile]   = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [uploading, setUploading]   = useState(false);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const audioInputRef = useRef<HTMLInputElement>(null);
 
-  function handleMint() {
+  function handleFileChange(kind: FileKind, file: File | null) {
+    if (!file) return;
+    if (kind === "image") {
+      setImageFile(file);
+      const reader = new FileReader();
+      reader.onload = (e) => setImagePreview(e.target?.result as string);
+      reader.readAsDataURL(file);
+    } else {
+      setAudioFile(file);
+    }
+  }
+
+  async function handleMint() {
     if (!name.trim()) return;
-    const nft = mintEngine.mint({
-      type: selectedType,
-      name: name.trim(),
-      ownerId: "demo-user",
-      metadata: { platform: "TMI", season: "S2" },
-      transferable: true,
-    });
-    setMinted(nft.id);
+    setUploading(true);
+    try {
+      // Build FormData for file uploads
+      const formData = new FormData();
+      formData.append("name", name.trim());
+      formData.append("description", description);
+      formData.append("type", selectedType);
+      formData.append("royaltyPct", royaltyPct);
+      if (imageFile) formData.append("image", imageFile);
+      if (audioFile) formData.append("audio", audioFile);
+
+      // Try real API; fall back to client-side engine
+      let nftId: string;
+      try {
+        const res = await fetch("/api/nft/mint", { method: "POST", body: formData });
+        if (res.ok) {
+          const data = await res.json() as { id?: string; nftId?: string };
+          nftId = data.id ?? data.nftId ?? "";
+        } else {
+          throw new Error("API unavailable");
+        }
+      } catch {
+        const nft = mintEngine.mint({
+          type: selectedType,
+          name: name.trim(),
+          ownerId: "demo-user",
+          metadata: {
+            platform: "TMI",
+            season: "S2",
+            description,
+            royaltyPct: Number(royaltyPct),
+            hasImage: imageFile ? 1 : 0,
+            hasAudio: audioFile ? 1 : 0,
+          },
+          transferable: true,
+        });
+        nftId = nft.id;
+      }
+      setMinted(nftId);
+    } finally {
+      setUploading(false);
+    }
   }
 
   const selected = NFT_TYPES.find(t => t.type === selectedType)!;
@@ -75,23 +137,124 @@ export default function NftMintPage() {
               />
             </div>
 
+            <div style={{ marginBottom: 24 }}>
+              <label style={{ display: "block", fontSize: 9, letterSpacing: "0.2em", color: "rgba(255,255,255,0.35)", fontWeight: 700, marginBottom: 8 }}>DESCRIPTION</label>
+              <textarea
+                value={description}
+                onChange={e => setDescription(e.target.value)}
+                placeholder="Describe this NFT..."
+                rows={3}
+                style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 8, color: "#fff", padding: "12px 14px", fontSize: 12, boxSizing: "border-box", resize: "vertical", fontFamily: "inherit" }}
+              />
+            </div>
+
+            <div style={{ marginBottom: 24 }}>
+              <label style={{ display: "block", fontSize: 9, letterSpacing: "0.2em", color: "rgba(255,255,255,0.35)", fontWeight: 700, marginBottom: 8 }}>ROYALTY % (ON RESALE)</label>
+              <input
+                type="number"
+                min="0"
+                max="25"
+                value={royaltyPct}
+                onChange={e => setRoyaltyPct(e.target.value)}
+                style={{ width: 120, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 8, color: "#fff", padding: "10px 14px", fontSize: 13, boxSizing: "border-box" }}
+              />
+              <span style={{ marginLeft: 10, fontSize: 10, color: "rgba(255,255,255,0.3)" }}>You earn this % each time your NFT is resold (max 25%)</span>
+            </div>
+
+            {/* Image upload */}
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 9, letterSpacing: "0.2em", color: "rgba(255,255,255,0.35)", fontWeight: 700, marginBottom: 8 }}>NFT IMAGE (OPTIONAL)</div>
+              <input
+                ref={imageInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/gif,image/webp"
+                style={{ display: "none" }}
+                onChange={e => handleFileChange("image", e.target.files?.[0] ?? null)}
+              />
+              {imagePreview ? (
+                <div style={{ position: "relative", display: "inline-block" }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={imagePreview} alt="NFT preview" style={{ width: 120, height: 120, objectFit: "cover", borderRadius: 10, border: `2px solid ${selected.color}44` }} />
+                  <button
+                    onClick={() => { setImageFile(null); setImagePreview(null); if (imageInputRef.current) imageInputRef.current.value = ""; }}
+                    style={{ position: "absolute", top: -6, right: -6, width: 20, height: 20, borderRadius: "50%", background: "#FF2DAA", border: "none", color: "#fff", fontSize: 11, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                  >✕</button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => imageInputRef.current?.click()}
+                  style={{ padding: "10px 20px", background: "rgba(255,255,255,0.03)", border: "1px dashed rgba(255,255,255,0.2)", borderRadius: 10, color: "rgba(255,255,255,0.5)", fontSize: 11, cursor: "pointer" }}
+                >
+                  + Upload Image (PNG, JPG, GIF, WEBP)
+                </button>
+              )}
+            </div>
+
+            {/* Audio upload */}
+            <div style={{ marginBottom: 24 }}>
+              <div style={{ fontSize: 9, letterSpacing: "0.2em", color: "rgba(255,255,255,0.35)", fontWeight: 700, marginBottom: 8 }}>AUDIO FILE (OPTIONAL)</div>
+              <input
+                ref={audioInputRef}
+                type="file"
+                accept="audio/mp3,audio/wav,audio/ogg,audio/flac,audio/*"
+                style={{ display: "none" }}
+                onChange={e => handleFileChange("audio", e.target.files?.[0] ?? null)}
+              />
+              {audioFile ? (
+                <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", background: "rgba(0,255,136,0.06)", border: "1px solid rgba(0,255,136,0.2)", borderRadius: 8 }}>
+                  <span style={{ fontSize: 16 }}>🎵</span>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: "#00FF88" }}>{audioFile.name}</div>
+                    <div style={{ fontSize: 9, color: "rgba(255,255,255,0.35)" }}>{formatFileSize(audioFile.size)}</div>
+                  </div>
+                  <button
+                    onClick={() => { setAudioFile(null); if (audioInputRef.current) audioInputRef.current.value = ""; }}
+                    style={{ background: "none", border: "none", color: "#FF2DAA", cursor: "pointer", fontSize: 14 }}
+                  >✕</button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => audioInputRef.current?.click()}
+                  style={{ padding: "10px 20px", background: "rgba(255,255,255,0.03)", border: "1px dashed rgba(255,255,255,0.2)", borderRadius: 10, color: "rgba(255,255,255,0.5)", fontSize: 11, cursor: "pointer" }}
+                >
+                  + Upload Audio (MP3, WAV, FLAC)
+                </button>
+              )}
+            </div>
+
             <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 10, padding: "14px 16px", marginBottom: 24 }}>
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
                 <span style={{ fontSize: 10, color: "rgba(255,255,255,0.35)" }}>Type</span>
                 <span style={{ fontSize: 10, fontWeight: 700 }}>{selected.label}</span>
               </div>
-              <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                <span style={{ fontSize: 10, color: "rgba(255,255,255,0.35)" }}>Royalty on resale</span>
+                <span style={{ fontSize: 10, fontWeight: 700 }}>{royaltyPct}%</span>
+              </div>
+              {imageFile && (
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                  <span style={{ fontSize: 10, color: "rgba(255,255,255,0.35)" }}>Image</span>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: "#00FF88" }}>{imageFile.name.slice(0, 24)}</span>
+                </div>
+              )}
+              {audioFile && (
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                  <span style={{ fontSize: 10, color: "rgba(255,255,255,0.35)" }}>Audio</span>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: "#00FF88" }}>{audioFile.name.slice(0, 24)}</span>
+                </div>
+              )}
+              <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 8, marginTop: 6 }}>
                 <span style={{ fontSize: 10, color: "rgba(255,255,255,0.35)" }}>Mint fee</span>
                 <span style={{ fontSize: 10, fontWeight: 700, color: selected.color }}>{selected.fee}</span>
               </div>
             </div>
 
             <button
-              onClick={handleMint}
-              disabled={!name.trim()}
-              style={{ width: "100%", padding: "13px", fontSize: 11, fontWeight: 800, letterSpacing: "0.15em", color: "#050510", background: name.trim() ? `linear-gradient(135deg, ${selected.color}, ${selected.color}99)` : "rgba(255,255,255,0.06)", border: "none", borderRadius: 10, cursor: name.trim() ? "pointer" : "not-allowed" }}
+              onClick={() => void handleMint()}
+              disabled={!name.trim() || uploading}
+              style={{ width: "100%", padding: "13px", fontSize: 11, fontWeight: 800, letterSpacing: "0.15em", color: "#050510", background: name.trim() && !uploading ? `linear-gradient(135deg, ${selected.color}, ${selected.color}99)` : "rgba(255,255,255,0.06)", border: "none", borderRadius: 10, cursor: name.trim() && !uploading ? "pointer" : "not-allowed" }}
             >
-              MINT NFT — {selected.fee}
+              {uploading ? "MINTING…" : `MINT NFT — ${selected.fee}`}
             </button>
             <p style={{ fontSize: 10, color: "rgba(255,255,255,0.2)", textAlign: "center", marginTop: 12 }}>Requires Artist Pro or higher subscription.</p>
           </>

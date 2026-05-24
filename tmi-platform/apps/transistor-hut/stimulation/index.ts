@@ -1,4 +1,4 @@
-﻿import { StimulationEngine } from '@tmi/module-runtime';
+import { StimulationEngine } from '@tmi/module-runtime';
 import { MODULE_CONFIG, TRANSISTOR_HUT_LOGIC_BEHAVIORS } from '@/config/module.config';
 
 export const transistorHutStimulation = new StimulationEngine(

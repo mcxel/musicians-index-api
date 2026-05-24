@@ -38,6 +38,15 @@ export default function PaymentSuccessPage() {
 
     const credits = CREDIT_AMOUNTS[priceId] ?? 0;
 
+    // Send purchase confirmation email (fire-and-forget)
+    const emailType = mode === 'subscription' ? 'subscription'
+      : (params?.get('type') ?? 'generic') as 'nft' | 'ticket' | 'generic';
+    fetch('/api/email/purchase-confirm', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId, type: emailType }),
+    }).catch(() => undefined);
+
     if (mode === 'subscription') {
       // Season pass — mark as granted, no credit deduction (subscription perks handled separately)
       localStorage.setItem(grantKey, '1');

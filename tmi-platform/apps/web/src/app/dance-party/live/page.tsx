@@ -10,6 +10,7 @@ import { registerRoute } from "@/lib/routing/RouteClosureRegistry";
 import { registerReturnPath } from "@/lib/routing/ReturnPathResolver";
 import { resolveSlug } from "@/lib/routing/SlugRecoveryEngine";
 import SocketRecoveryEngine from "@/lib/routing/SocketRecoveryEngine";
+import FanBar from "./FanBar";
 
 export const metadata: Metadata = {
   title: "Dance Party Live | TMI",
@@ -57,21 +58,7 @@ export default function DancePartyLivePage() {
       <WorldDancePartyArena djName={CURRENT_DJ} activeVisualizer="laser-grid" />
 
       {/* Fan action bar */}
-      <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "rgba(5,5,16,0.95)", borderTop: "1px solid rgba(0,255,255,0.2)", padding: "10px 20px", display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap", zIndex: 100 }}>
-        {[
-          { label: "TIP", color: "#00FF88" },
-          { label: "CLAP", color: "#FFD700" },
-          { label: "LOVE", color: "#FF2DAA" },
-          { label: "HYPE", color: "#AA2DFF" },
-          { label: "CHAT", color: "#00FFFF" },
-          { label: "VOTE", color: "#FF9500" },
-          { label: "SAVE", color: "#fff" },
-        ].map(({ label, color }) => (
-          <button key={label} style={{ padding: "8px 16px", fontSize: 9, fontWeight: 800, letterSpacing: "0.12em", color, border: `1px solid ${color}40`, borderRadius: 20, background: `${color}10`, cursor: "pointer" }}>
-            {label}
-          </button>
-        ))}
-      </div>
+      <FanBar />
 
       <div style={{ padding: "16px 20px 100px", display: "grid", gap: 8 }}>
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>

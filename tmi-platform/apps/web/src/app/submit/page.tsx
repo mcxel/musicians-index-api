@@ -20,7 +20,6 @@ interface SubmissionTile {
   icon: React.ComponentType<React.SVGProps<SVGSVGElement>>
   gradient: string
   requiresArtist: boolean
-  comingSoon?: boolean
 }
 
 const submissionTypes: SubmissionTile[] = [
@@ -71,7 +70,6 @@ const submissionTypes: SubmissionTile[] = [
     icon: Icon,
     gradient: 'from-pink-600 to-pink-800',
     requiresArtist: true,
-    comingSoon: true
   },
   {
     id: 'dance',
@@ -80,7 +78,6 @@ const submissionTypes: SubmissionTile[] = [
     icon: Icon,
     gradient: 'from-cyan-600 to-cyan-800',
     requiresArtist: true,
-    comingSoon: true
   },
   {
     id: 'shows',
@@ -89,7 +86,6 @@ const submissionTypes: SubmissionTile[] = [
     icon: Icon,
     gradient: 'from-indigo-600 to-indigo-800',
     requiresArtist: true,
-    comingSoon: true
   }
 ]
 
@@ -100,13 +96,14 @@ export default function SubmitPage() {
     'join-game': '/signup/performer',
     'audience': '/signup/fan',
     'monthly-idol': '/signup/performer',
-    'battle': '/signup/performer',
-    'cypher': '/signup/performer',
+    'battle': '/arena',
+    'cypher': '/go-live?type=cypher',
+    'comedy': '/go-live?type=comedy',
+    'dance': '/go-live?type=dance',
+    'shows': '/go-live',
   }
 
   const handleSubmissionClick = (submission: SubmissionTile) => {
-    if (submission.comingSoon) return
-
     const destination = ROUTE_MAP[submission.id]
     if (destination) {
       logger.log('Routing to:', destination)
@@ -135,9 +132,7 @@ export default function SubmitPage() {
               onClick={() => handleSubmissionClick(submission)}
               className="relative group"
             >
-              <div className={`bg-gradient-to-br ${submission.gradient} rounded-2xl p-8 h-full transition-all duration-300 transform group-hover:scale-105 group-hover:shadow-2xl ${
-                submission.comingSoon ? 'opacity-60' : ''
-              }`}>
+              <div className={`bg-gradient-to-br ${submission.gradient} rounded-2xl p-8 h-full transition-all duration-300 transform group-hover:scale-105 group-hover:shadow-2xl`}>
                 {/* Icon */}
                 <div className="bg-white/20 backdrop-blur-sm rounded-xl p-4 w-16 h-16 flex items-center justify-center mb-4 group-hover:bg-white/30 transition-colors">
                   <submission.icon className="w-8 h-8 text-white" />
@@ -158,11 +153,6 @@ export default function SubmitPage() {
                   ) : (
                     <span className="text-xs bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full text-white">
                       Open to All
-                    </span>
-                  )}
-                  {submission.comingSoon && (
-                    <span className="text-xs bg-yellow-500/20 backdrop-blur-sm px-3 py-1 rounded-full text-yellow-300 border border-yellow-500/30">
-                      Coming Soon
                     </span>
                   )}
                 </div>

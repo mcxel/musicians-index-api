@@ -1,16 +1,16 @@
 import { ensureProfileEconomyRuntime } from '@/lib/integration/EconomyIntegrationRuntime';
-import {
-  getMemoryWallStats,
-  getTopMemories,
-  listMemoriesForEntity,
-} from '@/lib/profiles/MemoryWallEngine';
+import { getMemoryWallStats, listMemoriesForEntity } from '@/lib/profiles/MemoryWallEngine';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 
-type ArtistMemoryPageProps = {
-  params: Promise<{ slug: string }>;
-};
+const MemoryWallCanvas = dynamic(
+  () => import('@/components/memory/MemoryWallCanvas'),
+  { ssr: false },
+);
 
-export default async function ArtistMemoryPage({ params }: ArtistMemoryPageProps) {
+type Props = { params: Promise<{ slug: string }> };
+
+export default async function ArtistMemoryPage({ params }: Props) {
   const { slug } = await params;
 
   ensureProfileEconomyRuntime({
@@ -22,62 +22,48 @@ export default async function ArtistMemoryPage({ params }: ArtistMemoryPageProps
 
   const stats = getMemoryWallStats(slug, 'artist');
   const memories = listMemoriesForEntity(slug, 'artist');
-  const topMemories = getTopMemories(slug, 'artist', 5);
 
   return (
-    <main style={{ minHeight: '100vh', background: '#050510', color: '#fff', padding: 20 }}>
-      <div style={{ maxWidth: 960, margin: '0 auto', display: 'grid', gap: 14 }}>
-        <Link href={`/artists/${slug}`} style={{ color: '#00FFFF', textDecoration: 'none' }}>
-          ← Back to Artist Profile
+    <main style={{ minHeight: '100vh', background: '#050510', color: '#fff', padding: 24 }}>
+      <div style={{ maxWidth: 1100, margin: '0 auto', display: 'grid', gap: 20 }}>
+        <Link href={`/artists/${slug}`} style={{ fontSize: 9, color: '#AA2DFF', textDecoration: 'none', fontWeight: 800, letterSpacing: '0.15em' }}>
+          ← ARTIST PROFILE
         </Link>
-        <h1 style={{ margin: 0 }}>Artist Memory Wall</h1>
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit,minmax(170px,1fr))',
-            gap: 10,
-          }}
-        >
-          <div style={{ border: '1px solid rgba(0,255,255,0.3)', borderRadius: 10, padding: 10 }}>
-            Total: {stats.totalMemories}
-          </div>
-          <div style={{ border: '1px solid rgba(255,45,170,0.3)', borderRadius: 10, padding: 10 }}>
-            Pinned: {stats.pinnedMemories}
-          </div>
-          <div style={{ border: '1px solid rgba(255,215,0,0.3)', borderRadius: 10, padding: 10 }}>
-            Achievements: {stats.achievementCount}
-          </div>
-          <div style={{ border: '1px solid rgba(0,255,136,0.3)', borderRadius: 10, padding: 10 }}>
-            Videos: {stats.videoCount}
-          </div>
+
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 16 }}>
+          <h1 style={{ margin: 0, fontSize: 26, fontWeight: 900 }}>Memory Wall</h1>
+          <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.1em' }}>
+            {slug.toUpperCase()}
+          </span>
         </div>
-        <section
-          style={{ border: '1px solid rgba(255,255,255,0.16)', borderRadius: 12, padding: 14 }}
-        >
-          <h2 style={{ marginTop: 0, fontSize: 18 }}>Top Memories</h2>
-          {topMemories.length === 0 ? (
-            <p style={{ color: 'rgba(255,255,255,0.65)' }}>No memories yet.</p>
-          ) : (
-            topMemories.map((memory) => (
-              <div key={memory.memoryId} style={{ marginBottom: 8, fontSize: 14 }}>
-                {memory.title} · {memory.contentType} · ❤ {memory.likes} · ↗ {memory.shares}
-              </div>
-            ))
-          )}
-        </section>
-        <section
-          style={{ border: '1px solid rgba(255,255,255,0.16)', borderRadius: 12, padding: 14 }}
-        >
-          <h2 style={{ marginTop: 0, fontSize: 18 }}>All Entries</h2>
-          {memories.map((memory) => (
-            <div
-              key={memory.memoryId}
-              style={{ marginBottom: 8, fontSize: 13, color: 'rgba(255,255,255,0.75)' }}
-            >
-              {memory.title} ({memory.contentType})
+
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          {[
+            { label: 'Total',        value: stats.totalMemories, color: '#AA2DFF' },
+            { label: 'Pinned',       value: stats.pinnedMemories, color: '#FFD700' },
+            { label: 'Achievements', value: stats.achievementCount, color: '#00FF88' },
+            { label: 'Videos',       value: stats.videoCount, color: '#00FFFF' },
+          ].map(s => (
+            <div key={s.label} style={{
+              background: 'rgba(255,255,255,0.03)',
+              border: `1px solid ${s.color}33`,
+              borderRadius: 8, padding: '8px 16px',
+              display: 'flex', gap: 8, alignItems: 'baseline',
+            }}>
+              <span style={{ fontSize: 18, fontWeight: 900, color: s.color }}>{s.value}</span>
+              <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.1em' }}>
+                {s.label.toUpperCase()}
+              </span>
             </div>
           ))}
-        </section>
+        </div>
+
+        <MemoryWallCanvas
+          entityId={slug}
+          entityType="artist"
+          initialMemories={memories}
+          accentColor="#AA2DFF"
+        />
       </div>
     </main>
   );

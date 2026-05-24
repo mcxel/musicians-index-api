@@ -21,11 +21,30 @@ const memoryEntries: MemoryEntry[] = [
 ];
 
 export default function BigAceMemoryPage() {
+  const [memList, setMemList] = useState<MemoryEntry[]>(memoryEntries);
   const [activeMemory, setActiveMemory] = useState<MemoryEntry>(memoryEntries[0]);
   const [filterType, setFilterType] = useState<'all' | 'bot' | 'system' | 'visual' | 'motion'>('all');
+  const [actionMsg, setActionMsg] = useState("");
 
-  const filteredMemory = filterType === 'all' ? memoryEntries : memoryEntries.filter(m => m.type === filterType);
-  const totalSize = memoryEntries.reduce((sum, m) => sum + m.size, 0);
+  function updateMem(id: string, patch: Partial<MemoryEntry>) {
+    setMemList(prev => prev.map(m => m.id === id ? { ...m, ...patch } : m));
+    setActiveMemory(prev => prev.id === id ? { ...prev, ...patch } : prev);
+  }
+
+  function actOnMemory(action: string) {
+    setActionMsg(`${action}: ${activeMemory.name}`);
+    if (action === "Archive") updateMem(activeMemory.id, { status: "archived" });
+    else if (action === "Restore") updateMem(activeMemory.id, { status: "active" });
+    else if (action === "Purge") {
+      setMemList(prev => prev.filter(m => m.id !== activeMemory.id));
+      const remaining = memList.filter(m => m.id !== activeMemory.id);
+      if (remaining.length > 0) setActiveMemory(remaining[0]);
+    }
+    setTimeout(() => setActionMsg(""), 3000);
+  }
+
+  const filteredMemory = filterType === 'all' ? memList : memList.filter(m => m.type === filterType);
+  const totalSize = memList.reduce((sum, m) => sum + m.size, 0);
 
   return (
     <div className="min-h-screen bg-black p-8">
@@ -44,11 +63,11 @@ export default function BigAceMemoryPage() {
           </div>
           <div className="bg-gray-900 border-2 border-green-500 rounded-lg p-4">
             <div className="text-gray-400 text-xs font-mono mb-1">ACTIVE ENTRIES</div>
-            <div className="text-2xl font-bold text-green-400">{memoryEntries.filter(m => m.status === 'active').length}</div>
+            <div className="text-2xl font-bold text-green-400">{memList.filter(m => m.status === 'active').length}</div>
           </div>
           <div className="bg-gray-900 border-2 border-yellow-500 rounded-lg p-4">
             <div className="text-gray-400 text-xs font-mono mb-1">ARCHIVED</div>
-            <div className="text-2xl font-bold text-yellow-400">{memoryEntries.filter(m => m.status === 'archived').length}</div>
+            <div className="text-2xl font-bold text-yellow-400">{memList.filter(m => m.status === 'archived').length}</div>
           </div>
           <div className="bg-gray-900 border-2 border-gray-600 rounded-lg p-4">
             <div className="text-gray-400 text-xs font-mono mb-1">USAGE</div>
@@ -145,11 +164,12 @@ export default function BigAceMemoryPage() {
             {/* Memory Actions */}
             <div className="mb-8">
               <h3 className="text-white font-mono text-sm mb-4">MEMORY ACTIONS</h3>
+              {actionMsg && <div className="mb-3 p-2 bg-green-900 border border-green-500 rounded text-green-400 text-xs font-mono">{actionMsg}</div>}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <button className="px-4 py-2 bg-white hover:bg-gray-300 text-black rounded font-mono text-xs font-bold">Review</button>
-                <button className="px-4 py-2 bg-yellow-600 hover:bg-yellow-500 text-black rounded font-mono text-xs font-bold">Restore</button>
-                <button className="px-4 py-2 bg-gray-600 hover:bg-gray-500 text-white rounded font-mono text-xs font-bold">Archive</button>
-                <button className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded font-mono text-xs font-bold">Purge</button>
+                <button onClick={() => actOnMemory("Review")} className="px-4 py-2 bg-white hover:bg-gray-300 text-black rounded font-mono text-xs font-bold">Review</button>
+                <button onClick={() => actOnMemory("Restore")} className="px-4 py-2 bg-yellow-600 hover:bg-yellow-500 text-black rounded font-mono text-xs font-bold">Restore</button>
+                <button onClick={() => actOnMemory("Archive")} className="px-4 py-2 bg-gray-600 hover:bg-gray-500 text-white rounded font-mono text-xs font-bold">Archive</button>
+                <button onClick={() => actOnMemory("Purge")} className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded font-mono text-xs font-bold">Purge</button>
               </div>
             </div>
 

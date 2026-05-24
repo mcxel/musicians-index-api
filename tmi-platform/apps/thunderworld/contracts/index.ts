@@ -1,4 +1,4 @@
-﻿export type ThunderworldWorkforceType = "cleanup" | "repair" | "emergency" | "event_staff";
+export type ThunderworldWorkforceType = "cleanup" | "repair" | "emergency" | "event_staff";
 export type ThunderworldCrowdPhase = "pre-show" | "group-round" | "finale";
 
 export interface ThunderworldWorkforceDispatchContract {

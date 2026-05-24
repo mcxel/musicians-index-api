@@ -3,6 +3,7 @@
 import { useState, useMemo, useRef } from "react";
 import Link from "next/link";
 import { buildSubmissionPreview } from "@/engines/performance/BeatSubmissionRouter";
+import BeatJourneyWidget from "@/components/beats/BeatJourneyWidget";
 
 const GENRES = ["Hip-Hop", "R&B", "Pop", "Trap", "Drill", "Afrobeats", "Jazz", "Gospel", "Latin", "EDM", "Country", "Rock", "Blues", "Reggae", "Instrumental"];
 const LICENSES = [
@@ -42,16 +43,17 @@ export default function BeatSubmitPage() {
   const lbl: React.CSSProperties = { fontSize: 9, fontWeight: 800, letterSpacing: "0.15em", color: "rgba(255,255,255,0.4)", display: "block", marginBottom: 6 };
 
   if (done) return (
-    <main style={{ minHeight: "100vh", background: "#050510", color: "#fff", display: "grid", placeItems: "center" }}>
-      <div style={{ textAlign: "center" }}>
-        <div style={{ fontSize: 52, marginBottom: 16 }}>🎛️</div>
-        <h1 style={{ fontSize: 22, fontWeight: 900, marginBottom: 8 }}>Beat Submitted</h1>
-        <p style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", marginBottom: 8 }}>Your beat is in review. Once approved it goes live in the marketplace.</p>
-        <p style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", marginBottom: 24 }}>Watermarked preview generated automatically.</p>
-        <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
-          <Link href="/beats/marketplace" style={{ fontSize: 10, fontWeight: 800, color: "#FFD700", textDecoration: "none", border: "1px solid rgba(255,215,0,0.3)", borderRadius: 8, padding: "10px 20px" }}>MARKETPLACE</Link>
-          <Link href="/producer/hub" style={{ fontSize: 10, fontWeight: 800, color: "rgba(255,255,255,0.4)", textDecoration: "none", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, padding: "10px 20px" }}>MY HUB</Link>
+    <main style={{ minHeight: "100vh", background: "#050510", color: "#fff", fontFamily: "'Inter', sans-serif" }}>
+      <div style={{ maxWidth: 680, margin: "0 auto", padding: "56px 24px 80px" }}>
+        <div style={{ textAlign: "center", marginBottom: 40 }}>
+          <div style={{ fontSize: 52, marginBottom: 16 }}>🎛️</div>
+          <div style={{ fontSize: 9, letterSpacing: "0.4em", color: "#FFD700", fontWeight: 800, marginBottom: 10 }}>SUBMITTED</div>
+          <h1 style={{ fontSize: "clamp(22px, 5vw, 36px)", fontWeight: 900, margin: "0 0 12px", letterSpacing: "-0.02em" }}>Beat Submitted to Vault</h1>
+          <p style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", maxWidth: 400, margin: "0 auto", lineHeight: 1.7 }}>
+            Your beat is in review. Once approved it enters the live pipeline below.
+          </p>
         </div>
+        <BeatJourneyWidget currentStep={0} />
       </div>
     </main>
   );

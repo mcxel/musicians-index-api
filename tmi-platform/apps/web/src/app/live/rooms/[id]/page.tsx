@@ -9,9 +9,11 @@ import { registerReturnPath } from "@/lib/routing/ReturnPathResolver";
 import { resolveSlug } from "@/lib/routing/SlugRecoveryEngine";
 import SocketRecoveryEngine from "@/lib/routing/SocketRecoveryEngine";
 import RoomInteractionLayout from "@/components/live/RoomInteractionLayout";
+import LiveRoomWebRTCLayer from "@/components/live/LiveRoomWebRTCLayer";
 import { registerPresence } from "@/lib/rooms/RoomSessionBridge";
 import { recordProfileLoopAction } from "@/lib/profile/ProfileSessionStore";
 import { startPerformerSession, recordFanEntry } from "@/lib/performer/PerformerAnalyticsEngine";
+import SeatArrivalTransition from "@/components/live/SeatArrivalTransition";
 
 interface LiveRoomPageProps {
   params: Promise<{ id: string }>;
@@ -74,12 +76,15 @@ export default async function LiveRoomPage({ params, searchParams }: LiveRoomPag
 
   return (
     <main style={{ minHeight: "100vh", background: "#050510", color: "#fff", padding: "34px 18px" }}>
+      <SeatArrivalTransition />
       <div style={{ maxWidth: 920, margin: "0 auto" }}>
         <Link href={returnHref} style={{ color: "#00FFFF", textDecoration: "none", fontSize: 12 }}>{returnLabel}</Link>
         <h1 style={{ fontSize: "clamp(1.8rem, 5vw, 2.8rem)", margin: "10px 0 6px" }}>Room {id}</h1>
         <p style={{ color: "rgba(255,255,255,0.65)", marginTop: 0 }}>
           Runtime spine active: join, interact, tip, and return.
         </p>
+
+        <LiveRoomWebRTCLayer roomId={id} />
 
         <RoomInteractionLayout roomId={id} sessionId={sessionId ?? undefined} />
 

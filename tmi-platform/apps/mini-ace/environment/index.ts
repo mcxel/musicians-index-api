@@ -1,4 +1,4 @@
-﻿import type { ModuleEnvironment } from '@tmi/module-runtime';
+import type { ModuleEnvironment } from '@tmi/module-runtime';
 export const ENVIRONMENT: ModuleEnvironment = {
   database: { url: process.env.DATABASE_URL ?? '', name: 'berntout_miniace', sandboxUrl: process.env.SANDBOX_DATABASE_URL ?? '' },
   redis: { url: process.env.REDIS_URL ?? 'redis://localhost:6379', namespace: 'mini-ace:', sandboxNamespace: 'mini-ace:sandbox:' },

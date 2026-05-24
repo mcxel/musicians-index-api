@@ -16,6 +16,11 @@ import { startGhostForceV1 } from "@/lib/bots/BotDripEmitter";
 import { runSentinelCheck } from "@/lib/sentinels/ShadowSentinelDiagnosticRegistry";
 import JuliusMascot from "@/components/mascot/JuliusMascot";
 import { useJulius } from "@/hooks/useJulius";
+import { useSpotlight } from "@/hooks/useSpotlight";
+import { StageSpotlightWidget } from "@/components/live/StageSpotlightWidget";
+import { AudienceVisibility } from "@/components/live/AudienceVisibility";
+import { ArenaLightingEngine } from "@/lib/engine/ArenaLightingEngine";
+import { ArenaCameraEngine } from "@/lib/engine/ArenaCameraEngine";
 
 const BOT_NAMES = ["Jay", "Nova", "Rico", "Luna", "Ace", "Kreach", "Zuri", "Dex"];
 const BOT_MESSAGES = [
@@ -154,6 +159,53 @@ export default function LiveRoomRuntimeSpine({
   const tipWaveArmedRef = useRef(true);
   const momentumCooldownRef = useRef(false);
   const { juliusState, triggerJulius, dismissJulius } = useJulius();
+
+  // Living Stage — ghost users come from BotDripEmitter names; real users from members
+  const ghostUsers = useMemo(
+    () =>
+      BOT_NAMES.map((name, i) => ({
+        id: `ghost-${name.toLowerCase()}`,
+        name,
+        role: 'Ghost Listener',
+        energyScore: 30 + (i * 7) % 50,
+        isGhost: true,
+        seatIndex: i * 3,
+      })),
+    []
+  );
+  const realUsers = useMemo(
+    () =>
+      members.map((m, i) => ({
+        id: m.userId,
+        name: readableName(m.userId),
+        role: 'Fan',
+        energyScore: 50 + (i * 13) % 45,
+        isGhost: false,
+        joinedAt: Date.now() - 5000,
+        seatIndex: i * 2,
+      })),
+    [members]
+  );
+
+  const { phase: spotPhase, target: spotTarget } = useSpotlight(realUsers, ghostUsers);
+
+  // Sync lighting + camera to spotlight phase
+  useEffect(() => {
+    if (spotPhase === 'revealed') {
+      ArenaLightingEngine.dimArena(0.45);
+      ArenaLightingEngine.triggerWavePulse();
+      ArenaCameraEngine.setSpotlightFocus(true);
+    } else if (spotPhase === 'idle') {
+      ArenaLightingEngine.undimArena();
+      ArenaCameraEngine.setSpotlightFocus(false);
+    }
+  }, [spotPhase]);
+
+  // Auto-vibe from population heat
+  useEffect(() => {
+    ArenaLightingEngine.autoVibeFromEnergy(population.heatLevel ?? 50);
+  }, [population.heatLevel]);
+
   const recentTipTimesRef = useRef<number[]>([]);
   const recentHypeTimesRef = useRef<number[]>([]);
   const momentumTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
@@ -987,6 +1039,19 @@ export default function LiveRoomRuntimeSpine({
         nudgeText={juliusState.nudgeText}
         onDismiss={dismissJulius}
       />
+
+      {/* Living Stage — audience visibility grid with spotlight burst */}
+      <div style={{ marginTop: 18 }}>
+        <AudienceVisibility
+          spotlightPhase={spotPhase}
+          spotlightSeatIndex={spotTarget?.seatIndex}
+          isMobile={false}
+          crowdEnergy={population.heatLevel ?? 50}
+        />
+      </div>
+
+      {/* Spotlight widget — fixed bottom-left overlay */}
+      <StageSpotlightWidget phase={spotPhase} target={spotTarget} />
     </>
   );
 }

@@ -1,22 +1,28 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import {
-  ROUTING_STATE_COOKIE,
-  destinationFromRoutingState,
-  verifyRoutingState,
-} from "@/lib/routingState";
+
+function roleToDestination(role: string): string {
+  const r = role.toLowerCase();
+  if (r === "admin" || r === "staff") return "/admin";
+  if (r === "artist")     return "/dashboard/artist";
+  if (r === "performer")  return "/dashboard/performer";
+  if (r === "sponsor")    return "/dashboard/sponsor";
+  if (r === "advertiser") return "/dashboard/advertiser";
+  if (r === "venue")      return "/dashboard/venue";
+  if (r === "writer")     return "/dashboard/writer";
+  if (r === "promoter")   return "/dashboard/promoter";
+  if (r === "fan")        return "/dashboard/fan";
+  return "/onboarding";
+}
 
 export default async function DashboardRouterPage() {
   const cookieStore = await cookies();
-  const sessionToken = cookieStore.get("phase11_session")?.value;
-  if (!sessionToken) {
+  const sessionId = cookieStore.get("tmi_session_id")?.value;
+
+  if (!sessionId) {
     redirect("/auth?next=%2Fdashboard");
   }
 
-  const routingState = await verifyRoutingState(cookieStore.get(ROUTING_STATE_COOKIE)?.value);
-  if (routingState) {
-    redirect(destinationFromRoutingState(routingState));
-  }
-
-  redirect("/onboarding");
+  const role = cookieStore.get("tmi_role")?.value ?? "user";
+  redirect(roleToDestination(role));
 }

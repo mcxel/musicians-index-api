@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import AutoPerformerWelcomeMessage from "@/components/onboarding/AutoPerformerWelcomeMessage";
 
 export default function OnboardingArtistPage() {
   const router = useRouter();
@@ -10,6 +11,7 @@ export default function OnboardingArtistPage() {
   const [skills, setSkills] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const [done, setDone] = useState(false);
 
   const getCsrfToken = async (): Promise<string | null> => {
     try {
@@ -38,7 +40,7 @@ export default function OnboardingArtistPage() {
       });
 
       if (res.ok) {
-        router.replace("/dashboard/artist");
+        setDone(true);
       } else {
         const err = (await res.json().catch(() => ({}))) as { message?: string };
         setMessage(`Setup failed (${res.status})${err?.message ? ": " + err.message : ""}`);
@@ -70,6 +72,19 @@ export default function OnboardingArtistPage() {
     fontWeight: 500,
   };
 
+  if (done) {
+    return (
+      <main style={{ minHeight: "100vh", background: "#0a0a0f", display: "flex", alignItems: "center", justifyContent: "center", padding: "40px 20px" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 20, alignItems: "center" }}>
+          <AutoPerformerWelcomeMessage displayName={stageName || ""} />
+          <button onClick={() => router.replace("/dashboard/performer")} style={{ padding: "10px 24px", background: "rgba(255,45,170,0.12)", color: "#FF2DAA", border: "1px solid rgba(255,45,170,0.3)", borderRadius: 8, fontWeight: 800, fontSize: 13, cursor: "pointer" }}>
+            Go to My Stage →
+          </button>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main
       style={{
@@ -81,16 +96,24 @@ export default function OnboardingArtistPage() {
       }}
     >
       <div style={{ maxWidth: 520, margin: "0 auto" }}>
-        {/* Brand header */}
         <p style={{ fontSize: 12, letterSpacing: 2, color: "#ff6b35", textTransform: "uppercase", marginBottom: 8 }}>
           The Musician&apos;s Index
         </p>
         <h1 style={{ fontSize: 30, fontWeight: 700, marginBottom: 8, margin: "0 0 8px" }}>
           Artist Setup
         </h1>
-        <p style={{ color: "rgba(255,255,255,0.5)", marginBottom: 36, fontSize: 15 }}>
+        <p style={{ color: "rgba(255,255,255,0.5)", marginBottom: 24, fontSize: 15 }}>
           Tell us about your artistry to complete your profile.
         </p>
+
+        <div style={{ background: "rgba(255,45,170,0.08)", border: "1px solid rgba(255,45,170,0.25)", borderRadius: 10, padding: "12px 16px", marginBottom: 24 }}>
+          <div style={{ fontSize: 10, letterSpacing: "0.2em", color: "#FF2DAA", fontWeight: 800, marginBottom: 6 }}>
+            🔥 YOU&apos;RE ALREADY IN THE HOMEPAGE ORBIT
+          </div>
+          <div style={{ fontSize: 13, color: "rgba(255,255,255,0.75)", lineHeight: 1.6 }}>
+            Your profile is live on the Home #1 orbit right now. Complete setup to unlock your full stage.
+          </div>
+        </div>
 
         <form
           onSubmit={(e) => void handleSubmit(e)}
@@ -135,7 +158,7 @@ export default function OnboardingArtistPage() {
             style={{
               marginTop: 8,
               padding: "13px 24px",
-              background: busy ? "rgba(255,107,53,0.35)" : "#ff6b35",
+              background: busy ? "rgba(255,107,53,0.35)" : "#FF2DAA",
               color: "#fff",
               border: "none",
               borderRadius: 8,
@@ -145,7 +168,7 @@ export default function OnboardingArtistPage() {
               letterSpacing: 0.3,
             }}
           >
-            {busy ? "Setting up your profile…" : "Continue as Artist →"}
+            {busy ? "Setting up your stage…" : "Claim My Stage →"}
           </button>
         </form>
 

@@ -1,11 +1,13 @@
+"use client";
 import Link from 'next/link';
+import { useState } from 'react';
 
 const TRANSACTIONS = [
-  { id: '1', user: 'DJ Kenzo', type: 'PURCHASE', item: 'Julius Gold Skin', amount: '+$4.99', currency: 'USD', time: '5 min ago' },
-  { id: '2', user: 'Amara Osei', type: 'TIP', item: 'Tip to FatimaDiallo', amount: '+$2.00', currency: 'USD', time: '12 min ago' },
-  { id: '3', user: 'Yusuf Bello', type: 'TICKET', item: 'Jakarta Hip-Hop Summit', amount: '+$30.00', currency: 'USD', time: '18 min ago' },
-  { id: '4', user: 'Siti Rahma', type: 'PAYOUT', item: 'Artist Payout', amount: '-$120.00', currency: 'USD', time: '1 hr ago' },
-  { id: '5', user: 'Kwame Asante', type: 'SUBSCRIPTION', item: 'Pro Plan Monthly', amount: '+$9.99', currency: 'USD', time: '2 hrs ago' },
+  { id: '1', user: 'DJ Kenzo',     type: 'PURCHASE',     item: 'Julius Gold Skin',         amount: '+$4.99',   currency: 'USD', time: '5 min ago' },
+  { id: '2', user: 'Amara Osei',   type: 'TIP',          item: 'Tip to FatimaDiallo',      amount: '+$2.00',   currency: 'USD', time: '12 min ago' },
+  { id: '3', user: 'Yusuf Bello',  type: 'TICKET',       item: 'Jakarta Hip-Hop Summit',   amount: '+$30.00',  currency: 'USD', time: '18 min ago' },
+  { id: '4', user: 'Siti Rahma',   type: 'PAYOUT',       item: 'Artist Payout',            amount: '-$120.00', currency: 'USD', time: '1 hr ago' },
+  { id: '5', user: 'Kwame Asante', type: 'SUBSCRIPTION', item: 'Pro Plan Monthly',         amount: '+$9.99',   currency: 'USD', time: '2 hrs ago' },
 ];
 
 const TYPE_COLORS: Record<string, string> = {
@@ -18,6 +20,13 @@ const TYPE_COLORS: Record<string, string> = {
 };
 
 export default function AdminEconomyPage() {
+  const [msg, setMsg] = useState("");
+
+  function runAction(label: string) {
+    setMsg(`${label} initiated`);
+    setTimeout(() => setMsg(""), 3000);
+  }
+
   return (
     <main className="min-h-screen bg-[#0a0a0f] text-white px-6 py-10 max-w-6xl mx-auto">
       <div className="flex items-center gap-3 mb-2">
@@ -28,7 +37,6 @@ export default function AdminEconomyPage() {
       <h1 className="text-3xl font-bold text-[#ff6b35] mb-2">Economy Controls</h1>
       <p className="text-gray-400 mb-8">Monitor platform-wide wallet activity, payouts, tips, and revenue.</p>
 
-      {/* Revenue Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
         {[
           { label: 'Total Revenue', value: '$48,320', color: 'text-green-400', sub: 'All time' },
@@ -44,7 +52,6 @@ export default function AdminEconomyPage() {
         ))}
       </div>
 
-      {/* Currency Breakdown */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
         {[
           { currency: 'USD', flag: '🇺🇸', revenue: '$38,200', users: 820 },
@@ -62,7 +69,6 @@ export default function AdminEconomyPage() {
         ))}
       </div>
 
-      {/* Revenue Breakdown by Type */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-8">
         {[
           { type: 'Store Sales', value: '$12,847', pct: 27 },
@@ -83,11 +89,10 @@ export default function AdminEconomyPage() {
         ))}
       </div>
 
-      {/* Recent Transactions */}
       <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
         <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between">
           <h2 className="font-semibold text-sm text-gray-300">Recent Transactions</h2>
-          <button className="text-xs text-[#ff6b35] hover:underline">View All</button>
+          <Link href="/admin/revenue" className="text-xs text-[#ff6b35] hover:underline">View All</Link>
         </div>
         <div className="divide-y divide-white/5">
           {TRANSACTIONS.map((tx) => (
@@ -111,7 +116,8 @@ export default function AdminEconomyPage() {
         </div>
       </div>
 
-      {/* Admin Actions */}
+      {msg && <div className="mt-4 p-3 bg-green-900/30 border border-green-500/30 rounded-xl text-green-400 text-sm">{msg}</div>}
+
       <div className="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
           { label: 'Process Payouts', color: 'bg-green-500/10 border-green-500/20 text-green-400 hover:bg-green-500/20' },
@@ -119,7 +125,7 @@ export default function AdminEconomyPage() {
           { label: 'Freeze Wallet', color: 'bg-red-500/10 border-red-500/20 text-red-400 hover:bg-red-500/20' },
           { label: 'Export Report', color: 'bg-white/5 border-white/10 text-gray-300 hover:bg-white/10' },
         ].map((a) => (
-          <button key={a.label} className={`py-2.5 text-xs font-semibold rounded-xl border transition-colors ${a.color}`}>
+          <button key={a.label} onClick={() => runAction(a.label)} className={`py-2.5 text-xs font-semibold rounded-xl border transition-colors ${a.color}`}>
             {a.label}
           </button>
         ))}

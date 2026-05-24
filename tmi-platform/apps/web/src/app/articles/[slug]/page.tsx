@@ -1,5 +1,4 @@
 import { ImageSlotWrapper } from '@/components/visual-enforcement';
-import { notFound } from 'next/navigation';
 import { JsonContentRenderer } from '@/components/editorial/JsonContentRenderer';
 import { WinnerBadge } from '@/components/editorial/WinnerBadge';
 import { VoteResults } from '@/components/editorial/VoteResults';
@@ -130,11 +129,31 @@ async function getArticle(slug: string): Promise<Article | null> {
   }
 }
 
+function ArticleNotFound({ slug }: { slug: string }) {
+  return (
+    <main style={{ minHeight: "100vh", background: "#050510", color: "#fff", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "48px 24px", textAlign: "center" }}>
+      <div style={{ fontSize: 48, marginBottom: 16 }}>📰</div>
+      <div style={{ fontSize: 10, letterSpacing: 4, color: "#FFD700", fontWeight: 800, marginBottom: 12 }}>STORY LOADING</div>
+      <h1 style={{ fontSize: "clamp(1.4rem,3vw,2rem)", fontWeight: 900, marginBottom: 12, maxWidth: 560 }}>
+        This story is being prepared for the current issue
+      </h1>
+      <p style={{ fontSize: 13, color: "rgba(255,255,255,0.45)", maxWidth: 480, lineHeight: 1.7, marginBottom: 32 }}>
+        The article <strong style={{ color: "#FFD700" }}>/{slug}</strong> is queued for the magazine. Explore live rooms, the current issue, or featured stories below.
+      </p>
+      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
+        <a href="/articles" style={{ padding: "10px 22px", background: "#FFD700", color: "#050510", fontWeight: 800, fontSize: 11, borderRadius: 8, textDecoration: "none", letterSpacing: 1 }}>ALL STORIES</a>
+        <a href="/magazine" style={{ padding: "10px 22px", border: "1px solid rgba(0,255,255,0.3)", color: "#00FFFF", fontWeight: 800, fontSize: 11, borderRadius: 8, textDecoration: "none", letterSpacing: 1 }}>MAGAZINE</a>
+        <a href="/join" style={{ padding: "10px 22px", background: "#FF2DAA", color: "#fff", fontWeight: 800, fontSize: 11, borderRadius: 8, textDecoration: "none", letterSpacing: 1 }}>JOIN TMI</a>
+      </div>
+    </main>
+  );
+}
+
 export default async function ArticlePage({ params }: { params: { slug: string } }) {
   const article = await getArticle(params.slug);
 
   if (!article) {
-    notFound();
+    return <ArticleNotFound slug={params.slug} />;
   }
 
   const publishedDate = article.publishedAt

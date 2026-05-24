@@ -1,6 +1,6 @@
+"use client";
 import Link from "next/link";
-import type { Metadata } from "next";
-export const metadata: Metadata = { title: "Fan Club Dashboard · The Musician's Index" };
+import { useState } from "react";
 
 const STATS = [
   { label: "Total Members", value: "2,841", sub: "+48 this week" },
@@ -10,12 +10,24 @@ const STATS = [
 ];
 
 const MEMBERS = [
-  { name: "XR99", tier: "Inner Circle", since: "Jan 2026" },
-  { name: "K1 Flair", tier: "Ride or Die", since: "Feb 2026" },
-  { name: "SunStreak", tier: "Supporter", since: "Mar 2026" },
+  { name: "XR99",      tier: "Inner Circle", since: "Jan 2026" },
+  { name: "K1 Flair",  tier: "Ride or Die",  since: "Feb 2026" },
+  { name: "SunStreak", tier: "Supporter",     since: "Mar 2026" },
 ];
 
 export default function FanClubDashboardPage() {
+  const [showPostForm, setShowPostForm] = useState(false);
+  const [postContent, setPostContent] = useState("");
+  const [postMsg, setPostMsg] = useState("");
+
+  function submitPost() {
+    if (!postContent.trim()) return;
+    setPostMsg("Post published to fan club!");
+    setPostContent("");
+    setShowPostForm(false);
+    setTimeout(() => setPostMsg(""), 3000);
+  }
+
   return (
     <main style={{ minHeight: "100vh", background: "#05060c", color: "#fff", padding: "32px 24px 80px", fontFamily: "'Inter', sans-serif" }}>
       <div style={{ maxWidth: 1000, margin: "0 auto" }}>
@@ -43,8 +55,24 @@ export default function FanClubDashboardPage() {
             </div>
           ))}
         </div>
+        {postMsg && <div style={{ marginBottom: 14, padding: "10px 14px", background: "rgba(255,45,170,0.08)", border: "1px solid rgba(255,45,170,0.2)", borderRadius: 8, fontSize: 12, color: "#FF2DAA" }}>{postMsg}</div>}
+        {showPostForm && (
+          <div style={{ marginBottom: 16, background: "rgba(255,45,170,0.04)", border: "1px solid rgba(255,45,170,0.15)", borderRadius: 10, padding: "16px" }}>
+            <textarea
+              value={postContent}
+              onChange={e => setPostContent(e.target.value)}
+              placeholder="Write a post for your fan club..."
+              rows={3}
+              style={{ width: "100%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 8, padding: "10px 14px", color: "#fff", fontSize: 13, outline: "none", resize: "none", boxSizing: "border-box", marginBottom: 10 }}
+            />
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={submitPost} style={{ padding: "8px 18px", borderRadius: 7, background: "#FF2DAA", color: "#fff", fontWeight: 800, fontSize: 12, cursor: "pointer", border: "none" }}>Publish</button>
+              <button onClick={() => setShowPostForm(false)} style={{ padding: "8px 18px", borderRadius: 7, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.5)", fontSize: 12, cursor: "pointer" }}>Cancel</button>
+            </div>
+          </div>
+        )}
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-          <button style={{ padding: "11px 22px", borderRadius: 8, background: "#FF2DAA", color: "#fff", fontWeight: 800, fontSize: 13, cursor: "pointer", border: "none" }}>+ New Post</button>
+          <button onClick={() => setShowPostForm(true)} style={{ padding: "11px 22px", borderRadius: 8, background: "#FF2DAA", color: "#fff", fontWeight: 800, fontSize: 13, cursor: "pointer", border: "none" }}>+ New Post</button>
           <Link href="/messages" style={{ padding: "11px 22px", borderRadius: 8, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.7)", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>Message All</Link>
         </div>
       </div>

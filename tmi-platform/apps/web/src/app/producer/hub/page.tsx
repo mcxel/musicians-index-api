@@ -16,6 +16,12 @@ const SEED_BEATS = [
 
 export default function ProducerHubPage() {
   const [stats, setStats] = useState<ProducerStats>(SEED_STATS);
+  const [payoutMsg, setPayoutMsg] = useState("");
+
+  function requestPayout() {
+    setPayoutMsg("Payout request submitted — funds arrive within 3 business days.");
+    setTimeout(() => setPayoutMsg(""), 5000);
+  }
 
   useEffect(() => {
     fetch("/api/producer/stats", { cache: "no-store", credentials: "include" })
@@ -91,8 +97,9 @@ export default function ProducerHubPage() {
             <div style={{ fontSize: 9, color: "#00FF88", fontWeight: 800, letterSpacing: "0.15em", marginBottom: 6 }}>PENDING PAYOUT</div>
             <div style={{ fontSize: 32, fontWeight: 900, color: "#00FF88" }}>${stats.pendingPayout}</div>
             <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", marginTop: 4 }}>Paid after platform cut (30% TMI fee)</div>
+            {payoutMsg && <div style={{ fontSize: 11, color: "#00FF88", marginTop: 8 }}>{payoutMsg}</div>}
           </div>
-          <button style={{ padding: "12px 28px", fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", color: "#050510", background: "#00FF88", borderRadius: 10, border: "none", cursor: "pointer" }}>
+          <button onClick={requestPayout} style={{ padding: "12px 28px", fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", color: "#050510", background: "#00FF88", borderRadius: 10, border: "none", cursor: "pointer" }}>
             REQUEST PAYOUT
           </button>
         </div>

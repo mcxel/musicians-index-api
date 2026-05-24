@@ -1,14 +1,22 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export default function SettingsAccountPage() {
+  const router = useRouter();
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [status, setStatus] = useState("");
   const [delConfirm, setDelConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
-  const handlePassword = () => {
+  function confirmDelete() {
+    setDeleting(true);
+    setTimeout(() => router.push("/auth?deleted=1"), 1500);
+  }
+
+  function handlePassword() {
     if (!password || password !== confirm) { setStatus("Passwords don't match."); return; }
     if (password.length < 8) { setStatus("Minimum 8 characters."); return; }
     setStatus("Password updated successfully.");
@@ -41,7 +49,7 @@ export default function SettingsAccountPage() {
             <button onClick={() => setDelConfirm(true)} style={{ padding: "10px 22px", borderRadius: 8, background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.25)", color: "#ef4444", fontWeight: 800, fontSize: 12, cursor: "pointer" }}>Delete My Account</button>
           ) : (
             <div style={{ display: "flex", gap: 10 }}>
-              <button style={{ padding: "10px 22px", borderRadius: 8, background: "#ef4444", color: "#fff", fontWeight: 800, fontSize: 12, cursor: "pointer", border: "none" }}>Confirm Delete</button>
+              <button onClick={confirmDelete} disabled={deleting} style={{ padding: "10px 22px", borderRadius: 8, background: "#ef4444", color: "#fff", fontWeight: 800, fontSize: 12, cursor: "pointer", border: "none", opacity: deleting ? 0.6 : 1 }}>{deleting ? "Deleting..." : "Confirm Delete"}</button>
               <button onClick={() => setDelConfirm(false)} style={{ padding: "10px 22px", borderRadius: 8, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.7)", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>Cancel</button>
             </div>
           )}

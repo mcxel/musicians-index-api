@@ -21,7 +21,11 @@ export interface MemoryItem {
     | 'meet-and-greet'
     | 'event-attendance'
     | 'merchandise'
-    | 'nft';
+    | 'nft'
+    | 'sponsored';
+  sponsorId?: string;
+  ctaLabel?: string;
+  ctaAction?: string;
   contentUrl: string;
   thumbnail?: string;
   title: string;

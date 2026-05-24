@@ -1,23 +1,16 @@
-/**
- * /cities/[city]/events/page.tsx
- *
- * Events in a city
- */
+'use client';
+import { useParams, useRouter } from 'next/navigation';
 
-import React from 'react';
-import { Metadata } from 'next';
+export default function CityEventsPage() {
+  const params = useParams();
+  const router = useRouter();
+  const rawCity = params?.city;
+  const city = typeof rawCity === 'string' ? rawCity : Array.isArray(rawCity) ? rawCity[0] : '';
+  const cityName = city.replace(/-/g, ' ').toUpperCase();
 
-export const metadata: Metadata = {
-  title: 'City Events | BernoutGlobal',
-  description: 'Music events and shows',
-};
-
-export default function CityEventsPage({
-  params,
-}: {
-  params: { city: string };
-}) {
-  const cityName = params.city.replace(/-/g, ' ').toUpperCase();
+  function getTicket(eventIndex: number) {
+    router.push(`/api/stripe/checkout?priceId=price_ticket_event${eventIndex}&mode=payment&type=ticket&city=${encodeURIComponent(city)}`);
+  }
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-gray-950 via-black to-gray-950">
@@ -43,7 +36,10 @@ export default function CityEventsPage({
                 </div>
                 <div className="text-sm text-cyan-400">🎤 Hosted by Artist Name</div>
               </div>
-              <button className="px-4 py-2 rounded bg-fuchsia-600 hover:bg-fuchsia-700 text-white text-sm font-medium transition-colors self-center whitespace-nowrap">
+              <button
+                onClick={() => getTicket(i)}
+                className="px-4 py-2 rounded bg-fuchsia-600 hover:bg-fuchsia-700 text-white text-sm font-medium transition-colors self-center whitespace-nowrap"
+              >
                 Get Ticket
               </button>
             </div>

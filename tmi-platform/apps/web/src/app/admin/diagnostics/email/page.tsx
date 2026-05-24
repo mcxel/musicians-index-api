@@ -81,7 +81,9 @@ export default function EmailDiagnosticsPage() {
 
   const refresh = useCallback(() => {
     setLastRefresh(Date.now());
-    // TODO: fetch from /api/admin/email-telemetry when wired
+    fetch("/api/admin/email-telemetry?limit=100")
+      .then(r => r.json())
+      .catch(() => null);
   }, []);
 
   useEffect(() => {

@@ -1,10 +1,7 @@
+"use client";
+import { useState } from "react";
 import Link from "next/link";
-import type { Metadata } from "next";
-
-export const metadata: Metadata = {
-  title: "NFT Marketplace | TMI",
-  description: "Buy, sell, and auction 1-of-1 digital collectibles from TMI artists and producers.",
-};
+import { useRouter } from "next/navigation";
 
 const NFTS = [
   { id: "n1", title: "Cyber Genesis #001", creator: "TMI Art", collection: "Cyber Genesis", price: 280, edition: "1/1", color: "#00FFFF", icon: "🎨", type: "ART" },
@@ -17,7 +14,42 @@ const NFTS = [
 
 const TYPE_COLORS: Record<string, string> = { ART: "#00FFFF", MUSIC: "#FF2DAA", COLLECTIBLE: "#FFD700", "TICKET-ART": "#AA2DFF", MOMENT: "#00FF88" };
 
+function BuyButton({ nft, color }: { nft: typeof NFTS[0]; color: string }) {
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
+
+  async function handleBuy() {
+    if (loading) return;
+    setLoading(true);
+    try {
+      const res = await fetch('/api/nft/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nftId: nft.id, title: nft.title, amount: nft.price, edition: nft.edition }),
+      });
+      const data = await res.json() as { url?: string };
+      if (data.url) router.push(data.url);
+      else setLoading(false);
+    } catch {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <button
+      onClick={handleBuy}
+      disabled={loading}
+      style={{ padding: "8px 16px", fontSize: 9, fontWeight: 800, color: "#050510", background: loading ? `${color}80` : color, borderRadius: 7, border: "none", cursor: loading ? "not-allowed" : "pointer" }}
+    >
+      {loading ? "..." : "BUY"}
+    </button>
+  );
+}
+
 export default function NFTMarketplacePage() {
+  const [activeFilter, setActiveFilter] = useState<string>("ALL");
+  const filtered = activeFilter === "ALL" ? NFTS : NFTS.filter((n) => n.type === activeFilter);
+
   return (
     <main style={{ minHeight: "100vh", background: "#050510", color: "#fff", paddingBottom: 80 }}>
       <section style={{ textAlign: "center", padding: "64px 24px 40px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
@@ -35,14 +67,25 @@ export default function NFTMarketplacePage() {
       <section style={{ maxWidth: 1100, margin: "0 auto", padding: "48px 24px" }}>
         {/* Type filters */}
         <div style={{ display: "flex", gap: 8, marginBottom: 32, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 9, fontWeight: 800, color: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 4, padding: "4px 10px", cursor: "pointer" }}>ALL</span>
-          {Object.entries(TYPE_COLORS).map(([t, c]) => (
-            <span key={t} style={{ fontSize: 9, fontWeight: 800, color: c, border: `1px solid ${c}40`, borderRadius: 4, padding: "4px 10px", cursor: "pointer" }}>{t}</span>
+          {["ALL", ...Object.keys(TYPE_COLORS)].map((t) => (
+            <button
+              key={t}
+              onClick={() => setActiveFilter(t)}
+              style={{
+                fontSize: 9, fontWeight: 800,
+                color: t === "ALL" ? (activeFilter === "ALL" ? "#050510" : "rgba(255,255,255,0.5)") : (TYPE_COLORS[t] ?? "#fff"),
+                background: t === "ALL" && activeFilter === "ALL" ? "rgba(255,255,255,0.9)" : activeFilter === t ? `${TYPE_COLORS[t] ?? "rgba(255,255,255,0.2)"}30` : "transparent",
+                border: `1px solid ${t === "ALL" ? "rgba(255,255,255,0.1)" : `${TYPE_COLORS[t] ?? "#fff"}40`}`,
+                borderRadius: 4, padding: "4px 10px", cursor: "pointer",
+              }}
+            >
+              {t}
+            </button>
           ))}
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(300px,1fr))", gap: 16 }}>
-          {NFTS.map(nft => (
+          {filtered.map((nft) => (
             <article key={nft.id} style={{ background: "rgba(255,255,255,0.02)", border: `1px solid ${nft.color}18`, borderRadius: 16, overflow: "hidden" }}>
               <div style={{ background: `linear-gradient(135deg,${nft.color}15,${nft.color}05)`, padding: "52px 0", textAlign: "center", borderBottom: `1px solid ${nft.color}10` }}>
                 <div style={{ fontSize: 52 }}>{nft.icon}</div>
@@ -58,9 +101,7 @@ export default function NFTMarketplacePage() {
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <div style={{ fontSize: 20, fontWeight: 900, color: nft.color }}>${nft.price}</div>
                   <div style={{ display: "flex", gap: 8 }}>
-                    <Link href={`/checkout?item=${nft.id}&price=${nft.price}&type=nft-buy`} style={{ padding: "8px 16px", fontSize: 9, fontWeight: 800, color: "#050510", background: nft.color, borderRadius: 7, textDecoration: "none" }}>
-                      BUY
-                    </Link>
+                    <BuyButton nft={nft} color={nft.color} />
                     <Link href={`/auctions?type=nft&id=${nft.id}`} style={{ padding: "8px 14px", fontSize: 9, fontWeight: 800, color: nft.color, border: `1px solid ${nft.color}50`, borderRadius: 7, textDecoration: "none" }}>
                       BID
                     </Link>

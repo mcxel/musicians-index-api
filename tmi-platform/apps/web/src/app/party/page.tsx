@@ -1,39 +1,66 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 const MOCK_PARTY = {
   id: 'party-1',
   leader: 'You',
   members: [
-    { id: '1', name: 'You', role: 'LEADER', status: 'online' },
-    { id: '2', name: 'DJ Kenzo', role: 'MEMBER', status: 'online' },
-    { id: '3', name: 'Amara Osei', role: 'MEMBER', status: 'online' },
+    { id: '1', name: 'You',       role: 'LEADER', status: 'online' },
+    { id: '2', name: 'DJ Kenzo',  role: 'MEMBER', status: 'online' },
+    { id: '3', name: 'Amara Osei',role: 'MEMBER', status: 'online' },
   ],
   currentRoom: 'Theater Lobby',
   maxSize: 8,
 };
 
 export default function PartyPage() {
+  const router = useRouter();
   const [inviteInput, setInviteInput] = useState('');
   const [inParty, setInParty] = useState(true);
+  const [joinCode, setJoinCode] = useState('');
+  const [showJoin, setShowJoin] = useState(false);
+  const [msg, setMsg] = useState('');
+
+  function showMsg(text: string) {
+    setMsg(text);
+    setTimeout(() => setMsg(''), 3000);
+  }
+
+  function sendInvite() {
+    if (!inviteInput.trim()) return;
+    showMsg(`Invite sent to ${inviteInput}`);
+    setInviteInput('');
+  }
+
+  function joinWithCode() {
+    if (!joinCode.trim()) return;
+    setInParty(true);
+    setShowJoin(false);
+    showMsg('Joined party!');
+  }
 
   if (!inParty) {
     return (
       <main className="min-h-screen bg-[#0a0a0f] text-white px-6 py-10 max-w-2xl mx-auto">
         <h1 className="text-3xl font-bold text-[#ff6b35] mb-2">Party</h1>
         <p className="text-gray-400 mb-10">Create or join a party to explore rooms together.</p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <button
-            onClick={() => setInParty(true)}
-            className="bg-[#ff6b35] hover:bg-[#ff6b35]/80 text-white font-bold py-4 rounded-xl transition-colors"
-          >
-            Create Party
-          </button>
-          <button className="bg-white/5 hover:bg-white/10 border border-white/10 text-white font-bold py-4 rounded-xl transition-colors">
-            Join with Code
-          </button>
-        </div>
+        {msg && <div className="mb-4 p-3 rounded-lg text-sm text-[#ff6b35] bg-[#ff6b35]/10 border border-[#ff6b35]/20">{msg}</div>}
+        {showJoin ? (
+          <div className="mb-4">
+            <input value={joinCode} onChange={e => setJoinCode(e.target.value)} placeholder="Enter party code..." className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-[#ff6b35] mb-3" />
+            <div className="flex gap-2">
+              <button onClick={joinWithCode} className="flex-1 bg-[#ff6b35] hover:bg-[#ff6b35]/80 text-white font-bold py-3 rounded-xl transition-colors">Join</button>
+              <button onClick={() => setShowJoin(false)} className="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-bold py-3 rounded-xl transition-colors">Cancel</button>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <button onClick={() => setInParty(true)} className="bg-[#ff6b35] hover:bg-[#ff6b35]/80 text-white font-bold py-4 rounded-xl transition-colors">Create Party</button>
+            <button onClick={() => setShowJoin(true)} className="bg-white/5 hover:bg-white/10 border border-white/10 text-white font-bold py-4 rounded-xl transition-colors">Join with Code</button>
+          </div>
+        )}
       </main>
     );
   }
@@ -42,13 +69,10 @@ export default function PartyPage() {
     <main className="min-h-screen bg-[#0a0a0f] text-white px-6 py-10 max-w-2xl mx-auto">
       <div className="flex items-center justify-between mb-2">
         <h1 className="text-3xl font-bold text-[#ff6b35]">Your Party</h1>
-        <span className="text-xs bg-green-500/20 text-green-400 px-3 py-1 rounded-full font-semibold">
-          ACTIVE
-        </span>
+        <span className="text-xs bg-green-500/20 text-green-400 px-3 py-1 rounded-full font-semibold">ACTIVE</span>
       </div>
-      <p className="text-gray-400 mb-8">
-        Currently in: <span className="text-white font-semibold">{MOCK_PARTY.currentRoom}</span>
-      </p>
+      <p className="text-gray-400 mb-8">Currently in: <span className="text-white font-semibold">{MOCK_PARTY.currentRoom}</span></p>
+      {msg && <div className="mb-4 p-3 rounded-lg text-sm text-[#ff6b35] bg-[#ff6b35]/10 border border-[#ff6b35]/20">{msg}</div>}
 
       {/* Members */}
       <div className="bg-white/5 border border-white/10 rounded-2xl p-5 mb-6">
@@ -96,7 +120,10 @@ export default function PartyPage() {
             onChange={(e) => setInviteInput(e.target.value)}
             className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-[#ff6b35]"
           />
-          <button className="px-4 py-2 bg-[#ff6b35] hover:bg-[#ff6b35]/80 text-white text-sm font-semibold rounded-lg transition-colors">
+          <button
+            onClick={sendInvite}
+            className="px-4 py-2 bg-[#ff6b35] hover:bg-[#ff6b35]/80 text-white text-sm font-semibold rounded-lg transition-colors"
+          >
             Invite
           </button>
         </div>
@@ -104,7 +131,7 @@ export default function PartyPage() {
 
       {/* Actions */}
       <div className="grid grid-cols-2 gap-3">
-        <button className="py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-sm font-semibold transition-colors">
+        <button onClick={() => router.push("/arena")} className="py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-sm font-semibold transition-colors">
           Change Room
         </button>
         <button

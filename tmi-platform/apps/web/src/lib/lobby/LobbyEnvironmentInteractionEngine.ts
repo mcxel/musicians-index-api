@@ -1,4 +1,4 @@
-﻿import { LobbyState } from './LobbyStateEngine';
+import { LobbyState } from './LobbyStateEngine';
 import { emitSystemEvent } from '@/lib/events/systemEventBus';
 
 export class LobbyEnvironmentInteractionEngine {

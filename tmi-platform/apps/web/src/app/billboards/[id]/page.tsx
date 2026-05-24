@@ -60,9 +60,9 @@ export default async function BillboardPage({ params }: BillboardPageProps) {
           <Link href={`/artists/${billboard.artistSlug}`} style={{ color: "#00FFFF" }}>Artist profile</Link>
           <Link href={`/articles/artist/${billboard.linkedArticleSlug ?? billboard.artistSlug}`} style={{ color: "#FF2DAA" }}>Linked article</Link>
           <Link href={`/venues/${billboard.linkedVenueSlug ?? "neon-palace"}`} style={{ color: "#FFD700" }}>Linked venue/show</Link>
-          <Link href={share?.shareLinks.x ?? "#"} style={{ color: "#8be9ff" }}>Share on X</Link>
-          <Link href={share?.shareLinks.facebook ?? "#"} style={{ color: "#9dc4ff" }}>Share on Facebook</Link>
-          <Link href={share?.shareLinks.whatsapp ?? "#"} style={{ color: "#9dffb2" }}>Share on WhatsApp</Link>
+          {share && <Link href={share.shareLinks.x} style={{ color: "#8be9ff" }}>Share on X</Link>}
+          {share && <Link href={share.shareLinks.facebook} style={{ color: "#9dc4ff" }}>Share on Facebook</Link>}
+          {share && <Link href={share.shareLinks.whatsapp} style={{ color: "#9dffb2" }}>Share on WhatsApp</Link>}
         </div>
       </div>
     </main>

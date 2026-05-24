@@ -27,6 +27,7 @@ import {
   startCountdown,
 } from "@/lib/lobby/lobbyPresenceEngine";
 import { enqueueBubble, pruneExpiredBubbles, type BubbleMessage } from "@/lib/live/bubbleQueueEngine";
+import SeatProfileOverlay, { type SeatProfile } from "@/components/live/SeatProfileOverlay";
 
 type LobbyShellProps = {
   slug: string;
@@ -39,7 +40,21 @@ export default function LobbyShell({ slug }: LobbyShellProps) {
   const [chatLog, setChatLog] = useState<string[]>([]);
   const [bubbles, setBubbles] = useState<BubbleMessage[]>([]);
   const [safetyBlocks, setSafetyBlocks] = useState<string[]>([]);
+  const [openProfile, setOpenProfile] = useState<SeatProfile | null>(null);
 
+  const handleSeatSelect = (seatId: string) => {
+    setSelectedSeatId(seatId);
+    const seat = map.seats.find((s) => s.id === seatId);
+    if (seat && seat.state !== "empty" && seat.occupantName) {
+      setOpenProfile({
+        id: seat.id,
+        name: seat.occupantName,
+        role: seat.state === "bot-held" ? "Ghost Listener" : seat.state === "live performer" ? "Performer" : "Fan",
+        energy: seat.state === "live performer" ? "HIGH" : seat.state === "bot-held" ? "LOW" : "MID",
+        isBot: seat.state === "bot-held",
+      });
+    }
+  };
   const roomName = useMemo(() => slug.replace(/-/g, " ").toUpperCase(), [slug]);
 
   useEffect(() => {
@@ -109,7 +124,7 @@ export default function LobbyShell({ slug }: LobbyShellProps) {
       <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: 14, maxWidth: 1300, margin: "0 auto" }}>
         <div style={{ display: "grid", gap: 10 }}>
           <LobbyScreen roomName={roomName} headline="Show starts soon. Claim your seat now." />
-          <LobbySeatGrid seats={map.seats} selectedSeatId={selectedSeatId} onSelectSeat={setSelectedSeatId} />
+          <LobbySeatGrid seats={map.seats} selectedSeatId={selectedSeatId} onSelectSeat={handleSeatSelect} />
           <LobbySeatSelector
             selectedSeatId={selectedSeatId}
             onClaim={handleClaim}
@@ -152,6 +167,7 @@ export default function LobbyShell({ slug }: LobbyShellProps) {
           <BubbleQueueHUD bubbles={bubbles} />
         </aside>
       </div>
+      <SeatProfileOverlay profile={openProfile} onClose={() => setOpenProfile(null)} />
     </main>
   );
 }

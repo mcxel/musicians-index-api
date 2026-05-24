@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
+import BeatJourneyWidget from '@/components/beats/BeatJourneyWidget';
 
 interface MeUser { id: string; email: string; name?: string; role: string; tier?: string; }
 
@@ -107,7 +108,7 @@ export default function PerformerDashboardPage() {
 
         {/* GO LIVE hero */}
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }}
-          style={{ background: 'linear-gradient(135deg, rgba(255,45,170,0.15), rgba(170,45,255,0.12))', border: '1.5px solid rgba(255,45,170,0.4)', borderRadius: 16, padding: '24px', marginBottom: 28, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 20, flexWrap: 'wrap' }}>
+          style={{ background: 'linear-gradient(135deg, rgba(255,45,170,0.15), rgba(170,45,255,0.12))', border: '1.5px solid rgba(255,45,170,0.4)', borderRadius: 16, padding: '24px', marginBottom: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 20, flexWrap: 'wrap' }}>
           <div>
             <div style={{ fontSize: 9, letterSpacing: '0.3em', color: '#FF2DAA', fontWeight: 800, marginBottom: 6 }}>🔴 READY TO PERFORM</div>
             <div style={{ fontSize: 22, fontWeight: 900 }}>Enter Your Control Room</div>
@@ -118,6 +119,11 @@ export default function PerformerDashboardPage() {
             <Link href="/hub/performer" style={{ padding: '13px 20px', background: 'rgba(170,45,255,0.15)', border: '1px solid rgba(170,45,255,0.4)', borderRadius: 9, color: '#AA2DFF', fontWeight: 800, fontSize: 13, textDecoration: 'none', whiteSpace: 'nowrap' }}>CONTROL ROOM</Link>
           </div>
         </motion.div>
+
+        {/* Beat Journey trust signal */}
+        <div style={{ marginBottom: 28 }}>
+          <BeatJourneyWidget compact />
+        </div>
 
         {/* Primary Actions */}
         <div style={{ marginBottom: 32 }}>

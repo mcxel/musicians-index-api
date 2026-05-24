@@ -1,4 +1,4 @@
-﻿export interface BreachResponseContract {
+export interface BreachResponseContract {
   startBreachResponse(input: {
     moduleId: string;
     incidentId: string;

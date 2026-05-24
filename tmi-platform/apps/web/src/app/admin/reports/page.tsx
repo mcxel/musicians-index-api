@@ -1,9 +1,10 @@
+"use client";
 import Link from "next/link";
-import type { Metadata } from "next";
+import { useState } from "react";
 
-export const metadata: Metadata = { title: "Reports | TMI Admin" };
+type Report = { id: string; title: string; type: string; date: string; status: string; color: string };
 
-const REPORTS = [
+const SEED: Report[] = [
   { id: "r1", title: "Weekly Revenue Summary",     type: "REVENUE",    date: "2026-04-21", status: "READY",   color: "#FFD700" },
   { id: "r2", title: "User Growth — April 2026",   type: "USERS",      date: "2026-04-20", status: "READY",   color: "#00FFFF" },
   { id: "r3", title: "Battle & Cypher Engagement", type: "ENGAGEMENT", date: "2026-04-19", status: "READY",   color: "#FF2DAA" },
@@ -13,6 +14,13 @@ const REPORTS = [
 ];
 
 export default function AdminReportsPage() {
+  const [msg, setMsg] = useState("");
+
+  function download(title: string) {
+    setMsg(`Downloading: ${title}`);
+    setTimeout(() => setMsg(""), 3000);
+  }
+
   return (
     <main style={{ minHeight: "100vh", background: "#050510", color: "#fff", paddingBottom: 80 }}>
       <div style={{ maxWidth: 1100, margin: "0 auto", padding: "32px 24px" }}>
@@ -23,7 +31,6 @@ export default function AdminReportsPage() {
         <h1 style={{ fontSize: 24, fontWeight: 900, marginTop: 20, marginBottom: 4 }}>Reports</h1>
         <p style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginBottom: 32 }}>Platform-wide reports for revenue, users, engagement, content, and bots.</p>
 
-        {/* Quick links */}
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 36 }}>
           {[
             { label: "Revenue", href: "/admin/revenue", color: "#FFD700" },
@@ -37,10 +44,11 @@ export default function AdminReportsPage() {
           ))}
         </div>
 
-        {/* Report list */}
+        {msg && <div style={{ marginBottom: 16, padding: "10px 14px", background: "rgba(0,255,136,0.08)", border: "1px solid rgba(0,255,136,0.2)", borderRadius: 8, fontSize: 12, color: "#00FF88" }}>{msg}</div>}
+
         <div style={{ fontSize: 9, letterSpacing: "0.2em", color: "rgba(255,255,255,0.35)", fontWeight: 700, marginBottom: 16 }}>ALL REPORTS</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {REPORTS.map(report => (
+          {SEED.map(report => (
             <div key={report.id} style={{ display: "flex", gap: 14, alignItems: "center", background: "rgba(255,255,255,0.02)", border: `1px solid ${report.color}14`, borderRadius: 12, padding: "16px 20px", flexWrap: "wrap" }}>
               <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: "0.1em", color: report.color, border: `1px solid ${report.color}40`, borderRadius: 4, padding: "3px 8px", flexShrink: 0 }}>
                 {report.type}
@@ -53,7 +61,7 @@ export default function AdminReportsPage() {
                 {report.status}
               </span>
               {report.status === "READY" && (
-                <button style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.1em", color: "rgba(255,255,255,0.35)", background: "none", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 6, padding: "4px 12px", cursor: "pointer" }}>
+                <button onClick={() => download(report.title)} style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.1em", color: "rgba(255,255,255,0.35)", background: "none", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 6, padding: "4px 12px", cursor: "pointer" }}>
                   DOWNLOAD
                 </button>
               )}

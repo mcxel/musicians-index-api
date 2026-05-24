@@ -18,12 +18,18 @@ generator client {
 
 // User roles for implementing Role-Based Access Control (RBAC)
 enum Role {
-  USER // Standard user, can consume content
-  ARTIST // An artist with a public profile
-  STAFF // Can manage content, but not system settings
-  ADMIN // Full administrative access
-  JUDGE // A judge for competitions
-  SPONSOR // A sponsor with access to specific dashboards
+  USER       // Generic account — pre-onboarding
+  FAN        // Consumer: watches, votes, collects
+  ARTIST     // Creator with public profile, beat lab, live access
+  PERFORMER  // Live battle performer
+  SPONSOR    // Brand sponsorships and contest contributions
+  ADVERTISER // Ad campaign buyer
+  VENUE      // Event venue and booking host
+  WRITER     // Editorial content creator
+  PROMOTER   // Ticket sales and event promoter
+  STAFF      // Can manage content, not system settings
+  ADMIN      // Full administrative access
+  JUDGE      // Competition judge
 }
 
 enum OnboardingState {
@@ -45,6 +51,10 @@ model User {
   acceptedOriginalityAgreementAt DateTime?
   canSubmitOfficialPlatformLinks Boolean         @default(false)
   lastSeenAt                     DateTime?
+  tier                           String    @default("FREE")
+  displayName                    String?   @map("display_name")
+  userRef                        String?   @map("user_ref")
+  userCreatedAt                  DateTime  @default(now()) @map("user_created_at")
   accounts                       Account[]
   sessions                       Session[]
 
@@ -112,6 +122,33 @@ model User {
   bookingRequestsAsVenue BookingRequest[]    @relation("VenueBookingRequests")
   bookingOffersAsArtist  BookingOffer[]      @relation("ArtistBookingOffers")
   bookingOffersAsVenue   BookingOffer[]      @relation("VenueBookingOffers")
+
+  // Social Graph
+  friendshipsAsRequester Friendship[]         @relation("FriendshipRequester")
+  friendshipsAsAddressee Friendship[]         @relation("FriendshipAddressee")
+
+  // Invites
+  roomInvitesSent        RoomInvite[]         @relation("RoomInviteSender")
+  roomInvitesReceived    RoomInvite[]         @relation("RoomInviteRecipient")
+  partyInvitesSent       PartyInvite[]        @relation("PartyInviteSender")
+  partyInvitesReceived   PartyInvite[]        @relation("PartyInviteRecipient")
+
+  // Advertising
+  adCreatives            AdCreative[]
+  adCampaigns            AdCampaign[]
+
+  // Auctions
+  auctionsListed         Auction[]            @relation("AuctionSeller")
+  auctionBidsPlaced      AuctionBid[]         @relation("AuctionBidder")
+
+  // Battles
+  battleVotesCast        BattleVote[]         @relation("BattleVoter")
+
+  // Tickets
+  ticketScansPerformed   TicketScan[]         @relation("TicketScanner")
+
+  // Vault
+  vaultDownloadTokens    VaultDownloadToken[]
 }
 
 model Account {
@@ -492,6 +529,7 @@ model Ticket {
   checkedInAt DateTime?
   checkIns    CheckIn[]
   refunds     Refund[]
+  scans       TicketScan[]
 }
 
 model CheckIn {
@@ -952,8 +990,9 @@ model Wallet {
   stripeAccountId  String?
   stripeOnboarded  Boolean       @default(false)
   fanCredits       Int           @default(0)
-  transactions     Transaction[]
-  payouts          Payout[]
+  transactions        Transaction[]
+  payouts             Payout[]
+  walletTransactions  WalletTransaction[]
 }
 
 model Transaction {
@@ -1142,6 +1181,7 @@ model Battle {
   voteCount1    Int          @default(0)
   voteCount2    Int          @default(0)
   createdAt     DateTime     @default(now())
+  votes         BattleVote[]
 }
 
 model RankEntry {
@@ -1733,6 +1773,7 @@ model Room {
   sections Section[]
   sessions RoomSession[]
   members  RoomMember[]
+  invites  RoomInvite[]
 
   @@map("rooms")
 }
@@ -1769,7 +1810,8 @@ model Lobby {
   level    Int     @default(1)
   
   displayItems LobbyDisplayItem[]
-  
+  partyInvites PartyInvite[]
+
   @@map("lobbies")
 }
 
@@ -1861,6 +1903,7 @@ model Party {
 
   leader    User          @relation(fields: [leaderId], references: [id])
   members   PartyMember[]
+  invites   PartyInvite[]
 
   @@map("parties")
 }
@@ -2196,4 +2239,226 @@ model BookingRules {
   updatedAt             DateTime     @updatedAt
 
   @@map("booking_rules")
+}
+
+// =============================================================================
+// MISSING MODELS — required by apps/api services
+// =============================================================================
+
+// -- Social Graph -------------------------------------------------------------
+
+model Friendship {
+  id          String   @id @default(cuid())
+  requesterId String
+  requester   User     @relation("FriendshipRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  addresseeId String
+  addressee   User     @relation("FriendshipAddressee", fields: [addresseeId], references: [id], onDelete: Cascade)
+  status      String   @default("pending") // pending | accepted | blocked
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([requesterId, addresseeId])
+  @@map("friendships")
+}
+
+// -- Invites ------------------------------------------------------------------
+
+model RoomInvite {
+  id          String    @id @default(cuid())
+  roomId      String
+  room        Room      @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  senderId    String
+  sender      User      @relation("RoomInviteSender", fields: [senderId], references: [id], onDelete: Cascade)
+  recipientId String
+  recipient   User      @relation("RoomInviteRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+  status      String    @default("pending") // pending | accepted | declined | expired
+  createdAt   DateTime  @default(now())
+  acceptedAt  DateTime?
+  respondedAt DateTime?
+
+  @@map("room_invites")
+}
+
+model PartyInvite {
+  id          String    @id @default(cuid())
+  senderId    String
+  sender      User      @relation("PartyInviteSender", fields: [senderId], references: [id], onDelete: Cascade)
+  recipientId String
+  recipient   User      @relation("PartyInviteRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+  partyId     String?
+  party       Party?    @relation(fields: [partyId], references: [id], onDelete: SetNull)
+  lobbyId     String?
+  lobby       Lobby?    @relation(fields: [lobbyId], references: [id], onDelete: SetNull)
+  inviteType  String    @default("party") // party | lobby
+  status      String    @default("pending") // pending | accepted | declined
+  createdAt   DateTime  @default(now())
+  acceptedAt  DateTime?
+  respondedAt DateTime?
+
+  @@map("party_invites")
+}
+
+// -- Advertising --------------------------------------------------------------
+
+model AdCreative {
+  id           String      @id @default(cuid())
+  advertiserId String
+  advertiser   User        @relation(fields: [advertiserId], references: [id], onDelete: Cascade)
+  name         String
+  type         String      // BANNER | VIDEO | NATIVE
+  fileUrl      String
+  clickUrl     String
+  altText      String?
+  width        Int?
+  height       Int?
+  status       String      @default("pending") // pending | approved | rejected
+  reviewNote   String?
+  createdAt    DateTime    @default(now())
+  campaigns    AdCampaign[]
+
+  @@map("ad_creatives")
+}
+
+model AdCampaign {
+  id             String       @id @default(cuid())
+  advertiserId   String
+  advertiser     User         @relation(fields: [advertiserId], references: [id], onDelete: Cascade)
+  name           String
+  creativeId     String
+  creative       AdCreative   @relation(fields: [creativeId], references: [id])
+  slot           String       // billboard | sidebar | pre-roll | overlay
+  budgetCents    Int          @default(0)
+  spentCents     Int          @default(0)
+  startDate      String
+  endDate        String
+  targeting      Json         @default("{}")
+  maxImpressions Int?
+  maxClicks      Int?
+  status         String       @default("draft") // draft | pending_review | approved | rejected | live | paused | completed
+  createdAt      DateTime     @default(now())
+  impressions    AdImpression[]
+  clicks         AdClick[]
+
+  @@map("ad_campaigns")
+}
+
+model AdImpression {
+  id          String    @id @default(cuid())
+  campaignId  String
+  campaign    AdCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  userId      String?
+  ip          String?
+  userAgent   String?
+  createdAt   DateTime  @default(now())
+
+  @@map("ad_impressions")
+}
+
+model AdClick {
+  id          String    @id @default(cuid())
+  campaignId  String
+  campaign    AdCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  userId      String?
+  ip          String?
+  userAgent   String?
+  createdAt   DateTime  @default(now())
+
+  @@map("ad_clicks")
+}
+
+// -- Auctions -----------------------------------------------------------------
+
+model Auction {
+  id           String       @id @default(cuid())
+  title        String
+  description  String?
+  assetType    String       // BEAT | NFT | MERCH | TICKET | MOMENT
+  assetRef     String?
+  sellerId     String
+  seller       User         @relation("AuctionSeller", fields: [sellerId], references: [id])
+  reservePrice Int          @default(0)
+  buyoutPrice  Int?
+  currentBid   Int          @default(0)
+  endsAt       DateTime
+  status       String       @default("SCHEDULED") // SCHEDULED | ACTIVE | ENDING_SOON | ENDED | CANCELLED
+  createdAt    DateTime     @default(now())
+  bids         AuctionBid[]
+
+  @@map("auctions")
+}
+
+model AuctionBid {
+  id          String   @id @default(cuid())
+  auctionId   String
+  auction     Auction  @relation(fields: [auctionId], references: [id], onDelete: Cascade)
+  bidderId    String
+  bidder      User     @relation("AuctionBidder", fields: [bidderId], references: [id])
+  amountCents Int
+  isWinning   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@map("auction_bids")
+}
+
+// -- Battle Votes -------------------------------------------------------------
+
+model BattleVote {
+  id        String   @id @default(cuid())
+  battleId  String
+  battle    Battle   @relation(fields: [battleId], references: [id], onDelete: Cascade)
+  voterId   String
+  voter     User     @relation("BattleVoter", fields: [voterId], references: [id])
+  votedFor  Int      // 1 or 2 (contestant index)
+  createdAt DateTime @default(now())
+
+  @@unique([battleId, voterId])
+  @@map("battle_votes")
+}
+
+// -- Wallet Transactions ------------------------------------------------------
+
+model WalletTransaction {
+  id          String   @id @default(cuid())
+  walletId    String
+  wallet      Wallet   @relation(fields: [walletId], references: [id])
+  amount      Int
+  netAmount   Int
+  category    String   // PURCHASE_BEAT | PURCHASE_NFT | CREDIT_ROYALTY | CREDIT_REFUND | etc.
+  referenceId String
+  direction   String   // debit | credit
+  status      String   @default("COMPLETED") // COMPLETED | PENDING | REFUNDED
+  createdAt   DateTime @default(now())
+
+  @@map("wallet_transactions")
+}
+
+// -- Ticket Scanning ----------------------------------------------------------
+
+model TicketScan {
+  id            String   @id @default(cuid())
+  ticketId      String?
+  ticket        Ticket?  @relation(fields: [ticketId], references: [id])
+  scannerUserId String
+  scanner       User     @relation("TicketScanner", fields: [scannerUserId], references: [id])
+  isValid       Boolean
+  reason        String?
+  createdAt     DateTime @default(now())
+
+  @@map("ticket_scans")
+}
+
+// -- Vault Download Tokens ----------------------------------------------------
+
+model VaultDownloadToken {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assetType     String   // BEAT | NFT
+  assetId       String
+  maxDownloads  Int      @default(3)
+  downloadCount Int      @default(0)
+  expiresAt     DateTime
+  createdAt     DateTime @default(now())
+
+  @@map("vault_download_tokens")
 }

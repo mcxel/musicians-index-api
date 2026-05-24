@@ -1,4 +1,4 @@
-﻿import { StimulationEngine } from '@tmi/module-runtime';
+import { StimulationEngine } from '@tmi/module-runtime';
 import { MODULE_CONFIG, CHARGE_LOGIC_BEHAVIORS } from '@/config/module.config';
 export const moduleStimulation = new StimulationEngine(
   MODULE_CONFIG.id,

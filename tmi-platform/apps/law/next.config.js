@@ -1,8 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  experimental: {
-    typedRoutes: true,
-  },
+  experimental: {},
   env: {
     NEXT_PUBLIC_MODULE_ID: "law",
     NEXT_PUBLIC_MODULE_NAME: "Danika's Law",

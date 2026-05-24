@@ -20,8 +20,6 @@ const AUTH_WHITELIST = [
   '/api/auth',
   '/health',
   '/support/account-recovery',
-  '/api/admin/phase1-invite',
-  '/api/admin/debug',
 ];
 
 function matchesAny(pathname: string, prefixes: string[]): boolean {
@@ -30,6 +28,53 @@ function matchesAny(pathname: string, prefixes: string[]): boolean {
 
 export function middleware(req: NextRequest) {
   const { pathname, search } = req.nextUrl;
+
+  const isExplicitAdminPath =
+    pathname === '/admin' ||
+    pathname.startsWith('/admin/') ||
+    pathname === '/api/admin' ||
+    pathname.startsWith('/api/admin/');
+
+  if (isExplicitAdminPath) {
+    const sessionCookie = req.cookies.get('tmi_session')?.value;
+    const tokenRole = (req.cookies.get('tmi_role')?.value ?? '').toUpperCase();
+
+    if (!sessionCookie) {
+      if (pathname.startsWith('/api/')) {
+        const denied = NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        denied.cookies.set('tmi_role', 'USER', { path: '/', httpOnly: false });
+        denied.cookies.set('tmi_user_email', '', { path: '/', maxAge: 0, httpOnly: false });
+        denied.cookies.set('tmi_session', '', { path: '/', maxAge: 0, httpOnly: false });
+        denied.cookies.set('tmi_session_id', '', { path: '/', maxAge: 0, httpOnly: false });
+        return denied;
+      }
+      const signin = new URL('/auth', req.url);
+      signin.searchParams.set('next', pathname);
+      const redirected = NextResponse.redirect(signin, 307);
+      redirected.cookies.set('tmi_role', 'USER', { path: '/', httpOnly: false });
+      redirected.cookies.set('tmi_user_email', '', { path: '/', maxAge: 0, httpOnly: false });
+      redirected.cookies.set('tmi_session', '', { path: '/', maxAge: 0, httpOnly: false });
+      redirected.cookies.set('tmi_session_id', '', { path: '/', maxAge: 0, httpOnly: false });
+      return redirected;
+    }
+
+    if (tokenRole !== 'ADMIN' && tokenRole !== 'STAFF') {
+      if (pathname.startsWith('/api/')) {
+        const denied = NextResponse.json({ error: 'Forbidden: admin role required' }, { status: 403 });
+        denied.cookies.set('tmi_role', 'USER', { path: '/', httpOnly: false });
+        denied.cookies.set('tmi_user_email', '', { path: '/', maxAge: 0, httpOnly: false });
+        denied.cookies.set('tmi_session', '', { path: '/', maxAge: 0, httpOnly: false });
+        denied.cookies.set('tmi_session_id', '', { path: '/', maxAge: 0, httpOnly: false });
+        return denied;
+      }
+      const safe = NextResponse.redirect(new URL('/home/1', req.url), 307);
+      safe.cookies.set('tmi_role', 'USER', { path: '/', httpOnly: false });
+      safe.cookies.set('tmi_user_email', '', { path: '/', maxAge: 0, httpOnly: false });
+      safe.cookies.set('tmi_session', '', { path: '/', maxAge: 0, httpOnly: false });
+      safe.cookies.set('tmi_session_id', '', { path: '/', maxAge: 0, httpOnly: false });
+      return safe;
+    }
+  }
 
   if (pathname === '/account/recovery') {
     return NextResponse.redirect(
@@ -72,9 +117,17 @@ export function middleware(req: NextRequest) {
 
     if (isAdmin && tokenRole !== 'ADMIN' && tokenRole !== 'STAFF') {
       if (pathname.startsWith('/api/')) {
-        return NextResponse.json({ error: 'Forbidden: admin role required' }, { status: 403 });
+        const denied = NextResponse.json({ error: 'Forbidden: admin role required' }, { status: 403 });
+        denied.cookies.set('tmi_role', 'USER', { path: '/', httpOnly: false });
+        denied.cookies.set('tmi_user_email', '', { path: '/', maxAge: 0, httpOnly: false });
+        return denied;
       }
-      return NextResponse.redirect(new URL('/home/1', req.url), 307);
+
+      const safe = NextResponse.redirect(new URL('/home/1', req.url), 307);
+      // sanitize leaked role/email cookies for non-admin session attempting admin routes
+      safe.cookies.set('tmi_role', 'USER', { path: '/', httpOnly: false });
+      safe.cookies.set('tmi_user_email', '', { path: '/', maxAge: 0, httpOnly: false });
+      return safe;
     }
   }
 

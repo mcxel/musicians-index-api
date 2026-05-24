@@ -84,6 +84,7 @@ export default function SponsorDashboardPage() {
           <div style={{ fontSize: 16, fontWeight: 900, marginTop: 2 }}>{user?.name ?? 'Sponsor'}</div>
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
+          <Link href="/hub/sponsor" style={{ fontSize: 10, color: '#FF2DAA', border: '1px solid rgba(255,45,170,0.3)', padding: '5px 12px', borderRadius: 6, textDecoration: 'none', fontWeight: 700, letterSpacing: '0.1em' }}>SPONSOR HUB</Link>
           <Link href="/admin/owner-dashboard" style={{ fontSize: 10, color: '#FFD700', border: '1px solid rgba(255,215,0,0.3)', padding: '5px 12px', borderRadius: 6, textDecoration: 'none', fontWeight: 700, letterSpacing: '0.1em' }}>ADMIN</Link>
           <Link href="/sponsor/analytics" style={{ fontSize: 10, color: '#00FFFF', border: '1px solid rgba(0,255,255,0.2)', padding: '5px 12px', borderRadius: 6, textDecoration: 'none', fontWeight: 700 }}>ANALYTICS</Link>
         </div>

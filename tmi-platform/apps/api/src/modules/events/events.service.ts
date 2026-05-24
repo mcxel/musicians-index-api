@@ -100,4 +100,103 @@ export class EventsService {
       take: limit,
     });
   }
+
+  async getAdminMomentum(limit = 50) {
+    const events = await this.prisma.event.findMany({
+      where: { status: { in: ['PUBLISHED', 'STARTED'] as any[] } },
+      include: { ticketTypes: true, _count: { select: { tickets: true } } },
+      orderBy: { startsAt: 'asc' },
+      take: limit,
+    });
+    return {
+      generatedAt: new Date().toISOString(),
+      events,
+      totalLive: events.filter((e: any) => e.status === 'STARTED').length,
+      totalPublished: events.filter((e: any) => e.status === 'PUBLISHED').length,
+    };
+  }
+
+  async getBeatPool(poolType: 'PLATFORM_POOL' | 'ARTIST_POOL' | 'CURATED', limit = 20) {
+    const beats = await this.prisma.beat.findMany({
+      where: { status: 'ACTIVE' as any },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+    });
+    return { poolType, beats, count: beats.length };
+  }
+
+  async selectBeatForEvent(params: {
+    eventId: string;
+    beatId: string;
+    poolType: string;
+    selectedBy: string;
+  }) {
+    const event = await this.findOne(params.eventId);
+    const beat = await this.prisma.beat.findUnique({ where: { id: params.beatId } });
+    if (!beat) throw new NotFoundException('Beat not found');
+    return {
+      success: true,
+      eventId: event.id,
+      beatId: beat.id,
+      beatTitle: beat.title,
+      poolType: params.poolType,
+      selectedBy: params.selectedBy,
+      selectedAt: new Date().toISOString(),
+    };
+  }
+
+  async getLiveBeat(eventId: string) {
+    const event = await this.findOne(eventId);
+    const beats = await this.prisma.beat.findMany({
+      where: { status: 'ACTIVE' as any },
+      orderBy: { createdAt: 'desc' },
+      take: 1,
+    });
+    const beat = beats[0] ?? null;
+    return {
+      eventId: event.id,
+      beat: beat
+        ? { id: beat.id, title: beat.title, bpm: beat.bpm, key: beat.key }
+        : null,
+    };
+  }
+
+  getTemplates() {
+    return {
+      templates: [
+        { key: 'cypher.mini',           name: 'Mini Cypher',          description: 'Quick 30-min cypher round', durationMinutes: 30,  maxEntrants: 8  },
+        { key: 'cypher.standard',       name: 'Arena Cypher',         description: 'Full 60-min cypher event',  durationMinutes: 60,  maxEntrants: 16 },
+        { key: 'battle.mini',           name: 'Mini Battle',          description: '1v1 quick battle',          durationMinutes: 20,  maxEntrants: 2  },
+        { key: 'battle.arena',          name: 'Arena Battle',         description: 'Full tournament bracket',   durationMinutes: 120, maxEntrants: 16 },
+        { key: 'dirty-dozens.mini',     name: 'Dirty Dozens Mini',    description: 'Rapid-fire dozen round',    durationMinutes: 45,  maxEntrants: 12 },
+        { key: 'dirty-dozens.tournament', name: 'Dirty Dozens Full', description: 'Full 12-round tournament',  durationMinutes: 180, maxEntrants: 12 },
+        { key: 'comedy.joke-off-mini',  name: 'Joke-Off Mini',        description: 'Short comedy battle',       durationMinutes: 30,  maxEntrants: 4  },
+        { key: 'comedy.night',          name: 'Comedy Night',         description: 'Full comedy showcase',      durationMinutes: 90,  maxEntrants: 8  },
+        { key: 'dance.mini-off',        name: 'Dance Mini-Off',       description: 'Quick dance battle',        durationMinutes: 20,  maxEntrants: 4  },
+        { key: 'dance.night',           name: 'Dance Night',          description: 'Full dance showcase',       durationMinutes: 90,  maxEntrants: 16 },
+      ],
+    };
+  }
+
+  async activateTemplate(params: {
+    userId: string;
+    templateKey: string;
+    startsAt: Date;
+    title?: string;
+    description?: string;
+  }) {
+    const templates = this.getTemplates().templates;
+    const template = templates.find((t) => t.key === params.templateKey);
+    if (!template) throw new NotFoundException(`Template '${params.templateKey}' not found`);
+
+    const endsAt = new Date(params.startsAt.getTime() + template.durationMinutes * 60 * 1000);
+
+    return this.create({
+      title: params.title ?? template.name,
+      description: params.description ?? template.description,
+      startsAt: params.startsAt,
+      endsAt,
+      artistUserId: params.userId,
+    });
+  }
 }
