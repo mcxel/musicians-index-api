@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { PersonaSwitcher } from '@/components/hud/PersonaSwitcher';
+import LiveMediaWall from '@/components/media/LiveMediaWall';
+import VideoCurtainReveal from '@/components/media/VideoCurtainReveal';
 
 interface MeUser { id: string; email: string; name?: string; role: string; }
 
@@ -120,6 +122,18 @@ export default function VenueDashboardPage() {
             <Link href="/booking" style={{ padding: '13px 20px', background: 'rgba(0,255,136,0.1)', border: '1px solid rgba(0,255,136,0.3)', borderRadius: 9, color: ACCENT, fontWeight: 800, fontSize: 13, textDecoration: 'none', whiteSpace: 'nowrap' }}>BOOK ARTIST</Link>
           </div>
         </motion.div>
+
+        {/* Live venue screens */}
+        <div style={{ marginBottom: 32 }}>
+          <LiveMediaWall roomId="venue-main" title="YOUR VENUE ROOMS · LIVE NOW" mode="wall" nodeCount={6} accentColor="#00FF88" enterHref="/live/rooms" />
+        </div>
+
+        {/* Venue stage + audience wall */}
+        <div style={{ marginBottom: 28 }}>
+          <VideoCurtainReveal title="VENUE STAGE FEED" subtitle="Tap to see your stage" accentColor={ACCENT} autoOpen revealDelayMs={700}>
+            <LiveMediaWall roomId="venue-main" title="MAIN STAGE · AUDIENCE VIEW" mode="spotlight" nodeCount={8} accentColor={ACCENT} enterHref="/live/stages" />
+          </VideoCurtainReveal>
+        </div>
 
         {/* Primary Actions */}
         <div style={{ marginBottom: 32 }}>

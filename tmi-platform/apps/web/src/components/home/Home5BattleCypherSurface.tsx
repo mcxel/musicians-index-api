@@ -20,8 +20,10 @@ import Home5BattleOfWeekRail from "@/components/home/Home5BattleOfWeekRail";
 import Home5CypherOfWeekRail from "@/components/home/Home5CypherOfWeekRail";
 import Home5XPLadderRail from "@/components/home/Home5XPLadderRail";
 import Home5OpenRoomsGrid from "@/components/home/Home5OpenRoomsGrid";
+import HomeLobbyVideoWall from "@/components/home/HomeLobbyVideoWall";
 import { enforceRouteOwnership } from '@/lib/routes/TmiVisualRouteMap';
 import { getVisualSlot } from '@/lib/visuals/TmiVisualSlotRegistry';
+import LiveMediaWall from '@/components/media/LiveMediaWall';
 import "@/styles/tmiTypography.css";
 import { battleChallengeRequestEngine } from "@/lib/competition/BattleChallengeRequestEngine";
 import { battleChallengeEconomyEngine, CHALLENGE_ENTRY_FEE_POINTS } from "@/lib/competition/BattleChallengeEconomyEngine";
@@ -467,6 +469,12 @@ export default function Home5BattleCypherSurface() {
         </div>
       </div>
 
+      {/* Battle arena live wall */}
+      <section style={{ maxWidth: 1100, margin: '0 auto', padding: '0 24px 28px' }}>
+        <LiveMediaWall roomId="R-307" title="BATTLE ARENA · LIVE NOW" mode="spotlight" nodeCount={8} accentColor="#FF2DAA" enterHref="/battles/live" />
+      </section>
+
+      <HomeLobbyVideoWall accentColor="#FF2DAA" />
       <Home5OpenRoomsGrid />
       <GlobalLiveBelt />
     </main>

@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { getRoleStats, type DashboardStat } from '@/lib/stats/DashboardStatsEngine';
+import LiveMediaWall from '@/components/media/LiveMediaWall';
+import VideoCurtainReveal from '@/components/media/VideoCurtainReveal';
 
 interface MeUser { id: string; email: string; name?: string; role: string; tier?: string; fanPoints?: number; }
 
@@ -122,6 +124,13 @@ export default function FanDashboardPage() {
             <Link href="/battles" style={{ padding: '13px 20px', background: 'rgba(0,255,255,0.1)', border: '1px solid rgba(0,255,255,0.3)', borderRadius: 9, color: ACCENT, fontWeight: 800, fontSize: 13, textDecoration: 'none', whiteSpace: 'nowrap' }}>BATTLES ⚔️</Link>
           </div>
         </motion.div>
+
+        {/* Live arena wall */}
+        <div style={{ marginBottom: 32 }}>
+          <VideoCurtainReveal title="LIVE ARENA" subtitle="Tap to reveal" accentColor={ACCENT} autoOpen revealDelayMs={600}>
+            <LiveMediaWall roomId="R-214" title="LIVE CYPHER · BATTLE ROOM" mode="spotlight" nodeCount={7} accentColor={ACCENT} enterHref="/live/rooms" />
+          </VideoCurtainReveal>
+        </div>
 
         {/* Primary Actions */}
         <div style={{ marginBottom: 32 }}>

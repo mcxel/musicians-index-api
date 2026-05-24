@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { getRoleStats, type DashboardStat } from '@/lib/stats/DashboardStatsEngine';
+import LiveStreamShell from '@/components/media/LiveStreamShell';
+import LiveMediaWall from '@/components/media/LiveMediaWall';
 
 interface MeUser { id: string; email: string; name?: string; role: string; }
 
@@ -113,6 +115,20 @@ export default function AdvertiserDashboardPage() {
             <Link href="/advertiser/payments" style={{ padding: '13px 20px', background: 'rgba(255,215,0,0.1)', border: '1px solid rgba(255,215,0,0.3)', borderRadius: 9, color: ACCENT, fontWeight: 800, fontSize: 13, textDecoration: 'none', whiteSpace: 'nowrap' }}>AD PACKAGES</Link>
           </div>
         </motion.div>
+
+        {/* Ad placement preview wall */}
+        <div style={{ marginBottom: 28 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div>
+              <div style={{ fontSize: 9, letterSpacing: '0.2em', color: ACCENT, fontWeight: 800, marginBottom: 8 }}>YOUR AD PREVIEW</div>
+              <LiveStreamShell mode="ad" roomId="sponsor-preview" title="AD PREVIEW" accentColor={ACCENT} />
+            </div>
+            <div>
+              <div style={{ fontSize: 9, letterSpacing: '0.2em', color: '#FF2DAA', fontWeight: 800, marginBottom: 8 }}>LIVE PLACEMENT WALL</div>
+              <LiveMediaWall roomId="billboard-live" mode="billboard" nodeCount={4} accentColor="#FF2DAA" enterHref="/advertiser/placements" />
+            </div>
+          </div>
+        </div>
 
         {/* Primary Actions */}
         <div style={{ marginBottom: 32 }}>

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
+import LiveMediaWall from "@/components/media/LiveMediaWall";
 
 interface MeUser { id: string; email: string; name?: string; role: string; }
 
@@ -113,6 +114,11 @@ export default function PromoterDashboardPage() {
             <Link href="/hub/promoter" style={{ padding: "13px 20px", background: "rgba(0,255,136,0.1)", border: "1px solid rgba(0,255,136,0.3)", borderRadius: 9, color: ACCENT, fontWeight: 800, fontSize: 13, textDecoration: "none", whiteSpace: "nowrap" }}>FULL CONTROL</Link>
           </div>
         </motion.div>
+
+        {/* Live event screens */}
+        <div style={{ marginBottom: 32 }}>
+          <LiveMediaWall roomId="promoter-events" title="LIVE EVENT ROOMS · ACTIVE NOW" mode="wall" nodeCount={6} accentColor="#00FF88" enterHref="/live/rooms" />
+        </div>
 
         {/* Primary Actions */}
         <div style={{ marginBottom: 32 }}>

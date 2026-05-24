@@ -14,8 +14,10 @@ import Home2NewsDensityRail from './Home2NewsDensityRail';
 import Home2LiveLobbyStrip from './Home2LiveLobbyStrip';
 import WorldTrendingBelt from './WorldTrendingBelt';
 import LiveMagazineVoiceTicker from './LiveMagazineVoiceTicker';
+import HomeLobbyVideoWall from './HomeLobbyVideoWall';
 import { enforceRouteOwnership } from '@/lib/routes/TmiVisualRouteMap';
 import { getVisualSlot } from '@/lib/visuals/TmiVisualSlotRegistry';
+import LiveMediaWall from '@/components/media/LiveMediaWall';
 import "@/styles/tmiTypography.css";
 
 export default function Home2NewsDeskSurface() {
@@ -81,6 +83,9 @@ export default function Home2NewsDeskSurface() {
       {/* Live lobby windows — rotating live rooms above editorial */}
       <Home2LiveLobbyStrip />
 
+      {/* Chaotic live arena wall */}
+      <HomeLobbyVideoWall accentColor="#AA2DFF" />
+
       {/* Editorial rail */}
       <Home2EditorialRail />
 
@@ -95,6 +100,11 @@ export default function Home2NewsDeskSurface() {
 
       {/* Marketplace rail */}
       <Home2MarketplaceRail />
+
+      {/* Live room video wall — billboard chaos */}
+      <section style={{ maxWidth: 1100, margin: '0 auto', padding: '0 24px 28px' }}>
+        <LiveMediaWall roomId="R-101" title="LIVE NOW — WORLD DANCE PARTY" mode="billboard" nodeCount={9} accentColor="#FF2DAA" enterHref="/live/rooms" />
+      </section>
 
       {/* Sponsor Article Strip */}
       <Home2SponsorArticleStrip />
