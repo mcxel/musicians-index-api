@@ -39,7 +39,7 @@ const GENRE_PALETTE: Record<TmiGenre, { primary: string; secondary: string; bg: 
   "Global":   { primary: "#00D4FF", secondary: "#FF6B6B",  bg: "radial-gradient(ellipse at 50% 30%,rgba(0,212,255,0.5) 0%,transparent 55%),radial-gradient(ellipse at 50% 70%,rgba(255,107,107,0.3) 0%,transparent 55%),linear-gradient(160deg,#001520 0%,#040c12 50%,#020608 100%)" },
 };
 
-// ─── Artist pools (9 per genre) ───────────────────────────────────────────────
+// ─── Artist pools ─────────────────────────────────────────────────────────────
 
 interface SeedArtist { name: string; rank: number; genre: TmiGenre; score: number; delta: number; }
 
@@ -58,27 +58,71 @@ const GENRE_ARTISTS: Record<TmiGenre, SeedArtist[]> = {
   "Global":   [ { name:"Earth Cipher", rank:1,genre:"Global", score:9000,delta:+266},{name:"Meridian Six",  rank:2,genre:"Global", score:8500,delta:+99 },{name:"Lingua Nova",   rank:3,genre:"Global", score:8000,delta:-55 },{name:"Nomad Signal",  rank:4,genre:"Global", score:7560,delta:+144},{name:"Atlas Beat",    rank:5,genre:"Global", score:7120,delta:-22 },{name:"Polyrhythm",    rank:6,genre:"Global", score:6700,delta:+88 },{name:"World Arc",     rank:7,genre:"Global", score:6280,delta:+33 },{name:"Border Grid",   rank:8,genre:"Global", score:5880,delta:-44 },{name:"Fusion Nova",   rank:9,genre:"Global", score:5480,delta:+111}],
 };
 
-// ─── Viral hook templates ──────────────────────────────────────────────────────
+// ─── Viral sticker dictionary ─────────────────────────────────────────────────
 
-const VIRAL_HOOK_TEMPLATES: Array<(genre: string, artist: string) => string> = [
-  (genre, artist)   => `Guess who just took the ${genre} crown… and what they plan to do with it.`,
-  (_genre, artist)  => `The Index is watching: ${artist} is moving different this week.`,
-  (_genre, artist)  => `A new challenger entered the orbit. ${artist} may not survive the flip.`,
-  (genre, _artist)  => `Tonight's ${genre} crown may not survive the flip.`,
-  (_genre, _artist) => `This week's quiet takeover starts tonight.`,
-  (genre, artist)   => `${artist} just redefined what it means to lead in ${genre}.`,
-  (_genre, artist)  => `Nobody saw ${artist} coming. The Index did.`,
-  (genre, _artist)  => `${genre} just had its most dangerous week in three months.`,
+const STICKER_PHRASES = [
+  { text: "Don't miss this week's battle", href: "/battles/live", color: "#FF2DAA" },
+  { text: "Tonight there's gonna be a drum battle", href: "/battles", color: "#FFD700" },
+  { text: "You don't even know who's in here", href: "/magazine", color: "#00FFFF" },
+  { text: "Not your average site", href: "/home/1", color: "#AA2DFF" },
+  { text: "Good times await you", href: "/live/rooms", color: "#00FF88" },
+  { text: "The takeover starts now", href: "/rankings", color: "#FF2DAA" },
+  { text: "The Index never sleeps", href: "/magazine", color: "#FFD700" },
+  { text: "They said it couldn't happen", href: "/rankings", color: "#00FFFF" },
+] as const;
+
+// ─── Ticker headlines ─────────────────────────────────────────────────────────
+
+const TICKER_LINES = [
+  "Guess who's in the Index this week... and what they're hiding",
+  "{ARTIST} just took the #1 spot",
+  "Leaked: The takeover begins tonight",
+  "Sources say someone's about to flip the rankings",
+  "You weren't supposed to see this yet",
+  "The battle nobody saw coming — but The Index did",
+  "This week's quiet takeover is already in motion",
+  "{GENRE} just had its most dangerous week in three months",
+  "They said it couldn't happen. The Index tracked the whole thing.",
+  "Tonight's crown may not survive the flip",
+  "A new challenger entered the orbit",
 ];
 
-// ─── Tabloid link configs ──────────────────────────────────────────────────────
+// ─── Sneaky card quotes ───────────────────────────────────────────────────────
 
-const TABLOID_TILES = [
-  { label: "COVER STORY",  href: "/magazine",     badge: "ISSUE 1",  accent: "#AA2DFF" },
-  { label: "RANKINGS",     href: "/rankings",     badge: "LIVE",     accent: "#00FFFF" },
-  { label: "CYPHER STAGE", href: "/cypher/stage", badge: "OPEN",     accent: "#FF2DAA" },
-  { label: "LIVE ROOMS",   href: "/live/rooms",   badge: "TONIGHT",  accent: "#FFD700" },
+const SNEAKY_QUOTES = [
+  "Someone's coming for the crown...",
+  "Watch this space tonight.",
+  "The Index is tracking their moves.",
+  "Not yet — but close.",
+  "Ask them about the battle.",
+  "Last week was just warmup.",
+  "They don't know we're watching.",
+  "A quiet contender.",
+  "The numbers don't lie.",
 ];
+
+// ─── Memphis clip-path variants ───────────────────────────────────────────────
+
+const CARD_CLIPS = [
+  "polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px))",
+  "polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px)",
+  "polygon(12px 0, 100% 0, 100% 100%, 0 100%, 0 12px)",
+  "polygon(0 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%)",
+];
+
+// ─── Leak types ───────────────────────────────────────────────────────────────
+
+type LeakEdge = "top-left" | "top-right" | "bottom-left" | "bottom-right";
+interface LeakNote { id: number; text: string; edge: LeakEdge }
+interface StickerNote { id: number; text: string; href: string; color: string; x: number; y: number; rotation: number; }
+
+const LEAK_EDGE_STYLES: Record<LeakEdge, React.CSSProperties> = {
+  "top-left":     { top: 72, left: 16 },
+  "top-right":    { top: 72, right: 16 },
+  "bottom-left":  { bottom: 60, left: 16 },
+  "bottom-right": { bottom: 60, right: 16 },
+};
+const LEAK_EDGES: LeakEdge[] = ["top-left", "top-right", "bottom-left", "bottom-right"];
 
 // ─── Orbit math ───────────────────────────────────────────────────────────────
 
@@ -91,18 +135,6 @@ function orbitPos(i: number): { left: number; top: number } {
     top:  cy + ORBIT_RADIUS * Math.sin(angleRad) - CARD_H / 2,
   };
 }
-
-// ─── Leak types ───────────────────────────────────────────────────────────────
-
-type LeakEdge = "top-left" | "top-right" | "bottom-left" | "bottom-right";
-interface LeakNote { id: number; text: string; edge: LeakEdge }
-const LEAK_EDGE_STYLES: Record<LeakEdge, React.CSSProperties> = {
-  "top-left":     { top: 72, left: 16 },
-  "top-right":    { top: 72, right: 16 },
-  "bottom-left":  { bottom: 60, left: 16 },
-  "bottom-right": { bottom: 60, right: 16 },
-};
-const LEAK_EDGES: LeakEdge[] = ["top-left", "top-right", "bottom-left", "bottom-right"];
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -117,15 +149,22 @@ export default function Home1OrbitalMagazine() {
   const [starburstActive, setStarburstActive] = useState(false);
   const [cycleCount, setCycleCount] = useState(0);
   const [leaks, setLeaks] = useState<LeakNote[]>([]);
-  const leakIdRef = useRef(0);
+  const [featuredIdx, setFeaturedIdx] = useState(0);
+  const [stickerQueue, setStickerQueue] = useState<StickerNote[]>([]);
+  const [logoGlitch, setLogoGlitch] = useState(false);
+
+  const leakIdRef      = useRef(0);
   const leakTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const stickerIdRef   = useRef(0);
+  const stickerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const prevGenreRef   = useRef(genreIndex);
 
-  const activeGenre = TMI_GENRES[genreIndex];
-  const palette = GENRE_PALETTE[activeGenre];
-  const artists = GENRE_ARTISTS[activeGenre];
-  const crownArtist = artists[0];
+  const activeGenre = TMI_GENRES[genreIndex]!;
+  const palette     = GENRE_PALETTE[activeGenre];
+  const artists     = GENRE_ARTISTS[activeGenre];
+  const crownArtist = artists[0]!;
 
-  // 30s lifecycle — resets via cycleCount
+  // 30s lifecycle
   useEffect(() => {
     const timers: ReturnType<typeof setTimeout>[] = [];
     setLifecyclePhase("spinning");
@@ -145,14 +184,14 @@ export default function Home1OrbitalMagazine() {
     return () => timers.forEach(clearTimeout);
   }, [cycleCount]);
 
-  // Leak notification scheduler
+  // Leak scheduler
   useEffect(() => {
     function scheduleNextLeak() {
       const delay = 8000 + Math.random() * 7000;
       leakTimeoutRef.current = setTimeout(() => {
         const id = ++leakIdRef.current;
-        const text = STATIC_LEAKS[id % STATIC_LEAKS.length];
-        const edge = LEAK_EDGES[id % LEAK_EDGES.length];
+        const text = STATIC_LEAKS[id % STATIC_LEAKS.length]!;
+        const edge = LEAK_EDGES[id % LEAK_EDGES.length]!;
         setLeaks(prev => [...prev, { id, text, edge }]);
         setTimeout(() => setLeaks(prev => prev.filter(l => l.id !== id)), 3000);
         scheduleNextLeak();
@@ -162,9 +201,50 @@ export default function Home1OrbitalMagazine() {
     return () => { if (leakTimeoutRef.current) clearTimeout(leakTimeoutRef.current); };
   }, []);
 
-  const viralHooks = TABLOID_TILES.map((_t, i) =>
-    VIRAL_HOOK_TEMPLATES[i % VIRAL_HOOK_TEMPLATES.length](activeGenre, crownArtist.name)
-  );
+  // Billboard featured rotation (15s)
+  useEffect(() => {
+    const id = setInterval(() => setFeaturedIdx(i => (i + 1) % NUM_ARTISTS), 15000);
+    return () => clearInterval(id);
+  }, []);
+
+  // Viral sticker engine (15–20s interval)
+  useEffect(() => {
+    function scheduleSticker() {
+      const delay = 15000 + Math.random() * 5000;
+      stickerTimerRef.current = setTimeout(() => {
+        const id = ++stickerIdRef.current;
+        const phrase = STICKER_PHRASES[id % STICKER_PHRASES.length]!;
+        const x = 5 + Math.random() * 62;
+        const y = 18 + Math.random() * 52;
+        const rotation = -18 + Math.random() * 36;
+        setStickerQueue(prev => [...prev, { id, text: phrase.text, href: phrase.href, color: phrase.color, x, y, rotation }]);
+        setTimeout(() => setStickerQueue(prev => prev.filter(s => s.id !== id)), 6000);
+        scheduleSticker();
+      }, delay);
+    }
+    scheduleSticker();
+    return () => { if (stickerTimerRef.current) clearTimeout(stickerTimerRef.current); };
+  }, []);
+
+  // Logo glitch on crown holder change
+  useEffect(() => {
+    if (prevGenreRef.current !== genreIndex) {
+      prevGenreRef.current = genreIndex;
+      setLogoGlitch(true);
+      const t = setTimeout(() => setLogoGlitch(false), 900);
+      return () => clearTimeout(t);
+    }
+  }, [genreIndex]);
+
+  // Bento grid: featured artist first, rest follow
+  const fIdx = featuredIdx % NUM_ARTISTS;
+  const featuredArtist = artists[fIdx]!;
+  const sideArtists = artists.filter((_, i) => i !== fIdx);
+
+  // Ticker text with substitutions
+  const tickerText = TICKER_LINES
+    .map(l => l.replace("{ARTIST}", crownArtist.name).replace("{GENRE}", activeGenre))
+    .join("  ◆  ");
 
   return (
     <div style={{ minHeight: "100vh", background: palette.bg, color: "#fff", display: "flex", flexDirection: "column", transition: "background 1.2s ease", position: "relative", overflow: "hidden" }}>
@@ -202,6 +282,18 @@ export default function Home1OrbitalMagazine() {
           0%,100% { filter:brightness(1) drop-shadow(0 0 8px rgba(255,255,255,0.4));  }
           50%     { filter:brightness(1.2) drop-shadow(0 0 18px rgba(255,255,255,0.7)); }
         }
+        @keyframes tmiLogoGlitch {
+          0%,100% { filter:brightness(1) drop-shadow(0 0 8px rgba(255,255,255,0.4)); transform:none; }
+          8%  { filter:hue-rotate(90deg) brightness(2.2); transform:translateX(7px) skewX(-4deg); }
+          14% { transform:translateX(-5px); filter:brightness(1.5); }
+          20% { transform:none; filter:brightness(1); }
+          32% { filter:hue-rotate(-90deg) brightness(1.8); transform:translateX(4px) skewX(3deg); }
+          38% { transform:none; filter:brightness(1); }
+          52% { filter:saturate(8) brightness(2); transform:translateX(-3px); }
+          56% { transform:none; filter:brightness(1); }
+          72% { filter:hue-rotate(180deg) brightness(1.4); transform:translateX(5px); }
+          78% { transform:none; filter:brightness(1.2) drop-shadow(0 0 18px rgba(255,255,255,0.7)); }
+        }
         @keyframes tmiStarburst {
           0%   { opacity:0;   transform:translate(-50%,-50%) scale(0.1); }
           20%  { opacity:0.9; transform:translate(-50%,-50%) scale(1);   }
@@ -216,24 +308,57 @@ export default function Home1OrbitalMagazine() {
           0%,100% { opacity:0.04; }
           50%     { opacity:0.09; }
         }
-        @keyframes tmiTabloidIn {
-          0%   { opacity:0; transform:translateY(18px); }
-          100% { opacity:1; transform:translateY(0);    }
-        }
         @keyframes tmiMastIn {
           0%   { opacity:0; transform:translateY(-10px); }
           100% { opacity:1; transform:translateY(0);     }
         }
 
-        .tmi-ring      { animation-timing-function:linear; animation-iteration-count:infinite; }
-        .tmi-card-inner{ animation-timing-function:linear; animation-iteration-count:infinite; }
-        .tmi-orbit-wrap{ display:flex; align-items:center; justify-content:center; }
+        /* Magazine OS additions */
+        @keyframes tmiGrainMove {
+          0%  { background-position:0% 0%;    }
+          20% { background-position:40% 60%;  }
+          40% { background-position:100% 30%; }
+          60% { background-position:60% 100%; }
+          80% { background-position:10% 70%;  }
+          100%{ background-position:0% 0%;    }
+        }
+        @keyframes tmiLightDrift {
+          0%,100% { opacity:0.5; transform:translate(0,0)       scale(1);    }
+          33%     { opacity:0.9; transform:translate(30px,-15px) scale(1.05); }
+          66%     { opacity:0.6; transform:translate(-20px,25px) scale(0.97); }
+        }
+        @keyframes tmiTickerScroll {
+          0%   { transform:translateX(0);    }
+          100% { transform:translateX(-50%); }
+        }
+        @keyframes tmiStickerSlap {
+          0%   { opacity:0; transform:scale(0.08) translateY(12px); }
+          55%  { opacity:1; transform:scale(1.14) translateY(-3px);  }
+          72%  { transform:scale(0.96) translateY(1px); }
+          100% { opacity:1; transform:scale(1) translateY(0); }
+        }
+        @keyframes tmiStickerFade {
+          0%   { opacity:1; transform:scale(1) translateY(0);      }
+          100% { opacity:0; transform:scale(0.85) translateY(-14px); }
+        }
+        @keyframes tmiBillboardIn {
+          0%   { opacity:0; transform:scale(0.94); }
+          100% { opacity:1; transform:scale(1);    }
+        }
+        @keyframes tmiFeaturedPulse {
+          0%,100% { box-shadow:0 0 0 0 rgba(255,215,0,0); }
+          50%     { box-shadow:0 0 24px 6px rgba(255,215,0,0.3); }
+        }
+
+        .tmi-ring       { animation-timing-function:linear; animation-iteration-count:infinite; }
+        .tmi-card-inner { animation-timing-function:linear; animation-iteration-count:infinite; }
+        .tmi-orbit-wrap { display:flex; align-items:center; justify-content:center; }
 
         @media (max-width:768px){ .tmi-orbit-wrap{ transform:scale(0.55); transform-origin:top center; } }
         @media (max-width:520px){ .tmi-orbit-wrap{ transform:scale(0.42); transform-origin:top center; } }
       `}</style>
 
-      {/* ── 1980s grid underlay ─────────────────────────────────────── */}
+      {/* ── 1980s grid underlay ────────────────────────────────────── */}
       <div aria-hidden style={{
         position:"absolute", inset:0, pointerEvents:"none", zIndex:0,
         backgroundImage:`linear-gradient(rgba(0,255,255,0.06) 1px,transparent 1px),linear-gradient(90deg,rgba(0,255,255,0.06) 1px,transparent 1px)`,
@@ -243,10 +368,13 @@ export default function Home1OrbitalMagazine() {
 
       {/* ── Geometric corner shapes ─────────────────────────────────── */}
       <svg aria-hidden style={{ position:"absolute", inset:0, width:"100%", height:"100%", pointerEvents:"none", zIndex:1, overflow:"visible" }} preserveAspectRatio="none">
-        <polygon points="0,0 160,0 0,160" fill={palette.primary} opacity="0.10" />
-        <polygon points="100%,0 100%,140 calc(100% - 140px),0" fill={palette.secondary} opacity="0.08" />
-        <polygon points="0,100% 120,100% 0,calc(100% - 120px)" fill={palette.secondary} opacity="0.07" />
-        <polygon points="100%,100% 100%,calc(100% - 120px) calc(100% - 120px),100%" fill={palette.primary} opacity="0.07" />
+        <polygon points="0,0 160,0 0,160"                                            fill={palette.primary}   opacity="0.10" />
+        <polygon points="100%,0 100%,140 calc(100% - 140px),0"                       fill={palette.secondary} opacity="0.08" />
+        <polygon points="0,100% 120,100% 0,calc(100% - 120px)"                       fill={palette.secondary} opacity="0.07" />
+        <polygon points="100%,100% 100%,calc(100% - 120px) calc(100% - 120px),100%" fill={palette.primary}   opacity="0.07" />
+        {/* Extra Memphis trapezoids */}
+        <polygon points="30%,0 50%,0 45%,20px 25%,20px" fill={palette.primary} opacity="0.06" />
+        <polygon points="70%,100% 90%,100% 88%,calc(100% - 16px) 68%,calc(100% - 16px)" fill={palette.secondary} opacity="0.05" />
       </svg>
 
       {/* ── Starfield ────────────────────────────────────────────────── */}
@@ -261,11 +389,26 @@ export default function Home1OrbitalMagazine() {
           radial-gradient(circle 1px at 87% 48%,  rgba(255,255,255,0.4) 0%,transparent 50%),
           radial-gradient(circle 1px at 32% 88%,  ${palette.secondary}50 0%,transparent 50%),
           radial-gradient(circle 1px at 92% 92%,  rgba(255,255,255,0.6) 0%,transparent 50%),
-          radial-gradient(circle 1px at 55% 52%,  ${palette.primary}40 0%,transparent 50%),
-          radial-gradient(circle 1px at 17% 44%,  rgba(255,255,255,0.3) 0%,transparent 50%),
           radial-gradient(circle 2px at 68% 28%,  ${palette.primary}50 0%,transparent 50%),
           radial-gradient(circle 2px at 38% 71%,  ${palette.secondary}40 0%,transparent 50%)
         `,
+      }} />
+
+      {/* ── MotionGrainEngine — animated film grain ─────────────────── */}
+      <div aria-hidden style={{
+        position:"absolute", inset:0, pointerEvents:"none", zIndex:3,
+        opacity:0.055,
+        backgroundImage:`url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='grain'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23grain)' opacity='1'/%3E%3C/svg%3E")`,
+        backgroundSize:"200px 200px",
+        animation:"tmiGrainMove 0.14s steps(1) infinite",
+      }} />
+
+      {/* ── Light-leak drift overlay ─────────────────────────────────── */}
+      <div aria-hidden style={{
+        position:"absolute", inset:0, pointerEvents:"none", zIndex:3,
+        background:`radial-gradient(ellipse 40% 35% at 15% 25%,${palette.primary}0a 0%,transparent 60%),radial-gradient(ellipse 30% 40% at 82% 70%,${palette.secondary}08 0%,transparent 60%)`,
+        animation:"tmiLightDrift 12s ease-in-out infinite",
+        transition:"background 1.2s ease",
       }} />
 
       {/* ── Corner labels ───────────────────────────────────────────── */}
@@ -293,18 +436,57 @@ export default function Home1OrbitalMagazine() {
       <HomeNavigator />
 
       {/* ══════════════════════════════════════════════════════════════
-          HERO ZONE  ~68-72vh
+          TABLOID HEADLINE TICKER
+      ══════════════════════════════════════════════════════════════ */}
+      <div style={{
+        background:`${palette.primary}18`,
+        borderBottom:`1px solid ${palette.primary}33`,
+        overflow:"hidden",
+        height:26,
+        display:"flex",
+        alignItems:"center",
+        position:"relative",
+        zIndex:20,
+        flexShrink:0,
+      }}>
+        <div style={{
+          display:"flex",
+          whiteSpace:"nowrap",
+          animation:"tmiTickerScroll 55s linear infinite",
+          willChange:"transform",
+        }}>
+          {[0, 1].map(rep => (
+            <span key={rep} style={{ display:"inline-flex", alignItems:"center" }}>
+              {TICKER_LINES.map((line, i) => (
+                <span key={i} style={{ display:"inline-flex", alignItems:"center" }}>
+                  <span style={{
+                    fontSize:8, fontWeight:900, letterSpacing:"0.1em", paddingLeft:32, paddingRight:8,
+                    color: i % 2 === 0 ? palette.primary : "rgba(255,255,255,0.55)",
+                  }}>
+                    {line.replace("{ARTIST}", crownArtist.name).replace("{GENRE}", activeGenre)}
+                  </span>
+                  <span style={{ color:palette.secondary, fontSize:8, opacity:0.7 }}>◆</span>
+                </span>
+              ))}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {/* ══════════════════════════════════════════════════════════════
+          HERO ZONE
       ══════════════════════════════════════════════════════════════ */}
       <main style={{ flex:"7 0 0", display:"flex", flexDirection:"column", alignItems:"center", padding:"12px 16px 8px", position:"relative", zIndex:10 }}>
 
-        {/* TMI wordmark */}
+        {/* TMI masthead wordmark — with scanline glitch on crown swap */}
         <div style={{ textAlign:"center", animation:"tmiMastIn 0.9s cubic-bezier(.16,1,.3,1) both", marginBottom:8 }}>
           <div style={{
             fontFamily:"var(--font-tmi-editorial,'Playfair Display',Georgia,serif)",
             fontSize:"clamp(20px,4vw,42px)", fontWeight:900, letterSpacing:"0.28em",
             textTransform:"uppercase", color:"#fff",
-            textShadow:`0 0 30px ${palette.primary}99, 0 0 60px ${palette.primary}44, 0 2px 0 rgba(0,0,0,0.7)`,
-            animation:"tmiLogoGlow 2.5s ease-in-out infinite",
+            textShadow:`0 0 30px ${palette.primary}99, 0 0 60px ${palette.primary}44, 0 2px 0 rgba(0,0,0,0.7), 2px 0 0 ${palette.secondary}33`,
+            animation: logoGlitch ? "tmiLogoGlitch 0.85s cubic-bezier(0.7,0,0.3,1) both" : "tmiLogoGlow 2.5s ease-in-out infinite",
+            display:"inline-block",
           }}>
             TMI
           </div>
@@ -353,7 +535,8 @@ export default function Home1OrbitalMagazine() {
                     willChange:"transform", cursor:"pointer",
                   }}>
                     <div style={{
-                      width:"100%", height:"100%", borderRadius:12,
+                      width:"100%", height:"100%", borderRadius:0,
+                      clipPath: CARD_CLIPS[i % CARD_CLIPS.length],
                       background: isFirst ? `linear-gradient(135deg,${palette.primary}33,${palette.secondary}22)` : "rgba(255,255,255,0.04)",
                       border:`1px solid ${isFirst ? palette.primary+"99" : ap.primary+"44"}`,
                       boxShadow: isFirst ? `0 0 28px ${palette.primary}55,inset 0 0 16px ${palette.primary}11` : "none",
@@ -411,7 +594,8 @@ export default function Home1OrbitalMagazine() {
                   "tmiCrownFloat 2.8s ease-in-out infinite",
               }}>
                 <div style={{
-                  width:"100%", height:"100%", borderRadius:16,
+                  width:"100%", height:"100%", borderRadius:0,
+                  clipPath:"polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 18px 100%, 0 calc(100% - 18px))",
                   background:`linear-gradient(135deg,${palette.primary}44,${palette.secondary}33,rgba(0,0,0,0.3))`,
                   border:`2px solid ${palette.primary}cc`,
                   boxShadow:`0 0 60px ${palette.primary}66,0 0 120px ${palette.primary}33,inset 0 0 30px ${palette.primary}11`,
@@ -432,7 +616,7 @@ export default function Home1OrbitalMagazine() {
                   <div style={{ fontSize:10, color:palette.primary, fontWeight:700, marginTop:3 }}>
                     {crownArtist.score.toLocaleString()} pts
                   </div>
-                  <div style={{ marginTop:8, padding:"3px 12px", fontSize:7, fontWeight:900, letterSpacing:"0.15em", background:`${palette.primary}22`, border:`1px solid ${palette.primary}66`, borderRadius:20, color:palette.primary, textTransform:"uppercase" }}>
+                  <div style={{ marginTop:8, padding:"3px 12px", fontSize:7, fontWeight:900, letterSpacing:"0.15em", background:`${palette.primary}22`, border:`1px solid ${palette.primary}66`, borderRadius:0, clipPath:"polygon(4px 0,100% 0,calc(100% - 4px) 100%,0 100%)", color:palette.primary, textTransform:"uppercase" }}>
                     {activeGenre}
                   </div>
                 </div>
@@ -444,14 +628,14 @@ export default function Home1OrbitalMagazine() {
         {/* Genre progress dots */}
         <div style={{ marginTop:14, display:"flex", gap:5, alignItems:"center", flexWrap:"wrap", justifyContent:"center" }}>
           {TMI_GENRES.map((g, i) => (
-            <div key={g} style={{ width: i === genreIndex ? 22 : 6, height:6, borderRadius:3, background: i === genreIndex ? palette.primary : "rgba(255,255,255,0.12)", transition:"width 0.4s ease,background 0.6s ease" }} />
+            <div key={g} style={{ width: i === genreIndex ? 22 : 6, height:6, borderRadius:0, clipPath:"polygon(2px 0,100% 0,calc(100% - 2px) 100%,0 100%)", background: i === genreIndex ? palette.primary : "rgba(255,255,255,0.12)", transition:"width 0.4s cubic-bezier(0.7,0,0.3,1),background 0.6s ease" }} />
           ))}
         </div>
 
       </main>
 
       {/* ══════════════════════════════════════════════════════════════
-          TABLOID ZONE  ~28-32vh
+          DYNAMIC BILLBOARD GRID  (replaces static tabloid tiles)
       ══════════════════════════════════════════════════════════════ */}
       <section style={{
         flex:"3 0 0", minHeight:"26vh",
@@ -460,52 +644,107 @@ export default function Home1OrbitalMagazine() {
         position:"relative", zIndex:10, padding:"10px 12px 8px", overflow:"hidden",
       }}>
 
-        {/* Tabloid scanline */}
+        {/* Scanline overlay */}
         <div aria-hidden style={{ position:"absolute", inset:0, pointerEvents:"none", zIndex:1, backgroundImage:"repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,0.07) 3px,rgba(0,0,0,0.07) 4px)", backgroundSize:"100% 4px" }} />
 
-        {/* Angled neon accent wash */}
+        {/* Angled accent wash */}
         <div aria-hidden style={{ position:"absolute", top:0, left:0, width:"100%", height:"100%", pointerEvents:"none", zIndex:0, background:`linear-gradient(108deg,${palette.primary}08 0%,transparent 45%)` }} />
 
         {/* Section header */}
         <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:9, position:"relative", zIndex:2 }}>
           <div style={{ fontFamily:"var(--font-tmi-editorial,'Playfair Display',Georgia,serif)", fontSize:"clamp(11px,2.5vw,17px)", fontWeight:900, letterSpacing:"0.18em", color:"#fff", textTransform:"uppercase" }}>
-            The Index
+            Active Performers
           </div>
           <div style={{ height:1, flex:1, background:`linear-gradient(90deg,${palette.primary}55,transparent)` }} />
-          <div style={{ fontSize:6, fontWeight:900, letterSpacing:"0.2em", color:palette.primary, border:`1px solid ${palette.primary}44`, padding:"2px 8px", borderRadius:20, animation:"tmiRingGlow 2s ease-in-out infinite" }}>
-            BREAKING
-          </div>
+          <Link href="/rankings" style={{ fontSize:6, fontWeight:900, letterSpacing:"0.2em", color:palette.primary, border:`1px solid ${palette.primary}44`, padding:"2px 8px", borderRadius:0, textDecoration:"none", animation:"tmiRingGlow 2s ease-in-out infinite", clipPath:"polygon(3px 0,100% 0,calc(100% - 3px) 100%,0 100%)" }}>
+            FULL INDEX →
+          </Link>
         </div>
 
-        {/* Tile grid */}
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(135px,1fr))", gap:8, position:"relative", zIndex:2 }}>
-          {TABLOID_TILES.map((tile, i) => (
-            <Link key={tile.href} href={tile.href} style={{ textDecoration:"none" }}>
-              <div style={{
-                background:"linear-gradient(135deg,rgba(0,0,0,0.72),rgba(0,0,0,0.5))",
-                border:`1px solid ${tile.accent}44`, borderRadius:8,
-                padding:"9px 10px 8px", position:"relative", overflow:"hidden", cursor:"pointer",
-                animation:`tmiTabloidIn 0.5s ${i * 0.08}s cubic-bezier(.16,1,.3,1) both`,
-              }}>
-                {/* Top neon bar */}
-                <div aria-hidden style={{ position:"absolute", top:0, left:0, width:"100%", height:2, background:`linear-gradient(90deg,${tile.accent},transparent)` }} />
-                {/* Sticker badge */}
-                <div style={{ position:"absolute", top:6, right:6, fontSize:6, fontWeight:900, letterSpacing:"0.12em", background:tile.accent, color:"#000", padding:"2px 6px", borderRadius:3, textTransform:"uppercase" }}>
-                  {tile.badge}
-                </div>
-                {/* Label */}
-                <div style={{ fontSize:7, fontWeight:900, letterSpacing:"0.2em", color:tile.accent, textTransform:"uppercase", marginBottom:5 }}>
-                  {tile.label}
-                </div>
-                {/* Hook */}
-                <div style={{ fontFamily:"var(--font-tmi-editorial,'Playfair Display',Georgia,serif)", fontSize:"clamp(8px,1.8vw,11px)", fontWeight:700, color:"rgba(255,255,255,0.85)", lineHeight:1.35 }}>
-                  {viralHooks[i]}
-                </div>
-                {/* Bottom accent */}
-                <div aria-hidden style={{ position:"absolute", bottom:0, left:0, width:"40%", height:1, background:`linear-gradient(90deg,${tile.accent}55,transparent)` }} />
+        {/* Bento grid — featured 2×2, rest 1×1 */}
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gridAutoRows:"78px", gap:6, position:"relative", zIndex:2 }}>
+
+          {/* Featured card */}
+          <Link href="/rankings" style={{ gridColumn:"span 2", gridRow:"span 2", textDecoration:"none" }}>
+            <div key={`featured-${fIdx}`} style={{
+              height:"100%",
+              background:`linear-gradient(135deg,${GENRE_PALETTE[featuredArtist.genre].primary}2a,${GENRE_PALETTE[featuredArtist.genre].secondary}18)`,
+              border:`1.5px solid ${GENRE_PALETTE[featuredArtist.genre].primary}77`,
+              clipPath: "polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 14px 100%, 0 calc(100% - 14px))",
+              padding:"12px 11px",
+              display:"flex", flexDirection:"column",
+              animation:"tmiBillboardIn 0.5s cubic-bezier(0.7,0,0.3,1) both, tmiFeaturedPulse 3s ease-in-out infinite",
+              cursor:"pointer", position:"relative", overflow:"hidden",
+            }}>
+              <div style={{ position:"absolute", top:0, left:0, right:0, height:2, background:`linear-gradient(90deg,${GENRE_PALETTE[featuredArtist.genre].primary},transparent)` }} />
+              <div style={{ fontSize:8, fontWeight:900, letterSpacing:"0.15em", color:"#FFD700", marginBottom:4 }}>
+                ★ FEATURED · #{featuredArtist.rank}
               </div>
-            </Link>
-          ))}
+              <div style={{
+                width:44, height:44, borderRadius:"50%",
+                background:`radial-gradient(circle at 35% 35%,${GENRE_PALETTE[featuredArtist.genre].primary}55,${GENRE_PALETTE[featuredArtist.genre].secondary}22)`,
+                border:`2px solid ${GENRE_PALETTE[featuredArtist.genre].primary}`,
+                display:"flex", alignItems:"center", justifyContent:"center",
+                fontSize:18, fontWeight:900, color:GENRE_PALETTE[featuredArtist.genre].primary,
+                marginBottom:8,
+              }}>
+                {featuredArtist.name.charAt(0)}
+              </div>
+              <div style={{ fontSize:12, fontWeight:900, color:"#fff", lineHeight:1.2, marginBottom:4 }}>
+                {featuredArtist.name}
+              </div>
+              <div style={{ fontFamily:"var(--font-tmi-editorial,'Playfair Display',Georgia,serif)", fontSize:9, color:"rgba(255,255,255,0.55)", fontStyle:"italic", lineHeight:1.35, marginBottom:"auto" }}>
+                &ldquo;{SNEAKY_QUOTES[fIdx % SNEAKY_QUOTES.length]}&rdquo;
+              </div>
+              <div style={{ display:"flex", gap:6, alignItems:"center", marginTop:6 }}>
+                <span style={{ fontSize:8, fontWeight:900, color: featuredArtist.delta > 0 ? "#00FF88" : "#FF4444" }}>
+                  {featuredArtist.delta > 0 ? `▲${featuredArtist.delta}` : `▼${Math.abs(featuredArtist.delta)}`}
+                </span>
+                <span style={{ fontSize:8, color:"rgba(255,255,255,0.3)" }}>{featuredArtist.score.toLocaleString()} pts</span>
+                <span style={{ marginLeft:"auto", fontSize:6, fontWeight:900, letterSpacing:"0.1em", color:GENRE_PALETTE[featuredArtist.genre].primary, border:`1px solid ${GENRE_PALETTE[featuredArtist.genre].primary}44`, padding:"1px 5px", clipPath:"polygon(3px 0,100% 0,calc(100% - 3px) 100%,0 100%)" }}>
+                  {featuredArtist.genre.toUpperCase()}
+                </span>
+              </div>
+            </div>
+          </Link>
+
+          {/* Regular side cards */}
+          {sideArtists.map((artist, i) => {
+            const ap = GENRE_PALETTE[artist.genre];
+            const deltaColor = artist.delta > 0 ? "#00FF88" : "#FF4444";
+            return (
+              <Link key={artist.name} href="/rankings" style={{ textDecoration:"none" }}>
+                <div style={{
+                  height:"100%",
+                  background:"rgba(255,255,255,0.03)",
+                  border:`1px solid ${ap.primary}33`,
+                  clipPath: CARD_CLIPS[(i + 1) % CARD_CLIPS.length],
+                  padding:"7px 6px",
+                  display:"flex", flexDirection:"column",
+                  animation:`tmiBillboardIn 0.4s ${i * 0.04}s cubic-bezier(0.7,0,0.3,1) both`,
+                  cursor:"pointer", position:"relative", overflow:"hidden",
+                  transition:"background 0.35s cubic-bezier(0.7,0,0.3,1)",
+                }}>
+                  <div style={{ fontSize:7, fontWeight:900, color:"rgba(255,255,255,0.3)", marginBottom:2 }}>#{artist.rank}</div>
+                  <div style={{
+                    width:24, height:24, borderRadius:"50%",
+                    background:`radial-gradient(circle at 35% 35%,${ap.primary}44,${ap.secondary}11)`,
+                    border:`1.5px solid ${ap.primary}66`,
+                    display:"flex", alignItems:"center", justifyContent:"center",
+                    fontSize:10, fontWeight:900, color:ap.primary, marginBottom:4,
+                  }}>
+                    {artist.name.charAt(0)}
+                  </div>
+                  <div style={{ fontSize:8, fontWeight:900, color:"rgba(255,255,255,0.85)", lineHeight:1.2, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+                    {artist.name}
+                  </div>
+                  <div style={{ marginTop:"auto", fontSize:7, fontWeight:900, color:deltaColor }}>
+                    {artist.delta > 0 ? `▲${artist.delta}` : `▼${Math.abs(artist.delta)}`}
+                  </div>
+                </div>
+              </Link>
+            );
+          })}
         </div>
 
       </section>
@@ -518,9 +757,40 @@ export default function Home1OrbitalMagazine() {
 
       {/* ── Leak notifications ──────────────────────────────────────── */}
       {leaks.map(leak => (
-        <div key={leak.id} style={{ position:"fixed", ...LEAK_EDGE_STYLES[leak.edge], zIndex:400, background:"rgba(0,0,0,0.9)", border:`1px solid ${palette.primary}66`, borderRadius:8, padding:"8px 14px", maxWidth:220, animation:"tmiLeakIn 0.3s cubic-bezier(.16,1,.3,1) both", backdropFilter:"blur(12px)" }}>
+        <div key={leak.id} style={{ position:"fixed", ...LEAK_EDGE_STYLES[leak.edge], zIndex:400, background:"rgba(0,0,0,0.9)", border:`1px solid ${palette.primary}66`, borderRadius:0, clipPath:"polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px))", padding:"8px 14px", maxWidth:220, animation:"tmiLeakIn 0.3s cubic-bezier(.16,1,.3,1) both", backdropFilter:"blur(12px)" }}>
           <div style={{ fontSize:7, fontWeight:900, letterSpacing:"0.2em", color:palette.primary, marginBottom:3 }}>EXCLUSIVE</div>
           <div style={{ fontSize:10, fontWeight:800, color:"#fff", letterSpacing:"0.04em", lineHeight:1.3 }}>{leak.text}</div>
+        </div>
+      ))}
+
+      {/* ── Viral Sticker Engine overlay ────────────────────────────── */}
+      {stickerQueue.map((sticker) => (
+        <div key={sticker.id} style={{
+          position:"fixed",
+          left:`${sticker.x}%`,
+          top:`${sticker.y}%`,
+          zIndex:600,
+          transform:`rotate(${sticker.rotation}deg)`,
+          pointerEvents:"auto",
+        }}>
+          <Link href={sticker.href} style={{ textDecoration:"none" }}>
+            <div style={{
+              background:`${sticker.color}f0`,
+              color:"#000",
+              padding:"9px 14px",
+              fontWeight:900,
+              fontSize:11,
+              letterSpacing:"0.04em",
+              maxWidth:190,
+              lineHeight:1.3,
+              boxShadow:`0 4px 24px rgba(0,0,0,0.6), 0 0 0 2px rgba(0,0,0,0.3)`,
+              clipPath:`polygon(0 8px,8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%)`,
+              animation:"tmiStickerSlap 0.55s cubic-bezier(0.7,0,0.3,1) both",
+              cursor:"pointer",
+            }}>
+              {sticker.text}
+            </div>
+          </Link>
         </div>
       ))}
 
