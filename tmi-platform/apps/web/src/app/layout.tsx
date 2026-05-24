@@ -53,7 +53,7 @@ export const metadata: Metadata = {
     type: "website",
     images: [
       {
-        url: "/og-image.jpg",
+        url: "https://themusiciansindex.com/og-image.jpg",
         width: 1200,
         height: 630,
         alt: "The Musician's Index Magazine — Live Music Platform",
@@ -62,9 +62,11 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
+    site: "@TMImagazine",
+    creator: "@TMImagazine",
     title: "The Musician's Index Magazine",
     description: "Live music platform for artists, performers, and fans.",
-    images: ["/og-image.jpg"],
+    images: ["https://themusiciansindex.com/og-image.jpg"],
   },
 };
 
