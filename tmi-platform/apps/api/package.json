@@ -20,7 +20,7 @@
   "license": "ISC",
   "type": "commonjs",
   "engines": {
-    "node": "20.x"
+    "node": "24.x"
   },
   "prisma": {
     "schema": "../../packages/db/prisma/schema.prisma"
