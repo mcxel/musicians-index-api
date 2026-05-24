@@ -5,15 +5,9 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import BeatJourneyWidget from '@/components/beats/BeatJourneyWidget';
+import { getRoleStats, type DashboardStat } from '@/lib/stats/DashboardStatsEngine';
 
 interface MeUser { id: string; email: string; name?: string; role: string; tier?: string; }
-
-const STATS = [
-  { label: 'Active Bookings', value: '0',     icon: '📅', color: '#AA2DFF' },
-  { label: 'Battle Record',   value: '0W-0L', icon: '⚔️', color: '#FF2DAA' },
-  { label: 'XP Points',       value: '0',     icon: '⭐', color: '#FFD700' },
-  { label: 'Monthly Revenue', value: '$0',    icon: '💵', color: '#00FF88' },
-];
 
 const PRIMARY_ACTIONS = [
   { label: 'GO LIVE',       icon: '🔴', href: '/go-live',                    color: '#FF2DAA', desc: 'Start your live session' },
@@ -57,6 +51,7 @@ export default function PerformerDashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState<MeUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [roleStats, setRoleStats] = useState<DashboardStat[]>([]);
 
   useEffect(() => {
     const load = async () => {
@@ -66,6 +61,7 @@ export default function PerformerDashboardPage() {
         const data = await res.json() as { authenticated: boolean; user?: MeUser };
         if (!data.authenticated || !data.user) { router.replace('/auth'); return; }
         setUser(data.user);
+        setRoleStats(getRoleStats(data.user.role ?? 'performer'));
       } catch { router.replace('/auth'); } finally { setLoading(false); }
     };
     void load();
@@ -95,13 +91,14 @@ export default function PerformerDashboardPage() {
 
         {/* Stats */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 32 }}>
-          {STATS.map((s, i) => (
-            <motion.div key={s.label} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}
+          {roleStats.map((s, i) => (
+            <motion.div key={s.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}
               style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${s.color}30`, borderRadius: 12, padding: '18px', position: 'relative', overflow: 'hidden' }}>
               <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: s.color }} />
               <div style={{ fontSize: 26, marginBottom: 4 }}>{s.icon}</div>
               <div style={{ fontSize: 24, fontWeight: 900, color: s.color }}>{s.value}</div>
               <div style={{ fontSize: 10, letterSpacing: 2, color: '#555', marginTop: 4, textTransform: 'uppercase' }}>{s.label}</div>
+              <div style={{ fontSize: 9, color: s.deltaPositive ? '#00FF88' : '#FF4444', marginTop: 3 }}>{s.delta}</div>
             </motion.div>
           ))}
         </div>

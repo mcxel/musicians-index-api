@@ -48,8 +48,14 @@ export default function PaymentSuccessPage() {
     }).catch(() => undefined);
 
     if (mode === 'subscription') {
-      // Season pass — mark as granted, no credit deduction (subscription perks handled separately)
       localStorage.setItem(grantKey, '1');
+      // Activate tier server-side (sets tmi_tier cookie + queues email)
+      fetch('/api/subscriptions/activate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ priceId }),
+      }).catch(() => undefined);
       setStatus('pass');
       return;
     }

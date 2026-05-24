@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import PageShell from "@/components/layout/PageShell";
 import HUDFrame from "@/components/hud/HUDFrame";
@@ -22,6 +23,9 @@ export default function BeatLabCreatePage() {
   const [selectedLoop, setSelectedLoop] = useState<string | null>(null);
   const [aiMode, setAiMode] = useState(false);
   const [step, setStep] = useState<"build" | "preview" | "pricing">("build");
+  const [selectedPricing, setSelectedPricing] = useState<"NON-EXCLUSIVE LEASE" | "EXCLUSIVE LEASE" | "EXCLUSIVE BUYOUT" | "FREE DOWNLOAD">("NON-EXCLUSIVE LEASE");
+  const [publishing, setPublishing] = useState(false);
+  const router = useRouter();
 
   return (
     <PageShell>
@@ -160,29 +164,45 @@ export default function BeatLabCreatePage() {
           {step === "pricing" && (
             <div style={{ padding: "32px", maxWidth: 500 }}>
               <div style={{ fontSize: 9, letterSpacing: 4, color: "#FFD700", fontWeight: 800, marginBottom: 20 }}>PRICING + RIGHTS</div>
-              {[
-                { label: "NON-EXCLUSIVE LEASE", price: "$29", desc: "Buyer gets limited use, you keep rights, can sell again" },
-                { label: "EXCLUSIVE LEASE", price: "$149", desc: "Buyer gets near-full rights, you keep writer credit" },
-                { label: "EXCLUSIVE BUYOUT", price: "$499", desc: "Buyer owns it fully — no further sales" },
-                { label: "FREE DOWNLOAD", price: "$0", desc: "Promotional only — no commercial use" },
-              ].map(opt => (
-                <div key={opt.label} style={{
-                  padding: 16, borderRadius: 10, marginBottom: 10,
-                  background: "rgba(255,215,0,0.05)", border: "1px solid rgba(255,215,0,0.15)", cursor: "pointer",
+              {([
+                { label: "NON-EXCLUSIVE LEASE" as const, price: "$29", desc: "Buyer gets limited use, you keep rights, can sell again" },
+                { label: "EXCLUSIVE LEASE" as const, price: "$149", desc: "Buyer gets near-full rights, you keep writer credit" },
+                { label: "EXCLUSIVE BUYOUT" as const, price: "$499", desc: "Buyer owns it fully — no further sales" },
+                { label: "FREE DOWNLOAD" as const, price: "$0", desc: "Promotional only — no commercial use" },
+              ]).map(opt => (
+                <div key={opt.label} onClick={() => setSelectedPricing(opt.label)} style={{
+                  padding: 16, borderRadius: 10, marginBottom: 10, cursor: "pointer",
+                  background: selectedPricing === opt.label ? "rgba(255,215,0,0.12)" : "rgba(255,215,0,0.05)",
+                  border: `1px solid ${selectedPricing === opt.label ? "#FFD700" : "rgba(255,215,0,0.15)"}`,
                 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: "#FFD700" }}>{opt.label}</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: selectedPricing === opt.label ? "#FFD700" : "#aaa" }}>{opt.label}</span>
                     <span style={{ fontSize: 16, fontWeight: 900, color: "#FFD700" }}>{opt.price}</span>
                   </div>
                   <p style={{ fontSize: 11, color: "#888", margin: "6px 0 0", lineHeight: 1.5 }}>{opt.desc}</p>
                 </div>
               ))}
-              <motion.button whileTap={{ scale: 0.97 }} style={{
-                marginTop: 20, width: "100%", padding: "14px 0", borderRadius: 10,
-                background: "linear-gradient(135deg, #FF2DAA, #AA2DFF)", border: "none",
-                color: "#fff", fontWeight: 900, fontSize: 13, letterSpacing: 3, cursor: "pointer",
-              }}>
-                PUBLISH BEAT →
+              <motion.button
+                whileTap={{ scale: 0.97 }}
+                disabled={publishing}
+                onClick={async () => {
+                  setPublishing(true);
+                  try {
+                    await fetch("/api/beats/submit", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      credentials: "include",
+                      body: JSON.stringify({ bpm, key: keyNote, scale, kit: selectedKit, sample: selectedSample, loop: selectedLoop, pricing: selectedPricing }),
+                    });
+                  } catch { /* proxy may be offline; continue */ }
+                  router.push("/beat-lab/my-beats");
+                }}
+                style={{
+                  marginTop: 20, width: "100%", padding: "14px 0", borderRadius: 10,
+                  background: publishing ? "rgba(255,45,170,0.4)" : "linear-gradient(135deg, #FF2DAA, #AA2DFF)",
+                  border: "none", color: "#fff", fontWeight: 900, fontSize: 13, letterSpacing: 3, cursor: publishing ? "default" : "pointer",
+                }}>
+                {publishing ? "PUBLISHING…" : "PUBLISH BEAT →"}
               </motion.button>
             </div>
           )}

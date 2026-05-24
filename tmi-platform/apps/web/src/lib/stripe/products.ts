@@ -141,8 +141,12 @@ export const STRIPE_PRODUCTS = {
   TICKET_VIP:      { productId:"prod_ticket", priceId:"price_ticket_vip",      name:"Event Ticket (VIP)",      price:1500, interval:"one_time" as const },
 
   // ── NFT / Beat ────────────────────────────────────────────────────────────
-  BEAT_LICENSE: { productId:"prod_beat", priceId:"price_beat_license", name:"Beat License", price:2500, interval:"one_time" as const },
-  NFT_MINT_FEE: { productId:"prod_nft",  priceId:"price_nft_mint_fee", name:"NFT Mint Fee", price:999,  interval:"one_time" as const },
+  BEAT_LICENSE:          { productId:"prod_beat", priceId:"price_beat_license",   name:"Beat License",            price:2500,  interval:"one_time" as const },
+  BEAT_LEASE_BASIC:      { productId:"prod_beat", priceId:"price_beat_basic",     name:"Beat Basic Lease",        price:2900,  interval:"one_time" as const },
+  BEAT_LEASE_PREMIUM:    { productId:"prod_beat", priceId:"price_beat_premium",   name:"Beat Premium Lease",      price:5900,  interval:"one_time" as const },
+  BEAT_LEASE_EXCLUSIVE:  { productId:"prod_beat", priceId:"price_beat_exclusive", name:"Beat Exclusive Buyout",   price:49900, interval:"one_time" as const },
+  NFT_MINT_FEE:          { productId:"prod_nft",  priceId:"price_nft_mint_fee",   name:"NFT Mint Fee",            price:999,   interval:"one_time" as const },
+  NFT_PURCHASE:          { productId:"prod_nft",  priceId:"price_nft_purchase",   name:"NFT Purchase",            price:9900,  interval:"one_time" as const },
 } as const;
 
 // Platform revenue split percentages
