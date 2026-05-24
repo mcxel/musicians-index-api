@@ -6,6 +6,8 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import BeatJourneyWidget from '@/components/beats/BeatJourneyWidget';
 import { getRoleStats, type DashboardStat } from '@/lib/stats/DashboardStatsEngine';
+import LiveMediaWall from '@/components/media/LiveMediaWall';
+import VideoCurtainReveal from '@/components/media/VideoCurtainReveal';
 
 interface MeUser { id: string; email: string; name?: string; role: string; tier?: string; }
 
@@ -120,6 +122,13 @@ export default function PerformerDashboardPage() {
         {/* Beat Journey trust signal */}
         <div style={{ marginBottom: 28 }}>
           <BeatJourneyWidget compact />
+        </div>
+
+        {/* Stage preview — your room, your audience */}
+        <div style={{ marginBottom: 32 }}>
+          <VideoCurtainReveal title="YOUR STAGE FEED" subtitle="Tap to open your room" accentColor="#FF2DAA" autoOpen revealDelayMs={800}>
+            <LiveMediaWall roomId="live-stage" title="LIVE STAGE · AUDIENCE PREVIEW" mode="spotlight" nodeCount={6} accentColor="#FF2DAA" enterHref="/go-live" />
+          </VideoCurtainReveal>
         </div>
 
         {/* Primary Actions */}

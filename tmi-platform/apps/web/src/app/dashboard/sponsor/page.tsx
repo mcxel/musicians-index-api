@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { getRoleStats, type DashboardStat } from '@/lib/stats/DashboardStatsEngine';
+import LiveMediaWall from '@/components/media/LiveMediaWall';
 
 interface MeUser { id: string; email: string; name?: string; role: string; }
 
@@ -115,6 +116,11 @@ export default function SponsorDashboardPage() {
             <Link href="/sponsor/payments" style={{ padding: '13px 20px', background: 'rgba(255,45,170,0.1)', border: '1px solid rgba(255,45,170,0.3)', borderRadius: 9, color: '#FF2DAA', fontWeight: 800, fontSize: 13, textDecoration: 'none', whiteSpace: 'nowrap' }}>VIEW PACKAGES</Link>
           </div>
         </motion.div>
+
+        {/* Sponsored live room preview */}
+        <div style={{ marginBottom: 28 }}>
+          <LiveMediaWall roomId="R-307" title="LIVE EVENTS YOU'RE SPONSORING" mode="billboard" nodeCount={6} accentColor="#FF2DAA" enterHref="/sponsor/campaigns" />
+        </div>
 
         {/* Primary Actions */}
         <div style={{ marginBottom: 32 }}>

@@ -18,8 +18,10 @@ import AvatarMiniPreview from '@/components/avatar/AvatarMiniPreview';
 import WeeklyContestRail from './WeeklyContestRail';
 import WinnerReplayWall from './WinnerReplayWall';
 import LiveMagazineVoiceTicker from './LiveMagazineVoiceTicker';
+import HomeLobbyVideoWall from './HomeLobbyVideoWall';
 import { enforceRouteOwnership } from '@/lib/routes/TmiVisualRouteMap';
 import { getVisualSlot } from '@/lib/visuals/TmiVisualSlotRegistry';
+import LiveMediaWall from '@/components/media/LiveMediaWall';
 
 export default function Home3LiveWorldSurface() {
   enforceRouteOwnership('/home/3');
@@ -103,7 +105,13 @@ export default function Home3LiveWorldSurface() {
       {/* Main preview lobby */}
       <Home3MainPreviewLobby />
 
+      {/* Live world video wall */}
+      <section style={{ maxWidth: 1100, margin: '0 auto', padding: '0 24px 28px' }}>
+        <LiveMediaWall roomId="R-101" title="LIVE WORLD FEED — ALL ROOMS" mode="billboard" nodeCount={9} accentColor="#00FFFF" enterHref="/live/rooms" />
+      </section>
+
       {/* Lobby wall grid */}
+      <HomeLobbyVideoWall accentColor="#00FFFF" />
       <Home3LivewallGrid />
 
       {/* Live events */}
