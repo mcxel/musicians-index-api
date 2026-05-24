@@ -1,5 +1,24 @@
 import React from 'react';
+import type { Metadata } from 'next';
 import { MagazinePageFlipRuntime } from '@/components/magazine/MagazinePageFlipRuntime';
+
+export const metadata: Metadata = {
+  title: "The Musician's Index — Live Music Platform",
+  description: "The Musician's Index is a live interactive music platform where artists battle, fans vote, venues broadcast, and music discovery happens in real time.",
+  openGraph: {
+    title: "The Musician's Index | Your Stage. Be Original.",
+    description: "Live battles, cyphers, shows, artist discovery, and fan engagement — all on one platform. The scene is live right now.",
+    url: "https://themusiciansindex.com/home/1",
+    images: [{ url: "https://themusiciansindex.com/og-image.jpg", width: 1200, height: 630, alt: "The Musician's Index — Live Music Platform" }],
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "The Musician's Index | Your Stage. Be Original.",
+    description: "Live battles, cyphers, shows, artist discovery, and fan engagement — all on one platform.",
+    images: ["https://themusiciansindex.com/og-image.jpg"],
+  },
+};
 import HomeSurfacePage from '@/components/home/system/HomeSurfacePage';
 import BillboardColumnPulse from '../../../components/home/BillboardColumnPulse';
 import Home3LiveWorldSurface from '@/components/home/Home3LiveWorldSurface';
