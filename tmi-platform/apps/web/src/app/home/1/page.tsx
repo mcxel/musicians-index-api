@@ -1,13 +1,11 @@
+import React from 'react';
 import { MagazinePageFlipRuntime } from '@/components/magazine/MagazinePageFlipRuntime';
 import HomeSurfacePage from '@/components/home/system/HomeSurfacePage';
-import IgnitionBurstConfetti from '@/components/home/effects/IgnitionBurstConfetti';
 import BillboardColumnPulse from '../../../components/home/BillboardColumnPulse';
 import Home3LiveWorldSurface from '@/components/home/Home3LiveWorldSurface';
 import Home4SponsorSurface from '@/components/home/Home4SponsorSurface';
 import Home5BattleCypherSurface from '@/components/home/Home5BattleCypherSurface';
-import LiveRibbonSystem from '@/components/home/LiveRibbonSystem';
-import AvatarMiniPreview from '@/components/avatar/AvatarMiniPreview';
-import TMIPricingPulse from '@/components/system/TMIPricingPulse';
+import Home1OrbitalMagazine from '@/components/home/Home1OrbitalMagazine';
 
 // ─── Scene atmosphere constants ───────────────────────────────────────────────
 
@@ -72,42 +70,7 @@ export const MAGAZINE_FULL_ROTATION_SCENES = [
   {
     id: 'home-1' as const,
     durationMs: 30000,
-    content: (
-      <main
-        role="main"
-        tabIndex={-1}
-        data-telemetry="home.1.render"
-        style={{
-          position: 'relative',
-          height: '100%',
-          minHeight: '100%',
-          background:
-            'radial-gradient(ellipse at 20% 25%, rgba(120,0,255,0.55) 0%, transparent 50%), radial-gradient(ellipse at 80% 75%, rgba(0,200,180,0.45) 0%, transparent 50%), radial-gradient(ellipse at 50% 100%, rgba(255,0,150,0.35) 0%, transparent 50%), radial-gradient(ellipse at 10% 80%, rgba(255,180,0,0.2) 0%, transparent 40%), linear-gradient(160deg, #12043a 0%, #080c2a 45%, #061018 100%)',
-        }}
-      >
-        <HomeSurfacePage surfaceId={1} />
-        <IgnitionBurstConfetti
-          zIndex={50}
-          assetCategory="hipHop"
-          burstDurationMs={2200}
-          cycleMs={14000}
-          burstCount={44}
-        />
-        {/* Live status ribbon — "VOTING LIVE", "CROWN UPDATING", etc. */}
-        <div aria-live="polite" style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 60, pointerEvents: 'none' }}>
-          <LiveRibbonSystem accent="#FF2DAA" />
-        </div>
-        {/* Avatar identity badge — bottom-right, above overlays */}
-        <div style={{ position: 'absolute', bottom: 16, right: 16, zIndex: 65, pointerEvents: 'auto' }}>
-          <AvatarMiniPreview variant="mini" accentColor="#00FFFF" />
-        </div>
-        {/* Pricing pulse — fades out after 5 s */}
-        <TMIPricingPulse />
-        {/* Cover vignette — frames the stage */}
-        <div aria-hidden="true" style={atmosphere('rgba(6,2,18,0.36)', 'rgba(120,0,255,0.08)', 'rgba(0,255,255,0.03)')} />
-        <div aria-hidden="true" style={SCANLINE} />
-      </main>
-    ),
+    content: <Home1OrbitalMagazine />,
   },
   {
     id: 'home-1-2' as const,

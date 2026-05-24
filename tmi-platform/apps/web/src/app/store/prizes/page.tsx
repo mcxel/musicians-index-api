@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { RECENT_WINNERS } from "@/lib/giveaway/giveawayEngine";
+import { RECENT_WINNERS } from "@/lib/giveaway/GiveawayEngine";
 
 type PrizeType = "Cash" | "Equipment" | "NFT" | "Season Pass" | "Ticket Bundle" | "Merch";
 type Sponsor   = "All" | "BeatGear Co" | "Prime Wave" | "FreshThreads NYC" | "Neon Vibe Records" | "AudioForge Labs";
