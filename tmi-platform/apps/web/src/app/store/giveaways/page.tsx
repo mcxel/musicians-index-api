@@ -10,7 +10,7 @@ import {
   formatCountdown,
   getDeadlineMs,
   type Giveaway,
-} from "@/lib/giveaway/giveawayEngine";
+} from "@/lib/giveaway/GiveawayEngine";
 
 const TIER_COLOR: Record<string, string> = {
   open:    "#00FFFF",
