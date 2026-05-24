@@ -10,7 +10,7 @@ import {
   formatPrizeValue,
   RECENT_WINNERS,
   type Giveaway,
-} from "@/lib/giveaway/GiveawayEngine";
+} from "@/lib/giveaway/giveawayEngine";
 
 const TIER_CONFIG = {
   open:    { label: "OPEN",    color: "#00FFFF" },
