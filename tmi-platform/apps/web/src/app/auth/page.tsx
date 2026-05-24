@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
+import { motion } from "framer-motion";
 
 type SessionPayload = {
   authenticated: boolean;
@@ -17,7 +19,6 @@ function toSessionPayload(data: unknown): SessionPayload {
     user?: { id?: string; email?: string } | null;
     expires?: string | null;
   };
-
   return {
     authenticated: Boolean(d?.authenticated),
     csrfToken: d?.csrfToken || null,
@@ -25,7 +26,6 @@ function toSessionPayload(data: unknown): SessionPayload {
     expires: d?.expires || null,
   };
 }
-
 
 function roleToHub(role?: string): string {
   const r = (role ?? "").toLowerCase();
@@ -38,7 +38,6 @@ function roleToHub(role?: string): string {
   if (r === "writer")     return "/dashboard/writer";
   if (r === "promoter")   return "/dashboard/promoter";
   if (r === "fan")        return "/dashboard/fan";
-  // generic user — hasn't picked a role yet
   return "/onboarding";
 }
 
@@ -50,19 +49,11 @@ export default function AuthPage() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [dateOfBirth, setDateOfBirth] = useState("");
-  const [parentEmail, setParentEmail] = useState("");
-  const [termsAccepted, setTermsAccepted] = useState(false);
-  const [originalityAccepted, setOriginalityAccepted] = useState(false);
-  const [isMinor, setIsMinor] = useState(false);
-  const [session, setSession] = useState<SessionPayload>({
-    authenticated: false,
-    csrfToken: null,
-    user: null,
-    expires: null,
-  });
   const [message, setMessage] = useState<string>("");
   const [busy, setBusy] = useState(false);
+  const [session, setSession] = useState<SessionPayload>({
+    authenticated: false, csrfToken: null, user: null, expires: null,
+  });
 
   const loadSession = async (): Promise<SessionPayload> => {
     const res = await fetch("/api/auth/session", { cache: "no-store", credentials: "include" });
@@ -71,12 +62,12 @@ export default function AuthPage() {
     setSession(parsed);
     return parsed;
   };
-  // Load session once on mount — redirect if already authenticated
+
   useEffect(() => {
     let active = true;
     loadSession().then((s) => {
       if (active && s.authenticated) {
-        const role = (s as unknown as { role?: string }).role ?? '';
+        const role = (s as unknown as { role?: string }).role ?? "";
         router.replace(nextRoute || roleToHub(role));
       }
     });
@@ -84,306 +75,140 @@ export default function AuthPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const waitForCsrfCookie = async (): Promise<boolean> => {
-    for (let attempt = 0; attempt < 8; attempt += 1) {
-      if (document.cookie.includes("phase11_csrf=")) {
-        return true;
-      }
-      await new Promise((resolve) => setTimeout(resolve, 100));
-    }
-    return false;
-  };
-
-  const loadFreshCsrf = async (): Promise<string | null> => {
-    const current = await loadSession();
-    if (!current.csrfToken) {
-      return null;
-    }
-    await waitForCsrfCookie();
-    return current.csrfToken;
-  };
-
-  const buildAuthHeaders = (csrfToken: string | null): Record<string, string> => {
-    const headers: Record<string, string> = { "Content-Type": "application/json" };
-    if (csrfToken) {
-      headers["X-CSRF-Token"] = csrfToken;
-    }
-    return headers;
-  };
-
-  const postWithCsrfRetry = async (url: string, body: string) => {
-    let csrf = await loadFreshCsrf();
-    let res = await fetch(url, {
-      method: "POST",
-      headers: buildAuthHeaders(csrf),
-      body,
-    });
-
-    if (res.status !== 403) {
-      return res;
-    }
-
-    await new Promise((resolve) => setTimeout(resolve, 120));
-    csrf = await loadFreshCsrf();
-    res = await fetch(url, {
-      method: "POST",
-      headers: buildAuthHeaders(csrf),
-      body,
-    });
-    return res;
-  };
-
   const waitForAuthenticatedSession = async (): Promise<boolean> => {
-    // Give the browser a brief window to persist Set-Cookie from the login response.
-    for (let attempt = 0; attempt < 5; attempt += 1) {
-      const current = await loadSession();
-      if (current.authenticated) {
-        return true;
-      }
-      await new Promise((resolve) => setTimeout(resolve, 150));
+    for (let i = 0; i < 5; i++) {
+      const s = await loadSession();
+      if (s.authenticated) return true;
+      await new Promise(r => setTimeout(r, 150));
     }
     return false;
-  };
-
-  const register = async () => {
-    setBusy(true);
-    setMessage("");
-    try {
-      // Always refresh session/CSRF before register
-      await loadSession();
-      // Calculate age and minor status
-      let minor = false;
-      if (dateOfBirth) {
-        const dob = new Date(dateOfBirth);
-        const now = new Date();
-        let age = now.getFullYear() - dob.getFullYear();
-        const m = now.getMonth() - dob.getMonth();
-        if (m < 0 || (m === 0 && now.getDate() < dob.getDate())) {
-          age--;
-        }
-        minor = age < 18;
-      }
-      setIsMinor(minor);
-      const payload: Record<string, unknown> = {
-        email,
-        password,
-        dateOfBirth,
-        termsAccepted,
-        originalityAccepted,
-      };
-      if (minor && parentEmail) {
-        payload.parentEmail = parentEmail;
-      }
-
-      const res = await postWithCsrfRetry("/api/auth/register", JSON.stringify(payload));
-
-      if (res.status === 201 || res.status === 200) {
-        // Auto-provision the new account (wallet, avatar, onboarding bots, role workspace)
-        const regData = await res.json().catch(() => ({}) as Record<string, unknown>);
-        const userId: string | undefined = typeof regData?.userId === "string" ? regData.userId : undefined;
-        if (userId) {
-          await fetch("/api/auth/provision", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ userId, accountType: "MEMBER" }),
-          }).catch(() => {});
-        }
-        setMessage("Registration succeeded. You can now sign in.");
-        // Auto-login after registration
-        const loginRes = await postWithCsrfRetry("/api/auth/signin", JSON.stringify({ email, password }));
-        if (loginRes.status === 200) {
-          const loginData = await loginRes.json().catch(() => ({} as { role?: string }));
-          const authenticated = await waitForAuthenticatedSession();
-          if (authenticated) {
-            const dest = nextRoute || roleToHub(loginData.role);
-            router.replace(dest);
-          }
-        }
-      } else if (res.status === 409) {
-        setMessage("User already exists.");
-      } else {
-        const err = await res.json().catch(() => ({}));
-        setMessage(`Register failed (${res.status})${err?.message ? ": " + err.message : ""}`);
-      }
-    } finally {
-      await loadSession();
-      setBusy(false);
-    }
   };
 
   const login = async () => {
     setBusy(true);
     setMessage("");
     try {
-      // Always refresh session/CSRF before login
-      await loadSession();
+      const csrfRes = await loadSession();
+      const csrf = csrfRes.csrfToken;
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (csrf) headers["X-CSRF-Token"] = csrf;
 
-      const res = await postWithCsrfRetry("/api/auth/signin", JSON.stringify({ email, password }));
+      const res = await fetch("/api/auth/signin", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ email: email.trim().toLowerCase(), password }),
+        credentials: "include",
+      });
 
       if (res.status === 200) {
         const data = await res.json().catch(() => ({} as { role?: string }));
         const authenticated = await waitForAuthenticatedSession();
         if (authenticated) {
           const dest = nextRoute || roleToHub(data.role);
-          setMessage(`Login succeeded. Redirecting...`);
           router.replace(dest);
         } else {
-          setMessage("Login completed but session was not restored. Please retry.");
+          setMessage("Login completed but session was not confirmed. Please try again.");
         }
       } else if (res.status === 401) {
-        setMessage("Invalid credentials.");
+        setMessage("Incorrect email or password.");
       } else if (res.status === 403) {
-        setMessage("Missing or invalid CSRF token.");
+        setMessage("Security token mismatch — please refresh and try again.");
       } else {
-        setMessage(`Login failed (${res.status}).`);
+        setMessage(`Sign in failed (${res.status}).`);
       }
     } finally {
-      await loadSession();
-      setBusy(false);
-    }
-  };
-
-  const logout = async () => {
-    setBusy(true);
-    setMessage("");
-    try {
-      const res = await postWithCsrfRetry("/api/auth/logout", "{}");
-      setMessage(res.status === 200 ? "Logged out." : `Logout failed (${res.status}).`);
-      if (res.status === 200) {
-        router.replace("/auth");
-      }
-    } finally {
-      await loadSession();
       setBusy(false);
     }
   };
 
   return (
-    <main className="min-h-screen bg-black text-white px-4 py-16">
-      <div className="max-w-xl mx-auto space-y-6">
-        <h1 className="text-3xl font-bold">Account Access</h1>
-        <p className="text-white/70">This screen uses backend credentials auth via `/api/auth/*`.</p>
-        <p className="text-xs text-white/50">GitHub OAuth is not active on this route in the current runtime path.</p>
+    <main style={{ minHeight: "100vh", background: "#050510", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 20px" }}>
+      <motion.div initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }} style={{ width: "100%", maxWidth: 420 }}>
 
-        <form
-          className="space-y-3 bg-white/5 border border-white/10 rounded-xl p-4"
-          onSubmit={(event) => {
-            event.preventDefault();
-            void login();
-          }}
+        {/* Logo */}
+        <div style={{ textAlign: "center", marginBottom: 36 }}>
+          <div style={{ fontSize: 9, letterSpacing: "0.35em", color: "#00FFFF", fontWeight: 800, marginBottom: 6 }}>THE MUSICIANS INDEX</div>
+          <div style={{ fontSize: 26, fontWeight: 900, letterSpacing: 3, color: "#fff" }}>SIGN IN</div>
+        </div>
+
+        {/* Form */}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}
+          style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, padding: "28px 24px" }}
         >
-          <label htmlFor="auth-email" className="block text-sm">Email</label>
-          <input
-            id="auth-email"
-            className="w-full rounded-md bg-black/40 border border-white/20 px-3 py-2"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            type="email"
-            placeholder="you@example.com"
-            required
-          />
-          <label htmlFor="auth-password" className="block text-sm">Password</label>
-          <input
-            id="auth-password"
-            className="w-full rounded-md bg-black/40 border border-white/20 px-3 py-2"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            type="password"
-            placeholder="Enter password"
-            minLength={8}
-            required
-          />
-          <label htmlFor="auth-dob" className="block text-sm">Date of Birth</label>
-          <input
-            id="auth-dob"
-            className="w-full rounded-md bg-black/40 border border-white/20 px-3 py-2"
-            value={dateOfBirth}
-            onChange={(e) => setDateOfBirth(e.target.value)}
-            type="date"
-            required
-          />
-          {/* Show parent email if under 18 */}
-          {(() => {
-            let minor = false;
-            if (dateOfBirth) {
-              const dob = new Date(dateOfBirth);
-              const now = new Date();
-              let age = now.getFullYear() - dob.getFullYear();
-              const m = now.getMonth() - dob.getMonth();
-              if (m < 0 || (m === 0 && now.getDate() < dob.getDate())) {
-                age--;
-              }
-              minor = age < 18;
-            }
-            if (minor) {
-              return (
-                <>
-                  <label htmlFor="auth-parent-email" className="block text-sm">Parent/Guardian Email (required if under 18)</label>
-                  <input
-                    id="auth-parent-email"
-                    className="w-full rounded-md bg-black/40 border border-white/20 px-3 py-2"
-                    value={parentEmail}
-                    onChange={(e) => setParentEmail(e.target.value)}
-                    type="email"
-                    required={minor}
-                  />
-                </>
-              );
-            }
-            return null;
-          })()}
-          <div className="flex items-center gap-2">
-            <input
-              id="auth-terms"
-              type="checkbox"
-              checked={termsAccepted}
-              onChange={(e) => setTermsAccepted(e.target.checked)}
-              required
-            />
-            <label htmlFor="auth-terms" className="text-sm">I agree to the <a href="/terms" className="underline">Terms of Service</a></label>
-          </div>
-          <div className="flex items-center gap-2">
-            <input
-              id="auth-originality"
-              type="checkbox"
-              checked={originalityAccepted}
-              onChange={(e) => setOriginalityAccepted(e.target.checked)}
-            />
-            <label htmlFor="auth-originality" className="text-sm">I agree to the <a href="/originality-policy" className="underline">Originality Policy</a></label>
-          </div>
-          <div className="flex gap-3">
-            <button className="px-4 py-2 rounded-md bg-blue-600 disabled:opacity-50" type="submit" disabled={busy}>
-              Sign in (Credentials)
-            </button>
-            <button className="px-4 py-2 rounded-md bg-emerald-600 disabled:opacity-50" type="button" onClick={() => void register()} disabled={busy}>
-              Register
-            </button>
-            <button className="px-4 py-2 rounded-md bg-zinc-700 disabled:opacity-50" type="button" onClick={() => void logout()} disabled={busy}>
-              Sign out
-            </button>
-          </div>
-        </form>
+          <form
+            onSubmit={(e) => { e.preventDefault(); void login(); }}
+            style={{ display: "flex", flexDirection: "column", gap: 14 }}
+          >
+            <div>
+              <label style={{ display: "block", fontSize: 8, letterSpacing: "0.15em", color: "rgba(255,255,255,0.38)", marginBottom: 6, fontWeight: 700 }}>EMAIL ADDRESS</label>
+              <input
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                required
+                autoComplete="email"
+                style={{ width: "100%", padding: "11px 13px", fontSize: 13, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, color: "#fff", outline: "none", boxSizing: "border-box" }}
+              />
+            </div>
 
-        {/* Legal text block */}
-        <div className="mt-6 p-4 bg-white/10 border border-white/20 rounded-xl text-sm">
-          <strong>AGE & CONTENT AGREEMENT</strong>
-          <ul className="list-disc pl-5 mt-2 space-y-1">
-            <li>You are at least 16 years old.</li>
-            <li>If you are under 18, you have permission from a parent or guardian.</li>
-            <li>All content you upload is your original work or you have rights to use it.</li>
-            <li>You agree to the <a href="/terms" className="underline">Terms of Service</a>, <a href="/privacy" className="underline">Privacy Policy</a>, and <a href="/guidelines" className="underline">Community Guidelines</a>.</li>
-          </ul>
-        </div>
+            <div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
+                <label style={{ fontSize: 8, letterSpacing: "0.15em", color: "rgba(255,255,255,0.38)", fontWeight: 700 }}>PASSWORD</label>
+                <Link href="/auth/forgot-password" style={{ fontSize: 9, color: "rgba(0,255,255,0.6)", textDecoration: "none" }}>Forgot password?</Link>
+              </div>
+              <input
+                type="password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                placeholder="Your password"
+                required
+                autoComplete="current-password"
+                style={{ width: "100%", padding: "11px 13px", fontSize: 13, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, color: "#fff", outline: "none", boxSizing: "border-box" }}
+              />
+            </div>
 
-        <div className="bg-white/5 border border-white/10 rounded-xl p-4">
-          <p>Status: {session.authenticated ? "authenticated" : "unauthenticated"}</p>
-          <p>User: {session.user ? `${session.user.email} (${session.user.id})` : "none"}</p>
-          <p>Expires: {session.expires || "none"}</p>
-          <p>CSRF: {session.csrfToken ? "present" : "missing"}</p>
-        </div>
+            {message && (
+              <div style={{ fontSize: 11, color: message.toLowerCase().includes("success") || message.toLowerCase().includes("redirect") ? "#00FF88" : "#FF6B6B", padding: "8px 12px", background: "rgba(255,255,255,0.04)", borderRadius: 7 }}>
+                {message}
+              </div>
+            )}
 
-        {message ? <p className="text-sm text-amber-300">{message}</p> : null}
-      </div>
+            <motion.button
+              whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.98 }}
+              type="submit"
+              disabled={busy}
+              style={{
+                width: "100%", padding: "13px", fontSize: 11, fontWeight: 800, letterSpacing: "0.15em",
+                background: busy ? "rgba(0,255,255,0.15)" : "linear-gradient(135deg,#00FFFF,#00FFFF99)",
+                color: "#050510", border: "none", borderRadius: 8, cursor: busy ? "wait" : "pointer",
+                opacity: busy ? 0.7 : 1,
+              }}
+            >
+              {busy ? "SIGNING IN..." : "SIGN IN →"}
+            </motion.button>
+          </form>
+        </motion.div>
+
+        {/* Create account CTA */}
+        <motion.div
+          initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}
+          style={{ marginTop: 20, textAlign: "center" }}
+        >
+          <div style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", marginBottom: 10 }}>Don&apos;t have an account?</div>
+          <Link href="/signup" style={{ display: "block", padding: "12px", fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 8, color: "rgba(255,255,255,0.7)", textDecoration: "none", background: "rgba(255,255,255,0.03)" }}>
+            CREATE YOUR TMI ACCOUNT →
+          </Link>
+        </motion.div>
+
+        {/* Debug session strip (dev only) */}
+        {process.env.NODE_ENV !== "production" && (
+          <div style={{ marginTop: 24, padding: "10px 14px", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 8, fontSize: 9, color: "rgba(255,255,255,0.3)" }}>
+            Session: {session.authenticated ? `authenticated · ${session.user?.email}` : "unauthenticated"} · CSRF: {session.csrfToken ? "present" : "missing"}
+          </div>
+        )}
+      </motion.div>
     </main>
   );
 }
