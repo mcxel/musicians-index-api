@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 import EmailProviderEngine from "@/lib/email/EmailProviderEngine";
 import { DiamondInviteEngine } from "@/lib/auth/DiamondInviteEngine";
 
@@ -6,14 +7,34 @@ const ALLOWED_ADMIN_EMAILS = [
   "berntmusic33@gmail.com",
 ];
 
-export async function POST(req: Request) {
+function isAllowedAdmin(email: string): boolean {
+  return ALLOWED_ADMIN_EMAILS.includes(email.trim().toLowerCase());
+}
+
+export async function POST(req: NextRequest) {
   try {
+    const sessionId = req.cookies.get("tmi_session_id")?.value;
+    const sessionToken = req.cookies.get("tmi_session")?.value;
+    const role = (req.cookies.get("tmi_role")?.value ?? "").trim().toUpperCase();
+    const sessionEmail = (req.cookies.get("tmi_user_email")?.value ?? "").trim().toLowerCase();
+
+    if (!sessionId || !sessionToken) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    }
+
+    if (role !== "ADMIN") {
+      return NextResponse.json({ error: "Not authorized" }, { status: 403 });
+    }
+
+    if (!sessionEmail || !isAllowedAdmin(sessionEmail)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const body = await req.json();
 
     const to = body.to;
     const name = body.name || "TMI VIP";
     const inviteCode = body.inviteCode || "VIP-ACCESS-2026";
-    const adminEmail = body.adminEmail;
 
     const senderDomain = "support@themusiciansindex.com";
 
@@ -22,10 +43,6 @@ export async function POST(req: Request) {
         { error: "recipient email is required" },
         { status: 400 }
       );
-    }
-
-    if (adminEmail && !ALLOWED_ADMIN_EMAILS.includes(adminEmail.toLowerCase())) {
-      return NextResponse.json({ error: "Not authorized" }, { status: 403 });
     }
 
     const baseUrl =
@@ -44,10 +61,18 @@ export async function POST(req: Request) {
       replyTo: senderDomain,
     });
 
+    if (!result.success) {
+      return NextResponse.json(
+        { success: false, error: result.error ?? "Email delivery failed", provider: result.provider },
+        { status: 502 }
+      );
+    }
+
     return NextResponse.json({
       success: true,
       inviteUrl,
-      provider: result?.provider,
+      provider: result.provider,
+      externalId: result.externalId,
     });
   } catch (err) {
     console.error("[INVITE ERROR]", err);

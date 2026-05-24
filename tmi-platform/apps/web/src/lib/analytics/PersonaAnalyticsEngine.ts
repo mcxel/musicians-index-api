@@ -265,17 +265,19 @@ export function getPersonaEventBreakdown(userId: string): Record<PersonaType, nu
 // ── Dispatch (replace this stub with PostHog / Mixpanel / Amplitude) ──────────
 
 function _dispatch(event: PersonaAnalyticsEvent): void {
-  // Server-side: forward to external analytics endpoint if configured
-  if (typeof window === 'undefined') {
-    // TODO: POST to /api/telemetry/ingest when that route is wired
-    return;
-  }
+  if (typeof window === 'undefined') return;
 
-  // Client-side: push to window.tmiAnalytics for debugging + future SDK
-  if (typeof window !== 'undefined') {
-    // @ts-expect-error intentional global for analytics debugging
-    window.tmiAnalytics ??= [];
-    // @ts-expect-error intentional global for analytics debugging
-    window.tmiAnalytics.push(event);
-  }
+  // Push to debug global
+  // @ts-expect-error intentional global for analytics debugging
+  window.tmiAnalytics ??= [];
+  // @ts-expect-error intentional global for analytics debugging
+  window.tmiAnalytics.push(event);
+
+  // Forward to ingest API (fire-and-forget)
+  void fetch('/api/telemetry/ingest', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify(event),
+  }).catch(() => undefined);
 }
