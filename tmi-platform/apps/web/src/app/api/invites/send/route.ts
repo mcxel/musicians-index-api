@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
     const baseUrl =
       process.env.NEXTAUTH_URL ?? "https://themusiciansindex.com";
 
-    const inviteUrl = `${baseUrl}/auth?code=${inviteCode}`;
+    const inviteUrl = `${baseUrl}/signup?token=${inviteCode}`;
 
     // Register invite
     DiamondInviteEngine.registerInvite(inviteCode, to);

@@ -4,6 +4,7 @@ import type { NextRequest } from 'next/server';
 import { registerUser } from '@/lib/auth/UserStore';
 import { createSession } from '@/lib/auth/SessionManager';
 import { EmailProviderEngine } from '@/lib/email/EmailProviderEngine';
+import { DiamondInviteEngine } from '@/lib/auth/DiamondInviteEngine';
 
 const BASE_URL = process.env.NEXTAUTH_URL ?? 'https://themusiciansindex.com';
 
@@ -43,6 +44,7 @@ export async function POST(req: NextRequest) {
   let parsed: {
     email?: string; password?: string; displayName?: string; name?: string;
     dateOfBirth?: string; termsAccepted?: boolean; ref?: string; role?: string;
+    inviteToken?: string;
   } = {};
 
   try {
@@ -87,6 +89,11 @@ export async function POST(req: NextRequest) {
   const { sessionId, sessionToken } = createSession(user.id, user.role, clientIp, userAgent);
 
   sendWelcomeEmail(email, displayName || user.displayName);
+
+  // Redeem invite token NOW that the account actually exists
+  if (parsed.inviteToken) {
+    void DiamondInviteEngine.validateAndRedeem(parsed.inviteToken, user.id);
+  }
 
   const response = NextResponse.json(
     { ok: true, userId: user.id, user: { id: user.id, email: user.email, tier: user.tier, role: user.role } },
