@@ -68,14 +68,24 @@ export default function TipButton({ artistSlug, artistName, compact = false }: T
             animate={{ opacity:1, y:0, scale:1 }}
             exit={{ opacity:0, y:-8, scale:0.95 }}
             style={{ position:"absolute", top:"calc(100% + 8px)", left:0, zIndex:100, background:"#0a0b18", border:"1px solid rgba(255,45,170,0.25)", borderRadius:9, padding:10, display:"flex", gap:6, boxShadow:"0 8px 32px rgba(0,0,0,0.5)" }}>
-            {TIP_AMOUNTS.map(t => (
-              <motion.button key={t.label} whileHover={{ scale:1.06 }} whileTap={{ scale:0.94 }}
-                onClick={() => sendTip(t.cents)} disabled={sending}
-                aria-label={`Tip ${t.label} to ${artistName ?? artistSlug}`}
-                style={{ padding:"8px 12px", fontSize:11, fontWeight:900, color:"#fff", background:"rgba(255,45,170,0.12)", border:"1px solid rgba(255,45,170,0.2)", borderRadius:7, cursor:sending?"not-allowed":"pointer" }}>
-                {t.label}
-              </motion.button>
-            ))}
+            <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+              <div style={{ display:"flex", gap:6 }}>
+                {TIP_AMOUNTS.map(t => (
+                  <motion.button key={t.label} whileHover={{ scale:1.06 }} whileTap={{ scale:0.94 }}
+                    onClick={() => sendTip(t.cents)} disabled={sending}
+                    aria-label={`Tip ${t.label} to ${artistName ?? artistSlug}`}
+                    style={{ padding:"8px 12px", fontSize:11, fontWeight:900, color:"#fff", background:"rgba(255,45,170,0.12)", border:"1px solid rgba(255,45,170,0.2)", borderRadius:7, cursor:sending?"not-allowed":"pointer" }}>
+                    {t.label}
+                  </motion.button>
+                ))}
+              </div>
+              <p style={{ margin:0, fontSize:10, color:"#888", textAlign:"center", padding:"2px 4px" }}>
+                ⚡ Verified Payout — Supports this performer instantly
+              </p>
+              <p style={{ margin:0, fontSize:10, color:"#ffd700", textAlign:"center" }}>
+                🏅 First tip = +20 XP + badge
+              </p>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

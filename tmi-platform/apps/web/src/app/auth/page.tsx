@@ -28,14 +28,18 @@ function toSessionPayload(data: unknown): SessionPayload {
 
 
 function roleToHub(role?: string): string {
-  const r = (role ?? "").toUpperCase();
-  if (r === "ADMIN" || r === "STAFF") return "/admin";
-  if (r === "ARTIST")     return "/hub/artist";
-  if (r === "PERFORMER")  return "/hub/performer";
-  if (r === "SPONSOR")    return "/hub/sponsor";
-  if (r === "ADVERTISER") return "/hub/advertiser";
-  if (r === "VENUE")      return "/hub/venue";
-  return "/hub/fan";
+  const r = (role ?? "").toLowerCase();
+  if (r === "admin" || r === "staff") return "/admin";
+  if (r === "artist")     return "/dashboard/artist";
+  if (r === "performer")  return "/dashboard/performer";
+  if (r === "sponsor")    return "/dashboard/sponsor";
+  if (r === "advertiser") return "/dashboard/advertiser";
+  if (r === "venue")      return "/dashboard/venue";
+  if (r === "writer")     return "/dashboard/writer";
+  if (r === "promoter")   return "/dashboard/promoter";
+  if (r === "fan")        return "/dashboard/fan";
+  // generic user — hasn't picked a role yet
+  return "/onboarding";
 }
 
 export default function AuthPage() {
@@ -71,7 +75,10 @@ export default function AuthPage() {
   useEffect(() => {
     let active = true;
     loadSession().then((s) => {
-      if (active && s.authenticated) router.replace(nextRoute || '/hub');
+      if (active && s.authenticated) {
+        const role = (s as unknown as { role?: string }).role ?? '';
+        router.replace(nextRoute || roleToHub(role));
+      }
     });
     return () => { active = false; };
   // eslint-disable-next-line react-hooks/exhaustive-deps

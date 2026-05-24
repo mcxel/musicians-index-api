@@ -1,19 +1,19 @@
 import Link from "next/link";
+import { getAllUsers, getUserCount } from "@/lib/auth/UserStore";
 
 const ROLE_COLORS: Record<string, string> = {
   ADMIN: "#ef4444", ARTIST: "#00FFFF", PERFORMER: "#AA2DFF",
-  FAN: "#FF2DAA", SPONSOR: "#FFD700", ADVERTISER: "#FFA500", VENUE: "#22c55e", STAFF: "#64748b",
+  FAN: "#FF2DAA", SPONSOR: "#FFD700", ADVERTISER: "#FFA500", VENUE: "#00FF88",
+  WRITER: "#FF2DAA", PROMOTER: "#AA2DFF", USER: "#64748b", STAFF: "#64748b",
+  DIAMOND: "#00FF88", PLATINUM: "#AA2DFF", GOLD: "#FFD700", SILVER: "#C0C0C0",
 };
 
-const SEED_USERS = [
-  { id: "u1", name: "Nova Cipher", email: "nova@tmi.live", role: "PERFORMER", status: "active", joined: "Jan 2026" },
-  { id: "u2", name: "Ari Volt", email: "ari@tmi.live", role: "ARTIST", status: "active", joined: "Feb 2026" },
-  { id: "u3", name: "Prime Wave Media", email: "brand@primemedia.com", role: "SPONSOR", status: "active", joined: "Mar 2026" },
-  { id: "u4", name: "Fan_XR99", email: "xr99@fan.tmi", role: "FAN", status: "active", joined: "Apr 2026" },
-  { id: "u5", name: "Cypher Arena", email: "ops@cypherarena.com", role: "VENUE", status: "suspended", joined: "Jan 2026" },
-];
+export const dynamic = "force-dynamic";
 
 export default function AdminUsersPage() {
+  const users = getAllUsers(100);
+  const total = getUserCount();
+
   return (
     <main style={{ minHeight: "100vh", background: "#05060c", color: "#fff", padding: "32px 24px 80px", fontFamily: "'Inter', sans-serif" }}>
       <div style={{ maxWidth: 1200, margin: "0 auto" }}>
@@ -30,28 +30,47 @@ export default function AdminUsersPage() {
             <Link href="/admin/invites" style={{ padding: "9px 18px", borderRadius: 8, background: "#ef4444", color: "#fff", fontSize: 12, fontWeight: 700, textDecoration: "none" }}>Invite User</Link>
           </div>
         </div>
+
+        {/* Stats */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(140px,1fr))", gap: 10, marginBottom: 28 }}>
-          {["Total Users", "Active", "Suspended", "New This Month"].map((label, i) => (
-            <div key={label} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: "14px 16px" }}>
-              <div style={{ fontSize: 22, fontWeight: 900, color: ["#fff","#22c55e","#ef4444","#00FFFF"][i] }}>{["1,284","1,241","43","89"][i]}</div>
-              <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", letterSpacing: "0.12em", textTransform: "uppercase", marginTop: 4 }}>{label}</div>
+          {[
+            { label: "Total Users",    value: String(total),                              color: "#fff" },
+            { label: "This Session",   value: String(users.length),                       color: "#22c55e" },
+            { label: "Diamond",        value: String(users.filter(u => u.tier === "DIAMOND").length),  color: "#00FF88" },
+            { label: "Admin",          value: String(users.filter(u => u.tier === "ADMIN").length),    color: "#ef4444" },
+          ].map((s) => (
+            <div key={s.label} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: "14px 16px" }}>
+              <div style={{ fontSize: 22, fontWeight: 900, color: s.color }}>{s.value}</div>
+              <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", letterSpacing: "0.12em", textTransform: "uppercase", marginTop: 4 }}>{s.label}</div>
             </div>
           ))}
         </div>
-        <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, overflow: "hidden" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 120px 100px 80px 80px", gap: 0, padding: "10px 20px", borderBottom: "1px solid rgba(255,255,255,0.06)", fontSize: 9, color: "rgba(255,255,255,0.3)", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" }}>
-            <span>Name</span><span>Email</span><span>Role</span><span>Status</span><span>Joined</span><span>Action</span>
+
+        {/* User table */}
+        {users.length === 0 ? (
+          <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, padding: "40px", textAlign: "center", color: "rgba(255,255,255,0.3)", fontSize: 13 }}>
+            No registered users yet. Users appear here after signing up.
           </div>
-          {SEED_USERS.map((u) => (
-            <div key={u.id} style={{ display: "grid", gridTemplateColumns: "1fr 1fr 120px 100px 80px 80px", gap: 0, padding: "14px 20px", borderBottom: "1px solid rgba(255,255,255,0.04)", alignItems: "center", fontSize: 12 }}>
-              <span style={{ fontWeight: 700 }}>{u.name}</span>
-              <span style={{ color: "rgba(255,255,255,0.45)" }}>{u.email}</span>
-              <span style={{ fontSize: 9, fontWeight: 800, color: ROLE_COLORS[u.role] ?? "#fff", letterSpacing: "0.1em", textTransform: "uppercase" }}>{u.role}</span>
-              <span style={{ fontSize: 9, fontWeight: 700, color: u.status === "active" ? "#22c55e" : "#ef4444", textTransform: "uppercase", letterSpacing: "0.1em" }}>{u.status}</span>
-              <span style={{ color: "rgba(255,255,255,0.35)" }}>{u.joined}</span>
-              <Link href={`/admin/users/${u.id}`} style={{ fontSize: 10, color: "#00FFFF", textDecoration: "none", fontWeight: 700 }}>View →</Link>
+        ) : (
+          <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, overflow: "hidden" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 100px 80px 80px 80px", gap: 0, padding: "10px 20px", borderBottom: "1px solid rgba(255,255,255,0.06)", fontSize: 9, color: "rgba(255,255,255,0.3)", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" }}>
+              <span>Display Name</span><span>Email</span><span>Role</span><span>Tier</span><span>Joined</span><span>Action</span>
             </div>
-          ))}
+            {users.map((u) => (
+              <div key={u.id} style={{ display: "grid", gridTemplateColumns: "1fr 1fr 100px 80px 80px 80px", gap: 0, padding: "14px 20px", borderBottom: "1px solid rgba(255,255,255,0.04)", alignItems: "center", fontSize: 12 }}>
+                <span style={{ fontWeight: 700 }}>{u.displayName}</span>
+                <span style={{ color: "rgba(255,255,255,0.45)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 11 }}>{u.email}</span>
+                <span style={{ fontSize: 9, fontWeight: 800, color: ROLE_COLORS[u.role?.toUpperCase() as keyof typeof ROLE_COLORS] ?? "#00FFFF", letterSpacing: "0.08em", textTransform: "uppercase" }}>{u.role}</span>
+                <span style={{ fontSize: 9, fontWeight: 800, color: ROLE_COLORS[u.tier] ?? "#aaa", letterSpacing: "0.08em", textTransform: "uppercase" }}>{u.tier}</span>
+                <span style={{ color: "rgba(255,255,255,0.35)", fontSize: 11 }}>{new Date(u.createdAt).toLocaleDateString("en-US", { month: "short", year: "2-digit" })}</span>
+                <Link href={`/admin/users/${u.id}`} style={{ fontSize: 10, color: "#00FFFF", textDecoration: "none", fontWeight: 700 }}>View →</Link>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div style={{ marginTop: 16, fontSize: 11, color: "rgba(255,255,255,0.25)" }}>
+          Showing {users.length} of {total} registered users. Emails hidden for privacy. Connect DATABASE_URL to persist users across restarts.
         </div>
       </div>
     </main>

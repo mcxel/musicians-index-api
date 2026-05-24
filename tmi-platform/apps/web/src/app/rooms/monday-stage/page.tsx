@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import PageShell from '@/components/layout/PageShell';
 import HUDFrame from '@/components/hud/HUDFrame';
 import FooterHUD from '@/components/hud/FooterHUD';
@@ -36,13 +37,12 @@ const CHAT_STUBS = [
 type ChatMsg = { user: string; msg: string };
 
 export default function MondayStagePage() {
+  const router = useRouter();
   const [stageState, setStageState]   = useState<StageState>('CURTAIN_CLOSED');
   const [chatMsgs, setChatMsgs]       = useState<ChatMsg[]>(CHAT_STUBS);
   const [chatInput, setChatInput]     = useState('');
   const [viewers, setViewers]         = useState(1847);
   const [tipping, setTipping]         = useState(false);
-  const [tipSent, setTipSent]         = useState(false);
-  const [tipsTotal, setTipsTotal]     = useState(342);
   const currentArtist = LINEUP.find((l) => l.status === 'LIVE');
 
   // Poll stage status
@@ -89,11 +89,9 @@ export default function MondayStagePage() {
     setTimeout(() => setStageState('ENDED'), 2000);
   }, []);
 
-  const sendTip = () => {
+  const sendTip = (amt: number) => {
     setTipping(false);
-    setTipSent(true);
-    setTipsTotal((t) => t + 5);
-    setTimeout(() => setTipSent(false), 3000);
+    router.push(`/api/stripe/checkout?priceId=price_tip_${amt * 100}&mode=payment&type=tip&roomId=${ROOM_ID}`);
   };
 
   const sendChat = () => {
@@ -177,14 +175,6 @@ export default function MondayStagePage() {
                   </motion.button>
                 ))}
                 <div style={{ flex: 1 }} />
-                <AnimatePresence>
-                  {tipSent && (
-                    <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                      style={{ fontSize: 11, color: '#FFD700', fontWeight: 700 }}>
-                      💰 Tip sent!
-                    </motion.div>
-                  )}
-                </AnimatePresence>
                 <button onClick={() => setTipping((t) => !t)}
                   style={{ padding: '7px 18px', borderRadius: 20, border: '1px solid #FFD70044', background: '#FFD70018', color: '#FFD700', fontSize: 10, fontWeight: 700, letterSpacing: 2, cursor: 'pointer' }}>
                   TIP 💰
@@ -198,12 +188,12 @@ export default function MondayStagePage() {
                     style={{ marginTop: 12, background: '#0d0019', border: '1px solid #FFD70033', borderRadius: 12, padding: '16px 20px', display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                     <div style={{ fontSize: 11, color: '#FFD700', fontWeight: 700, marginRight: 4 }}>Send tip:</div>
                     {[1, 5, 10, 25].map((amt) => (
-                      <button key={amt} onClick={sendTip}
+                      <button key={amt} onClick={() => sendTip(amt)}
                         style={{ padding: '6px 16px', borderRadius: 12, border: '1px solid #FFD70044', background: '#FFD70018', color: '#FFD700', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
                         ${amt}
                       </button>
                     ))}
-                    <span style={{ fontSize: 10, color: '#555', marginLeft: 8 }}>Total tips: ${tipsTotal}</span>
+                    <span style={{ fontSize: 10, color: '#555', marginLeft: 8 }}>You&apos;ll be taken to checkout</span>
                   </motion.div>
                 )}
               </AnimatePresence>

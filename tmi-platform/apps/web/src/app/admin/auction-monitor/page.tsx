@@ -21,7 +21,7 @@ const STATUS_C: Record<string, string> = {
 const TYPE_C: Record<string, string> = { BEAT: "#FFD700", NFT: "#AA2DFF", TICKET: "#FF2DAA", INSTRUMENTAL: "#00FFFF" };
 
 export default function AdminAuctionMonitorPage() {
-  const [auctions] = useState(SEED_AUCTIONS);
+  const [auctions, setAuctions] = useState(SEED_AUCTIONS);
   const active = auctions.filter(a => a.status === "ACTIVE" || a.status === "ENDING_SOON");
   const totalBidVolume = auctions.reduce((a, auc) => a + auc.currentBid, 0);
   const tmiCut = totalBidVolume * 0.15;
@@ -77,7 +77,9 @@ export default function AdminAuctionMonitorPage() {
                   </td>
                   <td style={{ padding: "14px 12px" }}>
                     {(a.status === "ACTIVE" || a.status === "ENDING_SOON") && (
-                      <button style={{ padding: "4px 8px", fontSize: 8, fontWeight: 800, color: "#FF2DAA", border: "1px solid rgba(255,45,170,0.3)", borderRadius: 4, background: "transparent", cursor: "pointer" }}>CANCEL</button>
+                      <button
+                        onClick={() => setAuctions(prev => prev.map(x => x.id === a.id ? { ...x, status: "CANCELLED" } : x))}
+                        style={{ padding: "4px 8px", fontSize: 8, fontWeight: 800, color: "#FF2DAA", border: "1px solid rgba(255,45,170,0.3)", borderRadius: 4, background: "transparent", cursor: "pointer" }}>CANCEL</button>
                     )}
                   </td>
                 </tr>

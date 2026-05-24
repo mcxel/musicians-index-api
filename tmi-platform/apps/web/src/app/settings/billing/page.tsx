@@ -1,13 +1,24 @@
 "use client";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 const PLANS = [
-  { id: "free", label: "Free", price: "$0/mo", perks: ["Basic feed access", "Vote in battles", "5 tips/mo"], current: false },
-  { id: "fan-pass", label: "Fan Pass", price: "$4.99/mo", perks: ["Unlimited voting", "XP multiplier x1.5", "Fan Club access", "Exclusive emotes"], current: true },
-  { id: "vip", label: "VIP Pass", price: "$14.99/mo", perks: ["All Fan Pass perks", "XP multiplier x3", "Backstage access", "Season pass included", "Priority support"], current: false },
+  { id: "free", label: "Free", price: "$0/mo", perks: ["Basic feed access", "Vote in battles", "5 tips/mo"], current: false, priceId: "price_free" },
+  { id: "fan-pass", label: "Fan Pass", price: "$4.99/mo", perks: ["Unlimited voting", "XP multiplier x1.5", "Fan Club access", "Exclusive emotes"], current: true, priceId: "price_fan_pass_monthly" },
+  { id: "vip", label: "VIP Pass", price: "$14.99/mo", perks: ["All Fan Pass perks", "XP multiplier x3", "Backstage access", "Season pass included", "Priority support"], current: false, priceId: "price_vip_monthly" },
 ];
 
 export default function SettingsBillingPage() {
+  const router = useRouter();
+
+  function selectPlan(p: typeof PLANS[0]) {
+    if (p.id === "free") {
+      router.push("/api/stripe/checkout?priceId=" + p.priceId + "&mode=subscription&downgrade=1");
+    } else {
+      router.push("/api/stripe/checkout?priceId=" + p.priceId + "&mode=subscription");
+    }
+  }
+
   return (
     <main style={{ minHeight: "100vh", background: "#05060c", color: "#fff", padding: "32px 24px 80px", fontFamily: "'Inter', sans-serif" }}>
       <div style={{ maxWidth: 780, margin: "0 auto" }}>
@@ -26,7 +37,7 @@ export default function SettingsBillingPage() {
                 {p.perks.map((perk) => <li key={perk} style={{ fontSize: 12, color: "rgba(255,255,255,0.6)" }}>✓ {perk}</li>)}
               </ul>
               {!p.current && (
-                <button style={{ width: "100%", padding: "10px", borderRadius: 8, background: "#00FFFF", color: "#05060c", fontWeight: 800, fontSize: 12, cursor: "pointer", border: "none" }}>
+                <button onClick={() => selectPlan(p)} style={{ width: "100%", padding: "10px", borderRadius: 8, background: "#00FFFF", color: "#05060c", fontWeight: 800, fontSize: 12, cursor: "pointer", border: "none" }}>
                   {p.id === "free" ? "Downgrade" : "Upgrade"}
                 </button>
               )}

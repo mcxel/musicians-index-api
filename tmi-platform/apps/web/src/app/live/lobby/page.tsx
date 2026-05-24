@@ -9,6 +9,10 @@ import { registerRoute } from "@/lib/routing/RouteClosureRegistry";
 import { registerReturnPath } from "@/lib/routing/ReturnPathResolver";
 import { resolveSlug } from "@/lib/routing/SlugRecoveryEngine";
 import SocketRecoveryEngine from "@/lib/routing/SocketRecoveryEngine";
+import LiveStoreOverlay from "@/components/live/LiveStoreOverlay";
+import GhostChatWidget from "@/components/live/GhostChatWidget";
+import SpotlightContainer from "@/components/live/SpotlightContainer";
+import SeatArrivalTransition from "@/components/live/SeatArrivalTransition";
 
 export const metadata: Metadata = {
   title: "Live Lobby | TMI",
@@ -31,6 +35,7 @@ export default function LiveLobbyPage() {
 
   return (
     <>
+      <SeatArrivalTransition />
       <LobbyShell slug="tmi-main-lobby" />
       <section style={{ padding: 12, background: "#050510", color: "#fff", display: "grid", gap: 8 }}>
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
@@ -41,6 +46,13 @@ export default function LiveLobbyPage() {
         <RouteRecoveryCard route="/live/lobby" />
         <SlugFallbackPanel entity="event" slug="tmi-main-lobby" />
       </section>
+      <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 98 }}>
+        <LiveStoreOverlay accentColor="#AA2DFF" />
+      </div>
+      <div style={{ position: 'fixed', bottom: 24, left: 24, zIndex: 97 }}>
+        <GhostChatWidget roomId="tmi-main-lobby" accentColor="#AA2DFF" />
+      </div>
+      <SpotlightContainer roomId="tmi-main-lobby" />
     </>
   );
 }

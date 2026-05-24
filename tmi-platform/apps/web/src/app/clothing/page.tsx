@@ -1,12 +1,20 @@
+"use client";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export default function ClothingPage() {
+  const router = useRouter();
+
   const items = [
-    { id: "hoodie-tmi", label: "TMI Hoodie", price: 1200, rarity: "uncommon" },
-    { id: "snapback", label: "TMI Snapback", price: 800, rarity: "common" },
-    { id: "jacket-crown", label: "Crown Jacket", price: 2400, rarity: "rare" },
-    { id: "tee-afrobeats", label: "Afrobeats Tee", price: 600, rarity: "common" },
+    { id: "hoodie-tmi",    label: "TMI Hoodie",     price: 1200, rarity: "uncommon" },
+    { id: "snapback",      label: "TMI Snapback",   price: 800,  rarity: "common" },
+    { id: "jacket-crown",  label: "Crown Jacket",   price: 2400, rarity: "rare" },
+    { id: "tee-afrobeats", label: "Afrobeats Tee",  price: 600,  rarity: "common" },
   ];
+
+  function buyItem(id: string, price: number) {
+    router.push(`/api/stripe/checkout?priceId=price_clothing_${id}&mode=payment&coins=${price}`);
+  }
 
   return (
     <main data-testid="clothing-page" style={{ minHeight: "100vh", background: "#020617", color: "#e2e8f0", padding: 20 }}>
@@ -18,7 +26,14 @@ export default function ClothingPage() {
             <h3 style={{ marginTop: 0, fontSize: 14, color: "#e2e8f0" }}>{label}</h3>
             <span style={{ fontSize: 10, color: "#94a3b8", textTransform: "uppercase" }}>{rarity}</span>
             <div style={{ marginTop: 12 }}>
-              <button data-testid={`buy-clothing-${id}`} type="button" style={{ border: "1px solid rgba(165,243,252,0.3)", borderRadius: 6, background: "rgba(165,243,252,0.08)", color: "#a5f3fc", fontSize: 11, padding: "5px 12px", cursor: "pointer" }}>{price} coins</button>
+              <button
+                data-testid={`buy-clothing-${id}`}
+                type="button"
+                onClick={() => buyItem(id, price)}
+                style={{ border: "1px solid rgba(165,243,252,0.3)", borderRadius: 6, background: "rgba(165,243,252,0.08)", color: "#a5f3fc", fontSize: 11, padding: "5px 12px", cursor: "pointer" }}
+              >
+                {price} coins
+              </button>
             </div>
           </div>
         ))}

@@ -1,12 +1,19 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import dynamic from 'next/dynamic';
 import LiveStageVideoOverlay from '@/components/stage/LiveStageVideoOverlay';
 import { useFamilyConsensus } from '@/hooks/useFamilyConsensus';
 import { useOverseerDeck } from '@/hooks/useOverseerDeck';
 import { useWebRtcSignaling } from '@/hooks/useWebRtcSignaling';
 import { useGamificationEngine } from '@/hooks/useGamificationEngine';
+import { useRoomEnergy } from '@/hooks/useRoomEnergy';
 import type { AccountTier, FamilyGroup } from '@/types/security';
+import type { TmiSeatTier } from '@/lib/audience/tmiSeatTierEngine';
+import { getGlobalOrchestrator } from '@/lib/showmanship/MomentOrchestrator';
+
+const ClosureOverlay = dynamic(() => import('@/components/showmanship/ClosureOverlay'), { ssr: false });
+const SeatUpgradeUI  = dynamic(() => import('@/components/showmanship/SeatUpgradeUI'),  { ssr: false });
 
 const ACCOUNT_TIER_BY_ROLE: Record<'FAN' | 'PERFORMER' | 'ADMIN', AccountTier> = {
   FAN: 'YOUTH_16',
@@ -27,13 +34,30 @@ const DEMO_FAMILY: FamilyGroup = {
 };
 
 export default function LiveStagePage() {
-  const { trackAction } = useGamificationEngine();
+  const { trackAction, walletCredits, spendCredits } = useGamificationEngine();
   const { currentRole } = useOverseerDeck();
+  const { energyScore } = useRoomEnergy();
+  const [seatTier, setSeatTier] = useState<TmiSeatTier>('free-back-row');
 
   useEffect(() => {
     trackAction('JOIN_STAGE');
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const accountTier = ACCOUNT_TIER_BY_ROLE[currentRole];
+
+  // Feed live energy into the orchestrator every 8s so moment rules can fire
+  useEffect(() => {
+    const orch = getGlobalOrchestrator();
+    const id = setInterval(() => {
+      orch.ingestRoomMetrics({
+        reactionRate:        energyScore / 20,
+        chatMessagesPerSec:  energyScore / 25,
+        viewerRetentionPct:  energyScore,
+        tipCount:            0,
+        activeViewers:       Math.round(energyScore / 5),
+      });
+    }, 8000);
+    return () => clearInterval(id);
+  }, [energyScore]);
 
   const [streamState, setStreamState] = useState<'VIDEO' | 'AVATAR_ONLY'>('VIDEO');
   const [selectedPeer, setSelectedPeer] = useState<'ADULT' | 'YOUTH_16'>('ADULT');
@@ -72,6 +96,15 @@ export default function LiveStagePage() {
         gap: 14,
       }}
     >
+      <ClosureOverlay />
+      <SeatUpgradeUI
+        currentTier={seatTier}
+        userPoints={walletCredits}
+        onUpgrade={(newTier, remainingPoints) => {
+          setSeatTier(newTier);
+          spendCredits(walletCredits - remainingPoints);
+        }}
+      />
       <header style={{ display: 'grid', gap: 6 }}>
         <div style={{ fontSize: 10, letterSpacing: '0.2em', color: '#00ffff', fontWeight: 800 }}>
           LIVE STAGE ROUTE

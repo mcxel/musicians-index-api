@@ -82,6 +82,7 @@ export default function AdvertiserDashboardPage() {
           <div style={{ fontSize: 16, fontWeight: 900, marginTop: 2 }}>{user?.name ?? 'Advertiser'}</div>
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
+          <Link href="/hub/advertiser" style={{ fontSize: 10, color: ACCENT, border: '1px solid rgba(255,215,0,0.3)', padding: '5px 12px', borderRadius: 6, textDecoration: 'none', fontWeight: 700, letterSpacing: '0.1em' }}>ADVERTISER HUB</Link>
           <Link href="/admin/owner-dashboard" style={{ fontSize: 10, color: '#FF9500', border: '1px solid rgba(255,149,0,0.3)', padding: '5px 12px', borderRadius: 6, textDecoration: 'none', fontWeight: 700, letterSpacing: '0.1em' }}>ADMIN</Link>
           <Link href="/advertiser/analytics" style={{ fontSize: 10, color: ACCENT, border: '1px solid rgba(255,215,0,0.3)', padding: '5px 12px', borderRadius: 6, textDecoration: 'none', fontWeight: 700 }}>ANALYTICS</Link>
         </div>

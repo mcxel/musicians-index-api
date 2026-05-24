@@ -1,4 +1,4 @@
-﻿export interface NeedAChargeInventoryContract {
+export interface NeedAChargeInventoryContract {
   requestParts(input: {
     itemSku: string;
     quantity: number;

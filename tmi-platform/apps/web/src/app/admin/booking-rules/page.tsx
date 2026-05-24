@@ -14,6 +14,7 @@ export default function AdminBookingRulesPage() {
   const [globalRepeatPenalty, setGlobalRepeatPenalty] = useState(20);
   const [globalExposureThreshold, setGlobalExposureThreshold] = useState(100);
   const [saved, setSaved] = useState(false);
+  const [editingVenue, setEditingVenue] = useState<string | null>(null);
 
   const handleSave = () => {
     setSaved(true);
@@ -101,8 +102,8 @@ export default function AdminBookingRulesPage() {
                 <span>Cooldown: <span className="text-white font-semibold">{venue.cooldownDays}d</span></span>
                 <span>Penalty: <span className="text-white font-semibold">-{venue.repeatPenalty}pts</span></span>
                 <span>Threshold: <span className="text-white font-semibold">{venue.exposureThreshold} views</span></span>
-                <button className="px-3 py-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg transition-colors text-white">
-                  Edit
+                <button onClick={() => setEditingVenue(editingVenue === venue.id ? null : venue.id)} className="px-3 py-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg transition-colors text-white">
+                  {editingVenue === venue.id ? 'Done' : 'Edit'}
                 </button>
               </div>
             </div>

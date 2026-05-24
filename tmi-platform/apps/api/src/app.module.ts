@@ -38,6 +38,11 @@ import { AchievementsModule } from "./modules/achievements/achievements.module";
 import { ChatModule } from "./modules/chat/chat.module";
 import { VenueBookingModule } from "./modules/venue-booking/venue-booking.module";
 import { EconomyModule } from "./modules/economy/economy.module";
+// Commerce & platform modules
+import { AdvertisersModule } from "./modules/advertisers/advertisers.module";
+import { AuctionsModule } from "./modules/auctions/auctions.module";
+import { InvitesModule } from "./modules/invites/invites.module";
+import { VaultModule } from "./modules/vault/vault.module";
 
 @Module({
   imports: [
@@ -127,6 +132,12 @@ import { EconomyModule } from "./modules/economy/economy.module";
 
     // Admin
     AdminModule,
+
+    // Commerce & Platform
+    AdvertisersModule,
+    AuctionsModule,
+    InvitesModule,
+    VaultModule,
   ],
 })
 export class AppModule {}

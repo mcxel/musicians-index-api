@@ -1,4 +1,4 @@
-﻿export interface LegalRepresentationContract {
+export interface LegalRepresentationContract {
   openRepresentation(input: {
     requesterModule: string;
     requestType: string;

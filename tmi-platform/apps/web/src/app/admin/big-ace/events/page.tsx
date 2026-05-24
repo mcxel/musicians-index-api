@@ -20,13 +20,24 @@ const events: Event[] = [
 ];
 
 export default function BigAceEventsPage() {
+  const [eventList, setEventList] = useState<Event[]>(events);
   const [activeEvent, setActiveEvent] = useState<Event>(events[0]);
+  const [actionMsg, setActionMsg] = useState("");
+
+  function actOnEvent(action: string) {
+    setActionMsg(`${action}: ${activeEvent.name}`);
+    if (action === "Cancel") {
+      setEventList(prev => prev.map(e => e.id === activeEvent.id ? { ...e, status: "ended" as const } : e));
+      setActiveEvent(prev => ({ ...prev, status: "ended" as const }));
+    }
+    setTimeout(() => setActionMsg(""), 3000);
+  }
 
   const eventsByStatus = {
-    live: events.filter(e => e.status === 'live'),
-    today: events.filter(e => e.status === 'today'),
-    upcoming: events.filter(e => e.status === 'upcoming'),
-    ended: events.filter(e => e.status === 'ended'),
+    live: eventList.filter(e => e.status === 'live'),
+    today: eventList.filter(e => e.status === 'today'),
+    upcoming: eventList.filter(e => e.status === 'upcoming'),
+    ended: eventList.filter(e => e.status === 'ended'),
   };
 
   return (
@@ -160,11 +171,12 @@ export default function BigAceEventsPage() {
             {/* Event Actions */}
             <div className="mb-8">
               <h3 className="text-cyan-400 font-mono text-sm mb-4">EVENT ACTIONS</h3>
+              {actionMsg && <div className="mb-3 p-2 bg-green-900 border border-green-500 rounded text-green-400 text-xs font-mono">{actionMsg}</div>}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <button className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-black rounded font-mono text-xs font-bold">Boost</button>
-                <button className="px-4 py-2 bg-yellow-600 hover:bg-yellow-500 text-black rounded font-mono text-xs font-bold">Pin</button>
-                <button className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded font-mono text-xs font-bold">Cancel</button>
-                <button className="px-4 py-2 bg-white hover:bg-gray-300 text-black rounded font-mono text-xs font-bold">Feature</button>
+                <button onClick={() => actOnEvent("Boost")} className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-black rounded font-mono text-xs font-bold">Boost</button>
+                <button onClick={() => actOnEvent("Pin")} className="px-4 py-2 bg-yellow-600 hover:bg-yellow-500 text-black rounded font-mono text-xs font-bold">Pin</button>
+                <button onClick={() => actOnEvent("Cancel")} className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded font-mono text-xs font-bold">Cancel</button>
+                <button onClick={() => actOnEvent("Feature")} className="px-4 py-2 bg-white hover:bg-gray-300 text-black rounded font-mono text-xs font-bold">Feature</button>
               </div>
             </div>
 

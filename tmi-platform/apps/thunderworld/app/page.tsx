@@ -1,4 +1,4 @@
-﻿import type { Metadata } from 'next';
+import type { Metadata } from 'next';
 export const metadata: Metadata = { title: 'Thunder World' };
 export default function HomePage() {
   return (

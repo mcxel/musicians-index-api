@@ -149,32 +149,52 @@ export default function HomeNavigator() {
         </div>
       </div>
 
-      {/* Right arrow */}
-      <div style={{ width: 140, display: "flex", justifyContent: "flex-end" }}>
+      {/* Right: Join + Plans + next arrow */}
+      <div style={{ width: 190, display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 6 }}>
+        <Link
+          href="/pricing"
+          style={{
+            textDecoration: "none", color: "#FFD700",
+            padding: "4px 9px", fontSize: 9, fontWeight: 800,
+            letterSpacing: "0.1em", textTransform: "uppercase",
+            borderRadius: 999, border: "1px solid rgba(255,215,0,0.35)",
+            background: "rgba(255,215,0,0.06)", whiteSpace: "nowrap",
+          }}
+        >
+          Plans
+        </Link>
+        <Link
+          href="/join"
+          style={{
+            textDecoration: "none", color: "#050510",
+            padding: "4px 10px", fontSize: 9, fontWeight: 900,
+            letterSpacing: "0.1em", textTransform: "uppercase",
+            borderRadius: 999, background: "#00FFFF", whiteSpace: "nowrap",
+          }}
+        >
+          Join Free
+        </Link>
         {next ? (
           <button
             onClick={() => router.push(next.path)}
             style={{
               background: "none", border: "none", cursor: "pointer", outline: "none",
-              display: "flex", alignItems: "center", gap: 8,
+              display: "flex", alignItems: "center", gap: 4,
               color: "rgba(255,255,255,0.5)", fontSize: 11, fontWeight: 700,
               letterSpacing: "0.1em", textTransform: "uppercase",
-              padding: "6px 10px", borderRadius: 6,
+              padding: "6px 8px", borderRadius: 6,
               transition: "color 0.2s",
             }}
             onMouseEnter={(e) => (e.currentTarget.style.color = next.accent)}
             onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(255,255,255,0.5)")}
           >
-            <span style={{ maxWidth: 90, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {next.short}
-            </span>
             <span style={{ fontSize: 14 }}>▶</span>
           </button>
-        ) : <div />}
+        ) : null}
       </div>
 
-      {/* Avatar mini chip — top-right corner */}
-      <div style={{ position: "absolute", top: "50%", right: 8, transform: "translateY(-50%)" }}>
+      {/* Avatar mini chip — absolute, won't displace layout */}
+      <div style={{ position: "absolute", top: "50%", right: 200, transform: "translateY(-50%)" }}>
         <AvatarMiniPreview variant="mini" accentColor={current?.accent ?? "#00FFFF"} />
       </div>
     </div>

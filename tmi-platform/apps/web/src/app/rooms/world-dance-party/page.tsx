@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import PageShell from "@/components/layout/PageShell";
 import HUDFrame from "@/components/hud/HUDFrame";
@@ -60,6 +61,7 @@ const SEAT_COLS = 8;
 interface ChatLine { id: string; name: string; text: string; isSystem: boolean; }
 
 export default function WorldDancePartyPage() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const refToken = searchParams?.get("ref") ?? null;
   const sessionStartRef2 = useRef<number>(Date.now());
@@ -70,11 +72,48 @@ export default function WorldDancePartyPage() {
   const [dancers, setDancers] = useState(2847);
   const [currentTrack, setCurrentTrack] = useState(0);
   const [tipAmount, setTipAmount] = useState<number | null>(null);
+  const [activeRoomLight, setActiveRoomLight] = useState<string | null>(null);
   const [interactionCount, setInteractionCount] = useState(0);
+  const [sentimentPos, setSentimentPos] = useState(0);
+  const [sentimentNeg, setSentimentNeg] = useState(0);
+  const [vibeAlert, setVibeAlert] = useState(false);
+  const [autoNext, setAutoNext] = useState(false);
+  const [lockerBeats, setLockerBeats] = useState<Array<{ id: string; title: string; genre: string; bpm: number; votes: number }>>([]);
+  const [lockerTrackIdx, setLockerTrackIdx] = useState(0);
 
   const trackInteraction = useCallback(() => {
     setInteractionCount((n) => n + 1);
   }, []);
+
+  // Sentiment score = positive / (positive + negative), floor 0-100
+  const sentimentScore = sentimentPos + sentimentNeg === 0 ? 70 : Math.round((sentimentPos / (sentimentPos + sentimentNeg)) * 100);
+
+  // Fetch locker beats on mount
+  useEffect(() => {
+    fetch("/api/beats/ingest?destination=dance-party&limit=8", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d: { beats?: Array<{ id: string; title: string; genre: string; bpm: number; votes: number }> }) => {
+        if (Array.isArray(d.beats)) setLockerBeats(d.beats);
+      })
+      .catch(() => {});
+  }, []);
+
+  // Vibe alert + auto-next logic
+  useEffect(() => {
+    if (sentimentScore < 40) {
+      setVibeAlert(true);
+      if (autoNext && lockerBeats.length > 0) {
+        setLockerTrackIdx((i) => (i + 1) % lockerBeats.length);
+        setSentimentPos(0);
+        setSentimentNeg(0);
+        setVibeAlert(false);
+        addChat("TMI", "⚡ Auto-DJ switched the beat — keep moving!", true);
+      }
+    } else {
+      setVibeAlert(false);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sentimentScore]);
 
   // ── Referral arrival tracking (runs once if ?ref=TOKEN in URL) ────────────
   useEffect(() => {
@@ -359,6 +398,57 @@ export default function WorldDancePartyPage() {
 
             {/* Right panel — Tip + Light controls */}
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+
+              {/* DJ Beat Monitor */}
+              <div style={{ background: vibeAlert ? "rgba(255,45,170,0.1)" : "rgba(0,255,255,0.04)", border: `1px solid ${vibeAlert ? "rgba(255,45,170,0.5)" : "rgba(0,255,255,0.15)"}`, borderRadius: 12, padding: 18, transition: "background 0.3s, border-color 0.3s" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                  <div style={{ fontSize: 9, letterSpacing: 4, color: vibeAlert ? "#FF2DAA" : "#00FFFF", fontWeight: 800 }}>
+                    {vibeAlert ? "⚠️ CHANGE THE VIBE" : "🎛 DJ MONITOR"}
+                  </div>
+                  <button onClick={() => setAutoNext((a) => !a)} style={{ fontSize: 8, padding: "3px 10px", borderRadius: 20, border: `1px solid ${autoNext ? "#00FF88" : "rgba(255,255,255,0.15)"}`, background: autoNext ? "rgba(0,255,136,0.12)" : "transparent", color: autoNext ? "#00FF88" : "#555", fontWeight: 700, cursor: "pointer", letterSpacing: "0.08em" }}>
+                    AUTO {autoNext ? "ON" : "OFF"}
+                  </button>
+                </div>
+                {/* Sentiment bar */}
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 9, color: "rgba(255,255,255,0.4)", marginBottom: 5 }}>
+                    <span>CROWD VIBE</span>
+                    <span style={{ color: sentimentScore >= 40 ? "#00FF88" : "#FF2DAA", fontWeight: 800 }}>{sentimentScore}%</span>
+                  </div>
+                  <div style={{ height: 6, background: "rgba(255,255,255,0.06)", borderRadius: 3, overflow: "hidden" }}>
+                    <div style={{ height: "100%", width: `${sentimentScore}%`, background: sentimentScore >= 60 ? "#00FF88" : sentimentScore >= 40 ? "#FFD700" : "#FF2DAA", borderRadius: 3, transition: "width 0.4s ease, background 0.4s" }} />
+                  </div>
+                  <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
+                    <button onClick={() => { setSentimentPos((n) => n + 1); trackInteraction(); }} style={{ flex: 1, padding: "8px 4px", background: "rgba(0,255,136,0.1)", border: "1px solid rgba(0,255,136,0.2)", borderRadius: 8, color: "#00FF88", fontSize: 13, cursor: "pointer", fontWeight: 700 }}>🔥</button>
+                    <button onClick={() => { setSentimentPos((n) => n + 1); trackInteraction(); }} style={{ flex: 1, padding: "8px 4px", background: "rgba(170,45,255,0.1)", border: "1px solid rgba(170,45,255,0.2)", borderRadius: 8, color: "#AA2DFF", fontSize: 13, cursor: "pointer", fontWeight: 700 }}>💎</button>
+                    <button onClick={() => { setSentimentPos((n) => n + 1); trackInteraction(); }} style={{ flex: 1, padding: "8px 4px", background: "rgba(0,255,255,0.1)", border: "1px solid rgba(0,255,255,0.2)", borderRadius: 8, color: "#00FFFF", fontSize: 13, cursor: "pointer", fontWeight: 700 }}>👏</button>
+                    <button onClick={() => { setSentimentNeg((n) => n + 1); trackInteraction(); }} style={{ flex: 1, padding: "8px 4px", background: "rgba(255,68,68,0.1)", border: "1px solid rgba(255,68,68,0.2)", borderRadius: 8, color: "#FF4444", fontSize: 13, cursor: "pointer", fontWeight: 700 }}>👎</button>
+                  </div>
+                </div>
+                {/* Current locker beat or hardcoded track */}
+                {lockerBeats.length > 0 ? (
+                  <div>
+                    <div style={{ fontSize: 9, color: "rgba(255,255,255,0.3)", letterSpacing: "0.08em", marginBottom: 6 }}>NOW PLAYING FROM LOCKER</div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: "#fff" }}>{lockerBeats[lockerTrackIdx % lockerBeats.length]?.title}</div>
+                    <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>
+                      {lockerBeats[lockerTrackIdx % lockerBeats.length]?.genre} · {lockerBeats[lockerTrackIdx % lockerBeats.length]?.bpm} BPM
+                    </div>
+                    <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                      <button onClick={() => { setLockerTrackIdx((i) => (i + 1) % lockerBeats.length); setSentimentPos(0); setSentimentNeg(0); setVibeAlert(false); addChat("Record Ralph", "⚡ Beat swap — new heat incoming!", false); }} style={{ flex: 1, padding: "8px", background: "rgba(255,45,170,0.15)", border: "1px solid rgba(255,45,170,0.3)", borderRadius: 8, color: "#FF2DAA", fontSize: 11, fontWeight: 800, cursor: "pointer" }}>
+                        SWAP BEAT
+                      </button>
+                      <a href="/beats/locker" style={{ flex: 1, padding: "8px", background: "rgba(0,255,255,0.08)", border: "1px solid rgba(0,255,255,0.2)", borderRadius: 8, color: "#00FFFF", fontSize: 11, fontWeight: 700, textDecoration: "none", textAlign: "center", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        LOCKER →
+                      </a>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)" }}>
+                    Now Playing: {DJ_TRACKS[currentTrack]?.title}
+                    <a href="/beats/locker" style={{ display: "block", marginTop: 8, fontSize: 10, color: "#00FFFF", textDecoration: "none" }}>Submit beats to locker →</a>
+                  </div>
+                )}
+              </div>
               {/* Tip dancer */}
               <div style={{
                 background: "rgba(255,215,0,0.05)", border: "1px solid rgba(255,215,0,0.2)",
@@ -376,7 +466,9 @@ export default function WorldDancePartyPage() {
                     }}>${amt}</motion.button>
                   ))}
                 </div>
-                <motion.button whileTap={{ scale: 0.97 }} disabled={!tipAmount} style={{
+                <motion.button whileTap={{ scale: 0.97 }} disabled={!tipAmount}
+                  onClick={() => { if (tipAmount) router.push(`/api/stripe/checkout?priceId=price_tip_${tipAmount * 100}&mode=payment&type=tip&roomId=${ROOM_ID}`); }}
+                  style={{
                   width: "100%", padding: "11px 0", borderRadius: 8, cursor: tipAmount ? "pointer" : "default",
                   background: tipAmount ? "linear-gradient(135deg, #FFD700, #FF9500)" : "rgba(255,255,255,0.05)",
                   border: "none", color: tipAmount ? "#050510" : "#444",
@@ -398,14 +490,14 @@ export default function WorldDancePartyPage() {
                   { label: "CROWD WASH", icon: "🌊", color: "#AA2DFF" },
                   { label: "BEAM SWEEP", icon: "🔦", color: "#FFD700" },
                 ].map(mode => (
-                  <motion.button key={mode.label} whileTap={{ scale: 0.96 }} onClick={trackInteraction} style={{
+                  <motion.button key={mode.label} whileTap={{ scale: 0.96 }} onClick={() => { setActiveRoomLight(activeRoomLight === mode.label ? null : mode.label); trackInteraction(); }} style={{
                     display: "block", width: "100%", padding: "10px 14px", borderRadius: 8,
-                    marginBottom: 6, background: "rgba(255,255,255,0.03)",
-                    border: "1px solid rgba(255,255,255,0.07)",
-                    color: mode.color, fontSize: 10, fontWeight: 700, letterSpacing: 2,
+                    marginBottom: 6, background: activeRoomLight === mode.label ? `${mode.color}18` : "rgba(255,255,255,0.03)",
+                    border: `1px solid ${activeRoomLight === mode.label ? `${mode.color}55` : "rgba(255,255,255,0.07)"}`,
+                    color: mode.color, fontSize: 10, fontWeight: activeRoomLight === mode.label ? 800 : 700, letterSpacing: 2,
                     cursor: "pointer", textAlign: "left",
                   }}>
-                    {mode.icon} {mode.label}
+                    {mode.icon} {mode.label}{activeRoomLight === mode.label ? " ●" : ""}
                   </motion.button>
                 ))}
               </div>

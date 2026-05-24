@@ -1,6 +1,11 @@
 "use client";
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import LiveStoreOverlay from "@/components/live/LiveStoreOverlay";
+import GhostChatWidget from "@/components/live/GhostChatWidget";
+import SpotlightContainer from "@/components/live/SpotlightContainer";
+import SeatArrivalTransition from "@/components/live/SeatArrivalTransition";
+import ConductorDeck from "@/components/conductor/ConductorDeck";
 
 type StageSnapshot = {
   venueSlug: string;
@@ -18,8 +23,14 @@ export default function LiveStagesPage() {
   const [loading, setLoading] = useState(true);
   const [activating, setActivating] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [role, setRole] = useState<string>("fan");
 
-  useEffect(() => { fetchStages(); }, []);
+  useEffect(() => {
+    fetchStages();
+    fetch("/api/auth/session").then(r => r.json()).then((d: { role?: string }) => {
+      if (d.role) setRole(d.role);
+    }).catch(() => undefined);
+  }, []);
 
   async function fetchStages() {
     setLoading(true);
@@ -69,6 +80,7 @@ export default function LiveStagesPage() {
 
   return (
     <main style={{ minHeight: "100vh", background: "#050510", color: "#fff", paddingBottom: 80 }}>
+      <SeatArrivalTransition />
       <section style={{ padding: "56px 24px 32px", borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
           <Link href="/live" style={{ color: "#666", textDecoration: "none", fontSize: 13 }}>{"<- Live Hub"}</Link>
@@ -140,6 +152,20 @@ export default function LiveStagesPage() {
           </div>
         ))}
       </section>
+
+      <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 98 }}>
+        <LiveStoreOverlay
+          performerName={stages.find((s) => s.active && s.currentPerformer)?.currentPerformer?.name}
+          accentColor="#FF2DAA"
+        />
+      </div>
+      <div style={{ position: 'fixed', bottom: 24, left: 24, zIndex: 97 }}>
+        <GhostChatWidget roomId="tmi-live-stages" accentColor="#FF2DAA" />
+      </div>
+      <SpotlightContainer roomId="tmi-live-stages" />
+      {(role === "performer" || role === "artist" || role === "admin") && (
+        <ConductorDeck roomId="stage" />
+      )}
     </main>
   );
 }

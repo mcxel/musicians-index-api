@@ -1,10 +1,27 @@
+"use client";
 import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
 import { getOwnedTickets } from "@/lib/tickets/ticketEngine";
+import { useState } from "react";
 
-export default function FanNFTTicketsPage({ params }: { params: { slug: string } }) {
-  const { slug } = params;
+export default function FanNFTTicketsPage() {
+  const params = useParams();
+  const router = useRouter();
+  const rawSlug = params?.slug;
+  const slug = typeof rawSlug === "string" ? rawSlug : Array.isArray(rawSlug) ? rawSlug[0] : "";
+  const [msg, setMsg] = useState("");
+
   const allTickets = getOwnedTickets(slug);
   const nftTickets = allTickets.filter((t) => t.outputFormats.includes("NFT"));
+
+  function viewOnChain(ticketId: string) {
+    setMsg("Opening blockchain explorer for ticket " + ticketId.slice(-8) + "...");
+    setTimeout(() => setMsg(""), 3000);
+  }
+
+  function listForSale(ticketId: string) {
+    router.push("/nft-marketplace?list=" + ticketId);
+  }
 
   return (
     <main style={{ minHeight: "100vh", background: "#03020b", color: "#e2e8f0", padding: "0 0 40px" }}>
@@ -14,6 +31,8 @@ export default function FanNFTTicketsPage({ params }: { params: { slug: string }
         <span style={{ marginLeft: "auto", color: "#e879f9", fontSize: 10, fontWeight: 700 }}>{nftTickets.length} NFT passes</span>
       </header>
 
+      {msg && <div style={{ margin: "12px 20px", padding: "10px 14px", background: "rgba(232,121,249,0.08)", border: "1px solid rgba(232,121,249,0.25)", borderRadius: 8, fontSize: 11, color: "#e879f9" }}>{msg}</div>}
+
       <div style={{ padding: "14px 20px", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 12 }}>
         {nftTickets.length === 0 && (
           <p style={{ color: "#475569", fontSize: 11, padding: "40px 0", gridColumn: "1/-1", textAlign: "center" }}>
@@ -21,29 +40,8 @@ export default function FanNFTTicketsPage({ params }: { params: { slug: string }
           </p>
         )}
         {nftTickets.map((ticket) => (
-          <div
-            key={ticket.id}
-            style={{
-              border: "1px solid rgba(232,121,249,0.4)",
-              borderRadius: 14,
-              background: "linear-gradient(135deg, rgba(88,28,135,0.25), rgba(3,2,11,0.9))",
-              padding: 16,
-              display: "grid",
-              gap: 10,
-            }}
-          >
-            {/* NFT visual placeholder */}
-            <div style={{
-              height: 140,
-              borderRadius: 10,
-              background: `radial-gradient(circle at 30% 30%, rgba(232,121,249,0.3), transparent 60%), radial-gradient(circle at 70% 70%, rgba(168,85,247,0.25), transparent 50%), rgba(20,5,35,0.8)`,
-              border: "1px solid rgba(232,121,249,0.3)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              flexDirection: "column",
-              gap: 6,
-            }}>
+          <div key={ticket.id} style={{ border: "1px solid rgba(232,121,249,0.4)", borderRadius: 14, background: "linear-gradient(135deg, rgba(88,28,135,0.25), rgba(3,2,11,0.9))", padding: 16, display: "grid", gap: 10 }}>
+            <div style={{ height: 140, borderRadius: 10, background: `radial-gradient(circle at 30% 30%, rgba(232,121,249,0.3), transparent 60%), radial-gradient(circle at 70% 70%, rgba(168,85,247,0.25), transparent 50%), rgba(20,5,35,0.8)`, border: "1px solid rgba(232,121,249,0.3)", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 6 }}>
               <span style={{ fontSize: 28 }}>🎫</span>
               <span style={{ fontSize: 9, color: "#e879f9", letterSpacing: "0.2em", textTransform: "uppercase" }}>NFT PASS</span>
             </div>
@@ -57,8 +55,8 @@ export default function FanNFTTicketsPage({ params }: { params: { slug: string }
               <span style={{ fontSize: 11, fontWeight: 800, color: "#f1f5f9" }}>${ticket.template.faceValue}</span>
             </div>
             <div style={{ display: "flex", gap: 5 }}>
-              <button type="button" style={{ flex: 1, borderRadius: 6, border: "1px solid rgba(232,121,249,0.4)", background: "rgba(88,28,135,0.25)", color: "#e879f9", fontSize: 9, fontWeight: 700, padding: "5px 0", cursor: "pointer" }}>VIEW ON CHAIN</button>
-              <button type="button" style={{ flex: 1, borderRadius: 6, border: "1px solid rgba(251,191,36,0.35)", background: "rgba(120,53,15,0.25)", color: "#fde68a", fontSize: 9, fontWeight: 700, padding: "5px 0", cursor: "pointer" }}>LIST FOR SALE</button>
+              <button type="button" onClick={() => viewOnChain(ticket.id)} style={{ flex: 1, borderRadius: 6, border: "1px solid rgba(232,121,249,0.4)", background: "rgba(88,28,135,0.25)", color: "#e879f9", fontSize: 9, fontWeight: 700, padding: "5px 0", cursor: "pointer" }}>VIEW ON CHAIN</button>
+              <button type="button" onClick={() => listForSale(ticket.id)} style={{ flex: 1, borderRadius: 6, border: "1px solid rgba(251,191,36,0.35)", background: "rgba(120,53,15,0.25)", color: "#fde68a", fontSize: 9, fontWeight: 700, padding: "5px 0", cursor: "pointer" }}>LIST FOR SALE</button>
             </div>
           </div>
         ))}

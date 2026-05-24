@@ -1,8 +1,10 @@
-import type { Metadata } from "next";
+"use client";
+import { useState } from "react";
 
-export const metadata: Metadata = { title: "Admin: Fulfillment | TMI" };
+type OrderStatus = "IN_PRODUCTION" | "QUEUED" | "READY_TO_SHIP" | "SHIPPED" | "AWAITING_STOCK" | "DELIVERED";
+type Order = { id: string; item: string; type: string; vendor: string; status: OrderStatus; buyer: string; eta: string };
 
-const QUEUE = [
+const SEED: Order[] = [
   { id: "ORD-0091", item: "TMI Logo Hoodie — Black", type: "POD", vendor: "Printify", status: "IN_PRODUCTION", buyer: "krypt_rider", eta: "Apr 30, 2026" },
   { id: "ORD-0086", item: "Cypher Nation Tee", type: "POD", vendor: "Printify", status: "QUEUED", buyer: "neon_merch_fan", eta: "May 2, 2026" },
   { id: "ORD-0084", item: "Wavetek Vinyl 12\"", type: "PHYSICAL", vendor: "Manual", status: "READY_TO_SHIP", buyer: "bass_head_99", eta: "Apr 28, 2026" },
@@ -20,6 +22,12 @@ const STATUS_C: Record<string, string> = {
 };
 
 export default function AdminFulfillmentPage() {
+  const [queue, setQueue] = useState<Order[]>(SEED);
+
+  function markShipped(id: string) {
+    setQueue(prev => prev.map(q => q.id === id ? { ...q, status: "SHIPPED" } : q));
+  }
+
   return (
     <main style={{ minHeight: "100vh", background: "#050510", color: "#fff", padding: "32px 24px 80px" }}>
       <div style={{ maxWidth: 1200, margin: "0 auto" }}>
@@ -30,10 +38,10 @@ export default function AdminFulfillmentPage() {
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 32 }}>
           {[
-            { l: "IN QUEUE", v: QUEUE.length, c: "#00FFFF" },
-            { l: "IN PRODUCTION", v: QUEUE.filter(q => q.status === "IN_PRODUCTION").length, c: "#FFD700" },
-            { l: "READY TO SHIP", v: QUEUE.filter(q => q.status === "READY_TO_SHIP").length, c: "#00FF88" },
-            { l: "AWAITING STOCK", v: QUEUE.filter(q => q.status === "AWAITING_STOCK").length, c: "#FF2DAA" },
+            { l: "IN QUEUE", v: queue.length, c: "#00FFFF" },
+            { l: "IN PRODUCTION", v: queue.filter(q => q.status === "IN_PRODUCTION").length, c: "#FFD700" },
+            { l: "READY TO SHIP", v: queue.filter(q => q.status === "READY_TO_SHIP").length, c: "#00FF88" },
+            { l: "AWAITING STOCK", v: queue.filter(q => q.status === "AWAITING_STOCK").length, c: "#FF2DAA" },
           ].map(s => (
             <div key={s.l} style={{ background: "rgba(255,255,255,0.02)", border: `1px solid ${s.c}18`, borderRadius: 10, padding: "14px 16px" }}>
               <div style={{ fontSize: 9, color: s.c, fontWeight: 800, marginBottom: 4 }}>{s.l}</div>
@@ -52,7 +60,7 @@ export default function AdminFulfillmentPage() {
               </tr>
             </thead>
             <tbody>
-              {QUEUE.map(q => (
+              {queue.map(q => (
                 <tr key={q.id} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
                   <td style={{ padding: "14px 12px", color: "rgba(255,255,255,0.4)", fontFamily: "monospace", fontSize: 10 }}>{q.id}</td>
                   <td style={{ padding: "14px 12px", fontWeight: 700 }}>{q.item}</td>
@@ -65,7 +73,7 @@ export default function AdminFulfillmentPage() {
                   </td>
                   <td style={{ padding: "14px 12px" }}>
                     {q.status === "READY_TO_SHIP" && (
-                      <button style={{ padding: "4px 10px", fontSize: 8, fontWeight: 800, color: "#00FFFF", border: "1px solid rgba(0,255,255,0.3)", borderRadius: 4, background: "transparent", cursor: "pointer" }}>MARK SHIPPED</button>
+                      <button onClick={() => markShipped(q.id)} style={{ padding: "4px 10px", fontSize: 8, fontWeight: 800, color: "#00FFFF", border: "1px solid rgba(0,255,255,0.3)", borderRadius: 4, background: "transparent", cursor: "pointer" }}>MARK SHIPPED</button>
                     )}
                   </td>
                 </tr>

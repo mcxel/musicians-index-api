@@ -1,18 +1,29 @@
+"use client";
 import Link from "next/link";
-import type { Metadata } from "next";
-export const metadata: Metadata = { title: "Beat Marketplace · The Musician's Index" };
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 const GENRES = ["All", "Hip-Hop", "Trap", "R&B", "Drill", "Afrobeats", "Lo-fi", "Pop"];
 const BEATS = [
-  { id: "b1", title: "Neon Crypt", producer: "Mako Beats", genre: "Trap", bpm: 140, price: 29.99, plays: 1842 },
-  { id: "b2", title: "Mirror City", producer: "XR99", genre: "Lo-fi", bpm: 90, price: 19.99, plays: 3201 },
-  { id: "b3", title: "Shadowmask", producer: "Nova Cipher", genre: "Hip-Hop", bpm: 95, price: 24.99, plays: 2110 },
-  { id: "b4", title: "Lagos Nights", producer: "K1 Flair", genre: "Afrobeats", bpm: 108, price: 34.99, plays: 4455 },
-  { id: "b5", title: "Crescent Drop", producer: "Mako Beats", genre: "Drill", bpm: 148, price: 27.99, plays: 987 },
-  { id: "b6", title: "Velvet Hours", producer: "SunStreak", genre: "R&B", bpm: 82, price: 22.99, plays: 1630 },
+  { id: "b1", title: "Neon Crypt",    producer: "Mako Beats",  genre: "Trap",     bpm: 140, price: 29.99, plays: 1842 },
+  { id: "b2", title: "Mirror City",   producer: "XR99",        genre: "Lo-fi",    bpm: 90,  price: 19.99, plays: 3201 },
+  { id: "b3", title: "Shadowmask",    producer: "Nova Cipher", genre: "Hip-Hop",  bpm: 95,  price: 24.99, plays: 2110 },
+  { id: "b4", title: "Lagos Nights",  producer: "K1 Flair",    genre: "Afrobeats",bpm: 108, price: 34.99, plays: 4455 },
+  { id: "b5", title: "Crescent Drop", producer: "Mako Beats",  genre: "Drill",    bpm: 148, price: 27.99, plays: 987  },
+  { id: "b6", title: "Velvet Hours",  producer: "SunStreak",   genre: "R&B",      bpm: 82,  price: 22.99, plays: 1630 },
 ];
 
 export default function BeatsPage() {
+  const router = useRouter();
+  const [activeGenre, setActiveGenre] = useState("All");
+  const [playing, setPlaying] = useState<string | null>(null);
+
+  const displayed = activeGenre === "All" ? BEATS : BEATS.filter(b => b.genre === activeGenre);
+
+  function buyBeat(beat: typeof BEATS[0]) {
+    router.push(`/api/stripe/checkout?priceId=price_beat_${beat.id}&mode=payment&name=${encodeURIComponent(beat.title)}`);
+  }
+
   return (
     <main style={{ minHeight: "100vh", background: "#05060c", color: "#fff", padding: "32px 24px 80px", fontFamily: "'Inter', sans-serif" }}>
       <div style={{ maxWidth: 1100, margin: "0 auto" }}>
@@ -20,19 +31,31 @@ export default function BeatsPage() {
         <h1 style={{ fontSize: "clamp(24px,5vw,42px)", fontWeight: 900, margin: "0 0 8px" }}>Beat Marketplace</h1>
         <p style={{ fontSize: 14, color: "rgba(255,255,255,0.45)", margin: "0 0 28px" }}>Exclusive beats from TMI producers. License instantly.</p>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 28 }}>
-          {GENRES.map((g) => <button key={g} style={{ padding: "7px 16px", borderRadius: 20, background: g === "All" ? "#AA2DFF" : "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: g === "All" ? "#fff" : "rgba(255,255,255,0.6)", fontSize: 12, cursor: "pointer", fontWeight: 600 }}>{g}</button>)}
+          {GENRES.map((g) => (
+            <button
+              key={g}
+              onClick={() => setActiveGenre(g)}
+              style={{ padding: "7px 16px", borderRadius: 20, background: activeGenre === g ? "#AA2DFF" : "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: activeGenre === g ? "#fff" : "rgba(255,255,255,0.6)", fontSize: 12, cursor: "pointer", fontWeight: 600 }}
+            >
+              {g}
+            </button>
+          ))}
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(280px,1fr))", gap: 14 }}>
-          {BEATS.map((b) => (
+          {displayed.map((b) => (
             <div key={b.id} style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(170,45,255,0.15)", borderRadius: 14, padding: "20px" }}>
-              <div style={{ width: "100%", height: 80, background: "linear-gradient(135deg, rgba(170,45,255,0.15), rgba(255,45,170,0.08))", borderRadius: 10, marginBottom: 14, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28 }}>🎶</div>
+              <div style={{ width: "100%", height: 80, background: playing === b.id ? "linear-gradient(135deg, rgba(170,45,255,0.35), rgba(255,45,170,0.2))" : "linear-gradient(135deg, rgba(170,45,255,0.15), rgba(255,45,170,0.08))", borderRadius: 10, marginBottom: 14, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28 }}>
+                {playing === b.id ? "⏸" : "🎶"}
+              </div>
               <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 4 }}>{b.title}</div>
               <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", marginBottom: 8 }}>{b.producer} · {b.genre} · {b.bpm} BPM</div>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <span style={{ fontWeight: 900, fontSize: 16, color: "#AA2DFF" }}>${b.price}</span>
                 <div style={{ display: "flex", gap: 8 }}>
-                  <button style={{ padding: "7px 12px", borderRadius: 7, background: "rgba(170,45,255,0.15)", border: "1px solid rgba(170,45,255,0.3)", color: "#AA2DFF", fontSize: 11, cursor: "pointer", fontWeight: 700 }}>▶ Play</button>
-                  <button style={{ padding: "7px 14px", borderRadius: 7, background: "#AA2DFF", color: "#fff", border: "none", fontSize: 11, cursor: "pointer", fontWeight: 700 }}>Buy</button>
+                  <button onClick={() => setPlaying(playing === b.id ? null : b.id)} style={{ padding: "7px 12px", borderRadius: 7, background: "rgba(170,45,255,0.15)", border: "1px solid rgba(170,45,255,0.3)", color: "#AA2DFF", fontSize: 11, cursor: "pointer", fontWeight: 700 }}>
+                    {playing === b.id ? "⏸ Pause" : "▶ Play"}
+                  </button>
+                  <button onClick={() => buyBeat(b)} style={{ padding: "7px 14px", borderRadius: 7, background: "#AA2DFF", color: "#fff", border: "none", fontSize: 11, cursor: "pointer", fontWeight: 700 }}>Buy</button>
                 </div>
               </div>
             </div>

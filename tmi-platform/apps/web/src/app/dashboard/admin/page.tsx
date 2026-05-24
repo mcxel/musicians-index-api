@@ -32,7 +32,7 @@ const ADMIN_LINKS = [
   { label: "Payouts", href: "/admin/payouts", emoji: "💸" },
 ];
 
-const ADMIN_ROLES = ["ADMIN", "STAFF"];
+const ADMIN_ROLES = ["admin", "staff", "ADMIN", "STAFF"];
 
 export default function AdminDashboardPage() {
   const router = useRouter();

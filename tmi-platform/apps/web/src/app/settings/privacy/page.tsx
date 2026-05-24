@@ -13,7 +13,13 @@ const TOGGLES = [
 
 export default function SettingsPrivacyPage() {
   const [on, setOn] = useState<Set<string>>(new Set(["public_profile", "show_online", "show_in_search"]));
+  const [saved, setSaved] = useState(false);
   const toggle = (id: string) => setOn((prev) => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
+
+  function saveSettings() {
+    setSaved(true);
+    setTimeout(() => setSaved(false), 3000);
+  }
 
   return (
     <main style={{ minHeight: "100vh", background: "#05060c", color: "#fff", padding: "32px 24px 80px", fontFamily: "'Inter', sans-serif" }}>
@@ -36,8 +42,9 @@ export default function SettingsPrivacyPage() {
             </div>
           ))}
         </div>
-        <div style={{ marginTop: 24, display: "flex", gap: 12 }}>
-          <button style={{ padding: "11px 28px", borderRadius: 8, background: "#00FFFF", color: "#05060c", fontWeight: 800, fontSize: 13, cursor: "pointer", border: "none" }}>Save</button>
+        <div style={{ marginTop: 24, display: "flex", gap: 12, alignItems: "center" }}>
+          <button onClick={saveSettings} style={{ padding: "11px 28px", borderRadius: 8, background: "#00FFFF", color: "#05060c", fontWeight: 800, fontSize: 13, cursor: "pointer", border: "none" }}>Save</button>
+          {saved && <span style={{ fontSize: 12, color: "#22c55e" }}>Saved!</span>}
           <Link href="/privacy" style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", textDecoration: "none", alignSelf: "center" }}>Privacy Policy</Link>
         </div>
       </div>

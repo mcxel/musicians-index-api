@@ -1,14 +1,25 @@
+"use client";
 import Link from "next/link";
-import type { Metadata } from "next";
+import { useState } from "react";
 
-export const metadata: Metadata = { title: "Manage Events | TMI Ticketing" };
+type Event = { id: string; title: string; date: string; tickets: number; sold: number; price: number; color: string };
 
-const MY_EVENTS = [
-  { id: "e1", title: "Fifth Ward Live", date: "2026-05-03", tickets: 240, sold: 187, price: 12, color: "#FF2DAA" },
-  { id: "e2", title: "Diaspora Session", date: "2026-05-10", tickets: 180, sold: 64, price: 9, color: "#00FF88" },
+const SEED: Event[] = [
+  { id: "e1", title: "Fifth Ward Live",   date: "2026-05-03", tickets: 240, sold: 187, price: 12, color: "#FF2DAA" },
+  { id: "e2", title: "Diaspora Session",  date: "2026-05-10", tickets: 180, sold: 64,  price: 9,  color: "#00FF88" },
 ];
 
 export default function TicketingManagePage() {
+  const [events, setEvents] = useState<Event[]>(SEED);
+  const [editing, setEditing] = useState<string | null>(null);
+  const [msg, setMsg] = useState("");
+
+  function saveEdit(id: string) {
+    setEditing(null);
+    setMsg("Event updated.");
+    setTimeout(() => setMsg(""), 3000);
+  }
+
   return (
     <main style={{ minHeight: "100vh", background: "#050510", color: "#fff", paddingBottom: 80 }}>
       <div style={{ maxWidth: 900, margin: "0 auto", padding: "40px 24px" }}>
@@ -23,7 +34,9 @@ export default function TicketingManagePage() {
           </Link>
         </div>
 
-        {MY_EVENTS.length === 0 ? (
+        {msg && <div style={{ marginBottom: 16, padding: "10px 14px", background: "rgba(0,255,255,0.06)", border: "1px solid rgba(0,255,255,0.2)", borderRadius: 8, fontSize: 12, color: "#00FFFF" }}>{msg}</div>}
+
+        {events.length === 0 ? (
           <div style={{ textAlign: "center", padding: 60 }}>
             <p style={{ color: "rgba(255,255,255,0.3)", marginBottom: 20 }}>No events yet.</p>
             <Link href="/ticketing/create" style={{ padding: "10px 22px", fontSize: 9, fontWeight: 800, letterSpacing: "0.12em", color: "#050510", background: "linear-gradient(135deg,#00FFFF,#00AABB)", borderRadius: 8, textDecoration: "none" }}>
@@ -32,7 +45,7 @@ export default function TicketingManagePage() {
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            {MY_EVENTS.map(event => {
+            {events.map(event => {
               const pct = Math.round((event.sold / event.tickets) * 100);
               const revenue = event.sold * event.price;
               return (
@@ -57,11 +70,18 @@ export default function TicketingManagePage() {
                     <div style={{ height: "100%", width: `${pct}%`, background: event.color, borderRadius: 2 }} />
                   </div>
                   <div style={{ fontSize: 9, color: "rgba(255,255,255,0.3)", marginBottom: 16 }}>{pct}% sold</div>
+                  {editing === event.id ? (
+                    <div style={{ marginBottom: 12, padding: "12px", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8 }}>
+                      <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginBottom: 8 }}>Editing: {event.title}</div>
+                      <button onClick={() => saveEdit(event.id)} style={{ padding: "7px 16px", fontSize: 9, fontWeight: 800, color: "#050510", background: "#00FFFF", border: "none", borderRadius: 6, cursor: "pointer", marginRight: 8 }}>SAVE</button>
+                      <button onClick={() => setEditing(null)} style={{ padding: "7px 16px", fontSize: 9, fontWeight: 700, color: "rgba(255,255,255,0.5)", background: "none", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 6, cursor: "pointer" }}>CANCEL</button>
+                    </div>
+                  ) : null}
                   <div style={{ display: "flex", gap: 10 }}>
                     <Link href={`/concerts/${event.id}`} style={{ padding: "7px 16px", fontSize: 9, fontWeight: 800, letterSpacing: "0.1em", color: event.color, border: `1px solid ${event.color}40`, borderRadius: 6, textDecoration: "none" }}>
                       VIEW
                     </Link>
-                    <button style={{ padding: "7px 16px", fontSize: 9, fontWeight: 800, letterSpacing: "0.1em", color: "rgba(255,255,255,0.35)", background: "none", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 6, cursor: "pointer" }}>
+                    <button onClick={() => setEditing(event.id)} style={{ padding: "7px 16px", fontSize: 9, fontWeight: 800, letterSpacing: "0.1em", color: "rgba(255,255,255,0.35)", background: "none", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 6, cursor: "pointer" }}>
                       EDIT
                     </button>
                   </div>

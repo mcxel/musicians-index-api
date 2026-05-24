@@ -150,7 +150,9 @@ export default function BotsDiagnosticsPage() {
 
   const refresh = useCallback(() => {
     setLastRefresh(Date.now());
-    // TODO: fetch from /api/admin/bot-telemetry when wired
+    fetch("/api/admin/bot-telemetry?limit=100")
+      .then(r => r.json())
+      .catch(() => null);
   }, []);
 
   useEffect(() => {

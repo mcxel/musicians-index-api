@@ -1,5 +1,6 @@
-import { notFound } from "next/navigation";
+import { redirect } from "next/navigation";
 import { getArticleBySlug, MAGAZINE_ISSUE_1 } from "@/lib/magazine/magazineIssueData";
+import { getEditorialArticleBySlug } from "@/lib/editorial/NewsArticleModel";
 import MagazineSpreadRenderer from "@/components/editorial/MagazineSpreadRenderer";
 import XPTrigger from "@/components/common/XPTrigger";
 
@@ -12,7 +13,7 @@ export async function generateStaticParams() {
 export async function generateMetadata({ params }: Props) {
   const { slug } = await params;
   const article = getArticleBySlug(slug);
-  if (!article) return { title: "Article Not Found | TMI" };
+  if (!article) return { title: "Article | TMI Magazine" };
   return {
     title: `${article.title} | TMI Magazine`,
     description: article.subtitle,
@@ -23,7 +24,19 @@ export async function generateMetadata({ params }: Props) {
 export default async function ArticlePage({ params }: Props) {
   const { slug } = await params;
   const article = getArticleBySlug(slug);
-  if (!article) return notFound();
+
+  if (!article) {
+    const editorial = getEditorialArticleBySlug(slug);
+    if (editorial) {
+      const dest = editorial.category === "artist"
+        ? `/articles/artist/${slug}`
+        : editorial.category === "performer"
+        ? `/articles/performer/${slug}`
+        : `/articles/news/${slug}`;
+      redirect(dest);
+    }
+    redirect("/magazine");
+  }
 
   const relatedArticles = MAGAZINE_ISSUE_1.filter((a) => a.slug !== slug);
 

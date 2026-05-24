@@ -100,10 +100,10 @@ export default function PromotionalHub({ artists = DEMO_ARTISTS }) {
       {/* ── NAV ── */}
       <nav className="promo-hub__nav">
         <ul className="promo-hub__nav-links">
-          <li><a href="#">Home</a></li>
-          <li><a href="#">Browse</a></li>
-          <li><a href="#" style={{ color:'var(--neon-gold)' }}>Creators</a></li>
-          <li><a href="#">Pricing</a></li>
+          <li><a href="/">Home</a></li>
+          <li><a href="/store">Browse</a></li>
+          <li><a href="/artists" style={{ color:'var(--neon-gold)' }}>Creators</a></li>
+          <li><a href="/pricing">Pricing</a></li>
         </ul>
         <div className="promo-hub__nav-right">
           <div className="promo-hub__nav-icon">🎵</div>

@@ -4,17 +4,11 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
+import { getRoleStats, type DashboardStat } from '@/lib/stats/DashboardStatsEngine';
 
 interface MeUser { id: string; email: string; name?: string; role: string; tier?: string; fanPoints?: number; }
 
 const ACCENT = '#00FFFF';
-
-const STATS = [
-  { label: 'XP Points',      value: '0',     icon: '⭐', color: '#FFD700' },
-  { label: 'Fan Tier',       value: 'FREE',  icon: '🏅', color: '#00FFFF' },
-  { label: 'Artists Following', value: '0',  icon: '🎤', color: '#FF2DAA' },
-  { label: 'Live Sessions',  value: '0',     icon: '📺', color: '#AA2DFF' },
-];
 
 const PRIMARY_ACTIONS = [
   { label: 'WATCH LIVE',     icon: '📺', href: '/live',              color: '#FF2DAA', desc: 'Join live performances' },
@@ -60,6 +54,7 @@ export default function FanDashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState<MeUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [roleStats, setRoleStats] = useState<DashboardStat[]>([]);
 
   useEffect(() => {
     const load = async () => {
@@ -69,6 +64,7 @@ export default function FanDashboardPage() {
         const data = await res.json() as { authenticated: boolean; user?: MeUser };
         if (!data.authenticated || !data.user) { router.replace('/auth'); return; }
         setUser(data.user);
+        setRoleStats(getRoleStats(data.user.role ?? 'fan'));
       } catch { router.replace('/auth'); } finally { setLoading(false); }
     };
     void load();
@@ -91,6 +87,7 @@ export default function FanDashboardPage() {
           <div style={{ fontSize: 16, fontWeight: 900, marginTop: 2 }}>{user?.name ?? user?.email?.split('@')[0] ?? 'Fan'} <span style={{ fontSize: 10, color: '#FFD700', fontWeight: 700, marginLeft: 6 }}>{displayTier}</span></div>
         </div>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          <Link href="/hub/fan" style={{ fontSize: 10, color: '#00FFFF', border: '1px solid rgba(0,255,255,0.3)', padding: '5px 12px', borderRadius: 6, textDecoration: 'none', fontWeight: 700, letterSpacing: '0.1em' }}>FAN HUB</Link>
           <Link href="/account/referrals" style={{ fontSize: 10, color: '#FF9500', border: '1px solid rgba(255,149,0,0.3)', padding: '5px 12px', borderRadius: 6, textDecoration: 'none', fontWeight: 700, letterSpacing: '0.1em' }}>⭐ XP</Link>
           <Link href="/settings" style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', border: '1px solid rgba(255,255,255,0.1)', padding: '5px 12px', borderRadius: 6, textDecoration: 'none', fontWeight: 700 }}>SETTINGS</Link>
         </div>
@@ -100,13 +97,14 @@ export default function FanDashboardPage() {
 
         {/* Stats */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 32 }}>
-          {STATS.map((s, i) => (
-            <motion.div key={s.label} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}
+          {(roleStats.length > 0 ? roleStats : []).map((s, i) => (
+            <motion.div key={s.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}
               style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${s.color}30`, borderRadius: 12, padding: '18px', position: 'relative', overflow: 'hidden' }}>
               <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: s.color }} />
               <div style={{ fontSize: 24, marginBottom: 4 }}>{s.icon}</div>
-              <div style={{ fontSize: 22, fontWeight: 900, color: s.color }}>{s.label === 'Fan Tier' ? displayTier : s.value}</div>
+              <div style={{ fontSize: 22, fontWeight: 900, color: s.color }}>{s.value}</div>
               <div style={{ fontSize: 10, letterSpacing: 2, color: '#555', marginTop: 4, textTransform: 'uppercase' }}>{s.label}</div>
+              <div style={{ fontSize: 9, color: s.deltaPositive ? '#00FF88' : '#FF4444', marginTop: 2 }}>{s.delta}</div>
             </motion.div>
           ))}
         </div>

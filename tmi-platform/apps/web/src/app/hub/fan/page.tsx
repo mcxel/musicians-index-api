@@ -9,6 +9,7 @@ import type { UserSeasonPass, SeasonPassReward } from "@/lib/gamification/Season
 import TMIVideoMonitor from "@/components/hud/TMIVideoMonitor";
 import Link from "next/link";
 import { useGamificationEngine } from "@/hooks/useGamificationEngine";
+import { TIER_COLORS, TIER_LABELS } from "@/lib/performance/FanJudgeReputationEngine";
 
 const SEED_BADGES = [
   { id: "b1", label: "Season 1 OG",     icon: "🏆", earnedAt: "Jan 2026" },
@@ -106,7 +107,12 @@ export default function FanHubPage() {
       {/* Persona switcher bar */}
       <div style={{ background: 'rgba(0,0,0,0.6)', borderBottom: '1px solid rgba(255,45,170,0.12)', padding: '10px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.2em', color: '#FF2DAA', textTransform: 'uppercase' }}>Fan Hub</span>
-        <PersonaSwitcher currentRole="fan" compact />
+        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          <Link href="/arena" style={{ padding: "8px 16px", background: "linear-gradient(135deg,#FF2DAA22,#FF2DAA08)", border: "1px solid #FF2DAA50", borderRadius: 8, fontSize: 10, fontWeight: 800, color: "#FF2DAA", textDecoration: "none", letterSpacing: "0.12em" }}>
+            🏟️ ENTER ARENA
+          </Link>
+          <PersonaSwitcher currentRole="fan" compact />
+        </div>
       </div>
 
       {/* Primary Hub Shell — live stage, avatar, reactions, tip, playlist, HUD */}
@@ -238,6 +244,38 @@ export default function FanHubPage() {
                 )}
               </div>
             ))}
+          </div>
+        </section>
+
+        {/* Judge Reputation */}
+        <section style={{ marginBottom: 32 }}>
+          <SectionLabel>Judge Reputation</SectionLabel>
+          <div style={{ background: "#0f0f1a", border: "1px solid #FFD70033", borderRadius: 14, padding: "20px 24px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 20 }}>
+              <div style={{ fontSize: 40 }}>⚖️</div>
+              <div>
+                <div style={{ fontSize: 12, color: TIER_COLORS["TRUSTED"], fontWeight: 800, letterSpacing: 2 }}>
+                  {TIER_LABELS["TRUSTED"]}
+                </div>
+                <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>Vote weight: 1.2× — your votes count more</div>
+              </div>
+              <Link href="/judge" style={{ marginLeft: "auto", fontSize: 10, color: "#FFD700", textDecoration: "none", border: "1px solid #FFD70033", borderRadius: 6, padding: "6px 12px", fontWeight: 700 }}>
+                JUDGE LEADERBOARD →
+              </Link>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 12 }}>
+              {[
+                { label: "Votes Cast",  val: "34",  color: "#00FFFF" },
+                { label: "Accuracy",    val: "71%", color: "#00FF88" },
+                { label: "Streak",      val: "4",   color: "#FFD700" },
+                { label: "Best Streak", val: "7",   color: "#FF2DAA" },
+              ].map(stat => (
+                <div key={stat.label} style={{ background: "#07071a", borderRadius: 10, padding: "12px 14px", border: "1px solid #1e1e3a" }}>
+                  <div style={{ fontSize: 20, fontWeight: 900, color: stat.color }}>{stat.val}</div>
+                  <div style={{ fontSize: 9, color: "#64748b", letterSpacing: 2, marginTop: 2 }}>{stat.label.toUpperCase()}</div>
+                </div>
+              ))}
+            </div>
           </div>
         </section>
 

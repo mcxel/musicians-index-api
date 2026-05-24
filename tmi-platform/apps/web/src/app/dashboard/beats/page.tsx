@@ -1,14 +1,28 @@
+"use client";
 import Link from "next/link";
-import type { Metadata } from "next";
-export const metadata: Metadata = { title: "My Beats · The Musician's Index" };
+import { useState } from "react";
 
-const MY_BEATS = [
-  { id: "mb1", title: "Neon Crypt", genre: "Trap", bpm: 140, price: 29.99, plays: 1842, sales: 14, status: "published" },
-  { id: "mb2", title: "Crescent Drop", genre: "Drill", bpm: 148, price: 27.99, plays: 987, sales: 7, status: "published" },
-  { id: "mb3", title: "Velvet WIP", genre: "R&B", bpm: 82, price: 22.99, plays: 0, sales: 0, status: "draft" },
+type Beat = { id: string; title: string; genre: string; bpm: number; price: number; plays: number; sales: number; status: "published" | "draft" };
+
+const SEED: Beat[] = [
+  { id: "mb1", title: "Neon Crypt",    genre: "Trap",  bpm: 140, price: 29.99, plays: 1842, sales: 14, status: "published" },
+  { id: "mb2", title: "Crescent Drop", genre: "Drill", bpm: 148, price: 27.99, plays: 987,  sales: 7,  status: "published" },
+  { id: "mb3", title: "Velvet WIP",    genre: "R&B",   bpm: 82,  price: 22.99, plays: 0,    sales: 0,  status: "draft" },
 ];
 
 export default function DashboardBeatsPage() {
+  const [beats, setBeats] = useState<Beat[]>(SEED);
+  const [editMsg, setEditMsg] = useState("");
+
+  function editBeat(id: string) {
+    setEditMsg(`Editing: ${beats.find(b => b.id === id)?.title}`);
+    setTimeout(() => setEditMsg(""), 3000);
+  }
+
+  function togglePublish(id: string) {
+    setBeats(prev => prev.map(b => b.id === id ? { ...b, status: b.status === "published" ? "draft" : "published" } : b));
+  }
+
   return (
     <main style={{ minHeight: "100vh", background: "#05060c", color: "#fff", padding: "32px 24px 80px", fontFamily: "'Inter', sans-serif" }}>
       <div style={{ maxWidth: 980, margin: "0 auto" }}>
@@ -22,8 +36,9 @@ export default function DashboardBeatsPage() {
           </div>
           <Link href="/beats/upload" style={{ padding: "11px 22px", borderRadius: 8, background: "#AA2DFF", color: "#fff", fontWeight: 800, fontSize: 13, textDecoration: "none" }}>+ Upload Beat</Link>
         </div>
+        {editMsg && <div style={{ marginBottom: 14, padding: "10px 14px", background: "rgba(170,45,255,0.08)", border: "1px solid rgba(170,45,255,0.2)", borderRadius: 8, fontSize: 12, color: "#AA2DFF" }}>{editMsg}</div>}
         <div style={{ display: "grid", gap: 10 }}>
-          {MY_BEATS.map((b) => (
+          {beats.map((b) => (
             <div key={b.id} style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, padding: "18px 22px", display: "grid", gridTemplateColumns: "1fr auto", gap: 16, alignItems: "center" }}>
               <div>
                 <div style={{ fontWeight: 700, fontSize: 14 }}>{b.title}</div>
@@ -31,8 +46,8 @@ export default function DashboardBeatsPage() {
               </div>
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                 <span style={{ fontSize: 9, fontWeight: 900, color: b.status === "published" ? "#22c55e" : "#FFD700", letterSpacing: "0.15em" }}>{b.status.toUpperCase()}</span>
-                <button style={{ padding: "6px 14px", borderRadius: 7, background: "rgba(170,45,255,0.15)", border: "1px solid rgba(170,45,255,0.25)", color: "#AA2DFF", fontSize: 11, cursor: "pointer", fontWeight: 700 }}>Edit</button>
-                <button style={{ padding: "6px 14px", borderRadius: 7, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.5)", fontSize: 11, cursor: "pointer" }}>{b.status === "published" ? "Unpublish" : "Publish"}</button>
+                <button onClick={() => editBeat(b.id)} style={{ padding: "6px 14px", borderRadius: 7, background: "rgba(170,45,255,0.15)", border: "1px solid rgba(170,45,255,0.25)", color: "#AA2DFF", fontSize: 11, cursor: "pointer", fontWeight: 700 }}>Edit</button>
+                <button onClick={() => togglePublish(b.id)} style={{ padding: "6px 14px", borderRadius: 7, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.5)", fontSize: 11, cursor: "pointer" }}>{b.status === "published" ? "Unpublish" : "Publish"}</button>
               </div>
             </div>
           ))}

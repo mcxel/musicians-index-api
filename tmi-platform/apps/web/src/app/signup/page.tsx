@@ -39,6 +39,7 @@ export default function SignupPage() {
   const [form, setForm] = useState({ name: "", email: "", password: "" });
   const [error, setError] = useState("");
   const [provSteps, setProvSteps] = useState<string[]>([]);
+  const [copied, setCopied] = useState(false);
 
   const sel = ACCOUNT_TYPES.find(t => t.type === accountType)!;
 
@@ -49,20 +50,23 @@ export default function SignupPage() {
     try {
       const regRes = await fetch("/api/auth/register", {
         method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ name: form.name, email: form.email, password: form.password, role: accountType }),
+        body: JSON.stringify({ name: form.name, email: form.email, password: form.password, role: accountType, termsAccepted: true }),
       });
-      const regData = await regRes.json().catch(() => ({}));
-      const userId = (regData as { id?: string }).id ?? `stub_${Date.now()}`;
+      const regData = await regRes.json().catch(() => ({})) as { ok?: boolean; userId?: string; user?: { id?: string }; token?: string; error?: string };
+      if (!regRes.ok || !regData.ok) {
+        setError(regData.error ?? "Registration failed — please try again.");
+        setStep("DETAILS");
+        return;
+      }
+      const userId = regData.userId ?? regData.user?.id ?? `stub_${Date.now()}`;
       const provRes = await fetch("/api/auth/provision", {
         method: "POST", headers: { "content-type": "application/json" },
         body: JSON.stringify({ userId, accountType, vipToken: vipToken || undefined }),
       });
-      const prov = await provRes.json();
-      setProvSteps(
-        ((prov as { steps?: Array<{ step: string }> }).steps ?? []).map((s: { step: string }) => s.step)
-      );
+      const prov = await provRes.json() as { steps?: Array<{ step: string }> };
+      setProvSteps((prov.steps ?? []).map((s) => s.step));
       // Write session cookies so /dashboard doesn't bounce the new user back to /auth
-      const sessionToken = (regData as { token?: string }).token ?? userId;
+      const sessionToken = regData.token ?? userId;
       setSession(sessionToken, accountType as TMIRole);
       setStep("DONE");
     } catch {
@@ -162,6 +166,44 @@ export default function SignupPage() {
               <motion.div animate={{ scale: [1, 1.15, 1] }} transition={{ duration: 0.6 }} style={{ fontSize: 52, marginBottom: 14 }}>✅</motion.div>
               <div style={{ fontSize: 15, fontWeight: 900, letterSpacing: 2, color: "#00FF88", marginBottom: 8 }}>WORKSPACE READY</div>
               <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginBottom: 20 }}>Your {sel.label} account is live. Bots assigned. Inventory loaded.</div>
+
+              {/* Orbit announcement */}
+              <motion.div
+                initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
+                style={{ background: "linear-gradient(135deg, rgba(255,45,170,0.12), rgba(170,45,255,0.1))", border: "1.5px solid rgba(255,45,170,0.4)", borderRadius: 12, padding: "16px 18px", marginBottom: 16, textAlign: "left" }}
+              >
+                <div style={{ fontSize: 11, fontWeight: 900, color: "#FF2DAA", letterSpacing: "0.1em", marginBottom: 6 }}>🔥 YOU&apos;RE LIVE ON THE HOMEPAGE ORBIT</div>
+                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", lineHeight: 1.6 }}>
+                  Your profile is already rotating in the <strong style={{ color: "#fff" }}>Home #1 live orbit</strong>. Every visitor to the homepage can see you right now. Send your invite link and watch your rank climb.
+                </div>
+              </motion.div>
+
+              {/* Invite link */}
+              {(() => {
+                const refSlug = encodeURIComponent(form.name.trim().replace(/\s+/g, ""));
+                const inviteUrl = `https://themusiciansindex.com/join?ref=${refSlug}`;
+                return (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }}
+                    style={{ background: "rgba(255,215,0,0.06)", border: "1px solid rgba(255,215,0,0.25)", borderRadius: 10, padding: "14px 16px", marginBottom: 18, textAlign: "left" }}
+                  >
+                    <div style={{ fontSize: 8, fontWeight: 800, color: "#FFD700", letterSpacing: "0.2em", marginBottom: 8 }}>⭐ YOUR INVITE LINK — EARN XP FOR EVERY SIGN-UP</div>
+                    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                      <div style={{ flex: 1, fontSize: 10, color: "rgba(255,255,255,0.55)", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 6, padding: "8px 10px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {inviteUrl}
+                      </div>
+                      <button
+                        onClick={() => { void navigator.clipboard.writeText(inviteUrl).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); }); }}
+                        style={{ padding: "8px 14px", fontSize: 9, fontWeight: 800, letterSpacing: "0.1em", background: copied ? "#00FF88" : "#FFD700", color: "#050510", border: "none", borderRadius: 6, cursor: "pointer", flexShrink: 0, transition: "background 200ms" }}
+                      >
+                        {copied ? "COPIED ✓" : "COPY"}
+                      </button>
+                    </div>
+                    <div style={{ fontSize: 9, color: "rgba(255,215,0,0.55)", marginTop: 6 }}>Launch bonus: 2× XP on all referrals — limited time</div>
+                  </motion.div>
+                );
+              })()}
+
               {provSteps.length > 0 && (
                 <div style={{ textAlign: "left", background: "rgba(0,255,136,0.04)", border: "1px solid rgba(0,255,136,0.12)", borderRadius: 7, padding: "10px 14px", marginBottom: 18 }}>
                   <div style={{ fontSize: 7, letterSpacing: "0.15em", color: "#00FF88", fontWeight: 700, marginBottom: 7 }}>PROVISION CHAIN</div>
@@ -172,9 +214,15 @@ export default function SignupPage() {
                   ))}
                 </div>
               )}
-              <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
-                <Link href="/dashboard" style={{ padding: "11px 22px", fontSize: 10, fontWeight: 800, letterSpacing: "0.15em", background: `linear-gradient(135deg, ${sel.color}, ${sel.color}88)`, color: "#050510", borderRadius: 6, textDecoration: "none" }}>GO TO DASHBOARD</Link>
-                <Link href={`/onboarding/${accountType === "MEMBER" ? "fan" : accountType === "ARTIST" ? "artist" : accountType.toLowerCase()}`} style={{ padding: "11px 22px", fontSize: 10, fontWeight: 800, letterSpacing: "0.15em", background: "rgba(255,255,255,0.06)", color: "#fff", borderRadius: 6, textDecoration: "none" }}>START TUTORIAL</Link>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <Link href="/home/1" style={{ padding: "13px 22px", fontSize: 11, fontWeight: 800, letterSpacing: "0.15em", background: `linear-gradient(135deg, ${sel.color}, ${sel.color}88)`, color: "#050510", borderRadius: 7, textDecoration: "none", display: "block" }}>
+                  🔥 SEE YOUR ORBIT POSITION →
+                </Link>
+                <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
+                  <Link href="/dashboard" style={{ padding: "10px 18px", fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", background: "rgba(255,255,255,0.06)", color: "#fff", borderRadius: 6, textDecoration: "none" }}>GO TO DASHBOARD</Link>
+                  <Link href={`/onboarding/${accountType === "MEMBER" ? "fan" : accountType === "ARTIST" ? "artist" : accountType.toLowerCase()}`} style={{ padding: "10px 18px", fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.5)", borderRadius: 6, textDecoration: "none" }}>START TUTORIAL</Link>
+                </div>
               </div>
             </motion.div>
           )}

@@ -3,15 +3,17 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 
 const ROLE_HUB: Record<string, string> = {
-  ARTIST:     "/hub/artist",
-  PERFORMER:  "/hub/performer",
-  FAN:        "/hub/fan",
-  USER:       "/hub/fan",
-  SPONSOR:    "/hub/sponsor",
-  ADVERTISER: "/hub/advertiser",
-  VENUE:      "/hub/venue",
-  ADMIN:      "/admin",
-  STAFF:      "/admin",
+  artist:     "/hub/artist",
+  performer:  "/hub/performer",
+  fan:        "/hub/fan",
+  user:       "/hub/fan",
+  sponsor:    "/hub/sponsor",
+  advertiser: "/hub/advertiser",
+  venue:      "/hub/venue",
+  writer:     "/hub/writer",
+  promoter:   "/hub/promoter",
+  admin:      "/admin",
+  staff:      "/admin",
 };
 
 const HUB_LINKS = [
@@ -20,15 +22,17 @@ const HUB_LINKS = [
   { label: "Performer Hub",  href: "/hub/performer",  color: "#AA2DFF", icon: "🎭" },
   { label: "Sponsor Hub",    href: "/hub/sponsor",    color: "#FFD700", icon: "🤝" },
   { label: "Advertiser Hub", href: "/hub/advertiser", color: "#FFA500", icon: "📢" },
-  { label: "Venue Hub",      href: "/hub/venue",      color: "#22c55e", icon: "🏟️" },
-  { label: "Admin",          href: "/admin",      color: "#94a3b8", icon: "⚙️" },
+  { label: "Venue Hub",      href: "/hub/venue",      color: "#00FF88", icon: "🏟️" },
+  { label: "Writer Hub",    href: "/hub/writer",    color: "#FF2DAA", icon: "✏️" },
+  { label: "Promoter Hub",  href: "/hub/promoter",  color: "#AA2DFF", icon: "🎟️" },
+  { label: "Admin",         href: "/admin",          color: "#94a3b8", icon: "⚙️" },
 ];
 
 export const dynamic = "force-dynamic";
 
 export default async function HubRouterPage() {
   const cookieStore = await cookies();
-  const role = cookieStore.get("tmi_role")?.value?.toUpperCase();
+  const role = cookieStore.get("tmi_role")?.value?.toLowerCase();
   const session = cookieStore.get("tmi_session")?.value;
 
   // Redirect authenticated users to their hub

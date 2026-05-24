@@ -1,4 +1,4 @@
-﻿import type { ModuleEnvironment } from '@tmi/module-runtime';
+import type { ModuleEnvironment } from '@tmi/module-runtime';
 
 export const ENVIRONMENT: ModuleEnvironment = {
   database: {

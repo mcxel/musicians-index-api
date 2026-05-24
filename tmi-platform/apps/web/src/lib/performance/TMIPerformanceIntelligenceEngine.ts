@@ -10,5 +10,14 @@ export { registerPerformance, getCreatorEvolutionStats } from "./CreatorEvolutio
 export type { ContestEntry, ContestResult } from "./WinnerDeclarationEngine";
 export { declareWinner } from "./WinnerDeclarationEngine";
 
-export type { FanJudgeProfile } from "./FanJudgeReputationEngine";
-export { recordJudgeVote, getJudgeProfile, TIER_COLORS, TIER_LABELS } from "./FanJudgeReputationEngine";
+export type { FanJudgeProfile, JudgeTier } from "./FanJudgeReputationEngine";
+export {
+  recordJudgeVote,
+  recordJudgeOutcome,
+  getJudgeProfile,
+  getJudgeVoteWeight,
+  TIER_COLORS,
+  TIER_LABELS,
+  TIER_WEIGHTS,
+  TIER_REQUIREMENTS,
+} from "./FanJudgeReputationEngine";

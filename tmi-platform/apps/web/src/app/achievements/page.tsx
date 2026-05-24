@@ -1,103 +1,140 @@
-const ACHIEVEMENTS = [
-  { id: '1', title: 'First Show', description: 'Attended your first live show on TMI.', icon: '🎤', earned: true, earnedAt: 'Jan 2025', rarity: 'COMMON', points: 50 },
-  { id: '2', title: 'Social Butterfly', description: 'Made 10 friends on the platform.', icon: '🦋', earned: true, earnedAt: 'Feb 2025', rarity: 'COMMON', points: 100 },
-  { id: '3', title: 'Lobby Legend', description: 'Spent 10 hours in lobbies.', icon: '🏛️', earned: true, earnedAt: 'Mar 2025', rarity: 'RARE', points: 250 },
-  { id: '4', title: 'Chart Climber', description: 'Voted on 50 songs in the Top 10.', icon: '📈', earned: false, earnedAt: null, rarity: 'RARE', points: 200 },
-  { id: '5', title: 'Julius Whisperer', description: 'Unlocked 5 Julius variants.', icon: '🤖', earned: false, earnedAt: null, rarity: 'EPIC', points: 500 },
-  { id: '6', title: 'VIP Access', description: 'Attended a VIP-only event.', icon: '💎', earned: false, earnedAt: null, rarity: 'LEGENDARY', points: 1000 },
-  { id: '7', title: 'Cypher King', description: 'Won a Cypher battle.', icon: '👑', earned: false, earnedAt: null, rarity: 'EPIC', points: 750 },
-  { id: '8', title: 'Early Adopter', description: 'Joined TMI in the first month.', icon: '🚀', earned: true, earnedAt: 'Jan 2025', rarity: 'LEGENDARY', points: 1000 },
-];
+import Link from 'next/link';
+import { ACHIEVEMENT_REGISTRY } from '@/lib/xp/achievementRegistry';
+import type { AchievementCategory } from '@/lib/xp/achievementRegistry';
 
-const RARITY_COLORS: Record<string, string> = {
-  COMMON: 'text-gray-400 border-gray-600',
-  RARE: 'text-blue-400 border-blue-600',
-  EPIC: 'text-purple-400 border-purple-600',
-  LEGENDARY: 'text-[#ff6b35] border-[#ff6b35]',
+const RARITY_CONFIG: Record<AchievementCategory, { label: string; color: string; bg: string; border: string }> = {
+  activity:  { label: 'ACTIVITY',  color: '#00FFFF', bg: 'rgba(0,255,255,0.06)',   border: 'rgba(0,255,255,0.2)'   },
+  social:    { label: 'SOCIAL',    color: '#00FF88', bg: 'rgba(0,255,136,0.06)',   border: 'rgba(0,255,136,0.2)'   },
+  commerce:  { label: 'COMMERCE',  color: '#FFD700', bg: 'rgba(255,215,0,0.06)',   border: 'rgba(255,215,0,0.2)'   },
+  milestone: { label: 'MILESTONE', color: '#AA2DFF', bg: 'rgba(170,45,255,0.06)', border: 'rgba(170,45,255,0.2)'  },
+  exclusive: { label: 'EXCLUSIVE', color: '#FF2DAA', bg: 'rgba(255,45,170,0.06)', border: 'rgba(255,45,170,0.2)'  },
 };
 
-const RARITY_BG: Record<string, string> = {
-  COMMON: 'bg-gray-500/10',
-  RARE: 'bg-blue-500/10',
-  EPIC: 'bg-purple-500/10',
-  LEGENDARY: 'bg-[#ff6b35]/10',
-};
+const CATEGORIES: AchievementCategory[] = ['activity', 'social', 'commerce', 'milestone', 'exclusive'];
+
+const VISIBLE = ACHIEVEMENT_REGISTRY.filter((a) => !a.secret);
+const DEMO_UNLOCKED = new Set(['first_login', 'first_room', 'first_vote', 'first_comment', 'profile_complete']);
+
+export const metadata = { title: 'Achievements | TMI' };
 
 export default function AchievementsPage() {
-  const earned = ACHIEVEMENTS.filter((a) => a.earned);
-  const totalPoints = earned.reduce((sum, a) => sum + a.points, 0);
+  const earned      = VISIBLE.filter((a) => DEMO_UNLOCKED.has(a.id));
+  const totalPoints = earned.reduce((sum, a) => sum + a.xpBonus, 0);
 
   return (
-    <main className="min-h-screen bg-[#0a0a0f] text-white px-6 py-10 max-w-4xl mx-auto">
-      <h1 className="text-3xl font-bold text-[#ff6b35] mb-2">Achievements</h1>
-      <p className="text-gray-400 mb-8">Earn badges by participating in the TMI platform.</p>
+    <main style={{ minHeight: '100vh', background: '#050510', color: '#fff', paddingBottom: 80, fontFamily: 'inherit' }}>
+      <div style={{ maxWidth: 880, margin: '0 auto', padding: '48px 24px 0' }}>
 
-      {/* Stats Bar */}
-      <div className="grid grid-cols-3 gap-4 mb-10">
-        <div className="bg-white/5 border border-white/10 rounded-xl p-4 text-center">
-          <p className="text-2xl font-bold text-[#ff6b35]">{earned.length}</p>
-          <p className="text-xs text-gray-400 mt-1">Earned</p>
+        {/* Breadcrumb */}
+        <div style={{ display: 'flex', gap: 16, marginBottom: 24 }}>
+          <Link href="/xp" style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', textDecoration: 'none' }}>← XP</Link>
+          <Link href="/leaderboard" style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', textDecoration: 'none' }}>Leaderboard</Link>
         </div>
-        <div className="bg-white/5 border border-white/10 rounded-xl p-4 text-center">
-          <p className="text-2xl font-bold text-white">{ACHIEVEMENTS.length}</p>
-          <p className="text-xs text-gray-400 mt-1">Total</p>
-        </div>
-        <div className="bg-white/5 border border-white/10 rounded-xl p-4 text-center">
-          <p className="text-2xl font-bold text-yellow-400">{totalPoints.toLocaleString()}</p>
-          <p className="text-xs text-gray-400 mt-1">Points</p>
-        </div>
-      </div>
 
-      {/* Progress Bar */}
-      <div className="mb-10">
-        <div className="flex justify-between text-xs text-gray-400 mb-2">
-          <span>Progress</span>
-          <span>{earned.length}/{ACHIEVEMENTS.length} achievements</span>
+        <div style={{ marginBottom: 36 }}>
+          <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.3em', color: '#FFD700', marginBottom: 6 }}>TMI</div>
+          <h1 style={{ fontSize: 'clamp(1.8rem,5vw,2.8rem)', fontWeight: 900, margin: 0 }}>Achievements</h1>
+          <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', marginTop: 6 }}>
+            Earn achievements by participating on The Musician&apos;s Index.
+          </p>
         </div>
-        <div className="w-full bg-white/10 rounded-full h-2">
-          <div
-            className="bg-[#ff6b35] h-2 rounded-full transition-all"
-            style={{ width: `${(earned.length / ACHIEVEMENTS.length) * 100}%` }}
-          />
-        </div>
-      </div>
 
-      {/* Achievement Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {ACHIEVEMENTS.map((achievement) => (
-          <div
-            key={achievement.id}
-            className={`relative border rounded-2xl p-5 transition-all ${
-              achievement.earned
-                ? `${RARITY_BG[achievement.rarity]} ${RARITY_COLORS[achievement.rarity]}`
-                : 'bg-white/3 border-white/5 opacity-50'
-            }`}
-          >
-            {!achievement.earned && (
-              <div className="absolute inset-0 flex items-center justify-center rounded-2xl bg-black/40 backdrop-blur-[1px]">
-                <span className="text-2xl">🔒</span>
+        {/* Stats bar */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 36 }}>
+          {[
+            { label: 'Earned',       value: `${earned.length} / ${VISIBLE.length}`, color: '#00FF88' },
+            { label: 'XP Bonus',     value: totalPoints.toLocaleString() + ' XP',   color: '#FFD700' },
+            { label: 'Categories',   value: CATEGORIES.length.toString(),            color: '#00FFFF' },
+          ].map((s) => (
+            <div key={s.label} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 14, padding: '18px 20px', textAlign: 'center' }}>
+              <div style={{ fontSize: 22, fontWeight: 900, color: s.color, fontVariantNumeric: 'tabular-nums' }}>{s.value}</div>
+              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', color: 'rgba(255,255,255,0.3)', marginTop: 4 }}>{s.label}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Progress bar */}
+        <div style={{ marginBottom: 40 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'rgba(255,255,255,0.3)', marginBottom: 8 }}>
+            <span>Progress</span>
+            <span>{Math.round((earned.length / VISIBLE.length) * 100)}% complete</span>
+          </div>
+          <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 99, height: 8, overflow: 'hidden' }}>
+            <div
+              style={{
+                width: `${(earned.length / VISIBLE.length) * 100}%`,
+                height: '100%',
+                background: 'linear-gradient(90deg, #00FFFF, #AA2DFF)',
+                borderRadius: 99,
+                boxShadow: '0 0 8px rgba(0,255,255,0.5)',
+              }}
+            />
+          </div>
+        </div>
+
+        {/* Achievements by category */}
+        {CATEGORIES.map((cat) => {
+          const items = VISIBLE.filter((a) => a.category === cat);
+          if (items.length === 0) return null;
+          const cfg = RARITY_CONFIG[cat];
+          return (
+            <div key={cat} style={{ marginBottom: 36 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+                <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.2em', color: cfg.color }}>
+                  {cfg.label}
+                </div>
+                <div style={{ flex: 1, height: 1, background: `${cfg.color}22` }} />
+                <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.25)' }}>
+                  {items.filter((a) => DEMO_UNLOCKED.has(a.id)).length}/{items.length}
+                </div>
               </div>
-            )}
-            <div className="flex items-start gap-4">
-              <div className="text-3xl">{achievement.icon}</div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <h3 className="font-bold text-sm text-white">{achievement.title}</h3>
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${RARITY_COLORS[achievement.rarity]} ${RARITY_BG[achievement.rarity]}`}>
-                    {achievement.rarity}
-                  </span>
-                </div>
-                <p className="text-xs text-gray-400 mb-2">{achievement.description}</p>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-yellow-400 font-semibold">+{achievement.points} pts</span>
-                  {achievement.earned && achievement.earnedAt && (
-                    <span className="text-xs text-gray-500">Earned {achievement.earnedAt}</span>
-                  )}
-                </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 10 }}>
+                {items.map((ach) => {
+                  const unlocked = DEMO_UNLOCKED.has(ach.id);
+                  return (
+                    <div
+                      key={ach.id}
+                      style={{
+                        position: 'relative',
+                        background:  unlocked ? cfg.bg : 'rgba(255,255,255,0.015)',
+                        border:      `1px solid ${unlocked ? cfg.border : 'rgba(255,255,255,0.04)'}`,
+                        borderRadius: 12,
+                        padding:     '16px',
+                        opacity:     unlocked ? 1 : 0.5,
+                      }}
+                    >
+                      {!unlocked && (
+                        <div style={{ position: 'absolute', top: 10, right: 12, fontSize: 12 }}>🔒</div>
+                      )}
+                      <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                        <span style={{ fontSize: 28, flexShrink: 0 }}>{ach.icon}</span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 12, fontWeight: 800, color: unlocked ? cfg.color : 'rgba(255,255,255,0.4)', marginBottom: 3 }}>
+                            {ach.title}
+                          </div>
+                          <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', lineHeight: 1.4, marginBottom: 6 }}>
+                            {ach.description}
+                          </div>
+                          <div style={{ fontSize: 10, fontWeight: 700, color: '#FFD700' }}>+{ach.xpBonus} XP</div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
+
+        {/* CTA */}
+        <div style={{ marginTop: 12, display: 'flex', gap: 10 }}>
+          <Link href="/xp" style={{ padding: '11px 22px', borderRadius: 24, fontSize: 12, fontWeight: 800, background: 'rgba(255,215,0,0.1)', border: '1px solid rgba(255,215,0,0.25)', color: '#FFD700', textDecoration: 'none' }}>
+            Your XP
+          </Link>
+          <Link href="/leaderboard" style={{ padding: '11px 22px', borderRadius: 24, fontSize: 12, fontWeight: 800, background: 'rgba(0,255,255,0.1)', border: '1px solid rgba(0,255,255,0.25)', color: '#00FFFF', textDecoration: 'none' }}>
+            Leaderboard
+          </Link>
+        </div>
       </div>
     </main>
   );

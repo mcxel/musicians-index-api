@@ -217,13 +217,20 @@ export default function FriendsPage() {
                 </div>
                 <div className="flex gap-2">
                   <button
-                    onClick={() => setFollowed((prev) => {
-                      const next = new Set(prev);
-                      const wasFollowing = next.has(user.id);
-                      wasFollowing ? next.delete(user.id) : next.add(user.id);
+                    onClick={async () => {
+                      const wasFollowing = followed.has(user.id);
+                      setFollowed((prev) => {
+                        const next = new Set(prev);
+                        wasFollowing ? next.delete(user.id) : next.add(user.id);
+                        return next;
+                      });
                       if (!wasFollowing) trackAction('VOTE_BATTLE');
-                      return next;
-                    })}
+                      await fetch('/api/social/follow', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ userId: user.id, userName: user.name, action: wasFollowing ? 'unfollow' : 'follow' }),
+                      });
+                    }}
                     className={`text-xs px-3 py-1.5 rounded-lg transition-colors font-semibold ${
                       followed.has(user.id)
                         ? 'bg-[#ff6b35] text-white'

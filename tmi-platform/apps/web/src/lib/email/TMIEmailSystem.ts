@@ -33,6 +33,8 @@
  */
 
 import { createHmac } from "crypto";
+import { checkEmailRateLimit } from "./emailRateLimiter";
+import { isUnsubscribed } from "./unsubscribeStore";
 
 /* ─── Types ─────────────────────────────────────────────────────────────── */
 export type EmailType =
@@ -344,6 +346,20 @@ const TEMPLATES: Record<string, (data: Record<string, unknown>, email: string) =
   }),
 };
 
+/* ─── Email category classification ─────────────────────────────────────── */
+const TRANSACTIONAL_TYPES = new Set<EmailType>([
+  "verify_email", "password_reset", "security_alert", "new_login",
+  "ticket_confirmation", "nft_receipt", "beat_receipt", "tip_received",
+  "subscription_start", "subscription_renew", "subscription_cancel", "subscription_upgrade",
+  "payout_queued", "payout_approved", "contest_win", "contest_loss", "battle_invite",
+]);
+
+function emailCategoryFor(type: EmailType): "transactional" | "marketing" | "newsletter" {
+  if (TRANSACTIONAL_TYPES.has(type)) return "transactional";
+  if (type === "weekly_digest" || type === "magazine_drop") return "newsletter";
+  return "marketing";
+}
+
 /* ─── Email sender ─────────────────────────────────────────────────────────── */
 export async function sendEmail({ to, type, data }: EmailPayload): Promise<SendResult> {
   const templateFn = TEMPLATES[type];
@@ -351,6 +367,19 @@ export async function sendEmail({ to, type, data }: EmailPayload): Promise<SendR
 
   if (isDisposableEmail(to)) {
     return { success: false, error: "Disposable email address blocked" };
+  }
+
+  const category = emailCategoryFor(type);
+
+  // Block if recipient opted out (transactional always goes through)
+  if (category !== "transactional" && isUnsubscribed(to, category)) {
+    return { success: false, error: `Recipient unsubscribed from ${category}` };
+  }
+
+  // Rate limit check
+  const rateCheck = checkEmailRateLimit(to);
+  if (!rateCheck.allowed) {
+    return { success: false, error: `Rate limited: ${rateCheck.reason}. Retry in ${Math.ceil((rateCheck.retryAfterMs ?? 60000) / 1000)}s` };
   }
 
   const { subject, html } = templateFn(data, to);

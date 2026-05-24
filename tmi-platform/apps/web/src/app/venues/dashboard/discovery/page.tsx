@@ -1,20 +1,27 @@
+"use client";
 import Link from 'next/link';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 const RECOMMENDATIONS = [
   {
     id: '1', name: 'DJ Kenzo', genres: ['Afrobeats', 'Dancehall'], distanceKm: 12, score: 94,
+    slug: 'dj-kenzo',
     tags: ['FRESH_PICK', 'UNDISCOVERED'], isFirstTime: true, breakdown: { distance: 23, genre: 20, availability: 14, budget: 13, exposure: 15, participation: 5, subscription: 4 },
   },
   {
     id: '2', name: 'Amara Osei', genres: ['R&B', 'Soul'], distanceKm: 28, score: 87,
+    slug: 'amara-osei',
     tags: ['RISING'], isFirstTime: true, breakdown: { distance: 20, genre: 18, availability: 13, budget: 12, exposure: 12, participation: 4, subscription: 5 },
   },
   {
     id: '3', name: 'Yusuf Bello', genres: ['Hip-Hop', 'Trap'], distanceKm: 45, score: 74,
+    slug: 'yusuf-bello',
     tags: ['HIGH_PARTICIPATION'], isFirstTime: false, breakdown: { distance: 16, genre: 16, availability: 10, budget: 10, exposure: 8, participation: 5, subscription: 5 },
   },
   {
     id: '4', name: 'Fatima Diallo', genres: ['Afrobeats', 'Afro-Pop'], distanceKm: 8, score: 71,
+    slug: 'fatima-diallo',
     tags: ['UNDISCOVERED'], isFirstTime: true, breakdown: { distance: 24, genre: 15, availability: 8, budget: 9, exposure: 10, participation: 3, subscription: 2 },
   },
 ];
@@ -40,6 +47,16 @@ function ScoreBar({ label, value, max }: { label: string; value: number; max: nu
 }
 
 export default function VenueDiscoveryPage() {
+  const router = useRouter();
+  const [offers, setOffers] = useState<Set<string>>(new Set());
+  const [msg, setMsg] = useState('');
+
+  function sendOffer(id: string, name: string) {
+    setOffers(prev => new Set([...prev, id]));
+    setMsg(`Offer sent to ${name}!`);
+    setTimeout(() => setMsg(''), 3000);
+  }
+
   return (
     <main className="min-h-screen bg-[#0a0a0f] text-white px-6 py-10 max-w-5xl mx-auto">
       <div className="flex items-center gap-3 mb-2">
@@ -52,13 +69,13 @@ export default function VenueDiscoveryPage() {
         AI-powered recommendations based on distance, genre fit, availability, budget, and exposure balance.
       </p>
 
-      {/* Score Legend */}
+      {msg && <div className="mb-4 p-3 rounded-lg text-sm text-[#ff6b35] bg-[#ff6b35]/10 border border-[#ff6b35]/20">{msg}</div>}
+
       <div className="bg-white/5 border border-white/10 rounded-xl p-4 mb-8 text-xs text-gray-400">
         <p className="font-semibold text-white mb-2">Scoring Formula</p>
         <p>Distance(25) + Genre(20) + Availability(15) + Budget(15) + Exposure Boost(15) + Participation(5) + Subscription(5) − Repeat Penalty(20) − Recent Booking(10)</p>
       </div>
 
-      {/* Recommendation Cards */}
       <div className="space-y-4">
         {RECOMMENDATIONS.map((rec, idx) => (
           <div key={rec.id} className="bg-white/5 border border-white/10 rounded-2xl p-6 hover:border-[#ff6b35]/30 transition-all">
@@ -95,7 +112,6 @@ export default function VenueDiscoveryPage() {
               </div>
             </div>
 
-            {/* Score Breakdown */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4">
               <ScoreBar label="Distance" value={rec.breakdown.distance} max={25} />
               <ScoreBar label="Genre" value={rec.breakdown.genre} max={20} />
@@ -106,10 +122,17 @@ export default function VenueDiscoveryPage() {
             </div>
 
             <div className="flex gap-2">
-              <button className="flex-1 py-2 bg-[#ff6b35] hover:bg-[#ff6b35]/80 text-white text-sm font-semibold rounded-lg transition-colors">
-                Send Offer
+              <button
+                onClick={() => sendOffer(rec.id, rec.name)}
+                disabled={offers.has(rec.id)}
+                className={`flex-1 py-2 text-white text-sm font-semibold rounded-lg transition-colors ${offers.has(rec.id) ? 'bg-green-700/60 cursor-not-allowed' : 'bg-[#ff6b35] hover:bg-[#ff6b35]/80'}`}
+              >
+                {offers.has(rec.id) ? '✓ Offer Sent' : 'Send Offer'}
               </button>
-              <button className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 text-sm rounded-lg transition-colors">
+              <button
+                onClick={() => router.push('/performers/' + rec.slug)}
+                className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 text-sm rounded-lg transition-colors"
+              >
                 View Profile
               </button>
             </div>

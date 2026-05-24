@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { LobbyState } from '@/lib/lobby/LobbyStateEngine';
 import { LobbyPropInteractionEngine } from '@/lib/lobby/LobbyPropInteractionEngine';
 import { LobbyPropUseButton } from './LobbyPropUseButton';

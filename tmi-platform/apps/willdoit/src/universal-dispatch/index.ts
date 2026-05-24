@@ -1,4 +1,4 @@
-﻿export type UniversalDispatchChainState =
+export type UniversalDispatchChainState =
   | 'COMPLETED'
   | 'CANCELLED'
   | 'RESCHEDULED'

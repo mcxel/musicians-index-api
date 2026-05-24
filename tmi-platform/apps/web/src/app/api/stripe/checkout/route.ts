@@ -1,6 +1,21 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getStripe } from '@/lib/stripe/client';
+import { getRegion, getRegionalPriceId, SUBSCRIPTION_TIERS } from '@/lib/stripe/regionalPricing';
+
+// Reverse-map a Tier 1 pricing page priceId to a product key for regional resolution
+function resolveRegionalPriceId(requestedPriceId: string, req: NextRequest): string {
+  const country = req.headers.get('x-vercel-ip-country');
+  const region = getRegion(country);
+  if (region === 'TIER_1') return requestedPriceId;
+
+  // Find which subscription tier this priceId belongs to
+  const match = SUBSCRIPTION_TIERS.find(
+    (t) => t.tier1PriceId === requestedPriceId || (process.env[`STRIPE_PRICE_${t.key}_TIER_1`] ?? t.tier1PriceId) === requestedPriceId,
+  );
+  if (!match) return requestedPriceId; // non-subscription price — pass through as-is
+  return getRegionalPriceId(match.tier1PriceId, match.key, region);
+}
 
 // GET /api/stripe/checkout?priceId=...&mode=subscription|payment
 // Used by season pass and credits CTA links — creates a session and redirects
@@ -19,11 +34,13 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(new URL('/season-pass?notice=stripe-pending', req.url));
   }
 
+  const resolvedPriceId = resolveRegionalPriceId(priceId, req);
+
   try {
     const session = await stripe.checkout.sessions.create({
       mode,
-      line_items: [{ price: priceId, quantity: 1 }],
-      success_url: `${origin}/payment-success?session_id={CHECKOUT_SESSION_ID}&priceId=${priceId}&mode=${mode}`,
+      line_items: [{ price: resolvedPriceId, quantity: 1 }],
+      success_url: `${origin}/payment-success?session_id={CHECKOUT_SESSION_ID}&priceId=${resolvedPriceId}&mode=${mode}`,
       cancel_url: `${origin}/season-pass`,
       allow_promotion_codes: true,
     });

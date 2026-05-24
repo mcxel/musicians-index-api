@@ -1,4 +1,4 @@
-﻿export type SystemEventType =
+export type SystemEventType =
   | "admin.monitor.select"
   | "admin.monitor.open"
   | "admin.monitor.preview"

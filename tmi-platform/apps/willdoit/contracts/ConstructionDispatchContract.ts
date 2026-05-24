@@ -1,4 +1,4 @@
-﻿export interface ConstructionDispatchContract {
+export interface ConstructionDispatchContract {
   createConstructionDispatch(input: {
     requesterModule: string;
     scope: string;

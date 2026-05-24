@@ -15,7 +15,13 @@ const PREFS = [
 
 export default function SettingsNotificationsPage() {
   const [enabled, setEnabled] = useState<Set<string>>(new Set(["battles", "tips", "messages", "shows", "xp"]));
+  const [saved, setSaved] = useState(false);
   const toggle = (id: string) => setEnabled((prev) => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
+
+  function savePrefs() {
+    setSaved(true);
+    setTimeout(() => setSaved(false), 3000);
+  }
 
   return (
     <main style={{ minHeight: "100vh", background: "#05060c", color: "#fff", padding: "32px 24px 80px", fontFamily: "'Inter', sans-serif" }}>
@@ -38,8 +44,9 @@ export default function SettingsNotificationsPage() {
             </div>
           ))}
         </div>
-        <div style={{ marginTop: 24 }}>
-          <button style={{ padding: "11px 28px", borderRadius: 8, background: "#00FFFF", color: "#05060c", fontWeight: 800, fontSize: 13, cursor: "pointer", border: "none" }}>Save Preferences</button>
+        <div style={{ marginTop: 24, display: "flex", gap: 12, alignItems: "center" }}>
+          <button onClick={savePrefs} style={{ padding: "11px 28px", borderRadius: 8, background: "#00FFFF", color: "#05060c", fontWeight: 800, fontSize: 13, cursor: "pointer", border: "none" }}>Save Preferences</button>
+          {saved && <span style={{ fontSize: 12, color: "#22c55e" }}>Saved!</span>}
         </div>
       </div>
     </main>

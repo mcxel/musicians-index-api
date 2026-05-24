@@ -1,11 +1,9 @@
-import type { Metadata } from "next";
+"use client";
+import { useState, useEffect } from "react";
 import { issueTicket, getTicketsByEvent } from "@/lib/ticketing/TicketOwnershipEngine";
 import { checkIn, getEventCheckIns, getEventCheckInCount } from "@/lib/ticketing/TicketCheckInEngine";
 
-export const metadata: Metadata = { title: "Admin: Ticket Scanner | TMI" };
-
 const STATUS_C: Record<string, string> = { "checked-in": "#00FF88", "already-used": "#FF2DAA", invalid: "#FFD700", denied: "#FF2DAA", "not-checked-in": "#555" };
-
 const EVENT_ID = "neon-vibe-show";
 
 function seedTicketData() {
@@ -24,10 +22,31 @@ function seedTicketData() {
 }
 
 export default function AdminTicketScannerPage() {
-  seedTicketData();
-  const checkIns = getEventCheckIns(EVENT_ID);
-  const validCount = getEventCheckInCount(EVENT_ID);
+  const [scanInput, setScanInput] = useState("");
+  const [scanMsg, setScanMsg] = useState("");
+  const [checkIns, setCheckIns] = useState(getEventCheckIns(EVENT_ID));
+
+  useEffect(() => {
+    seedTicketData();
+    setCheckIns(getEventCheckIns(EVENT_ID));
+  }, []);
+
+  const validCount = checkIns.filter(c => c.status === "checked-in").length;
   const issues = checkIns.filter(c => c.status !== "checked-in").length;
+
+  function handleScan() {
+    if (!scanInput.trim()) return;
+    const ticket = getTicketsByEvent(EVENT_ID).find(t => t.ticketId === scanInput.trim());
+    if (!ticket) {
+      setScanMsg(`Invalid ticket: ${scanInput}`);
+    } else {
+      const result = checkIn(ticket.ticketId, ticket.ownerId, "manual");
+      setScanMsg(`${result.status}: ${ticket.ticketId} (${ticket.ownerId})`);
+      setCheckIns(getEventCheckIns(EVENT_ID));
+    }
+    setScanInput("");
+    setTimeout(() => setScanMsg(""), 4000);
+  }
 
   return (
     <main style={{ minHeight: "100vh", background: "#050510", color: "#fff", padding: "32px 24px 80px" }}>
@@ -54,11 +73,16 @@ export default function AdminTicketScannerPage() {
 
         <div style={{ background: "rgba(0,255,255,0.03)", border: "1px solid rgba(0,255,255,0.12)", borderRadius: 12, padding: "20px 24px", marginBottom: 32 }}>
           <div style={{ fontSize: 9, color: "#00FFFF", fontWeight: 800, letterSpacing: "0.12em", marginBottom: 12 }}>SCAN TICKET</div>
+          {scanMsg && <div style={{ marginBottom: 10, padding: "8px 12px", background: "rgba(0,255,136,0.08)", border: "1px solid rgba(0,255,136,0.2)", borderRadius: 6, fontSize: 11, color: "#00FF88" }}>{scanMsg}</div>}
           <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-            <div style={{ flex: 1, padding: "10px 14px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 12, color: "rgba(255,255,255,0.4)" }}>
-              Point camera or enter ticket ID manually...
-            </div>
-            <button style={{ padding: "10px 20px", fontSize: 10, fontWeight: 800, color: "#050510", background: "#00FFFF", border: "none", borderRadius: 8, cursor: "pointer" }}>SCAN</button>
+            <input
+              value={scanInput}
+              onChange={e => setScanInput(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && handleScan()}
+              placeholder="Point camera or enter ticket ID manually..."
+              style={{ flex: 1, padding: "10px 14px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 12, color: "#fff", outline: "none" }}
+            />
+            <button onClick={handleScan} style={{ padding: "10px 20px", fontSize: 10, fontWeight: 800, color: "#050510", background: "#00FFFF", border: "none", borderRadius: 8, cursor: "pointer" }}>SCAN</button>
           </div>
         </div>
 

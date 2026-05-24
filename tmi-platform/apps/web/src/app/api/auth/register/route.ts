@@ -42,7 +42,7 @@ function sendWelcomeEmail(email: string, displayName: string) {
 export async function POST(req: NextRequest) {
   let parsed: {
     email?: string; password?: string; displayName?: string; name?: string;
-    dateOfBirth?: string; termsAccepted?: boolean; ref?: string;
+    dateOfBirth?: string; termsAccepted?: boolean; ref?: string; role?: string;
   } = {};
 
   try {
@@ -55,6 +55,15 @@ export async function POST(req: NextRequest) {
   const password    = parsed.password ?? '';
   const displayName = (parsed.displayName ?? parsed.name ?? '').trim();
 
+  // Normalize account type / role to platform role
+  const ROLE_MAP: Record<string, string> = {
+    MEMBER: 'fan', FAN: 'fan', ARTIST: 'artist', PERFORMER: 'performer',
+    SPONSOR: 'sponsor', ADVERTISER: 'advertiser', VENUE: 'venue',
+    WRITER: 'writer', PROMOTER: 'promoter',
+  };
+  const rawRole = (parsed.role ?? '').toUpperCase();
+  const platformRole = (ROLE_MAP[rawRole] ?? '') as import('@/lib/auth/UserStore').UserRole | '';
+
   if (!email || !password) {
     return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
   }
@@ -63,7 +72,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Register into shared UserStore (standalone — no backend required)
-  const result = registerUser({ email, password, displayName, ref: parsed.ref });
+  const result = registerUser({ email, password, displayName, ref: parsed.ref, role: platformRole || undefined });
 
   if (!result.ok || !result.user) {
     const status = result.error?.includes('already exists') ? 409 : 400;

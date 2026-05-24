@@ -1,4 +1,4 @@
-﻿import type { Metadata } from 'next';
+import type { Metadata } from 'next';
 import OwnerDashboardClient from './OwnerDashboardClient';
 
 export const metadata: Metadata = { title: 'Owner Dashboard' };

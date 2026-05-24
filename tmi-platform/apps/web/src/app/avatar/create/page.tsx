@@ -6,6 +6,7 @@ import PageShell from '@/components/layout/PageShell';
 import HUDFrame from '@/components/hud/HUDFrame';
 import FooterHUD from '@/components/hud/FooterHUD';
 import SectionTitle from '@/components/ui/SectionTitle';
+import { useRouter } from 'next/navigation';
 
 type AvatarConfig = {
   skin: string;
@@ -20,13 +21,36 @@ const HAIR_STYLES = ['Short Fade', 'Afro', 'Locs', 'Braids', 'Buzz Cut', 'Long C
 const OUTFITS = ['Street Fit', 'Stage Outfit', 'Crown Gear', 'Producer Drip', 'Cypher Uniform', 'Classic Tee'];
 
 export default function AvatarCreatePage() {
+  const router = useRouter();
   const [config, setConfig] = useState<AvatarConfig>({ skin: '#C47A45', hair: 'Afro', outfit: 'Street Fit', headSize: 1.4, name: '' });
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleSave = () => {
-    // TODO: POST to /api/avatar/save
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+  const handleSave = async () => {
+    if (!config.name.trim()) { setError('Enter an avatar name first'); return; }
+    setSaving(true);
+    setError('');
+    try {
+      const res = await fetch('/api/avatar/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          profile: { displayName: config.name, skinTone: config.skin, hairStyle: config.hair },
+          loadout: { outfit: config.outfit },
+        }),
+      });
+      if (res.ok) {
+        setSaved(true);
+        setTimeout(() => { setSaved(false); router.push('/avatar/shop'); }, 2000);
+      } else {
+        setError('Save failed — try again');
+      }
+    } catch {
+      setError('Save failed — try again');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -111,8 +135,9 @@ export default function AvatarCreatePage() {
                 </div>
 
                 {/* Save */}
-                <button onClick={handleSave} style={{ background: saved ? '#22aa44' : '#AA2DFF', color: '#fff', fontWeight: 800, fontSize: 14, letterSpacing: 2, padding: '14px', borderRadius: 10, border: 'none', cursor: 'pointer', transition: 'background .3s' }}>
-                  {saved ? '✓ AVATAR SAVED' : 'SAVE AVATAR'}
+                {error && <div style={{ fontSize: 11, color: '#FF2DAA', padding: '6px 0' }}>{error}</div>}
+                <button onClick={handleSave} disabled={saving} style={{ background: saved ? '#22aa44' : saving ? '#7820cc' : '#AA2DFF', color: '#fff', fontWeight: 800, fontSize: 14, letterSpacing: 2, padding: '14px', borderRadius: 10, border: 'none', cursor: saving ? 'wait' : 'pointer', transition: 'background .3s' }}>
+                  {saved ? '✓ SAVED — going to shop…' : saving ? 'SAVING…' : 'SAVE AVATAR'}
                 </button>
                 <Link href="/avatar/shop" style={{ textAlign: 'center', color: '#AA2DFF88', fontSize: 12, letterSpacing: 1 }}>Browse the shop for more items →</Link>
               </div>

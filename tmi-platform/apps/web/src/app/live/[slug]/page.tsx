@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { useGamificationEngine } from "@/hooks/useGamificationEngine";
+import SeatArrivalTransition from "@/components/live/SeatArrivalTransition";
 
 type Seat    = { id: number; taken: boolean; name?: string; icon?: string };
 type LobbyMsg= { id: string; user: string; text: string };
@@ -245,6 +246,7 @@ export default function LiveRoomPage({ params }: { params: { slug: string } }) {
 
   return (
     <main style={{ minHeight: "100vh", background: "#050510", color: "#fff", paddingBottom: 60, paddingTop: 56 }}>
+      <SeatArrivalTransition />
       {/* Top bar */}
       <div style={{ padding: "13px 20px", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
         <Link href="/live" style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.12em", color: "rgba(255,255,255,0.35)", textDecoration: "none" }}>← LIVE ROOMS</Link>

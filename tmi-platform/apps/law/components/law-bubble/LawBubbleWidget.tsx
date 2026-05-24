@@ -67,7 +67,7 @@ export function LawBubbleWidget({ userId, fullPage = false }: LawBubbleWidgetPro
 
       setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
 
-      while (true) {
+      for (;;) {
         const { done, value } = await reader.read();
         if (done) break;
         buffer += decoder.decode(value, { stream: true });
@@ -98,7 +98,7 @@ export function LawBubbleWidget({ userId, fullPage = false }: LawBubbleWidgetPro
         body: JSON.stringify({ userId, amount: 1 }),
       });
       setCredits((c) => (c !== null ? Math.max(0, c - 1) : null));
-    } catch (err) {
+    } catch {
       setMessages((prev) => [
         ...prev,
         { role: "system", content: "Error connecting to Law Bubble. Please try again." },
@@ -109,7 +109,6 @@ export function LawBubbleWidget({ userId, fullPage = false }: LawBubbleWidgetPro
   };
 
   const purchaseCredits = async (packageId: "starter" | "standard" | "pro") => {
-    const packages = { starter: 5, standard: 12, pro: 25 };
     try {
       const res = await fetch(`/api/law-bubble/wallet?action=purchase`, {
         method: "POST",

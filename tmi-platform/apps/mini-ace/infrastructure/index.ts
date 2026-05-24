@@ -1,4 +1,4 @@
-﻿import type { InfrastructureConfig } from '@tmi/module-runtime';
+import type { InfrastructureConfig } from '@tmi/module-runtime';
 export const INFRASTRUCTURE: InfrastructureConfig = {
   domain: 'miniace.berntout.com',
   subdomain: 'mini-ace',

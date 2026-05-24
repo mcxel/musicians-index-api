@@ -3,157 +3,227 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { motion } from "framer-motion";
+import { getRoleStats, type DashboardStat } from "@/lib/stats/DashboardStatsEngine";
 
-interface MeUser {
-  id: string;
-  email: string;
-  name?: string;
-  role: string;
-  onboardingState: string;
-}
+interface MeUser { id: string; email: string; name?: string; role: string; tier?: string; onboardingState?: string; }
 
-interface MeResponse {
-  authenticated: boolean;
-  user?: MeUser;
-}
+const ACCENT = "#00FFFF";
 
-const QUICK_LINKS = [
-  { label: "My Profile", href: "/profile", emoji: "🎤" },
-  { label: "My Station", href: "/stations", emoji: "📻" },
-  { label: "My Articles", href: "/articles", emoji: "📰" },
-  { label: "Earnings", href: "/dashboard/artist/earnings", emoji: "💰" },
-  { label: "Sponsor Tasks", href: "/dashboard/artist/sponsors", emoji: "🤝" },
-  { label: "My Clips", href: "/dashboard/artist/clips", emoji: "🎬" },
+const PRIMARY_ACTIONS = [
+  { label: "ARTIST HUB",      icon: "🎨", href: "/hub/artist",              color: "#00FFFF", desc: "Full artist control room" },
+  { label: "GO LIVE",         icon: "🔴", href: "/go-live",                 color: "#FF2DAA", desc: "Start your live broadcast" },
+  { label: "MY ARTICLES",     icon: "📰", href: "/articles/artist",         color: "#AA2DFF", desc: "Your editorial features" },
+  { label: "BEATS / DROPS",   icon: "💿", href: "/beats",                   color: "#FFD700", desc: "Release music & projects" },
+  { label: "LIVE STAGES",     icon: "🎤", href: "/live/stages",             color: "#FF2DAA", desc: "Perform on a live stage" },
+  { label: "BATTLES",         icon: "⚔️", href: "/battles",                color: "#AA2DFF", desc: "Enter live battle events" },
+  { label: "MY STATION",      icon: "📻", href: "/stations",                color: "#FFD700", desc: "Broadcast your station" },
+  { label: "EARNINGS",        icon: "💰", href: "/dashboard/artist/earnings", color: "#00FF88", desc: "Revenue & payouts" },
+  { label: "SPONSOR TASKS",   icon: "🤝", href: "/dashboard/artist/sponsors", color: "#FF2DAA", desc: "Brand deal pipeline" },
+  { label: "MY CLIPS",        icon: "🎬", href: "/dashboard/artist/clips",  color: "#00FFFF", desc: "Video library" },
+  { label: "INVITE & XP",    icon: "⭐", href: "/account/referrals",       color: "#FF9500", desc: "2× launch XP bonus" },
+  { label: "SETTINGS",        icon: "⚙️", href: "/settings",               color: "#555",    desc: "Account preferences" },
+];
+
+const LIVE_LINKS = [
+  { label: "Live Stages",   icon: "🎤", href: "/live/stages" },
+  { label: "Live Rooms",    icon: "📺", href: "/live/rooms" },
+  { label: "Live Lobby",    icon: "🏟️", href: "/live/lobby" },
+  { label: "Backstage",     icon: "🎪", href: "/live/backstage" },
+  { label: "Green Room",    icon: "🟢", href: "/live/green-room" },
+  { label: "Lobby Wall",    icon: "🎨", href: "/live/lobby-wall" },
+];
+
+const REVENUE_LINKS = [
+  { label: "Subscriptions", icon: "💎", href: "/pricing",                       color: "#00FFFF", desc: "Tier upgrades + passes" },
+  { label: "Tips",          icon: "💸", href: "/dashboard/artist/earnings",     color: "#00FF88", desc: "Fan tip income" },
+  { label: "Tickets",       icon: "🎟️", href: "/tickets",                     color: "#FFD700", desc: "Event ticket sales" },
+  { label: "Beats / Store", icon: "🎵", href: "/beats",                        color: "#AA2DFF", desc: "Music commerce" },
+];
+
+const PLATFORM_LINKS = [
+  { label: "HOME RAIL",    icon: "🏠", href: "/home/1",                desc: "Billboard #1",  color: ACCENT },
+  { label: "ADMIN PANEL",  icon: "👑", href: "/admin/owner-dashboard", desc: "Owner access",  color: "#FFD700" },
+  { label: "BILLBOARD",    icon: "📡", href: "/live/billboards",       desc: "Live screens",  color: "#AA2DFF" },
+  { label: "STORE HUB",    icon: "🛒", href: "/store",                 desc: "Global store",  color: "#00FF88" },
+];
+
+const TIER_TABLE = [
+  { tier: "Free",     normal: "500 XP",   launch: "1,000 XP", color: "#555" },
+  { tier: "Pro",      normal: "750 XP",   launch: "1,500 XP", color: ACCENT },
+  { tier: "Silver",   normal: "1,000 XP", launch: "2,000 XP", color: "#C0C0C0" },
+  { tier: "Gold",     normal: "1,500 XP", launch: "3,000 XP", color: "#FFD700" },
+  { tier: "Platinum", normal: "2,000 XP", launch: "4,000 XP", color: "#AA2DFF" },
+  { tier: "Diamond",  normal: "2,500 XP", launch: "5,000 XP", color: "#00FF88" },
 ];
 
 export default function ArtistDashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState<MeUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [roleStats, setRoleStats] = useState<DashboardStat[]>([]);
 
   useEffect(() => {
     const load = async () => {
       try {
         const res = await fetch("/api/auth/session", { cache: "no-store", credentials: "include" });
-        if (res.status === 401 || res.status === 403) {
-          router.replace("/auth");
-          return;
-        }
-        const data = (await res.json()) as MeResponse;
-        if (!data.authenticated || !data.user) {
-          router.replace("/auth");
-          return;
-        }
-        if (data.user.role !== "ARTIST") {
-          router.replace("/dashboard");
-          return;
-        }
+        if (res.status === 401 || res.status === 403) { router.replace("/auth"); return; }
+        const data = await res.json() as { authenticated: boolean; user?: MeUser };
+        if (!data.authenticated || !data.user) { router.replace("/auth"); return; }
+        if (data.user.role.toLowerCase() !== "artist") { router.replace("/dashboard"); return; }
         setUser(data.user);
-      } catch {
-        router.replace("/auth");
-      } finally {
-        setLoading(false);
-      }
+        setRoleStats(getRoleStats(data.user.role ?? "ARTIST"));
+      } catch { router.replace("/auth"); } finally { setLoading(false); }
     };
     void load();
   }, [router]);
 
-  if (loading) {
-    return (
-      <main style={{ minHeight: "100vh", background: "#0a0a0f", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <p style={{ color: "rgba(255,255,255,0.4)", fontFamily: "system-ui, sans-serif" }}>Loading…</p>
-      </main>
-    );
-  }
+  if (loading) return (
+    <div style={{ minHeight: "100vh", background: "#050510", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <span style={{ color: ACCENT, fontSize: 13, letterSpacing: 4, fontWeight: 700 }}>LOADING ARTIST HUB...</span>
+    </div>
+  );
 
   if (!user) return null;
 
+  const displayTier = (user.tier ?? "free").toUpperCase();
+
   return (
-    <main
-      style={{
-        minHeight: "100vh",
-        background: "#0a0a0f",
-        color: "#fff",
-        padding: "48px 20px",
-        fontFamily: "system-ui, -apple-system, sans-serif",
-      }}
-    >
-      <div style={{ maxWidth: 900, margin: "0 auto" }}>
-        {/* Header */}
-        <div style={{ marginBottom: 40 }}>
-          <p style={{ fontSize: 12, letterSpacing: 2, color: "#ff6b35", textTransform: "uppercase", marginBottom: 6 }}>
-            Artist Dashboard
-          </p>
-          <h1 style={{ fontSize: 32, fontWeight: 700, margin: "0 0 6px" }}>
-            Welcome back{user.name ? `, ${user.name}` : ""}
-          </h1>
-          <p style={{ color: "rgba(255,255,255,0.45)", fontSize: 15 }}>
-            The Musician&apos;s Index — your creative hub
-          </p>
-        </div>
-
-        {/* Quick links grid */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
-            gap: 16,
-            marginBottom: 40,
-          }}
-        >
-          {QUICK_LINKS.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 12,
-                padding: "18px 20px",
-                background: "rgba(255,255,255,0.04)",
-                border: "1px solid rgba(255,255,255,0.08)",
-                borderRadius: 12,
-                color: "#fff",
-                textDecoration: "none",
-                fontSize: 15,
-                fontWeight: 500,
-                transition: "border-color 0.15s",
-              }}
-            >
-              <span style={{ fontSize: 22 }}>{link.emoji}</span>
-              {link.label}
-            </Link>
-          ))}
-        </div>
-
-        {/* Account status panel */}
-        <div
-          style={{
-            padding: "24px 28px",
-            background: "rgba(255,107,53,0.06)",
-            border: "1px solid rgba(255,107,53,0.2)",
-            borderRadius: 12,
-          }}
-        >
-          <h2 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16, color: "#ff6b35" }}>
-            Account Status
-          </h2>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <StatusRow label="Role" value="Artist" />
-            <StatusRow label="Onboarding" value={user.onboardingState} />
-            <StatusRow label="Email" value={user.email} />
+    <main style={{ minHeight: "100vh", background: "#050510", color: "#fff", fontFamily: "'Inter', sans-serif" }}>
+      {/* Top bar */}
+      <div style={{ background: "rgba(0,0,0,0.8)", borderBottom: "1px solid rgba(0,255,255,0.2)", padding: "12px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 50 }}>
+        <div>
+          <div style={{ fontSize: 9, letterSpacing: "0.35em", color: ACCENT, fontWeight: 800 }}>ARTIST DASHBOARD</div>
+          <div style={{ fontSize: 16, fontWeight: 900, marginTop: 2 }}>
+            {user.name ?? user.email?.split("@")[0] ?? "Artist"}
+            <span style={{ fontSize: 10, color: "#FFD700", fontWeight: 700, marginLeft: 8 }}>{displayTier}</span>
           </div>
         </div>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <Link href="/hub/artist" style={{ fontSize: 10, color: ACCENT, border: "1px solid rgba(0,255,255,0.3)", padding: "5px 12px", borderRadius: 6, textDecoration: "none", fontWeight: 700, letterSpacing: "0.1em" }}>ARTIST HUB</Link>
+          <Link href="/go-live" style={{ fontSize: 10, color: "#FF2DAA", border: "1px solid rgba(255,45,170,0.3)", padding: "5px 12px", borderRadius: 6, textDecoration: "none", fontWeight: 700, letterSpacing: "0.1em" }}>🔴 GO LIVE</Link>
+          <Link href="/settings" style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", border: "1px solid rgba(255,255,255,0.1)", padding: "5px 12px", borderRadius: 6, textDecoration: "none", fontWeight: 700 }}>SETTINGS</Link>
+        </div>
+      </div>
+
+      <div style={{ maxWidth: 1100, margin: "0 auto", padding: "32px 24px 80px" }}>
+
+        {/* Stats */}
+        {roleStats.length > 0 && (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12, marginBottom: 32 }}>
+            {roleStats.map((s, i) => (
+              <motion.div key={s.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}
+                style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${s.color}30`, borderRadius: 12, padding: "18px", position: "relative", overflow: "hidden" }}>
+                <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: s.color }} />
+                <div style={{ fontSize: 24, marginBottom: 4 }}>{s.icon}</div>
+                <div style={{ fontSize: 22, fontWeight: 900, color: s.color }}>{s.value}</div>
+                <div style={{ fontSize: 10, letterSpacing: 2, color: "#555", marginTop: 4, textTransform: "uppercase" }}>{s.label}</div>
+                <div style={{ fontSize: 9, color: s.deltaPositive ? "#00FF88" : "#FF4444", marginTop: 2 }}>{s.delta}</div>
+              </motion.div>
+            ))}
+          </div>
+        )}
+
+        {/* CTA hero */}
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }}
+          style={{ background: "linear-gradient(135deg, rgba(0,255,255,0.1), rgba(170,45,255,0.08))", border: "1.5px solid rgba(0,255,255,0.3)", borderRadius: 16, padding: "24px", marginBottom: 28, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 20, flexWrap: "wrap" }}>
+          <div>
+            <div style={{ fontSize: 9, letterSpacing: "0.3em", color: ACCENT, fontWeight: 800, marginBottom: 6 }}>🎨 YOUR CREATIVE EMPIRE</div>
+            <div style={{ fontSize: 22, fontWeight: 900 }}>Create. Broadcast. Own the Stage.</div>
+            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginTop: 6 }}>Go live, drop music, enter battles, and build your audience on TMI.</div>
+          </div>
+          <div style={{ display: "flex", gap: 10, flexShrink: 0 }}>
+            <Link href="/go-live" style={{ padding: "13px 28px", background: `linear-gradient(90deg,${ACCENT},#AA2DFF)`, borderRadius: 9, color: "#050510", fontWeight: 900, fontSize: 13, textDecoration: "none", letterSpacing: "0.08em", whiteSpace: "nowrap" }}>🔴 GO LIVE NOW</Link>
+            <Link href="/hub/artist" style={{ padding: "13px 20px", background: "rgba(0,255,255,0.1)", border: "1px solid rgba(0,255,255,0.3)", borderRadius: 9, color: ACCENT, fontWeight: 800, fontSize: 13, textDecoration: "none", whiteSpace: "nowrap" }}>ARTIST HUB</Link>
+          </div>
+        </motion.div>
+
+        {/* Primary Actions */}
+        <div style={{ marginBottom: 32 }}>
+          <div style={{ fontSize: 9, letterSpacing: "0.35em", color: "rgba(255,255,255,0.35)", fontWeight: 800, marginBottom: 14 }}>QUICK ACTIONS</div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(175px, 1fr))", gap: 10 }}>
+            {PRIMARY_ACTIONS.map((a, i) => (
+              <motion.div key={a.href + a.label} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 + i * 0.04 }}>
+                <Link href={a.href} style={{ display: "flex", flexDirection: "column", gap: 4, padding: "14px 16px", background: `${a.color}08`, border: `1px solid ${a.color}25`, borderRadius: 10, textDecoration: "none" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ fontSize: 18 }}>{a.icon}</span>
+                    <span style={{ fontSize: 11, fontWeight: 800, color: a.color, letterSpacing: "0.1em" }}>{a.label}</span>
+                  </div>
+                  <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>{a.desc}</div>
+                </Link>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+
+        {/* Live + Revenue + Platform */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16, marginBottom: 28 }}>
+
+          {/* Live routes */}
+          <div style={{ background: "rgba(0,255,255,0.04)", border: "1px solid rgba(0,255,255,0.12)", borderRadius: 14, padding: "18px" }}>
+            <div style={{ fontSize: 9, letterSpacing: "0.35em", color: ACCENT, fontWeight: 800, marginBottom: 12 }}>LIVE VIDEO ROUTES</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+              {LIVE_LINKS.map((l) => (
+                <Link key={l.href} href={l.href} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", background: "rgba(0,255,255,0.04)", border: "1px solid rgba(0,255,255,0.1)", borderRadius: 7, textDecoration: "none" }}>
+                  <span style={{ fontSize: 14 }}>{l.icon}</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: ACCENT }}>{l.label}</span>
+                </Link>
+              ))}
+            </div>
+          </div>
+
+          {/* Revenue */}
+          <div style={{ background: "rgba(0,255,136,0.04)", border: "1px solid rgba(0,255,136,0.12)", borderRadius: 14, padding: "18px" }}>
+            <div style={{ fontSize: 9, letterSpacing: "0.35em", color: "#00FF88", fontWeight: 800, marginBottom: 12 }}>REVENUE RAILS</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {REVENUE_LINKS.map((r) => (
+                <Link key={r.href} href={r.href} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", background: `${r.color}08`, border: `1px solid ${r.color}20`, borderRadius: 8, textDecoration: "none" }}>
+                  <span style={{ fontSize: 18 }}>{r.icon}</span>
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 800, color: r.color }}>{r.label}</div>
+                    <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)" }}>{r.desc}</div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+
+          {/* Platform links */}
+          <div style={{ background: "rgba(255,215,0,0.04)", border: "1px solid rgba(255,215,0,0.1)", borderRadius: 14, padding: "18px" }}>
+            <div style={{ fontSize: 9, letterSpacing: "0.35em", color: "#FFD700", fontWeight: 800, marginBottom: 12 }}>PLATFORM CONNECTIONS</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {PLATFORM_LINKS.map((p) => (
+                <Link key={p.href} href={p.href} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", background: `${p.color}08`, border: `1px solid ${p.color}20`, borderRadius: 8, textDecoration: "none" }}>
+                  <span style={{ fontSize: 20 }}>{p.icon}</span>
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 800, color: p.color }}>{p.label}</div>
+                    <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)" }}>{p.desc}</div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Referral XP tier table */}
+        <div style={{ background: "rgba(255,149,0,0.06)", border: "1px solid rgba(255,149,0,0.2)", borderRadius: 14, padding: "20px" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: "#FF9500" }}>⭐ INVITE & EARN — 2× LAUNCH BONUS ACTIVE</div>
+            <Link href="/account/referrals" style={{ fontSize: 11, color: "#FF9500", border: "1px solid rgba(255,149,0,0.3)", padding: "6px 14px", borderRadius: 6, textDecoration: "none", fontWeight: 800 }}>VIEW INVITE LINK</Link>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 6 }}>
+            {TIER_TABLE.map((t) => (
+              <div key={t.tier} style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${t.color}30`, borderRadius: 8, padding: "10px 8px", textAlign: "center" }}>
+                <div style={{ fontSize: 10, fontWeight: 800, color: t.color, marginBottom: 4 }}>{t.tier}</div>
+                <div style={{ fontSize: 11, color: "#00FF88", fontWeight: 700 }}>{t.launch}</div>
+                <div style={{ fontSize: 9, color: "rgba(255,255,255,0.3)" }}>{t.normal} normal</div>
+              </div>
+            ))}
+          </div>
+          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginTop: 10 }}>Invite fans OR performers — you earn XP for both. Launch bonus expires Sep 2026.</div>
+        </div>
+
       </div>
     </main>
-  );
-}
-
-function StatusRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div style={{ display: "flex", gap: 12, fontSize: 14 }}>
-      <span style={{ color: "rgba(255,255,255,0.45)", minWidth: 110 }}>{label}</span>
-      <span style={{ color: "#fff", fontWeight: 500 }}>{value}</span>
-    </div>
   );
 }
