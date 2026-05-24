@@ -4,19 +4,22 @@ import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 
-type AccountType = "MEMBER" | "ARTIST" | "ADVERTISER" | "SPONSOR" | "VENUE";
+type AccountType = "FAN" | "PERFORMER" | "ADVERTISER" | "SPONSOR" | "VENUE" | "PROMOTER";
 type Step = "TYPE" | "DETAILS" | "PROVISIONING" | "DONE";
 
 const ACCOUNT_TYPES: Array<{
   type: AccountType; label: string; icon: string; color: string;
   tagline: string; perks: string[];
 }> = [
-  { type: "MEMBER",     icon: "🎧", color: "#00FFFF", label: "Member",
+  { type: "FAN",        icon: "🎧", color: "#00FFFF", label: "Fan",
     tagline: "Fan, listener, community member",
     perks: ["All live rooms", "Chat & react", "Earn points & rewards", "Vote in contests"] },
-  { type: "ARTIST",     icon: "🎤", color: "#FF2DAA", label: "Artist",
+  { type: "PERFORMER",  icon: "🎤", color: "#FF2DAA", label: "Performer",
     tagline: "Performer, producer, creator",
     perks: ["Artist profile", "Beat Lab", "NFT Lab", "Cypher & battle rooms"] },
+  { type: "PROMOTER",   icon: "🎫", color: "#38bdf8", label: "Promoter",
+    tagline: "Event promoter, ticket seller",
+    perks: ["Promoter profile", "Ticket sales", "Event management"] },
   { type: "ADVERTISER", icon: "📢", color: "#FFD700", label: "Advertiser",
     tagline: "Brand, agency, media buyer",
     perks: ["Ad placement dashboard", "Campaign workspace", "Analytics & reporting"] },
@@ -33,7 +36,7 @@ export default function SignupPage() {
   const vipToken = searchParams?.get("token") ?? "";
 
   const [step, setStep] = useState<Step>("TYPE");
-  const [accountType, setAccountType] = useState<AccountType>("MEMBER");
+  const [accountType, setAccountType] = useState<AccountType>("FAN");
   const [form, setForm] = useState({ name: "", email: "", password: "" });
   const [error, setError] = useState("");
   const [provSteps, setProvSteps] = useState<string[]>([]);
@@ -216,7 +219,7 @@ export default function SignupPage() {
                 </Link>
                 <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
                   <Link href="/dashboard" style={{ padding: "10px 18px", fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", background: "rgba(255,255,255,0.06)", color: "#fff", borderRadius: 6, textDecoration: "none" }}>GO TO DASHBOARD</Link>
-                  <Link href={`/onboarding/${accountType === "MEMBER" ? "fan" : accountType === "ARTIST" ? "artist" : accountType.toLowerCase()}`} style={{ padding: "10px 18px", fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.5)", borderRadius: 6, textDecoration: "none" }}>START TUTORIAL</Link>
+                  <Link href={`/onboarding/${accountType.toLowerCase()}`} style={{ padding: "10px 18px", fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.5)", borderRadius: 6, textDecoration: "none" }}>START TUTORIAL</Link>
                 </div>
               </div>
             </motion.div>
