@@ -24,12 +24,12 @@ export interface RetryDeliveryResult {
 const MAX_ATTEMPTS = 3;
 
 export class EmailRetryEngine {
-  static deliverWithRetry(payload: RetryableEmailPayload): RetryDeliveryResult {
+  static async deliverWithRetry(payload: RetryableEmailPayload): Promise<RetryDeliveryResult> {
     const { primary, fallback } = EmailProviderEngine.getProviderConfig();
 
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
       const provider = attempt < MAX_ATTEMPTS ? primary : fallback;
-      const result = EmailProviderEngine.send({
+      const result = await EmailProviderEngine.sendAsync({
         provider,
         to: payload.to,
         subject: payload.subject,
