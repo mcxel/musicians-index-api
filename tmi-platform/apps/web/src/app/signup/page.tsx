@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
@@ -33,7 +33,16 @@ const ACCOUNT_TYPES: Array<{
 
 export default function SignupPage() {
   const searchParams = useSearchParams();
-  const vipToken = searchParams?.get("token") ?? "";
+  const [vipToken, setVipToken] = useState(searchParams?.get("token") ?? "");
+
+  useEffect(() => {
+    // Restore invite code from localStorage if URL doesn't have one
+    if (!vipToken) {
+      const saved = localStorage.getItem("tmi_invite_code") ?? "";
+      if (saved) setVipToken(saved);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const [step, setStep] = useState<Step>("TYPE");
   const [accountType, setAccountType] = useState<AccountType>("FAN");
@@ -66,6 +75,7 @@ export default function SignupPage() {
       });
       const prov = await provRes.json() as { steps?: Array<{ step: string }> };
       setProvSteps((prov.steps ?? []).map((s) => s.step));
+      localStorage.removeItem("tmi_invite_code"); // consumed — clear so next user starts fresh
       setStep("DONE");
     } catch {
       setError("Signup failed — please try again.");

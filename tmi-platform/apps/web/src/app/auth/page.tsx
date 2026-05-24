@@ -51,6 +51,7 @@ export default function AuthPage() {
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState<string>("");
   const [busy, setBusy] = useState(false);
+  const [inviteCode, setInviteCode] = useState<string>("");
   const [session, setSession] = useState<SessionPayload>({
     authenticated: false, csrfToken: null, user: null, expires: null,
   });
@@ -64,6 +65,16 @@ export default function AuthPage() {
   };
 
   useEffect(() => {
+    // Persist invite code from URL to localStorage so returning users keep it
+    const codeFromUrl = searchParams?.get("code") ?? "";
+    if (codeFromUrl) {
+      localStorage.setItem("tmi_invite_code", codeFromUrl);
+      setInviteCode(codeFromUrl);
+    } else {
+      const saved = localStorage.getItem("tmi_invite_code") ?? "";
+      if (saved) setInviteCode(saved);
+    }
+
     let active = true;
     loadSession().then((s) => {
       if (active && s.authenticated) {
@@ -128,14 +139,48 @@ export default function AuthPage() {
         {/* Logo */}
         <div style={{ textAlign: "center", marginBottom: 36 }}>
           <div style={{ fontSize: 9, letterSpacing: "0.35em", color: "#00FFFF", fontWeight: 800, marginBottom: 6 }}>THE MUSICIANS INDEX</div>
-          <div style={{ fontSize: 26, fontWeight: 900, letterSpacing: 3, color: "#fff" }}>SIGN IN</div>
+          {inviteCode ? (
+            <div style={{ fontSize: 26, fontWeight: 900, letterSpacing: 3, color: "#fff" }}>YOU&apos;RE INVITED</div>
+          ) : (
+            <div style={{ fontSize: 26, fontWeight: 900, letterSpacing: 3, color: "#fff" }}>SIGN IN</div>
+          )}
         </div>
 
-        {/* Form */}
+        {/* Invite mode — show create account CTA first */}
+        {inviteCode && (
+          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+            style={{ background: "rgba(255,213,0,0.06)", border: "1px solid rgba(255,213,0,0.3)", borderRadius: 14, padding: "20px 22px", marginBottom: 20, textAlign: "center" }}>
+            <div style={{ fontSize: 28, marginBottom: 8 }}>💎</div>
+            <div style={{ fontSize: 11, fontWeight: 800, color: "#FFD700", letterSpacing: "0.12em", marginBottom: 6 }}>VIP ACCESS GRANTED</div>
+            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.55)", marginBottom: 18 }}>
+              Create your account to activate your invite and enter the platform.
+            </div>
+            <motion.a
+              href={`/signup?token=${inviteCode}`}
+              whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
+              style={{ display: "block", padding: "14px", fontSize: 12, fontWeight: 900, letterSpacing: "0.15em", background: "linear-gradient(135deg,#FFD700,#FF9500)", color: "#050510", borderRadius: 9, textDecoration: "none", marginBottom: 10 }}
+            >
+              CREATE MY ACCOUNT →
+            </motion.a>
+            <button
+              onClick={() => setInviteCode("")}
+              style={{ fontSize: 9, color: "rgba(255,255,255,0.3)", background: "none", border: "none", cursor: "pointer", letterSpacing: "0.1em" }}
+            >
+              Already have an account? Sign in below
+            </button>
+          </motion.div>
+        )}
+
+        {/* Sign-in form — always visible, de-emphasised in invite mode */}
         <motion.div
           initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}
-          style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, padding: "28px 24px" }}
+          style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, padding: "28px 24px", opacity: inviteCode ? 0.7 : 1 }}
         >
+          {inviteCode && (
+            <div style={{ fontSize: 9, letterSpacing: "0.12em", color: "rgba(255,255,255,0.3)", fontWeight: 700, marginBottom: 14, textAlign: "center" }}>
+              SIGN IN (RETURNING USERS)
+            </div>
+          )}
           <form
             onSubmit={(e) => { e.preventDefault(); void login(); }}
             style={{ display: "flex", flexDirection: "column", gap: 14 }}
@@ -191,21 +236,24 @@ export default function AuthPage() {
           </form>
         </motion.div>
 
-        {/* Create account CTA */}
-        <motion.div
-          initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}
-          style={{ marginTop: 20, textAlign: "center" }}
-        >
-          <div style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", marginBottom: 10 }}>Don&apos;t have an account?</div>
-          <Link href="/signup" style={{ display: "block", padding: "12px", fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 8, color: "rgba(255,255,255,0.7)", textDecoration: "none", background: "rgba(255,255,255,0.03)" }}>
-            CREATE YOUR TMI ACCOUNT →
-          </Link>
-        </motion.div>
+        {/* Create account CTA (shown only in non-invite mode) */}
+        {!inviteCode && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}
+            style={{ marginTop: 20, textAlign: "center" }}
+          >
+            <div style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", marginBottom: 10 }}>Don&apos;t have an account?</div>
+            <Link href="/signup" style={{ display: "block", padding: "12px", fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 8, color: "rgba(255,255,255,0.7)", textDecoration: "none", background: "rgba(255,255,255,0.03)" }}>
+              CREATE YOUR TMI ACCOUNT →
+            </Link>
+          </motion.div>
+        )}
 
         {/* Debug session strip (dev only) */}
         {process.env.NODE_ENV !== "production" && (
           <div style={{ marginTop: 24, padding: "10px 14px", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 8, fontSize: 9, color: "rgba(255,255,255,0.3)" }}>
             Session: {session.authenticated ? `authenticated · ${session.user?.email}` : "unauthenticated"} · CSRF: {session.csrfToken ? "present" : "missing"}
+            {inviteCode && ` · Invite: ${inviteCode}`}
           </div>
         )}
       </motion.div>
