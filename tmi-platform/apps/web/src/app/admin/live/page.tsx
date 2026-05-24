@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import InvitePanel from "@/components/admin/InvitePanel";
+import MultiRoomVideoMonitor from "@/components/media/MultiRoomVideoMonitor";
 import {
   getPresenceInRoom,
   getFanCountInRoom,
@@ -77,6 +78,11 @@ export default function AdminLivePage() {
               <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", letterSpacing: "0.1em", fontWeight: 700 }}>{stat.label}</div>
             </div>
           ))}
+        </div>
+
+        {/* Multi-room video command center */}
+        <div style={{ marginBottom: 40 }}>
+          <MultiRoomVideoMonitor title="VIDEO COMMAND CENTER" accentColor="#00FFFF" />
         </div>
 
         {/* Invite panel */}
