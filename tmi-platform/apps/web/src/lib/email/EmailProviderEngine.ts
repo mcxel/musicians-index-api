@@ -33,7 +33,7 @@ export interface ProviderSendResult {
   devMode?:   boolean;
 }
 
-const FROM_ADDRESS = process.env.EMAIL_FROM_ADDRESS ?? 'noreply@berntoutglobal.com';
+const FROM_ADDRESS = process.env.EMAIL_FROM_ADDRESS ?? 'noreply@themusiciansindex.com';
 const FROM_NAME    = process.env.EMAIL_FROM_NAME    ?? 'TMI Platform';
 
 function nextExternalId(provider: EmailProvider): string {
