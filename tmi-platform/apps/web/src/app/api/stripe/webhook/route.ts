@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from "next/server";
 import { getStripe } from "@/lib/stripe/client";
 import { recordStripeEvent } from "@/lib/stripe/stripe-telemetry-store";
+import { sendEmail } from "@/lib/email/TMIEmailSystem";
 
 const MAX_BODY_BYTES = 1024 * 1024; // 1MB
 const FORWARD_TIMEOUT_MS = 8000;
@@ -111,7 +112,41 @@ export async function POST(req: NextRequest) {
       const stripe = getStripe();
       if (stripe) {
         try {
-          stripe.webhooks.constructEvent(Buffer.from(rawBody), signature, webhookSecret);
+          const stripeEvent = stripe.webhooks.constructEvent(Buffer.from(rawBody), signature, webhookSecret);
+
+          // Fire emails for key payment events — non-blocking
+          if (stripeEvent.type === "checkout.session.completed") {
+            const session = stripeEvent.data.object as unknown as Record<string, unknown>;
+            const details = session["customer_details"] as Record<string, unknown> | undefined;
+            const customerEmail = (details?.["email"] ?? session["customer_email"] ?? session["receipt_email"]) as string | undefined;
+            if (customerEmail) {
+              const meta = (session["metadata"] ?? {}) as Record<string, string>;
+              const plan = meta["plan"] ?? "Pro";
+              const amountTotal = session["amount_total"] as number | undefined;
+              const priceMonthly = amountTotal ? (amountTotal / 100).toFixed(2) : "0";
+              const renewalDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+                .toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+              sendEmail({ to: customerEmail, type: "subscription_start", data: { plan, priceMonthly, renewalDate } })
+                .catch((err) => console.error("[stripe/webhook] email send failed:", err));
+            }
+          }
+
+          if (stripeEvent.type === "customer.subscription.created") {
+            const sub = stripeEvent.data.object as unknown as Record<string, unknown>;
+            const custEmail = sub["customer_email"] as string | undefined;
+            const meta = (sub["metadata"] ?? {}) as Record<string, string>;
+            if (custEmail) {
+              const plan = meta["plan"] ?? "Pro";
+              const items = sub["items"] as { data?: Array<{ price?: { unit_amount?: number } }> } | undefined;
+              const priceMonthly = items?.data?.[0]?.price?.unit_amount
+                ? (items.data[0].price.unit_amount / 100).toFixed(2)
+                : "0";
+              const renewalDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+                .toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+              sendEmail({ to: custEmail, type: "subscription_start", data: { plan, priceMonthly, renewalDate } })
+                .catch((err) => console.error("[stripe/webhook] email send failed:", err));
+            }
+          }
         } catch (verifyErr) {
           console.error("[stripe/webhook] Signature verification failed:", verifyErr);
           emitWebhookTelemetry("invalid_signature_rejected", { reason: "crypto-verify-failed" });
