@@ -11,7 +11,8 @@ export type BroadcastFeedKind =
   | "album-release"
   | "game-show"
   | "sponsor-billboard"
-  | "magazine-feature";
+  | "magazine-feature"
+  | "venue-ticketing";
 
 export type PerformerCategory =
   | "rapper"
@@ -79,6 +80,7 @@ export const KIND_TO_SHAPE: Record<BroadcastFeedKind, BroadcastTileShape> = {
   "game-show":        "glitch-rect",
   "sponsor-billboard":"glitch-rect",
   "magazine-feature": "torn-edge",
+  "venue-ticketing":  "glitch-rect",
 };
 
 // Deck labels shown in the broadcast banner
@@ -94,4 +96,5 @@ export const DECK_LABELS: Record<BroadcastFeedKind, string> = {
   "game-show":        "GAME SHOWS",
   "sponsor-billboard":"SPONSOR WALL",
   "magazine-feature": "MAGAZINE FEATURES",
+  "venue-ticketing":  "VENUE TICKETING",
 };

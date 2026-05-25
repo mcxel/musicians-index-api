@@ -55,6 +55,22 @@ const SEED_FEEDS: BroadcastFeedItem[] = [
 
   // Magazine feature
   { id: "mag-1", kind: "magazine-feature", title: "Charro Ace — Cover Story", subtitle: "Hip-Hop · Issue 31", href: "/articles/performer/charro-ace", genre: "Hip-Hop", status: "live", layoutMode: "billboard", mediaMode: "preview", accentColor: "#FF6B00", avatarEmoji: "🌟" },
+
+  // Venue ticketing
+  { id: "ven-1", kind: "venue-ticketing", title: "Sell Your Tickets Here", subtitle: "Zero TMI platform fees. Lower prices. Bigger crowds.", href: "/venues/sell", status: "live", layoutMode: "billboard", mediaMode: "preview", accentColor: "#FFD700", avatarEmoji: "🎟️" },
+  { id: "ven-2", kind: "venue-ticketing", title: "Promoters: List Your Show", subtitle: "Zero TMI platform fees. Standard payment processing fees may apply.", href: "/venues/sell", status: "live", layoutMode: "billboard", mediaMode: "preview", accentColor: "#00FF88", avatarEmoji: "🏟️" },
+  { id: "ven-3", kind: "venue-ticketing", title: "Lower Fees = Bigger Crowds", subtitle: "Bring ticket prices back down. Your show. Your crowd.", href: "/venues/sell", status: "live", layoutMode: "billboard", mediaMode: "preview", accentColor: "#FF2DAA", avatarEmoji: "📈" },
+];
+
+// ─── Venue/promoter ticker messages ──────────────────────────────────────────
+export const VENUE_TICKER_MESSAGES: string[] = [
+  "🎟️ VENUES: SELL YOUR TICKETS HERE",
+  "🏟️ PROMOTERS: ZERO TMI PLATFORM FEES",
+  "💸 BRING TICKET PRICES BACK DOWN",
+  "🔥 YOUR SHOW. YOUR CROWD. YOUR TICKETS.",
+  "📈 LOWER FEES = BIGGER CROWDS",
+  "🎤 BOOK ARTISTS. LIST EVENTS. SELL OUT.",
+  "🚀 LIST YOUR SHOW TODAY — THE INDEX",
 ];
 
 // ─── Deck sequences per surface ───────────────────────────────────────────────
@@ -83,6 +99,7 @@ export const HOME5_DECK_SEQUENCE: BroadcastFeedKind[] = [
   "world-premiere",
   "concert",
   "magazine-feature",
+  "venue-ticketing",
 ];
 
 // XP toast messages
