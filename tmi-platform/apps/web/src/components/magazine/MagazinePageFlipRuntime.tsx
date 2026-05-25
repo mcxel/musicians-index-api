@@ -7,6 +7,7 @@ import {
   type MagazineRuntimePhase,
   type MagazineSceneId,
 } from "@/engines/magazine/MagazineRuntimeEngine";
+import { runPageTurn } from "@/lib/magazine/MagazineAssemblyDirector";
 import { ingestMagazineSceneEnter } from "@/lib/performer/MagazinePerformerAnalyticsBridge";
 import PhysicalMagazineViewport from "./PhysicalMagazineViewport";
 import { useRouter } from "next/navigation";
@@ -161,11 +162,15 @@ function MultiSceneRuntime({ scenes, initialIndex = 0, onSceneEnter, onSceneExit
   const [phase, setPhase] = useState<MagazineRuntimePhase>("holding");
   const [paused, setPaused] = useState(false);
   const [mobile, setMobile] = useState(false);
+  const [chevronHover, setChevronHover] = useState<'prev' | 'next' | null>(null);
   const advancedRef = useRef(false);
   const pausedRef = useRef(false);
   const pauseTimerRef = useRef<number | null>(null);
   const pointerInsideRef = useRef(false);
+  const pageTurnCancelRef = useRef<(() => void) | null>(null);
   const currentIdRef = useRef<MagazineSceneId>(scenes[initialIndex]?.id ?? scenes[0]!.id);
+  const touchStartXRef = useRef<number | null>(null);
+  const touchStartYRef = useRef<number | null>(null);
 
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 767px)");
@@ -212,16 +217,36 @@ function MultiSceneRuntime({ scenes, initialIndex = 0, onSceneEnter, onSceneExit
       onPhaseChange: (p) => {
         if (pausedRef.current) return;
         setPhase(p);
+
+        // When the visual transition begins, schedule content swap at the
+        // edge-on midpoint (page invisible) instead of after full animation.
+        if (p === "starburst") {
+          pageTurnCancelRef.current?.();
+          pageTurnCancelRef.current = runPageTurn(
+            "forward",
+            {
+              onMidpoint: () => {
+                if (advancedRef.current || pausedRef.current) return;
+                advancedRef.current = true;
+                advanceToId(nextSceneId);
+              },
+              onComplete: () => {
+                pageTurnCancelRef.current = null;
+              },
+            }
+          );
+        }
       },
-      onAdvance: (nextId) => {
-        if (advancedRef.current || pausedRef.current) return;
-        advancedRef.current = true;
-        advanceToId(nextId);  // engine decides what's next
-      },
+      // onAdvance is now a no-op — content swap is owned by runPageTurn above.
+      onAdvance: () => {},
     });
 
     engine.start();
-    return () => engine.stop();
+    return () => {
+      engine.stop();
+      pageTurnCancelRef.current?.();
+      pageTurnCancelRef.current = null;
+    };
   }, [sceneIndex, paused, scene, scenes, isMasterWrap, advanceToId]);
 
   const clearPauseTimer = useCallback(() => {
@@ -262,6 +287,40 @@ function MultiSceneRuntime({ scenes, initialIndex = 0, onSceneEnter, onSceneExit
     advanceToId(id);
   }, [advanceToId]);
 
+  const goToIndex = useCallback((idx: number) => {
+    const clamped = ((idx % scenes.length) + scenes.length) % scenes.length;
+    const target = scenes[clamped];
+    if (!target) return;
+    advancedRef.current = false;
+    advanceToId(target.id);
+  }, [scenes, advanceToId]);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    const t = e.touches[0];
+    if (!t) return;
+    touchStartXRef.current = t.clientX;
+    touchStartYRef.current = t.clientY;
+  }, []);
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (touchStartXRef.current === null || touchStartYRef.current === null) return;
+    const t = e.changedTouches[0];
+    if (!t) return;
+    const dx = t.clientX - touchStartXRef.current;
+    const dy = t.clientY - touchStartYRef.current;
+    touchStartXRef.current = null;
+    touchStartYRef.current = null;
+    // Only treat as horizontal swipe if dx dominates
+    if (Math.abs(dx) < 40 || Math.abs(dy) > Math.abs(dx) * 0.8) return;
+    if (dx < 0) {
+      // Swipe left → next scene
+      goToIndex(sceneIndex + 1);
+    } else {
+      // Swipe right → previous scene
+      goToIndex(sceneIndex - 1);
+    }
+  }, [sceneIndex, goToIndex]);
+
   return (
     <section
       aria-label="Magazine full rotation"
@@ -270,6 +329,8 @@ function MultiSceneRuntime({ scenes, initialIndex = 0, onSceneEnter, onSceneExit
       onPointerEnter={handlePointerEnter}
       onPointerMove={handlePointerMove}
       onPointerLeave={handlePointerLeave}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
     >
       {/* Fix 3: Master reset glow fires during transition FROM last scene, not while sitting on it */}
       {isMasterWrap && phase !== "holding" && (
@@ -327,40 +388,108 @@ function MultiSceneRuntime({ scenes, initialIndex = 0, onSceneEnter, onSceneExit
       <MagazineStarburstTransition active={phase !== "holding"} phase={phase} />
       <FeatherRuffleOverlay phase={phase} />
 
-      {/* Scene nav dots */}
-      <nav
-        aria-label="Scene navigation"
-        style={{ position: "fixed", bottom: 20, left: "50%", transform: "translateX(-50%)", display: "flex", gap: 8, zIndex: 200 }}
-      >
-        {scenes.map((s, i) => (
-          <button
-            key={s.id}
-            type="button"
-            aria-label={`Go to scene ${i + 1}`}
-            onClick={() => goToScene(s.id)}
-            style={{
-              width: i === sceneIndex ? 24 : 8, height: 8,
-              borderRadius: 999,
-              background: i === sceneIndex ? "rgba(0,255,255,0.85)" : "rgba(255,255,255,0.22)",
-              border: "none", cursor: "pointer",
-              transition: "all 0.3s ease", padding: 0,
-            }}
-          />
-        ))}
-      </nav>
-
-      {/* Position HUD */}
-      <div
-        aria-hidden="true"
+      {/* ─── Left Chevron (Prev) ─── */}
+      <button
+        type="button"
+        aria-label="Previous scene"
+        onClick={() => goToIndex(sceneIndex - 1)}
+        onMouseEnter={() => setChevronHover('prev')}
+        onMouseLeave={() => setChevronHover(null)}
         style={{
-          position: "fixed", top: 16, right: 16, zIndex: 200,
-          fontSize: 8, fontWeight: 900, letterSpacing: "0.3em",
-          textTransform: "uppercase", color: "rgba(0,255,255,0.55)",
-          pointerEvents: "none",
+          position: "fixed", left: 12, top: "50%", transform: "translateY(-50%)",
+          zIndex: 210, width: 44, height: 44, borderRadius: "50%",
+          background: chevronHover === 'prev'
+            ? "rgba(0,255,255,0.22)"
+            : "rgba(5,5,16,0.72)",
+          border: `1.5px solid ${chevronHover === 'prev' ? "rgba(0,255,255,0.7)" : "rgba(0,255,255,0.25)"}`,
+          cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+          backdropFilter: "blur(8px)",
+          boxShadow: chevronHover === 'prev'
+            ? "0 0 18px rgba(0,255,255,0.35), inset 0 0 10px rgba(0,255,255,0.08)"
+            : "0 2px 12px rgba(0,0,0,0.5)",
+          transition: "all 0.18s ease",
+          opacity: sceneIndex === 0 ? 0.35 : 1,
         }}
       >
-        {sceneIndex + 1}/{scenes.length}{paused ? " · PAUSED" : ""}
-      </div>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={chevronHover === 'prev' ? "#00FFFF" : "rgba(255,255,255,0.7)"} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="15 18 9 12 15 6" />
+        </svg>
+      </button>
+
+      {/* ─── Right Chevron (Next) ─── */}
+      <button
+        type="button"
+        aria-label="Next scene"
+        onClick={() => goToIndex(sceneIndex + 1)}
+        onMouseEnter={() => setChevronHover('next')}
+        onMouseLeave={() => setChevronHover(null)}
+        style={{
+          position: "fixed", right: 12, top: "50%", transform: "translateY(-50%)",
+          zIndex: 210, width: 44, height: 44, borderRadius: "50%",
+          background: chevronHover === 'next'
+            ? "rgba(0,255,255,0.22)"
+            : "rgba(5,5,16,0.72)",
+          border: `1.5px solid ${chevronHover === 'next' ? "rgba(0,255,255,0.7)" : "rgba(0,255,255,0.25)"}`,
+          cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+          backdropFilter: "blur(8px)",
+          boxShadow: chevronHover === 'next'
+            ? "0 0 18px rgba(0,255,255,0.35), inset 0 0 10px rgba(0,255,255,0.08)"
+            : "0 2px 12px rgba(0,0,0,0.5)",
+          transition: "all 0.18s ease",
+          opacity: sceneIndex === scenes.length - 1 ? 0.55 : 1,
+        }}
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={chevronHover === 'next' ? "#00FFFF" : "rgba(255,255,255,0.7)"} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="9 18 15 12 9 6" />
+        </svg>
+      </button>
+
+      {/* ─── Scene nav dots + scene label ─── */}
+      <nav
+        aria-label="Scene navigation"
+        style={{
+          position: "fixed", bottom: 20, left: "50%", transform: "translateX(-50%)",
+          display: "flex", flexDirection: "column", alignItems: "center", gap: 8, zIndex: 200,
+        }}
+      >
+        {/* Scene label */}
+        <div style={{
+          fontSize: 9, fontWeight: 800, letterSpacing: "0.2em", textTransform: "uppercase",
+          color: "rgba(0,255,255,0.6)", background: "rgba(5,5,16,0.72)",
+          padding: "3px 10px", borderRadius: 99, border: "1px solid rgba(0,255,255,0.15)",
+          backdropFilter: "blur(6px)",
+        }}>
+          {sceneIndex + 1} / {scenes.length}{paused ? "  · PAUSED" : ""}
+        </div>
+
+        {/* Dots row */}
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          {scenes.map((s, i) => (
+            <button
+              key={s.id}
+              type="button"
+              aria-label={`Go to scene ${i + 1}`}
+              onClick={() => goToScene(s.id)}
+              style={{
+                width: i === sceneIndex ? 28 : 8, height: 8,
+                borderRadius: 999,
+                background: i === sceneIndex ? "rgba(0,255,255,0.9)" : "rgba(255,255,255,0.2)",
+                border: "none", cursor: "pointer",
+                transition: "all 0.3s cubic-bezier(0.16,1,0.3,1)", padding: 0,
+                boxShadow: i === sceneIndex ? "0 0 8px rgba(0,255,255,0.5)" : "none",
+              }}
+            />
+          ))}
+        </div>
+
+        {/* Swipe hint — only on touch devices */}
+        <div style={{
+          fontSize: 8, color: "rgba(255,255,255,0.2)", letterSpacing: "0.12em",
+          display: "flex", alignItems: "center", gap: 6,
+        }}>
+          <span>← SWIPE TO NAVIGATE →</span>
+        </div>
+      </nav>
     </section>
   );
 }

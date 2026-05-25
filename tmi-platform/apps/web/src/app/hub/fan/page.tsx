@@ -1,5 +1,6 @@
 'use client';
 import { PersonaSwitcher } from '@/components/hud/PersonaSwitcher';
+import { HubBackNav } from '@/components/nav/HubBackNav';
 import FanHubShell from "@/components/fan/FanHubShell";
 import FanRewardsRail from "@/components/fan/FanRewardsRail";
 import FanSocialRail from "@/components/fan/FanSocialRail";
@@ -105,9 +106,10 @@ export default function FanHubPage() {
     <div style={{ fontFamily: "'Inter', sans-serif", background: "#07071a", color: "#e2e8f0", minHeight: "100vh" }}>
 
       {/* Persona switcher bar */}
-      <div style={{ background: 'rgba(0,0,0,0.6)', borderBottom: '1px solid rgba(255,45,170,0.12)', padding: '10px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div style={{ background: 'rgba(0,0,0,0.6)', borderBottom: '1px solid rgba(255,45,170,0.12)', padding: '10px 24px', display: 'flex', alignItems: 'center', gap: 12 }}>
+        <HubBackNav accentColor="#FF2DAA" />
         <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.2em', color: '#FF2DAA', textTransform: 'uppercase' }}>Fan Hub</span>
-        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+        <div style={{ marginLeft: "auto", display: "flex", gap: 10, alignItems: "center" }}>
           <Link href="/arena" style={{ padding: "8px 16px", background: "linear-gradient(135deg,#FF2DAA22,#FF2DAA08)", border: "1px solid #FF2DAA50", borderRadius: 8, fontSize: 10, fontWeight: 800, color: "#FF2DAA", textDecoration: "none", letterSpacing: "0.12em" }}>
             🏟️ ENTER ARENA
           </Link>

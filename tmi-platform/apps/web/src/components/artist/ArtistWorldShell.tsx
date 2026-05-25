@@ -11,6 +11,7 @@ import ArtistShowRail from "./ArtistShowRail";
 import ArtistCurtainShell, { type ArtistShowState, nextShowState } from "./ArtistCurtainShell";
 import ArtistStageMonitor from "./ArtistStageMonitor";
 import ArtistCommandRail from "./ArtistCommandRail";
+import DynamicRadialAura, { type SponsorSlot } from "@/components/performer/DynamicRadialAura";
 
 interface ArtistWorldShellProps {
   displayName: string;
@@ -21,6 +22,10 @@ interface ArtistWorldShellProps {
   articleRoute?: string;
   children?: ReactNode;
   previewWindow?: ReactNode;
+  /** Active sponsors shown orbiting avatar */
+  sponsorAura?: SponsorSlot[];
+  /** Sponsor shelf section rendered in the main zone */
+  sponsorSection?: ReactNode;
 }
 
 export default function ArtistWorldShell({
@@ -32,6 +37,8 @@ export default function ArtistWorldShell({
   articleRoute,
   children,
   previewWindow,
+  sponsorAura = [],
+  sponsorSection,
 }: ArtistWorldShellProps) {
   const [showState, setShowState] = useState<ArtistShowState>("pre-show");
 
@@ -66,15 +73,26 @@ export default function ArtistWorldShell({
           backdropFilter: "blur(16px)",
         }}
       >
-        <Link
-          href="/artists"
-          style={{
-            fontSize: 8, fontWeight: 800, letterSpacing: "0.18em",
-            color: "rgba(255,255,255,0.25)", textTransform: "uppercase", textDecoration: "none",
-          }}
-        >
-          ← ARTISTS
-        </Link>
+        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+          <Link
+            href="/home/1"
+            style={{
+              fontSize: 8, fontWeight: 800, letterSpacing: "0.18em",
+              color: "rgba(0,255,255,0.4)", textTransform: "uppercase", textDecoration: "none",
+            }}
+          >
+            ⌂ HOME
+          </Link>
+          <Link
+            href="/artists"
+            style={{
+              fontSize: 8, fontWeight: 800, letterSpacing: "0.18em",
+              color: "rgba(255,255,255,0.25)", textTransform: "uppercase", textDecoration: "none",
+            }}
+          >
+            ← ARTISTS
+          </Link>
+        </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <span
             style={{
@@ -129,18 +147,34 @@ export default function ArtistWorldShell({
       >
         <div style={{ maxWidth: 1080, margin: "0 auto" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap", marginBottom: 8 }}>
-            {/* Avatar */}
-            <div
-              style={{
-                width: 72, height: 72, borderRadius: "50%", flexShrink: 0,
-                border: "2px solid rgba(0,255,255,0.4)",
-                background: "rgba(0,255,255,0.1)",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 28, boxShadow: "0 0 24px rgba(0,255,255,0.15)",
-              }}
-            >
-              🎤
-            </div>
+            {/* Avatar — wrapped in DynamicRadialAura when sponsors present */}
+            {sponsorAura.length > 0 ? (
+              <div style={{ flexShrink: 0 }}>
+                <DynamicRadialAura sponsors={sponsorAura} radius={60} performerSize={72}>
+                  <div style={{
+                    width: "100%", height: "100%", borderRadius: "50%",
+                    border: "2px solid rgba(0,255,255,0.5)",
+                    background: "rgba(0,255,255,0.1)",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: 28, boxShadow: "0 0 32px rgba(0,255,255,0.25)",
+                  }}>
+                    🎤
+                  </div>
+                </DynamicRadialAura>
+              </div>
+            ) : (
+              <div
+                style={{
+                  width: 72, height: 72, borderRadius: "50%", flexShrink: 0,
+                  border: "2px solid rgba(0,255,255,0.4)",
+                  background: "rgba(0,255,255,0.1)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 28, boxShadow: "0 0 24px rgba(0,255,255,0.15)",
+                }}
+              >
+                🎤
+              </div>
+            )}
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                 <h1
@@ -257,6 +291,13 @@ export default function ArtistWorldShell({
             </section>
           </div>
         </div>
+
+        {/* ── Sponsor shelf (passed from profile page) ── */}
+        {sponsorSection ? (
+          <section data-zone="SPONSOR_SHELF" style={{ marginTop: 4 }}>
+            {sponsorSection}
+          </section>
+        ) : null}
 
         {/* ── Rankings footer strip ── */}
         <div

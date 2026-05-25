@@ -9,6 +9,8 @@ import LiveSyncProvider from "@/components/media/LiveSyncProvider";
 import FirstRunExperienceOverlay from "@/components/onboarding/FirstRunExperienceOverlay";
 import TMIGlobalHUD from "@/components/hud/TMIGlobalHUD";
 import BotRuntimeProvider from "@/components/providers/BotRuntimeProvider";
+import ChevronNavigation from "@/components/navigation/ChevronNavigation";
+import TMIGlobalNav from "@/components/system/TMIGlobalNav";
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -119,6 +121,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <AppProviders>
           <TmiSessionProvider>
             {children}
+            <ChevronNavigation />
+            <TMIGlobalNav />
             <GamificationHUD />
             <LiveSyncProvider />
             <FirstRunExperienceOverlay />

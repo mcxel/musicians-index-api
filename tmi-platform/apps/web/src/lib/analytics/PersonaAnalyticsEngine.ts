@@ -38,7 +38,9 @@ export type AnalyticsDomain =
   | 'diagnostics'  // internal platform health events
   | 'advertiser'   // ad impressions, clicks, conversions
   | 'sponsor'      // sponsor actions, campaign metrics
-  | 'contest';     // battle entries, votes, results
+  | 'contest'      // battle entries, votes, results
+  | 'onboarding'   // role assignment, signup funnel steps
+  | 'bot';         // bot pulse, health, activity cycles
 
 export interface PersonaAnalyticsEvent {
   eventId:       string;
