@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getStripe } from "@/lib/stripe/client";
 import { recordStripeEvent } from "@/lib/stripe/stripe-telemetry-store";
 import { sendEmail } from "@/lib/email/TMIEmailSystem";
+import { createSponsorGift } from "@/lib/memory/ProLedgerEngine";
 
 const MAX_BODY_BYTES = 1024 * 1024; // 1MB
 const FORWARD_TIMEOUT_MS = 8000;
@@ -128,6 +129,18 @@ export async function POST(req: NextRequest) {
                 .toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
               sendEmail({ to: customerEmail, type: "subscription_start", data: { plan, priceMonthly, renewalDate } })
                 .catch((err) => console.error("[stripe/webhook] email send failed:", err));
+              // Create verified sponsor legacy item when role is sponsor
+              if (meta["role"] === "sponsor" && meta["userId"]) {
+                try {
+                  createSponsorGift(meta["userId"], {
+                    totalPaidOut: amountTotal ? amountTotal / 100 : 0,
+                    eventTitle: meta["eventTitle"],
+                    eventId: meta["eventId"],
+                  });
+                } catch (e) {
+                  console.error("[stripe/webhook] createSponsorGift failed:", e);
+                }
+              }
             }
           }
 
