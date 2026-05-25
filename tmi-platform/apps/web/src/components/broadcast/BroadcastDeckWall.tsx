@@ -5,6 +5,15 @@ import { useBroadcastRotation } from "@/lib/broadcast/BroadcastRotationEngine";
 import type { BroadcastFeedKind } from "@/types/broadcast";
 import { KIND_TO_SHAPE } from "@/types/broadcast";
 import MaskedVideoTile from "@/components/media/MaskedVideoTile";
+import FanLobbyWall from "@/components/lobby/FanLobbyWall";
+import PerformerLobbyWall from "@/components/lobby/PerformerLobbyWall";
+import MixedLobbyWall from "@/components/lobby/MixedLobbyWall";
+
+const LOBBY_WALL_KINDS = new Set<BroadcastFeedKind>([
+  "fan-lobby-wall",
+  "performer-lobby-wall",
+  "mixed-lobby-wall",
+]);
 
 interface BroadcastDeckWallProps {
   sequence: BroadcastFeedKind[];
@@ -140,7 +149,14 @@ export default function BroadcastDeckWall({
         </div>
       </div>
 
-      {/* Tiles */}
+      {/* Tiles — or lobby wall when kind matches */}
+      {LOBBY_WALL_KINDS.has(currentKind) ? (
+        <div style={{ opacity: transitioning ? 0 : 1, transform: transitioning ? "translateY(6px)" : "translateY(0)", transition: "opacity 0.28s ease, transform 0.28s ease" }}>
+          {currentKind === "fan-lobby-wall"       && <FanLobbyWall />}
+          {currentKind === "performer-lobby-wall" && <PerformerLobbyWall />}
+          {currentKind === "mixed-lobby-wall"     && <MixedLobbyWall />}
+        </div>
+      ) : (
       <div
         style={{
           display: "flex",
@@ -263,6 +279,7 @@ export default function BroadcastDeckWall({
           })
         )}
       </div>
+      )}
 
       <style>{`
         @keyframes tmiDeckProgress {

@@ -60,6 +60,17 @@ const SEED_FEEDS: BroadcastFeedItem[] = [
   { id: "ven-1", kind: "venue-ticketing", title: "Sell Your Tickets Here", subtitle: "Zero TMI platform fees. Lower prices. Bigger crowds.", href: "/venues/sell", status: "live", layoutMode: "billboard", mediaMode: "preview", accentColor: "#FFD700", avatarEmoji: "🎟️" },
   { id: "ven-2", kind: "venue-ticketing", title: "Promoters: List Your Show", subtitle: "Zero TMI platform fees. Standard payment processing fees may apply.", href: "/venues/sell", status: "live", layoutMode: "billboard", mediaMode: "preview", accentColor: "#00FF88", avatarEmoji: "🏟️" },
   { id: "ven-3", kind: "venue-ticketing", title: "Lower Fees = Bigger Crowds", subtitle: "Bring ticket prices back down. Your show. Your crowd.", href: "/venues/sell", status: "live", layoutMode: "billboard", mediaMode: "preview", accentColor: "#FF2DAA", avatarEmoji: "📈" },
+
+  // Fan lobby wall
+  { id: "fan-lobby-1", kind: "fan-lobby-wall", title: "Fan Discovery Lobby", subtitle: "42 fans online · Find your crew", href: "/live/lobby/fans", status: "live", layoutMode: "audience-grid", mediaMode: "avatar", accentColor: "#00FFFF", avatarEmoji: "👥", viewerCount: 42 },
+  { id: "fan-lobby-2", kind: "fan-lobby-wall", title: "Looking for Group", subtitle: "16 fans searching · Invite anyone", href: "/live/lobby/fans", status: "live", layoutMode: "audience-grid", mediaMode: "avatar", accentColor: "#00FFFF", avatarEmoji: "🤝", viewerCount: 16 },
+
+  // Performer lobby wall
+  { id: "perf-lobby-1", kind: "performer-lobby-wall", title: "Performer Connect Lobby", subtitle: "18 performers looking to collab", href: "/live/lobby/performers", status: "live", layoutMode: "audience-grid", mediaMode: "webrtc", accentColor: "#FF2DAA", avatarEmoji: "🎤", viewerCount: 18 },
+  { id: "perf-lobby-2", kind: "performer-lobby-wall", title: "Collab Crew — Open", subtitle: "Cypher + battle setups forming now", href: "/live/lobby/performers", status: "live", layoutMode: "audience-grid", mediaMode: "webrtc", accentColor: "#FF2DAA", avatarEmoji: "🎸", viewerCount: 9 },
+
+  // Mixed lobby wall
+  { id: "mix-lobby-1", kind: "mixed-lobby-wall", title: "Discovery Bridge", subtitle: "60+ fans & performers · Meet your match", href: "/live/lobby", status: "live", layoutMode: "audience-grid", mediaMode: "avatar", accentColor: "#AA2DFF", avatarEmoji: "🌐", viewerCount: 63 },
 ];
 
 // ─── Venue/promoter ticker messages ──────────────────────────────────────────
@@ -79,10 +90,13 @@ export const VENUE_TICKER_MESSAGES: string[] = [
 export const HOME3_DECK_SEQUENCE: BroadcastFeedKind[] = [
   "audience-seat",
   "live-camera",
+  "fan-lobby-wall",
   "cypher",
   "battle",
+  "performer-lobby-wall",
   "challenge",
   "concert",
+  "mixed-lobby-wall",
   "world-premiere",
   "album-release",
   "game-show",
