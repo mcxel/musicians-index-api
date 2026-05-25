@@ -245,12 +245,12 @@ export default function SignupPage() {
               )}
 
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <Link href="/home/1" style={{ padding: "13px 22px", fontSize: 11, fontWeight: 800, letterSpacing: "0.15em", background: `linear-gradient(135deg, ${sel.color}, ${sel.color}88)`, color: "#050510", borderRadius: 7, textDecoration: "none", display: "block" }}>
-                  🔥 SEE YOUR ORBIT POSITION →
+                <Link href={`/onboarding/${accountType.toLowerCase()}`} style={{ padding: "13px 22px", fontSize: 11, fontWeight: 800, letterSpacing: "0.12em", background: `linear-gradient(135deg, ${sel.color}, ${sel.color}88)`, color: "#050510", textDecoration: "none", display: "block", textAlign: "center" }}>
+                  {sel.icon} SET UP YOUR {sel.label.toUpperCase()} PROFILE →
                 </Link>
                 <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
-                  <Link href="/dashboard" style={{ padding: "10px 18px", fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", background: "rgba(255,255,255,0.06)", color: "#fff", borderRadius: 6, textDecoration: "none" }}>GO TO DASHBOARD</Link>
-                  <Link href={`/onboarding/${accountType.toLowerCase()}`} style={{ padding: "10px 18px", fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.5)", borderRadius: 6, textDecoration: "none" }}>START TUTORIAL</Link>
+                  <Link href="/home/1" style={{ padding: "10px 18px", fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", background: "rgba(255,255,255,0.06)", color: "#fff", borderRadius: 6, textDecoration: "none", flex: 1, textAlign: "center" }}>SEE ORBIT POSITION</Link>
+                  <Link href="/dashboard" style={{ padding: "10px 18px", fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.5)", borderRadius: 6, textDecoration: "none", flex: 1, textAlign: "center" }}>DASHBOARD</Link>
                 </div>
               </div>
             </motion.div>

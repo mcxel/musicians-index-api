@@ -6,15 +6,18 @@ import Link from 'next/link';
 const ROLES = ['performer', 'fan', 'promoter', 'advertiser', 'sponsor', 'venue'] as const;
 type Role = typeof ROLES[number];
 
-const VIP_TOKENS: Record<string, { email: string; name: string; role: Role }> = {
-  'VIP-KREACH-2026':  { email: 'kreach@themusiciansindex.com',  name: 'Kreach',       role: 'performer' },
-  'VIP-KG-2026':      { email: 'kg@themusiciansindex.com',      name: 'KG',           role: 'performer' },
-  'VIP-SAVAGE-2026':  { email: 'savageguns@themusiciansindex.com', name: 'Savage Guns', role: 'performer' },
-  'VIP-JASON-2026':   { email: 'sharingmyblessing1978@gmail.com', name: 'Jason Smith', role: 'promoter' },
-  'VIP-SHEILA-2026':  { email: 'mystictrinity@yahoo.com',       name: 'Sheila',       role: 'fan'       },
-  'VIP-SKEET-2026':   { email: 'facethebully916@gmail.com',     name: 'Skeet',        role: 'fan'       },
-  'VIP-KEVEN-2026':   { email: 'kevenfobbsgrip@gmail.com',      name: 'Keven Fobbs',  role: 'performer' },
-  'VIP-PARIS-2026':   { email: 'parisdcooper91@gmail.com',      name: 'Paris Cooper', role: 'performer' },
+const VIP_TOKENS: Record<string, { email: string; name: string; role: Role; isFounder?: boolean; isDiamondProducer?: boolean; trialDays?: number }> = {
+  'VIP-JPS-2026':     { email: 'jaypaul@example.com',              name: 'Jay Paul S.',  role: 'performer' },
+  'VIP-ACE-2026':     { email: 'bigace@example.com',               name: 'Big Ace',      role: 'performer' },
+  'VIP-KREACH-2026':  { email: 'kreach@themusiciansindex.com',     name: 'Kreach',       role: 'performer', isDiamondProducer: true },
+  'VIP-KG-2026':      { email: 'kg@themusiciansindex.com',         name: 'KG',           role: 'performer', isDiamondProducer: true },
+  'VIP-SAVAGE-2026':  { email: 'savageguns@themusiciansindex.com', name: 'Savage Guns',  role: 'performer', trialDays: 90 },
+  'VIP-JASON-2026':   { email: 'sharingmyblessing1978@gmail.com',  name: 'Jason Smith',  role: 'promoter',  isFounder: true },
+  'VIP-SHEILA-2026':  { email: 'mystictrinity@yahoo.com',          name: 'Sheila',       role: 'fan'       },
+  'VIP-SKEET-2026':   { email: 'facethebully916@gmail.com',        name: 'Skeet',        role: 'fan'       },
+  'VIP-KEVEN-2026':   { email: 'kevenfobbsgrip@gmail.com',         name: 'Keven Fobbs',  role: 'performer' },
+  'VIP-PARIS-2026':   { email: 'parisdcooper91@gmail.com',         name: 'Paris Cooper', role: 'performer' },
+  'VIP-LORENZO-2026': { email: 'lorenzomccoy@themusiciansindex.com', name: 'Lorenzo McCoy', role: 'performer', isFounder: true, isDiamondProducer: true },
 };
 
 const ACCENT = '#FFD700';
@@ -25,7 +28,7 @@ export default function AdminInvitesPage() {
   const [role, setRole]           = useState<Role>('performer');
   const [inviteCode, setInviteCode] = useState('');
   const [busy, setBusy]           = useState(false);
-  const [result, setResult]       = useState<{ ok: boolean; msg: string } | null>(null);
+  const [result, setResult]       = useState<{ ok: boolean; msg: string; nokey?: boolean } | null>(null);
 
   const send = async () => {
     if (!email || !name) return;
@@ -39,8 +42,10 @@ export default function AdminInvitesPage() {
         credentials: 'include',
         body: JSON.stringify({ to: email, name, inviteCode: code, role }),
       });
-      const data = await res.json() as { success?: boolean; inviteUrl?: string; error?: string };
-      if (data.success) {
+      const data = await res.json() as { success?: boolean; inviteUrl?: string; error?: string; devMode?: boolean };
+      if (res.status === 503 && data.devMode) {
+        setResult({ ok: false, nokey: true, msg: `Email NOT sent — add RESEND_API_KEY to Vercel. Invite URL: ${data.inviteUrl ?? ''}` });
+      } else if (data.success) {
         setResult({ ok: true, msg: `Sent! Invite URL: ${data.inviteUrl ?? ''}` });
         setEmail(''); setName(''); setInviteCode('');
       } else {
@@ -65,10 +70,14 @@ export default function AdminInvitesPage() {
         credentials: 'include',
         body: JSON.stringify({ to: p.email, name: p.name, inviteCode: token, role: p.role }),
       });
-      const data = await res.json() as { success?: boolean; inviteUrl?: string; error?: string };
-      setResult(data.success
-        ? { ok: true, msg: `Sent to ${p.name} (${p.email}) — ${data.inviteUrl ?? ''}` }
-        : { ok: false, msg: data.error ?? 'Failed' });
+      const data = await res.json() as { success?: boolean; inviteUrl?: string; error?: string; devMode?: boolean };
+      if (res.status === 503 && data.devMode) {
+        setResult({ ok: false, nokey: true, msg: `Email NOT sent — add RESEND_API_KEY to Vercel. Invite URL: ${data.inviteUrl ?? ''}` });
+      } else {
+        setResult(data.success
+          ? { ok: true, msg: `Sent to ${p.name} (${p.email}) — ${data.inviteUrl ?? ''}` }
+          : { ok: false, msg: data.error ?? 'Failed' });
+      }
     } catch (e) {
       setResult({ ok: false, msg: String(e) });
     } finally {
@@ -89,8 +98,8 @@ export default function AdminInvitesPage() {
 
         {/* Result */}
         {result && (
-          <div style={{ padding: '12px 16px', borderRadius: 8, marginBottom: 20, background: result.ok ? 'rgba(0,255,136,0.08)' : 'rgba(255,68,68,0.08)', border: `1px solid ${result.ok ? 'rgba(0,255,136,0.3)' : 'rgba(255,68,68,0.3)'}`, fontSize: 12, color: result.ok ? '#00FF88' : '#FF4444', wordBreak: 'break-all' }}>
-            {result.msg}
+          <div style={{ padding: '12px 16px', borderRadius: 8, marginBottom: 20, background: result.ok ? 'rgba(0,255,136,0.08)' : result.nokey ? 'rgba(255,215,0,0.08)' : 'rgba(255,68,68,0.08)', border: `1px solid ${result.ok ? 'rgba(0,255,136,0.3)' : result.nokey ? 'rgba(255,215,0,0.3)' : 'rgba(255,68,68,0.3)'}`, fontSize: 12, color: result.ok ? '#00FF88' : result.nokey ? '#FFD700' : '#FF4444', wordBreak: 'break-all' }}>
+            {result.nokey && <strong>⚠ NO EMAIL PROVIDER — </strong>}{result.msg}
           </div>
         )}
 
@@ -141,7 +150,12 @@ export default function AdminInvitesPage() {
             {Object.entries(VIP_TOKENS).map(([token, p]) => (
               <div key={token} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 9 }}>
                 <div>
-                  <div style={{ fontSize: 12, fontWeight: 800, color: '#fff' }}>{p.name}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                    <span style={{ fontSize: 12, fontWeight: 800, color: '#fff' }}>{p.name}</span>
+                    {p.isFounder && <span style={{ fontSize: 7, fontWeight: 900, letterSpacing: '0.12em', color: '#FFD700', background: 'rgba(255,215,0,0.15)', padding: '1px 4px' }}>FOUNDER</span>}
+                    {p.isDiamondProducer && <span style={{ fontSize: 7, fontWeight: 900, letterSpacing: '0.12em', color: '#AA2DFF', background: 'rgba(170,45,255,0.15)', padding: '1px 4px' }}>DIAMOND</span>}
+                    {p.trialDays && <span style={{ fontSize: 7, fontWeight: 900, letterSpacing: '0.12em', color: '#00C8FF', background: 'rgba(0,200,255,0.1)', padding: '1px 4px' }}>{p.trialDays}D TRIAL</span>}
+                  </div>
                   <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', marginTop: 1 }}>{p.email} · {p.role} · <span style={{ color: ACCENT }}>{token}</span></div>
                 </div>
                 <button onClick={() => void quickSend(token)} disabled={busy}
