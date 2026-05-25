@@ -12,7 +12,10 @@ export type BroadcastFeedKind =
   | "game-show"
   | "sponsor-billboard"
   | "magazine-feature"
-  | "venue-ticketing";
+  | "venue-ticketing"
+  | "fan-lobby-wall"
+  | "performer-lobby-wall"
+  | "mixed-lobby-wall";
 
 export type PerformerCategory =
   | "rapper"
@@ -69,32 +72,38 @@ export interface BroadcastFeedItem {
 
 // Shape mapping by feed kind
 export const KIND_TO_SHAPE: Record<BroadcastFeedKind, BroadcastTileShape> = {
-  "audience-seat":    "circle",
-  "live-camera":      "octagon",
-  "challenge":        "hexagon",
-  "battle":           "hexagon",
-  "cypher":           "hexagon",
-  "concert":          "octagon",
-  "world-premiere":   "torn-edge",
-  "album-release":    "torn-edge",
-  "game-show":        "glitch-rect",
-  "sponsor-billboard":"glitch-rect",
-  "magazine-feature": "torn-edge",
-  "venue-ticketing":  "glitch-rect",
+  "audience-seat":      "circle",
+  "live-camera":        "octagon",
+  "challenge":          "hexagon",
+  "battle":             "hexagon",
+  "cypher":             "hexagon",
+  "concert":            "octagon",
+  "world-premiere":     "torn-edge",
+  "album-release":      "torn-edge",
+  "game-show":          "glitch-rect",
+  "sponsor-billboard":  "glitch-rect",
+  "magazine-feature":   "torn-edge",
+  "venue-ticketing":    "glitch-rect",
+  "fan-lobby-wall":     "circle",
+  "performer-lobby-wall":"octagon",
+  "mixed-lobby-wall":   "glitch-rect",
 };
 
 // Deck labels shown in the broadcast banner
 export const DECK_LABELS: Record<BroadcastFeedKind, string> = {
-  "audience-seat":    "LIVE AUDIENCE",
-  "live-camera":      "PUBLIC LIVE CAMERAS",
-  "challenge":        "SONG CHALLENGES",
-  "battle":           "BATTLE ARENA",
-  "cypher":           "CYPHER STAGE",
-  "concert":          "WORLD CONCERTS",
-  "world-premiere":   "WORLD PREMIERES",
-  "album-release":    "ALBUM RELEASES",
-  "game-show":        "GAME SHOWS",
-  "sponsor-billboard":"SPONSOR WALL",
-  "magazine-feature": "MAGAZINE FEATURES",
-  "venue-ticketing":  "VENUE TICKETING",
+  "audience-seat":      "LIVE AUDIENCE",
+  "live-camera":        "PUBLIC LIVE CAMERAS",
+  "challenge":          "SONG CHALLENGES",
+  "battle":             "BATTLE ARENA",
+  "cypher":             "CYPHER STAGE",
+  "concert":            "WORLD CONCERTS",
+  "world-premiere":     "WORLD PREMIERES",
+  "album-release":      "ALBUM RELEASES",
+  "game-show":          "GAME SHOWS",
+  "sponsor-billboard":  "SPONSOR WALL",
+  "magazine-feature":   "MAGAZINE FEATURES",
+  "venue-ticketing":    "VENUE TICKETING",
+  "fan-lobby-wall":     "FAN LOBBY",
+  "performer-lobby-wall":"PERFORMER LOBBY",
+  "mixed-lobby-wall":   "DISCOVERY BRIDGE",
 };

@@ -13,6 +13,8 @@ import LiveStoreOverlay from "@/components/live/LiveStoreOverlay";
 import GhostChatWidget from "@/components/live/GhostChatWidget";
 import SpotlightContainer from "@/components/live/SpotlightContainer";
 import SeatArrivalTransition from "@/components/live/SeatArrivalTransition";
+import LiveLobbyDrawer from "@/components/lobby/LiveLobbyDrawer";
+import MixedLobbyWall from "@/components/lobby/MixedLobbyWall";
 
 export const metadata: Metadata = {
   title: "Live Lobby | TMI",
@@ -53,6 +55,13 @@ export default function LiveLobbyPage() {
         <GhostChatWidget roomId="tmi-main-lobby" accentColor="#AA2DFF" />
       </div>
       <SpotlightContainer roomId="tmi-main-lobby" />
+      <LiveLobbyDrawer />
+      <section style={{ padding: "20px 24px 40px", background: "#050510", maxWidth: 1100, margin: "0 auto" }}>
+        <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.2em", color: "#AA2DFF", marginBottom: 16 }}>
+          DISCOVERY BRIDGE — WHO&apos;S HERE NOW
+        </div>
+        <MixedLobbyWall />
+      </section>
     </>
   );
 }
