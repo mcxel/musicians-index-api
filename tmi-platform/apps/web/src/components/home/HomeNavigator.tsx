@@ -28,8 +28,8 @@ export default function HomeNavigator() {
   const pathname = usePathname();
   const activeIdx = getActiveIdx(pathname ?? "/");
   const current = HOME_SCREENS[activeIdx];
-  const prev = HOME_SCREENS[activeIdx - 1];
-  const next = HOME_SCREENS[activeIdx + 1];
+  const prev = HOME_SCREENS[(activeIdx - 1 + HOME_SCREENS.length) % HOME_SCREENS.length];
+  const next = HOME_SCREENS[(activeIdx + 1) % HOME_SCREENS.length];
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -62,26 +62,24 @@ export default function HomeNavigator() {
     }}>
       {/* Left arrow */}
       <div style={{ width: 140, display: "flex", justifyContent: "flex-start" }}>
-        {prev ? (
-          <button
-            onClick={() => router.push(prev.path)}
-            style={{
-              background: "none", border: "none", cursor: "pointer", outline: "none",
-              display: "flex", alignItems: "center", gap: 8,
-              color: "rgba(255,255,255,0.5)", fontSize: 11, fontWeight: 700,
-              letterSpacing: "0.1em", textTransform: "uppercase",
-              padding: "6px 10px", borderRadius: 6,
-              transition: "color 0.2s",
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = prev.accent)}
-            onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(255,255,255,0.5)")}
-          >
-            <span style={{ fontSize: 14 }}>◀</span>
-            <span style={{ maxWidth: 90, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {prev.short}
-            </span>
-          </button>
-        ) : <div />}
+        <button
+          onClick={() => router.push(prev.path)}
+          style={{
+            background: "none", border: "none", cursor: "pointer", outline: "none",
+            display: "flex", alignItems: "center", gap: 8,
+            color: "rgba(255,255,255,0.5)", fontSize: 11, fontWeight: 700,
+            letterSpacing: "0.1em", textTransform: "uppercase",
+            padding: "6px 10px", borderRadius: 6,
+            transition: "color 0.2s",
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.color = prev.accent)}
+          onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(255,255,255,0.5)")}
+        >
+          <span style={{ fontSize: 14 }}>◀</span>
+          <span style={{ maxWidth: 90, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {prev.short}
+          </span>
+        </button>
       </div>
 
       {/* Center: dots + current label */}
@@ -174,23 +172,24 @@ export default function HomeNavigator() {
         >
           Join Free
         </Link>
-        {next ? (
-          <button
-            onClick={() => router.push(next.path)}
-            style={{
-              background: "none", border: "none", cursor: "pointer", outline: "none",
-              display: "flex", alignItems: "center", gap: 4,
-              color: "rgba(255,255,255,0.5)", fontSize: 11, fontWeight: 700,
-              letterSpacing: "0.1em", textTransform: "uppercase",
-              padding: "6px 8px", borderRadius: 6,
-              transition: "color 0.2s",
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = next.accent)}
-            onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(255,255,255,0.5)")}
-          >
-            <span style={{ fontSize: 14 }}>▶</span>
-          </button>
-        ) : null}
+        <button
+          onClick={() => router.push(next.path)}
+          style={{
+            background: "none", border: "none", cursor: "pointer", outline: "none",
+            display: "flex", alignItems: "center", gap: 4,
+            color: "rgba(255,255,255,0.5)", fontSize: 11, fontWeight: 700,
+            letterSpacing: "0.1em", textTransform: "uppercase",
+            padding: "6px 8px", borderRadius: 6,
+            transition: "color 0.2s",
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.color = next.accent)}
+          onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(255,255,255,0.5)")}
+        >
+          <span style={{ maxWidth: 76, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {next.short}
+          </span>
+          <span style={{ fontSize: 14 }}>▶</span>
+        </button>
       </div>
 
       {/* Avatar mini chip — absolute, won't displace layout */}

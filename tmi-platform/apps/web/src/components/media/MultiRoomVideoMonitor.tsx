@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import LiveStreamShell from './LiveStreamShell';
-import MediaOrchestrator from '@/lib/media/MediaOrchestrator';
+import { mediaMesh } from '@/lib/media/MediaOrchestrator';
 import Link from 'next/link';
 
 interface MonitorRoom {

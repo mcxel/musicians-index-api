@@ -1,6 +1,11 @@
 import Link from "next/link";
 import { profileToArticleRoute } from "@/lib/editorial/editorialRoutingResolver";
 import ArtistWorldShell from "@/components/artist/ArtistWorldShell";
+import PerformerVideoPanel from "@/components/media/PerformerVideoPanel";
+import PerformerSponsorShelf, {
+  type PerformerSponsor,
+} from "@/components/performer/PerformerSponsorShelf";
+import type { SponsorSlot } from "@/components/performer/DynamicRadialAura";
 
 interface Props {
   params: { slug: string };
@@ -72,6 +77,43 @@ function seedArtist(slug: string) {
   };
 }
 
+// ─── Artist sponsor seed data ─────────────────────────────────────────────────
+
+const ARTIST_SEED_SPONSORS: Record<string, PerformerSponsor[]> = {
+  "kreach": [
+    { id: "kr-s1", merchantName: "Infinite Loops",  merchantCategory: "Music Tech",    sponsorClass: "local",  packageLabel: "Local Premium",  monthlyRateCents: 10000, status: "active",  color: "#00FFFF" },
+    { id: "kr-s2", merchantName: "AX Audio",         merchantCategory: "Audio Gear",    sponsorClass: "local",  packageLabel: "Local Standard", monthlyRateCents: 5000,  status: "active",  color: "#FF2DAA" },
+    { id: "kr-s3", merchantName: "Stage Nova",       merchantCategory: "Apparel",       sponsorClass: "local",  packageLabel: "Local Basic",    monthlyRateCents: 2500,  status: "active",  color: "#AA2DFF" },
+    { id: "kr-s4", merchantName: "SoundBlast Media", merchantCategory: "Media",         sponsorClass: "major",  packageLabel: "Major Standard", monthlyRateCents: 35000, status: "active",  color: "#FFD700" },
+    { id: "kr-s5", merchantName: "Flex Culture Co",  merchantCategory: "Fashion",       sponsorClass: "major",  packageLabel: "Major Basic",    monthlyRateCents: 15000, status: "active",  color: "#00FF88" },
+    { id: "kr-s6", merchantName: "NovaBrew",         merchantCategory: "Beverages",     sponsorClass: "local",  packageLabel: "Local Basic",    monthlyRateCents: 2500,  status: "pending", color: "#FF6B35" },
+  ],
+  "kg": [
+    { id: "kg-s1", merchantName: "SoulBox Studio",  merchantCategory: "Recording",     sponsorClass: "local",  packageLabel: "Local Standard", monthlyRateCents: 5000,  status: "active",  color: "#00FFFF" },
+    { id: "kg-s2", merchantName: "GridWave Gear",    merchantCategory: "Music Tech",    sponsorClass: "local",  packageLabel: "Local Basic",    monthlyRateCents: 2500,  status: "active",  color: "#FFD700" },
+    { id: "kg-s3", merchantName: "Apex Sound",       merchantCategory: "Audio Gear",    sponsorClass: "major",  packageLabel: "Major Basic",    monthlyRateCents: 15000, status: "pending", color: "#AA2DFF" },
+  ],
+  "savage-guns": [
+    { id: "sg-s1", merchantName: "Street Level",    merchantCategory: "Apparel",       sponsorClass: "local",  packageLabel: "Local Basic",    monthlyRateCents: 2500,  status: "active",  color: "#FF2DAA" },
+  ],
+};
+
+function seedArtistSponsors(slug: string): PerformerSponsor[] {
+  if (ARTIST_SEED_SPONSORS[slug]) return ARTIST_SEED_SPONSORS[slug]!;
+  const h = slug.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
+  return [
+    { id: `${slug}-as1`, merchantName: "Local Partner",  merchantCategory: "Local Business", sponsorClass: "local", packageLabel: "Local Basic",    monthlyRateCents: 2500,  status: "active",  color: "#00FFFF" },
+    { id: `${slug}-as2`, merchantName: "Brand Co",       merchantCategory: "Retail",          sponsorClass: "local", packageLabel: "Local Standard", monthlyRateCents: 5000,  status: h % 2 === 0 ? "active" : "pending", color: "#FFD700" },
+  ];
+}
+
+function buildArtistAuraSlots(sponsors: PerformerSponsor[]): SponsorSlot[] {
+  return sponsors
+    .filter((s) => s.status === "active")
+    .slice(0, 8)
+    .map((s) => ({ id: s.id, label: s.merchantName, color: s.color }));
+}
+
 const CYAN = "#00FFFF";
 const FUCHSIA = "#FF2DAA";
 const GOLD = "#FFD700";
@@ -79,6 +121,8 @@ const GOLD = "#FFD700";
 export default function ArtistProfilePage({ params }: Props) {
   const artist = seedArtist(params.slug);
   const articleRoute = artist.hasArticle ? profileToArticleRoute("artist", params.slug) : undefined;
+  const artistSponsors = seedArtistSponsors(params.slug);
+  const auraSlots = buildArtistAuraSlots(artistSponsors);
 
   return (
     <ArtistWorldShell
@@ -88,6 +132,15 @@ export default function ArtistProfilePage({ params }: Props) {
       rank={artist.rank}
       isVerified={artist.isVerified}
       articleRoute={articleRoute}
+      sponsorAura={auraSlots}
+      sponsorSection={
+        <PerformerSponsorShelf
+          performerSlug={params.slug}
+          performerName={artist.displayName}
+          tier="free"
+          sponsors={artistSponsors}
+        />
+      }
     >
       {/* Live badge */}
       {artist.isLive && (
@@ -160,6 +213,16 @@ export default function ArtistProfilePage({ params }: Props) {
           🎵 Join Room
         </Link>
       </div>
+
+      {/* Video & Media panel — live stream + past performances */}
+      <PerformerVideoPanel
+        slug={params.slug}
+        displayName={artist.displayName}
+        isLive={artist.isLive}
+        liveRoomId={artist.isLive ? `artist-${params.slug}` : undefined}
+        accentColor={CYAN}
+        role="artist"
+      />
     </ArtistWorldShell>
   );
 }

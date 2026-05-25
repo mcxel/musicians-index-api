@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useOverseerDeck } from '@/hooks/useOverseerDeck';
 import { useFamilyConsensus } from '@/hooks/useFamilyConsensus';
 import OverseerDock from '@/components/admin/overseer/OverseerDock';
+import LaunchControlPanel from '@/components/admin/overseer/LaunchControlPanel';
 import AvatarMiniPreview from '@/components/avatar/AvatarMiniPreview';
 import type { RoleType } from '@/types/avatar';
 import type { AccountTier, FamilyGroup } from '@/types/security';
@@ -100,6 +101,9 @@ export default function OverseerClientPage() {
             System Control
           </h1>
         </div>
+
+        {/* Platform launch controls */}
+        <LaunchControlPanel />
 
         {/* Active Role display */}
         <section style={{

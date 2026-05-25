@@ -7,6 +7,11 @@ import PerformerBattleRail from "@/components/performer/PerformerBattleRail";
 import PerformerBookingRail from "@/components/performer/PerformerBookingRail";
 import PerformerMediaRail from "@/components/performer/PerformerMediaRail";
 import PreviewWindow from "@/components/hubs/PreviewWindow";
+import PerformerVideoPanel from "@/components/media/PerformerVideoPanel";
+import PerformerSponsorShelf, {
+  type PerformerSponsor,
+} from "@/components/performer/PerformerSponsorShelf";
+import type { SponsorSlot } from "@/components/performer/DynamicRadialAura";
 
 interface Props {
   params: { slug: string };
@@ -103,6 +108,43 @@ function seedPerformer(slug: string) {
   };
 }
 
+// ─── Seed sponsor data per performer ─────────────────────────────────────────
+
+const SEED_SPONSORS: Record<string, PerformerSponsor[]> = {
+  "nova-cipher": [
+    { id: "nc-s1", merchantName: "BeatBox Labs",   merchantCategory: "Music Tech",    sponsorClass: "local",  packageLabel: "Local Premium",  monthlyRateCents: 10000,  status: "active",  color: "#00FFFF" },
+    { id: "nc-s2", merchantName: "FlexFit Gear",   merchantCategory: "Apparel",       sponsorClass: "local",  packageLabel: "Local Standard", monthlyRateCents: 5000,   status: "active",  color: "#FF2DAA" },
+    { id: "nc-s3", merchantName: "CyberDrip Co",   merchantCategory: "Fashion",       sponsorClass: "local",  packageLabel: "Local Standard", monthlyRateCents: 5000,   status: "active",  color: "#AA2DFF" },
+    { id: "nc-s4", merchantName: "SoundWave Pro",  merchantCategory: "Audio Gear",    sponsorClass: "major",  packageLabel: "Major Basic",    monthlyRateCents: 15000,  status: "active",  color: "#FFD700" },
+    { id: "nc-s5", merchantName: "Urban Media Grp",merchantCategory: "Media",         sponsorClass: "major",  packageLabel: "Major Standard", monthlyRateCents: 35000,  status: "active",  color: "#00FF88" },
+    { id: "nc-s6", merchantName: "NovaNest Drinks", merchantCategory: "Beverages",    sponsorClass: "local",  packageLabel: "Local Basic",    monthlyRateCents: 2500,   status: "pending", color: "#FF6B35" },
+  ],
+  "flowstate-j": [
+    { id: "fj-s1", merchantName: "Verse Kicks",    merchantCategory: "Footwear",      sponsorClass: "local",  packageLabel: "Local Standard", monthlyRateCents: 5000,   status: "active",  color: "#00FFFF" },
+    { id: "fj-s2", merchantName: "FreeStyle Fuel",  merchantCategory: "Energy Drinks", sponsorClass: "local",  packageLabel: "Local Basic",    monthlyRateCents: 2500,   status: "active",  color: "#FFD700" },
+    { id: "fj-s3", merchantName: "GridLock Studios",merchantCategory: "Recording",     sponsorClass: "major",  packageLabel: "Major Basic",    monthlyRateCents: 15000,  status: "pending", color: "#AA2DFF" },
+  ],
+};
+
+// Default seed sponsors for unknown performers (shows 2 actives, rest open)
+function seedSponsors(slug: string): PerformerSponsor[] {
+  if (SEED_SPONSORS[slug]) return SEED_SPONSORS[slug];
+  // Generic placeholders so every profile has something to show
+  const h = slug.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
+  return [
+    { id: `${slug}-s1`, merchantName: "Local Biz Co",    merchantCategory: "Local Business", sponsorClass: "local", packageLabel: "Local Basic",    monthlyRateCents: 2500,  status: "active",  color: "#00FFFF" },
+    { id: `${slug}-s2`, merchantName: "Brand Partner",   merchantCategory: "Retail",          sponsorClass: "local", packageLabel: "Local Standard", monthlyRateCents: 5000,  status: h % 2 === 0 ? "active" : "pending", color: "#FF2DAA" },
+  ];
+}
+
+// Build aura slots from active sponsors only (shown orbiting avatar)
+function buildAuraSlots(sponsors: PerformerSponsor[]): SponsorSlot[] {
+  return sponsors
+    .filter((s) => s.status === "active")
+    .slice(0, 8) // cap at 8 for orbit legibility
+    .map((s) => ({ id: s.id, label: s.merchantName, color: s.color }));
+}
+
 function getRelatedArticles(slug: string) {
   return EDITORIAL_ARTICLES.filter(
     (a) => a.relatedPerformerSlug === slug || a.category === "performer" || a.tags.includes("battle"),
@@ -127,6 +169,9 @@ export default function PerformerProfilePage({ params }: Props) {
   const performer = seedPerformer(params.slug);
   const articleRoute = performer.hasArticle ? profileToArticleRoute("performer", params.slug) : undefined;
 
+  const performerSponsors = seedSponsors(params.slug);
+  const auraSlots = buildAuraSlots(performerSponsors);
+
   const articleRail = rotateFrom(
     [
       { label: "Cover Story", href: articleRoute ?? "/magazine/articles/test", note: articleRoute ? "Linked" : "Fallback" },
@@ -135,15 +180,6 @@ export default function PerformerProfilePage({ params }: Props) {
       { label: "Issue Spotlight", href: "/magazine/articles/test", note: "Monthly" },
     ],
     `${params.slug}-article`,
-  );
-
-  const sponsorRail = rotateFrom(
-    [
-      { label: "Prime Wave", href: "/store", tag: "Sponsor" },
-      { label: "Marketplace Max", href: "/store", tag: "Offer" },
-      { label: "Urban Stream", href: "/store", tag: "Campaign" },
-    ],
-    `${params.slug}-sponsor`,
   );
 
   const mediaRail = rotateFrom(
@@ -171,6 +207,7 @@ export default function PerformerProfilePage({ params }: Props) {
         isVerified={performer.isVerified}
         battleRecord={{ wins: performer.wins, losses: performer.losses }}
         articleRoute={articleRoute}
+        sponsorAura={auraSlots}
         previewWindow={
           <PreviewWindow
             title={`${performer.displayName} Performer Preview`}
@@ -321,18 +358,12 @@ export default function PerformerProfilePage({ params }: Props) {
               </div>
             </section>
 
-            <section style={{ marginTop: 14, border: "1px solid rgba(244,114,182,0.25)", borderRadius: 12, padding: 12, background: "rgba(80,7,36,0.2)" }}>
-              <h3 style={{ margin: "0 0 8px 0", color: "#f9a8d4", fontSize: 12, letterSpacing: "0.12em", textTransform: "uppercase" }}>
-                Rotating Sponsor Rail
-              </h3>
-              <div style={{ display: "grid", gap: 8 }}>
-                {sponsorRail.map((s) => (
-                  <Link key={s.label} href={s.href} style={{ color: "#fce7f3", textDecoration: "none", fontSize: 12 }}>
-                    {s.label} <span style={{ color: "#fbcfe8", fontSize: 10 }}>· {s.tag}</span>
-                  </Link>
-                ))}
-              </div>
-            </section>
+            <PerformerSponsorShelf
+              performerSlug={params.slug}
+              performerName={performer.displayName}
+              tier="free"
+              sponsors={performerSponsors}
+            />
 
             <PerformerMediaRail performerSlug={params.slug} />
 
@@ -491,6 +522,15 @@ export default function PerformerProfilePage({ params }: Props) {
             </Link>
           ) : null}
         </div>
+        {/* Video & Media panel — live stream + past battle clips */}
+        <PerformerVideoPanel
+          slug={params.slug}
+          displayName={performer.displayName}
+          isLive={performer.isLive}
+          liveRoomId={performer.isLive ? `performer-${params.slug}` : undefined}
+          accentColor={ACCENT}
+          role="performer"
+        />
       </PerformerProfileShell>
     </>
   );

@@ -30,25 +30,32 @@ export default function SponsorBattlesPage() {
     const pkg = SPONSOR_PACKAGES.find(p => p.tier === selectedTier);
     if (!pkg) { setSubmitting(false); return; }
 
-    // For Starter: points-only, no Stripe; Featured/Title: Stripe checkout
+    // For Starter: auto-attach via API (no Stripe); Featured/Title: Stripe checkout
     if (pkg.tier === 'STARTER') {
-      setNotice(`✅ Starter sponsorship attached to battle ${selectedBattle}. Your logo will appear in the overlay within 60 seconds.`);
+      const res = await fetch('/api/sponsor/attach', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ battleId: selectedBattle, tier: 'STARTER', sponsorName: 'Battle Sponsor' }),
+      });
+      const data = await res.json() as { ok?: boolean; totalPool?: number; error?: string };
+      if (data.ok) {
+        setNotice(`✅ Starter sponsorship attached! Prize pool now $${data.totalPool ?? 50}. Your logo appears in the overlay within 60 seconds.`);
+      } else {
+        setNotice(`❌ ${data.error ?? 'Attach failed — are you signed in?'}`);
+      }
       setSubmitting(false);
       return;
     }
 
-    const res = await fetch('/api/stripe/checkout?' + new URLSearchParams({
-      priceId: `battle-sponsor-${pkg.tier.toLowerCase()}`,
-      mode: 'payment',
-      metadata: JSON.stringify({ battleId: selectedBattle, sponsorTier: pkg.tier }),
-    }));
-
-    if (!res.ok || !res.url.includes('stripe')) {
-      // Fallback: redirect directly to checkout endpoint
-      window.location.href = `/api/stripe/checkout?priceId=battle-sponsor-${pkg.tier.toLowerCase()}&mode=payment`;
-      return;
-    }
-    setSubmitting(false);
+    const url = `/api/stripe/checkout?${new URLSearchParams({
+      priceId:     `battle-sponsor-${pkg.tier.toLowerCase()}`,
+      mode:        'payment',
+      battleId:    selectedBattle,
+      sponsorTier: pkg.tier,
+      sponsorName: 'Battle Sponsor',
+    }).toString()}`;
+    window.location.href = url;
+    // page navigates away — submitting stays true intentionally
   }
 
   const stats = sponsorContestPool.getCapacityStats();
@@ -63,6 +70,7 @@ export default function SponsorBattlesPage() {
           <div style={{ fontSize: 16, fontWeight: 900, marginTop: 2 }}>Battle Sponsorship Marketplace</div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
+          <Link href="/home/1" style={{ fontSize: 10, color: 'rgba(255,215,0,0.45)', border: '1px solid rgba(255,215,0,0.1)', padding: '5px 12px', borderRadius: 6, textDecoration: 'none', fontWeight: 700 }}>⌂ HOME</Link>
           <Link href="/sponsor/campaigns" style={{ fontSize: 10, color: '#FFD700', border: '1px solid rgba(255,215,0,0.3)', padding: '5px 12px', borderRadius: 6, textDecoration: 'none', fontWeight: 700 }}>ALL CAMPAIGNS</Link>
           <Link href="/hub/sponsor" style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', border: '1px solid rgba(255,255,255,0.1)', padding: '5px 12px', borderRadius: 6, textDecoration: 'none', fontWeight: 700 }}>SPONSOR HUB</Link>
         </div>

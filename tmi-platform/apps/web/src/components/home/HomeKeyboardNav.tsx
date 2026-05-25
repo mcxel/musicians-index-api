@@ -2,7 +2,7 @@
 
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect } from "react";
-import { HOME_SCREENS } from "./HomeNavigator";
+import { HOME_ROUTE_CHAIN, getHomeRouteIndex } from "@/components/home/homeRouteChain";
 import { isNavigationLocked, lockNavigation } from "@/lib/navigationLock";
 
 function navigate(router: ReturnType<typeof useRouter>, path: string) {
@@ -18,20 +18,22 @@ export default function HomeKeyboardNav() {
   const pathname = usePathname() ?? "";
 
   useEffect(() => {
-    const activeIdx = HOME_SCREENS.findIndex((s) => s.path === pathname);
-    const prev = HOME_SCREENS[activeIdx - 1];
-    const next = HOME_SCREENS[activeIdx + 1];
-    const first = HOME_SCREENS[0];
-    const last = HOME_SCREENS[HOME_SCREENS.length - 1];
+    const activeIdx = getHomeRouteIndex(pathname);
+    if (activeIdx < 0) return;
+
+    const prev = HOME_ROUTE_CHAIN[(activeIdx - 1 + HOME_ROUTE_CHAIN.length) % HOME_ROUTE_CHAIN.length];
+    const next = HOME_ROUTE_CHAIN[(activeIdx + 1) % HOME_ROUTE_CHAIN.length];
+    const first = HOME_ROUTE_CHAIN[0];
+    const last = HOME_ROUTE_CHAIN[HOME_ROUTE_CHAIN.length - 1];
 
     const handler = (e: KeyboardEvent) => {
       const tag = (document.activeElement as HTMLElement)?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
       if (isNavigationLocked()) return;
-      if (e.key === "ArrowLeft" && prev) navigate(router, prev.path);
-      if (e.key === "ArrowRight" && next) navigate(router, next.path);
-      if (e.key === "Home" && !e.ctrlKey) navigate(router, first.path);
-      if (e.key === "End" && !e.ctrlKey) navigate(router, last.path);
+      if (e.key === "ArrowLeft") navigate(router, prev);
+      if (e.key === "ArrowRight") navigate(router, next);
+      if (e.key === "Home" && !e.ctrlKey) navigate(router, first);
+      if (e.key === "End" && !e.ctrlKey) navigate(router, last);
     };
 
     window.addEventListener("keydown", handler);
