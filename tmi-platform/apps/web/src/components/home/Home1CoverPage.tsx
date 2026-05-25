@@ -42,6 +42,18 @@ const ROTATING_SAYINGS = [
   'This is your stage, be original.',
 ];
 
+const BROADCAST_DECKS = [
+  { label: 'GAME SHOWS', icon: '🎯', color: '#FFD700', href: '/live/rooms/dealer-feud-1000', cta: 'JOIN GAME →' },
+  { label: 'CYPHER ARENA', icon: '🎤', color: '#FF2DAA', href: '/cypher/stage', cta: 'ENTER CYPHER →' },
+  { label: 'BATTLES', icon: '⚔️', color: '#AA2DFF', href: '/battles', cta: 'WATCH BATTLE →' },
+  { label: 'LIVE ROOMS', icon: '🏟️', color: '#00FFFF', href: '/live/lobby', cta: 'OPEN ROOM →' },
+  { label: 'CONCERTS', icon: '🎶', color: '#00FF88', href: '/live/rooms/monthly-idol', cta: 'JOIN CONCERT →' },
+  { label: 'WORLD PREMIERES', icon: '🌍', color: '#FF6B35', href: '/live/rooms/world-dance-party', cta: 'SEE PREMIERE →' },
+  { label: 'SPONSOR WALL', icon: '🤝', color: '#FFD700', href: '/sponsors', cta: 'SPONSOR ARTIST →' },
+  { label: 'MAGAZINE FEATURES', icon: '📰', color: '#00C8FF', href: '/magazine', cta: 'READ INTERVIEW →' },
+  { label: 'CHALLENGE YOUR SONG', icon: '🎵', color: '#39FF14', href: '/battles/new', cta: 'CHALLENGE NOW →' },
+] as const;
+
 const DEFAULT_LAYERS: TMILayer[] = [
   {
     id: 'underlay-color-field',
@@ -179,6 +191,8 @@ export default function Home1CoverPage() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [designMode, setDesignMode] = useState(false);
   const [voteCount, setVoteCount] = useState(4891);
+  const [broadcastDeckIndex, setBroadcastDeckIndex] = useState(0);
+  const [deckTransitioning, setDeckTransitioning] = useState(false);
 
   const [sayingIndex, setSayingIndex] = useState(0);
   const [typedChars, setTypedChars] = useState(0);
@@ -262,6 +276,17 @@ export default function Home1CoverPage() {
 
   useEffect(() => {
     const id = setInterval(() => setVoteCount((v) => v + Math.floor(Math.random() * 6) + 1), 950);
+    return () => clearInterval(id);
+  }, []);
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setDeckTransitioning(true);
+      setTimeout(() => {
+        setBroadcastDeckIndex((i) => (i + 1) % BROADCAST_DECKS.length);
+        setDeckTransitioning(false);
+      }, 280);
+    }, 13000);
     return () => clearInterval(id);
   }, []);
 
@@ -784,6 +809,49 @@ export default function Home1CoverPage() {
           50%, 100% { opacity: 0; }
         }
 
+        .tmi-broadcast-strip {
+          margin-top: 12px;
+          border: 2px solid #0f1320;
+          background: #03050d;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+          padding: 10px 16px;
+          box-shadow: 0 16px 30px rgba(0, 0, 0, 0.48), -1px -1px 0 rgba(5, 5, 10, 1);
+          overflow: hidden;
+        }
+
+        .tmi-broadcast-deck-label {
+          font-family: 'Inter', sans-serif;
+          font-size: 11px;
+          font-weight: 900;
+          letter-spacing: 0.18em;
+          text-transform: uppercase;
+          transition: opacity 0.28s ease, transform 0.28s ease;
+        }
+
+        .tmi-broadcast-deck-label.transitioning {
+          opacity: 0;
+          transform: translateY(8px);
+        }
+
+        .tmi-broadcast-cta {
+          font-family: 'Inter', sans-serif;
+          font-size: 9px;
+          font-weight: 900;
+          letter-spacing: 0.14em;
+          text-transform: uppercase;
+          text-decoration: none;
+          padding: 6px 14px;
+          border-radius: 4px;
+          border: 1px solid;
+          transition: opacity 0.28s ease;
+          white-space: nowrap;
+        }
+
+        .tmi-broadcast-cta.transitioning { opacity: 0; }
+
         @media (max-width: 1040px) {
           .tmi-canvas-stage {
             min-height: 1020px;
@@ -847,61 +915,7 @@ export default function Home1CoverPage() {
           ) : null}
         </div>
 
-        <section className="tmi-canvas-stage">
-          <article className="tmi-collage-card tmi-card-a">
-            <img src="/assets/_converted_webp/Tmi Homepage 1.webp" alt="Cover layout" />
-            <h3>Cover Story</h3>
-            <p>Main profile and sponsor collage block for this issue's narrative angle.</p>
-            <Link href="/articles/performer/ricardo-parker">Open Performer Article</Link>
-          </article>
-
-          <article className="tmi-collage-card tmi-card-b">
-            <img src="/assets/_converted_webp/Tmi Homepage 1-2.webp" alt="Open tabloid spread" />
-            <h3>Magazine Spread</h3>
-            <p>Layer-aware spread that keeps CTA, orbit, and editorial flow unified.</p>
-            <Link href="/magazine">Open Magazine</Link>
-          </article>
-
-          <article className="tmi-collage-card tmi-card-c">
-            <img src="/assets/_converted_webp/The Musician's Index Magazine images/img00042.webp" alt="Sponsor and news tiles" />
-            <h3>Ad + News</h3>
-            <p>Sponsor and article tiles can be repositioned in design mode for conversion optimization.</p>
-            <Link href="/sponsors">Open Sponsor Rail</Link>
-          </article>
-
-          <LayerCanvas layers={layers} onLayersChange={setLayers} isDesignMode={isAdmin && designMode} />
-        </section>
-
-        <section className="tmi-sayings-strip" aria-live="polite">
-          <p>{getTypewriterText(currentSaying, typedChars)}</p>
-        </section>
-
-        <section className="tmi-home1-second-section">
-          <h3>Home 1 Tabloid Extended Section</h3>
-          <div className="tmi-home1-second-grid">
-            <article className="tmi-panel">
-              <img src="/tmi-curated/mag-74.jpg" alt="Cypher panel" />
-              <h4>Cypher Arena Live</h4>
-              <p>Real-time cypher panel with performer story overlays and active crowd actions.</p>
-              <Link href="/cypher/stage">Open Cypher Arena</Link>
-            </article>
-
-            <article className="tmi-panel">
-              <img src="/tmi-curated/mag-66.jpg" alt="Artist interview panel" />
-              <h4>Artist Interview</h4>
-              <p>Interview block auto-updates when performer profile content is refreshed.</p>
-              <Link href="/articles/performer/ray-journey">Read Artist Profile</Link>
-            </article>
-
-            <article className="tmi-panel">
-              <img src="/tmi-curated/mag-58.jpg" alt="Business and ad panel" />
-              <h4>Advertise With Us</h4>
-              <p>Business placement panel tied to sponsor and advertiser route destinations.</p>
-              <Link href="/advertisers">Open Advertiser Hub</Link>
-            </article>
-          </div>
-        </section>
-
+        {/* ── ORBIT HERO — always first ── */}
         <section className="tmi-orbit-section">
           <h2>Weekly Crown Orbit</h2>
           <div className="tmi-orbit-meta">
@@ -936,6 +950,118 @@ export default function Home1CoverPage() {
                 </Link>
               );
             })}
+          </div>
+        </section>
+
+        {/* ── Broadcast deck banner ── */}
+        {(() => {
+          const deck = BROADCAST_DECKS[broadcastDeckIndex % BROADCAST_DECKS.length]!;
+          return (
+            <div className={`tmi-broadcast-strip`}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#FF2020', display: 'inline-block', boxShadow: '0 0 8px #FF2020', animation: 'tmiBlink 1.1s step-end infinite' }} />
+                <span style={{ fontSize: 8, fontWeight: 900, letterSpacing: '0.2em', color: '#FF2020', fontFamily: "'Inter',sans-serif" }}>NOW BROADCASTING</span>
+                <span className={`tmi-broadcast-deck-label${deckTransitioning ? ' transitioning' : ''}`} style={{ color: deck.color }}>
+                  {deck.icon} {deck.label}
+                </span>
+              </div>
+              <Link href={deck.href} className={`tmi-broadcast-cta${deckTransitioning ? ' transitioning' : ''}`} style={{ color: deck.color, borderColor: `${deck.color}66`, background: `${deck.color}12` }}>
+                {deck.cta}
+              </Link>
+            </div>
+          );
+        })()}
+
+        {/* ── Tabloid canvas stage ── */}
+        <section className="tmi-canvas-stage">
+          <article className="tmi-collage-card tmi-card-a">
+            <img src="/assets/_converted_webp/Tmi Homepage 1.webp" alt="Cover layout" />
+            <h3>Cover Story</h3>
+            <p>Main profile and sponsor collage block for this issue's narrative angle.</p>
+            <Link href="/articles/performer/ricardo-parker">Open Performer Article</Link>
+          </article>
+
+          <article className="tmi-collage-card tmi-card-b">
+            <img src="/assets/_converted_webp/Tmi Homepage 1-2.webp" alt="Open tabloid spread" />
+            <h3>Magazine Spread</h3>
+            <p>Layer-aware spread that keeps CTA, orbit, and editorial flow unified.</p>
+            <Link href="/magazine">Open Magazine</Link>
+          </article>
+
+          <article className="tmi-collage-card tmi-card-c">
+            <img src="/assets/_converted_webp/The Musician's Index Magazine images/img00042.webp" alt="Sponsor and news tiles" />
+            <h3>Ad + News</h3>
+            <p>Sponsor and article tiles can be repositioned in design mode for conversion optimization.</p>
+            <Link href="/sponsors">Open Sponsor Rail</Link>
+          </article>
+
+          <LayerCanvas layers={layers} onLayersChange={setLayers} isDesignMode={isAdmin && designMode} />
+        </section>
+
+        <section className="tmi-sayings-strip" aria-live="polite">
+          <p>{getTypewriterText(currentSaying, typedChars)}</p>
+        </section>
+
+        {/* ── 3 Live Billboard Tiles ── */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginTop: 14 }}>
+          {[
+            { title: "Guess Who's Up In Here?", subtitle: "It's gonna be a fun week in the Index", href: '/live/lobby', accent: '#FF2DAA', emoji: '👀' },
+            { title: "Song Challenge Live", subtitle: "Song for song · Work for work · Video for video", href: '/battles/new', accent: '#FFD700', emoji: '🎵' },
+            { title: "This Week In TMI", subtitle: "Who took the crown · This is your stage", href: '/magazine', accent: '#00FFFF', emoji: '📰' },
+          ].map((tile) => (
+            <Link key={tile.href} href={tile.href} style={{ textDecoration: 'none' }}>
+              <div style={{
+                border: `1.5px solid ${tile.accent}44`,
+                background: `linear-gradient(145deg, ${tile.accent}12, rgba(5,5,16,0.92))`,
+                borderRadius: 8,
+                padding: '14px 12px',
+                minHeight: 120,
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+                boxShadow: `0 0 18px ${tile.accent}18`,
+                transition: 'box-shadow 0.3s ease',
+              }}>
+                <div style={{ fontSize: 22 }}>{tile.emoji}</div>
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 900, color: '#fff', fontFamily: "'Inter',sans-serif", textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>
+                    {tile.title}
+                  </div>
+                  <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', fontFamily: "'Inter',sans-serif" }}>
+                    {tile.subtitle}
+                  </div>
+                </div>
+                <div style={{ fontSize: 8, fontWeight: 900, color: tile.accent, letterSpacing: '0.12em', fontFamily: "'Inter',sans-serif", marginTop: 8 }}>
+                  JOIN NOW →
+                </div>
+              </div>
+            </Link>
+          ))}
+        </div>
+
+        <section className="tmi-home1-second-section">
+          <h3>Home 1 Tabloid Extended Section</h3>
+          <div className="tmi-home1-second-grid">
+            <article className="tmi-panel">
+              <img src="/tmi-curated/mag-74.jpg" alt="Cypher panel" />
+              <h4>Cypher Arena Live</h4>
+              <p>Real-time cypher panel with performer story overlays and active crowd actions.</p>
+              <Link href="/cypher/stage">Open Cypher Arena</Link>
+            </article>
+
+            <article className="tmi-panel">
+              <img src="/tmi-curated/mag-66.jpg" alt="Artist interview panel" />
+              <h4>Artist Interview</h4>
+              <p>Interview block auto-updates when performer profile content is refreshed.</p>
+              <Link href="/articles/performer/ray-journey">Read Artist Profile</Link>
+            </article>
+
+            <article className="tmi-panel">
+              <img src="/tmi-curated/mag-58.jpg" alt="Business and ad panel" />
+              <h4>Advertise With Us</h4>
+              <p>Business placement panel tied to sponsor and advertiser route destinations.</p>
+              <Link href="/advertisers">Open Advertiser Hub</Link>
+            </article>
           </div>
         </section>
 

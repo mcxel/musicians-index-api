@@ -11,6 +11,22 @@ type AudienceSeat = {
 
 const REACTIONS = ['🔥', '💬', '⚡', '👑', '🎤'] as const;
 
+// Diverse avatar pool — youth, adult, older, all body types, all tones
+const AVATAR_EMOJIS = [
+  '🧑🏿', '🧑🏾', '🧑🏽', '🧑🏼', '🧑🏻', '🧑',
+  '👩🏿', '👩🏾', '👩🏽', '👩🏼', '👩🏻',
+  '👨🏿', '👨🏾', '👨🏽', '👨🏼', '👨🏻',
+  '🧓🏿', '🧓🏾', '🧓🏽', '🧓🏼', '🧓🏻',
+  '👴🏿', '👴🏾', '👴🏽', '👴🏼', '👴🏻',
+  '👵🏿', '👵🏾', '👵🏽', '👵🏼', '👵🏻',
+  '🧒🏿', '🧒🏾', '🧒🏽', '🧒🏼', '🧒🏻',
+  '👦🏿', '👦🏾', '👦🏽', '👦🏼', '👦🏻',
+  '👧🏿', '👧🏾', '👧🏽', '👧🏼', '👧🏻',
+  '🧑‍🦱', '🧑‍🦲', '🧑‍🦳', '🧑‍🦰',
+  '👩‍🦱', '👩‍🦲', '👩‍🦳', '👩‍🦰',
+  '🎤', '🎧', '🎶', '🎸',
+] as const;
+
 const GHOST_NAMES = [
   'MusicHead', 'NeonFan', 'CrownWatcher', 'BeatRider', 'WaveBreaker',
   'FlowObserver', 'RhymeWatcher', 'CypherFan', 'PulseFan', 'GrooveHead',
@@ -26,6 +42,7 @@ function ghostForSeat(tag: string) {
     role: GHOST_ROLES[hash % GHOST_ROLES.length]!,
     energy: 28 + (hash % 62),
     color: ENERGY_COLORS[hash % ENERGY_COLORS.length]!,
+    avatar: AVATAR_EMOJIS[hash % AVATAR_EMOJIS.length]!,
   };
 }
 
@@ -111,11 +128,11 @@ function SeatProfileOverlay({ seat, followed, onFollow, onReact, onClose }: Seat
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: 24,
+              fontSize: 28,
               boxShadow: `0 0 12px ${ghost.color}44`,
             }}
           >
-            🎧
+            {ghost.avatar}
           </div>
           <div>
             <div style={{ fontSize: 14, fontWeight: 900, color: '#fff', letterSpacing: '0.06em' }}>
@@ -347,7 +364,9 @@ export default function AudienceField({ isMobile }: { isMobile?: boolean }) {
           gap: 8,
         }}
       >
-        {seats.map((seat, i) => (
+        {seats.map((seat, i) => {
+          const ghost = ghostForSeat(seat.tag);
+          return (
           <div
             key={seat.id}
             role={seat.active ? 'button' : undefined}
@@ -358,23 +377,26 @@ export default function AudienceField({ isMobile }: { isMobile?: boolean }) {
             style={{
               aspectRatio: '1 / 1',
               borderRadius: 8,
-              border: seat.active ? '1px solid rgba(0,255,255,0.35)' : '1px solid rgba(255,255,255,0.12)',
-              background: seat.active ? 'rgba(0,0,0,0.62)' : 'rgba(255,255,255,0.04)',
+              border: seat.active ? `1px solid ${ghost.color}55` : '1px solid rgba(255,255,255,0.08)',
+              background: seat.active ? `${ghost.color}12` : 'rgba(255,255,255,0.03)',
               color: 'rgba(255,255,255,0.72)',
               display: 'flex',
+              flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: 10,
+              fontSize: seat.active ? 18 : 14,
               fontWeight: 700,
               position: 'relative',
               transform: 'translateZ(0)',
-              animation: `audienceSeatPulse ${2 + (i % 3)}s ease-in-out infinite`,
+              animation: seat.active ? `audienceSeatPulse ${2 + (i % 3)}s ease-in-out infinite` : undefined,
               willChange: 'transform, opacity',
               overflow: 'hidden',
               cursor: seat.active ? 'pointer' : 'default',
+              boxShadow: seat.active ? `0 0 8px ${ghost.color}22` : 'none',
+              opacity: seat.active ? 1 : 0.35,
             }}
           >
-            🎧
+            {ghost.avatar}
             {seat.reaction ? (
               <span
                 style={{
@@ -412,16 +434,18 @@ export default function AudienceField({ isMobile }: { isMobile?: boolean }) {
                 position: 'absolute',
                 left: 2,
                 bottom: 1,
-                fontSize: 7,
+                fontSize: 6,
                 letterSpacing: '0.03em',
-                color: 'rgba(255,255,255,0.58)',
+                color: seat.active ? ghost.color : 'rgba(255,255,255,0.3)',
                 whiteSpace: 'nowrap',
+                opacity: 0.7,
               }}
             >
               {seat.tag}
             </span>
           </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Seat profile overlay */}
