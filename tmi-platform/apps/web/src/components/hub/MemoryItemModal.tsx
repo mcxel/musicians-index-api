@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useMemoryModalStore } from "@/lib/memory/useMemoryModalStore";
-import type { MemoryItem, ProLegacyItem } from "@/types/memory";
+import type { MemoryItem, ProLegacyItem, WriterWorkItem } from "@/types/memory";
 
 const KIND_ICON: Record<MemoryItem["kind"], string> = {
   polaroid: "📸",
@@ -94,6 +94,68 @@ function ProLegacyView({ item, close }: { item: ProLegacyItem; close: () => void
   );
 }
 
+const WORK_KIND_ICON: Record<WriterWorkItem["kind"], string> = {
+  article: "📰", interview: "🎙️", review: "⭐", feature: "✨",
+  "past-work": "📂", image: "🖼️", draft: "✏️", assignment: "💼",
+};
+
+const WORK_KIND_COLOR: Record<WriterWorkItem["kind"], string> = {
+  article: "#FF2DAA", interview: "#00FFFF", review: "#FFD700", feature: "#AA2DFF",
+  "past-work": "#FFA500", image: "#00FF88", draft: "#94a3b8", assignment: "#00FFFF",
+};
+
+function WriterWorkView({ item, close }: { item: WriterWorkItem; close: () => void }) {
+  const accent = WORK_KIND_COLOR[item.kind] ?? "#FF2DAA";
+  const m = item.metrics;
+  return (
+    <div style={{ maxWidth: "min(90vw, 520px)", width: "100%" }} onClick={(e) => e.stopPropagation()}>
+      <div style={{
+        background: "linear-gradient(135deg,rgba(255,45,170,0.08),rgba(10,8,32,0.97))",
+        border: `1px solid ${accent}44`,
+        borderRadius: 16,
+        padding: 28,
+        boxShadow: `0 0 50px ${accent}18, 0 20px 60px rgba(0,0,0,0.7)`,
+        position: "relative",
+        overflow: "hidden",
+        fontFamily: "'Georgia', serif",
+      }}>
+        {/* Paper texture via repeating gradient */}
+        <div style={{ position: "absolute", inset: 0, backgroundImage: "repeating-linear-gradient(0deg,transparent,transparent 23px,rgba(255,255,255,0.015) 23px,rgba(255,255,255,0.015) 24px)", pointerEvents: "none" }} />
+        {item.verified && (
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 5, background: `${accent}18`, border: `1px solid ${accent}44`, borderRadius: 20, padding: "3px 10px", fontSize: 9, color: accent, fontWeight: 900, letterSpacing: "0.2em", marginBottom: 14, fontFamily: "inherit" }}>
+            ✓ VERIFIED WORK
+          </div>
+        )}
+        <div style={{ fontSize: 9, letterSpacing: "0.35em", color: `${accent}cc`, fontWeight: 800, marginBottom: 8, fontFamily: "sans-serif" }}>
+          {WORK_KIND_ICON[item.kind]} {item.kind.toUpperCase().replace("-", " ")}
+        </div>
+        <h2 style={{ margin: "0 0 8px", fontSize: 20, fontWeight: 900, color: "#fff", lineHeight: 1.3 }}>{item.title}</h2>
+        {item.description && <p style={{ margin: "0 0 16px", fontSize: 13, color: "rgba(255,255,255,0.5)", lineHeight: 1.7 }}>{item.description}</p>}
+        {item.publication && <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginBottom: 16 }}>📰 {item.publication}</div>}
+        {m && (
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 16 }}>
+            {m.views != null && <div style={{ background: `${accent}08`, border: `1px solid ${accent}22`, borderRadius: 8, padding: "10px 12px" }}><div style={{ fontSize: 8, color: "rgba(255,255,255,0.3)", letterSpacing: "0.15em", marginBottom: 3, fontFamily: "sans-serif" }}>VIEWS</div><div style={{ fontSize: 20, fontWeight: 900, color: accent }}>{m.views.toLocaleString()}</div></div>}
+            {m.readTimeMinutes != null && <div style={{ background: "rgba(0,200,255,0.06)", border: "1px solid rgba(0,200,255,0.2)", borderRadius: 8, padding: "10px 12px" }}><div style={{ fontSize: 8, color: "rgba(255,255,255,0.3)", letterSpacing: "0.15em", marginBottom: 3, fontFamily: "sans-serif" }}>AVG READ</div><div style={{ fontSize: 20, fontWeight: 900, color: "#00FFFF" }}>{m.readTimeMinutes}m</div></div>}
+            {m.engagementRate != null && <div style={{ background: "rgba(170,45,255,0.06)", border: "1px solid rgba(170,45,255,0.2)", borderRadius: 8, padding: "10px 12px" }}><div style={{ fontSize: 8, color: "rgba(255,255,255,0.3)", letterSpacing: "0.15em", marginBottom: 3, fontFamily: "sans-serif" }}>ENGAGEMENT</div><div style={{ fontSize: 20, fontWeight: 900, color: "#AA2DFF" }}>+{m.engagementRate}%</div></div>}
+            {m.paidAmount != null && <div style={{ background: "rgba(0,255,136,0.06)", border: "1px solid rgba(0,255,136,0.2)", borderRadius: 8, padding: "10px 12px" }}><div style={{ fontSize: 8, color: "rgba(255,255,255,0.3)", letterSpacing: "0.15em", marginBottom: 3, fontFamily: "sans-serif" }}>EARNED</div><div style={{ fontSize: 20, fontWeight: 900, color: "#00FF88" }}>${m.paidAmount}</div></div>}
+          </div>
+        )}
+        {item.articleSlug && (
+          <a href={`/magazine/article/${item.articleSlug}`} style={{ display: "inline-block", padding: "8px 16px", background: `${accent}22`, border: `1px solid ${accent}44`, borderRadius: 8, color: accent, fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textDecoration: "none", fontFamily: "sans-serif" }}>
+            READ ARTICLE →
+          </a>
+        )}
+        <div style={{ marginTop: 12, fontSize: 10, color: "rgba(255,255,255,0.25)", fontFamily: "sans-serif" }}>
+          {new Date(item.createdAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
+        </div>
+      </div>
+      <button onClick={close} style={{ display: "block", margin: "16px auto 0", padding: "8px 24px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 8, color: "rgba(255,255,255,0.5)", fontSize: 11, cursor: "pointer", letterSpacing: "0.1em" }}>
+        CLOSE ✕
+      </button>
+    </div>
+  );
+}
+
 export default function MemoryItemModal() {
   const { active, isOpen, close } = useMemoryModalStore();
 
@@ -119,6 +181,8 @@ export default function MemoryItemModal() {
     >
       {active.itemType === "pro-legacy" ? (
         <ProLegacyView item={active.item} close={close} />
+      ) : active.itemType === "writer-work" ? (
+        <WriterWorkView item={active.item} close={close} />
       ) : (
         <div style={{ maxWidth: "min(90vw, 600px)", width: "100%", animation: "tmiModalSlideUp 0.3s cubic-bezier(0.34,1.56,0.64,1)" }} onClick={(e) => e.stopPropagation()}>
           {/* Polaroid / memory frame */}

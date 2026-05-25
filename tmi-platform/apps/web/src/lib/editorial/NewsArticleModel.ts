@@ -31,6 +31,8 @@ export interface NewsArticle {
   relatedVenueSlug?: string;
   relatedSponsorSlug?: string;
   relatedAdvertiserSlug?: string;
+  /** Slug of the writer who authored this article — links to /profile/writer/[slug] */
+  writerSlug?: string;
   sponsorPlacementIds: string[];
   advertiserPlacementIds: string[];
   tags: string[];

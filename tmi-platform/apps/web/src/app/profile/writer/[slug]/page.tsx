@@ -1,0 +1,114 @@
+import { notFound } from "next/navigation";
+import Link from "next/link";
+import ProfileShell from "@/components/profile/ProfileShell";
+import ArticleAnalyticsPanel from "@/components/writer/ArticleAnalyticsPanel";
+import { seedWriterWall, getPublicItems } from "@/lib/writer/WriterWallEngine";
+import { scoreWriter, getWriterTierLabel } from "@/lib/writer/WriterRankEngine";
+import { getEarnedBadges } from "@/lib/writer/WriterBadgeSystem";
+
+interface Props { params: { slug: string } }
+
+interface SeedWriter {
+  displayName: string;
+  tagline: string;
+  specialty: string;
+  isVerified: boolean;
+}
+
+const SEED_WRITERS: Record<string, SeedWriter> = {
+  "m-dickens": {
+    displayName: "Marcel Dickens",
+    tagline: "Founder & Editor-in-Chief · TMI Magazine",
+    specialty: "Culture / Platform Strategy",
+    isVerified: true,
+  },
+  "nova-pen": {
+    displayName: "Nova Pen",
+    tagline: "Battle culture correspondent · 3x TMI Featured Writer",
+    specialty: "Battle Rap / Performer Features",
+    isVerified: true,
+  },
+  "lena-writes": {
+    displayName: "Lena Writes",
+    tagline: "R&B journalist · Soul section editor",
+    specialty: "R&B / Soul / Artist Profiles",
+    isVerified: false,
+  },
+};
+
+export default function WriterProfilePage({ params }: Props) {
+  const writer = SEED_WRITERS[params.slug];
+  if (!writer) notFound();
+
+  seedWriterWall(params.slug);
+  const items  = getPublicItems(params.slug);
+  const score  = scoreWriter(params.slug);
+  const badges = getEarnedBadges(params.slug);
+  const tierLabel = getWriterTierLabel(score.tier);
+
+  return (
+    <ProfileShell
+      role="performer"
+      displayName={writer.displayName}
+      slug={params.slug}
+      tagline={writer.tagline}
+      isVerified={writer.isVerified}
+    >
+      {/* Tier + specialty */}
+      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center", marginBottom: 24 }}>
+        <div style={{
+          display: "inline-flex", alignItems: "center", gap: 6,
+          background: `${score.tierColor}18`, border: `1px solid ${score.tierColor}44`,
+          borderRadius: 20, padding: "4px 12px",
+          fontSize: 9, fontWeight: 900, letterSpacing: "0.18em", color: score.tierColor,
+        }}>
+          ✍️ {tierLabel.toUpperCase()}
+        </div>
+        <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)" }}>
+          🎵 {writer.specialty}
+        </div>
+      </div>
+
+      {/* Analytics summary */}
+      <div style={{ marginBottom: 28 }}>
+        <ArticleAnalyticsPanel items={items} compact />
+      </div>
+
+      {/* Badges */}
+      {badges.length > 0 && (
+        <div style={{ marginBottom: 28 }}>
+          <div style={{ fontSize: 9, letterSpacing: "0.25em", color: "rgba(255,255,255,0.3)", marginBottom: 10 }}>ACHIEVEMENTS</div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {badges.map((b) => (
+              <div key={b.id} title={b.description} style={{ background: `${b.color}18`, border: `1px solid ${b.color}44`, borderRadius: 20, padding: "5px 12px", fontSize: 10, color: b.color, fontWeight: 700 }}>
+                {b.icon} {b.label}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Actions */}
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        <Link
+          href={`/profile/writer/${params.slug}/works`}
+          style={{ padding: "10px 20px", background: "linear-gradient(135deg,#FF2DAA,#AA2DFF)", border: "none", borderRadius: 8, color: "#fff", fontSize: 11, fontWeight: 900, letterSpacing: "0.12em", textDecoration: "none" }}
+        >
+          📋 VIEW PORTFOLIO
+        </Link>
+        <Link
+          href={`/messages?to=${params.slug}`}
+          style={{ padding: "10px 20px", background: "rgba(255,45,170,0.08)", border: "1px solid rgba(255,45,170,0.25)", borderRadius: 8, color: "#FF2DAA", fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textDecoration: "none" }}
+        >
+          💌 MESSAGE
+        </Link>
+        <Link
+          href="/hub/writer/pitches"
+          style={{ padding: "10px 20px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, color: "rgba(255,255,255,0.5)", fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textDecoration: "none" }}
+        >
+          ✏️ PITCH AN ARTICLE
+        </Link>
+      </div>
+    </ProfileShell>
+  );
+}
