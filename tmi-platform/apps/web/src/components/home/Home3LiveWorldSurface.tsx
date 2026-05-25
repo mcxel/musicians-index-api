@@ -1,4 +1,5 @@
-'use client';
+"use client";
+
 import Home3MainPreviewLobby from './Home3MainPreviewLobby';
 import Home3LivewallGrid from './Home3LobbyWallGrid';
 import Home3LiveEvents from './Home3LiveEvents';
@@ -22,6 +23,8 @@ import HomeLobbyVideoWall from './HomeLobbyVideoWall';
 import { enforceRouteOwnership } from '@/lib/routes/TmiVisualRouteMap';
 import { getVisualSlot } from '@/lib/visuals/TmiVisualSlotRegistry';
 import LiveMediaWall from '@/components/media/LiveMediaWall';
+import BroadcastDeckWall from '@/components/broadcast/BroadcastDeckWall';
+import { HOME3_DECK_SEQUENCE } from '@/lib/broadcast/BroadcastRotationEngine';
 
 export default function Home3LiveWorldSurface() {
   enforceRouteOwnership('/home/3');
@@ -92,6 +95,16 @@ export default function Home3LiveWorldSurface() {
             ))}
           </div>
         </div>
+      </section>
+
+      <section style={{ maxWidth: 1100, margin: '0 auto', padding: '0 24px 28px' }}>
+        <BroadcastDeckWall
+          sequence={HOME3_DECK_SEQUENCE}
+          title="LIVE WORLD"
+          accentColor="#00FFFF"
+          maxTiles={8}
+          intervalMs={13000}
+        />
       </section>
 
       <section style={{ maxWidth: 1100, margin: '0 auto', padding: '0 24px 12px' }}>

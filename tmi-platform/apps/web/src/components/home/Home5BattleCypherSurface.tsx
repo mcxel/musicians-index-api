@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
+import BroadcastDeckWall from "@/components/broadcast/BroadcastDeckWall";
+import { HOME5_DECK_SEQUENCE } from "@/lib/broadcast/BroadcastRotationEngine";
 import BattleBelt from "@/components/belts/BattleBelt";
 import LiveBelt from "@/components/belts/LiveBelt";
 import TmiBadgeLabel from "@/components/typography/TmiBadgeLabel";
@@ -385,6 +387,17 @@ export default function Home5BattleCypherSurface() {
             </Link>
           ))}
         </div>
+      </section>
+
+      {/* ── Broadcast Rotation Wall — battles, cyphers, challenges, games ── */}
+      <section style={{ maxWidth: 1100, margin: "0 auto", padding: "0 24px 28px" }}>
+        <BroadcastDeckWall
+          sequence={HOME5_DECK_SEQUENCE}
+          title="ARENA"
+          accentColor="#FF2DAA"
+          maxTiles={8}
+          intervalMs={13000}
+        />
       </section>
 
       {/* ── Audience Field ── */}
