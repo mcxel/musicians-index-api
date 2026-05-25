@@ -6,6 +6,7 @@ import LayerCanvas from '@/components/canvas/LayerCanvas';
 import type { TMILayer, TMILayerSessionState } from '@/types/layers';
 import { SEED_FEEDS } from '@/lib/broadcast/BroadcastRotationEngine';
 import type { BroadcastFeedItem } from '@/types/broadcast';
+import ChallengeYourSongCTA from '@/components/challenge/ChallengeYourSongCTA';
 
 const HOME1_LAYER_SESSION_KEY = 'TMI_OS_SessionState_Home1';
 const HOME1_ISSUE_ID = 'issue-001-neon';
@@ -989,6 +990,8 @@ export default function Home1CoverPage() {
           <h1 className="logo">The Musician's Index</h1>
           <div className="typewriter-line">{getTypewriterText(currentIssueLine, issueTypedChars)}</div>
         </header>
+
+        <ChallengeYourSongCTA variant="strip" />
 
         <div className="tmi-primary-cta-row">
           <Link className="join" href="/auth/signup">Join Free</Link>
