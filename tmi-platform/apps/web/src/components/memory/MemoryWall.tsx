@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useState } from "react";
 import type { MemoryItem } from "@/types/memory";
 import AvatarPocketReveal from "@/components/avatar/AvatarPocketReveal";
 import { useMemoryModalStore } from "@/lib/memory/useMemoryModalStore";
@@ -41,8 +41,9 @@ interface Props {
 }
 
 export default function MemoryWall({ items, title = "MEMORY WALL" }: Props) {
-  const { lastItem, open } = useMemoryModalStore();
+  const { last, open } = useMemoryModalStore();
   const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const lastMemory = last?.itemType === "memory" ? last.item : null;
 
   if (items.length === 0) {
     return (
@@ -57,9 +58,9 @@ export default function MemoryWall({ items, title = "MEMORY WALL" }: Props) {
     <div style={{ position: "relative" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
         <div style={{ fontSize: 8, letterSpacing: "0.4em", color: "#FF2DAA", fontWeight: 800 }}>{title}</div>
-        {lastItem && (
+        {last && (
           <button
-            onClick={() => open(lastItem)}
+            onClick={() => open(last)}
             style={{ background: "none", border: "1px solid rgba(255,45,170,0.25)", borderRadius: 6, padding: "4px 12px", color: "rgba(255,255,255,0.4)", fontSize: 9, cursor: "pointer", letterSpacing: "0.1em" }}
           >
             🔁 VIEW LAST
@@ -90,7 +91,7 @@ export default function MemoryWall({ items, title = "MEMORY WALL" }: Props) {
               }}
               onMouseEnter={() => setHoveredId(item.id)}
               onMouseLeave={() => setHoveredId(null)}
-              onClick={() => open(item)}
+              onClick={() => open({ itemType: "memory", item })}
             >
               {/* Polaroid-style card */}
               <div style={{
@@ -152,8 +153,8 @@ export default function MemoryWall({ items, title = "MEMORY WALL" }: Props) {
         })}
       </div>
 
-      {/* Replay button for last item */}
-      {lastItem && (
+      {/* Replay button for last memory item */}
+      {lastMemory && (
         <div style={{
           position: "fixed", bottom: 90, right: 18, zIndex: 900,
           background: "linear-gradient(135deg,#0a0818,#1a0a2e)",
@@ -162,11 +163,11 @@ export default function MemoryWall({ items, title = "MEMORY WALL" }: Props) {
           display: "flex", alignItems: "center", gap: 8,
           cursor: "pointer",
           boxShadow: "0 4px 20px rgba(0,0,0,0.5)",
-        }} onClick={() => open(lastItem)}>
-          <span style={{ fontSize: 18 }}>{KIND_ICON[lastItem.kind]}</span>
+        }} onClick={() => open({ itemType: "memory", item: lastMemory })}>
+          <span style={{ fontSize: 18 }}>{KIND_ICON[lastMemory.kind]}</span>
           <div>
             <p style={{ margin: 0, fontSize: 9, letterSpacing: "0.15em", color: "#FF2DAA", fontWeight: 800 }}>LAST ITEM</p>
-            <p style={{ margin: 0, fontSize: 11, color: "#fff", fontWeight: 700 }}>{lastItem.title}</p>
+            <p style={{ margin: 0, fontSize: 11, color: "#fff", fontWeight: 700 }}>{lastMemory.title}</p>
           </div>
           <span style={{ fontSize: 10, color: "rgba(255,255,255,0.3)" }}>🔁</span>
         </div>
