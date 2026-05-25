@@ -199,3 +199,59 @@ export function getFeedsByKind(kind: BroadcastFeedKind): BroadcastFeedItem[] {
 export function getHighXPFeeds(): BroadcastFeedItem[] {
   return SEED_FEEDS.filter((f) => f.isHighXP);
 }
+
+// ── Live-First Priority Feed ──────────────────────────────────────────────────
+// "Whoever is online owns the screen"
+// Priority: real live users → SEED_FEEDS live → SEED_FEEDS fallback
+// liveUsers: pass in from your real-time DB / presence layer when available
+
+export interface LiveUserSlot {
+  id: string;
+  slug: string;
+  name: string;
+  genre: string;
+  viewerCount?: number;
+  accentColor?: string;
+  avatarEmoji?: string;
+  roomHref?: string;
+}
+
+export function getPrioritizedFeeds(
+  liveUsers: LiveUserSlot[] = [],
+  maxTiles = 12,
+): BroadcastFeedItem[] {
+  // Convert real live users to feed items — they always go first
+  const userFeeds: BroadcastFeedItem[] = liveUsers.map((u) => ({
+    id: `live-user-${u.id}`,
+    kind: "live-camera" as const,
+    title: u.name,
+    subtitle: `${u.genre} · Live Now`,
+    href: u.roomHref ?? `/live/lobby`,
+    genre: u.genre,
+    status: "live" as const,
+    layoutMode: "single" as const,
+    mediaMode: "webrtc" as const,
+    accentColor: u.accentColor ?? "#FF2DAA",
+    avatarEmoji: u.avatarEmoji ?? "🎤",
+    viewerCount: u.viewerCount ?? 1,
+    shape: "octagon" as const,
+    isHighXP: true,
+  }));
+
+  // Fill remaining slots from SEED_FEEDS: live items first, then fallbacks
+  const seedLive     = SEED_FEEDS.filter((f) => f.status === "live");
+  const seedFallback = SEED_FEEDS.filter((f) => f.status !== "live");
+
+  const combined = [...userFeeds, ...seedLive, ...seedFallback];
+
+  // Deduplicate by id
+  const seen = new Set<string>();
+  const deduped = combined.filter((f) => {
+    if (seen.has(f.id)) return false;
+    seen.add(f.id);
+    return true;
+  });
+
+  return deduped.slice(0, maxTiles);
+}
+

@@ -57,9 +57,24 @@ export async function POST(req: NextRequest) {
       to,
       subject: `${name}, your TMI access is ready`,
       html: `<p>${name}, you’re in.</p><a href="${inviteUrl}">${inviteUrl}</a>`,
-      text: `${name}, you're in: ${inviteUrl}`,
+      text: `${name}, you’re in: ${inviteUrl}`,
       replyTo: senderDomain,
     });
+
+    // Dev-stub means no RESEND_API_KEY or SENDGRID_API_KEY is configured in Vercel env.
+    // Return a clear error so the admin knows emails are NOT being delivered.
+    if (result.devMode) {
+      return NextResponse.json(
+        {
+          success: false,
+          devMode: true,
+          error: "Email not sent — no provider API key configured. Add RESEND_API_KEY to Vercel environment variables.",
+          inviteUrl,
+          provider: "dev-stub",
+        },
+        { status: 503 }
+      );
+    }
 
     if (!result.success) {
       return NextResponse.json(

@@ -102,36 +102,50 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'successUrl and cancelUrl required' }, { status: 400 });
     }
 
-    // Prevent open redirects — successUrl/cancelUrl must be relative or on a trusted domain
     if (!isTrustedRedirectUrl(successUrl) || !isTrustedRedirectUrl(cancelUrl)) {
       console.error('[stripe/checkout] Rejected untrusted redirect URL', { successUrl, cancelUrl });
       return NextResponse.json({ error: 'Invalid redirect URL' }, { status: 400 });
     }
 
-    // Idempotency key: client may pass one, otherwise we derive from items hash
-    const idempotencyKey =
-      (req.headers.get("idempotency-key") ?? null) ||
-      `checkout_${Buffer.from(JSON.stringify(items)).toString("base64url").slice(0, 32)}_${Date.now()}`;
-
-    const apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'https://tmi-api.themusiciansindex.com';
-    const res = await fetch(`${apiBase}/stripe/checkout`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Idempotency-Key': idempotencyKey,
-      },
-      body: JSON.stringify({ items, successUrl, cancelUrl }),
-      signal: AbortSignal.timeout(CHECKOUT_TIMEOUT_MS),
-    });
-
-    if (!res.ok) {
-      const err = await res.text();
-      console.error(`[stripe/checkout] Upstream ${res.status}:`, err);
-      return NextResponse.json({ error: err }, { status: res.status });
+    const stripe = getStripe();
+    if (!stripe) {
+      return NextResponse.json({ error: 'Stripe not configured' }, { status: 503 });
     }
 
-    const data = await res.json();
-    return NextResponse.json(data);
+    // Try upstream API first (non-fatal — falls back to direct Stripe SDK)
+    const apiBase = process.env.NEXT_PUBLIC_API_URL;
+    if (apiBase) {
+      try {
+        const idempotencyKey =
+          (req.headers.get("idempotency-key") ?? null) ||
+          `checkout_${Buffer.from(JSON.stringify(items)).toString("base64url").slice(0, 32)}_${Date.now()}`;
+        const upstream = await fetch(`${apiBase}/stripe/checkout`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Idempotency-Key': idempotencyKey },
+          body: JSON.stringify({ items, successUrl, cancelUrl }),
+          signal: AbortSignal.timeout(CHECKOUT_TIMEOUT_MS),
+        });
+        if (upstream.ok) {
+          const data = await upstream.json();
+          return NextResponse.json(data);
+        }
+        console.error(`[stripe/checkout:POST] Upstream ${upstream.status} — falling back to direct SDK`);
+      } catch (upstreamErr) {
+        console.error('[stripe/checkout:POST] Upstream unreachable — falling back to direct SDK:', upstreamErr);
+      }
+    }
+
+    // Direct Stripe SDK fallback
+    const session = await stripe.checkout.sessions.create({
+      mode: items.length === 1 ? 'payment' : 'payment',
+      line_items: items.map(i => ({ price: i.priceId, quantity: i.quantity ?? 1 })),
+      success_url: successUrl,
+      cancel_url: cancelUrl,
+      allow_promotion_codes: true,
+    });
+
+    if (!session.url) throw new Error('No session URL from Stripe');
+    return NextResponse.json({ url: session.url });
   } catch (err) {
     if (err instanceof Error && err.name === 'TimeoutError') {
       console.error('[stripe/checkout] Upstream timeout');

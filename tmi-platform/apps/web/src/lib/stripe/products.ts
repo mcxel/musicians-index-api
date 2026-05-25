@@ -182,3 +182,49 @@ export const REVENUE_SPLITS = {
 } as const;
 
 export type StripeProductKey = keyof typeof STRIPE_PRODUCTS;
+
+// ── Price ID helpers ──────────────────────────────────────────────────────────
+// Real Stripe price IDs match the format price_1<alphanum>
+// Placeholder IDs are human-readable strings that will be rejected by Stripe
+
+export function isRealPriceId(priceId: string): boolean {
+  return /^price_1[A-Za-z0-9]{14,}$/.test(priceId);
+}
+
+// Returns only the products that have real Stripe price IDs (safe to checkout)
+export function getWorkingProducts(): Array<{
+  key: StripeProductKey;
+  name: string;
+  price: number;
+  priceId: string;
+  interval?: string;
+}> {
+  return (Object.entries(STRIPE_PRODUCTS) as [StripeProductKey, typeof STRIPE_PRODUCTS[StripeProductKey]][])
+    .filter(([, p]) => isRealPriceId(p.priceId))
+    .map(([key, p]) => ({
+      key,
+      name: p.name,
+      price: p.price,
+      priceId: p.priceId,
+      interval: 'interval' in p ? p.interval : undefined,
+    }));
+}
+
+// Returns all products with a flag indicating whether the price ID is active
+export function getProductAudit(): Array<{
+  key: StripeProductKey;
+  name: string;
+  price: number;
+  priceId: string;
+  isReal: boolean;
+}> {
+  return (Object.entries(STRIPE_PRODUCTS) as [StripeProductKey, typeof STRIPE_PRODUCTS[StripeProductKey]][])
+    .map(([key, p]) => ({
+      key,
+      name: p.name,
+      price: p.price,
+      priceId: p.priceId,
+      isReal: isRealPriceId(p.priceId),
+    }));
+}
+
