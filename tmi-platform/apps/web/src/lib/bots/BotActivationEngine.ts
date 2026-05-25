@@ -6,6 +6,7 @@
  */
 
 import type { BotRole, BotStatus } from "./botRegistry";
+import { emitEvent } from "@/lib/analytics/PersonaAnalyticsEngine";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -166,7 +167,6 @@ function _runPulse(): void {
     if (!bot.isActive) continue;
     const elapsed = now - bot.lastPulseMs;
     if (elapsed >= bot.intervalMs) {
-      // Simulate occasional degraded/restart state (2% chance)
       const rand = Math.random();
       let health: BotHealthStatus = "HEALTHY";
       if (rand < 0.01)       health = "DEGRADED";
@@ -177,6 +177,22 @@ function _runPulse(): void {
         lastPulseMs: now,
         health,
         errorCount: health !== "HEALTHY" ? bot.errorCount + 1 : bot.errorCount,
+      });
+
+      // Emit telemetry on every pulse — tag carries bot identity
+      emitEvent({
+        eventName:   "bot.pulse",
+        domain:      "bot",
+        userId:      `bot:${id}`,
+        activePersonaOverride: "admin",
+        meta: {
+          telemetryTag: bot.telemetryTag,
+          category: bot.category,
+          health,
+          intervalMs: bot.intervalMs,
+          errorCount: health !== "HEALTHY" ? bot.errorCount + 1 : bot.errorCount,
+          surface: bot.surface ?? "none",
+        },
       });
     }
   }

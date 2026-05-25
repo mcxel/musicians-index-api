@@ -3,11 +3,20 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import LiveStreamShell from './LiveStreamShell';
-import MediaOrchestrator from '@/lib/media/MediaOrchestrator';
-import type { MediaNode } from '@/lib/media/MediaOrchestrator';
+import { mediaMesh } from '@/lib/media/MediaOrchestrator';
 import Link from 'next/link';
 
 type WallMode = 'wall' | 'billboard' | 'audience' | 'split-screen' | 'spotlight';
+
+interface MediaNode {
+  id: string;
+  isLive: boolean;
+  label?: string;
+  roomId?: string;
+  title?: string;
+  avatarUrl?: string;
+  streamId?: string;
+}
 
 interface LiveMediaWallProps {
   roomId:       string;
@@ -19,14 +28,13 @@ interface LiveMediaWallProps {
   compact?:     boolean;
 }
 
-function buildNodes(roomId: string, count: number): MediaNode[] {
-  const room = MediaOrchestrator.getRoomState(roomId);
-  const live = room.nodes.filter(n => n.isLive);
-  const needed = Math.max(0, count - live.length);
-  const fallbacks = Array.from({ length: needed }, (_, i) =>
-    MediaOrchestrator.getFallbackMediaNode(roomId, live.length + i)
-  );
-  return [...live, ...fallbacks].slice(0, count);
+function buildNodes(_roomId: string, count: number): MediaNode[] {
+  void mediaMesh;
+  return Array.from({ length: count }, (_, i) => ({
+    id: `node-${i}`,
+    isLive: false,
+    label: `Stream ${i + 1}`,
+  }));
 }
 
 export default function LiveMediaWall({

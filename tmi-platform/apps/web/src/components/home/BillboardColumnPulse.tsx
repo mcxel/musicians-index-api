@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useSceneVisible } from "@/components/magazine/MagazinePageFlipRuntime";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Home2EditorialRail from "./Home2EditorialRail";
@@ -470,18 +471,126 @@ function BillboardColumn({ config, active }: { config: ColumnDef; active: boolea
 
 export default function BillboardColumnPulse() {
   const isVisible = useSceneVisible();
+  const deckArticles = [
+    "WHO TOOK THE CROWN THIS WEEK?",
+    "CYPHER ARENA OPEN FOR WILD-CARD ENTRY",
+    "BATTLE RING VOTES SPIKE 31% IN FINAL MINUTES",
+  ] as const;
+  const sponsorInserts = ["CROWN AUDIO", "BASSLINE ENERGY", "NEON THREADS"] as const;
 
   return (
     <div
       style={{
         minHeight: "100svh",
         background:
-          "radial-gradient(ellipse at 18% 24%, rgba(0,255,255,0.08) 0%, transparent 55%), radial-gradient(ellipse at 84% 76%, rgba(255,45,170,0.08) 0%, transparent 56%), linear-gradient(165deg, #050510 0%, #060718 48%, #040412 100%)",
+          "radial-gradient(ellipse at 18% 24%, rgba(0,255,255,0.14) 0%, transparent 55%), radial-gradient(ellipse at 84% 76%, rgba(255,45,170,0.14) 0%, transparent 56%), linear-gradient(165deg, #050510 0%, #060718 48%, #040412 100%)",
         display: "flex",
         flexDirection: "column",
         color: "#fff",
+        position: "relative",
+        overflow: "hidden",
       }}
     >
+      <div
+        aria-hidden
+        style={{
+          position: "absolute",
+          inset: 0,
+          pointerEvents: "none",
+          backgroundImage:
+            "radial-gradient(circle at 1px 1px, rgba(255,255,255,0.14) 1px, transparent 1.5px)",
+          backgroundSize: "14px 14px",
+          opacity: 0.14,
+          mixBlendMode: "soft-light",
+        }}
+      />
+
+      {/* ── Editorial spread header — no card grid, collage layout ── */}
+      <section
+        style={{
+          position: "relative",
+          zIndex: 2,
+          overflow: "hidden",
+          background: "linear-gradient(145deg, rgba(10,4,28,0.97), rgba(4,4,18,0.98))",
+          borderBottom: "1px solid rgba(255,215,0,0.18)",
+          minHeight: 148,
+        }}
+      >
+        {/* Neon wash behind the spread */}
+        <div aria-hidden style={{ position:"absolute", inset:0, pointerEvents:"none", background:"radial-gradient(ellipse 70% 90% at 10% 50%, rgba(170,45,255,0.18) 0%, transparent 60%), radial-gradient(ellipse 50% 80% at 90% 50%, rgba(0,255,255,0.1) 0%, transparent 60%)" }} />
+
+        {/* Cover story block — skewed left anchor */}
+        <div style={{
+          position: "absolute",
+          left: 0, top: 0, bottom: 0,
+          width: "clamp(190px, 38%, 340px)",
+          background: "linear-gradient(140deg, rgba(255,215,0,0.16) 0%, rgba(170,45,255,0.08) 100%)",
+          clipPath: "polygon(0 0, calc(100% - 28px) 0, 100% 50%, calc(100% - 28px) 100%, 0 100%)",
+          borderRight: "2px solid rgba(255,215,0,0.55)",
+          padding: "14px 52px 14px 16px",
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+        }}>
+          <div style={{ fontSize: 7, letterSpacing: "0.26em", fontWeight: 900, color: "#FFD700", marginBottom: 6, textTransform:"uppercase" }}>◆ COVER STORY</div>
+          <div style={{ fontSize: "clamp(14px,2.2vw,20px)", lineHeight: 1.0, fontWeight: 900, letterSpacing: "0.03em", textTransform:"uppercase" }}>
+            LIVE<br/>EDITION
+          </div>
+          <div style={{ marginTop: 6, fontSize: 8, color: "rgba(255,255,255,0.62)", fontStyle: "italic", lineHeight: 1.5 }}>
+            Rank volatility, crowd surge & who makes the jump tonight.
+          </div>
+        </div>
+
+        {/* Mid deck — stacked skewed headlines */}
+        <div style={{ position:"absolute", left:"34%", top:0, bottom:0, width:"clamp(180px,38%,300px)", display:"flex", flexDirection:"column", justifyContent:"center", gap:0 }}>
+          {deckArticles.map((title, idx) => (
+            <div
+              key={title}
+              style={{
+                padding: "8px 14px",
+                background: idx === 0
+                  ? "rgba(0,255,255,0.06)"
+                  : idx === 1
+                    ? "rgba(255,45,170,0.06)"
+                    : "rgba(255,215,0,0.05)",
+                borderLeft: `3px solid ${idx === 0 ? "#00FFFF" : idx === 1 ? "#FF2DAA" : "#FFD700"}`,
+                borderBottom: idx < deckArticles.length - 1 ? "1px solid rgba(255,255,255,0.06)" : "none",
+                fontSize: "clamp(8px, 1.1vw, 10px)",
+                fontWeight: 800,
+                letterSpacing: "0.07em",
+                color: idx === 0 ? "#00FFFF" : idx === 1 ? "#FF2DAA" : "#FFD700",
+                textTransform: "uppercase",
+                lineHeight: 1.3,
+              }}
+            >
+              {title}
+            </div>
+          ))}
+        </div>
+
+        {/* Right block — week issue stamp, overlapping */}
+        <div style={{
+          position: "absolute",
+          right: 12,
+          top: "50%",
+          transform: "translateY(-50%) rotate(-6deg)",
+          border: "2px solid rgba(255,215,0,0.5)",
+          background: "rgba(28,10,62,0.92)",
+          padding: "8px 14px",
+          clipPath: "polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px))",
+          textAlign: "center",
+          minWidth: 88,
+        }}>
+          <div style={{ fontSize: 7, fontWeight: 900, letterSpacing: "0.22em", color: "#FFD700" }}>
+            {(() => { const w = Math.floor(Date.now() / (7 * 24 * 60 * 60 * 1000)); return `WK ${(w % 52) + 1}`; })()}
+          </div>
+          <div style={{ fontSize: 11, fontWeight: 900, color: "#fff", letterSpacing: "0.08em" }}>ISSUE</div>
+          <div style={{ fontSize: 20, fontWeight: 900, color: "#FFD700", lineHeight: 1 }}>
+            {(() => { const w = Math.floor(Date.now() / (7 * 24 * 60 * 60 * 1000)); return (w % 52) + 1; })()}
+          </div>
+        </div>
+      </section>
+
       {/* ── Rankings viewport — fills first screen ── */}
       <div style={{ height: "100svh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
         <div
@@ -504,7 +613,7 @@ export default function BillboardColumnPulse() {
             </div>
           </div>
           <div style={{ fontSize: 7, color: "rgba(255,255,255,0.34)", letterSpacing: "0.12em", textTransform: "uppercase" }}>
-            Issue 47 · Week 28
+            {(() => { const w = Math.floor(Date.now() / (7 * 24 * 60 * 60 * 1000)); return `Issue ${(w % 52) + 1} · Week ${(w % 52) + 1}`; })()}
           </div>
         </div>
 
@@ -553,8 +662,118 @@ export default function BillboardColumnPulse() {
         </div>
       </div>
 
-      {/* ── Second section — below the fold ── */}
-      <div style={{ borderTop: "1px solid rgba(0,255,255,0.1)", background: "rgba(0,0,0,0.3)" }}>
+      {/* ── Second section — editorial collage below the fold ── */}
+      <div style={{ borderTop: "1px solid rgba(0,255,255,0.12)", background: "rgba(2,2,14,0.96)", position: "relative" }}>
+
+        {/* Editorial collage spread — no card grid */}
+        <section
+          style={{
+            position: "relative",
+            padding: "0",
+            borderBottom: "1px solid rgba(255,255,255,0.07)",
+            minHeight: 200,
+            overflow: "hidden",
+          }}
+        >
+          {/* Dark wash */}
+          <div aria-hidden style={{ position:"absolute", inset:0, background:"radial-gradient(ellipse 80% 100% at 20% 50%, rgba(170,45,255,0.12) 0%, transparent 55%), radial-gradient(ellipse 60% 100% at 85% 50%, rgba(0,255,255,0.08) 0%, transparent 55%)", pointerEvents:"none" }} />
+
+          {/* Dominant left strip — artist spotlight */}
+          <div style={{
+            position: "absolute",
+            left: 0, top: 0, bottom: 0,
+            width: "clamp(160px, 32%, 280px)",
+            background: "linear-gradient(160deg, rgba(170,45,255,0.22) 0%, rgba(0,255,255,0.08) 100%)",
+            borderRight: "2px solid rgba(170,45,255,0.44)",
+            padding: "16px 14px",
+            display: "flex",
+            flexDirection: "column",
+            gap: 8,
+          }}>
+            <div style={{ fontSize: 7, fontWeight: 900, letterSpacing: "0.22em", color: "#AA2DFF", textTransform:"uppercase" }}>◆ Artist Spotlight</div>
+            {/* Abstract portrait block */}
+            <div style={{
+              width: "100%",
+              aspectRatio: "4/3",
+              background: "linear-gradient(135deg, rgba(0,255,255,0.25) 0%, rgba(255,45,170,0.2) 50%, rgba(170,45,255,0.3) 100%)",
+              clipPath: "polygon(0 0, 100% 0, 92% 100%, 8% 100%)",
+              border: "1px solid rgba(255,255,255,0.18)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: 32,
+            }}>
+              🎤
+            </div>
+            <div style={{ fontSize: 14, fontWeight: 900, lineHeight: 1.1, letterSpacing: "0.02em" }}>Neon Verse</div>
+            <div style={{ fontSize: 8, color: "rgba(255,255,255,0.6)", lineHeight: 1.5, fontStyle:"italic" }}>From wildcard to crown contention in one rotation cycle.</div>
+          </div>
+
+          {/* Center — sponsor editorial features, stacked with skew */}
+          <div style={{ position:"absolute", left:"30%", right:"28%", top:0, bottom:0, display:"flex", flexDirection:"column", justifyContent:"center", gap:0 }}>
+            {sponsorInserts.map((sponsor, idx) => (
+              <div
+                key={sponsor}
+                style={{
+                  padding: "10px 16px",
+                  background: idx % 2 === 0 ? "rgba(255,215,0,0.06)" : "rgba(0,255,255,0.04)",
+                  borderLeft: `3px solid ${idx % 2 === 0 ? "#FFD700" : idx === 1 ? "#FF2DAA" : "#00FFFF"}`,
+                  borderBottom: idx < sponsorInserts.length - 1 ? "1px solid rgba(255,255,255,0.06)" : "none",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 3,
+                  transform: idx === 1 ? "translateX(8px)" : idx === 2 ? "translateX(-6px)" : "none",
+                }}
+              >
+                <div style={{ fontSize: 6, fontWeight: 900, letterSpacing: "0.22em", color: idx % 2 === 0 ? "#FFD700" : "#FF2DAA", textTransform:"uppercase" }}>SPONSORED FEATURE</div>
+                <div style={{ fontSize: 13, fontWeight: 900, lineHeight: 1.05, letterSpacing: "0.04em" }}>{sponsor}</div>
+                <div style={{ fontSize: 8, color: "rgba(255,255,255,0.45)", letterSpacing: "0.08em" }}>Ad Feature · Weekly Issue</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Right edge — vertical sponsor CTA strip */}
+          <div style={{
+            position: "absolute",
+            right: 0, top: 0, bottom: 0,
+            width: "clamp(90px, 26%, 200px)",
+            background: "linear-gradient(160deg, rgba(255,215,0,0.08), rgba(255,45,170,0.06))",
+            borderLeft: "1px solid rgba(255,215,0,0.2)",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "center",
+            alignItems: "center",
+            padding: "16px 10px",
+            gap: 10,
+          }}>
+            <div style={{ fontSize: 6, fontWeight: 900, letterSpacing: "0.22em", color: "#FFD700", textTransform:"uppercase", textAlign:"center" }}>YOUR BRAND<br/>IN THE INDEX</div>
+            <div style={{ fontSize: 10, fontWeight: 900, color: "#fff", textAlign:"center", lineHeight: 1.3 }}>Sponsor a<br/>performer</div>
+            <div style={{ fontSize: 8, color: "rgba(255,215,0,0.8)", fontWeight:700, textAlign:"center" }}>from $25/mo</div>
+            <Link
+              href="/hub/sponsor"
+              style={{
+                display: "block",
+                padding: "6px 12px",
+                background: "rgba(255,215,0,0.15)",
+                border: "1px solid rgba(255,215,0,0.5)",
+                color: "#FFD700",
+                fontSize: 7,
+                fontWeight: 900,
+                letterSpacing: "0.14em",
+                textDecoration: "none",
+                textTransform: "uppercase",
+                clipPath: "polygon(4px 0,100% 0,calc(100% - 4px) 100%,0 100%)",
+                textAlign: "center",
+              }}
+            >
+              Get Started →
+            </Link>
+          </div>
+
+          {/* Invisible height sentinel */}
+          <div style={{ height: 200, visibility: "hidden" }} />
+        </section>
+
         <Home2EditorialRail title="FEATURED EDITORIAL" accentColor="#00FFFF" />
         <Home2TrendingIssueRail />
       </div>

@@ -25,6 +25,7 @@ export interface Phase1InviteMessage {
 const SUBJECT = "You're invited to TMI — the room is live right now";
 
 function buildHtml(params: Phase1InviteParams): string {
+  const unsubscribeUrl = `https://themusiciansindex.com/unsubscribe?email=${encodeURIComponent(params.recipientEmail)}`;
   const note = params.personalNote
     ? `<p style="color:#00FFFF;font-style:italic;border-left:3px solid #00FFFF;padding-left:12px;margin:20px 0">${params.personalNote}</p>`
     : "";
@@ -90,7 +91,7 @@ function buildHtml(params: Phase1InviteParams): string {
       <div style="font-size:9px;color:rgba(255,255,255,0.2);line-height:1.8">
         TMI · The Musician's Index · BerntoutGlobal LLC<br>
         You received this because you're part of the first wave.<br>
-        <a href="#" style="color:rgba(255,255,255,0.2);text-decoration:none">Unsubscribe</a>
+        <a href="${unsubscribeUrl}" style="color:rgba(255,255,255,0.2);text-decoration:none">Unsubscribe</a>
       </div>
     </div>
 

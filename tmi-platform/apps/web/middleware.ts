@@ -22,6 +22,19 @@ const AUTH_WHITELIST = [
   '/support/account-recovery',
 ];
 
+// These paths are always reachable regardless of platform visibility
+const VISIBILITY_WHITELIST = [
+  '/coming-soon',
+  '/auth',
+  '/api/auth',
+  '/health',
+  '/support',
+  '/api/admin',
+  '/admin',
+  '/_next',
+  '/favicon.ico',
+];
+
 function matchesAny(pathname: string, prefixes: string[]): boolean {
   return prefixes.some((p) => pathname === p || pathname.startsWith(p + '/'));
 }
@@ -95,6 +108,22 @@ export function middleware(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid redirect target' }, { status: 400 });
   }
 
+  // ── Visibility gate ─────────────────────────────────────────────────────────
+  // tmi_visibility cookie is set by /api/admin/overseer when flags change.
+  // Default: allow (cookie absent = site has never been locked down).
+  const visibility = req.cookies.get('tmi_visibility')?.value ?? 'public';
+  if (visibility === 'private' && !matchesAny(pathname, VISIBILITY_WHITELIST)) {
+    const role = (req.cookies.get('tmi_role')?.value ?? '').toUpperCase();
+    const isAdminUser = role === 'ADMIN' || role === 'STAFF';
+    if (!isAdminUser) {
+      if (pathname.startsWith('/api/')) {
+        return NextResponse.json({ error: 'Platform not yet public', code: 'PRIVATE_MODE' }, { status: 503 });
+      }
+      return NextResponse.redirect(new URL('/coming-soon', req.url), 307);
+    }
+  }
+  // ───────────────────────────────────────────────────────────────────────────
+
   if (matchesAny(pathname, AUTH_WHITELIST)) {
     return NextResponse.next();
   }
@@ -136,20 +165,6 @@ export function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
-    '/hub/:path*',
-    '/dashboard/:path*',
-    '/admin/:path*',
-    '/api/admin/:path*',
-    '/api/payments/:path*',
-    '/api/rewards/:path*',
-    '/api/tickets/:path*',
-    '/api/learning/:path*',
-    '/api/recovery/:path*',
-    '/api/visuals/:path*',
-    '/api/promos/:path*',
-    '/api/stripe/:path*',
-    '/account/recovery',
-    '/auth/login',
-    '/support/account-recovery/:path*',
+    '/((?!_next/static|_next/image|favicon\\.ico).*)',
   ],
 };

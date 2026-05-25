@@ -4,6 +4,8 @@ import { ImageSlotWrapper } from '@/components/visual-enforcement';
 
 import { type ReactNode } from "react";
 import Link from "next/link";
+import type { SponsorSlot } from "@/components/performer/DynamicRadialAura";
+import PerformerAvatarAura from "@/components/performer/PerformerAvatarAura";
 
 interface PerformerProfileShellProps {
   displayName: string;
@@ -16,6 +18,8 @@ interface PerformerProfileShellProps {
   battleRecord?: { wins: number; losses: number };
   articleRoute?: string;
   previewWindow?: ReactNode;
+  /** Active sponsors shown orbiting the avatar via DynamicRadialAura */
+  sponsorAura?: SponsorSlot[];
 }
 
 const ACCENT = "#FF2DAA";
@@ -31,6 +35,7 @@ export default function PerformerProfileShell({
   battleRecord,
   articleRoute,
   previewWindow,
+  sponsorAura = [],
 }: PerformerProfileShellProps) {
   return (
     <div
@@ -55,19 +60,26 @@ export default function PerformerProfileShell({
           backdropFilter: "blur(12px)",
         }}
       >
-        <Link
-          href="/performers"
-          style={{
-            fontSize: 8,
-            fontWeight: 800,
-            letterSpacing: "0.18em",
-            color: "rgba(255,255,255,0.3)",
-            textTransform: "uppercase",
-            textDecoration: "none",
-          }}
-        >
-          ← Performers
-        </Link>
+        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+          <Link
+            href="/home/1"
+            style={{
+              fontSize: 8, fontWeight: 800, letterSpacing: "0.18em",
+              color: "rgba(255,45,170,0.5)", textTransform: "uppercase", textDecoration: "none",
+            }}
+          >
+            ⌂ HOME
+          </Link>
+          <Link
+            href="/performers"
+            style={{
+              fontSize: 8, fontWeight: 800, letterSpacing: "0.18em",
+              color: "rgba(255,255,255,0.3)", textTransform: "uppercase", textDecoration: "none",
+            }}
+          >
+            ← PERFORMERS
+          </Link>
+        </div>
         <span
           style={{
             fontSize: 7,
@@ -95,29 +107,11 @@ export default function PerformerProfileShell({
         }}
       >
         <div style={{ display: "flex", alignItems: "flex-start", gap: 20 }}>
-          <div
-            style={{
-              width: 72,
-              height: 72,
-              borderRadius: "50%",
-              border: `2px solid ${ACCENT}50`,
-              background: `${ACCENT}14`,
-              overflow: "hidden",
-              flexShrink: 0,
-              boxShadow: `0 0 20px ${ACCENT}18`,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: 28,
-            }}
-          >
-            {avatarUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <ImageSlotWrapper imageId="img-x8acg7" roomId="runtime-surface" priority="normal" className="w-full h-full object-cover" altText="Content image" containerStyle={{ width: '100%', height: '100%' }} />
-            ) : (
-              "🎭"
-            )}
-          </div>
+          <PerformerAvatarAura
+            sponsors={sponsorAura}
+            avatarUrl={avatarUrl}
+            accentColor={ACCENT}
+          />
 
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>

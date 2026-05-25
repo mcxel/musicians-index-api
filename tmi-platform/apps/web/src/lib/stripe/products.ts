@@ -129,6 +129,20 @@ export const STRIPE_PRODUCTS = {
     price:     1500, // $15
     interval:  "one_time" as const,
   },
+  QUICK_VIDEO_CHAT: {
+    productId: "prod_quick_video_chat",
+    priceId:   "price_quick_video_chat",
+    name:      "Quick Video Chat (15 min)",
+    price:     800,  // $8
+    interval:  "one_time" as const,
+  },
+  BACKSTAGE_PASS: {
+    productId: "prod_backstage_pass",
+    priceId:   "price_backstage_pass",
+    name:      "Digital Backstage Pass",
+    price:     1500, // $15
+    interval:  "one_time" as const,
+  },
 
   // ── Fan Club ──────────────────────────────────────────────────────────────
   FAN_CLUB_BRONZE:   { productId:"prod_fan_club", priceId:"price_fan_club_bronze",  name:"Fan Club Bronze",  price: 299,  interval:"month" as const },
@@ -163,6 +177,8 @@ export const REVENUE_SPLITS = {
   FAN_CLUB:         { platform: 0.15, artist: 0.85 },
   MEET_GREET:       { platform: 0.20, artist: 0.80 },
   SHOUTOUT:         { platform: 0.20, artist: 0.80 },
+  QUICK_VIDEO_CHAT: { platform: 0.20, artist: 0.80 },
+  BACKSTAGE_PASS:   { platform: 0.20, artist: 0.80 },
 } as const;
 
 export type StripeProductKey = keyof typeof STRIPE_PRODUCTS;

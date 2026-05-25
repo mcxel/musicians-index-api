@@ -14,7 +14,7 @@ const CREDIT_AMOUNTS: Record<string, number> = {
   price_vip_monthly: 10000,
 };
 
-type State = 'loading' | 'granted' | 'duplicate' | 'pass' | 'unknown';
+type State = 'loading' | 'granted' | 'duplicate' | 'pass' | 'sponsor' | 'unknown';
 
 export default function PaymentSuccessPage() {
   const params = useSearchParams();
@@ -35,6 +35,22 @@ export default function PaymentSuccessPage() {
     // Idempotency: only grant once per session ID
     const grantKey = `tmi_paid_${sessionId}`;
     if (localStorage.getItem(grantKey)) { setStatus('duplicate'); return; }
+
+    // Battle sponsor path — auto-attach via API, no credit grant
+    const battleId    = params?.get('battleId');
+    const sponsorTier = params?.get('sponsorTier') ?? 'FEATURED';
+    const sponsorName = params?.get('sponsorName') ?? 'Battle Sponsor';
+    if (battleId) {
+      fetch('/api/sponsor/attach', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ battleId, tier: sponsorTier, sponsorName }),
+      }).finally(() => {
+        localStorage.setItem(grantKey, '1');
+        setStatus('sponsor');
+      });
+      return;
+    }
 
     const credits = CREDIT_AMOUNTS[priceId] ?? 0;
 
@@ -77,7 +93,7 @@ export default function PaymentSuccessPage() {
   }, [sessionId, priceId, mode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const colors: Record<State, string> = {
-    loading: '#888', granted: '#00FF88', duplicate: '#FFD700', pass: '#AA2DFF', unknown: '#FF4444',
+    loading: '#888', granted: '#00FF88', duplicate: '#FFD700', pass: '#AA2DFF', sponsor: '#FFD700', unknown: '#FF4444',
   };
   const accent = colors[status] ?? '#888';
 
@@ -85,7 +101,7 @@ export default function PaymentSuccessPage() {
     <main style={{ minHeight: '100vh', background: '#050510', color: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 24px' }}>
       <div style={{ maxWidth: 480, width: '100%', textAlign: 'center' }}>
         <div style={{ fontSize: 56, marginBottom: 16 }}>
-          {status === 'loading' ? '⏳' : status === 'granted' ? '🎉' : status === 'pass' ? '🎸' : status === 'duplicate' ? '✅' : '❓'}
+          {status === 'loading' ? '⏳' : status === 'granted' ? '🎉' : status === 'pass' ? '🎸' : status === 'sponsor' ? '🤝' : status === 'duplicate' ? '✅' : '❓'}
         </div>
 
         {status === 'loading' && (
@@ -108,13 +124,26 @@ export default function PaymentSuccessPage() {
           </>
         )}
 
-        {status === 'pass' && (
-          <>
+        {status === 'pass' && (          <>
             <div style={{ fontSize: 9, letterSpacing: '0.4em', color: accent, fontWeight: 800, marginBottom: 10 }}>SUBSCRIPTION ACTIVE</div>
             <h1 style={{ fontSize: 22, fontWeight: 900, marginBottom: 8 }}>Season Pass Unlocked</h1>
             <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', marginBottom: 28 }}>
               Your pass is active. Perks and credits will appear in your account within a few minutes.
             </p>
+          </>
+        )}
+
+        {status === 'sponsor' && (
+          <>
+            <div style={{ fontSize: 9, letterSpacing: '0.4em', color: '#FFD700', fontWeight: 800, marginBottom: 10 }}>SPONSORSHIP CONFIRMED</div>
+            <h1 style={{ fontSize: 22, fontWeight: 900, marginBottom: 8 }}>Battle Sponsorship Live!</h1>
+            <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', marginBottom: 24 }}>
+              Your brand is now active in the battle overlay. Logo and prize boost appear within 60 seconds.
+            </p>
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 28 }}>
+              <a href="/sponsor/battles" style={{ padding: '10px 22px', fontSize: 9, fontWeight: 900, letterSpacing: '0.12em', color: '#050510', background: '#FFD700', borderRadius: 8, textDecoration: 'none' }}>SPONSOR ANOTHER</a>
+              <a href="/hub/sponsor" style={{ padding: '10px 22px', fontSize: 9, fontWeight: 900, letterSpacing: '0.12em', color: '#FFD700', border: '1px solid rgba(255,215,0,0.4)', borderRadius: 8, textDecoration: 'none' }}>SPONSOR HUB</a>
+            </div>
           </>
         )}
 
@@ -143,7 +172,15 @@ export default function PaymentSuccessPage() {
           <Link href="/season-pass" style={{ padding: '10px 22px', fontSize: 9, fontWeight: 900, letterSpacing: '0.12em', color: accent, background: 'transparent', border: `1px solid ${accent}`, borderRadius: 8, textDecoration: 'none' }}>
             SEASON PASS
           </Link>
+          <Link href="/home/1" style={{ padding: '10px 22px', fontSize: 9, fontWeight: 900, letterSpacing: '0.12em', color: 'rgba(255,255,255,0.35)', background: 'transparent', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, textDecoration: 'none' }}>
+            ⌂ HOME
+          </Link>
         </div>
+        {sessionId && (
+          <div style={{ marginTop: 24, fontSize: 9, color: 'rgba(255,255,255,0.15)', fontFamily: 'monospace' }}>
+            Session: {sessionId.slice(0, 18)}…
+          </div>
+        )}
       </div>
     </main>
   );

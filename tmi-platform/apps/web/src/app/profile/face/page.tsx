@@ -16,6 +16,14 @@ export default function ProfileFacePage() {
   const [confirm, setConfirm] = useState<'delete' | 'revoke' | null>(null);
   const [actionDone, setActionDone] = useState<string | null>(null);
 
+  function goBackSafe() {
+    if (typeof window !== 'undefined' && window.history.length > 2) {
+      router.back();
+      return;
+    }
+    router.push('/home/1');
+  }
+
   async function handleRevoke() {
     const { revokeFaceLogin } = await import('@/lib/face/faceLoginEngine');
     await revokeFaceLogin('me');
@@ -41,7 +49,7 @@ export default function ProfileFacePage() {
           {/* Header */}
           <div style={{ marginBottom: 32 }}>
             <button
-              onClick={() => router.back()}
+              onClick={goBackSafe}
               style={{ background: 'none', border: 'none', color: '#555', fontSize: 13, cursor: 'pointer', marginBottom: 16 }}
             >
               ← Back
