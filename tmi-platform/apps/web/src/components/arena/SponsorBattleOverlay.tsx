@@ -55,6 +55,33 @@ export default function SponsorBattleOverlay({ battleId, accentColor = '#FFD700'
     });
   }, [battleId]);
 
+  // Poll server for real sponsors paid via Stripe, hydrate client pool
+  useEffect(() => {
+    async function fetchAndHydrate() {
+      try {
+        const res = await fetch(`/api/sponsor/attach?battleId=${encodeURIComponent(battleId)}`);
+        if (!res.ok) return;
+        const data = await res.json() as { sponsors?: { id:string; name:string; category:'local'|'major'; logo?:string; prizePool:number; offerings: typeof DEMO_SPONSORS[0]['offerings']; activeContests:string[] }[] };
+        if (!data.sponsors) return;
+        let changed = false;
+        data.sponsors.forEach(s => {
+          const existing = sponsorContestPool.getAllSponsors().find(x => x.id === s.id);
+          if (!existing) {
+            const full = { ...s, logo: s.logo ?? '🤝', color: '#FFD700' };
+            if (s.category === 'major') sponsorContestPool.addMajorSponsor(full);
+            else sponsorContestPool.addLocalSponsor(full);
+            sponsorContestPool.registerForContest(s.id, battleId);
+            changed = true;
+          }
+        });
+        if (changed) setTick(t => t + 1);
+      } catch { /* silent */ }
+    }
+    fetchAndHydrate();
+    const id = setInterval(fetchAndHydrate, 30_000);
+    return () => clearInterval(id);
+  }, [battleId]);
+
   useEffect(() => {
     const id = setInterval(() => setTick(t => t + 1), 4000);
     return () => clearInterval(id);

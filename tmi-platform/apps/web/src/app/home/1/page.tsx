@@ -24,7 +24,8 @@ import BillboardColumnPulse from '../../../components/home/BillboardColumnPulse'
 import Home3LiveWorldSurface from '@/components/home/Home3LiveWorldSurface';
 import Home4SponsorSurface from '@/components/home/Home4SponsorSurface';
 import Home5BattleCypherSurface from '@/components/home/Home5BattleCypherSurface';
-import Home1OrbitalMagazine from '@/components/home/Home1OrbitalMagazine';
+import Home1CoverPage from '@/components/home/Home1CoverPage';
+import BillboardLiveWall from '@/components/media/BillboardLiveWall';
 
 // ─── Scene atmosphere constants ───────────────────────────────────────────────
 
@@ -88,16 +89,39 @@ const ATMO = {
 export const MAGAZINE_FULL_ROTATION_SCENES = [
   {
     id: 'home-1' as const,
-    durationMs: 30000,
-    content: <Home1OrbitalMagazine />,
+    durationMs: 60000,
+    content: <Home1CoverPage />,
   },
   {
     id: 'home-1-2' as const,
-    durationMs: 30000,
+    durationMs: 60000,
     content: (
-      // BillboardColumnPulse manages its own atmosphere; overflowY allows second section below fold
-      <main role="main" tabIndex={-1} data-telemetry="home.1-2.render" style={{ minHeight: '100%', overflowY: 'auto' }}>
-        <BillboardColumnPulse />
+      <main role="main" tabIndex={-1} data-telemetry="home.1-2.render" style={{ position: 'relative', minHeight: '100%', overflowX: 'hidden', overflowY: 'auto', background: '#00C8FF', filter: 'contrast(1.12) saturate(1.18)' }}>
+        {/* CMYK ink stripe */}
+        <div style={{ display: 'flex', height: 6, position: 'sticky', top: 0, zIndex: 50 }}>
+          {(['#FF2DAA','#FFD700','#AA2DFF','#00FF88','#FF4400'] as const).map((c) => <div key={c} style={{ flex: 1, background: c }} />)}
+        </div>
+        {/* Halftone underlay */}
+        <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(circle, rgba(0,0,30,0.2) 1px, transparent 1px)', backgroundSize: '10px 10px', mixBlendMode: 'multiply', pointerEvents: 'none', zIndex: 0 }} />
+        {/* Section header */}
+        <div style={{ background: '#050310', padding: '10px 20px', borderBottom: '4px solid #FFD700', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', position: 'relative', zIndex: 10 }}>
+          <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: '0.35em', color: '#00C8FF', fontFamily: 'Inter,sans-serif' }}>THE MUSICIAN&apos;S INDEX</div>
+          <div style={{ flex: 1, height: 2, background: '#FFD700', minWidth: 20 }} />
+          <div style={{ fontSize: 'clamp(18px,3.5vw,28px)', fontFamily: "'Bebas Neue',Impact,sans-serif", color: '#FFD700', letterSpacing: '0.04em', textShadow: '2px 2px 0 #050310', whiteSpace: 'nowrap' }}>LIVE RANKINGS &amp; NOW PLAYING</div>
+          <div style={{ flex: 1, height: 2, background: '#FFD700', minWidth: 20 }} />
+        </div>
+        <div style={{ position: 'relative', zIndex: 10 }}>
+          <BillboardColumnPulse />
+          <div style={{ background: '#fff', borderTop: '3px solid #050310', borderBottom: '3px solid #050310', padding: '20px 20px 28px', maxWidth: 1100, margin: '0 auto' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+              <div style={{ width: 6, height: 24, background: '#FF0044' }} />
+              <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: '0.3em', color: '#050310', fontFamily: 'Inter,sans-serif' }}>🔴 LIVE NOW — PERFORMING TONIGHT</div>
+              <div style={{ flex: 1, height: 2, background: '#050310' }} />
+            </div>
+            <BillboardLiveWall mode="home" maxTiles={12} title="LIVE NOW" />
+          </div>
+        </div>
+        <div aria-hidden="true" style={SCANLINE} />
       </main>
     ),
   },

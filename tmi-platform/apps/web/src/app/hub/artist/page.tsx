@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { PersonaSwitcher } from '@/components/hud/PersonaSwitcher';
+import { HubBackNav } from '@/components/nav/HubBackNav';
 import TMIVideoMonitor from '@/components/hud/TMIVideoMonitor';
 import ArtistStats from '@/components/artist/ArtistStats';
 import ArtistCurtainShell, { type ArtistShowState, nextShowState } from '@/components/artist/ArtistCurtainShell';
@@ -12,6 +13,7 @@ import ArtistShowRail from '@/components/artist/ArtistShowRail';
 import ArtistBackstageRail from '@/components/artist/ArtistBackstageRail';
 import ArtistPulseRail from '@/components/artist/ArtistPulseRail';
 import ArtistTipRail from '@/components/artist/ArtistTipRail';
+import LiveMediaWall from '@/components/media/LiveMediaWall';
 
 const ARTIST_SLUG = 'demo-artist';
 
@@ -36,8 +38,10 @@ export default function ArtistHubPage() {
     <div style={{ fontFamily: "'Inter', sans-serif", background: '#07071a', color: '#e2e8f0', minHeight: '100vh' }}>
 
       {/* Top nav strip */}
-      <div style={{ background: 'rgba(0,0,0,0.6)', borderBottom: '1px solid rgba(0,255,255,0.12)', padding: '12px 24px', display: 'flex', alignItems: 'center', gap: 24, overflowX: 'auto' }}>
+      <div style={{ background: 'rgba(0,0,0,0.6)', borderBottom: '1px solid rgba(0,255,255,0.12)', padding: '10px 24px', display: 'flex', alignItems: 'center', gap: 16, overflowX: 'auto' }}>
+        <HubBackNav accentColor="#00FFFF" />
         <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.2em', color: '#00FFFF', textTransform: 'uppercase', flexShrink: 0 }}>Artist Hub</span>
+        <div style={{ width: 1, height: 16, background: 'rgba(255,255,255,0.1)', flexShrink: 0 }} />
         {NAV_LINKS.map(link => (
           <Link key={link.href} href={link.href} style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)', textDecoration: 'none', whiteSpace: 'nowrap', flexShrink: 0 }}>
             {link.label}
@@ -154,6 +158,17 @@ export default function ArtistHubPage() {
             </div>
           </div>
         </div>
+      </div>
+      <div style={{ maxWidth: 1400, margin: '0 auto', padding: '0 24px 40px' }}>
+        <LiveMediaWall
+          roomId="artist-hub"
+          title="LIVE ROOMS — HAPPENING NOW"
+          mode="spotlight"
+          nodeCount={6}
+          accentColor="#00FFFF"
+          enterHref="/live/rooms"
+          compact={false}
+        />
       </div>
       <TMIVideoMonitor label="ARTIST CAM" position="bottom-right" />
     </div>

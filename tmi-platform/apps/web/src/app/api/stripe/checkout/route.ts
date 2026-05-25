@@ -36,13 +36,29 @@ export async function GET(req: NextRequest) {
 
   const resolvedPriceId = resolveRegionalPriceId(priceId, req);
 
+  // Battle sponsor passthrough params
+  const battleId    = searchParams.get('battleId');
+  const sponsorTier = searchParams.get('sponsorTier');
+  const sponsorName = searchParams.get('sponsorName') ?? 'Battle Sponsor';
+
+  // Build success URL — include sponsor params so payment-success can auto-attach
+  let successUrl = `${origin}/payment-success?session_id={CHECKOUT_SESSION_ID}&priceId=${resolvedPriceId}&mode=${mode}`;
+  if (battleId) {
+    successUrl += `&battleId=${encodeURIComponent(battleId)}`;
+    if (sponsorTier) successUrl += `&sponsorTier=${encodeURIComponent(sponsorTier)}&sponsorName=${encodeURIComponent(sponsorName)}`;
+  }
+  const cancelUrl = battleId ? `${origin}/sponsor/battles?notice=checkout-cancelled` : `${origin}/season-pass`;
+
   try {
     const session = await stripe.checkout.sessions.create({
       mode,
       line_items: [{ price: resolvedPriceId, quantity: 1 }],
-      success_url: `${origin}/payment-success?session_id={CHECKOUT_SESSION_ID}&priceId=${resolvedPriceId}&mode=${mode}`,
-      cancel_url: `${origin}/season-pass`,
+      success_url: successUrl,
+      cancel_url:  cancelUrl,
       allow_promotion_codes: true,
+      ...(battleId && {
+        metadata: { battleId, sponsorTier: sponsorTier ?? 'FEATURED', sponsorName, type: 'battle-sponsor' },
+      }),
     });
     if (!session.url) throw new Error('No session URL returned');
     return NextResponse.redirect(session.url, 303);

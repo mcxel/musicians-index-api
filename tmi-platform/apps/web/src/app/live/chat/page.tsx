@@ -3,6 +3,13 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { enforceAdultTeenContactBlock } from "@/lib/safety/AdultTeenContactBlocker";
 import type { SafetyAgeClass } from "@/lib/safety/TeenMessagingPolicyEngine";
+import {
+  FIRST_BATTLE_SCRIPT_EMERGENCY,
+  FIRST_BATTLE_SCRIPT_STEPS,
+  getBattleScriptStepAtMinute,
+  type BattleScriptEmergency,
+  type BattleScriptPhase,
+} from "@/lib/hosts/FirstBattleScriptEngine";
 
 type ChatMessage = {
   id: string;
@@ -26,6 +33,8 @@ let chatLog: ChatMessage[] = [
 
 function genId() { return `msg-${Date.now()}-${Math.floor(Math.random() * 9000 + 1000)}`; }
 
+const SCRIPT_MINUTE_MS = 30_000;
+
 export default function LiveChatPage() {
   const [messages, setMessages] = useState<ChatMessage[]>(chatLog);
   const [venueSlug, setVenueSlug] = useState("main-stage");
@@ -35,11 +44,74 @@ export default function LiveChatPage() {
   const [actorAgeClass, setActorAgeClass] = useState<SafetyAgeClass>("unknown");
   const [targetAgeClass, setTargetAgeClass] = useState<SafetyAgeClass>("unknown");
   const [safetyReason, setSafetyReason] = useState<string | null>(null);
+  const [scriptRunning, setScriptRunning] = useState(false);
+  const [scriptStartedAt, setScriptStartedAt] = useState<number | null>(null);
+  const [scriptMinute, setScriptMinute] = useState(0);
+  const [scriptPhase, setScriptPhase] = useState<BattleScriptPhase>("open-room");
   const bottomRef = useRef<HTMLDivElement>(null);
+  const firedPhasesRef = useRef(new Set<BattleScriptPhase>());
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  function pushHostLine(line: string) {
+    const hostMsg: ChatMessage = {
+      id: genId(),
+      userId: "host-script-engine",
+      displayName: "Arena Host",
+      text: line,
+      timestamp: Date.now(),
+      role: "host",
+    };
+    chatLog = [...chatLog, hostMsg];
+    setMessages([...chatLog]);
+  }
+
+  function runFirstBattleScript() {
+    if (scriptRunning) return;
+    firedPhasesRef.current = new Set();
+    setScriptRunning(true);
+    setScriptMinute(0);
+    setScriptPhase("open-room");
+    setScriptStartedAt(Date.now());
+    const opening = FIRST_BATTLE_SCRIPT_STEPS[0]!;
+    firedPhasesRef.current.add(opening.id);
+    opening.lines.forEach(pushHostLine);
+  }
+
+  function stopFirstBattleScript() {
+    setScriptRunning(false);
+    setScriptStartedAt(null);
+  }
+
+  function fireEmergencyCue(kind: BattleScriptEmergency) {
+    pushHostLine(FIRST_BATTLE_SCRIPT_EMERGENCY[kind]);
+  }
+
+  useEffect(() => {
+    if (!scriptRunning || scriptStartedAt === null) return;
+
+    const id = window.setInterval(() => {
+      const elapsedMs = Date.now() - scriptStartedAt;
+      const nextMinute = Math.floor(elapsedMs / SCRIPT_MINUTE_MS);
+      setScriptMinute(nextMinute);
+
+      const step = getBattleScriptStepAtMinute(nextMinute);
+      setScriptPhase(step.id);
+
+      if (!firedPhasesRef.current.has(step.id)) {
+        firedPhasesRef.current.add(step.id);
+        step.lines.forEach(pushHostLine);
+      }
+
+      if (nextMinute >= 15) {
+        stopFirstBattleScript();
+      }
+    }, 1000);
+
+    return () => window.clearInterval(id);
+  }, [scriptRunning, scriptStartedAt]);
 
   function sendMessage(e: React.FormEvent) {
     e.preventDefault();
@@ -98,6 +170,67 @@ export default function LiveChatPage() {
               <option key={v} value={v}>{v}</option>
             ))}
           </select>
+        </div>
+        <div style={{ marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+          <button
+            type="button"
+            onClick={runFirstBattleScript}
+            disabled={scriptRunning}
+            style={{
+              border: "1px solid rgba(255,45,170,0.45)",
+              background: scriptRunning ? "rgba(255,45,170,0.2)" : "rgba(255,45,170,0.12)",
+              color: "#FF2DAA",
+              padding: "7px 12px",
+              borderRadius: 8,
+              fontSize: 12,
+              fontWeight: 800,
+              cursor: scriptRunning ? "not-allowed" : "pointer",
+            }}
+          >
+            Run First Battle Script
+          </button>
+          <button
+            type="button"
+            onClick={stopFirstBattleScript}
+            disabled={!scriptRunning}
+            style={{
+              border: "1px solid rgba(255,255,255,0.2)",
+              background: "rgba(255,255,255,0.06)",
+              color: "#ddd",
+              padding: "7px 12px",
+              borderRadius: 8,
+              fontSize: 12,
+              fontWeight: 700,
+              cursor: !scriptRunning ? "not-allowed" : "pointer",
+            }}
+          >
+            Stop Script
+          </button>
+          <span style={{ fontSize: 11, color: "#999" }}>
+            {scriptRunning ? `Live Ops: minute ${scriptMinute} (${scriptPhase})` : "Live Ops: idle"}
+          </span>
+        </div>
+        <div style={{ marginTop: 8, display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {(Object.keys(FIRST_BATTLE_SCRIPT_EMERGENCY) as BattleScriptEmergency[]).map((kind) => (
+            <button
+              key={kind}
+              type="button"
+              onClick={() => fireEmergencyCue(kind)}
+              style={{
+                border: "1px solid rgba(255,215,0,0.35)",
+                background: "rgba(255,215,0,0.1)",
+                color: "#FFD700",
+                padding: "5px 10px",
+                borderRadius: 7,
+                fontSize: 11,
+                fontWeight: 700,
+                cursor: "pointer",
+                textTransform: "capitalize",
+              }}
+            >
+              Trigger {kind.replace("-", " ")}
+            </button>
+          ))}
         </div>
       </section>
 

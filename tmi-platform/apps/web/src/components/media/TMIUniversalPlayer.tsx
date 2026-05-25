@@ -109,6 +109,10 @@ export interface TMIUniversalPlayerProps {
   allowFullscreen?: boolean;
   allowPiP?:     boolean;
 
+  // ── Location
+  countryCode?:  string;   // ISO 3166-1 alpha-2 e.g. 'US', 'NG', 'GB' — auto-converts to flag emoji
+  countryFlag?:  string;   // raw flag emoji override e.g. '🇺🇸' (takes precedence over countryCode)
+
   // ── Callbacks
   onJoinCamera?: (stream: MediaStream) => void;
   onLeave?:      () => void;
@@ -146,6 +150,14 @@ const FRAME_COLORS: Record<FrameStyle, [string, string]> = {
   circuit:     ['#00FF88', '#00FFFF'],
   raw:         ['transparent', 'transparent'],
 };
+
+// ─── Country code → flag emoji ────────────────────────────────────────────────
+
+function codeToFlag(code: string): string {
+  return code.toUpperCase().split('').map(c =>
+    String.fromCodePoint(0x1F1E6 + c.charCodeAt(0) - 65)
+  ).join('');
+}
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -418,7 +430,10 @@ export default function TMIUniversalPlayer({
   onLeave,
   onClick,
   onEnded,
+  countryCode,
+  countryFlag,
 }: TMIUniversalPlayerProps) {
+  const flagEmoji = countryFlag ?? (countryCode ? codeToFlag(countryCode) : undefined);
   const videoRef     = useRef<HTMLVideoElement>(null);
   const streamRef    = useRef<MediaStream | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -747,6 +762,26 @@ export default function TMIUniversalPlayer({
         <div style={{ position: 'absolute', top: 3, left: 3, zIndex: 26, display: 'flex', alignItems: 'center', gap: 3, background: 'rgba(0,0,0,0.7)', borderRadius: 10, padding: '2px 5px' }}>
           <div style={{ width: 4, height: 4, borderRadius: '50%', background: badgeColor }} />
           <span style={{ fontSize: 6, fontWeight: 800, color: badgeColor, letterSpacing: '0.06em' }}>{badgeText}</span>
+        </div>
+      )}
+
+      {/* ── COUNTRY FLAG BADGE ─────────────────────────────── */}
+      {flagEmoji && (
+        <div style={{
+          position: 'absolute',
+          bottom: size === 'mini' ? 4 : 10,
+          right:  size === 'mini' ? 4 : 10,
+          zIndex: 28,
+          pointerEvents: 'none',
+          fontSize: size === 'mini' ? 10 : 14,
+          lineHeight: 1,
+          filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.85))',
+          background: 'rgba(0,0,0,0.55)',
+          borderRadius: 4,
+          padding: size === 'mini' ? '1px 2px' : '2px 4px',
+          backdropFilter: 'blur(4px)',
+        }}>
+          {flagEmoji}
         </div>
       )}
 
