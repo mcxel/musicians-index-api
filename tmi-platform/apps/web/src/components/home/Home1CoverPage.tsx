@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import LayerCanvas from '@/components/canvas/LayerCanvas';
 import type { TMILayer, TMILayerSessionState } from '@/types/layers';
+import { SEED_FEEDS } from '@/lib/broadcast/BroadcastRotationEngine';
+import type { BroadcastFeedItem } from '@/types/broadcast';
 
 const HOME1_LAYER_SESSION_KEY = 'TMI_OS_SessionState_Home1';
 const HOME1_ISSUE_ID = 'issue-001-neon';
@@ -53,6 +55,29 @@ const BROADCAST_DECKS = [
   { label: 'MAGAZINE FEATURES', icon: '📰', color: '#00C8FF', href: '/magazine', cta: 'READ INTERVIEW →' },
   { label: 'CHALLENGE YOUR SONG', icon: '🎵', color: '#39FF14', href: '/battles/new', cta: 'CHALLENGE NOW →' },
 ] as const;
+
+const GENRE_EMOJI: Record<string, string> = {
+  'Hip-Hop': '🎤', 'R&B': '🎵', 'EDM': '🎛️', 'Rap': '🔊',
+  'Soul': '🎶', 'Jazz': '🎺', 'Pop': '⭐', 'Gospel': '🙏',
+  'Dance': '💃', 'Comedy': '😂', 'Global': '🌍', 'Variety': '🎶',
+};
+
+const GENRE_ACCENT: Record<string, string> = {
+  'Hip-Hop': '#FF2DAA', 'R&B': '#AA2DFF', 'EDM': '#00FFFF', 'Rap': '#FFD700',
+  'Soul': '#FF6B35', 'Jazz': '#00FF88', 'Pop': '#FF2DAA', 'Gospel': '#39FF14',
+  'Dance': '#AA2DFF', 'Comedy': '#39FF14', 'Global': '#FF6B35', 'Variety': '#00FFFF',
+};
+
+function ctaLabel(kind: string): string {
+  const map: Record<string, string> = {
+    'battle': 'VOTE FOR WINNER →', 'cypher': 'ENTER CYPHER →',
+    'live-camera': 'WATCH LIVE →', 'magazine-feature': 'READ FULL STORY →',
+    'sponsor-billboard': 'SPONSOR ARTIST →', 'game-show': 'JOIN GAME →',
+    'concert': 'JOIN CONCERT →', 'challenge': 'SUBMIT NOW →',
+    'world-premiere': 'WATCH PREMIERE →', 'album-release': 'LISTEN NOW →',
+  };
+  return map[kind] ?? 'JOIN NOW →';
+}
 
 const DEFAULT_LAYERS: TMILayer[] = [
   {
@@ -210,6 +235,17 @@ export default function Home1CoverPage() {
     []
   );
   const currentIssueLine = issueLines[issueLineIndex] ?? issueLines[0] ?? '';
+
+  const liveCamFeeds = useMemo(
+    () => SEED_FEEDS.filter((f: BroadcastFeedItem) => f.kind === 'live-camera' && f.status === 'live')
+      .sort((a: BroadcastFeedItem, b: BroadcastFeedItem) => (b.viewerCount ?? 0) - (a.viewerCount ?? 0)),
+    [],
+  );
+  const battleFeeds = useMemo(() => SEED_FEEDS.filter((f: BroadcastFeedItem) => f.kind === 'battle' && f.status === 'live'), []);
+  const cyphers = useMemo(() => SEED_FEEDS.filter((f: BroadcastFeedItem) => f.kind === 'cypher'), []);
+  const magFeature = useMemo(() => SEED_FEEDS.find((f: BroadcastFeedItem) => f.kind === 'magazine-feature'), []);
+  const sponsorSlot = useMemo(() => SEED_FEEDS.find((f: BroadcastFeedItem) => f.kind === 'sponsor-billboard'), []);
+  const topLive = liveCamFeeds[0] ?? SEED_FEEDS.find((f: BroadcastFeedItem) => f.status === 'live')!;
 
   useEffect(() => {
     const fromStorage = safeParseLayerState(localStorage.getItem(HOME1_LAYER_SESSION_KEY));
@@ -478,6 +514,59 @@ export default function Home1CoverPage() {
           clip-path: polygon(8% 0, 100% 0, 92% 100%, 0 100%);
         }
 
+        .tmi-collage-emoji {
+          width: 100%;
+          height: clamp(120px, 18vw, 190px);
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          border: 1px solid rgba(255, 255, 255, 0.12);
+          clip-path: polygon(8% 0, 100% 0, 92% 100%, 0 100%);
+          margin-bottom: 8px;
+        }
+
+        .tmi-collage-emoji span {
+          font-size: clamp(36px, 7vw, 52px);
+          line-height: 1;
+        }
+
+        .tmi-collage-emoji small {
+          font-family: 'Inter', sans-serif;
+          font-size: 9px;
+          font-weight: 900;
+          letter-spacing: 0.14em;
+          color: rgba(255, 255, 255, 0.6);
+          text-transform: uppercase;
+        }
+
+        .tmi-panel-emoji {
+          width: 100%;
+          height: 135px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          border: 1px solid rgba(255, 255, 255, 0.10);
+          margin-bottom: 8px;
+        }
+
+        .tmi-panel-emoji span {
+          font-size: clamp(32px, 5vw, 44px);
+          line-height: 1;
+        }
+
+        .tmi-panel-emoji small {
+          font-family: 'Inter', sans-serif;
+          font-size: 9px;
+          font-weight: 900;
+          letter-spacing: 0.14em;
+          color: rgba(255, 255, 255, 0.5);
+          text-transform: uppercase;
+        }
+
         .tmi-collage-card h3 {
           margin: 8px 0 4px;
           color: #f8dd84;
@@ -586,7 +675,8 @@ export default function Home1CoverPage() {
           box-shadow: 0 0 0 2px rgba(12, 16, 28, 0.95), 0 0 28px rgba(0, 255, 255, 0.32);
         }
 
-        .tmi-orbit-center {
+        .tmi-orbit-center,
+        a.tmi-orbit-center {
           position: absolute;
           left: 50%;
           top: 50%;
@@ -725,7 +815,8 @@ export default function Home1CoverPage() {
           padding: 10px;
         }
 
-        .tmi-panel img {
+        .tmi-panel img,
+        .tmi-panel .tmi-panel-emoji {
           width: 100%;
           height: 135px;
           object-fit: cover;
@@ -892,7 +983,6 @@ export default function Home1CoverPage() {
           <span className="tmi-utility-pill">Voting Live</span>
           <span className="tmi-utility-pill">{voteCount.toLocaleString()} Votes</span>
           <span className="tmi-utility-pill">Crown Updating</span>
-          <span className="tmi-utility-pill">Home 1 LayerCanvas</span>
         </div>
 
         <header className="tmi-masthead">
@@ -919,21 +1009,28 @@ export default function Home1CoverPage() {
         <section className="tmi-orbit-section">
           <h2>Weekly Crown Orbit</h2>
           <div className="tmi-orbit-meta">
-            Direction: {THIS_WEEK_ORBIT_DIRECTION} · Shape preset: {THIS_WEEK_SHAPE_PRESET} · Next preset: octagon
+            Top Ranked · Live Now · Updated In Real Time
           </div>
 
           <div className="tmi-orbit-canvas">
             <div className="tmi-orbit-ring" />
 
-            <div className="tmi-orbit-center">
+            <Link
+              className="tmi-orbit-center"
+              href={topLive?.href ?? '/live/lobby'}
+              style={{ textDecoration: 'none' }}
+            >
               <div>
-                <strong>Blessed Voice</strong>
-                <small>#1 Gospel</small>
+                <strong style={{ fontSize: 28 }}>{topLive?.avatarEmoji ?? '🎤'}</strong>
+                <strong>{topLive?.title ?? 'LIVE NOW'}</strong>
+                <small>{topLive?.viewerCount ? `${topLive.viewerCount.toLocaleString()} WATCHING` : topLive?.subtitle ?? '#1 LIVE'}</small>
               </div>
-            </div>
+            </Link>
 
             {PERFORMERS.map((performer, index) => {
               const point = orbitPoint(index, PERFORMERS.length, 39, orbitAngle);
+              const accent = GENRE_ACCENT[performer.genre] ?? '#FF2DAA';
+              const emoji = GENRE_EMOJI[performer.genre] ?? '🎵';
               return (
                 <Link
                   key={performer.slug}
@@ -941,7 +1038,14 @@ export default function Home1CoverPage() {
                   style={{ left: `${point.x}%`, top: `${point.y}%` }}
                   href={`/articles/performer/${performer.slug}`}
                 >
-                  <img src={performer.avatar} alt={performer.name} />
+                  <div style={{
+                    width: '100%', height: '100%',
+                    background: `linear-gradient(135deg, ${accent}30, #050510)`,
+                    display: 'grid', placeItems: 'center',
+                    fontSize: 'clamp(20px,3.5vw,28px)',
+                  }}>
+                    {emoji}
+                  </div>
                   <span className="rank">{performer.rank}</span>
                   <div className="meta">
                     <strong>{performer.name}</strong>
@@ -974,26 +1078,44 @@ export default function Home1CoverPage() {
 
         {/* ── Tabloid canvas stage ── */}
         <section className="tmi-canvas-stage">
-          <article className="tmi-collage-card tmi-card-a">
-            <img src="/assets/_converted_webp/Tmi Homepage 1.webp" alt="Cover layout" />
-            <h3>Cover Story</h3>
-            <p>Main profile and sponsor collage block for this issue's narrative angle.</p>
-            <Link href="/articles/performer/ricardo-parker">Open Performer Article</Link>
-          </article>
+          {/* Card A — Magazine Cover Story */}
+          {magFeature && (
+            <article className="tmi-collage-card tmi-card-a">
+              <div className="tmi-collage-emoji" style={{ background: `linear-gradient(135deg, ${magFeature.accentColor}28, #050510)` }}>
+                <span>{magFeature.avatarEmoji}</span>
+                {magFeature.genre && <small>{magFeature.genre}</small>}
+              </div>
+              <h3>{magFeature.title}</h3>
+              <p>{magFeature.subtitle ?? 'This week\'s editorial feature — curated from the Index.'}</p>
+              <Link href={magFeature.href}>{ctaLabel(magFeature.kind)}</Link>
+            </article>
+          )}
 
-          <article className="tmi-collage-card tmi-card-b">
-            <img src="/assets/_converted_webp/Tmi Homepage 1-2.webp" alt="Open tabloid spread" />
-            <h3>Magazine Spread</h3>
-            <p>Layer-aware spread that keeps CTA, orbit, and editorial flow unified.</p>
-            <Link href="/magazine">Open Magazine</Link>
-          </article>
+          {/* Card B — Top Live Broadcast */}
+          {battleFeeds[0] && (
+            <article className="tmi-collage-card tmi-card-b">
+              <div className="tmi-collage-emoji" style={{ background: `linear-gradient(135deg, ${battleFeeds[0].accentColor}28, #050510)` }}>
+                <span>{battleFeeds[0].avatarEmoji}</span>
+                {battleFeeds[0].viewerCount && <small>{battleFeeds[0].viewerCount.toLocaleString()} WATCHING</small>}
+              </div>
+              <h3>{battleFeeds[0].title}</h3>
+              <p>{battleFeeds[0].subtitle ?? 'Live now — join the battle and cast your vote.'}</p>
+              <Link href={battleFeeds[0].href}>{ctaLabel(battleFeeds[0].kind)}</Link>
+            </article>
+          )}
 
-          <article className="tmi-collage-card tmi-card-c">
-            <img src="/assets/_converted_webp/The Musician's Index Magazine images/img00042.webp" alt="Sponsor and news tiles" />
-            <h3>Ad + News</h3>
-            <p>Sponsor and article tiles can be repositioned in design mode for conversion optimization.</p>
-            <Link href="/sponsors">Open Sponsor Rail</Link>
-          </article>
+          {/* Card C — Sponsor Slot */}
+          {sponsorSlot && (
+            <article className="tmi-collage-card tmi-card-c">
+              <div className="tmi-collage-emoji" style={{ background: `linear-gradient(135deg, ${sponsorSlot.accentColor}28, #050510)` }}>
+                <span>{sponsorSlot.avatarEmoji}</span>
+                <small>OPEN SLOTS</small>
+              </div>
+              <h3>{sponsorSlot.title}</h3>
+              <p>{sponsorSlot.subtitle ?? 'Sponsor a performer tonight and get front-page placement.'}</p>
+              <Link href={sponsorSlot.href}>{ctaLabel(sponsorSlot.kind)}</Link>
+            </article>
+          )}
 
           <LayerCanvas layers={layers} onLayersChange={setLayers} isDesignMode={isAdmin && designMode} />
         </section>
@@ -1040,27 +1162,43 @@ export default function Home1CoverPage() {
         </div>
 
         <section className="tmi-home1-second-section">
-          <h3>Home 1 Tabloid Extended Section</h3>
+          <h3>Live Index Stories</h3>
           <div className="tmi-home1-second-grid">
-            <article className="tmi-panel">
-              <img src="/tmi-curated/mag-74.jpg" alt="Cypher panel" />
-              <h4>Cypher Arena Live</h4>
-              <p>Real-time cypher panel with performer story overlays and active crowd actions.</p>
-              <Link href="/cypher/stage">Open Cypher Arena</Link>
-            </article>
+            {/* Left — Top Live Cypher */}
+            {cyphers[0] && (
+              <article className="tmi-panel">
+                <div className="tmi-panel-emoji" style={{ background: `linear-gradient(135deg, ${cyphers[0].accentColor}22, #050510)` }}>
+                  <span>{cyphers[0].avatarEmoji}</span>
+                  {cyphers[0].viewerCount && <small>{cyphers[0].viewerCount.toLocaleString()} WATCHING</small>}
+                </div>
+                <h4>{cyphers[0].title}</h4>
+                <p>{cyphers[0].subtitle ?? 'Live cypher stage — step up and perform.'}</p>
+                <Link href={cyphers[0].href}>{ctaLabel(cyphers[0].kind)}</Link>
+              </article>
+            )}
 
-            <article className="tmi-panel">
-              <img src="/tmi-curated/mag-66.jpg" alt="Artist interview panel" />
-              <h4>Artist Interview</h4>
-              <p>Interview block auto-updates when performer profile content is refreshed.</p>
-              <Link href="/articles/performer/ray-journey">Read Artist Profile</Link>
-            </article>
+            {/* Center — Top Live Camera (Artist Interview slot) */}
+            {liveCamFeeds[1] && (
+              <article className="tmi-panel">
+                <div className="tmi-panel-emoji" style={{ background: `linear-gradient(135deg, ${liveCamFeeds[1].accentColor}22, #050510)` }}>
+                  <span>{liveCamFeeds[1].avatarEmoji}</span>
+                  {liveCamFeeds[1].genre && <small>{liveCamFeeds[1].genre.toUpperCase()}</small>}
+                </div>
+                <h4>{liveCamFeeds[1].title}</h4>
+                <p>{liveCamFeeds[1].subtitle ?? 'Live now — tune in and catch the performance.'}</p>
+                <Link href={liveCamFeeds[1].href}>{ctaLabel(liveCamFeeds[1].kind)}</Link>
+              </article>
+            )}
 
-            <article className="tmi-panel">
-              <img src="/tmi-curated/mag-58.jpg" alt="Business and ad panel" />
+            {/* Right — Advertise (static CTA, no image needed) */}
+            <article className="tmi-panel" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+              <div className="tmi-panel-emoji" style={{ background: 'linear-gradient(135deg, #FFD70022, #050510)' }}>
+                <span>🏆</span>
+                <small>OPEN SLOTS</small>
+              </div>
               <h4>Advertise With Us</h4>
-              <p>Business placement panel tied to sponsor and advertiser route destinations.</p>
-              <Link href="/advertisers">Open Advertiser Hub</Link>
+              <p>Front-page placement, sponsor walls, and billboard tiles available now for brands and businesses.</p>
+              <Link href="/advertisers">OPEN ADVERTISER HUB →</Link>
             </article>
           </div>
         </section>

@@ -7,7 +7,7 @@ import { DECK_LABELS } from "@/types/broadcast";
 // ─── Seeded feed data ─────────────────────────────────────────────────────────
 // In production, replace these with API calls to /api/live/feeds
 
-const SEED_FEEDS: BroadcastFeedItem[] = [
+export const SEED_FEEDS: BroadcastFeedItem[] = [
   // Audience seats
   { id: "aud-1", kind: "audience-seat", title: "Main Lobby Audience", subtitle: "84% occupied · 2,147 watching", href: "/live/rooms/monthly-idol", status: "live", layoutMode: "audience-grid", mediaMode: "avatar", accentColor: "#00FFFF", avatarEmoji: "🎭", viewerCount: 2147 },
   { id: "aud-2", kind: "audience-seat", title: "Battle Floor Crowd", subtitle: "1,204 in seats", href: "/live/rooms/dealer-feud-1000", status: "live", layoutMode: "audience-grid", mediaMode: "avatar", accentColor: "#FFD700", avatarEmoji: "👥", viewerCount: 1204 },
