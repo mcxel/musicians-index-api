@@ -15,7 +15,8 @@ export type XPSource =
   | "referral_success"
   | "cypher_freestyle"
   | "contest_entry"
-  | "achievement_unlock";
+  | "achievement_unlock"
+  | "sponsor_received";
 
 export interface XPGrant {
   source: XPSource;
@@ -49,6 +50,7 @@ export const XP_VALUES: Record<XPSource, number> = {
   cypher_freestyle: 200,
   contest_entry:    150,
   achievement_unlock: 0, // bonus set per achievement
+  sponsor_received: 200, // base; caller may pass higher amount (dollars * 10 + 200)
 };
 
 export const XP_LEVELS: XPLevel[] = [
