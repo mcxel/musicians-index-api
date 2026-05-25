@@ -407,7 +407,11 @@ export default function MagazineIssueSurface({ article, issueNumber = 1, related
                 {article.subtitle}
               </p>
               <div style={{ fontSize: 8, color: "rgba(255,255,255,0.36)", letterSpacing: "0.16em", marginBottom: 22 }}>
-                {article.author} · {article.publishedAt}
+                {article.writerSlug ? (
+                  <Link href={`/profile/writer/${article.writerSlug}`} style={{ color: accent, textDecoration: "none", fontWeight: 700 }}>
+                    {article.author}
+                  </Link>
+                ) : article.author} · {article.publishedAt}
               </div>
               <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: "auto" }}>
                 <Link
@@ -571,7 +575,11 @@ export default function MagazineIssueSurface({ article, issueNumber = 1, related
           >
             <div style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.22em", textTransform: "uppercase", color: accent, marginBottom: 10 }}>Article Excerpts</div>
             <div style={{ fontSize: 8, color: "rgba(255,255,255,0.38)", marginBottom: 14, letterSpacing: "0.12em" }}>
-              {article.author} · {article.publishedAt} · #{article.tags[0] ?? "issue"}
+              {article.writerSlug ? (
+                <Link href={`/profile/writer/${article.writerSlug}`} style={{ color: accent, textDecoration: "none", fontWeight: 700 }}>
+                  {article.author}
+                </Link>
+              ) : article.author} · {article.publishedAt} · #{article.tags[0] ?? "issue"}
             </div>
             {activeSnippets.map((block, idx) => renderBodyBlock(block, idx, accent))}
             {snippetWindows.length > 1 && (

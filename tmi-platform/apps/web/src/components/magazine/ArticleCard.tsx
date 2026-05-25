@@ -12,6 +12,7 @@ export interface ArticleCardProps {
   title: string;
   excerpt?: string;
   author?: string;
+  writerSlug?: string;
   category?: string;
   imageUrl?: string;
   publishedAt?: string;
@@ -26,6 +27,7 @@ export default function ArticleCard({
   title,
   excerpt,
   author,
+  writerSlug,
   category,
   imageUrl,
   publishedAt,
@@ -157,7 +159,13 @@ export default function ArticleCard({
               paddingTop: 6,
             }}
           >
-            {author && <span>{author}</span>}
+            {author && (
+              writerSlug ? (
+                <Link href={`/profile/writer/${writerSlug}`} style={{ color: "rgba(255,255,255,0.45)", textDecoration: "none", fontWeight: 600 }}>
+                  {author}
+                </Link>
+              ) : <span>{author}</span>
+            )}
             {author && publishedAt && (
               <span style={{ opacity: 0.4 }}>·</span>
             )}

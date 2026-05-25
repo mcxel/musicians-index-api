@@ -9,6 +9,8 @@ export interface MagazineArticle {
   title: string;
   subtitle: string;
   author: string;
+  /** Links author name to /profile/writer/[writerSlug] when present */
+  writerSlug?: string;
   publishedAt: string;
   category: "feature" | "interview" | "review" | "news" | "editorial";
   tags: string[];
