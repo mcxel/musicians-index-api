@@ -14,6 +14,9 @@ const DRAFT_ARTICLES = [
 const QUICK_ACTIONS = [
   { label: "NEW ARTICLE",     icon: "✏️", href: "/editorial/write",        color: "#FF2DAA", desc: "Start a new piece" },
   { label: "MY DRAFTS",       icon: "📝", href: "/editorial/drafts",        color: "#AA2DFF", desc: "View all drafts" },
+  { label: "MY WORK WALL",    icon: "📌", href: "/hub/writer/works",        color: "#00FFFF", desc: "Portfolio + published articles" },
+  { label: "PITCH ARTICLE",   icon: "🚀", href: "/hub/writer/pitches",      color: "#FFD700", desc: "Submit article idea to editors" },
+  { label: "SUBMISSIONS",     icon: "📬", href: "/hub/writer/submissions",  color: "#00FF88", desc: "Track pitch + submission status" },
   { label: "MAGAZINE",        icon: "📰", href: "/magazine",                color: "#00FFFF", desc: "Live magazine issue" },
   { label: "EDITORIAL DESK",  icon: "🗞️", href: "/editorial",              color: "#FFD700", desc: "Full editorial suite" },
   { label: "ARTICLE HEALTH",  icon: "🔍", href: "/admin/articles",         color: "#00FF88", desc: "Sync status check" },

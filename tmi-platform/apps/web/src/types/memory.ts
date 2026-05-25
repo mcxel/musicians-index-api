@@ -60,8 +60,50 @@ export interface ProLegacyItem {
   createdAt: string;
 }
 
+// ─── Writer Wall — published works, portfolio, assignments ───────────────────
+// Separate from MemoryWall (fan/performer). Same modal system, different card.
+
+export type WriterWorkKind =
+  | "article"
+  | "interview"
+  | "review"
+  | "feature"
+  | "past-work"
+  | "image"
+  | "draft"
+  | "assignment";
+
+export interface WriterWorkMetrics {
+  views?: number;
+  readTimeMinutes?: number;
+  engagementRate?: number;
+  sponsorLinked?: boolean;
+  paidAmount?: number;
+}
+
+export interface WriterWorkItem {
+  id: string;
+  writerId: string;
+  kind: WriterWorkKind;
+  title: string;
+  description?: string;
+  mediaUrl?: string;
+  /** Slug of the live TMI article this links to */
+  articleSlug?: string;
+  publication?: string;
+  status: "draft" | "published" | "archived";
+  visibility: "private" | "editorial" | "public";
+  metrics?: WriterWorkMetrics;
+  /** Badges earned from editorial system */
+  badges?: string[];
+  /** Set true only by admin/editorial approval */
+  verified?: boolean;
+  createdAt: string;
+}
+
 // ─── Union for the fullscreen modal ──────────────────────────────────────────
 
 export type AnyMemoryItem =
   | { itemType: "memory"; item: MemoryItem }
-  | { itemType: "pro-legacy"; item: ProLegacyItem };
+  | { itemType: "pro-legacy"; item: ProLegacyItem }
+  | { itemType: "writer-work"; item: WriterWorkItem };
