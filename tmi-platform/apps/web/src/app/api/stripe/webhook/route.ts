@@ -168,22 +168,30 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Forward to backend (which holds final Stripe authority)
-    const upstream = await fetch(`${apiBase}/stripe/webhook`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "stripe-signature": signature,
-      },
-      body: rawBody,
-      signal: withTimeoutSignal(FORWARD_TIMEOUT_MS),
-      cache: "no-store",
-    });
-
-    if (!upstream.ok) {
-      console.error(`[stripe/webhook] Upstream returned ${upstream.status}`);
-      emitWebhookTelemetry("upstream_failure", { status: upstream.status });
-      return NextResponse.json({ error: "Webhook forwarding failed" }, { status: 502 });
+    // Optionally forward to a separate backend API — skipped if not configured or unavailable.
+    // All revenue-critical events (subscription_start email, ProLedger) are already handled above.
+    const skipForward = !process.env.NEXT_PUBLIC_API_URL ||
+                        process.env.STRIPE_WEBHOOK_LOCAL_ONLY === "true";
+    if (!skipForward) {
+      try {
+        const upstream = await fetch(`${apiBase}/stripe/webhook`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "stripe-signature": signature,
+          },
+          body: rawBody,
+          signal: withTimeoutSignal(FORWARD_TIMEOUT_MS),
+          cache: "no-store",
+        });
+        if (!upstream.ok) {
+          emitWebhookTelemetry("upstream_failure", { status: upstream.status });
+        }
+      } catch (forwardErr) {
+        // Non-fatal — log and continue. Events are already processed locally.
+        console.error("[stripe/webhook] Upstream forward failed (non-fatal):", forwardErr);
+        emitWebhookTelemetry("upstream_forward_skipped", { reason: "fetch-error" });
+      }
     }
 
     emitWebhookTelemetry("webhook_verified", { fingerprint });
