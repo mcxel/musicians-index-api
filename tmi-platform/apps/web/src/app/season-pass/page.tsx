@@ -13,6 +13,7 @@ const TIERS = [
     period: "/ month",
     color: "#00FFFF",
     priceId: "price_fan_monthly",
+    amount: 999,
     popular: false,
     perks: [
       "Early room access (30 min before public)",
@@ -30,6 +31,7 @@ const TIERS = [
     period: "/ month",
     color: "#FF2DAA",
     priceId: "price_artist_monthly",
+    amount: 1999,
     popular: true,
     perks: [
       "Everything in Fan Pass",
@@ -48,6 +50,7 @@ const TIERS = [
     period: "/ month",
     color: "#FFD700",
     priceId: "price_vip_monthly",
+    amount: 4999,
     popular: false,
     perks: [
       "Everything in Artist Pass",
@@ -125,7 +128,7 @@ export default function SeasonPassPage() {
               ))}
             </ul>
             <Link
-              href={`/api/stripe/checkout?priceId=${tier.priceId}&mode=subscription`}
+              href={`/api/stripe/checkout?priceId=${tier.priceId}&mode=subscription&amount=${tier.amount}&productName=${encodeURIComponent(tier.name)}`}
               style={{ display: "block", textAlign: "center", padding: "11px", fontSize: 9, fontWeight: 900, letterSpacing: "0.12em", color: tier.popular ? "#050510" : tier.color, background: tier.popular ? tier.color : "transparent", border: `1px solid ${tier.color}`, borderRadius: 8, textDecoration: "none" }}
             >
               GET {tier.name.toUpperCase()} →
