@@ -5,6 +5,7 @@ import { registerUser } from '@/lib/auth/UserStore';
 import { createSession } from '@/lib/auth/SessionManager';
 import { sendEmail } from '@/lib/email/TMIEmailSystem';
 import { DiamondInviteEngine } from '@/lib/auth/DiamondInviteEngine';
+import { checkRateLimit, validateSignupEmail } from '@/lib/security/TMISecurityEngine';
 
 const COOKIE_OPTS = {
   httpOnly: true,
@@ -30,6 +31,12 @@ export async function POST(req: NextRequest) {
   const email       = (parsed.email ?? '').trim().toLowerCase();
   const password    = parsed.password ?? '';
   const displayName = (parsed.displayName ?? parsed.name ?? '').trim();
+  const clientIp = req.headers.get('x-forwarded-for') ?? req.headers.get('x-client-ip') ?? 'unknown';
+
+  const rateLimit = checkRateLimit(`auth:signup:${clientIp}`, 20, 60_000);
+  if (!rateLimit.allowed) {
+    return NextResponse.json({ error: 'Too many signup attempts. Please wait and try again.' }, { status: 429 });
+  }
 
   // Normalize account type / role to platform role
   const ROLE_MAP: Record<string, string> = {
@@ -43,6 +50,16 @@ export async function POST(req: NextRequest) {
   if (!email || !password) {
     return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
   }
+
+  const emailValidation = validateSignupEmail(email);
+  if (!emailValidation.valid) {
+    return NextResponse.json({ error: emailValidation.error ?? 'Invalid email address' }, { status: 400 });
+  }
+
+  if (password.length < 8) {
+    return NextResponse.json({ error: 'Password must be at least 8 characters' }, { status: 400 });
+  }
+
   if (!parsed.termsAccepted) {
     return NextResponse.json({ error: 'Terms must be accepted' }, { status: 400 });
   }
@@ -58,7 +75,6 @@ export async function POST(req: NextRequest) {
   const user = result.user;
 
   // Auto-login: create session immediately so user lands on dashboard authenticated
-  const clientIp = req.headers.get('x-forwarded-for') ?? req.headers.get('x-client-ip') ?? 'unknown';
   const userAgent = req.headers.get('user-agent') ?? '';
   const { sessionId, sessionToken } = createSession(user.id, user.role, clientIp, userAgent);
 

@@ -1,16 +1,17 @@
 'use client';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
+import { ShoppingBag, Ticket, Trophy, Briefcase } from 'lucide-react'; // HD Interaction Icons
 
 interface Home1PlatformBeltProps {
   title?: string;
 }
 
 const PLATFORM_LINKS = [
-  { label: 'Store', icon: '🛍️', href: '/store', description: 'Buy beats, credits, merch', color: '#FF2DAA' },
-  { label: 'Booking', icon: '🎭', href: '/booking', description: 'Book artists, venues, bands', color: '#00FFFF' },
-  { label: 'Achievements', icon: '🏆', href: '/achievements', description: 'Badges, milestones, rewards', color: '#FFD700' },
-  { label: 'Sponsors', icon: '💼', href: '/sponsors', description: 'Featured campaigns & deals', color: '#AA2DFF' },
+  { label: 'Store', icon: ShoppingBag, href: '/store', description: 'Buy beats, credits, merch', color: '#FF2DAA' },
+  { label: 'Booking', icon: Ticket, href: '/booking', description: 'Book artists, venues, bands', color: '#00FFFF' },
+  { label: 'Achievements', icon: Trophy, href: '/achievements', description: 'Badges, milestones, rewards', color: '#FFD700' },
+  { label: 'Sponsors', icon: Briefcase, href: '/sponsors', description: 'Featured campaigns & deals', color: '#AA2DFF' },
 ];
 
 export default function Home1PlatformBelt({ title = 'PLATFORM' }: Home1PlatformBeltProps) {
@@ -59,7 +60,9 @@ export default function Home1PlatformBelt({ title = 'PLATFORM' }: Home1PlatformB
                   el.style.borderColor = link.color + '25';
                 }}
               >
-                <span style={{ fontSize: 24 }}>{link.icon}</span>
+                <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: link.color }}>
+                  <link.icon size={28} strokeWidth={1.5} />
+                </span>
                 <div>
                   <div style={{ fontSize: 13, fontWeight: 700, color: '#fff', marginBottom: 4 }}>
                     {link.label}

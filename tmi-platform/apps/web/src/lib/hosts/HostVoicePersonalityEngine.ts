@@ -43,7 +43,12 @@ export type SpeechContext =
   | "vote-open"
   | "vote-close"
   | "countdown"
-  | "tie-breaker";
+  | "tie-breaker"
+  | "radio-song-intro"
+  | "radio-drop-tease"
+  | "radio-reaction-comment"
+  | "radio-stay-locked"
+  | "radio-game-start";
 
 const VOICE_STYLES: Record<VoicePersonality, VoiceStyle> = {
   funny:     { personality: "funny",     pitchShift: 1,   speedMultiplier: 1.1,  energyLevel: 0.8, useSlang: true,  pauseFrequency: 0.2, exaggeration: 0.8 },
@@ -114,6 +119,46 @@ const SPEECH_TEMPLATES: Record<SpeechContext, Record<VoicePersonality, string[]>
   "tie-breaker":     { funny: [], sarcastic: [], serious: [], hype: [], mentor: [], chaotic: [], smooth: [], dramatic: [] },
   "score-reveal":    { funny: [], sarcastic: [], serious: [], hype: [], mentor: [], chaotic: [], smooth: [], dramatic: [] },
   "commercial-tease":{ funny: [], sarcastic: [], serious: [], hype: [], mentor: [], chaotic: [], smooth: [], dramatic: [] },
+
+  "radio-song-intro": {
+    funny:     ["Okay who greenlit this track lol — actually kinda slaps tho 👀", "Nobody asked for this one but here we are and I'm not mad about it 🔥"],
+    sarcastic: ["Next song. Fascinating. Let's see how this one goes.", "Oh look, another track. Sure."],
+    serious:   ["Up next — pay attention to the production on this one.", "The next artist is making a statement. Let's hear it."],
+    hype:      ["Ayo this one right here kinda smooth 👀… chat y'all rocking with this or nah?", "Alright next up — new artist stepping in… let's see if they got something 🔥", "YO this beat hits different chat 🔥🔥🔥"],
+    mentor:    [], chaotic: [], smooth: ["Mmm this one's got layers… let it breathe 🎧", "Slide into this one easy — real smooth energy incoming"], dramatic: [],
+  },
+
+  "radio-drop-tease": {
+    funny:     ["We might drop something on somebody for no reason 👀 could be you lol", "Random prize incoming… probably… maybe… okay yes definitely 🎁"],
+    sarcastic: ["Fine, there might be a prize soon. If people are actually here.", "A drop. Might happen. Who knows."],
+    serious:   ["Engagement is building. Watch for an incoming drop.", "The numbers are looking right. Stay locked in."],
+    hype:      ["Don't forget — stay locked in… we got a drop coming real soon 👀💎", "You've been here a minute… we might bless somebody right now 🎁", "PRIZE DROP INCOMING CHAT 💰💰 STAY IN THE ROOM"],
+    mentor:    [], chaotic: [], smooth: ["Stay right here… something good is about to happen for somebody 👀", "Real ones already know — stay locked in for this one 💎"], dramatic: [],
+  },
+
+  "radio-reaction-comment": {
+    funny:     ["Chat is going CRAZY right now lmao 😭😭", "Y'all really out here reacting to everything huh 👀 respect"],
+    sarcastic: ["Chat seems... alive. Noted.", "Reactions happening. People are here. Confirmed."],
+    serious:   ["The crowd is responding — this track is resonating.", "High engagement on this one. Artists take note."],
+    hype:      ["CHAT IS LIT RIGHT NOW 🔥🔥 KEEP IT GOING!", "YO the room is feeling this 🎤 react more let them know!"],
+    mentor:    [], chaotic: [], smooth: ["I see y'all in the chat — good energy in this room tonight 🙌", "Real fans always showing love — that's what it's about 💯"], dramatic: [],
+  },
+
+  "radio-stay-locked": {
+    funny:     ["Don't leave I literally just got comfortable 😭", "Stay here. Please. I'm talking to all three of you."],
+    sarcastic: ["You're welcome to stay. Or not. Mostly stay though.", "Remaining in the room continues to be an option."],
+    serious:   ["Stay locked in. More tracks, more XP, more opportunities.", "Consistency pays here. Stay in the room."],
+    hype:      ["DON'T TAP OUT NOW — THE BEST PART IS COMING 🔥", "STAY LOCKED IN CHAT — WE GOT MORE DROPS MORE GAMES MORE EVERYTHING 💎"],
+    mentor:    [], chaotic: [], smooth: ["No rush — good things come to those who stay 🎧", "You've invested this much time already… keep going 💎"], dramatic: [],
+  },
+
+  "radio-game-start": {
+    funny:     ["Pop quiz time and yes it counts 😂 don't embarrass yourself", "Time to separate the real ones from the fakes — GAME TIME"],
+    sarcastic: ["We're doing a question now. Try not to get it wrong.", "Game time. The stakes are XP. The pressure is mild."],
+    serious:   ["Quick knowledge check. Correct answer earns XP and a drop entry.", "Attention — interactive moment incoming."],
+    hype:      ["Aight quick one — first right answer wins XP 👇", "Time to see who's really paying attention 👀", "GAME TIME CHAT — YOU READY?! TAP YOUR ANSWER!"],
+    mentor:    [], chaotic: [], smooth: ["Real quick — let's see who's been paying attention 👀", "Light question — no pressure, big rewards 💡"], dramatic: [],
+  },
 };
 
 function findEmphasisWords(text: string): string[] {

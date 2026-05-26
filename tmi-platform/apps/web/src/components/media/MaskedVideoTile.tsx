@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import type { ReactNode } from 'react';
 
 export type TileShape =
   | 'octagon'
@@ -25,6 +26,7 @@ export interface MaskedVideoTileProps {
   accentColor?: string;
   size?: number;
   avatarEmoji?: string;
+  avatarIcon?: ReactNode;
   avatarUrl?: string;
   showActions?: boolean;
   onJoin?: () => void;
@@ -61,6 +63,7 @@ export default function MaskedVideoTile({
   accentColor = '#00FFFF',
   size = 180,
   avatarEmoji = '🎤',
+  avatarIcon,
   avatarUrl,
   showActions = false,
   onJoin,
@@ -148,6 +151,8 @@ export default function MaskedVideoTile({
             {avatarUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={avatarUrl} alt={performerName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            ) : avatarIcon ? (
+              <div style={{ display: 'grid', placeItems: 'center', width: '100%', height: '100%' }}>{avatarIcon}</div>
             ) : (
               <div style={{ fontSize: size * 0.32, filter: `drop-shadow(0 0 8px ${glowColor})` }}>{avatarEmoji}</div>
             )}

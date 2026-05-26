@@ -31,6 +31,15 @@ export interface TmiMagazineFlipSnapshot extends TmiMagazineFlipState {
   previewPageIndex: number;
   isRapidFlipping: boolean;
   peelOrigin: TmiPeelOrigin;
+  peelProgress: number;
+  learnedSmoothness: number;
+}
+
+export interface TmiFlipAdaptiveTuning {
+  flipDurationMs?: number;
+  minDistanceForFlip?: number;
+  minSwipeVelocityForRapid?: number;
+  learnedSmoothness?: number;
 }
 
 export interface TmiMagazineFlipEngineOptions {
@@ -40,6 +49,7 @@ export interface TmiMagazineFlipEngineOptions {
   maxRapidFlipPages?: number;
   minSwipeVelocityForRapid?: number;
   minDistanceForFlip?: number;
+  adaptiveTuning?: TmiFlipAdaptiveTuning;
   onPageTurnStarted?: (nextPage: number, direction: Exclude<TmiFlipDirection, null>) => void;
   onPageTurnCompleted?: (page: number) => void;
 }
@@ -73,6 +83,8 @@ export class TmiMagazinePageFlipEngine {
   private previewPageIndex = 0;
   private isRapidFlipping = false;
   private peelOrigin: TmiPeelOrigin = "right-edge";
+  private peelProgress = 0;
+  private learnedSmoothness = 0.35;
 
   private onPageTurnStarted?: TmiMagazineFlipEngineOptions["onPageTurnStarted"];
   private onPageTurnCompleted?: TmiMagazineFlipEngineOptions["onPageTurnCompleted"];
@@ -86,6 +98,10 @@ export class TmiMagazinePageFlipEngine {
     this.maxRapidFlipPages = Math.max(1, Math.min(10, options.maxRapidFlipPages ?? 10));
     this.minSwipeVelocityForRapid = options.minSwipeVelocityForRapid ?? 0.8;
     this.minDistanceForFlip = options.minDistanceForFlip ?? 80;
+
+    if (options.adaptiveTuning) {
+      this.applyAdaptiveTuning(options.adaptiveTuning);
+    }
 
     this.priorPageIndex = initialPage;
     this.targetPageIndex = initialPage;
@@ -119,13 +135,21 @@ export class TmiMagazinePageFlipEngine {
       previewPageIndex: this.previewPageIndex,
       isRapidFlipping: this.isRapidFlipping,
       peelOrigin: this.peelOrigin,
+      peelProgress: this.peelProgress,
+      learnedSmoothness: this.learnedSmoothness,
     };
+  }
+
+  setAdaptiveTuning(tuning: TmiFlipAdaptiveTuning): TmiMagazineFlipSnapshot {
+    this.applyAdaptiveTuning(tuning);
+    return this.getSnapshot();
   }
 
   setPreviewFromSwipe(distance: number, direction: Exclude<TmiFlipDirection, null>, peelOrigin?: TmiPeelOrigin): TmiMagazineFlipSnapshot {
     this.swipeDistance = Math.abs(distance);
     this.swipeDirection = direction;
     if (peelOrigin) this.peelOrigin = peelOrigin;
+    this.peelProgress = this.normalizePeelProgress(this.swipeDistance);
 
     const pageDelta = this.derivePageDelta(0, this.swipeDistance, direction);
     this.previewPageIndex = this.clampPage(this.state.currentPage + (direction === "forward" ? pageDelta : -pageDelta));
@@ -142,11 +166,13 @@ export class TmiMagazinePageFlipEngine {
     this.swipeDistance = Math.abs(input.distance);
     this.swipeDirection = input.direction;
     this.peelOrigin = input.peelOrigin ?? this.peelOrigin;
+    this.peelProgress = this.normalizePeelProgress(this.swipeDistance);
 
     if (this.swipeDistance < this.minDistanceForFlip) {
       this.previewPageIndex = this.state.currentPage;
       this.targetPageIndex = this.state.currentPage;
       this.visibleGhostPages = [];
+      this.peelProgress = this.normalizePeelProgress(this.swipeDistance);
       return this.getSnapshot();
     }
 
@@ -224,6 +250,7 @@ export class TmiMagazinePageFlipEngine {
 
     this.state.isFlipping = true;
     this.state.flipDirection = direction;
+    this.peelProgress = 1;
     this.onPageTurnStarted?.(page, direction);
 
     await this.delay(durationOverride ?? this.flipDurationMs);
@@ -232,6 +259,7 @@ export class TmiMagazinePageFlipEngine {
     this.state.currentPage = page;
     this.state.isFlipping = false;
     this.state.flipDirection = null;
+    this.peelProgress = 0;
     this.onPageTurnCompleted?.(this.state.currentPage);
 
     return this.getSnapshot();
@@ -262,6 +290,26 @@ export class TmiMagazinePageFlipEngine {
 
   private clampPage(page: number): number {
     return Math.min(this.totalPages - 1, Math.max(0, page));
+  }
+
+  private normalizePeelProgress(distance: number): number {
+    const threshold = Math.max(40, this.minDistanceForFlip);
+    return Math.max(0, Math.min(1, distance / threshold));
+  }
+
+  private applyAdaptiveTuning(tuning: TmiFlipAdaptiveTuning): void {
+    if (typeof tuning.flipDurationMs === "number") {
+      this.flipDurationMs = Math.max(320, Math.min(900, Math.round(tuning.flipDurationMs)));
+    }
+    if (typeof tuning.minDistanceForFlip === "number") {
+      this.minDistanceForFlip = Math.max(40, Math.min(140, Math.round(tuning.minDistanceForFlip)));
+    }
+    if (typeof tuning.minSwipeVelocityForRapid === "number") {
+      this.minSwipeVelocityForRapid = Math.max(0.3, Math.min(2.2, tuning.minSwipeVelocityForRapid));
+    }
+    if (typeof tuning.learnedSmoothness === "number") {
+      this.learnedSmoothness = Math.max(0, Math.min(1, tuning.learnedSmoothness));
+    }
   }
 
   private delay(ms: number): Promise<void> {

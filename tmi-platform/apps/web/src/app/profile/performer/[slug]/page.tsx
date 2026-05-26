@@ -12,6 +12,7 @@ import PerformerSponsorShelf, {
   type PerformerSponsor,
 } from "@/components/performer/PerformerSponsorShelf";
 import type { SponsorSlot } from "@/components/performer/DynamicRadialAura";
+import ViralShareButton from "@/components/share/ViralShareButton";
 
 interface Props {
   params: { slug: string };
@@ -328,6 +329,12 @@ export default function PerformerProfilePage({ params }: Props) {
           <span style={{ fontSize: 10, fontWeight: 900, letterSpacing: "0.14em", textTransform: "uppercase", color: "#22d3ee" }}>
             ● Live Performance
           </span>
+          <ViralShareButton
+            playlistId={`${params.slug}-performer-spotlight`}
+            curatorId={params.slug}
+            playlistTitle={`${performer.displayName} Live Spotlight`}
+            sharePath={`/profile/performer/${encodeURIComponent(params.slug)}`}
+          />
           <Link href="/booking" style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em", color: "#f0abfc", textDecoration: "none", border: "1px solid rgba(240,171,252,0.35)", borderRadius: 999, padding: "4px 10px" }}>
             Booking CTA
           </Link>

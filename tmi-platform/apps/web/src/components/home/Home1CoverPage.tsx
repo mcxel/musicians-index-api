@@ -2,12 +2,18 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import LayerCanvas from '@/components/canvas/LayerCanvas';
 import type { TMILayer, TMILayerSessionState } from '@/types/layers';
 import { SEED_FEEDS } from '@/lib/broadcast/BroadcastRotationEngine';
 import type { BroadcastFeedItem } from '@/types/broadcast';
 import ChallengeYourSongCTA from '@/components/challenge/ChallengeYourSongCTA';
 import FounderAdvertiserBanner from '@/components/advertiser/FounderAdvertiserBanner';
+import UserProfilePanel, { type UserProfilePanelUser } from '@/components/profile/UserProfilePanel';
+import WelcomeArenaOverlay from '@/components/entry/WelcomeArenaOverlay';
+import MiniChatPreview from '@/components/media/MiniChatPreview';
+import MaskedVideoTile from '@/components/media/MaskedVideoTile';
+import { getLatestEditorialArticles } from '@/lib/editorial/NewsArticleModel';
 
 const HOME1_LAYER_SESSION_KEY = 'TMI_OS_SessionState_Home1';
 const HOME1_ISSUE_ID = 'issue-001-neon';
@@ -18,21 +24,20 @@ type Performer = {
   slug: string;
   name: string;
   genre: string;
-  avatar: string;
   rank: number;
 };
 
 const PERFORMERS: Performer[] = [
-  { slug: 'ricardo-parker', name: 'Ricardo Parker', genre: 'Hip-Hop', avatar: '/tmi-curated/mag-20.jpg', rank: 1 },
-  { slug: 'chario-ace', name: 'Chario Ace', genre: 'Hip-Hop', avatar: '/tmi-curated/mag-28.jpg', rank: 2 },
-  { slug: 'honeybee', name: 'HoneyBee', genre: 'R&B', avatar: '/tmi-curated/mag-35.jpg', rank: 3 },
-  { slug: 'nova-cipher', name: 'Nova Cipher', genre: 'EDM', avatar: '/tmi-curated/mag-42.jpg', rank: 4 },
-  { slug: 'jamal-harris', name: 'Jamal Harris', genre: 'Rap', avatar: '/tmi-curated/mag-50.jpg', rank: 5 },
-  { slug: 'zuri-bloom', name: 'Zuri Bloom', genre: 'Soul', avatar: '/tmi-curated/mag-58.jpg', rank: 6 },
-  { slug: 'ray-journey', name: 'Ray Journey', genre: 'Jazz', avatar: '/tmi-curated/mag-66.jpg', rank: 7 },
-  { slug: 'big-ace', name: 'Big Ace', genre: 'Hip-Hop', avatar: '/tmi-curated/mag-74.jpg', rank: 8 },
-  { slug: 'lily88', name: 'Lily88', genre: 'Pop', avatar: '/tmi-curated/mag-82.jpg', rank: 9 },
-  { slug: 'flow-jamz', name: 'Flow Jamz', genre: 'Gospel', avatar: '/tmi-curated/home1.jpg', rank: 10 },
+  { slug: 'nova-cipher',  name: 'Nova Cipher',  genre: 'EDM',     rank: 1 },
+  { slug: 'zion-freq',    name: 'Zion Freq',    genre: 'Hip-Hop', rank: 2 },
+  { slug: 'astra-nova',   name: 'Astra Nova',   genre: 'R&B',     rank: 3 },
+  { slug: 'ray-journey',  name: 'Ray Journey',  genre: 'Jazz',    rank: 4 },
+  { slug: 'big-ace',      name: 'Big Ace',      genre: 'Hip-Hop', rank: 5 },
+  { slug: 'lily88',       name: 'Lily88',       genre: 'Pop',     rank: 6 },
+  { slug: 'zuri-bloom',   name: 'Zuri Bloom',   genre: 'Soul',    rank: 7 },
+  { slug: 'flow-jamz',    name: 'Flow Jamz',    genre: 'Gospel',  rank: 8 },
+  { slug: 'honeybee',     name: 'HoneyBee',     genre: 'R&B',     rank: 9 },
+  { slug: 'chario-ace',   name: 'Chario Ace',   genre: 'Rap',     rank: 10 },
 ];
 
 const ROTATING_SAYINGS = [
@@ -44,6 +49,13 @@ const ROTATING_SAYINGS = [
   'Who took the crown this week?',
   'Challenge your song here.',
   'This is your stage, be original.',
+];
+
+const CHALLENGE_PROMO_LINES = [
+  'Challenge Your Song Here',
+  'Song For Song · Work For Work',
+  'Video For Video · Crowd Votes Live',
+  'Use What You Have Right Now: Songs + Video Links',
 ];
 
 const BROADCAST_DECKS = [
@@ -137,18 +149,18 @@ const DEFAULT_LAYERS: TMILayer[] = [
   {
     id: 'overlay-physical-gloss',
     type: 'overlay',
-    label: 'Overlay B · Gloss/Scratches',
-    assetUrl: '/assets/_converted_webp/The Musician\'s Index Magazine images/img00042.webp',
+    label: 'Overlay B · Grain Texture',
     x: 52,
     y: 58,
     width: 820,
     height: 470,
     scale: 1,
     rotation: 2,
-    opacity: 0.19,
+    opacity: 0.06,
     blendMode: 'screen',
     zIndex: 19,
     isLocked: false,
+    text: 'GRAIN · NOISE · TEXTURE',
     animation: { type: 'float', speed: 0.9 },
   },
   {
@@ -171,7 +183,7 @@ const DEFAULT_LAYERS: TMILayer[] = [
   {
     id: 'cta-join-free',
     type: 'cta',
-    label: 'CTA · Join Free',
+    label: 'CTA · Join the Index',
     x: 15,
     y: 84,
     width: 170,
@@ -182,7 +194,7 @@ const DEFAULT_LAYERS: TMILayer[] = [
     blendMode: 'normal',
     zIndex: 22,
     isLocked: false,
-    text: 'Join Free',
+    text: 'JOIN THE INDEX',
     href: '/auth/signup',
   },
 ];
@@ -220,9 +232,12 @@ export default function Home1CoverPage() {
   const [voteCount, setVoteCount] = useState(4891);
   const [broadcastDeckIndex, setBroadcastDeckIndex] = useState(0);
   const [deckTransitioning, setDeckTransitioning] = useState(false);
+  const [canvasCardIndex, setCanvasCardIndex] = useState(0);
+  const [profilePanel, setProfilePanel] = useState<UserProfilePanelUser | null>(null);
 
   const [sayingIndex, setSayingIndex] = useState(0);
   const [typedChars, setTypedChars] = useState(0);
+  const [challengePromoIndex, setChallengePromoIndex] = useState(0);
 
   const [issueLineIndex, setIssueLineIndex] = useState(0);
   const [issueTypedChars, setIssueTypedChars] = useState(0);
@@ -248,6 +263,28 @@ export default function Home1CoverPage() {
   const magFeature = useMemo(() => SEED_FEEDS.find((f: BroadcastFeedItem) => f.kind === 'magazine-feature'), []);
   const sponsorSlot = useMemo(() => SEED_FEEDS.find((f: BroadcastFeedItem) => f.kind === 'sponsor-billboard'), []);
   const topLive = liveCamFeeds[0] ?? SEED_FEEDS.find((f: BroadcastFeedItem) => f.status === 'live')!;
+
+  // Orbit nodes: prefer live camera feeds, fall back to named performer stubs.
+  // No static profile images — every node renders emoji + name from live data.
+  const orbitPerformers = useMemo<Performer[]>(() => {
+    const fromFeeds: Performer[] = SEED_FEEDS
+      .filter((f: BroadcastFeedItem) => f.status === 'live' || f.kind === 'live-camera' || f.kind === 'battle' || f.kind === 'cypher')
+      .slice(0, 10)
+      .map((f, i) => ({ slug: f.id, name: f.title, genre: f.genre ?? 'Live', rank: i + 1 }));
+    if (fromFeeds.length >= 6) return fromFeeds;
+    // Merge with stubs for remaining slots
+    const used = new Set(fromFeeds.map(p => p.slug));
+    const stubs = PERFORMERS.filter(p => !used.has(p.slug)).map((p, i) => ({ ...p, rank: fromFeeds.length + i + 1 }));
+    return [...fromFeeds, ...stubs].slice(0, 10);
+  }, []);
+
+  const canvasCards = useMemo(() => {
+    const cards: Array<{ key: string; item: BroadcastFeedItem; rotation: number }> = [];
+    if (magFeature) cards.push({ key: 'mag', item: magFeature, rotation: -2.3 });
+    if (battleFeeds[0]) cards.push({ key: 'battle', item: battleFeeds[0], rotation: 2 });
+    if (sponsorSlot) cards.push({ key: 'sponsor', item: sponsorSlot, rotation: -1.3 });
+    return cards;
+  }, [magFeature, battleFeeds, sponsorSlot]);
 
   useEffect(() => {
     const fromStorage = safeParseLayerState(localStorage.getItem(HOME1_LAYER_SESSION_KEY));
@@ -329,6 +366,14 @@ export default function Home1CoverPage() {
   }, []);
 
   useEffect(() => {
+    if (canvasCards.length <= 1) return;
+    const id = setInterval(() => {
+      setCanvasCardIndex((i) => (i + 1) % canvasCards.length);
+    }, 8000);
+    return () => clearInterval(id);
+  }, [canvasCards.length]);
+
+  useEffect(() => {
     setTypedChars(0);
     let i = 0;
     const typeId = setInterval(() => {
@@ -362,6 +407,13 @@ export default function Home1CoverPage() {
     };
   }, [currentIssueLine, issueLines.length]);
 
+  useEffect(() => {
+    const id = setInterval(() => {
+      setChallengePromoIndex((idx) => (idx + 1) % CHALLENGE_PROMO_LINES.length);
+    }, 2800);
+    return () => clearInterval(id);
+  }, []);
+
   return (
     <div className="tmi-home1-canvas-surface">
       <style>{`
@@ -385,6 +437,51 @@ export default function Home1CoverPage() {
             radial-gradient(circle at 80% 20%, rgba(0, 255, 255, 0.2), transparent 40%),
             radial-gradient(circle at 35% 75%, rgba(255, 215, 0, 0.18), transparent 35%),
             repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.02) 0px, rgba(255, 255, 255, 0.02) 1px, transparent 1px, transparent 4px);
+        }
+
+        .tmi-paper-underlay {
+          position: fixed;
+          inset: 0;
+          z-index: 0;
+          pointer-events: none;
+          opacity: 0.44;
+          mix-blend-mode: multiply;
+          background: #e6d3ad;
+          background-image: radial-gradient(circle at 20% 10%, rgba(255, 255, 255, 0.42), transparent 34%), radial-gradient(circle at 82% 22%, rgba(255, 225, 141, 0.36), transparent 36%);
+        }
+
+        .tmi-halftone-underlay {
+          position: fixed;
+          inset: 0;
+          z-index: 1;
+          pointer-events: none;
+          opacity: 0.13;
+          mix-blend-mode: soft-light;
+          background-image:
+            radial-gradient(circle, #000 1.1px, transparent 1.1px),
+            radial-gradient(circle, #ff2daa 0.8px, transparent 0.8px);
+          background-size: 6px 6px, 5px 5px;
+          background-position: 0 0, 2.5px 2.5px;
+        }
+
+        .tmi-grain-overlay {
+          position: fixed;
+          inset: 0;
+          z-index: 90;
+          pointer-events: none;
+          opacity: 0.18;
+          mix-blend-mode: multiply;
+          background-image: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.10) 0px, rgba(0, 0, 0, 0.10) 1px, transparent 1px, transparent 3px), repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.06) 0px, rgba(0, 0, 0, 0.06) 1px, transparent 1px, transparent 4px);
+        }
+
+        .tmi-gloss-overlay {
+          position: fixed;
+          inset: 0;
+          z-index: 91;
+          pointer-events: none;
+          opacity: 0.34;
+          mix-blend-mode: overlay;
+          background: linear-gradient(130deg, rgba(255, 255, 255, 0.14) 0%, transparent 42%, rgba(0, 0, 0, 0.08) 100%);
         }
 
         .tmi-home1-shell {
@@ -634,10 +731,22 @@ export default function Home1CoverPage() {
         .tmi-orbit-section {
           margin-top: 14px;
           border: 2px solid #101727;
-          background: linear-gradient(140deg, #081e2f 0%, #0f2739 47%, #1a1130 100%);
+          background: #0f1f33;
           box-shadow: 0 24px 40px rgba(0, 0, 0, 0.56), -1px -1px 0 rgba(6, 6, 12, 0.95);
           padding: 16px;
           position: relative;
+          overflow: hidden;
+        }
+
+        .tmi-orbit-section::before {
+          content: '';
+          position: absolute;
+          inset: -8%;
+          pointer-events: none;
+          z-index: 0;
+          background:
+            linear-gradient(122deg, rgba(255, 215, 0, 0.24) 0%, rgba(255, 215, 0, 0) 44%),
+            linear-gradient(302deg, rgba(255, 45, 170, 0.18) 0%, rgba(255, 45, 170, 0) 52%);
         }
 
         .tmi-orbit-section h2 {
@@ -648,6 +757,8 @@ export default function Home1CoverPage() {
           text-transform: uppercase;
           letter-spacing: 0.04em;
           mix-blend-mode: multiply;
+          position: relative;
+          z-index: 1;
         }
 
         .tmi-orbit-meta {
@@ -659,6 +770,8 @@ export default function Home1CoverPage() {
           color: rgba(255, 255, 255, 0.75);
           text-transform: uppercase;
           letter-spacing: 0.11em;
+          position: relative;
+          z-index: 1;
         }
 
         .tmi-orbit-canvas {
@@ -667,6 +780,7 @@ export default function Home1CoverPage() {
           width: min(760px, 92vw);
           height: min(760px, 92vw);
           border-radius: 50%;
+          z-index: 1;
         }
 
         .tmi-orbit-ring {
@@ -789,9 +903,22 @@ export default function Home1CoverPage() {
         .tmi-home1-second-section {
           margin-top: 14px;
           border: 2px solid #11192b;
-          background: linear-gradient(150deg, #230b2f 0%, #10263a 48%, #17343a 100%);
+          background: #1a2439;
           padding: 16px;
           box-shadow: 0 24px 40px rgba(0, 0, 0, 0.56), -1px -1px 0 rgba(6, 6, 12, 0.95);
+          position: relative;
+          overflow: hidden;
+        }
+
+        .tmi-home1-second-section::before {
+          content: '';
+          position: absolute;
+          inset: -4%;
+          pointer-events: none;
+          z-index: 0;
+          background:
+            linear-gradient(132deg, rgba(255, 215, 0, 0.22) 0%, rgba(255, 215, 0, 0) 45%),
+            linear-gradient(312deg, rgba(255, 45, 170, 0.2) 0%, rgba(255, 45, 170, 0) 56%);
         }
 
         .tmi-home1-second-section h3 {
@@ -801,12 +928,45 @@ export default function Home1CoverPage() {
           font-size: clamp(24px, 4vw, 46px);
           line-height: 0.95;
           mix-blend-mode: multiply;
+          position: relative;
+          z-index: 1;
         }
 
         .tmi-home1-second-grid {
           display: grid;
           grid-template-columns: 1.2fr 1fr 1fr;
           gap: 10px;
+          position: relative;
+          z-index: 1;
+        }
+
+        .tmi-challenge-promo {
+          margin-top: 10px;
+          margin-bottom: 6px;
+          border: 2px solid #141d30;
+          background: linear-gradient(92deg, rgba(255, 215, 0, 0.21) 0%, rgba(255, 45, 170, 0.28) 100%);
+          min-height: 44px;
+          display: grid;
+          place-items: center;
+          text-align: center;
+          box-shadow: 0 14px 26px rgba(0, 0, 0, 0.48), -1px -1px 0 rgba(5, 5, 10, 1);
+          overflow: hidden;
+        }
+
+        .tmi-challenge-promo span {
+          font-family: 'Inter', sans-serif;
+          font-size: 10px;
+          font-weight: 900;
+          letter-spacing: 0.14em;
+          color: #fff7d5;
+          text-transform: uppercase;
+          animation: tmiPromoSlide 0.42s ease;
+          padding: 0 10px;
+        }
+
+        @keyframes tmiPromoSlide {
+          from { opacity: 0; transform: translateY(35%); }
+          to { opacity: 1; transform: translateY(0); }
         }
 
         .tmi-panel {
@@ -980,6 +1140,9 @@ export default function Home1CoverPage() {
         }
       `}</style>
 
+      <div className="tmi-paper-underlay" />
+      <div className="tmi-halftone-underlay" />
+
       <div className="tmi-home1-shell">
         <div className="tmi-utility-row">
           <span className="tmi-utility-pill">Voting Live</span>
@@ -994,10 +1157,41 @@ export default function Home1CoverPage() {
 
         <ChallengeYourSongCTA variant="strip" />
 
+        <Link href="/battles/new" style={{ textDecoration: 'none' }}>
+          <div className="tmi-challenge-promo" aria-live="polite">
+            <span>{CHALLENGE_PROMO_LINES[challengePromoIndex]}</span>
+          </div>
+        </Link>
+
         {process.env.NEXT_PUBLIC_BETA_MODE === 'true' && <FounderAdvertiserBanner />}
 
+        {/* ── HERO ENTER BUTTON ── */}
+        <div style={{ display: 'flex', justifyContent: 'center', margin: '12px 0 10px', gap: 10, flexWrap: 'wrap' }}>
+          <Link
+            href="/live/lobby"
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 8,
+              padding: '14px 36px',
+              background: 'linear-gradient(135deg, #00C8FF, #AA2DFF)',
+              color: '#050510',
+              fontFamily: "'Bebas Neue','Impact',sans-serif",
+              fontSize: 'clamp(16px,2.5vw,22px)',
+              letterSpacing: '0.1em',
+              textDecoration: 'none',
+              fontWeight: 900,
+              boxShadow: '0 0 24px rgba(0,200,255,0.35)',
+            }}
+          >
+            <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#FF2020', display: 'inline-block', boxShadow: '0 0 8px #FF2020', animation: 'tmiBlink 1.1s step-end infinite' }} />
+            ENTER LIVE ARENA
+          </Link>
+          <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.1em', fontFamily: "'Inter',sans-serif", textAlign: 'center', width: '100%' }}>
+            Jump into a live room in 1 tap
+          </div>
+        </div>
+
         <div className="tmi-primary-cta-row">
-          <Link className="join" href="/auth/signup">Join Free</Link>
+          <Link className="join" href="/auth/signup">JOIN THE INDEX</Link>
           <Link className="login" href="/auth/signin">Login</Link>
           <Link className="challenge" href="/battles/new">Challenge Song</Link>
           <Link className="arena" href="/cypher/stage">Cypher Arena</Link>
@@ -1033,16 +1227,25 @@ export default function Home1CoverPage() {
               </div>
             </Link>
 
-            {PERFORMERS.map((performer, index) => {
-              const point = orbitPoint(index, PERFORMERS.length, 39, orbitAngle);
+            {orbitPerformers.map((performer, index) => {
+              const point = orbitPoint(index, orbitPerformers.length, 39, orbitAngle);
               const accent = GENRE_ACCENT[performer.genre] ?? '#FF2DAA';
               const emoji = GENRE_EMOJI[performer.genre] ?? '🎵';
               return (
-                <Link
+                <button
                   key={performer.slug}
                   className="tmi-orbit-node"
-                  style={{ left: `${point.x}%`, top: `${point.y}%` }}
-                  href={`/articles/performer/${performer.slug}`}
+                  style={{ left: `${point.x}%`, top: `${point.y}%`, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+                  onClick={() => setProfilePanel({
+                    id: performer.slug,
+                    name: performer.name,
+                    role: 'artist',
+                    avatarEmoji: emoji,
+                    slug: performer.slug,
+                    genre: performer.genre,
+                    accentColor: accent,
+                    isOnline: true,
+                  })}
                 >
                   <div style={{
                     width: '100%', height: '100%',
@@ -1057,7 +1260,7 @@ export default function Home1CoverPage() {
                     <strong>{performer.name}</strong>
                     <small>{performer.genre}</small>
                   </div>
-                </Link>
+                </button>
               );
             })}
           </div>
@@ -1083,44 +1286,53 @@ export default function Home1CoverPage() {
         })()}
 
         {/* ── Tabloid canvas stage ── */}
-        <section className="tmi-canvas-stage">
-          {/* Card A — Magazine Cover Story */}
-          {magFeature && (
-            <article className="tmi-collage-card tmi-card-a">
-              <div className="tmi-collage-emoji" style={{ background: `linear-gradient(135deg, ${magFeature.accentColor}28, #050510)` }}>
-                <span>{magFeature.avatarEmoji}</span>
-                {magFeature.genre && <small>{magFeature.genre}</small>}
-              </div>
-              <h3>{magFeature.title}</h3>
-              <p>{magFeature.subtitle ?? 'This week\'s editorial feature — curated from the Index.'}</p>
-              <Link href={magFeature.href}>{ctaLabel(magFeature.kind)}</Link>
-            </article>
-          )}
+        <section className="tmi-canvas-stage" style={{ minHeight: canvasCards.length === 0 ? 120 : undefined }}>
+          <AnimatePresence mode="wait">
+            {canvasCards.length > 0 && (() => {
+              const card = canvasCards[canvasCardIndex % canvasCards.length]!;
+              return (
+                <motion.article
+                  key={card.key}
+                  className="tmi-collage-card"
+                  style={{ left: '50%', top: '7%', transform: `translateX(-50%) rotate(${card.rotation}deg)` }}
+                  initial={{ opacity: 0, y: 24 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  transition={{ duration: 0.28, ease: 'easeInOut' }}
+                >
+                  <div className="tmi-collage-emoji" style={{ background: `linear-gradient(135deg, ${card.item.accentColor}28, #050510)` }}>
+                    <span>{card.item.avatarEmoji}</span>
+                    {card.item.viewerCount && <small>{card.item.viewerCount.toLocaleString()} WATCHING</small>}
+                    {card.item.kind === 'sponsor-billboard' && <small>OPEN SLOTS</small>}
+                  </div>
+                  <h3>{card.item.title}</h3>
+                  <p>{card.item.subtitle ?? 'Live now — join the stage.'}</p>
+                  <Link href={card.item.href}>{ctaLabel(card.item.kind)}</Link>
+                </motion.article>
+              );
+            })()}
+          </AnimatePresence>
 
-          {/* Card B — Top Live Broadcast */}
-          {battleFeeds[0] && (
-            <article className="tmi-collage-card tmi-card-b">
-              <div className="tmi-collage-emoji" style={{ background: `linear-gradient(135deg, ${battleFeeds[0].accentColor}28, #050510)` }}>
-                <span>{battleFeeds[0].avatarEmoji}</span>
-                {battleFeeds[0].viewerCount && <small>{battleFeeds[0].viewerCount.toLocaleString()} WATCHING</small>}
-              </div>
-              <h3>{battleFeeds[0].title}</h3>
-              <p>{battleFeeds[0].subtitle ?? 'Live now — join the battle and cast your vote.'}</p>
-              <Link href={battleFeeds[0].href}>{ctaLabel(battleFeeds[0].kind)}</Link>
-            </article>
-          )}
-
-          {/* Card C — Sponsor Slot */}
-          {sponsorSlot && (
-            <article className="tmi-collage-card tmi-card-c">
-              <div className="tmi-collage-emoji" style={{ background: `linear-gradient(135deg, ${sponsorSlot.accentColor}28, #050510)` }}>
-                <span>{sponsorSlot.avatarEmoji}</span>
-                <small>OPEN SLOTS</small>
-              </div>
-              <h3>{sponsorSlot.title}</h3>
-              <p>{sponsorSlot.subtitle ?? 'Sponsor a performer tonight and get front-page placement.'}</p>
-              <Link href={sponsorSlot.href}>{ctaLabel(sponsorSlot.kind)}</Link>
-            </article>
+          {/* Card navigation dots */}
+          {canvasCards.length > 1 && (
+            <div style={{ position: 'absolute', bottom: 14, left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: 6, zIndex: 20 }}>
+              {canvasCards.map((c, i) => (
+                <button
+                  key={c.key}
+                  onClick={() => setCanvasCardIndex(i)}
+                  style={{
+                    width: i === canvasCardIndex % canvasCards.length ? 18 : 6,
+                    height: 6,
+                    borderRadius: 3,
+                    background: i === canvasCardIndex % canvasCards.length ? '#00C8FF' : 'rgba(255,255,255,0.2)',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: 0,
+                    transition: 'width 0.25s ease, background 0.25s ease',
+                  }}
+                />
+              ))}
+            </div>
           )}
 
           <LayerCanvas layers={layers} onLayersChange={setLayers} isDesignMode={isAdmin && designMode} />
@@ -1131,40 +1343,48 @@ export default function Home1CoverPage() {
         </section>
 
         {/* ── 3 Live Billboard Tiles ── */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginTop: 14 }}>
-          {[
-            { title: "Guess Who's Up In Here?", subtitle: "It's gonna be a fun week in the Index", href: '/live/lobby', accent: '#FF2DAA', emoji: '👀' },
-            { title: "Song Challenge Live", subtitle: "Song for song · Work for work · Video for video", href: '/battles/new', accent: '#FFD700', emoji: '🎵' },
-            { title: "This Week In TMI", subtitle: "Who took the crown · This is your stage", href: '/magazine', accent: '#00FFFF', emoji: '📰' },
-          ].map((tile) => (
-            <Link key={tile.href} href={tile.href} style={{ textDecoration: 'none' }}>
-              <div style={{
-                border: `1.5px solid ${tile.accent}44`,
-                background: `linear-gradient(145deg, ${tile.accent}12, rgba(5,5,16,0.92))`,
-                borderRadius: 8,
-                padding: '14px 12px',
-                minHeight: 120,
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-                boxShadow: `0 0 18px ${tile.accent}18`,
-                transition: 'box-shadow 0.3s ease',
-              }}>
-                <div style={{ fontSize: 22 }}>{tile.emoji}</div>
-                <div>
-                  <div style={{ fontSize: 11, fontWeight: 900, color: '#fff', fontFamily: "'Inter',sans-serif", textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>
-                    {tile.title}
-                  </div>
-                  <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', fontFamily: "'Inter',sans-serif" }}>
-                    {tile.subtitle}
-                  </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12, marginTop: 14 }}>
+          {(() => {
+            const liveCamera = liveCamFeeds[0];
+            const battle = battleFeeds[0];
+            const cypher = cyphers[0];
+            const tiles = [
+              liveCamera
+                ? { title: liveCamera.title, subtitle: liveCamera.subtitle, href: liveCamera.href, accent: liveCamera.accentColor ?? '#FF2DAA', emoji: liveCamera.avatarEmoji ?? '🎤', viewers: liveCamera.viewerCount, isLive: liveCamera.status === 'live', cta: 'ENTER ROOM' }
+                : { title: "Live Lobby", subtitle: "Join the crowd right now", href: '/live/lobby', accent: '#FF2DAA', emoji: '👥', viewers: 47, isLive: true, cta: 'ENTER ROOM' },
+              battle
+                ? { title: battle.title, subtitle: battle.subtitle, href: battle.href, accent: battle.accentColor ?? '#FFD700', emoji: battle.avatarEmoji ?? '⚔️', viewers: battle.viewerCount, isLive: battle.status === 'live', cta: 'WATCH BATTLE' }
+                : { title: "Song Challenge Live", subtitle: "Song for song · Work for work", href: '/battles/new', accent: '#FFD700', emoji: '⚔️', viewers: 23, isLive: true, cta: 'JOIN BATTLE' },
+              cypher
+                ? { title: cypher.title, subtitle: cypher.subtitle, href: cypher.href, accent: cypher.accentColor ?? '#00C8FF', emoji: cypher.avatarEmoji ?? '🎤', viewers: cypher.viewerCount, isLive: true, cta: 'ENTER CYPHER' }
+                : { title: "Cypher Arena", subtitle: "Drop bars · Earn your crown", href: '/cypher/stage', accent: '#00C8FF', emoji: '🎤', viewers: 31, isLive: true, cta: 'ENTER CYPHER' },
+            ];
+            return tiles.map((tile) => (
+              <div key={tile.href} style={{ border: `1.5px solid ${tile.accent}33`, background: `linear-gradient(145deg, ${tile.accent}12, rgba(5,5,16,0.92))`, padding: 12, boxShadow: `0 0 18px ${tile.accent}18` }}>
+                <Link href={tile.href} style={{ textDecoration: 'none', display: 'grid', placeItems: 'center', marginBottom: 8 }}>
+                  <MaskedVideoTile
+                    shape="octagon"
+                    performerName={tile.title}
+                    isLive={tile.isLive}
+                    viewerCount={typeof tile.viewers === 'number' ? tile.viewers : 0}
+                    accentColor={tile.accent}
+                    avatarEmoji={tile.emoji}
+                    size={170}
+                  />
+                </Link>
+                <div style={{ fontSize: 10, fontWeight: 900, color: '#fff', fontFamily: "'Inter',sans-serif", textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>
+                  {tile.title}
                 </div>
-                <div style={{ fontSize: 8, fontWeight: 900, color: tile.accent, letterSpacing: '0.12em', fontFamily: "'Inter',sans-serif", marginTop: 8 }}>
-                  JOIN NOW →
+                <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.56)', fontFamily: "'Inter',sans-serif", marginBottom: 6 }}>
+                  {tile.subtitle}
                 </div>
+                <MiniChatPreview accentColor={tile.accent} />
+                <Link href={tile.href} style={{ display: 'inline-block', marginTop: 8, fontSize: 9, fontWeight: 900, color: tile.accent, letterSpacing: '0.12em', fontFamily: "'Inter',sans-serif", textDecoration: 'none' }}>
+                  {tile.cta} →
+                </Link>
               </div>
-            </Link>
-          ))}
+            ));
+          })()}
         </div>
 
         <section className="tmi-home1-second-section">
@@ -1196,16 +1416,32 @@ export default function Home1CoverPage() {
               </article>
             )}
 
-            {/* Right — Advertise (static CTA, no image needed) */}
-            <article className="tmi-panel" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-              <div className="tmi-panel-emoji" style={{ background: 'linear-gradient(135deg, #FFD70022, #050510)' }}>
-                <span>🏆</span>
-                <small>OPEN SLOTS</small>
-              </div>
-              <h4>Advertise With Us</h4>
-              <p>Front-page placement, sponsor walls, and billboard tiles available now for brands and businesses.</p>
-              <Link href="/advertisers">OPEN ADVERTISER HUB →</Link>
-            </article>
+            {/* Right — Latest editorial article */}
+            {(() => {
+              const latestArticle = getLatestEditorialArticles(1)[0];
+              if (!latestArticle) return (
+                <article className="tmi-panel" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                  <div className="tmi-panel-emoji" style={{ background: 'linear-gradient(135deg, #FFD70022, #050510)' }}>
+                    <span>📰</span>
+                    <small>EDITORIAL</small>
+                  </div>
+                  <h4>Stories Loading</h4>
+                  <p>The editorial engine is loading the latest articles from the Index.</p>
+                  <Link href="/articles">READ ALL STORIES →</Link>
+                </article>
+              );
+              return (
+                <article className="tmi-panel" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                  <div className="tmi-panel-emoji" style={{ background: `linear-gradient(135deg, ${latestArticle.accentColor}22, #050510)` }}>
+                    <span>📰</span>
+                    <small>LATEST STORY</small>
+                  </div>
+                  <h4>{latestArticle.title}</h4>
+                  <p>{latestArticle.snippet}</p>
+                  <Link href={`/articles/${latestArticle.slug}`}>READ FULL STORY →</Link>
+                </article>
+              );
+            })()}
           </div>
         </section>
 
@@ -1214,6 +1450,17 @@ export default function Home1CoverPage() {
           <p>Who took the crown this week · This is your stage, be original</p>
         </footer>
       </div>
+
+      {profilePanel && (
+        <UserProfilePanel
+          user={profilePanel}
+          onClose={() => setProfilePanel(null)}
+        />
+      )}
+      <WelcomeArenaOverlay />
+
+      <div className="tmi-grain-overlay" />
+      <div className="tmi-gloss-overlay" />
     </div>
   );
 }

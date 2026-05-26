@@ -13,6 +13,56 @@ interface EmailRequestBody {
   data?: Record<string, unknown>;
 }
 
+function escapeHtml(input: string): string {
+  return input
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function sanitizeUrl(input: string): string {
+  if (!input) return 'https://themusiciansindex.com';
+  if (/^https?:\/\/[a-zA-Z0-9.-]+(?:\:[0-9]+)?(?:\/.*)?$/.test(input)) return input;
+  return 'https://themusiciansindex.com';
+}
+
+function parseBoolean(value: string | undefined, fallback = false): boolean {
+  if (!value) return fallback;
+  return ['1', 'true', 'yes', 'on'].includes(value.trim().toLowerCase());
+}
+
+function parseAllowedOrigins(raw: string | undefined): Set<string> {
+  const origins = (raw || '')
+    .split(',')
+    .map((v) => v.trim())
+    .filter(Boolean)
+    .map((v) => {
+      try {
+        const origin = new URL(v).origin;
+        return origin.toLowerCase();
+      } catch {
+        return null;
+      }
+    })
+    .filter((v): v is string => !!v);
+
+  return new Set(origins);
+}
+
+function isAllowedOrigin(req: NextRequest, allowed: Set<string>): boolean {
+  const origin = req.headers.get('origin')?.trim().toLowerCase();
+  if (!origin) return false;
+  if (allowed.has(origin)) return true;
+
+  const host = req.headers.get('host')?.trim().toLowerCase();
+  const xfHost = req.headers.get('x-forwarded-host')?.split(',')[0]?.trim().toLowerCase();
+  if (host && origin === `https://${host}`) return true;
+  if (xfHost && origin === `https://${xfHost}`) return true;
+  return false;
+}
+
 // ─── Rate limiting (module-level, resets on cold start) ──────────────────────
 
 interface RateBucket {
@@ -50,8 +100,11 @@ function buildEmailContent(
   type: EmailType,
   data: Record<string, unknown>,
 ): { html: string; text: string } {
-  const name = String(data.name ?? 'there');
-  const link = String(data.link ?? 'https://themusiciansindex.com');
+  const name = escapeHtml(String(data.name ?? 'there')).slice(0, 80);
+  const link = sanitizeUrl(String(data.link ?? 'https://themusiciansindex.com')).slice(0, 300);
+  const eventName = escapeHtml(String(data.event ?? 'the event')).slice(0, 120);
+  const reference = escapeHtml(String(data.ref ?? 'N/A')).slice(0, 120);
+  const message = escapeHtml(String(data.message ?? 'You have a new notification from TMI.')).slice(0, 500);
 
   switch (type) {
     case 'welcome':
@@ -66,13 +119,13 @@ function buildEmailContent(
       };
     case 'ticket':
       return {
-        html: `<h1 style="color:#AA2DFF">Your Ticket</h1><p>Hi ${name}, your ticket for <strong>${String(data.event ?? 'the event')}</strong> is confirmed.</p><p>Reference: <code>${String(data.ref ?? 'N/A')}</code></p>`,
-        text: `Hi ${name}, your ticket for ${String(data.event ?? 'the event')} is confirmed. Reference: ${String(data.ref ?? 'N/A')}`,
+        html: `<h1 style="color:#AA2DFF">Your Ticket</h1><p>Hi ${name}, your ticket for <strong>${eventName}</strong> is confirmed.</p><p>Reference: <code>${reference}</code></p>`,
+        text: `Hi ${name}, your ticket for ${eventName} is confirmed. Reference: ${reference}`,
       };
     case 'notification':
       return {
-        html: `<p style="color:#fff">${String(data.message ?? 'You have a new notification from TMI.')}</p>`,
-        text: String(data.message ?? 'You have a new notification from TMI.'),
+        html: `<p style="color:#fff">${message}</p>`,
+        text: message,
       };
     case 'invite':
       return {
@@ -94,6 +147,26 @@ function isValidEmailAddress(email: string): boolean {
 // ─── POST /api/email ──────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
+  const internalEmailKey = process.env.INTERNAL_EMAIL_API_KEY?.trim();
+  const headerKey = req.headers.get('x-tmi-email-key')?.trim();
+  const strictMode = parseBoolean(process.env.EMAIL_API_STRICT_MODE, false);
+  const requireInternalKey = parseBoolean(process.env.EMAIL_API_REQUIRE_INTERNAL_KEY, false);
+  const allowedOrigins = parseAllowedOrigins(process.env.EMAIL_API_ALLOWED_ORIGINS);
+
+  const hasValidInternalKey = !!internalEmailKey && !!headerKey && headerKey === internalEmailKey;
+  if (!!internalEmailKey && !hasValidInternalKey) {
+    return NextResponse.json({ ok: false, error: 'Unauthorized email dispatch' }, { status: 401 });
+  }
+
+  if ((requireInternalKey || (strictMode && !!internalEmailKey)) && !hasValidInternalKey) {
+    return NextResponse.json({ ok: false, error: 'Unauthorized email dispatch' }, { status: 401 });
+  }
+
+  // Browser-origin traffic must come from an approved origin in strict mode.
+  if (strictMode && !hasValidInternalKey && !isAllowedOrigin(req, allowedOrigins)) {
+    return NextResponse.json({ ok: false, error: 'Origin not allowed for email dispatch' }, { status: 403 });
+  }
+
   // IP-based rate limiting
   const ip =
     req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??

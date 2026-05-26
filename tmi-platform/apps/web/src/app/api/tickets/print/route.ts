@@ -1,200 +1,235 @@
-export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
-import crypto from 'crypto';
+import { checkRateLimit } from '@/lib/security/TMISecurityEngine';
 
-interface PrintTicketRequest {
-  tickets: Array<{
-    id: string;
-    tier: string;
-    ownerName?: string;
-    seatLabel?: string;
-    price?: number;
-  }>;
-  event: {
-    name: string;
-    venue: string;
-    date: string;
-    time: string;
-  };
-  venueBranding?: {
-    venueName?: string;
-    logoText?: string;
-    primaryColor?: string;
-    secondaryColor?: string;
-    footerNote?: string;
-  };
+// --- Security & Sanitization Helpers ---
+
+function escapeHtml(unsafe: string): string {
+  if (!unsafe) return '';
+  return unsafe
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }
 
-function generateQRHash(ticketId: string, eventName: string): string {
-  const salt = process.env.TICKET_SECRET_SALT ?? 'tmi-default-salt';
-  return crypto.createHash('sha256').update(`${ticketId}:${eventName}:${salt}`).digest('hex').slice(0, 16).toUpperCase();
-}
-
-function qrSvgPath(data: string): string {
-  const size = 8;
-  const cells = data.length;
-  const paths: string[] = [];
-  for (let i = 0; i < cells; i++) {
-    if (data.charCodeAt(i) % 2 === 0) {
-      const x = (i % size) * 4;
-      const y = Math.floor(i / size) * 4;
-      paths.push(`M${x},${y}h4v4h-4z`);
+function sanitizeUrl(url: string): string {
+  if (!url) return '';
+  try {
+    const u = new URL(url);
+    if (['http:', 'https:', 'data:'].includes(u.protocol)) {
+      return u.href;
     }
+  } catch {
+    // Invalid URL, return empty
   }
-  return paths.join(' ');
+  return '';
 }
 
-function renderTicketHTML(
-  ticket: PrintTicketRequest['tickets'][0],
-  event: PrintTicketRequest['event'],
-  branding: PrintTicketRequest['venueBranding'] = {},
-  index: number,
-): string {
-  const qrHash = generateQRHash(ticket.id, event.name);
-  const verifyUrl = `https://themusiciansindex.com/verify/${qrHash}`;
-  const color = branding.primaryColor ?? '#FFD700';
-  const secondary = branding.secondaryColor ?? '#050510';
-  const tierColors: Record<string, string> = {
-    vip: '#FFD700', premium: '#AA2DFF', general: '#00FFFF',
-    'collector vip': '#FF2DAA', default: '#00FF88',
-  };
-  const tierColor = tierColors[ticket.tier.toLowerCase()] ?? tierColors.default;
+type CustomField = { label: string; value: string };
+
+function sanitizeCustomFields(fields: unknown): CustomField[] {
+  if (!Array.isArray(fields)) return [];
+  return fields
+    .map((f: unknown) => {
+      if (typeof f === 'object' && f !== null && 'label' in f && 'value' in f) {
+        return {
+          label: escapeHtml(String((f as CustomField).label)),
+          value: escapeHtml(String((f as CustomField).value)),
+        };
+      }
+      return null;
+    })
+    .filter((f): f is CustomField => f !== null)
+    .slice(0, 5); // Cap custom fields to prevent abuse
+}
+
+// --- V2 Ticket HTML Builder ---
+
+interface TicketHtmlParams {
+  ticketId: string;
+  venueName: string;
+  eventTitle: string;
+  section?: string;
+  row?: string;
+  seat?: string;
+  holderName?: string;
+  qrCodeHash: string;
+  accentColor?: string;
+  borderColor?: string;
+  termsText?: string;
+  customFields?: CustomField[];
+}
+
+function buildTicketHtml(params: TicketHtmlParams): string {
+  const {
+    ticketId,
+    venueName,
+    eventTitle,
+    section = 'GA',
+    row = 'N/A',
+    seat = 'N/A',
+    holderName = 'Guest',
+    qrCodeHash,
+    accentColor = '#FFD700',
+    borderColor = '#e2e8f0',
+    termsText = 'Admit one. Venue policies apply. Non-refundable.',
+    customFields = [],
+  } = params;
+
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(qrCodeHash)}`;
 
   return `
-  <div class="ticket" style="page-break-after: ${index % 2 === 1 ? 'always' : 'auto'}">
-    <!-- Left accent bar -->
-    <div class="ticket-bar" style="background: ${tierColor}"></div>
-
-    <!-- Main content -->
-    <div class="ticket-body">
-      <!-- Header -->
-      <div class="ticket-header">
-        <div class="venue-logo" style="color: ${color}">${branding.logoText ?? branding.venueName ?? 'TMI'}</div>
-        <div class="tier-badge" style="background: ${tierColor}20; color: ${tierColor}; border: 1px solid ${tierColor}60">
-          ${ticket.tier.toUpperCase()}
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>TMI Ticket: ${escapeHtml(ticketId)}</title>
+      <style>
+        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background: #f0f2f5; display: grid; place-items: center; min-height: 100vh; margin: 0; }
+        .ticket {
+          width: 100%;
+          max-width: 700px;
+          background: #0a0a1a;
+          color: ${escapeHtml(borderColor)};
+          border: 4px solid ${escapeHtml(accentColor)};
+          border-radius: 12px;
+          box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+          margin: 20px;
+        }
+        .header { padding: 20px; text-align: center; border-bottom: 2px dashed ${escapeHtml(accentColor)}55; }
+        .header h1 { font-size: 24px; text-transform: uppercase; letter-spacing: 0.2em; color: ${escapeHtml(accentColor)}; margin: 0; }
+        .header h2 { font-size: 16px; color: #fff; margin: 5px 0 0; }
+        .content { display: flex; padding: 24px; gap: 24px; }
+        .details { flex: 1; }
+        .details h3 { font-size: 28px; font-weight: 900; color: #fff; margin: 0 0 12px; }
+        .seat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
+        .seat-item { background: rgba(255,255,255,0.05); border-radius: 8px; padding: 10px; text-align: center; }
+        .seat-item .label { font-size: 10px; text-transform: uppercase; color: #8899aa; }
+        .seat-item .value { font-size: 20px; font-weight: bold; color: ${escapeHtml(accentColor)}; }
+        .holder { font-size: 14px; }
+        .qr-section { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; }
+        .qr-code { background: #fff; padding: 10px; border-radius: 8px; }
+        .footer { padding: 16px; border-top: 1px solid rgba(255,255,255,0.1); font-size: 10px; color: #667; text-align: center; }
+        .custom-fields { margin-top: 16px; font-size: 11px; color: #99a; }
+      </style>
+    </head>
+    <body>
+      <div class="ticket">
+        <div class="header">
+          <h1>THE MUSICIAN'S INDEX</h1>
+          <h2>${escapeHtml(venueName)}</h2>
         </div>
+        <div class="content">
+          <div class="details">
+            <h3>${escapeHtml(eventTitle)}</h3>
+            <div class="seat-grid">
+              <div class="seat-item"><div class="label">Section</div><div class="value">${escapeHtml(section)}</div></div>
+              <div class="seat-item"><div class="label">Row</div><div class="value">${escapeHtml(row)}</div></div>
+              <div class="seat-item"><div class="label">Seat</div><div class="value">${escapeHtml(seat)}</div></div>
+            </div>
+            <div class="holder">HOLDER: <strong>${escapeHtml(holderName)}</strong></div>
+            <div class="custom-fields">
+              ${customFields.map(f => `<div><strong>${f.label}:</strong> ${f.value}</div>`).join('')}
+            </div>
+          </div>
+          <div class="qr-section">
+            <div class="qr-code"><img src="${sanitizeUrl(qrUrl)}" alt="Ticket QR Code" width="150" height="150"></div>
+            <div style="font-family: monospace; font-size: 11px; color: #667;">${escapeHtml(ticketId)}</div>
+          </div>
+        </div>
+        <div class="footer">${escapeHtml(termsText)}</div>
       </div>
-
-      <!-- Event info -->
-      <div class="event-name">${event.name}</div>
-      <div class="event-meta">
-        <span>📍 ${event.venue}</span>
-        <span>📅 ${event.date}</span>
-        <span>⏰ ${event.time}</span>
-      </div>
-
-      ${ticket.ownerName ? `<div class="owner-name">Issued to: <strong>${ticket.ownerName}</strong></div>` : ''}
-      ${ticket.seatLabel ? `<div class="seat-label" style="color: ${color}">Seat: ${ticket.seatLabel}</div>` : ''}
-      ${ticket.price !== undefined ? `<div class="price-label">$${ticket.price.toFixed(2)}</div>` : ''}
-    </div>
-
-    <!-- QR code section -->
-    <div class="ticket-qr">
-      <div class="qr-box">
-        <svg width="64" height="64" viewBox="0 0 32 32" style="display:block">
-          <!-- QR grid simulation -->
-          <rect width="32" height="32" fill="white"/>
-          <path d="${qrSvgPath(qrHash)}" fill="${secondary}"/>
-          <!-- Corner markers -->
-          <rect x="0" y="0" width="9" height="9" rx="1" fill="${secondary}"/>
-          <rect x="1" y="1" width="7" height="7" rx="1" fill="white"/>
-          <rect x="2" y="2" width="5" height="5" rx="0.5" fill="${secondary}"/>
-          <rect x="23" y="0" width="9" height="9" rx="1" fill="${secondary}"/>
-          <rect x="24" y="1" width="7" height="7" rx="1" fill="white"/>
-          <rect x="25" y="2" width="5" height="5" rx="0.5" fill="${secondary}"/>
-          <rect x="0" y="23" width="9" height="9" rx="1" fill="${secondary}"/>
-          <rect x="1" y="24" width="7" height="7" rx="1" fill="white"/>
-          <rect x="2" y="25" width="5" height="5" rx="0.5" fill="${secondary}"/>
-        </svg>
-        <div class="qr-code-text">${qrHash}</div>
-        <div class="verify-url">Verify: tmindex.com/v/${qrHash.slice(0, 8)}</div>
-      </div>
-      <div class="ticket-id">ID: ${ticket.id.slice(-8).toUpperCase()}</div>
-    </div>
-
-    <!-- Footer -->
-    <div class="ticket-footer">
-      <span>${branding.footerNote ?? 'This ticket is your proof of entry. Non-transferable.'}</span>
-    </div>
-  </div>`;
+    </body>
+    </html>
+  `;
 }
 
-export async function POST(req: NextRequest) {
-  try {
-    const body = await req.json() as PrintTicketRequest;
-    const { tickets, event, venueBranding } = body;
+/**
+ * GET /api/tickets/print
+ * Health check endpoint for the ticket printing service.
+ */
+export async function GET() {
+  return NextResponse.json({
+    status: 'ok',
+    engine: 'TMI Hardened Ticket Print v2',
+    timestamp: new Date().toISOString(),
+    capabilities: ['html_generation', 'pdf_generation_pending', 'rate_limiting', 'input_sanitization'],
+  });
+}
 
-    if (!tickets?.length || !event?.name) {
-      return NextResponse.json({ error: 'tickets and event required' }, { status: 400 });
+/**
+ * POST /api/tickets/print
+ * V2 Hardened endpoint for generating printable ticket HTML.
+ * Replaces the previous insecure implementation.
+ */
+export async function POST(req: NextRequest) {
+  const clientIp = req.headers.get('x-forwarded-for') ?? req.ip ?? '127.0.0.1';
+
+  // Aggressive rate limiting to prevent abuse
+  const { allowed, remaining } = checkRateLimit(`ticket:print:${clientIp}`, 20, 60_000);
+  const headers = { 'X-RateLimit-Remaining': String(remaining) };
+
+  if (!allowed) {
+    return NextResponse.json({ error: 'Rate limit exceeded. Please try again shortly.' }, { status: 429, headers });
+  }
+
+  try {
+    const body = await req.json().catch(() => null);
+
+    if (!body || typeof body !== 'object') {
+      return NextResponse.json({ error: 'Invalid JSON payload.' }, { status: 400, headers });
     }
 
-    const color = venueBranding?.primaryColor ?? '#FFD700';
+    const {
+      ticketId,
+      venueName,
+      eventTitle,
+      qrCodeHash,
+      mode = 'inline', // 'inline' or 'pdf'
+      ...rest
+    } = body;
 
-    const html = `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>${event.name} — Tickets</title>
-<style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: #fff; font-family: 'Arial', sans-serif; padding: 20px; }
-  @media print {
-    body { padding: 0; }
-    @page { size: 8.5in 11in; margin: 0.5in; }
-  }
-  .ticket {
-    display: flex;
-    width: 100%;
-    max-width: 680px;
-    height: 190px;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    overflow: hidden;
-    margin: 0 auto 20px;
-    background: #050510;
-    color: #fff;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-    position: relative;
-  }
-  .ticket-bar { width: 8px; flex-shrink: 0; }
-  .ticket-body { flex: 1; padding: 16px 18px; display: flex; flex-direction: column; justify-content: space-between; }
-  .ticket-header { display: flex; justify-content: space-between; align-items: flex-start; }
-  .venue-logo { font-size: 13px; font-weight: 900; letter-spacing: 0.15em; }
-  .tier-badge { font-size: 9px; font-weight: 800; padding: 3px 10px; border-radius: 4px; letter-spacing: 0.1em; }
-  .event-name { font-size: 18px; font-weight: 900; color: #fff; margin: 8px 0 4px; line-height: 1.2; }
-  .event-meta { display: flex; flex-wrap: wrap; gap: 10px; font-size: 10px; color: rgba(255,255,255,0.55); }
-  .owner-name { font-size: 11px; color: rgba(255,255,255,0.6); margin-top: 4px; }
-  .seat-label { font-size: 12px; font-weight: 800; margin-top: 2px; }
-  .price-label { font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 2px; }
-  .ticket-qr { width: 120px; flex-shrink: 0; border-left: 1px dashed rgba(255,255,255,0.1); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 12px; gap: 4px; }
-  .qr-box { display: flex; flex-direction: column; align-items: center; gap: 4px; }
-  .qr-code-text { font-size: 7px; color: rgba(255,255,255,0.4); letter-spacing: 0.08em; }
-  .verify-url { font-size: 6px; color: rgba(255,255,255,0.3); }
-  .ticket-id { font-size: 8px; color: rgba(255,255,255,0.3); letter-spacing: 0.1em; margin-top: 4px; }
-  .ticket-footer { position: absolute; bottom: 0; left: 8px; right: 0; padding: 5px 12px; font-size: 8px; color: rgba(255,255,255,0.25); border-top: 1px solid rgba(255,255,255,0.06); }
-  .print-controls { text-align: center; margin-bottom: 24px; }
-  .print-btn { padding: 10px 24px; background: ${color}; color: #050510; font-weight: 800; font-size: 13px; border: none; border-radius: 8px; cursor: pointer; letter-spacing: 0.08em; }
-  @media print { .print-controls { display: none; } }
-  .page-title { text-align: center; font-size: 11px; font-weight: 800; letter-spacing: 0.3em; color: ${color}; margin-bottom: 20px; }
-</style>
-</head>
-<body>
-<div class="print-controls">
-  <button class="print-btn" onclick="window.print()">🖨 PRINT TICKETS</button>
-</div>
-<div class="page-title">${event.name.toUpperCase()} — ${event.date} · ${event.time}</div>
-${tickets.map((t, i) => renderTicketHTML(t, event, venueBranding, i)).join('\n')}
-</body>
-</html>`;
+    if (!ticketId || !venueName || !eventTitle || !qrCodeHash) {
+      return NextResponse.json({ error: 'Missing required ticket parameters: ticketId, venueName, eventTitle, qrCodeHash are required.' }, { status: 400, headers });
+    }
 
+    const ticketParams: TicketHtmlParams = {
+      ticketId: String(ticketId),
+      venueName: String(venueName),
+      eventTitle: String(eventTitle),
+      qrCodeHash: String(qrCodeHash),
+      section: rest.section ? String(rest.section) : undefined,
+      row: rest.row ? String(rest.row) : undefined,
+      seat: rest.seat ? String(rest.seat) : undefined,
+      holderName: rest.holderName ? String(rest.holderName) : undefined,
+      accentColor: rest.accentColor ? String(rest.accentColor) : undefined,
+      borderColor: rest.borderColor ? String(rest.borderColor) : undefined,
+      termsText: rest.termsText ? String(rest.termsText) : undefined,
+      customFields: sanitizeCustomFields(rest.customFields),
+    };
+
+    const html = buildTicketHtml(ticketParams);
+
+    if (mode === 'pdf') {
+      // PDF generation is a future enhancement. For now, we return an error if requested.
+      // To implement: use puppeteer-core and @sparticuz/chromium in a serverless function.
+      return NextResponse.json({ error: 'PDF generation is not yet available in this build.' }, { status: 501, headers });
+    }
+
+    // Return the generated HTML string for inline display or printing from a popup.
     return new NextResponse(html, {
+      status: 200,
       headers: {
+        ...headers,
         'Content-Type': 'text/html; charset=utf-8',
-        'Cache-Control': 'no-store',
+        'Content-Security-Policy': "default-src 'self'; img-src 'self' https://api.qrserver.com; style-src 'unsafe-inline'",
+        'X-Content-Type-Options': 'nosniff',
       },
     });
-  } catch (err) {
-    console.error('[tickets/print]', err);
-    return NextResponse.json({ error: 'Print failed' }, { status: 500 });
+  } catch (error: any) {
+    console.error('[TMI_TICKET_PRINT_ERROR]', error);
+    return NextResponse.json({ error: 'An internal error occurred while generating the ticket.' }, { status: 500, headers });
   }
 }

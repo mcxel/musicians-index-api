@@ -39,8 +39,58 @@ function matchesAny(pathname: string, prefixes: string[]): boolean {
   return prefixes.some((p) => pathname === p || pathname.startsWith(p + '/'));
 }
 
+function normalizeRef(input: string | null): string | null {
+  if (!input) return null;
+  const value = input.trim().replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 64);
+  return value || null;
+}
+
+function isPlaylistSurface(pathname: string): boolean {
+  return (
+    pathname.startsWith('/playlist') ||
+    pathname.startsWith('/playlists') ||
+    pathname.startsWith('/writers') ||
+    pathname.startsWith('/profile')
+  );
+}
+
 export function middleware(req: NextRequest) {
   const { pathname, search } = req.nextUrl;
+  const incomingRef = normalizeRef(req.nextUrl.searchParams.get('ref'));
+  const incomingPlaylist = normalizeRef(req.nextUrl.searchParams.get('playlist'));
+  const incomingCurator = normalizeRef(req.nextUrl.searchParams.get('curator'));
+
+  const withReferralCookies = (res: NextResponse): NextResponse => {
+    if (!incomingRef || !isPlaylistSurface(pathname)) return res;
+
+    const secure = req.nextUrl.protocol === 'https:';
+    res.cookies.set('tmi_ref', incomingRef, {
+      path: '/',
+      maxAge: 60 * 60 * 24 * 7,
+      sameSite: 'lax',
+      secure,
+      httpOnly: false,
+    });
+    if (incomingPlaylist) {
+      res.cookies.set('tmi_ref_playlist', incomingPlaylist, {
+        path: '/',
+        maxAge: 60 * 60 * 24 * 7,
+        sameSite: 'lax',
+        secure,
+        httpOnly: false,
+      });
+    }
+    if (incomingCurator) {
+      res.cookies.set('tmi_ref_curator', incomingCurator, {
+        path: '/',
+        maxAge: 60 * 60 * 24 * 7,
+        sameSite: 'lax',
+        secure,
+        httpOnly: false,
+      });
+    }
+    return res;
+  };
 
   const isExplicitAdminPath =
     pathname === '/admin' ||
@@ -125,7 +175,7 @@ export function middleware(req: NextRequest) {
   // ───────────────────────────────────────────────────────────────────────────
 
   if (matchesAny(pathname, AUTH_WHITELIST)) {
-    return NextResponse.next();
+    return withReferralCookies(NextResponse.next());
   }
 
   const isAdmin     = matchesAny(pathname, ADMIN_PATHS);
@@ -160,7 +210,7 @@ export function middleware(req: NextRequest) {
     }
   }
 
-  return NextResponse.next();
+  return withReferralCookies(NextResponse.next());
 }
 
 export const config = {

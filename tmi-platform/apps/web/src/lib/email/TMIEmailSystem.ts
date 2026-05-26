@@ -11,7 +11,7 @@ import { isUnsubscribed } from "./unsubscribeStore";
 
 /* ─── Types ─────────────────────────────────────────────────────────────── */
 export type EmailType =
-  | "welcome_artist" | "welcome_fan" | "welcome_venue" | "welcome_diamond"
+  | "welcome_artist" | "welcome_fan" | "welcome_venue" | "welcome_diamond" | "welcome_admin"
   | "verify_email" | "password_reset"
   | "invite" | "profile_reminder"
   | "battle_invite" | "contest_win" | "contest_loss"
@@ -220,6 +220,29 @@ const TEMPLATES: Record<string, (data: Record<string, unknown>, email: string) =
       </table>
       ${btn("Enter Your Diamond Hub", `${BASE_URL}/profile`, "#38bdf8")}
     `, email, "#38bdf8"),
+  }),
+
+  welcome_admin: (d, email) => ({
+    subject: "🔐 Admin Access Activated — TMI Control Panel",
+    html: baseHtml(`
+      ${labelChip("ADMIN", "#FF2DAA")}
+      ${h1(`${d.name}, you're an admin. 🔐`)}
+      ${p("You now have full access to the TMI control panel, revenue analytics, user management, and platform settings.")}
+      <table width="100%" cellpadding="0" cellspacing="0" style="background:rgba(255,45,170,0.08);border:1px solid rgba(255,45,170,0.3);border-radius:14px;padding:0;margin:16px 0;overflow:hidden;">
+        <tr><td style="padding:16px 20px;">
+          <p style="margin:0 0 12px;font-size:8px;font-weight:900;letter-spacing:0.3em;color:rgba(255,255,255,0.3);text-transform:uppercase;">ADMIN TOOLS</p>
+          ${[
+            ["📊", "Revenue dashboard & payouts"],
+            ["👥", "User management & roles"],
+            ["📧", "Email campaign blasts"],
+            ["⚙️", "Platform settings & config"],
+            ["🤖", "Bot telemetry & health"],
+            ["🔍", "Admin audit logs"],
+          ].map(([icon, text]) => `<p style="margin:0 0 8px;font-size:12px;color:rgba(255,255,255,0.75);">${icon}&nbsp; ${text}</p>`).join("")}
+        </td></tr>
+      </table>
+      ${btn("Go to Admin Panel", `${BASE_URL}/admin`, "#FF2DAA")}
+    `, email, "#FF2DAA"),
   }),
 
   invite: (d, email) => ({
@@ -545,7 +568,7 @@ const TRANSACTIONAL_TYPES = new Set<EmailType>([
   "ticket_confirmation", "nft_receipt", "beat_receipt", "tip_received",
   "subscription_start", "subscription_renew", "subscription_cancel", "subscription_upgrade",
   "payout_queued", "payout_approved", "contest_win", "contest_loss",
-  "battle_invite", "welcome_diamond", "sponsor_confirmation",
+  "battle_invite", "welcome_diamond", "welcome_admin", "sponsor_confirmation",
 ]);
 
 function emailCategoryFor(type: EmailType): "transactional" | "marketing" | "newsletter" {

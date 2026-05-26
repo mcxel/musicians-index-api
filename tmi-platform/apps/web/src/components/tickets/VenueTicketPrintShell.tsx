@@ -51,6 +51,7 @@ export default function VenueTicketPrintShell({ ticket, branding, faceScanId, on
   const [verified, setVerified] = useState<boolean | null>(null);
   const [printed, setPrinted] = useState(false);
   const [showQR, setShowQR] = useState(true);
+  const [printError, setPrintError] = useState<string | null>(null);
 
   const tier = ticket.template.tier;
   const tierStyle = TIER_COLORS[tier] ?? TIER_COLORS.default;
@@ -63,10 +64,54 @@ export default function VenueTicketPrintShell({ ticket, branding, faceScanId, on
     setVerified(!!(result as { valid?: boolean }).valid);
   }
 
-  function handlePrint() {
-    printTicket(ticket.id);
-    setPrinted(true);
-    onPrinted?.(mode);
+  async function handlePrint() {
+    try {
+      setPrintError(null);
+      setPrinted(false);
+
+      const response = await fetch("/api/tickets/print", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ticketId: ticket.id,
+          venueName,
+          eventTitle: ticket.template.eventSlug.replace(/-/g, " ").toUpperCase(),
+          section: ticket.seat?.section,
+          row: ticket.seat?.row,
+          seat: ticket.seat?.seat,
+          holderName: faceScanId ? `Face:${faceScanId.slice(-8)}` : "Guest",
+          qrCodeHash: ticket.barcode?.qrValue ?? ticket.id,
+          accentColor: primary,
+          borderColor: accent,
+          termsText: "Admit one. Venue policies apply. Non-refundable unless required by law.",
+          customFields: [
+            { label: "Tier", value: ticket.template.tier },
+            { label: "Formats", value: ticket.outputFormats.join(", ") },
+          ],
+          mode: mode === "print" ? "inline" : "digital", // 'inline' returns HTML for popup
+        }),
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({ error: `HTTP ${response.status}: Failed to build ticket` }));
+        throw new Error(payload.error || "Failed to build ticket");
+      }
+
+      const html = await response.text();
+      const popup = window.open("", "_blank", "noopener,noreferrer,width=940,height=900");
+      if (popup) {
+        popup.document.open();
+        popup.document.write(html);
+        popup.document.close();
+        popup.focus();
+      }
+
+      setPrinted(true);
+      onPrinted?.("print");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to print ticket";
+      setPrintError(message);
+    }
   }
 
   return (
@@ -198,6 +243,12 @@ export default function VenueTicketPrintShell({ ticket, branding, faceScanId, on
           {showQR ? "HIDE QR" : "SHOW QR"}
         </button>
       </div>
+
+      {printError ? (
+        <div style={{ border: "1px solid rgba(239,68,68,0.5)", borderRadius: 7, background: "rgba(127,29,29,0.3)", color: "#fca5a5", fontSize: 10, padding: "8px 10px", letterSpacing: "0.04em" }}>
+          PRINT ERROR: {printError}
+        </div>
+      ) : null}
     </div>
   );
 }

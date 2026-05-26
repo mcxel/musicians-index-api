@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import ViralShareButton from '@/components/share/ViralShareButton';
 
 type MediaKind = 'song' | 'video' | 'live';
 
@@ -98,6 +99,12 @@ export default function ProfilePlaylist({
           🎵 MY PLAYLIST
         </div>
         <div style={{ flex: 1, height: 2, background: 'linear-gradient(90deg,#FFD700,transparent)' }} />
+        <ViralShareButton
+          playlistId={`${writerId}-playlist`}
+          curatorId={writerId}
+          playlistTitle="My Playlist"
+          sharePath={`/writers/${encodeURIComponent(writerId)}`}
+        />
         {editable && (
           <button
             type="button"
