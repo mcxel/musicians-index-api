@@ -11,6 +11,7 @@ type Props = {
   active: boolean;
   direction: TmiFlipDirection;
   peelOrigin?: TmiPeelOrigin;
+  peelProgress?: number;
   reducedMotion?: boolean;
   axis?: HingeAxis;
   thickness?: number;   // spine width in px
@@ -50,6 +51,7 @@ export default function PageTurnHinge({
   active,
   direction,
   peelOrigin = "right-edge",
+  peelProgress = 0,
   reducedMotion = false,
   axis,
   thickness = 8,
@@ -87,31 +89,38 @@ export default function PageTurnHinge({
 
   if (phase === "idle" || reducedMotion) return null;
 
+  const progress = Math.max(0, Math.min(1, peelProgress));
+  const phaseMultiplier =
+    phase === "opening" ? 0.62 :
+    phase === "peak" ? 1 :
+    phase === "closing" ? 0.5 : 0;
+  const peelStrength = Math.max(0.25, progress) * phaseMultiplier;
+
   const resolvedAxis = axis ?? deriveAxis(peelOrigin, direction);
   const perspectiveOrigin = derivePerspectiveOrigin(peelOrigin);
   const rotateSign = deriveRotateSign(direction, peelOrigin);
 
   const rotateAngle =
-    phase === "opening" ? rotateSign * 12 :
-    phase === "peak"    ? rotateSign * 22 :
-    phase === "closing" ? rotateSign * 6  : 0;
+    phase === "opening" ? rotateSign * (8 + 8 * peelStrength) :
+    phase === "peak"    ? rotateSign * (12 + 18 * peelStrength) :
+    phase === "closing" ? rotateSign * (4 + 6 * peelStrength)  : 0;
 
   const foldDepth =
-    phase === "opening" ? 10 :
-    phase === "peak" ? 18 :
-    phase === "closing" ? 8 : 0;
+    phase === "opening" ? 6 + 8 * peelStrength :
+    phase === "peak" ? 10 + 14 * peelStrength :
+    phase === "closing" ? 4 + 6 * peelStrength : 0;
 
   const spineFlex =
-    phase === "opening" ? 0.78 :
-    phase === "peak" ? 1 :
-    phase === "closing" ? 0.7 : 0.6;
+    phase === "opening" ? 0.68 + 0.24 * peelStrength :
+    phase === "peak" ? 0.82 + 0.3 * peelStrength :
+    phase === "closing" ? 0.62 + 0.18 * peelStrength : 0.6;
 
   const rotateAxis = resolvedAxis === "vertical"
     ? `rotateY(${rotateAngle}deg)`
     : `rotateX(${rotateAngle}deg)`;
 
   // Spine flex: depth thickens at peak for physical hinge continuity, tapers on close.
-  const spineWidth = phase === "peak" ? thickness * 1.5 : thickness;
+  const spineWidth = phase === "peak" ? thickness * (1.2 + 0.5 * peelStrength) : thickness * (0.9 + 0.25 * peelStrength);
 
   return (
     <div
@@ -151,7 +160,7 @@ export default function PageTurnHinge({
             transparent)`,
           borderRadius: 2,
           transition: "opacity 0.15s ease, width 0.12s ease, height 0.12s ease",
-          opacity: phase === "peak" ? 1 : 0.6,
+          opacity: phase === "peak" ? 0.65 + 0.3 * peelStrength : 0.42 + 0.24 * peelStrength,
           transform: resolvedAxis === "vertical" ? `scaleX(${spineFlex})` : `scaleY(${spineFlex})`,
         }}
       />
@@ -196,7 +205,7 @@ export default function PageTurnHinge({
                 height: 1,
               }),
           background: "rgba(0,245,255,0.22)",
-          opacity: phase === "peak" ? 1 : 0,
+          opacity: phase === "peak" ? 0.5 + 0.5 * peelStrength : 0,
           transition: "opacity 0.1s ease",
         }}
       />

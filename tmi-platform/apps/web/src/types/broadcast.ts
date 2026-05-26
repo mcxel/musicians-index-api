@@ -15,7 +15,8 @@ export type BroadcastFeedKind =
   | "venue-ticketing"
   | "fan-lobby-wall"
   | "performer-lobby-wall"
-  | "mixed-lobby-wall";
+  | "mixed-lobby-wall"
+  | "stream-and-win";
 
 export type PerformerCategory =
   | "rapper"
@@ -63,7 +64,9 @@ export interface BroadcastFeedItem {
   layoutMode: BroadcastLayoutMode;
   mediaMode: BroadcastMediaMode;
   accentColor?: string;
+  // Backward compatibility: many surfaces still render emoji fallbacks.
   avatarEmoji?: string;
+  avatarIconId?: string;
   streamUrl?: string;
   isHighXP?: boolean;
   prizePool?: string;
@@ -87,6 +90,7 @@ export const KIND_TO_SHAPE: Record<BroadcastFeedKind, BroadcastTileShape> = {
   "fan-lobby-wall":     "circle",
   "performer-lobby-wall":"octagon",
   "mixed-lobby-wall":   "glitch-rect",
+  "stream-and-win":     "glitch-rect",
 };
 
 // Deck labels shown in the broadcast banner
@@ -106,4 +110,5 @@ export const DECK_LABELS: Record<BroadcastFeedKind, string> = {
   "fan-lobby-wall":     "FAN LOBBY",
   "performer-lobby-wall":"PERFORMER LOBBY",
   "mixed-lobby-wall":   "DISCOVERY BRIDGE",
+  "stream-and-win":     "STREAM & WIN",
 };

@@ -1,23 +1,7 @@
-import DiamondGrantEngine from '@/lib/subscriptions/DiamondGrantEngine';
 import LifetimeEntitlementEngine from '@/lib/subscriptions/LifetimeEntitlementEngine';
 import Link from 'next/link';
 
 export default function AdminLifetimeSubscriptionsPage() {
-  if (LifetimeEntitlementEngine.listLifetimes().length === 0) {
-    DiamondGrantEngine.grantLifetimeDiamond({
-      userId: 'leeanncoats-79',
-      email: 'leeanncoats.79@gmail.com',
-      activationLink: '/signup?tier=diamond&grant=lifetime',
-      grantSource: 'admin-lifetime-superpass',
-    });
-    DiamondGrantEngine.grantLifetimeDiamond({
-      userId: 'nacoleelmer-143',
-      email: 'nacoleelmer143@gmail.com',
-      activationLink: '/signup?tier=diamond&grant=lifetime',
-      grantSource: 'admin-lifetime-superpass',
-    });
-  }
-
   const records = LifetimeEntitlementEngine.listLifetimes();
 
   return (
@@ -27,7 +11,9 @@ export default function AdminLifetimeSubscriptionsPage() {
       </Link>
       <h1 style={{ marginTop: 12 }}>Lifetime Subscription Entitlements</h1>
       <p>Permanent pass records protected from accidental downgrade and billing overwrite.</p>
-
+      {records.length === 0 && (
+        <p style={{ color: 'rgba(255,255,255,0.4)', marginTop: 16 }}>No lifetime entitlements on record.</p>
+      )}
       {records.map((entry) => (
         <div
           key={entry.id}

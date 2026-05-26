@@ -11,6 +11,8 @@ import TMIGlobalHUD from "@/components/hud/TMIGlobalHUD";
 import BotRuntimeProvider from "@/components/providers/BotRuntimeProvider";
 import ChevronNavigation from "@/components/navigation/ChevronNavigation";
 import TMIGlobalNav from "@/components/system/TMIGlobalNav";
+import { PWAInstallPrompt } from "@/components/mobile/PWAInstallPrompt";
+import { PWARegistration } from "@/components/mobile/PWARegistration";
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -120,7 +122,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </h1>
         <AppProviders>
           <TmiSessionProvider>
+            <PWARegistration />
             {children}
+            <PWAInstallPrompt />
             <ChevronNavigation />
             <TMIGlobalNav />
             <GamificationHUD />

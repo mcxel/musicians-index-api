@@ -102,6 +102,44 @@ export default function ArtistProfileClient({
           {isMessaging ? "Sending..." : "Message"}
         </button>
 
+        <Link
+          href={`/messages/${artistSlug}?call=video`}
+          style={{
+            padding: "10px 18px",
+            borderRadius: 6,
+            border: "1px solid rgba(0,200,150,0.3)",
+            background: "rgba(0,200,150,0.08)",
+            color: "#00C896",
+            fontWeight: 700,
+            fontSize: 11,
+            textDecoration: "none",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 5,
+          }}
+        >
+          🎥 Video Call
+        </Link>
+
+        <Link
+          href={`/messages/${artistSlug}?call=voice`}
+          style={{
+            padding: "10px 18px",
+            borderRadius: 6,
+            border: "1px solid rgba(170,45,255,0.3)",
+            background: "rgba(170,45,255,0.08)",
+            color: "#AA2DFF",
+            fontWeight: 700,
+            fontSize: 11,
+            textDecoration: "none",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 5,
+          }}
+        >
+          📞 Voice Call
+        </Link>
+
         <button
           onClick={handleTip}
           style={{

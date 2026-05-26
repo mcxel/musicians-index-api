@@ -1,4 +1,5 @@
 import { buildShareUrl } from '@/lib/share/ShareLinkEngine';
+import Link from 'next/link';
 
 const sampleTargets = [
   { title: 'TMI Home', path: '/home/1' },
@@ -14,6 +15,12 @@ export default function AdminPublicLaunchSharePage() {
       <p style={{ color: '#9fe', maxWidth: 760 }}>
         Validates deep links and share URLs used by the public share dock.
       </p>
+      <Link
+        href="/admin/public-launch/viral"
+        style={{ color: '#FFD700', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', textDecoration: 'none' }}
+      >
+        Open Viral Playlist Monitor →
+      </Link>
       <div style={{ display: 'grid', gap: 10 }}>
         {sampleTargets.map((target) => (
           <div

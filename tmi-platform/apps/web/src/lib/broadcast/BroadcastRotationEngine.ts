@@ -71,6 +71,9 @@ export const SEED_FEEDS: BroadcastFeedItem[] = [
 
   // Mixed lobby wall
   { id: "mix-lobby-1", kind: "mixed-lobby-wall", title: "Discovery Bridge", subtitle: "60+ fans & performers · Meet your match", href: "/live/lobby", status: "live", layoutMode: "audience-grid", mediaMode: "avatar", accentColor: "#AA2DFF", avatarEmoji: "🌐", viewerCount: 63 },
+
+  // Stream & Win
+  { id: "sw-1", kind: "stream-and-win", title: "Stream & Win", subtitle: "Listen · React · Win prizes · No purchase required", href: "/live/rooms/stream-win", status: "live", layoutMode: "single", mediaMode: "avatar", accentColor: "#FFD700", avatarEmoji: "🎵", viewerCount: 312, isHighXP: true, prizePool: "$200" },
 ];
 
 // ─── Venue/promoter ticker messages ──────────────────────────────────────────
@@ -108,6 +111,7 @@ export const HOME5_DECK_SEQUENCE: BroadcastFeedKind[] = [
   "cypher",
   "challenge",
   "game-show",
+  "stream-and-win",
   "sponsor-billboard",
   "live-camera",
   "world-premiere",
@@ -125,6 +129,7 @@ export const XP_TOASTS: { kind: BroadcastFeedKind; message: string }[] = [
   { kind: "concert",  message: "🌍 World premiere about to start" },
   { kind: "challenge",message: "💃 Dance challenge live — record your move" },
   { kind: "challenge",message: "😂 Comedy round coming up — get ready" },
+  { kind: "stream-and-win", message: "🎵 Stream & Win live — listen to enter" },
 ];
 
 // ─── Hook: useBroadcastRotation ───────────────────────────────────────────────

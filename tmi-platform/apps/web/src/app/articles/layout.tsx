@@ -15,9 +15,12 @@ export default function ArticlesLayout({ children }: { children: ReactNode }) {
       accent="#FFD700"
       secondaryAccent="#00FFFF"
       quickLinks={[
-        { label: "News", href: "/articles/news" },
-        { label: "Artist", href: "/articles/artist" },
-        { label: "Performer", href: "/articles/performer" },
+        { label: "Music", href: "/articles/c/music" },
+        { label: "Winners", href: "/articles/c/winners" },
+        { label: "Cypher", href: "/articles/c/cypher" },
+        { label: "Business", href: "/articles/c/business" },
+        { label: "World", href: "/articles/c/world" },
+        { label: "Culture", href: "/articles/c/culture" },
       ]}
     >
       <ArticleReadTracker />

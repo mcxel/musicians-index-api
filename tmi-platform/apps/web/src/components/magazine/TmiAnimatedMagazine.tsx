@@ -25,6 +25,11 @@ import TmiMagazinePageCurl from "./TmiMagazinePageCurl";
 import TmiMagazineControls from "./TmiMagazineControls";
 import TmiMagazineCoverLoop from "./TmiMagazineCoverLoop";
 import PageTurnHinge from "./PageTurnHinge";
+import {
+  readFlipLearningState,
+  recordFlipGesture,
+  toAdaptiveTuning,
+} from "@/lib/magazine/tmiMagazineFlipLearningEngine";
 
 interface TmiAnimatedMagazineProps {
   pages: TmiMagazinePageMeta[];
@@ -56,6 +61,8 @@ const EMPTY_STATE: TmiMagazineFlipSnapshot = {
   previewPageIndex: 0,
   isRapidFlipping: false,
   peelOrigin: "right-edge",
+  peelProgress: 0,
+  learnedSmoothness: 0.5,
 };
 
 const SWIPE_AXIS_THRESHOLD = 8;
@@ -72,7 +79,7 @@ export default function TmiAnimatedMagazine({
 }: TmiAnimatedMagazineProps) {
   const flipEngineRef = useRef<TmiMagazinePageFlipEngine | null>(null);
   const audioRef = useRef<TmiMagazineAudioEngine | null>(null);
-  const pointerRef = useRef<{ x: number; y: number; t: number } | null>(null);
+  const pointerRef = useRef<{ x: number; y: number; t: number; peelOrigin: TmiPeelOrigin; peelArmed: boolean } | null>(null);
 
   const [snapshot, setSnapshot] = useState<TmiMagazineFlipSnapshot>(EMPTY_STATE);
   const [isOpen, setIsOpen] = useState(false);
@@ -109,12 +116,15 @@ export default function TmiAnimatedMagazine({
     audioRef.current = audio;
     setSoundEnabled(audio.soundEnabled);
 
+    const adaptive = toAdaptiveTuning(readFlipLearningState());
+
     const engine = new TmiMagazinePageFlipEngine({
       totalPages: Math.max(1, pages.length),
       initialPage,
       maxRapidFlipPages: 10,
       minSwipeVelocityForRapid: 0.8,
       minDistanceForFlip: 80,
+      adaptiveTuning: adaptive,
       onPageTurnStarted: () => {
         void audio.playPageTurn();
       },
@@ -284,8 +294,24 @@ export default function TmiAnimatedMagazine({
     return "right-edge";
   }
 
+  function isPeelStartZone(clientX: number, clientY: number, rect: DOMRect): boolean {
+    const xRatio = (clientX - rect.left) / rect.width;
+    const yRatio = (clientY - rect.top) / rect.height;
+    const nearLeft = xRatio <= 0.2;
+    const nearRight = xRatio >= 0.8;
+    const nearTop = yRatio <= 0.2;
+    const nearBottom = yRatio >= 0.8;
+    const fromCorner = (nearLeft || nearRight) && (nearTop || nearBottom);
+    const fromSide = nearLeft || nearRight;
+    return fromCorner || fromSide;
+  }
+
   async function onPointerDown(event: React.PointerEvent<HTMLElement>) {
-    pointerRef.current = { x: event.clientX, y: event.clientY, t: performance.now() };
+    const rect = event.currentTarget.getBoundingClientRect();
+    const peelOrigin = derivePeelOrigin(event.clientX, event.clientY, rect);
+    const peelArmed = isPeelStartZone(event.clientX, event.clientY, rect);
+
+    pointerRef.current = { x: event.clientX, y: event.clientY, t: performance.now(), peelOrigin, peelArmed };
     (event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId);
     void audioRef.current?.playSoftSwipe();
   }
@@ -294,14 +320,14 @@ export default function TmiAnimatedMagazine({
     const start = pointerRef.current;
     const engine = flipEngineRef.current;
     if (!start || !engine) return;
+    if (!start.peelArmed) return;
     const dx = event.clientX - start.x;
     const dy = event.clientY - start.y;
     if (Math.abs(dx) < SWIPE_AXIS_THRESHOLD || Math.abs(dx) < Math.abs(dy)) return;
 
     event.preventDefault();
     const direction: Exclude<TmiFlipDirection, null> = dx < 0 ? "forward" : "backward";
-    const peelOrigin = derivePeelOrigin(event.clientX, event.clientY, event.currentTarget.getBoundingClientRect());
-    const next = engine.setPreviewFromSwipe(Math.abs(dx), direction, peelOrigin);
+    const next = engine.setPreviewFromSwipe(Math.abs(dx), direction, start.peelOrigin);
     setSnapshot(next);
   }
 
@@ -310,6 +336,7 @@ export default function TmiAnimatedMagazine({
     const engine = flipEngineRef.current;
     pointerRef.current = null;
     if (!start || !engine) return;
+    if (!start.peelArmed) return;
 
     const elapsedMs = Math.max(16, performance.now() - start.t);
     const dx = event.clientX - start.x;
@@ -320,7 +347,8 @@ export default function TmiAnimatedMagazine({
 
     const direction: Exclude<TmiFlipDirection, null> = dx < 0 ? "forward" : "backward";
     const velocity = Math.abs(dx) / elapsedMs;
-    const peelOrigin = derivePeelOrigin(event.clientX, event.clientY, event.currentTarget.getBoundingClientRect());
+    const peelOrigin = start.peelOrigin;
+    const beforePage = engine.getSnapshot().currentPage;
 
     const next = await engine.applySwipe({
       velocity,
@@ -329,6 +357,16 @@ export default function TmiAnimatedMagazine({
       reducedMotion,
       peelOrigin,
     });
+
+    const success = next.currentPage !== beforePage;
+    const learned = recordFlipGesture({
+      velocity,
+      distance: Math.abs(dx),
+      success,
+      origin: peelOrigin,
+    });
+    engine.setAdaptiveTuning(toAdaptiveTuning(learned));
+
     setSnapshot(next);
   }
 
@@ -423,6 +461,7 @@ export default function TmiAnimatedMagazine({
           active={snapshot.isFlipping || snapshot.isOpening || snapshot.isClosing || snapshot.swipeDistance > 16 || visualState === "searchTransition"}
           direction={(snapshot.flipDirection || snapshot.swipeDirection) as TmiFlipDirection}
           peelOrigin={snapshot.peelOrigin}
+          peelProgress={snapshot.peelProgress}
           velocity={snapshot.swipeVelocity}
           reducedMotion={reducedMotion}
           visualState={visualState}
@@ -432,6 +471,7 @@ export default function TmiAnimatedMagazine({
           active={snapshot.isFlipping || snapshot.isOpening || snapshot.isClosing || snapshot.swipeDistance > 16}
           direction={(snapshot.flipDirection || snapshot.swipeDirection) as TmiFlipDirection}
           peelOrigin={snapshot.peelOrigin}
+          peelProgress={snapshot.peelProgress}
           reducedMotion={reducedMotion}
         />
 

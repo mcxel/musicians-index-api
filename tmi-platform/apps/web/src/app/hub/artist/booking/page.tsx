@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import Link from 'next/link';
 import PageShell from '@/components/layout/PageShell';
 import HUDFrame from '@/components/hud/HUDFrame';
+import { hostVoicePersonalityEngine } from '@/lib/hosts/HostVoicePersonalityEngine';
 import FooterHUD from '@/components/hud/FooterHUD';
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -20,6 +21,7 @@ interface BookingRequest {
   status: BookingStatus;
   contact: string;
   notes: string;
+  isVirtual?: boolean;
 }
 
 interface EarningRow {
@@ -31,12 +33,12 @@ interface EarningRow {
 // ── Static seed data ──────────────────────────────────────────────────────────
 
 const BOOKINGS: BookingRequest[] = [
-  { id: 'b1', venueName: 'CLUB APEX ATL',    city: 'Atlanta, GA',     date: '2026-06-07', time: '10:00 PM', fee: 1200, status: 'confirmed',  contact: 'apex@bookings.io',   notes: '90-min set. PA included.' },
-  { id: 'b2', venueName: 'THE SUMMIT NYC',   city: 'New York, NY',    date: '2026-06-14', time: '9:30 PM',  fee: 2500, status: 'pending',    contact: 'summit@venues.com',  notes: 'Needs setlist by June 1.' },
-  { id: 'b3', venueName: 'NOVA LOUNGE CHI',  city: 'Chicago, IL',     date: '2026-06-21', time: '11:00 PM', fee: 900,  status: 'pending',    contact: 'nova@lounge.co',     notes: 'Guest list: 4 max.' },
-  { id: 'b4', venueName: 'FREQUENCY LA',     city: 'Los Angeles, CA', date: '2026-05-31', time: '8:00 PM',  fee: 1800, status: 'completed',  contact: 'freq@laevents.com',  notes: 'Paid. Receipt sent.' },
-  { id: 'b5', venueName: 'CYPHER HALL MIA',  city: 'Miami, FL',       date: '2026-05-18', time: '9:00 PM',  fee: 600,  status: 'cancelled',  contact: 'cypher@miami.com',   notes: 'Venue closed due to flood.' },
-  { id: 'b6', venueName: 'PALACE STAGE HOU', city: 'Houston, TX',     date: '2026-07-04', time: '7:30 PM',  fee: 3200, status: 'pending',    contact: 'palace@houston.io',  notes: 'Holiday weekend — premium slot.' },
+  { id: 'b1', venueName: 'CLUB APEX ATL',    city: 'Atlanta, GA',     date: '2026-06-07', time: '10:00 PM', fee: 1200, status: 'confirmed',  contact: 'apex@bookings.io',   notes: '90-min set. PA included.', isVirtual: false },
+  { id: 'b2', venueName: 'THE SUMMIT NYC',   city: 'New York, NY',    date: '2026-06-14', time: '9:30 PM',  fee: 2500, status: 'pending',    contact: 'summit@venues.com',  notes: 'Needs setlist by June 1.', isVirtual: false },
+  { id: 'b3', venueName: 'TMI VIRTUAL ARENA',city: 'Global WebRTC',   date: '2026-06-21', time: '11:00 PM', fee: 900,  status: 'confirmed',  contact: 'live@tmi.com',       notes: 'Virtual stage. Requires hardware check.', isVirtual: true },
+  { id: 'b4', venueName: 'FREQUENCY LA',     city: 'Los Angeles, CA', date: '2026-05-31', time: '8:00 PM',  fee: 1800, status: 'completed',  contact: 'freq@laevents.com',  notes: 'Paid. Receipt sent.', isVirtual: false },
+  { id: 'b5', venueName: 'CYPHER HALL MIA',  city: 'Miami, FL',       date: '2026-05-18', time: '9:00 PM',  fee: 600,  status: 'cancelled',  contact: 'cypher@miami.com',   notes: 'Venue closed due to flood.', isVirtual: false },
+  { id: 'b6', venueName: 'PALACE STAGE HOU', city: 'Houston, TX',     date: '2026-07-04', time: '7:30 PM',  fee: 3200, status: 'pending',    contact: 'palace@houston.io',  notes: 'Holiday weekend — premium slot.', isVirtual: false },
 ];
 
 const EARNINGS: EarningRow[] = [
@@ -59,6 +61,8 @@ export default function ArtistBookingPage() {
   const [filter, setFilter]       = useState<BookingStatus | 'all'>('all');
   const [expanded, setExpanded]   = useState<string | null>(null);
   const [showForm, setShowForm]   = useState(false);
+  const [camStream, setCamStream] = useState<MediaStream | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   // New booking form state
   const [form, setForm] = useState({ venueName: '', city: '', date: '', time: '', fee: '', contact: '', notes: '' });
@@ -73,6 +77,33 @@ export default function ArtistBookingPage() {
 
   function updateStatus(id: string, status: BookingStatus) {
     setBookings(prev => prev.map(b => b.id === id ? { ...b, status } : b));
+  }
+
+  async function testWebRTC() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      setCamStream(stream);
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+      const line = hostVoicePersonalityEngine.generateLine('system-host', 'contestant-enter', { name: 'Performer' });
+      console.log(`[HOST]: ${line.text}`);
+    } catch (err) {
+      console.error("WebRTC Capture Error:", err);
+      alert("Camera/Mic access denied. Check your WebKit/browser permissions.");
+    }
+  }
+
+  function stopWebRTC() {
+    if (camStream) {
+      camStream.getTracks().forEach(t => t.stop());
+      setCamStream(null);
+    }
+  }
+
+  function generateVenueTickets(bookingId: string, venueName: string) {
+    // Pipeline trigger for physical thermal/PDF ticket generation via Tmi Pdf's Folder logic
+    window.open(`/api/pdf/generate-tickets?bookingId=${bookingId}&venue=${encodeURIComponent(venueName)}&format=thermal`, '_blank');
   }
 
   function handleSubmit() {
@@ -288,6 +319,30 @@ export default function ArtistBookingPage() {
                             <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)' }}>{b.notes || '—'}</div>
                           </div>
                         </div>
+
+                        {/* WebRTC & Brick-and-Mortar Ticket Controls */}
+                        {b.status === 'confirmed' && (
+                          <div style={{ marginBottom: 16, padding: '14px', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 6 }}>
+                            <div style={{ fontSize: 9, color: '#FFD700', letterSpacing: '0.15em', marginBottom: 10, fontWeight: 900 }}>PRODUCTION CONTROLS</div>
+                            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                              {!b.isVirtual ? (
+                                <button type="button" onClick={() => generateVenueTickets(b.id, b.venueName)} style={{ background: '#FF2DAA', color: '#fff', border: 'none', padding: '8px 14px', fontSize: 9, fontWeight: 900, letterSpacing: '0.1em', cursor: 'pointer', borderRadius: 4 }}>
+                                  🖨️ PRINT VENUE TICKETS (PDF)
+                                </button>
+                              ) : (
+                                <button type="button" onClick={camStream ? stopWebRTC : testWebRTC} style={{ background: camStream ? '#FF4444' : '#00FF88', color: '#000', border: 'none', padding: '8px 14px', fontSize: 9, fontWeight: 900, letterSpacing: '0.1em', cursor: 'pointer', borderRadius: 4 }}>
+                                  {camStream ? '⏹ STOP HARDWARE TEST' : '🎥 TEST WEBRTC HARDWARE'}
+                                </button>
+                              )}
+                            </div>
+                            {camStream && b.isVirtual && (
+                              <div style={{ marginTop: 14 }}>
+                                <video ref={videoRef} autoPlay muted playsInline style={{ width: '100%', maxWidth: 320, border: '2px solid #00FF88', borderRadius: 8, background: '#000' }} />
+                                <div style={{ fontSize: 9, color: '#00FF88', marginTop: 6, letterSpacing: '0.1em' }}>● HARDWARE SYNCED & ACTIVE</div>
+                              </div>
+                            )}
+                          </div>
+                        )}
 
                         {/* Actions */}
                         {b.status === 'pending' && (

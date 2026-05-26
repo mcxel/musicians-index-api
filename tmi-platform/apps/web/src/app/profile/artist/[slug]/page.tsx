@@ -6,6 +6,7 @@ import PerformerSponsorShelf, {
   type PerformerSponsor,
 } from "@/components/performer/PerformerSponsorShelf";
 import type { SponsorSlot } from "@/components/performer/DynamicRadialAura";
+import ViralShareButton from "@/components/share/ViralShareButton";
 
 interface Props {
   params: { slug: string };
@@ -182,6 +183,12 @@ export default function ArtistProfilePage({ params }: Props) {
 
       {/* Action buttons */}
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <ViralShareButton
+          playlistId={`${params.slug}-artist-spotlight`}
+          curatorId={params.slug}
+          playlistTitle={`${artist.displayName} Artist Spotlight`}
+          sharePath={`/profile/artist/${encodeURIComponent(params.slug)}`}
+        />
         <Link
           href={`/messages/new?recipientId=${params.slug}&name=${encodeURIComponent(artist.displayName)}`}
           style={{

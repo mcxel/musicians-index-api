@@ -20,6 +20,23 @@ type Article = {
 
 const CATEGORIES = ['ALL', 'FEATURE', 'EXCLUSIVE', 'INTERVIEW', 'INDUSTRY', 'SPOTLIGHT', 'NEWS'];
 
+const CHANNELS = [
+  { slug: 'music',     icon: '🎤', label: 'Music' },
+  { slug: 'winners',   icon: '🏆', label: 'Winners' },
+  { slug: 'cypher',    icon: '⚔️',  label: 'Cypher' },
+  { slug: 'culture',   icon: '🎭', label: 'Culture' },
+  { slug: 'business',  icon: '💼', label: 'Business' },
+  { slug: 'world',     icon: '🌍', label: 'World' },
+  { slug: 'lifestyle', icon: '✨', label: 'Lifestyle' },
+  { slug: 'tech',      icon: '💻', label: 'Tech' },
+  { slug: 'live',      icon: '📡', label: 'Live' },
+  { slug: 'events',    icon: '🎟️',  label: 'Events' },
+  { slug: 'love',      icon: '❤️',  label: 'Love' },
+  { slug: 'science',   icon: '🔬', label: 'Science' },
+  { slug: 'sponsors',  icon: '💎', label: 'Sponsors' },
+  { slug: 'writers',   icon: '✍️',  label: 'Writers' },
+];
+
 const CATEGORY_COLORS: Record<string, string> = {
   FEATURE: '#FF2DAA',
   EXCLUSIVE: '#00FFFF',
@@ -65,8 +82,19 @@ export default function ArticlesPage() {
               <p style={{ color: '#aaa', fontSize: 16, maxWidth: 480 }}>Features, exclusives, interviews, and industry intel — straight from the culture.</p>
             </motion.div>
 
+            {/* Channel nav */}
+            <div style={{ display: 'flex', gap: 0, overflowX: 'auto', marginTop: 32, borderBottom: '1px solid rgba(255,255,255,0.08)', scrollbarWidth: 'none' }}>
+              {CHANNELS.map((ch) => (
+                <Link key={ch.slug} href={`/articles/c/${ch.slug}`} style={{ textDecoration: 'none', flexShrink: 0 }}>
+                  <div style={{ padding: '8px 14px', borderBottom: '3px solid transparent', fontFamily: 'inherit', fontSize: 9, fontWeight: 900, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.45)', whiteSpace: 'nowrap', transition: 'all 0.2s' }}>
+                    {ch.icon} {ch.label}
+                  </div>
+                </Link>
+              ))}
+            </div>
+
             {/* Category filter */}
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 32 }}>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 20 }}>
               {CATEGORIES.map((cat) => (
                 <button key={cat} onClick={() => setFilter(cat)} style={{ padding: '6px 16px', borderRadius: 20, border: `1px solid ${filter === cat ? '#FF2DAA' : '#333'}`, background: filter === cat ? '#FF2DAA22' : 'transparent', color: filter === cat ? '#FF2DAA' : '#888', fontSize: 11, letterSpacing: 2, cursor: 'pointer', fontWeight: 700, transition: 'all .2s' }}>
                   {cat}

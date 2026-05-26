@@ -6,6 +6,7 @@ interface TmiMagazinePageCurlProps {
   active: boolean;
   direction: TmiFlipDirection;
   peelOrigin?: TmiPeelOrigin;
+  peelProgress?: number;
   velocity?: number;
   reducedMotion?: boolean;
   visualState?: TmiMagazineVisualState;
@@ -26,13 +27,17 @@ export default function TmiMagazinePageCurl({
   active,
   direction,
   peelOrigin = "right-edge",
+  peelProgress = 0,
   velocity = 0,
   reducedMotion = false,
   visualState = "closedIdle",
 }: TmiMagazinePageCurlProps) {
   const entry = ORIGIN_STYLE[peelOrigin];
   const forward = direction === "forward";
-  const bend = Math.min(34, 14 + velocity * 12);
+  const progress = Math.max(0, Math.min(1, peelProgress));
+  const bend = Math.min(42, 8 + velocity * 8 + progress * 28);
+  const lightOpacity = Math.min(0.88, 0.18 + progress * 0.62);
+  const sheenOpacity = Math.min(0.92, 0.16 + progress * 0.58);
   const searching = visualState === "searchTransition";
   const showEffect = active || searching;
 
@@ -65,6 +70,7 @@ export default function TmiMagazinePageCurl({
           boxShadow: forward
             ? "-22px 0 34px rgba(0,0,0,0.4), inset -5px 0 8px rgba(255,255,255,0.24)"
             : "22px 0 34px rgba(0,0,0,0.4), inset 5px 0 8px rgba(255,255,255,0.24)",
+          opacity: showEffect ? lightOpacity : 0,
         }}
       />
 
@@ -78,9 +84,10 @@ export default function TmiMagazinePageCurl({
       ) : null}
 
       <div
-        className={showEffect ? "absolute inset-0 opacity-80 transition-opacity duration-200" : "absolute inset-0 opacity-0"}
+        className={showEffect ? "absolute inset-0 transition-opacity duration-200" : "absolute inset-0 opacity-0"}
         style={{
           background: "linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.02) 25%, rgba(0,0,0,0.26))",
+          opacity: showEffect ? sheenOpacity : 0,
         }}
       />
     </div>

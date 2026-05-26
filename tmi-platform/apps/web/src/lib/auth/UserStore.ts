@@ -156,6 +156,9 @@ const HARDCODED_ADMINS = new Set([
   'berntmusic33@gmail.com',
   'bjmtherapper1@gmail.com',
   'rjking42@icloud.com',
+  'justin@themusiciansindex.com',
+  'jay@themusiciansindex.com',
+  'micah@themusiciansindex.com',
 ]);
 
 // Diamond lifetime accounts

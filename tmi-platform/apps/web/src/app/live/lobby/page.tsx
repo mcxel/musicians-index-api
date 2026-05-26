@@ -15,6 +15,7 @@ import SpotlightContainer from "@/components/live/SpotlightContainer";
 import SeatArrivalTransition from "@/components/live/SeatArrivalTransition";
 import LiveLobbyDrawer from "@/components/lobby/LiveLobbyDrawer";
 import MixedLobbyWall from "@/components/lobby/MixedLobbyWall";
+import ArenaJoinToast from "@/components/entry/ArenaJoinToast";
 
 export const metadata: Metadata = {
   title: "Live Lobby | TMI",
@@ -62,6 +63,7 @@ export default function LiveLobbyPage() {
         </div>
         <MixedLobbyWall />
       </section>
+      <ArenaJoinToast />
     </>
   );
 }

@@ -1,23 +1,7 @@
-import BillingEmailEngine from '@/lib/email/BillingEmailEngine';
 import PaymentRecoveryEngine from '@/lib/email/PaymentRecoveryEngine';
 import Link from 'next/link';
 
 export default function AdminEmailBillingPage() {
-  if (PaymentRecoveryEngine.listRecoveries().length === 0) {
-    PaymentRecoveryEngine.startRecovery({
-      userId: 'fan-smoke',
-      email: 'fan-smoke@example.com',
-      tier: 'diamond',
-      recoveryLink: '/account/billing/recover',
-    });
-    BillingEmailEngine.sendFailedCardNotice({
-      userId: 'fan-smoke',
-      to: 'fan-smoke@example.com',
-      cardLast4: '4242',
-      updateCardLink: '/account/billing',
-    });
-  }
-
   const recoveries = PaymentRecoveryEngine.listRecoveries();
 
   return (
@@ -27,6 +11,9 @@ export default function AdminEmailBillingPage() {
       </Link>
       <h1 style={{ marginTop: 12 }}>Billing Email Lane</h1>
       <p>Missed payments, grace reminders, downgrade warnings, and recovery notices.</p>
+      {recoveries.length === 0 && (
+        <p style={{ color: 'rgba(255,255,255,0.4)', marginTop: 16 }}>No active recovery cases.</p>
+      )}
       {recoveries.map((item) => (
         <div
           key={item.id}
