@@ -13,6 +13,7 @@ import {
   CURRENT_PHASE,
   PHASE_1_BOTS,
 } from "@/lib/bots/Phase1LaunchConfig";
+import { getFeedbackSummary } from "@/app/api/feedback/report/route";
 
 export const metadata: Metadata = { title: "Phase 1 Live Monitor | TMI Admin" };
 
@@ -38,6 +39,10 @@ export default function AdminLivePage() {
 
   const totalPresent = roomData.reduce((sum, r) => sum + r.presence.length, 0);
   const activeRooms = roomData.filter((r) => r.presence.length > 0).length;
+  const livePerformers = roomData.filter((r) => r.performerLive).length;
+
+  // Feedback summary
+  const feedback = getFeedbackSummary();
 
   // Pull latest sentinel diagnostics
   const sentinelLog = getSentinelLog().slice(-5).reverse();
@@ -63,6 +68,98 @@ export default function AdminLivePage() {
             <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#00FF88", display: "inline-block", boxShadow: "0 0 8px #00FF88" }} />
             <span style={{ fontSize: 10, color: "#00FF88", fontWeight: 700 }}>LIVE</span>
           </div>
+        </div>
+
+        {/* ── BETA CONTROL ROOM ───────────────────────────────────────────── */}
+        <div style={{ marginBottom: 36, border: "1px solid rgba(255,107,0,0.25)", background: "rgba(255,107,0,0.04)", padding: "20px 24px" }}>
+          <div style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.3em", color: "#FF6B00", marginBottom: 14, textTransform: "uppercase" }}>
+            BETA CONTROL ROOM — LIVE METRICS
+          </div>
+
+          {/* 6-metric grid */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(150px,1fr))", gap: 10, marginBottom: 16 }}>
+            {[
+              {
+                label: "Users Present",
+                value: totalPresent,
+                threshold: totalPresent >= 5 ? "green" : totalPresent > 0 ? "yellow" : "red",
+                color: totalPresent >= 5 ? "#00C896" : totalPresent > 0 ? "#FFD700" : "#FF2DAA",
+              },
+              {
+                label: "Live Performers",
+                value: livePerformers,
+                threshold: livePerformers > 0 ? "green" : totalPresent > 0 ? "red" : "yellow",
+                color: livePerformers > 0 ? "#00C896" : totalPresent > 0 ? "#FF2DAA" : "#FFD700",
+              },
+              {
+                label: "Active Rooms",
+                value: activeRooms,
+                threshold: activeRooms > 0 ? "green" : "yellow",
+                color: activeRooms > 0 ? "#00C896" : "#FFD700",
+              },
+              {
+                label: "Phase 1 Bots",
+                value: Object.values(PHASE_1_BOTS).filter(Boolean).length,
+                threshold: "green",
+                color: "#AA2DFF",
+              },
+              {
+                label: "Feedback Reports",
+                value: feedback.total,
+                threshold: feedback.total > 10 ? "yellow" : "green",
+                color: feedback.total > 10 ? "#FFD700" : "#00C8FF",
+              },
+              {
+                label: "Top Issue",
+                value: feedback.buckets[0]?.category.replace(/-/g, " ").toUpperCase() ?? "—",
+                threshold: "green",
+                color: "#FF6B00",
+                small: true,
+              },
+            ].map(m => (
+              <div key={m.label} style={{ padding: "12px 14px", background: `${m.color}08`, border: `1px solid ${m.color}22` }}>
+                <div style={{ fontFamily: "'Bebas Neue','Impact',sans-serif", fontSize: m.small ? 13 : 22, color: m.color, marginBottom: 2, lineHeight: 1 }}>{m.value}</div>
+                <div style={{ fontSize: 7, color: "rgba(255,255,255,0.35)", letterSpacing: "0.14em", textTransform: "uppercase" }}>{m.label}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Threshold legend */}
+          <div style={{ display: "flex", gap: 16, marginBottom: 14 }}>
+            {[
+              { dot: "#00C896", label: "Healthy" },
+              { dot: "#FFD700", label: "Watch" },
+              { dot: "#FF2DAA", label: "Action needed — jump in now" },
+            ].map(l => (
+              <div key={l.label} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 9, color: "rgba(255,255,255,0.45)" }}>
+                <span style={{ width: 6, height: 6, borderRadius: "50%", background: l.dot, display: "inline-block", boxShadow: `0 0 4px ${l.dot}` }} />
+                {l.label}
+              </div>
+            ))}
+          </div>
+
+          {/* Critical alert */}
+          {totalPresent > 0 && livePerformers === 0 && (
+            <div style={{ padding: "10px 14px", background: "rgba(255,45,170,0.08)", border: "1px solid rgba(255,45,170,0.3)", fontSize: 11, color: "#FF2DAA", fontWeight: 700 }}>
+              ⚠ EMPTY STAGE — {totalPresent} user{totalPresent > 1 ? "s" : ""} present, no performer live. Jump in now.
+            </div>
+          )}
+
+          {/* Top feedback issues */}
+          {feedback.buckets.length > 0 && (
+            <div style={{ marginTop: 12 }}>
+              <div style={{ fontSize: 7, fontWeight: 900, letterSpacing: "0.2em", color: "rgba(255,255,255,0.3)", marginBottom: 8 }}>TOP REPORTED ISSUES</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                {feedback.buckets.slice(0, 4).map(b => (
+                  <div key={b.category} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 10, color: "rgba(255,255,255,0.6)" }}>
+                    <span style={{ minWidth: 24, fontWeight: 900, color: b.count >= 5 ? "#FF2DAA" : b.count >= 3 ? "#FFD700" : "#00C8FF" }}>{b.count}×</span>
+                    <span style={{ textTransform: "uppercase", letterSpacing: "0.08em", fontSize: 9 }}>{b.category.replace(/-/g, " ")}</span>
+                    {b.lastMessage && <span style={{ color: "rgba(255,255,255,0.3)", fontSize: 9 }}>&ldquo;{b.lastMessage.slice(0, 60)}&rdquo;</span>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Phase 1 stats */}

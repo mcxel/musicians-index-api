@@ -3,6 +3,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getStripe } from '@/lib/stripe/client';
 import { getRegion, getRegionalPriceId, SUBSCRIPTION_TIERS } from '@/lib/stripe/regionalPricing';
 
+function isStripePaused(): boolean {
+  return process.env.STRIPE_PAUSE_MODE === 'true';
+}
 // Reverse-map a Tier 1 pricing page priceId to a product key for regional resolution
 function resolveRegionalPriceId(requestedPriceId: string, req: NextRequest): string {
   const country = req.headers.get('x-vercel-ip-country');
@@ -26,6 +29,10 @@ export async function GET(req: NextRequest) {
 
   if (!priceId) {
     return NextResponse.redirect(new URL('/season-pass', req.url));
+  }
+
+  if (isStripePaused()) {
+    return NextResponse.redirect(new URL('/season-pass?notice=stripe-paused', req.url));
   }
 
   const stripe = getStripe();
@@ -86,6 +93,12 @@ function isTrustedRedirectUrl(raw: string): boolean {
 }
 
 export async function POST(req: NextRequest) {
+  if (isStripePaused()) {
+    return NextResponse.json({
+      paused: true,
+      message: "Payments are temporarily processing — your request is saved and will be fulfilled shortly.",
+    }, { status: 503 });
+  }
   try {
     const body = await req.json();
     const { items, successUrl, cancelUrl } = body as {
