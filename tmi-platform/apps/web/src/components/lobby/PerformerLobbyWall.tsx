@@ -202,6 +202,53 @@ export default function PerformerLobbyWall({ compact = false }: Props) {
             </div>
           );
         })}
+
+        {/* Go Live CTA slot */}
+        {!compact && (
+          <Link
+            href="/live/lobby"
+            style={{
+              borderRadius: 14,
+              border: '1.5px dashed rgba(255,45,170,0.35)',
+              background: 'rgba(255,45,170,0.04)',
+              padding: '14px 12px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 10,
+              textDecoration: 'none',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              minHeight: 200,
+            }}
+            onMouseEnter={e => {
+              (e.currentTarget as HTMLAnchorElement).style.background = 'rgba(255,45,170,0.10)';
+              (e.currentTarget as HTMLAnchorElement).style.borderColor = 'rgba(255,45,170,0.7)';
+            }}
+            onMouseLeave={e => {
+              (e.currentTarget as HTMLAnchorElement).style.background = 'rgba(255,45,170,0.04)';
+              (e.currentTarget as HTMLAnchorElement).style.borderColor = 'rgba(255,45,170,0.35)';
+            }}
+          >
+            <div style={{ fontSize: 32 }}>🎤</div>
+            <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: '0.14em', color: '#FF2DAA', textAlign: 'center' }}>
+              BE THE FIRST<br />TO GO LIVE HERE
+            </div>
+            <div style={{
+              padding: '7px 16px',
+              background: '#FF2DAA',
+              color: '#050510',
+              fontSize: 9,
+              fontWeight: 900,
+              letterSpacing: '0.12em',
+              borderRadius: 6,
+              marginTop: 4,
+            }}>
+              🔴 START BROADCASTING
+            </div>
+          </Link>
+        )}
       </div>
     </div>
   );

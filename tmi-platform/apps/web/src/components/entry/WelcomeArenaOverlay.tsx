@@ -116,9 +116,20 @@ export default function WelcomeArenaOverlay() {
             margin: "0 0 8px",
             textShadow: "0 0 40px rgba(0,200,255,0.3)",
           }}>
-            WELCOME TO<br />
-            <span style={{ color: "#00C8FF" }}>THE ARENA</span>
+            THIS IS<br />
+            <span style={{ color: "#00C8FF" }}>YOUR STAGE</span>
           </h1>
+
+          <p style={{
+            fontFamily: "'Inter',sans-serif",
+            fontSize: "clamp(13px,2vw,16px)",
+            color: "rgba(255,255,255,0.55)",
+            textAlign: "center",
+            margin: "0 0 8px",
+            letterSpacing: "0.02em",
+          }}>
+            Go live. Build your audience. Turn your sound into a movement.
+          </p>
 
           {/* Count-up stats */}
           <div style={{
@@ -175,25 +186,42 @@ export default function WelcomeArenaOverlay() {
               minWidth: 280,
             }}
           >
-            ⚡ ENTER LIVE ARENA
+            🎥 START BROADCASTING
           </motion.button>
 
           <div style={{
             fontSize: 9, color: "rgba(255,255,255,0.3)",
-            letterSpacing: "0.12em", marginBottom: 20,
+            letterSpacing: "0.12em", marginBottom: 16,
           }}>
-            Jump into a live room in 1 tap
+            Go live and let the world see you
           </div>
 
           {/* Secondary */}
           <button
+            onClick={() => enter("/live/lobby")}
+            style={{
+              background: "none",
+              border: "1px solid rgba(255,255,255,0.2)",
+              color: "rgba(255,255,255,0.55)",
+              padding: "10px 28px",
+              fontSize: 10, fontWeight: 700,
+              letterSpacing: "0.15em",
+              cursor: "pointer",
+              fontFamily: "'Inter',sans-serif",
+              marginBottom: 8,
+            }}
+          >
+            ⚡ ENTER LIVE ARENA
+          </button>
+
+          <button
             onClick={() => enter("/")}
             style={{
               background: "none",
-              border: "1px solid rgba(255,255,255,0.12)",
-              color: "rgba(255,255,255,0.4)",
-              padding: "10px 28px",
-              fontSize: 10, fontWeight: 700,
+              border: "none",
+              color: "rgba(255,255,255,0.25)",
+              padding: "6px 20px",
+              fontSize: 9, fontWeight: 700,
               letterSpacing: "0.15em",
               cursor: "pointer",
               fontFamily: "'Inter',sans-serif",

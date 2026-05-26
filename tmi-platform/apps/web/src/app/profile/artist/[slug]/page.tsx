@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { profileToArticleRoute } from "@/lib/editorial/editorialRoutingResolver";
 import ArtistWorldShell from "@/components/artist/ArtistWorldShell";
+import GoLiveBanner from "@/components/profile/GoLiveBanner";
 import PerformerVideoPanel from "@/components/media/PerformerVideoPanel";
 import PerformerSponsorShelf, {
   type PerformerSponsor,
@@ -143,6 +144,9 @@ export default function ArtistProfilePage({ params }: Props) {
         />
       }
     >
+      {/* Go Live banner — shows only to profile owner when not live */}
+      <GoLiveBanner profileSlug={params.slug} hasStreamed={artist.isLive} />
+
       {/* Live badge */}
       {artist.isLive && (
         <div style={{
