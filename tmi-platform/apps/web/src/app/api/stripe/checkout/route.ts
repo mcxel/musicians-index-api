@@ -56,10 +56,33 @@ export async function GET(req: NextRequest) {
   }
   const cancelUrl = battleId ? `${origin}/sponsor/battles?notice=checkout-cancelled` : `${origin}/season-pass`;
 
+  // Detect placeholder price IDs (e.g. price_fan_monthly vs real price_1TUWI4EL7B8tMf4N...)
+  const isRealPriceId = /^price_[A-Za-z0-9]{16,}$/.test(resolvedPriceId);
+
+  // For placeholders, build inline price_data from URL params
+  const amountStr = searchParams.get('amount');
+  const productName = searchParams.get('productName') ?? 'TMI Pass';
+  const amount = amountStr ? parseInt(amountStr, 10) : null;
+
+  const lineItem = isRealPriceId
+    ? { price: resolvedPriceId, quantity: 1 as const }
+    : amount
+      ? {
+          quantity: 1 as const,
+          price_data: {
+            currency: 'usd' as const,
+            unit_amount: amount,
+            ...(mode === 'subscription'
+              ? { recurring: { interval: 'month' as const }, product_data: { name: productName } }
+              : { product_data: { name: productName } }),
+          },
+        }
+      : { price: resolvedPriceId, quantity: 1 as const };
+
   try {
     const session = await stripe.checkout.sessions.create({
       mode,
-      line_items: [{ price: resolvedPriceId, quantity: 1 }],
+      line_items: [lineItem],
       success_url: successUrl,
       cancel_url:  cancelUrl,
       allow_promotion_codes: true,
