@@ -1,4 +1,5 @@
 import { UnifiedIdentityBridge } from '@/lib/profile/UnifiedIdentityBridge';
+import { emailAutomationEngine } from '@/lib/email/EmailAutomationEngine';
 
 export interface InvitePayload {
   token: string;
@@ -121,6 +122,14 @@ export class DiamondInviteEngine {
     const expiresAt = Date.now() + expiryDays * 24 * 60 * 60 * 1000;
     this.activeInvites.set(token, { token, email, assignedRole: role, expiresAt, status: 'active' });
     console.log(`[DIAMOND_INVITE] Registered new invite token: ${token} for ${email} (expires in ${expiryDays}d)`);
+
+    // Automatically shoot out the invite email
+    emailAutomationEngine.sendEmail({
+      to: email,
+      subject: 'Your TMI Diamond VIP Invitation',
+      template: 'diamond-invite',
+      data: { token, role, expiresAt }
+    });
   }
 
   static async validateAndRedeem(token: string, masterAccountId: string): Promise<boolean> {

@@ -2,6 +2,14 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getStripe } from '@/lib/stripe/client';
 import { getRegion, getRegionalPriceId, SUBSCRIPTION_TIERS } from '@/lib/stripe/regionalPricing';
+import type { UserTier } from '@/lib/auth/UserStore';
+
+// Map subscription product key → UserTier
+const PLAN_TO_TIER: Record<string, UserTier> = {
+  FAN:    'PRO',
+  ARTIST: 'GOLD',
+  VIP:    'DIAMOND',
+};
 
 function isStripePaused(): boolean {
   return process.env.STRIPE_PAUSE_MODE === 'true';
@@ -48,6 +56,23 @@ export async function GET(req: NextRequest) {
   const sponsorTier = searchParams.get('sponsorTier');
   const sponsorName = searchParams.get('sponsorName') ?? 'Battle Sponsor';
 
+  // For placeholders, build inline price_data from URL params
+  const amountStr   = searchParams.get('amount');
+  const productName = searchParams.get('productName') ?? 'TMI Pass';
+  const amount      = amountStr ? parseInt(amountStr, 10) : null;
+
+  // Resolve which plan/tier this purchase maps to
+  const planMatch = SUBSCRIPTION_TIERS.find(
+    (t) => t.tier1PriceId === resolvedPriceId ||
+           resolvedPriceId.toLowerCase().includes(t.key.toLowerCase()),
+  );
+  const pn = productName.toUpperCase();
+  const planKey: string = planMatch?.key ?? (pn.includes('VIP') || pn.includes('DIAMOND') ? 'VIP' : pn.includes('ARTIST') ? 'ARTIST' : 'FAN');
+  const tierUpgrade: UserTier = PLAN_TO_TIER[planKey] ?? 'PRO';
+
+  // Read user email from non-httpOnly cookie set at login/register
+  const userEmail = req.cookies.get('tmi_user_email')?.value ?? '';
+
   // Build success URL — include sponsor params so payment-success can auto-attach
   let successUrl = `${origin}/payment-success?session_id={CHECKOUT_SESSION_ID}&priceId=${resolvedPriceId}&mode=${mode}`;
   if (battleId) {
@@ -58,11 +83,6 @@ export async function GET(req: NextRequest) {
 
   // Detect placeholder price IDs (e.g. price_fan_monthly vs real price_1TUWI4EL7B8tMf4N...)
   const isRealPriceId = /^price_[A-Za-z0-9]{16,}$/.test(resolvedPriceId);
-
-  // For placeholders, build inline price_data from URL params
-  const amountStr = searchParams.get('amount');
-  const productName = searchParams.get('productName') ?? 'TMI Pass';
-  const amount = amountStr ? parseInt(amountStr, 10) : null;
 
   const lineItem = isRealPriceId
     ? { price: resolvedPriceId, quantity: 1 as const }
@@ -87,9 +107,12 @@ export async function GET(req: NextRequest) {
       success_url: successUrl,
       cancel_url:  cancelUrl,
       allow_promotion_codes: true,
-      ...(battleId && {
-        metadata: { battleId, sponsorTier: sponsorTier ?? 'FEATURED', sponsorName, type: 'battle-sponsor' },
-      }),
+      metadata: {
+        plan: planKey,
+        tierUpgrade,
+        userEmail,
+        ...(battleId && { battleId, sponsorTier: sponsorTier ?? 'FEATURED', sponsorName, type: 'battle-sponsor' }),
+      },
     });
     if (!session.url) throw new Error('No session URL returned');
     return NextResponse.redirect(session.url, 303);

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { sendEmail } from "@/lib/email/TMIEmailSystem";
 
 // ── In-memory rate limiter (per userId) ───────────────────────────────────────
 const lastSendMap = new Map<string, number>();
@@ -44,30 +45,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     // body is optional
   }
 
-  // TODO: integrate with Resend when API key is configured.
-  // For now we mark the send time and return ok.
   lastSendMap.set(userId, now);
 
-  // Attempt real email send via Resend if env key is set
-  const resendKey = process.env.RESEND_API_KEY;
-  if (resendKey && email) {
-    try {
-      await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${resendKey}`,
-        },
-        body: JSON.stringify({
-          from: "TMI <noreply@themusiciansindex.com>",
-          to: [email],
-          subject: "Verify your TMI account",
-          html: `<p>Click the link below to verify your email address.</p><p><a href="${process.env.NEXT_PUBLIC_SITE_URL ?? "https://themusiciansindex.com"}/email-verification/confirm?token=${sessionToken}">Verify Email</a></p>`,
-        }),
-      });
-    } catch {
-      // Non-fatal — email send failure doesn't break auth flow
-    }
+  if (email) {
+    void sendEmail({ to: email, type: "verify_email", data: { token: sessionToken } });
   }
 
   return NextResponse.json({ ok: true, message: "Verification email sent." });

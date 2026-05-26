@@ -290,8 +290,8 @@ const TEMPLATES: Record<string, (data: Record<string, unknown>, email: string) =
     html: baseHtml(`
       ${h1("Reset Your Password")}
       ${p("Someone (hopefully you) requested a password reset for this TMI account.")}
-      ${p("This link expires in 30 minutes.")}
-      ${btn("Reset Password", `${BASE_URL}/auth/reset?token=${d.token}`, "#ef4444")}
+      ${p("This link expires in 20 minutes and can only be used once.")}
+      ${btn("Reset Password", String(d.link ?? `${BASE_URL}/auth/reset-password/${d.token}`), "#ef4444")}
       ${p('<span style="font-size:11px;color:rgba(255,255,255,0.3);">If you didn\'t request this, your account is safe — ignore this email.</span>')}
     `, email),
   }),

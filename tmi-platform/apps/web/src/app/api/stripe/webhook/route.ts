@@ -4,6 +4,7 @@ import { getStripe } from "@/lib/stripe/client";
 import { recordStripeEvent } from "@/lib/stripe/stripe-telemetry-store";
 import { sendEmail } from "@/lib/email/TMIEmailSystem";
 import { createSponsorGift } from "@/lib/memory/ProLedgerEngine";
+import { updateUserTier, getUserByEmail, type UserTier } from "@/lib/auth/UserStore";
 
 const MAX_BODY_BYTES = 1024 * 1024; // 1MB
 const FORWARD_TIMEOUT_MS = 8000;
@@ -129,6 +130,22 @@ export async function POST(req: NextRequest) {
                 .toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
               sendEmail({ to: customerEmail, type: "subscription_start", data: { plan, priceMonthly, renewalDate } })
                 .catch((err) => console.error("[stripe/webhook] email send failed:", err));
+
+              // Upgrade user tier — use email from metadata first, fall back to customer_details
+              const upgradeEmail = (meta["userEmail"] || customerEmail).toLowerCase();
+              const tierUpgrade = (meta["tierUpgrade"] as UserTier | undefined);
+              if (upgradeEmail && tierUpgrade) {
+                const upgraded = updateUserTier(upgradeEmail, tierUpgrade);
+                if (upgraded) {
+                  console.log(`[stripe/webhook] Tier upgraded: ${upgradeEmail} → ${tierUpgrade}`);
+                  // Send tier-specific welcome if this is a VIP/Diamond upgrade
+                  if (tierUpgrade === "DIAMOND") {
+                    const user = getUserByEmail(upgradeEmail);
+                    sendEmail({ to: upgradeEmail, type: "welcome_diamond", data: { name: user?.displayName ?? upgradeEmail } })
+                      .catch(() => {});
+                  }
+                }
+              }
               // Create verified sponsor legacy item when role is sponsor
               if (meta["role"] === "sponsor" && meta["userId"]) {
                 try {
@@ -160,6 +177,36 @@ export async function POST(req: NextRequest) {
                 .catch((err) => console.error("[stripe/webhook] email send failed:", err));
             }
           }
+          if (stripeEvent.type === "customer.subscription.deleted") {
+            const sub = stripeEvent.data.object as unknown as Record<string, unknown>;
+            const custEmail = sub["customer_email"] as string | undefined;
+            if (custEmail) {
+              const periodEnd = sub["current_period_end"] as number | undefined;
+              const accessUntil = periodEnd
+                ? new Date(periodEnd * 1000).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
+                : "end of billing period";
+              sendEmail({ to: custEmail, type: "subscription_cancel", data: { accessUntil } })
+                .catch((err) => console.error("[stripe/webhook] email send failed:", err));
+              // Downgrade user back to FREE at cancellation
+              updateUserTier(custEmail, "FREE");
+            }
+          }
+
+          if (stripeEvent.type === "invoice.payment_succeeded") {
+            const invoice = stripeEvent.data.object as unknown as Record<string, unknown>;
+            const custEmail = invoice["customer_email"] as string | undefined;
+            const billingReason = invoice["billing_reason"] as string | undefined;
+            if (custEmail && billingReason === "subscription_cycle") {
+              const meta = (invoice["metadata"] ?? {}) as Record<string, string>;
+              const plan = meta["plan"] ?? "Pro";
+              const nextAttempt = invoice["next_payment_attempt"] as number | undefined;
+              const nextRenewalDate = new Date((nextAttempt ?? Date.now() / 1000 + 30 * 24 * 60 * 60) * 1000)
+                .toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+              sendEmail({ to: custEmail, type: "subscription_renew", data: { plan, nextRenewalDate } })
+                .catch((err) => console.error("[stripe/webhook] email send failed:", err));
+            }
+          }
+
         } catch (verifyErr) {
           console.error("[stripe/webhook] Signature verification failed:", verifyErr);
           emitWebhookTelemetry("invalid_signature_rejected", { reason: "crypto-verify-failed" });
