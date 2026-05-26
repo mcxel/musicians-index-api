@@ -287,3 +287,15 @@ export function updateUserRole(email: string, role: UserRole): boolean {
   void persistUser(user);
   return true;
 }
+
+export function updateUserTier(email: string, tier: UserTier): boolean {
+  const e = email.trim().toLowerCase();
+  const user = STORE.get(e);
+  if (!user) return false;
+  // Never downgrade ADMIN or DIAMOND hardcoded accounts
+  if (user.tier === 'ADMIN') return false;
+  user.tier = tier;
+  STORE.set(e, user);
+  void persistUser(user);
+  return true;
+}

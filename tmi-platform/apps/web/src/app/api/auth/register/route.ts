@@ -3,10 +3,8 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { registerUser } from '@/lib/auth/UserStore';
 import { createSession } from '@/lib/auth/SessionManager';
-import { EmailProviderEngine } from '@/lib/email/EmailProviderEngine';
+import { sendEmail } from '@/lib/email/TMIEmailSystem';
 import { DiamondInviteEngine } from '@/lib/auth/DiamondInviteEngine';
-
-const BASE_URL = process.env.NEXTAUTH_URL ?? 'https://themusiciansindex.com';
 
 const COOKIE_OPTS = {
   httpOnly: true,
@@ -15,30 +13,6 @@ const COOKIE_OPTS = {
   maxAge: 12 * 60 * 60,
   path: '/',
 };
-
-function sendWelcomeEmail(email: string, displayName: string) {
-  EmailProviderEngine.sendAsync({
-    to: email,
-    subject: "Welcome to TMI — The Musician's Index",
-    html: `
-      <div style="font-family:sans-serif;max-width:560px;margin:0 auto;background:#050510;color:#fff;padding:40px;border-radius:12px">
-        <h1 style="font-size:24px;font-weight:900;margin:0 0 8px;color:#00FFFF">Welcome to TMI${displayName ? `, ${displayName}` : ''}</h1>
-        <p style="font-size:13px;color:rgba(255,255,255,0.45);margin:0 0 20px">The Musician's Index</p>
-        <p style="font-size:14px;line-height:1.7;color:rgba(255,255,255,0.75);margin:0 0 28px">
-          Your account is ready. Go live, enter battles, vote, earn XP, and invite your crew.<br/><br/>
-          Invite fans and performers — you earn XP for everyone who joins through your link.
-        </p>
-        <a href="${BASE_URL}/join" style="display:inline-block;padding:13px 28px;background:linear-gradient(135deg,#FF2DAA,#AA2DFF);color:#fff;font-weight:800;font-size:12px;letter-spacing:0.12em;border-radius:8px;text-decoration:none">
-          GO TO TMI →
-        </a>
-        <hr style="border:none;border-top:1px solid rgba(255,255,255,0.08);margin:36px 0 20px" />
-        <p style="font-size:11px;color:rgba(255,255,255,0.25);margin:0">BernoutGlobal LLC · The Musician's Index</p>
-      </div>
-    `,
-    text: `Welcome to TMI${displayName ? `, ${displayName}` : ''}.\n\nYour account is ready. Visit: ${BASE_URL}/join\n\n— BernoutGlobal LLC`,
-    tags: ['welcome', 'registration'],
-  }).catch(() => {/* non-blocking */});
-}
 
 export async function POST(req: NextRequest) {
   let parsed: {
@@ -88,7 +62,23 @@ export async function POST(req: NextRequest) {
   const userAgent = req.headers.get('user-agent') ?? '';
   const { sessionId, sessionToken } = createSession(user.id, user.role, clientIp, userAgent);
 
-  sendWelcomeEmail(email, displayName || user.displayName);
+  // Role-specific welcome email via TMIEmailSystem magazine templates
+  const name = displayName || user.displayName;
+  const isArtist = platformRole === 'artist' || platformRole === 'performer';
+  const emailType = isArtist ? 'welcome_artist'
+    : platformRole === 'sponsor' ? 'sponsor_confirmation'
+    : platformRole === 'venue' ? 'welcome_venue'
+    : 'welcome_fan';
+  const emailData: Record<string, unknown> = { name, slug: user.id };
+  if (platformRole === 'venue') { emailData.venueName = name; emailData.venueSlug = user.id; }
+  if (platformRole === 'sponsor') {
+    emailData.sponsorName = name;
+    emailData.packageName = 'Standard';
+    emailData.monthlyBudget = '0';
+    emailData.activeUntil = 'Pending';
+    emailData.repEmail = 'sponsors@themusiciansindex.com';
+  }
+  void sendEmail({ to: email, type: emailType, data: emailData });
 
   // Redeem invite token NOW that the account actually exists
   if (parsed.inviteToken) {
