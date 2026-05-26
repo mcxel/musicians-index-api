@@ -41,10 +41,10 @@ const PERFORMERS: Performer[] = [
 ];
 
 const ROTATING_SAYINGS = [
-  'This is your stage. Go live and be seen.',
-  'Your audience is waiting. Start broadcasting now.',
+  'Go public → appear on the Lobby Wall → get seen now.',
+  'Start broadcasting and fans find you in seconds.',
   'Turn your sound into a movement.',
-  'Go live. Build your audience. Own the room.',
+  'Go live. Appear on the wall. Build your audience.',
   'The stage is always on. Are you?',
   'Who took the crown this week?',
   'Challenge your song here.',
@@ -1164,7 +1164,7 @@ export default function Home1CoverPage() {
           </div>
         </Link>
 
-        {process.env.NEXT_PUBLIC_BETA_MODE === 'true' && <FounderAdvertiserBanner />}
+        <FounderAdvertiserBanner />
 
         {/* ── HERO ENTER BUTTON ── */}
         <div style={{ display: 'flex', justifyContent: 'center', margin: '12px 0 10px', gap: 10, flexWrap: 'wrap' }}>
@@ -1192,10 +1192,11 @@ export default function Home1CoverPage() {
         </div>
 
         <div className="tmi-primary-cta-row">
-          <Link className="broadcast" href="/live/lobby">🎥 START BROADCASTING</Link>
+          <Link className="broadcast" href="/live/lobby">🎥 GO PUBLIC NOW</Link>
           <Link className="arena" href="/live/lobby">ENTER LIVE ARENA</Link>
           <Link className="login" href="/auth/signin">Login</Link>
           <Link className="challenge" href="/battles/new">Challenge Song</Link>
+          <Link className="advertise" href="/hub/advertiser">🚀 ADVERTISE HERE</Link>
           <Link className="magazine" href="/magazine">Magazine</Link>
           <Link className="sponsor" href="/sponsors">Sponsor</Link>
           <Link className="advertise" href="/advertisers">Advertise</Link>

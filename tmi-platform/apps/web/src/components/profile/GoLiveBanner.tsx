@@ -48,11 +48,11 @@ export default function GoLiveBanner({ profileSlug, hasStreamed = false }: GoLiv
   if (!checked || !isOwner || isLive) return null;
 
   const headline = hasStreamed
-    ? 'Your audience is ready.'
-    : 'You\'re not live yet.';
+    ? 'Your audience is ready. Go public.'
+    : 'Go public — get seen on the Lobby Wall.';
   const sub = hasStreamed
-    ? 'Go live and bring them back.'
-    : 'Start broadcasting and let fans discover you in real-time.';
+    ? 'Go live now and your profile reappears on the Lobby Wall for all active fans to see.'
+    : 'Start broadcasting and your profile goes live on the Lobby Wall. Real fans find you instantly.';
 
   return (
     <>
