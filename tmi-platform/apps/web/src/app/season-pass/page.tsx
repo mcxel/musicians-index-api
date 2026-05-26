@@ -1,5 +1,6 @@
 'use client';
 import { useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import TmiSeasonPassEngine from "@/components/pass/TmiSeasonPassEngine";
 import { useGamificationEngine } from "@/hooks/useGamificationEngine";
@@ -63,11 +64,34 @@ const TIERS = [
 
 export default function SeasonPassPage() {
   const { totalXp, walletCredits, trackAction } = useGamificationEngine();
+  const searchParams = useSearchParams();
+  const notice = searchParams?.get('notice');
 
   useEffect(() => { trackAction('LOGIN_DAILY'); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const NOTICES: Record<string, { bg: string; border: string; color: string; text: string }> = {
+    'stripe-paused': {
+      bg: 'rgba(255,215,0,0.06)', border: 'rgba(255,215,0,0.3)', color: '#FFD700',
+      text: 'Payments are temporarily processing — your request is saved and will be fulfilled shortly. Thank you for your patience.',
+    },
+    'stripe-pending': {
+      bg: 'rgba(255,45,170,0.06)', border: 'rgba(255,45,170,0.3)', color: '#FF2DAA',
+      text: 'Stripe is not yet configured. Add STRIPE_SECRET_KEY to Vercel to enable payments.',
+    },
+    'checkout-error': {
+      bg: 'rgba(255,45,170,0.06)', border: 'rgba(255,45,170,0.3)', color: '#FF2DAA',
+      text: 'Checkout encountered an issue. Please try again or contact support.',
+    },
+  };
+  const activeNotice = notice ? NOTICES[notice] : null;
+
   return (
     <main style={{ minHeight: "100vh", background: "#050510", color: "#fff", paddingBottom: 80 }}>
+      {activeNotice && (
+        <div style={{ padding: '14px 24px', background: activeNotice.bg, borderBottom: `1px solid ${activeNotice.border}`, textAlign: 'center', fontSize: 12, color: activeNotice.color, fontWeight: 600 }}>
+          {activeNotice.text}
+        </div>
+      )}
       <section style={{ textAlign: "center", padding: "56px 24px 40px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
         <div style={{ fontSize: 9, letterSpacing: "0.4em", color: "#FFD700", fontWeight: 800, marginBottom: 10 }}>TMI SEASON 1</div>
         <h1 style={{ fontSize: "clamp(1.6rem,4vw,2.8rem)", fontWeight: 900, marginBottom: 12 }}>Season Pass</h1>

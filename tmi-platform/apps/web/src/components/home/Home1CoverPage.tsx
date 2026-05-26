@@ -7,6 +7,7 @@ import type { TMILayer, TMILayerSessionState } from '@/types/layers';
 import { SEED_FEEDS } from '@/lib/broadcast/BroadcastRotationEngine';
 import type { BroadcastFeedItem } from '@/types/broadcast';
 import ChallengeYourSongCTA from '@/components/challenge/ChallengeYourSongCTA';
+import FounderAdvertiserBanner from '@/components/advertiser/FounderAdvertiserBanner';
 
 const HOME1_LAYER_SESSION_KEY = 'TMI_OS_SessionState_Home1';
 const HOME1_ISSUE_ID = 'issue-001-neon';
@@ -992,6 +993,8 @@ export default function Home1CoverPage() {
         </header>
 
         <ChallengeYourSongCTA variant="strip" />
+
+        {process.env.NEXT_PUBLIC_BETA_MODE === 'true' && <FounderAdvertiserBanner />}
 
         <div className="tmi-primary-cta-row">
           <Link className="join" href="/auth/signup">Join Free</Link>
