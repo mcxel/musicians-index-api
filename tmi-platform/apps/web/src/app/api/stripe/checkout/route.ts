@@ -82,6 +82,7 @@ export async function GET(req: NextRequest) {
   try {
     const session = await stripe.checkout.sessions.create({
       mode,
+      payment_method_types: ['card'],
       line_items: [lineItem],
       success_url: successUrl,
       cancel_url:  cancelUrl,
@@ -173,7 +174,8 @@ export async function POST(req: NextRequest) {
 
     // Direct Stripe SDK fallback
     const session = await stripe.checkout.sessions.create({
-      mode: items.length === 1 ? 'payment' : 'payment',
+      mode: 'payment',
+      payment_method_types: ['card'],
       line_items: items.map(i => ({ price: i.priceId, quantity: i.quantity ?? 1 })),
       success_url: successUrl,
       cancel_url: cancelUrl,
