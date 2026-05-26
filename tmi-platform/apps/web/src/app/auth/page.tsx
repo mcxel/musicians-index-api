@@ -112,7 +112,13 @@ export default function AuthPage() {
       });
 
       if (res.status === 200) {
-        const data = await res.json().catch(() => ({} as { role?: string }));
+        const data = await res.json().catch(() => ({} as { role?: string; streak?: { current: number; longest: number; isNewDay: boolean; multiplier: number; xpGranted: number } }));
+        if (data.streak) {
+          try {
+            localStorage.setItem('tmi_streak', JSON.stringify(data.streak));
+            window.dispatchEvent(new CustomEvent('tmi:streak', { detail: data.streak }));
+          } catch { /* localStorage unavailable */ }
+        }
         const authenticated = await waitForAuthenticatedSession();
         if (authenticated) {
           const dest = nextRoute || roleToHub(data.role);

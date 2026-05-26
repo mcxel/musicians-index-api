@@ -4,6 +4,8 @@ import type { NextRequest } from 'next/server';
 import { loginUser } from '@/lib/auth/UserStore';
 import { createSession } from '@/lib/auth/SessionManager';
 import { checkRateLimit } from '@/lib/security/TMISecurityEngine';
+import { StreakEngine } from '@/lib/gamification/StreakEngine';
+import { grantXP } from '@/lib/xp/xpEngine';
 
 const COOKIE_OPTS = {
   httpOnly: true,
@@ -43,8 +45,26 @@ export async function POST(req: NextRequest) {
     const userAgent = req.headers.get('user-agent') ?? '';
     const { sessionId, sessionToken } = createSession(user.id, user.role, clientIp, userAgent);
 
+    const streakResult = StreakEngine.recordDailyVisit(user.id);
+    if (streakResult.isNewDay && streakResult.xpGranted > 0) {
+      grantXP({ userId: user.id, source: 'login_daily', amount: streakResult.xpGranted });
+    }
+
     const response = NextResponse.json(
-      { ok: true, message: 'Session created', userId: user.id, role: user.role, tier: user.tier },
+      {
+        ok: true,
+        message: 'Session created',
+        userId: user.id,
+        role: user.role,
+        tier: user.tier,
+        streak: {
+          current: streakResult.streak.currentStreak,
+          longest: streakResult.streak.longestStreak,
+          isNewDay: streakResult.isNewDay,
+          multiplier: streakResult.xpMultiplier,
+          xpGranted: streakResult.xpGranted,
+        },
+      },
       { status: 200 }
     );
 

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { PersonaSwitcher } from "@/components/hud/PersonaSwitcher";
+import StreakBadge from "@/components/gamification/StreakBadge";
 
 interface SessionUser {
   id: string;
@@ -307,6 +308,11 @@ export function TMIGlobalHUD() {
           <div style={{ width: `${xpPct}%`, height: "100%", background: "linear-gradient(90deg,#AA2DFF,#FF2DAA)", borderRadius: 2 }} />
         </div>
         <div style={{ fontSize: 8, color: "rgba(255,255,255,0.25)", marginTop: 4, textAlign: "right" }}>{xp.toLocaleString()} / {xpMax.toLocaleString()} XP</div>
+      </div>
+
+      {/* Streak chip — compact, sits above XP bar */}
+      <div style={{ pointerEvents: 'all', display: 'flex', justifyContent: 'flex-end' }}>
+        <StreakBadge />
       </div>
     </div>
   );
