@@ -4,6 +4,10 @@
     {
       "path": "/api/email/queue-flush",
       "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/streak/warn",
+      "schedule": "0 7 * * *"
     }
   ]
 }

@@ -21,7 +21,8 @@ export type EmailType =
   | "subscription_start" | "subscription_renew" | "subscription_cancel" | "subscription_upgrade"
   | "sponsor_confirmation"
   | "weekly_digest" | "magazine_drop"
-  | "payout_queued" | "payout_approved";
+  | "payout_queued" | "payout_approved"
+  | "streak_warning";
 
 interface EmailPayload {
   to: string;
@@ -559,6 +560,23 @@ const TEMPLATES: Record<string, (data: Record<string, unknown>, email: string) =
       ], "#22c55e")}
       ${btn("View Earnings", `${BASE_URL}/artist/earnings`, "#22c55e")}
     `, email, "#22c55e"),
+  }),
+
+  streak_warning: (d, email) => ({
+    subject: "⚠️ Your TMI streak ends today",
+    html: baseHtml(`
+      ${labelChip("STREAK ALERT", "#FF2DAA")}
+      ${h1("Don't break the chain 🔥", "#FF2DAA")}
+      ${p(`You're on a <strong style="color:#FF2DAA;">${d.currentStreak}-day streak</strong> — but you haven't checked in today.`)}
+      ${p("Log in, listen to a track, or submit something. That's all it takes to keep it alive.")}
+      ${statBlock([
+        ["Current Streak", `🔥 ${d.currentStreak} days`],
+        ["XP Multiplier", `${d.multiplier}×`],
+        ["Longest Streak", `${d.longestStreak} days`],
+      ], "#FF2DAA")}
+      ${btn("Keep My Streak", `${BASE_URL}/home/1`, "#FF2DAA")}
+      ${p("Tomorrow the multiplier resets. Today it stays yours.")}
+    `, email, "#FF2DAA"),
   }),
 };
 
