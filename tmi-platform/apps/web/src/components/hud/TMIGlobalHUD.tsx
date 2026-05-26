@@ -245,7 +245,22 @@ export function TMIGlobalHUD() {
 
         {/* Live indicator */}
         <button
-          onClick={() => setIsLive((v) => !v)}
+          onClick={() => {
+            const next = !isLive;
+            setIsLive(next);
+            if (next) {
+              fetch('/api/live/go', { method: 'POST', credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ displayName: user.name ?? user.email }),
+              }).catch(() => {});
+              localStorage.setItem('tmi_is_live', 'true');
+              window.dispatchEvent(new CustomEvent('tmi:golive', { detail: { userId: user.id } }));
+            } else {
+              fetch('/api/live/go', { method: 'DELETE', credentials: 'include' }).catch(() => {});
+              localStorage.removeItem('tmi_is_live');
+              window.dispatchEvent(new CustomEvent('tmi:endbroadcast', { detail: { userId: user.id } }));
+            }
+          }}
           style={{
             width: 32,
             height: 32,
