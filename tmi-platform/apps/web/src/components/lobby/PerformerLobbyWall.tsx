@@ -233,7 +233,10 @@ export default function PerformerLobbyWall({ compact = false }: Props) {
           >
             <div style={{ fontSize: 32 }}>🎤</div>
             <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: '0.14em', color: '#FF2DAA', textAlign: 'center' }}>
-              BE THE FIRST<br />TO GO LIVE HERE
+              GO PUBLIC<br />APPEAR ON THIS WALL
+            </div>
+            <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.45)', textAlign: 'center', letterSpacing: '0.06em', lineHeight: 1.5 }}>
+              Start broadcasting and your<br />profile shows up here instantly.
             </div>
             <div style={{
               padding: '7px 16px',
@@ -245,7 +248,7 @@ export default function PerformerLobbyWall({ compact = false }: Props) {
               borderRadius: 6,
               marginTop: 4,
             }}>
-              🔴 START BROADCASTING
+              🔴 GO PUBLIC NOW
             </div>
           </Link>
         )}

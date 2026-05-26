@@ -128,7 +128,7 @@ export default function WelcomeArenaOverlay() {
             margin: "0 0 8px",
             letterSpacing: "0.02em",
           }}>
-            Go live. Build your audience. Turn your sound into a movement.
+            Go public — appear on the Lobby Wall and get discovered by real fans right now.
           </p>
 
           {/* Count-up stats */}
@@ -193,7 +193,7 @@ export default function WelcomeArenaOverlay() {
             fontSize: 9, color: "rgba(255,255,255,0.3)",
             letterSpacing: "0.12em", marginBottom: 16,
           }}>
-            Go live and let the world see you
+            Your profile hits the Lobby Wall the moment you go live
           </div>
 
           {/* Secondary */}
