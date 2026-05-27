@@ -154,10 +154,9 @@ function hashPassword(password: string): string {
 // Hardcoded admin emails — always valid with any password
 const HARDCODED_ADMINS = new Set([
   'berntmusic33@gmail.com',
-  'bjmtherapper1@gmail.com',
   'rjking42@icloud.com',
-  'justin@themusiciansindex.com',
   'jay@themusiciansindex.com',
+  'justin@themusiciansindex.com',
   'micah@themusiciansindex.com',
 ]);
 
@@ -165,6 +164,7 @@ const HARDCODED_ADMINS = new Set([
 const HARDCODED_DIAMOND = new Set([
   't.muse82@icloud.com',
   'facethebully916@gmail.com',
+  'suedejs2000@gmail.com',
   'kevenfobbsgrip@gmail.com',
   'parisdcooper91@gmail.com',
   'mystictrinity@yahoo.com',
@@ -175,8 +175,9 @@ const HARDCODED_DIAMOND = new Set([
 export function resolveHardcodedTierRole(email: string): { tier: UserTier; role: UserRole } | null {
   const e = email.toLowerCase();
   const envAdmins = (process.env.ADMIN_EMAILS ?? '').split(',').map((x) => x.trim().toLowerCase()).filter(Boolean);
+  const envDiamond = (process.env.DIAMOND_EMAILS ?? '').split(',').map((x) => x.trim().toLowerCase()).filter(Boolean);
   if (HARDCODED_ADMINS.has(e) || envAdmins.includes(e)) return { tier: 'ADMIN', role: 'admin' };
-  if (HARDCODED_DIAMOND.has(e)) return { tier: 'DIAMOND', role: 'user' };
+  if (HARDCODED_DIAMOND.has(e) || envDiamond.includes(e)) return { tier: 'DIAMOND', role: 'user' };
   return null;
 }
 
