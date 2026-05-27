@@ -6,6 +6,7 @@ import { createSession } from '@/lib/auth/SessionManager';
 import { sendEmail } from '@/lib/email/TMIEmailSystem';
 import { DiamondInviteEngine } from '@/lib/auth/DiamondInviteEngine';
 import { checkRateLimit, validateSignupEmail } from '@/lib/security/TMISecurityEngine';
+import { emitAdminLiveEvent } from '@/lib/admin/AdminLiveEventEngine';
 
 const COOKIE_OPTS = {
   httpOnly: true,
@@ -94,7 +95,53 @@ export async function POST(req: NextRequest) {
     emailData.activeUntil = 'Pending';
     emailData.repEmail = 'sponsors@themusiciansindex.com';
   }
-  void sendEmail({ to: email, type: emailType, data: emailData });
+  async function sendWelcomeEmailWithRetry() {
+    const first = await sendEmail({ to: email, type: emailType, data: emailData });
+    if (first.success) {
+      emitAdminLiveEvent({
+        type: 'engagement',
+        message: `[${new Date().toLocaleTimeString()}] 📧 Welcome email sent: ${email} (${emailType})`,
+        meta: { userId: user.id, email, emailType, attempt: 1 },
+      });
+      return;
+    }
+
+    const retryable = /(fetch|network|timeout|resend|socket|5\d\d)/i.test(first.error ?? '');
+    if (retryable) {
+      const second = await sendEmail({ to: email, type: emailType, data: emailData });
+      if (second.success) {
+        emitAdminLiveEvent({
+          type: 'engagement',
+          message: `[${new Date().toLocaleTimeString()}] 📧 Welcome email sent on retry: ${email} (${emailType})`,
+          meta: { userId: user.id, email, emailType, attempt: 2 },
+        });
+        return;
+      }
+      emitAdminLiveEvent({
+        type: 'alert',
+        message: `[${new Date().toLocaleTimeString()}] ⚠️ Welcome email failed after retry: ${email} (${emailType})`,
+        meta: { userId: user.id, email, emailType, error: second.error ?? 'unknown' },
+      });
+      console.error('[TMI register email] retry failed', email, emailType, second.error);
+      return;
+    }
+
+    emitAdminLiveEvent({
+      type: 'alert',
+      message: `[${new Date().toLocaleTimeString()}] ⚠️ Welcome email failed: ${email} (${emailType})`,
+      meta: { userId: user.id, email, emailType, error: first.error ?? 'unknown' },
+    });
+    console.error('[TMI register email] failed', email, emailType, first.error);
+  }
+
+  void sendWelcomeEmailWithRetry().catch((e) => {
+    emitAdminLiveEvent({
+      type: 'alert',
+      message: `[${new Date().toLocaleTimeString()}] ⚠️ Welcome email exception: ${email} (${emailType})`,
+      meta: { userId: user.id, email, emailType, error: String(e) },
+    });
+    console.error('[TMI register email] exception', e);
+  });
 
   // Redeem invite token NOW that the account actually exists
   if (parsed.inviteToken) {

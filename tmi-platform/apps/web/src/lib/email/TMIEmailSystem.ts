@@ -587,6 +587,7 @@ const TRANSACTIONAL_TYPES = new Set<EmailType>([
   "subscription_start", "subscription_renew", "subscription_cancel", "subscription_upgrade",
   "payout_queued", "payout_approved", "contest_win", "contest_loss",
   "battle_invite", "welcome_diamond", "welcome_admin", "sponsor_confirmation",
+  "welcome_artist", "welcome_fan", "welcome_venue", "streak_warning", "invite",
 ]);
 
 function emailCategoryFor(type: EmailType): "transactional" | "marketing" | "newsletter" {
