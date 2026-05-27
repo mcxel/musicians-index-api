@@ -2,6 +2,7 @@ import Link from "next/link";
 import { profileToArticleRoute } from "@/lib/editorial/editorialRoutingResolver";
 import ArtistWorldShell from "@/components/artist/ArtistWorldShell";
 import GoLiveBanner from "@/components/profile/GoLiveBanner";
+import ProfilePlaylistSection from "@/components/profile/ProfilePlaylistSection";
 import PerformerVideoPanel from "@/components/media/PerformerVideoPanel";
 import PerformerSponsorShelf, {
   type PerformerSponsor,
@@ -234,6 +235,9 @@ export default function ArtistProfilePage({ params }: Props) {
         accentColor={CYAN}
         role="artist"
       />
+
+      {/* Playlist — owner can add/reorder tracks; visitors see read-only */}
+      <ProfilePlaylistSection profileSlug={params.slug} />
     </ArtistWorldShell>
   );
 }
