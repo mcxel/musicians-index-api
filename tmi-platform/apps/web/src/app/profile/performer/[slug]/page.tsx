@@ -1,4 +1,5 @@
 import Link from "next/link";
+import ProfilePlaylistSection from "@/components/profile/ProfilePlaylistSection";
 import { EDITORIAL_ARTICLES } from "@/lib/editorial/NewsArticleModel";
 import { SPONSOR_PLACEMENTS } from "@/lib/editorial/SponsorPlacementModel";
 import { profileToArticleRoute } from "@/lib/editorial/editorialRoutingResolver";
@@ -538,6 +539,9 @@ export default function PerformerProfilePage({ params }: Props) {
           accentColor={ACCENT}
           role="performer"
         />
+
+        {/* Playlist — owner can add/reorder tracks; visitors see read-only */}
+        <ProfilePlaylistSection profileSlug={params.slug} />
       </PerformerProfileShell>
     </>
   );

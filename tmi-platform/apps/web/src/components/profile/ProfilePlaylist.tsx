@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import ViralShareButton from '@/components/share/ViralShareButton';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -160,7 +160,17 @@ export default function ProfilePlaylist({
   initialTitle?: string;
   initialSkin?: SkinId;
 }) {
-  const [entries,        setEntries]        = useState<PlaylistEntry[]>(initialEntries ?? DEMO_ENTRIES);
+  const STORAGE_KEY = `tmi_playlist_${writerId}`;
+
+  const [entries, setEntries] = useState<PlaylistEntry[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) return JSON.parse(saved) as PlaylistEntry[];
+      } catch { /* ignore */ }
+    }
+    return initialEntries ?? DEMO_ENTRIES;
+  });
   const [activeSkinId,   setActiveSkinId]   = useState<SkinId>(initialSkin);
   const [nowPlayingId,   setNowPlayingId]   = useState<string | null>(null);
   const [expandedId,     setExpandedId]     = useState<string | null>(null);
@@ -176,6 +186,11 @@ export default function ProfilePlaylist({
   const [newKind,        setNewKind]        = useState<MediaKind>('song');
   const [dragOverId,     setDragOverId]     = useState<string | null>(null);
   const dragSrcId = useRef<string | null>(null);
+
+  // Persist entries to localStorage whenever they change (owner's saves survive refresh)
+  useEffect(() => {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(entries)); } catch { /* ignore */ }
+  }, [entries, STORAGE_KEY]);
 
   const skin = SKINS.find(s => s.id === activeSkinId) ?? SKINS[0];
   const visible = (filter === 'all' ? entries : entries.filter(e => e.kind === filter)).slice(0, limit);
