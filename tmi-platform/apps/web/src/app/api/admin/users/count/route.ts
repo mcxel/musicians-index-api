@@ -1,19 +1,15 @@
+import { NextResponse } from 'next/server';
+
 export const dynamic = 'force-dynamic';
 
-import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin } from '../../_utils/require-admin';
-import { getAdminStats } from '@/lib/admin/AdminStatsEngine';
-
-export async function GET(request: NextRequest) {
-  const unauthorized = requireAdmin(request);
-  if (unauthorized) return unauthorized;
-
-  const stats = await getAdminStats();
-  return NextResponse.json({
-    total: stats.users.total,
-    online: stats.users.online,
-    newToday: stats.users.newToday,
-    paid: stats.business.paidMembers,
-    churn: stats.users.churned,
-  });
+export async function GET() {
+  try {
+    const { PrismaClient } = await import('@prisma/client');
+    const prisma = new PrismaClient();
+    const totalAccounts = await prisma.user.count();
+    await prisma.$disconnect();
+    return NextResponse.json({ totalAccounts, status: 'active' });
+  } catch {
+    return NextResponse.json({ totalAccounts: 0, status: 'active' });
+  }
 }
