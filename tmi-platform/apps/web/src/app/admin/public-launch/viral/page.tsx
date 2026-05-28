@@ -1,16 +1,18 @@
 'use client';
 
-export const dynamic = 'force-dynamic';
-
-import { useMemo, useState } from 'react';
+import { useState, useMemo } from 'react';
 
 interface Snapshot {
   playlistId: string;
   shares: number;
   opens: number;
-  clicks: number;
   copies: number;
+  clicks: number;
   lastAt: number;
+  totalOpens: number;
+  totalShares: number;
+  totalReferralClicks: number;
+  uniqueVisitors: number;
 }
 
 interface LeaderboardRow extends Snapshot {

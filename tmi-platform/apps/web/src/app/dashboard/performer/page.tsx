@@ -8,6 +8,7 @@ import BeatJourneyWidget from '@/components/beats/BeatJourneyWidget';
 import { getRoleStats, type DashboardStat } from '@/lib/stats/DashboardStatsEngine';
 import LiveMediaWall from '@/components/media/LiveMediaWall';
 import VideoCurtainReveal from '@/components/media/VideoCurtainReveal';
+import AdSenseSlot, { AD_SLOTS } from '@/components/ads/AdSenseSlot';
 
 interface MeUser { id: string; email: string; name?: string; role: string; tier?: string; }
 
@@ -149,8 +150,16 @@ export default function PerformerDashboardPage() {
           </div>
         </div>
 
+        {/* Ad slot — sponsor/advertiser fallback */}
+        <AdSenseSlot
+          slot={AD_SLOTS.dashboardSidebar}
+          format="horizontal"
+          label="ADVERTISEMENT"
+          style={{ marginBottom: 28 }}
+        />
+
         {/* Store & Assets row */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 32 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 20, marginBottom: 32 }}>
           {/* Store */}
           <div style={{ background: 'rgba(255,45,170,0.05)', border: '1px solid rgba(255,45,170,0.2)', borderRadius: 14, padding: '20px' }}>
             <div style={{ fontSize: 9, letterSpacing: '0.35em', color: '#FF2DAA', fontWeight: 800, marginBottom: 14 }}>STORE & PRODUCTS</div>
@@ -181,7 +190,7 @@ export default function PerformerDashboardPage() {
         {/* Platform Connections */}
         <div style={{ marginBottom: 28 }}>
           <div style={{ fontSize: 9, letterSpacing: '0.35em', color: 'rgba(255,255,255,0.35)', fontWeight: 800, marginBottom: 14 }}>PLATFORM CONNECTIONS</div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 10 }}>
             {PLATFORM_LINKS.map((p) => (
               <Link key={p.href} href={p.href} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: '16px 12px', background: `${p.color}08`, border: `1px solid ${p.color}25`, borderRadius: 12, textDecoration: 'none', textAlign: 'center' }}>
                 <span style={{ fontSize: 24 }}>{p.icon}</span>

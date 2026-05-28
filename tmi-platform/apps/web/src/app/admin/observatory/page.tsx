@@ -4,69 +4,56 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import MultiRoomVideoMonitor from "@/components/media/MultiRoomVideoMonitor";
 import HomeFeedObserver from "@/components/admin/HomeFeedObserver";
+import StripeObservatoryCard from "@/components/admin/StripeObservatoryCard";
+import BetaLaunchScoreboard from "@/components/admin/BetaLaunchScoreboard";
 
 // ─── Seed data (replace with live API when available) ────────────────────────
 
-const MOCK_BOTS = [
-  { id: "b001", name: "Fan-Aria",  role: "fan",        status: "streaming", room: "Cypher Arena"      },
-  { id: "b002", name: "Fan-Dex",   role: "fan",        status: "browsing",  room: "Home 2"            },
-  { id: "b003", name: "Art-Nova",  role: "artist",     status: "streaming", room: "Live Stage 1"      },
-  { id: "b004", name: "Art-Rex",   role: "artist",     status: "working",   room: "Dashboard"         },
-  { id: "b005", name: "Sp-Zane",   role: "sponsor",    status: "browsing",  room: "Marketplace"       },
-  { id: "b006", name: "Fan-Kira",  role: "fan",        status: "streaming", room: "Battle Ring"       },
-  { id: "b007", name: "Fan-Leo",   role: "fan",        status: "idle",      room: "Home 3"            },
-  { id: "b008", name: "Art-Mox",   role: "artist",     status: "streaming", room: "World Stage"       },
-  { id: "b009", name: "Adv-Rena",  role: "advertiser", status: "working",   room: "Campaign Builder"  },
-  { id: "b010", name: "Fan-Oryn",  role: "fan",        status: "browsing",  room: "Charts"            },
-];
+const MOCK_BOTS: { id: string; name: string; role: string; status: string; room: string }[] = [];
 
-const TOP10_MOCK = [
-  { rank: 1, name: "Nova Kane",  genre: "Hip Hop", pts: 14200, trend: "up"   },
-  { rank: 2, name: "Ari Volt",   genre: "R&B",     pts: 13800, trend: "same" },
-  { rank: 3, name: "Rhyme Lane", genre: "Hip Hop", pts: 12400, trend: "up"   },
-  { rank: 4, name: "Echo Vee",   genre: "Pop",     pts: 11900, trend: "down" },
-  { rank: 5, name: "Lex Royal",  genre: "EDM",     pts: 11200, trend: "up"   },
-];
+const TOP10_MOCK: { rank: number; name: string; genre: string; pts: number; trend: string }[] = [];
 
-const ROUTE_HEALTH = [
-  { route: "/home/1",       status: "ok",   ms: 42  },
-  { route: "/home/2",       status: "ok",   ms: 38  },
-  { route: "/home/3",       status: "ok",   ms: 55  },
-  { route: "/home/4",       status: "ok",   ms: 51  },
-  { route: "/home/5",       status: "ok",   ms: 48  },
-  { route: "/rooms/random", status: "ok",   ms: 62  },
-  { route: "/live/cypher",  status: "warn", ms: 198 },
-  { route: "/marketplace",  status: "ok",   ms: 44  },
-  { route: "/booking",      status: "ok",   ms: 39  },
-  { route: "/rewards",      status: "ok",   ms: 41  },
-];
+const ROUTE_HEALTH: { route: string; status: string; ms: number }[] = [];
 
-const SPONSOR_ROTATIONS = [
-  { slot: "Billboard Hero",  sponsor: "SoundWave Audio",    impressions: 4820, ctr: "3.2%" },
-  { slot: "Lobby Wall",      sponsor: "BeatBox Pro",        impressions: 2910, ctr: "2.7%" },
-  { slot: "Cypher Banner",   sponsor: "UrbanPulse Records", impressions: 1650, ctr: "4.1%" },
-];
+const SPONSOR_ROTATIONS: { slot: string; sponsor: string; impressions: number; ctr: string }[] = [];
 
 const ERROR_METRICS = [
-  { label: "Routes",  value: "6 warnings", tone: "yellow" },
-  { label: "Queues",  value: "2 stalls",   tone: "red"    },
-  { label: "Bots",    value: "17 fails",   tone: "red"    },
-  { label: "Visuals", value: "4 misses",   tone: "yellow" },
-  { label: "Motion",  value: "3 fails",    tone: "yellow" },
-  { label: "Sockets", value: "99.7%",      tone: "green"  },
+  { label: "Routes",  value: "0", tone: "green" },
+  { label: "Queues",  value: "0", tone: "green" },
+  { label: "Bots",    value: "0", tone: "green" },
+  { label: "Visuals", value: "0", tone: "green" },
+  { label: "Motion",  value: "0", tone: "green" },
+  { label: "Sockets", value: "0", tone: "green" },
 ];
 
 // ─── Tab config ───────────────────────────────────────────────────────────────
 
-type Tab = "live" | "bots" | "sponsors" | "routes" | "errors" | "safety";
+type Tab = "scoreboard" | "live" | "bots" | "sponsors" | "routes" | "errors" | "safety";
+
+type LiveSessionHealth = {
+  userId: string;
+  displayName: string;
+  title?: string;
+  roomId: string;
+  stageState: "pre-show" | "live" | "intermission" | "post-show";
+  streamHealth: "excellent" | "good" | "degraded" | "critical" | "unknown";
+  viewerCount: number;
+  tipTotal: number;
+  bitrateKbps: number;
+  droppedFramesPct: number;
+  rttMs: number;
+  audioOk: boolean;
+  lastPingAt: number;
+};
 
 const TABS: { id: Tab; label: string; color: string }[] = [
-  { id: "live",     label: "LIVE",     color: "#00C896" },
-  { id: "bots",     label: "BOTS",     color: "#00C8FF" },
-  { id: "sponsors", label: "SPONSORS", color: "#FFD700" },
-  { id: "routes",   label: "ROUTES",   color: "#AA2DFF" },
-  { id: "errors",   label: "ERRORS",   color: "#FF2DAA" },
-  { id: "safety",   label: "SAFETY",   color: "#FF6B00" },
+  { id: "scoreboard", label: "SCOREBOARD", color: "#AA2DFF" },
+  { id: "live",       label: "LIVE",       color: "#00C896" },
+  { id: "bots",       label: "BOTS",       color: "#00C8FF" },
+  { id: "sponsors",   label: "SPONSORS",   color: "#FFD700" },
+  { id: "routes",     label: "ROUTES",     color: "#AA2DFF" },
+  { id: "errors",     label: "ERRORS",     color: "#FF2DAA" },
+  { id: "safety",     label: "SAFETY",     color: "#FF6B00" },
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -91,17 +78,61 @@ function toneColor(tone: string) {
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 export default function ObservatoryPage() {
-  const [tab, setTab]   = useState<Tab>("live");
+  const [tab, setTab]   = useState<Tab>("scoreboard");
   const [tick, setTick] = useState(0);
+  const [liveSessions, setLiveSessions] = useState<LiveSessionHealth[]>([]);
+  const [totalUsers, setTotalUsers] = useState<number>(0);
 
   useEffect(() => {
     const id = setInterval(() => setTick(t => t + 1), 5000);
     return () => clearInterval(id);
   }, []);
 
+  useEffect(() => {
+    let stopped = false;
+
+    async function loadLiveSessions() {
+      try {
+        const res = await fetch('/api/live/go', { cache: 'no-store' });
+        if (!res.ok) return;
+        const data = (await res.json()) as { sessions?: LiveSessionHealth[] };
+        if (!stopped) {
+          setLiveSessions(Array.isArray(data.sessions) ? data.sessions : []);
+        }
+      } catch {
+        // Keep observatory resilient; stale values are acceptable on transient errors.
+      }
+    }
+
+    async function loadUserCount() {
+      try {
+        const res = await fetch('/api/admin/users/count', { cache: 'no-store' });
+        if (res.ok) {
+          const data = await res.json();
+          if (!stopped) setTotalUsers(data.totalAccounts ?? 0);
+        }
+      } catch {
+        // Fails silently if DB is still syncing
+      }
+    }
+
+    void loadLiveSessions();
+    void loadUserCount();
+    const pollId = setInterval(() => {
+      void loadLiveSessions();
+      void loadUserCount();
+    }, 5000);
+
+    return () => {
+      stopped = true;
+      clearInterval(pollId);
+    };
+  }, []);
+
   const streaming  = MOCK_BOTS.filter(b => b.status === "streaming").length;
   const warnRoutes = ROUTE_HEALTH.filter(r => r.status !== "ok").length;
   const activeTab  = TABS.find(t => t.id === tab)!;
+  const criticalStreams = liveSessions.filter((s) => s.streamHealth === 'critical').length;
 
   return (
     <div style={{ minHeight: "100vh", background: "#050510", color: "#fff", fontFamily: "'Inter',sans-serif" }}>
@@ -111,7 +142,10 @@ export default function ObservatoryPage() {
         <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.35em", color: "#00C8FF" }}>TMI OBSERVATORY</div>
         <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
           {[
+            { label: "TOTAL ACCOUNTS", value: totalUsers,                              color: "#FFD700" },
             { label: "STREAMING",  value: streaming,                                   color: "#00C896" },
+            { label: "LIVE SESSIONS", value: liveSessions.length,                        color: "#00FFFF" },
+            { label: "CRITICAL", value: criticalStreams,                                 color: criticalStreams > 0 ? "#FF2DAA" : "#00C896" },
             { label: "BOTS ACTIVE",value: MOCK_BOTS.length,                            color: "#00C8FF" },
             { label: "ROUTE WARNS",value: warnRoutes,                                  color: warnRoutes > 0 ? "#FFD700" : "#00C896" },
             { label: "TOP ARTIST", value: TOP10_MOCK[0].name,                          color: "#FF2DAA" },
@@ -130,7 +164,7 @@ export default function ObservatoryPage() {
       </div>
 
       {/* ── Tab nav ──────────────────────────────────────────────────────────── */}
-      <div style={{ borderBottom: "1px solid rgba(255,255,255,0.07)", padding: "0 clamp(16px,4vw,40px)", display: "flex", gap: 0 }}>
+      <div style={{ borderBottom: "1px solid rgba(255,255,255,0.07)", padding: "0 clamp(16px,4vw,40px)", display: "flex", gap: 0, overflowX: "auto", WebkitOverflowScrolling: "touch" as never, scrollbarWidth: "none" as never }}>
         {TABS.map(t => (
           <button
             key={t.id}
@@ -153,6 +187,9 @@ export default function ObservatoryPage() {
       {/* ── Tab content ──────────────────────────────────────────────────────── */}
       <div style={{ padding: "28px clamp(16px,4vw,40px) 80px" }}>
 
+        {/* ── SCOREBOARD ── */}
+        {tab === "scoreboard" && <BetaLaunchScoreboard />}
+
         {/* ── LIVE ── */}
         {tab === "live" && (
           <div>
@@ -165,6 +202,49 @@ export default function ObservatoryPage() {
             />
             <div style={{ marginTop: 32 }}>
               <HomeFeedObserver title="HOMEPAGE FEED OBSERVER" />
+            </div>
+            <div style={{ marginTop: 20, background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: "12px 14px" }}>
+              <div style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.2em", color: "#00FFFF", marginBottom: 10 }}>
+                GLOBAL LIVE SESSION HEALTH
+              </div>
+              {liveSessions.length === 0 ? (
+                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.45)" }}>No active live sessions.</div>
+              ) : (
+                <div style={{ display: "grid", gap: 8 }}>
+                  {liveSessions.map((session) => {
+                    const healthColor = session.streamHealth === 'critical'
+                      ? '#FF2DAA'
+                      : session.streamHealth === 'degraded'
+                        ? '#FFD700'
+                        : session.streamHealth === 'excellent'
+                          ? '#00C896'
+                          : '#00C8FF';
+
+                    return (
+                      <div key={session.userId} style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, padding: "10px 12px", background: "rgba(0,0,0,0.25)" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                          <div style={{ fontSize: 12, fontWeight: 700 }}>{session.title ?? session.displayName}</div>
+                          <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.1em", color: healthColor }}>{session.streamHealth.toUpperCase()}</div>
+                        </div>
+                        <div style={{ fontSize: 10, color: "rgba(255,255,255,0.6)", display: "flex", gap: 12, flexWrap: "wrap" }}>
+                          <span>Room: {session.roomId}</span>
+                          <span>Stage: {session.stageState}</span>
+                          <span>Viewers: {session.viewerCount}</span>
+                          <span>Tips: ${(session.tipTotal ?? 0).toFixed(2)}</span>
+                          <span>Bitrate: {session.bitrateKbps} kbps</span>
+                          <span>RTT: {session.rttMs} ms</span>
+                          <span>Dropped: {session.droppedFramesPct?.toFixed(1) ?? '0.0'}%</span>
+                          <span style={{ color: session.audioOk ? '#00C896' : '#FF2DAA' }}>{session.audioOk ? '🔊 Audio OK' : '🔇 No Audio'}</span>
+                          <span style={{ color: 'rgba(255,255,255,0.4)' }}>Ping: {Math.round((Date.now() - session.lastPingAt) / 1000)}s ago</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+            <div style={{ marginTop: 20 }}>
+              <StripeObservatoryCard />
             </div>
             <div style={{ marginTop: 24, display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(200px,1fr))", gap: 10 }}>
               {[

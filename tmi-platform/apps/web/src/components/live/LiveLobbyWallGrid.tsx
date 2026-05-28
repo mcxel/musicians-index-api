@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
+import AdRailSlot from '@/components/ads/AdRailSlot';
 
 // ─── Crayon-box palette — every room gets a unique vivid color ────────────────
 
@@ -59,22 +60,21 @@ function LobbyCell({ room, colorIndex, onJoin }: { room: LobbyRoom; colorIndex: 
       onClick={() => onJoin(room)}
       style={{
         position: 'relative',
-        borderRadius: 10,
-        overflow: 'hidden',
-        cursor: 'pointer',
+        borderRadius: 12,
         aspectRatio: '4/3',
         background: `radial-gradient(circle at 35% 35%, ${bg}cc, ${bg}55 60%, #050510)`,
-        border: `2px solid ${bg}80`,
+        border: `1px solid rgba(255,255,255,0.1)`,
         boxShadow: pulse && room.status === 'live'
-          ? `0 0 22px ${bg}90, inset 0 0 30px ${bg}22`
-          : `0 0 8px ${bg}40`,
-        transition: 'box-shadow 0.6s ease',
+          ? `0 4px 35px rgba(0,0,0,0.6), inset 0 1px 1px rgba(255,255,255,0.15)`
+          : `0 2px 12px rgba(0,0,0,0.4)`,
+        cursor: 'pointer',
+        overflow: 'hidden',
       }}
     >
-      {/* Live pulse dot */}
+      {/* Live status dot */}
       {room.status === 'live' && (
         <motion.div
-          animate={{ opacity: [1, 0.3, 1], scale: [1, 1.3, 1] }}
+          animate={{ opacity: [1, 0.3, 1] }}
           transition={{ duration: 1.4, repeat: Infinity }}
           style={{
             position: 'absolute', top: 8, right: 8,
@@ -98,6 +98,14 @@ function LobbyCell({ room, colorIndex, onJoin }: { room: LobbyRoom; colorIndex: 
           pointerEvents: 'none',
         }} />
       </div>
+
+      {/* Glass reflection */}
+      <div style={{
+        position: 'absolute', inset: 0,
+        background: 'linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 40%, rgba(0,0,0,0.2) 100%)',
+        pointerEvents: 'none',
+        zIndex: 4,
+      }} />
 
       {/* Performer initials avatar */}
       <div style={{
@@ -172,18 +180,17 @@ export default function LiveLobbyWallGrid({ rooms, title, accentColor = '#00FFFF
   return (
     <div style={{ minHeight: '100vh', background: '#050510', color: '#fff', paddingBottom: 80 }}>
       {/* Header */}
-      <div style={{ position: 'sticky', top: 0, zIndex: 20, background: 'rgba(5,5,16,0.92)', backdropFilter: 'blur(12px)', borderBottom: `1px solid ${accentColor}30`, padding: '14px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div style={{ position: 'sticky', top: 0, zIndex: 20, background: 'linear-gradient(180deg, rgba(5,5,16,0.95) 0%, rgba(5,5,16,0.8) 100%)', backdropFilter: 'blur(20px)', borderBottom: `1px solid rgba(255,255,255,0.1)`, boxShadow: '0 10px 30px rgba(0,0,0,0.5)', padding: '14px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
           <div style={{ fontSize: 9, letterSpacing: '0.35em', color: accentColor, fontWeight: 800 }}>{typeLabel} · LOBBY WALL</div>
           <h1 style={{ margin: 0, fontSize: 20, color: '#fff' }}>{title}</h1>
         </div>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={{ fontSize: 11, color: '#00FF88' }}>
             <motion.span animate={{ opacity: [1, 0.3, 1] }} transition={{ duration: 1.2, repeat: Infinity }}>●</motion.span>
             {' '}{liveRooms.length} LIVE
           </span>
           <motion.button
-            whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.97 }}
             onClick={joinRandom}
             disabled={liveRooms.length === 0}
@@ -209,6 +216,12 @@ export default function LiveLobbyWallGrid({ rooms, title, accentColor = '#00FFFF
 
       {/* Grid */}
       <div style={{ maxWidth: 1280, margin: '0 auto', padding: '28px 20px' }}>
+        <div style={{ marginBottom: 24, width: '100%' }}>
+          <AdRailSlot
+            slotId="lobby-wall-featured"
+            hasSponsor={false}
+          />
+        </div>
         {liveRooms.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '80px 0', color: 'rgba(255,255,255,0.35)' }}>
             <div style={{ fontSize: 40, marginBottom: 12 }}>📡</div>

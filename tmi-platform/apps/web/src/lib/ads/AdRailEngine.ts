@@ -3,7 +3,8 @@ export type AdRailSlotId =
   | 'home1-discovery-sidebar'
   | 'magazine-article-rail'
   | 'magazine-footer-block'
-  | 'billboard-rail-fallback';
+  | 'billboard-rail-fallback'
+  | 'lobby-wall-featured';
 
 export type SponsorPlacement = {
   id: string;
@@ -61,11 +62,12 @@ const ADVERTISER_INVENTORY: Partial<Record<AdRailSlotId, AdvertiserPlacement>> =
 };
 
 const ADSENSE_SLOT_MAP: Record<AdRailSlotId, { slot: string; format: 'auto' | 'rectangle' | 'horizontal' }> = {
-  'home1-lower-lobby-rail': { slot: '4100011001', format: 'horizontal' },
-  'home1-discovery-sidebar': { slot: '4100011002', format: 'rectangle' },
-  'magazine-article-rail': { slot: '4100011003', format: 'rectangle' },
-  'magazine-footer-block': { slot: '4100011004', format: 'horizontal' },
-  'billboard-rail-fallback': { slot: '4100011005', format: 'horizontal' },
+  'home1-lower-lobby-rail':   { slot: '4100011001', format: 'horizontal' },
+  'home1-discovery-sidebar':  { slot: '4100011002', format: 'rectangle'  },
+  'magazine-article-rail':    { slot: '4100011003', format: 'rectangle'  },
+  'magazine-footer-block':    { slot: '4100011004', format: 'horizontal' },
+  'billboard-rail-fallback':  { slot: '4100011005', format: 'horizontal' },
+  'lobby-wall-featured':      { slot: '4100011006', format: 'rectangle'  },
 };
 
 export function resolveAdRailSlot(params: {
