@@ -17,10 +17,14 @@ export async function POST(req: NextRequest) {
   // Accept either the Vercel cron header or a manual secret key
   const cronHeader  = req.headers.get('authorization');
   const flushKey    = req.headers.get('x-queue-flush-key');
-  const configKey   = process.env.QUEUE_FLUSH_KEY ?? 'tmi-queue-flush-dev';
+  const configKey   = process.env.QUEUE_FLUSH_KEY?.trim() ?? '';
+
+  if (!configKey && !process.env.CRON_SECRET?.trim()) {
+    return NextResponse.json({ ok: false, error: 'Queue flush keys are not configured' }, { status: 500 });
+  }
 
   const isVercelCron = cronHeader === 'Bearer ' + (process.env.CRON_SECRET ?? '');
-  const isManual     = flushKey === configKey;
+  const isManual     = !!configKey && flushKey === configKey;
 
   if (!isVercelCron && !isManual) {
     return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
@@ -53,7 +57,11 @@ export async function POST(req: NextRequest) {
  */
 export async function GET(req: NextRequest) {
   const key = req.headers.get('x-queue-flush-key') ?? req.nextUrl.searchParams.get('key') ?? '';
-  const configKey = process.env.QUEUE_FLUSH_KEY ?? 'tmi-queue-flush-dev';
+  const configKey = process.env.QUEUE_FLUSH_KEY?.trim() ?? '';
+
+  if (!configKey) {
+    return NextResponse.json({ ok: false, error: 'QUEUE_FLUSH_KEY is not configured' }, { status: 500 });
+  }
 
   if (key !== configKey) {
     return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });

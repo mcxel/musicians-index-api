@@ -74,7 +74,7 @@ export default function ArtistPortalFace({
       id: "live",
       label: "Live",
       routeTarget: `/artists/${artist.id}/live`,
-      fallbackRoute: `/live/room/${artist.id}`,
+      fallbackRoute: `/live/rooms/${artist.id}`,
       analyticsEvent: "home1_artist_live_click",
     },
   ];

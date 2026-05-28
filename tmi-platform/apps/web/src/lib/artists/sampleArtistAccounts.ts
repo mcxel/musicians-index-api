@@ -17,7 +17,7 @@ export const SAMPLE_ARTIST_ACCOUNTS: SampleArtistAccount[] = ARTIST_SEED.slice(0
   genre: artist.genre,
   profileImage: artist.image,
   articleRoute: `/artist/${artist.id}/article`,
-  liveRoute: `/live/room/${artist.id}`,
+  liveRoute: `/live/rooms/${artist.id}`,
   bookingRoute: `/booking/${artist.id}`,
   verified: index < 5,
 }));

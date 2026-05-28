@@ -40,7 +40,7 @@ export default function ArtistFaceCard({ artist, slot }: ArtistFaceCardProps) {
         <div className="live-face-slot__actions">
           <Link href={`/artist/${artist.id}`} className="live-face-slot__btn">View</Link>
           <Link href={`/vote/idol?artist=${artist.id}`} className="live-face-slot__btn">Vote</Link>
-          <Link href={`/live/room/${artist.id}`} className="live-face-slot__btn">Live</Link>
+          <Link href={`/live/rooms/${artist.id}`} className="live-face-slot__btn">Live</Link>
         </div>
       </div>
     </article>

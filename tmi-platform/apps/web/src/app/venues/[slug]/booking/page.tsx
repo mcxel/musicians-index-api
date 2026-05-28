@@ -33,6 +33,8 @@ function BookingForm({ slug }: { slug: string }) {
 
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [bookingRef, setBookingRef] = useState<{ bookingId: string; contractId?: string } | null>(null);
 
   const soundTechFee = form.soundTech ? 200 : 0;
   const securityFee = form.security ? 150 : 0;
@@ -41,10 +43,42 @@ function BookingForm({ slug }: { slug: string }) {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setSubmitError(null);
     setSubmitting(true);
-    await new Promise(r => setTimeout(r, 1200));
-    setSubmitting(false);
-    setSubmitted(true);
+    try {
+      const response = await fetch("/api/booking/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          venueSlug: slug,
+          artistName: form.artistName,
+          contactEmail: form.contactEmail,
+          eventDate: form.eventDate,
+          eventType: form.eventType,
+          expectedAttendance: Number(form.expectedAttendance || 0),
+          additionalRequests: form.additionalRequests,
+          addOns: [form.soundTech && "Sound Tech", form.security && "Security", form.catering && "Catering"].filter(Boolean),
+          estimatedTotal: totalEstimate,
+          slotId,
+        }),
+      });
+
+      const payload = await response.json().catch(() => ({} as Record<string, unknown>));
+      if (!response.ok) {
+        setSubmitError(typeof payload.error === "string" ? payload.error : "Could not submit booking request. Please try again.");
+        return;
+      }
+
+      setBookingRef({
+        bookingId: String(payload.bookingId ?? ""),
+        contractId: typeof payload.contractId === "string" ? payload.contractId : undefined,
+      });
+      setSubmitted(true);
+    } catch {
+      setSubmitError("Could not submit booking request. Please check your connection and try again.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   if (submitted) {
@@ -56,6 +90,11 @@ function BookingForm({ slug }: { slug: string }) {
         <div style={{ fontSize: 14, color: "rgba(255,255,255,0.6)", maxWidth: 400, margin: "0 auto 28px", lineHeight: 1.7 }}>
           Your booking request for {venueName} has been submitted. The venue team will contact you within 24 hours to confirm availability.
         </div>
+        {bookingRef?.bookingId ? (
+          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.52)", marginBottom: 18 }}>
+            Reference: {bookingRef.bookingId}{bookingRef.contractId ? ` · Contract: ${bookingRef.contractId}` : ""}
+          </div>
+        ) : null}
         <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
           <Link href={`/venues/${slug}`} style={{ padding: "11px 22px", background: "rgba(0,255,136,0.12)", border: "1px solid rgba(0,255,136,0.3)", borderRadius: 8, color: "#00FF88", fontWeight: 700, fontSize: 12, textDecoration: "none" }}>
             ← Back to Venue
@@ -184,6 +223,11 @@ function BookingForm({ slug }: { slug: string }) {
         style={{ width: "100%", padding: "15px", background: submitting ? "rgba(255,107,53,0.4)" : "linear-gradient(135deg,#ff6b35,#ff3d00)", border: "none", borderRadius: 10, color: "#fff", fontSize: 14, fontWeight: 800, letterSpacing: "0.08em", cursor: submitting ? "not-allowed" : "pointer" }}>
         {submitting ? "Submitting Request..." : "Submit Booking Request →"}
       </button>
+      {submitError ? (
+        <div style={{ marginTop: 10, fontSize: 12, color: "#ff8f8f" }}>
+          {submitError}
+        </div>
+      ) : null}
     </form>
   );
 }

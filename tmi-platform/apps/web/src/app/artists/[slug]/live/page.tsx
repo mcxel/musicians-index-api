@@ -19,7 +19,7 @@ export default async function ArtistLivePage({ params }: ArtistLivePageProps) {
         </p>
 
         <div className="mt-6 flex flex-wrap gap-3 text-xs uppercase tracking-[0.15em]">
-          <Link href={`/live/room/${slug}`} className="rounded-full border border-white/20 px-3 py-2">Open Room</Link>
+          <Link href={`/live/rooms/${slug}`} className="rounded-full border border-white/20 px-3 py-2">Open Room</Link>
           <Link href={`/artists/${slug}`} className="rounded-full border border-white/20 px-3 py-2">Profile</Link>
           <Link href={`/artists/${slug}/article`} className="rounded-full border border-white/20 px-3 py-2">Article</Link>
         </div>

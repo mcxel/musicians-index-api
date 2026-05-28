@@ -159,7 +159,7 @@ export default function HomeNavigator() {
             background: "rgba(255,215,0,0.06)", whiteSpace: "nowrap",
           }}
         >
-          Plans
+          Plans from $0
         </Link>
         <Link
           href="/join"
