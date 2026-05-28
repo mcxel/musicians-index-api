@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from "next";
-import Script from "next/script";
 import AppProviders from "@/components/providers";
 import "./globals.css";
 import "@/styles/tmiTypography.css";
@@ -119,14 +118,16 @@ const JSON_LD = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className="tmi-obsidian-cinematic">
-        <Script
-          id="google-adsense"
+      <head>
+        {/* AdSense verification — must be in <head> for Google crawler */}
+        {/* eslint-disable-next-line @next/next/no-sync-scripts */}
+        <script
           async
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4088577529436039"
           crossOrigin="anonymous"
-          strategy="afterInteractive"
         />
+      </head>
+      <body className="tmi-obsidian-cinematic">
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }}
