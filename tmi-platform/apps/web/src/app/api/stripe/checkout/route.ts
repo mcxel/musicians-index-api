@@ -147,12 +147,50 @@ export async function POST(req: NextRequest) {
     }, { status: 503 });
   }
   try {
-    const body = await req.json();
-    const { items, successUrl, cancelUrl } = body as {
-      items: { priceId: string; quantity?: number }[];
-      successUrl: string;
-      cancelUrl: string;
+    const body = await req.json() as {
+      product?: string;
+      artistSlug?: string;
+      amount?: number;
+      roomId?: string;
+      items?: { priceId: string; quantity?: number }[];
+      successUrl?: string;
+      cancelUrl?: string;
     };
+    const { items, successUrl, cancelUrl } = body;
+
+    // TIP product — TipButton sends { product: "TIP", artistSlug, amount: cents, roomId? }
+    if (body.product === "TIP" && body.artistSlug && body.amount) {
+      const stripe = getStripe();
+      if (!stripe) {
+        return NextResponse.json({ error: 'Stripe not configured' }, { status: 503 });
+      }
+      const fanId = req.cookies.get('tmi_user_email')?.value ?? '';
+      const fanDisplayName = fanId ? fanId.split('@')[0] : 'Fan';
+      const { origin } = req.nextUrl;
+      const tipSession = await stripe.checkout.sessions.create({
+        mode: 'payment',
+        payment_method_types: ['card'],
+        line_items: [{
+          quantity: 1,
+          price_data: {
+            currency: 'usd',
+            unit_amount: body.amount,
+            product_data: { name: `Tip for @${body.artistSlug}` },
+          },
+        }],
+        success_url: `${origin}/payment-success?type=tip&artist=${encodeURIComponent(body.artistSlug)}`,
+        cancel_url: `${origin}/home/1`,
+        metadata: {
+          product: 'TIP',
+          artistSlug: body.artistSlug,
+          roomId: body.roomId ?? '',
+          fanId,
+          fanDisplayName,
+        },
+      });
+      if (!tipSession.url) throw new Error('No session URL from Stripe');
+      return NextResponse.json({ url: tipSession.url });
+    }
 
     if (!items || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json({ error: 'items required' }, { status: 400 });
