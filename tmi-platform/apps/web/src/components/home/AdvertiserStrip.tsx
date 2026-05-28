@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
 import SectionTitle from "@/components/ui/SectionTitle";
 import Link from "next/link";
+import AdSenseUnit from "@/components/placement/AdSenseUnit";
 
 type AdSlot = { brand: string; tagline: string; cta: string; metric: string; color: string; isCTA?: boolean };
 
@@ -83,6 +84,12 @@ export default function AdvertiserStrip() {
           </motion.div>
         </AnimatePresence>
       </div>
+
+      {slot.isCTA && (
+        <div style={{ marginTop: 12 }}>
+          <AdSenseUnit format="horizontal" style={{ width: "100%", minHeight: 90 }} />
+        </div>
+      )}
     </div>
   );
 }
