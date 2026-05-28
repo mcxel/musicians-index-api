@@ -1,5 +1,6 @@
-// AdRenderer — launch-safe wired fallback
-// Non-obstructive sponsored surface used when placement engine is unavailable.
+'use client';
+
+import AdSenseUnit from '@/components/placement/AdSenseUnit';
 
 export interface AdRendererProps {
   zone: string;
@@ -7,53 +8,30 @@ export interface AdRendererProps {
   className?: string;
 }
 
-const TIER_LABEL: Record<NonNullable<AdRendererProps["tier"]>, string> = {
-  free: "Community Slot",
-  bronze: "Bronze Sponsor",
-  gold: "Gold Sponsor",
-  platinum: "Platinum Sponsor",
-  diamond: "Diamond Sponsor",
+const FORMAT_MAP: Record<string, 'horizontal' | 'rectangle' | 'auto'> = {
+  banner: 'horizontal',
+  sidebar: 'rectangle',
+  rail: 'rectangle',
+  inline: 'auto',
 };
 
-export default function AdRenderer({ zone, tier = "free", className }: AdRendererProps) {
-  const tierLabel = TIER_LABEL[tier];
+function zoneFormat(zone: string): 'horizontal' | 'rectangle' | 'auto' {
+  for (const key of Object.keys(FORMAT_MAP)) {
+    if (zone.toLowerCase().includes(key)) return FORMAT_MAP[key];
+  }
+  return 'auto';
+}
 
+export default function AdRenderer({ zone, tier = "free", className }: AdRendererProps) {
   return (
     <section
       className={className}
-      style={{
-        display: "grid",
-        gap: 6,
-        alignItems: "center",
-        background: "linear-gradient(135deg, rgba(255,107,53,0.12), rgba(8,8,18,0.78))",
-        border: "1px solid rgba(255,107,53,0.25)",
-        borderRadius: 8,
-        padding: "10px 12px",
-        minHeight: 56,
-      }}
       data-ad-zone={zone}
       data-ad-tier={tier}
-      aria-label={`Sponsored placement for ${zone}`}
+      aria-label={`Advertisement — ${zone}`}
+      style={{ overflow: 'hidden', borderRadius: 8 }}
     >
-      <div
-        style={{
-          fontSize: 9,
-          fontWeight: 900,
-          letterSpacing: "0.16em",
-          textTransform: "uppercase",
-          color: "rgba(255,255,255,0.72)",
-        }}
-      >
-        Sponsored
-      </div>
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-        <div style={{ fontSize: 12, color: "rgba(255,255,255,0.92)", fontWeight: 700 }}>
-          {tierLabel}
-        </div>
-        <div style={{ fontSize: 10, color: "rgba(255,255,255,0.62)" }}>
-          Zone: {zone}
-        </div>
-      </div>
+      <AdSenseUnit format={zoneFormat(zone)} style={{ width: '100%', minHeight: 90 }} />
     </section>
   );
 }
