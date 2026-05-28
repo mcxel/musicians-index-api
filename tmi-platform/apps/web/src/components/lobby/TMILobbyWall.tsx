@@ -368,8 +368,14 @@ export default function TMILobbyWall({
 
           {/* Chat sidebar */}
           <div className="w-64 flex-shrink-0 border-l border-white/10 flex flex-col bg-black/40">
-            <div className="px-3 py-2 border-b border-white/10">
+            <div className="px-3 py-2 border-b border-white/10 flex items-center justify-between gap-2">
               <p className="text-[9px] font-black uppercase tracking-widest text-white/40">Live Chat</p>
+              <Link
+                href="/live/chat"
+                className="text-[8px] font-black uppercase tracking-wider text-cyan-300 hover:text-cyan-200"
+              >
+                Open
+              </Link>
             </div>
             <div className="flex-1 overflow-y-auto px-3 py-2 space-y-0.5">
               {chatMessages.map((msg) => <ChatRow key={msg.id} msg={msg} />)}

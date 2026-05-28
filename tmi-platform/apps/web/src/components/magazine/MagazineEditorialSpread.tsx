@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Image from 'next/image';
+import AdRailSlot from '@/components/ads/AdRailSlot';
 
 interface ArticleProps {
   issueNumber: string;
@@ -42,6 +43,24 @@ export default function MagazineEditorialSpread({ issueNumber, headline, imageAs
           </h2>
           
           <button className="mt-10 self-start px-8 py-4 bg-white text-black font-bold uppercase tracking-widest text-xs hover:bg-indigo-500 hover:text-white transition-colors duration-300 rounded-none clip-path-slant">Read the Feature</button>
+
+          <div className="mt-6 max-w-sm">
+            <AdRailSlot
+              slotId="magazine-article-rail"
+              hasSponsor={false}
+              hasAdvertiser={false}
+              title="Article Rail"
+            />
+          </div>
+        </div>
+
+        <div className="hidden lg:block lg:col-span-4 xl:col-span-3 self-end pb-12">
+          <AdRailSlot
+            slotId="magazine-footer-block"
+            hasSponsor={false}
+            hasAdvertiser={false}
+            title="Magazine Footer Block"
+          />
         </div>
       </div>
     </div>

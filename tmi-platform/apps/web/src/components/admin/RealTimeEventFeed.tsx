@@ -3,10 +3,20 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
+export type PlatformEventType =
+  | 'join'
+  | 'payment'
+  | 'engagement'
+  | 'alert'
+  | 'arena_moderation'
+  | 'submission_received'
+  | 'submission_approved'
+  | 'viral';
+
 export type PlatformEvent = {
   id: string;
   timestamp: number;
-  type: 'join' | 'payment' | 'engagement' | 'alert';
+  type: PlatformEventType;
   message: string;
 };
 
@@ -14,34 +24,41 @@ export default function RealTimeEventFeed() {
   const [events, setEvents] = useState<PlatformEvent[]>([]);
 
   useEffect(() => {
-    // In production, this connects via WebSocket or Server-Sent Events (SSE) for real-time streaming.
-    // For now, we simulate the live signals heartbeat.
+    let isMounted = true;
+
+    async function pullEvents() {
+      try {
+        const res = await fetch('/api/admin/live-events?limit=12', { cache: 'no-store' });
+        if (!res.ok) return;
+        const data = (await res.json()) as { events?: PlatformEvent[] };
+        if (!isMounted || !Array.isArray(data.events)) return;
+        setEvents(data.events);
+      } catch {
+        // keep current events if polling fails
+      }
+    }
+
+    void pullEvents();
     const interval = setInterval(() => {
-      const newEvent: PlatformEvent = {
-        id: Math.random().toString(36).substring(7),
-        timestamp: Date.now(),
-        type: ['join', 'payment', 'engagement', 'alert'][Math.floor(Math.random() * 4)] as any,
-        message: 'Platform event logged',
-      };
+      void pullEvents();
+    }, 3000);
 
-      if (newEvent.type === 'join') newEvent.message = `[${new Date().toLocaleTimeString()}] User joined World Dance Party`;
-      if (newEvent.type === 'payment') newEvent.message = `[${new Date().toLocaleTimeString()}] $9.99 subscription completed`;
-      if (newEvent.type === 'engagement') newEvent.message = `[${new Date().toLocaleTimeString()}] Song received 12 likes`;
-      if (newEvent.type === 'alert') newEvent.message = `[${new Date().toLocaleTimeString()}] ⚠️ Empty Room Detected`;
-
-      setEvents((prev) => [newEvent, ...prev].slice(0, 10)); // Keep the latest 10 events
-    }, 4500);
-
-    return () => clearInterval(interval);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
   }, []);
 
-  const getEventColor = (type: string) => {
+  const getEventColor = (type: PlatformEventType): string => {
     switch (type) {
-      case 'join': return '#00FFFF'; // Neon Cyan
-      case 'payment': return '#00FF88'; // Neon Green
-      case 'engagement': return '#FFD700'; // Gold
-      case 'alert': return '#FF2020'; // Red
-      default: return '#FFFFFF';
+      case 'join':       return '#00FFFF';
+      case 'payment':    return '#00FF88';
+      case 'engagement': return '#FFD700';
+      case 'alert':      return '#FF2020';
+      case 'arena_moderation': return '#FF8A00';
+      case 'submission_received': return '#FF2DAA';
+      case 'submission_approved': return '#00FFFF';
+      case 'viral':      return '#AA2DFF';
     }
   };
 
@@ -49,6 +66,9 @@ export default function RealTimeEventFeed() {
     <div className="bg-[#050510] border border-white/10 rounded-xl p-4 w-full max-w-md shadow-2xl">
       <h3 className="text-[#00FFFF] text-xs font-black uppercase tracking-widest mb-4">Live Platform Signals</h3>
       <div className="flex flex-col gap-2 overflow-hidden">
+        {events.length === 0 && (
+          <div className="text-xs font-mono py-2 text-white/50">Awaiting live submission and growth events...</div>
+        )}
         <AnimatePresence>
           {events.map((evt) => (
             <motion.div

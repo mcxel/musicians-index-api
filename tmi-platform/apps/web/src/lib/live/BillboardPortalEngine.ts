@@ -7,6 +7,14 @@
 
 import type { RoomType } from "./VenuePresenceEngine";
 
+export interface BillboardPortalVibe {
+  underlay: string;
+  overlay: string;
+  strobeIntensity: number;
+  spotlightMode: boolean;
+  shaderQuality: "low" | "medium" | "high";
+}
+
 export interface BillboardPortal {
   portalId: string;
   roomId: string;
@@ -22,6 +30,7 @@ export interface BillboardPortal {
   energyLabel: string;
   tipsTotal: number;
   battleStatus?: string;     // e.g. "LIVE BATTLE", "VOTING OPEN", "QUEUE OPEN"
+  activeVibe?: BillboardPortalVibe;
   joinRoute: string;         // client-side route to join
   isPublic: boolean;
   isJoinable: boolean;
@@ -51,6 +60,7 @@ class BillboardPortalEngine {
     energyLabel: string;
     tipsTotal: number;
     battleStatus?: string;
+    activeVibe?: BillboardPortalVibe;
     isPublic: boolean;
     isJoinable: boolean;
     tags?: string[];
@@ -123,6 +133,13 @@ class BillboardPortalEngine {
   updateBattleStatus(roomId: string, status: string): void {
     const p = this.portals.get(roomId);
     if (p) p.battleStatus = status;
+  }
+
+  updateActiveVibe(roomId: string, vibe: BillboardPortalVibe): void {
+    const p = this.portals.get(roomId);
+    if (!p) return;
+    p.activeVibe = vibe;
+    p.lastActivityAt = Date.now();
   }
 
   closePortal(roomId: string): void {

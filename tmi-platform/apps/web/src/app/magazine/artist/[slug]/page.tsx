@@ -34,12 +34,18 @@ export default async function MagazineArtistSlugPage({ params }: Props) {
   return (
     <main style={{ minHeight: "100vh", background: "#050510", color: "#fff" }}>
       {/* Nav */}
-      <nav style={{ padding: "14px 24px", borderBottom: "1px solid rgba(255,45,170,0.12)", display: "flex", gap: 12, alignItems: "center" }}>
-        <Link href="/magazine" style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.18em", color: "rgba(255,255,255,0.3)", textDecoration: "none" }}>
-          ← MAGAZINE
+      <nav style={{ padding: "14px 24px", borderBottom: "1px solid rgba(255,45,170,0.12)", display: "flex", gap: 12, alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+          <span style={{ fontSize: 10 }}>📖</span>
+          <Link href="/magazine/1" style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.18em", color: "rgba(255,255,255,0.4)", textDecoration: "none" }}>
+            ← ISSUE 1
+          </Link>
+          <span style={{ fontSize: 9, color: "rgba(255,255,255,0.15)" }}>·</span>
+          <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.18em", color: accentColor }}>ARTIST FEATURE</span>
+        </div>
+        <Link href="/home/1" style={{ fontSize: 8, fontWeight: 700, letterSpacing: "0.1em", color: "rgba(255,255,255,0.2)", textDecoration: "none" }}>
+          EXIT PLATFORM
         </Link>
-        <span style={{ fontSize: 9, color: "rgba(255,255,255,0.15)" }}>·</span>
-        <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.18em", color: accentColor }}>ARTIST FEATURE</span>
       </nav>
 
       {/* Hero */}

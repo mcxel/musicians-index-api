@@ -18,6 +18,7 @@ import LiveMagazineVoiceTicker from "@/components/home/LiveMagazineVoiceTicker";
 import WeeklyContestRail from "@/components/home/WeeklyContestRail";
 import WinnerReplayWall from "@/components/home/WinnerReplayWall";
 import Home5BattleDensityRail from "@/components/home/Home5BattleDensityRail";
+import SubmissionPulseRail from "@/components/home/SubmissionPulseRail";
 import Home5BattleOfWeekRail from "@/components/home/Home5BattleOfWeekRail";
 import Home5CypherOfWeekRail from "@/components/home/Home5CypherOfWeekRail";
 import Home5XPLadderRail from "@/components/home/Home5XPLadderRail";
@@ -183,6 +184,10 @@ export default function Home5BattleCypherSurface() {
       </section>
 
       <Home5BattleDensityRail />
+
+      <section style={{ maxWidth: 1100, margin: "0 auto", padding: "0 24px 24px" }}>
+        <SubmissionPulseRail accentColor="#FF2DAA" title="JUST UPLOADED · CBC ARENA" maxItems={4} />
+      </section>
 
       {/* ── CHALLENGES — "put your song against theirs" ── */}
       <section style={{ maxWidth: 1100, margin: "0 auto", padding: "0 24px 32px" }}>

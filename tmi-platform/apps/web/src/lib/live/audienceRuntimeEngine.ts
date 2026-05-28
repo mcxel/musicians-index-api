@@ -7,6 +7,21 @@ export type AudienceMember = {
   joinedAt: number;
   seatId: string | null;
   active: boolean;
+  captureEnabled: boolean;
+  viewpoint: {
+    yaw: number;
+    pitch: number;
+    updatedAt: number;
+  };
+};
+
+export type AudienceChatMessage = {
+  id: string;
+  venueSlug: string;
+  userId: string;
+  displayName: string;
+  text: string;
+  createdAt: number;
 };
 
 export type VenueOccupancy = {
@@ -17,9 +32,41 @@ export type VenueOccupancy = {
   peakPresent: number;
 };
 
+export type VenueModerationPolicy = {
+  venueSlug: string;
+  slowModeMs: number;
+  mutedUserIds: string[];
+  updatedAt: number;
+};
+
 const occupancyRegistry = new Map<string, VenueOccupancy>();
+const chatRegistry = new Map<string, AudienceChatMessage[]>();
+const chatRateRegistry = new Map<string, number[]>();
+const chatLastMessageRegistry = new Map<string, number>();
+const moderationRegistry = new Map<string, VenueModerationPolicy>();
+
+const CHAT_WINDOW_MS = 15_000;
+const CHAT_MAX_PER_WINDOW = 5;
+const CHAT_MAX_LENGTH = 240;
+const BLOCKED_CHAT_PATTERNS = [
+  /https?:\/\//i,
+  /\b(?:discord\.gg|telegram|whatsapp)\b/i,
+  /\b(?:hate|kill|porn|nude)\b/i,
+];
 
 const DEFAULT_CAPACITY = 10000;
+
+export function getVenueModerationPolicy(venueSlug: string): VenueModerationPolicy {
+  if (!moderationRegistry.has(venueSlug)) {
+    moderationRegistry.set(venueSlug, {
+      venueSlug,
+      slowModeMs: 0,
+      mutedUserIds: [],
+      updatedAt: Date.now(),
+    });
+  }
+  return moderationRegistry.get(venueSlug)!;
+}
 
 export function getVenueOccupancy(venueSlug: string): VenueOccupancy {
   if (!occupancyRegistry.has(venueSlug)) {
@@ -34,14 +81,36 @@ export function getVenueOccupancy(venueSlug: string): VenueOccupancy {
   return occupancyRegistry.get(venueSlug)!;
 }
 
-export function joinAudience(venueSlug: string, member: Omit<AudienceMember, "joinedAt" | "active">): VenueOccupancy {
+export function joinAudience(venueSlug: string, member: {
+  userId: string;
+  displayName: string;
+  role: "fan" | "artist" | "host" | "bot";
+  seatId: string | null;
+  captureEnabled?: boolean;
+  viewpoint?: {
+    yaw: number;
+    pitch: number;
+    updatedAt: number;
+  };
+}): VenueOccupancy {
   const occ = getVenueOccupancy(venueSlug);
   const existing = occ.members.find((m) => m.userId === member.userId);
   if (existing) {
     existing.active = true;
+    existing.displayName = member.displayName;
+    existing.role = member.role;
+    existing.captureEnabled = member.captureEnabled ?? existing.captureEnabled;
+    existing.seatId = member.seatId;
+    existing.viewpoint = member.viewpoint ?? existing.viewpoint;
     return occ;
   }
-  occ.members.push({ ...member, joinedAt: Date.now(), active: true });
+  occ.members.push({
+    ...member,
+    joinedAt: Date.now(),
+    active: true,
+    viewpoint: member.viewpoint ?? { yaw: 0, pitch: 0, updatedAt: Date.now() },
+    captureEnabled: member.captureEnabled ?? false,
+  });
   occ.present = occ.members.filter((m) => m.active).length;
   occ.peakPresent = Math.max(occ.peakPresent, occ.present);
   return occ;
@@ -59,6 +128,7 @@ export function leaveAudience(venueSlug: string, userId: string): VenueOccupancy
 
 export function getAudienceSnapshot(venueSlug: string) {
   const occ = getVenueOccupancy(venueSlug);
+  const moderation = getVenueModerationPolicy(venueSlug);
   return {
     venueSlug: occ.venueSlug,
     present: occ.present,
@@ -66,7 +136,116 @@ export function getAudienceSnapshot(venueSlug: string) {
     peakPresent: occ.peakPresent,
     occupancyPct: Math.round((occ.present / occ.capacity) * 100),
     activeMembers: occ.members.filter((m) => m.active).slice(0, 100),
+    moderation,
   };
+}
+
+export function updateAudienceViewpoint(venueSlug: string, userId: string, yaw: number, pitch: number): VenueOccupancy {
+  const occ = getVenueOccupancy(venueSlug);
+  const member = occ.members.find((m) => m.userId === userId);
+  if (!member) return occ;
+  member.viewpoint = {
+    yaw: Math.max(-180, Math.min(180, Math.round(yaw))),
+    pitch: Math.max(-80, Math.min(80, Math.round(pitch))),
+    updatedAt: Date.now(),
+  };
+  return occ;
+}
+
+export function setAudienceCaptureEnabled(venueSlug: string, userId: string, captureEnabled: boolean): VenueOccupancy {
+  const occ = getVenueOccupancy(venueSlug);
+  const member = occ.members.find((m) => m.userId === userId);
+  if (!member) return occ;
+  member.captureEnabled = captureEnabled;
+  return occ;
+}
+
+export function postAudienceMessage(venueSlug: string, input: {
+  userId: string;
+  displayName: string;
+  text: string;
+}): AudienceChatMessage[] {
+  const current = chatRegistry.get(venueSlug) ?? [];
+  const message: AudienceChatMessage = {
+    id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    venueSlug,
+    userId: input.userId,
+    displayName: input.displayName,
+    text: input.text.trim().slice(0, CHAT_MAX_LENGTH),
+    createdAt: Date.now(),
+  };
+  const next = [...current, message].slice(-120);
+  chatRegistry.set(venueSlug, next);
+  return next;
+}
+
+export function getAudienceMessages(venueSlug: string): AudienceChatMessage[] {
+  return chatRegistry.get(venueSlug) ?? [];
+}
+
+export function validateAudienceMessage(venueSlug: string, userId: string, text: string): {
+  ok: boolean;
+  cleanText: string;
+  reason?: string;
+} {
+  const moderation = getVenueModerationPolicy(venueSlug);
+  if (moderation.mutedUserIds.includes(userId)) {
+    return { ok: false, cleanText: '', reason: 'You are muted in this arena' };
+  }
+
+  const cleanText = text.replace(/\s+/g, ' ').trim().slice(0, CHAT_MAX_LENGTH);
+  if (!cleanText) return { ok: false, cleanText, reason: 'Message is empty' };
+  if (BLOCKED_CHAT_PATTERNS.some((pattern) => pattern.test(cleanText))) {
+    return { ok: false, cleanText, reason: 'Message blocked by safety policy' };
+  }
+
+  const now = Date.now();
+  const key = `${venueSlug}:${userId}`;
+
+  if (moderation.slowModeMs > 0) {
+    const lastAt = chatLastMessageRegistry.get(key) ?? 0;
+    if (now - lastAt < moderation.slowModeMs) {
+      const seconds = Math.ceil((moderation.slowModeMs - (now - lastAt)) / 1000);
+      return { ok: false, cleanText, reason: `Slow mode active: wait ${seconds}s` };
+    }
+  }
+
+  const existing = chatRateRegistry.get(key) ?? [];
+  const withinWindow = existing.filter((ts) => now - ts <= CHAT_WINDOW_MS);
+  if (withinWindow.length >= CHAT_MAX_PER_WINDOW) {
+    chatRateRegistry.set(key, withinWindow);
+    return { ok: false, cleanText, reason: 'Rate limit exceeded' };
+  }
+
+  chatRateRegistry.set(key, [...withinWindow, now]);
+  chatLastMessageRegistry.set(key, now);
+  return { ok: true, cleanText };
+}
+
+export function setVenueSlowMode(venueSlug: string, slowModeMs: number): VenueModerationPolicy {
+  const moderation = getVenueModerationPolicy(venueSlug);
+  moderation.slowModeMs = Math.max(0, Math.min(60_000, Math.round(slowModeMs)));
+  moderation.updatedAt = Date.now();
+  moderationRegistry.set(venueSlug, moderation);
+  return moderation;
+}
+
+export function muteAudienceMember(venueSlug: string, userId: string): VenueModerationPolicy {
+  const moderation = getVenueModerationPolicy(venueSlug);
+  if (!moderation.mutedUserIds.includes(userId)) {
+    moderation.mutedUserIds.push(userId);
+  }
+  moderation.updatedAt = Date.now();
+  moderationRegistry.set(venueSlug, moderation);
+  return moderation;
+}
+
+export function unmuteAudienceMember(venueSlug: string, userId: string): VenueModerationPolicy {
+  const moderation = getVenueModerationPolicy(venueSlug);
+  moderation.mutedUserIds = moderation.mutedUserIds.filter((id) => id !== userId);
+  moderation.updatedAt = Date.now();
+  moderationRegistry.set(venueSlug, moderation);
+  return moderation;
 }
 
 export function listAllOccupancies(): VenueOccupancy[] {

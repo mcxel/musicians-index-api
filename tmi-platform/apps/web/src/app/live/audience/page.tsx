@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import ArenaImmersivePanel from "@/components/live/ArenaImmersivePanel";
 
 type AudienceSnapshot = {
   venueSlug: string;
@@ -104,6 +105,8 @@ export default function LiveAudiencePage() {
               </div>
               <div style={{ fontSize: 11, color: "#666" }}>{snapshot.occupancyPct}% capacity used</div>
             </div>
+
+            <ArenaImmersivePanel roomId={venueSlug} mode="audience" />
 
             {snapshot.activeMembers.length > 0 && (
               <div style={{ marginBottom: 28 }}>

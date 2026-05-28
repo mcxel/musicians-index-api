@@ -18,6 +18,8 @@ import GameInterrupt from "@/components/radio/GameInterrupt";
 import LiveRankingMoment from "@/components/radio/LiveRankingMoment";
 import NowMixingBanner from "@/components/radio/NowMixingBanner";
 import type { TransitionType } from "@/lib/radio/BPMMatchEngine";
+import { evaluateRules, type GiftInjectionRule, type SponsorGift } from "@/lib/sponsors/SponsorGiftInjectionEngine";
+import type { RoomVibeState } from "@/lib/live/RoomVibeEngine";
 
 interface StreamWinRoomProps {
   roomId: string;
@@ -31,13 +33,53 @@ interface DropInfo {
   userId?: string;
 }
 
+const UNDERLAY_OPTIONS = [
+  "stellar-drift",
+  "neon-pulse",
+  "solid-vibe",
+  "gradient-flow",
+  "green-screen-virtual",
+] as const;
+
+const OVERLAY_OPTIONS = ["none", "holographic-rain", "spotlight-flares", "scanlines", "crowd-sparks"] as const;
+
+const QUALITY_OPTIONS = ["low", "medium", "high"] as const;
+
+const TRANSITION_OPTIONS = ["fade", "slide", "scale", "flip"] as const;
+
+const DEFAULT_VIBE: RoomVibeState = {
+  underlay: "neon-pulse",
+  overlay: "none",
+  strobeIntensity: 35,
+  transitionMode: "fade",
+  spotlightMode: false,
+  shaderQuality: "medium",
+  updatedAt: Date.now(),
+};
+
+function underlayBackground(underlay: RoomVibeState["underlay"]): string {
+  switch (underlay) {
+    case "stellar-drift":
+      return "radial-gradient(120% 120% at 10% 10%, #1c2e55 0%, #0a0e1e 45%, #050510 100%)";
+    case "solid-vibe":
+      return "linear-gradient(135deg, #120726 0%, #140a2e 55%, #050510 100%)";
+    case "gradient-flow":
+      return "linear-gradient(125deg, #0a2035 0%, #2a0a45 40%, #082f2f 100%)";
+    case "green-screen-virtual":
+      return "linear-gradient(135deg, #072624 0%, #0d3b2d 55%, #050510 100%)";
+    case "neon-pulse":
+    default:
+      return "radial-gradient(120% 120% at 0% 0%, #1a1140 0%, #090a1e 42%, #050510 100%)";
+  }
+}
+
 export default function StreamWinRoom({ roomId }: StreamWinRoomProps) {
   const [songs, setSongs] = useState<StreamWinSong[]>([]);
   const [currentIdx, setCurrentIdx] = useState(0);
   const [sessionXP, setSessionXP] = useState(0);
   const [streak, setStreak] = useState(0);
   const [eligible, setEligible] = useState(false);
-  const [activeDrop] = useState<DropInfo | null>(null);
+  const [activeDrop, setActiveDrop] = useState<DropInfo | null>(null);
   const [progress, setProgress] = useState(0);
   const [isActive, setIsActive] = useState(true);
 
@@ -53,10 +95,30 @@ export default function StreamWinRoom({ roomId }: StreamWinRoomProps) {
   const [mixingType, setMixingType] = useState<TransitionType>("fade");
   // Daily lock
   const [lockProgress, setLockProgress] = useState<LockProgress | null>(null);
+  const [sessionRole, setSessionRole] = useState("fan");
+  const [canControlVibe, setCanControlVibe] = useState(false);
+  const [vibe, setVibe] = useState<RoomVibeState>(DEFAULT_VIBE);
+  const [greenAssistVisible, setGreenAssistVisible] = useState(false);
 
   const progressRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const userId = useRef(`guest-${Math.random().toString(36).slice(2, 7)}`);
   const songAdvanceCount = useRef(0);
+  const dropClearRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const giftRules = useRef<GiftInjectionRule[]>([
+    {
+      sponsorId: "soundwave-audio",
+      trigger: "vote_milestone",
+      triggerValue: 5,
+      cooldownMs: 120_000,
+      gift: { id: "gift-sw-1", sponsorId: "soundwave-audio", sponsorName: "SoundWave Audio", type: "discount_code", label: "10% Off Gear", value: "SW10", redeemUrl: "/profile/sponsor/soundwave-audio", expiresMs: null, maxClaims: 100, claimsRemaining: 100 },
+    },
+    {
+      sponsorId: "beatmarket",
+      trigger: "crowd_heat_peak",
+      cooldownMs: 180_000,
+      gift: { id: "gift-bm-1", sponsorId: "beatmarket", sponsorName: "BeatMarket", type: "exclusive_track", label: "Free Beat Drop", value: "1 free beat", redeemUrl: "/profile/advertiser/beatmarket", expiresMs: null, maxClaims: null, claimsRemaining: null },
+    },
+  ]);
   const lastInteractionAt = useRef(Date.now());
 
   // Tab visibility anti-cheat
@@ -81,6 +143,51 @@ export default function StreamWinRoom({ roomId }: StreamWinRoomProps) {
       .then(d => setSongs(d.songs ?? []))
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    fetch("/api/auth/session", { cache: "no-store", credentials: "include" })
+      .then((r) => (r.ok ? r.json() : { authenticated: false }))
+      .then((payload: { user?: { role?: string } }) => {
+        const role = (payload?.user?.role ?? "fan").toLowerCase();
+        setSessionRole(role);
+        setCanControlVibe(role === "performer" || role === "artist" || role === "admin" || role === "superadmin");
+      })
+      .catch(() => {
+        setSessionRole("fan");
+        setCanControlVibe(false);
+      });
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    const loadVibe = async () => {
+      try {
+        const res = await fetch(`/api/live/room-vibe?roomId=${encodeURIComponent(roomId)}`, { cache: "no-store", credentials: "include" });
+        if (!res.ok || !active) return;
+        const data = await res.json() as { vibe?: RoomVibeState };
+        if (data.vibe && active) setVibe(data.vibe);
+      } catch {
+        // non-blocking
+      }
+    };
+    loadVibe();
+    const id = setInterval(loadVibe, 5000);
+    return () => {
+      active = false;
+      clearInterval(id);
+    };
+  }, [roomId]);
+
+  useEffect(() => {
+    const net = (navigator as Navigator & { connection?: { downlink?: number } }).connection;
+    const highBandwidth = (net?.downlink ?? 0) >= 5;
+    if (!canControlVibe || !highBandwidth || vibe.underlay === "green-screen-virtual") {
+      setGreenAssistVisible(false);
+      return;
+    }
+    const id = setTimeout(() => setGreenAssistVisible(true), 1400);
+    return () => clearTimeout(id);
+  }, [canControlVibe, vibe.underlay]);
 
   // Progress bar per song
   useEffect(() => {
@@ -151,6 +258,18 @@ export default function StreamWinRoom({ roomId }: StreamWinRoomProps) {
     songAdvanceCount.current += 1;
     const count = songAdvanceCount.current;
 
+    // Gift injection — vote_milestone trigger every 5 advances
+    const { events: giftEvents, updatedRules } = evaluateRules(
+      giftRules.current, "vote_milestone", roomId, Date.now(), count,
+    );
+    giftRules.current = updatedRules;
+    if (giftEvents.length > 0) {
+      const g = giftEvents[0]!.gift;
+      if (dropClearRef.current) clearTimeout(dropClearRef.current);
+      setActiveDrop({ sponsorName: g.sponsorName, prizeName: g.label, triggerDesc: g.value, dropId: giftEvents[0]!.eventId, userId: userId.current });
+      dropClearRef.current = setTimeout(() => setActiveDrop(null), 10_000);
+    }
+
     // Game every 3–5 songs
     if (count % (3 + Math.floor(Math.random() * 3)) === 0 && !activeGame) {
       const q = GameEngine.startGame();
@@ -178,6 +297,20 @@ export default function StreamWinRoom({ roomId }: StreamWinRoomProps) {
       if (data.xpAwarded) setSessionXP(x => x + (data.xpAmount ?? 10));
       if (reaction !== "skip") setStreak(s => s + 1);
       else setStreak(0);
+
+      // Crowd heat peak — fire gift on "hard" or "replay" reactions during streak
+      if ((reaction === "hard" || reaction === "replay") && streak >= 3) {
+        const { events: heatEvents, updatedRules: heatRules } = evaluateRules(
+          giftRules.current, "crowd_heat_peak", roomId, Date.now(),
+        );
+        giftRules.current = heatRules;
+        if (heatEvents.length > 0) {
+          const g = heatEvents[0]!.gift;
+          if (dropClearRef.current) clearTimeout(dropClearRef.current);
+          setActiveDrop({ sponsorName: g.sponsorName, prizeName: g.label, triggerDesc: g.value, dropId: heatEvents[0]!.eventId, userId: userId.current });
+          dropClearRef.current = setTimeout(() => setActiveDrop(null), 10_000);
+        }
+      }
     } catch {}
   }
 
@@ -194,14 +327,33 @@ export default function StreamWinRoom({ roomId }: StreamWinRoomProps) {
 
   const queueSongs = songs.slice(0, 5);
 
+  async function updateRoomVibe(patch: Partial<RoomVibeState>) {
+    const next = { ...vibe, ...patch, updatedAt: Date.now() };
+    setVibe(next);
+    if (!canControlVibe) return;
+    try {
+      await fetch("/api/live/room-vibe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ roomId, vibe: patch }),
+      });
+    } catch {
+      // local state still provides immediate feedback
+    }
+  }
+
   return (
     <div style={{
-      background: "#050510",
+      background: underlayBackground(vibe.underlay),
       minHeight: "100vh",
       fontFamily: "'Inter',sans-serif",
       color: "#fff",
       display: "flex",
       flexDirection: "column",
+      boxShadow: vibe.overlay === "none"
+        ? "none"
+        : `inset 0 0 ${20 + vibe.strobeIntensity * 0.5}px rgba(0,255,255,${Math.min(0.45, vibe.strobeIntensity / 180)})`,
     }}>
       {/* Header */}
       <div style={{ padding: "20px 24px 12px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
@@ -371,6 +523,103 @@ export default function StreamWinRoom({ roomId }: StreamWinRoomProps) {
         {/* Right: Queue + chat */}
         <div style={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
           <div style={{ padding: "16px 16px 12px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+            <div style={{ marginBottom: 12, border: "1px solid rgba(0,255,255,0.2)", background: "rgba(0,255,255,0.05)", padding: 10 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                <span style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.2em", color: "#00FFFF" }}>
+                  ROOM VIBE CONTROLS
+                </span>
+                <span style={{ fontSize: 8, color: canControlVibe ? "#00FF88" : "rgba(255,255,255,0.35)", letterSpacing: "0.1em", fontWeight: 700 }}>
+                  {canControlVibe ? "PERFORMER CONTROL" : `VIEW ONLY · ${sessionRole.toUpperCase()}`}
+                </span>
+              </div>
+
+              {greenAssistVisible && (
+                <button
+                  onClick={() => {
+                    void updateRoomVibe({ underlay: "green-screen-virtual" });
+                    setGreenAssistVisible(false);
+                  }}
+                  style={{
+                    width: "100%",
+                    marginBottom: 8,
+                    padding: "7px 8px",
+                    border: "1px solid rgba(0,255,136,0.4)",
+                    background: "rgba(0,255,136,0.1)",
+                    color: "#00FF88",
+                    fontSize: 9,
+                    fontWeight: 800,
+                    letterSpacing: "0.08em",
+                    cursor: canControlVibe ? "pointer" : "not-allowed",
+                    opacity: canControlVibe ? 1 : 0.5,
+                  }}
+                  disabled={!canControlVibe}
+                >
+                  ENABLE VIRTUAL STAGE ASSIST
+                </button>
+              )}
+
+              <div style={{ display: "grid", gap: 6 }}>
+                <select
+                  value={vibe.underlay}
+                  onChange={(e) => void updateRoomVibe({ underlay: e.target.value as RoomVibeState["underlay"] })}
+                  disabled={!canControlVibe}
+                  style={{ background: "rgba(5,5,16,0.9)", color: "#fff", border: "1px solid rgba(255,255,255,0.15)", padding: "6px 8px", fontSize: 10 }}
+                >
+                  {UNDERLAY_OPTIONS.map((item) => (<option key={item} value={item}>{item}</option>))}
+                </select>
+
+                <select
+                  value={vibe.overlay}
+                  onChange={(e) => void updateRoomVibe({ overlay: e.target.value as RoomVibeState["overlay"] })}
+                  disabled={!canControlVibe}
+                  style={{ background: "rgba(5,5,16,0.9)", color: "#fff", border: "1px solid rgba(255,255,255,0.15)", padding: "6px 8px", fontSize: 10 }}
+                >
+                  {OVERLAY_OPTIONS.map((item) => (<option key={item} value={item}>{item}</option>))}
+                </select>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 8, alignItems: "center" }}>
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    value={vibe.strobeIntensity}
+                    onChange={(e) => void updateRoomVibe({ strobeIntensity: Number(e.target.value) })}
+                    disabled={!canControlVibe}
+                  />
+                  <span style={{ fontSize: 10, color: "#FFD700", fontWeight: 700 }}>{vibe.strobeIntensity}</span>
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+                  <select
+                    value={vibe.transitionMode}
+                    onChange={(e) => void updateRoomVibe({ transitionMode: e.target.value as RoomVibeState["transitionMode"] })}
+                    disabled={!canControlVibe}
+                    style={{ background: "rgba(5,5,16,0.9)", color: "#fff", border: "1px solid rgba(255,255,255,0.15)", padding: "6px 8px", fontSize: 10 }}
+                  >
+                    {TRANSITION_OPTIONS.map((item) => (<option key={item} value={item}>{item}</option>))}
+                  </select>
+                  <select
+                    value={vibe.shaderQuality}
+                    onChange={(e) => void updateRoomVibe({ shaderQuality: e.target.value as RoomVibeState["shaderQuality"] })}
+                    disabled={!canControlVibe}
+                    style={{ background: "rgba(5,5,16,0.9)", color: "#fff", border: "1px solid rgba(255,255,255,0.15)", padding: "6px 8px", fontSize: 10 }}
+                  >
+                    {QUALITY_OPTIONS.map((item) => (<option key={item} value={item}>{item}</option>))}
+                  </select>
+                </div>
+
+                <label style={{ fontSize: 9, color: "rgba(255,255,255,0.65)", display: "flex", alignItems: "center", gap: 6 }}>
+                  <input
+                    type="checkbox"
+                    checked={vibe.spotlightMode}
+                    onChange={(e) => void updateRoomVibe({ spotlightMode: e.target.checked })}
+                    disabled={!canControlVibe}
+                  />
+                  Spotlight Mode
+                </label>
+              </div>
+            </div>
+
             <div style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.25em", color: "#AA2DFF", marginBottom: 10 }}>
               SONG QUEUE — DJ ORDER
             </div>

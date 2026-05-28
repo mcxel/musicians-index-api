@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import MaskedVideoTile, { type TileShape } from './MaskedVideoTile';
 import Link from 'next/link';
+import type { LiveFeedItem } from '@/components/billboard/TMIBillboardLiveWall';
 
 export type WallMode = 'home' | 'performer-hub' | 'fan-hub' | 'battle' | 'venue' | 'magazine';
 
@@ -72,12 +73,40 @@ export default function BillboardLiveWall({ mode = 'home', maxTiles = 12, showAc
   const [justJoinedIdx, setJustJoinedIdx] = useState<number | null>(null);
 
   useEffect(() => {
-    const sorted = [...seedPerformers()].sort((a, b) => {
-      if (a.isLive && !b.isLive) return -1;
-      if (!a.isLive && b.isLive) return 1;
-      return (a.rank ?? 99) - (b.rank ?? 99);
-    });
-    setPerformers(sorted.slice(0, maxTiles));
+    const seed = [...seedPerformers()]
+      .sort((a, b) => {
+        if (a.isLive && !b.isLive) return -1;
+        if (!a.isLive && b.isLive) return 1;
+        return (a.rank ?? 99) - (b.rank ?? 99);
+      })
+      .slice(0, maxTiles);
+    setPerformers(seed);
+
+    async function fetchLive() {
+      try {
+        const res = await fetch('/api/live', { cache: 'no-store' });
+        if (!res.ok) return;
+        const data: LiveFeedItem[] = await res.json();
+        const liveIds = new Set(data.map((d) => d.id));
+        const liveSlots: PerformerSlot[] = data.map((item) => ({
+          id: item.id,
+          name: item.performerName,
+          slug: item.performerId,
+          rank: item.battleRank,
+          isLive: item.isLive,
+          viewerCount: item.viewers,
+          genre: item.genre,
+          accentColor: item.accentColor,
+          avatarUrl: item.thumbnailUrl,
+        }));
+        const seedFill = seed.filter((s) => !liveIds.has(s.id));
+        setPerformers([...liveSlots, ...seedFill].slice(0, maxTiles));
+      } catch { /* keep seed data on error */ }
+    }
+
+    fetchLive();
+    const interval = setInterval(fetchLive, 4_000);
+    return () => clearInterval(interval);
   }, [maxTiles]);
 
   useEffect(() => {

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { profileToArticleRoute } from "@/lib/editorial/editorialRoutingResolver";
+import TmiProfileLobby from "@/components/profile/TmiProfileLobby";
 import ArtistWorldShell from "@/components/artist/ArtistWorldShell";
 import GoLiveBanner from "@/components/profile/GoLiveBanner";
 import ProfilePlaylistSection from "@/components/profile/ProfilePlaylistSection";
@@ -238,6 +239,14 @@ export default function ArtistProfilePage({ params }: Props) {
 
       {/* Playlist — owner can add/reorder tracks; visitors see read-only */}
       <ProfilePlaylistSection profileSlug={params.slug} />
+
+      {/* Profile Lobby */}
+      <TmiProfileLobby
+        slug={params.slug}
+        displayName={artist.displayName}
+        role="artist"
+        accentColor={CYAN}
+      />
     </ArtistWorldShell>
   );
 }

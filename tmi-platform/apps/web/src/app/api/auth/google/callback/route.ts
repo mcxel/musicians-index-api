@@ -3,15 +3,29 @@ import { NextRequest, NextResponse } from 'next/server';
 import { registerUser, getUserByEmail, resolveHardcodedTierRole } from '@/lib/auth/UserStore';
 import { createSession } from '@/lib/auth/SessionManager';
 
-const GOOGLE_CLIENT_ID     = process.env.GOOGLE_CLIENT_ID     ?? '';
-const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET ?? '';
-const BASE_URL             = process.env.NEXTAUTH_URL ?? 'https://themusiciansindex.com';
+function getGoogleClientId(): string {
+  return (
+    process.env.GOOGLE_CLIENT_ID
+    ?? process.env.AUTH_GOOGLE_ID
+    ?? process.env.GOOGLE_OAUTH_CLIENT_ID
+    ?? ''
+  ).trim();
+}
+
+function getGoogleClientSecret(): string {
+  return (
+    process.env.GOOGLE_CLIENT_SECRET
+    ?? process.env.AUTH_GOOGLE_SECRET
+    ?? process.env.GOOGLE_OAUTH_CLIENT_SECRET
+    ?? ''
+  ).trim();
+}
 
 const COOKIE_OPTS = {
   httpOnly: true,
   secure:   process.env.NODE_ENV === 'production',
   sameSite: 'lax' as const,
-  maxAge:   12 * 60 * 60,
+  maxAge:   7 * 24 * 60 * 60,
   path:     '/',
 };
 
@@ -22,7 +36,7 @@ function roleToHub(role: string): string {
   if (role === 'advertiser') return '/dashboard/advertiser';
   if (role === 'venue')     return '/dashboard/venue';
   if (role === 'writer')    return '/dashboard/writer';
-  if (role === 'promoter')  return '/dashboard/promoter';
+  if (role === 'promoter')  return '/dashboard/fan';
   return '/dashboard/fan';
 }
 
@@ -40,6 +54,14 @@ interface GoogleUserInfo {
 }
 
 export async function GET(req: NextRequest) {
+  const GOOGLE_CLIENT_ID = getGoogleClientId();
+  const GOOGLE_CLIENT_SECRET = getGoogleClientSecret();
+  const BASE_URL = (process.env.NEXTAUTH_URL ?? req.nextUrl.origin ?? 'https://themusiciansindex.com').trim();
+
+  if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
+    return NextResponse.redirect(`${BASE_URL}/auth?error=oauth_not_configured`);
+  }
+
   const url    = new URL(req.url);
   const code   = url.searchParams.get('code')  ?? '';
   const state  = url.searchParams.get('state') ?? '';
@@ -109,6 +131,8 @@ export async function GET(req: NextRequest) {
   const res  = NextResponse.redirect(`${BASE_URL}${dest}`);
 
   res.cookies.delete('tmi_oauth_state');
+  res.cookies.delete('tmi_role');
+  res.cookies.delete('tmi_tier');
   res.cookies.set('tmi_session_id', sessionId,       COOKIE_OPTS);
   res.cookies.set('tmi_session',    sessionToken,     COOKIE_OPTS);
   res.cookies.set('tmi_role',       user.role,        COOKIE_OPTS);

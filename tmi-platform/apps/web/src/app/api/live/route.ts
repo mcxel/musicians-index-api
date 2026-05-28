@@ -1,5 +1,7 @@
+export const dynamic = 'force-dynamic';
 import { NextResponse } from "next/server";
 import type { LiveFeedItem } from "@/components/billboard/TMIBillboardLiveWall";
+import { getActiveSessions } from "@/lib/broadcast/GlobalLiveSessionRegistry";
 
 /**
  * GET /api/live
@@ -159,17 +161,56 @@ const SEED: Omit<LiveFeedItem, "viewers" | "tips" | "battleRank" | "activityLeve
   },
 ];
 
+const LIVE_GENRE_CANONICAL: Record<string, LiveFeedItem["genre"]> = {
+  cypher: "cypher", battle: "battle", live: "live", concert: "concert",
+  challenge: "challenge", game: "game", session: "live", show: "concert",
+  rap: "cypher", hip_hop: "live", r_and_b: "concert", rnb: "concert",
+};
+
+function normalizeGenre(raw: string): LiveFeedItem["genre"] {
+  return LIVE_GENRE_CANONICAL[raw.toLowerCase().replace(/[^a-z0-9]/g, "_")] ?? "live";
+}
+
+const REGISTRY_ACCENT = ["#00FFFF", "#FF2DAA", "#FFD700", "#AA2DFF", "#00FF88", "#FF6B35"];
+
 export async function GET() {
-  // Hydrate each seed with live-fluctuating stats
-  const feed: LiveFeedItem[] = SEED.map((s) => ({
-    ...s,
-    viewers:       s.isLive ? rand(8, 420) : rand(0, 12),
-    tips:          s.isLive ? rand(0, 180) : 0,
-    battleRank:    rand(1, 50),
-    activityLevel: s.isLive ? rand(30, 100) : rand(0, 20),
-    boostWeight:   maybeBoost(),
-    boostExpiresAt: maybeBoost() > 0 ? Date.now() + rand(30_000, 180_000) : undefined,
+  // Real live sessions — always appear first, sorted by viewer count
+  const liveSessions = getActiveSessions();
+
+  const registryFeed: LiveFeedItem[] = liveSessions.map((session, i) => ({
+    id:            `live-reg-${session.userId}`,
+    performerId:   session.userId,
+    performerName: session.displayName,
+    performerTier: session.performerTier,
+    roomId:        session.roomId,
+    genre:         normalizeGenre(session.category),
+    privacy:       session.privacy,
+    accentColor:   session.accentColor ?? REGISTRY_ACCENT[i % REGISTRY_ACCENT.length] ?? "#00FFFF",
+    isLive:        true,
+    viewers:       Math.max(session.viewerCount, rand(4, 30)),
+    tips:          session.tipTotal,
+    battleRank:    i + 1,
+    activityLevel: rand(60, 100),
+    boostWeight:   30,
+    entryPriceUsd: session.entryPriceUsd ?? undefined,
+    boostExpiresAt: Date.now() + 300_000,
   }));
+
+  // Filter seed: remove any seed whose performerId appears in active sessions (avoid dupes)
+  const registryIds = new Set(liveSessions.map((s) => s.userId));
+  const seedFeed: LiveFeedItem[] = SEED
+    .filter((s) => !registryIds.has(s.performerId))
+    .map((s) => ({
+      ...s,
+      viewers:       s.isLive ? rand(8, 420) : rand(0, 12),
+      tips:          s.isLive ? rand(0, 180) : 0,
+      battleRank:    rand(1, 50),
+      activityLevel: s.isLive ? rand(30, 100) : rand(0, 20),
+      boostWeight:   maybeBoost(),
+      boostExpiresAt: maybeBoost() > 0 ? Date.now() + rand(30_000, 180_000) : undefined,
+    }));
+
+  const feed = [...registryFeed, ...seedFeed];
 
   return NextResponse.json(feed, {
     headers: {

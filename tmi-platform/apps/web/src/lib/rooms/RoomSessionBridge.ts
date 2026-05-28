@@ -37,3 +37,7 @@ export function getFanCountInRoom(roomId: string): number {
 export function isPerformerLiveInRoom(roomId: string): boolean {
   return getPresenceInRoom(roomId).some((p) => p.role === 'performer');
 }
+
+export function getPresenceCount(): number {
+  return presenceMap.size;
+}

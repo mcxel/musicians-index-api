@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import SoftLaunchReadinessPanel from "@/components/admin/SoftLaunchReadinessPanel";
 import OwnerRealityPanel from "@/components/admin/OwnerRealityPanel";
+import UniversalMediaPanel from "@/components/media/UniversalMediaPanel";
 
 interface FeedItem {
   id: string;
@@ -45,6 +46,16 @@ export default function OwnerDashboardClient() {
     <main style={{ maxWidth: 1040, margin: "0 auto", padding: "2rem 1.25rem", background: '#050510', minHeight: '100vh', color: '#fff' }}>
       <h1 style={{ marginTop: 0, color: '#fff' }}>Owner Dashboard</h1>
       <p style={{ color: "#888" }}>Live shared service alerts and isolation protection timeline.</p>
+
+      {/* Platform activity monitor — live streams or ops feed */}
+      <div style={{ marginBottom: 32 }}>
+        <UniversalMediaPanel
+          slug="admin"
+          displayName="TMI Platform Monitor"
+          role="admin"
+          accentColor="#00FFFF"
+        />
+      </div>
 
       <div style={{ marginBottom: 32 }}>
         <OwnerRealityPanel />

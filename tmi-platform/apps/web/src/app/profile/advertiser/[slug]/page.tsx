@@ -1,5 +1,5 @@
-import { notFound } from "next/navigation";
 import ProfileShell from "@/components/profile/ProfileShell";
+import UniversalMediaPanel from "@/components/media/UniversalMediaPanel";
 import { EDITORIAL_ARTICLES } from "@/lib/editorial/NewsArticleModel";
 import { profileToArticleRoute } from "@/lib/editorial/editorialRoutingResolver";
 import { getAdvertiserPlacementsByZone } from "@/lib/editorial/AdvertiserPlacementModel";
@@ -23,6 +23,19 @@ const SEED_ADVERTISERS: Record<string, SeedAdvertiser> = {
   },
 };
 
+function titleCase(slug: string) {
+  return slug.split("-").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+}
+
+function seedAdvertiser(slug: string): SeedAdvertiser {
+  if (SEED_ADVERTISERS[slug]) return SEED_ADVERTISERS[slug]!;
+  return {
+    displayName: titleCase(slug),
+    tagline: "Advertising partner on The Musician's Index — reaching music creators worldwide.",
+    isVerified: false,
+  };
+}
+
 function findArticleRoute(advertiserSlug: string): string | undefined {
   const article = EDITORIAL_ARTICLES.find(
     (a) => a.category === "advertiser" && a.relatedAdvertiserSlug === advertiserSlug
@@ -31,8 +44,7 @@ function findArticleRoute(advertiserSlug: string): string | undefined {
 }
 
 export default function AdvertiserProfilePage({ params }: Props) {
-  const advertiser = SEED_ADVERTISERS[params.slug];
-  if (!advertiser) notFound();
+  const advertiser = seedAdvertiser(params.slug);
 
   const articleRoute = findArticleRoute(params.slug);
   const placements = getAdvertiserPlacementsByZone("footer-strip")
@@ -126,6 +138,13 @@ export default function AdvertiserProfilePage({ params }: Props) {
           Advertise with TMI →
         </Link>
       </div>
+
+      <UniversalMediaPanel
+        slug={params.slug}
+        displayName={advertiser.displayName}
+        role="advertiser"
+        accentColor="#FF6B35"
+      />
     </ProfileShell>
   );
 }

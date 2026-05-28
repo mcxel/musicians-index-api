@@ -65,12 +65,12 @@ export function getAdminEmails(): Set<string> {
 /**
  * Get Diamond tier emails from environment variable.
  * Set in Vercel: DIAMOND_EMAILS=skeet@gmail.com,facethebully916@gmail.com
- * Platform Law #2: Marcel + B.J. M Beat hardcoded as Diamond.
+ * Platform Law #2: Marcel + Jay Paul Sanchez hardcoded as Diamond.
  */
 export function getDiamondEmails(): Set<string> {
   const hardcoded = [
     "berntmusic33@gmail.com",           // Marcel — Platform Law #2
-    "bjmbeat@berntoutglobal.com",       // B.J. M Beat — Platform Law #2
+    "jay@themusiciansindex.com",        // Jay Paul Sanchez — Platform Law #2
   ];
 
   const fromEnv = (process.env.DIAMOND_EMAILS ?? "")
@@ -373,7 +373,7 @@ export function parseSessionCookie(cookieValue: string | undefined): SessionPayl
  *
  * CURRENT HARDCODED:
  *  Admin: berntmusic33@gmail.com, bigace@berntoutglobal.com
- *  Diamond: berntmusic33@gmail.com, bjmbeat@berntoutglobal.com
+ *  Diamond: berntmusic33@gmail.com, jay@themusiciansindex.com
  *
  * ADD via DIAMOND_EMAILS env var:
  *  - facethebully916@gmail.com (Skeet)

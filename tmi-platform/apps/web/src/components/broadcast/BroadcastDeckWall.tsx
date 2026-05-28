@@ -52,7 +52,7 @@ export default function BroadcastDeckWall({
             fontSize: 11,
             fontWeight: 900,
             letterSpacing: "0.08em",
-            boxShadow: "0 0 30px rgba(255,215,0,0.6)",
+            boxShadow: "0 8px 32px rgba(0,0,0,0.6)",
             animation: "tmiToastSlide 0.35s ease",
             maxWidth: 280,
           }}
@@ -174,7 +174,7 @@ export default function BroadcastDeckWall({
             <MaskedVideoTile
               key={`fallback-${i}`}
               shape="octagon"
-              performerName="Coming Soon"
+              performerName={currentLabel}
               avatarEmoji="🎤"
               accentColor={accentColor}
               size={160}

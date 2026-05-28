@@ -10,9 +10,9 @@ function roleToDestination(role: string): string {
   if (r === "advertiser") return "/dashboard/advertiser";
   if (r === "venue")      return "/dashboard/venue";
   if (r === "writer")     return "/dashboard/writer";
-  if (r === "promoter")   return "/dashboard/promoter";
-  if (r === "fan")        return "/dashboard/fan";
-  return "/onboarding";
+  if (r === "promoter")   return "/dashboard/fan";
+  if (r === "fan" || r === "user") return "/dashboard/fan";
+  return "/dashboard/fan";
 }
 
 export default async function DashboardRouterPage() {

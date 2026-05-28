@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { ReactNode, useMemo, useState } from 'react';
 import { PersonaSwitcher } from '@/components/hud/PersonaSwitcher';
 
 export type AdminOpsMetric = {
@@ -32,11 +32,13 @@ export type AdminOpsLink = {
 type Props = {
   title: string;
   subtitle: string;
+  headerControls?: ReactNode;
   metrics: AdminOpsMetric[];
   rowsTitle: string;
   rows: AdminOpsRow[];
   actions: AdminOpsAction[];
   quickLinks: AdminOpsLink[];
+  onAction?: (actionId: string) => void | Promise<void>;
 };
 
 const toneMap: Record<NonNullable<AdminOpsMetric['tone']>, string> = {
@@ -53,11 +55,13 @@ function toneStyle(tone: AdminOpsMetric['tone'] = 'white') {
 export default function AdminOpsConsole({
   title,
   subtitle,
+  headerControls,
   metrics,
   rowsTitle,
   rows,
   actions,
   quickLinks,
+  onAction,
 }: Props) {
   const [lastAction, setLastAction] = useState('none');
   const [actionCount, setActionCount] = useState<Record<string, number>>({});
@@ -70,6 +74,11 @@ export default function AdminOpsConsole({
   const runAction = (id: string) => {
     setLastAction(id);
     setActionCount(prev => ({ ...prev, [id]: (prev[id] ?? 0) + 1 }));
+    if (onAction) {
+      void Promise.resolve(onAction(id)).catch((error) => {
+        console.error('[AdminOpsConsole] action handler failed:', error);
+      });
+    }
   };
 
   return (
@@ -85,6 +94,7 @@ export default function AdminOpsConsole({
 
         <h1 style={{ marginTop: 12, marginBottom: 6, fontSize: 30 }}>{title}</h1>
         <p style={{ margin: 0, color: '#9ca3af' }}>{subtitle}</p>
+        {headerControls ? <div style={{ marginTop: 12 }}>{headerControls}</div> : null}
 
         <div style={{ marginTop: 16, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: 12, background: 'rgba(0,0,0,0.28)' }}>
           <div style={{ fontSize: 12, color: '#d1d5db' }}>Control Feedback</div>

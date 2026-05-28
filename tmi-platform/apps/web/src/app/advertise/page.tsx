@@ -1,72 +1,112 @@
-import Link from "next/link";
+'use client';
 
-export const metadata = { title: "Advertise on TMI | The Musician's Index" };
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 
-const PACKAGES = [
-  { id:"starter", name:"STARTER", price:"$299/mo", color:"#00FFFF", icon:"📣", placements:["Room banner (1 room)","Magazine sidebar (3 slots)","50K impressions/mo"], cta:"GET STARTED", href:"/api/stripe/checkout?priceId=price_ad_starter&mode=subscription" },
-  { id:"pro",     name:"PRO",     price:"$799/mo", color:"#FF2DAA", icon:"🚀", placements:["Room banners (3 rooms)","Homepage billboard","Magazine feature slot","150K impressions/mo","Campaign analytics"], cta:"GO PRO", href:"/api/stripe/checkout?priceId=price_ad_pro&mode=subscription" },
-  { id:"premium", name:"PREMIUM", price:"$1,999/mo", color:"#FFD700", icon:"👑", placements:["All rooms + lobby","Homepage hero slot","Sponsored magazine issue","500K impressions/mo","Dedicated account manager","Giveaway & prize integration"], cta:"GO PREMIUM", href:"/api/stripe/checkout?priceId=price_ad_premium&mode=subscription" },
-];
+export default function AdvertiseCheckoutPage() {
+  const searchParams = useSearchParams();
+  const packageId = searchParams?.get('package') || 'magazine-inline';
+  
+  const [brandName, setBrandName] = useState('');
+  const [targetUrl, setTargetUrl] = useState('');
+  const [imageUrl, setImageUrl] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
 
-const STATS = [
-  { label:"Monthly Active Users", value:"50K+" },
-  { label:"Avg Session Time", value:"22 min" },
-  { label:"Live Rooms", value:"20+" },
-  { label:"Genres Covered", value:"30+" },
-];
+  const handleCheckout = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsProcessing(true);
+    
+    try {
+      // Determine price based on package
+      const price = packageId === 'arena-stage-sponsor' ? 499 : packageId === 'lobby-wall-featured' ? 199 : 99;
+      
+      const res = await fetch('/api/stripe/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          product: 'ADVERTISEMENT', 
+          tier: packageId, 
+          amount: price,
+          metadata: { brandName, targetUrl, imageUrl }
+        })
+      });
+      
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url; // Redirect to Stripe
+      }
+    } catch (err) {
+      console.error(err);
+      setIsProcessing(false);
+    }
+  };
 
-export default function AdvertisePage() {
   return (
-    <main style={{ minHeight:"100vh", background:"#060410", color:"#fff", padding:"60px 20px 80px" }}>
-      <div style={{ maxWidth:960, margin:"0 auto" }}>
-        <div style={{ textAlign:"center", marginBottom:48 }}>
-          <div style={{ color:"#FF9500", fontSize:10, letterSpacing:4, marginBottom:8 }}>TMI ADVERTISING</div>
-          <h1 style={{ fontSize:"clamp(26px,5vw,44px)", fontWeight:900, letterSpacing:2, margin:"0 0 12px" }}>REACH MUSIC FANS</h1>
-          <p style={{ color:"#555", fontSize:13, maxWidth:500, margin:"0 auto" }}>
-            Advertise to 50,000+ engaged music fans, artists, and producers on the TMI platform.
-          </p>
+    <main style={{ minHeight: '100vh', background: '#050510', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+      <form onSubmit={handleCheckout} style={{
+        width: '100%', maxWidth: 500,
+        background: 'rgba(20,25,35,0.6)',
+        backdropFilter: 'blur(30px)',
+        border: '1px solid rgba(255,255,255,0.1)',
+        borderRadius: 16,
+        padding: 32,
+        boxShadow: '0 20px 40px rgba(0,0,0,0.5)'
+      }}>
+        <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: '0.2em', color: '#FFD700', textTransform: 'uppercase', marginBottom: 8 }}>
+          Campaign Setup
+        </div>
+        <h1 style={{ fontSize: 24, fontWeight: 900, textTransform: 'uppercase', margin: '0 0 24px' }}>
+          Configure Placement
+        </h1>
+
+        <div style={{ marginBottom: 20 }}>
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', marginBottom: 8 }}>Brand Name</label>
+          <input 
+            required type="text" value={brandName} onChange={e => setBrandName(e.target.value)}
+            placeholder="e.g. SoundWave Audio"
+            style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '12px 16px', color: '#fff', fontSize: 14, outline: 'none' }} 
+          />
         </div>
 
-        {/* Stats */}
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))", gap:12, marginBottom:48 }}>
-          {STATS.map(s => (
-            <div key={s.label} style={{ background:"rgba(255,255,255,0.03)", border:"1px solid rgba(255,255,255,0.08)", borderRadius:10, padding:"18px 16px", textAlign:"center" }}>
-              <div style={{ fontSize:22, fontWeight:900, color:"#FFD700", marginBottom:4 }}>{s.value}</div>
-              <div style={{ fontSize:9, color:"#444", letterSpacing:2 }}>{s.label.toUpperCase()}</div>
-            </div>
-          ))}
+        <div style={{ marginBottom: 20 }}>
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', marginBottom: 8 }}>Target URL (Click Destination)</label>
+          <input 
+            required type="url" value={targetUrl} onChange={e => setTargetUrl(e.target.value)}
+            placeholder="https://..."
+            style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '12px 16px', color: '#fff', fontSize: 14, outline: 'none' }} 
+          />
         </div>
 
-        {/* Packages */}
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))", gap:20, marginBottom:48 }}>
-          {PACKAGES.map(pkg => (
-            <div key={pkg.id} style={{ background:`linear-gradient(135deg,${pkg.color}12,rgba(6,4,16,0.98))`, border:`1px solid ${pkg.color}44`, borderRadius:14, padding:"32px 24px", display:"flex", flexDirection:"column", gap:20 }}>
-              <div>
-                <div style={{ fontSize:32, marginBottom:8 }}>{pkg.icon}</div>
-                <div style={{ color:pkg.color, fontSize:11, fontWeight:900, letterSpacing:3, marginBottom:4 }}>{pkg.name}</div>
-                <div style={{ fontSize:"clamp(20px,3.5vw,28px)", fontWeight:900, color:"#fff" }}>{pkg.price}</div>
-              </div>
-              <ul style={{ listStyle:"none", margin:0, padding:0, display:"flex", flexDirection:"column", gap:8 }}>
-                {pkg.placements.map(p => (
-                  <li key={p} style={{ color:"#888", fontSize:12, display:"flex", gap:8 }}>
-                    <span style={{ color:pkg.color, flexShrink:0 }}>✓</span>{p}
-                  </li>
-                ))}
-              </ul>
-              <Link href={pkg.href} style={{ display:"block", textAlign:"center", padding:"12px 0", background:`linear-gradient(135deg,${pkg.color},${pkg.color}88)`, borderRadius:8, color:"#050510", fontWeight:900, fontSize:12, letterSpacing:2, textDecoration:"none" }}>
-                {pkg.cta}
-              </Link>
-            </div>
-          ))}
+        <div style={{ marginBottom: 32 }}>
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', marginBottom: 8 }}>Creative Asset URL (1920x1080)</label>
+          <input 
+            required type="url" value={imageUrl} onChange={e => setImageUrl(e.target.value)}
+            placeholder="https://..."
+            style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '12px 16px', color: '#fff', fontSize: 14, outline: 'none' }} 
+          />
         </div>
 
-        <div style={{ textAlign:"center" }}>
-          <div style={{ color:"#333", fontSize:11, letterSpacing:2, marginBottom:12 }}>ENTERPRISE / CUSTOM CAMPAIGNS</div>
-          <Link href="/contact" style={{ color:"#FF9500", fontSize:12, letterSpacing:2, textDecoration:"none", border:"1px solid #FF950044", padding:"10px 24px", borderRadius:8 }}>
-            CONTACT SALES →
-          </Link>
-        </div>
-      </div>
+        <button 
+          disabled={isProcessing}
+          type="submit"
+          style={{
+            width: '100%',
+            padding: '16px',
+            background: isProcessing ? 'rgba(255,215,0,0.3)' : '#FFD700',
+            border: 'none',
+            borderRadius: 8,
+            color: '#000',
+            fontWeight: 900,
+            fontSize: 14,
+            letterSpacing: '0.1em',
+            textTransform: 'uppercase',
+            cursor: isProcessing ? 'not-allowed' : 'pointer',
+            boxShadow: '0 0 20px rgba(255,215,0,0.3)'
+          }}
+        >
+          {isProcessing ? 'PROCESSING...' : 'PROCEED TO STRIPE →'}
+        </button>
+      </form>
     </main>
   );
 }

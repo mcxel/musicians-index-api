@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import Script from "next/script";
 import AppProviders from "@/components/providers";
 import "./globals.css";
 import "@/styles/tmiTypography.css";
@@ -13,6 +14,10 @@ import ChevronNavigation from "@/components/navigation/ChevronNavigation";
 import TMIGlobalNav from "@/components/system/TMIGlobalNav";
 import { PWAInstallPrompt } from "@/components/mobile/PWAInstallPrompt";
 import { PWARegistration } from "@/components/mobile/PWARegistration";
+import VoiceDirector from "@/components/hud/VoiceDirector";
+import BetaModeBanner from "@/components/launch/BetaModeBanner";
+import BetaStatusChip from "@/components/launch/BetaStatusChip";
+import LiveFeedbackPanel from "@/components/feedback/LiveFeedbackPanel";
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -72,6 +77,9 @@ export const metadata: Metadata = {
     description: "Live music platform for artists, performers, and fans.",
     images: ["https://themusiciansindex.com/og-image.jpg"],
   },
+  other: {
+    "google-adsense-account": "ca-pub-4088577529436039",
+  },
 };
 
 const JSON_LD = {
@@ -111,7 +119,14 @@ const JSON_LD = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body>
+      <body className="tmi-obsidian-cinematic">
+        <Script
+          id="google-adsense"
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4088577529436039"
+          crossOrigin="anonymous"
+          strategy="afterInteractive"
+        />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }}
@@ -123,6 +138,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <AppProviders>
           <TmiSessionProvider>
             <PWARegistration />
+            <BetaModeBanner />
+            <BetaStatusChip />
             {children}
             <PWAInstallPrompt />
             <ChevronNavigation />
@@ -132,6 +149,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <FirstRunExperienceOverlay />
             <TMIGlobalHUD />
             <BotRuntimeProvider />
+            <VoiceDirector />
+            <LiveFeedbackPanel />
           </TmiSessionProvider>
         </AppProviders>
       </body>

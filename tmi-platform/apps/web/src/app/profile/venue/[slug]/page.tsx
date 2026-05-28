@@ -1,5 +1,6 @@
 import Link from "next/link";
 import ProfileShell from "@/components/profile/ProfileShell";
+import UniversalMediaPanel from "@/components/media/UniversalMediaPanel";
 
 interface Props {
   params: { slug: string };
@@ -175,6 +176,14 @@ export default function VenueProfilePage({ params }: Props) {
           Request Booking →
         </Link>
       </div>
+
+      <UniversalMediaPanel
+        slug={params.slug}
+        displayName={venue.displayName}
+        role="venue"
+        isLive={venue.isLive}
+        accentColor={GREEN}
+      />
     </ProfileShell>
   );
 }

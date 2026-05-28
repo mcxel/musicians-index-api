@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import ProfileShell from "@/components/profile/ProfileShell";
+import UniversalMediaPanel from "@/components/media/UniversalMediaPanel";
 import ArticleAnalyticsPanel from "@/components/writer/ArticleAnalyticsPanel";
 import { seedWriterWall, getPublicItems } from "@/lib/writer/WriterWallEngine";
 import { scoreWriter, getWriterTierLabel } from "@/lib/writer/WriterRankEngine";
@@ -109,6 +110,13 @@ export default function WriterProfilePage({ params }: Props) {
           ✏️ PITCH AN ARTICLE
         </Link>
       </div>
+
+      <UniversalMediaPanel
+        slug={params.slug}
+        displayName={writer.displayName}
+        role="writer"
+        accentColor="#FF2DAA"
+      />
     </ProfileShell>
   );
 }

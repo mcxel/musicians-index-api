@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   getPublicLobbies,
   checkLobbyAccess,
@@ -8,15 +9,25 @@ import {
 } from "@/lib/lobbies/lobbyPrivacyEngine";
 
 export default function LobbyPage() {
+  const router = useRouter();
   const [userId, setUserId] = useState("guest-user");
   const [age, setAge] = useState<number>(18);
   const [result, setResult] = useState<string>("");
+  const [joiningLobbyId, setJoiningLobbyId] = useState<string | null>(null);
 
   const lobbies = useMemo(() => getPublicLobbies(), []);
 
   function handleJoin(lobbyId: string, privacyType: LobbyPrivacyType) {
+    setJoiningLobbyId(lobbyId);
     const access = checkLobbyAccess(lobbyId, userId, age, false);
-    setResult(`${privacyType.toUpperCase()} ${lobbyId}: ${access.allowed ? "ALLOWED" : "BLOCKED"} (${access.reason})`);
+    if (access.allowed) {
+      setResult(`${privacyType.toUpperCase()} ${lobbyId}: ALLOWED (${access.reason})`);
+      router.push(`/live/lobby?from=%2Flobby&lobbyId=${encodeURIComponent(lobbyId)}`);
+      return;
+    }
+
+    setResult(`${privacyType.toUpperCase()} ${lobbyId}: BLOCKED (${access.reason})`);
+    setJoiningLobbyId(null);
   }
 
   return (
@@ -89,6 +100,7 @@ export default function LobbyPage() {
             </div>
             <button
               data-testid={`join-lobby-${lobby.lobbyId}`}
+              disabled={joiningLobbyId !== null}
               onClick={() => handleJoin(lobby.lobbyId, lobby.privacyType)}
               style={{
                 background: "#0ea5e9",
@@ -96,11 +108,12 @@ export default function LobbyPage() {
                 border: "none",
                 borderRadius: 8,
                 padding: "8px 12px",
-                cursor: "pointer",
+                cursor: joiningLobbyId !== null ? "not-allowed" : "pointer",
                 fontWeight: 700,
+                opacity: joiningLobbyId !== null ? 0.7 : 1,
               }}
             >
-              Join Lobby
+              {joiningLobbyId === lobby.lobbyId ? "JOINING..." : "Join Lobby"}
             </button>
           </div>
         ))}

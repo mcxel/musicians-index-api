@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { useGamificationEngine } from "@/hooks/useGamificationEngine";
 import type { UserTier } from "@/lib/showmanship/AssetLockerPolicy";
+import LiveSessionHeartbeat from "@/components/live/LiveSessionHeartbeat";
 
 const ShowmanshipCommandCenter = dynamic(
   () => import("@/components/showmanship/ShowmanshipCommandCenter"),
@@ -284,14 +285,37 @@ export default function GoLivePage() {
             <div style={{ display: "flex", gap: 10 }}>
               <button onClick={() => setStep("configure")} style={{ flex: 1, padding: "12px 0", fontSize: 10, fontWeight: 800, color: "rgba(255,255,255,0.4)", background: "transparent", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, cursor: "pointer" }}>← EDIT</button>
               <button
-                onClick={() => {
+                onClick={async () => {
                   stopStream();
                   setStep("live");
                   liveTimerRef.current = setInterval(() => setLiveSeconds((s) => s + 1), 1000);
+
+                  // Register the live session globally — propagates to homepage, lobby, observatory
+                  const categoryMap: Record<string, string> = {
+                    CONCERT: "concert", CYPHER: "cypher", BATTLE: "battle", SESSION: "session",
+                  };
+                  await fetch("/api/live/go", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    credentials: "include",
+                    body: JSON.stringify({
+                      title:         title || "Live Session",
+                      category:      categoryMap[type] ?? "live",
+                      roomId:        selectedRoom,
+                      privacy:       ticketed ? "PAID_ENTRY" : "PUBLIC",
+                      entryPriceUsd: ticketed ? parseFloat(price) || 0 : undefined,
+                    }),
+                  }).catch(() => {});
+
                   const room = ROOM_OPTIONS.find((r) => r.id === selectedRoom);
                   setTimeout(() => {
                     if (liveTimerRef.current) clearInterval(liveTimerRef.current);
-                    router.push(room?.path ?? "/live/world");
+                    const performerSlug = (title || "performer")
+                      .toLowerCase()
+                      .replace(/[^a-z0-9]+/g, "-")
+                      .replace(/^-+|-+$/g, "") || "performer";
+                    const sid = `live-${Date.now().toString(36)}`;
+                    router.push(`/live/rooms/${encodeURIComponent(room?.id ?? selectedRoom)}?performer=${encodeURIComponent(performerSlug)}&sid=${encodeURIComponent(sid)}`);
                   }, 3000);
                 }}
                 disabled={camState === "denied" || camState === "unsupported"}
@@ -305,6 +329,7 @@ export default function GoLivePage() {
 
         {step === "live" && (
           <>
+          <LiveSessionHeartbeat enabled={true} intervalMs={20_000} stageState="live" />
           <ClosureOverlay />
           <ShowmanshipCommandCenter
             performerName={title}

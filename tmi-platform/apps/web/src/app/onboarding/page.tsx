@@ -24,7 +24,7 @@ function roleToDestination(role: string): string {
     advertiser: "/dashboard/advertiser",
     venue:      "/dashboard/venue",
     writer:     "/dashboard/writer",
-    promoter:   "/dashboard/promoter",
+    promoter:   "/dashboard/fan",
   };
   return map[role] ?? "/hub/fan";
 }
@@ -33,7 +33,22 @@ export default function OnboardingPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [selectedRole, setSelectedRole] = useState<string | null>(null);
   const [error, setError] = useState("");
+
+  const roleOnboardingRoute = (roleId: string): string => {
+    const map: Record<string, string> = {
+      fan: "/onboarding/fan",
+      artist: "/onboarding/artist",
+      performer: "/onboarding/performer",
+      sponsor: "/onboarding/sponsor",
+      advertiser: "/onboarding/advertiser",
+      venue: "/onboarding/venue",
+      promoter: "/onboarding/promoter",
+      writer: "/start",
+    };
+    return map[roleId] ?? "/start";
+  };
 
   useEffect(() => {
     const check = async () => {
@@ -54,6 +69,7 @@ export default function OnboardingPage() {
   }, [router]);
 
   const selectRole = async (roleId: string) => {
+    setSelectedRole(roleId);
     setBusy(true);
     setError("");
     try {
@@ -64,15 +80,17 @@ export default function OnboardingPage() {
         body: JSON.stringify({ role: roleId }),
       });
       if (res.ok) {
-        router.replace(roleToDestination(roleId));
+        router.replace(roleOnboardingRoute(roleId));
       } else {
         const d = await res.json().catch(() => ({})) as { error?: string };
         setError(d.error ?? "Failed to set role. Please try again.");
         setBusy(false);
+        setSelectedRole(null);
       }
     } catch {
       setError("Network error. Please try again.");
       setBusy(false);
+      setSelectedRole(null);
     }
   };
 
@@ -110,7 +128,9 @@ export default function OnboardingPage() {
             >
               <span style={{ fontSize: 28 }}>{r.icon}</span>
               <span style={{ fontSize: 13, fontWeight: 800, color: r.color, letterSpacing: "0.06em" }}>{r.label}</span>
-              <span style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", lineHeight: 1.4 }}>{r.desc}</span>
+              <span style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", lineHeight: 1.4 }}>
+                {busy && selectedRole === r.id ? "CONNECTING..." : r.desc}
+              </span>
             </button>
           ))}
         </div>

@@ -102,7 +102,13 @@ export function PersonaSwitcher({ userId, currentRole, compact = false, showAdd 
   }, [handleSwitch]);
 
   const activeMeta = PERSONA_META[activePersona];
-  const addable    = SELF_ADDABLE.filter((p) => !userPersonas.includes(p));
+  const canSelfAddAdmin = (currentRole ?? '').toLowerCase() === 'admin' || (currentRole ?? '').toLowerCase() === 'superadmin';
+  const addablePool: PersonaType[] = canSelfAddAdmin ? [...SELF_ADDABLE, 'admin'] : SELF_ADDABLE;
+  const addable: PersonaType[] = addablePool.filter((p) => !userPersonas.includes(p));
+  const quickSwitchCandidates: PersonaType[] = ['admin', 'performer', 'fan'];
+  const quickSwitchTargets: PersonaType[] = quickSwitchCandidates.filter(
+    (pt) => userPersonas.includes(pt) || addable.includes(pt),
+  );
 
   if (compact) {
     return (
@@ -133,6 +139,34 @@ export function PersonaSwitcher({ userId, currentRole, compact = false, showAdd 
         {open && (
           <div style={dropdownStyle()}>
             <div style={dropdownHeaderStyle}>Persona</div>
+
+            {quickSwitchTargets.length > 0 && (
+              <div style={{ display: 'flex', gap: 6, padding: '0 8px 8px', flexWrap: 'wrap' }}>
+                {quickSwitchTargets.map((pt) => {
+                  const meta = PERSONA_META[pt];
+                  const isActive = pt === activePersona;
+                  return (
+                    <button
+                      key={`quick-${pt}`}
+                      onClick={() => userPersonas.includes(pt) ? handleSwitch(pt) : handleAddPersona(pt)}
+                      style={{
+                        border: `1px solid ${meta.color}55`,
+                        background: isActive ? `${meta.color}22` : 'rgba(255,255,255,0.02)',
+                        color: meta.color,
+                        borderRadius: 999,
+                        padding: '3px 8px',
+                        fontSize: 9,
+                        fontWeight: 900,
+                        letterSpacing: '0.08em',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {meta.label}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
 
             {/* Active personas */}
             {userPersonas.map((pt) => {

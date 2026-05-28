@@ -24,6 +24,14 @@ export default function BillboardPortalCard({
 }: BillboardPortalCardProps) {
   const energyColor = ENERGY_COLORS[portal.energyLabel] ?? "#00FFFF";
   const fillPct = Math.round((portal.occupancy / Math.max(1, portal.capacity)) * 100);
+  const vibe = portal.activeVibe;
+  const intensityState = vibe
+    ? vibe.strobeIntensity >= 70
+      ? "HIGH ENERGY"
+      : vibe.strobeIntensity >= 40
+        ? "MID ENERGY"
+        : "LOW ENERGY"
+    : null;
 
   const cardMinHeight = size === "lg" ? 280 : size === "md" ? 200 : 140;
 
@@ -125,6 +133,80 @@ export default function BillboardPortalCard({
             }}
           >
             {portal.battleStatus}
+          </div>
+        )}
+
+        {/* Vibe chip stack */}
+        {vibe && (
+          <div
+            style={{
+              position: "absolute",
+              left: 10,
+              bottom: 66,
+              display: "flex",
+              gap: 6,
+              flexWrap: "wrap",
+              maxWidth: "92%",
+            }}
+          >
+            <span
+              className="tmi-hud-label"
+              style={{
+                fontSize: 7,
+                color: "#00FFFF",
+                background: "rgba(0,255,255,0.14)",
+                border: "1px solid rgba(0,255,255,0.4)",
+                borderRadius: 4,
+                padding: "2px 6px",
+              }}
+            >
+              {vibe.underlay.toUpperCase()}
+            </span>
+            {vibe.overlay !== "none" && (
+              <span
+                className="tmi-hud-label"
+                style={{
+                  fontSize: 7,
+                  color: "#FF2DAA",
+                  background: "rgba(255,45,170,0.14)",
+                  border: "1px solid rgba(255,45,170,0.4)",
+                  borderRadius: 4,
+                  padding: "2px 6px",
+                }}
+              >
+                {vibe.overlay.toUpperCase()}
+              </span>
+            )}
+            {intensityState && (
+              <span
+                className="tmi-hud-label"
+                style={{
+                  fontSize: 7,
+                  color: "#FFD700",
+                  background: "rgba(255,215,0,0.14)",
+                  border: "1px solid rgba(255,215,0,0.4)",
+                  borderRadius: 4,
+                  padding: "2px 6px",
+                }}
+              >
+                {intensityState}
+              </span>
+            )}
+            {vibe.spotlightMode && (
+              <span
+                className="tmi-hud-label"
+                style={{
+                  fontSize: 7,
+                  color: "#ffffff",
+                  background: "rgba(255,255,255,0.14)",
+                  border: "1px solid rgba(255,255,255,0.4)",
+                  borderRadius: 4,
+                  padding: "2px 6px",
+                }}
+              >
+                SPOTLIGHT
+              </span>
+            )}
           </div>
         )}
 

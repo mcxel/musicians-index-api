@@ -131,49 +131,83 @@ function BotBar({ label, status, color }: { label: string; status: BotFleetStatu
   );
 }
 
+const ROOM_GRADIENTS: string[] = [
+  'linear-gradient(135deg, #0d0820 0%, #05050f 100%)',
+  'linear-gradient(135deg, #110812 0%, #05050f 100%)',
+  'linear-gradient(135deg, #080d14 0%, #05050f 100%)',
+  'linear-gradient(135deg, #0a0d08 0%, #05050f 100%)',
+  'linear-gradient(135deg, #100c08 0%, #05050f 100%)',
+  'linear-gradient(135deg, #0d0a18 0%, #05050f 100%)',
+];
+
 /* ─── Room monitor card ─────────────────────────────────────────────────────── */
-function RoomMonitor({ roomId, label }: { roomId: string; label: string }) {
+function RoomMonitor({ roomId, label, idx = 0 }: { roomId: string; label: string; idx?: number }) {
   const [viewers, setViewers] = useState(Math.floor(Math.random() * 40));
-  const [isLive, setIsLive] = useState(Math.random() < 0.6);
+  const [isLive] = useState(Math.random() < 0.6);
+  const bg = ROOM_GRADIENTS[idx % ROOM_GRADIENTS.length];
 
   useEffect(() => {
+    if (!isLive) return;
     const i = setInterval(() => {
       setViewers((v) => Math.max(0, v + Math.floor((Math.random() - 0.4) * 3)));
     }, 5000);
     return () => clearInterval(i);
-  }, []);
+  }, [isLive]);
 
   return (
-    <div className="border border-white/10 rounded-xl overflow-hidden">
-      {/* Video placeholder — swap for TMIVideoRoom when Daily key is confirmed */}
-      <div
-        className="relative aspect-video bg-[#0a0a12] flex items-center justify-center"
-        style={{
-          background: isLive
-            ? `radial-gradient(circle at 50% 50%, rgba(6,182,212,0.1) 0%, #0a0a12 70%)`
-            : "#0a0a12",
-        }}
-      >
-        {isLive ? (
-          <>
-            <div className="text-white/10 text-4xl">🎤</div>
-            <div className="absolute top-2 left-2 flex items-center gap-1 bg-red-600 text-white text-[8px] font-black px-1.5 py-0.5 rounded">
-              <span className="w-1 h-1 rounded-full bg-white animate-pulse" />LIVE
-            </div>
-            <div className="absolute top-2 right-2 text-[8px] text-white/50 font-mono">
-              {viewers} watching
-            </div>
-          </>
-        ) : (
-          <p className="text-[8px] text-white/20 uppercase tracking-widest">Offline</p>
+    <div style={{ borderRadius: 10, border: '1px solid rgba(255,255,255,0.08)', overflow: 'hidden' }}>
+      <div style={{ position: 'relative', aspectRatio: '16/9', background: bg }}>
+        {/* Film grain */}
+        <div style={{
+          position: 'absolute', inset: 0, zIndex: 1, opacity: 0.04,
+          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
+          backgroundSize: '160px 160px',
+        }} />
+        {/* Vignette */}
+        <div style={{ position: 'absolute', inset: 0, zIndex: 2, pointerEvents: 'none', background: 'radial-gradient(ellipse at center, transparent 35%, rgba(0,0,0,0.7) 100%)' }} />
+        {/* Scanlines */}
+        <div style={{ position: 'absolute', inset: 0, zIndex: 2, pointerEvents: 'none', backgroundImage: 'repeating-linear-gradient(0deg, rgba(255,255,255,0.012) 0px, rgba(255,255,255,0.012) 1px, transparent 1px, transparent 4px)' }} />
+        {/* Bottom lower-third gradient */}
+        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '45%', zIndex: 3, background: 'linear-gradient(to top, rgba(0,0,0,0.85), transparent)' }} />
+
+        {/* Room ID monogram — subtle background */}
+        <div style={{ position: 'absolute', inset: 0, zIndex: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.05 }}>
+          <span style={{ fontSize: 48, fontWeight: 900, fontFamily: 'monospace', color: '#fff', letterSpacing: '-0.05em' }}>{roomId}</span>
+        </div>
+
+        {/* LIVE badge */}
+        {isLive && (
+          <div style={{
+            position: 'absolute', top: 8, left: 8, zIndex: 10,
+            display: 'flex', alignItems: 'center', gap: 5,
+            background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)',
+            border: '1px solid rgba(255,32,32,0.5)', borderRadius: 4,
+            padding: '3px 7px',
+          }}>
+            <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#FF2020', display: 'inline-block' }} />
+            <span style={{ fontSize: 8, fontWeight: 900, color: '#fff', letterSpacing: '0.18em' }}>LIVE</span>
+          </div>
+        )}
+
+        {/* Viewer count */}
+        {isLive && (
+          <div style={{ position: 'absolute', top: 8, right: 8, zIndex: 10, fontSize: 8, fontFamily: 'monospace', color: 'rgba(255,255,255,0.5)', background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', padding: '2px 6px', borderRadius: 4 }}>
+            {viewers} watching
+          </div>
+        )}
+
+        {/* Offline state */}
+        {!isLive && (
+          <div style={{ position: 'absolute', inset: 0, zIndex: 5, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <span style={{ fontSize: 8, color: 'rgba(255,255,255,0.18)', fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase' }}>OFFLINE</span>
+          </div>
         )}
       </div>
-      <div className="px-2 py-1.5 flex items-center justify-between">
-        <p className="text-[9px] font-bold text-white/70">{label}</p>
-        <Link
-          href={`/live/rooms/${roomId}`}
-          className="text-[8px] text-cyan-400 hover:underline"
-        >
+
+      {/* Label strip */}
+      <div style={{ padding: '6px 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(0,0,0,0.3)' }}>
+        <span style={{ fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,0.65)' }}>{label}</span>
+        <Link href={`/live/rooms/${roomId}`} style={{ fontSize: 8, color: '#00FFFF', textDecoration: 'none', letterSpacing: '0.05em' }}>
           Open →
         </Link>
       </div>
@@ -284,12 +318,12 @@ export default function TMIAdminOverseer() {
               Live Room Feeds — click to enter
             </p>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              <RoomMonitor roomId="R-101" label="Battle Arena Alpha" />
-              <RoomMonitor roomId="R-102" label="Battle Arena Beta" />
-              <RoomMonitor roomId="CY-01" label="Cypher Kings Circle" />
-              <RoomMonitor roomId="CY-02" label="Gospel Frequencies" />
-              <RoomMonitor roomId="CY-03" label="ATL Open Mic" />
-              <RoomMonitor roomId="CY-04" label="Lagos Vibes" />
+              <RoomMonitor roomId="R-101" label="Battle Arena Alpha"  idx={0} />
+              <RoomMonitor roomId="R-102" label="Battle Arena Beta"   idx={1} />
+              <RoomMonitor roomId="CY-01" label="Cypher Kings Circle" idx={2} />
+              <RoomMonitor roomId="CY-02" label="Gospel Frequencies"  idx={3} />
+              <RoomMonitor roomId="CY-03" label="ATL Open Mic"        idx={4} />
+              <RoomMonitor roomId="CY-04" label="Lagos Vibes"         idx={5} />
             </div>
             <p className="text-[8px] text-white/20 mt-3 text-center">
               To see real video feeds: confirm DAILY_API_KEY in Vercel env vars, then swap RoomMonitor for TMIVideoRoom component

@@ -52,6 +52,20 @@ function SubmitForm({ lane, onClose }: { lane: LaneTile; onClose: () => void }) 
         setError(data.error ?? 'Submission failed. Try again.'); setLoading(false); return;
       }
       const data = (await res.json()) as { submissionId: string; shareUrl?: string };
+      if (typeof window !== 'undefined') {
+        const activity = {
+          id: data.submissionId,
+          title: title.trim(),
+          type: lane.id,
+          submitterId,
+          createdAt: Date.now(),
+        };
+        localStorage.setItem('tmi_last_submission', JSON.stringify(activity));
+        const existing = JSON.parse(localStorage.getItem('tmi_submission_feed') ?? '[]') as Array<typeof activity>;
+        const merged = [activity, ...existing.filter((entry) => entry.id !== activity.id)].slice(0, 12);
+        localStorage.setItem('tmi_submission_feed', JSON.stringify(merged));
+        window.dispatchEvent(new CustomEvent('tmi:submission-created', { detail: activity }));
+      }
       router.push(`/submit/confirm?id=${encodeURIComponent(data.submissionId)}&share=${encodeURIComponent(data.shareUrl ?? '')}&type=${lane.id}&title=${encodeURIComponent(title.trim())}`);
     } catch {
       setError('Network error. Check your connection.'); setLoading(false);

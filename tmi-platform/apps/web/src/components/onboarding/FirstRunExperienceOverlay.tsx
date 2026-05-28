@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   type FirstRunStep,
@@ -21,14 +22,20 @@ const ROLE_OPTIONS: { role: UserRole; label: string; icon: string; desc: string 
   { role: 'advertiser', label: 'Advertiser', icon: '📢', desc: 'Run ads, reach music fans' },
 ];
 
+const AUTH_PATHS = ['/auth', '/signup', '/login', '/support/account-recovery'];
+
 export default function FirstRunExperienceOverlay() {
+  const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
   const [visible, setVisible] = useState(false);
   const [role, setRole] = useState<UserRole | null>(null);
   const [steps, setSteps] = useState<FirstRunStep[]>([]);
   const [phase, setPhase] = useState<'role-select' | 'checklist'>('role-select');
 
+  const isAuthPath = AUTH_PATHS.some(p => pathname === p || pathname?.startsWith(p + '/'));
+
   useEffect(() => {
+    if (isAuthPath) return;
     setMounted(true);
     const state = getFirstRunState();
     if (state.dismissed) return;
@@ -38,7 +45,7 @@ export default function FirstRunExperienceOverlay() {
       setPhase('checklist');
     }
     setVisible(true);
-  }, []);
+  }, [isAuthPath]);
 
   function handleRoleSelect(r: UserRole) {
     setFirstRunRole(r);
