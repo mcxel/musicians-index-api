@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import Script from "next/script";
 import AppProviders from "@/components/providers";
 import "./globals.css";
 import "@/styles/tmiTypography.css";
@@ -119,10 +120,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <head>
-        {/* AdSense verification — must be in <head> for Google crawler */}
-        {/* eslint-disable-next-line @next/next/no-sync-scripts */}
-        <script
-          async
+        <Script
+          id="google-adsense"
+          strategy="beforeInteractive"
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4088577529436039"
           crossOrigin="anonymous"
         />
