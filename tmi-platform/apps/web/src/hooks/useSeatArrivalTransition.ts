@@ -30,6 +30,8 @@ export function useSeatArrivalTransition(): SeatArrivalState {
 
     if (reducedMotion) {
       setPhase("reduced");
+      const t = window.setTimeout(() => setPhase("seated"), 800);
+      timers.current.push(t);
       return;
     }
 

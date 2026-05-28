@@ -221,7 +221,9 @@ export default function SeatArrivalTransition() {
     return () => clearTimeout(t1);
   }, [phase]);
 
-  if (phase === "reduced") return <ReducedFallback phase="reduced" />;
+  const wasReduced = useRef(false);
+  if (phase === "reduced") wasReduced.current = true;
+  if (wasReduced.current) return <ReducedFallback phase={phase} />;
 
   return (
     <AnimatePresence>
