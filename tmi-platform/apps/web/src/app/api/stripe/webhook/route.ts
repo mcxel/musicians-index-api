@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from "next/server";
 import { getStripe } from "@/lib/stripe/client";
 import { recordStripeEvent } from "@/lib/stripe/stripe-telemetry-store";
+import { evaluateStripeIncident, isStripePayoutQueuePaused } from "@/lib/stripe/stripe-incident-engine";
 import { sendEmail } from "@/lib/email/TMIEmailSystem";
 import { createSponsorGift } from "@/lib/memory/ProLedgerEngine";
 import { updateUserTier, getUserByEmail, type UserTier } from "@/lib/auth/UserStore";
@@ -30,6 +31,7 @@ function withTimeoutSignal(ms: number): AbortSignal {
 function emitWebhookTelemetry(event: string, meta: Record<string, unknown> = {}): void {
   console.log(JSON.stringify({ event, service: "stripe-webhook", ts: Date.now(), ...meta }));
   recordStripeEvent(event, meta);
+  evaluateStripeIncident(event, meta);
 }
 
 function extractStripeTimestamp(sig: string): number | null {
@@ -61,6 +63,17 @@ function checkAndRegisterFingerprint(sig: string): { isReplay: boolean; fingerpr
 
 export async function POST(req: NextRequest) {
   try {
+    let observedEventType = "unknown";
+    let observedLiveMode = false;
+    let observedRevenueStream = "other";
+    let observedAmountCents = 0;
+    let observedCurrency = "usd";
+    const pipeline = {
+      userUpgraded: false,
+      payoutQueued: false,
+      emailSent: false,
+    };
+
     // Content-type gate
     const contentType = req.headers.get("content-type") ?? "";
     if (!contentType.toLowerCase().includes("application/json")) {
@@ -115,6 +128,72 @@ export async function POST(req: NextRequest) {
       if (stripe) {
         try {
           const stripeEvent = stripe.webhooks.constructEvent(Buffer.from(rawBody), signature, webhookSecret);
+          observedEventType = stripeEvent.type;
+          observedLiveMode = stripeEvent.livemode === true;
+
+          // Normalize telemetry dimensions for admin revenue aggregation.
+          const eventObject = stripeEvent.data.object as unknown as Record<string, unknown>;
+          const objectMetadata = (eventObject["metadata"] ?? {}) as Record<string, string>;
+          const objectCurrency = eventObject["currency"] as string | undefined;
+          observedCurrency = (objectCurrency ?? "usd").toLowerCase();
+
+          if (stripeEvent.type === "checkout.session.completed") {
+            const mode = String(eventObject["mode"] ?? "payment");
+            const amountTotal = Number(eventObject["amount_total"] ?? 0);
+            observedAmountCents = Number.isFinite(amountTotal) ? amountTotal : 0;
+            observedRevenueStream = mode === "subscription" ? "subscriptions" : "one_time";
+
+            // Founding/support packs and sponsorship purchases should stay distinct in telemetry.
+            if (objectMetadata["role"] === "sponsor") {
+              observedRevenueStream = "sponsors";
+            } else if ((objectMetadata["plan"] ?? "").toLowerCase().includes("found")) {
+              observedRevenueStream = "founding_packs";
+            } else if (objectMetadata["product"] === "TIP") {
+              observedRevenueStream = "tips";
+            }
+
+            // TIP: record on live session so viewer counts + tip totals stay live
+            if (objectMetadata["product"] === "TIP" && objectMetadata["artistSlug"]) {
+              try {
+                const { addTip } = await import('@/lib/broadcast/GlobalLiveSessionRegistry');
+                const amountUsd = observedAmountCents / 100;
+                addTip(objectMetadata["roomId"] || objectMetadata["artistSlug"], amountUsd);
+              } catch (e) {
+                console.error("[stripe/webhook] addTip failed:", e);
+              }
+              if (objectMetadata["fanId"]) {
+                try {
+                  const { recordFanTip } = await import('@/lib/fans/SuperFanMomentumEngine');
+                  recordFanTip(
+                    objectMetadata["artistSlug"],
+                    objectMetadata["fanId"],
+                    objectMetadata["fanDisplayName"] || objectMetadata["fanId"],
+                    observedAmountCents / 100,
+                  );
+                } catch (e) {
+                  console.error("[stripe/webhook] recordFanTip failed:", e);
+                }
+              }
+            }
+          }
+
+          if (stripeEvent.type === "invoice.payment_succeeded") {
+            const amountPaid = Number(eventObject["amount_paid"] ?? 0);
+            observedAmountCents = Number.isFinite(amountPaid) ? amountPaid : 0;
+            observedRevenueStream = "subscriptions";
+          }
+
+          if (stripeEvent.type === "payment_intent.succeeded") {
+            const amount = Number(eventObject["amount"] ?? 0);
+            observedAmountCents = Number.isFinite(amount) ? amount : 0;
+            observedRevenueStream = "payments";
+          }
+
+          if (stripeEvent.type === "charge.succeeded") {
+            const amount = Number(eventObject["amount"] ?? 0);
+            observedAmountCents = Number.isFinite(amount) ? amount : 0;
+            observedRevenueStream = "charges";
+          }
 
           // Fire emails for key payment events — non-blocking
           if (stripeEvent.type === "checkout.session.completed") {
@@ -130,6 +209,7 @@ export async function POST(req: NextRequest) {
                 .toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
               sendEmail({ to: customerEmail, type: "subscription_start", data: { plan, priceMonthly, renewalDate } })
                 .catch((err) => console.error("[stripe/webhook] email send failed:", err));
+              pipeline.emailSent = true;
 
               // Upgrade user tier — use email from metadata first, fall back to customer_details
               const upgradeEmail = (meta["userEmail"] || customerEmail).toLowerCase();
@@ -137,25 +217,35 @@ export async function POST(req: NextRequest) {
               if (upgradeEmail && tierUpgrade) {
                 const upgraded = updateUserTier(upgradeEmail, tierUpgrade);
                 if (upgraded) {
+                  pipeline.userUpgraded = true;
                   console.log(`[stripe/webhook] Tier upgraded: ${upgradeEmail} → ${tierUpgrade}`);
                   // Send tier-specific welcome if this is a VIP/Diamond upgrade
                   if (tierUpgrade === "DIAMOND") {
                     const user = getUserByEmail(upgradeEmail);
                     sendEmail({ to: upgradeEmail, type: "welcome_diamond", data: { name: user?.displayName ?? upgradeEmail } })
                       .catch(() => {});
+                    pipeline.emailSent = true;
                   }
                 }
               }
               // Create verified sponsor legacy item when role is sponsor
               if (meta["role"] === "sponsor" && meta["userId"]) {
-                try {
-                  createSponsorGift(meta["userId"], {
-                    totalPaidOut: amountTotal ? amountTotal / 100 : 0,
-                    eventTitle: meta["eventTitle"],
-                    eventId: meta["eventId"],
+                if (isStripePayoutQueuePaused()) {
+                  emitWebhookTelemetry("payout_queue_paused_skip", {
+                    reason: "incident-guard",
+                    userId: meta["userId"],
                   });
-                } catch (e) {
-                  console.error("[stripe/webhook] createSponsorGift failed:", e);
+                } else {
+                  try {
+                    createSponsorGift(meta["userId"], {
+                      totalPaidOut: amountTotal ? amountTotal / 100 : 0,
+                      eventTitle: meta["eventTitle"],
+                      eventId: meta["eventId"],
+                    });
+                    pipeline.payoutQueued = true;
+                  } catch (e) {
+                    console.error("[stripe/webhook] createSponsorGift failed:", e);
+                  }
                 }
               }
             }
@@ -175,6 +265,7 @@ export async function POST(req: NextRequest) {
                 .toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
               sendEmail({ to: custEmail, type: "subscription_start", data: { plan, priceMonthly, renewalDate } })
                 .catch((err) => console.error("[stripe/webhook] email send failed:", err));
+              pipeline.emailSent = true;
             }
           }
           if (stripeEvent.type === "customer.subscription.deleted") {
@@ -187,8 +278,10 @@ export async function POST(req: NextRequest) {
                 : "end of billing period";
               sendEmail({ to: custEmail, type: "subscription_cancel", data: { accessUntil } })
                 .catch((err) => console.error("[stripe/webhook] email send failed:", err));
+              pipeline.emailSent = true;
               // Downgrade user back to FREE at cancellation
               updateUserTier(custEmail, "FREE");
+              pipeline.userUpgraded = true;
             }
           }
 
@@ -204,6 +297,7 @@ export async function POST(req: NextRequest) {
                 .toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
               sendEmail({ to: custEmail, type: "subscription_renew", data: { plan, nextRenewalDate } })
                 .catch((err) => console.error("[stripe/webhook] email send failed:", err));
+              pipeline.emailSent = true;
             }
           }
 
@@ -241,7 +335,15 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    emitWebhookTelemetry("webhook_verified", { fingerprint });
+    emitWebhookTelemetry("webhook_verified", {
+      fingerprint,
+      eventType: observedEventType,
+      livemode: observedLiveMode,
+      revenueStream: observedRevenueStream,
+      amountCents: observedAmountCents,
+      currency: observedCurrency,
+      ...pipeline,
+    });
     return NextResponse.json({ received: true });
   } catch (err) {
     if (err instanceof Error && err.name === "TimeoutError") {
