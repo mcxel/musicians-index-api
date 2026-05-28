@@ -14,6 +14,7 @@ import WelcomeArenaOverlay from '@/components/entry/WelcomeArenaOverlay';
 import MiniChatPreview from '@/components/media/MiniChatPreview';
 import MaskedVideoTile from '@/components/media/MaskedVideoTile';
 import { getLatestEditorialArticles } from '@/lib/editorial/NewsArticleModel';
+import AdRailSlot from '@/components/ads/AdRailSlot';
 
 const HOME1_LAYER_SESSION_KEY = 'TMI_OS_SessionState_Home1';
 const HOME1_ISSUE_ID = 'issue-001-neon';
@@ -41,14 +42,15 @@ const PERFORMERS: Performer[] = [
 ];
 
 const ROTATING_SAYINGS = [
-  'Go public → appear on the Lobby Wall → get seen now.',
-  'Start broadcasting and fans find you in seconds.',
+  '⚡ DANCE-OFF ROOM FILLING FAST',
+  '🎤 OPEN MIC STARTING NOW',
+  '🔥 CYPHER HEATING UP',
+  '😂 COMEDY ROOM ACTIVE',
+  '🕺 STREET BATTLE LIVE',
+  '🏆 CROWD VOTE OPEN',
+  'Go public → appear on the Lobby Wall',
   'Turn your sound into a movement.',
-  'Go live. Appear on the wall. Build your audience.',
   'The stage is always on. Are you?',
-  'Who took the crown this week?',
-  'Challenge your song here.',
-  'You are not a musician if you are not in the Index.',
 ];
 
 const CHALLENGE_PROMO_LINES = [
@@ -227,6 +229,7 @@ function safeParseLayerState(serialized: string | null): TMILayer[] | null {
 export default function Home1CoverPage() {
   const [orbitAngle, setOrbitAngle] = useState(0);
   const [layers, setLayers] = useState<TMILayer[]>(DEFAULT_LAYERS);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [designMode, setDesignMode] = useState(false);
   const [voteCount, setVoteCount] = useState(4891);
@@ -311,6 +314,7 @@ export default function Home1CoverPage() {
         const response = await fetch('/api/auth/session', { credentials: 'include', cache: 'no-store' });
         if (!response.ok || cancelled) return;
         const data = (await response.json()) as { authenticated?: boolean; user?: { role?: string; roles?: string[] } };
+        setIsAuthenticated(Boolean(data?.authenticated));
         const roleBag = [data?.user?.role ?? '', ...(data?.user?.roles ?? [])].map((r) => r.toLowerCase());
         const admin = roleBag.some((role) => role === 'admin' || role === 'owner' || role === 'super_admin' || role === 'superadmin');
         if (!cancelled) {
@@ -319,6 +323,7 @@ export default function Home1CoverPage() {
         }
       } catch {
         if (!cancelled) {
+          setIsAuthenticated(false);
           setIsAdmin(false);
           setDesignMode(false);
         }
@@ -425,6 +430,25 @@ export default function Home1CoverPage() {
           overflow-x: hidden;
           position: relative;
         }
+        
+        .tmi-glass-panel {
+          background: rgba(5,5,12,0.4);
+          backdrop-filter: blur(24px);
+          border: 1px solid rgba(255,255,255,0.08);
+          border-top: 1px solid rgba(255,255,255,0.15);
+          box-shadow: inset 0 0 40px rgba(0,0,0,0.8), 0 8px 32px rgba(0,0,0,0.5);
+          border-radius: 12px;
+        }
+        
+        .tmi-crt-screen {
+          position: relative;
+          overflow: hidden;
+        }
+        .tmi-crt-screen::after {
+          content: ''; position: absolute; inset: 0; pointer-events: none;
+          box-shadow: inset 0 0 60px rgba(0,0,0,0.9);
+          background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.04) 2px, rgba(0,0,0,0.04) 4px);
+        }
 
         .tmi-home1-canvas-surface::before {
           content: '';
@@ -514,13 +538,22 @@ export default function Home1CoverPage() {
         }
 
         .tmi-masthead {
-          border: 2px solid #111724;
-          background: linear-gradient(160deg, #05060c 0%, #11182d 48%, #190f2e 100%);
+          border: 1px solid rgba(0,255,255,0.2);
+          border-top: 2px solid rgba(0,255,255,0.5);
+          background: rgba(5,5,12,0.6);
+          backdrop-filter: blur(24px);
           text-align: center;
           padding: 18px 16px 16px;
-          box-shadow: 0 18px 34px rgba(0, 0, 0, 0.52), -1px -1px 0 rgba(6, 7, 12, 1);
+          box-shadow: inset 0 0 40px rgba(0,0,0,0.9), 0 10px 30px rgba(0,255,255,0.1);
+          border-radius: 12px;
           margin-bottom: 12px;
           animation: tmiMastheadPulse 2.4s ease-in-out infinite;
+          position: relative;
+        }
+        .tmi-masthead::after {
+          content: ''; position: absolute; inset: 0; pointer-events: none;
+          background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,255,255,0.04) 2px, rgba(0,255,255,0.04) 4px);
+          border-radius: 12px;
         }
 
         .tmi-masthead .logo {
@@ -564,33 +597,47 @@ export default function Home1CoverPage() {
           text-decoration: none;
           font-family: 'Inter', sans-serif;
           text-transform: uppercase;
-          letter-spacing: 0.1em;
-          font-size: 10px;
+          letter-spacing: 0.12em;
+          font-size: 9px;
           font-weight: 900;
-          border: 1px solid #0f1320;
-          padding: 8px 12px;
+          border: 1px solid rgba(255,255,255,0.1);
+          border-top: 1px solid rgba(255,255,255,0.25);
+          border-bottom: 2px solid rgba(0,0,0,0.8);
+          padding: 10px 14px;
           color: #fff;
-          background: #18203a;
-          box-shadow: 0 10px 18px rgba(0, 0, 0, 0.45), -1px -1px 0 rgba(8, 8, 12, 1);
+          background: rgba(20,25,35,0.8);
+          backdrop-filter: blur(12px);
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.1), 0 4px 10px rgba(0, 0, 0, 0.5);
+          border-radius: 6px;
           cursor: pointer;
+          transition: all 0.15s ease;
         }
-
-        .tmi-primary-cta-row .broadcast { background: linear-gradient(135deg,#00FFFF,#AA2DFF); color: #050510; font-weight: 900; box-shadow: 0 0 18px rgba(0,255,255,0.35); }
-        .tmi-primary-cta-row .join { background: #00b67a; }
-        .tmi-primary-cta-row .login { background: #25304d; }
-        .tmi-primary-cta-row .challenge { background: #ff2daa; }
-        .tmi-primary-cta-row .arena { background: #aa2dff; }
-        .tmi-primary-cta-row .magazine { background: #00cde9; color: #0d1120; }
-        .tmi-primary-cta-row .sponsor { background: #ffd700; color: #0d1120; }
-        .tmi-primary-cta-row .advertise { background: #ff8f29; }
+        .tmi-primary-cta-row a:active,
+        .tmi-primary-cta-row button:active {
+          transform: translateY(2px);
+          border-bottom: 0px solid rgba(0,0,0,0.8);
+          box-shadow: inset 0 2px 4px rgba(0,0,0,0.8);
+        }
+        .tmi-primary-cta-row .broadcast { background: linear-gradient(135deg, rgba(0,255,255,0.2), rgba(170,45,255,0.2)); color: #00FFFF; border-color: rgba(0,255,255,0.4); border-top-color: rgba(0,255,255,0.6); }
+        .tmi-primary-cta-row .arena { background: rgba(170,45,255,0.2); color: #DDB7FF; border-color: rgba(170,45,255,0.4); border-top-color: rgba(170,45,255,0.6); }
+        .tmi-primary-cta-row .challenge { background: rgba(255,45,170,0.2); color: #FF9BDB; border-color: rgba(255,45,170,0.4); border-top-color: rgba(255,45,170,0.6); }
+        .tmi-primary-cta-row .advertise { background: rgba(255,143,41,0.2); color: #FFD4A3; border-color: rgba(255,143,41,0.4); border-top-color: rgba(255,143,41,0.6); }
+        .tmi-primary-cta-row .sponsor { background: rgba(255,215,0,0.2); color: #FFE28B; border-color: rgba(255,215,0,0.4); border-top-color: rgba(255,215,0,0.6); }
 
         .tmi-canvas-stage {
-          border: 2px solid #131b2a;
-          background: linear-gradient(145deg, #0b1f32 0%, #28113a 50%, #1a0a2a 100%);
+          border: 1px solid rgba(255,255,255,0.08);
+          border-top: 1px solid rgba(255,255,255,0.15);
+          background: rgba(5,5,12,0.4);
+          backdrop-filter: blur(24px);
           min-height: 760px;
           position: relative;
           overflow: hidden;
-          box-shadow: 0 24px 40px rgba(0, 0, 0, 0.56), -1px -1px 0 rgba(6, 6, 12, 0.95);
+          box-shadow: inset 0 0 80px rgba(0,0,0,0.9), 0 10px 40px rgba(0,0,0,0.5);
+          border-radius: 16px;
+        }
+        .tmi-canvas-stage::after {
+          content: ''; position: absolute; inset: 0; pointer-events: none;
+          background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.04) 2px, rgba(0,0,0,0.04) 4px);
         }
 
         .tmi-collage-card {
@@ -701,53 +748,60 @@ export default function Home1CoverPage() {
         .tmi-card-c { left: 59%; top: 32%; transform: rotate(-1.3deg); }
 
         .tmi-sayings-strip {
-          margin-top: 12px;
-          border: 2px solid #0f1320;
-          background: #03050d;
-          min-height: 38px;
+          margin-top: 16px;
+          border: 1px solid rgba(0,255,255,0.2);
+          border-top: 2px solid rgba(0,255,255,0.5);
+          background: rgba(0,10,15,0.8);
+          backdrop-filter: blur(12px);
+          min-height: 48px;
           display: flex;
           align-items: center;
           justify-content: center;
-          box-shadow: 0 16px 30px rgba(0, 0, 0, 0.48), -1px -1px 0 rgba(5, 5, 10, 1);
+          box-shadow: inset 0 0 20px rgba(0,0,0,0.9), 0 0 30px rgba(0,255,255,0.1);
+          position: relative;
           overflow: hidden;
+          border-radius: 8px;
+        }
+        .tmi-sayings-strip::before {
+          content: ''; position: absolute; inset: 0; pointer-events: none;
+          background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,255,255,0.05) 2px, rgba(0,255,255,0.05) 4px);
         }
 
         .tmi-sayings-strip p {
           margin: 0;
-          color: #00e7ff;
+          color: #00ffff;
           font-family: 'Inter', sans-serif;
-          font-size: 11px;
+          font-size: 13px;
           text-transform: uppercase;
-          letter-spacing: 0.12em;
+          letter-spacing: 0.16em;
           font-weight: 900;
-          animation: tmiSlideIn 0.28s ease;
+          text-shadow: 0 0 12px rgba(0,255,255,0.8);
+          animation: tmiAlertGlitch 3s infinite;
         }
 
-        .tmi-sayings-strip p::after {
-          content: '|';
-          margin-left: 3px;
-          animation: tmiBlink 0.8s linear infinite;
+        @keyframes tmiAlertGlitch {
+          0%, 96%, 100% { opacity: 1; transform: translateX(0); }
+          97% { opacity: 0.8; transform: translateX(-2px); }
+          98% { opacity: 0.9; transform: translateX(2px); }
+          99% { opacity: 0.5; transform: translateX(-1px); }
         }
 
         .tmi-orbit-section {
-          margin-top: 14px;
-          border: 2px solid #101727;
-          background: #0f1f33;
-          box-shadow: 0 24px 40px rgba(0, 0, 0, 0.56), -1px -1px 0 rgba(6, 6, 12, 0.95);
+          margin-top: 16px;
+          border: 1px solid rgba(255,215,0,0.15);
+          border-top: 1px solid rgba(255,215,0,0.4);
+          background: rgba(5,5,10,0.6);
+          backdrop-filter: blur(30px);
+          box-shadow: inset 0 0 80px rgba(0,0,0,0.9), 0 10px 40px rgba(0,0,0,0.5);
+          border-radius: 16px;
           padding: 16px;
           position: relative;
           overflow: hidden;
         }
 
-        .tmi-orbit-section::before {
-          content: '';
-          position: absolute;
-          inset: -8%;
-          pointer-events: none;
-          z-index: 0;
-          background:
-            linear-gradient(122deg, rgba(255, 215, 0, 0.24) 0%, rgba(255, 215, 0, 0) 44%),
-            linear-gradient(302deg, rgba(255, 45, 170, 0.18) 0%, rgba(255, 45, 170, 0) 52%);
+        .tmi-orbit-section::after {
+          content: ''; position: absolute; inset: 0; pointer-events: none;
+          background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.04) 2px, rgba(0,0,0,0.04) 4px);
         }
 
         .tmi-orbit-section h2 {
@@ -788,8 +842,9 @@ export default function Home1CoverPage() {
           position: absolute;
           inset: 11%;
           border-radius: 50%;
-          border: 2px solid rgba(0, 255, 255, 0.45);
-          box-shadow: 0 0 0 2px rgba(12, 16, 28, 0.95), 0 0 28px rgba(0, 255, 255, 0.32);
+          border: 2px solid rgba(255, 215, 0, 0.15);
+          box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.8), 0 0 40px rgba(255, 215, 0, 0.08);
+          background: rgba(0, 0, 0, 0.4);
         }
 
         .tmi-orbit-center,
@@ -801,9 +856,11 @@ export default function Home1CoverPage() {
           width: clamp(150px, 21vw, 230px);
           height: clamp(150px, 21vw, 230px);
           border-radius: 50%;
-          background: radial-gradient(circle at 30% 30%, #2bffd2 0%, #10b796 68%);
-          border: 3px solid #0a1118;
-          box-shadow: 0 22px 38px rgba(0, 0, 0, 0.56), -1px -1px 0 rgba(8, 8, 14, 1);
+          background: radial-gradient(circle at 30% 30%, rgba(43, 255, 210, 0.3) 0%, rgba(16, 183, 150, 0.1) 68%, rgba(0,0,0,0.8) 100%);
+          backdrop-filter: blur(12px);
+          border: 1px solid rgba(43, 255, 210, 0.4);
+          border-top: 2px solid rgba(43, 255, 210, 0.8);
+          box-shadow: inset 0 0 30px rgba(0,0,0,0.9), 0 22px 38px rgba(0, 0, 0, 0.56);
           display: grid;
           place-items: center;
           text-align: center;
@@ -813,20 +870,22 @@ export default function Home1CoverPage() {
 
         .tmi-orbit-center strong {
           display: block;
-          color: #052015;
+          color: #00FF88;
           text-transform: uppercase;
           font-size: 21px;
           line-height: 1;
+          text-shadow: 0 0 10px rgba(0,255,136,0.6);
         }
 
         .tmi-orbit-center small {
           display: block;
-          margin-top: 3px;
-          color: #082f25;
+          margin-top: 4px;
+          color: rgba(255,255,255,0.6);
           font-family: 'Inter', sans-serif;
-          font-size: 11px;
+          font-size: 10px;
           font-weight: 800;
           text-transform: uppercase;
+          letter-spacing: 0.1em;
         }
 
         .tmi-orbit-node {
@@ -902,24 +961,21 @@ export default function Home1CoverPage() {
         }
 
         .tmi-home1-second-section {
-          margin-top: 14px;
-          border: 2px solid #11192b;
-          background: #1a2439;
+          margin-top: 16px;
+          border: 1px solid rgba(255,255,255,0.08);
+          border-top: 1px solid rgba(255,255,255,0.15);
+          background: rgba(5,5,12,0.4);
+          backdrop-filter: blur(24px);
+          box-shadow: inset 0 0 60px rgba(0,0,0,0.8), 0 10px 40px rgba(0,0,0,0.5);
+          border-radius: 16px;
           padding: 16px;
-          box-shadow: 0 24px 40px rgba(0, 0, 0, 0.56), -1px -1px 0 rgba(6, 6, 12, 0.95);
           position: relative;
           overflow: hidden;
         }
 
-        .tmi-home1-second-section::before {
-          content: '';
-          position: absolute;
-          inset: -4%;
-          pointer-events: none;
-          z-index: 0;
-          background:
-            linear-gradient(132deg, rgba(255, 215, 0, 0.22) 0%, rgba(255, 215, 0, 0) 45%),
-            linear-gradient(312deg, rgba(255, 45, 170, 0.2) 0%, rgba(255, 45, 170, 0) 56%);
+        .tmi-home1-second-section::after {
+          content: ''; position: absolute; inset: 0; pointer-events: none;
+          background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.04) 2px, rgba(0,0,0,0.04) 4px);
         }
 
         .tmi-home1-second-section h3 {
@@ -971,11 +1027,20 @@ export default function Home1CoverPage() {
         }
 
         .tmi-panel {
-          border: 1px solid rgba(255, 255, 255, 0.18);
-          background: rgba(8, 10, 20, 0.86);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          background: rgba(5, 5, 12, 0.5);
+          backdrop-filter: blur(20px);
+          box-shadow: inset 0 0 40px rgba(0,0,0,0.8), 0 10px 30px rgba(0,0,0,0.5);
+          border-top: 1px solid rgba(255,255,255,0.15);
           min-height: 160px;
-          box-shadow: 0 16px 30px rgba(0, 0, 0, 0.45), -1px -1px 0 rgba(5, 5, 10, 0.95);
           padding: 10px;
+          border-radius: 12px;
+          position: relative;
+          overflow: hidden;
+        }
+        .tmi-panel::after {
+          content: ''; position: absolute; inset: 0; pointer-events: none;
+          background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
         }
 
         .tmi-panel img,
@@ -1043,6 +1108,13 @@ export default function Home1CoverPage() {
           font-weight: 800;
         }
 
+        .tmi-ad-rail-grid {
+          margin-top: 14px;
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 10px;
+        }
+
         @keyframes tmiMastheadPulse {
           0%, 100% { filter: saturate(1); }
           50% { filter: saturate(1.12); }
@@ -1064,16 +1136,24 @@ export default function Home1CoverPage() {
         }
 
         .tmi-broadcast-strip {
-          margin-top: 12px;
-          border: 2px solid #0f1320;
-          background: #03050d;
+          margin-top: 16px;
+          border: 1px solid rgba(255,45,170,0.2);
+          border-top: 2px solid rgba(255,45,170,0.5);
+          background: rgba(10,0,10,0.8);
+          backdrop-filter: blur(12px);
           display: flex;
           align-items: center;
           justify-content: space-between;
           gap: 10px;
           padding: 10px 16px;
-          box-shadow: 0 16px 30px rgba(0, 0, 0, 0.48), -1px -1px 0 rgba(5, 5, 10, 1);
+          box-shadow: inset 0 0 30px rgba(0,0,0,0.9), 0 0 20px rgba(255,45,170,0.15);
           overflow: hidden;
+          border-radius: 8px;
+          position: relative;
+        }
+        .tmi-broadcast-strip::before {
+          content: ''; position: absolute; inset: 0; pointer-events: none;
+          background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,45,170,0.05) 2px, rgba(255,45,170,0.05) 4px);
         }
 
         .tmi-broadcast-deck-label {
@@ -1138,6 +1218,10 @@ export default function Home1CoverPage() {
           .tmi-home1-second-grid {
             grid-template-columns: 1fr;
           }
+
+          .tmi-ad-rail-grid {
+            grid-template-columns: 1fr;
+          }
         }
       `}</style>
 
@@ -1170,17 +1254,22 @@ export default function Home1CoverPage() {
         <div style={{ display: 'flex', justifyContent: 'center', margin: '12px 0 10px', gap: 10, flexWrap: 'wrap' }}>
           <Link
             href="/live/lobby"
+            className="tmi-glass-panel"
             style={{
-              display: 'inline-flex', alignItems: 'center', gap: 8,
-              padding: '14px 36px',
-              background: 'linear-gradient(135deg, #00C8FF, #AA2DFF)',
-              color: '#050510',
-              fontFamily: "'Bebas Neue','Impact',sans-serif",
-              fontSize: 'clamp(16px,2.5vw,22px)',
-              letterSpacing: '0.1em',
+              display: 'inline-flex', alignItems: 'center', gap: 12,
+              padding: '16px 40px',
+              background: 'linear-gradient(180deg, rgba(0,255,255,0.15) 0%, rgba(170,45,255,0.1) 100%)',
+              border: '1px solid rgba(0,255,255,0.4)',
+              borderTop: '2px solid rgba(0,255,255,0.8)',
+              borderRadius: 12,
+              color: '#fff',
+              fontFamily: "'Inter', sans-serif",
+              fontSize: 'clamp(14px, 2vw, 18px)',
+              letterSpacing: '0.2em',
               textDecoration: 'none',
               fontWeight: 900,
-              boxShadow: '0 0 24px rgba(0,200,255,0.35)',
+              boxShadow: '0 0 30px rgba(0,255,255,0.2), inset 0 0 20px rgba(0,0,0,0.8)',
+              textTransform: 'uppercase',
             }}
           >
             <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#FF2020', display: 'inline-block', boxShadow: '0 0 8px #FF2020', animation: 'tmiBlink 1.1s step-end infinite' }} />
@@ -1194,7 +1283,17 @@ export default function Home1CoverPage() {
         <div className="tmi-primary-cta-row">
           <Link className="broadcast" href="/live/lobby">🎥 GO PUBLIC NOW</Link>
           <Link className="arena" href="/live/lobby">ENTER LIVE ARENA</Link>
-          <Link className="login" href="/auth/signin">Login</Link>
+          {isAuthenticated ? (
+            <>
+              <Link className="login" href="/account">My Account</Link>
+              <Link className="login" href="/api/auth/logout">Logout</Link>
+            </>
+          ) : (
+            <>
+              <Link className="login" href="/auth/signin">Login</Link>
+              <Link className="login" href="/auth/signup">Sign Up</Link>
+            </>
+          )}
           <Link className="challenge" href="/battles/new">Challenge Song</Link>
           <Link className="advertise" href="/hub/advertiser">🚀 ADVERTISE HERE</Link>
           <Link className="magazine" href="/magazine">Magazine</Link>
@@ -1362,7 +1461,7 @@ export default function Home1CoverPage() {
                 : { title: "Cypher Arena", subtitle: "Drop bars · Earn your crown", href: '/cypher/stage', accent: '#00C8FF', emoji: '🎤', viewers: 31, isLive: true, cta: 'ENTER CYPHER' },
             ];
             return tiles.map((tile) => (
-              <div key={tile.href} style={{ border: `1.5px solid ${tile.accent}33`, background: `linear-gradient(145deg, ${tile.accent}12, rgba(5,5,16,0.92))`, padding: 12, boxShadow: `0 0 18px ${tile.accent}18` }}>
+              <div key={tile.href} className="tmi-glass-panel tmi-crt-screen" style={{ border: `1px solid ${tile.accent}40`, borderTop: `2px solid ${tile.accent}80`, padding: 16, borderRadius: 16, boxShadow: `0 0 20px ${tile.accent}20` }}>
                 <Link href={tile.href} style={{ textDecoration: 'none', display: 'grid', placeItems: 'center', marginBottom: 8 }}>
                   <MaskedVideoTile
                     shape="octagon"
@@ -1445,6 +1544,21 @@ export default function Home1CoverPage() {
               );
             })()}
           </div>
+        </section>
+
+        <section className="tmi-ad-rail-grid" aria-label="Monetization rails">
+          <AdRailSlot
+            slotId="home1-lower-lobby-rail"
+            hasSponsor={false}
+            hasAdvertiser={false}
+            title="Lower Lobby Rail"
+          />
+          <AdRailSlot
+            slotId="home1-discovery-sidebar"
+            hasSponsor={false}
+            hasAdvertiser={false}
+            title="Discovery Sidebar"
+          />
         </section>
 
         <footer className="tmi-home1-footer">
