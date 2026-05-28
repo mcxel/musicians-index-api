@@ -16,10 +16,7 @@ import {
   setHomepageRuntimeOverrides,
 } from '@/lib/homepageAdmin/runtimeOverrides';
 import HomeDraggableBelts from './HomeDraggableBelts';
-import CardCanvas from '@/components/home/pdf/CardCanvas';
 import MotionWrapper from '@/components/home/pdf/MotionWrapper';
-import StatusRibbon from '@/components/home/pdf/StatusRibbon';
-import JuliusPanel from '@/components/home/pdf/JuliusPanel';
 import type { HomeSurfaceDefinition, HomeSurfaceId } from './types';
 import type {
   HomepageAdminSettings,
@@ -51,14 +48,28 @@ export default function HomeSurfacePage({ surfaceId }: Readonly<{ surfaceId: Hom
     async function loadRuntimeConfig() {
       const baseSurface = getHomeSurface(surfaceId);
       try {
+        const meRes = await fetch('/api/auth/me', { cache: 'no-store', credentials: 'include' });
+        const meData = meRes.ok
+          ? (await meRes.json().catch(() => ({}))) as { authenticated?: boolean; user?: { role?: string } }
+          : { authenticated: false };
+        const role = (meData?.user?.role ?? '').toUpperCase();
+        const isAdminViewer = Boolean(meData?.authenticated) && (role === 'ADMIN' || role === 'STAFF');
+
+        if (!isAdminViewer) {
+          if (!cancelled) {
+            setSurface(baseSurface);
+          }
+          return;
+        }
+
         const [beltsRes, settingsRes, scheduleRes] = await Promise.all([
           fetch('/api/admin/homepage/belts', { cache: 'no-store' }),
           fetch('/api/admin/homepage/settings', { cache: 'no-store' }),
           fetch('/api/admin/homepage/schedule', { cache: 'no-store' }),
         ]);
 
-        // Non-admin visitors get 401 — nothing to apply, avoid a re-render
-        if (beltsRes.status === 401) return;
+        // Non-admin/stale sessions can still fail here, keep base surface.
+        if (beltsRes.status === 401 || beltsRes.status === 403) return;
 
         const beltConfig = beltsRes.ok
           ? ((await beltsRes.json()) as HomepageBeltConfig[])
@@ -138,7 +149,7 @@ export default function HomeSurfacePage({ surfaceId }: Readonly<{ surfaceId: Hom
     );
   }
 
-  // Surfaces 2-5: no PageShell — let content scroll naturally on mobile
+  // Surfaces 2-5: full-bleed cinematic — no card borders, no grid, no dev labels
   return (
     <HUDFrame>
       <HomeNavigator />
@@ -149,26 +160,15 @@ export default function HomeSurfacePage({ surfaceId }: Readonly<{ surfaceId: Hom
         style={{
           minHeight: '100vh',
           background: surface.background,
-          padding: '12px 24px 24px',
         }}
       >
         <MotionWrapper>
-          <div style={{ marginBottom: 12 }}>
-            <StatusRibbon label={`Home ${surface.id} • ${surface.sceneId}`} live={surface.id === 3} />
-          </div>
-        </MotionWrapper>
-        <CardCanvas showGrid>
           <HomeDraggableBelts
             surfaceId={surface.id}
             belts={surface.belts}
             layoutOrder={surface.layoutOrder}
           />
-          {surface.id === 5 ? (
-            <div style={{ marginTop: 14 }}>
-              <JuliusPanel />
-            </div>
-          ) : null}
-        </CardCanvas>
+        </MotionWrapper>
         <div style={{ paddingTop: 20 }}>
           <BotConsole surface={`home${surfaceId}`} />
         </div>

@@ -26,6 +26,7 @@ import Home4SponsorSurface from '@/components/home/Home4SponsorSurface';
 import Home5BattleCypherSurface from '@/components/home/Home5BattleCypherSurface';
 import Home1CoverPage from '@/components/home/Home1CoverPage';
 import BillboardLiveWall from '@/components/media/BillboardLiveWall';
+import Home1CinematicLightingPass from '@/components/home/Home1CinematicLightingPass';
 
 // ─── Scene atmosphere constants ───────────────────────────────────────────────
 
@@ -90,7 +91,18 @@ export const MAGAZINE_FULL_ROTATION_SCENES = [
   {
     id: 'home-1' as const,
     durationMs: 60000,
-    content: <Home1CoverPage />,
+    content: (
+      <main
+        role="main"
+        tabIndex={-1}
+        data-telemetry="home.1.render"
+        className="tmi-home1-cinematic-lock"
+        style={{ position: 'relative', minHeight: '100%', overflowX: 'hidden', overflowY: 'auto' }}
+      >
+        <Home1CoverPage />
+        <Home1CinematicLightingPass />
+      </main>
+    ),
   },
   {
     id: 'home-1-2' as const,
@@ -112,11 +124,11 @@ export const MAGAZINE_FULL_ROTATION_SCENES = [
         </div>
         <div style={{ position: 'relative', zIndex: 10 }}>
           <BillboardColumnPulse />
-          <div style={{ background: '#fff', borderTop: '3px solid #050310', borderBottom: '3px solid #050310', padding: '20px 20px 28px', maxWidth: 1100, margin: '0 auto' }}>
+          <div style={{ background: 'rgba(5,5,16,0.88)', borderTop: '2px solid rgba(255,0,68,0.6)', borderBottom: '2px solid rgba(0,200,255,0.25)', padding: '20px 20px 28px', maxWidth: 1100, margin: '0 auto', backdropFilter: 'blur(8px)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-              <div style={{ width: 6, height: 24, background: '#FF0044' }} />
-              <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: '0.3em', color: '#050310', fontFamily: 'Inter,sans-serif' }}>🔴 LIVE NOW — PERFORMING TONIGHT</div>
-              <div style={{ flex: 1, height: 2, background: '#050310' }} />
+              <div style={{ width: 6, height: 24, background: '#FF0044', boxShadow: '0 0 12px rgba(255,0,68,0.7)' }} />
+              <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: '0.3em', color: '#fff', fontFamily: 'Inter,sans-serif' }}>🔴 LIVE NOW — PERFORMING TONIGHT</div>
+              <div style={{ flex: 1, height: 1, background: 'linear-gradient(90deg, rgba(255,45,170,0.6), transparent)' }} />
             </div>
             <BillboardLiveWall mode="home" maxTiles={12} title="LIVE NOW" />
           </div>

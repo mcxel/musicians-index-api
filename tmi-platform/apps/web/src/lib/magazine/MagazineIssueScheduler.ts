@@ -30,18 +30,26 @@ export interface IssueSchedule {
 export type MonthName = "Jan" | "Feb" | "Mar" | "Apr" | "May" | "Jun" | "Jul" | "Aug" | "Sep" | "Oct" | "Nov" | "Dec";
 
 const MONTH_THEMES: Record<MonthName, string> = {
-  Jan: "New Year, New Sound",
-  Feb: "Love & Music",
-  Mar: "Spring Showcase",
-  Apr: "Rising Stars",
-  May: "Festival Season",
-  Jun: "Summer Vibes",
-  Jul: "Independence Beats",
-  Aug: "Back to the Stage",
-  Sep: "Fall Freshness",
-  Oct: "Haunted Frequencies",
-  Nov: "Gratitude Sessions",
-  Dec: "Year in Review",
+  Jan: "Winter Edition",
+  Feb: "Winter Edition",
+  Mar: "Winter Edition",
+  Apr: "Spring Edition",
+  May: "Spring Edition",
+  Jun: "Spring Edition",
+  Jul: "Summer Edition",
+  Aug: "Summer Edition",
+  Sep: "Summer Edition",
+  Oct: "Fall Edition",
+  Nov: "Fall Edition",
+  Dec: "Fall Edition",
+};
+
+// Each issue covers one quarter (3 months)
+const QUARTER_NAMES: Record<number, string> = {
+  0: "Winter", 1: "Winter", 2: "Winter",
+  3: "Spring", 4: "Spring", 5: "Spring",
+  6: "Summer", 7: "Summer", 8: "Summer",
+  9: "Fall",   10: "Fall",  11: "Fall",
 };
 
 const MONTHS: MonthName[] = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -83,7 +91,7 @@ export class MagazineIssueScheduler {
       theme: options.theme ?? "Monthly Spotlight",
       status: publishAt <= Date.now() ? "live" : "scheduled",
       publishAt,
-      archiveAt: publishAt + (options.archiveDays ?? 32) * 86_400_000,
+      archiveAt: publishAt + (options.archiveDays ?? 91) * 86_400_000,
       articleIds: options.articleIds ?? [],
       coverArtistId: options.coverArtistId,
       editorialNote: options.editorialNote,
@@ -94,26 +102,36 @@ export class MagazineIssueScheduler {
     return issue;
   }
 
+  /** @deprecated Use generateQuarterlyIssues — each TMI issue runs 3 months */
   generateMonthlyIssues(startYear: number, startMonth: number, count: number): MagazineIssue[] {
-    const issues: MagazineIssue[] = [];
+    return this.generateQuarterlyIssues(startYear, startMonth, count);
+  }
+
+  /** Each issue lasts one quarter (3 months / 91 days). */
+  generateQuarterlyIssues(startYear: number, startMonth: number, count: number): MagazineIssue[] {
+    const result: MagazineIssue[] = [];
     let year = startYear;
     let month = startMonth; // 0-indexed
 
     for (let i = 0; i < count; i++) {
       const publishDate = new Date(year, month, 1, 9, 0, 0);
-      const monthName = MONTHS[month];
-      const issueNumber = (year - 2024) * 12 + month + 1;
+      const seasonName = QUARTER_NAMES[month] ?? 'Seasonal';
+      const issueNumber = i + 1;
       const issue = this.createIssue(
         issueNumber,
-        `TMI Magazine — ${monthName} ${year}`,
+        `TMI Magazine — ${seasonName} ${year}`,
         publishDate.getTime(),
-        { theme: MONTH_THEMES[monthName] },
+        {
+          theme: MONTH_THEMES[MONTHS[month] as MonthName] ?? `${seasonName} Edition`,
+          archiveDays: 91,
+        },
       );
-      issues.push(issue);
-      month++;
-      if (month > 11) { month = 0; year++; }
+      result.push(issue);
+      // Advance 3 months per issue
+      month += 3;
+      if (month > 11) { month = month - 12; year++; }
     }
-    return issues;
+    return result;
   }
 
   // ── Schedule transitions ───────────────────────────────────────────────────

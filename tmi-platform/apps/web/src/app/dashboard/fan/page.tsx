@@ -7,6 +7,7 @@ import { motion } from 'framer-motion';
 import { getRoleStats, type DashboardStat } from '@/lib/stats/DashboardStatsEngine';
 import LiveMediaWall from '@/components/media/LiveMediaWall';
 import VideoCurtainReveal from '@/components/media/VideoCurtainReveal';
+import AdSenseSlot, { AD_SLOTS } from '@/components/ads/AdSenseSlot';
 
 interface MeUser { id: string; email: string; name?: string; role: string; tier?: string; fanPoints?: number; }
 
@@ -150,8 +151,16 @@ export default function FanDashboardPage() {
           </div>
         </div>
 
+        {/* Ad slot — sponsor/advertiser fallback */}
+        <AdSenseSlot
+          slot={AD_SLOTS.dashboardSidebar}
+          format="horizontal"
+          label="ADVERTISEMENT"
+          style={{ marginBottom: 28 }}
+        />
+
         {/* Live Routes + Platform rail */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 32 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 20, marginBottom: 32 }}>
           <div style={{ background: 'rgba(255,45,170,0.05)', border: '1px solid rgba(255,45,170,0.15)', borderRadius: 14, padding: '20px' }}>
             <div style={{ fontSize: 9, letterSpacing: '0.35em', color: '#FF2DAA', fontWeight: 800, marginBottom: 14 }}>LIVE VIDEO ROUTES</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 7 }}>
@@ -186,7 +195,7 @@ export default function FanDashboardPage() {
             <div style={{ fontSize: 11, fontWeight: 800, color: '#FF9500' }}>⭐ INVITE & EARN — 2× LAUNCH BONUS ACTIVE</div>
             <Link href="/account/referrals" style={{ fontSize: 11, color: '#FF9500', border: '1px solid rgba(255,149,0,0.3)', padding: '6px 14px', borderRadius: 6, textDecoration: 'none', fontWeight: 800 }}>VIEW INVITE LINK</Link>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 6 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))', gap: 6 }}>
             {TIER_TABLE.map((t) => (
               <div key={t.tier} style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${t.color}30`, borderRadius: 8, padding: '10px 8px', textAlign: 'center' }}>
                 <div style={{ fontSize: 10, fontWeight: 800, color: t.color, marginBottom: 4 }}>{t.tier}</div>
