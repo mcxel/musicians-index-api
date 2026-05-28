@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { SPONSOR_PLACEMENTS } from '@/lib/editorial/SponsorPlacementModel';
 import { getLatestEditorialArticles } from '@/lib/editorial/NewsArticleModel';
-import { SEED_FEEDS } from '@/lib/broadcast/BroadcastRotationEngine';
+import { SEED_FEEDS } from '@/lib/broadcast/BroadcastSeedFeeds';
 
 // ─── Sponsor page registry ────────────────────────────────────────────────────
 // A sponsor buys a full-page takeover. This registry maps slugs to their page config.

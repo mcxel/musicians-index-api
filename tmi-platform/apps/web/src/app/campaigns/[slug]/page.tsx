@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { SEED_FEEDS } from '@/lib/broadcast/BroadcastRotationEngine';
+import { SEED_FEEDS } from '@/lib/broadcast/BroadcastSeedFeeds';
 import { getLatestEditorialArticles } from '@/lib/editorial/NewsArticleModel';
 
 // ─── Campaign registry ────────────────────────────────────────────────────────
