@@ -108,9 +108,9 @@ export function listMagazineArticlesByCategory(category: string): MagazineArticl
 }
 
 export function resolveMagazineArticleRoute(slug: string, category?: string): string {
-  if (category === "news") return `/articles/news/${slug}`;
-  if (category === "artist") return `/articles/artist/${slug}`;
-  if (category === "performer") return `/articles/performer/${slug}`;
-  if (category === "sponsor") return `/articles/sponsor/${slug}`;
+  if (category === "news")      return `/magazine/news/${slug}`;
+  if (category === "artist")    return `/magazine/artist/${slug}`;
+  if (category === "performer") return `/magazine/article/${slug}`;
+  if (category === "sponsor")   return `/magazine/article/${slug}`;
   return `/magazine/article/${slug}`;
 }

@@ -1,50 +1,72 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import MaskedVideoTile from "@/components/media/MaskedVideoTile";
-import { Mic, Flame, Disc, Crown, VenetianMask, Laugh } from 'lucide-react';
+import HighFidelityAvatar from "@/components/avatar/HighFidelityAvatar";
 
-const ICON_MAP = {
-  "🎤": Mic,
-  "🔥": Flame,
-  "🎛️": Disc,
-  "👑": Crown,
-  "💃": VenetianMask, // No direct 'dance' icon, using a thematic one
-  "😂": Laugh,
-};
+interface LiveEntry {
+  userId: string;
+  displayName: string;
+  genre: string;
+  avatarUrl?: string;
+  startedAt: number;
+  viewerCount: number;
+  roomId?: string;
+}
+
+type PerformerIconId = "🎤" | "🔥" | "🎛️" | "👑" | "💃" | "😂";
 
 interface PerformerTile {
   id: string;
   name: string;
   slug: string;
+  avatarUrl?: string;
   genre: string;
   category: string;
   lookingToCollab: boolean;
   viewers: number;
   accentColor: string;
   roomId: string;
-  iconId: keyof typeof ICON_MAP;
+  iconId: PerformerIconId;
 }
 
 const SEED_PERFORMERS: PerformerTile[] = [
-  { id: "p1", name: "Astra Nova",   slug: "astra-nova", iconId: "🎤", genre: "R&B",       category: "Singer",       lookingToCollab: true,  viewers: 847,  accentColor: "#FF2DAA", roomId: "room-astra-nova" },
-  { id: "p2", name: "Lagos Burst",  slug: "lagos-burst", iconId: "🔥", genre: "Afrobeat",  category: "Performer",    lookingToCollab: false, viewers: 563,  accentColor: "#FF6B35", roomId: "room-lagos-burst" },
-  { id: "p3", name: "Prism Vex",    slug: "prism-vex", iconId: "🎛️", genre: "EDM",       category: "DJ/Producer",  lookingToCollab: true,  viewers: 701,  accentColor: "#00FFFF", roomId: "room-prism-vex" },
-  { id: "p4", name: "Zion Freq",    slug: "zion-freq", iconId: "👑", genre: "Gospel",    category: "Singer",       lookingToCollab: true,  viewers: 1204, accentColor: "#FFD700", roomId: "room-zion-freq" },
-  { id: "p5", name: "Flex King",    slug: "flex-king", iconId: "💃", genre: "Dance",     category: "Dancer",       lookingToCollab: false, viewers: 389,  accentColor: "#AA2DFF", roomId: "room-flex-king" },
-  { id: "p6", name: "Nova Laugh",   slug: "nova-laugh", iconId: "😂", genre: "Comedy",    category: "Comedian",     lookingToCollab: true,  viewers: 512,  accentColor: "#39FF14", roomId: "room-nova-laugh" },
+  { id: "p1", name: "Astra Nova",   slug: "astra-nova", avatarUrl: "/tmi-curated/mag-22.jpg", iconId: "🎤", genre: "R&B",       category: "Singer",       lookingToCollab: true,  viewers: 847,  accentColor: "#FF2DAA", roomId: "room-astra-nova" },
+  { id: "p2", name: "Lagos Burst",  slug: "lagos-burst", avatarUrl: "/tmi-curated/mag-27.jpg", iconId: "🔥", genre: "Afrobeat",  category: "Performer",    lookingToCollab: false, viewers: 563,  accentColor: "#FF6B35", roomId: "room-lagos-burst" },
+  { id: "p3", name: "Prism Vex",    slug: "prism-vex", avatarUrl: "/tmi-curated/mag-31.jpg", iconId: "🎛️", genre: "EDM",       category: "DJ/Producer",  lookingToCollab: true,  viewers: 701,  accentColor: "#00FFFF", roomId: "room-prism-vex" },
+  { id: "p4", name: "Zion Freq",    slug: "zion-freq", avatarUrl: "/tmi-curated/mag-53.jpg", iconId: "👑", genre: "Gospel",    category: "Singer",       lookingToCollab: true,  viewers: 1204, accentColor: "#FFD700", roomId: "room-zion-freq" },
+  { id: "p5", name: "Flex King",    slug: "flex-king", avatarUrl: "/tmi-curated/mag-42.jpg", iconId: "💃", genre: "Dance",     category: "Dancer",       lookingToCollab: false, viewers: 389,  accentColor: "#AA2DFF", roomId: "room-flex-king" },
+  { id: "p6", name: "Nova Laugh",   slug: "nova-laugh", avatarUrl: "/tmi-curated/mag-58.jpg", iconId: "😂", genre: "Comedy",    category: "Comedian",     lookingToCollab: true,  viewers: 512,  accentColor: "#39FF14", roomId: "room-nova-laugh" },
 ];
 
 interface Props {
   compact?: boolean;
 }
 
+const ACCENT_POOL = ['#FF2DAA', '#00FFFF', '#FFD700', '#AA2DFF', '#FF6B35', '#00FF88'];
+
 export default function PerformerLobbyWall({ compact = false }: Props) {
   const router = useRouter();
-  const [connecting, setConnecting] = useState<Set<string>>(new Set());
-  const [accepted, setAccepted] = useState<Set<string>>(new Set());
+  const [connecting,  setConnecting]  = useState<Set<string>>(new Set());
+  const [accepted,    setAccepted]    = useState<Set<string>>(new Set());
+  const [joiningRoomId, setJoiningRoomId] = useState<string | null>(null);
+  const [liveUsers,   setLiveUsers]   = useState<LiveEntry[]>([]);
+
+  // Poll real live users from LiveRegistry every 10s
+  useEffect(() => {
+    async function fetchLive() {
+      try {
+        const res  = await fetch('/api/live/go');
+        const data = await res.json() as { live: LiveEntry[] };
+        if (Array.isArray(data.live)) setLiveUsers(data.live);
+      } catch { /* no-op */ }
+    }
+    fetchLive();
+    const t = setInterval(fetchLive, 10_000);
+    return () => clearInterval(t);
+  }, []);
 
   function connect(id: string) {
     setConnecting((prev) => new Set(prev).add(id));
@@ -60,17 +82,50 @@ export default function PerformerLobbyWall({ compact = false }: Props) {
 
   function acceptAndJoin(performer: PerformerTile) {
     setAccepted((prev) => new Set(prev).add(performer.id));
-    router.push(`/live/rooms/collab-${performer.slug}`);
+    setJoiningRoomId(performer.id);
+    router.push(`/live/rooms/collab-${performer.slug}?from=live-lobby`);
   }
 
-  const tiles = compact ? SEED_PERFORMERS.slice(0, 3) : SEED_PERFORMERS;
+  function joinRoom(performer: PerformerTile) {
+    setJoiningRoomId(performer.id);
+    router.push(`/live/rooms/${performer.roomId}?from=live-lobby`);
+  }
+
+  // Build real tiles from live users (deterministic accent color from userId hash)
+  const realTiles: PerformerTile[] = liveUsers.map((u, i) => ({
+    id: `live-${u.userId}`,
+    name: u.displayName,
+    slug: u.userId,
+    avatarUrl: u.avatarUrl,
+    genre: u.genre,
+    category: 'Performer',
+    lookingToCollab: false,
+    viewers: u.viewerCount,
+    accentColor: ACCENT_POOL[i % ACCENT_POOL.length] ?? '#FF2DAA',
+    roomId: u.roomId ?? `room-${u.userId}`,
+    iconId: '🎤',
+  }));
+
+  const seedTiles  = compact ? SEED_PERFORMERS.slice(0, 3) : SEED_PERFORMERS;
+  const mergedTiles = realTiles.length > 0
+    ? [...realTiles, ...seedTiles.slice(0, Math.max(0, 6 - realTiles.length))]
+    : seedTiles;
+  const tiles = compact ? mergedTiles.slice(0, 3) : mergedTiles;
   const cols = compact ? 3 : 3;
+  const totalOnline = realTiles.length > 0 ? realTiles.length : tiles.length;
 
   return (
     <div style={{ width: "100%" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-        <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.2em", color: "#FF2DAA" }}>
-          PERFORMER CONNECT · {tiles.length} ONLINE
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.2em", color: "#FF2DAA" }}>
+            PERFORMER CONNECT · {totalOnline} ONLINE
+          </div>
+          {realTiles.length > 0 && (
+            <span style={{ fontSize: 7, fontWeight: 900, background: "rgba(255,45,170,0.15)", border: "1px solid rgba(255,45,170,0.35)", color: "#FF2DAA", borderRadius: 4, padding: "2px 6px", letterSpacing: "0.1em" }}>
+              🔴 LIVE
+            </span>
+          )}
         </div>
         <Link href="/live/lobby/performers" style={{ fontSize: 8, color: "#FF2DAA", textDecoration: "none", letterSpacing: "0.1em" }}>
           VIEW ALL →
@@ -80,7 +135,6 @@ export default function PerformerLobbyWall({ compact = false }: Props) {
       <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 12 }}>
         {tiles.map((p) => {
           const sent = connecting.has(p.id);
-          const Icon = ICON_MAP[p.iconId] ?? Mic;
           return (
             <div
               key={p.id}
@@ -110,7 +164,8 @@ export default function PerformerLobbyWall({ compact = false }: Props) {
                   viewerCount={p.viewers}
                   genre={p.genre}
                   accentColor={p.accentColor}
-                  avatarIcon={<Icon size={compact ? 48 : 64} strokeWidth={1.5} />}
+                  avatarIcon={<HighFidelityAvatar imageUrl={p.avatarUrl} name={p.name} size={compact ? 58 : 72} tierColor={p.accentColor} />}
+                  role="performer"
                   size={compact ? 120 : 156}
                 />
               </div>
@@ -179,15 +234,19 @@ export default function PerformerLobbyWall({ compact = false }: Props) {
                     <Link href={`/performers/${p.slug}`} style={{ textAlign: "center", textDecoration: "none", padding: "6px 8px", borderRadius: 6, border: "1px solid rgba(255,255,255,0.24)", color: "#fff", fontSize: 8, fontWeight: 900, letterSpacing: "0.08em" }}>
                       VIEW PROFILE
                     </Link>
-                    <Link href={`/live/rooms/${p.roomId}`} style={{ textAlign: "center", textDecoration: "none", padding: "6px 8px", borderRadius: 6, border: "1px solid rgba(255,45,170,0.35)", color: "#FF2DAA", fontSize: 8, fontWeight: 900, letterSpacing: "0.08em" }}>
-                      JOIN ROOM
-                    </Link>
+                    <button
+                      onClick={() => joinRoom(p)}
+                      disabled={joiningRoomId !== null}
+                      style={{ textAlign: "center", textDecoration: "none", padding: "6px 8px", borderRadius: 6, border: "1px solid rgba(255,45,170,0.35)", color: "#FF2DAA", fontSize: 8, fontWeight: 900, letterSpacing: "0.08em", background: "transparent", cursor: joiningRoomId !== null ? "not-allowed" : "pointer", opacity: joiningRoomId !== null ? 0.65 : 1 }}
+                    >
+                      {joiningRoomId === p.id ? "JOINING..." : "JOIN ROOM"}
+                    </button>
                     {sent && !accepted.has(p.id) ? (
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4 }}>
-                        <button onClick={() => acceptAndJoin(p)} style={{ borderRadius: 6, border: "1px solid rgba(0,255,136,0.45)", background: "rgba(0,255,136,0.12)", color: "#00FF88", fontSize: 7, fontWeight: 900, letterSpacing: "0.08em", cursor: "pointer", padding: "6px 4px" }}>
+                        <button onClick={() => acceptAndJoin(p)} disabled={joiningRoomId !== null} style={{ borderRadius: 6, border: "1px solid rgba(0,255,136,0.45)", background: "rgba(0,255,136,0.12)", color: "#00FF88", fontSize: 7, fontWeight: 900, letterSpacing: "0.08em", cursor: joiningRoomId !== null ? "not-allowed" : "pointer", padding: "6px 4px", opacity: joiningRoomId !== null ? 0.65 : 1 }}>
                           ACCEPT
                         </button>
-                        <button onClick={() => decline(p.id)} style={{ borderRadius: 6, border: "1px solid rgba(255,107,107,0.45)", background: "rgba(255,107,107,0.12)", color: "#FF6B6B", fontSize: 7, fontWeight: 900, letterSpacing: "0.08em", cursor: "pointer", padding: "6px 4px" }}>
+                        <button onClick={() => decline(p.id)} disabled={joiningRoomId !== null} style={{ borderRadius: 6, border: "1px solid rgba(255,107,107,0.45)", background: "rgba(255,107,107,0.12)", color: "#FF6B6B", fontSize: 7, fontWeight: 900, letterSpacing: "0.08em", cursor: joiningRoomId !== null ? "not-allowed" : "pointer", padding: "6px 4px", opacity: joiningRoomId !== null ? 0.65 : 1 }}>
                           DECLINE
                         </button>
                       </div>
@@ -206,7 +265,7 @@ export default function PerformerLobbyWall({ compact = false }: Props) {
         {/* Go Live CTA slot */}
         {!compact && (
           <Link
-            href="/live/lobby"
+            href="/live/go"
             style={{
               borderRadius: 14,
               border: '1.5px dashed rgba(255,45,170,0.35)',

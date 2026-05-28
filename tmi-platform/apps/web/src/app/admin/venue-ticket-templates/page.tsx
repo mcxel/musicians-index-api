@@ -88,6 +88,30 @@ export default function AdminVenueTicketTemplatesPage() {
     setTimeout(() => setSaved(null), 1800);
   }
 
+  async function printTestTicket(t: Template) {
+    const section = t.sections[0] ?? "GA";
+    const res = await fetch("/api/tickets/print", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ticketId: `TMI-TEST-${t.id.toUpperCase()}-${Date.now().toString(36).toUpperCase()}`,
+        venueName: t.venue,
+        eventTitle: "TMI Test Event",
+        section,
+        row: "A",
+        seat: "1",
+        holderName: "Marcel Dickens",
+        qrCodeHash: `tmi-test-${t.id}-${Date.now()}`,
+        accentColor: t.color,
+        mode: "inline",
+      }),
+    });
+    if (!res.ok) { alert("Print API error"); return; }
+    const html = await res.text();
+    const win = window.open("", "_blank", "width=760,height=520");
+    if (win) { win.document.write(html); win.document.close(); win.focus(); win.print(); }
+  }
+
   const panelOpen = editing !== null || creating;
 
   return (
@@ -117,7 +141,15 @@ export default function AdminVenueTicketTemplatesPage() {
                   ))}
                 </div>
               </div>
-              <div style={{ fontSize: 9, color: "rgba(255,255,255,0.25)" }}>Last used: {t.lastUsed}</div>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 10 }}>
+                <div style={{ fontSize: 9, color: "rgba(255,255,255,0.25)" }}>Last used: {t.lastUsed}</div>
+                <button
+                  onClick={() => printTestTicket(t)}
+                  style={{ padding: "4px 10px", fontSize: 8, fontWeight: 800, color: "#FFD700", border: "1px solid rgba(255,215,0,0.3)", borderRadius: 5, background: "transparent", cursor: "pointer" }}
+                >
+                  🖨 PRINT TEST
+                </button>
+              </div>
             </div>
           ))}
         </div>

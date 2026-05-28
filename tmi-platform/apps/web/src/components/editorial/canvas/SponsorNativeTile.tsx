@@ -11,7 +11,7 @@ interface SponsorNativeTileProps {
 }
 
 export default function SponsorNativeTile({
-  brand, tagline, label = 'Presented by', accentColor = '#00FFFF', href = '#',
+  brand, tagline, label = 'Presented by', accentColor = '#00FFFF', href = '/sponsors',
 }: SponsorNativeTileProps) {
   const accent = accentColor;
 
@@ -29,7 +29,7 @@ export default function SponsorNativeTile({
           <div style={{ fontSize: 7, fontWeight: 700, letterSpacing: '0.22em', color: 'rgba(255,255,255,0.25)', textTransform: 'uppercase', marginBottom: 4 }}>
             {label}
           </div>
-          <div style={{ fontSize: 22, fontWeight: 900, color: accent, letterSpacing: '-0.02em', textShadow: `0 0 20px ${accent}50` }}>
+          <div style={{ fontSize: 22, fontWeight: 900, color: accent, letterSpacing: '-0.02em' }}>
             {brand}
           </div>
           <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 4 }}>{tagline}</div>

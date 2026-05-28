@@ -220,8 +220,8 @@ function BackCover() {
         <Link href="/magazine" style={{ fontSize: 9, fontWeight: 700, color: "#00FFFF", border: "1px solid rgba(0,255,255,0.3)", borderRadius: 6, padding: "7px 16px", textDecoration: "none" }}>
           ALL ISSUES
         </Link>
-        <Link href="/" style={{ fontSize: 9, fontWeight: 700, color: "#FF2DAA", border: "1px solid rgba(255,45,170,0.3)", borderRadius: 6, padding: "7px 16px", textDecoration: "none" }}>
-          TMI HOME
+        <Link href="/home/1" style={{ fontSize: 9, fontWeight: 700, color: "#FF2DAA", border: "1px solid rgba(255,45,170,0.3)", borderRadius: 6, padding: "7px 16px", textDecoration: "none" }}>
+          PLATFORM HOME
         </Link>
       </div>
     </div>

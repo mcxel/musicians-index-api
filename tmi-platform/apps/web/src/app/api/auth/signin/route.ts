@@ -11,7 +11,7 @@ const COOKIE_OPTS = {
   httpOnly: true,
   secure: process.env.NODE_ENV === 'production',
   sameSite: 'lax' as const,
-  maxAge: 12 * 60 * 60,
+  maxAge: 7 * 24 * 60 * 60,
   path: '/',
 };
 
@@ -68,6 +68,8 @@ export async function POST(req: NextRequest) {
       { status: 200 }
     );
 
+    response.cookies.delete('tmi_role');
+    response.cookies.delete('tmi_tier');
     response.cookies.set('tmi_session_id', sessionId, COOKIE_OPTS);
     response.cookies.set('tmi_session', sessionToken, COOKIE_OPTS);
     response.cookies.set('tmi_role', user.role, COOKIE_OPTS);
@@ -76,7 +78,7 @@ export async function POST(req: NextRequest) {
       httpOnly: false,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 12 * 60 * 60,
+      maxAge: 7 * 24 * 60 * 60,
       path: '/',
     });
 

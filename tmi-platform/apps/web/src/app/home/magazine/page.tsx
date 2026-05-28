@@ -1,26 +1,23 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 
 const MAGAZINE_PAGES = [
-  { id: 1, label: "Crown Cover",      route: "/home/1",       bg: "radial-gradient(circle at 25% 40%, rgba(0,255,255,0.12) 0%, transparent 55%), linear-gradient(170deg,#050510,#07081a)", accent: "#00FFFF" },
-  { id: 2, label: "Open Spread",      route: "/home/1-2",     bg: "radial-gradient(circle at 55% 25%, rgba(0,255,255,0.08) 0%, transparent 55%), radial-gradient(circle at 75% 70%, rgba(255,45,170,0.12) 0%, transparent 50%), linear-gradient(170deg,#050510,#0a0c22)", accent: "#36e4ff" },
-  { id: 3, label: "Dashboard Core",   route: "/home/2",       bg: "radial-gradient(circle at 75% 25%, rgba(255,45,170,0.12) 0%, transparent 55%), linear-gradient(170deg,#050510,#080515)", accent: "#FF2DAA" },
-  { id: 4, label: "Live World",       route: "/home/3",       bg: "radial-gradient(circle at 50% 0%, rgba(255,68,68,0.12) 0%, transparent 55%), linear-gradient(170deg,#050510,#120914)",  accent: "#FF4444" },
-  { id: 5, label: "Sponsor World",    route: "/home/4",       bg: "radial-gradient(circle at 80% 60%, rgba(255,215,0,0.12) 0%, transparent 55%), linear-gradient(170deg,#050510,#0b0a1b)",  accent: "#FFD700" },
-  { id: 6, label: "Charts & Store",   route: "/home/5",       bg: "radial-gradient(circle at 20% 80%, rgba(170,45,255,0.12) 0%, transparent 55%), linear-gradient(170deg,#050510,#07081a)", accent: "#AA2DFF" },
+  { id: 1, label: "Issue 1 — Crown Season",         route: "/magazine/1",                                          bg: "radial-gradient(circle at 25% 40%, rgba(255,45,170,0.14) 0%, transparent 55%), linear-gradient(170deg,#050510,#0a0515)", accent: "#FF2DAA", teaser: "The Musician's Index debut issue. Cover story, 10 features, interviews, and the platform's first editorial." },
+  { id: 2, label: "Wavetek's Rise",                  route: "/magazine/article/wavetek-rise-billboard",             bg: "radial-gradient(circle at 55% 25%, rgba(0,255,255,0.08) 0%, transparent 55%), radial-gradient(circle at 75% 70%, rgba(255,45,170,0.12) 0%, transparent 50%), linear-gradient(170deg,#050510,#0a0c22)", accent: "#00FFFF", teaser: "How the Houston rapper built a $2M streaming empire in 18 months — with zero label and zero promotion budget." },
+  { id: 3, label: "Neon Vibe Interview",             route: "/magazine/article/neon-vibe-monday-stage",             bg: "radial-gradient(circle at 75% 25%, rgba(255,45,170,0.12) 0%, transparent 55%), linear-gradient(170deg,#050510,#080515)", accent: "#FF2DAA", teaser: "Inside the Monday Stage residency that fans are calling 'The Neon Church.' A DJ/producer redefining live electronic music." },
+  { id: 4, label: "Zuri Bloom Feature",              route: "/magazine/article/zuri-bloom-afrobeats-future",        bg: "radial-gradient(circle at 50% 0%, rgba(0,255,136,0.12) 0%, transparent 55%), linear-gradient(170deg,#050510,#051209)", accent: "#00FF88",  teaser: "24 years old. Two continents. One sound. Zuri Bloom is bridging Lagos and Los Angeles one song at a time." },
+  { id: 5, label: "TMI Grand Contest Preview",       route: "/magazine/news/tmi-grand-contest-season-1",            bg: "radial-gradient(circle at 80% 60%, rgba(255,215,0,0.12) 0%, transparent 55%), linear-gradient(170deg,#050510,#0b0a1b)",  accent: "#FFD700", teaser: "Everything you need to know about Season 1. Categories, prize pools, and how the crown is earned." },
+  { id: 6, label: "Monday Cypher: Bars Born Here",  route: "/magazine/article/monday-cypher-bars-born",            bg: "radial-gradient(circle at 20% 80%, rgba(0,255,136,0.12) 0%, transparent 55%), linear-gradient(170deg,#050510,#050c07)", accent: "#00FF88",  teaser: "TMI's weekly freestyle session draws 15,000+ viewers. Three participants have since signed major deals." },
 ];
-
-const FLIP_INTERVAL = 6000;
 
 export default function MagazineFlipPage() {
   const router = useRouter();
   const [pageIndex, setPageIndex] = useState(0);
   const [direction, setDirection] = useState(1);
-  const [paused, setPaused] = useState(false);
 
   const goTo = useCallback((idx: number, dir: number) => {
     setDirection(dir);
@@ -34,12 +31,6 @@ export default function MagazineFlipPage() {
   const prev = useCallback(() => {
     goTo((pageIndex - 1 + MAGAZINE_PAGES.length) % MAGAZINE_PAGES.length, -1);
   }, [pageIndex, goTo]);
-
-  useEffect(() => {
-    if (paused) return;
-    const id = setTimeout(next, FLIP_INTERVAL);
-    return () => clearTimeout(id);
-  }, [paused, next]);
 
   const page = MAGAZINE_PAGES[pageIndex]!;
 
@@ -56,8 +47,6 @@ export default function MagazineFlipPage() {
         position: "relative",
         overflow: "hidden",
       }}
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}
     >
       {/* Masthead */}
       <div style={{ marginBottom: 20, textAlign: "center" }}>
@@ -65,7 +54,7 @@ export default function MagazineFlipPage() {
           THE MUSICIAN&apos;S INDEX
         </div>
         <div style={{ fontSize: 9, letterSpacing: "0.18em", opacity: 0.5, textTransform: "uppercase", marginTop: 3, fontFamily: "var(--font-tmi-rajdhani,'Rajdhani',sans-serif)" }}>
-          MAGAZINE PREVIEW · AUTO-FLIP
+          FLIP THROUGH · THEN ENTER THE MAGAZINE
         </div>
       </div>
 
@@ -104,12 +93,15 @@ export default function MagazineFlipPage() {
             {/* Page content preview */}
             <div>
               <div style={{ fontSize: 9, letterSpacing: "0.25em", color: page.accent, textTransform: "uppercase", fontFamily: "var(--font-tmi-orbitron,'Orbitron',monospace)", marginBottom: 10 }}>
-                PAGE {page.id} OF {MAGAZINE_PAGES.length} · {page.label}
+                {page.id === 1 ? "MAGAZINE" : "ARTICLE"} {page.id} OF {MAGAZINE_PAGES.length} · TMI ISSUE 1
               </div>
               <div style={{ fontSize: 32, fontWeight: 900, color: "#fff", letterSpacing: "0.04em", textTransform: "uppercase", fontFamily: "var(--font-tmi-bungee,'Bungee',sans-serif)", lineHeight: 1.1, textShadow: `0 0 30px ${page.accent}60` }}>
                 {page.label}
               </div>
               <div style={{ width: 40, height: 3, background: page.accent, marginTop: 12, borderRadius: 2 }} />
+              <div style={{ marginTop: 16, fontSize: 13, color: "rgba(255,255,255,0.5)", lineHeight: 1.6, maxWidth: 520 }}>
+                {page.teaser}
+              </div>
             </div>
 
             {/* Corner marks */}
@@ -121,7 +113,7 @@ export default function MagazineFlipPage() {
             {/* CTA */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
               <div style={{ fontSize: 9, opacity: 0.5, letterSpacing: "0.12em", textTransform: "uppercase" }}>
-                Hover to pause · Click page to enter
+                Use arrows to browse · Click to read
               </div>
               <Link
                 href={page.route}
@@ -143,7 +135,7 @@ export default function MagazineFlipPage() {
                   fontFamily: "var(--font-tmi-orbitron,'Orbitron',monospace)",
                 }}
               >
-                Enter →
+                {page.id === 1 ? "Open Magazine →" : "Read Article →"}
               </Link>
             </div>
           </motion.div>
@@ -187,30 +179,50 @@ export default function MagazineFlipPage() {
         </button>
       </div>
 
-      {/* Billboard Index entry */}
-      <Link
-        href="/magazine/billboards"
-        style={{
-          marginTop: 20,
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 8,
-          background: "rgba(0,255,255,0.06)",
-          border: "1px solid rgba(0,255,255,0.22)",
-          borderRadius: 8,
-          padding: "8px 18px",
-          fontSize: 9,
-          fontWeight: 800,
-          letterSpacing: "0.16em",
-          color: "#00FFFF",
-          textTransform: "uppercase",
-          textDecoration: "none",
-        }}
-      >
-        📊 Billboard Index — All Rankings
-      </Link>
+      {/* Footer nav */}
+      <div style={{ marginTop: 20, display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
+        <Link
+          href="/magazine/1"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 8,
+            background: "rgba(255,45,170,0.06)",
+            border: "1px solid rgba(255,45,170,0.25)",
+            borderRadius: 8,
+            padding: "8px 18px",
+            fontSize: 9,
+            fontWeight: 800,
+            letterSpacing: "0.16em",
+            color: "#FF2DAA",
+            textTransform: "uppercase",
+            textDecoration: "none",
+          }}
+        >
+          📖 Read Full Issue 1
+        </Link>
+        <Link
+          href="/magazine"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 8,
+            background: "rgba(0,255,255,0.06)",
+            border: "1px solid rgba(0,255,255,0.22)",
+            borderRadius: 8,
+            padding: "8px 18px",
+            fontSize: 9,
+            fontWeight: 800,
+            letterSpacing: "0.16em",
+            color: "#00FFFF",
+            textTransform: "uppercase",
+            textDecoration: "none",
+          }}
+        >
+          📰 All Articles
+        </Link>
+      </div>
 
-      {/* Exit */}
       <button
         type="button"
         onClick={() => router.push("/home/1")}
@@ -225,7 +237,7 @@ export default function MagazineFlipPage() {
           cursor: "pointer",
         }}
       >
-        ← Back to Home
+        ← Back to Platform Home
       </button>
     </div>
   );

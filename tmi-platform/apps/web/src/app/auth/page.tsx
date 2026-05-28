@@ -9,6 +9,7 @@ type SessionPayload = {
   authenticated: boolean;
   csrfToken: string | null;
   user: { id: string; email: string } | null;
+  role: string | null;
   expires: string | null;
 };
 
@@ -17,12 +18,14 @@ function toSessionPayload(data: unknown): SessionPayload {
     authenticated?: boolean;
     csrfToken?: string;
     user?: { id?: string; email?: string } | null;
+    role?: string;
     expires?: string | null;
   };
   return {
     authenticated: Boolean(d?.authenticated),
     csrfToken: d?.csrfToken || null,
     user: d?.user?.id && d?.user?.email ? { id: d.user.id, email: d.user.email } : null,
+    role: d?.role || null,
     expires: d?.expires || null,
   };
 }
@@ -36,9 +39,9 @@ function roleToHub(role?: string): string {
   if (r === "advertiser") return "/dashboard/advertiser";
   if (r === "venue")      return "/dashboard/venue";
   if (r === "writer")     return "/dashboard/writer";
-  if (r === "promoter")   return "/dashboard/promoter";
-  if (r === "fan")        return "/dashboard/fan";
-  return "/onboarding";
+  if (r === "promoter")   return "/dashboard/fan";
+  if (r === "fan" || r === "user") return "/dashboard/fan";
+  return "/dashboard/fan";
 }
 
 export default function AuthPage() {
@@ -53,7 +56,7 @@ export default function AuthPage() {
   const [busy, setBusy] = useState(false);
   const [inviteCode, setInviteCode] = useState<string>("");
   const [session, setSession] = useState<SessionPayload>({
-    authenticated: false, csrfToken: null, user: null, expires: null,
+    authenticated: false, csrfToken: null, user: null, role: null, expires: null,
   });
 
   const loadSession = async (): Promise<SessionPayload> => {
@@ -65,6 +68,13 @@ export default function AuthPage() {
   };
 
   useEffect(() => {
+    const authError = (searchParams?.get("error") ?? "").toLowerCase();
+    if (authError === "oauth_not_configured") {
+      setMessage("Google sign-in is temporarily unavailable. Please use email + password for now.");
+    } else if (authError.startsWith("oauth_")) {
+      setMessage("Google sign-in could not be completed. Please try again or use email + password.");
+    }
+
     // Persist invite code from URL to localStorage so returning users keep it
     const codeFromUrl = searchParams?.get("code") ?? "";
     if (codeFromUrl) {
@@ -78,8 +88,7 @@ export default function AuthPage() {
     let active = true;
     loadSession().then((s) => {
       if (active && s.authenticated) {
-        const role = (s as unknown as { role?: string }).role ?? "";
-        router.replace(nextRoute || roleToHub(role));
+        router.replace(nextRoute || roleToHub(s.role ?? ""));
       }
     });
     return () => { active = false; };
@@ -87,10 +96,11 @@ export default function AuthPage() {
   }, []);
 
   const waitForAuthenticatedSession = async (): Promise<boolean> => {
-    for (let i = 0; i < 5; i++) {
+    await new Promise(r => setTimeout(r, 100)); // give browser time to commit Set-Cookie
+    for (let i = 0; i < 8; i++) {
       const s = await loadSession();
       if (s.authenticated) return true;
-      await new Promise(r => setTimeout(r, 150));
+      await new Promise(r => setTimeout(r, 200));
     }
     return false;
   };

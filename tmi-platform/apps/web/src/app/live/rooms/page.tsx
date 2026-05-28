@@ -38,7 +38,7 @@ export default function LiveRoomsPage() {
             <div style={{ fontSize: 20, fontWeight: 900 }}>Ready to go live?</div>
             <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)', marginTop: 4 }}>Start your own session from the Cypher or Stage.</div>
           </div>
-          <Link href="/go-live" style={{ padding: '12px 24px', background: 'linear-gradient(90deg,#FF2DAA,#AA2DFF)', borderRadius: 8, color: '#fff', fontWeight: 900, fontSize: 12, textDecoration: 'none', letterSpacing: '0.1em', whiteSpace: 'nowrap' }}>
+          <Link href="/live/go" style={{ padding: '12px 24px', background: 'linear-gradient(90deg,#FF2DAA,#AA2DFF)', borderRadius: 8, color: '#fff', fontWeight: 900, fontSize: 12, textDecoration: 'none', letterSpacing: '0.1em', whiteSpace: 'nowrap' }}>
             GO LIVE NOW →
           </Link>
         </motion.div>

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import FoundingSupporterCTA from '@/components/launch/FoundingSupporterCTA';
 
 interface GoLiveBannerProps {
   /** The profile slug being viewed */
@@ -44,8 +45,16 @@ export default function GoLiveBanner({ profileSlug, hasStreamed = false }: GoLiv
     };
   }, [profileSlug]);
 
-  // Only show for profile owner when not currently live
-  if (!checked || !isOwner || isLive) return null;
+  if (!checked || !isOwner) return null;
+
+  // After going live — show founding CTA
+  if (isLive) {
+    return (
+      <div style={{ marginBottom: 24 }}>
+        <FoundingSupporterCTA variant="after-golive" />
+      </div>
+    );
+  }
 
   const headline = hasStreamed
     ? 'Your audience is ready. Go public.'
@@ -92,7 +101,7 @@ export default function GoLiveBanner({ profileSlug, hasStreamed = false }: GoLiv
           </p>
         </div>
         <Link
-          href="/live/lobby"
+          href="/live/go"
           style={{
             padding: '12px 24px',
             background: '#FF2DAA',

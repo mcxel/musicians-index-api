@@ -17,6 +17,7 @@ export type TileShape =
 export interface MaskedVideoTileProps {
   shape?: TileShape;
   streamUrl?: string;
+  mediaStream?: MediaStream | null;
   performerName?: string;
   performerSlug?: string;
   rank?: number;
@@ -28,10 +29,13 @@ export interface MaskedVideoTileProps {
   avatarEmoji?: string;
   avatarIcon?: ReactNode;
   avatarUrl?: string;
+  /** When 'performer' or 'artist', static avatarUrl is suppressed — only real video shows. */
+  role?: 'fan' | 'performer' | 'artist' | 'host' | 'venue' | 'admin' | string;
   showActions?: boolean;
   onJoin?: () => void;
   onTip?: () => void;
   onMessage?: () => void;
+  allowAudioPreview?: boolean;
   className?: string;
 }
 
@@ -54,6 +58,7 @@ function formatViewers(n: number): string {
 export default function MaskedVideoTile({
   shape = 'octagon',
   streamUrl,
+  mediaStream,
   performerName = 'Performer',
   performerSlug,
   rank,
@@ -65,16 +70,22 @@ export default function MaskedVideoTile({
   avatarEmoji = '🎤',
   avatarIcon,
   avatarUrl,
+  role,
   showActions = false,
   onJoin,
   onTip,
   onMessage,
+  allowAudioPreview = true,
   className = '',
 }: MaskedVideoTileProps) {
+  // Performers and artists must present as real video — static avatars are blocked
+  const isPerformerRole = role === 'performer' || role === 'artist';
+  const resolvedAvatarUrl = isPerformerRole ? undefined : avatarUrl;
   const videoRef = useRef<HTMLVideoElement>(null);
   const [videoReady, setVideoReady] = useState(false);
   const [hovered, setHovered] = useState(false);
   const [glitching, setGlitching] = useState(false);
+  const [audioPreviewOn, setAudioPreviewOn] = useState(false);
 
   const isFirstPlace = rank === 1;
   const clipPath = CLIP_PATHS[shape];
@@ -82,7 +93,8 @@ export default function MaskedVideoTile({
 
   useEffect(() => {
     const video = videoRef.current;
-    if (!video || !streamUrl) return;
+    if (!video || mediaStream) return;
+    if (!streamUrl) return;
     video.src = streamUrl;
     video.muted = true;
     video.autoplay = true;
@@ -96,7 +108,30 @@ export default function MaskedVideoTile({
       video.pause();
       video.src = '';
     };
-  }, [streamUrl]);
+  }, [streamUrl, mediaStream]);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !mediaStream) return;
+
+    video.srcObject = mediaStream;
+    video.autoplay = true;
+    video.playsInline = true;
+    video.muted = !audioPreviewOn;
+    setVideoReady(true);
+    video.play().catch(() => {});
+
+    return () => {
+      video.pause();
+      video.srcObject = null;
+    };
+  }, [mediaStream, audioPreviewOn]);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    video.muted = !audioPreviewOn;
+  }, [audioPreviewOn]);
 
   useEffect(() => {
     if (shape !== 'glitch-rect') return;
@@ -114,8 +149,8 @@ export default function MaskedVideoTile({
       onMouseLeave={() => setHovered(false)}
       className={className}
     >
-      {/* Underlay glow */}
-      <div style={{ position: 'absolute', inset: -8, background: `radial-gradient(ellipse at center, ${glowColor}55 0%, transparent 70%)`, opacity: hovered || isFirstPlace ? 1 : 0.45, transition: 'opacity 0.35s ease', pointerEvents: 'none', filter: 'blur(6px)' }} />
+      {/* Underlay glow — subtle, only on hover/first-place */}
+      <div style={{ position: 'absolute', inset: -8, background: `radial-gradient(ellipse at center, ${glowColor}28 0%, transparent 70%)`, opacity: hovered || isFirstPlace ? 1 : 0, transition: 'opacity 0.35s ease', pointerEvents: 'none', filter: 'blur(8px)' }} />
 
       {/* Crown */}
       {isFirstPlace && (
@@ -133,26 +168,37 @@ export default function MaskedVideoTile({
 
       {/* LIVE badge */}
       {isLive && (
-        <div style={{ position: 'absolute', top: size * 0.04, right: -4, zIndex: 25, background: '#FF2020', borderRadius: 4, padding: '2px 6px', fontSize: size * 0.07, fontWeight: 900, color: '#fff', letterSpacing: '0.05em', boxShadow: '0 0 8px #FF2020' }}>
-          ● LIVE
+        <div style={{ position: 'absolute', top: size * 0.04, right: -4, zIndex: 25, display: 'flex', alignItems: 'center', gap: 3,
+          background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)',
+          border: '1px solid rgba(255,32,32,0.5)', borderRadius: 4,
+          padding: '2px 6px', fontSize: size * 0.07, fontWeight: 900, color: '#fff', letterSpacing: '0.05em' }}>
+          <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#FF2020', display: 'inline-block', flexShrink: 0 }} />
+          LIVE
         </div>
       )}
 
       {/* Shape mask */}
-      <div style={{ width: '100%', height: '100%', clipPath, position: 'relative', overflow: 'hidden', border: `2px solid ${glowColor}88`, boxShadow: `0 0 ${hovered ? 28 : 14}px ${glowColor}55`, transition: 'box-shadow 0.3s ease', transform: glitching ? `translateX(${Math.random() * 6 - 3}px)` : 'none' }}>
+      <div style={{ width: '100%', height: '100%', clipPath, position: 'relative', overflow: 'hidden', border: `1px solid ${glowColor}40`, boxShadow: hovered ? `0 0 16px ${glowColor}28` : 'none', transition: 'box-shadow 0.3s ease', transform: glitching ? `translateX(${Math.random() * 6 - 3}px)` : 'none' }}>
         <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(135deg, ${glowColor}22, #050510)` }} />
 
-        {streamUrl && (
+        {(streamUrl || mediaStream) && (
           <video ref={videoRef} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: videoReady ? 1 : 0, transition: 'opacity 0.5s ease' }} />
         )}
 
         {(!streamUrl || !videoReady) && (
           <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-            {avatarUrl ? (
+            {resolvedAvatarUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={avatarUrl} alt={performerName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <img src={resolvedAvatarUrl} alt={performerName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             ) : avatarIcon ? (
               <div style={{ display: 'grid', placeItems: 'center', width: '100%', height: '100%' }}>{avatarIcon}</div>
+            ) : isPerformerRole && !streamUrl && !mediaStream ? (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                <div style={{ width: size * 0.22, height: size * 0.22, borderRadius: '50%', border: `1px solid ${glowColor}30`, background: `${glowColor}08`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <div style={{ width: size * 0.1, height: size * 0.1, borderRadius: '50%', background: `${glowColor}30` }} />
+                </div>
+                <div style={{ fontSize: size * 0.065, color: `${glowColor}55`, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>CAMERA READY</div>
+              </div>
             ) : (
               <div style={{ fontSize: size * 0.32, filter: `drop-shadow(0 0 8px ${glowColor})` }}>{avatarEmoji}</div>
             )}
@@ -181,6 +227,34 @@ export default function MaskedVideoTile({
               {onMessage && <button onClick={onMessage} style={{ padding: `${size * 0.04}px ${size * 0.07}px`, background: 'rgba(0,255,255,0.1)', border: '1px solid #00FFFF', borderRadius: 6, fontSize: size * 0.07, fontWeight: 800, color: '#00FFFF', cursor: 'pointer' }}>MSG</button>}
             </div>
           </div>
+        )}
+
+        {allowAudioPreview && (streamUrl || mediaStream) && videoReady && hovered && (
+          <button
+            onClick={(event) => {
+              event.stopPropagation();
+              event.preventDefault();
+              setAudioPreviewOn((prev) => !prev);
+            }}
+            style={{
+              position: 'absolute',
+              top: size * 0.06,
+              right: size * 0.06,
+              border: '1px solid rgba(255,255,255,0.25)',
+              background: audioPreviewOn ? 'rgba(0,255,255,0.22)' : 'rgba(5,5,16,0.62)',
+              color: audioPreviewOn ? '#00FFFF' : '#fff',
+              borderRadius: 6,
+              fontSize: size * 0.07,
+              fontWeight: 900,
+              letterSpacing: '0.08em',
+              padding: '4px 8px',
+              cursor: 'pointer',
+              zIndex: 26,
+            }}
+            aria-label={audioPreviewOn ? 'Mute preview audio' : 'Enable preview audio'}
+          >
+            {audioPreviewOn ? 'SOUND ON' : 'TAP FOR SOUND'}
+          </button>
         )}
 
         {/* Scanline overlay */}

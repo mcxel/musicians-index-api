@@ -91,8 +91,21 @@ const SKINS: Skin[] = [
   },
 ];
 
+// ── File-type helpers ──────────────────────────────────────────────────────────
+function isAudioFile(url: string): boolean {
+  return /\.(mp3|wav|ogg|m4a|flac|aac|opus|weba)(\?|$)/i.test(url);
+}
+function isVideoFile(url: string): boolean {
+  return /\.(mp4|webm|mov|avi|mkv|ogv)(\?|$)/i.test(url);
+}
+function canPlayNative(url: string): boolean {
+  return isAudioFile(url) || isVideoFile(url);
+}
+
 // ── Platform helpers ───────────────────────────────────────────────────────────
 function detectPlatform(url: string): string {
+  if (isAudioFile(url)) return 'Audio File';
+  if (isVideoFile(url)) return 'Video File';
   if (url.includes('youtube') || url.includes('youtu.be')) return 'YouTube';
   if (url.includes('spotify'))    return 'Spotify';
   if (url.includes('soundcloud')) return 'SoundCloud';
@@ -108,11 +121,13 @@ const PLATFORM_COLOR: Record<string, string> = {
   YouTube: '#FF0000', Spotify: '#1DB954', SoundCloud: '#FF5500',
   TikTok: '#00F2EA', Instagram: '#E1306C', 'Apple Music': '#FC3C44',
   Twitch: '#9146FF', Bandcamp: '#1DA0C3', Link: '#00C8FF',
+  'Audio File': '#AA2DFF', 'Video File': '#FF2DAA',
 };
 const PLATFORM_EMOJI: Record<string, string> = {
   YouTube: '▶️', Spotify: '🎵', SoundCloud: '🔊',
   TikTok: '📱', Instagram: '📸', 'Apple Music': '🎶',
   Twitch: '🎮', Bandcamp: '🎸', Link: '🔗',
+  'Audio File': '🎵', 'Video File': '🎬',
 };
 
 function getEmbedUrl(url: string, platform: string): string | null {
@@ -185,7 +200,12 @@ export default function ProfilePlaylist({
   const [newDuration,    setNewDuration]    = useState('');
   const [newKind,        setNewKind]        = useState<MediaKind>('song');
   const [dragOverId,     setDragOverId]     = useState<string | null>(null);
+  const [addMode,        setAddMode]        = useState<'url' | 'upload'>('url');
+  const [uploading,      setUploading]      = useState(false);
+  const [uploadPct,      setUploadPct]      = useState(0);
+  const [uploadError,    setUploadError]    = useState('');
   const dragSrcId = useRef<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Persist entries to localStorage whenever they change (owner's saves survive refresh)
   useEffect(() => {
@@ -247,6 +267,58 @@ export default function ProfilePlaylist({
     });
   }
 
+  // ── File upload ────────────────────────────────────────────────────────────
+  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadError('');
+    setUploading(true);
+    setUploadPct(0);
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const xhr = new XMLHttpRequest();
+    xhr.upload.onprogress = (ev) => {
+      if (ev.lengthComputable) setUploadPct(Math.round((ev.loaded / ev.total) * 100));
+    };
+    xhr.onload = () => {
+      setUploading(false);
+      if (xhr.status === 200) {
+        const data = JSON.parse(xhr.responseText) as { url: string; isVideo?: boolean; error?: string };
+        if (data.error) { setUploadError(data.error); return; }
+        const kind: MediaKind = data.isVideo ? 'video' : 'song';
+        const platform = data.isVideo ? 'Video File' : 'Audio File';
+        const entry: PlaylistEntry = {
+          id: `${writerId}-${Date.now()}`,
+          kind,
+          url: data.url,
+          title: file.name.replace(/\.[^.]+$/, ''),
+          platform,
+          addedAt: new Date().toISOString(),
+        };
+        setEntries(prev => [entry, ...prev]);
+        setAdding(false);
+        setAddMode('url');
+        setUploadPct(0);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      } else {
+        try {
+          const err = JSON.parse(xhr.responseText) as { error?: string };
+          setUploadError(err.error ?? 'Upload failed');
+        } catch {
+          setUploadError('Upload failed — check BLOB_READ_WRITE_TOKEN in Vercel environment variables.');
+        }
+      }
+    };
+    xhr.onerror = () => { setUploading(false); setUploadError('Upload failed. Check your connection.'); };
+    xhr.open('POST', '/api/upload/media');
+    xhr.send(formData);
+
+    // Reset input so the same file can be re-selected after an error
+    e.target.value = '';
+  }
+
   // ── Skin selector ──────────────────────────────────────────────────────────
   const SkinSelector = () => (
     <div style={{ position: 'relative' }}>
@@ -303,6 +375,8 @@ export default function ProfilePlaylist({
     const isExpand = expandedId === entry.id;
     const isDragOver = dragOverId === entry.id;
     const embedUrl = getEmbedUrl(entry.url, entry.platform);
+    const native   = canPlayNative(entry.url);
+    const canExpand = !!embedUrl || native;
 
     return (
       <div
@@ -389,8 +463,8 @@ export default function ProfilePlaylist({
 
           {/* Action buttons */}
           <div style={{ display: 'flex', gap: 5, flexShrink: 0, alignItems: 'center' }}>
-            {/* Expand embed */}
-            {embedUrl && (
+            {/* Expand embed / native player */}
+            {canExpand && (
               <button
                 type="button"
                 onClick={() => setExpandedId(isExpand ? null : entry.id)}
@@ -457,21 +531,34 @@ export default function ProfilePlaylist({
           </div>
         </div>
 
-        {/* Inline embed panel */}
-        {isExpand && embedUrl && (
-          <div style={{
-            borderTop: `1px solid ${skin.border}`,
-            background: 'rgba(0,0,0,0.5)',
-          }}>
-            <iframe
-              src={embedUrl}
-              width="100%"
-              height={entry.platform === 'Spotify' ? 80 : entry.platform === 'SoundCloud' ? 120 : 200}
-              frameBorder="0"
-              allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-              loading="lazy"
-              style={{ display: 'block' }}
-            />
+        {/* Inline player panel */}
+        {isExpand && canExpand && (
+          <div style={{ borderTop: `1px solid ${skin.border}`, background: 'rgba(0,0,0,0.5)' }}>
+            {native ? (
+              isVideoFile(entry.url) ? (
+                <video
+                  controls
+                  src={entry.url}
+                  style={{ display: 'block', width: '100%', maxHeight: 300, background: '#000' }}
+                />
+              ) : (
+                <audio
+                  controls
+                  src={entry.url}
+                  style={{ display: 'block', width: '100%', padding: '10px 12px', boxSizing: 'border-box' }}
+                />
+              )
+            ) : (
+              <iframe
+                src={embedUrl!}
+                width="100%"
+                height={entry.platform === 'Spotify' ? 80 : entry.platform === 'SoundCloud' ? 120 : 200}
+                frameBorder="0"
+                allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                loading="lazy"
+                style={{ display: 'block' }}
+              />
+            )}
           </div>
         )}
       </div>
@@ -487,114 +574,215 @@ export default function ProfilePlaylist({
         background: skin.accentSoft,
         padding: 16, marginBottom: 14,
       }}>
-        <div style={{
-          fontSize: 9, fontWeight: 900, letterSpacing: '0.14em',
-          color: skin.accent, marginBottom: 12, textTransform: 'uppercase',
-          fontFamily: skin.headerFont,
-        }}>
-          + ADD A TRACK
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+          <div style={{
+            fontSize: 9, fontWeight: 900, letterSpacing: '0.14em',
+            color: skin.accent, textTransform: 'uppercase',
+            fontFamily: skin.headerFont,
+          }}>
+            + ADD A TRACK
+          </div>
+          {/* Mode tabs */}
+          <div style={{ display: 'flex', gap: 0, border: `1px solid ${skin.border}` }}>
+            {(['url', 'upload'] as const).map(m => (
+              <button
+                key={m} type="button"
+                onClick={() => { setAddMode(m); setUploadError(''); }}
+                style={{
+                  background: addMode === m ? skin.accent : 'transparent',
+                  color: addMode === m ? '#050510' : skin.textMuted,
+                  border: 'none', borderRight: m === 'url' ? `1px solid ${skin.border}` : 'none',
+                  padding: '5px 12px', fontSize: 8, fontWeight: 900,
+                  letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer',
+                }}
+              >
+                {m === 'url' ? '🔗 PASTE URL' : '📁 UPLOAD FILE'}
+              </button>
+            ))}
+          </div>
         </div>
 
-        {/* Kind selector */}
-        <div style={{ display: 'flex', gap: 6, marginBottom: 10, flexWrap: 'wrap' }}>
-          {(['song', 'video', 'live', 'podcast'] as MediaKind[]).map(k => (
+        {addMode === 'url' ? (
+          <>
+            {/* Kind selector */}
+            <div style={{ display: 'flex', gap: 6, marginBottom: 10, flexWrap: 'wrap' }}>
+              {(['song', 'video', 'live', 'podcast'] as MediaKind[]).map(k => (
+                <button
+                  key={k} type="button" onClick={() => setNewKind(k)}
+                  style={{
+                    background: newKind === k ? KIND_COLORS[k] : 'transparent',
+                    border: `1px solid ${KIND_COLORS[k]}`,
+                    color: newKind === k ? '#fff' : KIND_COLORS[k],
+                    padding: '4px 12px', fontSize: 8, fontWeight: 900,
+                    letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer',
+                  }}
+                >
+                  {KIND_LABELS[k]}
+                </button>
+              ))}
+            </div>
+
+            {/* URL row with platform badge */}
+            <div style={{ position: 'relative', marginBottom: 8 }}>
+              <input
+                type="url"
+                placeholder="Paste link — YouTube, Spotify, SoundCloud, TikTok, or any URL..."
+                value={newUrl}
+                onChange={e => setNewUrl(e.target.value)}
+                style={{
+                  width: '100%', background: 'rgba(255,255,255,0.06)',
+                  border: `1px solid ${detectedPlatform ? PLATFORM_COLOR[detectedPlatform] + '88' : 'rgba(255,255,255,0.18)'}`,
+                  color: '#fff', padding: '8px 12px', fontSize: 11,
+                  fontFamily: "'Inter',sans-serif", boxSizing: 'border-box',
+                  paddingRight: detectedPlatform ? 90 : 12,
+                }}
+              />
+              {detectedPlatform && (
+                <div style={{
+                  position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
+                  background: `${PLATFORM_COLOR[detectedPlatform]}22`,
+                  border: `1px solid ${PLATFORM_COLOR[detectedPlatform]}66`,
+                  color: PLATFORM_COLOR[detectedPlatform],
+                  fontSize: 8, fontWeight: 900, letterSpacing: '0.1em', padding: '2px 7px',
+                }}>
+                  {PLATFORM_EMOJI[detectedPlatform]} {detectedPlatform.toUpperCase()}
+                </div>
+              )}
+            </div>
+
+            {/* Title + Artist row */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
+              <input
+                type="text" placeholder="Track title (optional)"
+                value={newTitle} onChange={e => setNewTitle(e.target.value)}
+                style={{
+                  background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.14)',
+                  color: '#fff', padding: '7px 10px', fontSize: 11,
+                  fontFamily: "'Inter',sans-serif",
+                }}
+              />
+              <input
+                type="text" placeholder="Artist name (optional)"
+                value={newArtist} onChange={e => setNewArtist(e.target.value)}
+                style={{
+                  background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.14)',
+                  color: '#fff', padding: '7px 10px', fontSize: 11,
+                  fontFamily: "'Inter',sans-serif",
+                }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+              <input
+                type="text" placeholder="Duration e.g. 3:45"
+                value={newDuration} onChange={e => setNewDuration(e.target.value)}
+                style={{
+                  background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.14)',
+                  color: '#fff', padding: '7px 10px', fontSize: 11, width: 110,
+                  fontFamily: "'Inter',sans-serif",
+                }}
+              />
+              <button
+                type="button" onClick={handleAdd}
+                style={{
+                  background: skin.accent, color: '#050510', border: 'none',
+                  padding: '8px 24px', fontWeight: 900, fontSize: 9,
+                  letterSpacing: '0.14em', textTransform: 'uppercase', cursor: 'pointer',
+                  boxShadow: `0 0 14px ${skin.accent}44`, fontFamily: skin.headerFont,
+                }}
+              >
+                ADD TO PLAYLIST →
+              </button>
+              <button
+                type="button" onClick={() => setAdding(false)}
+                style={{
+                  background: 'transparent', border: `1px solid ${skin.border}`,
+                  color: skin.textMuted, padding: '8px 14px', fontSize: 9,
+                  cursor: 'pointer', letterSpacing: '0.1em',
+                }}
+              >
+                CANCEL
+              </button>
+            </div>
+          </>
+        ) : (
+          /* ── Upload tab ─────────────────────────────────────────────────── */
+          <div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="audio/*,video/*,.mp3,.wav,.ogg,.m4a,.flac,.aac,.mp4,.webm,.mov"
+              onChange={handleFileSelect}
+              disabled={uploading}
+              style={{ display: 'none' }}
+            />
+
+            {!uploading ? (
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                style={{
+                  border: `2px dashed ${skin.accent}55`,
+                  borderRadius: 4,
+                  padding: '32px 20px',
+                  textAlign: 'center',
+                  cursor: 'pointer',
+                  background: 'rgba(255,255,255,0.02)',
+                  marginBottom: 12,
+                  transition: 'border-color 0.15s',
+                }}
+                onMouseEnter={e => (e.currentTarget.style.borderColor = skin.accent)}
+                onMouseLeave={e => (e.currentTarget.style.borderColor = `${skin.accent}55`)}
+              >
+                <div style={{ fontSize: 32, marginBottom: 10 }}>🎵</div>
+                <div style={{ fontSize: 12, fontWeight: 900, color: skin.accent, letterSpacing: '0.08em', marginBottom: 6 }}>
+                  CLICK TO UPLOAD
+                </div>
+                <div style={{ fontSize: 9, color: skin.textMuted, letterSpacing: '0.1em' }}>
+                  MP3 · WAV · OGG · M4A · MP4 · WebM · up to 100 MB
+                </div>
+              </div>
+            ) : (
+              <div style={{ marginBottom: 12, padding: '20px 0' }}>
+                <div style={{ fontSize: 10, color: skin.accent, fontWeight: 900, letterSpacing: '0.12em', marginBottom: 10, textTransform: 'uppercase', textAlign: 'center' }}>
+                  UPLOADING… {uploadPct}%
+                </div>
+                <div style={{ height: 6, background: 'rgba(255,255,255,0.08)', borderRadius: 3, overflow: 'hidden' }}>
+                  <div style={{
+                    height: '100%',
+                    width: `${uploadPct}%`,
+                    background: skin.accent,
+                    borderRadius: 3,
+                    boxShadow: `0 0 10px ${skin.accent}88`,
+                    transition: 'width 0.2s',
+                  }} />
+                </div>
+              </div>
+            )}
+
+            {uploadError && (
+              <div style={{
+                fontSize: 10, color: '#FF4444', background: 'rgba(255,68,68,0.1)',
+                border: '1px solid rgba(255,68,68,0.3)',
+                padding: '8px 12px', marginBottom: 10,
+              }}>
+                {uploadError}
+              </div>
+            )}
+
             <button
-              key={k} type="button" onClick={() => setNewKind(k)}
+              type="button" onClick={() => { setAdding(false); setUploadError(''); setAddMode('url'); }}
+              disabled={uploading}
               style={{
-                background: newKind === k ? KIND_COLORS[k] : 'transparent',
-                border: `1px solid ${KIND_COLORS[k]}`,
-                color: newKind === k ? '#fff' : KIND_COLORS[k],
-                padding: '4px 12px', fontSize: 8, fontWeight: 900,
-                letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer',
+                background: 'transparent', border: `1px solid ${skin.border}`,
+                color: skin.textMuted, padding: '8px 14px', fontSize: 9,
+                cursor: uploading ? 'not-allowed' : 'pointer', letterSpacing: '0.1em',
+                opacity: uploading ? 0.5 : 1,
               }}
             >
-              {KIND_LABELS[k]}
+              CANCEL
             </button>
-          ))}
-        </div>
-
-        {/* URL row with platform badge */}
-        <div style={{ position: 'relative', marginBottom: 8 }}>
-          <input
-            type="url"
-            placeholder="Paste link — YouTube, Spotify, SoundCloud, TikTok, or any URL..."
-            value={newUrl}
-            onChange={e => setNewUrl(e.target.value)}
-            style={{
-              width: '100%', background: 'rgba(255,255,255,0.06)',
-              border: `1px solid ${detectedPlatform ? PLATFORM_COLOR[detectedPlatform] + '88' : 'rgba(255,255,255,0.18)'}`,
-              color: '#fff', padding: '8px 12px', fontSize: 11,
-              fontFamily: "'Inter',sans-serif", boxSizing: 'border-box',
-              paddingRight: detectedPlatform ? 90 : 12,
-            }}
-          />
-          {detectedPlatform && (
-            <div style={{
-              position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
-              background: `${PLATFORM_COLOR[detectedPlatform]}22`,
-              border: `1px solid ${PLATFORM_COLOR[detectedPlatform]}66`,
-              color: PLATFORM_COLOR[detectedPlatform],
-              fontSize: 8, fontWeight: 900, letterSpacing: '0.1em', padding: '2px 7px',
-            }}>
-              {PLATFORM_EMOJI[detectedPlatform]} {detectedPlatform.toUpperCase()}
-            </div>
-          )}
-        </div>
-
-        {/* Title + Artist row */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
-          <input
-            type="text" placeholder="Track title (optional)"
-            value={newTitle} onChange={e => setNewTitle(e.target.value)}
-            style={{
-              background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.14)',
-              color: '#fff', padding: '7px 10px', fontSize: 11,
-              fontFamily: "'Inter',sans-serif",
-            }}
-          />
-          <input
-            type="text" placeholder="Artist name (optional)"
-            value={newArtist} onChange={e => setNewArtist(e.target.value)}
-            style={{
-              background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.14)',
-              color: '#fff', padding: '7px 10px', fontSize: 11,
-              fontFamily: "'Inter',sans-serif",
-            }}
-          />
-        </div>
-
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-          <input
-            type="text" placeholder="Duration e.g. 3:45"
-            value={newDuration} onChange={e => setNewDuration(e.target.value)}
-            style={{
-              background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.14)',
-              color: '#fff', padding: '7px 10px', fontSize: 11, width: 110,
-              fontFamily: "'Inter',sans-serif",
-            }}
-          />
-          <button
-            type="button" onClick={handleAdd}
-            style={{
-              background: skin.accent, color: '#050510', border: 'none',
-              padding: '8px 24px', fontWeight: 900, fontSize: 9,
-              letterSpacing: '0.14em', textTransform: 'uppercase', cursor: 'pointer',
-              boxShadow: `0 0 14px ${skin.accent}44`, fontFamily: skin.headerFont,
-            }}
-          >
-            ADD TO PLAYLIST →
-          </button>
-          <button
-            type="button" onClick={() => setAdding(false)}
-            style={{
-              background: 'transparent', border: `1px solid ${skin.border}`,
-              color: skin.textMuted, padding: '8px 14px', fontSize: 9,
-              cursor: 'pointer', letterSpacing: '0.1em',
-            }}
-          >
-            CANCEL
-          </button>
-        </div>
+          </div>
+        )}
       </div>
     );
   };

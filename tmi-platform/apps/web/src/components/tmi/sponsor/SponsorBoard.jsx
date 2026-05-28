@@ -55,11 +55,11 @@ function SponsorModal({ sponsor, onClose }) {
         <div className="sponsor-modal__desc">{sponsor.desc}</div>
         <span className={`tier-badge tier-${sponsor.tier}`}>{sponsor.tier} PARTNER</span>
         {!sponsor.active ? (
-          <button className="tmi-btn tmi-btn-primary" style={{ marginTop: 16, width: '100%' }}>
+          <a href="/sponsors" className="tmi-btn tmi-btn-primary" style={{ marginTop: 16, width: '100%', display: 'block', textAlign: 'center' }}>
             🤝 Become a Sponsor
-          </button>
+          </a>
         ) : (
-          <a href="#" className="tmi-btn tmi-btn-outline" style={{ marginTop: 16, width: '100%', display: 'block', textAlign: 'center' }}>
+          <a href="/sponsors" className="tmi-btn tmi-btn-outline" style={{ marginTop: 16, width: '100%', display: 'block', textAlign: 'center' }}>
             Visit Partner →
           </a>
         )}
@@ -143,8 +143,8 @@ export default function SponsorBoard({ sponsors = DEMO_SPONSORS, artistName = 'T
 
       {/* ── CTA ── */}
       <div className="sponsor-board__cta">
-        <button className="tmi-btn tmi-btn-primary">🤝 Become a Sponsor</button>
-        <button className="tmi-btn tmi-btn-ghost">📊 View Packages</button>
+        <a href="/sponsors" className="tmi-btn tmi-btn-primary">🤝 Become a Sponsor</a>
+        <a href="/sponsors/dashboard" className="tmi-btn tmi-btn-ghost">📊 View Packages</a>
       </div>
 
       {/* ── MODAL ── */}

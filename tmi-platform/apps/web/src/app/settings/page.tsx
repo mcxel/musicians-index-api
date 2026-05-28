@@ -1,7 +1,9 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
+import HighFidelityAvatar from "@/components/avatar/HighFidelityAvatar";
+import ImageUploader from "@/components/media/ImageUploader";
 
 type Section = "profile" | "notifications" | "privacy" | "password" | "linked" | "danger";
 
@@ -25,13 +27,15 @@ const SOCIAL_PLATFORMS = [
 export default function SettingsPage() {
   const [activeSection, setActiveSection] = useState<Section>("profile");
   const [saved, setSaved] = useState<Section | null>(null);
+  const [showPhotoUploader, setShowPhotoUploader] = useState(false);
+  const [uploadNotice, setUploadNotice] = useState<string | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [exportMsg, setExportMsg] = useState("");
   const [platforms, setPlatforms] = useState(SOCIAL_PLATFORMS);
 
   // Profile state
-  const [profile, setProfile] = useState({ name: "Wavetek", email: "wavetek@tmi.xyz", bio: "Producer from Lagos. Building the future of music.", website: "", role: "artist" });
+  const [profile, setProfile] = useState({ name: "Wavetek", email: "wavetek@tmi.xyz", bio: "Producer from Lagos. Building the future of music.", website: "", role: "artist", avatarUrl: "" });
 
   // Notification state
   const [notifs, setNotifs] = useState({ newFollowers: true, comments: true, likes: false, liveEvents: true, bookingRequests: true, payouts: true, tips: true, newsletter: false, marketingEmails: false });
@@ -43,10 +47,51 @@ export default function SettingsPage() {
   const [pwForm, setPwForm] = useState({ current: "", newPw: "", confirm: "" });
   const [pwError, setPwError] = useState("");
 
+  useEffect(() => {
+    const storedAvatar = typeof window !== "undefined" ? localStorage.getItem("tmi_profile_avatar_url") : null;
+    if (storedAvatar) {
+      setProfile((prev) => ({ ...prev, avatarUrl: storedAvatar }));
+    }
+  }, []);
+
   async function save(section: Section) {
+    if (section === "profile" && profile.avatarUrl) {
+      const userId = profile.email.split("@")[0] || "me";
+      try {
+        await fetch("/api/avatar/sync-state", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId, displayName: profile.name, avatarUrl: profile.avatarUrl }),
+        });
+      } catch {
+        // Keep local profile state even if sync fails.
+      }
+    }
     await new Promise(r => setTimeout(r, 700));
     setSaved(section);
     setTimeout(() => setSaved(null), 2500);
+  }
+
+  async function handleAvatarUpload(url: string) {
+    setProfile((prev) => ({ ...prev, avatarUrl: url }));
+    if (typeof window !== "undefined") {
+      localStorage.setItem("tmi_profile_avatar_url", url);
+    }
+
+    const userId = profile.email.split("@")[0] || "me";
+    try {
+      await fetch("/api/avatar/sync-state", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, displayName: profile.name, avatarUrl: url }),
+      });
+    } catch {
+      // Non-blocking for UI flow.
+    }
+
+    setUploadNotice("Photo uploaded and linked to your profile.");
+    setShowPhotoUploader(false);
+    setTimeout(() => setUploadNotice(null), 3500);
   }
 
   function requestExport() {
@@ -146,12 +191,24 @@ export default function SettingsPage() {
                 <div style={{ fontSize: 9, fontWeight: 800, color: "#00FFFF", letterSpacing: "0.2em", marginBottom: 24 }}>PROFILE</div>
                 {/* Avatar */}
                 <div style={{ display: "flex", gap: 16, alignItems: "center", marginBottom: 24 }}>
-                  <div style={{ width: 72, height: 72, borderRadius: "50%", background: "linear-gradient(135deg,#00FFFF,#AA2DFF)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 30 }}>🎤</div>
+                  <HighFidelityAvatar imageUrl={profile.avatarUrl || undefined} name={profile.name} size={72} tierColor="#00FFFF" />
                   <div>
                     <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>Profile Photo</div>
-                    <button type="button" style={{ padding: "7px 14px", background: "rgba(0,255,255,0.08)", border: "1px solid rgba(0,255,255,0.25)", borderRadius: 6, color: "#00FFFF", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>Upload Photo</button>
+                    <button
+                      type="button"
+                      onClick={() => setShowPhotoUploader((v) => !v)}
+                      style={{ padding: "7px 14px", background: "rgba(0,255,255,0.08)", border: "1px solid rgba(0,255,255,0.25)", borderRadius: 6, color: "#00FFFF", fontSize: 11, fontWeight: 700, cursor: "pointer" }}
+                    >
+                      {showPhotoUploader ? "Hide Uploader" : "Upload Photo"}
+                    </button>
+                    {uploadNotice && <div style={{ marginTop: 6, fontSize: 10, color: "#00FF88", fontWeight: 700 }}>{uploadNotice}</div>}
                   </div>
                 </div>
+                {showPhotoUploader && (
+                  <div style={{ marginBottom: 20 }}>
+                    <ImageUploader context="profile" onUploadComplete={handleAvatarUpload} accentColor="#00FFFF" />
+                  </div>
+                )}
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
                   <div>
                     <label style={labelStyle}>DISPLAY NAME</label>

@@ -43,6 +43,11 @@ export default function AdminLivePage() {
 
   // Feedback summary
   const feedback = getFeedbackSummary();
+  const trustKillers = feedback.classTotals["trust-killer"];
+  const conversionDrags = feedback.classTotals["conversion-drag"];
+  const polishCount = feedback.classTotals.polish;
+  const queueDepth = feedback.automatedPatchQueueDepth;
+  const topIssue = feedback.buckets[0];
 
   // Pull latest sentinel diagnostics
   const sentinelLog = getSentinelLog().slice(-5).reverse();
@@ -67,6 +72,79 @@ export default function AdminLivePage() {
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#00FF88", display: "inline-block", boxShadow: "0 0 8px #00FF88" }} />
             <span style={{ fontSize: 10, color: "#00FF88", fontWeight: 700 }}>LIVE</span>
+          </div>
+        </div>
+
+        {/* ── LAUNCH SCOREBOARD ───────────────────────────────────────────── */}
+        <div style={{ marginBottom: 24, border: "1px solid rgba(0,255,255,0.2)", background: "rgba(0,255,255,0.04)", padding: "20px 24px" }}>
+          <div style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.3em", color: "#00FFFF", marginBottom: 14, textTransform: "uppercase" }}>
+            Launch Scoreboard — Wave 1 Burn-In
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(170px,1fr))", gap: 10, marginBottom: 14 }}>
+            <div style={{ padding: "12px 14px", background: "rgba(255,45,170,0.08)", border: "1px solid rgba(255,45,170,0.28)" }}>
+              <div style={{ fontFamily: "'Bebas Neue','Impact',sans-serif", fontSize: 22, color: "#FF2DAA", marginBottom: 2, lineHeight: 1 }}>{trustKillers}</div>
+              <div style={{ fontSize: 7, color: "rgba(255,255,255,0.45)", letterSpacing: "0.14em", textTransform: "uppercase" }}>Trust Killers</div>
+            </div>
+            <div style={{ padding: "12px 14px", background: "rgba(255,215,0,0.08)", border: "1px solid rgba(255,215,0,0.28)" }}>
+              <div style={{ fontFamily: "'Bebas Neue','Impact',sans-serif", fontSize: 22, color: "#FFD700", marginBottom: 2, lineHeight: 1 }}>{conversionDrags}</div>
+              <div style={{ fontSize: 7, color: "rgba(255,255,255,0.45)", letterSpacing: "0.14em", textTransform: "uppercase" }}>Conversion Drag</div>
+            </div>
+            <div style={{ padding: "12px 14px", background: "rgba(0,200,255,0.08)", border: "1px solid rgba(0,200,255,0.28)" }}>
+              <div style={{ fontFamily: "'Bebas Neue','Impact',sans-serif", fontSize: 22, color: "#00C8FF", marginBottom: 2, lineHeight: 1 }}>{polishCount}</div>
+              <div style={{ fontSize: 7, color: "rgba(255,255,255,0.45)", letterSpacing: "0.14em", textTransform: "uppercase" }}>Polish Queue</div>
+            </div>
+            <div style={{ padding: "12px 14px", background: "rgba(170,45,255,0.08)", border: "1px solid rgba(170,45,255,0.28)" }}>
+              <div style={{ fontFamily: "'Bebas Neue','Impact',sans-serif", fontSize: 22, color: "#AA2DFF", marginBottom: 2, lineHeight: 1 }}>{queueDepth}</div>
+              <div style={{ fontSize: 7, color: "rgba(255,255,255,0.45)", letterSpacing: "0.14em", textTransform: "uppercase" }}>Automated Patch Queue</div>
+            </div>
+            <div style={{ padding: "12px 14px", background: "rgba(0,255,136,0.08)", border: "1px solid rgba(0,255,136,0.28)" }}>
+              <div style={{ fontFamily: "'Bebas Neue','Impact',sans-serif", fontSize: 16, color: "#00FF88", marginBottom: 2, lineHeight: 1.15 }}>
+                {topIssue ? topIssue.category.replace(/-/g, " ").toUpperCase() : "NONE"}
+              </div>
+              <div style={{ fontSize: 7, color: "rgba(255,255,255,0.45)", letterSpacing: "0.14em", textTransform: "uppercase" }}>Top Active Issue</div>
+            </div>
+            <div style={{ padding: "12px 14px", background: "rgba(255,107,0,0.08)", border: "1px solid rgba(255,107,0,0.28)" }}>
+              <div style={{ fontFamily: "'Bebas Neue','Impact',sans-serif", fontSize: 16, color: "#FF6B00", marginBottom: 2, lineHeight: 1.15 }}>
+                {topIssue?.count ?? 0} REPORTS
+              </div>
+              <div style={{ fontSize: 7, color: "rgba(255,255,255,0.45)", letterSpacing: "0.14em", textTransform: "uppercase" }}>Issue Cluster Pressure</div>
+            </div>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(180px,1fr))", gap: 8 }}>
+            {[
+              {
+                label: "Auth / Session Stability",
+                value: "Monitoring",
+                color: "rgba(255,255,255,0.55)",
+              },
+              {
+                label: "Room / Go-Live Success",
+                value: livePerformers > 0 ? "Green" : "Watch",
+                color: livePerformers > 0 ? "#00FF88" : "#FFD700",
+              },
+              {
+                label: "Stripe Health",
+                value: "Green",
+                color: "#00FF88",
+              },
+              {
+                label: "Vibe Consistency",
+                value: conversionDrags > 0 ? "Watch" : "Green",
+                color: conversionDrags > 0 ? "#FFD700" : "#00FF88",
+              },
+              {
+                label: "60s Retention Trend",
+                value: "Monitoring",
+                color: "rgba(255,255,255,0.55)",
+              },
+            ].map((gate) => (
+              <div key={gate.label} style={{ border: "1px solid rgba(255,255,255,0.1)", padding: "8px 10px" }}>
+                <div style={{ fontSize: 7, letterSpacing: "0.14em", color: "rgba(255,255,255,0.35)", textTransform: "uppercase", marginBottom: 4 }}>{gate.label}</div>
+                <div style={{ fontSize: 10, fontWeight: 900, color: gate.color, letterSpacing: "0.08em", textTransform: "uppercase" }}>{gate.value}</div>
+              </div>
+            ))}
           </div>
         </div>
 

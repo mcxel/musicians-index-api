@@ -23,6 +23,10 @@ async function handleLogout(req: NextRequest, isGet: boolean) {
     response.cookies.delete('tmi_session_id');
     response.cookies.delete('tmi_session');
     response.cookies.delete('tmi_role');
+    response.cookies.delete('tmi_tier');
+    response.cookies.delete('tmi_user_email');
+    response.cookies.delete('phase11_session');
+    response.cookies.delete('phase11_role');
 
     return response;
   } catch (error) {

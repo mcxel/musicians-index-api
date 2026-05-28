@@ -14,6 +14,14 @@ interface SessionUser {
   xp?: number;
 }
 
+interface SubmissionActivity {
+  id: string;
+  title: string;
+  type: string;
+  submitterId: string;
+  createdAt: number;
+}
+
 export function TMIGlobalHUD() {
   const pathname = usePathname();
   const router = useRouter();
@@ -23,6 +31,8 @@ export function TMIGlobalHUD() {
   const [msgCount, setMsgCount] = useState(1);
   const [isLive, setIsLive] = useState(false);
   const [hudHovered, setHudHovered] = useState(false);
+  const [submissionToast, setSubmissionToast] = useState<string>('');
+  const [arenaToast, setArenaToast] = useState<string>('');
   const isHome = pathname === '/home/1' || pathname === '/';
 
   const goBackSafe = () => {
@@ -46,10 +56,77 @@ export function TMIGlobalHUD() {
   }, []);
 
   useEffect(() => {
+    const onArenaStatus = (event: Event) => {
+      const detail = (event as CustomEvent<{ message?: string }>).detail;
+      if (!detail?.message) return;
+      setArenaToast(detail.message);
+      window.setTimeout(() => setArenaToast(''), 2600);
+    };
+
+    const onArenaMessage = () => {
+      setMsgCount((count) => Math.min(99, count + 1));
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('tmi:arena-status', onArenaStatus);
+      window.addEventListener('tmi:arena-message', onArenaMessage);
+    }
+
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('tmi:arena-status', onArenaStatus);
+        window.removeEventListener('tmi:arena-message', onArenaMessage);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const syncLiveState = () => {
+      setIsLive(localStorage.getItem('tmi_is_live') === 'true');
+    };
+
+    syncLiveState();
+
+    const onGoLive = () => setIsLive(true);
+    const onEndBroadcast = () => setIsLive(false);
+
+    window.addEventListener('storage', syncLiveState);
+    window.addEventListener('tmi:golive', onGoLive);
+    window.addEventListener('tmi:endbroadcast', onEndBroadcast);
+
+    return () => {
+      window.removeEventListener('storage', syncLiveState);
+      window.removeEventListener('tmi:golive', onGoLive);
+      window.removeEventListener('tmi:endbroadcast', onEndBroadcast);
+    };
+  }, []);
+
+  useEffect(() => {
     if (pathname?.startsWith('/home')) {
       setExpanded(false);
     }
   }, [pathname]);
+
+  useEffect(() => {
+    const onSubmissionCreated = (event: Event) => {
+      const detail = (event as CustomEvent<SubmissionActivity>).detail;
+      if (!detail?.title) return;
+      setSubmissionToast(`Uploaded: ${detail.title}`);
+      window.setTimeout(() => setSubmissionToast(''), 3600);
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('tmi:submission-created', onSubmissionCreated);
+    }
+
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('tmi:submission-created', onSubmissionCreated);
+      }
+    };
+  }, []);
 
   // Only render when logged in
   if (!user) return null;
@@ -59,6 +136,60 @@ export function TMIGlobalHUD() {
   const xpTier = xp >= 5000 ? "DIAMOND" : xp >= 3000 ? "PLATINUM" : xp >= 2000 ? "GOLD" : xp >= 1000 ? "SILVER" : xp >= 500 ? "PRO" : "FREE";
   const xpMax = 5000;
   const xpPct = Math.min(100, (xp / xpMax) * 100);
+
+  const resolveGoLive = async () => {
+    try {
+      if (isLive) {
+        await fetch('/api/live/go', { method: 'DELETE', credentials: 'include' });
+        localStorage.removeItem('tmi_is_live');
+        window.dispatchEvent(new CustomEvent('tmi:endbroadcast', {
+          detail: {
+            userId: user.id,
+            displayName: user.name ?? user.email,
+            role: user.role,
+          },
+        }));
+        setIsLive(false);
+        return;
+      }
+
+      window.dispatchEvent(new CustomEvent('tmi:live-syncing', {
+        detail: {
+          userId: user.id,
+          displayName: user.name ?? user.email,
+          role: user.role,
+          genre: 'Live',
+        },
+      }));
+
+      const response = await fetch('/api/live/go', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          displayName: user.name ?? user.email,
+          role: (user.role ?? 'fan').toLowerCase(),
+          genre: 'Live',
+        }),
+      });
+
+      if (response.ok) {
+        localStorage.setItem('tmi_is_live', 'true');
+        window.dispatchEvent(new CustomEvent('tmi:golive', {
+          detail: {
+            userId: user.id,
+            displayName: user.name ?? user.email,
+            role: user.role,
+            genre: 'Live',
+          },
+        }));
+        setIsLive(true);
+        router.push('/live/lobby');
+      }
+    } catch {
+      router.push('/go-live');
+    }
+  };
 
   if (!expanded) {
     return (
@@ -112,6 +243,50 @@ export function TMIGlobalHUD() {
         pointerEvents: "none",
       }}
     >
+      {submissionToast && (
+        <div
+          style={{
+            pointerEvents: 'all',
+            alignSelf: 'flex-end',
+            borderRadius: 10,
+            border: '1px solid rgba(0,255,255,0.38)',
+            background: 'linear-gradient(135deg, rgba(0,255,255,0.16), rgba(170,45,255,0.18))',
+            color: '#fff',
+            fontSize: 10,
+            fontWeight: 900,
+            letterSpacing: '0.08em',
+            textTransform: 'uppercase',
+            padding: '8px 10px',
+            maxWidth: 280,
+            boxShadow: '0 0 24px rgba(0,255,255,0.24)',
+          }}
+        >
+          {submissionToast}
+        </div>
+      )}
+
+      {arenaToast && (
+        <div
+          style={{
+            pointerEvents: 'all',
+            alignSelf: 'flex-end',
+            borderRadius: 10,
+            border: '1px solid rgba(170,45,255,0.45)',
+            background: 'linear-gradient(135deg, rgba(170,45,255,0.16), rgba(0,255,255,0.14))',
+            color: '#fff',
+            fontSize: 10,
+            fontWeight: 900,
+            letterSpacing: '0.08em',
+            textTransform: 'uppercase',
+            padding: '8px 10px',
+            maxWidth: 280,
+            boxShadow: '0 0 24px rgba(170,45,255,0.22)',
+          }}
+        >
+          {arenaToast}
+        </div>
+      )}
+
       {/* Main HUD bar */}
       <div
         style={{
@@ -245,28 +420,13 @@ export function TMIGlobalHUD() {
 
         {/* Live indicator */}
         <button
-          onClick={() => {
-            const next = !isLive;
-            setIsLive(next);
-            if (next) {
-              fetch('/api/live/go', { method: 'POST', credentials: 'include',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ displayName: user.name ?? user.email }),
-              }).catch(() => {});
-              localStorage.setItem('tmi_is_live', 'true');
-              window.dispatchEvent(new CustomEvent('tmi:golive', { detail: { userId: user.id } }));
-            } else {
-              fetch('/api/live/go', { method: 'DELETE', credentials: 'include' }).catch(() => {});
-              localStorage.removeItem('tmi_is_live');
-              window.dispatchEvent(new CustomEvent('tmi:endbroadcast', { detail: { userId: user.id } }));
-            }
-          }}
+          onClick={() => { void resolveGoLive(); }}
           style={{
             width: 32,
             height: 32,
             borderRadius: 8,
-            background: isLive ? "rgba(255,45,170,0.15)" : "rgba(255,255,255,0.04)",
-            border: `1px solid ${isLive ? "rgba(255,45,170,0.5)" : "rgba(255,255,255,0.08)"}`,
+            background: isLive ? "rgba(255,45,170,0.18)" : "rgba(255,255,255,0.04)",
+            border: `1px solid ${isLive ? "rgba(255,45,170,0.65)" : "rgba(255,255,255,0.08)"}`,
             cursor: "pointer",
             fontSize: 10,
             fontWeight: 800,
@@ -275,6 +435,7 @@ export function TMIGlobalHUD() {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
+            boxShadow: isLive ? "0 0 18px rgba(255,45,170,0.22)" : "none",
           }}
           aria-label="Go live"
         >
@@ -328,6 +489,28 @@ export function TMIGlobalHUD() {
       {/* Streak chip — compact, sits above XP bar */}
       <div style={{ pointerEvents: 'all', display: 'flex', justifyContent: 'flex-end' }}>
         <StreakBadge />
+      </div>
+
+      <div style={{ pointerEvents: 'all', display: 'flex', justifyContent: 'flex-end', marginTop: 6 }}>
+        <button
+          onClick={() => { void resolveGoLive(); }}
+          style={{
+            border: '1px solid rgba(255,45,170,0.5)',
+            background: isLive ? 'linear-gradient(135deg, rgba(255,45,170,0.2), rgba(170,45,255,0.18))' : 'linear-gradient(135deg, #FF2DAA, #FFD700)',
+            color: isLive ? '#FF2DAA' : '#050510',
+            borderRadius: 999,
+            padding: '10px 14px',
+            fontSize: 10,
+            fontWeight: 900,
+            letterSpacing: '0.14em',
+            textTransform: 'uppercase',
+            cursor: 'pointer',
+            boxShadow: isLive ? '0 0 18px rgba(255,45,170,0.22)' : '0 0 18px rgba(255,45,170,0.32)',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {isLive ? 'End Broadcast' : 'Go Live'}
+        </button>
       </div>
     </div>
   );

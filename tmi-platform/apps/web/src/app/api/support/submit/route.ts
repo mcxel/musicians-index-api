@@ -1,5 +1,17 @@
 import { NextResponse } from "next/server";
 import { EmailProviderEngine } from "@/lib/email/EmailProviderEngine";
+import { checkRateLimit, validateSignupEmail } from "@/lib/security/TMISecurityEngine";
+
+function sanitizeInput(value: string): string {
+  return value.replace(/[<>]/g, "").replace(/\s+/g, " ").trim();
+}
+
+function maskEmail(email: string): string {
+  const [local, domain] = email.split("@");
+  if (!local || !domain) return "hidden";
+  if (local.length <= 2) return `**@${domain}`;
+  return `${local.slice(0, 2)}***@${domain}`;
+}
 
 export async function POST(request: Request) {
   try {
@@ -9,8 +21,28 @@ export async function POST(request: Request) {
       sessionContext?: Record<string, unknown>;
     };
 
+    const forwardedFor = request.headers.get("x-forwarded-for") ?? request.headers.get("x-client-ip") ?? "unknown";
+    const clientIp = forwardedFor.split(",")[0]?.trim() ?? "unknown";
+
+    const rateLimit = checkRateLimit(`support:submit:${clientIp}`, 8, 60_000);
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ error: "Too many support submissions. Please wait and try again." }, { status: 429 });
+    }
+
     if (!category || !description || !email) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    }
+
+    const cleanCategory = sanitizeInput(category).slice(0, 80);
+    const cleanDescription = sanitizeInput(description).slice(0, 4000);
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanCategory || !cleanDescription) {
+      return NextResponse.json({ error: "Invalid support request fields" }, { status: 400 });
+    }
+
+    const emailValidation = validateSignupEmail(cleanEmail);
+    if (!emailValidation.valid) {
+      return NextResponse.json({ error: emailValidation.error ?? "Invalid email address" }, { status: 400 });
     }
 
     const ticketId = "TMI-" + Math.random().toString(36).slice(2, 8).toUpperCase();
@@ -22,23 +54,23 @@ export async function POST(request: Request) {
 
     // Send confirmation to user
     await EmailProviderEngine.sendAsync({
-      to: email,
+      to: cleanEmail,
       subject: `Support Ticket ${ticketId} Received`,
-      html: `<p>Hi,</p><p>We received your <strong>${category}</strong> support request (Ticket ID: <strong>${ticketId}</strong>).</p><p>We'll respond within <strong>${responseTime}</strong>.</p><p style="color:#888">The TMI Support Team</p>`,
+      html: `<p>Hi,</p><p>We received your <strong>${cleanCategory}</strong> support request (Ticket ID: <strong>${ticketId}</strong>).</p><p>We'll respond within <strong>${responseTime}</strong>.</p><p style="color:#888">The TMI Support Team</p>`,
       text: `Support ticket ${ticketId} received. We'll respond within ${responseTime}.`,
     }).catch(() => null);
 
     // Internal log with full session context
     console.log("[Support Ticket]", {
-      ticketId, category, email, urgency,
-      description: description.slice(0, 200),
+      ticketId, category: cleanCategory, email: maskEmail(cleanEmail), urgency,
+      description: cleanDescription.slice(0, 200),
       sessionContext,
     });
 
     return NextResponse.json({
       success: true,
       ticketId,
-      message: `Ticket ${ticketId} created. Response will be sent to ${email} within ${responseTime}.`,
+      message: `Ticket ${ticketId} created. Response will be sent to ${cleanEmail} within ${responseTime}.`,
       _ctxHtml: ctxHtml,
     });
   } catch {

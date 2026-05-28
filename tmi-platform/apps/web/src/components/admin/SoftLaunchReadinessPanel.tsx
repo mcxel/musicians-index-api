@@ -85,7 +85,7 @@ export default function SoftLaunchReadinessPanel() {
     results.push(await checkRoute('/admin/bot-operations', 'Admin — Bot Operations', 'Admin'));
 
     // Config checks
-    results.push({ name: 'Diamond Email — Set', category: 'Config', status: 'pass', detail: 'facethebully916@gmail.com, bjmbeat@berntoutglobal.com' });
+    results.push({ name: 'Diamond Email — Set', category: 'Config', status: 'pass', detail: 'facethebully916@gmail.com, jay@themusiciansindex.com' });
     results.push({ name: 'Subscription Tiers — 7 Tiers', category: 'Config', status: 'pass', detail: 'free/pro/bronze/silver/gold/platinum/diamond' });
 
     setChecks(results);

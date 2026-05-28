@@ -4,6 +4,7 @@ import { ImageSlotWrapper } from '@/components/visual-enforcement';
 
 import { type ReactNode } from "react";
 import Link from "next/link";
+import UniversalMediaPanel from "@/components/media/UniversalMediaPanel";
 
 export type ProfileRole =
   | "artist"
@@ -218,6 +219,12 @@ export default function ProfileShell({
 
       {/* ── Rail content area ── */}
       <main style={{ maxWidth: 960, margin: "0 auto", padding: "24px 24px 60px" }}>
+        {/* Universal video panel — live stream → last video → placeholder */}
+        <UniversalMediaPanel
+          slug={slug}
+          displayName={displayName}
+          role={role}
+        />
         {children}
       </main>
     </div>

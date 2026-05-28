@@ -79,7 +79,7 @@ export default function OnboardingPromoterPage() {
           credentials: "include",
           body: JSON.stringify({ role: "PROMOTER", company, city, focus, tier }),
         });
-        router.replace("/dashboard/promoter");
+        router.replace("/dashboard/fan");
       } else {
         const d = await res.json().catch(() => ({})) as { message?: string };
         setError(d?.message ?? `Error ${res.status}`);

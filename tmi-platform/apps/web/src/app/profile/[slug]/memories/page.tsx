@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import MemoryWall from "@/components/memory/MemoryWall";
 import HolographicCard from "@/components/memory/HolographicCard";
 import MemoryItemModal from "@/components/hub/MemoryItemModal";
+import ImageUploader from "@/components/media/ImageUploader";
 import type { MemoryItem, ProLegacyItem } from "@/types/memory";
 
 // Seed memories for demo — in production: fetch from /api/profile/[slug]/memories
@@ -77,8 +78,29 @@ const SEED_LEDGER: ProLegacyItem[] = [
 type Tab = "memories" | "ledger";
 
 export default function ProfileMemoriesPage({ params }: { params: { slug: string } }) {
-  const memories = useMemo(() => getSeedMemories(params.slug), [params.slug]);
+  const [memories, setMemories] = useState<MemoryItem[]>(() => getSeedMemories(params.slug));
   const [tab, setTab] = useState<Tab>("memories");
+  const [newMemoryTitle, setNewMemoryTitle] = useState("");
+  const [uploadMsg, setUploadMsg] = useState<string | null>(null);
+
+  function onMemoryUploadComplete(url: string) {
+    const safeTitle = newMemoryTitle.trim() || "New captured moment";
+    const now = new Date();
+    const item: MemoryItem = {
+      id: `polaroid-${now.getTime()}-${params.slug}`,
+      kind: "polaroid",
+      title: safeTitle,
+      subtitle: "Uploaded to memory wall",
+      mediaUrl: url,
+      date: now.toLocaleDateString(),
+      visibility: "public",
+      capturedAt: now.toISOString(),
+    };
+    setMemories((prev) => [item, ...prev]);
+    setNewMemoryTitle("");
+    setUploadMsg("Memory added to your wall.");
+    setTimeout(() => setUploadMsg(null), 3500);
+  }
 
   const tickets = memories.filter((m) => m.kind === "ticket");
   const polaroids = memories.filter((m) => m.kind === "polaroid");
@@ -116,6 +138,22 @@ export default function ProfileMemoriesPage({ params }: { params: { slug: string
 
         {tab === "memories" ? (
           <>
+            <section style={{ marginBottom: 34, background: "rgba(255,255,255,0.02)", border: "1px solid rgba(0,255,255,0.16)", borderRadius: 12, padding: 16 }}>
+              <div style={{ fontSize: 8, letterSpacing: "0.35em", color: "#00FFFF", fontWeight: 900, marginBottom: 10 }}>ADD NEW MEMORY</div>
+              <p style={{ margin: "0 0 12px", fontSize: 12, color: "rgba(255,255,255,0.45)" }}>
+                Upload a real event photo and it will appear instantly in your polaroid wall.
+              </p>
+              <div style={{ marginBottom: 12 }}>
+                <input
+                  value={newMemoryTitle}
+                  onChange={(e) => setNewMemoryTitle(e.target.value)}
+                  placeholder="Memory title (optional)"
+                  style={{ width: "100%", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 8, padding: "10px 12px", color: "#fff", fontSize: 13, outline: "none", boxSizing: "border-box" }}
+                />
+              </div>
+              <ImageUploader context="memory_wall" onUploadComplete={onMemoryUploadComplete} accentColor="#FF2DAA" />
+              {uploadMsg && <div style={{ marginTop: 10, fontSize: 11, fontWeight: 700, color: "#00FF88" }}>{uploadMsg}</div>}
+            </section>
             {tickets.length > 0 && (
               <section style={{ marginBottom: 48 }}>
                 <div style={{ fontSize: 8, letterSpacing: "0.35em", color: "#00FF88", fontWeight: 800, marginBottom: 16 }}>🎟️ TICKETS &amp; EVENTS</div>

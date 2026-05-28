@@ -57,6 +57,22 @@ export default function SubmitConfirmPage() {
   const [shareHint, setShareHint] = useState(false);
   const reactionIdx = useRef(0);
 
+  useEffect(() => {
+    if (typeof window === 'undefined' || !id) return;
+    const activity = {
+      id,
+      title: titleParam,
+      type,
+      submitterId: (sessionStorage.getItem('tmi_user_id') ?? 'guest-user'),
+      createdAt: Date.now(),
+    };
+    localStorage.setItem('tmi_last_submission', JSON.stringify(activity));
+    const existing = JSON.parse(localStorage.getItem('tmi_submission_feed') ?? '[]') as Array<typeof activity>;
+    const merged = [activity, ...existing.filter((entry) => entry.id !== activity.id)].slice(0, 12);
+    localStorage.setItem('tmi_submission_feed', JSON.stringify(merged));
+    window.dispatchEvent(new CustomEvent('tmi:submission-created', { detail: activity }));
+  }, [id, titleParam, type]);
+
   // XP burst fires after 400ms
   useEffect(() => {
     const t = setTimeout(() => setXpShown(true), 400);

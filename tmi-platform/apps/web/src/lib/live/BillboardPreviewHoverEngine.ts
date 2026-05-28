@@ -26,6 +26,13 @@ export type BillboardPreviewContent = {
     viewers: number;
     heatLevel: number;
   };
+  roomVibe?: {
+    underlay: string;
+    overlay: string;
+    strobeIntensity: number;
+    spotlightMode: boolean;
+    shaderQuality: "low" | "medium" | "high";
+  };
 };
 
 export type BillboardHoverState = {

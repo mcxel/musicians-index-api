@@ -1,12 +1,20 @@
 /**
- * POST /api/live/go  — register current session user as live
+ * POST /api/live/go  — register creator as live (writes to GlobalLiveSessionRegistry)
  * DELETE /api/live/go — end broadcast
- * GET  /api/live/go  — list all currently live users from LiveRegistry
+ * GET  /api/live/go  — list all active live sessions
  */
 
-export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
-import { LiveRegistry } from '@/lib/broadcast/LiveRegistry';
+import {
+  registerLiveSession,
+  endLiveSession,
+  pingSessionWithTelemetry,
+  getAllSessions,
+  type GoLivePayload,
+  type LivePingPayload,
+} from '@/lib/broadcast/GlobalLiveSessionRegistry';
+
+export const dynamic = 'force-dynamic';
 
 function sessionUserId(req: NextRequest): string | null {
   const sessionId = req.cookies.get('tmi_session_id')?.value;
@@ -18,29 +26,47 @@ export async function POST(req: NextRequest) {
   const userId = sessionUserId(req);
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  let body: { displayName?: string; genre?: string; roomId?: string } = {};
+  let body: Partial<GoLivePayload> & { action?: string } & LivePingPayload = {};
   try { body = await req.json(); } catch { /* body optional */ }
 
-  const entry = LiveRegistry.register({
+  // Ping-only (heartbeat from broadcaster)
+  if (body.action === 'ping') {
+    pingSessionWithTelemetry(userId, body);
+    return NextResponse.json({ ok: true });
+  }
+
+  const session = registerLiveSession({
     userId,
-    displayName: body.displayName ?? userId,
-    genre: body.genre ?? 'Live',
-    viewerCount: 0,
-    roomId: body.roomId,
+    displayName:   body.displayName ?? userId,
+    title:         body.title ?? `${body.displayName ?? userId} — Live`,
+    category:      body.category ?? 'live',
+    roomId:        body.roomId ?? `room-${userId}`,
+    avatarUrl:     body.avatarUrl,
+    previewUrl:    body.previewUrl,
+    thumbnailUrl:  body.thumbnailUrl,
+    privacy:       body.privacy ?? 'PUBLIC',
+    entryPriceUsd: body.entryPriceUsd,
+    accentColor:   body.accentColor,
+    performerTier: body.performerTier,
   });
 
-  return NextResponse.json({ ok: true, entry }, { status: 200 });
+  return NextResponse.json({ ok: true, session }, { status: 200 });
 }
 
 export async function DELETE(req: NextRequest) {
   const userId = sessionUserId(req);
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  LiveRegistry.unregister(userId);
+  endLiveSession(userId);
   return NextResponse.json({ ok: true }, { status: 200 });
 }
 
 export async function GET() {
-  const live = LiveRegistry.getLiveUsers();
-  return NextResponse.json({ live, count: live.length });
+  try {
+    const sessions = getAllSessions();
+    return NextResponse.json({ sessions, count: sessions.length });
+  } catch (err) {
+    console.error('[api/live/go] GET error:', err);
+    return NextResponse.json({ sessions: [], count: 0 });
+  }
 }

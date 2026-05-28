@@ -1,4 +1,5 @@
 import Link from "next/link";
+import StreamAndWinRadioPlayer from "@/components/radio/StreamAndWinRadioPlayer";
 
 export const metadata = { title: "Stream & Win — TMI Games" };
 
@@ -23,6 +24,12 @@ export default function StreamAndWinPage() {
         <div className="mb-5 rounded border border-cyan-300/25 bg-cyan-500/10 px-3 py-2 text-[11px] font-bold text-cyan-100">
           +20 pts per 5min · Auto-tracked · Bonus during qualifiers
         </div>
+        <div className="mb-5">
+          <StreamAndWinRadioPlayer />
+        </div>
+        <p className="mb-5 text-[11px] text-zinc-400 leading-relaxed">
+          Queue pulls from live public track submissions. Keep this tab open while listening to maintain watch-time streaks.
+        </p>
         <Link
           href="/live"
           className="inline-block rounded border border-cyan-300/60 bg-cyan-500/20 px-5 py-2 text-[11px] font-black uppercase tracking-[0.14em] text-cyan-100 hover:bg-cyan-500/40"

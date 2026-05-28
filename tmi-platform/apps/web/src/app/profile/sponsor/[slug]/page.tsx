@@ -1,5 +1,5 @@
-import { notFound } from "next/navigation";
 import ProfileShell from "@/components/profile/ProfileShell";
+import UniversalMediaPanel from "@/components/media/UniversalMediaPanel";
 import { EDITORIAL_ARTICLES } from "@/lib/editorial/NewsArticleModel";
 import { profileToArticleRoute } from "@/lib/editorial/editorialRoutingResolver";
 import { getSponsorPlacementsByZone } from "@/lib/editorial/SponsorPlacementModel";
@@ -33,6 +33,19 @@ const SEED_SPONSORS: Record<string, SeedSponsor> = {
   },
 };
 
+function titleCase(slug: string) {
+  return slug.split("-").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+}
+
+function seedSponsor(slug: string): SeedSponsor {
+  if (SEED_SPONSORS[slug]) return SEED_SPONSORS[slug]!;
+  return {
+    displayName: titleCase(slug),
+    tagline: "Official sponsor on The Musician's Index — supporting independent artists worldwide.",
+    isVerified: false,
+  };
+}
+
 function findArticleRoute(sponsorSlug: string): string | undefined {
   const article = EDITORIAL_ARTICLES.find(
     (a) => a.category === "sponsor" && a.relatedSponsorSlug === sponsorSlug
@@ -41,8 +54,7 @@ function findArticleRoute(sponsorSlug: string): string | undefined {
 }
 
 export default function SponsorProfilePage({ params }: Props) {
-  const sponsor = SEED_SPONSORS[params.slug];
-  if (!sponsor) notFound();
+  const sponsor = seedSponsor(params.slug);
 
   const articleRoute = findArticleRoute(params.slug);
   const placements = getSponsorPlacementsByZone("mid-article")
@@ -132,6 +144,13 @@ export default function SponsorProfilePage({ params }: Props) {
           Get in Touch →
         </Link>
       </div>
+
+      <UniversalMediaPanel
+        slug={params.slug}
+        displayName={sponsor.displayName}
+        role="sponsor"
+        accentColor="#FFD700"
+      />
     </ProfileShell>
   );
 }

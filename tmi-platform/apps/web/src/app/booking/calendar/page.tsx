@@ -1,12 +1,12 @@
 import Link from "next/link";
 
 const EVENTS = [
-  { date: "May 21, 2026", day: "Wed", title: "Cypher Arena Open",       type: "Show",    href: "/shows/cypher-arena-open",   accent: "#AA2DFF" },
-  { date: "May 23, 2026", day: "Fri", title: "BeatLab Friday",          type: "Session", href: "/shows/beatlab-friday",       accent: "#FF2DAA" },
-  { date: "May 25, 2026", day: "Sun", title: "TMI Season 2 Finals",     type: "Show",    href: "/shows/season-2-finals",      accent: "#FFD700" },
-  { date: "May 26, 2026", day: "Mon", title: "Monday Night Stage",      type: "Show",    href: "/shows/monday-night-stage",   accent: "#00FFFF" },
-  { date: "May 28, 2026", day: "Wed", title: "Nova Cipher LIVE",        type: "Concert", href: "/shows/nova-cipher-live",     accent: "#22c55e" },
-  { date: "Jun 1,  2026", day: "Mon", title: "Season 3 Launch Party",   type: "Event",   href: "/shows/season-3-launch",      accent: "#f59e0b" },
+  { date: "May 21, 2026", day: "Wed", title: "Cypher Arena Open",       type: "Show",    href: "/rooms/cypher",             accent: "#AA2DFF" },
+  { date: "May 23, 2026", day: "Fri", title: "BeatLab Friday",          type: "Session", href: "/rooms/listening-session",   accent: "#FF2DAA" },
+  { date: "May 25, 2026", day: "Sun", title: "TMI Season 2 Finals",     type: "Show",    href: "/rooms/battle/season-2-finals", accent: "#FFD700" },
+  { date: "May 26, 2026", day: "Mon", title: "Monday Night Stage",      type: "Show",    href: "/rooms/monday-stage",        accent: "#00FFFF" },
+  { date: "May 28, 2026", day: "Wed", title: "Nova Cipher LIVE",        type: "Concert", href: "/rooms/live-concert",        accent: "#22c55e" },
+  { date: "Jun 1,  2026", day: "Mon", title: "Season 3 Launch Party",   type: "Event",   href: "/rooms/world-premiere",      accent: "#f59e0b" },
 ];
 
 export default function BookingCalendarPage() {

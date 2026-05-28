@@ -10,15 +10,22 @@ import DynamicRadialAura, { type SponsorSlot } from '@/components/performer/Dyna
 
 interface PerformerAvatarAuraProps {
   sponsors: SponsorSlot[];
-  avatarUrl?: string;
+  performerName: string;
   accentColor?: string;
 }
 
 export default function PerformerAvatarAura({
   sponsors,
-  avatarUrl,
+  performerName,
   accentColor = '#FF2DAA',
 }: PerformerAvatarAuraProps) {
+  const initials = performerName
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? '')
+    .join('') || 'TM';
+
   const avatar = (
     <div
       style={{
@@ -32,22 +39,14 @@ export default function PerformerAvatarAura({
           ? `0 0 28px ${accentColor}44, 0 0 56px ${accentColor}18`
           : `0 0 20px ${accentColor}18`,
         display: 'flex',
+        flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        fontSize: 28,
         transition: 'box-shadow 0.6s ease',
       }}
     >
-      {avatarUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={avatarUrl}
-          alt="Performer avatar"
-          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-        />
-      ) : (
-        '🎭'
-      )}
+      <span style={{ fontSize: 24, fontWeight: 900, letterSpacing: '0.08em', color: '#fff' }}>{initials}</span>
+      <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: '0.14em', color: accentColor }}>LIVE SELF</span>
     </div>
   );
 

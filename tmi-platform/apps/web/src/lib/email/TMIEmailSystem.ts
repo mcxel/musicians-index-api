@@ -625,7 +625,7 @@ export async function sendEmail({ to, type, data }: EmailPayload): Promise<SendR
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        from: process.env.EMAIL_FROM ?? "support@themusiciansindex.com",
+        from: process.env.EMAIL_FROM ?? "The Musician's Index <noreply@themusiciansindex.com>",
         to,
         subject,
         html,

@@ -12,7 +12,6 @@ interface PerformerProfileShellProps {
   slug: string;
   children: ReactNode;
   tagline?: string;
-  avatarUrl?: string;
   isVerified?: boolean;
   rank?: number;
   battleRecord?: { wins: number; losses: number };
@@ -29,7 +28,6 @@ export default function PerformerProfileShell({
   slug,
   children,
   tagline,
-  avatarUrl,
   isVerified = false,
   rank,
   battleRecord,
@@ -109,7 +107,7 @@ export default function PerformerProfileShell({
         <div style={{ display: "flex", alignItems: "flex-start", gap: 20 }}>
           <PerformerAvatarAura
             sponsors={sponsorAura}
-            avatarUrl={avatarUrl}
+            performerName={displayName}
             accentColor={ACCENT}
           />
 

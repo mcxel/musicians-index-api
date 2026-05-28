@@ -1,4 +1,7 @@
 import Link from "next/link";
+import UniversalMediaPanel from "@/components/media/UniversalMediaPanel";
+import HighFidelityAvatar from "@/components/avatar/HighFidelityAvatar";
+import TmiProfileLobby from "@/components/profile/TmiProfileLobby";
 
 interface Props { params: { slug: string } }
 
@@ -47,14 +50,12 @@ export default function FanProfilePage({ params }: Props) {
       <div style={{ padding: "24px 24px 28px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
         <div style={{ maxWidth: 600, margin: "0 auto", display: "flex", alignItems: "center", gap: 20 }}>
           {/* Avatar */}
-          <div style={{
-            width: 72, height: 72, borderRadius: "50%", flexShrink: 0,
-            background: `${tierConfig.color}22`, border: `2px solid ${tierConfig.color}55`,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 28, fontWeight: 900, color: tierConfig.color,
-          }}>
-            {fan.displayName.charAt(0)}
-          </div>
+          <HighFidelityAvatar
+            name={fan.displayName}
+            size={72}
+            tierColor={tierConfig.color}
+            showCreateCTA
+          />
           <div>
             <h1 style={{ fontSize: 22, fontWeight: 900, margin: "0 0 6px", letterSpacing: "-0.3px" }}>
               {fan.displayName}
@@ -77,6 +78,15 @@ export default function FanProfilePage({ params }: Props) {
 
       {/* Stats row */}
       <div style={{ maxWidth: 600, margin: "0 auto", padding: "20px 24px" }}>
+        {/* Video panel */}
+        <div style={{ marginBottom: 24 }}>
+          <UniversalMediaPanel
+            slug={params.slug}
+            displayName={fan.displayName}
+            role="fan"
+            accentColor="#FFD700"
+          />
+        </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 24 }}>
           {[
             { label: "TMI Points", value: fan.points.toLocaleString(), color: "#00FFFF" },
@@ -149,6 +159,14 @@ export default function FanProfilePage({ params }: Props) {
             🎵 Join Room
           </Link>
         </div>
+
+        {/* Profile Lobby */}
+        <TmiProfileLobby
+          slug={params.slug}
+          displayName={fan.displayName}
+          role="fan"
+          accentColor={tierConfig.color}
+        />
       </div>
     </main>
   );

@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import ProfileShell from "@/components/profile/ProfileShell";
 import Link from "next/link";
+import UniversalMediaPanel from "@/components/media/UniversalMediaPanel";
 
 interface Props {
   params: { slug: string };
@@ -44,11 +45,34 @@ const SEED_PROMOTERS: Record<string, SeedPromoter> = {
   },
 };
 
+function titleCase(slug: string) {
+  return slug.split("-").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+}
+
+function seedPromoter(slug: string): SeedPromoter {
+  if (SEED_PROMOTERS[slug]) return SEED_PROMOTERS[slug]!;
+  const hash = slug.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
+  const cities = ["New York, NY", "Atlanta, GA", "Los Angeles, CA", "Houston, TX", "Chicago, IL", "Miami, FL"];
+  const genres = ["Hip-Hop / Rap", "R&B / Soul", "Multi-Genre", "EDM / Electronic", "Trap", "Afrobeats"];
+  return {
+    displayName: titleCase(slug),
+    tagline: "Independent music promoter on The Musician's Index.",
+    city: cities[hash % cities.length]!,
+    focus: genres[hash % genres.length]!,
+    isVerified: false,
+    stats: [
+      { label: "Events Promoted", value: (10 + (hash % 90)).toString() },
+      { label: "Tickets Sold",    value: `${1 + (hash % 99)}k` },
+      { label: "Artists Booked",  value: (5 + (hash % 40)).toString() },
+      { label: "Avg. Attendance", value: `${70 + (hash % 28)}%` },
+    ],
+  };
+}
+
 const ACCENT = "#00FF88";
 
 export default function PromoterProfilePage({ params }: Props) {
-  const promoter = SEED_PROMOTERS[params.slug];
-  if (!promoter) notFound();
+  const promoter = seedPromoter(params.slug);
 
   return (
     <ProfileShell
@@ -99,6 +123,13 @@ export default function PromoterProfilePage({ params }: Props) {
           🎟️ UPCOMING EVENTS
         </Link>
       </div>
+
+      <UniversalMediaPanel
+        slug={params.slug}
+        displayName={promoter.displayName}
+        role="promoter"
+        accentColor={ACCENT}
+      />
     </ProfileShell>
   );
 }

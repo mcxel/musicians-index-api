@@ -1,5 +1,6 @@
 import Link from "next/link";
 import ProfilePlaylistSection from "@/components/profile/ProfilePlaylistSection";
+import TmiProfileLobby from "@/components/profile/TmiProfileLobby";
 import { EDITORIAL_ARTICLES } from "@/lib/editorial/NewsArticleModel";
 import { SPONSOR_PLACEMENTS } from "@/lib/editorial/SponsorPlacementModel";
 import { profileToArticleRoute } from "@/lib/editorial/editorialRoutingResolver";
@@ -9,6 +10,7 @@ import PerformerBookingRail from "@/components/performer/PerformerBookingRail";
 import PerformerMediaRail from "@/components/performer/PerformerMediaRail";
 import PreviewWindow from "@/components/hubs/PreviewWindow";
 import PerformerVideoPanel from "@/components/media/PerformerVideoPanel";
+import GoLiveBanner from "@/components/profile/GoLiveBanner";
 import PerformerSponsorShelf, {
   type PerformerSponsor,
 } from "@/components/performer/PerformerSponsorShelf";
@@ -210,7 +212,7 @@ export default function PerformerProfilePage({ params }: Props) {
         battleRecord={{ wins: performer.wins, losses: performer.losses }}
         articleRoute={articleRoute}
         sponsorAura={auraSlots}
-        previewWindow={
+        previewWindow={<>
           <PreviewWindow
             title={`${performer.displayName} Performer Preview`}
             subtitle="Battle, booking, article, live, music, and ranking jump windows with safe fallbacks."
@@ -220,7 +222,6 @@ export default function PerformerProfilePage({ params }: Props) {
               mode: "cutout",
               state: performer.rank <= 1 ? "winner" : "featured",
               assetId: `asset-performer-${params.slug}`,
-              avatarId: `avatar-performer-${params.slug}`,
             }}
             cards={{
               profile: {
@@ -292,7 +293,8 @@ export default function PerformerProfilePage({ params }: Props) {
               },
             }}
           />
-        }
+          <GoLiveBanner profileSlug={params.slug} hasStreamed={performer.isLive} />
+        </>}
       >
         {performer.isLive ? (
           <div
@@ -542,6 +544,14 @@ export default function PerformerProfilePage({ params }: Props) {
 
         {/* Playlist — owner can add/reorder tracks; visitors see read-only */}
         <ProfilePlaylistSection profileSlug={params.slug} />
+
+        {/* Profile Lobby */}
+        <TmiProfileLobby
+          slug={params.slug}
+          displayName={performer.displayName}
+          role="performer"
+          accentColor={ACCENT}
+        />
       </PerformerProfileShell>
     </>
   );

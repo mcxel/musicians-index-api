@@ -21,7 +21,7 @@ const TESTER_ROSTER = [
   },
   {
     name:        'Jay Paul Sanchez',
-    email:       'bjmtherapper1@gmail.com',
+    email:       'jay@themusiciansindex.com',
     role:        'ARTIST',
     accountType: 'ARTIST',
     tier:        'diamond',

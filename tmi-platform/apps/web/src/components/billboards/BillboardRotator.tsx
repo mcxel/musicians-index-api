@@ -153,9 +153,15 @@ export default function BillboardRotator({
                 <BillboardPreviewHover
                   active={previewVisible}
                   roomId={previewContent.slotId}
+                  title={previewContent.title}
+                  subtitle={previewContent.subtitle}
                   performerNames={["Nova Kane", "Ari Volt"]}
                   topReactions={["🔥 hype", "👏 encore", "💸 tip", "🗳 vote"]}
                   crowdLevel={previewContent.liveStats?.heatLevel ?? 72}
+                  vibeUnderlay={previewContent.roomVibe?.underlay}
+                  vibeOverlay={previewContent.roomVibe?.overlay}
+                  spotlightMode={previewContent.roomVibe?.spotlightMode}
+                  strobeIntensity={previewContent.roomVibe?.strobeIntensity}
                 />
               )}
             </div>

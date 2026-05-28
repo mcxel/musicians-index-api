@@ -10,6 +10,8 @@ import { resolveSlug } from "@/lib/routing/SlugRecoveryEngine";
 import SocketRecoveryEngine from "@/lib/routing/SocketRecoveryEngine";
 import RoomInteractionLayout from "@/components/live/RoomInteractionLayout";
 import LiveRoomWebRTCLayer from "@/components/live/LiveRoomWebRTCLayer";
+import ArenaImmersivePanel from "@/components/live/ArenaImmersivePanel";
+import LiveSessionHeartbeat from "@/components/live/LiveSessionHeartbeat";
 import { registerPresence } from "@/lib/rooms/RoomSessionBridge";
 import { recordProfileLoopAction } from "@/lib/profile/ProfileSessionStore";
 import { startPerformerSession, recordFanEntry } from "@/lib/performer/PerformerAnalyticsEngine";
@@ -27,6 +29,7 @@ export default async function LiveRoomPage({ params, searchParams }: LiveRoomPag
   const sessionId = typeof sp['sessionId'] === 'string' ? sp['sessionId'] : Array.isArray(sp['sessionId']) ? sp['sessionId'][0] : null;
   const fromValue = typeof sp['from'] === 'string' ? sp['from'] : Array.isArray(sp['from']) ? sp['from'][0] : '';
   const fromFanHub = fromValue === 'fan-hub';
+  const fromLiveLobby = fromValue === 'live-lobby';
   const performerSlug = typeof sp['performer'] === 'string' ? sp['performer'] : Array.isArray(sp['performer']) ? sp['performer'][0] : null;
   const performerSid = performerSlug
     ? (typeof sp['sid'] === 'string' ? sp['sid'] : Array.isArray(sp['sid']) ? sp['sid'][0] : null)
@@ -37,8 +40,10 @@ export default async function LiveRoomPage({ params, searchParams }: LiveRoomPag
       ? `/fan/${encodeURIComponent(fanSlug)}?returnedFrom=${encodeURIComponent(id)}&session=ended${sessionId ? `&sessionId=${encodeURIComponent(sessionId)}` : ''}`
       : fromFanHub
         ? '/dashboard/fan'
-        : '/home/3';
-  const returnLabel = performerSlug ? '← Performer Dashboard' : fanSlug ? '← Back to Fan Profile' : fromFanHub ? '← Fan Hub' : '← Home 3';
+        : fromLiveLobby
+          ? '/live/lobby'
+          : '/home/3';
+  const returnLabel = performerSlug ? '← Performer Dashboard' : fanSlug ? '← Back to Fan Profile' : fromFanHub ? '← Fan Hub' : fromLiveLobby ? '← Back to Live Lobby' : '← Home 3';
 
   if (sessionId) {
     recordProfileLoopAction(sessionId, { type: 'enter_room', value: 1 });
@@ -85,6 +90,10 @@ export default async function LiveRoomPage({ params, searchParams }: LiveRoomPag
         </p>
 
         <LiveRoomWebRTCLayer roomId={id} />
+
+        {performerSlug && <LiveSessionHeartbeat enabled={true} intervalMs={15_000} stageState="live" />}
+
+        <ArenaImmersivePanel roomId={id} mode={performerSlug ? "performer" : "audience"} />
 
         <RoomInteractionLayout roomId={id} sessionId={sessionId ?? undefined} />
 

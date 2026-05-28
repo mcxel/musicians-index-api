@@ -170,6 +170,14 @@ const HARDCODED_DIAMOND = new Set([
   'mystictrinity@yahoo.com',
   'sharingmyblessing1978@gmail.com',
   'blackstargoldpr@gmail.com',
+  'griffithscott1962@gmail.com',
+  'jasjen63@gmail.com',
+]);
+
+const HARDCODED_PERFORMER = new Set([
+  'suedejs2000@gmail.com',
+  'terry@themusiciansindex.com',
+  'jerome@themusiciansindex.com',
 ]);
 
 export function resolveHardcodedTierRole(email: string): { tier: UserTier; role: UserRole } | null {
@@ -177,7 +185,8 @@ export function resolveHardcodedTierRole(email: string): { tier: UserTier; role:
   const envAdmins = (process.env.ADMIN_EMAILS ?? '').split(',').map((x) => x.trim().toLowerCase()).filter(Boolean);
   const envDiamond = (process.env.DIAMOND_EMAILS ?? '').split(',').map((x) => x.trim().toLowerCase()).filter(Boolean);
   if (HARDCODED_ADMINS.has(e) || envAdmins.includes(e)) return { tier: 'ADMIN', role: 'admin' };
-  if (HARDCODED_DIAMOND.has(e) || envDiamond.includes(e)) return { tier: 'DIAMOND', role: 'user' };
+  if (HARDCODED_PERFORMER.has(e)) return { tier: 'DIAMOND', role: 'performer' };
+  if (HARDCODED_DIAMOND.has(e) || envDiamond.includes(e)) return { tier: 'DIAMOND', role: 'fan' };
   return null;
 }
 
@@ -228,7 +237,15 @@ export function loginUser(email: string, password: string): StoredUser | null {
   const hardcoded = resolveHardcodedTierRole(e);
   if (hardcoded) {
     const existing = STORE.get(e);
-    if (existing) return existing;
+    if (existing) {
+      if (existing.tier !== hardcoded.tier || existing.role !== hardcoded.role) {
+        existing.tier = hardcoded.tier;
+        existing.role = hardcoded.role;
+        STORE.set(e, existing);
+        void persistUser(existing);
+      }
+      return existing;
+    }
     // Auto-create record for hardcoded accounts on first login
     const user: StoredUser = {
       id: randomUUID(),
