@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
 import SectionTitle from "@/components/ui/SectionTitle";
 import { getHomeSponsors, type HomeSponsorRow } from "@/components/home/data/getHomeSponsors";
+import AdSenseUnit from "@/components/placement/AdSenseUnit";
 
 const TIER_COLOR: Record<string, string> = {
   PLATINUM: "#E0E0FF",
@@ -70,6 +71,12 @@ export default function SponsorStrip() {
           ))}
         </motion.div>
       </div>
+
+      {source === "fallback" && (
+        <div style={{ marginTop: 16 }}>
+          <AdSenseUnit format="horizontal" style={{ width: "100%", minHeight: 90 }} />
+        </div>
+      )}
     </div>
   );
 }
