@@ -30,7 +30,7 @@ export const ctaContractMap: Record<string, CtaContract> = {
   "artist-card-live": {
     id: "artist-card-live",
     routeId: "artist-live-room",
-    pathTemplate: "/live/room/[slug]",
+    pathTemplate: "/live/rooms/[slug]",
     fallback: "/empty/rooms",
     backLink: "/home/3",
     authRequired: true,

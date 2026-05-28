@@ -63,7 +63,7 @@ export default function GlobalTopNavRail() {
               background: "rgba(255,215,0,0.06)",
             }}
           >
-            Plans
+            Plans from $0
           </Link>
           <Link
             href="/join"

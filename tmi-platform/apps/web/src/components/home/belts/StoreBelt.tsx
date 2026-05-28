@@ -24,6 +24,8 @@ const STORE_STUBS: StoreItem[] = [
   { id: "3", name: "Avatar Crown Bundle", price: 999, type: "Digital", accent: "gold" },
 ];
 
+const STORE_STUBS_LOW_FIRST = [...STORE_STUBS].sort((a, b) => a.price - b.price);
+
 export default function StoreBelt() {
   const [chartLeaders, setChartLeaders] = useState<HomeChartRow[]>([]);
   const [playlists, setPlaylists] = useState<HomePlaylistItem[]>([]);
@@ -45,7 +47,7 @@ export default function StoreBelt() {
         <SectionTitle title="Store Belt" subtitle="Featured drops, merch cues, and playlist-driven discovery." accent="gold" badge={`Featured · ${chartSource === "live" ? "Live" : "Fallback"}`} />
         <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.15fr) minmax(260px, 0.85fr)", gap: 16 }}>
           <div style={{ display: "grid", gap: 10 }}>
-            {STORE_STUBS.map((item) => (
+            {STORE_STUBS_LOW_FIRST.map((item) => (
               <BeltCard
                 key={item.id}
                 title={item.name}
@@ -55,6 +57,9 @@ export default function StoreBelt() {
                 glow
               />
             ))}
+            <div style={{ fontSize: 10, color: "rgba(255,255,255,0.45)", paddingLeft: 2 }}>
+              Low-cost options are listed first.
+            </div>
           </div>
 
           <div style={{ display: "grid", gap: 12 }}>

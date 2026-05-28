@@ -29,6 +29,8 @@ const STORE_STUBS: StoreItem[] = [
   { id: "4", name: "Crown Avatar Bundle", price: 999, type: "AVATAR", color: "#FFD700" },
 ];
 
+const STORE_STUBS_LOW_FIRST = [...STORE_STUBS].sort((a, b) => a.price - b.price);
+
 const CHANGE_ICON: Record<string, string> = { up: "▲", down: "▼", same: "–", new: "★" };
 const CHANGE_COLOR: Record<string, string> = { up: "#00FF99", down: "#FF4466", same: "rgba(255,255,255,0.3)", new: "#FFD700" };
 
@@ -122,7 +124,7 @@ export default function ChartsStoreScreen() {
           <div>
             <SectionTitle title="TMI Store" accent="gold" badge="Featured" />
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {STORE_STUBS.map((item, i) => (
+              {STORE_STUBS_LOW_FIRST.map((item, i) => (
                 <motion.div
                   key={item.id}
                   initial={{ opacity: 0, y: 10 }}
@@ -154,6 +156,9 @@ export default function ChartsStoreScreen() {
                   </div>
                 </motion.div>
               ))}
+              <div style={{ fontSize: 10, color: "rgba(255,255,255,0.45)", marginTop: 2 }}>
+                Low-cost picks first. Premium drops are optional upgrades.
+              </div>
               <div style={{ textAlign: "right", marginTop: 4 }}>
                 <Link href="/store" style={{ fontSize: 10, color: "#FFD700", textDecoration: "none", fontWeight: 700, letterSpacing: "0.1em" }}>
                   Browse Store →
