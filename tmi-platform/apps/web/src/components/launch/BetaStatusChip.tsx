@@ -9,9 +9,9 @@ export default function BetaStatusChip() {
       title="TMI Beta Season — Wave 1 active. Click to upgrade."
       style={{
         position: 'fixed',
-        top: 52,
+        bottom: 96,
         right: 12,
-        zIndex: 9500,
+        zIndex: 490,
         display: 'flex',
         alignItems: 'center',
         gap: 5,
