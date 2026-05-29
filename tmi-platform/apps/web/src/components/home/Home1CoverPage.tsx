@@ -526,7 +526,7 @@ export default function Home1CoverPage() {
           pointer-events: none;
           background: radial-gradient(ellipse at center, rgba(255,45,170,0.28) 0%, rgba(255,215,0,0.12) 40%, transparent 70%);
           animation: tmiSilkFlow 18s ease-in-out infinite alternate;
-          filter: blur(60px);
+          filter: blur(16px);
           mix-blend-mode: screen;
         }
 
@@ -538,7 +538,7 @@ export default function Home1CoverPage() {
           background: linear-gradient(90deg, transparent 0%, rgba(255,210,0,0.14) 30%, rgba(255,185,0,0.09) 70%, transparent 100%);
           background-size: 200% 100%;
           animation: tmiSilkFlowFast 10s linear infinite;
-          filter: blur(30px);
+          filter: blur(10px);
           mix-blend-mode: overlay;
         }
 
@@ -549,7 +549,7 @@ export default function Home1CoverPage() {
           pointer-events: none;
           background: radial-gradient(ellipse at 70% 50%, rgba(255,215,0,0.13) 0%, rgba(255,160,0,0.07) 40%, transparent 70%);
           animation: tmiSilkGold 22s ease-in-out infinite alternate;
-          filter: blur(70px);
+          filter: blur(20px);
           mix-blend-mode: screen;
         }
 
@@ -1246,10 +1246,10 @@ export default function Home1CoverPage() {
         }
 
         @keyframes tmiMastheadPulse {
-          0%, 100% { filter: saturate(1) brightness(1); transform: rotate(0deg); }
-          25% { filter: saturate(1.1) brightness(1.02); transform: rotate(0.35deg); }
-          50% { filter: saturate(1.18) brightness(1.05); transform: rotate(0deg); }
-          75% { filter: saturate(1.1) brightness(1.02); transform: rotate(-0.3deg); }
+          0%, 100% { filter: saturate(1) brightness(1); }
+          25% { filter: saturate(1.1) brightness(1.02); }
+          50% { filter: saturate(1.18) brightness(1.05); }
+          75% { filter: saturate(1.1) brightness(1.02); }
         }
 
         @keyframes tmiMastheadSweep {
