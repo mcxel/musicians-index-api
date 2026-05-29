@@ -7,6 +7,7 @@ import { recordFanJoin, recordFanMessage } from '@/lib/fans/SuperFanMomentumEngi
 import PerformerRelationshipPanel from './PerformerRelationshipPanel';
 import AudienceRecognitionOverlay from './AudienceRecognitionOverlay';
 import { SystemSecurityBot } from '@/lib/bots/SystemSecurityBot';
+import LiveRecoveryOverlay, { type RecoveryState } from './LiveRecoveryOverlay';
 
 type ArenaMode = 'audience' | 'performer';
 
@@ -90,6 +91,8 @@ export default function ArenaImmersivePanel({ roomId, mode }: Props) {
   const [captureEnabled, setCaptureEnabled] = useState(false);
   const [chatInput, setChatInput] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+  const [recoveryStatus, setRecoveryStatus] = useState<RecoveryState>('CONNECTED');
+  const wasLiveRef = useRef(false);
   const [slowModeSeconds, setSlowModeSeconds] = useState(0);
   const [rotationOffset, setRotationOffset] = useState(0);
   const [liveSession, setLiveSession] = useState<{
@@ -152,6 +155,29 @@ export default function ArenaImmersivePanel({ roomId, mode }: Props) {
     const interval = setInterval(fetchSession, 5_000);
     return () => clearInterval(interval);
   }, [roomId]);
+
+  // Trust Loop: Watch for host drops and WebRTC errors to trigger recovery UX
+  useEffect(() => {
+    if (mode === 'audience') {
+      if (error) {
+        setRecoveryStatus('RECONNECTING');
+      } else if (wasLiveRef.current && !liveSession) {
+        setRecoveryStatus('HOST_OFFLINE');
+      } else if (!wasLiveRef.current && liveSession) {
+        setRecoveryStatus('CONNECTED');
+      } else if (wasLiveRef.current && liveSession && (recoveryStatus === 'RECONNECTING' || recoveryStatus === 'HOST_OFFLINE')) {
+        setRecoveryStatus('RESTORED');
+        const t = setTimeout(() => setRecoveryStatus('CONNECTED'), 3000);
+        return () => clearTimeout(t);
+      }
+    }
+    
+    if (liveSession) {
+      wasLiveRef.current = true;
+    } else {
+      wasLiveRef.current = false;
+    }
+  }, [error, liveSession, mode, recoveryStatus]);
 
   // Track new audience members in SuperFanMomentumEngine
   useEffect(() => {
@@ -448,7 +474,8 @@ export default function ArenaImmersivePanel({ roomId, mode }: Props) {
           </div>
         )}
 
-        <div style={{ borderRadius: 10, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.15)', background: '#000', marginBottom: 10 }}>
+        <div style={{ position: 'relative', borderRadius: 10, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.15)', background: '#000', marginBottom: 10 }}>
+          <LiveRecoveryOverlay status={recoveryStatus} />
           {mode === 'performer' ? (
             <video ref={videoRef} autoPlay muted playsInline style={{ width: '100%', aspectRatio: '16 / 9', objectFit: 'cover' }} />
           ) : (
