@@ -243,7 +243,6 @@ function safeParseLayerState(serialized: string | null): TMILayer[] | null {
 }
 
 export default function Home1CoverPage() {
-  const [isHydrated, setIsHydrated] = useState(false);
   const [orbitAngle, setOrbitAngle] = useState(0);
   const [layers, setLayers] = useState<TMILayer[]>(DEFAULT_LAYERS);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -314,8 +313,6 @@ export default function Home1CoverPage() {
     if (battleFeeds[0]) cards.push({ key: 'battle', item: battleFeeds[0], rotation: 2 });
     if (sponsorSlot) cards.push({ key: 'sponsor', item: sponsorSlot, rotation: -1.3 });
     setCanvasCards(cards);
-    
-    setIsHydrated(true);
   }, []);
 
   useEffect(() => {
@@ -461,9 +458,6 @@ export default function Home1CoverPage() {
     }, 2800);
     return () => clearInterval(id);
   }, []);
-
-  // Do not render heavy visuals until hydrated to prevent React tear-downs
-  if (!isHydrated) return <div style={{ minHeight: '100vh', background: '#050510' }} />;
 
   return (
     <div className="tmi-home1-canvas-surface">
