@@ -506,6 +506,9 @@ importers:
       '@next/third-parties':
         specifier: ^14.2.3
         version: 14.2.35(next@14.2.3(@playwright/test@1.60.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
+      '@prisma/adapter-pg':
+        specifier: ^7.4.2
+        version: 7.8.0
       '@tmi/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
@@ -533,6 +536,9 @@ importers:
       next:
         specifier: 14.2.3
         version: 14.2.3(@playwright/test@1.60.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      pg:
+        specifier: ^8.13.3
+        version: 8.21.0
       postcss:
         specifier: ^8.4.0
         version: 8.5.15
@@ -561,6 +567,9 @@ importers:
       '@types/node':
         specifier: ^20.11.24
         version: 20.19.41
+      '@types/pg':
+        specifier: ^8.11.10
+        version: 8.20.0
       '@types/react':
         specifier: 18.3.3
         version: 18.3.3

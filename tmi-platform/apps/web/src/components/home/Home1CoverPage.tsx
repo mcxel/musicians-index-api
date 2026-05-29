@@ -201,6 +201,22 @@ const DEFAULT_LAYERS: TMILayer[] = [
   },
 ];
 
+interface OrbitParticle { x: number; y: number; size: number; color: string; dur: number; delay: number; tx: number; ty: number; scale: number; opMin: number; opMax: number }
+const OP_COLORS = ['#00FFFF', '#AA2DFF', '#FF2DAA', '#FFD700', '#00FF88'];
+const ORBIT_PARTICLES_AMB: OrbitParticle[] = Array.from({ length: 16 }, (_, i) => ({
+  x: (i * 47 + 11) % 85 + 7,
+  y: (i * 37 + 19) % 80 + 10,
+  size: 2 + (i % 4),
+  color: OP_COLORS[i % OP_COLORS.length]!,
+  dur: 3 + (i % 5) * 0.8,
+  delay: -(i * 0.7),
+  tx: ((i * 23) % 40) - 20,
+  ty: ((i * 17) % 40) - 20,
+  scale: 0.6 + (i % 4) * 0.2,
+  opMin: 0.1 + (i % 3) * 0.1,
+  opMax: 0.4 + (i % 4) * 0.1,
+}));
+
 function orbitPoint(index: number, total: number, radius: number, angle: number) {
   const baseAngle = (index / total) * 360;
   const final = (baseAngle + angle - 90) * (Math.PI / 180);
@@ -248,9 +264,15 @@ export default function Home1CoverPage() {
   const currentSaying = ROTATING_SAYINGS[sayingIndex] ?? ROTATING_SAYINGS[0] ?? '';
   const issueLines = useMemo(
     () => [
-      'The Musician\'s Index · Issue 31 · Gospel Edition',
-      'LayerCanvas Design Mode · Home 1 Only',
-      'Living Magazine Cover Simulation',
+      'MAGAZINE',
+      'LIVE MUSIC',
+      'LIVE PERFORMANCE',
+      'LIVE CULTURE',
+      'ARTISTS',
+      'FANS',
+      'VENUES',
+      'BOOKINGS',
+      'LIVE EVENTS',
     ],
     []
   );
@@ -396,20 +418,34 @@ export default function Home1CoverPage() {
   }, [currentSaying]);
 
   useEffect(() => {
+    const phrase = currentIssueLine;
     setIssueTypedChars(0);
     let i = 0;
+    const allTimers: (ReturnType<typeof setTimeout> | ReturnType<typeof setInterval>)[] = [];
+
     const typeId = setInterval(() => {
       i += 1;
       setIssueTypedChars(i);
-      if (i >= currentIssueLine.length) clearInterval(typeId);
-    }, 20);
-    const rotateId = setTimeout(() => {
-      setIssueLineIndex((idx) => (idx + 1) % issueLines.length);
-    }, 3400);
-    return () => {
-      clearInterval(typeId);
-      clearTimeout(rotateId);
-    };
+      if (i >= phrase.length) clearInterval(typeId);
+    }, 52);
+    allTimers.push(typeId);
+
+    const pauseMs = phrase.length * 52 + 900;
+    const eraseStartId = setTimeout(() => {
+      let ec = phrase.length;
+      const eraseId = setInterval(() => {
+        ec -= 1;
+        setIssueTypedChars(ec);
+        if (ec <= 0) {
+          clearInterval(eraseId);
+          setIssueLineIndex((idx) => (idx + 1) % issueLines.length);
+        }
+      }, 30);
+      allTimers.push(eraseId);
+    }, pauseMs);
+    allTimers.push(eraseStartId);
+
+    return () => allTimers.forEach((t) => { clearTimeout(t as ReturnType<typeof setTimeout>); clearInterval(t as ReturnType<typeof setInterval>); });
   }, [currentIssueLine, issueLines.length]);
 
   useEffect(() => {
@@ -470,6 +506,45 @@ export default function Home1CoverPage() {
             radial-gradient(circle at 80% 20%, rgba(0, 255, 255, 0.2), transparent 40%),
             radial-gradient(circle at 35% 75%, rgba(255, 215, 0, 0.18), transparent 35%),
             repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.02) 0px, rgba(255, 255, 255, 0.02) 1px, transparent 1px, transparent 4px);
+        }
+
+        .tmi-kinetic-silk-1 {
+          position: fixed;
+          top: -20%; left: -20%; width: 140%; height: 140%;
+          z-index: 0;
+          pointer-events: none;
+          background: radial-gradient(ellipse at center, rgba(255,45,170,0.28) 0%, rgba(255,215,0,0.12) 40%, transparent 70%);
+          animation: tmiSilkFlow 18s ease-in-out infinite alternate;
+          filter: blur(60px);
+          mix-blend-mode: screen;
+        }
+
+        .tmi-kinetic-silk-2 {
+          position: fixed;
+          top: 0; left: 0; width: 100%; height: 100%;
+          z-index: 0;
+          pointer-events: none;
+          background: linear-gradient(90deg, transparent 0%, rgba(255,210,0,0.14) 30%, rgba(255,185,0,0.09) 70%, transparent 100%);
+          background-size: 200% 100%;
+          animation: tmiSilkFlowFast 10s linear infinite;
+          filter: blur(30px);
+          mix-blend-mode: overlay;
+        }
+
+        .tmi-kinetic-silk-3 {
+          position: fixed;
+          top: 10%; left: -30%; width: 160%; height: 80%;
+          z-index: 0;
+          pointer-events: none;
+          background: radial-gradient(ellipse at 70% 50%, rgba(255,215,0,0.13) 0%, rgba(255,160,0,0.07) 40%, transparent 70%);
+          animation: tmiSilkGold 22s ease-in-out infinite alternate;
+          filter: blur(70px);
+          mix-blend-mode: screen;
+        }
+
+        @keyframes tmiSilkGold {
+          0% { transform: translateX(-8%) scale(1) rotate(-2deg); }
+          100% { transform: translateX(8%) scale(1.08) rotate(2deg); }
         }
 
         .tmi-paper-underlay {
@@ -563,6 +638,15 @@ export default function Home1CoverPage() {
           content: ''; position: absolute; inset: 0; pointer-events: none;
           background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,255,255,0.04) 2px, rgba(0,255,255,0.04) 4px);
           border-radius: 12px;
+        }
+        .tmi-masthead::before {
+          content: ''; position: absolute; top: 0; left: -110%; width: 55%; height: 100%;
+          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.06), rgba(0,255,255,0.03), transparent);
+          transform: skewX(-15deg);
+          animation: tmiMastheadSweep 7s ease-in-out infinite;
+          pointer-events: none;
+          z-index: 1;
+          border-radius: 16px;
         }
 
         .tmi-masthead .logo {
@@ -849,6 +933,17 @@ export default function Home1CoverPage() {
           height: min(760px, 92vw);
           border-radius: 50%;
           z-index: 1;
+        }
+
+        .tmi-orbit-particle {
+          position: absolute;
+          border-radius: 50%;
+          pointer-events: none;
+        }
+
+        @keyframes tmiParticleDrift {
+          0% { transform: translate(0, 0) scale(1); }
+          100% { transform: translate(var(--ptx), var(--pty)) scale(var(--psc)); }
         }
 
         .tmi-orbit-ring {
@@ -1140,8 +1235,16 @@ export default function Home1CoverPage() {
         }
 
         @keyframes tmiMastheadPulse {
-          0%, 100% { filter: saturate(1); }
-          50% { filter: saturate(1.12); }
+          0%, 100% { filter: saturate(1) brightness(1); transform: rotate(0deg); }
+          25% { filter: saturate(1.1) brightness(1.02); transform: rotate(0.35deg); }
+          50% { filter: saturate(1.18) brightness(1.05); transform: rotate(0deg); }
+          75% { filter: saturate(1.1) brightness(1.02); transform: rotate(-0.3deg); }
+        }
+
+        @keyframes tmiMastheadSweep {
+          0%, 55% { left: -110%; opacity: 0; }
+          58% { opacity: 1; }
+          100% { left: 200%; opacity: 0; }
         }
 
         @keyframes tmiCenterPulse {
@@ -1157,6 +1260,21 @@ export default function Home1CoverPage() {
         @keyframes tmiGlassSweep {
           0%, 50% { left: -100%; }
           100% { left: 200%; }
+        }
+
+        @keyframes tmiSilkFlow {
+          0% { transform: translateX(-10%) scale(1); }
+          100% { transform: translateX(10%) scale(1.1); }
+        }
+        
+        @keyframes tmiSilkFlowFast {
+          0% { background-position: 200% 0; }
+          100% { background-position: -200% 0; }
+        }
+
+        @keyframes tmiRibbonScroll {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-33.33%); }
         }
 
         @keyframes tmiBlink {
@@ -1256,6 +1374,9 @@ export default function Home1CoverPage() {
 
       <div className="tmi-paper-underlay" />
       <div className="tmi-halftone-underlay" />
+      <div className="tmi-kinetic-silk-1" />
+      <div className="tmi-kinetic-silk-2" />
+      <div className="tmi-kinetic-silk-3" />
 
       <div className="tmi-home1-shell">
         <div className="tmi-utility-row">
@@ -1265,9 +1386,20 @@ export default function Home1CoverPage() {
         </div>
 
         <header className="tmi-masthead">
-          <h1 className="logo">The Musician's Index</h1>
+          <h1 className="logo">The Musician&apos;s Index</h1>
           <div className="typewriter-line">{getTypewriterText(currentIssueLine, issueTypedChars)}</div>
         </header>
+
+        {/* ── Live Activity Ribbon ── */}
+        <div style={{ overflow: 'hidden', background: 'rgba(255,20,20,0.04)', borderTop: '1px solid rgba(255,20,20,0.2)', borderBottom: '1px solid rgba(255,20,20,0.1)', borderRadius: 6, marginBottom: 8, height: 28, display: 'flex', alignItems: 'center' }}>
+          <div style={{ display: 'flex', animation: 'tmiRibbonScroll 24s linear infinite', whiteSpace: 'nowrap', willChange: 'transform' }}>
+            {[0, 1, 2].map((k) => (
+              <span key={k} style={{ fontFamily: "'Inter', sans-serif", fontSize: 9, fontWeight: 900, letterSpacing: '0.18em', color: 'rgba(255,90,90,0.9)', textTransform: 'uppercase', padding: '0 40px' }}>
+                🔴 LIVE NOW &nbsp;·&nbsp; {(liveCamFeeds.length + battleFeeds.length) || 12} PERFORMERS &nbsp;·&nbsp; {cyphers.length || 4} CYPHERS ACTIVE &nbsp;·&nbsp; BATTLE STARTING SOON &nbsp;·&nbsp; 37 FANS ONLINE
+              </span>
+            ))}
+          </div>
+        </div>
 
         <ChallengeYourSongCTA variant="strip" />
 
@@ -1344,6 +1476,27 @@ export default function Home1CoverPage() {
 
           <div className="tmi-orbit-canvas">
             <div className="tmi-orbit-ring" />
+
+            {/* Ambient drifting particles */}
+            {ORBIT_PARTICLES_AMB.map((p, i) => (
+              <div
+                key={i}
+                className="tmi-orbit-particle"
+                style={{
+                  left: `${p.x}%`,
+                  top: `${p.y}%`,
+                  width: p.size,
+                  height: p.size,
+                  background: p.color,
+                  boxShadow: `0 0 ${p.size * 3}px ${p.color}`,
+                  opacity: p.opMin,
+                  animation: `tmiParticleDrift ${p.dur}s ease-in-out ${p.delay}s infinite alternate`,
+                  '--ptx': `${p.tx}px`,
+                  '--pty': `${p.ty}px`,
+                  '--psc': p.scale,
+                } as React.CSSProperties}
+              />
+            ))}
 
             <Link
               className="tmi-orbit-center"
