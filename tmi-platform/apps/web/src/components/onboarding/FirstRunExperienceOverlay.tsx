@@ -22,7 +22,7 @@ const ROLE_OPTIONS: { role: UserRole; label: string; icon: string; desc: string 
   { role: 'advertiser', label: 'Advertiser', icon: '📢', desc: 'Run ads, reach music fans' },
 ];
 
-const AUTH_PATHS = ['/auth', '/signup', '/login', '/support/account-recovery'];
+const AUTH_PATHS = ['/auth', '/signup', '/login', '/support/account-recovery', '/home'];
 
 export default function FirstRunExperienceOverlay() {
   const pathname = usePathname();
