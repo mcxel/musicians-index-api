@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import LobbyTakeSeatBanner from "@/components/lobby/LobbyTakeSeatBanner";
 import LobbyShell from "@/components/lobby/LobbyShell";
 import RouteRecoveryCard from "@/components/routing/RouteRecoveryCard";
 import SlugFallbackPanel from "@/components/routing/SlugFallbackPanel";
@@ -22,7 +23,14 @@ export const metadata: Metadata = {
   description: "Pre-show lobby. Claim your seat before the event goes live.",
 };
 
-export default function LiveLobbyPage() {
+interface LiveLobbyPageProps {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+}
+
+export default async function LiveLobbyPage({ searchParams }: LiveLobbyPageProps) {
+  const sp = searchParams ? await searchParams : {};
+  const roomId = typeof sp['room'] === 'string' ? sp['room'] : Array.isArray(sp['room']) ? sp['room'][0] : null;
+  const seat = sp['seat'] === '1';
   registerRoute("/live/lobby", "open", {
     returnRoute: "/",
     fallbackRoute: "/",
@@ -38,6 +46,9 @@ export default function LiveLobbyPage() {
 
   return (
     <>
+      {roomId && seat && (
+        <LobbyTakeSeatBanner roomId={roomId} />
+      )}
       <RoomWarpTransition roomId="tmi-main-lobby" hostName="TMI Live Lobby" />
       <LobbyShell slug="tmi-main-lobby" />
       <section style={{ padding: 12, background: "#050510", color: "#fff", display: "grid", gap: 8 }}>

@@ -1,18 +1,43 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 type LiveSessionHeartbeatProps = {
   enabled?: boolean;
   intervalMs?: number;
   stageState?: "pre-show" | "live" | "intermission" | "post-show";
+  roomId?: string;
 };
 
 export default function LiveSessionHeartbeat({
   enabled = true,
   intervalMs = 20_000,
   stageState = "live",
+  roomId,
 }: LiveSessionHeartbeatProps) {
+  const viewerCountRef = useRef<number>(0);
+
+  // Track audience count from /api/live/audience so the heartbeat reports real viewers
+  useEffect(() => {
+    if (!enabled || !roomId) return;
+    let disposed = false;
+
+    async function pollAudience() {
+      if (disposed) return;
+      try {
+        const res = await fetch(`/api/live/audience?venue=${encodeURIComponent(roomId!)}`, { credentials: "include" });
+        if (res.ok) {
+          const data = await res.json() as { present?: number };
+          if (typeof data.present === "number") viewerCountRef.current = data.present;
+        }
+      } catch { /* non-critical */ }
+    }
+
+    void pollAudience();
+    const t = window.setInterval(() => { void pollAudience(); }, Math.max(intervalMs, 10_000));
+    return () => { disposed = true; window.clearInterval(t); };
+  }, [enabled, roomId, intervalMs]);
+
   useEffect(() => {
     if (!enabled) return;
 
@@ -20,7 +45,7 @@ export default function LiveSessionHeartbeat({
 
     async function sendPing() {
       if (disposed) return;
-      const startedAt = performance.now();
+      const t0 = performance.now();
       try {
         await fetch("/api/live/ping", {
           method: "POST",
@@ -28,12 +53,13 @@ export default function LiveSessionHeartbeat({
           credentials: "include",
           body: JSON.stringify({
             stageState,
-            rttMs: Math.max(0, Math.round(performance.now() - startedAt)),
-            bitrateKbps: typeof navigator !== "undefined" && "connection" in navigator
+            viewerCount:    viewerCountRef.current,
+            rttMs:          Math.max(0, Math.round(performance.now() - t0)),
+            bitrateKbps:    typeof navigator !== "undefined" && "connection" in navigator
               ? Math.round((((navigator as Navigator & { connection?: { downlink?: number } }).connection?.downlink ?? 1) * 1000))
               : 0,
             droppedFramesPct: 0,
-            audioOk: true,
+            audioOk:        true,
           }),
         });
       } catch {
@@ -42,9 +68,7 @@ export default function LiveSessionHeartbeat({
     }
 
     void sendPing();
-    const timer = window.setInterval(() => {
-      void sendPing();
-    }, intervalMs);
+    const timer = window.setInterval(() => { void sendPing(); }, intervalMs);
 
     return () => {
       disposed = true;

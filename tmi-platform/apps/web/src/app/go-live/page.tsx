@@ -299,11 +299,14 @@ export default function GoLivePage() {
                     headers: { "Content-Type": "application/json" },
                     credentials: "include",
                     body: JSON.stringify({
-                      title:         title || "Live Session",
+                      displayName:   title || "Live Performer",
+                      title:         title ? `${title} — Live` : "Live Session",
                       category:      categoryMap[type] ?? "live",
                       roomId:        selectedRoom,
                       privacy:       ticketed ? "PAID_ENTRY" : "PUBLIC",
                       entryPriceUsd: ticketed ? parseFloat(price) || 0 : undefined,
+                      performerTier: performerTier,
+                      stageState:    "live",
                     }),
                   }).catch(() => {});
 

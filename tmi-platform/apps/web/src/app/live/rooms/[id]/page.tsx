@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import RouteRecoveryCard from "@/components/routing/RouteRecoveryCard";
 import SlugFallbackPanel from "@/components/routing/SlugFallbackPanel";
 import SocketStatusBadge from "@/components/routing/SocketStatusBadge";
@@ -16,6 +17,19 @@ import { registerPresence } from "@/lib/rooms/RoomSessionBridge";
 import { recordProfileLoopAction } from "@/lib/profile/ProfileSessionStore";
 import { startPerformerSession, recordFanEntry } from "@/lib/performer/PerformerAnalyticsEngine";
 import RoomWarpTransition from "@/components/live/RoomWarpTransition";
+
+// Referrers that grant direct room entry (passed via ?from= query param)
+const LOBBY_AUTHORIZED_ORIGINS = new Set([
+  "live-lobby",
+  "lobby-wall",
+  "fan-lobby-wall",
+  "performer-lobby-wall",
+  "mixed-lobby-wall",
+  "fan-hub",
+  "billboard",
+  "billboard-wall",
+  "home-3",
+]);
 
 interface LiveRoomPageProps {
   params: Promise<{ id: string }>;
@@ -44,6 +58,18 @@ export default async function LiveRoomPage({ params, searchParams }: LiveRoomPag
           ? '/live/lobby'
           : '/home/3';
   const returnLabel = performerSlug ? '← Performer Dashboard' : fanSlug ? '← Back to Fan Profile' : fromFanHub ? '← Fan Hub' : fromLiveLobby ? '← Back to Live Lobby' : '← Home 3';
+
+  // ── Audience Entry Gate ────────────────────────────────────────────────────
+  // Fans must arrive via the Live Lobby or a Billboard Lobby Wall.
+  // Performers arriving with ?performer= bypass the gate (they're going live).
+  // Direct URLs (bookmarks, social shares, etc.) redirect through the lobby
+  // so the fan is properly seated and registered before entering the room.
+  const isPerformerEntry = Boolean(performerSlug && performerSid);
+  const hasLobbyAuthorization = LOBBY_AUTHORIZED_ORIGINS.has(fromValue) || fromValue.includes('lobby');
+  if (!isPerformerEntry && !hasLobbyAuthorization) {
+    redirect(`/live/lobby?room=${encodeURIComponent(id)}&seat=1`);
+  }
+  // ──────────────────────────────────────────────────────────────────────────
 
   if (sessionId) {
     recordProfileLoopAction(sessionId, { type: 'enter_room', value: 1 });
@@ -91,7 +117,7 @@ export default async function LiveRoomPage({ params, searchParams }: LiveRoomPag
 
         <LiveRoomWebRTCLayer roomId={id} />
 
-        {performerSlug && <LiveSessionHeartbeat enabled={true} intervalMs={15_000} stageState="live" />}
+        {performerSlug && <LiveSessionHeartbeat enabled={true} intervalMs={15_000} stageState="live" roomId={id} />}
 
         <ArenaImmersivePanel roomId={id} mode={performerSlug ? "performer" : "audience"} />
 

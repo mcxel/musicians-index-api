@@ -237,7 +237,11 @@ export function getActiveSessions(): LiveSession[] {
       LiveRegistry.unregister(id);
     }
   }
-  return Array.from(sessions.values()).sort((a, b) => b.viewerCount - a.viewerCount);
+  // Sort: highest viewer count first; tie-break by newest startedAt (whoever went live most recently wins)
+  return Array.from(sessions.values()).sort((a, b) => {
+    if (b.viewerCount !== a.viewerCount) return b.viewerCount - a.viewerCount;
+    return b.startedAt - a.startedAt;
+  });
 }
 
 export function getSessionsByCategory(category: StreamCategory): LiveSession[] {
