@@ -536,6 +536,9 @@ importers:
       next:
         specifier: 14.2.3
         version: 14.2.3(@playwright/test@1.60.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      openai:
+        specifier: ^6.39.1
+        version: 6.39.1(ws@8.20.1)
       pg:
         specifier: ^8.13.3
         version: 8.21.0
@@ -653,6 +656,8 @@ importers:
       typescript:
         specifier: ^5
         version: 5.9.3
+
+  packages/agent-network: {}
 
   packages/automations:
     devDependencies:
@@ -3691,6 +3696,18 @@ packages:
   open@8.4.2:
     resolution: {integrity: sha512-7x81NCL719oNbsq/3mh+hVrAWmFuEYUqrq/Iw3kUzH8ReypT9QQ0BLoJS7/G9k6N81XjW4qHWtjWwe/9eLy1EQ==}
     engines: {node: '>=12'}
+
+  openai@6.39.1:
+    resolution: {integrity: sha512-z3dO9fEWOXBzlXynVb/xZ/tujzUjFWQWn3C0n0mw6Vo0zJTbEkaN4b2cLWjhJ6haJQx8LlREoafHRl+Gu/Hl+A==}
+    hasBin: true
+    peerDependencies:
+      ws: ^8.18.0
+      zod: ^3.25 || ^4.0
+    peerDependenciesMeta:
+      ws:
+        optional: true
+      zod:
+        optional: true
 
   openid-client@5.7.1:
     resolution: {integrity: sha512-jDBPgSVfTnkIh71Hg9pRvtJc6wTwqjRkN88+gCFtYWrlP4Yx2Dsrow8uPi3qLr/aeymPF3o2+dS+wOpglK04ew==}
@@ -8002,6 +8019,10 @@ snapshots:
       define-lazy-prop: 2.0.0
       is-docker: 2.2.1
       is-wsl: 2.2.0
+
+  openai@6.39.1(ws@8.20.1):
+    optionalDependencies:
+      ws: 8.20.1
 
   openid-client@5.7.1:
     dependencies:
