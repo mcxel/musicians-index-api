@@ -10,7 +10,14 @@ export class SystemSecurityBot {
    * (System Email Protection)
    */
   public scanComms(payload: string): boolean {
-    const maliciousPatterns = [/<script>/i, /javascript:/i, /DROP TABLE/i, /free-crypto/i];
+    const maliciousPatterns = [
+      /<script>/i, 
+      /javascript:/i, 
+      /DROP TABLE/i, 
+      /free-crypto/i,
+      /password\s*reset\s*fake/i, // Basic phishing block
+      /viagra|cialis|lottery|prince\s*of/i // Basic spam block
+    ];
     for (const pattern of maliciousPatterns) {
       if (pattern.test(payload)) {
         this.triggerWarning("MALICIOUS_PAYLOAD_DETECTED");
