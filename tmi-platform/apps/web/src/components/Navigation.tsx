@@ -18,7 +18,7 @@ const navigationItems = [
   { name: 'Submit', href: '/submit', icon: IconPlaceholder },
   { name: 'Dashboard', href: '/dashboard', icon: IconPlaceholder },
   { name: 'Artists', href: '/artists', icon: IconPlaceholder },
-  { name: 'Live Rooms', href: '/live-rooms', icon: IconPlaceholder },
+  { name: 'Live Rooms', href: '/live/lobby', icon: IconPlaceholder },
   { name: 'Articles', href: '/articles', icon: IconPlaceholder },
   { name: 'Community', href: '/community', icon: IconPlaceholder },
 ]
