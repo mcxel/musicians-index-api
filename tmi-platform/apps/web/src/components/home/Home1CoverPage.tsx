@@ -243,6 +243,7 @@ function safeParseLayerState(serialized: string | null): TMILayer[] | null {
 }
 
 export default function Home1CoverPage() {
+  const [isHydrated, setIsHydrated] = useState(false);
   const [orbitAngle, setOrbitAngle] = useState(0);
   const [layers, setLayers] = useState<TMILayer[]>(DEFAULT_LAYERS);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -261,6 +262,14 @@ export default function Home1CoverPage() {
   const [issueLineIndex, setIssueLineIndex] = useState(0);
   const [issueTypedChars, setIssueTypedChars] = useState(0);
 
+  // Data state populated post-hydration to prevent server/client mismatch
+  const [liveCamFeeds, setLiveCamFeeds] = useState<BroadcastFeedItem[]>([]);
+  const [battleFeeds, setBattleFeeds] = useState<BroadcastFeedItem[]>([]);
+  const [cyphers, setCyphers] = useState<BroadcastFeedItem[]>([]);
+  const [orbitPerformers, setOrbitPerformers] = useState<Performer[]>(PERFORMERS.slice(0, 10));
+  const [canvasCards, setCanvasCards] = useState<Array<{ key: string; item: BroadcastFeedItem; rotation: number }>>([]);
+  const [topLive, setTopLive] = useState<BroadcastFeedItem | null>(null);
+
   const currentSaying = ROTATING_SAYINGS[sayingIndex] ?? ROTATING_SAYINGS[0] ?? '';
   const issueLines = useMemo(
     () => [
@@ -278,38 +287,36 @@ export default function Home1CoverPage() {
   );
   const currentIssueLine = issueLines[issueLineIndex] ?? issueLines[0] ?? '';
 
-  const liveCamFeeds = useMemo(
-    () => SEED_FEEDS.filter((f: BroadcastFeedItem) => f.kind === 'live-camera' && f.status === 'live')
-      .sort((a: BroadcastFeedItem, b: BroadcastFeedItem) => (b.viewerCount ?? 0) - (a.viewerCount ?? 0)),
-    [],
-  );
-  const battleFeeds = useMemo(() => SEED_FEEDS.filter((f: BroadcastFeedItem) => f.kind === 'battle' && f.status === 'live'), []);
-  const cyphers = useMemo(() => SEED_FEEDS.filter((f: BroadcastFeedItem) => f.kind === 'cypher'), []);
-  const magFeature = useMemo(() => SEED_FEEDS.find((f: BroadcastFeedItem) => f.kind === 'magazine-feature'), []);
-  const sponsorSlot = useMemo(() => SEED_FEEDS.find((f: BroadcastFeedItem) => f.kind === 'sponsor-billboard'), []);
-  const topLive = liveCamFeeds[0] ?? SEED_FEEDS.find((f: BroadcastFeedItem) => f.status === 'live')!;
+  useEffect(() => {
+    // Post-mount data hydration
+    const live = SEED_FEEDS.filter((f: BroadcastFeedItem) => f.kind === 'live-camera' && f.status === 'live').sort((a, b) => (b.viewerCount ?? 0) - (a.viewerCount ?? 0));
+    const battles = SEED_FEEDS.filter((f: BroadcastFeedItem) => f.kind === 'battle' && f.status === 'live');
+    const cyp = SEED_FEEDS.filter((f: BroadcastFeedItem) => f.kind === 'cypher');
+    const magFeature = SEED_FEEDS.find((f: BroadcastFeedItem) => f.kind === 'magazine-feature');
+    const sponsorSlot = SEED_FEEDS.find((f: BroadcastFeedItem) => f.kind === 'sponsor-billboard');
 
-  // Orbit nodes: prefer live camera feeds, fall back to named performer stubs.
-  // No static profile images — every node renders emoji + name from live data.
-  const orbitPerformers = useMemo<Performer[]>(() => {
+    setLiveCamFeeds(live);
+    setBattleFeeds(battles);
+    setCyphers(cyp);
+    setTopLive(live[0] ?? SEED_FEEDS.find((f: BroadcastFeedItem) => f.status === 'live') ?? null);
+
     const fromFeeds: Performer[] = SEED_FEEDS
       .filter((f: BroadcastFeedItem) => f.status === 'live' || f.kind === 'live-camera' || f.kind === 'battle' || f.kind === 'cypher')
       .slice(0, 10)
       .map((f, i) => ({ slug: f.id, name: f.title, genre: f.genre ?? 'Live', rank: i + 1 }));
-    if (fromFeeds.length >= 6) return fromFeeds;
-    // Merge with stubs for remaining slots
+    
     const used = new Set(fromFeeds.map(p => p.slug));
     const stubs = PERFORMERS.filter(p => !used.has(p.slug)).map((p, i) => ({ ...p, rank: fromFeeds.length + i + 1 }));
-    return [...fromFeeds, ...stubs].slice(0, 10);
-  }, []);
+    setOrbitPerformers([...fromFeeds, ...stubs].slice(0, 10));
 
-  const canvasCards = useMemo(() => {
     const cards: Array<{ key: string; item: BroadcastFeedItem; rotation: number }> = [];
     if (magFeature) cards.push({ key: 'mag', item: magFeature, rotation: -2.3 });
     if (battleFeeds[0]) cards.push({ key: 'battle', item: battleFeeds[0], rotation: 2 });
     if (sponsorSlot) cards.push({ key: 'sponsor', item: sponsorSlot, rotation: -1.3 });
-    return cards;
-  }, [magFeature, battleFeeds, sponsorSlot]);
+    setCanvasCards(cards);
+    
+    setIsHydrated(true);
+  }, []);
 
   useEffect(() => {
     const fromStorage = safeParseLayerState(localStorage.getItem(HOME1_LAYER_SESSION_KEY));
@@ -455,6 +462,9 @@ export default function Home1CoverPage() {
     return () => clearInterval(id);
   }, []);
 
+  // Do not render heavy visuals until hydrated to prevent React tear-downs
+  if (!isHydrated) return <div style={{ minHeight: '100vh', background: '#050510' }} />;
+
   return (
     <div className="tmi-home1-canvas-surface">
       <style>{`
@@ -463,7 +473,7 @@ export default function Home1CoverPage() {
           background: #050510;
           color: #f8f7f1;
           font-family: 'Bebas Neue', 'Impact', sans-serif;
-          overflow-x: hidden;
+          overflow: hidden;
           position: relative;
         }
         
@@ -497,7 +507,7 @@ export default function Home1CoverPage() {
 
         .tmi-home1-canvas-surface::before {
           content: '';
-          position: fixed;
+          position: absolute;
           inset: 0;
           z-index: 0;
           pointer-events: none;
@@ -508,8 +518,9 @@ export default function Home1CoverPage() {
             repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.02) 0px, rgba(255, 255, 255, 0.02) 1px, transparent 1px, transparent 4px);
         }
 
+        /* ── Silk underlays: position:absolute so CSS perspective() on ancestor can't trap them ── */
         .tmi-kinetic-silk-1 {
-          position: fixed;
+          position: absolute;
           top: -20%; left: -20%; width: 140%; height: 140%;
           z-index: 0;
           pointer-events: none;
@@ -520,7 +531,7 @@ export default function Home1CoverPage() {
         }
 
         .tmi-kinetic-silk-2 {
-          position: fixed;
+          position: absolute;
           top: 0; left: 0; width: 100%; height: 100%;
           z-index: 0;
           pointer-events: none;
@@ -532,7 +543,7 @@ export default function Home1CoverPage() {
         }
 
         .tmi-kinetic-silk-3 {
-          position: fixed;
+          position: absolute;
           top: 10%; left: -30%; width: 160%; height: 80%;
           z-index: 0;
           pointer-events: none;
@@ -548,7 +559,7 @@ export default function Home1CoverPage() {
         }
 
         .tmi-paper-underlay {
-          position: fixed;
+          position: absolute;
           inset: 0;
           z-index: 0;
           pointer-events: none;
@@ -559,7 +570,7 @@ export default function Home1CoverPage() {
         }
 
         .tmi-halftone-underlay {
-          position: fixed;
+          position: absolute;
           inset: 0;
           z-index: 1;
           pointer-events: none;
@@ -573,7 +584,7 @@ export default function Home1CoverPage() {
         }
 
         .tmi-grain-overlay {
-          position: fixed;
+          position: absolute;
           inset: 0;
           z-index: 90;
           pointer-events: none;
@@ -583,7 +594,7 @@ export default function Home1CoverPage() {
         }
 
         .tmi-gloss-overlay {
-          position: fixed;
+          position: absolute;
           inset: 0;
           z-index: 91;
           pointer-events: none;
@@ -1372,12 +1383,16 @@ export default function Home1CoverPage() {
         }
       `}</style>
 
+      {/* 1. Base Layer */}
       <div className="tmi-paper-underlay" />
       <div className="tmi-halftone-underlay" />
+      
+      {/* 2 & 3. Kinetic Silk Underlays B & A (Pointer Events None) */}
       <div className="tmi-kinetic-silk-1" />
       <div className="tmi-kinetic-silk-2" />
       <div className="tmi-kinetic-silk-3" />
 
+      {/* 7. UI / CTA Layer Shell */}
       <div className="tmi-home1-shell">
         <div className="tmi-utility-row">
           <span className="tmi-utility-pill">Voting Live</span>
@@ -1477,7 +1492,7 @@ export default function Home1CoverPage() {
           <div className="tmi-orbit-canvas">
             <div className="tmi-orbit-ring" />
 
-            {/* Ambient drifting particles */}
+            {/* 5. Overlay A - Star Field Particles */}
             {ORBIT_PARTICLES_AMB.map((p, i) => (
               <div
                 key={i}
@@ -1498,6 +1513,7 @@ export default function Home1CoverPage() {
               />
             ))}
 
+            {/* 4. Top Artist Orbit / Interactive Nodes */}
             <Link
               className="tmi-orbit-center"
               href={topLive?.href ?? '/live/lobby'}
@@ -1603,6 +1619,7 @@ export default function Home1CoverPage() {
                 <button
                   key={c.key}
                   onClick={() => setCanvasCardIndex(i)}
+                  aria-label="Navigate Magazine Cards"
                   style={{
                     width: i === canvasCardIndex % canvasCards.length ? 18 : 6,
                     height: 6,
@@ -1757,6 +1774,7 @@ export default function Home1CoverPage() {
       )}
       <WelcomeArenaOverlay />
 
+      {/* 6. Top Gloss & Grain Overlays */}
       <div className="tmi-grain-overlay" />
       <div className="tmi-gloss-overlay" />
     </div>
