@@ -8,9 +8,8 @@ export default function BetaModeBanner() {
 
   return (
     <div style={{
-      position: 'sticky',
-      top: 0,
-      zIndex: 10000,
+      position: 'relative',
+      zIndex: 10,
       background: 'linear-gradient(90deg, #0a0a1a 0%, #12082a 50%, #0a0a1a 100%)',
       borderBottom: '1px solid rgba(170,45,255,0.35)',
       fontFamily: "'Inter',sans-serif",
