@@ -8,8 +8,19 @@ type BeforeInstallPromptEvent = Event & {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
 };
 
-const DISMISSED_KEY = 'tmi-pwa-dismissed';
+const DISMISSED_KEY = 'tmi-pwa-dismissed-until';
 const VISIT_KEY = 'tmi-pwa-visits';
+const DISMISS_DAYS = 7;
+
+function isDismissed(): boolean {
+  if (typeof window === 'undefined') return true;
+  const until = Number(localStorage.getItem(DISMISSED_KEY) ?? '0');
+  return Date.now() < until;
+}
+
+function setDismissed() {
+  localStorage.setItem(DISMISSED_KEY, String(Date.now() + DISMISS_DAYS * 86_400_000));
+}
 
 export function PWAInstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
@@ -20,43 +31,48 @@ export function PWAInstallPrompt() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    const userAgent = window.navigator.userAgent.toLowerCase();
-    const iOSDevice = /iphone|ipad|ipod/.test(userAgent);
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
-    const dismissed = localStorage.getItem(DISMISSED_KEY) === '1';
+    const ua = window.navigator.userAgent.toLowerCase();
+    const iOSDevice = /iphone|ipad|ipod/.test(ua);
+    const isStandalone =
+      window.matchMedia('(display-mode: standalone)').matches ||
+      (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
+
+    if (isStandalone || isDismissed()) return;
+
     const visits = Number(localStorage.getItem(VISIT_KEY) ?? '0') + 1;
     localStorage.setItem(VISIT_KEY, String(visits));
 
     setIsIos(iOSDevice);
+    if (visits >= 2) setVisible(true);
 
-    if (!dismissed && !isStandalone && visits >= 2) {
-      setVisible(true);
-    }
-
-    const onBeforeInstallPrompt = (event: Event) => {
-      event.preventDefault();
-      setDeferredPrompt(event as BeforeInstallPromptEvent);
-      if (!dismissed && !isStandalone) {
-        setVisible(true);
-      }
+    const onBefore = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e as BeforeInstallPromptEvent);
+      if (!isDismissed() && !isStandalone) setVisible(true);
     };
+    const onInstalled = () => { setVisible(false); setDeferredPrompt(null); };
 
-    const onInstalled = () => {
-      setVisible(false);
-      setDeferredPrompt(null);
-    };
-
-    window.addEventListener('beforeinstallprompt', onBeforeInstallPrompt);
+    window.addEventListener('beforeinstallprompt', onBefore);
     window.addEventListener('appinstalled', onInstalled);
-
     return () => {
-      window.removeEventListener('beforeinstallprompt', onBeforeInstallPrompt);
+      window.removeEventListener('beforeinstallprompt', onBefore);
       window.removeEventListener('appinstalled', onInstalled);
     };
   }, []);
 
+  // Push page content DOWN by the banner height so nothing gets covered
+  useEffect(() => {
+    const body = document.body;
+    if (visible) {
+      body.style.paddingBottom = 'calc(80px + env(safe-area-inset-bottom, 0px))';
+    } else {
+      body.style.paddingBottom = '';
+    }
+    return () => { body.style.paddingBottom = ''; };
+  }, [visible]);
+
   const dismiss = () => {
-    localStorage.setItem(DISMISSED_KEY, '1');
+    setDismissed();
     setVisible(false);
   };
 
@@ -64,142 +80,107 @@ export function PWAInstallPrompt() {
     if (deferredPrompt) {
       await deferredPrompt.prompt();
       const choice = await deferredPrompt.userChoice;
-      if (choice.outcome === 'accepted') {
-        setVisible(false);
-      }
+      if (choice.outcome === 'accepted') setVisible(false);
       setDeferredPrompt(null);
       return;
     }
-
-    if (!isIos) {
-      window.location.href = '/app-status';
-      return;
-    }
-
+    if (!isIos) { window.location.href = '/app-status'; return; }
     if (isIos && navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText('Tap Share, then Add to Home Screen.');
+      await navigator.clipboard.writeText('Tap Share → Add to Home Screen');
       setCopied(true);
-      window.setTimeout(() => setCopied(false), 2000);
+      window.setTimeout(() => setCopied(false), 2200);
     }
   };
 
   if (!visible) return null;
 
   return (
-    <div className="tmi-pwa-prompt" role="banner" aria-label="Install TMI app">
-      <div className="tmi-pwa-prompt__content">
-        <span className="tmi-pwa-prompt__icon" aria-hidden="true">📱</span>
-        <div className="tmi-pwa-prompt__text">
-          <strong>Install TMI</strong>
-          <span>
+    <div
+      role="banner"
+      aria-label="Install TMI app"
+      style={{
+        position: 'fixed',
+        left: 0,
+        right: 0,
+        bottom: 0,
+        // Above nav (400) and content (300) but below modals (600)
+        zIndex: 500,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 12,
+        flexWrap: 'wrap',
+        padding: '12px 16px',
+        paddingBottom: 'calc(12px + env(safe-area-inset-bottom, 0px))',
+        background: 'linear-gradient(145deg, rgba(5,5,16,0.97) 0%, rgba(14,18,32,0.97) 100%)',
+        borderTop: '1px solid rgba(0,255,255,0.22)',
+        boxShadow: '0 -8px 32px rgba(0,0,0,0.6)',
+        backdropFilter: 'blur(16px)',
+      }}
+    >
+      {/* Icon + text */}
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center', flex: '1 1 220px', minWidth: 0 }}>
+        <span aria-hidden="true" style={{ fontSize: 20, lineHeight: 1, flexShrink: 0 }}>📱</span>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: '0.16em', color: '#00FFFF', textTransform: 'uppercase', fontFamily: 'Inter,sans-serif' }}>
+            INSTALL TMI
+          </div>
+          <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', lineHeight: 1.4, fontFamily: 'Inter,sans-serif', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {deferredPrompt
-              ? 'Add TMI to your home screen for an app-style launch.'
+              ? 'Add to home screen for an app-style launch.'
               : isIos
-                ? 'On iPhone or iPad, use Share then Add to Home Screen.'
-                : 'TMI is installable from the browser now. Play Store packaging comes later.'}
-          </span>
+                ? 'Tap Share → Add to Home Screen.'
+                : 'Installable now. Play Store packaging coming.'}
+          </div>
         </div>
       </div>
-      <div className="tmi-pwa-prompt__actions">
-        <button className="tmi-pwa-prompt__primary" onClick={handleInstall}>
-          {deferredPrompt ? 'Install' : isIos ? (copied ? 'Copied' : 'Copy Steps') : 'Open Guide'}
+
+      {/* Buttons */}
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
+        <button
+          onClick={handleInstall}
+          style={{
+            padding: '8px 14px',
+            fontSize: 10,
+            fontWeight: 900,
+            letterSpacing: '0.1em',
+            textTransform: 'uppercase',
+            color: '#050510',
+            background: 'linear-gradient(135deg,#00FFFF,#00AABB)',
+            border: 'none',
+            borderRadius: 8,
+            cursor: 'pointer',
+            fontFamily: 'Inter,sans-serif',
+          }}
+        >
+          {deferredPrompt ? 'INSTALL' : isIos ? (copied ? '✓ COPIED' : 'HOW TO') : 'OPEN GUIDE'}
         </button>
-        {!deferredPrompt && !isIos ? (
-          <Link className="tmi-pwa-prompt__ghost" href="/app-status">
-            Learn More
+        {!deferredPrompt && !isIos && (
+          <Link
+            href="/app-status"
+            style={{ padding: '8px 12px', fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.55)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, textDecoration: 'none', fontFamily: 'Inter,sans-serif' }}
+          >
+            MORE
           </Link>
-        ) : null}
-        <button className="tmi-pwa-prompt__ghost" onClick={dismiss}>Not Now</button>
+        )}
+        <button
+          onClick={dismiss}
+          aria-label="Dismiss install banner for 7 days"
+          style={{
+            padding: '8px 12px',
+            fontSize: 10,
+            fontWeight: 700,
+            color: 'rgba(255,255,255,0.4)',
+            background: 'transparent',
+            border: '1px solid rgba(255,255,255,0.08)',
+            borderRadius: 8,
+            cursor: 'pointer',
+            fontFamily: 'Inter,sans-serif',
+          }}
+        >
+          NOT NOW
+        </button>
       </div>
-      <style>{`
-        .tmi-pwa-prompt {
-          position: fixed;
-          left: 14px;
-          right: 14px;
-          bottom: 88px;
-          z-index: 120;
-          display: flex;
-          justify-content: space-between;
-          gap: 14px;
-          flex-wrap: wrap;
-          padding: 14px 16px;
-          border: 1px solid rgba(0,255,255,0.22);
-          background: linear-gradient(145deg, rgba(5,5,16,0.96), rgba(18,24,40,0.96));
-          box-shadow: 0 18px 32px rgba(0,0,0,0.45);
-          backdrop-filter: blur(12px);
-        }
-
-        .tmi-pwa-prompt__content {
-          display: flex;
-          gap: 12px;
-          align-items: flex-start;
-          min-width: 220px;
-          flex: 1 1 280px;
-        }
-
-        .tmi-pwa-prompt__icon {
-          font-size: 24px;
-          line-height: 1;
-        }
-
-        .tmi-pwa-prompt__text {
-          display: grid;
-          gap: 4px;
-          font-family: Inter, sans-serif;
-        }
-
-        .tmi-pwa-prompt__text strong {
-          font-size: 12px;
-          font-weight: 900;
-          letter-spacing: 0.14em;
-          text-transform: uppercase;
-          color: #00FFFF;
-        }
-
-        .tmi-pwa-prompt__text span {
-          font-size: 13px;
-          line-height: 1.45;
-          color: rgba(255,255,255,0.86);
-        }
-
-        .tmi-pwa-prompt__actions {
-          display: flex;
-          gap: 8px;
-          align-items: center;
-          flex-wrap: wrap;
-        }
-
-        .tmi-pwa-prompt__primary,
-        .tmi-pwa-prompt__ghost {
-          appearance: none;
-          border: 1px solid rgba(255,255,255,0.14);
-          border-radius: 10px;
-          padding: 10px 14px;
-          font-family: Inter, sans-serif;
-          font-size: 11px;
-          font-weight: 900;
-          letter-spacing: 0.12em;
-          text-transform: uppercase;
-          text-decoration: none;
-          cursor: pointer;
-        }
-
-        .tmi-pwa-prompt__primary {
-          color: #050510;
-          background: linear-gradient(135deg, #00FFFF, #00AABB);
-        }
-
-        .tmi-pwa-prompt__ghost {
-          color: #f7f5ee;
-          background: rgba(255,255,255,0.06);
-        }
-
-        @media (max-width: 640px) {
-          .tmi-pwa-prompt {
-            bottom: 76px;
-          }
-        }
-      `}</style>
     </div>
   );
 }
