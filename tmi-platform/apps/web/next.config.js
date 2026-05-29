@@ -94,18 +94,78 @@ const nextConfig = {
   },
   async redirects() {
     return [
-      // www → apex canonical (301 permanent — consolidates all link authority)
+      // ── www → apex canonical ──────────────────────────────────────────────
       {
         source: '/:path*',
         has: [{ type: 'host', value: 'www.themusiciansindex.com' }],
         destination: 'https://themusiciansindex.com/:path*',
         permanent: true,
       },
-      {
-        source: "/",
-        destination: "/home/1",
-        permanent: false,
-      },
+      // ── Root → Home 1 ─────────────────────────────────────────────────────
+      { source: '/', destination: '/home/1', permanent: false },
+
+      // ── Battles ───────────────────────────────────────────────────────────
+      { source: '/battles/new', destination: '/battles/create', permanent: false },
+      { source: '/battles/hall-of-fame', destination: '/winner-hall', permanent: false },
+      { source: '/battles/weekly-cypher', destination: '/cypher/stage', permanent: false },
+      { source: '/battles/b1', destination: '/battles', permanent: false },
+
+      // ── Artist profile aliases ─────────────────────────────────────────────
+      { source: '/artist/:slug', destination: '/artists/:slug', permanent: false },
+      { source: '/artist/upload', destination: '/beats/submit', permanent: false },
+      { source: '/artist/nfts/mint', destination: '/nft-lab/mint', permanent: false },
+      { source: '/artist/tmi/store', destination: '/store', permanent: false },
+
+      // ── Rooms: legacy /rooms/live/[x] → /live/rooms/[x] ─────────────────
+      { source: '/rooms/live/:room', destination: '/live/rooms/:room', permanent: false },
+      { source: '/rooms/live', destination: '/live/lobby', permanent: false },
+      { source: '/live/world', destination: '/home/3', permanent: false },
+      { source: '/live/arena/:id', destination: '/live/rooms/:id', permanent: false },
+
+      // ── Lobbies ───────────────────────────────────────────────────────────
+      { source: '/lobbies/live-world', destination: '/live/lobby', permanent: false },
+      { source: '/lobbies/monday-cypher', destination: '/cypher/stage', permanent: false },
+      { source: '/lobbies/:slug', destination: '/live/lobby', permanent: false },
+
+      // ── Magazine ──────────────────────────────────────────────────────────
+      { source: '/magazine/1', destination: '/magazine/issue/1', permanent: false },
+      { source: '/magazine/auto', destination: '/magazine', permanent: false },
+      { source: '/magazine/article/:slug', destination: '/magazine/article/:slug', permanent: false },
+
+      // ── Articles aliases ──────────────────────────────────────────────────
+      { source: '/articles/artist/:slug', destination: '/artist-articles/:slug', permanent: false },
+      { source: '/articles/sponsor/:slug', destination: '/profile/sponsor/:slug', permanent: false },
+      { source: '/articles/c/:cat', destination: '/magazine', permanent: false },
+
+      // ── Billboard/campaigns aliases ────────────────────────────────────────
+      { source: '/billboards/crown-weekly', destination: '/billboard', permanent: false },
+      { source: '/billboards/game-night', destination: '/games', permanent: false },
+      { source: '/campaigns/summer-tour-2026', destination: '/campaigns/season-1-grand-finale', permanent: false },
+
+      // ── Shop/season-pass aliases ──────────────────────────────────────────
+      { source: '/shop/season-pass', destination: '/season-pass', permanent: false },
+
+      // ── Fan / social ──────────────────────────────────────────────────────
+      { source: '/fan/challenges', destination: '/challenges', permanent: false },
+      { source: '/groups/:slug', destination: '/social/feed', permanent: false },
+      { source: '/discover/:page', destination: '/home/:page', permanent: false },
+
+      // ── Auth aliases ──────────────────────────────────────────────────────
+      { source: '/signin', destination: '/auth', permanent: false },
+      { source: '/login', destination: '/auth', permanent: false },
+      { source: '/signup', destination: '/auth', permanent: false },
+
+      // ── Editorial / judge / support aliases ───────────────────────────────
+      { source: '/editorial/write', destination: '/submit', permanent: false },
+      { source: '/judge', destination: '/battles', permanent: false },
+      { source: '/messages/support', destination: '/support', permanent: false },
+      { source: '/events/:id', destination: '/live/rooms/:id', permanent: false },
+
+      // ── Promoter hub ─────────────────────────────────────────────────────
+      { source: '/promoter/events', destination: '/hub/promoter', permanent: false },
+
+      // ── Challenges ────────────────────────────────────────────────────────
+      { source: '/challenges/submit', destination: '/challenges/create', permanent: false },
     ];
   },
 };

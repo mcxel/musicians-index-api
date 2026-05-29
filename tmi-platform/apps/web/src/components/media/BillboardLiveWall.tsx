@@ -162,7 +162,7 @@ export default function BillboardLiveWall({ mode = 'home', maxTiles = 12, showAc
                 avatarEmoji={p.avatarEmoji}
                 avatarUrl={p.avatarUrl}
                 showActions={showActions}
-                onJoin={showActions ? () => { window.location.href = `/live/rooms/${p.id}`; } : undefined}
+                onJoin={showActions ? () => { window.location.href = `/live/rooms/${p.id}?from=billboard-wall`; } : undefined}
                 onTip={showActions ? () => alert(`Tip ${p.name}`) : undefined}
                 onMessage={showActions ? () => alert(`Message ${p.name}`) : undefined}
               />

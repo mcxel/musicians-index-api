@@ -168,13 +168,16 @@ export default function LiveLobbyWallGrid({ rooms, title, accentColor = '#00FFFF
   }, []);
 
   const joinRoom = useCallback((room: LobbyRoom) => {
-    router.push(room.href);
+    // Append from=lobby-wall so the room's audience gate grants entry
+    const sep = room.href.includes('?') ? '&' : '?';
+    router.push(`${room.href}${sep}from=lobby-wall`);
   }, [router]);
 
   const joinRandom = useCallback(() => {
     if (liveRooms.length === 0) return;
     const pick = liveRooms[Math.floor(Math.random() * liveRooms.length)];
-    router.push(pick.href);
+    const sep = pick.href.includes('?') ? '&' : '?';
+    router.push(`${pick.href}${sep}from=lobby-wall`);
   }, [liveRooms, router]);
 
   return (
