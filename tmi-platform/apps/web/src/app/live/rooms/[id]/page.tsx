@@ -15,7 +15,7 @@ import LiveSessionHeartbeat from "@/components/live/LiveSessionHeartbeat";
 import { registerPresence } from "@/lib/rooms/RoomSessionBridge";
 import { recordProfileLoopAction } from "@/lib/profile/ProfileSessionStore";
 import { startPerformerSession, recordFanEntry } from "@/lib/performer/PerformerAnalyticsEngine";
-import SeatArrivalTransition from "@/components/live/SeatArrivalTransition";
+import RoomWarpTransition from "@/components/live/RoomWarpTransition";
 
 interface LiveRoomPageProps {
   params: Promise<{ id: string }>;
@@ -81,7 +81,7 @@ export default async function LiveRoomPage({ params, searchParams }: LiveRoomPag
 
   return (
     <main style={{ minHeight: "100vh", background: "#050510", color: "#fff", padding: "34px 18px" }}>
-      <SeatArrivalTransition />
+      <RoomWarpTransition roomId={id} hostName={`Room ${id}`} />
       <div style={{ maxWidth: 920, margin: "0 auto" }}>
         <Link href={returnHref} style={{ color: "#00FFFF", textDecoration: "none", fontSize: 12 }}>{returnLabel}</Link>
         <h1 style={{ fontSize: "clamp(1.8rem, 5vw, 2.8rem)", margin: "10px 0 6px" }}>Room {id}</h1>

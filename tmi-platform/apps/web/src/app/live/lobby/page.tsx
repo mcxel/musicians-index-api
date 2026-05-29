@@ -12,7 +12,7 @@ import SocketRecoveryEngine from "@/lib/routing/SocketRecoveryEngine";
 import LiveStoreOverlay from "@/components/live/LiveStoreOverlay";
 import GhostChatWidget from "@/components/live/GhostChatWidget";
 import SpotlightContainer from "@/components/live/SpotlightContainer";
-import SeatArrivalTransition from "@/components/live/SeatArrivalTransition";
+import RoomWarpTransition from "@/components/live/RoomWarpTransition";
 import LiveLobbyDrawer from "@/components/lobby/LiveLobbyDrawer";
 import MixedLobbyWall from "@/components/lobby/MixedLobbyWall";
 import ArenaJoinToast from "@/components/entry/ArenaJoinToast";
@@ -38,7 +38,7 @@ export default function LiveLobbyPage() {
 
   return (
     <>
-      <SeatArrivalTransition />
+      <RoomWarpTransition roomId="tmi-main-lobby" hostName="TMI Live Lobby" />
       <LobbyShell slug="tmi-main-lobby" />
       <section style={{ padding: 12, background: "#050510", color: "#fff", display: "grid", gap: 8 }}>
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
