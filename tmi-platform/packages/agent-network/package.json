@@ -1,0 +1,9 @@
+{
+  "name": "@bernout/agent-network",
+  "version": "1.0.0",
+  "private": true,
+  "main": "src/index.ts",
+  "scripts": {
+    "typecheck": "pnpm exec tsc --noEmit"
+  }
+}
