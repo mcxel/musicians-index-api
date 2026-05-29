@@ -1,10 +1,24 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
+
+const DISMISSED_KEY = 'tmi-beta-banner-dismissed';
 
 export default function BetaModeBanner() {
   const [expanded, setExpanded] = useState(false);
+  const [dismissed, setDismissed] = useState(true); // hidden until hydrated
+
+  useEffect(() => {
+    setDismissed(sessionStorage.getItem(DISMISSED_KEY) === '1');
+  }, []);
+
+  function dismiss() {
+    sessionStorage.setItem(DISMISSED_KEY, '1');
+    setDismissed(true);
+  }
+
+  if (dismissed) return null;
 
   return (
     <div style={{
@@ -56,6 +70,18 @@ export default function BetaModeBanner() {
             }}
           >
             {expanded ? 'LESS' : 'DETAILS'}
+          </button>
+          <button
+            onClick={dismiss}
+            aria-label="Dismiss beta banner"
+            style={{
+              width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: 'transparent', border: 'none',
+              color: 'rgba(255,255,255,0.3)', cursor: 'pointer', fontSize: 13, lineHeight: 1,
+              padding: 0, flexShrink: 0,
+            }}
+          >
+            ×
           </button>
         </div>
       </div>
