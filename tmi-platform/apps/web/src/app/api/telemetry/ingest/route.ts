@@ -8,7 +8,7 @@ const MAX_LOG = 2000;
 export async function POST(req: NextRequest) {
   const sessionId = req.cookies.get("tmi_session_id")?.value;
   if (!sessionId) {
-    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    return NextResponse.json({ received: false }, { status: 200 });
   }
 
   let body: Partial<PersonaAnalyticsEvent>;

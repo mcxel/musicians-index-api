@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { SEED_FEEDS } from "@/lib/broadcast/BroadcastRotationEngine";
 
@@ -26,14 +27,16 @@ function useCountUp(target: number, active: boolean, duration = 1000): number {
 }
 
 export default function WelcomeArenaOverlay() {
+  const pathname = usePathname();
   const [visible, setVisible] = useState(false);
   const [exiting, setExiting] = useState(false);
   const linkRef = useRef<string>("/live/lobby");
 
   useEffect(() => {
+    if (pathname?.startsWith('/home')) return;
     const seen = localStorage.getItem(SEEN_KEY);
     if (!seen) setVisible(true);
-  }, []);
+  }, [pathname]);
 
   const liveFeeds   = SEED_FEEDS.filter(f => f.status === "live");
   const liveRooms   = liveFeeds.length;
