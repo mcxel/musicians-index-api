@@ -273,7 +273,90 @@ export default function GoLiveStudio() {
       <style>{`
         @keyframes tmiLivePulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
         @keyframes tmiLiveBorder { 0%,100%{box-shadow:0 0 0 0 rgba(255,45,170,0.4)} 50%{box-shadow:0 0 0 8px rgba(255,45,170,0)} }
+        @keyframes tmiSponsorGlow { 0%,100%{box-shadow:0 0 20px rgba(255,215,0,0.12)} 50%{box-shadow:0 0 36px rgba(255,215,0,0.28)} }
       `}</style>
+
+      {/* ── Community Sponsor Mission ─────────────────────────────────────── */}
+      <div style={{
+        marginBottom: 20,
+        borderRadius: 14,
+        border: '1px solid rgba(255,215,0,0.35)',
+        borderLeft: '4px solid #FFD700',
+        background: 'linear-gradient(135deg, rgba(255,215,0,0.07) 0%, rgba(170,45,255,0.06) 100%)',
+        padding: '18px 20px',
+        animation: 'tmiSponsorGlow 3s ease-in-out infinite',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+          <span style={{ fontSize: 22 }}>🏆</span>
+          <div>
+            <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: '0.25em', color: '#FFD700', textTransform: 'uppercase' }}>
+              We Grow Together — Community Sponsor Program
+            </div>
+            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', marginTop: 2 }}>
+              Your stage. Your neighborhood. Your income.
+            </div>
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gap: 10 }}>
+          {[
+            { icon: '🚶', title: 'Walk Your Neighborhood', body: 'Find local businesses — restaurants, barbershops, salons, stores — and introduce them to TMI. You already know these people. That\'s your advantage.' },
+            { icon: '🤝', title: 'Get Them to Sponsor You', body: 'Tell them: "I\'ll put your business on my TMI page and give you global promotion every time I perform. You\'ll reach fans across the platform — and beyond." It\'s a win-win.' },
+            { icon: '💸', title: 'Sponsor Money Goes Straight to Your Pocket', body: 'When a business signs up as your sponsor through your link, that revenue is yours. No middleman. You brought them in, you earn from them — monthly.' },
+            { icon: '🏅', title: 'Enter the Yearly Competition', body: 'Performers with active local sponsors get entry into the TMI Yearly Competition — with prizes, platform features, and industry exposure.' },
+            { icon: '🌍', title: 'You Promote Them. They Promote You.', body: 'Your neighborhood backs you on stage. You put them on the world map. Every show you do is free advertising for every business that sponsors you. That\'s a team.' },
+          ].map((item) => (
+            <div key={item.icon} style={{
+              display: 'flex', gap: 12,
+              padding: '10px 14px',
+              background: 'rgba(255,255,255,0.03)',
+              border: '1px solid rgba(255,255,255,0.07)',
+              borderRadius: 9,
+            }}>
+              <span style={{ fontSize: 18, flexShrink: 0, marginTop: 1 }}>{item.icon}</span>
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 800, color: '#fff', marginBottom: 3 }}>{item.title}</div>
+                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', lineHeight: 1.6 }}>{item.body}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ marginTop: 14, padding: '10px 14px', background: 'rgba(255,215,0,0.08)', border: '1px solid rgba(255,215,0,0.25)', borderRadius: 8 }}>
+          <div style={{ fontSize: 12, fontWeight: 900, color: '#FFD700', marginBottom: 4 }}>
+            How it works in 3 steps:
+          </div>
+          <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', lineHeight: 1.8 }}>
+            1. Find a local business → share your TMI sponsor link with them<br />
+            2. They sign up &amp; activate their sponsorship → money hits your account<br />
+            3. Feature them on your page every show → they grow, you grow, community wins
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: 10, marginTop: 14, flexWrap: 'wrap' }}>
+          <Link
+            href="/sponsors/invite"
+            style={{
+              padding: '10px 20px', borderRadius: 8, fontSize: 11, fontWeight: 900,
+              background: 'linear-gradient(135deg, #FFD700, #ff9500)',
+              color: '#050510', textDecoration: 'none', letterSpacing: '0.08em',
+            }}
+          >
+            🏆 GET MY SPONSOR LINK
+          </Link>
+          <Link
+            href="/hub/performer#sponsors"
+            style={{
+              padding: '10px 18px', borderRadius: 8, fontSize: 11, fontWeight: 800,
+              background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)',
+              color: 'rgba(255,255,255,0.7)', textDecoration: 'none', letterSpacing: '0.06em',
+            }}
+          >
+            VIEW SPONSOR DASHBOARD →
+          </Link>
+        </div>
+      </div>
+      {/* ──────────────────────────────────────────────────────────────────── */}
 
       {/* ── Camera self-view ──────────────────────────────────────────────── */}
       <div style={{
