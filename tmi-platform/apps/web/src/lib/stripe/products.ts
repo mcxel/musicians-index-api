@@ -293,6 +293,9 @@ export const STRIPE_PRODUCTS = {
   FOUNDING_CREATOR:    { productId:"prod_founding", priceId: process.env.STRIPE_PRICE_FOUNDING_15 ?? "price_founding_creator_15",   name:"Founding Creator Pack",   price:1500, interval:"one_time" as const },
   FOUNDING_MEMBER:     { productId:"prod_founding", priceId: process.env.STRIPE_PRICE_FOUNDING_25 ?? "price_founding_member_25",    name:"Founding Member Pack",    price:2500, interval:"one_time" as const },
   FOUNDING_DIAMOND:    { productId:"prod_founding", priceId: process.env.STRIPE_PRICE_FOUNDING_50 ?? "price_diamond_founder_50",    name:"Diamond Founder Pack",    price:5000, interval:"one_time" as const },
+
+  // ── DJ / event submissions ────────────────────────────────────────────────
+  DJ_SUBMISSION:       { productId:"prod_dj_sub",   priceId: process.env.STRIPE_PRICE_DJ_SUBMISSION ?? "price_dj_submission",       name:"DJ Track Submission",     price:499,  interval:"one_time" as const },
 } as const;
 
 // Platform revenue split percentages

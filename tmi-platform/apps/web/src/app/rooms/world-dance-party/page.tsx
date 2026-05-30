@@ -9,6 +9,7 @@ import FooterHUD from "@/components/hud/FooterHUD";
 import Link from "next/link";
 import ShareButton from "@/components/rooms/ShareButton";
 import LocalCameraFeed from "@/components/live/LocalCameraFeed";
+import DanceArena3D from "@/components/live/DanceArena3D";
 import { RecordRalphEngine, type RalphAnimState } from "@/lib/dj/RecordRalphEngine";
 import { activatePhase1Bots } from "@/lib/bots/Phase1BotActivator";
 import {
@@ -80,6 +81,18 @@ export default function WorldDancePartyPage() {
   const [autoNext, setAutoNext] = useState(false);
   const [lockerBeats, setLockerBeats] = useState<Array<{ id: string; title: string; genre: string; bpm: number; votes: number }>>([]);
   const [lockerTrackIdx, setLockerTrackIdx] = useState(0);
+
+  // ── DJ Submission ─────────────────────────────────────────────────────────
+  const [submitOpen,    setSubmitOpen]    = useState(false);
+  const [submitTitle,   setSubmitTitle]   = useState("");
+  const [submitArtist,  setSubmitArtist]  = useState("");
+  const [submitGenre,   setSubmitGenre]   = useState("Dance");
+  const [submitBpm,     setSubmitBpm]     = useState("");
+  const [submitLoading, setSubmitLoading] = useState(false);
+  const [submitDone,    setSubmitDone]    = useState(false);
+  const [submitError,   setSubmitError]   = useState<string | null>(null);
+  const [myXp,          setMyXp]          = useState<number | null>(null);
+  const XP_COST = 500;
 
   const trackInteraction = useCallback(() => {
     setInteractionCount((n) => n + 1);
@@ -231,6 +244,42 @@ export default function WorldDancePartyPage() {
     if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight;
   }, [chatLines]);
 
+  // Fetch performer XP for submission panel
+  useEffect(() => {
+    fetch("/api/dj-submission?performerId=guest-performer")
+      .then((r) => r.json())
+      .then((d: { xp?: number }) => { if (typeof d.xp === "number") setMyXp(d.xp); })
+      .catch(() => {});
+  }, []);
+
+  async function handleSubmit(method: "xp" | "paid") {
+    if (!submitTitle.trim() || !submitArtist.trim()) { setSubmitError("Title and artist required."); return; }
+    if (method === "paid") {
+      router.push(`/api/stripe/checkout?priceId=price_dj_submission&mode=payment&type=dj_submission&successUrl=/rooms/world-dance-party?submitted=1`);
+      return;
+    }
+    setSubmitLoading(true);
+    setSubmitError(null);
+    try {
+      const res = await fetch("/api/dj-submission", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ method: "xp", performerId: "guest-performer", title: submitTitle, artist: submitArtist, genre: submitGenre, bpm: submitBpm ? Number(submitBpm) : null }),
+      });
+      const data = await res.json() as { ok: boolean; error?: string; xpRemaining?: number };
+      if (!data.ok) {
+        setSubmitError(data.error === "insufficient_xp" ? `Not enough XP. You need ${XP_COST}.` : "Submission failed.");
+        return;
+      }
+      if (typeof data.xpRemaining === "number") setMyXp(data.xpRemaining);
+      setSubmitDone(true);
+      setSubmitTitle(""); setSubmitArtist("");
+      addChat("Record Ralph", `🎧 New submission in the queue: "${submitTitle}" — let's GO!`, false);
+    } finally {
+      setSubmitLoading(false);
+    }
+  }
+
   return (
     <PageShell>
       <HUDFrame>
@@ -293,46 +342,27 @@ export default function WorldDancePartyPage() {
 
             {/* Dance floor / Main stage */}
             <div>
-              {/* DJ Stream area */}
+              {/* 3D Arena */}
+              <div style={{ marginBottom: 20 }}>
+                <DanceArena3D
+                  mesh={mesh}
+                  fanSeat={fanSeat}
+                  activeColor={DANCE_FLOOR_COLORS[activeColor]!}
+                  bpm={bpm}
+                  ralphAnim={ralphAnim}
+                  ralphAnimColor={RALPH_ANIM_COLOR[ralphAnim]}
+                  ralphAnimLabel={RALPH_ANIM_LABEL[ralphAnim]}
+                  currentTrackTitle={DJ_TRACKS[currentTrack]?.title ?? ""}
+                  currentTrackArtist={DJ_TRACKS[currentTrack]?.artist ?? ""}
+                />
+              </div>
+
+              {/* Track list */}
               <div style={{
                 background: "rgba(255,45,170,0.06)", border: "1px solid rgba(255,45,170,0.2)",
-                borderRadius: 16, padding: 24, marginBottom: 20,
+                borderRadius: 12, padding: 16, marginBottom: 20,
               }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-                  <div style={{ fontSize: 9, letterSpacing: 4, color: "#FF2DAA", fontWeight: 800 }}>🎧 DJ STREAM</div>
-                  {/* Record Ralph host badge */}
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <div style={{ fontSize: 10, color: "#888" }}>Record Ralph</div>
-                    <motion.div
-                      key={ralphAnim}
-                      initial={{ scale: 0.85, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      style={{
-                        padding: "3px 10px", borderRadius: 20, fontSize: 9, fontWeight: 800, letterSpacing: 1,
-                        background: `${RALPH_ANIM_COLOR[ralphAnim]}22`,
-                        border: `1px solid ${RALPH_ANIM_COLOR[ralphAnim]}66`,
-                        color: RALPH_ANIM_COLOR[ralphAnim],
-                      }}
-                    >
-                      {RALPH_ANIM_LABEL[ralphAnim]}
-                    </motion.div>
-                  </div>
-                </div>
-                <div style={{ background: "#0a0a1a", borderRadius: 10, aspectRatio: "16/9", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
-                  <motion.div
-                    animate={{ rotate: 360 }}
-                    transition={{ duration: 60 / bpm * 2, repeat: Infinity, ease: "linear" }}
-                    style={{
-                      width: 100, height: 100, borderRadius: "50%",
-                      background: `conic-gradient(${DANCE_FLOOR_COLORS[activeColor]}, #0a0a1a, ${DANCE_FLOOR_COLORS[(activeColor + 2) % 6]})`,
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                    }}
-                  >
-                    <div style={{ width: 20, height: 20, borderRadius: "50%", background: "#050510" }} />
-                  </motion.div>
-                </div>
-
-                {/* Track list */}
+                <div style={{ fontSize: 9, letterSpacing: 4, color: "#FF2DAA", fontWeight: 800, marginBottom: 10 }}>🎧 NOW PLAYING</div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {DJ_TRACKS.map((track, i) => (
                     <div key={track.title} onClick={() => setCurrentTrack(i)} style={{
@@ -449,6 +479,115 @@ export default function WorldDancePartyPage() {
                   </div>
                 )}
               </div>
+              {/* DJ Track Submission */}
+              <div style={{
+                background: "rgba(170,45,255,0.05)", border: "1px solid rgba(170,45,255,0.2)",
+                borderRadius: 12, padding: 18,
+              }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                  <div style={{ fontSize: 9, letterSpacing: 4, color: "#AA2DFF", fontWeight: 800 }}>🎛 SUBMIT A TRACK</div>
+                  <button
+                    onClick={() => { setSubmitOpen((o) => !o); setSubmitDone(false); setSubmitError(null); }}
+                    style={{ fontSize: 9, color: "#AA2DFF", background: "none", border: "none", cursor: "pointer", fontWeight: 700 }}
+                  >
+                    {submitOpen ? "▲ CLOSE" : "▼ OPEN"}
+                  </button>
+                </div>
+
+                {!submitOpen && (
+                  <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", lineHeight: 1.5 }}>
+                    Submit your track to the World Dance Party queue.<br />
+                    <span style={{ color: "#AA2DFF", fontWeight: 700 }}>500 XP</span>
+                    {" "}or{" "}
+                    <span style={{ color: "#FFD700", fontWeight: 700 }}>$4.99</span>
+                  </div>
+                )}
+
+                {submitOpen && !submitDone && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {myXp !== null && (
+                      <div style={{ fontSize: 9, color: "#AA2DFF", marginBottom: 2 }}>
+                        Your XP: <strong>{myXp.toLocaleString()}</strong>
+                        {myXp < 500 && <span style={{ color: "#FF4444", marginLeft: 6 }}>(need 500)</span>}
+                      </div>
+                    )}
+                    <input
+                      placeholder="Track title"
+                      value={submitTitle}
+                      onChange={(e) => setSubmitTitle(e.target.value)}
+                      maxLength={60}
+                      style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(170,45,255,0.3)", color: "#fff", padding: "8px 10px", fontSize: 11, borderRadius: 6, outline: "none", fontFamily: "inherit" }}
+                    />
+                    <input
+                      placeholder="Artist / handle"
+                      value={submitArtist}
+                      onChange={(e) => setSubmitArtist(e.target.value)}
+                      maxLength={40}
+                      style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(170,45,255,0.3)", color: "#fff", padding: "8px 10px", fontSize: 11, borderRadius: 6, outline: "none", fontFamily: "inherit" }}
+                    />
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                      <select
+                        value={submitGenre}
+                        onChange={(e) => setSubmitGenre(e.target.value)}
+                        style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(170,45,255,0.3)", color: "#fff", padding: "8px 10px", fontSize: 11, borderRadius: 6, cursor: "pointer" }}
+                      >
+                        {["Dance","Hip-Hop","Trap","EDM","R&B","Afrobeats","House","Reggaeton","Pop"].map((g) => (
+                          <option key={g} value={g}>{g}</option>
+                        ))}
+                      </select>
+                      <input
+                        placeholder="BPM (optional)"
+                        value={submitBpm}
+                        onChange={(e) => setSubmitBpm(e.target.value.replace(/\D/g, ""))}
+                        maxLength={3}
+                        style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(170,45,255,0.3)", color: "#fff", padding: "8px 10px", fontSize: 11, borderRadius: 6, outline: "none", fontFamily: "inherit" }}
+                      />
+                    </div>
+                    {submitError && (
+                      <div style={{ fontSize: 10, color: "#FF4444", padding: "6px 8px", background: "rgba(255,68,68,0.08)", borderRadius: 4 }}>{submitError}</div>
+                    )}
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                      <motion.button
+                        whileTap={{ scale: 0.96 }}
+                        disabled={submitLoading || (myXp !== null && myXp < 500)}
+                        onClick={() => void handleSubmit("xp")}
+                        style={{
+                          padding: "10px 0", borderRadius: 8, cursor: submitLoading ? "wait" : "pointer",
+                          background: "rgba(170,45,255,0.15)", border: "1px solid rgba(170,45,255,0.45)",
+                          color: "#CC60FF", fontSize: 10, fontWeight: 800, letterSpacing: "0.06em",
+                          opacity: myXp !== null && myXp < 500 ? 0.4 : 1,
+                        }}
+                      >
+                        ⚡ 500 XP
+                      </motion.button>
+                      <motion.button
+                        whileTap={{ scale: 0.96 }}
+                        disabled={submitLoading}
+                        onClick={() => void handleSubmit("paid")}
+                        style={{
+                          padding: "10px 0", borderRadius: 8, cursor: "pointer",
+                          background: "linear-gradient(135deg, #FFD700, #FF9500)",
+                          border: "none", color: "#050510",
+                          fontSize: 10, fontWeight: 900, letterSpacing: "0.06em",
+                        }}
+                      >
+                        💳 $4.99
+                      </motion.button>
+                    </div>
+                  </div>
+                )}
+
+                {submitDone && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    style={{ fontSize: 11, color: "#00FF88", fontWeight: 700, textAlign: "center", padding: "10px 0" }}
+                  >
+                    ✓ Submitted! Record Ralph will drop it in the queue.
+                  </motion.div>
+                )}
+              </div>
+
               {/* Tip dancer */}
               <div style={{
                 background: "rgba(255,215,0,0.05)", border: "1px solid rgba(255,215,0,0.2)",
