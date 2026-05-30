@@ -6,5 +6,5 @@ export default async function ArtistProfilePage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  redirect(`/artists/${slug}`);
+  redirect(`/performers/${slug}`);
 }
