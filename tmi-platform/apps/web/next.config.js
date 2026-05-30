@@ -9,6 +9,7 @@ const nextConfig = {
     "@tmi/hud-runtime",
     "@tmi/hud-theme",
     "@tmi/hud-tmi",
+    "@bernout/agent-network",
   ],
   webpack(config, { isServer, nextRuntime }) {
     // Point each workspace package to its TypeScript source so Vercel can
@@ -20,6 +21,7 @@ const nextConfig = {
       "@tmi/hud-runtime": path.join(pkgRoot, "hud-runtime/src/index.ts"),
       "@tmi/hud-theme": path.join(pkgRoot, "hud-theme/src/index.ts"),
       "@tmi/hud-tmi": path.join(pkgRoot, "hud-tmi/src/index.tsx"),
+      "@bernout/agent-network": path.join(__dirname, "src/stubs/bernout-agent-network.ts"),
     });
 
     // Next.js 14 expects pages-manifest.json even for App Router-only projects.
