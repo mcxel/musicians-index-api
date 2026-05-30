@@ -243,7 +243,6 @@ function safeParseLayerState(serialized: string | null): TMILayer[] | null {
 }
 
 export default function Home1CoverPage() {
-  const [orbitAngle, setOrbitAngle] = useState(0);
   const [layers, setLayers] = useState<TMILayer[]>(DEFAULT_LAYERS);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -364,13 +363,22 @@ export default function Home1CoverPage() {
 
   useEffect(() => {
     let frame = 0;
+    let angle = 0;
     let last = 0;
 
     const tick = (time: number) => {
       if (last > 0) {
         const delta = time - last;
-        const directionFactor = THIS_WEEK_ORBIT_DIRECTION === 'clockwise' ? 1 : -1;
-        setOrbitAngle((prev) => (prev + directionFactor * delta * 0.013) % 360);
+        angle = (angle + delta * 0.013) % 360;
+        const canvas = orbitCanvasRef.current;
+        if (canvas) {
+          const nodes = canvas.querySelectorAll<HTMLElement>('.tmi-orbit-node');
+          nodes.forEach((node, i) => {
+            const p = orbitPoint(i, nodes.length, 39, angle);
+            node.style.left = `${p.x}%`;
+            node.style.top = `${p.y}%`;
+          });
+        }
       }
       last = time;
       frame = requestAnimationFrame(tick);
@@ -522,6 +530,7 @@ export default function Home1CoverPage() {
           animation: tmiSilkFlow 18s ease-in-out infinite alternate;
           filter: blur(16px);
           mix-blend-mode: screen;
+          will-change: transform;
         }
 
         .tmi-kinetic-silk-2 {
@@ -534,6 +543,7 @@ export default function Home1CoverPage() {
           animation: tmiSilkFlowFast 10s linear infinite;
           filter: blur(10px);
           mix-blend-mode: overlay;
+          will-change: transform;
         }
 
         .tmi-kinetic-silk-3 {
@@ -545,6 +555,7 @@ export default function Home1CoverPage() {
           animation: tmiSilkGold 22s ease-in-out infinite alternate;
           filter: blur(20px);
           mix-blend-mode: screen;
+          will-change: transform;
         }
 
         @keyframes tmiSilkGold {
@@ -636,7 +647,6 @@ export default function Home1CoverPage() {
           box-shadow: inset 0 1px 1px rgba(255,255,255,0.15), 0 20px 40px rgba(0,0,0,0.6), 0 0 40px rgba(0,255,255,0.1);
           border-radius: 16px;
           margin-bottom: 12px;
-          animation: tmiMastheadPulse 2.4s ease-in-out infinite;
           position: relative;
         }
         .tmi-masthead::after {
@@ -882,10 +892,8 @@ export default function Home1CoverPage() {
         }
 
         @keyframes tmiAlertGlitch {
-          0%, 96%, 100% { opacity: 1; transform: translateX(0); }
-          97% { opacity: 0.8; transform: translateX(-2px); }
-          98% { opacity: 0.9; transform: translateX(2px); }
-          99% { opacity: 0.5; transform: translateX(-1px); }
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.88; }
         }
 
         .tmi-orbit-section {
@@ -1374,6 +1382,15 @@ export default function Home1CoverPage() {
           .tmi-ad-rail-grid {
             grid-template-columns: 1fr;
           }
+
+          /* Remove heavy overlays that cause blend-mode glitches on mobile */
+          .tmi-kinetic-silk-1,
+          .tmi-kinetic-silk-2,
+          .tmi-kinetic-silk-3,
+          .tmi-grain-overlay,
+          .tmi-gloss-overlay {
+            display: none;
+          }
         }
       `}</style>
 
@@ -1483,7 +1500,7 @@ export default function Home1CoverPage() {
             Top Ranked · Live Now · Updated In Real Time
           </div>
 
-          <div className="tmi-orbit-canvas">
+          <div className="tmi-orbit-canvas" ref={orbitCanvasRef}>
             <div className="tmi-orbit-ring" />
 
             {/* 5. Overlay A - Star Field Particles */}
