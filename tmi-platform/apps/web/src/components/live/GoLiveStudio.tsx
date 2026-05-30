@@ -5,6 +5,7 @@ import Link from 'next/link';
 import type { DailyCall } from '@daily-co/daily-js';
 import MaskedVideoTile from '@/components/media/MaskedVideoTile';
 import ArenaImmersivePanel from '@/components/live/ArenaImmersivePanel';
+import LiveLobbyWallGrid, { type LobbyRoom } from '@/components/live/LiveLobbyWallGrid';
 import {
   startCountdown,
   openCurtain,
@@ -26,6 +27,13 @@ const FUCHSIA = '#FF2DAA';
 const CYAN = '#00FFFF';
 const GOLD = '#FFD700';
 
+const LOBBY_SEED_ROOMS: LobbyRoom[] = [
+  { id: 'l1', name: 'Cypher Room', performerName: 'DJ Nocturne', type: 'cypher', href: '/live/lobby', viewerCount: 14, status: 'live', genre: 'Hip-Hop' },
+  { id: 'l2', name: 'Battle Arena', performerName: 'Verse King', type: 'battle', href: '/live/lobby', viewerCount: 31, status: 'live', genre: 'Trap' },
+  { id: 'l3', name: 'Vibe Session', performerName: 'Luna Sol', type: 'live', href: '/live/lobby', viewerCount: 8, status: 'live', genre: 'R&B' },
+  { id: 'l4', name: 'Beat Lab', performerName: 'Crate Digger', type: 'mini-cypher', href: '/live/lobby', viewerCount: 5, status: 'starting', genre: 'Jazz' },
+];
+
 export default function GoLiveStudio() {
   const videoRef  = useRef<HTMLVideoElement>(null);
   const stageRef = useRef<HTMLVideoElement>(null);
@@ -45,7 +53,8 @@ export default function GoLiveStudio() {
   const [micOn,          setMicOn]          = useState(true);
   const [camOn,          setCamOn]          = useState(true);
   const [dailyRoomId,    setDailyRoomId]    = useState('');
-  const [curtainState,   setCurtainState]   = useState(() => getStageSnapshot().state);
+  const [curtainState,     setCurtainState]     = useState(() => getStageSnapshot().state);
+  const [isPublicSession,  setIsPublicSession]  = useState(true);
 
   useEffect(() => subscribeStage((s) => setCurtainState(s.state)), []);
 
@@ -523,43 +532,45 @@ export default function GoLiveStudio() {
         </div>
       )}
 
-      {isLive && (
-        <section style={{ marginBottom: 20 }}>
-          <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.14em', marginBottom: 8, fontWeight: 800 }}>
-            PANEL FOCUS ARENA
+      {isLive && !isPublicSession && (
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ fontSize: 9, color: CYAN, fontWeight: 800, letterSpacing: '0.14em', marginBottom: 10 }}>
+            🔒 PRIVATE SESSION — ARTIST BOX
           </div>
-
-          <div style={{ borderRadius: 12, border: '1px solid rgba(255,255,255,0.12)', overflow: 'hidden', marginBottom: 10, background: '#000', aspectRatio: '16/9' }}>
-            <video
-              ref={stageRef}
-              autoPlay
-              muted
-              playsInline
-              style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }}
-            />
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 8, marginBottom: 8 }}>
-            <MaskedVideoTile shape="octagon" performerName="Panelist 1" genre="Cypher" avatarEmoji="🎤" size={120} accentColor="#00FFFF" role="performer" allowAudioPreview />
-            <MaskedVideoTile shape="octagon" performerName="Panelist 2" genre="Battle" avatarEmoji="🎵" size={120} accentColor="#FF2DAA" role="performer" allowAudioPreview />
-            <MaskedVideoTile shape="octagon" performerName="Panelist 3" genre="Live"   avatarEmoji="🎙️" size={120} accentColor="#FFD700" role="performer" allowAudioPreview />
-          </div>
-
-          <div style={{ borderRadius: 10, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.02)', padding: 10 }}>
-            <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.38)', letterSpacing: '0.12em', marginBottom: 8, fontWeight: 800 }}>AUDIENCE AVATARS</div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 6 }}>
-              {['/tmi-curated/mag-42.jpg', '/tmi-curated/mag-50.jpg', '/tmi-curated/mag-58.jpg', '/tmi-curated/mag-66.jpg', '/tmi-curated/mag-74.jpg', '/tmi-curated/mag-82.jpg'].map((avatar, index) => (
-                <div key={avatar} style={{ borderRadius: 999, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.2)', aspectRatio: '1 / 1' }}>
-                  <img src={avatar} alt={`Audience avatar ${index + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
+          <LiveLobbyWallGrid
+            title="Artist Lobby"
+            accentColor={CYAN}
+            rooms={LOBBY_SEED_ROOMS}
+          />
+        </div>
       )}
 
-      {isLive && (
-        <ArenaImmersivePanel roomId="main-stage" mode="performer" />
+      {isLive && isPublicSession && (
+        <>
+          <section style={{ marginBottom: 20 }}>
+            <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.14em', marginBottom: 8, fontWeight: 800 }}>
+              PANEL FOCUS ARENA
+            </div>
+
+            <div style={{ borderRadius: 12, border: '1px solid rgba(255,255,255,0.12)', overflow: 'hidden', marginBottom: 10, background: '#000', aspectRatio: '16/9' }}>
+              <video
+                ref={stageRef}
+                autoPlay
+                muted
+                playsInline
+                style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }}
+              />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 8, marginBottom: 8 }}>
+              <MaskedVideoTile shape="octagon" performerName="Panelist 1" genre="Cypher" avatarEmoji="🎤" size={120} accentColor="#00FFFF" role="performer" allowAudioPreview />
+              <MaskedVideoTile shape="octagon" performerName="Panelist 2" genre="Battle" avatarEmoji="🎵" size={120} accentColor="#FF2DAA" role="performer" allowAudioPreview />
+              <MaskedVideoTile shape="octagon" performerName="Panelist 3" genre="Live"   avatarEmoji="🎙️" size={120} accentColor="#FFD700" role="performer" allowAudioPreview />
+            </div>
+          </section>
+
+          <ArenaImmersivePanel roomId="main-stage" mode="performer" />
+        </>
       )}
 
       {/* ── Broadcast setup (only when idle) ─────────────────────────────── */}
@@ -602,6 +613,34 @@ export default function GoLiveStudio() {
               {errorMsg}
             </div>
           )}
+
+          {/* Public / Private toggle */}
+          <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
+            <button
+              type="button"
+              onClick={() => setIsPublicSession(true)}
+              style={{
+                flex: 1, padding: '10px 0', borderRadius: 8, cursor: 'pointer', fontSize: 10, fontWeight: 800, letterSpacing: '0.08em',
+                background: isPublicSession ? 'rgba(255,45,170,0.15)' : 'rgba(255,255,255,0.04)',
+                border: `1px solid ${isPublicSession ? 'rgba(255,45,170,0.5)' : 'rgba(255,255,255,0.1)'}`,
+                color: isPublicSession ? FUCHSIA : 'rgba(255,255,255,0.3)',
+              }}
+            >
+              🌐 PUBLIC — AUDIENCE + LOBBY WALL
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsPublicSession(false)}
+              style={{
+                flex: 1, padding: '10px 0', borderRadius: 8, cursor: 'pointer', fontSize: 10, fontWeight: 800, letterSpacing: '0.08em',
+                background: !isPublicSession ? 'rgba(0,255,255,0.1)' : 'rgba(255,255,255,0.04)',
+                border: `1px solid ${!isPublicSession ? 'rgba(0,255,255,0.4)' : 'rgba(255,255,255,0.1)'}`,
+                color: !isPublicSession ? CYAN : 'rgba(255,255,255,0.3)',
+              }}
+            >
+              🔒 PRIVATE — ARTIST BOX ONLY
+            </button>
+          </div>
         </div>
       )}
 
