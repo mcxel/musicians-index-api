@@ -13,6 +13,7 @@ import {
   setVenueSlowMode,
   muteAudienceMember,
   unmuteAudienceMember,
+  assignNextSeat,
 } from "@/lib/live/audienceRuntimeEngine";
 import { emitAdminLiveEvent } from "@/lib/admin/AdminLiveEventEngine";
 import type { AudienceMember } from "@/lib/live/audienceRuntimeEngine";
@@ -61,9 +62,13 @@ export async function POST(req: NextRequest) {
     if (!venueSlug) return NextResponse.json({ error: "venueSlug required" }, { status: 400 });
 
     switch (action) {
-      case "join":
+      case "join": {
         if (!member) return NextResponse.json({ error: "member required" }, { status: 400 });
-        return NextResponse.json(joinAudience(venueSlug, member));
+        // Auto-assign a seat if none requested — every real person gets a specific seat
+        const assignedSeatId = member.seatId ?? assignNextSeat(venueSlug);
+        const occupancy = joinAudience(venueSlug, { ...member, seatId: assignedSeatId });
+        return NextResponse.json({ ...occupancy, assignedSeatId });
+      }
       case "leave":
         if (!userId) return NextResponse.json({ error: "userId required" }, { status: 400 });
         return NextResponse.json(leaveAudience(venueSlug, userId));

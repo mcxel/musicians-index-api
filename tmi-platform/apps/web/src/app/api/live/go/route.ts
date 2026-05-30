@@ -13,6 +13,7 @@ import {
   type GoLivePayload,
   type LivePingPayload,
 } from '@/lib/broadcast/GlobalLiveSessionRegistry';
+import { seedRoomWithBots } from '@/lib/live/audienceRuntimeEngine';
 
 export const dynamic = 'force-dynamic';
 
@@ -49,6 +50,9 @@ export async function POST(req: NextRequest) {
     accentColor:   body.accentColor,
     performerTier: body.performerTier,
   });
+
+  // Auto-seed 20 bots into the room so performer never sees an empty venue
+  seedRoomWithBots(session.roomId, 20);
 
   return NextResponse.json({ ok: true, session }, { status: 200 });
 }

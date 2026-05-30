@@ -10,6 +10,15 @@ import { SystemSecurityBot } from '@/lib/bots/SystemSecurityBot';
 import LiveRecoveryOverlay, { type RecoveryState } from './LiveRecoveryOverlay';
 import SponsorBubbleOverlay, { type BubbleSponsor } from '@/components/sponsor/SponsorBubbleOverlay';
 import { useShowtimeReveal } from '@/lib/live/LiveryRevealController';
+import StageCurtain from '@/components/live/StageCurtain';
+import {
+  startCountdown,
+  openCurtain,
+  closeCurtainAndEnd,
+  resetStage,
+  getStageSnapshot,
+  subscribeStage,
+} from '@/lib/live/StageLifecycleEngine';
 
 type ArenaMode = 'audience' | 'performer';
 
@@ -60,16 +69,6 @@ function publicName(name: string): string {
   return `${local.slice(0, 2)}***`;
 }
 
-const FALLBACK_AUDIENCE = [
-  { id: 'fb-1', name: 'Nova Fan', avatar: '🎧' },
-  { id: 'fb-2', name: 'Crown Vibe', avatar: '🔥' },
-  { id: 'fb-3', name: 'Wave Room', avatar: '🎶' },
-  { id: 'fb-4', name: 'Pulse Mode', avatar: '✨' },
-  { id: 'fb-5', name: 'Neon Seat', avatar: '🎤' },
-  { id: 'fb-6', name: 'Arena Fam', avatar: '💫' },
-  { id: 'fb-7', name: 'Beat Watch', avatar: '🪩' },
-  { id: 'fb-8', name: 'Stage Eye', avatar: '👀' },
-];
 
 const AVATAR_SET = ['🎧', '🔥', '🎶', '✨', '🎤', '💫', '🪩', '👑'];
 
@@ -78,10 +77,6 @@ function hashAvatar(seed: string): string {
   return AVATAR_SET[hash % AVATAR_SET.length] ?? '🎧';
 }
 
-function rotateWindow<T>(items: T[], start: number, count: number): T[] {
-  if (items.length <= count) return items;
-  return Array.from({ length: count }, (_, i) => items[(start + i) % items.length] as T);
-}
 
 const securityBot = new SystemSecurityBot();
 
@@ -93,18 +88,135 @@ const SHOWTIME_SPONSORS: BubbleSponsor[] = [
   { id: 'sp-5', name: 'Walmart', logoUrl: '', type: 'local', tierColor: '#00FF88' },
 ];
 
+// ── Theater Seat Grid ────────────────────────────────────────────────────────
+// Rows: A(5) B(6) C(7) D(7) E(5) = 30 seats
+const ROWS: { label: string; count: number }[] = [
+  { label: 'A', count: 5 },
+  { label: 'B', count: 6 },
+  { label: 'C', count: 7 },
+  { label: 'D', count: 7 },
+  { label: 'E', count: 5 },
+];
+
+const ROLE_EMOJI: Record<string, string> = { fan: '🎧', bot: '🤖', host: '🌟', artist: '🎤' };
+
+function VenueSeatGrid({
+  members,
+  mySeatId,
+  mode,
+}: {
+  members: AudienceMember[];
+  mySeatId: string | null;
+  totalSeats: number;
+  mode: 'audience' | 'performer';
+}) {
+  const byId = new Map(members.filter((m) => m.active && m.seatId).map((m) => [m.seatId!, m]));
+
+  let seatNum = 0;
+  return (
+    <div style={{ marginTop: 10 }}>
+      <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', letterSpacing: '0.14em', marginBottom: 8, fontWeight: 800 }}>
+        LIVE VENUE · {members.filter((m) => m.active).length} IN SEATS
+        {mode === 'audience' && mySeatId && (
+          <span style={{ color: '#00FFFF', marginLeft: 8 }}>YOUR SEAT: {mySeatId.toUpperCase()}</span>
+        )}
+      </div>
+      {/* CSS perspective for 3D theater feel */}
+      <div style={{ perspective: '600px' }}>
+        {ROWS.map((row, rowIdx) => {
+          const rowScale = 1 - rowIdx * 0.06;
+          const rowOpacity = 1 - rowIdx * 0.12;
+          return (
+            <div
+              key={row.label}
+              style={{
+                display: 'flex',
+                justifyContent: 'center',
+                gap: 4,
+                marginBottom: 5,
+                transform: `scale(${rowScale}) translateZ(${rowIdx * -18}px)`,
+                opacity: rowOpacity,
+              }}
+            >
+              <div style={{ fontSize: 8, color: 'rgba(255,215,0,0.5)', fontWeight: 800, width: 14, display: 'flex', alignItems: 'center' }}>{row.label}</div>
+              {Array.from({ length: row.count }, (_col) => {
+                seatNum += 1;
+                const seatId = `seat-${seatNum}`;
+                const member = byId.get(seatId);
+                const isMe = seatId === mySeatId;
+                const emoji = member ? (ROLE_EMOJI[member.role] ?? '🎧') : null;
+                const nameRaw = member?.displayName.split('|')[0] ?? '';
+                const name = nameRaw.length > 6 ? nameRaw.slice(0, 6) : nameRaw;
+                return (
+                  <div
+                    key={seatId}
+                    title={member ? `${member.displayName} — ${member.role}` : `Seat ${seatId}`}
+                    style={{
+                      width: 38,
+                      height: 38,
+                      borderRadius: 8,
+                      border: isMe
+                        ? '2px solid #00FFFF'
+                        : member
+                          ? member.role === 'bot'
+                            ? '1px solid rgba(170,45,255,0.4)'
+                            : '1px solid rgba(0,255,136,0.5)'
+                          : '1px solid rgba(255,255,255,0.1)',
+                      background: isMe
+                        ? 'rgba(0,255,255,0.18)'
+                        : member
+                          ? member.role === 'bot'
+                            ? 'rgba(170,45,255,0.12)'
+                            : 'rgba(0,255,136,0.1)'
+                          : 'rgba(255,255,255,0.03)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: member ? 13 : 11,
+                      color: member ? '#fff' : 'rgba(255,255,255,0.18)',
+                      boxShadow: isMe ? '0 0 10px rgba(0,255,255,0.4)' : undefined,
+                      position: 'relative',
+                      transition: 'all 0.3s ease',
+                    }}
+                  >
+                    {member ? emoji : '○'}
+                    {member && name && (
+                      <span style={{ fontSize: 6, color: 'rgba(255,255,255,0.55)', fontFamily: "'Inter',sans-serif", fontWeight: 700, letterSpacing: '0.04em', marginTop: 1, lineHeight: 1 }}>
+                        {name}
+                      </span>
+                    )}
+                    {isMe && (
+                      <span style={{ position: 'absolute', top: -7, left: '50%', transform: 'translateX(-50%)', fontSize: 7, color: '#00FFFF', fontWeight: 900, whiteSpace: 'nowrap' }}>YOU</span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })}
+      </div>
+      <div style={{ textAlign: 'center', marginTop: 6, fontSize: 8, color: 'rgba(255,255,255,0.25)', letterSpacing: '0.1em' }}>
+        🟢 FANS &nbsp;|&nbsp; 🤖 BOTS &nbsp;|&nbsp; 🎤 ARTISTS &nbsp;|&nbsp; ○ EMPTY
+      </div>
+    </div>
+  );
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 export default function ArenaImmersivePanel({ roomId, mode }: Props) {
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [userId, setUserId] = useState('guest-user');
   const [displayName, setDisplayName] = useState(mode === 'performer' ? 'Performer' : 'Fan');
   const [joined, setJoined] = useState(true);
+  const [mySeatId, setMySeatId] = useState<string | null>(null);
+  const [curtainState, setCurtainState] = useState(() => getStageSnapshot().state);
   const [captureEnabled, setCaptureEnabled] = useState(false);
   const [chatInput, setChatInput] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [recoveryStatus, setRecoveryStatus] = useState<RecoveryState>('CONNECTED');
   const wasLiveRef = useRef(false);
   const [slowModeSeconds, setSlowModeSeconds] = useState(0);
-  const [rotationOffset, setRotationOffset] = useState(0);
   const [liveSession, setLiveSession] = useState<{
     displayName: string; title: string; viewerCount: number; tipTotal: number; stageState: string; accentColor: string; userId: string;
   } | null>(null);
@@ -122,6 +234,9 @@ export default function ArenaImmersivePanel({ roomId, mode }: Props) {
     enabled: mode === 'performer',
     viewerCount: snapshot?.present ?? 0,
   });
+
+  // Keep curtainState in sync with StageLifecycleEngine
+  useEffect(() => subscribeStage((s) => setCurtainState(s.state)), []);
 
   useEffect(() => {
     fetch('/api/auth/session', { credentials: 'include', cache: 'no-store' })
@@ -214,12 +329,18 @@ export default function ArenaImmersivePanel({ roomId, mode }: Props) {
           userId,
           displayName,
           role: 'fan',
-          seatId: null,
+          seatId: null, // server auto-assigns
           captureEnabled,
           viewpoint: { yaw: 0, pitch: 0, updatedAt: Date.now() },
         },
       }),
-    }).then(() => refresh()).catch(() => {});
+    })
+      .then(async (r) => {
+        const data = await r.json() as { assignedSeatId?: string };
+        if (data.assignedSeatId) setMySeatId(data.assignedSeatId);
+        await refresh();
+      })
+      .catch(() => {});
 
     return () => {
       void fetch('/api/live/audience', {
@@ -302,49 +423,13 @@ export default function ArenaImmersivePanel({ roomId, mode }: Props) {
       .catch(() => setErrorMsg('Message failed to send'));
   }
 
-  const audience = snapshot?.activeMembers ?? [];
+  const audience = useMemo(() => snapshot?.activeMembers ?? [], [snapshot?.activeMembers]);
   const captureAudience = useMemo(() => audience.filter((member) => member.captureEnabled), [audience]);
   const mutedUserIds = snapshot?.moderation?.mutedUserIds ?? [];
   const activeSlowModeSeconds = Math.round((snapshot?.moderation?.slowModeMs ?? 0) / 1000);
-  const visibleTileCount = mode === 'performer' ? 6 : 4;
-
-  const audienceTiles = useMemo(() => {
-    const mapped = audience.map((member) => ({
-      id: member.userId,
-      name: member.displayName,
-      avatar: hashAvatar(member.userId),
-      captureEnabled: member.captureEnabled,
-    }));
-
-    if (mapped.length >= visibleTileCount) return mapped;
-
-    const needed = visibleTileCount - mapped.length;
-    const fallback = FALLBACK_AUDIENCE.slice(0, needed).map((item) => ({
-      id: item.id,
-      name: item.name,
-      avatar: item.avatar,
-      captureEnabled: false,
-    }));
-
-    return [...mapped, ...fallback];
-  }, [audience, visibleTileCount]);
-
-  const rotatingTiles = useMemo(
-    () => rotateWindow(audienceTiles, rotationOffset, visibleTileCount),
-    [audienceTiles, rotationOffset, visibleTileCount],
-  );
-
   useEffect(() => {
     setSlowModeSeconds(activeSlowModeSeconds);
   }, [activeSlowModeSeconds]);
-
-  useEffect(() => {
-    if (audienceTiles.length <= visibleTileCount) return;
-    const interval = window.setInterval(() => {
-      setRotationOffset((prev) => (prev + 1) % audienceTiles.length);
-    }, 7000);
-    return () => window.clearInterval(interval);
-  }, [audienceTiles.length, visibleTileCount]);
 
   function updateSlowMode() {
     void fetch('/api/live/audience', {
@@ -494,31 +579,17 @@ export default function ArenaImmersivePanel({ roomId, mode }: Props) {
               LIVE PERFORMER FEED
             </div>
           )}
+          {/* Stage curtain overlays the video area — controlled by StageLifecycleEngine */}
+          <StageCurtain durationMs={3200} />
         </div>
 
-        <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', letterSpacing: '0.14em', marginBottom: 8, fontWeight: 800 }}>
-          ROTATING AUDIENCE FEED
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(visibleTileCount, 3)}, minmax(0, 1fr))`, gap: 8 }}>
-          {rotatingTiles.map((tile) => (
-            <div key={tile.id} style={{ borderRadius: 8, border: `1px solid ${tile.captureEnabled ? 'rgba(0,255,136,0.45)' : 'rgba(255,255,255,0.2)'}`, background: tile.captureEnabled ? 'rgba(0,255,136,0.12)' : 'rgba(255,255,255,0.05)', padding: 8 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                <span style={{ fontSize: 14 }}>{tile.avatar}</span>
-                <span style={{ fontSize: 10, color: '#fff', fontWeight: 700 }}>{tile.name.slice(0, 12)}</span>
-              </div>
-              <div style={{ fontSize: 9, color: tile.captureEnabled ? '#00FF88' : 'rgba(255,255,255,0.55)' }}>
-                {tile.captureEnabled ? 'LIVE CAM READY' : 'AVATAR FALLBACK'}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {audienceTiles.length > visibleTileCount && (
-          <div style={{ marginTop: 8, fontSize: 10, color: 'rgba(255,255,255,0.45)' }}>
-            Rotating every 7s to simulate full crowd coverage.
-          </div>
-        )}
+        {/* ── Live Venue Seat Map ─────────────────────────────────────────── */}
+        <VenueSeatGrid
+          members={audience}
+          mySeatId={mySeatId}
+          totalSeats={30}
+          mode={mode}
+        />
 
         {revealActive && (
           <SponsorBubbleOverlay sponsors={SHOWTIME_SPONSORS} orbitRadius={120} />
@@ -537,6 +608,38 @@ export default function ArenaImmersivePanel({ roomId, mode }: Props) {
 
       {mode === 'performer' && (
         <>
+          {/* ── Curtain Control Panel ──────────────────────────────────────── */}
+          <div style={{ marginBottom: 12, border: '1px solid rgba(255,215,0,0.3)', borderRadius: 10, padding: 12, background: 'rgba(255,215,0,0.05)' }}>
+            <div style={{ fontSize: 10, color: '#FFD700', fontWeight: 800, letterSpacing: '0.1em', marginBottom: 10 }}>
+              🎭 STAGE CURTAIN · {curtainState.replace(/_/g, ' ')}
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button type="button" onClick={() => resetStage()}
+                style={{ padding: '7px 14px', fontSize: 10, fontWeight: 800, borderRadius: 7, border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.06)', color: '#fff', cursor: 'pointer' }}>
+                🔄 PREPARE STAGE
+              </button>
+              <button type="button" onClick={() => startCountdown()}
+                disabled={curtainState !== 'STAGE_PREP'}
+                style={{ padding: '7px 14px', fontSize: 10, fontWeight: 800, borderRadius: 7, border: '1px solid rgba(255,215,0,0.4)', background: curtainState === 'STAGE_PREP' ? 'rgba(255,215,0,0.15)' : 'rgba(255,255,255,0.04)', color: curtainState === 'STAGE_PREP' ? '#FFD700' : 'rgba(255,255,255,0.3)', cursor: curtainState === 'STAGE_PREP' ? 'pointer' : 'not-allowed' }}>
+                ⏱ START COUNTDOWN
+              </button>
+              <button type="button" onClick={() => openCurtain()}
+                disabled={curtainState === 'CAMERA_LIVE'}
+                style={{ padding: '7px 14px', fontSize: 10, fontWeight: 800, borderRadius: 7, border: '1px solid rgba(0,255,136,0.4)', background: curtainState !== 'CAMERA_LIVE' ? 'rgba(0,255,136,0.15)' : 'rgba(255,255,255,0.04)', color: curtainState !== 'CAMERA_LIVE' ? '#00FF88' : 'rgba(255,255,255,0.3)', cursor: curtainState !== 'CAMERA_LIVE' ? 'pointer' : 'not-allowed' }}>
+                🎬 OPEN CURTAIN
+              </button>
+              <button type="button" onClick={() => closeCurtainAndEnd()}
+                disabled={curtainState !== 'CAMERA_LIVE' && curtainState !== 'INTERMISSION'}
+                style={{ padding: '7px 14px', fontSize: 10, fontWeight: 800, borderRadius: 7, border: '1px solid rgba(255,45,170,0.4)', background: (curtainState === 'CAMERA_LIVE' || curtainState === 'INTERMISSION') ? 'rgba(255,45,170,0.15)' : 'rgba(255,255,255,0.04)', color: (curtainState === 'CAMERA_LIVE' || curtainState === 'INTERMISSION') ? '#FF2DAA' : 'rgba(255,255,255,0.3)', cursor: (curtainState === 'CAMERA_LIVE' || curtainState === 'INTERMISSION') ? 'pointer' : 'not-allowed' }}>
+                🚪 CLOSE & END
+              </button>
+            </div>
+            <div style={{ marginTop: 8, fontSize: 9, color: 'rgba(255,255,255,0.35)' }}>
+              Prepare Stage → Start Countdown → Open Curtain → Perform → Close &amp; End
+            </div>
+          </div>
+          {/* ─────────────────────────────────────────────────────────────────── */}
+
           {liveSession?.userId && (
             <>
               <AudienceRecognitionOverlay
