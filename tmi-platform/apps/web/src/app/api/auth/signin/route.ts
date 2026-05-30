@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { loginUser } from '@/lib/auth/UserStore';
+import { loginUser, dbReady } from '@/lib/auth/UserStore';
 import { createSession } from '@/lib/auth/SessionManager';
 import { checkRateLimit } from '@/lib/security/TMISecurityEngine';
 import { StreakEngine } from '@/lib/gamification/StreakEngine';
@@ -35,6 +35,9 @@ export async function POST(req: NextRequest) {
     if (!emailRegex.test(email)) {
       return NextResponse.json({ error: 'Invalid email format' }, { status: 400 });
     }
+
+    // Wait for DB preload to finish on cold starts before reading the store
+    await dbReady;
 
     // Verify against UserStore (handles hardcoded admins + registered users)
     const user = loginUser(email, password);
