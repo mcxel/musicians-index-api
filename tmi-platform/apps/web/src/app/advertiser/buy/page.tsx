@@ -123,10 +123,13 @@ export default function AdvertiserBuyPage() {
     e.preventDefault();
     if (!selected) return;
     setSubmitting(true);
-    await new Promise(r => setTimeout(r, 1200));
-    // In production: POST to /api/stripe/checkout with placement data
-    setSubmitting(false);
-    setSuccess(true);
+    const params = new URLSearchParams({
+      priceId: `price_ad_${selected.id.replace(/-/g, '_')}`,
+      mode: 'payment',
+      amount: String(budgetNum * 100),
+      productName: selected.name,
+    });
+    window.location.href = `/api/stripe/checkout?${params.toString()}`;
   }
 
   if (success && selected) {
