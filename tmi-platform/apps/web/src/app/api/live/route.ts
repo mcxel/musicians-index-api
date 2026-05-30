@@ -210,7 +210,9 @@ export async function GET() {
       boostExpiresAt: maybeBoost() > 0 ? Date.now() + rand(30_000, 180_000) : undefined,
     }));
 
-  const feed = [...registryFeed, ...seedFeed];
+  const feed = registryFeed.length > 0
+    ? registryFeed                    // real sessions only — no seeds when anyone is live
+    : seedFeed;                       // seed fallback only when platform is empty
 
   return NextResponse.json(feed, {
     headers: {

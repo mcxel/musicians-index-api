@@ -20,7 +20,8 @@
       "@tmi/contracts": ["./src/stubs/tmi-contracts.ts"],
       "@tmi/hud-core": ["./src/stubs/tmi-hud-core.ts"],
       "@tmi/hud-runtime": ["./src/stubs/tmi-hud-runtime.ts"],
-      "@tmi/module-runtime": ["./src/stubs/tmi-module-runtime.ts"]
+      "@tmi/module-runtime": ["./src/stubs/tmi-module-runtime.ts"],
+      "@bernout/agent-network": ["./src/stubs/bernout-agent-network.ts"]
     },
     "plugins": [{ "name": "next" }]
   },

@@ -21,7 +21,7 @@ const FOUNDING_PACKS = [
       'Season Zero recognition',
     ],
     cta: 'SUPPORT THE BUILD',
-    ctaHref: '/api/stripe/checkout?priceId=price_founding_supporter_5&mode=payment',
+    ctaHref: '/api/stripe/checkout?priceId=price_founding_supporter_5&mode=payment&amount=500&productName=Founding+Supporter+Pack',
   },
   {
     key: 'creator',
@@ -38,7 +38,7 @@ const FOUNDING_PACKS = [
       'Bonus TMI Coins',
     ],
     cta: 'JOIN AS CREATOR',
-    ctaHref: '/api/stripe/checkout?priceId=price_founding_creator_15&mode=payment',
+    ctaHref: '/api/stripe/checkout?priceId=price_founding_creator_15&mode=payment&amount=1500&productName=Founding+Creator+Pack',
   },
   {
     key: 'founding',
@@ -55,7 +55,7 @@ const FOUNDING_PACKS = [
       'Early access to future drops',
     ],
     cta: 'BECOME A FOUNDER',
-    ctaHref: '/api/stripe/checkout?priceId=price_founding_member_25&mode=payment',
+    ctaHref: '/api/stripe/checkout?priceId=price_founding_member_25&mode=payment&amount=2500&productName=Founding+Member+Pack',
   },
   {
     key: 'diamond',
@@ -73,7 +73,7 @@ const FOUNDING_PACKS = [
       'Founder priority in Beta Architect queue',
     ],
     cta: 'GO DIAMOND FOUNDER',
-    ctaHref: '/api/stripe/checkout?priceId=price_diamond_founder_50&mode=payment',
+    ctaHref: '/api/stripe/checkout?priceId=price_diamond_founder_50&mode=payment&amount=5000&productName=Diamond+Founder+Pack',
   },
 ] as const;
 
@@ -86,37 +86,46 @@ const FAN_TIERS = [
     icon: '👤',
     color: '#00FFFF',
     price: '$0',
-    priceId: null,
-    badge: null,
+    badge: null as string | null,
     perks: ['Read TMI magazine', 'Browse profiles', 'Watch public streams', 'Create fan account'],
     cta: 'JOIN FREE',
     ctaHref: '/signup',
     highlighted: false,
   },
   {
-    key: 'fan-pro',
-    name: 'PRO FAN',
-    icon: '🎧',
-    color: '#00FFFF',
-    price: '$2.99/mo',
-    priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_FAN_TIER_1 ?? 'price_fan_monthly',
-    badge: 'MOST POPULAR',
+    key: 'fan-ruby',
+    name: 'RUBY FAN',
+    icon: '🔴',
+    color: '#FF4444',
+    price: '$4.99/mo',
+    badge: 'START HERE' as string | null,
     perks: ['All live rooms', 'Chat + reactions', 'Tip performers', 'Monthly magazine', 'XP + achievements', '7-day free trial'],
     cta: 'START FREE TRIAL',
-    ctaHref: '/api/stripe/checkout?priceId=price_fan_monthly&mode=subscription',
+    ctaHref: `/api/stripe/checkout?priceId=${process.env.NEXT_PUBLIC_STRIPE_PRICE_FAN_RUBY ?? 'price_fan_ruby'}&mode=subscription&amount=499&productName=TMI+Fan+Ruby`,
     highlighted: true,
+  },
+  {
+    key: 'fan-silver',
+    name: 'SILVER FAN',
+    icon: '🥈',
+    color: '#C0C0C0',
+    price: '$9.99/mo',
+    badge: null as string | null,
+    perks: ['Everything in Ruby', 'Early access drops', 'Fan leaderboard placement', 'Silver avatar glow'],
+    cta: 'UPGRADE TO SILVER',
+    ctaHref: `/api/stripe/checkout?priceId=${process.env.NEXT_PUBLIC_STRIPE_PRICE_FAN_SILVER ?? 'price_fan_silver'}&mode=subscription&amount=999&productName=TMI+Fan+Silver`,
+    highlighted: false,
   },
   {
     key: 'fan-gold',
     name: 'GOLD FAN',
     icon: '🥇',
     color: '#FFD700',
-    price: '$4.99/mo',
-    priceId: null,
-    badge: null,
-    perks: ['Everything in Pro', 'Early access drops', 'Fan leaderboard placement', 'Gold avatar glow', 'Exclusive fan rooms'],
-    cta: 'UPGRADE',
-    ctaHref: '/signup?tier=gold',
+    price: '$14.99/mo',
+    badge: null as string | null,
+    perks: ['Everything in Silver', 'Exclusive fan rooms', 'Gold avatar glow', 'Priority merch drops'],
+    cta: 'UPGRADE TO GOLD',
+    ctaHref: `/api/stripe/checkout?priceId=${process.env.NEXT_PUBLIC_STRIPE_PRICE_FAN_GOLD ?? 'price_fan_gold'}&mode=subscription&amount=1499&productName=TMI+Fan+Gold`,
     highlighted: false,
   },
   {
@@ -124,12 +133,11 @@ const FAN_TIERS = [
     name: 'PLATINUM FAN',
     icon: '💠',
     color: '#AA2DFF',
-    price: '$7.99/mo',
-    priceId: null,
-    badge: null,
-    perks: ['Everything in Gold', 'Backstage passes', 'Priority merch drops', 'Platinum badge', 'Direct artist DMs'],
-    cta: 'UPGRADE',
-    ctaHref: '/signup?tier=platinum',
+    price: '$24.99/mo',
+    badge: null as string | null,
+    perks: ['Everything in Gold', 'Backstage passes', 'Direct artist DMs', 'Platinum badge'],
+    cta: 'UPGRADE TO PLATINUM',
+    ctaHref: `/api/stripe/checkout?priceId=${process.env.NEXT_PUBLIC_STRIPE_PRICE_FAN_PLATINUM ?? 'price_fan_platinum'}&mode=subscription&amount=2499&productName=TMI+Fan+Platinum`,
     highlighted: false,
   },
   {
@@ -137,12 +145,23 @@ const FAN_TIERS = [
     name: 'DIAMOND FAN',
     icon: '💎',
     color: '#00FF88',
-    price: '$12.99/mo',
-    priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_VIP_TIER_1 ?? 'price_vip_monthly',
-    badge: null,
-    perks: ['All Platinum perks', 'NFT access', 'VIP front-row seats', 'Lifetime pass option', 'Diamond avatar glow'],
+    price: '$49.99/mo',
+    badge: null as string | null,
+    perks: ['All Platinum perks', 'NFT access', 'VIP front-row seats', 'Diamond avatar glow', 'Season Zero recognition'],
     cta: 'GO DIAMOND',
-    ctaHref: '/api/stripe/checkout?priceId=price_vip_monthly&mode=subscription',
+    ctaHref: `/api/stripe/checkout?priceId=${process.env.NEXT_PUBLIC_STRIPE_PRICE_FAN_DIAMOND ?? 'price_fan_diamond'}&mode=subscription&amount=4999&productName=TMI+Fan+Diamond`,
+    highlighted: false,
+  },
+  {
+    key: 'fan-family',
+    name: 'FAMILY PLAN',
+    icon: '👨‍👩‍👧',
+    color: '#00FFFF',
+    price: '$27.99/mo',
+    badge: 'BEST VALUE' as string | null,
+    perks: ['Gold Fan perks for up to 4 accounts', 'Shared fan room', 'Family badge'],
+    cta: 'GET FAMILY PLAN',
+    ctaHref: `/api/stripe/checkout?priceId=${process.env.NEXT_PUBLIC_STRIPE_PRICE_FAN_FAMILY ?? 'price_fan_family'}&mode=subscription&amount=2799&productName=TMI+Fan+Family`,
     highlighted: false,
   },
 ];
@@ -154,37 +173,46 @@ const PERFORMER_TIERS = [
     icon: '🎤',
     color: '#FF2DAA',
     price: '$0',
-    priceId: null,
-    badge: null,
-    perks: ['Performer profile', 'Basic bio + links', 'Submit to magazine', 'Audience discovery'],
+    badge: null as string | null,
+    perks: ['10 Local + 10 Major Sponsor Slots', 'Performer profile', 'Basic bio + links', 'Submit to magazine', 'Audience discovery', 'Contest eligible (20 sponsors)'],
     cta: 'JOIN FREE',
     ctaHref: '/signup?role=performer',
     highlighted: false,
   },
   {
-    key: 'perf-pro',
-    name: 'PRO PERFORMER',
+    key: 'perf-ruby',
+    name: 'RUBY PERFORMER',
     icon: '🎙️',
     color: '#FF2DAA',
-    price: '$1.99/mo',
-    priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_ARTIST_TIER_1 ?? 'price_artist_monthly',
-    badge: 'START HERE',
-    perks: ['Go live anytime', 'Beat marketplace access', 'Booking requests', 'Analytics dashboard', '7-day free trial'],
+    price: '$2.99/mo',
+    badge: 'START HERE' as string | null,
+    perks: ['15 Local + 15 Major Sponsor Slots', 'Go live anytime', 'Beat marketplace access', 'Booking requests', 'Analytics dashboard', '7-day free trial'],
     cta: 'START FREE TRIAL',
-    ctaHref: '/api/stripe/checkout?priceId=price_artist_monthly&mode=subscription',
+    ctaHref: `/api/stripe/checkout?priceId=${process.env.NEXT_PUBLIC_STRIPE_PRICE_PERFORMER_RUBY ?? 'price_performer_ruby'}&mode=subscription&amount=299&productName=TMI+Performer+Ruby`,
     highlighted: true,
+  },
+  {
+    key: 'perf-silver',
+    name: 'SILVER PERFORMER',
+    icon: '🥈',
+    color: '#C0C0C0',
+    price: '$4.99/mo',
+    badge: null as string | null,
+    perks: ['20 Local + 20 Major Sponsor Slots', 'Fan club tools', 'Tipping enabled', 'Merch store access', 'Silver badge', 'Sponsor analytics'],
+    cta: 'UPGRADE TO SILVER',
+    ctaHref: `/api/stripe/checkout?priceId=${process.env.NEXT_PUBLIC_STRIPE_PRICE_PERFORMER_SILVER ?? 'price_performer_silver'}&mode=subscription&amount=499&productName=TMI+Performer+Silver`,
+    highlighted: false,
   },
   {
     key: 'perf-gold',
     name: 'GOLD PERFORMER',
     icon: '🏆',
     color: '#FFD700',
-    price: '$3.99/mo',
-    priceId: null,
-    badge: null,
-    perks: ['Everything in Pro', 'Fan club tools', 'Tipping enabled', 'Merch store access', 'Gold performer badge'],
-    cta: 'UPGRADE',
-    ctaHref: '/signup?role=performer&tier=gold',
+    price: '$9.99/mo',
+    badge: null as string | null,
+    perks: ['30 Local + 30 Major Sponsor Slots', 'Priority placement', 'Billboard rotation', 'Gold performer badge', 'Sponsor rotation controls'],
+    cta: 'UPGRADE TO GOLD',
+    ctaHref: `/api/stripe/checkout?priceId=${process.env.NEXT_PUBLIC_STRIPE_PRICE_PERFORMER_GOLD ?? 'price_performer_gold'}&mode=subscription&amount=999&productName=TMI+Performer+Gold`,
     highlighted: false,
   },
   {
@@ -192,12 +220,11 @@ const PERFORMER_TIERS = [
     name: 'PLATINUM PERFORMER',
     icon: '🎖️',
     color: '#AA2DFF',
-    price: '$6.99/mo',
-    priceId: null,
-    badge: null,
-    perks: ['Everything in Gold', 'Priority placement', 'Billboard rotation', 'Platinum badge', 'Tour booking tools'],
-    cta: 'UPGRADE',
-    ctaHref: '/signup?role=performer&tier=platinum',
+    price: '$19.99/mo',
+    badge: null as string | null,
+    perks: ['50 Local + 50 Major Sponsor Slots', 'Homepage eligibility', 'Priority booking visibility', 'NFT minting rights', 'Unlimited uploads', 'Platinum badge'],
+    cta: 'UPGRADE TO PLATINUM',
+    ctaHref: `/api/stripe/checkout?priceId=${process.env.NEXT_PUBLIC_STRIPE_PRICE_PERFORMER_PLATINUM ?? 'price_performer_platinum'}&mode=subscription&amount=1999&productName=TMI+Performer+Platinum`,
     highlighted: false,
   },
   {
@@ -205,17 +232,101 @@ const PERFORMER_TIERS = [
     name: 'DIAMOND PERFORMER',
     icon: '💎',
     color: '#00FF88',
-    price: '$11.99/mo',
-    priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_VIP_TIER_1 ?? 'price_vip_monthly',
-    badge: null,
-    perks: ['All Platinum perks', 'NFT minting rights', 'Unlimited uploads', 'Priority booking', 'Full revenue split access'],
+    price: '$29.99/mo',
+    badge: null as string | null,
+    perks: ['100 Local + 100 Major Sponsor Slots', 'Premium sponsor marketplace access', 'Highest visibility + priority promotion', 'Full revenue split access', 'Diamond badge + NFT minting'],
     cta: 'GO DIAMOND',
-    ctaHref: '/api/stripe/checkout?priceId=price_vip_monthly&mode=subscription',
+    ctaHref: `/api/stripe/checkout?priceId=${process.env.NEXT_PUBLIC_STRIPE_PRICE_PERFORMER_DIAMOND ?? 'price_performer_diamond'}&mode=subscription&amount=2999&productName=TMI+Performer+Diamond`,
+    highlighted: false,
+  },
+  {
+    key: 'perf-band',
+    name: 'BAND / GROUP',
+    icon: '🎸',
+    color: '#FF9500',
+    price: '$24.99/mo',
+    badge: 'GROUPS' as string | null,
+    perks: ['150 Local + 150 Major Sponsor Slots', 'Up to 5 linked members', 'Shared live room', 'Band profile page', 'Diamond Performer perks for all members'],
+    cta: 'REGISTER YOUR GROUP',
+    ctaHref: `/api/stripe/checkout?priceId=${process.env.NEXT_PUBLIC_STRIPE_PRICE_PERFORMER_BAND ?? 'price_performer_band'}&mode=subscription&amount=2499&productName=TMI+Band+Group+Diamond`,
     highlighted: false,
   },
 ];
 
-// ── Page ─────────────────────────────────────────────────────────────────────
+// ── Advertiser entry-level products ──────────────────────────────────────────
+
+const ADVERTISER_ENTRY = [
+  {
+    key: 'ad-micro',
+    name: 'MICRO AD',
+    icon: '📣',
+    color: '#00FFFF',
+    price: '$10/wk',
+    amount: 1000,
+    perks: ['1 ad slot for 7 days', 'Reaches active listeners', 'Basic impression report'],
+    cta: 'RUN MICRO AD',
+    ctaHref: '/api/stripe/checkout?priceId=price_ad_micro_weekly&mode=payment&amount=1000&productName=TMI+Micro+Ad',
+  },
+  {
+    key: 'ad-local',
+    name: 'LOCAL SHOUTOUT',
+    icon: '📍',
+    color: '#00FF88',
+    price: '$15/wk',
+    amount: 1500,
+    perks: ['Shoutout on 3 active rooms', 'Fan chat mentions', 'Weekly reach summary'],
+    cta: 'GET SHOUTOUT',
+    ctaHref: '/api/stripe/checkout?priceId=price_ad_local_weekly&mode=payment&amount=1500&productName=TMI+Local+Shoutout',
+  },
+  {
+    key: 'ad-playlist',
+    name: 'PLAYLIST BOOST',
+    icon: '🎵',
+    color: '#FF2DAA',
+    price: '$20/wk',
+    amount: 2000,
+    perks: ['Song featured in 2 TMI playlists', 'Artist discovery boost', 'Play count report'],
+    cta: 'BOOST PLAYLIST',
+    ctaHref: '/api/stripe/checkout?priceId=price_ad_playlist_weekly&mode=payment&amount=2000&productName=TMI+Playlist+Boost',
+  },
+  {
+    key: 'ad-sidebar',
+    name: 'SIDEBAR AD',
+    icon: '🖼️',
+    color: '#FFD700',
+    price: '$25/wk',
+    amount: 2500,
+    perks: ['Sidebar placement across live rooms', 'Click-through tracking', 'Weekly impression report'],
+    cta: 'PLACE SIDEBAR AD',
+    ctaHref: '/api/stripe/checkout?priceId=price_ad_sidebar_weekly&mode=payment&amount=2500&productName=TMI+Sidebar+Ad',
+  },
+] as const;
+
+// ── Support economy ───────────────────────────────────────────────────────────
+
+const SUPPORT_TIERS = [
+  {
+    key: 'support-performer',
+    name: 'SUPPORT THIS PERFORMER',
+    icon: '🤝',
+    color: '#FF2DAA',
+    price: '$2.99/mo',
+    perks: ['Shown on artist profile', 'Supporter badge in live rooms', '90% goes directly to the performer', 'Cancel anytime'],
+    cta: 'BECOME A SUPPORTER',
+    ctaHref: '/api/stripe/checkout?priceId=price_support_performer&mode=subscription&amount=299&productName=Support+This+Performer',
+  },
+  {
+    key: 'super-supporter',
+    name: 'SUPER SUPPORTER',
+    icon: '⚡',
+    color: '#FFD700',
+    price: '$4.99/mo',
+    perks: ['Everything in Supporter', 'Super Supporter badge (gold ring)', 'Priority mention in live rooms', 'Monthly thank-you from artist'],
+    cta: 'GO SUPER SUPPORTER',
+    ctaHref: '/api/stripe/checkout?priceId=price_super_supporter&mode=subscription&amount=499&productName=TMI+Super+Supporter',
+  },
+] as const;
+
 
 export default function PricingPage() {
   const [segment, setSegment] = useState<'fans' | 'performers'>('fans');
@@ -446,10 +557,79 @@ export default function PricingPage() {
                 fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', cursor: 'pointer',
               }}
             >
-              SEE ALL PLANS ↓ (up to $12.99/mo)
+              SEE ALL {segment === 'fans' ? 'FAN' : 'PERFORMER'} PLANS ↓
             </button>
           </div>
         )}
+
+        {/* ── Support Economy ───────────────────────────────────────────────── */}
+        <div style={{ marginBottom: 52 }}>
+          <div style={{ textAlign: 'center', marginBottom: 24 }}>
+            <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: '0.3em', color: '#FF2DAA', marginBottom: 6 }}>SUPPORT ECONOMY</div>
+            <h2 style={{ fontSize: 'clamp(18px,3vw,26px)', fontWeight: 900, margin: '0 0 8px' }}>Support Your Favourite Performer</h2>
+            <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, maxWidth: 440, margin: '0 auto', lineHeight: 1.6 }}>
+              Shown on artist profiles and live rooms. 90% goes directly to the performer. Cancel anytime.
+            </p>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(260px,1fr))', gap: 14 }}>
+            {SUPPORT_TIERS.map((tier) => (
+              <div key={tier.key} style={{ background: `${tier.color}08`, border: `1.5px solid ${tier.color}33`, borderRadius: 14, padding: '24px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <div>
+                  <div style={{ fontSize: 28, marginBottom: 6 }}>{tier.icon}</div>
+                  <div style={{ color: tier.color, fontSize: 9, fontWeight: 900, letterSpacing: '0.2em', marginBottom: 4 }}>{tier.name}</div>
+                  <div style={{ fontSize: 26, fontWeight: 900, color: '#fff' }}>{tier.price}</div>
+                </div>
+                <ul style={{ listStyle: 'none', margin: 0, padding: 0, flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {tier.perks.map((p) => (
+                    <li key={p} style={{ color: 'rgba(255,255,255,0.6)', fontSize: 11, display: 'flex', gap: 7, alignItems: 'flex-start', lineHeight: 1.4 }}>
+                      <span style={{ color: tier.color, flexShrink: 0, fontWeight: 900 }}>✓</span>{p}
+                    </li>
+                  ))}
+                </ul>
+                <Link href={tier.ctaHref} style={{ display: 'block', textAlign: 'center', padding: '12px 0', background: `${tier.color}22`, border: `1px solid ${tier.color}55`, borderRadius: 8, color: tier.color, fontWeight: 900, fontSize: 10, letterSpacing: '0.12em', textDecoration: 'none' }}>
+                  {tier.cta}
+                </Link>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ── Advertisers ───────────────────────────────────────────────────── */}
+        <div style={{ marginBottom: 52 }}>
+          <div style={{ textAlign: 'center', marginBottom: 24 }}>
+            <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: '0.3em', color: '#00FFFF', marginBottom: 6 }}>ADVERTISE ON TMI</div>
+            <h2 style={{ fontSize: 'clamp(18px,3vw,26px)', fontWeight: 900, margin: '0 0 8px' }}>Start Small. Scale When Ready.</h2>
+            <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, maxWidth: 480, margin: '0 auto', lineHeight: 1.6 }}>
+              Run a $10 ad this week. See results. Upgrade to billboards, magazine features, and championship sponsorships when you&apos;re ready.
+            </p>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(200px,1fr))', gap: 14, marginBottom: 16 }}>
+            {ADVERTISER_ENTRY.map((ad) => (
+              <div key={ad.key} style={{ background: `${ad.color}06`, border: `1px solid ${ad.color}25`, borderRadius: 12, padding: '20px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div>
+                  <div style={{ fontSize: 24, marginBottom: 5 }}>{ad.icon}</div>
+                  <div style={{ color: ad.color, fontSize: 9, fontWeight: 900, letterSpacing: '0.2em', marginBottom: 3 }}>{ad.name}</div>
+                  <div style={{ fontSize: 22, fontWeight: 900, color: '#fff' }}>{ad.price}</div>
+                </div>
+                <ul style={{ listStyle: 'none', margin: 0, padding: 0, flex: 1, display: 'flex', flexDirection: 'column', gap: 5 }}>
+                  {ad.perks.map((p) => (
+                    <li key={p} style={{ color: 'rgba(255,255,255,0.55)', fontSize: 10, display: 'flex', gap: 6, alignItems: 'flex-start', lineHeight: 1.4 }}>
+                      <span style={{ color: ad.color, flexShrink: 0, fontWeight: 900, fontSize: 9 }}>✓</span>{p}
+                    </li>
+                  ))}
+                </ul>
+                <Link href={ad.ctaHref} style={{ display: 'block', textAlign: 'center', padding: '10px 0', background: `${ad.color}15`, border: `1px solid ${ad.color}40`, borderRadius: 7, color: ad.color, fontWeight: 900, fontSize: 9, letterSpacing: '0.12em', textDecoration: 'none' }}>
+                  {ad.cta}
+                </Link>
+              </div>
+            ))}
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <Link href="/advertise" style={{ color: 'rgba(255,255,255,0.3)', fontSize: 10, letterSpacing: '0.1em', textDecoration: 'none' }}>
+              See billboard, magazine, video &amp; championship sponsorships →
+            </Link>
+          </div>
+        </div>
 
         {/* Footer note */}
         <div style={{ textAlign: 'center', color: 'rgba(255,255,255,0.2)', fontSize: 11, letterSpacing: 2, marginBottom: 20 }}>

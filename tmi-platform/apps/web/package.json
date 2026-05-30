@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "node ../../node_modules/next/dist/bin/next dev",
     "dev:socket": "ts-node socket-server.ts",
-    "prebuild": "pnpm -C ../.. -r --filter @tmi/contracts --filter @tmi/hud-core --filter @tmi/hud-runtime --filter @tmi/hud-theme --filter @tmi/hud-tmi build && pnpm -C ../../packages/db prisma:generate",
+    "prebuild": "pnpm -C ../.. -r --filter @tmi/contracts --filter @tmi/hud-core --filter @tmi/hud-runtime --filter @tmi/hud-theme --filter @tmi/hud-tmi build && pnpm -C ../../packages/db prisma:generate && pnpm -C ../../packages/db prisma:migrate",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",

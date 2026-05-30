@@ -469,14 +469,41 @@ function BillboardColumn({ config, active }: { config: ColumnDef; active: boolea
   );
 }
 
+const CHALLENGE_PAIRS = [
+  "Singer vs Singer",        "Rapper vs Rapper",         "Country Singer vs Country Singer",
+  "Opera Singer vs Opera Singer", "Beatboxer vs Beatboxer",  "Guitar vs Guitar",
+  "Bass vs Bass",            "Acoustic vs Acoustic",     "Lead vs Lead",
+  "Trumpet vs Trumpet",      "Saxophone vs Saxophone",   "Trombone vs Trombone",
+  "Tuba vs Tuba",            "French Horn vs French Horn","Drummer vs Drummer",
+  "Percussionist vs Percussionist","Violin vs Violin",   "Cello vs Cello",
+  "Harp vs Harp",            "Sitar vs Sitar",           "Ukulele vs Ukulele",
+  "Banjo vs Banjo",          "Mandolin vs Mandolin",     "Piano vs Piano",
+  "Keyboardist vs Keyboardist","Beat Producer vs Beat Producer","DJ vs DJ",
+  "Remix Artist vs Remix Artist","Comedian vs Comedian",  "Magician vs Magician",
+  "Dancer vs Dancer",        "Poet vs Poet",             "Spoken Word vs Spoken Word",
+  "Choir vs Choir",          "Band vs Band",             "Dance Crew vs Dance Crew",
+  "Cypher vs Cypher",        "Battle vs Battle",         "Song Challenge vs Song Challenge",
+] as const;
+
+const PAIR_COLORS = ["#00FFFF","#FF2DAA","#FFD700","#AA2DFF","#00FF88","#FF6B35"];
+
 export default function BillboardColumnPulse() {
   const isVisible = useSceneVisible();
+  const [pairIdx, setPairIdx] = useState(0);
   const deckArticles = [
     "WHO TOOK THE CROWN THIS WEEK?",
     "CYPHER ARENA OPEN FOR WILD-CARD ENTRY",
     "BATTLE RING VOTES SPIKE 31% IN FINAL MINUTES",
   ] as const;
   const sponsorInserts = ["CROWN AUDIO", "BASSLINE ENERGY", "NEON THREADS"] as const;
+
+  useEffect(() => {
+    const t = setInterval(() => setPairIdx((i) => (i + 1) % CHALLENGE_PAIRS.length), 3500);
+    return () => clearInterval(t);
+  }, []);
+
+  const activePair = CHALLENGE_PAIRS[pairIdx] ?? CHALLENGE_PAIRS[0]!;
+  const pairColor  = PAIR_COLORS[pairIdx % PAIR_COLORS.length]!;
 
   return (
     <div
@@ -504,6 +531,27 @@ export default function BillboardColumnPulse() {
           mixBlendMode: "soft-light",
         }}
       />
+
+      {/* ── Challenge Rotation Ticker ── */}
+      <div style={{
+        position: "relative", zIndex: 5,
+        display: "flex", alignItems: "center", justifyContent: "center", gap: 14,
+        padding: "10px 16px",
+        background: "rgba(5,5,16,0.97)",
+        borderBottom: `1px solid ${pairColor}40`,
+      }}>
+        <span style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.2em", color: "rgba(255,255,255,0.3)", flexShrink: 0 }}>OPEN CHALLENGE</span>
+        <div style={{
+          fontSize: "clamp(11px,2vw,16px)", fontWeight: 900, letterSpacing: "0.06em",
+          color: pairColor, textAlign: "center", transition: "color 0.4s ease",
+          textShadow: `0 0 18px ${pairColor}60`,
+        }}>
+          ⚔️ {activePair}
+        </div>
+        <a href="/battles/new" style={{ flexShrink: 0, fontSize: 8, fontWeight: 900, letterSpacing: "0.18em", color: pairColor, textDecoration: "none", border: `1px solid ${pairColor}50`, borderRadius: 4, padding: "3px 8px" }}>
+          ENTER →
+        </a>
+      </div>
 
       {/* ── Editorial spread header — no card grid, collage layout ── */}
       <section

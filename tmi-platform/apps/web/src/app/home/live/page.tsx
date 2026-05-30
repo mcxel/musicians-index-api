@@ -1,11 +1,5 @@
-import { MagazinePageFlipRuntime } from '@/components/magazine/MagazinePageFlipRuntime';
-import { MAGAZINE_FULL_ROTATION_SCENES } from '../1/page';
+import Home1CoverPage from '@/components/home/Home1CoverPage';
 
 export default function HomeLivePage() {
-  return (
-    <MagazinePageFlipRuntime
-      scenes={MAGAZINE_FULL_ROTATION_SCENES}
-      initialIndex={0}
-    />
-  );
+  return <Home1CoverPage />;
 }

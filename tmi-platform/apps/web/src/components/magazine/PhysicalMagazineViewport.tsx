@@ -37,7 +37,6 @@ export default function PhysicalMagazineViewport({ children, phase, sceneId: _sc
               ? "perspective(1700px) rotateX(1.5deg) rotateY(-2deg)"
               : "none",
           transition: "transform 420ms ease",
-          contain: "layout",
         }}
       >
         <div

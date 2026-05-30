@@ -54,6 +54,7 @@ export default function HomeRouteChevronNav() {
       tracking = false;
 
       const touch = event.changedTouches[0];
+      if (!touch) return;
       const dx = touch.clientX - startX;
       const dy = touch.clientY - startY;
       if (Math.abs(dx) < 60 || Math.abs(dx) <= Math.abs(dy) * 1.2) return;

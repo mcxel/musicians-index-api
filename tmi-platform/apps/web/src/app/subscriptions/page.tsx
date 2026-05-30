@@ -6,35 +6,35 @@ import { STRIPE_PRODUCTS } from "@/lib/stripe/products";
 
 const TIERS = [
   {
-    key: "MEMBER_PRO_MONTHLY" as const,
-    label: "Member Pro",
+    key: "FAN_RUBY_MONTHLY" as const,
+    label: "Fan Ruby",
     testId: "sub-tier-fan",
-    tagline: "All live rooms, priority chat, HD streams, monthly bonus XP, no ads.",
-    color: "#00FFFF",
+    tagline: "All live rooms, chat + reactions, tip performers, monthly magazine, XP + achievements.",
+    color: "#FF4444",
     highlight: false,
   },
   {
-    key: "MEMBER_VIP_MONTHLY" as const,
-    label: "Member VIP",
-    testId: "sub-tier-performer",
-    tagline: "Everything in Pro plus VIP rooms, monthly spotlight badge, exclusive artist drops, early access contests.",
-    color: "#FF2DAA",
+    key: "FAN_DIAMOND_MONTHLY" as const,
+    label: "Fan Diamond",
+    testId: "sub-tier-fan-diamond",
+    tagline: "All Platinum perks, NFT access, VIP front-row seats, Diamond avatar glow, Season Zero recognition.",
+    color: "#00FF88",
     highlight: true,
   },
   {
-    key: "ARTIST_PRO_MONTHLY" as const,
-    label: "Artist Pro",
-    testId: "sub-tier-artist",
-    tagline: "Verified badge, full Beat Lab access, NFT minting, profile analytics, priority booking listing.",
-    color: "#AA2DFF",
+    key: "PERFORMER_RUBY_MONTHLY" as const,
+    label: "Performer Ruby",
+    testId: "sub-tier-performer",
+    tagline: "Go live anytime, beat marketplace access, booking requests, analytics dashboard.",
+    color: "#FF2DAA",
     highlight: false,
   },
   {
-    key: "SEASON_PASS" as const,
-    label: "Season Pass",
-    testId: "sub-tier-season",
-    tagline: "All season events, VIP room access, exclusive merch drop, season champion eligibility, commemorative NFT.",
-    color: "#FFD700",
+    key: "PERFORMER_DIAMOND_MONTHLY" as const,
+    label: "Performer Diamond",
+    testId: "sub-tier-artist",
+    tagline: "All Platinum perks, priority booking, full revenue split access, Diamond badge, NFT minting.",
+    color: "#AA2DFF",
     highlight: false,
   },
 ] as const;
@@ -47,7 +47,7 @@ export default function SubscriptionsPage() {
   async function subscribe(tierKey: TierKey) {
     setLoading(tierKey);
     const product = STRIPE_PRODUCTS[tierKey];
-    const mode = "interval" in product && product.interval !== "one_time" ? "subscription" : "payment";
+    const mode = "interval" in product ? "subscription" : "payment";
     try {
       const res = await fetch("/api/stripe/checkout", {
         method: "POST",
@@ -86,7 +86,7 @@ export default function SubscriptionsPage() {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14 }}>
           {TIERS.map(({ key, label, testId, tagline, color, highlight }) => {
             const product = STRIPE_PRODUCTS[key];
-            const priceLabel = `$${(product.price / 100).toFixed(2)}${"interval" in product && product.interval !== "one_time" ? `/${product.interval}` : ""}`;
+            const priceLabel = `$${(product.price / 100).toFixed(2)}${"interval" in product ? `/${product.interval}` : ""}`;
             const isLoading = loading === key;
 
             return (
