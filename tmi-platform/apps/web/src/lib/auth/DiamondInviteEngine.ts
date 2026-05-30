@@ -98,6 +98,14 @@ export class DiamondInviteEngine {
       status: 'active',
     }],
 
+    // Losdamost — Lifetime diamond (permanent, owner-granted)
+    ['VIP-LOSDAMOST-2026', {
+      token: 'VIP-LOSDAMOST-2026',
+      email: 'losdamost222@gmail.com',
+      assignedRole: 'fan',
+      status: 'active',
+    }],
+
     // Lorenzo McCoy — Grandfathered lifetime Diamond VIP (permanent, hardcoded)
     ['VIP-LORENZO-2026', {
       token: 'VIP-LORENZO-2026',

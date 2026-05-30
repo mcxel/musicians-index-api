@@ -170,6 +170,7 @@ const HARDCODED_DIAMOND = new Set([
   'mystictrinity@yahoo.com',
   'sharingmyblessing1978@gmail.com',
   'blackstargoldpr@gmail.com',
+  'losdamost222@gmail.com',
   'griffithscott1962@gmail.com',
   'jasjen63@gmail.com',
 ]);

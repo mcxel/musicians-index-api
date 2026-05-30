@@ -47,12 +47,14 @@ export default function HomeNavigator() {
       @media (max-width: 639px) {
         [data-tmi-hnav-pills] { display: none !important; }
         [data-tmi-hnav-dots]  { display: none !important; }
+        [data-tmi-hnav-avatar] { display: none !important; }
       }
     `}</style>
     <div style={{
       position: "sticky", top: 0, zIndex: 100,
-      background: "rgba(5,5,12,0.92)",
-      backdropFilter: "blur(12px)",
+      background: "rgba(5,5,12,0.52)",
+      backdropFilter: "blur(18px)",
+      WebkitBackdropFilter: "blur(18px)",
       borderBottom: `1px solid ${current.accent}30`,
       boxShadow: `0 1px 20px ${current.accent}15`,
       padding: "0 16px",
@@ -192,8 +194,8 @@ export default function HomeNavigator() {
         </button>
       </div>
 
-      {/* Avatar mini chip — absolute, won't displace layout */}
-      <div style={{ position: "absolute", top: "50%", right: 200, transform: "translateY(-50%)" }}>
+      {/* Avatar mini chip — hidden on mobile to prevent overlap with Join Free */}
+      <div data-tmi-hnav-avatar style={{ position: "absolute", top: "50%", right: 200, transform: "translateY(-50%)" }}>
         <AvatarMiniPreview variant="mini" accentColor={current?.accent ?? "#00FFFF"} />
       </div>
     </div>
