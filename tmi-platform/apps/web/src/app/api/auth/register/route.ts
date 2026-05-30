@@ -1,7 +1,8 @@
 export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { registerUser, dbReady } from '@/lib/auth/UserStore';
+import { registerUser, dbReady, getUserById, updateUserTier } from '@/lib/auth/UserStore';
+import { registerArrival, qualifyReferral, resolveToken } from '@/lib/referral/ReferralEngine';
 import { createSession } from '@/lib/auth/SessionManager';
 import { sendEmail } from '@/lib/email/TMIEmailSystem';
 import { DiamondInviteEngine } from '@/lib/auth/DiamondInviteEngine';
@@ -149,6 +150,19 @@ export async function POST(req: NextRequest) {
   // Redeem invite token NOW that the account actually exists
   if (parsed.inviteToken) {
     void DiamondInviteEngine.validateAndRedeem(parsed.inviteToken, user.id);
+  }
+
+  // Auto-qualify referral on signup — a signup is stronger than 30s stay
+  if (parsed.ref) {
+    registerArrival(parsed.ref, user.id);
+    const refResult = qualifyReferral(parsed.ref, user.id, 999, 1);
+    if (refResult.qualified && refResult.milestoneBonus > 0) {
+      const link = resolveToken(parsed.ref);
+      if (link) {
+        const owner = getUserById(link.ownerId);
+        if (owner) updateUserTier(owner.email, 'GOLD');
+      }
+    }
   }
 
   const response = NextResponse.json(

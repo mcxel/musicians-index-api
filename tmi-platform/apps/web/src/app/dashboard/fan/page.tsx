@@ -8,6 +8,7 @@ import { getRoleStats, type DashboardStat } from '@/lib/stats/DashboardStatsEngi
 import LiveMediaWall from '@/components/media/LiveMediaWall';
 import VideoCurtainReveal from '@/components/media/VideoCurtainReveal';
 import AdSenseSlot, { AD_SLOTS } from '@/components/ads/AdSenseSlot';
+import InviteRewardPanel from '@/components/referral/InviteRewardPanel';
 
 interface MeUser { id: string; email: string; name?: string; role: string; tier?: string; fanPoints?: number; }
 
@@ -132,6 +133,13 @@ export default function FanDashboardPage() {
             <LiveMediaWall roomId="R-214" title="LIVE CYPHER · BATTLE ROOM" mode="spotlight" nodeCount={7} accentColor={ACCENT} enterHref="/live/rooms" />
           </VideoCurtainReveal>
         </div>
+
+        {/* Invite & Gold reward banner */}
+        {user && (
+          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }} style={{ marginBottom: 28 }}>
+            <InviteRewardPanel userId={user.id} />
+          </motion.div>
+        )}
 
         {/* Primary Actions */}
         <div style={{ marginBottom: 32 }}>
