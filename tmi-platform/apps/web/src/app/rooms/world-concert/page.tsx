@@ -10,16 +10,17 @@ import {
   createSeatingMesh,
   claimSeat,
   releaseFanSeat,
-  checkInFan,
   getFanSeat,
   getSeatGrid,
   getOccupancyRate,
-  autoAssignSeat,
   seatToAvatarPosition,
   type SeatingMeshState,
   type MeshSeat,
 } from "@/lib/seats/SeatingMeshEngine";
+import type { TicketRecord } from "@/lib/tickets/ticketCore";
 import { useSeatSession } from "@/lib/seats/useSeatSession";
+
+type SeatReservation = { fanId: string; seatId: string; displayName: string };
 
 const ROOM_ID = "world-concert";
 const SESSION_ID = "session-live-001";
@@ -50,28 +51,41 @@ export default function WorldConcertPage() {
   const [mesh, setMesh] = useState<SeatingMeshState>(() =>
     createSeatingMesh(ROOM_ID, SESSION_ID, SEAT_ROWS, SEAT_COLS),
   );
+  const [myTicket, setMyTicket] = useState<TicketRecord | null>(null);
+  const [loadingReservation, setLoadingReservation] = useState(false);
+  const [reservationError, setReservationError] = useState<string | null>(null);
 
-  // On mount: restore prior seat via return-loop, then auto-assign if still empty
+  // Fetch server seat map on mount + poll every 15s
   useEffect(() => {
-    setMesh((prev) => {
-      // 1. If fan has a prior seat in session storage, try to reclaim it
-      if (persistedSeatId) {
-        const seeded: SeatingMeshState = {
-          ...prev,
-          fanSeatIndex: { ...prev.fanSeatIndex, [FAN_ID]: persistedSeatId },
-        };
-        const { state: restored, seat } = checkInFan(seeded, FAN_ID, null);
-        if (seat) return restored;
+    let cancelled = false;
+
+    async function syncSeats() {
+      try {
+        const res = await fetch(`/api/seats/${ROOM_ID}`);
+        if (!res.ok || cancelled) return;
+        const data = await res.json() as { reservations?: Record<string, SeatReservation> };
+        const reservations = data.reservations ?? {};
+        setMesh((prev) => {
+          let next = prev;
+          for (const [seatId, r] of Object.entries(reservations)) {
+            const claimed = claimSeat(next, r.fanId, seatId);
+            if (claimed) next = claimed;
+          }
+          // Restore this fan's seat from sessionStorage if still open
+          if (persistedSeatId && !reservations[persistedSeatId]) {
+            const selfClaimed = claimSeat(next, FAN_ID, persistedSeatId);
+            if (selfClaimed) return selfClaimed;
+          }
+          return next;
+        });
+      } catch {
+        // silently ignore — client-side mesh stays as fallback
       }
-      // 2. No prior seat — auto-assign the best available seat
-      const assigned = autoAssignSeat(prev, FAN_ID, null);
-      if (assigned) {
-        persistClaim(assigned.seat.seatId);
-        return assigned.state;
-      }
-      return prev;
-    });
-  // persistedSeatId and persistClaim are stable across renders
+    }
+
+    syncSeats();
+    const poll = setInterval(syncSeats, 15_000);
+    return () => { cancelled = true; clearInterval(poll); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -83,19 +97,45 @@ export default function WorldConcertPage() {
     [fanSeat],
   );
 
-  function handleClaimSeat(seatId: string) {
-    setMesh((prev) => {
-      const next = claimSeat(prev, FAN_ID, seatId);
-      if (!next) return prev;
+  async function handleClaimSeat(seatId: string) {
+    setLoadingReservation(true);
+    setReservationError(null);
+    try {
+      const res = await fetch("/api/seats/reserve", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          concertId: ROOM_ID,
+          fanId: FAN_ID,
+          seatId,
+          displayName: "Fan",
+          tier: "STANDARD",
+          faceValue: 0,
+        }),
+      });
+      const data = await res.json() as { ok: boolean; error?: string; ticket?: TicketRecord };
+      if (!data.ok) {
+        setReservationError(
+          data.error === "seat_taken" ? "That seat was just claimed — pick another." : "Could not reserve seat.",
+        );
+        return;
+      }
+      setMyTicket(data.ticket ?? null);
       persistClaim(seatId);
-      return next;
-    });
+      setMesh((prev) => claimSeat(prev, FAN_ID, seatId) ?? prev);
+    } finally {
+      setLoadingReservation(false);
+    }
   }
 
-  function handleReleaseSeat() {
-    setMesh((prev) => {
-      persistRelease();
-      return releaseFanSeat(prev, FAN_ID);
+  async function handleReleaseSeat() {
+    setMyTicket(null);
+    persistRelease();
+    setMesh((prev) => releaseFanSeat(prev, FAN_ID));
+    await fetch("/api/seats/reserve", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ concertId: ROOM_ID, fanId: FAN_ID }),
     });
   }
 
@@ -261,6 +301,12 @@ export default function WorldConcertPage() {
                   🪑 YOUR SEAT
                 </div>
 
+                {reservationError && (
+                  <div style={{ fontSize: 10, color: "#FF4444", marginBottom: 8, padding: "6px 10px", background: "rgba(255,68,68,0.08)", borderRadius: 6 }}>
+                    {reservationError}
+                  </div>
+                )}
+
                 {fanSeat ? (
                   <div style={{ marginBottom: 10 }}>
                     <div style={{ fontSize: 11, color: "#fff", fontWeight: 700 }}>
@@ -268,14 +314,21 @@ export default function WorldConcertPage() {
                     </div>
                     <div style={{
                       fontSize: 9, fontWeight: 800, letterSpacing: 2,
-                      color: TIER_COLOR[fanSeat.tier] ?? "#fff", marginBottom: 4,
+                      color: TIER_COLOR[fanSeat.tier] ?? "#fff", marginBottom: 6,
                     }}>{fanSeat.tier.replace("_", " ")}</div>
-                    {avatarPos && (
-                      <div style={{ fontSize: 8, color: "#555", marginBottom: 8, fontFamily: "monospace" }}>
-                        x:{avatarPos.x.toFixed(1)} y:{avatarPos.y.toFixed(1)} z:{avatarPos.z.toFixed(1)}
+                    {myTicket && (
+                      <div style={{
+                        background: "rgba(0,255,136,0.06)", border: "1px solid rgba(0,255,136,0.3)",
+                        borderRadius: 8, padding: "8px 10px", marginBottom: 8,
+                      }}>
+                        <div style={{ fontSize: 8, color: "#00FF88", fontWeight: 800, letterSpacing: 2, marginBottom: 4 }}>✓ SEAT RESERVED</div>
+                        <div style={{ fontSize: 9, color: "rgba(255,255,255,0.6)", fontFamily: "monospace" }}>{myTicket.id}</div>
+                        <div style={{ fontSize: 8, color: "#555", marginTop: 3 }}>
+                          Section {myTicket.seat.section} · Row {myTicket.seat.row} · Seat {myTicket.seat.seat}
+                        </div>
                       </div>
                     )}
-                    <motion.button whileTap={{ scale: 0.95 }} onClick={handleReleaseSeat} style={{
+                    <motion.button whileTap={{ scale: 0.95 }} onClick={() => void handleReleaseSeat()} style={{
                       width: "100%", padding: "7px 0", borderRadius: 20,
                       background: "rgba(255,45,170,0.08)", border: "1px solid rgba(255,45,170,0.3)",
                       color: "#FF2DAA", fontSize: 9, fontWeight: 700, letterSpacing: 2, cursor: "pointer",
@@ -283,7 +336,7 @@ export default function WorldConcertPage() {
                   </div>
                 ) : (
                   <div style={{ fontSize: 10, color: "#555", marginBottom: 10 }}>
-                    Assigning seat…
+                    {loadingReservation ? "Reserving seat…" : "Pick a seat below ↓"}
                   </div>
                 )}
 
