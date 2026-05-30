@@ -2,6 +2,10 @@ import Link from "next/link";
 import UniversalMediaPanel from "@/components/media/UniversalMediaPanel";
 import HighFidelityAvatar from "@/components/avatar/HighFidelityAvatar";
 import TmiProfileLobby from "@/components/profile/TmiProfileLobby";
+import SocialDock from "@/components/social/SocialDock";
+import TrackUploadPanel from "@/components/social/TrackUploadPanel";
+import MemoryWall from "@/components/media/MemoryWall";
+import TieredAdSlot from "@/components/ads/TieredAdSlot";
 
 interface Props { params: { slug: string } }
 
@@ -158,6 +162,45 @@ export default function FanProfilePage({ params }: Props) {
           >
             🎵 Join Room
           </Link>
+        </div>
+
+        {/* Ad slot — free/pro tier users see this between actions and social */}
+        <div style={{ marginTop: 16 }}>
+          <TieredAdSlot
+            tier={fan.tier === "diamond" ? "diamond" : fan.tier === "gold" ? "gold-platinum" : fan.tier === "pro" ? "pro-bronze" : "free"}
+            placement="in-content"
+            height={80}
+          />
+        </div>
+
+        {/* Social dock */}
+        <div style={{ padding: "0 24px 16px" }}>
+          <SocialDock
+            profile={{ id: params.slug, name: fan.displayName, role: "Fan", isOnline: true }}
+            accentColor={tierConfig.color}
+          />
+        </div>
+
+        {/* Playlist */}
+        <div style={{ padding: "0 24px 16px" }}>
+          <TrackUploadPanel
+            playlistName={`${fan.displayName} — Favorites`}
+            accentColor={tierConfig.color}
+          />
+        </div>
+
+        {/* Memory Wall */}
+        <div style={{ padding: "0 24px 16px" }}>
+          <MemoryWall accentColor={tierConfig.color} title={`${fan.displayName} — Memory Wall`} />
+        </div>
+
+        {/* Ad slot below memory wall — free/pro only */}
+        <div style={{ padding: "0 24px 16px" }}>
+          <TieredAdSlot
+            tier={fan.tier === "diamond" ? "diamond" : fan.tier === "gold" ? "gold-platinum" : fan.tier === "pro" ? "pro-bronze" : "free"}
+            placement="leaderboard"
+            height={70}
+          />
         </div>
 
         {/* Profile Lobby */}

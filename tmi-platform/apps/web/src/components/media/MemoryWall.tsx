@@ -1,0 +1,454 @@
+"use client";
+
+import { useState, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+
+// ── Types ──────────────────────────────────────────────────────────────────────
+
+interface MediaItem {
+  id: string;
+  name: string;
+  url: string;        // objectURL or remote URL
+  size?: number;      // bytes
+  addedAt: number;
+  caption?: string;
+}
+
+type MemoryTab = "photos" | "videos" | "audio" | "moments" | "achievements";
+
+const TAB_CONFIG: { id: MemoryTab; icon: string; label: string; color: string }[] = [
+  { id: "photos",       icon: "📸", label: "Photos",       color: "#00FFFF" },
+  { id: "videos",       icon: "🎬", label: "Videos",       color: "#FF2DAA" },
+  { id: "audio",        icon: "🎵", label: "Audio",        color: "#AA2DFF" },
+  { id: "moments",      icon: "✨", label: "Moments",      color: "#FFD700" },
+  { id: "achievements", icon: "🏆", label: "Badges",       color: "#22c55e" },
+];
+
+const SEED_MOMENTS = [
+  "Cypher finals", "First tip received", "100 followers", "Battle win", "Diamond tier", "First collab",
+];
+
+const SEED_ACHIEVEMENTS = [
+  { icon: "🏆", label: "Battle Fan",      desc: "Watched 10 battles" },
+  { icon: "💎", label: "Diamond Fan",     desc: "Reached Diamond tier" },
+  { icon: "🎵", label: "Playlist Master", desc: "Added 50 tracks" },
+  { icon: "🔥", label: "Hot Streak",      desc: "7 days in a row" },
+  { icon: "🤝", label: "Connector",       desc: "Invited 5 friends" },
+];
+
+function fmtSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes}B`;
+  if (bytes < 1048576) return `${(bytes / 1024).toFixed(0)}KB`;
+  return `${(bytes / 1048576).toFixed(1)}MB`;
+}
+
+// ── Upload drop zone ──────────────────────────────────────────────────────────
+
+function UploadZone({ accept, label, icon, color, onFiles }: {
+  accept: string; label: string; icon: string; color: string;
+  onFiles: (files: FileList) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [dragging, setDragging] = useState(false);
+
+  return (
+    <div
+      onClick={() => inputRef.current?.click()}
+      onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+      onDragLeave={() => setDragging(false)}
+      onDrop={(e) => {
+        e.preventDefault();
+        setDragging(false);
+        if (e.dataTransfer.files.length) onFiles(e.dataTransfer.files);
+      }}
+      style={{
+        border: `1px dashed ${dragging ? color : color + "55"}`,
+        borderRadius: 10,
+        padding: "14px 16px",
+        textAlign: "center",
+        cursor: "pointer",
+        background: dragging ? `${color}08` : "rgba(255,255,255,0.02)",
+        transition: "all 0.15s",
+        marginBottom: 12,
+      }}
+    >
+      <div style={{ fontSize: 20, marginBottom: 4 }}>{icon}</div>
+      <div style={{ fontSize: 10, fontWeight: 700, color, letterSpacing: "0.1em" }}>{label}</div>
+      <div style={{ fontSize: 9, color: "rgba(255,255,255,0.25)", marginTop: 2 }}>
+        Click to browse or drag & drop
+      </div>
+      <input
+        ref={inputRef}
+        type="file"
+        accept={accept}
+        multiple
+        style={{ display: "none" }}
+        onChange={(e) => { if (e.target.files?.length) onFiles(e.target.files); }}
+      />
+    </div>
+  );
+}
+
+// ── Photo section ─────────────────────────────────────────────────────────────
+
+function PhotoSection({ accentColor }: { accentColor: string }) {
+  const [items, setItems] = useState<MediaItem[]>([]);
+  const [lightbox, setLightbox] = useState<MediaItem | null>(null);
+
+  const handleFiles = (files: FileList) => {
+    const newItems: MediaItem[] = Array.from(files).map((f) => ({
+      id: `photo-${Date.now()}-${Math.random()}`,
+      name: f.name,
+      url: URL.createObjectURL(f),
+      size: f.size,
+      addedAt: Date.now(),
+    }));
+    setItems((p) => [...newItems, ...p]);
+  };
+
+  return (
+    <div>
+      <UploadZone
+        accept="image/*"
+        label="UPLOAD PHOTOS"
+        icon="📸"
+        color="#00FFFF"
+        onFiles={handleFiles}
+      />
+      {items.length === 0 ? (
+        <div style={{ textAlign: "center", color: "rgba(255,255,255,0.2)", fontSize: 11, padding: "16px 0" }}>
+          No photos yet. Capture memories from live events.
+        </div>
+      ) : (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 6 }}>
+          {items.map((item) => (
+            <div
+              key={item.id}
+              onClick={() => setLightbox(item)}
+              style={{ position: "relative", aspectRatio: "1/1", borderRadius: 8, overflow: "hidden", cursor: "zoom-in", border: "1px solid rgba(255,255,255,0.08)" }}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={item.url} alt={item.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              <button
+                onClick={(e) => { e.stopPropagation(); URL.revokeObjectURL(item.url); setItems((p) => p.filter((x) => x.id !== item.id)); }}
+                style={{ position: "absolute", top: 4, right: 4, background: "rgba(0,0,0,0.7)", border: "none", color: "#fff", borderRadius: "50%", width: 18, height: 18, fontSize: 11, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+              >×</button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Lightbox */}
+      <AnimatePresence>
+        {lightbox && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setLightbox(null)}
+            style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.92)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={lightbox.url} alt={lightbox.name} style={{ maxWidth: "90vw", maxHeight: "85vh", borderRadius: 10, objectFit: "contain" }} />
+            <div style={{ position: "absolute", bottom: 24, left: "50%", transform: "translateX(-50%)", fontSize: 10, color: "rgba(255,255,255,0.5)" }}>
+              {lightbox.name}{lightbox.size ? ` · ${fmtSize(lightbox.size)}` : ""}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// ── Video section ─────────────────────────────────────────────────────────────
+
+function VideoSection({ accentColor }: { accentColor: string }) {
+  const [items, setItems] = useState<MediaItem[]>([]);
+  const [active, setActive] = useState<MediaItem | null>(null);
+
+  const handleFiles = (files: FileList) => {
+    const newItems: MediaItem[] = Array.from(files).map((f) => ({
+      id: `video-${Date.now()}-${Math.random()}`,
+      name: f.name,
+      url: URL.createObjectURL(f),
+      size: f.size,
+      addedAt: Date.now(),
+    }));
+    setItems((p) => [...newItems, ...p]);
+  };
+
+  return (
+    <div>
+      <UploadZone
+        accept="video/mp4,video/webm,video/quicktime,video/*"
+        label="UPLOAD VIDEOS"
+        icon="🎬"
+        color="#FF2DAA"
+        onFiles={handleFiles}
+      />
+      {items.length === 0 ? (
+        <div style={{ textAlign: "center", color: "rgba(255,255,255,0.2)", fontSize: 11, padding: "16px 0" }}>
+          No videos yet. Record performances and live moments.
+        </div>
+      ) : (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 8 }}>
+          {items.map((item) => (
+            <div
+              key={item.id}
+              style={{ position: "relative", borderRadius: 9, overflow: "hidden", border: "1px solid rgba(255,45,170,0.18)", background: "#050510" }}
+            >
+              <video
+                src={item.url}
+                style={{ width: "100%", aspectRatio: "16/9", display: "block", objectFit: "cover" }}
+                controls={active?.id === item.id}
+                onClick={() => setActive(active?.id === item.id ? null : item)}
+              />
+              {active?.id !== item.id && (
+                <div
+                  onClick={() => setActive(item)}
+                  style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", background: "rgba(0,0,0,0.35)" }}
+                >
+                  <div style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(255,45,170,0.85)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>▶</div>
+                </div>
+              )}
+              <div style={{ padding: "6px 8px", background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", gap: 6 }}>
+                <span style={{ flex: 1, fontSize: 10, color: "rgba(255,255,255,0.6)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.name}</span>
+                <button
+                  onClick={() => { URL.revokeObjectURL(item.url); setItems((p) => p.filter((x) => x.id !== item.id)); if (active?.id === item.id) setActive(null); }}
+                  style={{ background: "none", border: "none", color: "rgba(255,255,255,0.3)", fontSize: 13, cursor: "pointer", flexShrink: 0 }}
+                >×</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Audio section ─────────────────────────────────────────────────────────────
+
+function AudioSection({ accentColor }: { accentColor: string }) {
+  const [items, setItems] = useState<MediaItem[]>([]);
+
+  const handleFiles = (files: FileList) => {
+    const newItems: MediaItem[] = Array.from(files).map((f) => ({
+      id: `audio-${Date.now()}-${Math.random()}`,
+      name: f.name.replace(/\.[^.]+$/, ""),
+      url: URL.createObjectURL(f),
+      size: f.size,
+      addedAt: Date.now(),
+    }));
+    setItems((p) => [...newItems, ...p]);
+  };
+
+  return (
+    <div>
+      <UploadZone
+        accept="audio/mp3,audio/mpeg,audio/wav,audio/flac,audio/aac,audio/*"
+        label="UPLOAD AUDIO"
+        icon="🎵"
+        color="#AA2DFF"
+        onFiles={handleFiles}
+      />
+      {items.length === 0 ? (
+        <div style={{ textAlign: "center", color: "rgba(255,255,255,0.2)", fontSize: 11, padding: "16px 0" }}>
+          No audio yet. Add your freestyle recordings or demos.
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          {items.map((item, i) => (
+            <div
+              key={item.id}
+              style={{ background: "rgba(170,45,255,0.06)", border: "1px solid rgba(170,45,255,0.18)", borderRadius: 9, padding: "10px 12px" }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                <span style={{ fontSize: 10, color: "rgba(255,255,255,0.2)", width: 16, textAlign: "right", flexShrink: 0 }}>{i + 1}</span>
+                <span style={{ flex: 1, fontSize: 11, fontWeight: 700, color: "#e2e8f0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.name}</span>
+                {item.size && <span style={{ fontSize: 9, color: "rgba(255,255,255,0.25)", flexShrink: 0 }}>{fmtSize(item.size)}</span>}
+                <button
+                  onClick={() => { URL.revokeObjectURL(item.url); setItems((p) => p.filter((x) => x.id !== item.id)); }}
+                  style={{ background: "none", border: "none", color: "rgba(255,255,255,0.25)", fontSize: 14, cursor: "pointer", flexShrink: 0 }}
+                >×</button>
+              </div>
+              {/* Waveform placeholder + native audio player */}
+              <div style={{ height: 24, borderRadius: 4, background: "rgba(170,45,255,0.1)", marginBottom: 6, position: "relative", overflow: "hidden" }}>
+                {Array.from({ length: 48 }).map((_, j) => (
+                  <div
+                    key={j}
+                    style={{
+                      position: "absolute",
+                      bottom: 0,
+                      left: `${(j / 48) * 100}%`,
+                      width: "1.5%",
+                      height: `${20 + Math.sin(j * 0.9 + i) * 15 + Math.random() * 10}%`,
+                      background: "rgba(170,45,255,0.5)",
+                      borderRadius: 1,
+                    }}
+                  />
+                ))}
+              </div>
+              <audio controls src={item.url} style={{ width: "100%", height: 28, accentColor: "#AA2DFF" }} />
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Moments section ───────────────────────────────────────────────────────────
+
+function MomentsSection({ accentColor }: { accentColor: string }) {
+  const [items, setItems] = useState(SEED_MOMENTS);
+  const [input, setInput] = useState("");
+
+  const add = () => {
+    const t = input.trim();
+    if (!t) return;
+    setItems((p) => [t, ...p]);
+    setInput("");
+  };
+
+  return (
+    <div>
+      <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+        <input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && add()}
+          placeholder="Add a memory moment…"
+          style={{ flex: 1, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,215,0,0.2)", borderRadius: 8, padding: "7px 10px", color: "#fff", fontSize: 11, outline: "none" }}
+        />
+        <button
+          onClick={add}
+          style={{ padding: "7px 14px", borderRadius: 8, fontSize: 10, fontWeight: 800, background: "rgba(255,215,0,0.15)", border: "1px solid rgba(255,215,0,0.3)", color: "#FFD700", cursor: "pointer" }}
+        >+ ADD</button>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+        {items.map((m, i) => (
+          <div
+            key={m + i}
+            style={{ padding: "10px", borderRadius: 8, background: "rgba(255,215,0,0.06)", border: "1px solid rgba(255,215,0,0.14)", fontSize: 10, fontWeight: 700, color: "#e2e8f0", display: "flex", alignItems: "center", gap: 6 }}
+          >
+            <span>✨</span>
+            <span style={{ flex: 1 }}>{m}</span>
+            {i >= SEED_MOMENTS.length ? (
+              <button onClick={() => setItems((p) => p.filter((_, j) => j !== i))} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.2)", fontSize: 13, cursor: "pointer" }}>×</button>
+            ) : null}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Achievements section ──────────────────────────────────────────────────────
+
+function AchievementsSection({ accentColor }: { accentColor: string }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+      {SEED_ACHIEVEMENTS.map((a) => (
+        <div
+          key={a.label}
+          style={{ display: "flex", gap: 12, alignItems: "center", padding: "10px 12px", borderRadius: 9, background: "rgba(34,197,94,0.05)", border: "1px solid rgba(34,197,94,0.14)" }}
+        >
+          <span style={{ fontSize: 22, flexShrink: 0 }}>{a.icon}</span>
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "#e2e8f0" }}>{a.label}</div>
+            <div style={{ fontSize: 9, color: "rgba(255,255,255,0.35)" }}>{a.desc}</div>
+          </div>
+          <div style={{ marginLeft: "auto", fontSize: 9, fontWeight: 800, color: "#22c55e", letterSpacing: "0.1em" }}>EARNED</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── MemoryWall (main export) ──────────────────────────────────────────────────
+
+interface MemoryWallProps {
+  accentColor?: string;
+  title?: string;
+}
+
+export default function MemoryWall({ accentColor = "#00FFFF", title = "Memory Wall" }: MemoryWallProps) {
+  const [activeTab, setActiveTab] = useState<MemoryTab>("photos");
+  const activeConfig = TAB_CONFIG.find((t) => t.id === activeTab)!;
+
+  const counts: Partial<Record<MemoryTab, number>> = {};
+
+  return (
+    <div style={{
+      border: `1px solid ${accentColor}22`,
+      borderRadius: 14,
+      background: "rgba(5,5,18,0.88)",
+      overflow: "hidden",
+    }}>
+      {/* Header */}
+      <div style={{
+        display: "flex", alignItems: "center", gap: 8,
+        padding: "12px 16px",
+        borderBottom: `1px solid ${accentColor}18`,
+        background: "rgba(255,255,255,0.02)",
+      }}>
+        <span style={{ fontSize: 15 }}>💾</span>
+        <span style={{ fontSize: 11, fontWeight: 900, color: accentColor, letterSpacing: "0.14em", textTransform: "uppercase" }}>
+          {title}
+        </span>
+        <motion.div
+          animate={{ opacity: [1, 0.3, 1] }}
+          transition={{ repeat: Infinity, duration: 2 }}
+          style={{ marginLeft: "auto", width: 6, height: 6, borderRadius: "50%", background: accentColor }}
+        />
+      </div>
+
+      {/* Tab bar */}
+      <div style={{
+        display: "flex",
+        borderBottom: `1px solid rgba(255,255,255,0.06)`,
+        background: "rgba(0,0,0,0.2)",
+        overflowX: "auto",
+      }}>
+        {TAB_CONFIG.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            style={{
+              flex: 1, minWidth: 64, padding: "9px 4px",
+              border: "none", cursor: "pointer",
+              borderBottom: activeTab === tab.id ? `2px solid ${tab.color}` : "2px solid transparent",
+              background: activeTab === tab.id ? `${tab.color}0A` : "transparent",
+              display: "flex", flexDirection: "column", alignItems: "center", gap: 2,
+              transition: "all 0.15s",
+            }}
+          >
+            <span style={{ fontSize: 14 }}>{tab.icon}</span>
+            <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: activeTab === tab.id ? tab.color : "rgba(255,255,255,0.3)" }}>
+              {tab.label}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      {/* Tab content */}
+      <div style={{ padding: 14 }}>
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.15 }}
+          >
+            {activeTab === "photos"       && <PhotoSection accentColor={activeConfig.color} />}
+            {activeTab === "videos"       && <VideoSection accentColor={activeConfig.color} />}
+            {activeTab === "audio"        && <AudioSection accentColor={activeConfig.color} />}
+            {activeTab === "moments"      && <MomentsSection accentColor={activeConfig.color} />}
+            {activeTab === "achievements" && <AchievementsSection accentColor={activeConfig.color} />}
+          </motion.div>
+        </AnimatePresence>
+      </div>
+    </div>
+  );
+}

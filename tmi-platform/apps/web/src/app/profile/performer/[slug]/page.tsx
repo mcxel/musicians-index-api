@@ -16,6 +16,8 @@ import PerformerSponsorShelf, {
 } from "@/components/performer/PerformerSponsorShelf";
 import type { SponsorSlot } from "@/components/performer/DynamicRadialAura";
 import ViralShareButton from "@/components/share/ViralShareButton";
+import SocialDock from "@/components/social/SocialDock";
+import TrackUploadPanel from "@/components/social/TrackUploadPanel";
 
 interface Props {
   params: { slug: string };
@@ -346,6 +348,14 @@ export default function PerformerProfilePage({ params }: Props) {
           </Link>
         </div>
 
+        {/* Social dock — DM, voice chat, video call, follow, invite, friends */}
+        <div style={{ marginBottom: 20 }}>
+          <SocialDock
+            profile={{ id: params.slug, name: performer.displayName, role: "Performer", isOnline: performer.isLive }}
+            accentColor={ACCENT}
+          />
+        </div>
+
         <div style={{ display: "grid", gridTemplateColumns: "1fr 300px", gap: 28, alignItems: "start" }}>
           <div>
             <PerformerBattleRail
@@ -544,6 +554,14 @@ export default function PerformerProfilePage({ params }: Props) {
 
         {/* Playlist — owner can add/reorder tracks; visitors see read-only */}
         <ProfilePlaylistSection profileSlug={params.slug} />
+
+        {/* Track upload panel — add song links and uploads to profile playlist */}
+        <div style={{ marginTop: 14 }}>
+          <TrackUploadPanel
+            playlistName={`${performer.displayName} — Playlist`}
+            accentColor={ACCENT}
+          />
+        </div>
 
         {/* Profile Lobby */}
         <TmiProfileLobby
