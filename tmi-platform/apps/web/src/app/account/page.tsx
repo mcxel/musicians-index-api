@@ -48,7 +48,7 @@ const SECTIONS = [
       { label: "Change Password",     href: "/settings"        },
       { label: "Two-Factor Auth",     href: "/settings"        },
       { label: "Privacy Controls",    href: "/safety"          },
-      { label: "Delete Account",      href: "/settings"        },
+      { label: "Delete Account",      href: "/account/deactivate" },
     ],
   },
   {
