@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { registerUser } from '@/lib/auth/UserStore';
+import { registerUser, dbReady } from '@/lib/auth/UserStore';
 import { createSession } from '@/lib/auth/SessionManager';
 import { sendEmail } from '@/lib/email/TMIEmailSystem';
 import { DiamondInviteEngine } from '@/lib/auth/DiamondInviteEngine';
@@ -64,6 +64,9 @@ export async function POST(req: NextRequest) {
   if (!parsed.termsAccepted) {
     return NextResponse.json({ error: 'Terms must be accepted' }, { status: 400 });
   }
+
+  // Ensure DB is preloaded so duplicate detection works on cold starts
+  await dbReady;
 
   // Register into shared UserStore (standalone — no backend required)
   const result = registerUser({ email, password, displayName, ref: parsed.ref, role: platformRole || undefined });

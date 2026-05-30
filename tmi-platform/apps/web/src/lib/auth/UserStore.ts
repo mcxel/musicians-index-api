@@ -139,7 +139,8 @@ async function persistUser(user: StoredUser): Promise<void> {
 }
 
 // Pre-load DB users into Map on module init (non-blocking)
-void loadFromDb();
+// Exported so routes can await it before first read on cold start.
+export const dbReady: Promise<void> = loadFromDb();
 
 // ── Auth helpers ──────────────────────────────────────────────────────────────
 
