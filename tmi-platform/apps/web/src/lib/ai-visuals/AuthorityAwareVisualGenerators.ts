@@ -93,9 +93,8 @@ export async function hydrateImageWithAuthority(
       ownerId: 'hydration-queue',
     },
     async () => {
-      // Placeholder: actual hydration logic would go here
-      // For now, return a mock job ID
-      return { assetId: `hydrated-${imageId}-${Date.now()}` };
+      // No real hydration pipeline yet — return null so callers use fallback
+      return null;
     }
   );
 
