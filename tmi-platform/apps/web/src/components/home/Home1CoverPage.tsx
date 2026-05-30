@@ -361,32 +361,6 @@ export default function Home1CoverPage() {
     };
   }, []);
 
-  useEffect(() => {
-    let frame = 0;
-    let angle = 0;
-    let last = 0;
-
-    const tick = (time: number) => {
-      if (last > 0) {
-        const delta = time - last;
-        angle = (angle + delta * 0.013) % 360;
-        const canvas = orbitCanvasRef.current;
-        if (canvas) {
-          const nodes = canvas.querySelectorAll<HTMLElement>('.tmi-orbit-node');
-          nodes.forEach((node, i) => {
-            const p = orbitPoint(i, nodes.length, 39, angle);
-            node.style.left = `${p.x}%`;
-            node.style.top = `${p.y}%`;
-          });
-        }
-      }
-      last = time;
-      frame = requestAnimationFrame(tick);
-    };
-
-    frame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame);
-  }, []);
 
   useEffect(() => {
     const id = setInterval(() => setVoteCount((v) => v + Math.floor(Math.random() * 6) + 1), 950);
@@ -948,6 +922,28 @@ export default function Home1CoverPage() {
           z-index: 1;
         }
 
+        .tmi-orbit-spinner {
+          position: absolute;
+          inset: 0;
+          border-radius: 50%;
+          animation: tmiOrbitSpinCW 28s linear infinite;
+          will-change: transform;
+        }
+
+        @keyframes tmiOrbitSpinCW {
+          from { transform: rotate(0deg); }
+          to   { transform: rotate(360deg); }
+        }
+
+        @keyframes tmiOrbitNodeCCW {
+          from { transform: translate(-50%, -50%) rotate(0deg); }
+          to   { transform: translate(-50%, -50%) rotate(-360deg); }
+        }
+
+        .tmi-orbit-node-counter {
+          animation: tmiOrbitNodeCCW 28s linear infinite !important;
+        }
+
         .tmi-orbit-particle {
           position: absolute;
           border-radius: 50%;
@@ -1383,7 +1379,7 @@ export default function Home1CoverPage() {
             grid-template-columns: 1fr;
           }
 
-          /* Remove heavy overlays that cause blend-mode glitches on mobile */
+          /* Remove GPU-heavy blur/blend overlays on mobile — main source of flicker */
           .tmi-kinetic-silk-1,
           .tmi-kinetic-silk-2,
           .tmi-kinetic-silk-3,
@@ -1391,6 +1387,9 @@ export default function Home1CoverPage() {
           .tmi-gloss-overlay {
             display: none;
           }
+
+          /* Reduce paper wash on mobile so neon colours stay vivid */
+          .tmi-paper-underlay { opacity: 0.12; }
         }
       `}</style>
 
@@ -1500,10 +1499,10 @@ export default function Home1CoverPage() {
             Top Ranked · Live Now · Updated In Real Time
           </div>
 
-          <div className="tmi-orbit-canvas" ref={orbitCanvasRef}>
+          <div className="tmi-orbit-canvas">
             <div className="tmi-orbit-ring" />
 
-            {/* 5. Overlay A - Star Field Particles */}
+            {/* Star field particles — pure CSS animation */}
             {ORBIT_PARTICLES_AMB.map((p, i) => (
               <div
                 key={i}
@@ -1524,7 +1523,7 @@ export default function Home1CoverPage() {
               />
             ))}
 
-            {/* 4. Top Artist Orbit / Interactive Nodes */}
+            {/* Center node — outside spinner so it stays fixed */}
             <Link
               className="tmi-orbit-center"
               href={topLive?.href ?? '/live/lobby'}
@@ -1537,42 +1536,45 @@ export default function Home1CoverPage() {
               </div>
             </Link>
 
-            {orbitPerformers.map((performer, index) => {
-              const point = orbitPoint(index, orbitPerformers.length, 39, orbitAngle);
-              const accent = GENRE_ACCENT[performer.genre] ?? '#FF2DAA';
-              const emoji = GENRE_EMOJI[performer.genre] ?? '🎵';
-              return (
-                <button
-                  key={performer.slug}
-                  className="tmi-orbit-node"
-                  style={{ left: `${point.x}%`, top: `${point.y}%`, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
-                  onClick={() => setProfilePanel({
-                    id: performer.slug,
-                    name: performer.name,
-                    role: 'artist',
-                    avatarEmoji: emoji,
-                    slug: performer.slug,
-                    genre: performer.genre,
-                    accentColor: accent,
-                    isOnline: true,
-                  })}
-                >
-                  <div style={{
-                    width: '100%', height: '100%',
-                    background: `linear-gradient(135deg, ${accent}30, #050510)`,
-                    display: 'grid', placeItems: 'center',
-                    fontSize: 'clamp(20px,3.5vw,28px)',
-                  }}>
-                    {emoji}
-                  </div>
-                  <span className="rank">{performer.rank}</span>
-                  <div className="meta">
-                    <strong>{performer.name}</strong>
-                    <small>{performer.genre}</small>
-                  </div>
-                </button>
-              );
-            })}
+            {/* Orbit spinner — rotates via CSS; nodes counter-rotate to stay upright */}
+            <div className="tmi-orbit-spinner">
+              {orbitPerformers.map((performer, index) => {
+                const point = orbitPoint(index, orbitPerformers.length, 39, 0);
+                const accent = GENRE_ACCENT[performer.genre] ?? '#FF2DAA';
+                const emoji = GENRE_EMOJI[performer.genre] ?? '🎵';
+                return (
+                  <button
+                    key={performer.slug}
+                    className="tmi-orbit-node tmi-orbit-node-counter"
+                    style={{ left: `${point.x}%`, top: `${point.y}%`, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+                    onClick={() => setProfilePanel({
+                      id: performer.slug,
+                      name: performer.name,
+                      role: 'artist',
+                      avatarEmoji: emoji,
+                      slug: performer.slug,
+                      genre: performer.genre,
+                      accentColor: accent,
+                      isOnline: true,
+                    })}
+                  >
+                    <div style={{
+                      width: '100%', height: '100%',
+                      background: `linear-gradient(135deg, ${accent}30, #050510)`,
+                      display: 'grid', placeItems: 'center',
+                      fontSize: 'clamp(20px,3.5vw,28px)',
+                    }}>
+                      {emoji}
+                    </div>
+                    <span className="rank">{performer.rank}</span>
+                    <div className="meta">
+                      <strong>{performer.name}</strong>
+                      <small>{performer.genre}</small>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </section>
 
