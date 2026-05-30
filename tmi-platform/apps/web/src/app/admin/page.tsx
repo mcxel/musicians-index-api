@@ -27,6 +27,8 @@ const ROLE_COLORS: Record<string, string> = {
 };
 
 const DIAG_LINKS = [
+  { label: '🛰 Mission Control', href: '/admin/mission-control', color: '#22c55e' },
+  { label: '🔒 Beat Locker',     href: '/admin/beat-locker',     color: '#f59e0b' },
   { label: '🚀 Launch Proof', href: '/admin/launch-proof',    color: '#00FF88' },
   { label: 'Route Health',     href: '/admin/routes',          color: '#00FFFF' },
   { label: 'Error Monitor',    href: '/admin/errors',          color: '#FF2DAA' },
