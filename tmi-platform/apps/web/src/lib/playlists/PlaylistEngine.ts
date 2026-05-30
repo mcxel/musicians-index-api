@@ -239,7 +239,7 @@ export function buildPlaylist(
   }
 
   // Inject owned tracks at spaced intervals (one catalog per injection round)
-  const INJECTION_INTERVALS: Record<CatalogId, number> = {
+  const INJECTION_INTERVALS: Partial<Record<CatalogId, number>> = {
     'berntout-perductions': Math.floor(targetSize * 0.30),
     'bjm':                  Math.floor(targetSize * 0.55),
     'big-kazhdog':          Math.floor(targetSize * 0.75),
@@ -248,7 +248,7 @@ export function buildPlaylist(
   for (const cat of OWNED_CATALOGS) {
     const owned = ownedByLabel[cat];
     if (!owned || owned.length === 0) continue;
-    const targetPos = INJECTION_INTERVALS[cat];
+    const targetPos = INJECTION_INTERVALS[cat] ?? Math.floor(targetSize / 2);
     const legalPos = findLegalPosition(slots, targetPos, PREFERRED_SPACING);
     if (legalPos !== -1) {
       slots[legalPos] = owned[0] ?? null;
