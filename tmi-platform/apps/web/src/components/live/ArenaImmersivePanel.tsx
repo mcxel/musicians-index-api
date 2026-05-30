@@ -8,6 +8,8 @@ import PerformerRelationshipPanel from './PerformerRelationshipPanel';
 import AudienceRecognitionOverlay from './AudienceRecognitionOverlay';
 import { SystemSecurityBot } from '@/lib/bots/SystemSecurityBot';
 import LiveRecoveryOverlay, { type RecoveryState } from './LiveRecoveryOverlay';
+import SponsorBubbleOverlay, { type BubbleSponsor } from '@/components/sponsor/SponsorBubbleOverlay';
+import { useShowtimeReveal } from '@/lib/live/LiveryRevealController';
 
 type ArenaMode = 'audience' | 'performer';
 
@@ -83,6 +85,14 @@ function rotateWindow<T>(items: T[], start: number, count: number): T[] {
 
 const securityBot = new SystemSecurityBot();
 
+const SHOWTIME_SPONSORS: BubbleSponsor[] = [
+  { id: 'sp-1', name: 'Fender',  logoUrl: '', type: 'major', tierColor: '#FFD700' },
+  { id: 'sp-2', name: 'Sony',    logoUrl: '', type: 'major', tierColor: '#AA2DFF' },
+  { id: 'sp-3', name: 'Beats',   logoUrl: '', type: 'major', tierColor: '#FF2DAA' },
+  { id: 'sp-4', name: 'Nike',    logoUrl: '', type: 'local', tierColor: '#00FFFF' },
+  { id: 'sp-5', name: 'Walmart', logoUrl: '', type: 'local', tierColor: '#00FF88' },
+];
+
 export default function ArenaImmersivePanel({ roomId, mode }: Props) {
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [userId, setUserId] = useState('guest-user');
@@ -99,6 +109,7 @@ export default function ArenaImmersivePanel({ roomId, mode }: Props) {
     displayName: string; title: string; viewerCount: number; tipTotal: number; stageState: string; accentColor: string; userId: string;
   } | null>(null);
   const prevMemberIdsRef = useRef<Set<string>>(new Set());
+  const revealActive = useShowtimeReveal(liveSession?.stageState);
 
   const { stream, error, videoRef } = useStageWebRTC({
     video: mode === 'performer' || (mode === 'audience' && captureEnabled),
@@ -394,7 +405,7 @@ export default function ArenaImmersivePanel({ roomId, mode }: Props) {
   }
 
   return (
-    <section style={{ border: '1px solid rgba(0,255,255,0.25)', borderRadius: 14, padding: 12, background: 'rgba(5,5,16,0.74)', marginTop: 14 }}>
+    <section style={{ border: '1px solid rgba(0,255,255,0.25)', borderRadius: 14, padding: 12, background: 'rgba(5,5,16,0.22)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)', marginTop: 14 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
         <div>
           <div style={{ fontSize: 10, letterSpacing: '0.14em', color: '#00FFFF', fontWeight: 800 }}>
@@ -507,6 +518,10 @@ export default function ArenaImmersivePanel({ roomId, mode }: Props) {
           <div style={{ marginTop: 8, fontSize: 10, color: 'rgba(255,255,255,0.45)' }}>
             Rotating every 7s to simulate full crowd coverage.
           </div>
+        )}
+
+        {revealActive && (
+          <SponsorBubbleOverlay sponsors={SHOWTIME_SPONSORS} orbitRadius={120} />
         )}
       </div>
 
