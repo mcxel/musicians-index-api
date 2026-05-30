@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState, memo } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import LayerCanvas from '@/components/canvas/LayerCanvas';
 import type { TMILayer, TMILayerSessionState } from '@/types/layers';
@@ -242,23 +242,91 @@ function safeParseLayerState(serialized: string | null): TMILayer[] | null {
   }
 }
 
+// ─── Isolated high-frequency components ───────────────────────────────────
+// These manage their own rapidly-updating state so the parent never re-renders
+// from typewriter ticks (26ms) or vote counter ticks (950ms).
+
+const VoteCounter = memo(function VoteCounter() {
+  const [count, setCount] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setCount((v) => v + Math.floor(Math.random() * 6) + 1), 950);
+    return () => clearInterval(id);
+  }, []);
+  return <>{count.toLocaleString()}</>;
+});
+
+const MastheadTypewriter = memo(function MastheadTypewriter() {
+  const lines = ['MAGAZINE','LIVE MUSIC','LIVE PERFORMANCE','LIVE CULTURE','ARTISTS','FANS','VENUES','BOOKINGS','LIVE EVENTS'];
+  const [lineIndex, setLineIndex] = useState(0);
+  const [chars, setChars] = useState(0);
+  const phrase = lines[lineIndex] ?? '';
+
+  useEffect(() => {
+    setChars(0);
+    let i = 0;
+    const timers: ReturnType<typeof setInterval>[] = [];
+    const typeId = setInterval(() => { i += 1; setChars(i); if (i >= phrase.length) clearInterval(typeId); }, 52);
+    timers.push(typeId);
+    const pauseMs = phrase.length * 52 + 900;
+    const eraseId = setTimeout(() => {
+      let ec = phrase.length;
+      const ei = setInterval(() => { ec -= 1; setChars(ec); if (ec <= 0) { clearInterval(ei); setLineIndex((idx) => (idx + 1) % lines.length); } }, 30);
+      timers.push(ei);
+    }, pauseMs);
+    return () => { timers.forEach(clearInterval); clearTimeout(eraseId); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lineIndex]);
+
+  return <div className="typewriter-line">{phrase.slice(0, chars)}</div>;
+});
+
+const SayingsStrip = memo(function SayingsStrip() {
+  const [index, setIndex] = useState(0);
+  const [chars, setChars] = useState(0);
+  const saying = ROTATING_SAYINGS[index] ?? '';
+
+  useEffect(() => {
+    setChars(0);
+    let i = 0;
+    const typeId = setInterval(() => { i += 1; setChars(i); if (i >= saying.length) clearInterval(typeId); }, 26);
+    const rotId = setTimeout(() => setIndex((idx) => (idx + 1) % ROTATING_SAYINGS.length), 3600);
+    return () => { clearInterval(typeId); clearTimeout(rotId); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [index]);
+
+  return (
+    <section className="tmi-sayings-strip" aria-live="polite">
+      <p>{saying.slice(0, chars)}</p>
+    </section>
+  );
+});
+
+const ChallengePromoTicker = memo(function ChallengePromoTicker() {
+  const [index, setIndex] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setIndex((i) => (i + 1) % CHALLENGE_PROMO_LINES.length), 2800);
+    return () => clearInterval(id);
+  }, []);
+  return (
+    <Link href="/battles/new" style={{ textDecoration: 'none' }}>
+      <div className="tmi-challenge-promo" aria-live="polite">
+        <span>{CHALLENGE_PROMO_LINES[index]}</span>
+      </div>
+    </Link>
+  );
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
+
 export default function Home1CoverPage() {
   const [layers, setLayers] = useState<TMILayer[]>(DEFAULT_LAYERS);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [designMode, setDesignMode] = useState(false);
-  const [voteCount, setVoteCount] = useState(0);
   const [broadcastDeckIndex, setBroadcastDeckIndex] = useState(0);
   const [deckTransitioning, setDeckTransitioning] = useState(false);
   const [canvasCardIndex, setCanvasCardIndex] = useState(0);
   const [profilePanel, setProfilePanel] = useState<UserProfilePanelUser | null>(null);
-
-  const [sayingIndex, setSayingIndex] = useState(0);
-  const [typedChars, setTypedChars] = useState(0);
-  const [challengePromoIndex, setChallengePromoIndex] = useState(0);
-
-  const [issueLineIndex, setIssueLineIndex] = useState(0);
-  const [issueTypedChars, setIssueTypedChars] = useState(0);
 
   // Data state populated post-hydration to prevent server/client mismatch
   const [liveCamFeeds, setLiveCamFeeds] = useState<BroadcastFeedItem[]>([]);
@@ -267,23 +335,6 @@ export default function Home1CoverPage() {
   const [orbitPerformers, setOrbitPerformers] = useState<Performer[]>(PERFORMERS.slice(0, 10));
   const [canvasCards, setCanvasCards] = useState<Array<{ key: string; item: BroadcastFeedItem; rotation: number }>>([]);
   const [topLive, setTopLive] = useState<BroadcastFeedItem | null>(null);
-
-  const currentSaying = ROTATING_SAYINGS[sayingIndex] ?? ROTATING_SAYINGS[0] ?? '';
-  const issueLines = useMemo(
-    () => [
-      'MAGAZINE',
-      'LIVE MUSIC',
-      'LIVE PERFORMANCE',
-      'LIVE CULTURE',
-      'ARTISTS',
-      'FANS',
-      'VENUES',
-      'BOOKINGS',
-      'LIVE EVENTS',
-    ],
-    []
-  );
-  const currentIssueLine = issueLines[issueLineIndex] ?? issueLines[0] ?? '';
 
   useEffect(() => {
     // Post-mount data hydration
@@ -363,11 +414,6 @@ export default function Home1CoverPage() {
 
 
   useEffect(() => {
-    const id = setInterval(() => setVoteCount((v) => v + Math.floor(Math.random() * 6) + 1), 950);
-    return () => clearInterval(id);
-  }, []);
-
-  useEffect(() => {
     const id = setInterval(() => {
       setDeckTransitioning(true);
       setTimeout(() => {
@@ -385,61 +431,6 @@ export default function Home1CoverPage() {
     }, 8000);
     return () => clearInterval(id);
   }, [canvasCards.length]);
-
-  useEffect(() => {
-    setTypedChars(0);
-    let i = 0;
-    const typeId = setInterval(() => {
-      i += 1;
-      setTypedChars(i);
-      if (i >= currentSaying.length) clearInterval(typeId);
-    }, 26);
-    const rotateId = setTimeout(() => {
-      setSayingIndex((idx) => (idx + 1) % ROTATING_SAYINGS.length);
-    }, 3600);
-    return () => {
-      clearInterval(typeId);
-      clearTimeout(rotateId);
-    };
-  }, [currentSaying]);
-
-  useEffect(() => {
-    const phrase = currentIssueLine;
-    setIssueTypedChars(0);
-    let i = 0;
-    const allTimers: (ReturnType<typeof setTimeout> | ReturnType<typeof setInterval>)[] = [];
-
-    const typeId = setInterval(() => {
-      i += 1;
-      setIssueTypedChars(i);
-      if (i >= phrase.length) clearInterval(typeId);
-    }, 52);
-    allTimers.push(typeId);
-
-    const pauseMs = phrase.length * 52 + 900;
-    const eraseStartId = setTimeout(() => {
-      let ec = phrase.length;
-      const eraseId = setInterval(() => {
-        ec -= 1;
-        setIssueTypedChars(ec);
-        if (ec <= 0) {
-          clearInterval(eraseId);
-          setIssueLineIndex((idx) => (idx + 1) % issueLines.length);
-        }
-      }, 30);
-      allTimers.push(eraseId);
-    }, pauseMs);
-    allTimers.push(eraseStartId);
-
-    return () => allTimers.forEach((t) => { clearTimeout(t as ReturnType<typeof setTimeout>); clearInterval(t as ReturnType<typeof setInterval>); });
-  }, [currentIssueLine, issueLines.length]);
-
-  useEffect(() => {
-    const id = setInterval(() => {
-      setChallengePromoIndex((idx) => (idx + 1) % CHALLENGE_PROMO_LINES.length);
-    }, 2800);
-    return () => clearInterval(id);
-  }, []);
 
   return (
     <div className="tmi-home1-canvas-surface">
@@ -1406,13 +1397,13 @@ export default function Home1CoverPage() {
       <div className="tmi-home1-shell">
         <div className="tmi-utility-row">
           <span className="tmi-utility-pill">Voting Live</span>
-          <span className="tmi-utility-pill">{voteCount.toLocaleString()} Votes</span>
+          <span className="tmi-utility-pill"><VoteCounter /> Votes</span>
           <span className="tmi-utility-pill">Crown Updating</span>
         </div>
 
         <header className="tmi-masthead">
           <h1 className="logo">The Musician&apos;s Index</h1>
-          <div className="typewriter-line">{getTypewriterText(currentIssueLine, issueTypedChars)}</div>
+          <MastheadTypewriter />
         </header>
 
         {/* ── Live Activity Ribbon ── */}
@@ -1428,11 +1419,7 @@ export default function Home1CoverPage() {
 
         <ChallengeYourSongCTA variant="strip" />
 
-        <Link href="/battles/new" style={{ textDecoration: 'none' }}>
-          <div className="tmi-challenge-promo" aria-live="polite">
-            <span>{CHALLENGE_PROMO_LINES[challengePromoIndex]}</span>
-          </div>
-        </Link>
+        <ChallengePromoTicker />
 
         <FounderAdvertiserBanner />
 
@@ -1651,9 +1638,7 @@ export default function Home1CoverPage() {
           <LayerCanvas layers={layers} onLayersChange={setLayers} isDesignMode={isAdmin && designMode} />
         </section>
 
-        <section className="tmi-sayings-strip" aria-live="polite">
-          <p>{getTypewriterText(currentSaying, typedChars)}</p>
-        </section>
+        <SayingsStrip />
 
         {/* ── 3 Live Billboard Tiles ── */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12, marginTop: 14 }}>
