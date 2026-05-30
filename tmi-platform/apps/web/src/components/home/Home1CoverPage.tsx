@@ -472,7 +472,7 @@ export default function Home1CoverPage() {
         }
         
         .tmi-glass-panel {
-          background: linear-gradient(180deg, rgba(20,25,35,0.6) 0%, rgba(5,5,12,0.8) 100%);
+          background: linear-gradient(180deg, rgba(20,25,35,0.12) 0%, rgba(5,5,12,0.22) 100%);
           backdrop-filter: blur(32px);
           border: 1px solid rgba(255,255,255,0.08);
           border-top: 1px solid rgba(255,255,255,0.25);
@@ -495,7 +495,7 @@ export default function Home1CoverPage() {
         }
         .tmi-crt-screen::after {
           content: ''; position: absolute; inset: 0; pointer-events: none;
-          box-shadow: inset 0 0 60px rgba(0,0,0,0.9), inset 0 1px 1px rgba(255,255,255,0.15);
+          box-shadow: inset 0 0 60px rgba(0,0,0,0.35), inset 0 1px 1px rgba(255,255,255,0.15);
           background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.04) 2px, rgba(0,0,0,0.04) 4px);
         }
 
@@ -703,7 +703,7 @@ export default function Home1CoverPage() {
           border-bottom: 2px solid rgba(0,0,0,0.8);
           padding: 10px 14px;
           color: #fff;
-          background: rgba(20,25,35,0.8);
+          background: rgba(20,25,35,0.45);
           backdrop-filter: blur(12px);
           box-shadow: inset 0 1px 0 rgba(255,255,255,0.1), 0 4px 10px rgba(0, 0, 0, 0.5);
           border-radius: 6px;
@@ -725,12 +725,12 @@ export default function Home1CoverPage() {
         .tmi-canvas-stage {
           border: 1px solid rgba(255,255,255,0.05);
           border-top: 1px solid rgba(255,255,255,0.15);
-          background: radial-gradient(ellipse at 50% 100%, rgba(170,45,255,0.12) 0%, rgba(5,5,12,0.8) 60%), #030308;
+          background: radial-gradient(ellipse at 50% 100%, rgba(170,45,255,0.12) 0%, rgba(5,5,12,0.25) 60%), rgba(3,3,8,0.4);
           backdrop-filter: blur(30px);
           min-height: 760px;
           position: relative;
           overflow: hidden;
-          box-shadow: inset 0 -50px 100px rgba(0,0,0,0.9), inset 0 1px 1px rgba(255,255,255,0.1), 0 20px 50px rgba(0,0,0,0.8);
+          box-shadow: inset 0 -50px 100px rgba(0,0,0,0.35), inset 0 1px 1px rgba(255,255,255,0.1), 0 20px 50px rgba(0,0,0,0.4);
           border-radius: 24px;
         }
         .tmi-canvas-stage::after {
@@ -742,7 +742,7 @@ export default function Home1CoverPage() {
           position: absolute;
           width: clamp(200px, 29vw, 350px);
           min-height: clamp(200px, 27vw, 330px);
-          background: linear-gradient(145deg, rgba(25,30,45,0.9) 0%, rgba(10,12,20,0.95) 100%);
+          background: linear-gradient(145deg, rgba(25,30,45,0.28) 0%, rgba(10,12,20,0.38) 100%);
           backdrop-filter: blur(20px);
           border: 1px solid rgba(255,255,255,0.08);
           border-top: 1px solid rgba(255,255,255,0.25);
@@ -854,7 +854,7 @@ export default function Home1CoverPage() {
           border: 1px solid rgba(0,255,255,0.1);
           border-top: 1px solid rgba(0,255,255,0.3);
           border-bottom: 1px solid #000;
-          background: #020308;
+          background: rgba(2,3,8,0.65);
           min-height: 54px;
           display: flex;
           align-items: center;
@@ -892,9 +892,9 @@ export default function Home1CoverPage() {
           margin-top: 16px;
           border: 1px solid rgba(255,215,0,0.15);
           border-top: 1px solid rgba(255,215,0,0.4);
-          background: rgba(5,5,10,0.6);
+          background: rgba(5,5,10,0.18);
           backdrop-filter: blur(30px);
-          box-shadow: inset 0 0 80px rgba(0,0,0,0.9), 0 10px 40px rgba(0,0,0,0.5);
+          box-shadow: inset 0 0 80px rgba(0,0,0,0.35), 0 10px 40px rgba(0,0,0,0.3);
           border-radius: 16px;
           padding: 16px;
           position: relative;
@@ -1051,7 +1051,7 @@ export default function Home1CoverPage() {
           left: 0;
           right: 0;
           bottom: 0;
-          background: rgba(5, 8, 15, 0.82);
+          background: rgba(5, 8, 15, 0.55);
           padding: 4px;
           text-align: center;
         }

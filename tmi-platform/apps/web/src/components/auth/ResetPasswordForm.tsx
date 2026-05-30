@@ -3,7 +3,6 @@
 import { FormEvent, useMemo, useState } from "react";
 import PasswordStrengthMeter from "./PasswordStrengthMeter";
 import RecoveryStatusCard from "./RecoveryStatusCard";
-import { completePasswordReset } from "@/lib/auth/PasswordResetCompleteEngine";
 
 type Props = {
   token: string;
@@ -15,47 +14,44 @@ export default function ResetPasswordForm({ token, email }: Props) {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [status, setStatus] = useState<"idle" | "success" | "error" | "warning">("idle");
   const [message, setMessage] = useState("Set a new secure password to continue.");
+  const [loading, setLoading] = useState(false);
 
   const canSubmit = useMemo(
-    () => newPassword.length >= 10 && confirmPassword.length >= 10,
-    [newPassword, confirmPassword]
+    () => !loading && newPassword.length >= 10 && confirmPassword.length >= 10,
+    [loading, newPassword, confirmPassword]
   );
 
-  function onSubmit(e: FormEvent) {
+  async function onSubmit(e: FormEvent) {
     e.preventDefault();
+    setLoading(true);
+    try {
+      const res = await fetch('/api/auth/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, token, newPassword, confirmPassword }),
+      });
+      const data = await res.json() as { ok: boolean; reason?: string };
 
-    const result = completePasswordReset({
-      email,
-      token,
-      newPassword,
-      confirmPassword,
-      ip: "ui-client",
-      userAgent: "browser",
-    });
-
-    if (!result.ok) {
-      setStatus("error");
-      switch (result.reason) {
-        case "expired_token":
-          setMessage("This reset token is expired. Request a new link.");
-          break;
-        case "used_token":
-          setMessage("This reset token was already used.");
-          break;
-        case "weak_password":
-          setMessage("Password too weak. Use upper/lowercase, number, and symbol.");
-          break;
-        case "password_mismatch":
-          setMessage("Passwords do not match.");
-          break;
-        default:
-          setMessage("Invalid reset token.");
+      if (!data.ok) {
+        setStatus("error");
+        switch (data.reason) {
+          case "expired_token":   setMessage("This reset token is expired. Request a new link."); break;
+          case "used_token":      setMessage("This reset token was already used."); break;
+          case "weak_password":   setMessage("Password too weak. Use upper/lowercase, number, and symbol."); break;
+          case "password_mismatch": setMessage("Passwords do not match."); break;
+          default:                setMessage("Invalid reset token.");
+        }
+        return;
       }
-      return;
-    }
 
-    setStatus("success");
-    setMessage("Password updated. You can now sign in with your new password.");
+      setStatus("success");
+      setMessage("Password updated. You can now sign in with your new password.");
+    } catch {
+      setStatus("error");
+      setMessage("Network error. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (

@@ -321,3 +321,13 @@ export function updateUserTier(email: string, tier: UserTier): boolean {
   void persistUser(user);
   return true;
 }
+
+export function updateUserPassword(email: string, newPassword: string): boolean {
+  const e = email.trim().toLowerCase();
+  const user = STORE.get(e);
+  if (!user) return false;
+  user.passwordHash = hashPassword(newPassword);
+  STORE.set(e, user);
+  void persistUser(user);
+  return true;
+}

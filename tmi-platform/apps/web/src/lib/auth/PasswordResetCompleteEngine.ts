@@ -1,4 +1,5 @@
 import { consumePasswordResetToken, validatePasswordResetToken } from "./PasswordResetTokenEngine";
+import { updateUserPassword } from "./UserStore";
 
 type PasswordResetAuditRecord = {
   email: string;
@@ -98,6 +99,9 @@ export function completePasswordReset(params: {
 
   passwordDigestStore.set(email, `pw::${params.newPassword.length}::${Date.now()}`);
   authSessionVersion.set(email, (authSessionVersion.get(email) ?? 0) + 1);
+
+  // Write new password hash into UserStore so login works immediately after reset
+  updateUserPassword(email, params.newPassword);
 
   writeAudit({
     email,

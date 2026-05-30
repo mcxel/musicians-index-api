@@ -167,9 +167,16 @@ export default function TMIAuthFlow({
     if (!form.email.includes("@")) return setError({ field: "email", message: "Valid email required" });
     setLoading(true);
     try {
-      // POST /api/auth/reset
-      await new Promise((r) => setTimeout(r, 700));
-      setError({ message: "✓ Check your email for a reset link" });
+      const res = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: form.email.trim().toLowerCase() }),
+      });
+      const data = await res.json() as { ok: boolean };
+      if (data.ok) setError({ message: "✓ Check your email for a reset link" });
+      else setError({ message: "Could not send reset link. Please try again." });
+    } catch {
+      setError({ message: "Network error. Please try again." });
     } finally { setLoading(false); }
   }
 
