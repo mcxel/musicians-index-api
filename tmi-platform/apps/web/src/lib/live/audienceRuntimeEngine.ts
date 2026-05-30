@@ -251,3 +251,57 @@ export function unmuteAudienceMember(venueSlug: string, userId: string): VenueMo
 export function listAllOccupancies(): VenueOccupancy[] {
   return Array.from(occupancyRegistry.values());
 }
+
+// ── Seat auto-assignment ─────────────────────────────────────────────────────
+
+export function assignNextSeat(venueSlug: string): string {
+  const occ = getVenueOccupancy(venueSlug);
+  const taken = new Set(occ.members.filter((m) => m.active && m.seatId).map((m) => m.seatId));
+  for (let i = 1; i <= DEFAULT_CAPACITY; i++) {
+    const id = `seat-${i}`;
+    if (!taken.has(id)) return id;
+  }
+  return `seat-${Date.now()}`;
+}
+
+// ── Bot roster for seeding ───────────────────────────────────────────────────
+
+const BOT_NAMES = [
+  'NovaCrowd', 'BeatWatcher', 'PulseFan', 'ArenaVibe', 'WaveRoom',
+  'CrownSeat', 'NeonFam', 'StageEye', 'RhythmBot', 'GrooveBot',
+  'CypherFan', 'BassDrop', 'FreqWatch', 'LobbyBot', 'VenueVibe',
+  'SoulSeat', 'FlowBot', 'ChantBot', 'ReactionBot', 'HypeBot',
+  'VoltFan', 'SpinBot', 'GlowSeat', 'EchoBot', 'MixBot',
+];
+const BOT_EMOJIS = ['🎧', '🔥', '🎶', '✨', '🎤', '💫', '🪩', '👑', '🎵', '⭐'];
+
+export function seedRoomWithBots(venueSlug: string, count = 20): VenueOccupancy {
+  const occ = getVenueOccupancy(venueSlug);
+  const existing = new Set(occ.members.map((m) => m.userId));
+  let seeded = 0;
+  for (let i = 0; i < count && i < BOT_NAMES.length; i++) {
+    const botId = `bot-${venueSlug}-${i + 1}`;
+    if (existing.has(botId)) continue;
+    joinAudience(venueSlug, {
+      userId: botId,
+      displayName: BOT_NAMES[i] ?? `Bot${i + 1}`,
+      role: 'bot',
+      seatId: `seat-${i + 1}`,
+      captureEnabled: false,
+      viewpoint: { yaw: Math.round((i / count) * 120 - 60), pitch: -10, updatedAt: Date.now() },
+    });
+    seeded++;
+  }
+  // Stagger bot reactions over time (cosmetic — changes reactions field on existing bots)
+  const reactions = ['🔥', '💬', '⚡', '👑', '🎤', '💸', '🙌', '😤', '🎵', '🥵'];
+  occ.members
+    .filter((m) => m.role === 'bot')
+    .forEach((m, i) => {
+      // Store emoji hint in displayName suffix (parsed by seat grid renderer)
+      if (!m.displayName.includes('|')) {
+        m.displayName = `${m.displayName}|${BOT_EMOJIS[i % BOT_EMOJIS.length] ?? '🎧'}`;
+      }
+    });
+  void seeded; // suppress unused warning
+  return occ;
+}
