@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 
 const DISMISSED_KEY = 'tmi-beta-banner-dismissed';
@@ -8,10 +8,28 @@ const DISMISSED_KEY = 'tmi-beta-banner-dismissed';
 export default function BetaModeBanner() {
   const [expanded, setExpanded] = useState(false);
   const [dismissed, setDismissed] = useState(true); // hidden until hydrated
+  const bannerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setDismissed(sessionStorage.getItem(DISMISSED_KEY) === '1');
   }, []);
+
+  // Keep --tmi-banner-h in sync so MagazineNavBar and MainNav can offset themselves
+  useEffect(() => {
+    if (dismissed) {
+      document.documentElement.style.setProperty('--tmi-banner-h', '0px');
+      return;
+    }
+    const el = bannerRef.current;
+    if (!el) return;
+    const update = () => {
+      document.documentElement.style.setProperty('--tmi-banner-h', `${el.getBoundingClientRect().height}px`);
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [dismissed, expanded]);
 
   function dismiss() {
     sessionStorage.setItem(DISMISSED_KEY, '1');
@@ -21,9 +39,10 @@ export default function BetaModeBanner() {
   if (dismissed) return null;
 
   return (
-    <div style={{
-      position: 'relative',
-      zIndex: 10,
+    <div ref={bannerRef} style={{
+      position: 'sticky',
+      top: 0,
+      zIndex: 60,
       background: 'linear-gradient(90deg, #0a0a1a 0%, #12082a 50%, #0a0a1a 100%)',
       borderBottom: '1px solid rgba(170,45,255,0.35)',
       fontFamily: "'Inter',sans-serif",

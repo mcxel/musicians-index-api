@@ -11,12 +11,54 @@ import { runPageTurn } from "@/lib/magazine/MagazineAssemblyDirector";
 import { ingestMagazineSceneEnter } from "@/lib/performer/MagazinePerformerAnalyticsBridge";
 import PhysicalMagazineViewport from "./PhysicalMagazineViewport";
 import { useRouter } from "next/navigation";
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { createContext, Component, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import MagazineStarburstTransition from "./MagazineStarburstTransition";
 import FeatherRuffleOverlay from "./FeatherRuffleOverlay";
 
 // ─── Shared types ────────────────────────────────────────────────────────────
+
+// Error boundary — isolates individual scene crashes so one broken scene
+// cannot bring down all warm-mounted scenes or the runtime itself.
+class SceneErrorBoundary extends Component<
+  { sceneId: string; children: ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: { sceneId: string; children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error) {
+    console.error(`[TMI Runtime] Scene "${this.props.sceneId}" crashed:`, error);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{
+          position: 'absolute', inset: 0,
+          display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center',
+          background: '#050510', gap: 12,
+        }}>
+          <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: '0.2em', color: 'rgba(255,45,170,0.7)', textTransform: 'uppercase' }}>
+            SCENE LOAD ERROR
+          </div>
+          <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.1em' }}>
+            {this.props.sceneId} · check browser console
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 
 export type FullRotationScene = {
   id: MagazineSceneId;
@@ -125,7 +167,7 @@ function SingleSceneRuntime({
       aria-label="Magazine runtime scene"
       data-runtime-scene={sceneId}
       data-runtime-phase={phase}
-      style={{ position: "relative", minHeight: "100svh", overflow: "clip", maxWidth: "100vw", touchAction: "pan-y" }}
+      style={{ position: "relative", minHeight: "100vh", overflow: "clip", maxWidth: "100vw", touchAction: "pan-y" }}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
@@ -133,7 +175,7 @@ function SingleSceneRuntime({
     >
       <div aria-hidden="true" style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at 12% 24%, rgba(0, 255, 255, 0.14) 0%, transparent 58%), radial-gradient(ellipse at 84% 76%, rgba(255, 45, 170, 0.14) 0%, transparent 58%)", pointerEvents: "none", zIndex: 1 }} />
       <div style={{ position: "absolute", left: "50%", top: "5%", width: "min(1200px, 96vw)", height: "90%", transform: "translateX(-50%)", borderRadius: 22, background: "linear-gradient(140deg, rgba(8, 6, 24, 0.9), rgba(5, 5, 16, 0.94))", boxShadow: "0 24px 60px rgba(0,0,0,0.45), inset 18px 0 22px rgba(255,255,255,0.04), inset -18px 0 20px rgba(0,0,0,0.3)", zIndex: 2, pointerEvents: "none" }} />
-      <div style={{ position: "relative", zIndex: 3, minHeight: "100svh", transformOrigin: "left center", transform: getRuntimeTransform(phase, dragX), transition: getRuntimeTransition(phase), filter: phase === "starburst" ? "brightness(1.18) saturate(1.18)" : "none", boxShadow: phase === "flipping" ? "-14px 0 28px rgba(0,0,0,0.32), 0 10px 24px rgba(0,0,0,0.26)" : "none" }}>
+      <div style={{ position: "relative", zIndex: 3, minHeight: "100vh", transformOrigin: "left center", transform: getRuntimeTransform(phase, dragX), transition: getRuntimeTransition(phase), filter: phase === "starburst" ? "brightness(1.18) saturate(1.18)" : "none", boxShadow: phase === "flipping" ? "-14px 0 28px rgba(0,0,0,0.32), 0 10px 24px rgba(0,0,0,0.26)" : "none" }}>
         {children}
       </div>
       <MagazineStarburstTransition active={phase !== "holding"} phase={phase} />
@@ -325,7 +367,7 @@ function MultiSceneRuntime({ scenes, initialIndex = 0, onSceneEnter, onSceneExit
     <section
       aria-label="Magazine full rotation"
       data-runtime-phase={phase}
-      style={{ position: "relative", minHeight: "100svh", overflow: "clip", maxWidth: "100vw" }}
+      style={{ position: "relative", minHeight: "100vh", overflow: "clip", maxWidth: "100vw" }}
       onPointerEnter={handlePointerEnter}
       onPointerMove={handlePointerMove}
       onPointerLeave={handlePointerLeave}
@@ -377,7 +419,9 @@ function MultiSceneRuntime({ scenes, initialIndex = 0, onSceneEnter, onSceneExit
                 }}
               >
                 <SceneVisibilityContext.Provider value={isActive}>
-                  {s.content}
+                  <SceneErrorBoundary sceneId={s.id}>
+                    {s.content}
+                  </SceneErrorBoundary>
                 </SceneVisibilityContext.Provider>
               </div>
             );

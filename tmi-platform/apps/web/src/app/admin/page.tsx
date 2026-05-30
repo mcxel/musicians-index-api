@@ -6,24 +6,20 @@ import { UserManagement } from '@/components/admin/UserManagement';
 import { getTotalRevenueStat } from '@/lib/stats/DashboardStatsEngine';
 import { getBotStatus, getHealthSummary, type ActiveBot } from '@/lib/bots/BotActivationEngine';
 import { getAllGhosts, type GhostArchetype } from '@/lib/bots/GhostArchetypeEngine';
+import BigAceVisualPanel from '@/components/agents/BigAceVisualPanel';
+import MichaelCharlieDashboard from '@/components/agents/MichaelCharlieDashboard';
+import AgentCommandCenter from '@/components/agents/AgentCommandCenter';
 
 interface PlatformStats {
   totalUsers: number;
   byRole: Record<string, number>;
   activeRooms: number;
   activeBots: number;
+  activeSubs: string;
   revenueToday: string;
   revenueMonth: string;
   health: 'HEALTHY' | 'DEGRADED' | 'OFFLINE';
 }
-
-const RECENT_SIGNUPS = [
-  { name: 'Nova_K', role: 'FAN', ts: '2 min ago' },
-  { name: 'Wavetek_Pro', role: 'ARTIST', ts: '14 min ago' },
-  { name: 'UrbanVenue', role: 'VENUE', ts: '1 hr ago' },
-  { name: 'BrandX', role: 'SPONSOR', ts: '3 hr ago' },
-  { name: 'TrapFan99', role: 'FAN', ts: '4 hr ago' },
-];
 
 const ROLE_COLORS: Record<string, string> = {
   FAN: '#00FFFF', ARTIST: '#FF2DAA', PERFORMER: '#AA2DFF',
@@ -31,6 +27,7 @@ const ROLE_COLORS: Record<string, string> = {
 };
 
 const DIAG_LINKS = [
+  { label: '🚀 Launch Proof', href: '/admin/launch-proof',    color: '#00FF88' },
   { label: 'Route Health',     href: '/admin/routes',          color: '#00FFFF' },
   { label: 'Error Monitor',    href: '/admin/errors',          color: '#FF2DAA' },
   { label: 'Revenue',          href: '/admin/revenue',         color: '#FFD700' },
@@ -76,10 +73,18 @@ export default function AdminDashboard() {
   useEffect(() => {
     fetch('/api/admin/revenue')
       .then((r) => r.ok ? r.json() : null)
-      .then((d: { today?: string; month?: string } | null) => {
-        if (d?.today) {
+      .then((d: { totals?: { today?: string; month?: string }; subscriptions?: { active?: number | string } } | null) => {
+        const today = d?.totals?.today;
+        const month = d?.totals?.month;
+        const activeSubs = d?.subscriptions?.active;
+        if (today || month || activeSubs !== undefined) {
           setStats((prev) =>
-            prev ? { ...prev, revenueToday: d.today!, revenueMonth: d.month ?? prev.revenueMonth } : prev
+            prev ? {
+              ...prev,
+              ...(today ? { revenueToday: today } : {}),
+              ...(month ? { revenueMonth: month } : {}),
+              ...(activeSubs !== undefined ? { activeSubs: String(activeSubs) } : {}),
+            } : prev
           );
         }
       })
@@ -110,6 +115,7 @@ export default function AdminDashboard() {
           byRole,
           activeRooms: 7,
           activeBots: 62,
+          activeSubs: '0',
           revenueToday: rev.today,
           revenueMonth: rev.month,
           health: 'HEALTHY',
@@ -125,6 +131,7 @@ export default function AdminDashboard() {
           byRole: {},
           activeRooms: 7,
           activeBots: 62,
+          activeSubs: '0',
           revenueToday: rev.today,
           revenueMonth: rev.month,
           health: 'HEALTHY',
@@ -153,6 +160,7 @@ export default function AdminDashboard() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, marginBottom: 28 }}>
           {[
             { label: 'TOTAL USERS',     value: loading ? '…' : String(stats?.totalUsers ?? users.length), color: '#00FFFF', icon: '👥' },
+            { label: 'ACTIVE SUBS',     value: stats?.activeSubs ?? '0',                                   color: '#AA2DFF', icon: '🔑' },
             { label: 'REVENUE TODAY',   value: stats?.revenueToday ?? rev.today,    color: '#FFD700', icon: '💵' },
             { label: 'REV THIS MONTH',  value: stats?.revenueMonth ?? rev.month,    color: '#00FF88', icon: '📈' },
             { label: 'ACTIVE ROOMS',    value: String(stats?.activeRooms ?? 7),     color: '#FF2DAA', icon: '🏟️' },
@@ -195,16 +203,45 @@ export default function AdminDashboard() {
           {/* Recent signups */}
           <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 14, padding: '20px' }}>
             <div style={{ fontSize: 9, letterSpacing: '0.2em', fontWeight: 800, color: 'rgba(255,255,255,0.4)', marginBottom: 16 }}>RECENT SIGNUPS</div>
-            {RECENT_SIGNUPS.map((u, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: i < RECENT_SIGNUPS.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}>
-                <div style={{ width: 28, height: 28, borderRadius: 6, background: `${ROLE_COLORS[u.role] ?? '#fff'}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12 }}>👤</div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 12, fontWeight: 700 }}>{u.name}</div>
-                  <div style={{ fontSize: 9, color: ROLE_COLORS[u.role] ?? '#fff', fontWeight: 700 }}>{u.role}</div>
-                </div>
-                <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)' }}>{u.ts}</div>
-              </div>
-            ))}
+            {loading ? (
+              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.2)' }}>Loading…</div>
+            ) : users.length === 0 ? (
+              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.2)' }}>No users yet</div>
+            ) : (
+              [...users]
+                .sort((a, b) => new Date(String((b as UserPublic & { createdAt?: string }).createdAt ?? 0)).getTime() - new Date(String((a as UserPublic & { createdAt?: string }).createdAt ?? 0)).getTime())
+                .slice(0, 5)
+                .map((u, i, arr) => {
+                  const role = (u as UserPublic & { role?: string }).role ?? 'FAN';
+                  const name = (u as UserPublic & { name?: string; email?: string }).name ?? (u as UserPublic & { email?: string }).email ?? u.id;
+                  return (
+                    <div key={u.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: i < arr.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}>
+                      <div style={{ width: 28, height: 28, borderRadius: 6, background: `${ROLE_COLORS[role] ?? '#fff'}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12 }}>👤</div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 12, fontWeight: 700 }}>{name}</div>
+                        <div style={{ fontSize: 9, color: ROLE_COLORS[role] ?? '#fff', fontWeight: 700 }}>{role}</div>
+                      </div>
+                    </div>
+                  );
+                })
+            )}
+          </div>
+        </div>
+
+        {/* BernoutGlobal Agent Network — Mission Control */}
+        <div style={{ marginBottom: 28 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+            <div style={{ fontSize: 9, letterSpacing: '0.2em', fontWeight: 800, color: '#FFD700' }}>BERNOUTGLOBAL AGENT NETWORK</div>
+            <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.1em' }}>Marcel → Big Ace → Michael Charlie · TMI Deployment</div>
+          </div>
+          {/* Mission Control full-width */}
+          <div style={{ marginBottom: 16 }}>
+            <AgentCommandCenter />
+          </div>
+          {/* Agent panels below */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            <MichaelCharlieDashboard />
+            <BigAceVisualPanel />
           </div>
         </div>
 

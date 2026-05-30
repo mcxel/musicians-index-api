@@ -2,7 +2,12 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getStripe } from '@/lib/stripe/client';
 import { getRegion, getRegionalPriceId, SUBSCRIPTION_TIERS } from '@/lib/stripe/regionalPricing';
+import { STRIPE_PRODUCTS } from '@/lib/stripe/products';
 import type { UserTier } from '@/lib/auth/UserStore';
+
+// Lookup table: placeholder priceId → { price (cents), name, interval }
+const PRODUCT_BY_PRICE_ID: Record<string, { price: number; name: string; interval?: string }> =
+  Object.fromEntries(Object.values(STRIPE_PRODUCTS).map(p => [p.priceId, p]));
 
 // Map subscription product key → UserTier
 const PLAN_TO_TIER: Record<string, UserTier> = {
@@ -84,20 +89,25 @@ export async function GET(req: NextRequest) {
   // Detect placeholder price IDs (e.g. price_fan_monthly vs real price_1TUWI4EL7B8tMf4N...)
   const isRealPriceId = /^price_[A-Za-z0-9]{16,}$/.test(resolvedPriceId);
 
-  const lineItem = isRealPriceId
-    ? { price: resolvedPriceId, quantity: 1 as const }
-    : amount
-      ? {
-          quantity: 1 as const,
-          price_data: {
-            currency: 'usd' as const,
-            unit_amount: amount,
-            ...(mode === 'subscription'
-              ? { recurring: { interval: 'month' as const }, product_data: { name: productName } }
-              : { product_data: { name: productName } }),
-          },
-        }
-      : { price: resolvedPriceId, quantity: 1 as const };
+  let lineItem: object;
+  if (isRealPriceId) {
+    lineItem = { price: resolvedPriceId, quantity: 1 as const };
+  } else if (amount) {
+    lineItem = {
+      quantity: 1 as const,
+      price_data: {
+        currency: 'usd' as const,
+        unit_amount: amount,
+        ...(mode === 'subscription'
+          ? { recurring: { interval: 'month' as const }, product_data: { name: productName } }
+          : { product_data: { name: productName } }),
+      },
+    };
+  } else {
+    // No real price ID and no amount — avoid passing placeholder to Stripe
+    console.warn('[stripe/checkout:GET] Unresolved placeholder priceId, no amount provided:', resolvedPriceId);
+    return NextResponse.redirect(new URL('/season-pass?notice=price-not-configured', req.url));
+  }
 
   try {
     const session = await stripe.checkout.sessions.create({
@@ -234,10 +244,37 @@ export async function POST(req: NextRequest) {
     }
 
     // Direct Stripe SDK fallback
+    const isRealId = (id: string) => /^price_[A-Za-z0-9]{16,}$/.test(id);
+    type LineItem = { price: string; quantity: number } | {
+      quantity: number;
+      price_data: { currency: 'usd'; unit_amount: number; product_data: { name: string } };
+    };
+    const lineItems: LineItem[] = [];
+    for (const i of items) {
+      if (isRealId(i.priceId)) {
+        lineItems.push({ price: i.priceId, quantity: i.quantity ?? 1 });
+      } else {
+        const fallback = PRODUCT_BY_PRICE_ID[i.priceId];
+        if (fallback && (!fallback.interval || fallback.interval === 'one_time')) {
+          lineItems.push({
+            quantity: i.quantity ?? 1,
+            price_data: { currency: 'usd', unit_amount: fallback.price, product_data: { name: fallback.name } },
+          });
+        } else {
+          console.warn('[stripe/checkout] Skipping unresolved priceId:', i.priceId);
+        }
+      }
+    }
+
+    if (lineItems.length === 0) {
+      return NextResponse.json({ error: 'No valid products — set STRIPE_PRICE_* env vars in Vercel for subscription products' }, { status: 400 });
+    }
+
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
       payment_method_types: ['card'],
-      line_items: items.map(i => ({ price: i.priceId, quantity: i.quantity ?? 1 })),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      line_items: lineItems as any,
       success_url: successUrl,
       cancel_url: cancelUrl,
       allow_promotion_codes: true,

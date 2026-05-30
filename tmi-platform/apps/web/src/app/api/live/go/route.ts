@@ -64,9 +64,19 @@ export async function DELETE(req: NextRequest) {
 export async function GET() {
   try {
     const sessions = getAllSessions();
-    return NextResponse.json({ sessions, count: sessions.length });
+    // Map to LiveApiEntry shape for MixedLobbyWall and other consumers expecting { live: [] }
+    const live = sessions.map((s) => ({
+      userId:      s.userId,
+      displayName: s.displayName,
+      genre:       s.category,
+      role:        'performer' as const,
+      viewerCount: s.viewerCount,
+      avatarUrl:   s.avatarUrl ?? undefined,
+      accentColor: s.accentColor,
+    }));
+    return NextResponse.json({ sessions, live, count: sessions.length });
   } catch (err) {
     console.error('[api/live/go] GET error:', err);
-    return NextResponse.json({ sessions: [], count: 0 });
+    return NextResponse.json({ sessions: [], live: [], count: 0 });
   }
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import type { DailyCall } from '@daily-co/daily-js';
 import MaskedVideoTile from '@/components/media/MaskedVideoTile';
 import ArenaImmersivePanel from '@/components/live/ArenaImmersivePanel';
 
@@ -23,6 +24,7 @@ export default function GoLiveStudio() {
   const videoRef  = useRef<HTMLVideoElement>(null);
   const stageRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const dailyCallRef = useRef<DailyCall | null>(null);
 
   const [broadcastState, setBroadcastState] = useState<BroadcastState>('preview');
   const [cameraError,    setCameraError]    = useState('');
@@ -36,6 +38,7 @@ export default function GoLiveStudio() {
   const [sessionUser,    setSessionUser]    = useState<SessionUser | null>(null);
   const [micOn,          setMicOn]          = useState(true);
   const [camOn,          setCamOn]          = useState(true);
+  const [dailyRoomId,    setDailyRoomId]    = useState('');
 
   // Start camera + prefill session display name
   useEffect(() => {
@@ -128,6 +131,38 @@ export default function GoLiveStudio() {
       },
     }));
 
+    // ── Step 1: Create Daily.co room and join as owner ──────────────────────
+    let resolvedRoomId = '';
+    try {
+      const roomRes = await fetch('/api/video/rooms', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userName: displayName.trim() }),
+        credentials: 'include',
+      });
+      if (roomRes.ok) {
+        const roomData = await roomRes.json() as { roomId: string; roomUrl: string; token: string };
+        resolvedRoomId = roomData.roomId;
+        setDailyRoomId(roomData.roomId);
+
+        // Join as host — headless call object (no embedded iframe)
+        const { default: DailyIframe } = await import('@daily-co/daily-js');
+        const call = DailyIframe.createCallObject({ videoSource: true, audioSource: true });
+        dailyCallRef.current = call;
+
+        call.on('error', (e) => console.error('[Daily] call error', e));
+        call.on('left-meeting', () => { dailyCallRef.current = null; });
+
+        await call.join({ url: roomData.roomUrl, token: roomData.token });
+        console.log('[GoLive] Daily.co room joined as host:', roomData.roomId);
+      } else {
+        console.warn('[GoLive] Daily.co room creation failed — broadcasting registry-only');
+      }
+    } catch (dailyErr) {
+      console.warn('[GoLive] Daily.co unavailable — registry-only mode:', dailyErr);
+    }
+
+    // ── Step 2: Register in GlobalLiveSessionRegistry ───────────────────────
     try {
       const res = await fetch('/api/live/go', {
         method: 'POST',
@@ -136,6 +171,7 @@ export default function GoLiveStudio() {
           displayName: displayName.trim(),
           genre,
           role: (sessionUser?.role ?? 'performer').toLowerCase(),
+          ...(resolvedRoomId ? { roomId: resolvedRoomId } : {}),
         }),
         credentials: 'include',
       });
@@ -147,6 +183,11 @@ export default function GoLiveStudio() {
             ? 'You must be logged in to go live. Please sign in and try again.'
             : (err.error ?? 'Failed to start broadcast.'),
         );
+        // Clean up Daily call if registry failed
+        await dailyCallRef.current?.leave();
+        await dailyCallRef.current?.destroy();
+        dailyCallRef.current = null;
+        setDailyRoomId('');
         setBroadcastState('preview');
         return;
       }
@@ -160,10 +201,15 @@ export default function GoLiveStudio() {
           displayName: displayName.trim(),
           role: sessionUser?.role ?? 'performer',
           genre,
+          roomId: resolvedRoomId || undefined,
         },
       }));
     } catch {
       setErrorMsg('Network error. Check your connection and try again.');
+      await dailyCallRef.current?.leave();
+      await dailyCallRef.current?.destroy();
+      dailyCallRef.current = null;
+      setDailyRoomId('');
       setBroadcastState('preview');
     }
   }
@@ -171,6 +217,18 @@ export default function GoLiveStudio() {
   async function handleEndBroadcast() {
     setBroadcastState('ending');
     setActionError('');
+
+    // Leave Daily.co call first
+    try {
+      if (dailyCallRef.current) {
+        await dailyCallRef.current.leave();
+        await dailyCallRef.current.destroy();
+        dailyCallRef.current = null;
+      }
+    } catch (dailyErr) {
+      console.warn('[EndBroadcast] Daily.co leave error:', dailyErr);
+    }
+
     try {
       const res = await fetch('/api/live/go', { method: 'DELETE', credentials: 'include' });
       if (!res.ok) throw new Error('end-failed');
@@ -182,6 +240,7 @@ export default function GoLiveStudio() {
     setBroadcastState('preview');
     setLiveSeconds(0);
     setViewerCount(0);
+    setDailyRoomId('');
     localStorage.removeItem('tmi_is_live');
     window.dispatchEvent(new CustomEvent('tmi:endbroadcast', {
       detail: {
@@ -318,6 +377,21 @@ export default function GoLiveStudio() {
           >
             VIEW LOBBY WALL →
           </Link>
+
+          {dailyRoomId && (
+            <Link
+              href={`/live/rooms/${dailyRoomId}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                padding: '8px 16px', borderRadius: 8, fontSize: 9, fontWeight: 900,
+                background: 'rgba(0,255,136,0.12)', border: `1px solid rgba(0,255,136,0.4)`,
+                color: '#00FF88', textDecoration: 'none', letterSpacing: '0.1em', whiteSpace: 'nowrap',
+              }}
+            >
+              OPEN LIVE ROOM →
+            </Link>
+          )}
 
           <Link
             href="/live/arena/main-stage?mode=performer"

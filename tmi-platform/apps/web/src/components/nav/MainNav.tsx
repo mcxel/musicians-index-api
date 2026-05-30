@@ -123,7 +123,7 @@ export default function MainNav() {
   }
 
   return (
-    <nav className="fixed inset-x-0 top-0 z-50 border-b border-cyan-400/20 bg-black/72 backdrop-blur-xl">
+    <nav className="fixed inset-x-0 z-50 border-b border-cyan-400/20 bg-black/72 backdrop-blur-xl" style={{ top: 'var(--tmi-banner-h, 0px)' }}>
       <div className="mx-auto flex max-w-[1800px] items-center justify-between gap-3 px-4 py-3 text-white sm:px-6">
         <div className="flex flex-wrap items-center gap-3 sm:gap-5">
           <Link href={routes.home} className="text-sm font-black uppercase tracking-[0.28em] text-cyan-300">
@@ -164,6 +164,11 @@ export default function MainNav() {
                 <Link href={roleHub.href} className="rounded-full border border-cyan-300/30 bg-cyan-300/10 px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-cyan-100 transition hover:border-cyan-200/60">
                   {roleHub.label}
                 </Link>
+                {(session.role === 'admin' || session.role === 'superadmin' || session.role === 'owner') && (
+                  <Link href="/admin/launch-observatory" className="rounded-full border border-amber-300/30 bg-amber-300/10 px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-amber-100 transition hover:border-amber-200/60">
+                    Observatory
+                  </Link>
+                )}
                 <Link href={routes.hub} className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-2 py-1 transition hover:border-cyan-300/40 hover:bg-white/10">
                   <UserAvatar initials={initials} imageUrl={session.user?.image} />
                 </Link>

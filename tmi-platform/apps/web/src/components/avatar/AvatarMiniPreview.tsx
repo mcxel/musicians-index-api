@@ -32,6 +32,11 @@ function readSnapshot(): AvatarSnapshot {
   } catch { return DEFAULT; }
 }
 
+function hasStoredAvatar(): boolean {
+  if (typeof window === 'undefined') return false;
+  try { return !!localStorage.getItem(AVATAR_KEY); } catch { return false; }
+}
+
 export default function AvatarMiniPreview({
   variant = 'card',
   role,
@@ -39,13 +44,16 @@ export default function AvatarMiniPreview({
 }: AvatarMiniPreviewProps) {
   const [avatar, setAvatar] = useState<AvatarSnapshot>(DEFAULT);
   const [mounted, setMounted] = useState(false);
+  const [hasAvatar, setHasAvatar] = useState(false);
 
   useEffect(() => {
     setAvatar(readSnapshot());
+    setHasAvatar(hasStoredAvatar());
     setMounted(true);
     const handler = (e: Event) => {
       const detail = (e as CustomEvent<Partial<AvatarSnapshot>>).detail;
       setAvatar((prev) => ({ ...prev, ...detail }));
+      setHasAvatar(true);
     };
     window.addEventListener(AVATAR_EVENT, handler);
     return () => window.removeEventListener(AVATAR_EVENT, handler);
@@ -57,6 +65,21 @@ export default function AvatarMiniPreview({
   const massScale   = 0.75 + (avatar.bodyMass   / 100) * 0.55;
 
   if (variant === 'mini') {
+    if (!hasAvatar) {
+      return (
+        <Link href="/avatar-center" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
+          <div style={{
+            width: 32, height: 32, borderRadius: '50%',
+            border: `2px dashed ${accentColor}66`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: accentColor, fontSize: 18, flexShrink: 0,
+          }}>+</div>
+          <div style={{ fontSize: 10, fontWeight: 800, color: accentColor, letterSpacing: '0.08em', lineHeight: 1, whiteSpace: 'nowrap' }}>
+            Create Avatar
+          </div>
+        </Link>
+      );
+    }
     // Tiny inline badge — just the circle + name
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -109,6 +132,35 @@ export default function AvatarMiniPreview({
   }
 
   // Default: 'card' variant
+  if (!hasAvatar) {
+    return (
+      <section style={{
+        borderRadius: 14,
+        border: `1px dashed ${accentColor}44`,
+        background: `${accentColor}06`,
+        padding: '20px 18px',
+        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12,
+        textAlign: 'center',
+      }}>
+        <div style={{ fontSize: 32 }}>🎭</div>
+        <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.45)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+          No avatar yet
+        </div>
+        <Link
+          href="/avatar-center"
+          style={{
+            display: 'inline-block', fontSize: 10, fontWeight: 900,
+            color: '#050510', background: accentColor,
+            padding: '8px 20px', borderRadius: 999, textDecoration: 'none',
+            letterSpacing: '0.12em', textTransform: 'uppercase',
+          }}
+        >
+          Create Avatar →
+        </Link>
+      </section>
+    );
+  }
+
   return (
     <section style={{
       borderRadius: 14,

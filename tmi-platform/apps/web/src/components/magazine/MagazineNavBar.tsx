@@ -37,7 +37,7 @@ export default function MagazineNavBar() {
         aria-label="Global navigation"
         style={{
           position: "fixed",
-          top: 0,
+          top: 'var(--tmi-banner-h, 0px)',
           left: 0,
           right: 0,
           zIndex: 59,
