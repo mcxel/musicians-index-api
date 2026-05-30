@@ -34,6 +34,7 @@ const ACCOUNT_TYPES: Array<{
 export default function SignupPage() {
   const searchParams = useSearchParams();
   const [vipToken, setVipToken] = useState(searchParams?.get("token") ?? "");
+  const refToken = searchParams?.get("ref") ?? "";
 
   useEffect(() => {
     // Restore invite code from localStorage if URL doesn't have one
@@ -60,7 +61,7 @@ export default function SignupPage() {
     try {
       const regRes = await fetch("/api/auth/register", {
         method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ name: form.name, email: form.email, password: form.password, role: accountType, termsAccepted: true, inviteToken: vipToken || undefined }),
+        body: JSON.stringify({ name: form.name, email: form.email, password: form.password, role: accountType, termsAccepted: true, inviteToken: vipToken || undefined, ref: refToken || undefined }),
       });
       const regData = await regRes.json().catch(() => ({})) as { ok?: boolean; userId?: string; user?: { id?: string }; token?: string; error?: string };
       if (!regRes.ok || !regData.ok) {

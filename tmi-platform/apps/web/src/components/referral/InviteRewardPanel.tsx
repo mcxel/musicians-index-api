@@ -75,10 +75,10 @@ export default function InviteRewardPanel({ userId }: Props) {
               INVITE &amp; EARN
             </div>
             <h2 style={{ margin: 0, fontSize: 20, fontWeight: 900, color: "#fff" }}>
-              Bring Your People — Get Rewarded
+              Invite Friends — Get Free Gold
             </h2>
             <p style={{ margin: "6px 0 0", fontSize: 13, color: "rgba(255,255,255,0.45)", lineHeight: 1.5 }}>
-              Earn XP instantly. Use points to boost your profile, sponsor artists, enter battles, or unlock features.
+              Invite fans, performers &amp; creators. Every signup earns you XP. Get 5 people in and you unlock a <span style={{ color: "#FFD700", fontWeight: 700 }}>free Gold membership</span> for the month.
             </p>
           </div>
           {inLaunch && (
@@ -105,16 +105,32 @@ export default function InviteRewardPanel({ userId }: Props) {
         </div>
 
         {/* Milestone banner */}
-        <div style={{ background: "rgba(255,215,0,0.06)", border: "1px dashed rgba(255,215,0,0.3)", borderRadius: 8, padding: "10px 14px", marginBottom: 20, display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{ fontSize: 20 }}>🏆</div>
-          <div>
-            <div style={{ fontSize: 11, fontWeight: 800, color: "#FFD700" }}>
-              {stats?.milestoneUnlocked ? "MILESTONE UNLOCKED!" : `5-Invite Milestone: +${MILESTONE_BONUS.toLocaleString()} XP BONUS`}
+        <div style={{ background: stats?.milestoneUnlocked ? "rgba(255,215,0,0.12)" : "rgba(255,215,0,0.06)", border: `1px dashed ${stats?.milestoneUnlocked ? "rgba(255,215,0,0.7)" : "rgba(255,215,0,0.3)"}`, borderRadius: 8, padding: "12px 14px", marginBottom: 20 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ fontSize: 24 }}>{stats?.milestoneUnlocked ? "🥇" : "🏆"}</div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 12, fontWeight: 900, color: "#FFD700", letterSpacing: "0.05em" }}>
+                {stats?.milestoneUnlocked ? "🎉 GOLD MEMBERSHIP UNLOCKED!" : "Invite 5 Friends → FREE GOLD MEMBERSHIP (1 Month)"}
+              </div>
+              <div style={{ fontSize: 10, color: "rgba(255,255,255,0.45)", marginTop: 3 }}>
+                {stats?.milestoneUnlocked
+                  ? "Your Gold tier is active — 2× XP, game perks, vote boost, and more."
+                  : `${stats ? stats.qualified : 0} / 5 friends joined — ${stats ? Math.max(0, 5 - stats.qualified) : 5} more to go`}
+              </div>
             </div>
-            <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", marginTop: 2 }}>
-              {stats ? `${stats.qualified} / 5 qualified invites` : "Loading..."}
-            </div>
+            {!stats?.milestoneUnlocked && stats && (
+              <div style={{ display: "flex", gap: 4 }}>
+                {[0,1,2,3,4].map(i => (
+                  <div key={i} style={{ width: 10, height: 10, borderRadius: "50%", background: i < stats.qualified ? "#FFD700" : "rgba(255,215,0,0.2)", border: "1px solid rgba(255,215,0,0.4)" }} />
+                ))}
+              </div>
+            )}
           </div>
+          {!stats?.milestoneUnlocked && (
+            <div style={{ marginTop: 10, fontSize: 10, color: "rgba(255,255,255,0.35)", borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 8 }}>
+              Gold perks: 2× XP · 2× vote power · game features · sponsor slots · homepage feature
+            </div>
+          )}
         </div>
 
         {/* Stats row */}

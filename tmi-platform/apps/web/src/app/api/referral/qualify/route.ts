@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { registerArrival, qualifyReferral } from "@/lib/referral/ReferralEngine";
+import { registerArrival, qualifyReferral, resolveToken } from "@/lib/referral/ReferralEngine";
+import { getUserById, updateUserTier } from "@/lib/auth/UserStore";
 
 /**
  * POST /api/referral/qualify
@@ -42,6 +43,18 @@ export async function POST(req: NextRequest) {
     const staySeconds = typeof body.staySeconds === "number" ? body.staySeconds : 0;
     const actionCount = typeof body.actionCount === "number" ? body.actionCount : 0;
     const result = qualifyReferral(token, invitedId, staySeconds, actionCount);
+
+    // 5-referral milestone → grant owner 1 free Gold month
+    if (result.qualified && result.milestoneBonus > 0) {
+      const link = resolveToken(token);
+      if (link) {
+        const owner = getUserById(link.ownerId);
+        if (owner) {
+          updateUserTier(owner.email, 'GOLD');
+        }
+      }
+    }
+
     return NextResponse.json(result, { status: result.qualified ? 200 : 422 });
   }
 
