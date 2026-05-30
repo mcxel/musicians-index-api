@@ -33,25 +33,30 @@ export default function AudienceRecognitionOverlay({ performerId, currentMemberI
     for (const fanId of newIds) {
       seenIds.current.add(fanId);
 
-      const momentum = getFanMomentum(performerId, fanId);
-      if (!momentum) continue;
+      // Skip bot IDs — real fans only
+      if (fanId.startsWith('bot-') || fanId.startsWith('fb-')) continue;
 
-      const identity = getFanIdentity(momentum);
-      if (identity.title === 'REGULAR') continue;
+      const momentum = getFanMomentum(performerId, fanId);
+      const identity = momentum ? getFanIdentity(momentum) : null;
+      const isVip = identity && identity.title !== 'REGULAR';
 
       const event: RecognitionEvent = {
         fanId,
-        displayName: displayNames[fanId] ?? momentum.displayName,
-        glyph: identity.glyph,
-        color: identity.color,
-        line: getRecognitionLine(momentum),
+        displayName: displayNames[fanId] ?? momentum?.displayName ?? fanId,
+        // VIP fans get their earned glyph; regular fans get a warm star
+        glyph: isVip ? identity!.glyph : '🎵',
+        color: isVip ? identity!.color : '#AA2DFF',
+        // Every fan — VIP or new — gets the welcome motto
+        line: isVip
+          ? `${getRecognitionLine(momentum!)} · We grow together. Thank you for joining.`
+          : 'We grow together. Thank you for joining.',
         id: ++eventSeq,
       };
 
-      setFlashes((prev) => [...prev.slice(-2), event]);
+      setFlashes((prev) => [...prev.slice(-3), event]);
       setTimeout(() => {
         setFlashes((prev) => prev.filter((f) => f.id !== event.id));
-      }, 5000);
+      }, 6000);
     }
   }, [currentMemberIds, performerId, displayNames]);
 
@@ -61,13 +66,14 @@ export default function AudienceRecognitionOverlay({ performerId, currentMemberI
     <div
       style={{
         position: 'fixed',
-        bottom: 80,
+        bottom: 90,
         right: 20,
         display: 'flex',
         flexDirection: 'column',
         gap: 10,
         zIndex: 9000,
         pointerEvents: 'none',
+        maxWidth: 320,
       }}
     >
       {flashes.map((flash) => (
@@ -75,31 +81,34 @@ export default function AudienceRecognitionOverlay({ performerId, currentMemberI
           key={flash.id}
           style={{
             display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-            padding: '10px 16px',
-            background: `linear-gradient(135deg, rgba(5,5,16,0.95), ${flash.color}18)`,
-            border: `1px solid ${flash.color}55`,
+            alignItems: 'flex-start',
+            gap: 12,
+            padding: '12px 16px',
+            background: `linear-gradient(135deg, rgba(5,5,16,0.97), ${flash.color}22)`,
+            border: `1px solid ${flash.color}66`,
+            borderLeft: `3px solid ${flash.color}`,
             borderRadius: 12,
-            boxShadow: `0 0 20px ${flash.color}30`,
-            maxWidth: 300,
+            boxShadow: `0 4px 24px rgba(0,0,0,0.7), 0 0 16px ${flash.color}28`,
             animation: 'recognitionSlide 0.35s cubic-bezier(0.22,1,0.36,1)',
           }}
         >
-          <span style={{ fontSize: 22, flexShrink: 0 }}>{flash.glyph}</span>
-          <div>
-            <div style={{ fontSize: 12, fontWeight: 900, color: '#fff', marginBottom: 2 }}>
+          <span style={{ fontSize: 24, flexShrink: 0, lineHeight: 1 }}>{flash.glyph}</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.2em', color: flash.color, marginBottom: 3, textTransform: 'uppercase' }}>
+              WELCOME
+            </div>
+            <div style={{ fontSize: 13, fontWeight: 900, color: '#fff', marginBottom: 4, lineHeight: 1.2 }}>
               {flash.displayName}
             </div>
-            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', color: flash.color }}>
-              {flash.line}
+            <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.7)', lineHeight: 1.5 }}>
+              We grow together. Thank you for joining.
             </div>
           </div>
         </div>
       ))}
       <style>{`
         @keyframes recognitionSlide {
-          from { transform: translateX(40px); opacity: 0; }
+          from { transform: translateX(50px); opacity: 0; }
           to   { transform: translateX(0);    opacity: 1; }
         }
       `}</style>
