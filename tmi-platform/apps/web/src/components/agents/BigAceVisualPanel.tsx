@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { AgentRegistry, type AgentEntity } from '@bernout/agent-network';
+import { AgentRegistry, type AgentEntity } from '@/stubs/bernout-agent-network';
 
 type AgentState = 'idle' | 'thinking' | 'speaking' | 'listening';
 

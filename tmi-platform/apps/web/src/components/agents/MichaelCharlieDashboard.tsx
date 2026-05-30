@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { AgentRegistry, BusinessRegistry, type AgentEntity, type BusinessEntity } from '@bernout/agent-network';
+import { AgentRegistry, BusinessRegistry, type AgentEntity, type BusinessEntity } from '@/stubs/bernout-agent-network';
 
 export default function MichaelCharlieDashboard() {
   const [mc, setMc] = useState<AgentEntity | null>(null);
