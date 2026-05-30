@@ -110,13 +110,13 @@ function VenueSeatGrid({
   totalSeats: number;
   mode: 'audience' | 'performer';
 }) {
-  const byId = new Map(members.filter((m) => m.active && m.seatId).map((m) => [m.seatId!, m]));
+  const byId = new Map(members.filter((m) => m.seatId).map((m) => [m.seatId!, m]));
 
   let seatNum = 0;
   return (
     <div style={{ marginTop: 10 }}>
       <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', letterSpacing: '0.14em', marginBottom: 8, fontWeight: 800 }}>
-        LIVE VENUE · {members.filter((m) => m.active).length} IN SEATS
+        LIVE VENUE · {members.filter((m) => m.seatId).length} IN SEATS
         {mode === 'audience' && mySeatId && (
           <span style={{ color: '#00FFFF', marginLeft: 8 }}>YOUR SEAT: {mySeatId.toUpperCase()}</span>
         )}

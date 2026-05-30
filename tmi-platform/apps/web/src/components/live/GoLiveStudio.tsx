@@ -5,6 +5,12 @@ import Link from 'next/link';
 import type { DailyCall } from '@daily-co/daily-js';
 import MaskedVideoTile from '@/components/media/MaskedVideoTile';
 import ArenaImmersivePanel from '@/components/live/ArenaImmersivePanel';
+import {
+  startCountdown,
+  openCurtain,
+  subscribeStage,
+  getStageSnapshot,
+} from '@/lib/live/StageLifecycleEngine';
 
 type BroadcastState = 'preview' | 'syncing' | 'live' | 'ending';
 
@@ -39,6 +45,9 @@ export default function GoLiveStudio() {
   const [micOn,          setMicOn]          = useState(true);
   const [camOn,          setCamOn]          = useState(true);
   const [dailyRoomId,    setDailyRoomId]    = useState('');
+  const [curtainState,   setCurtainState]   = useState(() => getStageSnapshot().state);
+
+  useEffect(() => subscribeStage((s) => setCurtainState(s.state)), []);
 
   // Start camera + prefill session display name
   useEffect(() => {
@@ -407,6 +416,30 @@ export default function GoLiveStudio() {
       )}
 
       {/* ── MRT panel-focus arena ─────────────────────────────────────────── */}
+      {isLive && (
+        <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap', padding: '10px 14px', borderRadius: 10, border: '1px solid rgba(255,215,0,0.2)', background: 'rgba(255,215,0,0.04)' }}>
+          <div style={{ width: '100%', fontSize: 8, color: 'rgba(255,215,0,0.6)', fontWeight: 800, letterSpacing: '0.14em', marginBottom: 4 }}>STAGE CURTAIN</div>
+          <button
+            type="button"
+            onClick={() => startCountdown()}
+            style={{ padding: '7px 14px', borderRadius: 8, fontSize: 11, fontWeight: 900, background: 'rgba(255,215,0,0.12)', border: '1px solid rgba(255,215,0,0.4)', color: GOLD, cursor: 'pointer', letterSpacing: '0.07em' }}
+          >
+            ▶ PREPARE STAGE
+          </button>
+          <button
+            type="button"
+            onClick={() => openCurtain()}
+            disabled={curtainState !== 'COUNTDOWN'}
+            style={{ padding: '7px 14px', borderRadius: 8, fontSize: 11, fontWeight: 900, background: curtainState === 'COUNTDOWN' ? 'rgba(0,255,136,0.14)' : 'rgba(255,255,255,0.04)', border: `1px solid ${curtainState === 'COUNTDOWN' ? 'rgba(0,255,136,0.5)' : 'rgba(255,255,255,0.1)'}`, color: curtainState === 'COUNTDOWN' ? '#00FF88' : 'rgba(255,255,255,0.25)', cursor: curtainState === 'COUNTDOWN' ? 'pointer' : 'not-allowed', letterSpacing: '0.07em' }}
+          >
+            🎭 OPEN CURTAIN
+          </button>
+          <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', display: 'flex', alignItems: 'center' }}>
+            State: <span style={{ color: CYAN, fontWeight: 700, marginLeft: 4 }}>{curtainState}</span>
+          </span>
+        </div>
+      )}
+
       {isLive && (
         <section style={{ marginBottom: 20 }}>
           <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.14em', marginBottom: 8, fontWeight: 800 }}>
