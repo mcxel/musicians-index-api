@@ -12,6 +12,7 @@ import SocketRecoveryEngine from "@/lib/routing/SocketRecoveryEngine";
 import RoomInteractionLayout from "@/components/live/RoomInteractionLayout";
 import LiveRoomWebRTCLayer from "@/components/live/LiveRoomWebRTCLayer";
 import ArenaImmersivePanel from "@/components/live/ArenaImmersivePanel";
+import VenueImmersiveRoom from "@/components/live/VenueImmersiveRoom";
 import LiveSessionHeartbeat from "@/components/live/LiveSessionHeartbeat";
 import { registerPresence } from "@/lib/rooms/RoomSessionBridge";
 import { recordProfileLoopAction } from "@/lib/profile/ProfileSessionStore";
@@ -119,7 +120,9 @@ export default async function LiveRoomPage({ params, searchParams }: LiveRoomPag
 
         {performerSlug && <LiveSessionHeartbeat enabled={true} intervalMs={15_000} stageState="live" roomId={id} />}
 
-        <ArenaImmersivePanel roomId={id} mode={performerSlug ? "performer" : "audience"} />
+        {performerSlug
+          ? <ArenaImmersivePanel roomId={id} mode="performer" />
+          : <VenueImmersiveRoom roomId={id} mode="fan" />}
 
         <RoomInteractionLayout roomId={id} sessionId={sessionId ?? undefined} />
 
