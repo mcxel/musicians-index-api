@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { AgentMemoryEngine, type MemoryRecord } from '@/lib/agents/AgentMemoryEngine';
-import { AgentRegistry } from '@bernout/agent-network';
+import { AgentRegistry } from '@/stubs/bernout-agent-network';
 import { chatWithAgent } from '@/lib/agents/openaiClient';
 
 type Priority = 'low' | 'normal' | 'high' | 'critical';

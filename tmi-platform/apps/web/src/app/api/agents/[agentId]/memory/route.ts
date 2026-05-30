@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { AgentMemoryEngine } from '@/lib/agents/AgentMemoryEngine';
-import { AgentRegistry } from '@bernout/agent-network';
+import { AgentRegistry } from '@/stubs/bernout-agent-network';
 
 export async function GET(
   _req: NextRequest,
