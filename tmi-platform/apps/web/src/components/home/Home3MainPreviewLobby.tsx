@@ -8,9 +8,9 @@ interface Home3MainPreviewLobbyProps {
 }
 
 const SAMPLE_IMAGES = [
-  '/assets/generated/venues/main-lobby-cam-1.jpg',
-  '/assets/generated/venues/main-lobby-cam-2.jpg',
-  '/assets/generated/venues/main-lobby-cam-3.jpg',
+  '/tmi-curated/home3.png',
+  '/tmi-curated/home4.png',
+  '/tmi-curated/home5.png',
 ];
 
 export default function Home3MainPreviewLobby({ title = 'MAIN LOBBY' }: Home3MainPreviewLobbyProps) {
