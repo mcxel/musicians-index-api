@@ -49,6 +49,12 @@ export default function WelcomeArenaOverlay() {
   const displayWatching = useCountUp(totalWatch > 0 ? totalWatch : 47, visible, 1400);
   const displayPerf     = useCountUp(performers, visible, 800);
 
+  function dismiss() {
+    localStorage.setItem(SEEN_KEY, "1");
+    setExiting(true);
+    setTimeout(() => setVisible(false), 320);
+  }
+
   function enter(href: string) {
     linkRef.current = href;
     localStorage.setItem(SEEN_KEY, "1");
@@ -59,6 +65,20 @@ export default function WelcomeArenaOverlay() {
       window.location.href = dest;
     }, 320);
   }
+
+  // Lock body scroll while overlay is visible; ESC to dismiss
+  useEffect(() => {
+    if (!visible) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") dismiss(); };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prev;
+      document.removeEventListener("keydown", onKey);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible]);
 
   return (
     <AnimatePresence>
@@ -92,6 +112,22 @@ export default function WelcomeArenaOverlay() {
               0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; }
             }
           `}</style>
+
+          {/* Close button */}
+          <button
+            onClick={dismiss}
+            aria-label="Close"
+            style={{
+              position: "absolute", top: 16, right: 16,
+              background: "none", border: "1px solid rgba(255,255,255,0.18)",
+              color: "rgba(255,255,255,0.45)", width: 36, height: 36,
+              borderRadius: "50%", fontSize: 20, cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              lineHeight: 1, fontFamily: "sans-serif",
+            }}
+          >
+            ×
+          </button>
 
           {/* Eyebrow */}
           <div style={{

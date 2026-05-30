@@ -316,6 +316,86 @@ const ChallengePromoTicker = memo(function ChallengePromoTicker() {
   );
 });
 
+// ── Orbit: memo so it never re-renders from parent broadcastDeck / auth ticks ──
+// Computes performers synchronously from SEED_FEEDS (module constant) — stable forever.
+const WeeklyCrownOrbit = memo(function WeeklyCrownOrbit({
+  onNodeClick,
+}: {
+  onNodeClick: (user: UserProfilePanelUser) => void;
+}) {
+  const live = SEED_FEEDS
+    .filter((f: BroadcastFeedItem) => f.kind === 'live-camera' && f.status === 'live')
+    .sort((a: BroadcastFeedItem, b: BroadcastFeedItem) => (b.viewerCount ?? 0) - (a.viewerCount ?? 0));
+  const topLive = live[0] ?? SEED_FEEDS.find((f: BroadcastFeedItem) => f.status === 'live') ?? null;
+  const fromFeeds: Performer[] = SEED_FEEDS
+    .filter((f: BroadcastFeedItem) => f.status === 'live' || f.kind === 'live-camera' || f.kind === 'battle' || f.kind === 'cypher')
+    .slice(0, 10)
+    .map((f: BroadcastFeedItem, i: number) => ({ slug: f.id, name: f.title, genre: f.genre ?? 'Live', rank: i + 1 }));
+  const used = new Set(fromFeeds.map((p: Performer) => p.slug));
+  const stubs = PERFORMERS.filter((p: Performer) => !used.has(p.slug)).map((p: Performer, i: number) => ({ ...p, rank: fromFeeds.length + i + 1 }));
+  const performers = [...fromFeeds, ...stubs].slice(0, 10);
+
+  return (
+    <section className="tmi-orbit-section">
+      <h2>Weekly Crown Orbit</h2>
+      <div className="tmi-orbit-meta">Top Ranked · Live Now · Updated In Real Time</div>
+      <div className="tmi-orbit-canvas">
+        <div className="tmi-orbit-ring" />
+        {ORBIT_PARTICLES_AMB.map((p, i) => (
+          <div
+            key={i}
+            className="tmi-orbit-particle"
+            style={{
+              left: `${p.x}%`, top: `${p.y}%`,
+              width: p.size, height: p.size,
+              background: p.color,
+              boxShadow: `0 0 ${p.size * 3}px ${p.color}`,
+              opacity: p.opMin,
+              animation: `tmiParticleDrift ${p.dur}s ease-in-out ${p.delay}s infinite alternate`,
+              '--ptx': `${p.tx}px`, '--pty': `${p.ty}px`, '--psc': p.scale,
+            } as React.CSSProperties}
+          />
+        ))}
+        <Link className="tmi-orbit-center" href={topLive?.href ?? '/live/lobby'} style={{ textDecoration: 'none' }}>
+          <div>
+            <strong style={{ fontSize: 28 }}>{topLive?.avatarEmoji ?? '🎤'}</strong>
+            <strong>{topLive?.title ?? 'LIVE NOW'}</strong>
+            <small>{topLive?.viewerCount ? `${topLive.viewerCount.toLocaleString()} WATCHING` : topLive?.subtitle ?? '#1 LIVE'}</small>
+          </div>
+        </Link>
+        <div className="tmi-orbit-spinner">
+          {performers.map((performer, index) => {
+            const point = orbitPoint(index, performers.length, 39, 0);
+            const accent = GENRE_ACCENT[performer.genre] ?? '#FF2DAA';
+            const emoji = GENRE_EMOJI[performer.genre] ?? '🎵';
+            return (
+              <button
+                key={index}
+                className="tmi-orbit-node tmi-orbit-node-counter"
+                style={{ left: `${point.x}%`, top: `${point.y}%`, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+                onClick={() => onNodeClick({
+                  id: performer.slug, name: performer.name, role: 'artist',
+                  avatarEmoji: emoji, slug: performer.slug, genre: performer.genre,
+                  accentColor: accent, isOnline: true,
+                })}
+              >
+                <div style={{ width: '100%', height: '100%', background: `linear-gradient(135deg, ${accent}30, #050510)`, display: 'grid', placeItems: 'center', fontSize: 'clamp(20px,3.5vw,28px)' }}>
+                  {emoji}
+                </div>
+                <span className="rank">{performer.rank}</span>
+                <div className="meta">
+                  <strong>{performer.name}</strong>
+                  <small>{performer.genre}</small>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+});
+
 // ──────────────────────────────────────────────────────────────────────────────
 
 export default function Home1CoverPage() {
@@ -332,9 +412,7 @@ export default function Home1CoverPage() {
   const [liveCamFeeds, setLiveCamFeeds] = useState<BroadcastFeedItem[]>([]);
   const [battleFeeds, setBattleFeeds] = useState<BroadcastFeedItem[]>([]);
   const [cyphers, setCyphers] = useState<BroadcastFeedItem[]>([]);
-  const [orbitPerformers, setOrbitPerformers] = useState<Performer[]>(PERFORMERS.slice(0, 10));
   const [canvasCards, setCanvasCards] = useState<Array<{ key: string; item: BroadcastFeedItem; rotation: number }>>([]);
-  const [topLive, setTopLive] = useState<BroadcastFeedItem | null>(null);
 
   useEffect(() => {
     // Post-mount data hydration
@@ -347,20 +425,10 @@ export default function Home1CoverPage() {
     setLiveCamFeeds(live);
     setBattleFeeds(battles);
     setCyphers(cyp);
-    setTopLive(live[0] ?? SEED_FEEDS.find((f: BroadcastFeedItem) => f.status === 'live') ?? null);
-
-    const fromFeeds: Performer[] = SEED_FEEDS
-      .filter((f: BroadcastFeedItem) => f.status === 'live' || f.kind === 'live-camera' || f.kind === 'battle' || f.kind === 'cypher')
-      .slice(0, 10)
-      .map((f, i) => ({ slug: f.id, name: f.title, genre: f.genre ?? 'Live', rank: i + 1 }));
-    
-    const used = new Set(fromFeeds.map(p => p.slug));
-    const stubs = PERFORMERS.filter(p => !used.has(p.slug)).map((p, i) => ({ ...p, rank: fromFeeds.length + i + 1 }));
-    setOrbitPerformers([...fromFeeds, ...stubs].slice(0, 10));
 
     const cards: Array<{ key: string; item: BroadcastFeedItem; rotation: number }> = [];
     if (magFeature) cards.push({ key: 'mag', item: magFeature, rotation: -2.3 });
-    if (battleFeeds[0]) cards.push({ key: 'battle', item: battleFeeds[0], rotation: 2 });
+    if (battles[0]) cards.push({ key: 'battle', item: battles[0], rotation: 2 });
     if (sponsorSlot) cards.push({ key: 'sponsor', item: sponsorSlot, rotation: -1.3 });
     setCanvasCards(cards);
   }, []);
@@ -1479,91 +1547,8 @@ export default function Home1CoverPage() {
           ) : null}
         </div>
 
-        {/* ── ORBIT HERO — always first ── */}
-        <section className="tmi-orbit-section">
-          <h2>Weekly Crown Orbit</h2>
-          <div className="tmi-orbit-meta">
-            Top Ranked · Live Now · Updated In Real Time
-          </div>
-
-          <div className="tmi-orbit-canvas">
-            <div className="tmi-orbit-ring" />
-
-            {/* Star field particles — pure CSS animation */}
-            {ORBIT_PARTICLES_AMB.map((p, i) => (
-              <div
-                key={i}
-                className="tmi-orbit-particle"
-                style={{
-                  left: `${p.x}%`,
-                  top: `${p.y}%`,
-                  width: p.size,
-                  height: p.size,
-                  background: p.color,
-                  boxShadow: `0 0 ${p.size * 3}px ${p.color}`,
-                  opacity: p.opMin,
-                  animation: `tmiParticleDrift ${p.dur}s ease-in-out ${p.delay}s infinite alternate`,
-                  '--ptx': `${p.tx}px`,
-                  '--pty': `${p.ty}px`,
-                  '--psc': p.scale,
-                } as React.CSSProperties}
-              />
-            ))}
-
-            {/* Center node — outside spinner so it stays fixed */}
-            <Link
-              className="tmi-orbit-center"
-              href={topLive?.href ?? '/live/lobby'}
-              style={{ textDecoration: 'none' }}
-            >
-              <div>
-                <strong style={{ fontSize: 28 }}>{topLive?.avatarEmoji ?? '🎤'}</strong>
-                <strong>{topLive?.title ?? 'LIVE NOW'}</strong>
-                <small>{topLive?.viewerCount ? `${topLive.viewerCount.toLocaleString()} WATCHING` : topLive?.subtitle ?? '#1 LIVE'}</small>
-              </div>
-            </Link>
-
-            {/* Orbit spinner — rotates via CSS; nodes counter-rotate to stay upright */}
-            <div className="tmi-orbit-spinner">
-              {orbitPerformers.map((performer, index) => {
-                const point = orbitPoint(index, orbitPerformers.length, 39, 0);
-                const accent = GENRE_ACCENT[performer.genre] ?? '#FF2DAA';
-                const emoji = GENRE_EMOJI[performer.genre] ?? '🎵';
-                return (
-                  <button
-                    key={performer.slug}
-                    className="tmi-orbit-node tmi-orbit-node-counter"
-                    style={{ left: `${point.x}%`, top: `${point.y}%`, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
-                    onClick={() => setProfilePanel({
-                      id: performer.slug,
-                      name: performer.name,
-                      role: 'artist',
-                      avatarEmoji: emoji,
-                      slug: performer.slug,
-                      genre: performer.genre,
-                      accentColor: accent,
-                      isOnline: true,
-                    })}
-                  >
-                    <div style={{
-                      width: '100%', height: '100%',
-                      background: `linear-gradient(135deg, ${accent}30, #050510)`,
-                      display: 'grid', placeItems: 'center',
-                      fontSize: 'clamp(20px,3.5vw,28px)',
-                    }}>
-                      {emoji}
-                    </div>
-                    <span className="rank">{performer.rank}</span>
-                    <div className="meta">
-                      <strong>{performer.name}</strong>
-                      <small>{performer.genre}</small>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </section>
+        {/* ── ORBIT HERO — memo component, never re-renders from parent ── */}
+        <WeeklyCrownOrbit onNodeClick={setProfilePanel} />
 
         {/* ── Broadcast deck banner ── */}
         {(() => {
