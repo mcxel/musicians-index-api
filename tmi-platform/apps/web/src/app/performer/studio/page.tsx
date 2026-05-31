@@ -9,6 +9,43 @@ import MediaMonitor from "@/components/video/MediaMonitor";
 import { usePresenceEngine } from "@/lib/live/presenceEngine";
 import { STRIPE_PRODUCTS } from "@/lib/stripe/products";
 import { activatePhase1Bots } from "@/lib/bots/Phase1BotActivator";
+import ArtifactWall from "@/components/artifacts/ArtifactWall";
+
+// ── Performer Welcome Banner ───────────────────────────────────────────────────
+
+function PerformerWelcome({ onDismiss }: { onDismiss: () => void }) {
+  const { accentColor } = useRoom();
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -12 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -12 }}
+      style={{
+        margin: "0 20px 12px",
+        padding: "14px 18px",
+        borderRadius: 12,
+        background: `linear-gradient(135deg, ${accentColor}14 0%, rgba(0,255,136,0.06) 100%)`,
+        border: `1px solid ${accentColor}33`,
+        display: "flex", alignItems: "center", gap: 16,
+      }}
+    >
+      <div style={{ fontSize: 28, flexShrink: 0 }}>🎤</div>
+      <div style={{ flex: 1 }}>
+        <div style={{ fontSize: 13, fontWeight: 900, color: accentColor, letterSpacing: "0.04em", marginBottom: 3 }}>
+          Welcome to your Promotion Hub
+        </div>
+        <div style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", lineHeight: 1.5 }}>
+          We thank you for joining. We are ready to take you and your music global.
+          We appreciate you — <span style={{ color: accentColor, fontWeight: 700 }}>we grow together.</span>
+        </div>
+      </div>
+      <button onClick={onDismiss}
+        style={{ background: "none", border: "none", color: "rgba(255,255,255,0.3)", fontSize: 16, cursor: "pointer", flexShrink: 0 }}>
+        ×
+      </button>
+    </motion.div>
+  );
+}
 
 // ── Monitor ───────────────────────────────────────────────────────────────────
 
@@ -252,6 +289,7 @@ function StudioInner() {
   const { accentColor, roomId, title } = useRoom();
   const [isLive, setIsLive] = useState(false);
   const [botMessages, setBotMessages] = useState<string[]>([]);
+  const [showWelcome, setShowWelcome] = useState(true);
 
   useEffect(() => {
     const cleanup = activatePhase1Bots(roomId, "performer-session", {
@@ -288,6 +326,11 @@ function StudioInner() {
       {/* Bot rail */}
       <BotRail messages={botMessages} />
 
+      {/* Welcome banner */}
+      <AnimatePresence>
+        {showWelcome && <PerformerWelcome onDismiss={() => setShowWelcome(false)} />}
+      </AnimatePresence>
+
       {/* Monitor grid */}
       <div style={{ flex: 1, padding: "16px 20px", display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr", gridTemplateRows: "auto auto", gap: 12 }}>
         <WidgetSlot name="stage" style={{ gridRow: "1 / 3" }}>
@@ -309,6 +352,11 @@ function StudioInner() {
         <WidgetSlot name="sponsor">
           <SponsorMonitor />
         </WidgetSlot>
+      </div>
+
+      {/* Artifact Vault — performer's playlist artifacts */}
+      <div style={{ padding: "0 20px 24px" }}>
+        <ArtifactWall role="performer" userPoints={567} accentColor={accentColor} title="Artifact Vault" />
       </div>
     </div>
   );

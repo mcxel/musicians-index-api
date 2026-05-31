@@ -9,6 +9,7 @@ import { usePresenceEngine } from "@/lib/live/presenceEngine";
 import TrackUploadPanel from "@/components/social/TrackUploadPanel";
 import MemoryWall from "@/components/media/MemoryWall";
 import TieredAdSlot from "@/components/ads/TieredAdSlot";
+import ArtifactWall from "@/components/artifacts/ArtifactWall";
 
 // ── Monitor surface ───────────────────────────────────────────────────────────
 
@@ -248,6 +249,13 @@ function FanTheaterInner() {
 
         <WidgetSlot name="playlist">
           <PlaylistMonitor />
+        </WidgetSlot>
+      </div>
+
+      {/* Artifact Wall — Your Playlists */}
+      <div style={{ padding: "0 20px 16px" }}>
+        <WidgetSlot name="artifacts">
+          <ArtifactWall role="fan" userPoints={324} accentColor={accentColor} title="Your Playlists" />
         </WidgetSlot>
       </div>
 
