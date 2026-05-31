@@ -6,6 +6,7 @@ import type { DailyCall } from '@daily-co/daily-js';
 import MaskedVideoTile from '@/components/media/MaskedVideoTile';
 import ArenaImmersivePanel from '@/components/live/ArenaImmersivePanel';
 import LiveLobbyWallGrid, { type LobbyRoom } from '@/components/live/LiveLobbyWallGrid';
+import AudienceScene from '@/components/live/AudienceScene';
 import {
   startCountdown,
   openCurtain,
@@ -570,6 +571,22 @@ export default function GoLiveStudio() {
           </section>
 
           <ArenaImmersivePanel roomId="main-stage" mode="performer" />
+
+          {/* ── LIVE AUDIENCE VIEW — 3D crowd looking up at the performer ── */}
+          <section style={{ marginBottom: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+              <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#FF2020', display: 'inline-block', animation: 'tmiLivePulse 1s ease-in-out infinite' }} />
+              <div style={{ fontSize: 9, color: FUCHSIA, fontWeight: 900, letterSpacing: '0.18em' }}>YOUR LIVE AUDIENCE</div>
+              <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.35)', marginLeft: 4 }}>
+                · {viewerCount} watching
+              </div>
+            </div>
+            <AudienceScene
+              view="performer"
+              venue={0}
+              watcherCount={viewerCount}
+            />
+          </section>
         </>
       )}
 

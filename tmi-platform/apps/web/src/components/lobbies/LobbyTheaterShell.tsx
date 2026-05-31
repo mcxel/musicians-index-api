@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import AudienceScene, { type VenueIndex } from "@/components/live/AudienceScene";
 import { RoomChatBubbleLayer } from "@/components/chat/RoomChatBubbleLayer";
 import { PerformerFeedbackPanel } from "@/components/chat/PerformerFeedbackPanel";
 import { CrowdChatOverflowPanel } from "@/components/chat/CrowdChatOverflowPanel";
@@ -40,9 +41,22 @@ import LobbyBillboardSurface from "@/components/lobbies/LobbyBillboardSurface";
 import LobbyMainBillboard from "@/components/lobbies/LobbyMainBillboard";
 import { emitLobbyFeedState, type LobbyBillboardStatus } from "@/lib/lobby/LobbyFeedBus";
 
+/** Map a room slug to one of the 5 AudienceScene venue types */
+function slugToVenue(slug: string): VenueIndex {
+  const s = slug.toLowerCase();
+  if (/battle|versus|cypher|octagon|arena|championship|ring|dirty-dozen|deal-or-feud|contest/.test(s)) return 1; // Arena
+  if (/vip|club|lounge|backstage|green-room/.test(s)) return 2;  // Club
+  if (/outdoor|festival|rooftop/.test(s)) return 3;              // Outdoor
+  if (/boardroom|judge|trivia|game|quiz/.test(s)) return 4;      // Boardroom
+  return 0; // Theater — default (concerts, idol, shows, monthly, world-concert)
+}
+
 type LobbyTheaterShellProps = {
   slug: string;
   mode?: "directory" | "room";
+  autoSeat?: boolean;
+  /** If true the current user is the performer — shows crowd facing them */
+  isPerformer?: boolean;
 };
 
 function slugToChatRoomId(slug: string): ChatRoomId {
@@ -98,7 +112,7 @@ function mapQueueState(slot: QueueSlot): LobbyQueueEntry["state"] {
   return "waiting";
 }
 
-export default function LobbyTheaterShell({ slug, mode = "room" }: LobbyTheaterShellProps) {
+export default function LobbyTheaterShell({ slug, mode = "room", autoSeat = false, isPerformer = false }: LobbyTheaterShellProps) {
   const [seatMap, setSeatMap] = useState<LobbySeatMap>(() => createSeatMap(slug));
   const [selectedSeatId, setSelectedSeatId] = useState<string | null>(null);
   const [presence, setPresence] = useState(() => createInitialPresence());
@@ -106,6 +120,23 @@ export default function LobbyTheaterShell({ slug, mode = "room" }: LobbyTheaterS
   const [tipTotal, setTipTotal] = useState(0);
   const [queueVersion, setQueueVersion] = useState(0);
   const [idleBeat, setIdleBeat] = useState(0);
+
+  // ── Arena / AudienceScene state ───────────────────────────────────────────
+  const venueIndex = useMemo(() => slugToVenue(slug), [slug]);
+  const [arenaView, setArenaView] = useState<"fan" | "performer">(isPerformer ? "performer" : "fan");
+  const [audienceReactions, setAudienceReactions] = useState(0);
+
+  // ── Auto-seat when fan clicks JOIN from the lobby wall ────────────────────
+  useEffect(() => {
+    if (!autoSeat) return;
+    setSeatMap((prev) => {
+      const openSeat = prev.seats.find((s) => s.state === "empty");
+      if (!openSeat) return prev;
+      setSelectedSeatId(openSeat.id);
+      return claimSeatEngine(prev, openSeat.id, "You");
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoSeat]);
 
   // ── Chat ──────────────────────────────────────────────────────────────────
   const chatEngine = useMemo(() => new RoomChatEngine(slugToChatRoomId(slug), CHAT_RUNTIME_STATE), [slug]);
@@ -355,6 +386,45 @@ export default function LobbyTheaterShell({ slug, mode = "room" }: LobbyTheaterS
           </div>
 
           <div style={{ display: "grid", gap: 12 }}>
+            {/* ── 3D Arena / AudienceScene ─────────────────────────────── */}
+            <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid rgba(255,255,255,0.08)", background: "#050510" }}>
+              {/* Arena header + view toggle */}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 12px", background: "rgba(0,0,0,0.5)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#FF2020", display: "inline-block", animation: "tmiLivePulse 1s ease-in-out infinite" }} />
+                  <span style={{ fontSize: 9, fontWeight: 900, color: "#00FFFF", letterSpacing: "0.16em" }}>
+                    LIVE ARENA — {["THEATER","ARENA","CLUB","OUTDOOR","BOARDROOM"][venueIndex]}
+                  </span>
+                </div>
+                <div style={{ display: "flex", gap: 6 }}>
+                  <button
+                    onClick={() => setArenaView("fan")}
+                    style={{ padding: "3px 10px", borderRadius: 5, fontSize: 9, fontWeight: 800, cursor: "pointer", border: "none", background: arenaView === "fan" ? "rgba(0,255,255,0.18)" : "rgba(255,255,255,0.04)", color: arenaView === "fan" ? "#00FFFF" : "rgba(255,255,255,0.35)", outline: arenaView === "fan" ? "1px solid rgba(0,255,255,0.4)" : "1px solid rgba(255,255,255,0.08)" }}
+                  >👥 FAN VIEW</button>
+                  <button
+                    onClick={() => setArenaView("performer")}
+                    style={{ padding: "3px 10px", borderRadius: 5, fontSize: 9, fontWeight: 800, cursor: "pointer", border: "none", background: arenaView === "performer" ? "rgba(255,45,170,0.18)" : "rgba(255,255,255,0.04)", color: arenaView === "performer" ? "#FF2DAA" : "rgba(255,255,255,0.35)", outline: arenaView === "performer" ? "1px solid rgba(255,45,170,0.4)" : "1px solid rgba(255,255,255,0.08)" }}
+                  >🎤 STAGE VIEW</button>
+                </div>
+              </div>
+              <AudienceScene
+                view={arenaView}
+                venue={venueIndex}
+                watcherCount={presence.activeUsers}
+                hideControls={false}
+                onReaction={() => {
+                  setAudienceReactions((n) => n + 1);
+                  sendReaction("fire");
+                }}
+              />
+              {/* Reaction count bubble */}
+              {audienceReactions > 0 && (
+                <div style={{ padding: "4px 12px", background: "rgba(0,0,0,0.5)", fontSize: 9, color: "rgba(255,255,255,0.4)", textAlign: "right" }}>
+                  {audienceReactions} crowd reaction{audienceReactions !== 1 ? "s" : ""} sent
+                </div>
+              )}
+            </div>
+
             <LobbySeatGrid seats={seats} selectedSeatId={selectedSeatId} onSelectSeat={setSelectedSeatId} />
             <section style={{ borderRadius: 14, border: "1px solid #624590", background: "#160d25", padding: 12, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
               <div>

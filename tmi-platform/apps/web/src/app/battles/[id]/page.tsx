@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import PresenceBar from "@/components/live/PresenceBar";
+import AudienceScene from "@/components/live/AudienceScene";
 import { usePerformanceQueue } from "@/components/live/PerformanceQueue";
 import { battleChallengeEconomyEngine } from "@/lib/competition/BattleChallengeEconomyEngine";
 import { battlePredictionEngine } from "@/lib/competition/BattlePredictionEngine";
@@ -374,6 +375,24 @@ export default function BattleRoomPage({ params }: { params: { id: string } }) {
         <div style={{ marginTop: 20, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
           <ProfileStreakRail userId={battle.artist1.toLowerCase().replace(/\s+/g, '-')} displayName={battle.artist1} mode="compact" accentColor={battle.color} />
           <ProfileStreakRail userId={battle.artist2.toLowerCase().replace(/\s+/g, '-')} displayName={battle.artist2} mode="compact" accentColor="#00FFFF" />
+        </div>
+
+        {/* ── Battle Arena — 3D audience view ───────────────────────────────── */}
+        <div style={{ marginTop: 20, borderRadius: 14, overflow: "hidden", border: `1px solid ${battle.color}28`, background: "#050510" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 14px", background: "rgba(0,0,0,0.55)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#FF2020", display: "inline-block", animation: "tmiLivePulse 1s ease-in-out infinite" }} />
+              <span style={{ fontSize: 9, fontWeight: 900, color: battle.color, letterSpacing: "0.18em" }}>LIVE BATTLE ARENA</span>
+            </div>
+            <span style={{ fontSize: 9, color: "rgba(255,255,255,0.35)" }}>{votes.a + votes.b} votes cast · crowd is watching</span>
+          </div>
+          <AudienceScene
+            view="fan"
+            venue={1}
+            watcherCount={votes.a + votes.b}
+            hideControls={false}
+            onReaction={(emoji) => console.log("[Battle Arena] crowd reaction:", emoji)}
+          />
         </div>
 
         {/* Live room chat */}

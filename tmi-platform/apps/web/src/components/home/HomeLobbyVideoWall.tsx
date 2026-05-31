@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import TMIUniversalPlayer from '@/components/media/TMIUniversalPlayer';
 import type { FrameStyle, SizePreset } from '@/components/media/TMIUniversalPlayer';
 
@@ -57,11 +58,23 @@ function sortByAscendingViewers(slots: LobbySlot[], counts: number[]): { slot: L
     .sort((a, b) => a.count - b.count);
 }
 
+function roomHref(slot: LobbySlot): string {
+  if (slot.roomId) return `/rooms/${slot.roomId}?autoSeat=1`;
+  if (slot.performerSlug) return `/rooms/${slot.performerSlug}?autoSeat=1`;
+  return '/live/rooms';
+}
+
 export default function HomeLobbyVideoWall({ accentColor = '#00FFFF' }: { accentColor?: string }) {
+  const router = useRouter();
   const [viewerCounts, setViewerCounts] = useState<number[]>(
     () => LOBBY_SLOTS.map(s => s.viewers ?? 0)
   );
   const [justJoined, setJustJoined] = useState<number | null>(null);
+  const [hoverIdx, setHoverIdx] = useState<number | null>(null);
+
+  const handleJoin = useCallback((slot: LobbySlot) => {
+    router.push(roomHref(slot));
+  }, [router]);
 
   // Viewer count simulation — ticks every 3.2s
   useEffect(() => {
@@ -93,6 +106,8 @@ export default function HomeLobbyVideoWall({ accentColor = '#00FFFF' }: { accent
       backdropFilter: 'blur(10px)',
       overflow: 'hidden',
     }}>
+      <style>{`@keyframes tmiLobbyBlink { 0%,100%{opacity:1} 50%{opacity:0} }`}</style>
+
       {/* Scanline underlay */}
       <div aria-hidden style={{
         position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0,
@@ -136,15 +151,52 @@ export default function HomeLobbyVideoWall({ accentColor = '#00FFFF' }: { accent
               gridColumn: slot.colSpan ? `span ${slot.colSpan}` : undefined,
               gridRow:    slot.rowSpan ? `span ${slot.rowSpan}` : undefined,
               transform:  `rotate(${slot.rotate}deg)`,
-              transition: 'transform 0.3s ease',
-              outline: justJoined === origIdx ? `2px solid ${slot.frameColor}` : 'none',
-              boxShadow: justJoined === origIdx ? `0 0 20px ${slot.frameColor}88` : 'none',
+              transition: 'transform 0.25s ease',
+              outline: justJoined === origIdx ? `2px solid ${slot.frameColor}` : hoverIdx === origIdx ? `2px solid ${slot.frameColor}` : 'none',
+              boxShadow: justJoined === origIdx ? `0 0 24px ${slot.frameColor}88` : hoverIdx === origIdx ? `0 0 18px ${slot.frameColor}66` : 'none',
               borderRadius: 8,
               display: 'flex',
               flexDirection: 'column',
               gap: 4,
+              position: 'relative',
+              cursor: 'pointer',
             }}
+            onMouseEnter={() => setHoverIdx(origIdx)}
+            onMouseLeave={() => setHoverIdx(null)}
+            onClick={() => handleJoin(slot)}
           >
+            {/* ── JOIN ROOM hover overlay ── */}
+            {hoverIdx === origIdx && (
+              <div style={{
+                position: 'absolute', inset: 0, borderRadius: 8,
+                background: 'linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.3) 50%, transparent 100%)',
+                zIndex: 10, display: 'flex', flexDirection: 'column',
+                justifyContent: 'flex-end', padding: '10px 10px 12px',
+                pointerEvents: 'none',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 5 }}>
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#FF2020', display: 'inline-block', animation: 'tmiLobbyBlink 1s step-end infinite', flexShrink: 0 }} />
+                  <span style={{ fontSize: 8, fontWeight: 900, color: '#fff', letterSpacing: '0.12em' }}>LIVE</span>
+                  <span style={{ fontSize: 8, color: 'rgba(255,255,255,0.55)', marginLeft: 4 }}>
+                    {count.toLocaleString()} watching
+                  </span>
+                </div>
+                <div style={{ fontSize: 11, fontWeight: 900, color: '#fff', marginBottom: 6, lineHeight: 1.2 }}>
+                  {slot.avatarName}
+                </div>
+                <div style={{
+                  padding: '6px 0', borderRadius: 6,
+                  background: `${slot.frameColor}CC`,
+                  color: '#000', fontSize: 10, fontWeight: 900,
+                  textAlign: 'center', letterSpacing: '0.1em',
+                  boxShadow: `0 0 12px ${slot.frameColor}88`,
+                  pointerEvents: 'none',
+                }}>
+                  ▶ JOIN ROOM
+                </div>
+              </div>
+            )}
+
             <TMIUniversalPlayer
               mode={
                 slot.roomId    ? 'webrtc'   :
