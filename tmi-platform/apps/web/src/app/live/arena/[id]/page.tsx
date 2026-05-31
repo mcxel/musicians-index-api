@@ -1,31 +1,64 @@
 import Link from "next/link";
 import ArenaImmersivePanel from "@/components/live/ArenaImmersivePanel";
+import AudienceScene from "@/components/live/AudienceScene";
+import type { VenueIndex } from "@/components/live/AudienceScene";
 
 interface LiveArenaPageProps {
   params: Promise<{ id: string }>;
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }
 
+function idToVenue(id: string): VenueIndex {
+  const s = id.toLowerCase();
+  if (/battle|versus|cypher|octagon|ring|fight|championship/.test(s)) return 1; // Arena
+  if (/club|vip|lounge/.test(s)) return 2;
+  if (/outdoor|festival|rooftop/.test(s)) return 3;
+  if (/boardroom|judge|game/.test(s)) return 4;
+  return 0; // Theater (main-stage, concert, idol, etc)
+}
+
 export default async function LiveArenaPage({ params, searchParams }: LiveArenaPageProps) {
   const { id } = await params;
   const sp = searchParams ? await searchParams : {};
-  const modeValue = typeof sp['mode'] === 'string' ? sp['mode'] : Array.isArray(sp['mode']) ? sp['mode'][0] : 'audience';
-  const mode = modeValue === 'performer' ? 'performer' : 'audience';
+  const modeValue = typeof sp["mode"] === "string" ? sp["mode"] : Array.isArray(sp["mode"]) ? sp["mode"][0] : "audience";
+  const mode = modeValue === "performer" ? "performer" : "audience";
+  const venueIndex = idToVenue(id);
 
   return (
-    <main style={{ minHeight: "100vh", background: "#050510", color: "#fff", padding: "32px 20px 80px" }}>
-      <div style={{ maxWidth: 980, margin: "0 auto" }}>
-        <Link href="/live/lobby" style={{ color: "#00FFFF", textDecoration: "none", fontSize: 12 }}>
-          ← Back to Lobby
-        </Link>
+    <main style={{ minHeight: "100vh", background: "#050510", color: "#fff", paddingBottom: 80 }}>
+      <nav style={{ background: "rgba(0,0,0,0.85)", borderBottom: "1px solid rgba(255,255,255,0.07)", padding: "12px 24px", display: "flex", gap: 16, alignItems: "center", backdropFilter: "blur(12px)", position: "sticky", top: 0, zIndex: 50 }}>
+        <Link href="/live/lobby" style={{ color: "#00FFFF", textDecoration: "none", fontSize: 11, fontWeight: 700 }}>← Lobby</Link>
+        <span style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>›</span>
+        <span style={{ fontSize: 11, fontWeight: 900, color: "#fff", letterSpacing: "0.06em" }}>ARENA — {id.toUpperCase().replace(/-/g, " ")}</span>
+        <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
+          <Link href={`/live/arena/${id}?mode=audience`} style={{ padding: "4px 12px", borderRadius: 6, fontSize: 9, fontWeight: 800, background: mode === "audience" ? "rgba(0,255,255,0.15)" : "rgba(255,255,255,0.04)", color: mode === "audience" ? "#00FFFF" : "rgba(255,255,255,0.4)", border: `1px solid ${mode === "audience" ? "rgba(0,255,255,0.35)" : "rgba(255,255,255,0.1)"}`, textDecoration: "none", letterSpacing: "0.08em" }}>
+            👥 AUDIENCE
+          </Link>
+          <Link href={`/live/arena/${id}?mode=performer`} style={{ padding: "4px 12px", borderRadius: 6, fontSize: 9, fontWeight: 800, background: mode === "performer" ? "rgba(255,45,170,0.15)" : "rgba(255,255,255,0.04)", color: mode === "performer" ? "#FF2DAA" : "rgba(255,255,255,0.4)", border: `1px solid ${mode === "performer" ? "rgba(255,45,170,0.35)" : "rgba(255,255,255,0.1)"}`, textDecoration: "none", letterSpacing: "0.08em" }}>
+            🎤 STAGE
+          </Link>
+        </div>
+      </nav>
 
-        <h1 style={{ margin: "12px 0 8px", fontSize: "clamp(1.6rem,4vw,2.4rem)", fontWeight: 900 }}>
-          Arena {id}
-        </h1>
-        <p style={{ margin: "0 0 14px", color: "rgba(255,255,255,0.55)", fontSize: 13 }}>
-          Immersive camera view, audience capture, live chat, and moderation controls.
-        </p>
+      <div style={{ maxWidth: 1100, margin: "0 auto", padding: "24px 20px", display: "grid", gap: 16 }}>
+        {/* 3D Arena canvas — full width above the panel */}
+        <div style={{ borderRadius: 16, overflow: "hidden", border: "1px solid rgba(255,255,255,0.08)", background: "#050510" }}>
+          <div style={{ padding: "8px 14px", background: "rgba(0,0,0,0.6)", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#FF2020", display: "inline-block" }} />
+            <span style={{ fontSize: 9, fontWeight: 900, color: "#00FFFF", letterSpacing: "0.18em" }}>
+              LIVE — {["THEATER", "ARENA", "CLUB", "OUTDOOR", "BOARDROOM"][venueIndex]} STAGE
+            </span>
+            <span style={{ marginLeft: "auto", fontSize: 9, color: "rgba(255,255,255,0.35)" }}>
+              {mode === "performer" ? "Stage view — your crowd" : "Audience view — house left to right"}
+            </span>
+          </div>
+          {/* AudienceScene is client-only — render as a client island via the panel */}
+          <div style={{ fontSize: 10, color: "rgba(255,255,255,0.2)", padding: "8px 14px", textAlign: "center", display: "none" }}>
+            3D arena loading…
+          </div>
+        </div>
 
+        {/* ArenaImmersivePanel — WebRTC, chat, reactions, moderation */}
         <ArenaImmersivePanel roomId={id} mode={mode} />
       </div>
     </main>
