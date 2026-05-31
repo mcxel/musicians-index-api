@@ -185,9 +185,9 @@ function BroadcastMonitor({ isLive, mode, onToggleLive }: {
 
 // ── Audience Radar ────────────────────────────────────────────────────────────
 
-function AudienceRadar() {
+function AudienceRadar({ mode }: { mode: import("@/lib/live/presenceEngine").PresenceMode }) {
   const { accentColor } = useRoom();
-  const presence = usePresenceEngine("broadcast-studio");
+  const presence = usePresenceEngine("broadcast-studio", 8000, mode);
   const [events, setEvents] = useState<{ id: number; text: string; type: "join" | "tip" | "follow" }[]>([]);
   const counterRef = useRef(0);
 
@@ -445,7 +445,7 @@ function StudioInner() {
         </WidgetSlot>
 
         <WidgetSlot name="radar">
-          <AudienceRadar />
+          <AudienceRadar mode={perfMode} />
         </WidgetSlot>
 
         <WidgetSlot name="revenue">
