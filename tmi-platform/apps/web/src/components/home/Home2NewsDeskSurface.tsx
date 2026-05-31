@@ -18,6 +18,19 @@ import HomeLobbyVideoWall from './HomeLobbyVideoWall';
 import { enforceRouteOwnership } from '@/lib/routes/TmiVisualRouteMap';
 import { getVisualSlot } from '@/lib/visuals/TmiVisualSlotRegistry';
 import LiveMediaWall from '@/components/media/LiveMediaWall';
+import RoomContainer from '@/components/room/RoomContainer';
+import ActionCanister from '@/components/room/ActionCanister';
+import WidgetDrawer from '@/components/room/WidgetDrawer';
+import NeonWaveUnderlay from '@/components/atmosphere/NeonWaveUnderlay';
+import AdSenseSlot, { AD_SLOTS } from '@/components/ads/AdSenseSlot';
+
+const HOME2_ACTIONS = [
+  { id: 'messages',       icon: '💬', label: 'Messages'       },
+  { id: 'notifications',  icon: '🔔', label: 'Notifications'  },
+  { id: 'bookings',       icon: '📅', label: 'Bookings'       },
+  { id: 'revenue',        icon: '💰', label: 'Revenue'        },
+  { id: 'friends',        icon: '👥', label: 'Friends'        },
+];
 import "@/styles/tmiTypography.css";
 
 export default function Home2NewsDeskSurface() {
@@ -25,7 +38,9 @@ export default function Home2NewsDeskSurface() {
   getVisualSlot('home-2-hero');
 
   return (
-    <main style={{ minHeight: '100vh', background: 'radial-gradient(circle at 50% 0%, rgba(170,45,255,0.15), transparent 50%), #050510', color: '#fff', paddingBottom: 80 }}>
+    <RoomContainer roomId="home-2" title="News Desk" accentColor="#00FFFF" bpm={90}>
+    <main style={{ minHeight: '100vh', background: 'radial-gradient(circle at 50% 0%, rgba(170,45,255,0.15), transparent 50%), #050510', color: '#fff', paddingBottom: 80, position: 'relative' }}>
+      <NeonWaveUnderlay colorA="#00FFFF" colorB="#AA2DFF" colorC="#FF2DAA" opacity={0.1} zIndex={0} />
       <style>{`
         @media (max-width: 639px) {
           [data-tmi-home2-feature-grid] {
@@ -40,6 +55,9 @@ export default function Home2NewsDeskSurface() {
       <BreakingNewsTicker />
       <SponsorTickerRail />
       <LiveMagazineVoiceTicker pageId="home-2" accent="#AA2DFF" />
+
+      {/* ── AD BREAK — leaderboard after ticker, before editorial ── */}
+      <AdSenseSlot slot={AD_SLOTS.homepageBanner} format="horizontal" label="ADVERTISEMENT" style={{ margin: '0 24px 8px', minHeight: 90 }} />
       <Home2NewsDensityRail />
 
       <section style={{ maxWidth: 1100, margin: '0 auto', padding: '34px 24px 24px' }}>
@@ -89,6 +107,9 @@ export default function Home2NewsDeskSurface() {
       {/* Editorial rail */}
       <Home2EditorialRail />
 
+      {/* ── AD BREAK 2 — rectangle between editorial and discovery ── */}
+      <AdSenseSlot slot={AD_SLOTS.homepageMid} format="rectangle" label="ADVERTISEMENT" style={{ margin: '0 24px 8px', minHeight: 250 }} />
+
       {/* Discovery rail */}
       <Home2DiscoveryRail />
 
@@ -117,6 +138,9 @@ export default function Home2NewsDeskSurface() {
 
       {/* World trending global belt */}
       <WorldTrendingBelt />
+      <ActionCanister actions={HOME2_ACTIONS} />
+      <WidgetDrawer />
     </main>
+    </RoomContainer>
   );
 }

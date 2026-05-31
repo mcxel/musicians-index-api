@@ -4,6 +4,19 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect, useCallback } from "react";
 import LiveMagazineVoiceTicker from "./LiveMagazineVoiceTicker";
+import RoomContainer from '@/components/room/RoomContainer';
+import ActionCanister from '@/components/room/ActionCanister';
+import WidgetDrawer from '@/components/room/WidgetDrawer';
+import NeonWaveUnderlay from '@/components/atmosphere/NeonWaveUnderlay';
+import AdSenseSlot, { AD_SLOTS } from '@/components/ads/AdSenseSlot';
+
+const HOME4_ACTIONS = [
+  { id: 'sponsors',      icon: '🤝', label: 'Sponsors'      },
+  { id: 'revenue',       icon: '💰', label: 'Revenue'       },
+  { id: 'bookings',      icon: '📅', label: 'Bookings'      },
+  { id: 'messages',      icon: '💬', label: 'Messages'      },
+  { id: 'notifications', icon: '🔔', label: 'Notifications' },
+];
 
 // ─── Sponsor sticker chaos — race car jacket layout ───────────────────────────
 
@@ -422,14 +435,17 @@ function MarqueeStrip() {
 
 export default function Home4AdMagazine() {
   return (
+    <RoomContainer roomId="home-4" title="Sponsors & Advertise" accentColor="#FFD700" bpm={90}>
     <div
       style={{
         minHeight: "100svh",
         background: "linear-gradient(160deg, #06040f 0%, #050510 50%, #060412 100%)",
         color: "#fff",
         overflowX: "hidden",
+        position: "relative",
       }}
     >
+      <NeonWaveUnderlay colorA="#FFD700" colorB="#AA2DFF" colorC="#FF2DAA" opacity={0.1} zIndex={0} />
       {/* Background ambient glows */}
       <div style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0 }}>
         <div style={{ position: "absolute", top: "10%", left: "5%", width: "40%", height: "50%", borderRadius: "50%", background: "radial-gradient(circle, rgba(170,45,255,0.07) 0%, transparent 70%)" }} />
@@ -499,6 +515,9 @@ export default function Home4AdMagazine() {
           </Link>
         </div>
       </div>
+      <ActionCanister actions={HOME4_ACTIONS} />
+      <WidgetDrawer />
     </div>
+    </RoomContainer>
   );
 }

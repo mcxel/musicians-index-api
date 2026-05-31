@@ -37,6 +37,19 @@ import { CATEGORY_LABELS, CATEGORY_ICONS } from "@/lib/competition/ChampionshipY
 import GlobalLiveBelt from "@/components/home/GlobalLiveBelt";
 import SmartCameraDirector from "@/components/stage/SmartCameraDirector";
 import AudienceField from "@/components/live/AudienceField";
+import RoomContainer from '@/components/room/RoomContainer';
+import ActionCanister from '@/components/room/ActionCanister';
+import WidgetDrawer from '@/components/room/WidgetDrawer';
+import NeonWaveUnderlay from '@/components/atmosphere/NeonWaveUnderlay';
+import AdSenseSlot, { AD_SLOTS } from '@/components/ads/AdSenseSlot';
+
+const HOME5_ACTIONS = [
+  { id: 'revenue',    icon: '💰', label: 'Revenue'    },
+  { id: 'messages',   icon: '💬', label: 'Messages'   },
+  { id: 'inventory',  icon: '💎', label: 'Vault'      },
+  { id: 'friends',    icon: '👥', label: 'Friends'    },
+  { id: 'bookings',   icon: '📅', label: 'Bookings'   },
+];
 
 // ─── Championship categories displayed on Home 5 ─────────────────────────────
 
@@ -118,13 +131,16 @@ export default function Home5BattleCypherSurface() {
   const liveRooms = battleBillboardLobbyWallEngine.getLiveRoomCards().slice(0, 2);
 
   return (
+    <RoomContainer roomId="home-5" title="Battles & Cyphers" accentColor="#FF2DAA" bpm={140}>
     <main
       style={{
         minHeight: "100vh",
         padding: "0 0 60px",
         background: "radial-gradient(circle at 0% 0%, rgba(255,45,170,0.16), transparent 35%), radial-gradient(circle at 100% 100%, rgba(0,255,255,0.12), transparent 40%), linear-gradient(170deg, #050510, #0c0618)",
+        position: "relative",
       }}
     >
+      <NeonWaveUnderlay colorA="#FF2DAA" colorB="#AA2DFF" colorC="#FFD700" opacity={0.12} zIndex={0} />
       <style>{`
         @media (max-width: 639px) {
           [data-cbc-grid] { grid-template-columns: 1fr !important; }
@@ -184,6 +200,9 @@ export default function Home5BattleCypherSurface() {
       </section>
 
       <Home5BattleDensityRail />
+
+      {/* ── AD BREAK 1 — leaderboard after density rail ── */}
+      <AdSenseSlot slot={AD_SLOTS.homepageBanner} format="horizontal" label="ADVERTISEMENT" style={{ margin: '0 24px 8px', minHeight: 90 }} />
 
       <section style={{ maxWidth: 1100, margin: "0 auto", padding: "0 24px 24px" }}>
         <SubmissionPulseRail accentColor="#FF2DAA" title="JUST UPLOADED · CBC ARENA" maxItems={4} />
@@ -494,7 +513,14 @@ export default function Home5BattleCypherSurface() {
 
       <HomeLobbyVideoWall accentColor="#FF2DAA" />
       <Home5OpenRoomsGrid />
+
+      {/* ── AD BREAK 2 — mid-page rectangle before live belt ── */}
+      <AdSenseSlot slot={AD_SLOTS.homepageMid} format="rectangle" label="ADVERTISEMENT" style={{ margin: '0 24px 8px', minHeight: 250 }} />
+
       <GlobalLiveBelt />
+      <ActionCanister actions={HOME5_ACTIONS} />
+      <WidgetDrawer />
     </main>
+    </RoomContainer>
   );
 }

@@ -26,6 +26,19 @@ import { getVisualSlot } from '@/lib/visuals/TmiVisualSlotRegistry';
 import LiveMediaWall from '@/components/media/LiveMediaWall';
 import BroadcastDeckWall from '@/components/broadcast/BroadcastDeckWall';
 import { HOME3_DECK_SEQUENCE } from '@/lib/broadcast/BroadcastRotationEngine';
+import RoomContainer from '@/components/room/RoomContainer';
+import ActionCanister from '@/components/room/ActionCanister';
+import WidgetDrawer from '@/components/room/WidgetDrawer';
+import NeonWaveUnderlay from '@/components/atmosphere/NeonWaveUnderlay';
+import AdSenseSlot, { AD_SLOTS } from '@/components/ads/AdSenseSlot';
+
+const HOME3_ACTIONS = [
+  { id: 'live-rooms',  icon: '🎭', label: 'Live Rooms'  },
+  { id: 'messages',    icon: '💬', label: 'Messages'    },
+  { id: 'bookings',    icon: '📅', label: 'Bookings'    },
+  { id: 'revenue',     icon: '💰', label: 'Revenue'     },
+  { id: 'friends',     icon: '👥', label: 'Friends'     },
+];
 
 export default function Home3LiveWorldSurface() {
   enforceRouteOwnership('/home/3');
@@ -44,11 +57,17 @@ export default function Home3LiveWorldSurface() {
   ] as const;
 
   return (
-    <main style={{ minHeight: '100vh', background: 'radial-gradient(circle at 80% 20%, rgba(0,255,136,0.1), transparent 50%), #050510', color: '#fff', paddingBottom: 80 }}>
+    <RoomContainer roomId="home-3" title="Live World" accentColor="#00FF88" bpm={128}>
+    <main style={{ minHeight: '100vh', background: 'radial-gradient(circle at 80% 20%, rgba(0,255,136,0.1), transparent 50%), #050510', color: '#fff', paddingBottom: 80, position: 'relative' }}>
+      <NeonWaveUnderlay colorA="#00FF88" colorB="#00FFFF" colorC="#AA2DFF" opacity={0.1} zIndex={0} />
       <GlobalTopNavRail />
       <BreakingNewsTicker />
       <SponsorTickerRail />
       <LiveMagazineVoiceTicker pageId="home-3" accent="#00FFFF" />
+
+      {/* ── AD BREAK 1 — leaderboard after ticker ── */}
+      <AdSenseSlot slot={AD_SLOTS.liveLobbyBanner} format="horizontal" label="ADVERTISEMENT" style={{ margin: '0 24px 8px', minHeight: 90 }} />
+
       <Home3LiveDensityRail />
 
       <section style={{ maxWidth: 1100, margin: '0 auto', padding: '0 24px 20px' }}>
@@ -147,6 +166,9 @@ export default function Home3LiveWorldSurface() {
       {/* Room occupancy rail */}
       <Home3OccupancyRail />
 
+      {/* ── AD BREAK 2 — mid-page rectangle ── */}
+      <AdSenseSlot slot={AD_SLOTS.homepageMid} format="rectangle" label="ADVERTISEMENT" style={{ margin: '0 24px 8px', minHeight: 250 }} />
+
       {/* Host rail */}
       <Home3HostRail />
 
@@ -156,6 +178,9 @@ export default function Home3LiveWorldSurface() {
 
       {/* Global live belt */}
       <GlobalLiveBelt />
+      <ActionCanister actions={HOME3_ACTIONS} />
+      <WidgetDrawer />
     </main>
+    </RoomContainer>
   );
 }

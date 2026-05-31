@@ -16,11 +16,24 @@ import MiniChatPreview from '@/components/media/MiniChatPreview';
 import MaskedVideoTile from '@/components/media/MaskedVideoTile';
 import { getLatestEditorialArticles } from '@/lib/editorial/NewsArticleModel';
 import AdRailSlot from '@/components/ads/AdRailSlot';
+import RoomContainer from '@/components/room/RoomContainer';
+import ActionCanister from '@/components/room/ActionCanister';
+import WidgetDrawer from '@/components/room/WidgetDrawer';
+import NeonWaveUnderlay from '@/components/atmosphere/NeonWaveUnderlay';
+import AdSenseSlot, { AD_SLOTS } from '@/components/ads/AdSenseSlot';
 
 const HOME1_LAYER_SESSION_KEY = 'TMI_OS_SessionState_Home1';
 const HOME1_ISSUE_ID = 'issue-001-neon';
 const THIS_WEEK_ORBIT_DIRECTION: 'clockwise' = 'clockwise';
 const THIS_WEEK_SHAPE_PRESET: 'cutout' = 'cutout';
+
+const HOME_LOBBY_ACTIONS = [
+  { id: 'live-rooms', icon: '🎭', label: 'Live Rooms' },
+  { id: 'messages',   icon: '💬', label: 'Messages'   },
+  { id: 'rankings',   icon: '🏆', label: 'Rankings'   },
+  { id: 'revenue',    icon: '💰', label: 'Revenue'    },
+  { id: 'friends',    icon: '👥', label: 'Friends'    },
+];
 
 type Performer = {
   slug: string;
@@ -627,11 +640,12 @@ export default function Home1CoverPage() {
   }, [canvasCards.length]);
 
   return (
+    <RoomContainer roomId="home-1" title="The Musician's Index" accentColor="#AA2DFF" bpm={95}>
     <div className="tmi-home1-canvas-surface">
       <style>{`
         .tmi-home1-canvas-surface {
           min-height: 100vh;
-          background: #050510;
+          background: transparent;
           color: #f8f7f1;
           font-family: 'Bebas Neue', 'Impact', sans-serif;
           overflow: hidden;
@@ -1585,6 +1599,7 @@ export default function Home1CoverPage() {
       `}</style>
 
       {/* 1. Base Layer */}
+      <NeonWaveUnderlay colorA="#FFD700" colorB="#FF2DAA" colorC="#AA2DFF" opacity={0.13} zIndex={0} />
       <div className="tmi-paper-underlay" />
       <div className="tmi-halftone-underlay" />
       
@@ -1616,6 +1631,29 @@ export default function Home1CoverPage() {
             ))}
           </div>
         </div>
+
+        {/* ── LIVE MONITOR HERO — top 3 crown leaders ── */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, margin: '10px 0 14px' }}>
+          {([
+            { name: 'Nova Cipher', rank: 1, genre: 'EDM',     accent: '#FFD700', viewers: 312, slug: 'nova-cipher' },
+            { name: 'Zion Freq',   rank: 2, genre: 'Hip-Hop', accent: '#00FFFF', viewers: 248, slug: 'zion-freq'   },
+            { name: 'Astra Nova',  rank: 3, genre: 'R&B',     accent: '#FF2DAA', viewers: 189, slug: 'astra-nova'  },
+          ] as const).map((p) => (
+            <Link key={p.slug} href="/fan/theater" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: '12px 8px', background: 'rgba(5,5,16,0.7)', border: `1px solid ${p.accent}30`, borderRadius: 10, textDecoration: 'none', boxShadow: `0 0 18px ${p.accent}12`, position: 'relative', overflow: 'hidden' }}>
+              <div style={{ position: 'absolute', top: 6, left: 8, display: 'flex', alignItems: 'center', gap: 4 }}>
+                <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#FF2020', display: 'inline-block', animation: 'tmiBlink 1.1s step-end infinite' }} />
+                <span style={{ fontSize: 7, fontWeight: 900, color: '#FF2020', fontFamily: "'Inter',sans-serif", letterSpacing: '0.15em' }}>LIVE</span>
+              </div>
+              <MaskedVideoTile shape="hexagon" performerName={p.name} isLive viewerCount={p.viewers} accentColor={p.accent} avatarEmoji="🎤" size={88} />
+              <div style={{ fontSize: 9, color: '#fff', fontFamily: "'Inter',sans-serif", fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'center' }}>#{p.rank} {p.name}</div>
+              <div style={{ fontSize: 8, color: p.accent, fontFamily: "'Inter',sans-serif", letterSpacing: '0.1em' }}>{p.genre}</div>
+              <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.4)', fontFamily: "'Inter',sans-serif" }}>{p.viewers} watching</div>
+            </Link>
+          ))}
+        </div>
+
+        {/* ── AD BREAK 1 — above-fold leaderboard ── */}
+        <AdSenseSlot slot={AD_SLOTS.homepageBanner} format="horizontal" label="ADVERTISEMENT" style={{ margin: '8px 0 12px', minHeight: 90 }} />
 
         <ChallengeYourSongCTA variant="strip" />
 
@@ -1682,6 +1720,9 @@ export default function Home1CoverPage() {
         {/* ── ORBIT HERO — memo component, never re-renders from parent ── */}
         <PlatformPulse />
         <WeeklyCrownOrbit onNodeClick={setProfilePanel} />
+
+        {/* ── AD BREAK 2 — mid-page rectangle after orbit ── */}
+        <AdSenseSlot slot={AD_SLOTS.homepageMid} format="rectangle" label="ADVERTISEMENT" style={{ margin: '12px 0', minHeight: 250 }} />
 
         {/* ── Broadcast deck banner ── */}
         {(() => {
@@ -1894,9 +1935,13 @@ export default function Home1CoverPage() {
       <OrbitalAlertWidget side="left"  message="Watch Live Performances"   href="/fan/theater"   accentColor="#00FFFF" />
       <OrbitalAlertWidget side="right" message="Find Your Favorite Artist" href="/live/lobby"    accentColor="#FF2DAA" />
 
+      <ActionCanister actions={HOME_LOBBY_ACTIONS} />
+      <WidgetDrawer />
+
       {/* 6. Top Gloss & Grain Overlays */}
       <div className="tmi-grain-overlay" />
       <div className="tmi-gloss-overlay" />
     </div>
+    </RoomContainer>
   );
 }
