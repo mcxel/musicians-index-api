@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import VenueTicketPrinter, { type TicketData as VenueTicketData } from "@/components/tickets/VenueTicketPrinter";
 
 // ─── Seed ticket data (replace with API fetch per ticketId) ──────────────────
 interface TicketData {
@@ -41,6 +42,37 @@ const DEMO_TICKET: TicketData = {
   issueDate: "2026-05-03",
   accentColor: "#00FFFF",
 };
+
+// ─── Map page TicketData → VenueTicketPrinter TicketData ─────────────────────
+const TICKET_TYPE_MAP: Record<string, VenueTicketData["ticketType"]> = {
+  "VIP Floor Pass": "vip",
+  "Backstage Pass": "backstage",
+  "Reserved Seating": "reserved",
+  "Standing": "standing",
+  "General Admission": "general",
+};
+
+function toVenueTicket(t: TicketData): VenueTicketData {
+  return {
+    ticketId:     t.id,
+    eventName:    t.eventName,
+    artistName:   "TMI Featured Artists",
+    venueName:    t.venueName,
+    venueAddress: t.venueAddress,
+    date:         t.date,
+    time:         t.showTime,
+    doorsOpen:    t.doorsOpen,
+    seat:         t.seat,
+    row:          t.row,
+    section:      t.section,
+    ticketType:   TICKET_TYPE_MAP[t.ticketType] ?? "general",
+    holderName:   t.holderName,
+    price:        t.price,
+    qrData:       t.barcode,
+    accentColor:  t.accentColor,
+    barcode:      t.barcode,
+  };
+}
 
 // ─── QR code SVG (deterministic pattern from barcode string) ─────────────────
 function QRCode({ value, size = 120 }: { value: string; size?: number }) {
@@ -349,6 +381,12 @@ export default function TicketPrintPage() {
               <Link href="/admin/venue-ticket-templates" style={{ color: "#00FFFF", textDecoration: "none", fontWeight: 700 }}>Admin → Venue Ticket Templates</Link>.
               The barcode is scannable via the{" "}
               <Link href="/tickets/scanner" style={{ color: "#00FFFF", textDecoration: "none", fontWeight: 700 }}>Ticket Scanner</Link>.
+            </div>
+
+            {/* Venue Ticket Engine — VenueTicketPrinter view */}
+            <div className="no-print" style={{ width: "100%", maxWidth: 680, background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, padding: "18px 20px" }}>
+              <div style={{ fontSize: 8, letterSpacing: "0.3em", color: "rgba(255,255,255,0.3)", fontWeight: 800, textTransform: "uppercase", marginBottom: 14 }}>VENUE PRINT ENGINE</div>
+              <VenueTicketPrinter tickets={[toVenueTicket(ticket)]} showBatchPrint={false} />
             </div>
           </div>
         </div>
