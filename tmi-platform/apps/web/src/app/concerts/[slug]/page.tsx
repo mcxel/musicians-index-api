@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import ArenaEventShell from "@/components/live/ArenaEventShell";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -94,6 +95,21 @@ export default async function ConcertPage({ params }: Props) {
           </div>
         )}
       </header>
+
+      {/* Live arena — embedded for LIVE and REPLAY concerts */}
+      {(isLive || isReplay) && (
+        <div style={{ maxWidth: 860, margin: "0 auto", padding: "0 24px 40px" }}>
+          <div style={{ fontSize: 8, letterSpacing: "0.2em", color: "rgba(255,255,255,0.25)", fontWeight: 700, marginBottom: 16 }}>
+            {isLive ? "LIVE ARENA — YOU ARE INSIDE THE SHOW" : "REPLAY ARENA — RELIVE THE PERFORMANCE"}
+          </div>
+          <ArenaEventShell
+            roomId={slug}
+            eventType="concert"
+            mode="audience"
+            watcherCount={concert.viewers}
+          />
+        </div>
+      )}
 
       {/* Artist link */}
       <div style={{ maxWidth: 860, margin: "0 auto", padding: "0 24px 40px", borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 32 }}>

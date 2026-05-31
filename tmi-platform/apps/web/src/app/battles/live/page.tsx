@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import SplitStreamMatrix from '@/components/media/SplitStreamMatrix';
-import AudienceField from '@/components/live/AudienceField';
+import AudienceScene from '@/components/live/AudienceScene';
 import PerformanceVotePanel from '@/components/arena/PerformanceVotePanel';
 import { battleBillboardLobbyWallEngine } from '@/lib/competition/BattleBillboardLobbyWallEngine';
 import { battleMatchLifecycleEngine, UNIVERSAL_BATTLE_WINDOW_SECONDS } from '@/lib/competition/BattleMatchLifecycleEngine';
@@ -169,12 +169,12 @@ export default function BattlesLivePage() {
               onModeChange={setSplitMode}
             />
 
-            {/* Audience field */}
+            {/* 3D audience arena — battle venue (Arena, venue index 1) */}
             <div style={{ marginTop: 4 }}>
               <div style={{ fontSize: 9, letterSpacing: '0.25em', color: 'rgba(255,255,255,0.3)', fontWeight: 800, marginBottom: 10 }}>
                 LIVE AUDIENCE
               </div>
-              <AudienceField />
+              <AudienceScene view="fan" venue={1} />
             </div>
           </div>
 

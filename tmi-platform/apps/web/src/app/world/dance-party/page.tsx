@@ -8,6 +8,11 @@ import FooterHUD from '@/components/layout/FooterHUD';
 import CrowdPulseLights from '@/components/lighting/CrowdPulseLights';
 import BeamSweep from '@/components/lighting/BeamSweep';
 import TipArtistBox from '@/components/commerce/TipArtistBox';
+import DanceArena3D from '@/components/live/DanceArena3D';
+import { createSeatingMesh } from '@/lib/seats/SeatingMeshEngine';
+
+// Dance floor — 6 rows × 8 cols, no chairs, standing only
+const DANCE_FLOOR_MESH = createSeatingMesh('world-dance-party', 'global-session', 6, 8);
 
 const DJ_NAME = 'DJ KRONOS';
 const CURRENT_TRACK = 'World Stage Anthem (TMI Mix)';
@@ -127,6 +132,21 @@ export default function WorldDancePartyPage() {
                 </motion.div>
               )}
             </AnimatePresence>
+
+            {/* 3D Dance Arena — no chairs, standing floor, DJ booth */}
+            <div style={{ marginBottom: 24 }}>
+              <DanceArena3D
+                mesh={DANCE_FLOOR_MESH}
+                fanSeat={null}
+                activeColor="#FF2DAA"
+                bpm={BPM}
+                ralphAnim="💃"
+                ralphAnimColor="#FF2DAA"
+                ralphAnimLabel="WORLD DANCE PARTY"
+                currentTrackTitle={CURRENT_TRACK}
+                currentTrackArtist={DJ_NAME}
+              />
+            </div>
 
             {/* Dance zones */}
             <div style={{ marginBottom: 24 }}>

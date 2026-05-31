@@ -51,6 +51,26 @@ export const VENUE_PLACEMENTS: Record<string, VenuePlacement[]> = {
     { slot: 'roomLeaderboard',       networks: ['adsense', 'propeller'],           format: 'horizontal', minHeight: 90  },
     { slot: 'roomBetweenSegments',   networks: ['adsense', 'propeller', 'amazon'], format: 'rectangle',  minHeight: 250 },
   ],
+  'dashboard': [
+    { slot: 'dashboardBanner',       networks: ['adsense', 'medianet', 'amazon'],  format: 'horizontal', minHeight: 90  },
+    { slot: 'dashboardSidebar',      networks: ['adsense', 'medianet', 'carbon'],  format: 'rectangle',  minHeight: 250 },
+    { slot: 'dashboardMid',          networks: ['adsense', 'propeller', 'amazon'], format: 'rectangle',  minHeight: 250 },
+  ],
+  'arena': [
+    { slot: 'arenaBanner',           networks: ['adsense', 'propeller', 'amazon'], format: 'horizontal', minHeight: 90  },
+    { slot: 'arenaInterstitial',     networks: ['adsense', 'propeller'],           format: 'rectangle',  minHeight: 250 },
+  ],
+  'battle': [
+    { slot: 'battleBanner',          networks: ['adsense', 'propeller', 'amazon'], format: 'horizontal', minHeight: 90  },
+    { slot: 'battleInterstitial',    networks: ['adsense', 'propeller'],           format: 'rectangle',  minHeight: 250 },
+  ],
+  'cypher': [
+    { slot: 'cypherBanner',          networks: ['adsense', 'medianet'],            format: 'horizontal', minHeight: 90  },
+  ],
+  'concert': [
+    { slot: 'concertBanner',         networks: ['adsense', 'medianet', 'amazon'],  format: 'horizontal', minHeight: 90  },
+    { slot: 'concertSidebar',        networks: ['adsense', 'medianet', 'carbon'],  format: 'rectangle',  minHeight: 250 },
+  ],
 };
 
 // ── Network availability check ───────────────────────────────────────────────
