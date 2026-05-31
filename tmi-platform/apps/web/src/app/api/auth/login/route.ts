@@ -1,5 +1,2 @@
-import { proxyToApi } from "@/lib/apiProxy";
-
-export async function POST(req: Request) {
-  return proxyToApi(req, "/api/auth/login");
-}
+// Wire login → signin: same handler, one canonical path
+export { POST } from "@/app/api/auth/signin/route";
