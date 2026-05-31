@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState, memo } from 'react';
+import { useEffect, useState, useRef, memo } from 'react';
+import { usePresenceEngine } from '@/lib/live/presenceEngine';
 import { AnimatePresence, motion } from 'framer-motion';
 import LayerCanvas from '@/components/canvas/LayerCanvas';
 import type { TMILayer, TMILayerSessionState } from '@/types/layers';
@@ -395,6 +396,131 @@ const WeeklyCrownOrbit = memo(function WeeklyCrownOrbit({
     </section>
   );
 });
+
+// ── OrbitalAlertWidget — flashes 3× on mount, then settles to static ──────────
+const SESSION_ALERT_KEY = 'tmi_orbital_alert_flashed';
+
+function OrbitalAlertWidget({
+  side,
+  message,
+  href,
+  accentColor = '#FFD700',
+}: {
+  side: 'left' | 'right';
+  message: string;
+  href: string;
+  accentColor?: string;
+}) {
+  const [phase, setPhase] = useState<'hidden' | 'flash' | 'static'>('hidden');
+  const flashCount = useRef(0);
+  const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const alreadyFlashed = sessionStorage.getItem(SESSION_ALERT_KEY);
+    // Stagger: left fires at 1.8s, right at 2.8s
+    const delay = side === 'left' ? 1800 : 2800;
+    const t = setTimeout(() => {
+      if (alreadyFlashed) { setPhase('static'); return; }
+      setPhase('flash');
+      const cycle = () => {
+        flashCount.current += 1;
+        if (flashCount.current >= 3) {
+          setPhase('static');
+          sessionStorage.setItem(SESSION_ALERT_KEY, '1');
+          return;
+        }
+        setPhase('hidden');
+        flashTimer.current = setTimeout(() => { setPhase('flash'); cycle(); }, 420);
+      };
+      flashTimer.current = setTimeout(cycle, 600);
+    }, delay);
+    return () => {
+      clearTimeout(t);
+      if (flashTimer.current) clearTimeout(flashTimer.current);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  if (phase === 'hidden') return null;
+
+  const sideStyle: React.CSSProperties = side === 'left'
+    ? { left: 12, right: 'auto' }
+    : { right: 12, left: 'auto' };
+
+  return (
+    <a
+      href={href}
+      style={{
+        position: 'fixed',
+        top: '50%',
+        transform: 'translateY(-50%)',
+        zIndex: 60,
+        textDecoration: 'none',
+        ...sideStyle,
+      }}
+    >
+      <div
+        style={{
+          background: 'rgba(5,5,16,0.88)',
+          border: `1px solid ${accentColor}`,
+          borderRadius: 10,
+          padding: '12px 14px',
+          maxWidth: 128,
+          textAlign: 'center',
+          boxShadow: phase === 'flash'
+            ? `0 0 24px ${accentColor}99, 0 0 8px ${accentColor}66`
+            : `0 0 8px ${accentColor}33`,
+          backdropFilter: 'blur(14px)',
+          transition: 'box-shadow 0.2s ease',
+          animation: phase === 'flash' ? 'tmiAlertPulse 0.3s ease-in-out' : 'none',
+        }}
+      >
+        <div style={{
+          fontSize: 10, fontWeight: 900, color: accentColor,
+          letterSpacing: '0.08em', textTransform: 'uppercase',
+          lineHeight: 1.3, fontFamily: "'Inter', sans-serif",
+        }}>
+          {message}
+        </div>
+        <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.4)', marginTop: 4, fontFamily: "'Inter',sans-serif", letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+          With Upgrades Available
+        </div>
+      </div>
+    </a>
+  );
+}
+
+// ── PlatformPulse — live stats bar above the orbit ───────────────────────────
+function PlatformPulse() {
+  const presence = usePresenceEngine('fan-theater', 12000, 'community');
+  // Seeded platform-wide aggregates until real telemetry API exists
+  const watching = presence.watching + 4320;
+  const liveRooms = 14;
+
+  return (
+    <div style={{
+      display: 'flex', justifyContent: 'center', gap: 24, flexWrap: 'wrap',
+      fontFamily: "'Inter', sans-serif",
+      padding: '8px 16px',
+      background: 'rgba(0,0,0,0.35)',
+      border: '1px solid rgba(255,255,255,0.06)',
+      borderRadius: 10,
+      margin: '10px 0',
+    }}>
+      {[
+        { label: 'ONLINE',      value: watching.toLocaleString(), color: '#00FF88' },
+        { label: 'LIVE ROOMS',  value: liveRooms.toString(),       color: '#00FFFF' },
+        { label: 'TIPS TODAY',  value: '$4,382',                   color: '#FFD700' },
+      ].map((s) => (
+        <div key={s.label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div style={{ width: 6, height: 6, borderRadius: '50%', background: s.color, boxShadow: `0 0 6px ${s.color}` }} />
+          <span style={{ fontSize: 11, fontWeight: 900, color: s.color, letterSpacing: '0.04em' }}>{s.value}</span>
+          <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.12em' }}>{s.label}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 // ──────────────────────────────────────────────────────────────────────────────
 
@@ -1302,6 +1428,12 @@ export default function Home1CoverPage() {
           gap: 10px;
         }
 
+        @keyframes tmiAlertPulse {
+          0% { transform: scale(1); }
+          50% { transform: scale(1.06); }
+          100% { transform: scale(1); }
+        }
+
         @keyframes tmiMastheadPulse {
           0%, 100% { filter: saturate(1) brightness(1); }
           25% { filter: saturate(1.1) brightness(1.02); }
@@ -1548,6 +1680,7 @@ export default function Home1CoverPage() {
         </div>
 
         {/* ── ORBIT HERO — memo component, never re-renders from parent ── */}
+        <PlatformPulse />
         <WeeklyCrownOrbit onNodeClick={setProfilePanel} />
 
         {/* ── Broadcast deck banner ── */}
@@ -1756,6 +1889,10 @@ export default function Home1CoverPage() {
         />
       )}
       <WelcomeArenaOverlay />
+
+      {/* Orbital Alert Widgets — fixed overlays, flash on first visit */}
+      <OrbitalAlertWidget side="left"  message="Watch Live Performances"   href="/fan/theater"   accentColor="#00FFFF" />
+      <OrbitalAlertWidget side="right" message="Find Your Favorite Artist" href="/live/lobby"    accentColor="#FF2DAA" />
 
       {/* 6. Top Gloss & Grain Overlays */}
       <div className="tmi-grain-overlay" />
