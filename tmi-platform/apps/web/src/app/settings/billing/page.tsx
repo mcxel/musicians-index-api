@@ -3,20 +3,28 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 const PLANS = [
-  { id: "free", label: "Free", price: "$0/mo", perks: ["Basic feed access", "Vote in battles", "5 tips/mo"], current: false, priceId: "price_free" },
-  { id: "fan-pass", label: "Fan Pass", price: "$4.99/mo", perks: ["Unlimited voting", "XP multiplier x1.5", "Fan Club access", "Exclusive emotes"], current: true, priceId: "price_fan_pass_monthly" },
-  { id: "vip", label: "VIP Pass", price: "$14.99/mo", perks: ["All Fan Pass perks", "XP multiplier x3", "Backstage access", "Season pass included", "Priority support"], current: false, priceId: "price_vip_monthly" },
+  { id: "free",     label: "Free",       price: "$0/mo",   perks: ["Basic feed access", "Vote in battles", "5 tips/mo"],                                              current: false, priceId: "price_free",            amount: 0    },
+  { id: "fan-pass", label: "Fan Pass",   price: "$2.99/mo", perks: ["Unlimited voting", "XP multiplier x1.5", "Fan Club access", "Exclusive emotes"],                current: true,  priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_FAN_MONTHLY     ?? "price_fan_monthly",    amount: 299  },
+  { id: "artist",   label: "Artist",     price: "$9.99/mo", perks: ["Go live", "Battle entry", "Beat Vault upload", "Mint NFTs", "Revenue dashboard"],                current: false, priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_ARTIST_MONTHLY  ?? "price_artist_monthly",  amount: 999  },
+  { id: "vip",      label: "VIP Diamond",price: "$14.99/mo",perks: ["All Artist perks", "Diamond badge", "Front-row seats", "Priority matchmaking", "VIP Lounge"],  current: false, priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_VIP_MONTHLY     ?? "price_vip_monthly",     amount: 1499 },
 ];
 
 export default function SettingsBillingPage() {
   const router = useRouter();
 
   function selectPlan(p: typeof PLANS[0]) {
-    if (p.id === "free") {
-      router.push("/api/stripe/checkout?priceId=" + p.priceId + "&mode=subscription&downgrade=1");
-    } else {
-      router.push("/api/stripe/checkout?priceId=" + p.priceId + "&mode=subscription");
+    if (p.id === "free" || p.amount === 0) {
+      // Downgrade — no Stripe charge needed, just navigate
+      router.push("/settings?notice=downgraded");
+      return;
     }
+    const params = new URLSearchParams({
+      priceId: p.priceId,
+      amount: String(p.amount),
+      productName: `TMI ${p.label} Plan`,
+      mode: "subscription",
+    });
+    router.push("/api/stripe/checkout?" + params.toString());
   }
 
   return (

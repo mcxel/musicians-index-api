@@ -10,6 +10,17 @@ const PROTECTED_PREFIXES = [
   "/profile/",
   "/beats/locker",
   "/tickets/",
+  // Billing — must be authenticated before touching payment flows
+  "/settings/billing",
+  "/settings/account",
+  "/settings/payout",
+  "/settings/privacy",
+  // Role hubs — require role assignment
+  "/hub/",
+  // Messages + NFT vault — account required
+  "/messages",
+  "/nft/mint",
+  "/beat-vault/upload",
 ];
 
 export function middleware(req: NextRequest) {
@@ -40,5 +51,14 @@ export const config = {
     "/profile/:path*",
     "/beats/locker/:path*",
     "/tickets/:path*",
+    "/settings/billing/:path*",
+    "/settings/billing",
+    "/settings/account/:path*",
+    "/settings/payout/:path*",
+    "/settings/privacy/:path*",
+    "/hub/:path*",
+    "/messages",
+    "/nft/mint",
+    "/beat-vault/upload",
   ],
 };
