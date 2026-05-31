@@ -4,6 +4,7 @@ import { getEditorialArticleBySlug } from "@/lib/editorial/NewsArticleModel";
 import MagazineSpreadRenderer from "@/components/editorial/MagazineSpreadRenderer";
 import XPTrigger from "@/components/common/XPTrigger";
 import AdRailSlot from "@/components/ads/AdRailSlot";
+import UnifiedAdSlot from "@/components/ads/UnifiedAdSlot";
 import Link from "next/link";
 
 type Props = { params: Promise<{ slug: string }> };
@@ -73,10 +74,17 @@ export default async function ArticlePage({ params }: Props) {
         </div>
       </div>
 
+      {/* ── AD — leaderboard before article ── */}
+      <div style={{ maxWidth: 900, margin: "0 auto", padding: "8px 24px 0" }}>
+        <UnifiedAdSlot venue="magazine" slotKey="magazineLeaderboard" format="horizontal" label="ADVERTISEMENT" style={{ minHeight: 90 }} accentColor="#FF2DAA" />
+      </div>
+
       <MagazineSpreadRenderer article={article} issueNumber={1} related={relatedArticles} />
 
       <div style={{ maxWidth: 900, margin: "0 auto", padding: "0 24px" }}>
         <AdRailSlot slotId="magazine-article-rail" hasSponsor={false} hasAdvertiser={false} title="Article Rail" />
+        {/* ── AD — end of article ── */}
+        <UnifiedAdSlot venue="magazine" slotKey="magazineArticleEnd" format="rectangle" label="ADVERTISEMENT" style={{ marginTop: 16, minHeight: 250 }} accentColor="#FF2DAA" />
       </div>
 
       {/* Reader continuity footer */}

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import UnifiedAdSlot from "@/components/ads/UnifiedAdSlot";
 
 interface Props { params: { slug: string } }
 
@@ -142,6 +143,9 @@ export default function ShowPage({ params }: Props) {
             Fan Hub
           </Link>
         </div>
+
+        {/* ── AD — between show sections ── */}
+        <UnifiedAdSlot venue="shows" slotKey="roomLeaderboard" format="horizontal" label="ADVERTISEMENT" style={{ marginBottom: 28, minHeight: 90 }} accentColor={show.accent} />
 
         {/* More shows */}
         <div>

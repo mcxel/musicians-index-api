@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { emitSystemEvent } from "@/lib/systemEventBus";
+import UnifiedAdSlot from "@/components/ads/UnifiedAdSlot";
 
 type GameRouteShellProps = {
   gameId: string;
@@ -12,6 +13,10 @@ export default function GameRouteShell({ gameId }: GameRouteShellProps) {
     <main style={{ minHeight: "100vh", background: "#020617", color: "#e2e8f0", padding: 20 }}>
       <div style={{ maxWidth: 940, margin: "0 auto", display: "grid", gap: 12 }}>
         <Link href="/home/4" style={{ color: "#93c5fd", textDecoration: "none" }}>← Back to Game Home</Link>
+
+        {/* ── AD — game show header banner ── */}
+        <UnifiedAdSlot venue="games" slotKey="gameShowBanner" format="horizontal" label="ADVERTISEMENT" style={{ minHeight: 90 }} accentColor="#FF2DAA" />
+
         <h1 style={{ margin: 0 }}>Game Route · {gameId}</h1>
         <p style={{ margin: 0, color: "#cbd5e1" }}>Game route shell is live with lobby/reward integration chain.</p>
         <section style={{ border: "1px solid rgba(56,189,248,0.35)", borderRadius: 12, background: "rgba(15,23,42,0.72)", padding: 12 }}>
@@ -21,6 +26,9 @@ export default function GameRouteShell({ gameId }: GameRouteShellProps) {
             <Link href="/billboards/game-night" onClick={() => emitSystemEvent({ type: "pipeline.billboard.open", actor: "Game Route", sectionId: `game-${gameId}-billboard`, route: "/billboards/game-night", message: `Game ${gameId} -> billboard` })} style={linkStyle}>Open Billboard</Link>
           </div>
         </section>
+
+        {/* ── AD — between rounds/sections ── */}
+        <UnifiedAdSlot venue="games" slotKey="gameShowInterstitial" format="rectangle" label="ADVERTISEMENT" style={{ minHeight: 250 }} accentColor="#FF2DAA" />
       </div>
     </main>
   );

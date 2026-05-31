@@ -22,7 +22,7 @@ import RoomContainer from '@/components/room/RoomContainer';
 import ActionCanister from '@/components/room/ActionCanister';
 import WidgetDrawer from '@/components/room/WidgetDrawer';
 import NeonWaveUnderlay from '@/components/atmosphere/NeonWaveUnderlay';
-import AdSenseSlot, { AD_SLOTS } from '@/components/ads/AdSenseSlot';
+import UnifiedAdSlot from '@/components/ads/UnifiedAdSlot';
 
 const HOME2_ACTIONS = [
   { id: 'messages',       icon: '💬', label: 'Messages'       },
@@ -57,7 +57,7 @@ export default function Home2NewsDeskSurface() {
       <LiveMagazineVoiceTicker pageId="home-2" accent="#AA2DFF" />
 
       {/* ── AD BREAK — leaderboard after ticker, before editorial ── */}
-      <AdSenseSlot slot={AD_SLOTS.homepageBanner} format="horizontal" label="ADVERTISEMENT" style={{ margin: '0 24px 8px', minHeight: 90 }} />
+      <UnifiedAdSlot venue="home-2" slotKey="homepageBanner" format="horizontal" label="ADVERTISEMENT" style={{ margin: '0 24px 8px', minHeight: 90 }} accentColor="#00FFFF" />
       <Home2NewsDensityRail />
 
       <section style={{ maxWidth: 1100, margin: '0 auto', padding: '34px 24px 24px' }}>
@@ -108,7 +108,7 @@ export default function Home2NewsDeskSurface() {
       <Home2EditorialRail />
 
       {/* ── AD BREAK 2 — rectangle between editorial and discovery ── */}
-      <AdSenseSlot slot={AD_SLOTS.homepageMid} format="rectangle" label="ADVERTISEMENT" style={{ margin: '0 24px 8px', minHeight: 250 }} />
+      <UnifiedAdSlot venue="home-2" slotKey="homepageMid" format="rectangle" label="ADVERTISEMENT" style={{ margin: '0 24px 8px', minHeight: 250 }} accentColor="#00FFFF" />
 
       {/* Discovery rail */}
       <Home2DiscoveryRail />

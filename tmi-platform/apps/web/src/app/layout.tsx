@@ -126,6 +126,31 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4088577529436039"
           crossOrigin="anonymous"
         />
+        {/* Media.net — Yahoo/Bing contextual ads */}
+        {process.env.NEXT_PUBLIC_MEDIANET_CID && (
+          <Script
+            id="medianet-init"
+            strategy="afterInteractive"
+            dangerouslySetInnerHTML={{
+              __html: `window._mNDetails = { loadStarted: true }; window._mNHandle = { queue: [] };`,
+            }}
+          />
+        )}
+        {/* Amazon Publisher Services (APS) */}
+        {process.env.NEXT_PUBLIC_AMAZON_PUB_ID && (
+          <Script
+            id="amazon-aps"
+            strategy="afterInteractive"
+            src="https://c.amazon-adsystem.com/aax2/apstag.js"
+            onLoad={() => {
+              const pubId = process.env.NEXT_PUBLIC_AMAZON_PUB_ID;
+              if (!pubId) return;
+              try {
+                (window as any).apstag?.init({ pubID: pubId, adServer: 'googletag' });
+              } catch {}
+            }}
+          />
+        )}
       </head>
       <body className="tmi-obsidian-cinematic">
         <script

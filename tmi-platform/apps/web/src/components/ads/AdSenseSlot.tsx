@@ -9,12 +9,25 @@ import { useEffect, useRef } from 'react';
 // Until real slot IDs are added, AdSense will auto-detect and fill the slots
 // once the page traffic reaches the threshold for auto-ads.
 export const AD_SLOTS = {
-  homepageBanner:       process.env.NEXT_PUBLIC_ADSENSE_SLOT_HOMEPAGE_BANNER       ?? '',
-  homepageMid:          process.env.NEXT_PUBLIC_ADSENSE_SLOT_HOMEPAGE_MID          ?? '',
-  dashboardSidebar:     process.env.NEXT_PUBLIC_ADSENSE_SLOT_DASHBOARD_SIDEBAR     ?? '',
-  liveLobbyBanner:      process.env.NEXT_PUBLIC_ADSENSE_SLOT_LIVE_LOBBY_BANNER     ?? '',
-  articleInline:        process.env.NEXT_PUBLIC_ADSENSE_SLOT_ARTICLE_INLINE        ?? '',
-  sponsorFallback:      process.env.NEXT_PUBLIC_ADSENSE_SLOT_SPONSOR_FALLBACK      ?? '',
+  // Homepage
+  homepageBanner:          process.env.NEXT_PUBLIC_ADSENSE_SLOT_HOMEPAGE_BANNER          ?? '',
+  homepageMid:             process.env.NEXT_PUBLIC_ADSENSE_SLOT_HOMEPAGE_MID             ?? '',
+  dashboardSidebar:        process.env.NEXT_PUBLIC_ADSENSE_SLOT_DASHBOARD_SIDEBAR        ?? '',
+  liveLobbyBanner:         process.env.NEXT_PUBLIC_ADSENSE_SLOT_LIVE_LOBBY_BANNER        ?? '',
+  // Articles / Magazine
+  articleInline:           process.env.NEXT_PUBLIC_ADSENSE_SLOT_ARTICLE_INLINE           ?? '',
+  magazineLeaderboard:     process.env.NEXT_PUBLIC_ADSENSE_SLOT_MAGAZINE_LEADERBOARD     ?? '',
+  magazineInline:          process.env.NEXT_PUBLIC_ADSENSE_SLOT_MAGAZINE_INLINE          ?? '',
+  magazineArticleEnd:      process.env.NEXT_PUBLIC_ADSENSE_SLOT_MAGAZINE_ARTICLE_END     ?? '',
+  // Games / Shows
+  gameShowBanner:          process.env.NEXT_PUBLIC_ADSENSE_SLOT_GAME_SHOW_BANNER         ?? '',
+  gameShowInterstitial:    process.env.NEXT_PUBLIC_ADSENSE_SLOT_GAME_SHOW_INTERSTITIAL   ?? '',
+  showSidebar:             process.env.NEXT_PUBLIC_ADSENSE_SLOT_SHOW_SIDEBAR             ?? '',
+  // Rooms
+  roomLeaderboard:         process.env.NEXT_PUBLIC_ADSENSE_SLOT_ROOM_LEADERBOARD         ?? '',
+  roomBetweenSegments:     process.env.NEXT_PUBLIC_ADSENSE_SLOT_ROOM_BETWEEN_SEGMENTS    ?? '',
+  // Fallback
+  sponsorFallback:         process.env.NEXT_PUBLIC_ADSENSE_SLOT_SPONSOR_FALLBACK         ?? '',
 };
 
 const PUBLISHER_ID = 'ca-pub-4088577529436039';

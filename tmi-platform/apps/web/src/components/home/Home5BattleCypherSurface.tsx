@@ -41,7 +41,7 @@ import RoomContainer from '@/components/room/RoomContainer';
 import ActionCanister from '@/components/room/ActionCanister';
 import WidgetDrawer from '@/components/room/WidgetDrawer';
 import NeonWaveUnderlay from '@/components/atmosphere/NeonWaveUnderlay';
-import AdSenseSlot, { AD_SLOTS } from '@/components/ads/AdSenseSlot';
+import UnifiedAdSlot from '@/components/ads/UnifiedAdSlot';
 
 const HOME5_ACTIONS = [
   { id: 'revenue',    icon: '💰', label: 'Revenue'    },
@@ -202,7 +202,7 @@ export default function Home5BattleCypherSurface() {
       <Home5BattleDensityRail />
 
       {/* ── AD BREAK 1 — leaderboard after density rail ── */}
-      <AdSenseSlot slot={AD_SLOTS.homepageBanner} format="horizontal" label="ADVERTISEMENT" style={{ margin: '0 24px 8px', minHeight: 90 }} />
+      <UnifiedAdSlot venue="home-5" slotKey="homepageBanner" format="horizontal" label="ADVERTISEMENT" style={{ margin: '0 24px 8px', minHeight: 90 }} accentColor="#FF2DAA" />
 
       <section style={{ maxWidth: 1100, margin: "0 auto", padding: "0 24px 24px" }}>
         <SubmissionPulseRail accentColor="#FF2DAA" title="JUST UPLOADED · CBC ARENA" maxItems={4} />
@@ -515,7 +515,7 @@ export default function Home5BattleCypherSurface() {
       <Home5OpenRoomsGrid />
 
       {/* ── AD BREAK 2 — mid-page rectangle before live belt ── */}
-      <AdSenseSlot slot={AD_SLOTS.homepageMid} format="rectangle" label="ADVERTISEMENT" style={{ margin: '0 24px 8px', minHeight: 250 }} />
+      <UnifiedAdSlot venue="home-5" slotKey="homepageMid" format="rectangle" label="ADVERTISEMENT" style={{ margin: '0 24px 8px', minHeight: 250 }} accentColor="#FF2DAA" />
 
       <GlobalLiveBelt />
       <ActionCanister actions={HOME5_ACTIONS} />

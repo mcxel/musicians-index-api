@@ -8,7 +8,7 @@ import RoomContainer from '@/components/room/RoomContainer';
 import ActionCanister from '@/components/room/ActionCanister';
 import WidgetDrawer from '@/components/room/WidgetDrawer';
 import NeonWaveUnderlay from '@/components/atmosphere/NeonWaveUnderlay';
-import AdSenseSlot, { AD_SLOTS } from '@/components/ads/AdSenseSlot';
+import UnifiedAdSlot from '@/components/ads/UnifiedAdSlot';
 
 const HOME4_ACTIONS = [
   { id: 'sponsors',      icon: '🤝', label: 'Sponsors'      },
@@ -515,6 +515,9 @@ export default function Home4AdMagazine() {
           </Link>
         </div>
       </div>
+      {/* ── AD — sponsor marketplace footer banner ── */}
+      <UnifiedAdSlot venue="home-4" slotKey="homepageBanner" format="horizontal" label="ADVERTISEMENT" style={{ margin: '0 24px 24px', minHeight: 90 }} accentColor="#FFD700" />
+
       <ActionCanister actions={HOME4_ACTIONS} />
       <WidgetDrawer />
     </div>

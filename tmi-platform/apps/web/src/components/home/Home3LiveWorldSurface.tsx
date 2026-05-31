@@ -30,7 +30,7 @@ import RoomContainer from '@/components/room/RoomContainer';
 import ActionCanister from '@/components/room/ActionCanister';
 import WidgetDrawer from '@/components/room/WidgetDrawer';
 import NeonWaveUnderlay from '@/components/atmosphere/NeonWaveUnderlay';
-import AdSenseSlot, { AD_SLOTS } from '@/components/ads/AdSenseSlot';
+import UnifiedAdSlot from '@/components/ads/UnifiedAdSlot';
 
 const HOME3_ACTIONS = [
   { id: 'live-rooms',  icon: '🎭', label: 'Live Rooms'  },
@@ -66,7 +66,7 @@ export default function Home3LiveWorldSurface() {
       <LiveMagazineVoiceTicker pageId="home-3" accent="#00FFFF" />
 
       {/* ── AD BREAK 1 — leaderboard after ticker ── */}
-      <AdSenseSlot slot={AD_SLOTS.liveLobbyBanner} format="horizontal" label="ADVERTISEMENT" style={{ margin: '0 24px 8px', minHeight: 90 }} />
+      <UnifiedAdSlot venue="home-3" slotKey="liveLobbyBanner" format="horizontal" label="ADVERTISEMENT" style={{ margin: '0 24px 8px', minHeight: 90 }} accentColor="#00FF88" />
 
       <Home3LiveDensityRail />
 
@@ -167,7 +167,7 @@ export default function Home3LiveWorldSurface() {
       <Home3OccupancyRail />
 
       {/* ── AD BREAK 2 — mid-page rectangle ── */}
-      <AdSenseSlot slot={AD_SLOTS.homepageMid} format="rectangle" label="ADVERTISEMENT" style={{ margin: '0 24px 8px', minHeight: 250 }} />
+      <UnifiedAdSlot venue="home-3" slotKey="homepageMid" format="rectangle" label="ADVERTISEMENT" style={{ margin: '0 24px 8px', minHeight: 250 }} accentColor="#00FF88" />
 
       {/* Host rail */}
       <Home3HostRail />

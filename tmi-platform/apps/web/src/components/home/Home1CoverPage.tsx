@@ -20,7 +20,7 @@ import RoomContainer from '@/components/room/RoomContainer';
 import ActionCanister from '@/components/room/ActionCanister';
 import WidgetDrawer from '@/components/room/WidgetDrawer';
 import NeonWaveUnderlay from '@/components/atmosphere/NeonWaveUnderlay';
-import AdSenseSlot, { AD_SLOTS } from '@/components/ads/AdSenseSlot';
+import UnifiedAdSlot from '@/components/ads/UnifiedAdSlot';
 
 const HOME1_LAYER_SESSION_KEY = 'TMI_OS_SessionState_Home1';
 const HOME1_ISSUE_ID = 'issue-001-neon';
@@ -644,7 +644,7 @@ export default function Home1CoverPage() {
     <div className="tmi-home1-canvas-surface">
       <style>{`
         .tmi-home1-canvas-surface {
-          min-height: 100vh;
+          min-height: 100dvh;
           background: transparent;
           color: #f8f7f1;
           font-family: 'Bebas Neue', 'Impact', sans-serif;
@@ -1115,8 +1115,9 @@ export default function Home1CoverPage() {
         .tmi-orbit-canvas {
           margin: 0 auto;
           position: relative;
-          width: min(760px, 92vw);
-          height: min(760px, 92vw);
+          width: min(760px, 100% - 90px); /* Leave buffer for nodes to prevent clipping */
+          height: min(760px, 100vw - 90px);
+          aspect-ratio: 1;
           border-radius: 50%;
           z-index: 1;
         }
@@ -1206,8 +1207,8 @@ export default function Home1CoverPage() {
 
         .tmi-orbit-node {
           position: absolute;
-          width: clamp(76px, 11vw, 108px);
-          height: clamp(76px, 11vw, 108px);
+          width: clamp(60px, 14vw, 108px);
+          height: clamp(60px, 14vw, 108px);
           transform: translate(-50%, -50%);
           border: 1px solid rgba(255,255,255,0.1);
           border-top: 1px solid rgba(255,255,255,0.25);
@@ -1653,7 +1654,7 @@ export default function Home1CoverPage() {
         </div>
 
         {/* ── AD BREAK 1 — above-fold leaderboard ── */}
-        <AdSenseSlot slot={AD_SLOTS.homepageBanner} format="horizontal" label="ADVERTISEMENT" style={{ margin: '8px 0 12px', minHeight: 90 }} />
+        <UnifiedAdSlot venue="home-1" slotKey="homepageBanner" format="horizontal" label="ADVERTISEMENT" style={{ margin: '8px 0 12px', minHeight: 90 }} accentColor="#AA2DFF" />
 
         <ChallengeYourSongCTA variant="strip" />
 
@@ -1722,7 +1723,7 @@ export default function Home1CoverPage() {
         <WeeklyCrownOrbit onNodeClick={setProfilePanel} />
 
         {/* ── AD BREAK 2 — mid-page rectangle after orbit ── */}
-        <AdSenseSlot slot={AD_SLOTS.homepageMid} format="rectangle" label="ADVERTISEMENT" style={{ margin: '12px 0', minHeight: 250 }} />
+        <UnifiedAdSlot venue="home-1" slotKey="homepageMid" format="rectangle" label="ADVERTISEMENT" style={{ margin: '12px 0', minHeight: 250 }} accentColor="#AA2DFF" />
 
         {/* ── Broadcast deck banner ── */}
         {(() => {

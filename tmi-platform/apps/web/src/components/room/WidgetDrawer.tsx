@@ -10,6 +10,8 @@ import SponsorsWidget from "@/components/widgets/SponsorsWidget";
 import FriendsWidget from "@/components/widgets/FriendsWidget";
 import NotificationsWidget from "@/components/widgets/NotificationsWidget";
 import ArtifactWall from "@/components/artifacts/ArtifactWall";
+import RankingsWidget from "@/components/widgets/RankingsWidget";
+import LiveRoomsWidget from "@/components/widgets/LiveRoomsWidget";
 
 const DRAWER_TITLES: Record<string, string> = {
   messages:       "💬 Messages",
@@ -22,6 +24,8 @@ const DRAWER_TITLES: Record<string, string> = {
   "video-calls":  "📹 Video Calls",
   notifications:  "🔔 Notifications",
   communication:  "📡 Communication",
+  rankings:       "🏆 Crown Rankings",
+  "live-rooms":   "🎭 Live Rooms",
 };
 
 export default function WidgetDrawer() {
@@ -99,7 +103,9 @@ export default function WidgetDrawer() {
                 </div>
               </div>
             )}
-            {activeDrawer === "sponsors" && <SponsorsWidget />}
+            {activeDrawer === "sponsors"    && <SponsorsWidget />}
+            {activeDrawer === "rankings"    && <RankingsWidget />}
+            {activeDrawer === "live-rooms"  && <LiveRoomsWidget />}
           </div>
         </motion.div>
       )}
