@@ -226,7 +226,17 @@ function SeatProfileOverlay({ seat, followed, onFollow, onReact, onClose }: Seat
   );
 }
 
-export default function AudienceField({ isMobile }: { isMobile?: boolean }) {
+// ── MY SEAT: the seat ID the current user is sitting in
+const MY_SEAT_KEY = "tmi_my_audience_seat";
+
+export default function AudienceField({
+  isMobile,
+  status = "live",
+}: {
+  isMobile?: boolean;
+  /** live | replay | finished — controls whether seating is allowed */
+  status?: "live" | "replay" | "finished";
+}) {
   const base = useMemo(() => buildSeats(isMobile ? 24 : 48), [isMobile]);
   const [seats, setSeats] = useState<AudienceSeat[]>(base);
   const [occupancy, setOccupancy] = useState(84);
@@ -235,6 +245,28 @@ export default function AudienceField({ isMobile }: { isMobile?: boolean }) {
   const [followedSeats, setFollowedSeats] = useState<Set<string>>(new Set());
   const [sentReacts, setSentReacts] = useState<Record<string, string>>({});
   const prevOccupancyRef = useRef(84);
+
+  // MY SEAT — restore from session storage, allow sitting in empty seats
+  const [mySeatId, setMySeatId] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    return sessionStorage.getItem(MY_SEAT_KEY);
+  });
+
+  const sitInSeat = useCallback((seatId: string) => {
+    if (status === "finished") return; // finished shows lock seating
+    setMySeatId(seatId);
+    if (typeof window !== "undefined") sessionStorage.setItem(MY_SEAT_KEY, seatId);
+    // Mark the seat as active (occupied) in the grid
+    setSeats((prev) => prev.map((s) => s.id === seatId ? { ...s, active: true } : s));
+  }, [status]);
+
+  const leaveSeat = useCallback(() => {
+    if (mySeatId) {
+      setSeats((prev) => prev.map((s) => s.id === mySeatId ? { ...s, active: false } : s));
+    }
+    setMySeatId(null);
+    if (typeof window !== "undefined") sessionStorage.removeItem(MY_SEAT_KEY);
+  }, [mySeatId]);
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -315,45 +347,53 @@ export default function AudienceField({ isMobile }: { isMobile?: boolean }) {
         }
       `}</style>
 
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-        <div style={{ fontSize: 9, letterSpacing: '0.16em', color: '#00FFFF', fontWeight: 800 }}>
-          LIVE AUDIENCE
+      {/* Status banner */}
+      {status !== "live" && (
+        <div style={{ padding: "6px 12px", borderRadius: 6, background: status === "finished" ? "rgba(255,68,68,0.08)" : "rgba(255,215,0,0.08)", border: `1px solid ${status === "finished" ? "rgba(255,68,68,0.3)" : "rgba(255,215,0,0.3)"}`, marginBottom: 8, display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 10, fontWeight: 800, color: status === "finished" ? "#FF4444" : "#FFD700", letterSpacing: "0.1em" }}>
+            {status === "finished" ? "📼 REPLAY MODE — Audience locked for this session" : "⏳ REPLAY — Browse the audience from this show"}
+          </span>
         </div>
-        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 8 }}>
-          {joinBurst !== null && (
-            <span
-              aria-hidden
-              style={{
-                position: 'absolute',
-                right: '100%',
-                marginRight: 6,
-                whiteSpace: 'nowrap',
-                fontSize: 10,
-                fontWeight: 900,
-                color: '#00FF88',
-                letterSpacing: '0.06em',
-                animation: 'joinBurstFloat 1.4s ease-out forwards',
-                pointerEvents: 'none',
-                fontFamily: "var(--font-tmi-orbitron, 'Orbitron', monospace)",
-              }}
-            >
-              +{joinBurst} JOINED
+      )}
+
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 6 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ fontSize: 9, letterSpacing: '0.16em', color: '#00FFFF', fontWeight: 800 }}>
+            {status === 'live' ? 'LIVE AUDIENCE' : status === 'replay' ? 'REPLAY AUDIENCE' : 'AUDIENCE — SHOW ENDED'}
+          </div>
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 8 }}>
+            {joinBurst !== null && (
+              <span aria-hidden style={{ position: 'absolute', right: '100%', marginRight: 6, whiteSpace: 'nowrap', fontSize: 10, fontWeight: 900, color: '#00FF88', letterSpacing: '0.06em', animation: 'joinBurstFloat 1.4s ease-out forwards', pointerEvents: 'none' }}>
+                +{joinBurst} JOINED
+              </span>
+            )}
+            <div style={{ fontSize: 11, fontWeight: 900, color: occupancy >= 88 ? '#FFD700' : '#00FFFF', letterSpacing: '0.08em', transition: 'color 0.6s ease' }} aria-live="polite">
+              {occupancy}% <span style={{ opacity: 0.55, fontSize: 8, fontWeight: 700 }}>OCCUPIED</span>
+            </div>
+          </div>
+          {mySeatId && (
+            <span style={{ fontSize: 8, fontWeight: 900, color: '#00FF88', letterSpacing: '0.1em', background: 'rgba(0,255,136,0.12)', border: '1px solid rgba(0,255,136,0.3)', borderRadius: 4, padding: '2px 7px' }}>
+              SEATED ✓
             </span>
           )}
-          <div
-            style={{
-              fontSize: 11,
-              fontWeight: 900,
-              color: occupancy >= 88 ? '#FFD700' : '#00FFFF',
-              letterSpacing: '0.08em',
-              transition: 'color 0.6s ease',
-              fontFamily: "var(--font-tmi-orbitron, 'Orbitron', monospace)",
-            }}
-            aria-live="polite"
-            aria-label={`Audience occupancy ${occupancy} percent`}
-          >
-            {occupancy}% <span style={{ opacity: 0.55, fontSize: 8, fontWeight: 700 }}>OCCUPIED</span>
-          </div>
+        </div>
+        {/* Sit/Leave controls */}
+        <div style={{ display: 'flex', gap: 6 }}>
+          {mySeatId && (
+            <button onClick={leaveSeat} style={{ padding: '4px 12px', borderRadius: 6, background: 'rgba(255,68,68,0.1)', border: '1px solid rgba(255,68,68,0.3)', color: '#FF4444', fontSize: 9, fontWeight: 800, cursor: 'pointer', letterSpacing: '0.08em' }}>
+              LEAVE SEAT
+            </button>
+          )}
+          {!mySeatId && status !== 'finished' && (
+            <button
+              onClick={() => {
+                const empty = seats.find((s) => !s.active);
+                if (empty) sitInSeat(empty.id);
+              }}
+              style={{ padding: '4px 14px', borderRadius: 6, background: 'rgba(0,255,136,0.12)', border: '1px solid rgba(0,255,136,0.3)', color: '#00FF88', fontSize: 9, fontWeight: 800, cursor: 'pointer', letterSpacing: '0.08em' }}>
+              + SIT IN AUDIENCE
+            </button>
+          )}
         </div>
       </div>
 
@@ -366,37 +406,56 @@ export default function AudienceField({ isMobile }: { isMobile?: boolean }) {
       >
         {seats.map((seat, i) => {
           const ghost = ghostForSeat(seat.tag);
+          const isMe = seat.id === mySeatId;
+          const isEmpty = !seat.active && !isMe;
+          const canSitHere = isEmpty && status !== 'finished' && !mySeatId;
           return (
           <div
             key={seat.id}
-            role={seat.active ? 'button' : undefined}
-            tabIndex={seat.active ? 0 : undefined}
-            aria-label={seat.active ? `Audience seat ${seat.tag} — click to view profile` : `Empty seat ${seat.tag}`}
-            onClick={() => { if (seat.active) setSelectedSeat(seat); }}
-            onKeyDown={(e) => { if (seat.active && (e.key === 'Enter' || e.key === ' ')) setSelectedSeat(seat); }}
+            role="button"
+            tabIndex={0}
+            aria-label={isMe ? `YOUR SEAT — ${seat.tag}` : seat.active ? `Audience seat ${seat.tag} — click to view profile` : canSitHere ? `Empty seat ${seat.tag} — click to sit here` : `Empty seat ${seat.tag}`}
+            onClick={() => {
+              if (isMe) { leaveSeat(); return; }
+              if (seat.active) { setSelectedSeat(seat); return; }
+              if (canSitHere) { sitInSeat(seat.id); }
+            }}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { if (isMe) { leaveSeat(); } else if (seat.active) { setSelectedSeat(seat); } else if (canSitHere) { sitInSeat(seat.id); } } }}
             style={{
               aspectRatio: '1 / 1',
               borderRadius: 8,
-              border: seat.active ? `1px solid ${ghost.color}55` : '1px solid rgba(255,255,255,0.08)',
-              background: seat.active ? `${ghost.color}12` : 'rgba(255,255,255,0.03)',
+              border: isMe
+                ? '2px solid #00FF88'
+                : seat.active
+                ? `1px solid ${ghost.color}55`
+                : canSitHere
+                ? '1px dashed rgba(0,255,136,0.35)'
+                : '1px solid rgba(255,255,255,0.08)',
+              background: isMe
+                ? 'rgba(0,255,136,0.18)'
+                : seat.active
+                ? `${ghost.color}12`
+                : canSitHere
+                ? 'rgba(0,255,136,0.04)'
+                : 'rgba(255,255,255,0.03)',
               color: 'rgba(255,255,255,0.72)',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: seat.active ? 18 : 14,
+              fontSize: seat.active || isMe ? 18 : 11,
               fontWeight: 700,
               position: 'relative',
               transform: 'translateZ(0)',
-              animation: seat.active ? `audienceSeatPulse ${2 + (i % 3)}s ease-in-out infinite` : undefined,
+              animation: (seat.active || isMe) ? `audienceSeatPulse ${2 + (i % 3)}s ease-in-out infinite` : undefined,
               willChange: 'transform, opacity',
               overflow: 'hidden',
-              cursor: seat.active ? 'pointer' : 'default',
-              boxShadow: seat.active ? `0 0 8px ${ghost.color}22` : 'none',
-              opacity: seat.active ? 1 : 0.35,
+              cursor: (seat.active || isMe || canSitHere) ? 'pointer' : 'default',
+              boxShadow: isMe ? '0 0 14px rgba(0,255,136,0.4)' : seat.active ? `0 0 8px ${ghost.color}22` : 'none',
+              opacity: seat.active || isMe ? 1 : canSitHere ? 0.65 : 0.28,
             }}
           >
-            {ghost.avatar}
+            {isMe ? '🙋' : seat.active ? ghost.avatar : canSitHere ? '+' : '💺'}
             {seat.reaction ? (
               <span
                 style={{
@@ -436,12 +495,13 @@ export default function AudienceField({ isMobile }: { isMobile?: boolean }) {
                 bottom: 1,
                 fontSize: 6,
                 letterSpacing: '0.03em',
-                color: seat.active ? ghost.color : 'rgba(255,255,255,0.3)',
+                color: isMe ? '#00FF88' : seat.active ? ghost.color : 'rgba(255,255,255,0.3)',
                 whiteSpace: 'nowrap',
-                opacity: 0.7,
+                opacity: 0.8,
+                fontWeight: isMe ? 900 : 400,
               }}
             >
-              {seat.tag}
+              {isMe ? 'YOU' : seat.tag}
             </span>
           </div>
           );
