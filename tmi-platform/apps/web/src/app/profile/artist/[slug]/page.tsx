@@ -10,6 +10,8 @@ import PerformerSponsorShelf, {
 } from "@/components/performer/PerformerSponsorShelf";
 import type { SponsorSlot } from "@/components/performer/DynamicRadialAura";
 import ViralShareButton from "@/components/share/ViralShareButton";
+import MemoryWall from "@/components/media/MemoryWall";
+import TieredAdSlot from "@/components/ads/TieredAdSlot";
 
 interface Props {
   params: { slug: string };
@@ -239,6 +241,16 @@ export default function ArtistProfilePage({ params }: Props) {
 
       {/* Playlist — owner can add/reorder tracks; visitors see read-only */}
       <ProfilePlaylistSection profileSlug={params.slug} />
+
+      {/* Memory Wall — photos, videos, audio, moments */}
+      <div style={{ padding: "0 24px 16px" }}>
+        <MemoryWall accentColor={CYAN} title={`${artist.displayName} — Memory Wall`} />
+      </div>
+
+      {/* Ad slot — free visitors see this */}
+      <div style={{ padding: "0 24px 16px" }}>
+        <TieredAdSlot tier="free" placement="artist-profile-bottom" height={70} />
+      </div>
 
       {/* Profile Lobby */}
       <TmiProfileLobby

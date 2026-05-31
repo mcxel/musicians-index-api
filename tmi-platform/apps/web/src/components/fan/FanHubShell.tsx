@@ -1,38 +1,10 @@
 "use client";
 
-import { type ReactNode, useMemo, useState, useCallback, useRef } from "react";
+import { useState, useCallback, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getSmartRoom } from "@/lib/rooms/SmartRoomRouter";
-import { ProfileMemoryEngine } from "@/lib/profile/ProfileMemoryEngine";
-import { ProfileCameraFallbackEngine } from "@/lib/profile/ProfileCameraFallbackEngine";
-import FanLiveMonitor from "./FanLiveMonitor";
-import FanReactionBar from "./FanReactionBar";
-import FanLobbyPopup from "./FanLobbyPopup";
-import FanPointsPanel from "./FanPointsPanel";
-import FanShopRail from "./FanShopRail";
-import FanModeSwitcher from "./FanModeSwitcher";
-import FanInviteLobby from "./FanInviteLobby";
-import FanVenueFullscreen from "./FanVenueFullscreen";
-import { buildSeatFromPoints } from "./FanSeatEngine";
-import { nextFanTransitionState } from "./FanShowTransitionEngine";
-import {
-  getFanTierConfig,
-  isModeEnabled,
-  type FanHubMode,
-  type FanSubscriptionTier,
-  type FanTransitionState,
-} from "./FanTierSkinEngine";
-import ProfileWorldShell from "@/components/profileworld/ProfileWorldShell";
-import ProfileVisualFrame from "@/components/profileworld/ProfileVisualFrame";
-import ProfileStageMonitor from "@/components/profileworld/ProfileStageMonitor";
-import ProfileRightCommandRail from "@/components/profileworld/ProfileRightCommandRail";
-import ProfileBottomActionDock from "@/components/profileworld/ProfileBottomActionDock";
-import ProfileNeonPanel from "@/components/profileworld/ProfileNeonPanel";
-import { getProfileTierSkin, mapFanTierToProfileTier } from "@/components/profileworld/ProfileTierSkinEngine";
-import { isCurtainPreShowState } from "@/components/profileworld/ProfileModeStateMachine";
-import MonetizationRail from "@/components/monetization/MonetizationRail";
-import ProfileStreakRail from "@/components/streaks/ProfileStreakRail";
+import type { FanSubscriptionTier } from "./FanTierSkinEngine";
 
 type FanHubShellProps = {
   fanSlug: string;
@@ -40,24 +12,34 @@ type FanHubShellProps = {
   tier: FanSubscriptionTier;
   tagline: string;
   startingPoints: number;
-  previewWindow?: ReactNode;
+  previewWindow?: React.ReactNode;
 };
 
-function BulbRow({ accent }: { accent: string }) {
+const SPOTLIGHT = { name: "Chario Ace", genre: "HIP-HOP", nextShow: "8:00 PM" };
+
+const REACTIONS = [
+  { id: "thank",    label: "Thank You",     icon: "👍",  pts: 5  },
+  { id: "hearts",   label: "Throw Hearts",  icon: "❤️",  pts: 8  },
+  { id: "flicker",  label: "Light Flicker", icon: "🤚",  pts: 3  },
+  { id: "confetti", label: "Confetti",      icon: "🎉",  pts: 6  },
+  { id: "spark",    label: "Stage Spark",   icon: "✨",  pts: 10 },
+];
+
+const BOT_DOT_COLOR = "#cc2200";
+
+function MarqueeBulbs({ count = 32, accent = "#ff6600" }: { count?: number; accent?: string }) {
   return (
-    <div style={{ display: "flex", gap: 5, alignItems: "center", padding: "5px 0" }}>
-      {Array.from({ length: 28 }, (_, i) => (
+    <div style={{ display: "flex", gap: 3, alignItems: "center", padding: "3px 6px" }}>
+      {Array.from({ length: count }, (_, i) => (
         <div
           key={i}
-          aria-hidden
           style={{
-            width: 6,
+            flex: 1,
             height: 6,
             borderRadius: "50%",
-            background: i % 2 === 0 ? accent : "#5ad7ff",
-            boxShadow: i % 2 === 0 ? `0 0 6px ${accent}` : "0 0 6px #5ad7ff",
-            opacity: 0.5 + (i % 3) * 0.16,
-            flexShrink: 0,
+            background: i % 2 === 0 ? accent : "#ff9900",
+            boxShadow: i % 2 === 0 ? `0 0 5px ${accent}` : "0 0 5px #ff9900",
+            opacity: 0.55 + (i % 3) * 0.15,
           }}
         />
       ))}
@@ -65,538 +47,708 @@ function BulbRow({ accent }: { accent: string }) {
   );
 }
 
-const HUB_STATES: FanTransitionState[] = ["HUB_IDLE", "LOBBY_OPEN", "INVITE_ACCEPTED", "RETURN_TO_HUB"];
+function AudienceSilhouettes() {
+  return (
+    <div
+      style={{
+        position: "absolute",
+        bottom: 0,
+        left: 0,
+        right: 0,
+        height: "36%",
+        display: "flex",
+        alignItems: "flex-end",
+        justifyContent: "center",
+        gap: 0,
+        zIndex: 3,
+      }}
+    >
+      {Array.from({ length: 16 }, (_, i) => {
+        const h = 55 + Math.sin(i * 0.65 + 0.4) * 18;
+        const w = 5.5 + Math.sin(i * 0.9) * 1.2;
+        return (
+          <div
+            key={i}
+            style={{
+              width: `${w}%`,
+              height: `${h}%`,
+              background: "radial-gradient(ellipse at 50% 20%, #1a1010 0%, #080404 100%)",
+              borderRadius: "50% 50% 0 0",
+              flexShrink: 0,
+              opacity: 0.92,
+            }}
+          />
+        );
+      })}
+    </div>
+  );
+}
 
 export default function FanHubShell({
   fanSlug,
   displayName,
   tier,
-  tagline,
   startingPoints,
-  previewWindow,
 }: FanHubShellProps) {
-  const [mode, setMode] = useState<FanHubMode>("neutral");
-  const [transitionState, setTransitionState] = useState<FanTransitionState>("HUB_IDLE");
-  const [message, setMessage] = useState("");
-  const [points, setPoints] = useState(startingPoints);
-  const [activityLog, setActivityLog] = useState("Hub initialized.");
-  const [cameraMode, setCameraMode] = useState<
-    "standard" | "crowd-cam" | "friend-cam" | "performer-focus" | "billboard-mode"
-  >("standard");
-
   const router = useRouter();
-  const tierConfig = useMemo(() => getFanTierConfig(tier), [tier]);
-  const seat = useMemo(() => buildSeatFromPoints(points, fanSlug), [points, fanSlug]);
-  const invitedFriends = ["You", "Friend 1", "Friend 2", "Friend 3"];
+  const [points, setPoints] = useState(startingPoints);
+  const [message, setMessage] = useState("");
+  const [fired, setFired] = useState<string | null>(null);
+  const [tipSent, setTipSent] = useState(false);
+  const spinLocked = tier === "free";
 
-  // Session tracking — new ID per room visit
-  const activeSessionId = useRef<string | null>(null);
-  const activeRoomId    = useRef<string | null>(null);
-  const sessionStartMs  = useRef<number>(0);
-
-  const leapToRoom = useCallback(() => {
+  const goToShow = useCallback(() => {
     const roomId = getSmartRoom();
-    const sessionId = `session-${roomId}-${Date.now()}`;
-    activeSessionId.current = sessionId;
-    activeRoomId.current    = roomId;
-    sessionStartMs.current  = Date.now();
-    router.push(`/live/rooms/${roomId}?from=fan-hub&sid=${sessionId}`);
-  }, [router]);
+    router.push(`/live/rooms/${roomId}?from=fan-hub&fan=${fanSlug}`);
+  }, [router, fanSlug]);
 
-  const inFullscreen = transitionState === "FULLSCREEN_MODE";
-  const avatarInHub = HUB_STATES.includes(transitionState);
-  const profileSkin = useMemo(() => getProfileTierSkin(mapFanTierToProfileTier(tier)), [tier]);
-  const preShowCurtain = isCurtainPreShowState(transitionState);
+  const fireReaction = useCallback((id: string, pts: number) => {
+    setFired(id);
+    setPoints((p) => p + pts);
+    setTimeout(() => setFired(null), 550);
+  }, []);
 
-  const headerZone = (
-    <ProfileVisualFrame title="Fan Hub Command Center" titleColor={profileSkin.titleColor}>
-      <section
+  const sendTip = useCallback(() => {
+    setTipSent(true);
+    setTimeout(() => setTipSent(false), 1800);
+  }, []);
+
+  // Disable body scroll when viewing full-screen
+  useEffect(() => {
+    document.body.style.overscrollBehavior = "contain";
+    return () => { document.body.style.overscrollBehavior = ""; };
+  }, []);
+
+  const BG = "#040610";
+  const ACCENT = "#cc2200";
+  const PANEL_BG = "#07091a";
+  const BORDER = "#cc220033";
+
+  return (
+    <main
+      style={{
+        minHeight: "100vh",
+        background: BG,
+        color: "#fff",
+        fontFamily: "'Inter', 'SF Pro Display', sans-serif",
+        overflowX: "hidden",
+        display: "flex",
+        flexDirection: "column",
+      }}
+    >
+      {/* ── Top header ── */}
+      <header
         style={{
-          borderRadius: "0 0 22px 22px",
-          padding: "12px 18px 14px",
-          background: tierConfig.panelBackground,
-          boxShadow: tierConfig.glow,
-          border: `1px solid ${tierConfig.accent}44`,
-          borderTop: "none",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          padding: "10px 14px",
+          borderBottom: `1px solid ${BORDER}`,
+          background: "#030510",
+          flexShrink: 0,
         }}
       >
-        <BulbRow accent={tierConfig.accent} />
+        <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+          <span style={{ fontSize: 18 }}>💀</span>
+          <span
+            style={{
+              fontSize: 17,
+              fontWeight: 900,
+              letterSpacing: "0.05em",
+              color: "#ff4422",
+              textTransform: "uppercase",
+            }}
+          >
+            FAN DASHBOARD
+          </span>
+          <span style={{ fontSize: 18 }}>💀</span>
+        </div>
+        <Link
+          href="/fan/trivia"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 5,
+            padding: "6px 12px",
+            background: "#160606",
+            border: "1px solid #cc220044",
+            borderRadius: 8,
+            textDecoration: "none",
+          }}
+        >
+          <span style={{ fontSize: 14 }}>💀</span>
+          <span
+            style={{
+              fontSize: 10,
+              fontWeight: 900,
+              color: "#ff4422",
+              letterSpacing: "0.1em",
+            }}
+          >
+            TRIVA
+          </span>
+        </Link>
+      </header>
 
+      {/* ── Artist spotlight + SPIN / VOTE ── */}
+      <div
+        style={{
+          padding: "10px 14px",
+          background: "#05060f",
+          borderBottom: `1px solid ${BORDER}`,
+          flexShrink: 0,
+        }}
+      >
         <div
           style={{
             display: "flex",
             justifyContent: "space-between",
             alignItems: "flex-start",
             gap: 12,
-            marginTop: 10,
-            flexWrap: "wrap",
           }}
         >
           <div>
             <div
               style={{
-                fontSize: 10,
-                letterSpacing: "0.22em",
-                textTransform: "uppercase",
-                color: tierConfig.accent,
-                fontWeight: 900,
-                marginBottom: 4,
+                fontSize: 8,
+                color: "rgba(255,255,255,0.38)",
+                letterSpacing: "0.18em",
+                fontWeight: 700,
+                marginBottom: 3,
               }}
             >
-              FAN DASHBOARD · {tierConfig.badge}
+              Artist Spotlight
             </div>
-            <h1 style={{ margin: "0 0 4px", fontSize: 26, lineHeight: 1.1 }}>{displayName}</h1>
-            <div style={{ color: "#a8d7ff", fontSize: 12 }}>{tagline}</div>
-          </div>
-
-          <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-            <div style={{ textAlign: "right" }}>
-              <div style={{ fontSize: 9, letterSpacing: "0.14em", textTransform: "uppercase", color: "#7abed4", marginBottom: 3 }}>
-                State
-              </div>
-              <div style={{ fontSize: 12, color: tierConfig.accent, fontWeight: 900 }}>
-                {transitionState.split("_").join(" ")}
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={nextTransition}
-              style={{
-                borderRadius: 12,
-                border: `1px solid ${tierConfig.accent}66`,
-                background: `${tierConfig.accent}1e`,
-                color: tierConfig.accent,
-                padding: "8px 14px",
-                cursor: "pointer",
-                fontSize: 11,
-                fontWeight: 900,
-                letterSpacing: "0.08em",
-                textTransform: "uppercase",
-              }}
-            >
-              Advance →
-            </button>
-          </div>
-        </div>
-
-        <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
-          {[
-            { label: "Trivia", mode: "trivia" as FanHubMode, color: "#5ad7ff" },
-            { label: "Vote", mode: "earn-points" as FanHubMode, color: tierConfig.accent },
-            { label: "Profile", mode: "neutral" as FanHubMode, color: "#5ad7ff" },
-            { label: "Shop", mode: "shop" as FanHubMode, color: "#ffb84a" },
-          ].map(({ label, mode: m, color }) => (
-            <button
-              key={label}
-              type="button"
-              onClick={() => setMode(m)}
-              style={{
-                borderRadius: 10,
-                border: `1px solid ${color}44`,
-                background: mode === m ? `${color}20` : `${color}0e`,
-                color,
-                padding: "7px 14px",
-                cursor: "pointer",
-                fontSize: 11,
-                fontWeight: 800,
-                boxShadow: mode === m ? `0 0 10px ${color}44` : "none",
-              }}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-
-        <div style={{ marginTop: 10 }}>
-          <FanModeSwitcher
-            mode={mode}
-            onChange={setMode}
-            modeEnabled={(c) => isModeEnabled(c, tier)}
-            accent={tierConfig.accent}
-          />
-        </div>
-
-        <div style={{ marginTop: 8 }}>
-          <BulbRow accent={tierConfig.accent} />
-        </div>
-      </section>
-    </ProfileVisualFrame>
-  );
-
-  const handleCameraChange = useCallback(
-    (mode: typeof cameraMode) => {
-      setCameraMode(mode);
-      if (mode === "billboard-mode") {
-        void triggerCameraFallback();
-      }
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [fanSlug, activeSessionId, tierConfig]
-  );
-
-  const stageZone = inFullscreen ? (
-    <FanVenueFullscreen
-      seat={seat}
-      invitedFriends={invitedFriends}
-      cameraMode={cameraMode}
-      onCameraModeChange={handleCameraChange}
-      onAction={applyAction}
-    />
-  ) : (
-    <ProfileStageMonitor
-      title="Live Auditorium Feed"
-      preShow={preShowCurtain}
-      countdownText={transitionState === "SEATED" ? "Starting in 01:30" : "Starting in 03:00"}
-    >
-      <FanLiveMonitor mode={mode} transitionState={transitionState} title="Main Auditorium Monitor" />
-    </ProfileStageMonitor>
-  );
-
-  const reactionZone = inFullscreen ? null : <FanReactionBar enabledReactions={tierConfig.reactions} onReaction={applyAction} />;
-
-  const tipZone = inFullscreen ? null : (
-    <FanPointsPanel
-      points={points}
-      goalPoints={1400}
-      frontRowLabel="VIP Rail"
-      message={message}
-      onMessageChange={setMessage}
-      onSend={() => setActivityLog(`Message sent: ${message || "(empty)"}`)}
-      watchToEarnMultiplier={tierConfig.watchToEarnMultiplier}
-    />
-  );
-
-  const playlistZone = inFullscreen ? null : (
-    <div style={{ display: "grid", gap: 12 }}>
-      {previewWindow ? <div>{previewWindow}</div> : null}
-
-      <ProfileNeonPanel borderColor={tierConfig.accent} glow={`0 0 20px ${tierConfig.accent}20`} padding="14px">
-        <div
-          style={{
-            color: "#6ec8ef",
-            fontSize: 10,
-            letterSpacing: "0.16em",
-            textTransform: "uppercase",
-            marginBottom: 10,
-            fontWeight: 800,
-          }}
-        >
-          Avatar Lobby Presence
-        </div>
-        {avatarInHub ? (
-          <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
             <div
               style={{
-                width: 68,
-                height: 68,
-                borderRadius: 18,
-                border: `2px solid ${tierConfig.accent}`,
-                background: `radial-gradient(circle at 40% 35%, ${tierConfig.accent}30, rgba(90,215,255,0.12))`,
-                boxShadow: `0 0 18px ${tierConfig.accent}44`,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: 28,
-                flexShrink: 0,
-              }}
-            >
-              🎭
-            </div>
-            <div>
-              <div style={{ color: "#dff2ff", fontSize: 14, fontWeight: 800, marginBottom: 4 }}>
-                {displayName}
-              </div>
-              <div style={{ color: "#8fb8d8", fontSize: 11, marginBottom: 6 }}>
-                Avatar inside hub — not rendered in the monitor feed.
-              </div>
-              <div
-                style={{
-                  display: "inline-flex",
-                  gap: 6,
-                  alignItems: "center",
-                  borderRadius: 999,
-                  border: `1px solid ${tierConfig.accent}55`,
-                  color: tierConfig.accent,
-                  padding: "3px 10px",
-                  fontSize: 10,
-                  fontWeight: 900,
-                  letterSpacing: "0.1em",
-                }}
-              >
-                <span
-                  style={{
-                    width: 6,
-                    height: 6,
-                    borderRadius: "50%",
-                    background: tierConfig.accent,
-                    boxShadow: `0 0 5px ${tierConfig.accent}`,
-                  }}
-                />
-                {seat.zone.split("-").join(" ").toUpperCase()} · {seat.fanPointsBoost.toFixed(2)}x
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div style={{ color: "#7aa9cc", fontSize: 12 }}>
-            Avatar transferred to seat system — row {seat.row}, zone {seat.zone}.
-          </div>
-        )}
-      </ProfileNeonPanel>
-
-      <ProfileNeonPanel borderColor={tierConfig.accent} glow={`0 0 16px ${tierConfig.accent}1e`} padding="12px">
-        <div
-          style={{
-            color: "#6ec8ef",
-            fontSize: 10,
-            letterSpacing: "0.16em",
-            textTransform: "uppercase",
-            marginBottom: 10,
-            fontWeight: 800,
-          }}
-        >
-          Read & Earn
-        </div>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
-          <div style={{ color: "#b7dcff", fontSize: 12 }}>
-            Read the latest magazine story to earn Fan Points and unlock trivia boost.
-          </div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <Link
-              href="/magazine/article/wavetek-rise-billboard"
-              style={{
-                borderRadius: 10,
-                border: "1px solid rgba(90,215,255,0.45)",
-                background: "rgba(90,215,255,0.12)",
-                color: "#d8f4ff",
-                padding: "8px 10px",
-                textDecoration: "none",
-                fontSize: 11,
-                fontWeight: 800,
-              }}
-            >
-              Open Article
-            </Link>
-            <button
-              type="button"
-              onClick={() => {
-                setPoints((value) => value + Math.round(40 * tierConfig.watchToEarnMultiplier));
-                setMode("trivia");
-                setActivityLog("Read & Earn applied. Trivia unlocked.");
-              }}
-              style={{
-                borderRadius: 10,
-                border: `1px solid ${tierConfig.accent}55`,
-                background: `${tierConfig.accent}20`,
-                color: tierConfig.accent,
-                padding: "8px 10px",
-                cursor: "pointer",
-                fontSize: 11,
+                fontSize: 20,
                 fontWeight: 900,
+                color: "#ff6644",
+                lineHeight: 1.1,
+                marginBottom: 2,
               }}
             >
-              Claim + Earn
-            </button>
+              {SPOTLIGHT.name}
+            </div>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+              }}
+            >
+              <span style={{ fontSize: 9, color: "rgba(255,255,255,0.45)", fontWeight: 700, letterSpacing: "0.1em" }}>
+                {SPOTLIGHT.genre}
+              </span>
+              <span style={{ fontSize: 12, color: "#ff6644" }}>▶</span>
+            </div>
+          </div>
+          <div style={{ textAlign: "right" }}>
+            <div
+              style={{
+                fontSize: 8,
+                color: "rgba(255,255,255,0.38)",
+                letterSpacing: "0.14em",
+                fontWeight: 700,
+                marginBottom: 2,
+              }}
+            >
+              NEXT SHOW
+            </div>
+            <div style={{ fontSize: 24, fontWeight: 900, color: "#ff6644", lineHeight: 1 }}>
+              {SPOTLIGHT.nextShow}
+            </div>
           </div>
         </div>
-      </ProfileNeonPanel>
-    </div>
-  );
 
-  const botStripZone = inFullscreen ? null : (
-    <div style={{ display: "grid", gap: 12 }}>
-      <FanInviteLobby invitedFriends={invitedFriends} onInvite={() => setActivityLog("Invite sent.")} />
-
-      {mode === "lobby" && (
-        <FanLobbyPopup
-          invitedFriends={invitedFriends}
-          lobbySlots={tierConfig.lobbySlots}
-          onJoin={() => {
-            setTransitionState("SEATED");
-            setActivityLog("Joined room and seated.");
-          }}
-          onMoveCloser={() => {
-            setPoints((v) => v + 100);
-            setActivityLog("Seat movement requested.");
-          }}
-        />
-      )}
-    </div>
-  );
-
-  const rightTowerZone = inFullscreen ? null : (
-    <ProfileRightCommandRail title="Command Rail">
-      <FanShopRail onAction={applyAction} />
-    </ProfileRightCommandRail>
-  );
-
-  const bottomActionZone = inFullscreen ? null : (
-    <div style={{ display: "grid", gap: 10 }}>
-      <div
-        style={{
-          borderRadius: 14,
-          border: "1px solid rgba(90,215,255,0.22)",
-          background: "rgba(4,10,24,0.90)",
-          padding: 12,
-        }}
-      >
-        <div
-          style={{
-            color: "#6ec8ef",
-            fontSize: 10,
-            letterSpacing: "0.16em",
-            textTransform: "uppercase",
-            marginBottom: 10,
-            fontWeight: 800,
-          }}
-        >
-          Bottom Rail
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))", gap: 8 }}>
-          {[
-            { label: "Livestreams", icon: "📺" },
-            { label: "Trending Now", icon: "🔥" },
-            { label: "Fan Mix", icon: "🎵" },
-            { label: "Sponsor Earn", icon: "💰" },
-          ].map(({ label, icon }) => (
-            <button
-              key={label}
-              type="button"
-              onClick={() => applyAction(label.toLowerCase())}
+        <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
+          <button
+            type="button"
+            onClick={() => !spinLocked && setPoints((p) => p + 50)}
+            style={{
+              flex: 1,
+              padding: "10px 8px",
+              background: "#0c0814",
+              border: "1px solid #44228866",
+              borderRadius: 10,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 4,
+              cursor: spinLocked ? "not-allowed" : "pointer",
+              opacity: spinLocked ? 0.55 : 1,
+            }}
+          >
+            <span style={{ fontSize: 20 }}>🔒</span>
+            <span
               style={{
-                borderRadius: 12,
-                border: `1px solid ${tierConfig.accent}38`,
-                background: `${tierConfig.accent}10`,
-                color: "#ffdcb8",
-                padding: "10px 8px",
-                cursor: "pointer",
-                fontSize: 11,
-                fontWeight: 800,
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: 5,
+                fontSize: 10,
+                fontWeight: 900,
+                color: "#cc88ff",
+                letterSpacing: "0.08em",
               }}
             >
-              <span style={{ fontSize: 20 }}>{icon}</span>
-              <span>{label}</span>
-            </button>
-          ))}
+              SPIN
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={goToShow}
+            style={{
+              flex: 1,
+              padding: "10px 8px",
+              background: "#081408",
+              border: "1px solid #22440066",
+              borderRadius: 10,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 4,
+              cursor: "pointer",
+            }}
+          >
+            <span style={{ fontSize: 20, color: "#44cc88" }}>✓</span>
+            <span
+              style={{
+                fontSize: 10,
+                fontWeight: 900,
+                color: "#44cc88",
+                letterSpacing: "0.08em",
+              }}
+            >
+              VOTE
+            </span>
+          </button>
         </div>
       </div>
 
-      <ProfileBottomActionDock onAction={applyAction} />
-    </div>
-  );
+      {/* ── Main area: stage + right panel ── */}
+      <div style={{ display: "flex", gap: 0, flex: 1, minHeight: 0 }}>
 
-  const engineLogZone = (
-    <div
-      style={{
-        borderRadius: 10,
-        border: "1px solid rgba(90,215,255,0.18)",
-        background: "rgba(3,8,18,0.92)",
-        padding: "8px 12px",
-        fontSize: 11,
-        color: "#8ab8d2",
-      }}
-    >
-      <span style={{ color: tierConfig.accent, fontWeight: 900 }}>Engine Log: </span>
-      {activityLog}
-    </div>
-  );
+        {/* Stage column */}
+        <div style={{ flex: 1, padding: "10px 0 10px 14px", display: "flex", flexDirection: "column", gap: 8 }}>
+          <MarqueeBulbs accent="#ff6600" />
 
-  function applyAction(action: string) {
-    if (action === "watch & earn") setPoints((v) => v + Math.round(25 * tierConfig.watchToEarnMultiplier));
-    if (action === "upgrade") setPoints((v) => v + 15);
-    if (action === "livestreams" || action === "trending now") { leapToRoom(); return; }
-    setActivityLog(`Action: ${action}`);
-  }
+          {/* Stage frame */}
+          <div
+            style={{
+              position: "relative",
+              borderRadius: 8,
+              overflow: "hidden",
+              border: "3px solid #ff6600",
+              boxShadow: "0 0 24px #ff660033, inset 0 0 50px #00000099",
+              background: "#080205",
+              aspectRatio: "4/3",
+              flexShrink: 0,
+            }}
+          >
+            {/* Curtain gradient */}
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                background:
+                  "linear-gradient(180deg, #3d0a0a 0%, #220606 45%, #100303 75%, #050101 100%)",
+                zIndex: 0,
+              }}
+            />
+            {/* Stage lighting haze */}
+            <div
+              style={{
+                position: "absolute",
+                top: 0,
+                left: "20%",
+                right: "20%",
+                height: "50%",
+                background:
+                  "radial-gradient(ellipse at 50% 0%, rgba(255,100,60,0.12) 0%, transparent 70%)",
+                zIndex: 1,
+              }}
+            />
+            <AudienceSilhouettes />
+          </div>
 
-  async function triggerCameraFallback() {
-    const sid = activeSessionId.current ?? `fallback-${Date.now()}`;
-    const ok = await ProfileCameraFallbackEngine.bindFallbackToStream(sid, fanSlug, 'fan');
-    setActivityLog(ok ? 'Camera fallback bound — motion portrait active.' : 'Camera fallback failed.');
-  }
+          <MarqueeBulbs accent="#ff6600" />
+        </div>
 
-  async function nextTransition() {
-    const next = nextFanTransitionState(transitionState);
-    setTransitionState(next);
-
-    if (next === "LOBBY_OPEN") setMode("lobby");
-
-    if (next === "SEATED") {
-      setActivityLog(`Seated in ${seat.zone}. Avatar in crowd simulation.`);
-    }
-
-    if (next === "FULLSCREEN_MODE") {
-      setMode("live-auditorium");
-      leapToRoom();
-    }
-
-    if (next === "RETURN_TO_HUB") {
-      setMode("neutral");
-      // Seal the session memory shard
-      if (activeSessionId.current) {
-        const durationMs  = Date.now() - sessionStartMs.current;
-        const pointsEarned = Math.round((durationMs / 60000) * tierConfig.watchToEarnMultiplier * 10);
-        setPoints((v) => v + pointsEarned);
-        await ProfileMemoryEngine.captureSessionShard(fanSlug, activeSessionId.current, {
-          roomId: activeRoomId.current,
-          durationMs,
-          pointsEarned,
-          zone: seat.zone,
-          tier,
-        });
-        setActivityLog(`Session sealed. +${pointsEarned} FP earned. Memory shard saved.`);
-        activeSessionId.current = null;
-        activeRoomId.current    = null;
-      }
-    }
-  }
-
-  return (
-    <ProfileWorldShell
-      skin={profileSkin}
-      title="Fan Dashboard"
-      subtitle={`${displayName} | ${tierConfig.label} | ${transitionState.split("_").join(" ")}`}
-      topControls={
-        <button
-          type="button"
-          onClick={nextTransition}
+        {/* Right panel */}
+        <div
           style={{
-            borderRadius: 12,
-            border: `1px solid ${profileSkin.actionAccent}66`,
-            background: `${profileSkin.actionAccent}22`,
-            color: profileSkin.actionAccent,
-            padding: "8px 14px",
-            cursor: "pointer",
-            fontSize: 11,
-            fontWeight: 900,
-            letterSpacing: "0.08em",
-            textTransform: "uppercase",
+            width: 118,
+            flexShrink: 0,
+            padding: "10px 10px 10px 8px",
+            display: "flex",
+            flexDirection: "column",
+            gap: 8,
           }}
         >
-          Advance State
+          {/* SHOP */}
+          <div
+            style={{
+              background: PANEL_BG,
+              border: `1px solid ${BORDER}`,
+              borderRadius: 8,
+              padding: "8px 6px",
+            }}
+          >
+            <div
+              style={{
+                fontSize: 8,
+                letterSpacing: "0.2em",
+                color: "#cc88ff",
+                fontWeight: 900,
+                textAlign: "center",
+                marginBottom: 5,
+              }}
+            >
+              SHOP
+            </div>
+            <div
+              style={{
+                fontSize: 7,
+                color: "rgba(255,255,255,0.38)",
+                fontWeight: 700,
+                textAlign: "center",
+                marginBottom: 6,
+                letterSpacing: "0.06em",
+              }}
+            >
+              COSMETIC STORE
+            </div>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-around",
+                marginBottom: 8,
+              }}
+            >
+              {["FREE", "RAF", "EPIC"].map((label) => (
+                <div key={label} style={{ textAlign: "center" }}>
+                  <div
+                    style={{
+                      width: 26,
+                      height: 26,
+                      borderRadius: "50%",
+                      background: "#120e22",
+                      border: "1.5px solid #44224466",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: 12,
+                      margin: "0 auto 3px",
+                    }}
+                  >
+                    ⭕
+                  </div>
+                  <span
+                    style={{
+                      fontSize: 6,
+                      color: "rgba(255,255,255,0.3)",
+                      fontWeight: 700,
+                      letterSpacing: "0.05em",
+                    }}
+                  >
+                    {label}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-around" }}>
+              {(["🔒", "🏪", "⭐"] as const).map((icon, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: 6,
+                    background: "#12102a",
+                    border: "1px solid #33224444",
+                    fontSize: 13,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  {icon}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* BILLBOARD FANS */}
+          <div
+            style={{
+              background: PANEL_BG,
+              border: `1px solid ${BORDER}`,
+              borderRadius: 8,
+              padding: "8px 6px",
+            }}
+          >
+            <div
+              style={{
+                fontSize: 7,
+                letterSpacing: "0.14em",
+                color: "#cc88ff",
+                fontWeight: 900,
+                textAlign: "center",
+                marginBottom: 7,
+              }}
+            >
+              BILLBOARD FANS
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                <span style={{ fontSize: 13 }}>👤</span>
+                <span style={{ fontSize: 11, fontWeight: 800, color: "#cc88ff" }}>38.5K</span>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                <span style={{ fontSize: 13 }}>❤</span>
+                <span style={{ fontSize: 11, fontWeight: 700 }}>
+                  8
+                </span>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                <span style={{ fontSize: 13 }}>😊</span>
+                <span
+                  style={{ fontSize: 8, color: "rgba(255,255,255,0.45)", fontWeight: 600 }}
+                >
+                  SByeeGil
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* PUNPOINTS */}
+          <button
+            type="button"
+            style={{
+              padding: "8px 4px",
+              background: "#160a06",
+              border: "1px solid #cc660044",
+              borderRadius: 8,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 4,
+            }}
+          >
+            <span style={{ fontSize: 15 }}>🪙</span>
+            <span
+              style={{
+                fontSize: 7,
+                fontWeight: 900,
+                color: "#ff9944",
+                letterSpacing: "0.08em",
+              }}
+            >
+              PUNPOINTS
+            </span>
+          </button>
+
+          {/* Points display */}
+          <div
+            style={{
+              textAlign: "center",
+              padding: "6px 4px",
+              background: "#0a0712",
+              border: "1px solid #33224433",
+              borderRadius: 7,
+            }}
+          >
+            <div style={{ fontSize: 14, fontWeight: 900, color: "#cc88ff" }}>
+              {points.toLocaleString()}
+            </div>
+            <div style={{ fontSize: 6, color: "rgba(255,255,255,0.25)", letterSpacing: "0.1em", fontWeight: 700 }}>
+              PTS
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Reaction bar ── */}
+      <div
+        style={{
+          display: "flex",
+          gap: 8,
+          padding: "8px 14px",
+          overflowX: "auto",
+          borderTop: `1px solid ${BORDER}`,
+          flexShrink: 0,
+          msOverflowStyle: "none",
+          scrollbarWidth: "none",
+        }}
+      >
+        {REACTIONS.map((r) => (
+          <button
+            key={r.id}
+            type="button"
+            onClick={() => fireReaction(r.id, r.pts)}
+            style={{
+              flex: "0 0 auto",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 4,
+              padding: "9px 11px",
+              background: fired === r.id ? `${ACCENT}1a` : "#07091a",
+              border: `1px solid ${fired === r.id ? ACCENT : "#33224433"}`,
+              borderRadius: 10,
+              cursor: "pointer",
+              transform: fired === r.id ? "scale(1.1)" : "scale(1)",
+              transition: "all 0.15s",
+            }}
+          >
+            <span style={{ fontSize: 20 }}>{r.icon}</span>
+            <span
+              style={{
+                fontSize: 7,
+                color: "rgba(255,255,255,0.4)",
+                fontWeight: 700,
+                whiteSpace: "nowrap",
+                letterSpacing: "0.04em",
+              }}
+            >
+              {r.label}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      {/* ── Crowd message input ── */}
+      <div style={{ padding: "6px 14px 0", flexShrink: 0 }}>
+        <input
+          type="text"
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          placeholder="Say something to the crowd..."
+          style={{
+            width: "100%",
+            padding: "11px 15px",
+            background: "#07091a",
+            border: "1px solid #33224444",
+            borderRadius: 10,
+            color: "#fff",
+            fontSize: 12,
+            outline: "none",
+            boxSizing: "border-box",
+            fontFamily: "inherit",
+          }}
+        />
+      </div>
+
+      {/* ── Bot dock ── */}
+      <div
+        style={{
+          display: "flex",
+          gap: 16,
+          padding: "8px 14px",
+          borderTop: `1px solid ${BORDER}`,
+          overflowX: "auto",
+          flexShrink: 0,
+          msOverflowStyle: "none",
+          scrollbarWidth: "none",
+        }}
+      >
+        {["StageManagerBot", "BookingBot", "ChatGuardBot"].map((bot) => (
+          <div key={bot} style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
+            <div
+              style={{
+                width: 6,
+                height: 6,
+                borderRadius: "50%",
+                background: BOT_DOT_COLOR,
+                boxShadow: `0 0 5px ${BOT_DOT_COLOR}`,
+              }}
+            />
+            <span
+              style={{
+                fontSize: 8,
+                color: "rgba(255,255,255,0.35)",
+                fontWeight: 700,
+                whiteSpace: "nowrap",
+              }}
+            >
+              {bot}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {/* ── Video player controls bar ── */}
+      <div
+        style={{
+          position: "sticky",
+          bottom: 0,
+          background: "#07050c",
+          borderTop: "1px solid #22111122",
+          padding: "8px 14px",
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          flexShrink: 0,
+        }}
+      >
+        {/* $ TIP */}
+        <button
+          type="button"
+          onClick={sendTip}
+          style={{
+            padding: "6px 13px",
+            background: tipSent ? "#009900" : "#006600",
+            border: "none",
+            borderRadius: 6,
+            fontSize: 11,
+            fontWeight: 900,
+            color: "#fff",
+            cursor: "pointer",
+            letterSpacing: "0.06em",
+            transition: "background 0.2s",
+            flexShrink: 0,
+          }}
+        >
+          $ TIP
         </button>
-      }
-      zones={{
-        headerZone,
-        stageZone,
-        reactionZone,
-        tipZone,
-        playlistZone,
-        botStripZone,
-        rightTowerZone,
-        bottomActionZone,
-        engineLogZone,
-      }}
-    >
-      <MonetizationRail
-        target={{}}
-        actions={["subscribe", "gift", "ticket", "season-pass"]}
-        heading="FAN PERKS"
-        layout="row"
-      />
-      <ProfileStreakRail userId={fanSlug} displayName={displayName} mode="full" accentColor="#FF2DAA" />
-    </ProfileWorldShell>
+
+        <div style={{ width: 1, height: 20, background: "#33333355", flexShrink: 0 }} />
+
+        {/* Controls */}
+        {[
+          { icon: "▶", label: "play", action: goToShow },
+          { icon: "👋", label: "wave", action: () => fireReaction("wave", 3) },
+          { icon: "❤️", label: "heart", action: () => fireReaction("hearts", 8) },
+          { icon: "🔊", label: "audio", action: () => {} },
+          { icon: "⚙️", label: "settings", action: () => {} },
+          { icon: "⛶", label: "fullscreen", action: goToShow },
+        ].map((c) => (
+          <button
+            key={c.label}
+            type="button"
+            onClick={c.action}
+            aria-label={c.label}
+            style={{
+              background: "none",
+              border: "none",
+              fontSize: 16,
+              color: "#aa7766",
+              cursor: "pointer",
+              padding: "4px",
+              opacity: 0.7,
+              flexShrink: 0,
+            }}
+          >
+            {c.icon}
+          </button>
+        ))}
+
+        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6 }}>
+          <span style={{ fontSize: 9, color: "rgba(255,255,255,0.2)", fontWeight: 700 }}>
+            {displayName}
+          </span>
+        </div>
+      </div>
+    </main>
   );
 }

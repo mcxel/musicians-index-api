@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import ProfileShell from "@/components/profile/ProfileShell";
 import Link from "next/link";
 import UniversalMediaPanel from "@/components/media/UniversalMediaPanel";
+import MemoryWall from "@/components/media/MemoryWall";
 
 interface Props {
   params: { slug: string };
@@ -130,6 +131,10 @@ export default function PromoterProfilePage({ params }: Props) {
         role="promoter"
         accentColor={ACCENT}
       />
+
+      <div style={{ padding: "0 24px 16px" }}>
+        <MemoryWall accentColor={ACCENT} title={`${promoter.displayName} — Memory Wall`} />
+      </div>
     </ProfileShell>
   );
 }

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import ProfileShell from "@/components/profile/ProfileShell";
 import UniversalMediaPanel from "@/components/media/UniversalMediaPanel";
+import MemoryWall from "@/components/media/MemoryWall";
 
 interface Props {
   params: { slug: string };
@@ -184,6 +185,10 @@ export default function VenueProfilePage({ params }: Props) {
         isLive={venue.isLive}
         accentColor={GREEN}
       />
+
+      <div style={{ padding: "0 24px 16px" }}>
+        <MemoryWall accentColor={GREEN} title={`${venue.displayName} — Memory Wall`} />
+      </div>
     </ProfileShell>
   );
 }

@@ -18,6 +18,8 @@ import type { SponsorSlot } from "@/components/performer/DynamicRadialAura";
 import ViralShareButton from "@/components/share/ViralShareButton";
 import SocialDock from "@/components/social/SocialDock";
 import TrackUploadPanel from "@/components/social/TrackUploadPanel";
+import MemoryWall from "@/components/media/MemoryWall";
+import TieredAdSlot from "@/components/ads/TieredAdSlot";
 
 interface Props {
   params: { slug: string };
@@ -561,6 +563,16 @@ export default function PerformerProfilePage({ params }: Props) {
             playlistName={`${performer.displayName} — Playlist`}
             accentColor={ACCENT}
           />
+        </div>
+
+        {/* Memory Wall — photos, videos, audio, moments */}
+        <div style={{ marginTop: 14 }}>
+          <MemoryWall accentColor={ACCENT} title={`${performer.displayName} — Memory Wall`} />
+        </div>
+
+        {/* Ad slot — free visitors see this */}
+        <div style={{ marginTop: 14 }}>
+          <TieredAdSlot tier="free" placement="performer-profile-bottom" height={70} />
         </div>
 
         {/* Profile Lobby */}

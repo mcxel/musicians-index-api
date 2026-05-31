@@ -7,6 +7,7 @@ import {
   type UserRole,
   getFirstRunState,
   getPendingSteps,
+  getActiveStepsForRole,
   completeFirstRunStep,
   dismissFirstRun,
   setFirstRunRole,
@@ -24,12 +25,21 @@ const ROLE_OPTIONS: { role: UserRole; label: string; icon: string; desc: string 
 
 const AUTH_PATHS = ['/auth', '/signup', '/login', '/support/account-recovery', '/home'];
 
+const NEXT_ACTIONS = [
+  { icon: '🎭', label: 'Join a Live Room',     desc: 'Watch artists perform right now',        href: '/fan/theater'      },
+  { icon: '📰', label: 'Visit the Magazine',   desc: 'News, battles, and editorials',          href: '/home/1'           },
+  { icon: '👤', label: 'Complete Your Profile',desc: 'Add photo, bio, and links',              href: '/account'          },
+  { icon: '⭐', label: 'Follow an Artist',     desc: 'Get notified when they go live',         href: '/artists/dashboard'},
+  { icon: '✨', label: 'Earn Your First XP',   desc: 'Vote in a battle or send a tip',         href: '/battles'          },
+];
+
 export default function FirstRunExperienceOverlay() {
   const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
   const [visible, setVisible] = useState(false);
   const [role, setRole] = useState<UserRole | null>(null);
   const [steps, setSteps] = useState<FirstRunStep[]>([]);
+  const [totalSteps, setTotalSteps] = useState(0);
   const [phase, setPhase] = useState<'role-select' | 'checklist'>('role-select');
 
   const isAuthPath = AUTH_PATHS.some(p => pathname === p || pathname?.startsWith(p + '/'));
@@ -41,6 +51,8 @@ export default function FirstRunExperienceOverlay() {
     if (state.dismissed) return;
     if (state.role) {
       setRole(state.role);
+      const all = getActiveStepsForRole(state.role);
+      setTotalSteps(all.length);
       setSteps(getPendingSteps(state.role));
       setPhase('checklist');
     }
@@ -50,13 +62,17 @@ export default function FirstRunExperienceOverlay() {
   function handleRoleSelect(r: UserRole) {
     setFirstRunRole(r);
     setRole(r);
+    const all = getActiveStepsForRole(r);
+    setTotalSteps(all.length);
     setSteps(getPendingSteps(r));
     setPhase('checklist');
   }
 
   function handleStepDone(stepId: string) {
     completeFirstRunStep(stepId);
-    if (role) setSteps(getPendingSteps(role));
+    if (role) {
+      setSteps(getPendingSteps(role));
+    }
   }
 
   function handleDismiss() {
@@ -65,6 +81,9 @@ export default function FirstRunExperienceOverlay() {
   }
 
   if (!mounted || !visible) return null;
+
+  const completedCount = totalSteps - steps.length;
+  const progressPct = totalSteps > 0 ? Math.round((completedCount / totalSteps) * 100) : 0;
 
   return (
     <AnimatePresence>
@@ -92,6 +111,8 @@ export default function FirstRunExperienceOverlay() {
               maxWidth: 520,
               width: '100%',
               position: 'relative',
+              maxHeight: '85vh',
+              overflowY: 'auto',
             }}
           >
             <button
@@ -119,6 +140,7 @@ export default function FirstRunExperienceOverlay() {
                         cursor: 'pointer',
                         textAlign: 'left',
                         color: '#fff',
+                        transition: 'border-color 0.15s, background 0.15s',
                       }}
                     >
                       <div style={{ fontSize: 22, marginBottom: 4 }}>{opt.icon}</div>
@@ -134,18 +156,62 @@ export default function FirstRunExperienceOverlay() {
               <>
                 <div style={{ fontSize: 10, letterSpacing: '0.35em', color: '#AA2DFF', fontWeight: 800, marginBottom: 8 }}>QUICK START</div>
                 <h2 style={{ margin: '0 0 4px', fontSize: 22, color: '#fff' }}>Your First Steps</h2>
-                <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, marginBottom: 20 }}>
+                <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, marginBottom: 12 }}>
                   Complete these to earn up to {totalXPGranted(role)} XP
                 </p>
+
+                {/* Progress bar */}
+                <div style={{ marginBottom: 20 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
+                    <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>{completedCount} of {totalSteps} complete</span>
+                    <span style={{ fontSize: 11, color: '#AA2DFF', fontWeight: 700 }}>{progressPct}%</span>
+                  </div>
+                  <div style={{ height: 4, background: 'rgba(255,255,255,0.08)', borderRadius: 2, overflow: 'hidden' }}>
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${progressPct}%` }}
+                      transition={{ duration: 0.4 }}
+                      style={{ height: '100%', background: 'linear-gradient(90deg,#AA2DFF,#00FFFF)', borderRadius: 2 }}
+                    />
+                  </div>
+                </div>
+
                 {steps.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '24px 0', color: '#00FF88' }}>
-                    <div style={{ fontSize: 32, marginBottom: 8 }}>🏆</div>
-                    <div style={{ fontWeight: 800 }}>All done — you're set up!</div>
+                  <div>
+                    <div style={{ textAlign: 'center', padding: '16px 0 20px', color: '#00FF88' }}>
+                      <motion.div initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} style={{ fontSize: 36, marginBottom: 8 }}>🏆</motion.div>
+                      <div style={{ fontWeight: 900, fontSize: 18, color: '#fff', marginBottom: 4 }}>You&apos;re set up!</div>
+                      <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)' }}>Here&apos;s where to go next.</div>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+                      {NEXT_ACTIONS.map((a) => (
+                        <a key={a.href} href={a.href} onClick={handleDismiss} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.09)', borderRadius: 10, textDecoration: 'none', color: '#fff', transition: 'border-color 0.15s' }}>
+                          <span style={{ fontSize: 20 }}>{a.icon}</span>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontWeight: 700, fontSize: 13 }}>{a.label}</div>
+                            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 1 }}>{a.desc}</div>
+                          </div>
+                          <span style={{ color: '#AA2DFF', fontSize: 14 }}>›</span>
+                        </a>
+                      ))}
+                    </div>
+                    <button
+                      onClick={handleDismiss}
+                      style={{ width: '100%', padding: '11px', background: 'linear-gradient(135deg,#AA2DFF,#00CCFF)', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 900, fontSize: 13, letterSpacing: '0.06em' }}
+                    >
+                      Enter TMI →
+                    </button>
                   </div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {steps.map((step) => (
-                      <div key={step.id} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', padding: 12, background: 'rgba(255,255,255,0.03)', borderRadius: 8, border: '1px solid rgba(255,255,255,0.07)' }}>
+                      <motion.div
+                        key={step.id}
+                        layout
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        style={{ display: 'flex', gap: 12, alignItems: 'flex-start', padding: 12, background: 'rgba(255,255,255,0.03)', borderRadius: 8, border: '1px solid rgba(255,255,255,0.07)' }}
+                      >
                         <div style={{ flex: 1 }}>
                           <div style={{ fontWeight: 700, fontSize: 14 }}>{step.title}</div>
                           <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginTop: 2 }}>{step.description}</div>
@@ -153,10 +219,10 @@ export default function FirstRunExperienceOverlay() {
                             <div style={{ fontSize: 11, color: '#FFD700', marginTop: 4 }}>+{step.xpGrant} XP</div>
                           )}
                         </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flexShrink: 0 }}>
                           <a
                             href={step.ctaHref}
-                            style={{ padding: '7px 14px', background: '#AA2DFF', color: '#fff', borderRadius: 6, fontWeight: 800, fontSize: 11, textDecoration: 'none', whiteSpace: 'nowrap' }}
+                            style={{ padding: '7px 14px', background: '#AA2DFF', color: '#fff', borderRadius: 6, fontWeight: 800, fontSize: 11, textDecoration: 'none', whiteSpace: 'nowrap', textAlign: 'center' }}
                           >
                             {step.ctaLabel}
                           </a>
@@ -164,19 +230,21 @@ export default function FirstRunExperienceOverlay() {
                             onClick={() => handleStepDone(step.id)}
                             style={{ padding: '5px 14px', background: 'none', color: '#666', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, fontSize: 10, cursor: 'pointer' }}
                           >
-                            Done
+                            ✓ Done
                           </button>
                         </div>
-                      </div>
+                      </motion.div>
                     ))}
                   </div>
                 )}
-                <button
-                  onClick={handleDismiss}
-                  style={{ marginTop: 16, width: '100%', padding: '10px', background: 'rgba(255,255,255,0.04)', color: '#666', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, cursor: 'pointer', fontSize: 12 }}
-                >
-                  I'll explore on my own
-                </button>
+                {steps.length > 0 && (
+                  <button
+                    onClick={handleDismiss}
+                    style={{ marginTop: 16, width: '100%', padding: '10px', background: 'rgba(255,255,255,0.04)', color: '#666', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, cursor: 'pointer', fontSize: 12 }}
+                  >
+                    I&apos;ll explore on my own
+                  </button>
+                )}
               </>
             )}
           </motion.div>

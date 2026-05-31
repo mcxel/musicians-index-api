@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useMemo } from "react";
 import RoomInfrastructureProvider from "@/components/room/RoomInfrastructureProvider";
 import type { RoomType } from "@/components/room/RoomInfrastructureProvider";
+import { DrawerProvider } from "@/components/room/DrawerContext";
 
 // ── Room color/BPM context ────────────────────────────────────────────────────
 
@@ -55,6 +56,7 @@ export default function RoomContainer({
   );
 
   return (
+    <DrawerProvider>
     <RoomContext.Provider value={ctxValue}>
       <RoomInfrastructureProvider>
         <div
@@ -82,5 +84,6 @@ export default function RoomContainer({
         </div>
       </RoomInfrastructureProvider>
     </RoomContext.Provider>
+    </DrawerProvider>
   );
 }

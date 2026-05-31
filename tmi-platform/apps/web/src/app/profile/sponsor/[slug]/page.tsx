@@ -4,6 +4,7 @@ import { EDITORIAL_ARTICLES } from "@/lib/editorial/NewsArticleModel";
 import { profileToArticleRoute } from "@/lib/editorial/editorialRoutingResolver";
 import { getSponsorPlacementsByZone } from "@/lib/editorial/SponsorPlacementModel";
 import Link from "next/link";
+import MemoryWall from "@/components/media/MemoryWall";
 
 interface Props {
   params: { slug: string };
@@ -151,6 +152,10 @@ export default function SponsorProfilePage({ params }: Props) {
         role="sponsor"
         accentColor="#FFD700"
       />
+
+      <div style={{ padding: "0 24px 16px" }}>
+        <MemoryWall accentColor="#AA2DFF" title={`${sponsor.displayName} — Memory Wall`} />
+      </div>
     </ProfileShell>
   );
 }
