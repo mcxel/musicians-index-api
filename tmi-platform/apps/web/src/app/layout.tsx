@@ -10,6 +10,7 @@ import LiveSyncProvider from "@/components/media/LiveSyncProvider";
 import FirstRunExperienceOverlay from "@/components/onboarding/FirstRunExperienceOverlay";
 import TMIGlobalHUD from "@/components/hud/TMIGlobalHUD";
 import BotRuntimeProvider from "@/components/providers/BotRuntimeProvider";
+import BotProvider from "@/components/providers/BotProvider";
 import ChevronNavigation from "@/components/navigation/ChevronNavigation";
 import TMIGlobalNav from "@/components/system/TMIGlobalNav";
 import { PWAInstallPrompt } from "@/components/mobile/PWAInstallPrompt";
@@ -166,7 +167,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <PWARegistration />
             <BetaModeBanner />
             <BetaStatusChip />
-            {children}
+            <BotProvider>
+              {children}
+            </BotProvider>
             <PWAInstallPrompt />
             <ChevronNavigation />
             <TMIGlobalNav />

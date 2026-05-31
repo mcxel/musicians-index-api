@@ -2,6 +2,25 @@
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { MAGAZINE_ISSUE_1, type MagazineArticle } from "@/lib/magazine/magazineIssueData";
+import {
+  createMagazineIssue,
+  publishMagazineIssue,
+  listMagazineIssues,
+} from "@/lib/magazine/MagazineIssueEngine";
+
+// Seed Issue 1 into the engine once at module load (idempotent — skips if already seeded)
+const _currentIssue = (() => {
+  const existing = listMagazineIssues({ status: "published" });
+  if (existing.length > 0) return existing[0];
+  const issue = createMagazineIssue({
+    issueTitle: "TMI Issue 2026-04 — The Front Page",
+    issueMonth: 4,
+    issueYear: 2026,
+    coverTheme: "neon-editorial",
+    tags: ["issue-1", "monthly"],
+  });
+  return publishMagazineIssue(issue.issueId);
+})();
 
 const CATEGORY_COLORS: Record<string, string> = {
   feature:   "#FF2DAA",
@@ -159,6 +178,13 @@ function SponsorCard({ delay }: { delay: number }) {
 
 export default function MagazinePage() {
   const [hero, ...rest] = MAGAZINE_ISSUE_1;
+
+  // Get current issue metadata from the engine
+  const issueData = listMagazineIssues({ status: "published" })[0] ?? _currentIssue;
+  const MONTH_SHORT = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
+  const issueBadge = `${MONTH_SHORT[(issueData.issueMonth ?? 4) - 1]} ${issueData.issueYear ?? 2026}`;
+  const issueNum = issueData.issueId.split("-").pop()?.padStart(2, "0") ?? "01";
+
   // Inject sponsor slot after index 4
   const gridItems: Array<MagazineArticle | "sponsor"> = [
     ...rest.slice(0, 4),
@@ -183,7 +209,7 @@ export default function MagazinePage() {
           border: "1px solid rgba(255,45,170,0.3)",
           color: "#FF2DAA", fontSize: 10, letterSpacing: 2,
         }}>
-          ISSUE 01
+          ISSUE {issueNum} · {issueBadge}
         </span>
         <div style={{ marginLeft: "auto", display: "flex", gap: 10 }}>
           <Link href="/magazine/archive" style={{ color: "#333", fontSize: 11, letterSpacing: 2, textDecoration: "none" }}>ARCHIVE</Link>

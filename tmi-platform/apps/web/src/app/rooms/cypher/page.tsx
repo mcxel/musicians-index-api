@@ -6,6 +6,7 @@ import PageShell from '@/components/layout/PageShell';
 import HUDFrame from '@/components/hud/HUDFrame';
 import FooterHUD from '@/components/hud/FooterHUD';
 import LocalCameraFeed from '@/components/live/LocalCameraFeed';
+import ArenaEventShell from "@/components/live/ArenaEventShell";
 
 type BattlePhase = 'QUEUE' | 'COUNTDOWN' | 'ROUND' | 'VOTE' | 'RESULT';
 
@@ -140,6 +141,7 @@ export default function CypherRoomPage() {
           </div>
 
           {/* ── MAIN GRID ── */}
+          <ArenaEventShell roomId="cypher" eventType="cypher" mode="audience" />
           <div style={{ padding: '24px 32px 0', display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 300px', gap: 24 }}>
 
             {/* LEFT — Stage */}

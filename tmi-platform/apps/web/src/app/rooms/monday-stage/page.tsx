@@ -7,6 +7,7 @@ import PageShell from '@/components/layout/PageShell';
 import HUDFrame from '@/components/hud/HUDFrame';
 import FooterHUD from '@/components/hud/FooterHUD';
 import StageCurtain, { type StageState } from '@/components/stage/StageCurtain';
+import ArenaEventShell from "@/components/live/ArenaEventShell";
 
 const SHOW_TITLE  = "MARCEL'S MONDAY NIGHT STAGE";
 const ROOM_ID     = 'monday-stage';
@@ -136,6 +137,7 @@ export default function MondayStagePage() {
           </div>
 
           {/* ── MAIN GRID ── */}
+          <ArenaEventShell roomId="monday-stage" eventType="monday-stage" mode="audience" />
           <div style={{ padding: '24px 32px 0', display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 320px', gap: 24 }}>
 
             {/* LEFT — Stage + Controls */}

@@ -4,7 +4,7 @@
  * TMI AudienceScene — canvas-based 3D audience renderer
  * Fan view: back-of-head rows looking at stage screen
  * Performer view: front-facing crowd looking up at you
- * Supports 5 venue types, crowd reactions, and presence data.
+ * Supports 5 venue types, BPM sync, phone glow, spotlight beams, crowd reactions.
  */
 
 import { useEffect, useRef, useCallback } from "react";
@@ -12,17 +12,26 @@ import { useEffect, useRef, useCallback } from "react";
 // ── Venue definitions ─────────────────────────────────────────────────────────
 
 export const VENUES = [
-  { name: "Theater",   wallColor: "#1a0a04", floorColor: "#0e0602", ceilColor: "#0a0400", wallTex: true,  crowd: 2730  },
-  { name: "Arena",     wallColor: "#0a0a12", floorColor: "#080810", ceilColor: "#050510", wallTex: false, crowd: 18500 },
-  { name: "Club",      wallColor: "#0a0018", floorColor: "#060010", ceilColor: "#04000e", wallTex: false, crowd: 420   },
-  { name: "Outdoor",   wallColor: "#050c18", floorColor: "#030a10", ceilColor: "#000608", wallTex: false, crowd: 8200  },
-  { name: "Boardroom", wallColor: "#080814", floorColor: "#050510", ceilColor: "#030308", wallTex: true,  crowd: 120   },
+  { name: "Theater",   wallColor: "#1a0a04", floorColor: "#0e0602", ceilColor: "#0a0400", wallTex: true,  crowd: 2730,  accentR: 255, accentG: 80,  accentB: 20  },
+  { name: "Arena",     wallColor: "#0a0a12", floorColor: "#080810", ceilColor: "#050510", wallTex: false, crowd: 18500, accentR: 0,   accentG: 200, accentB: 255 },
+  { name: "Club",      wallColor: "#0a0018", floorColor: "#060010", ceilColor: "#04000e", wallTex: false, crowd: 420,   accentR: 170, accentG: 45,  accentB: 255 },
+  { name: "Outdoor",   wallColor: "#050c18", floorColor: "#030a10", ceilColor: "#000608", wallTex: false, crowd: 8200,  accentR: 0,   accentG: 255, accentB: 136 },
+  { name: "Boardroom", wallColor: "#080814", floorColor: "#050510", ceilColor: "#030308", wallTex: true,  crowd: 120,   accentR: 255, accentG: 215, accentB: 0   },
 ] as const;
 
 export type VenueIndex = 0 | 1 | 2 | 3 | 4;
 
 const SKINS = ["#8B4513","#5C3317","#2F1B0E","#A0522D","#CD853F","#D2691E","#704214","#3D2008"];
 const HAIR  = ["#1a0a00","#3d2000","#000000","#2a1500","#0a0a0a","#4a2800"];
+
+// ── Phone/lighter seed data — deterministic per seat ─────────────────────────
+function phoneGlowColor(idx: number): [number, number, number] {
+  const palette: [number,number,number][] = [
+    [0,255,255],[255,45,170],[170,45,255],[255,215,0],[0,255,136],[255,255,255],
+    [100,200,255],[255,150,50],[200,255,80],[255,100,200],
+  ];
+  return palette[idx % palette.length]!;
+}
 
 // ── Drawing helpers ───────────────────────────────────────────────────────────
 
@@ -44,7 +53,6 @@ function drawHead(
   ctx.save();
 
   if (!forward) {
-    // Back-of-head (fan view)
     ctx.strokeStyle = `rgba(${ch(skin,0)},${ch(skin,1)},${ch(skin,2)},.75)`;
     ctx.lineWidth = sz * 0.32;
     ctx.lineCap = "round";
@@ -61,9 +69,7 @@ function drawHead(
     ctx.beginPath(); ctx.ellipse(x, y+sz*.8, sz*.72, sz*.9, 0, 0, Math.PI*2); ctx.fill();
     ctx.fillStyle = hairRgb;
     ctx.beginPath(); ctx.ellipse(x, y, sz*.78, sz*.8, 0, 0, Math.PI*2); ctx.fill();
-
   } else {
-    // Front-facing (performer view)
     ctx.fillStyle = skinRgb;
     ctx.beginPath(); ctx.ellipse(x, y+sz*.5, sz*.56, sz*.65, 0, 0, Math.PI*2); ctx.fill();
     ctx.beginPath(); ctx.ellipse(x, y, sz*.66, sz*.72, 0, 0, Math.PI*2); ctx.fill();
@@ -97,6 +103,80 @@ function drawBricks(ctx: CanvasRenderingContext2D, x: number, y: number, w: numb
   }
 }
 
+// Draw sweeping spotlight beam from top-center down
+function drawSpotBeam(
+  ctx: CanvasRenderingContext2D,
+  W: number, H: number,
+  bx: number,  // beam x center at top
+  angle: number, // sweep angle in radians
+  r: number, g: number, b: number,
+  alpha: number,
+) {
+  const spread = 0.18;
+  const len = H * 0.85;
+  const ex = bx + Math.sin(angle) * len * 0.5;
+  const ey = H * 0.9;
+
+  const grad = ctx.createLinearGradient(bx, 0, ex, ey);
+  grad.addColorStop(0, `rgba(${r},${g},${b},${alpha * 0.9})`);
+  grad.addColorStop(0.45, `rgba(${r},${g},${b},${alpha * 0.35})`);
+  grad.addColorStop(1, `rgba(${r},${g},${b},0)`);
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(bx, 0);
+  ctx.lineTo(ex - W * spread, ey);
+  ctx.lineTo(ex + W * spread, ey);
+  ctx.closePath();
+  ctx.fillStyle = grad;
+  ctx.globalCompositeOperation = "screen";
+  ctx.fill();
+  ctx.restore();
+}
+
+// Draw phone glow above head position
+function drawPhoneGlow(
+  ctx: CanvasRenderingContext2D,
+  x: number, y: number,
+  r: number, g: number, b: number,
+  alpha: number, sz: number,
+) {
+  ctx.save();
+  ctx.shadowBlur = 10;
+  ctx.shadowColor = `rgba(${r},${g},${b},${alpha})`;
+  ctx.fillStyle = `rgba(${r},${g},${b},${alpha * 0.85})`;
+  const pw = sz * 0.7, ph = sz * 1.0;
+  ctx.beginPath();
+  ctx.roundRect(x - pw/2, y - ph - 2, pw, ph, 2);
+  ctx.fill();
+  // Screen interior
+  ctx.fillStyle = `rgba(${Math.min(r+60,255)},${Math.min(g+60,255)},${Math.min(b+60,255)},${alpha * 0.6})`;
+  ctx.beginPath();
+  ctx.roundRect(x - pw/2 + 1, y - ph - 1, pw - 2, ph - 2, 1);
+  ctx.fill();
+  ctx.restore();
+}
+
+// Draw lighter/candle glow (warm orange flame above head)
+function drawLighterGlow(
+  ctx: CanvasRenderingContext2D,
+  x: number, y: number,
+  alpha: number, sz: number, t: number, seed: number,
+) {
+  const flicker = 0.7 + Math.sin(t * 0.18 + seed) * 0.3;
+  const fy = y - sz * 1.4 + Math.sin(t * 0.12 + seed) * sz * 0.3;
+  ctx.save();
+  const grad = ctx.createRadialGradient(x, fy, 0, x, fy, sz * 1.8);
+  grad.addColorStop(0, `rgba(255,200,40,${alpha * flicker * 0.9})`);
+  grad.addColorStop(0.3, `rgba(255,100,10,${alpha * flicker * 0.5})`);
+  grad.addColorStop(1, `rgba(255,40,0,0)`);
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.ellipse(x, fy, sz * 1.2, sz * 2.0, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 interface AudienceSceneProps {
@@ -105,12 +185,26 @@ interface AudienceSceneProps {
   watcherCount?: number;
   onReaction?: (emoji: string) => void;
   hideControls?: boolean;
+  bpm?: number;
+  accentColor?: string;
+  screenLabel?: string;
+  screenSubLabel?: string;
 }
 
 interface SceneState {
   wave: boolean;
   jump: boolean;
   hype: boolean;
+}
+
+// Parse "#RRGGBB" → [r,g,b]
+function hexToRgb(hex: string): [number, number, number] {
+  const h = hex.replace("#", "");
+  return [
+    parseInt(h.slice(0,2), 16),
+    parseInt(h.slice(2,4), 16),
+    parseInt(h.slice(4,6), 16),
+  ];
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -121,6 +215,10 @@ export default function AudienceScene({
   watcherCount,
   onReaction,
   hideControls = false,
+  bpm = 120,
+  accentColor,
+  screenLabel,
+  screenSubLabel,
 }: AudienceSceneProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const timeRef   = useRef(0);
@@ -137,46 +235,86 @@ export default function AudienceScene({
     const t = timeRef.current++;
     const s = stateRef.current;
 
+    // BPM beat phase — 0→1 per beat
+    const beatDur = (60 / bpm) * 60; // frames per beat at ~60fps
+    const beatPhase = (t % beatDur) / beatDur; // 0..1
+    const beatPulse = Math.pow(Math.max(0, 1 - beatPhase * 2), 2); // sharp attack, decay
+
+    // Accent color
+    const [aR, aG, aB] = accentColor ? hexToRgb(accentColor) : [v.accentR, v.accentG, v.accentB];
+
     ctx.clearRect(0, 0, W, H);
 
     if (view === "fan") {
+      // ── Background ──
       if (v.wallTex) drawBricks(ctx, 0, 0, W, H * 0.52, v.wallColor);
       else { ctx.fillStyle = v.wallColor; ctx.fillRect(0, 0, W, H * 0.52); }
       ctx.fillStyle = v.floorColor; ctx.fillRect(0, H * 0.52, W, H * 0.48);
 
-      // Screen glow
+      // ── Floor reflection gradient ──
+      const fr = ctx.createLinearGradient(0, H * 0.52, 0, H);
+      fr.addColorStop(0, `rgba(${aR},${aG},${aB},0.04)`);
+      fr.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = fr; ctx.fillRect(0, H * 0.52, W, H * 0.48);
+
+      // ── Stage screen ──
       const scrX = 180, scrY = 30, scrW = 440, scrH = 210;
-      ctx.fillStyle = "#1a0900"; ctx.fillRect(scrX-10, scrY-10, scrW+20, scrH+20);
+      ctx.fillStyle = "#120806"; ctx.fillRect(scrX-12, scrY-12, scrW+24, scrH+24);
+      // Screen frame
+      ctx.strokeStyle = `rgba(${aR},${aG},${aB},0.5)`; ctx.lineWidth = 2;
+      ctx.strokeRect(scrX-2, scrY-2, scrW+4, scrH+4);
+
+      const ga = 0.84 + Math.sin(t * 0.02) * 0.13 + beatPulse * 0.12;
       const ag = ctx.createRadialGradient(scrX+scrW/2, scrY+scrH/2, 10, scrX+scrW/2, scrY+scrH/2, scrW*.75);
-      const ga = 0.84 + Math.sin(t * 0.02) * 0.13;
-      ag.addColorStop(0, `rgba(255,160,40,${ga})`);
-      ag.addColorStop(0.4, `rgba(200,100,15,${ga * 0.82})`);
-      ag.addColorStop(1, "rgba(40,15,0,0)");
+      ag.addColorStop(0, `rgba(${aR},${aG},${aB},${ga * 0.9})`);
+      ag.addColorStop(0.35, `rgba(${Math.floor(aR*.7)},${Math.floor(aG*.7)},${Math.floor(aB*.7)},${ga * 0.65})`);
+      ag.addColorStop(0.7, `rgba(${Math.floor(aR*.3)},${Math.floor(aG*.3)},${Math.floor(aB*.3)},${ga * 0.3})`);
+      ag.addColorStop(1, "rgba(0,0,0,0)");
       ctx.fillStyle = ag; ctx.fillRect(scrX, scrY, scrW, scrH);
 
-      // Scanline
+      // Scanlines
       ctx.strokeStyle = `rgba(255,255,255,${0.04 + Math.sin(t * 0.03) * 0.02})`;
       ctx.lineWidth = 1.5;
       for (let sl = 0; sl < scrH; sl += 6) {
         ctx.beginPath(); ctx.moveTo(scrX, scrY + sl); ctx.lineTo(scrX + scrW, scrY + sl); ctx.stroke();
       }
 
-      // "LIVE" text on screen
+      // Screen content
+      const mainLabel = screenLabel ?? "● LIVE";
+      const subLabel  = screenSubLabel ?? "TMI · THE MUSICIAN'S INDEX";
       ctx.font = "bold 22px 'Orbitron', monospace";
-      ctx.fillStyle = `rgba(255,220,80,${0.7 + Math.sin(t * 0.05) * 0.3})`;
+      ctx.fillStyle = `rgba(255,255,255,${0.7 + Math.sin(t * 0.05) * 0.25 + beatPulse * 0.25})`;
       ctx.textAlign = "center";
-      ctx.fillText("● LIVE", scrX + scrW / 2, scrY + scrH / 2 + 8);
-      ctx.font = "11px 'Exo 2', monospace";
-      ctx.fillStyle = "rgba(255,200,80,0.5)";
-      ctx.fillText("TMI · THE MUSICIAN'S INDEX", scrX + scrW / 2, scrY + scrH - 16);
+      ctx.fillText(mainLabel, scrX + scrW / 2, scrY + scrH / 2 + 8);
+      ctx.font = "10px 'Exo 2', monospace";
+      ctx.fillStyle = `rgba(${aR},${aG},${aB},0.7)`;
+      ctx.fillText(subLabel, scrX + scrW / 2, scrY + scrH - 16);
       ctx.textAlign = "left";
 
-      // Wall glow
+      // Screen edge glow + BPM pulse
+      ctx.save();
+      ctx.shadowBlur = 18 + beatPulse * 22;
+      ctx.shadowColor = `rgba(${aR},${aG},${aB},0.7)`;
+      ctx.strokeStyle = `rgba(${aR},${aG},${aB},${0.25 + beatPulse * 0.4})`;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(scrX, scrY, scrW, scrH);
+      ctx.restore();
+
+      // Wall glow below screen
       const wg = ctx.createRadialGradient(scrX+scrW/2, scrY+scrH, 0, scrX+scrW/2, scrY+scrH, scrW*.9);
-      wg.addColorStop(0, `rgba(255,140,20,${0.16*ga})`); wg.addColorStop(1, "rgba(0,0,0,0)");
+      wg.addColorStop(0, `rgba(${aR},${aG},${aB},${(0.12 + beatPulse * 0.08) * ga})`);
+      wg.addColorStop(1, "rgba(0,0,0,0)");
       ctx.fillStyle = wg; ctx.fillRect(0, scrY, W, scrH + 90);
 
-      // Audience rows (back-of-head)
+      // ── Sweep spotlights from top (3 beams) ──
+      const beamColors: [number,number,number][] = [[aR,aG,aB],[255,255,255],[aR,aG,aB]];
+      for (let b = 0; b < 3; b++) {
+        const sweepAngle = Math.sin(t * 0.018 + b * 1.1) * 0.35;
+        const [br,bg_,bb] = beamColors[b]!;
+        drawSpotBeam(ctx, W, H, W * (0.25 + b * 0.25), sweepAngle, br, bg_, bb, 0.055 + beatPulse * 0.03);
+      }
+
+      // ── Audience rows (back-of-head) ──
       const fanRows = [
         { y: 310, seats: 15, sw: 48, sz: 9.5,  lit: 0.15 },
         { y: 332, seats: 14, sw: 52, sz: 11,   lit: 0.22 },
@@ -190,15 +328,39 @@ export default function AudienceScene({
         const sx = (W - row.seats * row.sw) / 2;
         for (let c = 0; c < row.seats; c++) {
           const idx = ri * 20 + c;
+          const seed = idx * 137.5;
           const px = sx + c * row.sw + row.sw / 2;
           const wb = s.wave ? Math.sin(t * 0.04 + c * 0.6 + ri * 0.3) * 4.5 : 0;
           const jb = s.jump ? Math.abs(Math.sin(t * 0.08)) * -7 : 0;
-          drawHead(ctx, px, row.y + wb + jb, row.sz, SKINS[(idx*7+c*3) % SKINS.length]!, HAIR[(idx*5+ri*2) % HAIR.length]!, t*0.025+(c*0.4)+(ri*0.2), false, row.lit);
+          const beatBob = beatPulse * -2.5 * row.lit;
+          const hy = row.y + wb + jb + beatBob;
+
+          drawHead(ctx, px, hy, row.sz, SKINS[(idx*7+c*3) % SKINS.length]!, HAIR[(idx*5+ri*2) % HAIR.length]!, t*0.025+(c*0.4)+(ri*0.2), false, row.lit);
+
+          // Phone/lighter glow — 65% show phones, 12% show lighters
+          const phoneRoll = (seed * 6271) % 100;
+          if (phoneRoll < 65 && row.lit > 0.3) {
+            const [pr,pg,pb] = phoneGlowColor(idx);
+            const swayX = px + Math.sin(t * 0.022 + seed) * row.sz * 0.8;
+            const glowAlpha = (0.45 + Math.sin(t * 0.04 + seed) * 0.2) * (row.lit * 0.8);
+            drawPhoneGlow(ctx, swayX, hy - row.sz * 0.8, pr, pg, pb, glowAlpha, row.sz * 0.55);
+          } else if (phoneRoll < 77 && row.lit > 0.5) {
+            const lighterAlpha = (0.55 + Math.sin(t * 0.03 + seed) * 0.25) * row.lit;
+            const swayX = px + Math.sin(t * 0.019 + seed) * row.sz * 0.5;
+            drawLighterGlow(ctx, swayX, hy - row.sz * 1.2, lighterAlpha, row.sz * 0.7, t, seed);
+          }
         }
       });
 
+      // ── Ambient accent glow at bottom ──
+      const bottomGlow = ctx.createLinearGradient(0, H * 0.75, 0, H);
+      bottomGlow.addColorStop(0, "rgba(0,0,0,0)");
+      bottomGlow.addColorStop(1, `rgba(${aR},${aG},${aB},${0.06 + beatPulse * 0.06})`);
+      ctx.fillStyle = bottomGlow; ctx.fillRect(0, H * 0.75, W, H * 0.25);
+
     } else {
-      // PERFORMER VIEW
+      // ── PERFORMER VIEW ──────────────────────────────────────────────────────
+
       const bg = ctx.createLinearGradient(0, 0, 0, H);
       bg.addColorStop(0, v.ceilColor); bg.addColorStop(1, v.floorColor);
       ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
@@ -206,23 +368,37 @@ export default function AudienceScene({
       if (v.wallTex) drawBricks(ctx, 0, 0, W, H * 0.42, v.wallColor);
       else { ctx.fillStyle = v.wallColor; ctx.fillRect(0, 0, W, H * 0.42); }
 
-      // Stage warm glow
+      // Stage warm glow under performer
       const sg = ctx.createRadialGradient(W/2, H, 0, W/2, H, W * 0.65);
-      sg.addColorStop(0, "rgba(255,100,0,.32)"); sg.addColorStop(0.5, "rgba(180,60,0,.1)"); sg.addColorStop(1, "rgba(0,0,0,0)");
+      sg.addColorStop(0, `rgba(255,100,0,${0.28 + beatPulse * 0.12})`);
+      sg.addColorStop(0.5, "rgba(180,60,0,.1)");
+      sg.addColorStop(1, "rgba(0,0,0,0)");
       ctx.fillStyle = sg; ctx.fillRect(0, H * 0.48, W, H * 0.52);
 
-      // Spotlight beams
-      for (let b = 0; b < 3; b++) {
-        const bx = W * (0.25 + b * 0.25);
-        const bAlpha = 0.04 + Math.sin(t * 0.02 + b * 1.2) * 0.02;
-        const sg2 = ctx.createRadialGradient(bx, 0, 0, bx, H * 0.5, W * 0.2);
-        sg2.addColorStop(0, `rgba(255,200,100,${bAlpha})`);
-        sg2.addColorStop(1, "rgba(0,0,0,0)");
-        ctx.fillStyle = sg2;
-        ctx.fillRect(0, 0, W, H);
+      // Stage floor reflection
+      const sfr = ctx.createLinearGradient(0, H * 0.88, 0, H);
+      sfr.addColorStop(0, `rgba(${aR},${aG},${aB},${0.08 + beatPulse * 0.06})`);
+      sfr.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = sfr; ctx.fillRect(0, H * 0.88, W, H * 0.12);
+
+      // ── Swept colored spotbeams (5 beams, performer view) ──
+      const perfBeamCols: [number,number,number][] = [
+        [aR,aG,aB],[255,255,255],[aR,aG,aB],[255,150,50],[aR,aG,aB],
+      ];
+      for (let b = 0; b < 5; b++) {
+        const sweepAngle = Math.sin(t * 0.016 + b * 0.78) * 0.45;
+        const [br,bg_,bb] = perfBeamCols[b]!;
+        drawSpotBeam(ctx, W, H, W * (0.15 + b * 0.175), sweepAngle, br, bg_, bb,
+          0.07 + beatPulse * 0.05 + (b === 2 ? 0.03 : 0));
       }
 
-      // Audience rows (front-facing)
+      // ── Center follow spotlight on performer position ──
+      const followGrad = ctx.createRadialGradient(W/2, H*0.15, 0, W/2, H*0.15, W*0.22);
+      followGrad.addColorStop(0, `rgba(255,220,180,${0.18 + beatPulse * 0.1})`);
+      followGrad.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = followGrad; ctx.fillRect(0, 0, W, H * 0.5);
+
+      // ── Audience rows (front-facing) ──
       const perfRows = [
         { ri: 0, yB: H*0.40, seats: 20, sw: 36, sz: 8,    lit: 0.65 },
         { ri: 1, yB: H*0.46, seats: 18, sw: 40, sz: 9.5,  lit: 0.72 },
@@ -237,28 +413,68 @@ export default function AudienceScene({
         const sx = (W - row.seats * row.sw) / 2;
         for (let c = 0; c < row.seats; c++) {
           const idx = row.ri * 30 + c;
+          const seed = idx * 137.5;
           const px = sx + c * row.sw + row.sw / 2;
           const wb = s.wave ? Math.sin(t*0.04+c*0.5)*5.5 : 0;
           const jb = s.jump ? Math.abs(Math.sin(t*0.08+c*0.3))*-9 : 0;
           const hb = s.hype ? (Math.sin(t*0.06+c*0.4)*4.5+Math.sin(t*0.03+c*0.2)*3.5) : 0;
-          drawHead(ctx, px, row.yB+wb+jb+hb, row.sz, SKINS[(idx*7+c*3)%SKINS.length]!, HAIR[(idx*5+row.ri*2)%HAIR.length]!, t*0.028+(c*0.35)+(row.ri*0.15), true, row.lit);
+          const beatBob = beatPulse * -3 * row.lit;
+          const hy = row.yB + wb + jb + hb + beatBob;
+
+          drawHead(ctx, px, hy, row.sz, SKINS[(idx*7+c*3)%SKINS.length]!, HAIR[(idx*5+row.ri*2)%HAIR.length]!, t*0.028+(c*0.35)+(row.ri*0.15), true, row.lit);
+
+          // Phone/lighter glow (performer sees crowd lit up)
+          const phoneRoll = (seed * 6271) % 100;
+          if (phoneRoll < 70) {
+            const [pr,pg,pb] = phoneGlowColor(idx);
+            const swayX = px + Math.sin(t * 0.02 + seed) * row.sz * 0.9;
+            const glowAlpha = (0.4 + Math.sin(t * 0.035 + seed) * 0.2) * (0.5 + row.lit * 0.5);
+            drawPhoneGlow(ctx, swayX, hy - row.sz * 0.7, pr, pg, pb, glowAlpha, row.sz * 0.5);
+          } else if (phoneRoll < 82) {
+            const lighterAlpha = (0.6 + Math.sin(t * 0.028 + seed) * 0.25);
+            const swayX = px + Math.sin(t * 0.017 + seed) * row.sz * 0.5;
+            drawLighterGlow(ctx, swayX, hy - row.sz * 1.1, lighterAlpha * row.lit, row.sz * 0.8, t, seed);
+          }
         }
       });
 
+      // Crowd color wash (tint back rows with accent color)
+      const crowdWash = ctx.createLinearGradient(0, H*0.38, 0, H*0.65);
+      crowdWash.addColorStop(0, `rgba(${aR},${aG},${aB},${0.06 + beatPulse * 0.04})`);
+      crowdWash.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = crowdWash; ctx.fillRect(0, H*0.38, W, H*0.27);
+
+      // Floor fade
       const tf = ctx.createLinearGradient(0, H*0.86, 0, H);
       tf.addColorStop(0, "rgba(0,0,0,0)"); tf.addColorStop(1, v.floorColor);
       ctx.fillStyle = tf; ctx.fillRect(0, H*0.86, W, H*0.14);
+
+      // Stage rim glow
+      const rimGlow = ctx.createLinearGradient(0, H*0.91, 0, H*0.96);
+      rimGlow.addColorStop(0, `rgba(${aR},${aG},${aB},${0.35 + beatPulse * 0.3})`);
+      rimGlow.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = rimGlow; ctx.fillRect(0, H*0.91, W, H*0.05);
     }
 
-    // Watcher count overlay
+    // ── Watcher count ──
     if (watcherCount !== undefined) {
       ctx.font = "bold 11px 'Exo 2', monospace";
       ctx.fillStyle = "rgba(0,255,136,0.8)";
       ctx.fillText(`👁 ${watcherCount.toLocaleString()}`, 10, H - 10);
     }
 
+    // ── BPM beat flash at very top (subtle) ──
+    if (beatPulse > 0.5) {
+      const flashAlpha = (beatPulse - 0.5) * 0.14;
+      const flashGrad = ctx.createLinearGradient(0, 0, 0, H * 0.12);
+      flashGrad.addColorStop(0, `rgba(${aR},${aG},${aB},${flashAlpha})`);
+      flashGrad.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = flashGrad;
+      ctx.fillRect(0, 0, W, H * 0.12);
+    }
+
     frameRef.current = requestAnimationFrame(render);
-  }, [view, venue, watcherCount]);
+  }, [view, venue, watcherCount, bpm, accentColor, screenLabel, screenSubLabel]);
 
   useEffect(() => {
     frameRef.current = requestAnimationFrame(render);
@@ -280,12 +496,12 @@ export default function AudienceScene({
       {!hideControls && (
         <div style={{ position: "absolute", bottom: 10, left: "50%", transform: "translateX(-50%)", display: "flex", gap: 6 }}>
           {[
-            { label: "🌊 WAVE", fn: triggerWave, color: "rgba(220,70,0,.7)", text: "#FF8C00" },
-            { label: "⬆ JUMP", fn: triggerJump, color: "rgba(220,70,0,.7)", text: "#FF8C00" },
-            { label: "🔥 HYPE", fn: triggerHype, color: "#FFD700", text: "#FFD700" },
+            { label: "🌊 WAVE", fn: triggerWave, color: "rgba(0,200,255,.7)",   text: "#00CFFF" },
+            { label: "⬆ JUMP",  fn: triggerJump, color: "rgba(170,45,255,.7)",  text: "#AA2DFF" },
+            { label: "🔥 HYPE",  fn: triggerHype, color: "rgba(255,215,0,.7)",   text: "#FFD700" },
           ].map(({ label, fn, color, text }) => (
             <button key={label} onClick={fn} style={{
-              background: "rgba(0,0,0,0.6)", border: `1px solid ${color}`, color: text,
+              background: "rgba(0,0,0,0.65)", border: `1px solid ${color}`, color: text,
               borderRadius: 4, padding: "4px 10px", fontSize: 11, cursor: "pointer",
               fontWeight: 700, backdropFilter: "blur(4px)",
             }}>{label}</button>

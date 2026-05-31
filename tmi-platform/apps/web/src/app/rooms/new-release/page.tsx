@@ -5,6 +5,7 @@ import PageShell from "@/components/layout/PageShell";
 import HUDFrame from "@/components/hud/HUDFrame";
 import FooterHUD from "@/components/hud/FooterHUD";
 import Link from "next/link";
+import ArenaEventShell from "@/components/live/ArenaEventShell";
 
 const NEW_RELEASES = [
   {
@@ -67,6 +68,9 @@ export default function NewReleasePage() {
           </div>
 
           {/* Release list */}
+          <div style={{ padding: "0 32px" }}>
+            <ArenaEventShell roomId="new-release" eventType="concert" mode="audience" />
+          </div>
           <div style={{ padding: "28px 32px" }}>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 16 }}>
               {NEW_RELEASES.map((r) => (

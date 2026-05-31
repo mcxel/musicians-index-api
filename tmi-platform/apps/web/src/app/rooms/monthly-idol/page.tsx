@@ -5,6 +5,7 @@ import PageShell from "@/components/layout/PageShell";
 import HUDFrame from "@/components/hud/HUDFrame";
 import FooterHUD from "@/components/hud/FooterHUD";
 import Link from "next/link";
+import ArenaEventShell from "@/components/live/ArenaEventShell";
 
 const PHASES = ["AUDITIONS", "ROUND 1", "QUARTERFINALS", "SEMIFINALS", "FINALE", "CROWNED"] as const;
 type Phase = typeof PHASES[number];
@@ -66,6 +67,7 @@ export default function MonthlyIdolPage() {
             </div>
           </div>
 
+          <ArenaEventShell roomId="monthly-idol" eventType="challenge" mode="audience" />
           <div style={{ display: "grid", gridTemplateColumns: "1fr 320px", gap: 20, padding: "24px 32px" }}>
 
             {/* Contestant grid */}

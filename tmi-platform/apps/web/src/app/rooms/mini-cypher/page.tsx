@@ -5,6 +5,7 @@ import PageShell from "@/components/layout/PageShell";
 import HUDFrame from "@/components/hud/HUDFrame";
 import FooterHUD from "@/components/hud/FooterHUD";
 import Link from "next/link";
+import ArenaEventShell from "@/components/live/ArenaEventShell";
 
 const MODES = ["1V1", "2V2", "CIRCLE", "OPEN MIC"] as const;
 type Mode = typeof MODES[number];
@@ -60,6 +61,7 @@ export default function MiniCypherPage() {
             </div>
           </div>
 
+          <ArenaEventShell roomId="mini-cypher" eventType="cypher" mode="audience" />
           <div style={{ display: "grid", gridTemplateColumns: "1fr 280px", gap: 20, padding: "24px 32px" }}>
 
             {/* Battle area */}

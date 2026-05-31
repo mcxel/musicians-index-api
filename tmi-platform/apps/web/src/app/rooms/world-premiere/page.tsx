@@ -5,6 +5,7 @@ import PageShell from "@/components/layout/PageShell";
 import HUDFrame from "@/components/hud/HUDFrame";
 import FooterHUD from "@/components/hud/FooterHUD";
 import Link from "next/link";
+import ArenaEventShell from "@/components/live/ArenaEventShell";
 
 const TARGET = new Date(Date.now() + 4 * 60 * 60 * 1000 + 22 * 60 * 1000);
 
@@ -58,6 +59,9 @@ export default function WorldPremierePage() {
             </div>
           </div>
 
+          <div style={{ position: "relative", zIndex: 1 }}>
+            <ArenaEventShell roomId="world-premiere" eventType="concert" mode="audience" />
+          </div>
           <div style={{ position: "relative", zIndex: 1, padding: "40px 32px", textAlign: "center" }}>
 
             {/* Countdown */}

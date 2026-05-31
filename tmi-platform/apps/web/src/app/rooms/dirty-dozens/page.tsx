@@ -5,6 +5,7 @@ import PageShell from "@/components/layout/PageShell";
 import HUDFrame from "@/components/hud/HUDFrame";
 import FooterHUD from "@/components/hud/FooterHUD";
 import Link from "next/link";
+import ArenaEventShell from "@/components/live/ArenaEventShell";
 
 const CONTESTANTS = [
   { id: 1, name: "SmoothTalk_99", score: 487, rank: 1, badge: "🏆" },
@@ -75,6 +76,7 @@ export default function DirtyDozensPage() {
             </div>
           </div>
 
+          <ArenaEventShell roomId="dirty-dozens" eventType="battle" mode="audience" />
           <div style={{ display: "grid", gridTemplateColumns: "1fr 300px", gap: 20, padding: "24px 32px" }}>
 
             {/* Main battle area */}
