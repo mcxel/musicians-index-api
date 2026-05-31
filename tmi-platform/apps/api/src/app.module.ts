@@ -43,6 +43,8 @@ import { AdvertisersModule } from "./modules/advertisers/advertisers.module";
 import { AuctionsModule } from "./modules/auctions/auctions.module";
 import { InvitesModule } from "./modules/invites/invites.module";
 import { VaultModule } from "./modules/vault/vault.module";
+import { ParticipationModule } from "./modules/participation/participation.module";
+import { StatsModule } from "./modules/stats/stats.module";
 
 @Module({
   imports: [
@@ -104,6 +106,8 @@ import { VaultModule } from "./modules/vault/vault.module";
     TipsModule,
     RewardsModule,
     EconomyModule,
+    ParticipationModule,
+    StatsModule,
 
     // Store
     StoreModule,

@@ -6,6 +6,7 @@ import { usePresenceEngine } from "@/lib/live/presenceEngine";
 import ActionCanister from "@/components/room/ActionCanister";
 import WidgetDrawer from "@/components/room/WidgetDrawer";
 import { DrawerProvider } from "@/components/room/DrawerContext";
+import WebRTCBroadcast from "@/components/media/WebRTCBroadcast";
 
 // ── Color tokens (matches reference design) ────────────────────────────────────
 const C = {
@@ -84,8 +85,8 @@ const SET_LIST = [
   "Midnight Cipher", "Gold Rush", "Neon District", "Stellar Bounce", "Dark Matter",
 ];
 
-type Tab = "BEAT LOCKER" | "ANALYTICS" | "SCHEDULE" | "SETTINGS";
-const TABS: Tab[] = ["BEAT LOCKER", "ANALYTICS", "SCHEDULE", "SETTINGS"];
+type Tab = "BROADCAST" | "BEAT LOCKER" | "ANALYTICS" | "SCHEDULE" | "SETTINGS";
+const TABS: Tab[] = ["BROADCAST", "BEAT LOCKER", "ANALYTICS", "SCHEDULE", "SETTINGS"];
 
 // ── Hardware Rack Panel ────────────────────────────────────────────────────────
 function HardwareRack() {
@@ -686,7 +687,7 @@ function SettingsTab() {
 export default function ArtistStudioPage() {
   const [isLive,    setIsLive]    = useState(false);
   const [chatInput, setChatInput] = useState("");
-  const [activeTab, setActiveTab] = useState<Tab>("BEAT LOCKER");
+  const [activeTab, setActiveTab] = useState<Tab>("BROADCAST");
   const [reactions, setReactions] = useState<FloatReaction[]>([]);
   const reactionId                = useRef(0);
 
@@ -889,6 +890,7 @@ export default function ArtistStudioPage() {
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
             >
+              {activeTab === "BROADCAST"  && <WebRTCBroadcast accentColor={C.red} />}
               {activeTab === "BEAT LOCKER" && <BeatLockerTab />}
               {activeTab === "ANALYTICS"   && <AnalyticsTab />}
               {activeTab === "SCHEDULE"    && <ScheduleTab />}

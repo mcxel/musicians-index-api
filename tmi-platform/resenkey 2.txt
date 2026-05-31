@@ -1,0 +1,26 @@
+
+Type
+Name
+Content
+TTL
+Proxy status
+MX
+send
+feedback-smtp.us-east-1.amazonses.com
+
+10
+Auto
+
+DNS only
+TXT
+resend._domainkey
+"p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCr1V+LsSIETj4Rhl/1NZpFsfHIhzZzzwpLBvW2kSxOBoNGDLvf2jkkQeEBcQYpUgzozIf/FdVEB8w5nyB5aXPsoF8ULvPDAwK4bc5/baCr/qR85R2uz/WnNK/9mNNAJGmm/eZPNKQzMOzggR+X0YK9G62aGbuXvp3x2/Mu1la2cwIDAQAB"
+Auto
+
+DNS only
+TXT
+send
+"v=spf1 include:amazonses.com ~all"
+Auto
+
+DNS only

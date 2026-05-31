@@ -149,6 +149,12 @@ model User {
 
   // Vault
   vaultDownloadTokens    VaultDownloadToken[]
+
+  // Universal Economy Spine (P1-P3)
+  userStats              UserStats?
+  participationLedgers   ParticipationLedger[]
+  participationSessions  ParticipationSession[]
+  challengeAnswers       ChallengeAnswer[]
 }
 
 model Account {
@@ -2461,4 +2467,63 @@ model VaultDownloadToken {
   createdAt     DateTime @default(now())
 
   @@map("vault_download_tokens")
+}
+
+// ==============================================================================
+// PACK 50: UNIVERSAL ECONOMY SPINE (P1, P2, P3)
+// ==============================================================================
+
+model UserStats {
+  id               String   @id @default(cuid())
+  userId           String   @unique
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  engagementPoints Int      @default(0)
+  rewardPoints     Int      @default(0)
+  entryPoints      Int      @default(0)
+  achievementPts   Int      @default(0)
+  xp               Int      @default(0)
+  level            Int      @default(1)
+  rank             Int?
+  updatedAt        DateTime @updatedAt
+
+  @@map("user_stats")
+}
+
+model ParticipationLedger {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  actionType  String
+  points      Int
+  metadata    Json?
+  timestamp   DateTime @default(now())
+
+  @@index([userId, timestamp])
+  @@map("participation_ledger")
+}
+
+model ParticipationSession {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  roomId      String?
+  active      Boolean  @default(true)
+  startedAt   DateTime @default(now())
+  endedAt     DateTime?
+  pointsEarned Int     @default(0)
+
+  @@index([userId, active])
+  @@map("participation_sessions")
+}
+
+model ChallengeAnswer {
+  id            String          @id @default(cuid())
+  userId        String
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  selectedIdx   Int
+  isCorrect     Boolean?
+  pointsAwarded Int             @default(0)
+  answeredAt    DateTime        @default(now())
+
+  @@map("challenge_answers")
 }

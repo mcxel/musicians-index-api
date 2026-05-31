@@ -1,0 +1,24 @@
+{
+  "counter": 1,
+  "events": [
+    {
+      "id": "1779937483275-1",
+      "kind": "webhook_verified",
+      "category": "success",
+      "ts": 1779937483275,
+      "meta": {
+        "fingerprint": "sim-1779937483275",
+        "eventType": "checkout.session.completed",
+        "livemode": false,
+        "revenueStream": "founding_packs",
+        "amountCents": 9900,
+        "currency": "usd",
+        "userUpgraded": true,
+        "payoutQueued": true,
+        "emailSent": true,
+        "simulated": true,
+        "source": "admin/manual-simulation"
+      }
+    }
+  ]
+}
