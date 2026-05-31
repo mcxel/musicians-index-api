@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import RoomContainer, { useRoom } from "@/components/room/RoomContainer";
@@ -10,8 +10,12 @@ import { usePresenceEngine } from "@/lib/live/presenceEngine";
 import { STRIPE_PRODUCTS } from "@/lib/stripe/products";
 import { activatePhase1Bots } from "@/lib/bots/Phase1BotActivator";
 import ArtifactWall from "@/components/artifacts/ArtifactWall";
+import VenueLobbyWall from "@/components/live/VenueLobbyWall";
+import IntermissionAdPlayer from "@/components/ads/IntermissionAdPlayer";
+import TieredAdSlot from "@/components/ads/TieredAdSlot";
+import PerformanceModeSelector, { type PerformanceMode } from "@/components/room/PerformanceModeSelector";
 
-// ── Performer Welcome Banner ───────────────────────────────────────────────────
+// ── Performer Welcome Banner ──────────────────────────────────────────────────
 
 function PerformerWelcome({ onDismiss }: { onDismiss: () => void }) {
   const { accentColor } = useRoom();
@@ -75,11 +79,31 @@ function Monitor({ title, icon, children, accentColor, style }: {
   );
 }
 
-// ── Primary Broadcast Monitor (camera feed) ───────────────────────────────────
+// ── Primary Broadcast Monitor ─────────────────────────────────────────────────
 
-function BroadcastMonitor({ isLive }: { isLive: boolean }) {
+function BroadcastMonitor({ isLive, mode, onToggleLive }: {
+  isLive: boolean;
+  mode: PerformanceMode;
+  onToggleLive: () => void;
+}) {
   const { accentColor } = useRoom();
   const [cameraActive, setCameraActive] = useState(false);
+  const [audioLevel, setAudioLevel]     = useState(0);
+  const audioRef = useRef<MediaStream | null>(null);
+
+  // Audio meter (visual VU)
+  useEffect(() => {
+    if (!cameraActive) { setAudioLevel(0); return; }
+    let raf: number;
+    const tick = () => {
+      setAudioLevel(Math.random() * 70 + 20);
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [cameraActive]);
+
+  const modeColor = mode === "private" ? "#6b7280" : mode === "community" ? "#60a5fa" : accentColor;
 
   return (
     <Monitor title="Broadcast Feed" icon="📹" accentColor={accentColor} style={{ minHeight: 300 }}>
@@ -104,9 +128,27 @@ function BroadcastMonitor({ isLive }: { isLive: boolean }) {
               CAM ON
             </div>
           )}
+          <div style={{ fontSize: 9, fontWeight: 800, color: modeColor, background: `${modeColor}22`, border: `1px solid ${modeColor}44`, padding: "2px 8px", borderRadius: 6, letterSpacing: "0.1em" }}>
+            {mode.toUpperCase()}
+          </div>
         </div>
+
+        {/* Audio VU bar */}
+        {cameraActive && (
+          <div style={{ position: "absolute", bottom: 8, right: 8, display: "flex", gap: 1.5, alignItems: "flex-end" }}>
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} style={{
+                width: 3,
+                height: Math.max(3, (audioLevel / 100) * 20 * (0.5 + Math.random() * 0.5)),
+                background: audioLevel > 70 ? "#ef4444" : accentColor,
+                borderRadius: 1, transition: "height 0.08s",
+              }} />
+            ))}
+          </div>
+        )}
       </div>
-      {/* Camera toggle */}
+
+      {/* Controls */}
       <div style={{ display: "flex", gap: 8 }}>
         <button
           onClick={() => setCameraActive(!cameraActive)}
@@ -120,16 +162,23 @@ function BroadcastMonitor({ isLive }: { isLive: boolean }) {
         >
           {cameraActive ? "⏹ STOP CAM" : "▶ START CAM"}
         </button>
-        <a href="/performer/studio/go-live" style={{
+        <button onClick={onToggleLive} style={{
           flex: 1, padding: "8px 0", borderRadius: 8, fontSize: 11, fontWeight: 800,
           cursor: "pointer", letterSpacing: "0.08em", textAlign: "center",
           background: isLive ? "rgba(239,68,68,0.2)" : `rgba(34,197,94,0.15)`,
           border: `1px solid ${isLive ? "rgba(239,68,68,0.35)" : "rgba(34,197,94,0.35)"}`,
-          color: isLive ? "#fca5a5" : "#86efac", textDecoration: "none",
+          color: isLive ? "#fca5a5" : "#86efac",
         }}>
           {isLive ? "END STREAM" : "GO LIVE ›"}
-        </a>
+        </button>
       </div>
+
+      {/* Sound check notice */}
+      {!cameraActive && (
+        <div style={{ marginTop: 8, padding: "6px 10px", borderRadius: 7, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", fontSize: 9, color: "rgba(255,255,255,0.3)" }}>
+          🎤 Camera off · Audio capture ready once you start cam
+        </div>
+      )}
     </Monitor>
   );
 }
@@ -173,7 +222,8 @@ function AudienceRadar() {
         <AnimatePresence initial={false}>
           {events.map((e) => (
             <motion.div key={e.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }}
-              style={{ fontSize: 11, padding: "5px 8px", borderRadius: 7, display: "flex", alignItems: "center", gap: 6,
+              style={{
+                fontSize: 11, padding: "5px 8px", borderRadius: 7, display: "flex", alignItems: "center", gap: 6,
                 background: e.type === "tip" ? "rgba(245,158,11,0.1)" : e.type === "follow" ? "rgba(170,45,255,0.1)" : "rgba(255,255,255,0.04)",
                 border: `1px solid ${e.type === "tip" ? "rgba(245,158,11,0.2)" : e.type === "follow" ? "rgba(170,45,255,0.15)" : "rgba(255,255,255,0.06)"}`,
               }}>
@@ -192,12 +242,12 @@ function AudienceRadar() {
 function RevenueMonitor() {
   const { accentColor } = useRoom();
   const lines = [
-    { label: "Tips today", value: "$0.00", color: "#f59e0b" },
-    { label: "Subscriptions", value: `$${(STRIPE_PRODUCTS.PERFORMER_SILVER_MONTHLY.price / 100).toFixed(2)}/mo`, color: "#22c55e" },
-    { label: "Beat sales", value: "$0.00", color: "#818cf8" },
-    { label: "Bookings pending", value: "0", color: "#60a5fa" },
-    { label: "Meet & Greet", value: `$${(STRIPE_PRODUCTS.MEET_GREET.price / 100).toFixed(2)} ea`, color: "#f472b6" },
-    { label: "Shoutouts", value: `$${(STRIPE_PRODUCTS.SHOUTOUT.price / 100).toFixed(2)} ea`, color: "#a78bfa" },
+    { label: "Tips today",       value: "$0.00",                                                               color: "#f59e0b" },
+    { label: "Subscriptions",    value: `$${(STRIPE_PRODUCTS.PERFORMER_SILVER_MONTHLY.price / 100).toFixed(2)}/mo`, color: "#22c55e" },
+    { label: "Beat sales",       value: "$0.00",                                                               color: "#818cf8" },
+    { label: "Bookings pending", value: "0",                                                                   color: "#60a5fa" },
+    { label: "Meet & Greet",     value: `$${(STRIPE_PRODUCTS.MEET_GREET.price / 100).toFixed(2)} ea`,          color: "#f472b6" },
+    { label: "Shoutouts",        value: `$${(STRIPE_PRODUCTS.SHOUTOUT.price / 100).toFixed(2)} ea`,            color: "#a78bfa" },
   ];
   return (
     <Monitor title="Revenue" icon="💰" accentColor={accentColor}>
@@ -243,9 +293,9 @@ function BookingMonitor() {
 function SponsorMonitor() {
   const { accentColor } = useRoom();
   const slots = [
-    { label: "Local Slot 1", status: "open", color: "#22c55e" },
-    { label: "Local Slot 2", status: "open", color: "#22c55e" },
-    { label: "Major Slot 1", status: "open", color: "#f59e0b" },
+    { label: "Local Slot 1",  status: "open", color: "#22c55e" },
+    { label: "Local Slot 2",  status: "open", color: "#22c55e" },
+    { label: "Major Slot 1",  status: "open", color: "#f59e0b" },
   ];
   return (
     <Monitor title="Sponsors" icon="🤝" accentColor={accentColor}>
@@ -266,7 +316,6 @@ function SponsorMonitor() {
 // ── Bot activity rail ─────────────────────────────────────────────────────────
 
 function BotRail({ messages }: { messages: string[] }) {
-  const { accentColor } = useRoom();
   if (messages.length === 0) return null;
   return (
     <div style={{
@@ -287,20 +336,32 @@ function BotRail({ messages }: { messages: string[] }) {
 
 function StudioInner() {
   const { accentColor, roomId, title } = useRoom();
-  const [isLive, setIsLive] = useState(false);
-  const [botMessages, setBotMessages] = useState<string[]>([]);
-  const [showWelcome, setShowWelcome] = useState(true);
+  const [isLive,       setIsLive]       = useState(false);
+  const [botMessages,  setBotMessages]  = useState<string[]>([]);
+  const [showWelcome,  setShowWelcome]  = useState(true);
+  const [perfMode,     setPerfMode]     = useState<PerformanceMode>("private");
+  const [showModePanel, setShowModePanel] = useState(false);
+  const [isIntermission, setIsIntermission] = useState(false);
 
   useEffect(() => {
     const cleanup = activatePhase1Bots(roomId, "performer-session", {
-      onWelcome: (text) => setBotMessages((p) => [...p, text]),
-      onBotChat: (name, text) => setBotMessages((p) => [...p, `${name}: ${text}`]),
-      onBotHype: (name) => setBotMessages((p) => [...p, `${name} hyped the room`]),
-      onBotTip: (name) => setBotMessages((p) => [...p, `${name} sent a tip`]),
+      onWelcome:  (text) => setBotMessages((p) => [...p, text]),
+      onBotChat:  (name, text) => setBotMessages((p) => [...p, `${name}: ${text}`]),
+      onBotHype:  (name) => setBotMessages((p) => [...p, `${name} hyped the room`]),
+      onBotTip:   (name) => setBotMessages((p) => [...p, `${name} sent a tip`]),
       onDiag: () => {},
     });
     return cleanup;
   }, [roomId]);
+
+  const toggleLive = () => {
+    if (!isLive && perfMode === "private") {
+      setPerfMode("performance");
+    }
+    setIsLive(!isLive);
+  };
+
+  const modeColor = perfMode === "private" ? "#6b7280" : perfMode === "community" ? "#60a5fa" : accentColor;
 
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
@@ -308,16 +369,53 @@ function StudioInner() {
       <div style={{ padding: "14px 20px", display: "flex", alignItems: "center", gap: 12, borderBottom: `1px solid ${accentColor}22` }}>
         <a href="/artists/dashboard" style={{ fontSize: 9, color: "rgba(255,255,255,0.3)", textDecoration: "none", letterSpacing: "0.12em" }}>← DASHBOARD</a>
         <div style={{ fontSize: 14, fontWeight: 900, color: accentColor, letterSpacing: "0.08em" }}>{title}</div>
-        <button
-          onClick={() => setIsLive(!isLive)}
-          style={{
-            marginLeft: "auto", padding: "7px 18px", borderRadius: 8, fontSize: 10, fontWeight: 900,
-            cursor: "pointer", letterSpacing: "0.1em",
-            background: isLive ? "rgba(239,68,68,0.2)" : "rgba(34,197,94,0.15)",
-            border: `1px solid ${isLive ? "rgba(239,68,68,0.4)" : "rgba(34,197,94,0.35)"}`,
-            color: isLive ? "#fca5a5" : "#86efac",
-          }}
-        >
+
+        {/* Mode selector compact */}
+        <div style={{ position: "relative" }}>
+          <button onClick={() => setShowModePanel(!showModePanel)} style={{
+            padding: "5px 12px", borderRadius: 7, fontSize: 9, fontWeight: 800,
+            cursor: "pointer", letterSpacing: "0.08em",
+            background: `${modeColor}18`, border: `1px solid ${modeColor}44`,
+            color: modeColor,
+          }}>
+            {perfMode === "private" ? "🔒" : perfMode === "community" ? "👥" : "🎭"} {perfMode.toUpperCase()} ▾
+          </button>
+          <AnimatePresence>
+            {showModePanel && (
+              <motion.div
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                style={{ position: "absolute", top: "calc(100% + 8px)", left: 0, zIndex: 200, width: 280 }}
+              >
+                <PerformanceModeSelector
+                  mode={perfMode}
+                  onChange={(m) => { setPerfMode(m); setShowModePanel(false); }}
+                  accentColor={accentColor}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* Intermission toggle */}
+        <button onClick={() => setIsIntermission(!isIntermission)} style={{
+          padding: "5px 12px", borderRadius: 7, fontSize: 9, fontWeight: 800,
+          cursor: "pointer", letterSpacing: "0.08em",
+          background: isIntermission ? "rgba(245,158,11,0.15)" : "rgba(255,255,255,0.05)",
+          border: `1px solid ${isIntermission ? "rgba(245,158,11,0.35)" : "rgba(255,255,255,0.1)"}`,
+          color: isIntermission ? "#f59e0b" : "rgba(255,255,255,0.4)",
+        }}>
+          {isIntermission ? "▶ RESUME" : "⏸ BREAK"}
+        </button>
+
+        <button onClick={toggleLive} style={{
+          marginLeft: "auto", padding: "7px 18px", borderRadius: 8, fontSize: 10, fontWeight: 900,
+          cursor: "pointer", letterSpacing: "0.1em",
+          background: isLive ? "rgba(239,68,68,0.2)" : "rgba(34,197,94,0.15)",
+          border: `1px solid ${isLive ? "rgba(239,68,68,0.4)" : "rgba(34,197,94,0.35)"}`,
+          color: isLive ? "#fca5a5" : "#86efac",
+        }}>
           {isLive ? "● LIVE — END" : "▶ GO LIVE"}
         </button>
         <a href="/admin/mission-control" style={{ fontSize: 9, color: "rgba(255,255,255,0.3)", textDecoration: "none", letterSpacing: "0.1em" }}>MISSION CONTROL ›</a>
@@ -333,8 +431,17 @@ function StudioInner() {
 
       {/* Monitor grid */}
       <div style={{ flex: 1, padding: "16px 20px", display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr", gridTemplateRows: "auto auto", gap: 12 }}>
-        <WidgetSlot name="stage" style={{ gridRow: "1 / 3" }}>
-          <BroadcastMonitor isLive={isLive} />
+        <WidgetSlot name="stage" style={{ gridRow: "1 / 3", position: "relative" }}>
+          <BroadcastMonitor isLive={isLive} mode={perfMode} onToggleLive={toggleLive} />
+          {/* Intermission ad overlay on broadcast monitor for performers */}
+          <IntermissionAdPlayer
+            isActive={isIntermission && isLive}
+            userTier="diamond"
+            onClose={() => setIsIntermission(false)}
+            accentColor={accentColor}
+            performerName="You"
+            returnInSeconds={180}
+          />
         </WidgetSlot>
 
         <WidgetSlot name="radar">
@@ -354,7 +461,28 @@ function StudioInner() {
         </WidgetSlot>
       </div>
 
-      {/* Artifact Vault — performer's playlist artifacts */}
+      {/* Audience lobby — performer view, shows who's watching */}
+      <div style={{ padding: "0 20px 16px" }}>
+        <VenueLobbyWall
+          roomId="broadcast-studio"
+          accentColor={accentColor}
+          userTier="diamond"
+          defaultSize="sm"
+          view="performer"
+        />
+      </div>
+
+      {/* Sponsor ad slot — visible to performer for awareness of what fans see */}
+      {isLive && (
+        <div style={{ padding: "0 20px 10px" }}>
+          <TieredAdSlot tier="free" placement="in-content" height={50} />
+          <div style={{ marginTop: 4, fontSize: 9, color: "rgba(255,255,255,0.2)", textAlign: "center" }}>
+            Preview of what free fans see during your stream
+          </div>
+        </div>
+      )}
+
+      {/* Artifact Vault */}
       <div style={{ padding: "0 20px 24px" }}>
         <ArtifactWall role="performer" userPoints={567} accentColor={accentColor} title="Artifact Vault" />
       </div>
