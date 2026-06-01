@@ -446,6 +446,93 @@ export default function TmiMagazineOrbitalUnderlay() {
         </div>
       </div>
 
+      {/* ── BOTTOM SECTION: News Belt + Interviews + Arena CTAs + Live Stats ── */}
+      <div style={{ borderTop: `1px solid rgba(255,215,0,.18)`, background: "rgba(8,12,30,.98)" }}>
+
+        {/* News Belt + Interviews 2-col */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 0 }}>
+          {/* News Belt */}
+          <div style={{ borderRight: "1px solid rgba(255,255,255,.07)", padding: "12px 16px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+              <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 11, fontWeight: 900, color: "#fff" }}>NEWS BELT</div>
+              <div style={{ background: "rgba(255,45,170,.2)", border: `1px solid ${C.pink}`, borderRadius: 3, padding: "1px 7px", fontSize: 8, fontWeight: 700, color: C.pink }}>ROLLING</div>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+              {[
+                "⚔️ Battle Night — Wavetek holds crown for 3rd week straight",
+                "🎤 Cypher arena breaks attendance record — 2,730 filled",
+                "🌍 World Release: Krypt drops album midnight tonight",
+                "👑 Challenge Arena: 221 entries — winner stays after 8 rounds",
+              ].map((item, i) => (
+                <div key={i} style={{ fontSize: 9, color: "rgba(255,255,255,.5)", padding: "5px 0", borderBottom: i < 3 ? "1px solid rgba(255,255,255,.06)" : "none" }}>{item}</div>
+              ))}
+            </div>
+          </div>
+
+          {/* Interviews */}
+          <div style={{ padding: "12px 16px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+              <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 11, fontWeight: 900, color: "#fff" }}>INTERVIEWS</div>
+              <div style={{ background: "rgba(0,255,127,.12)", border: "1px solid rgba(0,255,127,.4)", borderRadius: 3, padding: "1px 7px", fontSize: 8, fontWeight: 700, color: C.green }}>NEW</div>
+              <span className="tmi-live-dot" style={{ width: 5, height: 5, marginLeft: 4 }} />
+              <span style={{ fontSize: 8, color: C.red }}>LIVE</span>
+            </div>
+            <div style={{ fontSize: 10, fontWeight: 700, color: "#fff", marginBottom: 3 }}>EXCLUSIVE</div>
+            <div style={{ fontSize: 13, fontWeight: 800, color: C.gold, marginBottom: 6 }}>Wavetek: The Crown, The Journey</div>
+            <div style={{ fontSize: 9, color: "rgba(255,255,255,.5)", lineHeight: 1.6, marginBottom: 8 }}>Inside look at 47 wins, what it takes to hold the belt, and what comes next for TMI's longest reigning battle champion.</div>
+            <Link href="/magazine" style={{ fontSize: 9, color: C.cyan, fontWeight: 800, textDecoration: "none", letterSpacing: "0.08em" }}>READ FULL INTERVIEW →</Link>
+          </div>
+        </div>
+
+        {/* Arena Triangle CTAs */}
+        <div style={{ padding: "14px 16px", borderTop: "1px solid rgba(255,255,255,.06)" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 6 }}>
+            <Link href="/auth/signup" style={{ background: C.purple, color: "#fff", padding: "11px", fontSize: 12, fontWeight: 800, borderRadius: 8, textAlign: "center", textDecoration: "none", letterSpacing: "0.06em" }}>JOIN TMI</Link>
+            <Link href="/magazine" style={{ background: C.cyan, color: "#000", padding: "11px", fontSize: 12, fontWeight: 800, borderRadius: 8, textAlign: "center", textDecoration: "none", letterSpacing: "0.06em" }}>READ MAGAZINE</Link>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 6 }}>
+            <Link href="/vote" style={{ background: C.pink, color: "#fff", padding: "11px", fontSize: 12, fontWeight: 800, borderRadius: 8, textAlign: "center", textDecoration: "none", letterSpacing: "0.06em" }}>VOTE LIVE</Link>
+            <Link href="/battles/live" style={{ background: C.red, color: "#fff", padding: "11px", fontSize: 12, fontWeight: 800, borderRadius: 8, textAlign: "center", textDecoration: "none", letterSpacing: "0.06em" }}>JOIN BATTLE</Link>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6 }}>
+            <Link href="/live/rooms" style={{ background: C.gold, color: "#000", padding: "9px", fontSize: 11, fontWeight: 800, borderRadius: 6, textAlign: "center", textDecoration: "none" }}>SEE ROOMS</Link>
+            <Link href="/cypher" style={{ background: "rgba(0,229,255,.15)", color: C.cyan, border: "1px solid rgba(0,229,255,.4)", padding: "9px", fontSize: 11, fontWeight: 800, borderRadius: 6, textAlign: "center", textDecoration: "none" }}>CYPHER ARENA</Link>
+            <Link href="/hub/sponsor" style={{ background: "rgba(123,0,255,.18)", color: C.purple, border: "1px solid rgba(123,0,255,.4)", padding: "9px", fontSize: 11, fontWeight: 800, borderRadius: 6, textAlign: "center", textDecoration: "none" }}>SPONSOR</Link>
+          </div>
+
+          {/* Live stats bar */}
+          <div style={{ background: "rgba(0,0,0,.4)", border: `1px solid rgba(255,215,0,.14)`, borderRadius: 6, padding: "8px 14px", display: "flex", justifyContent: "space-around", alignItems: "center", marginTop: 10 }}>
+            {[
+              { value: "11", label: "VENUES LIVE",  color: C.pink  },
+              { value: voteCount > 9000 ? "9.3K" : voteCount.toLocaleString(), label: "WATCHING",    color: C.gold  },
+              { value: "$4.2K",  label: "TIPS TODAY",  color: C.green },
+              { value: voteCount.toLocaleString(), label: "VOTES CAST", color: C.cyan  },
+            ].map(s => (
+              <div key={s.label} style={{ textAlign: "center" }}>
+                <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 16, fontWeight: 900, color: s.color }}>{s.value}</div>
+                <div style={{ fontSize: 7, color: "rgba(255,255,255,.32)", letterSpacing: "0.12em", marginTop: 2 }}>{s.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Bottom HUD strip */}
+        <div style={{ background: "rgba(5,8,21,.98)", borderTop: "1px solid rgba(255,255,255,.07)", padding: "8px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ display: "flex", gap: 6 }}>
+            <Link href="/auth/signin" style={{ background: "rgba(255,45,170,.18)", border: `1px solid ${C.pink}`, color: C.pink, padding: "5px 12px", fontSize: 10, fontWeight: 800, borderRadius: 5, textDecoration: "none", letterSpacing: "0.05em" }}>SIGN IN</Link>
+            <Link href="/challenge" style={{ background: C.gold, color: "#000", padding: "5px 12px", fontSize: 10, fontWeight: 900, borderRadius: 5, textDecoration: "none", letterSpacing: "0.05em" }}>+ SUBMIT</Link>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 9, color: "rgba(255,255,255,.35)" }}>
+            <span className="tmi-live-dot" style={{ width: 5, height: 5 }} />
+            11 VENUES LIVE
+          </div>
+          <div style={{ display: "flex", gap: 6 }}>
+            <Link href="/hub/advertiser" style={{ fontSize: 9, color: "rgba(255,255,255,.4)", textDecoration: "none", fontWeight: 700 }}>ADVERTISE</Link>
+            <Link href="/hub/promoter" style={{ fontSize: 9, color: "rgba(255,255,255,.4)", textDecoration: "none", fontWeight: 700 }}>PROMOTE</Link>
+          </div>
+        </div>
+      </div>
+
       {/* Expanded lobby modal */}
       {expandedNode && <LobbyModal node={expandedNode} onClose={() => setExpandedNode(null)} />}
     </>
