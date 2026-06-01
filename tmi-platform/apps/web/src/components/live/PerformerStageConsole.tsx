@@ -96,6 +96,8 @@ export default function PerformerStageConsole({ roomId, data }: PerformerStageCo
         occupancyPercent={Math.min(100, Math.round((data.presence.occupancy / 12) * 100))}
         reactionPulseId={data.emojiTrail.length}
         hypePulseId={data.population.heatLevel}
+        showCurtain={data.stageState === "pre-show"}
+        onPerformanceStart={() => data.setStageState("live")}
       />
 
       <div style={{ border: "1px solid rgba(255,255,255,0.16)", borderRadius: 12, padding: 12, background: "rgba(255,255,255,0.04)" }}>

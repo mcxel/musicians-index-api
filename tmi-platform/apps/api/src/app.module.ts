@@ -45,6 +45,8 @@ import { InvitesModule } from "./modules/invites/invites.module";
 import { VaultModule } from "./modules/vault/vault.module";
 import { ParticipationModule } from "./modules/participation/participation.module";
 import { StatsModule } from "./modules/stats/stats.module";
+import { CypherModule } from "./modules/cypher/cypher.module";
+import { GamesModule } from "./modules/games/games.module";
 
 @Module({
   imports: [
@@ -108,6 +110,8 @@ import { StatsModule } from "./modules/stats/stats.module";
     EconomyModule,
     ParticipationModule,
     StatsModule,
+    CypherModule,
+    GamesModule,
 
     // Store
     StoreModule,

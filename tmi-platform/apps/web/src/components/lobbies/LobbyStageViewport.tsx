@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
+import VideoPanelCurtain from '@/components/live/VideoPanelCurtain';
 
 type LobbyStageViewportProps = {
   title?: string;
@@ -20,6 +21,10 @@ type LobbyStageViewportProps = {
   accentColor?: string;
   reactionPulseId?: number;
   hypePulseId?: number;
+  /** Show the TMI curtain with countdown selector — hides when artist goes live */
+  showCurtain?: boolean;
+  /** Called when the curtain countdown completes and the curtain fully opens */
+  onPerformanceStart?: () => void;
 };
 
 function tierStyle(tier: LobbyStageViewportProps['membershipTier']): { border: string; glow: string } {
@@ -58,6 +63,8 @@ export default function LobbyStageViewport({
   accentColor = '#FF2DAA',
   reactionPulseId = 0,
   hypePulseId = 0,
+  showCurtain = false,
+  onPerformanceStart,
 }: LobbyStageViewportProps) {
   const [tipBurst, setTipBurst] = useState(false);
   const [hypeRipple, setHypeRipple] = useState(false);
@@ -261,6 +268,14 @@ export default function LobbyStageViewport({
         >
           {queueDepth} performer{queueDepth !== 1 ? 's' : ''} in queue
         </div>
+      )}
+
+      {/* TMI curtain — artist-controlled pre-performance countdown */}
+      {showCurtain && (
+        <VideoPanelCurtain
+          key={showCurtain ? "curtain-active" : "curtain-hidden"}
+          onPerformanceStart={onPerformanceStart}
+        />
       )}
     </section>
   );

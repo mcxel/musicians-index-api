@@ -2527,3 +2527,114 @@ model ChallengeAnswer {
 
   @@map("challenge_answers")
 }
+
+// ==============================================================================
+// PACK 51: CYPHER ENGINE (W-08) & GAMES ENGINE (W-09) & BOTS (W-15)
+// ==============================================================================
+
+model CypherSession {
+  id          String   @id @default(cuid())
+  roomId      String
+  hostId      String
+  status      String   @default("PENDING") // PENDING, WARMUP, ACTIVE, ENDED
+  theme       String?
+  bpm         Int      @default(90)
+  startedAt   DateTime @default(now())
+  endedAt     DateTime?
+
+  performers  CypherPerformer[]
+  rounds      CypherRound[]
+  @@map("cypher_sessions")
+}
+
+model CypherPerformer {
+  id              String   @id @default(cuid())
+  cypherSessionId String
+  cypherSession   CypherSession @relation(fields: [cypherSessionId], references: [id], onDelete: Cascade)
+  userId          String
+  orderIndex      Int
+  status          String   @default("WAITING") // WAITING, PERFORMING, DONE, DROPPED
+  scores          CypherScore[]
+  @@map("cypher_performers")
+}
+
+model CypherRound {
+  id              String   @id @default(cuid())
+  cypherSessionId String
+  cypherSession   CypherSession @relation(fields: [cypherSessionId], references: [id], onDelete: Cascade)
+  roundNumber     Int
+  startTime       DateTime @default(now())
+  endTime         DateTime?
+  @@map("cypher_rounds")
+}
+
+model CypherScore {
+  id                String   @id @default(cuid())
+  cypherPerformerId String
+  cypherPerformer   CypherPerformer @relation(fields: [cypherPerformerId], references: [id], onDelete: Cascade)
+  voterId           String
+  score             Int
+  timestamp         DateTime @default(now())
+  @@map("cypher_scores")
+}
+
+model GameSession {
+  id          String   @id @default(cuid())
+  roomId      String
+  gameType    String   // DEAL_OR_FEUD, TRIVIA, etc.
+  status      String   @default("PENDING") // PENDING, ACTIVE, ENDED
+  startedAt   DateTime @default(now())
+  endedAt     DateTime?
+  players     GamePlayer[]
+  rounds      GameRound[]
+  @@map("game_sessions")
+}
+
+model GamePlayer {
+  id            String   @id @default(cuid())
+  gameSessionId String
+  gameSession   GameSession @relation(fields: [gameSessionId], references: [id], onDelete: Cascade)
+  userId        String
+  score         Int      @default(0)
+  status        String   @default("ACTIVE") // ACTIVE, ELIMINATED
+  answers       GameAnswer[]
+  @@map("game_players")
+}
+
+model GameRound {
+  id            String   @id @default(cuid())
+  gameSessionId String
+  gameSession   GameSession @relation(fields: [gameSessionId], references: [id], onDelete: Cascade)
+  roundNumber   Int
+  question      String?
+  answer        String?
+  startedAt     DateTime @default(now())
+  endedAt       DateTime?
+  answers       GameAnswer[]
+  @@map("game_rounds")
+}
+
+model GameAnswer {
+  id          String   @id @default(cuid())
+  gameRoundId String
+  gameRound   GameRound @relation(fields: [gameRoundId], references: [id], onDelete: Cascade)
+  playerId    String
+  player      GamePlayer @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  answerText  String
+  isCorrect   Boolean
+  pointsAward Int      @default(0)
+  answeredAt  DateTime @default(now())
+  @@map("game_answers")
+}
+
+model BotRunLog {
+  id          String   @id @default(cuid())
+  botName     String
+  status      String   // SUCCESS, FAILED
+  tasksRun    Int      @default(0)
+  errors      Int      @default(0)
+  logs        Json?
+  startedAt   DateTime @default(now())
+  completedAt DateTime?
+  @@map("bot_run_logs")
+}

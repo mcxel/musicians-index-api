@@ -17,7 +17,7 @@
  *   └─────────────────────────────────────────────────┘
  */
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -91,8 +91,96 @@ function DanceFloorPreview({ color }: { color: string }) {
   );
 }
 
+// ── Venue expand modal ───────────────────────────────────────────────────────
+function VenueModal({ venue, onClose }: { venue: WorldVenue; onClose: () => void }) {
+  const router = useRouter();
+
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", handleKey);
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", handleKey);
+      document.body.style.overflow = "";
+    };
+  }, [onClose]);
+
+  return (
+    <div
+      style={{ position: "fixed", inset: 0, zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: "16px", background: "rgba(2,3,10,0.92)", backdropFilter: "blur(12px)" }}
+      onClick={onClose}
+    >
+      <div
+        style={{ position: "relative", width: "100%", maxWidth: 580, borderRadius: 20, overflow: "hidden", background: "#080C1A", border: `2px solid ${venue.color}55`, boxShadow: `0 0 60px ${venue.color}33, 0 30px 80px rgba(0,0,0,0.8)` }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Close button */}
+        <button onClick={onClose} style={{ position: "absolute", top: 12, right: 12, zIndex: 10, background: "rgba(0,0,0,0.6)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: "50%", width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#fff", fontSize: 14 }}>✕</button>
+
+        {/* Arena preview */}
+        <div style={{ height: 240, position: "relative", overflow: "hidden" }}>
+          {venue.usesDanceFloor ? (
+            <div style={{ height: "100%", background: `linear-gradient(135deg, #0a0010, ${venue.color}18)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 56 }}>💃</div>
+          ) : (
+            <AudienceScene venue={venue.venueIndex} watcherCount={venue.capacity} view="fan" accentColor={venue.color} bpm={BPM_MAP[venue.eventType] ?? 120} screenLabel={venue.currentEvent ?? venue.label} screenSubLabel={venue.currentArtist} />
+          )}
+          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, transparent 40%, #080C1A 100%)" }} />
+          {/* Live badge */}
+          <div style={{ position: "absolute", top: 12, left: 14, display: "flex", gap: 5, alignItems: "center", background: "rgba(0,0,0,0.7)", borderRadius: 6, padding: "4px 10px", backdropFilter: "blur(4px)" }}>
+            <span style={{ display: "inline-block", width: 6, height: 6, borderRadius: "50%", background: venue.isLive ? "#FF2020" : "#FFD700", animation: venue.isLive ? "wlsBlink 1s step-end infinite" : "none", flexShrink: 0 }} />
+            <span style={{ fontSize: 8, fontWeight: 900, color: "#fff", letterSpacing: "0.12em" }}>{venue.isLive ? "LIVE NOW" : "COMING SOON"}</span>
+          </div>
+          <div style={{ position: "absolute", top: 12, right: 50, fontSize: 8, fontWeight: 900, color: venue.color, background: `${venue.color}22`, border: `1px solid ${venue.color}44`, padding: "4px 12px", borderRadius: 20 }}>{venue.emoji} {venue.label}</div>
+        </div>
+
+        {/* Details */}
+        <div style={{ padding: "16px 20px 20px" }}>
+          <div style={{ fontSize: 8, color: venue.color, fontWeight: 800, letterSpacing: "0.2em", marginBottom: 4 }}>{venue.label.toUpperCase()}</div>
+          <div style={{ fontSize: 22, fontWeight: 900, marginBottom: 4 }}>{venue.currentEvent ?? venue.label}</div>
+          {venue.currentArtist && <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", marginBottom: 8 }}>featuring {venue.currentArtist}</div>}
+          {venue.usesDanceFloor && <div style={{ fontSize: 9, color: venue.color, fontWeight: 800, marginBottom: 8 }}>★ NO SEATING — DANCE FLOOR ONLY</div>}
+
+          {/* Capacity / format */}
+          <div style={{ display: "flex", gap: 16, marginBottom: 14, flexWrap: "wrap" }}>
+            <div style={{ fontSize: 9, color: "rgba(255,255,255,0.5)" }}>🏟️ Capacity: <span style={{ color: "#fff", fontWeight: 700 }}>{venue.capacity.toLocaleString()}</span></div>
+            <div style={{ fontSize: 9, color: "rgba(255,255,255,0.5)" }}>👁 Watching: <span style={{ color: venue.color, fontWeight: 700 }}>{venue.viewers.toLocaleString()}</span></div>
+            <div style={{ fontSize: 9, color: "rgba(255,255,255,0.5)" }}>🎭 Format: <span style={{ color: "#fff", fontWeight: 700 }}>{venue.eventType}</span></div>
+          </div>
+
+          {/* Revenue hooks */}
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14 }}>
+            {[
+              { label: "🎫 Buy Ticket", href: `/tickets?event=${venue.id}`, primary: true },
+              { label: "💰 Tip Artist", href: `/api/stripe/checkout?priceId=price_tip&amount=500&productName=Tip&mode=payment` },
+              { label: "🤝 Sponsor", href: `/sponsor/battles?venue=${venue.id}` },
+              { label: "👑 Subscribe", href: "/subscribe" },
+            ].map(h => (
+              <Link key={h.label} href={h.href} style={{ padding: "6px 14px", borderRadius: 8, fontSize: 9, fontWeight: 900, textDecoration: "none", letterSpacing: "0.06em", background: h.primary ? venue.color : "rgba(255,255,255,0.06)", color: h.primary ? "#000" : "rgba(255,255,255,0.7)", border: h.primary ? "none" : "1px solid rgba(255,255,255,0.12)" }}>
+                {h.label}
+              </Link>
+            ))}
+          </div>
+
+          {/* CTA row */}
+          <div style={{ display: "flex", gap: 10 }}>
+            <button
+              onClick={() => router.push(`${venue.route}?autoSeat=1`)}
+              style={{ flex: 1, padding: "13px 0", borderRadius: 10, border: "none", background: `linear-gradient(90deg, ${venue.color}, ${venue.color}AA)`, color: "#000", fontWeight: 900, fontSize: 13, cursor: "pointer", letterSpacing: "0.1em" }}
+            >
+              {venue.isLive ? "▶ ENTER NOW" : "📅 VIEW SCHEDULE"} →
+            </button>
+            <button onClick={onClose} style={{ padding: "13px 20px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.15)", background: "transparent", color: "rgba(255,255,255,0.5)", fontSize: 11, cursor: "pointer", letterSpacing: "0.08em", fontFamily: "'Inter',sans-serif" }}>
+              CLOSE
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Single venue card ────────────────────────────────────────────────────────
-function VenueCard({ venue, idx }: { venue: WorldVenue; idx: number }) {
+function VenueCard({ venue, idx, onExpand }: { venue: WorldVenue; idx: number; onExpand: (v: WorldVenue) => void }) {
   const router = useRouter();
   const [hovered, setHovered] = useState(false);
   const [viewers, setViewers] = useState(venue.viewers);
@@ -116,8 +204,8 @@ function VenueCard({ venue, idx }: { venue: WorldVenue; idx: number }) {
         boxShadow: hovered ? `0 0 20px ${venue.color}28` : "none",
       }}
     >
-      {/* Mini arena preview */}
-      <div style={{ height: 110, position: "relative", overflow: "hidden", background: "#050510", cursor: "pointer" }} onClick={() => router.push(`${venue.route}?autoSeat=1`)}>
+      {/* Mini arena preview — click to expand */}
+      <div style={{ height: 110, position: "relative", overflow: "hidden", background: "#050510", cursor: "pointer" }} onClick={() => onExpand(venue)}>
         {venue.usesDanceFloor ? (
           <DanceFloorPreview color={venue.color} />
         ) : (
@@ -131,6 +219,9 @@ function VenueCard({ venue, idx }: { venue: WorldVenue; idx: number }) {
           />
         )}
         <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, transparent 45%, #050510 100%)" }} />
+
+        {/* Expand hint */}
+        <div style={{ position: "absolute", bottom: 8, right: 8, background: "rgba(0,0,0,0.65)", borderRadius: 4, padding: "2px 7px", fontSize: 7, color: "rgba(255,255,255,0.5)", fontWeight: 700, letterSpacing: "0.06em" }}>⤢ EXPAND</div>
 
         {/* Live / Soon badge */}
         <div style={{ position: "absolute", top: 7, left: 8, display: "flex", alignItems: "center", gap: 3, background: "rgba(0,0,0,0.7)", borderRadius: 4, padding: "2px 7px", backdropFilter: "blur(4px)" }}>
@@ -250,7 +341,9 @@ export default function WorldLobbySection() {
   const [venues, setVenues] = useState(() => getWorldVenues());
   const [totalViewers, setTotalViewers] = useState(getTotalViewers);
   const [filter, setFilter] = useState<"all" | "live" | "battle" | "cypher" | "concert">("all");
+  const [expandedVenue, setExpandedVenue] = useState<WorldVenue | null>(null);
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const handleExpand = useCallback((v: WorldVenue) => setExpandedVenue(v), []);
 
   useEffect(() => {
     tickRef.current = setInterval(() => {
@@ -321,7 +414,7 @@ export default function WorldLobbySection() {
         {/* Venue grid — with revenue hooks on each card */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(210px, 1fr))", gap: 12, marginBottom: 32 }}>
           {filtered.map((venue, idx) => (
-            <VenueCard key={venue.id} venue={venue} idx={idx} />
+            <VenueCard key={venue.id} venue={venue} idx={idx} onExpand={handleExpand} />
           ))}
         </div>
 
@@ -369,6 +462,8 @@ export default function WorldLobbySection() {
           ))}
         </div>
       </div>
+      {/* Venue expand modal */}
+      {expandedVenue && <VenueModal venue={expandedVenue} onClose={() => setExpandedVenue(null)} />}
     </section>
   );
 }
