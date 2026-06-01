@@ -106,7 +106,7 @@ const MAG_PANELS = [
     footer: "OPEN MIC ALL DAY · ROTATE THROUGH · WIN XP",
     footerBg: "#000",
     footerColor: "#00BFFF",
-    href: "/cypher",
+    href: "/rooms/cypher",
   },
   {
     id: "challenge",
@@ -332,7 +332,7 @@ export default function TmiMagazineOrbitalUnderlay() {
           <Link href="/challenge" style={{ fontWeight: 800, cursor: "pointer", borderRadius: 5, padding: "7px 16px", border: `1px solid rgba(255,215,0,.4)`, background: "rgba(255,215,0,.15)", color: C.gold, fontSize: 11, textDecoration: "none" }}>CHALLENGE SONG</Link>
         </div>
         <div style={{ display: "flex", justifyContent: "center", gap: 6, marginBottom: 6, flexWrap: "wrap" }}>
-          <Link href="/cypher" style={{ fontWeight: 800, cursor: "pointer", borderRadius: 5, padding: "7px 14px", border: `1px solid rgba(0,229,255,.4)`, background: "rgba(0,229,255,.15)", color: C.cyan, fontSize: 11, textDecoration: "none" }}>CYPHER ARENA</Link>
+          <Link href="/rooms/cypher" style={{ fontWeight: 800, cursor: "pointer", borderRadius: 5, padding: "7px 14px", border: `1px solid rgba(0,229,255,.4)`, background: "rgba(0,229,255,.15)", color: C.cyan, fontSize: 11, textDecoration: "none" }}>CYPHER ARENA</Link>
           <Link href="/magazine" style={{ fontWeight: 800, cursor: "pointer", borderRadius: 5, padding: "7px 14px", border: `1px solid rgba(255,45,170,.4)`, background: "rgba(255,45,170,.15)", color: C.pink, fontSize: 11, textDecoration: "none" }}>MAGAZINE</Link>
           <Link href="/hub/sponsor" style={{ fontWeight: 800, cursor: "pointer", borderRadius: 5, padding: "7px 14px", border: "1px solid rgba(155,89,182,.4)", background: "rgba(155,89,182,.15)", color: "#9B59B6", fontSize: 11, textDecoration: "none" }}>SPONSOR</Link>
           <Link href="/hub/advertiser" style={{ fontWeight: 800, cursor: "pointer", borderRadius: 5, padding: "7px 14px", border: `1px solid rgba(230,48,0,.4)`, background: "rgba(230,48,0,.15)", color: C.red, fontSize: 11, textDecoration: "none" }}>ADVERTISE</Link>
@@ -496,7 +496,7 @@ export default function TmiMagazineOrbitalUnderlay() {
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6 }}>
             <Link href="/live/rooms" style={{ background: C.gold, color: "#000", padding: "9px", fontSize: 11, fontWeight: 800, borderRadius: 6, textAlign: "center", textDecoration: "none" }}>SEE ROOMS</Link>
-            <Link href="/cypher" style={{ background: "rgba(0,229,255,.15)", color: C.cyan, border: "1px solid rgba(0,229,255,.4)", padding: "9px", fontSize: 11, fontWeight: 800, borderRadius: 6, textAlign: "center", textDecoration: "none" }}>CYPHER ARENA</Link>
+            <Link href="/rooms/cypher" style={{ background: "rgba(0,229,255,.15)", color: C.cyan, border: "1px solid rgba(0,229,255,.4)", padding: "9px", fontSize: 11, fontWeight: 800, borderRadius: 6, textAlign: "center", textDecoration: "none" }}>CYPHER ARENA</Link>
             <Link href="/hub/sponsor" style={{ background: "rgba(123,0,255,.18)", color: C.purple, border: "1px solid rgba(123,0,255,.4)", padding: "9px", fontSize: 11, fontWeight: 800, borderRadius: 6, textAlign: "center", textDecoration: "none" }}>SPONSOR</Link>
           </div>
 
