@@ -28,9 +28,9 @@ const P = {
   SPONSOR_STANDARD: process.env.NEXT_PUBLIC_STRIPE_PRICE_SPONSOR_STANDARD ?? "price_1Tb147EAwH1Fjtu9yCbRfH3j",
   SPONSOR_PREMIUM:  process.env.NEXT_PUBLIC_STRIPE_PRICE_SPONSOR_PREMIUM  ?? "price_1Tb144EAwH1Fjtu9I0Xq1iFV",
   SPONSOR_DIAMOND:  process.env.NEXT_PUBLIC_STRIPE_PRICE_SPONSOR_DIAMOND  ?? "price_1Tb143EAwH1Fjtu9WDqnYV7z",
-  // Venue, Promoter, Advertiser (created 2026-06-01)
-  VENUE:       process.env.NEXT_PUBLIC_STRIPE_PRICE_VENUE       ?? "price_1TdY0TEAwH1Fjtu9tvYTiqcK",
-  PROMOTER:    process.env.NEXT_PUBLIC_STRIPE_PRICE_PROMOTER    ?? "price_1TdY0TEAwH1Fjtu9FGbvJyJM",
+  // Venue, Promoter, Advertiser — Venue/Promoter are weekly billing
+  VENUE:       process.env.NEXT_PUBLIC_STRIPE_PRICE_VENUE       ?? "price_1TdZQEEAwH1Fjtu9JcPS32sL",
+  PROMOTER:    process.env.NEXT_PUBLIC_STRIPE_PRICE_PROMOTER    ?? "price_1TdZQSEAwH1Fjtu9Cz3j2Rik",
   ADVERTISER:  process.env.NEXT_PUBLIC_STRIPE_PRICE_ADVERTISER  ?? "price_1TdY0UEAwH1Fjtu9FTrdprdy",
 };
 
@@ -39,6 +39,7 @@ interface Plan {
   key: string; name: string; price: number; cents: number;
   color: string; emoji: string; priceId: string;
   features: string[]; cta: string; popular?: boolean; badge?: string;
+  interval?: "mo" | "wk";
 }
 
 const PLAN_GROUPS: PlanGroup[] = [
@@ -83,10 +84,10 @@ const PLAN_GROUPS: PlanGroup[] = [
       {
         key: "VENUE",
         name: "Venue Owner",
-        price: 29.99, cents: 2999,
+        price: 14.99, cents: 1499,
         color: "#00FF88", emoji: "🏟️",
         priceId: P.VENUE,
-        popular: true, badge: "FOR VENUES",
+        popular: true, badge: "FOR VENUES", interval: "wk" as const,
         features: [
           "Host unlimited live events",
           "Ticket sales + box office",
@@ -101,10 +102,10 @@ const PLAN_GROUPS: PlanGroup[] = [
       {
         key: "PROMOTER",
         name: "Promoter",
-        price: 19.99, cents: 1999,
+        price: 9.99, cents: 999,
         color: "#FF6B35", emoji: "📢",
         priceId: P.PROMOTER,
-        badge: "FOR PROMOTERS",
+        badge: "FOR PROMOTERS", interval: "wk" as const,
         features: [
           "Manage up to 20 artists",
           "Promote events platform-wide",
@@ -196,7 +197,7 @@ export default function SubscribePage() {
             <h2 style={{ margin: "0 0 4px", fontSize: 15, fontWeight: 900 }}>{plan.name}</h2>
             <div style={{ display: "flex", alignItems: "baseline", gap: 3, marginBottom: 14 }}>
               <span style={{ fontSize: 28, fontWeight: 900, color: plan.color }}>${plan.price}</span>
-              <span style={{ fontSize: 10, color: "rgba(255,255,255,0.4)" }}>/mo</span>
+              <span style={{ fontSize: 10, color: "rgba(255,255,255,0.4)" }}>/{plan.interval ?? "mo"}</span>
             </div>
             <ul style={{ margin: "0 0 16px", padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 6 }}>
               {plan.features.map((f) => (
