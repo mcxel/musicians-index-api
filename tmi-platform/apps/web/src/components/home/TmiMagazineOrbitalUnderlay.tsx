@@ -248,7 +248,7 @@ export default function TmiMagazineOrbitalUnderlay() {
       </div>
 
       {/* ── 3-COLUMN SECTION: Left Panel | Orbital | Right Panel ── */}
-      <div style={{ display: "flex", alignItems: "stretch", overflow: "hidden", background: C.bg, minHeight: 460, position: "relative" }}>
+      <div style={{ display: "flex", alignItems: "stretch", overflow: "hidden", background: C.bg, minHeight: 500, position: "relative" }}>
 
         {/* ══ LEFT PANEL ══ */}
         <div className="tmi-panel-slide" style={{ width: leftOpen ? 178 : 0 }}>
@@ -367,7 +367,7 @@ export default function TmiMagazineOrbitalUnderlay() {
 
           {/* Scrolling tabloid underlay */}
           <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", overflow: "hidden", background: C.bg }}>
-            <div className={scrollDir === "left" ? "tmi-underlay-left" : "tmi-underlay-right"} style={{ display: "flex", whiteSpace: "nowrap", gap: 0, opacity: 0.88 }}>
+            <div className={scrollDir === "left" ? "tmi-underlay-left" : "tmi-underlay-right"} style={{ display: "flex", whiteSpace: "nowrap", gap: 0, opacity: 1 }}>
               {[...MAG_PANELS, ...MAG_PANELS, ...MAG_PANELS].map((p, i) => (
                 <Link key={`${p.id}-${i}`} href={p.href} style={{ display: "inline-flex", flexDirection: "column", width: 260, flexShrink: 0, border: "3px solid #000", overflow: "hidden", verticalAlign: "top", textDecoration: "none" }}>
                   <div style={{ background: p.headerBg, padding: "6px 10px" }}>
@@ -389,9 +389,9 @@ export default function TmiMagazineOrbitalUnderlay() {
             </div>
           </div>
 
-          {/* Vignette overlay */}
-          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(90deg,rgba(5,8,21,.9) 0%,rgba(5,8,21,.1) 18%,rgba(5,8,21,.1) 82%,rgba(5,8,21,.9) 100%)", pointerEvents: "none" }} />
-          <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse 65% 85% at center,transparent 28%,rgba(5,8,21,.9) 100%)", pointerEvents: "none" }} />
+          {/* Vignette overlay — light edge fade so panels are VISIBLE, orbital readable on top */}
+          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(90deg,rgba(5,8,21,.75) 0%,rgba(5,8,21,.0) 14%,rgba(5,8,21,.0) 86%,rgba(5,8,21,.75) 100%)", pointerEvents: "none" }} />
+          <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse 55% 75% at center,rgba(5,8,21,.6) 0%,transparent 60%)", pointerEvents: "none" }} />
 
           {/* Orbital wheel */}
           <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none" }}>

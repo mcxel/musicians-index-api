@@ -390,6 +390,25 @@ export default function WorldLobbySection() {
 
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 16px" }}>
 
+        {/* ── ARENA TRIANGLE — 3 giant cards above the fold ── */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 24 }}>
+          {[
+            { emoji: "⚔️", label: "BATTLE ARENA",    sub: "1v1 · Winner Stays · 18,500 cap",   color: "#FF2DAA", href: "/battles/live",                    badge: "LIVE" },
+            { emoji: "🎵", label: "CHALLENGE ARENA",  sub: "Song vs Song · Nonstop Queue",      color: "#FFD700", href: "/rooms/challenge-arena?autoSeat=1", badge: "ENTER" },
+            { emoji: "🎤", label: "CYPHER ARENA",     sub: "Open Mic · Rotate · Community Vote",color: "#00FFFF", href: "/rooms/cypher?autoSeat=1",          badge: "OPEN MIC" },
+          ].map(a => (
+            <Link key={a.label} href={a.href} style={{ textDecoration: "none", display: "flex", flexDirection: "column", gap: 8, padding: "20px", borderRadius: 16, background: `linear-gradient(135deg, ${a.color}14, rgba(5,5,16,0.98))`, border: `2px solid ${a.color}44`, boxShadow: `0 0 24px ${a.color}18`, transition: "all 0.18s ease", position: "relative", overflow: "hidden" }}>
+              <div style={{ fontSize: 36, marginBottom: 4 }}>{a.emoji}</div>
+              <div style={{ fontSize: 13, fontWeight: 900, color: a.color, letterSpacing: "0.06em" }}>{a.label}</div>
+              <div style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", lineHeight: 1.4 }}>{a.sub}</div>
+              <div style={{ marginTop: "auto", display: "inline-flex", alignItems: "center", gap: 6, background: a.color, color: "#000", padding: "6px 14px", borderRadius: 8, fontSize: 10, fontWeight: 900, letterSpacing: "0.1em", alignSelf: "flex-start" }}>
+                <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#000", display: "inline-block", opacity: 0.6 }} />
+                {a.badge} →
+              </div>
+            </Link>
+          ))}
+        </div>
+
         {/* Featured venue */}
         <FeaturedVenueBanner venue={featuredVenue} />
 

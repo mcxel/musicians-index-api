@@ -11,6 +11,8 @@ import ActionCanister from "@/components/room/ActionCanister";
 import WidgetDrawer from "@/components/room/WidgetDrawer";
 import NeonWaveUnderlay from "@/components/atmosphere/NeonWaveUnderlay";
 import UnifiedAdSlot from "@/components/ads/UnifiedAdSlot";
+import TipBar from "@/components/hud/TipBar";
+import TokenBalance from "@/components/hud/TokenBalance";
 
 const NAV_LINKS = [
   { href: "/hub/performer",     label: "Control Room" },
@@ -49,7 +51,8 @@ export default function PerformerHubPage() {
               {link.label}
             </Link>
           ))}
-          <div style={{ marginLeft: "auto", flexShrink: 0 }}>
+          <div style={{ marginLeft: "auto", flexShrink: 0, display: "flex", gap: 10, alignItems: "center" }}>
+            <TokenBalance accentColor="#FFD700" compact />
             <PersonaSwitcher currentRole="performer" compact />
           </div>
         </div>
@@ -107,6 +110,9 @@ export default function PerformerHubPage() {
                   <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
                     <Link href="/performer/studio" style={{ flex: 1, padding: "8px", background: "rgba(0,229,255,0.1)", border: "1px solid rgba(0,229,255,0.3)", color: "#00E5FF", borderRadius: 8, fontWeight: 800, fontSize: 9, textDecoration: "none", textAlign: "center" }}>🎚 SOUND CHECK</Link>
                     <Link href="/rooms/fan-meetup" style={{ flex: 1, padding: "8px", background: "rgba(0,229,255,0.08)", border: "1px solid rgba(0,229,255,0.2)", color: "#00E5FF", borderRadius: 8, fontWeight: 800, fontSize: 9, textDecoration: "none", textAlign: "center" }}>💬 FAN CHAT</Link>
+                  </div>
+                  <div style={{ marginTop: 10 }}>
+                    <TipBar performerId="nova-cipher" performerName="Nova Cipher" accentColor="#00E5FF" compact />
                   </div>
                 </div>
               </div>
