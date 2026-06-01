@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
-import WorldLobby from '@/components/home/WorldLobby';
+import Home1CoverPage from '@/components/home/Home1CoverPage';
+import WorldLobbySection from '@/components/home/WorldLobbySection';
 
 export const metadata: Metadata = {
   title: "The Musician's Index — Live Music Platform",
@@ -20,5 +21,12 @@ export const metadata: Metadata = {
 };
 
 export default function Home1Page() {
-  return <WorldLobby />;
+  return (
+    <>
+      {/* Magazine identity — featured stories, artists, discovery */}
+      <Home1CoverPage />
+      {/* Live World — all active venues, billboard, revenue hooks */}
+      <WorldLobbySection />
+    </>
+  );
 }
