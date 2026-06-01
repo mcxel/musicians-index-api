@@ -13,6 +13,7 @@ import BotRuntimeProvider from "@/components/providers/BotRuntimeProvider";
 import BotProvider from "@/components/providers/BotProvider";
 import ChevronNavigation from "@/components/navigation/ChevronNavigation";
 import TMIGlobalNav from "@/components/system/TMIGlobalNav";
+import NavigationRail from "@/components/nav/NavigationRail";
 import { PWAInstallPrompt } from "@/components/mobile/PWAInstallPrompt";
 import { PWARegistration } from "@/components/mobile/PWARegistration";
 import VoiceDirector from "@/components/hud/VoiceDirector";
@@ -171,6 +172,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               {children}
             </BotProvider>
             <PWAInstallPrompt />
+            <NavigationRail />
             <ChevronNavigation />
             <TMIGlobalNav />
             <GamificationHUD />
