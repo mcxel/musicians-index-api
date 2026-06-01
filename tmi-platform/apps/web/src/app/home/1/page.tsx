@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Home1CoverPage from '@/components/home/Home1CoverPage';
+import TmiMagazineOrbitalUnderlay from '@/components/home/TmiMagazineOrbitalUnderlay';
 import WorldLobbySection from '@/components/home/WorldLobbySection';
 
 export const metadata: Metadata = {
@@ -23,9 +24,11 @@ export const metadata: Metadata = {
 export default function Home1Page() {
   return (
     <>
-      {/* Magazine identity — featured stories, artists, discovery */}
+      {/* 1. Magazine identity — masthead, editorial belt, stories, crown tiles */}
       <Home1CoverPage />
-      {/* Live World — all active venues, billboard, revenue hooks */}
+      {/* 2. Orbital + Tabloid Underlay — full-screen scrolling panels + orbit wheel */}
+      <TmiMagazineOrbitalUnderlay />
+      {/* 3. Live World — all active venues, billboard, revenue hooks */}
       <WorldLobbySection />
     </>
   );

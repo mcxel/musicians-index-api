@@ -22,6 +22,7 @@ import WidgetDrawer from '@/components/room/WidgetDrawer';
 import NeonWaveUnderlay from '@/components/atmosphere/NeonWaveUnderlay';
 import UnifiedAdSlot from '@/components/ads/UnifiedAdSlot';
 import MagazineEditorialBelt from '@/components/magazine/MagazineEditorialBelt';
+import TmiMagazineOrbitalUnderlay from '@/components/home/TmiMagazineOrbitalUnderlay';
 
 const HOME1_LAYER_SESSION_KEY = 'TMI_OS_SessionState_Home1';
 const HOME1_ISSUE_ID = 'issue-001-neon';
@@ -257,6 +258,43 @@ function safeParseLayerState(serialized: string | null): TMILayer[] | null {
   }
 }
 
+const AnimatedTitle = memo(function AnimatedTitle() {
+  const text = "THE MUSICIAN'S INDEX";
+  return (
+    <h1 className="logo" style={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: '2px' }}>
+      {text.split('').map((char, i) => (
+        <span key={i} style={{ animation: `colorCycle 6s infinite ${i * 0.15}s` }}>
+          {char === ' ' ? '\u00A0' : char}
+        </span>
+      ))}
+    </h1>
+  );
+});
+
+const TabloidUnderlay = memo(function TabloidUnderlay() {
+  const [direction, setDirection] = useState<'normal' | 'reverse'>('normal');
+  return (
+    <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', zIndex: 0, opacity: 0.75 }}>
+      <div style={{ position: 'absolute', top: 16, right: 16, zIndex: 50, display: 'flex', gap: 8 }}>
+         <button onClick={() => setDirection('reverse')} style={{ background: 'rgba(0,0,0,0.8)', border: '1px solid #fff', color: '#fff', padding: '6px 12px', cursor: 'pointer', borderRadius: '6px', fontSize: 10, fontWeight: 900 }}>◀ SCROLL</button>
+         <button onClick={() => setDirection('normal')} style={{ background: 'rgba(0,0,0,0.8)', border: '1px solid #fff', color: '#fff', padding: '6px 12px', cursor: 'pointer', borderRadius: '6px', fontSize: 10, fontWeight: 900 }}>SCROLL ▶</button>
+      </div>
+      <div style={{ display: 'flex', gap: '24px', height: '100%', alignItems: 'center', paddingLeft: '24px', width: 'fit-content', animation: `marqueeUnderlay 40s linear infinite ${direction}` }}>
+        {[...Array(3)].map((_, i) => (
+          <div key={i} style={{ display: 'flex', gap: '24px' }}>
+            <div className="tabloid-card" style={{ background: '#FFD700', color: '#050510' }}>WHO TOOK<br/>THE CROWN</div>
+            <div className="tabloid-card" style={{ background: '#FF2DAA', color: '#fff' }}>BATTLE<br/>NIGHT</div>
+            <div className="tabloid-card" style={{ background: '#00FFFF', color: '#050510' }}>CYPHER<br/>ARENA</div>
+            <div className="tabloid-card" style={{ background: '#050510', color: '#FFD700', border: '4px solid #FFD700' }}>CHALLENGE<br/>SONG</div>
+          </div>
+        ))}
+      </div>
+      {/* Fade over the underlay so orbital wheel is highly legible */}
+      <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at center, rgba(5,5,16,0.3) 0%, rgba(5,5,16,0.85) 100%)', pointerEvents: 'none' }} />
+    </div>
+  );
+});
+
 // ─── Isolated high-frequency components ───────────────────────────────────
 // These manage their own rapidly-updating state so the parent never re-renders
 // from typewriter ticks (26ms) or vote counter ticks (950ms).
@@ -323,11 +361,13 @@ const ChallengePromoTicker = memo(function ChallengePromoTicker() {
     return () => clearInterval(id);
   }, []);
   return (
-    <Link href="/battles/new" style={{ textDecoration: 'none' }}>
-      <div className="tmi-challenge-promo" aria-live="polite">
-        <span>{CHALLENGE_PROMO_LINES[index]}</span>
-      </div>
-    </Link>
+        <div className="tmi-challenge-promo" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px' }}>
+          <button onClick={() => setIndex(i => (i - 1 + CHALLENGE_PROMO_LINES.length) % CHALLENGE_PROMO_LINES.length)} style={{ background: 'none', border: 'none', color: '#FFD700', fontSize: 18, cursor: 'pointer', outline: 'none' }}>◀</button>
+          <Link href="/battles/new" style={{ textDecoration: 'none', flex: 1, display: 'grid', placeItems: 'center' }}>
+            <span aria-live="polite" key={index}>{CHALLENGE_PROMO_LINES[index]}</span>
+          </Link>
+          <button onClick={() => setIndex(i => (i + 1) % CHALLENGE_PROMO_LINES.length)} style={{ background: 'none', border: 'none', color: '#FFD700', fontSize: 18, cursor: 'pointer', outline: 'none' }}>▶</button>
+        </div>
   );
 });
 
@@ -352,6 +392,7 @@ const WeeklyCrownOrbit = memo(function WeeklyCrownOrbit({
 
   return (
     <section className="tmi-orbit-section">
+      <TabloidUnderlay />
       <h2>Weekly Crown Orbit</h2>
       <div className="tmi-orbit-meta">Top Ranked · Live Now · Updated In Real Time</div>
       <div className="tmi-orbit-canvas">
@@ -1493,6 +1534,28 @@ export default function Home1CoverPage() {
           100% { transform: translateX(-33.33%); }
         }
 
+        @keyframes colorCycle {
+          0%, 100% { color: #fff; text-shadow: 0 0 10px rgba(255,255,255,0.8); }
+          25% { color: #FFD700; text-shadow: 0 0 10px rgba(255,215,0,0.8); }
+          50% { color: #00FF88; text-shadow: 0 0 10px rgba(0,255,136,0.8); }
+          75% { color: #FF2DAA; text-shadow: 0 0 10px rgba(255,45,170,0.8); }
+        }
+
+        @keyframes marqueeUnderlay {
+          from { transform: translateX(0); }
+          to { transform: translateX(-33.333%); }
+        }
+
+        .tabloid-card {
+          width: clamp(260px, 20vw, 340px); height: clamp(340px, 30vw, 480px); flex-shrink: 0;
+          display: flex; align-items: center; justify-content: center;
+          font-size: clamp(36px, 4vw, 56px); text-align: center; font-weight: 900; line-height: 1.1;
+          padding: 20px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+          text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.8; transform: rotate(-2deg);
+          font-family: var(--font-tmi-bebas, 'Bebas Neue', Impact, sans-serif);
+        }
+        .tabloid-card:nth-child(even) { transform: rotate(2deg); }
+
         @keyframes tmiBlink {
           0%, 49% { opacity: 1; }
           50%, 100% { opacity: 0; }
@@ -1619,7 +1682,7 @@ export default function Home1CoverPage() {
         </div>
 
         <header className="tmi-masthead">
-          <h1 className="logo">The Musician&apos;s Index</h1>
+          <AnimatedTitle />
           <MastheadTypewriter />
         </header>
 
@@ -1752,24 +1815,22 @@ export default function Home1CoverPage() {
         </div>
 
         <div className="tmi-primary-cta-row">
-          <Link className="broadcast" href="/live/lobby">🎥 GO PUBLIC NOW</Link>
-          <Link className="arena" href="/live/lobby">ENTER LIVE ARENA</Link>
           {isAuthenticated ? (
             <>
-              <Link className="login" href="/account">My Account</Link>
-              <Link className="login" href="/api/auth/logout">Logout</Link>
+              <Link className="login" href="/account">MY ACCOUNT</Link>
+              <Link className="login" href="/api/auth/logout">LOGOUT</Link>
             </>
           ) : (
             <>
-              <Link className="login" href="/auth/signin">Login</Link>
-              <Link className="login" href="/auth/signup">Sign Up</Link>
+              <Link className="login" href="/auth/signup">JOIN FREE</Link>
+              <Link className="login" href="/auth/signin">LOGIN</Link>
             </>
           )}
-          <Link className="challenge" href="/battles/new">Challenge Song</Link>
-          <Link className="advertise" href="/hub/advertiser">🚀 ADVERTISE HERE</Link>
-          <Link className="magazine" href="/magazine">Magazine</Link>
-          <Link className="sponsor" href="/sponsors">Sponsor</Link>
-          <Link className="advertise" href="/advertisers">Advertise</Link>
+          <Link className="challenge" href="/battles/new">CHALLENGE SONG</Link>
+          <Link className="arena" href="/cypher/stage">CYPHER ARENA</Link>
+          <Link className="magazine" href="/magazine">MAGAZINE</Link>
+          <Link className="sponsor" href="/sponsors">SPONSOR</Link>
+          <Link className="advertise" href="/hub/advertiser">ADVERTISE</Link>
           {isAdmin ? (
             <button type="button" onClick={() => setDesignMode((value) => !value)}>
               {designMode ? 'Exit Design Mode' : 'Enable Design Mode'}
@@ -1919,7 +1980,6 @@ export default function Home1CoverPage() {
 
         {/* ── WEEKLY CROWN ORBIT — discovery feature, after editorial ── */}
         <PlatformPulse />
-        <WeeklyCrownOrbit onNodeClick={setProfilePanel} />
 
         <footer className="tmi-home1-footer">
           <h4>Weekly Cyphers</h4>
