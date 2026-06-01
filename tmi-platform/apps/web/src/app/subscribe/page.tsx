@@ -15,12 +15,14 @@ const P = {
   FAN_GOLD:      process.env.NEXT_PUBLIC_STRIPE_PRICE_FAN_GOLD      ?? "price_1TcJrTEAwH1Fjtu9wjhmnv5K",
   FAN_PLATINUM:  process.env.NEXT_PUBLIC_STRIPE_PRICE_FAN_PLATINUM  ?? "price_1TcJsDEAwH1Fjtu9zU7X7mml",
   FAN_DIAMOND:   process.env.NEXT_PUBLIC_STRIPE_PRICE_FAN_DIAMOND   ?? "price_1TcJvaEAwH1Fjtu9me4Aq2UU",
+  FAN_FAMILY:    process.env.NEXT_PUBLIC_STRIPE_PRICE_FAN_FAMILY    ?? "price_1TcJxBEAwH1Fjtu9xjMfLhw4",
   // Performer tiers
   PERF_RUBY:     process.env.NEXT_PUBLIC_STRIPE_PRICE_PERFORMER_RUBY    ?? "price_1TcJzdEAwH1Fjtu9Nx5DsRzL",
   PERF_SILVER:   process.env.NEXT_PUBLIC_STRIPE_PRICE_PERFORMER_SILVER  ?? "price_1TcK0dEAwH1Fjtu9MXK323Q7",
   PERF_GOLD:     process.env.NEXT_PUBLIC_STRIPE_PRICE_PERFORMER_GOLD    ?? "price_1TcK1LEAwH1Fjtu9ZnOrTyZw",
   PERF_PLATINUM: process.env.NEXT_PUBLIC_STRIPE_PRICE_PERFORMER_PLATINUM ?? "price_1TcK2xEAwH1Fjtu9FLlIHItH",
   PERF_DIAMOND:  process.env.NEXT_PUBLIC_STRIPE_PRICE_PERFORMER_DIAMOND ?? "price_1TcK4MEAwH1Fjtu96b2TJlBe",
+  PERF_BAND:     process.env.NEXT_PUBLIC_STRIPE_PRICE_PERFORMER_BAND    ?? "price_1TcK68EAwH1Fjtu9KGLcf8HE",
   // Sponsor/Advertiser
   SPONSOR_BASIC:    process.env.NEXT_PUBLIC_STRIPE_PRICE_SPONSOR_BASIC    ?? "price_1Tb148EAwH1Fjtu9KZFL3H3Y",
   SPONSOR_STANDARD: process.env.NEXT_PUBLIC_STRIPE_PRICE_SPONSOR_STANDARD ?? "price_1Tb147EAwH1Fjtu9yCbRfH3j",
@@ -45,6 +47,7 @@ const PLAN_GROUPS: PlanGroup[] = [
       { key: "FAN_GOLD",     name: "Gold Fan",      price: 14.99, cents: 1499, color: "#FFD700", emoji: "🌟", priceId: P.FAN_GOLD,     features: ["Everything in Silver", "Gold badge everywhere", "Exclusive emotes", "Fan Club access"], cta: "GO GOLD", popular: true, badge: "POPULAR" },
       { key: "FAN_PLATINUM", name: "Platinum Fan",  price: 24.99, cents: 2499, color: "#E5E4E2", emoji: "💿", priceId: P.FAN_PLATINUM, features: ["Everything in Gold", "XP multiplier ×3", "Backstage access", "Monthly crown ballot"], cta: "GO PLATINUM" },
       { key: "FAN_DIAMOND",  name: "Diamond Fan",   price: 49.99, cents: 4999, color: "#AA2DFF", emoji: "💎", priceId: P.FAN_DIAMOND,  features: ["Everything in Platinum", "Diamond badge + aura", "Front-row guaranteed seats", "Priority support", "VIP Lounge"], cta: "GO DIAMOND" },
+      { key: "FAN_FAMILY",   name: "Fan Family Plan", price: 27.99, cents: 2799, color: "#00FF88", emoji: "👨‍👩‍👧‍👦", priceId: P.FAN_FAMILY, features: ["Up to 4 family members", "Each member gets Gold Fan access", "Shared family vault", "Family badge on profiles", "One subscription, 4 accounts"], cta: "GET FAMILY PLAN", badge: "BEST FOR FAMILIES" },
     ],
   },
   {
@@ -56,6 +59,7 @@ const PLAN_GROUPS: PlanGroup[] = [
       { key: "PERF_GOLD",     name: "Gold Performer",     price: 9.99,  cents: 999,  color: "#FFD700", emoji: "🎵", priceId: P.PERF_GOLD,     features: ["Everything in Silver", "Mint NFTs", "Full revenue dashboard", "Gold profile spotlight"], cta: "GO GOLD", popular: true, badge: "MOST POPULAR" },
       { key: "PERF_PLATINUM", name: "Platinum Performer", price: 19.99, cents: 1999, color: "#00FFFF", emoji: "🏆", priceId: P.PERF_PLATINUM, features: ["Everything in Gold", "Platinum badge", "Priority matchmaking", "Advanced analytics"], cta: "GO PLATINUM" },
       { key: "PERF_DIAMOND",  name: "Diamond Performer",  price: 29.99, cents: 2999, color: "#AA2DFF", emoji: "👑", priceId: P.PERF_DIAMOND,  features: ["Everything in Platinum", "Diamond aura", "Crown ballot vote", "VIP Lounge + Backstage", "Featured on homepage"], cta: "GO DIAMOND" },
+      { key: "PERF_BAND",     name: "Band / Group / Choir", price: 24.99, cents: 2499, color: "#FF9500", emoji: "🎼", priceId: P.PERF_BAND, features: ["All members share one account", "Band/Group/Choir profile", "Up to team size", "Shared revenue dashboard", "Group badge on all content", "Book as a group"], cta: "JOIN AS A GROUP", badge: "BANDS & CHOIRS" },
     ],
   },
   {
