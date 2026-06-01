@@ -68,7 +68,7 @@ export default function SponsorAdViewer({ contract, campaignName, ctaRoute }: Sp
           href={ctaRoute}
           data-testid="cta-visit"
           aria-label="Visit sponsor CTA destination"
-          data-fallback-route="/lobbies/live-world"
+          data-fallback-route="/rooms/live-world?autoSeat=1"
           onClick={() => trackArtifactClick(contract, { actor: "Sponsor CTA", routeOverride: ctaRoute })}
           style={{ ...btnStyle, textDecoration: "none", display: "inline-flex", alignItems: "center" }}
         >

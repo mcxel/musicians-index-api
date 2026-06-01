@@ -30,7 +30,7 @@ export default function WelcomeArenaOverlay() {
   const pathname = usePathname();
   const [visible, setVisible] = useState(false);
   const [exiting, setExiting] = useState(false);
-  const linkRef = useRef<string>("/live/lobby");
+  const linkRef = useRef<string>("/live/rooms");
 
   useEffect(() => {
     if (pathname?.startsWith('/home')) return;
@@ -59,7 +59,7 @@ export default function WelcomeArenaOverlay() {
     linkRef.current = href;
     localStorage.setItem(SEEN_KEY, "1");
     setExiting(true);
-    const dest = href === "/live/lobby" ? "/live/lobby?entered=1" : href;
+    const dest = href === "/live/rooms" ? "/live/lobby?entered=1" : href;
     setTimeout(() => {
       setVisible(false);
       window.location.href = dest;
@@ -209,7 +209,7 @@ export default function WelcomeArenaOverlay() {
           <motion.button
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.98 }}
-            onClick={() => enter("/live/lobby")}
+            onClick={() => enter("/live/rooms")}
             style={{
               padding: "18px 48px",
               background: "linear-gradient(135deg, #00C8FF, #AA2DFF)",
@@ -237,7 +237,7 @@ export default function WelcomeArenaOverlay() {
 
           {/* Secondary */}
           <button
-            onClick={() => enter("/live/lobby")}
+            onClick={() => enter("/live/rooms")}
             style={{
               background: "none",
               border: "1px solid rgba(255,255,255,0.2)",

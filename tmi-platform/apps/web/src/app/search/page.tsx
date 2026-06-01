@@ -5,8 +5,8 @@ import Link from "next/link";
 const TRENDING_SEARCHES = ["wavetek", "afrobeats", "monday cypher", "beat battle", "neon vibe", "trap beats", "cypher", "zuri bloom"];
 
 const ALL_ROOMS = [
-  { name: "Monday Cypher",   viewers: "4.2K", tag: "LIVE",  href: "/lobbies/monday-cypher",  color: "#FF2DAA" },
-  { name: "The Neon Church", viewers: "2.8K", tag: "LIVE",  href: "/lobbies/neon-church",    color: "#00FFFF" },
+  { name: "Monday Cypher",   viewers: "4.2K", tag: "LIVE",  href: "/rooms/monday-cypher?autoSeat=1",  color: "#FF2DAA" },
+  { name: "The Neon Church", viewers: "2.8K", tag: "LIVE",  href: "/rooms/neon-church?autoSeat=1",    color: "#00FFFF" },
   { name: "R&B Showcase",   viewers: "1.1K", tag: "LIVE",  href: "/live/zuri",               color: "#00FF88" },
   { name: "Battle Arena",   viewers: "890",  tag: "LIVE",  href: "/live/battles",             color: "#FFD700" },
 ];
@@ -154,7 +154,7 @@ export default function SearchPage() {
         <section style={{ textAlign: "center", marginTop: 8, display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap", padding: "0 24px" }}>
           <Link href="/browse" style={{ fontSize: 9, fontWeight: 700, color: "#00FFFF", textDecoration: "none", border: "1px solid #00FFFF30", borderRadius: 6, padding: "8px 16px" }}>Browse All →</Link>
           <Link href="/beat-marketplace" style={{ fontSize: 9, fontWeight: 700, color: "#FFD700", textDecoration: "none", border: "1px solid #FFD70030", borderRadius: 6, padding: "8px 16px" }}>Beat Marketplace →</Link>
-          <Link href="/live/lobby" style={{ fontSize: 9, fontWeight: 700, color: "#FF2DAA", textDecoration: "none", border: "1px solid #FF2DAA30", borderRadius: 6, padding: "8px 16px" }}>Live Rooms →</Link>
+          <Link href="/live/rooms" style={{ fontSize: 9, fontWeight: 700, color: "#FF2DAA", textDecoration: "none", border: "1px solid #FF2DAA30", borderRadius: 6, padding: "8px 16px" }}>Live Rooms →</Link>
         </section>
       )}
     </main>

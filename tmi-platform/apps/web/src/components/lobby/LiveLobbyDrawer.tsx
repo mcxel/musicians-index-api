@@ -41,7 +41,7 @@ const TAB_LABEL: Record<LobbyTab, string> = {
 const TAB_HREF: Record<LobbyTab, string> = {
   fans:       "/live/lobby/fans",
   performers: "/live/lobby/performers",
-  mixed:      "/live/lobby",
+  mixed:      "/live/rooms",
 };
 
 export default function LiveLobbyDrawer() {

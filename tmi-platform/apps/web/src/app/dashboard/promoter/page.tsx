@@ -21,7 +21,7 @@ const PRIMARY_ACTIONS = [
   { label: "PROMOTE EVENT",   icon: "📣", href: "/promoter/events",    color: "#00FF88", desc: "Launch event campaign" },
   { label: "BOOK ARTIST",     icon: "🎤", href: "/booking",            color: "#00FFFF", desc: "Contract performers" },
   { label: "SELL TICKETS",    icon: "🎟️", href: "/tickets",           color: "#FFD700", desc: "Create ticket tiers" },
-  { label: "LIVE LOBBY",      icon: "🏟️", href: "/live/lobby",        color: "#AA2DFF", desc: "Open pre-show space" },
+  { label: "LIVE LOBBY",      icon: "🏟️", href: "/live/rooms",        color: "#AA2DFF", desc: "Open pre-show space" },
   { label: "VENUES",          icon: "🏢", href: "/venues",             color: "#00FF88", desc: "Find partner venues" },
   { label: "ADVERTISING",     icon: "📢", href: "/advertising",        color: "#FF2DAA", desc: "Buy promo placements" },
   { label: "SPONSOR DEALS",   icon: "🤝", href: "/sponsor/campaigns",  color: "#FFD700", desc: "Attach brands to shows" },
@@ -34,7 +34,7 @@ const PRIMARY_ACTIONS = [
 
 const VENUE_ROUTES = [
   { label: "All Venues",       icon: "🏢", href: "/venues" },
-  { label: "Live Lobby",       icon: "🏟️", href: "/live/lobby" },
+  { label: "Live Lobby",       icon: "🏟️", href: "/live/rooms" },
   { label: "Live Rooms",       icon: "📺", href: "/live/rooms" },
   { label: "Backstage",        icon: "🎪", href: "/live/backstage" },
   { label: "Lobby Wall",       icon: "🎨", href: "/live/lobby-wall" },

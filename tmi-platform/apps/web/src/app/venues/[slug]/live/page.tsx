@@ -45,13 +45,13 @@ export default function VenueLivePage() {
 
   useEffect(() => {
     registerRoute("/venues/[slug]/live", "open", {
-      returnRoute: "/live/lobby",
+      returnRoute: "/live/rooms",
       fallbackRoute: "/venues",
       nextAction: "watch-live",
     });
     registerReturnPath({
       fromRoute: "/venues/[slug]/live",
-      toRoute: "/live/lobby",
+      toRoute: "/live/rooms",
       label: "Back to Lobby",
     });
     resolveSlug("venue", slug || "unknown-venue");

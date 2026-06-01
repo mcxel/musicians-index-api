@@ -3,7 +3,7 @@ import Link from "next/link";
 const CARDS = [
   { title: "Main Preview Lobby", href: "/lobbies" },
   { title: "Lobby Wall", href: "/lobbies" },
-  { title: "Join Random Room", href: "/lobbies/random" },
+  { title: "Join Random Room", href: "/rooms/random?autoSeat=1" },
   { title: "Live Game Lobby", href: "/lobbies" },
 ];
 

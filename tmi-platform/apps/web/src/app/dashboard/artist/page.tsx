@@ -28,7 +28,7 @@ const PRIMARY_ACTIONS = [
 const LIVE_LINKS = [
   { label: "Live Stages",   icon: "🎤", href: "/live/stages" },
   { label: "Live Rooms",    icon: "📺", href: "/live/rooms" },
-  { label: "Live Lobby",    icon: "🏟️", href: "/live/lobby" },
+  { label: "Live Lobby",    icon: "🏟️", href: "/live/rooms" },
   { label: "Backstage",     icon: "🎪", href: "/live/backstage" },
   { label: "Green Room",    icon: "🟢", href: "/live/green-room" },
   { label: "Lobby Wall",    icon: "🎨", href: "/live/lobby-wall" },

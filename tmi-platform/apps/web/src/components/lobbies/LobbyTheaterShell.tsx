@@ -39,6 +39,7 @@ import LobbyTipRail from "@/components/lobbies/LobbyTipRail";
 import { getLobbyIdleInteraction, summarizeLobbyIdleInteractions } from "@/lib/lobby/LobbyIdleInteractionEngine";
 import LobbyBillboardSurface from "@/components/lobbies/LobbyBillboardSurface";
 import LobbyMainBillboard from "@/components/lobbies/LobbyMainBillboard";
+import SeatUpgradeWidget from "@/components/venue/SeatUpgradeWidget";
 import { emitLobbyFeedState, type LobbyBillboardStatus } from "@/lib/lobby/LobbyFeedBus";
 
 /** Map a room slug to one of the 5 AudienceScene venue types */
@@ -387,7 +388,7 @@ export default function LobbyTheaterShell({ slug, mode = "room", autoSeat = fals
 
           <div style={{ display: "grid", gap: 12 }}>
             {/* ── 3D Arena / AudienceScene ─────────────────────────────── */}
-            <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid rgba(255,255,255,0.08)", background: "#050510" }}>
+            <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid rgba(255,255,255,0.08)", background: "#050510", position: "relative" }}>
               {/* Arena header + view toggle */}
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 12px", background: "rgba(0,0,0,0.5)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -417,6 +418,13 @@ export default function LobbyTheaterShell({ slug, mode = "room", autoSeat = fals
                   sendReaction("fire");
                 }}
               />
+              
+              {/* Interactive Fan Overlays */}
+              {arenaView === "fan" && selectedSeat && (
+                <div style={{ position: "absolute", bottom: 20, right: 20, zIndex: 20 }}>
+                  <SeatUpgradeWidget roomId={slug} compact />
+                </div>
+              )}
               {/* Reaction count bubble */}
               {audienceReactions > 0 && (
                 <div style={{ padding: "4px 12px", background: "rgba(0,0,0,0.5)", fontSize: 9, color: "rgba(255,255,255,0.4)", textAlign: "right" }}>

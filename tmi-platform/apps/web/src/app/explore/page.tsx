@@ -14,9 +14,9 @@ const TRENDING_ARTISTS = [
 ];
 
 const HOT_ROOMS = [
-  { name: "Monday Cypher",      viewers: "4.2K", tag: "LIVE",        icon: "🎙️", color: "#FF2DAA", href: "/lobbies/monday-cypher"   },
-  { name: "The Neon Church",    viewers: "2.8K", tag: "LIVE",        icon: "⛪", color: "#00FFFF", href: "/lobbies/neon-church"      },
-  { name: "Beat Lab Sundays",   viewers: "1.4K", tag: "LIVE",        icon: "🎛️", color: "#AA2DFF", href: "/lobbies/beat-lab"         },
+  { name: "Monday Cypher",      viewers: "4.2K", tag: "LIVE",        icon: "🎙️", color: "#FF2DAA", href: "/rooms/monday-cypher?autoSeat=1"   },
+  { name: "The Neon Church",    viewers: "2.8K", tag: "LIVE",        icon: "⛪", color: "#00FFFF", href: "/rooms/neon-church?autoSeat=1"      },
+  { name: "Beat Lab Sundays",   viewers: "1.4K", tag: "LIVE",        icon: "🎛️", color: "#AA2DFF", href: "/rooms/beat-lab?autoSeat=1"         },
   { name: "World Party",        viewers: "3.1K", tag: "LIVE",        icon: "🌍", color: "#00FF88", href: "/rooms"                  },
 ];
 

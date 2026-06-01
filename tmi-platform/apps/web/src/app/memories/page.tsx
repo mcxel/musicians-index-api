@@ -35,7 +35,7 @@ export default function MemoriesPage() {
       style={{ minHeight: '100vh', background: '#050510', color: '#fff', padding: '40px 24px' }}
     >
       <div style={{ maxWidth: 920, margin: '0 auto' }}>
-        <Link href="/live/lobby" style={{ color: '#AA2DFF', textDecoration: 'none', fontSize: 12 }}>
+        <Link href="/live/rooms" style={{ color: '#AA2DFF', textDecoration: 'none', fontSize: 12 }}>
           ← Return to Lobby
         </Link>
         <h1 style={{ fontSize: 32, margin: '20px 0 8px' }}>My Memories</h1>

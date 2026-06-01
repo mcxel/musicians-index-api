@@ -89,7 +89,7 @@ export default async function LiveRoomPage({ params, searchParams }: LiveRoomPag
 
   registerRoute("/live/rooms/[id]", "open", {
     returnRoute: returnHref,
-    fallbackRoute: "/live/lobby",
+    fallbackRoute: "/live/rooms",
     nextAction: "interact",
   });
   registerReturnPath({

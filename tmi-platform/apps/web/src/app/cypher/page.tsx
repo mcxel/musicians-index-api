@@ -42,7 +42,7 @@ export default function CypherPage() {
           90 seconds. No hooks. No repeats. Just bars. The most competitive freestyle session in music — live every Monday night.
         </p>
         <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
-          <Link href="/lobbies/monday-cypher" aria-label="Enter Monday Cypher room"
+          <Link href="/rooms/monday-cypher?autoSeat=1" aria-label="Enter Monday Cypher room"
             style={{ padding: "12px 30px", fontSize: 10, fontWeight: 800, letterSpacing: "0.15em", color: "#050510", background: "linear-gradient(135deg,#FF2DAA,#AA2DFF)", borderRadius: 8, textDecoration: "none" }}>
             ENTER THE CYPHER →
           </Link>

@@ -250,7 +250,7 @@ export default function ObservatoryPage() {
               {[
                 { href: "/admin/live",        label: "BETA CONTROL ROOM", color: "#FF6B00" },
                 { href: "/admin/rooms",        label: "ROOM MANAGER",      color: "#00C8FF" },
-                { href: "/live/lobby",         label: "ENTER LOBBY",       color: "#00C896" },
+                { href: "/live/rooms",         label: "ENTER LOBBY",       color: "#00C896" },
                 { href: "/admin/launch-gates", label: "LAUNCH GATES",      color: "#AA2DFF" },
               ].map(l => (
                 <Link key={l.href} href={l.href} style={{ display: "block", padding: "12px 16px", background: `${l.color}08`, border: `1px solid ${l.color}30`, fontSize: 9, fontWeight: 900, letterSpacing: "0.2em", color: l.color, textDecoration: "none", textAlign: "center" }}>

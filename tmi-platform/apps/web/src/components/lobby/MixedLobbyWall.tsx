@@ -319,7 +319,7 @@ export default function MixedLobbyWall({ compact = false }: Props) {
         <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.2em", color: "#AA2DFF" }}>
           MIXED LOBBY WALL · {prioritizedTiles.length} ACTIVE TILES
         </div>
-        <Link href="/live/lobby" style={{ fontSize: 8, color: "#AA2DFF", textDecoration: "none", letterSpacing: "0.1em" }}>
+        <Link href="/live/rooms" style={{ fontSize: 8, color: "#AA2DFF", textDecoration: "none", letterSpacing: "0.1em" }}>
           VIEW ALL →
         </Link>
       </div>

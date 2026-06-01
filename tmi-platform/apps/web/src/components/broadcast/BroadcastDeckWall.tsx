@@ -135,7 +135,7 @@ export default function BroadcastDeckWall({
             />
           </div>
           <Link
-            href="/live/lobby"
+            href="/live/rooms"
             style={{
               fontSize: 8,
               fontWeight: 700,

@@ -21,7 +21,7 @@ export default function GameRouteShell({ gameId }: GameRouteShellProps) {
         <p style={{ margin: 0, color: "#cbd5e1" }}>Game route shell is live with lobby/reward integration chain.</p>
         <section style={{ border: "1px solid rgba(56,189,248,0.35)", borderRadius: 12, background: "rgba(15,23,42,0.72)", padding: 12 }}>
           <div style={{ display: "grid", gap: 8 }}>
-            <Link href="/lobbies/live-world" onClick={() => emitSystemEvent({ type: "pipeline.lobby.open", actor: "Game Route", sectionId: `game-${gameId}-lobby`, route: "/lobbies/live-world", message: `Game ${gameId} -> lobby` })} style={linkStyle}>Connect Lobby</Link>
+            <Link href="/rooms/live-world?autoSeat=1" onClick={() => emitSystemEvent({ type: "pipeline.lobby.open", actor: "Game Route", sectionId: `game-${gameId}-lobby`, route: "/rooms/live-world?autoSeat=1", message: `Game ${gameId} -> lobby` })} style={linkStyle}>Connect Lobby</Link>
             <Link href="/home/13" onClick={() => emitSystemEvent({ type: "homepage.artifact.route", actor: "Game Route", sectionId: `game-${gameId}-rewards`, route: "/home/13", message: `Game ${gameId} -> rewards` })} style={linkStyle}>Open Rewards</Link>
             <Link href="/billboards/game-night" onClick={() => emitSystemEvent({ type: "pipeline.billboard.open", actor: "Game Route", sectionId: `game-${gameId}-billboard`, route: "/billboards/game-night", message: `Game ${gameId} -> billboard` })} style={linkStyle}>Open Billboard</Link>
           </div>

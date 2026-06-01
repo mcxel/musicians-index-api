@@ -60,7 +60,7 @@ export default function MagazineLoopClient({ userId, rewardPoints, rewardReason,
           <button onClick={spendForRoomJoin} style={{ border: "1px solid rgba(255,215,0,0.45)", background: "rgba(255,215,0,0.08)", color: "#FFD700", borderRadius: 8, padding: "7px 10px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
             Spend 15 to Join Room
           </button>
-          <Link href="/live/lobby" style={{ color: "#00FF88", fontSize: 11, textDecoration: "none" }}>Go To Lobby</Link>
+          <Link href="/live/rooms" style={{ color: "#00FF88", fontSize: 11, textDecoration: "none" }}>Go To Lobby</Link>
           <Link href="/wallet" style={{ color: "#AA2DFF", fontSize: 11, textDecoration: "none" }}>Open Wallet</Link>
         </div>
         {joinMessage && <div style={{ marginTop: 8, fontSize: 11, color: "#fff" }}>{joinMessage}</div>}

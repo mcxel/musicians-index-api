@@ -238,7 +238,7 @@ export default function UniversalMediaPanel({
             <div style={{ fontSize: 10, fontWeight: 800, color: 'rgba(255,255,255,0.6)', marginBottom: 2 }}>No active stream</div>
             <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)' }}>Check back during scheduled events or live sessions.</div>
           </div>
-          <Link href="/live/lobby" style={{ padding: '7px 16px', background: `${accent}18`, border: `1px solid ${accent}44`, color: accent, fontWeight: 900, fontSize: 9, letterSpacing: '0.1em', textDecoration: 'none', borderRadius: 6, flexShrink: 0 }}>
+          <Link href="/live/rooms" style={{ padding: '7px 16px', background: `${accent}18`, border: `1px solid ${accent}44`, color: accent, fontWeight: 900, fontSize: 9, letterSpacing: '0.1em', textDecoration: 'none', borderRadius: 6, flexShrink: 0 }}>
             BROWSE LIVE →
           </Link>
         </div>

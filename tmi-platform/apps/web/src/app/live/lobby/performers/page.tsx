@@ -16,7 +16,7 @@ export default function PerformerLobbyPage() {
   return (
     <main style={{ minHeight: "100vh", background: "#050510", color: "#fff", padding: "40px 24px" }}>
       <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-        <Link href="/live/lobby" style={{ fontSize: 9, color: "#FF2DAA", textDecoration: "none", letterSpacing: "0.12em", display: "block", marginBottom: 20 }}>
+        <Link href="/live/rooms" style={{ fontSize: 9, color: "#FF2DAA", textDecoration: "none", letterSpacing: "0.12em", display: "block", marginBottom: 20 }}>
           ← BACK TO LOBBY
         </Link>
         <h1 style={{ margin: "0 0 6px", fontSize: "clamp(1.4rem,3vw,2rem)", fontWeight: 900 }}>

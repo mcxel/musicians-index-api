@@ -24,7 +24,7 @@ const GENRES = ["Hip-Hop", "Afrobeats", "Electronic", "R&B", "Battle Rap", "Dril
 
 const NAV_ARTIFACTS = [
   { label: "Read Magazine", href: "/home/1-2",        accent: "#00FFFF" },
-  { label: "Live World",    href: "/lobbies/live-world", accent: "#FF2DAA" },
+  { label: "Live World",    href: "/rooms/live-world?autoSeat=1", accent: "#FF2DAA" },
   { label: "Play Games",   href: "/cypher",            accent: "#AA2DFF" },
   { label: "Marketplace",  href: "/shop",              accent: "#FFD700" },
   { label: "About Us",     href: "/about",             accent: "rgba(255,255,255,0.55)" },

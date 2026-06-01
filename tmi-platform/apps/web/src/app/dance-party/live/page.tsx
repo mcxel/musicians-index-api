@@ -24,7 +24,7 @@ const TRACK_PRODUCER = "Wavetek";
 export default function DancePartyLivePage() {
   registerRoute("/dance-party/live", "open", {
     returnRoute: "/dance-party",
-    fallbackRoute: "/live/lobby",
+    fallbackRoute: "/live/rooms",
     nextAction: "dance",
   });
   registerReturnPath({ fromRoute: "/dance-party/live", toRoute: "/dance-party", label: "Back to Dance Party" });

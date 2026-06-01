@@ -53,12 +53,12 @@ export default function SponsorHub({ sponsorId }: SponsorHubProps) {
         />
 
         <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 12 }}>
-          <SponsorAdViewer contract={contract} campaignName="Prime Wave Spring Launch" ctaRoute="/lobbies/live-world" />
+          <SponsorAdViewer contract={contract} campaignName="Prime Wave Spring Launch" ctaRoute="/rooms/live-world?autoSeat=1" />
           <section style={{ border: "1px solid rgba(148,163,184,0.35)", borderRadius: 12, background: "rgba(15,23,42,0.7)", padding: 10 }}>
             <h3 style={{ marginTop: 0, fontSize: 12, letterSpacing: "0.12em", textTransform: "uppercase", color: "#a5f3fc" }}>Linked Systems</h3>
             <div style={{ display: "grid", gap: 8 }}>
               <ChainLink href="/billboards/crown-weekly" label="Linked Billboard" onClick={() => trackPipelineRoute(contract, "billboard", { routeOverride: "/billboards/crown-weekly" })} />
-              <ChainLink href="/lobbies/live-world" label="Linked Lobby" onClick={() => trackPipelineRoute(contract, "lobby", { routeOverride: "/lobbies/live-world" })} />
+              <ChainLink href="/rooms/live-world?autoSeat=1" label="Linked Lobby" onClick={() => trackPipelineRoute(contract, "lobby", { routeOverride: "/rooms/live-world?autoSeat=1" })} />
               <ChainLink href="/games/name-that-tune" label="Linked Game" onClick={() => trackPipelineRoute(contract, "game", { routeOverride: "/games/name-that-tune" })} />
               <ChainLink href="/admin?monitor=live-feed" label="Admin Feed" onClick={() => trackPipelineRoute(contract, "sponsor", { routeOverride: "/admin?monitor=live-feed" })} />
             </div>

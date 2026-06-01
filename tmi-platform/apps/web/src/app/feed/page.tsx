@@ -7,7 +7,7 @@ export const metadata: Metadata = {
 };
 
 const FEED_ITEMS = [
-  { type: "ROOM_LIVE",   icon: "🔴", actor: "Neon Vibe",     text: "just went live in The Neon Church",           sub: "4,200 watching",        color: "#00FFFF", href: "/lobbies/neon-church",     time: "now"     },
+  { type: "ROOM_LIVE",   icon: "🔴", actor: "Neon Vibe",     text: "just went live in The Neon Church",           sub: "4,200 watching",        color: "#00FFFF", href: "/rooms/neon-church?autoSeat=1",     time: "now"     },
   { type: "TIP",         icon: "💸", actor: "@fan2",          text: "tipped you 500 credits",                      sub: "= $5.00 to your wallet", color: "#00FF88", href: "/wallet",                time: "2m ago"  },
   { type: "CONTEST",     icon: "🏆", actor: "Grand Contest",  text: "Ep.12 is live — submit your entry now!",      sub: "Ends in 4 hours",        color: "#FFD700", href: "/contests",              time: "4h ago"  },
   { type: "BEAT_DROP",   icon: "🎵", actor: "Krypt",          text: "dropped a new beat: 'Cipher Code'",           sub: "Boom Bap · 88 BPM",      color: "#AA2DFF", href: "/beats/cipher-code",     time: "5h ago"  },

@@ -9,7 +9,7 @@ const FEATURE_ROUTES: Record<string, string> = {
   "collab-studio":   "/go-live?type=collab",
   "artist-academy":  "/articles",
   "fan-club":        "/hub/fan",
-  "watch-parties":   "/live/lobby",
+  "watch-parties":   "/live/rooms",
   "cypher-league":   "/cypher",
   "ai-mastering":    "/beats/submit",
   "booking-pro":     "/booking",

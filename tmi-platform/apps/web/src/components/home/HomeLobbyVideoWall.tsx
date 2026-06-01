@@ -127,7 +127,7 @@ export default function HomeLobbyVideoWall({ accentColor = '#00FFFF' }: { accent
           LIVE NOW
         </span>
         <div style={{ height: 1, flex: 1, background: `linear-gradient(90deg,${accentColor}44,transparent)` }} />
-        <Link href="/live/lobby" style={{
+        <Link href="/live/rooms" style={{
           fontSize: 7, fontWeight: 800, letterSpacing: '0.15em',
           color: accentColor, border: `1px solid ${accentColor}44`,
           padding: '2px 10px', borderRadius: 20, textDecoration: 'none',
@@ -299,7 +299,7 @@ export default function HomeLobbyVideoWall({ accentColor = '#00FFFF' }: { accent
         marginTop: 12, textAlign: 'center', position: 'relative', zIndex: 2,
         display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap',
       }}>
-        <Link href="/live/lobby" style={{
+        <Link href="/live/rooms" style={{
           padding: '7px 20px', fontSize: 9, fontWeight: 800, letterSpacing: '0.18em',
           background: `linear-gradient(135deg,#FF2DAA,#AA2DFF)`, color: '#fff',
           borderRadius: 20, textDecoration: 'none',

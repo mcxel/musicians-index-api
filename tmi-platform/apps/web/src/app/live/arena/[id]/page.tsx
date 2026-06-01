@@ -27,7 +27,7 @@ export default async function LiveArenaPage({ params, searchParams }: LiveArenaP
   return (
     <main style={{ minHeight: "100vh", background: "#050510", color: "#fff", paddingBottom: 80 }}>
       <nav style={{ background: "rgba(0,0,0,0.85)", borderBottom: "1px solid rgba(255,255,255,0.07)", padding: "12px 24px", display: "flex", gap: 16, alignItems: "center", backdropFilter: "blur(12px)", position: "sticky", top: 0, zIndex: 50 }}>
-        <Link href="/live/lobby" style={{ color: "#00FFFF", textDecoration: "none", fontSize: 11, fontWeight: 700 }}>← Lobby</Link>
+        <Link href="/live/rooms" style={{ color: "#00FFFF", textDecoration: "none", fontSize: 11, fontWeight: 700 }}>← Lobby</Link>
         <span style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>›</span>
         <span style={{ fontSize: 11, fontWeight: 900, color: "#fff", letterSpacing: "0.06em" }}>ARENA — {id.toUpperCase().replace(/-/g, " ")}</span>
         <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>

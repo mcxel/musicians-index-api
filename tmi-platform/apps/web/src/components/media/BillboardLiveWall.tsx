@@ -185,7 +185,7 @@ export default function BillboardLiveWall({ mode = 'home', maxTiles = 12, showAc
       </div>
 
       <div style={{ marginTop: 16, display: 'flex', gap: 10, alignItems: 'center' }}>
-        <Link href="/live/lobby" style={{ padding: '8px 20px', background: 'linear-gradient(90deg, #00FFFF, #00C8FF)', borderRadius: 8, fontSize: 9, fontWeight: 900, color: '#050510', textDecoration: 'none', letterSpacing: '0.1em', boxShadow: '0 0 14px rgba(0,255,255,0.35)' }}>
+        <Link href="/live/rooms" style={{ padding: '8px 20px', background: 'linear-gradient(90deg, #00FFFF, #00C8FF)', borderRadius: 8, fontSize: 9, fontWeight: 900, color: '#050510', textDecoration: 'none', letterSpacing: '0.1em', boxShadow: '0 0 14px rgba(0,255,255,0.35)' }}>
           JOIN LOBBY →
         </Link>
         <span style={{ fontSize: 8, color: 'rgba(255,255,255,0.3)' }}>{performers.filter((p) => p.isLive).length} performers live now</span>

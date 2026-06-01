@@ -470,7 +470,7 @@ export default function GoLiveStudio() {
             </div>
           </div>
           <Link
-            href="/live/lobby"
+            href="/live/rooms"
             style={{
               padding: '8px 16px', borderRadius: 8, fontSize: 9, fontWeight: 900,
               background: 'rgba(255,45,170,0.15)', border: `1px solid rgba(255,45,170,0.4)`,
@@ -700,7 +700,7 @@ export default function GoLiveStudio() {
               {isEnding ? '⟳  ENDING…' : '■  END BROADCAST'}
             </button>
             <Link
-              href="/live/lobby"
+              href="/live/rooms"
               style={{
                 padding: '14px 20px', borderRadius: 10, fontSize: 11, fontWeight: 900,
                 background: `rgba(0,255,255,0.1)`, border: `1px solid rgba(0,255,255,0.3)`,

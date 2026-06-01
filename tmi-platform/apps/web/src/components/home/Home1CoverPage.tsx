@@ -1850,7 +1850,7 @@ export default function Home1CoverPage() {
         {/* ── HERO ENTER BUTTON ── */}
         <div style={{ display: 'flex', justifyContent: 'center', margin: '12px 0 10px', gap: 10, flexWrap: 'wrap' }}>
           <Link
-            href="/live/lobby"
+            href="/live/rooms"
             className="tmi-glass-panel"
             style={{
               display: 'inline-flex', alignItems: 'center', gap: 12,
@@ -2155,7 +2155,7 @@ export default function Home1CoverPage() {
 
       {/* Orbital Alert Widgets — fixed overlays, flash on first visit */}
       <OrbitalAlertWidget side="left"  message="Watch Live Performances"   href="/fan/theater"   accentColor="#00FFFF" />
-      <OrbitalAlertWidget side="right" message="Find Your Favorite Artist" href="/live/lobby"    accentColor="#FF2DAA" />
+      <OrbitalAlertWidget side="right" message="Find Your Favorite Artist" href="/live/rooms"    accentColor="#FF2DAA" />
 
       <ActionCanister actions={HOME_LOBBY_ACTIONS} />
       <WidgetDrawer />

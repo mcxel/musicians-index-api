@@ -54,7 +54,7 @@ export default function DiscoverDetailPage({ params }: { params: { id: string } 
         <Link href="/home/1" style={{ fontSize: 11, fontWeight: 900, color: accentColor, textDecoration: "none", letterSpacing: "0.14em" }}>TMI</Link>
         <Link href="/browse" style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", textDecoration: "none" }}>Browse</Link>
         <span style={{ fontSize: 11, color: accentColor, fontWeight: 700 }}>{genre?.label ?? id.toUpperCase()}</span>
-        <Link href="/live/lobby" style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", textDecoration: "none", marginLeft: "auto" }}>All Rooms →</Link>
+        <Link href="/live/rooms" style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", textDecoration: "none", marginLeft: "auto" }}>All Rooms →</Link>
       </nav>
 
       {/* Background glow */}
@@ -72,7 +72,7 @@ export default function DiscoverDetailPage({ params }: { params: { id: string } 
             {genre?.desc ?? `Explore the best ${id.replace(/-/g, " ")} talent, live rooms, cyphers, and battles on TMI.`}
           </p>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <Link href="/live/lobby" style={{ padding: "10px 20px", borderRadius: 10, background: `${accentColor}18`, border: `1px solid ${accentColor}45`, color: accentColor, fontSize: 11, fontWeight: 900, textDecoration: "none", letterSpacing: "0.08em" }}>▶ JOIN A LIVE ROOM</Link>
+            <Link href="/live/rooms" style={{ padding: "10px 20px", borderRadius: 10, background: `${accentColor}18`, border: `1px solid ${accentColor}45`, color: accentColor, fontSize: 11, fontWeight: 900, textDecoration: "none", letterSpacing: "0.08em" }}>▶ JOIN A LIVE ROOM</Link>
             <Link href="/battles/create" style={{ padding: "10px 20px", borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.6)", fontSize: 11, fontWeight: 800, textDecoration: "none" }}>⚔️ START CHALLENGE</Link>
           </div>
         </div>

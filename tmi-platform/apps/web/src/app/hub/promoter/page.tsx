@@ -15,7 +15,7 @@ const STATS = [
 const QUICK_ACTIONS = [
   { label: "PROMOTE EVENT",   icon: "📣", href: "/promoter/events",    color: "#00FF88", desc: "Launch event campaign" },
   { label: "BOOK ARTIST",     icon: "🎤", href: "/booking",            color: "#00FFFF", desc: "Contract performers" },
-  { label: "LIVE LOBBY",      icon: "🏟️", href: "/live/lobby",        color: "#AA2DFF", desc: "Open pre-show space" },
+  { label: "LIVE LOBBY",      icon: "🏟️", href: "/live/rooms",        color: "#AA2DFF", desc: "Open pre-show space" },
   { label: "VENUES",          icon: "🏢", href: "/venues",             color: "#FFD700", desc: "Find partner venues" },
   { label: "ADVERTISING",     icon: "📢", href: "/advertising",        color: "#FF2DAA", desc: "Buy promo placements" },
   { label: "SPONSOR DEALS",   icon: "🤝", href: "/sponsor/campaigns",  color: "#00FFFF", desc: "Attach brands to shows" },
@@ -319,7 +319,7 @@ export default function PromoterHubPage() {
                 { label: "Seating Maps",    icon: "🏟️", href: "/seating" },
                 { label: "Live Rooms",      icon: "📺", href: "/live/rooms" },
                 { label: "Backstage",       icon: "🎪", href: "/live/backstage" },
-                { label: "Live Lobby",      icon: "🏟️", href: "/live/lobby" },
+                { label: "Live Lobby",      icon: "🏟️", href: "/live/rooms" },
                 { label: "Live Billboards", icon: "📡", href: "/live/billboards" },
               ].map((l) => (
                 <Link key={l.href} href={l.href} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", background: "rgba(0,255,255,0.05)", border: "1px solid rgba(0,255,255,0.1)", borderRadius: 7, textDecoration: "none" }}>

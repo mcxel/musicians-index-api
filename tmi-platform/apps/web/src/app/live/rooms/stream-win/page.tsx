@@ -11,13 +11,13 @@ export const metadata: Metadata = {
 
 export default function StreamWinRoomPage() {
   registerRoute("/live/rooms/stream-win", "open", {
-    returnRoute: "/live/lobby",
+    returnRoute: "/live/rooms",
     fallbackRoute: "/",
     nextAction: "interact",
   });
   registerReturnPath({
     fromRoute: "/live/rooms/stream-win",
-    toRoute: "/live/lobby",
+    toRoute: "/live/rooms",
     label: "Back to Lobby",
   });
 

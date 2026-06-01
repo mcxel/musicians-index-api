@@ -34,7 +34,7 @@ function ArticleNotFoundFallback({ slug }: { slug: string }) {
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
         <a href="/articles" style={{ padding: "10px 22px", background: "#FFD700", color: "#050510", fontWeight: 800, fontSize: 11, borderRadius: 8, textDecoration: "none", letterSpacing: 1 }}>ALL STORIES</a>
         <a href="/magazine" style={{ padding: "10px 22px", border: "1px solid rgba(0,255,255,0.3)", color: "#00FFFF", fontWeight: 800, fontSize: 11, borderRadius: 8, textDecoration: "none", letterSpacing: 1 }}>MAGAZINE</a>
-        <a href="/live/lobby" style={{ padding: "10px 22px", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.6)", fontWeight: 700, fontSize: 11, borderRadius: 8, textDecoration: "none", letterSpacing: 1 }}>WATCH LIVE</a>
+        <a href="/live/rooms" style={{ padding: "10px 22px", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.6)", fontWeight: 700, fontSize: 11, borderRadius: 8, textDecoration: "none", letterSpacing: 1 }}>WATCH LIVE</a>
         <a href="/join" style={{ padding: "10px 22px", background: "#FF2DAA", color: "#fff", fontWeight: 800, fontSize: 11, borderRadius: 8, textDecoration: "none", letterSpacing: 1 }}>JOIN TMI</a>
       </div>
     </div>

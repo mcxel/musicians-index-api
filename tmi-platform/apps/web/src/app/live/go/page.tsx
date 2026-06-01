@@ -21,7 +21,7 @@ export default function GoLivePage() {
     <main style={{ minHeight: '100vh', background: '#050510', color: '#fff', padding: '40px 24px 80px' }}>
       <div style={{ maxWidth: 700, margin: '0 auto' }}>
         <Link
-          href="/live/lobby"
+          href="/live/rooms"
           style={{ fontSize: 9, color: '#FF2DAA', textDecoration: 'none', letterSpacing: '0.12em', display: 'block', marginBottom: 28 }}
         >
           ← BACK TO LOBBY

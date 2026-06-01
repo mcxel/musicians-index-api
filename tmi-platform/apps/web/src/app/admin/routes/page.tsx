@@ -12,7 +12,7 @@ export default function AdminRouteHealthPage() {
     { path: "/hub/fan", status: "active", latency: "35ms" },
     { path: "/hub/performer", status: "active", latency: "36ms" },
     { path: "/magazine/article/*", status: "active", latency: "42ms" },
-    { path: "/live/lobby", status: "active", latency: "38ms" },
+    { path: "/live/rooms", status: "active", latency: "38ms" },
     { path: "/venues/[slug]", status: "active", latency: "40ms" },
     { path: "/venues/[slug]/live", status: "active", latency: "41ms" },
     { path: "/groups", status: "active", latency: "33ms" },
