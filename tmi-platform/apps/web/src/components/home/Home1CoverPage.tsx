@@ -21,6 +21,7 @@ import ActionCanister from '@/components/room/ActionCanister';
 import WidgetDrawer from '@/components/room/WidgetDrawer';
 import NeonWaveUnderlay from '@/components/atmosphere/NeonWaveUnderlay';
 import UnifiedAdSlot from '@/components/ads/UnifiedAdSlot';
+import MagazineEditorialBelt from '@/components/magazine/MagazineEditorialBelt';
 
 const HOME1_LAYER_SESSION_KEY = 'TMI_OS_SessionState_Home1';
 const HOME1_ISSUE_ID = 'issue-001-neon';
@@ -1653,6 +1654,64 @@ export default function Home1CoverPage() {
           ))}
         </div>
 
+        {/* ── MAGAZINE EDITORIAL BELT — magazine identity before anything else ── */}
+        <MagazineEditorialBelt label="THIS WEEK IN TMI" />
+
+        {/* ── LIVE INDEX STORIES — news, interviews, features, editorial ── */}
+        <section className="tmi-home1-second-section">
+          <h3>Live Index Stories</h3>
+          <div className="tmi-home1-second-grid">
+            {/* Left — Top Live Cypher */}
+            {cyphers[0] && (
+              <article className="tmi-panel">
+                <div className="tmi-panel-emoji" style={{ background: `linear-gradient(135deg, ${cyphers[0].accentColor}22, #050510)` }}>
+                  <span>{cyphers[0].avatarEmoji}</span>
+                  {cyphers[0].viewerCount && <small>{cyphers[0].viewerCount.toLocaleString()} WATCHING</small>}
+                </div>
+                <h4>{cyphers[0].title}</h4>
+                <p>{cyphers[0].subtitle ?? 'Live cypher stage — step up and perform.'}</p>
+                <Link href={cyphers[0].href}>{ctaLabel(cyphers[0].kind)}</Link>
+              </article>
+            )}
+            {/* Center — Top Live Camera (Artist Interview slot) */}
+            {liveCamFeeds[1] && (
+              <article className="tmi-panel">
+                <div className="tmi-panel-emoji" style={{ background: `linear-gradient(135deg, ${liveCamFeeds[1].accentColor}22, #050510)` }}>
+                  <span>{liveCamFeeds[1].avatarEmoji}</span>
+                  {liveCamFeeds[1].genre && <small>{liveCamFeeds[1].genre.toUpperCase()}</small>}
+                </div>
+                <h4>{liveCamFeeds[1].title}</h4>
+                <p>{liveCamFeeds[1].subtitle ?? 'Live now — tune in and catch the performance.'}</p>
+                <Link href={liveCamFeeds[1].href}>{ctaLabel(liveCamFeeds[1].kind)}</Link>
+              </article>
+            )}
+            {/* Right — Latest editorial article */}
+            {(() => {
+              const latestArticle = getLatestEditorialArticles(1)[0];
+              if (!latestArticle) return (
+                <article className="tmi-panel" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                  <div className="tmi-panel-emoji" style={{ background: 'linear-gradient(135deg, #FFD70022, #050510)' }}>
+                    <span>📰</span><small>EDITORIAL</small>
+                  </div>
+                  <h4>Stories Loading</h4>
+                  <p>The editorial engine is loading the latest articles from the Index.</p>
+                  <Link href="/articles">READ ALL STORIES →</Link>
+                </article>
+              );
+              return (
+                <article className="tmi-panel" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                  <div className="tmi-panel-emoji" style={{ background: `linear-gradient(135deg, ${latestArticle.accentColor}22, #050510)` }}>
+                    <span>📰</span><small>LATEST STORY</small>
+                  </div>
+                  <h4>{latestArticle.title}</h4>
+                  <p>{latestArticle.snippet}</p>
+                  <Link href={`/articles/${latestArticle.slug}`}>READ FULL STORY →</Link>
+                </article>
+              );
+            })()}
+          </div>
+        </section>
+
         {/* ── AD BREAK 1 — above-fold leaderboard ── */}
         <UnifiedAdSlot venue="home-1" slotKey="homepageBanner" format="horizontal" label="ADVERTISEMENT" style={{ margin: '8px 0 12px', minHeight: 90 }} accentColor="#AA2DFF" />
 
@@ -1718,11 +1777,7 @@ export default function Home1CoverPage() {
           ) : null}
         </div>
 
-        {/* ── ORBIT HERO — memo component, never re-renders from parent ── */}
-        <PlatformPulse />
-        <WeeklyCrownOrbit onNodeClick={setProfilePanel} />
-
-        {/* ── AD BREAK 2 — mid-page rectangle after orbit ── */}
+        {/* ── AD BREAK 2 — mid-page rectangle ── */}
         <UnifiedAdSlot venue="home-1" slotKey="homepageMid" format="rectangle" label="ADVERTISEMENT" style={{ margin: '12px 0', minHeight: 250 }} accentColor="#AA2DFF" />
 
         {/* ── Broadcast deck banner ── */}
@@ -1845,63 +1900,7 @@ export default function Home1CoverPage() {
           })()}
         </div>
 
-        <section className="tmi-home1-second-section">
-          <h3>Live Index Stories</h3>
-          <div className="tmi-home1-second-grid">
-            {/* Left — Top Live Cypher */}
-            {cyphers[0] && (
-              <article className="tmi-panel">
-                <div className="tmi-panel-emoji" style={{ background: `linear-gradient(135deg, ${cyphers[0].accentColor}22, #050510)` }}>
-                  <span>{cyphers[0].avatarEmoji}</span>
-                  {cyphers[0].viewerCount && <small>{cyphers[0].viewerCount.toLocaleString()} WATCHING</small>}
-                </div>
-                <h4>{cyphers[0].title}</h4>
-                <p>{cyphers[0].subtitle ?? 'Live cypher stage — step up and perform.'}</p>
-                <Link href={cyphers[0].href}>{ctaLabel(cyphers[0].kind)}</Link>
-              </article>
-            )}
-
-            {/* Center — Top Live Camera (Artist Interview slot) */}
-            {liveCamFeeds[1] && (
-              <article className="tmi-panel">
-                <div className="tmi-panel-emoji" style={{ background: `linear-gradient(135deg, ${liveCamFeeds[1].accentColor}22, #050510)` }}>
-                  <span>{liveCamFeeds[1].avatarEmoji}</span>
-                  {liveCamFeeds[1].genre && <small>{liveCamFeeds[1].genre.toUpperCase()}</small>}
-                </div>
-                <h4>{liveCamFeeds[1].title}</h4>
-                <p>{liveCamFeeds[1].subtitle ?? 'Live now — tune in and catch the performance.'}</p>
-                <Link href={liveCamFeeds[1].href}>{ctaLabel(liveCamFeeds[1].kind)}</Link>
-              </article>
-            )}
-
-            {/* Right — Latest editorial article */}
-            {(() => {
-              const latestArticle = getLatestEditorialArticles(1)[0];
-              if (!latestArticle) return (
-                <article className="tmi-panel" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                  <div className="tmi-panel-emoji" style={{ background: 'linear-gradient(135deg, #FFD70022, #050510)' }}>
-                    <span>📰</span>
-                    <small>EDITORIAL</small>
-                  </div>
-                  <h4>Stories Loading</h4>
-                  <p>The editorial engine is loading the latest articles from the Index.</p>
-                  <Link href="/articles">READ ALL STORIES →</Link>
-                </article>
-              );
-              return (
-                <article className="tmi-panel" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                  <div className="tmi-panel-emoji" style={{ background: `linear-gradient(135deg, ${latestArticle.accentColor}22, #050510)` }}>
-                    <span>📰</span>
-                    <small>LATEST STORY</small>
-                  </div>
-                  <h4>{latestArticle.title}</h4>
-                  <p>{latestArticle.snippet}</p>
-                  <Link href={`/articles/${latestArticle.slug}`}>READ FULL STORY →</Link>
-                </article>
-              );
-            })()}
-          </div>
-        </section>
+        {/* ── Live Index Stories moved up — now rendered after editorial belt ── */}
 
         <section className="tmi-ad-rail-grid" aria-label="Monetization rails">
           <AdRailSlot
@@ -1917,6 +1916,10 @@ export default function Home1CoverPage() {
             title="Discovery Sidebar"
           />
         </section>
+
+        {/* ── WEEKLY CROWN ORBIT — discovery feature, after editorial ── */}
+        <PlatformPulse />
+        <WeeklyCrownOrbit onNodeClick={setProfilePanel} />
 
         <footer className="tmi-home1-footer">
           <h4>Weekly Cyphers</h4>
