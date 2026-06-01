@@ -22,8 +22,6 @@ import WidgetDrawer from '@/components/room/WidgetDrawer';
 import NeonWaveUnderlay from '@/components/atmosphere/NeonWaveUnderlay';
 import UnifiedAdSlot from '@/components/ads/UnifiedAdSlot';
 import MagazineEditorialBelt from '@/components/magazine/MagazineEditorialBelt';
-import TmiMagazineOrbitalUnderlay from '@/components/home/TmiMagazineOrbitalUnderlay';
-
 const HOME1_LAYER_SESSION_KEY = 'TMI_OS_SessionState_Home1';
 const HOME1_ISSUE_ID = 'issue-001-neon';
 const THIS_WEEK_ORBIT_DIRECTION: 'clockwise' = 'clockwise';
@@ -690,7 +688,7 @@ export default function Home1CoverPage() {
           background: transparent;
           color: #f8f7f1;
           font-family: 'Bebas Neue', 'Impact', sans-serif;
-          overflow: hidden;
+          overflow-x: hidden;
           position: relative;
         }
         
@@ -1661,6 +1659,73 @@ export default function Home1CoverPage() {
           /* Reduce paper wash on mobile so neon colours stay vivid */
           .tmi-paper-underlay { opacity: 0.12; }
         }
+
+        /* ── Full-bleed tabloid orbital underlay ──────────────────────────── */
+        .tmi-tabloid-fullbleed {
+          position: relative;
+          width: 100vw;
+          margin-left: calc(-50vw + 50%);
+          overflow: hidden;
+          height: 500px;
+          margin-bottom: 16px;
+          margin-top: 8px;
+        }
+        .tmi-tabloid-track {
+          display: flex;
+          white-space: nowrap;
+          height: 100%;
+          align-items: center;
+          animation: tmiTabloidScrollLeft 22s linear infinite;
+          will-change: transform;
+          gap: 0;
+        }
+        .tmi-mag-panel {
+          display: inline-flex;
+          flex-direction: column;
+          width: 270px;
+          flex-shrink: 0;
+          border-left: 3px solid #000;
+          border-right: 3px solid #000;
+          border-top: 3px solid #000;
+          border-bottom: 3px solid #000;
+          overflow: hidden;
+          height: 400px;
+          vertical-align: top;
+          flex-shrink: 0;
+        }
+        .tmi-tabloid-vignette {
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(90deg, rgba(5,8,21,.88) 0%, rgba(5,8,21,.14) 16%, rgba(5,8,21,.14) 84%, rgba(5,8,21,.88) 100%);
+          pointer-events: none;
+          z-index: 2;
+        }
+        .tmi-tabloid-radial {
+          position: absolute;
+          inset: 0;
+          background: radial-gradient(ellipse 60% 88% at center, transparent 22%, rgba(5,8,21,.82) 100%);
+          pointer-events: none;
+          z-index: 3;
+        }
+        @keyframes tmiTabloidScrollLeft {
+          from { transform: translateX(0); }
+          to   { transform: translateX(-50%); }
+        }
+        .tmi-orbit-section {
+          position: relative;
+          z-index: 10;
+          background: rgba(5,5,10,0.1);
+          backdrop-filter: blur(8px);
+          border: 1px solid rgba(255,215,0,0.12);
+          border-top: 1px solid rgba(255,215,0,0.35);
+          border-radius: 16px;
+          padding: 16px;
+          overflow: hidden;
+        }
+        @media (max-width: 760px) {
+          .tmi-tabloid-fullbleed { height: 400px; }
+          .tmi-mag-panel { width: 220px; height: 340px; }
+        }
       `}</style>
 
       {/* 1. Base Layer */}
@@ -1717,14 +1782,12 @@ export default function Home1CoverPage() {
           ))}
         </div>
 
-        {/* ── MAGAZINE EDITORIAL BELT — magazine identity before anything else ── */}
+        {/* ── MAGAZINE EDITORIAL BELT — THIS WEEK IN TMI ── */}
         <MagazineEditorialBelt label="THIS WEEK IN TMI" />
 
         {/* ── LIVE INDEX STORIES — news, interviews, features, editorial ── */}
         <section className="tmi-home1-second-section">
-          <h3>Live Index Stories</h3>
           <div className="tmi-home1-second-grid">
-            {/* Left — Top Live Cypher */}
             {cyphers[0] && (
               <article className="tmi-panel">
                 <div className="tmi-panel-emoji" style={{ background: `linear-gradient(135deg, ${cyphers[0].accentColor}22, #050510)` }}>
@@ -1978,8 +2041,103 @@ export default function Home1CoverPage() {
           />
         </section>
 
-        {/* ── WEEKLY CROWN ORBIT — discovery feature, after editorial ── */}
+        {/* ── WEEKLY CROWN ORBIT — full-bleed tabloid underlay + orbit wheel ── */}
         <PlatformPulse />
+        <div className="tmi-tabloid-fullbleed">
+          {/* Scrolling tabloid magazine panels */}
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', overflow: 'hidden', zIndex: 1 }}>
+            <div className="tmi-tabloid-track">
+              {/* 4 panels × 2 for seamless loop */}
+              {/* PANEL 1: Yellow — WHO TOOK THE CROWN */}
+              {[0, 1].map(dup => [
+                <div key={`p1-${dup}`} className="tmi-mag-panel" style={{ background: '#FFD700' }}>
+                  <div style={{ background: '#FF1493', padding: '10px 12px' }}>
+                    <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 8, color: 'rgba(0,0,0,0.6)', fontWeight: 700 }}>THE MUSICIAN&apos;S INDEX · VOL.1 · WEEK 25 · $4.99</div>
+                  </div>
+                  <div style={{ background: '#FFD700', padding: '14px 12px', flex: 1, display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ fontFamily: "'Anton',sans-serif", fontSize: 34, color: '#000', lineHeight: 1, marginBottom: 6 }}>WHO TOOK THE CROWN?</div>
+                    <div style={{ background: '#00BFFF', padding: 8, marginBottom: 6 }}>
+                      <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 8, fontWeight: 800, color: '#000' }}>COVER PERFORMER</div>
+                      <div style={{ fontFamily: "'Anton',sans-serif", fontSize: 20, color: '#000' }}>BIG ACE</div>
+                    </div>
+                    <div style={{ background: '#000', color: '#fff', padding: 6, fontFamily: "'Inter',sans-serif", fontSize: 8, marginBottom: 4 }}>RANK · DJ BLEND · 41 CYPHER WINS</div>
+                    <div style={{ display: 'flex', gap: 4, marginBottom: 6, flexWrap: 'wrap' }}>
+                      <div style={{ background: '#00BFFF', padding: '3px 8px', fontFamily: "'Inter',sans-serif", fontSize: 8, fontWeight: 800, color: '#000' }}>CYPHER OPEN</div>
+                      <div style={{ background: '#FF1493', padding: '3px 8px', fontFamily: "'Inter',sans-serif", fontSize: 8, fontWeight: 800, color: '#fff' }}>VOTE NOW</div>
+                    </div>
+                    <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 7, color: '#333' }}>Lan Flame · DJ Blend · Bobby Starley · Blessed Voice</div>
+                  </div>
+                  <div style={{ background: '#FFD700', borderTop: '2px solid #000', padding: '5px 12px', fontFamily: "'Inter',sans-serif", fontSize: 8, color: '#000', fontWeight: 700 }}>BATTLE TONIGHT 8PM · STREAM LIVE</div>
+                </div>,
+                /* PANEL 2: Pink — BATTLE NIGHT */
+                <div key={`p2-${dup}`} className="tmi-mag-panel" style={{ background: '#FF1493' }}>
+                  <div style={{ background: '#000', padding: '10px 12px' }}>
+                    <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 8, color: '#FF1493', fontWeight: 700 }}>TMI · HIP-HOP EDITION · WEEK 25</div>
+                  </div>
+                  <div style={{ padding: '14px 12px', flex: 1, display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ fontFamily: "'Anton',sans-serif", fontSize: 30, color: '#FFD700', lineHeight: 1, marginBottom: 8 }}>BATTLE NIGHT CHAMPION</div>
+                    <div style={{ background: '#FFD700', padding: 8, marginBottom: 6 }}>
+                      <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 8, fontWeight: 800, color: '#000' }}>REIGNING CHAMP</div>
+                      <div style={{ fontFamily: "'Anton',sans-serif", fontSize: 20, color: '#000' }}>WAVETEK</div>
+                      <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 8, color: '#333' }}>47 WINS · HIP-HOP · UNDEFEATED</div>
+                    </div>
+                    <div style={{ background: '#000', padding: 6, fontFamily: "'Inter',sans-serif", fontSize: 8, color: '#FF1493', marginBottom: 6 }}>CHALLENGE HIM AT THE BATTLE ARENA NOW</div>
+                    <div style={{ background: '#00BFFF', padding: 6 }}>
+                      <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 8, fontWeight: 800, color: '#000' }}>⚔️ CHALLENGE OPENS 8PM TONIGHT</div>
+                    </div>
+                  </div>
+                  <div style={{ background: '#000', padding: '5px 12px', fontFamily: "'Inter',sans-serif", fontSize: 8, color: '#FF1493', fontWeight: 700 }}>JOIN THE BATTLE · ENTER YOUR SONG</div>
+                </div>,
+                /* PANEL 3: Cyan — CYPHER */
+                <div key={`p3-${dup}`} className="tmi-mag-panel" style={{ background: '#00BFFF' }}>
+                  <div style={{ background: '#000', padding: '10px 12px' }}>
+                    <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 8, color: '#00BFFF', fontWeight: 700 }}>TMI CYPHER EDITION · OPEN MIC · LIVE NOW</div>
+                  </div>
+                  <div style={{ padding: '14px 12px', flex: 1, display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ fontFamily: "'Anton',sans-serif", fontSize: 30, color: '#000', lineHeight: 1, marginBottom: 8 }}>WHO&apos;S GOT THE BARS?</div>
+                    <div style={{ background: '#FFD700', padding: 8, marginBottom: 6 }}>
+                      <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 8, fontWeight: 800, color: '#000' }}>ON THE MIC NOW</div>
+                      <div style={{ fontFamily: "'Anton',sans-serif", fontSize: 20, color: '#000' }}>NOVA CIPHER</div>
+                    </div>
+                    <div style={{ background: '#FF1493', padding: 6, color: '#fff', fontFamily: "'Inter',sans-serif", fontSize: 8, fontWeight: 800, marginBottom: 6 }}>CYPHER ARENA — 841 WATCHING LIVE</div>
+                    <div style={{ background: '#000', padding: 6, fontFamily: "'Inter',sans-serif", fontSize: 8, color: '#00BFFF' }}>THEATER SEATS 2,730 · DROP IN ANYTIME</div>
+                  </div>
+                  <div style={{ background: '#000', padding: '5px 12px', fontFamily: "'Inter',sans-serif", fontSize: 8, color: '#00BFFF', fontWeight: 700 }}>OPEN MIC ALL DAY · ROTATE THROUGH · WIN XP</div>
+                </div>,
+                /* PANEL 4: Dark/Gold — CHALLENGE */
+                <div key={`p4-${dup}`} className="tmi-mag-panel" style={{ background: '#000' }}>
+                  <div style={{ background: '#FFD700', padding: '10px 12px' }}>
+                    <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 8, color: '#000', fontWeight: 700 }}>TMI CHALLENGE ARENA · SONG VS SONG</div>
+                  </div>
+                  <div style={{ padding: '14px 12px', flex: 1, background: '#111', display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ fontFamily: "'Anton',sans-serif", fontSize: 30, color: '#FFD700', lineHeight: 1, marginBottom: 8 }}>CHALLENGE THE CROWN</div>
+                    <div style={{ background: '#FFD700', padding: 8, marginBottom: 6 }}>
+                      <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 8, fontWeight: 800, color: '#000' }}>DEFENDING TITLE</div>
+                      <div style={{ fontFamily: "'Anton',sans-serif", fontSize: 20, color: '#000' }}>BEAT THE BEAT</div>
+                      <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 8, color: '#333' }}>WAVETEK · 841 VOTES · RUNNING NOW</div>
+                    </div>
+                    <div style={{ background: '#FF1493', padding: 6, color: '#fff', fontFamily: "'Inter',sans-serif", fontSize: 8, fontWeight: 800 }}>YOUR SONG CAN TAKE THE THRONE</div>
+                  </div>
+                  <div style={{ background: '#FFD700', padding: '5px 12px', fontFamily: "'Inter',sans-serif", fontSize: 8, color: '#000', fontWeight: 700 }}>WINNER STAYS · NONSTOP · JOIN NOW FREE</div>
+                </div>,
+              ].flat())}
+            </div>
+          </div>
+          {/* Vignette overlays */}
+          <div className="tmi-tabloid-vignette" />
+          <div className="tmi-tabloid-radial" />
+          {/* Orbit title strip */}
+          <div style={{ position: 'absolute', top: 8, left: 0, right: 0, textAlign: 'center', zIndex: 12, pointerEvents: 'none' }}>
+            <div style={{ fontFamily: "'Orbitron', 'Inter', sans-serif", fontSize: 13, fontWeight: 900, color: '#FFD700', letterSpacing: '0.08em', textShadow: '0 0 20px rgba(255,215,0,0.6)' }}>WEEKLY CROWN ORBIT</div>
+            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 8, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.15em' }}>TOP RANKED · LIVE NOW · UPDATED IN REAL TIME</div>
+          </div>
+          {/* Orbit wheel floating above panels */}
+          <div style={{ position: 'absolute', inset: 0, zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '32px clamp(12px,2vw,24px) 0' }}>
+            <div style={{ width: '100%', maxWidth: 1280 }}>
+              <WeeklyCrownOrbit onNodeClick={setProfilePanel} />
+            </div>
+          </div>
+        </div>
 
         <footer className="tmi-home1-footer">
           <h4>Weekly Cyphers</h4>

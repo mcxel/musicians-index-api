@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import JuliusHudDock from "@/components/julius/JuliusHudDock";
 import MonetizationRail from "@/components/monetization/MonetizationRail";
+import ArenaEventShell from "@/components/live/ArenaEventShell";
 
 export const metadata: Metadata = {
   title: "Battles | TMI",
@@ -23,6 +24,9 @@ export default function BattlesPage() {
 
   return (
     <main style={{ minHeight: "100vh", background: "#050510", color: "#fff", paddingBottom: 80 }}>
+      {/* Arena system header — Battle Arena (venueIndex 1, 18,500 cap) */}
+      <ArenaEventShell eventType="battle" roomId="battles-hub" watcherCount={live.reduce((s,b) => s + b.viewers, 0)} />
+
       <section style={{ textAlign: "center", padding: "64px 24px 40px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
         <div style={{ fontSize: 9, letterSpacing: "0.4em", color: "#FF2DAA", fontWeight: 800, marginBottom: 12 }}>
           TMI BATTLES
