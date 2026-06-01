@@ -6,9 +6,9 @@ import { Suspense } from "react";
 function PurchaseContent() {
   const params = useSearchParams();
   const router = useRouter();
-  const title    = params.get("title") ?? "Beat";
-  const producer = params.get("producer") ?? "Producer";
-  const price    = parseInt(params.get("price") ?? "0", 10);
+  const title    = params?.get("title") ?? "Beat";
+  const producer = params?.get("producer") ?? "Producer";
+  const price    = parseInt(params?.get("price") ?? "0", 10);
 
   function handlePay() {
     const qs = new URLSearchParams({
