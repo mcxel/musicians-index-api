@@ -1,5 +1,6 @@
 import Link from "next/link";
 import ChallengeYourSongCTA from "@/components/challenge/ChallengeYourSongCTA";
+import ArenaEventShell from "@/components/live/ArenaEventShell";
 
 const ACTIVE_CHALLENGES = [
   { id: "ch1", title: "Beat the Beat",         genre: "Hip-Hop",  prize: "$500 + Crown Points", entries: 142, daysLeft: 4, color: "#FF2DAA", emoji: "🎤", host: "Wavetek" },
@@ -12,6 +13,8 @@ const ACTIVE_CHALLENGES = [
 export default function ChallengePage() {
   return (
     <main style={{ minHeight: "100vh", background: "#050510", color: "#fff", fontFamily: "'Inter', sans-serif", paddingBottom: 80 }}>
+      {/* Challenges are hosted in the Outdoor Arena (8,200 cap, festival stage) */}
+      <ArenaEventShell eventType="challenge" roomId="challenges-main" watcherCount={440} />
       <nav style={{ position: "sticky", top: 0, background: "rgba(5,5,16,0.92)", borderBottom: "1px solid rgba(255,255,255,0.07)", padding: "11px 20px", display: "flex", gap: 14, alignItems: "center", backdropFilter: "blur(12px)", zIndex: 50 }}>
         <Link href="/home/1" style={{ fontSize: 11, fontWeight: 900, color: "#FF2DAA", textDecoration: "none", letterSpacing: "0.14em" }}>TMI</Link>
         <span style={{ fontSize: 11, fontWeight: 700 }}>CHALLENGES</span>

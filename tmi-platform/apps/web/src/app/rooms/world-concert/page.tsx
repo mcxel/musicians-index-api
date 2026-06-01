@@ -3,6 +3,7 @@ import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import PageShell from "@/components/layout/PageShell";
+import AudienceScene from "@/components/live/AudienceScene";
 import HUDFrame from "@/components/hud/HUDFrame";
 import FooterHUD from "@/components/hud/FooterHUD";
 import Link from "next/link";
@@ -173,18 +174,21 @@ export default function WorldConcertPage() {
 
             {/* Main stage */}
             <div>
-              {/* Video feed */}
+              {/* 3D Arena — World Concert uses Arena venue (18,500 cap, stadium wrap) */}
               <div style={{
-                background: "rgba(255,45,170,0.06)", border: "1px solid rgba(255,45,170,0.2)",
+                background: "#050510", border: "1px solid rgba(255,45,170,0.2)",
                 borderRadius: 16, aspectRatio: "16/9",
-                display: "flex", alignItems: "center", justifyContent: "center",
                 marginBottom: 20, position: "relative", overflow: "hidden",
               }}>
-                <motion.div
-                  animate={{ scale: [1, 1.08, 1] }}
-                  transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
-                  style={{ fontSize: 80, opacity: 0.4 }}
-                >🎤</motion.div>
+                <AudienceScene
+                  venue={1}
+                  watcherCount={18500}
+                  view="fan"
+                  accentColor="#FF2DAA"
+                  bpm={120}
+                  screenLabel="WORLD CONCERT"
+                  screenSubLabel="Nova Cipher · LIVE"
+                />
                 <div style={{ position: "absolute", bottom: 16, left: 16, right: 16, display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
                   <div>
                     <div style={{ fontSize: 11, color: "#aaa" }}>NOW PLAYING</div>
