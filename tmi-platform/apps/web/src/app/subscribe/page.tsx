@@ -28,6 +28,10 @@ const P = {
   SPONSOR_STANDARD: process.env.NEXT_PUBLIC_STRIPE_PRICE_SPONSOR_STANDARD ?? "price_1Tb147EAwH1Fjtu9yCbRfH3j",
   SPONSOR_PREMIUM:  process.env.NEXT_PUBLIC_STRIPE_PRICE_SPONSOR_PREMIUM  ?? "price_1Tb144EAwH1Fjtu9I0Xq1iFV",
   SPONSOR_DIAMOND:  process.env.NEXT_PUBLIC_STRIPE_PRICE_SPONSOR_DIAMOND  ?? "price_1Tb143EAwH1Fjtu9WDqnYV7z",
+  // Venue, Promoter, Advertiser (created 2026-06-01)
+  VENUE:       process.env.NEXT_PUBLIC_STRIPE_PRICE_VENUE       ?? "price_1TdY0TEAwH1Fjtu9tvYTiqcK",
+  PROMOTER:    process.env.NEXT_PUBLIC_STRIPE_PRICE_PROMOTER    ?? "price_1TdY0TEAwH1Fjtu9FGbvJyJM",
+  ADVERTISER:  process.env.NEXT_PUBLIC_STRIPE_PRICE_ADVERTISER  ?? "price_1TdY0UEAwH1Fjtu9FTrdprdy",
 };
 
 type PlanGroup = { group: string; color: string; plans: Plan[] };
@@ -70,6 +74,66 @@ const PLAN_GROUPS: PlanGroup[] = [
       { key: "SPONSOR_STANDARD", name: "Sponsor Standard", price: 99,  cents: 9900,  color: "#AA2DFF", emoji: "📡", priceId: P.SPONSOR_STANDARD, features: ["Multi-room ad placement", "Battle & Cypher sponsorships", "Weekly analytics", "Brand on lobby walls"], cta: "GO STANDARD", popular: true, badge: "BEST VALUE" },
       { key: "SPONSOR_PREMIUM",  name: "Sponsor Premium",  price: 499, cents: 49900, color: "#FFD700", emoji: "🏟️", priceId: P.SPONSOR_PREMIUM,  features: ["Everything in Standard", "Homepage billboard placement", "Arena sponsorship", "Priority support", "Custom campaign"], cta: "GO PREMIUM" },
       { key: "SPONSOR_DIAMOND",  name: "Sponsor Diamond",  price: 999, cents: 99900, color: "#FF2DAA", emoji: "💎", priceId: P.SPONSOR_DIAMOND,  features: ["Full platform ownership", "Championship sponsorship", "All lobby walls", "Magazine features", "Dedicated account manager"], cta: "GO DIAMOND" },
+    ],
+  },
+  {
+    group: "VENUE / PROMOTER",
+    color: "#00FF88",
+    plans: [
+      {
+        key: "VENUE",
+        name: "Venue Owner",
+        price: 29.99, cents: 2999,
+        color: "#00FF88", emoji: "🏟️",
+        priceId: P.VENUE,
+        popular: true, badge: "FOR VENUES",
+        features: [
+          "Host unlimited live events",
+          "Ticket sales + box office",
+          "Physical ticket printing (thermal)",
+          "Multi-room management",
+          "Venue analytics dashboard",
+          "TMI Certified Venue badge",
+          "Venue profile + booking calendar",
+        ],
+        cta: "OPEN YOUR VENUE",
+      },
+      {
+        key: "PROMOTER",
+        name: "Promoter",
+        price: 19.99, cents: 1999,
+        color: "#FF6B35", emoji: "📢",
+        priceId: P.PROMOTER,
+        badge: "FOR PROMOTERS",
+        features: [
+          "Manage up to 20 artists",
+          "Promote events platform-wide",
+          "Booking + scheduling tools",
+          "Promoter analytics dashboard",
+          "Giveaway + contest hosting",
+          "Certified Promoter badge",
+          "Revenue share tracking",
+        ],
+        cta: "START PROMOTING",
+      },
+      {
+        key: "ADVERTISER",
+        name: "Advertiser Monthly",
+        price: 49.99, cents: 4999,
+        color: "#FFD700", emoji: "🚀",
+        priceId: P.ADVERTISER,
+        badge: "FOR ADVERTISERS",
+        features: [
+          "Self-serve ad placement portal",
+          "Multi-network rotation (5 networks)",
+          "Homepage + arena + magazine slots",
+          "Real-time campaign analytics",
+          "A/B test ad creatives",
+          "Advertiser badge on campaigns",
+          "Monthly performance reports",
+        ],
+        cta: "START ADVERTISING",
+      },
     ],
   },
 ];
