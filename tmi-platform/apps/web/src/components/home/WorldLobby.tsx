@@ -13,6 +13,7 @@ import {
 } from "@/lib/world/WorldRuntime";
 import AudienceScene from "@/components/live/AudienceScene";
 import UnifiedAdSlot from "@/components/ads/UnifiedAdSlot";
+import MagazineEditorialBelt from "@/components/magazine/MagazineEditorialBelt";
 
 const BPM_MAP: Record<string, number> = {
   concert: 120, battle: 145, cypher: 130, "monday-stage": 118,
@@ -268,7 +269,27 @@ export default function WorldLobby() {
 
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "20px 16px" }}>
 
+        {/* ── MAGAZINE BELT ───────────────────────────────────────── */}
+        <div style={{ marginBottom: 28 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+            <span style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.4em", color: "rgba(255,255,255,0.35)" }}>
+              THE MUSICIAN'S INDEX
+            </span>
+            <div style={{ flex: 1, height: 1, background: "linear-gradient(to right, rgba(255,255,255,0.08), transparent)" }} />
+            <Link href="/magazine" style={{ fontSize: 8, color: "#FFD700", textDecoration: "none", fontWeight: 800, letterSpacing: "0.2em" }}>
+              MAGAZINE →
+            </Link>
+          </div>
+          <MagazineEditorialBelt label="THIS WEEK IN TMI" />
+        </div>
+
         {/* Featured venue */}
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+          <span style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.4em", color: "rgba(255,255,255,0.35)" }}>
+            LIVE NOW
+          </span>
+          <div style={{ flex: 1, height: 1, background: "linear-gradient(to right, rgba(255,45,170,0.2), transparent)" }} />
+        </div>
         <FeaturedVenue venue={featuredVenue} />
 
         {/* Ad */}
