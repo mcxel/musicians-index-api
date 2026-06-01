@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import Home1CoverPage from '@/components/home/Home1CoverPage';
+import WorldLobby from '@/components/home/WorldLobby';
 
 export const metadata: Metadata = {
   title: "The Musician's Index — Live Music Platform",
@@ -20,5 +20,5 @@ export const metadata: Metadata = {
 };
 
 export default function Home1Page() {
-  return <Home1CoverPage />;
+  return <WorldLobby />;
 }
