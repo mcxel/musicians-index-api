@@ -90,20 +90,18 @@ export default function RankingsPage() {
 
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
               {PERFORMERS.map((p) => (
-                <Link key={p.slug} href={`/artist/${p.slug}`} style={{ textDecoration: "none", color: "#fff" }}>
-                  <div style={{
+                <div key={p.slug} style={{
                     display: "grid", gridTemplateColumns: "40px 1fr 80px 80px 70px 90px", gap: 8,
                     alignItems: "center", padding: "12px 16px", borderRadius: 10,
                     background: p.rank <= 3 ? `${p.accent}0D` : "rgba(255,255,255,0.025)",
                     border: `1px solid ${p.rank <= 3 ? p.accent + "30" : "rgba(255,255,255,0.06)"}`,
-                    transition: "background 120ms",
                   }}>
                     <div style={{ fontSize: p.rank <= 3 ? 18 : 12, fontWeight: 900, color: p.accent, textAlign: "center" }}>
                       {p.rank === 1 ? "👑" : p.rank === 2 ? "🥈" : p.rank === 3 ? "🥉" : p.rank}
                     </div>
                     <div>
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <span style={{ fontSize: 13, fontWeight: 800 }}>{p.name}</span>
+                        <Link href={`/artist/${p.slug}`} style={{ fontSize: 13, fontWeight: 800, color: "#fff", textDecoration: "none" }}>{p.name}</Link>
                         {p.isLive && (
                           <span style={{ fontSize: 7, fontWeight: 900, color: "#FF2020", letterSpacing: "0.12em", background: "rgba(255,32,32,0.12)", border: "1px solid rgba(255,32,32,0.3)", borderRadius: 3, padding: "1px 5px" }}>
                             LIVE
@@ -119,12 +117,11 @@ export default function RankingsPage() {
                     <div style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", fontWeight: 600 }}>{p.battles}</div>
                     <div style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", fontWeight: 600 }}>{p.fans.toLocaleString()}</div>
                     <div>
-                      <Link href={`/vote?artist=${p.slug}`} onClick={(e) => e.stopPropagation()} style={{ padding: "5px 12px", borderRadius: 6, background: `${p.accent}18`, border: `1px solid ${p.accent}35`, color: p.accent, fontSize: 9, fontWeight: 800, textDecoration: "none", letterSpacing: "0.06em" }}>
+                      <Link href={`/vote?artist=${p.slug}`} style={{ padding: "5px 12px", borderRadius: 6, background: `${p.accent}18`, border: `1px solid ${p.accent}35`, color: p.accent, fontSize: 9, fontWeight: 800, textDecoration: "none", letterSpacing: "0.06em" }}>
                         VOTE
                       </Link>
                     </div>
                   </div>
-                </Link>
               ))}
             </div>
 

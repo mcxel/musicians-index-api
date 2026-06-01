@@ -91,10 +91,16 @@ export default function CyphersPage() {
             JOIN MONDAY CYPHER →
           </Link>
           <Link
-            href="/cyphers/today"
-            style={{ padding: "13px 22px", fontSize: 10, fontWeight: 800, letterSpacing: "0.1em", color: "#FF2DAA", border: "1px solid rgba(255,45,170,0.35)", borderRadius: 10, textDecoration: "none" }}
+            href="/compete"
+            style={{ padding: "13px 22px", fontSize: 10, fontWeight: 800, letterSpacing: "0.1em", color: "#FFD700", border: "1px solid rgba(255,215,0,0.35)", borderRadius: 10, textDecoration: "none" }}
           >
-            TODAY&apos;S SESSIONS
+            ⚔️ ALL ARENAS
+          </Link>
+          <Link
+            href="/battles"
+            style={{ padding: "13px 22px", fontSize: 10, fontWeight: 800, letterSpacing: "0.1em", color: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 10, textDecoration: "none" }}
+          >
+            BATTLES
           </Link>
         </div>
       </section>
