@@ -17,6 +17,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import AudienceScene from "@/components/live/AudienceScene";
 import UnifiedAdSlot from "@/components/ads/UnifiedAdSlot";
+import MediaUploadWidget from "@/components/media/MediaUploadWidget";
 
 // ── Seed queue ────────────────────────────────────────────────────────────────
 const SEED_QUEUE = [
@@ -267,17 +268,33 @@ export default function ChallengeArenaPage() {
             <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", lineHeight: 1.6, marginBottom: 14 }}>
               Submit your song. When your turn comes, both songs play live and the crowd votes. Winner stays.
             </div>
+            {/* Upload your track directly */}
+            <MediaUploadWidget
+              mediaType="challenge_entry"
+              ownerId="current-user"
+              ownerName="You"
+              ownerRole="performer"
+              linkedEntityId="challenge-arena"
+              linkedEntityType="challenge"
+              accentColor="#FFD700"
+              placeholder="Upload your track…"
+              onSuccess={({ title }) => {
+                if (title) {
+                  setQueue(q => [...q, { id: `user-${Date.now()}`, name: title, genre: "Various", song: title, color: "#FF6B35", emoji: "🎵", wins: 0, platform: "Upload" }]);
+                }
+              }}
+            />
+            <div style={{ marginTop: 8, textAlign: "center", fontSize: 9, color: "rgba(255,255,255,0.3)" }}>—— or add by name ——</div>
             <input
               placeholder="Your performer name…"
               value={entryInput}
               onChange={e => setEntryInput(e.target.value)}
               onKeyDown={e => e.key === "Enter" && submitChallenge()}
-              style={{ width: "100%", padding: "10px 12px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,215,0,0.3)", borderRadius: 8, color: "#fff", fontSize: 13, outline: "none", marginBottom: 10, boxSizing: "border-box" }}
+              style={{ width: "100%", padding: "10px 12px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,215,0,0.2)", borderRadius: 8, color: "#fff", fontSize: 12, outline: "none", marginTop: 8, marginBottom: 8, boxSizing: "border-box" }}
             />
-            <button onClick={submitChallenge} disabled={!entryInput.trim()} style={{ width: "100%", padding: "11px 0", borderRadius: 10, border: "none", background: entryInput.trim() ? "linear-gradient(90deg, #FFD700, #FF2DAA)" : "rgba(255,255,255,0.06)", color: entryInput.trim() ? "#000" : "rgba(255,255,255,0.3)", fontWeight: 900, fontSize: 11, cursor: entryInput.trim() ? "pointer" : "not-allowed", letterSpacing: "0.1em" }}>
-              JOIN THE QUEUE →
+            <button onClick={submitChallenge} disabled={!entryInput.trim()} style={{ width: "100%", padding: "10px 0", borderRadius: 10, border: "none", background: entryInput.trim() ? "rgba(255,215,0,0.2)" : "rgba(255,255,255,0.04)", color: entryInput.trim() ? "#FFD700" : "rgba(255,255,255,0.2)", fontWeight: 800, fontSize: 10, cursor: entryInput.trim() ? "pointer" : "not-allowed", letterSpacing: "0.08em", outline: "1px solid rgba(255,215,0,0.2)" }}>
+              JOIN BY NAME →
             </button>
-            <div style={{ marginTop: 10, fontSize: 9, color: "rgba(255,255,255,0.25)", textAlign: "center" }}>Free entry · Any genre · Any platform</div>
 
             {/* Stats */}
             <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid rgba(255,255,255,0.06)", display: "flex", justifyContent: "space-around" }}>
