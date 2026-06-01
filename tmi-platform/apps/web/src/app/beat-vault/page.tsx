@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 const BEATS = [
   { id: 1,  title: 'Midnight Trap',    producer: 'BeatMaestro',  bpm: 140, key: 'Am',  genre: 'Trap',   price: 30 },
@@ -20,8 +21,21 @@ const BEATS = [
 const GENRES = ['All', 'Hip-Hop', 'R&B', 'EDM', 'Trap', 'Lo-Fi', 'Pop', 'Drill'];
 
 export default function BeatVaultPage() {
+  const router = useRouter();
   const [genre, setGenre] = useState('All');
   const [previewing, setPreviewing] = useState<number | null>(null);
+  const [buying, setBuying] = useState<number | null>(null);
+
+  function handleBuy(beat: typeof BEATS[0]) {
+    setBuying(beat.id);
+    const params = new URLSearchParams({
+      priceId: 'price_beat_basic',
+      amount: String(beat.price * 100),
+      productName: `Beat: ${beat.title} by ${beat.producer}`,
+      mode: 'payment',
+    });
+    router.push(`/api/stripe/checkout?${params.toString()}`);
+  }
 
   const filtered = genre === 'All' ? BEATS : BEATS.filter(b => b.genre === genre);
 
@@ -116,12 +130,16 @@ export default function BeatVaultPage() {
                 >
                   {previewing === beat.id ? '⏹ Stop' : '▶ Preview'}
                 </button>
-                <button style={{
-                  flex: 1, background: '#00FF88', color: '#07071a',
-                  border: 'none', borderRadius: 6,
-                  padding: '8px 0', cursor: 'pointer', fontWeight: 700, fontSize: 13,
-                }}>
-                  Buy
+                <button
+                  onClick={() => handleBuy(beat)}
+                  disabled={buying === beat.id}
+                  style={{
+                    flex: 1, background: buying === beat.id ? '#0a1a0f' : '#00FF88', color: buying === beat.id ? '#00FF88' : '#07071a',
+                    border: buying === beat.id ? '1px solid #00FF8844' : 'none', borderRadius: 6,
+                    padding: '8px 0', cursor: buying === beat.id ? 'not-allowed' : 'pointer', fontWeight: 700, fontSize: 13,
+                  }}
+                >
+                  {buying === beat.id ? '…' : `Buy $${beat.price}`}
                 </button>
               </div>
             </div>
