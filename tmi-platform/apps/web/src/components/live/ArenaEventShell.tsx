@@ -20,6 +20,7 @@
 
 import AudienceScene, { type VenueIndex } from "@/components/live/AudienceScene";
 import ArenaImmersivePanel from "@/components/live/ArenaImmersivePanel";
+import AvatarVenueAnchor from "@/components/avatar/AvatarVenueAnchor";
 
 export type ArenaEventType =
   | "concert"
@@ -28,6 +29,8 @@ export type ArenaEventType =
   | "challenge"
   | "live-show"
   | "monday-stage";
+
+export type ArenaLiveState = "soon" | "live" | "ended";
 
 const VENUE_MAP: Record<ArenaEventType, VenueIndex> = {
   "concert":      1,
@@ -47,11 +50,22 @@ const EVENT_LABELS: Record<ArenaEventType, string> = {
   "monday-stage": "MONDAY NIGHT STAGE",
 };
 
+// Maps ArenaEventType → venueSlug used by HeroPresenceRegistry
+const VENUE_SLUG_MAP: Record<ArenaEventType, string> = {
+  "concert":      "world-concert",
+  "battle":       "battle-arena",
+  "cypher":       "cypher",
+  "challenge":    "challenge-arena",
+  "live-show":    "world-concert",
+  "monday-stage": "monday-stage",
+};
+
 interface ArenaEventShellProps {
   roomId: string;
   eventType?: ArenaEventType;
   mode?: "audience" | "performer";
   watcherCount?: number;
+  liveState?: ArenaLiveState;
 }
 
 export default function ArenaEventShell({
@@ -59,9 +73,12 @@ export default function ArenaEventShell({
   eventType = "live-show",
   mode = "audience",
   watcherCount,
+  liveState = "live",
 }: ArenaEventShellProps) {
   const venueIndex = VENUE_MAP[eventType] ?? 0;
   const label = EVENT_LABELS[eventType] ?? "TMI ARENA";
+  const venueSlug = VENUE_SLUG_MAP[eventType];
+  const showHeroes = liveState === "live";
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
@@ -79,7 +96,7 @@ export default function ArenaEventShell({
         <span style={{
           fontSize: 9, fontWeight: 900, letterSpacing: "0.28em", color: "#FF2020",
         }}>
-          LIVE
+          {liveState === "soon" ? "SOON" : liveState === "ended" ? "ENDED" : "LIVE"}
         </span>
         <span style={{
           fontSize: 9, fontWeight: 800, letterSpacing: "0.18em",
@@ -94,15 +111,21 @@ export default function ArenaEventShell({
         )}
       </div>
 
-      {/* ── 3D canvas audience scene ── */}
-      {/* Fan sees back-of-heads looking at the stage */}
-      {/* Performer sees front-facing crowd looking up at them */}
-      <AudienceScene
-        view={mode === "performer" ? "performer" : "fan"}
-        venue={venueIndex}
-        watcherCount={watcherCount}
-        hideControls={mode === "performer"}
-      />
+      {/* ── 3D canvas + hero overlay ── */}
+      <div style={{ position: "relative" }}>
+        <AudienceScene
+          view={mode === "performer" ? "performer" : "fan"}
+          venue={venueIndex}
+          watcherCount={watcherCount}
+          hideControls={mode === "performer"}
+        />
+        {showHeroes && (
+          <AvatarVenueAnchor
+            venueSlug={venueSlug}
+            venueIndex={venueIndex}
+          />
+        )}
+      </div>
 
       {/* ── Full arena panel: seats, chat, moderation, performer controls ── */}
       <ArenaImmersivePanel roomId={roomId} mode={mode} />
