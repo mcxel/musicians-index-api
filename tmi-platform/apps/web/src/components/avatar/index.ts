@@ -24,6 +24,6 @@ export { AvatarIdleController }    from "./AvatarIdleController";
 
 // Structural / wrapper components
 export { AvatarCrowdCluster }    from "./AvatarCrowdCluster";
-export { AvatarVenueAnchor }     from "./AvatarVenueAnchor";
+export { default as AvatarVenueAnchor } from "./AvatarVenueAnchor";
 export { AvatarTransitionShell } from "./AvatarTransitionShell";
 export { AvatarTalkTurnBehavior } from "./AvatarTalkTurnBehavior";
