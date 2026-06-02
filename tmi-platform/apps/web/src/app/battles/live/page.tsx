@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import SplitStreamMatrix from '@/components/media/SplitStreamMatrix';
@@ -10,6 +10,7 @@ import { battleBillboardLobbyWallEngine } from '@/lib/competition/BattleBillboar
 import { battleMatchLifecycleEngine, UNIVERSAL_BATTLE_WINDOW_SECONDS } from '@/lib/competition/BattleMatchLifecycleEngine';
 import type { BattleVoteTally, VoteOption } from '@/lib/competition/BattleVoteClosureEngine';
 import SponsorBattleOverlay from '@/components/arena/SponsorBattleOverlay';
+import { useEvolutionToast } from '@/components/avatar/EvolutionToast';
 
 const DEMO_BATTLES = [
   { battleId: 'arena-001', challengerName: 'Astra Nova',  targetName: 'Neon Verse',   format: 'Dirty Dozens', accentA: '#00FFFF', accentB: '#FF2DAA', status: 'live' as const },
@@ -22,6 +23,7 @@ export default function BattlesLivePage() {
   const [splitMode, setSplitMode] = useState<'SPLIT' | 'AUDIENCE_FOCUS'>('SPLIT');
   const [winner, setWinner] = useState<{ label: string; percent: number } | null>(null);
   const [showJudge, setShowJudge] = useState(false);
+  const { showXp, showTierUp, ToastRenderer } = useEvolutionToast();
 
   const engineCards = battleBillboardLobbyWallEngine.getCards().filter(c => c.status === 'live');
   const remaining = battleMatchLifecycleEngine.getRemainingSeconds(activeBattle.battleId);
@@ -29,11 +31,21 @@ export default function BattlesLivePage() {
   const mm = String(Math.floor(displaySeconds / 60)).padStart(2, '0');
   const ss = String(displaySeconds % 60).padStart(2, '0');
 
-  const handleWinner = (side: VoteOption, tally: BattleVoteTally) => {
+  const handleWinner = useCallback(async (side: VoteOption, tally: BattleVoteTally) => {
     const label = side === 'artist-a' ? activeBattle.challengerName : activeBattle.targetName;
     const percent = side === 'artist-a' ? tally.artistAPercent : tally.artistBPercent;
     setWinner({ label, percent });
-  };
+    try {
+      const res = await fetch('/api/tokens/balance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: 'current-user', event: 'vote_battle' }),
+      });
+      const data = await res.json();
+      showXp(data.xpAwarded ?? 10, 'Battle Vote');
+      if (data.tierChanged && data.newTier) showTierUp(data.newTier);
+    } catch { /* non-blocking */ }
+  }, [activeBattle, showXp, showTierUp]);
 
   return (
     <main style={{
@@ -42,6 +54,7 @@ export default function BattlesLivePage() {
       color: '#fff',
       paddingBottom: 80,
     }}>
+      {ToastRenderer}
 
       {/* Top bar */}
       <div style={{

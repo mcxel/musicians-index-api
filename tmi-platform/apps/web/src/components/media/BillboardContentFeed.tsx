@@ -8,6 +8,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { saveMemoryMoment } from "@/lib/memories/MemoryMomentEngine";
+import { useEvolutionToast } from "@/components/avatar/EvolutionToast";
 
 type FeedTab = "live" | "uploads" | "trending" | "battles" | "cyphers" | "ranked";
 
@@ -93,6 +94,7 @@ function MediaCard({ item, compact, userId }: { item: FeedItem; compact: boolean
   const [liked, setLiked] = useState(false);
   const [saved, setSaved] = useState(false);
   const [likes, setLikes] = useState(Math.floor(item.plays * 0.12));
+  const { showXp, ToastRenderer } = useEvolutionToast();
 
   const tipUrl = `/api/stripe/checkout?priceId=price_tip&amount=500&productName=Tip+${encodeURIComponent(item.artist)}&mode=payment`;
 
@@ -108,7 +110,8 @@ function MediaCard({ item, compact, userId }: { item: FeedItem; compact: boolean
     if (saved) return;
     saveMemoryMoment(userId, `${item.title} — ${item.artist}`, "event", item.id);
     setSaved(true);
-  }, [saved, userId, item]);
+    showXp(8, "Saved to Memory Wall", "#00FF88");
+  }, [saved, userId, item, showXp]);
 
   const handleShare = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
@@ -122,19 +125,22 @@ function MediaCard({ item, compact, userId }: { item: FeedItem; compact: boolean
 
   const handleTip = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
+    showXp(15, "Tipped Artist", "#FFD700");
     router.push(tipUrl);
-  }, [router, tipUrl]);
+  }, [router, tipUrl, showXp]);
 
   return (
-    <div
-      onClick={() => router.push(item.href)}
-      style={{
-        borderRadius: 10, background: "rgba(255,255,255,0.02)", border: `1px solid ${item.color}18`,
-        transition: "border-color 0.15s, background 0.15s", cursor: "pointer",
-        padding: compact ? "8px 10px" : "10px 12px",
-      }}
-      onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.borderColor = `${item.color}44`; (e.currentTarget as HTMLDivElement).style.background = `${item.color}06`; }}
-      onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.borderColor = `${item.color}18`; (e.currentTarget as HTMLDivElement).style.background = "rgba(255,255,255,0.02)"; }}
+    <div style={{ position: "relative" }}>
+      {ToastRenderer}
+      <div
+        onClick={() => router.push(item.href)}
+        style={{
+          borderRadius: 10, background: "rgba(255,255,255,0.02)", border: `1px solid ${item.color}18`,
+          transition: "border-color 0.15s, background 0.15s", cursor: "pointer",
+          padding: compact ? "8px 10px" : "10px 12px",
+        }}
+        onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.borderColor = `${item.color}44`; (e.currentTarget as HTMLDivElement).style.background = `${item.color}06`; }}
+        onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.borderColor = `${item.color}18`; (e.currentTarget as HTMLDivElement).style.background = "rgba(255,255,255,0.02)"; }}
     >
       {/* Top row: emoji + title + badge + plays */}
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -201,6 +207,7 @@ function MediaCard({ item, compact, userId }: { item: FeedItem; compact: boolean
         >
           {saved ? "✓" : "📸"}
         </button>
+      </div>
       </div>
     </div>
   );
