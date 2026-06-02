@@ -12,7 +12,8 @@
  * Revenue: tips, tickets, sponsor slots all active
  */
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { useEvolutionToast } from "@/components/avatar/EvolutionToast";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import AudienceScene from "@/components/live/AudienceScene";
@@ -85,7 +86,8 @@ export default function ChallengeArenaPage() {
   const [challengerVotes, setChallengerVotes] = useState(1203);
   const [hasVoted, setHasVoted] = useState(false);
   const [votedFor, setVotedFor] = useState<"holder" | "challenger" | null>(null);
-  const [roundTime, setRoundTime] = useState(120); // 2 min rounds
+  const [roundTime, setRoundTime] = useState(120);
+  const { showXp, showTierUp, ToastRenderer } = useEvolutionToast();
   const [roundNum, setRoundNum] = useState(1);
   const [phase, setPhase] = useState<"live" | "deciding" | "result">("live");
   const [winner, setWinner] = useState<"holder" | "challenger" | null>(null);
@@ -112,21 +114,31 @@ export default function ChallengeArenaPage() {
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, []);
 
-  function resolveRound() {
+  async function resolveRound() {
     const holderWins = holderVotes > challengerVotes;
     setWinner(holderWins ? "holder" : "challenger");
     setPhase("result");
 
+    // Award XP for winning a challenge round (current user as winner)
+    try {
+      const res = await fetch("/api/tokens/balance", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: "current-user", event: "win_challenge" }),
+      });
+      const data = await res.json();
+      showXp(data.xpAwarded ?? 80, "Challenge Victory");
+      if (data.tierChanged && data.newTier) showTierUp(data.newTier);
+    } catch { /* non-blocking */ }
+
     setTimeout(() => {
       if (!holderWins) {
-        // Challenger becomes new holder
         const newHolder = { ...challenger, wins: 1 };
         const nextChallenger = queue[0] ?? SEED_QUEUE[Math.floor(Math.random() * SEED_QUEUE.length)]!;
         setHolder(newHolder);
         setChallenger({ ...nextChallenger, wins: 0 });
         setQueue(q => [...q.slice(1), holder]);
       } else {
-        // Holder keeps crown, new challenger enters
         const nextChallenger = queue[0] ?? SEED_QUEUE[Math.floor(Math.random() * SEED_QUEUE.length)]!;
         setHolder(h => ({ ...h, wins: h.wins + 1 }));
         setChallenger({ ...nextChallenger, wins: 0 });
@@ -142,9 +154,20 @@ export default function ChallengeArenaPage() {
     }, 3000);
   }
 
-  function vote(side: "holder" | "challenger") {
+  async function vote(side: "holder" | "challenger") {
     if (hasVoted) return;
     setHasVoted(true);
+    // Award XP for voting
+    try {
+      const res = await fetch("/api/tokens/balance", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: "current-user", event: "vote_battle" }),
+      });
+      const data = await res.json();
+      showXp(data.xpAwarded ?? 10, "Voted");
+      if (data.tierChanged && data.newTier) showTierUp(data.newTier);
+    } catch { /* non-blocking */ }
     setVotedFor(side);
     if (side === "holder") setHolderVotes(v => v + 1);
     else setChallengerVotes(v => v + 1);
@@ -161,6 +184,7 @@ export default function ChallengeArenaPage() {
 
   return (
     <main style={{ minHeight: "100vh", background: "#050510", color: "#fff", fontFamily: "'Inter', sans-serif", paddingBottom: 80 }}>
+      {ToastRenderer}
       <style>{`@keyframes caBlink{0%,100%{opacity:1}50%{opacity:0}} @keyframes caResultPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}`}</style>
 
       {/* Nav */}
