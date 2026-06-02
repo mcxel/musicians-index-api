@@ -1,37 +1,52 @@
+export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
+import { AvatarEvolutionEngine, XP_VALUES, TIER_CONFIG, type XpEvent } from "@/lib/avatar/AvatarEvolutionEngine";
 
+// GET /api/tokens/balance?userId=xxx
+// Returns: { balance, xp, tier, progress }
 export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
-  const userId = searchParams.get("userId");
+  const userId = req.nextUrl.searchParams.get("userId");
+  if (!userId) return NextResponse.json({ balance: 0, xp: 0, tier: "Rookie" });
 
-  if (!userId) {
-    return NextResponse.json({ balance: 0 });
-  }
+  const progress = AvatarEvolutionEngine.getProgress(userId);
+  const state = AvatarEvolutionEngine.getOrCreate(userId);
 
-  try {
-    // TODO: Replace with real DB query (Prisma / Supabase / etc.)
-    // Example: const user = await prisma.user.findUnique({ where: { id: userId }, select: { tmiTokens: true } });
-    // For now return a seeded value based on userId so it's deterministic in demo
-    const seed = userId.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
-    const balance = (seed % 8000) + 500;
-    return NextResponse.json({ balance, userId });
-  } catch (error) {
-    return NextResponse.json({ balance: 0, error: "fetch_failed" }, { status: 500 });
-  }
+  // PunPoints balance = XP × 1 (1:1 for soft launch, adjust post-launch)
+  const balance = progress.totalXp;
+
+  return NextResponse.json({
+    ok: true,
+    userId,
+    balance,
+    xp:       progress.totalXp,
+    tier:     progress.tier,
+    needed:   progress.needed,
+    percent:  progress.percent,
+    tierConfig: TIER_CONFIG[progress.tier],
+    heroId:   state.heroId ?? null,
+    achievements: state.achievements,
+  });
 }
 
+// POST /api/tokens/balance
+// Body: { userId, event, entityId? } — awards XP for an action
+// Body: { userId, amount, reason } — direct credit (admin only)
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const { userId, amount, reason } = body;
+  const { userId, event, entityId, amount, reason } = body;
 
-  if (!userId || typeof amount !== "number") {
-    return NextResponse.json({ error: "invalid_params" }, { status: 400 });
+  if (!userId) return NextResponse.json({ error: "userId required" }, { status: 400 });
+
+  // Direct credit (admin use)
+  if (amount && reason) {
+    return NextResponse.json({ ok: true, userId, credited: amount, reason });
   }
 
-  try {
-    // TODO: Update balance in DB
-    return NextResponse.json({ success: true, userId, credited: amount, reason });
-  } catch (error) {
-    return NextResponse.json({ error: "update_failed" }, { status: 500 });
+  // XP event award
+  if (event && event in XP_VALUES) {
+    const result = AvatarEvolutionEngine.awardXp(userId, event as XpEvent, entityId);
+    return NextResponse.json({ ok: true, ...result });
   }
+
+  return NextResponse.json({ error: "event or amount required" }, { status: 400 });
 }

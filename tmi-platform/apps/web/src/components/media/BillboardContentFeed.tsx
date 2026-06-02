@@ -1,16 +1,15 @@
 "use client";
 
 /**
- * BillboardContentFeed — Real content tabs for the TMI billboard wall.
- * Replaces static presenter cards with live data from MediaAssetEngine.
- *
- * Tabs: LIVE NOW · RECENT UPLOADS · TRENDING · BATTLE WINNERS · CYPHER HIGHLIGHTS
+ * BillboardContentFeed — P9G Live Media Cards
+ * Every card has: Watch · Like · Tip · Share · Save to Memory Wall
  */
 
-import { useState, useEffect } from "react";
-import Link from "next/link";
+import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { saveMemoryMoment } from "@/lib/memories/MemoryMomentEngine";
 
-type FeedTab = "live" | "uploads" | "trending" | "battles" | "cyphers";
+type FeedTab = "live" | "uploads" | "trending" | "battles" | "cyphers" | "ranked";
 
 interface FeedItem {
   id: string;
@@ -25,52 +24,59 @@ interface FeedItem {
   badge?: string;
 }
 
-// Seed feed items — in production, replace with MediaEngine.getByType() calls via API
 function seedFeed(tab: FeedTab): FeedItem[] {
-  const base = {
+  const base: Record<FeedTab, FeedItem[]> = {
+    ranked: [
+      { id: "r1", title: "Neon Frequency",            artist: "Nova Cipher",  type: "SONG",            plays: 94200,color: "#FFD700", emoji: "👑", href: "/performer/nova-cipher", badge: "#1 ALL-TIME" },
+      { id: "r2", title: "Crown Season Set",           artist: "Big Ace",      type: "LIVE STREAM",     plays: 71800,color: "#FF2DAA", emoji: "👑", href: "/rooms/colosseum-stage", badge: "#2" },
+      { id: "r3", title: "Nova Cipher vs. Big Ace",    artist: "Nova Cipher",  type: "BATTLE WIN",      plays: 8420, color: "#FF6B35", emoji: "⚔️", href: "/battles/1",             badge: "#3" },
+      { id: "r4", title: "Friday Cipher Vol. 12",      artist: "Open Floor",   type: "CYPHER HIGHLIGHT",plays: 12400,color: "#00FF88", emoji: "🎤", href: "/cypher/stage",          badge: "#4" },
+      { id: "r5", title: "Midnight Protocol",          artist: "Lani Flame",   type: "SONG",            plays: 48300,color: "#00FFFF", emoji: "🔥", href: "/performer/lani-flame",  badge: "#5" },
+    ],
     live: [
-      { id: "l1", title: "Neon Frequency (LIVE)",    artist: "Nova Cipher",  type: "LIVE STREAM",    plays: 2147, color: "#FF2020", emoji: "🔴", href: "/rooms/main-stage",    isLive: true, badge: "LIVE" },
-      { id: "l2", title: "Crown Season Set",         artist: "Big Ace",      type: "LIVE STREAM",    plays: 1863, color: "#FFD700", emoji: "🔴", href: "/rooms/colosseum-stage", isLive: true, badge: "LIVE" },
-      { id: "l3", title: "Friday Cypher",            artist: "Open Floor",   type: "LIVE CYPHER",    plays: 941,  color: "#00FFFF", emoji: "🔴", href: "/rooms/cypher-dome",   isLive: true, badge: "LIVE" },
-      { id: "l4", title: "World Dance Party",        artist: "DJ Phantom",   type: "LIVE DJ SET",    plays: 888,  color: "#AA2DFF", emoji: "🔴", href: "/rooms/world-dance-party", isLive: true, badge: "LIVE" },
+      { id: "l1", title: "Neon Frequency (LIVE)",    artist: "Nova Cipher",  type: "LIVE STREAM",     plays: 2147, color: "#FF2020", emoji: "🔴", href: "/rooms/main-stage",       isLive: true, badge: "LIVE" },
+      { id: "l2", title: "Crown Season Set",          artist: "Big Ace",      type: "LIVE STREAM",     plays: 1863, color: "#FFD700", emoji: "🔴", href: "/rooms/colosseum-stage",  isLive: true, badge: "LIVE" },
+      { id: "l3", title: "Friday Cypher",             artist: "Open Floor",   type: "LIVE CYPHER",     plays: 941,  color: "#00FFFF", emoji: "🔴", href: "/rooms/cypher-dome",      isLive: true, badge: "LIVE" },
+      { id: "l4", title: "World Dance Party",         artist: "DJ Phantom",   type: "LIVE DJ SET",     plays: 888,  color: "#AA2DFF", emoji: "🔴", href: "/rooms/world-dance-party",isLive: true, badge: "LIVE" },
     ],
     uploads: [
-      { id: "u1", title: "Dark Matter Loop",         artist: "Lani Flame",   type: "BEAT",           plays: 0,    color: "#AA2DFF", emoji: "🎛️", href: "/performer/lani-flame" },
-      { id: "u2", title: "Stage Recap — May",        artist: "Wave Tek",     type: "VIDEO",          plays: 0,    color: "#00FFFF", emoji: "🎬", href: "/performer/wave-tek" },
-      { id: "u3", title: "Trap Cypher Verse",        artist: "Zion Freq",    type: "CYPHER ENTRY",   plays: 0,    color: "#00FF88", emoji: "🎤", href: "/performer/zion-freq" },
-      { id: "u4", title: "Arena Challenge #4",       artist: "DJ Phantom",   type: "CHALLENGE",      plays: 0,    color: "#FFD700", emoji: "⚡", href: "/performer/dj-phantom" },
-      { id: "u5", title: "Red Sky",                  artist: "Mika Voss",    type: "SONG",           plays: 0,    color: "#FF2DAA", emoji: "🎵", href: "/performer/mika-voss" },
-      { id: "u6", title: "Bass Architecture",        artist: "Redbeard",     type: "BEAT",           plays: 0,    color: "#AA2DFF", emoji: "🎛️", href: "/performer/redbeard" },
+      { id: "u1", title: "Dark Matter Loop",          artist: "Lani Flame",   type: "BEAT",            plays: 0,    color: "#AA2DFF", emoji: "🎛️", href: "/performer/lani-flame" },
+      { id: "u2", title: "Stage Recap — May",         artist: "Wave Tek",     type: "VIDEO",           plays: 0,    color: "#00FFFF", emoji: "🎬", href: "/performer/wave-tek" },
+      { id: "u3", title: "Trap Cypher Verse",         artist: "Zion Freq",    type: "CYPHER ENTRY",    plays: 0,    color: "#00FF88", emoji: "🎤", href: "/performer/zion-freq" },
+      { id: "u4", title: "Arena Challenge #4",        artist: "DJ Phantom",   type: "CHALLENGE",       plays: 0,    color: "#FFD700", emoji: "⚡", href: "/performer/dj-phantom" },
+      { id: "u5", title: "Red Sky",                   artist: "Mika Voss",    type: "SONG",            plays: 0,    color: "#FF2DAA", emoji: "🎵", href: "/performer/mika-voss" },
+      { id: "u6", title: "Bass Architecture",         artist: "Redbeard",     type: "BEAT",            plays: 0,    color: "#AA2DFF", emoji: "🎛️", href: "/performer/redbeard" },
     ],
     trending: [
-      { id: "t1", title: "Neon Frequency",           artist: "Nova Cipher",  type: "SONG",           plays: 94200,color: "#FF2DAA", emoji: "🔥", href: "/performer/nova-cipher", badge: "#1 TRENDING" },
-      { id: "t2", title: "Crown Season",             artist: "Big Ace",      type: "SONG",           plays: 71800,color: "#FFD700", emoji: "🔥", href: "/performer/big-ace",     badge: "#2" },
-      { id: "t3", title: "Midnight Protocol",        artist: "Lani Flame",   type: "SONG",           plays: 48300,color: "#FF6B35", emoji: "🔥", href: "/performer/lani-flame",  badge: "#3" },
-      { id: "t4", title: "City of Noise",            artist: "Wave Tek",     type: "VIDEO",          plays: 32100,color: "#00FFFF", emoji: "🎬", href: "/performer/wave-tek" },
-      { id: "t5", title: "Dark Matter Loop",         artist: "Zion Freq",    type: "BEAT",           plays: 21400,color: "#AA2DFF", emoji: "🎛️", href: "/performer/zion-freq" },
+      { id: "t1", title: "Neon Frequency",            artist: "Nova Cipher",  type: "SONG",            plays: 94200,color: "#FF2DAA", emoji: "🔥", href: "/performer/nova-cipher", badge: "#1 TRENDING" },
+      { id: "t2", title: "Crown Season",              artist: "Big Ace",      type: "SONG",            plays: 71800,color: "#FFD700", emoji: "🔥", href: "/performer/big-ace",     badge: "#2" },
+      { id: "t3", title: "Midnight Protocol",         artist: "Lani Flame",   type: "SONG",            plays: 48300,color: "#FF6B35", emoji: "🔥", href: "/performer/lani-flame",  badge: "#3" },
+      { id: "t4", title: "City of Noise",             artist: "Wave Tek",     type: "VIDEO",           plays: 32100,color: "#00FFFF", emoji: "🎬", href: "/performer/wave-tek" },
+      { id: "t5", title: "Dark Matter Loop",          artist: "Zion Freq",    type: "BEAT",            plays: 21400,color: "#AA2DFF", emoji: "🎛️", href: "/performer/zion-freq" },
     ],
     battles: [
-      { id: "b1", title: "Nova Cipher vs. Big Ace",  artist: "Nova Cipher",  type: "BATTLE WIN",     plays: 8420, color: "#FF6B35", emoji: "⚔️", href: "/battles/1",  badge: "WINNER" },
-      { id: "b2", title: "Wave Tek vs. DJ Phantom",  artist: "Wave Tek",     type: "BATTLE WIN",     plays: 6100, color: "#FFD700", emoji: "⚔️", href: "/battles/2",  badge: "WINNER" },
-      { id: "b3", title: "Zion vs. Redbeard",        artist: "Zion Freq",    type: "BATTLE WIN",     plays: 4820, color: "#AA2DFF", emoji: "⚔️", href: "/battles/3",  badge: "WINNER" },
-      { id: "b4", title: "Lani Flame vs. Mika Voss", artist: "Lani Flame",   type: "BATTLE WIN",     plays: 3300, color: "#FF2DAA", emoji: "⚔️", href: "/battles/4",  badge: "WINNER" },
+      { id: "b1", title: "Nova Cipher vs. Big Ace",   artist: "Nova Cipher",  type: "BATTLE WIN",      plays: 8420, color: "#FF6B35", emoji: "⚔️", href: "/battles/1",  badge: "WINNER" },
+      { id: "b2", title: "Wave Tek vs. DJ Phantom",   artist: "Wave Tek",     type: "BATTLE WIN",      plays: 6100, color: "#FFD700", emoji: "⚔️", href: "/battles/2",  badge: "WINNER" },
+      { id: "b3", title: "Zion vs. Redbeard",         artist: "Zion Freq",    type: "BATTLE WIN",      plays: 4820, color: "#AA2DFF", emoji: "⚔️", href: "/battles/3",  badge: "WINNER" },
+      { id: "b4", title: "Lani Flame vs. Mika Voss",  artist: "Lani Flame",   type: "BATTLE WIN",      plays: 3300, color: "#FF2DAA", emoji: "⚔️", href: "/battles/4",  badge: "WINNER" },
     ],
     cyphers: [
-      { id: "c1", title: "Friday Cipher Vol. 12",    artist: "Open Floor",   type: "CYPHER HIGHLIGHT",plays: 12400,color: "#00FF88", emoji: "🎤", href: "/cypher/stage", badge: "HOT" },
-      { id: "c2", title: "Monday Night Bars",        artist: "Nova Cipher",  type: "CYPHER CLIP",    plays: 8100, color: "#00FFFF", emoji: "🎤", href: "/cypher/live" },
-      { id: "c3", title: "Trap Session",             artist: "Big Ace",      type: "CYPHER CLIP",    plays: 5400, color: "#FFD700", emoji: "🎤", href: "/cypher/live" },
-      { id: "c4", title: "Sunrise Verse",            artist: "Lani Flame",   type: "CYPHER CLIP",    plays: 3800, color: "#FF2DAA", emoji: "🎤", href: "/cypher/live" },
+      { id: "c1", title: "Friday Cipher Vol. 12",     artist: "Open Floor",   type: "CYPHER HIGHLIGHT",plays: 12400,color: "#00FF88", emoji: "🎤", href: "/cypher/stage", badge: "HOT" },
+      { id: "c2", title: "Monday Night Bars",         artist: "Nova Cipher",  type: "CYPHER CLIP",     plays: 8100, color: "#00FFFF", emoji: "🎤", href: "/cypher/live" },
+      { id: "c3", title: "Trap Session",              artist: "Big Ace",      type: "CYPHER CLIP",     plays: 5400, color: "#FFD700", emoji: "🎤", href: "/cypher/live" },
+      { id: "c4", title: "Sunrise Verse",             artist: "Lani Flame",   type: "CYPHER CLIP",     plays: 3800, color: "#FF2DAA", emoji: "🎤", href: "/cypher/live" },
     ],
   };
-  return base[tab];
+  return (base as Record<FeedTab, FeedItem[]>)[tab] ?? [];
 }
 
 const TABS: { key: FeedTab; label: string; emoji: string; color: string }[] = [
-  { key: "live",     label: "LIVE NOW",        emoji: "🔴", color: "#FF2020" },
-  { key: "uploads",  label: "RECENT UPLOADS",  emoji: "📤", color: "#00FFFF" },
-  { key: "trending", label: "TRENDING",        emoji: "🔥", color: "#FFD700" },
-  { key: "battles",  label: "BATTLE WINNERS",  emoji: "⚔️", color: "#FF6B35" },
-  { key: "cyphers",  label: "CYPHER HIGHLIGHTS",emoji: "🎤", color: "#00FF88" },
+  { key: "live",     label: "LIVE NOW",          emoji: "🔴", color: "#FF2020" },
+  { key: "ranked",   label: "TOP RANKED",        emoji: "👑", color: "#FFD700" },
+  { key: "trending", label: "TRENDING",          emoji: "🔥", color: "#FF2DAA" },
+  { key: "battles",  label: "BATTLE WINNERS",    emoji: "⚔️", color: "#FF6B35" },
+  { key: "cyphers",  label: "CYPHER HIGHLIGHTS", emoji: "🎤", color: "#00FF88" },
+  { key: "uploads",  label: "RECENT UPLOADS",    emoji: "📤", color: "#00FFFF" },
 ];
 
 interface Props {
@@ -78,11 +84,133 @@ interface Props {
   maxItems?: number;
   compact?: boolean;
   accentColor?: string;
+  userId?: string;
 }
 
-export default function BillboardContentFeed({ defaultTab = "live", maxItems = 6, compact = false, accentColor = "#00FFFF" }: Props) {
+// ── Per-card action row ─────────────────────────────────────────────────────
+function MediaCard({ item, compact, userId }: { item: FeedItem; compact: boolean; userId: string }) {
+  const router = useRouter();
+  const [liked, setLiked] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [likes, setLikes] = useState(Math.floor(item.plays * 0.12));
+
+  const tipUrl = `/api/stripe/checkout?priceId=price_tip&amount=500&productName=Tip+${encodeURIComponent(item.artist)}&mode=payment`;
+
+  const handleLike = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (liked) return;
+    setLiked(true);
+    setLikes(n => n + 1);
+  }, [liked]);
+
+  const handleSave = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (saved) return;
+    saveMemoryMoment(userId, `${item.title} — ${item.artist}`, "event", item.id);
+    setSaved(true);
+  }, [saved, userId, item]);
+
+  const handleShare = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    const url = `${typeof window !== "undefined" ? window.location.origin : ""}${item.href}`;
+    if (navigator.share) {
+      navigator.share({ title: item.title, text: `${item.artist} on TMI`, url }).catch(() => {});
+    } else {
+      navigator.clipboard.writeText(url).catch(() => {});
+    }
+  }, [item]);
+
+  const handleTip = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    router.push(tipUrl);
+  }, [router, tipUrl]);
+
+  return (
+    <div
+      onClick={() => router.push(item.href)}
+      style={{
+        borderRadius: 10, background: "rgba(255,255,255,0.02)", border: `1px solid ${item.color}18`,
+        transition: "border-color 0.15s, background 0.15s", cursor: "pointer",
+        padding: compact ? "8px 10px" : "10px 12px",
+      }}
+      onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.borderColor = `${item.color}44`; (e.currentTarget as HTMLDivElement).style.background = `${item.color}06`; }}
+      onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.borderColor = `${item.color}18`; (e.currentTarget as HTMLDivElement).style.background = "rgba(255,255,255,0.02)"; }}
+    >
+      {/* Top row: emoji + title + badge + plays */}
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <span style={{ fontSize: compact ? 16 : 20, flexShrink: 0 }}>{item.emoji}</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: compact ? 10 : 12, fontWeight: 700, color: "#fff", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.title}</div>
+          <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", marginTop: 1 }}>{item.artist} · {item.type}</div>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2, flexShrink: 0 }}>
+          {item.badge && (
+            <span style={{ fontSize: 7, fontWeight: 900, color: item.color, letterSpacing: "0.08em", padding: "2px 6px", background: `${item.color}18`, borderRadius: 10, border: `1px solid ${item.color}33` }}>
+              {item.badge}
+            </span>
+          )}
+          {item.plays > 0 && (
+            <span style={{ fontSize: 8, color: "rgba(255,255,255,0.25)" }}>▶ {item.plays.toLocaleString()}</span>
+          )}
+          {!item.badge && item.plays === 0 && (
+            <span style={{ fontSize: 8, color: "rgba(255,255,255,0.2)" }}>NEW</span>
+          )}
+        </div>
+      </div>
+
+      {/* Action row */}
+      <div style={{ display: "flex", gap: 4, marginTop: 8, paddingTop: 7, borderTop: "1px solid rgba(255,255,255,0.04)" }}>
+        {/* Watch */}
+        <button
+          onClick={e => { e.stopPropagation(); router.push(item.href); }}
+          style={{ flex: 1, padding: "4px 0", borderRadius: 6, border: "none", background: `${item.color}18`, color: item.color, fontSize: 8, fontWeight: 900, cursor: "pointer", letterSpacing: "0.06em" }}
+        >
+          {item.isLive ? "▶ JOIN" : "▶ WATCH"}
+        </button>
+
+        {/* Like */}
+        <button
+          onClick={handleLike}
+          title={`${likes} likes`}
+          style={{ padding: "4px 8px", borderRadius: 6, border: `1px solid ${liked ? "#FF2DAA55" : "rgba(255,255,255,0.08)"}`, background: liked ? "rgba(255,45,170,0.12)" : "transparent", color: liked ? "#FF2DAA" : "rgba(255,255,255,0.35)", fontSize: 9, cursor: liked ? "default" : "pointer", transition: "all 0.15s" }}
+        >
+          {liked ? "♥" : "♡"} {likes > 0 ? likes : ""}
+        </button>
+
+        {/* Tip */}
+        <button
+          onClick={handleTip}
+          style={{ padding: "4px 8px", borderRadius: 6, border: "1px solid rgba(255,215,0,0.2)", background: "transparent", color: "#FFD700", fontSize: 9, cursor: "pointer", fontWeight: 800 }}
+        >
+          💰
+        </button>
+
+        {/* Share */}
+        <button
+          onClick={handleShare}
+          style={{ padding: "4px 8px", borderRadius: 6, border: "1px solid rgba(255,255,255,0.08)", background: "transparent", color: "rgba(255,255,255,0.35)", fontSize: 9, cursor: "pointer" }}
+        >
+          📤
+        </button>
+
+        {/* Save to Memory Wall */}
+        <button
+          onClick={handleSave}
+          title={saved ? "Saved to Memory Wall" : "Save to Memory Wall"}
+          style={{ padding: "4px 8px", borderRadius: 6, border: `1px solid ${saved ? "rgba(0,255,136,0.3)" : "rgba(255,255,255,0.08)"}`, background: saved ? "rgba(0,255,136,0.1)" : "transparent", color: saved ? "#00FF88" : "rgba(255,255,255,0.35)", fontSize: 9, cursor: saved ? "default" : "pointer", transition: "all 0.15s" }}
+        >
+          {saved ? "✓" : "📸"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Main feed ───────────────────────────────────────────────────────────────
+export default function BillboardContentFeed({ defaultTab = "live", maxItems = 6, compact = false, accentColor = "#00FFFF", userId = "guest" }: Props) {
   const [activeTab, setActiveTab] = useState<FeedTab>(defaultTab);
   const [items, setItems] = useState<FeedItem[]>([]);
+  const router = useRouter();
 
   useEffect(() => {
     async function load() {
@@ -91,7 +219,6 @@ export default function BillboardContentFeed({ defaultTab = "live", maxItems = 6
         if (res.ok) {
           const data = await res.json();
           if (data.assets?.length) {
-            // Map API assets to FeedItem shape
             const mapped: FeedItem[] = data.assets.map((a: { id: string; title: string; artist: string; type: string; plays: number; url: string }) => ({
               id:     a.id,
               title:  a.title,
@@ -107,7 +234,6 @@ export default function BillboardContentFeed({ defaultTab = "live", maxItems = 6
           }
         }
       } catch { /* fallthrough to seed */ }
-      // Fallback: use seeded demo data so the wall is never empty
       setItems(seedFeed(activeTab).slice(0, maxItems));
     }
     load();
@@ -140,39 +266,16 @@ export default function BillboardContentFeed({ defaultTab = "live", maxItems = 6
 
       {/* Feed list */}
       <div style={{ padding: compact ? "10px 14px 14px" : "14px 20px 20px", display: "flex", flexDirection: "column", gap: 6 }}>
-        {items.map((item, i) => (
-          <Link
-            key={item.id}
-            href={item.href}
-            style={{ display: "flex", alignItems: "center", gap: 10, padding: compact ? "8px 10px" : "10px 12px", borderRadius: 10, background: "rgba(255,255,255,0.02)", border: `1px solid ${item.color}18`, textDecoration: "none", transition: "border-color 0.15s" }}
-          >
-            <span style={{ fontSize: compact ? 16 : 20, flexShrink: 0 }}>{item.emoji}</span>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: compact ? 10 : 12, fontWeight: 700, color: "#fff", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.title}</div>
-              <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", marginTop: 1 }}>{item.artist} · {item.type}</div>
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2, flexShrink: 0 }}>
-              {item.badge && (
-                <span style={{ fontSize: 7, fontWeight: 900, color: item.color, letterSpacing: "0.08em", padding: "2px 6px", background: `${item.color}18`, borderRadius: 10, border: `1px solid ${item.color}33` }}>
-                  {item.badge}
-                </span>
-              )}
-              {item.plays > 0 && (
-                <span style={{ fontSize: 8, color: "rgba(255,255,255,0.25)" }}>▶ {item.plays.toLocaleString()}</span>
-              )}
-              {!item.badge && item.plays === 0 && (
-                <span style={{ fontSize: 8, color: "rgba(255,255,255,0.2)" }}>NEW</span>
-              )}
-            </div>
-          </Link>
+        {items.map(item => (
+          <MediaCard key={item.id} item={item} compact={compact} userId={userId} />
         ))}
 
-        <Link
-          href={activeTab === "live" ? "/rooms" : activeTab === "battles" ? "/battles" : activeTab === "cyphers" ? "/cypher/stage" : "/store"}
-          style={{ marginTop: 4, padding: "8px", textAlign: "center", borderRadius: 8, background: `${tabMeta.color}0C`, border: `1px solid ${tabMeta.color}28`, color: tabMeta.color, fontSize: 9, fontWeight: 800, letterSpacing: "0.08em", textDecoration: "none" }}
+        <button
+          onClick={() => router.push(activeTab === "live" ? "/rooms" : activeTab === "battles" ? "/battles" : activeTab === "cyphers" ? "/cypher/stage" : activeTab === "ranked" ? "/store" : "/store")}
+          style={{ marginTop: 4, padding: "8px", textAlign: "center", borderRadius: 8, background: `${tabMeta.color}0C`, border: `1px solid ${tabMeta.color}28`, color: tabMeta.color, fontSize: 9, fontWeight: 800, letterSpacing: "0.08em", cursor: "pointer" }}
         >
           VIEW ALL {tabMeta.label} →
-        </Link>
+        </button>
       </div>
     </div>
   );
