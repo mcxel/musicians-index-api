@@ -6,6 +6,7 @@ import Link from "next/link";
 import { PersonaSwitcher } from "@/components/hud/PersonaSwitcher";
 import StreakBadge from "@/components/gamification/StreakBadge";
 import TokenBalance from "@/components/hud/TokenBalance";
+import XPProgressRing from "@/components/hud/XPProgressRing";
 
 interface SessionUser {
   id: string;
@@ -339,7 +340,8 @@ export function TMIGlobalHUD() {
           <PersonaSwitcher userId={user.id} currentRole={user.role} compact />
         </div>
 
-        {/* Token balance */}
+        {/* XP ring + Token balance */}
+        <XPProgressRing userId={user.id} size={32} />
         <TokenBalance userId={user.id} compact accentColor="#FFD700" />
 
         {/* Notification bell */}

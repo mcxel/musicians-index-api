@@ -10,6 +10,7 @@ import { getRouteMap, type TMIRole } from "@/lib/routing/ProfileLobbyRouteMap";
 import AvatarLobbyCanvas from "@/components/lobby/AvatarLobbyCanvas";
 import TipBar from "@/components/hud/TipBar";
 import TokenBalance from "@/components/hud/TokenBalance";
+import HeroCard from "@/components/avatar/HeroCard";
 
 interface ProfileLobbyRuntimeProps {
   mode: TMIRole;
@@ -20,6 +21,8 @@ interface ProfileLobbyRuntimeProps {
   tokenBalance?: number;
   isOwner?: boolean;
   performerId?: string;
+  heroId?: string;
+  xp?: number;
 }
 
 const ROLE_CONFIG: Record<TMIRole, { label: string; icon: string; accentColor: string; cta: string }> = {
@@ -43,6 +46,8 @@ export default function ProfileLobbyRuntime({
   tokenBalance = 0,
   isOwner = false,
   performerId,
+  heroId,
+  xp = 0,
 }: ProfileLobbyRuntimeProps) {
   const [activeTab, setActiveTab] = useState<"lobby" | "profile" | "activity">("lobby");
   const config = ROLE_CONFIG[mode] ?? ROLE_CONFIG.fan;
@@ -137,6 +142,7 @@ export default function ProfileLobbyRuntime({
 
         {activeTab === "profile" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            {heroId && <HeroCard heroId={heroId} xp={xp} />}
             <div style={{
               background: `${color}08`, border: `1px solid ${color}20`,
               borderRadius: 12, padding: "16px",

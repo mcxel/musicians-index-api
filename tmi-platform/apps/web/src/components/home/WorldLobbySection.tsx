@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import AudienceScene from "@/components/live/AudienceScene";
+import AvatarVenueAnchor from "@/components/avatar/AvatarVenueAnchor";
 
 // ── Venue catalog with live data ───────────────────────────────────────────
 const VENUES = [
@@ -41,7 +42,10 @@ function VenueCard({ v }: { v: typeof VENUES[0] }) {
             <div style={{ fontSize: 7, color: v.color, fontWeight: 900, letterSpacing: "0.18em" }}>NO SEATING · DANCE FLOOR</div>
           </div>
         ) : (
-          <AudienceScene venue={v.venueIndex} watcherCount={v.cap} view="fan" accentColor={v.color} bpm={v.bpm} screenLabel={v.name} />
+          <>
+            <AudienceScene venue={v.venueIndex} watcherCount={v.cap} view="fan" accentColor={v.color} bpm={v.bpm} screenLabel={v.name} />
+            <AvatarVenueAnchor venueSlug={v.id} venueIndex={v.venueIndex} width={900} height={480} />
+          </>
         )}
         <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, transparent 40%, #050510 100%)" }} />
         <div style={{ position: "absolute", top: 7, left: 8, display: "flex", alignItems: "center", gap: 3, background: "rgba(0,0,0,0.7)", borderRadius: 4, padding: "2px 7px", backdropFilter: "blur(4px)" }}>
