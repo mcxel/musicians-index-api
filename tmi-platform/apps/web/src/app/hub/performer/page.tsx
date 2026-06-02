@@ -13,6 +13,7 @@ import NeonWaveUnderlay from "@/components/atmosphere/NeonWaveUnderlay";
 import UnifiedAdSlot from "@/components/ads/UnifiedAdSlot";
 import TipBar from "@/components/hud/TipBar";
 import TokenBalance from "@/components/hud/TokenBalance";
+import MixtapeShareCard from "@/components/mixtape/MixtapeShareCard";
 
 const NAV_LINKS = [
   { href: "/hub/performer",     label: "Control Room" },
@@ -234,6 +235,11 @@ export default function PerformerHubPage() {
 
         <ActionCanister actions={PERFORMER_ACTIONS} />
         <WidgetDrawer />
+
+        {/* Mixtape share — send beats/tracks as a package */}
+        <div style={{ padding: "0 18px 80px" }}>
+          <MixtapeShareCard curatorId="current-user" curatorName="Nova Cipher" />
+        </div>
       </div>
     </RoomContainer>
   );

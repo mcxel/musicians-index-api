@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import AudienceScene from "@/components/live/AudienceScene";
 import UnifiedAdSlot from "@/components/ads/UnifiedAdSlot";
 import SeatUpgradeWidget from "@/components/venue/SeatUpgradeWidget";
+import TipBar from "@/components/hud/TipBar";
 
 const VENUES: Record<string, {
   name: string; type: "theater" | "arena" | "club" | "outdoor" | "studio";
@@ -205,6 +206,11 @@ export default function VenuePage({ params }: { params: { slug: string } }) {
                     <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", marginBottom: 14 }}>{venue.currentArtist}</div>
                     <Link href={`/rooms/${params.slug}?autoSeat=1`} style={{ display: "block", padding: "12px", background: venue.accentColor, color: "#000", borderRadius: 10, fontWeight: 900, fontSize: 11, textDecoration: "none", marginBottom: 8 }}>ENTER + SIT →</Link>
                     <button onClick={() => setActiveTab("tickets")} style={{ width: "100%", padding: "10px", background: "transparent", border: `1px solid ${venue.accentColor}44`, color: venue.accentColor, borderRadius: 10, fontWeight: 800, fontSize: 10, cursor: "pointer" }}>🎫 GET TICKET</button>
+                    {venue.currentArtist && (
+                      <div style={{ marginTop: 12 }}>
+                        <TipBar performerId={params.slug} performerName={venue.currentArtist} roomId={params.slug} accentColor={venue.accentColor} compact />
+                      </div>
+                    )}
                   </>
                 ) : (
                   <>

@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Home1CoverPage from '@/components/home/Home1CoverPage';
 import TmiMagazineOrbitalUnderlay from '@/components/home/TmiMagazineOrbitalUnderlay';
 import WorldLobbySection from '@/components/home/WorldLobbySection';
+import BillboardContentFeed from '@/components/media/BillboardContentFeed';
 
 export const metadata: Metadata = {
   title: "The Musician's Index — Live Music Platform",
@@ -30,6 +31,12 @@ export default function Home1Page() {
       <TmiMagazineOrbitalUnderlay />
       {/* 3. Live World — all active venues, billboard, revenue hooks */}
       <WorldLobbySection />
+      {/* 4. Content feed — Live Now / Recent Uploads / Trending / Battles / Cyphers */}
+      <section className="relative w-full py-12 px-4 sm:px-8 bg-[#050510] z-20">
+        <div className="max-w-6xl mx-auto">
+          <BillboardContentFeed defaultTab="live" maxItems={6} accentColor="#00FFFF" />
+        </div>
+      </section>
     </>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import PerformerMediaLibrary from "@/components/media/PerformerMediaLibrary";
 
 const ACCENT = "#AA2DFF";
 const BG = "#050510";
@@ -171,6 +172,9 @@ export default function PerformerProfilePage() {
             </Link>
           ))}
         </div>
+
+        {/* Media library */}
+        <PerformerMediaLibrary ownerId="current-user" ownerName={displayName} accentColor={ACCENT} showUpload />
       </div>
     </main>
   );

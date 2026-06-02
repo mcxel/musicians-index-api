@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { PersonaSwitcher } from "@/components/hud/PersonaSwitcher";
 import StreakBadge from "@/components/gamification/StreakBadge";
+import TokenBalance from "@/components/hud/TokenBalance";
 
 interface SessionUser {
   id: string;
@@ -337,6 +338,9 @@ export function TMIGlobalHUD() {
         <div style={{ flex: 1, minWidth: 0 }}>
           <PersonaSwitcher userId={user.id} currentRole={user.role} compact />
         </div>
+
+        {/* Token balance */}
+        <TokenBalance userId={user.id} compact accentColor="#FFD700" />
 
         {/* Notification bell */}
         <Link

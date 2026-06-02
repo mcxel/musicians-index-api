@@ -7,6 +7,7 @@
  *
  * Flow: Upload → Classify → Validate → Store → Deliver → Analyze
  *
+ * P9F: MediaProcessingEngine wired in — staged job queue on every upload.
  * P9 implementation — in-memory store for soft launch,
  * replace with Neon DB writes + Cloudflare R2 URLs post-launch.
  */
@@ -127,6 +128,16 @@ const MAX_SIZE_BYTES: Record<MediaType, number> = {
 // ── In-memory store (replace with Neon DB post-launch) ───────────────────────
 const ASSETS = new Map<string, MediaAsset>();
 
+// Lazy import to avoid circular deps — processing engine uses MediaType from here
+let _processingEngine: typeof import("@/lib/media/MediaProcessingEngine").MediaProcessingEngine | null = null;
+async function getProcessingEngine() {
+  if (!_processingEngine) {
+    const mod = await import("@/lib/media/MediaProcessingEngine");
+    _processingEngine = mod.MediaProcessingEngine;
+  }
+  return _processingEngine;
+}
+
 function generateId(): string {
   return `med_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 }
@@ -192,17 +203,48 @@ export class MediaAssetEngineClass {
 
     ASSETS.set(id, asset);
 
-    // Simulate async processing (transcoding, waveform, thumbnail)
-    setTimeout(() => {
-      const a = ASSETS.get(id);
-      if (a) ASSETS.set(id, { ...a, status: "ready", updatedAt: new Date().toISOString() });
-    }, 2000);
+    // Kick off staged processing pipeline
+    getProcessingEngine().then(engine => {
+      engine.queueJob(id, req.ownerId, req.type);
+      // Advance asset to ready when job completes (poll-style for soft launch)
+      const checkReady = setInterval(() => {
+        const job = engine.getJobByAsset(id);
+        if (job?.status === "complete") {
+          clearInterval(checkReady);
+          const a = ASSETS.get(id);
+          if (a) ASSETS.set(id, {
+            ...a,
+            status: "ready",
+            thumbnailUrl: `${cdnBase}/thumbs/${id}.jpg`,
+            waveformUrl: req.type === "song" || req.type === "beat" ? `${cdnBase}/waveforms/${id}.png` : undefined,
+            updatedAt: new Date().toISOString(),
+          });
+        }
+        if (job?.status === "failed") {
+          clearInterval(checkReady);
+          const a = ASSETS.get(id);
+          if (a) ASSETS.set(id, { ...a, status: "failed", updatedAt: new Date().toISOString() });
+        }
+      }, 500);
+      // Safety: clear after 30s to avoid memory leaks in dev
+      setTimeout(() => clearInterval(checkReady), 30_000);
+    }).catch(() => {
+      // Fallback: 2s direct promotion (matches original behaviour)
+      setTimeout(() => {
+        const a = ASSETS.get(id);
+        if (a) ASSETS.set(id, { ...a, status: "ready", updatedAt: new Date().toISOString() });
+      }, 2000);
+    });
 
     return { ok: true, assetId: id, url, status: "processing" };
   }
 
   getAsset(id: string): MediaAsset | null {
     return ASSETS.get(id) ?? null;
+  }
+
+  getAll(): MediaAsset[] {
+    return [...ASSETS.values()];
   }
 
   getByOwner(ownerId: string): MediaAsset[] {
