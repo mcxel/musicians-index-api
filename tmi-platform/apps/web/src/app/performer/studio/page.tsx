@@ -724,7 +724,7 @@ export default function ArtistStudioPage() {
       {/* Right slide-in widget drawer */}
       <WidgetDrawer />
 
-      <div style={{ minHeight: "100vh", background: C.bg, color: C.white, paddingLeft: 72 }}>
+      <div style={{ minHeight: "100vh", background: C.bg, color: C.white, paddingLeft: 72, overflowY: "auto", overflowX: "hidden" }}>
 
         {/* ── Welcome banner ── */}
         <div style={{

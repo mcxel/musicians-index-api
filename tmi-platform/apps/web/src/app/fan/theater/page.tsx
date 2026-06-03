@@ -316,6 +316,7 @@ function FanTheaterInner() {
         flexDirection: "column",
         position: "relative",
         overflowX: "hidden",
+        overflowY: "auto",
       }}
     >
       {/* ActionCanister (fixed left) */}

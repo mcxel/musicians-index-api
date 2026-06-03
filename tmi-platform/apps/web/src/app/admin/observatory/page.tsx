@@ -148,7 +148,7 @@ export default function ObservatoryPage() {
             { label: "CRITICAL", value: criticalStreams,                                 color: criticalStreams > 0 ? "#FF2DAA" : "#00C896" },
             { label: "BOTS ACTIVE",value: MOCK_BOTS.length,                            color: "#00C8FF" },
             { label: "ROUTE WARNS",value: warnRoutes,                                  color: warnRoutes > 0 ? "#FFD700" : "#00C896" },
-            { label: "TOP ARTIST", value: TOP10_MOCK[0].name,                          color: "#FF2DAA" },
+            { label: "TOP ARTIST", value: TOP10_MOCK[0]?.name ?? "—",                  color: "#FF2DAA" },
             { label: "TICK",       value: `#${tick}`,                                  color: "#444"    },
           ].map(m => (
             <div key={m.label} style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
