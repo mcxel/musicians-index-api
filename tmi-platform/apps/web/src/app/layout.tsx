@@ -4,6 +4,7 @@ import AppProviders from "@/components/providers";
 import "./globals.css";
 import "@/styles/tmiTypography.css";
 import "@/styles/tmi/globals.css";
+import HudRuntimeProvider from "@/components/hud/HudRuntimeProvider";
 import { TmiSessionProvider } from "@/hooks/SessionContext";
 import GamificationHUD from "@/components/hud/GamificationHUD";
 import LiveSyncProvider from "@/components/media/LiveSyncProvider";
@@ -184,23 +185,25 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </h1>
         <AppProviders>
           <TmiSessionProvider>
-            <PWARegistration />
-            <BetaModeBanner />
-            <BetaStatusChip />
-            <BotProvider>
-              {children}
-            </BotProvider>
-            <PWAInstallPrompt />
-            <NavigationRail />
-            <ChevronNavigation />
-            <TMIGlobalNav />
-            <GamificationHUD />
-            <LiveSyncProvider />
-            <FirstRunExperienceOverlay />
-            <TMIGlobalHUD />
-            <BotRuntimeProvider />
-            <VoiceDirector />
-            <LiveFeedbackPanel />
+            <HudRuntimeProvider>
+              <PWARegistration />
+              <BetaModeBanner />
+              <BetaStatusChip />
+              <BotProvider>
+                {children}
+              </BotProvider>
+              <PWAInstallPrompt />
+              <NavigationRail />
+              <ChevronNavigation />
+              <TMIGlobalNav />
+              <GamificationHUD />
+              <LiveSyncProvider />
+              <FirstRunExperienceOverlay />
+              <TMIGlobalHUD />
+              <BotRuntimeProvider />
+              <VoiceDirector />
+              <LiveFeedbackPanel />
+            </HudRuntimeProvider>
           </TmiSessionProvider>
         </AppProviders>
       </body>
