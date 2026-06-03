@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -n \"\\\\$35\\\\|\\\\$20\\\\|\\\\$50\\\\|merch\\\\|Hoodie\\\\|T-Shirt\\\\|Cap\" \"c:/Users/Admin/Documents/BerntoutGlobal XXL/tmi-platform/apps/web/src/app/hub/performer/page.tsx\")",
+      "Bash(mkdir -p \"c:/Users/Admin/Documents/BerntoutGlobal XXL/tmi-platform/apps/web/src/app/api/messages/[threadId]\")",
+      "Bash([ -f \"$dir/page.tsx\" ])",
+      "Bash(ls app/api/follow/)",
+      "Bash(ls app/api/giveaway/)"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\Admin\\Documents\\BerntoutGlobal XXL\\tmi-platform\\apps\\web\\src\\app\\api\\messages"
+    ]
+  }
+}

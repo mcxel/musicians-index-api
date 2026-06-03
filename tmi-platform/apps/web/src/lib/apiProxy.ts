@@ -22,8 +22,12 @@ export async function proxyToApi(req: Request, path: string) {
   const base = process.env.API_BASE_URL;
   if (!base) {
     return new Response(
-      JSON.stringify({ error: "API_BASE_URL not set", path }),
-      { status: 503, headers: { "content-type": "application/json" } }
+      JSON.stringify({
+        error: "feature_not_configured",
+        message: "API_BASE_URL is not configured",
+        path,
+      }),
+      { status: 501, headers: { "content-type": "application/json" } }
     );
   }
 

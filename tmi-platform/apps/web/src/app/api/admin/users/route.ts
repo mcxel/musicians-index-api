@@ -1,23 +1,40 @@
+export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '../_utils/require-admin';
-
-const SEEDED_USERS = [
-  { id: 'u-marcel-001', role: 'ADMIN',  email: 'admin@themusiciansindex.com',  name: 'Marcel Dickens', createdAt: '2026-01-01' },
-  { id: 'u-kreach-001', role: 'ARTIST', email: 'kreach@themusiciansindex.com', name: 'Kreach',         createdAt: '2026-05-01' },
-  { id: 'u-kg-001',     role: 'ARTIST', email: 'kg@themusiciansindex.com',     name: 'KG',             createdAt: '2026-05-01' },
-  { id: 'u-savage-001', role: 'USER',   email: 'savage@themusiciansindex.com', name: 'Savage Guns',    createdAt: '2026-05-01' },
-  { id: 'u-jason-001',  role: 'USER',   email: 'jason@themusiciansindex.com',  name: 'Jason Smith',    createdAt: '2026-05-01' },
-];
-
-const SEEDED_ARTISTS = [
-  { id: 'a-kreach-001', name: 'Kreach',      userId: 'u-kreach-001', slug: 'kreach',      genre: 'Hip-Hop', bio: 'Diamond producer / performer — Lifetime VIP', verified: true  },
-  { id: 'a-kg-001',     name: 'KG',          userId: 'u-kg-001',     slug: 'kg',          genre: 'Hip-Hop', bio: 'Diamond producer / performer — Lifetime VIP', verified: true  },
-  { id: 'a-savage-001', name: 'Savage Guns', userId: 'u-savage-001', slug: 'savage-guns', genre: 'Hip-Hop', bio: 'Performer — 90-day Diamond trial',            verified: false },
-];
+import { getAllUsers, getUserCount } from '@/lib/auth/UserStore';
 
 export async function GET(request: NextRequest) {
   const unauthorized = requireAdmin(request);
   if (unauthorized) return unauthorized;
 
-  return NextResponse.json({ users: SEEDED_USERS, artists: SEEDED_ARTISTS });
+  const url = new URL(request.url);
+  const limit = Math.min(parseInt(url.searchParams.get('limit') ?? '200'), 500);
+  const roleFilter = url.searchParams.get('role')?.toLowerCase() ?? '';
+
+  const allUsers = getAllUsers(limit);
+  const filtered = roleFilter
+    ? allUsers.filter(u => u.role.toLowerCase() === roleFilter)
+    : allUsers;
+
+  const roleCounts: Record<string, number> = {};
+  const tierCounts: Record<string, number> = {};
+  for (const u of allUsers) {
+    roleCounts[u.role] = (roleCounts[u.role] ?? 0) + 1;
+    tierCounts[u.tier] = (tierCounts[u.tier] ?? 0) + 1;
+  }
+
+  return NextResponse.json({
+    total: getUserCount(),
+    returned: filtered.length,
+    roleCounts,
+    tierCounts,
+    users: filtered.map(u => ({
+      id: u.id,
+      email: u.email,
+      displayName: u.displayName,
+      role: u.role,
+      tier: u.tier,
+      createdAt: new Date(u.createdAt).toISOString(),
+    })),
+  });
 }

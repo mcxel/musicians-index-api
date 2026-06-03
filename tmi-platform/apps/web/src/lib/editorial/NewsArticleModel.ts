@@ -38,7 +38,7 @@ export interface NewsArticle {
   tags: string[];
 }
 
-export const EDITORIAL_ARTICLES: NewsArticle[] = [
+const BASE_ARTICLES: NewsArticle[] = [
   {
     id: "ea-001",
     slug: "ray-journey-builds-his-empire",
@@ -169,7 +169,7 @@ export const EDITORIAL_ARTICLES: NewsArticle[] = [
 
 // ── 10 launch-critical articles ───────────────────────────────────────────────
 
-const LAUNCH_ARTICLES: NewsArticle[] = [
+export const LAUNCH_ARTICLES: NewsArticle[] = [
   {
     id: "ea-l01",
     slug: "tmi-grand-contest-season-1",
@@ -416,7 +416,7 @@ const LAUNCH_ARTICLES: NewsArticle[] = [
   },
 ];
 
-EDITORIAL_ARTICLES.push(...LAUNCH_ARTICLES);
+export const EDITORIAL_ARTICLES: NewsArticle[] = [...BASE_ARTICLES, ...LAUNCH_ARTICLES];
 
 export function getEditorialArticleBySlug(slug: string): NewsArticle | undefined {
   return EDITORIAL_ARTICLES.find((a) => a.slug === slug);

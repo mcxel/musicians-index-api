@@ -26,9 +26,9 @@ interface Track {
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const TRACKS: Track[] = [
-  { id: 1, title: "Big Moves",        artist: "Chario Ace",  duration: "3:42" },
-  { id: 2, title: "Wave Rider",        artist: "BJM",         duration: "4:18" },
-  { id: 3, title: "Thunder Zone",      artist: "Big KazhDog", duration: "3:55" },
+  { id: 1, title: "Thunder Zone",      artist: "Big KazhDog", duration: "3:55" },
+  { id: 2, title: "Big Moves",         artist: "Chario Ace",  duration: "3:42" },
+  { id: 3, title: "Wave Rider",        artist: "BJM",         duration: "4:18" },
   { id: 4, title: "Night Frequency",   artist: "Chario Ace",  duration: "5:01" },
   { id: 5, title: "Sound Pressure",    artist: "BJM",         duration: "4:27" },
 ];
@@ -390,7 +390,7 @@ function FanTheaterInner() {
           animation: "ticker 28s linear infinite",
           fontSize: 9, color: "#FF6B00", letterSpacing: "0.12em", fontWeight: 700,
         }}>
-          🔴 LIVE NOW — Chario Ace on Monday Stage &nbsp;|&nbsp; 🎵 New Drop: Wave Rider by BJM &nbsp;|&nbsp;
+          🔴 LIVE NOW — Big KazhDog on Main Stage &nbsp;|&nbsp; 🎵 Thunder Zone — Big KazhDog &nbsp;|&nbsp; New Drop: Wave Rider by BJM &nbsp;|&nbsp;
           ⚡ Billboard Fans: 38.5K watching &nbsp;|&nbsp; 🏆 Top PunPoints this week: NightOwl42 — 4,820 pts &nbsp;|&nbsp;
           🎉 Dirty Dozens — Battle Arena open &nbsp;|&nbsp; 📢 Upgrade to TMI Pro — No ads + all skins
         </div>
@@ -422,10 +422,10 @@ function FanTheaterInner() {
               </div>
               <div style={{ flex: 1 }}>
                 <div className="tmi-orbitron" style={{ fontSize: 14, fontWeight: 900, color: "#FFD700" }}>
-                  Chario Ace
+                  Big KazhDog
                 </div>
                 <div style={{ fontSize: 10, color: "#E63000", fontWeight: 700, marginTop: 2 }}>
-                  Hip-Hop / R&amp;B
+                  Hip-Hop · Big Kash Records
                 </div>
                 <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", marginTop: 4 }}>
                   Next Show: <span style={{ color: "#00FF7F" }}>Tonight 9PM EST</span>

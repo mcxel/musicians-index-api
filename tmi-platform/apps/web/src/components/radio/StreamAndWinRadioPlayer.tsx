@@ -3,18 +3,31 @@
 import React, { useEffect, useState } from 'react';
 import { Play, Pause, FastForward, Radio } from 'lucide-react';
 import type { Submission } from '@/lib/submissions/SubmissionEngine';
+import { usePlaylistEngine } from '@/hooks/usePlaylistEngine';
+import type { PlaylistTrack } from '@/engines/PlaylistEngine';
 
 export default function StreamAndWinRadioPlayer() {
+  // Engine #1 bridge: legacy-compatible / pending PlaylistEngine migration.
+  const playlist = usePlaylistEngine();
   const [tracks, setTracks] = useState<Submission[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(false);
 
   useEffect(() => {
     async function fetchRadioQueue() {
       try {
         const res = await fetch('/api/submissions?type=track&status=live&public=1&limit=50');
         const data = await res.json();
-        if (data.submissions) setTracks(data.submissions);
+        if (data.submissions) {
+          setTracks(data.submissions);
+          const queue: PlaylistTrack[] = (data.submissions as Submission[]).map((s, i) => ({
+            id: s.id ?? `${i}`,
+            title: s.title ?? `Track ${i + 1}`,
+            genre: s.genre ?? undefined,
+          }));
+          playlist.hydrateQueue(queue);
+          playlist.attachToRuntime({ roomId: 'stream-and-win-radio' });
+          playlist.setVisibility('public');
+        }
       } catch (err) {
         console.error('Failed to load radio queue', err);
       }
@@ -23,10 +36,12 @@ export default function StreamAndWinRadioPlayer() {
   }, []);
 
   const currentTrack = tracks[currentIndex];
+  const isPlaying = playlist.state.isPlaying;
 
   const nextTrack = () => {
+    if (!tracks.length) return;
     setCurrentIndex((prev) => (prev + 1) % tracks.length);
-    setIsPlaying(true);
+    playlist.next();
   };
 
   if (!currentTrack) {
@@ -55,7 +70,10 @@ export default function StreamAndWinRadioPlayer() {
 
       {/* Controls */}
       <div className="flex items-center gap-3">
-        <button onClick={() => setIsPlaying(!isPlaying)} className="w-10 h-10 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 transition-transform">
+        <button
+          onClick={() => (isPlaying ? playlist.pause() : playlist.play())}
+          className="w-10 h-10 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 transition-transform"
+        >
           {isPlaying ? <Pause size={18} className="fill-black" /> : <Play size={18} className="fill-black translate-x-0.5" />}
         </button>
         <button onClick={nextTrack} className="w-8 h-8 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-white/20 transition-colors">

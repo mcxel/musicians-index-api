@@ -51,7 +51,7 @@ const PANELS = [
     ],
     footer: "CHALLENGE RUNS ALL DAY · WINNER STAYS · NONSTOP",
     footerBg: "#FFD700", footerColor: "#000",
-    href: "/rooms/challenge-arena",
+    href: "/challenge",
   },
 ];
 
@@ -99,7 +99,7 @@ export default function TmiMagazineOrbitalUnderlay() {
       }}
     >
       {/* ── SCROLLING TABLOID UNDERLAY — solid editorial panels ── */}
-      <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", overflow: "hidden" }}>
+      <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", overflow: "hidden", pointerEvents: "none" }}>
         <motion.div
           animate={{ x: direction > 0 ? [0, "-50%"] : ["-50%", 0] }}
           transition={{ duration: 22, ease: "linear", repeat: Infinity }}
@@ -112,14 +112,15 @@ export default function TmiMagazineOrbitalUnderlay() {
               style={{
                 textDecoration: "none", display: "flex", flexDirection: "column",
                 width: 280, minWidth: 280, flexShrink: 0,
-                border: "3px solid #000", overflow: "hidden",
-                minHeight: 380, opacity: 0.88,
+                border: "1px solid #000", overflow: "hidden",
+                minHeight: 380, opacity: 0.92,
+                willChange: "transform",
               }}
             >
               {/* Header strip */}
               <div style={{ background: p.headerBg, padding: "10px 12px" }}>
                 <div style={{ fontSize: 8, color: p.headerColor, fontWeight: 700, letterSpacing: "0.05em" }}>
-                  THE MUSICIAN'S INDEX · VOL.1 · WEEK 25 · $4.99
+                  THE MUSICIAN&apos;S INDEX · VOL.1 · WEEK 25 · $4.99
                 </div>
               </div>
 
@@ -159,22 +160,21 @@ export default function TmiMagazineOrbitalUnderlay() {
         </motion.div>
       </div>
 
-      {/* Side vignettes — 30% opacity so panels show through clearly */}
+      {/* Side vignettes — reduced density to avoid bleed/noise */}
       <div style={{
         position: "absolute", inset: 0, pointerEvents: "none",
-        background: "linear-gradient(90deg, rgba(2,2,5,0.30) 0%, transparent 12%, transparent 88%, rgba(2,2,5,0.30) 100%)",
+        background: "linear-gradient(90deg, rgba(5,5,16,0.1) 0%, transparent 18%, transparent 82%, rgba(5,5,16,0.1) 100%)",
       }} />
-      {/* Radial vignette — pulls focus to center orbital */}
       <div style={{
         position: "absolute", inset: 0, pointerEvents: "none",
-        background: "radial-gradient(ellipse 70% 90% at center, transparent 30%, rgba(2,2,5,0.65) 100%)",
+        background: "linear-gradient(180deg, rgba(5,5,16,0.04) 0%, rgba(5,5,16,0.12) 100%)",
       }} />
 
       {/* ── ORBITAL WHEEL — floats above underlay ── */}
       <div style={{
         position: "relative", zIndex: 20,
         display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-        minHeight: 420, paddingTop: 40,
+        minHeight: 390, paddingTop: 24, paddingBottom: 20,
       }}>
         {/* Title */}
         <div style={{ textAlign: "center", marginBottom: 8 }}>
@@ -191,7 +191,7 @@ export default function TmiMagazineOrbitalUnderlay() {
         </div>
 
         {/* Wheel container */}
-        <div style={{ position: "relative", width: WHEEL, height: WHEEL }}>
+        <div style={{ position: "relative", width: WHEEL, height: WHEEL, maxWidth: "100%" }}>
 
           {/* SVG track rings */}
           <svg

@@ -1,39 +1,58 @@
-# Documentation + WebRTC TODO (Reality-first pass)
+# Sprint 1A — Home1 Masthead Rebuild TODO (Flow-Lock Preserved)
 
-## Docs
-- [x] Create `README.md` (soft-launch accurate, reality-first)
-- [x] Create `docs/ONBOARDING.md` (current operator flows + testing)
-- [x] Create `docs/VISION.md` (future-state blueprint)
-- [x] Update `README_DEPLOYMENT.md` (practical deploy + env + smoke checks)
-- [x] Run docs consistency review against current known flows/routes
+## Phase 0 — Discovery / Audit
+- [x] Audit `apps/web/src/app/home/1/page.tsx` composition and identify duplicate/legacy fragments.
+- [x] Audit `apps/web/src/components/home/Home1CoverPage.tsx` for non-compliant gradients/blur/shadow usage.
+- [x] Audit `apps/web/src/components/home/TmiMagazineOrbitalUnderlay.tsx` for layer order and click-through risk.
+- [x] Audit `apps/web/src/components/home/WorldLobbySection.tsx` for text density and legacy visual artifacts.
+- [x] Audit `apps/web/src/components/home/HomeVisualTruth.tsx` and `apps/web/src/components/home/Home1PlatformBelt.tsx` for overlap/redundancy.
+- [x] Confirm whether `apps/web/src/components/magazine/MagazineEditorialSpread.tsx` is injected on Home1 and whether to purge from masthead path.
 
-## WebRTC Critical Path
-- [x] Wire live room route to actual multi-participant video component
-- [x] Ensure participant joined/updated/left visibility in grid
-- [x] Add explicit empty-state messaging when alone in room
-- [x] Keep chat minimal/local proof-of-life only (no backend expansion)
-- [ ] Run route load check + multi-tab participant visibility test
+## Phase 1 — Home1 Visual Truth Enforcement (TMI-OS)
+- [ ] Refactor Home1 masthead to flat CMYK blocks only:
+  - base `#050510`
+  - accents `#FFD700`, `#FF2DAA`, `#00FFFF`, `#00FF88`
+- [ ] Remove non-compliant styling where feasible:
+  - gradients
+  - heavy transparency masks
+  - blur filters
+  - fuzzy/glow-heavy shadows
+- [ ] Reduce text density and remove placeholder/duplicate explainer copy.
+- [ ] Ensure all animated/media surfaces include GPU hinting (`will-change: transform`) where appropriate.
 
-## P0 Email System Hardening
-- [x] Convert `EmailRetryEngine` to async provider-backed sends (`sendAsync`) to prevent dev-stub false positives
-- [x] Update `EmailQueueEngine` processing methods to async and await real delivery outcomes
-- [x] Remove spoofable body-based `adminEmail` auth path from `api/invites/send`
-- [x] Add invite send failure handling when provider send returns unsuccessful status
-- [x] Align invite route admin gate with trusted cookie/session resolver (replace transitional header role/email gate)
+## Phase 2 — Layer Hierarchy + Interaction Safety
+- [ ] Enforce Home1 layer hierarchy:
+  - background base
+  - tabloid underlay
+  - orbital
+  - interactive feed/CTA surfaces
+- [ ] Verify `TmiMagazineOrbitalUnderlay` z-index is below interactive controls but above background.
+- [ ] Eliminate click-through conflicts in overlapped layers.
 
-## P0 Security Lockdown (Identity Scope)
-- [x] Patch `apps/web/src/app/api/auth/session/route.ts` for role-scoped identity + admin/internal email redaction for non-admin responses
-- [x] Add `apps/web/src/app/api/auth/me/route.ts` as self-only endpoint with same redaction policy
-- [x] Patch `apps/web/src/hooks/SessionContext.tsx` to hydrate from `/api/auth/me` and remove hardcoded identity
-- [x] Patch `apps/web/middleware.ts` to enforce admin gate sanitation and clear leaked role/email cookies on denied admin access
-- [x] Audit `AdminAuthStore` / `AdminUserStore` usage outside `/admin` (none found in `apps/web/src`)
-- [x] Run focused typecheck for touched files
+## Phase 3 — Preserve Flow-Lock + Canonical Routing
+- [ ] Preserve Arena Triangle destinations.
+- [ ] Preserve Billboard/feed behavior.
+- [ ] Preserve NavigationRail behavior.
+- [ ] Preserve `autoSeat=1` room routing behavior.
+- [ ] Keep canonical challenge routing (`/challenge`) intact; do not introduce legacy challenge routes.
 
-## Chaotic Arena Mode
-- [x] Plan approved for arena-mode implementation-only pass
-- [x] Extend `VideoRoom` to expose participant list + media metadata to parent layer
-- [x] Replace boring grid-only feeling with arena shell + floating participant presentation layer
-- [x] Add spotlight scaffold with click-to-focus behavior
-- [x] Add floating live chat overlay (last 3 messages)
-- [x] Add lightweight room-energy activity signal
-- [x] Integrate without backend expansion or architecture rebuild
+## Phase 4 — Purge / Cleanup Tracking
+- [ ] Mark every removed legacy fragment as `[x] Purged` in this file during edits.
+- [ ] Keep `ROUTE_TRUTH_TABLE.md` unchanged except if explicitly approved for route governance updates.
+
+## Phase 5 — Validation
+- [ ] Run `pnpm -C apps/web typecheck`.
+- [ ] Run `pnpm -C apps/web build`.
+- [ ] Perform critical-path browser checks on Home1 (desktop + mobile):
+  - [ ] Challenge CTA
+  - [ ] Battle CTA
+  - [ ] Cypher CTA
+  - [ ] Arena Triangle cards
+  - [ ] World lobby cards
+  - [ ] Orbital panel links
+- [ ] Capture desktop/mobile screenshots for validation summary.
+
+## Notes
+- Do not modify Stripe/API/XP engines in Sprint 1A.
+- Do not modify ArenaEventShell behavior in Sprint 1A.
+- Home1 must read as: **Live Discovery Network first**, editorial second.

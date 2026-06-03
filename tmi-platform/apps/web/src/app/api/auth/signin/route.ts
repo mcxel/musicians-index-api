@@ -17,7 +17,13 @@ const COOKIE_OPTS = {
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json() as { email?: string; password?: string };
+    let body: { email?: string; password?: string };
+    try {
+      body = await req.json() as { email?: string; password?: string };
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON payload' }, { status: 400 });
+    }
+
     const email    = (body.email ?? '').trim().toLowerCase();
     const password = body.password ?? '';
     const clientIp = req.headers.get('x-forwarded-for') ?? req.headers.get('x-client-ip') ?? 'unknown';
@@ -86,9 +92,9 @@ export async function POST(req: NextRequest) {
     });
 
     return response;
-  } catch (error) {
+  } catch {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Login failed' },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }

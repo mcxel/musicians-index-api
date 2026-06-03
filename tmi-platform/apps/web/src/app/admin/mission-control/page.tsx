@@ -355,7 +355,29 @@ export default function MissionControlPage() {
   const [taskInput, setTaskInput] = useState("");
   const [panicMode, setPanicMode] = useState(false);
   const [apiRooms, setApiRooms] = useState<ApiRoom[] | null>(null);
+  const [liveStatValues, setLiveStatValues] = useState<Record<string, string>>({});
   const autoIdxRef = React.useRef(0);
+
+  // Fetch real platform stats from AdminStatsEngine
+  const fetchStats = useCallback(async () => {
+    try {
+      const r = await fetch("/api/admin/stats", { cache: "no-store" });
+      if (!r.ok) return;
+      const d = await r.json() as {
+        users?: { total?: number; online?: number };
+        business?: { paidMembers?: number; revenueToday?: number };
+        rooms?: { active?: number };
+      };
+      setLiveStatValues({
+        "Total Users":   String(d.users?.total   ?? "—"),
+        "Online Now":    String(d.users?.online   ?? "—"),
+        "Paid Members":  String(d.business?.paidMembers ?? "—"),
+        "Revenue Today": d.business?.revenueToday != null ? `$${d.business.revenueToday.toFixed(0)}` : "—",
+        "Live Now":      String(d.rooms?.active   ?? "—"),
+        "Ad Revenue":    "—",
+      });
+    } catch { /* keep dashes */ }
+  }, []);
 
   const addEvent = useCallback((level: KillLevel, msg: string, source = "system") => {
     setEvents((prev) => [makeEvent(level, msg, source), ...prev].slice(0, 80));
@@ -417,10 +439,12 @@ export default function MissionControlPage() {
   useEffect(() => {
     runScan();
     fetchRooms();
+    fetchStats();
     const iv1 = setInterval(runScan, 60_000);
     const iv2 = setInterval(fetchRooms, 30_000);
-    return () => { clearInterval(iv1); clearInterval(iv2); };
-  }, [runScan, fetchRooms]);
+    const iv3 = setInterval(fetchStats, 15_000);
+    return () => { clearInterval(iv1); clearInterval(iv2); clearInterval(iv3); };
+  }, [runScan, fetchRooms, fetchStats]);
 
   const summonBot = (id: string) => {
     setBots((prev) => prev.map((b) => b.id === id ? { ...b, status: b.status === "OFFLINE" ? "ONLINE" : b.status } : b));
@@ -488,7 +512,7 @@ export default function MissionControlPage() {
             <Panel key={s.label} style={{ padding: 7, textAlign: "center" as const }}>
               <div style={{ fontSize: 13, marginBottom: 2 }}>{s.icon}</div>
               <Lbl>{s.label}</Lbl>
-              <Val>{s.value}</Val>
+              <Val>{liveStatValues[s.label] ?? s.value}</Val>
               <div style={{ fontSize: 7, color: s.deltaColor, marginTop: 1 }}>{s.delta}</div>
             </Panel>
           ))}
@@ -497,7 +521,7 @@ export default function MissionControlPage() {
         {/* ── LIVE TICKER ── */}
         <div style={{ overflow: "hidden", borderTop: `1px solid ${C.border}50`, borderBottom: `1px solid ${C.border}50`, height: 22, display: "flex", alignItems: "center", margin: "6px 0 0" }}>
           <div style={{ animation: "mcTicker 22s linear infinite", whiteSpace: "nowrap", fontSize: 8, color: C.gold, padding: "0 40px" }}>
-            💰 Tips: $4.2k today &nbsp;&nbsp;&nbsp; 🎟 Tickets: 847 sold &nbsp;&nbsp;&nbsp; 📢 Sponsors: 12 active &nbsp;&nbsp;&nbsp; 🎵 Streams: 50k+ &nbsp;&nbsp;&nbsp; 👥 +124 signups today &nbsp;&nbsp;&nbsp; 💳 3,271 active subs &nbsp;&nbsp;&nbsp; 🤖 {onlineBots} bots online &nbsp;&nbsp;&nbsp; 🎤 {liveCount} rooms live &nbsp;&nbsp;&nbsp;
+            👑 Big KazhDog — Thunder Zone — NOW PLAYING &nbsp;&nbsp;&nbsp; 🤖 {onlineBots} bots online &nbsp;&nbsp;&nbsp; 🎤 {liveCount} rooms live &nbsp;&nbsp;&nbsp; 💰 Revenue: Stripe connected &nbsp;&nbsp;&nbsp; 📢 BidVertiser: verified &nbsp;&nbsp;&nbsp; 🔐 Auth: active &nbsp;&nbsp;&nbsp;
           </div>
         </div>
 
@@ -667,11 +691,11 @@ export default function MissionControlPage() {
                   <Lbl>Billboard Rankings</Lbl>
                   <div style={{ marginTop: 5 }}>
                     {[
-                      { rank: 1, name: "Live Performance", count: "📈 5780" },
-                      { rank: 2, name: "Memory Streams",   count: "👁 1.5k" },
-                      { rank: 3, name: "Jay Paul Beats",   count: "📈 1.2k" },
-                      { rank: 4, name: "Big Ace",          count: "📈 1.38k"},
-                      { rank: 5, name: "SpontanYall",      count: "📈 330"  },
+                      { rank: 1, name: "Big KazhDog",      count: "👑 #1"   },
+                      { rank: 2, name: "Chario Ace",       count: "📈 —"    },
+                      { rank: 3, name: "BJM The Rapper",   count: "📈 —"    },
+                      { rank: 4, name: "Jay Paul Beats",   count: "📈 —"    },
+                      { rank: 5, name: "Big Ace",          count: "📈 —"    },
                     ].map((r) => (
                       <div key={r.rank} style={{ display: "flex", justifyContent: "space-between", marginBottom: 2 }}>
                         <span style={{ fontSize: 7 }}>{r.rank}. {r.name}</span>

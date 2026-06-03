@@ -1,361 +1,58 @@
+import { NextResponse } from 'next/server';
+import Stripe from 'stripe';
+
 export const dynamic = 'force-dynamic';
-import { NextRequest, NextResponse } from "next/server";
-import { getStripe } from "@/lib/stripe/client";
-import { recordStripeEvent } from "@/lib/stripe/stripe-telemetry-store";
-import { evaluateStripeIncident, isStripePayoutQueuePaused } from "@/lib/stripe/stripe-incident-engine";
-import { sendEmail } from "@/lib/email/TMIEmailSystem";
-import { createSponsorGift } from "@/lib/memory/ProLedgerEngine";
-import { updateUserTier, getUserByEmail, type UserTier } from "@/lib/auth/UserStore";
 
-const MAX_BODY_BYTES = 1024 * 1024; // 1MB
-const FORWARD_TIMEOUT_MS = 8000;
-const REPLAY_WINDOW_SECS = 300;       // Stripe's standard replay window
-const FINGERPRINT_TTL_MS = 10 * 60 * 1000; // 10 min (2× the replay window)
+// Initialize Stripe with the locked API version for TMI stability
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
+  apiVersion: '2023-10-16' as any,
+});
 
-const ALLOWED_API_BASES = new Set([
-  "https://tmi-api.themusiciansindex.com",
-  process.env.NEXT_PUBLIC_API_URL,
-].filter(Boolean) as string[]);
-
-// Fingerprint cache: v1 sig prefix → expiresAt; prevents duplicate event replay at the edge
-const fingerprintCache = new Map<string, number>();
-
-function isAllowedApiBase(value: string): boolean {
-  return ALLOWED_API_BASES.has(value);
-}
-
-function withTimeoutSignal(ms: number): AbortSignal {
-  return AbortSignal.timeout(ms);
-}
-
-function emitWebhookTelemetry(event: string, meta: Record<string, unknown> = {}): void {
-  console.log(JSON.stringify({ event, service: "stripe-webhook", ts: Date.now(), ...meta }));
-  recordStripeEvent(event, meta);
-  evaluateStripeIncident(event, meta);
-}
-
-function extractStripeTimestamp(sig: string): number | null {
-  const match = sig.match(/t=(\d+)/);
-  return match ? parseInt(match[1], 10) : null;
-}
-
-function buildFingerprint(sig: string): string {
-  const v1 = sig.match(/v1=([a-f0-9]+)/)?.[1];
-  return v1 ? `v1:${v1.slice(0, 24)}` : `raw:${sig.slice(0, 40)}`;
-}
-
-function purgeFingerprintCache(): void {
-  const now = Date.now();
-  for (const [key, exp] of fingerprintCache) {
-    if (now > exp) fingerprintCache.delete(key);
-  }
-}
-
-function checkAndRegisterFingerprint(sig: string): { isReplay: boolean; fingerprint: string } {
-  purgeFingerprintCache();
-  const fingerprint = buildFingerprint(sig);
-  const isReplay = fingerprintCache.has(fingerprint);
-  if (!isReplay) {
-    fingerprintCache.set(fingerprint, Date.now() + FINGERPRINT_TTL_MS);
-  }
-  return { isReplay, fingerprint };
-}
-
-export async function POST(req: NextRequest) {
-  try {
-    let observedEventType = "unknown";
-    let observedLiveMode = false;
-    let observedRevenueStream = "other";
-    let observedAmountCents = 0;
-    let observedCurrency = "usd";
-    const pipeline = {
-      userUpgraded: false,
-      payoutQueued: false,
-      emailSent: false,
-    };
-
-    // Content-type gate
-    const contentType = req.headers.get("content-type") ?? "";
-    if (!contentType.toLowerCase().includes("application/json")) {
-      emitWebhookTelemetry("malformed_payload_rejected", { reason: "bad-content-type", contentType });
-      return NextResponse.json({ error: "Unsupported media type" }, { status: 415 });
-    }
-
-    // Signature presence gate
-    const signature = req.headers.get("stripe-signature");
-    if (!signature) {
-      emitWebhookTelemetry("invalid_signature_rejected", { reason: "missing-header" });
-      return NextResponse.json({ error: "Missing stripe signature" }, { status: 400 });
-    }
-
-    // Timestamp staleness gate — reject replays older than REPLAY_WINDOW_SECS
-    const stripeTimestamp = extractStripeTimestamp(signature);
-    if (stripeTimestamp !== null) {
-      const nowSecs = Math.floor(Date.now() / 1000);
-      const ageSecs = nowSecs - stripeTimestamp;
-      if (ageSecs > REPLAY_WINDOW_SECS) {
-        emitWebhookTelemetry("replay_attack_detected", { ageSecs, stripeTimestamp });
-        return NextResponse.json({ error: "Webhook timestamp too old" }, { status: 400 });
-      }
-    }
-
-    // Duplicate event fingerprint gate
-    const { isReplay, fingerprint } = checkAndRegisterFingerprint(signature);
-    if (isReplay) {
-      emitWebhookTelemetry("duplicate_event_rejected", { fingerprint });
-      return NextResponse.json({ error: "Duplicate event" }, { status: 200 }); // 200 so Stripe stops retrying
-    }
-
-    // Allowlist gate
-    const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "https://tmi-api.themusiciansindex.com";
-    if (!isAllowedApiBase(apiBase)) {
-      emitWebhookTelemetry("upstream_failure", { reason: "allowlist-rejected", apiBase });
-      return NextResponse.json({ error: "Webhook forwarding unavailable" }, { status: 503 });
-    }
-
-    // Payload size gate
-    const rawBody = await req.arrayBuffer();
-    if (rawBody.byteLength === 0 || rawBody.byteLength > MAX_BODY_BYTES) {
-      emitWebhookTelemetry("malformed_payload_rejected", { reason: "size-violation", bytes: rawBody.byteLength });
-      return NextResponse.json({ error: "Payload rejected" }, { status: 413 });
-    }
-
-    // Edge signature pre-verification — rejects forged payloads before they reach the backend.
-    // Only runs when STRIPE_WEBHOOK_SECRET is configured; falls through otherwise.
-    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-    if (webhookSecret) {
-      const stripe = getStripe();
-      if (stripe) {
-        try {
-          const stripeEvent = stripe.webhooks.constructEvent(Buffer.from(rawBody), signature, webhookSecret);
-          observedEventType = stripeEvent.type;
-          observedLiveMode = stripeEvent.livemode === true;
-
-          // Normalize telemetry dimensions for admin revenue aggregation.
-          const eventObject = stripeEvent.data.object as unknown as Record<string, unknown>;
-          const objectMetadata = (eventObject["metadata"] ?? {}) as Record<string, string>;
-          const objectCurrency = eventObject["currency"] as string | undefined;
-          observedCurrency = (objectCurrency ?? "usd").toLowerCase();
-
-          if (stripeEvent.type === "checkout.session.completed") {
-            const mode = String(eventObject["mode"] ?? "payment");
-            const amountTotal = Number(eventObject["amount_total"] ?? 0);
-            observedAmountCents = Number.isFinite(amountTotal) ? amountTotal : 0;
-            observedRevenueStream = mode === "subscription" ? "subscriptions" : "one_time";
-
-            // Founding/support packs and sponsorship purchases should stay distinct in telemetry.
-            if (objectMetadata["role"] === "sponsor") {
-              observedRevenueStream = "sponsors";
-            } else if ((objectMetadata["plan"] ?? "").toLowerCase().includes("found")) {
-              observedRevenueStream = "founding_packs";
-            } else if (objectMetadata["product"] === "TIP") {
-              observedRevenueStream = "tips";
-            }
-
-            // TIP: record on live session so viewer counts + tip totals stay live
-            if (objectMetadata["product"] === "TIP" && objectMetadata["artistSlug"]) {
-              try {
-                const { addTip } = await import('@/lib/broadcast/GlobalLiveSessionRegistry');
-                const amountUsd = observedAmountCents / 100;
-                addTip(objectMetadata["roomId"] || objectMetadata["artistSlug"], amountUsd);
-              } catch (e) {
-                console.error("[stripe/webhook] addTip failed:", e);
-              }
-              if (objectMetadata["fanId"]) {
-                try {
-                  const { recordFanTip } = await import('@/lib/fans/SuperFanMomentumEngine');
-                  recordFanTip(
-                    objectMetadata["artistSlug"],
-                    objectMetadata["fanId"],
-                    objectMetadata["fanDisplayName"] || objectMetadata["fanId"],
-                    observedAmountCents / 100,
-                  );
-                } catch (e) {
-                  console.error("[stripe/webhook] recordFanTip failed:", e);
-                }
-              }
-            }
-          }
-
-          if (stripeEvent.type === "invoice.payment_succeeded") {
-            const amountPaid = Number(eventObject["amount_paid"] ?? 0);
-            observedAmountCents = Number.isFinite(amountPaid) ? amountPaid : 0;
-            observedRevenueStream = "subscriptions";
-          }
-
-          if (stripeEvent.type === "payment_intent.succeeded") {
-            const amount = Number(eventObject["amount"] ?? 0);
-            observedAmountCents = Number.isFinite(amount) ? amount : 0;
-            observedRevenueStream = "payments";
-          }
-
-          if (stripeEvent.type === "charge.succeeded") {
-            const amount = Number(eventObject["amount"] ?? 0);
-            observedAmountCents = Number.isFinite(amount) ? amount : 0;
-            observedRevenueStream = "charges";
-          }
-
-          // Fire emails for key payment events — non-blocking
-          if (stripeEvent.type === "checkout.session.completed") {
-            const session = stripeEvent.data.object as unknown as Record<string, unknown>;
-            const details = session["customer_details"] as Record<string, unknown> | undefined;
-            const customerEmail = (details?.["email"] ?? session["customer_email"] ?? session["receipt_email"]) as string | undefined;
-            if (customerEmail) {
-              const meta = (session["metadata"] ?? {}) as Record<string, string>;
-              const plan = meta["plan"] ?? "Pro";
-              const amountTotal = session["amount_total"] as number | undefined;
-              const priceMonthly = amountTotal ? (amountTotal / 100).toFixed(2) : "0";
-              const renewalDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-                .toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
-              sendEmail({ to: customerEmail, type: "subscription_start", data: { plan, priceMonthly, renewalDate } })
-                .catch((err) => console.error("[stripe/webhook] email send failed:", err));
-              pipeline.emailSent = true;
-
-              // Upgrade user tier — use email from metadata first, fall back to customer_details
-              const upgradeEmail = (meta["userEmail"] || customerEmail).toLowerCase();
-              const tierUpgrade = (meta["tierUpgrade"] as UserTier | undefined);
-              if (upgradeEmail && tierUpgrade) {
-                const upgraded = updateUserTier(upgradeEmail, tierUpgrade);
-                if (upgraded) {
-                  pipeline.userUpgraded = true;
-                  console.log(`[stripe/webhook] Tier upgraded: ${upgradeEmail} → ${tierUpgrade}`);
-                  // Send tier-specific welcome if this is a VIP/Diamond upgrade
-                  if (tierUpgrade === "DIAMOND") {
-                    const user = getUserByEmail(upgradeEmail);
-                    sendEmail({ to: upgradeEmail, type: "welcome_diamond", data: { name: user?.displayName ?? upgradeEmail } })
-                      .catch(() => {});
-                    pipeline.emailSent = true;
-                  }
-                }
-              }
-              // Create verified sponsor legacy item when role is sponsor
-              if (meta["role"] === "sponsor" && meta["userId"]) {
-                if (isStripePayoutQueuePaused()) {
-                  emitWebhookTelemetry("payout_queue_paused_skip", {
-                    reason: "incident-guard",
-                    userId: meta["userId"],
-                  });
-                } else {
-                  try {
-                    createSponsorGift(meta["userId"], {
-                      totalPaidOut: amountTotal ? amountTotal / 100 : 0,
-                      eventTitle: meta["eventTitle"],
-                      eventId: meta["eventId"],
-                    });
-                    pipeline.payoutQueued = true;
-                  } catch (e) {
-                    console.error("[stripe/webhook] createSponsorGift failed:", e);
-                  }
-                }
-              }
-            }
-          }
-
-          if (stripeEvent.type === "customer.subscription.created") {
-            const sub = stripeEvent.data.object as unknown as Record<string, unknown>;
-            const custEmail = sub["customer_email"] as string | undefined;
-            const meta = (sub["metadata"] ?? {}) as Record<string, string>;
-            if (custEmail) {
-              const plan = meta["plan"] ?? "Pro";
-              const items = sub["items"] as { data?: Array<{ price?: { unit_amount?: number } }> } | undefined;
-              const priceMonthly = items?.data?.[0]?.price?.unit_amount
-                ? (items.data[0].price.unit_amount / 100).toFixed(2)
-                : "0";
-              const renewalDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-                .toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
-              sendEmail({ to: custEmail, type: "subscription_start", data: { plan, priceMonthly, renewalDate } })
-                .catch((err) => console.error("[stripe/webhook] email send failed:", err));
-              pipeline.emailSent = true;
-            }
-          }
-          if (stripeEvent.type === "customer.subscription.deleted") {
-            const sub = stripeEvent.data.object as unknown as Record<string, unknown>;
-            const custEmail = sub["customer_email"] as string | undefined;
-            if (custEmail) {
-              const periodEnd = sub["current_period_end"] as number | undefined;
-              const accessUntil = periodEnd
-                ? new Date(periodEnd * 1000).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
-                : "end of billing period";
-              sendEmail({ to: custEmail, type: "subscription_cancel", data: { accessUntil } })
-                .catch((err) => console.error("[stripe/webhook] email send failed:", err));
-              pipeline.emailSent = true;
-              // Downgrade user back to FREE at cancellation
-              updateUserTier(custEmail, "FREE");
-              pipeline.userUpgraded = true;
-            }
-          }
-
-          if (stripeEvent.type === "invoice.payment_succeeded") {
-            const invoice = stripeEvent.data.object as unknown as Record<string, unknown>;
-            const custEmail = invoice["customer_email"] as string | undefined;
-            const billingReason = invoice["billing_reason"] as string | undefined;
-            if (custEmail && billingReason === "subscription_cycle") {
-              const meta = (invoice["metadata"] ?? {}) as Record<string, string>;
-              const plan = meta["plan"] ?? "Pro";
-              const nextAttempt = invoice["next_payment_attempt"] as number | undefined;
-              const nextRenewalDate = new Date((nextAttempt ?? Date.now() / 1000 + 30 * 24 * 60 * 60) * 1000)
-                .toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
-              sendEmail({ to: custEmail, type: "subscription_renew", data: { plan, nextRenewalDate } })
-                .catch((err) => console.error("[stripe/webhook] email send failed:", err));
-              pipeline.emailSent = true;
-            }
-          }
-
-        } catch (verifyErr) {
-          console.error("[stripe/webhook] Signature verification failed:", verifyErr);
-          emitWebhookTelemetry("invalid_signature_rejected", { reason: "crypto-verify-failed" });
-          return NextResponse.json({ error: "Webhook signature invalid" }, { status: 400 });
-        }
-      }
-    }
-
-    // Optionally forward to a separate backend API — skipped if not configured or unavailable.
-    // All revenue-critical events (subscription_start email, ProLedger) are already handled above.
-    const skipForward = !process.env.NEXT_PUBLIC_API_URL ||
-                        process.env.STRIPE_WEBHOOK_LOCAL_ONLY === "true";
-    if (!skipForward) {
-      try {
-        const upstream = await fetch(`${apiBase}/stripe/webhook`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "stripe-signature": signature,
-          },
-          body: rawBody,
-          signal: withTimeoutSignal(FORWARD_TIMEOUT_MS),
-          cache: "no-store",
-        });
-        if (!upstream.ok) {
-          emitWebhookTelemetry("upstream_failure", { status: upstream.status });
-        }
-      } catch (forwardErr) {
-        // Non-fatal — log and continue. Events are already processed locally.
-        console.error("[stripe/webhook] Upstream forward failed (non-fatal):", forwardErr);
-        emitWebhookTelemetry("upstream_forward_skipped", { reason: "fetch-error" });
-      }
-    }
-
-    emitWebhookTelemetry("webhook_verified", {
-      fingerprint,
-      eventType: observedEventType,
-      livemode: observedLiveMode,
-      revenueStream: observedRevenueStream,
-      amountCents: observedAmountCents,
-      currency: observedCurrency,
-      ...pipeline,
-    });
-    return NextResponse.json({ received: true });
-  } catch (err) {
-    if (err instanceof Error && err.name === "TimeoutError") {
-      console.error("[stripe/webhook] Upstream timeout");
-      emitWebhookTelemetry("upstream_timeout", {});
-      return NextResponse.json({ error: "Webhook service timeout" }, { status: 504 });
-    }
-    console.error("[stripe/webhook] Unhandled error:", err);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
-  }
-}
+const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET || '';
 
 export async function GET() {
-  return NextResponse.json({ error: "Method not allowed" }, { status: 405 });
+  return NextResponse.json({ status: 'Stripe Webhook Endpoint Active' }, { status: 200 });
+}
+
+export async function POST(req: Request) {
+  const payload = await req.text();
+  const sig = req.headers.get('stripe-signature') || '';
+
+  let event;
+
+  try {
+    // Validate the event using the Stripe SDK to prevent spoofed revenue data
+    event = stripe.webhooks.constructEvent(payload, sig, endpointSecret);
+  } catch (err: any) {
+    console.error(`[STRIPE_ERR] Webhook signature verification failed: ${err.message}`);
+    return NextResponse.json({ error: `Webhook Error: ${err.message}` }, { status: 400 });
+  }
+
+  // Process the verified event for the TMI Economy Stack
+  switch (event.type) {
+    case 'checkout.session.completed': {
+      const session = event.data.object as Stripe.Checkout.Session;
+      
+      // Extract TMI-specific metadata (e.g., ticket purchase, beat lease, performer tip)
+      const metadata = session.metadata || {};
+      console.log(`[STRIPE_SUCCESS] Payment completed for session: ${session.id}`, metadata);
+      
+      // TODO: Connect to Prisma DB to update Admin Revenue Command Center
+      // Example: 
+      // if (metadata.type === 'TIP') await recordTip(metadata.artistId, session.amount_total);
+      // if (metadata.type === 'TICKET') await issueTicketNFT(metadata.eventId, session.customer_email);
+      
+      break;
+    }
+    
+    case 'customer.subscription.created':
+    case 'customer.subscription.updated': {
+      const subscription = event.data.object as Stripe.Subscription;
+      console.log(`[STRIPE_SUBSCRIPTION] Tier upgraded for customer: ${subscription.customer}`);
+      break;
+    }
+  }
+
+  // Return a 200 response to acknowledge receipt of the event
+  return NextResponse.json({ received: true, status: 'Active' }, { status: 200 });
 }

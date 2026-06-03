@@ -10,7 +10,7 @@ import AvatarVenueAnchor from "@/components/avatar/AvatarVenueAnchor";
 const VENUES = [
   { id: "world-concert",   name: "World Concert",     type: "CONCERT",   color: "#FFD700", venueIndex: 1 as const, cap: 18500, bpm: 120, viewers: 3400, isLive: true,  dance: false, href: "/rooms/world-concert?autoSeat=1",     tipHref: "/api/stripe/checkout?priceId=price_tip&amount=500&productName=Tip+World+Concert&mode=payment" },
   { id: "battle-arena",   name: "Battle Arena",       type: "BATTLE",    color: "#FF2DAA", venueIndex: 1 as const, cap: 18500, bpm: 145, viewers: 2100, isLive: true,  dance: false, href: "/battles/live",                        tipHref: "/api/stripe/checkout?priceId=price_tip&amount=500&productName=Tip+Battle+Arena&mode=payment" },
-  { id: "challenge-arena",name: "Challenge Arena",    type: "CHALLENGE", color: "#FFD700", venueIndex: 1 as const, cap: 18500, bpm: 130, viewers: 1640, isLive: true,  dance: false, href: "/rooms/challenge-arena?autoSeat=1",    tipHref: "/api/stripe/checkout?priceId=price_tip&amount=500&productName=Tip+Challenge+Arena&mode=payment" },
+  { id: "challenge-arena",name: "Challenge Arena",    type: "CHALLENGE", color: "#FFD700", venueIndex: 1 as const, cap: 18500, bpm: 130, viewers: 1640, isLive: true,  dance: false, href: "/challenge",                           tipHref: "/api/stripe/checkout?priceId=price_tip&amount=500&productName=Tip+Challenge+Arena&mode=payment" },
   { id: "cypher",         name: "Cypher Arena",       type: "CYPHER",    color: "#00FFFF", venueIndex: 0 as const, cap: 2730,  bpm: 118, viewers: 841,  isLive: true,  dance: false, href: "/rooms/cypher?autoSeat=1",             tipHref: "/api/stripe/checkout?priceId=price_tip&amount=500&productName=Tip+Cypher+Arena&mode=payment" },
   { id: "monthly-idol",   name: "Monthly Idol",       type: "GAME SHOW", color: "#FF9500", venueIndex: 0 as const, cap: 2730,  bpm: 110, viewers: 1204, isLive: true,  dance: false, href: "/rooms/monthly-idol?autoSeat=1",       tipHref: "/api/stripe/checkout?priceId=price_tip&amount=500&productName=Tip+Monthly+Idol&mode=payment" },
   { id: "dirty-dozens",   name: "Dirty Dozens",       type: "GAME SHOW", color: "#AA2DFF", venueIndex: 1 as const, cap: 18500, bpm: 120, viewers: 920,  isLive: false, dance: false, href: "/rooms/dirty-dozens?autoSeat=1",       tipHref: "" },
@@ -91,7 +91,7 @@ export default function WorldLobbySection() {
   }, []);
 
   return (
-    <section style={{ background: "#050510", color: "#fff", fontFamily: "'Inter', sans-serif", paddingBottom: 80 }}>
+    <section style={{ background: "#050510", color: "#fff", fontFamily: "'Inter', sans-serif", paddingBottom: 80, position: "relative", overflow: "hidden" }}>
       <style>{`@keyframes wlsBlink{0%,100%{opacity:1}50%{opacity:0}}`}</style>
 
       {/* Section header */}
@@ -115,13 +115,13 @@ export default function WorldLobbySection() {
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 16px" }}>
 
         {/* Arena Triangle — 3 primary CTAs */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 20 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10, marginBottom: 20 }}>
           {[
             { emoji: "⚔️", label: "BATTLE ARENA",   sub: "1v1 · Winner Stays · 18,500", color: "#FF2DAA", href: "/battles/live" },
-            { emoji: "⚡", label: "CHALLENGE ARENA", sub: "Song vs Song · Nonstop",       color: "#FFD700", href: "/rooms/challenge-arena?autoSeat=1" },
+            { emoji: "⚡", label: "CHALLENGE ARENA", sub: "Song vs Song · Nonstop",       color: "#FFD700", href: "/challenge" },
             { emoji: "🎤", label: "CYPHER ARENA",    sub: "Open Mic · Community Vote",     color: "#00FFFF", href: "/rooms/cypher?autoSeat=1" },
           ].map(a => (
-            <Link key={a.label} href={a.href} style={{ textDecoration: "none", padding: "14px 12px", borderRadius: 12, background: `linear-gradient(135deg, ${a.color}12, rgba(5,5,16,0.98))`, border: `1.5px solid ${a.color}44`, display: "flex", flexDirection: "column", gap: 4 }}>
+            <Link key={a.label} href={a.href} style={{ textDecoration: "none", padding: "14px 12px", borderRadius: 12, background: "rgba(5,5,16,0.98)", border: `1.5px solid ${a.color}44`, display: "flex", flexDirection: "column", gap: 4 }}>
               <div style={{ fontSize: 24 }}>{a.emoji}</div>
               <div style={{ fontSize: 10, fontWeight: 900, color: a.color, letterSpacing: "0.06em" }}>{a.label}</div>
               <div style={{ fontSize: 9, color: "rgba(255,255,255,0.45)" }}>{a.sub}</div>
@@ -131,7 +131,7 @@ export default function WorldLobbySection() {
         </div>
 
         {/* All venues grid */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 12, marginBottom: 24 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(230px, 1fr))", gap: 12, marginBottom: 24 }}>
           {VENUES.map(v => <VenueCard key={v.id} v={v} />)}
         </div>
 
@@ -140,7 +140,7 @@ export default function WorldLobbySection() {
           {[
             { href: "/live/rooms", label: "📡 ALL ROOMS", color: "#FF2020" },
             { href: "/battles", label: "⚔️ BATTLES", color: "#FF2DAA" },
-            { href: "/rooms/world-dance-party", label: "💃 DANCE PARTY", color: "#AA2DFF" },
+            { href: "/rooms/world-dance-party?autoSeat=1", label: "💃 DANCE PARTY", color: "#AA2DFF" },
             { href: "/magazine", label: "📖 MAGAZINE", color: "#FFD700" },
             { href: "/subscribe", label: "👑 SUBSCRIBE", color: "#00FF88" },
             { href: "/live/go", label: "🔴 GO LIVE", color: "#FF6B35" },

@@ -168,13 +168,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           strategy="afterInteractive"
           src="//resources.infolinks.com/js/infolinks_main.js"
         />
-        <Script id="bidvertiser-verification" strategy="beforeInteractive">
-          {`<!-- Bidvertiser2104976 -->`}
-        </Script>
       </head>
       <body className="tmi-obsidian-cinematic">
-        {/* BidVertiser site verification — must appear in HTML source */}
-        <div dangerouslySetInnerHTML={{ __html: '<!-- Bidvertiser2104976 -->' }} style={{ display: 'none' }} />
+        {/* BidVertiser site verification rendered as real HTML comment in page source */}
+        <div id="bv-verify" dangerouslySetInnerHTML={{ __html: '<!-- Bidvertiser2104976 -->' }} style={{ display: 'none', position: 'absolute', width: 0, height: 0, overflow: 'hidden' }} />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }}
