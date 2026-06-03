@@ -6,10 +6,10 @@ import { useMemo, useState } from "react";
 const ACCENT = "#00FF88";
 
 const STATS = [
-  { label: "Events Promoted",  value: "6",        icon: "🎪", color: "#00FF88" },
-  { label: "Artists Booked",   value: "14",       icon: "🎤", color: "#00FFFF" },
-  { label: "Tickets Sold",     value: "1,840",    icon: "🎟️", color: "#FFD700" },
-  { label: "Gross Revenue",    value: "$64,400",  icon: "💵", color: "#AA2DFF" },
+  { label: "Events Promoted",  value: "0",    icon: "🎪", color: "#00FF88" },
+  { label: "Artists Booked",   value: "0",    icon: "🎤", color: "#00FFFF" },
+  { label: "Tickets Sold",     value: "0",    icon: "🎟️", color: "#FFD700" },
+  { label: "Gross Revenue",    value: "$0",   icon: "💵", color: "#AA2DFF" },
 ];
 
 const QUICK_ACTIONS = [

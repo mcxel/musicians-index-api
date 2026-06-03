@@ -63,24 +63,24 @@ export default function AdvertiserSponsorHub() {
             
             <div>
               <div className="flex justify-between text-xs mb-2">
-                <span className="font-bold text-white">Nova Cipher Takeover</span>
-                <span style={{ color: accentColor }} className="font-bold">$450 / $1000</span>
+                <span className="font-bold text-white">No Active Campaign</span>
+                <span style={{ color: accentColor }} className="font-bold">$0 / $0</span>
               </div>
               <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-                <motion.div 
-                  initial={{ width: 0 }} animate={{ width: "45%" }} 
-                  className="h-full rounded-full" style={{ background: accentColor }} 
+                <motion.div
+                  initial={{ width: 0 }} animate={{ width: "0%" }}
+                  className="h-full rounded-full" style={{ background: accentColor }}
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-white/5 border border-white/10 p-3 rounded-lg text-center">
-                <div className="text-2xl font-black text-white">12</div>
+                <div className="text-2xl font-black text-white">0</div>
                 <div className="text-[9px] text-white/40 tracking-widest mt-1">ACTIVE SLOTS</div>
               </div>
               <div className="bg-white/5 border border-white/10 p-3 rounded-lg text-center">
-                <div className="text-2xl font-black text-white">EDM</div>
+                <div className="text-2xl font-black text-white">—</div>
                 <div className="text-[9px] text-white/40 tracking-widest mt-1">TARGET GENRE</div>
               </div>
             </div>
@@ -146,17 +146,7 @@ export default function AdvertiserSponsorHub() {
 
             <div className="mt-4">
               <h3 className="text-[10px] font-black tracking-widest text-white/40 mb-3">TOP SPONSORED ARTISTS</h3>
-              {[
-                { rank: 1, name: "Nova Cipher", impact: "High" },
-                { rank: 2, name: "Zion Freq", impact: "High" },
-                { rank: 3, name: "Ray Journey", impact: "Med" }
-              ].map(artist => (
-                <div key={artist.rank} className="flex items-center gap-3 bg-white/5 p-3 rounded-lg border border-white/5 mb-2">
-                  <span className="text-sm font-black text-white/30">0{artist.rank}</span>
-                  <span className="text-xs font-bold text-white flex-1">{artist.name}</span>
-                  <span className="text-[9px] px-2 py-1 bg-white/10 rounded tracking-wider">{artist.impact}</span>
-                </div>
-              ))}
+              <div className="text-[10px] text-white/30 text-center py-4">No sponsored artists yet — launch a campaign to begin</div>
             </div>
           </aside>
         </div>

@@ -62,7 +62,7 @@ export default function PerformerHubPage() {
         <div style={{ position: "relative", zIndex: 1, background: "linear-gradient(135deg, rgba(170,45,255,0.15), rgba(255,45,170,0.08))", borderBottom: "1px solid rgba(170,45,255,0.15)", padding: "14px 28px", display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
           <div>
             <div style={{ fontSize: 9, letterSpacing: "0.28em", color: "#AA2DFF", fontWeight: 800 }}>PERFORMER CONTROL ROOM</div>
-            <div style={{ fontSize: 18, fontWeight: 900, marginTop: 3 }}>Nova Cipher <span style={{ color: "#FFD700", fontSize: 13 }}>· Rank #1</span></div>
+            <div style={{ fontSize: 18, fontWeight: 900, marginTop: 3 }}>Your Stage <span style={{ color: "#FFD700", fontSize: 13 }}>· Performer Hub</span></div>
           </div>
           <div style={{ display: "flex", gap: 10, marginLeft: "auto", flexWrap: "wrap" }}>
             <Link href="/performer/studio" style={{ padding: "9px 20px", borderRadius: 9, background: "linear-gradient(135deg, #AA2DFF, #FF2DAA)", color: "#fff", fontSize: 11, fontWeight: 900, textDecoration: "none", letterSpacing: "0.08em", boxShadow: "0 0 20px rgba(170,45,255,0.35)" }}>
@@ -78,7 +78,7 @@ export default function PerformerHubPage() {
         </div>
 
         <div style={{ position: "relative", zIndex: 1 }}>
-          <PerformerHubDashboard performerId="nova-cipher" displayName="Nova Cipher" />
+          <PerformerHubDashboard performerId="current-user" displayName="Your Profile" />
 
           <div style={{ maxWidth: 1300, margin: "0 auto", padding: "0 24px 40px", display: "flex", flexDirection: "column", gap: 32 }}>
 
@@ -99,9 +99,9 @@ export default function PerformerHubPage() {
                 <div style={{ fontSize: 9, letterSpacing: "0.2em", color: "#00E5FF", fontWeight: 800, marginBottom: 12 }}>🎪 BACKSTAGE / GREEN ROOM</div>
                 <div style={{ display: "flex", flex: 1, flexDirection: "column", gap: 8 }}>
                   {[
-                    { label: "Fans waiting in lobby", value: "847", color: "#00FFFF" },
-                    { label: "Show starts in", value: "02:34:18", color: "#FFD700" },
-                    { label: "Set list items", value: "4 tracks", color: "#AA2DFF" },
+                    { label: "Fans waiting in lobby", value: "0", color: "#00FFFF" },
+                    { label: "Show starts in", value: "—", color: "#FFD700" },
+                    { label: "Set list items", value: "0 tracks", color: "#AA2DFF" },
                   ].map(s => (
                     <div key={s.label} style={{ display: "flex", justifyContent: "space-between", padding: "8px 10px", background: "rgba(255,255,255,0.03)", borderRadius: 8 }}>
                       <span style={{ fontSize: 11, color: "rgba(255,255,255,0.5)" }}>{s.label}</span>
@@ -113,7 +113,7 @@ export default function PerformerHubPage() {
                     <Link href="/rooms/fan-meetup" style={{ flex: 1, padding: "8px", background: "rgba(0,229,255,0.08)", border: "1px solid rgba(0,229,255,0.2)", color: "#00E5FF", borderRadius: 8, fontWeight: 800, fontSize: 9, textDecoration: "none", textAlign: "center" }}>💬 FAN CHAT</Link>
                   </div>
                   <div style={{ marginTop: 10 }}>
-                    <TipBar performerId="nova-cipher" performerName="Nova Cipher" accentColor="#00E5FF" compact />
+                    <TipBar performerId="current-user" performerName="Your Stage" accentColor="#00E5FF" compact />
                   </div>
                 </div>
               </div>
@@ -170,9 +170,9 @@ export default function PerformerHubPage() {
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
                   {[
-                    { item: "Crown Tee", price: "$35", sold: 12, emoji: "👕" },
-                    { item: "Beat Pack", price: "$20", sold: 8,  emoji: "🎛️" },
-                    { item: "NFT Drop",  price: "$50", sold: 3,  emoji: "🖼️" },
+                    { item: "Crown Tee", price: "—", sold: 0, emoji: "👕" },
+                    { item: "Beat Pack", price: "—", sold: 0, emoji: "🎛️" },
+                    { item: "NFT Drop",  price: "—", sold: 0, emoji: "🖼️" },
                   ].map(m => (
                     <div key={m.item} style={{ background: "rgba(255,255,255,0.03)", borderRadius: 10, padding: "10px 8px", textAlign: "center" }}>
                       <div style={{ fontSize: 22, marginBottom: 4 }}>{m.emoji}</div>
@@ -218,7 +218,7 @@ export default function PerformerHubPage() {
                   <Link href="/magazine" style={{ fontSize: 9, color: "#FFD700", textDecoration: "none", fontWeight: 700 }}>READ ALL →</Link>
                 </div>
                 {[
-                  { title: "Nova Cipher: The Crown, The Journey", issue: "Issue 01 · Cover Story", color: "#FFD700" },
+                  { title: "Coming Soon", issue: "Issue 01 · TMI Magazine", color: "#FFD700" },
                   { title: "Top 10 Cypher Moments of 2026",       issue: "Issue 01 · Feature",     color: "#00FFFF" },
                   { title: "Battle Night — Full Recap",            issue: "Issue 01 · Recap",       color: "#FF2DAA" },
                 ].map(a => (
@@ -238,7 +238,7 @@ export default function PerformerHubPage() {
 
         {/* Mixtape share — send beats/tracks as a package */}
         <div style={{ padding: "0 18px 80px" }}>
-          <MixtapeShareCard curatorId="current-user" curatorName="Nova Cipher" />
+          <MixtapeShareCard curatorId="current-user" curatorName="Your Mixtape" />
         </div>
       </div>
     </RoomContainer>
