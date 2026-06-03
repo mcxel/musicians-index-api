@@ -722,9 +722,9 @@ function FanTheaterInner() {
           <Panel glowColor="#FFD700" style={{ padding: 10, textAlign: "center" }}>
             <div style={{ fontSize: 8, color: "rgba(255,255,255,0.35)", letterSpacing: "0.1em", marginBottom: 4 }}>BILLBOARD FANS</div>
             <div className="tmi-orbitron" style={{ fontSize: 20, fontWeight: 900, color: "#FFD700", animation: "glow 2s infinite" }}>
-              38.5K
+              LIVE
             </div>
-            <div style={{ fontSize: 9, color: "rgba(255,255,255,0.5)", marginTop: 3 }}>Chario Ace</div>
+            <div style={{ fontSize: 9, color: "rgba(255,255,255,0.5)", marginTop: 3 }}>Now Playing</div>
             <motion.div
               animate={{ opacity: [1, 0.4, 1] }}
               transition={{ repeat: Infinity, duration: 1.4 }}
@@ -792,7 +792,7 @@ function FanTheaterInner() {
           fontSize: 9, color: "#FF6B00", letterSpacing: "0.12em", fontWeight: 700,
           animation: "venueTicker 32s linear infinite",
         }}>
-          🔴 FAN THEATER LIVE &nbsp;·&nbsp; 4,200 WATCHING &nbsp;·&nbsp; CHARIO ACE ON STAGE &nbsp;·&nbsp; TIPS: $312 TODAY &nbsp;·&nbsp; VIP SEATS AVAILABLE &nbsp;·&nbsp; NEXT SHOW: 9PM EST &nbsp;·&nbsp; 🔴 FAN THEATER LIVE &nbsp;·&nbsp; 4,200 WATCHING &nbsp;·&nbsp; CHARIO ACE ON STAGE &nbsp;·&nbsp; TIPS: $312 TODAY &nbsp;·&nbsp; VIP SEATS AVAILABLE &nbsp;·&nbsp; NEXT SHOW: 9PM EST &nbsp;·&nbsp;
+          🔴 FAN THEATER LIVE &nbsp;·&nbsp; JOIN THE AUDIENCE &nbsp;·&nbsp; TMI FAN THEATER &nbsp;·&nbsp; LIVE PERFORMANCES &nbsp;·&nbsp; VIP SEATS AVAILABLE &nbsp;·&nbsp; BE PART OF THE CROWD &nbsp;·&nbsp; 🔴 FAN THEATER LIVE &nbsp;·&nbsp; JOIN THE AUDIENCE &nbsp;·&nbsp; TMI FAN THEATER &nbsp;·&nbsp; LIVE PERFORMANCES &nbsp;·&nbsp; VIP SEATS AVAILABLE &nbsp;·&nbsp; BE PART OF THE CROWD &nbsp;·&nbsp;
         </div>
       </div>
 

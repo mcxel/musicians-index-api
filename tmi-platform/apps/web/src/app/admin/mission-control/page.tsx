@@ -56,12 +56,12 @@ const ROOMS_SEED = [
 ];
 
 const STAT_CARDS = [
-  { icon: "👥", label: "Total Users",    value: "12,841", delta: "+124",  deltaColor: C.green },
-  { icon: "🟢", label: "Online Now",     value: "1,204",  delta: "+8",    deltaColor: C.green },
-  { icon: "💳", label: "Paid Members",   value: "3,271",  delta: "+22",   deltaColor: C.green },
-  { icon: "💰", label: "Revenue Today",  value: "$8,940", delta: "+$1.2k",deltaColor: C.green },
-  { icon: "🎤", label: "Live Now",       value: "14",     delta: "+3",    deltaColor: C.green },
-  { icon: "📢", label: "Ad Revenue",     value: "$520",   delta: "+$80",  deltaColor: C.cyan  },
+  { icon: "👥", label: "Total Users",    value: "—", delta: "live",  deltaColor: C.green },
+  { icon: "🟢", label: "Online Now",     value: "—",  delta: "live",    deltaColor: C.green },
+  { icon: "💳", label: "Paid Members",   value: "—",  delta: "live",   deltaColor: C.green },
+  { icon: "💰", label: "Revenue Today",  value: "—", delta: "Stripe",deltaColor: C.green },
+  { icon: "🎤", label: "Live Now",       value: "—",     delta: "live",    deltaColor: C.green },
+  { icon: "📢", label: "Ad Revenue",     value: "—",   delta: "live",  deltaColor: C.cyan  },
 ];
 
 const PLATFORM_HEALTH: Gate[] = [

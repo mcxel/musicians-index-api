@@ -122,6 +122,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <head>
+        {/* BidVertiser verification */}
+        {/* Bidvertiser2104976 */}
         <Script
           id="google-adsense"
           strategy="beforeInteractive"
@@ -153,8 +155,25 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             }}
           />
         )}
+        {/* Infolinks ad network global script */}
+        <Script id="infolinks-config" strategy="afterInteractive">
+          {`
+            var infolinks_pid = 3445854;
+            var infolinks_wsid = 0;
+          `}
+        </Script>
+        <Script
+          id="infolinks-main"
+          strategy="afterInteractive"
+          src="//resources.infolinks.com/js/infolinks_main.js"
+        />
+        <Script id="bidvertiser-verification" strategy="beforeInteractive">
+          {`<!-- Bidvertiser2104976 -->`}
+        </Script>
       </head>
       <body className="tmi-obsidian-cinematic">
+        {/* BidVertiser site verification — must appear in HTML source */}
+        <div dangerouslySetInnerHTML={{ __html: '<!-- Bidvertiser2104976 -->' }} style={{ display: 'none' }} />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }}
