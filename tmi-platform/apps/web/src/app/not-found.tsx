@@ -1,4 +1,6 @@
-import Link from 'next/link';
+'use client';
+
+import React from 'react';
 
 export default function NotFound() {
   return (
@@ -9,7 +11,7 @@ export default function NotFound() {
         <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', marginBottom: '32px', letterSpacing: '0.1em' }}>
           The venue or article you are looking for does not exist on the TMI network.
         </p>
-        <Link href="/home/1" style={{
+        <a href="/home/1" style={{
           display: 'inline-block',
           padding: '12px 24px',
           background: 'var(--pink, #FF2DAA)',
@@ -19,7 +21,7 @@ export default function NotFound() {
           fontWeight: 900,
           fontSize: '12px',
           letterSpacing: '0.1em'
-        }}>RETURN TO LOBBY</Link>
+        }}>RETURN TO LOBBY</a>
       </div>
     </main>
   );
