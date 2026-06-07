@@ -24,33 +24,60 @@ const nextConfig = {
       "@bernout/agent-network": path.join(__dirname, "src/stubs/bernout-agent-network.ts"),
     });
 
-    // Next.js 14 expects pages-manifest.json even for App Router-only projects.
-    // Emit an empty one so the post-compilation data-collection phase doesn't throw ENOENT.
+    // Add watchOptions to ignore noisy system files on Windows during `next dev`
+    // This prevents "EINVAL" errors from files like pagefile.sys or System Volume Information.
+    if (!isServer) {
+      config.watchOptions = {
+        ...(config.watchOptions ?? {}),
+        ignored: "**/{DumpStack.log.tmp,System Volume Information,hiberfil.sys,pagefile.sys,swapfile.sys}",
+      };
+    }
+
+    // Ensure pages-manifest and minimal pages fallbacks are present for mixed app/pages setups.
     if (isServer && nextRuntime === "nodejs") {
       config.plugins.push({
         apply(compiler) {
           compiler.hooks.done.tap("EnsurePagesManifest", (stats) => {
             if (stats.compilation.errors.length) return;
-            // pages-manifest.json
+
             const manifestPath = path.join(compiler.outputPath, "pages-manifest.json");
             const manifestDir = path.dirname(manifestPath);
             if (!fs.existsSync(manifestDir)) fs.mkdirSync(manifestDir, { recursive: true });
-            // Always write {} — this project has no Pages Router pages.
-            fs.writeFileSync(manifestPath, JSON.stringify({}));
-            // _document.js — App-Router-only apps have no pages/ directory but Next.js
-            // build workers still attempt to load /_document during "Collecting page data".
-            // Emitting a minimal stub prevents the unhandled PageNotFoundError on Node ≥22.
-            const docDir = path.join(compiler.outputPath, "pages");
-            const docPath = path.join(docDir, "_document.js");
-            if (!fs.existsSync(docDir)) fs.mkdirSync(docDir, { recursive: true });
-            if (!fs.existsSync(docPath)) {
-              fs.writeFileSync(docPath, [
-                '"use strict";',
-                'Object.defineProperty(exports, "__esModule", { value: true });',
-                'exports.default = function Document() { return null; };',
-                'exports.default.getInitialProps = undefined;',
-              ].join("\n"));
-            }
+
+            const manifest = fs.existsSync(manifestPath)
+              ? JSON.parse(fs.readFileSync(manifestPath, "utf8") || "{}")
+              : {};
+
+            const pagesDir = path.join(compiler.outputPath, "pages");
+            if (!fs.existsSync(pagesDir)) fs.mkdirSync(pagesDir, { recursive: true });
+
+            const ensureStub = (name, lines) => {
+              const p = path.join(pagesDir, name);
+              if (!fs.existsSync(p)) fs.writeFileSync(p, lines.join("\n"));
+            };
+
+            ensureStub("_document.js", [
+              '"use strict";',
+              'Object.defineProperty(exports, "__esModule", { value: true });',
+              "const React = require('react');",
+              "function Document() { return React.createElement(React.Fragment, null); }",
+              "module.exports = Document;",
+              "module.exports.default = Document;",
+            ]);
+
+            ensureStub("_error.js", [
+              '"use strict";',
+              'Object.defineProperty(exports, "__esModule", { value: true });',
+              "const React = require('react');",
+              "function ErrorPage(){ return React.createElement('div', null, 'Error'); }",
+              "ErrorPage.getInitialProps = function(){ return { statusCode: 500 }; };",
+              "module.exports = ErrorPage;",
+              "module.exports.default = ErrorPage;",
+            ]);
+
+            manifest["/_document"] = "pages/_document.js";
+            manifest["/_error"] = "pages/_error.js";
+            fs.writeFileSync(manifestPath, JSON.stringify(manifest));
           });
         },
       });

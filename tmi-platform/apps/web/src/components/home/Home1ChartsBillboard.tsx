@@ -1,7 +1,15 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
+
+interface ChartEntry { rank: number; name: string; plays: string; delta: number; img: string; slug: string; }
+
+function formatPlays(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${Math.round(n / 1_000)}K`;
+  return `${n}`;
+}
 
 const GENRES = ['Hip-Hop', 'R&B', 'Trap', 'Electronic', 'Pop', 'Latin', 'Rock', 'Soul', 'Gospel', 'Jazz'];
 
@@ -63,6 +71,8 @@ GENRES.forEach((g) => {
 export default function Home1ChartsBillboard() {
   const [activeGenre, setActiveGenre] = useState('Hip-Hop');
   const [autoplay, setAutoplay] = useState(true);
+  const [liveCache, setLiveCache] = useState<Record<string, ChartEntry[]>>({});
+  const fetchingRef = useRef<Set<string>>(new Set());
 
   // Auto-rotate genres every 6 seconds
   useEffect(() => {
@@ -76,8 +86,29 @@ export default function Home1ChartsBillboard() {
     return () => clearInterval(t);
   }, [autoplay]);
 
+  // Fetch live chart data for the active genre
+  useEffect(() => {
+    if (liveCache[activeGenre] || fetchingRef.current.has(activeGenre)) return;
+    fetchingRef.current.add(activeGenre);
+    fetch(`/api/homepage/charts?genre=${encodeURIComponent(activeGenre.toLowerCase())}&limit=5`)
+      .then((r) => r.json())
+      .then((payload) => {
+        const items: unknown[] = Array.isArray(payload?.items) ? payload.items : [];
+        if (items.length === 0) return;
+        const mapped: ChartEntry[] = items.map((item: unknown, i: number) => {
+          const e = item as Record<string, unknown>;
+          const name = typeof e.artist === 'string' ? e.artist : typeof e.title === 'string' ? e.title : `Artist ${i + 1}`;
+          const slug = typeof e.slug === 'string' ? e.slug : name.toLowerCase().replace(/\s+/g, '-');
+          const plays = typeof e.score === 'number' ? formatPlays(e.score) : typeof e.plays === 'string' ? e.plays : `${(5 - i) * 200}K`;
+          return { rank: i + 1, name, plays, delta: 0, img: `/tmi-curated/mag-${(i + 1) * 10}.jpg`, slug };
+        });
+        setLiveCache((prev) => ({ ...prev, [activeGenre]: mapped }));
+      })
+      .catch(() => { fetchingRef.current.delete(activeGenre); });
+  }, [activeGenre, liveCache]);
+
   const accent = GENRE_ACCENT[activeGenre] ?? '#00FFFF';
-  const entries = CHART_ENTRIES[activeGenre] ?? [];
+  const entries: ChartEntry[] = liveCache[activeGenre] ?? CHART_ENTRIES[activeGenre] ?? [];
 
   return (
     <section style={{ maxWidth: 1100, margin: '0 auto', padding: '0 24px 32px' }}>

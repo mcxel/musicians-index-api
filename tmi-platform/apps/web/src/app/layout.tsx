@@ -14,6 +14,7 @@ import BotRuntimeProvider from "@/components/providers/BotRuntimeProvider";
 import BotProvider from "@/components/providers/BotProvider";
 import ChevronNavigation from "@/components/navigation/ChevronNavigation";
 import TMIGlobalNav from "@/components/system/TMIGlobalNav";
+import { NavigationLock } from "@/components/navigation/NavigationLock";
 import NavigationRail from "@/components/nav/NavigationRail";
 import { PWAInstallPrompt } from "@/components/mobile/PWAInstallPrompt";
 import { PWARegistration } from "@/components/mobile/PWARegistration";
@@ -21,6 +22,8 @@ import VoiceDirector from "@/components/hud/VoiceDirector";
 import BetaModeBanner from "@/components/launch/BetaModeBanner";
 import BetaStatusChip from "@/components/launch/BetaStatusChip";
 import LiveFeedbackPanel from "@/components/feedback/LiveFeedbackPanel";
+import { MonitorRuntimeProvider } from "@/components/monitor/MonitorRuntimeContext";
+import MonitorRuntime from "@/components/monitor/MonitorRuntime";
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -182,6 +185,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </h1>
         <AppProviders>
           <TmiSessionProvider>
+            <MonitorRuntimeProvider>
             <HudRuntimeProvider>
               <PWARegistration />
               <BetaModeBanner />
@@ -193,6 +197,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <NavigationRail />
               <ChevronNavigation />
               <TMIGlobalNav />
+              <NavigationLock />
               <GamificationHUD />
               <LiveSyncProvider />
               <FirstRunExperienceOverlay />
@@ -200,7 +205,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <BotRuntimeProvider />
               <VoiceDirector />
               <LiveFeedbackPanel />
+              <MonitorRuntime />
             </HudRuntimeProvider>
+            </MonitorRuntimeProvider>
           </TmiSessionProvider>
         </AppProviders>
       </body>

@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import React from 'react';
 
 export default function ErrorPage({
   error,
@@ -68,8 +68,8 @@ export default function ErrorPage({
           >
             Try Again
           </button>
-          <Link
-            href="/"
+          <a
+            href="/home/1"
             style={{
               border: '1px solid rgba(255,255,255,.35)',
               color: '#fff',
@@ -80,7 +80,7 @@ export default function ErrorPage({
             }}
           >
             Go Home
-          </Link>
+          </a>
         </div>
       </section>
     </main>

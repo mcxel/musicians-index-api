@@ -72,7 +72,7 @@ function RoomContent({ onLeave, onParticipantsChange }: { onLeave?: () => void; 
     const { name, text } = (e?.data ?? {}) as { name?: string; text?: string };
     if (!text) return;
     const msgId = ++chatIdRef.current;
-    setChatMessages(prev => [...prev.slice(-2), { id: msgId, name: name ?? 'Guest', text }]);
+    setChatMessages(prev => [...prev.slice(-49), { id: msgId, name: name ?? 'Guest', text }]);
   }, []));
 
   function toggleMic() {
@@ -102,7 +102,7 @@ function RoomContent({ onLeave, onParticipantsChange }: { onLeave?: () => void; 
     const name = localParticipant?.user_name ?? 'You';
     DailyIframe.getCallInstance()?.sendAppMessage({ name, text });
     const msgId = ++chatIdRef.current;
-    setChatMessages(prev => [...prev.slice(-2), { id: msgId, name, text }]);
+    setChatMessages(prev => [...prev.slice(-49), { id: msgId, name, text }]);
     setChatInput('');
   }
 

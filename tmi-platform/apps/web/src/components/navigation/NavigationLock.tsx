@@ -1,58 +1,68 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
-import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/solid';
+import { usePathname, useRouter } from 'next/navigation';
 
-export default function NavigationLock() {
-  const router = useRouter();
+/**
+ * NavigationLock: Safe Return-Path Guard
+ * Enforces continuity for: Home -> Venue -> Lobby -> Profile -> Home
+ * and Home -> Lobby -> Seat -> Home
+ */
+export function NavigationLock() {
   const pathname = usePathname();
-  const [canGoBack, setCanGoBack] = useState(false);
+  const router = useRouter();
+  
+  const [lastVenue, setLastVenue] = useState<string | null>(null);
+  const [lastSeat, setLastSeat] = useState<string | null>(null);
 
-  // Always ensure we know if history exists
   useEffect(() => {
-    setCanGoBack(window.history.length > 2 || pathname !== '/home/1');
+    // Track venue and seating locations for safe return paths
+    if (pathname?.includes('/live/rooms/') || pathname?.includes('/arena/')) {
+      setLastVenue(pathname);
+      sessionStorage.setItem('tmi_last_venue', pathname);
+    }
+    if (pathname?.includes('/checkout/seat') || pathname?.includes('/seating')) {
+      setLastSeat(pathname);
+    }
   }, [pathname]);
 
-  const handleBack = () => {
-    if (canGoBack) {
-      router.back();
-    } else {
-      // DEAD-END PREVENTION RULE: Fallback to root hub
-      router.push('/home/1');
-    }
-  };
+  useEffect(() => {
+    const storedVenue = sessionStorage.getItem('tmi_last_venue');
+    if (storedVenue && !lastVenue) setLastVenue(storedVenue);
+  }, []);
 
-  const handleForward = () => {
-    // If forward fails natively, we handle it gracefully.
-    try {
-      router.forward();
-    } catch (e) {
-      console.warn('NavigationLock: Forward history boundary reached.');
-    }
-  };
+  // Determine if we are in a "dead end" profile or lobby that needs a return path
+  const isProfile = pathname?.includes('/profile/') || pathname?.includes('/artists/') || pathname?.includes('/advertisers/');
+  const isLobby = pathname?.includes('/live/lobby');
+  
+  if (!isProfile && !isLobby) return null;
 
   return (
-    <div className="fixed top-6 left-6 z-[9999] flex items-center space-x-3 pointer-events-auto">
-      <button
-        onClick={handleBack}
-        className="p-3 rounded-full bg-black/80 backdrop-blur-xl border border-white/10 text-white shadow-[0_0_20px_rgba(0,0,0,0.8)] hover:bg-white hover:text-black hover:scale-110 transition-all duration-300"
-        aria-label="Go Back (Safe)"
-      >
-        <ChevronLeftIcon className="w-6 h-6" />
-      </button>
-
-      <button
-        onClick={handleForward}
-        className="p-3 rounded-full bg-black/80 backdrop-blur-xl border border-white/10 text-white shadow-[0_0_20px_rgba(0,0,0,0.8)] hover:bg-white hover:text-black hover:scale-110 transition-all duration-300"
-        aria-label="Go Forward"
-      >
-        <ChevronRightIcon className="w-6 h-6" />
-      </button>
+    <div style={{ position: 'fixed', bottom: 24, left: 24, zIndex: 9999, display: 'flex', gap: 12 }}>
+      {lastSeat && (
+        <button 
+          onClick={() => router.push(lastSeat)}
+          style={{ background: '#FFD700', color: '#000', padding: '8px 16px', borderRadius: 20, fontSize: 11, fontWeight: 900, cursor: 'pointer', border: 'none', boxShadow: '0 4px 15px rgba(255, 215, 0, 0.4)' }}
+        >
+          🎟️ RETURN TO SEAT
+        </button>
+      )}
       
-      <div className="hidden md:block ml-4 px-3 py-1 rounded-full bg-black/50 border border-white/5 text-[10px] font-mono text-white/50 tracking-[0.2em] uppercase">
-        SYS // {pathname}
-      </div>
+      {lastVenue && !lastSeat && (
+        <button 
+          onClick={() => router.push(lastVenue)}
+          style={{ background: '#00FF88', color: '#000', padding: '8px 16px', borderRadius: 20, fontSize: 11, fontWeight: 900, cursor: 'pointer', border: 'none', boxShadow: '0 4px 15px rgba(0, 255, 136, 0.4)' }}
+        >
+          🎤 BACK TO VENUE
+        </button>
+      )}
+
+      <button 
+        onClick={() => router.push('/home/1')}
+        style={{ background: 'rgba(0,0,0,0.8)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', padding: '8px 16px', borderRadius: 20, fontSize: 11, fontWeight: 800, cursor: 'pointer', backdropFilter: 'blur(10px)' }}
+      >
+        🏠 HOME
+      </button>
     </div>
   );
 }
