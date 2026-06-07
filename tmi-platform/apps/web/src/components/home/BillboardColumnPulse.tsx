@@ -34,12 +34,12 @@ type ColumnDef = {
 };
 
 const COLUMNS: readonly ColumnDef[] = [
-  { key: "best_song",          title: "Legacy Era",          accent: "#00FFFF", shadow: "rgba(0,255,255,0.55)",   speedSec: 40 },
-  { key: "best_hooks",         title: "Next Wave",           accent: "#FF2DAA", shadow: "rgba(255,45,170,0.55)", speedSec: 44 },
-  { key: "best_horns",         title: "Brass Division",      accent: "#FFD700", shadow: "rgba(255,215,0,0.55)",  speedSec: 48 },
-  { key: "best_battle",        title: "Keys Division",       accent: "#AA2DFF", shadow: "rgba(170,45,255,0.55)", speedSec: 42 },
-  { key: "fan_crown",          title: "Comedy Stage",        accent: "#00FF88", shadow: "rgba(0,255,136,0.5)",   speedSec: 46 },
-  { key: "rising_performer",   title: "Motion Division",     accent: "#5EE1FF", shadow: "rgba(94,225,255,0.5)",  speedSec: 50 },
+  { key: "best_song",          title: "Digital Hip-Hop Night",  accent: "#00FFFF", shadow: "rgba(0,255,255,0.55)",   speedSec: 40 },
+  { key: "best_hooks",         title: "Digital Comedy Night",   accent: "#FF2DAA", shadow: "rgba(255,45,170,0.55)", speedSec: 44 },
+  { key: "best_horns",         title: "Digital Country Night",  accent: "#FFD700", shadow: "rgba(255,215,0,0.55)",  speedSec: 48 },
+  { key: "best_battle",        title: "Digital DJ Night",       accent: "#AA2DFF", shadow: "rgba(170,45,255,0.55)", speedSec: 42 },
+  { key: "fan_crown",          title: "Digital Dance Night",    accent: "#00FF88", shadow: "rgba(0,255,136,0.5)",   speedSec: 46 },
+  { key: "rising_performer",   title: "Digital Gospel Night",   accent: "#5EE1FF", shadow: "rgba(94,225,255,0.5)",  speedSec: 50 },
 ] as const;
 
 // Country flags cycle by artist index so each name gets a consistent flag
@@ -194,6 +194,25 @@ function MovementGlyph({ movement, color }: { movement: RankRow["movement"]; col
   return <span style={{ color: "rgba(255,255,255,0.35)" }}>•</span>;
 }
 
+interface LiveRankRow { id: string; name: string; wins: number; losses: number; fans: number; winRate: number; }
+
+function toRankRow(r: LiveRankRow, col: ColumnKey): RankRow {
+  const fanTruth =
+    col === 'fan_crown'    ? Math.min(140, Math.max(20, Math.round(r.fans / 500))) :
+    col === 'best_battle'  ? Math.min(140, Math.max(20, r.wins * 10)) :
+                             Math.min(140, Math.max(20, r.wins * 8 + Math.floor(r.fans / 200)));
+  return {
+    id:              r.id,
+    name:            r.name,
+    movement:        'flat',
+    fanTruth,
+    completionRate:  r.winRate,
+    likeRate:        Math.min(99, Math.round(r.fans / 200)),
+    newFanConversion: Math.min(70, r.wins * 2),
+    movementReason:  `W: ${r.wins}  L: ${r.losses}  Fans: ${r.fans.toLocaleString()}`,
+  };
+}
+
 function BillboardColumn({ config, active }: { config: ColumnDef; active: boolean }) {
   const [rows, setRows] = useState<RankRow[]>(() => sortRows(makeRows(config.title.length * 13)));
   const [hotId, setHotId] = useState<string | null>(null);
@@ -209,6 +228,17 @@ function BillboardColumn({ config, active }: { config: ColumnDef; active: boolea
   useEffect(() => {
     ensureStyles();
   }, []);
+
+  // Fetch real challenge-win + fan-count rankings; keep seeded data as fallback
+  useEffect(() => {
+    fetch(`/api/billboard/rankings?column=${config.key}&limit=8`)
+      .then(r => r.json())
+      .then((data: { ok: boolean; rows?: LiveRankRow[] }) => {
+        if (!data.ok || !Array.isArray(data.rows) || data.rows.length === 0) return;
+        setRows(sortRows(data.rows.map(r => toRankRow(r, config.key))));
+      })
+      .catch(() => {});
+  }, [config.key]);
 
   useEffect(() => {
     if (!active) {
@@ -654,10 +684,10 @@ export default function BillboardColumnPulse() {
         >
           <div>
             <div style={{ fontSize: 10, fontWeight: 900, color: "#FFFFFF", letterSpacing: "0.14em", textTransform: "uppercase" }}>
-              TMI Fan-Truth Billboard
+              TMI Digital Nights — Live Rankings
             </div>
             <div style={{ fontSize: 7, color: "rgba(0,255,255,0.65)", letterSpacing: "0.16em", textTransform: "uppercase", marginTop: 2 }}>
-              Cover Spread · Live Rank Motion
+              Fan-Truth Billboard · Cover Spread · Live Rank Motion
             </div>
           </div>
           <div style={{ fontSize: 7, color: "rgba(255,255,255,0.34)", letterSpacing: "0.12em", textTransform: "uppercase" }}>

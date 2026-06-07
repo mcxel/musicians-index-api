@@ -59,6 +59,12 @@ export default function ChallengesCreatePage() {
   function handleSubmit() {
     if (!mediaUrl.trim() && type !== 'live') return;
     setSubmitted(true);
+    fetch('/api/challenges/submit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ type, genre, title, mediaUrl }),
+    }).catch(() => {});
   }
 
   if (submitted) {
