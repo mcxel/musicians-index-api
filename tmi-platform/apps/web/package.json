@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "node ../../node_modules/next/dist/bin/next dev",
     "dev:socket": "ts-node socket-server.ts",
-    "prebuild": "node -e \"require('fs').rmSync('.next',{recursive:true,force:true})\" && pnpm -C ../.. -r --filter @tmi/contracts --filter @tmi/hud-core --filter @tmi/hud-runtime --filter @tmi/hud-theme --filter @tmi/hud-tmi build && pnpm -C ../../packages/db prisma:generate",
+    "prebuild": "node -e \"require('fs').rmSync('.next',{recursive:true,force:true}); require('fs').rmSync('tsconfig.tsbuildinfo',{force:true})\" && pnpm -C ../.. -r --filter @tmi/contracts --filter @tmi/hud-core --filter @tmi/hud-runtime --filter @tmi/hud-theme --filter @tmi/hud-tmi build && pnpm -C ../../packages/db prisma:generate",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
@@ -27,6 +27,7 @@
     "@heroicons/react": "^2.0.0",
     "@next/third-parties": "^14.2.3",
     "@prisma/adapter-pg": "^7.4.2",
+    "@prisma/client": "^7.4.2",
     "@tmi/contracts": "workspace:*",
     "@tmi/hud-core": "workspace:*",
     "@tmi/hud-runtime": "workspace:*",

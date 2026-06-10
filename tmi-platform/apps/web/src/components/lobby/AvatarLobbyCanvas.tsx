@@ -158,7 +158,7 @@ export default function AvatarLobbyCanvas({
         display: "flex", justifyContent: "space-between", alignItems: "center",
       }}>
         <span style={{ fontSize: 8, color: "rgba(255,255,255,0.25)" }}>
-          🎭 3D avatars coming soon
+          🎭 {avatars.filter(a => a.isLive).length > 0 ? `${avatars.filter(a => a.isLive).length} LIVE` : "LOBBY ACTIVE"}
         </span>
         <Link href={`/live/rooms`} style={{
           fontSize: 8, color: accentColor, textDecoration: "none", fontWeight: 700,

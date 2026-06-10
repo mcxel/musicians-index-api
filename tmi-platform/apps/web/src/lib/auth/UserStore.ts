@@ -174,6 +174,8 @@ const HARDCODED_DIAMOND = new Set([
   'losdamost222@gmail.com',
   'griffithscott1962@gmail.com',
   'jasjen63@gmail.com',
+  'pat.jones2022@gmail.com',
+  'bjmbeat@berntoutglobal.com',
 ]);
 
 const HARDCODED_PERFORMER = new Set([

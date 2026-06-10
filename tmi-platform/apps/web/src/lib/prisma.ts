@@ -1,24 +1,24 @@
-import { PrismaClient } from "@prisma/client";
-import { PrismaPg } from "@prisma/adapter-pg";
-import { Pool } from "pg";
+import { PrismaClient } from '@prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { Pool } from 'pg';
 
-const globalForPrisma = globalThis as unknown as { prisma: PrismaClient | undefined };
+declare global {
+  // eslint-disable-next-line no-var
+  var prisma: PrismaClient | undefined;
+}
 
-function buildClient(): PrismaClient {
-  // Prisma v7 + the schema's `driverAdapters` preview feature require an
-  // explicit adapter — bare `new PrismaClient()` throws at construction
-  // ("needs to be constructed with a non-empty, valid PrismaClientOptions").
-  const connectionString = process.env["DATABASE_URL"];
-  if (!connectionString) {
-    throw new Error("[lib/prisma] DATABASE_URL environment variable is not set");
+function createPrismaClient(): PrismaClient {
+  if (!process.env.DATABASE_URL) {
+    return new PrismaClient({ log: ['error'] });
   }
-  const pool = new Pool({ connectionString });
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
   const adapter = new PrismaPg(pool);
-  return new PrismaClient({ adapter });
+  return new PrismaClient({ adapter, log: ['error'] });
 }
 
-export const prisma: PrismaClient = globalForPrisma.prisma ?? buildClient();
+export const prisma: PrismaClient =
+  globalThis.prisma ?? createPrismaClient();
 
-if (process.env["NODE_ENV"] !== "production") {
-  globalForPrisma.prisma = prisma;
-}
+if (process.env.NODE_ENV !== 'production') globalThis.prisma = prisma;
+
+export default prisma;
