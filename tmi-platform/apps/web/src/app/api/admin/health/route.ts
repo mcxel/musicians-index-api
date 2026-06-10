@@ -1,17 +1,11 @@
 export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
-
-let prisma: PrismaClient | null = null;
-function getDb() {
-  if (!prisma) prisma = new PrismaClient();
-  return prisma;
-}
+import { prisma } from "@/lib/prisma";
 
 async function checkDb(): Promise<{ ok: boolean; latencyMs: number; detail: string }> {
   const t = Date.now();
   try {
-    await getDb().$queryRaw`SELECT 1`;
+    await prisma.$queryRaw`SELECT 1`;
     return { ok: true, latencyMs: Date.now() - t, detail: "Neon PostgreSQL connected" };
   } catch (e) {
     return { ok: false, latencyMs: Date.now() - t, detail: e instanceof Error ? e.message : "DB error" };

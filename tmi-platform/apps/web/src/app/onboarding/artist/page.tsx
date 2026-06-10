@@ -1,17 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import AutoPerformerWelcomeMessage from "@/components/onboarding/AutoPerformerWelcomeMessage";
 
 export default function OnboardingArtistPage() {
   const router = useRouter();
-  const [stageName, setStageName] = useState("");
+  const [artistName, setArtistName] = useState("");
+  const [shortBio, setShortBio] = useState("");
   const [genres, setGenres] = useState("");
-  const [skills, setSkills] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
-  const [done, setDone] = useState(false);
 
   const getCsrfToken = async (): Promise<string | null> => {
     try {
@@ -22,6 +20,22 @@ export default function OnboardingArtistPage() {
       return null;
     }
   };
+
+  useEffect(() => {
+    const check = async () => {
+      try {
+        const res = await fetch("/api/auth/session", { cache: "no-store", credentials: "include" });
+        if (!res.ok) { router.replace("/auth?next=/onboarding"); return; }
+        const data = await res.json() as { authenticated?: boolean; user?: { role?: string } };
+        if (!data.authenticated) { router.replace("/auth?next=/onboarding"); return; }
+        const role = (data.user?.role ?? "user").toLowerCase();
+        if (role !== "user" && role !== "artist") {
+          router.replace("/onboarding");
+        }
+      } catch { /* stay */ }
+    };
+    void check();
+  }, [router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,10 +54,10 @@ export default function OnboardingArtistPage() {
       });
 
       if (res.ok) {
-        setDone(true);
+        router.replace("/dashboard/artist");
       } else {
-        const err = (await res.json().catch(() => ({}))) as { message?: string };
-        setMessage(`Setup failed (${res.status})${err?.message ? ": " + err.message : ""}`);
+        const err = (await res.json().catch(() => ({}))) as { message?: string; error?: string };
+        setMessage(`Setup failed (${res.status})${err?.error ?? err?.message ? ": " + (err.error ?? err.message) : ""}`);
       }
     } catch {
       setMessage("Network error. Please try again.");
@@ -72,19 +86,6 @@ export default function OnboardingArtistPage() {
     fontWeight: 500,
   };
 
-  if (done) {
-    return (
-      <main style={{ minHeight: "100vh", background: "#0a0a0f", display: "flex", alignItems: "center", justifyContent: "center", padding: "40px 20px" }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 20, alignItems: "center" }}>
-          <AutoPerformerWelcomeMessage displayName={stageName || ""} />
-          <button onClick={() => router.replace("/dashboard/performer")} style={{ padding: "10px 24px", background: "rgba(255,45,170,0.12)", color: "#FF2DAA", border: "1px solid rgba(255,45,170,0.3)", borderRadius: 8, fontWeight: 800, fontSize: 13, cursor: "pointer" }}>
-            Go to My Stage →
-          </button>
-        </div>
-      </main>
-    );
-  }
-
   return (
     <main
       style={{
@@ -96,37 +97,39 @@ export default function OnboardingArtistPage() {
       }}
     >
       <div style={{ maxWidth: 520, margin: "0 auto" }}>
-        <p style={{ fontSize: 12, letterSpacing: 2, color: "#ff6b35", textTransform: "uppercase", marginBottom: 8 }}>
+        <p style={{ fontSize: 12, letterSpacing: 2, color: "#FF2DAA", textTransform: "uppercase", marginBottom: 8 }}>
           The Musician&apos;s Index
         </p>
-        <h1 style={{ fontSize: 30, fontWeight: 700, marginBottom: 8, margin: "0 0 8px" }}>
-          Artist Setup
-        </h1>
-        <p style={{ color: "rgba(255,255,255,0.5)", marginBottom: 24, fontSize: 15 }}>
+        <h1 style={{ fontSize: 30, fontWeight: 700, margin: "0 0 8px" }}>Artist Setup</h1>
+        <p style={{ color: "rgba(255,255,255,0.5)", marginBottom: 36, fontSize: 15 }}>
           Tell us about your artistry to complete your profile.
         </p>
-
-        <div style={{ background: "rgba(255,45,170,0.08)", border: "1px solid rgba(255,45,170,0.25)", borderRadius: 10, padding: "12px 16px", marginBottom: 24 }}>
-          <div style={{ fontSize: 10, letterSpacing: "0.2em", color: "#FF2DAA", fontWeight: 800, marginBottom: 6 }}>
-            🔥 YOU&apos;RE ALREADY IN THE HOMEPAGE ORBIT
-          </div>
-          <div style={{ fontSize: 13, color: "rgba(255,255,255,0.75)", lineHeight: 1.6 }}>
-            Your profile is live on the Home #1 orbit right now. Complete setup to unlock your full stage.
-          </div>
-        </div>
 
         <form
           onSubmit={(e) => void handleSubmit(e)}
           style={{ display: "flex", flexDirection: "column", gap: 20 }}
         >
           <div>
-            <label style={labelStyle}>Stage Name</label>
+            <label htmlFor="artist-name" style={labelStyle}>Artist name</label>
             <input
+              id="artist-name"
               type="text"
-              value={stageName}
-              onChange={(e) => setStageName(e.target.value)}
+              value={artistName}
+              onChange={(e) => setArtistName(e.target.value)}
               placeholder="Your artist name"
               style={inputStyle}
+            />
+          </div>
+
+          <div>
+            <label htmlFor="short-bio" style={labelStyle}>Short bio</label>
+            <textarea
+              id="short-bio"
+              value={shortBio}
+              onChange={(e) => setShortBio(e.target.value)}
+              placeholder="Describe your sound and style…"
+              rows={3}
+              style={{ ...inputStyle, resize: "vertical", lineHeight: 1.5 }}
             />
           </div>
 
@@ -141,34 +144,22 @@ export default function OnboardingArtistPage() {
             />
           </div>
 
-          <div>
-            <label style={labelStyle}>Skills (comma-separated)</label>
-            <input
-              type="text"
-              value={skills}
-              onChange={(e) => setSkills(e.target.value)}
-              placeholder="e.g. Rapper, Producer, Songwriter"
-              style={inputStyle}
-            />
-          </div>
-
           <button
             type="submit"
             disabled={busy}
             style={{
               marginTop: 8,
               padding: "13px 24px",
-              background: busy ? "rgba(255,107,53,0.35)" : "#FF2DAA",
+              background: busy ? "rgba(255,45,170,0.35)" : "#FF2DAA",
               color: "#fff",
               border: "none",
               borderRadius: 8,
               fontSize: 16,
               fontWeight: 700,
               cursor: busy ? "not-allowed" : "pointer",
-              letterSpacing: 0.3,
             }}
           >
-            {busy ? "Setting up your stage…" : "Claim My Stage →"}
+            {busy ? "Setting up your stage…" : "Save and continue"}
           </button>
         </form>
 

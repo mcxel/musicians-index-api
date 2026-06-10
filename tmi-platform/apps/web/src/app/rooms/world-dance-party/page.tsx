@@ -70,7 +70,7 @@ export default function WorldDancePartyPage() {
   const [bpm, setBpm] = useState(142);
   const [isLive, setIsLive] = useState(true);
   const [activeColor, setActiveColor] = useState(0);
-  const [dancers, setDancers] = useState(2847);
+  const [dancers] = useState(0);
   const [currentTrack, setCurrentTrack] = useState(0);
   const [tipAmount, setTipAmount] = useState<number | null>(null);
   const [activeRoomLight, setActiveRoomLight] = useState<string | null>(null);
@@ -229,8 +229,6 @@ export default function WorldDancePartyPage() {
   useEffect(() => {
     const interval = setInterval(() => {
       setActiveColor(c => (c + 1) % DANCE_FLOOR_COLORS.length);
-      setDancers(d => d + Math.floor(Math.random() * 5) - 2);
-      // Simulate crowd heat rising with dance activity
       const heat = 40 + Math.random() * 45;
       const audioHigh = Math.random() > 0.65;
       const anim = ralphRef.current.tickCrowdSignal(heat, audioHigh);

@@ -5,12 +5,7 @@ import Link from "next/link";
 type BeatStatus = 'LIVE' | 'REVIEW' | 'FLAGGED' | 'REMOVED';
 type Beat = { id: string; title: string; producer: string; genre: string; status: BeatStatus; sales: number; revenue: number; flags: number };
 
-const SEED_BEATS: Beat[] = [
-  { id: "b1", title: "Midnight Bars", producer: "Wavetek", genre: "Hip-Hop", status: "LIVE", sales: 5, revenue: 245, flags: 0 },
-  { id: "b2", title: "Battle Code", producer: "Verse Knight", genre: "Battle Rap", status: "LIVE", sales: 7, revenue: 343, flags: 0 },
-  { id: "b3", title: "Frequency", producer: "Cold Spark", genre: "Instrumental", status: "REVIEW", sales: 0, revenue: 0, flags: 0 },
-  { id: "b4", title: "Stolen Vibe", producer: "Unknown_88", genre: "R&B", status: "FLAGGED", sales: 0, revenue: 0, flags: 2 },
-];
+const SEED_BEATS: Beat[] = [];
 const STATUS_COLOR: Record<string, string> = { LIVE: "#00FF88", REVIEW: "#FFD700", FLAGGED: "#FF2DAA", REMOVED: "#AA2DFF" };
 
 export default function AdminBeatsPage() {
@@ -41,6 +36,9 @@ export default function AdminBeatsPage() {
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
           <thead><tr style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>{["TITLE", "PRODUCER", "GENRE", "STATUS", "SALES", "REVENUE", "FLAGS", "ACTIONS"].map(h => <th key={h} style={{ textAlign: "left", padding: "10px 12px", fontSize: 8, color: "rgba(255,255,255,0.3)", fontWeight: 800 }}>{h}</th>)}</tr></thead>
           <tbody>
+            {beats.length === 0 && (
+              <tr><td colSpan={8} style={{ padding: "32px 12px", textAlign: "center", color: "rgba(255,255,255,0.25)", fontSize: 11 }}>No beats submitted yet.</td></tr>
+            )}
             {beats.map(b => (
               <tr key={b.id} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
                 <td style={{ padding: "14px 12px", fontWeight: 700 }}>{b.title}</td>

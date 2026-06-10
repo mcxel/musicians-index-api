@@ -9,6 +9,7 @@ import { getAllGhosts, type GhostArchetype } from '@/lib/bots/GhostArchetypeEngi
 import BigAceVisualPanel from '@/components/agents/BigAceVisualPanel';
 import MichaelCharlieDashboard from '@/components/agents/MichaelCharlieDashboard';
 import AgentCommandCenter from '@/components/agents/AgentCommandCenter';
+import AdminUnifiedInbox from '@/components/admin/UnifiedInboxPanel';
 
 interface PlatformStats {
   totalUsers: number;
@@ -115,8 +116,8 @@ export default function AdminDashboard() {
         setStats({
           totalUsers: userList.length,
           byRole,
-          activeRooms: 7,
-          activeBots: 62,
+          activeRooms: 0,
+          activeBots: 0,
           activeSubs: '0',
           revenueToday: rev.today,
           revenueMonth: rev.month,
@@ -127,16 +128,15 @@ export default function AdminDashboard() {
       })
       .catch((e: Error) => {
         setError(e.message);
-        // Still show demo stats even on API error
         setStats({
           totalUsers: 0,
           byRole: {},
-          activeRooms: 7,
-          activeBots: 62,
+          activeRooms: 0,
+          activeBots: 0,
           activeSubs: '0',
           revenueToday: rev.today,
           revenueMonth: rev.month,
-          health: 'HEALTHY',
+          health: 'DEGRADED',
         });
       })
       .finally(() => setLoading(false));
@@ -165,8 +165,8 @@ export default function AdminDashboard() {
             { label: 'ACTIVE SUBS',     value: stats?.activeSubs ?? '0',                                   color: '#AA2DFF', icon: '🔑' },
             { label: 'REVENUE TODAY',   value: stats?.revenueToday ?? rev.today,    color: '#FFD700', icon: '💵' },
             { label: 'REV THIS MONTH',  value: stats?.revenueMonth ?? rev.month,    color: '#00FF88', icon: '📈' },
-            { label: 'ACTIVE ROOMS',    value: String(stats?.activeRooms ?? 7),     color: '#FF2DAA', icon: '🏟️' },
-            { label: 'ACTIVE BOTS',     value: String(stats?.activeBots ?? 62),     color: '#AA2DFF', icon: '🤖' },
+            { label: 'ACTIVE ROOMS',    value: String(stats?.activeRooms ?? 0),     color: '#FF2DAA', icon: '🏟️' },
+            { label: 'ACTIVE BOTS',     value: String(bots.filter(b => b.isActive).length || (stats?.activeBots ?? 0)), color: '#AA2DFF', icon: '🤖' },
             { label: 'PLATFORM HEALTH', value: stats?.health ?? 'HEALTHY',          color: healthColor, icon: '🔋' },
           ].map((s) => (
             <div key={s.label} style={{ background: 'rgba(255,255,255,0.02)', border: `1px solid ${s.color}20`, borderRadius: 12, padding: '16px', position: 'relative', overflow: 'hidden' }}>
@@ -240,10 +240,15 @@ export default function AdminDashboard() {
           <div style={{ marginBottom: 16 }}>
             <AgentCommandCenter />
           </div>
-          {/* Agent panels below */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-            <MichaelCharlieDashboard />
-            <BigAceVisualPanel />
+          {/* Agent panels and Inbox below */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <MichaelCharlieDashboard />
+              <AdminUnifiedInbox />
+            </div>
+            <div style={{ gridColumn: 'span 2' }}>
+              <BigAceVisualPanel />
+            </div>
           </div>
         </div>
 

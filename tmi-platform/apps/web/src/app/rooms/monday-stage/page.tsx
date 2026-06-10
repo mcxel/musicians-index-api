@@ -40,9 +40,9 @@ type ChatMsg = { user: string; msg: string };
 export default function MondayStagePage() {
   const router = useRouter();
   const [stageState, setStageState]   = useState<StageState>('CURTAIN_CLOSED');
-  const [chatMsgs, setChatMsgs]       = useState<ChatMsg[]>(CHAT_STUBS);
+  const [chatMsgs, setChatMsgs]       = useState<ChatMsg[]>([]);
   const [chatInput, setChatInput]     = useState('');
-  const [viewers, setViewers]         = useState(1847);
+  const [viewers, setViewers]         = useState(0);
   const [tipping, setTipping]         = useState(false);
   const currentArtist = LINEUP.find((l) => l.status === 'LIVE');
 
@@ -62,13 +62,6 @@ export default function MondayStagePage() {
     return () => clearInterval(id);
   }, []);
 
-  // Simulate viewer drift
-  useEffect(() => {
-    const id = setInterval(() => {
-      setViewers((v) => v + Math.floor(Math.random() * 5) - 2);
-    }, 4000);
-    return () => clearInterval(id);
-  }, []);
 
   const openCurtain = useCallback(async () => {
     setStageState('CURTAIN_OPENING');

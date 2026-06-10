@@ -82,8 +82,8 @@ export default function ChallengeArenaPage() {
   const [queue, setQueue] = useState<Challenger[]>(SEED_QUEUE.slice(1));
   const [holder, setHolder] = useState<Challenger>(SEED_QUEUE[0]!);
   const [challenger, setChallenger] = useState<Challenger>(SEED_QUEUE[1]!);
-  const [holderVotes, setHolderVotes] = useState(1847);
-  const [challengerVotes, setChallengerVotes] = useState(1203);
+  const [holderVotes, setHolderVotes] = useState(0);
+  const [challengerVotes, setChallengerVotes] = useState(0);
   const [hasVoted, setHasVoted] = useState(false);
   const [votedFor, setVotedFor] = useState<"holder" | "challenger" | null>(null);
   const [roundTime, setRoundTime] = useState(120);
@@ -91,7 +91,7 @@ export default function ChallengeArenaPage() {
   const [roundNum, setRoundNum] = useState(1);
   const [phase, setPhase] = useState<"live" | "deciding" | "result">("live");
   const [winner, setWinner] = useState<"holder" | "challenger" | null>(null);
-  const [totalViewers, setTotalViewers] = useState(18247);
+  const [totalViewers] = useState(0);
   const [entryInput, setEntryInput] = useState("");
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -106,10 +106,6 @@ export default function ChallengeArenaPage() {
         }
         return t - 1;
       });
-      // Tick votes
-      setHolderVotes(v => v + Math.floor(Math.random() * 8));
-      setChallengerVotes(v => v + Math.floor(Math.random() * 6));
-      setTotalViewers(v => Math.max(5, v + Math.floor((Math.random() - 0.35) * 30)));
     }, 1000);
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, []);
@@ -144,8 +140,8 @@ export default function ChallengeArenaPage() {
         setChallenger({ ...nextChallenger, wins: 0 });
         setQueue(q => [...q.slice(1), challenger]);
       }
-      setHolderVotes(Math.floor(Math.random() * 800) + 400);
-      setChallengerVotes(Math.floor(Math.random() * 600) + 200);
+      setHolderVotes(0);
+      setChallengerVotes(0);
       setHasVoted(false);
       setVotedFor(null);
       setWinner(null);

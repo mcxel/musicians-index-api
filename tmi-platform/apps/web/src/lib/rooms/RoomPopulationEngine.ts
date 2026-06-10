@@ -3,6 +3,7 @@ import { joinAudience, leaveAudience } from "@/lib/live/audienceRuntimeEngine";
 import { recordMomentumSample, getCrowdMomentum } from "@/lib/live/crowdMomentumEngine";
 import { emitLobbyOccupancy, emitLobbyHeat, emitLobbyReactionBurst } from "@/lib/lobby/lobbyLiveBillboardFeed";
 import { defaultClock, type RoomClock } from "./RoomClock";
+import { getCanonicalRoomSlug } from "@/lib/world/WorldRuntime";
 
 let _clock: RoomClock = defaultClock;
 export function setRoomClock(c: RoomClock): void { _clock = c; }
@@ -38,6 +39,10 @@ const BASELINE: Record<ChatRoomId, Omit<RoomPopulationSnapshot, "roomId">> = {
   "name-that-tune":    { audienceCount: 155, performerCount: 3, hostCount: 2, sponsorCount: 1, lurkerCount: 38,  reactionRate: 15, heatLevel: 28, queueDepth: 3  },
   "circle-squares":    { audienceCount: 120, performerCount: 4, hostCount: 1, sponsorCount: 0, lurkerCount: 28,  reactionRate: 12, heatLevel: 22, queueDepth: 2  },
   "cypher-arena":      { audienceCount: 280, performerCount: 6, hostCount: 1, sponsorCount: 1, lurkerCount: 60,  reactionRate: 32, heatLevel: 55, queueDepth: 10 },
+  "world-concert":      { audienceCount: 3400, performerCount: 12, hostCount: 2, sponsorCount: 3, lurkerCount: 520, reactionRate: 48, heatLevel: 68, queueDepth: 12 },
+  "battle-arena":       { audienceCount: 2100, performerCount: 10, hostCount: 2, sponsorCount: 2, lurkerCount: 360, reactionRate: 42, heatLevel: 60, queueDepth: 9 },
+  "challenge-arena":    { audienceCount: 1640, performerCount: 8, hostCount: 1, sponsorCount: 1, lurkerCount: 220, reactionRate: 36, heatLevel: 52, queueDepth: 10 },
+  "vip-lounge":         { audienceCount:  85, performerCount: 2, hostCount: 1, sponsorCount: 0, lurkerCount: 18,  reactionRate: 10, heatLevel: 22, queueDepth: 2  },
   "venue-room":        { audienceCount:  85, performerCount: 2, hostCount: 1, sponsorCount: 0, lurkerCount: 20,  reactionRate:  8, heatLevel: 15, queueDepth: 1  },
 };
 
@@ -54,10 +59,12 @@ const HEAT_DELTA: Record<RoomHeatEventType, number> = {
 
 const registry = new Map<ChatRoomId, RoomPopulationState>();
 
-function getOrInit(roomId: ChatRoomId): RoomPopulationState {
+function getOrInit(rawRoomId: ChatRoomId): RoomPopulationState {
+  const roomId = getCanonicalRoomSlug(rawRoomId) as ChatRoomId;
   if (!registry.has(roomId)) {
+    const baseStats = BASELINE[roomId] || BASELINE["venue-room"];
     registry.set(roomId, {
-      snapshot: { roomId, ...BASELINE[roomId] },
+      snapshot: { roomId, ...baseStats },
       syntheticUserIds: [],
       lastTickMs: _clock.now(),
     });
@@ -101,12 +108,13 @@ export function getRoomPopulation(roomId: ChatRoomId): RoomPopulationSnapshot {
  * - Records a momentum sample in CrowdMomentumEngine
  * - Emits occupancy + heat events to LobbyLiveBillboardFeed (overflow/shard bridge)
  */
-export function tickPopulation(roomId: ChatRoomId): RoomPopulationSnapshot {
-  const state = getOrInit(roomId);
+export function tickPopulation(rawRoomId: ChatRoomId): RoomPopulationSnapshot {
+  const state = getOrInit(rawRoomId);
   const s = state.snapshot;
+  const roomId = s.roomId;
   const seed = roomSeed(roomId);
 
-  const base = BASELINE[roomId];
+  const base = BASELINE[roomId] || BASELINE["venue-room"];
 
   // Audience drifts ±5% of baseline around its current value
   const audienceDrift = drift(seed, Math.ceil(base.audienceCount * 0.05), 60_000);
@@ -146,9 +154,10 @@ export function tickPopulation(roomId: ChatRoomId): RoomPopulationSnapshot {
  * Register a heat-generating event for a room (reaction burst, queue join, battle, voting, tip).
  * Bumps heatLevel immediately, emits to live feed.
  */
-export function recordRoomHeatEvent(roomId: ChatRoomId, eventType: RoomHeatEventType): void {
-  const state = getOrInit(roomId);
+export function recordRoomHeatEvent(rawRoomId: ChatRoomId, eventType: RoomHeatEventType): void {
+  const state = getOrInit(rawRoomId);
   const s = state.snapshot;
+  const roomId = s.roomId;
   s.heatLevel = clamp(s.heatLevel + HEAT_DELTA[eventType], 5, 100);
   if (eventType === "queue_join") s.queueDepth = clamp(s.queueDepth + 1, 0, 999);
   emitLobbyHeat(roomId, s.heatLevel);
@@ -159,9 +168,10 @@ export function recordRoomHeatEvent(roomId: ChatRoomId, eventType: RoomHeatEvent
  * Inject synthetic audience members (bots) into the room.
  * Registers each bot with AudienceRuntimeEngine so occupancy counts stay consistent.
  */
-export function injectSyntheticAudience(roomId: ChatRoomId, count: number = 10): void {
-  const state = getOrInit(roomId);
+export function injectSyntheticAudience(rawRoomId: ChatRoomId, count: number = 10): void {
+  const state = getOrInit(rawRoomId);
   const s = state.snapshot;
+  const roomId = s.roomId;
 
   for (let i = 0; i < count; i++) {
     const userId = `syn-${roomId}-${state.syntheticUserIds.length + i}`;
@@ -186,9 +196,10 @@ export function injectSyntheticAudience(roomId: ChatRoomId, count: number = 10):
  * Remove synthetic audience members from the room.
  * Unregisters from AudienceRuntimeEngine.
  */
-export function removeSyntheticAudience(roomId: ChatRoomId, count: number = 10): void {
-  const state = getOrInit(roomId);
+export function removeSyntheticAudience(rawRoomId: ChatRoomId, count: number = 10): void {
+  const state = getOrInit(rawRoomId);
   const s = state.snapshot;
+  const roomId = s.roomId;
 
   const toRemove = state.syntheticUserIds.splice(0, count);
   for (const userId of toRemove) {
@@ -205,6 +216,7 @@ export function removeSyntheticAudience(roomId: ChatRoomId, count: number = 10):
  * Returns a full momentum snapshot from CrowdMomentumEngine for the room.
  * Useful for camera-reaction sync and observatory displays.
  */
-export function getRoomMomentum(roomId: ChatRoomId) {
+export function getRoomMomentum(rawRoomId: ChatRoomId) {
+  const roomId = getCanonicalRoomSlug(rawRoomId) as ChatRoomId;
   return getCrowdMomentum(roomId);
 }

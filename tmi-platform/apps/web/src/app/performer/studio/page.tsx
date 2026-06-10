@@ -242,7 +242,7 @@ function ReactionFloater({ reactions }: { reactions: FloatReaction[] }) {
 
 // ── Countdown timer ────────────────────────────────────────────────────────────
 function Countdown() {
-  const [secs, setSecs] = useState(9458); // 02:34:18
+  const [secs, setSecs] = useState(0);
   useEffect(() => {
     const t = setInterval(() => setSecs(s => Math.max(0, s - 1)), 1000);
     return () => clearInterval(t);

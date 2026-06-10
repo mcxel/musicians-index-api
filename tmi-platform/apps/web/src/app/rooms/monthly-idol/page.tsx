@@ -10,14 +10,7 @@ import ArenaEventShell from "@/components/live/ArenaEventShell";
 const PHASES = ["AUDITIONS", "ROUND 1", "QUARTERFINALS", "SEMIFINALS", "FINALE", "CROWNED"] as const;
 type Phase = typeof PHASES[number];
 
-const CONTESTANTS = [
-  { id: 1, name: "NeonVoice_X", genre: "R&B", score: 934, qualified: true, city: "Atlanta" },
-  { id: 2, name: "LaserLyrics", genre: "Hip-Hop", score: 912, qualified: true, city: "Houston" },
-  { id: 3, name: "MidnightMelody", genre: "Soul", score: 889, qualified: true, city: "Detroit" },
-  { id: 4, name: "CrownSeekerV2", genre: "Trap", score: 862, qualified: true, city: "Chicago" },
-  { id: 5, name: "PinkDiva99", genre: "Pop R&B", score: 841, qualified: true, city: "Miami" },
-  { id: 6, name: "GoldenVibez", genre: "Neo-Soul", score: 807, qualified: false, city: "LA" },
-];
+const CONTESTANTS: { id: number; name: string; genre: string; score: number; qualified: boolean; city: string }[] = [];
 
 const SPONSOR_GIFTS = [
   { sponsor: "Crown Audio", prize: "Pro Studio Time (4hrs)", icon: "🎙️" },
@@ -27,7 +20,7 @@ const SPONSOR_GIFTS = [
 
 export default function MonthlyIdolPage() {
   const [phase, setPhase] = useState<Phase>("ROUND 1");
-  const [watching, setWatching] = useState(5841);
+  const [watching, setWatching] = useState(0);
 
   return (
     <PageShell>
@@ -74,6 +67,11 @@ export default function MonthlyIdolPage() {
             <div>
               <div style={{ fontSize: 9, letterSpacing: 4, color: "#FFD700", fontWeight: 800, marginBottom: 16 }}>CONTESTANTS — {phase}</div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 14 }}>
+                {CONTESTANTS.length === 0 && (
+                  <div style={{ gridColumn: "1/-1", padding: "32px 16px", textAlign: "center", background: "rgba(255,215,0,0.04)", border: "1px solid rgba(255,215,0,0.12)", borderRadius: 12, color: "rgba(255,255,255,0.3)", fontSize: 12 }}>
+                    No contestants registered yet for this round.
+                  </div>
+                )}
                 {CONTESTANTS.map((c, i) => (
                   <motion.div key={c.id}
                     initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}

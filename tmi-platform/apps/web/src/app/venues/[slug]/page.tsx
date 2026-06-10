@@ -7,6 +7,7 @@ import AudienceScene from "@/components/live/AudienceScene";
 import UnifiedAdSlot from "@/components/ads/UnifiedAdSlot";
 import SeatUpgradeWidget from "@/components/venue/SeatUpgradeWidget";
 import TipBar from "@/components/hud/TipBar";
+import { getCanonicalRoomSlug } from "@/lib/world/WorldRuntime";
 
 const VENUES: Record<string, {
   name: string; type: "theater" | "arena" | "club" | "outdoor" | "studio";
@@ -19,7 +20,7 @@ const VENUES: Record<string, {
   "main-stage": {
     name: "Main Stage", type: "arena", city: "Los Angeles",
     capacity: 18500, venueIndex: 1, accentColor: "#FF2DAA",
-    emoji: "🏟️", isLive: true, viewers: 3400,
+    emoji: "🏟️", isLive: false, viewers: 0,
     description: "The flagship TMI arena. 18,500 seats, stadium-wrap seating, full production broadcast capability.",
     currentEvent: "World Concert Live", currentArtist: "Nova Cipher",
     priceGA: 5, priceVIP: 20, priceFrontRow: 10, priceBackstage: 50,
@@ -29,7 +30,7 @@ const VENUES: Record<string, {
   "cypher-theater": {
     name: "Cypher Theater", type: "theater", city: "New York",
     capacity: 2730, venueIndex: 0, accentColor: "#00FFFF",
-    emoji: "🎭", isLive: true, viewers: 841,
+    emoji: "🎭", isLive: false, viewers: 0,
     description: "Intimate 2,730-seat theater designed for cyphers, open mics, and live showcases.",
     currentEvent: "Monday Cypher", currentArtist: "Open Floor",
     priceGA: 3, priceVIP: 12, priceFrontRow: 7, priceBackstage: 30,
@@ -66,17 +67,14 @@ const TICKET_TIERS = [
 export default function VenuePage({ params }: { params: { slug: string } }) {
   const router = useRouter();
   const venue = VENUES[params.slug] ?? VENUES["main-stage"]!;
+  const canonicalRoomSlug = getCanonicalRoomSlug(params.slug);
+  const joinHref = `/rooms/${canonicalRoomSlug}?autoSeat=1`;
   const [activeTab, setActiveTab] = useState<"entrance" | "tickets" | "seats" | "sponsors">("entrance");
   const [ticketQty, setTicketQty] = useState(1);
   const [selectedTier, setSelectedTier] = useState("ga");
   const [buyingTicket, setBuyingTicket] = useState(false);
-  const [viewers, setViewers] = useState(venue.viewers);
+  const [viewers] = useState(venue.viewers);
 
-  useEffect(() => {
-    if (!venue.isLive) return;
-    const id = setInterval(() => setViewers(v => Math.max(5, v + Math.floor((Math.random() - 0.35) * 40))), 3000);
-    return () => clearInterval(id);
-  }, [venue.isLive]);
 
   const tier = TICKET_TIERS.find(t => t.id === selectedTier)!;
   const tierPrice = venue[tier.key];
@@ -136,7 +134,7 @@ export default function VenuePage({ params }: { params: { slug: string } }) {
         </div>
         {venue.isLive && (
           <div style={{ position: "absolute", bottom: 70, left: "50%", transform: "translateX(-50%)" }}>
-            <Link href={`/rooms/${params.slug}?autoSeat=1`} style={{ padding: "14px 36px", background: `linear-gradient(90deg, ${venue.accentColor}, ${venue.accentColor}88)`, color: "#000", borderRadius: 12, fontWeight: 900, fontSize: 13, textDecoration: "none", letterSpacing: "0.12em", whiteSpace: "nowrap", boxShadow: `0 0 40px ${venue.accentColor}55`, display: "block", animation: "vPulse 2.5s ease-in-out infinite" }}>
+            <Link href={joinHref} style={{ padding: "14px 36px", background: `linear-gradient(90deg, ${venue.accentColor}, ${venue.accentColor}88)`, color: "#000", borderRadius: 12, fontWeight: 900, fontSize: 13, textDecoration: "none", letterSpacing: "0.12em", whiteSpace: "nowrap", boxShadow: `0 0 40px ${venue.accentColor}55`, display: "block", animation: "vPulse 2.5s ease-in-out infinite" }}>
               ▶ ENTER VENUE + SIT
             </Link>
           </div>
@@ -204,7 +202,7 @@ export default function VenuePage({ params }: { params: { slug: string } }) {
                     <div style={{ fontSize: 8, color: "#FF2020", fontWeight: 800, letterSpacing: "0.14em", marginBottom: 8 }}>● LIVE NOW</div>
                     <div style={{ fontSize: 13, fontWeight: 900, marginBottom: 4 }}>{venue.currentEvent}</div>
                     <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", marginBottom: 14 }}>{venue.currentArtist}</div>
-                    <Link href={`/rooms/${params.slug}?autoSeat=1`} style={{ display: "block", padding: "12px", background: venue.accentColor, color: "#000", borderRadius: 10, fontWeight: 900, fontSize: 11, textDecoration: "none", marginBottom: 8 }}>ENTER + SIT →</Link>
+                    <Link href={joinHref} style={{ display: "block", padding: "12px", background: venue.accentColor, color: "#000", borderRadius: 10, fontWeight: 900, fontSize: 11, textDecoration: "none", marginBottom: 8 }}>ENTER + SIT →</Link>
                     <button onClick={() => setActiveTab("tickets")} style={{ width: "100%", padding: "10px", background: "transparent", border: `1px solid ${venue.accentColor}44`, color: venue.accentColor, borderRadius: 10, fontWeight: 800, fontSize: 10, cursor: "pointer" }}>🎫 GET TICKET</button>
                     {venue.currentArtist && (
                       <div style={{ marginTop: 12 }}>

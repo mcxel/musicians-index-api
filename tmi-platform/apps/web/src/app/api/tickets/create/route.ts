@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { NextResponse } from "next/server";
 import { createTicket, resolveTicketRoyalty } from "@/lib/tickets/ticketEngine";
 import type { TicketTier } from "@/lib/tickets/ticketCore";

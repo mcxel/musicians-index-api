@@ -192,7 +192,5 @@ export default function AudioProvider({ children }: AudioProviderProps) {
     clearPlaylist,
   }
 
-  if (!isMounted) return null
-
   return <AudioContext.Provider value={value}>{children}</AudioContext.Provider>
 }

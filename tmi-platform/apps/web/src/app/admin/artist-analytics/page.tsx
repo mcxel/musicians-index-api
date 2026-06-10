@@ -3,13 +3,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Artist Analytics | TMI Admin" };
 
-const ARTISTS = [
-  { name: "Wavetek",     fans: 42800, revenue: 38200, streams: 2100000, growth: "+24%", color: "#FF2DAA", tier: "GOLD" },
-  { name: "Zuri Bloom",  fans: 31400, revenue: 22700, streams: 1400000, growth: "+31%", color: "#00FF88", tier: "GOLD" },
-  { name: "Krypt",       fans: 28900, revenue: 29100, streams: 980000,  growth: "+18%", color: "#AA2DFF", tier: "GOLD" },
-  { name: "Neon Vibe",   fans: 24600, revenue: 18400, streams: 740000,  growth: "+12%", color: "#00FFFF", tier: "SILVER" },
-  { name: "Lyric Stone", fans: 19200, revenue: 14800, streams: 620000,  growth: "+28%", color: "#FFD700", tier: "SILVER" },
-];
+const ARTISTS: { name: string; fans: number; revenue: number; streams: number; growth: string; color: string; tier: string }[] = [];
 
 export default function AdminArtistAnalyticsPage() {
   const totalRevenue = ARTISTS.reduce((a, r) => a + r.revenue, 0);
@@ -38,6 +32,11 @@ export default function AdminArtistAnalyticsPage() {
 
         <div style={{ fontSize: 9, letterSpacing: "0.2em", color: "rgba(255,255,255,0.3)", fontWeight: 700, marginBottom: 16 }}>TOP ARTISTS BY REVENUE</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {ARTISTS.length === 0 && (
+            <div style={{ padding: "32px 24px", textAlign: "center", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 12, color: "rgba(255,255,255,0.3)", fontSize: 12 }}>
+              No artist data yet — revenue populates as performers earn on platform.
+            </div>
+          )}
           {ARTISTS.map((artist, i) => (
             <div key={artist.name} style={{ display: "flex", gap: 16, alignItems: "center", background: "rgba(255,255,255,0.02)", border: `1px solid ${artist.color}14`, borderRadius: 12, padding: "16px 20px", flexWrap: "wrap" }}>
               <span style={{ fontSize: 12, fontWeight: 900, color: "rgba(255,255,255,0.2)", minWidth: 24 }}>#{i + 1}</span>

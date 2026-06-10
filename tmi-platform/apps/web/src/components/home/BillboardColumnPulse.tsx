@@ -33,14 +33,24 @@ type ColumnDef = {
   speedSec: number;
 };
 
-const COLUMNS: readonly ColumnDef[] = [
-  { key: "best_song",          title: "Digital Hip-Hop Night",  accent: "#00FFFF", shadow: "rgba(0,255,255,0.55)",   speedSec: 40 },
-  { key: "best_hooks",         title: "Digital Comedy Night",   accent: "#FF2DAA", shadow: "rgba(255,45,170,0.55)", speedSec: 44 },
-  { key: "best_horns",         title: "Digital Country Night",  accent: "#FFD700", shadow: "rgba(255,215,0,0.55)",  speedSec: 48 },
-  { key: "best_battle",        title: "Digital DJ Night",       accent: "#AA2DFF", shadow: "rgba(170,45,255,0.55)", speedSec: 42 },
-  { key: "fan_crown",          title: "Digital Dance Night",    accent: "#00FF88", shadow: "rgba(0,255,136,0.5)",   speedSec: 46 },
-  { key: "rising_performer",   title: "Digital Gospel Night",   accent: "#5EE1FF", shadow: "rgba(94,225,255,0.5)",  speedSec: 50 },
+const INDUSTRY_COLUMNS: readonly ColumnDef[] = [
+  { key: "best_song",        title: "Top Artists",      accent: "#00FFFF", shadow: "rgba(0,255,255,0.55)",   speedSec: 40 },
+  { key: "best_battle",      title: "Top DJs",          accent: "#E040FB", shadow: "rgba(224,64,251,0.55)", speedSec: 42 },
+  { key: "best_hooks",       title: "Top Producers",    accent: "#40C4FF", shadow: "rgba(64,196,255,0.55)", speedSec: 44 },
+  { key: "best_horns",       title: "Top Bands",        accent: "#FFD700", shadow: "rgba(255,215,0,0.55)",  speedSec: 48 },
+  { key: "fan_crown",        title: "Top Venues",       accent: "#00FF88", shadow: "rgba(0,255,136,0.5)",   speedSec: 46 },
+  { key: "rising_performer", title: "Top Promoters",    accent: "#FF6B35", shadow: "rgba(255,107,53,0.5)",  speedSec: 50 },
 ] as const;
+
+const DISCOVERY_COLUMNS: readonly ColumnDef[] = [
+  { key: "rising_performer", title: "Undiscovered 100", accent: "#00FFFF", shadow: "rgba(0,255,255,0.55)",   speedSec: 38 },
+  { key: "best_song",        title: "Rising Artists",   accent: "#FF2DAA", shadow: "rgba(255,45,170,0.55)", speedSec: 42 },
+  { key: "best_battle",      title: "DJ Discovery",     accent: "#E040FB", shadow: "rgba(224,64,251,0.55)", speedSec: 44 },
+  { key: "best_hooks",       title: "Comedy Rising",    accent: "#FFA500", shadow: "rgba(255,165,0,0.55)",  speedSec: 40 },
+  { key: "fan_crown",        title: "Dance Rising",     accent: "#FF2D9B", shadow: "rgba(255,45,155,0.5)",  speedSec: 46 },
+  { key: "best_horns",       title: "Producer Rising",  accent: "#40C4FF", shadow: "rgba(64,196,255,0.5)",  speedSec: 48 },
+] as const;
+
 
 // Country flags cycle by artist index so each name gets a consistent flag
 const FLAGS = ["🇺🇸", "🇯🇲", "🇬🇧", "🇨🇦", "🇧🇷", "🇳🇬", "🇿🇦", "🇲🇽", "🇫🇷", "🇯🇵", "🇩🇪", "🇦🇺"];
@@ -520,6 +530,15 @@ const PAIR_COLORS = ["#00FFFF","#FF2DAA","#FFD700","#AA2DFF","#00FF88","#FF6B35"
 export default function BillboardColumnPulse() {
   const isVisible = useSceneVisible();
   const [pairIdx, setPairIdx] = useState(0);
+  const [chartMode, setChartMode] = useState<'industry' | 'discovery' | 'challenge'>('industry');
+  const [challengeRows, setChallengeRows] = useState<Array<{id:string;name:string;wins:number;losses:number;fans:number;votes:number;tips:number;winStreak:number;challenges:number;winRate:number;score:number}>>([]);
+
+  useEffect(() => {
+    fetch('/api/billboard/challenge-rankings?limit=10')
+      .then(r => r.json())
+      .then((d: { ok: boolean; rows?: typeof challengeRows }) => { if (d.ok && d.rows) setChallengeRows(d.rows); })
+      .catch(() => {});
+  }, []);
   const deckArticles = [
     "WHO TOOK THE CROWN THIS WEEK?",
     "CYPHER ARENA OPEN FOR WILD-CARD ENTRY",
@@ -684,17 +703,63 @@ export default function BillboardColumnPulse() {
         >
           <div>
             <div style={{ fontSize: 10, fontWeight: 900, color: "#FFFFFF", letterSpacing: "0.14em", textTransform: "uppercase" }}>
-              TMI Digital Nights — Live Rankings
+              {chartMode === 'industry' ? 'TMI Industry Billboard' : 'TMI Discovery Charts'}
             </div>
             <div style={{ fontSize: 7, color: "rgba(0,255,255,0.65)", letterSpacing: "0.16em", textTransform: "uppercase", marginTop: 2 }}>
-              Fan-Truth Billboard · Cover Spread · Live Rank Motion
+              {chartMode === 'industry' ? 'Established Talent · Fan-Truth Rankings · Live Rank Motion' : 'Emerging Talent · Undiscovered 100 · Rising Performers'}
             </div>
           </div>
-          <div style={{ fontSize: 7, color: "rgba(255,255,255,0.34)", letterSpacing: "0.12em", textTransform: "uppercase" }}>
-            {(() => { const w = Math.floor(Date.now() / (7 * 24 * 60 * 60 * 1000)); return `Issue ${(w % 52) + 1} · Week ${(w % 52) + 1}`; })()}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <button
+              onClick={() => setChartMode('industry')}
+              style={{ fontSize: 7, fontWeight: 900, letterSpacing: '0.14em', textTransform: 'uppercase', padding: '4px 10px', borderRadius: 4, border: `1px solid ${chartMode === 'industry' ? '#00FFFF' : 'rgba(255,255,255,0.15)'}`, background: chartMode === 'industry' ? 'rgba(0,255,255,0.12)' : 'transparent', color: chartMode === 'industry' ? '#00FFFF' : 'rgba(255,255,255,0.35)', cursor: 'pointer', transition: 'all 0.2s ease' }}
+            >
+              INDUSTRY
+            </button>
+            <button
+              onClick={() => setChartMode('discovery')}
+              style={{ fontSize: 7, fontWeight: 900, letterSpacing: '0.14em', textTransform: 'uppercase', padding: '4px 10px', borderRadius: 4, border: `1px solid ${chartMode === 'discovery' ? '#FF2DAA' : 'rgba(255,255,255,0.15)'}`, background: chartMode === 'discovery' ? 'rgba(255,45,170,0.12)' : 'transparent', color: chartMode === 'discovery' ? '#FF2DAA' : 'rgba(255,255,255,0.35)', cursor: 'pointer', transition: 'all 0.2s ease' }}
+            >
+              DISCOVERY
+            </button>
+            <button
+              onClick={() => setChartMode('challenge')}
+              style={{ fontSize: 7, fontWeight: 900, letterSpacing: '0.14em', textTransform: 'uppercase', padding: '4px 10px', borderRadius: 4, border: `1px solid ${chartMode === 'challenge' ? '#FFD700' : 'rgba(255,255,255,0.15)'}`, background: chartMode === 'challenge' ? 'rgba(255,215,0,0.12)' : 'transparent', color: chartMode === 'challenge' ? '#FFD700' : 'rgba(255,255,255,0.35)', cursor: 'pointer', transition: 'all 0.2s ease' }}
+            >
+              ⚔️ CHALLENGE
+            </button>
           </div>
         </div>
 
+        {chartMode === 'challenge' ? (
+          <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '12px 16px' }}>
+            <div style={{ fontSize: 8, fontWeight: 900, letterSpacing: '0.2em', color: '#FFD700', marginBottom: 10, textTransform: 'uppercase' }}>
+              ⚔️ Challenge Billboard — Score = Votes · Wins · Tips · Streak
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {challengeRows.length === 0 && (
+                <div style={{ padding: '24px 0', textAlign: 'center', color: 'rgba(255,255,255,0.25)', fontSize: 11 }}>
+                  No challenge rankings yet — rankings fill as performers compete.
+                </div>
+              )}
+              {challengeRows.map((r, i) => (
+                <Link key={r.id} href={`/artists/${r.id}`} style={{ textDecoration: 'none' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 8, background: i === 0 ? 'rgba(255,215,0,0.12)' : 'rgba(255,255,255,0.03)', border: `1px solid ${i === 0 ? '#FFD70055' : 'rgba(255,255,255,0.06)'}` }}>
+                    <div style={{ width: 20, textAlign: 'center', fontSize: 10, fontWeight: 900, color: i === 0 ? '#FFD700' : i === 1 ? '#C0C0C0' : i === 2 ? '#CD7F32' : 'rgba(255,255,255,0.4)', fontFamily: "'Inter',sans-serif" }}>#{i+1}</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 10, fontWeight: 900, color: '#fff', fontFamily: "'Inter',sans-serif", overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}</div>
+                      <div style={{ fontSize: 7, color: 'rgba(255,255,255,0.4)', fontFamily: "'Inter',sans-serif", marginTop: 2 }}>
+                        W:{r.wins} L:{r.losses} · {r.votes.toLocaleString()} votes · {r.tips} tips · 🔥{r.winStreak} streak
+                      </div>
+                    </div>
+                    <div style={{ fontSize: 11, fontWeight: 900, color: '#FFD700', fontFamily: "'Inter',sans-serif", flexShrink: 0 }}>{r.score}</div>
+                    <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.3)', fontFamily: "'Inter',sans-serif" }}>{r.winRate}%</div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        ) : (
         <div
           style={{
             display: "grid",
@@ -704,12 +769,16 @@ export default function BillboardColumnPulse() {
             minHeight: 0,
           }}
         >
-          {COLUMNS.map((column, idx) => (
-            <div key={column.key} style={{ borderRight: idx < COLUMNS.length - 1 ? "1px solid rgba(255,255,255,0.07)" : "none", minWidth: 0 }}>
-              <BillboardColumn config={column} active={isVisible} />
-            </div>
-          ))}
+          {(chartMode === 'industry' ? INDUSTRY_COLUMNS : DISCOVERY_COLUMNS).map((column, idx) => {
+            const activeCols = chartMode === 'industry' ? INDUSTRY_COLUMNS : DISCOVERY_COLUMNS;
+            return (
+              <div key={`${chartMode}-${column.key}-${idx}`} style={{ borderRight: idx < activeCols.length - 1 ? "1px solid rgba(255,255,255,0.07)" : "none", minWidth: 0 }}>
+                <BillboardColumn config={column} active={isVisible} />
+              </div>
+            );
+          })}
         </div>
+        )}
 
         <div
           style={{

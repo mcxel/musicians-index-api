@@ -8,11 +8,11 @@ const SEED_STATS: PerformerStats = {
   userId: "local",
   displayName: "Performer",
   period: "7d",
-  revenue: { tips: 42, beats: 120, nfts: 0, tickets: 85, subscriptions: 30, total: 277 },
-  battles: { won: 3, lost: 1, totalXP: 1840, avgCrowdVote: 78 },
-  fans: { gained: 14, total: 312, returningPct: 62 },
-  streams: { sessions: 7, totalMinutes: 840, peakViewers: 148, avgDuration: 24, topRoom: "Battle Night" },
-  beats: { plays: 204, purchases: 6, topBeat: "Crown Cypher" },
+  revenue: { tips: 0, beats: 0, nfts: 0, tickets: 0, subscriptions: 0, total: 0 },
+  battles: { won: 0, lost: 0, totalXP: 0, avgCrowdVote: 0 },
+  fans: { gained: 0, total: 0, returningPct: 0 },
+  streams: { sessions: 0, totalMinutes: 0, peakViewers: 0, avgDuration: 0, topRoom: "—" },
+  beats: { plays: 0, purchases: 0, topBeat: "—" },
   articles: { reads: 0, topArticle: "—" },
 };
 

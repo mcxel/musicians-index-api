@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useReducer } from "react";
+import { useState } from "react";
 
 interface ArtistStat {
   id: string;
@@ -15,28 +15,7 @@ interface ArtistStat {
   heatScore: number;
 }
 
-const SEED: ArtistStat[] = [
-  { id: "a1", name: "Julius.B",   genre: "R&B / Soul",     rank: 1,  rankDelta:  0, revenue: 84200, revenueDelta:  1200, fans: 24800, fanConversion: 8.4,  heatScore: 96 },
-  { id: "a2", name: "Verse.XL",   genre: "Hip-Hop",        rank: 2,  rankDelta: +1, revenue: 61400, revenueDelta:   840, fans: 18200, fanConversion: 7.1,  heatScore: 88 },
-  { id: "a3", name: "Crown.T",    genre: "Afrobeats",      rank: 3,  rankDelta: -1, revenue: 55900, revenueDelta:  -320, fans: 16700, fanConversion: 6.8,  heatScore: 82 },
-  { id: "a4", name: "Lyric.44",   genre: "Neo-Soul",       rank: 4,  rankDelta: +2, revenue: 41200, revenueDelta:   610, fans: 13100, fanConversion: 5.9,  heatScore: 74 },
-  { id: "a5", name: "Bass.Nero",  genre: "Electronic",     rank: 5,  rankDelta:  0, revenue: 38800, revenueDelta:   200, fans: 11400, fanConversion: 5.2,  heatScore: 69 },
-  { id: "a6", name: "Sona.Dee",   genre: "Gospel / Soul",  rank: 6,  rankDelta: -2, revenue: 29700, revenueDelta:  -150, fans:  9800, fanConversion: 4.8,  heatScore: 61 },
-];
-
-type Action = { type: "tick" };
-
-function statsReducer(state: ArtistStat[], action: Action): ArtistStat[] {
-  if (action.type === "tick") {
-    return state.map((a) => ({
-      ...a,
-      revenue: a.revenue + Math.floor(Math.random() * 200 - 40),
-      fans:    a.fans    + Math.floor(Math.random() * 30),
-      heatScore: Math.min(100, Math.max(0, a.heatScore + (Math.random() > 0.5 ? 1 : -1))),
-    }));
-  }
-  return state;
-}
+const SEED: ArtistStat[] = [];
 
 function fmt(n: number): string {
   if (n >= 1000) return `$${(n / 1000).toFixed(1)}k`;
@@ -68,12 +47,7 @@ function heatBar(score: number): string {
 }
 
 export default function ArtistAnalyticsPanel() {
-  const [stats, dispatch] = useReducer(statsReducer, SEED);
-
-  useEffect(() => {
-    const id = setInterval(() => dispatch({ type: "tick" }), 7000);
-    return () => clearInterval(id);
-  }, []);
+  const [stats] = useState<ArtistStat[]>(SEED);
 
   const totalRevenue = stats.reduce((s, a) => s + a.revenue, 0);
   const totalFans    = stats.reduce((s, a) => s + a.fans, 0);
@@ -106,6 +80,11 @@ export default function ArtistAnalyticsPanel() {
       </div>
 
       <div className="flex flex-col gap-1 overflow-y-auto">
+        {stats.length === 0 && (
+          <div className="py-8 text-center text-[10px] text-zinc-600">
+            No artist data yet — populates as performers earn on platform.
+          </div>
+        )}
         {stats.map((a) => (
           <div key={a.id} className="grid grid-cols-[24px_1fr_56px_56px_56px_80px] items-center gap-2 rounded-lg border border-white/5 bg-black/40 px-2 py-1.5">
             {/* Rank */}

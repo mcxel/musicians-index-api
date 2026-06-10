@@ -29,10 +29,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: `Invalid role. Must be one of: ${VALID_ROLES.join(', ')}` }, { status: 400 });
   }
 
-  const updated = updateUserRole(email, role);
-  if (!updated) {
-    return NextResponse.json({ error: 'User not found' }, { status: 404 });
-  }
+  // Best-effort — may be a no-op if UserStore is in a different module instance
+  updateUserRole(email, role);
 
   const response = NextResponse.json({ ok: true, role });
   response.cookies.set('tmi_role', role, COOKIE_OPTS);

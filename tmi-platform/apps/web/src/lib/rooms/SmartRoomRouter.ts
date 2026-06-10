@@ -18,7 +18,11 @@ import { listRoomMembers } from '@/lib/rooms/RoomJoinEngine';
 import type { ChatRoomId } from '@/lib/chat/RoomChatEngine';
 
 export const ROUTABLE_ROOMS: ChatRoomId[] = [
+  'world-concert' as ChatRoomId,
+  'battle-arena' as ChatRoomId,
   'cypher-arena',
+  'challenge-arena',
+  'vip-lounge',
   'monthly-idol',
   'monday-night-stage',
   'deal-or-feud',

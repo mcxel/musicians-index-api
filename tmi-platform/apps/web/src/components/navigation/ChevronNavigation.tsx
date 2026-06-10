@@ -3,6 +3,8 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
+const HIDDEN_PATH_PREFIXES = ["/auth", "/api"];
+
 export default function ChevronNavigation() {
   const router = useRouter();
   const pathname = usePathname() ?? "/";
@@ -73,12 +75,16 @@ export default function ChevronNavigation() {
     };
   }, [onTouchEnd]);
 
+  const shouldHide = HIDDEN_PATH_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+  if (shouldHide) return null;
+
   return (
     <>
       {/* Back Chevron */}
       <button
         onClick={goBackSafe}
-        className="fixed top-1/2 left-2 z-50 p-2 md:p-3 bg-black/55 text-white rounded-full hover:bg-black/80 transition-colors transform -translate-y-1/2 flex items-center justify-center group focus:outline-none focus:ring-2 focus:ring-white/50"
+        className="chevron-nav-btn fixed top-1/2 left-2 z-[2147483647] p-2 md:p-3 bg-black/55 text-white rounded-full hover:bg-black/80 transition-colors transform -translate-y-1/2 flex items-center justify-center group focus:outline-none focus:ring-2 focus:ring-white/50"
+        style={{ opacity: 1, visibility: "visible", pointerEvents: "auto", display: "flex" }}
         aria-label="Go Back"
         title="Go Back"
       >
@@ -95,7 +101,8 @@ export default function ChevronNavigation() {
       {/* Forward Chevron */}
       <button
         onClick={goForwardSafe}
-        className="fixed top-1/2 right-2 z-50 p-2 md:p-3 bg-black/55 text-white rounded-full hover:bg-black/80 transition-colors transform -translate-y-1/2 flex items-center justify-center group focus:outline-none focus:ring-2 focus:ring-white/50"
+        className="chevron-nav-btn fixed top-1/2 right-2 z-[2147483647] p-2 md:p-3 bg-black/55 text-white rounded-full hover:bg-black/80 transition-colors transform -translate-y-1/2 flex items-center justify-center group focus:outline-none focus:ring-2 focus:ring-white/50"
+        style={{ opacity: 1, visibility: "visible", pointerEvents: "auto", display: "flex" }}
         aria-label="Go Forward"
         title="Go Forward"
       >

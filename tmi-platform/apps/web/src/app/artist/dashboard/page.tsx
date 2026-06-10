@@ -43,8 +43,8 @@ export default function ArtistDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [userName, setUserName] = useState("Artist");
   const [isLive, setIsLive] = useState(false);
-  const [viewers, setViewers] = useState(215);
-  const [tips, setTips] = useState(865);
+  const [viewers] = useState(0);
+  const [tips] = useState(0);
   const [reactions, setReactions] = useState<{ id: number; em: string; x: number }[]>([]);
   const [reactionId, setReactionId] = useState(0);
 
@@ -59,14 +59,6 @@ export default function ArtistDashboardPage() {
       .catch(() => router.replace("/auth"));
   }, [router]);
 
-  useEffect(() => {
-    if (!isLive) return;
-    const id = setInterval(() => {
-      setViewers(v => Math.max(180, v + Math.floor((Math.random() - 0.3) * 12)));
-      setTips(v => v + Math.floor(Math.random() * 5));
-    }, 2500);
-    return () => clearInterval(id);
-  }, [isLive]);
 
   function fireReaction(em: string) {
     const id = reactionId + 1;

@@ -6,12 +6,7 @@ export const metadata: Metadata = {
   description: "Track beat plays, sales, revenue, and conversion rates across your TMI producer catalog.",
 };
 
-const BEATS_DATA = [
-  { title: "Battle Code", genre: "Battle Rap", plays: 7800, sales: 7, revenue: 343, convRate: "0.09%", battleUses: 4, cypherUses: 2, wins: 3 },
-  { title: "Midnight Bars", genre: "Hip-Hop", plays: 4200, sales: 5, revenue: 245, convRate: "0.12%", battleUses: 2, cypherUses: 1, wins: 1 },
-  { title: "Gold Standard", genre: "Trap", plays: 5600, sales: 2, revenue: 118, convRate: "0.04%", battleUses: 0, cypherUses: 3, wins: 0 },
-  { title: "Frequency", genre: "Instrumental", plays: 1900, sales: 0, revenue: 0, convRate: "0%", battleUses: 0, cypherUses: 0, wins: 0 },
-];
+const BEATS_DATA: { title: string; genre: string; plays: number; sales: number; revenue: number; convRate: string; battleUses: number; cypherUses: number; wins: number }[] = [];
 
 export default function ProducerAnalyticsPage() {
   const totalPlays = BEATS_DATA.reduce((a, b) => a + b.plays, 0);

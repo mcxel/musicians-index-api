@@ -23,7 +23,7 @@ const ROLE_OPTIONS: { role: UserRole; label: string; icon: string; desc: string 
   { role: 'advertiser', label: 'Advertiser', icon: '📢', desc: 'Run ads, reach music fans' },
 ];
 
-const AUTH_PATHS = ['/auth', '/signup', '/login', '/support/account-recovery', '/home'];
+const AUTH_PATHS = ['/auth', '/signup', '/login', '/support/account-recovery', '/home', '/onboarding'];
 
 const NEXT_ACTIONS = [
   { icon: '🎭', label: 'Join a Live Room',     desc: 'Watch artists perform right now',        href: '/fan/theater'      },

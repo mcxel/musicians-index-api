@@ -56,6 +56,33 @@ Each AI has one lane:
 - **Gemini**: audit/verify routes, PASS/FAIL only, no code writing
 - **BlackBox**: locked one-pass bulk tasks with explicit scope only
 
+### 8. THE ONE REASON RULE (PRODUCT COHERENCE)
+Every homepage must be describable in one sentence. If a new visitor cannot explain what a page is for in 5 seconds, the page fails certification.
+- **Home 1**: Join the network. *(Recruitment, Crown Holder, Discovery, Sign Up)*
+- **Home 1-2**: Discover who's winning. *(Charts, Rankings, Rising Artists)*
+- **Home 2**: Read the magazine. *(Articles, Interviews, News)*
+- **Home 3**: Watch live. *(Live rooms, Upcoming shows, Audience wall)*
+- **Home 4**: Buy, advertise, sponsor. *(Ads, Sponsors, Tickets, Marketplace)*
+- **Home 5**: Compete and win. *(Battles, Challenges, Cyphers, Belts)*
+
+### 9. AUDIT ORDER: COHERENCE THEN CLOSURE
+Before writing any code or wiring a module, you must perform two audits in this exact order:
+1. **Priority -2: Product Coherence Audit**: Does this page obey the "One Reason Rule"? Remove or relocate any module that violates the page's core identity.
+2. **Priority -1: Loop Closure Audit**: Verify the data path (Database → API → Context Provider → Component Props → UI). No visual shells without data binding.
+
+### 10. CENTRAL SERVICE REGISTRY
+Every component belongs to ONE of these engines. Do not mix pieces blindly:
+- **Broadcast Engine**: Lobby walls, rotations, live tiles
+- **Media Engine**: WebRTC, video capture, streams
+- **Ranking Engine**: Charts, crowns, divisions
+- **Battle Engine**: Challenges, belts, trophies
+- **Revenue Engine**: Stripe, ads, tickets, sponsors
+- **Magazine Engine**: Articles, news, interviews
+- **Profile Engine**: Fans, performers, venues
+- **Admin Engine**: KPI dashboard, analytics
+- **Notification Engine**: Email, alerts, messaging
+- **Automation Engine**: Bots, maintenance agents
+
 ---
 
 ## PACKAGE STRUCTURE

@@ -64,6 +64,24 @@ export interface WorldVenue {
   usesDanceFloor: boolean;  // true ONLY for world-dance-party
 }
 
+// ── Centralized Routing Registry ─────────────────────────────────────────────
+export const ROOM_ALIAS_MAP: Record<string, string> = {
+  "main-stage": "world-concert",
+  "cypher-theater": "cypher-arena",
+  "underground-club": "vip-lounge",
+  "festival-grounds": "challenge-arena",
+  "battle-arena": "battle-arena",
+  "monthly-idol": "monthly-idol",
+};
+
+export const getCanonicalRoomSlug = (slug: string): string => {
+  return ROOM_ALIAS_MAP[slug] || slug;
+};
+
+export const getCanonicalChatRoomId = (slug: string): string => {
+  return getCanonicalRoomSlug(slug);
+};
+
 // ── Canonical venue registry ─────────────────────────────────────────────────
 const WORLD_VENUES: WorldVenue[] = [
   {
@@ -278,16 +296,18 @@ export function tickWorldRuntime(): void {
 
 // Returns slug→venue mapping for LobbyTheaterShell/ArenaEventShell routing
 export function slugToVenueConfig(slug: string): Pick<WorldVenue, "venueIndex" | "skin" | "usesDanceFloor" | "eventType" | "color"> {
-  const byId = _venues.find(v => v.id === slug || v.route.includes(slug));
+  const canonical = getCanonicalRoomSlug(slug);
+  const byId = _venues.find(v => v.id === canonical || v.route.includes(canonical));
   if (byId) return byId;
+
   // Fallback heuristics
-  if (slug.includes("dance-party") || slug.includes("dance_party")) return { venueIndex: 2, skin: "dance", usesDanceFloor: true,  eventType: "world-dance-party", color: "#FF2DAA" };
-  if (slug.includes("battle") || slug.includes("arena"))            return { venueIndex: 1, skin: "stadium",  usesDanceFloor: false, eventType: "battle",    color: "#FF2DAA" };
-  if (slug.includes("cypher") || slug.includes("monday"))           return { venueIndex: 0, skin: "theater",  usesDanceFloor: false, eventType: "cypher",    color: "#00FFFF" };
-  if (slug.includes("concert") || slug.includes("premiere"))        return { venueIndex: 1, skin: "stadium",  usesDanceFloor: false, eventType: "concert",   color: "#FFD700" };
-  if (slug.includes("idol") || slug.includes("dirty") || slug.includes("dozens")) return { venueIndex: 1, skin: "gameshow", usesDanceFloor: false, eventType: "dirty-dozens", color: "#AA2DFF" };
-  if (slug.includes("challenge"))                                    return { venueIndex: 3, skin: "festival", usesDanceFloor: false, eventType: "challenge", color: "#FFD700" };
-  if (slug.includes("fan"))                                          return { venueIndex: 2, skin: "club",     usesDanceFloor: false, eventType: "fan-live",  color: "#FF6B35" };
+  if (canonical.includes("dance-party") || canonical.includes("dance_party")) return { venueIndex: 2, skin: "dance", usesDanceFloor: true,  eventType: "world-dance-party", color: "#FF2DAA" };
+  if (canonical.includes("battle") || canonical.includes("arena"))            return { venueIndex: 1, skin: "stadium",  usesDanceFloor: false, eventType: "battle",    color: "#FF2DAA" };
+  if (canonical.includes("cypher") || canonical.includes("monday"))           return { venueIndex: 0, skin: "theater",  usesDanceFloor: false, eventType: "cypher",    color: "#00FFFF" };
+  if (canonical.includes("concert") || canonical.includes("premiere"))        return { venueIndex: 1, skin: "stadium",  usesDanceFloor: false, eventType: "concert",   color: "#FFD700" };
+  if (canonical.includes("idol") || canonical.includes("dirty") || canonical.includes("dozens")) return { venueIndex: 1, skin: "gameshow", usesDanceFloor: false, eventType: "dirty-dozens", color: "#AA2DFF" };
+  if (canonical.includes("challenge"))                                    return { venueIndex: 3, skin: "festival", usesDanceFloor: false, eventType: "challenge", color: "#FFD700" };
+  if (canonical.includes("fan"))                                          return { venueIndex: 2, skin: "club",     usesDanceFloor: false, eventType: "fan-live",  color: "#FF6B35" };
   // Default — theater
   return { venueIndex: 0, skin: "theater", usesDanceFloor: false, eventType: "concert", color: "#00FFFF" };
 }

@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useReducer } from "react";
+import { useState, useReducer, useEffect, useCallback } from "react";
 
 type InboxCategory = "artist" | "venue" | "support" | "payout" | "sponsor";
 type InboxPriority = "URGENT" | "NORMAL" | "LOW";
-type InboxStatus = "UNREAD" | "READ" | "ACTIONED";
+type InboxStatus   = "UNREAD" | "READ" | "ACTIONED";
 
 interface InboxItem {
   id: string;
@@ -15,9 +15,67 @@ interface InboxItem {
   subject: string;
   preview: string;
   ts: string;
+  _notifId?: string;
 }
 
-const MESSAGES: InboxItem[] = [
+// ── Notification → InboxItem mapping ─────────────────────────────────────────
+
+type NotifType =
+  | 'system' | 'room_joined' | 'room_started' | 'battle_result' | 'battle_invite'
+  | 'tip_received' | 'tip_sent' | 'achievement' | 'follower' | 'mention'
+  | 'ticket_confirmed' | 'payout' | 'subscription' | 'magazine_drop'
+  | 'nft_sale' | 'beat_purchase' | 'moderation' | 'bot_alert';
+
+interface TMINotification {
+  id: string;
+  type: NotifType;
+  title: string;
+  body: string;
+  priority: 'low' | 'medium' | 'high' | 'critical';
+  read: boolean;
+  ts: number;
+  href?: string;
+  emoji?: string;
+}
+
+function notifToCategory(type: NotifType): InboxCategory {
+  if (type === 'payout') return 'payout';
+  if (type === 'subscription' || type === 'magazine_drop') return 'sponsor';
+  if (type === 'moderation' || type === 'bot_alert' || type === 'system' || type === 'ticket_confirmed') return 'support';
+  return 'artist';
+}
+
+function notifToPriority(p: TMINotification['priority']): InboxPriority {
+  if (p === 'critical' || p === 'high') return 'URGENT';
+  if (p === 'medium') return 'NORMAL';
+  return 'LOW';
+}
+
+function tsAgo(ms: number): string {
+  const diff = Date.now() - ms;
+  if (diff < 60_000)   return 'just now';
+  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`;
+  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`;
+  return `${Math.floor(diff / 86_400_000)}d ago`;
+}
+
+function mapNotifToItem(n: TMINotification): InboxItem {
+  return {
+    id: `notif-${n.id}`,
+    _notifId: n.id,
+    category: notifToCategory(n.type),
+    priority: notifToPriority(n.priority),
+    status: n.read ? 'READ' : 'UNREAD',
+    from: n.emoji ? `${n.emoji} ${n.type.replace(/_/g, ' ')}` : n.type.replace(/_/g, ' '),
+    subject: n.title,
+    preview: n.body,
+    ts: tsAgo(n.ts),
+  };
+}
+
+// ── Seed messages (platform admin activity) ───────────────────────────────────
+
+const SEED_MESSAGES: InboxItem[] = [
   { id: "i1",  category: "payout",  priority: "URGENT",  status: "UNREAD",   from: "Julius.B",       subject: "Payout batch #441 blocked",          preview: "Stripe flagged 3 payouts for manual review. Need override.",       ts: "2m ago"  },
   { id: "i2",  category: "sponsor", priority: "URGENT",  status: "UNREAD",   from: "Beats by Dre",   subject: "Slot confirmation required",         preview: "Campaign slot #7 unconfirmed — goes live in 4h. Awaiting sign.",  ts: "5m ago"  },
   { id: "i3",  category: "artist",  priority: "NORMAL",  status: "UNREAD",   from: "Verse.XL",       subject: "Feature request — setlist upload",   preview: "Wants to upload pre-show setlist via artist dashboard.",           ts: "11m ago" },
@@ -30,6 +88,30 @@ const MESSAGES: InboxItem[] = [
   { id: "i10", category: "support", priority: "LOW",     status: "ACTIONED", from: "User #u-7712",   subject: "Login issue resolved",               preview: "User confirmed resolution after password reset.",                 ts: "4h ago"  },
 ];
 
+// ── Reducer ───────────────────────────────────────────────────────────────────
+
+type Action =
+  | { type: "mark_read"; id: string }
+  | { type: "action"; id: string }
+  | { type: "prepend_live"; items: InboxItem[] };
+
+function inboxReducer(state: InboxItem[], action: Action): InboxItem[] {
+  if (action.type === "mark_read") {
+    return state.map((m) => m.id === action.id && m.status === "UNREAD" ? { ...m, status: "READ" } : m);
+  }
+  if (action.type === "action") {
+    return state.map((m) => m.id === action.id ? { ...m, status: "ACTIONED" } : m);
+  }
+  if (action.type === "prepend_live") {
+    const existingIds = new Set(state.map((m) => m.id));
+    const fresh = action.items.filter((i) => !existingIds.has(i.id));
+    return fresh.length > 0 ? [...fresh, ...state] : state;
+  }
+  return state;
+}
+
+// ── Style maps ────────────────────────────────────────────────────────────────
+
 const CAT_STYLE: Record<InboxCategory, string> = {
   artist:  "border-fuchsia-400/50 text-fuchsia-300 bg-fuchsia-500/10",
   venue:   "border-cyan-400/50 text-cyan-300 bg-cyan-500/10",
@@ -39,39 +121,66 @@ const CAT_STYLE: Record<InboxCategory, string> = {
 };
 
 const CAT_LABEL: Record<InboxCategory, string> = {
-  artist:  "ARTIST",
-  venue:   "VENUE",
-  support: "SUPPORT",
-  payout:  "PAYOUT",
-  sponsor: "SPONSOR",
+  artist: "ARTIST", venue: "VENUE", support: "SUPPORT", payout: "PAYOUT", sponsor: "SPONSOR",
 };
 
 const PRI_STYLE: Record<InboxPriority, string> = {
-  URGENT: "text-red-300",
-  NORMAL: "text-zinc-400",
-  LOW:    "text-zinc-600",
+  URGENT: "text-red-300", NORMAL: "text-zinc-400", LOW: "text-zinc-600",
 };
 
 const ALL_CATS: InboxCategory[] = ["artist", "venue", "support", "payout", "sponsor"];
 
-type Action =
-  | { type: "mark_read"; id: string }
-  | { type: "action"; id: string };
-
-function inboxReducer(state: InboxItem[], action: Action): InboxItem[] {
-  if (action.type === "mark_read") {
-    return state.map((m) => m.id === action.id && m.status === "UNREAD" ? { ...m, status: "READ" } : m);
-  }
-  if (action.type === "action") {
-    return state.map((m) => m.id === action.id ? { ...m, status: "ACTIONED" } : m);
-  }
-  return state;
-}
+// ── Component ─────────────────────────────────────────────────────────────────
 
 export default function UnifiedInboxPanel() {
-  const [messages, dispatch] = useReducer(inboxReducer, MESSAGES);
-  const [filter, setFilter] = useState<InboxCategory | "all">("all");
+  const [messages, dispatch] = useReducer(inboxReducer, SEED_MESSAGES);
+  const [filter, setFilter]   = useState<InboxCategory | "all">("all");
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [liveCount, setLiveCount] = useState(0);
+
+  // Fetch session to show who is viewing
+  useEffect(() => {
+    fetch('/api/auth/session', { credentials: 'include', cache: 'no-store' })
+      .then((r) => r.ok ? r.json() : null)
+      .then((data: { user?: { email?: string } } | null) => {
+        if (data?.user?.email) setUserEmail(data.user.email);
+      })
+      .catch(() => {});
+  }, []);
+
+  // Poll notifications and merge into inbox
+  const loadNotifications = useCallback(async () => {
+    try {
+      const r = await fetch('/api/notifications', { credentials: 'include', cache: 'no-store' });
+      if (!r.ok) return;
+      const data = (await r.json()) as { notifications: TMINotification[]; unreadCount: number };
+      if (!Array.isArray(data.notifications)) return;
+      const mapped = data.notifications.map(mapNotifToItem);
+      dispatch({ type: "prepend_live", items: mapped });
+      setLiveCount(data.unreadCount);
+    } catch {
+      // notifications unavailable — keep seed messages
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadNotifications();
+    const id = setInterval(() => void loadNotifications(), 30_000);
+    return () => clearInterval(id);
+  }, [loadNotifications]);
+
+  // Mark notification read via API when item opened
+  async function markNotifRead(notifId: string) {
+    try {
+      await fetch('/api/notifications', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'mark_read', id: notifId }),
+      });
+    } catch {}
+  }
 
   const visible = filter === "all" ? messages : messages.filter((m) => m.category === filter);
   const unread  = messages.filter((m) => m.status === "UNREAD").length;
@@ -80,17 +189,28 @@ export default function UnifiedInboxPanel() {
   function toggle(id: string) {
     const next = expanded === id ? null : id;
     setExpanded(next);
-    if (next) dispatch({ type: "mark_read", id });
+    if (next) {
+      dispatch({ type: "mark_read", id });
+      const item = messages.find((m) => m.id === id);
+      if (item?._notifId) void markNotifRead(item._notifId);
+    }
   }
 
   return (
     <section className="flex h-full flex-col rounded-xl border border-cyan-400/30 bg-black/60 p-3">
       <header className="mb-3 flex items-center justify-between gap-2">
         <div>
-          <p className="text-[9px] font-black uppercase tracking-[0.18em] text-cyan-400">Unified Inbox</p>
+          <p className="text-[9px] font-black uppercase tracking-[0.18em] text-cyan-400">
+            {userEmail ? `Signed in · ${userEmail}` : 'Unified Inbox'}
+          </p>
           <p className="text-[11px] font-black uppercase text-white">Platform Messages</p>
         </div>
-        <div className="flex gap-1.5">
+        <div className="flex gap-1.5 flex-wrap justify-end">
+          {liveCount > 0 && (
+            <span className="rounded border border-cyan-500/60 bg-cyan-500/10 px-2 py-0.5 text-[9px] font-black uppercase text-cyan-300">
+              {liveCount} LIVE
+            </span>
+          )}
           {urgent > 0 && (
             <span className="rounded border border-red-500/60 bg-red-500/10 px-2 py-0.5 text-[9px] font-black uppercase text-red-300">
               {urgent} URGENT
@@ -109,26 +229,32 @@ export default function UnifiedInboxPanel() {
           onClick={() => setFilter("all")}
           className={`rounded border px-2 py-0.5 text-[8px] font-black uppercase tracking-[0.1em] transition ${filter === "all" ? "border-white/30 bg-white/10 text-white" : "border-white/10 text-zinc-500 hover:text-zinc-300"}`}
         >
-          All
+          All ({messages.length})
         </button>
-        {ALL_CATS.map((cat) => (
-          <button
-            key={cat}
-            type="button"
-            onClick={() => setFilter(cat)}
-            className={`rounded border px-2 py-0.5 text-[8px] font-black uppercase tracking-[0.1em] transition ${filter === cat ? `${CAT_STYLE[cat].split(" ")[0]} bg-white/5 ${CAT_STYLE[cat].split(" ")[1]}` : "border-white/10 text-zinc-500 hover:text-zinc-300"}`}
-          >
-            {CAT_LABEL[cat]}
-          </button>
-        ))}
+        {ALL_CATS.map((cat) => {
+          const count = messages.filter((m) => m.category === cat).length;
+          return (
+            <button
+              key={cat}
+              type="button"
+              onClick={() => setFilter(cat)}
+              className={`rounded border px-2 py-0.5 text-[8px] font-black uppercase tracking-[0.1em] transition ${filter === cat ? `${CAT_STYLE[cat].split(" ")[0]} bg-white/5 ${CAT_STYLE[cat].split(" ")[1]}` : "border-white/10 text-zinc-500 hover:text-zinc-300"}`}
+            >
+              {CAT_LABEL[cat]} ({count})
+            </button>
+          );
+        })}
       </div>
 
       {/* Message list */}
       <div className="flex flex-col gap-1 overflow-y-auto">
+        {visible.length === 0 && (
+          <p className="py-6 text-center text-[10px] text-zinc-600">No messages in this category</p>
+        )}
         {visible.map((msg) => {
-          const isOpen = expanded === msg.id;
+          const isOpen     = expanded === msg.id;
           const isActioned = msg.status === "ACTIONED";
-          const isUnread = msg.status === "UNREAD";
+          const isUnread   = msg.status === "UNREAD";
           return (
             <div
               key={msg.id}
@@ -140,10 +266,9 @@ export default function UnifiedInboxPanel() {
                 className="w-full px-2.5 py-2 text-left"
               >
                 <div className="flex items-start gap-2">
-                  {isUnread && <span className="mt-1 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-cyan-400" />}
-                  {!isUnread && <span className="mt-1 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-transparent" />}
+                  <span className={`mt-1 h-1.5 w-1.5 flex-shrink-0 rounded-full ${isUnread ? "bg-cyan-400" : "bg-transparent"}`} />
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5 flex-wrap">
                       <span className={`rounded border px-1 py-0.5 text-[7px] font-black uppercase ${CAT_STYLE[msg.category]}`}>
                         {CAT_LABEL[msg.category]}
                       </span>

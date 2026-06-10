@@ -5,6 +5,10 @@ export type ChatRoomId =
   | "name-that-tune"
   | "circle-squares"
   | "cypher-arena"
+  | "world-concert"
+  | "battle-arena"
+  | "challenge-arena"
+  | "vip-lounge"
   | "venue-room";
 
 export type RoomRuntimeState = "FREE_ROAM" | "PRE_SHOW" | "LIVE_SHOW" | "POST_SHOW";

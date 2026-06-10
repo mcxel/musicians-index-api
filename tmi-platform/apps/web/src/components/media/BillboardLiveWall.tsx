@@ -312,18 +312,6 @@ export default function BillboardLiveWall({ mode = 'home', maxTiles = 12, showAc
                   {(p.sponsorCount ?? 0) > 0 ? `🤝 ${p.sponsorCount}` : '🤝 0'}
                 </div>
               )}
-              {!!p.sponsorCount && p.sponsorCount > 0 && (
-                <div style={{
-                  position: 'absolute', top: 10, right: 10, zIndex: 25,
-                  display: 'flex', alignItems: 'center', gap: 3,
-                  background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)',
-                  border: '1px solid rgba(255,215,0,0.4)', borderRadius: 20,
-                  padding: '3px 8px', fontSize: 8, fontWeight: 900, color: '#FFD700',
-                  boxShadow: '0 2px 10px rgba(0,0,0,0.5)',
-                }}>
-                  🤝 {p.sponsorCount}
-                </div>
-              )}
               {mode === 'performer-hub' && p.sponsorCount !== undefined && (
                 <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, fontSize: 8 }}>
                   {p.sponsorCount > 0 ? (

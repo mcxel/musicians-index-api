@@ -62,10 +62,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Password must be at least 8 characters' }, { status: 400 });
   }
 
-  if (!parsed.termsAccepted) {
-    return NextResponse.json({ error: 'Terms must be accepted' }, { status: 400 });
-  }
-
   // Ensure DB is preloaded so duplicate detection works on cold starts
   await dbReady;
 

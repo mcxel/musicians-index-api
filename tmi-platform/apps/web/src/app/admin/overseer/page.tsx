@@ -1,6 +1,8 @@
 "use client";
+import Link from 'next/link';
 import MediaMonitor from '@/components/video/MediaMonitor';
 import TrustKillerFeed from '@/components/admin/TrustKillerFeed';
+import UnifiedInbox from '@/components/admin/overseer/UnifiedInbox';
 
 const SYSTEM_HEALTH = [
   { id: 'auth', label: 'AUTH', status: 'GREEN', color: '#00FF88' },
@@ -46,11 +48,14 @@ export default function OverseerDeckPage() {
       </div>
 
       {/* Main Operations Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: 24, height: 'calc(100vh - 180px)' }}>
-        
+      <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr 300px', gap: 24, height: 'calc(100vh - 180px)' }}>
+
         {/* Left Rail: Trust Killer Feed */}
-        <div style={{ height: '100%' }}>
+        <div style={{ height: '100%', display: 'flex', flexDirection: 'column', gap: 16 }}>
           <TrustKillerFeed />
+          <Link href="/admin/inbox" style={{ display: 'block', textAlign: 'center', padding: '8px', border: '1px solid rgba(0,255,255,0.25)', borderRadius: 8, fontSize: 10, color: '#00FFFF', textDecoration: 'none', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+            Full Inbox →
+          </Link>
         </div>
 
         {/* Right Area: Monitor Wall */}
@@ -82,6 +87,11 @@ export default function OverseerDeckPage() {
               <MediaMonitor mode="standby" isActive={false} />
             </div>
           </div>
+        </div>
+
+        {/* Right Rail: Unified Inbox */}
+        <div style={{ height: '100%', overflow: 'hidden' }}>
+          <UnifiedInbox />
         </div>
 
       </div>

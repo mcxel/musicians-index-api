@@ -263,10 +263,18 @@ export default function TicketPrintPage() {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch(`/api/tickets/${encodeURIComponent(ticketId)}/print`, { cache: "no-store" });
+      const res = await fetch(`/api/tickets/print?ticketId=${encodeURIComponent(ticketId)}`, { cache: "no-store" });
       if (!res.ok) { setError("Ticket not found"); return; }
-      // API returns ticketId + outputs; use demo data for now with injected ID
-      setTicket({ ...DEMO_TICKET, id: ticketId });
+      const data = await res.json() as { success?: boolean; payload?: { venue?: string; event?: string } };
+      if (!data.success) { setError("Ticket not found"); return; }
+      // Merge any real data from the API response into the ticket
+      setTicket({
+        ...DEMO_TICKET,
+        id: ticketId,
+        ...(data.payload?.venue ? { venueName: data.payload.venue } : {}),
+        ...(data.payload?.event ? { eventName: data.payload.event } : {}),
+        barcode: `TMI${ticketId.replace(/[^A-Z0-9]/gi, "")}`,
+      });
     } catch {
       setError("Network error fetching ticket");
     } finally {

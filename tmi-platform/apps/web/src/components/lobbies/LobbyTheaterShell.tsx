@@ -7,6 +7,7 @@ import { RoomChatBubbleLayer } from "@/components/chat/RoomChatBubbleLayer";
 import { PerformerFeedbackPanel } from "@/components/chat/PerformerFeedbackPanel";
 import { CrowdChatOverflowPanel } from "@/components/chat/CrowdChatOverflowPanel";
 import { ModeratorShield } from "@/components/chat/ModeratorShield";
+import { getCanonicalRoomSlug } from "@/lib/world/WorldRuntime";
 import { RoomChatEngine } from "@/lib/chat/RoomChatEngine";
 import type { RoomChatMessage, RoomRuntimeState, ChatRoomId } from "@/lib/chat/RoomChatEngine";
 import type { OverflowRailEntry } from "@/lib/chat/ChatOverflowRailEngine";
@@ -61,13 +62,18 @@ type LobbyTheaterShellProps = {
 };
 
 function slugToChatRoomId(slug: string): ChatRoomId {
+  const canonical = getCanonicalRoomSlug(slug);
   const MAP: Record<string, ChatRoomId> = {
+    "world-concert": "world-concert",
+    "battle-arena": "battle-arena",
+    "challenge-arena": "challenge-arena",
+    "vip-lounge": "vip-lounge",
     "monthly-idol": "monthly-idol",
     "monday-night-stage": "monday-night-stage",
     "cypher-drop": "cypher-arena",
     "cypher-arena": "cypher-arena",
   };
-  return MAP[slug] ?? "venue-room";
+  return MAP[canonical] ?? (canonical as ChatRoomId);
 }
 
 function slugToRoomType(slug: string): string {
@@ -113,7 +119,9 @@ function mapQueueState(slot: QueueSlot): LobbyQueueEntry["state"] {
   return "waiting";
 }
 
-export default function LobbyTheaterShell({ slug, mode = "room", autoSeat = false, isPerformer = false }: LobbyTheaterShellProps) {
+export default function LobbyTheaterShell({ slug: rawSlug, mode = "room", autoSeat = false, isPerformer = false }: LobbyTheaterShellProps) {
+  const slug = getCanonicalRoomSlug(rawSlug);
+  const canonicalRoomSlug = slug;
   const [seatMap, setSeatMap] = useState<LobbySeatMap>(() => createSeatMap(slug));
   const [selectedSeatId, setSelectedSeatId] = useState<string | null>(null);
   const [presence, setPresence] = useState(() => createInitialPresence());
@@ -140,7 +148,7 @@ export default function LobbyTheaterShell({ slug, mode = "room", autoSeat = fals
   }, [autoSeat]);
 
   // ── Chat ──────────────────────────────────────────────────────────────────
-  const chatEngine = useMemo(() => new RoomChatEngine(slugToChatRoomId(slug), CHAT_RUNTIME_STATE), [slug]);
+  const chatEngine = useMemo(() => new RoomChatEngine(slugToChatRoomId(canonicalRoomSlug), CHAT_RUNTIME_STATE), [canonicalRoomSlug]);
   const [chatMessages, setChatMessages] = useState<RoomChatMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
   const [overflowOpen, setOverflowOpen] = useState(false);
@@ -175,10 +183,35 @@ export default function LobbyTheaterShell({ slug, mode = "room", autoSeat = fals
     chatInputRef.current?.focus();
   }, [chatEngine, chatInput]);
 
+  // ── Presence Heartbeat Engine ─────────────────────────────────────────────
   useEffect(() => {
-    setSeatMap(createSeatMap(slug));
+    const pingHeartbeat = () => {
+      fetch('/api/rooms/heartbeat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ roomId: canonicalRoomSlug, userId: VIEWER_ID })
+      }).catch(console.error);
+    };
+
+    pingHeartbeat(); // Initial ping on entry
+    const heartbeatInterval = setInterval(pingHeartbeat, 15000); // Ping every 15s
+
+    return () => {
+      clearInterval(heartbeatInterval);
+      // Use keepalive so the request fires even if the tab is closing
+      fetch('/api/rooms/heartbeat', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ roomId: canonicalRoomSlug, userId: VIEWER_ID }),
+        keepalive: true
+      }).catch(console.error);
+    };
+  }, [canonicalRoomSlug]);
+
+  useEffect(() => {
+    setSeatMap(createSeatMap(canonicalRoomSlug));
     setSelectedSeatId(null);
-  }, [slug]);
+  }, [canonicalRoomSlug]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -195,18 +228,18 @@ export default function LobbyTheaterShell({ slug, mode = "room", autoSeat = fals
   }, []);
 
   useEffect(() => {
-    const snapshot = getQueueSnapshot(slug);
+    const snapshot = getQueueSnapshot(canonicalRoomSlug);
     if (snapshot.count > 0) {
       return;
     }
 
-    joinQueueEngine(slug, "perf-mc-charlie", "MC Charlie", 1);
-    joinQueueEngine(slug, "perf-dj-nova", "DJ Nova", 2);
-    joinQueueEngine(slug, "perf-crown-rae", "Crown Rae", 3);
+    joinQueueEngine(canonicalRoomSlug, "perf-mc-charlie", "MC Charlie", 1);
+    joinQueueEngine(canonicalRoomSlug, "perf-dj-nova", "DJ Nova", 2);
+    joinQueueEngine(canonicalRoomSlug, "perf-crown-rae", "Crown Rae", 3);
     setQueueVersion((prev) => prev + 1);
-  }, [slug]);
+  }, [canonicalRoomSlug]);
 
-  const queueSnapshot = useMemo(() => getQueueSnapshot(slug), [slug, queueVersion]);
+  const queueSnapshot = useMemo(() => getQueueSnapshot(canonicalRoomSlug), [canonicalRoomSlug]);
 
   const seats = useMemo<TheaterSeat[]>(
     () =>

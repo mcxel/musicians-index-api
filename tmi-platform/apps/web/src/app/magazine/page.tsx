@@ -1,311 +1,143 @@
-"use client";
-import { motion } from "framer-motion";
-import Link from "next/link";
-import { MAGAZINE_ISSUE_1, type MagazineArticle } from "@/lib/magazine/magazineIssueData";
-import {
-  createMagazineIssue,
-  publishMagazineIssue,
-  listMagazineIssues,
-} from "@/lib/magazine/MagazineIssueEngine";
+'use client';
 
-// Seed Issue 1 into the engine once at module load (idempotent — skips if already seeded)
-const _currentIssue = (() => {
-  const existing = listMagazineIssues({ status: "published" });
-  if (existing.length > 0) return existing[0];
-  const issue = createMagazineIssue({
-    issueTitle: "TMI Issue 2026-04 — The Front Page",
-    issueMonth: 4,
-    issueYear: 2026,
-    coverTheme: "neon-editorial",
-    tags: ["issue-1", "monthly"],
-  });
-  return publishMagazineIssue(issue.issueId);
-})();
+import React from 'react';
+import Link from 'next/link';
+import { ConfettiBackground, GeoBlock, MagButton, MagPill, NeonHead, MAG_COLORS } from '@/components/ui/MagazineUI';
+import AdRenderer from '@/components/ads/AdRenderer';
+import { MAGAZINE_ISSUE_1 } from '@/lib/magazine/magazineIssueData';
 
-const CATEGORY_COLORS: Record<string, string> = {
-  feature:   "#FF2DAA",
-  interview: "#00FFFF",
-  editorial: "#FFD700",
-  review:    "#AA2DFF",
-  news:      "#00FF88",
+const CAT_COLOR: Record<string, string> = {
+  feature:   MAG_COLORS.PK,
+  interview: MAG_COLORS.CY,
+  review:    MAG_COLORS.PU,
+  editorial: MAG_COLORS.GD,
+  news:      MAG_COLORS.GN,
 };
 
-const CLIP_PATHS = [
-  "polygon(0 0, 100% 0, 100% 85%, 92% 100%, 0 100%)",
-  "polygon(0 0, 95% 0, 100% 8%, 100% 100%, 5% 100%, 0 92%)",
-  "polygon(8% 0, 100% 0, 100% 100%, 0 100%, 0 10%)",
-  "polygon(0 0, 92% 0, 100% 12%, 100% 100%, 0 100%)",
-  "polygon(0 8%, 100% 0, 100% 100%, 0 92%)",
-  "polygon(5% 0, 100% 0, 95% 100%, 0 100%)",
-];
-
-const SPONSOR_SLOT = {
-  label: "SPONSORED",
-  title: "LIST YOUR BRAND ON TMI",
-  body: "Reach 50,000+ music fans, artists, and producers. Advertiser packages start at $299/mo.",
-  cta: "GET STARTED →",
-  href: "/advertise",
-  accent: "#FFD700",
+const SHAPE_BY_CAT: Record<string, 'blob' | 'hex' | 'tagR' | 'default'> = {
+  feature:   'blob',
+  interview: 'hex',
+  editorial: 'tagR',
+  review:    'default',
+  news:      'default',
 };
-
-function ArticleCard({ article, index, large = false }: { article: MagazineArticle; index: number; large?: boolean }) {
-  const accent = CATEGORY_COLORS[article.category] ?? "#00FFFF";
-  const clip = large ? "polygon(0 0, 100% 0, 100% 88%, 96% 100%, 0 100%)" : CLIP_PATHS[index % CLIP_PATHS.length];
-  const firstPara = article.blocks.find(b => b.type === "paragraph")?.text ?? "";
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 24 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.07, duration: 0.4 }}
-      whileHover={{ scale: 1.02, y: -4 }}
-      style={{ position: "relative" }}
-    >
-      <Link href={`/magazine/article/${article.slug}`} style={{ textDecoration: "none", display: "block" }}>
-        <div style={{
-          clipPath: clip,
-          background: `linear-gradient(135deg, ${accent}18 0%, rgba(6,4,16,0.97) 65%)`,
-          border: `1px solid ${accent}40`,
-          padding: large ? "36px 32px 40px" : "24px 20px 28px",
-          position: "relative",
-          overflow: "hidden",
-          minHeight: large ? 260 : 180,
-          cursor: "pointer",
-        }}>
-          {/* Glow dot */}
-          <div style={{
-            position: "absolute", top: 14, right: 14, width: 8, height: 8,
-            borderRadius: "50%", background: accent,
-            boxShadow: `0 0 14px ${accent}`,
-          }} />
-
-          <div style={{ fontSize: large ? 34 : 26, marginBottom: 10 }}>{article.icon}</div>
-
-          <div style={{
-            color: accent, fontSize: 10, fontWeight: 700, letterSpacing: 3,
-            marginBottom: 8, textTransform: "uppercase",
-          }}>
-            {article.category} · {new Date(article.publishedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-          </div>
-
-          <h2 style={{
-            color: "#fff",
-            fontSize: large ? "clamp(18px, 3vw, 26px)" : "clamp(13px, 2vw, 16px)",
-            fontWeight: 900,
-            letterSpacing: large ? 2 : 1,
-            margin: "0 0 10px",
-            lineHeight: 1.25,
-          }}>
-            {article.title}
-          </h2>
-
-          {large && (
-            <p style={{ color: "#777", fontSize: 13, lineHeight: 1.65, margin: "0 0 12px" }}>
-              {article.subtitle}
-            </p>
-          )}
-
-          {!large && firstPara && (
-            <p style={{ color: "#666", fontSize: 12, lineHeight: 1.6, margin: 0 }}>
-              {firstPara.length > 100 ? firstPara.slice(0, 100) + "…" : firstPara}
-            </p>
-          )}
-
-          <div style={{ color: "#444", fontSize: 10, marginTop: 10, letterSpacing: 1 }}>
-            {article.author}
-          </div>
-
-          {/* Bottom accent bar */}
-          <div style={{
-            position: "absolute", bottom: 0, left: 0, right: 0, height: 2,
-            background: `linear-gradient(90deg, transparent, ${accent}, transparent)`,
-          }} />
-        </div>
-      </Link>
-    </motion.div>
-  );
-}
-
-function SponsorCard({ delay }: { delay: number }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 24 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay, duration: 0.4 }}
-      whileHover={{ scale: 1.02 }}
-    >
-      <Link href={SPONSOR_SLOT.href} style={{ textDecoration: "none", display: "block" }}>
-        <div style={{
-          clipPath: "polygon(0 0, 92% 0, 100% 12%, 100% 100%, 0 100%)",
-          background: `linear-gradient(135deg, ${SPONSOR_SLOT.accent}12 0%, rgba(6,4,16,0.97) 65%)`,
-          border: `1px dashed ${SPONSOR_SLOT.accent}50`,
-          padding: "24px 20px 28px",
-          position: "relative",
-          overflow: "hidden",
-          minHeight: 180,
-          cursor: "pointer",
-        }}>
-          <div style={{
-            fontSize: 9, color: SPONSOR_SLOT.accent, letterSpacing: 3,
-            fontWeight: 700, marginBottom: 10,
-          }}>
-            {SPONSOR_SLOT.label}
-          </div>
-          <div style={{ color: "#fff", fontSize: 15, fontWeight: 900, letterSpacing: 1, marginBottom: 10 }}>
-            {SPONSOR_SLOT.title}
-          </div>
-          <p style={{ color: "#666", fontSize: 12, lineHeight: 1.6, margin: "0 0 14px" }}>
-            {SPONSOR_SLOT.body}
-          </p>
-          <div style={{
-            display: "inline-block", padding: "6px 14px",
-            background: `${SPONSOR_SLOT.accent}22`,
-            border: `1px solid ${SPONSOR_SLOT.accent}60`,
-            borderRadius: 4, color: SPONSOR_SLOT.accent,
-            fontSize: 10, letterSpacing: 2, fontWeight: 700,
-          }}>
-            {SPONSOR_SLOT.cta}
-          </div>
-          <div style={{
-            position: "absolute", bottom: 0, left: 0, right: 0, height: 2,
-            background: `linear-gradient(90deg, transparent, ${SPONSOR_SLOT.accent}, transparent)`,
-          }} />
-        </div>
-      </Link>
-    </motion.div>
-  );
-}
 
 export default function MagazinePage() {
-  const [hero, ...rest] = MAGAZINE_ISSUE_1;
-
-  // Get current issue metadata from the engine
-  const issueData = listMagazineIssues({ status: "published" })[0] ?? _currentIssue;
-  const MONTH_SHORT = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
-  const issueBadge = `${MONTH_SHORT[(issueData.issueMonth ?? 4) - 1]} ${issueData.issueYear ?? 2026}`;
-  const issueNum = issueData.issueId.split("-").pop()?.padStart(2, "0") ?? "01";
-
-  // Inject sponsor slot after index 4
-  const gridItems: Array<MagazineArticle | "sponsor"> = [
-    ...rest.slice(0, 4),
-    "sponsor",
-    ...rest.slice(4),
-  ];
+  const featured = MAGAZINE_ISSUE_1.slice(0, 2);
+  const rest     = MAGAZINE_ISSUE_1.slice(2);
 
   return (
-    <div style={{ minHeight: "100vh", background: "#060410", paddingBottom: 80 }}>
-      {/* Header */}
-      <div style={{
-        padding: "14px 20px",
-        display: "flex", alignItems: "center", gap: 14,
-        borderBottom: "1px solid #111",
-      }}>
-        <span style={{ color: "#AA2DFF", fontSize: 13, fontWeight: 900, letterSpacing: 4 }}>
-          TMI MAGAZINE
-        </span>
-        <span style={{
-          padding: "3px 10px", borderRadius: 4,
-          background: "rgba(255,45,170,0.15)",
-          border: "1px solid rgba(255,45,170,0.3)",
-          color: "#FF2DAA", fontSize: 10, letterSpacing: 2,
-        }}>
-          ISSUE {issueNum} · {issueBadge}
-        </span>
-        <div style={{ marginLeft: "auto", display: "flex", gap: 10 }}>
-          <Link href="/magazine/archive" style={{ color: "#333", fontSize: 11, letterSpacing: 2, textDecoration: "none" }}>ARCHIVE</Link>
-          <Link href="/magazine/auto" style={{ color: "#333", fontSize: 11, letterSpacing: 2, textDecoration: "none" }}>AUTO-GEN</Link>
-        </div>
-      </div>
+    <main style={{ minHeight: '100vh', background: '#050510', color: '#fff', position: 'relative', overflow: 'hidden' }}>
+      <ConfettiBackground count={30} />
 
-      <div style={{ maxWidth: 960, margin: "0 auto", padding: "32px 20px 0" }}>
+      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '40px 24px', position: 'relative', zIndex: 10 }}>
+
         {/* Masthead */}
-        <motion.div
-          initial={{ opacity: 0, y: -16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.45 }}
-          style={{ marginBottom: 32 }}
-        >
-          <div style={{ color: "#333", fontSize: 10, letterSpacing: 4, marginBottom: 6 }}>
-            THE MUSICIAN&apos;S INDEX · DIGITAL EDITION
+        <div style={{ textAlign: 'center', marginBottom: 40 }}>
+          <NeonHead text="THE MUSICIAN'S INDEX" color={MAG_COLORS.OR} size={48} />
+          <div style={{ marginTop: 10, display: 'flex', justifyContent: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <MagPill text="ISSUE 001 · DIGITAL FIRST" bg={MAG_COLORS.PK} />
+            <MagPill text={`${MAGAZINE_ISSUE_1.length} ARTICLES`} bg={MAG_COLORS.CY} />
           </div>
-          <h1 style={{
-            fontSize: "clamp(28px, 5vw, 48px)", fontWeight: 900,
-            letterSpacing: 3, color: "#fff", margin: 0, lineHeight: 1.1,
-          }}>
-            THE FRONT PAGE
-          </h1>
-          <div style={{
-            width: 60, height: 2, marginTop: 12,
-            background: "linear-gradient(90deg, #FF2DAA, #AA2DFF)",
-          }} />
-        </motion.div>
-
-        {/* Hero article */}
-        {hero && <ArticleCard article={hero} index={0} large />}
-
-        {/* Bento grid */}
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
-          gap: 18,
-          marginTop: 18,
-        }}>
-          {gridItems.map((item, i) =>
-            item === "sponsor"
-              ? <SponsorCard key="sponsor" delay={(i + 1) * 0.07} />
-              : <ArticleCard key={item.slug} article={item} index={i + 1} />
-          )}
         </div>
 
-        {/* Category filter strip */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.8 }}
-          style={{ marginTop: 40, display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center" }}
-        >
-          {Object.entries(CATEGORY_COLORS).map(([cat, color]) => (
-            <span key={cat} style={{
-              padding: "5px 14px", borderRadius: 4,
-              background: `${color}15`,
-              border: `1px solid ${color}40`,
-              color, fontSize: 10, letterSpacing: 2, fontWeight: 700,
-              textTransform: "uppercase",
-            }}>
-              {cat}
-            </span>
-          ))}
-        </motion.div>
+        {/* Main Sponsor Billboard */}
+        <div style={{ marginBottom: 40, width: '100%' }}>
+          <AdRenderer zone="billboard" />
+        </div>
 
-        {/* Footer links */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1 }}
-          style={{ marginTop: 40, textAlign: "center", borderTop: "1px solid #111", paddingTop: 32 }}
-        >
-          <div style={{ color: "#222", fontSize: 10, letterSpacing: 4, marginBottom: 16 }}>
-            EXPLORE MORE
+        {/* Featured articles + sidebar */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 24, alignItems: 'start', marginBottom: 40 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 24 }}>
+            {featured.map((article) => {
+              const accent = CAT_COLOR[article.category] ?? MAG_COLORS.CY;
+              const shape  = SHAPE_BY_CAT[article.category] ?? 'blob';
+              return (
+                <GeoBlock
+                  key={article.slug}
+                  bg="#1A0A3A"
+                  border={accent}
+                  shape={shape}
+                  height={260}
+                  label={article.category.toUpperCase()}
+                >
+                  <div style={{ textAlign: 'center', padding: '0 12px' }}>
+                    <div style={{ fontSize: 32, marginBottom: 8 }}>{article.icon}</div>
+                    <NeonHead text={article.title.toUpperCase()} color={accent} size={20} />
+                    <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', marginTop: 8, marginBottom: 16, lineHeight: 1.5 }}>
+                      {article.subtitle}
+                    </p>
+                    <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.35)', marginBottom: 16 }}>
+                      {article.author} · {new Date(article.publishedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                    </p>
+                    <Link href={`/magazine/article/${article.slug}`} style={{ textDecoration: 'none' }}>
+                      <MagButton label="READ FULL STORY" bg={accent} />
+                    </Link>
+                  </div>
+                </GeoBlock>
+              );
+            })}
           </div>
-          <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
-            <Link href="/magazine/issues/current" style={{
-              padding: "9px 22px",
-              background: "linear-gradient(135deg, #FF2DAA, #AA2DFF)",
-              borderRadius: 6, color: "#fff",
-              fontSize: 11, letterSpacing: 2, fontWeight: 700, textDecoration: "none",
-            }}>
-              FULL ISSUE →
-            </Link>
-            <Link href="/magazine/archive" style={{
-              padding: "9px 22px", background: "transparent",
-              border: "1px solid #222", borderRadius: 6, color: "#444",
-              fontSize: 11, letterSpacing: 2, textDecoration: "none",
-            }}>
-              ARCHIVE
+
+          {/* Sidebar */}
+          <div style={{ position: 'sticky', top: 20 }}>
+            <AdRenderer zone="sidebar" />
+          </div>
+        </div>
+
+        {/* More articles grid */}
+        <div style={{ marginBottom: 24 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <NeonHead text="MORE FROM THIS ISSUE" color={MAG_COLORS.CY} size={22} />
+            <Link href="/articles" style={{ textDecoration: 'none' }}>
+              <MagButton label="VIEW ALL →" bg={MAG_COLORS.DT} border={MAG_COLORS.CY} />
             </Link>
           </div>
-        </motion.div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
+            {rest.map((article) => {
+              const accent = CAT_COLOR[article.category] ?? MAG_COLORS.CY;
+              return (
+                <div
+                  key={article.slug}
+                  style={{
+                    background: '#0D0D24',
+                    border: `1px solid ${accent}33`,
+                    borderRadius: 12,
+                    padding: '16px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 10,
+                    transition: 'border-color 0.2s',
+                  }}
+                >
+                  <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                    <span style={{ fontSize: 24, flexShrink: 0 }}>{article.icon}</span>
+                    <div>
+                      <div style={{ fontSize: 8, fontWeight: 800, color: accent, letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: 4 }}>
+                        {article.category}
+                      </div>
+                      <h3 style={{ fontSize: 13, fontWeight: 900, color: '#fff', margin: 0, lineHeight: 1.3 }}>
+                        {article.title}
+                      </h3>
+                    </div>
+                  </div>
+                  <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', lineHeight: 1.5, margin: 0, flex: 1 }}>
+                    {article.subtitle}
+                  </p>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)' }}>{article.author}</span>
+                    <Link href={`/magazine/article/${article.slug}`} style={{ textDecoration: 'none' }}>
+                      <MagButton label="READ →" bg={accent} />
+                    </Link>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
       </div>
-    </div>
+    </main>
   );
 }

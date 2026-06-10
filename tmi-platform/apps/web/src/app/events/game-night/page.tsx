@@ -67,18 +67,13 @@ export default function GameNightPage() {
   const [countdown, setCountdown]   = useState(3);
   const [players, setPlayers]       = useState<Player[]>(PLAYERS_STUB);
   const [selected, setSelected]     = useState<number | null>(null);
-  const [viewers, setViewers]       = useState(312);
+  const [viewers]       = useState(0);
   const [chatMsgs, setChatMsgs]     = useState(CHAT_STUBS);
   const [chatInput, setChatInput]   = useState('');
 
   const question = QUESTIONS[qIdx % QUESTIONS.length]!;
   const myPlayer = players.find(p => p.id === '4')!;
 
-  // Viewer drift
-  useEffect(() => {
-    const id = setInterval(() => setViewers(v => v + Math.floor(Math.random() * 3) - 1), 4500);
-    return () => clearInterval(id);
-  }, []);
 
   // Countdown timer
   useEffect(() => {

@@ -24,7 +24,7 @@ const QUEUE = [
 export default function MiniCypherPage() {
   const [mode, setMode] = useState<Mode>("1V1");
   const [battling, setBattling] = useState({ a: "CurrentChamp_X", b: "LaserMouth_X" });
-  const [queueCount, setQueueCount] = useState(247);
+  const [queueCount] = useState(0);
   const [barCount, setBarCount] = useState(8);
 
   return (

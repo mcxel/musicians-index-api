@@ -27,7 +27,7 @@ const ROUNDS = ["WARM UP", "ROUND 1", "ROUND 2", "SEMI-FINAL", "FINAL", "CHAMPIO
 export default function DirtyDozensPage() {
   const [round, setRound] = useState(1);
   const [timeLeft, setTimeLeft] = useState(45);
-  const [crowdMeter, setCrowdMeter] = useState(72);
+  const [crowdMeter] = useState(0);
   const [isLive, setIsLive] = useState(true);
   const [currentPair, setCurrentPair] = useState({ a: "SmoothTalk_99", b: "CrowdKing_X" });
 
@@ -35,7 +35,6 @@ export default function DirtyDozensPage() {
     if (!isLive || timeLeft <= 0) return;
     const t = setTimeout(() => {
       setTimeLeft(s => s - 1);
-      setCrowdMeter(m => Math.min(100, Math.max(30, m + (Math.random() * 8 - 4))));
     }, 1000);
     return () => clearTimeout(t);
   }, [timeLeft, isLive]);

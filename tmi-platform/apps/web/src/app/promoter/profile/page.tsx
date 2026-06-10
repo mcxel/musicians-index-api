@@ -1,36 +1,42 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 const ACCENT = "#FF6B35";
 const BG = "#050510";
 
 const STATS = [
-  { label: "Events Hosted",   value: "34",    color: ACCENT    },
-  { label: "Tickets Sold",    value: "8,240", color: "#00FFFF" },
-  { label: "Artists Managed", value: "12",    color: "#AA2DFF" },
-  { label: "Revenue (Total)", value: "$94K",  color: "#FFD700" },
-  { label: "Active Campaigns",value: "5",     color: "#00FF88" },
-  { label: "Avg Attendance",  value: "78%",   color: ACCENT    },
+  { label: "Events Hosted",   value: "0",  color: ACCENT    },
+  { label: "Tickets Sold",    value: "0",  color: "#00FFFF" },
+  { label: "Artists Managed", value: "0",  color: "#AA2DFF" },
+  { label: "Revenue (Total)", value: "$0", color: "#FFD700" },
+  { label: "Active Campaigns",value: "0",  color: "#00FF88" },
+  { label: "Avg Attendance",  value: "—",  color: ACCENT    },
 ];
 
-const MANAGED_ARTISTS = [
-  { name: "Nova Cipher", genre: "EDM",       slug: "nova-cipher", color: "#FFD700" },
-  { name: "Zion Freq",   genre: "Hip-Hop",   slug: "zion-freq",   color: "#00FFFF" },
-  { name: "Astra Nova",  genre: "R&B",       slug: "astra-nova",  color: "#FF2DAA" },
-  { name: "DJ Lumi",     genre: "House",     slug: "dj-lumi",     color: "#AA2DFF" },
-];
-
-const UPCOMING_EVENTS = [
-  { title: "Summer Cypher Series",  date: "Jun 10 · TMI Arena",  href: "/shows/summer-cypher"   },
-  { title: "Battle Week Vol. 3",    date: "Jun 17 · Main Stage", href: "/shows/battle-week-v3"  },
-  { title: "Season 2 Launch Party", date: "Jul 1 · World Stage", href: "/shows/s2-launch"       },
-];
+interface MeUser { id: string; email: string; name?: string; role: string; }
 
 export default function PromoterProfilePage() {
+  const router = useRouter();
+  const [user, setUser] = useState<MeUser | null>(null);
   const [editing, setEditing] = useState(false);
-  const [name, setName] = useState("Next Level Promos");
-  const [bio, setBio] = useState("Full-service music promotion agency on TMI. Specializing in battle shows, cyphers, and world-stage events.");
+  const [name, setName] = useState("");
+  const [bio, setBio] = useState("");
+  const [saveStatus, setSaveStatus] = useState("");
+
+  useEffect(() => {
+    fetch("/api/auth/session", { credentials: "include" })
+      .then(r => r.json())
+      .then((d: { authenticated?: boolean; user?: MeUser }) => {
+        if (!d.authenticated || !d.user) { router.replace("/auth"); return; }
+        setUser(d.user);
+        setName(d.user.name ?? d.user.email.split("@")[0] ?? "");
+      })
+      .catch(() => router.replace("/auth"));
+  }, [router]);
+
+  if (!user) return null;
 
   return (
     <main style={{ minHeight: "100vh", background: BG, color: "#fff", fontFamily: "'Inter', sans-serif", paddingBottom: 80 }}>
@@ -58,7 +64,7 @@ export default function PromoterProfilePage() {
         </div>
         {editing && (
           <div style={{ padding: "24px", background: "rgba(255,255,255,0.02)", border: `1px solid ${ACCENT}20`, borderRadius: 16, marginBottom: 24 }}>
-            <form action="/api/profile/update" method="POST" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <form onSubmit={async (e) => { e.preventDefault(); setSaveStatus(""); try { const r = await fetch("/api/profile/update", { method: "POST", headers: { "content-type": "application/json" }, credentials: "include", body: JSON.stringify({ displayName: name, bio }) }); setSaveStatus(r.ok ? "Saved!" : "Save failed."); } catch { setSaveStatus("Network error."); } }} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               <div>
                 <label style={{ display: "block", fontSize: 9, color: "rgba(255,255,255,0.35)", letterSpacing: "0.15em", fontWeight: 800, marginBottom: 6 }}>AGENCY NAME</label>
                 <input type="text" name="name" value={name} onChange={(e) => setName(e.target.value)} style={{ width: "100%", padding: "10px 14px", borderRadius: 8, background: "rgba(255,255,255,0.05)", border: `1px solid ${ACCENT}20`, color: "#fff", fontSize: 13, outline: "none", boxSizing: "border-box" }} />
@@ -73,8 +79,11 @@ export default function PromoterProfilePage() {
                   <input type="text" name={f.name} style={{ width: "100%", padding: "10px 14px", borderRadius: 8, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#fff", fontSize: 13, outline: "none", boxSizing: "border-box" }} />
                 </div>
               ))}
-              <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <button type="submit" style={{ padding: "10px 24px", borderRadius: 8, background: ACCENT, color: "#fff", border: "none", fontSize: 12, fontWeight: 900, cursor: "pointer" }}>SAVE</button>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                  <button type="submit" style={{ padding: "10px 24px", borderRadius: 8, background: ACCENT, color: "#fff", border: "none", fontSize: 12, fontWeight: 900, cursor: "pointer" }}>SAVE</button>
+                  {saveStatus && <span style={{ fontSize: 11, color: saveStatus === "Saved!" ? "#00FF88" : "#FF4444" }}>{saveStatus}</span>}
+                </div>
                 <Link href="/account/deactivate" style={{ color: "#ff4444", fontSize: 11, textDecoration: "none" }}>Deactivate</Link>
               </div>
             </form>
@@ -86,21 +95,11 @@ export default function PromoterProfilePage() {
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 20 }}>
           <div style={{ padding: "18px 20px", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14 }}>
             <div style={{ fontSize: 9, letterSpacing: "0.2em", color: ACCENT, fontWeight: 800, marginBottom: 12 }}>MANAGED ARTISTS</div>
-            {MANAGED_ARTISTS.map((a) => (
-              <Link key={a.slug} href={`/artist/${a.slug}`} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: "1px solid rgba(255,255,255,0.05)", textDecoration: "none", color: "#fff" }}>
-                <span style={{ width: 32, height: 32, borderRadius: "50%", background: `linear-gradient(135deg, ${a.color}, ${BG})`, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>🎤</span>
-                <div><div style={{ fontSize: 12, fontWeight: 700 }}>{a.name}</div><div style={{ fontSize: 9, color: "rgba(255,255,255,0.35)" }}>{a.genre}</div></div>
-              </Link>
-            ))}
+            <p style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", textAlign: "center", padding: "14px 0" }}>No managed artists yet.</p>
           </div>
           <div style={{ padding: "18px 20px", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14 }}>
             <div style={{ fontSize: 9, letterSpacing: "0.2em", color: ACCENT, fontWeight: 800, marginBottom: 12 }}>UPCOMING EVENTS</div>
-            {UPCOMING_EVENTS.map((u) => (
-              <Link key={u.href} href={u.href} style={{ display: "block", padding: "8px 0", borderBottom: "1px solid rgba(255,255,255,0.05)", textDecoration: "none", color: "#fff" }}>
-                <div style={{ fontSize: 12, fontWeight: 700 }}>{u.title}</div>
-                <div style={{ fontSize: 9, color: "rgba(255,255,255,0.35)", marginTop: 1 }}>{u.date}</div>
-              </Link>
-            ))}
+            <p style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", textAlign: "center", padding: "14px 0" }}>No upcoming events — <Link href="/hub/promoter" style={{ color: ACCENT, textDecoration: "none" }}>create one</Link></p>
           </div>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 10 }}>

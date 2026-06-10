@@ -7,6 +7,8 @@ import dynamic from "next/dynamic";
 import { useGamificationEngine } from "@/hooks/useGamificationEngine";
 import type { UserTier } from "@/lib/showmanship/AssetLockerPolicy";
 import LiveSessionHeartbeat from "@/components/live/LiveSessionHeartbeat";
+import LiveVideoShell from "@/components/live/LiveVideoShell";
+import TMICurtainSystem from "@/components/stage/TMICurtainSystem";
 
 const ShowmanshipCommandCenter = dynamic(
   () => import("@/components/showmanship/ShowmanshipCommandCenter"),
@@ -332,7 +334,11 @@ export default function GoLivePage() {
 
         {step === "live" && (
           <>
+          <TMICurtainSystem isOpen={true} venueTitle={title || "TMI STAGE"} />
           <LiveSessionHeartbeat enabled={true} intervalMs={20_000} stageState="live" />
+          <div style={{ borderRadius: 14, overflow: "hidden", aspectRatio: "16/9", marginBottom: 16 }}>
+            <LiveVideoShell performerId={title || "performer"} isLive={true} />
+          </div>
           <ClosureOverlay />
           <ShowmanshipCommandCenter
             performerName={title}

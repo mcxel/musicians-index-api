@@ -1,19 +1,10 @@
-'use client';
-/**
- * contest/page.tsx
- * TMI Grand Platform Contest — Home / Discovery Hub
- * BerntoutGlobal XXL
- *
- * Repo path: apps/web/src/app/contest/page.tsx
- * Route: /contest
- * Auth: Public-facing, creator actions require auth
- */
-
-'use client';
-
+import type { Metadata } from 'next';
 import type { CSSProperties } from 'react';
-import { useEffect } from 'react';
 import { Trophy, Star, Users, Zap, Play, ChevronRight } from 'lucide-react';
+
+export const metadata: Metadata = {
+  title: 'Grand Platform Contest | TMI',
+};
 
 function getContestData() {
   return {
@@ -42,12 +33,8 @@ function getContestData() {
 export default function ContestPage() {
   const data = getContestData();
 
-  useEffect(() => {
-    document.title = 'Grand Platform Contest | TMI';
-  }, []);
-
   return (
-    <main className="contest-page">
+      <main className="contest-page">
       {/* Hero Section */}
       <section className="contest-hero">
         <div className="hero-glow-left" />
@@ -176,7 +163,16 @@ export default function ContestPage() {
         </a>
       </section>
 
-      <style jsx>{`
+      <style dangerouslySetInnerHTML={{ __html: `
+        .chevron-nav-btn {
+          position: fixed !important;
+          top: 50% !important;
+          transform: translateY(-50%) !important;
+          z-index: 2147483647 !important;
+          opacity: 1 !important;
+          visibility: visible !important;
+          pointer-events: auto !important;
+        }
         .contest-page {
           min-height: 100vh;
           background: #070a0f;
@@ -474,7 +470,7 @@ export default function ContestPage() {
           font-weight: 800;
           color: #fff;
         }
-      `}</style>
-    </main>
+      ` }} />
+      </main>
   );
 }

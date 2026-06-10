@@ -57,23 +57,23 @@ const PANELS = [
 
 // ── 10 orbit nodes — weekly crown rankings ─────────────────────────────────
 const ORBIT_NODES = [
-  { rank: "#1",  name: "ASTRA NOVA",    genre: "R&B",      color: "#FF2DAA", live: true  },
-  { rank: "#2",  name: "PRISM VEX",     genre: "EDM",      color: "#FFD700", live: false },
-  { rank: "#3",  name: "ZION FREQ",     genre: "Gospel",   color: "#00FF7F", live: false },
-  { rank: "#4",  name: "FLEX KING",     genre: "Dance",    color: "#00FFFF", live: false },
-  { rank: "#5",  name: "SONG CHALL.",   genre: "Hip-Hop",  color: "#AA2DFF", live: false },
-  { rank: "#6",  name: "MAIN LOBBY",    genre: "Various",  color: "#FF8C00", live: false },
-  { rank: "#7",  name: "BATTLE FLOOR",  genre: "LIVE",     color: "#E63000", live: true  },
-  { rank: "#8",  name: "LAGOS BURST",   genre: "Afrobeat", color: "#FFD700", live: false },
-  { rank: "#9",  name: "NOVA LAUGH",    genre: "Comedy",   color: "#00FFFF", live: false },
-  { rank: "#10", name: "DANCE CREW",    genre: "Dance",    color: "#FF2DAA", live: false },
+  { rank: "#1", contextRank: "#1 Global DJ", name: "ASTRA NOVA", genre: "DJ / Turntablist", color: "#FF2DAA", live: true, audienceCount: 1284, countryFlag: "🇺🇸", countryCode: "USA", countryName: "United States", watchHref: "/live/rooms/dj-astra-nova", profileHref: "/artist/astra-nova" },
+  { rank: "#2", contextRank: "#2 Rising DJ", name: "PRISM VEX", genre: "EDM DJ", color: "#FFD700", live: true, audienceCount: 943, countryFlag: "🇬🇧", countryCode: "UK", countryName: "United Kingdom", watchHref: "/live/rooms/prism-vex", profileHref: "/artist/prism-vex" },
+  { rank: "#3", contextRank: "#3 DJ Battle Champion", name: "ZION FREQ", genre: "Battle DJ", color: "#00FF7F", live: false, audienceCount: 402, countryFlag: "🇨🇦", countryCode: "CAN", countryName: "Canada", watchHref: "/live/rooms/zion-freq", profileHref: "/artist/zion-freq" },
+  { rank: "#4", contextRank: "#4 Comedy Challenge", name: "NOVA LAUGH", genre: "Stand-Up Comedy", color: "#00FFFF", live: true, audienceCount: 611, countryFlag: "🇳🇬", countryCode: "NGA", countryName: "Nigeria", watchHref: "/live/rooms/nova-laugh", profileHref: "/artist/nova-laugh" },
+  { rank: "#5", contextRank: "#5 DJ Discovery", name: "FLEX KING", genre: "Open Format DJ", color: "#AA2DFF", live: false, audienceCount: 288, countryFlag: "🇦🇺", countryCode: "AUS", countryName: "Australia", watchHref: "/live/rooms/flex-king", profileHref: "/artist/flex-king" },
+  { rank: "#6", contextRank: "#6 Producer Showcase", name: "BEAT GRID", genre: "Producer", color: "#FF8C00", live: false, audienceCount: 198, countryFlag: "🇩🇪", countryCode: "DEU", countryName: "Germany", watchHref: "/live/rooms/beat-grid", profileHref: "/artist/beat-grid" },
+  { rank: "#7", contextRank: "#7 Dance-Off Challenge", name: "DANCE CREW", genre: "Dance Crew", color: "#E63000", live: true, audienceCount: 859, countryFlag: "🇧🇷", countryCode: "BRA", countryName: "Brazil", watchHref: "/live/rooms/dance-crew", profileHref: "/artist/dance-crew" },
+  { rank: "#8", contextRank: "#8 Afrobeat Discovery", name: "LAGOS BURST", genre: "Afrobeat", color: "#FFD700", live: false, audienceCount: 334, countryFlag: "🇳🇬", countryCode: "NGA", countryName: "Nigeria", watchHref: "/live/rooms/lagos-burst", profileHref: "/artist/lagos-burst" },
+  { rank: "#9", contextRank: "#9 Spoken Word Arena", name: "CIPHER SOUL", genre: "Spoken Word", color: "#00FFFF", live: false, audienceCount: 147, countryFlag: "🇿🇦", countryCode: "ZAF", countryName: "South Africa", watchHref: "/live/rooms/cipher-soul", profileHref: "/artist/cipher-soul" },
+  { rank: "#10", contextRank: "#10 Audience Favorite", name: "MAIN LOBBY", genre: "Multi-Genre", color: "#FF2DAA", live: true, audienceCount: 1532, countryFlag: "🌍", countryCode: "GLB", countryName: "Global", watchHref: "/home/live", profileHref: "/artist/main-lobby" },
 ];
 
 const WHEEL  = 380;  // px — container size
 const CENTER = 190;  // px — center of container
 const ORBIT_R = 154; // px — orbit radius (matches reference HTML)
-const NODE_W  = 84;  // approx node width
-const NODE_H  = 44;  // approx node height
+const NODE_W  = 132; // clean-tile width
+const NODE_H  = 166; // clean-tile height (portrait-safe metadata layout)
 
 function nodePosition(idx: number): { left: number; top: number } {
   const angle = (idx / ORBIT_NODES.length) * 2 * Math.PI - Math.PI / 2;
@@ -234,26 +234,90 @@ export default function TmiMagazineOrbitalUnderlay() {
                   transition={SPIN}
                   style={{ position: "absolute", left, top, transformOrigin: "center" }}
                 >
-                  <div style={{
-                    background: `${node.color}22`,
-                    border: `1.5px solid ${node.color}`,
-                    borderRadius: 6, padding: "5px 8px",
-                    textAlign: "center", minWidth: NODE_W,
-                  }}>
-                    <div style={{ fontSize: 8, color: node.color, fontWeight: 800 }}>
-                      {node.rank}
-                      {node.live && (
+                  <Link
+                    href={node.live ? node.watchHref : node.profileHref}
+                    aria-label={node.live ? `Watch ${node.name} live` : `View ${node.name} profile`}
+                    style={{
+                      display: "block",
+                      width: NODE_W,
+                      minHeight: NODE_H,
+                      borderRadius: 12,
+                      overflow: "hidden",
+                      textDecoration: "none",
+                      border: `1px solid ${node.color}99`,
+                      boxShadow: `0 8px 22px ${node.color}33`,
+                      background: "linear-gradient(180deg, rgba(8,8,14,0.88) 0%, rgba(6,6,10,0.96) 100%)",
+                      padding: 10,
+                    }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
+                      <span style={{
+                        fontSize: 9,
+                        fontWeight: 900,
+                        color: node.rank === "#1" ? "#FFD700" : node.rank === "#2" ? "#C0C0C0" : node.rank === "#3" ? "#CD7F32" : "#fff",
+                        background: "rgba(0,0,0,0.55)",
+                        border: "1px solid rgba(255,255,255,0.16)",
+                        borderRadius: 999,
+                        padding: "2px 7px",
+                        letterSpacing: "0.04em",
+                      }}>
+                        {node.rank}
+                      </span>
+                      <span style={{ fontSize: 11, color: "#fff" }}>
+                        {node.countryFlag} {node.countryCode}
+                      </span>
+                    </div>
+
+                    <div
+                      style={{
+                        width: "100%",
+                        aspectRatio: "4 / 5",
+                        borderRadius: 8,
+                        background: `radial-gradient(circle at 50% 38%, ${node.color}66 0%, rgba(12,12,20,0.95) 70%)`,
+                        border: "1px solid rgba(255,255,255,0.12)",
+                        marginBottom: 8,
+                        position: "relative",
+                        overflow: "hidden",
+                      }}
+                    >
+                      <div style={{
+                        position: "absolute",
+                        inset: "14% 18%",
+                        borderRadius: "50%",
+                        background: "rgba(255,255,255,0.15)",
+                        boxShadow: "0 0 0 10px rgba(255,255,255,0.03)",
+                      }} />
+                    </div>
+
+                    <div style={{
+                      borderTop: "1px solid rgba(255,255,255,0.14)",
+                      paddingTop: 6,
+                      minHeight: "25%",
+                    }}>
+                      <div style={{ fontSize: 8, color: node.color, fontWeight: 800, marginBottom: 2 }}>{node.contextRank}</div>
+                      <div style={{ fontSize: 10, fontWeight: 900, color: "#fff", lineHeight: 1.1 }}>{node.name}</div>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 4 }}>
                         <span style={{
-                          display: "inline-block", width: 5, height: 5, borderRadius: "50%",
-                          background: "#FF2020", marginLeft: 4, verticalAlign: "middle",
-                        }} />
-                      )}
+                          fontSize: 7,
+                          color: "rgba(255,255,255,0.9)",
+                          border: `1px solid ${node.color}88`,
+                          borderRadius: 999,
+                          padding: "1px 6px",
+                        }}>
+                          {node.genre}
+                        </span>
+                        <span style={{ fontSize: 7, color: "rgba(255,255,255,0.78)" }}>{node.countryName}</span>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 4 }}>
+                        <span style={{ fontSize: 8, color: node.live ? "#61ff8f" : "rgba(210,210,210,0.75)", fontWeight: 800 }}>
+                          {node.live ? "● LIVE" : "● OFFLINE"}
+                        </span>
+                        <span style={{ fontSize: 8, color: "rgba(255,255,255,0.88)" }}>
+                          {node.audienceCount.toLocaleString()} watching
+                        </span>
+                      </div>
                     </div>
-                    <div style={{ fontSize: 9, fontWeight: 800, color: "#fff" }}>{node.name}</div>
-                    <div style={{ fontSize: 7, color: node.live ? node.color : "rgba(255,255,255,0.5)" }}>
-                      {node.genre}
-                    </div>
-                  </div>
+                  </Link>
                 </motion.div>
               );
             })}

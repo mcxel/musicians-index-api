@@ -6,6 +6,7 @@ import MultiRoomVideoMonitor from "@/components/media/MultiRoomVideoMonitor";
 import HomeFeedObserver from "@/components/admin/HomeFeedObserver";
 import StripeObservatoryCard from "@/components/admin/StripeObservatoryCard";
 import BetaLaunchScoreboard from "@/components/admin/BetaLaunchScoreboard";
+import OmniPresenceEngine from "@/components/admin/OmniPresenceEngine";
 
 // ─── Seed data (replace with live API when available) ────────────────────────
 
@@ -28,7 +29,7 @@ const ERROR_METRICS = [
 
 // ─── Tab config ───────────────────────────────────────────────────────────────
 
-type Tab = "scoreboard" | "live" | "bots" | "sponsors" | "routes" | "errors" | "safety";
+type Tab = "scoreboard" | "live" | "bots" | "sponsors" | "routes" | "errors" | "safety" | "presence";
 
 type LiveSessionHealth = {
   userId: string;
@@ -54,6 +55,7 @@ const TABS: { id: Tab; label: string; color: string }[] = [
   { id: "routes",     label: "ROUTES",     color: "#AA2DFF" },
   { id: "errors",     label: "ERRORS",     color: "#FF2DAA" },
   { id: "safety",     label: "SAFETY",     color: "#FF6B00" },
+  { id: "presence",   label: "PRESENCE",   color: "#FF2DAA" },
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -417,6 +419,9 @@ export default function ObservatoryPage() {
             </div>
           </div>
         )}
+
+        {/* ── PRESENCE ── */}
+        {tab === "presence" && <OmniPresenceEngine />}
 
       </div>
     </div>

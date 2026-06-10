@@ -31,6 +31,13 @@ interface LiveEntry {
   viewerCount: number;
 }
 
+interface RevenueData {
+  mode: string;
+  totals: { today: string; month: string; todayCents: number; monthCents: number };
+  subscriptions: { active: number | string };
+  config: { secretConfigured: boolean; publishableConfigured: boolean; webhookConfigured: boolean };
+}
+
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 function timeAgo(ts: number) {
@@ -98,6 +105,7 @@ export default function BetaLaunchScoreboard() {
   const [feedback, setFeedback]   = useState<FeedbackSummary | null>(null);
   const [liveUsers, setLiveUsers] = useState<LiveEntry[]>([]);
   const [authOk, setAuthOk]       = useState<boolean | null>(null);
+  const [revenue, setRevenue]     = useState<RevenueData | null>(null);
   const [lastRefresh, setLastRefresh] = useState(Date.now());
 
   const fetchAll = useCallback(async () => {
@@ -121,6 +129,12 @@ export default function BetaLaunchScoreboard() {
       const r = await fetch('/api/auth/session', { credentials: 'include', cache: 'no-store' });
       setAuthOk(r.ok);
     } catch { setAuthOk(false); }
+
+    // Revenue data
+    try {
+      const r = await fetch('/api/admin/revenue', { credentials: 'include', cache: 'no-store' });
+      if (r.ok) setRevenue(await r.json() as RevenueData);
+    } catch {}
 
     setLastRefresh(Date.now());
   }, []);
@@ -166,8 +180,15 @@ export default function BetaLaunchScoreboard() {
     },
     {
       system: 'Stripe / Checkout',
-      status: 'PENDING',
-      note: 'Connect Stripe webhook for live status',
+      status: revenue === null ? 'PENDING'
+        : revenue.mode === 'live' ? 'GO'
+        : revenue.mode === 'test' ? 'WARN'
+        : 'NO-GO',
+      note: revenue === null ? 'Loading…'
+        : revenue.mode === 'live' ? `Live mode · ${revenue.subscriptions.active} active subs`
+        : revenue.mode === 'test' ? `Test mode · ${revenue.subscriptions.active} active subs`
+        : revenue.mode === 'not_configured' ? 'Stripe keys not configured'
+        : 'Stripe error — check logs',
     },
   ];
 
@@ -244,7 +265,10 @@ export default function BetaLaunchScoreboard() {
         <KpiCard label="Conversion Drag"  value={convDrag}        color="#FFD700"   sublabel="Medium severity" />
         <KpiCard label="Patch Queue"      value={patchQueueDepth} color="#AA2DFF"   sublabel="Items awaiting triage" />
         <KpiCard label="Total Reports"    value={totalFeedback}   color="#00FFFF"   sublabel="Beta feedback received" />
-        <KpiCard label="Broadcasting"     value={liveUsers.length} color="#00FF88"  sublabel="Users live right now" />
+        <KpiCard label="Broadcasting"     value={liveUsers.length}           color="#00FF88"  sublabel="Users live right now" />
+        <KpiCard label="Revenue Today"    value={revenue?.totals.today ?? '—'}  color="#FFD700"  sublabel="Stripe net today" />
+        <KpiCard label="Revenue Month"    value={revenue?.totals.month ?? '—'}  color="#00FF88"  sublabel="Stripe net this month" />
+        <KpiCard label="Active Subs"      value={revenue?.subscriptions.active ?? '—'} color="#AA2DFF" sublabel="Stripe active subscriptions" />
       </div>
 
       {/* ── System health grid ────────────────────────────────────────────── */}

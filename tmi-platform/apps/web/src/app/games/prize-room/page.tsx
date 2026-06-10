@@ -55,7 +55,7 @@ type ClaimResult = { gift: SponsorGift; claim: GiftClaim } | { gift: SponsorGift
 export default function PrizeRoomPage() {
   if (!_seeded && typeof window !== "undefined") ensureSeeded();
 
-  const [crownPoints] = useState(850);
+  const [crownPoints] = useState(0);
   const [prizes, setPrizes] = useState<SponsorGift[]>(() => {
     if (typeof window !== "undefined") {
       if (!_seeded) ensureSeeded();

@@ -13,9 +13,9 @@ interface Site {
 }
 
 const sites: Site[] = [
-  { id: 'bg', name: 'BernoutGlobal', status: 'online', users: 1200, rooms: 60, revenue: 4500, uptime: 99.9 },
-  { id: 'tmi', name: 'The Musician\'s Index', status: 'online', users: 1100, rooms: 70, revenue: 5200, uptime: 99.8 },
-  { id: 'xxl', name: 'XXL', status: 'online', users: 547, rooms: 26, revenue: 2750, uptime: 99.7 },
+  { id: 'bg',  name: 'BernoutGlobal',          status: 'online', users: 0, rooms: 0, revenue: 0, uptime: 100 },
+  { id: 'tmi', name: "The Musician's Index",   status: 'online', users: 0, rooms: 0, revenue: 0, uptime: 100 },
+  { id: 'xxl', name: 'XXL',                    status: 'online', users: 0, rooms: 0, revenue: 0, uptime: 100 },
 ];
 
 export default function BigAceSitesPage() {

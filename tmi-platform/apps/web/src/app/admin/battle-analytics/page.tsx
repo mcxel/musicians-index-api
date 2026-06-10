@@ -3,20 +3,15 @@ import type { Metadata } from "next";
 export const metadata: Metadata = { title: "Admin: Battle Analytics | TMI" };
 
 const BATTLE_TYPE_STATS = [
-  { type: "MC BATTLE (VOCAL)", battles: 44, participants: 88, avgVotes: 312, prizeOut: 4400, entryRevenue: 880, votingMode: "CROWD" },
-  { type: "DIRTY DOZENS", battles: 22, participants: 66, avgVotes: 520, prizeOut: 2200, entryRevenue: 440, votingMode: "CROWD" },
-  { type: "INSTRUMENTAL DUEL", battles: 18, participants: 36, avgVotes: 198, prizeOut: 3600, entryRevenue: 360, votingMode: "JUDGE" },
-  { type: "GROUP BATTLE", battles: 9, participants: 54, avgVotes: 402, prizeOut: 4500, entryRevenue: 900, votingMode: "HYBRID" },
-  { type: "PRODUCER FACE-OFF", battles: 12, participants: 24, avgVotes: 144, prizeOut: 2400, entryRevenue: 240, votingMode: "JUDGE" },
-  { type: "FREESTYLE CIPHER", battles: 31, participants: 62, avgVotes: 280, prizeOut: 1550, entryRevenue: 620, votingMode: "CROWD" },
+  { type: "MC BATTLE (VOCAL)",  battles: 0, participants: 0, avgVotes: 0, prizeOut: 0, entryRevenue: 0, votingMode: "CROWD" },
+  { type: "DIRTY DOZENS",       battles: 0, participants: 0, avgVotes: 0, prizeOut: 0, entryRevenue: 0, votingMode: "CROWD" },
+  { type: "INSTRUMENTAL DUEL",  battles: 0, participants: 0, avgVotes: 0, prizeOut: 0, entryRevenue: 0, votingMode: "JUDGE" },
+  { type: "GROUP BATTLE",       battles: 0, participants: 0, avgVotes: 0, prizeOut: 0, entryRevenue: 0, votingMode: "HYBRID" },
+  { type: "PRODUCER FACE-OFF",  battles: 0, participants: 0, avgVotes: 0, prizeOut: 0, entryRevenue: 0, votingMode: "JUDGE" },
+  { type: "FREESTYLE CIPHER",   battles: 0, participants: 0, avgVotes: 0, prizeOut: 0, entryRevenue: 0, votingMode: "CROWD" },
 ];
 
-const TOP_PERFORMERS = [
-  { name: "Wavetek", wins: 12, battles: 14, winRate: 86, earnings: 3600 },
-  { name: "Krypt", wins: 9, battles: 12, winRate: 75, earnings: 2700 },
-  { name: "FlowMaster", wins: 7, battles: 10, winRate: 70, earnings: 2100 },
-  { name: "Neon MC", wins: 6, battles: 9, winRate: 67, earnings: 1800 },
-];
+const TOP_PERFORMERS: { name: string; wins: number; battles: number; winRate: number; earnings: number }[] = [];
 
 export default function AdminBattleAnalyticsPage() {
   const totalBattles = BATTLE_TYPE_STATS.reduce((a, b) => a + b.battles, 0);

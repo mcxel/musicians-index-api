@@ -1,64 +1,60 @@
-export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
-import { getStripe } from '@/lib/stripe/client';
+import Stripe from 'stripe';
+import { prisma } from '@/lib/prisma';
 
-const TRUSTED_HOSTS = new Set(['themusiciansindex.com', 'www.themusiciansindex.com', 'localhost']);
+export const dynamic = 'force-dynamic';
 
-function isTrustedUrl(raw: string): boolean {
-  if (raw.startsWith('/')) return true;
-  try { return TRUSTED_HOSTS.has(new URL(raw).hostname); } catch { return false; }
-}
+// Initialize Stripe SDK
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
+  apiVersion: '2026-02-25.clover' as const,
+});
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json() as {
-      beatId: string; title: string; producer: string;
-      license: string; amount: number; bpm?: number; key?: string;
-      successUrl?: string; cancelUrl?: string;
-    };
-    const { beatId, title, producer, license, amount, bpm, key, successUrl, cancelUrl } = body;
+    const body = await req.json();
+    const { beatId, licenseType, price } = body;
+    
+    // Extract user session
+    const sessionId = req.cookies.get("tmi_session_id")?.value;
+    const buyerId = sessionId ? sessionId.substring(0, 8) : 'guest';
 
-    if (!beatId || !title || !amount) {
-      return NextResponse.json({ error: 'beatId, title, and amount required' }, { status: 400 });
+    if (!beatId || !licenseType || !price) {
+      return NextResponse.json({ ok: false, error: 'Missing beat purchasing parameters' }, { status: 400 });
     }
 
-    const origin = req.nextUrl.origin;
-    const resolvedSuccess = successUrl ?? `${origin}/payment-success?type=beat&session_id={CHECKOUT_SESSION_ID}`;
-    const resolvedCancel  = cancelUrl  ?? `${origin}/beat-marketplace`;
-
-    if (!isTrustedUrl(resolvedSuccess) || !isTrustedUrl(resolvedCancel)) {
-      return NextResponse.json({ error: 'Invalid redirect URL' }, { status: 400 });
+    const beat = await prisma.beat.findUnique({ where: { id: beatId } });
+    if (!beat) {
+      return NextResponse.json({ ok: false, error: 'Beat track not found in vault' }, { status: 404 });
     }
-
-    const stripe = getStripe();
-    if (!stripe) {
-      return NextResponse.json({ error: 'Payments not configured' }, { status: 503 });
-    }
-
-    const desc = [bpm ? `${bpm} BPM` : '', key ?? '', `License: ${license}`].filter(Boolean).join(' · ');
 
     const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
       mode: 'payment',
-      line_items: [{
-        price_data: {
-          currency: 'usd',
-          unit_amount: Math.round(amount * 100),
-          product_data: {
-            name: `"${title}" by ${producer}`,
-            description: desc,
-            metadata: { beatId, license },
+      line_items: [
+        {
+          price_data: {
+            currency: 'usd',
+            product_data: {
+              name: `Beat License: ${beat.title} (${licenseType.toUpperCase()})`,
+            },
+            unit_amount: price, // Handled in cents (e.g., 5000 = $50.00)
           },
+          quantity: 1,
         },
-        quantity: 1,
-      }],
-      success_url: resolvedSuccess.replace('{CHECKOUT_SESSION_ID}', '{CHECKOUT_SESSION_ID}'),
-      cancel_url: resolvedCancel,
-      metadata: { beatId, license, type: 'beat' },
+      ],
+      metadata: {
+        type: 'beat',
+        beatId: beat.id,
+        buyerId,
+        licenseType,
+      },
+      success_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3001'}/beats/marketplace?success=true`,
+      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3001'}/beats/marketplace?canceled=true`,
     });
 
-    return NextResponse.json({ url: session.url });
-  } catch (err) {
-    console.error('[beats/checkout]', err);
-    return NextResponse.json({ error: 'Checkout failed' }, { status: 500 });
+    return NextResponse.json({ ok: true, url: session.url });
+  } catch (error: any) {
+    console.error('Stripe Checkout Error:', error);
+    return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
   }
 }

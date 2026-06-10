@@ -15,8 +15,26 @@
       "extract",
       "metadata",
       "reconstruct",
-      "store"
+      "store",
+      "webrtc-bind",
+      "stripe-ticketing-init"
     ]
+  },
+  "ticketing": {
+    "provider": "stripe",
+    "skuBase": "TKT-BEBO-LOBBY",
+    "pricingTiers": {
+      "vip": 15000,
+      "standard": 5000
+    }
+  },
+  "webrtc": {
+    "signalingServer": "wss://signal.berntoutglobal.com/bebo",
+    "maxPeers": 1000,
+    "mediaConstraints": {
+      "video": { "width": 1920, "height": 1080, "frameRate": 60 },
+      "audio": { "echoCancellation": true, "noiseSuppression": true }
+    }
   },
   "segmentation": {
     "asset": "Bebo.jpg",

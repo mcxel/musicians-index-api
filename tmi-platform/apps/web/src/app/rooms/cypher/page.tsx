@@ -50,16 +50,10 @@ export default function CypherRoomPage() {
   const [rightVotes, setRightVotes] = useState(0);
   const [voted, setVoted]       = useState(false);
   const [winner, setWinner]     = useState<Battler | null>(null);
-  const [viewers, setViewers]   = useState(643);
-  const [chatMsgs, setChatMsgs] = useState<ChatMsg[]>(CHAT_STUBS);
+  const [viewers]   = useState(0);
+  const [chatMsgs, setChatMsgs] = useState<ChatMsg[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [countdown, setCountdown] = useState(3);
-
-  // Viewer count drift
-  useEffect(() => {
-    const id = setInterval(() => setViewers((v) => v + Math.floor(Math.random() * 4) - 1), 5000);
-    return () => clearInterval(id);
-  }, []);
 
   // Round timer
   useEffect(() => {

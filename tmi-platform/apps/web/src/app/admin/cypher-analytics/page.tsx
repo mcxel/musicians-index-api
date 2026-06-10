@@ -3,18 +3,18 @@ import type { Metadata } from "next";
 export const metadata: Metadata = { title: "Admin: Cypher Analytics | TMI" };
 
 const GENRE_STATS = [
-  { genre: "Hip-Hop (Classic)", sessions: 38, participants: 312, avgRound: 4.2, topBeat: "Trap Essentials Vol.2", entryFee: "$5", revenue: 1560 },
-  { genre: "Trap (ATL)", sessions: 29, participants: 241, avgRound: 3.8, topBeat: "808 ATL Kit", entryFee: "$5", revenue: 1205 },
-  { genre: "Drill (UK)", sessions: 14, participants: 98, avgRound: 3.1, topBeat: "UK Drill Pack", entryFee: "$5", revenue: 490 },
-  { genre: "R&B Freestyle", sessions: 21, participants: 187, avgRound: 5.0, topBeat: "Late Night Vibes", entryFee: "$3", revenue: 561 },
-  { genre: "Afrobeats", sessions: 11, participants: 89, avgRound: 4.6, topBeat: "Lagos Nights", entryFee: "$5", revenue: 445 },
-  { genre: "Latin Trap", sessions: 9, participants: 72, avgRound: 3.9, topBeat: "Reggaeton 808", entryFee: "$5", revenue: 360 },
+  { genre: "Hip-Hop (Classic)", sessions: 0, participants: 0, avgRound: 0, topBeat: "—", entryFee: "$5", revenue: 0 },
+  { genre: "Trap (ATL)",        sessions: 0, participants: 0, avgRound: 0, topBeat: "—", entryFee: "$5", revenue: 0 },
+  { genre: "Drill (UK)",        sessions: 0, participants: 0, avgRound: 0, topBeat: "—", entryFee: "$5", revenue: 0 },
+  { genre: "R&B Freestyle",     sessions: 0, participants: 0, avgRound: 0, topBeat: "—", entryFee: "$3", revenue: 0 },
+  { genre: "Afrobeats",         sessions: 0, participants: 0, avgRound: 0, topBeat: "—", entryFee: "$5", revenue: 0 },
+  { genre: "Latin Trap",        sessions: 0, participants: 0, avgRound: 0, topBeat: "—", entryFee: "$5", revenue: 0 },
 ];
 
 const QUEUE_STATS = [
-  { type: "OPEN", sessions: 62, avgWait: "2.1 min", fillRate: "94%" },
-  { type: "INVITE", sessions: 18, avgWait: "—", fillRate: "100%" },
-  { type: "BRACKET", sessions: 8, avgWait: "5.4 min", fillRate: "87%" },
+  { type: "OPEN",    sessions: 0, avgWait: "—", fillRate: "—" },
+  { type: "INVITE",  sessions: 0, avgWait: "—", fillRate: "—" },
+  { type: "BRACKET", sessions: 0, avgWait: "—", fillRate: "—" },
 ];
 
 export default function AdminCypherAnalyticsPage() {

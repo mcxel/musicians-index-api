@@ -195,8 +195,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               </BotProvider>
               <PWAInstallPrompt />
               <NavigationRail />
-              <ChevronNavigation />
               <TMIGlobalNav />
+              <ChevronNavigation />
               <NavigationLock />
               <GamificationHUD />
               <LiveSyncProvider />

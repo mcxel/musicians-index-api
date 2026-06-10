@@ -4,12 +4,12 @@ import Link from "next/link";
 export const metadata: Metadata = { title: "Admin: Commerce | TMI" };
 
 const CHANNELS = [
-  { label: "Ticket Sales", revenue: 12800, cut: 1280, payout: 11520, transactions: 142, color: "#FF2DAA", href: "/admin/tickets" },
-  { label: "Beat Marketplace", revenue: 8920, cut: 2676, payout: 6244, transactions: 87, color: "#FFD700", href: "/admin/beats" },
-  { label: "NFT Sales", revenue: 1120, cut: 224, payout: 896, transactions: 8, color: "#00FFFF", href: "/admin/nfts" },
-  { label: "Auctions", revenue: 2350, cut: 470, payout: 1880, transactions: 5, color: "#AA2DFF", href: "/admin/auctions" },
-  { label: "Store / Merch", revenue: 4200, cut: 630, payout: 3570, transactions: 63, color: "#00FF88", href: "/admin/merch" },
-  { label: "Sponsor Deals", revenue: 18000, cut: 0, payout: 18000, transactions: 3, color: "#00FFFF", href: "/admin/sales" },
+  { label: "Ticket Sales",     revenue: 0, cut: 0, payout: 0, transactions: 0, color: "#FF2DAA", href: "/admin/tickets" },
+  { label: "Beat Marketplace", revenue: 0, cut: 0, payout: 0, transactions: 0, color: "#FFD700", href: "/admin/beats" },
+  { label: "NFT Sales",        revenue: 0, cut: 0, payout: 0, transactions: 0, color: "#00FFFF", href: "/admin/nfts" },
+  { label: "Auctions",         revenue: 0, cut: 0, payout: 0, transactions: 0, color: "#AA2DFF", href: "/admin/auctions" },
+  { label: "Store / Merch",    revenue: 0, cut: 0, payout: 0, transactions: 0, color: "#00FF88", href: "/admin/merch" },
+  { label: "Sponsor Deals",    revenue: 0, cut: 0, payout: 0, transactions: 0, color: "#00FFFF", href: "/admin/sales" },
 ];
 
 export default function AdminCommercePage() {

@@ -2,13 +2,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Admin: Beat Sales | TMI" };
 
-const BEATS = [
-  { id: "b1", title: "Midnight Bars", producer: "Wavetek", genre: "Trap", plays: 1842, basicSales: 12, premiumSales: 5, exclusiveSales: 1, basicRev: 348, premiumRev: 295, exclusiveRev: 499, auctionRev: 0 },
-  { id: "b2", title: "The Code", producer: "FlowMaster", genre: "Boom Bap", plays: 921, basicSales: 6, premiumSales: 2, exclusiveSales: 0, basicRev: 174, premiumRev: 118, exclusiveRev: 0, auctionRev: 1050 },
-  { id: "b3", title: "808 Dreams", producer: "Krypt", genre: "Drill", plays: 654, basicSales: 4, premiumSales: 3, exclusiveSales: 0, basicRev: 116, premiumRev: 177, exclusiveRev: 0, auctionRev: 0 },
-  { id: "b4", title: "Cyber Genesis", producer: "TMI Beats", genre: "Electronic", plays: 388, basicSales: 2, premiumSales: 1, exclusiveSales: 0, basicRev: 58, premiumRev: 59, exclusiveRev: 0, auctionRev: 0 },
-  { id: "b5", title: "Lagos Nights", producer: "Neon Vibe", genre: "Afrobeats", plays: 279, basicSales: 3, premiumSales: 0, exclusiveSales: 0, basicRev: 87, premiumRev: 0, exclusiveRev: 0, auctionRev: 0 },
-];
+const BEATS: { id: string; title: string; producer: string; genre: string; plays: number; basicSales: number; premiumSales: number; exclusiveSales: number; basicRev: number; premiumRev: number; exclusiveRev: number; auctionRev: number }[] = [];
 
 export default function AdminBeatSalesPage() {
   const totalRev = BEATS.reduce((a, b) => a + b.basicRev + b.premiumRev + b.exclusiveRev + b.auctionRev, 0);
@@ -46,6 +40,9 @@ export default function AdminBeatSalesPage() {
             </tr>
           </thead>
           <tbody>
+            {BEATS.length === 0 && (
+              <tr><td colSpan={9} style={{ padding: "32px 12px", textAlign: "center", color: "rgba(255,255,255,0.25)", fontSize: 11 }}>No beat sales yet.</td></tr>
+            )}
             {BEATS.map(b => {
               const rev = b.basicRev + b.premiumRev + b.exclusiveRev + b.auctionRev;
               return (

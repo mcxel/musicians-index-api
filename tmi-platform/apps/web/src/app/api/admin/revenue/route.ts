@@ -93,8 +93,11 @@ function aggregateWebhookRevenue(): { streams: RevenueStreams; totalTodayCents: 
 }
 
 export async function GET(req: NextRequest) {
-  const role = req.cookies.get('tmi_role')?.value;
-  if (role !== 'admin') {
+  const role = req.cookies.get('tmi_role')?.value?.toUpperCase() ?? '';
+  const email = req.cookies.get('tmi_email')?.value ?? '';
+  const ADMIN_EMAILS = (process.env.ADMIN_EMAILS ?? 'berntmusic33@gmail.com,bigace@berntoutglobal.com').split(',');
+  const authorized = ['ADMIN', 'SUPERADMIN', 'OWNER'].includes(role) || ADMIN_EMAILS.includes(email);
+  if (!authorized) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 

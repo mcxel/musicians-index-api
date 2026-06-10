@@ -72,19 +72,34 @@ export type TicketRecord = {
   redeemed: boolean;
 };
 
-const ticketStore = new Map<string, TicketRecord>();
+// In-memory store. Works for single-instance dev.
+// TODO-PROD: Replace with Prisma-backed store (see UserStore.ts pattern) when
+// DATABASE_URL is confirmed stable — map TicketRecord → Prisma Ticket model.
+const TICKET_TTL_MS = 24 * 60 * 60 * 1000; // 24-hour in-memory retention
+type StoredTicket = TicketRecord & { _evictAt: number };
+const ticketStore = new Map<string, StoredTicket>();
 const scanLedgerStore: TicketScanLedger[] = [];
 
+function evictExpiredTickets(): void {
+  const now = Date.now();
+  for (const [id, t] of ticketStore.entries()) {
+    if (t._evictAt < now) ticketStore.delete(id);
+  }
+}
+
 export function listTicketsByOwner(ownerId: string): TicketRecord[] {
-  return Array.from(ticketStore.values()).filter((ticket) => ticket.ownerId === ownerId);
+  evictExpiredTickets();
+  return Array.from(ticketStore.values()).filter((t) => t.ownerId === ownerId);
 }
 
 export function getTicketById(ticketId: string): TicketRecord | undefined {
+  evictExpiredTickets();
   return ticketStore.get(ticketId);
 }
 
 export function saveTicket(ticket: TicketRecord): TicketRecord {
-  ticketStore.set(ticket.id, ticket);
+  const stored: StoredTicket = { ...ticket, _evictAt: Date.now() + TICKET_TTL_MS };
+  ticketStore.set(ticket.id, stored);
   return ticket;
 }
 

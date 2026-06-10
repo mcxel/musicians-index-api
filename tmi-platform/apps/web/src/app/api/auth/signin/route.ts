@@ -90,6 +90,7 @@ export async function POST(req: NextRequest) {
       maxAge: 7 * 24 * 60 * 60,
       path: '/',
     });
+    response.cookies.set('phase11_session', sessionToken, COOKIE_OPTS);
 
     return response;
   } catch {

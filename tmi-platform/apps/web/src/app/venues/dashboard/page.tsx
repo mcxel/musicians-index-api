@@ -1,17 +1,8 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-
-const STATS = [
-  { label: 'Total Shows', value: '24', icon: '🎤' },
-  { label: 'Artists Booked', value: '18', icon: '🎵' },
-  { label: 'Pending Offers', value: '3', icon: '📨' },
-  { label: 'Avg Score Match', value: '82', icon: '⭐' },
-];
-
-const RECENT_BOOKINGS = [
-  { artist: 'DJ Kenzo', date: 'Jul 15', status: 'CONFIRMED', genre: 'Afrobeats', score: 91 },
-  { artist: 'Amara Osei', date: 'Jul 22', status: 'PENDING', genre: 'R&B', score: 87 },
-  { artist: 'Yusuf Bello', date: 'Aug 3', status: 'DECLINED', genre: 'Hip-Hop', score: 74 },
-];
 
 const STATUS_STYLES: Record<string, string> = {
   CONFIRMED: 'bg-green-500/20 text-green-400',
@@ -19,7 +10,32 @@ const STATUS_STYLES: Record<string, string> = {
   DECLINED: 'bg-red-500/20 text-red-400',
 };
 
+interface Booking { artist: string; date: string; status: string; genre: string; score: number; }
+
 export default function VenueDashboardPage() {
+  const router = useRouter();
+  const [loading, setLoading] = useState(true);
+  const [bookings] = useState<Booking[]>([]);
+
+  const stats = [
+    { label: 'Total Shows', value: '0', icon: '🎤' },
+    { label: 'Artists Booked', value: '0', icon: '🎵' },
+    { label: 'Pending Offers', value: '0', icon: '📨' },
+    { label: 'Avg Score Match', value: '—', icon: '⭐' },
+  ];
+
+  useEffect(() => {
+    fetch('/api/auth/session', { credentials: 'include' })
+      .then(r => r.json())
+      .then((d: { authenticated?: boolean }) => {
+        if (!d.authenticated) router.replace('/auth');
+        else setLoading(false);
+      })
+      .catch(() => router.replace('/auth'));
+  }, [router]);
+
+  if (loading) return null;
+
   return (
     <main className="min-h-screen bg-[#0a0a0f] text-white px-6 py-10 max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-2">
@@ -32,7 +48,7 @@ export default function VenueDashboardPage() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
-        {STATS.map((stat) => (
+        {stats.map((stat) => (
           <div key={stat.label} className="bg-white/5 border border-white/10 rounded-xl p-4 text-center">
             <p className="text-2xl mb-1">{stat.icon}</p>
             <p className="text-2xl font-bold text-[#ff6b35]">{stat.value}</p>
@@ -77,27 +93,31 @@ export default function VenueDashboardPage() {
             View all →
           </Link>
         </div>
-        <div className="space-y-3">
-          {RECENT_BOOKINGS.map((booking, i) => (
-            <div key={i} className="flex items-center justify-between py-3 border-b border-white/5 last:border-0">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-[#ff6b35]/20 flex items-center justify-center text-[#ff6b35] text-xs font-bold">
-                  {booking.artist.charAt(0)}
+        {bookings.length === 0 ? (
+          <p className="text-sm text-gray-500 py-4 text-center">No bookings yet — discover artists to get started.</p>
+        ) : (
+          <div className="space-y-3">
+            {bookings.map((booking, i) => (
+              <div key={i} className="flex items-center justify-between py-3 border-b border-white/5 last:border-0">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-[#ff6b35]/20 flex items-center justify-center text-[#ff6b35] text-xs font-bold">
+                    {booking.artist.charAt(0)}
+                  </div>
+                  <div>
+                    <p className="font-semibold text-sm">{booking.artist}</p>
+                    <p className="text-xs text-gray-400">{booking.genre} · {booking.date}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="font-semibold text-sm">{booking.artist}</p>
-                  <p className="text-xs text-gray-400">{booking.genre} · {booking.date}</p>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-gray-400">Score: <span className="text-white font-semibold">{booking.score}</span></span>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${STATUS_STYLES[booking.status] ?? ''}`}>
+                    {booking.status}
+                  </span>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                <span className="text-xs text-gray-400">Score: <span className="text-white font-semibold">{booking.score}</span></span>
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${STATUS_STYLES[booking.status]}`}>
-                  {booking.status}
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </main>
   );

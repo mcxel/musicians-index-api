@@ -1,117 +1,146 @@
-import { NextResponse } from "next/server";
-import { createTicket } from "@/lib/tickets/ticketEngine";
-import type { TicketTier } from "@/lib/tickets/ticketCore";
+export const dynamic = 'force-dynamic';
 
-export interface SeatReservation {
-  seatId: string;
-  fanId: string;
-  displayName: string;
-  tier: string;
-  reservedAt: number;
-  ticketId: string;
-}
+import { NextRequest, NextResponse } from "next/server";
+import { getCanonicalRoomSlug } from "@/lib/world/WorldRuntime";
+import { prisma } from "@/lib/prisma";
 
-/** Server-side seat reservation store: concertId → seatId → reservation */
-const reservationStore = new Map<string, Map<string, SeatReservation>>();
+const SEAT_TTL_MS = 5 * 60 * 1000; // 5-minute hold
 
-export function getConcertSeats(concertId: string): Map<string, SeatReservation> {
-  if (!reservationStore.has(concertId)) {
-    reservationStore.set(concertId, new Map());
-  }
-  return reservationStore.get(concertId)!;
-}
-
-export async function POST(req: Request) {
-  const body = await req.json().catch(() => ({}));
-  const concertId: string = typeof body.concertId === "string" ? body.concertId : "world-concert";
-  const seatId: string    = typeof body.seatId    === "string" ? body.seatId    : "";
-  const fanId: string     = typeof body.fanId     === "string" ? body.fanId     : "guest";
-  const displayName: string = typeof body.displayName === "string" ? body.displayName : "Fan";
-  const tier: TicketTier  = typeof body.tier === "string" ? (body.tier as TicketTier) : "STANDARD";
-  const faceValue: number = typeof body.faceValue === "number" ? body.faceValue : 0;
-
-  if (!seatId) {
-    return NextResponse.json({ ok: false, error: "seatId required" }, { status: 400 });
-  }
-
-  const seats = getConcertSeats(concertId);
-
-  // Check if seat is already taken by someone else
-  const existing = seats.get(seatId);
-  if (existing && existing.fanId !== fanId) {
-    return NextResponse.json({ ok: false, error: "seat_taken" }, { status: 409 });
-  }
-
-  // Release any prior seat held by this fan
-  for (const [sid, res] of seats.entries()) {
-    if (res.fanId === fanId && sid !== seatId) {
-      seats.delete(sid);
+async function cleanupExpiredSeatReservations(tx: any, roomId: string) {
+  const now = new Date();
+  const expired = await tx.seatReservation.findMany({
+    where: {
+      roomId,
+      expiresAt: { lt: now }
     }
+  });
+  for (const row of expired) {
+    await tx.seatReservation.delete({ where: { id: row.id } }).catch(() => null);
+    await tx.roomSeatState.updateMany({
+      where: { roomId, seatId: row.seatId, currentUser: row.userId },
+      data: { occupied: false, currentUser: null }
+    });
   }
-
-  // Derive section/row/col from seatId (format: roomId:seat-R-C or r{R}c{C})
-  const [rowLabel, colLabel] = parseSeatId(seatId);
-
-  const ticket = createTicket({
-    ownerId: fanId,
-    venueSlug: concertId,
-    eventSlug: concertId,
-    tier,
-    faceValue,
-  });
-
-  // Patch seat binding to match the actual chosen seat
-  (ticket.seat as { section: string; row: string; seat: string }) = {
-    section: tier === "STANDARD" ? "GEN" : tier.slice(0, 3),
-    row: rowLabel,
-    seat: colLabel,
-  };
-
-  seats.set(seatId, {
-    seatId,
-    fanId,
-    displayName,
-    tier,
-    reservedAt: Date.now(),
-    ticketId: ticket.id,
-  });
-
-  return NextResponse.json({ ok: true, ticket, seatId });
 }
 
-export async function DELETE(req: Request) {
+export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
-  const concertId: string = typeof body.concertId === "string" ? body.concertId : "world-concert";
-  const fanId: string     = typeof body.fanId     === "string" ? body.fanId     : "";
-
-  if (!fanId) {
-    return NextResponse.json({ ok: false, error: "fanId required" }, { status: 400 });
+  const sessionId = req.cookies.get("tmi_session_id")?.value;
+  
+  if (!sessionId) {
+    return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
   }
 
-  const seats = getConcertSeats(concertId);
-  for (const [sid, res] of seats.entries()) {
-    if (res.fanId === fanId) {
-      seats.delete(sid);
+  const fanId: string = sessionId.substring(0, 8);
+  const rawConcertId: string = typeof body.concertId === "string" ? body.concertId : "world-concert";
+  const concertId = getCanonicalRoomSlug(rawConcertId);
+  const seatId: string = body.seatId;
+
+  if (!seatId || seatId.length > 64 || !/^[a-zA-Z0-9:_-]+$/.test(seatId)) {
+    return NextResponse.json({ ok: false, error: "Invalid seatId" }, { status: 400 });
+  }
+  if (concertId.length > 64 || !/^[a-zA-Z0-9:_-]+$/.test(concertId)) {
+    return NextResponse.json({ ok: false, error: "Invalid concertId" }, { status: 400 });
+  }
+
+  try {
+    const result = await prisma.$transaction(async (tx: any) => {
+      await cleanupExpiredSeatReservations(tx, concertId);
+      
+      // Release any prior seat held by this fan to prevent multi-booking
+      const userPriorReservations = await tx.seatReservation.findMany({
+        where: { roomId: concertId, userId: fanId }
+      });
+      
+      for (const prior of userPriorReservations) {
+        if (prior.seatId !== seatId) {
+          await tx.seatReservation.delete({ where: { id: prior.id } }).catch(() => null);
+          await tx.roomSeatState.updateMany({
+            where: { roomId: concertId, seatId: prior.seatId, currentUser: fanId },
+            data: { occupied: false, currentUser: null }
+          });
+        }
+      }
+      
+      // Check seat occupancy state
+      const existing = await tx.roomSeatState.findUnique({
+        where: { roomId_seatId: { roomId: concertId, seatId } }
+      });
+      
+      if (existing?.occupied && existing.currentUser !== fanId) {
+        throw new Error("seat_taken");
+      }
+      
+      // Check reservation ownership (prevents overwrite races on upsert update path)
+      const reservation = await tx.seatReservation.findUnique({
+        where: { roomId_seatId: { roomId: concertId, seatId } }
+      });
+      
+      if (reservation && reservation.userId !== fanId && reservation.expiresAt > new Date()) {
+        throw new Error("seat_taken");
+      }
+      
+      // Create/Update Occupancy
+      const state = await tx.roomSeatState.upsert({
+        where: { roomId_seatId: { roomId: concertId, seatId } },
+        create: { roomId: concertId, seatId, occupied: true, currentUser: fanId },
+        update: { occupied: true, currentUser: fanId }
+      });
+
+      // Create/Update Reservation
+      const expiresAt = new Date(Date.now() + SEAT_TTL_MS);
+      const res = await tx.seatReservation.upsert({
+        where: { roomId_seatId: { roomId: concertId, seatId } },
+        create: { roomId: concertId, seatId, userId: fanId, expiresAt },
+        update: { userId: fanId, expiresAt }
+      });
+
+      return { state, reservation: res };
+    });
+
+    return NextResponse.json({ ok: true, result });
+  } catch (err: any) {
+    if (err.message === "seat_taken") {
+      return NextResponse.json({ ok: false, error: "Conflict: Seat is already taken" }, { status: 409 });
     }
+    console.error("Seat reservation error:", err);
+    return NextResponse.json({ ok: false, error: "Internal Server Error" }, { status: 500 });
   }
-
-  return NextResponse.json({ ok: true });
 }
 
-function parseSeatId(seatId: string): [string, string] {
-  // Format "world-concert:seat-2-5" → row "C", col "6"
-  const meshMatch = seatId.match(/seat-(\d+)-(\d+)/);
-  if (meshMatch) {
-    const r = parseInt(meshMatch[1]!, 10);
-    const c = parseInt(meshMatch[2]!, 10);
-    return [String.fromCharCode(65 + r), String(c + 1).padStart(2, "0")];
+export async function DELETE(req: NextRequest) {
+  const body = await req.json().catch(() => ({}));
+  const sessionId = req.cookies.get("tmi_session_id")?.value;
+  
+  if (!sessionId) {
+    return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
   }
-  // Format "r2c5"
-  const gridMatch = seatId.match(/r(\d+)c(\d+)/);
-  if (gridMatch) {
-    const r = parseInt(gridMatch[1]!, 10);
-    const c = parseInt(gridMatch[2]!, 10);
-    return [String.fromCharCode(65 + r), String(c + 1).padStart(2, "0")];
+
+  const fanId: string = sessionId.substring(0, 8);
+  const rawConcertId: string = typeof body.concertId === "string" ? body.concertId : "world-concert";
+  const concertId = getCanonicalRoomSlug(rawConcertId);
+
+  if (concertId.length > 64 || !/^[a-zA-Z0-9:_-]+$/.test(concertId)) {
+    return NextResponse.json({ ok: false, error: "Invalid concertId" }, { status: 400 });
   }
-  return ["A", "01"];
+
+  try {
+    await prisma.$transaction(async (tx: any) => {
+      await cleanupExpiredSeatReservations(tx, concertId);
+      const userReservations = await tx.seatReservation.findMany({
+        where: { roomId: concertId, userId: fanId }
+      });
+      for (const res of userReservations) {
+        await tx.seatReservation.delete({ where: { id: res.id } }).catch(() => null);
+        await tx.roomSeatState.updateMany({
+          where: { roomId: concertId, seatId: res.seatId, currentUser: fanId },
+          data: { occupied: false, currentUser: null }
+        });
+      }
+    });
+    return NextResponse.json({ ok: true, message: "Released" });
+  } catch (err) {
+    console.error("Seat release error:", err);
+    return NextResponse.json({ ok: false, error: "Internal Server Error" }, { status: 500 });
+  }
 }

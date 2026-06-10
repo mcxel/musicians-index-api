@@ -68,43 +68,9 @@ export function SponsorDashboard({ artistName, tier }: SponsorDashboardProps) {
 
   const totalRevenue = Object.values(mockRevenue).reduce((sum, val) => sum + val, 0);
 
-  const mockPlacements: SponsorPlacement[] = [
-    {
-      id: 'sp_001',
-      platform: 'DanikaLaw',
-      location: 'Home Page Banner',
-      impressions: 45678,
-      clicks: 1234,
-      ctr: 2.7,
-      revenue: 2800,
-    },
-    {
-      id: 'sp_002',
-      platform: 'Arena',
-      location: 'Stage Backdrop',
-      impressions: 32100,
-      clicks: 890,
-      ctr: 2.8,
-      revenue: 2800,
-    },
-  ];
+  const mockPlacements: SponsorPlacement[] = [];
 
-  const mockPayments: PaymentRecord[] = [
-    {
-      id: 'pay_001',
-      date: new Date('2026-02-01'),
-      amount: 5600,
-      type: 'Monthly Sponsor Revenue',
-      status: 'completed',
-    },
-    {
-      id: 'pay_002',
-      date: new Date('2026-01-15'),
-      amount: 2450.5,
-      type: 'Arena Performance',
-      status: 'completed',
-    },
-  ];
+  const mockPayments: PaymentRecord[] = [];
 
   return (
     <div className="min-h-screen bg-gray-50 p-8">

@@ -463,9 +463,24 @@ export default function TMIBeatStore({
     }
   }
 
-  function handlePurchase(beat: Beat, license: LicenseType) {
-    // In production: POST /api/beats/purchase
-    setPurchased((prev) => [...prev, beat.id]);
+  async function handlePurchase(beat: Beat, license: LicenseType) {
+    try {
+      const priceUsd = license === "exclusive" ? (beat.exclusivePriceUsd ?? beat.priceUsd * 5) : beat.priceUsd;
+      const res = await fetch('/api/beats/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ beatId: beat.id, licenseType: license, price: Math.round(priceUsd * 100) }),
+      });
+      const data = await res.json();
+      
+      if (data.url) {
+        window.location.href = data.url; // Trigger Stripe redirection
+      } else {
+        alert(data.error || 'Beat checkout failed to initialize.');
+      }
+    } catch (err) {
+      console.error('Checkout error:', err);
+    }
   }
 
   function handleBid(beat: Beat, amount: number) {

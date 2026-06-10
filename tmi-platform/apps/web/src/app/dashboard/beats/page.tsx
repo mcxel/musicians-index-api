@@ -4,11 +4,7 @@ import { useState } from "react";
 
 type Beat = { id: string; title: string; genre: string; bpm: number; price: number; plays: number; sales: number; status: "published" | "draft" };
 
-const SEED: Beat[] = [
-  { id: "mb1", title: "Neon Crypt",    genre: "Trap",  bpm: 140, price: 29.99, plays: 1842, sales: 14, status: "published" },
-  { id: "mb2", title: "Crescent Drop", genre: "Drill", bpm: 148, price: 27.99, plays: 987,  sales: 7,  status: "published" },
-  { id: "mb3", title: "Velvet WIP",    genre: "R&B",   bpm: 82,  price: 22.99, plays: 0,    sales: 0,  status: "draft" },
-];
+const SEED: Beat[] = [];
 
 export default function DashboardBeatsPage() {
   const [beats, setBeats] = useState<Beat[]>(SEED);

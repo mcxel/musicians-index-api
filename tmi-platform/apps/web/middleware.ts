@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-const ADMIN_PATHS = ['/admin', '/api/admin'];
+const ADMIN_PATHS = ['/admin', '/api/admin', '/contest/admin'];
 const PROTECTED_PATHS = [
   '/hub',
   '/dashboard',
@@ -31,6 +31,7 @@ const VISIBILITY_WHITELIST = [
   '/support',
   '/api/admin',
   '/admin',
+  '/contest',
   '/_next',
   '/favicon.ico',
 ];
@@ -131,6 +132,21 @@ export function middleware(req: NextRequest) {
       new URL('/auth/signin' + (search || ''), req.url),
       301,
     );
+  }
+
+  if (pathname === '/contest/admin' || pathname.startsWith('/contest/admin/')) {
+    const sessionCookie = req.cookies.get('tmi_session')?.value;
+    const tokenRole = (req.cookies.get('tmi_role')?.value ?? '').toUpperCase();
+
+    if (!sessionCookie) {
+      const signin = new URL('/auth/signin', req.url);
+      signin.searchParams.set('next', pathname);
+      return NextResponse.redirect(signin, 307);
+    }
+
+    if (tokenRole !== 'ADMIN' && tokenRole !== 'STAFF') {
+      return NextResponse.redirect(new URL('/home/1', req.url), 307);
+    }
   }
 
   const nextParam = req.nextUrl.searchParams.get('next');

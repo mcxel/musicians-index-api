@@ -1,31 +1,42 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 const ACCENT = "#FF2DAA";
 const BG = "#050510";
 
 const STATS = [
-  { label: "Active Ads",    value: "12",   color: ACCENT    },
-  { label: "Impressions",   value: "5.1M", color: "#00FFFF" },
-  { label: "CTR",           value: "6.7%", color: "#FFD700" },
-  { label: "Budget Left",   value: "$8.4K",color: "#AA2DFF" },
-  { label: "Conversions",   value: "847",  color: "#00FF88" },
-  { label: "ROAS",          value: "4.2×", color: ACCENT    },
+  { label: "Active Ads",  value: "0",  color: ACCENT    },
+  { label: "Impressions", value: "0",  color: "#00FFFF" },
+  { label: "CTR",         value: "—",  color: "#FFD700" },
+  { label: "Budget Left", value: "$0", color: "#AA2DFF" },
+  { label: "Conversions", value: "0",  color: "#00FF88" },
+  { label: "ROAS",        value: "—",  color: ACCENT    },
 ];
 
-const AD_SURFACES = [
-  { surface: "Home 1 — Cover",      impressions: "142K", ctr: "8.1%", status: "live"   },
-  { surface: "Home 3 — Live World", impressions: "98K",  ctr: "7.4%", status: "live"   },
-  { surface: "Magazine Articles",   impressions: "214K", ctr: "5.8%", status: "live"   },
-  { surface: "Game Shows",          impressions: "87K",  ctr: "6.9%", status: "live"   },
-  { surface: "Fan Hub",             impressions: "44K",  ctr: "4.1%", status: "paused" },
-];
+interface MeUser { id: string; email: string; name?: string; role: string; tier?: string; }
 
 export default function AdvertiserProfilePage() {
+  const router = useRouter();
+  const [user, setUser] = useState<MeUser | null>(null);
   const [editing, setEditing] = useState(false);
-  const [brandName, setBrandName] = useState("PrimeBeat Media");
-  const [bio, setBio] = useState("Digital advertising brand specializing in live music platform campaigns. Reaching fans at point of passion.");
+  const [brandName, setBrandName] = useState("");
+  const [bio, setBio] = useState("");
+  const [saveStatus, setSaveStatus] = useState("");
+
+  useEffect(() => {
+    fetch("/api/auth/session", { credentials: "include" })
+      .then(r => r.json())
+      .then((d: { authenticated?: boolean; user?: MeUser }) => {
+        if (!d.authenticated || !d.user) { router.replace("/auth"); return; }
+        setUser(d.user);
+        setBrandName(d.user.name ?? d.user.email.split("@")[0] ?? "");
+      })
+      .catch(() => router.replace("/auth"));
+  }, [router]);
+
+  if (!user) return null;
 
   return (
     <main style={{ minHeight: "100vh", background: BG, color: "#fff", fontFamily: "'Inter', sans-serif", paddingBottom: 80 }}>
@@ -54,7 +65,7 @@ export default function AdvertiserProfilePage() {
         </div>
         {editing && (
           <div style={{ padding: "24px", background: "rgba(255,255,255,0.02)", border: `1px solid ${ACCENT}20`, borderRadius: 16, marginBottom: 24 }}>
-            <form action="/api/profile/update" method="POST" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <form onSubmit={async (e) => { e.preventDefault(); setSaveStatus(""); try { const r = await fetch("/api/profile/update", { method: "POST", headers: { "content-type": "application/json" }, credentials: "include", body: JSON.stringify({ displayName: brandName, bio }) }); setSaveStatus(r.ok ? "Saved!" : "Save failed."); } catch { setSaveStatus("Network error."); } }} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               <div>
                 <label style={{ display: "block", fontSize: 9, color: "rgba(255,255,255,0.35)", letterSpacing: "0.15em", fontWeight: 800, marginBottom: 6 }}>BRAND NAME</label>
                 <input type="text" name="brandName" value={brandName} onChange={(e) => setBrandName(e.target.value)} style={{ width: "100%", padding: "10px 14px", borderRadius: 8, background: "rgba(255,255,255,0.05)", border: `1px solid ${ACCENT}20`, color: "#fff", fontSize: 13, outline: "none", boxSizing: "border-box" }} />
@@ -69,8 +80,11 @@ export default function AdvertiserProfilePage() {
                   <input type="text" name={f.name} style={{ width: "100%", padding: "10px 14px", borderRadius: 8, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#fff", fontSize: 13, outline: "none", boxSizing: "border-box" }} />
                 </div>
               ))}
-              <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <button type="submit" style={{ padding: "10px 24px", borderRadius: 8, background: ACCENT, color: "#fff", border: "none", fontSize: 12, fontWeight: 900, cursor: "pointer" }}>SAVE</button>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                  <button type="submit" style={{ padding: "10px 24px", borderRadius: 8, background: ACCENT, color: "#fff", border: "none", fontSize: 12, fontWeight: 900, cursor: "pointer" }}>SAVE</button>
+                  {saveStatus && <span style={{ fontSize: 11, color: saveStatus === "Saved!" ? "#00FF88" : "#FF4444" }}>{saveStatus}</span>}
+                </div>
                 <Link href="/account/deactivate" style={{ color: "#ff4444", fontSize: 11, textDecoration: "none" }}>Deactivate</Link>
               </div>
             </form>
@@ -81,15 +95,7 @@ export default function AdvertiserProfilePage() {
         </div>
         <div style={{ padding: "18px 20px", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14, marginBottom: 20 }}>
           <div style={{ fontSize: 9, letterSpacing: "0.2em", color: ACCENT, fontWeight: 800, marginBottom: 12 }}>ACTIVE AD SURFACES</div>
-          {AD_SURFACES.map((a) => (
-            <div key={a.surface} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "9px 0", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-              <div><div style={{ fontSize: 12, fontWeight: 700 }}>{a.surface}</div><div style={{ fontSize: 9, color: "rgba(255,255,255,0.35)" }}>{a.impressions} impressions</div></div>
-              <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                <span style={{ fontSize: 10, fontWeight: 800, color: ACCENT }}>{a.ctr}</span>
-                <span style={{ fontSize: 8, fontWeight: 900, padding: "2px 7px", borderRadius: 4, background: a.status === "live" ? "rgba(0,255,136,0.12)" : "rgba(255,255,255,0.06)", color: a.status === "live" ? "#00FF88" : "rgba(255,255,255,0.35)", border: `1px solid ${a.status === "live" ? "rgba(0,255,136,0.3)" : "rgba(255,255,255,0.1)"}` }}>{a.status.toUpperCase()}</span>
-              </div>
-            </div>
-          ))}
+          <p style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", textAlign: "center", padding: "14px 0" }}>No active ads yet — <Link href="/advertiser/campaigns" style={{ color: ACCENT, textDecoration: "none" }}>launch an ad</Link></p>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 10 }}>
           {[

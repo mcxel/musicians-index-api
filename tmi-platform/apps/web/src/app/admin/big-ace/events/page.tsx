@@ -11,24 +11,19 @@ interface Event {
   revenue: number;
 }
 
-const events: Event[] = [
-  { id: '1', name: 'Summer Live Beat Battle', time: '12:00 PM', status: 'live', attendees: 234, revenue: 1200 },
-  { id: '2', name: 'Artist Showcase', time: '2:00 PM', status: 'today', attendees: 156, revenue: 850 },
-  { id: '3', name: 'Diamond VIP Lounge', time: '4:00 PM', status: 'upcoming', attendees: 0, revenue: 0 },
-  { id: '4', name: 'Midnight DJ Set', time: '11:00 PM', status: 'upcoming', attendees: 0, revenue: 0 },
-  { id: '5', name: 'Classic Battle Archive', time: 'Yesterday', status: 'ended', attendees: 512, revenue: 2560 },
-];
+const events: Event[] = [];
 
 export default function BigAceEventsPage() {
   const [eventList, setEventList] = useState<Event[]>(events);
-  const [activeEvent, setActiveEvent] = useState<Event>(events[0]);
+  const [activeEvent, setActiveEvent] = useState<Event | null>(null);
   const [actionMsg, setActionMsg] = useState("");
 
   function actOnEvent(action: string) {
+    if (!activeEvent) return;
     setActionMsg(`${action}: ${activeEvent.name}`);
     if (action === "Cancel") {
       setEventList(prev => prev.map(e => e.id === activeEvent.id ? { ...e, status: "ended" as const } : e));
-      setActiveEvent(prev => ({ ...prev, status: "ended" as const }));
+      setActiveEvent(prev => prev ? { ...prev, status: "ended" as const } : null);
     }
     setTimeout(() => setActionMsg(""), 3000);
   }
@@ -50,6 +45,11 @@ export default function BigAceEventsPage() {
         </div>
 
         {/* Events by Status */}
+        {eventList.length === 0 && (
+          <div className="mb-8 p-8 text-center bg-gray-900 border border-gray-700 rounded-lg text-gray-400 text-sm">
+            No events yet — events appear here as they are created.
+          </div>
+        )}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           {/* Live */}
           {eventsByStatus.live.length > 0 && (
@@ -60,7 +60,7 @@ export default function BigAceEventsPage() {
                   key={evt.id}
                   onClick={() => setActiveEvent(evt)}
                   className={`w-full text-left p-3 rounded mb-2 transition ${
-                    activeEvent.id === evt.id ? 'bg-red-900 border border-red-500' : 'bg-gray-800 hover:bg-gray-700'
+                    activeEvent?.id === evt.id ? 'bg-red-900 border border-red-500' : 'bg-gray-800 hover:bg-gray-700'
                   }`}
                 >
                   <div className="text-white text-sm font-bold">{evt.name}</div>
@@ -79,7 +79,7 @@ export default function BigAceEventsPage() {
                   key={evt.id}
                   onClick={() => setActiveEvent(evt)}
                   className={`w-full text-left p-3 rounded mb-2 transition ${
-                    activeEvent.id === evt.id ? 'bg-green-900 border border-green-500' : 'bg-gray-800 hover:bg-gray-700'
+                    activeEvent?.id === evt.id ? 'bg-green-900 border border-green-500' : 'bg-gray-800 hover:bg-gray-700'
                   }`}
                 >
                   <div className="text-white text-sm font-bold">{evt.name}</div>
@@ -98,7 +98,7 @@ export default function BigAceEventsPage() {
                   key={evt.id}
                   onClick={() => setActiveEvent(evt)}
                   className={`w-full text-left p-3 rounded mb-2 transition ${
-                    activeEvent.id === evt.id ? 'bg-yellow-900 border border-yellow-500' : 'bg-gray-800 hover:bg-gray-700'
+                    activeEvent?.id === evt.id ? 'bg-yellow-900 border border-yellow-500' : 'bg-gray-800 hover:bg-gray-700'
                   }`}
                 >
                   <div className="text-white text-sm font-bold">{evt.name}</div>
@@ -117,7 +117,7 @@ export default function BigAceEventsPage() {
                   key={evt.id}
                   onClick={() => setActiveEvent(evt)}
                   className={`w-full text-left p-3 rounded mb-2 transition ${
-                    activeEvent.id === evt.id ? 'bg-gray-800 border border-gray-500' : 'bg-gray-800 hover:bg-gray-700'
+                    activeEvent?.id === evt.id ? 'bg-gray-800 border border-gray-500' : 'bg-gray-800 hover:bg-gray-700'
                   }`}
                 >
                   <div className="text-gray-300 text-sm font-bold">{evt.name}</div>

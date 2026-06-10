@@ -4,14 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 const GENRES = ["All", "Hip-Hop", "Trap", "R&B", "Drill", "Afrobeats", "Lo-fi", "Pop"];
-const BEATS = [
-  { id: "b1", title: "Neon Crypt",    producer: "Mako Beats",  genre: "Trap",     bpm: 140, price: 29.99, plays: 1842 },
-  { id: "b2", title: "Mirror City",   producer: "XR99",        genre: "Lo-fi",    bpm: 90,  price: 19.99, plays: 3201 },
-  { id: "b3", title: "Shadowmask",    producer: "Nova Cipher", genre: "Hip-Hop",  bpm: 95,  price: 24.99, plays: 2110 },
-  { id: "b4", title: "Lagos Nights",  producer: "K1 Flair",    genre: "Afrobeats",bpm: 108, price: 34.99, plays: 4455 },
-  { id: "b5", title: "Crescent Drop", producer: "Mako Beats",  genre: "Drill",    bpm: 148, price: 27.99, plays: 987  },
-  { id: "b6", title: "Velvet Hours",  producer: "SunStreak",   genre: "R&B",      bpm: 82,  price: 22.99, plays: 1630 },
-];
+const BEATS: { id: string; title: string; producer: string; genre: string; bpm: number; price: number; plays: number }[] = [];
 
 export default function BeatsPage() {
   const router = useRouter();
@@ -42,6 +35,11 @@ export default function BeatsPage() {
           ))}
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(280px,1fr))", gap: 14 }}>
+          {displayed.length === 0 && (
+            <div style={{ gridColumn: "1/-1", padding: "48px 24px", textAlign: "center", background: "rgba(170,45,255,0.04)", border: "1px solid rgba(170,45,255,0.12)", borderRadius: 14, color: "rgba(255,255,255,0.3)", fontSize: 13 }}>
+              No beats listed yet — producers join to upload.
+            </div>
+          )}
           {displayed.map((b) => (
             <div key={b.id} style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(170,45,255,0.15)", borderRadius: 14, padding: "20px" }}>
               <div style={{ width: "100%", height: 80, background: playing === b.id ? "linear-gradient(135deg, rgba(170,45,255,0.35), rgba(255,45,170,0.2))" : "linear-gradient(135deg, rgba(170,45,255,0.15), rgba(255,45,170,0.08))", borderRadius: 10, marginBottom: 14, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28 }}>

@@ -31,12 +31,12 @@ const QUEUE = [
 function fmt(s: number) { return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; }
 
 export default function CompetePage() {
-  const [defV, setDefV] = useState(841);
-  const [chalV, setChalV] = useState(612);
+  const [defV, setDefV] = useState(0);
+  const [chalV, setChalV] = useState(0);
   const [timer, setTimer] = useState(107);
-  const [reacts, setReacts] = useState(247);
-  const [tips, setTips] = useState(840);
-  const [watch, setWatch] = useState(2840);
+  const [reacts, setReacts] = useState(0);
+  const [tips, setTips] = useState(0);
+  const [watch, setWatch] = useState(0);
   const [voted, setVoted] = useState<"def" | "chal" | null>(null);
 
   const total = defV + chalV;
@@ -45,8 +45,8 @@ export default function CompetePage() {
   const vote = useCallback((who: "def" | "chal") => {
     if (voted) return;
     setVoted(who);
-    if (who === "def") setDefV((v) => v + Math.floor(Math.random() * 8) + 3);
-    else setChalV((v) => v + Math.floor(Math.random() * 8) + 3);
+    if (who === "def") setDefV((v) => v + 1);
+    else setChalV((v) => v + 1);
   }, [voted]);
 
   useEffect(() => {

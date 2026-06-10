@@ -31,13 +31,24 @@ const ACCOUNT_TYPES: Array<{
     perks: ["Venue profile", "Booking workspace", "Event calendar"] },
 ];
 
+const ROLE_MAP: Record<string, AccountType> = {
+  performer: "PERFORMER", artist: "PERFORMER", musician: "PERFORMER",
+  fan: "FAN", listener: "FAN",
+  sponsor: "SPONSOR",
+  advertiser: "ADVERTISER", brand: "ADVERTISER",
+  venue: "VENUE",
+  promoter: "PROMOTER",
+};
+
 export default function SignupPage() {
   const searchParams = useSearchParams();
   const [vipToken, setVipToken] = useState(searchParams?.get("token") ?? "");
   const refToken = searchParams?.get("ref") ?? "";
 
+  const roleParam = searchParams?.get("role")?.toLowerCase() ?? "";
+  const presetType: AccountType = ROLE_MAP[roleParam] ?? "FAN";
+
   useEffect(() => {
-    // Restore invite code from localStorage if URL doesn't have one
     if (!vipToken) {
       const saved = localStorage.getItem("tmi_invite_code") ?? "";
       if (saved) setVipToken(saved);
@@ -45,8 +56,8 @@ export default function SignupPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const [step, setStep] = useState<Step>("TYPE");
-  const [accountType, setAccountType] = useState<AccountType>("FAN");
+  const [step, setStep] = useState<Step>(roleParam && ROLE_MAP[roleParam] ? "DETAILS" : "TYPE");
+  const [accountType, setAccountType] = useState<AccountType>(presetType);
   const [form, setForm] = useState({ name: "", email: "", password: "" });
   const [error, setError] = useState("");
   const [provSteps, setProvSteps] = useState<string[]>([]);

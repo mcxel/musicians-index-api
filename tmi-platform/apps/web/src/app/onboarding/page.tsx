@@ -31,7 +31,7 @@ function roleToDestination(role: string): string {
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [selectedRole, setSelectedRole] = useState<string | null>(null);
   const [error, setError] = useState("");
@@ -51,11 +51,14 @@ export default function OnboardingPage() {
   };
 
   useEffect(() => {
+    let active = true;
     const check = async () => {
       try {
         const res = await fetch("/api/auth/session", { cache: "no-store", credentials: "include" });
+        if (!active) return;
         if (!res.ok) { router.replace("/auth?next=%2Fonboarding"); return; }
         const me = await res.json() as { authenticated?: boolean; user?: { role?: string } };
+        if (!active) return;
         if (!me.authenticated) { router.replace("/auth?next=%2Fonboarding"); return; }
         const role = (me.user?.role ?? "user").toLowerCase();
         if (role !== "user") {
@@ -63,35 +66,15 @@ export default function OnboardingPage() {
           return;
         }
       } catch { /* stay on page */ }
-      setLoading(false);
+      if (active) setLoading(false);
     };
     void check();
+    return () => { active = false; };
   }, [router]);
 
-  const selectRole = async (roleId: string) => {
-    setSelectedRole(roleId);
-    setBusy(true);
-    setError("");
-    try {
-      const res = await fetch("/api/auth/set-role", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ role: roleId }),
-      });
-      if (res.ok) {
-        router.replace(roleOnboardingRoute(roleId));
-      } else {
-        const d = await res.json().catch(() => ({})) as { error?: string };
-        setError(d.error ?? "Failed to set role. Please try again.");
-        setBusy(false);
-        setSelectedRole(null);
-      }
-    } catch {
-      setError("Network error. Please try again.");
-      setBusy(false);
-      setSelectedRole(null);
-    }
+  const selectRole = (roleId: string) => {
+    // Navigate directly — role is persisted by the sub-page form submission
+    window.location.href = roleOnboardingRoute(roleId);
   };
 
   if (loading) {
@@ -119,6 +102,7 @@ export default function OnboardingPage() {
               key={r.id}
               disabled={busy}
               onClick={() => void selectRole(r.id)}
+              aria-label={`Continue as ${r.label}`}
               style={{
                 display: "flex", flexDirection: "column", gap: 8, padding: "20px 16px",
                 background: `${r.color}08`, border: `1px solid ${r.color}30`, borderRadius: 14,

@@ -73,7 +73,7 @@ function RoundCard({ round }: { round: CypherRound }) {
 }
 
 export default function CypherArenaPage() {
-  const [totalViewers, setTotalViewers] = useState(15800);
+  const [totalViewers, setTotalViewers] = useState(0);
 
   useEffect(() => {
     const interval = setInterval(() => {

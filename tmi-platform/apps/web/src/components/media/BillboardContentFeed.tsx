@@ -25,50 +25,8 @@ interface FeedItem {
   badge?: string;
 }
 
-function seedFeed(tab: FeedTab): FeedItem[] {
-  const base: Record<FeedTab, FeedItem[]> = {
-    ranked: [
-      { id: "r1", title: "Neon Frequency",            artist: "Nova Cipher",  type: "SONG",            plays: 94200,color: "#FFD700", emoji: "👑", href: "/performer/nova-cipher", badge: "#1 ALL-TIME" },
-      { id: "r2", title: "Crown Season Set",           artist: "Big Ace",      type: "LIVE STREAM",     plays: 71800,color: "#FF2DAA", emoji: "👑", href: "/rooms/colosseum-stage", badge: "#2" },
-      { id: "r3", title: "Nova Cipher vs. Big Ace",    artist: "Nova Cipher",  type: "BATTLE WIN",      plays: 8420, color: "#FF6B35", emoji: "⚔️", href: "/battles/1",             badge: "#3" },
-      { id: "r4", title: "Friday Cipher Vol. 12",      artist: "Open Floor",   type: "CYPHER HIGHLIGHT",plays: 12400,color: "#00FF88", emoji: "🎤", href: "/cypher/stage",          badge: "#4" },
-      { id: "r5", title: "Midnight Protocol",          artist: "Lani Flame",   type: "SONG",            plays: 48300,color: "#00FFFF", emoji: "🔥", href: "/performer/lani-flame",  badge: "#5" },
-    ],
-    live: [
-      { id: "l1", title: "Neon Frequency (LIVE)",    artist: "Nova Cipher",  type: "LIVE STREAM",     plays: 2147, color: "#FF2020", emoji: "🔴", href: "/rooms/main-stage",       isLive: true, badge: "LIVE" },
-      { id: "l2", title: "Crown Season Set",          artist: "Big Ace",      type: "LIVE STREAM",     plays: 1863, color: "#FFD700", emoji: "🔴", href: "/rooms/colosseum-stage",  isLive: true, badge: "LIVE" },
-      { id: "l3", title: "Friday Cypher",             artist: "Open Floor",   type: "LIVE CYPHER",     plays: 941,  color: "#00FFFF", emoji: "🔴", href: "/rooms/cypher-dome",      isLive: true, badge: "LIVE" },
-      { id: "l4", title: "World Dance Party",         artist: "DJ Phantom",   type: "LIVE DJ SET",     plays: 888,  color: "#AA2DFF", emoji: "🔴", href: "/rooms/world-dance-party",isLive: true, badge: "LIVE" },
-    ],
-    uploads: [
-      { id: "u1", title: "Dark Matter Loop",          artist: "Lani Flame",   type: "BEAT",            plays: 0,    color: "#AA2DFF", emoji: "🎛️", href: "/performer/lani-flame" },
-      { id: "u2", title: "Stage Recap — May",         artist: "Wave Tek",     type: "VIDEO",           plays: 0,    color: "#00FFFF", emoji: "🎬", href: "/performer/wave-tek" },
-      { id: "u3", title: "Trap Cypher Verse",         artist: "Zion Freq",    type: "CYPHER ENTRY",    plays: 0,    color: "#00FF88", emoji: "🎤", href: "/performer/zion-freq" },
-      { id: "u4", title: "Arena Challenge #4",        artist: "DJ Phantom",   type: "CHALLENGE",       plays: 0,    color: "#FFD700", emoji: "⚡", href: "/performer/dj-phantom" },
-      { id: "u5", title: "Red Sky",                   artist: "Mika Voss",    type: "SONG",            plays: 0,    color: "#FF2DAA", emoji: "🎵", href: "/performer/mika-voss" },
-      { id: "u6", title: "Bass Architecture",         artist: "Redbeard",     type: "BEAT",            plays: 0,    color: "#AA2DFF", emoji: "🎛️", href: "/performer/redbeard" },
-    ],
-    trending: [
-      { id: "t1", title: "Neon Frequency",            artist: "Nova Cipher",  type: "SONG",            plays: 94200,color: "#FF2DAA", emoji: "🔥", href: "/performer/nova-cipher", badge: "#1 TRENDING" },
-      { id: "t2", title: "Crown Season",              artist: "Big Ace",      type: "SONG",            plays: 71800,color: "#FFD700", emoji: "🔥", href: "/performer/big-ace",     badge: "#2" },
-      { id: "t3", title: "Midnight Protocol",         artist: "Lani Flame",   type: "SONG",            plays: 48300,color: "#FF6B35", emoji: "🔥", href: "/performer/lani-flame",  badge: "#3" },
-      { id: "t4", title: "City of Noise",             artist: "Wave Tek",     type: "VIDEO",           plays: 32100,color: "#00FFFF", emoji: "🎬", href: "/performer/wave-tek" },
-      { id: "t5", title: "Dark Matter Loop",          artist: "Zion Freq",    type: "BEAT",            plays: 21400,color: "#AA2DFF", emoji: "🎛️", href: "/performer/zion-freq" },
-    ],
-    battles: [
-      { id: "b1", title: "Nova Cipher vs. Big Ace",   artist: "Nova Cipher",  type: "BATTLE WIN",      plays: 8420, color: "#FF6B35", emoji: "⚔️", href: "/battles/1",  badge: "WINNER" },
-      { id: "b2", title: "Wave Tek vs. DJ Phantom",   artist: "Wave Tek",     type: "BATTLE WIN",      plays: 6100, color: "#FFD700", emoji: "⚔️", href: "/battles/2",  badge: "WINNER" },
-      { id: "b3", title: "Zion vs. Redbeard",         artist: "Zion Freq",    type: "BATTLE WIN",      plays: 4820, color: "#AA2DFF", emoji: "⚔️", href: "/battles/3",  badge: "WINNER" },
-      { id: "b4", title: "Lani Flame vs. Mika Voss",  artist: "Lani Flame",   type: "BATTLE WIN",      plays: 3300, color: "#FF2DAA", emoji: "⚔️", href: "/battles/4",  badge: "WINNER" },
-    ],
-    cyphers: [
-      { id: "c1", title: "Friday Cipher Vol. 12",     artist: "Open Floor",   type: "CYPHER HIGHLIGHT",plays: 12400,color: "#00FF88", emoji: "🎤", href: "/cypher/stage", badge: "HOT" },
-      { id: "c2", title: "Monday Night Bars",         artist: "Nova Cipher",  type: "CYPHER CLIP",     plays: 8100, color: "#00FFFF", emoji: "🎤", href: "/cypher/live" },
-      { id: "c3", title: "Trap Session",              artist: "Big Ace",      type: "CYPHER CLIP",     plays: 5400, color: "#FFD700", emoji: "🎤", href: "/cypher/live" },
-      { id: "c4", title: "Sunrise Verse",             artist: "Lani Flame",   type: "CYPHER CLIP",     plays: 3800, color: "#FF2DAA", emoji: "🎤", href: "/cypher/live" },
-    ],
-  };
-  return (base as Record<FeedTab, FeedItem[]>)[tab] ?? [];
+function seedFeed(_tab: FeedTab): FeedItem[] {
+  return [];
 }
 
 const TABS: { key: FeedTab; label: string; emoji: string; color: string }[] = [
@@ -273,6 +231,16 @@ export default function BillboardContentFeed({ defaultTab = "live", maxItems = 6
 
       {/* Feed list */}
       <div style={{ padding: compact ? "10px 14px 14px" : "14px 20px 20px", display: "flex", flexDirection: "column", gap: 6 }}>
+        {items.length === 0 && (
+          <div style={{ padding: "24px 0", textAlign: "center", color: "rgba(255,255,255,0.25)", fontSize: 11 }}>
+            {activeTab === "live" ? "No live sessions right now — check back soon." :
+             activeTab === "battles" ? "No battles recorded yet." :
+             activeTab === "cyphers" ? "No cypher highlights yet." :
+             activeTab === "ranked" ? "Rankings populate as performers compete." :
+             activeTab === "trending" ? "Nothing trending yet — be the first." :
+             "No uploads yet."}
+          </div>
+        )}
         {items.map(item => (
           <MediaCard key={item.id} item={item} compact={compact} userId={userId} />
         ))}

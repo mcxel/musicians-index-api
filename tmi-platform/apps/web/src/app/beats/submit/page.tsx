@@ -1,176 +1,144 @@
-"use client";
+'use client';
 
-import { useState, useMemo, useRef } from "react";
-import Link from "next/link";
-import { buildSubmissionPreview } from "@/engines/performance/BeatSubmissionRouter";
-import BeatJourneyWidget from "@/components/beats/BeatJourneyWidget";
+import React, { useState, useRef } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
-const GENRES = ["Hip-Hop", "R&B", "Pop", "Trap", "Drill", "Afrobeats", "Jazz", "Gospel", "Latin", "EDM", "Country", "Rock", "Blues", "Reggae", "Instrumental"];
-const LICENSES = [
-  { id: "basic", label: "Basic Lease", price: "$29", desc: "Non-exclusive · MP3 only · 2,500 copies" },
-  { id: "premium", label: "Premium Lease", price: "$59", desc: "Non-exclusive · WAV + MP3 · Unlimited copies" },
-  { id: "exclusive", label: "Exclusive", price: "$499+", desc: "Full ownership transfer · All stems included" },
-];
+const GENRES = ['Trap', 'Hip-Hop', 'R&B', 'EDM', 'Dance', 'Afrobeat', 'Latin', 'Rock', 'Pop', 'House', 'Drill', 'Reggaeton', 'Other'];
 
-export default function BeatSubmitPage() {
-  const [form, setForm] = useState({ title: "", genre: "", bpm: "", key: "", tags: "", basicPrice: "29", premiumPrice: "59", exclusivePrice: "499", enableAuction: false, battleUsable: true, cypherUsable: true });
-  const [done, setDone] = useState(false);
-  const [beatFile, setBeatFile] = useState<File | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+export default function BeatSubmissionPage() {
+  const router = useRouter();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [file, setFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [phase, setPhase] = useState<'idle' | 'uploading' | 'saving' | 'done' | 'error'>('idle');
+  const [errMsg, setErrMsg] = useState('');
 
-  const preview = useMemo(() => {
-    if (!form.genre) return null;
-    const tags = form.tags.split(",").map((t) => t.trim()).filter(Boolean);
-    return buildSubmissionPreview(form.genre, tags, form.battleUsable, form.cypherUsable);
-  }, [form.genre, form.tags, form.battleUsable, form.cypherUsable]);
-
-  function set(k: string, v: string | boolean) { setForm(p => ({ ...p, [k]: v })); }
-
-  async function submit(e: React.FormEvent) {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const fd = new FormData();
-    Object.entries(form).forEach(([k, v]) => fd.append(k, String(v)));
-    if (beatFile) fd.append("file", beatFile);
-    setDone(true);
-    await fetch("/api/beats/submit", {
-      method:      "POST",
-      credentials: "include",
-      body:        fd,
-    }).catch(() => {});
-  }
+    if (!file) { setErrMsg('Please select an audio file.'); return; }
+    setErrMsg('');
+    setUploading(true);
+    setPhase('uploading');
 
-  const input: React.CSSProperties = { width: "100%", padding: "10px 14px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, color: "#fff", fontSize: 13, outline: "none", boxSizing: "border-box" };
-  const lbl: React.CSSProperties = { fontSize: 9, fontWeight: 800, letterSpacing: "0.15em", color: "rgba(255,255,255,0.4)", display: "block", marginBottom: 6 };
+    try {
+      // Step 1: upload audio to media endpoint
+      const fd = new FormData();
+      fd.append('file', file);
+      const uploadRes = await fetch('/api/upload/media', { method: 'POST', body: fd, credentials: 'include' });
+      const uploadData = await uploadRes.json() as { url?: string; error?: string };
+      if (!uploadRes.ok || !uploadData.url) {
+        throw new Error(uploadData.error ?? 'Upload failed');
+      }
 
-  if (done) return (
-    <main style={{ minHeight: "100vh", background: "#050510", color: "#fff", fontFamily: "'Inter', sans-serif" }}>
-      <div style={{ maxWidth: 680, margin: "0 auto", padding: "56px 24px 80px" }}>
-        <div style={{ textAlign: "center", marginBottom: 40 }}>
-          <div style={{ fontSize: 52, marginBottom: 16 }}>🎛️</div>
-          <div style={{ fontSize: 9, letterSpacing: "0.4em", color: "#FFD700", fontWeight: 800, marginBottom: 10 }}>SUBMITTED</div>
-          <h1 style={{ fontSize: "clamp(22px, 5vw, 36px)", fontWeight: 900, margin: "0 0 12px", letterSpacing: "-0.02em" }}>Beat Submitted to Vault</h1>
-          <p style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", maxWidth: 400, margin: "0 auto", lineHeight: 1.7 }}>
-            Your beat is in review. Once approved it enters the live pipeline below.
-          </p>
-        </div>
-        <BeatJourneyWidget currentStep={0} />
-      </div>
-    </main>
-  );
+      const audioUrl = uploadData.url;
+      setPhase('saving');
+
+      // Step 2: register beat in the DB
+      const form = e.currentTarget;
+      const submitRes = await fetch('/api/beats/submit', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          title:       (form.elements.namedItem('title') as HTMLInputElement).value,
+          genre:       (form.elements.namedItem('genre') as HTMLSelectElement).value,
+          bpm:         (form.elements.namedItem('bpm') as HTMLInputElement).value,
+          key:         (form.elements.namedItem('key') as HTMLInputElement).value,
+          tags:        (form.elements.namedItem('tags') as HTMLInputElement).value,
+          basicPrice:  Math.floor(Number((form.elements.namedItem('basicPrice') as HTMLInputElement).value ?? 29.99) * 100),
+          premiumPrice:Math.floor(Number((form.elements.namedItem('premiumPrice') as HTMLInputElement).value ?? 79.99) * 100),
+          previewUrl:  audioUrl,
+          audioUrl,
+        }),
+      });
+      const saveData = await submitRes.json() as { ok?: boolean; error?: string };
+      if (!submitRes.ok || !saveData.ok) throw new Error(saveData.error ?? 'Save failed');
+
+      setPhase('done');
+      setTimeout(() => router.push('/beats/marketplace'), 1500);
+    } catch (err) {
+      setErrMsg(err instanceof Error ? err.message : 'Upload failed — try again.');
+      setPhase('error');
+      setUploading(false);
+    }
+  };
+
+  const phaseLabel = phase === 'uploading' ? 'UPLOADING AUDIO…' : phase === 'saving' ? 'SAVING TO VAULT…' : phase === 'done' ? '✓ SUBMITTED!' : 'PUBLISH BEAT';
 
   return (
-    <main style={{ minHeight: "100vh", background: "#050510", color: "#fff", paddingBottom: 80 }}>
-      <div style={{ maxWidth: 720, margin: "0 auto", padding: "48px 24px" }}>
-        <Link href="/beats" style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.15em", color: "rgba(255,255,255,0.3)", textDecoration: "none" }}>← BEATS</Link>
-        <h1 style={{ fontSize: "clamp(1.6rem,4vw,2.4rem)", fontWeight: 900, margin: "24px 0 8px" }}>Submit a Beat</h1>
-        <p style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", marginBottom: 36 }}>Your beat enters a private vault. Buyers purchase a license — you keep ownership.</p>
-
-        <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-          {/* Upload zone */}
-          <div
-            onClick={() => fileInputRef.current?.click()}
-            style={{ border: `2px dashed ${beatFile ? "rgba(255,215,0,0.6)" : "rgba(255,215,0,0.2)"}`, borderRadius: 12, padding: "36px 24px", textAlign: "center", cursor: "pointer", transition: "border-color 0.2s" }}
-          >
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".mp3,.wav,audio/mpeg,audio/wav"
-              style={{ display: "none" }}
-              onChange={(e) => setBeatFile(e.target.files?.[0] ?? null)}
-            />
-            <div style={{ fontSize: 32, marginBottom: 10 }}>{beatFile ? "🎵" : "🎚️"}</div>
-            {beatFile ? (
-              <>
-                <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4, color: "#FFD700" }}>{beatFile.name}</div>
-                <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)" }}>{(beatFile.size / (1024 * 1024)).toFixed(1)} MB · Click to change</div>
-              </>
-            ) : (
-              <>
-                <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 6 }}>Click to select beat file</div>
-                <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)" }}>WAV or MP3 · Max 50MB · Private vault upload</div>
-              </>
-            )}
+    <main style={{ minHeight: '100vh', background: '#050510', color: '#fff', padding: '40px 24px', fontFamily: "'Inter', sans-serif" }}>
+      <div style={{ maxWidth: 800, margin: '0 auto' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: '1px solid rgba(170,45,255,0.2)', paddingBottom: 20, marginBottom: 40 }}>
+          <div>
+            <div style={{ fontSize: 10, letterSpacing: '0.3em', color: '#AA2DFF', fontWeight: 900, marginBottom: 8, textTransform: 'uppercase' }}>PRODUCER SUITE</div>
+            <h1 style={{ fontSize: 32, margin: 0, fontFamily: 'var(--font-orbitron, Impact)', letterSpacing: '0.05em' }}>UPLOAD <span style={{ color: '#00FFFF' }}>INSTRUMENTAL</span></h1>
           </div>
+          <Link href="/beats/marketplace" style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, textDecoration: 'none', border: '1px solid rgba(255,255,255,0.2)', padding: '6px 12px', borderRadius: 6 }}>← Marketplace</Link>
+        </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+        <form onSubmit={handleSubmit} style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 12, padding: 30 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
             <div>
-              <span style={lbl}>BEAT TITLE</span>
-              <input style={input} placeholder="e.g. Midnight Bars" value={form.title} onChange={e => set("title", e.target.value)} required />
+              <label style={{ display: 'block', fontSize: 10, fontWeight: 900, color: 'rgba(255,255,255,0.5)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Beat Title</label>
+              <input required name="title" type="text" placeholder="e.g. Neon Bounce" style={{ width: '100%', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(0,255,255,0.3)', color: '#fff', padding: '12px', borderRadius: 8, outline: 'none' }} />
             </div>
             <div>
-              <span style={lbl}>GENRE</span>
-              <select style={{ ...input }} value={form.genre} onChange={e => set("genre", e.target.value)} required>
-                <option value="">Select…</option>
+              <label style={{ display: 'block', fontSize: 10, fontWeight: 900, color: 'rgba(255,255,255,0.5)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Genre</label>
+              <select required name="genre" style={{ width: '100%', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(0,255,255,0.3)', color: '#fff', padding: '12px', borderRadius: 8, outline: 'none' }}>
                 {GENRES.map(g => <option key={g}>{g}</option>)}
               </select>
             </div>
-          </div>
-
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
             <div>
-              <span style={lbl}>BPM</span>
-              <input style={input} type="number" min="40" max="300" placeholder="140" value={form.bpm} onChange={e => set("bpm", e.target.value)} />
+              <label style={{ display: 'block', fontSize: 10, fontWeight: 900, color: 'rgba(255,255,255,0.5)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.1em' }}>BPM</label>
+              <input required name="bpm" type="number" min={60} max={220} placeholder="120" style={{ width: '100%', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(0,255,255,0.3)', color: '#fff', padding: '12px', borderRadius: 8, outline: 'none' }} />
             </div>
             <div>
-              <span style={lbl}>KEY</span>
-              <input style={input} placeholder="e.g. Cm, F#" value={form.key} onChange={e => set("key", e.target.value)} />
+              <label style={{ display: 'block', fontSize: 10, fontWeight: 900, color: 'rgba(255,255,255,0.5)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Key</label>
+              <input name="key" type="text" placeholder="C Minor" style={{ width: '100%', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(0,255,255,0.3)', color: '#fff', padding: '12px', borderRadius: 8, outline: 'none' }} />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: 10, fontWeight: 900, color: 'rgba(255,255,255,0.5)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Tags (comma-separated)</label>
+              <input name="tags" type="text" placeholder="dark, melodic, 808" style={{ width: '100%', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(0,255,255,0.3)', color: '#fff', padding: '12px', borderRadius: 8, outline: 'none' }} />
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: 10, fontWeight: 900, color: 'rgba(255,255,255,0.5)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Basic Price ($)</label>
+                <input name="basicPrice" type="number" min={0.99} step={0.01} defaultValue={29.99} style={{ width: '100%', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(0,255,255,0.3)', color: '#fff', padding: '12px', borderRadius: 8, outline: 'none' }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 10, fontWeight: 900, color: 'rgba(255,255,255,0.5)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Premium Price ($)</label>
+                <input name="premiumPrice" type="number" min={0.99} step={0.01} defaultValue={79.99} style={{ width: '100%', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(0,255,255,0.3)', color: '#fff', padding: '12px', borderRadius: 8, outline: 'none' }} />
+              </div>
             </div>
           </div>
 
-          <div>
-            <span style={lbl}>TAGS (comma-separated)</span>
-            <input style={input} placeholder="dark, trap, melody, 808s" value={form.tags} onChange={e => set("tags", e.target.value)} />
-          </div>
-
-          {/* License pricing */}
-          <div>
-            <span style={lbl}>LICENSE PRICING</span>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12 }}>
-              {LICENSES.map(lic => (
-                <div key={lic.id} style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: "14px 16px" }}>
-                  <div style={{ fontSize: 12, fontWeight: 800, marginBottom: 4 }}>{lic.label}</div>
-                  <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", marginBottom: 12, lineHeight: 1.4 }}>{lic.desc}</div>
-                  <input style={{ ...input, fontSize: 11 }} type="number" min="0" placeholder={lic.price.replace("$", "").replace("+", "")}
-                    value={lic.id === "basic" ? form.basicPrice : lic.id === "premium" ? form.premiumPrice : form.exclusivePrice}
-                    onChange={e => set(`${lic.id}Price`, e.target.value)} />
-                </div>
-              ))}
+          {/* File drop zone */}
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={() => fileRef.current?.click()}
+            onKeyDown={(e) => e.key === 'Enter' && fileRef.current?.click()}
+            style={{ marginBottom: 30, padding: 40, border: `2px dashed ${file ? 'rgba(0,255,136,0.6)' : 'rgba(170,45,255,0.5)'}`, borderRadius: 12, textAlign: 'center', background: file ? 'rgba(0,255,136,0.05)' : 'rgba(170,45,255,0.05)', cursor: 'pointer' }}
+          >
+            <div style={{ fontSize: 32, marginBottom: 10 }}>{file ? '🎵' : '📁'}</div>
+            <div style={{ fontSize: 12, fontWeight: 900, color: file ? '#00FF88' : '#AA2DFF', letterSpacing: '0.1em' }}>
+              {file ? file.name : 'CLICK TO SELECT AUDIO FILE (.WAV or .MP3)'}
             </div>
+            {file && <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', marginTop: 6 }}>{(file.size / 1024 / 1024).toFixed(1)} MB</div>}
+            <input
+              ref={fileRef}
+              type="file"
+              accept="audio/*"
+              style={{ display: 'none' }}
+              onChange={(e) => { setFile(e.target.files?.[0] ?? null); setErrMsg(''); }}
+            />
           </div>
 
-          {/* Usage flags */}
-          <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
-            {[
-              { key: "battleUsable", label: "Usable in battles" },
-              { key: "cypherUsable", label: "Usable in cyphers" },
-              { key: "enableAuction", label: "Enable auction" },
-            ].map(({ key, label }) => (
-              <label key={key} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "rgba(255,255,255,0.6)", cursor: "pointer" }}>
-                <input type="checkbox" checked={!!form[key as keyof typeof form]} onChange={e => set(key, e.target.checked)} style={{ width: 15, height: 15 }} />
-                {label}
-              </label>
-            ))}
-          </div>
+          {errMsg && <div style={{ marginBottom: 16, padding: '10px 14px', background: 'rgba(255,68,68,0.1)', border: '1px solid rgba(255,68,68,0.3)', borderRadius: 8, color: '#FF4444', fontSize: 12 }}>{errMsg}</div>}
 
-          {/* Session pool compatibility preview */}
-          {preview && (
-            <div style={{ borderRadius: 10, border: "1px solid rgba(255,215,0,0.15)", background: "rgba(255,215,0,0.04)", padding: "14px 16px" }}>
-              <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.16em", color: "rgba(255,215,0,0.6)", textTransform: "uppercase", marginBottom: 8 }}>Session Pool Eligibility</div>
-              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", marginBottom: 10 }}>{preview.poolSummary}</div>
-              {preview.eligibleSessions.length > 0 && (
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                  {preview.eligibleSessions.map(({ slot }) => (
-                    <span key={slot.label} style={{ fontSize: 8, fontWeight: 700, padding: "3px 9px", borderRadius: 999, border: "1px solid rgba(255,215,0,0.2)", color: "rgba(255,215,0,0.7)", background: "rgba(255,215,0,0.06)" }}>
-                      {slot.label}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          <button type="submit" style={{ padding: "14px 0", fontSize: 11, fontWeight: 800, letterSpacing: "0.15em", color: "#050510", background: "linear-gradient(135deg,#FFD700,#FF2DAA)", borderRadius: 10, border: "none", cursor: "pointer" }}>
-            SUBMIT TO VAULT
+          <button type="submit" disabled={uploading || phase === 'done'} style={{ width: '100%', background: phase === 'done' ? '#00FF88' : 'linear-gradient(90deg, #00FFFF, #AA2DFF)', color: '#050510', border: 'none', padding: '16px', borderRadius: 8, fontSize: 14, fontWeight: 900, letterSpacing: '0.1em', cursor: uploading ? 'not-allowed' : 'pointer', opacity: uploading ? 0.8 : 1 }}>
+            {phaseLabel}
           </button>
         </form>
       </div>

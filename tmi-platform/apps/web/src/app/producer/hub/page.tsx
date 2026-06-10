@@ -5,14 +5,9 @@ import Link from "next/link";
 
 type ProducerStats = { totalBeats: number; totalSales: number; totalRevenue: number; pendingPayout: number; plays: number; licenses: number };
 
-const SEED_STATS: ProducerStats = { totalBeats: 6, totalSales: 14, totalRevenue: 892, pendingPayout: 312, plays: 18400, licenses: 14 };
+const SEED_STATS: ProducerStats = { totalBeats: 0, totalSales: 0, totalRevenue: 0, pendingPayout: 0, plays: 0, licenses: 0 };
 
-const SEED_BEATS = [
-  { id: "b1", title: "Midnight Bars", genre: "Hip-Hop", bpm: 140, status: "LIVE", sales: 5, revenue: 245, plays: 4200 },
-  { id: "b2", title: "Battle Code", genre: "Battle Rap", bpm: 95, status: "LIVE", sales: 7, revenue: 343, plays: 7800 },
-  { id: "b3", title: "Frequency", genre: "Instrumental", bpm: 110, status: "REVIEW", sales: 0, revenue: 0, plays: 1900 },
-  { id: "b4", title: "Gold Standard", genre: "Trap", bpm: 145, status: "LIVE", sales: 2, revenue: 118, plays: 5600 },
-];
+const SEED_BEATS: { id: string; title: string; genre: string; bpm: number; status: string; sales: number; revenue: number; plays: number }[] = [];
 
 export default function ProducerHubPage() {
   const [stats, setStats] = useState<ProducerStats>(SEED_STATS);

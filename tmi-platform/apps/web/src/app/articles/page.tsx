@@ -1,143 +1,83 @@
 'use client';
-import { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
+
+import React from 'react';
 import Link from 'next/link';
-import PageShell from '@/components/layout/PageShell';
-import HUDFrame from '@/components/hud/HUDFrame';
-import FooterHUD from '@/components/hud/FooterHUD';
-import SectionTitle from '@/components/ui/SectionTitle';
+import { ConfettiBackground, GeoBlock, MagButton, MagPill, NeonHead, MAG_COLORS } from '@/components/ui/MagazineUI';
+import { MAGAZINE_ISSUE_1 } from '@/lib/magazine/magazineIssueData';
 
-type Article = {
-  id: string;
-  slug: string;
-  title: string;
-  subtitle?: string | null;
-  category?: string | null;
-  publishedAt: string | null;
-  author?: { name: string | null } | null;
-  coverImage?: string | null;
+const CAT_COLOR: Record<string, string> = {
+  feature:   MAG_COLORS.PK,
+  interview: MAG_COLORS.CY,
+  review:    MAG_COLORS.PU,
+  editorial: MAG_COLORS.GD,
+  news:      MAG_COLORS.GN,
 };
-
-const CATEGORIES = ['ALL', 'FEATURE', 'EXCLUSIVE', 'INTERVIEW', 'INDUSTRY', 'SPOTLIGHT', 'NEWS'];
-
-const CHANNELS = [
-  { slug: 'music',     icon: '🎤', label: 'Music' },
-  { slug: 'winners',   icon: '🏆', label: 'Winners' },
-  { slug: 'cypher',    icon: '⚔️',  label: 'Cypher' },
-  { slug: 'culture',   icon: '🎭', label: 'Culture' },
-  { slug: 'business',  icon: '💼', label: 'Business' },
-  { slug: 'world',     icon: '🌍', label: 'World' },
-  { slug: 'lifestyle', icon: '✨', label: 'Lifestyle' },
-  { slug: 'tech',      icon: '💻', label: 'Tech' },
-  { slug: 'live',      icon: '📡', label: 'Live' },
-  { slug: 'events',    icon: '🎟️',  label: 'Events' },
-  { slug: 'love',      icon: '❤️',  label: 'Love' },
-  { slug: 'science',   icon: '🔬', label: 'Science' },
-  { slug: 'sponsors',  icon: '💎', label: 'Sponsors' },
-  { slug: 'writers',   icon: '✍️',  label: 'Writers' },
-];
-
-const CATEGORY_COLORS: Record<string, string> = {
-  FEATURE: '#FF2DAA',
-  EXCLUSIVE: '#00FFFF',
-  INTERVIEW: '#AA2DFF',
-  INDUSTRY: '#FFD700',
-  SPOTLIGHT: '#FF2DAA',
-  NEWS: '#00FFFF',
-};
-
-const STUB_ARTICLES: Article[] = [
-  { id: '1', slug: 'the-crown-never-rests', title: 'The Crown Never Rests', subtitle: 'How the TMI weekly winner system is reshaping the music industry', category: 'FEATURE', publishedAt: '2026-04-01', author: { name: 'TMI Editorial' } },
-  { id: '2', slug: 'cypher-arena-explained', title: 'Cypher Arena Explained', subtitle: 'Breaking down how artists compete live in real-time', category: 'EXCLUSIVE', publishedAt: '2026-03-29', author: { name: 'Staff Writer' } },
-  { id: '3', slug: 'stream-win-radio-launch', title: 'Stream & Win Radio Is Live', subtitle: 'The first music competition radio station drops this month', category: 'NEWS', publishedAt: '2026-03-25', author: { name: 'TMI News Desk' } },
-  { id: '4', slug: 'artist-dashboard-breakdown', title: 'Your Artist Dashboard: A Full Breakdown', subtitle: 'Analytics, bookings, wallet, and more — all in one place', category: 'INDUSTRY', publishedAt: '2026-03-20', author: { name: 'Platform Team' } },
-  { id: '5', slug: 'bobblehead-avatars-arrive', title: 'Bobblehead Avatars Have Arrived', subtitle: 'Create your animated stage presence inside the platform', category: 'SPOTLIGHT', publishedAt: '2026-03-15', author: { name: 'TMI Editorial' } },
-  { id: '6', slug: 'interview-rising-mc', title: 'Interview: The Rising MC Taking Over', subtitle: 'We sat down with one of this season\'s biggest Cypher contenders', category: 'INTERVIEW', publishedAt: '2026-03-10', author: { name: 'Interviews Desk' } },
-];
 
 export default function ArticlesPage() {
-  const [articles, setArticles] = useState<Article[]>(STUB_ARTICLES);
-  const [filter, setFilter] = useState('ALL');
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetch('/api/homepage/latest-articles?limit=24')
-      .then((r) => r.json())
-      .then((data) => { if (Array.isArray(data) && data.length) setArticles(data); })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
-
-  const filtered = filter === 'ALL' ? articles : articles.filter((a) => a.category === filter);
-
   return (
-    <PageShell>
-      <HUDFrame>
-        <div style={{ minHeight: '100vh', background: '#050510', paddingBottom: 80 }}>
-          {/* Hero */}
-          <div style={{ background: 'linear-gradient(160deg, #1a0a2e 0%, #050510 60%)', padding: '64px 32px 48px', borderBottom: '1px solid #FF2DAA33' }}>
-            <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
-              <div style={{ fontSize: 11, letterSpacing: 4, color: '#FF2DAA', textTransform: 'uppercase', marginBottom: 12 }}>THE MUSICIANS INDEX</div>
-              <h1 style={{ fontSize: 52, fontWeight: 900, color: '#fff', margin: '0 0 12px', lineHeight: 1.1 }}>MAGAZINE</h1>
-              <p style={{ color: '#aaa', fontSize: 16, maxWidth: 480 }}>Features, exclusives, interviews, and industry intel — straight from the culture.</p>
-            </motion.div>
+    <main style={{ minHeight: '100vh', background: '#050510', color: '#fff', position: 'relative', overflow: 'hidden' }}>
+      <ConfettiBackground count={15} />
 
-            {/* Channel nav */}
-            <div style={{ display: 'flex', gap: 0, overflowX: 'auto', marginTop: 32, borderBottom: '1px solid rgba(255,255,255,0.08)', scrollbarWidth: 'none' }}>
-              {CHANNELS.map((ch) => (
-                <Link key={ch.slug} href={`/articles/c/${ch.slug}`} style={{ textDecoration: 'none', flexShrink: 0 }}>
-                  <div style={{ padding: '8px 14px', borderBottom: '3px solid transparent', fontFamily: 'inherit', fontSize: 9, fontWeight: 900, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.45)', whiteSpace: 'nowrap', transition: 'all 0.2s' }}>
-                    {ch.icon} {ch.label}
-                  </div>
-                </Link>
-              ))}
-            </div>
+      <div style={{ maxWidth: 1000, margin: '0 auto', padding: '40px 24px', position: 'relative', zIndex: 10 }}>
 
-            {/* Category filter */}
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 20 }}>
-              {CATEGORIES.map((cat) => (
-                <button key={cat} onClick={() => setFilter(cat)} style={{ padding: '6px 16px', borderRadius: 20, border: `1px solid ${filter === cat ? '#FF2DAA' : '#333'}`, background: filter === cat ? '#FF2DAA22' : 'transparent', color: filter === cat ? '#FF2DAA' : '#888', fontSize: 11, letterSpacing: 2, cursor: 'pointer', fontWeight: 700, transition: 'all .2s' }}>
-                  {cat}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Grid */}
-          <div style={{ padding: '48px 32px 0' }}>
-            <SectionTitle title={filter === 'ALL' ? 'ALL ARTICLES' : filter} accent="pink" />
-            {loading && <div style={{ color: '#555', padding: '40px 0' }}>Loading articles…</div>}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 24, marginTop: 24 }}>
-              {filtered.map((article, i) => {
-                const cat = article.category ?? 'NEWS';
-                const accent = CATEGORY_COLORS[cat] ?? '#00FFFF';
-                return (
-                  <motion.div key={article.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
-                    <Link href={`/articles/${article.slug}`} style={{ textDecoration: 'none' }}>
-                      <div style={{ background: '#0a0a1a', border: '1px solid #1a1a2e', borderRadius: 12, overflow: 'hidden', cursor: 'pointer', transition: 'border-color .2s', borderTopColor: accent }}>
-                        {/* Cover image placeholder */}
-                        <div style={{ height: 160, background: `linear-gradient(135deg, ${accent}22 0%, #050510 100%)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 40 }}>
-                          {cat === 'INTERVIEW' ? '🎤' : cat === 'FEATURE' ? '🎵' : cat === 'EXCLUSIVE' ? '👑' : cat === 'INDUSTRY' ? '📊' : '📰'}
-                        </div>
-                        <div style={{ padding: '16px 18px 20px' }}>
-                          <div style={{ fontSize: 10, letterSpacing: 2, color: accent, marginBottom: 8, fontWeight: 700 }}>{cat}</div>
-                          <div style={{ color: '#fff', fontSize: 16, fontWeight: 700, lineHeight: 1.3, marginBottom: 8 }}>{article.title}</div>
-                          {article.subtitle && <div style={{ color: '#888', fontSize: 13, lineHeight: 1.5 }}>{article.subtitle}</div>}
-                          <div style={{ marginTop: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11, color: '#555' }}>
-                            <span>{article.author?.name ?? 'TMI Editorial'}</span>
-                            <span>{article.publishedAt ? new Date(article.publishedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''}</span>
-                          </div>
-                        </div>
-                      </div>
-                    </Link>
-                  </motion.div>
-                );
-              })}
-            </div>
-          </div>
+        {/* Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 30 }}>
+          <NeonHead text="ALL ARTICLES" color={MAG_COLORS.CY} size={32} />
+          <MagPill text={`${MAGAZINE_ISSUE_1.length} ARTICLES`} bg={MAG_COLORS.OR} />
         </div>
-        <FooterHUD />
-      </HUDFrame>
-    </PageShell>
+
+        {/* Article list */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {MAGAZINE_ISSUE_1.map((article) => {
+            const accent = CAT_COLOR[article.category] ?? MAG_COLORS.CY;
+            return (
+              <GeoBlock
+                key={article.slug}
+                bg="#1A1A2E"
+                border={accent}
+                shape="tagR"
+                height={120}
+                label={article.category.toUpperCase()}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', padding: '0 20px', gap: 16 }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, flex: 1, minWidth: 0 }}>
+                    <span style={{ fontSize: 28, flexShrink: 0 }}>{article.icon}</span>
+                    <div style={{ minWidth: 0 }}>
+                      <h2 style={{ fontSize: 16, fontWeight: 900, color: '#fff', margin: 0, lineHeight: 1.3 }}>
+                        {article.title}
+                      </h2>
+                      <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', marginTop: 4, lineHeight: 1.4 }}>
+                        {article.subtitle}
+                      </p>
+                      <div style={{ display: 'flex', gap: 8, marginTop: 6, alignItems: 'center' }}>
+                        <span style={{ fontSize: 9, color: accent, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+                          {article.category}
+                        </span>
+                        <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)' }}>·</span>
+                        <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)' }}>{article.author}</span>
+                        <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)' }}>·</span>
+                        <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)' }}>
+                          {new Date(article.publishedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <Link href={`/magazine/article/${article.slug}`} style={{ textDecoration: 'none', flexShrink: 0 }}>
+                    <MagButton label="READ" bg={accent} />
+                  </Link>
+                </div>
+              </GeoBlock>
+            );
+          })}
+        </div>
+
+        {/* Back nav */}
+        <div style={{ marginTop: 40, textAlign: 'center' }}>
+          <Link href="/magazine" style={{ textDecoration: 'none' }}>
+            <MagButton label="← BACK TO MAGAZINE" bg={MAG_COLORS.DT} border={MAG_COLORS.CY} />
+          </Link>
+        </div>
+      </div>
+    </main>
   );
 }

@@ -6,10 +6,20 @@ const PROTECTED_PREFIXES = [
   "/fan/",
   "/performer/",
   "/artist/",
-  "/admin/",
   "/profile/",
   "/beats/locker",
   "/tickets/",
+  // Role-specific sections
+  "/venue/",
+  "/promoter/",
+  "/sponsor/",
+  "/advertiser/",
+  // Dashboards
+  "/dashboard/",
+  // Contest admin — requires auth
+  "/contest/admin",
+  // Go live — requires account
+  "/go-live",
   // Billing — must be authenticated before touching payment flows
   "/settings/billing",
   "/settings/account",
@@ -23,20 +33,47 @@ const PROTECTED_PREFIXES = [
   "/beat-vault/upload",
 ];
 
+const ADMIN_EMAILS_DEFAULT = "berntmusic33@gmail.com,bigace@berntoutglobal.com";
+
+function buildAuthRedirect(req: NextRequest, pathname: string) {
+  const loginUrl = req.nextUrl.clone();
+  loginUrl.pathname = "/auth";
+  loginUrl.search = "";
+  loginUrl.searchParams.set("next", pathname);
+  return NextResponse.redirect(loginUrl);
+}
+
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
-
-  const isProtected = PROTECTED_PREFIXES.some((p) => pathname.startsWith(p));
-  if (!isProtected) return NextResponse.next();
 
   const sessionId    = req.cookies.get("tmi_session_id")?.value;
   const sessionToken = req.cookies.get("tmi_session")?.value;
 
+  // Auth page guard — redirect authenticated users away from /auth
+  if (pathname === "/auth" && sessionId && sessionToken) {
+    return NextResponse.redirect(new URL("/onboarding", req.url));
+  }
+
+  // Admin guard — authentication + role check
+  if (pathname.startsWith("/admin")) {
+    if (!sessionId || !sessionToken) {
+      return buildAuthRedirect(req, pathname);
+    }
+    const role  = (req.cookies.get("tmi_role")?.value ?? "").toLowerCase();
+    const email = (req.cookies.get("tmi_user_email")?.value ?? "").toLowerCase();
+    const adminEmails = (process.env.ADMIN_EMAILS ?? ADMIN_EMAILS_DEFAULT)
+      .split(",").map((e) => e.trim().toLowerCase()).filter(Boolean);
+    if (role !== "admin" && role !== "staff" && !adminEmails.includes(email)) {
+      return NextResponse.redirect(new URL("/", req.url));
+    }
+    return NextResponse.next();
+  }
+
+  const isProtected = PROTECTED_PREFIXES.some((p) => pathname.startsWith(p));
+  if (!isProtected) return NextResponse.next();
+
   if (!sessionId || !sessionToken) {
-    const loginUrl = req.nextUrl.clone();
-    loginUrl.pathname = "/auth";
-    loginUrl.searchParams.set("redirect", pathname);
-    return NextResponse.redirect(loginUrl);
+    return buildAuthRedirect(req, pathname);
   }
 
   return NextResponse.next();
@@ -44,6 +81,7 @@ export function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
+    "/auth",
     "/fan/:path*",
     "/performer/:path*",
     "/artist/:path*",
@@ -51,6 +89,15 @@ export const config = {
     "/profile/:path*",
     "/beats/locker/:path*",
     "/tickets/:path*",
+    "/venue/:path*",
+    "/promoter/:path*",
+    "/sponsor/:path*",
+    "/advertiser/:path*",
+    "/dashboard/:path*",
+    "/contest/admin",
+    "/contest/admin/:path*",
+    "/go-live",
+    "/go-live/:path*",
     "/settings/billing/:path*",
     "/settings/billing",
     "/settings/account/:path*",

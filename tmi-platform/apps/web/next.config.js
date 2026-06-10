@@ -182,7 +182,12 @@ const nextConfig = {
       // ── Auth aliases ──────────────────────────────────────────────────────
       { source: '/signin', destination: '/auth', permanent: false },
       { source: '/login', destination: '/auth', permanent: false },
-      { source: '/signup', destination: '/auth', permanent: false },
+
+      // ── Account legacy aliases to existing settings surfaces ──────────────
+      { source: '/account/notifications', destination: '/settings/notifications', permanent: false },
+      { source: '/account/invites', destination: '/invite', permanent: false },
+      { source: '/account/deactivate', destination: '/settings/account', permanent: false },
+      { source: '/account/promos', destination: '/promo/TMI', permanent: false },
 
       // ── Editorial / judge / support aliases ───────────────────────────────
       { source: '/editorial/write', destination: '/submit', permanent: false },

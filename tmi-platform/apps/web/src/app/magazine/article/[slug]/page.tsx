@@ -6,6 +6,7 @@ import XPTrigger from "@/components/common/XPTrigger";
 import AdRailSlot from "@/components/ads/AdRailSlot";
 import UnifiedAdSlot from "@/components/ads/UnifiedAdSlot";
 import Link from "next/link";
+import TMIGeoBlock from "@/components/shared/TMIGeoBlock";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -80,6 +81,31 @@ export default async function ArticlePage({ params }: Props) {
       </div>
 
       <MagazineSpreadRenderer article={article} issueNumber={1} related={relatedArticles} />
+
+      <div style={{ maxWidth: 900, margin: "0 auto", padding: "12px 24px 0" }}>
+        <TMIGeoBlock
+          shape="jagg"
+          label="GEO FEATURE"
+          accentColor="#FF2DAA"
+          bg="linear-gradient(135deg, rgba(13,8,28,0.95), rgba(25,9,35,0.88))"
+          glow
+          style={{ padding: "12px 14px" }}
+        >
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+            <div style={{ display: "grid", gap: 3 }}>
+              <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: "0.12em", color: "rgba(255,255,255,0.7)" }}>
+                TMI MAGAZINE SIGNAL
+              </span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: "#fff", lineHeight: 1.3 }}>
+                Discovery + Industry visibility is now active for this editorial surface.
+              </span>
+            </div>
+            <span style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.12em", color: "#FF2DAA" }}>
+              GEO-BLOCK LIVE
+            </span>
+          </div>
+        </TMIGeoBlock>
+      </div>
 
       <div style={{ maxWidth: 900, margin: "0 auto", padding: "0 24px" }}>
         <AdRailSlot slotId="magazine-article-rail" hasSponsor={false} hasAdvertiser={false} title="Article Rail" />

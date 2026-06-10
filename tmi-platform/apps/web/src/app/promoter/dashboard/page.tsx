@@ -1,60 +1,79 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import PageShell from '@/components/layout/PageShell';
+import HUDFrame from '@/components/hud/HUDFrame';
+import FooterHUD from '@/components/hud/FooterHUD';
 
-const CFG = { label: 'Promoter', accent: '#FF6B35', hub: '/hub/promoter', emoji: '📢' };
+interface Event { id: string; title: string; date: string; sold: number; capacity: number; revenue: number; }
 
-const STATS = [
-  { label: 'Events Hosted', value: '0', sub: 'total events promoted' },
-  { label: 'Ticket Sales', value: '0', sub: 'tickets sold' },
-  { label: 'Revenue', value: '$0', sub: 'all time earnings' },
-  { label: 'Artists Booked', value: '0', sub: 'unique artists' },
-];
+export default function PromoterDashboard() {
+  const router = useRouter();
+  const [events] = useState<Event[]>([]);
+  const [loading, setLoading] = useState(true);
 
-export default function PromoterDashboardPage() {
+  useEffect(() => {
+    fetch('/api/auth/session', { credentials: 'include' })
+      .then(r => r.json())
+      .then((d: { authenticated?: boolean }) => {
+        if (!d.authenticated) router.replace('/auth');
+        else setLoading(false);
+      })
+      .catch(() => router.replace('/auth'));
+  }, [router]);
+
+  if (loading) return null;
+
   return (
-    <div style={{ minHeight: '100vh', background: '#07071a', color: '#fff', fontFamily: 'sans-serif', padding: '2rem' }}>
-      <div style={{ maxWidth: 900, margin: '0 auto' }}>
-        <Link href={CFG.hub} style={{ color: CFG.accent, textDecoration: 'none', fontSize: 14 }}>
-          ← Back to {CFG.label} Hub
-        </Link>
-        <h1 style={{ fontSize: 28, fontWeight: 700, marginTop: '1rem' }}>
-          {CFG.emoji} Promoter Dashboard
-        </h1>
-        <p style={{ color: '#888', fontSize: 15, marginBottom: '2rem' }}>Your event promotion overview at a glance.</p>
+    <PageShell>
+      <HUDFrame>
+        <div style={{ minHeight: '100vh', background: '#050510', color: '#fff', padding: '32px 24px', fontFamily: "'Inter', sans-serif" }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32, borderBottom: '1px solid rgba(255,149,0,0.2)', paddingBottom: 16 }}>
+            <div>
+              <div style={{ fontSize: 10, color: '#FF9500', fontWeight: 900, letterSpacing: '0.2em' }}>PROMOTER HUB</div>
+              <h1 style={{ fontSize: 32, margin: 0, fontFamily: "'Bebas Neue', Impact, sans-serif" }}>EVENT MANAGEMENT</h1>
+            </div>
+            <button style={{ background: '#FF9500', color: '#000', border: 'none', padding: '10px 20px', fontWeight: 900, borderRadius: 6, cursor: 'pointer' }}>+ CREATE EVENT</button>
+          </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
-          {STATS.map(s => (
-            <StatCard key={s.label} label={s.label} value={s.value} sub={s.sub} accent={CFG.accent} />
-          ))}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 32 }}>
+            <div style={{ background: 'rgba(255,149,0,0.05)', border: '1px solid rgba(255,149,0,0.2)', padding: 20, borderRadius: 8 }}>
+              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', marginBottom: 8 }}>Total Ticket Revenue</div>
+              <div style={{ fontSize: 28, color: '#FF9500', fontWeight: 900 }}>${events.reduce((acc, e) => acc + e.revenue, 0).toLocaleString()}</div>
+            </div>
+            <div style={{ background: 'rgba(0,255,255,0.05)', border: '1px solid rgba(0,255,255,0.2)', padding: 20, borderRadius: 8 }}>
+              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', marginBottom: 8 }}>Tickets Sold</div>
+              <div style={{ fontSize: 28, color: '#00FFFF', fontWeight: 900 }}>{events.reduce((acc, e) => acc + e.sold, 0).toLocaleString()}</div>
+            </div>
+            <div style={{ background: 'rgba(170,45,255,0.05)', border: '1px solid rgba(170,45,255,0.2)', padding: 20, borderRadius: 8 }}>
+              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', marginBottom: 8 }}>Active Campaigns</div>
+              <div style={{ fontSize: 28, color: '#AA2DFF', fontWeight: 900 }}>{events.length}</div>
+            </div>
+          </div>
+
+          <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 12, padding: 24 }}>
+            <h2 style={{ fontSize: 16, marginTop: 0, marginBottom: 16, color: '#fff' }}>Your Events</h2>
+            {events.map(ev => (
+              <div key={ev.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 0', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+                <div>
+                  <div style={{ fontSize: 16, fontWeight: 900 }}>{ev.title}</div>
+                  <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', marginTop: 4 }}>Date: {ev.date}</div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: '#00FF88' }}>{ev.sold} / {ev.capacity} Sold</div>
+                  <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', marginTop: 4 }}>${ev.revenue.toLocaleString()}</div>
+                </div>
+                <div>
+                  <Link href={`/promoter/events/${ev.id}`} style={{ padding: '6px 12px', background: 'rgba(255,255,255,0.1)', color: '#fff', textDecoration: 'none', borderRadius: 4, fontSize: 11, fontWeight: 700 }}>MANAGE</Link>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-          <QuickLink href="/promoter/events" label="Events" desc="Create and manage your events" accent={CFG.accent} />
-          <QuickLink href="/promoter/tickets" label="Tickets" desc="Ticket inventory and sales" accent={CFG.accent} />
-          <QuickLink href="/promoter/analytics" label="Analytics" desc="Attendance, revenue, and reach" accent={CFG.accent} />
-          <QuickLink href="/promoter/contracts" label="Contracts" desc="Artist and venue agreements" accent={CFG.accent} />
-          <QuickLink href="/promoter/payments" label="Payments" desc="Revenue tracking and payouts" accent={CFG.accent} />
-          <QuickLink href="/promoter/profile" label="Edit Profile" desc="Update your brand and info" accent={CFG.accent} />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function StatCard({ label, value, sub, accent }: { label: string; value: string; sub: string; accent: string }) {
-  return (
-    <div style={{ background: '#0f0f2a', border: `1px solid ${accent}33`, borderRadius: 10, padding: '1.25rem' }}>
-      <div style={{ fontSize: 28, fontWeight: 700, color: accent }}>{value}</div>
-      <div style={{ fontSize: 14, fontWeight: 600, marginTop: 4 }}>{label}</div>
-      <div style={{ fontSize: 12, color: '#666', marginTop: 2 }}>{sub}</div>
-    </div>
-  );
-}
-
-function QuickLink({ href, label, desc, accent }: { href: string; label: string; desc: string; accent: string }) {
-  return (
-    <Link href={href} style={{ background: '#0f0f2a', border: `1px solid ${accent}22`, borderRadius: 10, padding: '1rem 1.25rem', textDecoration: 'none', color: '#fff', display: 'block' }}>
-      <div style={{ fontSize: 15, fontWeight: 700, color: accent }}>{label}</div>
-      <div style={{ fontSize: 13, color: '#888', marginTop: 4 }}>{desc}</div>
-    </Link>
+      </HUDFrame>
+      <FooterHUD />
+    </PageShell>
   );
 }

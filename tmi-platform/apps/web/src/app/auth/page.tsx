@@ -30,29 +30,14 @@ function toSessionPayload(data: unknown): SessionPayload {
   };
 }
 
-function roleToHub(role?: string): string {
-  const r = (role ?? "").toLowerCase();
-  if (r === "admin" || r === "staff") return "/admin";
-  if (r === "artist")     return "/dashboard/artist";
-  if (r === "performer")  return "/dashboard/performer";
-  if (r === "sponsor")    return "/dashboard/sponsor";
-  if (r === "advertiser") return "/dashboard/advertiser";
-  if (r === "venue")      return "/dashboard/venue";
-  if (r === "writer")     return "/dashboard/writer";
-  if (r === "promoter")   return "/dashboard/fan";
-  if (r === "fan" || r === "user") return "/dashboard/fan";
-  return "/dashboard/fan";
-}
-
 export default function AuthPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const nextParam = searchParams?.get("next") || "";
-  const nextRoute = nextParam.startsWith("/") && !nextParam.startsWith("//") ? nextParam : "";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState<string>("");
+  const [registerMsg, setRegisterMsg] = useState<string>("");
   const [busy, setBusy] = useState(false);
   const [inviteCode, setInviteCode] = useState<string>("");
   const [session, setSession] = useState<SessionPayload>({
@@ -88,7 +73,7 @@ export default function AuthPage() {
     let active = true;
     loadSession().then((s) => {
       if (active && s.authenticated) {
-        router.replace(nextRoute || roleToHub(s.role ?? ""));
+        router.replace("/onboarding");
       }
     });
     return () => { active = false; };
@@ -105,6 +90,36 @@ export default function AuthPage() {
     return false;
   };
 
+  const register = async () => {
+    setBusy(true);
+    setRegisterMsg("");
+    setMessage("");
+    try {
+      const csrfRes = await loadSession();
+      const csrf = csrfRes.csrfToken;
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (csrf) headers["X-CSRF-Token"] = csrf;
+
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ email: email.trim().toLowerCase(), password, termsAccepted: true }),
+        credentials: "include",
+      });
+
+      if (res.status === 201) {
+        setRegisterMsg("Registration succeeded.");
+      } else if (res.status === 409) {
+        setRegisterMsg("User already exists.");
+      } else {
+        const d = await res.json().catch(() => ({} as { error?: string }));
+        setRegisterMsg(d.error ?? `Registration failed (${res.status}).`);
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const login = async () => {
     setBusy(true);
     setMessage("");
@@ -114,7 +129,7 @@ export default function AuthPage() {
       const headers: Record<string, string> = { "Content-Type": "application/json" };
       if (csrf) headers["X-CSRF-Token"] = csrf;
 
-      const res = await fetch("/api/auth/signin", {
+      const res = await fetch("/api/auth/login", {
         method: "POST",
         headers,
         body: JSON.stringify({ email: email.trim().toLowerCase(), password }),
@@ -122,20 +137,14 @@ export default function AuthPage() {
       });
 
       if (res.status === 200) {
-        const data = await res.json().catch(() => ({} as { role?: string; streak?: { current: number; longest: number; isNewDay: boolean; multiplier: number; xpGranted: number } }));
+        const data = await res.json().catch(() => ({} as { streak?: { current: number; longest: number; isNewDay: boolean; multiplier: number; xpGranted: number } }));
         if (data.streak) {
           try {
             localStorage.setItem('tmi_streak', JSON.stringify(data.streak));
             window.dispatchEvent(new CustomEvent('tmi:streak', { detail: data.streak }));
           } catch { /* localStorage unavailable */ }
         }
-        const authenticated = await waitForAuthenticatedSession();
-        if (authenticated) {
-          const dest = nextRoute || roleToHub(data.role);
-          router.replace(dest);
-        } else {
-          setMessage("Login completed but session was not confirmed. Please try again.");
-        }
+        window.location.replace("/onboarding");
       } else if (res.status === 401) {
         setMessage("Incorrect email or password.");
       } else if (res.status === 403) {
@@ -202,8 +211,9 @@ export default function AuthPage() {
             style={{ display: "flex", flexDirection: "column", gap: 14 }}
           >
             <div>
-              <label style={{ display: "block", fontSize: 8, letterSpacing: "0.15em", color: "rgba(255,255,255,0.38)", marginBottom: 6, fontWeight: 700 }}>EMAIL ADDRESS</label>
+              <label htmlFor="auth-email" style={{ display: "block", fontSize: 8, letterSpacing: "0.15em", color: "rgba(255,255,255,0.38)", marginBottom: 6, fontWeight: 700 }}>Email</label>
               <input
+                id="auth-email"
                 type="email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
@@ -216,10 +226,11 @@ export default function AuthPage() {
 
             <div>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
-                <label style={{ fontSize: 8, letterSpacing: "0.15em", color: "rgba(255,255,255,0.38)", fontWeight: 700 }}>PASSWORD</label>
+                <label htmlFor="auth-password" style={{ fontSize: 8, letterSpacing: "0.15em", color: "rgba(255,255,255,0.38)", fontWeight: 700 }}>Password</label>
                 <Link href="/auth/forgot-password" style={{ fontSize: 9, color: "rgba(0,255,255,0.6)", textDecoration: "none" }}>Forgot password?</Link>
               </div>
               <input
+                id="auth-password"
                 type="password"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
@@ -230,25 +241,46 @@ export default function AuthPage() {
               />
             </div>
 
+            {registerMsg && (
+              <div style={{ fontSize: 11, color: registerMsg.toLowerCase().includes("succeeded") || registerMsg.toLowerCase().includes("already exists") ? "#00FF88" : "#FF6B6B", padding: "8px 12px", background: "rgba(255,255,255,0.04)", borderRadius: 7 }}>
+                {registerMsg}
+              </div>
+            )}
+
             {message && (
-              <div style={{ fontSize: 11, color: message.toLowerCase().includes("success") || message.toLowerCase().includes("redirect") ? "#00FF88" : "#FF6B6B", padding: "8px 12px", background: "rgba(255,255,255,0.04)", borderRadius: 7 }}>
+              <div style={{ fontSize: 11, color: "#FF6B6B", padding: "8px 12px", background: "rgba(255,255,255,0.04)", borderRadius: 7 }}>
                 {message}
               </div>
             )}
 
-            <motion.button
-              whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.98 }}
-              type="submit"
-              disabled={busy}
-              style={{
-                width: "100%", padding: "13px", fontSize: 11, fontWeight: 800, letterSpacing: "0.15em",
-                background: busy ? "rgba(0,255,255,0.15)" : "linear-gradient(135deg,#00FFFF,#00FFFF99)",
-                color: "#050510", border: "none", borderRadius: 8, cursor: busy ? "wait" : "pointer",
-                opacity: busy ? 0.7 : 1,
-              }}
-            >
-              {busy ? "SIGNING IN..." : "SIGN IN →"}
-            </motion.button>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                type="button"
+                onClick={() => void register()}
+                disabled={busy}
+                style={{
+                  flex: 1, padding: "13px", fontSize: 11, fontWeight: 800, letterSpacing: "0.12em",
+                  background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.15)",
+                  color: "#fff", borderRadius: 8, cursor: busy ? "wait" : "pointer", opacity: busy ? 0.7 : 1,
+                }}
+              >
+                Register
+              </button>
+
+              <motion.button
+                whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.98 }}
+                type="submit"
+                disabled={busy}
+                style={{
+                  flex: 1, padding: "13px", fontSize: 11, fontWeight: 800, letterSpacing: "0.15em",
+                  background: busy ? "rgba(0,255,255,0.15)" : "linear-gradient(135deg,#00FFFF,#00FFFF99)",
+                  color: "#050510", border: "none", borderRadius: 8, cursor: busy ? "wait" : "pointer",
+                  opacity: busy ? 0.7 : 1,
+                }}
+              >
+                {busy ? "..." : "Login"}
+              </motion.button>
+            </div>
 
             {/* Divider */}
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>

@@ -9,6 +9,7 @@ import LiveMediaWall from '@/components/media/LiveMediaWall';
 import VideoCurtainReveal from '@/components/media/VideoCurtainReveal';
 import AdSenseSlot, { AD_SLOTS } from '@/components/ads/AdSenseSlot';
 import InviteRewardPanel from '@/components/referral/InviteRewardPanel';
+import PlaylistEngine from '@/components/artifacts/PlaylistArtifact';
 
 interface MeUser { id: string; email: string; name?: string; role: string; tier?: string; fanPoints?: number; }
 
@@ -67,6 +68,8 @@ export default function FanDashboardPage() {
         if (res.status === 401 || res.status === 403) { router.replace('/auth'); return; }
         const data = await res.json() as { authenticated: boolean; user?: MeUser };
         if (!data.authenticated || !data.user) { router.replace('/auth'); return; }
+        const r = (data.user.role ?? '').toLowerCase();
+        if (r !== 'fan' && r !== 'user') { router.replace('/dashboard'); return; }
         setUser(data.user);
         setRoleStats(getRoleStats(data.user.role ?? 'fan'));
       } catch { router.replace('/auth'); } finally { setLoading(false); }
@@ -129,9 +132,47 @@ export default function FanDashboardPage() {
 
         {/* Live arena wall */}
         <div style={{ marginBottom: 32 }}>
+          <PlaylistEngine />
           <VideoCurtainReveal title="LIVE ARENA" subtitle="Tap to reveal" accentColor={ACCENT} autoOpen revealDelayMs={600}>
             <LiveMediaWall roomId="R-214" title="LIVE CYPHER · BATTLE ROOM" mode="spotlight" nodeCount={7} accentColor={ACCENT} enterHref="/live/rooms" />
           </VideoCurtainReveal>
+        </div>
+
+        {/* Fan Lobby Wall - Assembled from HTML blueprint */}
+        <div style={{ marginBottom: 32 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+            <div style={{ fontSize: 9, letterSpacing: '0.35em', color: '#00FFFF', fontWeight: 800 }}>🎭 LIVE LOBBY WALL</div>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <span style={{ fontSize: 9, background: 'rgba(0,255,255,0.1)', color: '#00FFFF', padding: '4px 8px', borderRadius: 4, fontWeight: 700 }}>ALL ROOMS</span>
+              <span style={{ fontSize: 9, border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.6)', padding: '4px 8px', borderRadius: 4, fontWeight: 700 }}>BATTLES</span>
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12 }}>
+            {[
+              { name: 'Main Stage Room', genre: 'Hip-Hop · Chario Ace', views: '1,204', icon: '🎤', color: '#FFD700', link: '/live/rooms/main-stage' },
+              { name: 'Battle Arena A', genre: 'Rap Battle · Open', views: '876', icon: '⚔️', color: '#FF2DAA', link: '/battles/live' },
+              { name: 'Cypher Lounge', genre: 'Open Mic · All genres', views: '432', icon: '🔥', color: '#00FF88', link: '/cypher/live' },
+              { name: 'Chill Beats Room', genre: 'Lo-Fi · Instrumental', views: '218', icon: '🎵', color: '#AA2DFF', link: '/rooms/chill-beats', soon: true },
+            ].map((room, i) => (
+              <Link key={i} href={room.link} style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${room.color}33`, borderRadius: 12, overflow: 'hidden', textDecoration: 'none', display: 'flex', flexDirection: 'column' }}>
+                <div style={{ height: 80, background: `linear-gradient(to bottom, ${room.color}11, transparent)`, borderBottom: `1px solid ${room.color}22`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, position: 'relative' }}>
+                  {room.icon}
+                  <div style={{ position: 'absolute', top: 8, left: 8, display: 'flex', alignItems: 'center', gap: 4, background: 'rgba(0,0,0,0.6)', padding: '2px 6px', borderRadius: 4 }}>
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: room.soon ? '#FFD700' : '#00FF88', boxShadow: `0 0 6px ${room.soon ? '#FFD700' : '#00FF88'}` }}></span>
+                    <span style={{ fontSize: 8, fontWeight: 900, color: room.soon ? '#FFD700' : '#00FF88', letterSpacing: 1 }}>{room.soon ? 'SOON' : 'LIVE'}</span>
+                  </div>
+                </div>
+                <div style={{ padding: '12px' }}>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: room.color, marginBottom: 4 }}>{room.name}</div>
+                  <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', marginBottom: 10 }}>{room.genre}</div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>👁 {room.views}</span>
+                    <span style={{ fontSize: 9, background: `${room.color}22`, color: room.color, padding: '4px 10px', borderRadius: 6, fontWeight: 800 }}>ENTER</span>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
         </div>
 
         {/* Invite & Gold reward banner */}

@@ -1,16 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 
-// Simulate fetching active campaigns from the DB
-const MOCK_CAMPAIGNS = [
-  { id: 'camp-1', brand: 'BeatMarket', slot: 'lobby-wall-featured', status: 'active', impressions: 14205, revenue: 199 },
-  { id: 'camp-2', brand: 'SoundWave Audio', slot: 'arena-stage-sponsor', status: 'active', impressions: 38400, revenue: 499 },
-];
+type Campaign = { id: string; brand: string; slot: string; status: string; impressions: number; revenue: number };
 
 export default function AdminAdvertisersPage() {
-  const [campaigns, setCampaigns] = useState(MOCK_CAMPAIGNS);
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const totalRevenue = campaigns.reduce((acc, c) => acc + c.revenue, 0);
   const totalImpressions = campaigns.reduce((acc, c) => acc + c.impressions, 0);
 

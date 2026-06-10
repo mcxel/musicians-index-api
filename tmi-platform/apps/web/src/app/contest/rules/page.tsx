@@ -22,8 +22,8 @@ export default function RulesPage() {
         <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: ".12em", color: "#ff6b1a", marginBottom: 16 }}>
           OFFICIAL CONTEST RULES
         </p>
-        <h1 style={{ fontSize: 42, fontWeight: 900, margin: "0 0 8px" }}>Grand Platform Contest</h1>
-        <h2 style={{ fontSize: 24, fontWeight: 800, margin: "0 0 12px", color: "#ffd700" }}>Official Rule Sections</h2>
+        <h1 style={{ fontSize: 42, fontWeight: 900, margin: "0 0 8px" }}>Grand Platform Contest Rules</h1>
+        <h2 style={{ fontSize: 24, fontWeight: 800, margin: "0 0 12px", color: "#ffd700" }}>Rules Overview</h2>
         <p style={{ color: "rgba(255,255,255,.4)", marginBottom: 48 }}>BerntoutGlobal XXL — The Musician&apos;s Index</p>
         {RULES.map((r) => (
           <div key={r.section} style={{ borderBottom: "1px solid rgba(255,255,255,.07)", paddingBottom: 24, marginBottom: 24 }}>

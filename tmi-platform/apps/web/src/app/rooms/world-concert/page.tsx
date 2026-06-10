@@ -21,7 +21,7 @@ import {
 import type { TicketRecord } from "@/lib/tickets/ticketCore";
 import { useSeatSession } from "@/lib/seats/useSeatSession";
 
-type SeatReservation = { fanId: string; seatId: string; displayName: string };
+type SeatReservationRow = { seatId: string; userId: string; expiresAt: string };
 
 const ROOM_ID = "world-concert";
 const SESSION_ID = "session-live-001";
@@ -38,16 +38,29 @@ const SET_LIST = [
 
 export default function WorldConcertPage() {
   const router = useRouter();
-  const [encoreVotes, setEncoreVotes] = useState(1247);
+  const [encoreVotes, setEncoreVotes] = useState(0);
   const [tipped, setTipped] = useState(false);
   const [tipPicking, setTipPicking] = useState(false);
   const [activeLight, setActiveLight] = useState<string | null>(null);
 
   // ── Seating Mesh ────────────────────────────────────────────────────
-  const FAN_ID = "guest-fan"; // placeholder; replace with real auth session id
+  // fanId must match the server's derivation (sessionId.substring(0, 8)) in
+  // /api/seats/reserve — otherwise optimistic claims and synced server state diverge.
+  const [fanId, setFanId] = useState<string>("guest-fan");
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/auth/session", { cache: "no-store", credentials: "include" })
+      .then((res) => res.json())
+      .then((data: { authenticated?: boolean; user?: { id?: string } }) => {
+        if (!cancelled && data.authenticated && data.user?.id) setFanId(data.user.id);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
 
   const { seatId: persistedSeatId, claim: persistClaim, release: persistRelease } =
-    useSeatSession(ROOM_ID, FAN_ID);
+    useSeatSession(ROOM_ID, fanId);
 
   const [mesh, setMesh] = useState<SeatingMeshState>(() =>
     createSeatingMesh(ROOM_ID, SESSION_ID, SEAT_ROWS, SEAT_COLS),
@@ -64,18 +77,26 @@ export default function WorldConcertPage() {
       try {
         const res = await fetch(`/api/seats/${ROOM_ID}`);
         if (!res.ok || cancelled) return;
-        const data = await res.json() as { reservations?: Record<string, SeatReservation> };
-        const reservations = data.reservations ?? {};
+        const data = await res.json() as { reservations?: SeatReservationRow[] };
+        const reservations = data.reservations ?? [];
+        const reservedBy = new Map(reservations.map((r) => [r.seatId, r.userId]));
         setMesh((prev) => {
           let next = prev;
-          for (const [seatId, r] of Object.entries(reservations)) {
-            const claimed = claimSeat(next, r.fanId, seatId);
+          for (const r of reservations) {
+            const claimed = claimSeat(next, r.userId, r.seatId);
             if (claimed) next = claimed;
           }
-          // Restore this fan's seat from sessionStorage if still open
-          if (persistedSeatId && !reservations[persistedSeatId]) {
-            const selfClaimed = claimSeat(next, FAN_ID, persistedSeatId);
-            if (selfClaimed) return selfClaimed;
+          // Restore this fan's seat from sessionStorage as long as the server
+          // doesn't show someone else now holding it (covers the brief window
+          // right after a claim, before the server row is visible to GET).
+          if (persistedSeatId) {
+            const heldBy = reservedBy.get(persistedSeatId);
+            if (!heldBy || heldBy === fanId) {
+              const selfClaimed = claimSeat(next, fanId, persistedSeatId);
+              if (selfClaimed) next = selfClaimed;
+            } else {
+              persistRelease();
+            }
           }
           return next;
         });
@@ -88,9 +109,9 @@ export default function WorldConcertPage() {
     const poll = setInterval(syncSeats, 15_000);
     return () => { cancelled = true; clearInterval(poll); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [fanId, persistedSeatId]);
 
-  const fanSeat: MeshSeat | null = useMemo(() => getFanSeat(mesh, FAN_ID), [mesh]);
+  const fanSeat: MeshSeat | null = useMemo(() => getFanSeat(mesh, fanId), [mesh, fanId]);
   const seatGrid = useMemo(() => getSeatGrid(mesh), [mesh]);
   const occupancy = useMemo(() => Math.round(getOccupancyRate(mesh) * 100), [mesh]);
   const avatarPos = useMemo(
@@ -107,7 +128,7 @@ export default function WorldConcertPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           concertId: ROOM_ID,
-          fanId: FAN_ID,
+          fanId,
           seatId,
           displayName: "Fan",
           tier: "STANDARD",
@@ -123,7 +144,7 @@ export default function WorldConcertPage() {
       }
       setMyTicket(data.ticket ?? null);
       persistClaim(seatId);
-      setMesh((prev) => claimSeat(prev, FAN_ID, seatId) ?? prev);
+      setMesh((prev) => claimSeat(prev, fanId, seatId) ?? prev);
     } finally {
       setLoadingReservation(false);
     }
@@ -132,11 +153,11 @@ export default function WorldConcertPage() {
   async function handleReleaseSeat() {
     setMyTicket(null);
     persistRelease();
-    setMesh((prev) => releaseFanSeat(prev, FAN_ID));
+    setMesh((prev) => releaseFanSeat(prev, fanId));
     await fetch("/api/seats/reserve", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ concertId: ROOM_ID, fanId: FAN_ID }),
+      body: JSON.stringify({ concertId: ROOM_ID, fanId }),
     });
   }
 
