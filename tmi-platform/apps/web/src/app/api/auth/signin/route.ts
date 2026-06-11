@@ -6,6 +6,8 @@ import { createSession } from '@/lib/auth/SessionManager';
 import { checkRateLimit } from '@/lib/security/TMISecurityEngine';
 import { StreakEngine } from '@/lib/gamification/StreakEngine';
 import { grantXP } from '@/lib/xp/xpEngine';
+import { compare } from 'bcryptjs';
+import prisma from '@/lib/prisma';
 
 const COOKIE_OPTS = {
   httpOnly: true,
@@ -46,7 +48,29 @@ export async function POST(req: NextRequest) {
     await dbReady;
 
     // Verify against UserStore (handles hardcoded admins + registered users)
-    const user = loginUser(email, password);
+    let user = loginUser(email, password);
+
+    // Fallback: user registered via /api/auth/register (bcryptjs hash in DB, not in UserStore)
+    if (!user) {
+      const dbUser = await prisma.user.findUnique({ where: { email } });
+      if (dbUser?.passwordHash && await compare(password, dbUser.passwordHash)) {
+        const DB_ROLE_MAP: Record<string, string> = {
+          ADMIN: 'admin', STAFF: 'staff', FAN: 'fan', ARTIST: 'artist',
+          PERFORMER: 'performer', SPONSOR: 'sponsor', ADVERTISER: 'advertiser',
+          VENUE: 'venue', WRITER: 'writer', PROMOTER: 'promoter', USER: 'user',
+        };
+        user = {
+          id: dbUser.id,
+          email: dbUser.email,
+          passwordHash: dbUser.passwordHash,
+          displayName: dbUser.displayName ?? dbUser.email.split('@')[0],
+          tier: (dbUser.tier?.toLowerCase() ?? 'free') as import('@/lib/auth/UserStore').UserTier,
+          role: (DB_ROLE_MAP[dbUser.role ?? 'USER'] ?? 'fan') as import('@/lib/auth/UserStore').UserRole,
+          createdAt: dbUser.userCreatedAt?.getTime() ?? Date.now(),
+        };
+      }
+    }
+
     if (!user) {
       return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });
     }

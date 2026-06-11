@@ -9,49 +9,104 @@ const PANELS = [
   {
     bg: "#FFD700", headerBg: "#FF1493", headerColor: "rgba(0,0,0,0.6)",
     headline: "WHO TOOK THE CROWN?",
-    artistLabel: "COVER PERFORMER", artist: "BIG ACE",
-    statLine: "RANK · DJ BLEND · 41 CYPHER WINS",
+    artistLabel: "COVER PERFORMER", artist: "THIS WEEK'S #1",
+    statLine: "LIVE RANKING · UPDATED IN REAL TIME · ALL GENRES",
     tags: [
-      { bg: "#00BFFF", c: "#000", text: "CYPHER OPEN" },
+      { bg: "#00BFFF", c: "#000", text: "CYPHER OPEN NOW" },
       { bg: "#FF1493", c: "#fff", text: "VOTE NOW" },
-      { bg: "#000",    c: "#FFD700", text: "4,812 VOTES" },
+      { bg: "#000",    c: "#FFD700", text: "4,812 VOTES CAST" },
     ],
     footer: "STREAM & WIN RADIO LIVE · BATTLE TONIGHT 8PM",
     footerBg: "#FFD700", footerColor: "#000",
     href: "/vote",
   },
   {
+    bg: "#000", headerBg: "#00FFFF", headerColor: "#000",
+    headline: "JOIN FREE. WIN CASH & PRIZES.",
+    artistLabel: "FOR FANS", artist: "FREE TO JOIN",
+    statLine: "VOTE · TIP · CHEER · EARN REWARDS",
+    tags: [
+      { bg: "#00FFFF", c: "#000", text: "CREATE ACCOUNT NOW" },
+      { bg: "#FF1493", c: "#fff", text: "WIN REAL MONEY" },
+      { bg: "#FFD700", c: "#000", text: "NO CREDIT CARD" },
+    ],
+    footer: "JOIN TODAY — SUPPORT YOUR FAVORITE ARTISTS LIVE",
+    footerBg: "#00FFFF", footerColor: "#000",
+    href: "/signup",
+  },
+  {
     bg: "#FF1493", headerBg: "#000", headerColor: "#FF1493",
     headline: "BATTLE NIGHT CHAMPION",
-    artistLabel: "REIGNING CHAMP", artist: "WAVETEK",
-    statLine: "47 WINS · HIP-HOP · UNDEFEATED",
+    artistLabel: "REIGNING CHAMP", artist: "THIS WEEK'S WINNER",
+    statLine: "LIVE BATTLES · HIP-HOP · R&B · DANCE · COMEDY",
     tags: [{ bg: "#00BFFF", c: "#000", text: "CHALLENGE OPENS 8PM TONIGHT" }],
-    footer: "JOIN THE BATTLE · ENTER YOUR SONG · WIN TONIGHT",
+    footer: "ENTER YOUR SONG · VOTE FOR A WINNER · WIN PRIZES",
     footerBg: "#000", footerColor: "#FF1493",
     href: "/battles/live",
   },
   {
+    bg: "#AA2DFF", headerBg: "#000", headerColor: "#AA2DFF",
+    headline: "CONCERTS · COMEDY · DANCE",
+    artistLabel: "LIVE EVERY DAY", artist: "ALL GENRES",
+    statLine: "RAP · R&B · GOSPEL · DJ · COMEDY · DANCE",
+    tags: [
+      { bg: "#FF1493", c: "#fff", text: "WATCH LIVE NOW" },
+      { bg: "#FFD700", c: "#000", text: "BUY TICKETS" },
+      { bg: "#00BFFF", c: "#000", text: "FREE SEATS AVAILABLE" },
+    ],
+    footer: "YOUR FAVORITE ARTISTS PERFORM HERE EVERY NIGHT",
+    footerBg: "#AA2DFF", footerColor: "#fff",
+    href: "/live",
+  },
+  {
     bg: "#00BFFF", headerBg: "#000", headerColor: "#00BFFF",
     headline: "WHO'S GOT THE BARS?",
-    artistLabel: "ON THE MIC NOW", artist: "NOVA CIPHER",
-    statLine: "CYPHER ARENA — 841 WATCHING LIVE",
-    tags: [{ bg: "#000", c: "#00BFFF", text: "THEATER SEATS 2,730 · DROP IN ANYTIME" }],
-    footer: "OPEN MIC ALL DAY · ROTATE THROUGH · WIN XP",
+    artistLabel: "OPEN MIC NOW", artist: "DROP IN ANYTIME",
+    statLine: "CYPHER ARENA — LIVE AUDIENCE WATCHING",
+    tags: [{ bg: "#000", c: "#00BFFF", text: "THEATER SEATS · OPEN ALL DAY" }],
+    footer: "WATCH · VOTE · CHEER · WIN XP AND PRIZES",
     footerBg: "#000", footerColor: "#00BFFF",
     href: "/rooms/cypher?autoSeat=1",
   },
   {
     bg: "#000", headerBg: "#FFD700", headerColor: "#000",
+    headline: "SUPPORT YOUR FAVORITE ARTISTS",
+    artistLabel: "FOR FANS", artist: "TIP · VOTE · FOLLOW",
+    statLine: "SEND TIPS LIVE · VOTE THEM TO #1 · WIN TOGETHER",
+    tags: [
+      { bg: "#FFD700", c: "#000", text: "TIP YOUR ARTIST NOW" },
+      { bg: "#FF1493", c: "#fff", text: "FAN CLUB PERKS" },
+    ],
+    footer: "YOUR SUPPORT MOVES THEM UP THE RANKINGS",
+    footerBg: "#FFD700", footerColor: "#000",
+    href: "/fan-club",
+  },
+  {
+    bg: "#FFD700", headerBg: "#000", headerColor: "#FFD700",
     headline: "CHALLENGE THE CROWN HOLDER",
-    artistLabel: "DEFENDING TITLE", artist: "BEAT THE BEAT",
-    statLine: "WAVETEK · 841 VOTES · RUNNING NOW",
+    artistLabel: "OPEN CHALLENGE", artist: "ANY SONG. ANY GENRE.",
+    statLine: "ARTISTS COMPETE · FANS VOTE · WINNER CROWNED",
     tags: [
       { bg: "#FF1493", c: "#fff", text: "YOUR SONG CAN TAKE THE THRONE" },
       { bg: "#00BFFF", c: "#000", text: "ARENA SEATS 18,500" },
     ],
     footer: "CHALLENGE RUNS ALL DAY · WINNER STAYS · NONSTOP",
-    footerBg: "#FFD700", footerColor: "#000",
+    footerBg: "#000", footerColor: "#FFD700",
     href: "/challenge",
+  },
+  {
+    bg: "#000", headerBg: "#FF1493", headerColor: "#fff",
+    headline: "STREAM & WIN RADIO",
+    artistLabel: "LISTEN + EARN", artist: "FREE TO STREAM",
+    statLine: "STREAM MUSIC · EARN XP · WIN CASH PRIZES",
+    tags: [
+      { bg: "#FF1493", c: "#fff", text: "TUNE IN FREE" },
+      { bg: "#FFD700", c: "#000", text: "DAILY PRIZES" },
+      { bg: "#00BFFF", c: "#000", text: "NO ADS FOR MEMBERS" },
+    ],
+    footer: "LISTEN TO MUSIC AND GET PAID — ONLY ON TMI",
+    footerBg: "#FF1493", footerColor: "#fff",
+    href: "/radio",
   },
 ];
 
@@ -324,33 +379,36 @@ export default function TmiMagazineOrbitalUnderlay() {
           </motion.div>
 
           {/* Center hub */}
-          <div style={{
-            position: "absolute", top: "50%", left: "50%",
-            transform: "translate(-50%,-50%)",
-            width: 136, height: 136, borderRadius: "50%",
-            background: "rgba(2,2,5,0.96)",
-            border: "2px solid rgba(0,229,255,0.6)",
-            boxShadow: "0 0 40px rgba(0,229,255,0.15)",
-            display: "flex", flexDirection: "column",
-            alignItems: "center", justifyContent: "center", textAlign: "center",
-          }}>
-            <div style={{ fontSize: 8, color: "rgba(255,255,255,0.35)", letterSpacing: "0.15em", marginBottom: 2 }}>
-              HOME 1/6
-            </div>
+          <Link href="/signup" style={{ textDecoration: "none", position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)" }}>
             <div style={{
-              fontFamily: "'Orbitron', monospace",
-              fontSize: 11, fontWeight: 900, color: "#FF2DAA",
-              lineHeight: 1.2, marginBottom: 2,
+              width: 136, height: 136, borderRadius: "50%",
+              background: "rgba(2,2,5,0.96)",
+              border: "2px solid rgba(0,229,255,0.6)",
+              boxShadow: "0 0 40px rgba(0,229,255,0.25)",
+              display: "flex", flexDirection: "column",
+              alignItems: "center", justifyContent: "center", textAlign: "center",
+              padding: 8,
             }}>
-              ASTRA<br />NOVA
+              <div style={{ fontSize: 7, color: "rgba(255,255,255,0.4)", letterSpacing: "0.15em", marginBottom: 3 }}>
+                THE MUSICIAN&apos;S INDEX
+              </div>
+              <div style={{
+                fontFamily: "'Orbitron', monospace",
+                fontSize: 10, fontWeight: 900, color: "#00FFFF",
+                lineHeight: 1.2, marginBottom: 3,
+              }}>
+                JOIN<br />FREE
+              </div>
+              <div style={{ fontSize: 7, color: "#FFD700", fontWeight: 800, letterSpacing: "0.05em" }}>WIN CASH & PRIZES</div>
+              <motion.div
+                animate={{ scale: [1, 1.1, 1] }}
+                transition={{ duration: 1.5, repeat: Infinity }}
+                style={{ marginTop: 5, background: "#FF1493", borderRadius: 999, padding: "2px 10px", fontSize: 7, fontWeight: 900, color: "#fff" }}
+              >
+                START NOW →
+              </motion.div>
             </div>
-            <div style={{ fontSize: 8, color: "rgba(255,255,255,0.5)" }}>R&amp;B · LIVE NOW</div>
-            <motion.span
-              animate={{ opacity: [1, 0, 1] }}
-              transition={{ duration: 1, repeat: Infinity }}
-              style={{ display: "inline-block", width: 7, height: 7, borderRadius: "50%", background: "#FF2020", marginTop: 4 }}
-            />
-          </div>
+          </Link>
         </div>
       </div>
 
