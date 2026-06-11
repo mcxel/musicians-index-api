@@ -1,67 +1,24 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { motion } from "framer-motion";
-import { getRoleStats, type DashboardStat } from "@/lib/stats/DashboardStatsEngine";
+import AdSenseSlot, { AD_SLOTS } from "@/components/ads/AdSenseSlot";
 
-interface MeUser { id: string; email: string; name?: string; role: string; tier?: string; onboardingState?: string; }
+interface MeUser { id: string; email: string; name?: string; role: string; tier?: string; }
+interface Reaction { id: number; emoji: string; x: number; }
 
-const ACCENT = "#00FFFF";
-
-const PRIMARY_ACTIONS = [
-  { label: "ARTIST HUB",      icon: "🎨", href: "/hub/artist",              color: "#00FFFF", desc: "Full artist control room" },
-  { label: "GO LIVE",         icon: "🔴", href: "/go-live",                 color: "#FF2DAA", desc: "Start your live broadcast" },
-  { label: "MY ARTICLES",     icon: "📰", href: "/articles/artist",         color: "#AA2DFF", desc: "Your editorial features" },
-  { label: "BEATS / DROPS",   icon: "💿", href: "/beats",                   color: "#FFD700", desc: "Release music & projects" },
-  { label: "LIVE STAGES",     icon: "🎤", href: "/live/stages",             color: "#FF2DAA", desc: "Perform on a live stage" },
-  { label: "BATTLES",         icon: "⚔️", href: "/battles",                color: "#AA2DFF", desc: "Enter live battle events" },
-  { label: "MY STATION",      icon: "📻", href: "/stations",                color: "#FFD700", desc: "Broadcast your station" },
-  { label: "EARNINGS",        icon: "💰", href: "/dashboard/artist/earnings", color: "#00FF88", desc: "Revenue & payouts" },
-  { label: "SPONSOR TASKS",   icon: "🤝", href: "/dashboard/artist/sponsors", color: "#FF2DAA", desc: "Brand deal pipeline" },
-  { label: "MY CLIPS",        icon: "🎬", href: "/dashboard/artist/clips",  color: "#00FFFF", desc: "Video library" },
-  { label: "INVITE & XP",    icon: "⭐", href: "/account/referrals",       color: "#FF9500", desc: "2× launch XP bonus" },
-  { label: "SETTINGS",        icon: "⚙️", href: "/settings",               color: "#555",    desc: "Account preferences" },
-];
-
-const LIVE_LINKS = [
-  { label: "Live Stages",   icon: "🎤", href: "/live/stages" },
-  { label: "Live Rooms",    icon: "📺", href: "/live/rooms" },
-  { label: "Live Lobby",    icon: "🏟️", href: "/live/rooms" },
-  { label: "Backstage",     icon: "🎪", href: "/live/backstage" },
-  { label: "Green Room",    icon: "🟢", href: "/live/green-room" },
-  { label: "Lobby Wall",    icon: "🎨", href: "/live/lobby-wall" },
-];
-
-const REVENUE_LINKS = [
-  { label: "Subscriptions", icon: "💎", href: "/pricing",                       color: "#00FFFF", desc: "Tier upgrades + passes" },
-  { label: "Tips",          icon: "💸", href: "/dashboard/artist/earnings",     color: "#00FF88", desc: "Fan tip income" },
-  { label: "Tickets",       icon: "🎟️", href: "/tickets",                     color: "#FFD700", desc: "Event ticket sales" },
-  { label: "Beats / Store", icon: "🎵", href: "/beats",                        color: "#AA2DFF", desc: "Music commerce" },
-];
-
-const PLATFORM_LINKS = [
-  { label: "HOME RAIL",    icon: "🏠", href: "/home/1",                desc: "Billboard #1",  color: ACCENT },
-  { label: "ADMIN PANEL",  icon: "👑", href: "/admin/owner-dashboard", desc: "Owner access",  color: "#FFD700" },
-  { label: "BILLBOARD",    icon: "📡", href: "/live/billboards",       desc: "Live screens",  color: "#AA2DFF" },
-  { label: "STORE HUB",    icon: "🛒", href: "/store",                 desc: "Global store",  color: "#00FF88" },
-];
-
-const TIER_TABLE = [
-  { tier: "Free",     normal: "500 XP",   launch: "1,000 XP", color: "#555" },
-  { tier: "Pro",      normal: "750 XP",   launch: "1,500 XP", color: ACCENT },
-  { tier: "Silver",   normal: "1,000 XP", launch: "2,000 XP", color: "#C0C0C0" },
-  { tier: "Gold",     normal: "1,500 XP", launch: "3,000 XP", color: "#FFD700" },
-  { tier: "Platinum", normal: "2,000 XP", launch: "4,000 XP", color: "#AA2DFF" },
-  { tier: "Diamond",  normal: "2,500 XP", launch: "5,000 XP", color: "#00FF88" },
-];
+const REVENUE_BARS = [34, 55, 28, 72, 96, 78, 88];
 
 export default function ArtistDashboardPage() {
   const router = useRouter();
-  const [user, setUser] = useState<MeUser | null>(null);
+  const [user, setUser]       = useState<MeUser | null>(null);
   const [loading, setLoading] = useState(true);
-  const [roleStats, setRoleStats] = useState<DashboardStat[]>([]);
+  const [isLive, setIsLive]   = useState(true);
+  const [reactions, setReactions] = useState<Reaction[]>([]);
+  const [chatMsg, setChatMsg] = useState("");
+  const [countdown] = useState("02:34:18");
+  const rxIdRef = useRef(0);
 
   useEffect(() => {
     const load = async () => {
@@ -72,155 +29,333 @@ export default function ArtistDashboardPage() {
         if (!data.authenticated || !data.user) { router.replace("/auth"); return; }
         if (data.user.role.toLowerCase() !== "artist") { router.replace("/dashboard"); return; }
         setUser(data.user);
-        setRoleStats(getRoleStats(data.user.role ?? "ARTIST"));
       } catch { router.replace("/auth"); } finally { setLoading(false); }
     };
     void load();
   }, [router]);
 
+  const fireReaction = useCallback((emoji: string) => {
+    const id = ++rxIdRef.current;
+    const x = 8 + Math.random() * 82;
+    setReactions(prev => [...prev.slice(-10), { id, emoji, x }]);
+    setTimeout(() => setReactions(prev => prev.filter(r => r.id !== id)), 1500);
+  }, []);
+
   if (loading) return (
     <div style={{ minHeight: "100vh", background: "#050510", display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <span style={{ color: ACCENT, fontSize: 13, letterSpacing: 4, fontWeight: 700 }}>LOADING ARTIST HUB...</span>
+      <span style={{ color: "#00FFFF", fontSize: 13, letterSpacing: 4, fontWeight: 700 }}>LOADING ARTIST HUB...</span>
     </div>
   );
 
   if (!user) return null;
 
+  const displayName = user.name ?? user.email?.split("@")[0] ?? "Artist";
   const displayTier = (user.tier ?? "free").toUpperCase();
 
   return (
-    <main style={{ minHeight: "100vh", background: "#050510", color: "#fff", fontFamily: "'Inter', sans-serif" }}>
-      {/* Top bar */}
-      <div style={{ background: "rgba(0,0,0,0.8)", borderBottom: "1px solid rgba(0,255,255,0.2)", padding: "12px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 50 }}>
-        <div>
-          <div style={{ fontSize: 9, letterSpacing: "0.35em", color: ACCENT, fontWeight: 800 }}>ARTIST DASHBOARD</div>
-          <div style={{ fontSize: 16, fontWeight: 900, marginTop: 2 }}>
-            {user.name ?? user.email?.split("@")[0] ?? "Artist"}
-            <span style={{ fontSize: 10, color: "#FFD700", fontWeight: 700, marginLeft: 8 }}>{displayTier}</span>
-          </div>
-        </div>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <Link href="/hub/artist" style={{ fontSize: 10, color: ACCENT, border: "1px solid rgba(0,255,255,0.3)", padding: "5px 12px", borderRadius: 6, textDecoration: "none", fontWeight: 700, letterSpacing: "0.1em" }}>ARTIST HUB</Link>
-          <Link href="/go-live" style={{ fontSize: 10, color: "#FF2DAA", border: "1px solid rgba(255,45,170,0.3)", padding: "5px 12px", borderRadius: 6, textDecoration: "none", fontWeight: 700, letterSpacing: "0.1em" }}>🔴 GO LIVE</Link>
-          <Link href="/settings" style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", border: "1px solid rgba(255,255,255,0.1)", padding: "5px 12px", borderRadius: 6, textDecoration: "none", fontWeight: 700 }}>SETTINGS</Link>
+    <main style={{ minHeight: "100vh", background: "#050510", color: "#fff", fontFamily: "'Exo 2', 'Inter', sans-serif" }}>
+      <style>{`
+        @keyframes art-blink{0%,100%{opacity:1}50%{opacity:0}}
+        @keyframes art-bobble{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+        @keyframes art-float{0%{transform:translateY(0) scale(1);opacity:1}100%{transform:translateY(-80px) scale(.2);opacity:0}}
+        @keyframes art-pulse{0%,100%{box-shadow:0 0 4px #00FF88}50%{box-shadow:0 0 18px #00FF88,0 0 36px rgba(0,255,136,.3)}}
+        @keyframes art-ad-pulse{0%,100%{opacity:.8}50%{opacity:1}}
+        @keyframes art-flicker{0%,93%,100%{text-shadow:0 0 12px #FF2DAA,0 0 24px rgba(255,45,170,.4)}94%,99%{text-shadow:none}}
+        @keyframes art-ticker{from{transform:translateX(110%)}to{transform:translateX(-110%)}}
+        .art-blink{animation:art-blink 1.2s ease-in-out infinite}
+        .art-bobble{animation:art-bobble 1.8s ease-in-out infinite}
+        .art-float{animation:art-float 1.5s ease-out forwards}
+        .art-pulse-border{animation:art-pulse 2s ease-in-out infinite}
+        .art-ad-pulse{animation:art-ad-pulse 3s ease-in-out infinite}
+        .art-flicker{animation:art-flicker 4s ease-in-out infinite}
+        .art-ticker{animation:art-ticker 18s linear infinite;white-space:nowrap}
+        .art-action-btn{display:flex;flex-direction:column;align-items:center;gap:3px;padding:5px 6px;background:transparent;border:1px solid rgba(255,45,170,.4);color:rgba(255,140,0,.9);font-size:7px;font-weight:700;cursor:pointer;border-radius:4px;flex:1;min-width:38px;transition:all .15s}
+        .art-action-btn:hover{background:rgba(255,45,170,.2);color:#FFD700}
+      `}</style>
+
+      {/* ── Sticky header ── */}
+      <div style={{ background: "#030610", borderBottom: "1px solid rgba(255,45,170,.3)", padding: "9px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 100 }}>
+        <span className="art-flicker" style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 15, fontWeight: 900, color: "#FF2DAA", letterSpacing: ".08em", textTransform: "uppercase" }}>ARTIST STUDIO 🎤</span>
+        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+          <span style={{ fontSize: 11, color: "#00FFFF", fontWeight: 700 }}>{displayName}</span>
+          <span style={{ fontSize: 9, background: "rgba(255,215,0,.12)", color: "#FFD700", border: "1px solid rgba(255,215,0,.3)", padding: "2px 8px", borderRadius: 10, fontWeight: 700 }}>{displayTier}</span>
+          <button
+            onClick={() => setIsLive(l => !l)}
+            style={{ fontSize: 9, padding: "3px 10px", background: isLive ? "rgba(0,255,136,.15)" : "transparent", border: `1px solid ${isLive ? "#00FF88" : "rgba(255,45,170,.4)"}`, color: isLive ? "#00FF88" : "rgba(255,140,0,.9)", borderRadius: 4, cursor: "pointer", fontWeight: 700, letterSpacing: ".05em" }}
+          >
+            {isLive ? "🔴 ON AIR" : "🟢 GO LIVE"}
+          </button>
+          <Link href="/settings" style={{ fontSize: 9, color: "rgba(255,255,255,.35)", border: "1px solid rgba(255,255,255,.1)", padding: "3px 8px", borderRadius: 4, textDecoration: "none", fontWeight: 700 }}>⚙️</Link>
         </div>
       </div>
 
-      <div style={{ maxWidth: 1100, margin: "0 auto", padding: "32px 24px 80px" }}>
+      <div style={{ padding: "8px 12px" }}>
 
-        {/* Stats */}
-        {roleStats.length > 0 && (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12, marginBottom: 32 }}>
-            {roleStats.map((s, i) => (
-              <motion.div key={s.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}
-                style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${s.color}30`, borderRadius: 12, padding: "18px", position: "relative", overflow: "hidden" }}>
-                <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: s.color }} />
-                <div style={{ fontSize: 24, marginBottom: 4 }}>{s.icon}</div>
-                <div style={{ fontSize: 22, fontWeight: 900, color: s.color }}>{s.value}</div>
-                <div style={{ fontSize: 10, letterSpacing: 2, color: "#555", marginTop: 4, textTransform: "uppercase" }}>{s.label}</div>
-                <div style={{ fontSize: 9, color: s.deltaPositive ? "#00FF88" : "#FF4444", marginTop: 2 }}>{s.delta}</div>
-              </motion.div>
-            ))}
+        {/* ── Welcome banner ── */}
+        <div style={{ background: "rgba(8,14,38,.95)", border: "1px solid rgba(255,215,0,.4)", borderRadius: 6, padding: "8px 14px", marginBottom: 7, textAlign: "center" }}>
+          <div style={{ fontFamily: "'Orbitron', sans-serif", color: "#FFD700", fontSize: 10, fontWeight: 700, letterSpacing: ".1em" }}>🎵 WELCOME TO YOUR PROMOTION HUB 🎵</div>
+          <div style={{ fontSize: 8, color: "rgba(255,140,0,.5)", marginTop: 2 }}>We thank you for joining. Ready to take you and your music global. We grow together.</div>
+        </div>
+
+        {/* ── Quick actions bar ── */}
+        <div style={{ display: "flex", gap: 5, marginBottom: 7, flexWrap: "wrap" }}>
+          {[
+            { lbl: "⬆ UPLOAD",     href: "/beats" },
+            { lbl: "📅 SET UP SHOW", href: "/live/stages" },
+            { lbl: "💼 SPONSOR",    href: "/dashboard/artist/sponsors" },
+          ].map(({ lbl, href }) => (
+            <Link key={lbl} href={href} style={{ fontSize: 8, padding: "5px 10px", background: "transparent", border: "1px solid rgba(255,45,170,.4)", color: "rgba(255,140,0,.9)", borderRadius: 4, textDecoration: "none", fontWeight: 700, letterSpacing: ".05em", textTransform: "uppercase" as const }}>{lbl}</Link>
+          ))}
+          <button onClick={() => setIsLive(l => !l)} style={{ fontSize: 8, padding: "5px 10px", background: isLive ? "rgba(0,255,136,.1)" : "transparent", border: `1px solid ${isLive ? "#00FF88" : "rgba(0,255,136,.4)"}`, color: isLive ? "#00FF88" : "rgba(0,255,136,.7)", borderRadius: 4, cursor: "pointer", fontWeight: 700, letterSpacing: ".05em" }}>
+            {isLive ? "⏹ END SHOW" : "🔴 GO LIVE"}
+          </button>
+        </div>
+
+        {/* ── Publisher input ── */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 7, marginBottom: 7 }}>
+          <input
+            value={chatMsg}
+            onChange={e => setChatMsg(e.target.value)}
+            placeholder="Talk to your fans or pin a message..."
+            style={{ width: "100%", background: "rgba(12,20,50,.9)", border: "1px solid rgba(255,45,170,.4)", color: "rgba(255,140,0,.9)", fontSize: 11, outline: "none", borderRadius: 4, padding: "7px 11px", boxSizing: "border-box" as const }}
+          />
+          <div style={{ display: "flex", gap: 5 }}>
+            <button style={{ padding: "7px 14px", fontSize: 10, background: "rgba(255,215,0,.12)", border: "1px solid rgba(255,215,0,.4)", color: "#FFD700", borderRadius: 4, cursor: "pointer", fontWeight: 700, letterSpacing: ".05em" }}>PUBLISH</button>
+            <Link href="/hub/artist" style={{ padding: "7px 8px", fontSize: 8, background: "transparent", border: "1px solid rgba(255,45,170,.4)", color: "rgba(255,140,0,.9)", borderRadius: 4, textDecoration: "none", fontWeight: 700, display: "flex", alignItems: "center" }}>🤖 ASSISTANT</Link>
           </div>
-        )}
+        </div>
 
-        {/* CTA hero */}
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }}
-          style={{ background: "linear-gradient(135deg, rgba(0,255,255,0.1), rgba(170,45,255,0.08))", border: "1.5px solid rgba(0,255,255,0.3)", borderRadius: 16, padding: "24px", marginBottom: 28, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 20, flexWrap: "wrap" }}>
+        {/* ── Main grid: content + sidebar ── */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 162px", gap: 8, marginBottom: 8 }}>
+
+          {/* LEFT: Live or Green Room */}
           <div>
-            <div style={{ fontSize: 9, letterSpacing: "0.3em", color: ACCENT, fontWeight: 800, marginBottom: 6 }}>🎨 YOUR CREATIVE EMPIRE</div>
-            <div style={{ fontSize: 22, fontWeight: 900 }}>Create. Broadcast. Own the Stage.</div>
-            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginTop: 6 }}>Go live, drop music, enter battles, and build your audience on TMI.</div>
-          </div>
-          <div style={{ display: "flex", gap: 10, flexShrink: 0 }}>
-            <Link href="/go-live" style={{ padding: "13px 28px", background: `linear-gradient(90deg,${ACCENT},#AA2DFF)`, borderRadius: 9, color: "#050510", fontWeight: 900, fontSize: 13, textDecoration: "none", letterSpacing: "0.08em", whiteSpace: "nowrap" }}>🔴 GO LIVE NOW</Link>
-            <Link href="/hub/artist" style={{ padding: "13px 20px", background: "rgba(0,255,255,0.1)", border: "1px solid rgba(0,255,255,0.3)", borderRadius: 9, color: ACCENT, fontWeight: 800, fontSize: 13, textDecoration: "none", whiteSpace: "nowrap" }}>ARTIST HUB</Link>
-          </div>
-        </motion.div>
-
-        {/* Primary Actions */}
-        <div style={{ marginBottom: 32 }}>
-          <div style={{ fontSize: 9, letterSpacing: "0.35em", color: "rgba(255,255,255,0.35)", fontWeight: 800, marginBottom: 14 }}>QUICK ACTIONS</div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(175px, 1fr))", gap: 10 }}>
-            {PRIMARY_ACTIONS.map((a, i) => (
-              <motion.div key={a.href + a.label} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 + i * 0.04 }}>
-                <Link href={a.href} style={{ display: "flex", flexDirection: "column", gap: 4, padding: "14px 16px", background: `${a.color}08`, border: `1px solid ${a.color}25`, borderRadius: 10, textDecoration: "none" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <span style={{ fontSize: 18 }}>{a.icon}</span>
-                    <span style={{ fontSize: 11, fontWeight: 800, color: a.color, letterSpacing: "0.1em" }}>{a.label}</span>
+            {isLive ? (
+              <>
+                {/* Marquee / Live screen */}
+                <div className="art-pulse-border" style={{ position: "relative", border: "2px solid #00FF88", borderRadius: 8, overflow: "hidden", background: "#06000a", height: 174, marginBottom: 6, boxShadow: "0 0 18px rgba(0,255,136,.3)" }}>
+                  <div style={{ position: "absolute", inset: 12, borderRadius: 4, background: "linear-gradient(to bottom, #0a0020, #050510)", display: "flex", alignItems: "flex-end", justifyContent: "center", paddingBottom: 10, overflow: "hidden" }}>
+                    {[...Array(10)].map((_, i) => (
+                      <div key={i} className="art-bobble" style={{ display: "flex", flexDirection: "column", alignItems: "center", animationDelay: `${i * 0.14}s`, margin: "0 4px" }}>
+                        <div style={{ width: 18 + (i % 3) * 3, height: 18 + (i % 3) * 3, borderRadius: "50%", background: ["#5C2A00","#8B2200","#2F1B0E","#6B2C00","#4a1e00","#703200","#5C2A00","#8B2200","#2F1B0E","#703200"][i], border: `2px solid ${["#FF2DAA","#00FFFF","#FFD700","#AA2DFF","#FF9500","#00FF88","#00FFFF","#FF2DAA","#FFD700","#00FF88"][i]}` }} />
+                        <div style={{ width: 12 + (i % 3) * 2, height: 20, borderRadius: "3px 3px 0 0", background: "#1a0a00" }} />
+                      </div>
+                    ))}
                   </div>
-                  <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>{a.desc}</div>
-                </Link>
-              </motion.div>
-            ))}
-          </div>
-        </div>
+                  {reactions.map(r => (
+                    <div key={r.id} className="art-float" style={{ position: "absolute", bottom: 20, left: `${r.x}%`, fontSize: 20, pointerEvents: "none", zIndex: 10 }}>{r.emoji}</div>
+                  ))}
+                  <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 2, background: "linear-gradient(90deg,transparent,#00FF88,transparent)" }} />
+                  <div style={{ position: "absolute", top: 12, right: 12, background: "#FF2DAA", borderRadius: 4, padding: "3px 9px", fontSize: 8, fontWeight: 700, fontFamily: "'Orbitron', sans-serif", zIndex: 10, display: "flex", alignItems: "center", gap: 4 }}>
+                    <span className="art-blink" style={{ width: 6, height: 6, borderRadius: "50%", background: "#00FF88", boxShadow: "0 0 5px #00FF88", display: "inline-block" }} />
+                    ON AIR
+                  </div>
+                </div>
 
-        {/* Live + Revenue + Platform */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16, marginBottom: 28 }}>
+                {/* Reaction dock */}
+                <div style={{ background: "rgba(8,14,38,.95)", border: "1px solid rgba(255,45,170,.4)", borderRadius: 6, padding: 6, marginBottom: 6 }}>
+                  <div style={{ display: "flex", gap: 4 }}>
+                    {[["👍","Thanks"],["❤️","Hearts"],["💡","Flicker"],["🎉","Confetti"],["⚡","Spark"]].map(([em, lbl]) => (
+                      <button key={lbl} className="art-action-btn" onClick={() => fireReaction(em)}>
+                        <span style={{ fontSize: 15 }}>{em}</span>{lbl}
+                      </button>
+                    ))}
+                    <div className="art-ad-pulse" style={{ flex: 1, minWidth: 50, background: "rgba(4,8,26,.95)", border: "1px solid rgba(255,140,0,.3)", borderRadius: 5, padding: "5px 4px", textAlign: "center", position: "relative", overflow: "hidden", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2 }}>
+                      <span style={{ position: "absolute", top: 2, right: 3, fontSize: 6, fontWeight: 700, color: "rgba(255,140,0,.55)", padding: "1px 3px" }}>AD</span>
+                      <div style={{ fontSize: 7, fontWeight: 700, color: "rgba(255,140,0,.9)" }}>SPONSOR SLOT</div>
+                      <div style={{ fontSize: 6, color: "rgba(255,140,0,.4)" }}>Reach your fans</div>
+                    </div>
+                  </div>
+                </div>
 
-          {/* Live routes */}
-          <div style={{ background: "rgba(0,255,255,0.04)", border: "1px solid rgba(0,255,255,0.12)", borderRadius: 14, padding: "18px" }}>
-            <div style={{ fontSize: 9, letterSpacing: "0.35em", color: ACCENT, fontWeight: 800, marginBottom: 12 }}>LIVE VIDEO ROUTES</div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
-              {LIVE_LINKS.map((l) => (
-                <Link key={l.href} href={l.href} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", background: "rgba(0,255,255,0.04)", border: "1px solid rgba(0,255,255,0.1)", borderRadius: 7, textDecoration: "none" }}>
-                  <span style={{ fontSize: 14 }}>{l.icon}</span>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: ACCENT }}>{l.label}</span>
-                </Link>
-              ))}
-            </div>
-          </div>
-
-          {/* Revenue */}
-          <div style={{ background: "rgba(0,255,136,0.04)", border: "1px solid rgba(0,255,136,0.12)", borderRadius: 14, padding: "18px" }}>
-            <div style={{ fontSize: 9, letterSpacing: "0.35em", color: "#00FF88", fontWeight: 800, marginBottom: 12 }}>REVENUE RAILS</div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {REVENUE_LINKS.map((r) => (
-                <Link key={r.href} href={r.href} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", background: `${r.color}08`, border: `1px solid ${r.color}20`, borderRadius: 8, textDecoration: "none" }}>
-                  <span style={{ fontSize: 18 }}>{r.icon}</span>
+                {/* Live tips + stats */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 7, marginBottom: 6 }}>
+                  <div style={{ background: "rgba(8,14,38,.95)", border: "1px solid rgba(255,45,170,.4)", borderRadius: 6, padding: 7 }}>
+                    <div style={{ display: "flex", gap: 5, alignItems: "center", marginBottom: 5 }}>
+                      <span className="art-blink" style={{ width: 7, height: 7, borderRadius: "50%", background: "#00FF88", boxShadow: "0 0 5px #00FF88", display: "inline-block" }} />
+                      <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: ".12em", color: "rgba(255,149,0,.8)", textTransform: "uppercase" }}>$ LIVE TIPS</span>
+                    </div>
+                    {[["JamesSky","$20"],["Lily88","$15"],["Alex94","$10"]].map(([name, amt]) => (
+                      <div key={name} style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 3 }}>
+                        <span style={{ fontSize: 8 }}>🟢</span>
+                        <span style={{ fontSize: 9, flex: 1 }}>{name}</span>
+                        <span style={{ fontSize: 8, color: "#00FF88", fontWeight: 700 }}>+{amt}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                    {[["VIEWERS","215"],["TIPS","$865"],["RATING","4.8"]].map(([lbl, val]) => (
+                      <div key={lbl} style={{ background: "rgba(8,14,38,.95)", border: "1px solid rgba(255,45,170,.4)", borderRadius: 4, padding: "6px", textAlign: "center", flex: 1 }}>
+                        <div style={{ fontSize: 7, fontWeight: 700, letterSpacing: ".12em", color: "rgba(255,149,0,.8)", textTransform: "uppercase" }}>{lbl}</div>
+                        <div style={{ fontFamily: "'Orbitron', sans-serif", fontWeight: 700, color: "#FFD700", fontSize: lbl === "VIEWERS" ? 16 : 14 }}>{val}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>
+            ) : (
+              /* ── GREEN ROOM ── */
+              <div style={{ background: "rgba(0,12,30,.95)", border: "1px solid #00FFFF", borderRadius: 8, padding: 12, marginBottom: 7, boxShadow: "0 0 8px rgba(0,255,255,.2)" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
                   <div>
-                    <div style={{ fontSize: 11, fontWeight: 800, color: r.color }}>{r.label}</div>
-                    <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)" }}>{r.desc}</div>
+                    <div style={{ fontFamily: "'Orbitron', sans-serif", color: "#00FFFF", fontSize: 12, fontWeight: 700 }}>🟢 PRIVATE LOBBY — GREEN ROOM</div>
+                    <div style={{ fontSize: 8, color: "rgba(255,140,0,.5)", marginTop: 2 }}>Your pre-show waiting area. Fans can&apos;t see you yet.</div>
                   </div>
-                </Link>
-              ))}
-            </div>
-          </div>
+                  <div style={{ textAlign: "right" }}>
+                    <div style={{ fontSize: 7, fontWeight: 700, letterSpacing: ".12em", color: "rgba(0,229,255,.7)", textTransform: "uppercase" }}>Show starts in</div>
+                    <div style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 18, color: "#FFD700" }}>{countdown}</div>
+                  </div>
+                </div>
 
-          {/* Platform links */}
-          <div style={{ background: "rgba(255,215,0,0.04)", border: "1px solid rgba(255,215,0,0.1)", borderRadius: 14, padding: "18px" }}>
-            <div style={{ fontSize: 9, letterSpacing: "0.35em", color: "#FFD700", fontWeight: 800, marginBottom: 12 }}>PLATFORM CONNECTIONS</div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {PLATFORM_LINKS.map((p) => (
-                <Link key={p.href} href={p.href} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", background: `${p.color}08`, border: `1px solid ${p.color}20`, borderRadius: 8, textDecoration: "none" }}>
-                  <span style={{ fontSize: 20 }}>{p.icon}</span>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 10 }}>
+                  {/* Fans waiting */}
                   <div>
-                    <div style={{ fontSize: 11, fontWeight: 800, color: p.color }}>{p.label}</div>
-                    <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)" }}>{p.desc}</div>
+                    <div style={{ fontSize: 7, fontWeight: 700, letterSpacing: ".12em", color: "rgba(0,229,255,.7)", textTransform: "uppercase", marginBottom: 5 }}>FANS WAITING</div>
+                    {[["SkyFan94","Gold Tier"],["MusicLvr22","Fan"],["BeatHead33","Silver"],["FrequentFly","Fan"]].map(([name, tier]) => (
+                      <div key={name} style={{ display: "flex", alignItems: "center", gap: 5, padding: "3px 6px", background: "rgba(0,229,255,.05)", borderRadius: 3, marginBottom: 3 }}>
+                        <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#00FFFF", boxShadow: "0 0 5px #00FFFF", display: "inline-block", flexShrink: 0 }} />
+                        <span style={{ fontSize: 8, flex: 1 }}>{name}</span>
+                        <span style={{ fontSize: 7, color: "rgba(255,140,0,.5)" }}>{tier}</span>
+                      </div>
+                    ))}
+                    <div style={{ textAlign: "center", fontSize: 8, color: "#00FFFF", marginTop: 3 }}>+ 847 more waiting...</div>
                   </div>
-                </Link>
-              ))}
-            </div>
-          </div>
-        </div>
 
-        {/* Referral XP tier table */}
-        <div style={{ background: "rgba(255,149,0,0.06)", border: "1px solid rgba(255,149,0,0.2)", borderRadius: 14, padding: "20px" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-            <div style={{ fontSize: 11, fontWeight: 800, color: "#FF9500" }}>⭐ INVITE & EARN — 2× LAUNCH BONUS ACTIVE</div>
-            <Link href="/account/referrals" style={{ fontSize: 11, color: "#FF9500", border: "1px solid rgba(255,149,0,0.3)", padding: "6px 14px", borderRadius: 6, textDecoration: "none", fontWeight: 800 }}>VIEW INVITE LINK</Link>
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 6 }}>
-            {TIER_TABLE.map((t) => (
-              <div key={t.tier} style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${t.color}30`, borderRadius: 8, padding: "10px 8px", textAlign: "center" }}>
-                <div style={{ fontSize: 10, fontWeight: 800, color: t.color, marginBottom: 4 }}>{t.tier}</div>
-                <div style={{ fontSize: 11, color: "#00FF88", fontWeight: 700 }}>{t.launch}</div>
-                <div style={{ fontSize: 9, color: "rgba(255,255,255,0.3)" }}>{t.normal} normal</div>
+                  {/* Set list */}
+                  <div>
+                    <div style={{ fontSize: 7, fontWeight: 700, letterSpacing: ".12em", color: "rgba(0,229,255,.7)", textTransform: "uppercase", marginBottom: 5 }}>SET LIST — TONIGHT</div>
+                    {[["Big Moves", true],["Night Frequency", true],["Sound Pressure", false],["Storm Season", false]].map(([title, done], i) => (
+                      <div key={String(title)} style={{ display: "flex", alignItems: "center", gap: 5, padding: "3px 6px", background: "rgba(255,140,0,.06)", borderRadius: 3, marginBottom: 3 }}>
+                        <span style={{ fontSize: 8, color: "rgba(255,140,0,.4)" }}>{i + 1}.</span>
+                        <span style={{ fontSize: 8, flex: 1 }}>{title as string}</span>
+                        <input type="checkbox" defaultChecked={done as boolean} style={{ accentColor: "#00FFFF" }} />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Private chat */}
+                <div style={{ marginBottom: 8 }}>
+                  <div style={{ fontSize: 7, fontWeight: 700, letterSpacing: ".12em", color: "rgba(0,229,255,.7)", textTransform: "uppercase", marginBottom: 4 }}>GREEN ROOM CHAT — PRIVATE</div>
+                  <div style={{ background: "rgba(0,0,0,.4)", border: "1px solid rgba(0,229,255,.2)", borderRadius: 4, padding: 6, height: 64, overflowY: "auto", marginBottom: 5 }}>
+                    {[["SkyFan94","Can't wait for tonight!! 🔥"],["MusicLvr22","Please play Big Moves first!"],["BeatHead33","Ready to tip heavy tonight 💰"]].map(([name, msg]) => (
+                      <div key={name} style={{ fontSize: 8, color: "#00FFFF", marginBottom: 3 }}><strong>{name}:</strong> <span style={{ color: "rgba(255,140,0,.8)" }}>{msg}</span></div>
+                    ))}
+                  </div>
+                  <div style={{ display: "flex", gap: 5 }}>
+                    <input placeholder="Send a private message to waiting fans..." style={{ flex: 1, background: "rgba(12,20,50,.9)", border: "1px solid rgba(0,229,255,.3)", color: "rgba(255,140,0,.9)", fontSize: 9, outline: "none", borderRadius: 4, padding: "5px 9px", boxSizing: "border-box" as const }} />
+                    <button style={{ padding: "5px 10px", fontSize: 9, background: "transparent", border: "1px solid #00FFFF", color: "#00FFFF", borderRadius: 4, cursor: "pointer", fontWeight: 700 }}>SEND</button>
+                  </div>
+                </div>
+
+                {/* Backstage controls */}
+                <div style={{ display: "flex", gap: 5 }}>
+                  {["🎚 SOUND CHECK","📋 EDIT SET LIST","🎁 PLAN GIVEAWAY"].map(lbl => (
+                    <button key={lbl} style={{ flex: 1, padding: 8, fontSize: 9, background: "transparent", border: "1px solid #00FFFF", color: "#00FFFF", borderRadius: 4, cursor: "pointer", fontWeight: 700 }}>{lbl}</button>
+                  ))}
+                  <button onClick={() => setIsLive(true)} style={{ flex: 1, padding: 8, fontSize: 9, background: "transparent", border: "1px solid #FF2DAA", color: "#FF2DAA", borderRadius: 4, cursor: "pointer", fontWeight: 700 }}>🔴 GO LIVE NOW</button>
+                </div>
               </div>
-            ))}
+            )}
+
+            {/* Revenue + battle actions */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 5, marginBottom: 6 }}>
+              <div style={{ background: "rgba(8,14,38,.95)", border: "1px solid rgba(255,45,170,.4)", borderRadius: 6, padding: 7, textAlign: "center" }}>
+                <div style={{ fontSize: 7, fontWeight: 700, letterSpacing: ".12em", color: "rgba(255,149,0,.8)", textTransform: "uppercase", marginBottom: 2 }}>$ EARNING</div>
+                <div style={{ fontFamily: "'Orbitron', sans-serif", fontWeight: 700, color: "#FFD700", fontSize: 14 }}>$945</div>
+                <div style={{ fontSize: 7, color: "rgba(255,140,0,.4)", marginTop: 2 }}>Daily $215</div>
+              </div>
+              <Link href="/cypher/live" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2, padding: 7, background: "transparent", border: "1px solid rgba(255,45,170,.4)", color: "rgba(255,140,0,.9)", borderRadius: 6, textDecoration: "none", fontWeight: 700, textAlign: "center" as const }}>
+                <span style={{ fontSize: 16 }}>⚡</span><span style={{ fontSize: 8 }}>JOIN CYPHER</span>
+              </Link>
+              <Link href="/battles" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2, padding: 7, background: "transparent", border: "1px solid rgba(255,45,170,.4)", color: "rgba(255,140,0,.9)", borderRadius: 6, textDecoration: "none", fontWeight: 700, textAlign: "center" as const }}>
+                <span style={{ fontSize: 16 }}>🥊</span><span style={{ fontSize: 8 }}>BEAT BATTLE</span>
+              </Link>
+            </div>
+
+            {/* Revenue chart */}
+            <div style={{ background: "rgba(8,14,38,.95)", border: "1px solid rgba(255,45,170,.4)", borderRadius: 6, padding: 7, marginBottom: 6 }}>
+              <div style={{ fontSize: 7, fontWeight: 700, letterSpacing: ".12em", color: "rgba(255,149,0,.8)", textTransform: "uppercase", marginBottom: 5 }}>Revenue Trend (7 days)</div>
+              <div style={{ display: "flex", alignItems: "flex-end", gap: 3, height: 44 }}>
+                {REVENUE_BARS.map((h, i) => (
+                  <div key={i} style={{ flex: 1, height: `${h}%`, background: h > 80 ? "#FFD700" : h > 55 ? "#FF9500" : "#FF2DAA", borderRadius: "2px 2px 0 0" }} />
+                ))}
+              </div>
+            </div>
+
+            {/* Ad in green room only */}
+            {!isLive && (
+              <div className="art-ad-pulse" style={{ background: "rgba(4,8,26,.95)", border: "1px solid rgba(255,140,0,.28)", borderRadius: 5, padding: 8, position: "relative", overflow: "hidden", marginBottom: 6 }}>
+                <span style={{ position: "absolute", top: 2, right: 3, fontSize: 6, fontWeight: 700, color: "rgba(255,140,0,.55)", padding: "1px 3px" }}>AD</span>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div>
+                    <div style={{ fontSize: 9, fontWeight: 700, color: "rgba(255,140,0,.9)" }}>🎙 BerntoutStudio AI — Upgrade your sound</div>
+                    <div style={{ fontSize: 7, color: "rgba(255,140,0,.4)" }}>AI mastering, mixing, and beat generation. Exclusive artist rates.</div>
+                  </div>
+                  <Link href="/store" style={{ padding: "4px 10px", fontSize: 8, background: "transparent", border: "1px solid rgba(255,45,170,.4)", color: "rgba(255,140,0,.9)", borderRadius: 4, textDecoration: "none", fontWeight: 700 }}>GET DEAL</Link>
+                </div>
+              </div>
+            )}
           </div>
-          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginTop: 10 }}>Invite fans OR performers — you earn XP for both. Launch bonus expires Sep 2026.</div>
+
+          {/* RIGHT SIDEBAR */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {/* Upload track */}
+            <Link href="/beats" style={{ background: "rgba(8,14,38,.95)", border: "1px solid rgba(255,45,170,.4)", borderRadius: 6, padding: 8, textDecoration: "none", textAlign: "center" as const, display: "block" }}>
+              <div style={{ fontSize: 22, marginBottom: 4 }}>⬆</div>
+              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: ".12em", color: "rgba(255,149,0,.8)", textTransform: "uppercase" }}>UPLOAD TRACK</div>
+              <div style={{ fontSize: 7, color: "rgba(255,140,0,.4)", marginTop: 2 }}>Drop your latest</div>
+            </Link>
+
+            {/* Upcoming shows */}
+            <div style={{ background: "rgba(8,14,38,.95)", border: "1px solid rgba(255,45,170,.4)", borderRadius: 6, padding: 7 }}>
+              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: ".12em", color: "rgba(255,149,0,.8)", textTransform: "uppercase", textAlign: "center", marginBottom: 5 }}>Shows</div>
+              {[["Today","8:00 PM","Main Stage"],["Jun 14","6:30 PM","Cypher Lounge"]].map(([date, time, room]) => (
+                <div key={date} style={{ padding: "4px 0", borderBottom: "1px solid rgba(255,255,255,.04)" }}>
+                  <div style={{ fontSize: 8, color: "#FFD700", fontWeight: 700 }}>{date} · {time}</div>
+                  <div style={{ fontSize: 7, color: "rgba(255,140,0,.4)" }}>{room}</div>
+                </div>
+              ))}
+              <Link href="/live/stages" style={{ display: "block", marginTop: 5, fontSize: 8, fontWeight: 700, border: "1px solid rgba(255,45,170,.4)", color: "rgba(255,140,0,.9)", borderRadius: 4, textDecoration: "none", textAlign: "center" as const, padding: "3px 0", letterSpacing: ".05em", textTransform: "uppercase" as const }}>+ ADD SHOW</Link>
+            </div>
+
+            {/* Revenue summary */}
+            <div style={{ background: "rgba(8,14,38,.95)", border: "1px solid rgba(255,45,170,.4)", borderRadius: 6, padding: 7, textAlign: "center" }}>
+              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: ".12em", color: "rgba(255,149,0,.8)", textTransform: "uppercase", marginBottom: 3 }}>Total Revenue</div>
+              <div style={{ fontFamily: "'Orbitron', sans-serif", fontWeight: 700, color: "#00FF88", fontSize: 18 }}>$3,845</div>
+              <div style={{ fontSize: 7, color: "rgba(255,140,0,.4)", marginTop: 2 }}>+$215 today</div>
+              <Link href="/dashboard/artist/earnings" style={{ display: "block", marginTop: 5, fontSize: 8, fontWeight: 700, border: "1px solid rgba(0,255,136,.3)", color: "#00FF88", borderRadius: 4, textDecoration: "none", textAlign: "center" as const, padding: "3px 0", letterSpacing: ".05em", textTransform: "uppercase" as const }}>VIEW PAYOUTS</Link>
+            </div>
+
+            {/* Fan wall mini */}
+            <div style={{ background: "rgba(8,14,38,.95)", border: "1px solid rgba(255,45,170,.4)", borderRadius: 6, padding: 7 }}>
+              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: ".12em", color: "rgba(255,149,0,.8)", textTransform: "uppercase", marginBottom: 5 }}>Top Fans</div>
+              {[["SkyFan94","💛"],["MusicLvr22","❤️"],["BeatHead33","💜"]].map(([name, em]) => (
+                <div key={name} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                  <span style={{ fontSize: 9 }}>{name}</span>
+                  <span style={{ fontSize: 12 }}>{em}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Sidebar AD */}
+            <div className="art-ad-pulse" style={{ background: "rgba(4,8,26,.95)", border: "1px solid rgba(255,140,0,.28)", borderRadius: 5, padding: "9px 7px", textAlign: "center", position: "relative", overflow: "hidden" }}>
+              <span style={{ position: "absolute", top: 2, right: 3, fontSize: 6, fontWeight: 700, color: "rgba(255,140,0,.55)", padding: "1px 3px" }}>AD</span>
+              <div style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,140,0,.9)", marginBottom: 3 }}>📢 Promote Your Track</div>
+              <div style={{ fontSize: 7, color: "rgba(255,140,0,.4)", marginBottom: 5 }}>Reach 50K+ fans on TMI radio.</div>
+              <Link href="/advertiser" style={{ display: "block", width: "100%", padding: "3px", fontSize: 8, fontWeight: 700, border: "1px solid rgba(255,45,170,.4)", color: "rgba(255,140,0,.9)", borderRadius: 4, textDecoration: "none", letterSpacing: ".05em", textTransform: "uppercase" as const }}>GET PROMO</Link>
+            </div>
+          </div>
+        </div>
+
+        {/* AdSense */}
+        <AdSenseSlot slot={AD_SLOTS.dashboardSidebar} format="horizontal" label="ADVERTISEMENT" style={{ marginBottom: 8 }} />
+
+        {/* Ticker */}
+        <div style={{ background: "rgba(8,14,38,.95)", border: "1px solid rgba(255,45,170,.35)", borderRadius: 6, padding: "5px 8px", overflow: "hidden", marginBottom: 8 }}>
+          <div className="art-ticker" style={{ fontSize: 8, color: "#FFD700" }}>
+            🔴 LIVE: Chario Ace — Main Stage &nbsp;&nbsp;&nbsp; 💰 $2,400 in tips sent today &nbsp;&nbsp;&nbsp; 🎯 Beat Battle Tournament — 8PM Tonight &nbsp;&nbsp;&nbsp; 🏆 Billboard #1: Big KazhDog this week &nbsp;&nbsp;&nbsp; 🆕 New fan: SkyFan94 followed you &nbsp;&nbsp;&nbsp;
+          </div>
         </div>
 
       </div>

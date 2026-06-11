@@ -108,7 +108,8 @@ export default function AuthPage() {
       });
 
       if (res.status === 201) {
-        setRegisterMsg("Registration succeeded.");
+        window.location.replace("/onboarding");
+        return;
       } else if (res.status === 409) {
         setRegisterMsg("User already exists.");
       } else {

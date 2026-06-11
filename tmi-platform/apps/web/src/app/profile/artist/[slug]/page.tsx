@@ -12,6 +12,7 @@ import type { SponsorSlot } from "@/components/performer/DynamicRadialAura";
 import ViralShareButton from "@/components/share/ViralShareButton";
 import MemoryWall from "@/components/media/MemoryWall";
 import TieredAdSlot from "@/components/ads/TieredAdSlot";
+import OmniPresenceEngine from "@/components/presence/OmniPresenceEngine";
 
 interface Props {
   params: { slug: string };
@@ -250,6 +251,11 @@ export default function ArtistProfilePage({ params }: Props) {
       {/* Ad slot — free visitors see this */}
       <div style={{ padding: "0 24px 16px" }}>
         <TieredAdSlot tier="free" placement="artist-profile-bottom" height={70} />
+      </div>
+
+      {/* Omni-Presence: Messages + Video Chat + Audio + Live Routing */}
+      <div style={{ padding: "0 24px 24px" }}>
+        <OmniPresenceEngine slug={params.slug} displayName={artist.displayName} defaultTab="messages" />
       </div>
 
       {/* Profile Lobby */}

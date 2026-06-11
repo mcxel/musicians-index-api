@@ -262,6 +262,16 @@ export default function MagazineShell({
     setAudioPlaying(false);
   }, []);
 
+  // Grant XP only on manual turns AND only if user spent ≥5s on the spread (anti-farm)
+  const grantReadXP = useCallback(() => {
+    const elapsed = Date.now() - pageEntryTimeRef.current;
+    if (elapsed < MIN_READ_MS) return;
+    trackAction("READ_ARTICLE");
+    if (xpToastTimerRef.current) clearTimeout(xpToastTimerRef.current);
+    setXpToast({ amount: 20 });
+    xpToastTimerRef.current = setTimeout(() => setXpToast(null), 3000);
+  }, [trackAction]);
+
   const goToSpread = useCallback((leftIdx: number, dir: FlipDirection, turnSource: "manual" | "auto" = "manual") => {
     if (stateRef.current.flipping) return;
     if (reduced) {
@@ -360,16 +370,6 @@ export default function MagazineShell({
     }, AUTO_ADVANCE_MS);
     return () => { if (autoTimerRef.current) clearInterval(autoTimerRef.current); };
   }, [autoPlay, hovering, isLast, flipping, goNext]);
-
-  // Grant XP only on manual turns AND only if user spent ≥5s on the spread (anti-farm)
-  const grantReadXP = useCallback(() => {
-    const elapsed = Date.now() - pageEntryTimeRef.current;
-    if (elapsed < MIN_READ_MS) return;
-    trackAction("READ_ARTICLE");
-    if (xpToastTimerRef.current) clearTimeout(xpToastTimerRef.current);
-    setXpToast({ amount: 20 });
-    xpToastTimerRef.current = setTimeout(() => setXpToast(null), 3000);
-  }, [trackAction]);
 
   // Swipe handlers
   function onTouchStart(e: React.TouchEvent) {
@@ -705,7 +705,7 @@ export default function MagazineShell({
           type="button"
           aria-label="Next spread"
           disabled={isLast || !!flipping}
-          onClick={goNext}
+          onClick={() => goNext("manual")}
           style={{
             border: "1px solid rgba(0,255,255,0.2)", borderRadius: 8,
             background: "transparent", color: isLast ? "#1e293b" : "#00FFFF",

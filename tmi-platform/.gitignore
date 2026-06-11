@@ -49,3 +49,34 @@ apps/web/package-lock.json
 *.exe
 *.msi
 *.dmg
+
+# =============================
+# SECURITY — NEVER COMMIT
+# =============================
+*.pem
+*.key
+*.p12
+*.pfx
+*id_rsa*
+*id_dsa*
+*id_ed25519*
+*id_ecdsa*
+SSH KEY*.txt
+*SSH KEY*
+*ssh_key*
+*private_key*
+*secret_key*
+*.ppk
+
+# =============================
+# BUILD LOGS / TMP
+# =============================
+build-log.txt
+apps/**/build-log.txt
+.tmp-*
+humanity-benchmark.js
+
+# =============================
+# MIGRATIONS BACKUP
+# =============================
+packages/db/prisma/migrations_backup/

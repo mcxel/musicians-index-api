@@ -20,6 +20,7 @@ import SocialDock from "@/components/social/SocialDock";
 import TrackUploadPanel from "@/components/social/TrackUploadPanel";
 import MemoryWall from "@/components/media/MemoryWall";
 import TieredAdSlot from "@/components/ads/TieredAdSlot";
+import OmniPresenceEngine from "@/components/presence/OmniPresenceEngine";
 
 interface Props {
   params: { slug: string };
@@ -573,6 +574,11 @@ export default function PerformerProfilePage({ params }: Props) {
         {/* Ad slot — free visitors see this */}
         <div style={{ marginTop: 14 }}>
           <TieredAdSlot tier="free" placement="performer-profile-bottom" height={70} />
+        </div>
+
+        {/* Omni-Presence: Messages + Video Chat + Audio + Live Routing */}
+        <div style={{ marginTop: 14 }}>
+          <OmniPresenceEngine slug={params.slug} displayName={performer.displayName} defaultTab="messages" />
         </div>
 
         {/* Profile Lobby */}

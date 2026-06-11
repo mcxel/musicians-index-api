@@ -1,7 +1,8 @@
 export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { registerUser, dbReady, getUserById, updateUserTier } from '@/lib/auth/UserStore';
+import { hash } from 'bcryptjs';
+import prisma from '@/lib/prisma';
 import { registerArrival, qualifyReferral, resolveToken } from '@/lib/referral/ReferralEngine';
 import { createSession } from '@/lib/auth/SessionManager';
 import { sendEmail } from '@/lib/email/TMIEmailSystem';
@@ -62,25 +63,32 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Password must be at least 8 characters' }, { status: 400 });
   }
 
-  // Ensure DB is preloaded so duplicate detection works on cold starts
-  await dbReady;
+  // Check for existing user in the database
+  const existingUser = await prisma.user.findUnique({ where: { email } });
 
-  // Register into shared UserStore (standalone — no backend required)
-  const result = registerUser({ email, password, displayName, ref: parsed.ref, role: platformRole || undefined });
-
-  if (!result.ok || !result.user) {
-    const status = result.error?.includes('already exists') ? 409 : 400;
-    return NextResponse.json({ error: result.error ?? 'Registration failed' }, { status });
+  if (existingUser) {
+    return NextResponse.json({ error: 'User already exists' }, { status: 409 });
   }
 
-  const user = result.user;
+  // Hash the password securely and save it as passwordHash
+  const hashedPassword = await hash(password, 10);
+
+  const user = await prisma.user.create({
+    data: {
+      email,
+      passwordHash: hashedPassword,
+      displayName: displayName || email.split('@')[0],
+      role: platformRole === '' ? 'USER' : (platformRole.toUpperCase() as any),
+      tier: 'FREE'
+    }
+  });
 
   // Auto-login: create session immediately so user lands on dashboard authenticated
   const userAgent = req.headers.get('user-agent') ?? '';
   const { sessionId, sessionToken } = createSession(user.id, user.role, clientIp, userAgent);
 
   // Role-specific welcome email via TMIEmailSystem magazine templates
-  const name = displayName || user.displayName;
+  const name = displayName || user.displayName || email.split('@')[0];
   const isArtist = platformRole === 'artist' || platformRole === 'performer';
   const emailType = isArtist ? 'welcome_artist'
     : platformRole === 'sponsor' ? 'sponsor_confirmation'
@@ -155,8 +163,8 @@ export async function POST(req: NextRequest) {
     if (refResult.qualified && refResult.milestoneBonus > 0) {
       const link = resolveToken(parsed.ref);
       if (link) {
-        const owner = getUserById(link.ownerId);
-        if (owner) updateUserTier(owner.email, 'GOLD');
+        const owner = await prisma.user.findUnique({ where: { id: link.ownerId } });
+        if (owner) await prisma.user.update({ where: { id: owner.id }, data: { tier: 'GOLD' } });
       }
     }
   }

@@ -6,6 +6,7 @@ import SocialDock from "@/components/social/SocialDock";
 import TrackUploadPanel from "@/components/social/TrackUploadPanel";
 import MemoryWall from "@/components/media/MemoryWall";
 import TieredAdSlot from "@/components/ads/TieredAdSlot";
+import OmniPresenceEngine from "@/components/presence/OmniPresenceEngine";
 
 interface Props { params: { slug: string } }
 
@@ -202,6 +203,9 @@ export default function FanProfilePage({ params }: Props) {
             height={70}
           />
         </div>
+
+        {/* Omni-Presence: Messages + Video Chat + Audio */}
+        <OmniPresenceEngine slug={params.slug} displayName={fan.displayName} defaultTab="messages" />
 
         {/* Profile Lobby */}
         <TmiProfileLobby

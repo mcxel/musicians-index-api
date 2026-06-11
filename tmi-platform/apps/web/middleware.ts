@@ -55,6 +55,31 @@ function isPlaylistSurface(pathname: string): boolean {
   );
 }
 
+function roleDashboardPath(role: string): string {
+  switch (role.toUpperCase()) {
+    case 'ADMIN':
+    case 'STAFF':
+      return '/admin';
+    case 'PERFORMER':
+    case 'ARTIST':
+      return '/performer/dashboard';
+    case 'FAN':
+      return '/fan/dashboard';
+    case 'SPONSOR':
+      return '/sponsor';
+    case 'PROMOTER':
+      return '/promoter/dashboard';
+    case 'ADVERTISER':
+      return '/advertiser/dashboard';
+    case 'VENUE':
+      return '/venue/dashboard';
+    case 'WRITER':
+      return '/writer/dashboard';
+    default:
+      return '/dashboard';
+  }
+}
+
 export function middleware(req: NextRequest) {
   const { pathname, search } = req.nextUrl;
   const incomingRef = normalizeRef(req.nextUrl.searchParams.get('ref'));
@@ -152,6 +177,20 @@ export function middleware(req: NextRequest) {
   const nextParam = req.nextUrl.searchParams.get('next');
   if (nextParam && (!nextParam.startsWith('/') || nextParam.startsWith('//'))) {
     return NextResponse.json({ error: 'Invalid redirect target' }, { status: 400 });
+  }
+
+  const isAuthSurface =
+    pathname === '/auth' ||
+    pathname === '/auth/signin' ||
+    pathname === '/auth/login';
+
+  if (isAuthSurface) {
+    const sessionCookie = req.cookies.get('tmi_session')?.value;
+    const tokenRole = (req.cookies.get('tmi_role')?.value ?? '').toUpperCase();
+    if (sessionCookie) {
+      const target = nextParam || roleDashboardPath(tokenRole);
+      return NextResponse.redirect(new URL(target, req.url), 307);
+    }
   }
 
   // ── Visibility gate ─────────────────────────────────────────────────────────

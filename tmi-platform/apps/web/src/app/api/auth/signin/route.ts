@@ -61,9 +61,9 @@ export async function POST(req: NextRequest) {
         };
         user = {
           id: dbUser.id,
-          email: dbUser.email,
+          email: dbUser.email ?? '',
           passwordHash: dbUser.passwordHash,
-          displayName: dbUser.displayName ?? dbUser.email.split('@')[0],
+          displayName: dbUser.displayName ?? (dbUser.email ?? '').split('@')[0],
           tier: (dbUser.tier?.toLowerCase() ?? 'free') as import('@/lib/auth/UserStore').UserTier,
           role: (DB_ROLE_MAP[dbUser.role ?? 'USER'] ?? 'fan') as import('@/lib/auth/UserStore').UserRole,
           createdAt: dbUser.userCreatedAt?.getTime() ?? Date.now(),

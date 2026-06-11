@@ -1,1094 +1,636 @@
 'use client';
 
-/**
- * Home1CoverPage — TMI Homepage 1, full tabloid-pop redesign.
- *
- * DROP FILE AT:
- *   apps/web/src/components/home/Home1CoverPage.tsx
- *
- * THEN IN apps/web/src/app/home/1/page.tsx replace:
- *   import Home1OrbitalMagazine from '@/components/home/Home1OrbitalMagazine';
- * with:
- *   import Home1CoverPage from '@/components/home/Home1CoverPage';
- * and swap <Home1OrbitalMagazine /> → <Home1CoverPage />
- *
- * WHAT THIS DOES:
- *  - 10 performers per genre, cycle through genres every 6 s
- *  - Every performer card routes to /articles/performer/[slug]
- *  - No real face photos — genre-colored emoji avatars
- *  - Orbital ring kept (360 spin), bright teal/gold palette
- *  - Tabloid overlays: VOTING LIVE, GENRE BATTLE, CYPHER ARENA OPEN
- *  - Bottom: Weekly Cyphers bar with article link
- *  - Typecheck-safe, no external deps beyond Next.js
- */
-
-import { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import BillboardLiveWall from '@/components/media/BillboardLiveWall';
 
-// ─── Genre + performer data (10 per genre) ────────────────────────────────────
+const PERFORMERS = ['Astra Nova', 'Wavetek', 'Lagos Burst', 'DJ Kraze', 'Nova Cipher', 'Flex King', 'Bar God', 'Prism Vex', 'Zion Freq', 'NovaQueen'];
+const GENRES_P = ['R&B', 'Hip-Hop', 'Afrobeat', 'DJ', 'Cypher', 'Dance', 'Battle', 'EDM', 'Gospel', 'R&B'];
+const EMOJIS = ['🎤', '🎧', '🎵', '💃', '🥁', '🎹', '🎸', '🎺', '🎻', '🎙️', '😂', '🌟'];
 
-interface Performer {
-  slug: string;
-  name: string;
-  emoji: string;
-  rank: number;
-  score: number;
-  genre: string;
-}
+const RAIL1_MSGS = ['✦ ALL PERFORMERS WELCOME ✦', '🎧 DJs WANTED — JOIN BATTLE NIGHT', '😂 COMEDIANS WANTED — DIGITAL COMEDY NIGHT', '💃 DANCERS WANTED — DANCE-OFF CHALLENGES', '🎹 PRODUCERS WANTED — BEAT BATTLES LIVE', '🏢 VENUES WANTED — BOOK TALENT DIRECT', '📣 PROMOTERS WANTED — PROMOTE WORLDWIDE', '💼 SPONSORS WANTED — ADVERTISE FROM $25', '🎵 FREE GLOBAL PROMOTION — SIGN UP NOW', '🏆 CLIMB THE GLOBAL RANKINGS TODAY', '🎟 SELL TICKETS THROUGH TMI', '💰 EARN TIPS LIVE — PERFORMERS & DJs', '⚔️ JOIN BATTLE ARENA — COMPETE TONIGHT', '🎤 CYPHER ARENA OPEN — DROP IN ANYTIME', '🌍 GET DISCOVERED WORLDWIDE'];
+const RAIL2_MSGS = ['★ BREAKING: CROWN CROWN CROWN — SEE WHO LEADS', '▶ LATEST BATTLES TONIGHT — TUNE IN NOW', '◆ MUSIC NEWS LIVE UPDATE — WAVETEK DEFENDS', '● TMI MAGAZINE ISSUE 25 OUT NOW — READ IT', '◉ BEAT MARKETPLACE OPEN — BUY/SELL BEATS', '▷ WORLD PREMIERE DROPPING TONIGHT AT MIDNIGHT', '◈ CYPHER CHAMPIONS — FINALS THIS SATURDAY', '◆ SPONSOR SPOTLIGHT — BEATS BY TMX ON TMI', '★ NEW ARTISTS JOINING — DISCOVERY CHARTS LIVE', '▶ AUDITIONS OPEN — ALL GENRES ACCEPTED'];
 
-const GENRE_DATA: Record<string, { color: string; bg: string; emoji: string; performers: Performer[] }> = {
-  'Hip-Hop': {
-    color: '#FFD700',
-    bg: '#2D1A00',
-    emoji: '🎤',
-    performers: [
-      { slug: 'big-ace', name: 'Big Ace', emoji: '🎤', rank: 1, score: 9840, genre: 'Hip-Hop' },
-      { slug: 'charro-ace', name: 'Charro Ace', emoji: '👑', rank: 2, score: 8910, genre: 'Hip-Hop' },
-      { slug: 'flow-jamz', name: 'Flow Jamz', emoji: '🎶', rank: 3, score: 7830, genre: 'Hip-Hop' },
-      { slug: 'yung-tuck', name: 'Yung Tuck', emoji: '🤙', rank: 4, score: 6720, genre: 'Hip-Hop' },
-      { slug: 'urban-scholar', name: 'Urban Scholar', emoji: '📚', rank: 5, score: 5940, genre: 'Hip-Hop' },
-      { slug: 'max-flare', name: 'Max Flare', emoji: '⚡', rank: 6, score: 4880, genre: 'Hip-Hop' },
-      { slug: 'mc-nova', name: 'MC Nova', emoji: '🌟', rank: 7, score: 3760, genre: 'Hip-Hop' },
-      { slug: 'leeze', name: 'Leeze', emoji: '🎯', rank: 8, score: 3120, genre: 'Hip-Hop' },
-      { slug: 'retro-rick', name: 'Retro Rick', emoji: '🎸', rank: 9, score: 2480, genre: 'Hip-Hop' },
-      { slug: 'trovor-rw', name: 'Trovor RW', emoji: '🔊', rank: 10, score: 1940, genre: 'Hip-Hop' },
-    ],
-  },
-  'R&B': {
-    color: '#FF2DAA',
-    bg: '#2D001A',
-    emoji: '🎵',
-    performers: [
-      { slug: 'lani-flame', name: 'Lani Flame', emoji: '🔥', rank: 1, score: 9210, genre: 'R&B' },
-      { slug: 'mia-jay', name: 'Mia Jay', emoji: '💜', rank: 2, score: 8340, genre: 'R&B' },
-      { slug: 'nova-sky', name: 'Nova Sky', emoji: '⭐', rank: 3, score: 7200, genre: 'R&B' },
-      { slug: 'diana-electro', name: 'Diana E.', emoji: '💙', rank: 4, score: 6100, genre: 'R&B' },
-      { slug: 'trina-sky', name: 'Trina Sky', emoji: '🌸', rank: 5, score: 5280, genre: 'R&B' },
-      { slug: 'lucy-sky', name: 'Lucy Sky', emoji: '🎀', rank: 6, score: 4430, genre: 'R&B' },
-      { slug: 'rosa-vibes', name: 'Rosa Vibes', emoji: '🌹', rank: 7, score: 3610, genre: 'R&B' },
-      { slug: 'axalla-cosmo', name: 'Axalla Cosmo', emoji: '🌙', rank: 8, score: 2940, genre: 'R&B' },
-      { slug: 'mona-chromatic', name: 'Mona Chroma', emoji: '🎭', rank: 9, score: 2240, genre: 'R&B' },
-      { slug: 'lily88', name: 'Lily 88', emoji: '🌺', rank: 10, score: 1820, genre: 'R&B' },
-    ],
-  },
-  'Gospel': {
-    color: '#00FF88',
-    bg: '#001A0D',
-    emoji: '🙏',
-    performers: [
-      { slug: 'blessed-voice', name: 'Blessed Voice', emoji: '🙏', rank: 1, score: 8800, genre: 'Gospel' },
-      { slug: 'grace-notes', name: 'Grace Notes', emoji: '🕊️', rank: 2, score: 7920, genre: 'Gospel' },
-      { slug: 'light-bringer', name: 'Light Bringer', emoji: '✨', rank: 3, score: 6980, genre: 'Gospel' },
-      { slug: 'choir-king', name: 'Choir King', emoji: '🎼', rank: 4, score: 5830, genre: 'Gospel' },
-      { slug: 'spirit-wave', name: 'Spirit Wave', emoji: '🌊', rank: 5, score: 4760, genre: 'Gospel' },
-      { slug: 'amen-flow', name: 'Amen Flow', emoji: '🌅', rank: 6, score: 3920, genre: 'Gospel' },
-      { slug: 'holy-bars', name: 'Holy Bars', emoji: '📖', rank: 7, score: 3140, genre: 'Gospel' },
-      { slug: 'faith-first', name: 'Faith First', emoji: '⛪', rank: 8, score: 2560, genre: 'Gospel' },
-      { slug: 'heavenly-sound', name: 'Heavenly Sound', emoji: '🎷', rank: 9, score: 1990, genre: 'Gospel' },
-      { slug: 'worship-wave', name: 'Worship Wave', emoji: '🎺', rank: 10, score: 1540, genre: 'Gospel' },
-    ],
-  },
-  'Jazz': {
-    color: '#AA2DFF',
-    bg: '#1A001A',
-    emoji: '🎷',
-    performers: [
-      { slug: 'global-vibes', name: 'Global Vibes', emoji: '🎷', rank: 1, score: 8400, genre: 'Jazz' },
-      { slug: 'phat-bass', name: 'Phat Bass', emoji: '🎸', rank: 2, score: 7560, genre: 'Jazz' },
-      { slug: 'midnight-groove', name: 'Midnight Groove', emoji: '🌑', rank: 3, score: 6620, genre: 'Jazz' },
-      { slug: 'brass-king', name: 'Brass King', emoji: '🎺', rank: 4, score: 5480, genre: 'Jazz' },
-      { slug: 'swing-city', name: 'Swing City', emoji: '🎻', rank: 5, score: 4340, genre: 'Jazz' },
-      { slug: 'blue-notes', name: 'Blue Notes', emoji: '💙', rank: 6, score: 3510, genre: 'Jazz' },
-      { slug: 'smooth-synth', name: 'Smooth Synth', emoji: '🎹', rank: 7, score: 2880, genre: 'Jazz' },
-      { slug: 'bebop-jones', name: 'Bebop Jones', emoji: '🎵', rank: 8, score: 2210, genre: 'Jazz' },
-      { slug: 'cool-cat', name: 'Cool Cat', emoji: '😎', rank: 9, score: 1760, genre: 'Jazz' },
-      { slug: 'vibe-check', name: 'Vibe Check', emoji: '✅', rank: 10, score: 1340, genre: 'Jazz' },
-    ],
-  },
-  'EDM': {
-    color: '#00C8FF',
-    bg: '#001A2D',
-    emoji: '🎧',
-    performers: [
-      { slug: 'dj-blend', name: 'DJ Blend', emoji: '🎧', rank: 1, score: 9100, genre: 'EDM' },
-      { slug: 'crystal-fizz', name: 'Crystal Fizz', emoji: '💎', rank: 2, score: 8080, genre: 'EDM' },
-      { slug: 'neon-city', name: 'Neon City', emoji: '🌆', rank: 3, score: 7040, genre: 'EDM' },
-      { slug: 'bass-drop', name: 'Bass Drop', emoji: '💥', rank: 4, score: 5930, genre: 'EDM' },
-      { slug: 'dj-synch', name: 'DJ Synch', emoji: '🔄', rank: 5, score: 5020, genre: 'EDM' },
-      { slug: 'wave-rider', name: 'Wave Rider', emoji: '🌊', rank: 6, score: 4120, genre: 'EDM' },
-      { slug: 'hyper-drop', name: 'Hyper Drop', emoji: '⚡', rank: 7, score: 3380, genre: 'EDM' },
-      { slug: 'sonic-burst', name: 'Sonic Burst', emoji: '💫', rank: 8, score: 2640, genre: 'EDM' },
-      { slug: 'echo-zone', name: 'Echo Zone', emoji: '🔊', rank: 9, score: 2010, genre: 'EDM' },
-      { slug: 'pulse-unit', name: 'Pulse Unit', emoji: '📡', rank: 10, score: 1570, genre: 'EDM' },
-    ],
-  },
-  'Pop': {
-    color: '#FF6B35',
-    bg: '#2D1000',
-    emoji: '🎀',
-    performers: [
-      { slug: 'poptronica', name: 'Poptronica', emoji: '🎀', rank: 1, score: 8750, genre: 'Pop' },
-      { slug: 'mfts', name: 'MFTS', emoji: '🌟', rank: 2, score: 7830, genre: 'Pop' },
-      { slug: 'sky-drop', name: 'Sky Drop', emoji: '🌤️', rank: 3, score: 6900, genre: 'Pop' },
-      { slug: 'sweet-harmony', name: 'Sweet Harmony', emoji: '🍬', rank: 4, score: 5770, genre: 'Pop' },
-      { slug: 'neon-angel', name: 'Neon Angel', emoji: '😇', rank: 5, score: 4810, genre: 'Pop' },
-      { slug: 'cover-climber', name: 'Cover Climber', emoji: '📈', rank: 6, score: 3920, genre: 'Pop' },
-      { slug: 'radio-burst', name: 'Radio Burst', emoji: '📻', rank: 7, score: 3180, genre: 'Pop' },
-      { slug: 'chart-queen', name: 'Chart Queen', emoji: '👸', rank: 8, score: 2530, genre: 'Pop' },
-      { slug: 'top-drop', name: 'Top Drop', emoji: '🎯', rank: 9, score: 1960, genre: 'Pop' },
-      { slug: 'brit-wave', name: 'Brit Wave', emoji: '🇬🇧', rank: 10, score: 1440, genre: 'Pop' },
-    ],
-  },
-  'Soul': {
-    color: '#FFB800',
-    bg: '#2D1F00',
-    emoji: '🕯️',
-    performers: [
-      { slug: 'darkwave-diva', name: 'Darkwave Diva', emoji: '🌑', rank: 1, score: 8200, genre: 'Soul' },
-      { slug: 'groove-master', name: 'Groove Master', emoji: '🕺', rank: 2, score: 7340, genre: 'Soul' },
-      { slug: 'deep-roots', name: 'Deep Roots', emoji: '🌳', rank: 3, score: 6410, genre: 'Soul' },
-      { slug: 'soulfire', name: 'Soulfire', emoji: '🔥', rank: 4, score: 5360, genre: 'Soul' },
-      { slug: 'velvet-voice', name: 'Velvet Voice', emoji: '🎙️', rank: 5, score: 4420, genre: 'Soul' },
-      { slug: 'rhythm-king', name: 'Rhythm King', emoji: '♟️', rank: 6, score: 3580, genre: 'Soul' },
-      { slug: 'motown-echo', name: 'Motown Echo', emoji: '📼', rank: 7, score: 2870, genre: 'Soul' },
-      { slug: 'warm-notes', name: 'Warm Notes', emoji: '☀️', rank: 8, score: 2210, genre: 'Soul' },
-      { slug: 'church-groove', name: 'Church Groove', emoji: '⛪', rank: 9, score: 1730, genre: 'Soul' },
-      { slug: 'old-school', name: 'Old School', emoji: '📡', rank: 10, score: 1280, genre: 'Soul' },
-    ],
-  },
-  'Rap': {
-    color: '#39FF14',
-    bg: '#001A00',
-    emoji: '💬',
-    performers: [
-      { slug: 'bobby-stanley', name: 'Bobby Stanley', emoji: '🎙️', rank: 1, score: 8960, genre: 'Rap' },
-      { slug: 'night-rider-beats', name: 'NightRider', emoji: '🌙', rank: 2, score: 7980, genre: 'Rap' },
-      { slug: 'rapid-fire', name: 'Rapid Fire', emoji: '💨', rank: 3, score: 6840, genre: 'Rap' },
-      { slug: 'word-smith', name: 'Word Smith', emoji: '✏️', rank: 4, score: 5710, genre: 'Rap' },
-      { slug: 'street-poet', name: 'Street Poet', emoji: '📝', rank: 5, score: 4690, genre: 'Rap' },
-      { slug: 'lyric-lord', name: 'Lyric Lord', emoji: '📜', rank: 6, score: 3830, genre: 'Rap' },
-      { slug: 'punch-line', name: 'Punch Line', emoji: '👊', rank: 7, score: 3060, genre: 'Rap' },
-      { slug: 'mic-wreck', name: 'Mic Wreck', emoji: '🎤', rank: 8, score: 2430, genre: 'Rap' },
-      { slug: 'flow-state', name: 'Flow State', emoji: '🌊', rank: 9, score: 1900, genre: 'Rap' },
-      { slug: 'cold-bars', name: 'Cold Bars', emoji: '🧊', rank: 10, score: 1450, genre: 'Rap' },
-    ],
-  },
-};
-
-const GENRE_KEYS = Object.keys(GENRE_DATA);
-
-// ─── Clip-path shapes for the 10 orbit cards ──────────────────────────────────
-
-const CARD_SHAPES = [
-  'polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%)', // octagon #1
-  'polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%)',                            // pentagon
-  'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)',                    // hexagon
-  'circle(50% at 50% 50%)',                                                             // circle
-  'polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)', // star
-  'polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%)', // octagon
-  'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)',                    // hexagon
-  'polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%)',                            // pentagon
-  'circle(50% at 50% 50%)',                                                             // circle
-  'polygon(30% 0%, 70% 0%, 100% 25%, 100% 75%, 70% 100%, 30% 100%, 0% 75%, 0% 25%)', // wide octagon
+const VT_DATA = [
+  { names: ['Wavetek', 'Astra Nova', 'Lagos Burst', 'DJ Kraze'], emojis: ['🎤', '🎵', '🎧', '💃'], viewers: [1284, 2140, 847, 3200] },
+  { names: ['Nova Cipher', 'Bar God', 'Flex King', 'Prism Vex'], emojis: ['🎹', '🎸', '🎻', '🥁'], viewers: [920, 1650, 440, 2800] },
+  { names: ['Zion Freq', 'Beat Lab', 'Verse XL', 'Soul Shaker'], emojis: ['🎺', '🎙️', '😂', '🌟'], viewers: [710, 1380, 590, 2200] },
 ];
-
-// Positions for 10 orbit cards (angle in degrees, radius 44% of container)
-function getOrbitPos(i: number, total: number, radius: number) {
-  const angle = (i / total) * 360 - 90; // start from top
-  const rad = (angle * Math.PI) / 180;
-  return {
-    x: 50 + radius * Math.cos(rad),
-    y: 50 + radius * Math.sin(rad),
-  };
-}
-
-// ─── Tabloid ticker messages ──────────────────────────────────────────────────
-
-const TICKER_MSGS = [
-  '🔥 DRUM BATTLE LIVE RIGHT NOW',
-  '👑 WHO TOOK THE CROWN? VOTE NOW',
-  '⚡ CYPHER ARENA OPEN — GET IN',
-  '🎤 SOMEBODY JUST GOT KNOCKED OFF #1',
-  '💥 GENRE BATTLE — HIP-HOP VS R&B',
-  '🚀 NEW PERFORMERS JUST INDEXED',
-  '🗳️ VOTING LIVE — CROWN SHIFTING',
-  '🔊 STREAM & WIN RADIO IS LIVE',
-  '🎵 BEAT DROP AT MIDNIGHT — 8PM CYPHER',
-  '👀 YOU DON\'T KNOW WHO\'S IN HERE',
-];
-
-// ─── Component ────────────────────────────────────────────────────────────────
 
 export default function Home1CoverPage() {
-  const [genreIdx, setGenreIdx] = useState(0);
-  const [tickerIdx, setTickerIdx] = useState(0);
-  const [orbitDeg, setOrbitDeg] = useState(0);
-  const [voteCount, setVoteCount] = useState(4812);
-  const [activeIdx, setActiveIdx] = useState<number | null>(null);
-  const rafRef = useRef<number | null>(null);
-  const lastRef = useRef<number>(0);
+  const [lTab, setLTab] = useState(0);
+  const [rTab, setRTab] = useState(0);
+  const [leftOpen, setLeftOpen] = useState(true);
+  const [rightOpen, setRightOpen] = useState(true);
+  const [underlayDir, setUnderlayDir] = useState<'left' | 'right'>('right');
+  const [magText, setMagText] = useState('');
+  
+  // Independent video tiles state
+  const [vtIdx, setVtIdx] = useState([0, 0, 0]);
+  const [vtViewers, setVtViewers] = useState([
+    VT_DATA[0].viewers[0],
+    VT_DATA[1].viewers[0],
+    VT_DATA[2].viewers[0]
+  ]);
+  const [vtFlip, setVtFlip] = useState([false, false, false]);
 
-  const genreKey = GENRE_KEYS[genreIdx % GENRE_KEYS.length]!;
-  const genre = GENRE_DATA[genreKey]!;
-  const performers = genre.performers;
-  const crowdHolder = performers[0]!;
+  const [stats, setStats] = useState({ votes: 4948, watchers: 9282, tips: 4200 });
 
-  // Orbit spin
+  // Typewriter effect
   useEffect(() => {
-    const spin = (ts: number) => {
-      if (lastRef.current) {
-        const dt = ts - lastRef.current;
-        setOrbitDeg((d) => (d + dt * 0.015) % 360);
+    const MAG_TEXT = 'MAGAZINE';
+    let idx = 0;
+    let phase = 'typing';
+    let timeout: NodeJS.Timeout;
+
+    const tick = () => {
+      if (phase === 'typing') {
+        setMagText(MAG_TEXT.slice(0, idx));
+        idx++;
+        if (idx > MAG_TEXT.length) {
+          phase = 'holding';
+          timeout = setTimeout(() => { phase = 'erasing'; tick(); }, 1000);
+          return;
+        }
+        timeout = setTimeout(tick, 110);
+      } else if (phase === 'erasing') {
+        setMagText('');
+        idx = 0;
+        phase = 'typing';
+        timeout = setTimeout(tick, 400);
       }
-      lastRef.current = ts;
-      rafRef.current = requestAnimationFrame(spin);
     };
-    rafRef.current = requestAnimationFrame(spin);
+    timeout = setTimeout(tick, 500);
+    return () => clearTimeout(timeout);
+  }, []);
+
+  // Independent video tile timers
+  useEffect(() => {
+    const intervals = [9500, 13200, 17000];
+    const offsets = [0, 2300, 4600];
+    const timeouts: NodeJS.Timeout[] = [];
+    const intervalRefs: NodeJS.Timeout[] = [];
+
+    intervals.forEach((interval, i) => {
+      timeouts.push(
+        setTimeout(() => {
+          intervalRefs.push(
+            setInterval(() => {
+              setVtFlip(prev => {
+                const next = [...prev];
+                next[i] = true;
+                return next;
+              });
+              
+              setTimeout(() => {
+                setVtIdx(prev => {
+                  const next = [...prev];
+                  next[i] = (next[i] + 1) % VT_DATA[i].names.length;
+                  return next;
+                });
+                setVtViewers(prev => {
+                  const next = [...prev];
+                  const currentIdx = (vtIdx[i] + 1) % VT_DATA[i].names.length;
+                  next[i] = VT_DATA[i].viewers[currentIdx] + Math.floor(Math.random() * 200) - 100;
+                  return next;
+                });
+                setVtFlip(prev => {
+                  const next = [...prev];
+                  next[i] = false;
+                  return next;
+                });
+              }, 300);
+            }, interval)
+          );
+        }, offsets[i])
+      );
+    });
+
     return () => {
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      timeouts.forEach(clearTimeout);
+      intervalRefs.forEach(clearInterval);
     };
-  }, []);
+  }, [vtIdx]);
 
-  // Genre cycle every 6s
+  // Live Stats Tick
   useEffect(() => {
-    const id = setInterval(() => setGenreIdx((i) => i + 1), 6000);
-    return () => clearInterval(id);
+    const interval = setInterval(() => {
+      setStats(prev => ({
+        votes: prev.votes + Math.floor(Math.random() * 8) + 2,
+        watchers: Math.max(8500, prev.watchers + Math.floor((Math.random() - 0.35) * 40)),
+        tips: prev.tips + Math.floor(Math.random() * 18)
+      }));
+      setVtViewers(prev => prev.map(v => Math.max(10, v + Math.floor((Math.random() - 0.4) * 80))));
+    }, 2800);
+    return () => clearInterval(interval);
   }, []);
 
-  // Ticker cycle every 3s
-  useEffect(() => {
-    const id = setInterval(() => setTickerIdx((i) => (i + 1) % TICKER_MSGS.length), 3000);
-    return () => clearInterval(id);
-  }, []);
+  const renderLeftContent = () => {
+    if (lTab === 0) {
+      return (
+        <>
+          <div style={{ color: 'var(--pink)', fontWeight: 800, letterSpacing: '.1em', fontSize: '8px', marginBottom: '6px' }}>⭐ FREE PROMO SLOTS</div>
+          {PERFORMERS.slice(0, 3).map((n, i) => (
+            <div key={i} style={{ background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,45,170,.2)', borderRadius: '5px', padding: '5px', marginBottom: '4px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '3px' }}>
+                <div className="performer-img-circle" style={{ background: 'rgba(255,45,170,.2)', border: '1px solid rgba(255,45,170,.4)' }}>{EMOJIS[i]}</div>
+                <div style={{ flex: 1 }}><div style={{ fontSize: '9px', fontWeight: 700 }}>{n}</div><div style={{ fontSize: '7px', color: 'rgba(255,255,255,.35)' }}>{GENRES_P[i]}</div></div>
+                <button className="btn" style={{ background: 'rgba(255,45,170,.2)', color: 'var(--pink)', border: '1px solid rgba(255,45,170,.3)', padding: '1px 5px', fontSize: '6px' }}>BOOST</button>
+              </div>
+              <div style={{ fontSize: '8px', color: 'var(--green)' }}>▲ {[2140, 980, 540][i].toLocaleString()} views</div>
+            </div>
+          ))}
+          <div style={{ background: 'rgba(255,215,0,.05)', border: '1px dashed rgba(255,215,0,.3)', borderRadius: '5px', padding: '6px', textAlign: 'center', cursor: 'pointer' }}>
+            <div style={{ fontSize: '11px', marginBottom: '1px' }}>+</div><div style={{ fontSize: '8px', color: 'var(--gold)', fontWeight: 700 }}>Claim Free Slot</div>
+          </div>
+        </>
+      );
+    } else if (lTab === 1) {
+      return (
+        <>
+          <div style={{ color: 'var(--amber)', fontWeight: 800, fontSize: '8px', letterSpacing: '.1em', marginBottom: '6px' }}>🏟 VENUE BOOKING</div>
+          {[['SAT', 'Main Arena'], ['SUN', 'Theater'], ['MON', 'Club Stage']].map(([d, v], i) => (
+            <div key={i} style={{ background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,140,0,.2)', borderRadius: '5px', padding: '5px', marginBottom: '4px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div><div style={{ fontSize: '8px', fontWeight: 700, color: 'var(--amber)' }}>{d} · {v}</div></div>
+              <button className="btn" style={{ background: 'rgba(0,255,127,.12)', color: 'var(--green)', border: '1px solid rgba(0,255,127,.3)', fontSize: '7px', padding: '1px 5px' }}>BOOK</button>
+            </div>
+          ))}
+          <button className="btn" style={{ width: '100%', background: 'var(--amber)', color: '#000', marginTop: '3px', padding: '5px' }}>Browse Dates</button>
+        </>
+      );
+    } else {
+      return (
+        <>
+          <div style={{ color: 'var(--cyan)', fontWeight: 800, fontSize: '8px', letterSpacing: '.1em', marginBottom: '6px' }}>📢 AD SPACES</div>
+          {[['Homepage Banner', '$120/day', 'HOT'], ['Arena Sidebar', '$80/day', 'OPEN'], ['Lobby Wall', '$60/day', 'OPEN']].map(([n, p, s], i) => (
+            <div key={i} style={{ background: 'rgba(255,255,255,.04)', border: '1px solid rgba(0,229,255,.18)', borderRadius: '5px', padding: '5px', marginBottom: '4px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div><div style={{ fontSize: '8px', fontWeight: 700 }}>{n}</div><div style={{ fontSize: '7px', color: 'var(--gold)' }}>{p}</div></div>
+              <div style={{ fontSize: '7px', fontWeight: 800, color: s === 'HOT' ? 'var(--red)' : 'var(--green)', background: s === 'HOT' ? 'rgba(230,48,0,.15)' : 'rgba(0,255,127,.1)', borderRadius: '3px', padding: '2px 5px' }}>{s}</div>
+            </div>
+          ))}
+          <button className="btn" style={{ width: '100%', background: 'var(--cyan)', color: '#000', marginTop: '3px', padding: '5px', fontSize: '8px' }}>Buy Ad Slot</button>
+        </>
+      );
+    }
+  };
 
-  // Vote count tick
-  useEffect(() => {
-    const id = setInterval(() => {
-      setVoteCount((v) => v + Math.floor(Math.random() * 7 + 1));
-    }, 820);
-    return () => clearInterval(id);
-  }, []);
+  const renderRightContent = () => {
+    if (rTab === 0) {
+      return (
+        <>
+          <div style={{ color: 'var(--gold)', fontWeight: 800, fontSize: '8px', letterSpacing: '.1em', marginBottom: '6px' }}>👑 LIVE RANKINGS</div>
+          {PERFORMERS.slice(0, 8).map((n, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '3px 0', borderBottom: '1px solid rgba(255,255,255,.05)' }}>
+              <div className="performer-img-circle" style={{ background: i === 0 ? 'rgba(255,45,170,.18)' : 'rgba(255,215,0,.12)', border: `1px solid ${i === 0 ? 'rgba(255,45,170,.3)' : 'rgba(255,215,0,.3)'}`, fontSize: '9px' }}>{EMOJIS[i]}</div>
+              <span style={{ color: ['var(--gold)', '#C0C0C0', '#CD7F32', 'rgba(255,255,255,.5)', 'rgba(255,255,255,.5)', 'rgba(255,255,255,.5)', 'rgba(255,255,255,.5)', 'rgba(255,255,255,.5)'][i], fontWeight: 800, fontSize: '9px', minWidth: '14px' }}>{i + 1}</span>
+              <div style={{ flex: 1, minWidth: 0 }}><div style={{ fontSize: '9px', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{n}</div><div style={{ fontSize: '7px', color: 'rgba(255,255,255,.35)' }}>{GENRES_P[i]}</div></div>
+              {i < 3 && <span className="live-dot" style={{ width: '4px', height: '4px' }}></span>}
+            </div>
+          ))}
+          <button className="btn" style={{ width: '100%', background: 'rgba(255,215,0,.12)', color: 'var(--gold)', border: '1px solid rgba(255,215,0,.25)', marginTop: '5px', padding: '4px', fontSize: '8px' }}>Full Leaderboard →</button>
+        </>
+      );
+    } else if (rTab === 1) {
+      return (
+        <>
+          <div style={{ color: 'var(--amber)', fontWeight: 800, fontSize: '8px', letterSpacing: '.1em', marginBottom: '6px' }}>📺 ACTIVE ADS</div>
+          {[['Beats By TMX', '$86K', '72%'], ['BerntoutStudio AI', '$38K', '45%']].map(([n, s, p], i) => (
+            <div key={i} style={{ background: 'rgba(0,229,255,.06)', border: '1px solid rgba(0,229,255,.2)', borderRadius: '5px', padding: '6px', marginBottom: '5px' }}>
+              <div style={{ fontSize: '9px', fontWeight: 700, color: 'var(--cyan)', marginBottom: '2px' }}>{n}</div>
+              <div style={{ height: '4px', background: 'rgba(0,229,255,.15)', borderRadius: '2px', overflow: 'hidden', margin: '4px 0' }}><div style={{ height: '4px', background: 'var(--cyan)', width: p }}></div></div>
+              <div style={{ fontSize: '7px', color: 'rgba(255,255,255,.3)' }}>{p} · {s} spent</div>
+            </div>
+          ))}
+          <button className="btn" style={{ width: '100%', background: 'var(--amber)', color: '#000', padding: '5px', fontSize: '8px' }}>Advertise Here →</button>
+        </>
+      );
+    } else {
+      return (
+        <>
+          <div style={{ color: 'var(--pink)', fontWeight: 800, fontSize: '8px', letterSpacing: '.1em', marginBottom: '6px' }}>📣 PROMOTERS</div>
+          {[['Promo Jay', '12 events', '$2.4K'], ['EventKing', '8 events', '$1.8K'], ['NightOwl', '6 events', '$980']].map(([n, e, r], i) => (
+            <div key={i} style={{ background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,45,170,.18)', borderRadius: '5px', padding: '5px', marginBottom: '4px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div><div style={{ fontSize: '9px', fontWeight: 700 }}>{n}</div><div style={{ fontSize: '7px', color: 'rgba(255,255,255,.35)' }}>{e}</div></div>
+              <div style={{ fontSize: '8px', fontWeight: 700, color: 'var(--green)' }}>{r}</div>
+            </div>
+          ))}
+          <button className="btn" style={{ width: '100%', background: 'rgba(255,45,170,.18)', color: 'var(--pink)', border: '1px solid rgba(255,45,170,.3)', marginTop: '3px', padding: '5px', fontSize: '8px' }}>Become Promoter →</button>
+        </>
+      );
+    }
+  };
 
-  const accentColor = genre.color;
-  const bgColor = genre.bg;
+  const panels = [
+    { bg: '#FFD700', hdr: '#FF1493', title: 'WHO TOOK THE CROWN?', sub: 'COVER PERFORMER', artist: 'BIG ACE', tag: 'HIP-HOP · 4,812 VOTES', cta: 'CYPHER OPEN', c1: '#00BFFF' },
+    { bg: '#FF1493', hdr: '#000', title: 'BATTLE NIGHT CHAMPION', sub: 'REIGNING CHAMP', artist: 'WAVETEK', tag: '47 WINS · HIP-HOP', cta: '⚔️ CHALLENGE 8PM', c1: '#FFD700' },
+    { bg: '#00BFFF', hdr: '#000', title: "WHO'S GOT THE BARS?", sub: 'ON THE MIC NOW', artist: 'NOVA CIPHER', tag: 'CYPHER OPEN · 841 WATCHING', cta: 'DROP IN ANYTIME', c1: '#FF1493' },
+    { bg: '#000', hdr: '#FFD700', title: 'CHALLENGE THE CROWN', sub: 'DEFENDING NOW', artist: 'BEAT THE BEAT', tag: 'WAVETEK · 841 VOTES', cta: 'ARENA SEATS 18,500', c1: '#FF1493' },
+    { bg: '#9B59B6', hdr: '#FFD700', title: 'DJ BATTLE NIGHT', sub: 'CURRENT #1 DJ', artist: 'DJ KRAZE', tag: 'DJ · TURNTABLIST', cta: 'JOIN BATTLE QUEUE', c1: '#00BFFF' },
+  ];
 
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        background: `linear-gradient(160deg, ${bgColor} 0%, #0a0614 45%, #050310 100%)`,
-        color: '#fff',
-        fontFamily: "'Impact', 'Arial Black', sans-serif",
-        overflowX: 'hidden',
-        position: 'relative',
-      }}
-    >
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;700;900&display=swap');
+    <div style={{ background: 'linear-gradient(135deg,#06021a 0%,#0a0528 40%,#08031e 100%)', fontFamily: "'Exo 2',sans-serif", color: '#fff', overflowX: 'hidden', position: 'relative', minHeight: '100vh' }}>
+      <style dangerouslySetInnerHTML={{ __html: `
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Exo+2:wght@300;400;600;700;800;900&family=Anton&display=swap');
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        :root { --bg: #06021a; --pink: #FF2DAA; --gold: #FFD700; --cyan: #00E5FF; --red: #E63000; --green: #00FF7F; --purple: #7B00FF; --amber: #FF8C00; }
+        @keyframes blink { 0%, 100% { opacity: 1 } 50% { opacity: 0 } }
+        @keyframes orbit { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }
+        @keyframes counterOrbit { from { transform: rotate(0deg) } to { transform: rotate(-360deg) } }
+        @keyframes scrollLeft { from { transform: translateX(0) } to { transform: translateX(-50%) } }
+        @keyframes scrollRight { from { transform: translateX(-50%) } to { transform: translateX(0%) } }
+        @keyframes typeColor { 0% { color: #fff } 25% { color: var(--gold) } 50% { color: #00FF7F } 75% { color: var(--red) } 100% { color: #fff } }
+        @keyframes centerGlow { 0%, 100% { box-shadow: 0 0 20px rgba(0,229,255,.5), 0 0 40px rgba(255,45,170,.3) } 50% { box-shadow: 0 0 40px rgba(0,229,255,.9), 0 0 70px rgba(255,45,170,.5) } }
+        @keyframes panelIn { from { opacity: 0; transform: translateX(-14px) } to { opacity: 1; transform: translateX(0) } }
+        @keyframes panelInR { from { opacity: 0; transform: translateX(14px) } to { opacity: 1; transform: translateX(0) } }
+        @keyframes badgePulse { 0%, 100% { box-shadow: 0 0 6px rgba(255,45,170,.4) } 50% { box-shadow: 0 0 16px rgba(255,45,170,.8) } }
+        @keyframes colorBg { 0% { background-position: 0% 50% } 50% { background-position: 100% 50% } 100% { background-position: 0% 50% } }
+        @keyframes floatStar { 0%, 100% { transform: translateY(0) rotate(0deg) } 50% { transform: translateY(-8px) rotate(5deg) } }
+        @keyframes tileFlip { 0% { opacity: 1; transform: rotateY(0deg) } 40% { opacity: 0; transform: rotateY(90deg) } 60% { opacity: 0; transform: rotateY(-90deg) } 100% { opacity: 1; transform: rotateY(0deg) } }
+        .live-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #FF2020; animation: blink 1s infinite; vertical-align: middle; margin-right: 4px; }
+        .twl { animation: typeColor 4s ease-in-out infinite; }
+        .orbit-ring { animation: orbit 38s linear infinite; transform-origin: center; }
+        .node-ctr { animation: counterOrbit 38s linear infinite; transform-origin: center; }
+        .rail-l { animation: scrollLeft 22s linear infinite; display: flex; white-space: nowrap; width: max-content; }
+        .rail-r { animation: scrollRight 18s linear infinite; display: flex; white-space: nowrap; width: max-content; }
+        .btn { font-family: 'Exo 2', sans-serif; font-weight: 800; cursor: pointer; border-radius: 5px; padding: 6px 12px; border: none; transition: all .14s; text-transform: uppercase; font-size: 10px; letter-spacing: .05em; }
+        .btn:hover { transform: scale(1.04); filter: brightness(1.2); }
+        .tab-btn { font-family: 'Exo 2', sans-serif; font-size: 9px; font-weight: 800; cursor: pointer; border-radius: 4px; padding: 3px 8px; border: none; text-transform: uppercase; letter-spacing: .06em; flex: 1; transition: all .14s; }
+        .center-glow { animation: centerGlow 3s ease-in-out infinite; }
+        .video-tile { position: relative; border-radius: 5px; overflow: hidden; cursor: pointer; background: #060f1e; border: 1px solid rgba(255,255,255,.1); }
+        .video-tile::before { content: ''; position: absolute; top: -100%; left: 0; right: 0; height: 2px; background: rgba(0,229,255,.3); animation: scanline 3s linear infinite; z-index: 3; }
+        @keyframes scanline { 0% { top: -5% } 100% { top: 105% } }
+        .video-tile .live-badge { position: absolute; top: 4px; left: 4px; background: var(--red); color: #fff; font-size: 6px; font-weight: 900; padding: 1px 5px; border-radius: 3px; z-index: 4; letter-spacing: .1em; }
+        .video-tile .v-name { position: absolute; bottom: 3px; left: 4px; color: #fff; font-size: 7px; font-weight: 700; z-index: 4; }
+        .video-tile .v-count { position: absolute; top: 4px; right: 4px; background: rgba(0,0,0,.65); color: var(--cyan); font-size: 6px; padding: 1px 4px; border-radius: 3px; z-index: 4; }
+        .geo { position: absolute; pointer-events: none; opacity: .2; }
+        .mag-panel { display: inline-flex; flex-direction: column; width: 210px; flex-shrink: 0; border: 3px solid #000; overflow: hidden; vertical-align: top; }
+        .typewriter-cursor { animation: blink .7s ease-in-out infinite; color: var(--gold); }
+        .left-panel-body { animation: panelIn .3s ease-out; }
+        .right-panel-body { animation: panelInR .3s ease-out; }
+        .performer-img-circle { width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; flex-shrink: 0; }
+        .tmi-paper { position: fixed; inset: 0; z-index: 0; background: #e8d5aa; opacity: 0.035; pointer-events: none; mix-blend-mode: multiply; }
+        .tmi-halftone { position: fixed; inset: 0; z-index: 1; background-image: radial-gradient(circle, rgba(0,0,0,0.9) 1px, transparent 1px); background-size: 5px 5px; opacity: 0.05; pointer-events: none; }
+        .tmi-grain { position: fixed; inset: 0; z-index: 92; background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='160' height='160' filter='url(%23n)' opacity='0.9'/></svg>"); mix-blend-mode: multiply; opacity: 0.14; pointer-events: none; }
+        .tmi-gloss { position: fixed; inset: 0; z-index: 93; background: linear-gradient(130deg, rgba(255,255,255,0.07) 0%, transparent 40%, rgba(0,0,0,0.06) 100%); mix-blend-mode: overlay; opacity: 0.5; pointer-events: none; }
+        .challenge-loop { animation: challengeCycle 3.5s ease-in-out infinite; }
+        @keyframes challengeCycle { 0%,8%{opacity:1;transform:translateY(0)} 16%,24%{opacity:0;transform:translateY(-8px)} 32%,40%{opacity:0;transform:translateY(8px)} 48%,100%{opacity:1;transform:translateY(0)} }
+        @keyframes challengeSlot0 { 0%,20%{opacity:1;transform:translateY(0)} 25%,100%{opacity:0;transform:translateY(-14px)} }
+        @keyframes challengeSlot1 { 0%,24%{opacity:0} 25%,45%{opacity:1;transform:translateY(0)} 50%,100%{opacity:0;transform:translateY(-14px)} }
+        @keyframes challengeSlot2 { 0%,49%{opacity:0} 50%,70%{opacity:1;transform:translateY(0)} 75%,100%{opacity:0;transform:translateY(-14px)} }
+        @keyframes challengeSlot3 { 0%,74%{opacity:0} 75%,95%{opacity:1;transform:translateY(0)} 100%{opacity:0;transform:translateY(-14px)} }
+      `}} />
 
-        @keyframes h1Spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        @keyframes h1CounterSpin { from { transform: rotate(0deg); } to { transform: rotate(-360deg); } }
-        @keyframes h1CrownFloat {
-          0%, 100% { transform: translateY(0px) scale(1); }
-          50% { transform: translateY(-8px) scale(1.05); }
-        }
-        @keyframes h1Typewriter {
-          0%, 5% { opacity: 0; transform: translateY(4px); }
-          10%, 80% { opacity: 1; transform: translateY(0); }
-          90%, 100% { opacity: 0; transform: translateY(-4px); }
-        }
-        @keyframes h1TypeColor {
-          0%, 19% { color: #00FF7F; text-shadow: 0 0 12px rgba(0,255,127,0.6); }
-          20%, 39% { color: #00E5FF; text-shadow: 0 0 12px rgba(0,229,255,0.6); }
-          40%, 59% { color: #FFD700; text-shadow: 0 0 12px rgba(255,215,0,0.6); }
-          60%, 79% { color: #E63000; text-shadow: 0 0 12px rgba(230,48,0,0.6); }
-          80%, 100% { color: #FF8C00; text-shadow: 0 0 12px rgba(255,140,0,0.6); }
-        }
-        @keyframes h1Pulse {
-          0%, 100% { box-shadow: 0 0 20px ${accentColor}55; }
-          50% { box-shadow: 0 0 40px ${accentColor}99, 0 0 80px ${accentColor}33; }
-        }
-        @keyframes h1TickerSlide {
-          0% { transform: translateY(100%); opacity: 0; }
-          10%, 90% { transform: translateY(0); opacity: 1; }
-          100% { transform: translateY(-100%); opacity: 0; }
-        }
-        @keyframes h1StickerPop {
-          0% { transform: scale(0) rotate(-15deg); opacity: 0; }
-          70% { transform: scale(1.1) rotate(3deg); opacity: 1; }
-          100% { transform: scale(1) rotate(0deg); opacity: 1; }
-        }
-        @keyframes h1CardHover {
-          0% { transform: scale(1); }
-          100% { transform: scale(1.06); }
-        }
-        @keyframes h1ConfettiDrift {
-          0% { transform: translateY(0) rotate(0deg); opacity: 1; }
-          100% { transform: translateY(60px) rotate(180deg); opacity: 0; }
-        }
-      `}</style>
+      {/* 80s magazine print layers */}
+      <div className="tmi-paper" aria-hidden="true" />
+      <div className="tmi-halftone" aria-hidden="true" />
 
-      {/* ── Background confetti triangles ── */}
-      {[...Array(24)].map((_, i) => (
-        <div
-          key={i}
-          style={{
-            position: 'absolute',
-            width: 8 + (i % 5) * 4,
-            height: 8 + (i % 5) * 4,
-            background: [accentColor, '#FFD700', '#FF2DAA', '#00FF88', '#AA2DFF'][i % 5],
-            clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)',
-            left: `${(i * 13 + 3) % 100}%`,
-            top: `${(i * 17 + 5) % 90}%`,
-            opacity: 0.18,
-            transform: `rotate(${i * 37}deg)`,
-            pointerEvents: 'none',
-          }}
-        />
-      ))}
+      {/* Background geometric accents */}
+      <div className="geo" style={{ top: 80, right: 60, width: 60, height: 60, background: 'var(--gold)', transform: 'rotate(45deg)' }}></div>
+      <div className="geo" style={{ top: 200, left: 20, width: 0, height: 0, borderLeft: '25px solid transparent', borderRight: '25px solid transparent', borderBottom: '42px solid var(--pink)' }}></div>
+      <div className="geo" style={{ bottom: 200, right: 30, width: 0, height: 0, borderLeft: '18px solid transparent', borderRight: '18px solid transparent', borderBottom: '30px solid var(--cyan)' }}></div>
+      <div className="geo" style={{ top: 500, left: 40, width: 40, height: 40, background: 'var(--purple)', borderRadius: '50%' }}></div>
+      <div className="geo" style={{ bottom: 350, left: 80, width: 0, height: 0, borderLeft: '15px solid transparent', borderRight: '15px solid transparent', borderBottom: '26px solid var(--gold)' }}></div>
+      <div className="geo" style={{ top: 350, right: 100, width: 35, height: 35, background: 'var(--pink)', transform: 'rotate(20deg)' }}></div>
 
-      {/* ── Genre badge top left ── */}
-      <div
-        style={{
-          position: 'absolute',
-          top: 18,
-          left: 20,
-          zIndex: 50,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-        }}
-      >
-        <Link href="/home/1" style={{ textDecoration: 'none' }}>
-          <div
-            style={{
-              fontSize: 11,
-              fontWeight: 900,
-              letterSpacing: '0.2em',
-              color: 'rgba(255,255,255,0.5)',
-              fontFamily: "'Inter', sans-serif",
-            }}
-          >
-            ← BACK
-          </div>
-        </Link>
+      {/* BETA BAR */}
+      <div style={{ background: 'rgba(230,48,0,.2)', borderBottom: '1px solid rgba(230,48,0,.35)', padding: '3px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '8px' }}>
+        <div style={{ color: 'var(--red)', fontWeight: 700, letterSpacing: '.12em' }}>✦ TMI BETA SEASON</div>
+        <div style={{ color: 'rgba(255,255,255,.5)' }}>Founding Beta Member · Purchases & unlocks persist permanently</div>
+        <div style={{ color: 'var(--gold)', fontWeight: 700, cursor: 'pointer' }}>DETAILS →</div>
       </div>
 
-      {/* ── Voting LIVE banner ── */}
-      <div
-        style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          zIndex: 100,
-          background: `linear-gradient(90deg, #1a0050 0%, ${accentColor}33 50%, #1a0050 100%)`,
-          borderBottom: `2px solid ${accentColor}`,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 16,
-          padding: '7px 16px',
-        }}
-      >
-        <span
-          style={{
-            fontSize: 11,
-            fontWeight: 900,
-            color: accentColor,
-            letterSpacing: '0.15em',
-            fontFamily: "'Inter', sans-serif",
-          }}
-        >
-          🗳️ VOTING LIVE!
-        </span>
-        <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 10 }}>|</span>
-        <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.8)', fontFamily: "'Inter', sans-serif" }}>
-          CROWN UPDATING IN REAL-TIME... {voteCount.toLocaleString()} votes cast
-        </span>
-        <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 10 }}>|</span>
-        <span
-          style={{
-            fontSize: 10,
-            fontWeight: 900,
-            color: '#FFD700',
-            letterSpacing: '0.1em',
-            fontFamily: "'Inter', sans-serif",
-          }}
-        >
-          {genreKey.toUpperCase()} GENRE BATTLE!
-        </span>
+      {/* NAV */}
+      <div style={{ background: 'rgba(6,2,26,.97)', borderBottom: '1px solid rgba(255,215,0,.15)', padding: '5px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: '15px', fontWeight: 900, color: 'var(--pink)' }}>TMI</div>
+        <div style={{ display: 'flex', gap: '3px' }}>
+          <Link href="/home/1"><button className="btn" style={{ background: 'var(--pink)', color: '#fff', borderRadius: '12px', padding: '3px 10px' }}>1</button></Link>
+          <Link href="/home/1-2"><button className="btn" style={{ background: 'rgba(255,255,255,.08)', color: 'rgba(255,255,255,.5)', borderRadius: '12px', padding: '3px 9px' }}>1-2</button></Link>
+          <Link href="/home/2"><button className="btn" style={{ background: 'rgba(255,255,255,.08)', color: 'rgba(255,255,255,.5)', borderRadius: '12px', padding: '3px 10px' }}>2</button></Link>
+          <Link href="/home/3"><button className="btn" style={{ background: 'rgba(255,255,255,.08)', color: 'rgba(255,255,255,.5)', borderRadius: '12px', padding: '3px 10px' }}>3</button></Link>
+          <Link href="/home/4"><button className="btn" style={{ background: 'rgba(255,255,255,.08)', color: 'rgba(255,255,255,.5)', borderRadius: '12px', padding: '3px 10px' }}>4</button></Link>
+          <Link href="/home/5"><button className="btn" style={{ background: 'rgba(255,255,255,.08)', color: 'rgba(255,255,255,.5)', borderRadius: '12px', padding: '3px 10px' }}>5</button></Link>
+        </div>
+        <div style={{ display: 'flex', gap: '5px' }}>
+          <button className="btn" style={{ background: 'transparent', color: 'rgba(255,255,255,.7)', border: '1px solid rgba(255,255,255,.25)' }}>Log In</button>
+          <button className="btn" style={{ background: 'var(--pink)', color: '#fff' }}>Sign Up</button>
+        </div>
       </div>
 
-      {/* ── Main content ── */}
-      <div
-        style={{
-          paddingTop: 52,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          minHeight: '100vh',
-        }}
-      >
-
-        {/* ── Masthead ── */}
-        <div style={{ textAlign: 'center', marginTop: 24, marginBottom: 8, zIndex: 10 }}>
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'center',
-              whiteSpace: 'nowrap',
-              overflow: 'visible',
-              fontSize: 'clamp(14px, 3.5vw, 24px)',
-              fontWeight: 900,
-              letterSpacing: '0.35em',
-              fontFamily: "'Inter', sans-serif",
-              marginBottom: 12,
-            }}
-          >
-            {"THE MUSICIAN'S INDEX".split('').map((char, index) => (
-              <span
-                key={index}
-                style={{
-                  display: 'inline-block',
-                  minWidth: char === ' ' ? '0.5em' : 'auto',
-                  opacity: 0,
-                  animation: 'h1Typewriter 7s infinite, h1TypeColor 7s infinite',
-                  animationDelay: `${index * 0.1}s, 0s`,
-                }}
-              >
-                {char}
-              </span>
-            ))}
-          </div>
-          <div
-            style={{
-              fontSize: 'clamp(28px, 6vw, 48px)',
-              fontFamily: "'Bebas Neue', 'Impact', sans-serif",
-              background: `linear-gradient(135deg, #fff 0%, ${accentColor} 100%)`,
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              letterSpacing: '0.04em',
-              lineHeight: 1,
-            }}
-          >
-            WHO TOOK THE CROWN?
-          </div>
-          <div
-            style={{
-              display: 'inline-block',
-              marginTop: 6,
-              padding: '3px 16px',
-              background: `${accentColor}22`,
-              border: `1px solid ${accentColor}55`,
-              borderRadius: 20,
-              fontSize: 10,
-              fontWeight: 900,
-              color: accentColor,
-              letterSpacing: '0.18em',
-              fontFamily: "'Inter', sans-serif",
-            }}
-          >
-            {genre.emoji} {genreKey.toUpperCase()} · WEEK {Math.ceil((Date.now() / (7 * 24 * 60 * 60 * 1000)) % 52) || 1}
-          </div>
-        </div>
-
-        {/* ── Cinematic Edge-to-Edge Grid Wrapper ── */}
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'minmax(50px, 1fr) auto minmax(50px, 1fr)',
-            width: '100%',
-            alignItems: 'center',
-          }}
-        >
-          <div /> {/* Left edge spacer */}
-          
-          {/* ── Orbital ring ── */}
-          <div
-            style={{
-              position: 'relative',
-              width: '100%',
-              minWidth: 'min(300px, 92vw)',
-              maxWidth: '700px',
-              aspectRatio: '1 / 1',
-              margin: '0 auto',
-              flexShrink: 0,
-            }}
-          >
-          {/* Spinning ring */}
-          <div
-            style={{
-              position: 'absolute',
-              inset: '5%',
-              borderRadius: '50%',
-              border: `1px solid ${accentColor}22`,
-              boxShadow: `0 0 40px ${accentColor}18`,
-              transform: `rotate(${orbitDeg}deg)`,
-              transition: 'transform 0.016s linear',
-            }}
-          />
-          <div
-            style={{
-              position: 'absolute',
-              inset: '8%',
-              borderRadius: '50%',
-              border: `1px dashed ${accentColor}14`,
-              transform: `rotate(${-orbitDeg * 0.6}deg)`,
-              transition: 'transform 0.016s linear',
-            }}
-          />
-
-          {/* Center: Crown holder */}
-          <Link
-            href={`/articles/performer/${crowdHolder.slug}`}
-            style={{
-              position: 'absolute',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              textDecoration: 'none',
-              zIndex: 20,
-            }}
-          >
-            <div
-              style={{
-                width: 'min(130px, 22vw)',
-                height: 'min(130px, 22vw)',
-                borderRadius: '50%',
-                background: `radial-gradient(circle at 40% 35%, ${accentColor}55, ${bgColor})`,
-                border: `3px solid ${accentColor}`,
-                boxShadow: `0 0 40px ${accentColor}66, inset 0 0 20px ${accentColor}22`,
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                animation: 'h1Pulse 2.5s ease-in-out infinite',
-                cursor: 'pointer',
-              }}
-            >
-              {/* Crown above */}
-              <div
-                style={{
-                  fontSize: 'min(28px, 5vw)',
-                  animation: 'h1CrownFloat 3s ease-in-out infinite',
-                  marginBottom: 2,
-                  filter: `drop-shadow(0 0 8px #FFD700)`,
-                }}
-              >
-                👑
-              </div>
-              <div
-                style={{
-                  fontSize: 'min(28px, 5vw)',
-                  filter: `drop-shadow(0 0 6px ${accentColor})`,
-                }}
-              >
-                {crowdHolder.emoji}
-              </div>
-              <div
-                style={{
-                  fontSize: 'min(9px, 1.8vw)',
-                  fontWeight: 900,
-                  color: '#fff',
-                  letterSpacing: '0.05em',
-                  textAlign: 'center',
-                  fontFamily: "'Inter', sans-serif",
-                  marginTop: 2,
-                  maxWidth: '80%',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                {crowdHolder.name}
-              </div>
-              <div
-                style={{
-                  fontSize: 'min(8px, 1.5vw)',
-                  fontWeight: 700,
-                  color: '#FFD700',
-                  fontFamily: "'Inter', sans-serif",
-                }}
-              >
-                #1 {genreKey}
-              </div>
-            </div>
-          </Link>
-
-          {/* 10 orbit cards */}
-          {performers.map((p, i) => {
-            const pos = getOrbitPos(i, 10, 44);
-            const cardSize = i === 0 ? 80 : 68;
-            return (
-              <Link
-                key={p.slug}
-                href={`/articles/performer/${p.slug}`}
-                style={{ textDecoration: 'none' }}
-              >
-                <div
-                  style={{
-                    position: 'absolute',
-                    left: `${pos.x}%`,
-                    top: `${pos.y}%`,
-                    transform: 'translate(-50%, -50%)',
-                    zIndex: activeIdx === i ? 30 : 10,
-                    cursor: 'pointer',
-                    transition: 'transform 0.2s ease',
-                  }}
-                  onMouseEnter={() => setActiveIdx(i)}
-                  onMouseLeave={() => setActiveIdx(null)}
-                >
-                  {/* Rank badge */}
-                  <div
-                    style={{
-                      position: 'absolute',
-                      top: -10,
-                      left: -4,
-                      zIndex: 5,
-                      width: 20,
-                      height: 20,
-                      borderRadius: '50%',
-                      background:
-                        p.rank === 1
-                          ? 'linear-gradient(135deg, #FFD700, #FF9500)'
-                          : `${accentColor}33`,
-                      border: `1.5px solid ${p.rank === 1 ? '#FFD700' : accentColor}`,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: 8,
-                      fontWeight: 900,
-                      color: p.rank === 1 ? '#050510' : accentColor,
-                      fontFamily: "'Inter', sans-serif",
-                      boxShadow: `0 0 8px ${p.rank === 1 ? '#FFD700' : accentColor}66`,
-                    }}
-                  >
-                    {p.rank}
-                  </div>
-
-                  {/* Card shape */}
-                  <div
-                    style={{
-                      width: cardSize,
-                      height: cardSize,
-                      clipPath: CARD_SHAPES[i % CARD_SHAPES.length],
-                      background: `linear-gradient(135deg, ${accentColor}33, ${bgColor})`,
-                      border: `2px solid ${accentColor}66`,
-                      boxShadow:
-                        activeIdx === i
-                          ? `0 0 24px ${accentColor}88`
-                          : `0 0 12px ${accentColor}33`,
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      transition: 'box-shadow 0.2s ease, transform 0.2s ease',
-                      transform: activeIdx === i ? 'scale(1.12)' : 'scale(1)',
-                    }}
-                  >
-                    <div style={{ fontSize: cardSize * 0.32, lineHeight: 1 }}>{p.emoji}</div>
-                    <div
-                      style={{
-                        fontSize: cardSize * 0.1,
-                        fontWeight: 900,
-                        color: '#fff',
-                        textAlign: 'center',
-                        marginTop: 3,
-                        fontFamily: "'Inter', sans-serif",
-                        maxWidth: '85%',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                        letterSpacing: '-0.01em',
-                      }}
-                    >
-                      {p.name.split(' ')[0]}
-                    </div>
-                  </div>
-
-                  {/* Hover tooltip */}
-                  {activeIdx === i && (
-                    <div
-                      style={{
-                        position: 'absolute',
-                        bottom: -36,
-                        left: '50%',
-                        transform: 'translateX(-50%)',
-                        background: 'rgba(10,6,20,0.95)',
-                        border: `1px solid ${accentColor}55`,
-                        borderRadius: 8,
-                        padding: '5px 10px',
-                        whiteSpace: 'nowrap',
-                        zIndex: 50,
-                        animation: 'h1StickerPop 0.25s ease',
-                      }}
-                    >
-                      <div style={{ fontSize: 9, fontWeight: 900, color: accentColor, fontFamily: "'Inter', sans-serif" }}>
-                        {p.name}
-                      </div>
-                      <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.5)', fontFamily: "'Inter', sans-serif" }}>
-                        #{p.rank} · {p.score.toLocaleString()} pts → Read Article
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </Link>
-            );
-          })}
-
-          {/* Sticker overlays */}
-          <div
-            style={{
-              position: 'absolute',
-              top: '8%',
-              left: '-4%',
-              background: `linear-gradient(135deg, ${accentColor}, #FFD700)`,
-              color: '#050510',
-              padding: '6px 12px',
-              borderRadius: 8,
-              fontSize: 9,
-              fontWeight: 900,
-              letterSpacing: '0.1em',
-              fontFamily: "'Inter', sans-serif",
-              transform: 'rotate(-8deg)',
-              boxShadow: `0 4px 20px ${accentColor}55`,
-              animation: 'h1StickerPop 0.4s ease',
-              zIndex: 40,
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {genre.emoji} {genreKey} GENRE BATTLE!
-          </div>
-
-          <div
-            style={{
-              position: 'absolute',
-              bottom: '12%',
-              right: '-2%',
-              background: 'linear-gradient(135deg, #AA2DFF, #FF2DAA)',
-              color: '#fff',
-              padding: '6px 14px',
-              borderRadius: 20,
-              fontSize: 9,
-              fontWeight: 900,
-              letterSpacing: '0.08em',
-              fontFamily: "'Inter', sans-serif",
-              transform: 'rotate(5deg)',
-              boxShadow: '0 4px 20px rgba(170,45,255,0.5)',
-              animation: 'h1StickerPop 0.5s ease',
-              zIndex: 40,
-              whiteSpace: 'nowrap',
-            }}
-          >
-            🔘 CYPHER ARENA OPEN
-          </div>
-
-          <div
-            style={{
-              position: 'absolute',
-              bottom: '22%',
-              left: '-2%',
-              background: 'rgba(20,10,40,0.92)',
-              border: '2px solid #FFD700',
-              color: '#FFD700',
-              padding: '5px 12px',
-              borderRadius: 8,
-              fontSize: 9,
-              fontWeight: 900,
-              letterSpacing: '0.06em',
-              fontFamily: "'Inter', sans-serif",
-              transform: 'rotate(-4deg)',
-              boxShadow: '0 4px 16px rgba(255,215,0,0.3)',
-              zIndex: 40,
-              whiteSpace: 'nowrap',
-            }}
-          >
-            🗳️ VOTING OPEN: VOTE FOR #4!
-          </div>
-        </div>
-        
-        <div /> {/* Right edge spacer */}
-        </div> {/* End Cinematic Wrapper */}
-
-        {/* ── Genre navigation dots ── */}
-        <div
-          style={{
-            display: 'flex',
-            gap: 8,
-            marginTop: 16,
-            alignItems: 'center',
-            flexWrap: 'wrap',
-            justifyContent: 'center',
-            padding: '0 20px',
-          }}
-        >
-          {GENRE_KEYS.map((g, i) => {
-            const gd = GENRE_DATA[g]!;
-            const active = i === genreIdx % GENRE_KEYS.length;
-            return (
-              <button
-                key={g}
-                onClick={() => setGenreIdx(i)}
-                style={{
-                  padding: '4px 12px',
-                  borderRadius: 20,
-                  border: `1.5px solid ${active ? gd.color : gd.color + '44'}`,
-                  background: active ? `${gd.color}22` : 'transparent',
-                  color: active ? gd.color : `${gd.color}88`,
-                  fontSize: 9,
-                  fontWeight: 900,
-                  letterSpacing: '0.1em',
-                  cursor: 'pointer',
-                  fontFamily: "'Inter', sans-serif",
-                  transition: 'all 0.2s ease',
-                  boxShadow: active ? `0 0 10px ${gd.color}44` : 'none',
-                }}
-              >
-                {gd.emoji} {g.toUpperCase()}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* ── Tabloid ticker ── */}
-        <div
-          style={{
-            width: '100%',
-            background: `linear-gradient(90deg, transparent, ${accentColor}18, transparent)`,
-            borderTop: `1px solid ${accentColor}22`,
-            borderBottom: `1px solid ${accentColor}22`,
-            padding: '8px 24px',
-            marginTop: 16,
-            overflow: 'hidden',
-            height: 34,
-            position: 'relative',
-          }}
-        >
-          <div
-            key={tickerIdx}
-            style={{
-              fontSize: 10,
-              fontWeight: 900,
-              color: accentColor,
-              letterSpacing: '0.15em',
-              fontFamily: "'Inter', sans-serif",
-              animation: 'h1TickerSlide 3s ease',
-              position: 'absolute',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {TICKER_MSGS[tickerIdx]}
-          </div>
-        </div>
-
-        {/* ── All performers grid (10 cards) ── */}
-        <div
-          style={{
-            width: '100%',
-            maxWidth: 900,
-            padding: '20px 16px 8px',
-          }}
-        >
-          <div
-            style={{
-              fontSize: 10,
-              fontWeight: 900,
-              color: 'rgba(255,255,255,0.4)',
-              letterSpacing: '0.2em',
-              fontFamily: "'Inter', sans-serif",
-              marginBottom: 10,
-              textTransform: 'uppercase',
-            }}
-          >
-            {genre.emoji} Top 10 — {genreKey} · Click any card to read their article
-          </div>
-
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))',
-              gap: 10,
-            }}
-          >
-            {performers.map((p, i) => (
-              <Link
-                key={p.slug}
-                href={`/articles/performer/${p.slug}`}
-                style={{ textDecoration: 'none' }}
-              >
-                <div
-                  style={{
-                    background: `linear-gradient(135deg, ${accentColor}18, rgba(10,6,20,0.8))`,
-                    border: `1px solid ${accentColor}${i === 0 ? '88' : '33'}`,
-                    borderRadius: 10,
-                    padding: '10px 10px 8px',
-                    cursor: 'pointer',
-                    transition: 'all 0.18s ease',
-                    position: 'relative',
-                    overflow: 'hidden',
-                  }}
-                  onMouseEnter={(e) => {
-                    (e.currentTarget as HTMLDivElement).style.borderColor = accentColor;
-                    (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-2px)';
-                    (e.currentTarget as HTMLDivElement).style.boxShadow = `0 6px 20px ${accentColor}44`;
-                  }}
-                  onMouseLeave={(e) => {
-                    (e.currentTarget as HTMLDivElement).style.borderColor = `${accentColor}${i === 0 ? '88' : '33'}`;
-                    (e.currentTarget as HTMLDivElement).style.transform = 'translateY(0)';
-                    (e.currentTarget as HTMLDivElement).style.boxShadow = 'none';
-                  }}
-                >
-                  {/* Rank */}
-                  <div
-                    style={{
-                      position: 'absolute',
-                      top: 6,
-                      right: 8,
-                      fontSize: 16,
-                      fontWeight: 900,
-                      color: i === 0 ? '#FFD700' : `${accentColor}88`,
-                      fontFamily: "'Bebas Neue', 'Impact', sans-serif",
-                      lineHeight: 1,
-                    }}
-                  >
-                    #{p.rank}
-                  </div>
-
-                  <div style={{ fontSize: 26, marginBottom: 4 }}>{p.emoji}</div>
-                  <div
-                    style={{
-                      fontSize: 11,
-                      fontWeight: 900,
-                      color: '#fff',
-                      letterSpacing: '-0.01em',
-                      fontFamily: "'Inter', sans-serif",
-                      marginBottom: 2,
-                    }}
-                  >
-                    {p.name}
-                  </div>
-                  <div
-                    style={{
-                      fontSize: 8,
-                      color: accentColor,
-                      fontWeight: 700,
-                      fontFamily: "'Inter', sans-serif",
-                      letterSpacing: '0.06em',
-                    }}
-                  >
-                    {p.score.toLocaleString()} pts
-                  </div>
-                  <div
-                    style={{
-                      marginTop: 6,
-                      fontSize: 8,
-                      color: 'rgba(255,255,255,0.35)',
-                      fontFamily: "'Inter', sans-serif",
-                      borderTop: `1px solid ${accentColor}22`,
-                      paddingTop: 5,
-                    }}
-                  >
-                    Read Article →
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-
-        {/* ── CTA strip ── */}
-        <div
-          style={{
-            display: 'flex',
-            gap: 10,
-            flexWrap: 'wrap',
-            justifyContent: 'center',
-            padding: '16px 16px 0',
-          }}
-        >
-          {[
-            { label: '🎤 JOIN AS ARTIST', href: '/signup?role=artist', bg: accentColor, color: '#050510' },
-            { label: '⚔️ BATTLE TONIGHT', href: '/battles', bg: '#FF2DAA', color: '#fff' },
-            { label: '📰 READ THE INDEX', href: '/magazine', bg: 'transparent', color: '#FFD700', border: '#FFD700' },
-            { label: '👀 FAN MODE', href: '/signup?role=fan', bg: 'transparent', color: '#00FF88', border: '#00FF88' },
-          ].map((btn) => (
-            <Link
-              key={btn.label}
-              href={btn.href}
-              style={{
-                padding: '10px 20px',
-                background: btn.bg || 'transparent',
-                border: `2px solid ${btn.border || btn.bg}`,
-                borderRadius: 8,
-                fontSize: 9,
-                fontWeight: 900,
-                color: btn.color,
-                textDecoration: 'none',
-                letterSpacing: '0.08em',
-                fontFamily: "'Inter', sans-serif",
-                boxShadow: btn.bg !== 'transparent' ? `0 0 16px ${btn.bg}55` : 'none',
-              }}
-            >
-              {btn.label}
-            </Link>
+      {/* MOVING RAIL #1 (TOP) → LEFT DIRECTION */}
+      <div style={{ background: 'rgba(0,0,0,.5)', borderBottom: '1px solid rgba(255,215,0,.2)', overflow: 'hidden', height: '22px', position: 'relative' }}>
+        <div className="rail-l">
+          {Array(4).fill(0).map((_, i) => (
+            <React.Fragment key={i}>
+              {RAIL1_MSGS.map((m, j) => (
+                <span key={`${i}-${j}`} style={{ fontSize: '9px', fontWeight: 700, color: 'var(--gold)', padding: '0 20px', lineHeight: '22px', whiteSpace: 'nowrap' }}>{m}</span>
+              ))}
+            </React.Fragment>
           ))}
         </div>
+      </div>
 
-        {/* ── Weekly Cyphers bottom bar ── */}
-        <Link
-          href="/articles?category=cypher"
-          style={{
-            display: 'block',
-            width: '100%',
-            marginTop: 24,
-            textDecoration: 'none',
-          }}
-        >
-          <div
-            style={{
-              background: `linear-gradient(90deg, #2D0D6E, #1a0050, #2D0D6E)`,
-              borderTop: `2px solid ${accentColor}`,
-              padding: '16px 24px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 12,
-              cursor: 'pointer',
-            }}
-          >
-            <span style={{ fontSize: 18 }}>⚡</span>
-            <div style={{ textAlign: 'center' }}>
-              <div
-                style={{
-                  fontSize: 'clamp(18px, 4vw, 26px)',
-                  fontFamily: "'Bebas Neue', 'Impact', sans-serif",
-                  color: '#FFD700',
-                  letterSpacing: '0.04em',
-                }}
-              >
-                Weekly Cyphers!
+      {/* MAGAZINE HEADER */}
+      <div style={{ background: 'linear-gradient(180deg,rgba(255,45,170,.2) 0%,rgba(6,2,26,1) 100%)', padding: '14px 16px 8px', textAlign: 'center', position: 'relative' }}>
+        {/* Decorative stars */}
+        <div style={{ position: 'absolute', top: 10, left: 30, fontSize: 16, opacity: .3, animation: 'floatStar 3s ease-in-out infinite' }}>⭐</div>
+        <div style={{ position: 'absolute', top: 20, right: 40, fontSize: 12, opacity: .3, animation: 'floatStar 4s ease-in-out infinite .5s' }}>✦</div>
+
+        {/* Status badges */}
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', background: 'rgba(255,45,170,.2)', border: '1px solid rgba(255,45,170,.6)', borderRadius: '4px', padding: '3px 10px', animation: 'badgePulse 2s ease-in-out infinite' }}>
+            <span className="live-dot"></span><span style={{ fontSize: '9px', fontWeight: 800, letterSpacing: '.1em', color: 'var(--pink)' }}>VOTING LIVE</span>
+          </div>
+          <div style={{ background: 'rgba(255,215,0,.15)', border: '1px solid rgba(255,215,0,.5)', borderRadius: '4px', padding: '3px 12px', fontFamily: "'Orbitron',sans-serif", fontSize: '10px', fontWeight: 700, color: 'var(--gold)' }}>{stats.votes.toLocaleString()} VOTES</div>
+          <div style={{ background: 'rgba(230,48,0,.2)', border: '1px solid rgba(230,48,0,.5)', borderRadius: '4px', padding: '3px 10px', fontSize: '9px', fontWeight: 800, letterSpacing: '.1em', color: 'var(--red)' }}>CROWN UPDATING</div>
+        </div>
+
+        {/* MAIN TITLE - Per-letter color cycling */}
+        <div style={{ fontFamily: "'Anton',sans-serif", fontSize: '46px', lineHeight: 1, letterSpacing: '.02em', marginBottom: '3px' }}>
+          <span className="twl" style={{ animationDelay: '0s' }}>T</span><span className="twl" style={{ animationDelay: '.07s' }}>H</span><span className="twl" style={{ animationDelay: '.14s' }}>E</span>
+          <span style={{ color: 'rgba(255,255,255,.2)' }}> </span>
+          <span className="twl" style={{ animationDelay: '.21s' }}>M</span><span className="twl" style={{ animationDelay: '.28s' }}>U</span><span className="twl" style={{ animationDelay: '.35s' }}>S</span><span className="twl" style={{ animationDelay: '.42s' }}>I</span><span className="twl" style={{ animationDelay: '.49s' }}>C</span><span className="twl" style={{ animationDelay: '.56s' }}>I</span><span className="twl" style={{ animationDelay: '.63s' }}>A</span><span className="twl" style={{ animationDelay: '.7s' }}>N</span><span className="twl" style={{ animationDelay: '.77s' }}>'</span><span className="twl" style={{ animationDelay: '.84s' }}>S</span>
+          <span style={{ color: 'rgba(255,255,255,.2)' }}> </span>
+          <span className="twl" style={{ animationDelay: '.91s' }}>I</span><span className="twl" style={{ animationDelay: '.98s' }}>N</span><span className="twl" style={{ animationDelay: '1.05s' }}>D</span><span className="twl" style={{ animationDelay: '1.12s' }}>E</span><span className="twl" style={{ animationDelay: '1.19s' }}>X</span>
+        </div>
+        
+        {/* MAGAZINE TYPEWRITER SUBTITLE */}
+        <div style={{ height: '26px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '10px' }}>
+          <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: '18px', fontWeight: 900, letterSpacing: '.3em', color: 'var(--gold)' }}>{magText}</span><span className="typewriter-cursor" style={{ fontFamily: "'Orbitron',sans-serif", fontSize: '18px', color: 'var(--gold)' }}>|</span>
+        </div>
+
+        {/* Challenge banner — animated rotating challenge types */}
+        <Link href="/challenge/arena" style={{ textDecoration: 'none', display: 'block' }}>
+          <div style={{ background: 'linear-gradient(135deg,rgba(123,0,255,.25),rgba(255,45,170,.15))', border: '1px solid rgba(123,0,255,.5)', borderRadius: '8px', padding: '10px 14px', marginBottom: '8px', cursor: 'pointer', position: 'relative', overflow: 'hidden' }}>
+            {/* animated bg shimmer */}
+            <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(90deg,transparent 0%,rgba(255,255,255,.04) 50%,transparent 100%)', animation: 'colorBg 3s ease infinite', backgroundSize: '400% 100%' }} />
+            <div style={{ position: 'relative', zIndex: 2, textAlign: 'center' }}>
+              <div style={{ fontSize: '13px', fontWeight: 900, color: '#fff', letterSpacing: '.12em', marginBottom: '3px' }}>⚔️ CHALLENGE YOUR SONG HERE</div>
+              <div style={{ height: '18px', overflow: 'hidden', position: 'relative' }}>
+                {['SONG FOR SONG · VIDEO FOR VIDEO · WORK FOR WORK', 'PUT YOUR MUSIC IN THE ARENA — AUDIENCE VOTES', 'TWO SCREENS · ONE WINNER · CROWD DECIDES', 'PASTE A LINK · CHALLENGE GOES LIVE NOW'].map((txt, i) => (
+                  <div key={i} style={{ fontSize: '9px', color: 'rgba(255,255,255,.55)', fontWeight: 700, letterSpacing: '.06em', position: 'absolute', width: '100%', animation: `challengeSlot${i} 14s ease-in-out infinite`, animationDelay: `${i * 3.5}s` }}>{txt}</div>
+                ))}
               </div>
-              <div
-                style={{
-                  fontSize: 11,
-                  fontWeight: 700,
-                  color: 'rgba(255,255,255,0.7)',
-                  letterSpacing: '0.06em',
-                  fontFamily: "'Inter', sans-serif",
-                }}
-              >
-                Who took the crown this week? → Read all articles
+              <div style={{ marginTop: '6px', display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(255,215,0,.15)', border: '1px solid rgba(255,215,0,.4)', borderRadius: '20px', padding: '3px 12px' }}>
+                <span className="live-dot" style={{ width: '5px', height: '5px' }} />
+                <span style={{ fontSize: '9px', fontWeight: 900, color: 'var(--gold)', letterSpacing: '.1em' }}>ARENA OPEN — CHALLENGE NOW</span>
               </div>
             </div>
-            <span style={{ fontSize: 18 }}>⚡</span>
           </div>
         </Link>
 
+        {/* Action buttons */}
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '5px', marginBottom: '5px', flexWrap: 'wrap' }}>
+          <button className="btn" style={{ background: 'rgba(0,255,127,.15)', color: '#00FF7F', border: '1px solid rgba(0,255,127,.4)' }}>JOIN FREE</button>
+          <button className="btn" style={{ background: 'rgba(255,255,255,.07)', color: 'rgba(255,255,255,.7)', border: '1px solid rgba(255,255,255,.2)' }}>LOGIN</button>
+          <button className="btn" style={{ background: 'rgba(255,215,0,.15)', color: 'var(--gold)', border: '1px solid rgba(255,215,0,.35)' }}>CHALLENGE SONG</button>
+          <button className="btn" style={{ background: 'rgba(0,229,255,.12)', color: 'var(--cyan)', border: '1px solid rgba(0,229,255,.3)' }}>CYPHER ARENA</button>
+          <button className="btn" style={{ background: 'rgba(255,45,170,.12)', color: 'var(--pink)', border: '1px solid rgba(255,45,170,.3)' }}>MAGAZINE</button>
+          <button className="btn" style={{ background: 'rgba(155,89,182,.12)', color: '#9B59B6', border: '1px solid rgba(155,89,182,.3)' }}>SPONSOR</button>
+          <button className="btn" style={{ background: 'rgba(230,48,0,.12)', color: 'var(--red)', border: '1px solid rgba(230,48,0,.3)' }}>ADVERTISE</button>
+        </div>
       </div>
+
+      {/* ORBITAL + PANELS SECTION */}
+      <div style={{ position: 'relative', overflow: 'hidden' }}>
+
+        {/* DIRECTION CONTROLS for tabloid underlay */}
+        <div style={{ position: 'absolute', top: '6px', left: '50%', transform: 'translateX(-50%)', zIndex: 30, display: 'flex', gap: '5px', alignItems: 'center' }}>
+          <button onClick={() => setUnderlayDir('left')} className="btn" style={{ background: underlayDir === 'left' ? 'rgba(255,215,0,.8)' : 'rgba(255,215,0,.15)', color: underlayDir === 'left' ? '#000' : 'var(--gold)', fontSize: '8px', padding: '2px 8px', border: underlayDir === 'right' ? '1px solid rgba(255,215,0,.3)' : 'none' }}>◀ TABLOID</button>
+          <button onClick={() => setUnderlayDir('right')} className="btn" style={{ background: underlayDir === 'right' ? 'rgba(255,215,0,.8)' : 'rgba(255,215,0,.15)', color: underlayDir === 'right' ? '#000' : 'var(--gold)', border: underlayDir === 'left' ? '1px solid rgba(255,215,0,.3)' : 'none', fontSize: '8px', padding: '2px 8px' }}>TABLOID ▶</button>
+        </div>
+
+        {/* THE BIG TABLOID UNDERLAY (BEHIND orbital) */}
+        <div style={{ overflow: 'hidden', position: 'absolute', inset: 0, zIndex: 0 }}>
+          <div style={{ display: 'flex', whiteSpace: 'nowrap', animation: underlayDir === 'left' ? 'scrollLeft 16s linear infinite' : 'scrollRight 16s linear infinite', opacity: .9, width: 'max-content' }}>
+            {Array(3).fill(0).map((_, idx) => (
+              <React.Fragment key={idx}>
+                {panels.map((p, i) => (
+                  <div key={`${idx}-${i}`} className="mag-panel" style={{ background: p.bg, height: '200px' }}>
+                    <div style={{ background: p.hdr, padding: '6px 8px' }}><div style={{ fontSize: '6px', fontWeight: 700, color: 'rgba(255,255,255,.6)' }}>THE MUSICIAN'S INDEX · VOL.1 · $4.99</div></div>
+                    <div style={{ padding: '10px 8px', flex: 1 }}>
+                      <div style={{ fontFamily: "'Anton',sans-serif", fontSize: '22px', color: p.hdr === '#000' ? (p.bg === '#FF1493' ? '#FFD700' : p.bg === '#000' ? '#FFD700' : '#000') : '#000', lineHeight: 1, marginBottom: '5px' }}>{p.title}</div>
+                      <div style={{ background: p.c1, padding: '4px 6px', marginBottom: '3px' }}><div style={{ fontSize: '7px', fontWeight: 800, color: '#000' }}>{p.sub}</div><div style={{ fontFamily: "'Anton',sans-serif", fontSize: '14px', color: '#000' }}>{p.artist}</div></div>
+                      <div style={{ fontSize: '7px', color: 'rgba(0,0,0,.6)' }}>{p.tag}</div>
+                    </div>
+                    <div style={{ background: '#000', padding: '4px 8px', fontSize: '7px', fontWeight: 700, color: p.hdr === '#000' ? p.c1 : '#FFD700' }}>{p.cta}</div>
+                  </div>
+                ))}
+              </React.Fragment>
+            ))}
+          </div>
+        </div>
+
+        {/* Radial vignette overlay */}
+        <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 72% 88% at center,transparent 20%,rgba(6,2,26,.9) 100%)', pointerEvents: 'none', zIndex: 2 }}></div>
+        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(90deg,rgba(6,2,26,.9) 0%,transparent 18%,transparent 82%,rgba(6,2,26,.9) 100%)', pointerEvents: 'none', zIndex: 2 }}></div>
+
+        {/* MAIN 3-RAIL LAYOUT */}
+        <div style={{ position: 'relative', zIndex: 10, display: 'flex', alignItems: 'stretch', minHeight: '420px' }}>
+
+          {/* LEFT PANEL */}
+          <div style={{ display: 'flex', alignItems: 'stretch', marginRight: '6px', padding: '10px 0 10px 8px' }}>
+            <div style={{ width: leftOpen ? '152px' : '0px', transition: 'all .35s ease', overflow: 'hidden' }}>
+              <div className="left-panel-body" style={{ background: 'rgba(6,2,26,.95)', border: '1px solid rgba(255,45,170,.35)', borderRadius: '8px 0 0 8px', height: '100%', display: 'flex', flexDirection: 'column' }}>
+                <div style={{ display: 'flex', gap: '2px', padding: '5px 5px 4px', borderBottom: '1px solid rgba(255,255,255,.08)' }}>
+                  <button className="tab-btn" onClick={() => setLTab(0)} style={{ background: lTab === 0 ? 'rgba(255,45,170,.25)' : 'rgba(255,255,255,.06)', color: lTab === 0 ? 'var(--pink)' : 'rgba(255,255,255,.4)' }}>PROMO</button>
+                  <button className="tab-btn" onClick={() => setLTab(1)} style={{ background: lTab === 1 ? 'rgba(255,140,0,.2)' : 'rgba(255,255,255,.06)', color: lTab === 1 ? 'var(--amber)' : 'rgba(255,255,255,.4)' }}>VENUE</button>
+                  <button className="tab-btn" onClick={() => setLTab(2)} style={{ background: lTab === 2 ? 'rgba(0,229,255,.15)' : 'rgba(255,255,255,.06)', color: lTab === 2 ? 'var(--cyan)' : 'rgba(255,255,255,.4)' }}>ADS</button>
+                </div>
+                <div style={{ flex: 1, overflow: 'hidden', padding: '6px 7px', fontSize: '9px' }}>
+                  {renderLeftContent()}
+                </div>
+              </div>
+            </div>
+            <div onClick={() => setLeftOpen(!leftOpen)} style={{ background: 'rgba(255,45,170,.2)', border: '1px solid rgba(255,45,170,.4)', borderRadius: '0 5px 5px 0', width: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', writingMode: 'vertical-lr', fontSize: '7px', fontWeight: 800, color: 'var(--pink)', letterSpacing: '.1em', userSelect: 'none' }}>
+              {leftOpen ? '◂ PANEL' : '▸ PANEL'}
+            </div>
+          </div>
+
+          {/* ORBITAL CENTER */}
+          <div style={{ flex: 1, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '400px' }}>
+            {/* Weekly Crown Orbit label */}
+            <div style={{ position: 'absolute', top: '4px', left: 0, right: 0, textAlign: 'center', zIndex: 15 }}>
+              <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: '13px', fontWeight: 900, color: 'var(--gold)', textShadow: '0 0 15px rgba(255,215,0,.6)' }}>WEEKLY CROWN ORBIT</div>
+              <div style={{ fontSize: '7px', color: 'rgba(255,255,255,.3)', letterSpacing: '.15em' }}>TOP RANKED · LIVE NOW · REAL TIME</div>
+            </div>
+
+            {/* Orbital SVG rings */}
+            <div style={{ position: 'relative', width: '340px', height: '340px' }}>
+              <svg viewBox="0 0 340 340" width="340" height="340" style={{ position: 'absolute', inset: 0, overflow: 'visible' }}>
+                <circle cx="170" cy="170" r="164" fill="none" stroke="rgba(255,215,0,.12)" strokeWidth="1"/>
+                <circle cx="170" cy="170" r="142" fill="none" stroke="rgba(255,45,170,.15)" strokeWidth=".7" strokeDasharray="4 9"/>
+                <circle cx="170" cy="170" r="94" fill="none" stroke="rgba(0,229,255,.12)" strokeWidth=".6" strokeDasharray="3 11"/>
+                <circle cx="170" cy="170" r="60" fill="rgba(6,2,26,.97)" stroke="rgba(0,229,255,.6)" strokeWidth="1.5"/>
+                <circle cx="170" cy="170" r="56" fill="none" stroke="rgba(255,215,0,.2)" strokeWidth=".4"/>
+                {/* Color glow behind orbital */}
+                <circle cx="170" cy="170" r="164" fill="none" stroke="rgba(255,215,0,.04)" strokeWidth="30"/>
+              </svg>
+
+              {/* Rotating performer nodes */}
+              <div className="orbit-ring" style={{ position: 'absolute', inset: 0, transformOrigin: '170px 170px' }}>
+                <div className="node-ctr" style={{ position: 'absolute', top: '14px', left: '134px', transformOrigin: '36px 156px' }}><div style={{ background: 'rgba(255,45,170,.22)', border: '1.5px solid var(--pink)', borderRadius: '6px', padding: '4px 7px', textAlign: 'center', minWidth: '72px' }}><div style={{ fontSize: '6px', color: 'var(--pink)', fontWeight: 800 }}>#1 <span className="live-dot" style={{ width: '4px', height: '4px' }}></span></div><div style={{ fontSize: '8px', fontWeight: 800 }}>ASTRA NOVA</div><div style={{ fontSize: '6px', color: 'rgba(255,255,255,.4)' }}>R&B</div></div></div>
+                <div className="node-ctr" style={{ position: 'absolute', top: '46px', right: '24px', transformOrigin: '-92px 124px' }}><div style={{ background: 'rgba(255,215,0,.18)', border: '1.5px solid var(--gold)', borderRadius: '6px', padding: '4px 7px', textAlign: 'center', minWidth: '72px' }}><div style={{ fontSize: '6px', color: 'var(--gold)', fontWeight: 800 }}>#2</div><div style={{ fontSize: '8px', fontWeight: 800 }}>PRISM VEX</div><div style={{ fontSize: '6px', color: 'rgba(255,255,255,.4)' }}>EDM</div></div></div>
+                <div className="node-ctr" style={{ position: 'absolute', top: '122px', right: '10px', transformOrigin: '-124px 48px' }}><div style={{ background: 'rgba(0,255,127,.12)', border: '1.5px solid #00FF7F', borderRadius: '6px', padding: '4px 7px', textAlign: 'center', minWidth: '72px' }}><div style={{ fontSize: '6px', color: '#00FF7F', fontWeight: 800 }}>#3</div><div style={{ fontSize: '8px', fontWeight: 800 }}>ZION FREQ</div><div style={{ fontSize: '6px', color: 'rgba(255,255,255,.4)' }}>Gospel</div></div></div>
+                <div className="node-ctr" style={{ position: 'absolute', bottom: '62px', right: '20px', transformOrigin: '-98px -128px' }}><div style={{ background: 'rgba(0,229,255,.12)', border: '1.5px solid var(--cyan)', borderRadius: '6px', padding: '4px 7px', textAlign: 'center', minWidth: '72px' }}><div style={{ fontSize: '6px', color: 'var(--cyan)', fontWeight: 800 }}>#4</div><div style={{ fontSize: '8px', fontWeight: 800 }}>FLEX KING</div><div style={{ fontSize: '6px', color: 'rgba(255,255,255,.4)' }}>Dance</div></div></div>
+                <div className="node-ctr" style={{ position: 'absolute', bottom: '16px', left: '170px', transformOrigin: '-42px -156px' }}><div style={{ background: 'rgba(155,89,182,.18)', border: '1.5px solid #9B59B6', borderRadius: '6px', padding: '4px 7px', textAlign: 'center', minWidth: '72px' }}><div style={{ fontSize: '6px', color: '#9B59B6', fontWeight: 800 }}>#5</div><div style={{ fontSize: '8px', fontWeight: 800 }}>SONG CHALL</div><div style={{ fontSize: '6px', color: 'rgba(255,255,255,.4)' }}>Hip-Hop</div></div></div>
+                <div className="node-ctr" style={{ position: 'absolute', bottom: '16px', left: '130px', transformOrigin: '40px -156px' }}><div style={{ background: 'rgba(255,140,0,.14)', border: '1.5px solid var(--amber)', borderRadius: '6px', padding: '4px 7px', textAlign: 'center', minWidth: '72px' }}><div style={{ fontSize: '6px', color: 'var(--amber)', fontWeight: 800 }}>#6</div><div style={{ fontSize: '8px', fontWeight: 800 }}>MAIN LOBBY</div><div style={{ fontSize: '6px', color: 'rgba(255,255,255,.4)' }}>Various</div></div></div>
+                <div className="node-ctr" style={{ position: 'absolute', bottom: '62px', left: '10px', transformOrigin: '112px -126px' }}><div style={{ background: 'rgba(230,48,0,.18)', border: '1.5px solid var(--red)', borderRadius: '6px', padding: '4px 7px', textAlign: 'center', minWidth: '72px' }}><div style={{ fontSize: '6px', color: 'var(--red)', fontWeight: 800 }}>#7 <span className="live-dot" style={{ width: '4px', height: '4px' }}></span></div><div style={{ fontSize: '8px', fontWeight: 800 }}>BATTLE FLR</div><div style={{ fontSize: '6px', color: 'var(--red)' }}>LIVE</div></div></div>
+                <div className="node-ctr" style={{ position: 'absolute', top: '122px', left: '10px', transformOrigin: '126px 48px' }}><div style={{ background: 'rgba(255,215,0,.1)', border: '1.5px solid rgba(255,215,0,.4)', borderRadius: '6px', padding: '4px 7px', textAlign: 'center', minWidth: '72px' }}><div style={{ fontSize: '6px', color: 'var(--gold)', fontWeight: 800 }}>#8</div><div style={{ fontSize: '8px', fontWeight: 800 }}>LAGOS BURST</div><div style={{ fontSize: '6px', color: 'rgba(255,255,255,.4)' }}>Afrobeat</div></div></div>
+                <div className="node-ctr" style={{ position: 'absolute', top: '46px', left: '24px', transformOrigin: '92px 124px' }}><div style={{ background: 'rgba(0,229,255,.1)', border: '1.5px solid rgba(0,229,255,.35)', borderRadius: '6px', padding: '4px 7px', textAlign: 'center', minWidth: '72px' }}><div style={{ fontSize: '6px', color: 'var(--cyan)', fontWeight: 800 }}>#9</div><div style={{ fontSize: '8px', fontWeight: 800 }}>NOVA LAUGH</div><div style={{ fontSize: '6px', color: 'rgba(255,255,255,.4)' }}>Comedy</div></div></div>
+                <div className="node-ctr" style={{ position: 'absolute', top: '14px', left: '110px', transformOrigin: '60px 156px' }}><div style={{ background: 'rgba(255,45,170,.1)', border: '1.5px solid rgba(255,45,170,.3)', borderRadius: '6px', padding: '4px 7px', textAlign: 'center', minWidth: '72px' }}><div style={{ fontSize: '6px', color: 'var(--pink)', fontWeight: 800 }}>#10</div><div style={{ fontSize: '8px', fontWeight: 800 }}>DANCE CREW</div><div style={{ fontSize: '6px', color: 'rgba(255,255,255,.4)' }}>Dance</div></div></div>
+              </div>
+
+              {/* Center hub */}
+              <div className="center-glow" style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: '116px', height: '116px', borderRadius: '50%', background: 'rgba(6,2,26,.98)', border: '2px solid rgba(0,229,255,.7)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', zIndex: 15 }}>
+                <div style={{ fontSize: '7px', color: 'rgba(255,255,255,.3)', letterSpacing: '.15em' }}>HOME 1/6</div>
+                <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: '10px', fontWeight: 900, color: 'var(--pink)', lineHeight: 1.2, margin: '2px 0' }}>ASTRA<br/>NOVA</div>
+                <div style={{ fontSize: '7px', color: 'rgba(255,255,255,.4)' }}>R&B · LIVE</div>
+                <span className="live-dot" style={{ marginTop: '3px' }}></span>
+              </div>
+            </div>
+
+            {/* BACK/NEXT arrows */}
+            <div style={{ position: 'absolute', left: 0, bottom: '8px' }}><button className="btn" style={{ background: 'rgba(0,0,0,.6)', border: '1px solid rgba(255,255,255,.2)', color: '#fff', padding: '5px 10px', borderRadius: '16px' }}>◀ BACK</button></div>
+            <div style={{ position: 'absolute', right: 0, bottom: '8px' }}><button className="btn" style={{ background: 'rgba(0,0,0,.6)', border: '1px solid rgba(255,255,255,.2)', color: '#fff', padding: '5px 10px', borderRadius: '16px' }}>NEXT ▶</button></div>
+          </div>
+
+          {/* RIGHT PANEL */}
+          <div style={{ display: 'flex', alignItems: 'stretch', marginLeft: '6px', padding: '10px 8px 10px 0' }}>
+            <div onClick={() => setRightOpen(!rightOpen)} style={{ background: 'rgba(255,215,0,.18)', border: '1px solid rgba(255,215,0,.4)', borderRadius: '5px 0 0 5px', width: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', writingMode: 'vertical-lr', fontSize: '7px', fontWeight: 800, color: 'var(--gold)', letterSpacing: '.1em', userSelect: 'none', transform: 'rotate(180deg)' }}>
+              {rightOpen ? '◂ PANEL' : '▸ PANEL'}
+            </div>
+            <div style={{ width: rightOpen ? '152px' : '0px', transition: 'all .35s ease', overflow: 'hidden' }}>
+              <div className="right-panel-body" style={{ background: 'rgba(6,2,26,.95)', border: '1px solid rgba(255,215,0,.35)', borderRadius: '0 8px 8px 0', height: '100%', display: 'flex', flexDirection: 'column' }}>
+                <div style={{ display: 'flex', gap: '2px', padding: '5px 5px 4px', borderBottom: '1px solid rgba(255,255,255,.08)' }}>
+                  <button className="tab-btn" onClick={() => setRTab(0)} style={{ background: rTab === 0 ? 'rgba(255,215,0,.25)' : 'rgba(255,255,255,.06)', color: rTab === 0 ? 'var(--gold)' : 'rgba(255,255,255,.4)' }}>RANKS</button>
+                  <button className="tab-btn" onClick={() => setRTab(1)} style={{ background: rTab === 1 ? 'rgba(255,140,0,.2)' : 'rgba(255,255,255,.06)', color: rTab === 1 ? 'var(--amber)' : 'rgba(255,255,255,.4)' }}>ADS</button>
+                  <button className="tab-btn" onClick={() => setRTab(2)} style={{ background: rTab === 2 ? 'rgba(255,45,170,.2)' : 'rgba(255,255,255,.06)', color: rTab === 2 ? 'var(--pink)' : 'rgba(255,255,255,.4)' }}>PROMO</button>
+                </div>
+                <div style={{ flex: 1, overflow: 'hidden', padding: '6px 7px', fontSize: '9px' }}>
+                  {renderRightContent()}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* MOVING RAIL #2 (BELOW ORBITAL) ← RIGHT DIRECTION */}
+      <div style={{ background: 'linear-gradient(90deg,var(--pink),var(--purple),var(--cyan),var(--gold),var(--pink))', backgroundSize: '400% 100%', animation: 'colorBg 8s ease infinite', overflow: 'hidden', height: '24px', position: 'relative', borderTop: '1px solid rgba(255,255,255,.15)', borderBottom: '1px solid rgba(255,255,255,.15)' }}>
+        <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.6)' }}></div>
+        <div className="rail-r" style={{ position: 'relative', zIndex: 2 }}>
+          {Array(4).fill(0).map((_, i) => (
+            <React.Fragment key={i}>
+              {RAIL2_MSGS.map((m, j) => (
+                <span key={`${i}-${j}`} style={{ fontSize: '9px', fontWeight: 700, color: 'var(--cyan)', padding: '0 20px', lineHeight: '22px', whiteSpace: 'nowrap' }}>{m}</span>
+              ))}
+            </React.Fragment>
+          ))}
+        </div>
+      </div>
+
+      {/* VIDEO MONITORS */}
+      <div style={{ background: 'rgba(0,0,0,.4)', padding: '10px 12px', borderBottom: '1px solid rgba(255,255,255,.06)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+          <div style={{ fontSize: '9px', fontWeight: 700, color: 'rgba(255,255,255,.4)', letterSpacing: '.1em' }}>🎬 LIVE PREVIEW MONITORS — HOME 1</div>
+          <div style={{ fontSize: '8px', color: 'rgba(255,255,255,.3)' }}>Each tile updates independently</div>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginBottom: '8px' }}>
+          {[0, 1, 2].map(i => (
+            <div key={i} className="video-tile" style={{ aspectRatio: '16/9', animation: vtFlip[i] ? 'tileFlip .6s ease' : 'none' }}>
+              <div className="live-badge">LIVE</div><div className="v-count">{vtViewers[i].toLocaleString()}</div>
+              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '32px', opacity: .6 }}>{VT_DATA[i].emojis[vtIdx[i]]}</div>
+              <div className="v-name">{VT_DATA[i].names[vtIdx[i]]}</div>
+            </div>
+          ))}
+        </div>
+        {/* Sponsor Ad Rail */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px' }}>
+          <div style={{ background: 'rgba(255,215,0,.06)', border: '1px solid rgba(255,215,0,.2)', borderRadius: '5px', padding: '6px 8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '8px', color: 'rgba(255,255,255,.5)' }}>🎵 Beats By TMX</span>
+            <button className="btn" style={{ background: 'rgba(255,215,0,.15)', color: 'var(--gold)', border: '1px solid rgba(255,215,0,.25)', fontSize: '7px', padding: '2px 6px' }}>VISIT</button>
+          </div>
+          <div style={{ background: 'rgba(0,229,255,.05)', border: '1px solid rgba(0,229,255,.2)', borderRadius: '5px', padding: '6px 8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '8px', color: 'rgba(255,255,255,.5)' }}>🎙 BerntoutStudio AI</span>
+            <button className="btn" style={{ background: 'rgba(0,229,255,.12)', color: 'var(--cyan)', border: '1px solid rgba(0,229,255,.25)', fontSize: '7px', padding: '2px 6px' }}>TRY</button>
+          </div>
+          <div style={{ background: 'rgba(255,45,170,.05)', border: '1px solid rgba(255,45,170,.25)', borderRadius: '5px', padding: '6px 8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '8px', color: 'var(--pink)' }}>📢 ADVERTISE FROM $25</span>
+            <button className="btn" style={{ background: 'var(--pink)', color: '#fff', fontSize: '7px', padding: '2px 6px' }}>→</button>
+          </div>
+        </div>
+      </div>
+
+      {/* BILLBOARD LIVE WALL — octagon/hexagon/torn-edge performer grid */}
+      <div style={{ padding: '16px 12px 12px', background: 'rgba(0,0,0,.45)', borderTop: '1px solid rgba(0,229,255,.12)', borderBottom: '1px solid rgba(0,229,255,.1)' }}>
+        <BillboardLiveWall mode="home" maxTiles={12} title="LIVE RIGHT NOW" showActions />
+      </div>
+
+      {/* NEWS + INTERVIEWS */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0, borderTop: '1px solid rgba(255,215,0,.15)' }}>
+        <div style={{ background: 'rgba(6,2,26,.98)', borderRight: '1px solid rgba(255,255,255,.07)', padding: '10px 12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '7px' }}>
+            <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: '10px', fontWeight: 900, color: '#fff' }}>NEWS BELT</div>
+            <div style={{ background: 'rgba(255,45,170,.2)', border: '1px solid var(--pink)', borderRadius: '3px', padding: '1px 6px', fontSize: '8px', fontWeight: 700, color: 'var(--pink)' }}>ROLLING</div>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <div style={{ fontSize: '9px', color: 'rgba(255,255,255,.5)', padding: '3px 0', borderBottom: '1px solid rgba(255,255,255,.05)' }}>⚔️ Battle Night — Wavetek holds crown 3rd week</div>
+            <div style={{ fontSize: '9px', color: 'rgba(255,255,255,.5)', padding: '3px 0', borderBottom: '1px solid rgba(255,255,255,.05)' }}>🎤 Cypher Arena breaks attendance record</div>
+            <div style={{ fontSize: '9px', color: 'rgba(255,255,255,.5)', padding: '3px 0' }}>🌍 Krypt drops album midnight tonight</div>
+          </div>
+        </div>
+        <div style={{ background: 'rgba(6,2,26,.98)', padding: '10px 12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '7px' }}>
+            <div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: '10px', fontWeight: 900, color: '#fff' }}>INTERVIEWS</div>
+            <div style={{ background: 'rgba(0,255,127,.15)', border: '1px solid rgba(0,255,127,.4)', borderRadius: '3px', padding: '1px 6px', fontSize: '8px', fontWeight: 700, color: '#00FF7F' }}>NEW</div>
+            <span className="live-dot" style={{ width: '5px', height: '5px' }}></span><span style={{ fontSize: '8px', color: 'var(--red)' }}>LIVE</span>
+          </div>
+          <div style={{ fontSize: '11px', fontWeight: 800, color: 'var(--gold)', marginBottom: '2px' }}>Amirah Wells: Touring, Healing</div>
+          <div style={{ fontSize: '9px', color: 'rgba(255,255,255,.5)', lineHeight: 1.5 }}>Exclusive sit-down about her journey from streets to stage. TMI's top R&B artist.</div>
+        </div>
+      </div>
+
+      {/* CTA BUTTONS */}
+      <div style={{ background: 'rgba(6,2,26,.97)', padding: '10px 12px', borderTop: '1px solid rgba(255,255,255,.06)' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5px', marginBottom: '5px' }}>
+          <button className="btn" style={{ background: 'var(--purple)', color: '#fff', padding: '9px', fontSize: '11px', borderRadius: '7px' }}>JOIN TMI</button>
+          <button className="btn" style={{ background: 'var(--cyan)', color: '#000', padding: '9px', fontSize: '11px', borderRadius: '7px' }}>READ MAGAZINE</button>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5px', marginBottom: '5px' }}>
+          <button className="btn" style={{ background: 'var(--pink)', color: '#fff', padding: '9px', fontSize: '11px', borderRadius: '7px' }}>VOTE LIVE</button>
+          <button className="btn" style={{ background: 'var(--red)', color: '#fff', padding: '9px', fontSize: '11px', borderRadius: '7px' }}>JOIN BATTLE</button>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '5px' }}>
+          <button className="btn" style={{ background: 'var(--gold)', color: '#000', padding: '7px', borderRadius: '6px' }}>SEE ROOMS</button>
+          <button className="btn" style={{ background: 'rgba(0,229,255,.12)', color: 'var(--cyan)', border: '1px solid rgba(0,229,255,.3)', padding: '7px', borderRadius: '6px' }}>CYPHER</button>
+          <button className="btn" style={{ background: 'rgba(155,89,182,.15)', color: '#9B59B6', border: '1px solid rgba(155,89,182,.3)', padding: '7px', borderRadius: '6px' }}>SPONSOR</button>
+        </div>
+        {/* Live stats */}
+        <div style={{ display: 'flex', justifyContent: 'space-around', marginTop: '8px', padding: '5px 10px', background: 'rgba(0,0,0,.35)', border: '1px solid rgba(255,215,0,.12)', borderRadius: '6px' }}>
+          <div style={{ textAlign: 'center' }}><div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: '13px', color: 'var(--pink)' }}>11</div><div style={{ fontSize: '7px', color: 'rgba(255,255,255,.3)', letterSpacing: '.08em' }}>LIVE</div></div>
+          <div style={{ textAlign: 'center' }}><div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: '13px', color: 'var(--gold)' }}>{stats.watchers.toLocaleString()}</div><div style={{ fontSize: '7px', color: 'rgba(255,255,255,.3)' }}>WATCHING</div></div>
+          <div style={{ textAlign: 'center' }}><div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: '13px', color: 'var(--green)' }}>${(stats.tips >= 1000 ? (stats.tips / 1000).toFixed(1) + 'K' : stats.tips)}</div><div style={{ fontSize: '7px', color: 'rgba(255,255,255,.3)' }}>TIPS</div></div>
+          <div style={{ textAlign: 'center' }}><div style={{ fontFamily: "'Orbitron',sans-serif", fontSize: '13px', color: 'var(--cyan)' }}>{stats.votes.toLocaleString()}</div><div style={{ fontSize: '7px', color: 'rgba(255,255,255,.3)' }}>VOTES</div></div>
+        </div>
+      </div>
+
+      {/* BOTTOM NAV */}
+      <div style={{ background: 'rgba(6,2,26,.97)', borderTop: '1px solid rgba(255,255,255,.07)', padding: '5px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '4px' }}>
+          <button className="btn" style={{ background: 'rgba(255,45,170,.18)', color: 'var(--pink)', border: '1px solid rgba(255,45,170,.35)' }}>SIGN IN</button>
+          <button className="btn" style={{ background: 'var(--gold)', color: '#000' }}>+ SUBMIT</button>
+        </div>
+        <div style={{ fontSize: '8px', color: 'rgba(255,255,255,.3)' }}><span className="live-dot" style={{ width: '4px', height: '4px' }}></span>11 VENUES LIVE</div>
+        <div style={{ display: 'flex', gap: '4px' }}>
+          <button className="btn" style={{ background: 'rgba(255,255,255,.07)', color: 'rgba(255,255,255,.5)', border: '1px solid rgba(255,255,255,.15)' }}>OPEN GUIDE</button>
+          <button className="btn" style={{ background: 'rgba(230,48,0,.15)', color: 'var(--red)', border: '1px solid rgba(230,48,0,.3)' }}>BETA FEEDBACK</button>
+        </div>
+      </div>
+
+      {/* 80s magazine print grain + gloss (rendered on top of everything) */}
+      <div className="tmi-grain" aria-hidden="true" />
+      <div className="tmi-gloss" aria-hidden="true" />
     </div>
   );
 }

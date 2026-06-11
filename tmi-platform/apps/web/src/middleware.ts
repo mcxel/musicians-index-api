@@ -51,7 +51,27 @@ export function middleware(req: NextRequest) {
 
   // Auth page guard — redirect authenticated users away from /auth
   if (pathname === "/auth" && sessionId && sessionToken) {
-    return NextResponse.redirect(new URL("/onboarding", req.url));
+    const role = (req.cookies.get("tmi_role")?.value ?? "").toLowerCase();
+
+    switch (role) {
+      case "admin":
+      case "staff":
+        return NextResponse.redirect(new URL("/admin", req.url));
+      case "artist":
+        return NextResponse.redirect(new URL("/dashboard/artist", req.url));
+      case "fan":
+        return NextResponse.redirect(new URL("/dashboard/fan", req.url));
+      case "sponsor":
+      case "advertiser":
+        return NextResponse.redirect(new URL("/dashboard/sponsor", req.url));
+      case "performer":
+        return NextResponse.redirect(new URL("/dashboard/performer", req.url));
+      case "venue":
+      case "promoter":
+        return NextResponse.redirect(new URL("/dashboard/venue", req.url));
+      default:
+        return NextResponse.redirect(new URL("/onboarding", req.url));
+    }
   }
 
   // Admin guard — authentication + role check
