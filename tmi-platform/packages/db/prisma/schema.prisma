@@ -361,6 +361,12 @@ enum AuditLogAction {
   USER_ROLE_CHANGED
   OFFICIAL_LINK_ADDED
   OFFICIAL_LINK_REMOVED
+
+  // Beat Economy Actions
+  BEAT_SUBMITTED
+  BEAT_ADMIN_SUBMITTED
+  BEAT_PUBLISHED
+  BEAT_ASSIGNED
 }
 
 model AuditLog {
@@ -581,7 +587,6 @@ model RefundPolicy {
   id          String   @id @default(cuid())
   name        String
   description String?
-  // JSON rules: refundableUntilHours, refundableFees, partialAllowed, tierRules, etc
   rules       Json
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -1111,8 +1116,33 @@ model Beat {
   premiumPrice   Int
   exclusivePrice Int?
   status         String        @default("draft")
+  
+  // Phase B: Attribution & Moderation
+  moderationStatus String      @default("PENDING")
+  adminSubmitted Boolean       @default(false)
+  producerName   String?
+
   playCount      Int           @default(0)
   licenses       BeatLicense[]
+  assignments    BeatAssignment[]
+
+  // Phase C: Beat Health Score
+  usageScore     Float         @default(0)
+  skipRate       Float         @default(0)
+  completionRate Float         @default(0)
+  purchaseRate   Float         @default(0)
+  audienceRating Float         @default(0)
+
+  // Phase C: Battle-Safe Segments (stored in milliseconds)
+  markerIntro    Int?
+  markerVerseA   Int?
+  markerHook     Int?
+  markerVerseB   Int?
+  markerBridge   Int?
+  markerOutro    Int?
+
+  usageHistory   BeatUsageHistory[]
+  vetos          BeatVeto[]
   createdAt      DateTime      @default(now())
 
   @@index([genre, status])
@@ -1131,6 +1161,48 @@ model BeatLicense {
   createdAt   DateTime @default(now())
 
   @@unique([beatId, buyerId, type])
+}
+
+// Maps a beat to a specific live event
+model BeatAssignment {
+  id          String   @id @default(cuid())
+  beatId      String
+  beat        Beat     @relation(fields: [beatId], references: [id], onDelete: Cascade)
+  targetType  String   // e.g., "battle", "cypher", "tournament", "challenge"
+  targetId    String   // ID of the target event
+  assignedAt  DateTime @default(now())
+
+  @@unique([beatId, targetType, targetId])
+  @@map("beat_assignments")
+}
+
+// Phase C: Tracks every time a beat is dropped in a room
+model BeatUsageHistory {
+  id          String   @id @default(cuid())
+  beatId      String
+  beat        Beat     @relation(fields: [beatId], references: [id], onDelete: Cascade)
+  roomId      String
+  eventId     String?
+  performerId String?
+  result      String   // "win", "loss", "skip", "complete"
+  createdAt   DateTime @default(now())
+
+  @@index([beatId, result])
+  @@index([roomId])
+  @@map("beat_usage_history")
+}
+
+// Phase C: Tracks individual fan vetoes to prevent double-voting
+model BeatVeto {
+  id          String   @id @default(cuid())
+  roomId      String
+  beatId      String
+  beat        Beat     @relation(fields: [beatId], references: [id], onDelete: Cascade)
+  userId      String
+  createdAt   DateTime @default(now())
+
+  @@unique([roomId, beatId, userId])
+  @@map("beat_vetos")
 }
 
 // -- COMPETITIONS & SEASONS ----------------------------------------------------
@@ -2637,4 +2709,44 @@ model BotRunLog {
   startedAt   DateTime @default(now())
   completedAt DateTime?
   @@map("bot_run_logs")
+}
+
+// ==============================================================================
+// SEATING & PRESENCE ENGINE (P0 CRITICAL)
+// ==============================================================================
+
+model SeatReservation {
+  id          String   @id @default(uuid())
+  roomId      String
+  seatId      String
+  userId      String
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([roomId, seatId])
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model RoomSeatState {
+  id          String   @id @default(uuid())
+  roomId      String
+  seatId      String
+  currentUser String?
+  occupied    Boolean  @default(false)
+
+  @@unique([roomId, seatId])
+}
+
+model RoomPresence {
+  id         String   @id @default(uuid())
+  roomId     String
+  userId     String
+  lastSeenAt DateTime @default(now())
+  connected  Boolean  @default(true)
+
+  @@unique([roomId, userId])
+  @@index([roomId])
+  @@index([lastSeenAt])
 }
