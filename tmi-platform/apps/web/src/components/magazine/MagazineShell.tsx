@@ -6,6 +6,10 @@ import { TIMING } from "@/lib/motion/timingRegistry";
 import { prefersReducedMotion } from "@/lib/motion/reducedMotionGuard";
 import { TmiMagazineAudioEngine } from "@/lib/magazine/tmiMagazineAudioEngine";
 import GlitchOverlay from "@/components/motion/GlitchOverlay";
+import { useGamificationEngine } from "@/hooks/useGamificationEngine";
+
+// Auto-advance interval in ms (10 seconds per spread)
+const AUTO_ADVANCE_MS = 10_000;
 
 // Pages at this index and beyond require a subscription to read
 const FREE_PAGE_THRESHOLD = 4;
@@ -161,10 +165,16 @@ export default function MagazineShell({
   const [flipPhase, setFlipPhase] = useState<FlipPhase>(null);
   const [isWide, setIsWide] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
+  const [autoPlay, setAutoPlay] = useState(true);
+  const [hovering, setHovering] = useState(false);
+  const [xpToast, setXpToast] = useState<{ amount: number } | null>(null);
   const reduced = prefersReducedMotion();
+  const { trackAction } = useGamificationEngine();
   const containerRef = useRef<HTMLDivElement>(null);
   const touchStartX = useRef<number | null>(null);
   const audioRef = useRef<TmiMagazineAudioEngine | null>(null);
+  const autoTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const xpToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const stateRef = useRef({ currentLeft, flipping, flipPhase, isWide });
   stateRef.current = { currentLeft, flipping, flipPhase, isWide };
 
@@ -246,6 +256,7 @@ export default function MagazineShell({
     audioRef.current?.playPageTurn();
     setFlipping(dir);
     setFlipPhase("out");
+    grantReadXP();
 
     // Out-phase complete: swap content and snap to the other side (no transition)
     window.setTimeout(() => {
@@ -266,7 +277,7 @@ export default function MagazineShell({
         });
       });
     }, HALF_FLIP);
-  }, [reduced, pages, onPageChange]);
+  }, [reduced, pages, onPageChange, grantReadXP]);
 
   const goNext = useCallback(() => {
     const { currentLeft: cl, flipping: f } = stateRef.current;
@@ -299,6 +310,24 @@ export default function MagazineShell({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [goNext, goPrev]);
+
+  // Auto-advance timer — pauses when user hovers, touches, or reaches the last spread
+  useEffect(() => {
+    if (autoTimerRef.current) clearInterval(autoTimerRef.current);
+    if (!autoPlay || hovering || isLast || !!flipping) return;
+    autoTimerRef.current = setInterval(() => {
+      goNext();
+    }, AUTO_ADVANCE_MS);
+    return () => { if (autoTimerRef.current) clearInterval(autoTimerRef.current); };
+  }, [autoPlay, hovering, isLast, flipping, goNext]);
+
+  // Grant XP for each spread view (client-side gamification engine)
+  const grantReadXP = useCallback(() => {
+    trackAction("READ_ARTICLE");
+    if (xpToastTimerRef.current) clearTimeout(xpToastTimerRef.current);
+    setXpToast({ amount: 20 });
+    xpToastTimerRef.current = setTimeout(() => setXpToast(null), 3000);
+  }, [trackAction]);
 
   // Swipe handlers
   function onTouchStart(e: React.TouchEvent) {
@@ -385,15 +414,41 @@ export default function MagazineShell({
         gridTemplateRows: "auto 1fr auto",
       }}
     >
+      {/* XP toast */}
+      {xpToast && (
+        <div
+          aria-live="polite"
+          style={{
+            position: "fixed",
+            bottom: 80,
+            right: 24,
+            zIndex: 999,
+            background: "linear-gradient(135deg,#00FF88,#00C8FF)",
+            color: "#050510",
+            padding: "10px 18px",
+            borderRadius: 10,
+            fontWeight: 900,
+            fontSize: 12,
+            letterSpacing: "0.08em",
+            boxShadow: "0 4px 24px rgba(0,255,136,0.4)",
+            animation: "fadeInUp 0.25s ease",
+          }}
+        >
+          +{xpToast.amount} XP — keep reading to earn more!
+        </div>
+      )}
+
       {/* Masthead */}
       <header style={{
         padding: "12px 28px",
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
+        gap: 12,
         borderBottom: "1px solid rgba(0,255,255,0.1)",
         background: "rgba(5,5,16,0.8)",
         backdropFilter: "blur(8px)",
+        flexWrap: "wrap",
       }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
           <span style={{ fontSize: 8, letterSpacing: "0.4em", color: "#FF2DAA", fontWeight: 800, textTransform: "uppercase" }}>
@@ -403,19 +458,56 @@ export default function MagazineShell({
             Issue #{issue} — April 2026
           </span>
         </div>
-        <div style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", fontWeight: 700 }}>
-          {showSpread
-            ? `Pages ${currentLeft + 1}–${Math.min(currentLeft + 2, pages.length)} of ${pages.length}`
-            : `Page ${currentLeft + 1} of ${pages.length}`}
+
+        {/* XP earn notice */}
+        <div style={{
+          display: "flex", alignItems: "center", gap: 6,
+          background: "rgba(0,255,136,0.08)", border: "1px solid rgba(0,255,136,0.2)",
+          borderRadius: 20, padding: "4px 12px",
+        }}>
+          <span style={{ fontSize: 13 }}>⭐</span>
+          <span style={{ fontSize: 9, color: "#00FF88", fontWeight: 800, letterSpacing: "0.06em" }}>
+            +20 XP per spread · use points in the store &amp; competitions
+          </span>
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          {/* Auto-play toggle */}
+          <button
+            type="button"
+            onClick={() => setAutoPlay(p => !p)}
+            title={autoPlay ? "Pause auto-advance" : "Resume auto-advance"}
+            style={{
+              background: "transparent",
+              border: `1px solid ${autoPlay ? "#00FFFF" : "rgba(255,255,255,0.15)"}`,
+              borderRadius: 6,
+              color: autoPlay ? "#00FFFF" : "rgba(255,255,255,0.3)",
+              fontSize: 14,
+              lineHeight: 1,
+              padding: "4px 8px",
+              cursor: "pointer",
+            }}
+            aria-label={autoPlay ? "Pause auto-advance" : "Resume auto-advance"}
+          >
+            {autoPlay ? "⏸" : "▶"}
+          </button>
+
+          <div style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", fontWeight: 700 }}>
+            {showSpread
+              ? `Pages ${currentLeft + 1}–${Math.min(currentLeft + 2, pages.length)} of ${pages.length}`
+              : `Page ${currentLeft + 1} of ${pages.length}`}
+          </div>
         </div>
       </header>
 
-      {/* Page canvas */}
+      {/* Page canvas — hover pauses auto-timer */}
       <div
         ref={containerRef}
         style={{ position: "relative", overflow: "hidden", padding: "24px" }}
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
+        onMouseEnter={() => setHovering(true)}
+        onMouseLeave={() => setHovering(false)}
       >
         {/* Edge lighting pulse on the container when spread is idle */}
         {!reduced && !flipping && (

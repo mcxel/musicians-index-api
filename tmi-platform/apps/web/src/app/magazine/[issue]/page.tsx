@@ -140,7 +140,17 @@ function CoverPage({ issue }: { issue: string }) {
         ))}
       </div>
 
-      <div style={{ textAlign: "center", paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+      <div style={{ textAlign: "center", paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.05)", display: "flex", flexDirection: "column", gap: 6 }}>
+        <div style={{
+          display: "inline-flex", alignItems: "center", gap: 6, justifyContent: "center",
+          background: "rgba(0,255,136,0.08)", border: "1px solid rgba(0,255,136,0.2)",
+          borderRadius: 20, padding: "5px 14px",
+        }}>
+          <span style={{ fontSize: 12 }}>⭐</span>
+          <span style={{ fontSize: 8, fontWeight: 900, color: "#00FF88", letterSpacing: "0.06em" }}>
+            +20 XP per page you read · use points in the store &amp; contests
+          </span>
+        </div>
         <div style={{ fontSize: 8, color: "rgba(255,255,255,0.2)", letterSpacing: "0.15em" }}>
           USE ARROW KEYS OR SWIPE TO TURN PAGES
         </div>

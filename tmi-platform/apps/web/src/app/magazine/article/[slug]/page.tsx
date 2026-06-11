@@ -75,6 +75,27 @@ export default async function ArticlePage({ params }: Props) {
         </div>
       </div>
 
+      {/* XP earn banner */}
+      <div style={{
+        maxWidth: 900, margin: "0 auto", padding: "12px 24px 0",
+      }}>
+        <div style={{
+          display: "flex", alignItems: "center", gap: 10,
+          background: "rgba(0,255,136,0.07)", border: "1px solid rgba(0,255,136,0.2)",
+          borderRadius: 10, padding: "10px 16px",
+        }}>
+          <span style={{ fontSize: 18 }}>⭐</span>
+          <div>
+            <div style={{ fontSize: 10, fontWeight: 900, color: "#00FF88", letterSpacing: "0.06em" }}>
+              +10–40 XP for reading this article — you earn more points in the magazine than anywhere else
+            </div>
+            <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>
+              Use your XP to enter contests, buy exclusive items in the store, and unlock platform perks
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* ── AD — leaderboard before article ── */}
       <div style={{ maxWidth: 900, margin: "0 auto", padding: "8px 24px 0" }}>
         <UnifiedAdSlot venue="magazine" slotKey="magazineLeaderboard" format="horizontal" label="ADVERTISEMENT" style={{ minHeight: 90 }} accentColor="#FF2DAA" />

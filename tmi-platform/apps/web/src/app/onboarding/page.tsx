@@ -73,7 +73,6 @@ export default function OnboardingPage() {
   }, [router]);
 
   const selectRole = (roleId: string) => {
-    // Navigate directly — role is persisted by the sub-page form submission
     window.location.href = roleOnboardingRoute(roleId);
   };
 
