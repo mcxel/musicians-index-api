@@ -7,9 +7,13 @@ import { prefersReducedMotion } from "@/lib/motion/reducedMotionGuard";
 import { TmiMagazineAudioEngine } from "@/lib/magazine/tmiMagazineAudioEngine";
 import GlitchOverlay from "@/components/motion/GlitchOverlay";
 import { useGamificationEngine } from "@/hooks/useGamificationEngine";
+import AdSenseSlot, { AD_SLOTS } from "@/components/ads/AdSenseSlot";
 
 // Auto-advance interval in ms (10 seconds per spread)
 const AUTO_ADVANCE_MS = 10_000;
+
+// Minimum ms a user must stay on a spread before a manual turn earns XP (anti-farm)
+const MIN_READ_MS = 5_000;
 
 // Pages at this index and beyond require a subscription to read
 const FREE_PAGE_THRESHOLD = 4;
@@ -22,6 +26,7 @@ export interface MagazinePage {
   title: string;
   type: "cover" | "editorial" | "article" | "sponsor" | "chart" | "top10" | "interview";
   content: React.ReactNode;
+  audioText?: string;
 }
 
 interface MagazineShellProps {
@@ -168,13 +173,16 @@ export default function MagazineShell({
   const [autoPlay, setAutoPlay] = useState(true);
   const [hovering, setHovering] = useState(false);
   const [xpToast, setXpToast] = useState<{ amount: number } | null>(null);
+  const [audioPlaying, setAudioPlaying] = useState(false);
   const reduced = prefersReducedMotion();
   const { trackAction } = useGamificationEngine();
   const containerRef = useRef<HTMLDivElement>(null);
   const touchStartX = useRef<number | null>(null);
   const audioRef = useRef<TmiMagazineAudioEngine | null>(null);
+  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const autoTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const xpToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pageEntryTimeRef = useRef<number>(Date.now());
   const stateRef = useRef({ currentLeft, flipping, flipPhase, isWide });
   stateRef.current = { currentLeft, flipping, flipPhase, isWide };
 
@@ -246,17 +254,27 @@ export default function MagazineShell({
   const rightPage = currentLeft > 0 && currentLeft + 1 < pages.length ? pages[currentLeft + 1] : null;
   const showSpread = isWide && currentLeft > 0 && !!rightPage;
 
-  const goToSpread = useCallback((leftIdx: number, dir: FlipDirection) => {
+  const stopAudio = useCallback(() => {
+    if (typeof window !== "undefined" && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
+    if (utteranceRef.current) utteranceRef.current = null;
+    setAudioPlaying(false);
+  }, []);
+
+  const goToSpread = useCallback((leftIdx: number, dir: FlipDirection, turnSource: "manual" | "auto" = "manual") => {
     if (stateRef.current.flipping) return;
     if (reduced) {
       setCurrentLeft(leftIdx);
       onPageChange?.(pages[leftIdx], leftIdx);
       return;
     }
+    stopAudio();
     audioRef.current?.playPageTurn();
     setFlipping(dir);
     setFlipPhase("out");
-    grantReadXP();
+    if (turnSource === "manual") grantReadXP();
+    pageEntryTimeRef.current = Date.now();
 
     // Out-phase complete: swap content and snap to the other side (no transition)
     window.setTimeout(() => {
@@ -277,9 +295,9 @@ export default function MagazineShell({
         });
       });
     }, HALF_FLIP);
-  }, [reduced, pages, onPageChange, grantReadXP]);
+  }, [reduced, pages, onPageChange, grantReadXP, stopAudio]);
 
-  const goNext = useCallback(() => {
+  const goNext = useCallback((turnSource: "manual" | "auto" = "manual") => {
     const { currentLeft: cl, flipping: f } = stateRef.current;
     if (f) return;
     let si = 0;
@@ -287,7 +305,7 @@ export default function MagazineShell({
       if (spreadStarts[i] <= cl) si = i; else break;
     }
     const next = spreadStarts[si + 1];
-    if (next !== undefined) goToSpread(next, "forward");
+    if (next !== undefined) goToSpread(next, "forward", turnSource);
   }, [spreadStarts, goToSpread]);
 
   const goPrev = useCallback(() => {
@@ -298,7 +316,7 @@ export default function MagazineShell({
       if (spreadStarts[i] <= cl) si = i; else break;
     }
     const prev = spreadStarts[si - 1];
-    if (prev !== undefined) goToSpread(prev, "backward");
+    if (prev !== undefined) goToSpread(prev, "backward", "manual");
   }, [spreadStarts, goToSpread]);
 
   // Keyboard handler
@@ -311,18 +329,42 @@ export default function MagazineShell({
     return () => window.removeEventListener("keydown", onKey);
   }, [goNext, goPrev]);
 
+  // Audio: read current spread aloud via Web Speech API
+  const toggleAudio = useCallback(() => {
+    if (typeof window === "undefined" || !window.speechSynthesis) return;
+    if (audioPlaying) {
+      window.speechSynthesis.cancel();
+      utteranceRef.current = null;
+      setAudioPlaying(false);
+      return;
+    }
+    const currentPage = pages[currentLeft];
+    const text = currentPage?.audioText ?? currentPage?.title ?? "";
+    if (!text) return;
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 0.92;
+    utterance.pitch = 1;
+    utterance.onend = () => { utteranceRef.current = null; setAudioPlaying(false); };
+    utterance.onerror = () => { utteranceRef.current = null; setAudioPlaying(false); };
+    utteranceRef.current = utterance;
+    setAudioPlaying(true);
+    window.speechSynthesis.speak(utterance);
+  }, [audioPlaying, pages, currentLeft]);
+
   // Auto-advance timer — pauses when user hovers, touches, or reaches the last spread
   useEffect(() => {
     if (autoTimerRef.current) clearInterval(autoTimerRef.current);
     if (!autoPlay || hovering || isLast || !!flipping) return;
     autoTimerRef.current = setInterval(() => {
-      goNext();
+      goNext("auto");
     }, AUTO_ADVANCE_MS);
     return () => { if (autoTimerRef.current) clearInterval(autoTimerRef.current); };
   }, [autoPlay, hovering, isLast, flipping, goNext]);
 
-  // Grant XP for each spread view (client-side gamification engine)
+  // Grant XP only on manual turns AND only if user spent ≥5s on the spread (anti-farm)
   const grantReadXP = useCallback(() => {
+    const elapsed = Date.now() - pageEntryTimeRef.current;
+    if (elapsed < MIN_READ_MS) return;
     trackAction("READ_ARTICLE");
     if (xpToastTimerRef.current) clearTimeout(xpToastTimerRef.current);
     setXpToast({ amount: 20 });
@@ -614,7 +656,7 @@ export default function MagazineShell({
                 key={start}
                 data-testid={`magazine-dot-${i}`}
                 type="button"
-                onClick={() => goToSpread(start, start > currentLeft ? "forward" : "backward")}
+                onClick={() => goToSpread(start, start > currentLeft ? "forward" : "backward", "manual")}
                 style={{
                   width: active ? 20 : 7,
                   height: 7,
@@ -630,6 +672,33 @@ export default function MagazineShell({
             );
           })}
         </div>
+
+        {/* Audio listen button */}
+        {leftPage?.audioText && (
+          <button
+            type="button"
+            onClick={toggleAudio}
+            aria-label={audioPlaying ? "Stop listening" : "Listen to this spread"}
+            title={audioPlaying ? "Stop audio" : "Listen"}
+            style={{
+              border: `1px solid ${audioPlaying ? "#FF2DAA" : "rgba(255,215,0,0.35)"}`,
+              borderRadius: 8,
+              background: audioPlaying ? "rgba(255,45,170,0.12)" : "transparent",
+              color: audioPlaying ? "#FF2DAA" : "#FFD700",
+              padding: "8px 16px",
+              fontSize: 11,
+              fontWeight: 800,
+              letterSpacing: "0.1em",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: 5,
+              transition: `all ${TIMING.fast}ms ease`,
+            }}
+          >
+            {audioPlaying ? "⏹ STOP" : "🔊 LISTEN"}
+          </button>
+        )}
 
         <button
           data-testid="magazine-next"
@@ -648,6 +717,43 @@ export default function MagazineShell({
           NEXT →
         </button>
       </nav>
+
+      {/* Bottom ad leaderboard — displayed after each spread, ready for AdSense/agency fill */}
+      <div style={{
+        padding: "6px 24px 12px",
+        background: "rgba(5,5,16,0.95)",
+        borderTop: "1px solid rgba(255,255,255,0.04)",
+      }}>
+        <AdSenseSlot
+          slot={AD_SLOTS.magazineLeaderboard}
+          format="horizontal"
+          label="ADVERTISEMENT"
+          style={{ minHeight: 60, maxWidth: 900, margin: "0 auto" }}
+        />
+      </div>
+
+      {/* Fixed right rail — only on very wide screens (1400px+) */}
+      {isWide && (
+        <div
+          aria-label="Advertisement"
+          style={{
+            position: "fixed",
+            right: 8,
+            top: "50%",
+            transform: "translateY(-50%)",
+            width: 160,
+            zIndex: 80,
+            pointerEvents: "auto",
+          }}
+        >
+          <AdSenseSlot
+            slot={AD_SLOTS.magazineInline}
+            format="vertical"
+            label="AD"
+            style={{ minHeight: 280 }}
+          />
+        </div>
+      )}
     </div>
   );
 }

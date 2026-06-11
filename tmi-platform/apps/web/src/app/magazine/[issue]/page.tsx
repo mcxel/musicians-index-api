@@ -297,6 +297,7 @@ function buildPages(issue: string): MagazinePage[] {
       title: a.title,
       type: a.category === "interview" ? "interview" : "article",
       content: <ArticlePage article={a} />,
+      audioText: `${a.title}. ${a.subtitle}. ${a.blocks.filter(b => b.type === "paragraph" || b.type === "pullquote").map(b => b.text).join(". ")}`,
     })),
     // 7 — Sponsor 1
     {
@@ -311,6 +312,7 @@ function buildPages(issue: string): MagazinePage[] {
       title: a.title,
       type: a.category === "interview" ? "interview" : "article",
       content: <ArticlePage article={a} />,
+      audioText: `${a.title}. ${a.subtitle}. ${a.blocks.filter(b => b.type === "paragraph" || b.type === "pullquote").map(b => b.text).join(". ")}`,
     })),
     // 13 — Sponsor 2
     {

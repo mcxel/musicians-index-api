@@ -4,6 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { ConfettiBackground, GeoBlock, MagButton, MagPill, NeonHead, MAG_COLORS } from '@/components/ui/MagazineUI';
 import AdRenderer from '@/components/ads/AdRenderer';
+import AdSenseSlot, { AD_SLOTS } from '@/components/ads/AdSenseSlot';
 import { MAGAZINE_ISSUE_1 } from '@/lib/magazine/magazineIssueData';
 
 const CAT_COLOR: Record<string, string> = {
@@ -135,6 +136,41 @@ export default function MagazinePage() {
               );
             })}
           </div>
+        </div>
+
+        {/* Mid-page leaderboard — between articles and footer */}
+        <div style={{ marginBottom: 32 }}>
+          <AdSenseSlot
+            slot={AD_SLOTS.magazineLeaderboard}
+            format="horizontal"
+            label="ADVERTISEMENT"
+            style={{ minHeight: 90 }}
+          />
+        </div>
+
+        {/* Subscribe + read full issue CTA */}
+        <div style={{
+          background: 'linear-gradient(135deg, rgba(255,45,170,0.1), rgba(170,45,255,0.1))',
+          border: '1px solid rgba(255,45,170,0.25)',
+          borderRadius: 16,
+          padding: '24px',
+          textAlign: 'center',
+          marginBottom: 24,
+        }}>
+          <div style={{ fontSize: 9, fontWeight: 800, color: '#FF2DAA', letterSpacing: '0.2em', marginBottom: 8 }}>READ THE FULL ISSUE</div>
+          <div style={{ fontSize: 22, fontWeight: 900, marginBottom: 12 }}>Earn XP · Discover Artists · Win Prizes</div>
+          <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', marginBottom: 20 }}>
+            Flip pages, listen to articles, and earn more points in the magazine than anywhere else on the platform.
+          </div>
+          <Link href="/magazine/1" style={{
+            display: 'inline-block', padding: '12px 32px',
+            background: 'linear-gradient(135deg,#FF2DAA,#AA2DFF)',
+            color: '#fff', borderRadius: 10,
+            fontSize: 10, fontWeight: 900, letterSpacing: '0.12em',
+            textDecoration: 'none', boxShadow: '0 4px 20px rgba(255,45,170,0.35)',
+          }}>
+            OPEN ISSUE 1 →
+          </Link>
         </div>
 
       </div>
