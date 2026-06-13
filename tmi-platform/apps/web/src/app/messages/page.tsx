@@ -4,38 +4,9 @@ import React, { useEffect, useState } from 'react';
 import { MessengerShell } from '@/components/messenger/MessengerShell';
 import type { Conversation, Message, ConversationType } from '@/components/messenger/types';
 
-// ── Fallback data shown before API loads ──────────────────────────────────────
-const FALLBACK_CONVERSATIONS: Conversation[] = [
-  {
-    id: 'conv_dm_1',
-    type: 'dm',
-    participantIds: ['user_me', 'user_a'],
-    title: 'Ralph',
-    lastMessageAt: Date.now() - 1000 * 60 * 3,
-    createdAt: Date.now() - 1000 * 60 * 60 * 24,
-    updatedAt: Date.now() - 1000 * 60 * 3,
-  },
-  {
-    id: 'conv_group_1',
-    type: 'group',
-    participantIds: ['user_me', 'user_a', 'user_b'],
-    title: 'Cypher Group',
-    lastMessageAt: Date.now() - 1000 * 60 * 14,
-    createdAt: Date.now() - 1000 * 60 * 60 * 48,
-    updatedAt: Date.now() - 1000 * 60 * 14,
-  },
-];
-
-const FALLBACK_QUEUE: Record<string, Message[]> = {
-  conv_dm_1: [
-    {
-      id: 'm1', conversationId: 'conv_dm_1', senderId: 'user_a', senderName: 'Ralph',
-      senderRole: 'artist', messageType: 'text', text: 'Yo, check this cut',
-      status: 'sent', createdAt: Date.now() - 1000 * 60 * 10,
-      moderationStatus: 'approved', scanStatus: 'clean', adminApproved: false,
-    },
-  ],
-};
+// Empty initial state — real conversations loaded from API
+const FALLBACK_CONVERSATIONS: Conversation[] = [];
+const FALLBACK_QUEUE: Record<string, Message[]> = {};
 
 // ── API response → Messenger types ───────────────────────────────────────────
 
