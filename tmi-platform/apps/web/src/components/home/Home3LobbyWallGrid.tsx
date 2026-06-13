@@ -106,7 +106,7 @@ function LiveLobbyTile({
             variant="homepage"
             size="full"
             showOverlay={false}
-            onEnterLobby={() => router.push(`/live/rooms/${active.roomId}`)}
+            onEnterLobby={() => router.push(`/live/rooms/${active.roomId}?from=lobby-wall`)}
           />
         ) : (
           <div
@@ -134,7 +134,7 @@ function LiveLobbyTile({
 
       <button
         onClick={() => {
-          const target = active ? `/live/rooms/${active.roomId}` : `/live/${config.fallbackRoomId}`;
+          const target = active ? `/live/rooms/${active.roomId}?from=lobby-wall` : `/live/${config.fallbackRoomId}`;
           router.push(target);
         }}
         style={{

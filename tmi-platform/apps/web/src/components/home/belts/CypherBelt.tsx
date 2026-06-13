@@ -126,7 +126,7 @@ function MiniRoomCard({
       )}
 
       <Link
-        href={`/live/rooms/${room.id}`}
+        href={`/live/rooms/${room.id}?from=lobby-wall`}
         style={{
           display: "inline-block", fontSize: 8, fontWeight: 900, letterSpacing: "0.16em",
           textTransform: "uppercase", padding: "5px 14px", borderRadius: 4,

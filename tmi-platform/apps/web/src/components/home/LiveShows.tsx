@@ -92,7 +92,7 @@ export default function LiveShows() {
                 {room.host} · {room.genre}
               </div>
               <Link
-                href={`/live/rooms/${room.id}`}
+                href={`/live/rooms/${room.id}?from=lobby-wall`}
                 onClick={e => e.stopPropagation()}
                 style={{
                   display: "inline-block", fontSize: 9, fontWeight: 800,

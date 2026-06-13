@@ -31,6 +31,7 @@ const PROTECTED_PREFIXES = [
   "/messages",
   "/nft/mint",
   "/beat-vault/upload",
+  "/beats/submit",
 ];
 
 const ADMIN_EMAILS_DEFAULT = "berntmusic33@gmail.com,bigace@berntoutglobal.com";
@@ -138,5 +139,6 @@ export const config = {
     "/messages",
     "/nft/mint",
     "/beat-vault/upload",
+    "/beats/submit",
   ],
 };

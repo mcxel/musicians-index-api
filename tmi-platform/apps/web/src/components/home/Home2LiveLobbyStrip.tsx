@@ -90,7 +90,7 @@ export default function Home2LiveLobbyStrip() {
                 background: `linear-gradient(145deg, ${lobby.accentColor}18, rgba(5,5,16,0.9))`,
               }}
             >
-              <Link href={`/live/rooms/${lobby.roomId}`} style={{ display: "block", height: "100%", textDecoration: "none" }}>
+              <Link href={`/live/rooms/${lobby.roomId}?from=lobby-wall`} style={{ display: "block", height: "100%", textDecoration: "none" }}>
                 <TMILiveMediaWidget
                   performerId={lobby.performerId}
                   performerName={lobby.performerName}

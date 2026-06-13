@@ -166,7 +166,7 @@ export default function LiveDiscoverySurface({
 
   const handleEnter = useCallback((roomId: string) => {
     setEntering(roomId);
-    setTimeout(() => router.push(`/live/rooms/${roomId}`), 300);
+    setTimeout(() => router.push(`/live/rooms/${roomId}?from=lobby-wall`), 300);
   }, [router]);
 
   useEffect(() => {

@@ -45,7 +45,7 @@ export default function LiveDiscoveryWall({
       userId={userId}
       onEnterLobby={(item) => {
         if (item.roomId) {
-          router.push(`/live/rooms/${item.roomId}`);
+          router.push(`/live/rooms/${item.roomId}?from=lobby-wall`);
         }
       }}
     />

@@ -20,6 +20,9 @@ const QUICK_LINKS = [
   { label: '🎧 Stream & Win', href: '/live/radio', color: '#00FF88' },
   { label: '🏆 Rankings', href: '/home/ranking', color: '#AA2DFF' },
   { label: '🎟 Tickets', href: '/tickets', color: '#FF8C00' },
+  { label: '🧬 Avatar Lobby', href: '/avatar', color: '#AA2DFF' },
+  { label: '🛍️ Avatar Store', href: '/avatar/shop', color: '#00FFFF' },
+  { label: '🧠 Memory Wall', href: '/avatar/showcase', color: '#FFD700' },
 ];
 
 export default function FanHubPage() {
@@ -87,7 +90,7 @@ export default function FanHubPage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
           {/* Quick Links */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 10 }}>
             {QUICK_LINKS.map((link) => (
               <Link key={link.href} href={link.href} style={{ background: 'rgba(0,0,0,0.4)', border: `1px solid ${link.color}22`, borderRadius: 10, padding: '14px', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 8, transition: 'all 0.15s' }}>
                 <span style={{ fontSize: 15 }}>{link.label.split(' ')[0]}</span>

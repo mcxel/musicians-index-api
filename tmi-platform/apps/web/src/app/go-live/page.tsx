@@ -370,6 +370,56 @@ export default function GoLivePage() {
             <Link href="/live/conductor" style={{ display: "inline-block", marginBottom: 16, padding: "8px 18px", border: "1px solid rgba(0,255,255,0.3)", borderRadius: 8, color: "#00FFFF", fontSize: 10, fontWeight: 700, textDecoration: "none", letterSpacing: "0.12em" }}>
               STAGE CONTROL PANEL →
             </Link>
+
+            {/* Live audience count panel */}
+            <div style={{ background: "rgba(0,255,136,0.05)", border: "1px solid rgba(0,255,136,0.2)", borderRadius: 12, padding: "14px 18px", marginBottom: 20, textAlign: "left" }}>
+              <div style={{ fontSize: 9, letterSpacing: "0.2em", color: "#00FF88", fontWeight: 800, marginBottom: 8 }}>AUDIENCE IN ROOM</div>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                {Array.from({ length: Math.min(Math.floor(liveSeconds / 3) + 1, 12) }, (_, i) => (
+                  <div key={i} style={{ width: 28, height: 28, borderRadius: "50%", background: `hsl(${(i * 37) % 360},70%,55%)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12 }}>
+                    {["🎤","👑","🔥","⭐","🎧","💎","🎵","🥊","🌟","💯","🎶","🏆"][i % 12]}
+                  </div>
+                ))}
+                {Math.floor(liveSeconds / 3) + 1 > 12 && (
+                  <div style={{ fontSize: 10, color: "#00FF88", fontWeight: 700, alignSelf: "center" }}>+{Math.floor(liveSeconds / 3) - 11} more</div>
+                )}
+              </div>
+            </div>
+
+            {/* Share live link */}
+            <div style={{ background: "rgba(0,0,0,0.4)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: "14px 18px", marginBottom: 20 }}>
+              <div style={{ fontSize: 9, letterSpacing: "0.2em", color: "rgba(255,255,255,0.4)", fontWeight: 800, marginBottom: 10 }}>SHARE YOUR LIVE SESSION</div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <button
+                  onClick={() => {
+                    const room = ROOM_OPTIONS.find((r) => r.id === selectedRoom);
+                    const slug = (title || "performer").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "performer";
+                    const url = `${typeof window !== "undefined" ? window.location.origin : ""}/live/rooms/${encodeURIComponent(room?.id ?? selectedRoom)}?performer=${encodeURIComponent(slug)}&from=lobby-wall`;
+                    if (navigator.clipboard) void navigator.clipboard.writeText(url);
+                  }}
+                  style={{ padding: "8px 14px", borderRadius: 8, background: "rgba(0,255,255,0.1)", border: "1px solid rgba(0,255,255,0.3)", color: "#00FFFF", fontSize: 10, fontWeight: 700, cursor: "pointer" }}
+                >
+                  🔗 Copy Link
+                </button>
+                <a
+                  href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`🔴 I'm LIVE on @MusiciansIndex — "${title}" — Watch now:`)}&url=${encodeURIComponent(typeof window !== "undefined" ? window.location.origin : "https://themusiciansindex.com")}/live/rooms/${encodeURIComponent(selectedRoom)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ padding: "8px 14px", borderRadius: 8, background: "rgba(29,161,242,0.1)", border: "1px solid rgba(29,161,242,0.3)", color: "#1DA1F2", fontSize: 10, fontWeight: 700, textDecoration: "none" }}
+                >
+                  𝕏 Post
+                </a>
+                <a
+                  href={`https://wa.me/?text=${encodeURIComponent(`🔴 Watch me LIVE on TMI: "${title}" → ${typeof window !== "undefined" ? window.location.origin : "https://themusiciansindex.com"}/live/rooms/${encodeURIComponent(selectedRoom)}`)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ padding: "8px 14px", borderRadius: 8, background: "rgba(37,211,102,0.1)", border: "1px solid rgba(37,211,102,0.3)", color: "#25D366", fontSize: 10, fontWeight: 700, textDecoration: "none" }}
+                >
+                  WhatsApp
+                </a>
+              </div>
+            </div>
+
             <p style={{ fontSize: 11, color: "rgba(255,255,255,0.3)" }}>Redirecting to your room…</p>
           </div>
           </>

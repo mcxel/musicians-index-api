@@ -45,14 +45,14 @@ export default function Home3LiveWorldSurface() {
   getVisualSlot('home-3-hero');
 
   const roomStack = [
-    { href: '/live/rooms/monthly-idol', title: 'Main Lobby', occupancy: '84%', tickets: '120', color: '#00FFFF', glyph: '🏟️' },
-    { href: '/live/rooms/cypher-arena', title: 'Cypher East', occupancy: '71%', tickets: '42', color: '#FF2DAA', glyph: '🎤' },
-    { href: '/live/rooms/venue-room', title: 'Producer Lab', occupancy: '67%', tickets: '35', color: '#FFD700', glyph: '🎛️' },
+    { href: '/live/rooms/monthly-idol?from=lobby-wall', title: 'Main Lobby', occupancy: '84%', tickets: '120', color: '#00FFFF', glyph: '🏟️' },
+    { href: '/live/rooms/cypher-arena?from=lobby-wall', title: 'Cypher East', occupancy: '71%', tickets: '42', color: '#FF2DAA', glyph: '🎤' },
+    { href: '/live/rooms/venue-room?from=lobby-wall', title: 'Producer Lab', occupancy: '67%', tickets: '35', color: '#FFD700', glyph: '🎛️' },
   ] as const;
 
   const burstRooms = [
-    { href: '/live/rooms/monday-night-stage', title: 'VIP Lounge', subtitle: 'Host interviews', color: '#AA2DFF', glyph: '🛋️' },
-    { href: '/live/rooms/deal-or-feud', title: 'Battle Floor', subtitle: 'Crowd vote live', color: '#00FF88', glyph: '🥊' },
+    { href: '/live/rooms/monday-night-stage?from=lobby-wall', title: 'VIP Lounge', subtitle: 'Host interviews', color: '#AA2DFF', glyph: '🛋️' },
+    { href: '/live/rooms/deal-or-feud?from=lobby-wall', title: 'Battle Floor', subtitle: 'Crowd vote live', color: '#00FF88', glyph: '🥊' },
     { href: '/live/lobby', title: 'Event Timeline', subtitle: 'Premieres + lock times', color: '#FF6B35', glyph: '🗓️' },
   ] as const;
 
@@ -97,7 +97,7 @@ export default function Home3LiveWorldSurface() {
             ))}
           </div>
 
-          <a href="/live/rooms/monthly-idol" style={{ textDecoration: 'none', color: '#fff' }}>
+          <a href="/live/rooms/monthly-idol?from=lobby-wall" style={{ textDecoration: 'none', color: '#fff' }}>
             <div style={{ minHeight: 220, borderRadius: 12, overflow: 'hidden', border: '1px solid rgba(0,255,255,0.35)', background: 'linear-gradient(145deg, rgba(0,255,255,0.25), rgba(5,5,16,0.82))', padding: 16, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
               <div style={{ display: 'inline-flex', fontSize: 8, letterSpacing: '0.14em', color: '#00FFFF', border: '1px solid rgba(0,255,255,0.45)', borderRadius: 4, padding: '3px 6px', width: 'fit-content' }}>JOIN ROOM RUNTIME</div>
               <div>
