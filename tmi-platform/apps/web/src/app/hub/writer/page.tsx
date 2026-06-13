@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { PersonaSwitcher } from "@/components/hud/PersonaSwitcher";
 
 const ACCENT = "#FF2DAA";
 
@@ -58,7 +59,8 @@ export default function WriterHubPage() {
           <div style={{ fontSize: 9, letterSpacing: "0.35em", color: ACCENT, fontWeight: 800 }}>EDITORIAL HUB</div>
           <div style={{ fontSize: 16, fontWeight: 900, marginTop: 2 }}>Writer Command Center</div>
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <PersonaSwitcher currentRole="writer" compact />
           <Link href="/dashboard/writer" style={{ fontSize: 10, color: ACCENT, border: "1px solid rgba(255,45,170,0.3)", padding: "5px 12px", borderRadius: 6, textDecoration: "none", fontWeight: 700 }}>DASHBOARD</Link>
           <Link href="/editorial" style={{ fontSize: 10, color: "#00FFFF", border: "1px solid rgba(0,255,255,0.25)", padding: "5px 12px", borderRadius: 6, textDecoration: "none", fontWeight: 700 }}>EDITORIAL DESK</Link>
           <Link href="/magazine" style={{ fontSize: 10, color: "#FFD700", border: "1px solid rgba(255,215,0,0.25)", padding: "5px 12px", borderRadius: 6, textDecoration: "none", fontWeight: 700 }}>MAGAZINE</Link>

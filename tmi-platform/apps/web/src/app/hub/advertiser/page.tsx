@@ -6,6 +6,7 @@ import RoomContainer from "@/components/room/RoomContainer";
 import ActionCanister from "@/components/room/ActionCanister";
 import WidgetDrawer from "@/components/room/WidgetDrawer";
 import MediaMonitor from "@/components/video/MediaMonitor";
+import { PersonaSwitcher } from "@/components/hud/PersonaSwitcher";
 
 type HubMode = "ADVERTISER" | "SPONSOR";
 type Tier = "GOLD" | "DIAMOND";
@@ -38,19 +39,22 @@ export default function AdvertiserSponsorHub() {
             <p className="text-xs text-white/50 tracking-widest mt-1">LIVE ADVERTISING & SPONSORSHIP ECONOMY</p>
           </div>
           
-          <div className="flex gap-2 p-1 bg-black/50 border border-white/10 rounded-lg">
-            <button 
-              onClick={() => setMode("ADVERTISER")}
-              className={`px-6 py-2 text-xs font-bold tracking-widest rounded transition-all ${mode === "ADVERTISER" ? "bg-[#FF8C00] text-black" : "text-white/40 hover:text-white"}`}
-            >
-              ADVERTISER
-            </button>
-            <button 
-              onClick={() => setMode("SPONSOR")}
-              className={`px-6 py-2 text-xs font-bold tracking-widest rounded transition-all ${mode === "SPONSOR" ? "bg-[#00FFFF] text-black" : "text-white/40 hover:text-white"}`}
-            >
-              SPONSOR
-            </button>
+          <div className="flex gap-3 items-center">
+            <PersonaSwitcher currentRole="advertiser" compact />
+            <div className="flex gap-2 p-1 bg-black/50 border border-white/10 rounded-lg">
+              <button
+                onClick={() => setMode("ADVERTISER")}
+                className={`px-6 py-2 text-xs font-bold tracking-widest rounded transition-all ${mode === "ADVERTISER" ? "bg-[#FF8C00] text-black" : "text-white/40 hover:text-white"}`}
+              >
+                ADVERTISER
+              </button>
+              <button
+                onClick={() => setMode("SPONSOR")}
+                className={`px-6 py-2 text-xs font-bold tracking-widest rounded transition-all ${mode === "SPONSOR" ? "bg-[#00FFFF] text-black" : "text-white/40 hover:text-white"}`}
+              >
+                SPONSOR
+              </button>
+            </div>
           </div>
         </header>
 

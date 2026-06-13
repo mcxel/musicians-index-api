@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { PersonaSwitcher } from "@/components/hud/PersonaSwitcher";
 
 const ACCENT = "#00FF88";
 
@@ -90,7 +91,8 @@ export default function PromoterHubPage() {
           <div style={{ fontSize: 9, letterSpacing: "0.35em", color: ACCENT, fontWeight: 800 }}>PROMOTER HUB</div>
           <div style={{ fontSize: 16, fontWeight: 900, marginTop: 2 }}>Event Promoter Command Center</div>
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <PersonaSwitcher currentRole="promoter" compact />
           <Link href="/dashboard/promoter" style={{ fontSize: 10, color: ACCENT, border: "1px solid rgba(0,255,136,0.3)", padding: "5px 12px", borderRadius: 6, textDecoration: "none", fontWeight: 700 }}>DASHBOARD</Link>
           <Link href="/booking" style={{ fontSize: 10, color: "#00FFFF", border: "1px solid rgba(0,255,255,0.25)", padding: "5px 12px", borderRadius: 6, textDecoration: "none", fontWeight: 700 }}>BOOK ARTIST</Link>
           <Link href="/hub/venue" style={{ fontSize: 10, color: "#FFD700", border: "1px solid rgba(255,215,0,0.25)", padding: "5px 12px", borderRadius: 6, textDecoration: "none", fontWeight: 700 }}>VENUE HUB</Link>
