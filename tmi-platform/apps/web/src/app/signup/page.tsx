@@ -163,7 +163,7 @@ function SignupForm() {
               </div>
               <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
                 onClick={() => setStep("DETAILS")}
-                style={{ width: "100%", padding: "13px", fontSize: 11, fontWeight: 800, letterSpacing: "0.15em", color: "#050510", background: `linear-gradient(135deg, ${sel.color}, ${sel.color}AA)`, border: "none", borderRadius: 7, cursor: "pointer" }}
+                style={{ width: "100%", padding: "13px", minHeight: "44px", fontSize: 11, fontWeight: 800, letterSpacing: "0.15em", color: "#050510", background: `linear-gradient(135deg, ${sel.color}, ${sel.color}AA)`, border: "none", borderRadius: 7, cursor: "pointer" }}
               >CONTINUE AS {sel.label.toUpperCase()} →</motion.button>
               <div style={{ textAlign: "center", marginTop: 14, fontSize: 10, color: "rgba(255,255,255,0.28)" }}>
                 Already have an account? <Link href="/auth" style={{ color: "#00FFFF" }}>Sign in</Link>
@@ -189,7 +189,7 @@ function SignupForm() {
               {error && <div style={{ color: "#FF3C3C", fontSize: 10, marginBottom: 10 }}>{error}</div>}
               <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
                 onClick={handleSignup}
-                style={{ width: "100%", padding: "13px", fontSize: 11, fontWeight: 800, letterSpacing: "0.15em", color: "#050510", background: `linear-gradient(135deg, ${sel.color}, ${sel.color}AA)`, border: "none", borderRadius: 7, cursor: "pointer" }}
+                style={{ width: "100%", padding: "13px", minHeight: "44px", fontSize: 11, fontWeight: 800, letterSpacing: "0.15em", color: "#050510", background: `linear-gradient(135deg, ${sel.color}, ${sel.color}AA)`, border: "none", borderRadius: 7, cursor: "pointer" }}
               >CREATE {sel.label.toUpperCase()} ACCOUNT</motion.button>
             </motion.div>
           )}
@@ -208,9 +208,24 @@ function SignupForm() {
               <div style={{ fontSize: 15, fontWeight: 900, letterSpacing: 2, color: "#00FF88", marginBottom: 8 }}>WORKSPACE READY</div>
               <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginBottom: 20 }}>Your {sel.label} account is live. Bots assigned. Inventory loaded.</div>
 
+              {/* Photo upload CTA */}
+              <motion.div
+                initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}
+                style={{ background: "linear-gradient(135deg, rgba(170,45,255,0.12), rgba(0,255,255,0.06))", border: "1.5px solid rgba(170,45,255,0.4)", borderRadius: 12, padding: "16px 18px", marginBottom: 14, textAlign: "left" }}
+              >
+                <div style={{ fontSize: 11, fontWeight: 900, color: "#AA2DFF", letterSpacing: "0.1em", marginBottom: 6 }}>📷 UPLOAD YOUR PHOTO — APPEAR ON THE ORBIT WHEEL</div>
+                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.55)", lineHeight: 1.5, marginBottom: 12 }}>
+                  Your face spins on the <strong style={{ color: "#fff" }}>homepage orbit</strong> that every visitor sees. Add your photo now to claim your spot visually.
+                </div>
+                <Link href="/settings/avatar"
+                  style={{ display: "inline-block", padding: "9px 20px", background: "#AA2DFF", color: "#fff", fontWeight: 900, fontSize: 10, letterSpacing: "0.1em", borderRadius: 8, textDecoration: "none" }}>
+                  📷 UPLOAD PHOTO NOW →
+                </Link>
+              </motion.div>
+
               {/* Orbit announcement */}
               <motion.div
-                initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
+                initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
                 style={{ background: "linear-gradient(135deg, rgba(255,45,170,0.12), rgba(170,45,255,0.1))", border: "1.5px solid rgba(255,45,170,0.4)", borderRadius: 12, padding: "16px 18px", marginBottom: 16, textAlign: "left" }}
               >
                 <div style={{ fontSize: 11, fontWeight: 900, color: "#FF2DAA", letterSpacing: "0.1em", marginBottom: 6 }}>🔥 YOU&apos;RE LIVE ON THE HOMEPAGE ORBIT</div>

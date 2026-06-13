@@ -66,20 +66,14 @@ export default function OnboardingPromoterPage() {
     setBusy(true);
     setError("");
     try {
-      const res = await fetch("/api/auth/register", {
+      const res = await fetch("/api/onboarding/role", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ name, email, password, role: "PROMOTER" }),
+        body: JSON.stringify({ role: "PROMOTER", company, city, focus, tier }),
       });
       if (res.ok) {
-        await fetch("/api/onboarding/role", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ role: "PROMOTER", company, city, focus, tier }),
-        });
-        router.replace("/dashboard/fan");
+        router.replace("/dashboard/promoter");
       } else {
         const d = await res.json().catch(() => ({})) as { message?: string };
         setError(d?.message ?? `Error ${res.status}`);

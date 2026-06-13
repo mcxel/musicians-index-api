@@ -172,7 +172,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           src="//resources.infolinks.com/js/infolinks_main.js"
         />
       </head>
-      <body className="tmi-obsidian-cinematic">
+      <body className="tmi-obsidian-cinematic overflow-x-hidden">
         {/* BidVertiser site verification rendered as real HTML comment in page source */}
         <div id="bv-verify" dangerouslySetInnerHTML={{ __html: '<!-- Bidvertiser2104976 -->' }} style={{ display: 'none', position: 'absolute', width: 0, height: 0, overflow: 'hidden' }} />
         <script

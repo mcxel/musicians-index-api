@@ -54,6 +54,14 @@ export default function OnboardingArtistPage() {
       });
 
       if (res.ok) {
+        // Fire-and-forget: persist artist profile data collected in form
+        const genreList = genres.split(",").map(g => g.trim()).filter(Boolean);
+        fetch("/api/profile/update", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ displayName: artistName || undefined, bio: shortBio || undefined, genres: genreList.length ? genreList : undefined }),
+        }).catch(() => {});
         router.replace("/dashboard/artist");
       } else {
         const err = (await res.json().catch(() => ({}))) as { message?: string; error?: string };

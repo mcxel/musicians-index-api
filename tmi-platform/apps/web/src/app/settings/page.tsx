@@ -35,7 +35,7 @@ export default function SettingsPage() {
   const [platforms, setPlatforms] = useState(SOCIAL_PLATFORMS);
 
   // Profile state
-  const [profile, setProfile] = useState({ name: "Wavetek", email: "wavetek@tmi.xyz", bio: "Producer from Lagos. Building the future of music.", website: "", role: "artist", avatarUrl: "" });
+  const [profile, setProfile] = useState({ name: "", email: "", bio: "", website: "", role: "artist", avatarUrl: "" });
 
   // Notification state
   const [notifs, setNotifs] = useState({ newFollowers: true, comments: true, likes: false, liveEvents: true, bookingRequests: true, payouts: true, tips: true, newsletter: false, marketingEmails: false });
@@ -48,6 +48,20 @@ export default function SettingsPage() {
   const [pwError, setPwError] = useState("");
 
   useEffect(() => {
+    fetch("/api/auth/session", { cache: "no-store", credentials: "include" })
+      .then(r => r.json())
+      .then((d: { user?: { id?: string; name?: string; email?: string; role?: string } }) => {
+        if (d?.user) {
+          setProfile(prev => ({
+            ...prev,
+            name:  d.user!.name  ?? d.user!.email?.split("@")[0] ?? "",
+            email: d.user!.email ?? "",
+            role:  d.user!.role  ?? "artist",
+          }));
+        }
+      })
+      .catch(() => {});
+
     const storedAvatar = typeof window !== "undefined" ? localStorage.getItem("tmi_profile_avatar_url") : null;
     if (storedAvatar) {
       setProfile((prev) => ({ ...prev, avatarUrl: storedAvatar }));
@@ -55,19 +69,16 @@ export default function SettingsPage() {
   }, []);
 
   async function save(section: Section) {
-    if (section === "profile" && profile.avatarUrl) {
-      const userId = profile.email.split("@")[0] || "me";
+    if (section === "profile") {
       try {
-        await fetch("/api/avatar/sync-state", {
-          method: "POST",
+        await fetch("/api/profile/update", {
+          method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ userId, displayName: profile.name, avatarUrl: profile.avatarUrl }),
+          credentials: "include",
+          body: JSON.stringify({ displayName: profile.name, bio: profile.bio, website: profile.website, avatarUrl: profile.avatarUrl || undefined }),
         });
-      } catch {
-        // Keep local profile state even if sync fails.
-      }
+      } catch { /* non-blocking */ }
     }
-    await new Promise(r => setTimeout(r, 700));
     setSaved(section);
     setTimeout(() => setSaved(null), 2500);
   }
@@ -77,18 +88,12 @@ export default function SettingsPage() {
     if (typeof window !== "undefined") {
       localStorage.setItem("tmi_profile_avatar_url", url);
     }
-
-    const userId = profile.email.split("@")[0] || "me";
-    try {
-      await fetch("/api/avatar/sync-state", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, displayName: profile.name, avatarUrl: url }),
-      });
-    } catch {
-      // Non-blocking for UI flow.
-    }
-
+    fetch("/api/profile/update", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ avatarUrl: url }),
+    }).catch(() => {});
     setUploadNotice("Photo uploaded and linked to your profile.");
     setShowPhotoUploader(false);
     setTimeout(() => setUploadNotice(null), 3500);

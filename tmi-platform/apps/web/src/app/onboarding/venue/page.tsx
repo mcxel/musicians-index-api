@@ -36,12 +36,20 @@ export default function OnboardingVenuePage() {
     e.preventDefault();
     setSaving(true);
     try {
-      await fetch("/api/profile/venue", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(form),
-      });
+      await Promise.all([
+        fetch("/api/profile/venue", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify(form),
+        }),
+        fetch("/api/onboarding/role", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ role: "VENUE" }),
+        }),
+      ]);
     } catch { /* non-fatal */ }
     setSaving(false);
     setDone(true);

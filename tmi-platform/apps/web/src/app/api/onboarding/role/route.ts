@@ -1,8 +1,10 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { proxyToApi } from "@/lib/apiProxy";
-import { emitEvent } from "@/lib/analytics/PersonaAnalyticsEngine";
+import { emitEvent, } from "@/lib/analytics/PersonaAnalyticsEngine";
+import prisma from "@/lib/prisma";
+import { updateUserRole, type UserRole } from "@/lib/auth/UserStore";
 
-const VALID_ROLES = new Set(["MEMBER", "ARTIST", "ADVERTISER", "SPONSOR", "VENUE", "PERFORMER", "FAN"]);
+const VALID_ROLES = new Set(["MEMBER", "ARTIST", "ADVERTISER", "SPONSOR", "VENUE", "PERFORMER", "FAN", "WRITER", "PROMOTER"]);
 
 const COOKIE_OPTS = {
   httpOnly: true,
@@ -27,6 +29,15 @@ export async function POST(req: NextRequest) {
   }
 
   const normalizedRole = role.toUpperCase();
+
+  // Persist role to both DB and in-memory cache so next login gets the right role
+  const email = req.cookies.get('tmi_user_email')?.value;
+  if (email) {
+    const lowerRole = normalizedRole.toLowerCase() as UserRole;
+    updateUserRole(email, lowerRole);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    prisma.user.updateMany({ where: { email }, data: { role: normalizedRole as any } }).catch(() => {});
+  }
 
   const emitTelemetry = (source: string) => {
     emitEvent({

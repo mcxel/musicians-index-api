@@ -121,15 +121,13 @@ function OrbitFaceRail({
   orbitRadius,
   frame,
 }: {
-  orbitArtists: Array<{ artistId: string; name: string; rank: number; score: number; route: string; articleRoute: string }>;
+  orbitArtists: Array<{ artistId: string; name: string; rank: number; score: number; route: string; articleRoute: string; avatarUrl?: string; genre?: string }>;
   orbitRadius: number;
   frame: number;
 }) {
   return (
     <>
       {orbitArtists.map((artist, idx) => {
-        // Clockwise in CSS screen coords: positive angle increment → right→down→left→up
-        // Speed: ~14s per revolution (2π / (0.045 × 10fps))
         const angle = ((idx / Math.max(orbitArtists.length, 1)) * Math.PI * 2) + frame * 0.045;
         const x = Math.cos(angle) * orbitRadius;
         const y = Math.sin(angle) * (orbitRadius * 0.65);
@@ -147,6 +145,8 @@ function OrbitFaceRail({
             x={x}
             y={y}
             delayIndex={idx}
+            avatarUrl={artist.avatarUrl}
+            genre={artist.genre}
           />
         );
       })}
@@ -159,6 +159,7 @@ export default function Home1MagazineCoverHero({ heroImageRef }: Home1MagazineCo
   const [orbitRadius, setOrbitRadius] = useState(190);
   const [maxOrbitCount, setMaxOrbitCount] = useState(9);
   const [livePerformers, setLivePerformers] = useState<PublicPerformer[]>([]);
+  const [activeGenreIdx, setActiveGenreIdx] = useState(0);
 
   const cover = useMemo(() => composeLiveMagazineCover(), []);
   const fallbackWinner = useMemo(() => getCrownArtistPayload(), []);
@@ -199,6 +200,7 @@ export default function Home1MagazineCoverHero({ heroImageRef }: Home1MagazineCo
         route: entry.articleRoute,
         articleRoute: entry.articleRoute,
         voteRoute: `/vote/${entry.artistId}`,
+        avatarUrl: entry.posterFrameUrl ?? undefined,
         media: {
           posterFrameUrl: entry.posterFrameUrl,
           status: entry.liveStatus,
@@ -209,7 +211,7 @@ export default function Home1MagazineCoverHero({ heroImageRef }: Home1MagazineCo
     artistId: u.id,
     name: u.name,
     rank: i + 2,
-    genre: 'Hip-Hop',
+    genre: u.genre ?? 'Hip-Hop',
     score: u.score,
     delta: 5,
     movement: 'rising' as const,
@@ -217,6 +219,7 @@ export default function Home1MagazineCoverHero({ heroImageRef }: Home1MagazineCo
     route: u.route,
     articleRoute: u.route,
     voteRoute: `/vote/${u.id}`,
+    avatarUrl: u.avatarUrl,
     media: { posterFrameUrl: u.avatarUrl, status: 'LIVE' as const },
   }));
 
@@ -279,6 +282,20 @@ export default function Home1MagazineCoverHero({ heroImageRef }: Home1MagazineCo
     return () => window.removeEventListener('resize', update);
   }, []);
 
+  // Collect unique genres from the orbit ring for rotation display
+  const orbitGenres = useMemo(() => {
+    const raw = orbitArtists.map((a) => (a as { genre?: string }).genre).filter(Boolean) as string[];
+    return [...new Set(raw)];
+  }, [orbitArtists]);
+
+  useEffect(() => {
+    if (orbitGenres.length <= 1) return;
+    const t = setInterval(() => setActiveGenreIdx((p) => (p + 1) % orbitGenres.length), 3200);
+    return () => clearInterval(t);
+  }, [orbitGenres.length]);
+
+  const displayGenre = orbitGenres[activeGenreIdx] ?? winner.genre ?? 'Hip-Hop';
+
   const heroPoster = heroImageRef ?? winner.media.posterFrameUrl ?? '/artists/artist-01.png';
 
   return (
@@ -319,9 +336,30 @@ export default function Home1MagazineCoverHero({ heroImageRef }: Home1MagazineCo
               <div style={{ fontSize: 9, letterSpacing: '0.4em', color: '#00FFFF', fontWeight: 800, marginBottom: 10 }}>
                 TOP 10 CROWN ENGINE · LIVE VOTING
               </div>
-              <h2 className="tmi-masthead" style={{ fontSize: 'clamp(1.8rem,5vw,3.4rem)', margin: 0 }}>
+              <h2 className="tmi-masthead" style={{ fontSize: 'clamp(1.8rem,5vw,3.4rem)', margin: '0 0 10px' }}>
                 {cover.headlines[0] ?? 'CROWN UPDATE IN PROGRESS'}
               </h2>
+              {/* Rotating genre display */}
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+                {orbitGenres.slice(0, 6).map((g, i) => (
+                  <span
+                    key={g}
+                    style={{
+                      fontSize: 9,
+                      fontWeight: 800,
+                      letterSpacing: '0.14em',
+                      padding: '3px 10px',
+                      borderRadius: 20,
+                      border: `1px solid ${i === activeGenreIdx ? '#FF2DAA' : 'rgba(255,255,255,0.12)'}`,
+                      background: i === activeGenreIdx ? 'rgba(255,45,170,0.14)' : 'transparent',
+                      color: i === activeGenreIdx ? '#FF2DAA' : 'rgba(255,255,255,0.3)',
+                      transition: 'all 0.5s ease',
+                    }}
+                  >
+                    {g}
+                  </span>
+                ))}
+              </div>
             </div>
 
             <div style={{ position: 'relative', width: '100%', flex: 1, minHeight: 420 }}>

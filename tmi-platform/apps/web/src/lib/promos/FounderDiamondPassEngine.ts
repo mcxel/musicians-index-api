@@ -46,6 +46,28 @@ const FOUNDER_PASSES: DiamondPassHolder[] = [
     role: "fan",
     active: true,
   },
+  {
+    email: "mannipaulayton1@gmail.com",
+    name: "Manni Paulayton",
+    grantedBy: "Marcel Dickens — Founder",
+    grantedAt: new Date("2026-06-12"),
+    code: "DIAMOND-MANNI-LIFETIME",
+    tier: "diamond",
+    duration: "lifetime",
+    role: "fan",
+    active: true,
+  },
+  {
+    email: "greenshean21@gmail.com",
+    name: "Green Shean",
+    grantedBy: "Marcel Dickens — Founder",
+    grantedAt: new Date("2026-06-12"),
+    code: "DIAMOND-GREENSHEAN-LIFETIME",
+    tier: "diamond",
+    duration: "lifetime",
+    role: "fan",
+    active: true,
+  },
 ];
 
 let initialized = false;

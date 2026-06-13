@@ -69,21 +69,20 @@ export default function NavigationRail() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
 
-  // Hide on excluded paths
-  const isExcluded = EXCLUDED_PREFIXES.some(p => (pathname ?? "").startsWith(p));
-  if (isExcluded) return null;
-
-  // Close on route change
+  // All hooks must precede any early return (Rules of Hooks)
   useEffect(() => {
     setOpen(false);
   }, [pathname]);
 
-  // Close on Escape key
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, []);
+
+  // Hide on excluded paths
+  const isExcluded = EXCLUDED_PREFIXES.some(p => (pathname ?? "").startsWith(p));
+  if (isExcluded) return null;
 
   function handleLink(href: string) {
     setOpen(false);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 export default function OnboardingWriterPage() {
@@ -72,6 +72,13 @@ export default function OnboardingWriterPage() {
     fontWeight: 500,
   };
 
+  useEffect(() => {
+    if (done) {
+      const t = setTimeout(() => router.replace("/dashboard/writer"), 2200);
+      return () => clearTimeout(t);
+    }
+  }, [done, router]);
+
   if (done) {
     return (
       <main style={{ minHeight: "100vh", background: "#0a0a0f", display: "flex", alignItems: "center", justifyContent: "center", padding: "40px 20px" }}>
@@ -85,7 +92,7 @@ export default function OnboardingWriterPage() {
             <button onClick={() => router.replace("/magazine")} style={{ padding: "10px 20px", background: "rgba(0,200,255,0.12)", color: "#00C8FF", border: "1px solid rgba(0,200,255,0.3)", borderRadius: 8, fontWeight: 800, fontSize: 13, cursor: "pointer" }}>
               Go to Magazine →
             </button>
-            <button onClick={() => router.replace("/dashboard")} style={{ padding: "10px 20px", background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.7)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 8, fontWeight: 800, fontSize: 13, cursor: "pointer" }}>
+            <button onClick={() => router.replace("/dashboard/writer")} style={{ padding: "10px 20px", background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.7)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 8, fontWeight: 800, fontSize: 13, cursor: "pointer" }}>
               My Dashboard
             </button>
           </div>

@@ -31,6 +31,7 @@ interface KillEvent { id: string; ts: number; level: KillLevel; source: string; 
 interface ApiRoom { id: string; name: string; emoji: string; status: "live"|"preshow"|"idle"; watchers: number; capacity: number; href: string; }
 interface HealthCheck { ok: boolean; latencyMs?: number; detail?: string; }
 interface HealthResponse { checks: { db?: HealthCheck; stripe?: HealthCheck; resend?: HealthCheck; daily?: HealthCheck; }; }
+interface AdminUser { id: string; email: string; displayName?: string; role: string; tier: string; createdAt: string; }
 
 // ─── Seed data ────────────────────────────────────────────────────────────────
 const BOTS: BotEntry[] = [
@@ -356,6 +357,7 @@ export default function MissionControlPage() {
   const [panicMode, setPanicMode] = useState(false);
   const [apiRooms, setApiRooms] = useState<ApiRoom[] | null>(null);
   const [liveStatValues, setLiveStatValues] = useState<Record<string, string>>({});
+  const [userList, setUserList] = useState<AdminUser[]>([]);
   const autoIdxRef = React.useRef(0);
 
   // Fetch real platform stats from AdminStatsEngine
@@ -392,6 +394,17 @@ export default function MissionControlPage() {
       setEvents((prev) => [makeEvent(lvl, msg, src), ...prev].slice(0, 80));
     }, 6000);
     return () => clearInterval(iv);
+  }, []);
+
+  // Fetch real users from UserStore/Prisma
+  const fetchUsers = useCallback(async () => {
+    try {
+      const r = await fetch("/api/admin/users?limit=200", { credentials: "include", cache: "no-store" });
+      if (r.ok) {
+        const d = await r.json() as { users: AdminUser[] };
+        if (d.users?.length) setUserList(d.users);
+      }
+    } catch { /* keep empty */ }
   }, []);
 
   // Fetch rooms from API
@@ -440,11 +453,13 @@ export default function MissionControlPage() {
     runScan();
     fetchRooms();
     fetchStats();
+    fetchUsers();
     const iv1 = setInterval(runScan, 60_000);
     const iv2 = setInterval(fetchRooms, 30_000);
     const iv3 = setInterval(fetchStats, 15_000);
-    return () => { clearInterval(iv1); clearInterval(iv2); clearInterval(iv3); };
-  }, [runScan, fetchRooms, fetchStats]);
+    const iv4 = setInterval(fetchUsers, 30_000);
+    return () => { clearInterval(iv1); clearInterval(iv2); clearInterval(iv3); clearInterval(iv4); };
+  }, [runScan, fetchRooms, fetchStats, fetchUsers]);
 
   const summonBot = (id: string) => {
     setBots((prev) => prev.map((b) => b.id === id ? { ...b, status: b.status === "OFFLINE" ? "ONLINE" : b.status } : b));
@@ -628,21 +643,30 @@ export default function MissionControlPage() {
                 <div>
                   <input value={userSearch} onChange={(e) => setUserSearch(e.target.value)} placeholder="Search users..."
                     style={{ width: "100%", background: C.card, border: `1px solid ${C.border}`, color: C.amber, fontFamily: "'Exo 2', sans-serif", fontSize: 9, outline: "none", borderRadius: 4, padding: "4px 7px", boxSizing: "border-box", marginBottom: 5 }} />
-                  {[
-                    { name: "BigKazhdog",  role: "Artist",   tier: "Diamond", status: "green" as const },
-                    { name: "BJM_Rapper",  role: "Artist",   tier: "Gold",    status: "green" as const },
-                    { name: "Fan_User_441",role: "Fan",      tier: "Silver",  status: "green" as const },
-                    { name: "Sponsor_Co",  role: "Sponsor",  tier: "Active",  status: "dim"   as const },
-                    { name: "Promo_Jay",   role: "Promoter", tier: "Busy",    status: "yellow" as const },
-                  ].filter((u) => u.name.toLowerCase().includes(userSearch.toLowerCase())).map((u) => (
-                    <div key={u.name} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4, padding: "3px 5px", background: "rgba(230,48,0,.07)", borderRadius: 3 }}>
-                      <div style={{ display: "flex", gap: 3, alignItems: "center" }}>
-                        <StatusDot status={u.status} />
-                        <div><div style={{ fontSize: 8 }}>{u.name}</div><div style={{ fontSize: 6, color: C.dim }}>{u.role} · {u.tier}</div></div>
-                      </div>
-                      <button style={{ background: "transparent", border: `1px solid ${C.border}`, color: C.amber, fontSize: 6, padding: "1px 4px", borderRadius: 3, cursor: "pointer", fontFamily: "'Exo 2', sans-serif", fontWeight: 700 }}>Edit</button>
-                    </div>
-                  ))}
+                  {userList.length === 0 && (
+                    <div style={{ fontSize: 8, color: C.dim, padding: "6px 5px" }}>Loading users from database…</div>
+                  )}
+                  {userList
+                    .filter((u) => {
+                      const q = userSearch.toLowerCase();
+                      return (u.displayName ?? u.email ?? "").toLowerCase().includes(q) || u.role.toLowerCase().includes(q);
+                    })
+                    .slice(0, 40)
+                    .map((u) => {
+                      const display = u.displayName || u.email.split("@")[0] || u.id;
+                      return (
+                        <div key={u.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4, padding: "3px 5px", background: "rgba(230,48,0,.07)", borderRadius: 3 }}>
+                          <div style={{ display: "flex", gap: 3, alignItems: "center" }}>
+                            <StatusDot status="green" />
+                            <div>
+                              <div style={{ fontSize: 8 }}>{display}</div>
+                              <div style={{ fontSize: 6, color: C.dim }}>{u.role} · {u.tier}</div>
+                            </div>
+                          </div>
+                          <button style={{ background: "transparent", border: `1px solid ${C.border}`, color: C.amber, fontSize: 6, padding: "1px 4px", borderRadius: 3, cursor: "pointer", fontFamily: "'Exo 2', sans-serif", fontWeight: 700 }}>Edit</button>
+                        </div>
+                      );
+                    })}
                 </div>
               )}
 

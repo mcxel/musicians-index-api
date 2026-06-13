@@ -15,6 +15,9 @@ interface GovernedOrbitFaceProps {
   x: number;
   y: number;
   delayIndex?: number;
+  /** Direct photo URL from DB — bypasses the authority resolution system */
+  avatarUrl?: string;
+  genre?: string;
 }
 
 export default function GovernedOrbitFace({
@@ -28,6 +31,8 @@ export default function GovernedOrbitFace({
   x,
   y,
   delayIndex = 0,
+  avatarUrl,
+  genre,
 }: GovernedOrbitFaceProps) {
   return (
     // Positioning wrapper — static transform so Framer Motion doesn't fight it
@@ -55,19 +60,25 @@ export default function GovernedOrbitFace({
         WebkitBackfaceVisibility: 'hidden',
       }}
     >
-      {/* Governed performer portrait (replaces direct backgroundImage) */}
+      {/* Portrait — direct URL wins over authority system for real users */}
       <div style={{ height: 68, position: 'relative', overflow: 'hidden' }}>
-        <PerformerPortraitWrapper
-          performerId={artistId}
-          roomId={roomId}
-          displayName={artistName}
-          kind="artist"
-          containerStyle={{
-            width: '100%',
-            height: '100%',
-          }}
-          className="w-full h-full object-cover"
-        />
+        {avatarUrl ? (
+          <img
+            src={avatarUrl}
+            alt={artistName}
+            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+            onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/tmi-curated/mag-20.jpg'; }}
+          />
+        ) : (
+          <PerformerPortraitWrapper
+            performerId={artistId}
+            roomId={roomId}
+            displayName={artistName}
+            kind="artist"
+            containerStyle={{ width: '100%', height: '100%' }}
+            className="w-full h-full object-cover"
+          />
+        )}
       </div>
 
       {/* Info section */}
@@ -76,7 +87,7 @@ export default function GovernedOrbitFace({
           #{rank} {artistName}
         </div>
         <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.6)', letterSpacing: '0.05em' }}>
-          SCORE {score}
+          {genre ? <span style={{ color: '#FF2DAA', marginRight: 4 }}>{genre}</span> : null}SCORE {score}
         </div>
         <div style={{ display: 'flex', gap: 4 }}>
           <Link

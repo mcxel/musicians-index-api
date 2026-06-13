@@ -12,7 +12,7 @@ const TIERS = [
     price: "$9.99",
     period: "/ month",
     color: "#00FFFF",
-    priceId: "price_fan_monthly",
+    priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_FAN_SILVER ?? "price_1TcJoOEAwH1Fjtu9IrhSwoyA",
     amount: 999,
     popular: false,
     perks: [
@@ -30,7 +30,7 @@ const TIERS = [
     price: "$19.99",
     period: "/ month",
     color: "#FF2DAA",
-    priceId: "price_artist_monthly",
+    priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_PERFORMER_PLATINUM ?? "price_1TcK2xEAwH1Fjtu9FLlIHItH",
     amount: 1999,
     popular: true,
     perks: [
@@ -49,7 +49,7 @@ const TIERS = [
     price: "$49.99",
     period: "/ month",
     color: "#FFD700",
-    priceId: "price_vip_monthly",
+    priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_FAN_DIAMOND ?? "price_1TcJvaEAwH1Fjtu9me4Aq2UU",
     amount: 4999,
     popular: false,
     perks: [
@@ -129,7 +129,7 @@ export default function SeasonPassPage() {
             </ul>
             <Link
               href={`/api/stripe/checkout?priceId=${tier.priceId}&mode=subscription&amount=${tier.amount}&productName=${encodeURIComponent(tier.name)}`}
-              style={{ display: "block", textAlign: "center", padding: "11px", fontSize: 9, fontWeight: 900, letterSpacing: "0.12em", color: tier.popular ? "#050510" : tier.color, background: tier.popular ? tier.color : "transparent", border: `1px solid ${tier.color}`, borderRadius: 8, textDecoration: "none" }}
+              style={{ display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center", padding: "11px", minHeight: "44px", fontSize: 9, fontWeight: 900, letterSpacing: "0.12em", color: tier.popular ? "#050510" : tier.color, background: tier.popular ? tier.color : "transparent", border: `1px solid ${tier.color}`, borderRadius: 8, textDecoration: "none" }}
             >
               GET {tier.name.toUpperCase()} →
             </Link>

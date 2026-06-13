@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { dbReady, getUserByEmail } from '@/lib/auth/UserStore';
+import prisma from '@/lib/prisma';
 
 type ProfileBody = {
   displayName?: string;
@@ -11,12 +12,10 @@ type ProfileBody = {
   avatarUrl?: string;
   bannerUrl?: string;
   socialLinks?: Record<string, string>;
-  // Artist-specific
   stageName?: string;
   genres?: string[];
   skills?: string[];
   label?: string;
-  // Fan-specific
   favoriteGenres?: string[];
 };
 
@@ -43,87 +42,70 @@ export async function PUT(req: NextRequest) {
   const user = getUserByEmail(email);
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
-  // Try persisting to Prisma if DB is available
   let saved = false;
   try {
-    if (process.env.DATABASE_URL) {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const { PrismaClient } = require('@prisma/client') as { PrismaClient: new (opts: object) => Record<string, unknown> };
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const { PrismaPg } = require('@prisma/adapter-pg') as { PrismaPg: new (pool: unknown) => unknown };
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const { Pool } = require('pg') as { Pool: new (opts: object) => unknown };
-      const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-      const adapter = new PrismaPg(pool);
-      const prisma = new PrismaClient({ adapter }) as {
-        userProfile: {
-          upsert: (args: {
-            where: { userId: string };
-            create: Record<string, unknown>;
-            update: Record<string, unknown>;
-          }) => Promise<{ id: string }>;
-        };
-        artistProfile: {
-          upsert: (args: {
-            where: { userId: string };
-            create: Record<string, unknown>;
-            update: Record<string, unknown>;
-          }) => Promise<{ id: string }>;
-        };
-        fanProfile: {
-          upsert: (args: {
-            where: { userId: string };
-            create: Record<string, unknown>;
-            update: Record<string, unknown>;
-          }) => Promise<{ id: string }>;
-        };
-        $disconnect: () => Promise<void>;
-      };
-
-      const profileData = {
-        userId: user.id,
-        displayName: body.displayName,
-        bio: body.bio,
-        website: body.website,
-        location: body.location,
-        avatarUrl: body.avatarUrl,
-        bannerUrl: body.bannerUrl,
-        socialLinks: body.socialLinks,
-      };
-      await prisma.userProfile.upsert({
-        where: { userId: user.id },
-        create: profileData,
-        update: profileData,
+    // Update User.displayName directly so performers list reflects it immediately
+    if (body.displayName) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data:  { displayName: body.displayName },
       });
-
-      const role = user.role.toLowerCase();
-      if (role === 'artist' || role === 'performer') {
-        const artistData = {
-          userId: user.id,
-          stageName: body.stageName,
-          genres: body.genres ?? [],
-          skills: body.skills ?? [],
-          label: body.label,
-        };
-        await prisma.artistProfile.upsert({
-          where: { userId: user.id },
-          create: artistData,
-          update: artistData,
-        });
-      }
-
-      if (role === 'fan') {
-        const fanData = { userId: user.id, favoriteGenres: body.favoriteGenres ?? [], bio: body.bio };
-        await prisma.fanProfile.upsert({
-          where: { userId: user.id },
-          create: fanData,
-          update: fanData,
-        });
-      }
-
-      await prisma.$disconnect();
-      saved = true;
     }
+
+    // userProfile — avatar, bio, links
+    await prisma.userProfile.upsert({
+      where:  { userId: user.id },
+      create: {
+        userId:      user.id,
+        displayName: body.displayName,
+        bio:         body.bio,
+        website:     body.website,
+        location:    body.location,
+        avatarUrl:   body.avatarUrl,
+        bannerUrl:   body.bannerUrl,
+        socialLinks: body.socialLinks ?? undefined,
+      },
+      update: {
+        ...(body.displayName !== undefined && { displayName: body.displayName }),
+        ...(body.bio         !== undefined && { bio:         body.bio         }),
+        ...(body.website     !== undefined && { website:     body.website     }),
+        ...(body.location    !== undefined && { location:    body.location    }),
+        ...(body.avatarUrl   !== undefined && { avatarUrl:   body.avatarUrl   }),
+        ...(body.bannerUrl   !== undefined && { bannerUrl:   body.bannerUrl   }),
+        ...(body.socialLinks !== undefined && { socialLinks: body.socialLinks }),
+      },
+    });
+
+    // artistProfile — genres saved for ALL roles so orbit shows real genre tags
+    if (body.genres !== undefined || body.stageName !== undefined || body.skills !== undefined || body.label !== undefined) {
+      await prisma.artistProfile.upsert({
+        where:  { userId: user.id },
+        create: {
+          userId:    user.id,
+          stageName: body.stageName,
+          genres:    body.genres    ?? [],
+          skills:    body.skills    ?? [],
+          label:     body.label,
+        },
+        update: {
+          ...(body.stageName !== undefined && { stageName: body.stageName }),
+          ...(body.genres    !== undefined && { genres:    body.genres    }),
+          ...(body.skills    !== undefined && { skills:    body.skills    }),
+          ...(body.label     !== undefined && { label:     body.label     }),
+        },
+      });
+    }
+
+    const role = user.role.toLowerCase();
+    if (role === 'fan' && body.favoriteGenres !== undefined) {
+      await prisma.fanProfile.upsert({
+        where:  { userId: user.id },
+        create: { userId: user.id, favoriteGenres: body.favoriteGenres, bio: body.bio },
+        update: { favoriteGenres: body.favoriteGenres, ...(body.bio !== undefined && { bio: body.bio }) },
+      });
+    }
+
+    saved = true;
   } catch (err) {
     console.error('[api/profile/update] DB write failed (non-fatal):', err);
   }
@@ -137,5 +119,4 @@ export async function PUT(req: NextRequest) {
   return response;
 }
 
-// Also support POST for compatibility
 export const POST = PUT;

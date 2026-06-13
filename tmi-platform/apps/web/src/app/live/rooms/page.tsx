@@ -38,7 +38,7 @@ const FILTERS = ['ALL', 'BATTLE', 'CYPHER', 'CONCERT', 'GAME SHOW', 'SESSION', '
 type Filter = typeof FILTERS[number];
 
 function roomHref(slug: string) {
-  return `/rooms/${slug}?autoSeat=1`;
+  return `/live/rooms/${slug}?from=lobby-wall`;
 }
 
 export default function BillboardLobbyWallPage() {

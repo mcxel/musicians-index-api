@@ -1,10 +1,12 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { TMI_ONBOARDING_CHECKLIST } from '@/lib/onboarding/tmiOnboardingChecklist';
 import AutoPerformerWelcomeMessage from '@/components/onboarding/AutoPerformerWelcomeMessage';
 
 export default function OnboardingPerformerPage() {
+  const router = useRouter();
   const [done, setDone] = useState(false);
 
   if (done) {
@@ -44,7 +46,18 @@ export default function OnboardingPerformerPage() {
       </ul>
 
       <button
-        onClick={() => setDone(true)}
+        onClick={async () => {
+          try {
+            await fetch('/api/onboarding/role', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              credentials: 'include',
+              body: JSON.stringify({ role: 'PERFORMER' }),
+            });
+          } catch { /* non-fatal */ }
+          setDone(true);
+          setTimeout(() => router.replace('/dashboard/performer'), 2200);
+        }}
         style={{ marginTop: 28, padding: '13px 28px', background: '#FF2DAA', color: '#fff', border: 'none', borderRadius: 8, fontSize: 15, fontWeight: 900, cursor: 'pointer', letterSpacing: '0.06em' }}
       >
         I&apos;m Ready — Show Me My Stage →

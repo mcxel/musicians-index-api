@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { PersonaSwitcher } from '@/components/hud/PersonaSwitcher';
 import { HubBackNav } from '@/components/nav/HubBackNav';
@@ -15,20 +15,32 @@ import ArtistPulseRail from '@/components/artist/ArtistPulseRail';
 import ArtistTipRail from '@/components/artist/ArtistTipRail';
 import LiveMediaWall from '@/components/media/LiveMediaWall';
 
-const ARTIST_SLUG = 'demo-artist';
-
-const NAV_LINKS = [
-  { href: `/artists/${ARTIST_SLUG}`,           label: 'Public Profile' },
-  { href: `/artists/${ARTIST_SLUG}/analytics`, label: 'Analytics' },
-  { href: `/artists/${ARTIST_SLUG}/article`,   label: 'Article' },
-  { href: '/beat-vault',                        label: 'Beat Vault' },
-  { href: '/nft',                               label: 'NFT Studio' },
-  { href: '/settings',                          label: 'Settings' },
-  { href: '/api/auth/logout',                    label: 'Logout' },
-];
-
 export default function ArtistHubPage() {
   const [showState, setShowState] = useState<ArtistShowState>('closed');
+  const [artistSlug, setArtistSlug] = useState('me');
+  const [displayName, setDisplayName] = useState('');
+
+  useEffect(() => {
+    fetch('/api/auth/session', { cache: 'no-store', credentials: 'include' })
+      .then(r => r.json())
+      .then((d: { user?: { id?: string; name?: string; email?: string } }) => {
+        if (d?.user) {
+          setArtistSlug(d.user.id ?? 'me');
+          setDisplayName(d.user.name ?? d.user.email?.split('@')[0] ?? 'artist');
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const NAV_LINKS = [
+    { href: `/artists/${artistSlug}`,           label: 'Public Profile' },
+    { href: `/artists/${artistSlug}/analytics`, label: 'Analytics' },
+    { href: `/artists/${artistSlug}/article`,   label: 'Article' },
+    { href: '/beat-vault',                       label: 'Beat Vault' },
+    { href: '/nft',                              label: 'NFT Studio' },
+    { href: '/settings',                         label: 'Settings' },
+    { href: '/api/auth/logout',                   label: 'Logout' },
+  ];
 
   function advanceShow(state: ArtistShowState) {
     setShowState(nextShowState(state));
@@ -57,7 +69,7 @@ export default function ArtistHubPage() {
         {/* Header */}
         <div style={{ marginBottom: 28 }}>
           <div style={{ fontSize: 10, color: '#00FFFF', letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: 6 }}>Artist Command Deck</div>
-          <h1 style={{ fontSize: 32, fontWeight: 900, margin: 0, letterSpacing: '-0.01em' }}>@{ARTIST_SLUG}</h1>
+          <h1 style={{ fontSize: 32, fontWeight: 900, margin: 0, letterSpacing: '-0.01em' }}>@{displayName}</h1>
           <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.45)', marginTop: 6 }}>
             Live show control · revenue · tips · setlist · backstage · pulse
           </p>
@@ -111,7 +123,7 @@ export default function ArtistHubPage() {
             {/* Command rail (signal + quick actions) */}
             <div style={{ marginBottom: 20 }}>
               <SectionLabel>Command Rail</SectionLabel>
-              <ArtistCommandRail showState={showState} slug={ARTIST_SLUG} onStateChange={advanceShow} />
+              <ArtistCommandRail showState={showState} slug={artistSlug} onStateChange={advanceShow} />
             </div>
 
             {/* Backstage crew */}
@@ -125,10 +137,10 @@ export default function ArtistHubPage() {
               <SectionLabel>Analytics</SectionLabel>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {[
-                  { label: 'Full Analytics Dashboard', href: `/artists/${ARTIST_SLUG}/analytics`, color: '#00FFFF' },
-                  { label: 'Revenue Report',            href: `/artists/${ARTIST_SLUG}/analytics?tab=revenue`, color: '#FFD700' },
-                  { label: 'Audience Retention',        href: `/artists/${ARTIST_SLUG}/analytics?tab=retention`, color: '#AA2DFF' },
-                  { label: 'Beat Performance',          href: `/artists/${ARTIST_SLUG}/analytics?tab=beats`, color: '#FF2DAA' },
+                  { label: 'Full Analytics Dashboard', href: `/artists/${artistSlug}/analytics`, color: '#00FFFF' },
+                  { label: 'Revenue Report',            href: `/artists/${artistSlug}/analytics?tab=revenue`, color: '#FFD700' },
+                  { label: 'Audience Retention',        href: `/artists/${artistSlug}/analytics?tab=retention`, color: '#AA2DFF' },
+                  { label: 'Beat Performance',          href: `/artists/${artistSlug}/analytics?tab=beats`, color: '#FF2DAA' },
                 ].map(link => (
                   <Link key={link.href} href={link.href} style={{ textDecoration: 'none' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,0.02)', border: `1px solid ${link.color}22`, borderRadius: 8, padding: '10px 14px' }}>

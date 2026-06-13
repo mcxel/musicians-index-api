@@ -218,11 +218,11 @@ export default function PerformerHubPage() {
                   <Link href="/magazine" style={{ fontSize: 9, color: "#FFD700", textDecoration: "none", fontWeight: 700 }}>READ ALL →</Link>
                 </div>
                 {[
-                  { title: "Coming Soon", issue: "Issue 01 · TMI Magazine", color: "#FFD700" },
-                  { title: "Top 10 Cypher Moments of 2026",       issue: "Issue 01 · Feature",     color: "#00FFFF" },
-                  { title: "Battle Night — Full Recap",            issue: "Issue 01 · Recap",       color: "#FF2DAA" },
+                  { title: "Rise of the Underground Performer: 2026 Edition", issue: "Issue 01 · Cover Feature",  color: "#FFD700",  href: "/articles/performer" },
+                  { title: "Top 10 Cypher Moments of 2026",                   issue: "Issue 01 · Feature",        color: "#00FFFF",  href: "/magazine" },
+                  { title: "Battle Night — Full Season 1 Recap",               issue: "Issue 01 · Recap",          color: "#FF2DAA",  href: "/magazine" },
                 ].map(a => (
-                  <Link key={a.title} href="/magazine" style={{ display: "block", padding: "8px 0", borderBottom: "1px solid rgba(255,255,255,0.05)", textDecoration: "none" }}>
+                  <Link key={a.title} href={a.href} style={{ display: "block", padding: "8px 0", borderBottom: "1px solid rgba(255,255,255,0.05)", textDecoration: "none" }}>
                     <div style={{ fontSize: 11, fontWeight: 700, color: "#fff", marginBottom: 2, lineHeight: 1.3 }}>{a.title}</div>
                     <div style={{ fontSize: 9, color: a.color }}>{a.issue}</div>
                   </Link>

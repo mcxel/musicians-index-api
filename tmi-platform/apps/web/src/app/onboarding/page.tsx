@@ -45,7 +45,7 @@ export default function OnboardingPage() {
       advertiser: "/onboarding/advertiser",
       venue: "/onboarding/venue",
       promoter: "/onboarding/promoter",
-      writer: "/start",
+      writer: "/onboarding/writer",
     };
     return map[roleId] ?? "/start";
   };

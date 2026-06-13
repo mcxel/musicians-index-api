@@ -5,16 +5,38 @@ import EmailQueueEngine from '@/lib/email/EmailQueueEngine';
 
 // Maps Stripe price IDs → TMI subscription tier names
 const PRICE_TO_TIER: Record<string, string> = {
-  price_fan_monthly:                           'pro',
-  price_1TUWI4EL7B8tMf4NHs74ydgc:             'pro',
-  price_member_vip_monthly:                    'gold',
-  price_artist_monthly:                        'pro',
-  price_artist_pro_monthly:                    'pro',
-  price_season_pass:                           'platinum',
-  price_fan_club_RUBY:                       'RUBY',
-  price_fan_club_silver:                       'silver',
-  price_fan_club_gold:                         'gold',
-  price_fan_club_platinum:                     'platinum',
+  // Fan tiers (real Stripe IDs)
+  'price_1TcJXrEAwH1Fjtu9pYxAwEqi': 'FREE',
+  'price_1TcJnFEAwH1Fjtu98MhoEGqG': 'RUBY',
+  'price_1TcJoOEAwH1Fjtu9IrhSwoyA': 'SILVER',
+  'price_1TcJrTEAwH1Fjtu9wjhmnv5K': 'GOLD',
+  'price_1TcJsDEAwH1Fjtu9zU7X7mml': 'PLATINUM',
+  'price_1TcJvaEAwH1Fjtu9me4Aq2UU': 'DIAMOND',
+  'price_1TcJxBEAwH1Fjtu9xjMfLhw4': 'GOLD',
+  // Performer tiers
+  'price_1TcJzdEAwH1Fjtu9Nx5DsRzL': 'RUBY',
+  'price_1TcK0dEAwH1Fjtu9MXK323Q7': 'SILVER',
+  'price_1TcK1LEAwH1Fjtu9ZnOrTyZw': 'GOLD',
+  'price_1TcK2xEAwH1Fjtu9FLlIHItH': 'PLATINUM',
+  'price_1TcK4MEAwH1Fjtu96b2TJlBe': 'DIAMOND',
+  'price_1TcK68EAwH1Fjtu9KGLcf8HE': 'GOLD',
+  // Sponsor/Advertiser/Venue/Promoter
+  'price_1Tb148EAwH1Fjtu9KZFL3H3Y': 'RUBY',
+  'price_1Tb147EAwH1Fjtu9yCbRfH3j': 'SILVER',
+  'price_1Tb144EAwH1Fjtu9I0Xq1iFV': 'GOLD',
+  'price_1Tb143EAwH1Fjtu9WDqnYV7z': 'DIAMOND',
+  'price_1TdZQEEAwH1Fjtu9JcPS32sL': 'PRO',
+  'price_1TdZQSEAwH1Fjtu9Cz3j2Rik': 'PRO',
+  'price_1TdY0UEAwH1Fjtu9FTrdprdy': 'GOLD',
+  // Legacy placeholder IDs (backwards compat)
+  price_fan_monthly:        'SILVER',
+  price_artist_monthly:     'GOLD',
+  price_vip_monthly:        'DIAMOND',
+  price_season_pass:        'PLATINUM',
+  price_fan_club_RUBY:      'RUBY',
+  price_fan_club_silver:    'SILVER',
+  price_fan_club_gold:      'GOLD',
+  price_fan_club_platinum:  'PLATINUM',
 };
 
 const COOKIE_OPTS = {

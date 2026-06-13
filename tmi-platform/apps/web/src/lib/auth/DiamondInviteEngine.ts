@@ -123,6 +123,22 @@ export class DiamondInviteEngine {
       assignedRole: 'fan',
       status: 'active',
     }],
+
+    // Manni Paulayton — Lifetime diamond (owner-granted 2026-06-12)
+    ['VIP-MANNI-2026', {
+      token: 'VIP-MANNI-2026',
+      email: 'mannipaulayton1@gmail.com',
+      assignedRole: 'fan',
+      status: 'active',
+    }],
+
+    // Green Shean — Lifetime diamond (owner-granted 2026-06-12)
+    ['VIP-GREENSHEAN-2026', {
+      token: 'VIP-GREENSHEAN-2026',
+      email: 'greenshean21@gmail.com',
+      assignedRole: 'fan',
+      status: 'active',
+    }],
   ]);
 
   static getInvite(token: string): InvitePayload | undefined {

@@ -260,7 +260,7 @@ export default function AuthPage() {
                 onClick={() => void register()}
                 disabled={busy}
                 style={{
-                  flex: 1, padding: "13px", fontSize: 11, fontWeight: 800, letterSpacing: "0.12em",
+                  flex: 1, padding: "13px", minHeight: "44px", fontSize: 11, fontWeight: 800, letterSpacing: "0.12em",
                   background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.15)",
                   color: "#fff", borderRadius: 8, cursor: busy ? "wait" : "pointer", opacity: busy ? 0.7 : 1,
                 }}
@@ -273,7 +273,7 @@ export default function AuthPage() {
                 type="submit"
                 disabled={busy}
                 style={{
-                  flex: 1, padding: "13px", fontSize: 11, fontWeight: 800, letterSpacing: "0.15em",
+                  flex: 1, padding: "13px", minHeight: "44px", fontSize: 11, fontWeight: 800, letterSpacing: "0.15em",
                   background: busy ? "rgba(0,255,255,0.15)" : "linear-gradient(135deg,#00FFFF,#00FFFF99)",
                   color: "#050510", border: "none", borderRadius: 8, cursor: busy ? "wait" : "pointer",
                   opacity: busy ? 0.7 : 1,
@@ -294,7 +294,7 @@ export default function AuthPage() {
             <a href="/api/auth/google"
               style={{
                 display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
-                width: "100%", padding: "12px", fontSize: 11, fontWeight: 700,
+                width: "100%", padding: "12px", minHeight: "44px", fontSize: 11, fontWeight: 700,
                 background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)",
                 borderRadius: 8, color: "#fff", textDecoration: "none", cursor: "pointer",
                 letterSpacing: "0.06em",
@@ -318,7 +318,7 @@ export default function AuthPage() {
             style={{ marginTop: 20, textAlign: "center" }}
           >
             <div style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", marginBottom: 10 }}>Don&apos;t have an account?</div>
-            <Link href="/signup" style={{ display: "block", padding: "12px", fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 8, color: "rgba(255,255,255,0.7)", textDecoration: "none", background: "rgba(255,255,255,0.03)" }}>
+            <Link href="/signup" style={{ display: "block", padding: "12px", minHeight: "44px", fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 8, color: "rgba(255,255,255,0.7)", textDecoration: "none", background: "rgba(255,255,255,0.03)", lineHeight: "20px" }}>
               CREATE YOUR TMI ACCOUNT →
             </Link>
           </motion.div>

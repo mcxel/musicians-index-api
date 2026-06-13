@@ -63,128 +63,134 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Password must be at least 8 characters' }, { status: 400 });
   }
 
-  // Check for existing user in the database
-  const existingUser = await prisma.user.findUnique({ where: { email } });
+  try {
+    const existingUser = await prisma.user.findUnique({ where: { email } });
 
-  if (existingUser) {
-    return NextResponse.json({ error: 'User already exists' }, { status: 409 });
-  }
-
-  // Hash the password securely and save it as passwordHash
-  const hashedPassword = await hash(password, 10);
-
-  const user = await prisma.user.create({
-    data: {
-      email,
-      passwordHash: hashedPassword,
-      displayName: displayName || email.split('@')[0],
-      role: platformRole === '' ? 'USER' : (platformRole.toUpperCase() as any),
-      tier: 'FREE'
-    }
-  });
-
-  // Auto-login: create session immediately so user lands on dashboard authenticated
-  const userAgent = req.headers.get('user-agent') ?? '';
-  const { sessionId, sessionToken } = createSession(user.id, user.role, clientIp, userAgent);
-
-  // Role-specific welcome email via TMIEmailSystem magazine templates
-  const name = displayName || user.displayName || email.split('@')[0];
-  const isArtist = platformRole === 'artist' || platformRole === 'performer';
-  const emailType = isArtist ? 'welcome_artist'
-    : platformRole === 'sponsor' ? 'sponsor_confirmation'
-    : platformRole === 'venue' ? 'welcome_venue'
-    : 'welcome_fan';
-  const emailData: Record<string, unknown> = { name, slug: user.id };
-  if (platformRole === 'venue') { emailData.venueName = name; emailData.venueSlug = user.id; }
-  if (platformRole === 'sponsor') {
-    emailData.sponsorName = name;
-    emailData.packageName = 'Standard';
-    emailData.monthlyBudget = '0';
-    emailData.activeUntil = 'Pending';
-    emailData.repEmail = 'sponsors@themusiciansindex.com';
-  }
-  async function sendWelcomeEmailWithRetry() {
-    const first = await sendEmail({ to: email, type: emailType, data: emailData });
-    if (first.success) {
-      emitAdminLiveEvent({
-        type: 'engagement',
-        message: `[${new Date().toLocaleTimeString()}] 📧 Welcome email sent: ${email} (${emailType})`,
-        meta: { userId: user.id, email, emailType, attempt: 1 },
-      });
-      return;
+    if (existingUser) {
+      return NextResponse.json({ error: 'An account with this email already exists.' }, { status: 409 });
     }
 
-    const retryable = /(fetch|network|timeout|resend|socket|5\d\d)/i.test(first.error ?? '');
-    if (retryable) {
-      const second = await sendEmail({ to: email, type: emailType, data: emailData });
-      if (second.success) {
+    const hashedPassword = await hash(password, 10);
+
+    const user = await prisma.user.create({
+      data: {
+        email,
+        passwordHash: hashedPassword,
+        displayName: displayName || email.split('@')[0],
+        role: platformRole === '' ? 'USER' : (platformRole.toUpperCase() as any),
+        tier: 'FREE'
+      }
+    });
+
+    const userAgent = req.headers.get('user-agent') ?? '';
+    const { sessionId, sessionToken } = createSession(user.id, user.role, clientIp, userAgent);
+
+    const name = displayName || user.displayName || email.split('@')[0];
+    const isArtist = platformRole === 'artist' || platformRole === 'performer';
+    const emailType = isArtist ? 'welcome_artist'
+      : platformRole === 'sponsor' ? 'sponsor_confirmation'
+      : platformRole === 'venue' ? 'welcome_venue'
+      : 'welcome_fan';
+    const emailData: Record<string, unknown> = { name, slug: user.id };
+    if (platformRole === 'venue') { emailData.venueName = name; emailData.venueSlug = user.id; }
+    if (platformRole === 'sponsor') {
+      emailData.sponsorName = name;
+      emailData.packageName = 'Standard';
+      emailData.monthlyBudget = '0';
+      emailData.activeUntil = 'Pending';
+      emailData.repEmail = 'sponsors@themusiciansindex.com';
+    }
+    const sendWelcomeEmailWithRetry = async () => {
+      const first = await sendEmail({ to: email, type: emailType, data: emailData });
+      if (first.success) {
         emitAdminLiveEvent({
           type: 'engagement',
-          message: `[${new Date().toLocaleTimeString()}] 📧 Welcome email sent on retry: ${email} (${emailType})`,
-          meta: { userId: user.id, email, emailType, attempt: 2 },
+          message: `[${new Date().toLocaleTimeString()}] 📧 Welcome email sent: ${email} (${emailType})`,
+          meta: { userId: user.id, email, emailType, attempt: 1 },
         });
         return;
       }
+
+      const retryable = /(fetch|network|timeout|resend|socket|5\d\d)/i.test(first.error ?? '');
+      if (retryable) {
+        const second = await sendEmail({ to: email, type: emailType, data: emailData });
+        if (second.success) {
+          emitAdminLiveEvent({
+            type: 'engagement',
+            message: `[${new Date().toLocaleTimeString()}] 📧 Welcome email sent on retry: ${email} (${emailType})`,
+            meta: { userId: user.id, email, emailType, attempt: 2 },
+          });
+          return;
+        }
+        emitAdminLiveEvent({
+          type: 'alert',
+          message: `[${new Date().toLocaleTimeString()}] ⚠️ Welcome email failed after retry: ${email} (${emailType})`,
+          meta: { userId: user.id, email, emailType, error: second.error ?? 'unknown' },
+        });
+        console.error('[TMI register email] retry failed', email, emailType, second.error);
+        return;
+      }
+
       emitAdminLiveEvent({
         type: 'alert',
-        message: `[${new Date().toLocaleTimeString()}] ⚠️ Welcome email failed after retry: ${email} (${emailType})`,
-        meta: { userId: user.id, email, emailType, error: second.error ?? 'unknown' },
+        message: `[${new Date().toLocaleTimeString()}] ⚠️ Welcome email failed: ${email} (${emailType})`,
+        meta: { userId: user.id, email, emailType, error: first.error ?? 'unknown' },
       });
-      console.error('[TMI register email] retry failed', email, emailType, second.error);
-      return;
+      console.error('[TMI register email] failed', email, emailType, first.error);
+    };
+
+    void sendWelcomeEmailWithRetry().catch((e) => {
+      emitAdminLiveEvent({
+        type: 'alert',
+        message: `[${new Date().toLocaleTimeString()}] ⚠️ Welcome email exception: ${email} (${emailType})`,
+        meta: { userId: user.id, email, emailType, error: String(e) },
+      });
+      console.error('[TMI register email] exception', e);
+    });
+
+    if (parsed.inviteToken) {
+      void DiamondInviteEngine.validateAndRedeem(parsed.inviteToken, user.id);
     }
 
-    emitAdminLiveEvent({
-      type: 'alert',
-      message: `[${new Date().toLocaleTimeString()}] ⚠️ Welcome email failed: ${email} (${emailType})`,
-      meta: { userId: user.id, email, emailType, error: first.error ?? 'unknown' },
-    });
-    console.error('[TMI register email] failed', email, emailType, first.error);
-  }
-
-  void sendWelcomeEmailWithRetry().catch((e) => {
-    emitAdminLiveEvent({
-      type: 'alert',
-      message: `[${new Date().toLocaleTimeString()}] ⚠️ Welcome email exception: ${email} (${emailType})`,
-      meta: { userId: user.id, email, emailType, error: String(e) },
-    });
-    console.error('[TMI register email] exception', e);
-  });
-
-  // Redeem invite token NOW that the account actually exists
-  if (parsed.inviteToken) {
-    void DiamondInviteEngine.validateAndRedeem(parsed.inviteToken, user.id);
-  }
-
-  // Auto-qualify referral on signup — a signup is stronger than 30s stay
-  if (parsed.ref) {
-    registerArrival(parsed.ref, user.id);
-    const refResult = qualifyReferral(parsed.ref, user.id, 999, 1);
-    if (refResult.qualified && refResult.milestoneBonus > 0) {
-      const link = resolveToken(parsed.ref);
-      if (link) {
-        const owner = await prisma.user.findUnique({ where: { id: link.ownerId } });
-        if (owner) await prisma.user.update({ where: { id: owner.id }, data: { tier: 'GOLD' } });
+    if (parsed.ref) {
+      try {
+        registerArrival(parsed.ref, user.id);
+        const refResult = qualifyReferral(parsed.ref, user.id, 999, 1);
+        if (refResult.qualified && refResult.milestoneBonus > 0) {
+          const link = resolveToken(parsed.ref);
+          if (link) {
+            const owner = await prisma.user.findUnique({ where: { id: link.ownerId } });
+            if (owner) await prisma.user.update({ where: { id: owner.id }, data: { tier: 'GOLD' } });
+          }
+        }
+      } catch (refErr) {
+        console.error('[TMI register] referral bonus failed (non-fatal):', refErr);
       }
     }
+
+    const response = NextResponse.json(
+      { ok: true, userId: user.id, user: { id: user.id, email: user.email, tier: user.tier, role: user.role } },
+      { status: 201 }
+    );
+
+    response.cookies.set('tmi_session_id', sessionId, COOKIE_OPTS);
+    response.cookies.set('tmi_session', sessionToken, COOKIE_OPTS);
+    response.cookies.set('tmi_role', user.role, COOKIE_OPTS);
+    response.cookies.set('tmi_tier', user.tier, COOKIE_OPTS);
+    response.cookies.set('tmi_user_email', email, {
+      httpOnly: false,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60,
+      path: '/',
+    });
+
+    return response;
+  } catch (err) {
+    console.error('[TMI register] error:', err);
+    return NextResponse.json(
+      { error: 'Registration is temporarily unavailable. Please try again in a moment.' },
+      { status: 500 }
+    );
   }
-
-  const response = NextResponse.json(
-    { ok: true, userId: user.id, user: { id: user.id, email: user.email, tier: user.tier, role: user.role } },
-    { status: 201 }
-  );
-
-  response.cookies.set('tmi_session_id', sessionId, COOKIE_OPTS);
-  response.cookies.set('tmi_session', sessionToken, COOKIE_OPTS);
-  response.cookies.set('tmi_role', user.role, COOKIE_OPTS);
-  response.cookies.set('tmi_tier', user.tier, COOKIE_OPTS);
-  response.cookies.set('tmi_user_email', email, {
-    httpOnly: false,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    maxAge: 7 * 24 * 60 * 60,
-    path: '/',
-  });
-
-  return response;
 }

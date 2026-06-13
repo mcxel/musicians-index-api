@@ -71,6 +71,8 @@ export function getDiamondEmails(): Set<string> {
   const hardcoded = [
     "berntmusic33@gmail.com",           // Marcel — Platform Law #2
     "jay@themusiciansindex.com",        // Jay Paul Sanchez — Platform Law #2
+    "mannipaulayton1@gmail.com",        // Manni Paulayton — Lifetime Diamond (2026-06-12)
+    "greenshean21@gmail.com",           // Green Shean — Lifetime Diamond (2026-06-12)
   ];
 
   const fromEnv = (process.env.DIAMOND_EMAILS ?? "")
@@ -373,7 +375,7 @@ export function parseSessionCookie(cookieValue: string | undefined): SessionPayl
  *
  * CURRENT HARDCODED:
  *  Admin: berntmusic33@gmail.com, bigace@berntoutglobal.com
- *  Diamond: berntmusic33@gmail.com, jay@themusiciansindex.com
+ *  Diamond: berntmusic33@gmail.com, jay@themusiciansindex.com, mannipaulayton1@gmail.com, greenshean21@gmail.com
  *
  * ADD via DIAMOND_EMAILS env var:
  *  - facethebully916@gmail.com (Skeet)
