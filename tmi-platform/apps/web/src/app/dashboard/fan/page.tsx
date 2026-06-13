@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ActivityTimelineEngine } from '@/lib/timeline/ActivityTimelineEngine';
+import { useGamificationEngine } from '@/hooks/useGamificationEngine';
 
 const XP_ACTIONS = [
   { label: 'Watch a live room', xp: 10, link: '/home/3' },
@@ -22,7 +23,8 @@ const QUICK_LINKS = [
 ];
 
 export default function FanHubPage() {
-  const [xp, setXp] = useState(4250);
+  const { totalXp, trackAction } = useGamificationEngine();
+  const xp = totalXp;
   const [events, setEvents] = useState<ReturnType<typeof ActivityTimelineEngine.getEvents>>([]);
   const [playlists] = useState([
     { name: 'Late Night Cypher Vibes', tracks: 24, shared: false },
@@ -37,7 +39,14 @@ export default function FanHubPage() {
   }, []);
 
   const earnXp = (amount: number, label: string) => {
-    setXp((prev) => prev + amount);
+    const actionMap: Record<string, import('@/hooks/useGamificationEngine').GamificationAction> = {
+      'Watch a live room': 'JOIN_STAGE',
+      'Vote in a battle':  'VOTE_BATTLE',
+      'Share a playlist':  'SEND_MESSAGE',
+      'Read an article':   'READ_ARTICLE',
+      'Attend a cypher':   'JOIN_STAGE',
+    };
+    trackAction(actionMap[label] ?? 'LOGIN_DAILY');
     ActivityTimelineEngine.addEvent({ userId: 'current-user', type: 'EVENT_JOINED', label: `✦ ${label}`, xpEarned: amount });
   };
 
