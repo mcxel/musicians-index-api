@@ -9,7 +9,7 @@
 
 import React, { useState, useCallback, useRef } from 'react';
 
-type Tier = 'FREE' | 'BRONZE' | 'SILVER' | 'GOLD' | 'DIAMOND';
+type Tier = 'FREE' | 'RUBY' | 'SILVER' | 'GOLD' | 'DIAMOND';
 
 interface EmoteItem {
   id: string;
@@ -31,11 +31,11 @@ interface PlayWidgetProps {
 }
 
 const TIER_EMOTE_SLOTS: Record<Tier, number> = {
-  FREE: 4, BRONZE: 4, SILVER: 5, GOLD: 6, DIAMOND: 6,
+  FREE: 4, RUBY: 4, SILVER: 5, GOLD: 6, DIAMOND: 6,
 };
 
 const TIER_ICON_SLOTS: Record<Tier, number> = {
-  FREE: 4, BRONZE: 4, SILVER: 5, GOLD: 6, DIAMOND: 6,
+  FREE: 4, RUBY: 4, SILVER: 5, GOLD: 6, DIAMOND: 6,
 };
 
 const RARITY_GLOW: Record<string, string> = {
@@ -364,10 +364,10 @@ export const PlayWidget: React.FC<PlayWidgetProps> = ({
 
 // Fallback emoji icons for demo
 const TIER_BADGE_COLORS: Record<Tier, string> = {
-  FREE: '#AAAAAA', BRONZE: '#CD7F32', SILVER: '#C0C0C0', GOLD: '#FFD700', DIAMOND: '#22E7FF',
+  FREE: '#AAAAAA', RUBY: '#CD7F32', SILVER: '#C0C0C0', GOLD: '#FFD700', DIAMOND: '#22E7FF',
 };
 const TIER_EMOJIS: Record<Tier, string> = {
-  FREE: '⚪', BRONZE: '🥉', SILVER: '🥈', GOLD: '🥇', DIAMOND: '💎',
+  FREE: '⚪', RUBY: '🥉', SILVER: '🥈', GOLD: '🥇', DIAMOND: '💎',
 };
 const EMOTE_FALLBACK_ICONS: Record<string, string> = {
   emote_clap: '👏', emote_heart: '❤️', emote_fire: '🔥', emote_wave: '👋',

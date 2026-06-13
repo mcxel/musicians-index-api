@@ -3,7 +3,7 @@
 // Higher prize value = higher ad tier.
 // Revenue loop: Sponsor gives value → platform gives visibility.
 
-export type SponsorTier = "bronze" | "silver" | "gold" | "premium" | "billboard";
+export type SponsorTier = "RUBY" | "silver" | "gold" | "premium" | "billboard";
 
 export type SponsorPrizeDonation = {
   donationId: string;
@@ -40,14 +40,14 @@ export type SponsorCampaignEarned = {
 };
 
 // ── Tier thresholds ───────────────────────────────────────────────────────────
-// Bronze:   $1–$499  → 1 sidebar slot (7 days)
+// RUBY:   $1–$499  → 1 sidebar slot (7 days)
 // Silver:   $500–$1999 → 1 featured slot (14 days)
 // Gold:     $2000–$4999 → 1 featured + 1 cypher chip (21 days)
 // Premium:  $5000–$9999 → hero billboard (30 days)
 // Billboard: $10000+ → homepage hero + editorial feature (60 days)
 
 const TIER_RULES: Array<{ minUsd: number; maxUsd: number; tier: SponsorTier; slotTypes: PlacementSlot["slotType"][]; days: number }> = [
-  { minUsd: 1,      maxUsd: 499,   tier: "bronze",    slotTypes: ["sidebar"],                               days: 7 },
+  { minUsd: 1,      maxUsd: 499,   tier: "RUBY",    slotTypes: ["sidebar"],                               days: 7 },
   { minUsd: 500,    maxUsd: 1999,  tier: "silver",    slotTypes: ["featured_slot"],                         days: 14 },
   { minUsd: 2000,   maxUsd: 4999,  tier: "gold",      slotTypes: ["featured_slot", "cypher_chip"],          days: 21 },
   { minUsd: 5000,   maxUsd: 9999,  tier: "premium",   slotTypes: ["hero_billboard", "battle_badge"],        days: 30 },

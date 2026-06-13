@@ -40,7 +40,7 @@ export default function GoLivePage() {
     if (level >= 20) return "diamond";
     if (level >= 15) return "gold";
     if (level >= 10) return "silver";
-    if (level >= 6)  return "bronze";
+    if (level >= 6)  return "RUBY";
     if (level >= 3)  return "pro";
     return "free";
   }

@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
@@ -40,7 +40,7 @@ const ROLE_MAP: Record<string, AccountType> = {
   promoter: "PROMOTER",
 };
 
-export default function SignupPage() {
+function SignupForm() {
   const searchParams = useSearchParams();
   const [vipToken, setVipToken] = useState(searchParams?.get("token") ?? "");
   const refToken = searchParams?.get("ref") ?? "";
@@ -270,5 +270,17 @@ export default function SignupPage() {
         </AnimatePresence>
       </div>
     </div>
+  );
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense fallback={
+      <div style={{ minHeight: "100vh", background: "#050510", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <span style={{ color: "#00FFFF", fontSize: 11, letterSpacing: "0.3em", fontWeight: 700 }}>LOADING...</span>
+      </div>
+    }>
+      <SignupForm />
+    </Suspense>
   );
 }

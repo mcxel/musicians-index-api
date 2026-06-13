@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto';
 
-export type TrophyType = 'bronze' | 'silver' | 'gold' | 'platinum' | 'diamond';
+export type TrophyType = 'RUBY' | 'silver' | 'gold' | 'platinum' | 'diamond';
 
 export interface TrophyRecord {
   id: string;
@@ -40,7 +40,7 @@ export class TrophyEngine {
 
   static countByType(userId: string): Record<TrophyType, number> {
     const base: Record<TrophyType, number> = {
-      bronze: 0,
+      RUBY: 0,
       silver: 0,
       gold: 0,
       platinum: 0,

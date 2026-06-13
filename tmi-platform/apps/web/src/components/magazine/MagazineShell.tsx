@@ -198,7 +198,7 @@ export default function MagazineShell({
   // Resolve subscription entitlement from session
   // Unlocked roles: admin, artist, sponsor (platform partners + staff)
   // Fan tier: free preview only — Copilot: replace role check with subscriptionTier field
-  //   when API returns it (pro | bronze | gold | platinum | diamond | season-pass)
+  //   when API returns it (pro | RUBY | gold | platinum | diamond | season-pass)
   useEffect(() => {
     let active = true;
     fetch("/api/auth/session", { cache: "no-store", credentials: "include" })

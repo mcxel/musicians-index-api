@@ -1,0 +1,2705 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider        = "prisma-client-js"
+  output          = "../../../node_modules/.prisma/client"
+  previewFeatures = ["driverAdapters"]
+}
+
+// ==============================================================================
+// AUTHENTICATION & USER MODELS
+// Based on NextAuth.js schema for easy integration
+// ==============================================================================
+
+// User roles for implementing Role-Based Access Control (RBAC)
+enum Role {
+  USER       // Generic account — pre-onboarding
+  FAN        // Consumer: watches, votes, collects
+  ARTIST     // Creator with public profile, beat lab, live access
+  PERFORMER  // Live battle performer
+  SPONSOR    // Brand sponsorships and contest contributions
+  ADVERTISER // Ad campaign buyer
+  VENUE      // Event venue and booking host
+  WRITER     // Editorial content creator
+  PROMOTER   // Ticket sales and event promoter
+  STAFF      // Can manage content, not system settings
+  ADMIN      // Full administrative access
+  JUDGE      // Competition judge
+}
+
+enum OnboardingState {
+  NO_ROLE_SELECTED
+  INCOMPLETE
+  COMPLETE
+}
+
+model User {
+  id                             String          @id @default(cuid())
+  name                           String?
+  email                          String?         @unique
+  passwordHash                   String?         @map("password_hash")
+  emailVerified                  DateTime?
+  image                          String?
+  role                           Role            @default(USER)
+  onboardingState                OnboardingState @default(NO_ROLE_SELECTED)
+  onboardingCompletedAt          DateTime?
+  acceptedOriginalityAgreementAt DateTime?
+  canSubmitOfficialPlatformLinks Boolean         @default(false)
+  lastSeenAt                     DateTime?
+  tier                           String    @default("FREE")
+  displayName                    String?   @map("display_name")
+  userRef                        String?   @map("user_ref")
+  userCreatedAt                  DateTime  @default(now()) @map("user_created_at")
+  accounts                       Account[]
+  sessions                       Session[]
+
+  // A user can be associated with an artist profile
+  userProfile            UserProfile?
+  artistProfile          ArtistProfile?
+  fanProfile             FanProfile?
+  artist                 Artist?
+  // Stripe-related fields
+  stripeCustomerId       String?        @unique @map("stripe_customer_id")
+  stripeSubscriptionId   String?        @unique @map("stripe_subscription_id")
+  stripePriceId          String?        @map("stripe_price_id")
+  stripeCurrentPeriodEnd DateTime?      @map("stripe_current_period_end")
+
+  // Ledger
+  ledgerEntries LedgerEntry[]
+
+  // Relations added for schema additions
+  musicLinksAdded   MusicLink[]    @relation("MusicLinkAddedBy")
+  createdPromoCodes PromoCode[]    @relation("CreatedPromoCodes")
+  usedPromoCodes    PromoCode[]    @relation("UsedPromoCodes")
+  subscriptions     Subscription[] @relation("UserSubscriptions")
+  auditLogs         AuditLog[]     @relation("UserAuditLogs")
+  authoredArticles  Article[]      @relation("ArticleAuthor")
+
+  // Pack25-26 delta relations
+  notifications           Notification[]
+  notificationPreferences NotificationPreference[]
+  feedItems               FeedItem[]
+  wallet                  Wallet?
+  userSettings            UserSettings?
+  familyAccount           FamilyAccount?
+  childAccount            ChildAccount?
+  pushSubscriptions       PushSubscription[]
+  // Legal compliance and age gating fields
+  dateOfBirth             DateTime?
+  age                     Int?
+  isMinor                 Boolean?                 @default(false) 
+  parentEmail             String?
+  termsAccepted           Boolean                  @default(false)
+
+  // Pack 48+ additions for Live World
+  faceVerifiedAt          DateTime? // Tracks completion of the face scan for avatar creation
+  canUseVoiceChat         Boolean   @default(false) // Unlocked after face verification
+
+  // Pack 47 additions
+  outgoingNotifications OutgoingNotification[]
+  inAppNotifications    InAppNotification[]
+
+  // Live World Relations (Pack 49+)
+  lobby                 Lobby?
+  ownedMemories         FanMemory[]
+  sentShoutouts         FanMemory[]            @relation("artistMemories")
+  juliusUnlocks         JuliusUserUnlock[]
+  controlMappingProfile ControlMappingProfile?
+  partyMemberships      PartyMember[]
+  ledParties            Party[]
+  ownedRooms            Room[]
+  roomMemberships       RoomMember[]
+
+  // Venue Booking System
+  venueProfile          VenueProfile?
+  artistTerritory       ArtistTerritory?
+  artistExposureStats   ArtistExposureStats?
+  bookingRequestsAsVenue BookingRequest[]    @relation("VenueBookingRequests")
+  bookingOffersAsArtist  BookingOffer[]      @relation("ArtistBookingOffers")
+  bookingOffersAsVenue   BookingOffer[]      @relation("VenueBookingOffers")
+
+  // Social Graph
+  friendshipsAsRequester Friendship[]         @relation("FriendshipRequester")
+  friendshipsAsAddressee Friendship[]         @relation("FriendshipAddressee")
+
+  // Invites
+  roomInvitesSent        RoomInvite[]         @relation("RoomInviteSender")
+  roomInvitesReceived    RoomInvite[]         @relation("RoomInviteRecipient")
+  partyInvitesSent       PartyInvite[]        @relation("PartyInviteSender")
+  partyInvitesReceived   PartyInvite[]        @relation("PartyInviteRecipient")
+
+  // Advertising
+  adCreatives            AdCreative[]
+  adCampaigns            AdCampaign[]
+
+  // Auctions
+  auctionsListed         Auction[]            @relation("AuctionSeller")
+  auctionBidsPlaced      AuctionBid[]         @relation("AuctionBidder")
+
+  // Battles
+  battleVotesCast        BattleVote[]         @relation("BattleVoter")
+
+  // Tickets
+  ticketScansPerformed   TicketScan[]         @relation("TicketScanner")
+
+  // Vault
+  vaultDownloadTokens    VaultDownloadToken[]
+
+  // Universal Economy Spine (P1-P3)
+  userStats              UserStats?
+  participationLedgers   ParticipationLedger[]
+  participationSessions  ParticipationSession[]
+  challengeAnswers       ChallengeAnswer[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ==============================================================================
+// APPLICATION-SPECIFIC MODELS
+// ==============================================================================
+
+model Artist {
+  id   String  @id @default(cuid())
+  name String
+  bio  String? @db.Text
+
+  // Link back to the user account
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id])
+
+  // An artist can have multiple official music links
+  musicLinks MusicLink[]
+
+  // Profile article — auto-created on onboarding completion (Phase C)
+  profileArticleId String?  @unique
+  profileArticle   Article? @relation("ArtistProfileArticle", fields: [profileArticleId], references: [id])
+}
+
+model MusicLink {
+  id       String @id @default(cuid())
+  platform String // e.g., "Spotify", "Apple Music", "SoundCloud"
+  url      String
+
+  // The artist this link belongs to
+  artistId String
+  artist   Artist @relation(fields: [artistId], references: [id], onDelete: Cascade)
+
+  // Who added this link? For auditing purposes.
+  // This helps enforce the rule about who can add links.
+  addedById String
+  addedBy   User   @relation("MusicLinkAddedBy", fields: [addedById], references: [id])
+}
+
+// ==============================================================================
+// PAYMENTS & SUBSCRIPTIONS (STRIPE)
+// ==============================================================================
+
+enum SubscriptionStatus {
+  active
+  trialing
+  past_due
+  canceled
+  unpaid
+}
+
+model Product {
+  id          String  @id @map("id") // Stripe Product ID
+  active      Boolean
+  name        String
+  description String?
+  image       String?
+  metadata    Json?
+  prices      Price[]
+}
+
+model Price {
+  id            String         @id @map("id") // Stripe Price ID
+  productId     String         @map("product_id")
+  product       Product        @relation(fields: [productId], references: [id])
+  active        Boolean
+  description   String?
+  unitAmount    Int?           @map("unit_amount")
+  currency      String
+  type          String // "one_time" or "recurring"
+  interval      String? // "day", "week", "month", "year"
+  metadata      Json?
+  subscriptions Subscription[] @relation("PriceSubscriptions")
+}
+
+model Subscription {
+  id                 String             @id @map("id") // Stripe Subscription ID
+  userId             String             @unique
+  user               User               @relation("UserSubscriptions", fields: [userId], references: [id])
+  status             SubscriptionStatus
+  metadata           Json?
+  priceId            String             @map("price_id")
+  price              Price              @relation("PriceSubscriptions", fields: [priceId], references: [id])
+  cancelAtPeriodEnd  Boolean            @map("cancel_at_period_end")
+  created            DateTime
+  currentPeriodStart DateTime           @map("current_period_start")
+  currentPeriodEnd   DateTime           @map("current_period_end")
+}
+
+// ==============================================================================
+// LEDGER / VIRTUAL CURRENCY
+// ==============================================================================
+enum LedgerEntryType {
+  CREDIT // Adding currency to a user's balance
+  DEBIT // Spending currency from a user's balance
+}
+
+model LedgerEntry {
+  id          String          @id @default(cuid())
+  userId      String
+  user        User            @relation(fields: [userId], references: [id])
+  type        LedgerEntryType
+  amount      Int // The amount of virtual currency
+  description String
+  relatedId   String? // ID of a related object (e.g., Tip, Vote, Purchase)
+  createdAt   DateTime        @default(now())
+
+  @@index([userId])
+}
+
+// ==============================================================================
+// PROMOTIONS & MARKETING
+// ==============================================================================
+
+enum PromoCodeStatus {
+  ACTIVE
+  EXPIRED
+  USED
+  REVOKED
+}
+
+enum PromoCodeType {
+  FREE_TRIAL_DAYS
+  PERCENTAGE_DISCOUNT
+  FIXED_AMOUNT_CREDIT
+  FEATURE_UNLOCK
+}
+
+model PromoCode {
+  id          String          @id @default(cuid())
+  codeHash    String          @unique // The hashed promo code, for security
+  description String
+  type        PromoCodeType
+  value       Float // e.g., 90 (days), 25 (percent), 5000 (cents)
+  status      PromoCodeStatus @default(ACTIVE)
+
+  maxUses   Int @default(1)
+  usedCount Int @default(0)
+
+  validFrom DateTime
+  expiresAt DateTime
+
+  // Who created this code?
+  createdBy   User   @relation("CreatedPromoCodes", fields: [createdById], references: [id])
+  createdById String
+
+  // Who used this code?
+  usedBy   User?   @relation("UsedPromoCodes", fields: [usedById], references: [id])
+  usedById String?
+
+  // Audit trail for this specific code
+  auditHistory AuditLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ==============================================================================
+// AUDITING & LOGGING
+// ==============================================================================
+
+enum AuditLogAction {
+  // Promo Actions
+  PROMO_CODE_CREATED
+  PROMO_CODE_REDEEMED
+  PROMO_CODE_REVOKED
+  PROMO_CODE_EXPIRED
+
+  // Admin Actions
+  USER_ROLE_CHANGED
+  OFFICIAL_LINK_ADDED
+  OFFICIAL_LINK_REMOVED
+
+  // Beat Economy Actions
+  BEAT_SUBMITTED
+  BEAT_ADMIN_SUBMITTED
+  BEAT_PUBLISHED
+  BEAT_ASSIGNED
+}
+
+model AuditLog {
+  id        String         @id @default(cuid())
+  action    AuditLogAction
+  timestamp DateTime       @default(now())
+
+  // The user who performed the action
+  actor   User   @relation("UserAuditLogs", fields: [actorId], references: [id])
+  actorId String
+
+  // Optional: The entity that was acted upon
+  targetId String?
+  details  Json? // Store extra context as JSON
+
+  // Can be linked to a promo code
+  promoCode   PromoCode? @relation(fields: [promoCodeId], references: [id])
+  promoCodeId String?
+
+  @@index([actorId])
+  @@index([targetId])
+}
+
+// ==============================================================================
+// HUB & MODULE REGISTRY
+// ==============================================================================
+
+enum HubStatus {
+  ONLINE
+  OFFLINE
+  DEGRADED
+}
+
+model Hub {
+  id          String    @id @default(cuid())
+  name        String    @unique
+  baseUrl     String
+  description String?
+  status      HubStatus @default(OFFLINE)
+  iconUrl     String?
+
+  lastSeenAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+// Feature flags for gradual rollouts and safe toggles
+model FeatureFlag {
+  id          String  @id @default(cuid())
+  key         String  @unique
+  description String?
+  enabled     Boolean @default(false)
+  notes       String?
+
+  // Stored as JSON to avoid enum-array portability issues across providers
+  targeting Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([enabled])
+}
+
+// ======================================================================
+// TICKETING CORE (Phase 1)
+// Minimal models to support Event, TicketType, Ticket, CheckIn, Order
+// Refund-ready fields are included but payment processing is out of scope
+// ======================================================================
+
+enum EventStatus {
+  DRAFT
+  PUBLISHED
+  ON_SALE
+  DOORS_OPEN
+  STARTED
+  ENDED
+  CANCELED
+  RESCHEDULED
+}
+
+enum TicketStatus {
+  ACTIVE
+  CANCELED
+  REFUND_PENDING
+  REFUNDED
+  USED
+}
+
+model Event {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  title        String
+  description  String?   @db.Text
+  startsAt     DateTime
+  endsAt       DateTime?
+  timezone     String?
+  venueName    String?
+  venueCity    String?
+  venueState   String?
+  venueCountry String?
+
+  // ownership / organizer hooks
+  artistUserId String?
+  venueUserId  String?
+
+  status       EventStatus @default(PUBLISHED)
+  cancelReason String?
+  canceledAt   DateTime?
+
+  // optional lightweight refund policy JSON for MVP
+  refundPolicy Json?
+
+  ticketTypes TicketType[]
+  tickets     Ticket[]
+}
+
+model TicketType {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  name       String // e.g., "GA", "VIP"
+  priceCents Int    @default(0)
+  currency   String @default("USD")
+  quantity   Int    @default(0)
+
+  tickets Ticket[]
+}
+
+model Order {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  buyerUserId       String?
+  provider          String? // e.g. STRIPE
+  providerPaymentId String? // e.g. stripe payment intent / charge id
+  currency          String?
+  amountCents       Int?
+  status            String? // PAID | REFUND_PENDING | REFUNDED
+
+  tickets Ticket[]
+  refunds Refund[]
+}
+
+model Ticket {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  ticketTypeId String
+  ticketType   TicketType @relation(fields: [ticketTypeId], references: [id])
+
+  orderId String?
+  order   Order?  @relation(fields: [orderId], references: [id])
+
+  ownerUserId String?
+  status      TicketStatus @default(ACTIVE)
+
+  // store only a hash of the ticket token
+  tokenHash String   @unique
+  issuedAt  DateTime @default(now())
+
+  checkedInAt DateTime?
+  checkIns    CheckIn[]
+  refunds     Refund[]
+  scans       TicketScan[]
+}
+
+model CheckIn {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  ticketId String
+  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  checkedInByUserId String?
+  note              String?
+}
+
+// ======================================================================
+// REFUNDS & POLICIES
+// Keep these models ready for Prisma migrations and later wiring to Stripe
+// ======================================================================
+
+enum RefundReason {
+  CUSTOMER_REQUEST
+  EVENT_CANCELLED
+  EVENT_POSTPONED
+  FRAUD
+  DUPLICATE
+  OTHER
+}
+
+enum RefundStatus {
+  REQUESTED
+  APPROVED
+  REJECTED
+  PROCESSING
+  SUCCEEDED
+  FAILED
+}
+
+enum RefundProcessor {
+  STRIPE
+  ESCROW
+}
+
+model RefundPolicy {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  rules       Json
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Refund {
+  id                String           @id @default(cuid())
+  orderId           String
+  order             Order            @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  ticketId          String?
+  ticket            Ticket?          @relation(fields: [ticketId], references: [id])
+  amountCents       Int
+  currency          String           @default("USD")
+  reason            RefundReason
+  status            RefundStatus     @default(REQUESTED)
+  processor         RefundProcessor?
+  processorRefundId String?
+  idempotencyKey    String?          @unique
+  createdAt         DateTime         @default(now())
+  processedAt       DateTime?
+  metadata          Json?
+}
+
+// Contest System (appended by install-contest-system.ps1)
+// ═══════════════════════════════════════════════════════════════════════════
+// PRISMA SCHEMA ADDITIONS — TMI Grand Platform Contest System
+// BerntoutGlobal XXL
+//
+// Repo path: prisma/schema.prisma
+// Action: ADD these models to your existing schema.prisma file
+//         Do NOT replace existing models — append only
+//
+// After adding, run:
+//   npx prisma generate
+//   npx prisma migrate dev --name add_contest_system
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ─── Contest Season ──────────────────────────────────────────────────────────
+
+model ContestSeason {
+  id     String @id @default(cuid())
+  name   String // "Grand Platform Contest — Season 1"
+  status String @default("upcoming") // upcoming | active | completed | archived
+
+  // Contest open gate (must enforce Aug 8 policy)
+  startDate         DateTime
+  registrationOpen  DateTime
+  registrationClose DateTime
+
+  // Key dates
+  registrationStartDate    DateTime
+  registrationEndDate      DateTime
+  sponsorCollectionEndDate DateTime
+  regionalsStartDate       DateTime
+  regionalsEndDate         DateTime
+  semiFinalsStartDate      DateTime
+  semiFinalsEndDate        DateTime
+  finalsDate               DateTime
+
+  prizePool   Float?
+  description String?
+
+  // Relations
+  entries ContestEntry[]
+  rounds  ContestRound[]
+  prizes  ContestPrize[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("contest_seasons")
+}
+
+// ─── Contest Entry ───────────────────────────────────────────────────────────
+
+model ContestEntry {
+  id String @id @default(cuid())
+
+  // Artist reference — update this foreign key to match your User/Artist model
+  artistId String
+  // artist   User   @relation(fields: [artistId], references: [id])
+
+  seasonId String
+  season   ContestSeason @relation(fields: [seasonId], references: [id])
+
+  category               String // singers | rappers | comedians | dancers | djs | bands | beatmakers | magicians | influencers | freestyle | other
+  stageName              String?
+  performanceDescription String?
+
+  status String @default("pending")
+  // pending | qualified | regional | semi_finals | finals | winner | eliminated | disqualified
+
+  // Cached sponsor counts (updated via trigger/hook)
+  localSponsorCount Int @default(0)
+  majorSponsorCount Int @default(0)
+
+  // Relations
+  sponsorContributions SponsorContribution[]
+  votes                ContestVote[]
+  round                ContestRound?         @relation(fields: [roundId], references: [id])
+  roundId              String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([artistId, seasonId]) // one entry per artist per season
+  @@map("contest_entries")
+}
+
+// ─── Sponsor Contribution ────────────────────────────────────────────────────
+
+model SponsorContribution {
+  id String @id @default(cuid())
+
+  entryId String
+  entry   ContestEntry @relation(fields: [entryId], references: [id])
+
+  // Sponsor reference — update to match your Sponsor/User model
+  sponsorId String
+  // sponsor  Sponsor @relation(fields: [sponsorId], references: [id])
+
+  packageId    String // 'local-bronze' | 'local-silver' | 'local-gold' | 'major-bronze' | 'major-silver' | 'major-gold' | 'title'
+  packageLabel String
+  packageType  String // 'local' | 'major'
+  amount       Float
+
+  message   String?
+  adminNote String?
+
+  status String @default("invited")
+  // invited | pending_payment | payment_received | verified | rejected
+
+  // Payment tracking
+  paymentReference  String?
+  paymentVerifiedAt DateTime?
+  verifiedById      String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([entryId, sponsorId]) // one contribution per sponsor per entry
+  @@map("sponsor_contributions")
+}
+
+// ─── Sponsor Package (static/config, but storing for flexibility) ────────────
+
+model SponsorPackage {
+  id          String  @id
+  label       String
+  packageType String // 'local' | 'major'
+  tier        String // 'bronze' | 'silver' | 'gold' | 'title'
+  price       Float
+  description String?
+  benefits    Json? // array of benefit strings
+  isActive    Boolean @default(true)
+
+  @@map("sponsor_packages")
+}
+
+// ─── Contest Round ───────────────────────────────────────────────────────────
+
+model ContestRound {
+  id String @id @default(cuid())
+
+  seasonId String
+  season   ContestSeason @relation(fields: [seasonId], references: [id])
+
+  name      String // "Qualification" | "Regional Round" | "Semi-Finals" | "Grand Finals"
+  roundType String // "qualification" | "regional" | "semi_finals" | "finals"
+  order     Int
+
+  startDate DateTime
+  endDate   DateTime
+  status    String   @default("upcoming") // upcoming | active | voting | completed
+
+  category String? // optional per-category round
+
+  entries      ContestEntry[]
+  pollSnapshot PollSnapshot?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("contest_rounds")
+}
+
+// ─── Contest Vote ────────────────────────────────────────────────────────────
+
+model ContestVote {
+  id String @id @default(cuid())
+
+  entryId String
+  entry   ContestEntry @relation(fields: [entryId], references: [id])
+
+  roundId String
+  // round  ContestRound @relation(...)
+
+  // Voter reference — update to match your User model
+  voterId String
+
+  // Sponsor vote weight (major sponsors may get weighted vote)
+  weight Float @default(1.0)
+
+  createdAt DateTime @default(now())
+
+  @@unique([entryId, voterId, roundId]) // one vote per user per entry per round
+  @@map("contest_votes")
+}
+
+// ─── Contest Prize ───────────────────────────────────────────────────────────
+
+model ContestPrize {
+  id String @id @default(cuid())
+
+  seasonId String
+  season   ContestSeason @relation(fields: [seasonId], references: [id])
+
+  name        String // "Grand Prize" | "Runner Up" | "Sponsor Deal" etc
+  description String?
+  prizeType   String // 'cash' | 'deal' | 'equipment' | 'tour' | 'recording' | 'brand_partnership'
+
+  cashValue  Float?
+  otherValue String? // description if non-cash
+
+  placement Int // 1 = first place, 2 = second, etc.
+  category  String? // null = all categories
+
+  // Fulfillment
+  fulfillments PrizeFulfillment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("contest_prizes")
+}
+
+// ─── Prize Fulfillment ───────────────────────────────────────────────────────
+
+model PrizeFulfillment {
+  id String @id @default(cuid())
+
+  prizeId String
+  prize   ContestPrize @relation(fields: [prizeId], references: [id])
+
+  // Winner reference
+  artistId String
+  entryId  String
+
+  status String @default("pending")
+  // pending | processing | delivered | verified | disputed
+
+  notes       String?
+  deliveredAt DateTime?
+  verifiedAt  DateTime?
+  adminId     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("prize_fulfillments")
+}
+
+// ─── Ray Journey Script Library ──────────────────────────────────────────────
+
+model RayJourneyScript {
+  id String @id @default(cuid())
+
+  type String
+  // contestant_intro | sponsor_shoutout | prize_reveal | round_transition | winner_announce | crowd_hype | co_host_handoff
+
+  text    String
+  emotion String @default("neutral")
+  // neutral | excited | announcing | revealing | crowd | sponsor
+
+  variables Json? // template variables like {{contestantName}}, {{sponsorName}}
+  order     Int     @default(0)
+  isActive  Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("ray_journey_scripts")
+}
+
+// ─── Host Cue Log ────────────────────────────────────────────────────────────
+
+model HostCue {
+  id String @id @default(cuid())
+
+  scriptId String
+  // script  RayJourneyScript @relation(...)
+
+  triggeredBy String // admin/host userId
+  context     Json? // resolved variables used
+
+  createdAt DateTime @default(now())
+
+  @@map("host_cues")
+}
+
+// ==============================================================================
+// EDITORIAL & ARTICLE MODELS
+// ==============================================================================
+
+enum ArticleStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+model Article {
+  id          String        @id @default(cuid())
+  title       String
+  slug        String        @unique
+  subtitle    String?
+  content     Json // Storing content as JSON (e.g., from a rich text editor)
+  status      ArticleStatus @default(DRAFT)
+  authorId    String? // The admin/staff user who wrote/edited the article
+  author      User?         @relation("ArticleAuthor", fields: [authorId], references: [id])
+  publishedAt DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  // An article can be generated from a poll snapshot
+  pollSnapshot PollSnapshot?
+
+  // Back-relation: this article may be an artist's profile article
+  artistProfile Artist? @relation("ArtistProfileArticle")
+
+  @@map("articles")
+}
+
+model PollSnapshot {
+  id String @id @default(cuid())
+
+  // The poll (ContestRound) this snapshot is for
+  contestRoundId String       @unique
+  contestRound   ContestRound @relation(fields: [contestRoundId], references: [id])
+
+  // The article generated from this snapshot
+  articleId String?  @unique
+  article   Article? @relation(fields: [articleId], references: [id])
+
+  // The captured results
+  results    Json // e.g., [{"entryId": "cuid", "entryName": "Artist A", "voteCount": 123}, ...]
+  winnerInfo Json? // e.g., {"entryId": "cuid", "entryName": "Artist A"}
+
+  createdAt DateTime @default(now())
+
+  @@map("poll_snapshots")
+}
+
+// =============================================================================
+// PACK25-26 DELTA MODELS
+// =============================================================================
+
+// -- NOTIFICATIONS -------------------------------------------------------------
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String
+  title     String
+  body      String
+  href      String?
+  isRead    Boolean  @default(false)
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@index([userId, isRead])
+  @@index([userId, createdAt])
+}
+
+model NotificationPreference {
+  id      String  @id @default(cuid())
+  userId  String
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type    String
+  channel String
+  enabled Boolean @default(true)
+
+  @@unique([userId, type, channel])
+}
+
+// -- FEED ----------------------------------------------------------------------
+
+model FeedItem {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type       String
+  weight     Int      @default(5)
+  entityId   String?
+  entityType String?
+  data       Json
+  createdAt  DateTime @default(now())
+  expiresAt  DateTime
+
+  @@index([userId, createdAt])
+}
+
+// -- WALLET & ECONOMY ----------------------------------------------------------
+
+model Wallet {
+  id               String        @id @default(cuid())
+  userId           String        @unique
+  user             User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  availableBalance Int           @default(0)
+  pendingBalance   Int           @default(0)
+  lifetimeEarnings Int           @default(0)
+  stripeAccountId  String?
+  stripeOnboarded  Boolean       @default(false)
+  fanCredits       Int           @default(0)
+  transactions        Transaction[]
+  payouts             Payout[]
+  walletTransactions  WalletTransaction[]
+}
+
+model Transaction {
+  id          String   @id @default(cuid())
+  walletId    String
+  wallet      Wallet   @relation(fields: [walletId], references: [id])
+  type        String
+  amount      Int
+  fee         Int      @default(0)
+  netAmount   Int
+  status      String
+  stripeId    String?
+  referenceId String?
+  note        String?
+  createdAt   DateTime @default(now())
+
+  @@index([walletId, createdAt])
+}
+
+model Payout {
+  id             String    @id @default(cuid())
+  walletId       String
+  wallet         Wallet    @relation(fields: [walletId], references: [id])
+  amount         Int
+  status         String
+  stripePayoutId String?
+  createdAt      DateTime  @default(now())
+  processedAt    DateTime?
+  failureReason  String?
+}
+
+model Tip {
+  id          String    @id @default(cuid())
+  fromUserId  String
+  toArtistId  String
+  roomId      String?
+  amount      Int
+  artistShare Int
+  platformFee Int
+  status      String
+  heldUntil   DateTime?
+  stripeId    String
+  createdAt   DateTime  @default(now())
+
+  @@index([toArtistId, createdAt])
+  @@index([fromUserId, createdAt])
+}
+
+// -- FAN CLUBS -----------------------------------------------------------------
+
+model FanClub {
+  id          String              @id @default(cuid())
+  artistId    String              @unique
+  description String?
+  tiers       FanClubTier[]
+  memberships FanClubMembership[]
+  posts       FanClubPost[]
+  createdAt   DateTime            @default(now())
+}
+
+model FanClubTier {
+  id            String   @id @default(cuid())
+  fanClubId     String
+  fanClub       FanClub  @relation(fields: [fanClubId], references: [id])
+  name          String
+  priceMonthly  Int
+  perks         String[]
+  stripePriceId String?
+}
+
+model FanClubMembership {
+  id          String    @id @default(cuid())
+  fanClubId   String
+  fanClub     FanClub   @relation(fields: [fanClubId], references: [id])
+  userId      String
+  tier        String
+  status      String
+  stripeSubId String?
+  startedAt   DateTime  @default(now())
+  cancelledAt DateTime?
+
+  @@unique([fanClubId, userId])
+  @@index([fanClubId, tier])
+}
+
+model FanClubPost {
+  id        String   @id @default(cuid())
+  fanClubId String
+  fanClub   FanClub  @relation(fields: [fanClubId], references: [id])
+  content   String
+  mediaUrl  String?
+  minTier   String   @default("supporter")
+  createdAt DateTime @default(now())
+}
+
+// -- BEAT MARKETPLACE ----------------------------------------------------------
+
+model Beat {
+  id             String        @id @default(cuid())
+  producerId     String
+  slug           String        @unique
+  title          String
+  genre          String
+  bpm            Int
+  key            String?
+  tags           String[]
+  previewUrl     String
+  taggedUrl      String
+  basicPrice     Int
+  premiumPrice   Int
+  exclusivePrice Int?
+  status         String        @default("draft")
+  
+  // Phase B: Attribution & Moderation
+  moderationStatus String      @default("PENDING")
+  adminSubmitted Boolean       @default(false)
+  producerName   String?
+
+  playCount      Int           @default(0)
+  licenses       BeatLicense[]
+  assignments    BeatAssignment[]
+  createdAt      DateTime      @default(now())
+
+  @@index([genre, status])
+  @@index([status, createdAt])
+}
+
+model BeatLicense {
+  id          String   @id @default(cuid())
+  beatId      String
+  beat        Beat     @relation(fields: [beatId], references: [id])
+  buyerId     String
+  type        String
+  price       Int
+  stripeId    String
+  downloadUrl String?
+  createdAt   DateTime @default(now())
+
+  @@unique([beatId, buyerId, type])
+}
+
+// Maps a beat to a specific live event
+model BeatAssignment {
+  id          String   @id @default(cuid())
+  beatId      String
+  beat        Beat     @relation(fields: [beatId], references: [id], onDelete: Cascade)
+  targetType  String   // e.g., "battle", "cypher", "tournament", "challenge"
+  targetId    String   // ID of the target event
+  assignedAt  DateTime @default(now())
+
+  @@unique([beatId, targetType, targetId])
+  @@map("beat_assignments")
+}
+
+// -- COMPETITIONS & SEASONS ----------------------------------------------------
+
+model Season {
+  id           String        @id @default(cuid())
+  slug         String        @unique
+  name         String
+  status       String
+  startDate    DateTime
+  endDate      DateTime
+  rankEntries  RankEntry[]
+  competitions Competition[]
+  awards       SeasonAward[]
+  createdAt    DateTime      @default(now())
+}
+
+model Competition {
+  id            String                    @id @default(cuid())
+  slug          String                    @unique
+  seasonId      String?
+  season        Season?                   @relation(fields: [seasonId], references: [id])
+  name          String
+  type          String
+  bracketType   String
+  status        String
+  maxEntrants   Int?
+  registrations CompetitionRegistration[]
+  battles       Battle[]
+  createdAt     DateTime                  @default(now())
+}
+
+model CompetitionRegistration {
+  id            String      @id @default(cuid())
+  competitionId String
+  competition   Competition @relation(fields: [competitionId], references: [id])
+  artistId      String
+  seed          Int?
+  status        String
+
+  @@unique([competitionId, artistId])
+}
+
+model Battle {
+  id            String       @id @default(cuid())
+  competitionId String?
+  competition   Competition? @relation(fields: [competitionId], references: [id])
+  roomId        String?
+  artist1Id     String
+  artist2Id     String
+  winnerId      String?
+  round         Int?
+  status        String
+  voteCount1    Int          @default(0)
+  voteCount2    Int          @default(0)
+  createdAt     DateTime     @default(now())
+  votes         BattleVote[]
+}
+
+model RankEntry {
+  id        String   @id @default(cuid())
+  seasonId  String
+  season    Season   @relation(fields: [seasonId], references: [id])
+  artistId  String
+  points    Int      @default(0)
+  rank      Int?
+  updatedAt DateTime @updatedAt
+
+  @@unique([seasonId, artistId])
+  @@index([seasonId, points])
+}
+
+model SeasonAward {
+  id        String   @id @default(cuid())
+  seasonId  String
+  season    Season   @relation(fields: [seasonId], references: [id])
+  artistId  String
+  awardType String
+  awardedAt DateTime @default(now())
+}
+
+// -- USER SETTINGS -------------------------------------------------------------
+
+model UserSettings {
+  id                  String    @id @default(cuid())
+  userId              String    @unique
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  profileVisibility   String    @default("public")
+  showOnlineStatus    Boolean   @default(true)
+  allowMessages       String    @default("followers")
+  allowFriendRequests Boolean   @default(true)
+  reducedMotion       Boolean   @default(false)
+  highContrast        Boolean   @default(false)
+  deletionRequestedAt DateTime?
+  deletionScheduledAt DateTime?
+  exportRequestedAt   DateTime?
+  exportDownloadUrl   String?
+  exportExpiresAt     DateTime?
+}
+
+// -- MODERATION ----------------------------------------------------------------
+
+model Report {
+  id         String    @id @default(cuid())
+  reporterId String
+  targetType String
+  targetId   String
+  category   String
+  detail     String?
+  status     String    @default("pending")
+  severity   String    @default("p3")
+  reviewedBy String?
+  createdAt  DateTime  @default(now())
+  reviewedAt DateTime?
+
+  @@index([status, severity])
+  @@index([targetType, targetId])
+}
+
+model ModerationAction {
+  id           String    @id @default(cuid())
+  targetUserId String
+  actionType   String
+  reason       String
+  duration     Int?
+  performedBy  String
+  reportId     String?
+  createdAt    DateTime  @default(now())
+  expiresAt    DateTime?
+
+  @@index([targetUserId])
+}
+
+// -- FAMILY / KID ACCOUNTS -----------------------------------------------------
+
+model FamilyAccount {
+  id        String         @id @default(cuid())
+  parentId  String         @unique
+  parent    User           @relation(fields: [parentId], references: [id])
+  children  ChildAccount[]
+  createdAt DateTime       @default(now())
+}
+
+model ChildAccount {
+  id                 String        @id @default(cuid())
+  familyAccountId    String
+  familyAccount      FamilyAccount @relation(fields: [familyAccountId], references: [id])
+  userId             String        @unique
+  user               User          @relation(fields: [userId], references: [id])
+  birthYear          Int
+  performerStatus    String        @default("not_requested")
+  canUploadMedia     Boolean       @default(false)
+  canBePublic        Boolean       @default(false)
+  canReceiveMessages Boolean       @default(false)
+  canJoinEvents      Boolean       @default(false)
+  canMakePurchases   Boolean       @default(false)
+  spendingLimitCents Int?
+  parentApprovedAt   DateTime?
+  createdAt          DateTime      @default(now())
+}
+
+model ParentApproval {
+  id          String    @id @default(cuid())
+  parentId    String
+  childId     String
+  actionType  String
+  status      String    @default("pending")
+  requestData Json?
+  createdAt   DateTime  @default(now())
+  decidedAt   DateTime?
+
+  @@index([parentId, status])
+  @@index([childId])
+}
+
+// -- BLOCK / MUTE --------------------------------------------------------------
+
+model UserBlock {
+  id        String   @id @default(cuid())
+  blockerId String
+  blockedId String
+  createdAt DateTime @default(now())
+
+  @@unique([blockerId, blockedId])
+}
+
+model UserMute {
+  id        String    @id @default(cuid())
+  muterId   String
+  mutedId   String
+  expiresAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@unique([muterId, mutedId])
+}
+
+// -- PUSH SUBSCRIPTIONS --------------------------------------------------------
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  platform  String
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// ===================== PROFILE SYSTEM MODELS =====================
+
+model UserProfile {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  displayName String?
+  username    String?  @unique
+  bio         String?
+  location    String?
+  website     String?
+  avatarUrl   String?
+  bannerUrl   String?
+  socialLinks Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model ArtistProfile {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  stageName String?
+  slug      String?  @unique
+  genres    String[]
+  skills    String[]
+  label     String?
+  manager   String?
+  verified  Boolean  @default(false)
+  followers Int      @default(0)
+  views     Int      @default(0)
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model FanProfile {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  favoriteGenres String[]
+  bio            String?
+  followers      Int      @default(0)
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+// ===================== PIPELINE & AUTOMATION TRACKING =====================
+model PipelineRun {
+  id          String   @id @default(uuid())
+  name        String   // e.g., "WEEKLY_CROWNS", "BILLING_RUN"
+  status      String   // "RUNNING", "COMPLETED", "FAILED"
+  startedAt   DateTime @default(now())
+  completedAt DateTime?
+  errorLogs   String?
+  metrics     Json?    // e.g., { "processed": 1500, "skipped": 12 }
+
+  @@index([name, status])
+}
+
+model CronJobLog {
+  id          String   @id @default(uuid())
+  jobName     String
+  status      String   // "SUCCESS", "ERROR"
+  executedAt  DateTime @default(now())
+  durationMs  Int
+  details     String?
+
+  @@index([jobName, executedAt])
+}
+// PACK 43: REWARDS / GIVEAWAYS / AVATAR ECONOMY — SCHEMA ADDITIONS
+// Append to packages/db/prisma/schema.prisma
+// Run: pnpm prisma migrate dev --name pack43_rewards
+
+// ── NEW ENUMS ──────────────────────────────────────────────
+
+enum RewardType {
+  POINTS
+  AVATAR_ITEM
+  SPONSOR_ITEM
+  DISCOUNT_CODE
+  FREE_TICKET
+  BACKSTAGE_PASS
+  MERCH_ITEM
+  DIGITAL_COLLECTIBLE
+  BADGE
+  TITLE
+  RANK_BOOST
+  SHOUTOUT
+  SKIP_QUEUE
+  PRIORITY_ENTRY
+  BONUS_VOTE
+  MYSTERY_BOX
+  WALLET_CREDIT
+}
+
+enum RewardTrigger {
+  RANDOM_AUDIENCE_DROP
+  RANDOM_CONTESTANT_DROP
+  FIRST_TO_REACT
+  FIRST_CORRECT_ANSWER
+  FIRST_TO_JOIN_ROOM
+  FIRST_TICKET_BUYER
+  FASTEST_RESPONSE
+  MODERATOR_MANUAL_GIFT
+  HOST_MANUAL_GIFT
+  SPONSOR_TRIGGERED
+  BOT_TRIGGERED
+  STREAK_REWARD
+  ATTENDANCE_REWARD
+  PARTICIPATION_REWARD
+  LOYALTY_REWARD
+  SURPRISE_LIVE_DROP
+  MILESTONE_REWARD
+  LEADERBOARD_REWARD
+  CONTEST_WINNER
+  AUDIENCE_VOTE_WINNER
+  CHALLENGE_COMPLETION
+  REFERRAL_REWARD
+}
+
+enum FulfillmentStatus {
+  PENDING
+  PROCESSING
+  FULFILLED
+  FAILED
+  FRAUD_REVIEW
+  REQUIRES_BIG_ACE
+  EXPIRED
+}
+
+enum PromptType {
+  TRIVIA
+  REACTION
+  FASTEST_TAP
+  FILL_BLANK
+  PICK_WINNER
+  SHOUTOUT_REQUEST
+}
+
+enum ItemRarity {
+  COMMON
+  UNCOMMON
+  RARE
+  EPIC
+  LEGENDARY
+}
+
+// ── MODELS ────────────────────────────────────────────────
+
+model RewardRule {
+  id                         String        @id @default(cuid())
+  name                       String
+  rewardType                 RewardType
+  triggerType                RewardTrigger
+  pointsAmount               Int?          // for POINTS reward
+  itemId                     String?       // for item rewards
+  discountPct                Int?          // for DISCOUNT_CODE
+  walletCreditCents          Int?          // Big Ace required if > 0
+  eligibleRoles              String[]
+  eligibleRoomTypes          String[]
+  minimumWatchTimeSeconds    Int           @default(0)
+  minimumParticipationActions Int          @default(0)
+  requiresTicket             Boolean       @default(false)
+  requiresVerifiedAccount    Boolean       @default(false)
+  dropOddsPct                Float         @default(100)
+  maxClaimsPerUser           Int           @default(1)
+  maxClaimsPerEvent          Int           @default(0)  // 0 = unlimited
+  maxClaimsPerSession        Int           @default(0)
+  cooldownSeconds            Int           @default(0)
+  minAccountAgeDays          Int           @default(0)
+  maxVelocityPerMinute       Int           @default(10)
+  requiresRoomPresence       Boolean       @default(true)
+  requiresBigAceApproval     Boolean       @default(false)
+  sponsorId                  String?
+  campaignId                 String?
+  availableFrom              DateTime?
+  availableUntil             DateTime?
+  isActive                   Boolean       @default(true)
+  createdAt                  DateTime      @default(now())
+
+  claims                     RewardClaim[]
+  prompts                    AudiencePrompt[]
+
+  @@index([isActive])
+  @@index([triggerType])
+  @@map("reward_rules")
+}
+
+model RewardClaim {
+  id                  String             @id @default(cuid())
+  userId              String
+  ruleId              String
+  sessionId           String?            // room or game session
+  eventId             String?
+  roomId              String?
+  rewardType          RewardType
+  status              FulfillmentStatus  @default(PENDING)
+  pointsGranted       Int?
+  itemGrantedId       String?
+  discountCode        String?
+  walletCreditCents   Int?
+  requiresBigAce      Boolean            @default(false)
+  requiresFraudReview Boolean            @default(false)
+  fraudReviewNote     String?
+  fulfilledAt         DateTime?
+  expiredAt           DateTime?
+  claimedAt           DateTime           @default(now())
+
+  rule                RewardRule         @relation(fields: [ruleId], references: [id])
+
+  @@index([userId])
+  @@index([status])
+  @@index([claimedAt])
+  @@map("reward_claims")
+}
+
+model AudiencePrompt {
+  id              String      @id @default(cuid())
+  sessionId       String
+  roomId          String
+  ruleId          String
+  promptType      PromptType
+  question        String?
+  correctAnswer   String?
+  windowSeconds   Int         @default(15)
+  maxWinners      Int         @default(1)
+  status          String      @default("pending")
+  winners         String[]    // userIds
+  firedAt         DateTime?
+  closedAt        DateTime?
+  createdAt       DateTime    @default(now())
+
+  rule            RewardRule  @relation(fields: [ruleId], references: [id])
+  entries         AudiencePromptEntry[]
+
+  @@index([sessionId])
+  @@map("audience_prompts")
+}
+
+model AudiencePromptEntry {
+  id              String         @id @default(cuid())
+  promptId        String
+  userId          String
+  response        String?
+  responseTimeMs  Int
+  isCorrect       Boolean?
+  isWinner        Boolean        @default(false)
+  pointsAwarded   Int            @default(0)
+  submittedAt     DateTime       @default(now())
+
+  prompt          AudiencePrompt @relation(fields: [promptId], references: [id])
+
+  @@unique([promptId, userId])
+  @@map("audience_prompt_entries")
+}
+
+model DropTable {
+  id                    String           @id @default(cuid())
+  name                  String
+  sponsorId             String?
+  eventId               String?
+  guaranteedAfterNDraws Int?
+  isActive              Boolean          @default(true)
+  createdAt             DateTime         @default(now())
+
+  entries               DropTableEntry[]
+
+  @@map("drop_tables")
+}
+
+model DropTableEntry {
+  id           String    @id @default(cuid())
+  tableId      String
+  rewardType   RewardType
+  itemId       String?
+  pointsAmount Int?
+  weight       Int       @default(100)
+  rarity       ItemRarity @default(COMMON)
+  maxTotal     Int?
+  droppedCount Int       @default(0)
+
+  table        DropTable @relation(fields: [tableId], references: [id])
+
+  @@map("drop_table_entries")
+}
+
+model RewardCooldown {
+  id        String   @id @default(cuid())
+  userId    String
+  ruleId    String
+  expiresAt DateTime
+
+  @@unique([userId, ruleId])
+  @@map("reward_cooldowns")
+}
+
+model RewardFraudFlag {
+  id          String   @id @default(cuid())
+  userId      String
+  claimId     String   @unique
+  reason      String
+  patternData Json?
+  isResolved  Boolean  @default(false)
+  resolvedBy  String?
+  resolvedAt  DateTime?
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([isResolved])
+  @@map("reward_fraud_flags")
+}
+
+model SponsorPrizeCatalog {
+  id          String    @id @default(cuid())
+  sponsorId   String
+  name        String
+  description String?
+  imageUrl    String?
+  totalQty    Int
+  remaining   Int
+  isActive    Boolean   @default(true)
+  expiresAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([sponsorId])
+  @@map("sponsor_prize_catalog")
+}
+
+// =============================================================================
+// PACK 47: ADVANCED NOTIFICATIONS SYSTEM
+// =============================================================================
+
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+  SMS
+  PUSH
+}
+
+enum NotificationStatus {
+  PENDING // Job created, not yet processed
+  SENT // Sent to the provider
+  DELIVERED // Confirmed delivery (if provider supports it)
+  FAILED // Failed to send
+}
+
+model NotificationTemplate {
+  id        String @id @default(cuid())
+  type      String @unique // e.g., "USER_SIGNUP_WELCOME", "REWARD_UNLOCKED"
+  description String
+
+  // Template content for each channel
+  templateEmailSubject String?
+  templateEmailBody    String? @db.Text // Can be HTML
+  templateSms          String?
+  templatePushTitle    String?
+  templatePushBody     String?
+  templateInAppTitle   String?
+  templateInAppBody    String?
+  templateInAppHref    String?
+
+  requiredVariables String[] // e.g. ["username", "rewardName"]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("notification_templates")
+}
+
+// This table will log all outgoing notifications and their status.
+model OutgoingNotification {
+  id        String              @id @default(cuid())
+  userId    String
+  user      User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  channel   NotificationChannel
+  status    NotificationStatus  @default(PENDING)
+  type      String // e.g., "USER_SIGNUP_WELCOME", links conceptually to NotificationTemplate
+  data      Json? // The variables for the template
+
+  // The rendered content at the time of sending
+  sentContentSubject String?
+  sentContentBody    String? @db.Text
+
+  // For IN_APP notifications, this links to the visible notification
+  inAppNotificationId String?           @unique
+  inAppNotification   InAppNotification? @relation(fields: [inAppNotificationId], references: [id])
+
+  // Provider-specific info
+  provider          String? // e.g., "SendGrid", "Twilio", "FCM"
+  providerMessageId String?
+  providerError     String? @db.Text
+
+  createdAt   DateTime  @default(now())
+  processedAt DateTime?
+  deliveredAt DateTime?
+
+  @@index([userId, status, createdAt])
+  @@map("outgoing_notifications")
+}
+
+// A new model for In-App notifications, linked from the log.
+model InAppNotification {
+  id      String   @id @default(cuid())
+  userId  String
+  title   String
+  body    String
+  href    String?
+  isRead  Boolean  @default(false)
+  readAt  DateTime?
+  expiresAt DateTime?
+  metadata Json?
+  createdAt DateTime @default(now())
+
+  user                 User?                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  outgoingNotification OutgoingNotification?
+
+  @@index([userId, isRead, createdAt])
+  @@map("in_app_notifications")
+}
+
+// =============================================================================
+// TMI LIVE WORLD SYSTEM (PACK 49+)
+// =============================================================================
+
+// -- Live Rooms, Auditoriums, and Sections ------------------------------------
+
+model Room {
+  id          String   @id @default(cuid())
+  name        String
+  type        String // LOBBY, THEATER, ARENA, BAR_LOUNGE, CLUB, etc.
+  status      String   @default("CLOSED") // CLOSED, PRESHOW, LIVE, POSTSHOW, ARCHIVED
+  ownerId     String?
+  maxCapacity Int      @default(10000)
+
+  owner    User?         @relation(fields: [ownerId], references: [id])
+  sections Section[]
+  sessions RoomSession[]
+  members  RoomMember[]
+  invites  RoomInvite[]
+
+  @@map("rooms")
+}
+
+model Section {
+  id        String @id @default(cuid())
+  roomId    String
+  room      Room   @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  status    String @default("OPEN") // OPEN, FULL, CLOSED
+  memberIds String[]
+
+  @@map("sections")
+}
+
+model RoomSession {
+  id        String    @id @default(cuid())
+  roomId    String
+  room      Room      @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  status    String // PENDING, ACTIVE, PAUSED, ENDED
+  startedAt DateTime  @default(now())
+  endedAt   DateTime?
+
+  @@map("room_sessions")
+}
+
+// -- Lobby System: Personal, Party, and Upgrades ------------------------------
+
+model Lobby {
+  id       String  @id @default(cuid())
+  userId   String  @unique
+  user     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tier     String  @default("FREE") // FREE, BRONZE, GOLD, PLATINUM, DIAMOND
+  theme    String  @default("default_theater")
+  level    Int     @default(1)
+  
+  displayItems LobbyDisplayItem[]
+  partyInvites PartyInvite[]
+
+  @@map("lobbies")
+}
+
+model LobbyTheme {
+  id          String  @id @default(cuid())
+  key         String  @unique // e.g., "vibe_hiphop", "neon_retro"
+  name        String
+  description String?
+  assetUrl    String? // URL to the theme's asset bundle
+  isPremium   Boolean @default(false)
+
+  @@map("lobby_themes")
+}
+
+model LobbyDisplayItem {
+  id        String @id @default(cuid())
+  lobbyId   String
+  lobby     Lobby  @relation(fields: [lobbyId], references: [id], onDelete: Cascade)
+  type      String // SHOUTOUT, MEMORY, TROPHY, BADGE, REPLAY_CLIP
+  assetId   String // ID of the Shoutout, Replay, etc.
+  position  Json?  // { x, y, z, rotation } for placement in the 3D lobby
+
+  @@map("lobby_display_items")
+}
+
+// -- Social Showcase: Shoutouts & Memories ------------------------------------
+
+model FanMemory {
+  id           String   @id @default(cuid())
+  ownerId      String
+  owner        User     @relation(fields: [ownerId], references: [id])
+  type         String // SHOUTOUT, BIRTHDAY_WISH, PERSONAL_VIDEO
+  fromArtistId String
+  videoUrl     String?
+  message      String?  @db.Text
+  isPublic     Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  fromArtist User @relation("artistMemories", fields: [fromArtistId], references: [id])
+
+  @@map("fan_memories")
+}
+
+// -- Julius System: The Interactive Mascot ------------------------------------
+
+model JuliusVariant {
+  id          String   @id @default(cuid())
+  key         String   @unique // e.g., "julius_gold", "julius_retro"
+  name        String
+  description String?
+  rarity      String   @default("COMMON") // COMMON, RARE, EPIC, LEGENDARY
+  assetUrl    String   // URL to the 3D model/skin
+
+  userUnlocks JuliusUserUnlock[]
+
+  @@map("julius_variants")
+}
+
+model JuliusUserUnlock {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  variantId String
+  variant   JuliusVariant @relation(fields: [variantId], references: [id])
+  unlockedAt DateTime @default(now())
+  source    String   // STORE, REWARD, SEASON_PASS
+
+  @@unique([userId, variantId])
+  @@map("julius_user_unlocks")
+}
+
+model JuliusEffect {
+  id          String   @id @default(cuid())
+  key         String   @unique // e.g., "confetti_burst", "spotlight_prank"
+  name        String
+  type        String   // THROWABLE, FILTER, OVERLAY
+  assetUrl    String
+  rarity      String   @default("COMMON")
+
+  @@map("julius_effects")
+}
+
+// -- Party & Control Mapping Systems ------------------------------------------
+
+model Party {
+  id        String   @id @default(cuid())
+  leaderId  String
+  createdAt DateTime @default(now())
+
+  leader    User          @relation(fields: [leaderId], references: [id])
+  members   PartyMember[]
+  invites   PartyInvite[]
+
+  @@map("parties")
+}
+
+model PartyMember {
+  id        String   @id @default(cuid())
+  partyId   String
+  party     Party    @relation(fields: [partyId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  joinedAt  DateTime @default(now())
+
+  @@unique([partyId, userId])
+  @@map("party_members")
+}
+
+model ControlMappingProfile {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  profile   Json // { "keyboard": {...}, "gamepad": {...}, "vr": {...} }
+  updatedAt DateTime @updatedAt
+
+  @@map("control_mapping_profiles")
+}
+
+model RoomMember {
+  id        String   @id @default(cuid())
+  roomId    String
+  room      Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      String // HOST, PERFORMER, AUDIENCE, MODERATOR
+  joinedAt  DateTime @default(now())
+
+  @@unique([roomId, userId])
+  @@map("room_members")
+}
+
+// =============================================================================
+// PHASE 4: VENUE BOOKING RECOMMENDATION ENGINE
+// =============================================================================
+
+enum BookingOfferStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  EXPIRED
+  CANCELLED
+}
+
+enum BookingRequestStatus {
+  OPEN
+  MATCHED
+  CLOSED
+  CANCELLED
+}
+
+enum EventType {
+  LOCAL
+  REGIONAL
+  INTERNATIONAL
+  ONLINE
+  LIVESTREAM
+  CYPHER
+  DANCE_PARTY
+  COMPETITION
+  OPEN_MIC
+  FESTIVAL
+}
+
+// -- Venue Profile ------------------------------------------------------------
+
+model VenueProfile {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  venueName   String
+  venueType   String   @default("CLUB") // CLUB, THEATER, ARENA, BAR, FESTIVAL, ONLINE
+  description String?  @db.Text
+  website     String?
+  logoUrl     String?
+  bannerUrl   String?
+  isVerified  Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  location      VenueLocation?
+  availability  VenueAvailability[]
+  bookingRequests BookingRequest[]
+  bookingHistory  BookingHistory[]
+  venueArtistHistory VenueArtistHistory[]
+  bookingRules    BookingRules?
+
+  @@map("venue_profiles")
+}
+
+model VenueLocation {
+  id             String       @id @default(cuid())
+  venueProfileId String       @unique
+  venueProfile   VenueProfile @relation(fields: [venueProfileId], references: [id], onDelete: Cascade)
+  address        String?
+  city           String
+  state          String?
+  country        String       @default("US")
+  postalCode     String?
+  latitude       Float
+  longitude      Float
+  timezone       String       @default("UTC")
+  currency       String       @default("USD")
+
+  @@map("venue_locations")
+}
+
+model VenueAvailability {
+  id             String       @id @default(cuid())
+  venueProfileId String
+  venueProfile   VenueProfile @relation(fields: [venueProfileId], references: [id], onDelete: Cascade)
+  date           DateTime
+  isAvailable    Boolean      @default(true)
+  note           String?
+
+  @@unique([venueProfileId, date])
+  @@map("venue_availability")
+}
+
+// -- Artist Territory & Availability ------------------------------------------
+
+model ArtistTerritory {
+  id                      String   @id @default(cuid())
+  userId                  String   @unique
+  user                    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  homeLatitude            Float?
+  homeLongitude           Float?
+  homeCity                String?
+  homeCountry             String   @default("US")
+  travelRadiusKm          Int      @default(100)
+  willingToTravelNational Boolean  @default(false)
+  willingToTravelIntl     Boolean  @default(false)
+  onlineAvailable         Boolean  @default(true)
+  budgetMin               Int      @default(0)   // minimum fee in cents
+  budgetMax               Int      @default(0)   // 0 = negotiable
+  updatedAt               DateTime @updatedAt
+
+  availability ArtistAvailability[]
+
+  @@map("artist_territories")
+}
+
+model ArtistAvailability {
+  id              String          @id @default(cuid())
+  artistTerritoryId String
+  artistTerritory ArtistTerritory @relation(fields: [artistTerritoryId], references: [id], onDelete: Cascade)
+  date            DateTime
+  isAvailable     Boolean         @default(true)
+  note            String?
+
+  @@unique([artistTerritoryId, date])
+  @@map("artist_availability")
+}
+
+// -- Exposure Stats (for underserved boost) -----------------------------------
+
+model ArtistExposureStats {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  totalViews        Int      @default(0)
+  totalBookings     Int      @default(0)
+  totalShows        Int      @default(0)
+  underservedScore  Float    @default(100.0) // 100 = fully underserved, 0 = overexposed
+  lastBookedAt      DateTime?
+  lastViewedAt      DateTime?
+  updatedAt         DateTime @updatedAt
+
+  @@map("artist_exposure_stats")
+}
+
+// -- Booking Request (venue initiates) ----------------------------------------
+
+model BookingRequest {
+  id             String               @id @default(cuid())
+  venueProfileId String
+  venueProfile   VenueProfile         @relation(fields: [venueProfileId], references: [id])
+  venueUserId    String
+  venueUser      User                 @relation("VenueBookingRequests", fields: [venueUserId], references: [id])
+  latitude       Float
+  longitude      Float
+  radiusKm       Int                  @default(100)
+  genres         String[]
+  eventDate      DateTime
+  budgetMin      Int                  @default(0)
+  budgetMax      Int                  @default(0)
+  eventType      EventType            @default(LOCAL)
+  status         BookingRequestStatus @default(OPEN)
+  note           String?
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+
+  matches BookingMatch[]
+  offers  BookingOffer[]
+
+  @@index([venueProfileId, status])
+  @@index([eventDate])
+  @@map("booking_requests")
+}
+
+// -- Booking Match (recommendation result row) --------------------------------
+
+model BookingMatch {
+  id               String         @id @default(cuid())
+  requestId        String
+  request          BookingRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  artistUserId     String
+  artistProfileId  String?
+  distanceKm       Float
+  score            Float
+  distanceScore    Float          @default(0)
+  genreScore       Float          @default(0)
+  availabilityScore Float         @default(0)
+  budgetScore      Float          @default(0)
+  exposureBoost    Float          @default(0)
+  participationBoost Float        @default(0)
+  subscriptionBoost Float         @default(0)
+  repeatPenalty    Float          @default(0)
+  recentBookingPenalty Float      @default(0)
+  tags             String[]       // FRESH_PICK, UNDISCOVERED, RISING, COOLDOWN_BLOCKED, HIGH_PARTICIPATION
+  isFirstTimeForVenue Boolean     @default(true)
+  isCooldownBlocked   Boolean     @default(false)
+  createdAt        DateTime       @default(now())
+
+  @@index([requestId, score])
+  @@map("booking_matches")
+}
+
+// -- Booking Offer (venue → artist) -------------------------------------------
+
+model BookingOffer {
+  id             String             @id @default(cuid())
+  requestId      String?
+  request        BookingRequest?    @relation(fields: [requestId], references: [id])
+  venueUserId    String
+  venueUser      User               @relation("VenueBookingOffers", fields: [venueUserId], references: [id])
+  artistUserId   String
+  artistUser     User               @relation("ArtistBookingOffers", fields: [artistUserId], references: [id])
+  eventDate      DateTime
+  budgetCents    Int                @default(0)
+  currency       String             @default("USD")
+  message        String?            @db.Text
+  status         BookingOfferStatus @default(PENDING)
+  respondedAt    DateTime?
+  expiresAt      DateTime?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  history BookingHistory?
+
+  @@index([artistUserId, status])
+  @@index([venueUserId, status])
+  @@map("booking_offers")
+}
+
+// -- Booking History (confirmed bookings) -------------------------------------
+
+model BookingHistory {
+  id             String        @id @default(cuid())
+  offerId        String        @unique
+  offer          BookingOffer  @relation(fields: [offerId], references: [id])
+  venueProfileId String
+  venueProfile   VenueProfile  @relation(fields: [venueProfileId], references: [id])
+  artistUserId   String
+  eventDate      DateTime
+  budgetCents    Int
+  currency       String        @default("USD")
+  eventType      EventType     @default(LOCAL)
+  confirmedAt    DateTime      @default(now())
+  completedAt    DateTime?
+  cancelledAt    DateTime?
+  note           String?
+
+  @@index([venueProfileId, eventDate])
+  @@index([artistUserId, eventDate])
+  @@map("booking_history")
+}
+
+// -- Venue-Artist Cooldown History --------------------------------------------
+
+model VenueArtistHistory {
+  id             String       @id @default(cuid())
+  venueProfileId String
+  venueProfile   VenueProfile @relation(fields: [venueProfileId], references: [id])
+  artistUserId   String
+  bookedAt       DateTime
+  cooldownUntil  DateTime
+  cooldownDays   Int          @default(30)
+
+  @@index([venueProfileId, artistUserId])
+  @@index([venueProfileId, cooldownUntil])
+  @@map("venue_artist_history")
+}
+
+// -- Artist Booking Score (cached composite score) ----------------------------
+
+model ArtistBookingScore {
+  id                  String   @id @default(cuid())
+  artistUserId        String   @unique
+  compositeScore      Float    @default(0)
+  distanceScore       Float    @default(0)
+  genreScore          Float    @default(0)
+  availabilityScore   Float    @default(0)
+  budgetScore         Float    @default(0)
+  exposureBoost       Float    @default(0)
+  participationBoost  Float    @default(0)
+  subscriptionBoost   Float    @default(0)
+  updatedAt           DateTime @updatedAt
+
+  @@map("artist_booking_scores")
+}
+
+// -- Booking Rules (admin-configurable per venue) -----------------------------
+
+model BookingRules {
+  id                    String       @id @default(cuid())
+  venueProfileId        String       @unique
+  venueProfile          VenueProfile @relation(fields: [venueProfileId], references: [id], onDelete: Cascade)
+  cooldownDays          Int          @default(30)
+  maxCooldownDays       Int          @default(90)
+  minPoolSize           Int          @default(5)
+  exposureBoostThreshold Int         @default(100) // views below this get boost
+  repeatPenaltyPoints   Int          @default(20)
+  recentBookingPenalty  Int          @default(10)
+  updatedAt             DateTime     @updatedAt
+
+  @@map("booking_rules")
+}
+
+// =============================================================================
+// MISSING MODELS — required by apps/api services
+// =============================================================================
+
+// -- Social Graph -------------------------------------------------------------
+
+model Friendship {
+  id          String   @id @default(cuid())
+  requesterId String
+  requester   User     @relation("FriendshipRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  addresseeId String
+  addressee   User     @relation("FriendshipAddressee", fields: [addresseeId], references: [id], onDelete: Cascade)
+  status      String   @default("pending") // pending | accepted | blocked
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([requesterId, addresseeId])
+  @@map("friendships")
+}
+
+// -- Invites ------------------------------------------------------------------
+
+model RoomInvite {
+  id          String    @id @default(cuid())
+  roomId      String
+  room        Room      @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  senderId    String
+  sender      User      @relation("RoomInviteSender", fields: [senderId], references: [id], onDelete: Cascade)
+  recipientId String
+  recipient   User      @relation("RoomInviteRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+  status      String    @default("pending") // pending | accepted | declined | expired
+  createdAt   DateTime  @default(now())
+  acceptedAt  DateTime?
+  respondedAt DateTime?
+
+  @@map("room_invites")
+}
+
+model PartyInvite {
+  id          String    @id @default(cuid())
+  senderId    String
+  sender      User      @relation("PartyInviteSender", fields: [senderId], references: [id], onDelete: Cascade)
+  recipientId String
+  recipient   User      @relation("PartyInviteRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+  partyId     String?
+  party       Party?    @relation(fields: [partyId], references: [id], onDelete: SetNull)
+  lobbyId     String?
+  lobby       Lobby?    @relation(fields: [lobbyId], references: [id], onDelete: SetNull)
+  inviteType  String    @default("party") // party | lobby
+  status      String    @default("pending") // pending | accepted | declined
+  createdAt   DateTime  @default(now())
+  acceptedAt  DateTime?
+  respondedAt DateTime?
+
+  @@map("party_invites")
+}
+
+// -- Advertising --------------------------------------------------------------
+
+model AdCreative {
+  id           String      @id @default(cuid())
+  advertiserId String
+  advertiser   User        @relation(fields: [advertiserId], references: [id], onDelete: Cascade)
+  name         String
+  type         String      // BANNER | VIDEO | NATIVE
+  fileUrl      String
+  clickUrl     String
+  altText      String?
+  width        Int?
+  height       Int?
+  status       String      @default("pending") // pending | approved | rejected
+  reviewNote   String?
+  createdAt    DateTime    @default(now())
+  campaigns    AdCampaign[]
+
+  @@map("ad_creatives")
+}
+
+model AdCampaign {
+  id             String       @id @default(cuid())
+  advertiserId   String
+  advertiser     User         @relation(fields: [advertiserId], references: [id], onDelete: Cascade)
+  name           String
+  creativeId     String
+  creative       AdCreative   @relation(fields: [creativeId], references: [id])
+  slot           String       // billboard | sidebar | pre-roll | overlay
+  budgetCents    Int          @default(0)
+  spentCents     Int          @default(0)
+  startDate      String
+  endDate        String
+  targeting      Json         @default("{}")
+  maxImpressions Int?
+  maxClicks      Int?
+  status         String       @default("draft") // draft | pending_review | approved | rejected | live | paused | completed
+  createdAt      DateTime     @default(now())
+  impressions    AdImpression[]
+  clicks         AdClick[]
+
+  @@map("ad_campaigns")
+}
+
+model AdImpression {
+  id          String    @id @default(cuid())
+  campaignId  String
+  campaign    AdCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  userId      String?
+  ip          String?
+  userAgent   String?
+  createdAt   DateTime  @default(now())
+
+  @@map("ad_impressions")
+}
+
+model AdClick {
+  id          String    @id @default(cuid())
+  campaignId  String
+  campaign    AdCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  userId      String?
+  ip          String?
+  userAgent   String?
+  createdAt   DateTime  @default(now())
+
+  @@map("ad_clicks")
+}
+
+// -- Auctions -----------------------------------------------------------------
+
+model Auction {
+  id           String       @id @default(cuid())
+  title        String
+  description  String?
+  assetType    String       // BEAT | NFT | MERCH | TICKET | MOMENT
+  assetRef     String?
+  sellerId     String
+  seller       User         @relation("AuctionSeller", fields: [sellerId], references: [id])
+  reservePrice Int          @default(0)
+  buyoutPrice  Int?
+  currentBid   Int          @default(0)
+  endsAt       DateTime
+  status       String       @default("SCHEDULED") // SCHEDULED | ACTIVE | ENDING_SOON | ENDED | CANCELLED
+  createdAt    DateTime     @default(now())
+  bids         AuctionBid[]
+
+  @@map("auctions")
+}
+
+model AuctionBid {
+  id          String   @id @default(cuid())
+  auctionId   String
+  auction     Auction  @relation(fields: [auctionId], references: [id], onDelete: Cascade)
+  bidderId    String
+  bidder      User     @relation("AuctionBidder", fields: [bidderId], references: [id])
+  amountCents Int
+  isWinning   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@map("auction_bids")
+}
+
+// -- Battle Votes -------------------------------------------------------------
+
+model BattleVote {
+  id        String   @id @default(cuid())
+  battleId  String
+  battle    Battle   @relation(fields: [battleId], references: [id], onDelete: Cascade)
+  voterId   String
+  voter     User     @relation("BattleVoter", fields: [voterId], references: [id])
+  votedFor  Int      // 1 or 2 (contestant index)
+  createdAt DateTime @default(now())
+
+  @@unique([battleId, voterId])
+  @@map("battle_votes")
+}
+
+// -- Wallet Transactions ------------------------------------------------------
+
+model WalletTransaction {
+  id          String   @id @default(cuid())
+  walletId    String
+  wallet      Wallet   @relation(fields: [walletId], references: [id])
+  amount      Int
+  netAmount   Int
+  category    String   // PURCHASE_BEAT | PURCHASE_NFT | CREDIT_ROYALTY | CREDIT_REFUND | etc.
+  referenceId String
+  direction   String   // debit | credit
+  status      String   @default("COMPLETED") // COMPLETED | PENDING | REFUNDED
+  createdAt   DateTime @default(now())
+
+  @@map("wallet_transactions")
+}
+
+// -- Ticket Scanning ----------------------------------------------------------
+
+model TicketScan {
+  id            String   @id @default(cuid())
+  ticketId      String?
+  ticket        Ticket?  @relation(fields: [ticketId], references: [id])
+  scannerUserId String
+  scanner       User     @relation("TicketScanner", fields: [scannerUserId], references: [id])
+  isValid       Boolean
+  reason        String?
+  createdAt     DateTime @default(now())
+
+  @@map("ticket_scans")
+}
+
+// -- Vault Download Tokens ----------------------------------------------------
+
+model VaultDownloadToken {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assetType     String   // BEAT | NFT
+  assetId       String
+  maxDownloads  Int      @default(3)
+  downloadCount Int      @default(0)
+  expiresAt     DateTime
+  createdAt     DateTime @default(now())
+
+  @@map("vault_download_tokens")
+}
+
+// ==============================================================================
+// PACK 50: UNIVERSAL ECONOMY SPINE (P1, P2, P3)
+// ==============================================================================
+
+model UserStats {
+  id               String   @id @default(cuid())
+  userId           String   @unique
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  engagementPoints Int      @default(0)
+  rewardPoints     Int      @default(0)
+  entryPoints      Int      @default(0)
+  achievementPts   Int      @default(0)
+  xp               Int      @default(0)
+  level            Int      @default(1)
+  rank             Int?
+  updatedAt        DateTime @updatedAt
+
+  @@map("user_stats")
+}
+
+model ParticipationLedger {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  actionType  String
+  points      Int
+  metadata    Json?
+  timestamp   DateTime @default(now())
+
+  @@index([userId, timestamp])
+  @@map("participation_ledger")
+}
+
+model ParticipationSession {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  roomId      String?
+  active      Boolean  @default(true)
+  startedAt   DateTime @default(now())
+  endedAt     DateTime?
+  pointsEarned Int     @default(0)
+
+  @@index([userId, active])
+  @@map("participation_sessions")
+}
+
+model ChallengeAnswer {
+  id            String          @id @default(cuid())
+  userId        String
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  selectedIdx   Int
+  isCorrect     Boolean?
+  pointsAwarded Int             @default(0)
+  answeredAt    DateTime        @default(now())
+
+  @@map("challenge_answers")
+}
+
+// ==============================================================================
+// PACK 51: CYPHER ENGINE (W-08) & GAMES ENGINE (W-09) & BOTS (W-15)
+// ==============================================================================
+
+model CypherSession {
+  id          String   @id @default(cuid())
+  roomId      String
+  hostId      String
+  status      String   @default("PENDING") // PENDING, WARMUP, ACTIVE, ENDED
+  theme       String?
+  bpm         Int      @default(90)
+  startedAt   DateTime @default(now())
+  endedAt     DateTime?
+
+  performers  CypherPerformer[]
+  rounds      CypherRound[]
+  @@map("cypher_sessions")
+}
+
+model CypherPerformer {
+  id              String   @id @default(cuid())
+  cypherSessionId String
+  cypherSession   CypherSession @relation(fields: [cypherSessionId], references: [id], onDelete: Cascade)
+  userId          String
+  orderIndex      Int
+  status          String   @default("WAITING") // WAITING, PERFORMING, DONE, DROPPED
+  scores          CypherScore[]
+  @@map("cypher_performers")
+}
+
+model CypherRound {
+  id              String   @id @default(cuid())
+  cypherSessionId String
+  cypherSession   CypherSession @relation(fields: [cypherSessionId], references: [id], onDelete: Cascade)
+  roundNumber     Int
+  startTime       DateTime @default(now())
+  endTime         DateTime?
+  @@map("cypher_rounds")
+}
+
+model CypherScore {
+  id                String   @id @default(cuid())
+  cypherPerformerId String
+  cypherPerformer   CypherPerformer @relation(fields: [cypherPerformerId], references: [id], onDelete: Cascade)
+  voterId           String
+  score             Int
+  timestamp         DateTime @default(now())
+  @@map("cypher_scores")
+}
+
+model GameSession {
+  id          String   @id @default(cuid())
+  roomId      String
+  gameType    String   // DEAL_OR_FEUD, TRIVIA, etc.
+  status      String   @default("PENDING") // PENDING, ACTIVE, ENDED
+  startedAt   DateTime @default(now())
+  endedAt     DateTime?
+  players     GamePlayer[]
+  rounds      GameRound[]
+  @@map("game_sessions")
+}
+
+model GamePlayer {
+  id            String   @id @default(cuid())
+  gameSessionId String
+  gameSession   GameSession @relation(fields: [gameSessionId], references: [id], onDelete: Cascade)
+  userId        String
+  score         Int      @default(0)
+  status        String   @default("ACTIVE") // ACTIVE, ELIMINATED
+  answers       GameAnswer[]
+  @@map("game_players")
+}
+
+model GameRound {
+  id            String   @id @default(cuid())
+  gameSessionId String
+  gameSession   GameSession @relation(fields: [gameSessionId], references: [id], onDelete: Cascade)
+  roundNumber   Int
+  question      String?
+  answer        String?
+  startedAt     DateTime @default(now())
+  endedAt       DateTime?
+  answers       GameAnswer[]
+  @@map("game_rounds")
+}
+
+model GameAnswer {
+  id          String   @id @default(cuid())
+  gameRoundId String
+  gameRound   GameRound @relation(fields: [gameRoundId], references: [id], onDelete: Cascade)
+  playerId    String
+  player      GamePlayer @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  answerText  String
+  isCorrect   Boolean
+  pointsAward Int      @default(0)
+  answeredAt  DateTime @default(now())
+  @@map("game_answers")
+}
+
+model BotRunLog {
+  id          String   @id @default(cuid())
+  botName     String
+  status      String   // SUCCESS, FAILED
+  tasksRun    Int      @default(0)
+  errors      Int      @default(0)
+  logs        Json?
+  startedAt   DateTime @default(now())
+  completedAt DateTime?
+  @@map("bot_run_logs")
+}
+
+// ==============================================================================
+// SEATING & PRESENCE ENGINE (P0 CRITICAL)
+// ==============================================================================
+
+model SeatReservation {
+  id          String   @id @default(uuid())
+  roomId      String
+  seatId      String
+  userId      String
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([roomId, seatId])
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model RoomSeatState {
+  id          String   @id @default(uuid())
+  roomId      String
+  seatId      String
+  currentUser String?
+  occupied    Boolean  @default(false)
+
+  @@unique([roomId, seatId])
+}
+
+model RoomPresence {
+  id         String   @id @default(uuid())
+  roomId     String
+  userId     String
+  lastSeenAt DateTime @default(now())
+  connected  Boolean  @default(true)
+
+  @@unique([roomId, userId])
+  @@index([roomId])
+  @@index([lastSeenAt])
+}

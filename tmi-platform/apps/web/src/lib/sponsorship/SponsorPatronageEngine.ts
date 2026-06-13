@@ -59,7 +59,7 @@ export const SPONSOR_PRICES: Record<SponsorTarget, Record<SponsorTier, number>> 
 export const ARTIST_SPONSOR_LIMITS: Record<string, number> = {
   free:     2,
   pro:      5,
-  bronze:   10,
+  RUBY:   10,
   silver:   15,
   gold:     20,
   platinum: 30,

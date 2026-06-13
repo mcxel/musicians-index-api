@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import styles from '../1/Home1.module.css';
+import Script from 'next/script';
+import styles from './Home12.module.css';
 import { getLatestEditorialArticles } from '@/lib/editorial/NewsArticleModel';
 import { fetchTrendingArtists, type TrendingArtist } from '@/lib/api/homepage';
 
@@ -66,7 +67,7 @@ const CITIES = [
   { city: 'Miami, FL',   country: 'United States',  flag: '🇺🇸' },
 ];
 
-const TIERS = ['Bronze', 'Silver', 'Gold', 'Platinum', 'Diamond'];
+const TIERS = ['RUBY', 'Silver', 'Gold', 'Platinum', 'Diamond'];
 
 const buildFallback = (category: string): BillboardCard[] =>
   Array.from({ length: 12 }).map((_, i) => {
@@ -121,7 +122,7 @@ function BillboardPortraitCard({
 }) {
   const tierColors: Record<string, string> = {
     Diamond: '#00FFFF', Platinum: '#E5E4E2', Gold: '#FFD700',
-    Silver: '#C0C0C0', Bronze: '#CD7F32',
+    Silver: '#C0C0C0', RUBY: '#E0115F', // Ruby color for RUBY tier
   };
   const tierColor = tierColors[item.tier] || '#fff';
 
@@ -185,7 +186,7 @@ function BillboardPortraitCard({
           letterSpacing: '0.08em',
           textTransform: 'uppercase',
         }}>
-          {item.tier}
+          {item.tier === 'RUBY' ? 'Ruby' : item.tier}
         </div>
 
         {/* Live indicator */}
@@ -304,6 +305,343 @@ export default function Home12Page() {
   const latestNews = getLatestEditorialArticles(5);
   const tickerStr = latestNews.map(a => `[${a.category.toUpperCase()}] ${a.headline}`).join('  ⚡  ');
 
+  // 3D Page Turn Engine Initialization
+  useEffect(() => {
+    let autoTurnInterval: NodeJS.Timeout;
+    
+    function initEngine() {
+      const THREE = (window as any).THREE;
+      if (!THREE) return;
+
+      const wrapEl = document.getElementById('tmi-3d-wrap');
+      const c3d = document.getElementById('tmi-3d-canvas');
+      if (!wrapEl || !c3d || c3d.children.length > 0) return;
+
+      function setLoad(p: number, m?: string){
+        const f = document.getElementById('tmi-3d-lf');
+        const s = document.getElementById('tmi-3d-ls');
+        if(f) f.style.width = p + '%';
+        if(s && m) s.textContent = m;
+      }
+
+      const W = wrapEl.clientWidth || 680, H = 580;
+
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x050508);
+      const camera = new THREE.PerspectiveCamera(40, W/H, 0.01, 50);
+      camera.position.set(0, 0.42, 4.3);
+      camera.lookAt(0, 0, 0);
+
+      const renderer = new THREE.WebGLRenderer({antialias:true});
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.setSize(W, H);
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      c3d.appendChild(renderer.domElement);
+
+      scene.add(new THREE.AmbientLight(0xffffff, 0.36));
+      const kl = new THREE.DirectionalLight(0xfff2e0, 1.55);
+      kl.position.set(3, 9, 8); kl.castShadow = true; scene.add(kl);
+      const fl = new THREE.DirectionalLight(0x8899cc, 0.38);
+      fl.position.set(-4, 3, 5); scene.add(fl);
+
+      const SPREADS = [
+        {left:{type:'ic'},right:{type:'cover'}},
+        {left:{type:'sec',title:'TOP TEN',accent:'#00FFFF',bg:'#04101e',sub:'GLOBAL DIRECTORY',
+          body:'The Index provides the most comprehensive ranking of live performers. Track the Top 10 in every genre. See who is live now.'},
+         right:{type:'sec',title:'LIVE VENUES',accent:'#FFD700',bg:'#031218',sub:'BOOK DIRECTLY',
+          body:'Browse open slots. Secure a venue. Artists and promoters can instantly lock dates on the TMI Network.'}},
+        {left:{type:'sec',title:'AD SPACES',accent:'#FF2DAA',bg:'#0a0b1a',sub:'PREMIUM PROMO',
+          body:'Boost your profile. Buy ad slots on the Live Wall or Sidebar. Reach 18,000+ viewers daily.'},
+         right:{type:'back'}}
+      ];
+
+      function mkTex(d: any){
+        const C = 1024, H_tex = 1400, cv = document.createElement('canvas');
+        cv.width = C; cv.height = H_tex; const g = cv.getContext('2d')!;
+        function wt(txt: string, x: number, y: number, mw: number, lh: number){
+          g.textBaseline = 'top';
+          const ws = txt.split(' ');
+          let ln = '';
+          for(let i=0; i<ws.length; i++){
+            const t = ln + ws[i] + ' ';
+            if(g.measureText(t).width > mw && ln){ g.fillText(ln.trim(), x, y); y += lh; ln = ws[i] + ' '; }
+            else ln = t;
+          }
+          if(ln.trim()) g.fillText(ln.trim(), x, y);
+        }
+
+        if(d.type==='cover'){
+          const bg = g.createLinearGradient(0,0,C,H_tex); bg.addColorStop(0,'#07041c'); bg.addColorStop(1,'#0a0520');
+          g.fillStyle = bg; g.fillRect(0,0,C,H_tex);
+          g.strokeStyle = 'rgba(0,255,255,0.05)'; g.lineWidth = 1;
+          for(let x=0; x<C; x+=68){ g.beginPath(); g.moveTo(x,0); g.lineTo(x,H_tex); g.stroke(); }
+          for(let y=0; y<H_tex; y+=68){ g.beginPath(); g.moveTo(0,y); g.lineTo(C,y); g.stroke(); }
+          g.fillStyle = '#FF6B00'; g.fillRect(0,0,C,12);
+          g.save(); g.textAlign = 'center'; g.textBaseline = 'alphabetic';
+          g.shadowColor = '#FF6B00'; g.shadowBlur = 60; g.fillStyle = '#FF6B00'; g.font = 'bold 178px Arial';
+          g.fillText('TMI', C/2, 268); g.shadowBlur = 0; g.restore();
+          g.fillStyle = 'rgba(255,255,255,0.88)'; g.font = '300 27px Arial'; g.textAlign = 'center'; g.textBaseline = 'alphabetic';
+          g.fillText("THE MUSICIAN'S INDEX", C/2, 322);
+          g.strokeStyle = 'rgba(255,107,0,0.32)'; g.lineWidth = 1;
+          g.beginPath(); g.moveTo(100,348); g.lineTo(C-100,348); g.stroke();
+          g.fillStyle = 'rgba(0,255,255,0.72)'; g.font = '300 18px Arial';
+          g.fillText('ISSUE 001  ·  VOL. 2  ·  THE DIRECTORY', C/2, 380);
+          const bars = 44, bw = 8, sp = 4, tx = (C-bars*(bw+sp))/2;
+          for(let i=0; i<bars; i++){
+            const bh = 48+Math.sin(i*0.55+1)*88+Math.sin(i*0.22)*38;
+            g.fillStyle = 'rgba(0,255,255,'+(0.45+0.55*(i/bars)).toFixed(2)+')';
+            g.fillRect(tx+i*(bw+sp), 680-bh/2, bw, bh);
+          }
+          const hl = g.createRadialGradient(C/2,680,20,C/2,680,300);
+          hl.addColorStop(0,'rgba(0,255,255,0.13)'); hl.addColorStop(1,'transparent');
+          g.fillStyle = hl; g.beginPath(); g.arc(C/2,680,300,0,Math.PI*2); g.fill();
+          g.fillStyle = 'rgba(255,255,255,0.18)'; g.font = '300 14px Arial';
+          g.fillText('TOP TEN  ·  LIVE VENUES  ·  AD SPACES', C/2, 1100);
+          g.fillStyle = 'rgba(0,255,255,0.58)'; g.font = '400 17px Arial';
+          g.fillText('BERNTOUTGLOBAL XXL', C/2, 1358);
+          g.fillStyle = 'rgba(255,255,255,0.11)';
+          for(let i=0; i<26; i++){ const bh = 14+(i%3)*7; g.fillRect(786+i*5, 1334-bh, 3, bh); }
+          g.fillStyle = '#FF6B00'; g.fillRect(0, H_tex-12, C, 12);
+        } else if(d.type==='ic'){
+          const bg2 = g.createLinearGradient(0,0,C,H_tex); bg2.addColorStop(0,'#0d0d26'); bg2.addColorStop(1,'#060618');
+          g.fillStyle = bg2; g.fillRect(0,0,C,H_tex);
+          g.fillStyle = 'rgba(0,255,255,0.07)';
+          for(let x=70; x<C; x+=80) for(let y=70; y<H_tex; y+=80){ g.beginPath(); g.arc(x,y,1.5,0,Math.PI*2); g.fill(); }
+          g.fillStyle = 'rgba(0,255,255,0.08)'; g.fillRect(C-72, 0, 72, H_tex);
+          g.fillStyle = 'rgba(0,255,255,0.22)'; g.font = '300 15px Arial'; g.textAlign = 'center'; g.textBaseline = 'alphabetic';
+          g.fillText("THE MUSICIAN'S INDEX", C/2, H_tex-62);
+        } else if(d.type==='sec'){
+          g.fillStyle = d.bg||'#040810'; g.fillRect(0,0,C,H_tex);
+          g.strokeStyle = (d.accent||'#FF6B00')+'12'; g.lineWidth = 1;
+          for(let x=0; x<C; x+=80){ g.beginPath(); g.moveTo(x,0); g.lineTo(x,H_tex); g.stroke(); }
+          g.fillStyle = d.accent; g.fillRect(0,0,8,H_tex); g.fillRect(0,0,C,7);
+          g.fillStyle = d.accent+'cc'; g.font = 'bold 13px Arial'; g.textAlign = 'left'; g.textBaseline = 'alphabetic';
+          g.fillText('· '+d.title, 58, 70);
+          g.save(); g.shadowColor = d.accent; g.shadowBlur = 32; g.fillStyle = d.accent; g.font = 'bold 84px Arial';
+          g.fillText(d.title, 54, 222); g.shadowBlur = 0; g.fillStyle = '#ffffff'; g.fillText(d.title, 54, 222); g.restore();
+          g.fillStyle = 'rgba(255,255,255,0.42)'; g.font = '300 20px Arial'; g.fillText(d.sub||'', 54, 260);
+          g.strokeStyle = d.accent+'3a'; g.lineWidth = 1; g.beginPath(); g.moveTo(54,287); g.lineTo(C-54,287); g.stroke();
+          g.fillStyle = 'rgba(255,255,255,0.65)'; g.font = '300 21px Arial';
+          wt(d.body||'', 54, 320, C-120, 39);
+          const rc = g.createRadialGradient(C-180, H_tex-325, 0, C-180, H_tex-325, 305);
+          rc.addColorStop(0, d.accent+'18'); rc.addColorStop(1,'transparent');
+          g.fillStyle = rc; g.beginPath(); g.arc(C-180, H_tex-325, 305, 0, Math.PI*2); g.fill();
+          g.textAlign = 'right'; g.fillStyle = 'rgba(255,255,255,0.14)'; g.font = '300 14px Arial';
+          g.fillText('TMI', C-44, H_tex-46);
+        } else {
+          const bg3 = g.createLinearGradient(0,0,C,H_tex); bg3.addColorStop(0,'#050508'); bg3.addColorStop(1,'#080518');
+          g.fillStyle = bg3; g.fillRect(0,0,C,H_tex);
+          g.strokeStyle = 'rgba(0,255,255,0.04)'; g.lineWidth = 1;
+          for(let x=0; x<C; x+=72){ g.beginPath(); g.moveTo(x,0); g.lineTo(x,H_tex); g.stroke(); }
+          for(let y=0; y<H_tex; y+=72){ g.beginPath(); g.moveTo(0,y); g.lineTo(C,y); g.stroke(); }
+          g.fillStyle = '#FF6B00'; g.fillRect(0, H_tex-12, C, 12); g.fillRect(0,0,C,12);
+          g.textAlign = 'center'; g.textBaseline = 'alphabetic';
+          g.save(); g.shadowColor = '#FF6B00'; g.shadowBlur = 30; g.fillStyle = '#FF6B00'; g.font = 'bold 54px Arial';
+          g.fillText('BERNTOUTGLOBAL', C/2, H_tex/2-22); g.shadowBlur = 0; g.restore();
+          g.fillStyle = 'rgba(255,255,255,0.42)'; g.font = '300 18px Arial';
+          g.fillText('XXL · ENTERTAINMENT · TECHNOLOGY', C/2, H_tex/2+25);
+          g.fillStyle = 'rgba(0,255,255,0.3)'; g.font = '300 13px Arial';
+          g.fillText('Stream & Win · WillDoIt · HotScreens · Thunder World', C/2, H_tex/2+82);
+          g.fillText("Rent-A-Charge · Danika's Law · BerntoutStudio AI", C/2, H_tex/2+112);
+          g.fillStyle = 'rgba(255,255,255,0.08)';
+          for(let i=0; i<30; i++){ const bh = 16+(i*7%14); g.fillRect(C/2-76+i*5, H_tex-118-bh, 3, bh); }
+        }
+        return new THREE.CanvasTexture(cv);
+      }
+
+      setLoad(15,'BAKING TEXTURES');
+      const TEX: Record<string, any> = {};
+      const defs: any[] = []; SPREADS.forEach(s => { defs.push(s.left, s.right); });
+      defs.forEach(d => { const k = JSON.stringify(d); if(!TEX[k]) TEX[k] = mkTex(d); });
+      function gT(d: any) { return TEX[JSON.stringify(d)]; }
+      setLoad(78,'BUILDING GEOMETRY');
+
+      const PW = 1.0, PH = 1.35, GAP = 0.018, SD = 0.11, SEG = 72, TOTAL = SPREADS.length;
+      const book = new THREE.Group();
+      book.rotation.x = -0.13; book.position.y = -0.08; scene.add(book);
+
+      const flr = new THREE.Mesh(new THREE.PlaneGeometry(10,8), new THREE.MeshStandardMaterial({color:0x050510, roughness:0.98}));
+      flr.rotation.x = -Math.PI/2; flr.position.y = -PH/2-0.01; flr.receiveShadow = true; book.add(flr);
+
+      function flatGeo() { return new THREE.PlaneGeometry(PW,PH,1,1); }
+      function curlGeo() {
+        const g = new THREE.PlaneGeometry(PW,PH,SEG,1);
+        const pos = g.attributes.position;
+        for(let i=0; i<pos.count; i++) pos.setX(i, pos.getX(i)+0.5);
+        pos.needsUpdate = true; return g;
+      }
+
+      const leftMat = new THREE.MeshStandardMaterial({roughness:0.84, metalness:0});
+      const rightMat = new THREE.MeshStandardMaterial({roughness:0.84, metalness:0});
+      const leftMesh = new THREE.Mesh(flatGeo(), leftMat);
+      const rightMesh = new THREE.Mesh(flatGeo(), rightMat);
+      leftMesh.position.x = -PW/2-GAP/2; rightMesh.position.x = PW/2+GAP/2;
+      [leftMesh, rightMesh].forEach(m => { m.castShadow = true; m.receiveShadow = true; });
+      book.add(leftMesh); book.add(rightMesh);
+
+      const VS = "uniform float uP; uniform float uDir; varying vec2 vUv; varying float vZ; void main(){ vUv=uv; vec3 p=position; float ox=position.x; float theta=uP*3.14159265; float lag=ox*sin(theta)*0.72; float a=clamp(theta-lag,0.0,3.14159265); float sx=uDir>0.0?1.0:-1.0; p.x=sx*ox*cos(a); p.z=ox*sin(a)*0.52; vZ=p.z; gl_Position=projectionMatrix*modelViewMatrix*vec4(p,1.0); }";
+      const FS = "uniform sampler2D uFront; uniform sampler2D uBack; uniform float uDir; varying vec2 vUv; varying float vZ; void main(){ bool front; if(uDir>0.0){front=gl_FrontFacing;} else{front=!gl_FrontFacing;} vec4 c; if(front){c=texture2D(uFront,vUv);} else{c=texture2D(uBack,vec2(1.0-vUv.x,vUv.y));} float ao=smoothstep(0.0,0.09,vUv.x); c.rgb*=0.58+0.42*ao; c.rgb*=max(0.18,1.0-vZ*1.38); c.rgb+=vec3(vZ*0.08); gl_FragColor=c; }";
+
+      const turnMat = new THREE.ShaderMaterial({
+        vertexShader:VS, fragmentShader:FS,
+        uniforms:{uP:{value:0},uDir:{value:1},uFront:{value:null},uBack:{value:null}},
+        side:THREE.DoubleSide
+      });
+      const turnMesh = new THREE.Mesh(curlGeo(), turnMat);
+      turnMesh.position.x = GAP/2; turnMesh.position.z = 0.003;
+      turnMesh.renderOrder = 1; turnMesh.visible = false; turnMesh.castShadow = true; book.add(turnMesh);
+
+      const sMat = new THREE.MeshStandardMaterial({color:0xd2d2d2, roughness:0.92});
+      const stackR = new THREE.Mesh(new THREE.BoxGeometry(PW,PH,SD), sMat);
+      const stackL = new THREE.Mesh(new THREE.BoxGeometry(PW,PH,SD), sMat);
+      stackR.position.set(PW/2+GAP/2, 0, -SD/2); stackL.position.set(-PW/2-GAP/2, 0, -SD/2);
+      book.add(stackR); book.add(stackL);
+
+      const spineMsh = new THREE.Mesh(new THREE.BoxGeometry(GAP*2.5,PH,SD), new THREE.MeshStandardMaterial({color:0x1a1a2e, roughness:0.88}));
+      spineMsh.position.z = -SD/2; book.add(spineMsh);
+      const spineShad = new THREE.Mesh(new THREE.PlaneGeometry(0.22,PH), new THREE.MeshBasicMaterial({color:0, transparent:true, opacity:0.3, depthWrite:false}));
+      spineShad.position.z = 0.001; book.add(spineShad);
+
+      let idx = 0, animActive = false, animP = 0, animVel = 0, pendingDir = 1;
+
+      function updateStacks(){
+        const rR = Math.max(0.04, (TOTAL-1-idx)/TOTAL);
+        const lR = Math.max(0.04, idx/TOTAL);
+        stackR.scale.z = rR; stackR.position.z = -SD/2*rR;
+        stackL.scale.z = lR; stackL.position.z = -SD/2*lR;
+      }
+
+      function applySpread(i: number){
+        const s = SPREADS[i];
+        leftMat.map = gT(s.left); leftMat.needsUpdate = true;
+        rightMat.map = gT(s.right); rightMat.needsUpdate = true;
+      }
+
+      function startTurn(dir: number){
+        if(animActive) return;
+        let next = idx + dir;
+        if(next < 0) next = TOTAL - 1; 
+        if(next >= TOTAL) next = 0; 
+        animActive = true; animP = 0; animVel = 0; pendingDir = dir;
+        const cur = SPREADS[idx], nxt = SPREADS[next];
+        if(dir > 0){
+          turnMat.uniforms.uDir.value = 1;
+          turnMat.uniforms.uFront.value = gT(cur.right);
+          turnMat.uniforms.uBack.value = gT(nxt.left);
+          turnMesh.position.x = GAP/2;
+          rightMesh.visible = false;
+          rightMat.map = gT(nxt.right); rightMat.needsUpdate = true;
+        }else{
+          turnMat.uniforms.uDir.value = -1;
+          turnMat.uniforms.uFront.value = gT(cur.left);
+          turnMat.uniforms.uBack.value = gT(nxt.right);
+          turnMesh.position.x = -GAP/2;
+          leftMesh.visible = false;
+          leftMat.map = gT(nxt.left); leftMat.needsUpdate = true;
+        }
+        turnMesh.visible = true;
+      }
+
+      function finishTurn(){
+        idx += pendingDir;
+        if(idx < 0) idx = TOTAL - 1;
+        if(idx >= TOTAL) idx = 0;
+        applySpread(idx); updateStacks();
+        turnMesh.visible = false;
+        leftMesh.visible = true; rightMesh.visible = true;
+        animActive = false; animP = 0;
+        updateUI();
+      }
+
+      function tickAnim(){
+        if(!animActive) return;
+        animVel = animVel*0.78 + (1-animP)*0.108;
+        animP += animVel;
+        if(animP >= 0.998){ animP = 1; turnMat.uniforms.uP.value = 1; finishTurn(); return; }
+        turnMat.uniforms.uP.value = animP;
+      }
+
+      function updateUI(){
+        const pi = document.getElementById('tmi-3d-pi');
+        if(pi) pi.textContent = 'SPREAD '+(idx+1)+' / '+TOTAL;
+        const dotsEl = document.getElementById('tmi-3d-dots');
+        if(dotsEl){
+          dotsEl.querySelectorAll('.tmi-3d-dot').forEach((d,i) => {
+            d.classList.toggle('active', i === idx);
+          });
+        }
+      }
+
+      const dotsEl = document.getElementById('tmi-3d-dots');
+      if(dotsEl) {
+        dotsEl.innerHTML = '';
+        SPREADS.forEach((_, i) => {
+          const d = document.createElement('div');
+          d.className = 'tmi-3d-dot' + (i === 0 ? ' active' : '');
+          d.onclick = () => { if(!animActive && i !== idx) startTurn(i > idx ? 1 : -1); };
+          dotsEl.appendChild(d);
+        });
+      }
+
+      const bn = document.getElementById('tmi-3d-bn');
+      if(bn) bn.onclick = () => startTurn(1);
+      const bp = document.getElementById('tmi-3d-bp');
+      if(bp) bp.onclick = () => startTurn(-1);
+
+      let mx=0, my=0;
+      document.addEventListener('mousemove', (e) => {
+        const r = wrapEl.getBoundingClientRect();
+        mx = ((e.clientX - r.left) / r.width - 0.5) * 2;
+        my = ((e.clientY - r.top) / r.height - 0.5) * 2;
+      });
+
+      setLoad(95, 'READY');
+      applySpread(0); updateStacks(); updateUI();
+
+      setTimeout(() => {
+        const load = document.getElementById('tmi-3d-load');
+        if(load) {
+          load.style.opacity = '0';
+          setTimeout(() => { load.style.display = 'none'; }, 550);
+        }
+      }, 220);
+
+      // Auto turn every 45 seconds for Home 1-2
+      autoTurnInterval = setInterval(() => {
+        if (!animActive) startTurn(1);
+      }, 45000);
+
+      const clock = new THREE.Clock();
+      function renderLoop(){
+        requestAnimationFrame(renderLoop);
+        const t = clock.getElapsedTime();
+        camera.position.x += (mx*0.13 - camera.position.x)*0.022;
+        camera.position.y += (-my*0.065 + 0.42 - camera.position.y)*0.022;
+        camera.lookAt(0,0,0);
+        book.rotation.z = Math.sin(t*0.38)*0.004;
+        book.position.y = -0.08 + Math.sin(t*0.5)*0.004;
+        tickAnim();
+        renderer.render(scene, camera);
+      }
+      renderLoop();
+    }
+
+    // Load ThreeJS
+    if (!(window as any).THREE) {
+      const script = document.createElement('script');
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
+      script.onload = initEngine;
+      document.head.appendChild(script);
+    } else {
+      initEngine();
+    }
+
+    return () => {
+      if (autoTurnInterval) clearInterval(autoTurnInterval);
+    };
+  }, []);
+
   return (
     <main className={styles.root} style={{ background: '#050510', minHeight: '100vh' }}>
       {/* Background */}
@@ -336,6 +674,34 @@ export default function Home12Page() {
         <div className={styles.tickerInner}>
           {tickerStr}  ⚡  TMI BILLBOARD WORLD — {CATEGORIES.length} CATEGORIES  ⚡  GLOBAL RANKINGS LIVE
         </div>
+      </div>
+
+      {/* 3D MAGAZINE ENGINE HERO */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        .tmi-3d-btn { background: rgba(4,4,14,0.88); border: 1px solid rgba(255,107,0,0.38); color: #FF6B00; padding: 8px 20px; cursor: pointer; font-family: 'Courier New', monospace; font-size: 9px; letter-spacing: 3px; text-transform: uppercase; transition: background 0.18s, border-color 0.18s; }
+        .tmi-3d-btn:hover:not(:disabled) { background: rgba(255,107,0,0.12); border-color: #FF6B00; }
+        .tmi-3d-btn:disabled { opacity: 0.2; cursor: default; }
+        .tmi-3d-dot { width: 5px; height: 5px; border-radius: 50%; background: rgba(255,255,255,0.14); cursor: pointer; transition: all 0.24s; }
+        .tmi-3d-dot.active { background: #FF6B00; box-shadow: 0 0 7px #FF6B00; }
+        @keyframes tmi-fh { 0% { opacity: 1 } 60% { opacity: 1 } 100% { opacity: 0 } }
+      `}} />
+      <div id="tmi-3d-wrap" style={{ width: '100%', height: '580px', position: 'relative', overflow: 'hidden', background: '#050508', marginTop: '10px' }}>
+        <div id="tmi-3d-canvas" style={{ position: 'absolute', inset: 0 }}></div>
+        <div id="tmi-3d-load" style={{ position: 'absolute', inset: 0, zIndex: 999, background: '#050508', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '13px', fontFamily: "'Courier New', monospace", transition: 'opacity 0.5s' }}>
+          <div style={{ fontSize: '9px', letterSpacing: '5px', color: 'rgba(0,255,255,0.48)' }}>INITIALIZING 3D ENGINE</div>
+          <div style={{ width: '150px', height: '1px', background: 'rgba(255,255,255,0.07)' }}><div id="tmi-3d-lf" style={{ height: '100%', width: '0%', background: '#FF6B00', transition: 'width 0.3s' }}></div></div>
+          <div id="tmi-3d-ls" style={{ fontSize: '8px', letterSpacing: '3px', color: 'rgba(255,255,255,0.22)' }}>COMPILING SHADERS</div>
+        </div>
+        <div id="tmi-3d-hud" style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '16px 20px', pointerEvents: 'none', fontFamily: "'Courier New', monospace" }}>
+          <div style={{ display: 'flex', justifyContent: 'center' }}><div style={{ fontSize: '9px', letterSpacing: '5px', color: 'rgba(0,255,255,0.45)', border: '1px solid rgba(0,255,255,0.12)', padding: '5px 14px', textTransform: 'uppercase' }}>TMI · 3D PAGE ENGINE · THE INDEX</div></div>
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '16px', pointerEvents: 'all' }}>
+            <button id="tmi-3d-bp" className="tmi-3d-btn">◀ PREV</button>
+            <div id="tmi-3d-pi" style={{ fontSize: '9px', letterSpacing: '3px', color: 'rgba(255,255,255,0.28)', minWidth: '118px', textAlign: 'center' }}>SPREAD 1 / 3</div>
+            <button id="tmi-3d-bn" className="tmi-3d-btn">NEXT ▶</button>
+          </div>
+        </div>
+        <div id="tmi-3d-dots" style={{ position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)', display: 'flex', flexDirection: 'column', gap: '9px', pointerEvents: 'all' }}></div>
+        <div id="tmi-3d-hint" style={{ position: 'absolute', bottom: '68px', left: '50%', transform: 'translateX(-50%)', fontFamily: "'Courier New', monospace", fontSize: '8px', letterSpacing: '3px', color: 'rgba(255,255,255,0.18)', pointerEvents: 'none', animation: 'tmi-fh 4s ease forwards' }}>DRAG OR USE ARROW KEYS TO TURN</div>
       </div>
 
       {/* Main content */}
@@ -410,7 +776,8 @@ export default function Home12Page() {
           gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
           gap: 16,
           opacity: transitioning ? 0 : 1,
-          transition: 'opacity 0.2s',
+          transform: transitioning ? 'translateY(22px)' : 'translateY(0)',
+          transition: 'opacity 0.3s ease-out, transform 0.4s cubic-bezier(0.25, 1, 0.5, 1)',
         }}>
           {items.map(item => (
             <Link

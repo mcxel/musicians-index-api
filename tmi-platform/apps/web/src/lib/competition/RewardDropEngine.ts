@@ -35,7 +35,7 @@ export interface RewardConfig {
   multipliers: {
     free: number;
     pro: number;
-    bronze: number;
+    RUBY: number;
     silver: number;
     gold: number;
     platinum: number;
@@ -240,7 +240,7 @@ export class RewardDropEngine {
       multipliers: {
         free: 1,
         pro: 1.1,
-        bronze: 1.15,
+        RUBY: 1.15,
         silver: 1.2,
         gold: 1.3,
         platinum: 1.4,
@@ -263,7 +263,7 @@ export class RewardDropEngine {
       multipliers: {
         free: 1,
         pro: 1.1,
-        bronze: 1.15,
+        RUBY: 1.15,
         silver: 1.2,
         gold: 1.3,
         platinum: 1.4,
@@ -286,7 +286,7 @@ export class RewardDropEngine {
       multipliers: {
         free: 1,
         pro: 1.15,
-        bronze: 1.2,
+        RUBY: 1.2,
         silver: 1.25,
         gold: 1.35,
         platinum: 1.45,
@@ -309,7 +309,7 @@ export class RewardDropEngine {
       multipliers: {
         free: 1,
         pro: 1.15,
-        bronze: 1.2,
+        RUBY: 1.2,
         silver: 1.25,
         gold: 1.35,
         platinum: 1.45,
@@ -332,7 +332,7 @@ export class RewardDropEngine {
       multipliers: {
         free: 1,
         pro: 1.2,
-        bronze: 1.25,
+        RUBY: 1.25,
         silver: 1.3,
         gold: 1.4,
         platinum: 1.5,

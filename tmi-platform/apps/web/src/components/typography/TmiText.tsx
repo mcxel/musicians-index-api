@@ -26,11 +26,7 @@ export function TmiText({
   style,
 }: TmiTextProps) {
   const variantClass = `tmi-${variant}`;
-  return (
-    <Tag className={`${variantClass} ${className}`} style={style}>
-      {children}
-    </Tag>
-  );
+  return React.createElement(Tag, { className: `${variantClass} ${className}`, style }, children);
 }
 
 export default TmiText;

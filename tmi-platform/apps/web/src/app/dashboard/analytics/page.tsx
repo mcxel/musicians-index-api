@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { getAnalyticsSnapshot, TIER_ORDER, ENGINE_META, type SubscriptionTier } from '@/lib/analytics/TieredAnalyticsEngine';
 
 const TIER_COLORS: Record<SubscriptionTier, string> = {
-  free: '#94a3b8', pro: '#60a5fa', bronze: '#cd7f32', silver: '#94a3b8',
+  free: '#94a3b8', pro: '#60a5fa', ruby: '#cd7f32', silver: '#94a3b8',
   gold: '#FFD700', platinum: '#e2e8f0', diamond: '#00FFFF',
 };
 

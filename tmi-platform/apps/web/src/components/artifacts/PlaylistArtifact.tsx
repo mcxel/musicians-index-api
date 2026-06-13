@@ -6,6 +6,7 @@ import {
   type ArtifactSkin, type ArtifactTrack, type EQState,
   SKIN_META, DEFAULT_EQ, interleaveTMI, parseSourceLabel, SOURCE_COLORS, fmtPoints,
 } from "@/lib/artifacts/artifactEngine";
+import { ActivityTimelineEngine } from "@/lib/timeline/ActivityTimelineEngine";
 
 // ── Scrolling ticker ──────────────────────────────────────────────────────────
 
@@ -782,7 +783,11 @@ export default function PlaylistArtifact({
                   {liked ? "♥ LIKED" : "♡ LIKE"}
                 </button>
                 <button
-                  onClick={() => { setAddedLibrary(true); onAddToLibrary?.(artifactId); }}
+                  onClick={() => {
+                    setAddedLibrary(true);
+                    onAddToLibrary?.(artifactId);
+                    ActivityTimelineEngine.addEvent({ userId: 'current-user', type: 'MEMORY_SAVED', label: `💾 Saved "${title}" to Library`, xpEarned: 10 });
+                  }}
                   style={{ padding: "6px 12px", borderRadius: 7, fontSize: 9, fontWeight: 800, background: addedLibrary ? "rgba(34,197,94,0.15)" : "rgba(255,255,255,0.04)", border: `1px solid ${addedLibrary ? "rgba(34,197,94,0.4)" : "rgba(255,255,255,0.1)"}`, color: addedLibrary ? "#22c55e" : "rgba(255,255,255,0.4)", cursor: "pointer" }}>
                   {addedLibrary ? "✓ SAVED" : "+ LIBRARY"}
                 </button>

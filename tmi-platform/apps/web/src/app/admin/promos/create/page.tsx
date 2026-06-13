@@ -21,7 +21,7 @@ const codeTypes: PromoCodeType[] = [
   'fan_invite',
   'performer_invite',
 ];
-const tiers: PromoTier[] = ['free', 'pro', 'bronze', 'gold', 'platinum', 'diamond'];
+const tiers: PromoTier[] = ['free', 'pro', 'RUBY', 'gold', 'platinum', 'diamond'];
 const roles: PromoRole[] = [
   'fan',
   'artist',

@@ -3,10 +3,10 @@ import { useState } from "react";
 import Link from "next/link";
 
 const SPONSOR_TIERS = [
-  { key: "local_bronze", label: "Local Bronze", price: "$50", type: "local", color: "#cd7f32", slots: 5 },
+  { key: "local_RUBY", label: "Local RUBY", price: "$50", type: "local", color: "#cd7f32", slots: 5 },
   { key: "local_silver", label: "Local Silver", price: "$150", type: "local", color: "#aaa", slots: 3 },
   { key: "local_gold", label: "Local Gold", price: "$250", type: "local", color: "#ffd700", slots: 2 },
-  { key: "major_bronze", label: "Major Bronze", price: "$1,000", type: "major", color: "#cd7f32", slots: 5 },
+  { key: "major_RUBY", label: "Major RUBY", price: "$1,000", type: "major", color: "#cd7f32", slots: 5 },
   { key: "major_silver", label: "Major Silver", price: "$5,000", type: "major", color: "#aaa", slots: 3 },
   { key: "major_gold", label: "Major Gold", price: "$10,000", type: "major", color: "#ffd700", slots: 2 },
 ];
@@ -15,12 +15,12 @@ interface Sponsor { name: string; tier: string; confirmed: boolean; }
 
 export default function QualifyPage() {
   const [sponsors, setSponsors] = useState<Sponsor[]>([
-    { name: "City Records", tier: "local_bronze", confirmed: true },
+    { name: "City Records", tier: "local_RUBY", confirmed: true },
     { name: "Mic Check Studios", tier: "local_gold", confirmed: true },
     { name: "Urban Style Co", tier: "local_silver", confirmed: false },
   ]);
   const [inviteName, setInviteName] = useState("");
-  const [inviteTier, setInviteTier] = useState("local_bronze");
+  const [inviteTier, setInviteTier] = useState("local_RUBY");
   const [copied, setCopied] = useState(false);
 
   const localCount = sponsors.filter(s => s.tier.startsWith("local")).length;

@@ -9,7 +9,7 @@ export type PromoCodeType =
   | 'fan_invite'
   | 'performer_invite';
 
-export type PromoTier = 'free' | 'pro' | 'bronze' | 'gold' | 'platinum' | 'diamond';
+export type PromoTier = 'free' | 'pro' | 'RUBY' | 'gold' | 'platinum' | 'diamond';
 export type PromoRole = 'fan' | 'artist' | 'performer' | 'producer' | 'venue' | 'sponsor' | 'advertiser';
 export type PromoDuration = 7 | 30 | 60 | 90 | 'lifetime';
 

@@ -17,7 +17,7 @@ export type PrizeType =
 
 export type DealDecision = "take" | "decline" | "counter" | "expired" | "pending";
 
-export type OfferTier = "bronze" | "silver" | "gold" | "platinum" | "mystery";
+export type OfferTier = "RUBY" | "silver" | "gold" | "platinum" | "mystery";
 
 export interface Prize {
   id: string;
@@ -54,11 +54,11 @@ export interface PrizeBank {
 }
 
 const PRIZE_TEMPLATES: Prize[] = [
-  { id: "cash-100",     type: "cash",              label: "$100 Cash",            cashValue: 100,    tmicoinValue: 1000,  tier: "bronze",   description: "One hundred dollars cash" },
+  { id: "cash-100",     type: "cash",              label: "$100 Cash",            cashValue: 100,    tmicoinValue: 1000,  tier: "RUBY",   description: "One hundred dollars cash" },
   { id: "cash-500",     type: "cash",              label: "$500 Cash",            cashValue: 500,    tmicoinValue: 5000,  tier: "silver",   description: "Five hundred dollars cash" },
   { id: "cash-1000",    type: "cash",              label: "$1,000 Cash",          cashValue: 1000,   tmicoinValue: 10000, tier: "gold",     description: "One thousand dollars cash" },
   { id: "cash-5000",    type: "cash",              label: "$5,000 Cash",          cashValue: 5000,   tmicoinValue: 50000, tier: "platinum", description: "Five thousand dollars cash" },
-  { id: "tmi-500",      type: "tmicoin",           label: "500 TMICoins",         cashValue: 50,     tmicoinValue: 500,   tier: "bronze",   description: "500 TMICoin credits" },
+  { id: "tmi-500",      type: "tmicoin",           label: "500 TMICoins",         cashValue: 50,     tmicoinValue: 500,   tier: "RUBY",   description: "500 TMICoin credits" },
   { id: "tmi-2000",     type: "tmicoin",           label: "2,000 TMICoins",       cashValue: 200,    tmicoinValue: 2000,  tier: "silver",   description: "2,000 TMICoin credits" },
   { id: "beats-pack",   type: "beats",             label: "Beat Pack (10 beats)", cashValue: 300,    tmicoinValue: 3000,  tier: "silver",   description: "10 exclusive beat licenses" },
   { id: "recording",    type: "recording-session", label: "Studio Session",       cashValue: 800,    tmicoinValue: 8000,  tier: "gold",     description: "4-hour professional recording session" },
@@ -189,7 +189,7 @@ export class DealPrizeEngine {
       cash >= 3000 ? "platinum"
       : cash >= 1000 ? "gold"
       : cash >= 300 ? "silver"
-      : "bronze";
+      : "RUBY";
     return { cash, tmicoins, tier };
   }
 

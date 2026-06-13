@@ -4,7 +4,7 @@
 
 export type AdPlacement =
   | "free-member-profile"
-  | "bronze-silver-profile"
+  | "RUBY-silver-profile"
   | "gold-plus-profile"
   | "homepage-ticker"
   | "homepage-rail"
@@ -24,8 +24,8 @@ export type AdDuration = "day" | "week" | "month";
 export const AD_PRICES: Record<AdPlacement, Record<AdDuration, number>> = {
   // Free profiles — 6 slots each, highest inventory, cheapest CPM
   "free-member-profile":      { day:   99, week:   499, month:  1499 },
-  // Bronze/Silver profiles — 3 slots each
-  "bronze-silver-profile":    { day:  199, week:  1199, month:  2999 },
+  // RUBY/Silver profiles — 3 slots each
+  "RUBY-silver-profile":    { day:  199, week:  1199, month:  2999 },
   // Gold+ profiles — 1 slot, premium audience
   "gold-plus-profile":        { day:  299, week:  1799, month:  4499 },
   // Homepage placements
@@ -49,7 +49,7 @@ export const AD_PRICES: Record<AdPlacement, Record<AdDuration, number>> = {
 export const MEMBER_AD_SLOT_COUNT: Record<string, number> = {
   free:     6,
   pro:      4,
-  bronze:   3,
+  RUBY:   3,
   silver:   2,
   gold:     1,
   platinum: 1,
@@ -59,7 +59,7 @@ export const MEMBER_AD_SLOT_COUNT: Record<string, number> = {
 // Which placement applies to a given member tier's profile
 export function profileAdPlacement(tier: string): AdPlacement {
   if (tier === "gold" || tier === "platinum" || tier === "diamond") return "gold-plus-profile";
-  if (tier === "bronze" || tier === "silver") return "bronze-silver-profile";
+  if (tier === "RUBY" || tier === "silver") return "RUBY-silver-profile";
   return "free-member-profile";
 }
 

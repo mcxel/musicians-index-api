@@ -3,7 +3,7 @@
  * Canon format and team-size rules for challenge/battle requests.
  */
 
-export type BattleTier = "free" | "pro" | "bronze" | "silver" | "gold" | "platinum" | "diamond";
+export type BattleTier = "free" | "pro" | "RUBY" | "silver" | "gold" | "platinum" | "diamond";
 
 export type BattleFormatType =
   | "solo-vs-solo"

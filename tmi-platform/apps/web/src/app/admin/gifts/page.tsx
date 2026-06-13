@@ -16,7 +16,7 @@ type AdminGiftsPageProps = {
 };
 
 const ROLES: GiftAccountRole[] = ["artist", "fan", "venue", "producer", "sponsor", "advertiser"];
-const TIERS: GiftTier[] = ["free", "pro", "bronze", "gold", "platinum", "diamond"];
+const TIERS: GiftTier[] = ["free", "pro", "RUBY", "gold", "platinum", "diamond"];
 
 function safeRole(value?: string): GiftAccountRole {
   return ROLES.includes((value ?? "").toLowerCase() as GiftAccountRole)

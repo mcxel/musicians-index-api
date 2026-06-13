@@ -3,7 +3,7 @@ export type TrophyType =
   | "top-artist" | "top-performer" | "song-battle-champion" | "annual-crown"
   | "venue-legend" | "sponsor-award" | "first-blood" | "perfect-score";
 
-export type TrophyRarity = "bronze" | "silver" | "gold" | "platinum" | "crown";
+export type TrophyRarity = "RUBY" | "silver" | "gold" | "platinum" | "crown";
 
 export interface Trophy {
   trophyId: string;
@@ -26,7 +26,7 @@ const trophies = new Map<string, Trophy>();
 const ownerIndex = new Map<string, string[]>();
 
 const TROPHY_META: Record<TrophyType, { title: string; rarity: TrophyRarity; description: string; transferable: boolean }> = {
-  "battle-win":          { title: "Battle Victor",       rarity: "bronze",   description: "Won a ranked battle",           transferable: false },
+  "battle-win":          { title: "Battle Victor",       rarity: "RUBY",   description: "Won a ranked battle",           transferable: false },
   "battle-streak":       { title: "Streak Champion",     rarity: "silver",   description: "Won 5 battles in a row",        transferable: false },
   "season-champion":     { title: "Season Champion",     rarity: "gold",     description: "Top artist of the season",      transferable: false },
   "crowd-favorite":      { title: "Crowd Favorite",      rarity: "silver",   description: "Most crowd votes in one night", transferable: true  },
@@ -36,7 +36,7 @@ const TROPHY_META: Record<TrophyType, { title: string; rarity: TrophyRarity; des
   "annual-crown":        { title: "Annual Crown",        rarity: "crown",    description: "TMI Artist of the Year",        transferable: false },
   "venue-legend":        { title: "Venue Legend",        rarity: "platinum", description: "Performed at 10+ venues",       transferable: false },
   "sponsor-award":       { title: "Sponsor Award",       rarity: "gold",     description: "Awarded by a platform sponsor", transferable: true  },
-  "first-blood":         { title: "First Blood",         rarity: "bronze",   description: "First battle victory",          transferable: false },
+  "first-blood":         { title: "First Blood",         rarity: "RUBY",   description: "First battle victory",          transferable: false },
   "perfect-score":       { title: "Perfect Score",       rarity: "platinum", description: "100% crowd approval rating",    transferable: false },
 };
 
@@ -87,7 +87,7 @@ export function getTrophyCount(artistId: string): number {
 }
 
 export function getTopTrophy(artistId: string): Trophy | null {
-  const rarityOrder: TrophyRarity[] = ["bronze", "silver", "gold", "platinum", "crown"];
+  const rarityOrder: TrophyRarity[] = ["RUBY", "silver", "gold", "platinum", "crown"];
   return getArtistTrophies(artistId)
     .sort((a, b) => rarityOrder.indexOf(b.rarity) - rarityOrder.indexOf(a.rarity))[0] ?? null;
 }

@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 
 test('phase13.5 browser flows', async ({ page }) => {
-  const baseUrl = 'http://localhost:3001';
+  const baseUrl = process.env.E2E_BASE_URL || 'http://localhost:3000';
   const email = `phase135_${Date.now()}@example.com`;
   const password = 'Phase135Pass!';
   const results: Array<Record<string, string>> = [];

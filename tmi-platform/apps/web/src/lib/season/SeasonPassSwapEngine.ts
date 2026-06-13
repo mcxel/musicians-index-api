@@ -9,7 +9,7 @@ export type PassInstrument =
   | "producer_pad"
   | "microphone";
 
-export type PassTier = "bronze" | "silver" | "gold" | "platinum";
+export type PassTier = "RUBY" | "silver" | "gold" | "platinum";
 
 export type SwapStatus = "available" | "locked" | "cooldown" | "maxed";
 
@@ -54,7 +54,7 @@ const TIER_CONFIG: Record<
   PassTier,
   { maxSwaps: number; cooldownMinutes: number; unlockedCount: number }
 > = {
-  bronze:   { maxSwaps: 2,  cooldownMinutes: 1440, unlockedCount: 2 },
+  RUBY:   { maxSwaps: 2,  cooldownMinutes: 1440, unlockedCount: 2 },
   silver:   { maxSwaps: 4,  cooldownMinutes: 720,  unlockedCount: 4 },
   gold:     { maxSwaps: 8,  cooldownMinutes: 360,  unlockedCount: 7 },
   platinum: { maxSwaps: 99, cooldownMinutes: 60,   unlockedCount: 9 },

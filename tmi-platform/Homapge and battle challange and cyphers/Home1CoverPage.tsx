@@ -292,6 +292,18 @@ export default function Home1CoverPage() {
           0%, 100% { transform: translateY(0px) scale(1); }
           50% { transform: translateY(-8px) scale(1.05); }
         }
+        @keyframes h1Typewriter {
+          0%, 5% { opacity: 0; transform: translateY(4px); }
+          10%, 80% { opacity: 1; transform: translateY(0); }
+          90%, 100% { opacity: 0; transform: translateY(-4px); }
+        }
+        @keyframes h1TypeColor {
+          0%, 19% { color: #00FF7F; text-shadow: 0 0 12px rgba(0,255,127,0.6); }
+          20%, 39% { color: #00E5FF; text-shadow: 0 0 12px rgba(0,229,255,0.6); }
+          40%, 59% { color: #FFD700; text-shadow: 0 0 12px rgba(255,215,0,0.6); }
+          60%, 79% { color: #E63000; text-shadow: 0 0 12px rgba(230,48,0,0.6); }
+          80%, 100% { color: #FF8C00; text-shadow: 0 0 12px rgba(255,140,0,0.6); }
+        }
         @keyframes h1Pulse {
           0%, 100% { box-shadow: 0 0 20px ${accentColor}55; }
           50% { box-shadow: 0 0 40px ${accentColor}99, 0 0 80px ${accentColor}33; }
@@ -423,15 +435,31 @@ export default function Home1CoverPage() {
         <div style={{ textAlign: 'center', marginTop: 24, marginBottom: 8, zIndex: 10 }}>
           <div
             style={{
-              fontSize: 11,
+              display: 'flex',
+              justifyContent: 'center',
+              whiteSpace: 'nowrap',
+              overflow: 'visible',
+              fontSize: 'clamp(14px, 3.5vw, 24px)',
               fontWeight: 900,
               letterSpacing: '0.35em',
-              color: 'rgba(255,255,255,0.45)',
               fontFamily: "'Inter', sans-serif",
-              marginBottom: 4,
+              marginBottom: 12,
             }}
           >
-            THE MUSICIAN&apos;S INDEX
+            {"THE MUSICIAN'S INDEX".split('').map((char, index) => (
+              <span
+                key={index}
+                style={{
+                  display: 'inline-block',
+                  minWidth: char === ' ' ? '0.5em' : 'auto',
+                  opacity: 0,
+                  animation: 'h1Typewriter 7s infinite, h1TypeColor 7s infinite',
+                  animationDelay: `${index * 0.1}s, 0s`,
+                }}
+              >
+                {char}
+              </span>
+            ))}
           </div>
           <div
             style={{
@@ -465,16 +493,29 @@ export default function Home1CoverPage() {
           </div>
         </div>
 
-        {/* ── Orbital ring ── */}
+        {/* ── Cinematic Edge-to-Edge Grid Wrapper ── */}
         <div
           style={{
-            position: 'relative',
-            width: 'min(540px, 92vw)',
-            height: 'min(540px, 92vw)',
-            margin: '0 auto',
-            flexShrink: 0,
+            display: 'grid',
+            gridTemplateColumns: 'minmax(50px, 1fr) auto minmax(50px, 1fr)',
+            width: '100%',
+            alignItems: 'center',
           }}
         >
+          <div /> {/* Left edge spacer */}
+          
+          {/* ── Orbital ring ── */}
+          <div
+            style={{
+              position: 'relative',
+              width: '100%',
+              minWidth: 'min(300px, 92vw)',
+              maxWidth: '700px',
+              aspectRatio: '1 / 1',
+              margin: '0 auto',
+              flexShrink: 0,
+            }}
+          >
           {/* Spinning ring */}
           <div
             style={{
@@ -766,6 +807,9 @@ export default function Home1CoverPage() {
             🗳️ VOTING OPEN: VOTE FOR #4!
           </div>
         </div>
+        
+        <div /> {/* Right edge spacer */}
+        </div> {/* End Cinematic Wrapper */}
 
         {/* ── Genre navigation dots ── */}
         <div

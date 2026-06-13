@@ -5,7 +5,7 @@
 import { randomUUID } from 'crypto';
 
 export type TrophySeason = 'fall-2025' | 'winter-2025' | 'spring-2026' | 'summer-2026';
-export type TrophyRarity = 'bronze' | 'silver' | 'gold' | 'platinum' | 'diamond';
+export type TrophyRarity = 'RUBY' | 'silver' | 'gold' | 'platinum' | 'diamond';
 
 export interface Trophy {
   id: string;
@@ -73,7 +73,7 @@ const SEASONAL_LADDERS = new Map<TrophySeason, SeasonalLadder>();
 const SEASONS: TrophySeason[] = ['fall-2025', 'winter-2025', 'spring-2026', 'summer-2026'];
 
 const RARITY_TIERS: Record<TrophyRarity, { prizeMultiplier: number; description: string }> = {
-  bronze: { prizeMultiplier: 1, description: 'Entry-level battle victory' },
+  RUBY: { prizeMultiplier: 1, description: 'Entry-level battle victory' },
   silver: { prizeMultiplier: 1.5, description: 'Solid performance' },
   gold: { prizeMultiplier: 2, description: 'Strong victory' },
   platinum: { prizeMultiplier: 3, description: 'Exceptional performance' },
@@ -89,7 +89,7 @@ export class TrophyLineageEngine {
     if (winPercentage >= 70) return 'platinum';
     if (winPercentage >= 55) return 'gold';
     if (winPercentage >= 45) return 'silver';
-    return 'bronze';
+    return 'RUBY';
   }
 
   /**
@@ -340,7 +340,7 @@ export class TrophyLineageEngine {
     const winners = new Set(trophies.map((t) => t.winnerId));
 
     const rarityCount = {
-      bronze: 0,
+      RUBY: 0,
       silver: 0,
       gold: 0,
       platinum: 0,

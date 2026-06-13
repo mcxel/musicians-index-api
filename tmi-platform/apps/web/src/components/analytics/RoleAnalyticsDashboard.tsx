@@ -16,7 +16,8 @@ interface RingDatum { value: number; max: number; label: string; color: string }
 
 // ─── KPI Card ─────────────────────────────────────────────────────────────────
 
-function KPICard({ label, value, delta, up, color, icon: Icon }: KPICard) {
+function KPICard({ label, value, delta, up, color, icon }: KPICard) {
+  const Icon = icon as React.ComponentType<any>;
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
       style={{ background: '#0a0a1a', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12, padding: '14px 16px', position: 'relative', overflow: 'hidden' }}>

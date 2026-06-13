@@ -11,7 +11,7 @@
 
 import { createHash, randomUUID } from 'node:crypto';
 
-export type UserTier = 'FREE' | 'PRO' | 'BRONZE' | 'SILVER' | 'GOLD' | 'PLATINUM' | 'DIAMOND' | 'ADMIN';
+export type UserTier = 'FREE' | 'PRO' | 'RUBY' | 'SILVER' | 'GOLD' | 'PLATINUM' | 'DIAMOND' | 'ADMIN';
 export type UserRole = 'user' | 'admin' | 'staff' | 'fan' | 'artist' | 'performer' | 'sponsor' | 'advertiser' | 'venue' | 'writer' | 'promoter';
 
 export interface StoredUser {

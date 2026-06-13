@@ -113,7 +113,7 @@ function defaultUnlockLedger(userId: string): AvatarUnlockLedger {
   return {
     userId,
     xp: 120,
-    milestones: ["starter", "battle-bronze"],
+    milestones: ["starter", "battle-RUBY"],
     lastUpdatedAt: nowIso(),
   };
 }

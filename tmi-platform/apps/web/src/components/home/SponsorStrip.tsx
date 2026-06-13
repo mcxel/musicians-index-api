@@ -9,7 +9,7 @@ const TIER_COLOR: Record<string, string> = {
   PLATINUM: "#E0E0FF",
   GOLD: "#FFD700",
   SILVER: "#C0C0C0",
-  BRONZE: "#CD7F32",
+  RUBY: "#CD7F32",
 };
 
 export default function SponsorStrip() {

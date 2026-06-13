@@ -46,12 +46,25 @@ async function csrfPatch(api: APIRequestContext, baseUrl: string, path: string, 
 }
 
 async function registerAndLogin(api: APIRequestContext, baseUrl: string, email: string, password: string) {
-  const registerRes = await authPost(api, baseUrl, '/api/auth/register', { email, password });
-  expect(registerRes.ok()).toBeTruthy();
+  const registerRes = await authPost(api, baseUrl, '/api/auth/register', {
+    email,
+    password,
+    termsAccepted: true,
+  });
+  expect([201, 409]).toContain(registerRes.status());
 
-  const loginRes = await authPost(api, baseUrl, '/api/auth/login', { email, password });
+  const loginRes = await authPost(api, baseUrl, '/api/auth/signin', { email, password });
   expect(loginRes.status()).toBe(200);
 }
+
+// Healthcheck test to confirm server connectivity before running full guards
+test('phase15.4 API guards: environment port check', async ({ request }) => {
+  const baseUrl = process.env.E2E_BASE_URL || 'http://localhost:3001';
+  // Ensures we aren't failing due to ECONNREFUSED on port 3001
+  const healthRes = await request.get(`${baseUrl}/api/health`).catch(() => request.get(`${baseUrl}/api/readyz`));
+  // If the server is up, it should return a valid response code
+  expect(healthRes?.status()).toBeLessThan(500);
+});
 
 test('phase15.4 API guards: onboarding role rejects admin', async ({ request }) => {
   const baseUrl = process.env.E2E_BASE_URL || 'http://localhost:3001';

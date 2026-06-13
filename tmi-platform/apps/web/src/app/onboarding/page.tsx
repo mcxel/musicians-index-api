@@ -24,7 +24,7 @@ function roleToDestination(role: string): string {
     advertiser: "/dashboard/advertiser",
     venue:      "/dashboard/venue",
     writer:     "/dashboard/writer",
-    promoter:   "/dashboard/fan",
+    promoter:   "/dashboard/promoter",
   };
   return map[role] ?? "/hub/fan";
 }

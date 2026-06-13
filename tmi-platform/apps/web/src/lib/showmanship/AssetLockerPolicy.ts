@@ -1,4 +1,4 @@
-export type UserTier = "free" | "pro" | "bronze" | "silver" | "gold" | "diamond" | "platinum";
+export type UserTier = "free" | "pro" | "RUBY" | "silver" | "gold" | "diamond" | "platinum";
 
 export interface AssetLockerPolicy {
   tier: UserTier;
@@ -71,8 +71,8 @@ export const LOCKER_POLICIES: Record<UserTier, AssetLockerPolicy> = {
     canShowExternalMedia: true,
     maxActiveSurfaces: 2,
   },
-  bronze: {
-    tier: "bronze",
+  RUBY: {
+    tier: "RUBY",
     maxAlbums: 5,
     maxSongsPerAlbum: 15,
     maxVideos: 15,
@@ -214,7 +214,7 @@ export function getMediaSurfaceLimit(tier: UserTier): number {
 
 export function tierRank(tier: UserTier): number {
   const ranks: Record<UserTier, number> = {
-    free: 0, pro: 1, bronze: 2, silver: 3, gold: 4, diamond: 5, platinum: 6,
+    free: 0, pro: 1, RUBY: 2, silver: 3, gold: 4, diamond: 5, platinum: 6,
   };
   return ranks[tier] ?? 0;
 }
@@ -224,7 +224,7 @@ export function isEligibleForUpgrade(tier: UserTier): boolean {
 }
 
 export function getNextTier(tier: UserTier): UserTier | null {
-  const ladder: UserTier[] = ["free", "pro", "bronze", "silver", "gold", "diamond", "platinum"];
+  const ladder: UserTier[] = ["free", "pro", "RUBY", "silver", "gold", "diamond", "platinum"];
   const idx = ladder.indexOf(tier);
   return idx >= 0 && idx < ladder.length - 1 ? ladder[idx + 1] : null;
 }

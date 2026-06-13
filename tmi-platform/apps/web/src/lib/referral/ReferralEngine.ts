@@ -6,7 +6,7 @@
  * Anti-spam: max 10 pending per owner, tokens expire after 7 days.
  */
 
-export type InviteeTier = 'free' | 'pro' | 'bronze' | 'silver' | 'gold' | 'platinum' | 'diamond';
+export type InviteeTier = 'free' | 'pro' | 'RUBY' | 'silver' | 'gold' | 'platinum' | 'diamond';
 
 export interface ReferralLink {
   token: string;
@@ -38,7 +38,7 @@ export interface ReferralStats {
 export const TIER_XP: Record<InviteeTier, number> = {
   free:     500,
   pro:      750,
-  bronze:  1_000,
+  RUBY:  1_000,
   silver:  1_250,
   gold:    1_500,
   platinum: 2_000,

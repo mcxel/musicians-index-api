@@ -1,0 +1,717 @@
+
+<h2 class="sr-only">TMI five admin dashboard hubs: Marcel, Big Ace, Jay Paul Sanchez, Justin, Micah</h2>
+<style>
+.tabs{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:12px}
+.tab{padding:5px 10px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary);font-size:11px;cursor:pointer;background:var(--color-background-primary);color:var(--color-text-secondary);white-space:nowrap}
+.tab.on{background:var(--color-background-tertiary);color:var(--color-text-primary);font-weight:500;border-color:var(--color-border-primary)}
+.pg{display:none}.pg.on{display:block}
+.hub-top{display:flex;justify-content:space-between;align-items:center;padding:7px 10px;background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);margin-bottom:8px}
+.qa-row{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px}
+.qa{font-size:10px;padding:3px 8px}
+.hub-grid{display:grid;grid-template-columns:1fr 1.7fr 1fr;gap:8px;margin-bottom:8px}
+.panel{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:10px}
+.panel h4{font-size:11px;font-weight:500;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:.05em;margin:0 0 7px}
+.stat-row{display:flex;justify-content:space-between;align-items:center;padding:3px 0;font-size:12px;border-bottom:0.5px solid var(--color-border-tertiary)}
+.stat-row:last-child{border-bottom:none}
+.live-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:#E24B4A;vertical-align:middle;margin-right:3px}
+.monitor{position:relative;background:var(--color-background-tertiary);border:1.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);overflow:hidden;cursor:pointer}
+.monitor::before{content:'';position:absolute;top:-200%;left:0;right:0;height:1px;background:rgba(0,180,200,.3);animation:scan 3s linear infinite;z-index:2}
+@keyframes scan{0%{top:-5%}100%{top:105%}}
+.monitor-label{position:absolute;bottom:4px;left:6px;font-size:9px;color:rgba(255,255,255,.6);z-index:3;background:rgba(0,0,0,.4);padding:1px 5px;border-radius:2px}
+.monitor-badge{position:absolute;top:4px;right:4px;font-size:8px;font-weight:500;padding:1px 5px;border-radius:2px;z-index:3}
+.monitor-icon{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:0}
+.monitor-icon i{font-size:28px;color:rgba(200,200,200,.25)}
+.switcher{display:flex;align-items:center;gap:8px;font-size:11px;background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:5px 8px}
+.switch-btn{font-size:10px;padding:2px 8px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary);cursor:pointer}
+.switch-btn.on{background:var(--color-background-warning);color:var(--color-text-warning);border-color:var(--color-border-warning)}
+.sub-btn{display:flex;align-items:center;gap:5px;padding:6px 8px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-tertiary);font-size:11px;cursor:pointer;margin-bottom:4px;width:100%;text-align:left;background:var(--color-background-primary)}
+.sub-btn:hover{background:var(--color-background-secondary)}
+.task-item{display:flex;align-items:center;gap:5px;padding:4px 0;font-size:11px;border-bottom:0.5px solid var(--color-border-tertiary)}
+.task-item input[type=checkbox]{width:12px;height:12px;flex-shrink:0}
+.msg-item{padding:5px 0;border-bottom:0.5px solid var(--color-border-tertiary);font-size:11px}
+.msg-item:last-child{border-bottom:none}
+.avatar{width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:500;flex-shrink:0}
+.chart-bar{display:flex;align-items:flex-end;gap:2px;height:70px;padding:4px;background:var(--color-background-tertiary);border-radius:var(--border-radius-md)}
+.bar{flex:1;border-radius:2px 2px 0 0;min-height:4px}
+.playlist-item{display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:0.5px solid var(--color-border-tertiary);font-size:11px}
+.playlist-item:last-child{border-bottom:none}
+.perm-badge{font-size:10px;padding:2px 6px;border-radius:var(--border-radius-md);font-weight:500}
+.perm-full{background:var(--color-background-danger);color:var(--color-text-danger)}
+.perm-submit{background:var(--color-background-success);color:var(--color-text-success)}
+.perm-observe{background:var(--color-background-secondary);color:var(--color-text-secondary)}
+.perm-suggest{background:var(--color-background-info);color:var(--color-text-info)}
+</style>
+
+<div style="padding:8px 0">
+
+<div class="tabs">
+  <button class="tab on" onclick="sw('marcel')"><i class="ti ti-crown" aria-hidden="true"></i> Marcel (Founder)</button>
+  <button class="tab" onclick="sw('bigace')"><i class="ti ti-shield-check" aria-hidden="true"></i> Big Ace (AI CEO)</button>
+  <button class="tab" onclick="sw('jay')"><i class="ti ti-music" aria-hidden="true"></i> Jay Paul Sanchez</button>
+  <button class="tab" onclick="sw('justin')"><i class="ti ti-eye" aria-hidden="true"></i> Justin (Observer)</button>
+  <button class="tab" onclick="sw('micah')"><i class="ti ti-code" aria-hidden="true"></i> Micah (Dev)</button>
+</div>
+
+<!-- ═══════════════ MARCEL ═══════════════ -->
+<div id="pg-marcel" class="pg on">
+  <div class="hub-top">
+    <div style="display:flex;align-items:center;gap:8px">
+      <div class="avatar" style="width:32px;height:32px;background:var(--color-background-warning);color:var(--color-text-warning);font-size:12px">M</div>
+      <div><div style="font-size:13px;font-weight:500">Marcel — Founder &amp; CEO</div><div style="font-size:10px;color:var(--color-text-secondary)"><span class="live-dot"></span>LIVE · BerntttGlobal Overseer · 11:45 AM EST</div></div>
+    </div>
+    <div style="display:flex;gap:5px;align-items:center">
+      <span class="perm-badge perm-full"><i class="ti ti-crown" aria-hidden="true"></i> Full control</span>
+      <span class="perm-badge perm-suggest"><i class="ti ti-bulb" aria-hidden="true"></i> Suggestion</span>
+      <span class="perm-badge perm-submit"><i class="ti ti-upload" aria-hidden="true"></i> Submit</span>
+      <div class="switcher">
+        <span style="font-size:10px;color:var(--color-text-secondary)">View as:</span>
+        <button class="switch-btn on" onclick="toggleView(this,'fan','performer','m')">Fan</button>
+        <button class="switch-btn" onclick="toggleView(this,'performer','fan','m')">Performer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Actions -->
+  <div class="qa-row">
+    <button class="qa" style="background:var(--color-background-danger);color:var(--color-text-danger);border:0.5px solid var(--color-border-danger)"><i class="ti ti-ban" aria-hidden="true"></i> Quick block</button>
+    <button class="qa"><i class="ti ti-alert-triangle" aria-hidden="true"></i> Alerts <span style="background:var(--color-background-danger);color:var(--color-text-danger);border-radius:50%;padding:0 4px;font-size:9px">8</span></button>
+    <button class="qa"><i class="ti ti-pulse" aria-hidden="true"></i> Chain pulse</button>
+    <button class="qa"><i class="ti ti-video" aria-hidden="true"></i> Start meeting</button>
+    <button class="qa"><i class="ti ti-robot" aria-hidden="true"></i> Summon Big Ace</button>
+    <button class="qa" style="background:var(--color-background-warning);color:var(--color-text-warning);border:0.5px solid var(--color-border-warning)"><i class="ti ti-check" aria-hidden="true"></i> Approve queue</button>
+    <button class="qa"><i class="ti ti-upload" aria-hidden="true"></i> Submit song</button>
+    <button class="qa"><i class="ti ti-playlist" aria-hidden="true"></i> Manage playlist</button>
+  </div>
+
+  <div class="hub-grid">
+    <!-- LEFT COL -->
+    <div>
+      <div class="panel" style="margin-bottom:8px">
+        <h4>Chain command</h4>
+        <div style="display:flex;align-items:center;gap:5px;padding:4px;background:var(--color-background-secondary);border-radius:var(--border-radius-md);margin-bottom:4px"><div class="avatar" style="background:var(--color-background-warning);color:var(--color-text-warning)">BA</div><div style="font-size:11px">Big Ace — AI Overseer</div></div>
+        <div style="border-left:2px solid var(--color-border-warning);margin-left:10px;padding-left:8px">
+          <div style="font-size:11px;padding:2px 0;color:var(--color-text-secondary)">Marcel (Founder) ← YOU</div>
+          <div style="font-size:11px;padding:2px 0;color:var(--color-text-tertiary)">Jay Paul S. — Beats</div>
+          <div style="font-size:11px;padding:2px 0;color:var(--color-text-tertiary)">Justin — Observer</div>
+          <div style="font-size:11px;padding:2px 0;color:var(--color-text-tertiary)">Micah — Dev assist</div>
+        </div>
+        <div style="background:var(--color-background-success);border-radius:var(--border-radius-md);padding:5px;margin-top:7px;text-align:center"><div style="font-size:15px;font-weight:500;color:var(--color-text-success)">54%</div><div style="font-size:9px;color:var(--color-text-success)">Chain health — GOOD</div></div>
+      </div>
+      <div class="panel" style="margin-bottom:8px">
+        <h4>Submit song / music</h4>
+        <button class="sub-btn"><i class="ti ti-radio" aria-hidden="true"></i> Stream &amp; Win Radio</button>
+        <button class="sub-btn"><i class="ti ti-swords" aria-hidden="true"></i> Battle / Cypher entry</button>
+        <button class="sub-btn"><i class="ti ti-trophy" aria-hidden="true"></i> Contest submission</button>
+        <button class="sub-btn"><i class="ti ti-disc" aria-hidden="true"></i> New release upload</button>
+        <button class="sub-btn"><i class="ti ti-playlist" aria-hidden="true"></i> Add to playlist</button>
+      </div>
+      <div class="panel">
+        <h4>Playlist</h4>
+        <div id="mPlaylist"></div>
+        <button style="width:100%;font-size:10px;margin-top:5px;padding:4px"><i class="ti ti-plus" aria-hidden="true"></i> Add track</button>
+      </div>
+    </div>
+
+    <!-- CENTER COL — VIDEO PANELS (BOARDROOM STYLE) -->
+    <div>
+      <div class="panel" style="margin-bottom:8px">
+        <h4>TV screen router — boardroom <span class="live-dot"></span></h4>
+        <!-- Main large monitor -->
+        <div class="monitor" style="aspect-ratio:16/7;margin-bottom:6px">
+          <div class="monitor-icon"><i class="ti ti-device-desktop-analytics" aria-hidden="true"></i></div>
+          <div class="monitor-badge" style="background:rgba(230,48,0,.8);color:#fff">BOARDROOM LIVE</div>
+          <div class="monitor-label">Main — Platform overview</div>
+          <div style="position:absolute;top:4px;left:6px;font-size:9px;color:rgba(255,255,255,.5)">📡 SIGNAL STRONG</div>
+        </div>
+        <!-- 4 smaller independent monitors -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:6px">
+          <div class="monitor" style="aspect-ratio:16/9">
+            <div class="monitor-icon"><i class="ti ti-microphone" aria-hidden="true"></i></div>
+            <div class="monitor-badge" style="background:rgba(230,48,0,.7);color:#fff">LIVE</div>
+            <div class="monitor-label" id="m-mon1">Stage A — Wavetek</div>
+          </div>
+          <div class="monitor" style="aspect-ratio:16/9">
+            <div class="monitor-icon"><i class="ti ti-users" aria-hidden="true"></i></div>
+            <div class="monitor-badge" style="background:rgba(0,140,180,.7);color:#fff">FEED</div>
+            <div class="monitor-label">Lobby wall — Fan view</div>
+          </div>
+          <div class="monitor" style="aspect-ratio:16/9">
+            <div class="monitor-icon"><i class="ti ti-chart-bar" aria-hidden="true"></i></div>
+            <div class="monitor-badge" style="background:rgba(186,117,23,.8);color:#fff">STATS</div>
+            <div class="monitor-label">Analytics — Live</div>
+          </div>
+          <div class="monitor" style="aspect-ratio:16/9">
+            <div class="monitor-icon"><i class="ti ti-message-circle" aria-hidden="true"></i></div>
+            <div class="monitor-badge" style="background:rgba(83,74,183,.8);color:#fff">MSG</div>
+            <div class="monitor-label">Messages — Inbox</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:5px;flex-wrap:wrap">
+          <button style="font-size:10px;padding:3px 7px;flex:1">Switch feed</button>
+          <button style="font-size:10px;padding:3px 7px;flex:1"><i class="ti ti-video" aria-hidden="true"></i> Group meet</button>
+          <button style="font-size:10px;padding:3px 7px;flex:1">Call Big Ace</button>
+          <button style="font-size:10px;padding:3px 7px;flex:1">Record</button>
+        </div>
+      </div>
+      <!-- Live Feed Explorer -->
+      <div class="panel">
+        <h4>Live feed explorer</h4>
+        <div style="display:flex;gap:5px;margin-bottom:7px">
+          <input type="text" placeholder="Search artists or events..." style="flex:1;font-size:11px">
+          <select style="font-size:11px"><option>Hip-Hop</option><option>All genres</option></select>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px" id="m-livefeed"></div>
+      </div>
+    </div>
+
+    <!-- RIGHT COL -->
+    <div>
+      <div class="panel" style="margin-bottom:8px">
+        <h4>Security sentinel wall</h4>
+        <div style="display:flex;justify-content:space-between;margin-bottom:5px"><span style="font-size:16px;font-weight:500">100 <span style="font-size:10px;color:var(--color-text-secondary)">sentinels</span></span><span style="background:var(--color-background-success);color:var(--color-text-success);font-size:9px;padding:2px 6px;border-radius:var(--border-radius-md)">LOW</span></div>
+        <div class="stat-row"><span style="font-size:11px">Threat level</span><span style="color:var(--color-text-success);font-size:11px">STABLE</span></div>
+        <div class="stat-row"><span style="font-size:11px">Fixed vulnerabilities</span><span style="color:var(--color-text-success);font-size:11px">2</span></div>
+        <div class="stat-row"><span style="font-size:11px">Urgent</span><span style="color:var(--color-text-danger);font-size:11px">0</span></div>
+        <div class="stat-row"><span style="font-size:11px">Alerts</span><span style="font-size:11px">15</span></div>
+      </div>
+      <div class="panel" style="margin-bottom:8px">
+        <h4>Account linker</h4>
+        <div id="m-acctlink"></div>
+      </div>
+      <div class="panel" style="margin-bottom:8px">
+        <h4>Unified inbox <span style="background:var(--color-background-info);color:var(--color-text-info);border-radius:50%;padding:0 4px;font-size:9px">7</span></h4>
+        <div id="m-inbox"></div>
+        <button style="width:100%;font-size:10px;margin-top:5px;padding:4px"><i class="ti ti-message-circle" aria-hidden="true"></i> Open messages</button>
+      </div>
+      <div class="panel">
+        <h4>Bot roster</h4>
+        <div id="m-bots"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom Analytics -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+    <div class="panel">
+      <h4>Artist analytics &amp; revenue</h4>
+      <div style="display:flex;gap:5px;margin-bottom:8px;flex-wrap:wrap">
+        <button style="font-size:9px;padding:2px 5px;background:var(--color-background-warning);color:var(--color-text-warning);border-radius:var(--border-radius-md)">Month</button>
+        <button style="font-size:9px;padding:2px 5px">Web</button>
+        <button style="font-size:9px;padding:2px 5px">Wave</button>
+        <button style="font-size:9px;padding:2px 5px">NFT</button>
+        <button style="font-size:9px;padding:2px 5px">Citrine</button>
+      </div>
+      <div class="chart-bar" id="m-chart"></div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-top:8px">
+        <div style="text-align:center;background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:6px"><div style="font-size:14px;font-weight:500;color:var(--color-text-warning)">$70M</div><div style="font-size:9px;color:var(--color-text-secondary)">Revenue</div></div>
+        <div style="text-align:center;background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:6px"><div style="font-size:14px;font-weight:500;color:var(--color-text-info)">21M</div><div style="font-size:9px;color:var(--color-text-secondary)">Users</div></div>
+        <div style="text-align:center;background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:6px"><div style="font-size:14px;font-weight:500;color:var(--color-text-success)">$56K</div><div style="font-size:9px;color:var(--color-text-secondary)">Teams pay</div></div>
+        <div style="text-align:center;background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:6px"><div style="font-size:14px;font-weight:500;color:var(--color-text-danger)">3</div><div style="font-size:9px;color:var(--color-text-secondary)">Blockers</div></div>
+      </div>
+    </div>
+    <div class="panel">
+      <h4>Musician index &amp; magazine analytics</h4>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div>
+          <div style="font-size:11px;font-weight:500;margin-bottom:5px">Live billboard rankings</div>
+          <div id="m-bb"></div>
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:500;margin-bottom:5px">User engagement</div>
+          <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:6px" id="m-heatmap"></div>
+          <div style="font-size:10px;font-weight:500;margin-bottom:3px">Content management</div>
+          <div style="display:flex;gap:4px"><button style="font-size:9px;padding:2px 6px">Tools</button><button style="font-size:9px;padding:2px 6px">Top</button><button style="font-size:9px;padding:2px 6px;background:var(--color-background-success);color:var(--color-text-success);border-radius:var(--border-radius-md)">Auto</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div style="text-align:center;margin-top:8px"><button onclick="sendPrompt('Build Marcel Founder Admin Hub at /admin/marcel — Full control + suggestion + submit permissions. Chain Command hierarchy panel. TV Screen Router with one large main monitor and four independent smaller monitors (Stage feed, Lobby wall feed, Analytics feed, Messages feed), each showing different content independently. Group meet and Call Big Ace buttons. Live Feed Explorer. Song submission panel routing to: Stream and Win Radio, Battle/Cypher entry, Contest submission, New release upload, Add to playlist. Playlist manager. Security Sentinel Wall. Account Linker (Google Ads, Meta, Stripe, PayPal, SSR Hosting, Pundworthy). Unified Inbox 7 items. Bot Roster (Big Ace AI, Brian, Nova, Finance bot). Bottom: Artist Analytics Revenue chart with Month/Web/Wave/NFT/Citrine tabs, 4 metric cards, Billboard Rankings, User Engagement Heatmap, Content Management tools. Profile switcher Fan/Performer. Match the Administration Hub reference image style.')">Build Marcel admin hub in repo ↗</button></div>
+</div>
+
+<!-- ═══════════════ BIG ACE ═══════════════ -->
+<div id="pg-bigace" class="pg">
+  <div class="hub-top">
+    <div style="display:flex;align-items:center;gap:8px">
+      <div class="avatar" style="width:32px;height:32px;background:var(--color-background-danger);color:var(--color-text-danger);font-size:11px">BA</div>
+      <div><div style="font-size:13px;font-weight:500">Big Ace — AI Umbrella CEO</div><div style="font-size:10px;color:var(--color-text-secondary)"><span class="live-dot"></span>FULL AUTHORITY · All systems · 24/7 Active</div></div>
+    </div>
+    <div style="display:flex;gap:5px;align-items:center">
+      <span class="perm-badge perm-full"><i class="ti ti-shield-check" aria-hidden="true"></i> FULL FULL CONTROL</span>
+      <span class="perm-badge" style="background:var(--color-background-danger);color:var(--color-text-danger)"><i class="ti ti-coin" aria-hidden="true"></i> Payout authority</span>
+      <div class="switcher">
+        <span style="font-size:10px;color:var(--color-text-secondary)">View:</span>
+        <button class="switch-btn on">All business</button>
+        <button class="switch-btn">TMI only</button>
+      </div>
+    </div>
+  </div>
+  <div class="qa-row">
+    <button class="qa" style="background:var(--color-background-danger);color:var(--color-text-danger);border:0.5px solid var(--color-border-danger)"><i class="ti ti-cash" aria-hidden="true"></i> Approve payout</button>
+    <button class="qa" style="background:var(--color-background-warning);color:var(--color-text-warning);border:0.5px solid var(--color-border-warning)"><i class="ti ti-check" aria-hidden="true"></i> Approve queue</button>
+    <button class="qa"><i class="ti ti-ban" aria-hidden="true"></i> Block / Suspend</button>
+    <button class="qa"><i class="ti ti-world" aria-hidden="true"></i> Cross-business view</button>
+    <button class="qa"><i class="ti ti-robot" aria-hidden="true"></i> AI mandate</button>
+    <button class="qa"><i class="ti ti-video" aria-hidden="true"></i> Group meet</button>
+    <button class="qa"><i class="ti ti-building" aria-hidden="true"></i> Origin Hub status</button>
+  </div>
+  <div class="hub-grid">
+    <div>
+      <div class="panel" style="margin-bottom:8px">
+        <h4>Cross-business visibility</h4>
+        <div id="ba-biz"></div>
+      </div>
+      <div class="panel" style="margin-bottom:8px">
+        <h4>Payout authority queue</h4>
+        <div id="ba-payouts"></div>
+        <button style="width:100%;font-size:10px;background:var(--color-background-warning);color:var(--color-text-warning);border:0.5px solid var(--color-border-warning);border-radius:var(--border-radius-md);padding:5px;margin-top:5px"><i class="ti ti-check" aria-hidden="true"></i> Approve all pending</button>
+      </div>
+      <div class="panel">
+        <h4>Playlist + radio control</h4>
+        <div id="ba-playlist"></div>
+        <button style="width:100%;font-size:10px;margin-top:5px;padding:4px"><i class="ti ti-radio" aria-hidden="true"></i> Stream &amp; Win Radio control</button>
+      </div>
+    </div>
+    <div>
+      <div class="panel" style="margin-bottom:8px">
+        <h4>TV screen router — boardroom <span class="live-dot"></span></h4>
+        <div class="monitor" style="aspect-ratio:16/7;margin-bottom:6px">
+          <div class="monitor-icon"><i class="ti ti-device-desktop-analytics" aria-hidden="true"></i></div>
+          <div class="monitor-badge" style="background:rgba(230,48,0,.8);color:#fff">ALL SYSTEMS LIVE</div>
+          <div class="monitor-label">BerntttGlobal — Full network view</div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:6px">
+          <div class="monitor" style="aspect-ratio:16/9"><div class="monitor-icon"><i class="ti ti-building" aria-hidden="true"></i></div><div class="monitor-label">TMI platform</div><div class="monitor-badge" style="background:rgba(230,48,0,.7);color:#fff">LIVE</div></div>
+          <div class="monitor" style="aspect-ratio:16/9"><div class="monitor-icon"><i class="ti ti-radio" aria-hidden="true"></i></div><div class="monitor-label">Stream &amp; Win Radio</div><div class="monitor-badge" style="background:rgba(0,140,180,.7);color:#fff">LIVE</div></div>
+          <div class="monitor" style="aspect-ratio:16/9"><div class="monitor-icon"><i class="ti ti-coin" aria-hidden="true"></i></div><div class="monitor-label">Revenue — All business</div><div class="monitor-badge" style="background:rgba(186,117,23,.8);color:#fff">LIVE</div></div>
+          <div class="monitor" style="aspect-ratio:16/9"><div class="monitor-icon"><i class="ti ti-users" aria-hidden="true"></i></div><div class="monitor-label">User activity feed</div><div class="monitor-badge" style="background:rgba(83,74,183,.8);color:#fff">FEED</div></div>
+          <div class="monitor" style="aspect-ratio:16/9"><div class="monitor-icon"><i class="ti ti-message-circle" aria-hidden="true"></i></div><div class="monitor-label">Messaging — All teams</div><div class="monitor-badge" style="background:rgba(83,74,183,.8);color:#fff">MSG</div></div>
+          <div class="monitor" style="aspect-ratio:16/9"><div class="monitor-icon"><i class="ti ti-robot" aria-hidden="true"></i></div><div class="monitor-label">AI bot network</div><div class="monitor-badge" style="background:rgba(0,160,80,.8);color:#fff">AUTO</div></div>
+        </div>
+        <div style="display:flex;gap:5px"><button style="flex:1;font-size:10px;padding:3px">Call Marcel</button><button style="flex:1;font-size:10px;padding:3px"><i class="ti ti-video" aria-hidden="true"></i> Group meet</button><button style="flex:1;font-size:10px;padding:3px">Emergency stop</button></div>
+      </div>
+      <div class="panel">
+        <h4>AI mandate board</h4>
+        <div style="display:flex;flex-direction:column;gap:4px" id="ba-mandates"></div>
+      </div>
+    </div>
+    <div>
+      <div class="panel" style="margin-bottom:8px">
+        <h4>Security — all systems</h4>
+        <div class="stat-row"><span style="font-size:11px">TMI sentinels</span><span style="color:var(--color-text-success);font-size:11px">100 — LOW</span></div>
+        <div class="stat-row"><span style="font-size:11px">WillDoIt</span><span style="color:var(--color-text-success);font-size:11px">STABLE</span></div>
+        <div class="stat-row"><span style="font-size:11px">Stream &amp; Win</span><span style="color:var(--color-text-success);font-size:11px">STABLE</span></div>
+        <div class="stat-row"><span style="font-size:11px">Hot Screens</span><span style="color:var(--color-text-warning);font-size:11px">REVIEW</span></div>
+      </div>
+      <div class="panel" style="margin-bottom:8px">
+        <h4>Unified inbox — all teams <span style="background:var(--color-background-danger);color:var(--color-text-danger);border-radius:50%;padding:0 4px;font-size:9px">12</span></h4>
+        <div id="ba-inbox"></div>
+        <button style="width:100%;font-size:10px;margin-top:5px;padding:4px">Open all messages</button>
+      </div>
+      <div class="panel">
+        <h4>Stats — all businesses</h4>
+        <div class="chart-bar" id="ba-chart" style="margin-bottom:6px"></div>
+        <div class="stat-row"><span style="font-size:11px">Total revenue today</span><span style="color:var(--color-text-warning);font-size:11px">$4.8K</span></div>
+        <div class="stat-row"><span style="font-size:11px">Active users</span><span style="font-size:11px">21M</span></div>
+        <div class="stat-row"><span style="font-size:11px">Pending payouts</span><span style="color:var(--color-text-danger);font-size:11px">$27M</span></div>
+      </div>
+    </div>
+  </div>
+  <div style="text-align:center;margin-top:8px"><button onclick="sendPrompt('Build Big Ace AI CEO Hub at /admin/big-ace — FULL FULL CONTROL permissions, payout approval authority. Cross-business visibility panel (TMI, Stream and Win Radio, WillDoIt, Hot Screens, Thunder World, Rent-A-Charge). Payout authority queue with Approve All Pending button. TV Screen Router with main large monitor and 6 smaller independent monitors (TMI Platform, Stream and Win Radio, Revenue all business, User Activity Feed, Messaging all teams, AI Bot Network). AI Mandate Board. Security status for all businesses. Unified inbox 12 items from all teams. Revenue chart all businesses. Call Marcel button, Group meet button, Emergency stop button. Playlist + radio control. Match the Administration Hub reference image with full authority styling.')">Build Big Ace admin hub in repo ↗</button></div>
+</div>
+
+<!-- ═══════════════ JAY PAUL SANCHEZ ═══════════════ -->
+<div id="pg-jay" class="pg">
+  <div class="hub-top">
+    <div style="display:flex;align-items:center;gap:8px">
+      <div class="avatar" style="width:32px;height:32px;background:var(--color-background-info);color:var(--color-text-info);font-size:11px">JP</div>
+      <div><div style="font-size:13px;font-weight:500">Jay Paul Sanchez — Beat Producer</div><div style="font-size:10px;color:var(--color-text-secondary)"><span class="live-dot"></span>Active · Beat Portal · Submissions routed</div></div>
+    </div>
+    <div style="display:flex;gap:5px;align-items:center">
+      <span class="perm-badge perm-submit"><i class="ti ti-upload" aria-hidden="true"></i> Submit beats</span>
+      <span class="perm-badge perm-suggest"><i class="ti ti-bulb" aria-hidden="true"></i> Suggest</span>
+      <span class="perm-badge perm-observe"><i class="ti ti-eye" aria-hidden="true"></i> Observe stats</span>
+      <div class="switcher">
+        <span style="font-size:10px;color:var(--color-text-secondary)">Profile:</span>
+        <button class="switch-btn on">Producer</button>
+        <button class="switch-btn">Artist</button>
+      </div>
+    </div>
+  </div>
+  <div class="qa-row">
+    <button class="qa" style="background:var(--color-background-info);color:var(--color-text-info);border:0.5px solid var(--color-border-info)"><i class="ti ti-upload" aria-hidden="true"></i> Submit beat</button>
+    <button class="qa"><i class="ti ti-swords" aria-hidden="true"></i> Route to battle</button>
+    <button class="qa"><i class="ti ti-microphone" aria-hidden="true"></i> Route to cypher</button>
+    <button class="qa"><i class="ti ti-radio" aria-hidden="true"></i> Submit to S&amp;W Radio</button>
+    <button class="qa"><i class="ti ti-playlist" aria-hidden="true"></i> Manage beats playlist</button>
+    <button class="qa"><i class="ti ti-message-circle" aria-hidden="true"></i> Messages</button>
+    <button class="qa"><i class="ti ti-robot" aria-hidden="true"></i> Ask beat AI</button>
+  </div>
+  <div class="hub-grid">
+    <div>
+      <div class="panel" style="margin-bottom:8px">
+        <h4>Beat submission router</h4>
+        <button class="sub-btn" style="background:var(--color-background-info);border-color:var(--color-border-info)"><i class="ti ti-radio" aria-hidden="true"></i> Stream &amp; Win Radio</button>
+        <button class="sub-btn"><i class="ti ti-swords" aria-hidden="true"></i> Battle arena — Beat battle</button>
+        <button class="sub-btn"><i class="ti ti-microphone" aria-hidden="true"></i> Cypher arena</button>
+        <button class="sub-btn"><i class="ti ti-disc" aria-hidden="true"></i> Dance battle background</button>
+        <button class="sub-btn"><i class="ti ti-device-gamepad" aria-hidden="true"></i> Game / Show entry</button>
+        <button class="sub-btn"><i class="ti ti-trophy" aria-hidden="true"></i> Contest / Challenge</button>
+        <div style="background:var(--color-background-success);border-radius:var(--border-radius-md);padding:6px;margin-top:5px">
+          <div style="font-size:10px;font-weight:500;color:var(--color-text-success);margin-bottom:2px"><i class="ti ti-brain" aria-hidden="true"></i> Beat AI learning</div>
+          <div style="font-size:10px;color:var(--color-text-success)">Your beats teach the platform AI — each submission improves the system's understanding of your style</div>
+        </div>
+      </div>
+      <div class="panel">
+        <h4>Beat playlist</h4>
+        <div id="jp-playlist"></div>
+        <button style="width:100%;font-size:10px;margin-top:5px;padding:4px"><i class="ti ti-plus" aria-hidden="true"></i> Add beat</button>
+      </div>
+    </div>
+    <div>
+      <div class="panel" style="margin-bottom:8px">
+        <h4>Production monitors <span class="live-dot"></span></h4>
+        <div class="monitor" style="aspect-ratio:16/7;margin-bottom:6px">
+          <div class="monitor-icon"><i class="ti ti-music" aria-hidden="true"></i></div>
+          <div class="monitor-badge" style="background:rgba(24,95,165,.8);color:#fff">BEAT STUDIO</div>
+          <div class="monitor-label">Beat production dashboard</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:6px">
+          <div class="monitor" style="aspect-ratio:16/9"><div class="monitor-icon"><i class="ti ti-swords" aria-hidden="true"></i></div><div class="monitor-badge" style="background:rgba(230,48,0,.7);color:#fff">LIVE</div><div class="monitor-label">Battle arena feed</div></div>
+          <div class="monitor" style="aspect-ratio:16/9"><div class="monitor-icon"><i class="ti ti-radio" aria-hidden="true"></i></div><div class="monitor-badge" style="background:rgba(0,140,180,.7);color:#fff">ON AIR</div><div class="monitor-label">S&amp;W Radio — now playing</div></div>
+          <div class="monitor" style="aspect-ratio:16/9"><div class="monitor-icon"><i class="ti ti-chart-bar" aria-hidden="true"></i></div><div class="monitor-badge" style="background:rgba(186,117,23,.8);color:#fff">STATS</div><div class="monitor-label">Beat performance analytics</div></div>
+          <div class="monitor" style="aspect-ratio:16/9"><div class="monitor-icon"><i class="ti ti-message-circle" aria-hidden="true"></i></div><div class="monitor-badge" style="background:rgba(83,74,183,.8);color:#fff">MSG</div><div class="monitor-label">Team messages</div></div>
+        </div>
+        <div style="display:flex;gap:5px"><button style="flex:1;font-size:10px;padding:3px">Switch feed</button><button style="flex:1;font-size:10px;padding:3px"><i class="ti ti-video" aria-hidden="true"></i> Call Marcel</button><button style="flex:1;font-size:10px;padding:3px">Call Big Ace</button></div>
+      </div>
+      <div class="panel">
+        <h4>Beat AI assistant</h4>
+        <div style="background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:8px;margin-bottom:6px">
+          <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:4px">The beat AI learns from your submissions and can help the platform automatically categorize, route, and suggest placement for your beats across all arenas.</div>
+          <div class="stat-row"><span style="font-size:10px">Beats submitted</span><span style="color:var(--color-text-info);font-size:10px">47</span></div>
+          <div class="stat-row"><span style="font-size:10px">AI patterns learned</span><span style="color:var(--color-text-success);font-size:10px">12</span></div>
+          <div class="stat-row"><span style="font-size:10px">Auto-routed this week</span><span style="color:var(--color-text-warning);font-size:10px">8</span></div>
+        </div>
+        <button style="width:100%;font-size:11px;padding:6px;background:var(--color-background-info);color:var(--color-text-info);border:0.5px solid var(--color-border-info);border-radius:var(--border-radius-md)"><i class="ti ti-robot" aria-hidden="true"></i> Ask beat AI for help</button>
+      </div>
+    </div>
+    <div>
+      <div class="panel" style="margin-bottom:8px">
+        <h4>Task list — Jay Paul works on</h4>
+        <div id="jp-tasks"></div>
+      </div>
+      <div class="panel" style="margin-bottom:8px">
+        <h4>Earnings dashboard</h4>
+        <div class="chart-bar" id="jp-chart" style="margin-bottom:6px"></div>
+        <div class="stat-row"><span style="font-size:11px">Beat sales this month</span><span style="color:var(--color-text-warning);font-size:11px">$2.4K</span></div>
+        <div class="stat-row"><span style="font-size:11px">Pending payout</span><span style="color:var(--color-text-danger);font-size:11px">$890 (Big Ace ✓)</span></div>
+        <div class="stat-row"><span style="font-size:11px">Streams on radio</span><span style="font-size:11px">14.2K</span></div>
+      </div>
+      <div class="panel">
+        <h4>Messages</h4>
+        <div id="jp-inbox"></div>
+        <button style="width:100%;font-size:10px;margin-top:5px;padding:4px"><i class="ti ti-message-circle" aria-hidden="true"></i> Open messaging</button>
+      </div>
+    </div>
+  </div>
+  <div style="text-align:center;margin-top:8px"><button onclick="sendPrompt('Build Jay Paul Sanchez Beat Producer Hub at /admin/jay-paul — Submit and suggest permissions only. Beat submission router panel routing to: Stream and Win Radio, Battle Arena Beat Battle, Cypher Arena, Dance Battle background, Game/Show entry, Contest/Challenge. Beat AI Learning section showing beats submitted count, patterns learned, and auto-routed stats. Production monitors: main beat studio monitor + 4 independent smaller monitors (Battle arena feed, S&W Radio on air, Beat performance analytics, Team messages). Task list for Jay Paul work items. Earnings dashboard with chart (beat sales, pending payout requiring Big Ace approval, radio streams). Beat playlist manager. Messages panel. Big Ace payout approval gate enforced. AI learns from his beat submission patterns.')">Build Jay Paul hub in repo ↗</button></div>
+</div>
+
+<!-- ═══════════════ JUSTIN ═══════════════ -->
+<div id="pg-justin" class="pg">
+  <div class="hub-top">
+    <div style="display:flex;align-items:center;gap:8px">
+      <div class="avatar" style="width:32px;height:32px;background:var(--color-background-secondary);color:var(--color-text-secondary);font-size:12px">J</div>
+      <div><div style="font-size:13px;font-weight:500">Justin — Observer</div><div style="font-size:10px;color:var(--color-text-secondary)"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--color-text-secondary);vertical-align:middle;margin-right:3px"></span>Read-only · Observation mode · Suggestions allowed</div></div>
+    </div>
+    <div style="display:flex;gap:5px;align-items:center">
+      <span class="perm-badge perm-observe"><i class="ti ti-eye" aria-hidden="true"></i> Observe only</span>
+      <span class="perm-badge perm-suggest"><i class="ti ti-bulb" aria-hidden="true"></i> Suggest</span>
+      <div class="switcher">
+        <span style="font-size:10px;color:var(--color-text-secondary)">View:</span>
+        <button class="switch-btn on">Platform health</button>
+        <button class="switch-btn">Analytics</button>
+      </div>
+    </div>
+  </div>
+  <div class="qa-row">
+    <button class="qa"><i class="ti ti-bulb" aria-hidden="true"></i> Submit suggestion</button>
+    <button class="qa"><i class="ti ti-eye" aria-hidden="true"></i> Platform health view</button>
+    <button class="qa"><i class="ti ti-chart-bar" aria-hidden="true"></i> View analytics</button>
+    <button class="qa"><i class="ti ti-message-circle" aria-hidden="true"></i> Messages</button>
+    <button class="qa" style="opacity:.5;cursor:not-allowed" disabled><i class="ti ti-ban" aria-hidden="true"></i> Block (locked)</button>
+    <button class="qa" style="opacity:.5;cursor:not-allowed" disabled><i class="ti ti-cash" aria-hidden="true"></i> Payouts (locked)</button>
+  </div>
+  <div class="hub-grid">
+    <div>
+      <div class="panel" style="margin-bottom:8px">
+        <h4>Platform health — read only</h4>
+        <div id="ju-health"></div>
+      </div>
+      <div class="panel" style="margin-bottom:8px">
+        <h4>Submit suggestion</h4>
+        <textarea style="width:100%;height:70px;font-size:11px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);padding:6px;resize:none;background:var(--color-background-primary);color:var(--color-text-primary)" placeholder="Enter your suggestion or observation..."></textarea>
+        <select style="width:100%;margin-top:5px;font-size:11px"><option>Category: Platform</option><option>Category: Revenue</option><option>Category: Design</option><option>Category: Bug report</option><option>Category: New feature</option></select>
+        <button style="width:100%;font-size:11px;margin-top:5px;padding:6px;background:var(--color-background-info);color:var(--color-text-info);border:0.5px solid var(--color-border-info);border-radius:var(--border-radius-md)"><i class="ti ti-send" aria-hidden="true"></i> Submit suggestion</button>
+      </div>
+      <div class="panel">
+        <h4>Playlist — view only</h4>
+        <div id="ju-playlist"></div>
+      </div>
+    </div>
+    <div>
+      <div class="panel" style="margin-bottom:8px">
+        <h4>Observation monitors <span style="font-size:10px;color:var(--color-text-secondary)">(read-only)</span></h4>
+        <div class="monitor" style="aspect-ratio:16/7;margin-bottom:6px">
+          <div class="monitor-icon"><i class="ti ti-eye" aria-hidden="true"></i></div>
+          <div class="monitor-badge" style="background:rgba(83,74,183,.7);color:#fff">OBSERVE</div>
+          <div class="monitor-label">Platform activity — live view</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:6px">
+          <div class="monitor" style="aspect-ratio:16/9"><div class="monitor-icon"><i class="ti ti-chart-line" aria-hidden="true"></i></div><div class="monitor-badge" style="background:rgba(186,117,23,.8);color:#fff">STATS</div><div class="monitor-label">Revenue trends</div></div>
+          <div class="monitor" style="aspect-ratio:16/9"><div class="monitor-icon"><i class="ti ti-users" aria-hidden="true"></i></div><div class="monitor-badge" style="background:rgba(0,110,86,.8);color:#fff">ACTIVE</div><div class="monitor-label">User activity</div></div>
+          <div class="monitor" style="aspect-ratio:16/9"><div class="monitor-icon"><i class="ti ti-microphone" aria-hidden="true"></i></div><div class="monitor-badge" style="background:rgba(230,48,0,.7);color:#fff">LIVE</div><div class="monitor-label">Live performances</div></div>
+          <div class="monitor" style="aspect-ratio:16/9"><div class="monitor-icon"><i class="ti ti-message-circle" aria-hidden="true"></i></div><div class="monitor-badge" style="background:rgba(83,74,183,.8);color:#fff">MSG</div><div class="monitor-label">My messages</div></div>
+        </div>
+        <div style="display:flex;gap:5px"><button style="flex:1;font-size:10px;padding:3px"><i class="ti ti-video" aria-hidden="true"></i> Join meeting</button><button style="flex:1;font-size:10px;padding:3px">Call Marcel</button></div>
+      </div>
+      <div class="panel">
+        <h4>Live activity log — read only</h4>
+        <div id="ju-log"></div>
+      </div>
+    </div>
+    <div>
+      <div class="panel" style="margin-bottom:8px">
+        <h4>Analytics — view only</h4>
+        <div class="chart-bar" id="ju-chart" style="margin-bottom:6px"></div>
+        <div id="ju-stats"></div>
+      </div>
+      <div class="panel" style="margin-bottom:8px">
+        <h4>Messages</h4>
+        <div id="ju-inbox"></div>
+        <button style="width:100%;font-size:10px;margin-top:5px;padding:4px"><i class="ti ti-message-circle" aria-hidden="true"></i> Open messages</button>
+      </div>
+      <div class="panel">
+        <h4>Permissions</h4>
+        <div class="stat-row"><span style="font-size:11px"><i class="ti ti-check" style="color:var(--color-text-success)" aria-hidden="true"></i> View platform health</span></div>
+        <div class="stat-row"><span style="font-size:11px"><i class="ti ti-check" style="color:var(--color-text-success)" aria-hidden="true"></i> Submit suggestions</span></div>
+        <div class="stat-row"><span style="font-size:11px"><i class="ti ti-check" style="color:var(--color-text-success)" aria-hidden="true"></i> View analytics</span></div>
+        <div class="stat-row"><span style="font-size:11px"><i class="ti ti-x" style="color:var(--color-text-danger)" aria-hidden="true"></i> Approve/block users</span></div>
+        <div class="stat-row"><span style="font-size:11px"><i class="ti ti-x" style="color:var(--color-text-danger)" aria-hidden="true"></i> Approve payouts</span></div>
+      </div>
+    </div>
+  </div>
+  <div style="text-align:center;margin-top:8px"><button onclick="sendPrompt('Build Justin Observer Hub at /admin/justin — Read-only platform health metrics, live activity log, analytics charts. Submit suggestion form with category selector. Observation monitors: main platform activity monitor, 4 smaller read-only monitors (Revenue trends, User activity, Live performances, Messages). Join meeting button and Call Marcel button. Analytics view (chart plus stats). Messages panel. Permission list showing what is and is not allowed. Locked buttons for block and payout actions shown but disabled. Playlist view-only mode. Match the Administration Hub reference image style.')">Build Justin observer hub in repo ↗</button></div>
+</div>
+
+<!-- ═══════════════ MICAH ═══════════════ -->
+<div id="pg-micah" class="pg">
+  <div class="hub-top">
+    <div style="display:flex;align-items:center;gap:8px">
+      <div class="avatar" style="width:32px;height:32px;background:var(--color-background-success);color:var(--color-text-success);font-size:12px">Mi</div>
+      <div><div style="font-size:13px;font-weight:500">Micah — Dev Assistant (Push buttons with Marcel)</div><div style="font-size:10px;color:var(--color-text-secondary)"><span class="live-dot" style="background:var(--color-text-success)"></span>Active · Coding assist · Song submissions · VS Code tasks</div></div>
+    </div>
+    <div style="display:flex;gap:5px;align-items:center">
+      <span class="perm-badge perm-submit"><i class="ti ti-upload" aria-hidden="true"></i> Submit songs</span>
+      <span class="perm-badge perm-suggest"><i class="ti ti-bulb" aria-hidden="true"></i> Suggest</span>
+      <span class="perm-badge" style="background:var(--color-background-success);color:var(--color-text-success)"><i class="ti ti-code" aria-hidden="true"></i> Dev tasks</span>
+      <div class="switcher">
+        <span style="font-size:10px;color:var(--color-text-secondary)">Mode:</span>
+        <button class="switch-btn on">Dev</button>
+        <button class="switch-btn">Music</button>
+      </div>
+    </div>
+  </div>
+  <div class="qa-row">
+    <button class="qa" style="background:var(--color-background-success);color:var(--color-text-success);border:0.5px solid var(--color-border-success)"><i class="ti ti-code" aria-hidden="true"></i> Open VS Code task</button>
+    <button class="qa"><i class="ti ti-upload" aria-hidden="true"></i> Submit song</button>
+    <button class="qa"><i class="ti ti-git-branch" aria-hidden="true"></i> Push to GitHub</button>
+    <button class="qa"><i class="ti ti-player-play" aria-hidden="true"></i> Run build</button>
+    <button class="qa"><i class="ti ti-bulb" aria-hidden="true"></i> Submit suggestion</button>
+    <button class="qa"><i class="ti ti-message-circle" aria-hidden="true"></i> Message Marcel</button>
+    <button class="qa"><i class="ti ti-playlist" aria-hidden="true"></i> Playlist</button>
+  </div>
+  <div class="hub-grid">
+    <div>
+      <div class="panel" style="margin-bottom:8px">
+        <h4>Coding task queue</h4>
+        <div id="mi-tasks"></div>
+        <button style="width:100%;font-size:10px;margin-top:5px;padding:5px;background:var(--color-background-success);color:var(--color-text-success);border:0.5px solid var(--color-border-success);border-radius:var(--border-radius-md)"><i class="ti ti-code" aria-hidden="true"></i> Open VS Code — start next task</button>
+      </div>
+      <div class="panel" style="margin-bottom:8px">
+        <h4>Song submission</h4>
+        <button class="sub-btn"><i class="ti ti-radio" aria-hidden="true"></i> Submit to Stream &amp; Win Radio</button>
+        <button class="sub-btn"><i class="ti ti-bulb" aria-hidden="true"></i> Submit suggestion</button>
+        <textarea style="width:100%;height:50px;font-size:11px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);padding:6px;resize:none;background:var(--color-background-primary);color:var(--color-text-primary)" placeholder="Notes or suggestions..."></textarea>
+        <button style="width:100%;font-size:11px;margin-top:4px;padding:5px;background:var(--color-background-info);color:var(--color-text-info);border:0.5px solid var(--color-border-info);border-radius:var(--border-radius-md)"><i class="ti ti-send" aria-hidden="true"></i> Submit</button>
+      </div>
+      <div class="panel">
+        <h4>Playlist</h4>
+        <div id="mi-playlist"></div>
+      </div>
+    </div>
+    <div>
+      <div class="panel" style="margin-bottom:8px">
+        <h4>Dev monitors <span class="live-dot" style="background:var(--color-text-success)"></span></h4>
+        <div class="monitor" style="aspect-ratio:16/7;margin-bottom:6px">
+          <div class="monitor-icon"><i class="ti ti-terminal" aria-hidden="true"></i></div>
+          <div class="monitor-badge" style="background:rgba(0,110,86,.8);color:#fff">DEV CONSOLE</div>
+          <div class="monitor-label">Build status — pnpm build</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:6px">
+          <div class="monitor" style="aspect-ratio:16/9"><div class="monitor-icon"><i class="ti ti-git-branch" aria-hidden="true"></i></div><div class="monitor-badge" style="background:rgba(0,110,86,.8);color:#fff">GIT</div><div class="monitor-label">GitHub — latest push</div></div>
+          <div class="monitor" style="aspect-ratio:16/9"><div class="monitor-icon"><i class="ti ti-check" aria-hidden="true"></i></div><div class="monitor-badge" style="background:rgba(0,140,180,.7);color:#fff">TESTS</div><div class="monitor-label">Playwright — test results</div></div>
+          <div class="monitor" style="aspect-ratio:16/9"><div class="monitor-icon"><i class="ti ti-chart-bar" aria-hidden="true"></i></div><div class="monitor-badge" style="background:rgba(186,117,23,.8);color:#fff">PERF</div><div class="monitor-label">Platform performance</div></div>
+          <div class="monitor" style="aspect-ratio:16/9"><div class="monitor-icon"><i class="ti ti-message-circle" aria-hidden="true"></i></div><div class="monitor-badge" style="background:rgba(83,74,183,.8);color:#fff">MSG</div><div class="monitor-label">Marcel — task thread</div></div>
+        </div>
+        <div style="display:flex;gap:5px"><button style="flex:1;font-size:10px;padding:3px"><i class="ti ti-video" aria-hidden="true"></i> Call Marcel</button><button style="flex:1;font-size:10px;padding:3px">Push to GitHub</button><button style="flex:1;font-size:10px;padding:3px">Run build</button></div>
+      </div>
+      <div class="panel">
+        <h4>Build &amp; deploy status</h4>
+        <div class="stat-row"><span style="font-size:11px">Last build</span><span style="color:var(--color-text-success);font-size:11px">PASS — Exit 0</span></div>
+        <div class="stat-row"><span style="font-size:11px">Playwright</span><span style="color:var(--color-text-warning);font-size:11px">26/43 passed</span></div>
+        <div class="stat-row"><span style="font-size:11px">TypeScript</span><span style="color:var(--color-text-success);font-size:11px">0 errors</span></div>
+        <div class="stat-row"><span style="font-size:11px">Deploy status</span><span style="color:var(--color-text-success);font-size:11px">Vercel — Live</span></div>
+      </div>
+    </div>
+    <div>
+      <div class="panel" style="margin-bottom:8px">
+        <h4>"Push buttons with Marcel" shared tasks</h4>
+        <div id="mi-shared"></div>
+      </div>
+      <div class="panel" style="margin-bottom:8px">
+        <h4>Messages</h4>
+        <div id="mi-inbox"></div>
+        <button style="width:100%;font-size:10px;margin-top:5px;padding:4px"><i class="ti ti-message-circle" aria-hidden="true"></i> Open messages</button>
+      </div>
+      <div class="panel">
+        <h4>Stats — dev contributions</h4>
+        <div class="chart-bar" id="mi-chart" style="margin-bottom:6px"></div>
+        <div class="stat-row"><span style="font-size:11px">Tasks completed</span><span style="color:var(--color-text-success);font-size:11px">34</span></div>
+        <div class="stat-row"><span style="font-size:11px">PRs merged</span><span style="color:var(--color-text-info);font-size:11px">12</span></div>
+        <div class="stat-row"><span style="font-size:11px">Songs submitted</span><span style="color:var(--color-text-warning);font-size:11px">7</span></div>
+      </div>
+    </div>
+  </div>
+  <div style="text-align:center;margin-top:8px"><button onclick="sendPrompt('Build Micah Dev Assistant Hub at /admin/micah — Submit songs and suggest permissions, plus dev task permissions. Coding task queue with VS Code deep link button. Song submission panel routing to Stream and Win Radio. Suggestion submission form. Dev monitors: main console/build status monitor, 4 smaller independent monitors (GitHub latest push, Playwright test results, Platform performance, Marcel task thread messages). Build and deploy status panel (last build pass/fail, Playwright count, TypeScript errors, Vercel deploy status). Shared task list Push buttons with Marcel showing joint tasks. Messages panel. Playlist manager. Stats: tasks completed, PRs merged, songs submitted. Match the Administration Hub reference image style.')">Build Micah dev hub in repo ↗</button></div>
+</div>
+
+</div>
+
+<script>
+function sw(name){
+  document.querySelectorAll('.pg').forEach(p=>p.classList.remove('on'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
+  document.getElementById('pg-'+name).classList.add('on');
+  const map={marcel:0,bigace:1,jay:2,justin:3,micah:4};
+  document.querySelectorAll('.tab')[map[name]].classList.add('on');
+  populatePage(name);
+}
+function toggleView(el,a,b,pre){
+  el.closest('.switcher').querySelectorAll('.switch-btn').forEach(b=>b.classList.remove('on'));
+  el.classList.add('on');
+}
+
+const TRACKS=['Neon Pulse Beat','Sunday Wave','Midnight Cypher','Gold Rush Remix','Stadium Drop','Frequency 808','Vibe Control'];
+const NAMES=['Wavetek','Astra Nova','Jay Paul S.','Lagos Burst','Nova Cipher','Big Ace','DJ Kraze'];
+const BARS=[30,45,38,55,42,48,62,55,70,58,65,80];
+const TASKS_JP=['Route "Neon Pulse" to Battle Arena','Update beat tags for S&W Radio','Review AI pattern match for new tracks','Submit 2 beats to Monday Cypher','Check earnings payout with Big Ace','Upload instrumental version of Drop #7'];
+const TASKS_MI=['Fix auth selector #auth-email in auth/page.tsx','Run Playwright full 43-test suite','Push Home 3 lobby wall fix to GitHub','Update ChevronNavigation hidden paths','Wire BroadcastLobbyWall feedType props','Check Vercel env vars (DAILY_API_KEY)'];
+const TASKS_SHARED=['Verify Home 1 orbital wheel renders','Test 3 video monitors independent timers','Confirm season pass animation on all instruments','Deploy to production after green tests'];
+
+function makeChart(id){
+  const el=document.getElementById(id);
+  if(!el||el.innerHTML) return;
+  BARS.forEach(v=>{el.innerHTML+=`<div class="bar" style="height:${v}%;background:var(--color-border-warning)"></div>`;});
+}
+function makePlaylist(id){
+  const el=document.getElementById(id);
+  if(!el||el.innerHTML) return;
+  TRACKS.slice(0,4).forEach((t,i)=>{
+    el.innerHTML+=`<div class="playlist-item"><div style="width:20px;height:20px;border-radius:var(--border-radius-md);background:var(--color-background-tertiary);display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--color-text-tertiary)">${i+1}</div><div style="flex:1;font-size:11px">${t}</div><i class="ti ti-player-play" style="font-size:14px;color:var(--color-text-secondary)" aria-hidden="true"></i></div>`;
+  });
+}
+function makeLiveFeed(id){
+  const el=document.getElementById(id);
+  if(!el||el.innerHTML) return;
+  [['Live Performance: Ace','Neutral tones'],['Cypher Tournament','Tournament feed'],['Transistor Hut Beta','Product demo feed'],['Sponsor Segment','Advertiser feed']].forEach(([t,s])=>{
+    el.innerHTML+=`<div style="background:var(--color-background-tertiary);border-radius:var(--border-radius-md);padding:6px"><div style="font-size:10px;font-weight:500"><span class="live-dot"></span>${t}</div><div style="font-size:9px;color:var(--color-text-tertiary)">${s}</div></div>`;
+  });
+}
+function makeInbox(id,msgs){
+  const el=document.getElementById(id);
+  if(!el||el.innerHTML) return;
+  msgs.forEach(([n,m,v])=>{
+    el.innerHTML+=`<div class="msg-item"><div style="display:flex;align-items:center;gap:4px;margin-bottom:2px"><div class="avatar" style="background:var(--color-background-info);color:var(--color-text-info)">${n[0]}</div><span style="font-weight:500">${n}</span>${v?`<span style="color:var(--color-text-warning);font-size:10px">${v}</span>`:''}</div><div style="font-size:10px;color:var(--color-text-secondary)">${m}</div></div>`;
+  });
+}
+
+const populated={};
+function populatePage(name){
+  if(populated[name]) return;
+  populated[name]=true;
+  if(name==='marcel'){
+    makeChart('m-chart');makePlaylist('mPlaylist');makeLiveFeed('m-livefeed');
+    makeInbox('m-inbox',[['Jay Paul S.','Beat submission ready for approval','$27M'],['Micah','Build passed — tests at 26/43',null],['Big Ace','Payout queue: 3 pending','$12M']]);
+    const al=document.getElementById('m-acctlink');
+    ['Google Ads','Meta Business','Stripe','Pay Pal','SSR Hosting','Pundworthy'].forEach(s=>{al.innerHTML+=`<div class="stat-row" style="font-size:11px"><span>${s}</span><i class="ti ti-check" style="color:var(--color-text-success)" aria-hidden="true"></i></div>`;});
+    const bb=document.getElementById('m-bb');
+    [['Live Performance','57M'],['Jay Paul Smith','57M'],['Big Ace','1.3B'],['Superfant41','1.2K']].forEach(([n,v],i)=>{bb.innerHTML+=`<div class="stat-row" style="font-size:10px"><span>${i+1} ${n}</span><span>${v}</span></div>`;});
+    const hm=document.getElementById('m-heatmap');
+    for(let i=0;i<14;i++){const o=Math.random()>.5?'.8':'.3';hm.innerHTML+=`<div style="height:10px;background:var(--color-border-warning);border-radius:2px;opacity:${o}"></div>`;}
+    const br=document.getElementById('m-bots');
+    [['Big Ace AI','ACTIVE'],['Brian','ACTIVE'],['Nova','STANDBY'],['Finance bot','ACTIVE']].forEach(([n,s])=>{br.innerHTML+=`<div class="stat-row" style="font-size:11px"><span><span class="live-dot" style="background:${s==='ACTIVE'?'#E24B4A':'var(--color-border-secondary)'}"></span>${n}</span><button style="font-size:9px;padding:1px 5px">Summon</button></div>`;});
+  }
+  if(name==='bigace'){
+    makeChart('ba-chart');makePlaylist('ba-playlist');
+    const biz=document.getElementById('ba-biz');
+    ['TMI — Live ● 21M users','Stream & Win Radio — On Air','WillDoIt — Active','Hot Screens — Review needed','Thunder World — Standby','Rent-A-Charge — Active'].forEach((b,i)=>{biz.innerHTML+=`<div class="stat-row" style="font-size:11px"><span>${b}</span><span style="font-size:9px;color:var(--color-text-${i===3?'warning':'success'})">${i===3?'REVIEW':'OK'}</span></div>`;});
+    const po=document.getElementById('ba-payouts');
+    [['Jay Paul S.','$890'],['Marcel','$12K'],['DJ Kraze','$240']].forEach(([n,v])=>{po.innerHTML+=`<div class="stat-row" style="font-size:11px"><span>${n}</span><button style="font-size:9px;padding:1px 6px;background:var(--color-background-warning);color:var(--color-text-warning);border:0.5px solid var(--color-border-warning);border-radius:var(--border-radius-md)">Approve ${v}</button></div>`;});
+    makeInbox('ba-inbox',[['Marcel','Full platform review needed',null],['Jay Paul','Beat payout request $890',null],['Micah','Push to prod after tests',null],['Finance','$27M pending queue',null]]);
+    const bam=document.getElementById('ba-mandates');
+    ['Auto-optimize ad placements weekly','Block accounts with fraud score >90','Escalate all payout requests to Big Ace','Auto-certify builds after 43/43 Playwright'].forEach(m=>{bam.innerHTML+=`<div class="task-item"><input type="checkbox" checked><span>${m}</span></div>`;});
+  }
+  if(name==='jay'){
+    makeChart('jp-chart');makePlaylist('jp-playlist');
+    const jt=document.getElementById('jp-tasks');
+    TASKS_JP.forEach((t,i)=>{jt.innerHTML+=`<div class="task-item"><input type="checkbox" ${i<2?'checked':''}><span>${t}</span></div>`;});
+    makeInbox('jp-inbox',[['Marcel','New cypher opens Friday — submit 2 beats',null],['Big Ace','Payout $890 pending your submission',null],['Beat AI','3 new patterns learned from your beats',null]]);
+  }
+  if(name==='justin'){
+    makeChart('ju-chart');makePlaylist('ju-playlist');
+    const jh=document.getElementById('ju-health');
+    [['TMI platform','LIVE — 21M users'],['Build status','PASS — 0 errors'],['Playwright','26/43 passing'],['Revenue today','$4.8K'],['Active battles','14']].forEach(([l,v])=>{jh.innerHTML+=`<div class="stat-row" style="font-size:11px"><span>${l}</span><span style="color:var(--color-text-secondary)">${v}</span></div>`;});
+    const jl=document.getElementById('ju-log');
+    ['Wavetek went live — 2,841 watching','New user signup: 3 fans, 1 performer','Beat submission routed to cypher','$240 tip processed — DJ Kraze'].forEach(e=>{jl.innerHTML+=`<div style="font-size:10px;color:var(--color-text-secondary);padding:3px 0;border-bottom:0.5px solid var(--color-border-tertiary)">${e}</div>`;});
+    const js=document.getElementById('ju-stats');
+    [['Total users','21M'],['Active rooms','11'],['Tips today','$4.2K'],['Battles live','14']].forEach(([l,v])=>{js.innerHTML+=`<div class="stat-row" style="font-size:11px"><span>${l}</span><span style="color:var(--color-text-warning)">${v}</span></div>`;});
+    makeInbox('ju-inbox',[['Marcel','Join Thursday build review meeting',null],['Big Ace','Platform health report needed',null]]);
+  }
+  if(name==='micah'){
+    makeChart('mi-chart');makePlaylist('mi-playlist');
+    const mt=document.getElementById('mi-tasks');
+    TASKS_MI.forEach((t,i)=>{mt.innerHTML+=`<div class="task-item"><input type="checkbox" ${i===0?'checked':''}><span>${t}</span></div>`;});
+    const ms=document.getElementById('mi-shared');
+    TASKS_SHARED.forEach((t,i)=>{ms.innerHTML+=`<div class="task-item" style="background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:4px 6px;margin-bottom:3px"><input type="checkbox" ${i===0?'checked':''}><span style="font-size:10px">${t}</span></div>`;});
+    makeInbox('mi-inbox',[['Marcel','Tests at 26/43 — fix auth selector first',null],['Marcel','Then push to prod together',null]]);
+  }
+}
+populatePage('marcel');
+
+// Live viewer count ticker on monitors
+setInterval(()=>{
+  document.querySelectorAll('.monitor').forEach((m,i)=>{
+    const v=Math.floor(Math.random()*3000+50);
+    const existing=m.querySelector('.monitor-viewer');
+    if(!existing){
+      const d=document.createElement('div');
+      d.className='monitor-viewer';
+      d.style.cssText='position:absolute;bottom:4px;right:6px;font-size:8px;color:rgba(255,255,255,.5);z-index:3';
+      d.textContent=v.toLocaleString()+' watching';
+      m.appendChild(d);
+    } else {
+      existing.textContent=(Math.max(10,parseInt(existing.textContent)+Math.floor((Math.random()-.4)*80))).toLocaleString()+' watching';
+    }
+  });
+},4000);
+</script>

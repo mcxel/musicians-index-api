@@ -4,6 +4,9 @@ import Link from 'next/link';
 import PageShell from '@/components/layout/PageShell';
 import HUDFrame from '@/components/hud/HUDFrame';
 import FooterHUD from '@/components/hud/FooterHUD';
+import dynamic from 'next/dynamic';
+
+const AvatarLobbyCanvas = dynamic(() => import('@/components/3d/AvatarLobbyCanvas'), { ssr: false });
 
 const ROOMS = [
   { label: "Monday Night Stage",   href: "/rooms/monday-stage",       desc: "Marcel's weekly live show — artist performances every Monday 8PM EST.",       emoji: "🎭", accent: "#FF2DAA", badge: "WEEKLY",   live: true  },
@@ -37,23 +40,26 @@ export default function RoomsPage() {
   return (
     <PageShell>
       <HUDFrame>
-        <div style={{ minHeight: '100vh', background: '#050510', color: '#fff', padding: '32px 32px 80px' }}>
+        <div style={{ minHeight: '100vh', background: 'radial-gradient(circle at 50% 0%, #1a0a2e 0%, #050510 60%)', color: '#fff', padding: '32px 32px 80px', position: 'relative', overflow: 'hidden' }}>
+          
+          {/* 3D Background Layer */}
+          <AvatarLobbyCanvas activeCount={7} />
 
-          {/* Header */}
-          <div style={{ marginBottom: 32 }}>
+          {/* UI Foreground Layer */}
+          <div style={{ marginBottom: 32, position: 'relative', zIndex: 10 }}>
             <div style={{ fontSize: 9, letterSpacing: 4, color: '#00FFFF', fontWeight: 800, marginBottom: 8 }}>LIVE ROOMS</div>
             <h1 style={{ fontSize: 'clamp(22px,4vw,36px)', fontWeight: 900, letterSpacing: 3, margin: '0 0 8px' }}>JOIN A ROOM</h1>
             <p style={{ color: '#555', fontSize: 13, margin: 0 }}>Watch a show, battle in the cypher, or hang with the community.</p>
           </div>
 
           {/* Live rooms first */}
-          <div style={{ fontSize: 9, letterSpacing: 4, color: '#FF2DAA', fontWeight: 800, marginBottom: 16 }}>● LIVE NOW</div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16, marginBottom: 36 }}>
+          <div style={{ fontSize: 9, letterSpacing: 4, color: '#FF2DAA', fontWeight: 800, marginBottom: 16, position: 'relative', zIndex: 10 }}>● LIVE NOW</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16, marginBottom: 36, position: 'relative', zIndex: 10 }}>
             {ROOMS.filter((r) => r.live).map((room, i) => (
               <motion.div key={room.href} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
                 <Link href={room.href} style={{ textDecoration: 'none', display: 'block' }}>
                   <motion.div whileHover={{ y: -3, borderColor: room.accent }}
-                    style={{ background: `${room.accent}08`, border: `1px solid ${room.accent}44`, borderRadius: 14, padding: '22px 20px', cursor: 'pointer', transition: 'border-color 0.2s' }}>
+                    style={{ background: `rgba(5, 5, 16, 0.6)`, backdropFilter: 'blur(12px)', border: `1px solid ${room.accent}44`, borderRadius: 14, padding: '22px 20px', cursor: 'pointer', transition: 'border-color 0.2s', boxShadow: `0 8px 32px ${room.accent}15` }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
                       <div style={{ fontSize: 32 }}>{room.emoji}</div>
                       <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
@@ -72,13 +78,13 @@ export default function RoomsPage() {
           </div>
 
           {/* All rooms */}
-          <div style={{ fontSize: 9, letterSpacing: 4, color: '#555', fontWeight: 800, marginBottom: 16 }}>ALL ROOMS</div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 14 }}>
+          <div style={{ fontSize: 9, letterSpacing: 4, color: '#555', fontWeight: 800, marginBottom: 16, position: 'relative', zIndex: 10 }}>ALL ROOMS</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 14, position: 'relative', zIndex: 10 }}>
             {ROOMS.filter((r) => !r.live).map((room, i) => (
               <motion.div key={room.href} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 + i * 0.04 }}>
                 <Link href={room.href} style={{ textDecoration: 'none', display: 'block' }}>
                   <motion.div whileHover={{ y: -2, borderColor: `${room.accent}55` }}
-                    style={{ background: '#0a0a14', border: '1px solid #1a1a2e', borderRadius: 12, padding: '18px 18px', cursor: 'pointer', transition: 'border-color 0.2s' }}>
+                    style={{ background: 'rgba(10, 10, 20, 0.65)', backdropFilter: 'blur(10px)', border: '1px solid #1a1a2e', borderRadius: 12, padding: '18px 18px', cursor: 'pointer', transition: 'border-color 0.2s' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
                       <div style={{ fontSize: 26 }}>{room.emoji}</div>
                       <div style={{ fontSize: 8, color: room.accent, fontWeight: 700, letterSpacing: 2, background: `${room.accent}12`, padding: '3px 8px', borderRadius: 8, border: `1px solid ${room.accent}25` }}>{room.badge}</div>

@@ -1,6 +1,6 @@
 import { setSeatCamera, type CameraWorldLike } from './camera360.engine'
 
-export type Tier = 'free' | 'bronze' | 'silver' | 'vip'
+export type Tier = 'free' | 'RUBY' | 'silver' | 'vip'
 
 export type Player = {
   id: string
@@ -29,7 +29,7 @@ export type SeatingWorldLike = Omit<CameraWorldLike, 'players'> & {
 
 function allowedRowsForTier(tier: Tier): number[] {
   if (tier === 'free') return [4, 3]
-  if (tier === 'bronze') return [4, 3, 2]
+  if (tier === 'RUBY') return [4, 3, 2]
   if (tier === 'silver') return [4, 3, 2, 1]
   return [4, 3, 2, 1]
 }
@@ -101,7 +101,7 @@ export function upgradeSeat(world: SeatingWorldLike, playerId: string): { ok: bo
   )
 
   if (!targetSeat) return { ok: false, reason: 'no-upgrade-available' }
-  if (player.tier === 'bronze' && targetSeat.row < 3) {
+  if (player.tier === 'RUBY' && targetSeat.row < 3) {
     return { ok: false, reason: 'no-upgrade-available' }
   }
 

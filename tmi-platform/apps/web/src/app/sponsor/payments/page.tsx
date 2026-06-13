@@ -5,10 +5,10 @@ import Link from "next/link";
 
 const PACKAGES = [
   {
-    id: "bronze",
-    name: "Bronze Sponsor",
+    id: "RUBY",
+    name: "RUBY Sponsor",
     price: "$99 / mo",
-    priceId: "price_sponsor_bronze",
+    priceId: "price_sponsor_RUBY",
     color: "#CD7F32",
     perks: ["Logo on 5 live rooms/mo", "1 sponsored contest", "Basic analytics"],
   },

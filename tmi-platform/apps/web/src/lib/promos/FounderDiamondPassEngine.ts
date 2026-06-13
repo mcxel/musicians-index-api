@@ -14,6 +14,17 @@ export interface DiamondPassHolder {
 
 const FOUNDER_PASSES: DiamondPassHolder[] = [
   {
+    email: "Cyrisaiah24@gmail.com",
+    name: "Cyrisaiah",
+    grantedBy: "Marcel Dickens — Founder",
+    grantedAt: new Date("2026-06-12"),
+    code: "DIAMOND-CYRISAIAH-LIFETIME",
+    tier: "diamond",
+    duration: "lifetime",
+    role: "fan",
+    active: true,
+  },
+  {
     email: "leeanncoats.79@gmail.com",
     name: "LeeAnn Coats",
     grantedBy: "Marcel Dickens — Founder",

@@ -68,6 +68,8 @@ Tell Claude, Copilot, and Gemini to never modify:
 | Phase | Task | Who |
 |---|---|---|
 | 19.0 | Gemini repo audit + placement map | Gemini |
+| 19.0a | Priority -2: Product Coherence Audit (One Reason Rule) | Gemini + Claude |
+| 19.0b | Priority -1: Loop Closure Audit (Data Binding) | Blackbox + Copilot |
 | 19.1 | Visual completion pass | Copilot |
 | 19.2 | No-static-shell sweep | Copilot |
 | 19.3 | Performance pass | Copilot |

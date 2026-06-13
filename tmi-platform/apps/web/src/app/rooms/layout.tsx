@@ -1,5 +1,8 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
+import SharedRoomVideoPanel from "@/components/room/SharedRoomVideoPanel";
+import GroupPhotoCanister from "@/components/capture/GroupPhotoCanister";
+import MemoryShareToast from "@/components/capture/MemoryShareToast";
 
 export default function RoomsLayout({ children }: { children: ReactNode }) {
   return (
@@ -154,8 +157,13 @@ export default function RoomsLayout({ children }: { children: ReactNode }) {
         @keyframes tmiCornerConfetti { from { transform: translateY(0) rotate(0deg); opacity: 0.8; } to { transform: translateY(14px) rotate(180deg); opacity: 0.3; } }
       `}</style>
 
+      {/* ── Room-level HUD overlays ── */}
+      <GroupPhotoCanister />
+      <MemoryShareToast />
+
       {/* ── Room content ── */}
       <div style={{ position: "relative", zIndex: 1, paddingTop: 11, paddingBottom: 11, paddingLeft: 4, paddingRight: 4 }}>
+        <SharedRoomVideoPanel />
         {children}
       </div>
     </>

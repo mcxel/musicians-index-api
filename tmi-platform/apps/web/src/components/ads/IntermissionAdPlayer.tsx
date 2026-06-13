@@ -9,7 +9,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
-type UserTier = "free" | "pro-bronze" | "gold-platinum" | "diamond";
+type UserTier = "free" | "pro-RUBY" | "gold-platinum" | "diamond";
 
 interface IntermissionAdPlayerProps {
   isActive: boolean;

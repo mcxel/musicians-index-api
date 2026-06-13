@@ -15,14 +15,15 @@ const nextConfig = {
     // Point each workspace package to its TypeScript source so Vercel can
     // resolve and transpile them without needing a pre-built dist/ directory.
     const pkgRoot = path.resolve(__dirname, "../../packages");
-    Object.assign(config.resolve.alias, {
+    config.resolve.alias = {
+      ...(config.resolve.alias || {}),
       "@tmi/contracts": path.join(pkgRoot, "contracts/src/index.ts"),
       "@tmi/hud-core": path.join(pkgRoot, "hud-core/src/index.ts"),
       "@tmi/hud-runtime": path.join(pkgRoot, "hud-runtime/src/index.ts"),
       "@tmi/hud-theme": path.join(pkgRoot, "hud-theme/src/index.ts"),
       "@tmi/hud-tmi": path.join(pkgRoot, "hud-tmi/src/index.tsx"),
       "@bernout/agent-network": path.join(__dirname, "src/stubs/bernout-agent-network.ts"),
-    });
+    };
 
     // Add watchOptions to ignore noisy system files on Windows during `next dev`
     // This prevents "EINVAL" errors from files like pagefile.sys or System Volume Information.
@@ -31,56 +32,6 @@ const nextConfig = {
         ...(config.watchOptions ?? {}),
         ignored: "**/{DumpStack.log.tmp,System Volume Information,hiberfil.sys,pagefile.sys,swapfile.sys}",
       };
-    }
-
-    // Ensure pages-manifest and minimal pages fallbacks are present for mixed app/pages setups.
-    if (isServer && nextRuntime === "nodejs") {
-      config.plugins.push({
-        apply(compiler) {
-          compiler.hooks.done.tap("EnsurePagesManifest", (stats) => {
-            if (stats.compilation.errors.length) return;
-
-            const manifestPath = path.join(compiler.outputPath, "pages-manifest.json");
-            const manifestDir = path.dirname(manifestPath);
-            if (!fs.existsSync(manifestDir)) fs.mkdirSync(manifestDir, { recursive: true });
-
-            const manifest = fs.existsSync(manifestPath)
-              ? JSON.parse(fs.readFileSync(manifestPath, "utf8") || "{}")
-              : {};
-
-            const pagesDir = path.join(compiler.outputPath, "pages");
-            if (!fs.existsSync(pagesDir)) fs.mkdirSync(pagesDir, { recursive: true });
-
-            const ensureStub = (name, lines) => {
-              const p = path.join(pagesDir, name);
-              if (!fs.existsSync(p)) fs.writeFileSync(p, lines.join("\n"));
-            };
-
-            ensureStub("_document.js", [
-              '"use strict";',
-              'Object.defineProperty(exports, "__esModule", { value: true });',
-              "const React = require('react');",
-              "function Document() { return React.createElement(React.Fragment, null); }",
-              "module.exports = Document;",
-              "module.exports.default = Document;",
-            ]);
-
-            ensureStub("_error.js", [
-              '"use strict";',
-              'Object.defineProperty(exports, "__esModule", { value: true });',
-              "const React = require('react');",
-              "function ErrorPage(){ return React.createElement('div', null, 'Error'); }",
-              "ErrorPage.getInitialProps = function(){ return { statusCode: 500 }; };",
-              "module.exports = ErrorPage;",
-              "module.exports.default = ErrorPage;",
-            ]);
-
-            manifest["/_document"] = "pages/_document.js";
-            manifest["/_error"] = "pages/_error.js";
-            fs.writeFileSync(manifestPath, JSON.stringify(manifest));
-          });
-        },
-      });
     }
 
     return config;

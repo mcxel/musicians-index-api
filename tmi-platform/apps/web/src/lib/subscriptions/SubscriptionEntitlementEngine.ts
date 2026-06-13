@@ -33,7 +33,7 @@ export type SubscriptionEntitlement = {
 };
 
 const TIER_INDEX: Record<SubscriptionTier, number> = {
-  free: 0, pro: 1, bronze: 2, silver: 3, gold: 4, platinum: 5, diamond: 6,
+  free: 0, pro: 1, RUBY: 2, silver: 3, gold: 4, platinum: 5, diamond: 6,
 };
 
 export function resolveEntitlement(accountType: AccountType, tier: SubscriptionTier): SubscriptionEntitlement {

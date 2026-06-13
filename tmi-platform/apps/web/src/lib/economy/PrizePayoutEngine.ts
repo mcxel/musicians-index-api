@@ -34,7 +34,7 @@ export interface PayoutRecord {
 const DEFAULT_PRIZE_STRUCTURE: PrizeTier[] = [
   { place: 1, label: "Champion",   cashUsd: 1000, tmicoin: 10000, additionalPrizes: ["Crown badge", "Magazine feature", "Recording session"] },
   { place: 2, label: "Runner-up",  cashUsd: 500,  tmicoin: 5000,  additionalPrizes: ["Silver badge", "Magazine mention"] },
-  { place: 3, label: "Third",      cashUsd: 250,  tmicoin: 2500,  additionalPrizes: ["Bronze badge"] },
+  { place: 3, label: "Third",      cashUsd: 250,  tmicoin: 2500,  additionalPrizes: ["RUBY badge"] },
   { place: 4, label: "Semi",       cashUsd: 0,    tmicoin: 1000,  additionalPrizes: ["Participation badge"] },
   { place: 5, label: "Semi",       cashUsd: 0,    tmicoin: 1000,  additionalPrizes: ["Participation badge"] },
 ];

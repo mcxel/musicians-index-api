@@ -1,13 +1,13 @@
 // Battle Creation Gate — governs who can start sessions vs join-only
 // Gold+ = create battles/cyphers with no limit
-// Free / Pro / Bronze = join-only (0 creation slots)
+// Free / Pro / RUBY = join-only (0 creation slots)
 // SSR-safe — pure functions, no side effects
 
 import type { SubscriptionTier } from "./SubscriptionPricingEngine";
 
 // ── Tier index mirrors SubscriptionGateEngine ─────────────────────────────────
 
-const TIER_ORDER: SubscriptionTier[] = ["free", "pro", "bronze", "silver", "gold", "platinum", "diamond"];
+const TIER_ORDER: SubscriptionTier[] = ["free", "pro", "RUBY", "silver", "gold", "platinum", "diamond"];
 
 function tierIndex(t: SubscriptionTier): number {
   return TIER_ORDER.indexOf(t);
@@ -21,7 +21,7 @@ const CYPHER_CREATION_TIER: SubscriptionTier = "gold";
 const MAX_CONCURRENT_BY_TIER: Record<SubscriptionTier, number> = {
   free:     0,
   pro:      0,
-  bronze:   0,
+  RUBY:   0,
   silver:   0,
   gold:     3,
   platinum: 6,

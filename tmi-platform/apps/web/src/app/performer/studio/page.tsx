@@ -78,7 +78,7 @@ const LOBBY_FANS = [
   { name: "JamesSky",  tier: "Gold",    emoji: "🥇" },
   { name: "Lily88",    tier: "Silver",  emoji: "🥈" },
   { name: "Alex94",    tier: "Diamond", emoji: "💎" },
-  { name: "NovaFan",   tier: "Bronze",  emoji: "🥉" },
+  { name: "NovaFan",   tier: "RUBY",  emoji: "🥉" },
 ];
 
 const SET_LIST = [

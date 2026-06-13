@@ -14,7 +14,7 @@ export default function PerformerSignupPage() {
   const [genre, setGenre] = useState("");
   const [password, setPassword] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState("");
-  const [avatarTier, setAvatarTier] = useState<AvatarTier>("BRONZE");
+  const [avatarTier, setAvatarTier] = useState<AvatarTier>("RUBY");
   const [subscriptionTier, setSubscriptionTier] = useState<SubscriptionTier>("SILVER");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");

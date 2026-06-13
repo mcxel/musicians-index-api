@@ -176,7 +176,7 @@ export const TMI_CHARACTERS: TMICharacter[] = [
     personality: ["calm", "groove-locked", "deep", "precise", "old-school"],
     accentColor: "#AA2DFF",
     secondaryColor: "#FFD700",
-    avatarSpec: makeSpec("ralph-spec", "Record Ralph", "middle-age", "average", "heavy", "round", "bronze", "producer-puffer", 3),
+    avatarSpec: makeSpec("ralph-spec", "Record Ralph", "middle-age", "average", "heavy", "round", "RUBY", "producer-puffer", 3),
     signatureMoves: [
       { id: "ralph-scratch",  name: "The Scratch",     description: "Turntable scratch animation, crowd reacts",       triggerOn: "beat-drop" },
       { id: "ralph-drop",     name: "The Drop",        description: "Head down, fists up, full drop moment",            triggerOn: "crowd-reaction" },

@@ -36,7 +36,7 @@ export type SubscriptionPlan = {
 
 // ─── Plan data ────────────────────────────────────────────────────────────────
 
-const TIERS: SubscriptionTier[] = ["free", "pro", "bronze", "silver", "gold", "platinum", "diamond"];
+const TIERS: SubscriptionTier[] = ["free", "pro", "RUBY", "silver", "gold", "platinum", "diamond"];
 
 const TIER_META: Record<SubscriptionTier, {
   name: string;
@@ -86,13 +86,13 @@ const TIER_META: Record<SubscriptionTier, {
     marketplaceBenefits: ["List beats", "List services", "NFT listing"],
     articlePlacementBenefits: ["3 article listings", "Featured article slot"],
   },
-  bronze: {
-    name: "Bronze",
+  RUBY: {
+    name: "RUBY",
     localSponsorSlots: 50,
     majorSponsorSlots: 25,
     imageSlots: 6,
     platformRevenueShare: 0.20,
-    badge: "BRONZE",
+    badge: "RUBY",
     badgeColor: "#CD7F32",
     fanBenefits: ["All Pro benefits", "Private feeds"],
     artistBenefits: ["All Pro benefits", "50 local sponsor slots", "25 major sponsor slots", "Early ticket access", "Exclusive giveaways"],
@@ -110,10 +110,10 @@ const TIER_META: Record<SubscriptionTier, {
     platformRevenueShare: 0.175,
     badge: "SILVER",
     badgeColor: "#C0C0C0",
-    fanBenefits: ["All Bronze benefits", "Vote multiplier ×1.8", "Bonus XP ×1.5"],
-    artistBenefits: ["All Bronze benefits", "75 local sponsor slots", "35 major sponsor slots", "Vote multiplier ×1.8", "Meet & greet 7 slots"],
-    venueBenefits: ["All Bronze benefits", "Silver venue badge"],
-    sponsorBenefits: ["All Bronze benefits", "8 ad placements"],
+    fanBenefits: ["All RUBY benefits", "Vote multiplier ×1.8", "Bonus XP ×1.5"],
+    artistBenefits: ["All RUBY benefits", "75 local sponsor slots", "35 major sponsor slots", "Vote multiplier ×1.8", "Meet & greet 7 slots"],
+    venueBenefits: ["All RUBY benefits", "Silver venue badge"],
+    sponsorBenefits: ["All RUBY benefits", "8 ad placements"],
     advertiserBenefits: ["8 article ad placements", "Inline banner slots"],
     marketplaceBenefits: ["Silver beat badge", "Priority listing"],
     articlePlacementBenefits: ["8 article listings", "Featured article slot"],
@@ -126,10 +126,10 @@ const TIER_META: Record<SubscriptionTier, {
     platformRevenueShare: 0.15,
     badge: "GOLD",
     badgeColor: "#FFD700",
-    fanBenefits: ["All Bronze benefits", "Vote multiplier ×2", "Bonus XP ×2", "Game perks"],
-    artistBenefits: ["All Bronze benefits", "100 local sponsor slots", "50 major sponsor slots", "Vote multiplier ×2", "Meet & greet 10 slots"],
-    venueBenefits: ["All Bronze benefits", "Homepage venue feature slot"],
-    sponsorBenefits: ["All Bronze benefits", "10 ad placements", "Live room overlay"],
+    fanBenefits: ["All RUBY benefits", "Vote multiplier ×2", "Bonus XP ×2", "Game perks"],
+    artistBenefits: ["All RUBY benefits", "100 local sponsor slots", "50 major sponsor slots", "Vote multiplier ×2", "Meet & greet 10 slots"],
+    venueBenefits: ["All RUBY benefits", "Homepage venue feature slot"],
+    sponsorBenefits: ["All RUBY benefits", "10 ad placements", "Live room overlay"],
     advertiserBenefits: ["10 article ad placements", "Artist genre targeting"],
     marketplaceBenefits: ["Homepage beat feature", "Marketplace badge"],
     articlePlacementBenefits: ["10 article listings", "Homepage article feature"],

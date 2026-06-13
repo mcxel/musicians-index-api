@@ -14,18 +14,18 @@ interface LobbySlot {
   frameColor2:  string;
   size:         SizePreset;
   title?:       string;
-  rotate:       number;   // degrees
+  rotate:       number;
   viewers?:     number;
   scanLines?:   boolean;
   colSpan?:     number;
   rowSpan?:     number;
-  youtubeId?:   string;   // real YouTube embed — overrides avatar mode
-  src?:         string;   // direct HLS/MP4 URL — overrides avatar mode
-  roomId?:      string;   // Daily.co room ID for live WebRTC feed
-  countryCode?: string;   // ISO 3166-1 alpha-2 e.g. 'US', 'NG', 'GB'
-  isFan?:       boolean;  // fan slots get no sponsor strip
+  youtubeId?:   string;
+  src?:         string;
+  roomId?:      string;
+  countryCode?: string;
+  isFan?:       boolean;
   sponsorCount?: number;
-  sponsorRevCents?: number; // monthly revenue in cents
+  sponsorRevCents?: number;
   performerSlug?: string;
 }
 
@@ -50,18 +50,102 @@ const LOBBY_SLOTS: LobbySlot[] = [
   { avatarEmoji:'⚡', avatarName:'Grid Walk',    frameStyle:'circuit',     frameColor:'#FFD700', frameColor2:'#FF6B35', size:'mini',    title:'Cypher',           rotate:3,  viewers:78,   countryCode:'NG', performerSlug:'grid-walk',   sponsorCount:1,  sponsorRevCents:2500   },
 ];
 
-// ─── Sort policy: ascending viewer count (fewest fans = highest position)
-// This promotes rising/emerging artists over already-popular ones — TMI editorial doctrine.
-function sortByAscendingViewers(slots: LobbySlot[], counts: number[]): { slot: LobbySlot; count: number; origIdx: number }[] {
-  return slots
-    .map((slot, i) => ({ slot, count: counts[i] ?? 0, origIdx: i }))
-    .sort((a, b) => a.count - b.count);
-}
+// Prime-ish intervals — 12 tiles never sync up
+const TILE_INTERVALS = [9500, 11300, 13100, 15200, 17000, 19300, 10700, 12500, 14100, 16700, 18400, 21200];
 
 function roomHref(slot: LobbySlot): string {
   if (slot.roomId) return `/rooms/${slot.roomId}?autoSeat=1`;
   if (slot.performerSlug) return `/rooms/${slot.performerSlug}?autoSeat=1`;
   return '/live/rooms';
+}
+
+function IndependentLobbyTile({
+  startIdx, intervalMs, viewerCounts, justJoined, onJoin,
+}: {
+  startIdx: number; intervalMs: number; viewerCounts: number[];
+  justJoined: number | null; onJoin: (slot: LobbySlot) => void;
+}) {
+  const [slotIdx, setSlotIdx] = useState(startIdx % LOBBY_SLOTS.length);
+  const [hover, setHover] = useState(false);
+
+  useEffect(() => {
+    const id = setInterval(() => setSlotIdx(prev => (prev + 1) % LOBBY_SLOTS.length), intervalMs);
+    return () => clearInterval(id);
+  }, [intervalMs]);
+
+  const slot = LOBBY_SLOTS[slotIdx]!;
+  const count = viewerCounts[slotIdx] ?? 0;
+  const isFlash = justJoined === slotIdx;
+
+  return (
+    <div
+      style={{
+        gridColumn: slot.colSpan ? `span ${slot.colSpan}` : undefined,
+        gridRow: slot.rowSpan ? `span ${slot.rowSpan}` : undefined,
+        transform: `rotate(${slot.rotate}deg)`,
+        transition: 'transform 0.25s ease',
+        outline: isFlash || hover ? `2px solid ${slot.frameColor}` : 'none',
+        boxShadow: isFlash ? `0 0 24px ${slot.frameColor}88` : hover ? `0 0 18px ${slot.frameColor}66` : 'none',
+        borderRadius: 8, display: 'flex', flexDirection: 'column', gap: 4,
+        position: 'relative', cursor: 'pointer',
+      }}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      onClick={() => onJoin(slot)}
+    >
+      {hover && (
+        <div style={{
+          position: 'absolute', inset: 0, borderRadius: 8,
+          background: 'linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.3) 50%, transparent 100%)',
+          zIndex: 10, display: 'flex', flexDirection: 'column',
+          justifyContent: 'flex-end', padding: '10px 10px 12px', pointerEvents: 'none',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 5 }}>
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#FF2020', display: 'inline-block', animation: 'tmiLobbyBlink 1s step-end infinite', flexShrink: 0 }} />
+            <span style={{ fontSize: 8, fontWeight: 900, color: '#fff', letterSpacing: '0.12em' }}>LIVE</span>
+            <span style={{ fontSize: 8, color: 'rgba(255,255,255,0.55)', marginLeft: 4 }}>{count.toLocaleString()} watching</span>
+          </div>
+          <div style={{ fontSize: 11, fontWeight: 900, color: '#fff', marginBottom: 6, lineHeight: 1.2 }}>{slot.avatarName}</div>
+          <div style={{
+            padding: '6px 0', borderRadius: 6, background: `${slot.frameColor}CC`,
+            color: '#000', fontSize: 10, fontWeight: 900, textAlign: 'center',
+            letterSpacing: '0.1em', boxShadow: `0 0 12px ${slot.frameColor}88`, pointerEvents: 'none',
+          }}>▶ JOIN ROOM</div>
+        </div>
+      )}
+      <TMIUniversalPlayer
+        mode={slot.roomId ? 'webrtc' : slot.youtubeId ? 'youtube' : slot.src ? 'hls' : 'avatar'}
+        roomId={slot.roomId} youtubeId={slot.youtubeId} src={slot.src}
+        avatarEmoji={slot.avatarEmoji} avatarName={slot.avatarName}
+        frameStyle={slot.frameStyle} frameColor={slot.frameColor} frameColor2={slot.frameColor2}
+        size={slot.size} title={isFlash ? '✦ JUST JOINED' : slot.title}
+        subtitle={count > 0 ? `${count.toLocaleString()} in room` : undefined}
+        scanLines={slot.scanLines} countryCode={slot.countryCode}
+        showBadge controls={false} privacy="public" autoplay muted
+      />
+      {!slot.isFan && slot.performerSlug !== undefined && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 4, padding: '3px 6px',
+          background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)',
+          borderRadius: 6, border: '1px solid rgba(255,255,255,0.07)', flexWrap: 'wrap',
+        }}>
+          {slot.sponsorCount !== undefined && slot.sponsorCount > 0 ? (
+            <>
+              <span style={{ fontSize: 7, fontWeight: 800, color: '#FFD700', letterSpacing: '0.08em', flexShrink: 0 }}>{slot.sponsorCount} sponsors</span>
+              <span style={{ width: 1, height: 8, background: 'rgba(255,255,255,0.2)', flexShrink: 0 }} />
+              <span style={{ fontSize: 7, fontWeight: 800, color: '#00FF88', letterSpacing: '0.06em', flexShrink: 0 }}>${Math.round((slot.sponsorRevCents ?? 0) / 100).toLocaleString()}/mo</span>
+              <Link href={`/hub/sponsor?target=performer&slug=${slot.performerSlug}`} style={{ marginLeft: 'auto', fontSize: 6, fontWeight: 900, letterSpacing: '0.1em', color: slot.frameColor, border: `1px solid ${slot.frameColor}55`, padding: '1px 6px', borderRadius: 4, textDecoration: 'none', flexShrink: 0, whiteSpace: 'nowrap' }}>Sponsor →</Link>
+            </>
+          ) : (
+            <>
+              <span style={{ fontSize: 7, fontWeight: 700, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.06em', flex: 1 }}>No sponsors yet</span>
+              <Link href={`/hub/sponsor?target=performer&slug=${slot.performerSlug}`} style={{ fontSize: 6, fontWeight: 900, letterSpacing: '0.1em', color: '#FFD700', border: '1px solid rgba(255,215,0,0.4)', padding: '1px 6px', borderRadius: 4, textDecoration: 'none', flexShrink: 0, whiteSpace: 'nowrap' }}>Be First →</Link>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function HomeLobbyVideoWall({ accentColor = '#00FFFF' }: { accentColor?: string }) {
@@ -70,7 +154,6 @@ export default function HomeLobbyVideoWall({ accentColor = '#00FFFF' }: { accent
     () => LOBBY_SLOTS.map(s => s.viewers ?? 0)
   );
   const [justJoined, setJustJoined] = useState<number | null>(null);
-  const [hoverIdx, setHoverIdx] = useState<number | null>(null);
 
   const handleJoin = useCallback((slot: LobbySlot) => {
     router.push(roomHref(slot));
@@ -79,10 +162,9 @@ export default function HomeLobbyVideoWall({ accentColor = '#00FFFF' }: { accent
   // Viewer count simulation — ticks every 3.2s
   useEffect(() => {
     const id = setInterval(() => {
-      setViewerCounts(prev => prev.map((v, i) => {
+      setViewerCounts(prev => prev.map(v => {
         if (v === 0) return v;
-        const delta = Math.floor((Math.random() - 0.4) * 18);
-        return Math.max(5, v + delta);
+        return Math.max(5, v + Math.floor((Math.random() - 0.4) * 18));
       }));
     }, 3200);
     return () => clearInterval(id);
@@ -97,6 +179,7 @@ export default function HomeLobbyVideoWall({ accentColor = '#00FFFF' }: { accent
     }, 9000);
     return () => clearInterval(id);
   }, []);
+
   return (
     <section style={{
       padding: '20px 12px 14px',
@@ -117,7 +200,6 @@ export default function HomeLobbyVideoWall({ accentColor = '#00FFFF' }: { accent
 
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, position: 'relative', zIndex: 2 }}>
-        {/* Pulsing live dot */}
         <span style={{
           width: 8, height: 8, borderRadius: '50%', background: '#FF2DAA',
           boxShadow: '0 0 8px #FF2DAA', display: 'inline-block',
@@ -136,7 +218,7 @@ export default function HomeLobbyVideoWall({ accentColor = '#00FFFF' }: { accent
         </Link>
       </div>
 
-      {/* Sorted grid — fewest fans at top (promotes emerging artists) */}
+      {/* Independent tile grid — each position rotates on its own timer */}
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
@@ -144,153 +226,15 @@ export default function HomeLobbyVideoWall({ accentColor = '#00FFFF' }: { accent
         position: 'relative',
         zIndex: 2,
       }}>
-        {sortByAscendingViewers(LOBBY_SLOTS, viewerCounts).map(({ slot, count, origIdx }) => (
-          <div
-            key={slot.avatarName + origIdx}
-            style={{
-              gridColumn: slot.colSpan ? `span ${slot.colSpan}` : undefined,
-              gridRow:    slot.rowSpan ? `span ${slot.rowSpan}` : undefined,
-              transform:  `rotate(${slot.rotate}deg)`,
-              transition: 'transform 0.25s ease',
-              outline: justJoined === origIdx ? `2px solid ${slot.frameColor}` : hoverIdx === origIdx ? `2px solid ${slot.frameColor}` : 'none',
-              boxShadow: justJoined === origIdx ? `0 0 24px ${slot.frameColor}88` : hoverIdx === origIdx ? `0 0 18px ${slot.frameColor}66` : 'none',
-              borderRadius: 8,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 4,
-              position: 'relative',
-              cursor: 'pointer',
-            }}
-            onMouseEnter={() => setHoverIdx(origIdx)}
-            onMouseLeave={() => setHoverIdx(null)}
-            onClick={() => handleJoin(slot)}
-          >
-            {/* ── JOIN ROOM hover overlay ── */}
-            {hoverIdx === origIdx && (
-              <div style={{
-                position: 'absolute', inset: 0, borderRadius: 8,
-                background: 'linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.3) 50%, transparent 100%)',
-                zIndex: 10, display: 'flex', flexDirection: 'column',
-                justifyContent: 'flex-end', padding: '10px 10px 12px',
-                pointerEvents: 'none',
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 5 }}>
-                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#FF2020', display: 'inline-block', animation: 'tmiLobbyBlink 1s step-end infinite', flexShrink: 0 }} />
-                  <span style={{ fontSize: 8, fontWeight: 900, color: '#fff', letterSpacing: '0.12em' }}>LIVE</span>
-                  <span style={{ fontSize: 8, color: 'rgba(255,255,255,0.55)', marginLeft: 4 }}>
-                    {count.toLocaleString()} watching
-                  </span>
-                </div>
-                <div style={{ fontSize: 11, fontWeight: 900, color: '#fff', marginBottom: 6, lineHeight: 1.2 }}>
-                  {slot.avatarName}
-                </div>
-                <div style={{
-                  padding: '6px 0', borderRadius: 6,
-                  background: `${slot.frameColor}CC`,
-                  color: '#000', fontSize: 10, fontWeight: 900,
-                  textAlign: 'center', letterSpacing: '0.1em',
-                  boxShadow: `0 0 12px ${slot.frameColor}88`,
-                  pointerEvents: 'none',
-                }}>
-                  ▶ JOIN ROOM
-                </div>
-              </div>
-            )}
-
-            <TMIUniversalPlayer
-              mode={
-                slot.roomId    ? 'webrtc'   :
-                slot.youtubeId ? 'youtube'  :
-                slot.src       ? 'hls'      :
-                'avatar'
-              }
-              roomId={slot.roomId}
-              youtubeId={slot.youtubeId}
-              src={slot.src}
-              avatarEmoji={slot.avatarEmoji}
-              avatarName={slot.avatarName}
-              frameStyle={slot.frameStyle}
-              frameColor={slot.frameColor}
-              frameColor2={slot.frameColor2}
-              size={slot.size}
-              title={justJoined === origIdx ? '✦ JUST JOINED' : slot.title}
-              subtitle={count > 0 ? `${count.toLocaleString()} in room` : undefined}
-              scanLines={slot.scanLines}
-              countryCode={slot.countryCode}
-              showBadge
-              controls={false}
-              privacy="public"
-              autoplay
-              muted
-            />
-            {/* Sponsor strip — only for performers with a slug */}
-            {!slot.isFan && slot.performerSlug !== undefined && (
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 4,
-                padding: '3px 6px',
-                background: 'rgba(0,0,0,0.7)',
-                backdropFilter: 'blur(8px)',
-                borderRadius: 6,
-                border: '1px solid rgba(255,255,255,0.07)',
-                flexWrap: 'wrap',
-              }}>
-                {slot.sponsorCount !== undefined && slot.sponsorCount > 0 ? (
-                  <>
-                    <span style={{ fontSize: 7, fontWeight: 800, color: '#FFD700', letterSpacing: '0.08em', flexShrink: 0 }}>
-                      {slot.sponsorCount} sponsors
-                    </span>
-                    <span style={{ width: 1, height: 8, background: 'rgba(255,255,255,0.2)', flexShrink: 0 }} />
-                    <span style={{ fontSize: 7, fontWeight: 800, color: '#00FF88', letterSpacing: '0.06em', flexShrink: 0 }}>
-                      ${Math.round((slot.sponsorRevCents ?? 0) / 100).toLocaleString()}/mo
-                    </span>
-                    <Link
-                      href={`/hub/sponsor?target=performer&slug=${slot.performerSlug}`}
-                      style={{
-                        marginLeft: 'auto',
-                        fontSize: 6,
-                        fontWeight: 900,
-                        letterSpacing: '0.1em',
-                        color: slot.frameColor,
-                        border: `1px solid ${slot.frameColor}55`,
-                        padding: '1px 6px',
-                        borderRadius: 4,
-                        textDecoration: 'none',
-                        flexShrink: 0,
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      Sponsor →
-                    </Link>
-                  </>
-                ) : (
-                  <>
-                    <span style={{ fontSize: 7, fontWeight: 700, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.06em', flex: 1 }}>
-                      No sponsors yet
-                    </span>
-                    <Link
-                      href={`/hub/sponsor?target=performer&slug=${slot.performerSlug}`}
-                      style={{
-                        fontSize: 6,
-                        fontWeight: 900,
-                        letterSpacing: '0.1em',
-                        color: '#FFD700',
-                        border: '1px solid rgba(255,215,0,0.4)',
-                        padding: '1px 6px',
-                        borderRadius: 4,
-                        textDecoration: 'none',
-                        flexShrink: 0,
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      Be First →
-                    </Link>
-                  </>
-                )}
-              </div>
-            )}
-          </div>
+        {TILE_INTERVALS.map((ms, pos) => (
+          <IndependentLobbyTile
+            key={pos}
+            startIdx={pos}
+            intervalMs={ms}
+            viewerCounts={viewerCounts}
+            justJoined={justJoined}
+            onJoin={handleJoin}
+          />
         ))}
       </div>
 

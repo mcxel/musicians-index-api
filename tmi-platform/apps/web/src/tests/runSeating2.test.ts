@@ -6,7 +6,7 @@ type TestWorld = SeatingWorldLike & CameraWorldLike
 function createWorld(): TestWorld {
   const players: Player[] = [
     { id: 'u_free', name: 'Free User', tier: 'free', position: 'standing' },
-    { id: 'u_bronze', name: 'Bronze User', tier: 'bronze', position: 'standing' }
+    { id: 'u_RUBY', name: 'RUBY User', tier: 'RUBY', position: 'standing' }
   ]
   return {
     worldId: 'seating2_test_world',
@@ -18,11 +18,11 @@ function runSeating2Test() {
   const world = createWorld()
 
   const freeSeat = assignSeat(world, 'u_free')
-  const bronzeSeat = assignSeat(world, 'u_bronze')
+  const RUBYSeat = assignSeat(world, 'u_RUBY')
 
   const freeUpgrade1 = upgradeSeat(world, 'u_free')
-  const bronzeUpgrade1 = upgradeSeat(world, 'u_bronze')
-  const bronzeUpgrade2 = upgradeSeat(world, 'u_bronze')
+  const RUBYUpgrade1 = upgradeSeat(world, 'u_RUBY')
+  const RUBYUpgrade2 = upgradeSeat(world, 'u_RUBY')
 
   setCameraMode(world, 'audience')
   const view = getCameraView(world)
@@ -32,22 +32,22 @@ function runSeating2Test() {
     freeUpgrade1.ok &&
     world.seating2!.seats.some(s => s.occupiedBy === 'u_free' && s.row < (freeSeat?.row ?? 99))
 
-  const bronzeMovedForward =
-    Boolean(bronzeSeat) &&
-    bronzeUpgrade1.ok &&
-    world.seating2!.seats.some(s => s.occupiedBy === 'u_bronze' && s.row < (bronzeSeat?.row ?? 99))
+  const RUBYMovedForward =
+    Boolean(RUBYSeat) &&
+    RUBYUpgrade1.ok &&
+    world.seating2!.seats.some(s => s.occupiedBy === 'u_RUBY' && s.row < (RUBYSeat?.row ?? 99))
 
-  const bronzeRestrictionValid = bronzeUpgrade2.ok === false && bronzeUpgrade2.reason === 'no-upgrade-available'
+  const RUBYRestrictionValid = RUBYUpgrade2.ok === false && RUBYUpgrade2.reason === 'no-upgrade-available'
 
   console.log('[SEATING2_ASSERT]', {
     assignedFree: Boolean(freeSeat),
-    assignedBronze: Boolean(bronzeSeat),
+    assignedRUBY: Boolean(RUBYSeat),
     freeMovedForward,
-    bronzeMovedForward,
-    bronzeRestrictionValid,
+    RUBYMovedForward,
+    RUBYRestrictionValid,
     freeUpgrade1,
-    bronzeUpgrade1,
-    bronzeUpgrade2,
+    RUBYUpgrade1,
+    RUBYUpgrade2,
     cameraMode: view.mode,
     cameraSeatRef: view.seatRef ?? 'none'
   })

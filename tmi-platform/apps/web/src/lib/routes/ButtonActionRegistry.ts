@@ -76,7 +76,7 @@ export function listAllActions(): ButtonAction[] {
 }
 
 export function getLockedActions(userTier: SubscriptionTier): ButtonAction[] {
-  const TIER_ORDER: SubscriptionTier[] = ['free', 'pro', 'bronze', 'silver', 'gold', 'platinum', 'diamond'];
+  const TIER_ORDER: SubscriptionTier[] = ['free', 'pro', 'RUBY', 'silver', 'gold', 'platinum', 'diamond'];
   const userIdx = TIER_ORDER.indexOf(userTier);
   return REGISTRY.filter((b) => {
     if (!b.requiredTier) return false;
@@ -89,7 +89,7 @@ export function resolveButtonTarget(id: string, userTier: SubscriptionTier): { h
   if (!action) return { href: '#', locked: false };
 
   if (action.requiredTier) {
-    const TIER_ORDER: SubscriptionTier[] = ['free', 'pro', 'bronze', 'silver', 'gold', 'platinum', 'diamond'];
+    const TIER_ORDER: SubscriptionTier[] = ['free', 'pro', 'RUBY', 'silver', 'gold', 'platinum', 'diamond'];
     const required = TIER_ORDER.indexOf(action.requiredTier);
     const user = TIER_ORDER.indexOf(userTier);
     if (user < required) {

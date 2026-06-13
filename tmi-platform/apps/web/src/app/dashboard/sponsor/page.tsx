@@ -41,7 +41,7 @@ const SPONSOR_PACKAGES = [
 ];
 
 const PATRONAGE_ORBIT = [
-  { label: 'Bronze Orbit', xp: '2,500 XP', reach: '5K fans/mo',   color: '#CD7F32' },
+  { label: 'RUBY Orbit', xp: '2,500 XP', reach: '5K fans/mo',   color: '#CD7F32' },
   { label: 'Silver Orbit', xp: '5,000 XP', reach: '15K fans/mo',  color: '#C0C0C0' },
   { label: 'Gold Orbit',   xp: '10,000 XP', reach: '40K fans/mo', color: '#FFD700' },
 ];

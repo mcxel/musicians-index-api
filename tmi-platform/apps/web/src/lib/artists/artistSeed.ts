@@ -1,7 +1,7 @@
 export type ArtistSubscriptionTier =
   | "FREE"
   | "PRO"
-  | "BRONZE"
+  | "RUBY"
   | "SILVER"
   | "GOLD"
   | "PLATINUM"
@@ -18,7 +18,7 @@ export type ArtistSeedRecord = {
   addOnTier: ArtistAddOnTier;
 };
 
-const TIERS: ArtistSubscriptionTier[] = ["FREE", "PRO", "BRONZE", "SILVER", "GOLD", "PLATINUM", "DIAMOND"];
+const TIERS: ArtistSubscriptionTier[] = ["FREE", "PRO", "RUBY", "SILVER", "GOLD", "PLATINUM", "DIAMOND"];
 const ADDONS: ArtistAddOnTier[] = ["NONE", "LIVE_PLUS", "PROMO_PLUS", "LABEL_PLUS"];
 
 const CURATED_IMAGES = [

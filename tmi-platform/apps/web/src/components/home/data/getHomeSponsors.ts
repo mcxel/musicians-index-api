@@ -18,9 +18,9 @@ const FALLBACK_SPONSORS: HomeSponsorRow[] = [
   { name: 'VELOCITY AUDIO', tier: 'GOLD' },
   { name: 'NOVA MEDIA GROUP', tier: 'SILVER' },
   { name: 'CROWN & CO.', tier: 'SILVER' },
-  { name: 'FREQUENCY LABS', tier: 'BRONZE' },
-  { name: 'THE VAULT COLLECTIVE', tier: 'BRONZE' },
-  { name: 'SONIC AXIS', tier: 'BRONZE' },
+  { name: 'FREQUENCY LABS', tier: 'RUBY' },
+  { name: 'THE VAULT COLLECTIVE', tier: 'RUBY' },
+  { name: 'SONIC AXIS', tier: 'RUBY' },
 ];
 
 export async function getHomeSponsors(options: HomeSponsorsOptions = {}): Promise<HomeDataEnvelope<HomeSponsorRow[]>> {
@@ -58,7 +58,7 @@ export async function getHomeSponsors(options: HomeSponsorsOptions = {}): Promis
 
     const mapped = data.map((sponsor) => ({
       name: typeof sponsor.name === 'string' ? sponsor.name.toUpperCase() : 'SPONSOR',
-      tier: typeof sponsor.tier === 'string' ? sponsor.tier.toUpperCase() : 'BRONZE',
+      tier: typeof sponsor.tier === 'string' ? sponsor.tier.toUpperCase() : 'RUBY',
     }));
 
     return {

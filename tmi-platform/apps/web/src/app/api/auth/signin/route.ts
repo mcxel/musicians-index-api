@@ -8,6 +8,7 @@ import { StreakEngine } from '@/lib/gamification/StreakEngine';
 import { grantXP } from '@/lib/xp/xpEngine';
 import { compare } from 'bcryptjs';
 import prisma from '@/lib/prisma';
+import { isFounderDiamondEmail } from '@/lib/promos/FounderDiamondPassEngine';
 
 const COOKIE_OPTS = {
   httpOnly: true,
@@ -64,7 +65,7 @@ export async function POST(req: NextRequest) {
           email: dbUser.email ?? '',
           passwordHash: dbUser.passwordHash,
           displayName: dbUser.displayName ?? (dbUser.email ?? '').split('@')[0],
-          tier: (dbUser.tier?.toLowerCase() ?? 'free') as import('@/lib/auth/UserStore').UserTier,
+          tier: (dbUser.tier?.toUpperCase() ?? 'FREE') as import('@/lib/auth/UserStore').UserTier,
           role: (DB_ROLE_MAP[dbUser.role ?? 'USER'] ?? 'fan') as import('@/lib/auth/UserStore').UserRole,
           createdAt: dbUser.userCreatedAt?.getTime() ?? Date.now(),
         };
@@ -75,21 +76,30 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });
     }
 
-    const userAgent = req.headers.get('user-agent') ?? '';
-    const { sessionId, sessionToken } = createSession(user.id, user.role, clientIp, userAgent);
+    // Founder diamond override — lifetime grant list takes priority over DB tier
+    const resolvedUser = isFounderDiamondEmail(email) && user.tier !== 'DIAMOND'
+      ? (() => {
+          // Persist to DB so future logins read DIAMOND directly (fire-and-forget)
+          prisma.user.updateMany({ where: { email }, data: { tier: 'DIAMOND' } }).catch(() => {});
+          return { ...user, tier: 'DIAMOND' as import('@/lib/auth/UserStore').UserTier };
+        })()
+      : user;
 
-    const streakResult = StreakEngine.recordDailyVisit(user.id);
+    const userAgent = req.headers.get('user-agent') ?? '';
+    const { sessionId, sessionToken } = createSession(resolvedUser.id, resolvedUser.role, clientIp, userAgent);
+
+    const streakResult = StreakEngine.recordDailyVisit(resolvedUser.id);
     if (streakResult.isNewDay && streakResult.xpGranted > 0) {
-      grantXP({ userId: user.id, source: 'login_daily', amount: streakResult.xpGranted });
+      grantXP({ userId: resolvedUser.id, source: 'login_daily', amount: streakResult.xpGranted });
     }
 
     const response = NextResponse.json(
       {
         ok: true,
         message: 'Session created',
-        userId: user.id,
-        role: user.role,
-        tier: user.tier,
+        userId: resolvedUser.id,
+        role: resolvedUser.role,
+        tier: resolvedUser.tier,
         streak: {
           current: streakResult.streak.currentStreak,
           longest: streakResult.streak.longestStreak,
@@ -105,8 +115,8 @@ export async function POST(req: NextRequest) {
     response.cookies.delete('tmi_tier');
     response.cookies.set('tmi_session_id', sessionId, COOKIE_OPTS);
     response.cookies.set('tmi_session', sessionToken, COOKIE_OPTS);
-    response.cookies.set('tmi_role', user.role, COOKIE_OPTS);
-    response.cookies.set('tmi_tier', user.tier, COOKIE_OPTS);
+    response.cookies.set('tmi_role', resolvedUser.role, COOKIE_OPTS);
+    response.cookies.set('tmi_tier', resolvedUser.tier, COOKIE_OPTS);
     response.cookies.set('tmi_user_email', email, {
       httpOnly: false,
       secure: process.env.NODE_ENV === 'production',

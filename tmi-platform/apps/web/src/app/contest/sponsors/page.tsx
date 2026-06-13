@@ -6,8 +6,8 @@ const PACKAGES = [
     group: "LOCAL PACKAGES",
     color: "#ff6b1a",
     items: [
-      { tier: "Local Bronze", price: "$50", priceId: "price_contest_local_bronze", perks: ["Business name in contestant profile", "Shoutout during live show", "Platform badge"], highlight: false },
-      { tier: "Local Silver", price: "$150", priceId: "price_contest_local_silver", perks: ["Everything in Bronze", "Logo in show thumbnails", "Social media mention"], highlight: false },
+      { tier: "Local RUBY", price: "$50", priceId: "price_contest_local_RUBY", perks: ["Business name in contestant profile", "Shoutout during live show", "Platform badge"], highlight: false },
+      { tier: "Local Silver", price: "$150", priceId: "price_contest_local_silver", perks: ["Everything in RUBY", "Logo in show thumbnails", "Social media mention"], highlight: false },
       { tier: "Local Gold", price: "$250", priceId: "price_contest_local_gold", perks: ["Everything in Silver", "30-second ad spot during show", "Brand overlay on contestant stream"], highlight: true },
     ],
   },
@@ -15,8 +15,8 @@ const PACKAGES = [
     group: "MAJOR PACKAGES",
     color: "#ffd700",
     items: [
-      { tier: "Major Bronze", price: "$1,000", priceId: "price_contest_major_bronze", perks: ["National brand recognition", "Homepage feature for 7 days", "Branded segment in broadcast"], highlight: false },
-      { tier: "Major Silver", price: "$5,000", priceId: "price_contest_major_silver", perks: ["Everything in Major Bronze", "Exclusive category naming rights", "Pre-roll video ad during show"], highlight: false },
+      { tier: "Major RUBY", price: "$1,000", priceId: "price_contest_major_RUBY", perks: ["National brand recognition", "Homepage feature for 7 days", "Branded segment in broadcast"], highlight: false },
+      { tier: "Major Silver", price: "$5,000", priceId: "price_contest_major_silver", perks: ["Everything in Major RUBY", "Exclusive category naming rights", "Pre-roll video ad during show"], highlight: false },
       { tier: "Major Gold", price: "$10,000", priceId: "price_contest_major_gold", perks: ["Everything in Major Silver", "Title co-sponsor recognition", "Permanent Hall of Fame placement"], highlight: true },
     ],
   },

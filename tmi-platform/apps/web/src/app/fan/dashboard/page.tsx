@@ -39,7 +39,7 @@ interface MeResponse {
 function toFanTier(raw?: string): FanSubscriptionTier {
   if (raw === "diamond")       return "diamond";
   if (raw === "gold-platinum") return "gold-platinum";
-  if (raw === "pro-bronze")    return "pro-bronze";
+  if (raw === "pro-RUBY")    return "pro-RUBY";
   return "free";
 }
 

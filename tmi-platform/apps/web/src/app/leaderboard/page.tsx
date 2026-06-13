@@ -13,7 +13,7 @@ const BADGE_STYLE: Record<string, { color: string; bg: string; label: string }> 
   Crown:  { color: "#FFD700", bg: "rgba(255,215,0,0.12)",   label: "👑 Crown"  },
   Gold:   { color: "#FFD700", bg: "rgba(255,215,0,0.08)",   label: "🥇 Gold"   },
   Silver: { color: "#C0C0C0", bg: "rgba(192,192,192,0.08)", label: "🥈 Silver" },
-  Bronze: { color: "#CD7F32", bg: "rgba(205,127,50,0.08)",  label: "🥉 Bronze" },
+  RUBY: { color: "#CD7F32", bg: "rgba(205,127,50,0.08)",  label: "🥉 RUBY" },
 };
 
 export default function LeaderboardPage() {

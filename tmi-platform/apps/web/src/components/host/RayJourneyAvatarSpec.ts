@@ -143,6 +143,31 @@ export const RAY_STAGE_POSITIONS = {
   background: { x: '50%', y: '40%' },
 } as const;
 
+// ─── Props & Accessories (Store & Inventory) ──────────────────────────────────
+
+export const RAY_PROPS = {
+  microphone: {
+    standard: '/assets/3d/props/mic_standard.glb',
+    gold: '/assets/3d/props/mic_gold.glb',
+    vintage: '/assets/3d/props/mic_vintage.glb',
+  },
+  accessories: {
+    sunglasses: '/assets/3d/props/glasses_aviator.glb',
+    headset: '/assets/3d/props/headset_producer.glb',
+    chain: '/assets/3d/props/chain_gold.glb',
+  }
+} as const;
+
+// ─── Scenes & Backgrounds ─────────────────────────────────────────────────────
+
+export const STAGE_SCENES = {
+  cyberArena: { backgroundUrl: '/assets/3d/scenes/cyber_arena.glb', lighting: 'neon_pulse', particles: 'laser_grid' },
+  classicTheater: { backgroundUrl: '/assets/3d/scenes/classic_theater.glb', lighting: 'warm_spotlight', particles: 'dust_motes' },
+  undergroundCypher: { backgroundUrl: '/assets/3d/scenes/underground_cypher.glb', lighting: 'harsh_fluorescent', particles: 'smoke' },
+  festivalMainstage: { backgroundUrl: '/assets/3d/scenes/festival_mainstage.glb', lighting: 'strobe_heavy', particles: 'confetti' },
+  vipLounge: { backgroundUrl: '/assets/3d/scenes/vip_lounge.glb', lighting: 'dim_ambient', particles: 'none' },
+} as const;
+
 // ─── Sound Cue References ─────────────────────────────────────────────────────
 // Wire these to your audio engine / Tone.js integration
 

@@ -2,7 +2,7 @@
 
 export type AccountType = "artist" | "performer" | "fan";
 
-export type SubscriptionTier = "free" | "pro" | "bronze" | "silver" | "gold" | "platinum" | "diamond";
+export type SubscriptionTier = "free" | "pro" | "RUBY" | "silver" | "gold" | "platinum" | "diamond";
 
 export type TierPrice = {
   tier: SubscriptionTier;
@@ -33,13 +33,13 @@ export type TierBenefits = {
 };
 
 // ─── Price tables ─────────────────────────────────────────────────────────────
-// Fan:      Free $0 / Pro $4.99 / Bronze $9.99 / Silver $14.99 / Gold $24.99 / Platinum $39.99 / Diamond $49.99
-// Performer: Free $0 / Pro $2.99 / Bronze $7.99 / Silver $14.99 / Gold $29.99 / Platinum $39.99 / Diamond $69.99
+// Fan:      Free $0 / Pro $4.99 / RUBY $9.99 / Silver $14.99 / Gold $24.99 / Platinum $39.99 / Diamond $49.99
+// Performer: Free $0 / Pro $2.99 / RUBY $7.99 / Silver $14.99 / Gold $29.99 / Platinum $39.99 / Diamond $69.99
 
 const CREATOR_PRICES: Record<SubscriptionTier, { cents: number; display: string }> = {
   free:     { cents:    0, display: "$0.00"  },
   pro:      { cents:  299, display: "$2.99"  },
-  bronze:   { cents:  799, display: "$7.99"  },
+  RUBY:   { cents:  799, display: "$7.99"  },
   silver:   { cents: 1499, display: "$14.99" },
   gold:     { cents: 2999, display: "$29.99" },
   platinum: { cents: 3999, display: "$39.99" },
@@ -49,7 +49,7 @@ const CREATOR_PRICES: Record<SubscriptionTier, { cents: number; display: string 
 const FAN_PRICES: Record<SubscriptionTier, { cents: number; display: string }> = {
   free:     { cents:    0, display: "$0.00"  },
   pro:      { cents:  499, display: "$4.99"  },
-  bronze:   { cents:  999, display: "$9.99"  },
+  RUBY:   { cents:  999, display: "$9.99"  },
   silver:   { cents: 1499, display: "$14.99" },
   gold:     { cents: 2499, display: "$24.99" },
   platinum: { cents: 3999, display: "$39.99" },
@@ -71,7 +71,7 @@ function priceTable(accountType: AccountType) {
 
 // ─── Tier order ───────────────────────────────────────────────────────────────
 
-const TIER_ORDER: SubscriptionTier[] = ["free", "pro", "bronze", "silver", "gold", "platinum", "diamond"];
+const TIER_ORDER: SubscriptionTier[] = ["free", "pro", "RUBY", "silver", "gold", "platinum", "diamond"];
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 

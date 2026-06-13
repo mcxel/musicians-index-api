@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 
 interface TieredAdSlotProps {
-  tier: 'free' | 'pro' | 'silver' | 'gold' | 'gold-platinum' | 'pro-bronze' | 'platinum' | 'diamond' | string;
+  tier: 'free' | 'pro' | 'silver' | 'gold' | 'gold-platinum' | 'pro-RUBY' | 'platinum' | 'diamond' | string;
   placement: 'leaderboard' | 'in-content' | 'footer-banner' | 'sidebar' | string;
   height?: number;
 }

@@ -19,7 +19,7 @@ interface Sponsor {
   type: 'local' | 'major';
   category: string;
   logo?: string;
-  tier?: 'bronze' | 'silver' | 'gold' | 'title';
+  tier?: 'RUBY' | 'silver' | 'gold' | 'title';
 }
 
 interface SponsorInvitePanelProps {
@@ -31,10 +31,10 @@ interface SponsorInvitePanelProps {
 }
 
 const SPONSOR_PACKAGES = [
-  { id: 'local-bronze', label: 'Local Bronze', price: '$50', type: 'local', description: 'Name on profile' },
+  { id: 'local-RUBY', label: 'Local RUBY', price: '$50', type: 'local', description: 'Name on profile' },
   { id: 'local-silver', label: 'Local Silver', price: '$100', type: 'local', description: 'Name + logo on profile' },
   { id: 'local-gold', label: 'Local Gold', price: '$250', type: 'local', description: 'Logo + stage mention' },
-  { id: 'major-bronze', label: 'Major Bronze', price: '$1,000', type: 'major', description: 'Logo + profile placement' },
+  { id: 'major-RUBY', label: 'Major RUBY', price: '$1,000', type: 'major', description: 'Logo + profile placement' },
   { id: 'major-silver', label: 'Major Silver', price: '$5,000', type: 'major', description: 'Logo + stage overlay + analytics' },
   { id: 'major-gold', label: 'Major Gold', price: '$10,000', type: 'major', description: 'Priority mention + all surfaces' },
   { id: 'title', label: 'Title Sponsor', price: '$25,000+', type: 'major', description: 'Full naming rights + exclusive overlays' },

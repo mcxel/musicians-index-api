@@ -15,7 +15,7 @@ const SKIN_TONES = [
   { hex: "#F1C27D", label: "Ivory" },
   { hex: "#E0AC69", label: "Sand" },
   { hex: "#C68642", label: "Caramel" },
-  { hex: "#8D5524", label: "Bronze" },
+  { hex: "#8D5524", label: "RUBY" },
   { hex: "#5C3317", label: "Espresso" },
   { hex: "#3B1F0A", label: "Ebony" },
   { hex: "#D4A574", label: "Warm Olive" },

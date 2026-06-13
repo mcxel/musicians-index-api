@@ -10,24 +10,24 @@
 
 import { Check, Star, Crown, Zap } from 'lucide-react';
 
-type PackageTier = 'local-bronze' | 'local-silver' | 'local-gold' | 'major-bronze' | 'major-silver' | 'major-gold' | 'title';
+type PackageTier = 'local-RUBY' | 'local-silver' | 'local-gold' | 'major-RUBY' | 'major-silver' | 'major-gold' | 'title';
 
 interface SponsorPackage {
   id: PackageTier;
   label: string;
   type: 'local' | 'major';
   price: number;
-  tier: 'bronze' | 'silver' | 'gold' | 'title';
+  tier: 'RUBY' | 'silver' | 'gold' | 'title';
   benefits: string[];
 }
 
 const PACKAGES: SponsorPackage[] = [
   {
-    id: 'local-bronze',
-    label: 'Local Bronze',
+    id: 'local-RUBY',
+    label: 'Local RUBY',
     type: 'local',
     price: 50,
-    tier: 'bronze',
+    tier: 'RUBY',
     benefits: ['Name on artist profile', 'Contest entry acknowledgment'],
   },
   {
@@ -47,11 +47,11 @@ const PACKAGES: SponsorPackage[] = [
     benefits: ['Logo + profile placement', 'Stage mention during performance', 'Fan page visibility', 'Sponsor analytics'],
   },
   {
-    id: 'major-bronze',
-    label: 'Major Bronze',
+    id: 'major-RUBY',
+    label: 'Major RUBY',
     type: 'major',
     price: 1000,
-    tier: 'bronze',
+    tier: 'RUBY',
     benefits: ['Logo + profile placement', 'Stage mention', 'Sponsor analytics dashboard', 'Brand safety controls'],
   },
   {
@@ -81,7 +81,7 @@ const PACKAGES: SponsorPackage[] = [
 ];
 
 const TIER_COLORS = {
-  bronze: { color: '#cd7f32', glow: 'rgba(205,127,50,0.2)', border: 'rgba(205,127,50,0.3)' },
+  RUBY: { color: '#cd7f32', glow: 'rgba(205,127,50,0.2)', border: 'rgba(205,127,50,0.3)' },
   silver: { color: '#c0c0c0', glow: 'rgba(192,192,192,0.15)', border: 'rgba(192,192,192,0.3)' },
   gold: { color: '#ffd700', glow: 'rgba(255,215,0,0.2)', border: 'rgba(255,215,0,0.35)' },
   title: { color: '#00e5ff', glow: 'rgba(0,229,255,0.2)', border: 'rgba(0,229,255,0.4)' },

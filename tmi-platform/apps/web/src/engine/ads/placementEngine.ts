@@ -64,12 +64,12 @@ export function useAdRotator({ slots = DEFAULT_AD_SLOTS, intervalMs = 5000 }: Us
 /**
  * Returns sponsor tier color.
  */
-export function getSponsorTierColor(tier: "PLATINUM" | "GOLD" | "SILVER" | "BRONZE"): string {
+export function getSponsorTierColor(tier: "PLATINUM" | "GOLD" | "SILVER" | "RUBY"): string {
   const MAP: Record<string, string> = {
     PLATINUM: "#E0E0FF",
     GOLD: "#FFD700",
     SILVER: "#C0C0C0",
-    BRONZE: "#CD7F32",
+    RUBY: "#CD7F32",
   };
   return MAP[tier] ?? "#FFFFFF";
 }

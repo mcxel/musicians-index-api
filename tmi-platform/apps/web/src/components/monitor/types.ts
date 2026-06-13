@@ -1,4 +1,4 @@
-export type MonitorMode = 'floating' | 'docked' | 'pinned' | 'full-stage' | 'mini' | 'collapsed';
+export type MonitorMode = 'floating' | 'docked' | 'pinned' | 'full-stage' | 'mini' | 'collapsed' | 'fullscreen' | 'popped-out';
 
 export type MonitorSourceType =
   | 'playlist'
@@ -12,7 +12,7 @@ export type MonitorSourceType =
   | 'image'
   | 'audio';
 
-export type SubscriptionTier = 'FREE' | 'PRO' | 'BRONZE' | 'SILVER' | 'GOLD' | 'PLATINUM' | 'DIAMOND';
+export type SubscriptionTier = 'FREE' | 'PRO' | 'RUBY' | 'SILVER' | 'GOLD' | 'PLATINUM' | 'DIAMOND';
 
 export interface SyncState {
   monitorId: string;
@@ -52,4 +52,7 @@ export interface ActiveMonitor {
   pinned: boolean;
   docked: boolean;
   collapsed: boolean;
+  slotId?: string;
+  lockFeed?: boolean;
+  poppedOut?: boolean;
 }

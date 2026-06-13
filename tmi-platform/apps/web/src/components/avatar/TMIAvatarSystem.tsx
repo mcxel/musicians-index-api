@@ -72,7 +72,7 @@ const SKIN_TONES: SkinTone[] = [
   { id: "beige",      label: "Beige",       hex: "#D4956A", shadowHex: "#A06B40" },
   { id: "warm_olive", label: "Warm Olive",  hex: "#C68642", shadowHex: "#9E6321" },
   { id: "tan",        label: "Tan",         hex: "#B5651D", shadowHex: "#8B4513" },
-  { id: "bronze",     label: "Bronze",      hex: "#A0522D", shadowHex: "#7A3920" },
+  { id: "RUBY",     label: "RUBY",      hex: "#A0522D", shadowHex: "#7A3920" },
   { id: "caramel",    label: "Caramel",     hex: "#8B4513", shadowHex: "#6B3410" },
   { id: "mahogany",   label: "Mahogany",    hex: "#7B3F00", shadowHex: "#5C2E00" },
   { id: "dark_brown", label: "Dark Brown",  hex: "#5C2E00", shadowHex: "#3D1F00" },

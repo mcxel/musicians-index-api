@@ -1,0 +1,426 @@
+
+<h2 class="sr-only">TMI Playlist Engine — animated skins, media cards, skin generator, lobby sync, and share panel</h2>
+<style>
+@keyframes bubble{0%{transform:translateY(0) scale(1);opacity:.7}100%{transform:translateY(-120px) scale(.4);opacity:0}}
+@keyframes rock{0%,100%{transform:rotate(-2deg)}50%{transform:rotate(2deg)}}
+@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+@keyframes spinSlow{from{transform:rotate(0)}to{transform:rotate(-360deg)}}
+@keyframes eq1{0%,100%{height:8px}50%{height:28px}}
+@keyframes eq2{0%,100%{height:16px}50%{height:10px}}
+@keyframes eq3{0%,100%{height:22px}50%{height:6px}}
+@keyframes eq4{0%,100%{height:10px}50%{height:30px}}
+@keyframes eq5{0%,100%{height:18px}50%{height:8px}}
+@keyframes pulse{0%,100%{opacity:.4}50%{opacity:1}}
+@keyframes signal{0%,100%{transform:scaleX(1)}50%{transform:scaleX(1.05)}}
+@keyframes neonPulse{0%,100%{border-color:var(--color-border-info)}50%{border-color:var(--color-border-warning)}}
+@keyframes crowd{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+@keyframes slideIn{from{opacity:0;transform:translateX(8px)}to{opacity:1;transform:translateX(0)}}
+@keyframes popOut{from{opacity:0;transform:scaleY(0);transform-origin:top}to{opacity:1;transform:scaleY(1);transform-origin:top}}
+.eq-bar{width:5px;border-radius:2px 2px 0 0;background:var(--color-border-warning);display:inline-block;vertical-align:bottom}
+.eq-bar:nth-child(1){animation:eq1 .6s ease-in-out infinite}
+.eq-bar:nth-child(2){animation:eq2 .5s ease-in-out infinite .1s}
+.eq-bar:nth-child(3){animation:eq3 .7s ease-in-out infinite .05s}
+.eq-bar:nth-child(4){animation:eq4 .55s ease-in-out infinite .15s}
+.eq-bar:nth-child(5){animation:eq5 .65s ease-in-out infinite .08s}
+.eq-bar:nth-child(6){animation:eq1 .5s ease-in-out infinite .2s}
+.eq-bar:nth-child(7){animation:eq3 .6s ease-in-out infinite .12s}
+.eq-bar:nth-child(8){animation:eq2 .7s ease-in-out infinite .03s}
+.skin-btn{padding:5px 8px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary);font-size:11px;cursor:pointer;background:var(--color-background-primary);color:var(--color-text-secondary);white-space:nowrap;transition:all .15s;text-align:left;display:flex;align-items:center;gap:5px}
+.skin-btn.on{border:2px solid var(--color-border-info);background:var(--color-background-info);color:var(--color-text-info)}
+.skin-btn:hover:not(.on){background:var(--color-background-secondary)}
+.track-card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:8px 10px;display:flex;align-items:center;gap:8px;cursor:pointer;transition:border-color .15s;animation:slideIn .2s ease-out}
+.track-card:hover{border-color:var(--color-border-secondary)}
+.track-card.playing{border-color:var(--color-border-warning);background:var(--color-background-warning)}
+.media-type-btn{padding:5px 8px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-tertiary);font-size:11px;cursor:pointer;background:var(--color-background-primary);color:var(--color-text-secondary);display:flex;flex-direction:column;align-items:center;gap:3px;transition:border-color .15s}
+.media-type-btn:hover{border-color:var(--color-border-primary);background:var(--color-background-secondary)}
+.share-pill{padding:5px 10px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary);font-size:11px;cursor:pointer;background:var(--color-background-primary);display:flex;align-items:center;gap:5px;white-space:nowrap}
+.share-pill:hover{background:var(--color-background-secondary)}
+.bubble{position:absolute;border-radius:50%;background:var(--color-background-info);animation:bubble linear infinite;opacity:.7}
+.stage{border-radius:var(--border-radius-lg);border:0.5px solid var(--color-border-tertiary);overflow:hidden;position:relative;background:var(--color-background-secondary);transition:background .4s,border-color .4s}
+.stage.sub{background:var(--color-background-info);border-color:var(--color-border-info)}
+.stage.neon{background:var(--color-background-secondary);border-color:var(--color-border-info);animation:neonPulse 2s ease-in-out infinite}
+.stage.radio{background:var(--color-background-warning);border-color:var(--color-border-warning)}
+.stage.cypher{background:var(--color-background-danger);border-color:var(--color-border-danger)}
+.stage.velvet{background:var(--color-background-secondary);border-color:var(--color-border-secondary)}
+.stage.dj{background:var(--color-background-secondary);border-color:var(--color-border-secondary)}
+.prop{width:24px;height:24px;border-radius:50%;border:2.5px solid var(--color-border-warning);border-top-color:transparent;animation:spin .8s linear infinite}
+.vinyl{width:36px;height:36px;border-radius:50%;border:3px solid var(--color-border-primary);border-top-color:var(--color-border-warning);animation:spinSlow 2s linear infinite}
+.sync-indicator{display:flex;align-items:center;gap:5px;padding:5px 10px;border-radius:var(--border-radius-md);font-size:12px;border:0.5px solid var(--color-border-tertiary);background:var(--color-background-primary)}
+.sync-indicator.live{border-color:var(--color-border-success);background:var(--color-background-success);color:var(--color-text-success)}
+.chevron-toggle{display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:8px 10px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-tertiary);background:var(--color-background-primary);user-select:none;transition:background .15s}
+.chevron-toggle:hover{background:var(--color-background-secondary)}
+.color-swatch{width:20px;height:20px;border-radius:50%;border:1.5px solid var(--color-border-secondary);cursor:pointer;flex-shrink:0;transition:transform .15s}
+.color-swatch:hover{transform:scale(1.2)}
+.color-swatch.sel{border:2.5px solid var(--color-border-primary);transform:scale(1.15)}
+</style>
+
+<div style="display:grid;grid-template-columns:140px 1fr;gap:12px;margin-bottom:12px">
+
+  <!-- SKIN SELECTOR -->
+  <div>
+    <p style="font-size:12px;font-weight:500;color:var(--color-text-secondary);margin-bottom:6px">Playlist skin</p>
+    <div style="display:flex;flex-direction:column;gap:4px" id="skinList">
+      <button class="skin-btn on" onclick="setSkin('sub',this)"><i class="ti ti-submarine" style="font-size:14px" aria-hidden="true"></i> Submarine</button>
+      <button class="skin-btn" onclick="setSkin('neon',this)"><i class="ti ti-bolt" style="font-size:14px" aria-hidden="true"></i> Neon club</button>
+      <button class="skin-btn" onclick="setSkin('radio',this)"><i class="ti ti-radio" style="font-size:14px" aria-hidden="true"></i> Radio station</button>
+      <button class="skin-btn" onclick="setSkin('cypher',this)"><i class="ti ti-microphone" style="font-size:14px" aria-hidden="true"></i> Cypher arena</button>
+      <button class="skin-btn" onclick="setSkin('velvet',this)"><i class="ti ti-theater" style="font-size:14px" aria-hidden="true"></i> Velvet theater</button>
+      <button class="skin-btn" onclick="setSkin('dj',this)"><i class="ti ti-headphones" style="font-size:14px" aria-hidden="true"></i> DJ booth</button>
+      <button class="skin-btn" onclick="setSkin('concert',this)"><i class="ti ti-guitar-pick" style="font-size:14px" aria-hidden="true"></i> Concert stage</button>
+      <button class="skin-btn" onclick="setSkin('magazine',this)"><i class="ti ti-book" style="font-size:14px" aria-hidden="true"></i> Magazine</button>
+      <button class="skin-btn" onclick="setSkin('dance',this)"><i class="ti ti-music" style="font-size:14px" aria-hidden="true"></i> World dance</button>
+      <button class="skin-btn" onclick="setSkin('game',this)"><i class="ti ti-device-gamepad" style="font-size:14px" aria-hidden="true"></i> Game show</button>
+    </div>
+  </div>
+
+  <!-- PLAYER STAGE -->
+  <div>
+
+    <!-- Playlist header -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:6px">
+      <div style="display:flex;align-items:center;gap:8px">
+        <input id="playlistName" type="text" value="Big Kazhdog Live Set" style="font-size:15px;font-weight:500;border:none;background:transparent;color:var(--color-text-primary);padding:0;width:200px">
+        <select style="font-size:11px;padding:3px 6px"><option>Performer playlist</option><option>Fan playlist</option><option>Radio playlist</option><option>Event playlist</option><option>Sponsor playlist</option></select>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <span style="font-size:11px;color:var(--color-text-secondary)">Color:</span>
+        <div style="display:flex;gap:4px">
+          <div class="color-swatch sel" style="background:#E6F1FB" onclick="setColor('info',this)"></div>
+          <div class="color-swatch" style="background:#FAEEDA" onclick="setColor('warning',this)"></div>
+          <div class="color-swatch" style="background:#FBEAF0" onclick="setColor('pink',this)"></div>
+          <div class="color-swatch" style="background:#EAF3DE" onclick="setColor('success',this)"></div>
+          <div class="color-swatch" style="background:#EEEDFE" onclick="setColor('purple',this)"></div>
+          <div class="color-swatch" style="background:#FCEBEB" onclick="setColor('danger',this)"></div>
+        </div>
+        <div class="sync-indicator" id="syncIndicator">
+          <i class="ti ti-users" style="font-size:14px" aria-hidden="true"></i>
+          <span id="syncLabel">Lobby sync off</span>
+          <button onclick="toggleSync()" style="font-size:10px;padding:2px 6px">Enable</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- STAGE (skin-specific visual) -->
+    <div class="stage sub" id="stage" style="height:180px;margin-bottom:8px;display:flex;align-items:center;justify-content:center;padding:12px">
+      <div id="stageInner" style="display:flex;align-items:center;gap:14px;width:100%">
+        <!-- Submarine SVG approximation in HTML -->
+        <div id="subViz" style="position:relative;width:140px;height:110px;flex-shrink:0">
+          <div style="position:absolute;bottom:10px;left:10px;right:10px;height:70px;background:var(--color-background-warning);border-radius:50%;animation:rock 3s ease-in-out infinite;display:flex;align-items:center;justify-content:center;border:2px solid var(--color-border-warning)">
+            <div style="background:var(--color-background-primary);border-radius:6px;padding:4px 8px;text-align:center;width:88px">
+              <div style="font-size:8px;font-weight:500;color:var(--color-text-primary)" id="stageTitle">TOP CHARTS — POP</div>
+              <div id="nowPlaying" style="font-size:9px;font-weight:500;color:var(--color-text-warning);margin-top:1px">Neon Pulse Beat</div>
+              <div style="font-size:8px;color:var(--color-text-secondary)">3:28</div>
+            </div>
+          </div>
+          <!-- Periscope -->
+          <div style="position:absolute;top:0;left:55px;width:6px;height:26px;background:var(--color-background-warning);border-radius:3px"></div>
+          <div style="position:absolute;top:0;left:52px;width:12px;height:5px;background:var(--color-border-warning);border-radius:3px"></div>
+          <!-- Propeller -->
+          <div class="prop" style="position:absolute;right:4px;bottom:32px"></div>
+          <!-- Bubbles -->
+          <div class="bubble" style="width:8px;height:8px;left:30px;bottom:80px;animation-duration:2.1s"></div>
+          <div class="bubble" style="width:5px;height:5px;left:50px;bottom:85px;animation-duration:1.7s;animation-delay:.4s"></div>
+          <div class="bubble" style="width:10px;height:10px;left:15px;bottom:75px;animation-duration:2.5s;animation-delay:.8s"></div>
+          <div class="bubble" style="width:6px;height:6px;left:70px;bottom:80px;animation-duration:1.9s;animation-delay:1.2s"></div>
+        </div>
+
+        <!-- Track info + equalizer -->
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:500;margin-bottom:2px" id="stageSong">Neon Pulse Beat</div>
+          <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:8px" id="stageArtist">Jay Paul Sanchez</div>
+          <!-- Equalizer -->
+          <div id="eqBars" style="display:flex;gap:2px;align-items:flex-end;height:32px;margin-bottom:8px">
+            <div class="eq-bar" style="height:12px"></div>
+            <div class="eq-bar" style="height:20px"></div>
+            <div class="eq-bar" style="height:8px"></div>
+            <div class="eq-bar" style="height:24px"></div>
+            <div class="eq-bar" style="height:14px"></div>
+            <div class="eq-bar" style="height:18px"></div>
+            <div class="eq-bar" style="height:10px"></div>
+            <div class="eq-bar" style="height:22px"></div>
+          </div>
+          <!-- Progress bar -->
+          <div style="height:4px;background:var(--color-border-tertiary);border-radius:2px;margin-bottom:7px;cursor:pointer" onclick="seekTrack(event,this)">
+            <div id="progressFill" style="height:4px;background:var(--color-border-warning);border-radius:2px;width:35%;transition:width .3s"></div>
+          </div>
+          <!-- Controls -->
+          <div style="display:flex;align-items:center;gap:8px">
+            <button style="font-size:12px;padding:4px 8px" onclick="prevTrack()"><i class="ti ti-player-skip-back" aria-hidden="true"></i></button>
+            <button id="playBtn" style="font-size:12px;padding:5px 12px;background:var(--color-background-warning);color:var(--color-text-warning);border:0.5px solid var(--color-border-warning);border-radius:var(--border-radius-md)" onclick="togglePlay()"><i class="ti ti-player-play" id="playIcon" aria-hidden="true"></i></button>
+            <button style="font-size:12px;padding:4px 8px" onclick="nextTrack()"><i class="ti ti-player-skip-forward" aria-hidden="true"></i></button>
+            <button style="font-size:12px;padding:4px 8px" onclick="toggleRepeat()" id="repeatBtn"><i class="ti ti-repeat" aria-hidden="true"></i></button>
+            <button style="font-size:12px;padding:4px 8px" onclick="toggleShuffle()" id="shuffleBtn"><i class="ti ti-arrows-shuffle" aria-hidden="true"></i></button>
+            <div style="flex:1"></div>
+            <span style="font-size:11px;color:var(--color-text-secondary)" id="timeDisp">1:12 / 3:28</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Skin Generator -->
+    <div style="background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:10px;margin-bottom:10px">
+      <p style="font-size:12px;font-weight:500;margin-bottom:6px"><i class="ti ti-wand" style="font-size:14px" aria-hidden="true"></i> Skin generator — describe your vibe</p>
+      <div style="display:flex;gap:6px">
+        <input id="skinPrompt" type="text" placeholder="e.g. purple 90s R&B lounge, gold hip-hop radio, red comedy club..." style="flex:1;font-size:12px">
+        <button onclick="generateSkin()" style="font-size:11px;padding:0 12px;background:var(--color-background-info);color:var(--color-text-info);border:0.5px solid var(--color-border-info);border-radius:var(--border-radius-md)"><i class="ti ti-sparkles" aria-hidden="true"></i> Generate</button>
+      </div>
+      <div id="skinGenResult" style="margin-top:6px;font-size:11px;color:var(--color-text-tertiary)">Type a description and the AI will build a custom animated skin for your playlist.</div>
+    </div>
+  </div>
+</div>
+
+<!-- TRACK LIST (COLLAPSIBLE WITH CHEVRON) -->
+<div style="margin-bottom:10px">
+  <div class="chevron-toggle" onclick="toggleTracks()">
+    <div style="display:flex;align-items:center;gap:8px">
+      <i class="ti ti-playlist" style="font-size:16px" aria-hidden="true"></i>
+      <span style="font-size:13px;font-weight:500">Track list</span>
+      <span style="font-size:11px;color:var(--color-text-secondary)" id="trackCount">8 tracks · 28:42 total</span>
+      <span style="font-size:10px;background:var(--color-background-warning);color:var(--color-text-warning);padding:1px 7px;border-radius:var(--border-radius-md)">PLAYING</span>
+    </div>
+    <i class="ti ti-chevron-down" id="trackChevron" style="font-size:16px;transition:transform .2s" aria-hidden="true"></i>
+  </div>
+  <div id="trackListBody" style="border:0.5px solid var(--color-border-tertiary);border-top:none;border-radius:0 0 var(--border-radius-lg) var(--border-radius-lg);overflow:hidden;animation:popOut .2s ease-out">
+    <div style="padding:8px;display:flex;flex-direction:column;gap:5px" id="trackCards"></div>
+  </div>
+</div>
+
+<!-- ADD MEDIA -->
+<div style="margin-bottom:10px">
+  <div class="chevron-toggle" onclick="toggleAddMedia()">
+    <div style="display:flex;align-items:center;gap:8px">
+      <i class="ti ti-plus" style="font-size:16px" aria-hidden="true"></i>
+      <span style="font-size:13px;font-weight:500">Add media to playlist</span>
+      <span style="font-size:11px;color:var(--color-text-secondary)">Audio · Video · Links · Uploads</span>
+    </div>
+    <i class="ti ti-chevron-down" id="addChevron" style="font-size:16px;transition:transform .2s" aria-hidden="true"></i>
+  </div>
+  <div id="addMediaBody" style="display:none;border:0.5px solid var(--color-border-tertiary);border-top:none;border-radius:0 0 var(--border-radius-lg) var(--border-radius-lg);padding:10px">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(88px,1fr));gap:6px;margin-bottom:10px">
+      <div class="media-type-btn"><i class="ti ti-upload" style="font-size:18px" aria-hidden="true"></i><span>Upload audio</span></div>
+      <div class="media-type-btn"><i class="ti ti-video" style="font-size:18px" aria-hidden="true"></i><span>Upload video</span></div>
+      <div class="media-type-btn"><i class="ti ti-brand-youtube" style="font-size:18px;color:var(--color-text-danger)" aria-hidden="true"></i><span>YouTube link</span></div>
+      <div class="media-type-btn"><i class="ti ti-brand-spotify" style="font-size:18px;color:var(--color-text-success)" aria-hidden="true"></i><span>Spotify link</span></div>
+      <div class="media-type-btn"><i class="ti ti-brand-apple" style="font-size:18px" aria-hidden="true"></i><span>Apple Music</span></div>
+      <div class="media-type-btn"><i class="ti ti-music" style="font-size:18px;color:var(--color-text-warning)" aria-hidden="true"></i><span>SoundCloud</span></div>
+      <div class="media-type-btn"><i class="ti ti-headphones" style="font-size:18px" aria-hidden="true"></i><span>Tidal link</span></div>
+      <div class="media-type-btn"><i class="ti ti-file-music" style="font-size:18px" aria-hidden="true"></i><span>Beat / instrumental</span></div>
+      <div class="media-type-btn"><i class="ti ti-comedy" style="font-size:18px" aria-hidden="true"></i><span>Comedy clip</span></div>
+      <div class="media-type-btn"><i class="ti ti-human-dance" style="font-size:18px" aria-hidden="true"></i><span>Dance video</span></div>
+      <div class="media-type-btn"><i class="ti ti-ticket" style="font-size:18px;color:var(--color-text-info)" aria-hidden="true"></i><span>Ticket / event link</span></div>
+      <div class="media-type-btn"><i class="ti ti-link" style="font-size:18px" aria-hidden="true"></i><span>Any website link</span></div>
+      <div class="media-type-btn"><i class="ti ti-user" style="font-size:18px" aria-hidden="true"></i><span>Artist profile link</span></div>
+      <div class="media-type-btn"><i class="ti ti-shopping-cart" style="font-size:18px;color:var(--color-text-warning)" aria-hidden="true"></i><span>Beat marketplace</span></div>
+    </div>
+    <div style="display:flex;gap:6px">
+      <input type="text" placeholder="Paste any link — YouTube, Spotify, Apple Music, Tidal, SoundCloud, website, profile..." style="flex:1;font-size:12px">
+      <button style="font-size:11px;padding:0 12px;background:var(--color-background-success);color:var(--color-text-success);border:0.5px solid var(--color-border-success);border-radius:var(--border-radius-md)"><i class="ti ti-plus" aria-hidden="true"></i> Add</button>
+    </div>
+  </div>
+</div>
+
+<!-- LOBBY SYNC + SHARE -->
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+
+  <!-- Lobby Sync Panel -->
+  <div style="background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:12px">
+    <p style="font-size:13px;font-weight:500;margin-bottom:6px"><i class="ti ti-users" style="font-size:15px" aria-hidden="true"></i> Lobby sync</p>
+    <p style="font-size:11px;color:var(--color-text-secondary);margin-bottom:8px">Everyone in the room hears the exact same song, perfectly synced. No delays. All at once.</p>
+    <div id="syncStatus" style="background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:7px 10px;font-size:11px;color:var(--color-text-secondary);display:flex;align-items:center;gap:6px;margin-bottom:6px">
+      <i class="ti ti-plug-x" style="font-size:14px" aria-hidden="true"></i>
+      <span id="syncStatusText">Sync disabled — only you hear this</span>
+    </div>
+    <div style="display:flex;gap:5px">
+      <button onclick="toggleSync()" id="syncBtn" style="flex:1;font-size:11px;padding:6px;background:var(--color-background-success);color:var(--color-text-success);border:0.5px solid var(--color-border-success);border-radius:var(--border-radius-md)"><i class="ti ti-broadcast" aria-hidden="true"></i> Start lobby sync</button>
+      <button style="font-size:11px;padding:6px;border-radius:var(--border-radius-md)"><i class="ti ti-settings" aria-hidden="true"></i></button>
+    </div>
+    <div id="syncListeners" style="margin-top:6px;font-size:10px;color:var(--color-text-tertiary)">0 listeners synced</div>
+  </div>
+
+  <!-- Share Panel -->
+  <div style="background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:12px">
+    <p style="font-size:13px;font-weight:500;margin-bottom:6px"><i class="ti ti-share" style="font-size:15px" aria-hidden="true"></i> Share playlist</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">
+      <button class="share-pill"><i class="ti ti-link" style="font-size:13px" aria-hidden="true"></i> Copy link</button>
+      <button class="share-pill" onclick="copyEmbed()"><i class="ti ti-code" style="font-size:13px" aria-hidden="true"></i> Embed code</button>
+      <button class="share-pill"><i class="ti ti-qrcode" style="font-size:13px" aria-hidden="true"></i> QR code</button>
+      <button class="share-pill"><i class="ti ti-user-plus" style="font-size:13px" aria-hidden="true"></i> Follow playlist</button>
+      <button class="share-pill"><i class="ti ti-heart" style="font-size:13px" aria-hidden="true"></i> Add to mine</button>
+      <button class="share-pill"><i class="ti ti-coin" style="font-size:13px" aria-hidden="true"></i> Tip creator</button>
+      <button class="share-pill"><i class="ti ti-ticket" style="font-size:13px" aria-hidden="true"></i> Buy ticket</button>
+      <button class="share-pill"><i class="ti ti-calendar-plus" style="font-size:13px" aria-hidden="true"></i> Book artist</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONNECTIONS MAP (where this playlist lives) -->
+<div style="background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:10px;margin-bottom:10px">
+  <p style="font-size:12px;font-weight:500;margin-bottom:7px"><i class="ti ti-plug" style="font-size:14px" aria-hidden="true"></i> This playlist connects to</p>
+  <div style="display:flex;gap:5px;flex-wrap:wrap" id="connectionPills"></div>
+</div>
+
+<!-- BUILD DIRECTIVE -->
+<div style="text-align:center">
+  <button onclick="sendPrompt('Build the TMI Playlist Engine — a living animated media playlist system unlike anything before. Components needed: PlaylistPlayer (animated skin stage with equalizer, controls, progress bar), PlaylistSkinRenderer (10 skins: Submarine with animated bubbles and rocking body, Neon Club with pulsing floor lights, Radio Station with spinning vinyl and signal tower, Cypher Arena with crowd energy, Velvet Theater with spotlights, DJ Booth with turntables, Concert Stage, Magazine, World Dance Party, Game Show), PlaylistSkinGenerator (AI prompt input that generates custom animated skin — background, frame, buttons, equalizer style, transitions, player layout), PlaylistMediaCard (supports: uploaded audio, uploaded video, YouTube link, Spotify link, Apple Music, SoundCloud, Tidal, Pandora, beat/instrumental, comedy clip, dance video, music video, ticket/event link, artist profile link, beat marketplace link, any website URL), PlaylistEmbedWidget (embeddable anywhere), PlaylistSharePanel (copy link, embed code, QR code, follow, add to mine, tip creator, buy ticket, book artist), PlaylistLobbySync (WebRTC-based real-time sync so everyone in a room hears the same song at the same millisecond — no delays, perfectly synced), PlaylistDashboardPanel (collapsible chevron container that pops out without cluttering the screen — compact face showing current track, expand to full playlist). Color customization: every playlist can change its accent color. Modes: Personal Playlist, Performer Playlist, Radio Playlist, Event Playlist, Sponsor Playlist. Connects to: fan dashboard, performer dashboard, artist profile, venue pages, sponsor pages, Stream and Win Radio, World Dance Party, cypher rooms, battle rooms, challenge rooms, magazine articles, admin hubs. Old-school MySpace inspiration but modern TMI broadcast network cinematic style. Every track change should trigger a skin reaction animation.')">Build TMI Playlist Engine in repo ↗</button>
+</div>
+
+<script>
+const TRACKS=[
+  {title:'Neon Pulse Beat',artist:'Jay Paul Sanchez',dur:'3:28',type:'beat',icon:'ti-file-music',color:'warning'},
+  {title:'Stadium Anthem',artist:'Wavetek',dur:'4:12',type:'upload',icon:'ti-upload',color:'info'},
+  {title:'Midnight Cypher',artist:'Nova Cipher',dur:'3:55',type:'youtube',icon:'ti-brand-youtube',color:'danger'},
+  {title:'Gold Rush Remix',artist:'Lagos Burst',dur:'3:41',type:'spotify',icon:'ti-brand-spotify',color:'success'},
+  {title:'Frequency 808',artist:'DJ Kraze',dur:'5:02',type:'soundcloud',icon:'ti-music',color:'warning'},
+  {title:'Comedy Night #7',artist:'Nova Laugh',dur:'6:14',type:'video',icon:'ti-video',color:'secondary'},
+  {title:'Dance Floor Daze',artist:'Flex King',dur:'3:33',type:'dance',icon:'ti-human-dance',color:'purple'},
+  {title:'VIP Backstage Pass',artist:'TMI Events',dur:'—',type:'ticket',icon:'ti-ticket',color:'info'},
+];
+const TYPE_LABELS={beat:'Beat',upload:'Uploaded',youtube:'YouTube',spotify:'Spotify',soundcloud:'SoundCloud',video:'Video',dance:'Dance clip',ticket:'Ticket/Link'};
+
+let curTrack=0,playing=true,tracksOpen=true,addMediaOpen=false,syncOn=false,progress=35;
+
+function renderTracks(){
+  const el=document.getElementById('trackCards');
+  el.innerHTML=TRACKS.map((t,i)=>`
+    <div class="track-card${i===curTrack?' playing':''}" onclick="playTrack(${i})">
+      <div style="width:24px;height:24px;border-radius:var(--border-radius-md);background:var(--color-background-${t.color});display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        <i class="ti ${t.icon}" style="font-size:13px;color:var(--color-text-${t.color})" aria-hidden="true"></i>
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:${i===curTrack?'500':'400'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.title}</div>
+        <div style="font-size:11px;color:var(--color-text-secondary)">${t.artist} · <span style="color:var(--color-text-tertiary)">${TYPE_LABELS[t.type]}</span></div>
+      </div>
+      <div style="font-size:11px;color:var(--color-text-secondary);white-space:nowrap">${t.dur}</div>
+      ${i===curTrack?'<div style="display:flex;gap:3px;align-items:flex-end;height:16px"><div class="eq-bar" style="height:8px;width:3px"></div><div class="eq-bar" style="height:12px;width:3px"></div><div class="eq-bar" style="height:6px;width:3px"></div></div>':''}
+      <button style="font-size:11px;padding:2px 6px;opacity:.4;transition:opacity .15s" onmouseenter="this.style.opacity=1" onmouseleave="this.style.opacity=.4"><i class="ti ti-trash" aria-hidden="true"></i></button>
+    </div>`).join('');
+}
+function playTrack(i){
+  curTrack=i;playing=true;progress=0;
+  const t=TRACKS[i];
+  document.getElementById('stageSong').textContent=t.title;
+  document.getElementById('stageArtist').textContent=t.artist;
+  document.getElementById('nowPlaying').textContent=t.title;
+  document.getElementById('playIcon').className='ti ti-player-pause';
+  renderTracks();
+  document.getElementById('progressFill').style.width='2%';
+}
+function nextTrack(){playTrack((curTrack+1)%TRACKS.length);}
+function prevTrack(){playTrack((curTrack-1+TRACKS.length)%TRACKS.length);}
+function togglePlay(){
+  playing=!playing;
+  document.getElementById('playIcon').className=playing?'ti ti-player-pause':'ti ti-player-play';
+  document.querySelectorAll('.eq-bar').forEach(b=>{b.style.animationPlayState=playing?'running':'paused';});
+}
+function toggleRepeat(){document.getElementById('repeatBtn').style.background=document.getElementById('repeatBtn').style.background?'':'var(--color-background-warning)';}
+function toggleShuffle(){document.getElementById('shuffleBtn').style.background=document.getElementById('shuffleBtn').style.background?'':'var(--color-background-info)';}
+function seekTrack(e,el){const r=el.getBoundingClientRect();progress=Math.round((e.clientX-r.left)/r.width*100);document.getElementById('progressFill').style.width=progress+'%';}
+renderTracks();
+
+function toggleTracks(){
+  tracksOpen=!tracksOpen;
+  document.getElementById('trackListBody').style.display=tracksOpen?'block':'none';
+  document.getElementById('trackChevron').style.transform=tracksOpen?'rotate(0)':'rotate(-90deg)';
+}
+function toggleAddMedia(){
+  addMediaOpen=!addMediaOpen;
+  document.getElementById('addMediaBody').style.display=addMediaOpen?'block':'none';
+  document.getElementById('addChevron').style.transform=addMediaOpen?'rotate(0)':'rotate(-90deg)';
+}
+
+const SKINS={
+  sub:{cls:'sub',label:'Submarine',accent:'info'},
+  neon:{cls:'neon',label:'Neon club',accent:'info'},
+  radio:{cls:'radio',label:'Radio station',accent:'warning'},
+  cypher:{cls:'cypher',label:'Cypher arena',accent:'danger'},
+  velvet:{cls:'velvet',label:'Velvet theater',accent:'secondary'},
+  dj:{cls:'dj',label:'DJ booth',accent:'secondary'},
+  concert:{cls:'neon',label:'Concert stage',accent:'info'},
+  magazine:{cls:'velvet',label:'Magazine',accent:'secondary'},
+  dance:{cls:'neon',label:'World dance',accent:'info'},
+  game:{cls:'radio',label:'Game show',accent:'warning'},
+};
+function setSkin(name,btn){
+  document.querySelectorAll('.skin-btn').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  const stage=document.getElementById('stage');
+  stage.className='stage '+SKINS[name].cls;
+}
+function setColor(color,swatch){
+  document.querySelectorAll('.color-swatch').forEach(s=>s.classList.remove('sel'));
+  swatch.classList.add('sel');
+  document.querySelectorAll('.eq-bar').forEach(b=>{b.style.background=`var(--color-border-${color})`;});
+}
+function toggleSync(){
+  syncOn=!syncOn;
+  const indicator=document.getElementById('syncIndicator');
+  const statusEl=document.getElementById('syncStatus');
+  const btn=document.getElementById('syncBtn');
+  if(syncOn){
+    indicator.className='sync-indicator live';
+    document.getElementById('syncLabel').textContent='Lobby sync on — 3 listening';
+    statusEl.style.background='var(--color-background-success)';
+    statusEl.style.color='var(--color-text-success)';
+    document.getElementById('syncStatusText').textContent='Synced — all listeners hear this track now';
+    btn.textContent='Stop sync';
+    btn.style.background='var(--color-background-danger)';
+    btn.style.color='var(--color-text-danger)';
+    btn.style.borderColor='var(--color-border-danger)';
+    let n=3;
+    const tick=setInterval(()=>{n+=Math.floor(Math.random()*2);document.getElementById('syncListeners').textContent=n+' listeners synced';if(!syncOn)clearInterval(tick);},2000);
+  } else {
+    indicator.className='sync-indicator';
+    document.getElementById('syncLabel').textContent='Lobby sync off';
+    statusEl.style.background='var(--color-background-secondary)';
+    statusEl.style.color='var(--color-text-secondary)';
+    document.getElementById('syncStatusText').textContent='Sync disabled — only you hear this';
+    btn.textContent='Start lobby sync';
+    btn.style.background='var(--color-background-success)';
+    btn.style.color='var(--color-text-success)';
+    btn.style.borderColor='var(--color-border-success)';
+    document.getElementById('syncListeners').textContent='0 listeners synced';
+  }
+}
+function copyEmbed(){
+  const code=`<iframe src="https://themusiciansindex.com/playlist/embed/bigkazhdog" width="400" height="320" frameborder="0"></iframe>`;
+  navigator.clipboard.writeText(code).catch(()=>{});
+  const btn=event.target.closest('button');
+  const orig=btn.innerHTML;btn.textContent='Copied!';setTimeout(()=>{btn.innerHTML=orig;},1500);
+}
+function generateSkin(){
+  const prompt=document.getElementById('skinPrompt').value;
+  if(!prompt.trim()) return;
+  const result=document.getElementById('skinGenResult');
+  result.style.color='var(--color-text-warning)';
+  result.textContent='Generating animated skin...';
+  setTimeout(()=>{
+    result.style.color='var(--color-text-success)';
+    result.textContent=`Skin generated: "${prompt}" — background animated, frame styled, equalizer customized, transitions created. Apply to stage?`;
+    const applyBtn=document.createElement('button');
+    applyBtn.textContent=' Apply skin';
+    applyBtn.style.cssText='font-size:10px;padding:2px 7px;margin-left:8px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-success);background:var(--color-background-success);color:var(--color-text-success);cursor:pointer';
+    applyBtn.onclick=()=>{document.getElementById('stage').className='stage neon';result.textContent='Custom skin applied!';};
+    result.appendChild(applyBtn);
+  },1400);
+}
+
+const CONNECTIONS=['Fan dashboard','Performer dashboard','Artist profile','Venue pages','Sponsor pages','Stream &amp; Win Radio','World Dance Party','Cypher rooms','Battle rooms','Challenge rooms','Magazine articles','Admin hubs'];
+const pillEl=document.getElementById('connectionPills');
+CONNECTIONS.forEach(c=>{
+  const d=document.createElement('div');
+  d.style.cssText='font-size:11px;padding:3px 9px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary);background:var(--color-background-primary);cursor:pointer;white-space:nowrap;transition:border-color .15s';
+  d.innerHTML=c;
+  d.onmouseenter=()=>{d.style.borderColor='var(--color-border-primary)';d.style.background='var(--color-background-secondary)';};
+  d.onmouseleave=()=>{d.style.borderColor='var(--color-border-secondary)';d.style.background='var(--color-background-primary)';};
+  pillEl.appendChild(d);
+});
+
+let prog=35;
+setInterval(()=>{
+  if(playing){prog=Math.min(100,prog+.3);document.getElementById('progressFill').style.width=Math.round(prog)+'%';
+    const mins=Math.floor(prog/100*208/60),secs=Math.floor(prog/100*208)%60;
+    document.getElementById('timeDisp').textContent=mins+':'+String(secs).padStart(2,'0')+' / 3:28';
+    if(prog>=100){prog=0;nextTrack();}
+  }
+},300);
+</script>

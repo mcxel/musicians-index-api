@@ -11,7 +11,7 @@ export interface StreakBadge {
   label: string;
   icon: string;
   color: string;
-  tier: "bronze" | "silver" | "gold" | "platinum" | "legendary";
+  tier: "RUBY" | "silver" | "gold" | "platinum" | "legendary";
 }
 
 export interface StreakSnapshot {
@@ -56,7 +56,7 @@ function badgeForStreak(streak: number, type: "win" | "predict" | "support" | "a
   const configs: Record<string, { tiers: [number, StreakBadge][] }> = {
     win: {
       tiers: [
-        [3,  { label: "3-WIN STREAK",    icon: "🔥", color: "#FF6B35", tier: "bronze"   }],
+        [3,  { label: "3-WIN STREAK",    icon: "🔥", color: "#FF6B35", tier: "RUBY"   }],
         [5,  { label: "5-WIN STREAK",    icon: "⚡", color: "#FFD700", tier: "silver"   }],
         [10, { label: "10-WIN STREAK",   icon: "💎", color: "#00FFFF", tier: "gold"     }],
         [20, { label: "20-WIN STREAK",   icon: "👑", color: "#AA2DFF", tier: "platinum" }],
@@ -65,7 +65,7 @@ function badgeForStreak(streak: number, type: "win" | "predict" | "support" | "a
     },
     predict: {
       tiers: [
-        [3,  { label: "PROPHET",         icon: "🔮", color: "#AA2DFF", tier: "bronze"   }],
+        [3,  { label: "PROPHET",         icon: "🔮", color: "#AA2DFF", tier: "RUBY"   }],
         [7,  { label: "ORACLE",          icon: "🌟", color: "#FFD700", tier: "silver"   }],
         [15, { label: "SEER",            icon: "👁️",  color: "#00FFFF", tier: "gold"     }],
         [30, { label: "NOSTRADAMUS",     icon: "🧿", color: "#FF2DAA", tier: "legendary"}],
@@ -73,7 +73,7 @@ function badgeForStreak(streak: number, type: "win" | "predict" | "support" | "a
     },
     support: {
       tiers: [
-        [3,  { label: "SUPPORTER",       icon: "💚", color: "#00FF88", tier: "bronze"   }],
+        [3,  { label: "SUPPORTER",       icon: "💚", color: "#00FF88", tier: "RUBY"   }],
         [7,  { label: "PATRON",          icon: "💎", color: "#00FFFF", tier: "silver"   }],
         [14, { label: "SUPER FAN",       icon: "❤️‍🔥", color: "#FF2DAA", tier: "gold"    }],
         [30, { label: "LEGEND FAN",      icon: "🌠", color: "#FFD700", tier: "legendary"}],
@@ -81,7 +81,7 @@ function badgeForStreak(streak: number, type: "win" | "predict" | "support" | "a
     },
     attend: {
       tiers: [
-        [3,  { label: "REGULAR",         icon: "📅", color: "#00FFFF", tier: "bronze"   }],
+        [3,  { label: "REGULAR",         icon: "📅", color: "#00FFFF", tier: "RUBY"   }],
         [8,  { label: "VETERAN",         icon: "🎖️", color: "#FFD700", tier: "silver"   }],
         [20, { label: "LIFER",           icon: "🏟️", color: "#FF2DAA", tier: "gold"     }],
         [52, { label: "IMMORTAL",        icon: "♾️",  color: "#AA2DFF", tier: "legendary"}],

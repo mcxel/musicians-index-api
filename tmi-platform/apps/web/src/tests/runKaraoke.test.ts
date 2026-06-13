@@ -5,8 +5,8 @@ function runKaraokeTest() {
   const world: SeatingWorldLike = {
     worldId: 'karaoke_zone_test',
     players: [
-      { id: 'user1', name: 'A', tier: 'bronze', position: 'standing' },
-      { id: 'user2', name: 'B', tier: 'bronze', position: 'standing' }
+      { id: 'user1', name: 'A', tier: 'RUBY', position: 'standing' },
+      { id: 'user2', name: 'B', tier: 'RUBY', position: 'standing' }
     ]
   }
 

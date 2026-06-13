@@ -66,7 +66,7 @@ export async function GET(req: NextRequest) {
     tier === 'PLATINUM' ? 'advanced' :
     tier === 'GOLD'     ? 'professional' :
     tier === 'SILVER'   ? 'standard' :
-    tier === 'BRONZE'   ? 'basic' :
+    tier === 'RUBY'   ? 'basic' :
     tier === 'PRO'      ? 'basic' :
     'minimal';
 

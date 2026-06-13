@@ -17,7 +17,7 @@ export type SponsorAdSlot = {
   tagline: string;
   logoUrl?: string;
   href: string;
-  tier: "platinum" | "gold" | "silver" | "bronze" | "free";
+  tier: "platinum" | "gold" | "silver" | "RUBY" | "free";
   type: "banner" | "card" | "chip" | "fullstrip";
   gifted?: boolean;
   giveawayActive?: boolean;
@@ -85,7 +85,7 @@ const TIER_STYLE: Record<string, string> = {
   platinum: "border-purple-400 bg-purple-900/40",
   gold: "border-yellow-400 bg-yellow-900/30",
   silver: "border-slate-400 bg-slate-800/40",
-  bronze: "border-orange-400 bg-orange-900/30",
+  RUBY: "border-orange-400 bg-orange-900/30",
   free: "border-white/20 bg-white/5",
 };
 
@@ -93,7 +93,7 @@ const TIER_BADGE: Record<string, string> = {
   platinum: "bg-purple-600",
   gold: "bg-yellow-600",
   silver: "bg-slate-600",
-  bronze: "bg-orange-700",
+  RUBY: "bg-orange-700",
   free: "bg-slate-700",
 };
 

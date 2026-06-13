@@ -6,7 +6,7 @@ import AdSenseUnit from '@/components/placement/AdSenseUnit';
 
 export interface AdRendererProps {
   zone: string;
-  tier?: "free" | "bronze" | "gold" | "platinum" | "diamond";
+  tier?: "free" | "RUBY" | "gold" | "platinum" | "diamond";
   className?: string;
 }
 

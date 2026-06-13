@@ -14,7 +14,7 @@ import TieredAdSlot from "@/components/ads/TieredAdSlot";
 import { usePresenceEngine } from "@/lib/live/presenceEngine";
 
 type LobbySize = "sm" | "md" | "lg" | "full";
-type UserTier  = "free" | "pro-bronze" | "gold-platinum" | "diamond";
+type UserTier  = "free" | "pro-RUBY" | "gold-platinum" | "diamond";
 
 interface VenueLobbyWallProps {
   roomId?: string;

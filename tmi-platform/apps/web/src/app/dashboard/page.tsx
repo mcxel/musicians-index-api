@@ -10,7 +10,7 @@ function roleToDestination(role: string): string {
   if (r === "advertiser") return "/dashboard/advertiser";
   if (r === "venue")      return "/dashboard/venue";
   if (r === "writer")     return "/dashboard/writer";
-  if (r === "promoter")   return "/dashboard/fan";
+  if (r === "promoter")   return "/dashboard/promoter";
   if (r === "user") return "/onboarding";
   if (r === "fan") return "/dashboard/fan";
   return "/dashboard/fan";

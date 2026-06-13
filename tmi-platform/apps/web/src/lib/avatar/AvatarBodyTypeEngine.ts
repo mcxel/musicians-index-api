@@ -87,7 +87,7 @@ export const SKIN_TONES: SkinTone[] = [
   { id: "warm-olive",  label: "Warm Olive",  hex: "#D4A574", shadowHex: "#B8895A", highlightHex: "#E8B888" },
   { id: "caramel",     label: "Caramel",     hex: "#C68642", shadowHex: "#A8702E", highlightHex: "#D89858" },
   { id: "tawny",       label: "Tawny",       hex: "#AA6C39", shadowHex: "#8E5825", highlightHex: "#C0804E" },
-  { id: "bronze",      label: "Bronze",      hex: "#8D5524", shadowHex: "#724010", highlightHex: "#A06A38" },
+  { id: "RUBY",      label: "RUBY",      hex: "#8D5524", shadowHex: "#724010", highlightHex: "#A06A38" },
   { id: "sienna",      label: "Sienna",      hex: "#6B3A1F", shadowHex: "#50280C", highlightHex: "#804E32" },
   { id: "espresso",    label: "Espresso",    hex: "#5C3317", shadowHex: "#401F04", highlightHex: "#70472A" },
   { id: "ebony",       label: "Ebony",       hex: "#3B1F0A", shadowHex: "#200D00", highlightHex: "#4E3018" },

@@ -33,7 +33,7 @@ export default function FanProfilePage() {
   const name = session?.user?.displayName ?? session?.user?.email?.split('@')[0] ?? 'Fan';
   const tier = session?.tier ?? 'FREE';
 
-  const TIER_COLORS: Record<string, string> = { DIAMOND: '#00FFFF', GOLD: '#FFD700', PLATINUM: '#E5E4E2', SILVER: '#C0C0C0', BRONZE: '#CD7F32', PRO: '#AA2DFF', FREE: '#666' };
+  const TIER_COLORS: Record<string, string> = { DIAMOND: '#00FFFF', GOLD: '#FFD700', PLATINUM: '#E5E4E2', SILVER: '#C0C0C0', RUBY: '#CD7F32', PRO: '#AA2DFF', FREE: '#666' };
   const tierColor = TIER_COLORS[tier] ?? '#666';
 
   return (

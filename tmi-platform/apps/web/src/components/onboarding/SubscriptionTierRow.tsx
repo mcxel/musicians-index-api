@@ -1,12 +1,12 @@
 "use client";
 
 // Canon source: Fan Sign up.png — 5-card horizontal tier row
-// Tiers: FREE → BRONZE → SILVER → GOLD → PLATINUM (displays as DIAMOND at top)
+// Tiers: FREE → RUBY → SILVER → GOLD → PLATINUM (displays as DIAMOND at top)
 // Selected card gets color border + glow; highlight badge on recommended
 
 import React, { useState } from "react";
 
-export type SubscriptionTier = "FREE" | "BRONZE" | "SILVER" | "GOLD" | "PLATINUM";
+export type SubscriptionTier = "FREE" | "RUBY" | "SILVER" | "GOLD" | "PLATINUM";
 
 interface TierOption {
   tier: SubscriptionTier;
@@ -28,8 +28,8 @@ const TIER_OPTIONS: TierOption[] = [
     perks: ["Watch Rooms", "Vote", "Basic Chat"],
   },
   {
-    tier: "BRONZE",
-    displayLabel: "BRONZE",
+    tier: "RUBY",
+    displayLabel: "RUBY",
     color: "#CD7F32",
     bg: "rgba(205,127,50,0.08)",
     price: "$4.99",

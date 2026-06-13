@@ -4,10 +4,10 @@
  * Governs analytics depth per subscription tier.
  * Free gets basic counts. Diamond gets predictive AI + full suite.
  *
- * Tiers: free → pro → bronze → silver → gold → platinum → diamond
+ * Tiers: free → pro → RUBY → silver → gold → platinum → diamond
  */
 
-export type SubscriptionTier = 'free' | 'pro' | 'bronze' | 'silver' | 'gold' | 'platinum' | 'diamond';
+export type SubscriptionTier = 'free' | 'pro' | 'ruby' | 'silver' | 'gold' | 'platinum' | 'diamond';
 
 export type InsightEngine =
   | 'AudienceInsightEngine'
@@ -40,7 +40,7 @@ export interface TierCapabilities {
   };
 }
 
-export const TIER_ORDER: SubscriptionTier[] = ['free', 'pro', 'bronze', 'silver', 'gold', 'platinum', 'diamond'];
+export const TIER_ORDER: SubscriptionTier[] = ['free', 'pro', 'ruby', 'silver', 'gold', 'platinum', 'diamond'];
 
 export const TIER_CAPABILITIES: Record<SubscriptionTier, TierCapabilities> = {
   free: {
@@ -85,8 +85,8 @@ export const TIER_CAPABILITIES: Record<SubscriptionTier, TierCapabilities> = {
       revenueForecasting: false,
     },
   },
-  bronze: {
-    tier: 'bronze',
+  ruby: {
+    tier: 'ruby',
     historyDays: 30,
     enabledEngines: ['AudienceInsightEngine', 'FanRetentionEngine'],
     features: {
@@ -238,8 +238,8 @@ export function getAnalyticsSnapshot(
   const metrics: AnalyticsMetric[] = [
     { label: 'Profile Views', value: '12.4K', delta: '+8%', color: '#00FFFF', locked: false, requiredTier: 'free' },
     { label: 'Beat Plays',    value: '89.2K', delta: '+22%', color: '#FF2DAA', locked: isLocked('pro', userTier), requiredTier: 'pro' },
-    { label: 'Fan Messages',  value: '1,842', delta: '+5%',  color: '#FFD700', locked: isLocked('bronze', userTier), requiredTier: 'bronze' },
-    { label: 'Avg Watch Time', value: '4m 12s', delta: '-1m', color: '#AA2DFF', locked: isLocked('bronze', userTier), requiredTier: 'bronze' },
+    { label: 'Fan Messages',  value: '1,842', delta: '+5%',  color: '#FFD700', locked: isLocked('ruby', userTier), requiredTier: 'ruby' },
+    { label: 'Avg Watch Time', value: '4m 12s', delta: '-1m', color: '#AA2DFF', locked: isLocked('ruby', userTier), requiredTier: 'ruby' },
     { label: 'Follower Growth', value: '+340', delta: '+12%', color: '#00FF88', locked: isLocked('silver', userTier), requiredTier: 'silver' },
     { label: 'Revenue This Month', value: '$12,680', delta: '+31%', color: '#FFD700', locked: isLocked('gold', userTier), requiredTier: 'gold' },
     { label: 'Sponsor Interactions', value: '5,910', delta: '+44%', color: '#FF9200', locked: isLocked('silver', userTier), requiredTier: 'silver' },
@@ -263,7 +263,7 @@ export function getAnalyticsSnapshot(
       headline: 'Day-7 retention dropped 12% — post-show engagement gap',
       body: 'Fans who miss the first week after a show churn 3× faster. Consider an automated follow-up beat clip or behind-the-scenes drop on day 3.',
       urgency: 'warning',
-      locked: isLocked('bronze', userTier),
+      locked: isLocked('ruby', userTier),
     },
     {
       engine: 'TrendMomentumEngine',

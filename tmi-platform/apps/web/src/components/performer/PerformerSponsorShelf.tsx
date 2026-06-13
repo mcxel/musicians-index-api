@@ -15,7 +15,7 @@ import { useState } from 'react';
 const TIER_SLOTS: Record<string, { local: number; major: number; badge: string; color: string }> = {
   free:     { local: 10,  major: 10,  badge: 'FREE',     color: '#888888' },
   pro:      { local: 25,  major: 15,  badge: 'PRO',      color: '#00FFFF' },
-  bronze:   { local: 50,  major: 25,  badge: 'BRONZE',   color: '#CD7F32' },
+  RUBY:   { local: 50,  major: 25,  badge: 'RUBY',   color: '#CD7F32' },
   silver:   { local: 75,  major: 35,  badge: 'SILVER',   color: '#C0C0C0' },
   gold:     { local: 100, major: 50,  badge: 'GOLD',     color: '#FFD700' },
   platinum: { local: 250, major: 100, badge: 'PLATINUM', color: '#E5E4E2' },
@@ -23,7 +23,7 @@ const TIER_SLOTS: Record<string, { local: number; major: number; badge: string; 
 };
 
 const TIER_UPGRADE_NEXT: Record<string, string> = {
-  free: 'pro', pro: 'bronze', bronze: 'silver',
+  free: 'pro', pro: 'RUBY', RUBY: 'silver',
   silver: 'gold', gold: 'platinum', platinum: 'diamond', diamond: 'diamond',
 };
 

@@ -1,4 +1,4 @@
-export type AchievementTier = "bronze" | "silver" | "gold" | "platinum" | "diamond";
+export type AchievementTier = "RUBY" | "silver" | "gold" | "platinum" | "diamond";
 
 export interface BotAchievement {
   achievementId: string;
@@ -13,7 +13,7 @@ export interface BotAchievement {
 
 const ledger = new Map<string, BotAchievement[]>();
 
-const TIER_ORDER: AchievementTier[] = ["bronze", "silver", "gold", "platinum", "diamond"];
+const TIER_ORDER: AchievementTier[] = ["RUBY", "silver", "gold", "platinum", "diamond"];
 
 function botKey(botId: string) { return `bot:${botId}`; }
 

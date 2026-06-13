@@ -24,7 +24,7 @@ const FEATURED_CLUBS = [
     perks: ["Early beat access", "Monthly video drops", "Contest priority voting", "Signed merch giveaways"],
   },
   {
-    artist: "Krypt",         genre: "Hip-Hop",   members: "2,900",  tier: "Bronze",   price: "$1.99/mo", color: "#AA2DFF", icon: "🔒",
+    artist: "Krypt",         genre: "Hip-Hop",   members: "2,900",  tier: "RUBY",   price: "$1.99/mo", color: "#AA2DFF", icon: "🔒",
     perks: ["Exclusive fan badge", "Monthly fan chat", "Priority room seating"],
   },
   {
@@ -33,7 +33,7 @@ const FEATURED_CLUBS = [
   },
 ];
 
-const TIER_COLOR: Record<string, string> = { Bronze: "#CD7F32", Silver: "#C0C0C0", Gold: "#FFD700", Platinum: "#00FFFF" };
+const TIER_COLOR: Record<string, string> = { RUBY: "#CD7F32", Silver: "#C0C0C0", Gold: "#FFD700", Platinum: "#00FFFF" };
 
 export default function FanClubPage() {
   return (

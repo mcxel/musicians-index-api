@@ -1,12 +1,12 @@
 "use client";
 
 // Canon source: Fan Sign up.png — Avatar Quick Pick row beneath the form
-// 4 avatar bubbles: FREE / BRONZE / SILVER / HOST
+// 4 avatar bubbles: FREE / RUBY / SILVER / HOST
 // Tap to select — selected bubble gets glow ring
 
 import React, { useState } from "react";
 
-export type AvatarTier = "FREE" | "BRONZE" | "SILVER" | "HOST";
+export type AvatarTier = "FREE" | "RUBY" | "SILVER" | "HOST";
 
 interface AvatarOption {
   tier: AvatarTier;
@@ -19,7 +19,7 @@ interface AvatarOption {
 
 const AVATAR_OPTIONS: AvatarOption[] = [
   { tier: "FREE",   label: "FREE",   color: "#00FFFF", bg: "rgba(0,255,255,0.08)",    icon: "🎵" },
-  { tier: "BRONZE", label: "BRONZE", color: "#CD7F32", bg: "rgba(205,127,50,0.12)",   icon: "🎤" },
+  { tier: "RUBY", label: "RUBY", color: "#CD7F32", bg: "rgba(205,127,50,0.12)",   icon: "🎤" },
   { tier: "SILVER", label: "SILVER", color: "#C0C0C0", bg: "rgba(192,192,192,0.12)",  icon: "⭐" },
   { tier: "HOST",   label: "HOST",   color: "#FF2DAA", bg: "rgba(255,45,170,0.12)",   icon: "👑", locked: true },
 ];

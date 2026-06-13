@@ -59,7 +59,7 @@ export default function AutoFanWelcomeMessage({ displayName, username }: AutoFan
             ['Tier', 'Normal', 'Launch 2×'],
             ['Free join', '500 XP', '1,000 XP'],
             ['Pro', '750 XP', '1,500 XP'],
-            ['Bronze', '1,000 XP', '2,000 XP'],
+            ['RUBY', '1,000 XP', '2,000 XP'],
             ['Silver', '1,250 XP', '2,500 XP'],
             ['Gold', '1,500 XP', '3,000 XP'],
             ['Platinum', '2,000 XP', '4,000 XP'],

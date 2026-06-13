@@ -115,6 +115,14 @@ export class DiamondInviteEngine {
       isDiamondProducer: true,
       status: 'active',
     }],
+
+    // Cyrisaiah — Lifetime diamond fan (already had free account, owner-granted 2026-06-12)
+    ['VIP-CYRISAIAH-2026', {
+      token: 'VIP-CYRISAIAH-2026',
+      email: 'Cyrisaiah24@gmail.com',
+      assignedRole: 'fan',
+      status: 'active',
+    }],
   ]);
 
   static getInvite(token: string): InvitePayload | undefined {

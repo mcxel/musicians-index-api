@@ -52,26 +52,37 @@ export function middleware(req: NextRequest) {
   // Auth page guard — redirect authenticated users away from /auth
   if (pathname === "/auth" && sessionId && sessionToken) {
     const role = (req.cookies.get("tmi_role")?.value ?? "").toLowerCase();
+    const lastWorkspace = req.cookies.get("tmi_last_workspace")?.value;
+    const nextParam = req.nextUrl.searchParams.get("next");
+
+    let defaultPath = "/onboarding";
 
     switch (role) {
       case "admin":
       case "staff":
-        return NextResponse.redirect(new URL("/admin", req.url));
+        defaultPath = "/admin"; break;
       case "artist":
-        return NextResponse.redirect(new URL("/dashboard/artist", req.url));
+        defaultPath = "/dashboard/artist"; break;
       case "fan":
-        return NextResponse.redirect(new URL("/dashboard/fan", req.url));
+        defaultPath = "/dashboard/fan"; break;
       case "sponsor":
+        defaultPath = "/dashboard/sponsor"; break;
       case "advertiser":
-        return NextResponse.redirect(new URL("/dashboard/sponsor", req.url));
+        defaultPath = "/dashboard/advertiser"; break;
       case "performer":
-        return NextResponse.redirect(new URL("/dashboard/performer", req.url));
+        defaultPath = "/dashboard/performer"; break;
       case "venue":
+        defaultPath = "/dashboard/venue"; break;
       case "promoter":
-        return NextResponse.redirect(new URL("/dashboard/venue", req.url));
+        defaultPath = "/dashboard/promoter"; break;
+      case "writer":
+        defaultPath = "/dashboard/writer"; break;
       default:
-        return NextResponse.redirect(new URL("/onboarding", req.url));
+        defaultPath = "/onboarding"; break;
     }
+
+    const target = nextParam || (lastWorkspace && lastWorkspace.startsWith('/') ? lastWorkspace : defaultPath);
+    return NextResponse.redirect(new URL(target, req.url));
   }
 
   // Admin guard — authentication + role check

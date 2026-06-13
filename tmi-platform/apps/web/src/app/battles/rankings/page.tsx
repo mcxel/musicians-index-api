@@ -12,9 +12,9 @@ const FIGHT_CARD = [
   { id: 'sable-court',  name: 'Sable Court',   wins: 12, losses: 6,  streak: 3,  xp: 7200, prize: '$820',   genre: 'Pop',        rank: 5, tier: 'SILVER',  color: '#00FF88' },
   { id: 'velox-prime',  name: 'Velox Prime',   wins: 11, losses: 9,  streak: 1,  xp: 6890, prize: '$640',   genre: 'Electronic', rank: 6, tier: 'SILVER',  color: '#FF6B35' },
   { id: 'wavetek',      name: 'Wavetek',        wins: 9,  losses: 4,  streak: 5,  xp: 6440, prize: '$580',   genre: 'Trap',       rank: 7, tier: 'SILVER',  color: '#FF2DAA' },
-  { id: 'ivory-arc',    name: 'Ivory Arc',     wins: 8,  losses: 10, streak: 0,  xp: 5980, prize: '$340',   genre: 'Jazz',       rank: 8, tier: 'BRONZE',  color: '#00FFFF' },
-  { id: 'torque-sin',   name: 'Torque Sin',    wins: 7,  losses: 8,  streak: 2,  xp: 5620, prize: '$280',   genre: 'Rock',       rank: 9, tier: 'BRONZE',  color: '#FFD700' },
-  { id: 'koda-rush',    name: 'Koda Rush',     wins: 6,  losses: 9,  streak: 0,  xp: 5100, prize: '$190',   genre: 'Hip Hop',    rank: 10,tier: 'BRONZE',  color: '#AA2DFF' },
+  { id: 'ivory-arc',    name: 'Ivory Arc',     wins: 8,  losses: 10, streak: 0,  xp: 5980, prize: '$340',   genre: 'Jazz',       rank: 8, tier: 'RUBY',  color: '#00FFFF' },
+  { id: 'torque-sin',   name: 'Torque Sin',    wins: 7,  losses: 8,  streak: 2,  xp: 5620, prize: '$280',   genre: 'Rock',       rank: 9, tier: 'RUBY',  color: '#FFD700' },
+  { id: 'koda-rush',    name: 'Koda Rush',     wins: 6,  losses: 9,  streak: 0,  xp: 5100, prize: '$190',   genre: 'Hip Hop',    rank: 10,tier: 'RUBY',  color: '#AA2DFF' },
 ];
 
 const CHAMPIONSHIP_DISPLAY: Array<{ category: CompetitionCategory; prize: string; period: string }> = [
@@ -27,7 +27,7 @@ const CHAMPIONSHIP_DISPLAY: Array<{ category: CompetitionCategory; prize: string
 ];
 
 const TIER_COLORS: Record<string, string> = {
-  DIAMOND: '#00FFFF', GOLD: '#FFD700', SILVER: '#aaa', BRONZE: '#cd7f32',
+  DIAMOND: '#00FFFF', GOLD: '#FFD700', SILVER: '#aaa', RUBY: '#cd7f32',
 };
 
 type Tab = 'fighters' | 'championships' | 'history';

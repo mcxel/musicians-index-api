@@ -115,7 +115,7 @@ export const MAGAZINE_ISSUE_1: MagazineArticle[] = [
     icon: "📊",
     blocks: [
       { type: "paragraph", text: "The math is simple: 1,000 fans paying $9.99/month = $9,990 in recurring monthly revenue. Minus platform fees, that's roughly $7,900 landing directly in the artist's wallet." },
-      { type: "paragraph", text: "TMI's Fan Club system launched with four tiers — Bronze, Silver, Gold, and Platinum — each offering escalating access." },
+      { type: "paragraph", text: "TMI's Fan Club system launched with four tiers — RUBY, Silver, Gold, and Platinum — each offering escalating access." },
       { type: "paragraph", text: "The top-earning artist on the platform has 4,200 Fan Club members across all tiers, generating $38,000 per month in membership revenue." },
     ],
   },

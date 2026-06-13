@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 test('phase15.5 artist onboarding and admin boundary', async ({ page }) => {
   test.setTimeout(120000);
 
-  const baseUrl = process.env.E2E_BASE_URL || 'http://localhost:3001';
+  const baseUrl = process.env.E2E_BASE_URL || 'http://localhost:3000';
   const email = `phase155_artist_${Date.now()}@example.com`;
   const password = 'Phase155Pass!';
 

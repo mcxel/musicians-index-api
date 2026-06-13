@@ -30,7 +30,7 @@ export interface AssetToSection {
   backRoute: string;
   interactive: boolean;
   requiresAnimation: boolean;
-  tier: 'free' | 'bronze' | 'silver' | 'gold' | 'platinum' | 'diamond';
+  tier: 'free' | 'RUBY' | 'silver' | 'gold' | 'platinum' | 'diamond';
 }
 
 /**

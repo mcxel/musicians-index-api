@@ -45,7 +45,7 @@ export default function FanProfilePage() {
   if (!user) return null;
 
   const tier = (user.tier ?? "free").toUpperCase();
-  const tierColor = tier === "DIAMOND" ? "#00FFFF" : tier === "GOLD" || tier === "GOLD-PLATINUM" ? "#FFD700" : tier === "PRO-BRONZE" ? "#CD7F32" : "#555";
+  const tierColor = tier === "DIAMOND" ? "#00FFFF" : tier === "GOLD" || tier === "GOLD-PLATINUM" ? "#FFD700" : tier === "PRO-RUBY" ? "#CD7F32" : "#555";
 
   const stats = [
     { label: "Fan Tier",         value: tier,  color: tierColor },

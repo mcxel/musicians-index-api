@@ -42,8 +42,8 @@ const CREATOR_FEATURE_GATE: Record<FeatureKey, SubscriptionTier> = {
   booking:             "pro",
   article_page:        "pro",
   meet_greet:          "pro",
-  early_tickets:       "bronze",
-  exclusive_giveaways: "bronze",
+  early_tickets:       "RUBY",
+  exclusive_giveaways: "RUBY",
   game_perks:          "gold",
   private_feeds:       "pro",
   vote_boost:          "pro",
@@ -64,7 +64,7 @@ const FAN_FEATURE_GATE: Record<FeatureKey, SubscriptionTier> = {
   vote_boost:          "pro",
 };
 
-const TIER_ORDER: SubscriptionTier[] = ["free", "pro", "bronze", "gold", "platinum", "diamond"];
+const TIER_ORDER: SubscriptionTier[] = ["free", "pro", "RUBY", "gold", "platinum", "diamond"];
 
 function tierIndex(tier: SubscriptionTier): number {
   return TIER_ORDER.indexOf(tier);
@@ -78,8 +78,8 @@ const UPGRADE_PROMPTS: Record<FeatureKey, string> = {
   booking:             "Upgrade to Pro to unlock booking eligibility.",
   article_page:        "Upgrade to Pro to publish your artist article.",
   meet_greet:          "Upgrade to Pro to book meet & greet sessions.",
-  early_tickets:       "Upgrade to Bronze for early ticket access.",
-  exclusive_giveaways: "Upgrade to Bronze for exclusive giveaway entries.",
+  early_tickets:       "Upgrade to RUBY for early ticket access.",
+  exclusive_giveaways: "Upgrade to RUBY for exclusive giveaway entries.",
   game_perks:          "Upgrade to Gold for game perks and bonuses.",
   private_feeds:       "Upgrade to Pro to access private feeds.",
   vote_boost:          "Upgrade to Pro for a vote multiplier boost.",

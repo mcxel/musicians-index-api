@@ -3,7 +3,7 @@
  * Manages sponsor reward campaigns: impression tracking, activation, and payout triggers.
  */
 
-export type SponsorTier = "bronze" | "silver" | "gold" | "platinum" | "title";
+export type SponsorTier = "RUBY" | "silver" | "gold" | "platinum" | "title";
 export type RewardTrigger = "impression" | "click" | "vote" | "purchase" | "show-watch" | "milestone";
 
 export interface SponsorCampaign {
@@ -38,7 +38,7 @@ export interface SponsorReward {
 }
 
 const TIER_MULTIPLIERS: Record<SponsorTier, number> = {
-  bronze:   1.0,
+  RUBY:   1.0,
   silver:   1.25,
   gold:     1.5,
   platinum: 2.0,

@@ -47,7 +47,7 @@ const SKINS: Record<ProfileTier, ProfileTierSkin> = {
 export function mapFanTierToProfileTier(tier: string): ProfileTier {
   if (tier === "diamond") return "diamond";
   if (tier === "gold-platinum") return "gold";
-  if (tier === "pro-bronze") return "pro";
+  if (tier === "pro-RUBY") return "pro";
   return "free";
 }
 

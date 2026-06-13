@@ -143,9 +143,9 @@ export default function ContestPage() {
 
         <div className="packages-row">
           {[
-            { tier: 'Local Bronze', price: '$50', color: '#cd7f32', type: 'local' },
+            { tier: 'Local RUBY', price: '$50', color: '#cd7f32', type: 'local' },
             { tier: 'Local Gold', price: '$250', color: '#ffd700', type: 'local' },
-            { tier: 'Major Bronze', price: '$1,000', color: '#cd7f32', type: 'major' },
+            { tier: 'Major RUBY', price: '$1,000', color: '#cd7f32', type: 'major' },
             { tier: 'Major Gold', price: '$10,000', color: '#ffd700', type: 'major' },
             { tier: 'Title Sponsor', price: '$25,000+', color: '#00e5ff', type: 'title' },
           ].map((pkg) => (

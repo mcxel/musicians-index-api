@@ -3,10 +3,10 @@ import Link from "next/link";
 const SEED_SPONSORS = [
   { id: "sp1", name: "Prime Wave Media", spend: "$28,400", rooms: 12, tier: "Gold", status: "active" },
   { id: "sp2", name: "Neon Arena Group", spend: "$16,200", rooms: 7, tier: "Silver", status: "active" },
-  { id: "sp3", name: "Brand Voltage LLC", spend: "$5,900", rooms: 3, tier: "Bronze", status: "pending" },
+  { id: "sp3", name: "Brand Voltage LLC", spend: "$5,900", rooms: 3, tier: "RUBY", status: "pending" },
 ];
 
-const TIER_COLOR: Record<string, string> = { Gold: "#FFD700", Silver: "#C0C0C0", Bronze: "#CD7F32" };
+const TIER_COLOR: Record<string, string> = { Gold: "#FFD700", Silver: "#C0C0C0", RUBY: "#CD7F32" };
 
 export default function AdminSponsorsPage() {
   return (

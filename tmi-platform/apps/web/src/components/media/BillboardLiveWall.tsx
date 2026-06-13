@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import MaskedVideoTile, { type TileShape } from './MaskedVideoTile';
+import { useMediaBroadcast } from '@/components/media/MediaBroadcastEngine';
 import Link from 'next/link';
 import type { LiveFeedItem } from '@/components/billboard/TMIBillboardLiveWall';
 
@@ -133,6 +134,7 @@ export default function BillboardLiveWall({ mode = 'home', maxTiles = 12, showAc
   const [performers, setPerformers] = useState<PerformerSlot[]>([]);
   const [justJoinedIdx, setJustJoinedIdx] = useState<number | null>(null);
   const [sponsorIdx, setSponsorIdx] = useState<number>(0);
+  const { setPipFeed } = useMediaBroadcast();
 
   useEffect(() => {
     const seed = [...seedPerformers()]
@@ -172,6 +174,43 @@ export default function BillboardLiveWall({ mode = 'home', maxTiles = 12, showAc
     fetchLive();
     const interval = setInterval(fetchLive, 4_000);
     return () => clearInterval(interval);
+  }, [maxTiles]);
+
+  // Listen for new captures from the global LiveCaptureRegistry
+  useEffect(() => {
+    const handleCaptureStart = (e: Event) => {
+      const customEvent = e as CustomEvent<any>;
+      const session = customEvent.detail;
+      
+      setPerformers(prev => {
+        if (prev.some(p => p.id === session.id)) return prev;
+        
+        const newSlot: PerformerSlot = {
+          id: session.id,
+          name: `Live User ${session.userId?.substring(0, 4) || 'New'}`,
+          slug: session.userId,
+          isLive: true,
+          viewerCount: 1,
+          accentColor: '#00FFFF',
+          liveStartedAt: session.startedAt,
+        };
+        return [newSlot, ...prev].slice(0, maxTiles);
+      });
+    };
+
+    const handleCaptureStop = (e: Event) => {
+      const customEvent = e as CustomEvent<any>;
+      const sessionId = customEvent.detail;
+      setPerformers(prev => prev.filter(p => p.id !== sessionId));
+    };
+
+    window.addEventListener('LIVE_CAPTURE_STARTED', handleCaptureStart);
+    window.addEventListener('LIVE_CAPTURE_STOPPED', handleCaptureStop);
+
+    return () => {
+      window.removeEventListener('LIVE_CAPTURE_STARTED', handleCaptureStart);
+      window.removeEventListener('LIVE_CAPTURE_STOPPED', handleCaptureStop);
+    };
   }, [maxTiles]);
 
   useEffect(() => {
@@ -245,7 +284,13 @@ export default function BillboardLiveWall({ mode = 'home', maxTiles = 12, showAc
         {performers.map((p, i) => {
           const isFlashing = justJoinedIdx === i;
           return (
-            <div key={p.id} style={{ position: 'relative' }}>
+            <div 
+              key={p.id} 
+              style={{ position: 'relative', cursor: 'pointer' }}
+              onClick={() => {
+                setPipFeed({ id: p.id, title: p.name, url: resolveMediaAsset(p) });
+              }}
+            >
               {isFlashing && (
                 <div style={{ position: 'absolute', top: -18, left: '50%', transform: 'translateX(-50%)', background: '#00FF88', borderRadius: 6, padding: '2px 8px', fontSize: 8, fontWeight: 900, color: '#050510', letterSpacing: '0.1em', whiteSpace: 'nowrap', zIndex: 30, boxShadow: '0 0 10px #00FF88', animation: 'tmiJoinPop 0.3s cubic-bezier(0.7,0,0.3,1)' }}>
                   🎤 JUST JOINED

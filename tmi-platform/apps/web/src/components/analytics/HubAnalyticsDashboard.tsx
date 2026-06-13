@@ -23,7 +23,7 @@ interface Props {
 const TIER_COLOR: Record<SubscriptionTier, string> = {
   free:     "#888888",
   pro:      "#00FFFF",
-  bronze:   "#CD7F32",
+  ruby:   "#CD7F32",
   silver:   "#C0C0C0",
   gold:     "#FFD700",
   platinum: "#E5E4E2",

@@ -11,7 +11,7 @@
 
 export type SponsorTier =
   | "NONE"
-  | "BRONZE"
+  | "RUBY"
   | "SILVER"
   | "GOLD"
   | "PLATINUM"
@@ -60,7 +60,7 @@ export interface SponsorPowerState {
 
 export const SPONSOR_TIERS: SponsorTierDef[] = [
   { tier: "NONE",     label: "Unsponsored",             minScore: 0,    maxScore: 9,    color: "#555",    icon: "○",  badge: "" },
-  { tier: "BRONZE",   label: "Bronze Sponsored",        minScore: 10,   maxScore: 49,   color: "#CD7F32", icon: "🥉", badge: "BRONZE" },
+  { tier: "RUBY",   label: "RUBY Sponsored",        minScore: 10,   maxScore: 49,   color: "#CD7F32", icon: "🥉", badge: "RUBY" },
   { tier: "SILVER",   label: "Silver Sponsored",        minScore: 50,   maxScore: 149,  color: "#C0C0C0", icon: "🥈", badge: "SILVER" },
   { tier: "GOLD",     label: "Gold Sponsored",          minScore: 150,  maxScore: 299,  color: "#FFD700", icon: "🥇", badge: "GOLD" },
   { tier: "PLATINUM", label: "Platinum Sponsored",      minScore: 300,  maxScore: 599,  color: "#E5E4E2", icon: "⚡", badge: "PLATINUM" },
@@ -127,7 +127,7 @@ export function getTierForScore(score: number): SponsorTierDef {
 }
 
 export function getActiveUnlocks(tier: SponsorTier, sponsorCount: number): SponsorUnlock[] {
-  const tierOrder: SponsorTier[] = ["NONE", "BRONZE", "SILVER", "GOLD", "PLATINUM", "DIAMOND", "ELITE"];
+  const tierOrder: SponsorTier[] = ["NONE", "RUBY", "SILVER", "GOLD", "PLATINUM", "DIAMOND", "ELITE"];
   const tierIndex = tierOrder.indexOf(tier);
 
   return SPONSOR_UNLOCKS.filter(u => {

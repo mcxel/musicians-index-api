@@ -7,7 +7,7 @@ import { getAnalyticsSnapshot, ENGINE_META, TIER_ORDER, type SubscriptionTier } 
 const TIER_COLORS: Record<SubscriptionTier, string> = {
   free:     '#94a3b8',
   pro:      '#60a5fa',
-  bronze:   '#cd7f32',
+  ruby:     '#cd7f32',
   silver:   '#94a3b8',
   gold:     '#FFD700',
   platinum: '#e2e8f0',

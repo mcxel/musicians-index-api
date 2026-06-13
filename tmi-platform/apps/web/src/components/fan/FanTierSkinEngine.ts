@@ -7,7 +7,7 @@ export type FanHubMode =
   | "trivia"
   | "livestream";
 
-export type FanSubscriptionTier = "free" | "pro-bronze" | "gold-platinum" | "diamond";
+export type FanSubscriptionTier = "free" | "pro-RUBY" | "gold-platinum" | "diamond";
 
 export type FanTransitionState =
   | "HUB_IDLE"
@@ -53,9 +53,9 @@ const TIER_CONFIG: Record<FanSubscriptionTier, FanTierConfig> = {
     privateLobby: false,
     advancedAnalytics: false,
   },
-  "pro-bronze": {
-    label: "Pro/Bronze",
-    badge: "Bronze Plus",
+  "pro-RUBY": {
+    label: "Pro/RUBY",
+    badge: "RUBY Plus",
     glow: "0 0 0 1px rgba(255,120,45,0.5), 0 0 18px rgba(255,120,45,0.22)",
     panelBackground: "linear-gradient(180deg, rgba(14,20,38,0.95), rgba(7,11,23,0.98))",
     accent: "#ff9d38",
@@ -110,7 +110,7 @@ export function getFanTierConfig(tier: FanSubscriptionTier): FanTierConfig {
 export function mapSlugToTier(slug: string): FanSubscriptionTier {
   if (slug.includes("diamond") || slug.includes("elite")) return "diamond";
   if (slug.includes("gold") || slug.includes("platinum")) return "gold-platinum";
-  if (slug.includes("pro") || slug.includes("bronze")) return "pro-bronze";
+  if (slug.includes("pro") || slug.includes("RUBY")) return "pro-RUBY";
   return "free";
 }
 

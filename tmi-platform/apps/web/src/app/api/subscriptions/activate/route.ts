@@ -11,7 +11,7 @@ const PRICE_TO_TIER: Record<string, string> = {
   price_artist_monthly:                        'pro',
   price_artist_pro_monthly:                    'pro',
   price_season_pass:                           'platinum',
-  price_fan_club_bronze:                       'bronze',
+  price_fan_club_RUBY:                       'RUBY',
   price_fan_club_silver:                       'silver',
   price_fan_club_gold:                         'gold',
   price_fan_club_platinum:                     'platinum',

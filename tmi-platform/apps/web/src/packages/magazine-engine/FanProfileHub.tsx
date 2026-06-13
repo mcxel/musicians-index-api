@@ -4,7 +4,7 @@ import JuliusSmartPopIn from '../mascots/JuliusSmartPopIn';
 
 interface FanProfileProps {
   fanName: string;
-  tier: 'Free' | 'Bronze' | 'Silver' | 'Gold' | 'Platinum' | 'Diamond';
+  tier: 'Free' | 'RUBY' | 'Silver' | 'Gold' | 'Platinum' | 'Diamond';
   points: number;
   favoriteArtists: string[];
 }
@@ -15,7 +15,7 @@ interface FanProfileProps {
 export default function FanProfileHub({ fanName, tier, points, favoriteArtists }: FanProfileProps) {
   const tierColors = {
     Free: 'text-zinc-400',
-    Bronze: 'text-amber-600',
+    RUBY: 'text-amber-600',
     Silver: 'text-zinc-300',
     Gold: 'text-yellow-400',
     Platinum: 'text-cyan-200',

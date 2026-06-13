@@ -6,14 +6,14 @@
  * NEVER hardcode tier prices or benefits in components.
  */
 
-export type SponsorTierType = 'local-bronze' | 'local-silver' | 'local-gold' | 'major-bronze' | 'major-silver' | 'major-gold' | 'title';
+export type SponsorTierType = 'local-RUBY' | 'local-silver' | 'local-gold' | 'major-RUBY' | 'major-silver' | 'major-gold' | 'title';
 export type SponsorCategory = 'local' | 'major';
 
 export interface SponsorTier {
   id: SponsorTierType;
   label: string;
   category: SponsorCategory;
-  tier: 'bronze' | 'silver' | 'gold' | 'title';
+  tier: 'RUBY' | 'silver' | 'gold' | 'title';
   price: number;            // USD minimum contribution
   benefits: string[];
   logoOnProfile: boolean;
@@ -27,7 +27,7 @@ export interface SponsorTier {
 
 export const SPONSOR_TIERS: SponsorTier[] = [
   {
-    id: 'local-bronze', label: 'Local Bronze', category: 'local', tier: 'bronze',
+    id: 'local-RUBY', label: 'Local RUBY', category: 'local', tier: 'RUBY',
     price: 50, benefits: ['Name on profile', 'Contest entry acknowledgment'],
     logoOnProfile: false, stageOverlay: false, stageMentionCount: 0,
     analyticsDepth: 'none', overlayFrequency: 'none', namingRights: false, color: '#cd7f32',
@@ -45,7 +45,7 @@ export const SPONSOR_TIERS: SponsorTier[] = [
     analyticsDepth: 'basic', overlayFrequency: 'none', namingRights: false, color: '#ffd700',
   },
   {
-    id: 'major-bronze', label: 'Major Bronze', category: 'major', tier: 'bronze',
+    id: 'major-RUBY', label: 'Major RUBY', category: 'major', tier: 'RUBY',
     price: 1000, benefits: ['Logo + profile placement', 'Stage mention', 'Analytics'],
     logoOnProfile: true, stageOverlay: true, stageMentionCount: 2,
     analyticsDepth: 'basic', overlayFrequency: 'low', namingRights: false, color: '#cd7f32',
