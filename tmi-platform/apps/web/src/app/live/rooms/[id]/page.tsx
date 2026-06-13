@@ -18,6 +18,7 @@ import { registerPresence } from "@/lib/rooms/RoomSessionBridge";
 import { recordProfileLoopAction } from "@/lib/profile/ProfileSessionStore";
 import { startPerformerSession, recordFanEntry } from "@/lib/performer/PerformerAnalyticsEngine";
 import RoomWarpTransition from "@/components/live/RoomWarpTransition";
+import BotRoomActivator from "@/components/bots/BotRoomActivator";
 
 // Referrers that grant direct room entry (passed via ?from= query param)
 const LOBBY_AUTHORIZED_ORIGINS = new Set([
@@ -124,6 +125,7 @@ export default async function LiveRoomPage({ params, searchParams }: LiveRoomPag
           ? <ArenaImmersivePanel roomId={id} mode="performer" />
           : <VenueImmersiveRoom roomId={id} mode="fan" />}
 
+        <BotRoomActivator roomId={id} fanId={fanSlug ?? sessionId ?? "fan-guest"} />
         <RoomInteractionLayout roomId={id} sessionId={sessionId ?? undefined} />
 
         <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
