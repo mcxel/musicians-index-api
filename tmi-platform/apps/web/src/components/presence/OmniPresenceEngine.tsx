@@ -1,6 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import ArenaRadar from '@/components/arena/ArenaRadar';
 
 const C = {
   bg: "#070714", card: "#0D0D24", panel: "#111130",
@@ -12,21 +15,22 @@ const C = {
 interface OmniPresenceEngineProps {
   slug?: string;
   displayName?: string;
-  defaultTab?: 'videotiles' | 'audio' | 'live' | 'messages';
+  defaultTab?: 'videotiles' | 'audio' | 'live' | 'messages' | 'radar';
 }
 
 const MOCK_MESSAGES = [
-  { id: 1, from: 'Chario Ace', avatar: '🎤', text: 'Great set last night! Want to collab?', time: '2m ago', unread: true },
-  { id: 2, from: 'TMI Booking', avatar: '📅', text: 'New venue request from Club Nova', time: '18m ago', unread: true },
-  { id: 3, from: 'Wavetek',     avatar: '🎵', text: 'Sent you a beat pack to check out', time: '1h ago',  unread: false },
-  { id: 4, from: 'Fan Support', avatar: '💬', text: '3 new fan messages in your inbox',  time: '2h ago',  unread: false },
+  { id: 'chario-ace',   recipientId: 'chario-ace',   from: 'Chario Ace',   avatar: '🎤', text: 'Great set last night! Want to collab?', time: '2m ago',  unread: true  },
+  { id: 'tmi-booking',  recipientId: 'tmi-booking',  from: 'TMI Booking',  avatar: '📅', text: 'New venue request from Club Nova',      time: '18m ago', unread: true  },
+  { id: 'wavetek',      recipientId: 'wavetek',      from: 'Wavetek',      avatar: '🎵', text: 'Sent you a beat pack to check out',     time: '1h ago',  unread: false },
+  { id: 'fan-support',  recipientId: 'tmi-support',  from: 'Fan Support',  avatar: '💬', text: '3 new fan messages in your inbox',      time: '2h ago',  unread: false },
 ];
 
 export default function OmniPresenceEngine({ displayName = 'Artist', defaultTab = 'videotiles' }: OmniPresenceEngineProps) {
-  const [activeTab, setActiveTab] = useState<'videotiles' | 'audio' | 'live' | 'messages'>(defaultTab);
+  const [activeTab, setActiveTab] = useState<'videotiles' | 'audio' | 'live' | 'messages' | 'radar'>(defaultTab);
   const [voiceVol, setVoiceVol] = useState(75);
   const [beatVol, setBeatVol] = useState(65);
   const [msgInput, setMsgInput] = useState('');
+  const router = useRouter();
 
   const duckedBeat = voiceVol > 70 ? Math.max(20, beatVol - Math.round((voiceVol - 70) * 0.75)) : beatVol;
 
@@ -48,7 +52,8 @@ export default function OmniPresenceEngine({ displayName = 'Artist', defaultTab 
           { id: 'videotiles', label: '📹 Video' },
           { id: 'audio',      label: '🎚 Audio' },
           { id: 'live',       label: '⏺ Go Live' },
-        ] as { id: 'messages' | 'videotiles' | 'audio' | 'live'; label: string }[]).map(tab => (
+          { id: 'radar',      label: '⚡ Arena' },
+        ] as { id: 'messages' | 'videotiles' | 'audio' | 'live' | 'radar'; label: string }[]).map(tab => (
           <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{
             padding: '7px 14px', background: activeTab === tab.id ? C.or : 'transparent',
             color: activeTab === tab.id ? '#fff' : C.mt,
@@ -62,18 +67,28 @@ export default function OmniPresenceEngine({ displayName = 'Artist', defaultTab 
 
       <div style={{ padding: '20px 18px' }}>
 
-        {/* Messages tab */}
+        {/* Messages tab — links to /messages/[id] routes */}
         {activeTab === 'messages' && (
           <div>
-            <div style={{ fontSize: 10, fontWeight: 800, color: C.cy, letterSpacing: '0.1em', marginBottom: 14 }}>INBOX — {displayName}</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+              <div style={{ fontSize: 10, fontWeight: 800, color: C.cy, letterSpacing: '0.1em' }}>INBOX — {displayName}</div>
+              <Link href="/messages" style={{ fontSize: 8, fontWeight: 800, color: C.or, border: `1px solid ${C.or}44`, borderRadius: 5, padding: '3px 9px', textDecoration: 'none', letterSpacing: '0.08em' }}>
+                OPEN INBOX →
+              </Link>
+            </div>
             <div style={{ display: 'grid', gap: 8, marginBottom: 16 }}>
               {MOCK_MESSAGES.map(msg => (
-                <div key={msg.id} style={{
-                  background: msg.unread ? 'rgba(0,212,255,0.05)' : C.panel,
-                  border: `1px solid ${msg.unread ? C.cy + '30' : C.bd}`,
-                  borderRadius: 8, padding: '10px 14px',
-                  display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer',
-                }}>
+                <button
+                  key={msg.id}
+                  onClick={() => router.push(`/messages/${msg.recipientId}`)}
+                  style={{
+                    background: msg.unread ? 'rgba(0,212,255,0.05)' : C.panel,
+                    border: `1px solid ${msg.unread ? C.cy + '30' : C.bd}`,
+                    borderRadius: 8, padding: '10px 14px',
+                    display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer',
+                    textAlign: 'left', width: '100%', color: 'inherit',
+                  }}
+                >
                   <span style={{ fontSize: 22, flexShrink: 0 }}>{msg.avatar}</span>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -83,18 +98,29 @@ export default function OmniPresenceEngine({ displayName = 'Artist', defaultTab 
                     <div style={{ fontSize: 10, color: msg.unread ? 'rgba(255,255,255,0.7)' : C.mt, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{msg.text}</div>
                   </div>
                   {msg.unread && <span style={{ width: 7, height: 7, borderRadius: '50%', background: C.cy, flexShrink: 0 }} />}
-                </div>
+                </button>
               ))}
             </div>
-            {/* Quick reply */}
+            {/* Quick reply — routes to /messages/new */}
             <div style={{ display: 'flex', gap: 8 }}>
               <input
                 value={msgInput}
                 onChange={e => setMsgInput(e.target.value)}
-                placeholder="Send a message..."
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && msgInput.trim()) {
+                    router.push(`/messages/new`);
+                    setMsgInput('');
+                  }
+                }}
+                placeholder="Quick message... (Enter to compose)"
                 style={{ flex: 1, background: C.panel, border: `1px solid ${C.bd}`, borderRadius: 6, padding: '8px 12px', color: C.tx, fontSize: 11, outline: 'none' }}
               />
-              <button onClick={() => setMsgInput('')} style={{ background: C.or, color: '#fff', border: 'none', borderRadius: 6, padding: '8px 14px', fontWeight: 800, fontSize: 10, cursor: 'pointer' }}>Send</button>
+              <button
+                onClick={() => router.push('/messages/new')}
+                style={{ background: C.or, color: '#fff', border: 'none', borderRadius: 6, padding: '8px 14px', fontWeight: 800, fontSize: 10, cursor: 'pointer' }}
+              >
+                New
+              </button>
             </div>
           </div>
         )}
@@ -165,6 +191,28 @@ export default function OmniPresenceEngine({ displayName = 'Artist', defaultTab 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8 }}>
               {['🎭 Fan Theater', '🔴 Battle Arena', '🌀 Cypher Room'].map(dest => (
                 <button key={dest} style={{ background: C.panel, border: `1px solid ${C.bd}`, borderRadius: 7, padding: '8px 6px', color: C.mt, fontSize: 9, fontWeight: 700, cursor: 'pointer' }}>{dest}</button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Arena Radar tab */}
+        {activeTab === 'radar' && (
+          <div>
+            <div style={{ fontSize: 10, fontWeight: 800, color: '#FF2DAA', letterSpacing: '0.1em', marginBottom: 14 }}>⚡ LIVE ARENA RADAR</div>
+            <ArenaRadar compact maxItems={6} />
+            <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {[
+                { href: '/arena/hip-hop', label: '🎤 Hip-Hop',  color: '#FFD700' },
+                { href: '/arena/rnb',     label: '🔥 R&B',      color: '#FF2DAA' },
+                { href: '/arena/edm',     label: '🎧 EDM',      color: '#00FFFF' },
+                { href: '/arena/rap',     label: '🎙 Rap',      color: '#39FF14' },
+                { href: '/arena/cypher',  label: '⚡ Cypher',   color: '#FF2DAA' },
+                { href: '/arena',         label: 'ALL ARENAS →', color: '#fff'    },
+              ].map(l => (
+                <Link key={l.href} href={l.href} style={{ fontSize: 9, fontWeight: 800, color: l.color, border: `1px solid ${l.color}33`, borderRadius: 5, padding: '4px 10px', textDecoration: 'none', background: `${l.color}08`, letterSpacing: '0.06em' }}>
+                  {l.label}
+                </Link>
               ))}
             </div>
           </div>
