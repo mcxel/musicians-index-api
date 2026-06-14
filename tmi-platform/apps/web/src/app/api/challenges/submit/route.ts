@@ -8,10 +8,11 @@ export async function POST(req: NextRequest) {
 
   const userId = req.cookies.get('tmi_session_id')?.value ?? 'anonymous';
 
-  const type     = typeof body.type     === 'string' ? body.type     : 'song';
-  const genre    = typeof body.genre    === 'string' ? body.genre    : 'Hip-Hop';
-  const title    = typeof body.title    === 'string' ? body.title.trim() : '';
-  const mediaUrl = typeof body.mediaUrl === 'string' ? body.mediaUrl.trim() : '';
+  const type         = typeof body.type         === 'string' ? body.type              : 'song';
+  const genre        = typeof body.genre        === 'string' ? body.genre             : 'Hip-Hop';
+  const title        = typeof body.title        === 'string' ? body.title.trim()      : '';
+  const mediaUrl     = typeof body.mediaUrl     === 'string' ? body.mediaUrl.trim()   : '';
+  const pointsWager  = typeof body.pointsWager  === 'number' ? Math.max(0, Math.floor(body.pointsWager)) : 0;
 
   if (!mediaUrl && type !== 'live') {
     return NextResponse.json({ error: 'mediaUrl is required' }, { status: 400 });
@@ -37,7 +38,7 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // Also write a participation ledger entry for engagement points
+    // Participation ledger — base 10 pts for submitting
     await prisma.participationLedger.create({
       data: {
         userId,
@@ -45,9 +46,21 @@ export async function POST(req: NextRequest) {
         points:     10,
         metadata:   JSON.stringify({ type, genre, title, mediaUrl, battleId: battle.id }),
       },
-    }).catch(() => null); // non-fatal
+    }).catch(() => null);
 
-    return NextResponse.json({ ok: true, challengeId: battle.id });
+    // Points wager escrow — deduct from submitter, hold until result
+    if (pointsWager > 0) {
+      await prisma.participationLedger.create({
+        data: {
+          userId,
+          actionType: 'POINTS_WAGER_ESCROW',
+          points:     -pointsWager,
+          metadata:   JSON.stringify({ battleId: battle.id, wager: pointsWager, pool: pointsWager * 2, status: 'escrowed' }),
+        },
+      }).catch(() => null);
+    }
+
+    return NextResponse.json({ ok: true, challengeId: battle.id, pointsWagered: pointsWager });
   } catch (err) {
     console.error('[challenges/submit]', err);
     // Return success anyway — soft launch: UI works even if DB write fails

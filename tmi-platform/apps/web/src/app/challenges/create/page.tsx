@@ -46,6 +46,8 @@ export default function ChallengesCreatePage() {
   const [platform, setPlatform] = useState(0);
   const [openToAll, setOpenToAll] = useState(true);
   const [opponentSlug, setOpponentSlug] = useState('');
+  const [usePointsWager, setUsePointsWager] = useState(false);
+  const [pointsWager, setPointsWager] = useState(100);
   const [submitted, setSubmitted] = useState(false);
   const [ticker, setTicker] = useState(0);
 
@@ -63,7 +65,10 @@ export default function ChallengesCreatePage() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ type, genre, title, mediaUrl }),
+      body: JSON.stringify({
+        type, genre, title, mediaUrl,
+        pointsWager: usePointsWager ? pointsWager : 0,
+      }),
     }).catch(() => {});
   }
 
@@ -290,6 +295,68 @@ export default function ChallengesCreatePage() {
               </div>
             )}
 
+            {/* Points wager */}
+            <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 9, fontWeight: 900, color: 'rgba(255,255,255,0.5)', letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 10 }}>
+              STAKE YOUR POINTS (OPTIONAL)
+            </div>
+            <div style={{ background: 'rgba(255,215,0,0.06)', border: `2px solid ${usePointsWager ? '#FFD700' : 'rgba(255,255,255,0.1)'}`, padding: '14px 16px', marginBottom: 24 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: usePointsWager ? 14 : 0 }}>
+                <div>
+                  <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 11, fontWeight: 900, color: '#FFD700', marginBottom: 3 }}>
+                    ⭐ Use Points as Entry Fee
+                  </div>
+                  <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 9, color: 'rgba(255,255,255,0.45)', lineHeight: 1.5 }}>
+                    Stake points on yourself. Winner takes both stacks. Points don&apos;t expire — put them to work.
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setUsePointsWager(v => !v)}
+                  style={{
+                    background: usePointsWager ? '#FFD700' : 'rgba(255,255,255,0.08)',
+                    border: 'none', borderRadius: 20, padding: '6px 14px',
+                    color: usePointsWager ? '#050510' : 'rgba(255,255,255,0.5)',
+                    fontFamily: "'Inter',sans-serif", fontWeight: 900, fontSize: 9,
+                    letterSpacing: '0.12em', textTransform: 'uppercase', cursor: 'pointer',
+                    flexShrink: 0, marginLeft: 12,
+                  }}
+                >
+                  {usePointsWager ? 'ON' : 'OFF'}
+                </button>
+              </div>
+              {usePointsWager && (
+                <div>
+                  <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
+                    {[50, 100, 250, 500, 1000].map(amt => (
+                      <button
+                        key={amt}
+                        type="button"
+                        onClick={() => setPointsWager(amt)}
+                        style={{
+                          background: pointsWager === amt ? '#FFD700' : 'rgba(255,255,255,0.06)',
+                          border: `1px solid ${pointsWager === amt ? '#FFD700' : 'rgba(255,255,255,0.15)'}`,
+                          color: pointsWager === amt ? '#050510' : 'rgba(255,255,255,0.6)',
+                          padding: '5px 14px', borderRadius: 4, cursor: 'pointer',
+                          fontFamily: "'Inter',sans-serif", fontWeight: 900, fontSize: 10,
+                        }}
+                      >{amt}</button>
+                    ))}
+                  </div>
+                  <input
+                    type="range"
+                    min={50} max={2000} step={50}
+                    value={pointsWager}
+                    onChange={e => setPointsWager(Number(e.target.value))}
+                    style={{ width: '100%', accentColor: '#FFD700', marginBottom: 10 }}
+                  />
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: "'Inter',sans-serif", fontSize: 10 }}>
+                    <span style={{ color: 'rgba(255,255,255,0.4)' }}>Your stake: <strong style={{ color: '#FFD700' }}>{pointsWager} pts</strong></span>
+                    <span style={{ color: '#00FF88', fontWeight: 900 }}>🏆 Winner pool: {pointsWager * 2} pts</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* Open challenge vs specific opponent */}
             <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 9, fontWeight: 900, color: 'rgba(255,255,255,0.5)', letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 10 }}>
               CHALLENGE WHO?
@@ -362,6 +429,7 @@ export default function ChallengesCreatePage() {
                 ...(type !== 'live' && mediaUrl ? [['LINK', mediaUrl.length > 60 ? mediaUrl.slice(0, 60) + '…' : mediaUrl]] : []),
                 ...(title ? [['TITLE', title]] : []),
                 ['OPPONENT', openToAll ? 'Open — Anyone Can Accept' : opponentSlug || 'Pending…'],
+                ...(usePointsWager ? [['POINTS STAKE', `${pointsWager} pts each · winner takes ${pointsWager * 2} pts`]] : [['POINTS STAKE', 'None (free entry)']]),
               ].map(([k, v]) => (
                 <div key={k} style={{ display: 'flex', gap: 16, alignItems: 'flex-start', marginBottom: 10 }}>
                   <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 8, fontWeight: 900, color: selectedType.color, letterSpacing: '0.18em', textTransform: 'uppercase', minWidth: 80 }}>{k}</div>
@@ -373,9 +441,14 @@ export default function ChallengesCreatePage() {
             {/* Prize display */}
             <div style={{ background: 'rgba(255,215,0,0.08)', border: '2px solid #FFD70044', padding: '12px 16px', marginBottom: 24, display: 'flex', alignItems: 'center', gap: 12 }}>
               <span style={{ fontSize: 24 }}>🏆</span>
-              <div>
-                <div style={{ fontFamily: "'Bebas Neue','Impact',sans-serif", fontSize: 18, color: '#FFD700' }}>WIN XP + PRIZES</div>
-                <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 9, color: 'rgba(255,215,0,0.7)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Crowd votes decide the winner · Results each week</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontFamily: "'Bebas Neue','Impact',sans-serif", fontSize: 18, color: '#FFD700' }}>
+                  WIN XP + PRIZES{usePointsWager ? ` + ${pointsWager * 2} POINTS` : ''}
+                </div>
+                <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 9, color: 'rgba(255,215,0,0.7)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+                  Crowd votes decide the winner · Results each week
+                  {usePointsWager && ` · Both stacks go to winner — ${pointsWager} pts each`}
+                </div>
               </div>
             </div>
 
