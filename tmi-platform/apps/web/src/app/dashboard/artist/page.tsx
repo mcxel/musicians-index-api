@@ -100,7 +100,7 @@ export default function ArtistDashboardPage() {
         {/* ── Quick actions bar ── */}
         <div style={{ display: "flex", gap: 5, marginBottom: 7, flexWrap: "wrap" }}>
           {[
-            { lbl: "⬆ UPLOAD",     href: "/beats/submit" },
+            { lbl: "⬆ UPLOAD",     href: "/beat-vault" },
             { lbl: "📅 SET UP SHOW", href: "/live/stages" },
             { lbl: "💼 SPONSOR",    href: "/dashboard/artist/sponsors" },
           ].map(({ lbl, href }) => (
@@ -281,6 +281,11 @@ export default function ArtistDashboardPage() {
                   <div key={i} style={{ flex: 1, height: `${h}%`, background: h > 80 ? "#FFD700" : h > 55 ? "#FF9500" : "#FF2DAA", borderRadius: "2px 2px 0 0" }} />
                 ))}
               </div>
+              <div style={{ display: "flex", justifyContent: "space-between", marginTop: 3 }}>
+                {["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map(d => (
+                  <span key={d} style={{ fontSize: 6, color: "rgba(255,140,0,0.4)", flex: 1, textAlign: "center" }}>{d}</span>
+                ))}
+              </div>
             </div>
 
             {/* Ad in green room only */}
@@ -301,7 +306,7 @@ export default function ArtistDashboardPage() {
           {/* RIGHT SIDEBAR */}
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {/* Upload track */}
-            <Link href="/beats" style={{ background: "rgba(8,14,38,.95)", border: "1px solid rgba(255,45,170,.4)", borderRadius: 6, padding: 8, textDecoration: "none", textAlign: "center" as const, display: "block" }}>
+            <Link href="/beat-vault" style={{ background: "rgba(8,14,38,.95)", border: "1px solid rgba(255,45,170,.4)", borderRadius: 6, padding: 8, textDecoration: "none", textAlign: "center" as const, display: "block" }}>
               <div style={{ fontSize: 22, marginBottom: 4 }}>⬆</div>
               <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: ".12em", color: "rgba(255,149,0,.8)", textTransform: "uppercase" }}>UPLOAD TRACK</div>
               <div style={{ fontSize: 7, color: "rgba(255,140,0,.4)", marginTop: 2 }}>Drop your latest</div>
@@ -356,6 +361,23 @@ export default function ArtistDashboardPage() {
           <div className="art-ticker" style={{ fontSize: 8, color: "#FFD700" }}>
             🔴 LIVE: Chario Ace — Main Stage &nbsp;&nbsp;&nbsp; 💰 $2,400 in tips sent today &nbsp;&nbsp;&nbsp; 🎯 Beat Battle Tournament — 8PM Tonight &nbsp;&nbsp;&nbsp; 🏆 Billboard #1: Big KazhDog this week &nbsp;&nbsp;&nbsp; 🆕 New fan: SkyFan94 followed you &nbsp;&nbsp;&nbsp;
           </div>
+        </div>
+
+        {/* Active bots status bar */}
+        <div style={{ display: "flex", gap: 14, flexWrap: "wrap", padding: "6px 10px", background: "rgba(0,0,0,0.3)", border: "1px solid rgba(255,45,170,0.2)", borderRadius: 6, marginBottom: 8 }}>
+          {([
+            ["StageManagerBot", "#00FF88", true],
+            ["RevenueBot",      "#00FF88", true],
+            ["ChatGuardBot",    "#00FF88", true],
+            ["StreamMonitor",   "#FFD700", true],
+            ["BookingBot",      "#00FF88", true],
+            ["BookingBot#2",    "rgba(255,255,255,0.25)", false],
+          ] as [string, string, boolean][]).map(([name, color, active]) => (
+            <div key={name} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              <span style={{ width: 6, height: 6, borderRadius: "50%", background: color, boxShadow: active ? `0 0 5px ${color}` : "none", display: "inline-block", animation: active ? "art-blink 1.2s ease-in-out infinite" : "none" }} />
+              <span style={{ fontSize: 7, color: "rgba(255,140,0,0.45)" }}>{name}</span>
+            </div>
+          ))}
         </div>
 
       </div>

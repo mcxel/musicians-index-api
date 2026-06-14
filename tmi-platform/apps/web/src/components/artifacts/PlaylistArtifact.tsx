@@ -28,10 +28,12 @@ function Ticker({ text, color }: { text: string; color: string }) {
 
 function MonitorDisplay({
   tracks, currentIdx, isPlaying, points, primary, accent, listeners,
+  streams, shares, rank,
   onPrev, onPlay, onNext, onLike,
 }: {
   tracks: ArtifactTrack[]; currentIdx: number; isPlaying: boolean;
   points: number; primary: string; accent: string; listeners: number;
+  streams?: number; shares?: number; rank?: number;
   onPrev: () => void; onPlay: () => void; onNext: () => void; onLike: () => void;
 }) {
   const track = tracks[currentIdx];
@@ -93,6 +95,16 @@ function MonitorDisplay({
         <button onClick={onLike} style={{ ...ctrlBtn("#FF2DAA"), marginLeft: 4 }}>♥</button>
         <div style={{ marginLeft: "auto", fontSize: 9, fontWeight: 900, color: primary }}>{fmtPoints(points)}</div>
       </div>
+
+      {/* Stream & Win stats row */}
+      {(streams != null || shares != null || rank != null) && (
+        <div style={{ padding: "2px 8px", display: "flex", gap: 6, alignItems: "center", borderTop: "1px solid rgba(255,255,255,0.04)" }}>
+          {streams != null && <span style={{ fontSize: 7, color: primary, fontWeight: 800 }}>▶ {streams >= 1000 ? `${(streams/1000).toFixed(1)}K` : streams}</span>}
+          {shares != null && <span style={{ fontSize: 7, color: accent, fontWeight: 700 }}>📤 {shares}</span>}
+          {rank != null && <span style={{ fontSize: 7, color: "#FFD700", fontWeight: 900 }}>#{rank}</span>}
+          <span style={{ marginLeft: "auto", fontSize: 7, color: primary, fontWeight: 900 }}>{fmtPoints(points)} XP</span>
+        </div>
+      )}
 
       {/* Scrolling ticker */}
       <div style={{ background: "rgba(0,0,0,0.5)", borderTop: "1px solid rgba(255,255,255,0.06)", padding: "3px 0", overflow: "hidden" }}>
@@ -642,6 +654,9 @@ interface PlaylistArtifactProps {
   initialTracks?: ArtifactTrack[];
   initialPoints?: number;
   listeners?: number;
+  initialStreams?: number;
+  shares?: number;
+  rank?: number;
   onAddToLibrary?: (artifactId: string) => void;
 }
 
@@ -652,6 +667,9 @@ export default function PlaylistArtifact({
   initialTracks = [],
   initialPoints = 0,
   listeners = 0,
+  initialStreams = 0,
+  shares,
+  rank,
   onAddToLibrary,
 }: PlaylistArtifactProps) {
   const meta = SKIN_META[skin];
@@ -665,6 +683,7 @@ export default function PlaylistArtifact({
   );
   const [eq,            setEQ]            = useState<EQState>(DEFAULT_EQ);
   const [points,        setPoints]        = useState(initialPoints);
+  const [streamCount,   setStreamCount]   = useState(initialStreams);
   const [xpFlash,       setXpFlash]       = useState(false);
   const [showShare,     setShowShare]     = useState(false);
   const [showAddTrack,  setShowAddTrack]  = useState(false);
@@ -708,9 +727,10 @@ export default function PlaylistArtifact({
         <MonitorDisplay
           tracks={tracks} currentIdx={currentIdx} isPlaying={isPlaying}
           points={points} primary={meta.primary} accent={meta.accent} listeners={listeners}
+          streams={streamCount} shares={shares} rank={rank}
           onPrev={() => setCurrentIdx((i) => (i - 1 + tracks.length) % Math.max(tracks.length, 1))}
-          onPlay={() => setIsPlaying(!isPlaying)}
-          onNext={() => { setCurrentIdx((i) => (i + 1) % Math.max(tracks.length, 1)); setPoints((p) => p + 10); }}
+          onPlay={() => { setIsPlaying(p => { if (!p) setStreamCount(n => n + 1); return !p; }); }}
+          onNext={() => { setCurrentIdx((i) => (i + 1) % Math.max(tracks.length, 1)); setPoints((p) => p + 10); setStreamCount(n => n + 1); }}
           onLike={() => setLiked(!liked)}
         />
       </SkinComponent>

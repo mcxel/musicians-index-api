@@ -80,6 +80,10 @@ export default function GoLivePage() {
       // Mic level meter
       try {
         const ctx = new AudioContext();
+        // iOS Safari Fix: Explicitly resume the suspended audio context
+        if (ctx.state === 'suspended') {
+          await ctx.resume(); 
+        }
         const src = ctx.createMediaStreamSource(stream);
         const analyser = ctx.createAnalyser(); analyser.fftSize = 256;
         src.connect(analyser); analyserRef.current = analyser;
@@ -393,8 +397,7 @@ export default function GoLivePage() {
                 <button
                   onClick={() => {
                     const room = ROOM_OPTIONS.find((r) => r.id === selectedRoom);
-                    const slug = (title || "performer").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "performer";
-                    const url = `${typeof window !== "undefined" ? window.location.origin : ""}/live/rooms/${encodeURIComponent(room?.id ?? selectedRoom)}?performer=${encodeURIComponent(slug)}&from=lobby-wall`;
+                    const url = `${typeof window !== "undefined" ? window.location.origin : ""}/live/rooms/${encodeURIComponent(room?.id ?? selectedRoom)}?from=billboard`;
                     if (navigator.clipboard) void navigator.clipboard.writeText(url);
                   }}
                   style={{ padding: "8px 14px", borderRadius: 8, background: "rgba(0,255,255,0.1)", border: "1px solid rgba(0,255,255,0.3)", color: "#00FFFF", fontSize: 10, fontWeight: 700, cursor: "pointer" }}
@@ -402,7 +405,7 @@ export default function GoLivePage() {
                   🔗 Copy Link
                 </button>
                 <a
-                  href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`🔴 I'm LIVE on @MusiciansIndex — "${title}" — Watch now:`)}&url=${encodeURIComponent(typeof window !== "undefined" ? window.location.origin : "https://themusiciansindex.com")}/live/rooms/${encodeURIComponent(selectedRoom)}`}
+                  href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`🔴 I'm LIVE on @MusiciansIndex — "${title}" — Watch now:`)}&url=${encodeURIComponent(`${typeof window !== "undefined" ? window.location.origin : "https://themusiciansindex.com"}/live/rooms/${encodeURIComponent(selectedRoom)}?from=billboard`)}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   style={{ padding: "8px 14px", borderRadius: 8, background: "rgba(29,161,242,0.1)", border: "1px solid rgba(29,161,242,0.3)", color: "#1DA1F2", fontSize: 10, fontWeight: 700, textDecoration: "none" }}

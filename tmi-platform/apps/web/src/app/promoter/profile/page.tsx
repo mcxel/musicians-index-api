@@ -2,6 +2,8 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import MemoryWall from "@/components/media/MemoryWall";
+import OmniPresenceEngine from "@/components/presence/OmniPresenceEngine";
 
 const ACCENT = "#FF6B35";
 const BG = "#050510";
@@ -102,7 +104,7 @@ export default function PromoterProfilePage() {
             <p style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", textAlign: "center", padding: "14px 0" }}>No upcoming events — <Link href="/hub/promoter" style={{ color: ACCENT, textDecoration: "none" }}>create one</Link></p>
           </div>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 10 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 10, marginBottom: 24 }}>
           {[
             { href: "/hub/promoter",       label: "Promoter Hub",    color: ACCENT    },
             { href: "/promoter/dashboard", label: "Dashboard",       color: "#00FFFF" },
@@ -112,6 +114,8 @@ export default function PromoterProfilePage() {
             { href: "/settings",           label: "Settings",        color: "#FF6B35" },
           ].map((a) => (<Link key={a.href} href={a.href} style={{ display: "block", padding: "12px", borderRadius: 10, background: `${a.color}0A`, border: `1px solid ${a.color}28`, color: a.color, fontSize: 11, fontWeight: 800, textDecoration: "none", textAlign: "center" }}>{a.label}</Link>))}
         </div>
+        <MemoryWall accentColor={ACCENT} title="Agency Memory Wall" />
+        <OmniPresenceEngine displayName={name || "Promoter"} defaultTab="messages" />
       </div>
     </main>
   );

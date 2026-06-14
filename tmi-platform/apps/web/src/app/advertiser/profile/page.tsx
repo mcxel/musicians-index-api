@@ -2,6 +2,8 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import MemoryWall from "@/components/media/MemoryWall";
+import OmniPresenceEngine from "@/components/presence/OmniPresenceEngine";
 
 const ACCENT = "#FF2DAA";
 const BG = "#050510";
@@ -196,7 +198,7 @@ export default function AdvertiserProfilePage() {
         </div>
 
         {/* Quick nav */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 10 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 10, marginBottom: 24 }}>
           {[
             { href: "/hub/advertiser",         label: "Ad Hub",         color: ACCENT    },
             { href: "/advertiser/buy",         label: "Buy Placement",  color: "#00FFFF" },
@@ -210,6 +212,8 @@ export default function AdvertiserProfilePage() {
             <Link key={a.href} href={a.href} style={{ display: "block", padding: "13px 12px", borderRadius: 10, background: `${a.color}0A`, border: `1px solid ${a.color}28`, color: a.color, fontSize: 11, fontWeight: 800, textDecoration: "none", textAlign: "center" }}>{a.label}</Link>
           ))}
         </div>
+        <MemoryWall accentColor={ACCENT} title="Advertiser Wall" />
+        <OmniPresenceEngine displayName="Advertiser" defaultTab="messages" />
       </div>
     </main>
   );

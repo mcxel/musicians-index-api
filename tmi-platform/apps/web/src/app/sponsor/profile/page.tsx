@@ -2,6 +2,8 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import MemoryWall from "@/components/media/MemoryWall";
+import OmniPresenceEngine from "@/components/presence/OmniPresenceEngine";
 
 const ACCENT = "#FFD700";
 const BG = "#050510";
@@ -204,7 +206,7 @@ export default function SponsorProfilePage() {
         </div>
 
         {/* Quick nav */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 10 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 10, marginBottom: 24 }}>
           {[
             { href: "/hub/sponsor",        label: "Sponsor Hub",   color: ACCENT    },
             { href: "/sponsor/campaigns",  label: "Campaigns",     color: "#00FFFF" },
@@ -218,6 +220,8 @@ export default function SponsorProfilePage() {
             <Link key={a.href} href={a.href} style={{ display: "block", padding: "13px 12px", borderRadius: 10, background: `${a.color}0A`, border: `1px solid ${a.color}28`, color: a.color, fontSize: 11, fontWeight: 800, textDecoration: "none", textAlign: "center" }}>{a.label}</Link>
           ))}
         </div>
+        <MemoryWall accentColor={ACCENT} title="Sponsor Wall" />
+        <OmniPresenceEngine displayName="Sponsor" defaultTab="messages" />
       </div>
     </main>
   );

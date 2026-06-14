@@ -3,6 +3,8 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
+import MemoryWall from "@/components/media/MemoryWall";
+import OmniPresenceEngine from "@/components/presence/OmniPresenceEngine";
 
 const ACCENT = "#22c55e";
 const BG = "#050510";
@@ -209,7 +211,7 @@ export default function VenueProfilePage() {
         </div>
 
         {/* Quick nav */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 10 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 10, marginBottom: 24 }}>
           {[
             { href: "/hub/venue",         label: "Venue Hub",      color: ACCENT    },
             { href: "/venue/bookings",    label: "Bookings",       color: "#00FFFF" },
@@ -223,6 +225,12 @@ export default function VenueProfilePage() {
             <Link key={a.href} href={a.href} style={{ display: "block", padding: "13px 12px", borderRadius: 10, background: `${a.color}0A`, border: `1px solid ${a.color}28`, color: a.color, fontSize: 11, fontWeight: 800, textDecoration: "none", textAlign: "center", transition: "background .2s" }}>{a.label}</Link>
           ))}
         </div>
+
+        {/* Memory wall + canisters */}
+        <MemoryWall accentColor={ACCENT} title="Venue Memory Wall" />
+
+        {/* Omni presence */}
+        <OmniPresenceEngine displayName={name || "Venue"} defaultTab="messages" />
       </div>
     </main>
   );

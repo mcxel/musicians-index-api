@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import PerformerMediaLibrary from "@/components/media/PerformerMediaLibrary";
+import MemoryWall from "@/components/media/MemoryWall";
+import OmniPresenceEngine from "@/components/presence/OmniPresenceEngine";
 
 const ACCENT = "#AA2DFF";
 const BG = "#050510";
@@ -195,6 +197,8 @@ export default function PerformerProfilePage() {
 
         {/* Media library */}
         <PerformerMediaLibrary ownerId={user.id} ownerName={displayName} accentColor={ACCENT} showUpload />
+        <MemoryWall accentColor={ACCENT} title="Performer Memory Wall" />
+        <OmniPresenceEngine displayName={displayName || "Performer"} defaultTab="messages" />
       </div>
     </main>
   );

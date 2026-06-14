@@ -7,6 +7,7 @@ import ActionCanister from "@/components/room/ActionCanister";
 import WidgetDrawer from "@/components/room/WidgetDrawer";
 import { DrawerProvider } from "@/components/room/DrawerContext";
 import WebRTCBroadcast from "@/components/media/WebRTCBroadcast";
+import { RoomHUD } from "@/components/hud/RoomHUD";
 
 // ── Color tokens (matches reference design) ────────────────────────────────────
 const C = {
@@ -723,6 +724,13 @@ export default function ArtistStudioPage() {
 
       {/* Right slide-in widget drawer */}
       <WidgetDrawer />
+
+      {/* RoomHUD: floats over studio as fixed overlay when performer is on air */}
+      {isLive && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 100, pointerEvents: "none" }}>
+          <RoomHUD venueId="performer-studio" venueClass="PERFORMER STUDIO" />
+        </div>
+      )}
 
       <div style={{ minHeight: "100vh", background: C.bg, color: C.white, paddingLeft: 72, overflowY: "auto", overflowX: "hidden" }}>
 

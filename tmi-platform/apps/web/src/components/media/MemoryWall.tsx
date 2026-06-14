@@ -14,7 +14,7 @@ interface MediaItem {
   caption?: string;
 }
 
-type MemoryTab = "photos" | "videos" | "audio" | "moments" | "achievements";
+type MemoryTab = "photos" | "videos" | "audio" | "moments" | "achievements" | "sponsors" | "orbit" | "booking";
 
 const TAB_CONFIG: { id: MemoryTab; icon: string; label: string; color: string }[] = [
   { id: "photos",       icon: "📸", label: "Photos",       color: "#00FFFF" },
@@ -22,6 +22,9 @@ const TAB_CONFIG: { id: MemoryTab; icon: string; label: string; color: string }[
   { id: "audio",        icon: "🎵", label: "Audio",        color: "#AA2DFF" },
   { id: "moments",      icon: "✨", label: "Moments",      color: "#FFD700" },
   { id: "achievements", icon: "🏆", label: "Badges",       color: "#22c55e" },
+  { id: "sponsors",     icon: "🏷️", label: "Sponsors",     color: "#FF6B35" },
+  { id: "orbit",        icon: "🌀", label: "Orbit",        color: "#9B59FF" },
+  { id: "booking",      icon: "📍", label: "Booking Map",  color: "#00FF88" },
 ];
 
 const SEED_MOMENTS = [
@@ -365,6 +368,182 @@ function AchievementsSection({ accentColor }: { accentColor: string }) {
   );
 }
 
+// ── Sponsor Stamp Wall ─────────────────────────────────────────────────────────
+
+const SEED_SPONSORS = [
+  { id: 's1', name: 'BeatDrop Audio',   logo: '🎧', tier: 'GOLD',     amount: '$500/mo',  color: '#FFD700' },
+  { id: 's2', name: 'FreshFit Apparel', logo: '👕', tier: 'SILVER',   amount: '$200/mo',  color: '#C0C0C0' },
+  { id: 's3', name: 'Neon Studios',     logo: '🎬', tier: 'BRONZE',   amount: '$100/mo',  color: '#FF6B35' },
+  { id: 's4', name: 'Mic Republic',     logo: '🎤', tier: 'PLATINUM', amount: '$1000/mo', color: '#00FFFF' },
+];
+
+function SponsorStampWall({ accentColor }: { accentColor: string }) {
+  return (
+    <div>
+      <div style={{ fontSize: 9, color: 'rgba(255,255,255,.35)', marginBottom: 14, letterSpacing: '0.06em' }}>
+        Brands backing this artist. Sponsor slots are available.
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
+        {SEED_SPONSORS.map(s => (
+          <div key={s.id} style={{
+            background: `${s.color}0A`,
+            border: `1.5px solid ${s.color}44`,
+            borderRadius: 10, padding: '14px 12px',
+            display: 'flex', flexDirection: 'column', gap: 4,
+          }}>
+            <div style={{ fontSize: 28 }}>{s.logo}</div>
+            <div style={{ fontSize: 11, fontWeight: 900, color: '#fff' }}>{s.name}</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: 8, fontWeight: 800, color: s.color, letterSpacing: '0.1em' }}>{s.tier}</span>
+              <span style={{ fontSize: 9, color: 'rgba(255,255,255,.4)' }}>{s.amount}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+      <a
+        href="/sponsor"
+        style={{
+          display: 'block', textAlign: 'center', padding: '10px 0',
+          background: `${accentColor}18`, border: `1px solid ${accentColor}44`,
+          borderRadius: 8, fontSize: 9, fontWeight: 900, color: accentColor,
+          textDecoration: 'none', letterSpacing: '0.1em',
+        }}
+      >
+        + BECOME A SPONSOR
+      </a>
+    </div>
+  );
+}
+
+// ── Sponsor Orbit ──────────────────────────────────────────────────────────────
+
+function SponsorOrbit({ accentColor }: { accentColor: string }) {
+  const orbitSponsors = [
+    { name: 'BeatDrop',    logo: '🎧', deg: 0   },
+    { name: 'FreshFit',    logo: '👕', deg: 45  },
+    { name: 'Neon Studios',logo: '🎬', deg: 90  },
+    { name: 'Mic Republic',logo: '🎤', deg: 135 },
+    { name: 'TMI Media',   logo: '📰', deg: 180 },
+    { name: 'HypeLabel',   logo: '🏷️', deg: 225 },
+    { name: 'StreamHD',    logo: '📡', deg: 270 },
+    { name: 'GlobalAV',    logo: '🌍', deg: 315 },
+  ];
+
+  return (
+    <div style={{ textAlign: 'center' }}>
+      <div style={{ fontSize: 9, color: 'rgba(255,255,255,.35)', marginBottom: 16, letterSpacing: '0.06em' }}>
+        Sponsors in orbit around this profile
+      </div>
+      <div style={{ position: 'relative', width: 220, height: 220, margin: '0 auto 20px' }}>
+        {/* Center */}
+        <div style={{
+          position: 'absolute', top: '50%', left: '50%',
+          transform: 'translate(-50%,-50%)',
+          width: 56, height: 56, borderRadius: '50%',
+          background: `${accentColor}22`, border: `2px solid ${accentColor}`,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 22,
+        }}>🌟</div>
+        {/* Outer ring */}
+        <div style={{
+          position: 'absolute', inset: 0, borderRadius: '50%',
+          border: `1px dashed ${accentColor}22`,
+        }} />
+        {/* Sponsor nodes */}
+        {orbitSponsors.map((s) => {
+          const rad = (s.deg * Math.PI) / 180;
+          const x = 50 + 44 * Math.cos(rad);
+          const y = 50 + 44 * Math.sin(rad);
+          return (
+            <div key={s.name} style={{
+              position: 'absolute',
+              left: `${x}%`, top: `${y}%`,
+              transform: 'translate(-50%,-50%)',
+            }}>
+              <div
+                title={s.name}
+                style={{
+                  width: 36, height: 36, borderRadius: '50%',
+                  background: `${accentColor}18`,
+                  border: `1.5px solid ${accentColor}44`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 16, cursor: 'pointer',
+                }}
+              >
+                {s.logo}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div style={{ fontSize: 8, color: 'rgba(255,255,255,.25)', letterSpacing: '0.1em' }}>
+        {orbitSponsors.length} active sponsors in orbit
+      </div>
+      <a href="/sponsor" style={{
+        display: 'inline-block', marginTop: 12, padding: '8px 20px',
+        background: `${accentColor}18`, border: `1px solid ${accentColor}44`,
+        borderRadius: 8, fontSize: 9, fontWeight: 900, color: accentColor,
+        textDecoration: 'none', letterSpacing: '0.1em',
+      }}>JOIN ORBIT →</a>
+    </div>
+  );
+}
+
+// ── Booking Map ────────────────────────────────────────────────────────────────
+
+const BOOKING_SLOTS = [
+  { id: 'b1', city: 'New York, NY',     venue: 'Club Nova',       date: '2026-07-04', status: 'OPEN',   price: '$2,500', emoji: '🗽' },
+  { id: 'b2', city: 'Atlanta, GA',      venue: 'Sound Haven',     date: '2026-07-12', status: 'OPEN',   price: '$1,800', emoji: '🍑' },
+  { id: 'b3', city: 'Los Angeles, CA',  venue: 'Neon Amphitheater',date: '2026-07-19',status: 'BOOKED', price: '$3,200', emoji: '🌴' },
+  { id: 'b4', city: 'Chicago, IL',      venue: 'Midwest Arena',   date: '2026-08-01', status: 'OPEN',   price: '$2,100', emoji: '🌆' },
+  { id: 'b5', city: 'Houston, TX',      venue: 'Lone Star Stage',  date: '2026-08-15', status: 'OPEN',   price: '$1,600', emoji: '⭐' },
+];
+
+function BookingMap({ accentColor }: { accentColor: string }) {
+  return (
+    <div>
+      <div style={{ fontSize: 9, color: 'rgba(255,255,255,.35)', marginBottom: 14, letterSpacing: '0.06em' }}>
+        Available booking dates and confirmed shows
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
+        {BOOKING_SLOTS.map(slot => (
+          <div key={slot.id} style={{
+            display: 'flex', alignItems: 'center', gap: 12,
+            padding: '12px 14px',
+            background: slot.status === 'BOOKED' ? 'rgba(255,215,0,0.05)' : `${accentColor}08`,
+            border: `1px solid ${slot.status === 'BOOKED' ? 'rgba(255,215,0,0.2)' : accentColor + '22'}`,
+            borderRadius: 9,
+          }}>
+            <span style={{ fontSize: 24, flexShrink: 0 }}>{slot.emoji}</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 11, fontWeight: 800, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {slot.venue}
+              </div>
+              <div style={{ fontSize: 9, color: 'rgba(255,255,255,.4)', marginTop: 2 }}>
+                {slot.city} · {new Date(slot.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+              </div>
+            </div>
+            <div style={{ textAlign: 'right', flexShrink: 0 }}>
+              <div style={{ fontSize: 9, fontWeight: 700, color: slot.status === 'BOOKED' ? '#FFD700' : accentColor }}>
+                {slot.status}
+              </div>
+              <div style={{ fontSize: 8, color: 'rgba(255,255,255,.3)', marginTop: 2 }}>{slot.price}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+      <a href="/booking" style={{
+        display: 'block', textAlign: 'center', padding: '10px 0',
+        background: `${accentColor}18`, border: `1px solid ${accentColor}44`,
+        borderRadius: 8, fontSize: 9, fontWeight: 900, color: accentColor,
+        textDecoration: 'none', letterSpacing: '0.1em',
+      }}>
+        REQUEST A BOOKING DATE →
+      </a>
+    </div>
+  );
+}
+
 // ── MemoryWall (main export) ──────────────────────────────────────────────────
 
 interface MemoryWallProps {
@@ -446,6 +625,9 @@ export default function MemoryWall({ accentColor = "#00FFFF", title = "Memory Wa
             {activeTab === "audio"        && <AudioSection accentColor={activeConfig.color} />}
             {activeTab === "moments"      && <MomentsSection accentColor={activeConfig.color} />}
             {activeTab === "achievements" && <AchievementsSection accentColor={activeConfig.color} />}
+            {activeTab === "sponsors"     && <SponsorStampWall accentColor={activeConfig.color} />}
+            {activeTab === "orbit"        && <SponsorOrbit accentColor={activeConfig.color} />}
+            {activeTab === "booking"      && <BookingMap accentColor={activeConfig.color} />}
           </motion.div>
         </AnimatePresence>
       </div>

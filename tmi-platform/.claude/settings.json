@@ -222,13 +222,36 @@
       "PowerShell($f = \"c:\\\\Users\\\\Admin\\\\Documents\\\\BerntoutGlobal XXL\\\\tmi-platform\\\\apps\\\\web\\\\src\\\\app\\\\api\\\\auth\\\\signin\\\\route.ts\"; \\(Get-Item $f -ErrorAction SilentlyContinue\\)?.Length; Get-Content $f | Select-Object -First 20)",
       "PowerShell(foreach \\($r in @\\(\"admin\",\"admin/overview\",\"admin/users\",\"admin/payouts\",\"admin/moderation\",\"admin/content\",\"admin/contests\",\"admin/bots\"\\)\\) { $f = \"c:\\\\Users\\\\Admin\\\\Documents\\\\BerntoutGlobal XXL\\\\tmi-platform\\\\apps\\\\web\\\\src\\\\app\\\\$r\\\\page.tsx\"; $size = \\(Get-Item $f -ErrorAction SilentlyContinue\\)?.Length; echo \"$r => $size bytes\" })",
       "PowerShell($pkg = Get-Content \"c:\\\\Users\\\\Admin\\\\Documents\\\\BerntoutGlobal XXL\\\\tmi-platform\\\\apps\\\\web\\\\package.json\" | ConvertFrom-Json; $pkg.dependencies | Select-Object -Property @{N='three';E={$_.'three'}}, @{N='fiber';E={$_.'@react-three/fiber'}}, @{N='drei';E={$_.'@react-three/drei'}})",
-      "PowerShell(ls \"c:\\\\Users\\\\Admin\\\\Documents\\\\BerntoutGlobal XXL\\\\tmi-platform\\\\apps\\\\web\\\\src\\\\app\" | Where-Object { $_.Name -match \"^@\" } | Select-Object Name)"
+      "PowerShell(ls \"c:\\\\Users\\\\Admin\\\\Documents\\\\BerntoutGlobal XXL\\\\tmi-platform\\\\apps\\\\web\\\\src\\\\app\" | Where-Object { $_.Name -match \"^@\" } | Select-Object Name)",
+      "PowerShell(Get-ChildItem -Path \"c:\\\\Users\\\\Admin\\\\Documents\\\\BerntoutGlobal XXL\\\\tmi-platform\\\\apps\\\\web\\\\src\\\\app\" -Recurse -Filter \"page.tsx\" | ForEach-Object { $lines = \\(Get-Content $_.FullName\\).Count; [PSCustomObject]@{Lines=$lines; Path=$_.FullName.Replace\\(\"c:\\\\Users\\\\Admin\\\\Documents\\\\BerntoutGlobal XXL\\\\tmi-platform\\\\apps\\\\web\\\\src\\\\app\\\\\",\"\"\\)} } | Sort-Object Lines | Select-Object -First 40 | Format-Table -AutoSize)",
+      "Bash(echo \"\" > \"c:\\\\Users\\\\Admin\\\\Documents\\\\BerntoutGlobal XXL\\\\tmi-platform\\\\apps\\\\web\\\\src\\\\app\\\\battles\\\\[id]\\\\page.tsx\")",
+      "Bash(dir \"C:\\\\Users\\\\Admin\\\\Documents\\\\BerntoutGlobal XXL\\\\tmi-platform\\\\Homapge and battle challange and cyphers\")",
+      "Bash(rm -rf \"C:/Users/Admin/Documents/BerntoutGlobal XXL/tmi-platform/apps/web/src/app/arena/[genre]\" && echo \"deleted\" && ls \"C:/Users/Admin/Documents/BerntoutGlobal XXL/tmi-platform/apps/web/src/app/arena/\")",
+      "Bash(xargs ls -la)",
+      "Bash(rm -rf \"C:/Users/Admin/Documents/BerntoutGlobal XXL/tmi-platform/apps/web/src/app/lobbies/[id]\" && echo \"deleted lobbies/[id]\")",
+      "Bash(awk -F'/' '{print $1}')",
+      "Skill(code-review)",
+      "Skill(code-review:*)",
+      "Bash(git diff *)",
+      "PowerShell(New-Item -ItemType Directory -Force \"C:\\\\Users\\\\Admin\\\\Documents\\\\BerntoutGlobal XXL\\\\tmi-platform\\\\apps\\\\web\\\\src\\\\app\\\\video\\\\rooms\\\\new\")",
+      "PowerShell(New-Item -ItemType File -Force \"C:\\\\Users\\\\Admin\\\\Documents\\\\BerntoutGlobal XXL\\\\tmi-platform\\\\apps\\\\web\\\\src\\\\app\\\\video\\\\rooms\\\\new\\\\page.tsx\")",
+      "PowerShell(cd \"C:\\\\Users\\\\Admin\\\\Documents\\\\BerntoutGlobal XXL\\\\tmi-platform\"; $env:DATABASE_URL = \"postgresql://neondb_owner:npg_ZwbT8HgP4yJD@ep-muddy-morning-aim5jrn4.c-4.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require\"; $env:DIRECT_URL = \"postgresql://neondb_owner:npg_ZwbT8HgP4yJD@ep-muddy-morning-aim5jrn4.us-east-1.aws.neon.tech/neondb?sslmode=require\"; npx prisma migrate dev --name add_live_fields --schema packages/db/prisma/schema.prisma 2>&1)",
+      "PowerShell(Get-ChildItem \"C:\\\\Users\\\\Admin\\\\Documents\\\\BerntoutGlobal XXL\\\\tmi-platform\\\\apps\\\\web\\\\src\\\\components\" -Recurse -Name 2>$null | Where-Object { $_ -match \"\\(?i\\)playlist|player|media\" } | Select-Object -First 30)",
+      "PowerShell(Get-ChildItem \"C:\\\\Users\\\\Admin\\\\Documents\\\\BerntoutGlobal XXL\\\\tmi-platform\\\\apps\\\\web\\\\src\\\\app\\\\api\" -Recurse -Name 2>$null | Where-Object { $_ -match \"\\(?i\\)playlist|track|media\" } | Select-Object -First 20)",
+      "PowerShell(cd \"C:\\\\Users\\\\Admin\\\\Documents\\\\BerntoutGlobal XXL\\\\tmi-platform\" && npx tsc --noEmit --project apps/web/tsconfig.json 2>&1 | Where-Object { $_ -match \"playlist|MediaPlayer|error\" } | Select-Object -First 20)",
+      "PowerShell(cd \"C:\\\\Users\\\\Admin\\\\Documents\\\\BerntoutGlobal XXL\\\\tmi-platform\" && npx tsc --noEmit --project apps/web/tsconfig.json 2>&1 | Where-Object { $_ -match \"PlaylistArtifact|playlist|error TS\" } | Select-Object -First 20)",
+      "PowerShell(cd \"C:\\\\Users\\\\Admin\\\\Documents\\\\BerntoutGlobal XXL\\\\tmi-platform\" && npx tsc --noEmit --project apps/web/tsconfig.json 2>&1 | Where-Object { $_ -match \"webhook|stripe|error TS\" } | Select-Object -First 20)",
+      "PowerShell(cd \"C:\\\\Users\\\\Admin\\\\Documents\\\\BerntoutGlobal XXL\\\\tmi-platform\" && npx tsc --noEmit --project apps/web/tsconfig.json 2>&1 | Where-Object { $_ -match \"webhook|error TS\" } | Select-Object -First 10)"
     ],
     "additionalDirectories": [
       "c:\\Users\\Admin\\Documents\\BerntoutGlobal XXL\\tmi-platform\\apps\\web\\src\\app\\api\\messages",
       "c:\\Users\\Admin\\Documents\\BerntoutGlobal XXL\\tmi-platform\\apps\\web\\.next",
       "c:\\Users\\Admin\\Documents\\BerntoutGlobal XXL\\tmi-platform\\apps\\web\\src\\app\\showcases",
-      "c:\\Users\\Admin\\Documents\\BerntoutGlobal XXL\\tmi-platform"
+      "c:\\Users\\Admin\\Documents\\BerntoutGlobal XXL\\tmi-platform",
+      "c:\\Users\\Admin\\Documents\\BerntoutGlobal XXL\\tmi-platform\\apps\\web\\src\\app\\battles\\[id]",
+      "C:\\Users\\Admin\\Documents\\BerntoutGlobal XXL\\tmi-platform\\apps\\web\\src\\app\\arena\\[genre]",
+      "C:\\Users\\Admin\\Documents\\BerntoutGlobal XXL\\tmi-platform\\apps\\web\\src\\app\\lobbies\\[id]",
+      "C:\\Users\\Admin\\Documents\\BerntoutGlobal XXL\\tmi-platform\\apps\\web\\src\\app\\articles\\[category]"
     ]
   }
 }

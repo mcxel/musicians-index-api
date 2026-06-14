@@ -162,6 +162,30 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // ─── INVOICE EVENTS ───────────────────────────────────────────────────────
+    if (event.type === 'invoice.paid') {
+      const invoice = event.data.object as Stripe.Invoice;
+      const customerId = invoice.customer as string;
+      const customer = await stripe.customers.retrieve(customerId);
+      const email = 'deleted' in customer ? null : customer.email;
+      const subscriptionId = (invoice as Stripe.Invoice & { subscription?: string }).subscription;
+      if (email && subscriptionId) {
+        const sub = await stripe.subscriptions.retrieve(subscriptionId);
+        const priceId = sub.items.data[0]?.price?.id ?? '';
+        await grantSubscriptionTier(email, priceId, customerId);
+      }
+    }
+
+    if (event.type === 'invoice.payment_failed') {
+      const invoice = event.data.object as Stripe.Invoice;
+      const customer = await stripe.customers.retrieve(invoice.customer as string);
+      const email = 'deleted' in customer ? null : customer.email;
+      if (email) {
+        updateUserTier(email, 'FREE');
+        await prisma.user.updateMany({ where: { email }, data: { tier: 'FREE' } }).catch(() => {});
+      }
+    }
+
     return NextResponse.json({ received: true });
   } catch (err) {
     console.error('[Stripe Webhook] Fulfillment failed:', err);

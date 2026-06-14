@@ -53,6 +53,11 @@ model User {
   lastSeenAt                     DateTime?
   tier                           String    @default("FREE")
   displayName                    String?   @map("display_name")
+  // Live broadcast state — DB-persisted so serverless cold starts don't drop performers
+  isLive                         Boolean   @default(false) @map("is_live")
+  liveRoomId                     String?   @map("live_room_id")
+  liveGenre                      String?   @map("live_genre")
+  liveStartedAt                  DateTime? @map("live_started_at")
   userRef                        String?   @map("user_ref")
   userCreatedAt                  DateTime  @default(now()) @map("user_created_at")
   accounts                       Account[]

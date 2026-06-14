@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextResponse } from "next/server";
 import type { LiveFeedItem } from "@/components/billboard/TMIBillboardLiveWall";
 import { getActiveSessions } from "@/lib/broadcast/GlobalLiveSessionRegistry";
+import { prisma } from "@/lib/prisma";
 
 /**
  * GET /api/live
@@ -174,7 +175,7 @@ function normalizeGenre(raw: string): LiveFeedItem["genre"] {
 const REGISTRY_ACCENT = ["#00FFFF", "#FF2DAA", "#FFD700", "#AA2DFF", "#00FF88", "#FF6B35"];
 
 export async function GET() {
-  // Real live sessions — always appear first, sorted by viewer count
+  // Real live sessions — in-memory registry (warm lambda path)
   const liveSessions = getActiveSessions();
 
   const registryFeed: LiveFeedItem[] = liveSessions.map((session, i) => ({
@@ -196,10 +197,52 @@ export async function GET() {
     boostExpiresAt: Date.now() + 300_000,
   }));
 
-  // Filter seed: remove any seed whose performerId appears in active sessions (avoid dupes)
-  const registryIds = new Set(liveSessions.map((s) => s.userId));
+  // DB fallback — cold start recovery. Query users marked live in DB.
+  // Auto-expires sessions older than 6 hours (stale crash recovery).
+  let dbFeed: LiveFeedItem[] = [];
+  if (registryFeed.length === 0) {
+    try {
+      const SIX_HOURS = 6 * 60 * 60 * 1000;
+      const staleThreshold = new Date(Date.now() - SIX_HOURS);
+
+      // Clear stale sessions (performer crashed without ending)
+      await prisma.user.updateMany({
+        where: { isLive: true, liveStartedAt: { lt: staleThreshold } },
+        data:  { isLive: false, liveRoomId: null, liveGenre: null, liveStartedAt: null },
+      }).catch(() => {});
+
+      const dbLive = await prisma.user.findMany({
+        where:  { isLive: true },
+        select: { id: true, displayName: true, name: true, tier: true, liveRoomId: true, liveGenre: true },
+      });
+
+      dbFeed = dbLive.map((u, i) => ({
+        id:            `live-db-${u.id}`,
+        performerId:   u.id,
+        performerName: u.displayName ?? u.name ?? "Performer",
+        performerTier: (u.tier?.toLowerCase() as LiveFeedItem["performerTier"]) ?? "free",
+        roomId:        u.liveRoomId ?? `room-${u.id}`,
+        genre:         normalizeGenre(u.liveGenre ?? "live"),
+        privacy:       "PUBLIC" as const,
+        accentColor:   REGISTRY_ACCENT[i % REGISTRY_ACCENT.length] ?? "#00FFFF",
+        isLive:        true,
+        viewers:       rand(10, 80),
+        tips:          rand(0, 50),
+        battleRank:    i + 1,
+        activityLevel: rand(50, 95),
+        boostWeight:   20,
+        boostExpiresAt: Date.now() + 300_000,
+      }));
+    } catch { /* DB unavailable — fall through to seed */ }
+  }
+
+  // Combine: in-memory registry → DB recovery → seed fallback
+  const realFeed = registryFeed.length > 0 ? registryFeed : dbFeed;
+
+  // Filter seed: remove any seed whose performerId appears in real sessions (avoid dupes)
+  const realIds = new Set([...liveSessions.map((s) => s.userId), ...dbFeed.map((d) => d.performerId)]);
   const seedFeed: LiveFeedItem[] = SEED
-    .filter((s) => !registryIds.has(s.performerId))
+    .filter((s) => !realIds.has(s.performerId))
     .map((s) => ({
       ...s,
       viewers:       s.isLive ? rand(8, 420) : rand(0, 12),
@@ -210,9 +253,9 @@ export async function GET() {
       boostExpiresAt: maybeBoost() > 0 ? Date.now() + rand(30_000, 180_000) : undefined,
     }));
 
-  const feed = registryFeed.length > 0
-    ? registryFeed                    // real sessions only — no seeds when anyone is live
-    : seedFeed;                       // seed fallback only when platform is empty
+  const feed = realFeed.length > 0
+    ? realFeed                    // real sessions (in-memory or DB recovery)
+    : seedFeed;                   // seed fallback only when platform is empty
 
   return NextResponse.json(feed, {
     headers: {

@@ -4,7 +4,7 @@
  */
 
 export interface CheckoutPayload {
-  type: 'TICKET' | 'BEAT' | 'SUBSCRIPTION' | 'SPONSORSHIP';
+  type: 'TICKET' | 'BEAT' | 'SUBSCRIPTION' | 'SPONSORSHIP' | 'TIP';
   itemId: string;
   amountInCents: number;
   metadata?: Record<string, string>;

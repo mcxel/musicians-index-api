@@ -1,7 +1,37 @@
 'use client';
 
-import Home1CoverPage from '@/components/home/Home1CoverPage';
+import React from 'react';
+import { Home1CoverPage } from '@/components/home/Home1CoverPage';
+import OmniPresenceEngine from '@/components/presence/OmniPresenceEngine';
+import BillboardLiveWall from '@/components/media/BillboardLiveWall';
+import SponsorRail from '@/components/sponsors/SponsorRail';
+import Home1EditorialBelt from '@/components/home/Home1EditorialBelt';
+
+const SEED_SPONSORS = [
+  { id: "sp1", name: "BernoutGlobal Media" },
+  { id: "sp2", name: "TMI Founding Partner" },
+  { id: "sp3", name: "Crown Circuit Records" },
+];
 
 export default function Home1Page() {
-  return <Home1CoverPage />;
+  return (
+    <main className="relative min-h-screen bg-[#050510] overflow-x-hidden">
+      {/* LAYER 1 & 2: Magazine Identity and World Lobby Orbital */}
+      <Home1CoverPage />
+
+      {/* LAYER 3: Omni Dashboards (Messages, Video Chat, Routing, Audio Ducking) */}
+      <OmniPresenceEngine />
+
+      {/* LAYER 4: Sponsor Rail — discovery strip for platform sponsors */}
+      <SponsorRail sponsors={SEED_SPONSORS} zone="home1-rail" className="px-6 py-2" />
+
+      {/* LAYER 5: Live Rooms Billboard Lobby Wall */}
+      <div className="relative z-10 pt-10 pb-10">
+        <BillboardLiveWall />
+      </div>
+
+      {/* LAYER 6: Editorial Belt — magazine content surface */}
+      <Home1EditorialBelt title="FROM THE MAGAZINE" accentColor="#FF2DAA" />
+    </main>
+  );
 }

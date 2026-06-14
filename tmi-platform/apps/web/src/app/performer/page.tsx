@@ -1,2 +1,2 @@
 import { redirect } from "next/navigation";
-export default function PerformerPage() { redirect("/performers"); }
+export default function PerformerPage() { redirect("/performer/dashboard"); }

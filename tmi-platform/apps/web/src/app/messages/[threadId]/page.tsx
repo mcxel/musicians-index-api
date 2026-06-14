@@ -71,13 +71,19 @@ const AUTO_REPLIES: Record<string, string[]> = {
 };
 
 function normalizeMessages(data: unknown, fallback: Msg[]): Msg[] {
-  if (!Array.isArray(data) || data.length === 0) return fallback;
-  return (data as Record<string, unknown>[]).map((m, i) => ({
-    id:   String(m.id ?? `m-${i}`),
+  // Handle real API response: { messages: [...] }
+  const arr = Array.isArray(data)
+    ? data
+    : Array.isArray((data as Record<string, unknown>)?.messages)
+      ? (data as Record<string, unknown[]>).messages
+      : null;
+  if (!arr || arr.length === 0) return fallback;
+  return (arr as Record<string, unknown>[]).map((m, i) => ({
+    id:   String(m.messageId ?? m.id ?? `m-${i}`),
     from: String(m.senderName ?? m.from ?? "Unknown"),
-    text: String(m.content ?? m.text ?? ""),
-    mine: Boolean(m.isMine ?? m.mine ?? false),
-    ts:   typeof m.createdAt === "string" ? new Date(m.createdAt).getTime() : (Number(m.ts) || Date.now()),
+    text: String(m.body ?? m.content ?? m.text ?? ""),
+    mine: Boolean(m.isOwn ?? m.isMine ?? m.mine ?? false),
+    ts:   typeof m.createdAt === "string" ? new Date(m.createdAt).getTime() : (Number(m.createdAt) || Number(m.ts) || Date.now()),
   }));
 }
 
@@ -102,17 +108,17 @@ export default function MessageThreadPage({ params }: { params: { threadId: stri
   const [safetyReason, setSafetyReason] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  // Load thread — try API first, fall back to seed
+  // Load thread — real MessageThreadEngine API, fall back to seed for demo contacts
   useEffect(() => {
     let active = true;
 
-    fetch(`/api/messages/conversations/${threadId}`, { cache: "no-store", credentials: "include" })
-      .then(r => r.json())
+    fetch(`/api/messages/${threadId}`, { cache: "no-store", credentials: "include" })
+      .then(r => r.ok ? r.json() : null)
       .then((d: unknown) => {
         if (!active) return;
         const normalized = normalizeMessages(d, SEED[threadId] ?? []);
         setMessages(normalized);
-        setApiMode(Array.isArray(d) && d.length > 0);
+        setApiMode(!!d && (d as Record<string, unknown[]>).messages?.length > 0);
         setReady(true);
       })
       .catch(() => {
@@ -120,9 +126,6 @@ export default function MessageThreadPage({ params }: { params: { threadId: stri
         setMessages(SEED[threadId] ?? []);
         setReady(true);
       });
-
-    // Mark thread as read
-    fetch(`/api/messages/conversations/${threadId}`, { method: "POST", credentials: "include" }).catch(() => {});
 
     return () => { active = false; };
   }, [threadId]);
@@ -133,11 +136,11 @@ export default function MessageThreadPage({ params }: { params: { threadId: stri
 
   const sendViaApi = useCallback(async (text: string): Promise<boolean> => {
     try {
-      const res = await fetch("/api/messages/conversations", {
+      const res = await fetch(`/api/messages/${threadId}`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ toUserId: threadId, content: text }),
+        body: JSON.stringify({ body: text, type: "text" }),
       });
       return res.ok;
     } catch {
@@ -168,8 +171,9 @@ export default function MessageThreadPage({ params }: { params: { threadId: stri
     setInput("");
     trackAction('SEND_MESSAGE');
 
-    // Send via API (optimistic — message already shown)
-    if (apiMode) {
+    // Real threads (UUID-format) always persist via API; seed demo contacts use local sim only
+    const isRealThread = !CONTACTS[threadId];
+    if (apiMode || isRealThread) {
       void sendViaApi(text);
     }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, Suspense, useEffect, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { enforceAdultTeenContactBlock } from "@/lib/safety/AdultTeenContactBlocker";
@@ -10,6 +10,17 @@ const SYSTEM_CONTACTS = [
   { id: "tmi-booking", name: "TMI Booking",   role: "SYSTEM",  icon: "📋", color: "#FFD700" },
   { id: "tmi-admin",   name: "TMI Admin",     role: "ADMIN",   icon: "👑", color: "#FF2DAA" },
 ];
+
+type SearchResult = { id: string; name: string; role: string; icon?: string; color?: string };
+
+function roleColor(role: string): string {
+  if (role === "ARTIST" || role === "PERFORMER") return "#AA2DFF";
+  if (role === "SPONSOR") return "#FFD700";
+  if (role === "VENUE") return "#00FF88";
+  if (role === "PROMOTER") return "#FF6B35";
+  if (role === "ADMIN") return "#FF2DAA";
+  return "#00FFFF";
+}
 
 function NewMessageInner() {
   const router = useRouter();
@@ -22,13 +33,37 @@ function NewMessageInner() {
   const [message, setMessage] = useState("");
   const [blocked, setBlocked] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
+  const [searching, setSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [selected, setSelected] = useState<{ id: string; name: string } | null>(
     prefilledId ? { id: prefilledId, name: prefilledName } : null
   );
 
-  const filtered = [
-    ...SYSTEM_CONTACTS.filter(u => u.name.toLowerCase().includes(query.toLowerCase())),
-  ];
+  const searchUsers = useCallback(async (q: string) => {
+    if (q.length < 2) { setSearchResults([]); return; }
+    setSearching(true);
+    try {
+      const res = await fetch(`/api/users/search?q=${encodeURIComponent(q)}&limit=8`, { credentials: "include" });
+      if (res.ok) {
+        const data = await res.json() as { users?: SearchResult[] };
+        setSearchResults(data.users ?? []);
+      }
+    } catch { /* ignore */ }
+    finally { setSearching(false); }
+  }, []);
+
+  useEffect(() => {
+    const t = setTimeout(() => void searchUsers(query), 300);
+    return () => clearTimeout(t);
+  }, [query, searchUsers]);
+
+  const systemFiltered = SYSTEM_CONTACTS.filter(u => !query || u.name.toLowerCase().includes(query.toLowerCase()));
+  const filtered: SearchResult[] = query.length >= 2
+    ? [
+        ...searchResults,
+        ...systemFiltered.map(c => ({ ...c, color: c.color })),
+      ]
+    : systemFiltered;
 
   async function handleSend(recipientId: string, recipientName: string) {
     const decision = enforceAdultTeenContactBlock({
@@ -99,7 +134,7 @@ function NewMessageInner() {
         {/* Suggestions */}
         <div style={{ marginBottom: 28 }}>
           <div style={{ fontSize: 8, letterSpacing: "0.2em", color: "rgba(255,255,255,0.25)", fontWeight: 700, marginBottom: 10 }}>
-            {selected ? "SELECTED" : query ? "RESULTS" : "TMI CONTACTS"}
+            {selected ? "SELECTED" : query.length >= 2 ? (searching ? "SEARCHING…" : "RESULTS") : "TMI CONTACTS"}
           </div>
 
           {selected ? (
@@ -119,16 +154,19 @@ function NewMessageInner() {
                   onClick={() => setSelected({ id: user.id, name: user.name })}
                   style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, cursor: "pointer", textAlign: "left", width: "100%", color: "#fff" }}
                 >
-                  <span style={{ fontSize: 22, flexShrink: 0 }}>{user.icon}</span>
+                  <span style={{ fontSize: 22, flexShrink: 0 }}>{user.icon ?? "👤"}</span>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: 13, fontWeight: 700 }}>{user.name}</div>
-                    <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.1em", color: user.color }}>{user.role}</div>
+                    <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.1em", color: user.color ?? roleColor(user.role) }}>{user.role}</div>
                   </div>
                   <span style={{ fontSize: 12, color: "rgba(255,255,255,0.2)" }}>→</span>
                 </button>
               ))}
-              {filtered.length === 0 && query && (
-                <p style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", padding: "12px 0" }}>No contacts found for "{query}"</p>
+              {!searching && filtered.length === 0 && query.length >= 2 && (
+                <p style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", padding: "12px 0" }}>No users found for "{query}"</p>
+              )}
+              {!searching && filtered.length === 0 && query.length > 0 && query.length < 2 && (
+                <p style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", padding: "12px 0" }}>Type at least 2 characters to search</p>
               )}
             </div>
           )}

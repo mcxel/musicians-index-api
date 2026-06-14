@@ -2,6 +2,8 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import MemoryWall from "@/components/media/MemoryWall";
+import OmniPresenceEngine from "@/components/presence/OmniPresenceEngine";
 
 const ACCENT = "#FF2DAA";
 const BG = "#050510";
@@ -99,7 +101,7 @@ export default function ArtistProfilePage() {
             <p style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", textAlign: "center", padding: "14px 0" }}>Add social links via Edit Profile.</p>
           </div>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 10 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 10, marginBottom: 24 }}>
           {[
             { href: "/hub/performer",    label: "Performer Hub",  color: ACCENT    },
             { href: "/battles/create",   label: "New Challenge",  color: "#FFD700" },
@@ -109,6 +111,8 @@ export default function ArtistProfilePage() {
             { href: "/magazine",         label: "Magazine",       color: "#FF6B35" },
           ].map((a) => (<Link key={a.href} href={a.href} style={{ display: "block", padding: "12px", borderRadius: 10, background: `${a.color}0A`, border: `1px solid ${a.color}28`, color: a.color, fontSize: 11, fontWeight: 800, textDecoration: "none", textAlign: "center" }}>{a.label}</Link>))}
         </div>
+        <MemoryWall accentColor={ACCENT} title="Artist Memory Wall" />
+        <OmniPresenceEngine displayName="Artist" defaultTab="messages" />
       </div>
     </main>
   );

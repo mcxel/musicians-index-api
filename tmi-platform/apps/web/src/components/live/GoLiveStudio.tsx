@@ -2,10 +2,11 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import type { DailyCall } from '@daily-co/daily-js';
 import MaskedVideoTile from '@/components/media/MaskedVideoTile';
 import ArenaImmersivePanel from '@/components/live/ArenaImmersivePanel';
-import LiveLobbyWallGrid, { type LobbyRoom } from '@/components/live/LiveLobbyWallGrid';
+import PerformerVideoOrbit from '@/components/live/PerformerVideoOrbit';
 import AudienceScene from '@/components/live/AudienceScene';
 import {
   startCountdown,
@@ -28,14 +29,9 @@ const FUCHSIA = '#FF2DAA';
 const CYAN = '#00FFFF';
 const GOLD = '#FFD700';
 
-const LOBBY_SEED_ROOMS: LobbyRoom[] = [
-  { id: 'l1', name: 'Cypher Room', performerName: 'DJ Nocturne', type: 'cypher', href: '/live/lobby', viewerCount: 14, status: 'live', genre: 'Hip-Hop' },
-  { id: 'l2', name: 'Battle Arena', performerName: 'Verse King', type: 'battle', href: '/live/lobby', viewerCount: 31, status: 'live', genre: 'Trap' },
-  { id: 'l3', name: 'Vibe Session', performerName: 'Luna Sol', type: 'live', href: '/live/lobby', viewerCount: 8, status: 'live', genre: 'R&B' },
-  { id: 'l4', name: 'Beat Lab', performerName: 'Crate Digger', type: 'mini-cypher', href: '/live/lobby', viewerCount: 5, status: 'starting', genre: 'Jazz' },
-];
 
 export default function GoLiveStudio() {
+  const router    = useRouter();
   const videoRef  = useRef<HTMLVideoElement>(null);
   const stageRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -277,6 +273,8 @@ export default function GoLiveStudio() {
   const isLive     = broadcastState === 'live';
   const isStarting = broadcastState === 'syncing';
   const isEnding   = broadcastState === 'ending';
+  // Audience / lobby view is visible from camera-on, not just when fully live
+  const showAudience = (camOn || isLive) && broadcastState !== 'ending';
 
   return (
     <div style={{ fontFamily: "'Inter', sans-serif", maxWidth: 680, margin: '0 auto' }}>
@@ -533,20 +531,26 @@ export default function GoLiveStudio() {
         </div>
       )}
 
-      {isLive && !isPublicSession && (
+      {showAudience && !isPublicSession && (
         <div style={{ marginBottom: 20 }}>
-          <div style={{ fontSize: 9, color: CYAN, fontWeight: 800, letterSpacing: '0.14em', marginBottom: 10 }}>
+          <div style={{ fontSize: 9, color: CYAN, fontWeight: 800, letterSpacing: '0.14em', marginBottom: 12 }}>
             🔒 PRIVATE SESSION — ARTIST BOX
           </div>
-          <LiveLobbyWallGrid
-            title="Artist Lobby"
-            accentColor={CYAN}
-            rooms={LOBBY_SEED_ROOMS}
+          <PerformerVideoOrbit
+            accent={CYAN}
+            maxVisible={6}
+            onInvite={(id) => {
+              if (id === 'invite') {
+                router.push('/performers/search');
+              } else {
+                router.push(`/messages/new?to=${encodeURIComponent(id)}&type=invite`);
+              }
+            }}
           />
         </div>
       )}
 
-      {isLive && isPublicSession && (
+      {showAudience && isPublicSession && (
         <>
           <section style={{ marginBottom: 20 }}>
             <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.14em', marginBottom: 8, fontWeight: 800 }}>

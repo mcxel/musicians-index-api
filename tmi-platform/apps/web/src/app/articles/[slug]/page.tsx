@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { WinnerBadge } from '@/components/editorial/WinnerBadge';
 import { VoteResults } from '@/components/editorial/VoteResults';
 import { StructuredData } from '@/components/seo/StructuredData';
@@ -157,8 +157,19 @@ function RelatedArticles({ current, accent }: { current: string; accent: string 
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
+// Genre slugs from the old articles/[category] route — redirect to magazine channel
+const GENRE_CATEGORY_SLUGS = new Set([
+  'hip-hop', 'r-b', 'rnb', 'gospel', 'edm', 'jazz', 'pop', 'soul', 'rap',
+  'dance', 'comedy', 'spoken-word', 'afrobeat',
+]);
+
 export default async function ArticlePage({ params }: { params: { slug: string } }) {
   const { slug } = params;
+
+  // Category slug → redirect to magazine channel or articles list filtered by genre
+  if (GENRE_CATEGORY_SLUGS.has(slug)) {
+    redirect(`/articles?genre=${slug}`);
+  }
 
   // Resolution order: editorial catalog → local catalog → remote API
   const editorial: NewsArticle | undefined = getEditorialArticleBySlug(slug);

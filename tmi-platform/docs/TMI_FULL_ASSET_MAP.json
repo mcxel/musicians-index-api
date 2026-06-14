@@ -409,18 +409,18 @@
         "folder":  "C:\\Users\\Admin\\Documents\\BerntoutGlobal XXL\\Tmi pdf 2 li",
         "fileName":  "The Musician fini.pdf",
         "ext":  ".pdf",
-        "pageType":  "unclassified",
-        "routeTarget":  "pending",
-        "status":  "pending"
+        "pageType":  "MAGAZINE",
+        "routeTarget":  "/magazine/issues/musician-fini",
+        "status":  "active"
     },
     {
         "filePath":  "C:\\Users\\Admin\\Documents\\BerntoutGlobal XXL\\Tmi pdf 2 li\\The Musician\u0027s index Magazine.pdf",
         "folder":  "C:\\Users\\Admin\\Documents\\BerntoutGlobal XXL\\Tmi pdf 2 li",
         "fileName":  "The Musician\u0027s index Magazine.pdf",
         "ext":  ".pdf",
-        "pageType":  "unclassified",
-        "routeTarget":  "pending",
-        "status":  "pending"
+        "pageType":  "MAGAZINE",
+        "routeTarget":  "/magazine/issues/index-magazine",
+        "status":  "active"
     },
     {
         "filePath":  "C:\\Users\\Admin\\Documents\\BerntoutGlobal XXL\\Tmi PDF\u0027s\\game show and venue skins\\BobbleHead Avatar extras 1.jpg",
@@ -913,27 +913,27 @@
         "folder":  "C:\\Users\\Admin\\Documents\\BerntoutGlobal XXL\\Tmi PDF\u0027s",
         "fileName":  "The Musician\u0027s Index Magazine images.pdf",
         "ext":  ".pdf",
-        "pageType":  "unclassified",
-        "routeTarget":  "pending",
-        "status":  "pending"
+        "pageType":  "MAGAZINE",
+        "routeTarget":  "/magazine/issues/latest",
+        "status":  "active"
     },
     {
         "filePath":  "C:\\Users\\Admin\\Documents\\BerntoutGlobal XXL\\Tmi PDF\u0027s\\The Musician\u0027s Index Magazine images\\img00001.jpg",
         "folder":  "C:\\Users\\Admin\\Documents\\BerntoutGlobal XXL\\Tmi PDF\u0027s\\The Musician\u0027s Index Magazine images",
         "fileName":  "img00001.jpg",
         "ext":  ".jpg",
-        "pageType":  "unclassified",
-        "routeTarget":  "pending",
-        "status":  "pending"
+        "pageType":  "MAGAZINE",
+        "routeTarget":  "/magazine/issues/latest/page/1",
+        "status":  "active"
     },
     {
         "filePath":  "C:\\Users\\Admin\\Documents\\BerntoutGlobal XXL\\Tmi PDF\u0027s\\The Musician\u0027s Index Magazine images\\img00002.jpg",
         "folder":  "C:\\Users\\Admin\\Documents\\BerntoutGlobal XXL\\Tmi PDF\u0027s\\The Musician\u0027s Index Magazine images",
         "fileName":  "img00002.jpg",
         "ext":  ".jpg",
-        "pageType":  "unclassified",
-        "routeTarget":  "pending",
-        "status":  "pending"
+        "pageType":  "MAGAZINE",
+        "routeTarget":  "/magazine/issues/latest/page/2",
+        "status":  "active"
     },
     {
         "filePath":  "C:\\Users\\Admin\\Documents\\BerntoutGlobal XXL\\Tmi PDF\u0027s\\The Musician\u0027s Index Magazine images\\img00003.jpg",

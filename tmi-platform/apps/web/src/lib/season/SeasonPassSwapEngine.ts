@@ -1,3 +1,29 @@
+/**
+ * SeasonPassSwapEngine
+ * Maps the 5-Tier Reward Pyramid to internal XP/Credits.
+ */
+
+export const REWARD_PYRAMID = {
+  XP: 0.70,
+  STORE: 0.20,
+  SPONSOR: 0.08,
+  CASH: 0.02
+};
+
+export interface SeasonPassTierConfig {
+  id: 'FREE' | 'RUBY' | 'SILVER' | 'GOLD' | 'PLATINUM';
+  xpMultiplier: number;
+  benefits: string[];
+}
+
+export const SEASON_PASS_CONFIG: Record<string, SeasonPassTierConfig> = {
+  FREE:     { id: 'FREE',     xpMultiplier: 1.0, benefits: ['Watch Rooms', 'Vote', 'Basic Chat'] },
+  RUBY:     { id: 'RUBY',     xpMultiplier: 1.5, benefits: ['+ Tips', 'Avatar Badge', 'Cypher Entry'] },
+  SILVER:   { id: 'SILVER',   xpMultiplier: 2.0, benefits: ['+ Beat Battles', 'VIP Rooms', 'Merch Drops'] },
+  GOLD:     { id: 'GOLD',     xpMultiplier: 2.5, benefits: ['+ Booking', 'Season Pass', 'Crown Voting'] },
+  PLATINUM: { id: 'PLATINUM', xpMultiplier: 3.0, benefits: ['All Access', 'NFT Drops', 'Stage Slot'] },
+};
+
 export type PassInstrument =
   | "guitar"
   | "saxophone"
@@ -9,7 +35,7 @@ export type PassInstrument =
   | "producer_pad"
   | "microphone";
 
-export type PassTier = "RUBY" | "silver" | "gold" | "platinum";
+export type PassTier = "FREE" | "RUBY" | "SILVER" | "GOLD" | "PLATINUM";
 
 export type SwapStatus = "available" | "locked" | "cooldown" | "maxed";
 
@@ -54,10 +80,11 @@ const TIER_CONFIG: Record<
   PassTier,
   { maxSwaps: number; cooldownMinutes: number; unlockedCount: number }
 > = {
+  FREE:     { maxSwaps: 0,  cooldownMinutes: 0,    unlockedCount: 1 },
   RUBY:   { maxSwaps: 2,  cooldownMinutes: 1440, unlockedCount: 2 },
-  silver:   { maxSwaps: 4,  cooldownMinutes: 720,  unlockedCount: 4 },
-  gold:     { maxSwaps: 8,  cooldownMinutes: 360,  unlockedCount: 7 },
-  platinum: { maxSwaps: 99, cooldownMinutes: 60,   unlockedCount: 9 },
+  SILVER:   { maxSwaps: 4,  cooldownMinutes: 720,  unlockedCount: 4 },
+  GOLD:     { maxSwaps: 8,  cooldownMinutes: 360,  unlockedCount: 7 },
+  PLATINUM: { maxSwaps: 99, cooldownMinutes: 60,   unlockedCount: 9 },
 };
 
 const ALL_INSTRUMENTS: PassInstrument[] = [
@@ -171,6 +198,17 @@ export function getAllInstruments(): PassInstrument[] {
 
 export function getUnlockedInstruments(userId: string): PassInstrument[] {
   return _passes.get(userId)?.unlockedInstruments ?? [];
+}
+
+// Calculates the exact reward distribution according to the TMI rule: 
+// Cash is the rarest output. Status, Store, and XP come first.
+export function calculateRewards(battlePrizePool: number) {
+  return {
+    xp: Math.floor(battlePrizePool * REWARD_PYRAMID.XP),
+    storeCredits: Math.floor(battlePrizePool * REWARD_PYRAMID.STORE),
+    sponsorPrizeValue: Math.floor(battlePrizePool * REWARD_PYRAMID.SPONSOR),
+    cashPayout: Math.floor(battlePrizePool * REWARD_PYRAMID.CASH),
+  };
 }
 
 // ── Season archive + progression lane ────────────────────────────────────────

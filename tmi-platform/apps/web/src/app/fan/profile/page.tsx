@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import MemoryWall from "@/components/media/MemoryWall";
+import OmniPresenceEngine from "@/components/presence/OmniPresenceEngine";
 
 const ACCENT = "#00FFFF";
 const BG = "#050510";
@@ -143,7 +145,7 @@ export default function FanProfilePage() {
         </div>
 
         {/* Action grid */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 10 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 10, marginBottom: 24 }}>
           {[
             { href: "/hub/fan",         label: "Fan Hub",         color: ACCENT    },
             { href: "/vote",            label: "Vote Now",         color: "#FFD700" },
@@ -157,6 +159,8 @@ export default function FanProfilePage() {
             </Link>
           ))}
         </div>
+        <MemoryWall accentColor={ACCENT} title="Fan Memory Wall" />
+        <OmniPresenceEngine displayName="Fan" defaultTab="messages" />
       </div>
     </main>
   );

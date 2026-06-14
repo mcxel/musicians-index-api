@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 const BEATS = [
@@ -25,6 +25,10 @@ export default function BeatVaultPage() {
   const [genre, setGenre] = useState('All');
   const [previewing, setPreviewing] = useState<number | null>(null);
   const [buying, setBuying] = useState<number | null>(null);
+  
+  const [uploadState, setUploadState] = useState<'IDLE' | 'UPLOADING' | 'SUCCESS' | 'ERROR'>('IDLE');
+  const [uploadError, setUploadError] = useState('');
+  const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   function handleBuy(beat: typeof BEATS[0]) {
     setBuying(beat.id);
@@ -36,6 +40,36 @@ export default function BeatVaultPage() {
     });
     router.push(`/api/stripe/checkout?${params.toString()}`);
   }
+
+  const handleUniversalUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (successTimerRef.current) clearTimeout(successTimerRef.current);
+    setUploadError('');
+    setUploadState('UPLOADING');
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("title", file.name.replace(/\.[^/.]+$/, ""));
+      formData.append("genre", genre === 'All' ? 'Other' : genre);
+      formData.append("bpm", "120");
+
+      const res = await fetch('/api/beats/submit', { method: 'POST', body: formData });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({ error: 'Upload failed' }));
+        setUploadError(body.error ?? `Error ${res.status}`);
+        setUploadState('ERROR');
+        return;
+      }
+      setUploadState('SUCCESS');
+      successTimerRef.current = setTimeout(() => setUploadState('IDLE'), 4000);
+    } catch {
+      setUploadError('Network error — please try again.');
+      setUploadState('ERROR');
+    }
+  };
 
   const filtered = genre === 'All' ? BEATS : BEATS.filter(b => b.genre === genre);
 
@@ -57,19 +91,45 @@ export default function BeatVaultPage() {
           </a>
         </div>
 
-        {/* Upload Drop Zone */}
+        {/* Universal Upload Drop Zone (Works for all Profiles) */}
         <div style={{
           background: '#0a1a0f', border: '2px dashed #00FF8833', borderRadius: 12,
           padding: '32px 24px', marginBottom: 36, textAlign: 'center',
+          position: 'relative'
         }}>
-          <div style={{ fontSize: 36, marginBottom: 8 }}>🎵</div>
-          <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>Upload a Beat</div>
-          <div style={{ color: '#555', fontSize: 13, marginBottom: 16 }}>
-            Drag &amp; drop an audio file here, or click to browse. MP3, WAV, FLAC supported.
-          </div>
-          <button style={{ background: '#00FF88', color: '#07071a', border: 'none', borderRadius: 6, padding: '9px 28px', fontWeight: 700, cursor: 'pointer', fontSize: 14 }}>
-            Choose File
-          </button>
+          {uploadState === 'SUCCESS' ? (
+            <div>
+              <div style={{ fontSize: 36, marginBottom: 8 }}>✅</div>
+              <div style={{ fontWeight: 900, color: '#00FF88', fontSize: 18 }}>BEAT UPLOADED — PENDING REVIEW</div>
+              <div style={{ fontSize: 12, color: '#00FF8866', marginTop: 4 }}>Our team will approve it within 24 hours.</div>
+            </div>
+          ) : uploadState === 'ERROR' ? (
+            <div>
+              <div style={{ fontSize: 36, marginBottom: 8 }}>❌</div>
+              <div style={{ fontWeight: 900, color: '#FF2DAA', fontSize: 16, marginBottom: 6 }}>{uploadError || 'Upload failed'}</div>
+              <button onClick={() => setUploadState('IDLE')} style={{ background: '#FF2DAA22', color: '#FF2DAA', border: '1px solid #FF2DAA44', borderRadius: 6, padding: '6px 20px', cursor: 'pointer', fontSize: 13, fontWeight: 700 }}>
+                Try Again
+              </button>
+            </div>
+          ) : (
+            <>
+              <div style={{ fontSize: 36, marginBottom: 8 }}>{uploadState === 'UPLOADING' ? '⏳' : '🎵'}</div>
+              <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>{uploadState === 'UPLOADING' ? 'Uploading to Vault...' : 'Upload a Beat'}</div>
+              <div style={{ color: '#555', fontSize: 13, marginBottom: 16 }}>
+                Drag &amp; drop an audio file here, or click to browse. MP3, WAV, FLAC supported.
+              </div>
+              <label style={{ background: uploadState === 'UPLOADING' ? '#333' : '#00FF88', color: uploadState === 'UPLOADING' ? '#888' : '#07071a', border: 'none', borderRadius: 6, padding: '9px 28px', fontWeight: 700, cursor: uploadState === 'UPLOADING' ? 'not-allowed' : 'pointer', fontSize: 14, display: 'inline-block' }}>
+                {uploadState === 'UPLOADING' ? 'Processing...' : 'Choose File'}
+                <input
+                  type="file"
+                  accept="audio/*"
+                  onChange={handleUniversalUpload}
+                  disabled={uploadState === 'UPLOADING'}
+                  style={{ display: 'none' }}
+                />
+              </label>
+            </>
+          )}
         </div>
 
         {/* Genre Filter */}

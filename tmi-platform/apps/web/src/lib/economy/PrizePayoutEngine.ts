@@ -3,6 +3,19 @@
  * Manages prize distribution for shows, battles, and contests.
  */
 
+const MAX_PAYOUT_RATIO = 0.40; // Max 40% of revenue goes to prizes
+
+/**
+ * Validates the "Revenue Protection Rule": Never pay out more than a % of contest revenue.
+ */
+export const validatePayout = (revenue: number, proposedPrize: number) => {
+  const allowed = revenue * MAX_PAYOUT_RATIO;
+  if (proposedPrize > allowed) {
+    throw new Error(`[TMI Engine] Payout exceeds revenue protection ratio. Max allowed: $${allowed}`);
+  }
+  return true;
+};
+
 export type PayoutMethod = "cash" | "tmicoin" | "store-credit" | "beat-pack" | "merch" | "recording-session" | "nft";
 export type PayoutStatus = "pending" | "processing" | "paid" | "failed" | "cancelled" | "on-hold";
 
@@ -71,6 +84,10 @@ export class PrizePayoutEngine {
     const tiers = this.getStructure(showId);
     const tier = tiers.find((t) => t.place === place);
     if (!tier) return null;
+
+    // Example Revenue Protection Check Hook 
+    // If we knew total show revenue here, we would run:
+    // validatePayout(showRevenue, tier.cashUsd);
 
     const record: PayoutRecord = {
       id: Math.random().toString(36).slice(2),

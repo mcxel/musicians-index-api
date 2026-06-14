@@ -14,6 +14,7 @@ import {
   type LivePingPayload,
 } from '@/lib/broadcast/GlobalLiveSessionRegistry';
 import { seedRoomWithBots } from '@/lib/live/audienceRuntimeEngine';
+import { prisma } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
 
@@ -51,6 +52,17 @@ export async function POST(req: NextRequest) {
     performerTier: body.performerTier,
   });
 
+  // Persist live state to DB so serverless cold starts don't drop the session
+  await prisma.user.updateMany({
+    where: { OR: [{ id: userId }, { userRef: userId }] },
+    data: {
+      isLive:       true,
+      liveRoomId:   session.roomId,
+      liveGenre:    session.category,
+      liveStartedAt: new Date(),
+    },
+  }).catch(() => {});
+
   // Auto-seed 20 bots into the room so performer never sees an empty venue
   seedRoomWithBots(session.roomId, 20);
 
@@ -62,6 +74,13 @@ export async function DELETE(req: NextRequest) {
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   endLiveSession(userId);
+
+  // Clear DB live state so the billboard stops showing this performer
+  await prisma.user.updateMany({
+    where: { OR: [{ id: userId }, { userRef: userId }] },
+    data: { isLive: false, liveRoomId: null, liveGenre: null, liveStartedAt: null },
+  }).catch(() => {});
+
   return NextResponse.json({ ok: true }, { status: 200 });
 }
 
