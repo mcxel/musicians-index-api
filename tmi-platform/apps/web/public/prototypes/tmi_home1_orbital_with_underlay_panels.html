@@ -1,0 +1,462 @@
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Exo+2:wght@300;400;600;700&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --red:#E63000;--pink:#FF2DAA;--gold:#FFD700;--cyan:#00E5FF;--purple:#9B59B6;--green:#00FF7F;
+  --bg:#050815;--panel:rgba(8,14,38,.96);--card:rgba(12,20,50,.92);
+  --border:rgba(220,70,0,.4);--amber:#FF8C00;
+}
+@keyframes blobA{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(60px,-40px) scale(1.12)}66%{transform:translate(-40px,30px) scale(.9)}}
+@keyframes blobB{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(-50px,50px) scale(.88)}66%{transform:translate(70px,-30px) scale(1.1)}}
+@keyframes blobC{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(40px,60px) scale(1.08)}}
+@keyframes orbit{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+@keyframes orbitRev{from{transform:rotate(0deg)}to{transform:rotate(-360deg)}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(255,45,170,.4)}70%{box-shadow:0 0 0 12px rgba(255,45,170,0)}}
+@keyframes floatUp{0%{transform:translateY(0);opacity:1}100%{transform:translateY(-60px);opacity:0}}
+@keyframes ticker{from{transform:translateX(100%)}to{transform:translateX(-100%)}}
+@keyframes shimmer{0%,100%{opacity:.7}50%{opacity:1}}
+@keyframes cardSlideIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.blob{position:absolute;border-radius:50%;filter:blur(80px);pointer-events:none;opacity:.55}
+.blobA{animation:blobA 9s ease-in-out infinite}
+.blobB{animation:blobB 12s ease-in-out infinite}
+.blobC{animation:blobC 15s ease-in-out infinite}
+.orbit-ring{animation:orbit 40s linear infinite;transform-origin:center center}
+.orbit-ring-2{animation:orbit 28s linear infinite reverse;transform-origin:center center}
+.orbit-counter{animation:orbitRev 40s linear infinite;transform-origin:center}
+.orbit-counter-2{animation:orbitRev 28s linear infinite;transform-origin:center}
+.live-dot{animation:blink 1.2s ease-in-out infinite;display:inline-block;width:6px;height:6px;border-radius:50%;background:#FF2020;margin-right:5px;vertical-align:middle}
+.tmi-btn{background:transparent;border:1px solid var(--border);color:var(--amber);font-family:'Exo 2',sans-serif;font-size:10px;font-weight:700;cursor:pointer;border-radius:4px;padding:5px 10px;transition:all .15s;text-transform:uppercase;letter-spacing:.06em}
+.tmi-btn:hover{background:rgba(230,48,0,.2);color:var(--gold)}
+.tmi-btn.pink{border-color:var(--pink);color:var(--pink)}
+.tmi-btn.pink:hover{background:rgba(255,45,170,.15)}
+.tmi-btn.gold{border-color:var(--gold);color:var(--gold)}
+.tmi-btn.gold:hover{background:rgba(255,215,0,.12)}
+.tmi-btn.cyan{border-color:var(--cyan);color:var(--cyan)}
+.panel-card{background:var(--panel);border:1px solid var(--border);border-radius:7px;padding:10px 12px;margin-bottom:8px;animation:cardSlideIn .4s ease-out}
+.side-section{background:var(--bg);border:1px solid rgba(255,215,0,.2);border-radius:8px;padding:10px 12px;margin-bottom:8px}
+.lbl{font-size:8px;font-weight:700;letter-spacing:.15em;color:var(--amber);text-transform:uppercase}
+.val{font-family:'Orbitron',sans-serif;font-weight:700;color:var(--gold)}
+.rank-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:10px}
+.rank-row:last-child{border-bottom:none}
+.promo-tile{background:var(--card);border:1px solid rgba(255,215,0,.18);border-radius:6px;padding:8px 10px;margin-bottom:6px;cursor:pointer;transition:border-color .15s}
+.promo-tile:hover{border-color:var(--gold)}
+.genre-pill{background:rgba(0,229,255,.12);border:1px solid rgba(0,229,255,.3);border-radius:12px;padding:2px 8px;font-size:8px;font-weight:700;color:var(--cyan);display:inline-block}
+.ticker-wrap{overflow:hidden;white-space:nowrap;font-size:9px;color:var(--amber);padding:4px 0;border-top:1px solid rgba(255,215,0,.15);border-bottom:1px solid rgba(255,215,0,.15);margin-bottom:10px}
+.ticker-inner{animation:ticker 22s linear infinite;display:inline-block}
+</style>
+
+<div id="root" style="background:var(--bg);font-family:'Exo 2',sans-serif;color:#fff;min-height:700px;position:relative;overflow:hidden;user-select:none">
+
+<!-- ══ NEON UNDERLAY — pink + gold + cyan blobs ══ -->
+<div style="position:absolute;inset:0;pointer-events:none;z-index:0;overflow:hidden">
+  <div class="blob blobA" style="width:460px;height:460px;background:radial-gradient(circle,rgba(255,45,170,.55) 0%,transparent 70%);top:-60px;left:5%"></div>
+  <div class="blob blobB" style="width:480px;height:480px;background:radial-gradient(circle,rgba(255,215,0,.45) 0%,transparent 70%);top:80px;right:-60px"></div>
+  <div class="blob blobC" style="width:400px;height:400px;background:radial-gradient(circle,rgba(0,229,255,.3) 0%,transparent 70%);bottom:-40px;left:30%"></div>
+  <div class="blob" style="width:320px;height:320px;background:radial-gradient(circle,rgba(155,89,182,.4) 0%,transparent 70%);bottom:80px;right:15%;animation:blobA 18s ease-in-out infinite reverse"></div>
+  <!-- Grid lines -->
+  <svg style="position:absolute;inset:0;width:100%;height:100%;opacity:.06" preserveAspectRatio="none">
+    <defs>
+      <pattern id="grid" width="48" height="48" patternUnits="userSpaceOnUse">
+        <path d="M48 0L0 0 0 48" fill="none" stroke="#FFD700" stroke-width=".5"/>
+      </pattern>
+    </defs>
+    <rect width="100%" height="100%" fill="url(#grid)"/>
+  </svg>
+</div>
+
+<!-- ══ TOP BAR ══ -->
+<div style="position:relative;z-index:10;display:flex;justify-content:space-between;align-items:center;padding:8px 14px;background:rgba(5,8,21,.88);border-bottom:1px solid rgba(255,215,0,.2);backdrop-filter:blur(12px)">
+  <div style="display:flex;align-items:center;gap:8px">
+    <div style="font-family:'Orbitron',sans-serif;font-size:14px;font-weight:900;color:var(--pink);letter-spacing:.1em">TMI</div>
+    <span style="font-size:8px;color:rgba(255,255,255,.3);letter-spacing:.15em">BETA SEASON</span>
+    <div style="font-size:8px;background:rgba(255,215,0,.12);border:1px solid rgba(255,215,0,.3);border-radius:3px;padding:2px 8px;color:var(--gold)">Founding Beta Member</div>
+  </div>
+  <div style="display:flex;gap:5px;align-items:center">
+    <div style="display:flex;gap:3px">
+      <button class="tmi-btn" style="background:rgba(255,45,170,.15);border-color:var(--pink);padding:3px 9px;font-size:9px">1</button>
+      <button class="tmi-btn" style="padding:3px 8px;font-size:9px">1-2</button>
+      <button class="tmi-btn" style="padding:3px 8px;font-size:9px">2</button>
+      <button class="tmi-btn" style="padding:3px 8px;font-size:9px">3</button>
+      <button class="tmi-btn" style="padding:3px 8px;font-size:9px">4</button>
+      <button class="tmi-btn" style="padding:3px 8px;font-size:9px">5</button>
+    </div>
+    <button class="tmi-btn">Log In</button>
+    <button class="tmi-btn gold">Sign Up</button>
+  </div>
+</div>
+
+<!-- ══ TICKER ══ -->
+<div class="ticker-wrap" style="position:relative;z-index:10;padding:4px 14px;margin:0">
+  <div class="ticker-inner">
+    🔴 LIVE: Astra Nova — Main Arena &nbsp;&nbsp;&nbsp; ⚔️ Battle: Wavetek vs Bar God — Championship &nbsp;&nbsp;&nbsp; 🌍 World Release: Krypt drops new album midnight &nbsp;&nbsp;&nbsp; 🎤 Cypher Arena open — 841 watching &nbsp;&nbsp;&nbsp; 💰 $4.2K tips sent today &nbsp;&nbsp;&nbsp; 👑 Weekly Crown updating in real time &nbsp;&nbsp;&nbsp;
+  </div>
+</div>
+
+<!-- ══ MAIN 3-COLUMN LAYOUT ══ -->
+<div style="position:relative;z-index:10;display:grid;grid-template-columns:170px 1fr 170px;gap:10px;padding:8px 10px;min-height:590px">
+
+  <!-- ════ LEFT PANEL — FREE PROMOTION ════ -->
+  <div style="display:flex;flex-direction:column;gap:0">
+    <div class="side-section">
+      <div class="lbl" style="color:var(--pink);margin-bottom:6px">⭐ Free Promotion</div>
+      <div style="font-size:9px;color:rgba(255,255,255,.45);margin-bottom:7px">Artists — get featured for free. Claim your slot.</div>
+
+      <div class="promo-tile">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:3px">
+          <div style="font-size:10px;font-weight:700;color:#fff">Lagos Burst</div>
+          <span class="genre-pill">Afrobeat</span>
+        </div>
+        <div style="font-size:8px;color:rgba(255,255,255,.4)">Free slot · Expires 6h</div>
+        <div style="display:flex;justify-content:space-between;margin-top:5px">
+          <span style="font-size:9px;color:var(--green)">▲ 2,140 views</span>
+          <button class="tmi-btn pink" style="padding:2px 7px;font-size:7px">BOOST</button>
+        </div>
+      </div>
+
+      <div class="promo-tile">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:3px">
+          <div style="font-size:10px;font-weight:700;color:#fff">Nova Laugh</div>
+          <span class="genre-pill" style="border-color:rgba(155,89,182,.4);background:rgba(155,89,182,.12);color:var(--purple)">Comedy</span>
+        </div>
+        <div style="font-size:8px;color:rgba(255,255,255,.4)">Free slot · 14h left</div>
+        <div style="display:flex;justify-content:space-between;margin-top:5px">
+          <span style="font-size:9px;color:var(--green)">▲ 980 views</span>
+          <button class="tmi-btn pink" style="padding:2px 7px;font-size:7px">BOOST</button>
+        </div>
+      </div>
+
+      <div class="promo-tile" style="border:1px dashed rgba(255,215,0,.3);background:rgba(255,215,0,.04)">
+        <div style="text-align:center;padding:6px 0">
+          <div style="font-size:18px;margin-bottom:3px">+</div>
+          <div style="font-size:9px;color:var(--gold);font-weight:700">Claim Free Slot</div>
+          <div style="font-size:8px;color:rgba(255,255,255,.35);margin-top:2px">For artists & performers</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SPONSOR STRIP -->
+    <div class="side-section" style="border-color:rgba(0,229,255,.2)">
+      <div class="lbl" style="color:var(--cyan);margin-bottom:6px">💼 Sponsor Spotlight</div>
+      <div class="promo-tile" style="border-color:rgba(0,229,255,.2)">
+        <div style="font-size:9px;font-weight:700;color:var(--cyan)">Beats By TMX</div>
+        <div style="font-size:8px;color:rgba(255,255,255,.4);margin:2px 0">Official Season 1 Partner</div>
+        <div style="height:3px;background:rgba(0,229,255,.15);border-radius:2px;margin-top:5px;overflow:hidden">
+          <div style="height:3px;background:var(--cyan);border-radius:2px;width:72%"></div>
+        </div>
+        <div style="font-size:7px;color:rgba(255,255,255,.3);margin-top:3px">Campaign 72% — $86K spent</div>
+      </div>
+      <button class="tmi-btn cyan" style="width:100%;padding:4px;font-size:8px;margin-top:2px">Become a Sponsor</button>
+    </div>
+
+    <!-- VENUE BOOKING -->
+    <div class="side-section" style="border-color:rgba(255,140,0,.2)">
+      <div class="lbl" style="color:var(--amber);margin-bottom:6px">🏟 Venue Booking</div>
+      <div style="font-size:9px;color:rgba(255,255,255,.5);margin-bottom:6px">Open dates available now</div>
+      <div class="rank-row" style="font-size:9px">
+        <span style="color:var(--amber)">SAT</span><span style="flex:1;color:rgba(255,255,255,.7)">Main Arena</span>
+        <button class="tmi-btn" style="padding:2px 6px;font-size:7px;color:var(--green);border-color:var(--green)">Book</button>
+      </div>
+      <div class="rank-row" style="font-size:9px">
+        <span style="color:var(--amber)">SUN</span><span style="flex:1;color:rgba(255,255,255,.7)">Theater</span>
+        <button class="tmi-btn" style="padding:2px 6px;font-size:7px;color:var(--green);border-color:var(--green)">Book</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════ CENTER — ORBITAL ════ -->
+  <div style="position:relative;display:flex;flex-direction:column;align-items:center">
+    <!-- Title -->
+    <div style="text-align:center;margin-bottom:8px">
+      <div style="font-family:'Orbitron',sans-serif;font-size:20px;font-weight:900;color:var(--gold);letter-spacing:.08em;text-shadow:0 0 30px rgba(255,215,0,.5)">WEEKLY CROWN ORBIT</div>
+      <div style="font-size:9px;color:rgba(255,255,255,.4);letter-spacing:.18em;margin-top:3px">TOP RANKED · LIVE NOW · UPDATED IN REAL TIME</div>
+    </div>
+
+    <!-- ORBITAL SVG -->
+    <div style="position:relative;width:380px;height:380px;flex-shrink:0">
+      <svg viewBox="0 0 380 380" width="380" height="380" style="position:absolute;inset:0">
+        <!-- Outer decorative ring glow -->
+        <circle cx="190" cy="190" r="178" fill="none" stroke="rgba(255,215,0,.08)" stroke-width="1"/>
+        <circle cx="190" cy="190" r="165" fill="none" stroke="rgba(255,45,170,.1)" stroke-width=".5"/>
+
+        <!-- Orbit track 1 (outer) -->
+        <circle cx="190" cy="190" r="152" fill="none" stroke="rgba(255,215,0,.18)" stroke-width=".8" stroke-dasharray="4 8"/>
+
+        <!-- Orbit track 2 (inner) -->
+        <circle cx="190" cy="190" r="100" fill="none" stroke="rgba(0,229,255,.14)" stroke-width=".8" stroke-dasharray="3 10"/>
+
+        <!-- OUTER ROTATING GROUP (10 artists) -->
+        <g class="orbit-ring" style="transform-origin:190px 190px">
+          <!-- artist nodes at r=152 from (190,190). Angles: 0,36,72,108,144,180,216,252,288,324 -->
+
+          <!-- #1 ASTRA NOVA — 0° (top) x=190, y=38 -->
+          <g class="orbit-counter" style="transform-origin:190px 38px">
+            <rect x="158" y="18" width="64" height="40" rx="6" fill="rgba(255,45,170,.22)" stroke="rgba(255,45,170,.7)" stroke-width="1"/>
+            <text x="190" y="31" text-anchor="middle" font-family="'Exo 2',sans-serif" font-size="9" font-weight="700" fill="#FF2DAA">#1</text>
+            <text x="190" y="42" text-anchor="middle" font-family="'Exo 2',sans-serif" font-size="7.5" font-weight="700" fill="#fff">ASTRA NOVA</text>
+            <text x="190" y="52" text-anchor="middle" font-family="'Exo 2',sans-serif" font-size="6.5" fill="rgba(255,255,255,.5)">R&amp;B</text>
+            <circle cx="174" cy="28" r="3" fill="#FF2020"/>
+          </g>
+
+          <!-- #2 PRISM VEX — 36° -->
+          <g class="orbit-counter" style="transform-origin:279px 61px">
+            <rect x="247" y="41" width="64" height="40" rx="6" fill="rgba(255,215,0,.15)" stroke="rgba(255,215,0,.55)" stroke-width=".8"/>
+            <text x="279" y="54" text-anchor="middle" font-family="'Exo 2',sans-serif" font-size="9" font-weight="700" fill="#FFD700">#2</text>
+            <text x="279" y="65" text-anchor="middle" font-family="'Exo 2',sans-serif" font-size="7.5" font-weight="700" fill="#fff">PRISM VEX</text>
+            <text x="279" y="75" text-anchor="middle" font-family="'Exo 2',sans-serif" font-size="6.5" fill="rgba(255,255,255,.5)">EDM</text>
+          </g>
+
+          <!-- #3 ZION FREQ — 72° -->
+          <g class="orbit-counter" style="transform-origin:336px 144px">
+            <rect x="304" y="124" width="64" height="40" rx="6" fill="rgba(0,255,127,.12)" stroke="rgba(0,255,127,.4)" stroke-width=".8"/>
+            <text x="336" y="137" text-anchor="middle" font-family="'Exo 2',sans-serif" font-size="9" font-weight="700" fill="#00FF7F">#3</text>
+            <text x="336" y="148" text-anchor="middle" font-family="'Exo 2',sans-serif" font-size="7.5" font-weight="700" fill="#fff">ZION FREQ</text>
+            <text x="336" y="158" text-anchor="middle" font-family="'Exo 2',sans-serif" font-size="6.5" fill="rgba(255,255,255,.5)">Gospel</text>
+          </g>
+
+          <!-- #4 FLEX KING — 108° -->
+          <g class="orbit-counter" style="transform-origin:342px 238px">
+            <rect x="310" y="218" width="64" height="40" rx="6" fill="rgba(0,229,255,.12)" stroke="rgba(0,229,255,.4)" stroke-width=".8"/>
+            <text x="342" y="231" text-anchor="middle" font-family="'Exo 2',sans-serif" font-size="9" font-weight="700" fill="#00E5FF">#4</text>
+            <text x="342" y="242" text-anchor="middle" font-family="'Exo 2',sans-serif" font-size="7.5" font-weight="700" fill="#fff">FLEX KING</text>
+            <text x="342" y="252" text-anchor="middle" font-family="'Exo 2',sans-serif" font-size="6.5" fill="rgba(255,255,255,.5)">Dance</text>
+          </g>
+
+          <!-- #5 SONG CHALLENGE — 144° -->
+          <g class="orbit-counter" style="transform-origin:280px 311px">
+            <rect x="248" y="291" width="64" height="40" rx="6" fill="rgba(155,89,182,.18)" stroke="rgba(155,89,182,.5)" stroke-width=".8"/>
+            <text x="280" y="304" text-anchor="middle" font-family="'Exo 2',sans-serif" font-size="9" font-weight="700" fill="#9B59B6">#5</text>
+            <text x="280" y="315" text-anchor="middle" font-family="'Exo 2',sans-serif" font-size="7.5" font-weight="700" fill="#fff">SONG CHALL.</text>
+            <text x="280" y="325" text-anchor="middle" font-family="'Exo 2',sans-serif" font-size="6.5" fill="rgba(255,255,255,.5)">Hip-Hop</text>
+          </g>
+
+          <!-- #6 MAIN LOBBY — 180° (bottom) -->
+          <g class="orbit-counter" style="transform-origin:190px 342px">
+            <rect x="158" y="322" width="64" height="40" rx="6" fill="rgba(255,140,0,.15)" stroke="rgba(255,140,0,.45)" stroke-width=".8"/>
+            <text x="190" y="335" text-anchor="middle" font-family="'Exo 2',sans-serif" font-size="9" font-weight="700" fill="#FF8C00">#6</text>
+            <text x="190" y="346" text-anchor="middle" font-family="'Exo 2',sans-serif" font-size="7.5" font-weight="700" fill="#fff">MAIN LOBBY</text>
+            <text x="190" y="356" text-anchor="middle" font-family="'Exo 2',sans-serif" font-size="6.5" fill="rgba(255,255,255,.5)">Various</text>
+          </g>
+
+          <!-- #7 BATTLE FLOOR — 216° -->
+          <g class="orbit-counter" style="transform-origin:100px 311px">
+            <rect x="68" y="291" width="64" height="40" rx="6" fill="rgba(230,48,0,.18)" stroke="rgba(230,48,0,.5)" stroke-width=".8"/>
+            <text x="100" y="304" text-anchor="middle" font-family="'Exo 2',sans-serif" font-size="9" font-weight="700" fill="#E63000">#7</text>
+            <text x="100" y="315" text-anchor="middle" font-family="'Exo 2',sans-serif" font-size="7.5" font-weight="700" fill="#fff">BATTLE FLOOR</text>
+            <text x="100" y="325" text-anchor="middle" font-family="'Exo 2',sans-serif" font-size="6.5" fill="rgba(255,255,255,.5)">LIVE</text>
+            <circle cx="84" cy="302" r="3" fill="#FF2020"/>
+          </g>
+
+          <!-- #8 LAGOS BURST — 252° -->
+          <g class="orbit-counter" style="transform-origin:44px 238px">
+            <rect x="12" y="218" width="64" height="40" rx="6" fill="rgba(255,215,0,.1)" stroke="rgba(255,215,0,.35)" stroke-width=".8"/>
+            <text x="44" y="231" text-anchor="middle" font-family="'Exo 2',sans-serif" font-size="9" font-weight="700" fill="#FFD700">#8</text>
+            <text x="44" y="242" text-anchor="middle" font-family="'Exo 2',sans-serif" font-size="7.5" font-weight="700" fill="#fff">LAGOS BURST</text>
+            <text x="44" y="252" text-anchor="middle" font-family="'Exo 2',sans-serif" font-size="6.5" fill="rgba(255,255,255,.5)">Afrobeat</text>
+          </g>
+
+          <!-- #9 NOVA LAUGH — 288° -->
+          <g class="orbit-counter" style="transform-origin:38px 144px">
+            <rect x="6" y="124" width="64" height="40" rx="6" fill="rgba(0,229,255,.1)" stroke="rgba(0,229,255,.3)" stroke-width=".8"/>
+            <text x="38" y="137" text-anchor="middle" font-family="'Exo 2',sans-serif" font-size="9" font-weight="700" fill="#00E5FF">#9</text>
+            <text x="38" y="148" text-anchor="middle" font-family="'Exo 2',sans-serif" font-size="7.5" font-weight="700" fill="#fff">NOVA LAUGH</text>
+            <text x="38" y="158" text-anchor="middle" font-family="'Exo 2',sans-serif" font-size="6.5" fill="rgba(255,255,255,.5)">Comedy</text>
+          </g>
+
+          <!-- #10 DANCE — 324° -->
+          <g class="orbit-counter" style="transform-origin:101px 61px">
+            <rect x="69" y="41" width="64" height="40" rx="6" fill="rgba(255,45,170,.12)" stroke="rgba(255,45,170,.35)" stroke-width=".8"/>
+            <text x="101" y="54" text-anchor="middle" font-family="'Exo 2',sans-serif" font-size="9" font-weight="700" fill="#FF2DAA">#10</text>
+            <text x="101" y="65" text-anchor="middle" font-family="'Exo 2',sans-serif" font-size="7.5" font-weight="700" fill="#fff">DANCE CREW</text>
+            <text x="101" y="75" text-anchor="middle" font-family="'Exo 2',sans-serif" font-size="6.5" fill="rgba(255,255,255,.5)">Dance</text>
+          </g>
+        </g>
+
+        <!-- CENTER SPOTLIGHT GLOW -->
+        <radialGradient id="cGlow" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#FF2DAA" stop-opacity=".35"/>
+          <stop offset="60%" stop-color="#FFD700" stop-opacity=".1"/>
+          <stop offset="100%" stop-color="transparent" stop-opacity="0"/>
+        </radialGradient>
+        <circle cx="190" cy="190" r="70" fill="url(#cGlow)"/>
+
+        <!-- CENTER HUB -->
+        <circle cx="190" cy="190" r="62" fill="rgba(5,8,21,.9)" stroke="rgba(255,45,170,.6)" stroke-width="1.5"/>
+        <circle cx="190" cy="190" r="58" fill="none" stroke="rgba(255,215,0,.2)" stroke-width=".5"/>
+        <text x="190" y="174" text-anchor="middle" font-family="'Orbitron',sans-serif" font-size="8" font-weight="700" fill="rgba(255,255,255,.4)" letter-spacing="2">HOME 1/6</text>
+        <text x="190" y="191" text-anchor="middle" font-family="'Orbitron',sans-serif" font-size="13" font-weight="900" fill="#FF2DAA">ASTRA NOVA</text>
+        <text x="190" y="205" text-anchor="middle" font-family="'Exo 2',sans-serif" font-size="8.5" fill="rgba(255,255,255,.6)">R&amp;B · LIVE NOW</text>
+        <circle cx="163" cy="198" r="4" fill="#FF2020" opacity=".9"/>
+
+        <!-- Connecting spokes (subtle) -->
+        <line x1="190" y1="128" x2="190" y2="38" stroke="rgba(255,215,0,.1)" stroke-width=".5"/>
+        <line x1="239" y1="141" x2="279" y2="61" stroke="rgba(255,215,0,.08)" stroke-width=".5"/>
+        <line x1="252" y1="190" x2="342" y2="190" stroke="rgba(255,215,0,.08)" stroke-width=".5"/>
+      </svg>
+    </div>
+
+    <!-- CTA ROW -->
+    <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;justify-content:center">
+      <button class="tmi-btn pink" style="padding:7px 16px;font-size:10px" onclick="fireParticles()">⚡ Enter Live Arena</button>
+      <button class="tmi-btn gold" style="padding:7px 16px;font-size:10px">👑 Vote for Crown</button>
+      <button class="tmi-btn cyan" style="padding:7px 14px;font-size:10px">🎤 Join Cypher</button>
+    </div>
+
+    <!-- LIVE STATS BAR -->
+    <div style="display:flex;gap:16px;margin-top:10px;padding:7px 16px;background:rgba(0,0,0,.4);border:1px solid rgba(255,215,0,.15);border-radius:20px">
+      <div style="text-align:center">
+        <div class="val" style="font-size:14px" id="viewerCount">9,282</div>
+        <div class="lbl" style="font-size:7px">WATCHING</div>
+      </div>
+      <div style="text-align:center">
+        <div class="val" style="font-size:14px;color:var(--green)">11</div>
+        <div class="lbl" style="font-size:7px">LIVE NOW</div>
+      </div>
+      <div style="text-align:center">
+        <div class="val" style="font-size:14px;color:var(--pink)">$4.2K</div>
+        <div class="lbl" style="font-size:7px">TIPS TODAY</div>
+      </div>
+    </div>
+
+    <!-- Particle layer -->
+    <div id="particles" style="position:absolute;inset:0;pointer-events:none;overflow:hidden"></div>
+  </div>
+
+  <!-- ════ RIGHT PANEL — RANKINGS + ADS ════ -->
+  <div style="display:flex;flex-direction:column;gap:0">
+
+    <!-- LIVE TOP 10 RANKINGS -->
+    <div class="side-section" style="border-color:rgba(255,45,170,.25)">
+      <div class="lbl" style="color:var(--pink);margin-bottom:6px">👑 Live Rankings</div>
+
+      <div class="rank-row">
+        <span style="color:var(--gold);font-weight:900;font-size:10px;width:16px">1</span>
+        <span style="font-size:10px;font-weight:700;flex:1">Astra Nova</span>
+        <span style="font-size:8px;color:var(--green)">+34%</span>
+        <span style="width:5px;height:5px;border-radius:50%;background:#FF2020;display:inline-block;animation:blink 1.2s ease-in-out infinite"></span>
+      </div>
+      <div class="rank-row">
+        <span style="color:rgba(192,192,192,1);font-weight:700;font-size:10px;width:16px">2</span>
+        <span style="font-size:9px;flex:1">Prism Vex</span>
+        <span style="font-size:8px;color:var(--green)">+22%</span>
+        <span style="width:5px;height:5px;border-radius:50%;background:#FF2020;display:inline-block;animation:blink 1.2s ease-in-out infinite;animation-delay:.4s"></span>
+      </div>
+      <div class="rank-row">
+        <span style="color:rgba(205,127,50,1);font-weight:700;font-size:10px;width:16px">3</span>
+        <span style="font-size:9px;flex:1">Zion Freq</span>
+        <span style="font-size:8px;color:var(--green)">+15%</span>
+      </div>
+      <div class="rank-row">
+        <span style="color:rgba(255,255,255,.4);font-size:10px;width:16px">4</span>
+        <span style="font-size:9px;flex:1">Flex King</span>
+        <span style="font-size:8px;color:rgba(255,255,255,.4)">+9%</span>
+      </div>
+      <div class="rank-row">
+        <span style="color:rgba(255,255,255,.4);font-size:10px;width:16px">5</span>
+        <span style="font-size:9px;flex:1">Song Challenge</span>
+        <span style="font-size:8px;color:rgba(255,140,0,.8)">▼2%</span>
+      </div>
+      <div class="rank-row">
+        <span style="color:rgba(255,255,255,.4);font-size:10px;width:16px">6</span>
+        <span style="font-size:9px;flex:1">Main Lobby</span>
+        <span style="font-size:8px;color:rgba(255,255,255,.35)">—</span>
+      </div>
+      <div class="rank-row">
+        <span style="color:rgba(255,255,255,.4);font-size:10px;width:16px">7</span>
+        <span style="font-size:9px;flex:1">Battle Floor</span>
+        <span style="font-size:8px;color:var(--green)">+6%</span>
+        <span style="width:5px;height:5px;border-radius:50%;background:#FF2020;display:inline-block;animation:blink 1.2s ease-in-out infinite;animation-delay:.8s"></span>
+      </div>
+      <div class="rank-row">
+        <span style="color:rgba(255,255,255,.4);font-size:10px;width:16px">8</span>
+        <span style="font-size:9px;flex:1">Lagos Burst</span>
+        <span style="font-size:8px;color:rgba(255,255,255,.35)">+3%</span>
+      </div>
+      <div class="rank-row">
+        <span style="color:rgba(255,255,255,.4);font-size:10px;width:16px">9</span>
+        <span style="font-size:9px;flex:1">Nova Laugh</span>
+        <span style="font-size:8px;color:rgba(255,255,255,.35)">+1%</span>
+      </div>
+      <div class="rank-row">
+        <span style="color:rgba(255,255,255,.4);font-size:10px;width:16px">10</span>
+        <span style="font-size:9px;flex:1">Dance Crew</span>
+        <span style="font-size:8px;color:rgba(255,255,255,.35)">—</span>
+      </div>
+      <button class="tmi-btn" style="width:100%;padding:4px;font-size:8px;margin-top:6px;color:var(--pink);border-color:var(--pink)">Full Leaderboard →</button>
+    </div>
+
+    <!-- AD SLOT -->
+    <div class="side-section" style="border-color:rgba(255,140,0,.2);padding:8px">
+      <div class="lbl" style="font-size:7px;color:rgba(255,255,255,.3);margin-bottom:4px">ADVERTISEMENT</div>
+      <div style="background:rgba(255,140,0,.05);border-radius:5px;padding:8px;text-align:center">
+        <div style="font-size:10px;font-weight:700;color:var(--amber);margin-bottom:3px">🎧 BerntoutStudio AI</div>
+        <div style="font-size:8px;color:rgba(255,255,255,.4);margin-bottom:6px">Make beats with AI. Free trial.</div>
+        <button class="tmi-btn" style="width:100%;padding:4px;font-size:8px">TRY FREE</button>
+      </div>
+    </div>
+
+    <!-- PROMOTER PANEL -->
+    <div class="side-section" style="border-color:rgba(0,229,255,.15)">
+      <div class="lbl" style="color:var(--cyan);margin-bottom:5px">📣 Promoters</div>
+      <div class="rank-row" style="font-size:9px">
+        <span style="flex:1">Promo_Jay</span>
+        <span style="font-size:7px;color:var(--amber)">12 events</span>
+      </div>
+      <div class="rank-row" style="font-size:9px">
+        <span style="flex:1">EventKing</span>
+        <span style="font-size:7px;color:var(--amber)">8 events</span>
+      </div>
+      <button class="tmi-btn cyan" style="width:100%;padding:4px;font-size:8px;margin-top:5px">Be a Promoter →</button>
+    </div>
+
+    <!-- ADVERTISER SLOT -->
+    <div class="side-section" style="border-color:rgba(155,89,182,.2)">
+      <div class="lbl" style="color:var(--purple);margin-bottom:4px">📢 Advertise Here</div>
+      <div style="font-size:8px;color:rgba(255,255,255,.4);margin-bottom:6px">9,200+ daily impressions. Gold & Diamond slots.</div>
+      <button class="tmi-btn" style="width:100%;padding:4px;font-size:8px;color:var(--purple);border-color:var(--purple)">Buy Ad Slot</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ BOTTOM HUD ══ -->
+<div style="position:relative;z-index:10;display:flex;justify-content:space-between;align-items:center;padding:6px 14px;background:rgba(5,8,21,.9);border-top:1px solid rgba(255,215,0,.15)">
+  <div style="display:flex;gap:6px">
+    <button class="tmi-btn" style="padding:4px 12px;font-size:9px">SIGN IN</button>
+    <button class="tmi-btn gold" style="padding:4px 12px;font-size:9px">+ SUBMIT</button>
+  </div>
+  <div style="font-size:8px;color:rgba(255,255,255,.3)">
+    <span class="live-dot"></span> 11 VENUES LIVE · 9,282 WATCHING
+  </div>
+  <div style="display:flex;gap:5px">
+    <button class="tmi-btn" style="padding:4px 10px;font-size:9px">◀ BACK</button>
+    <button class="tmi-btn pink" style="padding:4px 10px;font-size:9px">NEXT ▶</button>
+  </div>
+</div>
+
+</div>
+
+<script>
+// Ticker viewer count live
+const vcEl = document.getElementById('viewerCount');
+setInterval(() => {
+  const cur = parseInt(vcEl.textContent.replace(',',''));
+  const next = Math.max(8000, cur + Math.floor((Math.random()-.35)*60));
+  vcEl.textContent = next.toLocaleString();
+}, 3000);
+
+// Particle burst on CTA click
+function fireParticles() {
+  const layer = document.getElementById('particles');
+  const emojis = ['⚡','🔥','❤️','🎵','👑','✨','💥'];
+  for(let i=0;i<12;i++){
+    setTimeout(()=>{
+      const el = document.createElement('div');
+      el.textContent = emojis[i % emojis.length];
+      el.style.cssText = `position:absolute;bottom:${20+Math.random()*40}%;left:${10+Math.random()*80}%;font-size:${16+Math.random()*12}px;animation:floatUp 1.4s ease-out forwards;pointer-events:none`;
+      layer.appendChild(el);
+      setTimeout(()=>el.remove(),1500);
+    },i*70);
+  }
+}
+</script>
