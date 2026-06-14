@@ -8,9 +8,11 @@ import Home1EditorialBelt from '@/components/home/Home1EditorialBelt';
 import { OmniDashboards } from '@/components/hud/OmniDashboards';
 
 const SEED_SPONSORS = [
-  { id: "sp1", name: "BernoutGlobal Media" },
-  { id: "sp2", name: "TMI Founding Partner" },
-  { id: "sp3", name: "Crown Circuit Records" },
+  { id: "sp1", name: "BernoutGlobal Media", tagline: "Official Media Partner" },
+  { id: "sp2", name: "TMI Founding Partner", tagline: "Founding Sponsor" },
+  { id: "sp3", name: "Crown Circuit Records", tagline: "Label Partner" },
+  { id: "sp4", name: "Beat Vault Pro", tagline: "Beat Marketplace" },
+  { id: "sp5", name: "Arena Live Network", tagline: "Broadcast Partner" },
 ];
 
 export default function Home1Page() {

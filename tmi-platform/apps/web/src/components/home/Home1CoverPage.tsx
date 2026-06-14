@@ -1,29 +1,8 @@
 'use client';
 
-/**
- * Home1CoverPage — TMI Homepage 1, full tabloid-pop redesign.
- *
- * DROP FILE AT:
- *   apps/web/src/components/home/Home1CoverPage.tsx
- *
- * THEN IN apps/web/src/app/home/1/page.tsx replace:
- *   import Home1OrbitalMagazine from '@/components/home/Home1OrbitalMagazine';
- * with:
- *   import Home1CoverPage from '@/components/home/Home1CoverPage';
- * and swap <Home1OrbitalMagazine /> → <Home1CoverPage />
- *
- * WHAT THIS DOES:
- *  - 10 performers per genre, cycle through genres every 6 s
- *  - Every performer card routes to /articles/performer/[slug]
- *  - No real face photos — genre-colored emoji avatars
- *  - Orbital ring kept (360 spin), bright teal/gold palette
- *  - Tabloid overlays: VOTING LIVE, GENRE BATTLE, CYPHER ARENA OPEN
- *  - Bottom: Weekly Cyphers bar with article link
- *  - Typecheck-safe, no external deps beyond Next.js
- */
-
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { TmiMagazineOrbitalUnderlay } from '@/components/home/TmiMagazineOrbitalUnderlay';
 
 // ─── Genre + performer data (10 per genre) ────────────────────────────────────
 
@@ -177,24 +156,25 @@ const GENRE_DATA: Record<string, { color: string; bg: string; emoji: string; per
 
 const GENRE_KEYS = Object.keys(GENRE_DATA);
 
-// ─── Clip-path shapes for the 10 orbit cards ──────────────────────────────────
+// ─── Clip-path shapes for orbit cards ─────────────────────────────────────────
 
 const CARD_SHAPES = [
-  'polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%)', // octagon #1
-  'polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%)',                            // pentagon
-  'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)',                    // hexagon
-  'circle(50% at 50% 50%)',                                                             // circle
-  'polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)', // star
-  'polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%)', // octagon
-  'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)',                    // hexagon
-  'polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%)',                            // pentagon
-  'circle(50% at 50% 50%)',                                                             // circle
-  'polygon(30% 0%, 70% 0%, 100% 25%, 100% 75%, 70% 100%, 30% 100%, 0% 75%, 0% 25%)', // wide octagon
+  'polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%)',
+  'polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%)',
+  'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)',
+  'circle(50% at 50% 50%)',
+  'polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)',
+  'polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%)',
+  'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)',
+  'polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%)',
+  'circle(50% at 50% 50%)',
+  'polygon(30% 0%, 70% 0%, 100% 25%, 100% 75%, 70% 100%, 30% 100%, 0% 75%, 0% 25%)',
 ];
 
-// Positions for 10 orbit cards (angle in degrees, radius 44% of container)
+// ─── Orbit card positions ──────────────────────────────────────────────────────
+
 function getOrbitPos(i: number, total: number, radius: number) {
-  const angle = (i / total) * 360 - 90; // start from top
+  const angle = (i / total) * 360 - 90;
   const rad = (angle * Math.PI) / 180;
   return {
     x: 50 + radius * Math.cos(rad),
@@ -202,7 +182,7 @@ function getOrbitPos(i: number, total: number, radius: number) {
   };
 }
 
-// ─── Tabloid ticker messages ──────────────────────────────────────────────────
+// ─── Ticker messages ───────────────────────────────────────────────────────────
 
 const TICKER_MSGS = [
   '🔥 DRUM BATTLE LIVE RIGHT NOW',
@@ -233,7 +213,7 @@ export default function Home1CoverPage() {
   const performers = genre.performers;
   const crowdHolder = performers[0]!;
 
-  // Orbit spin
+  // Orbit spin via requestAnimationFrame
   useEffect(() => {
     const spin = (ts: number) => {
       if (lastRef.current) {
@@ -283,11 +263,14 @@ export default function Home1CoverPage() {
         position: 'relative',
       }}
     >
+      {/* ── Cosmic underlay — absolute behind everything ── */}
+      <div style={{ position: 'absolute', inset: 0, zIndex: 0, overflow: 'hidden', pointerEvents: 'none' }}>
+        <TmiMagazineOrbitalUnderlay />
+      </div>
+
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;700;900&display=swap');
 
-        @keyframes h1Spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        @keyframes h1CounterSpin { from { transform: rotate(0deg); } to { transform: rotate(-360deg); } }
         @keyframes h1CrownFloat {
           0%, 100% { transform: translateY(0px) scale(1); }
           50% { transform: translateY(-8px) scale(1.05); }
@@ -318,14 +301,6 @@ export default function Home1CoverPage() {
           70% { transform: scale(1.1) rotate(3deg); opacity: 1; }
           100% { transform: scale(1) rotate(0deg); opacity: 1; }
         }
-        @keyframes h1CardHover {
-          0% { transform: scale(1); }
-          100% { transform: scale(1.06); }
-        }
-        @keyframes h1ConfettiDrift {
-          0% { transform: translateY(0) rotate(0deg); opacity: 1; }
-          100% { transform: translateY(60px) rotate(180deg); opacity: 0; }
-        }
       `}</style>
 
       {/* ── Background confetti triangles ── */}
@@ -340,9 +315,10 @@ export default function Home1CoverPage() {
             clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)',
             left: `${(i * 13 + 3) % 100}%`,
             top: `${(i * 17 + 5) % 90}%`,
-            opacity: 0.18,
+            opacity: 0.15,
             transform: `rotate(${i * 37}deg)`,
             pointerEvents: 'none',
+            zIndex: 1,
           }}
         />
       ))}
@@ -354,9 +330,6 @@ export default function Home1CoverPage() {
           top: 18,
           left: 20,
           zIndex: 50,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
         }}
       >
         <Link href="/home/1" style={{ textDecoration: 'none' }}>
@@ -374,14 +347,11 @@ export default function Home1CoverPage() {
         </Link>
       </div>
 
-      {/* ── Voting LIVE banner ── */}
+      {/* ── Voting LIVE banner — in-flow, sits below MagazineNavBar ── */}
       <div
         style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          zIndex: 100,
+          position: 'relative',
+          zIndex: 10,
           background: `linear-gradient(90deg, #1a0050 0%, ${accentColor}33 50%, #1a0050 100%)`,
           borderBottom: `2px solid ${accentColor}`,
           display: 'flex',
@@ -389,6 +359,7 @@ export default function Home1CoverPage() {
           justifyContent: 'center',
           gap: 16,
           padding: '7px 16px',
+          flexWrap: 'wrap',
         }}
       >
         <span
@@ -423,7 +394,8 @@ export default function Home1CoverPage() {
       {/* ── Main content ── */}
       <div
         style={{
-          paddingTop: 52,
+          position: 'relative',
+          zIndex: 1,
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
@@ -465,11 +437,10 @@ export default function Home1CoverPage() {
             style={{
               fontSize: 'clamp(28px, 6vw, 48px)',
               fontFamily: "'Bebas Neue', 'Impact', sans-serif",
-              background: `linear-gradient(135deg, #fff 0%, ${accentColor} 100%)`,
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
+              color: accentColor,
               letterSpacing: '0.04em',
               lineHeight: 1,
+              textShadow: `0 0 30px ${accentColor}88, 0 0 60px ${accentColor}33`,
             }}
           >
             WHO TOOK THE CROWN?
@@ -502,8 +473,8 @@ export default function Home1CoverPage() {
             alignItems: 'center',
           }}
         >
-          <div /> {/* Left edge spacer */}
-          
+          <div />
+
           {/* ── Orbital ring ── */}
           <div
             style={{
@@ -516,300 +487,295 @@ export default function Home1CoverPage() {
               flexShrink: 0,
             }}
           >
-          {/* Spinning ring */}
-          <div
-            style={{
-              position: 'absolute',
-              inset: '5%',
-              borderRadius: '50%',
-              border: `1px solid ${accentColor}22`,
-              boxShadow: `0 0 40px ${accentColor}18`,
-              transform: `rotate(${orbitDeg}deg)`,
-              transition: 'transform 0.016s linear',
-            }}
-          />
-          <div
-            style={{
-              position: 'absolute',
-              inset: '8%',
-              borderRadius: '50%',
-              border: `1px dashed ${accentColor}14`,
-              transform: `rotate(${-orbitDeg * 0.6}deg)`,
-              transition: 'transform 0.016s linear',
-            }}
-          />
-
-          {/* Center: Crown holder */}
-          <Link
-            href={`/articles/performer/${crowdHolder.slug}`}
-            style={{
-              position: 'absolute',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              textDecoration: 'none',
-              zIndex: 20,
-            }}
-          >
+            {/* Spinning rings */}
             <div
               style={{
-                width: 'min(130px, 22vw)',
-                height: 'min(130px, 22vw)',
+                position: 'absolute',
+                inset: '5%',
                 borderRadius: '50%',
-                background: `radial-gradient(circle at 40% 35%, ${accentColor}55, ${bgColor})`,
-                border: `3px solid ${accentColor}`,
-                boxShadow: `0 0 40px ${accentColor}66, inset 0 0 20px ${accentColor}22`,
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                animation: 'h1Pulse 2.5s ease-in-out infinite',
-                cursor: 'pointer',
+                border: `1px solid ${accentColor}22`,
+                boxShadow: `0 0 40px ${accentColor}18`,
+                transform: `rotate(${orbitDeg}deg)`,
+                transition: 'transform 0.016s linear',
+              }}
+            />
+            <div
+              style={{
+                position: 'absolute',
+                inset: '8%',
+                borderRadius: '50%',
+                border: `1px dashed ${accentColor}14`,
+                transform: `rotate(${-orbitDeg * 0.6}deg)`,
+                transition: 'transform 0.016s linear',
+              }}
+            />
+
+            {/* Center crown holder */}
+            <Link
+              href={`/articles/performer/${crowdHolder.slug}`}
+              style={{
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                textDecoration: 'none',
+                zIndex: 20,
               }}
             >
-              {/* Crown above */}
               <div
                 style={{
-                  fontSize: 'min(28px, 5vw)',
-                  animation: 'h1CrownFloat 3s ease-in-out infinite',
-                  marginBottom: 2,
-                  filter: `drop-shadow(0 0 8px #FFD700)`,
+                  width: 'min(130px, 22vw)',
+                  height: 'min(130px, 22vw)',
+                  borderRadius: '50%',
+                  background: `radial-gradient(circle at 40% 35%, ${accentColor}55, ${bgColor})`,
+                  border: `3px solid ${accentColor}`,
+                  boxShadow: `0 0 40px ${accentColor}66, inset 0 0 20px ${accentColor}22`,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  animation: 'h1Pulse 2.5s ease-in-out infinite',
+                  cursor: 'pointer',
                 }}
-              >
-                👑
-              </div>
-              <div
-                style={{
-                  fontSize: 'min(28px, 5vw)',
-                  filter: `drop-shadow(0 0 6px ${accentColor})`,
-                }}
-              >
-                {crowdHolder.emoji}
-              </div>
-              <div
-                style={{
-                  fontSize: 'min(9px, 1.8vw)',
-                  fontWeight: 900,
-                  color: '#fff',
-                  letterSpacing: '0.05em',
-                  textAlign: 'center',
-                  fontFamily: "'Inter', sans-serif",
-                  marginTop: 2,
-                  maxWidth: '80%',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                {crowdHolder.name}
-              </div>
-              <div
-                style={{
-                  fontSize: 'min(8px, 1.5vw)',
-                  fontWeight: 700,
-                  color: '#FFD700',
-                  fontFamily: "'Inter', sans-serif",
-                }}
-              >
-                #1 {genreKey}
-              </div>
-            </div>
-          </Link>
-
-          {/* 10 orbit cards */}
-          {performers.map((p, i) => {
-            const pos = getOrbitPos(i, 10, 44);
-            const cardSize = i === 0 ? 80 : 68;
-            return (
-              <Link
-                key={p.slug}
-                href={`/articles/performer/${p.slug}`}
-                style={{ textDecoration: 'none' }}
               >
                 <div
                   style={{
-                    position: 'absolute',
-                    left: `${pos.x}%`,
-                    top: `${pos.y}%`,
-                    transform: 'translate(-50%, -50%)',
-                    zIndex: activeIdx === i ? 30 : 10,
-                    cursor: 'pointer',
-                    transition: 'transform 0.2s ease',
+                    fontSize: 'min(28px, 5vw)',
+                    animation: 'h1CrownFloat 3s ease-in-out infinite',
+                    marginBottom: 2,
+                    filter: 'drop-shadow(0 0 8px #FFD700)',
                   }}
-                  onMouseEnter={() => setActiveIdx(i)}
-                  onMouseLeave={() => setActiveIdx(null)}
                 >
-                  {/* Rank badge */}
+                  👑
+                </div>
+                <div
+                  style={{
+                    fontSize: 'min(28px, 5vw)',
+                    filter: `drop-shadow(0 0 6px ${accentColor})`,
+                  }}
+                >
+                  {crowdHolder.emoji}
+                </div>
+                <div
+                  style={{
+                    fontSize: 'min(9px, 1.8vw)',
+                    fontWeight: 900,
+                    color: '#fff',
+                    letterSpacing: '0.05em',
+                    textAlign: 'center',
+                    fontFamily: "'Inter', sans-serif",
+                    marginTop: 2,
+                    maxWidth: '80%',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {crowdHolder.name}
+                </div>
+                <div
+                  style={{
+                    fontSize: 'min(8px, 1.5vw)',
+                    fontWeight: 700,
+                    color: '#FFD700',
+                    fontFamily: "'Inter', sans-serif",
+                  }}
+                >
+                  #1 {genreKey}
+                </div>
+              </div>
+            </Link>
+
+            {/* 10 orbit cards */}
+            {performers.map((p, i) => {
+              const pos = getOrbitPos(i, 10, 44);
+              const cardSize = i === 0 ? 80 : 68;
+              return (
+                <Link
+                  key={p.slug}
+                  href={`/articles/performer/${p.slug}`}
+                  style={{ textDecoration: 'none' }}
+                >
                   <div
                     style={{
                       position: 'absolute',
-                      top: -10,
-                      left: -4,
-                      zIndex: 5,
-                      width: 20,
-                      height: 20,
-                      borderRadius: '50%',
-                      background:
-                        p.rank === 1
-                          ? 'linear-gradient(135deg, #FFD700, #FF9500)'
-                          : `${accentColor}33`,
-                      border: `1.5px solid ${p.rank === 1 ? '#FFD700' : accentColor}`,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: 8,
-                      fontWeight: 900,
-                      color: p.rank === 1 ? '#050510' : accentColor,
-                      fontFamily: "'Inter', sans-serif",
-                      boxShadow: `0 0 8px ${p.rank === 1 ? '#FFD700' : accentColor}66`,
+                      left: `${pos.x}%`,
+                      top: `${pos.y}%`,
+                      transform: 'translate(-50%, -50%)',
+                      zIndex: activeIdx === i ? 30 : 10,
+                      cursor: 'pointer',
+                      transition: 'transform 0.2s ease',
                     }}
+                    onMouseEnter={() => setActiveIdx(i)}
+                    onMouseLeave={() => setActiveIdx(null)}
                   >
-                    {p.rank}
-                  </div>
-
-                  {/* Card shape */}
-                  <div
-                    style={{
-                      width: cardSize,
-                      height: cardSize,
-                      clipPath: CARD_SHAPES[i % CARD_SHAPES.length],
-                      background: `linear-gradient(135deg, ${accentColor}33, ${bgColor})`,
-                      border: `2px solid ${accentColor}66`,
-                      boxShadow:
-                        activeIdx === i
-                          ? `0 0 24px ${accentColor}88`
-                          : `0 0 12px ${accentColor}33`,
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      transition: 'box-shadow 0.2s ease, transform 0.2s ease',
-                      transform: activeIdx === i ? 'scale(1.12)' : 'scale(1)',
-                    }}
-                  >
-                    <div style={{ fontSize: cardSize * 0.32, lineHeight: 1 }}>{p.emoji}</div>
-                    <div
-                      style={{
-                        fontSize: cardSize * 0.1,
-                        fontWeight: 900,
-                        color: '#fff',
-                        textAlign: 'center',
-                        marginTop: 3,
-                        fontFamily: "'Inter', sans-serif",
-                        maxWidth: '85%',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                        letterSpacing: '-0.01em',
-                      }}
-                    >
-                      {p.name.split(' ')[0]}
-                    </div>
-                  </div>
-
-                  {/* Hover tooltip */}
-                  {activeIdx === i && (
                     <div
                       style={{
                         position: 'absolute',
-                        bottom: -36,
-                        left: '50%',
-                        transform: 'translateX(-50%)',
-                        background: 'rgba(10,6,20,0.95)',
-                        border: `1px solid ${accentColor}55`,
-                        borderRadius: 8,
-                        padding: '5px 10px',
-                        whiteSpace: 'nowrap',
-                        zIndex: 50,
-                        animation: 'h1StickerPop 0.25s ease',
+                        top: -10,
+                        left: -4,
+                        zIndex: 5,
+                        width: 20,
+                        height: 20,
+                        borderRadius: '50%',
+                        background:
+                          p.rank === 1
+                            ? 'linear-gradient(135deg, #FFD700, #FF9500)'
+                            : `${accentColor}33`,
+                        border: `1.5px solid ${p.rank === 1 ? '#FFD700' : accentColor}`,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: 8,
+                        fontWeight: 900,
+                        color: p.rank === 1 ? '#050510' : accentColor,
+                        fontFamily: "'Inter', sans-serif",
+                        boxShadow: `0 0 8px ${p.rank === 1 ? '#FFD700' : accentColor}66`,
                       }}
                     >
-                      <div style={{ fontSize: 9, fontWeight: 900, color: accentColor, fontFamily: "'Inter', sans-serif" }}>
-                        {p.name}
-                      </div>
-                      <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.5)', fontFamily: "'Inter', sans-serif" }}>
-                        #{p.rank} · {p.score.toLocaleString()} pts → Read Article
+                      {p.rank}
+                    </div>
+                    <div
+                      style={{
+                        width: cardSize,
+                        height: cardSize,
+                        clipPath: CARD_SHAPES[i % CARD_SHAPES.length],
+                        background: `linear-gradient(135deg, ${accentColor}33, ${bgColor})`,
+                        border: `2px solid ${accentColor}66`,
+                        boxShadow:
+                          activeIdx === i
+                            ? `0 0 24px ${accentColor}88`
+                            : `0 0 12px ${accentColor}33`,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        transition: 'box-shadow 0.2s ease, transform 0.2s ease',
+                        transform: activeIdx === i ? 'scale(1.12)' : 'scale(1)',
+                      }}
+                    >
+                      <div style={{ fontSize: cardSize * 0.32, lineHeight: 1 }}>{p.emoji}</div>
+                      <div
+                        style={{
+                          fontSize: cardSize * 0.1,
+                          fontWeight: 900,
+                          color: '#fff',
+                          textAlign: 'center',
+                          marginTop: 3,
+                          fontFamily: "'Inter', sans-serif",
+                          maxWidth: '85%',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                          letterSpacing: '-0.01em',
+                        }}
+                      >
+                        {p.name.split(' ')[0]}
                       </div>
                     </div>
-                  )}
-                </div>
-              </Link>
-            );
-          })}
 
-          {/* Sticker overlays */}
-          <div
-            style={{
-              position: 'absolute',
-              top: '8%',
-              left: '-4%',
-              background: `linear-gradient(135deg, ${accentColor}, #FFD700)`,
-              color: '#050510',
-              padding: '6px 12px',
-              borderRadius: 8,
-              fontSize: 9,
-              fontWeight: 900,
-              letterSpacing: '0.1em',
-              fontFamily: "'Inter', sans-serif",
-              transform: 'rotate(-8deg)',
-              boxShadow: `0 4px 20px ${accentColor}55`,
-              animation: 'h1StickerPop 0.4s ease',
-              zIndex: 40,
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {genre.emoji} {genreKey} GENRE BATTLE!
+                    {activeIdx === i && (
+                      <div
+                        style={{
+                          position: 'absolute',
+                          bottom: -36,
+                          left: '50%',
+                          transform: 'translateX(-50%)',
+                          background: 'rgba(10,6,20,0.95)',
+                          border: `1px solid ${accentColor}55`,
+                          borderRadius: 8,
+                          padding: '5px 10px',
+                          whiteSpace: 'nowrap',
+                          zIndex: 50,
+                          animation: 'h1StickerPop 0.25s ease',
+                        }}
+                      >
+                        <div style={{ fontSize: 9, fontWeight: 900, color: accentColor, fontFamily: "'Inter', sans-serif" }}>
+                          {p.name}
+                        </div>
+                        <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.5)', fontFamily: "'Inter', sans-serif" }}>
+                          #{p.rank} · {p.score.toLocaleString()} pts → Read Article
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </Link>
+              );
+            })}
+
+            {/* Sticker overlays */}
+            <div
+              style={{
+                position: 'absolute',
+                top: '8%',
+                left: '-4%',
+                background: `linear-gradient(135deg, ${accentColor}, #FFD700)`,
+                color: '#050510',
+                padding: '6px 12px',
+                borderRadius: 8,
+                fontSize: 9,
+                fontWeight: 900,
+                letterSpacing: '0.1em',
+                fontFamily: "'Inter', sans-serif",
+                transform: 'rotate(-8deg)',
+                boxShadow: `0 4px 20px ${accentColor}55`,
+                animation: 'h1StickerPop 0.4s ease',
+                zIndex: 40,
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {genre.emoji} {genreKey} GENRE BATTLE!
+            </div>
+
+            <div
+              style={{
+                position: 'absolute',
+                bottom: '12%',
+                right: '-2%',
+                background: 'linear-gradient(135deg, #AA2DFF, #FF2DAA)',
+                color: '#fff',
+                padding: '6px 14px',
+                borderRadius: 20,
+                fontSize: 9,
+                fontWeight: 900,
+                letterSpacing: '0.08em',
+                fontFamily: "'Inter', sans-serif",
+                transform: 'rotate(5deg)',
+                boxShadow: '0 4px 20px rgba(170,45,255,0.5)',
+                animation: 'h1StickerPop 0.5s ease',
+                zIndex: 40,
+                whiteSpace: 'nowrap',
+              }}
+            >
+              🔘 CYPHER ARENA OPEN
+            </div>
+
+            <div
+              style={{
+                position: 'absolute',
+                bottom: '22%',
+                left: '-2%',
+                background: 'rgba(20,10,40,0.92)',
+                border: '2px solid #FFD700',
+                color: '#FFD700',
+                padding: '5px 12px',
+                borderRadius: 8,
+                fontSize: 9,
+                fontWeight: 900,
+                letterSpacing: '0.06em',
+                fontFamily: "'Inter', sans-serif",
+                transform: 'rotate(-4deg)',
+                boxShadow: '0 4px 16px rgba(255,215,0,0.3)',
+                zIndex: 40,
+                whiteSpace: 'nowrap',
+              }}
+            >
+              🗳️ VOTING OPEN: VOTE FOR #4!
+            </div>
           </div>
 
-          <div
-            style={{
-              position: 'absolute',
-              bottom: '12%',
-              right: '-2%',
-              background: 'linear-gradient(135deg, #AA2DFF, #FF2DAA)',
-              color: '#fff',
-              padding: '6px 14px',
-              borderRadius: 20,
-              fontSize: 9,
-              fontWeight: 900,
-              letterSpacing: '0.08em',
-              fontFamily: "'Inter', sans-serif",
-              transform: 'rotate(5deg)',
-              boxShadow: '0 4px 20px rgba(170,45,255,0.5)',
-              animation: 'h1StickerPop 0.5s ease',
-              zIndex: 40,
-              whiteSpace: 'nowrap',
-            }}
-          >
-            🔘 CYPHER ARENA OPEN
-          </div>
-
-          <div
-            style={{
-              position: 'absolute',
-              bottom: '22%',
-              left: '-2%',
-              background: 'rgba(20,10,40,0.92)',
-              border: '2px solid #FFD700',
-              color: '#FFD700',
-              padding: '5px 12px',
-              borderRadius: 8,
-              fontSize: 9,
-              fontWeight: 900,
-              letterSpacing: '0.06em',
-              fontFamily: "'Inter', sans-serif",
-              transform: 'rotate(-4deg)',
-              boxShadow: '0 4px 16px rgba(255,215,0,0.3)',
-              zIndex: 40,
-              whiteSpace: 'nowrap',
-            }}
-          >
-            🗳️ VOTING OPEN: VOTE FOR #4!
-          </div>
+          <div />
         </div>
-        
-        <div /> {/* Right edge spacer */}
-        </div> {/* End Cinematic Wrapper */}
 
         {/* ── Genre navigation dots ── */}
         <div
@@ -885,7 +851,7 @@ export default function Home1CoverPage() {
           </div>
         </div>
 
-        {/* ── All performers grid (10 cards) ── */}
+        {/* ── Top 10 performers grid ── */}
         <div
           style={{
             width: '100%',
@@ -942,7 +908,6 @@ export default function Home1CoverPage() {
                     (e.currentTarget as HTMLDivElement).style.boxShadow = 'none';
                   }}
                 >
-                  {/* Rank */}
                   <div
                     style={{
                       position: 'absolute',
@@ -957,7 +922,6 @@ export default function Home1CoverPage() {
                   >
                     #{p.rank}
                   </div>
-
                   <div style={{ fontSize: 26, marginBottom: 4 }}>{p.emoji}</div>
                   <div
                     style={{
@@ -1050,7 +1014,7 @@ export default function Home1CoverPage() {
         >
           <div
             style={{
-              background: `linear-gradient(90deg, #2D0D6E, #1a0050, #2D0D6E)`,
+              background: 'linear-gradient(90deg, #2D0D6E, #1a0050, #2D0D6E)',
               borderTop: `2px solid ${accentColor}`,
               padding: '16px 24px',
               display: 'flex',
