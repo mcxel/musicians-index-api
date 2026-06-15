@@ -481,9 +481,21 @@ export default function AudienceScene({
     return () => { if (frameRef.current) cancelAnimationFrame(frameRef.current); };
   }, [render]);
 
-  const triggerWave = () => { stateRef.current.wave = true; onReaction?.("🌊"); setTimeout(() => { stateRef.current.wave = false; }, 3200); };
-  const triggerJump = () => { stateRef.current.jump = true; onReaction?.("⬆"); setTimeout(() => { stateRef.current.jump = false; }, 2400); };
-  const triggerHype = () => { stateRef.current.hype = true; onReaction?.("🔥"); setTimeout(() => { stateRef.current.hype = false; }, 4000); };
+  const triggerWave = () => { 
+    stateRef.current.wave = true; onReaction?.("🌊"); 
+    if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('tmi-xp-reward', { detail: { amount: 5, action: 'Crowd Wave' } }));
+    setTimeout(() => { stateRef.current.wave = false; }, 3200); 
+  };
+  const triggerJump = () => { 
+    stateRef.current.jump = true; onReaction?.("⬆"); 
+    if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('tmi-xp-reward', { detail: { amount: 10, action: 'Crowd Jump' } }));
+    setTimeout(() => { stateRef.current.jump = false; }, 2400); 
+  };
+  const triggerHype = () => { 
+    stateRef.current.hype = true; onReaction?.("🔥"); 
+    if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('tmi-xp-reward', { detail: { amount: 15, action: 'Crowd Hype' } }));
+    setTimeout(() => { stateRef.current.hype = false; }, 4000); 
+  };
 
   return (
     <div style={{ position: "relative" }}>

@@ -86,12 +86,13 @@ export const StreamWinRoom: React.FC<StreamWinRoomProps> = ({ currentUserRole, r
         {/* Brady-Bunch Live Performance Grid */}
         <div className={`flex-1 grid gap-6 ${getGridClass()} transition-all duration-700 ease-in-out pb-4`}>
           {participants.map(p => (
-            <MaskedVideoTile 
+            <MaskedVideoTile
               key={p.id}
-              participantId={p.id}
-              participantName={p.name}
-              isAudioActive={p.isAudioActive}
-              vibeState={roomVibe}
+              performerName={p.name}
+              isLive={p.isAudioActive}
+              shape="octagon"
+              avatarEmoji="🎤"
+              accentColor="#00FFFF"
             />
           ))}
         </div>

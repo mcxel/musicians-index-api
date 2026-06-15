@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { bookingContractEngine, type ContractTerms } from "@/lib/booking/BookingContractEngine";
 import EmailProviderEngine from "@/lib/email/EmailProviderEngine";
+import { VenueBookingRegistry } from "@/lib/registries/VenueBookingRegistry";
 
 function slugify(input: string): string {
   return input
@@ -26,65 +27,87 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    const bookingId = "BK-" + Math.random().toString(36).slice(2, 10).toUpperCase();
     const artistSlug = slugify(String(artistName));
+    const attendance = Math.max(0, Math.round(toSafeNumber(expectedAttendance, 0)));
+    const totalUsd   = Math.max(0, Math.round(toSafeNumber(estimatedTotal, 0)));
 
     const contractTerms: ContractTerms = {
-      performanceDate: String(eventDate),
-      setLengthMinutes: 60,
-      guaranteeUsd: Math.max(0, Math.round(toSafeNumber(estimatedTotal, 0))),
-      revenueSplitPercent: 70,
-      merchandisingRights: true,
-      soundcheckIncluded: true,
-      hotelIncluded: false,
+      performanceDate:        String(eventDate),
+      setLengthMinutes:       60,
+      guaranteeUsd:           totalUsd,
+      revenueSplitPercent:    70,
+      merchandisingRights:    true,
+      soundcheckIncluded:     true,
+      hotelIncluded:          false,
       travelReimbursementUsd: 0,
-      advancePaymentPercent: 20,
+      advancePaymentPercent:  20,
       cancellationPolicyDays: 14,
-      additionalNotes: String(additionalRequests ?? "").slice(0, 1200),
-      riderRequirements: Array.isArray(addOns) ? addOns.map((entry) => String(entry).slice(0, 120)) : [],
-      setList: [String(eventType ?? "concert")],
+      additionalNotes:        String(additionalRequests ?? "").slice(0, 1200),
+      riderRequirements:      Array.isArray(addOns) ? addOns.map((e) => String(e).slice(0, 120)) : [],
+      setList:                [String(eventType ?? "concert")],
     };
 
-    const contract = bookingContractEngine.createContract(String(venueSlug), artistSlug || bookingId.toLowerCase(), contractTerms, "artist");
-    const offer = bookingContractEngine.sendOffer(contract.id);
+    const contract = bookingContractEngine.createContract(String(venueSlug), artistSlug, contractTerms, "artist");
+    const offer    = bookingContractEngine.sendOffer(contract.id);
     if (!offer.success) {
       return NextResponse.json({ error: offer.error ?? "Failed to stage booking contract" }, { status: 500 });
     }
 
-    const bookingAlertEmail = process.env.BOOKING_ALERT_EMAIL?.trim();
-    if (bookingAlertEmail) {
-      const attendance = Math.max(0, Math.round(toSafeNumber(expectedAttendance, 0)));
+    // Persist via registry (replaces direct feedItem write)
+    let booking;
+    try {
+      booking = await VenueBookingRegistry.create({
+        venueSlug:          String(venueSlug),
+        artistName:         String(artistName),
+        artistSlug,
+        contactEmail:       String(contactEmail),
+        eventDate:          String(eventDate),
+        eventType:          String(eventType ?? 'concert'),
+        expectedAttendance: attendance,
+        estimatedTotalUsd:  totalUsd,
+        addOns:             Array.isArray(addOns) ? addOns.map(String) : [],
+        additionalNotes:    String(additionalRequests ?? "").slice(0, 1200),
+        contractId:         contract.id,
+      });
+    } catch {
+      // Registry failure non-fatal — email still fires
+    }
+
+    const bookingId = booking?.bookingId ?? `BK-${Math.random().toString(36).slice(2, 10).toUpperCase()}`;
+
+    const alertEmail = process.env.BOOKING_ALERT_EMAIL?.trim();
+    if (alertEmail) {
       void EmailProviderEngine.sendAsync({
-        to: bookingAlertEmail,
+        to:      alertEmail,
         subject: `New booking request ${bookingId} (${venueSlug})`,
-        html: `<h2>New booking request</h2><p><strong>Booking:</strong> ${bookingId}</p><p><strong>Venue:</strong> ${venueSlug}</p><p><strong>Artist:</strong> ${artistName}</p><p><strong>Email:</strong> ${contactEmail}</p><p><strong>Date:</strong> ${eventDate}</p><p><strong>Type:</strong> ${eventType ?? "concert"}</p><p><strong>Expected Attendance:</strong> ${attendance}</p><p><strong>Estimated Total:</strong> $${Math.max(0, Math.round(toSafeNumber(estimatedTotal, 0))).toLocaleString()}</p>`,
-        text: `New booking request\nBooking: ${bookingId}\nVenue: ${venueSlug}\nArtist: ${artistName}\nEmail: ${contactEmail}\nDate: ${eventDate}\nType: ${eventType ?? "concert"}\nExpected Attendance: ${attendance}\nEstimated Total: $${Math.max(0, Math.round(toSafeNumber(estimatedTotal, 0))).toLocaleString()}`,
-        tags: ["booking-request"],
+        html:    `<h2>New booking request</h2><p><b>Booking:</b> ${bookingId}</p><p><b>Venue:</b> ${venueSlug}</p><p><b>Artist:</b> ${artistName}</p><p><b>Email:</b> ${contactEmail}</p><p><b>Date:</b> ${eventDate}</p><p><b>Type:</b> ${eventType ?? "concert"}</p><p><b>Attendance:</b> ${attendance}</p><p><b>Total:</b> $${totalUsd.toLocaleString()}</p>`,
+        text:    `Booking ${bookingId}\nVenue: ${venueSlug}\nArtist: ${artistName}\nDate: ${eventDate}`,
+        tags:    ["booking-request"],
         replyTo: String(contactEmail),
       });
     }
 
-    console.log("[Booking Request]", {
-      bookingId,
-      contractId: contract.id,
-      venueSlug,
-      artistName,
-      contactEmail,
-      eventDate,
-      eventType,
-      expectedAttendance,
-      addOns,
-      estimatedTotal,
-    });
-
     return NextResponse.json({
-      success: true,
+      success:        true,
       bookingId,
-      contractId: contract.id,
-      message: `Booking request ${bookingId} submitted. The venue team will respond within 24 hours.`,
-      estimatedTotal: estimatedTotal ?? 0,
+      contractId:     contract.id,
+      message:        `Booking request ${bookingId} submitted. The venue team will respond within 24 hours.`,
+      estimatedTotal: totalUsd,
     });
   } catch {
     return NextResponse.json({ error: "Failed to create booking request" }, { status: 500 });
+  }
+}
+
+export async function GET(request: Request) {
+  const url       = new URL(request.url);
+  const venueSlug = url.searchParams.get('venueSlug');
+  try {
+    const bookings = venueSlug
+      ? await VenueBookingRegistry.listByVenue(venueSlug)
+      : await VenueBookingRegistry.listAll();
+    return NextResponse.json({ success: true, requests: bookings });
+  } catch {
+    return NextResponse.json({ success: true, requests: [] });
   }
 }

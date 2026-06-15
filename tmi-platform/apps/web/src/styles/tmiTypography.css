@@ -1,12 +1,16 @@
-@import url('https://fonts.googleapis.com/css2?family=Anton&family=Bungee&family=Orbitron:wght@400..900&family=Oswald:wght@200..700&family=Rajdhani:wght@300..700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Anton&family=Bungee&family=Exo+2:wght@300..700&family=Orbitron:wght@400..900&family=Oswald:wght@200..700&family=Rajdhani:wght@300..700&display=swap');
 
 :root {
   --font-tmi-anton: 'Anton', sans-serif;
   --font-tmi-bungee: 'Bungee', display;
+  --font-tmi-exo: 'Exo 2', sans-serif;
   --font-tmi-orbitron: 'Orbitron', monospace;
   --font-tmi-oswald: 'Oswald', sans-serif;
   --font-tmi-rajdhani: 'Rajdhani', sans-serif;
 }
+
+.tmi-orbitron { font-family: var(--font-tmi-orbitron) !important; }
+.tmi-exo      { font-family: var(--font-tmi-exo) !important; }
 
 .tmi-masthead {
   font-family: var(--font-tmi-anton);

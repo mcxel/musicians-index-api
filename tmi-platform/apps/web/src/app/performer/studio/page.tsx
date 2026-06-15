@@ -8,6 +8,14 @@ import WidgetDrawer from "@/components/room/WidgetDrawer";
 import { DrawerProvider } from "@/components/room/DrawerContext";
 import WebRTCBroadcast from "@/components/media/WebRTCBroadcast";
 import { RoomHUD } from "@/components/hud/RoomHUD";
+import dynamic from 'next/dynamic';
+import type React from 'react';
+
+type AudienceSceneProps = { view?: string; venue?: number; onReaction?: () => void };
+const AudienceSceneLive = dynamic(
+  () => (import('@/components/live/AudienceScene') as Promise<{ default: React.ComponentType<AudienceSceneProps> }>),
+  { ssr: false },
+);
 
 // ── Color tokens (matches reference design) ────────────────────────────────────
 const C = {
@@ -687,6 +695,7 @@ function SettingsTab() {
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function ArtistStudioPage() {
   const [isLive,    setIsLive]    = useState(false);
+  const [liveRoomId, setLiveRoomId] = useState<string | null>(null);
   const [chatInput, setChatInput] = useState("");
   const [activeTab, setActiveTab] = useState<Tab>("BROADCAST");
   const [reactions, setReactions] = useState<FloatReaction[]>([]);
@@ -698,7 +707,42 @@ export default function ArtistStudioPage() {
     isLive ? "performance" : "private",
   );
 
-  const toggleLive = () => setIsLive(v => !v);
+  const toggleLive = async () => {
+    if (!isLive) {
+      const rid = `studio-${Date.now()}`;
+      try {
+        const res = await fetch('/api/live/go', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            displayName:   'Performer',
+            title:         'Live Session',
+            category:      'live',
+            roomId:        rid,
+            privacy:       'PUBLIC',
+            accentColor:   C.gold,
+            performerTier: 'free',
+          }),
+        });
+        if (res.ok) {
+          const data = await res.json() as { session?: { roomId?: string } };
+          setLiveRoomId(data.session?.roomId ?? rid);
+        } else {
+          setLiveRoomId(rid);
+        }
+      } catch {
+        setLiveRoomId(rid);
+      }
+      setIsLive(true);
+    } else {
+      try {
+        await fetch('/api/live/go', { method: 'DELETE', credentials: 'include' });
+      } catch { /* silent */ }
+      setIsLive(false);
+      setLiveRoomId(null);
+    }
+  };
 
   const fireReaction = (emoji: string) => {
     const id = ++reactionId.current;
@@ -858,6 +902,21 @@ export default function ArtistStudioPage() {
                 </motion.div>
               )}
             </AnimatePresence>
+
+            {/* ── Audience scene — appears when live ── */}
+            {isLive && (
+              <div style={{ marginTop: 16, borderRadius: 12, overflow: 'hidden', border: `1px solid ${C.red}44` }}>
+                <div style={{ padding: '6px 12px', background: `${C.red}18`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span className="orbitron" style={{ fontSize: 8, color: C.red, letterSpacing: '0.15em', fontWeight: 900 }}>
+                    ⏺ LIVE AUDIENCE — {liveRoomId ?? 'STUDIO'}
+                  </span>
+                  <a href={`/live/rooms/${liveRoomId ?? 'studio'}`} style={{ fontSize: 8, color: C.cyan, textDecoration: 'none', fontWeight: 800, letterSpacing: '0.1em' }}>
+                    OPEN ROOM →
+                  </a>
+                </div>
+                <AudienceSceneLive view="performer" venue={0} />
+              </div>
+            )}
           </div>
 
           {/* RIGHT sidebar */}

@@ -549,6 +549,8 @@ function BookingMap({ accentColor }: { accentColor: string }) {
 interface MemoryWallProps {
   accentColor?: string;
   title?: string;
+  entityId?: string;
+  entityType?: string;
 }
 
 export default function MemoryWall({ accentColor = "#00FFFF", title = "Memory Wall" }: MemoryWallProps) {

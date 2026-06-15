@@ -1,0 +1,1415 @@
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Exo+2:wght@300;400;600;700&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#050815;--panel:rgba(8,14,38,.95);--card:rgba(12,20,50,.9);--red:#E63000;--orange:#FF6B00;--amber:#FF8C00;--gold:#FFD700;--border:rgba(220,70,0,.5);--dim:rgba(255,140,0,.4);--green:#00FF7F;--cyan:#00E5FF;--purple:#9B59B6}
+@keyframes mq{0%,100%{opacity:1;box-shadow:0 0 7px #FFD700,0 0 14px #FF6B00}50%{opacity:.25}}
+@keyframes mqB{0%,100%{opacity:.25}50%{opacity:1;box-shadow:0 0 7px #FFD700,0 0 14px #FF6B00}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+@keyframes sway{0%,100%{transform:rotate(-4deg)}50%{transform:rotate(4deg)}}
+@keyframes floatUp{0%{transform:translateY(0) scale(1);opacity:1}100%{transform:translateY(-80px) scale(.2);opacity:0}}
+@keyframes ticker{from{transform:translateX(110%)}to{transform:translateX(-110%)}}
+@keyframes flicker{0%,93%,100%{text-shadow:0 0 12px #E63000,0 0 24px rgba(230,48,0,.4)}94%,99%{text-shadow:none}}
+@keyframes pulse{0%,100%{box-shadow:0 0 4px #E63000}50%{box-shadow:0 0 18px #E63000,0 0 36px rgba(230,48,0,.3)}}
+@keyframes eqBar{0%,100%{height:4px}50%{height:var(--eqh)}}
+@keyframes adFade{0%,100%{opacity:.8}50%{opacity:1}}
+@keyframes bobble{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+@keyframes glow{0%,100%{box-shadow:0 0 8px var(--cyan),0 0 16px rgba(0,229,255,.3)}50%{box-shadow:0 0 16px var(--cyan),0 0 32px rgba(0,229,255,.5)}}
+@keyframes spinCd{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+.mq{animation:mq 1.9s ease-in-out infinite}.mqB{animation:mqB 1.9s ease-in-out infinite}
+.blink{animation:blink 1.2s ease-in-out infinite}
+.pulse-border{animation:pulse 2s ease-in-out infinite}
+.flicker{animation:flicker 4s ease-in-out infinite}
+.ticker-text{animation:ticker 18s linear infinite}
+.sway-arm{animation:sway 2s ease-in-out infinite;transform-origin:bottom center}
+.float-em{animation:floatUp 1.5s ease-out forwards}
+.bobble{animation:bobble 1.8s ease-in-out infinite}
+.glow-cyan{animation:glow 2.5s ease-in-out infinite}
+.spin-cd{animation:spinCd 4s linear infinite}
+.ad-pulse{animation:adFade 3s ease-in-out infinite}
+body{background:var(--bg);font-family:'Exo 2',sans-serif;color:var(--amber);overflow-x:hidden}
+.tmi-title{font-family:'Orbitron',sans-serif;font-weight:900;color:var(--red);text-transform:uppercase;letter-spacing:.08em}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:6px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:5px}
+.lbl{font-size:9px;font-weight:700;letter-spacing:.12em;color:var(--amber);text-transform:uppercase}
+.val{font-family:'Orbitron',sans-serif;font-weight:700;color:var(--gold)}
+.dot{border-radius:50%;display:inline-block;flex-shrink:0}
+.dot-g{background:var(--green);box-shadow:0 0 5px var(--green)}
+.dot-y{background:var(--gold);box-shadow:0 0 5px var(--gold)}
+.dot-r{background:var(--red);box-shadow:0 0 5px var(--red)}
+.dot-c{background:var(--dim)}
+.dot-cy{background:var(--cyan);box-shadow:0 0 5px var(--cyan)}
+.tmi-btn{background:transparent;border:1px solid var(--red);color:var(--amber);font-family:'Exo 2',sans-serif;font-size:10px;font-weight:700;cursor:pointer;border-radius:4px;padding:5px 9px;transition:all .15s;letter-spacing:.05em;text-transform:uppercase}
+.tmi-btn:hover{background:rgba(230,48,0,.25);color:var(--gold);box-shadow:0 0 8px rgba(230,48,0,.35)}
+.tmi-btn.gold{border-color:var(--gold);color:var(--gold)}
+.tmi-btn.green{border-color:var(--green);color:var(--green)}
+.tmi-btn.cyan{border-color:var(--cyan);color:var(--cyan)}
+.tmi-btn.active{background:rgba(230,48,0,.3);color:var(--gold)}
+.tmi-input{background:rgba(12,20,50,.9);border:1px solid var(--border);color:var(--amber);font-family:'Exo 2',sans-serif;font-size:11px;outline:none;border-radius:4px;padding:7px 11px;width:100%}
+.tmi-input::placeholder{color:var(--dim)}
+.tmi-input:focus{border-color:var(--red)}
+.tab-btn{flex:1;padding:9px 4px;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--dim);font-family:'Exo 2',sans-serif;font-size:9px;font-weight:700;cursor:pointer;letter-spacing:.06em;text-transform:uppercase;transition:all .15s}
+.tab-btn:hover{color:var(--amber)}
+.tab-btn.active{background:rgba(230,48,0,.18);border-bottom-color:var(--red);color:var(--gold)}
+.marquee-frame{position:relative;border:2px solid var(--red);border-radius:8px;overflow:hidden;background:#06000a}
+.screen-inner{position:absolute;inset:14px;border-radius:4px;overflow:hidden}
+.mq-bulb{position:absolute;width:9px;height:9px;border-radius:50%;background:#FFD700}
+.action-btn{display:flex;flex-direction:column;align-items:center;gap:3px;padding:5px 6px;background:transparent;border:1px solid var(--red);color:var(--amber);font-family:'Exo 2',sans-serif;font-size:7px;font-weight:700;cursor:pointer;border-radius:4px;transition:all .15s;flex:1;min-width:38px}
+.action-btn:hover{background:rgba(230,48,0,.2);color:var(--gold)}
+.action-btn .em{font-size:15px;line-height:1}
+.bot-bar{display:flex;gap:8px;flex-wrap:wrap;padding:5px 10px;background:rgba(0,0,0,.3);border-top:1px solid var(--border)}
+.bar-chart{display:flex;align-items:flex-end;gap:3px}
+.bar-seg{border-radius:2px 2px 0 0;min-width:12px}
+.health-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+
+/* AD WIDGET */
+.ad-widget{background:rgba(4,8,26,.95);border:1px solid rgba(255,140,0,.3);border-radius:5px;padding:6px 8px;text-align:center;position:relative;overflow:hidden}
+.ad-widget::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--amber),transparent)}
+.ad-badge{position:absolute;top:3px;right:4px;background:rgba(255,140,0,.2);border:1px solid var(--dim);border-radius:3px;font-size:6px;font-weight:700;color:var(--dim);padding:1px 4px;letter-spacing:.08em}
+
+/* PLAYLIST */
+.playlist-track{padding:5px 8px;border-radius:4px;cursor:pointer;display:flex;align-items:center;gap:7px;transition:background .12s}
+.playlist-track:hover{background:rgba(230,48,0,.15)}
+.playlist-track.active{background:rgba(230,48,0,.25);border-left:2px solid var(--red)}
+.eq-bar{display:inline-block;width:3px;border-radius:1px;background:var(--red);vertical-align:bottom;margin:0 1px}
+
+/* LOBBY WALL */
+.room-card{background:var(--card);border:1px solid var(--border);border-radius:6px;overflow:hidden;cursor:pointer;transition:all .15s}
+.room-card:hover{border-color:var(--red);box-shadow:0 0 10px rgba(230,48,0,.2)}
+.room-card.featured{border-color:var(--gold);box-shadow:0 0 8px rgba(255,215,0,.15)}
+.bobble-char{display:flex;flex-direction:column;align-items:center;gap:0}
+
+/* PRIVATE LOBBY */
+.green-room{background:rgba(0,12,30,.95);border:1px solid var(--cyan);border-radius:8px}
+</style>
+
+<div style="background:var(--bg);min-height:100vh">
+
+<!-- TAB BAR -->
+<div style="display:flex;background:#030610;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100">
+  <button class="tab-btn active" onclick="showTab('fan',this)">🎭 FAN THEATER</button>
+  <button class="tab-btn" onclick="showTab('artist',this)">🎤 ARTIST STUDIO</button>
+  <button class="tab-btn" onclick="showTab('overseer',this)">👁 OVERSEER DECK</button>
+  <button class="tab-btn" onclick="showTab('admin',this)">⚙️ ADMIN HUB</button>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     FAN THEATER
+══════════════════════════════════════════════════════════════════════════ -->
+<div id="tab-fan" class="tmi-tab" style="padding:8px">
+
+  <!-- Header -->
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px">
+    <div class="tmi-title flicker" style="font-size:18px">FAN DASHBOARD ☠</div>
+    <div style="display:flex;gap:5px">
+      <button class="tmi-btn" style="font-size:10px">☠ TRIVA</button>
+      <button class="tmi-btn gold" style="font-size:10px">⭐ UPGRADED</button>
+    </div>
+  </div>
+
+  <!-- TOP ROW: Spotlight + Screen + Right col -->
+  <div style="display:grid;grid-template-columns:1fr 170px;gap:7px;margin-bottom:7px">
+    <div>
+      <!-- Artist spotlight -->
+      <div class="panel" style="padding:8px 12px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div class="lbl" style="margin-bottom:2px">Artist Spotlight</div>
+          <div style="font-family:'Orbitron',sans-serif;font-size:14px;font-weight:700;color:var(--gold)">Chario Ace</div>
+          <div style="font-size:10px;color:var(--red);font-weight:600">HIP-HOP</div>
+        </div>
+        <div style="display:flex;gap:5px;align-items:center">
+          <button class="tmi-btn" style="font-size:17px;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 10px">📡<span style="font-size:7px">SPIN</span></button>
+          <button class="tmi-btn" style="font-size:17px;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 10px">✓<span style="font-size:7px">VOTE</span></button>
+          <div class="panel" style="padding:6px 12px;text-align:center">
+            <div class="lbl" style="font-size:7px">Next Show</div>
+            <div style="font-family:'Orbitron',sans-serif;font-size:15px;font-weight:700;color:var(--gold)">8:00 PM</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Marquee screen -->
+      <div class="marquee-frame pulse-border" style="height:180px;margin-bottom:6px" id="fanScreen">
+        <div class="screen-inner"><div id="fanCrowd" style="width:100%;height:100%;position:relative"></div></div>
+        <div id="fanReactions" style="position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:10"></div>
+      </div>
+
+      <!-- Action dock -->
+      <div class="panel" style="padding:6px;margin-bottom:6px">
+        <div style="display:flex;gap:4px">
+          <button class="action-btn" onclick="fireReaction('👍','fan')"><span class="em">👍</span>Thank You</button>
+          <button class="action-btn" onclick="fireReaction('❤️','fan')"><span class="em">❤️</span>Hearts</button>
+          <button class="action-btn" onclick="fireReaction('✋','fan')"><span class="em">✋</span>Flicker</button>
+          <button class="action-btn" onclick="fireReaction('🎉','fan')"><span class="em">🎉</span>Confetti</button>
+          <button class="action-btn" onclick="fireReaction('⚡','fan')"><span class="em">⚡</span>Spark</button>
+          <button class="action-btn" onclick="fireReaction('🎵','fan')"><span class="em">🎵</span>Vibe</button>
+          <!-- AD SLOT inline -->
+          <div class="ad-widget ad-pulse" style="flex:1;min-width:50px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:pointer">
+            <div class="ad-badge">AD</div>
+            <div style="font-size:9px;font-weight:700;color:var(--amber)">SPONSOR</div>
+            <div style="font-size:7px;color:var(--dim)">Your Ad Here</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Chat -->
+      <input class="tmi-input" placeholder="Say something to the crowd..." style="margin-bottom:6px">
+
+      <!-- Fan Analytics -->
+      <div class="panel" style="padding:8px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <div class="lbl">Fan Analytics</div><span style="font-size:9px;color:var(--cyan)">24 min session</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="font-size:9px;color:var(--dim)">Watch time</span><span class="val" style="font-size:11px">24h</span></div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="font-size:9px;color:var(--dim)">Tips sent</span><span class="val" style="font-size:11px">8</span></div>
+            <div style="display:flex;justify-content:space-between"><span style="font-size:9px;color:var(--dim)">Artists followed</span><span class="val" style="font-size:11px">3</span></div>
+          </div>
+          <div class="bar-chart" style="height:48px">
+            <div class="bar-seg" style="height:35%;background:var(--red);flex:1"></div>
+            <div class="bar-seg" style="height:58%;background:var(--red);flex:1"></div>
+            <div class="bar-seg" style="height:25%;background:var(--red);flex:1"></div>
+            <div class="bar-seg" style="height:80%;background:var(--gold);flex:1"></div>
+            <div class="bar-seg" style="height:100%;background:var(--gold);flex:1"></div>
+            <div class="bar-seg" style="height:70%;background:var(--red);flex:1"></div>
+            <div class="bar-seg" style="height:88%;background:var(--orange);flex:1"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT COLUMN -->
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <!-- Shop -->
+      <div class="panel" style="padding:7px">
+        <div class="lbl" style="text-align:center;margin-bottom:4px">Cosmetic Shop</div>
+        <div style="display:flex;gap:4px;margin-bottom:5px">
+          <button class="tmi-btn" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 2px;font-size:13px">🔴<span style="font-size:7px">FREE</span></button>
+          <button class="tmi-btn" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 2px;font-size:13px">💧<span style="font-size:7px">RAF</span></button>
+          <button class="tmi-btn" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 2px;font-size:13px">⭕<span style="font-size:7px">EPIC</span></button>
+        </div>
+        <!-- AD in shop for free tier -->
+        <div class="ad-widget ad-pulse" style="margin-bottom:5px;padding:5px 6px">
+          <div class="ad-badge">AD</div>
+          <div style="font-size:8px;font-weight:700;color:var(--orange)">🎯 Upgrade to Gold</div>
+          <div style="font-size:7px;color:var(--dim);margin-top:1px">Remove ads + bonus PunPoints</div>
+        </div>
+      </div>
+
+      <!-- Billboard -->
+      <div class="panel" style="padding:7px;text-align:center">
+        <div class="lbl" style="margin-bottom:4px">Billboard Fans</div>
+        <div class="val" style="font-size:18px">38.5K</div>
+        <div style="font-size:9px;color:var(--orange);margin-top:2px">SByeeGil</div>
+        <div style="display:flex;justify-content:center;gap:8px;font-size:9px;margin-top:4px">
+          <span>❤️ <strong style="color:var(--gold)">8</strong></span>
+          <span>🟡 <strong style="color:var(--gold)">6</strong></span>
+        </div>
+      </div>
+
+      <!-- PunPoints -->
+      <div class="panel" style="padding:7px;text-align:center">
+        <div style="display:flex;align-items:center;justify-content:center;gap:4px;margin-bottom:3px"><span>🟠</span><div class="lbl">PunPoints</div></div>
+        <div style="font-size:13px;margin-bottom:5px">⭐⭐⭐⭐⭐</div>
+        <button class="tmi-btn" style="width:100%;padding:4px;font-size:8px">UPGRADE</button>
+      </div>
+
+      <!-- Memory Wall -->
+      <div class="panel" style="padding:7px;text-align:center;cursor:pointer" onclick="openMemoryWall()">
+        <div class="lbl" style="margin-bottom:3px">Memory Wall</div>
+        <div style="font-size:16px;margin-bottom:2px">🎞</div>
+        <div style="font-size:7px;color:var(--dim)">Videos · Audio · Images</div>
+      </div>
+
+      <!-- Sidebar AD -->
+      <div class="ad-widget ad-pulse" style="padding:9px 7px;cursor:pointer">
+        <div class="ad-badge">AD</div>
+        <div style="font-size:10px;font-weight:700;color:var(--amber);margin-bottom:3px">🎵 BerntoutStudio AI</div>
+        <div style="font-size:7px;color:var(--dim);margin-bottom:5px">Make beats with AI. Free trial.</div>
+        <button class="tmi-btn" style="width:100%;padding:3px;font-size:8px">TRY FREE</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ PLAYLIST WIDGET ═══ -->
+  <div class="panel glow-cyan" style="padding:10px;margin-bottom:7px;border-color:var(--cyan)">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div style="display:flex;align-items:center;gap:7px">
+        <div style="font-family:'Orbitron',sans-serif;font-size:11px;color:var(--cyan);font-weight:700">🎵 PLAYLIST ENGINE</div>
+        <div style="font-size:8px;color:var(--dim);background:rgba(0,229,255,.1);border:1px solid rgba(0,229,255,.3);padding:2px 6px;border-radius:3px">SUBMARINE SKIN v1</div>
+      </div>
+      <div style="display:flex;gap:5px">
+        <button class="tmi-btn cyan" style="padding:3px 7px;font-size:8px">🔀 SHUFFLE</button>
+        <button class="tmi-btn cyan" style="padding:3px 7px;font-size:8px">🔁 LOOP</button>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;margin-bottom:8px">
+      <!-- Spinning CD art -->
+      <div style="width:56px;height:56px;border-radius:50%;background:radial-gradient(circle at 30% 30%,#1a0a00,#050815);border:2px solid var(--cyan);display:flex;align-items:center;justify-content:center;flex-shrink:0" id="cdArt" class="spin-cd">
+        <div style="width:12px;height:12px;border-radius:50%;background:var(--bg);border:1px solid var(--dim)"></div>
+      </div>
+
+      <!-- Now playing -->
+      <div>
+        <div style="font-family:'Orbitron',sans-serif;font-size:12px;font-weight:700;color:var(--gold)" id="nowPlayingTitle">Big Moves – Chario Ace</div>
+        <div style="font-size:9px;color:var(--dim);margin-bottom:5px">Berntout Perductions · HIP-HOP</div>
+        <!-- EQ bars -->
+        <div style="display:flex;align-items:flex-end;gap:2px;height:16px">
+          <span class="eq-bar" style="animation:eqBar 0.4s ease-in-out infinite;--eqh:16px;height:8px"></span>
+          <span class="eq-bar" style="animation:eqBar 0.6s ease-in-out infinite .1s;--eqh:12px;height:12px"></span>
+          <span class="eq-bar" style="animation:eqBar 0.5s ease-in-out infinite .2s;--eqh:16px;height:5px"></span>
+          <span class="eq-bar" style="animation:eqBar 0.7s ease-in-out infinite .05s;--eqh:14px;height:14px"></span>
+          <span class="eq-bar" style="animation:eqBar 0.4s ease-in-out infinite .15s;--eqh:10px;height:10px"></span>
+          <span class="eq-bar" style="animation:eqBar 0.8s ease-in-out infinite;--eqh:16px;height:7px"></span>
+          <span class="eq-bar" style="animation:eqBar 0.5s ease-in-out infinite .25s;--eqh:13px;height:13px"></span>
+          <span class="eq-bar" style="animation:eqBar 0.6s ease-in-out infinite .1s;--eqh:16px;height:9px"></span>
+        </div>
+        <!-- Progress bar -->
+        <div style="margin-top:5px;height:3px;background:rgba(0,229,255,.2);border-radius:2px;cursor:pointer">
+          <div id="progressBar" style="height:3px;background:var(--cyan);border-radius:2px;width:38%;transition:width .5s"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:2px">
+          <span style="font-size:7px;color:var(--dim)">1:24</span>
+          <span style="font-size:7px;color:var(--dim)">3:47</span>
+        </div>
+      </div>
+
+      <!-- Controls -->
+      <div style="display:flex;flex-direction:column;gap:5px;align-items:center">
+        <div style="display:flex;gap:5px">
+          <button class="tmi-btn cyan" style="padding:4px 7px;font-size:11px" onclick="prevTrack()">⏮</button>
+          <button class="tmi-btn cyan" style="padding:4px 8px;font-size:13px" id="playBtn" onclick="togglePlay()">⏸</button>
+          <button class="tmi-btn cyan" style="padding:4px 7px;font-size:11px" onclick="nextTrack()">⏭</button>
+        </div>
+        <div style="display:flex;align-items:center;gap:5px">
+          <span style="font-size:9px">🔊</span>
+          <input type="range" min="0" max="100" value="75" style="width:60px;accent-color:var(--cyan)">
+        </div>
+      </div>
+    </div>
+
+    <!-- Track list -->
+    <div style="max-height:120px;overflow-y:auto">
+      <div class="playlist-track active" onclick="selectTrack(0,this,'Big Moves – Chario Ace')">
+        <div style="font-size:8px;color:var(--dim);width:14px">1</div>
+        <div style="flex:1"><div style="font-size:9px;color:var(--gold)">Big Moves</div><div style="font-size:7px;color:var(--dim)">Chario Ace · Berntout Perductions</div></div>
+        <span style="font-size:7px;color:var(--cyan)">3:47</span>
+      </div>
+      <div class="playlist-track" onclick="selectTrack(1,this,'Wave Rider – BJM The Rapper')">
+        <div style="font-size:8px;color:var(--dim);width:14px">2</div>
+        <div style="flex:1"><div style="font-size:9px;color:var(--amber)">Wave Rider</div><div style="font-size:7px;color:var(--dim)">BJM The Rapper · BJM Beats</div></div>
+        <span style="font-size:7px;color:var(--dim)">4:12</span>
+      </div>
+      <div class="playlist-track" onclick="selectTrack(2,this,'Thunder Zone – Big KazhDog')">
+        <div style="font-size:8px;color:var(--dim);width:14px">3</div>
+        <div style="flex:1"><div style="font-size:9px;color:var(--amber)">Thunder Zone</div><div style="font-size:7px;color:var(--dim)">Big KazhDog · Big Kash Records</div></div>
+        <span style="font-size:7px;color:var(--dim)">3:21</span>
+      </div>
+      <div class="playlist-track" onclick="selectTrack(3,this,'Night Frequency – Chario Ace')">
+        <div style="font-size:8px;color:var(--dim);width:14px">4</div>
+        <div style="flex:1"><div style="font-size:9px;color:var(--amber)">Night Frequency</div><div style="font-size:7px;color:var(--dim)">Chario Ace · Berntout Perductions</div></div>
+        <span style="font-size:7px;color:var(--dim)">5:02</span>
+      </div>
+      <div class="playlist-track" onclick="selectTrack(4,this,'Sound Pressure – BJM The Rapper')">
+        <div style="font-size:8px;color:var(--dim);width:14px">5</div>
+        <div style="flex:1"><div style="font-size:9px;color:var(--amber)">Sound Pressure</div><div style="font-size:7px;color:var(--dim)">BJM The Rapper · BJM Beats</div></div>
+        <span style="font-size:7px;color:var(--dim)">2:58</span>
+      </div>
+    </div>
+    <!-- Playlist AD slot -->
+    <div class="ad-widget ad-pulse" style="margin-top:7px">
+      <div class="ad-badge">AD</div>
+      <div style="font-size:8px;color:var(--amber)">🎧 Rent-A-Charge Kiosks — Find one near you</div>
+    </div>
+  </div>
+
+  <!-- ═══ FAN LOBBY WALL ═══ -->
+  <div style="margin-bottom:7px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px">
+      <div class="tmi-title" style="font-size:14px">🎭 LIVE LOBBY</div>
+      <div style="display:flex;gap:5px">
+        <button class="tmi-btn active" style="font-size:8px;padding:3px 8px">ALL ROOMS</button>
+        <button class="tmi-btn" style="font-size:8px;padding:3px 8px">HIP-HOP</button>
+        <button class="tmi-btn" style="font-size:8px;padding:3px 8px">BATTLES</button>
+        <button class="tmi-btn" style="font-size:8px;padding:3px 8px">CHILL</button>
+      </div>
+    </div>
+
+    <!-- Bobblehead theater row -->
+    <div class="panel" style="padding:10px;margin-bottom:8px;background:rgba(4,2,12,.98)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-end;padding:0 20px">
+        <!-- Stage silhouette crowd -->
+        <div style="display:flex;gap:10px;align-items:flex-end">
+          <div class="bobble-char bobble" style="animation-delay:0s">
+            <div style="width:22px;height:22px;border-radius:50%;background:#5C2A00;border:2px solid var(--amber)"></div>
+            <div style="width:16px;height:24px;border-radius:3px 3px 0 0;background:#3d1a00;margin:0 auto"></div>
+          </div>
+          <div class="bobble-char bobble" style="animation-delay:.3s">
+            <div style="width:20px;height:20px;border-radius:50%;background:#8B2200;border:2px solid var(--red)"></div>
+            <div style="width:14px;height:22px;border-radius:3px 3px 0 0;background:#5a1500;margin:0 auto"></div>
+          </div>
+          <div class="bobble-char bobble" style="animation-delay:.6s">
+            <div style="width:24px;height:24px;border-radius:50%;background:#2F1B0E;border:2px solid var(--gold)"></div>
+            <div style="width:18px;height:26px;border-radius:3px 3px 0 0;background:#1e1006;margin:0 auto"></div>
+          </div>
+          <div class="bobble-char bobble" style="animation-delay:.9s">
+            <div style="width:20px;height:20px;border-radius:50%;background:#6B2C00;border:2px solid var(--orange)"></div>
+            <div style="width:14px;height:22px;border-radius:3px 3px 0 0;background:#451c00;margin:0 auto"></div>
+          </div>
+          <div class="bobble-char bobble" style="animation-delay:1.2s">
+            <div style="width:22px;height:22px;border-radius:50%;background:#4a1e00;border:2px solid var(--amber)"></div>
+            <div style="width:16px;height:24px;border-radius:3px 3px 0 0;background:#2d1200;margin:0 auto"></div>
+          </div>
+          <div class="bobble-char bobble" style="animation-delay:1.5s">
+            <div style="width:20px;height:20px;border-radius:50%;background:#3a1c00;border:2px solid var(--red)"></div>
+            <div style="width:14px;height:22px;border-radius:3px 3px 0 0;background:#240f00;margin:0 auto"></div>
+          </div>
+        </div>
+        <div style="text-align:center">
+          <div style="font-family:'Orbitron',sans-serif;font-size:9px;color:var(--dim)">👁 WATCHING NOW</div>
+          <div class="val" style="font-size:22px">2,730</div>
+          <div style="font-size:8px;color:var(--green)">FANS IN LOBBY</div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:flex-end">
+          <div class="bobble-char bobble" style="animation-delay:.2s">
+            <div style="width:22px;height:22px;border-radius:50%;background:#5C2A00;border:2px solid var(--cyan)"></div>
+            <div style="width:16px;height:24px;border-radius:3px 3px 0 0;background:#3d1a00;margin:0 auto"></div>
+          </div>
+          <div class="bobble-char bobble" style="animation-delay:.7s">
+            <div style="width:20px;height:20px;border-radius:50%;background:#703200;border:2px solid var(--gold)"></div>
+            <div style="width:14px;height:22px;border-radius:3px 3px 0 0;background:#4a2000;margin:0 auto"></div>
+          </div>
+          <div class="bobble-char bobble" style="animation-delay:1s">
+            <div style="width:24px;height:24px;border-radius:50%;background:#2F1B0E;border:2px solid var(--amber)"></div>
+            <div style="width:18px;height:26px;border-radius:3px 3px 0 0;background:#1e1006;margin:0 auto"></div>
+          </div>
+          <div class="bobble-char bobble" style="animation-delay:.4s">
+            <div style="width:20px;height:20px;border-radius:50%;background:#8B1200;border:2px solid var(--red)"></div>
+            <div style="width:14px;height:22px;border-radius:3px 3px 0 0;background:#5a0c00;margin:0 auto"></div>
+          </div>
+          <div class="bobble-char bobble" style="animation-delay:1.3s">
+            <div style="width:22px;height:22px;border-radius:50%;background:#4a1e00;border:2px solid var(--orange)"></div>
+            <div style="width:16px;height:24px;border-radius:3px 3px 0 0;background:#2d1200;margin:0 auto"></div>
+          </div>
+          <div class="bobble-char bobble" style="animation-delay:.8s">
+            <div style="width:20px;height:20px;border-radius:50%;background:#6B2C00;border:2px solid var(--gold)"></div>
+            <div style="width:14px;height:22px;border-radius:3px 3px 0 0;background:#451c00;margin:0 auto"></div>
+          </div>
+        </div>
+      </div>
+      <!-- Theater floor -->
+      <div style="height:2px;background:linear-gradient(90deg,transparent,var(--red),transparent);margin-top:6px"></div>
+    </div>
+
+    <!-- Room cards grid -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:7px">
+      <!-- FEATURED -->
+      <div class="room-card featured" onclick="enterRoom('Main Stage')">
+        <div style="height:64px;background:#0a0002;position:relative;overflow:hidden">
+          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--gold)">🎤 LIVE</div>
+          <div style="position:absolute;bottom:0;left:0;right:0;height:24px;background:linear-gradient(transparent,#0a0002)"></div>
+          <div style="position:absolute;top:4px;left:4px;display:flex;align-items:center;gap:3px"><span class="dot dot-g blink" style="width:5px;height:5px"></span><span style="font-size:7px;color:var(--green)">LIVE</span></div>
+          <div style="position:absolute;top:4px;right:4px;background:var(--gold);border-radius:2px;font-size:6px;padding:1px 4px;color:#000;font-weight:700">FEATURED</div>
+        </div>
+        <div style="padding:6px">
+          <div style="font-size:10px;font-weight:700;color:var(--gold);margin-bottom:2px">Main Stage Room</div>
+          <div style="font-size:7px;color:var(--dim);margin-bottom:4px">Hip-Hop · Chario Ace</div>
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span style="font-size:8px;color:var(--amber)">👁 1,204</span>
+            <button class="tmi-btn gold" style="padding:2px 6px;font-size:7px">ENTER</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="room-card" onclick="enterRoom('Battle Arena A')">
+        <div style="height:64px;background:#030a0a;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:24px">⚔️
+          <div style="position:absolute;top:4px;left:4px;display:flex;align-items:center;gap:3px"><span class="dot dot-g blink" style="width:5px;height:5px;animation-delay:.5s"></span><span style="font-size:7px;color:var(--green)">LIVE</span></div>
+        </div>
+        <div style="padding:6px">
+          <div style="font-size:10px;font-weight:700;color:var(--amber);margin-bottom:2px">Battle Arena A</div>
+          <div style="font-size:7px;color:var(--dim);margin-bottom:4px">Rap Battle · Open</div>
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span style="font-size:8px;color:var(--amber)">👁 876</span>
+            <button class="tmi-btn" style="padding:2px 6px;font-size:7px">ENTER</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="room-card" onclick="enterRoom('Cypher Lounge')">
+        <div style="height:64px;background:#00050a;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:24px">🎤
+          <div style="position:absolute;top:4px;left:4px;display:flex;align-items:center;gap:3px"><span class="dot dot-g blink" style="width:5px;height:5px;animation-delay:1s"></span><span style="font-size:7px;color:var(--green)">LIVE</span></div>
+        </div>
+        <div style="padding:6px">
+          <div style="font-size:10px;font-weight:700;color:var(--amber);margin-bottom:2px">Cypher Lounge</div>
+          <div style="font-size:7px;color:var(--dim);margin-bottom:4px">Open Mic · All genres</div>
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span style="font-size:8px;color:var(--amber)">👁 432</span>
+            <button class="tmi-btn" style="padding:2px 6px;font-size:7px">ENTER</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="room-card" onclick="enterRoom('Chill Beats')">
+        <div style="height:64px;background:#00080a;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:24px">🎵
+          <div style="position:absolute;top:4px;left:4px;display:flex;align-items:center;gap:3px"><span class="dot dot-y blink" style="width:5px;height:5px"></span><span style="font-size:7px;color:var(--gold)">SOON</span></div>
+        </div>
+        <div style="padding:6px">
+          <div style="font-size:10px;font-weight:700;color:var(--amber);margin-bottom:2px">Chill Beats Room</div>
+          <div style="font-size:7px;color:var(--dim);margin-bottom:4px">Lo-Fi · Instrumental</div>
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span style="font-size:8px;color:var(--amber)">👁 218</span>
+            <button class="tmi-btn" style="padding:2px 6px;font-size:7px">WAIT</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Second row + leaderboard AD -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:7px">
+      <div class="room-card">
+        <div style="padding:8px;display:flex;align-items:center;gap:7px">
+          <span style="font-size:18px">🥁</span>
+          <div>
+            <div style="font-size:9px;color:var(--amber);font-weight:600">Beat Factory</div>
+            <div style="font-size:7px;color:var(--dim)">Production · 89 watching</div>
+          </div>
+          <button class="tmi-btn" style="margin-left:auto;padding:2px 6px;font-size:7px">JOIN</button>
+        </div>
+      </div>
+      <div class="room-card">
+        <div style="padding:8px;display:flex;align-items:center;gap:7px">
+          <span style="font-size:18px">🎸</span>
+          <div>
+            <div style="font-size:9px;color:var(--amber);font-weight:600">Rock Room</div>
+            <div style="font-size:7px;color:var(--dim)">Rock · 142 watching</div>
+          </div>
+          <button class="tmi-btn" style="margin-left:auto;padding:2px 6px;font-size:7px">JOIN</button>
+        </div>
+      </div>
+      <div class="room-card">
+        <div style="padding:8px;display:flex;align-items:center;gap:7px">
+          <span style="font-size:18px">🎹</span>
+          <div>
+            <div style="font-size:9px;color:var(--amber);font-weight:600">Jazz Corner</div>
+            <div style="font-size:7px;color:var(--dim)">Jazz · 67 watching</div>
+          </div>
+          <button class="tmi-btn" style="margin-left:auto;padding:2px 6px;font-size:7px">JOIN</button>
+        </div>
+      </div>
+      <!-- Lobby leaderboard AD -->
+      <div class="ad-widget ad-pulse" style="min-width:130px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px">
+        <div class="ad-badge">AD</div>
+        <div style="font-size:9px;font-weight:700;color:var(--orange)">🎟 Stream & Win Radio</div>
+        <div style="font-size:7px;color:var(--dim)">Win prizes every hour</div>
+        <button class="tmi-btn" style="padding:3px 8px;font-size:7px;margin-top:2px">LISTEN</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer banner AD -->
+  <div class="ad-widget ad-pulse" style="padding:8px 12px;display:flex;justify-content:space-between;align-items:center">
+    <div class="ad-badge">AD</div>
+    <div>
+      <div style="font-size:10px;font-weight:700;color:var(--amber)">📺 HotScreens — Digital Billboard Network</div>
+      <div style="font-size:8px;color:var(--dim)">Advertise your music on 500+ screens nationwide</div>
+    </div>
+    <button class="tmi-btn" style="padding:5px 12px;font-size:9px">LEARN MORE</button>
+  </div>
+
+  <!-- Ticker -->
+  <div class="panel" style="padding:5px 8px;overflow:hidden;margin-top:6px">
+    <div class="ticker-text" style="white-space:nowrap;font-size:8px;color:var(--gold)">
+      🔴 LIVE: Chario Ace — Main Stage &nbsp;&nbsp;&nbsp; 🔥 Battle Arena: 3 rounds in progress &nbsp;&nbsp;&nbsp; 🆕 BJM The Rapper joined Cypher Lounge &nbsp;&nbsp;&nbsp; 💰 $2,400 in tips sent today &nbsp;&nbsp;&nbsp; 🎯 Beat Battle Tournament — 8PM Tonight &nbsp;&nbsp;&nbsp; 🏆 Billboard #1: Big KazhDog this week &nbsp;&nbsp;&nbsp;
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     ARTIST STUDIO
+══════════════════════════════════════════════════════════════════════════ -->
+<div id="tab-artist" class="tmi-tab" style="padding:8px;display:none">
+
+  <!-- Welcome banner -->
+  <div class="panel" style="padding:8px 14px;margin-bottom:7px;text-align:center;border-color:var(--gold)">
+    <div style="font-family:'Orbitron',sans-serif;color:var(--gold);font-size:10px;font-weight:700;letter-spacing:.1em">🎵 WELCOME TO YOUR PROMOTION HUB 🎵</div>
+    <div style="font-size:8px;color:var(--dim);margin-top:2px">We thank you for joining. Ready to take you and your music global. We grow together.</div>
+  </div>
+
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px">
+    <div class="tmi-title flicker" style="font-size:16px">ARTIST DASHBOARD</div>
+    <div style="display:flex;gap:4px">
+      <button class="tmi-btn" style="font-size:8px">⬆ UPLOAD</button>
+      <button class="tmi-btn" style="font-size:8px">📅 SET UP SHOW</button>
+      <button class="tmi-btn" style="font-size:8px">💼 SPONSOR</button>
+      <button class="tmi-btn" id="goLiveBtn" onclick="toggleGoLive()" style="font-size:8px;border-color:var(--green);color:var(--green)">🔴 GO LIVE</button>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr auto;gap:7px;margin-bottom:7px">
+    <input class="tmi-input" placeholder="Talk to your fans or pin a message...">
+    <div style="display:flex;gap:5px">
+      <button class="tmi-btn gold" style="padding:7px 14px;font-size:10px">PUBLISH</button>
+      <button class="tmi-btn" style="padding:7px 8px;font-size:8px">🤖 ASSISTANT</button>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 170px;gap:7px;margin-bottom:7px">
+    <div>
+
+      <!-- LIVE MODE: Marquee Screen (shown when live) -->
+      <div id="liveMode">
+        <div class="marquee-frame pulse-border" style="height:180px;margin-bottom:6px;position:relative" id="artistScreen">
+          <div class="screen-inner"><div id="artistCrowd" style="width:100%;height:100%;position:relative"></div></div>
+          <div id="onAirBadge" style="position:absolute;top:14px;right:14px;background:var(--red);border-radius:4px;padding:3px 9px;font-size:8px;font-weight:700;font-family:'Orbitron',sans-serif;z-index:10;display:flex;align-items:center;gap:4px">
+            <span class="dot dot-g blink" style="width:6px;height:6px"></span> ON AIR
+          </div>
+          <div id="artistReactions" style="position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:10"></div>
+        </div>
+
+        <div class="panel" style="padding:6px;margin-bottom:6px">
+          <div style="display:flex;gap:4px">
+            <button class="action-btn" onclick="fireReaction('👍','artist')"><span class="em">👍</span>Thanks</button>
+            <button class="action-btn" onclick="fireReaction('❤️','artist')"><span class="em">❤️</span>Hearts</button>
+            <button class="action-btn" onclick="fireReaction('💡','artist')"><span class="em">💡</span>Flicker</button>
+            <button class="action-btn" onclick="fireReaction('🎉','artist')"><span class="em">🎉</span>Confetti</button>
+            <button class="action-btn" onclick="fireReaction('⚡','artist')"><span class="em">⚡</span>Spark</button>
+            <!-- AD SLOT -->
+            <div class="ad-widget ad-pulse" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;cursor:pointer;min-width:46px">
+              <div class="ad-badge">AD</div>
+              <div style="font-size:7px;font-weight:700;color:var(--amber)">SPONSOR SLOT</div>
+              <div style="font-size:6px;color:var(--dim)">Reach your fans</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr auto;gap:7px;margin-bottom:6px">
+          <div class="panel" style="padding:7px">
+            <div style="display:flex;gap:5px;align-items:center;margin-bottom:5px">
+              <span class="dot dot-g blink" style="width:7px;height:7px"></span>
+              <div class="lbl" style="font-size:7px">$ LIVE TIPS</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:5px;margin-bottom:3px"><span style="font-size:8px">🟢</span><span style="font-size:9px">JamesSky</span><span style="margin-left:auto;font-size:8px;color:var(--green);font-weight:700">+$20</span></div>
+            <div style="display:flex;align-items:center;gap:5px;margin-bottom:3px"><span style="font-size:8px">🟢</span><span style="font-size:9px">Lily88</span><span style="margin-left:auto;font-size:8px;color:var(--green);font-weight:700">+$15</span></div>
+            <div style="display:flex;align-items:center;gap:5px"><span style="font-size:8px">🟢</span><span style="font-size:9px">Alex94</span><span style="margin-left:auto;font-size:8px;color:var(--green);font-weight:700">+$10</span></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:5px">
+            <div class="panel" style="padding:6px;text-align:center;flex:1"><div class="lbl" style="font-size:7px">VIEWERS</div><div class="val" style="font-size:16px">215</div></div>
+            <div class="panel" style="padding:6px;text-align:center;flex:1"><div class="lbl" style="font-size:7px">TIPS</div><div class="val" style="font-size:14px">$865</div></div>
+            <div class="panel" style="padding:6px;text-align:center;flex:1"><div class="lbl" style="font-size:7px">RATING</div><div class="val" style="font-size:14px">4.8</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PRIVATE LOBBY / GREEN ROOM (shown when NOT live) -->
+      <div id="privateMode" style="display:none">
+        <div class="green-room" style="padding:12px;margin-bottom:7px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+            <div>
+              <div style="font-family:'Orbitron',sans-serif;color:var(--cyan);font-size:12px;font-weight:700">🟢 PRIVATE LOBBY — GREEN ROOM</div>
+              <div style="font-size:8px;color:var(--dim);margin-top:2px">Your pre-show waiting area. Fans can't see you yet.</div>
+            </div>
+            <div style="text-align:right">
+              <div class="lbl" style="font-size:7px;color:var(--cyan)">Show starts in</div>
+              <div style="font-family:'Orbitron',sans-serif;font-size:18px;color:var(--gold)" id="countdownDisplay">02:34:18</div>
+            </div>
+          </div>
+
+          <!-- Fan wall waiting -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+            <div>
+              <div class="lbl" style="font-size:7px;margin-bottom:5px;color:var(--cyan)">FANS WAITING IN LOBBY</div>
+              <div style="display:flex;flex-direction:column;gap:4px">
+                <div style="display:flex;align-items:center;gap:5px;padding:3px 6px;background:rgba(0,229,255,.06);border-radius:3px">
+                  <span class="dot dot-cy" style="width:6px;height:6px"></span><span style="font-size:8px">SkyFan94</span><span style="margin-left:auto;font-size:7px;color:var(--dim)">Gold Tier</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:5px;padding:3px 6px;background:rgba(0,229,255,.05);border-radius:3px">
+                  <span class="dot dot-cy" style="width:6px;height:6px"></span><span style="font-size:8px">MusicLvr22</span><span style="margin-left:auto;font-size:7px;color:var(--dim)">Fan</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:5px;padding:3px 6px;background:rgba(0,229,255,.05);border-radius:3px">
+                  <span class="dot dot-cy" style="width:6px;height:6px"></span><span style="font-size:8px">Beathead33</span><span style="margin-left:auto;font-size:7px;color:var(--dim)">Silver</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:5px;padding:3px 6px;background:rgba(0,229,255,.04);border-radius:3px">
+                  <span class="dot dot-cy" style="width:6px;height:6px"></span><span style="font-size:8px">FrequentFly</span><span style="margin-left:auto;font-size:7px;color:var(--dim)">Fan</span>
+                </div>
+                <div style="text-align:center;font-size:8px;color:var(--cyan);margin-top:3px">+ 847 more waiting...</div>
+              </div>
+            </div>
+
+            <div>
+              <div class="lbl" style="font-size:7px;margin-bottom:5px;color:var(--cyan)">SET LIST — TONIGHT</div>
+              <div style="display:flex;flex-direction:column;gap:3px">
+                <div style="display:flex;align-items:center;gap:5px;padding:3px 6px;background:rgba(255,140,0,.08);border-radius:3px">
+                  <span style="font-size:8px;color:var(--dim)">1.</span><span style="font-size:8px">Big Moves</span><input type="checkbox" checked style="margin-left:auto;accent-color:var(--cyan)">
+                </div>
+                <div style="display:flex;align-items:center;gap:5px;padding:3px 6px;background:rgba(255,140,0,.06);border-radius:3px">
+                  <span style="font-size:8px;color:var(--dim)">2.</span><span style="font-size:8px">Night Frequency</span><input type="checkbox" checked style="margin-left:auto;accent-color:var(--cyan)">
+                </div>
+                <div style="display:flex;align-items:center;gap:5px;padding:3px 6px;background:rgba(255,140,0,.06);border-radius:3px">
+                  <span style="font-size:8px;color:var(--dim)">3.</span><span style="font-size:8px">Sound Pressure</span><input type="checkbox" style="margin-left:auto;accent-color:var(--cyan)">
+                </div>
+                <div style="display:flex;align-items:center;gap:5px;padding:3px 6px;background:rgba(255,140,0,.05);border-radius:3px">
+                  <span style="font-size:8px;color:var(--dim)">4.</span><span style="font-size:8px">Storm Season</span><input type="checkbox" style="margin-left:auto;accent-color:var(--cyan)">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Private chat with waiting fans -->
+          <div style="margin-bottom:8px">
+            <div class="lbl" style="font-size:7px;margin-bottom:4px;color:var(--cyan)">GREEN ROOM CHAT — PRIVATE</div>
+            <div style="background:rgba(0,0,0,.4);border:1px solid rgba(0,229,255,.2);border-radius:4px;padding:6px;height:70px;overflow-y:auto;margin-bottom:5px">
+              <div style="font-size:8px;color:var(--cyan);margin-bottom:3px"><strong>SkyFan94:</strong> <span style="color:var(--amber)">Can't wait for tonight!! 🔥</span></div>
+              <div style="font-size:8px;color:var(--cyan);margin-bottom:3px"><strong>MusicLvr22:</strong> <span style="color:var(--amber)">Please play Big Moves first!</span></div>
+              <div style="font-size:8px;color:var(--cyan)"><strong>BeatHead33:</strong> <span style="color:var(--amber)">Ready to tip heavy tonight 💰</span></div>
+            </div>
+            <div style="display:flex;gap:5px">
+              <input class="tmi-input" placeholder="Send a private message to waiting fans..." style="font-size:9px">
+              <button class="tmi-btn cyan" style="padding:5px 10px;font-size:9px">SEND</button>
+            </div>
+          </div>
+
+          <!-- Backstage controls -->
+          <div style="display:flex;gap:5px">
+            <button class="tmi-btn cyan" style="flex:1;padding:8px;font-size:9px">🎚 SOUND CHECK</button>
+            <button class="tmi-btn cyan" style="flex:1;padding:8px;font-size:9px">📋 EDIT SET LIST</button>
+            <button class="tmi-btn cyan" style="flex:1;padding:8px;font-size:9px">🎁 PLAN GIVEAWAY</button>
+            <button class="tmi-btn" style="flex:1;padding:8px;font-size:9px;border-color:var(--red);color:var(--red)" onclick="toggleGoLive()">🔴 GO LIVE NOW</button>
+          </div>
+        </div>
+
+        <!-- AD slot in green room -->
+        <div class="ad-widget ad-pulse" style="margin-bottom:7px;padding:8px">
+          <div class="ad-badge">AD</div>
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <div style="font-size:9px;font-weight:700;color:var(--amber)">🎙 BerntoutStudio AI — Upgrade your sound</div>
+              <div style="font-size:7px;color:var(--dim)">AI mastering, mixing, and beat generation. Exclusive artist rates.</div>
+            </div>
+            <button class="tmi-btn" style="padding:4px 10px;font-size:8px">GET DEAL</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Revenue + Battle -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:6px">
+        <div class="panel" style="padding:7px;text-align:center">
+          <div class="lbl" style="font-size:7px;margin-bottom:2px">$ EARNING</div>
+          <div class="val" style="font-size:14px">$945</div>
+          <div style="font-size:7px;color:var(--dim);margin-top:2px">Daily $215</div>
+        </div>
+        <button class="tmi-btn" style="padding:7px;display:flex;flex-direction:column;align-items:center;gap:2px">⚡<span style="font-size:8px">JOIN CYPHER</span></button>
+        <button class="tmi-btn" style="padding:7px;display:flex;flex-direction:column;align-items:center;gap:2px">🥊<span style="font-size:8px">BEAT BATTLE</span></button>
+      </div>
+
+      <!-- Revenue chart -->
+      <div class="panel" style="padding:7px">
+        <div class="lbl" style="margin-bottom:5px;font-size:7px">Revenue Trend (7 days)</div>
+        <div class="bar-chart" style="height:44px;gap:3px">
+          <div class="bar-seg" style="height:34%;background:var(--red);flex:1"></div>
+          <div class="bar-seg" style="height:55%;background:var(--red);flex:1"></div>
+          <div class="bar-seg" style="height:28%;background:var(--red);flex:1"></div>
+          <div class="bar-seg" style="height:72%;background:var(--red);flex:1"></div>
+          <div class="bar-seg" style="height:96%;background:var(--gold);flex:1"></div>
+          <div class="bar-seg" style="height:78%;background:var(--red);flex:1"></div>
+          <div class="bar-seg" style="height:88%;background:var(--orange);flex:1"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:2px">
+          <span style="font-size:6px;color:var(--dim)">Mon</span><span style="font-size:6px;color:var(--dim)">Tue</span><span style="font-size:6px;color:var(--dim)">Wed</span><span style="font-size:6px;color:var(--dim)">Thu</span><span style="font-size:6px;color:var(--dim)">Fri</span><span style="font-size:6px;color:var(--dim)">Sat</span><span style="font-size:6px;color:var(--dim)">Sun</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right col -->
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <div class="panel" style="padding:7px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+          <div class="lbl">Booking</div><span>📅</span>
+        </div>
+        <div style="font-size:10px;color:var(--gold);font-weight:600;margin-bottom:4px">SAT, 11</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:3px;margin-bottom:5px">
+          <div class="card" style="padding:2px 4px;text-align:center;font-size:7px">8 PM</div>
+          <div class="card" style="padding:2px 4px;text-align:center;font-size:7px">9 PM</div>
+          <div class="card" style="padding:2px 4px;text-align:center;font-size:7px">9 PM</div>
+          <div class="card" style="padding:2px 4px;text-align:center;font-size:7px">10 PM</div>
+        </div>
+        <button class="tmi-btn" style="width:100%;padding:3px;font-size:7px;margin-bottom:3px">REQPUBLISH</button>
+        <button class="tmi-btn" style="width:100%;padding:3px;font-size:7px">📍 PROMOTE SHOW</button>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">
+        <button class="tmi-btn" style="padding:7px;display:flex;flex-direction:column;align-items:center;gap:2px">👕<span style="font-size:7px">MERCH</span></button>
+        <button class="tmi-btn" style="padding:7px;display:flex;flex-direction:column;align-items:center;gap:2px">🎨<span style="font-size:7px">NFT</span></button>
+      </div>
+
+      <!-- Spin wheel -->
+      <div class="panel" style="padding:7px;text-align:center">
+        <div class="lbl" style="margin-bottom:4px;font-size:7px">Daily Spin</div>
+        <div id="spinWheel" onclick="triggerSpin()" style="width:58px;height:58px;margin:0 auto 5px;border-radius:50%;border:3px solid var(--gold);display:flex;align-items:center;justify-content:center;cursor:pointer;background:rgba(230,48,0,.1);font-size:22px;transition:transform 2s cubic-bezier(.17,.67,.12,1)">🎡</div>
+        <button class="tmi-btn" style="width:100%;padding:3px;font-size:8px" onclick="triggerSpin()">PLAY</button>
+      </div>
+
+      <!-- XP Stats -->
+      <div class="panel" style="padding:7px">
+        <div class="health-row"><span style="font-size:8px;color:var(--dim)">XP</span><span class="val" style="font-size:10px">#3</span></div>
+        <div class="health-row"><span style="font-size:8px;color:var(--dim)">FANS</span><span class="val" style="font-size:10px">17k</span></div>
+        <div class="health-row"><span style="font-size:8px;color:var(--dim)">RANK</span><span class="val" style="font-size:10px">70</span></div>
+        <div class="health-row"><span style="font-size:8px;color:var(--dim)">SHOW</span><span class="val" style="font-size:10px">FA #3</span></div>
+      </div>
+
+      <!-- Artist Playlist -->
+      <div class="panel" style="padding:7px;border-color:var(--cyan)">
+        <div class="lbl" style="font-size:7px;color:var(--cyan);margin-bottom:5px">MY PLAYLIST</div>
+        <div class="playlist-track active" style="padding:3px 5px;margin-bottom:2px">
+          <div class="eq-bar" style="animation:eqBar .4s ease-in-out infinite;--eqh:12px;height:6px;background:var(--cyan)"></div>
+          <div class="eq-bar" style="animation:eqBar .6s ease-in-out infinite .1s;--eqh:12px;height:12px;background:var(--cyan)"></div>
+          <div style="flex:1;margin-left:5px"><div style="font-size:7px;color:var(--gold)">Big Moves</div><div style="font-size:6px;color:var(--dim)">3:47</div></div>
+        </div>
+        <div class="playlist-track" style="padding:3px 5px;margin-bottom:2px"><span style="font-size:7px;color:var(--dim);width:10px">2</span><div style="flex:1;margin-left:5px"><div style="font-size:7px;color:var(--amber)">Night Frequency</div><div style="font-size:6px;color:var(--dim)">5:02</div></div></div>
+        <div class="playlist-track" style="padding:3px 5px"><span style="font-size:7px;color:var(--dim);width:10px">3</span><div style="flex:1;margin-left:5px"><div style="font-size:7px;color:var(--amber)">Sound Pressure</div><div style="font-size:6px;color:var(--dim)">2:58</div></div></div>
+      </div>
+
+      <!-- Sidebar artist AD -->
+      <div class="ad-widget ad-pulse" style="padding:8px">
+        <div class="ad-badge">AD</div>
+        <div style="font-size:8px;font-weight:700;color:var(--amber);margin-bottom:3px">🎯 WillDoIt Pro</div>
+        <div style="font-size:6px;color:var(--dim);margin-bottom:4px">Artist task management. Stay on schedule.</div>
+        <button class="tmi-btn" style="width:100%;padding:3px;font-size:7px">EXPLORE</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bot bar -->
+  <div class="bot-bar" style="border-radius:6px;margin-top:0">
+    <div style="display:flex;align-items:center;gap:4px"><span class="dot dot-g blink" style="width:6px;height:6px"></span><span style="font-size:7px;color:var(--dim)">StageManagerBot</span></div>
+    <div style="display:flex;align-items:center;gap:4px"><span class="dot dot-g blink" style="width:6px;height:6px;animation-delay:.3s"></span><span style="font-size:7px;color:var(--dim)">RevenueBot</span></div>
+    <div style="display:flex;align-items:center;gap:4px"><span class="dot dot-g blink" style="width:6px;height:6px;animation-delay:.6s"></span><span style="font-size:7px;color:var(--dim)">ChatGuardBot</span></div>
+    <div style="display:flex;align-items:center;gap:4px"><span class="dot dot-y blink" style="width:6px;height:6px;animation-delay:.9s"></span><span style="font-size:7px;color:var(--dim)">StreamMonitor</span></div>
+    <div style="display:flex;align-items:center;gap:4px"><span class="dot dot-g blink" style="width:6px;height:6px;animation-delay:1.2s"></span><span style="font-size:7px;color:var(--dim)">BookingBot</span></div>
+    <div style="display:flex;align-items:center;gap:4px"><span class="dot dot-c" style="width:6px;height:6px"></span><span style="font-size:7px;color:var(--dim)">BookingBot#2</span></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     OVERSEER DECK
+══════════════════════════════════════════════════════════════════════════ -->
+<div id="tab-overseer" class="tmi-tab" style="padding:8px;display:none">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:7px 12px">
+    <div class="tmi-title flicker" style="font-size:13px">BerntoutGlobal — OVERSEER DECK</div>
+    <div style="display:flex;gap:5px;align-items:center">
+      <div style="display:flex;align-items:center;gap:3px"><span class="dot dot-g blink" style="width:6px;height:6px"></span><span style="font-size:8px;color:var(--green)">LIVE</span></div>
+      <span style="font-size:8px;color:var(--dim)">11:45 AM EST</span>
+      <button class="tmi-btn" style="font-size:7px">⚡ CHAIN PULSE</button>
+      <button class="tmi-btn" style="font-size:7px">🤖 Summon Big Ace</button>
+      <button class="tmi-btn" style="font-size:7px;border-color:var(--red);color:var(--red)">Approve Digest</button>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:190px 1fr 205px;gap:7px">
+    <!-- LEFT -->
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <div class="panel" style="padding:8px">
+        <div class="lbl" style="margin-bottom:6px">Chain of Command</div>
+        <div style="display:flex;align-items:center;gap:5px;margin-bottom:5px;padding:4px;background:rgba(230,48,0,.08);border-radius:4px">
+          <span class="dot dot-g blink" style="width:7px;height:7px"></span>
+          <div><div style="font-size:9px;color:var(--gold);font-weight:600">Big Ace Overseer CEO</div><div style="font-size:7px;color:var(--dim)">TMI</div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:5px;margin-bottom:5px;padding:4px;background:rgba(230,48,0,.06);border-radius:4px">
+          <span class="dot dot-g blink" style="width:7px;height:7px;animation-delay:.4s"></span>
+          <div><div style="font-size:9px;color:var(--gold);font-weight:600">Big Ace</div><div style="font-size:7px;color:var(--dim)">Operations Lead · 14</div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:5px;margin-bottom:5px;padding:4px;background:rgba(230,48,0,.05);border-radius:4px">
+          <span class="dot dot-g blink" style="width:7px;height:7px;animation-delay:.8s"></span>
+          <div><div style="font-size:9px;color:var(--amber)">Michael Charlie</div><div style="font-size:7px;color:var(--dim)">Systems · Platform</div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:5px;padding:4px;background:rgba(230,48,0,.04);border-radius:4px">
+          <span class="dot dot-y blink" style="width:7px;height:7px"></span>
+          <div><div style="font-size:9px;color:var(--amber)">Big Ace 14</div><div style="font-size:7px;color:var(--dim)">Support Staff</div></div>
+        </div>
+      </div>
+
+      <div class="panel" style="padding:8px">
+        <div class="lbl" style="margin-bottom:6px">Money & Billing</div>
+        <div class="health-row"><div style="display:flex;gap:4px;align-items:center"><span>🤖</span><div><div style="font-size:9px">Ace</div><div style="font-size:6px;color:var(--dim)">Owner</div></div></div><span class="val" style="font-size:9px">$1.2k</span></div>
+        <div class="health-row"><div style="display:flex;gap:4px;align-items:center"><span>👤</span><div><div style="font-size:9px">Big Ace</div><div style="font-size:6px;color:var(--dim)">Manager</div></div></div><span class="val" style="font-size:9px">$945</span></div>
+        <div class="health-row"><div style="display:flex;gap:4px;align-items:center"><span>👤</span><div><div style="font-size:9px">Jay Paul Beats</div><div style="font-size:6px;color:var(--dim)">Artist</div></div></div><span class="val" style="font-size:9px">$421</span></div>
+        <div class="health-row"><div style="display:flex;gap:4px;align-items:center"><span>👤</span><div><div style="font-size:9px">FBi Ace</div><div style="font-size:6px;color:var(--dim)">Partner</div></div></div><span class="val" style="font-size:9px">$234</span></div>
+      </div>
+
+      <div class="panel" style="padding:8px">
+        <div class="lbl" style="margin-bottom:6px">Bot Roster & Summon</div>
+        <div class="health-row"><div style="display:flex;gap:4px;align-items:center"><span class="dot dot-g blink" style="width:5px;height:5px"></span><span style="font-size:8px">Big Ace</span></div><button class="tmi-btn" style="padding:1px 5px;font-size:7px">⚡</button></div>
+        <div class="health-row"><div style="display:flex;gap:4px;align-items:center"><span class="dot dot-g blink" style="width:5px;height:5px;animation-delay:.3s"></span><span style="font-size:8px">Michael Charlie</span></div><button class="tmi-btn" style="padding:1px 5px;font-size:7px">⚡</button></div>
+        <div class="health-row"><div style="display:flex;gap:4px;align-items:center"><span class="dot dot-y blink" style="width:5px;height:5px"></span><span style="font-size:8px">NovaBot</span></div><button class="tmi-btn" style="padding:1px 5px;font-size:7px">⚡</button></div>
+        <div class="health-row"><div style="display:flex;gap:4px;align-items:center"><span class="dot dot-g blink" style="width:5px;height:5px;animation-delay:.6s"></span><span style="font-size:8px">SecurityBot</span></div><button class="tmi-btn" style="padding:1px 5px;font-size:7px">⚡</button></div>
+        <div class="health-row"><div style="display:flex;gap:4px;align-items:center"><span class="dot dot-c" style="width:5px;height:5px"></span><span style="font-size:8px">RevenueBot</span></div><button class="tmi-btn green" style="padding:1px 5px;font-size:7px">⚡</button></div>
+      </div>
+
+      <div class="panel" style="padding:8px;flex:1">
+        <div class="lbl" style="margin-bottom:6px">Unified Inbox</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:3px 5px;background:rgba(230,48,0,.07);border-radius:3px;margin-bottom:4px"><span style="font-size:8px">Big Ace</span><span style="background:var(--red);border-radius:8px;font-size:6px;padding:1px 4px;color:#fff;font-weight:700">3</span></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:3px 5px;background:rgba(230,48,0,.05);border-radius:3px;margin-bottom:4px"><span style="font-size:8px">Jay Paul Beats</span><span style="background:var(--red);border-radius:8px;font-size:6px;padding:1px 4px;color:#fff;font-weight:700">1</span></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:3px 5px;background:rgba(230,48,0,.05);border-radius:3px;margin-bottom:4px"><span style="font-size:8px">BJM The Rapper</span><span style="background:var(--orange);border-radius:8px;font-size:6px;padding:1px 4px;color:#fff;font-weight:700">2</span></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:3px 5px;background:rgba(230,48,0,.04);border-radius:3px"><span style="font-size:8px">FBi Ace</span><span style="background:var(--red);border-radius:8px;font-size:6px;padding:1px 4px;color:#fff;font-weight:700">1</span></div>
+      </div>
+    </div>
+
+    <!-- CENTER -->
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <div class="panel" style="padding:7px">
+        <div class="lbl" style="margin-bottom:6px">TV Screen Router — Boardroom Live</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">
+          <div style="height:62px;background:#0a0002;border:1px solid var(--red);border-radius:4px;display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative"><span style="font-size:10px;color:var(--gold)">🎤 Main Stage</span><div style="position:absolute;top:4px;left:4px;display:flex;align-items:center;gap:2px"><span class="dot dot-g blink" style="width:4px;height:4px"></span><span style="font-size:6px;color:var(--green)">LIVE</span></div></div>
+          <div style="height:62px;background:#030a0a;border:1px solid var(--border);border-radius:4px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px">⚔️</div>
+          <div style="height:62px;background:#00050a;border:1px solid var(--border);border-radius:4px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px">🎤</div>
+          <div style="height:62px;background:#00080a;border:1px solid var(--border);border-radius:4px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px">🎵</div>
+        </div>
+      </div>
+
+      <div class="panel" style="padding:7px">
+        <div class="lbl" style="margin-bottom:6px">Live Feed Explorer</div>
+        <input class="tmi-input" placeholder="Search Artists or Events..." style="margin-bottom:5px;font-size:9px;padding:5px 8px">
+        <div style="display:flex;gap:4px;margin-bottom:6px">
+          <button class="tmi-btn active" style="font-size:7px;padding:2px 6px">Live Now</button>
+          <button class="tmi-btn" style="font-size:7px;padding:2px 6px">Genre: Hip-Hop</button>
+          <button class="tmi-btn" style="font-size:7px;padding:2px 6px">Top Trending</button>
+        </div>
+        <div class="panel" style="padding:6px;margin-bottom:4px"><div style="display:flex;gap:6px;align-items:center"><span>🎤</span><div style="flex:1"><div style="font-size:9px;color:var(--gold);font-weight:600">Live Performance: Ace</div><div style="font-size:7px;color:var(--dim)">Boardroom Event</div></div><div style="display:flex;align-items:center;gap:3px"><span class="dot dot-g blink" style="width:5px;height:5px"></span><span style="font-size:7px;color:var(--green)">LIVE</span></div></div></div>
+        <div class="panel" style="padding:6px;margin-bottom:4px"><div style="display:flex;gap:6px;align-items:center"><span>⚡</span><div style="flex:1"><div style="font-size:9px;color:var(--gold);font-weight:600">Cypher Tournament Event</div><div style="font-size:7px;color:var(--dim)">Session (local)</div></div><div style="display:flex;align-items:center;gap:3px"><span class="dot dot-g blink" style="width:5px;height:5px;animation-delay:.4s"></span><span style="font-size:7px;color:var(--green)">LIVE</span></div></div></div>
+        <div class="panel" style="padding:6px"><div style="display:flex;gap:6px;align-items:center"><span>📢</span><div style="flex:1"><div style="font-size:9px;color:var(--gold);font-weight:600">Sponsor Segment (PunWorkly)</div><div style="font-size:7px;color:var(--dim)">Ad Campaign</div></div><div style="display:flex;align-items:center;gap:3px"><span class="dot dot-g blink" style="width:5px;height:5px;animation-delay:.8s"></span><span style="font-size:7px;color:var(--green)">LIVE</span></div></div></div>
+      </div>
+
+      <div class="panel" style="padding:7px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div>
+            <div class="lbl" style="margin-bottom:5px;font-size:7px">Artist Analytics & Revenue</div>
+            <div class="bar-chart" style="height:55px;gap:2px">
+              <div class="bar-seg" style="height:30%;background:var(--orange);flex:1"></div>
+              <div class="bar-seg" style="height:45%;background:var(--orange);flex:1"></div>
+              <div class="bar-seg" style="height:62%;background:var(--amber);flex:1"></div>
+              <div class="bar-seg" style="height:80%;background:var(--gold);flex:1"></div>
+              <div class="bar-seg" style="height:96%;background:var(--gold);flex:1"></div>
+              <div class="bar-seg" style="height:76%;background:var(--amber);flex:1"></div>
+              <div class="bar-seg" style="height:86%;background:var(--orange);flex:1"></div>
+            </div>
+          </div>
+          <div>
+            <div class="lbl" style="margin-bottom:5px;font-size:7px">Billboard Rankings</div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:2px"><span style="font-size:7px">1. Live Performance</span><span style="font-size:7px;color:var(--gold)">📈 5780</span></div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:2px"><span style="font-size:7px">2. Memory Streams</span><span style="font-size:7px;color:var(--gold)">👁 1.5k</span></div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:2px"><span style="font-size:7px">3. Jay Paul Beats</span><span style="font-size:7px;color:var(--gold)">📈 1.2k</span></div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:2px"><span style="font-size:7px">4. Big Ace</span><span style="font-size:7px;color:var(--gold)">📈 1.38</span></div>
+            <div style="display:flex;justify-content:space-between"><span style="font-size:7px">5. SpontanYall</span><span style="font-size:7px;color:var(--gold)">📈 .33</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel" style="padding:5px 8px;overflow:hidden">
+        <div class="ticker-text" style="white-space:nowrap;font-size:8px;color:var(--gold)">
+          💰 Tips: $4.2k today &nbsp;&nbsp;&nbsp; 🎟 Tickets: 847 sold &nbsp;&nbsp;&nbsp; 📢 Sponsors: 12 active &nbsp;&nbsp;&nbsp; 🎵 Streams: 50k+ &nbsp;&nbsp;&nbsp; 👥 +124 signups today &nbsp;&nbsp;&nbsp; 💳 3,271 active subs &nbsp;&nbsp;&nbsp;
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT -->
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <div class="panel" style="padding:8px">
+        <div class="lbl" style="margin-bottom:6px">Security Sentinel Wall</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
+          <span style="font-size:9px">100 Sentinels</span>
+          <svg width="44" height="44" viewBox="0 0 44 44"><circle cx="22" cy="22" r="17" fill="none" stroke="rgba(220,70,0,.3)" stroke-width="4"/><circle cx="22" cy="22" r="17" fill="none" stroke="#00FF7F" stroke-width="4" stroke-dasharray="76 24" stroke-dashoffset="17" transform="rotate(-90 22 22)"/><text x="22" y="26" text-anchor="middle" fill="#00FF7F" font-size="9" font-family="monospace">76%</text></svg>
+        </div>
+        <div style="font-size:8px;color:var(--green);margin-bottom:4px">● THREAT LEVEL: STABLE</div>
+        <div class="health-row"><span style="font-size:7px;color:var(--dim)">Vulns</span><span style="font-size:8px;color:var(--gold);font-weight:700">2 open</span></div>
+        <div class="health-row"><span style="font-size:7px;color:var(--dim)">Alerts</span><span style="font-size:8px;color:var(--red);font-weight:700">11+</span></div>
+      </div>
+
+      <div class="panel" style="padding:8px">
+        <div class="lbl" style="margin-bottom:6px">Account Linker</div>
+        <div class="health-row"><div style="display:flex;gap:4px;align-items:center"><span style="font-size:10px">💳</span><span style="font-size:8px">Stripe</span></div><span class="dot dot-g" style="width:6px;height:6px"></span></div>
+        <div class="health-row"><div style="display:flex;gap:4px;align-items:center"><span style="font-size:10px">🎵</span><span style="font-size:8px">Spotify</span></div><span class="dot dot-g" style="width:6px;height:6px"></span></div>
+        <div class="health-row"><div style="display:flex;gap:4px;align-items:center"><span style="font-size:10px">🅿️</span><span style="font-size:8px">PayPal</span></div><span class="dot dot-g" style="width:6px;height:6px"></span></div>
+        <div class="health-row"><div style="display:flex;gap:4px;align-items:center"><span style="font-size:10px">🎬</span><span style="font-size:8px">Memory Streams</span></div><span class="dot dot-c" style="width:6px;height:6px"></span></div>
+        <div class="health-row"><div style="display:flex;gap:4px;align-items:center"><span style="font-size:10px">🖥</span><span style="font-size:8px">SBA Hosting</span></div><span class="dot dot-g" style="width:6px;height:6px"></span></div>
+        <div class="health-row"><div style="display:flex;gap:4px;align-items:center"><span style="font-size:10px">🔧</span><span style="font-size:8px">PunWorkly</span></div><span class="dot dot-y blink" style="width:6px;height:6px"></span></div>
+      </div>
+
+      <div class="panel" style="padding:8px">
+        <div class="lbl" style="margin-bottom:6px">Platform Health</div>
+        <div class="health-row"><span style="font-size:8px;color:var(--dim)">Auth</span><div style="display:flex;align-items:center;gap:3px"><span class="dot dot-g" style="width:5px;height:5px"></span><span style="font-size:7px;color:var(--green)">OK</span></div></div>
+        <div class="health-row"><span style="font-size:8px;color:var(--dim)">Database</span><div style="display:flex;align-items:center;gap:3px"><span class="dot dot-g" style="width:5px;height:5px"></span><span style="font-size:7px;color:var(--green)">OK</span></div></div>
+        <div class="health-row"><span style="font-size:8px;color:var(--dim)">Stripe</span><div style="display:flex;align-items:center;gap:3px"><span class="dot dot-g" style="width:5px;height:5px"></span><span style="font-size:7px;color:var(--green)">OK</span></div></div>
+        <div class="health-row"><span style="font-size:8px;color:var(--dim)">WebRTC</span><div style="display:flex;align-items:center;gap:3px"><span class="dot dot-g" style="width:5px;height:5px"></span><span style="font-size:7px;color:var(--green)">OK</span></div></div>
+        <div class="health-row"><span style="font-size:8px;color:var(--dim)">Redis</span><div style="display:flex;align-items:center;gap:3px"><span class="dot dot-y blink" style="width:5px;height:5px"></span><span style="font-size:7px;color:var(--gold)">Warn</span></div></div>
+        <div class="health-row"><span style="font-size:8px;color:var(--dim)">Storage</span><div style="display:flex;align-items:center;gap:3px"><span class="dot dot-g" style="width:5px;height:5px"></span><span style="font-size:7px;color:var(--green)">OK</span></div></div>
+      </div>
+
+      <div class="panel" style="padding:8px">
+        <div class="lbl" style="margin-bottom:6px">Artist Benefits & Revenue</div>
+        <div class="health-row"><span style="font-size:7px;color:var(--dim)">Stripe (today)</span><span class="val" style="font-size:9px">$4.1k</span></div>
+        <div class="health-row"><span style="font-size:7px;color:var(--dim)">Tips</span><span style="font-size:8px;color:var(--green);font-weight:700">$865</span></div>
+        <div class="health-row"><span style="font-size:7px;color:var(--dim)">Ads Revenue</span><span style="font-size:8px;color:var(--cyan);font-weight:700">$520</span></div>
+        <div class="health-row"><span style="font-size:7px;color:var(--dim)">Tickets</span><span class="val" style="font-size:9px">$2.4k</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     ADMIN HUB
+══════════════════════════════════════════════════════════════════════════ -->
+<div id="tab-admin" class="tmi-tab" style="padding:8px;display:none">
+
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:7px 12px">
+    <div class="tmi-title flicker" style="font-size:13px">BerntoutGlobal — ADMINISTRATION HUB</div>
+    <div style="display:flex;gap:5px;align-items:center">
+      <div style="display:flex;align-items:center;gap:3px"><span class="dot dot-g blink" style="width:6px;height:6px"></span><span style="font-size:8px;color:var(--green)">SYSTEM ONLINE</span></div>
+      <button class="tmi-btn" style="font-size:7px">🔄 Refresh All</button>
+      <button class="tmi-btn" style="font-size:7px;border-color:var(--red);color:var(--red)">⚠ Trust Killer Feed</button>
+    </div>
+  </div>
+
+  <!-- Stat cards -->
+  <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-bottom:7px">
+    <div class="panel" style="padding:7px;text-align:center"><div style="font-size:13px;margin-bottom:2px">👥</div><div class="lbl" style="font-size:6px;margin-bottom:1px">Total Users</div><div class="val" style="font-size:12px">12,841</div><div style="font-size:7px;color:var(--green)">+124</div></div>
+    <div class="panel" style="padding:7px;text-align:center"><div style="font-size:13px;margin-bottom:2px">🟢</div><div class="lbl" style="font-size:6px;margin-bottom:1px">Online Now</div><div class="val" style="font-size:12px">1,204</div><div style="font-size:7px;color:var(--green)">+8</div></div>
+    <div class="panel" style="padding:7px;text-align:center"><div style="font-size:13px;margin-bottom:2px">💳</div><div class="lbl" style="font-size:6px;margin-bottom:1px">Paid Members</div><div class="val" style="font-size:12px">3,271</div><div style="font-size:7px;color:var(--green)">+22</div></div>
+    <div class="panel" style="padding:7px;text-align:center"><div style="font-size:13px;margin-bottom:2px">💰</div><div class="lbl" style="font-size:6px;margin-bottom:1px">Revenue Today</div><div class="val" style="font-size:12px">$8,940</div><div style="font-size:7px;color:var(--green)">+$1.2k</div></div>
+    <div class="panel" style="padding:7px;text-align:center"><div style="font-size:13px;margin-bottom:2px">🎤</div><div class="lbl" style="font-size:6px;margin-bottom:1px">Live Now</div><div class="val" style="font-size:12px">14</div><div style="font-size:7px;color:var(--green)">+3</div></div>
+    <div class="panel" style="padding:7px;text-align:center"><div style="font-size:13px;margin-bottom:2px">📢</div><div class="lbl" style="font-size:6px;margin-bottom:1px">Ad Revenue</div><div class="val" style="font-size:12px">$520</div><div style="font-size:7px;color:var(--cyan)">+$80</div></div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:198px 1fr 198px;gap:7px">
+    <!-- LEFT -->
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <div class="panel" style="padding:6px;display:flex;gap:3px">
+        <button class="tmi-btn active" id="admTab0" onclick="setAdmTab(0,this)" style="flex:1;padding:3px;font-size:7px">USERS</button>
+        <button class="tmi-btn" id="admTab1" onclick="setAdmTab(1,this)" style="flex:1;padding:3px;font-size:7px">CONTENT</button>
+        <button class="tmi-btn" id="admTab2" onclick="setAdmTab(2,this)" style="flex:1;padding:3px;font-size:7px">BOTS</button>
+      </div>
+
+      <div id="admPanel0" class="adm-panel panel" style="padding:7px;flex:1">
+        <div class="lbl" style="margin-bottom:5px;font-size:7px">User Management</div>
+        <input class="tmi-input" placeholder="Search users..." style="margin-bottom:5px;font-size:9px;padding:4px 7px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;padding:3px 5px;background:rgba(230,48,0,.07);border-radius:3px"><div style="display:flex;gap:3px;align-items:center"><span class="dot dot-g" style="width:5px;height:5px"></span><div><div style="font-size:8px">BigKazhdog</div><div style="font-size:6px;color:var(--dim)">Artist · Diamond</div></div></div><button class="tmi-btn" style="padding:1px 4px;font-size:6px">Edit</button></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;padding:3px 5px;background:rgba(230,48,0,.05);border-radius:3px"><div style="display:flex;gap:3px;align-items:center"><span class="dot dot-g" style="width:5px;height:5px"></span><div><div style="font-size:8px">BJM_Rapper</div><div style="font-size:6px;color:var(--dim)">Artist · Gold</div></div></div><button class="tmi-btn" style="padding:1px 4px;font-size:6px">Edit</button></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;padding:3px 5px;background:rgba(230,48,0,.04);border-radius:3px"><div style="display:flex;gap:3px;align-items:center"><span class="dot dot-g" style="width:5px;height:5px"></span><div><div style="font-size:8px">Fan_User_441</div><div style="font-size:6px;color:var(--dim)">Fan · Silver</div></div></div><button class="tmi-btn" style="padding:1px 4px;font-size:6px">Edit</button></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;padding:3px 5px;background:rgba(230,48,0,.04);border-radius:3px"><div style="display:flex;gap:3px;align-items:center"><span class="dot dot-c" style="width:5px;height:5px"></span><div><div style="font-size:8px">Sponsor_Co</div><div style="font-size:6px;color:var(--dim)">Sponsor · Active</div></div></div><button class="tmi-btn" style="padding:1px 4px;font-size:6px">Edit</button></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:3px 5px;background:rgba(230,48,0,.04);border-radius:3px"><div style="display:flex;gap:3px;align-items:center"><span class="dot dot-y blink" style="width:5px;height:5px"></span><div><div style="font-size:8px">Promo_Jay</div><div style="font-size:6px;color:var(--dim)">Promoter · Busy</div></div></div><button class="tmi-btn" style="padding:1px 4px;font-size:6px">Edit</button></div>
+      </div>
+
+      <div id="admPanel1" class="adm-panel panel" style="padding:7px;display:none;flex:1">
+        <div class="lbl" style="margin-bottom:5px;font-size:7px">Content Control</div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px;padding:3px 5px;background:rgba(230,48,0,.07);border-radius:3px"><div style="display:flex;gap:3px;align-items:center"><span>📰</span><span style="font-size:8px">Magazine Issues</span></div><span class="val" style="font-size:9px">12</span></div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px;padding:3px 5px;background:rgba(230,48,0,.05);border-radius:3px"><div style="display:flex;gap:3px;align-items:center"><span>🎤</span><span style="font-size:8px">Live Streams</span></div><span class="val" style="font-size:9px">14</span></div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px;padding:3px 5px;background:rgba(230,48,0,.05);border-radius:3px"><div style="display:flex;gap:3px;align-items:center"><span>⚔️</span><span style="font-size:8px">Battles</span></div><span class="val" style="font-size:9px">6</span></div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px;padding:3px 5px;background:rgba(230,48,0,.04);border-radius:3px"><div style="display:flex;gap:3px;align-items:center"><span>🎨</span><span style="font-size:8px">NFT Listings</span></div><span class="val" style="font-size:9px">231</span></div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px;padding:3px 5px;background:rgba(230,48,0,.04);border-radius:3px"><div style="display:flex;gap:3px;align-items:center"><span>🎵</span><span style="font-size:8px">Beat Store</span></div><span class="val" style="font-size:9px">89</span></div>
+        <div style="display:flex;justify-content:space-between;padding:3px 5px;background:rgba(230,48,0,.04);border-radius:3px"><div style="display:flex;gap:3px;align-items:center"><span>📢</span><span style="font-size:8px">Active Ads</span></div><span style="font-size:9px;color:var(--cyan);font-weight:700">22</span></div>
+      </div>
+
+      <div id="admPanel2" class="adm-panel panel" style="padding:7px;display:none;flex:1">
+        <div class="lbl" style="margin-bottom:5px;font-size:7px">Bot Control Center</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><div style="display:flex;gap:3px;align-items:center"><span class="dot dot-g blink" style="width:5px;height:5px"></span><div><div style="font-size:8px">Big Ace (CEO)</div><div style="font-size:6px;color:var(--dim)">Leadership</div></div></div><button class="tmi-btn" style="padding:1px 4px;font-size:6px">Pause</button></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><div style="display:flex;gap:3px;align-items:center"><span class="dot dot-g blink" style="width:5px;height:5px;animation-delay:.3s"></span><div><div style="font-size:8px">ChatGuard</div><div style="font-size:6px;color:var(--dim)">Security</div></div></div><button class="tmi-btn" style="padding:1px 4px;font-size:6px">Pause</button></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><div style="display:flex;gap:3px;align-items:center"><span class="dot dot-y blink" style="width:5px;height:5px"></span><div><div style="font-size:8px">RevenueBot</div><div style="font-size:6px;color:var(--dim)">Finance</div></div></div><button class="tmi-btn" style="padding:1px 4px;font-size:6px">Pause</button></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><div style="display:flex;gap:3px;align-items:center"><span class="dot dot-g blink" style="width:5px;height:5px;animation-delay:.6s"></span><div><div style="font-size:8px">BookingBot</div><div style="font-size:6px;color:var(--dim)">Booking</div></div></div><button class="tmi-btn" style="padding:1px 4px;font-size:6px">Pause</button></div>
+        <div style="display:flex;justify-content:space-between;align-items:center"><div style="display:flex;gap:3px;align-items:center"><span class="dot dot-c" style="width:5px;height:5px"></span><div><div style="font-size:8px">AdBot</div><div style="font-size:6px;color:var(--dim)">Advertising</div></div></div><button class="tmi-btn green" style="padding:1px 4px;font-size:6px">Start</button></div>
+      </div>
+
+      <div class="panel" style="padding:7px">
+        <div class="lbl" style="margin-bottom:5px;font-size:7px">Quick Actions</div>
+        <button class="tmi-btn" style="width:100%;padding:4px 7px;margin-bottom:3px;text-align:left;font-size:8px">📧 Send System Email</button>
+        <button class="tmi-btn" style="width:100%;padding:4px 7px;margin-bottom:3px;text-align:left;font-size:8px">⚡ Restart All Bots</button>
+        <button class="tmi-btn" style="width:100%;padding:4px 7px;margin-bottom:3px;text-align:left;font-size:8px">📊 Export Report</button>
+        <button class="tmi-btn" style="width:100%;padding:4px 7px;margin-bottom:3px;text-align:left;font-size:8px">📢 Manage Ad Slots</button>
+        <button class="tmi-btn" style="width:100%;padding:4px 7px;text-align:left;font-size:8px;border-color:var(--red);color:var(--red)">🚨 Emergency Broadcast</button>
+      </div>
+    </div>
+
+    <!-- CENTER -->
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <!-- System Health -->
+      <div class="panel" style="padding:7px">
+        <div class="lbl" style="margin-bottom:7px;font-size:7px">System Health Monitors</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px">
+          <div class="card" style="padding:5px;text-align:center"><div style="display:flex;justify-content:center;margin-bottom:2px"><span class="dot dot-g" style="width:6px;height:6px"></span></div><div class="lbl" style="font-size:6px;margin-bottom:1px">Auth Service</div><div style="font-size:7px;color:var(--green);font-weight:700">Operational</div></div>
+          <div class="card" style="padding:5px;text-align:center"><div style="display:flex;justify-content:center;margin-bottom:2px"><span class="dot dot-g" style="width:6px;height:6px"></span></div><div class="lbl" style="font-size:6px;margin-bottom:1px">PostgreSQL</div><div style="font-size:7px;color:var(--green);font-weight:700">Operational</div></div>
+          <div class="card" style="padding:5px;text-align:center"><div style="display:flex;justify-content:center;margin-bottom:2px"><span class="dot dot-g" style="width:6px;height:6px"></span></div><div class="lbl" style="font-size:6px;margin-bottom:1px">Stripe Hooks</div><div style="font-size:7px;color:var(--green);font-weight:700">Operational</div></div>
+          <div class="card" style="padding:5px;text-align:center"><div style="display:flex;justify-content:center;margin-bottom:2px"><span class="dot dot-g" style="width:6px;height:6px"></span></div><div class="lbl" style="font-size:6px;margin-bottom:1px">WebRTC</div><div style="font-size:7px;color:var(--green);font-weight:700">Operational</div></div>
+          <div class="card" style="padding:5px;text-align:center"><div style="display:flex;justify-content:center;margin-bottom:2px"><span class="dot dot-y blink" style="width:6px;height:6px"></span></div><div class="lbl" style="font-size:6px;margin-bottom:1px">Redis Cache</div><div style="font-size:7px;color:var(--gold);font-weight:700">Degraded</div></div>
+          <div class="card" style="padding:5px;text-align:center"><div style="display:flex;justify-content:center;margin-bottom:2px"><span class="dot dot-g" style="width:6px;height:6px"></span></div><div class="lbl" style="font-size:6px;margin-bottom:1px">CDN Storage</div><div style="font-size:7px;color:var(--green);font-weight:700">Operational</div></div>
+          <div class="card" style="padding:5px;text-align:center"><div style="display:flex;justify-content:center;margin-bottom:2px"><span class="dot dot-g" style="width:6px;height:6px"></span></div><div class="lbl" style="font-size:6px;margin-bottom:1px">Email</div><div style="font-size:7px;color:var(--green);font-weight:700">Operational</div></div>
+          <div class="card" style="padding:5px;text-align:center"><div style="display:flex;justify-content:center;margin-bottom:2px"><span class="dot dot-g" style="width:6px;height:6px"></span></div><div class="lbl" style="font-size:6px;margin-bottom:1px">Sessions</div><div style="font-size:7px;color:var(--green);font-weight:700">Operational</div></div>
+        </div>
+      </div>
+
+      <!-- Ad Revenue Manager -->
+      <div class="panel" style="padding:7px;border-color:var(--cyan)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px">
+          <div style="display:flex;align-items:center;gap:5px">
+            <div class="lbl" style="font-size:7px;color:var(--cyan)">📢 AD REVENUE MANAGER</div>
+            <span style="background:rgba(0,229,255,.1);border:1px solid rgba(0,229,255,.3);color:var(--cyan);font-size:6px;padding:1px 5px;border-radius:3px;font-weight:700">22 ACTIVE SLOTS</span>
+          </div>
+          <button class="tmi-btn cyan" style="padding:2px 7px;font-size:7px">+ New Ad Slot</button>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:6px">
+          <div class="card" style="padding:6px;text-align:center"><div class="lbl" style="font-size:6px;margin-bottom:2px">Today</div><div style="font-size:14px;font-weight:700;color:var(--cyan)">$520</div><div style="font-size:6px;color:var(--green)">+$80 vs yest.</div></div>
+          <div class="card" style="padding:6px;text-align:center"><div class="lbl" style="font-size:6px;margin-bottom:2px">This Week</div><div style="font-size:14px;font-weight:700;color:var(--cyan)">$3,240</div><div style="font-size:6px;color:var(--green)">+22%</div></div>
+          <div class="card" style="padding:6px;text-align:center"><div class="lbl" style="font-size:6px;margin-bottom:2px">CTR Avg</div><div style="font-size:14px;font-weight:700;color:var(--cyan)">4.8%</div><div style="font-size:6px;color:var(--green)">Above avg</div></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 7px;background:rgba(0,229,255,.05);border:1px solid rgba(0,229,255,.2);border-radius:4px">
+            <div><div style="font-size:8px;font-weight:700;color:var(--amber)">Fan Dashboard — Action Dock Slot</div><div style="font-size:7px;color:var(--dim)">Free Tier · Banner · 12,841 impressions</div></div>
+            <div style="display:flex;gap:4px;align-items:center"><span class="dot dot-g" style="width:5px;height:5px"></span><span style="font-size:7px;color:var(--green)">$148/day</span></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 7px;background:rgba(0,229,255,.04);border:1px solid rgba(0,229,255,.15);border-radius:4px">
+            <div><div style="font-size:8px;font-weight:700;color:var(--amber)">Fan Dashboard — Sidebar Slots (×2)</div><div style="font-size:7px;color:var(--dim)">Free Tier · Sidebar · 9,200 impressions</div></div>
+            <div style="display:flex;gap:4px;align-items:center"><span class="dot dot-g" style="width:5px;height:5px"></span><span style="font-size:7px;color:var(--green)">$96/day</span></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 7px;background:rgba(0,229,255,.04);border:1px solid rgba(0,229,255,.15);border-radius:4px">
+            <div><div style="font-size:8px;font-weight:700;color:var(--amber)">Lobby Wall — Room Cards Footer</div><div style="font-size:7px;color:var(--dim)">Fan Lobby · Banner · 8,100 impressions</div></div>
+            <div style="display:flex;gap:4px;align-items:center"><span class="dot dot-g" style="width:5px;height:5px"></span><span style="font-size:7px;color:var(--green)">$112/day</span></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 7px;background:rgba(0,229,255,.03);border:1px solid rgba(0,229,255,.1);border-radius:4px">
+            <div><div style="font-size:8px;font-weight:700;color:var(--amber)">Artist Studio — Green Room Slot</div><div style="font-size:7px;color:var(--dim)">Pre-Show · Contextual · 4,800 impressions</div></div>
+            <div style="display:flex;gap:4px;align-items:center"><span class="dot dot-g" style="width:5px;height:5px"></span><span style="font-size:7px;color:var(--green)">$89/day</span></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 7px;background:rgba(0,229,255,.03);border:1px solid rgba(0,229,255,.1);border-radius:4px">
+            <div><div style="font-size:8px;font-weight:700;color:var(--amber)">Playlist Engine — Between Tracks</div><div style="font-size:7px;color:var(--dim)">Free Tier · Audio/Banner · 15,000 plays</div></div>
+            <div style="display:flex;gap:4px;align-items:center"><span class="dot dot-g" style="width:5px;height:5px"></span><span style="font-size:7px;color:var(--green)">$75/day</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Revenue chart -->
+      <div class="panel" style="padding:7px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <div class="lbl" style="font-size:7px">Revenue Radar — Weekly</div>
+          <div style="display:flex;gap:7px">
+            <div style="display:flex;align-items:center;gap:2px"><div style="width:7px;height:7px;background:var(--amber);border-radius:1px"></div><span style="font-size:6px;color:var(--amber)">Stripe</span></div>
+            <div style="display:flex;align-items:center;gap:2px"><div style="width:7px;height:7px;background:var(--green);border-radius:1px"></div><span style="font-size:6px;color:var(--green)">Tips</span></div>
+            <div style="display:flex;align-items:center;gap:2px"><div style="width:7px;height:7px;background:var(--cyan);border-radius:1px"></div><span style="font-size:6px;color:var(--cyan)">Ads</span></div>
+          </div>
+        </div>
+        <div class="bar-chart" style="height:80px;gap:4px;align-items:flex-end">
+          <div style="display:flex;flex-direction:column;align-items:center;flex:1;height:100%;justify-content:flex-end">
+            <div class="bar-seg" style="height:18%;background:var(--cyan);width:100%"></div>
+            <div class="bar-seg" style="height:12%;background:var(--green);width:100%;margin-top:1px"></div>
+            <div class="bar-seg" style="height:38%;background:var(--amber);width:100%;margin-top:1px"></div>
+            <div style="font-size:6px;color:var(--dim);margin-top:2px">Mon</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:center;flex:1;height:100%;justify-content:flex-end">
+            <div class="bar-seg" style="height:25%;background:var(--cyan);width:100%"></div>
+            <div class="bar-seg" style="height:16%;background:var(--green);width:100%;margin-top:1px"></div>
+            <div class="bar-seg" style="height:55%;background:var(--amber);width:100%;margin-top:1px"></div>
+            <div style="font-size:6px;color:var(--dim);margin-top:2px">Tue</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:center;flex:1;height:100%;justify-content:flex-end">
+            <div class="bar-seg" style="height:14%;background:var(--cyan);width:100%"></div>
+            <div class="bar-seg" style="height:10%;background:var(--green);width:100%;margin-top:1px"></div>
+            <div class="bar-seg" style="height:28%;background:var(--amber);width:100%;margin-top:1px"></div>
+            <div style="font-size:6px;color:var(--dim);margin-top:2px">Wed</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:center;flex:1;height:100%;justify-content:flex-end">
+            <div class="bar-seg" style="height:32%;background:var(--cyan);width:100%"></div>
+            <div class="bar-seg" style="height:20%;background:var(--green);width:100%;margin-top:1px"></div>
+            <div class="bar-seg" style="height:65%;background:var(--amber);width:100%;margin-top:1px"></div>
+            <div style="font-size:6px;color:var(--dim);margin-top:2px">Thu</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:center;flex:1;height:100%;justify-content:flex-end">
+            <div class="bar-seg" style="height:44%;background:var(--cyan);width:100%"></div>
+            <div class="bar-seg" style="height:28%;background:var(--green);width:100%;margin-top:1px"></div>
+            <div class="bar-seg" style="height:88%;background:var(--gold);width:100%;margin-top:1px"></div>
+            <div style="font-size:6px;color:var(--dim);margin-top:2px">Fri</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:center;flex:1;height:100%;justify-content:flex-end">
+            <div class="bar-seg" style="height:38%;background:var(--cyan);width:100%"></div>
+            <div class="bar-seg" style="height:35%;background:var(--green);width:100%;margin-top:1px"></div>
+            <div class="bar-seg" style="height:78%;background:var(--amber);width:100%;margin-top:1px"></div>
+            <div style="font-size:6px;color:var(--dim);margin-top:2px">Sat</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:center;flex:1;height:100%;justify-content:flex-end">
+            <div class="bar-seg" style="height:50%;background:var(--cyan);width:100%"></div>
+            <div class="bar-seg" style="height:40%;background:var(--green);width:100%;margin-top:1px"></div>
+            <div class="bar-seg" style="height:94%;background:var(--gold);width:100%;margin-top:1px"></div>
+            <div style="font-size:6px;color:var(--dim);margin-top:2px">Sun</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Trust Killer Feed -->
+      <div class="panel" style="padding:7px;flex:1">
+        <div class="lbl" style="font-size:7px;color:var(--red);margin-bottom:6px">⚠ TRUST KILLER FEED</div>
+        <div style="display:flex;gap:4px;align-items:flex-start;margin-bottom:4px;padding:3px 5px;background:rgba(0,0,0,.3);border-radius:3px;border-left:2px solid var(--green)"><span style="font-size:6px;color:var(--green);font-weight:700;min-width:28px">[INFO]</span><span style="font-size:8px;flex:1">User #4421 completed signup</span><span style="font-size:6px;color:var(--dim)">2m</span></div>
+        <div style="display:flex;gap:4px;align-items:flex-start;margin-bottom:4px;padding:3px 5px;background:rgba(0,0,0,.3);border-radius:3px;border-left:2px solid var(--gold)"><span style="font-size:6px;color:var(--gold);font-weight:700;min-width:28px">[WARN]</span><span style="font-size:8px;flex:1">Redis latency spike: 340ms</span><span style="font-size:6px;color:var(--dim)">8m</span></div>
+        <div style="display:flex;gap:4px;align-items:flex-start;margin-bottom:4px;padding:3px 5px;background:rgba(0,0,0,.3);border-radius:3px;border-left:2px solid var(--green)"><span style="font-size:6px;color:var(--green);font-weight:700;min-width:28px">[INFO]</span><span style="font-size:8px;flex:1">Stripe webhook received: $89</span><span style="font-size:6px;color:var(--dim)">12m</span></div>
+        <div style="display:flex;gap:4px;align-items:flex-start;margin-bottom:4px;padding:3px 5px;background:rgba(0,0,0,.3);border-radius:3px;border-left:2px solid var(--cyan)"><span style="font-size:6px;color:var(--cyan);font-weight:700;min-width:28px">[AD]</span><span style="font-size:8px;flex:1">New sponsor ad booked: HotScreens $500 campaign</span><span style="font-size:6px;color:var(--dim)">18m</span></div>
+        <div style="display:flex;gap:4px;align-items:flex-start;padding:3px 5px;background:rgba(0,0,0,.3);border-radius:3px;border-left:2px solid var(--gold)"><span style="font-size:6px;color:var(--gold);font-weight:700;min-width:28px">[WARN]</span><span style="font-size:8px;flex:1">CDN: 2 image assets returning 404</span><span style="font-size:6px;color:var(--dim)">22m</span></div>
+      </div>
+    </div>
+
+    <!-- RIGHT -->
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <div class="panel" style="padding:7px">
+        <div class="lbl" style="margin-bottom:6px;font-size:7px">Live Room Monitor</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;padding:3px 5px;background:rgba(230,48,0,.07);border-radius:3px">
+          <div><div style="display:flex;gap:3px;align-items:center"><span class="dot dot-g blink" style="width:4px;height:4px"></span><span style="font-size:8px">Main Stage</span></div><span style="font-size:6px;color:var(--dim)">👁 1,204</span></div>
+          <button class="tmi-btn" style="padding:1px 4px;font-size:6px">View</button>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;padding:3px 5px;background:rgba(230,48,0,.05);border-radius:3px">
+          <div><div style="display:flex;gap:3px;align-items:center"><span class="dot dot-g blink" style="width:4px;height:4px;animation-delay:.4s"></span><span style="font-size:8px">Battle Arena A</span></div><span style="font-size:6px;color:var(--dim)">👁 876</span></div>
+          <button class="tmi-btn" style="padding:1px 4px;font-size:6px">View</button>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;padding:3px 5px;background:rgba(230,48,0,.04);border-radius:3px">
+          <div><div style="display:flex;gap:3px;align-items:center"><span class="dot dot-g blink" style="width:4px;height:4px;animation-delay:.8s"></span><span style="font-size:8px">Cypher Lounge</span></div><span style="font-size:6px;color:var(--dim)">👁 432</span></div>
+          <button class="tmi-btn" style="padding:1px 4px;font-size:6px">View</button>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:3px 5px;background:rgba(230,48,0,.04);border-radius:3px">
+          <div><div style="display:flex;gap:3px;align-items:center"><span class="dot dot-y blink" style="width:4px;height:4px"></span><span style="font-size:8px">Chill Beats</span></div><span style="font-size:6px;color:var(--dim)">👁 218</span></div>
+          <button class="tmi-btn" style="padding:1px 4px;font-size:6px">View</button>
+        </div>
+      </div>
+
+      <div class="panel" style="padding:7px">
+        <div class="lbl" style="margin-bottom:6px;font-size:7px">Permission Tiers</div>
+        <div class="health-row" style="margin-bottom:4px"><span style="font-size:8px;color:#B9F2FF">Diamond</span><div style="flex:1;margin:0 5px;height:3px;background:rgba(255,255,255,.08);border-radius:2px"><div style="height:3px;background:#B9F2FF;border-radius:2px;width:5%"></div></div><span style="font-size:7px;color:var(--dim)">2</span></div>
+        <div class="health-row" style="margin-bottom:4px"><span style="font-size:8px;color:var(--gold)">Gold</span><div style="flex:1;margin:0 5px;height:3px;background:rgba(255,255,255,.08);border-radius:2px"><div style="height:3px;background:var(--gold);border-radius:2px;width:10%"></div></div><span style="font-size:7px;color:var(--dim)">12</span></div>
+        <div class="health-row" style="margin-bottom:4px"><span style="font-size:8px;color:#C0C0C0">Silver</span><div style="flex:1;margin:0 5px;height:3px;background:rgba(255,255,255,.08);border-radius:2px"><div style="height:3px;background:#C0C0C0;border-radius:2px;width:22%"></div></div><span style="font-size:7px;color:var(--dim)">89</span></div>
+        <div class="health-row" style="margin-bottom:4px"><span style="font-size:8px;color:var(--orange)">Artist</span><div style="flex:1;margin:0 5px;height:3px;background:rgba(255,255,255,.08);border-radius:2px"><div style="height:3px;background:var(--orange);border-radius:2px;width:35%"></div></div><span style="font-size:7px;color:var(--dim)">431</span></div>
+        <div class="health-row" style="margin-bottom:4px"><span style="font-size:8px;color:var(--amber)">Fan</span><div style="flex:1;margin:0 5px;height:3px;background:rgba(255,255,255,.08);border-radius:2px"><div style="height:3px;background:var(--amber);border-radius:2px;width:96%"></div></div><span style="font-size:7px;color:var(--dim)">11,843</span></div>
+        <div class="health-row"><span style="font-size:8px;color:var(--cyan)">Sponsor</span><div style="flex:1;margin:0 5px;height:3px;background:rgba(255,255,255,.08);border-radius:2px"><div style="height:3px;background:var(--cyan);border-radius:2px;width:8%"></div></div><span style="font-size:7px;color:var(--dim)">22</span></div>
+      </div>
+
+      <div class="panel" style="padding:7px">
+        <div class="lbl" style="margin-bottom:6px;font-size:7px">Stripe Revenue Monitor</div>
+        <div class="health-row"><span style="font-size:7px;color:var(--dim)">Today</span><span class="val" style="font-size:9px">$8,940</span></div>
+        <div class="health-row"><span style="font-size:7px;color:var(--dim)">This Week</span><span class="val" style="font-size:9px">$48,200</span></div>
+        <div class="health-row"><span style="font-size:7px;color:var(--dim)">This Month</span><span class="val" style="font-size:9px">$182,410</span></div>
+        <div class="health-row"><span style="font-size:7px;color:var(--dim)">Tips</span><span style="font-size:8px;color:var(--green);font-weight:700">$1,100</span></div>
+        <div class="health-row"><span style="font-size:7px;color:var(--dim)">Ad Revenue</span><span style="font-size:8px;color:var(--cyan);font-weight:700">$520</span></div>
+        <div class="health-row"><span style="font-size:7px;color:var(--dim)">Pending</span><span style="font-size:8px;color:var(--gold);font-weight:700">$340</span></div>
+      </div>
+
+      <div class="panel" style="padding:7px;flex:1">
+        <div class="lbl" style="margin-bottom:6px;font-size:7px">Email & Notifications</div>
+        <div class="health-row"><span style="font-size:7px;color:var(--dim)">Transactional</span><div style="display:flex;gap:2px;align-items:center"><span class="dot dot-g" style="width:4px;height:4px"></span><span style="font-size:7px;color:var(--green)">Active</span></div></div>
+        <div class="health-row"><span style="font-size:7px;color:var(--dim)">SPF/DKIM</span><div style="display:flex;gap:2px;align-items:center"><span class="dot dot-g" style="width:4px;height:4px"></span><span style="font-size:7px;color:var(--green)">Valid</span></div></div>
+        <div class="health-row"><span style="font-size:7px;color:var(--dim)">Bounce Rate</span><span style="font-size:7px;color:var(--green);font-weight:700">0.8%</span></div>
+        <div class="health-row"><span style="font-size:7px;color:var(--dim)">Queue</span><span style="font-size:7px;color:var(--gold);font-weight:700">12 pending</span></div>
+        <button class="tmi-btn" style="width:100%;padding:4px;font-size:8px;margin-top:5px">📧 Send System Email</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Memory Wall Modal -->
+<div id="memoryModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:1000;align-items:center;justify-content:center">
+  <div class="panel" style="width:460px;max-width:94vw;padding:16px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div class="tmi-title" style="font-size:14px">🎞 MEMORY WALL</div>
+      <button class="tmi-btn" onclick="closeMemory()" style="padding:3px 7px">✕</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:10px">
+      <div class="card" style="padding:7px;text-align:center;cursor:pointer"><div style="font-size:22px;margin-bottom:2px">🎵</div><div style="font-size:8px;color:var(--amber)">Concert Night</div><div style="font-size:6px;color:var(--dim)">May 2026</div></div>
+      <div class="card" style="padding:7px;text-align:center;cursor:pointer"><div style="font-size:22px;margin-bottom:2px">🏆</div><div style="font-size:8px;color:var(--amber)">Battle Win</div><div style="font-size:6px;color:var(--dim)">May 2026</div></div>
+      <div class="card" style="padding:7px;text-align:center;cursor:pointer"><div style="font-size:22px;margin-bottom:2px">🎉</div><div style="font-size:8px;color:var(--amber)">First Tip</div><div style="font-size:6px;color:var(--dim)">Apr 2026</div></div>
+      <div class="card" style="padding:7px;text-align:center;cursor:pointer"><div style="font-size:22px;margin-bottom:2px">📸</div><div style="font-size:8px;color:var(--amber)">Captured Moment</div></div>
+      <div class="card" style="padding:7px;text-align:center;cursor:pointer"><div style="font-size:22px;margin-bottom:2px">🎤</div><div style="font-size:8px;color:var(--amber)">Cypher Session</div></div>
+      <div class="card" style="padding:7px;text-align:center;cursor:pointer;border-color:var(--gold)"><div style="font-size:22px;margin-bottom:2px">➕</div><div style="font-size:8px;color:var(--gold)">Add Memory</div></div>
+    </div>
+    <button class="tmi-btn gold" style="width:100%;padding:9px;font-size:10px" onclick="closeMemory()">VIEW ALL MEMORIES</button>
+  </div>
+</div>
+
+</div>
+
+<script>
+// Tab switching
+function showTab(id, btn) {
+  document.querySelectorAll('.tmi-tab').forEach(t=>t.style.display='none');
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+id).style.display='block';
+  btn.classList.add('active');
+}
+
+// Admin sub-tabs
+function setAdmTab(i, btn) {
+  document.querySelectorAll('.adm-panel').forEach(p=>p.style.display='none');
+  document.getElementById('admPanel'+i).style.display='block';
+  ['admTab0','admTab1','admTab2'].forEach(id=>{const b=document.getElementById(id);b&&b.classList.remove('active')});
+  btn.classList.add('active');
+}
+
+// Memory wall
+function openMemoryWall(){ const m=document.getElementById('memoryModal');m.style.display='flex'; }
+function closeMemory(){ document.getElementById('memoryModal').style.display='none'; }
+
+// Enter room
+function enterRoom(name){ alert('🎭 Entering '+name+' — Loading live stream...'); }
+
+// Reactions
+function fireReaction(em, source) {
+  const id = source==='fan'?'fanReactions':'artistReactions';
+  const cont = document.getElementById(id);
+  if(!cont) return;
+  const el = document.createElement('div');
+  el.textContent = em;
+  el.style.cssText = `position:absolute;bottom:10%;left:${10+Math.random()*70}%;font-size:20px;animation:floatUp 1.5s ease-out forwards;z-index:20;pointer-events:none`;
+  cont.appendChild(el);
+  setTimeout(()=>el.remove(), 1500);
+}
+
+// Go live toggle
+let isLive = true;
+function toggleGoLive() {
+  isLive = !isLive;
+  const liveMode = document.getElementById('liveMode');
+  const privateMode = document.getElementById('privateMode');
+  const btn = document.getElementById('goLiveBtn');
+  if(isLive){
+    liveMode.style.display='block';
+    privateMode.style.display='none';
+    btn.style.borderColor='var(--green)';btn.style.color='var(--green)';
+    btn.textContent='🔴 GO LIVE';
+  } else {
+    liveMode.style.display='none';
+    privateMode.style.display='block';
+    btn.style.borderColor='var(--red)';btn.style.color='var(--red)';
+    btn.textContent='⬛ PRIVATE MODE';
+  }
+}
+
+// Spin wheel
+function triggerSpin(){
+  const w = document.getElementById('spinWheel');
+  const cur = parseFloat(w.dataset.rot||'0');
+  const next = cur+720+Math.random()*360;
+  w.style.transform=`rotate(${next}deg)`;
+  w.dataset.rot = next;
+}
+
+// Playlist
+const tracks = [
+  'Big Moves – Chario Ace',
+  'Wave Rider – BJM The Rapper',
+  'Thunder Zone – Big KazhDog',
+  'Night Frequency – Chario Ace',
+  'Sound Pressure – BJM The Rapper',
+];
+let currentTrack = 0;
+let isPlaying = true;
+
+function selectTrack(i, el, title) {
+  document.querySelectorAll('.playlist-track').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  currentTrack = i;
+  document.getElementById('nowPlayingTitle').textContent = title||tracks[i];
+  if(!isPlaying) togglePlay();
+}
+
+function nextTrack() {
+  currentTrack = (currentTrack+1)%tracks.length;
+  const items = document.querySelectorAll('.playlist-track');
+  items.forEach(t=>t.classList.remove('active'));
+  if(items[currentTrack]) items[currentTrack].classList.add('active');
+  document.getElementById('nowPlayingTitle').textContent = tracks[currentTrack];
+}
+
+function prevTrack() {
+  currentTrack = (currentTrack-1+tracks.length)%tracks.length;
+  const items = document.querySelectorAll('.playlist-track');
+  items.forEach(t=>t.classList.remove('active'));
+  if(items[currentTrack]) items[currentTrack].classList.add('active');
+  document.getElementById('nowPlayingTitle').textContent = tracks[currentTrack];
+}
+
+function togglePlay() {
+  isPlaying = !isPlaying;
+  const btn = document.getElementById('playBtn');
+  const cd = document.getElementById('cdArt');
+  btn.textContent = isPlaying ? '⏸' : '▶';
+  cd.style.animationPlayState = isPlaying ? 'running' : 'paused';
+}
+
+// Progress bar simulation
+let progress = 38;
+setInterval(()=>{
+  if(!isPlaying) return;
+  progress = (progress+0.5)%100;
+  const pb = document.getElementById('progressBar');
+  if(pb) pb.style.width = progress+'%';
+}, 1000);
+
+// Countdown timer
+let countdownSec = 9258;
+setInterval(()=>{
+  countdownSec--;
+  const h=Math.floor(countdownSec/3600);
+  const m=Math.floor((countdownSec%3600)/60);
+  const s=countdownSec%60;
+  const el=document.getElementById('countdownDisplay');
+  if(el) el.textContent=`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}, 1000);
+
+// Build marquee bulbs
+function buildMarquee(frameId, nH, nV) {
+  const frame = document.getElementById(frameId);
+  if(!frame) return;
+  for(let i=0;i<nH;i++){
+    const pct=`${(i/(nH-1))*96+2}%`;
+    ['top','bottom'].forEach((pos,j)=>{
+      const b=document.createElement('div');
+      b.className='mq-bulb '+(((i+j)%2===0)?'mq':'mqB');
+      b.style.cssText=`${pos}:4px;left:${pct};transform:translateX(-50%)`;
+      frame.appendChild(b);
+    });
+  }
+  for(let i=1;i<nV-1;i++){
+    const pct=`${(i/(nV-1))*86+7}%`;
+    ['left','right'].forEach((pos,j)=>{
+      const b=document.createElement('div');
+      b.className='mq-bulb '+(((i+j)%2===0)?'mq':'mqB');
+      b.style.cssText=`${pos}:4px;top:${pct};transform:translateY(-50%)`;
+      frame.appendChild(b);
+    });
+  }
+}
+
+// Build audience SVG
+function buildCrowd(containerId, count) {
+  const c = document.getElementById(containerId);
+  if(!c) return;
+  const ns='http://www.w3.org/2000/svg';
+  const svg=document.createElementNS(ns,'svg');
+  svg.setAttribute('viewBox','0 0 400 160');
+  svg.style.cssText='width:100%;height:100%';
+  const colors=['#8B4513','#5C3317','#2F1B0E','#704214','#3D2008','#6B2C00','#4a1e00'];
+  const defs=document.createElementNS(ns,'defs');
+  const g=document.createElementNS(ns,'radialGradient');
+  g.setAttribute('id','sgl'+containerId);g.setAttribute('cx','50%');g.setAttribute('cy','0%');g.setAttribute('r','60%');
+  const s1=document.createElementNS(ns,'stop');s1.setAttribute('offset','0%');s1.setAttribute('stop-color','#FF8C00');s1.setAttribute('stop-opacity','0.25');
+  const s2=document.createElementNS(ns,'stop');s2.setAttribute('offset','100%');s2.setAttribute('stop-color','#0a0002');s2.setAttribute('stop-opacity','0');
+  g.appendChild(s1);g.appendChild(s2);defs.appendChild(g);svg.appendChild(defs);
+  const bg=document.createElementNS(ns,'rect');bg.setAttribute('width','400');bg.setAttribute('height','160');bg.setAttribute('fill','#0a0002');svg.appendChild(bg);
+  const glow=document.createElementNS(ns,'ellipse');glow.setAttribute('cx','200');glow.setAttribute('cy','15');glow.setAttribute('rx','130');glow.setAttribute('ry','45');glow.setAttribute('fill',`url(#sgl${containerId})`);svg.appendChild(glow);
+  for(let i=0;i<count;i++){
+    const row=Math.floor(i/7);const col=i%7;
+    const x=35+col*50+(row%2)*22;const y=60+row*30;
+    const col2=colors[i%7];
+    const grp=document.createElementNS(ns,'g');
+    const body=document.createElementNS(ns,'ellipse');body.setAttribute('cx',x);body.setAttribute('cy',y+18);body.setAttribute('rx','10');body.setAttribute('ry','14');body.setAttribute('fill',col2);grp.appendChild(body);
+    const head=document.createElementNS(ns,'circle');head.setAttribute('cx',x);head.setAttribute('cy',y);head.setAttribute('r','7');head.setAttribute('fill',col2);grp.appendChild(head);
+    if(i%3===0){const arm=document.createElementNS(ns,'line');arm.setAttribute('x1',x);arm.setAttribute('y1',y+5);arm.setAttribute('x2',x-11);arm.setAttribute('y2',y-14);arm.setAttribute('stroke',col2);arm.setAttribute('stroke-width','3');arm.setAttribute('stroke-linecap','round');arm.classList.add('sway-arm');arm.style.animationDelay=((i*0.18)%2)+'s';arm.style.transformOrigin=`${x}px ${y+5}px`;grp.appendChild(arm);}
+    if(i%4===0){const ph=document.createElementNS(ns,'rect');ph.setAttribute('x',x-13);ph.setAttribute('y',y-21);ph.setAttribute('width','5');ph.setAttribute('height','8');ph.setAttribute('fill','#00E5FF');ph.setAttribute('rx','1');ph.setAttribute('opacity','0.8');grp.appendChild(ph);}
+    svg.appendChild(grp);
+  }
+  const fog=document.createElementNS(ns,'rect');fog.setAttribute('x','0');fog.setAttribute('y','130');fog.setAttribute('width','400');fog.setAttribute('height','30');fog.setAttribute('fill','#0a0002');svg.appendChild(fog);
+  c.appendChild(svg);
+}
+
+buildMarquee('fanScreen',17,8);
+buildMarquee('artistScreen',17,8);
+buildCrowd('fanCrowd',21);
+buildCrowd('artistCrowd',24);
+</script>

@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from 'react';
+import { LobbyEntryFlow, type UniversalRoom } from '@/components/room/UniversalLobbyEntry';
 import Home3MainPreviewLobby from './Home3MainPreviewLobby';
 import Home3LivewallGrid from './Home3LobbyWallGrid';
 import Home3LiveEvents from './Home3LiveEvents';
@@ -44,21 +46,28 @@ export default function Home3LiveWorldSurface() {
   enforceRouteOwnership('/home/3');
   getVisualSlot('home-3-hero');
 
+  const [pending, setPending] = useState<UniversalRoom | null>(null);
+
+  function openRoom(id: string, title: string, color: string) {
+    setPending({ id, title, viewers: 0, status: 'live', access: 'free', accentColor: color, roomRoute: `/live/rooms/${id}?from=lobby-wall`, venueIndex: 0, shape: 'hex' });
+  }
+
   const roomStack = [
-    { href: '/live/rooms/monthly-idol?from=lobby-wall', title: 'Main Lobby', occupancy: '84%', tickets: '120', color: '#00FFFF', glyph: '🏟️' },
-    { href: '/live/rooms/cypher-arena?from=lobby-wall', title: 'Cypher East', occupancy: '71%', tickets: '42', color: '#FF2DAA', glyph: '🎤' },
-    { href: '/live/rooms/venue-room?from=lobby-wall', title: 'Producer Lab', occupancy: '67%', tickets: '35', color: '#FFD700', glyph: '🎛️' },
-  ] as const;
+    { id: 'monthly-idol', title: 'Main Lobby',   occupancy: '84%', tickets: '120', color: '#00FFFF', glyph: '🏟️' },
+    { id: 'cypher-arena', title: 'Cypher East',  occupancy: '71%', tickets: '42',  color: '#FF2DAA', glyph: '🎤' },
+    { id: 'venue-room',   title: 'Producer Lab', occupancy: '67%', tickets: '35',  color: '#FFD700', glyph: '🎛️' },
+  ];
 
   const burstRooms = [
-    { href: '/live/rooms/monday-night-stage?from=lobby-wall', title: 'VIP Lounge', subtitle: 'Host interviews', color: '#AA2DFF', glyph: '🛋️' },
-    { href: '/live/rooms/deal-or-feud?from=lobby-wall', title: 'Battle Floor', subtitle: 'Crowd vote live', color: '#00FF88', glyph: '🥊' },
-    { href: '/live/lobby', title: 'Event Timeline', subtitle: 'Premieres + lock times', color: '#FF6B35', glyph: '🗓️' },
-  ] as const;
+    { id: 'monday-night-stage', href: '',            title: 'VIP Lounge',     subtitle: 'Host interviews',       color: '#AA2DFF', glyph: '🛋️' },
+    { id: 'deal-or-feud',       href: '',            title: 'Battle Floor',   subtitle: 'Crowd vote live',        color: '#00FF88', glyph: '🥊' },
+    { id: '',                   href: '/live/lobby', title: 'Event Timeline', subtitle: 'Premieres + lock times', color: '#FF6B35', glyph: '🗓️' },
+  ];
 
   return (
     <RoomContainer roomId="home-3" title="Live World" accentColor="#00FF88" bpm={128}>
     <main style={{ minHeight: '100vh', background: 'radial-gradient(circle at 80% 20%, rgba(0,255,136,0.1), transparent 50%), #050510', color: '#fff', paddingBottom: 80, position: 'relative' }}>
+      {pending && <LobbyEntryFlow room={pending} onClose={() => setPending(null)} />}
       <NeonWaveUnderlay colorA="#00FF88" colorB="#00FFFF" colorC="#AA2DFF" opacity={0.1} zIndex={0} />
       <GlobalTopNavRail />
       <BreakingNewsTicker />
@@ -85,7 +94,7 @@ export default function Home3LiveWorldSurface() {
           <div style={{ borderRadius: 12, border: '1px solid rgba(0,255,255,0.35)', background: 'linear-gradient(145deg, rgba(0,255,255,0.12), rgba(5,5,16,0.82))', padding: 12 }}>
             <div style={{ fontSize: 8, letterSpacing: '0.16em', color: '#00FFFF', fontWeight: 800, marginBottom: 8 }}>ACTIVE ROOMS</div>
             {roomStack.map((room) => (
-              <a key={room.href} href={room.href} style={{ textDecoration: 'none', color: '#fff', display: 'block', marginBottom: 8 }}>
+              <button key={room.id} onClick={() => openRoom(room.id, room.title, room.color)} style={{ textDecoration: 'none', color: '#fff', display: 'block', marginBottom: 8, background: 'none', border: 'none', cursor: 'pointer', width: '100%', textAlign: 'left', padding: 0 }}>
                 <div style={{ borderRadius: 10, border: `1px solid ${room.color}55`, background: `${room.color}14`, padding: '8px 10px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
                     <span style={{ fontSize: 12, fontWeight: 800 }}>{room.glyph} {room.title}</span>
@@ -93,11 +102,11 @@ export default function Home3LiveWorldSurface() {
                   </div>
                   <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)', marginTop: 3 }}>Ticket queue {room.tickets}</div>
                 </div>
-              </a>
+              </button>
             ))}
           </div>
 
-          <a href="/live/rooms/monthly-idol?from=lobby-wall" style={{ textDecoration: 'none', color: '#fff' }}>
+          <button onClick={() => openRoom('monthly-idol', 'Main Lobby', '#00FFFF')} style={{ textDecoration: 'none', color: '#fff', background: 'none', border: 'none', cursor: 'pointer', padding: 0, width: '100%', textAlign: 'left' }}>
             <div style={{ minHeight: 220, borderRadius: 12, overflow: 'hidden', border: '1px solid rgba(0,255,255,0.35)', background: 'linear-gradient(145deg, rgba(0,255,255,0.25), rgba(5,5,16,0.82))', padding: 16, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
               <div style={{ display: 'inline-flex', fontSize: 8, letterSpacing: '0.14em', color: '#00FFFF', border: '1px solid rgba(0,255,255,0.45)', borderRadius: 4, padding: '3px 6px', width: 'fit-content' }}>JOIN ROOM RUNTIME</div>
               <div>
@@ -105,18 +114,23 @@ export default function Home3LiveWorldSurface() {
                 <p style={{ margin: '6px 0 0', fontSize: 12, color: 'rgba(255,255,255,0.78)' }}>Join room, interact, tip, and return to Home 3 in one continuous flow.</p>
               </div>
             </div>
-          </a>
+          </button>
 
           <div style={{ borderRadius: 12, border: '1px solid rgba(255,45,170,0.35)', background: 'linear-gradient(145deg, rgba(255,45,170,0.12), rgba(5,5,16,0.82))', padding: 12 }}>
             <div style={{ fontSize: 8, letterSpacing: '0.16em', color: '#FF2DAA', fontWeight: 800, marginBottom: 8 }}>BURST ROOMS</div>
-            {burstRooms.map((room) => (
-              <a key={room.href} href={room.href} style={{ textDecoration: 'none', color: '#fff', display: 'block', marginBottom: 8 }}>
+            {burstRooms.map((room, i) => {
+              const inner = (
                 <div style={{ borderRadius: 10, border: `1px solid ${room.color}55`, background: `${room.color}14`, padding: '9px 10px' }}>
                   <div style={{ fontSize: 12, fontWeight: 800 }}>{room.glyph} {room.title}</div>
                   <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)', marginTop: 3 }}>{room.subtitle}</div>
                 </div>
-              </a>
-            ))}
+              );
+              return room.href ? (
+                <a key={i} href={room.href} style={{ textDecoration: 'none', color: '#fff', display: 'block', marginBottom: 8 }}>{inner}</a>
+              ) : (
+                <button key={i} onClick={() => openRoom(room.id, room.title, room.color)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#fff', display: 'block', marginBottom: 8, width: '100%', textAlign: 'left', padding: 0 }}>{inner}</button>
+              );
+            })}
           </div>
         </div>
       </section>

@@ -1,8 +1,29 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+/**
+ * Home1CoverPage — TMI Homepage 1, full tabloid-pop redesign.
+ *
+ * DROP FILE AT:
+ *   apps/web/src/components/home/Home1CoverPage.tsx
+ *
+ * THEN IN apps/web/src/app/home/1/page.tsx replace:
+ *   import Home1OrbitalMagazine from '@/components/home/Home1OrbitalMagazine';
+ * with:
+ *   import Home1CoverPage from '@/components/home/Home1CoverPage';
+ * and swap <Home1OrbitalMagazine /> → <Home1CoverPage />
+ *
+ * WHAT THIS DOES:
+ *  - 10 performers per genre, cycle through genres every 6 s
+ *  - Every performer card routes to /articles/performer/[slug]
+ *  - No real face photos — genre-colored emoji avatars
+ *  - Orbital ring kept (360 spin), bright teal/gold palette
+ *  - Tabloid overlays: VOTING LIVE, GENRE BATTLE, CYPHER ARENA OPEN
+ *  - Bottom: Weekly Cyphers bar with article link
+ *  - Typecheck-safe, no external deps beyond Next.js
+ */
+
+import { useEffect, useRef, useState, useCallback } from 'react';
 import Link from 'next/link';
-import { TmiMagazineOrbitalUnderlay } from '@/components/home/TmiMagazineOrbitalUnderlay';
 
 // ─── Genre + performer data (10 per genre) ────────────────────────────────────
 
@@ -156,25 +177,9 @@ const GENRE_DATA: Record<string, { color: string; bg: string; emoji: string; per
 
 const GENRE_KEYS = Object.keys(GENRE_DATA);
 
-// ─── Clip-path shapes for orbit cards ─────────────────────────────────────────
-
-const CARD_SHAPES = [
-  'polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%)',
-  'polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%)',
-  'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)',
-  'circle(50% at 50% 50%)',
-  'polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)',
-  'polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%)',
-  'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)',
-  'polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%)',
-  'circle(50% at 50% 50%)',
-  'polygon(30% 0%, 70% 0%, 100% 25%, 100% 75%, 70% 100%, 30% 100%, 0% 75%, 0% 25%)',
-];
-
-// ─── Orbit card positions ──────────────────────────────────────────────────────
-
+// Positions for 10 orbit cards (angle in degrees, radius 44% of container)
 function getOrbitPos(i: number, total: number, radius: number) {
-  const angle = (i / total) * 360 - 90;
+  const angle = (i / total) * 360 - 90; // start from top
   const rad = (angle * Math.PI) / 180;
   return {
     x: 50 + radius * Math.cos(rad),
@@ -182,29 +187,96 @@ function getOrbitPos(i: number, total: number, radius: number) {
   };
 }
 
-// ─── Ticker messages ───────────────────────────────────────────────────────────
+// ─── Full CHANNEL_ROTATION — 31 messages covering all roles + B2B ────────────
 
 const TICKER_MSGS = [
+  '🎵 ALL PERFORMERS WELCOME — JOIN NOW',
+  '🌍 FREE GLOBAL PROMOTION FOR ALL ARTISTS',
+  '📈 CLIMB THE GLOBAL RANKINGS TODAY',
+  '🔍 GET DISCOVERED WORLDWIDE — SIGN UP FREE',
+  '🎧 DJs WANTED — JOIN DJ BATTLE NIGHT',
+  '🎧 DJ DISCOVERY CHARTS NOW OPEN',
+  '😂 DIGITAL COMEDY NIGHT — COMEDIANS WANTED',
+  '😂 JOKE-OFF BATTLES — ALL COMEDY STYLES ACCEPTED',
+  '💃 DANCE-OFF CHALLENGES — DANCERS WANTED',
+  '💃 ALL DANCE CREWS WELCOME — SIGN UP NOW',
+  '🎹 PRODUCERS WANTED — BEAT BATTLES LIVE',
+  '🎤 SINGERS WELCOME — VOCAL SHOWCASE OPEN',
+  '🎸 BANDS WANTED — LIVE PERFORMANCE SLOTS OPEN',
+  '🥁 ALL INSTRUMENTALISTS WELCOME',
+  '🎭 ACTORS · MAGICIANS · SPOKEN WORD ARTISTS',
+  '🏢 VENUES WANTED — BOOK TALENT DIRECT',
+  '📣 PROMOTERS WANTED — PROMOTE SHOWS WORLDWIDE',
+  '💼 SPONSORS WANTED — ADVERTISE FROM $25',
+  '📺 ADVERTISERS WANTED — REACH LIVE AUDIENCES',
+  '🎟 SELL TICKETS THROUGH TMI',
+  '💰 EARN TIPS LIVE — PERFORMERS & DJs',
+  '📅 GET BOOKED — LIST YOUR AVAILABILITY',
+  '🏆 CHALLENGE YOUR SONG — SONG FOR SONG',
+  '⚔️ JOIN BATTLE ARENA — COMPETE TONIGHT',
+  '🎤 CYPHER ARENA OPEN — DROP IN ANYTIME',
   '🔥 DRUM BATTLE LIVE RIGHT NOW',
   '👑 WHO TOOK THE CROWN? VOTE NOW',
-  '⚡ CYPHER ARENA OPEN — GET IN',
-  '🎤 SOMEBODY JUST GOT KNOCKED OFF #1',
   '💥 GENRE BATTLE — HIP-HOP VS R&B',
   '🚀 NEW PERFORMERS JUST INDEXED',
   '🗳️ VOTING LIVE — CROWN SHIFTING',
   '🔊 STREAM & WIN RADIO IS LIVE',
-  '🎵 BEAT DROP AT MIDNIGHT — 8PM CYPHER',
-  '👀 YOU DON\'T KNOW WHO\'S IN HERE',
 ];
+
+// ─── P6: Independent performer monitor tiles ──────────────────────────────────
+
+function PerformerMonitor({
+  performers, offsetIdx, intervalMs, accentColor, delayMs, channelNum,
+}: {
+  performers: Performer[];
+  offsetIdx: number;
+  intervalMs: number;
+  accentColor: string;
+  delayMs: number;
+  channelNum: number;
+}) {
+  const [idx, setIdx] = useState(offsetIdx % performers.length);
+  useEffect(() => {
+    let iid: ReturnType<typeof setInterval>;
+    const tid = setTimeout(() => {
+      iid = setInterval(() => setIdx((x) => (x + 1) % performers.length), intervalMs);
+    }, delayMs);
+    return () => { clearTimeout(tid); clearInterval(iid); };
+  }, [performers.length, intervalMs, delayMs]);
+
+  const p = performers[idx]!;
+  return (
+    <div style={{ flex: 1, background: 'rgba(5,8,21,0.92)', border: `2px solid ${accentColor}44`, borderRadius: 8, overflow: 'hidden', position: 'relative', minHeight: 110 }}>
+      {/* Scanline overlay */}
+      <div style={{ position: 'absolute', inset: 0, background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.07) 2px, rgba(0,0,0,0.07) 4px)', pointerEvents: 'none', zIndex: 5 }} />
+      {/* Channel header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '3px 8px', background: `${accentColor}18`, borderBottom: `1px solid ${accentColor}33` }}>
+        <span style={{ fontSize: 7, fontWeight: 900, color: accentColor, letterSpacing: '0.15em', fontFamily: "'Inter',sans-serif" }}>CH-{channelNum} LIVE</span>
+        <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#E63000', display: 'inline-block', boxShadow: '0 0 4px #E63000', animation: 'h1Pulse 1.5s infinite' }} />
+      </div>
+      {/* Performer */}
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '8px 6px', gap: 3 }}>
+        <div style={{ fontSize: 28, lineHeight: 1 }}>{p.emoji}</div>
+        <div style={{ fontSize: 9, fontWeight: 900, color: '#fff', textAlign: 'center', fontFamily: "'Inter',sans-serif", lineHeight: 1.2 }}>{p.name}</div>
+        <div style={{ fontSize: 7, color: accentColor, background: `${accentColor}22`, borderRadius: 8, padding: '1px 5px', fontFamily: "'Inter',sans-serif" }}>{p.genre}</div>
+        <div style={{ fontSize: 7, color: 'rgba(255,255,255,0.35)', fontFamily: "'Inter',sans-serif" }}>#{p.rank} · {p.score.toLocaleString()} pts</div>
+      </div>
+      {/* Timer progress bar */}
+      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 2, background: `${accentColor}18` }}>
+        <div style={{ height: 2, background: accentColor, width: '100%', transformOrigin: 'left center', animation: `h1MonitorBar ${intervalMs / 1000}s linear infinite` }} />
+      </div>
+    </div>
+  );
+}
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function Home1CoverPage() {
   const [genreIdx, setGenreIdx] = useState(0);
-  const [tickerIdx, setTickerIdx] = useState(0);
   const [orbitDeg, setOrbitDeg] = useState(0);
   const [voteCount, setVoteCount] = useState(4812);
   const [activeIdx, setActiveIdx] = useState<number | null>(null);
+  const [starburst, setStarburst] = useState(false);
   const rafRef = useRef<number | null>(null);
   const lastRef = useRef<number>(0);
 
@@ -213,7 +285,7 @@ export default function Home1CoverPage() {
   const performers = genre.performers;
   const crowdHolder = performers[0]!;
 
-  // Orbit spin via requestAnimationFrame
+  // Orbit spin
   useEffect(() => {
     const spin = (ts: number) => {
       if (lastRef.current) {
@@ -229,15 +301,15 @@ export default function Home1CoverPage() {
     };
   }, []);
 
-  // Genre cycle every 6s
+  // Genre cycle every 6s with starburst flash
   useEffect(() => {
-    const id = setInterval(() => setGenreIdx((i) => i + 1), 6000);
-    return () => clearInterval(id);
-  }, []);
-
-  // Ticker cycle every 3s
-  useEffect(() => {
-    const id = setInterval(() => setTickerIdx((i) => (i + 1) % TICKER_MSGS.length), 3000);
+    const id = setInterval(() => {
+      setStarburst(true);
+      setTimeout(() => {
+        setGenreIdx((i) => i + 1);
+        setStarburst(false);
+      }, 800);
+    }, 6000);
     return () => clearInterval(id);
   }, []);
 
@@ -263,14 +335,11 @@ export default function Home1CoverPage() {
         position: 'relative',
       }}
     >
-      {/* ── Cosmic underlay — absolute behind everything ── */}
-      <div style={{ position: 'absolute', inset: 0, zIndex: 0, overflow: 'hidden', pointerEvents: 'none' }}>
-        <TmiMagazineOrbitalUnderlay />
-      </div>
-
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;700;900&display=swap');
 
+        @keyframes h1Spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes h1CounterSpin { from { transform: rotate(0deg); } to { transform: rotate(-360deg); } }
         @keyframes h1CrownFloat {
           0%, 100% { transform: translateY(0px) scale(1); }
           50% { transform: translateY(-8px) scale(1.05); }
@@ -291,15 +360,45 @@ export default function Home1CoverPage() {
           0%, 100% { box-shadow: 0 0 20px ${accentColor}55; }
           50% { box-shadow: 0 0 40px ${accentColor}99, 0 0 80px ${accentColor}33; }
         }
-        @keyframes h1TickerSlide {
-          0% { transform: translateY(100%); opacity: 0; }
-          10%, 90% { transform: translateY(0); opacity: 1; }
-          100% { transform: translateY(-100%); opacity: 0; }
+        @keyframes h1TickerScroll {
+          from { transform: translateX(100vw); }
+          to   { transform: translateX(-100%); }
+        }
+        @keyframes h1StarburstRay {
+          0%   { transform: scaleY(0) translateX(-50%); opacity: 1; }
+          50%  { transform: scaleY(1) translateX(-50%); opacity: 0.8; }
+          100% { transform: scaleY(1.6) translateX(-50%); opacity: 0; }
+        }
+        @keyframes h1BlobA {
+          0%,100% { transform: translate(0,0) scale(1); }
+          33%     { transform: translate(60px,-40px) scale(1.12); }
+          66%     { transform: translate(-40px,30px) scale(0.9); }
+        }
+        @keyframes h1BlobB {
+          0%,100% { transform: translate(0,0) scale(1); }
+          33%     { transform: translate(-50px,50px) scale(0.88); }
+          66%     { transform: translate(70px,-30px) scale(1.1); }
+        }
+        @keyframes h1BlobC {
+          0%,100% { transform: translate(0,0) scale(1); }
+          50%     { transform: translate(40px,60px) scale(1.08); }
         }
         @keyframes h1StickerPop {
           0% { transform: scale(0) rotate(-15deg); opacity: 0; }
           70% { transform: scale(1.1) rotate(3deg); opacity: 1; }
           100% { transform: scale(1) rotate(0deg); opacity: 1; }
+        }
+        @keyframes h1CardHover {
+          0% { transform: scale(1); }
+          100% { transform: scale(1.06); }
+        }
+        @keyframes h1ConfettiDrift {
+          0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+          100% { transform: translateY(60px) rotate(180deg); opacity: 0; }
+        }
+        @keyframes h1MonitorBar {
+          from { transform: scaleX(0); }
+          to   { transform: scaleX(1); }
         }
       `}</style>
 
@@ -315,13 +414,57 @@ export default function Home1CoverPage() {
             clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)',
             left: `${(i * 13 + 3) % 100}%`,
             top: `${(i * 17 + 5) % 90}%`,
-            opacity: 0.15,
+            opacity: 0.18,
             transform: `rotate(${i * 37}deg)`,
             pointerEvents: 'none',
-            zIndex: 1,
           }}
         />
       ))}
+
+      {/* ── Neon blob underlay — matches blueprint tmi_home1_orbital_with_underlay_panels ── */}
+      <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0, overflow: 'hidden' }}>
+        {/* Pink blob — top left */}
+        <div style={{
+          position: 'absolute', borderRadius: '50%', filter: 'blur(80px)', opacity: 0.55,
+          width: 460, height: 460,
+          background: 'radial-gradient(circle, rgba(255,45,170,0.55) 0%, transparent 70%)',
+          top: -60, left: '5%',
+          animation: 'h1BlobA 9s ease-in-out infinite',
+        }} />
+        {/* Gold blob — top right */}
+        <div style={{
+          position: 'absolute', borderRadius: '50%', filter: 'blur(80px)', opacity: 0.45,
+          width: 480, height: 480,
+          background: 'radial-gradient(circle, rgba(255,215,0,0.45) 0%, transparent 70%)',
+          top: 80, right: -60,
+          animation: 'h1BlobB 12s ease-in-out infinite',
+        }} />
+        {/* Cyan blob — bottom center */}
+        <div style={{
+          position: 'absolute', borderRadius: '50%', filter: 'blur(80px)', opacity: 0.35,
+          width: 400, height: 400,
+          background: 'radial-gradient(circle, rgba(0,229,255,0.3) 0%, transparent 70%)',
+          bottom: -40, left: '30%',
+          animation: 'h1BlobC 15s ease-in-out infinite',
+        }} />
+        {/* Purple blob — bottom right */}
+        <div style={{
+          position: 'absolute', borderRadius: '50%', filter: 'blur(80px)', opacity: 0.4,
+          width: 320, height: 320,
+          background: 'radial-gradient(circle, rgba(155,89,182,0.4) 0%, transparent 70%)',
+          bottom: 80, right: '15%',
+          animation: 'h1BlobA 18s ease-in-out infinite reverse',
+        }} />
+        {/* SVG grid lines */}
+        <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0.06 }} preserveAspectRatio="none">
+          <defs>
+            <pattern id="tmiGrid" width="48" height="48" patternUnits="userSpaceOnUse">
+              <path d="M48 0L0 0 0 48" fill="none" stroke="#FFD700" strokeWidth="0.5"/>
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#tmiGrid)"/>
+        </svg>
+      </div>
 
       {/* ── Genre badge top left ── */}
       <div
@@ -330,6 +473,9 @@ export default function Home1CoverPage() {
           top: 18,
           left: 20,
           zIndex: 50,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
         }}
       >
         <Link href="/home/1" style={{ textDecoration: 'none' }}>
@@ -347,11 +493,14 @@ export default function Home1CoverPage() {
         </Link>
       </div>
 
-      {/* ── Voting LIVE banner — in-flow, sits below MagazineNavBar ── */}
+      {/* ── Voting LIVE banner ── */}
       <div
         style={{
-          position: 'relative',
-          zIndex: 10,
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          zIndex: 100,
           background: `linear-gradient(90deg, #1a0050 0%, ${accentColor}33 50%, #1a0050 100%)`,
           borderBottom: `2px solid ${accentColor}`,
           display: 'flex',
@@ -359,7 +508,6 @@ export default function Home1CoverPage() {
           justifyContent: 'center',
           gap: 16,
           padding: '7px 16px',
-          flexWrap: 'wrap',
         }}
       >
         <span
@@ -394,8 +542,7 @@ export default function Home1CoverPage() {
       {/* ── Main content ── */}
       <div
         style={{
-          position: 'relative',
-          zIndex: 1,
+          paddingTop: 52,
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
@@ -426,7 +573,7 @@ export default function Home1CoverPage() {
                   minWidth: char === ' ' ? '0.5em' : 'auto',
                   opacity: 0,
                   animation: 'h1Typewriter 7s infinite, h1TypeColor 7s infinite',
-                  animationDelay: `${index * 0.1}s, 0s`,
+                  animationDelay: `${index * 0.1}s, ${index * 0.1}s`,
                 }}
               >
                 {char}
@@ -437,10 +584,11 @@ export default function Home1CoverPage() {
             style={{
               fontSize: 'clamp(28px, 6vw, 48px)',
               fontFamily: "'Bebas Neue', 'Impact', sans-serif",
-              color: accentColor,
+              background: `linear-gradient(135deg, #fff 0%, ${accentColor} 100%)`,
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
               letterSpacing: '0.04em',
               lineHeight: 1,
-              textShadow: `0 0 30px ${accentColor}88, 0 0 60px ${accentColor}33`,
             }}
           >
             WHO TOOK THE CROWN?
@@ -464,17 +612,66 @@ export default function Home1CoverPage() {
           </div>
         </div>
 
-        {/* ── Cinematic Edge-to-Edge Grid Wrapper ── */}
+        {/* ── Cinematic 3-Rail Grid — LEFT PANEL | ORBITAL | RIGHT PANEL ── */}
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'minmax(50px, 1fr) auto minmax(50px, 1fr)',
+            gridTemplateColumns: 'clamp(120px, 15vw, 170px) 1fr clamp(120px, 15vw, 170px)',
             width: '100%',
-            alignItems: 'center',
+            alignItems: 'start',
+            gap: 10,
+            padding: '0 10px',
           }}
         >
-          <div />
-
+          {/* ════ LEFT PANEL ════ */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingTop: 8 }}>
+            {/* Free Promotion */}
+            <div style={{ background: 'rgba(5,8,21,0.88)', border: '1px solid rgba(255,45,170,0.25)', borderRadius: 8, padding: '10px 12px' }}>
+              <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.15em', color: '#FF2DAA', textTransform: 'uppercase', marginBottom: 6, fontFamily: "'Inter',sans-serif" }}>⭐ Free Promotion</div>
+              <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.4)', marginBottom: 8, fontFamily: "'Inter',sans-serif" }}>Artists — get featured free.</div>
+              {[{ name: 'Lagos Burst', genre: 'Afrobeat', views: '2,140', color: '#00FF88' }, { name: 'Nova Laugh', genre: 'Comedy', views: '980', color: '#AA2DFF' }].map((p) => (
+                <div key={p.name} style={{ background: 'rgba(12,20,50,0.92)', border: `1px solid rgba(255,45,170,0.18)`, borderRadius: 6, padding: '7px 9px', marginBottom: 6, cursor: 'pointer' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 3 }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: '#fff', fontFamily: "'Inter',sans-serif" }}>{p.name}</div>
+                    <span style={{ fontSize: 7, fontWeight: 700, padding: '2px 6px', borderRadius: 10, background: `${p.color}18`, border: `1px solid ${p.color}44`, color: p.color, fontFamily: "'Inter',sans-serif" }}>{p.genre}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+                    <span style={{ fontSize: 8, color: '#00FF88', fontFamily: "'Inter',sans-serif" }}>▲ {p.views}</span>
+                    <button style={{ fontSize: 7, fontWeight: 700, padding: '2px 6px', border: '1px solid rgba(255,45,170,0.5)', background: 'transparent', color: '#FF2DAA', borderRadius: 3, cursor: 'pointer', fontFamily: "'Inter',sans-serif" }}>BOOST</button>
+                  </div>
+                </div>
+              ))}
+              <div style={{ border: '1px dashed rgba(255,215,0,0.3)', background: 'rgba(255,215,0,0.04)', borderRadius: 6, padding: '8px', textAlign: 'center', cursor: 'pointer' }}>
+                <div style={{ fontSize: 16, marginBottom: 2 }}>+</div>
+                <div style={{ fontSize: 8, color: '#FFD700', fontWeight: 700, fontFamily: "'Inter',sans-serif" }}>Claim Free Slot</div>
+              </div>
+            </div>
+            {/* Sponsor Spotlight */}
+            <div style={{ background: 'rgba(5,8,21,0.88)', border: '1px solid rgba(0,229,255,0.2)', borderRadius: 8, padding: '10px 12px' }}>
+              <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.15em', color: '#00E5FF', textTransform: 'uppercase', marginBottom: 6, fontFamily: "'Inter',sans-serif" }}>💼 Sponsor Spotlight</div>
+              <div style={{ background: 'rgba(12,20,50,0.92)', border: '1px solid rgba(0,229,255,0.2)', borderRadius: 6, padding: '8px 9px' }}>
+                <div style={{ fontSize: 9, fontWeight: 700, color: '#00E5FF', fontFamily: "'Inter',sans-serif" }}>Beats By TMX</div>
+                <div style={{ fontSize: 7, color: 'rgba(255,255,255,0.4)', margin: '2px 0 5px', fontFamily: "'Inter',sans-serif" }}>Official Season 1 Partner</div>
+                <div style={{ height: 3, background: 'rgba(0,229,255,0.15)', borderRadius: 2, overflow: 'hidden' }}>
+                  <div style={{ height: 3, background: '#00E5FF', borderRadius: 2, width: '72%' }} />
+                </div>
+                <div style={{ fontSize: 7, color: 'rgba(255,255,255,0.3)', marginTop: 3, fontFamily: "'Inter',sans-serif" }}>Campaign 72%</div>
+              </div>
+              <button style={{ width: '100%', marginTop: 6, padding: '4px', fontSize: 7, fontWeight: 700, border: '1px solid rgba(0,229,255,0.4)', background: 'transparent', color: '#00E5FF', borderRadius: 4, cursor: 'pointer', fontFamily: "'Inter',sans-serif", letterSpacing: '0.06em' }}>BECOME A SPONSOR</button>
+            </div>
+            {/* Venue Booking */}
+            <div style={{ background: 'rgba(5,8,21,0.88)', border: '1px solid rgba(255,140,0,0.2)', borderRadius: 8, padding: '10px 12px' }}>
+              <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.15em', color: '#FF8C00', textTransform: 'uppercase', marginBottom: 6, fontFamily: "'Inter',sans-serif" }}>🏟 Venue Booking</div>
+              {[{ day: 'SAT', venue: 'Main Arena' }, { day: 'SUN', venue: 'Theater' }, { day: 'FRI', venue: 'Club Room' }].map((v) => (
+                <div key={v.day} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 0', borderBottom: '1px solid rgba(255,255,255,0.05)', fontSize: 9 }}>
+                  <span style={{ color: '#FF8C00', fontWeight: 700, fontFamily: "'Inter',sans-serif", minWidth: 24 }}>{v.day}</span>
+                  <span style={{ flex: 1, color: 'rgba(255,255,255,0.7)', fontFamily: "'Inter',sans-serif" }}>{v.venue}</span>
+                  <button style={{ fontSize: 7, padding: '2px 6px', border: '1px solid rgba(0,255,136,0.5)', background: 'transparent', color: '#00FF88', borderRadius: 3, cursor: 'pointer', fontFamily: "'Inter',sans-serif" }}>Book</button>
+                </div>
+              ))}
+            </div>
+          </div>
+          
           {/* ── Orbital ring ── */}
           <div
             style={{
@@ -487,294 +684,359 @@ export default function Home1CoverPage() {
               flexShrink: 0,
             }}
           >
-            {/* Spinning rings */}
-            <div
-              style={{
-                position: 'absolute',
-                inset: '5%',
-                borderRadius: '50%',
-                border: `1px solid ${accentColor}22`,
-                boxShadow: `0 0 40px ${accentColor}18`,
-                transform: `rotate(${orbitDeg}deg)`,
-                transition: 'transform 0.016s linear',
-              }}
-            />
-            <div
-              style={{
-                position: 'absolute',
-                inset: '8%',
-                borderRadius: '50%',
-                border: `1px dashed ${accentColor}14`,
-                transform: `rotate(${-orbitDeg * 0.6}deg)`,
-                transition: 'transform 0.016s linear',
-              }}
-            />
+          {/* Starburst transition overlay */}
+          {starburst && (
+            <div style={{ position: 'absolute', inset: 0, zIndex: 50, pointerEvents: 'none', overflow: 'hidden' }}>
+              {[...Array(14)].map((_, i) => (
+                <div key={i} style={{
+                  position: 'absolute',
+                  top: '50%', left: '50%',
+                  width: 4,
+                  height: '55%',
+                  background: `linear-gradient(to top, ${accentColor}, transparent)`,
+                  transformOrigin: 'bottom center',
+                  transform: `rotate(${i * (360 / 14)}deg) translateX(-50%)`,
+                  animation: 'h1StarburstRay 0.8s ease-out forwards',
+                  animationDelay: `${i * 0.02}s`,
+                }} />
+              ))}
+            </div>
+          )}
 
-            {/* Center crown holder */}
-            <Link
-              href={`/articles/performer/${crowdHolder.slug}`}
+          {/* Spinning ring */}
+          <div
+            style={{
+              position: 'absolute',
+              inset: '5%',
+              borderRadius: '50%',
+              border: `1px solid ${accentColor}22`,
+              boxShadow: `0 0 40px ${accentColor}18`,
+              transform: `rotate(${orbitDeg}deg)`,
+              transition: 'transform 0.016s linear',
+            }}
+          />
+          <div
+            style={{
+              position: 'absolute',
+              inset: '8%',
+              borderRadius: '50%',
+              border: `1px dashed ${accentColor}14`,
+              transform: `rotate(${-orbitDeg * 0.6}deg)`,
+              transition: 'transform 0.016s linear',
+            }}
+          />
+
+          {/* Center: Crown holder */}
+          <Link
+            href={`/articles/performer/${crowdHolder.slug}`}
+            style={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              textDecoration: 'none',
+              zIndex: 20,
+            }}
+          >
+            <div
               style={{
-                position: 'absolute',
-                top: '50%',
-                left: '50%',
-                transform: 'translate(-50%, -50%)',
-                textDecoration: 'none',
-                zIndex: 20,
+                width: 'min(130px, 22vw)',
+                height: 'min(130px, 22vw)',
+                borderRadius: '50%',
+                background: `radial-gradient(circle at 40% 35%, ${accentColor}55, ${bgColor})`,
+                border: `3px solid ${accentColor}`,
+                boxShadow: `0 0 40px ${accentColor}66, inset 0 0 20px ${accentColor}22`,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                animation: 'h1Pulse 2.5s ease-in-out infinite',
+                cursor: 'pointer',
               }}
             >
+              {/* Crown above */}
               <div
                 style={{
-                  width: 'min(130px, 22vw)',
-                  height: 'min(130px, 22vw)',
-                  borderRadius: '50%',
-                  background: `radial-gradient(circle at 40% 35%, ${accentColor}55, ${bgColor})`,
-                  border: `3px solid ${accentColor}`,
-                  boxShadow: `0 0 40px ${accentColor}66, inset 0 0 20px ${accentColor}22`,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  animation: 'h1Pulse 2.5s ease-in-out infinite',
-                  cursor: 'pointer',
+                  fontSize: 'min(28px, 5vw)',
+                  animation: 'h1CrownFloat 3s ease-in-out infinite',
+                  marginBottom: 2,
+                  filter: `drop-shadow(0 0 8px #FFD700)`,
                 }}
+              >
+                👑
+              </div>
+              <div
+                style={{
+                  fontSize: 'min(28px, 5vw)',
+                  filter: `drop-shadow(0 0 6px ${accentColor})`,
+                }}
+              >
+                {crowdHolder.emoji}
+              </div>
+              <div
+                style={{
+                  fontSize: 'min(9px, 1.8vw)',
+                  fontWeight: 900,
+                  color: '#fff',
+                  letterSpacing: '0.05em',
+                  textAlign: 'center',
+                  fontFamily: "'Inter', sans-serif",
+                  marginTop: 2,
+                  maxWidth: '80%',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {crowdHolder.name}
+              </div>
+              <div
+                style={{
+                  fontSize: 'min(8px, 1.5vw)',
+                  fontWeight: 700,
+                  color: '#FFD700',
+                  fontFamily: "'Inter', sans-serif",
+                }}
+              >
+                #1 {genreKey}
+              </div>
+            </div>
+          </Link>
+
+          {/* 10 orbit cards */}
+          {performers.map((p, i) => {
+            const pos = getOrbitPos(i, 10, 44);
+            const cardSize = i === 0 ? 80 : 68;
+            return (
+              <Link
+                key={p.slug}
+                href={`/articles/performer/${p.slug}`}
+                style={{ textDecoration: 'none' }}
               >
                 <div
                   style={{
-                    fontSize: 'min(28px, 5vw)',
-                    animation: 'h1CrownFloat 3s ease-in-out infinite',
-                    marginBottom: 2,
-                    filter: 'drop-shadow(0 0 8px #FFD700)',
+                    position: 'absolute',
+                    left: `${pos.x}%`,
+                    top: `${pos.y}%`,
+                    transform: 'translate(-50%, -50%)',
+                    zIndex: activeIdx === i ? 30 : 10,
+                    cursor: 'pointer',
+                    transition: 'transform 0.2s ease',
                   }}
+                  onMouseEnter={() => setActiveIdx(i)}
+                  onMouseLeave={() => setActiveIdx(null)}
                 >
-                  👑
-                </div>
-                <div
-                  style={{
-                    fontSize: 'min(28px, 5vw)',
-                    filter: `drop-shadow(0 0 6px ${accentColor})`,
-                  }}
-                >
-                  {crowdHolder.emoji}
-                </div>
-                <div
-                  style={{
-                    fontSize: 'min(9px, 1.8vw)',
-                    fontWeight: 900,
-                    color: '#fff',
-                    letterSpacing: '0.05em',
-                    textAlign: 'center',
-                    fontFamily: "'Inter', sans-serif",
-                    marginTop: 2,
-                    maxWidth: '80%',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {crowdHolder.name}
-                </div>
-                <div
-                  style={{
-                    fontSize: 'min(8px, 1.5vw)',
-                    fontWeight: 700,
-                    color: '#FFD700',
-                    fontFamily: "'Inter', sans-serif",
-                  }}
-                >
-                  #1 {genreKey}
-                </div>
-              </div>
-            </Link>
-
-            {/* 10 orbit cards */}
-            {performers.map((p, i) => {
-              const pos = getOrbitPos(i, 10, 44);
-              const cardSize = i === 0 ? 80 : 68;
-              return (
-                <Link
-                  key={p.slug}
-                  href={`/articles/performer/${p.slug}`}
-                  style={{ textDecoration: 'none' }}
-                >
+                  {/* Rank badge */}
                   <div
                     style={{
                       position: 'absolute',
-                      left: `${pos.x}%`,
-                      top: `${pos.y}%`,
-                      transform: 'translate(-50%, -50%)',
-                      zIndex: activeIdx === i ? 30 : 10,
-                      cursor: 'pointer',
-                      transition: 'transform 0.2s ease',
+                      top: -10,
+                      left: -4,
+                      zIndex: 5,
+                      width: 20,
+                      height: 20,
+                      borderRadius: '50%',
+                      background:
+                        p.rank === 1
+                          ? 'linear-gradient(135deg, #FFD700, #FF9500)'
+                          : `${accentColor}33`,
+                      border: `1.5px solid ${p.rank === 1 ? '#FFD700' : accentColor}`,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: 8,
+                      fontWeight: 900,
+                      color: p.rank === 1 ? '#050510' : accentColor,
+                      fontFamily: "'Inter', sans-serif",
+                      boxShadow: `0 0 8px ${p.rank === 1 ? '#FFD700' : accentColor}66`,
                     }}
-                    onMouseEnter={() => setActiveIdx(i)}
-                    onMouseLeave={() => setActiveIdx(null)}
                   >
+                    {p.rank}
+                  </div>
+
+                  {/* P7: 4:5 portrait card */}
+                  <div
+                    style={{
+                      width: cardSize,
+                      height: Math.round(cardSize * 1.28),
+                      borderRadius: 5,
+                      background: `linear-gradient(160deg, ${accentColor}28, ${bgColor})`,
+                      border: `2px solid ${accentColor}${activeIdx === i ? 'cc' : '55'}`,
+                      boxShadow: activeIdx === i ? `0 0 24px ${accentColor}88` : `0 0 8px ${accentColor}22`,
+                      transition: 'box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease',
+                      transform: activeIdx === i ? 'scale(1.12)' : 'scale(1)',
+                      overflow: 'hidden',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 2,
+                      position: 'relative',
+                    }}
+                  >
+                    {/* Live dot — top-right for top 3 */}
+                    {p.rank <= 3 && (
+                      <div style={{ position: 'absolute', top: 3, right: 3, width: 5, height: 5, borderRadius: '50%', background: '#E63000', boxShadow: '0 0 5px #E63000', animation: 'h1Pulse 1.5s infinite' }} />
+                    )}
+                    {/* Performer emoji */}
+                    <div style={{ fontSize: cardSize * 0.34, lineHeight: 1 }}>{p.emoji}</div>
+                    {/* Name */}
+                    <div style={{ fontSize: Math.max(cardSize * 0.1, 7), fontWeight: 900, color: '#fff', textAlign: 'center', fontFamily: "'Inter',sans-serif", maxWidth: '90%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {p.name.split(' ')[0]}
+                    </div>
+                    {/* Genre pill */}
+                    <div style={{ fontSize: Math.max(cardSize * 0.08, 6), color: accentColor, background: `${accentColor}18`, borderRadius: 8, padding: '1px 4px', fontFamily: "'Inter',sans-serif" }}>
+                      {p.genre}
+                    </div>
+                    {/* Audience count */}
+                    <div style={{ fontSize: Math.max(cardSize * 0.08, 6), color: 'rgba(255,255,255,0.3)', fontFamily: "'Inter',sans-serif" }}>
+                      👁 {(Math.round(p.score / 10) * 10).toLocaleString()}
+                    </div>
+                  </div>
+
+                  {/* Hover tooltip */}
+                  {activeIdx === i && (
                     <div
                       style={{
                         position: 'absolute',
-                        top: -10,
-                        left: -4,
-                        zIndex: 5,
-                        width: 20,
-                        height: 20,
-                        borderRadius: '50%',
-                        background:
-                          p.rank === 1
-                            ? 'linear-gradient(135deg, #FFD700, #FF9500)'
-                            : `${accentColor}33`,
-                        border: `1.5px solid ${p.rank === 1 ? '#FFD700' : accentColor}`,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: 8,
-                        fontWeight: 900,
-                        color: p.rank === 1 ? '#050510' : accentColor,
-                        fontFamily: "'Inter', sans-serif",
-                        boxShadow: `0 0 8px ${p.rank === 1 ? '#FFD700' : accentColor}66`,
+                        bottom: -36,
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        background: 'rgba(10,6,20,0.95)',
+                        border: `1px solid ${accentColor}55`,
+                        borderRadius: 8,
+                        padding: '5px 10px',
+                        whiteSpace: 'nowrap',
+                        zIndex: 50,
+                        animation: 'h1StickerPop 0.25s ease',
                       }}
                     >
-                      {p.rank}
-                    </div>
-                    <div
-                      style={{
-                        width: cardSize,
-                        height: cardSize,
-                        clipPath: CARD_SHAPES[i % CARD_SHAPES.length],
-                        background: `linear-gradient(135deg, ${accentColor}33, ${bgColor})`,
-                        border: `2px solid ${accentColor}66`,
-                        boxShadow:
-                          activeIdx === i
-                            ? `0 0 24px ${accentColor}88`
-                            : `0 0 12px ${accentColor}33`,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        transition: 'box-shadow 0.2s ease, transform 0.2s ease',
-                        transform: activeIdx === i ? 'scale(1.12)' : 'scale(1)',
-                      }}
-                    >
-                      <div style={{ fontSize: cardSize * 0.32, lineHeight: 1 }}>{p.emoji}</div>
-                      <div
-                        style={{
-                          fontSize: cardSize * 0.1,
-                          fontWeight: 900,
-                          color: '#fff',
-                          textAlign: 'center',
-                          marginTop: 3,
-                          fontFamily: "'Inter', sans-serif",
-                          maxWidth: '85%',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                          letterSpacing: '-0.01em',
-                        }}
-                      >
-                        {p.name.split(' ')[0]}
+                      <div style={{ fontSize: 9, fontWeight: 900, color: accentColor, fontFamily: "'Inter', sans-serif" }}>
+                        {p.name}
+                      </div>
+                      <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.5)', fontFamily: "'Inter', sans-serif" }}>
+                        #{p.rank} · {p.score.toLocaleString()} pts → Read Article
                       </div>
                     </div>
+                  )}
+                </div>
+              </Link>
+            );
+          })}
 
-                    {activeIdx === i && (
-                      <div
-                        style={{
-                          position: 'absolute',
-                          bottom: -36,
-                          left: '50%',
-                          transform: 'translateX(-50%)',
-                          background: 'rgba(10,6,20,0.95)',
-                          border: `1px solid ${accentColor}55`,
-                          borderRadius: 8,
-                          padding: '5px 10px',
-                          whiteSpace: 'nowrap',
-                          zIndex: 50,
-                          animation: 'h1StickerPop 0.25s ease',
-                        }}
-                      >
-                        <div style={{ fontSize: 9, fontWeight: 900, color: accentColor, fontFamily: "'Inter', sans-serif" }}>
-                          {p.name}
-                        </div>
-                        <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.5)', fontFamily: "'Inter', sans-serif" }}>
-                          #{p.rank} · {p.score.toLocaleString()} pts → Read Article
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </Link>
-              );
-            })}
-
-            {/* Sticker overlays */}
-            <div
-              style={{
-                position: 'absolute',
-                top: '8%',
-                left: '-4%',
-                background: `linear-gradient(135deg, ${accentColor}, #FFD700)`,
-                color: '#050510',
-                padding: '6px 12px',
-                borderRadius: 8,
-                fontSize: 9,
-                fontWeight: 900,
-                letterSpacing: '0.1em',
-                fontFamily: "'Inter', sans-serif",
-                transform: 'rotate(-8deg)',
-                boxShadow: `0 4px 20px ${accentColor}55`,
-                animation: 'h1StickerPop 0.4s ease',
-                zIndex: 40,
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {genre.emoji} {genreKey} GENRE BATTLE!
-            </div>
-
-            <div
-              style={{
-                position: 'absolute',
-                bottom: '12%',
-                right: '-2%',
-                background: 'linear-gradient(135deg, #AA2DFF, #FF2DAA)',
-                color: '#fff',
-                padding: '6px 14px',
-                borderRadius: 20,
-                fontSize: 9,
-                fontWeight: 900,
-                letterSpacing: '0.08em',
-                fontFamily: "'Inter', sans-serif",
-                transform: 'rotate(5deg)',
-                boxShadow: '0 4px 20px rgba(170,45,255,0.5)',
-                animation: 'h1StickerPop 0.5s ease',
-                zIndex: 40,
-                whiteSpace: 'nowrap',
-              }}
-            >
-              🔘 CYPHER ARENA OPEN
-            </div>
-
-            <div
-              style={{
-                position: 'absolute',
-                bottom: '22%',
-                left: '-2%',
-                background: 'rgba(20,10,40,0.92)',
-                border: '2px solid #FFD700',
-                color: '#FFD700',
-                padding: '5px 12px',
-                borderRadius: 8,
-                fontSize: 9,
-                fontWeight: 900,
-                letterSpacing: '0.06em',
-                fontFamily: "'Inter', sans-serif",
-                transform: 'rotate(-4deg)',
-                boxShadow: '0 4px 16px rgba(255,215,0,0.3)',
-                zIndex: 40,
-                whiteSpace: 'nowrap',
-              }}
-            >
-              🗳️ VOTING OPEN: VOTE FOR #4!
-            </div>
+          {/* Sticker overlays */}
+          <div
+            style={{
+              position: 'absolute',
+              top: '8%',
+              left: '-4%',
+              background: `linear-gradient(135deg, ${accentColor}, #FFD700)`,
+              color: '#050510',
+              padding: '6px 12px',
+              borderRadius: 8,
+              fontSize: 9,
+              fontWeight: 900,
+              letterSpacing: '0.1em',
+              fontFamily: "'Inter', sans-serif",
+              transform: 'rotate(-8deg)',
+              boxShadow: `0 4px 20px ${accentColor}55`,
+              animation: 'h1StickerPop 0.4s ease',
+              zIndex: 40,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {genre.emoji} {genreKey} GENRE BATTLE!
           </div>
 
-          <div />
+          <div
+            style={{
+              position: 'absolute',
+              bottom: '12%',
+              right: '-2%',
+              background: 'linear-gradient(135deg, #AA2DFF, #FF2DAA)',
+              color: '#fff',
+              padding: '6px 14px',
+              borderRadius: 20,
+              fontSize: 9,
+              fontWeight: 900,
+              letterSpacing: '0.08em',
+              fontFamily: "'Inter', sans-serif",
+              transform: 'rotate(5deg)',
+              boxShadow: '0 4px 20px rgba(170,45,255,0.5)',
+              animation: 'h1StickerPop 0.5s ease',
+              zIndex: 40,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            🔘 CYPHER ARENA OPEN
+          </div>
+
+          <div
+            style={{
+              position: 'absolute',
+              bottom: '22%',
+              left: '-2%',
+              background: 'rgba(20,10,40,0.92)',
+              border: '2px solid #FFD700',
+              color: '#FFD700',
+              padding: '5px 12px',
+              borderRadius: 8,
+              fontSize: 9,
+              fontWeight: 900,
+              letterSpacing: '0.06em',
+              fontFamily: "'Inter', sans-serif",
+              transform: 'rotate(-4deg)',
+              boxShadow: '0 4px 16px rgba(255,215,0,0.3)',
+              zIndex: 40,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            🗳️ VOTING OPEN: VOTE FOR #4!
+          </div>
+        </div>
+        
+          {/* ════ RIGHT PANEL ════ */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingTop: 8 }}>
+            {/* Live Rankings */}
+            <div style={{ background: 'rgba(5,8,21,0.88)', border: `1px solid ${accentColor}33`, borderRadius: 8, padding: '10px 12px' }}>
+              <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.15em', color: accentColor, textTransform: 'uppercase', marginBottom: 8, fontFamily: "'Inter',sans-serif" }}>🏆 Live Rankings</div>
+              {performers.slice(0, 5).map((p, i) => (
+                <div key={p.slug} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                  <span style={{ fontSize: 9, fontWeight: 900, color: i === 0 ? '#FFD700' : i === 1 ? '#C0C0C0' : i === 2 ? '#CD7F32' : 'rgba(255,255,255,0.4)', minWidth: 14, fontFamily: "'Inter',sans-serif" }}>#{p.rank}</span>
+                  <span style={{ fontSize: 10, lineHeight: 1 }}>{p.emoji}</span>
+                  <span style={{ flex: 1, fontSize: 8, fontWeight: 700, color: '#fff', fontFamily: "'Inter',sans-serif", overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
+                </div>
+              ))}
+              <button style={{ width: '100%', marginTop: 6, padding: '4px', fontSize: 7, fontWeight: 700, border: `1px solid ${accentColor}44`, background: 'transparent', color: accentColor, borderRadius: 4, cursor: 'pointer', fontFamily: "'Inter',sans-serif", letterSpacing: '0.06em' }}>SEE ALL RANKS</button>
+            </div>
+            {/* Live Activity */}
+            <div style={{ background: 'rgba(5,8,21,0.88)', border: '1px solid rgba(255,45,170,0.25)', borderRadius: 8, padding: '10px 12px' }}>
+              <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.15em', color: '#FF2DAA', textTransform: 'uppercase', marginBottom: 8, fontFamily: "'Inter',sans-serif" }}>🔴 Live Now</div>
+              {[{ name: 'Cypher Arena', viewers: '841', color: '#00E5FF' }, { name: 'Battle Stage', viewers: '2,130', color: '#FF2DAA' }, { name: 'Stream & Win', viewers: '3,412', color: '#FFD700' }].map((item) => (
+                <div key={item.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <div style={{ width: 6, height: 6, borderRadius: '50%', background: item.color, boxShadow: `0 0 6px ${item.color}` }} />
+                    <span style={{ fontSize: 9, color: '#fff', fontFamily: "'Inter',sans-serif" }}>{item.name}</span>
+                  </div>
+                  <span style={{ fontSize: 8, color: 'rgba(255,255,255,0.4)', fontFamily: "'Inter',sans-serif" }}>{item.viewers}</span>
+                </div>
+              ))}
+            </div>
+            {/* Ad Slot */}
+            <div style={{ background: 'rgba(5,8,21,0.88)', border: '1px solid rgba(255,215,0,0.2)', borderRadius: 8, padding: '10px 12px', textAlign: 'center', cursor: 'pointer' }}>
+              <div style={{ fontSize: 7, color: 'rgba(255,255,255,0.25)', letterSpacing: '0.15em', marginBottom: 6, fontFamily: "'Inter',sans-serif" }}>ADVERTISEMENT</div>
+              <div style={{ fontSize: 10, color: '#FFD700', fontWeight: 700, marginBottom: 4, fontFamily: "'Inter',sans-serif" }}>Advertise Here</div>
+              <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.35)', marginBottom: 8, fontFamily: "'Inter',sans-serif" }}>Reach live audiences from $25</div>
+              <button style={{ width: '100%', padding: '5px', fontSize: 8, fontWeight: 700, border: '1px solid rgba(255,215,0,0.4)', background: 'rgba(255,215,0,0.08)', color: '#FFD700', borderRadius: 4, cursor: 'pointer', fontFamily: "'Inter',sans-serif" }}>GET STARTED</button>
+            </div>
+          </div>
+        </div> {/* End Cinematic Wrapper */}
+
+        {/* ── P6: Three independent video monitors (9500 / 13200 / 17000 ms, 2300ms stagger) ── */}
+        <div style={{ width: '100%', maxWidth: 900, padding: '12px 10px 0', display: 'flex', gap: 10 }}>
+          <PerformerMonitor performers={performers} offsetIdx={0} intervalMs={9500}  accentColor={accentColor} delayMs={0}    channelNum={1} />
+          <PerformerMonitor performers={performers} offsetIdx={3} intervalMs={13200} accentColor={accentColor} delayMs={2300} channelNum={2} />
+          <PerformerMonitor performers={performers} offsetIdx={6} intervalMs={17000} accentColor={accentColor} delayMs={4600} channelNum={3} />
         </div>
 
         {/* ── Genre navigation dots ── */}
@@ -817,41 +1079,43 @@ export default function Home1CoverPage() {
           })}
         </div>
 
-        {/* ── Tabloid ticker ── */}
+        {/* ── Tabloid ticker — horizontal LEFT-scroll chyron ── */}
         <div
           style={{
             width: '100%',
-            background: `linear-gradient(90deg, transparent, ${accentColor}18, transparent)`,
-            borderTop: `1px solid ${accentColor}22`,
-            borderBottom: `1px solid ${accentColor}22`,
-            padding: '8px 24px',
+            background: `linear-gradient(90deg, #1a0050, ${accentColor}22, #1a0050)`,
+            borderTop: `1px solid ${accentColor}33`,
+            borderBottom: `1px solid ${accentColor}33`,
+            padding: '6px 0',
             marginTop: 16,
             overflow: 'hidden',
-            height: 34,
+            height: 30,
             position: 'relative',
           }}
         >
           <div
-            key={tickerIdx}
             style={{
+              display: 'inline-block',
+              whiteSpace: 'nowrap',
               fontSize: 10,
               fontWeight: 900,
               color: accentColor,
               letterSpacing: '0.15em',
               fontFamily: "'Inter', sans-serif",
-              animation: 'h1TickerSlide 3s ease',
-              position: 'absolute',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              whiteSpace: 'nowrap',
+              animation: 'h1TickerScroll 45s linear infinite',
             }}
           >
-            {TICKER_MSGS[tickerIdx]}
+            {TICKER_MSGS.map((msg, i) => (
+              <span key={i} style={{ marginRight: '4em' }}>{msg}</span>
+            ))}
+            {/* Duplicate for seamless loop */}
+            {TICKER_MSGS.map((msg, i) => (
+              <span key={`d-${i}`} style={{ marginRight: '4em' }}>{msg}</span>
+            ))}
           </div>
         </div>
 
-        {/* ── Top 10 performers grid ── */}
+        {/* ── All performers grid (10 cards) ── */}
         <div
           style={{
             width: '100%',
@@ -908,6 +1172,7 @@ export default function Home1CoverPage() {
                     (e.currentTarget as HTMLDivElement).style.boxShadow = 'none';
                   }}
                 >
+                  {/* Rank */}
                   <div
                     style={{
                       position: 'absolute',
@@ -922,6 +1187,7 @@ export default function Home1CoverPage() {
                   >
                     #{p.rank}
                   </div>
+
                   <div style={{ fontSize: 26, marginBottom: 4 }}>{p.emoji}</div>
                   <div
                     style={{
@@ -1014,7 +1280,7 @@ export default function Home1CoverPage() {
         >
           <div
             style={{
-              background: 'linear-gradient(90deg, #2D0D6E, #1a0050, #2D0D6E)',
+              background: `linear-gradient(90deg, #2D0D6E, #1a0050, #2D0D6E)`,
               borderTop: `2px solid ${accentColor}`,
               padding: '16px 24px',
               display: 'flex',

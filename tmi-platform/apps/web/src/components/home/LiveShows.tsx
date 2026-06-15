@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import SectionTitle from "@/components/ui/SectionTitle";
 import Link from "next/link";
 import { getHomeLive, type HomeLiveRoom } from "@/components/home/data/getHomeLive";
+import { LobbyEntryFlow, type UniversalRoom } from "@/components/room/UniversalLobbyEntry";
 
 const SHOW_COLORS = ["#FFD700", "#FF2DAA", "#00FFFF", "#AA2DFF"];
 
@@ -28,6 +29,7 @@ export default function LiveShows() {
   const [rooms, setRooms] = useState<ShowRow[]>([]);
   const [activeRoom, setActiveRoom] = useState<string | null>(null);
   const [source, setSource] = useState<"live" | "fallback">("fallback");
+  const [pending, setPending] = useState<UniversalRoom | null>(null);
 
   useEffect(() => {
     getHomeLive(4, 3)
@@ -56,6 +58,7 @@ export default function LiveShows() {
       marginBottom: 20,
       boxShadow: "0 0 40px rgba(255,45,45,0.04)",
     }}>
+      {pending && <LobbyEntryFlow room={pending} onClose={() => setPending(null)} />}
       <SectionTitle title="Live Now" subtitle="Active rooms across the platform" accent="pink" badge={`🔴 ${source === "live" ? "LIVE" : "FALLBACK"}`} />
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
@@ -91,20 +94,19 @@ export default function LiveShows() {
               <div style={{ fontSize: 9, color: "rgba(255,255,255,0.45)", marginBottom: 10 }}>
                 {room.host} · {room.genre}
               </div>
-              <Link
-                href={`/live/rooms/${room.id}?from=lobby-wall`}
-                onClick={e => e.stopPropagation()}
+              <button
+                onClick={(e) => { e.stopPropagation(); setPending({ id: room.id, title: room.name, viewers: room.viewers, status: 'live', access: 'free', accentColor: room.color, roomRoute: `/live/rooms/${room.id}?from=lobby-wall`, venueIndex: 0, shape: 'hex' }); }}
                 style={{
                   display: "inline-block", fontSize: 9, fontWeight: 800,
                   letterSpacing: "0.15em", textTransform: "uppercase",
                   padding: "6px 16px", borderRadius: 5,
                   background: room.color, color: "#000",
-                  textDecoration: "none",
+                  border: "none", cursor: "pointer",
                   boxShadow: `0 0 12px ${room.color}50`,
                 }}
               >
                 JOIN →
-              </Link>
+              </button>
             </motion.div>
           ))}
         </AnimatePresence>

@@ -1,5 +1,17 @@
 import type { Metadata } from 'next';
 import Home5BattleCypherSurface from "@/components/home/Home5BattleCypherSurface";
+import SponsorRail from '@/components/sponsors/SponsorRail';
+
+const SEED_SPONSORS = [
+  { id: 'amplify',   name: 'AMPLIFY RECORDS',     tagline: 'Platinum Partner' },
+  { id: 'beatlab',   name: 'BEATLAB STUDIOS',      tagline: 'Gold Partner'    },
+  { id: 'velocity',  name: 'VELOCITY AUDIO',       tagline: 'Gold Partner'    },
+  { id: 'nova',      name: 'NOVA MEDIA GROUP',     tagline: 'Silver Partner'  },
+  { id: 'crown',     name: 'CROWN & CO.',          tagline: ''                },
+  { id: 'frequency', name: 'FREQUENCY LABS',       tagline: ''                },
+  { id: 'vault',     name: 'THE VAULT COLLECTIVE', tagline: ''                },
+  { id: 'sonic',     name: 'SONIC AXIS',           tagline: ''                },
+];
 
 export const metadata: Metadata = {
   title: "CBC Arena — Battles, Challenges & Cyphers",
@@ -20,5 +32,10 @@ export const metadata: Metadata = {
 };
 
 export default function Home5Page() {
-  return <Home5BattleCypherSurface />;
+  return (
+    <>
+      <SponsorRail sponsors={SEED_SPONSORS} zone="home-5-top" />
+      <Home5BattleCypherSurface />
+    </>
+  );
 }

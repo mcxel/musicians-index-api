@@ -2,9 +2,9 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import TMIUniversalPlayer from '@/components/media/TMIUniversalPlayer';
 import type { FrameStyle, SizePreset } from '@/components/media/TMIUniversalPlayer';
+import { LobbyEntryFlow, type UniversalRoom } from '@/components/room/UniversalLobbyEntry';
 
 interface LobbySlot {
   avatarEmoji:  string;
@@ -149,15 +149,26 @@ function IndependentLobbyTile({
 }
 
 export default function HomeLobbyVideoWall({ accentColor = '#00FFFF' }: { accentColor?: string }) {
-  const router = useRouter();
   const [viewerCounts, setViewerCounts] = useState<number[]>(
     () => LOBBY_SLOTS.map(s => s.viewers ?? 0)
   );
   const [justJoined, setJustJoined] = useState<number | null>(null);
+  const [pending, setPending] = useState<UniversalRoom | null>(null);
 
   const handleJoin = useCallback((slot: LobbySlot) => {
-    router.push(roomHref(slot));
-  }, [router]);
+    const id = slot.roomId ?? slot.performerSlug ?? 'live-lobby';
+    setPending({
+      id,
+      title: slot.avatarName,
+      viewers: slot.viewers ?? 0,
+      status: 'live',
+      access: 'free',
+      accentColor: slot.frameColor,
+      roomRoute: roomHref(slot),
+      venueIndex: 0,
+      shape: 'hex',
+    });
+  }, []);
 
   // Viewer count simulation — ticks every 3.2s
   useEffect(() => {
@@ -189,6 +200,7 @@ export default function HomeLobbyVideoWall({ accentColor = '#00FFFF' }: { accent
       backdropFilter: 'blur(10px)',
       overflow: 'hidden',
     }}>
+      {pending && <LobbyEntryFlow room={pending} onClose={() => setPending(null)} />}
       <style>{`@keyframes tmiLobbyBlink { 0%,100%{opacity:1} 50%{opacity:0} }`}</style>
 
       {/* Scanline underlay */}

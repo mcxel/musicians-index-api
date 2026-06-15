@@ -1,29 +1,30 @@
-import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
+'use client';
 
-function roleToDestination(role: string): string {
-  const r = role.toLowerCase();
-  if (r === "admin" || r === "staff") return "/admin";
-  if (r === "artist")     return "/dashboard/artist";
-  if (r === "performer")  return "/dashboard/performer";
-  if (r === "sponsor")    return "/dashboard/sponsor";
-  if (r === "advertiser") return "/dashboard/advertiser";
-  if (r === "venue")      return "/dashboard/venue";
-  if (r === "writer")     return "/dashboard/writer";
-  if (r === "promoter")   return "/dashboard/promoter";
-  if (r === "user") return "/onboarding";
-  if (r === "fan") return "/dashboard/fan";
-  return "/dashboard/fan";
-}
+import React from 'react';
+import AudienceScene from '@/components/live/AudienceScene';
+import { MaskedVideoTile } from '@/components/live/MaskedVideoTile';
 
-export default async function DashboardRouterPage() {
-  const cookieStore = await cookies();
-  const sessionId = cookieStore.get("tmi_session_id")?.value;
+export default function LiveRoomRoute({ params }: { params: { roomId: string } }) {
+  return (
+    <div className="relative w-full h-screen bg-[#050510] overflow-hidden flex flex-col items-center justify-center">
+      {/* 3D Audience Background Generator */}
+      <div className="absolute inset-0 z-0 pointer-events-none opacity-80">
+        <AudienceScene view="fan" venue={1} />
+      </div>
 
-  if (!sessionId) {
-    redirect("/auth?next=%2Fdashboard");
-  }
-
-  const role = cookieStore.get("tmi_role")?.value ?? "user";
-  redirect(roleToDestination(role));
+      {/* Main Stage Masked Video Focus */}
+      <div className="relative z-10 w-full max-w-2xl aspect-video p-4 flex justify-center mt-[-10vh]">
+        <MaskedVideoTile
+          participantId="main-stage"
+          performerName={`LIVE EVENT: ${params.roomId.toUpperCase()}`}
+          isLive={true}
+          isAudioActive={true}
+          accentColor="#FFD700"
+          shape="torn-edge"
+          size={450}
+          showActions={true}
+        />
+      </div>
+    </div>
+  );
 }

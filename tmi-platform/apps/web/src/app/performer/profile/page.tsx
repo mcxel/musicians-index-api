@@ -6,11 +6,20 @@ import Link from "next/link";
 import PerformerMediaLibrary from "@/components/media/PerformerMediaLibrary";
 import MemoryWall from "@/components/media/MemoryWall";
 import OmniPresenceEngine from "@/components/presence/OmniPresenceEngine";
+import { LobbyEntryFlow, type UniversalRoom } from "@/components/room/UniversalLobbyEntry";
 
 const ACCENT = "#AA2DFF";
 const BG = "#050510";
 
-interface MeUser { id: string; email: string; name?: string; role: string; tier?: string; }
+interface MeUser { 
+  id: string; 
+  email: string; 
+  name?: string; 
+  role: string; 
+  tier?: string; 
+  isLive?: boolean; 
+  liveRoomId?: string; 
+}
 
 export default function PerformerProfilePage() {
   const router = useRouter();
@@ -21,6 +30,7 @@ export default function PerformerProfilePage() {
   const [genres, setGenres] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState("");
+  const [activeFlowRoom, setActiveFlowRoom] = useState<UniversalRoom | null>(null);
 
   useEffect(() => {
     fetch("/api/auth/session", { credentials: "include" })
@@ -75,6 +85,8 @@ export default function PerformerProfilePage() {
 
   return (
     <main style={{ minHeight: "100vh", background: BG, color: "#fff", fontFamily: "'Inter', sans-serif", paddingBottom: 80 }}>
+      {activeFlowRoom && <LobbyEntryFlow room={activeFlowRoom} onClose={() => setActiveFlowRoom(null)} />}
+
       <nav style={{ background: "rgba(0,0,0,0.8)", borderBottom: `1px solid ${ACCENT}22`, padding: "12px 24px", display: "flex", gap: 20, alignItems: "center", overflowX: "auto", backdropFilter: "blur(12px)" }}>
         <Link href="/home/1" style={{ fontSize: 11, fontWeight: 900, color: ACCENT, textDecoration: "none", letterSpacing: "0.12em", flexShrink: 0 }}>TMI</Link>
         <Link href="/hub/performer" style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", textDecoration: "none" }}>Hub</Link>
@@ -91,7 +103,15 @@ export default function PerformerProfilePage() {
         <div style={{ display: "flex", gap: 24, alignItems: "flex-start", padding: "28px 28px", background: `linear-gradient(135deg, ${ACCENT}10, rgba(5,5,16,0.95))`, border: `1px solid ${ACCENT}28`, borderRadius: 20, marginBottom: 24, flexWrap: "wrap" }}>
           <div style={{ width: 88, height: 88, borderRadius: "50%", background: `linear-gradient(135deg, ${ACCENT}, #FF2DAA)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 36, flexShrink: 0, boxShadow: `0 0 28px ${ACCENT}40` }}>🎤</div>
           <div style={{ flex: 1, minWidth: 200 }}>
-            <div style={{ fontSize: 9, letterSpacing: "0.25em", color: ACCENT, fontWeight: 800, marginBottom: 4 }}>PERFORMER · {(user.tier ?? "FREE").toUpperCase()}</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+              <div style={{ fontSize: 9, letterSpacing: "0.25em", color: ACCENT, fontWeight: 800 }}>PERFORMER · {(user.tier ?? "FREE").toUpperCase()}</div>
+              {user.isLive && (
+                <div style={{ background: "rgba(0,255,136,0.1)", border: "1px solid rgba(0,255,136,0.3)", color: "#00FF88", fontSize: 8, fontWeight: 900, padding: "2px 6px", borderRadius: 4, letterSpacing: "0.1em", display: "flex", alignItems: "center", gap: 4 }}>
+                  <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#00FF88", boxShadow: "0 0 5px #00FF88" }} />
+                  LIVE NOW
+                </div>
+              )}
+            </div>
             <h1 style={{ margin: "0 0 6px", fontSize: "clamp(22px,4vw,34px)", fontWeight: 900 }}>{displayName}</h1>
             <p style={{ margin: "0 0 10px", fontSize: 13, color: "rgba(255,255,255,0.5)", lineHeight: 1.5, maxWidth: 480 }}>{bio || "Edit your profile to add a bio."}</p>
             {genres && (
@@ -166,13 +186,51 @@ export default function PerformerProfilePage() {
           {/* Battle record */}
           <div style={{ padding: "20px 24px", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14 }}>
             <div style={{ fontSize: 9, letterSpacing: "0.22em", color: ACCENT, fontWeight: 800, marginBottom: 14 }}>RECENT BATTLES</div>
-            <p style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", textAlign: "center", padding: "16px 0" }}>No battles yet — <Link href="/battles" style={{ color: ACCENT, textDecoration: "none" }}>join a battle</Link></p>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "16px 0" }}>
+              <div style={{ fontSize: 40, opacity: 0.2, filter: "grayscale(100%)", marginBottom: 16 }}>🏆</div>
+              <button 
+                onClick={() => setActiveFlowRoom({
+                  id: 'battle-arena',
+                  title: 'Battle Arena',
+                  status: 'live',
+                  access: 'free',
+                  accentColor: ACCENT,
+                  roomRoute: '/battles/live',
+                  viewers: 2130,
+                  venueIndex: 1
+                })} 
+                style={{ cursor: "pointer", padding: "10px 24px", borderRadius: 8, background: `linear-gradient(135deg, ${ACCENT}22, transparent)`, border: `1px solid ${ACCENT}55`, color: ACCENT, fontSize: 11, fontWeight: 900, letterSpacing: "0.1em", boxShadow: `0 0 15px ${ACCENT}22` }}
+              >
+                ENTER THE ARENA
+              </button>
+            </div>
           </div>
 
           {/* Upcoming shows */}
           <div style={{ padding: "20px 24px", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14 }}>
             <div style={{ fontSize: 9, letterSpacing: "0.22em", color: ACCENT, fontWeight: 800, marginBottom: 14 }}>UPCOMING SHOWS</div>
-            <p style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", textAlign: "center", padding: "16px 0" }}>No shows booked yet.</p>
+            {user.isLive ? (
+               <div style={{ textAlign: "center", padding: "12px 0" }}>
+                 <div style={{ fontSize: 10, color: "#00FF88", fontWeight: 800, marginBottom: 8, letterSpacing: "0.1em" }}>🔴 YOU ARE CURRENTLY LIVE</div>
+                 <button 
+                   onClick={() => setActiveFlowRoom({
+                     id: user.liveRoomId ?? `room-${user.id}`,
+                     title: `${displayName} — Live`,
+                     status: 'live',
+                     access: 'free',
+                     accentColor: '#00FF88',
+                     roomRoute: `/live/rooms/${user.liveRoomId ?? `room-${user.id}`}`,
+                     viewers: 142,
+                     venueIndex: 0
+                   })} 
+                   style={{ cursor: "pointer", display: "inline-block", padding: "8px 16px", borderRadius: 8, background: "rgba(0,255,136,0.1)", border: "1px solid #00FF88", color: "#00FF88", fontSize: 10, fontWeight: 900, letterSpacing: "0.08em" }}
+                 >
+                   ENTER ROOM →
+                 </button>
+               </div>
+            ) : (
+              <p style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", textAlign: "center", padding: "16px 0" }}>No shows booked yet.</p>
+            )}
             <Link href="/booking" style={{ display: "block", marginTop: 14, padding: "9px 0", textAlign: "center", borderRadius: 8, background: `${ACCENT}10`, border: `1px solid ${ACCENT}28`, color: ACCENT, fontSize: 10, fontWeight: 800, textDecoration: "none" }}>
               + BOOK A SHOW
             </Link>
@@ -197,7 +255,12 @@ export default function PerformerProfilePage() {
 
         {/* Media library */}
         <PerformerMediaLibrary ownerId={user.id} ownerName={displayName} accentColor={ACCENT} showUpload />
-        <MemoryWall accentColor={ACCENT} title="Performer Memory Wall" />
+        <MemoryWall 
+          entityId={user.id} 
+          entityType="performer" 
+          accentColor={ACCENT} 
+          title="Performer Memory Wall" 
+        />
         <OmniPresenceEngine displayName={displayName || "Performer"} defaultTab="messages" />
       </div>
     </main>

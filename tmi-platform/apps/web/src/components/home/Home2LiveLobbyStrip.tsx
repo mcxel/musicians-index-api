@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import TMILiveMediaWidget from "@/components/media/TMILiveMediaWidget";
+import { LobbyEntryFlow, type UniversalRoom } from "@/components/room/UniversalLobbyEntry";
 
 // ─── Simulated live lobby data (replaced by real useLiveSync in prod) ─────────
 
@@ -19,9 +20,27 @@ const LIVE_LOBBIES = [
 const ROTATE_INTERVAL_MS = 7000;
 const VISIBLE_COUNT = 4;
 
+type LobbyItem = typeof LIVE_LOBBIES[number];
+
+function lobbyToRoom(lobby: LobbyItem): UniversalRoom {
+  return {
+    id: lobby.roomId,
+    title: lobby.performerName,
+    genre: lobby.genre,
+    viewers: lobby.viewers,
+    status: lobby.isLive ? 'live' : 'upcoming',
+    access: 'free',
+    accentColor: lobby.accentColor,
+    roomRoute: `/live/rooms/${lobby.roomId}?from=lobby-wall`,
+    venueIndex: 0,
+    shape: 'hex',
+  };
+}
+
 export default function Home2LiveLobbyStrip() {
   const [startIdx, setStartIdx] = useState(0);
   const [direction, setDirection] = useState(1);
+  const [pending, setPending] = useState<UniversalRoom | null>(null);
 
   const advance = useCallback(() => {
     setDirection(1);
@@ -40,6 +59,7 @@ export default function Home2LiveLobbyStrip() {
 
   return (
     <section style={{ maxWidth: 1100, margin: "0 auto", padding: "0 24px 32px" }}>
+      {pending && <LobbyEntryFlow room={pending} onClose={() => setPending(null)} />}
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -88,22 +108,22 @@ export default function Home2LiveLobbyStrip() {
                 position: "relative",
                 aspectRatio: "16/10",
                 background: `linear-gradient(145deg, ${lobby.accentColor}18, rgba(5,5,16,0.9))`,
+                cursor: "pointer",
               }}
+              onClick={() => setPending(lobbyToRoom(lobby))}
             >
-              <Link href={`/live/rooms/${lobby.roomId}?from=lobby-wall`} style={{ display: "block", height: "100%", textDecoration: "none" }}>
-                <TMILiveMediaWidget
-                  performerId={lobby.performerId}
-                  performerName={lobby.performerName}
-                  roomId={lobby.roomId}
-                  isLive={lobby.isLive}
-                  accentColor={lobby.accentColor}
-                  genre={lobby.genre}
-                  liveViewerCount={lobby.viewers}
-                  variant="homepage"
-                  size="full"
-                  showOverlay
-                />
-              </Link>
+              <TMILiveMediaWidget
+                performerId={lobby.performerId}
+                performerName={lobby.performerName}
+                roomId={lobby.roomId}
+                isLive={lobby.isLive}
+                accentColor={lobby.accentColor}
+                genre={lobby.genre}
+                liveViewerCount={lobby.viewers}
+                variant="homepage"
+                size="full"
+                showOverlay
+              />
               {/* Genre tag */}
               <div style={{
                 position: "absolute", top: 8, left: 8,

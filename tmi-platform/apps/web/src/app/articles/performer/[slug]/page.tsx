@@ -87,20 +87,6 @@ const PERFORMERS: Record<string, PerformerArticle> = {
       { label: 'Crown Wins', value: '2' },
     ],
   },
-  'charro-ace': {
-    slug: 'charro-ace', name: 'Charro Ace', emoji: '🌟', genre: 'Hip-Hop', rank: 2, score: 8750,
-    accentColor: '#FF6B00',
-    tagline: 'Flow like water, hit like thunder.',
-    bio: 'Charro Ace arrived on TMI with a style unlike anything the Hip-Hop division had seen — part spoken word, part battle rap, part performance art. Fans describe his sets as "cinematic." He\'s been climbing the rankings faster than any new performer this season.',
-    highlights: ['Fastest-rising performer this season', 'Signature "Cinematic Flow" style', '3 viral battle clips', 'Featured in TMI Magazine Issue 1'],
-    quote: '"Every bar is a scene. Every set is a film."',
-    stats: [
-      { label: 'Rank', value: '#2 Hip-Hop' },
-      { label: 'TMI Score', value: '8,750' },
-      { label: 'Battle Wins', value: '31' },
-      { label: 'Fan Votes', value: '12,400' },
-    ],
-  },
 };
 
 // Fallback for any slug without specific data
@@ -483,6 +469,38 @@ export default function PerformerArticlePage({
             }}
           >
             VIEW PROFILE →
+          </Link>
+          <Link
+            href={`/live/rooms/${p.slug}-live`}
+            style={{
+              padding: '10px 20px',
+              background: 'rgba(230,48,0,0.12)',
+              border: '1.5px solid rgba(230,48,0,0.5)',
+              borderRadius: 8,
+              fontSize: 10,
+              fontWeight: 900,
+              color: '#E63000',
+              textDecoration: 'none',
+              letterSpacing: '0.08em',
+            }}
+          >
+            ⏺ WATCH LIVE →
+          </Link>
+          <Link
+            href={`/playlist?performer=${p.slug}`}
+            style={{
+              padding: '10px 20px',
+              background: 'rgba(0,229,255,0.08)',
+              border: '1px solid rgba(0,229,255,0.28)',
+              borderRadius: 8,
+              fontSize: 10,
+              fontWeight: 900,
+              color: '#00E5FF',
+              textDecoration: 'none',
+              letterSpacing: '0.08em',
+            }}
+          >
+            🎵 PLAYLIST →
           </Link>
           <Link
             href={`/hub/sponsor?target=performer&slug=${p.slug}`}

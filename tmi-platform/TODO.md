@@ -1,37 +1,31 @@
-# TODO - Launch Certification Mode (Auth Redirect + Home1 Ticker)
+# Recovery + Canonicalization TODO (current session)
 
-- [x] Step A — Update `apps/web/middleware.ts` so authenticated users on `/auth`, `/auth/signin`, `/auth/login` redirect to role dashboard
-- [x] Step B — Add deterministic role dashboard map:
-  - `ADMIN` / `STAFF` → `/admin`
-  - `ARTIST` → `/dashboard/artist`
-  - `PERFORMER` → `/dashboard/performer`
-  - `FAN` → `/dashboard/fan`
-  - `SPONSOR` → `/dashboard/sponsor`
-  - `ADVERTISER` → `/dashboard/advertiser`
-  - `VENUE` → `/dashboard/venue`
-  - `PROMOTER` → `/dashboard/promoter`
-  - `WRITER` → `/dashboard/writer`
-  - fallback → `/onboarding`
-- [x] Step C — Update Home 1 ticker copy in `apps/web/src/components/home/Home1CoverPage.tsx`:
-  - FREE TO JOIN
-  - CREATE YOUR PROFILE TODAY
-  - MONDAY NIGHT CYPHER
-  - JOKE-OFFS ONLY ALLOW BOOING
-  - CHALLENGE YOUR SONG AGAINST ANOTHER SONG
-  - RAPPER VS RAPPER
-  - SINGER VS SINGER
-  - DRUMMER VS DRUMMER
-  - PIANO VS PIANO
-  - COMEDIAN SHOWCASE
-  - DANCE CHALLENGE
-  - ADVERTISE STARTING AT $25
-  - SELL TICKETS
-  - EARN TIPS LIVE
-  - GET BOOKED BY VENUES
-  - STREAM & WIN RADIO
-  - WRITERS WANTED
-  - SPONSORS WANTED
-- [x] Step C.1 — Booing policy added to RAIL2 ticker:
-  - Booing allowed ONLY for Monday Night Stage + Joke-Offs/comedy battles
-  - Booing NOT allowed for regular concerts/showcases/memorials/education/standard livestream rooms
-- [x] Step D — Run build verification: `pnpm -C apps/web build` — exit code 0, 754 routes compiled
+## Phase A — Recovery & Canonicalization
+- [ ] Audit and stabilize `apps/web/src/components/home/Home1CoverPage.tsx`
+- [ ] Audit and stabilize `apps/web/src/components/home/TmiMagazineOrbitalUnderlay.tsx`
+- [ ] Audit and stabilize `apps/web/src/components/sponsors/SponsorRail.tsx`
+- [ ] Audit and stabilize `apps/web/src/app/home/1/page.tsx`
+- [ ] Audit `tests/e2e/runtime_proof_audit.spec.ts` for unintended corruption
+
+## Phase B — Root File Cleanup
+- [ ] Inspect root `UploadPipelineEngine.ts` vs canonical app location
+- [ ] Inspect root `VenueRuntimeShell.tsx` vs canonical app location
+- [ ] Inspect root `uploadActions.ts` vs canonical app location
+- [ ] Remove/ignore non-canonical duplicates and zip artifact from working set
+
+## Phase C — Home 1 Stabilization (no redesign)
+- [ ] Improve underlay visibility/layering (textures/lighting only)
+- [ ] Improve sponsor readability/contrast and motion smoothness
+- [ ] Preserve Claude hierarchy/spacing/information architecture
+
+## Phase D — Verify Build
+- [ ] `pnpm -C apps/web typecheck`
+- [ ] `pnpm -C apps/web build`
+
+## Phase E — Runtime Matrix (next)
+- [ ] Messaging
+- [ ] Playlist + Stream & Win
+- [ ] Go Live + Invite + RTC
+- [ ] Upload closure
+- [ ] Stripe entitlements
+- [ ] Security/RBAC

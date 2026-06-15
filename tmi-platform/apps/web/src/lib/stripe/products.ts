@@ -8,7 +8,7 @@ export const STRIPE_PRODUCTS = {
   // ── Fan subscriptions ─────────────────────────────────────────────────────
   FAN_RUBY_MONTHLY: {
     productId: "prod_fan_ruby",
-    priceId:   process.env.STRIPE_PRICE_FAN_RUBY ?? "price_fan_ruby",
+    priceId:   process.env.NEXT_PUBLIC_STRIPE_PRICE_FAN_RUBY ?? "price_fan_ruby",
     name:      "TMI Fan — Ruby",
     price:     499,  // $4.99/mo
     interval:  "month" as const,
@@ -16,7 +16,7 @@ export const STRIPE_PRODUCTS = {
   },
   FAN_SILVER_MONTHLY: {
     productId: "prod_fan_silver",
-    priceId:   process.env.STRIPE_PRICE_FAN_SILVER ?? "price_fan_silver",
+    priceId:   process.env.NEXT_PUBLIC_STRIPE_PRICE_FAN_SILVER ?? "price_fan_silver",
     name:      "TMI Fan — Silver",
     price:     999,  // $9.99/mo
     interval:  "month" as const,
@@ -24,7 +24,7 @@ export const STRIPE_PRODUCTS = {
   },
   FAN_GOLD_MONTHLY: {
     productId: "prod_fan_gold",
-    priceId:   process.env.STRIPE_PRICE_FAN_GOLD ?? "price_fan_gold",
+    priceId:   process.env.NEXT_PUBLIC_STRIPE_PRICE_FAN_GOLD ?? "price_fan_gold",
     name:      "TMI Fan — Gold",
     price:     1499, // $14.99/mo
     interval:  "month" as const,
@@ -32,7 +32,7 @@ export const STRIPE_PRODUCTS = {
   },
   FAN_PLATINUM_MONTHLY: {
     productId: "prod_fan_platinum",
-    priceId:   process.env.STRIPE_PRICE_FAN_PLATINUM ?? "price_fan_platinum",
+    priceId:   process.env.NEXT_PUBLIC_STRIPE_PRICE_FAN_PLATINUM ?? "price_fan_platinum",
     name:      "TMI Fan — Platinum",
     price:     2499, // $24.99/mo
     interval:  "month" as const,
@@ -40,7 +40,7 @@ export const STRIPE_PRODUCTS = {
   },
   FAN_DIAMOND_MONTHLY: {
     productId: "prod_fan_diamond",
-    priceId:   process.env.STRIPE_PRICE_FAN_DIAMOND ?? "price_1TUWI4EL7B8tMf4NHs74ydgc",
+    priceId:   process.env.NEXT_PUBLIC_STRIPE_PRICE_FAN_DIAMOND ?? "price_1TUWI4EL7B8tMf4NHs74ydgc",
     name:      "TMI Fan — Diamond",
     price:     4999, // $49.99/mo
     interval:  "month" as const,
@@ -48,7 +48,7 @@ export const STRIPE_PRODUCTS = {
   },
   FAN_FAMILY_MONTHLY: {
     productId: "prod_fan_family",
-    priceId:   process.env.STRIPE_PRICE_FAN_FAMILY ?? "price_fan_family",
+    priceId:   process.env.NEXT_PUBLIC_STRIPE_PRICE_FAN_FAMILY ?? "price_fan_family",
     name:      "TMI Fan — Family",
     price:     2799, // $27.99/mo — up to 4 accounts
     interval:  "month" as const,
@@ -58,7 +58,7 @@ export const STRIPE_PRODUCTS = {
   // ── Performer subscriptions ───────────────────────────────────────────────
   PERFORMER_RUBY_MONTHLY: {
     productId: "prod_performer_ruby",
-    priceId:   process.env.STRIPE_PRICE_PERFORMER_RUBY ?? "price_performer_ruby",
+    priceId:   process.env.NEXT_PUBLIC_STRIPE_PRICE_PERFORMER_RUBY ?? "price_performer_ruby",
     name:      "TMI Performer — Ruby",
     price:     299,  // $2.99/mo
     interval:  "month" as const,
@@ -66,7 +66,7 @@ export const STRIPE_PRODUCTS = {
   },
   PERFORMER_SILVER_MONTHLY: {
     productId: "prod_performer_silver",
-    priceId:   process.env.STRIPE_PRICE_PERFORMER_SILVER ?? "price_performer_silver",
+    priceId:   process.env.NEXT_PUBLIC_STRIPE_PRICE_PERFORMER_SILVER ?? "price_performer_silver",
     name:      "TMI Performer — Silver",
     price:     499,  // $4.99/mo
     interval:  "month" as const,
@@ -74,7 +74,7 @@ export const STRIPE_PRODUCTS = {
   },
   PERFORMER_GOLD_MONTHLY: {
     productId: "prod_performer_gold",
-    priceId:   process.env.STRIPE_PRICE_PERFORMER_GOLD ?? "price_performer_gold",
+    priceId:   process.env.NEXT_PUBLIC_STRIPE_PRICE_PERFORMER_GOLD ?? "price_performer_gold",
     name:      "TMI Performer — Gold",
     price:     999,  // $9.99/mo
     interval:  "month" as const,
@@ -82,7 +82,7 @@ export const STRIPE_PRODUCTS = {
   },
   PERFORMER_PLATINUM_MONTHLY: {
     productId: "prod_performer_platinum",
-    priceId:   process.env.STRIPE_PRICE_PERFORMER_PLATINUM ?? "price_performer_platinum",
+    priceId:   process.env.NEXT_PUBLIC_STRIPE_PRICE_PERFORMER_PLATINUM ?? "price_performer_platinum",
     name:      "TMI Performer — Platinum",
     price:     1999, // $19.99/mo
     interval:  "month" as const,
@@ -90,7 +90,7 @@ export const STRIPE_PRODUCTS = {
   },
   PERFORMER_DIAMOND_MONTHLY: {
     productId: "prod_performer_diamond",
-    priceId:   process.env.STRIPE_PRICE_PERFORMER_DIAMOND ?? "price_performer_diamond",
+    priceId:   process.env.NEXT_PUBLIC_STRIPE_PRICE_PERFORMER_DIAMOND ?? "price_performer_diamond",
     name:      "TMI Performer — Diamond",
     price:     2999, // $29.99/mo
     interval:  "month" as const,
@@ -98,7 +98,7 @@ export const STRIPE_PRODUCTS = {
   },
   PERFORMER_BAND_MONTHLY: {
     productId: "prod_performer_band",
-    priceId:   process.env.STRIPE_PRICE_PERFORMER_BAND ?? "price_performer_band",
+    priceId:   process.env.NEXT_PUBLIC_STRIPE_PRICE_PERFORMER_BAND ?? "price_performer_band",
     name:      "TMI Performer — Band/Group Diamond",
     price:     2499, // $24.99/mo — up to 5 members
     interval:  "month" as const,
@@ -108,14 +108,14 @@ export const STRIPE_PRODUCTS = {
   // ── Support economy ───────────────────────────────────────────────────────
   SUPPORT_PERFORMER_MONTHLY: {
     productId: "prod_support_performer",
-    priceId:   process.env.STRIPE_PRICE_SUPPORT_PERFORMER ?? "price_support_performer",
+    priceId:   process.env.NEXT_PUBLIC_STRIPE_PRICE_SUPPORT_BASIC ?? "price_support_performer",
     name:      "Support This Performer",
     price:     299,  // $2.99/mo
     interval:  "month" as const,
   },
   SUPER_SUPPORTER_MONTHLY: {
     productId: "prod_super_supporter",
-    priceId:   process.env.STRIPE_PRICE_SUPER_SUPPORTER ?? "price_super_supporter",
+    priceId:   process.env.NEXT_PUBLIC_STRIPE_PRICE_SUPPORT_SUPER ?? "price_super_supporter",
     name:      "Super Supporter",
     price:     499,  // $4.99/mo
     interval:  "month" as const,

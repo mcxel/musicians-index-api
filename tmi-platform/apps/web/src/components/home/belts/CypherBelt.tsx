@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { getHomeLive, type HomeLiveRoom } from "@/components/home/data/getHomeLive";
 import { CONTEST_ROUTES } from "@/config/contest.routes";
+import { LobbyEntryFlow, type UniversalRoom } from "@/components/room/UniversalLobbyEntry";
 
 // ─── Mode definitions ────────────────────────────────────────────────────────
 const MODES = [
@@ -69,10 +70,12 @@ function MiniRoomCard({
   room,
   accent,
   capacity = 25,
+  onJoin,
 }: {
   room: HomeLiveRoom;
   accent: string;
   capacity?: number;
+  onJoin: (room: HomeLiveRoom) => void;
 }) {
   const fillPct = Math.min(100, Math.round((room.viewers / capacity) * 100));
   const almostFull = fillPct >= 80;
@@ -125,17 +128,17 @@ function MiniRoomCard({
         </div>
       )}
 
-      <Link
-        href={`/live/rooms/${room.id}?from=lobby-wall`}
+      <button
+        onClick={() => onJoin(room)}
         style={{
           display: "inline-block", fontSize: 8, fontWeight: 900, letterSpacing: "0.16em",
           textTransform: "uppercase", padding: "5px 14px", borderRadius: 4,
-          background: accent, color: "#000", textDecoration: "none",
+          background: accent, color: "#000", border: "none", cursor: "pointer",
           boxShadow: `0 0 10px ${accent}50`,
         }}
       >
         JOIN →
-      </Link>
+      </button>
     </motion.div>
   );
 }
@@ -144,6 +147,7 @@ function MiniRoomCard({
 export default function CypherBelt() {
   const [activeMode, setActiveMode] = useState<ModeId>("contest");
   const [rooms, setRooms] = useState<HomeLiveRoom[]>([]);
+  const [pending, setPending] = useState<UniversalRoom | null>(null);
   const autoRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const countdown = useCountdown(24 * 60 + 37); // 24:37 stub — will be real data
 
@@ -176,6 +180,7 @@ export default function CypherBelt() {
         transition: "border-color 0.6s ease",
       }}
     >
+      {pending && <LobbyEntryFlow room={pending} onClose={() => setPending(null)} />}
       {/* ── Header bar ── */}
       <div
         style={{
@@ -343,7 +348,13 @@ export default function CypherBelt() {
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {rooms.length > 0
               ? rooms.map((room, i) => (
-                  <MiniRoomCard key={room.id} room={room} accent={mode.accent} capacity={25 - i * 3} />
+                  <MiniRoomCard
+                    key={room.id}
+                    room={room}
+                    accent={mode.accent}
+                    capacity={25 - i * 3}
+                    onJoin={(r) => setPending({ id: r.id, title: r.name, viewers: r.viewers, status: 'live', access: 'free', accentColor: mode.accent, roomRoute: `/live/rooms/${r.id}?from=lobby-wall`, venueIndex: 0, shape: 'hex' })}
+                  />
                 ))
               : Array.from({ length: 3 }, (_, i) => (
                   <div

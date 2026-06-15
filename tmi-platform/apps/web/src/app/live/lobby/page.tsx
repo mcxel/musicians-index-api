@@ -1,7 +1,12 @@
-import { redirect } from "next/navigation";
+'use client';
 
-// Legacy /live/lobby — now redirects to the billboard lobby wall
-// The new flow: browse rooms visually → click tile → enter venue → auto-sit
-export default function LiveLobbyPage() {
-  redirect("/live/rooms");
+import React from 'react';
+import BillboardLiveWall from '@/components/media/BillboardLiveWall';
+
+export default function LiveLobbyRoute() {
+  return (
+    <main className="min-h-screen bg-[#050510] text-white p-8">
+      <BillboardLiveWall mode="home" maxTiles={18} title="TMI GLOBAL LIVE LOBBY" showActions />
+    </main>
+  );
 }

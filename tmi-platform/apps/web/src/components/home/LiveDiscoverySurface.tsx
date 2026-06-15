@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { useLiveSync } from "@/lib/media/useLiveSync";
 import TMILiveMediaWidget from "@/components/media/TMILiveMediaWidget";
 import type { LiveFeedItem, LobbyGenre } from "@/components/billboard/TMIBillboardLiveWall";
+import { LobbyEntryFlow, type UniversalRoom } from "@/components/room/UniversalLobbyEntry";
 
 // ─── Floating particle layer (CSS-only, no rAF) ───────────────────────────────
 
@@ -162,12 +163,30 @@ export default function LiveDiscoverySurface({
   const router = useRouter();
   const { feed } = useLiveSync();
   const [entering, setEntering] = useState<string | null>(null);
+  const [pending, setPending] = useState<UniversalRoom | null>(null);
   const [scrollY, setScrollY] = useState(0);
 
   const handleEnter = useCallback((roomId: string) => {
     setEntering(roomId);
-    setTimeout(() => router.push(`/live/rooms/${roomId}?from=lobby-wall`), 300);
-  }, [router]);
+    setTimeout(() => {
+      setEntering(null);
+      const item = feed.find(f => f.roomId === roomId);
+      if (item) {
+        setPending({
+          id: roomId,
+          title: item.performerName,
+          genre: item.genre,
+          viewers: item.viewers,
+          status: item.isLive ? 'live' : 'upcoming',
+          access: (item.performerTier === 'gold' || item.performerTier === 'platinum' || item.performerTier === 'diamond') ? 'vip' : 'free',
+          accentColor: accent,
+          roomRoute: `/live/rooms/${roomId}?from=lobby-wall`,
+          venueIndex: 0,
+          shape: 'hex',
+        });
+      }
+    }, 300);
+  }, [feed, accent]);
 
   useEffect(() => {
     const onScroll = () => setScrollY(window.scrollY);
@@ -196,6 +215,7 @@ export default function LiveDiscoverySurface({
 
   return (
     <div style={{ minHeight: "100svh", background: "#04040e", overflowX: "hidden", position: "relative" }}>
+      {pending && <LobbyEntryFlow room={pending} onClose={() => setPending(null)} />}
 
       {/* Scroll-reactive underlay */}
       <div

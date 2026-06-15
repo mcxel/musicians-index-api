@@ -1,12 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import TmiBadgeLabel from "@/components/typography/TmiBadgeLabel";
 import TmiCardTitle from "@/components/typography/TmiCardTitle";
 import TMILiveMediaWidget from "@/components/media/TMILiveMediaWidget";
 import { useLiveSync } from "@/lib/media/useLiveSync";
 import type { LiveFeedItem, LobbyGenre } from "@/components/billboard/TMIBillboardLiveWall";
+import { LobbyEntryFlow, type UniversalRoom } from "@/components/room/UniversalLobbyEntry";
 
 const LOBBY_CONFIG = [
   {
@@ -52,8 +52,8 @@ function LiveLobbyTile({
   config: typeof LOBBY_CONFIG[number];
   feed: LiveFeedItem[];
 }) {
-  const router = useRouter();
   const [activeIdx, setActiveIdx] = useState(0);
+  const [pendingRoom, setPendingRoom] = useState<UniversalRoom | null>(null);
 
   // Rotate through matching rooms every ROTATE_INTERVAL_MS
   const matches = feed
@@ -71,7 +71,26 @@ function LiveLobbyTile({
 
   const active = matches[activeIdx] ?? null;
 
+  const handleJoin = () => {
+    const roomId = active ? active.roomId : config.fallbackRoomId;
+    const room: UniversalRoom = {
+      id:           roomId,
+      title:        active ? active.performerName : config.fallbackName,
+      genre:        active ? active.genre.toUpperCase() : config.genres.join(" / ").toUpperCase(),
+      viewers:      active?.viewers ?? 0,
+      status:       "live",
+      access:       "free",
+      accentColor:  config.accent,
+      roomRoute:    `/live/rooms/${roomId}?from=lobby-wall`,
+      venueIndex:   0,
+      shape:        "oct",
+    };
+    setPendingRoom(room);
+  };
+
   return (
+    <>
+      {pendingRoom && <LobbyEntryFlow room={pendingRoom} onClose={() => setPendingRoom(null)} />}
     <article
       style={{
         borderRadius: 10,
@@ -106,7 +125,7 @@ function LiveLobbyTile({
             variant="homepage"
             size="full"
             showOverlay={false}
-            onEnterLobby={() => router.push(`/live/rooms/${active.roomId}?from=lobby-wall`)}
+            onEnterLobby={handleJoin}
           />
         ) : (
           <div
@@ -133,10 +152,7 @@ function LiveLobbyTile({
       </div>
 
       <button
-        onClick={() => {
-          const target = active ? `/live/rooms/${active.roomId}?from=lobby-wall` : `/live/${config.fallbackRoomId}`;
-          router.push(target);
-        }}
+        onClick={handleJoin}
         style={{
           display: "inline-flex", alignItems: "center", justifyContent: "center",
           textDecoration: "none", borderRadius: 8, border: `1px solid ${config.accent}77`,
@@ -168,6 +184,7 @@ function LiveLobbyTile({
         </div>
       )}
     </article>
+    </>
   );
 }
 

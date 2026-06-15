@@ -1,0 +1,474 @@
+
+<h2 class="sr-only">TMI Memory Wall, Sponsor Stamp Wall, Sponsor Bubble Orbit, and Booking Map canisters</h2>
+<style>
+@keyframes tileFloat{0%,100%{transform:translateY(0) rotate(var(--rot,0deg))}50%{transform:translateY(-5px) rotate(var(--rot,0deg))}}
+@keyframes tileIn{from{opacity:0;transform:translateY(18px) rotate(-6deg) scale(.75)}to{opacity:1;transform:translateY(0) rotate(var(--rot,0deg)) scale(1)}}
+@keyframes bubbleOrbit{from{transform:rotate(0deg) translateX(var(--r,60px)) rotate(0deg)}to{transform:rotate(360deg) translateX(var(--r,60px)) rotate(-360deg)}}
+@keyframes glowPulse{0%,100%{box-shadow:0 0 6px var(--gc,rgba(0,180,200,.4))}50%{box-shadow:0 0 18px var(--gc,rgba(0,180,200,.8))}}
+@keyframes stampIn{from{transform:scale(.5) rotateY(90deg);opacity:0}to{transform:scale(1) rotateY(0deg);opacity:1}}
+@keyframes floatUp{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+@keyframes slideUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes popIn{from{transform:scale(.4);opacity:0}to{transform:scale(1);opacity:1}}
+@keyframes avatarLift{0%{transform:scale(1) translateY(0)}60%{transform:scale(1.15) translateY(-12px)}100%{transform:scale(.2) translateY(-90px) translateX(30px);opacity:0}}
+.tab{padding:5px 10px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary);font-size:11px;cursor:pointer;background:var(--color-background-primary);color:var(--color-text-secondary);white-space:nowrap}
+.tab.on{background:var(--color-background-tertiary);color:var(--color-text-primary);font-weight:500;border-color:var(--color-border-primary)}
+.pg{display:none}.pg.on{display:block;animation:slideUp .25s ease-out}
+.mem-tile{border-radius:var(--border-radius-md);overflow:hidden;cursor:pointer;position:relative;animation:tileIn .35s ease-out forwards,tileFloat 4s ease-in-out infinite;transition:transform .2s,box-shadow .2s;--rot:0deg}
+.mem-tile:hover{z-index:10;box-shadow:0 4px 16px rgba(0,0,0,.15)}
+.tile-trophy{background:var(--color-background-warning);border:1.5px solid var(--color-border-warning);animation-duration:3.2s}
+.tile-ticket{border:1px dashed var(--color-border-secondary);background:var(--color-background-secondary)}
+.tile-badge{border-radius:50%;background:var(--color-background-info);border:2px solid var(--color-border-info)}
+.tile-video{background:var(--color-background-tertiary);border:1px solid var(--color-border-secondary)}
+.tile-audio{background:var(--color-background-secondary);border:1px solid var(--color-border-secondary)}
+.tile-photo{border:1px solid var(--color-border-tertiary);background:var(--color-background-secondary)}
+.stamp{border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary);background:var(--color-background-primary);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:6px 4px;font-size:9px;transition:border-color .15s,transform .15s;text-align:center;animation:stampIn .3s ease-out}
+.stamp:hover{border-color:var(--color-border-primary);transform:scale(1.05);z-index:5}
+.stamp.major{border-color:var(--color-border-warning);background:var(--color-background-warning)}
+.orbit-wrap{border-radius:50%;animation:bubbleOrbit linear infinite;position:absolute;top:50%;left:50%;transform-origin:0 0}
+.orbit-bubble{border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;border:1.5px solid var(--color-border-secondary);background:var(--color-background-primary);transition:transform .2s;animation:glowPulse 3s ease-in-out infinite;font-size:11px;font-weight:500}
+.orbit-bubble:hover{transform:scale(1.25)}
+.map-cell{width:12px;height:12px;border-radius:2px;background:var(--color-border-tertiary);transition:background .2s}
+.map-venue{background:var(--color-border-info);cursor:pointer;border-radius:50%;transition:transform .15s,box-shadow .15s;animation:glowPulse 2.5s ease-in-out infinite;--gc:rgba(0,100,200,.5)}
+.map-venue:hover{transform:scale(1.5)}
+.map-venue.sel{background:var(--color-border-warning);--gc:rgba(180,117,23,.6)}
+.chevron-tog{display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:8px 10px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-tertiary);background:var(--color-background-primary);transition:background .15s;user-select:none}
+.chevron-tog:hover{background:var(--color-background-secondary)}
+.performer-only{font-size:9px;background:var(--color-background-info);color:var(--color-text-info);padding:2px 7px;border-radius:var(--border-radius-md);font-weight:500}
+.fan-only{font-size:9px;background:var(--color-background-success);color:var(--color-text-success);padding:2px 7px;border-radius:var(--border-radius-md);font-weight:500}
+.both-tag{font-size:9px;background:var(--color-background-warning);color:var(--color-text-warning);padding:2px 7px;border-radius:var(--border-radius-md);font-weight:500}
+.theme-btn{padding:4px 8px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary);font-size:10px;cursor:pointer;background:var(--color-background-primary);transition:all .15s}
+.theme-btn.on{font-weight:500;border-width:1.5px}
+.wall-stage{border-radius:var(--border-radius-lg);border:0.5px solid var(--color-border-tertiary);padding:12px;min-height:200px;transition:background .4s,border-color .4s;position:relative;overflow:hidden}
+.wall-stage.ruby{border-color:var(--color-border-danger);animation:glowPulse 3s ease-in-out infinite;--gc:rgba(200,50,50,.4)}
+.wall-stage.diamond{border-color:var(--color-border-info);animation:glowPulse 2.5s ease-in-out infinite;--gc:rgba(0,150,200,.5)}
+.wall-stage.gold{border-color:var(--color-border-warning);animation:glowPulse 3.5s ease-in-out infinite;--gc:rgba(180,117,23,.5)}
+.wall-stage.neon{border-color:var(--color-border-info)}
+.pip-card{position:absolute;top:10px;right:10px;width:110px;background:var(--color-background-primary);border:1.5px solid var(--color-border-warning);border-radius:var(--border-radius-md);padding:7px;font-size:10px;animation:popIn .4s ease-out;z-index:20;box-shadow:0 2px 10px rgba(0,0,0,.12)}
+</style>
+
+<!-- TABS -->
+<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:12px">
+  <button class="tab on" onclick="sw('mem')"><i class="ti ti-photo-album" aria-hidden="true"></i> Memory wall</button>
+  <button class="tab" onclick="sw('stamp')"><i class="ti ti-layout-grid" aria-hidden="true"></i> Sponsor stamp wall</button>
+  <button class="tab" onclick="sw('orbit')"><i class="ti ti-circles-relation" aria-hidden="true"></i> Sponsor orbit</button>
+  <button class="tab" onclick="sw('map')"><i class="ti ti-map-2" aria-hidden="true"></i> Booking map</button>
+</div>
+
+<!-- ═══ MEMORY WALL ═══ -->
+<div id="pg-mem" class="pg on">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:6px">
+    <div style="display:flex;align-items:center;gap:8px">
+      <span style="font-size:15px;font-weight:500">Memory wall</span>
+      <span class="both-tag">Fan + Performer</span>
+      <span style="font-size:11px;color:var(--color-text-secondary)" id="memCount">24 memories</span>
+    </div>
+    <div style="display:flex;gap:5px;align-items:center">
+      <span style="font-size:11px;color:var(--color-text-secondary)">Theme:</span>
+      <button class="theme-btn on" id="th-classic" onclick="setTheme('classic')">Classic</button>
+      <button class="theme-btn" id="th-ruby" onclick="setTheme('ruby')" style="color:var(--color-text-danger);border-color:var(--color-border-danger)">Ruby</button>
+      <button class="theme-btn" id="th-diamond" onclick="setTheme('diamond')" style="color:var(--color-text-info);border-color:var(--color-border-info)">Diamond</button>
+      <button class="theme-btn" id="th-gold" onclick="setTheme('gold')" style="color:var(--color-text-warning);border-color:var(--color-border-warning)">Gold</button>
+      <button class="theme-btn" id="th-neon" onclick="setTheme('neon')" style="color:var(--color-text-info)">Neon</button>
+    </div>
+  </div>
+
+  <!-- CLOSED STATE - compact preview -->
+  <div class="chevron-tog" id="memToggle" onclick="toggleMem()">
+    <div style="display:flex;align-items:center;gap:10px">
+      <div style="display:flex;gap:3px" id="memPreviewTiles"></div>
+      <div>
+        <span style="font-size:12px;font-weight:500">Your memories</span>
+        <span style="font-size:10px;color:var(--color-text-secondary);margin-left:6px">Latest: Won Battle Arena · 2h ago</span>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px">
+      <span style="font-size:10px;color:var(--color-text-tertiary)">Click to open</span>
+      <i class="ti ti-chevron-down" id="memChevron" style="font-size:16px;transition:transform .3s" aria-hidden="true"></i>
+    </div>
+  </div>
+
+  <!-- OPEN STATE - full collage -->
+  <div id="memWallOpen" style="display:none">
+    <div class="wall-stage classic" id="wallStage" style="margin-top:6px">
+      <!-- Memory type filter tabs -->
+      <div style="display:flex;gap:4px;margin-bottom:10px;flex-wrap:wrap" id="memFilters"></div>
+
+      <!-- Floating masonry collage -->
+      <div id="memCollage" style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start;min-height:160px"></div>
+
+      <!-- PIP room share card (shown when sharing) -->
+      <div id="pipCard" class="pip-card" style="display:none">
+        <div style="font-size:9px;font-weight:500;margin-bottom:4px"><i class="ti ti-users" aria-hidden="true"></i> Shared in room</div>
+        <div id="pipContent"></div>
+        <div style="font-size:8px;color:var(--color-text-secondary);margin-top:3px">3 reactions ❤️🔥👏</div>
+      </div>
+    </div>
+
+    <!-- Timeline tabs + actions -->
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;flex-wrap:wrap;gap:6px">
+      <div style="display:flex;gap:4px;flex-wrap:wrap">
+        <button onclick="filterTime('all')" id="tf-all" style="font-size:10px;padding:3px 8px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary);background:var(--color-background-warning);color:var(--color-text-warning)">All time</button>
+        <button onclick="filterTime('week')" style="font-size:10px;padding:3px 8px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary)">This week</button>
+        <button onclick="filterTime('month')" style="font-size:10px;padding:3px 8px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary)">This month</button>
+      </div>
+      <div style="display:flex;gap:5px">
+        <button onclick="shareViaAvatar()" style="font-size:11px;padding:5px 10px;background:var(--color-background-info);color:var(--color-text-info);border:0.5px solid var(--color-border-info);border-radius:var(--border-radius-md)"><i class="ti ti-user" aria-hidden="true"></i> Share via avatar</button>
+        <button style="font-size:11px;padding:5px 10px;background:var(--color-background-success);color:var(--color-text-success);border:0.5px solid var(--color-border-success);border-radius:var(--border-radius-md)"><i class="ti ti-upload" aria-hidden="true"></i> Upload memory</button>
+        <button style="font-size:11px;padding:5px 10px;border-radius:var(--border-radius-md)"><i class="ti ti-share" aria-hidden="true"></i> Share wall</button>
+      </div>
+    </div>
+
+    <!-- Avatar share animation overlay -->
+    <div id="avatarShareOverlay" style="display:none;position:relative;height:60px;overflow:hidden;margin-top:8px;background:var(--color-background-secondary);border-radius:var(--border-radius-md)">
+      <div id="avatarCard" style="position:absolute;left:50%;top:10px;transform:translateX(-50%);background:var(--color-background-warning);color:var(--color-text-warning);border:1.5px solid var(--color-border-warning);border-radius:var(--border-radius-md);padding:5px 12px;font-size:11px;font-weight:500;white-space:nowrap">
+        <i class="ti ti-photo" aria-hidden="true"></i> Memory card flying to room...
+      </div>
+    </div>
+
+    <!-- Collections progress -->
+    <div style="margin-top:8px;display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:6px" id="collections"></div>
+  </div>
+  <div style="text-align:center;margin-top:8px">
+    <button onclick="sendPrompt('Build the TMI Memory Wall canister — MemoryWallContainer (collapsible chevron, closed shows 3-5 latest memories with count badge, open reveals full animated floating masonry collage). Tile types: photo (slight random rotation, scrapbook style), video (dark tile, play icon, autoplays on hover), trophy (gold glow, 3D-ish), ticket (torn edge stub style), badge (circular pin), audio (waveform bars). Animations: staggered tile entrance (tileIn keyframe), gentle float oscillation per tile (independent timing and direction), hover lifts tile with shadow. Theme system: Classic, Ruby (red glow), Diamond (cyan glow), Gold Hall of Fame (gold borders), Neon Cypher (cyan/purple). Timeline filter: All/This Week/This Month. Avatar share button: animates selected memory card flying upward out of wall and appearing as PIP picture-in-picture card in current room, non-blocking. Room share appears as floating card top-right of room, does not cover avatars, chat, or lobby wall. XP earned on upload and share. Memory collections with progress bars. Auto-generates memories on: ticket purchased, battle won, playlist milestone, magazine feature. Fan AND Performer both get memory walls.')">Build memory wall canister in repo ↗</button>
+  </div>
+</div>
+
+<!-- ═══ SPONSOR STAMP WALL ═══ -->
+<div id="pg-stamp" class="pg">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:6px">
+    <div style="display:flex;align-items:center;gap:8px">
+      <span style="font-size:15px;font-weight:500">Sponsor stamp wall</span>
+      <span class="performer-only">Performer only</span>
+      <span style="font-size:11px;color:var(--color-text-secondary)" id="slotCount">12/20 slots used (free tier)</span>
+    </div>
+    <div style="display:flex;gap:5px">
+      <select style="font-size:11px"><option>All sponsors</option><option>Major sponsors</option><option>Local sponsors</option><option>Event sponsors</option><option>Product sponsors</option></select>
+      <button style="font-size:11px;padding:4px 10px;background:var(--color-background-success);color:var(--color-text-success);border:0.5px solid var(--color-border-success);border-radius:var(--border-radius-md)"><i class="ti ti-plus" aria-hidden="true"></i> Add sponsor</button>
+    </div>
+  </div>
+
+  <!-- Slot limit bar -->
+  <div style="margin-bottom:10px">
+    <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--color-text-secondary);margin-bottom:3px"><span>Slot usage</span><span id="slotPct">60%</span></div>
+    <div style="height:5px;background:var(--color-border-tertiary);border-radius:3px;overflow:hidden"><div id="slotBar" style="height:5px;background:var(--color-border-warning);border-radius:3px;width:60%;transition:width .5s"></div></div>
+    <div style="font-size:10px;color:var(--color-text-tertiary);margin-top:2px">Upgrade tier to unlock unlimited slots</div>
+  </div>
+
+  <!-- NASCAR-style dense stamp grid -->
+  <div style="border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:10px;background:var(--color-background-secondary);margin-bottom:10px">
+    <div id="stampGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:5px"></div>
+  </div>
+
+  <!-- Expanded sponsor card (popup on click) -->
+  <div id="sponsorCardPop" style="display:none;background:var(--color-background-primary);border:1.5px solid var(--color-border-warning);border-radius:var(--border-radius-lg);padding:12px;animation:popIn .3s ease-out">
+    <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:8px">
+      <div id="popSponsorName" style="font-size:14px;font-weight:500"></div>
+      <button onclick="closeStampPop()" style="font-size:11px;padding:2px 7px"><i class="ti ti-x" aria-hidden="true"></i></button>
+    </div>
+    <div id="popSponsorContent"></div>
+  </div>
+
+  <div style="text-align:center;margin-top:8px">
+    <button onclick="sendPrompt('Build SponsorStampWallCanister — Performer only. NASCAR-style high-density patchwork grid of sponsor logo stamps. SponsorSlotRegistry enforces tier limits (Free=20 slots, paid tiers=more, Diamond=unlimited). Major sponsors display larger than local. Click any stamp to expand a SponsorCard popup (coupon codes, promo video, direct link). Expired sponsors do not render. Slot usage progress bar. Scrollable rail with lazy-loaded logos. Add sponsor button. Admin can flag/remove inappropriate logos. Wire to /api/sponsors/slots and /api/sponsors/performer/[performerId].')">Build sponsor stamp wall in repo ↗</button>
+  </div>
+</div>
+
+<!-- ═══ SPONSOR ORBIT ═══ -->
+<div id="pg-orbit" class="pg">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:6px">
+    <div style="display:flex;align-items:center;gap:8px">
+      <span style="font-size:15px;font-weight:500">Sponsor bubble orbit</span>
+      <span class="performer-only">Performer only</span>
+    </div>
+    <div style="display:flex;gap:5px">
+      <button style="font-size:11px;padding:4px 10px;background:var(--color-background-info);color:var(--color-text-info);border:0.5px solid var(--color-border-info);border-radius:var(--border-radius-md)"><i class="ti ti-plus" aria-hidden="true"></i> Add sponsor orbit</button>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start">
+    <!-- Orbit visual -->
+    <div style="background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:16px;display:flex;flex-direction:column;align-items:center">
+      <div style="font-size:12px;color:var(--color-text-secondary);margin-bottom:12px">Live on performer's profile hero</div>
+      <div style="position:relative;width:220px;height:220px">
+        <!-- Center performer node -->
+        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:50px;height:50px;border-radius:50%;background:var(--color-background-warning);border:2px solid var(--color-border-warning);display:flex;align-items:center;justify-content:center;font-size:18px;z-index:5;animation:glowPulse 2s ease-in-out infinite;--gc:rgba(180,117,23,.5)"><i class="ti ti-microphone" aria-hidden="true"></i></div>
+        <!-- Orbit rings -->
+        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:120px;height:120px;border-radius:50%;border:1px dashed var(--color-border-tertiary)"></div>
+        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:190px;height:190px;border-radius:50%;border:1px dashed var(--color-border-secondary)"></div>
+        <!-- Orbiting bubbles rendered by JS -->
+        <div id="orbitBubbles" style="position:absolute;inset:0"></div>
+      </div>
+      <div style="font-size:11px;color:var(--color-text-tertiary);margin-top:10px;text-align:center">Click any bubble to burst it and see sponsor offer</div>
+    </div>
+
+    <!-- Orbit roster -->
+    <div>
+      <div style="font-size:12px;font-weight:500;margin-bottom:8px">Orbit roster</div>
+      <div id="orbitRoster" style="display:flex;flex-direction:column;gap:5px"></div>
+      <div style="background:var(--color-background-info);border-radius:var(--border-radius-md);padding:8px;margin-top:10px;font-size:11px;color:var(--color-text-info)">
+        <strong>Orbit physics:</strong> Major sponsors orbit closer to center and appear larger. Local sponsors orbit outer ring. Bubbles rotate based on sponsorship weight. No two bubbles overlap.
+      </div>
+    </div>
+  </div>
+
+  <!-- Burst popup -->
+  <div id="burstPop" style="display:none;background:var(--color-background-primary);border:1.5px solid var(--color-border-info);border-radius:var(--border-radius-lg);padding:12px;margin-top:10px;animation:popIn .3s ease-out">
+    <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:6px">
+      <div id="burstSponsorName" style="font-size:14px;font-weight:500"></div>
+      <button onclick="document.getElementById('burstPop').style.display='none'" style="font-size:11px;padding:2px 7px"><i class="ti ti-x" aria-hidden="true"></i></button>
+    </div>
+    <div id="burstContent"></div>
+  </div>
+
+  <div style="text-align:center;margin-top:8px">
+    <button onclick="sendPrompt('Build SponsorBubbleOrbitCanister — Performer only. Cinematic floating 3D-like parallax effect using Framer Motion layout prop. Sponsor bubbles orbit center performer node using OrbitPhysics. Major sponsors orbit inner ring and display larger. Local sponsors orbit outer ring. Orbit speed based on sponsorship weight. Click bubble triggers burst animation then opens sponsor interactive offer card. No two bubbles overlap (OrbitPhysics prevents collision). Renders as independent floating layer above performer UI on profile and live room. Wire to PerformerSponsorRegistry. Canister isolated with CSS scoping.')">Build sponsor orbit canister in repo ↗</button>
+  </div>
+</div>
+
+<!-- ═══ BOOKING MAP ═══ -->
+<div id="pg-map" class="pg">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:6px">
+    <div style="display:flex;align-items:center;gap:8px">
+      <span style="font-size:15px;font-weight:500">Booking map</span>
+      <span class="performer-only">Performer only</span>
+      <span style="font-size:11px;color:var(--color-text-secondary)">Find venues · Get booked · Auto-logistics</span>
+    </div>
+    <div style="display:flex;gap:5px">
+      <select style="font-size:11px"><option>All venue types</option><option>Arena</option><option>Club</option><option>Theater</option><option>Outdoor</option></select>
+      <select style="font-size:11px"><option>Within 100 miles</option><option>My city</option><option>Nationwide</option><option>Global</option></select>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:10px">
+    <!-- MAP VISUAL -->
+    <div style="background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:12px;position:relative">
+      <div style="font-size:11px;font-weight:500;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center">
+        <span>Venue map — click a pin to view</span>
+        <div style="display:flex;gap:6px;font-size:9px;color:var(--color-text-secondary)">
+          <span style="display:flex;align-items:center;gap:3px"><span style="width:8px;height:8px;border-radius:50%;background:var(--color-border-info);display:inline-block"></span>Available venue</span>
+          <span style="display:flex;align-items:center;gap:3px"><span style="width:8px;height:8px;border-radius:50%;background:var(--color-border-warning);display:inline-block"></span>Selected</span>
+        </div>
+      </div>
+      <!-- City grid map -->
+      <div id="cityGrid" style="display:grid;gap:2px;margin-bottom:8px;position:relative"></div>
+      <div style="font-size:10px;color:var(--color-text-tertiary);text-align:center">Stylized city grid — real Mapbox/Leaflet in repo</div>
+    </div>
+
+    <!-- LOGISTICS SIDEBAR -->
+    <div id="logisticsPanel" style="background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:12px">
+      <div style="font-size:12px;font-weight:500;margin-bottom:10px"><i class="ti ti-map-pin" aria-hidden="true"></i> Venue details + logistics</div>
+      <div id="venueDetails">
+        <div style="font-size:12px;color:var(--color-text-secondary);text-align:center;padding:20px 0">Select a venue pin on the map</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="text-align:center;margin-top:8px">
+    <button onclick="sendPrompt('Build BookingMapCanister — Performer only. Dual-pane container: interactive Mapbox/Leaflet map (left/main) + Logistics side panel (right). VenueBookingRegistry stores booking requests, matches venues to performers, tracks booking status and deposits. BookingOpportunityRegistry finds nearby venues filtered by type, genre, city, distance, price range, size. LogisticsAutomationService calculates hotel and ride-share ESTIMATES ONLY (no auto-charge yet) — all prices are editable inputs adjustable in real time (inflation-proof design). Distance trigger: if show > 100 miles from performer origin, prompt Logistics Bundle automatically. Financial rule: estimates only until Stripe/escrow confirmed in a later payment pass. Wire to /api/bookings/request, /api/bookings/opportunities, /api/logistics/quote. All prices stored as adjustable fields, never hardcoded.')">Build booking map canister in repo ↗</button>
+  </div>
+</div>
+
+<script>
+function sw(n){document.querySelectorAll('.pg').forEach(p=>p.classList.remove('on'));document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));document.getElementById('pg-'+n).classList.add('on');document.querySelectorAll('.tab')[{mem:0,stamp:1,orbit:2,map:3}[n]].classList.add('on');if(n==='stamp')initStamp();if(n==='orbit')initOrbit();if(n==='map')initMap();}
+
+/* ── MEMORY WALL ── */
+const MEM_TYPES=[{type:'trophy',icon:'ti-trophy',label:'Battle Win',size:[70,70],delay:.05},{type:'photo',icon:'ti-photo',label:'Concert 🎤',size:[90,65],delay:.1},{type:'ticket',icon:'ti-ticket',label:'Arena Ticket',size:[80,45],delay:.15},{type:'badge',icon:'ti-award',label:'Top 100',size:[60,60],delay:.2},{type:'video',icon:'ti-player-play',label:'Cypher Clip',size:[95,60],delay:.25},{type:'photo',icon:'ti-photo',label:'Backstage',size:[75,65],delay:.3},{type:'trophy',icon:'ti-crown',label:'Crown Holder',size:[70,70],delay:.35},{type:'audio',icon:'ti-waveform',label:'Radio Moment',size:[90,48],delay:.4},{type:'ticket',icon:'ti-ticket',label:'World Tour',size:[85,45],delay:.45},{type:'badge',icon:'ti-star',label:'1K Streams',size:[55,55],delay:.5},{type:'photo',icon:'ti-photo',label:'Fan Lobby 🎉',size:[80,65],delay:.55},{type:'video',icon:'ti-player-play',label:'Battle Win',size:[90,60],delay:.6}];
+const THEME_COLORS={classic:'',ruby:'ruby',diamond:'diamond',gold:'gold',neon:'neon'};
+let memOpen=false,curTheme='classic';
+
+function buildMemPreview(){
+  const el=document.getElementById('memPreviewTiles');
+  el.innerHTML=MEM_TYPES.slice(0,4).map(m=>`<div style="width:28px;height:28px;border-radius:var(--border-radius-md);background:var(--color-background-${m.type==='trophy'?'warning':m.type==='badge'?'info':m.type==='ticket'?'secondary':'tertiary'});display:flex;align-items:center;justify-content:center;border:0.5px solid var(--color-border-${m.type==='trophy'?'warning':m.type==='badge'?'info':'tertiary'})"><i class="ti ${m.icon}" style="font-size:13px" aria-hidden="true"></i></div>`).join('');
+}
+function buildMemCollage(){
+  const el=document.getElementById('memCollage');
+  const rots=[-3,-1,2,-2,1,3,-1,2,-3,1,-2,3];
+  el.innerHTML=MEM_TYPES.map((m,i)=>{
+    const rot=rots[i%rots.length];
+    const colors={trophy:'warning',photo:'secondary',ticket:'secondary',badge:'info',video:'tertiary',audio:'secondary'};
+    const bc={trophy:'warning',photo:'tertiary',ticket:'secondary',badge:'info',video:'secondary',audio:'secondary'};
+    return `<div class="mem-tile tile-${m.type}" style="width:${m.w||m.size[0]}px;height:${m.h||m.size[1]}px;--rot:${rot}deg;animation-delay:${m.delay}s,${m.delay+(i*.3)}s;animation-duration:.35s,${3+i*.2}s;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px" onclick="showMemTile('${m.label}')">
+      <i class="ti ${m.icon}" style="font-size:${m.type==='badge'?20:16}px;color:var(--color-text-${bc[m.type]})" aria-hidden="true"></i>
+      <div style="font-size:8px;color:var(--color-text-secondary);text-align:center;padding:0 4px;line-height:1.2">${m.label}</div>
+      ${m.type==='trophy'?'<div style="font-size:7px;font-weight:500;color:var(--color-text-warning)">+50 XP</div>':''}
+    </div>`;
+  }).join('');
+}
+function buildFilters(){
+  const el=document.getElementById('memFilters');
+  ['All','Photos','Videos','Trophies','Tickets','Badges','Audio'].forEach((f,i)=>{
+    const btn=document.createElement('button');
+    btn.textContent=f;btn.style.cssText='font-size:10px;padding:2px 8px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary);cursor:pointer;background:var(--color-background-primary)';
+    if(i===0){btn.style.background='var(--color-background-warning)';btn.style.color='var(--color-text-warning)';btn.style.borderColor='var(--color-border-warning)';}
+    el.appendChild(btn);
+  });
+}
+function buildCollections(){
+  const el=document.getElementById('collections');
+  [['Concert Collection','Attend 10 concerts','7/10','warning'],['Cypher Legend','Join 25 cyphers','18/25','info'],['Stream & Win','100hr listened','62/100','success']].forEach(([name,desc,prog,color])=>{
+    const[done,total]=prog.split('/').map(Number);
+    el.innerHTML+=`<div style="background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:7px"><div style="font-size:11px;font-weight:500;margin-bottom:2px">${name}</div><div style="font-size:10px;color:var(--color-text-secondary);margin-bottom:4px">${desc} · ${prog}</div><div style="height:4px;background:var(--color-border-tertiary);border-radius:2px;overflow:hidden"><div style="height:4px;background:var(--color-border-${color});border-radius:2px;width:${Math.round(done/total*100)}%;transition:width .5s"></div></div></div>`;
+  });
+}
+function toggleMem(){
+  memOpen=!memOpen;
+  document.getElementById('memWallOpen').style.display=memOpen?'block':'none';
+  document.getElementById('memChevron').style.transform=memOpen?'rotate(180deg)':'rotate(0)';
+  if(memOpen){buildMemCollage();buildFilters();buildCollections();}
+}
+function setTheme(t){
+  document.querySelectorAll('.theme-btn').forEach(b=>b.classList.remove('on'));
+  document.getElementById('th-'+t).classList.add('on');
+  const stage=document.getElementById('wallStage');
+  stage.className='wall-stage '+THEME_COLORS[t];
+  curTheme=t;
+}
+function showMemTile(label){
+  const pip=document.getElementById('pipCard');
+  document.getElementById('pipContent').innerHTML=`<i class="ti ti-photo" aria-hidden="true"></i> <strong>${label}</strong>`;
+  pip.style.display='block';
+  setTimeout(()=>{pip.style.display='none';},3000);
+}
+function shareViaAvatar(){
+  const ov=document.getElementById('avatarShareOverlay');
+  const card=document.getElementById('avatarCard');
+  ov.style.display='block';
+  card.style.animation='avatarLift .8s ease-out forwards';
+  setTimeout(()=>{ov.style.display='none';card.style.animation='';
+    const pip=document.getElementById('pipCard');
+    document.getElementById('pipContent').innerHTML='<i class="ti ti-user" aria-hidden="true"></i> Avatar shared your memory in the room!';
+    pip.style.display='block';
+    setTimeout(()=>{pip.style.display='none';},3500);
+  },850);
+}
+function filterTime(t){}
+buildMemPreview();
+
+/* ── SPONSOR STAMP WALL ── */
+const SPONSORS=[
+  {name:'Beats By TMX',type:'major',emoji:'🎧',offer:'15% off all headphones'},
+  {name:'BerntoutStudio AI',type:'major',emoji:'🤖',offer:'Free trial — AI beats'},
+  {name:'Lagos Sound',type:'local',emoji:'🎵',offer:'Studio time $40/hr'},
+  {name:'Neon Records',type:'local',emoji:'💿',offer:'Distribution deal'},
+  {name:'Stage Lights Co',type:'event',emoji:'💡',offer:'Event lighting packages'},
+  {name:'Crowd Media',type:'local',emoji:'📸',offer:'Press photography'},
+  {name:'TMI Merch',type:'major',emoji:'👕',offer:'Free collab merch'},
+  {name:'BeatBank Pro',type:'local',emoji:'🎹',offer:'Unlimited beat leases'},
+  {name:'Venue Boost',type:'event',emoji:'🏟️',offer:'Booking promo'},
+  {name:'Radio Wave',type:'local',emoji:'📻',offer:'Radio airplay package'},
+  {name:'Fan Token Co',type:'local',emoji:'🎟️',offer:'NFT ticket deal'},
+  {name:'Add Sponsor',type:'empty',emoji:'➕',offer:''},
+];
+function initStamp(){
+  const grid=document.getElementById('stampGrid');
+  if(grid.innerHTML) return;
+  SPONSORS.forEach((s,i)=>{
+    const d=document.createElement('div');
+    d.className='stamp'+(s.type==='major'?' major':'');
+    d.style.animationDelay=i*.03+'s';
+    d.innerHTML=`<span style="font-size:18px">${s.emoji}</span><span style="font-size:9px;font-weight:500;line-height:1.2">${s.name}</span><span style="font-size:8px;color:var(--color-text-${s.type==='major'?'warning':s.type==='empty'?'info':'secondary'})">${s.type==='empty'?'FREE SLOT':s.type.toUpperCase()}</span>`;
+    d.onclick=()=>s.offer&&showSponsorCard(s);
+    grid.appendChild(d);
+  });
+}
+function showSponsorCard(s){
+  document.getElementById('popSponsorName').textContent=s.emoji+' '+s.name;
+  document.getElementById('popSponsorContent').innerHTML=`<div style="font-size:12px;color:var(--color-text-secondary);margin-bottom:8px">${s.offer}</div><div style="display:flex;gap:5px"><button style="flex:1;font-size:11px;padding:5px;background:var(--color-background-warning);color:var(--color-text-warning);border:0.5px solid var(--color-border-warning);border-radius:var(--border-radius-md)">Get offer</button><button style="font-size:11px;padding:5px;border-radius:var(--border-radius-md)">Visit site</button><button style="font-size:11px;padding:5px;border-radius:var(--border-radius-md)">Remove</button></div>`;
+  const pop=document.getElementById('sponsorCardPop');
+  pop.style.display='block';
+}
+function closeStampPop(){document.getElementById('sponsorCardPop').style.display='none';}
+
+/* ── SPONSOR ORBIT ── */
+const ORBIT_SPONSORS=[
+  {name:'Beats By TMX',weight:'major',color:'warning',r:55,speed:12,size:38},
+  {name:'BerntoutStudio',weight:'major',color:'warning',r:55,speed:18,size:34},
+  {name:'Lagos Sound',weight:'local',color:'info',r:85,speed:22,size:28},
+  {name:'Neon Rec.',weight:'local',color:'info',r:85,speed:28,size:26},
+  {name:'Stage Lights',weight:'event',color:'success',r:85,speed:16,size:26},
+  {name:'TMI Merch',weight:'major',color:'warning',r:55,speed:25,size:32},
+];
+function initOrbit(){
+  const wrap=document.getElementById('orbitBubbles');
+  if(wrap.innerHTML) return;
+  ORBIT_SPONSORS.forEach((s,i)=>{
+    const ow=document.createElement('div');
+    ow.className='orbit-wrap';
+    ow.style.cssText=`--r:${s.r}px;animation-duration:${s.speed}s;animation-delay:${-i*(s.speed/ORBIT_SPONSORS.length)}s;margin-top:-${s.size/2}px;margin-left:-${s.size/2}px`;
+    const b=document.createElement('div');
+    b.className='orbit-bubble';
+    b.style.cssText=`width:${s.size}px;height:${s.size}px;font-size:${s.size>30?'9':'8'}px;--gc:rgba(${s.color==='warning'?'180,117,23':s.color==='info'?'0,100,200':'0,110,86'},.4)`;
+    b.title=s.name;
+    b.textContent=s.name.split(' ')[0].substring(0,5);
+    b.onclick=()=>showBurst(s);
+    ow.appendChild(b);
+    wrap.appendChild(ow);
+  });
+  const roster=document.getElementById('orbitRoster');
+  ORBIT_SPONSORS.forEach(s=>{
+    roster.innerHTML+=`<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:0.5px solid var(--color-border-tertiary);font-size:11px"><div style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:var(--color-border-${s.color});display:inline-block"></span>${s.name}</div><span style="font-size:10px;color:var(--color-text-secondary)">${s.weight} · ring ${s.r>70?'outer':'inner'}</span></div>`;
+  });
+}
+function showBurst(s){
+  document.getElementById('burstSponsorName').textContent=s.name;
+  document.getElementById('burstContent').innerHTML=`<div style="font-size:12px;color:var(--color-text-secondary);margin-bottom:7px">Sponsorship tier: <strong>${s.weight}</strong> · Orbit ring: ${s.r>70?'outer':'inner'}</div><div style="display:flex;gap:5px"><button style="flex:1;font-size:11px;padding:5px;background:var(--color-background-warning);color:var(--color-text-warning);border:0.5px solid var(--color-border-warning);border-radius:var(--border-radius-md)">View sponsor offer</button><button style="font-size:11px;padding:5px;border-radius:var(--border-radius-md)">Manage deal</button></div>`;
+  document.getElementById('burstPop').style.display='block';
+}
+
+/* ── BOOKING MAP ── */
+const VENUES=[
+  {id:0,name:'Arena Prime',type:'Arena',city:'Los Angeles',cap:'18,500',row:2,col:8,dist:5},
+  {id:1,name:'Club Neon',type:'Club',city:'Los Angeles',cap:'450',row:5,col:4,dist:12},
+  {id:2,name:'Velvet Theater',type:'Theater',city:'Long Beach',cap:'1,200',row:7,col:12,dist:28},
+  {id:3,name:'Open Air Stage',type:'Outdoor',city:'Pasadena',cap:'5,000',row:3,col:14,dist:45},
+  {id:4,name:'Stadium East',type:'Arena',city:'Las Vegas',cap:'12,000',row:1,col:2,dist:280},
+];
+let selVenue=null;
+const HOTEL_BASE=89,RIDE_BASE=24;
+let hotelPrice=HOTEL_BASE,ridePrice=RIDE_BASE;
+function initMap(){
+  const grid=document.getElementById('cityGrid');
+  if(grid.innerHTML) return;
+  const ROWS=10,COLS=18;
+  grid.style.gridTemplateColumns=`repeat(${COLS},1fr)`;
+  for(let r=0;r<ROWS;r++){
+    for(let c=0;c<COLS;c++){
+      const v=VENUES.find(v=>v.row===r&&v.col===c);
+      const cell=document.createElement('div');
+      cell.style.aspectRatio='1';
+      if(v){cell.className='map-cell map-venue';cell.title=v.name;cell.onclick=()=>selectVenue(v,cell);}
+      else {cell.className='map-cell';}
+      grid.appendChild(cell);
+    }
+  }
+}
+function selectVenue(v,cell){
+  document.querySelectorAll('.map-venue').forEach(c=>c.classList.remove('sel'));
+  cell.classList.add('sel');
+  selVenue=v;
+  const needsLogistics=v.dist>100;
+  const panel=document.getElementById('venueDetails');
+  panel.innerHTML=`
+    <div style="font-size:14px;font-weight:500;margin-bottom:4px">${v.name}</div>
+    <div style="font-size:12px;color:var(--color-text-secondary);margin-bottom:8px">${v.type} · ${v.city} · Capacity: ${v.cap} · ${v.dist} mi away</div>
+    <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;font-size:11px;padding:5px 0;border-bottom:0.5px solid var(--color-border-tertiary)"><span>Venue booking rate</span><input type="number" id="vRate" value="500" min="0" style="width:70px;font-size:11px;text-align:right"> /show</div>
+      ${needsLogistics?`
+      <div style="font-size:11px;font-weight:500;color:var(--color-text-warning);background:var(--color-background-warning);padding:5px 8px;border-radius:var(--border-radius-md)">
+        <i class="ti ti-car" aria-hidden="true"></i> Logistics bundle auto-triggered (${v.dist} mi)
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:11px;padding:5px 0;border-bottom:0.5px solid var(--color-border-tertiary)"><span>Hotel estimate (per night)</span><div style="display:flex;align-items:center;gap:3px">$<input type="number" id="hPrice" value="${hotelPrice}" min="0" oninput="hotelPrice=parseInt(this.value)||0;updateLogTotal()" style="width:55px;font-size:11px;text-align:right"></div></div>
+      <div style="display:flex;justify-content:space-between;font-size:11px;padding:5px 0;border-bottom:0.5px solid var(--color-border-tertiary)"><span>Ride-share estimate</span><div style="display:flex;align-items:center;gap:3px">$<input type="number" id="rPrice" value="${ridePrice}" min="0" oninput="ridePrice=parseInt(this.value)||0;updateLogTotal()" style="width:55px;font-size:11px;text-align:right"></div></div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:500;padding:5px 0;border-top:0.5px solid var(--color-border-tertiary)"><span>Logistics total (estimate)</span><span id="logTotal" style="color:var(--color-text-warning)">$${hotelPrice+ridePrice}</span></div>
+      <div style="font-size:9px;color:var(--color-text-tertiary)">Estimate only — no charges until payment confirmed. Prices adjustable at any time.</div>`:''}
+    </div>
+    <div style="display:flex;gap:5px">
+      <button style="flex:1;font-size:11px;padding:6px;background:var(--color-background-success);color:var(--color-text-success);border:0.5px solid var(--color-border-success);border-radius:var(--border-radius-md)"><i class="ti ti-calendar-plus" aria-hidden="true"></i> Request booking</button>
+      <button style="font-size:11px;padding:6px;border-radius:var(--border-radius-md)"><i class="ti ti-message-circle" aria-hidden="true"></i> Contact</button>
+    </div>`;
+}
+function updateLogTotal(){
+  const el=document.getElementById('logTotal');
+  if(el)el.textContent='$'+(hotelPrice+ridePrice);
+}
+</script>

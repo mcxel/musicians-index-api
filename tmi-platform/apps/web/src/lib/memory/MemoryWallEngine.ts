@@ -1,8 +1,4 @@
-/**
- * MemoryWallEngine
- * Retention loop engine for TMI. Handles the storage and retrieval of captured 
- * live moments, tickets, and NFTs to bring fans back to the platform.
- */
+import prisma from '@/lib/prisma';
 
 export interface MemoryArtifact {
   id: string;
@@ -17,19 +13,16 @@ export interface MemoryArtifact {
   eventId?: string;
 }
 
+const FAR_FUTURE = new Date('2040-01-01T00:00:00Z');
+
 export class MemoryWallEngine {
-  /**
-   * Captures a moment from an active Arena/Cypher and mints it to the user's wall
-   */
   static async captureLiveMoment(
-    userId: string, 
-    eventId: string, 
-    mediaUrl: string, 
+    userId: string,
+    eventId: string,
+    mediaUrl: string,
     title: string
   ): Promise<MemoryArtifact> {
-    console.log(`[MEMORY_ENGINE] Capturing live moment for user ${userId} at event ${eventId}`);
-    
-    const newArtifact: MemoryArtifact = {
+    const artifact: MemoryArtifact = {
       id: `mem_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
       userId,
       type: 'LIVE_MOMENT',
@@ -38,10 +31,24 @@ export class MemoryWallEngine {
       tags: ['live', 'capture', 'legendary'],
       createdAt: new Date().toISOString(),
       isPublic: true,
-      eventId
+      eventId,
     };
-    
-    // TODO: Connect to Prisma/Database for persistent storage
-    return newArtifact;
+
+    try {
+      await prisma.feedItem.create({
+        data: {
+          userId,
+          type: 'MEMORY_WALL_ITEM',
+          entityId: userId,
+          entityType: 'fan',
+          data: artifact as object,
+          expiresAt: FAR_FUTURE,
+        },
+      });
+    } catch (err) {
+      console.error('[MemoryWallEngine.captureLiveMoment]', err);
+    }
+
+    return artifact;
   }
 }

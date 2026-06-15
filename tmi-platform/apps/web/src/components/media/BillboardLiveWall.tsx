@@ -17,8 +17,9 @@
  */
 
 import { useEffect, useState, useCallback } from 'react';
-import MaskedVideoTile, { type TileShape } from './MaskedVideoTile';
+import { MaskedVideoTile, type TileShape } from '@/components/live/MaskedVideoTile';
 import Link from 'next/link';
+import { LobbyEntryFlow, type UniversalRoom } from '@/components/room/UniversalLobbyEntry';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -104,6 +105,7 @@ export default function BillboardLiveWall({
 }: BillboardLiveWallProps) {
   const [performers, setPerformers] = useState<PerformerSlot[]>([]);
   const [justJoinedIdx, setJustJoinedIdx] = useState<number | null>(null);
+  const [activeFlowRoom, setActiveFlowRoom] = useState<UniversalRoom | null>(null);
 
   // Load + sort performers: live first, then by rank
   useEffect(() => {
@@ -137,6 +139,22 @@ export default function BillboardLiveWall({
     return 170;
   };
 
+  const handleJoinClick = (p: PerformerSlot) => {
+    setActiveFlowRoom({
+      id: p.id,
+      title: `${p.name} — Live`,
+      hostName: p.name,
+      hostEmoji: p.avatarEmoji,
+      genre: p.genre ?? 'Live',
+      viewers: p.viewerCount,
+      status: p.isLive ? 'live' : 'upcoming',
+      access: 'free',
+      accentColor: p.accentColor ?? '#00FFFF',
+      roomRoute: `/live/rooms/${p.id}`,
+      venueIndex: 0,
+    });
+  };
+
   if (performers.length === 0) {
     return (
       <div style={{ padding: 40, textAlign: 'center', color: 'rgba(255,255,255,0.3)', fontSize: 13 }}>
@@ -147,6 +165,8 @@ export default function BillboardLiveWall({
 
   return (
     <div className={className} style={{ width: '100%' }}>
+      {activeFlowRoom && <LobbyEntryFlow room={activeFlowRoom} onClose={() => setActiveFlowRoom(null)} />}
+
       {/* ── Header ── */}
       {title && (
         <div
@@ -263,7 +283,7 @@ export default function BillboardLiveWall({
                 avatarEmoji={p.avatarEmoji}
                 avatarUrl={p.avatarUrl}
                 showActions={showActions}
-                onJoin={showActions ? () => (window.location.href = `/live/rooms/${p.id}`) : undefined}
+                onJoin={showActions ? () => handleJoinClick(p) : undefined}
                 onTip={showActions ? () => alert(`Tip ${p.name}`) : undefined}
                 onMessage={showActions ? () => alert(`Message ${p.name}`) : undefined}
               />

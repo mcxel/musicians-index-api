@@ -3,9 +3,22 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import Script from 'next/script';
+import { LobbyEntryFlow, type UniversalRoom } from '@/components/room/UniversalLobbyEntry';
 import styles from './Home12.module.css';
 import { getLatestEditorialArticles } from '@/lib/editorial/NewsArticleModel';
 import { fetchTrendingArtists, type TrendingArtist } from '@/lib/api/homepage';
+import SponsorRail from '@/components/sponsors/SponsorRail';
+
+const SEED_SPONSORS = [
+  { id: 'amplify',   name: 'AMPLIFY RECORDS',     tagline: 'Platinum Partner' },
+  { id: 'beatlab',   name: 'BEATLAB STUDIOS',      tagline: 'Gold Partner'    },
+  { id: 'velocity',  name: 'VELOCITY AUDIO',       tagline: 'Gold Partner'    },
+  { id: 'nova',      name: 'NOVA MEDIA GROUP',     tagline: 'Silver Partner'  },
+  { id: 'crown',     name: 'CROWN & CO.',          tagline: ''                },
+  { id: 'frequency', name: 'FREQUENCY LABS',       tagline: ''                },
+  { id: 'vault',     name: 'THE VAULT COLLECTIVE', tagline: ''                },
+  { id: 'sonic',     name: 'SONIC AXIS',           tagline: ''                },
+];
 
 // 45 categories — all performer types + audience-side verticals
 const CATEGORIES = [
@@ -274,6 +287,7 @@ export default function Home12Page() {
   const [isPaused, setIsPaused] = useState(false);
   const [items, setItems] = useState<BillboardCard[]>(() => buildFallback(CATEGORIES[0]));
   const [transitioning, setTransitioning] = useState(false);
+  const [pendingRoom, setPendingRoom] = useState<UniversalRoom | null>(null);
 
   const advanceCat = useCallback((dir: 1 | -1) => {
     setTransitioning(true);
@@ -644,6 +658,7 @@ export default function Home12Page() {
 
   return (
     <main className={styles.root} style={{ background: '#050510', minHeight: '100vh' }}>
+      {pendingRoom && <LobbyEntryFlow room={pendingRoom} onClose={() => setPendingRoom(null)} />}
       {/* Background */}
       <div className={styles.underlay} style={{
         backgroundImage: 'url("/tmi-source/_converted_webp_all/Tmi Homepage 1-2.webp")',
@@ -675,6 +690,8 @@ export default function Home12Page() {
           {tickerStr}  ⚡  TMI BILLBOARD WORLD — {CATEGORIES.length} CATEGORIES  ⚡  GLOBAL RANKINGS LIVE
         </div>
       </div>
+
+      <SponsorRail sponsors={SEED_SPONSORS} zone="home-1-2-top" />
 
       {/* 3D MAGAZINE ENGINE HERO */}
       <style dangerouslySetInnerHTML={{ __html: `
@@ -779,7 +796,26 @@ export default function Home12Page() {
           transform: transitioning ? 'translateY(22px)' : 'translateY(0)',
           transition: 'opacity 0.3s ease-out, transform 0.4s cubic-bezier(0.25, 1, 0.5, 1)',
         }}>
-          {items.map(item => (
+          {items.map(item => item.isLive ? (
+            <button
+              key={item.id}
+              onClick={() => setPendingRoom({
+                id: `${item.id}-live`,
+                title: item.name,
+                viewers: item.audienceCount,
+                status: 'live',
+                access: (item.tier === 'Diamond' || item.tier === 'Platinum' || item.tier === 'Gold') ? 'vip' : 'free',
+                accentColor: theme.accent,
+                roomRoute: `/live/rooms/${encodeURIComponent(item.id)}-live?from=billboard`,
+                venueIndex: 0,
+                shape: 'hex',
+              })}
+              style={{ textDecoration: 'none', background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'block' }}
+              aria-label={`Join live room for ${item.name}`}
+            >
+              <BillboardPortraitCard item={item} theme={theme} />
+            </button>
+          ) : (
             <Link
               key={item.id}
               href={`/performers/${encodeURIComponent(item.id)}`}

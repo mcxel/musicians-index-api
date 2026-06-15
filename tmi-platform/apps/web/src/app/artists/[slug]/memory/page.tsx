@@ -1,5 +1,6 @@
 import { ensureProfileEconomyRuntime } from '@/lib/integration/EconomyIntegrationRuntime';
-import { getMemoryWallStats, listMemoriesForEntity } from '@/lib/profiles/MemoryWallEngine';
+import type { MemoryItem } from '@/lib/profiles/MemoryWallEngine';
+import prisma from '@/lib/prisma';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 
@@ -9,6 +10,31 @@ const MemoryWallCanvas = dynamic(
 );
 
 type Props = { params: Promise<{ slug: string }> };
+
+async function findUserIdBySlug(slug: string): Promise<string | null> {
+  const profile = await prisma.userProfile.findUnique({
+    where: { username: slug },
+    select: { userId: true },
+  });
+  if (profile) return profile.userId;
+
+  const user = await prisma.user.findFirst({
+    where: { email: { startsWith: `${slug}@` } },
+    select: { id: true },
+  });
+  return user?.id ?? null;
+}
+
+function computeStats(memories: MemoryItem[]) {
+  return {
+    totalMemories:    memories.length,
+    pinnedMemories:   memories.filter((m) => m.pinnedAt != null).length,
+    photoCount:       memories.filter((m) => m.contentType === 'photo').length,
+    videoCount:       memories.filter((m) => m.contentType === 'video').length,
+    achievementCount: memories.filter((m) => m.contentType === 'achievement').length,
+    ticketStubCount:  memories.filter((m) => m.contentType === 'ticket-stub').length,
+  };
+}
 
 export default async function ArtistMemoryPage({ params }: Props) {
   const { slug } = await params;
@@ -20,8 +46,22 @@ export default async function ArtistMemoryPage({ params }: Props) {
     routePath: `/artists/${slug}/memory`,
   });
 
-  const stats = getMemoryWallStats(slug, 'artist');
-  const memories = listMemoriesForEntity(slug, 'artist');
+  let memories: MemoryItem[] = [];
+  try {
+    const userId = await findUserIdBySlug(slug);
+    if (userId) {
+      const feedItems = await prisma.feedItem.findMany({
+        where: { userId, type: 'MEMORY_WALL_ITEM', entityType: 'artist' },
+        orderBy: { createdAt: 'desc' },
+        take: 200,
+      });
+      memories = feedItems.map((fi) => fi.data as unknown as MemoryItem);
+    }
+  } catch {
+    // DB unavailable — MemoryWallCanvas falls back to DEMO_SEEDS
+  }
+
+  const stats = computeStats(memories);
 
   return (
     <main style={{ minHeight: '100vh', background: '#050510', color: '#fff', padding: 24 }}>
@@ -39,10 +79,10 @@ export default async function ArtistMemoryPage({ params }: Props) {
 
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           {[
-            { label: 'Total',        value: stats.totalMemories, color: '#AA2DFF' },
-            { label: 'Pinned',       value: stats.pinnedMemories, color: '#FFD700' },
+            { label: 'Total',        value: stats.totalMemories,    color: '#AA2DFF' },
+            { label: 'Pinned',       value: stats.pinnedMemories,   color: '#FFD700' },
             { label: 'Achievements', value: stats.achievementCount, color: '#00FF88' },
-            { label: 'Videos',       value: stats.videoCount, color: '#00FFFF' },
+            { label: 'Videos',       value: stats.videoCount,       color: '#00FFFF' },
           ].map(s => (
             <div key={s.label} style={{
               background: 'rgba(255,255,255,0.03)',

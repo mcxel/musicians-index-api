@@ -1,5 +1,17 @@
 import type { Metadata } from 'next';
 import Home2NewsDeskSurface from "@/components/home/Home2NewsDeskSurface";
+import SponsorRail from '@/components/sponsors/SponsorRail';
+
+const SEED_SPONSORS = [
+  { id: 'amplify',   name: 'AMPLIFY RECORDS',     tagline: 'Platinum Partner' },
+  { id: 'beatlab',   name: 'BEATLAB STUDIOS',      tagline: 'Gold Partner'    },
+  { id: 'velocity',  name: 'VELOCITY AUDIO',       tagline: 'Gold Partner'    },
+  { id: 'nova',      name: 'NOVA MEDIA GROUP',     tagline: 'Silver Partner'  },
+  { id: 'crown',     name: 'CROWN & CO.',          tagline: ''                },
+  { id: 'frequency', name: 'FREQUENCY LABS',       tagline: ''                },
+  { id: 'vault',     name: 'THE VAULT COLLECTIVE', tagline: ''                },
+  { id: 'sonic',     name: 'SONIC AXIS',           tagline: ''                },
+];
 
 export const metadata: Metadata = {
   title: "News Desk — Music News, Interviews & Studio Recaps",
@@ -20,5 +32,10 @@ export const metadata: Metadata = {
 };
 
 export default function Home2Page() {
-  return <Home2NewsDeskSurface />;
+  return (
+    <>
+      <SponsorRail sponsors={SEED_SPONSORS} zone="home-2-top" />
+      <Home2NewsDeskSurface />
+    </>
+  );
 }

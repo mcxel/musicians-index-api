@@ -2,11 +2,14 @@
 
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { usePresenceEngine } from "@/lib/live/presenceEngine";
 import { DrawerProvider } from "@/components/room/DrawerContext";
 import ActionCanister from "@/components/room/ActionCanister";
 import WidgetDrawer from "@/components/room/WidgetDrawer";
 import TieredAdSlot from "@/components/ads/TieredAdSlot";
+import AudienceScene from "@/components/live/AudienceScene";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -21,6 +24,13 @@ interface Track {
   title: string;
   artist: string;
   duration: string;
+  src?: string;
+}
+
+interface ChatEntry {
+  id: number;
+  text: string;
+  ts: string;
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -248,16 +258,19 @@ function FanTheaterInner() {
   const [progress, setProgress] = useState(0);
   const [volume, setVolume] = useState(70);
 
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
   // Chat input
   const [chatMsg, setChatMsg] = useState("");
+  const [chatLog, setChatLog] = useState<ChatEntry[]>([]);
 
   // New fan arrival toast
   const [arrivalName, setArrivalName] = useState<string | null>(null);
   const arrivalTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Progress ticker
+  // Simulated progress — fallback when no audio src
   useEffect(() => {
-    if (!isPlaying) return;
+    if (TRACKS[currentTrack]?.src || !isPlaying) return;
     const t = setInterval(() => {
       setProgress((p) => {
         if (p >= 100) { setCurrentTrack((c) => (c + 1) % TRACKS.length); return 0; }
@@ -265,7 +278,40 @@ function FanTheaterInner() {
       });
     }, 300);
     return () => clearInterval(t);
-  }, [isPlaying]);
+  }, [isPlaying, currentTrack]);
+
+  // Real audio: load src + wire timeupdate/ended events
+  useEffect(() => {
+    const audio = audioRef.current;
+    const src = TRACKS[currentTrack]?.src;
+    if (!audio || !src) return;
+    audio.src = src;
+    audio.volume = volume / 100;
+    setProgress(0);
+    const onTimeUpdate = () => {
+      if (audio.duration) setProgress((audio.currentTime / audio.duration) * 100);
+    };
+    const onEnded = () => { setCurrentTrack((c) => (c + 1) % TRACKS.length); setProgress(0); };
+    audio.addEventListener('timeupdate', onTimeUpdate);
+    audio.addEventListener('ended', onEnded);
+    return () => {
+      audio.pause();
+      audio.removeEventListener('timeupdate', onTimeUpdate);
+      audio.removeEventListener('ended', onEnded);
+    };
+  }, [currentTrack]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Real audio: play/pause
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio || !TRACKS[currentTrack]?.src) return;
+    if (isPlaying) audio.play().catch(() => {}); else audio.pause();
+  }, [isPlaying, currentTrack]);
+
+  // Real audio: volume
+  useEffect(() => {
+    if (audioRef.current) audioRef.current.volume = volume / 100;
+  }, [volume]);
 
   // Watch joinedRecently for arrival toast
   useEffect(() => {
@@ -285,9 +331,23 @@ function FanTheaterInner() {
     }, 1400);
   }
 
-  function sendChat(e: React.FormEvent) {
+  async function sendChat(e: React.FormEvent) {
     e.preventDefault();
+    const body = chatMsg.trim();
+    if (!body) return;
     setChatMsg("");
+    const id = Date.now();
+    const ts = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    setChatLog((prev) => [...prev, { id, text: body, ts }]);
+    try {
+      await fetch('/api/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ recipientId: 'fan-theater-room', recipientName: 'Theater Room', body, kind: 'fan-fan' }),
+      });
+    } catch {
+      // silent — message shown locally
+    }
   }
 
   function prevTrack() {
@@ -453,137 +513,107 @@ function FanTheaterInner() {
               </div>
             </div>
             <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-              <button style={{
-                flex: 1, padding: "8px 0", borderRadius: 7, fontSize: 10, fontWeight: 800,
-                background: "rgba(255,215,0,0.15)", border: "1px solid #FFD70066",
-                color: "#FFD700", cursor: "pointer", letterSpacing: "0.08em",
-              }}>
+              <Link
+                href="/playlist"
+                style={{
+                  flex: 1, display: "block", textAlign: "center",
+                  padding: "8px 0", borderRadius: 7, fontSize: 10, fontWeight: 800,
+                  background: "rgba(255,215,0,0.15)", border: "1px solid #FFD70066",
+                  color: "#FFD700", textDecoration: "none", letterSpacing: "0.08em",
+                }}
+              >
                 🎵 SPIN
-              </button>
-              <button style={{
-                flex: 1, padding: "8px 0", borderRadius: 7, fontSize: 10, fontWeight: 800,
-                background: "rgba(230,48,0,0.15)", border: "1px solid #E6300066",
-                color: "#E63000", cursor: "pointer", letterSpacing: "0.08em",
-              }}>
+              </Link>
+              <Link
+                href="/battles/live"
+                style={{
+                  flex: 1, display: "block", textAlign: "center",
+                  padding: "8px 0", borderRadius: 7, fontSize: 10, fontWeight: 800,
+                  background: "rgba(230,48,0,0.15)", border: "1px solid #E6300066",
+                  color: "#E63000", textDecoration: "none", letterSpacing: "0.08em",
+                }}
+              >
                 👍 VOTE
-              </button>
+              </Link>
             </div>
           </Panel>
 
-          {/* Marquee Screen (stage) */}
-          <div style={{
-            height: 180, borderRadius: 12, overflow: "hidden", position: "relative",
-            background: "linear-gradient(135deg, #0a001a 0%, #020210 100%)",
-            border: "2px solid #E63000",
-            animation: "pulse 2.5s infinite",
-          }}>
-            {/* LED strip across top */}
+          {/* ── 3D AUDIENCE THEATER — live canvas ──────────────── */}
+          <div style={{ position: "relative", borderRadius: 12, overflow: "hidden", border: "2px solid rgba(230,48,0,0.5)", animation: "pulse 2.5s infinite" }}>
+            {/* LED strip */}
             <div style={{
-              position: "absolute", top: 0, left: 0, right: 0, height: 3, zIndex: 6,
+              position: "absolute", top: 0, left: 0, right: 0, height: 3, zIndex: 10, pointerEvents: "none",
               background: "linear-gradient(90deg, #E63000, #FFD700, #00E5FF, #FF2DAA, #00FF7F)",
               boxShadow: "0 0 12px rgba(0,229,255,0.6)",
             }} />
 
-            {/* Stage lighting bars — cyan, gold, fuchsia */}
-            {([
-              { color: "#00E5FF", angle: -25, left: "30%" },
-              { color: "#FFD700", angle: 0,   left: "50%" },
-              { color: "#FF2DAA", angle: 25,  left: "70%" },
-            ] as { color: string; angle: number; left: string }[]).map((sl, i) => (
-              <motion.div
-                key={i}
-                animate={{ opacity: [0.15, 0.25, 0.15] }}
-                transition={{ repeat: Infinity, duration: 3 + i * 0.9, ease: "easeInOut" }}
-                style={{
-                  position: "absolute", top: 0, left: sl.left,
-                  width: 3, height: "60%",
-                  background: `linear-gradient(180deg, ${sl.color}55, transparent)`,
-                  transformOrigin: "top center",
-                  transform: `translateX(-50%) rotate(${sl.angle}deg)`,
-                  zIndex: 2,
-                }}
-              />
-            ))}
-
-            {/* Center content */}
+            {/* Stage label */}
             <div style={{
-              position: "absolute", inset: 0,
-              display: "flex", flexDirection: "column",
-              alignItems: "center", justifyContent: "center", gap: 6,
-              zIndex: 3,
+              position: "absolute", top: 8, left: "50%", transform: "translateX(-50%)",
+              zIndex: 10, pointerEvents: "none",
+              background: "rgba(0,0,0,0.7)", borderRadius: 4,
+              padding: "2px 10px",
+              fontSize: 8, color: "#E63000", fontWeight: 900, letterSpacing: "0.2em",
+              animation: "blink 1.2s infinite",
             }}>
-              <motion.div
-                animate={{ y: [0, -5, 0] }}
-                transition={{ repeat: Infinity, duration: 2.4, ease: "easeInOut" }}
-                style={{ fontSize: 40 }}
-              >
-                🎤
-              </motion.div>
-              <div className="tmi-orbitron" style={{
-                fontSize: 9, color: "#E63000", fontWeight: 900,
-                letterSpacing: "0.2em", animation: "blink 1.2s infinite",
-              }}>
-                ● LIVE NOW
-              </div>
+              ● LIVE NOW — FAN THEATER
             </div>
 
-            {/* Crowd silhouettes — 12 alternating heights with bobble */}
-            <div style={{
-              position: "absolute", bottom: 0, left: 0, right: 0, height: "30%",
-              background: "linear-gradient(180deg, transparent, rgba(0,0,0,0.85))",
-              display: "flex", alignItems: "flex-end", justifyContent: "center",
-              gap: 3, paddingBottom: 2, zIndex: 4,
-            }}>
-              {Array.from({ length: 12 }).map((_, i) => (
-                <div key={i} style={{
-                  display: "flex", flexDirection: "column", alignItems: "center",
-                  gap: 0,
-                  animation: `bobble ${1.8 + (i % 3) * 0.4}s ease-in-out infinite`,
-                  animationDelay: `${i * 0.12}s`,
-                }}>
-                  {/* Head */}
-                  <div style={{
-                    width: i % 2 === 0 ? 7 : 9,
-                    height: i % 2 === 0 ? 7 : 9,
-                    borderRadius: "50%",
-                    background: "rgba(0,0,0,0.7)",
-                    marginBottom: 1,
-                  }} />
-                  {/* Shoulders */}
-                  <div style={{
-                    width: i % 2 === 0 ? 14 : 18,
-                    height: i % 2 === 0 ? 10 : 13,
-                    borderRadius: "50% 50% 0 0",
-                    background: "rgba(0,0,0,0.7)",
-                  }} />
+            <AudienceScene view="fan" venue={0} />
+
+            {/* Floating reactions overlay */}
+            <div style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 8 }}>
+              {reactions.map((r) => (
+                <div
+                  key={r.id}
+                  style={{
+                    position: "absolute",
+                    bottom: 60,
+                    left: `${r.x}%`,
+                    fontSize: 22,
+                    pointerEvents: "none",
+                    animation: "floatUp 1.3s ease-out forwards",
+                  }}
+                >
+                  {r.emoji}
                 </div>
               ))}
             </div>
+          </div>
 
-            {/* CRT scanline overlay */}
-            <div style={{
-              position: "absolute", inset: 0, pointerEvents: "none", zIndex: 5,
-              background: "repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.08) 2px, rgba(0,0,0,0.08) 4px)",
-              boxShadow: "inset 0 0 40px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.1)",
-            }} />
-
-            {/* Floating reactions */}
-            {reactions.map((r) => (
-              <div
-                key={r.id}
-                style={{
-                  position: "absolute",
-                  bottom: 40,
-                  left: `${r.x}%`,
-                  fontSize: 22,
-                  pointerEvents: "none",
-                  animation: "floatUp 1.3s ease-out forwards",
-                  zIndex: 6,
-                }}
-              >
-                {r.emoji}
-              </div>
-            ))}
+          {/* Jump into a live room */}
+          <div style={{ display: "flex", gap: 8, marginTop: -4 }}>
+            <Link
+              href="/live/rooms/monthly-idol?from=fan-hub"
+              style={{
+                flex: 1, display: "block", textAlign: "center",
+                padding: "9px 0", borderRadius: 8, fontSize: 10, fontWeight: 800,
+                background: "linear-gradient(135deg, #E63000, #FF6B00)",
+                color: "#fff", textDecoration: "none", letterSpacing: "0.1em",
+              }}
+            >
+              🎭 ENTER LIVE ROOM
+            </Link>
+            <Link
+              href="/battles/live"
+              style={{
+                padding: "9px 14px", borderRadius: 8, fontSize: 10, fontWeight: 800,
+                background: "rgba(255,45,170,0.12)", border: "1px solid rgba(255,45,170,0.35)",
+                color: "#FF2DAA", textDecoration: "none", letterSpacing: "0.08em",
+              }}
+            >
+              ⚔️ BATTLES
+            </Link>
+            <Link
+              href="/cypher/stage"
+              style={{
+                padding: "9px 14px", borderRadius: 8, fontSize: 10, fontWeight: 800,
+                background: "rgba(170,45,255,0.12)", border: "1px solid rgba(170,45,255,0.35)",
+                color: "#AA2DFF", textDecoration: "none", letterSpacing: "0.08em",
+              }}
+            >
+              ⚡ CYPHER
+            </Link>
           </div>
 
           {/* Action Dock */}
@@ -610,6 +640,29 @@ function FanTheaterInner() {
             </div>
             <TieredAdSlot tier="free" placement="fan-theater-action-dock" height={54} />
           </Panel>
+
+          {/* Chat Log */}
+          {chatLog.length > 0 && (
+            <div
+              className="tmi-scroll"
+              style={{ maxHeight: 120, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 5, padding: '4px 2px' }}
+            >
+              {chatLog.map((msg) => (
+                <div key={msg.id} style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'flex-end', gap: 6 }}>
+                  <span style={{ fontSize: 8, color: 'rgba(255,255,255,0.3)', whiteSpace: 'nowrap' }}>{msg.ts}</span>
+                  <div style={{
+                    maxWidth: '80%', padding: '6px 10px',
+                    borderRadius: '10px 10px 2px 10px',
+                    background: 'rgba(0,229,255,0.12)',
+                    border: '1px solid rgba(0,229,255,0.25)',
+                    fontSize: 11, color: '#fff',
+                  }}>
+                    {msg.text}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* Chat Input */}
           <form onSubmit={sendChat} style={{ display: "flex", gap: 8 }}>
@@ -778,6 +831,9 @@ function FanTheaterInner() {
           <TieredAdSlot tier="free" placement="fan-theater-sidebar" height={100} />
         </div>
       </div>
+
+      {/* Hidden audio element for real track playback */}
+      <audio ref={audioRef} preload="none" />
 
       {/* ── VENUE TICKER (fixed bottom) ──────────────────── */}
       <div style={{

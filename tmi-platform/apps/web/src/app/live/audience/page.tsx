@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import ArenaImmersivePanel from "@/components/live/ArenaImmersivePanel";
+import AudienceScene from "@/components/live/AudienceScene";
 
 type AudienceSnapshot = {
   venueSlug: string;
@@ -104,6 +105,22 @@ export default function LiveAudiencePage() {
                 <div style={{ height: 6, background: "#00BFFF", borderRadius: 4, width: `${snapshot.occupancyPct}%` }} />
               </div>
               <div style={{ fontSize: 11, color: "#666" }}>{snapshot.occupancyPct}% capacity used</div>
+            </div>
+
+            {/* 3D live audience canvas — fan POV looking at the stage */}
+            <div style={{ marginBottom: 28 }}>
+              <div style={{ fontSize: 11, color: "#aaa", fontWeight: 800, letterSpacing: "0.1em", marginBottom: 12 }}>
+                LIVE AUDIENCE VIEW
+              </div>
+              <AudienceScene
+                view="fan"
+                venue={(
+                  venueSlug === "battle-zone" ? 1 :
+                  venueSlug === "cypher-room" ? 2 :
+                  venueSlug === "concert-hall" ? 0 :
+                  0
+                ) as 0 | 1 | 2 | 3 | 4}
+              />
             </div>
 
             <ArenaImmersivePanel roomId={venueSlug} mode="audience" />

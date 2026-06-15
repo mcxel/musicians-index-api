@@ -1,0 +1,544 @@
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Exo+2:wght@400;600;700&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#08040a;font-family:'Exo 2',sans-serif;color:#FF8C00}
+@keyframes sway{0%,100%{transform:rotate(-5deg) translateY(0)}50%{transform:rotate(5deg) translateY(-3px)}}
+@keyframes swayL{0%,100%{transform:rotate(5deg) translateY(0)}50%{transform:rotate(-5deg) translateY(-3px)}}
+@keyframes clap{0%,100%{transform:rotate(-20deg)}50%{transform:rotate(20deg)}}
+@keyframes raise{0%,80%,100%{transform:translateY(0) rotate(-15deg)}40%{transform:translateY(-14px) rotate(-30deg)}}
+@keyframes headBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+@keyframes screenGlow{0%,100%{opacity:.85}50%{opacity:1}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+@keyframes floatReact{0%{transform:translateY(0) scale(1);opacity:1}100%{transform:translateY(-90px) scale(.3);opacity:0}}
+@keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+@keyframes venueFade{from{opacity:0}to{opacity:1}}
+@keyframes pulse{0%,100%{box-shadow:0 0 4px #E63000}50%{box-shadow:0 0 18px #E63000,0 0 36px rgba(230,48,0,.3)}}
+.tmi-btn{background:transparent;border:1px solid #E63000;color:#FF8C00;font-family:'Exo 2',sans-serif;font-size:11px;font-weight:700;cursor:pointer;border-radius:4px;padding:6px 12px;transition:all .15s;letter-spacing:.05em;text-transform:uppercase}
+.tmi-btn:hover{background:rgba(230,48,0,.25);color:#FFD700;box-shadow:0 0 8px rgba(230,48,0,.4)}
+.tmi-btn.active{background:rgba(230,48,0,.3);color:#FFD700;border-color:#FFD700}
+.tmi-btn.gold{border-color:#FFD700;color:#FFD700}
+.react-btn{background:transparent;border:1px solid rgba(220,70,0,.5);color:#FF8C00;font-family:'Exo 2',sans-serif;font-size:9px;font-weight:700;cursor:pointer;border-radius:4px;padding:5px 8px;transition:all .15s;text-align:center}
+.react-btn:hover{background:rgba(230,48,0,.2);color:#FFD700}
+.venue-btn{background:rgba(8,14,38,.9);border:1px solid rgba(220,70,0,.4);color:#FF8C00;font-size:10px;font-weight:700;cursor:pointer;border-radius:4px;padding:5px 10px;font-family:'Exo 2',sans-serif;transition:all .15s;text-transform:uppercase;letter-spacing:.05em}
+.venue-btn:hover{border-color:#E63000;color:#FFD700}
+.venue-btn.active{border-color:#FFD700;color:#FFD700;background:rgba(230,48,0,.2)}
+.lbl{font-size:9px;font-weight:700;letter-spacing:.12em;color:#FF8C00;text-transform:uppercase}
+</style>
+
+<div style="background:#08040a;min-height:600px;padding:10px">
+<h2 class="sr-only">TMI 3D Theater Audience Scene — performer and fan views with animated crowd</h2>
+
+<!-- Header controls -->
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding:8px 12px;background:rgba(8,14,38,.95);border:1px solid rgba(220,70,0,.5);border-radius:6px">
+  <div style="font-family:'Orbitron',sans-serif;font-weight:900;color:#E63000;font-size:14px;letter-spacing:.08em">🎭 TMI VENUE — 3D AUDIENCE ENGINE</div>
+  <div style="display:flex;gap:6px;align-items:center">
+    <div style="display:flex;align-items:center;gap:4px"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#00FF7F;box-shadow:0 0 5px #00FF7F;animation:blink 1.2s ease-in-out infinite"></span><span style="font-size:9px;color:#00FF7F">LIVE</span></div>
+    <span style="font-size:9px;color:rgba(255,140,0,.4)">2,730 in venue</span>
+  </div>
+</div>
+
+<!-- View toggle -->
+<div style="display:flex;gap:6px;margin-bottom:8px;justify-content:center">
+  <button class="tmi-btn active" id="btnFan" onclick="setView('fan')">👤 FAN VIEW — Audience Looking At Screen</button>
+  <button class="tmi-btn" id="btnPerformer" onclick="setView('performer')">🎤 PERFORMER VIEW — Stage Looking At Crowd</button>
+</div>
+
+<!-- Venue selector -->
+<div style="display:flex;gap:5px;margin-bottom:8px;justify-content:center;flex-wrap:wrap">
+  <span style="font-size:9px;color:rgba(255,140,0,.5);align-self:center;font-weight:700;letter-spacing:.1em">VENUE:</span>
+  <button class="venue-btn active" id="vBtn0" onclick="setVenue(0,this)">🏛 Theater</button>
+  <button class="venue-btn" id="vBtn1" onclick="setVenue(1,this)">🏟 Arena</button>
+  <button class="venue-btn" id="vBtn2" onclick="setVenue(2,this)">🎪 Club</button>
+  <button class="venue-btn" id="vBtn3" onclick="setVenue(3,this)">🌆 Outdoor Stage</button>
+  <button class="venue-btn" id="vBtn4" onclick="setVenue(4,this)">🎬 Boardroom</button>
+</div>
+
+<!-- SCENE CANVAS -->
+<div id="sceneWrap" style="position:relative;border-radius:8px;overflow:hidden;margin-bottom:8px;animation:venueFade .4s ease-out">
+  <canvas id="theaterCanvas" width="680" height="420" style="display:block;width:100%;border-radius:8px"></canvas>
+  <!-- Floating reactions layer -->
+  <div id="reactLayer" style="position:absolute;inset:0;pointer-events:none;overflow:hidden"></div>
+  <!-- View label -->
+  <div id="viewLabel" style="position:absolute;top:10px;left:12px;background:rgba(0,0,0,.7);border:1px solid rgba(220,70,0,.5);border-radius:4px;padding:4px 10px;font-size:9px;font-weight:700;color:#FF8C00;letter-spacing:.1em">FAN VIEW</div>
+  <!-- Crowd count badge -->
+  <div style="position:absolute;top:10px;right:12px;background:rgba(0,0,0,.7);border:1px solid rgba(220,70,0,.4);border-radius:4px;padding:4px 10px;font-size:9px;color:#FF8C00">
+    <span style="display:inline-block;width:5px;height:5px;border-radius:50%;background:#00FF7F;margin-right:4px;vertical-align:middle"></span>
+    <span id="crowdCount">2,730 fans</span>
+  </div>
+</div>
+
+<!-- Reaction dock -->
+<div style="background:rgba(8,14,38,.95);border:1px solid rgba(220,70,0,.5);border-radius:6px;padding:8px;margin-bottom:8px">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px">
+    <div class="lbl">Crowd Reactions — Fire one at the audience</div>
+    <div style="display:flex;align-items:center;gap:6px">
+      <span style="font-size:9px;color:rgba(255,140,0,.5)">Auto-react:</span>
+      <label style="position:relative;display:inline-block;width:32px;height:16px">
+        <input type="checkbox" id="autoReact" onchange="toggleAuto()" style="opacity:0;width:0;height:0">
+        <span id="autoSlider" style="position:absolute;inset:0;background:rgba(220,70,0,.3);border:1px solid rgba(220,70,0,.5);border-radius:8px;cursor:pointer;transition:.3s"></span>
+        <span id="autoKnob" style="position:absolute;left:2px;top:2px;width:12px;height:12px;border-radius:50%;background:#E63000;transition:.3s"></span>
+      </label>
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(8,1fr);gap:5px">
+    <button class="react-btn" onclick="fireReact('👏','CLAP')"><div style="font-size:18px">👏</div><div>CLAP</div></button>
+    <button class="react-btn" onclick="fireReact('✋','HANDS')"><div style="font-size:18px">✋</div><div>HANDS</div></button>
+    <button class="react-btn" onclick="fireReact('❤️','HEARTS')"><div style="font-size:18px">❤️</div><div>HEARTS</div></button>
+    <button class="react-btn" onclick="fireReact('🔥','FIRE')"><div style="font-size:18px">🔥</div><div>FIRE</div></button>
+    <button class="react-btn" onclick="fireReact('💰','MONEY')"><div style="font-size:18px">💰</div><div>MONEY</div></button>
+    <button class="react-btn" onclick="fireReact('⚡','HYPE')"><div style="font-size:18px">⚡</div><div>HYPE</div></button>
+    <button class="react-btn" onclick="fireReact('🎵','VIBE')"><div style="font-size:18px">🎵</div><div>VIBE</div></button>
+    <button class="react-btn" onclick="fireReact('🏆','WIN')"><div style="font-size:18px">🏆</div><div>WIN</div></button>
+  </div>
+</div>
+
+<!-- Audience mood + crowd wave -->
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px">
+  <div style="background:rgba(8,14,38,.95);border:1px solid rgba(220,70,0,.5);border-radius:6px;padding:8px">
+    <div class="lbl" style="margin-bottom:6px">Crowd Energy</div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <div id="energyBar" style="flex:1;height:8px;background:rgba(220,70,0,.2);border-radius:4px;overflow:hidden">
+        <div id="energyFill" style="height:100%;background:linear-gradient(90deg,#E63000,#FFD700);border-radius:4px;width:72%;transition:width .5s"></div>
+      </div>
+      <span id="energyPct" style="font-family:'Orbitron',sans-serif;font-size:12px;color:#FFD700">72%</span>
+    </div>
+    <div style="font-size:8px;color:rgba(255,140,0,.5);margin-top:4px">HYPE LEVEL: HIGH</div>
+  </div>
+  <div style="background:rgba(8,14,38,.95);border:1px solid rgba(220,70,0,.5);border-radius:6px;padding:8px;text-align:center">
+    <div class="lbl" style="margin-bottom:4px">Crowd Actions</div>
+    <div style="display:flex;gap:5px;justify-content:center">
+      <button class="tmi-btn" style="padding:4px 8px;font-size:9px" onclick="triggerWave()">🌊 WAVE</button>
+      <button class="tmi-btn" style="padding:4px 8px;font-size:9px" onclick="triggerJump()">⬆ JUMP</button>
+      <button class="tmi-btn gold" style="padding:4px 8px;font-size:9px" onclick="triggerHype()">🔥 HYPE</button>
+    </div>
+  </div>
+  <div style="background:rgba(8,14,38,.95);border:1px solid rgba(220,70,0,.5);border-radius:6px;padding:8px">
+    <div class="lbl" style="margin-bottom:5px">Live Reactions</div>
+    <div id="reactFeed" style="font-size:9px;color:rgba(255,140,0,.7);height:36px;overflow:hidden">
+      <div>SkyFan94 threw ❤️</div>
+      <div>Beathead33 fired ⚡</div>
+      <div>MusicLvr22 sent 💰</div>
+    </div>
+  </div>
+</div>
+
+<!-- Audience section tabs -->
+<div style="display:flex;gap:5px;margin-bottom:8px">
+  <button class="tmi-btn active" id="secAll" onclick="setSection('all',this)" style="flex:1;padding:6px;font-size:9px">ALL SECTIONS</button>
+  <button class="tmi-btn" id="secFront" onclick="setSection('front',this)" style="flex:1;padding:6px;font-size:9px">FRONT ROW VIP</button>
+  <button class="tmi-btn" id="secMid" onclick="setSection('mid',this)" style="flex:1;padding:6px;font-size:9px">MID FLOOR</button>
+  <button class="tmi-btn" id="secBack" onclick="setSection('back',this)" style="flex:1;padding:6px;font-size:9px">UPPER DECK</button>
+  <button class="tmi-btn" id="secStage" onclick="setSection('stage',this)" style="flex:1;padding:6px;font-size:9px">STAGE PIT</button>
+</div>
+
+<!-- Stats row -->
+<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px">
+  <div style="background:rgba(8,14,38,.95);border:1px solid rgba(220,70,0,.4);border-radius:5px;padding:7px;text-align:center">
+    <div class="lbl" style="font-size:7px;margin-bottom:2px">Front Row</div>
+    <div style="font-family:'Orbitron',sans-serif;font-size:14px;color:#FFD700">180</div>
+    <div style="font-size:7px;color:rgba(255,140,0,.5)">VIP · Diamond</div>
+  </div>
+  <div style="background:rgba(8,14,38,.95);border:1px solid rgba(220,70,0,.4);border-radius:5px;padding:7px;text-align:center">
+    <div class="lbl" style="font-size:7px;margin-bottom:2px">Mid Floor</div>
+    <div style="font-family:'Orbitron',sans-serif;font-size:14px;color:#FFD700">820</div>
+    <div style="font-size:7px;color:rgba(255,140,0,.5)">Gold · Silver</div>
+  </div>
+  <div style="background:rgba(8,14,38,.95);border:1px solid rgba(220,70,0,.4);border-radius:5px;padding:7px;text-align:center">
+    <div class="lbl" style="font-size:7px;margin-bottom:2px">Upper Deck</div>
+    <div style="font-family:'Orbitron',sans-serif;font-size:14px;color:#FFD700">1,204</div>
+    <div style="font-size:7px;color:rgba(255,140,0,.5)">Fan · General</div>
+  </div>
+  <div style="background:rgba(8,14,38,.95);border:1px solid rgba(220,70,0,.4);border-radius:5px;padding:7px;text-align:center">
+    <div class="lbl" style="font-size:7px;margin-bottom:2px">Stage Pit</div>
+    <div style="font-family:'Orbitron',sans-serif;font-size:14px;color:#E63000">526</div>
+    <div style="font-size:7px;color:rgba(255,140,0,.5)">Ultra · Access</div>
+  </div>
+  <div style="background:rgba(8,14,38,.95);border:1px solid rgba(220,70,0,.4);border-radius:5px;padding:7px;text-align:center">
+    <div class="lbl" style="font-size:7px;margin-bottom:2px">Total Tips</div>
+    <div style="font-family:'Orbitron',sans-serif;font-size:14px;color:#00FF7F">$4.2k</div>
+    <div style="font-size:7px;color:rgba(255,140,0,.5)">This show</div>
+  </div>
+</div>
+</div>
+
+<script>
+const canvas = document.getElementById('theaterCanvas');
+const ctx = canvas.getContext('2d');
+let currentView = 'fan';
+let currentVenue = 0;
+let autoInterval = null;
+let frameId = null;
+let time = 0;
+let wavePhase = 0;
+let waveActive = false;
+let jumpActive = false;
+let hypeActive = false;
+let crowdEnergyPct = 72;
+
+const VENUES = [
+  { name:'Theater', wallColor:'#1a0a04', floorColor:'#0e0602', ceilColor:'#0a0400', seatColor:'#5a1008', wallTex:true, tiered:true, crowd:2730 },
+  { name:'Arena', wallColor:'#0a0a12', floorColor:'#080810', ceilColor:'#050510', seatColor:'#1a1a3a', wallTex:false, tiered:false, crowd:18500 },
+  { name:'Club', wallColor:'#0a0018', floorColor:'#060010', ceilColor:'#04000e', seatColor:'#2a0040', wallTex:false, tiered:false, crowd:420 },
+  { name:'Outdoor', wallColor:'#050c18', floorColor:'#030a10', ceilColor:'#000608', seatColor:'#0a1a0a', wallTex:false, tiered:false, crowd:8200 },
+  { name:'Boardroom', wallColor:'#080814', floorColor:'#050510', ceilColor:'#030308', seatColor:'#1a0a2a', wallTex:true, tiered:true, crowd:120 },
+];
+
+const SKIN_TONES = ['#8B4513','#5C3317','#2F1B0E','#A0522D','#CD853F','#D2691E','#704214','#3D2008','#6B3a2C','#915030'];
+const HAIR_COLORS = ['#1a0a00','#3d2000','#000000','#2a1500','#0a0a0a','#4a2800','#1f0f00'];
+
+function getRandFrom(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+
+function lerp(a,b,t){ return a+(b-a)*t; }
+
+function drawBricks(x,y,w,h,col){
+  ctx.fillStyle=col;
+  ctx.fillRect(x,y,w,h);
+  ctx.strokeStyle='rgba(0,0,0,.35)';
+  ctx.lineWidth=.8;
+  const bw=38,bh=14;
+  for(let row=0;row*bh<h;row++){
+    const off=(row%2)*bw/2;
+    for(let col2=0;col2*bw<w+bw;col2++){
+      ctx.strokeRect(x+col2*bw-off,y+row*bh,bw,bh);
+    }
+  }
+}
+
+function drawHead(x,y,size,skin,hair,armPhase,isForward,isLit,expression,seatHighlight){
+  const lit = isLit? 1: .45;
+  ctx.save();
+
+  if(!isForward){
+    const armLen = size*1.4;
+    const armOff = Math.sin(armPhase)*armLen;
+    if(Math.random()<.05 || seatHighlight==='raise'){
+      ctx.strokeStyle=`rgba(${Math.round(parseInt(skin.slice(1,3),16)*lit)},${Math.round(parseInt(skin.slice(3,5),16)*lit)},${Math.round(parseInt(skin.slice(5,7),16)*lit)},.9)`;
+      ctx.lineWidth=size*.35;
+      ctx.lineCap='round';
+      ctx.beginPath();
+      ctx.moveTo(x-size*.3,y+size*.7);
+      ctx.lineTo(x-size*.3+armOff*.4,y-armLen*.8);
+      ctx.stroke();
+    } else {
+      ctx.strokeStyle=`rgba(${Math.round(parseInt(skin.slice(1,3),16)*lit)},${Math.round(parseInt(skin.slice(3,5),16)*lit)},${Math.round(parseInt(skin.slice(5,7),16)*lit)},.7)`;
+      ctx.lineWidth=size*.3;
+      ctx.lineCap='round';
+      ctx.beginPath();
+      ctx.moveTo(x-size*.4,y+size*.7);
+      ctx.lineTo(x-size*.4+Math.sin(armPhase)*size*.6,y+size+Math.cos(armPhase)*size*.3);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(x+size*.4,y+size*.7);
+      ctx.lineTo(x+size*.4+Math.sin(armPhase+1)*size*.5,y+size+Math.cos(armPhase+1)*size*.3);
+      ctx.stroke();
+    }
+
+    ctx.fillStyle=`rgb(${Math.round(parseInt(skin.slice(1,3),16)*lit)},${Math.round(parseInt(skin.slice(3,5),16)*lit)},${Math.round(parseInt(skin.slice(5,7),16)*lit)})`;
+    ctx.beginPath();
+    ctx.ellipse(x,y+size*.8,size*.7,size*.9,0,0,Math.PI*2);
+    ctx.fill();
+    ctx.fillStyle=`rgb(${Math.round(parseInt(hair.slice(1,3),16)*lit)},${Math.round(parseInt(hair.slice(3,5),16)*lit)},${Math.round(parseInt(hair.slice(5,7),16)*lit)})`;
+    ctx.beginPath();
+    ctx.ellipse(x,y,size*.75,size*.78,0,0,Math.PI*2);
+    ctx.fill();
+
+    if(Math.random()<.25){
+      const phoneGlow = `rgba(100,200,255,${.5*lit})`;
+      ctx.fillStyle=phoneGlow;
+      ctx.fillRect(x-size*.5,y-size*.6,size*.28,size*.4);
+    }
+  } else {
+    ctx.fillStyle=`rgb(${Math.round(parseInt(skin.slice(1,3),16)*lit)},${Math.round(parseInt(skin.slice(3,5),16)*lit)},${Math.round(parseInt(skin.slice(5,7),16)*lit)})`;
+    ctx.beginPath();
+    ctx.ellipse(x,y+size*.5,size*.55,size*.65,0,0,Math.PI*2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(x,y,size*.65,size*.7,0,0,Math.PI*2);
+    ctx.fill();
+
+    const hr = parseInt(hair.slice(1,3),16)*lit;
+    const hg = parseInt(hair.slice(3,5),16)*lit;
+    const hb = parseInt(hair.slice(5,7),16)*lit;
+    ctx.fillStyle=`rgb(${Math.round(hr)},${Math.round(hg)},${Math.round(hb)})`;
+    ctx.beginPath();
+    ctx.arc(x,y-size*.1,size*.68,Math.PI,0);
+    ctx.fill();
+
+    const er = parseInt(skin.slice(1,3),16)*lit*.9;
+    const eg = parseInt(skin.slice(3,5),16)*lit*.9;
+    const eb = parseInt(skin.slice(5,7),16)*lit*.9;
+    ctx.fillStyle=`rgb(${Math.round(er)},${Math.round(eg)},${Math.round(eb)})`;
+    ctx.beginPath();ctx.ellipse(x-size*.72,y+size*.1,size*.22,size*.18,0,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.ellipse(x+size*.72,y+size*.1,size*.22,size*.18,0,0,Math.PI*2);ctx.fill();
+
+    ctx.fillStyle=`rgba(30,10,0,${.8*lit})`;
+    ctx.beginPath();ctx.ellipse(x-size*.22,y,size*.12,size*.16,0,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.ellipse(x+size*.22,y,size*.12,size*.16,0,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle=`rgba(60,20,0,${.7*lit})`;
+    ctx.lineWidth=size*.12;ctx.lineCap='round';
+    ctx.beginPath();ctx.arc(x,y+size*.22,size*.22,0,Math.PI);ctx.stroke();
+
+    ctx.strokeStyle=`rgba(${Math.round(parseInt(skin.slice(1,3),16)*lit*.8)},${Math.round(parseInt(skin.slice(3,5),16)*lit*.8)},${Math.round(parseInt(skin.slice(5,7),16)*lit*.8)},0.8)`;
+    ctx.lineWidth=size*.32;ctx.lineCap='round';
+    ctx.beginPath();ctx.moveTo(x-size*.5,y+size*.5);ctx.lineTo(x-size*.6+Math.sin(armPhase)*size*.9,y+size*.3+Math.cos(armPhase)*size*.6);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(x+size*.5,y+size*.5);ctx.lineTo(x+size*.6+Math.sin(armPhase+1.2)*size*.8,y+size*.3+Math.cos(armPhase+1.2)*size*.5);ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawFanView(v){
+  const W=680,H=420;
+  ctx.clearRect(0,0,W,H);
+
+  ctx.fillStyle=v.ceilColor;
+  ctx.fillRect(0,0,W,H);
+
+  if(v.wallTex){
+    drawBricks(0,0,W,H*0.55,v.wallColor);
+  } else {
+    ctx.fillStyle=v.wallColor;
+    ctx.fillRect(0,0,W,H*.55);
+  }
+
+  ctx.fillStyle=v.floorColor;
+  ctx.fillRect(0,H*.55,W,H*.45);
+
+  const scrX=140,scrY=28,scrW=400,scrH=200;
+  ctx.fillStyle='#1a0900';
+  ctx.fillRect(scrX-8,scrY-8,scrW+16,scrH+16);
+
+  const ambGrad=ctx.createRadialGradient(scrX+scrW/2,scrY+scrH/2,10,scrX+scrW/2,scrY+scrH/2,scrW*.7);
+  const glowA=.85+Math.sin(time*.02)*.12;
+  ambGrad.addColorStop(0,`rgba(255,160,40,${glowA})`);
+  ambGrad.addColorStop(.4,`rgba(200,100,15,${glowA*.85})`);
+  ambGrad.addColorStop(.75,`rgba(100,50,5,${glowA*.4})`);
+  ambGrad.addColorStop(1,`rgba(40,15,0,0)`);
+  ctx.fillStyle=ambGrad;
+  ctx.fillRect(scrX,scrY,scrW,scrH);
+
+  const scanY=(time*.8)%scrH;
+  ctx.fillStyle='rgba(255,200,100,.04)';
+  ctx.fillRect(scrX,scrY+scanY,scrW,3);
+
+  const wallGlow=ctx.createRadialGradient(scrX+scrW/2,scrY+scrH,0,scrX+scrW/2,scrY+scrH,scrW*.8);
+  wallGlow.addColorStop(0,`rgba(255,140,20,${.18*glowA})`);
+  wallGlow.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle=wallGlow;
+  ctx.fillRect(0,scrY,W,scrH+80);
+
+  const rows=[
+    {y:300,seats:14,seatW:44,headSz:9,lit:.15},
+    {y:324,seats:13,seatW:48,headSz:10,lit:.2},
+    {y:348,seats:12,seatW:52,headSz:12,lit:.28},
+    {y:368,seats:11,seatW:56,headSz:13,lit:.38},
+    {y:386,seats:10,seatW:60,headSz:14,lit:.5},
+    {y:402,seats:9,seatW:64,headSz:15,lit:.65},
+  ];
+
+  rows.forEach((row,ri)=>{
+    const startX=(W-row.seats*row.seatW)/2;
+    for(let c=0;c<row.seats;c++){
+      const idx=ri*20+c;
+      const px=startX+c*row.seatW+row.seatW/2;
+      const py=row.y;
+      const seatBob=waveActive? Math.sin(time*.04+c*.6+ri*.3)*4: jumpActive? Math.abs(Math.sin(time*.08))*-6: 0;
+      const sk=SKIN_TONES[(idx*7+c*3)%SKIN_TONES.length];
+      const hr=HAIR_COLORS[(idx*5+ri*2)%HAIR_COLORS.length];
+      const aph=time*.025+(c*.4)+(ri*.2);
+
+      const scl=lerp(.6,1,row.lit/.7);
+      ctx.save();
+      ctx.scale(1,scl);
+      drawHead(px,py/scl+seatBob/scl,row.headSz,sk,hr,aph,false,true,'neutral',null);
+      ctx.restore();
+    }
+  });
+
+  ctx.fillStyle='rgba(0,0,0,.25)';
+  ctx.fillRect(0,H*.53,W,5);
+}
+
+function drawPerformerView(v){
+  const W=680,H=420;
+  ctx.clearRect(0,0,W,H);
+
+  const bgGrad=ctx.createLinearGradient(0,0,0,H);
+  bgGrad.addColorStop(0,v.ceilColor);
+  bgGrad.addColorStop(1,v.floorColor);
+  ctx.fillStyle=bgGrad;
+  ctx.fillRect(0,0,W,H);
+
+  if(v.wallTex){
+    drawBricks(0,0,W,H*.45,v.wallColor);
+  } else {
+    ctx.fillStyle=v.wallColor;
+    ctx.fillRect(0,0,W,H*.45);
+  }
+
+  const lights=['rgba(255,180,50,.12)','rgba(200,80,0,.1)','rgba(255,220,50,.08)'];
+  lights.forEach((c,i)=>{
+    const lx=W*.2+i*W*.3;
+    const lg=ctx.createRadialGradient(lx,0,0,lx,0,H*.6);
+    lg.addColorStop(0,c);
+    lg.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=lg;
+    ctx.fillRect(0,0,W,H*.6);
+  });
+
+  const stageGlow=ctx.createRadialGradient(W/2,H,0,W/2,H,W*.6);
+  stageGlow.addColorStop(0,'rgba(255,100,0,.35)');
+  stageGlow.addColorStop(.5,'rgba(180,60,0,.12)');
+  stageGlow.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle=stageGlow;
+  ctx.fillRect(0,H*.5,W,H*.5);
+
+  const vp={x:W/2,y:H*.32};
+
+  const drawRow=(rowDef)=>{
+    const {t:ty,seats,seatW,headSz,lit,yBase,section} = rowDef;
+    const totalW=seats*seatW;
+    const startX=(W-totalW)/2;
+
+    if(section!=='pit'){
+      ctx.strokeStyle=`rgba(${parseInt(v.seatColor.slice(1,3),16)},${parseInt(v.seatColor.slice(3,5),16)},${parseInt(v.seatColor.slice(5,7),16)},${lit*.4})`;
+      ctx.lineWidth=.5;
+      ctx.beginPath();
+      ctx.moveTo(startX-10,yBase+headSz*2.5);
+      ctx.lineTo(startX+totalW+10,yBase+headSz*2.5);
+      ctx.stroke();
+    }
+
+    for(let c=0;c<seats;c++){
+      const idx=rowDef.rowIdx*30+c;
+      const px=startX+c*seatW+seatW/2;
+      const py=yBase;
+      const waveOff=waveActive?Math.sin(time*.04+c*.5)*5:0;
+      const jumpOff=jumpActive?Math.abs(Math.sin(time*.08+c*.3))*-8:0;
+      const hypeWave=hypeActive?(Math.sin(time*.06+c*.4)*4+Math.sin(time*.03+c*.2)*3):0;
+      const finalY=py+waveOff+jumpOff+hypeWave;
+      const sk=SKIN_TONES[(idx*7+c*3)%SKIN_TONES.length];
+      const hr=HAIR_COLORS[(idx*5+rowDef.rowIdx*2)%HAIR_COLORS.length];
+      const aph=time*.028+(c*.35)+(rowDef.rowIdx*.15);
+      const expr=hypeActive&&Math.random()<.3?'happy':'neutral';
+      drawHead(px,finalY,headSz,sk,hr,aph,true,true,expr,null);
+    }
+  };
+
+  const seatRows=[
+    {rowIdx:0,yBase:H*.41,seats:18,seatW:34,headSz:8.5,lit:.7,section:'upper'},
+    {rowIdx:1,yBase:H*.46,seats:16,seatW:36,headSz:9.5,lit:.75,section:'upper'},
+    {rowIdx:2,yBase:H*.52,seats:14,seatW:40,headSz:11,lit:.8,section:'mid'},
+    {rowIdx:3,yBase:H*.58,seats:12,seatW:44,headSz:12.5,lit:.85,section:'mid'},
+    {rowIdx:4,yBase:H*.64,seats:10,seatW:50,headSz:14,lit:.9,section:'front'},
+    {rowIdx:5,yBase:H*.70,seats:8,seatW:58,headSz:15.5,lit:.95,section:'front'},
+    {rowIdx:6,yBase:H*.77,seats:6,seatW:66,headSz:17,lit:1,section:'pit'},
+    {rowIdx:7,yBase:H*.84,seats:5,seatW:74,headSz:18,lit:1,section:'pit'},
+  ];
+
+  seatRows.forEach(drawRow);
+
+  const sg=ctx.createLinearGradient(0,H*.88,0,H);
+  sg.addColorStop(0,'rgba(0,0,0,0)');
+  sg.addColorStop(1,v.floorColor);
+  ctx.fillStyle=sg;
+  ctx.fillRect(0,H*.88,W,H*.12);
+
+  const topFade=ctx.createLinearGradient(0,0,0,H*.35);
+  topFade.addColorStop(0,'rgba(0,0,0,.6)');
+  topFade.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle=topFade;
+  ctx.fillRect(0,0,W,H*.35);
+}
+
+function render(){
+  time++;
+  const v=VENUES[currentVenue];
+  if(currentView==='fan') drawFanView(v);
+  else drawPerformerView(v);
+
+  if(waveActive&&time%80===0) waveActive=false;
+  if(jumpActive&&time%60===0) jumpActive=false;
+  if(hypeActive&&time%100===0){ hypeActive=false; crowdEnergyPct=Math.min(100,crowdEnergyPct+15); updateEnergy(); }
+
+  frameId=requestAnimationFrame(render);
+}
+
+function setView(v){
+  currentView=v;
+  document.getElementById('viewLabel').textContent=v==='fan'?'FAN VIEW':'PERFORMER VIEW';
+  document.getElementById('btnFan').classList.toggle('active',v==='fan');
+  document.getElementById('btnPerformer').classList.toggle('active',v==='performer');
+}
+
+function setVenue(i,btn){
+  currentVenue=i;
+  document.querySelectorAll('.venue-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('crowdCount').textContent=VENUES[i].crowd.toLocaleString()+' fans';
+}
+
+function setSection(s,btn){
+  document.querySelectorAll('[id^=sec]').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function fireReact(emoji,label){
+  const layer=document.getElementById('reactLayer');
+  const count=Math.floor(Math.random()*6)+4;
+  for(let i=0;i<count;i++){
+    setTimeout(()=>{
+      const el=document.createElement('div');
+      el.textContent=emoji;
+      const x=Math.random()*80+10;
+      el.style.cssText=`position:absolute;bottom:${10+Math.random()*30}%;left:${x}%;font-size:${16+Math.random()*12}px;animation:floatReact ${1.2+Math.random()*.8}s ease-out forwards;pointer-events:none;z-index:10`;
+      layer.appendChild(el);
+      setTimeout(()=>el.remove(),2200);
+    },i*80);
+  }
+  crowdEnergyPct=Math.min(100,crowdEnergyPct+4);
+  updateEnergy();
+  addFeedItem(label,emoji);
+}
+
+const feedNames=['SkyFan94','Beathead33','MusicLvr22','JamesSky','Lily88','Alex94','FanUser441','BJM_Fan','KazhFam'];
+function addFeedItem(label,emoji){
+  const feed=document.getElementById('reactFeed');
+  const name=feedNames[Math.floor(Math.random()*feedNames.length)];
+  const d=document.createElement('div');
+  d.style.cssText='font-size:9px;color:rgba(255,140,0,.8);animation:slideUp .3s ease-out';
+  d.textContent=`${name} fired ${emoji}`;
+  feed.insertBefore(d,feed.firstChild);
+  if(feed.children.length>4) feed.removeChild(feed.lastChild);
+}
+
+function triggerWave(){ waveActive=true; crowdEnergyPct=Math.min(100,crowdEnergyPct+8); updateEnergy(); addFeedItem('WAVE','🌊'); }
+function triggerJump(){ jumpActive=true; crowdEnergyPct=Math.min(100,crowdEnergyPct+10); updateEnergy(); addFeedItem('JUMP','⬆'); }
+function triggerHype(){ hypeActive=true; addFeedItem('HYPE','🔥'); }
+
+function updateEnergy(){
+  document.getElementById('energyFill').style.width=crowdEnergyPct+'%';
+  document.getElementById('energyPct').textContent=crowdEnergyPct+'%';
+}
+
+function toggleAuto(){
+  const cb=document.getElementById('autoReact');
+  const knob=document.getElementById('autoKnob');
+  if(cb.checked){
+    knob.style.left='18px';
+    knob.style.background='#00FF7F';
+    autoInterval=setInterval(()=>{
+      const emojis=[['👏','CLAP'],['✋','HANDS'],['❤️','HEARTS'],['🔥','FIRE'],['⚡','HYPE']];
+      const pick=emojis[Math.floor(Math.random()*emojis.length)];
+      fireReact(pick[0],pick[1]);
+      if(Math.random()<.2) triggerWave();
+    },2200);
+  } else {
+    knob.style.left='2px';
+    knob.style.background='#E63000';
+    clearInterval(autoInterval);
+  }
+}
+
+render();
+</script>

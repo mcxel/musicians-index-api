@@ -14,7 +14,7 @@ const CREDIT_AMOUNTS: Record<string, number> = {
   price_vip_monthly: 10000,
 };
 
-type State = 'loading' | 'granted' | 'duplicate' | 'pass' | 'sponsor' | 'unknown';
+type State = 'loading' | 'granted' | 'tip' | 'duplicate' | 'pass' | 'sponsor' | 'unknown';
 
 export default function PaymentSuccessPage() {
   const params = useSearchParams();
@@ -30,6 +30,8 @@ export default function PaymentSuccessPage() {
   const [creditsGranted, setCreditsGranted] = useState(0);
 
   useEffect(() => {
+    // Tip payments land without a session_id — show success directly
+    if (!sessionId && params?.get('type') === 'tip') { setStatus('tip'); return; }
     if (!sessionId) { setStatus('unknown'); return; }
 
     // Idempotency: only grant once per session ID
@@ -93,7 +95,7 @@ export default function PaymentSuccessPage() {
   }, [sessionId, priceId, mode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const colors: Record<State, string> = {
-    loading: '#888', granted: '#00FF88', duplicate: '#FFD700', pass: '#AA2DFF', sponsor: '#FFD700', unknown: '#FF4444',
+    loading: '#888', granted: '#00FF88', tip: '#FF2DAA', duplicate: '#FFD700', pass: '#AA2DFF', sponsor: '#FFD700', unknown: '#FF4444',
   };
   const accent = colors[status] ?? '#888';
 
@@ -101,8 +103,18 @@ export default function PaymentSuccessPage() {
     <main style={{ minHeight: '100vh', background: '#050510', color: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 24px' }}>
       <div style={{ maxWidth: 480, width: '100%', textAlign: 'center' }}>
         <div style={{ fontSize: 56, marginBottom: 16 }}>
-          {status === 'loading' ? '⏳' : status === 'granted' ? '🎉' : status === 'pass' ? '🎸' : status === 'sponsor' ? '🤝' : status === 'duplicate' ? '✅' : '❓'}
+          {status === 'loading' ? '⏳' : status === 'tip' ? '💸' : status === 'granted' ? '🎉' : status === 'pass' ? '🎸' : status === 'sponsor' ? '🤝' : status === 'duplicate' ? '✅' : '❓'}
         </div>
+
+        {status === 'tip' && (
+          <>
+            <div style={{ fontSize: 9, letterSpacing: '0.4em', color: '#FF2DAA', fontWeight: 800, marginBottom: 10 }}>TIP SENT</div>
+            <h1 style={{ fontSize: 22, fontWeight: 900, marginBottom: 8 }}>Your tip went through!</h1>
+            <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', marginBottom: 28 }}>
+              The performer receives your support directly. Thank you for keeping the music alive.
+            </p>
+          </>
+        )}
 
         {status === 'loading' && (
           <>

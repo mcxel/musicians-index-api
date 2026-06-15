@@ -1,29 +1,55 @@
 export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { MediaEngine } from "@/lib/media/MediaAssetEngine";
-import type { UploadRequest } from "@/lib/media/MediaAssetEngine";
+import type { UploadRequest, MediaType } from "@/lib/media/MediaAssetEngine";
 
-// POST /api/media/upload
-// Body: UploadRequest JSON
-// Returns: UploadResult JSON
-//
-// In production: parse multipart/form-data, stream to Cloudflare R2,
-//   return CDN URL. For soft launch: simulate via MediaAssetEngine.
+const UI_TYPE_MAP: Record<string, MediaType> = {
+  Video: "video", Audio: "song", Beat: "beat", "Beat Pack": "beat",
+  Image: "article_media", Song: "song", Interview: "interview",
+};
+
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json() as UploadRequest;
+    const contentType = req.headers.get("content-type") ?? "";
+    let title = "", rawType = "song", ownerId = "", simulatedFileName = "", simulatedSizeBytes = 0;
 
-    // Basic validation
-    if (!body.ownerId || !body.type || !body.title?.trim()) {
-      return NextResponse.json({ ok: false, error: "ownerId, type, and title are required" }, { status: 400 });
+    if (contentType.includes("multipart/form-data")) {
+      const fd = await req.formData();
+      title = (fd.get("title") as string) ?? "";
+      rawType = (fd.get("type") as string) ?? "Audio";
+      const file = fd.get("file") as File | null;
+      simulatedFileName = file?.name ?? "upload";
+      simulatedSizeBytes = file?.size ?? 0;
+    } else {
+      const body = await req.json() as UploadRequest & { rawType?: string };
+      title = body.title ?? "";
+      rawType = body.rawType ?? (body.type as string) ?? "song";
+      simulatedSizeBytes = body.simulatedSizeBytes ?? 0;
+      ownerId = body.ownerId ?? "";
     }
 
-    const result = await MediaEngine.upload(body);
+    // Owner from cookie (client uploads always come from the logged-in user)
+    const cookieEmail = req.cookies.get("tmi_user_email")?.value ?? "";
+    const cookieRole  = req.cookies.get("tmi_role")?.value ?? "fan";
+    if (!ownerId) ownerId = cookieEmail || "guest";
+    const ownerName = cookieEmail ? cookieEmail.split("@")[0] : "user";
 
-    if (!result.ok) {
-      return NextResponse.json(result, { status: 400 });
+    if (!title.trim()) {
+      return NextResponse.json({ ok: false, error: "title is required" }, { status: 400 });
     }
 
+    const mediaType: MediaType = UI_TYPE_MAP[rawType] ?? (rawType as MediaType) ?? "song";
+    const ownerRole = (["performer","fan","venue","sponsor","advertiser","promoter"].includes(cookieRole)
+      ? cookieRole : "fan") as UploadRequest["ownerRole"];
+
+    const uploadReq: UploadRequest = {
+      ownerId, ownerName, ownerRole,
+      type: mediaType, title,
+      simulatedFileName, simulatedSizeBytes,
+    };
+
+    const result = await MediaEngine.upload(uploadReq);
+    if (!result.ok) return NextResponse.json(result, { status: 400 });
     return NextResponse.json(result, { status: 201 });
   } catch (err) {
     console.error("[media/upload]", err);

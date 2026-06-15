@@ -1,5 +1,6 @@
 import { ensureProfileEconomyRuntime } from '@/lib/integration/EconomyIntegrationRuntime';
-import { getMemoryWallStats, listMemoriesForEntity } from '@/lib/profiles/MemoryWallEngine';
+import type { MemoryItem, MemoryWallStats } from '@/lib/profiles/MemoryWallEngine';
+import prisma from '@/lib/prisma';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 
@@ -9,6 +10,32 @@ const MemoryWallCanvas = dynamic(
 );
 
 type Props = { params: Promise<{ slug: string }> };
+
+async function findUserIdBySlug(slug: string): Promise<string | null> {
+  const profile = await prisma.userProfile.findUnique({
+    where: { username: slug },
+    select: { userId: true },
+  });
+  if (profile) return profile.userId;
+
+  const user = await prisma.user.findFirst({
+    where: { email: { startsWith: `${slug}@` } },
+    select: { id: true },
+  });
+  return user?.id ?? null;
+}
+
+function computeStats(memories: MemoryItem[]): MemoryWallStats {
+  return {
+    totalMemories: memories.length,
+    pinnedMemories: memories.filter((m) => m.pinnedAt !== undefined && m.pinnedAt !== null).length,
+    photoCount: memories.filter((m) => m.contentType === 'photo').length,
+    videoCount: memories.filter((m) => m.contentType === 'video').length,
+    achievementCount: memories.filter((m) => m.contentType === 'achievement').length,
+    ticketStubCount: memories.filter((m) => m.contentType === 'ticket-stub').length,
+    lastUpdated: memories.length > 0 ? Math.max(...memories.map((m) => m.createdAt)) : Date.now(),
+  };
+}
 
 export default async function FanMemoryPage({ params }: Props) {
   const { slug } = await params;
@@ -20,8 +47,22 @@ export default async function FanMemoryPage({ params }: Props) {
     routePath: `/fan/${slug}/memory`,
   });
 
-  const stats = getMemoryWallStats(slug, 'fan');
-  const memories = listMemoriesForEntity(slug, 'fan');
+  let memories: MemoryItem[] = [];
+  try {
+    const userId = await findUserIdBySlug(slug);
+    if (userId) {
+      const feedItems = await prisma.feedItem.findMany({
+        where: { userId, type: 'MEMORY_WALL_ITEM', entityType: 'fan' },
+        orderBy: { createdAt: 'desc' },
+        take: 200,
+      });
+      memories = feedItems.map((fi) => fi.data as unknown as MemoryItem);
+    }
+  } catch {
+    // DB unavailable — MemoryWallCanvas falls back to DEMO_SEEDS
+  }
+
+  const stats = computeStats(memories);
 
   return (
     <main style={{ minHeight: '100vh', background: '#050510', color: '#fff', padding: 24 }}>

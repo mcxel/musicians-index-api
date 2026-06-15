@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import TMILiveMediaWidget from "@/components/media/TMILiveMediaWidget";
+import { LobbyEntryFlow, type UniversalRoom } from "@/components/room/UniversalLobbyEntry";
 
 // ─── Game show definitions ────────────────────────────────────────────────────
 
@@ -171,11 +172,11 @@ function AudienceSeatLayer({ emotes, accent }: { emotes: string[]; accent: strin
 
 // ─── Game show card ───────────────────────────────────────────────────────────
 
-function GameShowCard({ show, featured }: { show: typeof GAME_SHOWS[0]; featured?: boolean }) {
+function GameShowCard({ show, featured, onJoin }: { show: typeof GAME_SHOWS[0]; featured?: boolean; onJoin: (show: typeof GAME_SHOWS[0]) => void }) {
   const isLive = show.status === "LIVE";
 
   return (
-    <Link href={show.href} style={{ textDecoration: "none" }}>
+    <div onClick={() => onJoin(show)} style={{ textDecoration: "none", cursor: "pointer" }}>
       <motion.div
         whileHover={{ scale: 1.03, boxShadow: `0 0 40px ${show.accent}44` }}
         whileTap={{ scale: 0.98 }}
@@ -270,7 +271,7 @@ function GameShowCard({ show, featured }: { show: typeof GAME_SHOWS[0]; featured
           </motion.div>
         </div>
       </motion.div>
-    </Link>
+    </div>
   );
 }
 
@@ -335,7 +336,27 @@ function PrizeWinnerFlash() {
 // ─── Main export ──────────────────────────────────────────────────────────────
 
 export default function Home3GameShowAudienceWall() {
+  const [pending, setPending] = useState<UniversalRoom | null>(null);
+
+  const handleJoin = (show: typeof GAME_SHOWS[0]) => {
+    setPending({
+      id:           show.id,
+      title:        show.name,
+      subtitle:     show.tagline,
+      viewers:      show.audienceSize,
+      prizeLabel:   `${show.prizePool} prize`,
+      status:       show.status === 'LIVE' ? 'live' : 'upcoming',
+      access:       'free',
+      accentColor:  show.accent,
+      roomRoute:    show.href,
+      venueIndex:   1,
+      shape:        'oct',
+    });
+  };
+
   return (
+    <>
+      {pending && <LobbyEntryFlow room={pending} onClose={() => setPending(null)} />}
     <section style={{ maxWidth: 1100, margin: "0 auto", padding: "0 24px 40px" }}>
       {/* Header */}
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: 20 }}>
@@ -365,21 +386,21 @@ export default function Home3GameShowAudienceWall() {
           }
         `}</style>
         <div data-home3-gameshows style={{ gridColumn: "1 / 2" }}>
-          <GameShowCard show={GAME_SHOWS[0]!} featured />
+          <GameShowCard show={GAME_SHOWS[0]!} featured onJoin={handleJoin} />
         </div>
         <div style={{ display: "grid", gap: 14 }}>
-          <GameShowCard show={GAME_SHOWS[1]!} />
-          <GameShowCard show={GAME_SHOWS[2]!} />
+          <GameShowCard show={GAME_SHOWS[1]!} onJoin={handleJoin} />
+          <GameShowCard show={GAME_SHOWS[2]!} onJoin={handleJoin} />
         </div>
         <div style={{ display: "grid", gap: 14 }}>
-          <GameShowCard show={GAME_SHOWS[3]!} />
-          <GameShowCard show={GAME_SHOWS[4]!} />
+          <GameShowCard show={GAME_SHOWS[3]!} onJoin={handleJoin} />
+          <GameShowCard show={GAME_SHOWS[4]!} onJoin={handleJoin} />
         </div>
       </div>
 
       {/* 6th show — full width strip */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-        <GameShowCard show={GAME_SHOWS[5]!} />
+        <GameShowCard show={GAME_SHOWS[5]!} onJoin={handleJoin} />
         {/* "Be in the audience" CTA */}
         <Link href="/auth" style={{ textDecoration: "none" }}>
           <motion.div
@@ -417,5 +438,6 @@ export default function Home3GameShowAudienceWall() {
         </Link>
       </div>
     </section>
+    </>
   );
 }

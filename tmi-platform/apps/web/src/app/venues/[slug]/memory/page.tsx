@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { motion, AnimatePresence } from "framer-motion";
-import { getMemoryWallStats, listMemoriesForEntity } from "@/lib/profiles/MemoryWallEngine";
+import type { MemoryItem } from "@/lib/profiles/MemoryWallEngine";
 
 const MemoryWallCanvas = dynamic(
   () => import("@/components/memory/MemoryWallCanvas"),
@@ -88,8 +88,18 @@ function totalSold(tickets: TicketListing[]) {
 export default function VenueMemoryHubPage({ params }: { params: { slug: string } }) {
   const { slug } = params;
 
-  const stats    = getMemoryWallStats(slug, "venue");
-  const memories = listMemoriesForEntity(slug, "venue");
+  const [memories, setMemories] = useState<MemoryItem[]>([]);
+  const [memoriesLoaded, setMemoriesLoaded] = useState(false);
+
+  useEffect(() => {
+    fetch(`/api/memory/wall?entitySlug=${encodeURIComponent(slug)}&entityType=venue`)
+      .then(r => r.json())
+      .then((data: { memories?: MemoryItem[] }) => {
+        if (Array.isArray(data.memories)) setMemories(data.memories);
+      })
+      .catch(() => {})
+      .finally(() => setMemoriesLoaded(true));
+  }, [slug]);
 
   const [tab, setTab] = useState<Tab>("memories");
   const [tickets, setTickets] = useState<TicketListing[]>(SEED_TICKETS);
@@ -129,6 +139,10 @@ export default function VenueMemoryHubPage({ params }: { params: { slug: string 
   const revenue = totalRevenue(tickets);
   const sold    = totalSold(tickets);
   const maxBar  = Math.max(...WEEKLY_REVENUE);
+  const stats = {
+    totalMemories:    memories.length,
+    achievementCount: memories.filter(m => m.contentType === 'achievement').length,
+  };
 
   return (
     <main style={{ minHeight: "100vh", background: "#050510", color: "#fff", paddingBottom: 80 }}>
@@ -199,12 +213,15 @@ export default function VenueMemoryHubPage({ params }: { params: { slug: string 
           {/* ── MEMORIES TAB ── */}
           {tab === "memories" && (
             <motion.div key="memories" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-              <MemoryWallCanvas
-                entityId={slug}
-                entityType="venue"
-                initialMemories={memories}
-                accentColor={ACCENT}
-              />
+              {memoriesLoaded && (
+                <MemoryWallCanvas
+                  key={`venue-${slug}-${memories.length}`}
+                  entityId={slug}
+                  entityType="venue"
+                  initialMemories={memories}
+                  accentColor={ACCENT}
+                />
+              )}
             </motion.div>
           )}
 
