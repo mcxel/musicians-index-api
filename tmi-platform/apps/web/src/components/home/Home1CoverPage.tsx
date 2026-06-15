@@ -462,7 +462,7 @@ export default function Home1CoverPage() {
           display: 'flex',
           whiteSpace: 'nowrap',
           animation: 'h1TabloidScroll 22s linear infinite',
-          opacity: 0.9,
+          opacity: 0.65,
           height: '100%',
           alignItems: 'stretch',
         }}>
@@ -478,7 +478,7 @@ export default function Home1CoverPage() {
               <div key={`${rep}-${i}`} style={{
                 display: 'inline-flex',
                 flexDirection: 'column',
-                width: 260,
+                width: 190,
                 flexShrink: 0,
                 border: '3px solid #000',
                 overflow: 'hidden',
@@ -521,13 +521,13 @@ export default function Home1CoverPage() {
         {/* Radial vignette — clears the orbital center, lighter to show tabloid panels */}
         <div style={{
           position: 'absolute', inset: 0,
-          background: 'radial-gradient(ellipse 65% 78% at center, transparent 30%, rgba(6,2,26,0.58) 100%)',
+          background: 'radial-gradient(ellipse 65% 78% at center, transparent 40%, rgba(6,2,26,0.85) 100%)',
           pointerEvents: 'none',
         }} />
         {/* Left/right linear fade — lighter so edge panels remain visible */}
         <div style={{
           position: 'absolute', inset: 0,
-          background: 'linear-gradient(90deg, rgba(6,2,26,0.62) 0%, transparent 22%, transparent 78%, rgba(6,2,26,0.62) 100%)',
+          background: 'linear-gradient(90deg, rgba(6,2,26,0.85) 0%, transparent 28%, transparent 72%, rgba(6,2,26,0.85) 100%)',
           pointerEvents: 'none',
         }} />
       </div>
@@ -727,22 +727,26 @@ export default function Home1CoverPage() {
             <div style={{ background: 'rgba(5,8,21,0.88)', border: '1px solid rgba(255,45,170,0.25)', borderRadius: 8, padding: '10px 12px' }}>
               <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.15em', color: '#FF2DAA', textTransform: 'uppercase', marginBottom: 6, fontFamily: "'Inter',sans-serif" }}>⭐ Free Promotion</div>
               <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.4)', marginBottom: 8, fontFamily: "'Inter',sans-serif" }}>Artists — get featured free.</div>
-              {[{ name: 'Lagos Burst', genre: 'Afrobeat', views: '2,140', color: '#00FF88' }, { name: 'Nova Laugh', genre: 'Comedy', views: '980', color: '#AA2DFF' }].map((p) => (
-                <div key={p.name} style={{ background: 'rgba(12,20,50,0.92)', border: `1px solid rgba(255,45,170,0.18)`, borderRadius: 6, padding: '7px 9px', marginBottom: 6, cursor: 'pointer' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 3 }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, color: '#fff', fontFamily: "'Inter',sans-serif" }}>{p.name}</div>
-                    <span style={{ fontSize: 7, fontWeight: 700, padding: '2px 6px', borderRadius: 10, background: `${p.color}18`, border: `1px solid ${p.color}44`, color: p.color, fontFamily: "'Inter',sans-serif" }}>{p.genre}</span>
+              {[{ name: 'Lagos Burst', genre: 'Afrobeat', views: '2,140', color: '#00FF88', slug: 'lagos-burst' }, { name: 'Nova Laugh', genre: 'Comedy', views: '980', color: '#AA2DFF', slug: 'nova-laugh' }].map((p) => (
+                <Link key={p.name} href={`/performers/${p.slug}`} style={{ textDecoration: 'none' }}>
+                  <div style={{ background: 'rgba(12,20,50,0.92)', border: `1px solid rgba(255,45,170,0.18)`, borderRadius: 6, padding: '7px 9px', marginBottom: 6, cursor: 'pointer' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 3 }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: '#fff', fontFamily: "'Inter',sans-serif" }}>{p.name}</div>
+                      <span style={{ fontSize: 7, fontWeight: 700, padding: '2px 6px', borderRadius: 10, background: `${p.color}18`, border: `1px solid ${p.color}44`, color: p.color, fontFamily: "'Inter',sans-serif" }}>{p.genre}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+                      <span style={{ fontSize: 8, color: '#00FF88', fontFamily: "'Inter',sans-serif" }}>▲ {p.views}</span>
+                      <span style={{ fontSize: 7, fontWeight: 700, padding: '2px 6px', border: '1px solid rgba(255,45,170,0.5)', background: 'transparent', color: '#FF2DAA', borderRadius: 3, fontFamily: "'Inter',sans-serif" }}>BOOST</span>
+                    </div>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
-                    <span style={{ fontSize: 8, color: '#00FF88', fontFamily: "'Inter',sans-serif" }}>▲ {p.views}</span>
-                    <button style={{ fontSize: 7, fontWeight: 700, padding: '2px 6px', border: '1px solid rgba(255,45,170,0.5)', background: 'transparent', color: '#FF2DAA', borderRadius: 3, cursor: 'pointer', fontFamily: "'Inter',sans-serif" }}>BOOST</button>
-                  </div>
-                </div>
+                </Link>
               ))}
-              <div style={{ border: '1px dashed rgba(255,215,0,0.3)', background: 'rgba(255,215,0,0.04)', borderRadius: 6, padding: '8px', textAlign: 'center', cursor: 'pointer' }}>
-                <div style={{ fontSize: 16, marginBottom: 2 }}>+</div>
-                <div style={{ fontSize: 8, color: '#FFD700', fontWeight: 700, fontFamily: "'Inter',sans-serif" }}>Claim Free Slot</div>
-              </div>
+              <Link href="/sponsors/claim-slot" style={{ textDecoration: 'none' }}>
+                <div style={{ border: '1px dashed rgba(255,215,0,0.3)', background: 'rgba(255,215,0,0.04)', borderRadius: 6, padding: '8px', textAlign: 'center', cursor: 'pointer' }}>
+                  <div style={{ fontSize: 16, marginBottom: 2 }}>+</div>
+                  <div style={{ fontSize: 8, color: '#FFD700', fontWeight: 700, fontFamily: "'Inter',sans-serif" }}>Claim Free Slot</div>
+                </div>
+              </Link>
             </div>
             {/* Sponsor Spotlight */}
             <div style={{ background: 'rgba(5,8,21,0.88)', border: '1px solid rgba(0,229,255,0.2)', borderRadius: 8, padding: '10px 12px' }}>
@@ -755,16 +759,20 @@ export default function Home1CoverPage() {
                 </div>
                 <div style={{ fontSize: 7, color: 'rgba(255,255,255,0.3)', marginTop: 3, fontFamily: "'Inter',sans-serif" }}>Campaign 72%</div>
               </div>
-              <button style={{ width: '100%', marginTop: 6, padding: '4px', fontSize: 7, fontWeight: 700, border: '1px solid rgba(0,229,255,0.4)', background: 'transparent', color: '#00E5FF', borderRadius: 4, cursor: 'pointer', fontFamily: "'Inter',sans-serif", letterSpacing: '0.06em' }}>BECOME A SPONSOR</button>
+              <Link href="/sponsors/apply" style={{ textDecoration: 'none' }}>
+                <button style={{ width: '100%', marginTop: 6, padding: '4px', fontSize: 7, fontWeight: 700, border: '1px solid rgba(0,229,255,0.4)', background: 'transparent', color: '#00E5FF', borderRadius: 4, cursor: 'pointer', fontFamily: "'Inter',sans-serif", letterSpacing: '0.06em' }}>BECOME A SPONSOR</button>
+              </Link>
             </div>
             {/* Venue Booking */}
             <div style={{ background: 'rgba(5,8,21,0.88)', border: '1px solid rgba(255,140,0,0.2)', borderRadius: 8, padding: '10px 12px' }}>
               <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.15em', color: '#FF8C00', textTransform: 'uppercase', marginBottom: 6, fontFamily: "'Inter',sans-serif" }}>🏟 Venue Booking</div>
-              {[{ day: 'SAT', venue: 'Main Arena' }, { day: 'SUN', venue: 'Theater' }, { day: 'FRI', venue: 'Club Room' }].map((v) => (
+              {[{ day: 'SAT', venue: 'Main Arena', slug: 'arena-prime' }, { day: 'SUN', venue: 'Theater', slug: 'cypher-dome' }, { day: 'FRI', venue: 'Club Room', slug: 'neon-pit' }].map((v) => (
                 <div key={v.day} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 0', borderBottom: '1px solid rgba(255,255,255,0.05)', fontSize: 9 }}>
                   <span style={{ color: '#FF8C00', fontWeight: 700, fontFamily: "'Inter',sans-serif", minWidth: 24 }}>{v.day}</span>
                   <span style={{ flex: 1, color: 'rgba(255,255,255,0.7)', fontFamily: "'Inter',sans-serif" }}>{v.venue}</span>
-                  <button style={{ fontSize: 7, padding: '2px 6px', border: '1px solid rgba(0,255,136,0.5)', background: 'transparent', color: '#00FF88', borderRadius: 3, cursor: 'pointer', fontFamily: "'Inter',sans-serif" }}>Book</button>
+                  <Link href={`/venues/book?venue=${v.slug}`} style={{ textDecoration: 'none' }}>
+                    <span style={{ fontSize: 7, padding: '2px 6px', border: '1px solid rgba(0,255,136,0.5)', background: 'transparent', color: '#00FF88', borderRadius: 3, cursor: 'pointer', fontFamily: "'Inter',sans-serif" }}>Book</span>
+                  </Link>
                 </div>
               ))}
             </div>
@@ -863,14 +871,14 @@ export default function Home1CoverPage() {
               >
                 👑
               </div>
-              <div
-                style={{
-                  fontSize: 'min(28px, 5vw)',
-                  filter: `drop-shadow(0 0 6px ${accentColor})`,
+              <img 
+                src={`https://i.pravatar.cc/150?u=${crowdHolder.slug}`} 
+                alt={crowdHolder.name} 
+                style={{ 
+                  width: 'min(50px, 9vw)', height: 'min(50px, 9vw)', borderRadius: '50%', 
+                  objectFit: 'cover', marginBottom: 4, border: `2px solid ${accentColor}` 
                 }}
-              >
-                {crowdHolder.emoji}
-              </div>
+              />
               <div style={{
                 fontSize: 'min(9px, 1.8vw)',
                 fontWeight: 900,
@@ -972,8 +980,15 @@ export default function Home1CoverPage() {
                     {p.rank <= 3 && (
                       <div style={{ position: 'absolute', top: 3, right: 3, width: 5, height: 5, borderRadius: '50%', background: '#E63000', boxShadow: '0 0 5px #E63000', animation: 'h1Pulse 1.5s infinite' }} />
                     )}
-                    {/* Performer emoji */}
-                    <div style={{ fontSize: cardSize * 0.34, lineHeight: 1 }}>{p.emoji}</div>
+                    {/* Performer Avatar */}
+                    <img 
+                      src={`https://i.pravatar.cc/150?u=${p.slug}`} 
+                      alt={p.name} 
+                      style={{ 
+                        width: cardSize * 0.45, height: cardSize * 0.45, borderRadius: '50%', 
+                        objectFit: 'cover', marginBottom: 4, border: `1px solid ${accentColor}55`, zIndex: 1 
+                      }} 
+                    />
                     {/* Name */}
                     <div style={{ fontSize: Math.max(cardSize * 0.1, 7), fontWeight: 900, color: '#fff', textAlign: 'center', fontFamily: "'Inter',sans-serif", maxWidth: '90%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {p.name.split(' ')[0]}
@@ -1042,51 +1057,57 @@ export default function Home1CoverPage() {
             {genre.emoji} {genreKey} GENRE BATTLE!
           </div>
 
-          <div
-            style={{
-              position: 'absolute',
-              bottom: '12%',
-              right: '-2%',
-              background: 'linear-gradient(135deg, #AA2DFF, #FF2DAA)',
-              color: '#fff',
-              padding: '6px 14px',
-              borderRadius: 20,
-              fontSize: 9,
-              fontWeight: 900,
-              letterSpacing: '0.08em',
-              fontFamily: "'Inter', sans-serif",
-              transform: 'rotate(5deg)',
-              boxShadow: '0 4px 20px rgba(170,45,255,0.5)',
-              animation: 'h1StickerPop 0.5s ease',
-              zIndex: 40,
-              whiteSpace: 'nowrap',
-            }}
-          >
-            🔘 CYPHER ARENA OPEN
-          </div>
+          <Link href="/live/rooms/cypher-arena" style={{ textDecoration: 'none' }}>
+            <div
+              style={{
+                position: 'absolute',
+                bottom: '12%',
+                right: '-2%',
+                background: 'linear-gradient(135deg, #AA2DFF, #FF2DAA)',
+                color: '#fff',
+                padding: '6px 14px',
+                borderRadius: 20,
+                fontSize: 9,
+                fontWeight: 900,
+                letterSpacing: '0.08em',
+                fontFamily: "'Inter', sans-serif",
+                transform: 'rotate(5deg)',
+                boxShadow: '0 4px 20px rgba(170,45,255,0.5)',
+                animation: 'h1StickerPop 0.5s ease',
+                zIndex: 40,
+                whiteSpace: 'nowrap',
+                cursor: 'pointer',
+              }}
+            >
+              🔘 CYPHER ARENA OPEN
+            </div>
+          </Link>
 
-          <div
-            style={{
-              position: 'absolute',
-              bottom: '22%',
-              left: '-2%',
-              background: 'rgba(20,10,40,0.92)',
-              border: '2px solid #FFD700',
-              color: '#FFD700',
-              padding: '5px 12px',
-              borderRadius: 8,
-              fontSize: 9,
-              fontWeight: 900,
-              letterSpacing: '0.06em',
-              fontFamily: "'Inter', sans-serif",
-              transform: 'rotate(-4deg)',
-              boxShadow: '0 4px 16px rgba(255,215,0,0.3)',
-              zIndex: 40,
-              whiteSpace: 'nowrap',
-            }}
-          >
-            🗳️ VOTING OPEN: VOTE FOR #4!
-          </div>
+          <Link href="/rankings/vote" style={{ textDecoration: 'none' }}>
+            <div
+              style={{
+                position: 'absolute',
+                bottom: '22%',
+                left: '-2%',
+                background: 'rgba(20,10,40,0.92)',
+                border: '2px solid #FFD700',
+                color: '#FFD700',
+                padding: '5px 12px',
+                borderRadius: 8,
+                fontSize: 9,
+                fontWeight: 900,
+                letterSpacing: '0.06em',
+                fontFamily: "'Inter', sans-serif",
+                transform: 'rotate(-4deg)',
+                boxShadow: '0 4px 16px rgba(255,215,0,0.3)',
+                zIndex: 40,
+                whiteSpace: 'nowrap',
+                cursor: 'pointer',
+              }}
+            >
+              🗳️ VOTING OPEN: VOTE FOR #4!
+            </div>
+          </Link>
         </div>
         
           {/* ════ RIGHT PANEL ════ */}
@@ -1101,28 +1122,38 @@ export default function Home1CoverPage() {
                   <span style={{ flex: 1, fontSize: 8, fontWeight: 700, color: '#fff', fontFamily: "'Inter',sans-serif", overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
                 </div>
               ))}
-              <button style={{ width: '100%', marginTop: 6, padding: '4px', fontSize: 7, fontWeight: 700, border: `1px solid ${accentColor}44`, background: 'transparent', color: accentColor, borderRadius: 4, cursor: 'pointer', fontFamily: "'Inter',sans-serif", letterSpacing: '0.06em' }}>SEE ALL RANKS</button>
+              <Link href="/rankings" style={{ textDecoration: 'none' }}>
+                <button style={{ width: '100%', marginTop: 6, padding: '4px', fontSize: 7, fontWeight: 700, border: `1px solid ${accentColor}44`, background: 'transparent', color: accentColor, borderRadius: 4, cursor: 'pointer', fontFamily: "'Inter',sans-serif", letterSpacing: '0.06em' }}>SEE ALL RANKS</button>
+              </Link>
             </div>
             {/* Live Activity */}
             <div style={{ background: 'rgba(5,8,21,0.88)', border: '1px solid rgba(255,45,170,0.25)', borderRadius: 8, padding: '10px 12px' }}>
               <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.15em', color: '#FF2DAA', textTransform: 'uppercase', marginBottom: 8, fontFamily: "'Inter',sans-serif" }}>🔴 Live Now</div>
-              {[{ name: 'Cypher Arena', viewers: '841', color: '#00E5FF' }, { name: 'Battle Stage', viewers: '2,130', color: '#FF2DAA' }, { name: 'Stream & Win', viewers: '3,412', color: '#FFD700' }].map((item) => (
-                <div key={item.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                    <div style={{ width: 6, height: 6, borderRadius: '50%', background: item.color, boxShadow: `0 0 6px ${item.color}` }} />
-                    <span style={{ fontSize: 9, color: '#fff', fontFamily: "'Inter',sans-serif" }}>{item.name}</span>
+              {[
+                { name: 'Cypher Arena', viewers: '841', color: '#00E5FF', href: '/live/rooms/cypher-arena' },
+                { name: 'Battle Stage', viewers: '2,130', color: '#FF2DAA', href: '/live/rooms/battle-stage' },
+                { name: 'Stream & Win', viewers: '3,412', color: '#FFD700', href: '/live/lobby?filter=stream-win' },
+              ].map((item) => (
+                <Link key={item.name} href={item.href} style={{ textDecoration: 'none' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0', borderBottom: '1px solid rgba(255,255,255,0.05)', cursor: 'pointer' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                      <div style={{ width: 6, height: 6, borderRadius: '50%', background: item.color, boxShadow: `0 0 6px ${item.color}` }} />
+                      <span style={{ fontSize: 9, color: '#fff', fontFamily: "'Inter',sans-serif" }}>{item.name}</span>
+                    </div>
+                    <span style={{ fontSize: 8, color: 'rgba(255,255,255,0.4)', fontFamily: "'Inter',sans-serif" }}>{item.viewers}</span>
                   </div>
-                  <span style={{ fontSize: 8, color: 'rgba(255,255,255,0.4)', fontFamily: "'Inter',sans-serif" }}>{item.viewers}</span>
-                </div>
+                </Link>
               ))}
             </div>
             {/* Ad Slot */}
-            <div style={{ background: 'rgba(5,8,21,0.88)', border: '1px solid rgba(255,215,0,0.2)', borderRadius: 8, padding: '10px 12px', textAlign: 'center', cursor: 'pointer' }}>
-              <div style={{ fontSize: 7, color: 'rgba(255,255,255,0.25)', letterSpacing: '0.15em', marginBottom: 6, fontFamily: "'Inter',sans-serif" }}>ADVERTISEMENT</div>
-              <div style={{ fontSize: 10, color: '#FFD700', fontWeight: 700, marginBottom: 4, fontFamily: "'Inter',sans-serif" }}>Advertise Here</div>
-              <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.35)', marginBottom: 8, fontFamily: "'Inter',sans-serif" }}>Reach live audiences from $25</div>
-              <button style={{ width: '100%', padding: '5px', fontSize: 8, fontWeight: 700, border: '1px solid rgba(255,215,0,0.4)', background: 'rgba(255,215,0,0.08)', color: '#FFD700', borderRadius: 4, cursor: 'pointer', fontFamily: "'Inter',sans-serif" }}>GET STARTED</button>
-            </div>
+            <Link href="/sponsors/advertise" style={{ textDecoration: 'none' }}>
+              <div style={{ background: 'rgba(5,8,21,0.88)', border: '1px solid rgba(255,215,0,0.2)', borderRadius: 8, padding: '10px 12px', textAlign: 'center', cursor: 'pointer' }}>
+                <div style={{ fontSize: 7, color: 'rgba(255,255,255,0.25)', letterSpacing: '0.15em', marginBottom: 6, fontFamily: "'Inter',sans-serif" }}>ADVERTISEMENT</div>
+                <div style={{ fontSize: 10, color: '#FFD700', fontWeight: 700, marginBottom: 4, fontFamily: "'Inter',sans-serif" }}>Advertise Here</div>
+                <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.35)', marginBottom: 8, fontFamily: "'Inter',sans-serif" }}>Reach live audiences from $25</div>
+                <button style={{ width: '100%', padding: '5px', fontSize: 8, fontWeight: 700, border: '1px solid rgba(255,215,0,0.4)', background: 'rgba(255,215,0,0.08)', color: '#FFD700', borderRadius: 4, cursor: 'pointer', fontFamily: "'Inter',sans-serif" }}>GET STARTED</button>
+              </div>
+            </Link>
           </div>
         </div> {/* End Cinematic Wrapper */}
 

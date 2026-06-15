@@ -59,8 +59,8 @@ export default function Home3LiveWorldSurface() {
   ];
 
   const burstRooms = [
-    { id: 'monday-night-stage', href: '',            title: 'VIP Lounge',     subtitle: 'Host interviews',       color: '#AA2DFF', glyph: '🛋️' },
-    { id: 'deal-or-feud',       href: '',            title: 'Battle Floor',   subtitle: 'Crowd vote live',        color: '#00FF88', glyph: '🥊' },
+    { id: 'monday-night-stage', href: '/live/rooms/vip-lounge',   title: 'VIP Lounge',     subtitle: 'Host interviews',      color: '#AA2DFF', glyph: '🛋️' },
+    { id: 'deal-or-feud',       href: '/live/rooms/battle-floor', title: 'Battle Floor',   subtitle: 'Crowd vote live',       color: '#00FF88', glyph: '🥊' },
     { id: '',                   href: '/live/lobby', title: 'Event Timeline', subtitle: 'Premieres + lock times', color: '#FF6B35', glyph: '🗓️' },
   ];
 
