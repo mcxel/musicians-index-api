@@ -152,6 +152,148 @@ export default function Home5BattleCypherSurface() {
       <SponsorTickerRail />
       <LiveMagazineVoiceTicker pageId="home-5" accent="#FF2DAA" />
 
+      {/* ══ BLUEPRINT TRIANGLE HEADER — tmi_arena_triangle_battles_cyphers_challenges ══ */}
+      <div style={{
+        background: 'linear-gradient(135deg,rgba(255,45,170,.15),rgba(255,215,0,.1),rgba(0,229,255,.1))',
+        borderBottom: '2px solid rgba(255,215,0,.3)',
+        padding: '18px 24px',
+        textAlign: 'center',
+      }}>
+        <div style={{ fontFamily: 'var(--font-orbitron,"Orbitron",sans-serif)', fontSize: 'clamp(20px,4vw,28px)', fontWeight: 900, letterSpacing: '.06em', marginBottom: 4 }}>
+          <span style={{ color: '#FF2DAA' }}>BATTLE</span>
+          <span style={{ color: 'rgba(255,255,255,.3)', margin: '0 12px' }}>·</span>
+          <span style={{ color: '#00E5FF' }}>CYPHER</span>
+          <span style={{ color: 'rgba(255,255,255,.3)', margin: '0 12px' }}>·</span>
+          <span style={{ color: '#FFD700' }}>CHALLENGE</span>
+        </div>
+        <div style={{ fontSize: 11, color: 'rgba(255,255,255,.5)', letterSpacing: '.12em' }}>
+          ONE ARENA SYSTEM — RUNS ALL DAY — AUDIENCE ALWAYS WATCHING
+        </div>
+      </div>
+
+      {/* ══ THE TRIANGLE VISUAL — 3 columns ══ */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', borderBottom: '1px solid rgba(255,255,255,.08)' }}>
+        {/* BATTLE column */}
+        <div style={{ background: 'linear-gradient(180deg,rgba(255,45,170,.12),rgba(5,8,21,.95))', borderRight: '1px solid rgba(255,255,255,.08)', padding: '18px 16px' }}>
+          <div style={{ textAlign: 'center', marginBottom: 12 }}>
+            <div style={{ fontFamily: 'var(--font-orbitron,"Orbitron",sans-serif)', fontSize: 16, fontWeight: 900, color: '#FF2DAA', marginBottom: 3 }}>BATTLE</div>
+            <div style={{ fontSize: 10, color: 'rgba(255,255,255,.4)' }}>1v1 Head-to-Head</div>
+          </div>
+          <div style={{ background: 'rgba(255,45,170,.08)', border: '1px solid rgba(255,45,170,.3)', borderRadius: 8, padding: 12, marginBottom: 10 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <div style={{ textAlign: 'center', flex: 1 }}>
+                <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(255,45,170,.2)', border: '2px solid #FF2DAA', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 4px', fontWeight: 800, fontSize: 11 }}>WV</div>
+                <div style={{ fontSize: 10, fontWeight: 700 }}>Wavetek</div>
+                <div style={{ fontSize: 8, color: 'rgba(255,255,255,.4)' }}>Challenger</div>
+              </div>
+              <div style={{ flex: '0 0 32px', textAlign: 'center', fontSize: 16, fontWeight: 900, color: '#FF2DAA' }}>VS</div>
+              <div style={{ textAlign: 'center', flex: 1 }}>
+                <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(255,215,0,.15)', border: '2px solid #FFD700', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 4px', fontWeight: 800, fontSize: 11, color: '#FFD700' }}>BG</div>
+                <div style={{ fontSize: 10, fontWeight: 700 }}>Bar God</div>
+                <div style={{ fontSize: 8, color: 'rgba(255,255,255,.4)' }}>Defender</div>
+              </div>
+            </div>
+            <Link href="/battles/live" style={{ display: 'block', textAlign: 'center', marginTop: 8, padding: '6px', background: 'rgba(255,45,170,.2)', border: '1px solid rgba(255,45,170,.5)', borderRadius: 5, color: '#FF2DAA', textDecoration: 'none', fontSize: 10, fontWeight: 900, letterSpacing: '.06em' }}>
+              ⚔️ JOIN BATTLE
+            </Link>
+          </div>
+          <div style={{ fontSize: 9, color: 'rgba(255,255,255,.5)', lineHeight: 1.7 }}>
+            <div>⚔️ Judged by crowd votes + panel</div>
+            <div>🏆 Winner stays, next challenger enters</div>
+            <div>🎭 Arena seats 18,500 fans</div>
+          </div>
+        </div>
+
+        {/* CYPHER column */}
+        <div style={{ background: 'linear-gradient(180deg,rgba(0,229,255,.1),rgba(5,8,21,.95))', borderRight: '1px solid rgba(255,255,255,.08)', padding: '18px 16px' }}>
+          <div style={{ textAlign: 'center', marginBottom: 12 }}>
+            <div style={{ fontFamily: 'var(--font-orbitron,"Orbitron",sans-serif)', fontSize: 16, fontWeight: 900, color: '#00E5FF', marginBottom: 3 }}>CYPHER</div>
+            <div style={{ fontSize: 10, color: 'rgba(255,255,255,.4)' }}>Open Mic · All Are Welcome</div>
+          </div>
+          <div style={{ background: 'rgba(0,229,255,.07)', border: '1px solid rgba(0,229,255,.25)', borderRadius: 8, padding: 12, marginBottom: 10 }}>
+            <div style={{ position: 'relative', width: 80, height: 80, margin: '0 auto 8px' }}>
+              <div style={{ width: 80, height: 80, borderRadius: '50%', border: '1.5px solid rgba(0,229,255,.3)', position: 'absolute', inset: 0 }} />
+              <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', fontSize: 24 }}>🎤</div>
+              {['N1','N2','N3','ON'].map((lbl, i) => {
+                const positions = [{top:'2px',left:'50%',transform:'translateX(-50%)'},{top:'50%',right:'2px',transform:'translateY(-50%)'},{bottom:'2px',left:'50%',transform:'translateX(-50%)'},{top:'50%',left:'2px',transform:'translateY(-50%)'}];
+                return (
+                  <div key={lbl} style={{ position: 'absolute', ...positions[i] as React.CSSProperties, width: 16, height: 16, borderRadius: '50%', background: i === 3 ? 'rgba(255,215,0,.2)' : 'rgba(0,229,255,.3)', border: `1px solid ${i === 3 ? '#FFD700' : '#00E5FF'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 7, fontWeight: 800, color: i === 3 ? '#FFD700' : undefined }}>
+                    {lbl}
+                  </div>
+                );
+              })}
+            </div>
+            <Link href="/cypher/live" style={{ display: 'block', textAlign: 'center', padding: '6px', background: 'rgba(0,229,255,.15)', border: '1px solid rgba(0,229,255,.4)', borderRadius: 5, color: '#00E5FF', textDecoration: 'none', fontSize: 10, fontWeight: 900, letterSpacing: '.06em' }}>
+              🎤 ENTER CYPHER
+            </Link>
+          </div>
+          <div style={{ fontSize: 9, color: 'rgba(255,255,255,.5)', lineHeight: 1.7 }}>
+            <div>🎤 Everyone gets the mic in rotation</div>
+            <div>⚡ Drop bars, get voted up instantly</div>
+            <div>🎭 Theater seats 2,730 — intimate</div>
+          </div>
+        </div>
+
+        {/* CHALLENGE column */}
+        <div style={{ background: 'linear-gradient(180deg,rgba(255,215,0,.1),rgba(5,8,21,.95))', padding: '18px 16px' }}>
+          <div style={{ textAlign: 'center', marginBottom: 12 }}>
+            <div style={{ fontFamily: 'var(--font-orbitron,"Orbitron",sans-serif)', fontSize: 16, fontWeight: 900, color: '#FFD700', marginBottom: 3 }}>CHALLENGE</div>
+            <div style={{ fontSize: 10, color: 'rgba(255,255,255,.4)' }}>Song vs Song · Continuous</div>
+          </div>
+          <div style={{ background: 'rgba(255,215,0,.07)', border: '1px solid rgba(255,215,0,.25)', borderRadius: 8, padding: 12, marginBottom: 10 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,255,127,.12)', border: '1px solid rgba(0,255,127,.3)', borderRadius: 5, padding: '5px 8px' }}>
+                <div>
+                  <div style={{ fontSize: 8, fontWeight: 700, color: '#00FF7F' }}>DEFENDING NOW</div>
+                  <div style={{ fontSize: 11, fontWeight: 800 }}>Beat the Beat</div>
+                </div>
+                <div style={{ fontWeight: 900, color: '#00FF7F', fontSize: 12 }}>WON</div>
+              </div>
+              <div style={{ textAlign: 'center', fontSize: 10, color: '#FFD700', fontWeight: 700 }}>↓ NEXT CHALLENGER ↓</div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,215,0,.1)', border: '1px solid rgba(255,215,0,.3)', borderRadius: 5, padding: '5px 8px' }}>
+                <div>
+                  <div style={{ fontSize: 8, fontWeight: 700, color: '#FFD700' }}>CHALLENGING</div>
+                  <div style={{ fontSize: 11, fontWeight: 800 }}>Trap Session</div>
+                </div>
+                <div style={{ fontSize: 11, fontWeight: 800, color: '#FFD700' }}>LIVE</div>
+              </div>
+            </div>
+            <Link href="/challenges" style={{ display: 'block', textAlign: 'center', marginTop: 8, padding: '6px', background: 'rgba(255,215,0,.15)', border: '1px solid rgba(255,215,0,.4)', borderRadius: 5, color: '#FFD700', textDecoration: 'none', fontSize: 10, fontWeight: 900, letterSpacing: '.06em' }}>
+              🏆 CHALLENGE THE WINNER
+            </Link>
+          </div>
+          <div style={{ fontSize: 9, color: 'rgba(255,255,255,.5)', lineHeight: 1.7 }}>
+            <div>🎵 Challenge any song, any time</div>
+            <div>👑 Winner stays, runs all day</div>
+            <div>🎭 Arena seats 18,500 fans</div>
+          </div>
+        </div>
+      </div>
+
+      {/* ══ SHARED ARENA ENGINE ══ */}
+      <div style={{ background: 'rgba(255,215,0,.04)', borderBottom: '1px solid rgba(255,215,0,.15)', padding: '12px 24px' }}>
+        <div style={{ textAlign: 'center', marginBottom: 10 }}>
+          <span style={{ fontFamily: 'var(--font-orbitron,"Orbitron",sans-serif)', fontSize: 8, fontWeight: 700, letterSpacing: '.15em', padding: '3px 10px', borderRadius: 3, background: 'rgba(255,215,0,.12)', color: '#FFD700', border: '1px solid rgba(255,215,0,.3)' }}>
+            SHARED ARENA ENGINE — ALL THREE USE THIS
+          </span>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 8, textAlign: 'center', maxWidth: 900, margin: '0 auto' }}>
+          {[
+            { icon: '🎭', label: 'AudienceScene', sub: 'Live crowd, reactions' },
+            { icon: '🏟', label: 'Venue Skins', sub: 'Stadium, theater' },
+            { icon: '📺', label: 'Lobby Wall', sub: 'Video panels, live' },
+            { icon: '🎤', label: 'Stage Curtain', sub: 'Opens when ready' },
+            { icon: '💰', label: 'Tips + Votes', sub: 'Stripe, real-time' },
+          ].map((e) => (
+            <div key={e.label} style={{ background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.1)', borderRadius: 6, padding: '8px 6px' }}>
+              <div style={{ fontSize: 18, marginBottom: 3 }}>{e.icon}</div>
+              <div style={{ fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,.8)' }}>{e.label}</div>
+              <div style={{ fontSize: 8, color: 'rgba(255,255,255,.4)' }}>{e.sub}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
       {/* ── Hero Header ── */}
       <div style={{ maxWidth: 1100, margin: "0 auto", padding: "28px 24px 0" }}>
         <TmiBadgeLabel color="#FF2DAA">CBC Arena</TmiBadgeLabel>

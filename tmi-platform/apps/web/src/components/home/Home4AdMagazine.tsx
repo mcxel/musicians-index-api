@@ -453,11 +453,84 @@ export default function Home4AdMagazine() {
         <div style={{ position: "absolute", top: "40%", left: "40%", width: "30%", height: "40%", borderRadius: "50%", background: "radial-gradient(circle, rgba(255,45,170,0.05) 0%, transparent 70%)" }} />
       </div>
 
+      {/* ══ MARKETPLACE MASTHEAD — blueprint Home 4 directive ══ */}
+      <div style={{ position: 'relative', zIndex: 1, borderBottom: '2px solid rgba(255,215,0,.3)', background: 'linear-gradient(180deg,rgba(255,215,0,.12),rgba(170,45,255,.06),rgba(5,8,21,.98))', padding: '18px 24px' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 14 }}>
+          <div>
+            <div style={{ fontSize: 8, letterSpacing: '.2em', color: 'rgba(255,215,0,.7)', fontWeight: 900, marginBottom: 4 }}>THE MUSICIAN&apos;S INDEX</div>
+            <div style={{ fontFamily: 'var(--font-tmi-bebas,"Bebas Neue",Impact,sans-serif)', fontSize: 'clamp(22px,4vw,36px)', fontWeight: 900, color: '#FFD700', textShadow: '0 0 14px #FFD70088', letterSpacing: '.04em', lineHeight: 1.05 }}>
+              THE MARKETPLACE
+            </div>
+            <div style={{ fontSize: 11, color: 'rgba(255,255,255,.5)', letterSpacing: '.1em', marginTop: 2 }}>
+              WHAT CAN I BUY? · TICKETS · BEATS · PASSES · ADS · MERCH
+            </div>
+          </div>
+          <Link href="/advertiser" style={{ textDecoration: 'none' }}>
+            <div style={{ background: '#FFD700', color: '#000', borderRadius: 8, padding: '10px 20px', fontSize: 10, fontWeight: 900, letterSpacing: '.1em', boxShadow: '0 0 16px #FFD70060', cursor: 'pointer' }}>
+              ADVERTISE WITH US →
+            </div>
+          </Link>
+        </div>
+
+        {/* 3-panel row: Sponsor Spotlight | Main Billboard | Pre-Roll */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr 1fr', gap: 10 }}>
+          <div style={{ background: 'rgba(255,215,0,.07)', border: '1px solid rgba(255,215,0,.25)', borderRadius: 10, padding: '14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ fontSize: 8, fontWeight: 900, color: '#FFD700', letterSpacing: '.15em' }}>SPONSOR SPOTLIGHT</div>
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,215,0,.05)', border: '1px dashed rgba(255,215,0,.2)', borderRadius: 8, minHeight: 60, fontSize: 12, color: 'rgba(255,215,0,.35)', textAlign: 'center', padding: 8 }}>YOUR BRAND<br/>FEATURED HERE</div>
+            <Link href="/sponsors" style={{ display: 'block', textAlign: 'center', padding: '6px', background: 'rgba(255,215,0,.15)', border: '1px solid rgba(255,215,0,.3)', borderRadius: 5, color: '#FFD700', textDecoration: 'none', fontSize: 9, fontWeight: 900, letterSpacing: '.08em' }}>
+              GET FEATURED
+            </Link>
+          </div>
+
+          <div style={{ background: 'linear-gradient(135deg,rgba(255,45,170,.1),rgba(170,45,255,.1))', border: '2px solid rgba(255,45,170,.35)', borderRadius: 10, padding: '14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ fontSize: 8, fontWeight: 900, color: '#FF2DAA', letterSpacing: '.15em' }}>MAIN BILLBOARD AD</div>
+              <div style={{ fontSize: 7, background: '#FF2DAA', color: '#fff', padding: '2px 6px', borderRadius: 3, fontWeight: 900 }}>PREMIUM</div>
+            </div>
+            <div style={{ height: 2, background: 'linear-gradient(90deg,#FF2DAA,#AA2DFF,#00E5FF)' }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ fontSize: 32 }}>🎧</div>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 900, color: '#fff', lineHeight: 1.1 }}>BRAND TAKEOVER</div>
+                <div style={{ fontSize: 9, color: 'rgba(255,255,255,.55)' }}>Premium brand campaign</div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <Link href="/advertiser/buy" style={{ flex: 1, display: 'block', textAlign: 'center', padding: '7px', background: '#FF2DAA', borderRadius: 5, color: '#fff', textDecoration: 'none', fontSize: 9, fontWeight: 900 }}>BUY THIS SLOT</Link>
+              <Link href="/advertiser" style={{ flex: 1, display: 'block', textAlign: 'center', padding: '7px', background: 'rgba(255,255,255,.08)', borderRadius: 5, color: '#fff', textDecoration: 'none', fontSize: 9, fontWeight: 700 }}>PREVIEW</Link>
+            </div>
+          </div>
+
+          <div style={{ background: 'rgba(170,45,255,.07)', border: '1px solid rgba(170,45,255,.25)', borderRadius: 10, padding: '14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ fontSize: 8, fontWeight: 900, color: '#AA2DFF', letterSpacing: '.15em' }}>SPONSORED ARTIST</div>
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(170,45,255,.05)', border: '1px dashed rgba(170,45,255,.2)', borderRadius: 8, minHeight: 60, fontSize: 20 }}>🎤</div>
+            <Link href="/advertiser/artist-spotlight" style={{ display: 'block', textAlign: 'center', padding: '6px', background: 'rgba(170,45,255,.15)', border: '1px solid rgba(170,45,255,.3)', borderRadius: 5, color: '#AA2DFF', textDecoration: 'none', fontSize: 9, fontWeight: 900 }}>
+              BUY PRE-ROLL AD
+            </Link>
+          </div>
+        </div>
+
+        {/* Advertising Marketplace buttons */}
+        <div style={{ marginTop: 12, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          {[
+            { label: 'BUY AD PLACEMENT', href: '/advertiser/buy', color: '#FF2DAA' },
+            { label: 'CAMPAIGN BUILDER', href: '/advertiser/campaigns', color: '#FFD700' },
+            { label: 'AUDIENCE TARGETING', href: '/advertiser/targeting', color: '#00E5FF' },
+            { label: 'EVENT SPONSORSHIPS', href: '/events/sponsor', color: '#AA2DFF' },
+            { label: 'LIVESTREAM SPONSORSHIPS', href: '/live/sponsor', color: '#00FF88' },
+          ].map((btn) => (
+            <Link key={btn.href} href={btn.href} style={{ textDecoration: 'none', padding: '6px 12px', borderRadius: 5, border: `1px solid ${btn.color}55`, background: `${btn.color}12`, color: btn.color, fontSize: 8, fontWeight: 900, letterSpacing: '.08em', whiteSpace: 'nowrap' }}>
+              {btn.label}
+            </Link>
+          ))}
+        </div>
+      </div>
+
       <div style={{ position: "relative", zIndex: 1, maxWidth: 1160, margin: "0 auto", padding: "24px 20px 80px" }}>
-        {/* Header */}
+        {/* Header — sponsor stage sub-section */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 28 }}>
           <div>
-            <div style={{ fontSize: 9, letterSpacing: "0.3em", color: "#FFD700", fontWeight: 800 }}>THE MUSICIAN&apos;S INDEX</div>
+            <div style={{ fontSize: 9, letterSpacing: "0.3em", color: "#FFD700", fontWeight: 800 }}>SPONSOR PARTNERS</div>
             <div style={{ fontSize: "clamp(18px,3vw,28px)", fontWeight: 900, color: "#fff", letterSpacing: "0.04em", fontFamily: "var(--font-tmi-bebas,'Bebas Neue',Impact,sans-serif)" }}>
               SPONSOR STAGE
             </div>

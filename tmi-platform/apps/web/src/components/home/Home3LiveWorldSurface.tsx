@@ -74,6 +74,41 @@ export default function Home3LiveWorldSurface() {
       <SponsorTickerRail />
       <LiveMagazineVoiceTicker pageId="home-3" accent="#00FFFF" />
 
+      {/* ══ LIVE WORLD MASTHEAD — tmi_billboard_live_lobby_wall_system blueprint ══ */}
+      <div style={{ background: 'linear-gradient(180deg,rgba(0,229,255,.12),rgba(0,255,136,.06),rgba(5,8,21,1))', borderBottom: '2px solid rgba(0,229,255,.3)', padding: '16px 24px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
+          <div>
+            <div style={{ fontFamily: 'var(--font-orbitron,"Orbitron",sans-serif)', fontSize: 'clamp(18px,3.5vw,26px)', fontWeight: 900, color: '#00E5FF', textShadow: '0 0 14px #00E5FF88', letterSpacing: '.05em', lineHeight: 1.1 }}>
+              LIVE WORLD
+            </div>
+            <div style={{ fontSize: 11, color: 'rgba(255,255,255,.5)', letterSpacing: '.12em', marginTop: 2 }}>
+              WHAT SHOULD I WATCH? · THE NETWORK · THE BIGGEST PAGE
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'rgba(230,48,0,.15)', border: '1px solid rgba(230,48,0,.4)', borderRadius: 4, padding: '4px 10px', fontSize: 9, fontWeight: 800, color: '#E63000', letterSpacing: '.1em' }}>
+              <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#E63000', animation: 'none', display: 'inline-block' }} />
+              LIVE
+            </div>
+            <span style={{ color: '#E63000', fontSize: 11, fontWeight: 700 }}>21 rooms live now</span>
+          </div>
+        </div>
+        {/* Broadcast mode tabs */}
+        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+          {[
+            { label: '🌐 Global live', href: '/live/lobby', active: true },
+            { label: '🎤 Hip-Hop takeover', href: '/live/lobby?genre=hip-hop' },
+            { label: '🎮 Games network', href: '/games' },
+            { label: '🎪 Concert mode', href: '/live/concert' },
+            { label: '👑 Monthly Idol', href: '/events/monthly-idol' },
+          ].map((m) => (
+            <a key={m.label} href={m.href} style={{ padding: '5px 10px', borderRadius: 6, border: `0.5px solid ${m.active ? '#00E5FF' : 'rgba(255,255,255,.15)'}`, fontSize: 10, cursor: 'pointer', background: m.active ? 'rgba(0,229,255,.15)' : 'transparent', color: m.active ? '#00E5FF' : 'rgba(255,255,255,.55)', whiteSpace: 'nowrap', textDecoration: 'none', fontWeight: m.active ? 700 : 400 }}>
+              {m.label}
+            </a>
+          ))}
+        </div>
+      </div>
+
       {/* ── AD BREAK 1 — leaderboard after ticker ── */}
       <UnifiedAdSlot venue="home-3" slotKey="liveLobbyBanner" format="horizontal" label="ADVERTISEMENT" style={{ margin: '0 24px 8px', minHeight: 90 }} accentColor="#00FF88" />
 

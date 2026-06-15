@@ -271,12 +271,23 @@ function PerformerMonitor({
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
+const TMI_HUB_PHRASES = [
+  { line1: 'WHO TOOK', line2: 'THE CROWN?' },
+  { line1: 'GENRE', line2: 'BATTLE!' },
+  { line1: 'CYPHER ARENA', line2: 'OPEN NOW' },
+  { line1: 'VOTING', line2: 'LIVE!' },
+  { line1: 'CHALLENGE', line2: 'THE CROWN' },
+  { line1: 'BATTLE NIGHT', line2: 'ARENA' },
+];
+
 export default function Home1CoverPage() {
   const [genreIdx, setGenreIdx] = useState(0);
   const [orbitDeg, setOrbitDeg] = useState(0);
   const [voteCount, setVoteCount] = useState(4812);
   const [activeIdx, setActiveIdx] = useState<number | null>(null);
   const [starburst, setStarburst] = useState(false);
+  const [phraseIdx, setPhraseIdx] = useState(0);
+  const [showPhrase, setShowPhrase] = useState(false);
   const rafRef = useRef<number | null>(null);
   const lastRef = useRef<number>(0);
 
@@ -318,6 +329,17 @@ export default function Home1CoverPage() {
     const id = setInterval(() => {
       setVoteCount((v) => v + Math.floor(Math.random() * 7 + 1));
     }, 820);
+    return () => clearInterval(id);
+  }, []);
+
+  // Hub phrase rotation — alternates between performer display and TMI phrases every 3.5s
+  useEffect(() => {
+    const id = setInterval(() => {
+      setShowPhrase((prev) => {
+        if (prev) setPhraseIdx((i) => (i + 1) % TMI_HUB_PHRASES.length);
+        return !prev;
+      });
+    }, 3500);
     return () => clearInterval(id);
   }, []);
 
@@ -439,7 +461,7 @@ export default function Home1CoverPage() {
           animation: 'h1TabloidScroll 16s linear infinite',
           opacity: 0.9,
           height: '100%',
-          alignItems: 'center',
+          alignItems: 'stretch',
         }}>
           {/* 3 repetitions of 5 panels = seamless loop */}
           {[0, 1, 2].map(rep => (
@@ -459,7 +481,7 @@ export default function Home1CoverPage() {
                 overflow: 'hidden',
                 verticalAlign: 'top',
                 background: p.bg,
-                height: 200,
+                height: '100%',
               }}>
                 <div style={{ background: p.hdr, padding: '6px 8px' }}>
                   <div style={{ fontSize: 6, fontWeight: 700, color: 'rgba(255,255,255,0.6)', fontFamily: "'Anton', sans-serif" }}>
@@ -839,33 +861,59 @@ export default function Home1CoverPage() {
               >
                 {crowdHolder.emoji}
               </div>
-              <div
-                style={{
-                  fontSize: 'min(9px, 1.8vw)',
-                  fontWeight: 900,
-                  color: '#fff',
-                  letterSpacing: '0.05em',
-                  textAlign: 'center',
-                  fontFamily: "'Inter', sans-serif",
-                  marginTop: 2,
-                  maxWidth: '80%',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                {crowdHolder.name}
-              </div>
-              <div
-                style={{
-                  fontSize: 'min(8px, 1.5vw)',
-                  fontWeight: 700,
-                  color: '#FFD700',
-                  fontFamily: "'Inter', sans-serif",
-                }}
-              >
-                #1 {genreKey}
-              </div>
+              {showPhrase ? (
+                <>
+                  <div style={{
+                    fontSize: 'min(8px, 1.6vw)',
+                    fontWeight: 900,
+                    color: '#FFD700',
+                    letterSpacing: '0.04em',
+                    textAlign: 'center',
+                    fontFamily: "'Inter', sans-serif",
+                    marginTop: 2,
+                    lineHeight: 1.2,
+                  }}>
+                    {TMI_HUB_PHRASES[phraseIdx]?.line1}
+                  </div>
+                  <div style={{
+                    fontSize: 'min(8px, 1.6vw)',
+                    fontWeight: 900,
+                    color: '#FF2DAA',
+                    letterSpacing: '0.04em',
+                    textAlign: 'center',
+                    fontFamily: "'Inter', sans-serif",
+                    lineHeight: 1.2,
+                  }}>
+                    {TMI_HUB_PHRASES[phraseIdx]?.line2}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div style={{
+                    fontSize: 'min(9px, 1.8vw)',
+                    fontWeight: 900,
+                    color: '#fff',
+                    letterSpacing: '0.05em',
+                    textAlign: 'center',
+                    fontFamily: "'Inter', sans-serif",
+                    marginTop: 2,
+                    maxWidth: '80%',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}>
+                    {crowdHolder.name}
+                  </div>
+                  <div style={{
+                    fontSize: 'min(8px, 1.5vw)',
+                    fontWeight: 700,
+                    color: '#FFD700',
+                    fontFamily: "'Inter', sans-serif",
+                  }}>
+                    #1 {genreKey}
+                  </div>
+                </>
+              )}
             </div>
           </Link>
 

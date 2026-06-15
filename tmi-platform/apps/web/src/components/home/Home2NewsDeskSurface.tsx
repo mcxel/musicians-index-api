@@ -56,6 +56,42 @@ export default function Home2NewsDeskSurface() {
       <SponsorTickerRail />
       <LiveMagazineVoiceTicker pageId="home-2" accent="#AA2DFF" />
 
+      {/* ══ MAGAZINE MASTHEAD — blueprint tmi_magazine_all_page_templates ══ */}
+      <div style={{ background: 'linear-gradient(180deg,rgba(255,107,0,.12),rgba(255,215,0,.06),rgba(10,6,40,1))', borderBottom: '2px solid #FF6B00', padding: '16px 24px' }}>
+        {/* Issue header */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+          <div>
+            <div style={{ fontFamily: 'Impact,"Arial Black",sans-serif', fontSize: 'clamp(22px,4vw,34px)', fontWeight: 900, color: '#FF6B00', textShadow: '0 0 14px #FF6B0099', letterSpacing: '.03em', lineHeight: 1.05 }}>
+              THE MUSICIAN&apos;S INDEX
+            </div>
+            <div style={{ fontFamily: 'Impact,"Arial Black",sans-serif', fontSize: 'clamp(22px,4vw,34px)', fontWeight: 900, color: '#FFD700', textShadow: '0 0 10px #FFD70099', letterSpacing: '.03em', lineHeight: 1.05 }}>
+              MAGAZINE
+            </div>
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ background: '#FF6B00', color: '#fff', fontSize: 9, fontWeight: 900, padding: '3px 10px', borderRadius: 3, letterSpacing: '.1em', marginBottom: 4, display: 'inline-block' }}>CURRENT ISSUE</div>
+            <div style={{ fontSize: 10, color: 'rgba(255,255,255,.55)', fontFamily: 'Inter,sans-serif' }}>VOL.1 · Rolling Stone meets Billboard</div>
+          </div>
+        </div>
+        {/* Section tabs */}
+        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+          {[
+            { label: 'ARTICLES', href: '/articles', color: '#FF6B00' },
+            { label: 'EDITORIAL', href: '#editorial', color: '#FFD700' },
+            { label: 'DISCOVERY', href: '#discovery', color: '#00D4FF' },
+            { label: 'LIVE ROOMS', href: '/live/lobby', color: '#FF2DAA' },
+            { label: 'GAMES', href: '/games', color: '#00A896' },
+            { label: 'MARKETPLACE', href: '/sponsors', color: '#6B2FB3' },
+          ].map((tab) => (
+            <a key={tab.href} href={tab.href} style={{ padding: '4px 10px', borderRadius: 4, border: `1px solid ${tab.color}66`, background: 'transparent', color: tab.color, fontSize: 8, fontWeight: 900, cursor: 'pointer', fontFamily: 'Inter,sans-serif', letterSpacing: '.08em', textDecoration: 'none', transition: 'all .15s', whiteSpace: 'nowrap' }}>
+              {tab.label}
+            </a>
+          ))}
+        </div>
+        {/* Divider line */}
+        <div style={{ height: 2, background: 'linear-gradient(90deg,#FF6B00,#FFD700,#00D4FF)', margin: '10px 0 0', borderRadius: 1 }} />
+      </div>
+
       {/* ── AD BREAK — leaderboard after ticker, before editorial ── */}
       <UnifiedAdSlot venue="home-2" slotKey="homepageBanner" format="horizontal" label="ADVERTISEMENT" style={{ margin: '0 24px 8px', minHeight: 90 }} accentColor="#00FFFF" />
       <Home2NewsDensityRail />
