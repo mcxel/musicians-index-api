@@ -3,7 +3,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { CAPTURE_TYPE_META, snapSelector, buildEventPosterDataUrl } from '@/lib/capture/CaptureEngine';
 import type { CaptureType } from '@/lib/capture/CaptureEngine';
-import { MemoryCaptureEngine } from '@/lib/memory/MemoryCaptureEngine';
+import { ActivityTimelineEngine } from '@/lib/timeline/ActivityTimelineEngine';
 
 interface GroupPhotoCanisterProps {
   roomId?: string;
@@ -104,7 +104,8 @@ export default function GroupPhotoCanister({
   }, [previewUrl, userId, captureType, roomId, eventId, playlistId, performerIds, performerName, roomLabel]);
 
   const handleShare = useCallback(() => {
-    MemoryCaptureEngine.broadcastShare(userId, `mem_${Date.now()}`, userId);
+    window.dispatchEvent(new CustomEvent('TMI_MEMORY_SHARED', { detail: { userId, memoryId: `mem_${Date.now()}`, userName: userId } }));
+    ActivityTimelineEngine.addEvent({ userId, type: 'MEMORY_SHARED', label: '📤 Shared a memory to the room', xpEarned: 50 });
     setPhase('idle');
     setPreviewUrl(null);
   }, [userId]);

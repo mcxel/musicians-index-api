@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState } from 'react';
-import { MemoryWallEngine } from '@/lib/memory/MemoryWallEngine';
 
 interface PolaroidCaptureButtonProps {
   userId: string;
@@ -15,19 +14,18 @@ export default function PolaroidCaptureButton({ userId, eventId, onCaptureSucces
   const handleCapture = async () => {
     setIsCapturing(true);
     try {
-      // Trigger the canvas capture or WebRTC frame grab logic here
-      const simulatedMediaUrl = '/tmi-source/placeholders/memory-capture.jpg';
-      
-      await MemoryWallEngine.captureLiveMoment(
-        userId,
-        eventId,
-        simulatedMediaUrl,
-        'Legendary Drop Captured!'
-      );
-
-      if (onCaptureSuccess) {
-        onCaptureSuccess();
-      }
+      await fetch('/api/memory/capture', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId,
+          imageData: '/tmi-source/placeholders/memory-capture.jpg',
+          captureType: 'group_photo',
+          eventId,
+          roomLabel: 'Legendary Drop Captured!',
+        }),
+      });
+      if (onCaptureSuccess) onCaptureSuccess();
     } catch (error) {
       console.error('[CAPTURE_ERR] Failed to capture moment', error);
     } finally {
