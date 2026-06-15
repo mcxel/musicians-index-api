@@ -1,30 +1,21 @@
-'use client';
+import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
 
-import React from 'react';
-import AudienceScene from '@/components/live/AudienceScene';
-import { MaskedVideoTile } from '@/components/live/MaskedVideoTile';
+const ROLE_DASHBOARD: Record<string, string> = {
+  admin:      '/dashboard/admin',
+  performer:  '/dashboard/performer',
+  artist:     '/dashboard/artist',
+  fan:        '/dashboard/fan',
+  sponsor:    '/dashboard/sponsor',
+  advertiser: '/dashboard/advertiser',
+  venue:      '/dashboard/venue',
+  promoter:   '/dashboard/promoter',
+  writer:     '/dashboard/writer',
+};
 
-export default function LiveRoomRoute({ params }: { params: { roomId: string } }) {
-  return (
-    <div className="relative w-full h-screen bg-[#050510] overflow-hidden flex flex-col items-center justify-center">
-      {/* 3D Audience Background Generator */}
-      <div className="absolute inset-0 z-0 pointer-events-none opacity-80">
-        <AudienceScene view="fan" venue={1} />
-      </div>
-
-      {/* Main Stage Masked Video Focus */}
-      <div className="relative z-10 w-full max-w-2xl aspect-video p-4 flex justify-center mt-[-10vh]">
-        <MaskedVideoTile
-          participantId="main-stage"
-          performerName={`LIVE EVENT: ${params.roomId.toUpperCase()}`}
-          isLive={true}
-          isAudioActive={true}
-          accentColor="#FFD700"
-          shape="torn-edge"
-          size={450}
-          showActions={true}
-        />
-      </div>
-    </div>
-  );
+export default async function DashboardRedirect() {
+  const cookieStore = cookies();
+  const role = cookieStore.get('tmi_role')?.value?.toLowerCase() ?? '';
+  const dest = ROLE_DASHBOARD[role] ?? '/dashboard/fan';
+  redirect(dest);
 }
