@@ -24,6 +24,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import Link from 'next/link';
+import { getCrownHolder } from '@/lib/performers/PerformerRegistry';
 
 // ─── Genre + performer data (10 per genre) ────────────────────────────────────
 
@@ -296,7 +297,9 @@ export default function Home1CoverPage() {
   const genreKey = GENRE_KEYS[genreIdx % GENRE_KEYS.length]!;
   const genre = GENRE_DATA[genreKey]!;
   const performers = genre.performers;
-  const crowdHolder = performers[0]!;
+  // Crown holder always comes from the PerformerRegistry — the real global #1 by XP.
+  const crownData = getCrownHolder();
+  const crowdHolder = { slug: crownData.slug, name: crownData.name, profileImageUrl: crownData.profileImageUrl, profileRoute: crownData.profileRoute };
 
   // Orbit spin
   useEffect(() => {
@@ -834,7 +837,7 @@ export default function Home1CoverPage() {
 
           {/* Center: Crown holder */}
           <Link
-            href={`/articles/performer/${crowdHolder.slug}`}
+            href={crowdHolder.profileRoute}
             style={{
               position: 'absolute',
               top: '50%',
@@ -871,12 +874,12 @@ export default function Home1CoverPage() {
               >
                 👑
               </div>
-              <img 
-                src={`https://i.pravatar.cc/150?u=${crowdHolder.slug}`} 
-                alt={crowdHolder.name} 
-                style={{ 
-                  width: 'min(50px, 9vw)', height: 'min(50px, 9vw)', borderRadius: '50%', 
-                  objectFit: 'cover', marginBottom: 4, border: `2px solid ${accentColor}` 
+              <img
+                src={crowdHolder.profileImageUrl}
+                alt={crowdHolder.name}
+                style={{
+                  width: 'min(50px, 9vw)', height: 'min(50px, 9vw)', borderRadius: '50%',
+                  objectFit: 'cover', marginBottom: 4, border: `2px solid ${accentColor}`
                 }}
               />
               <div style={{
