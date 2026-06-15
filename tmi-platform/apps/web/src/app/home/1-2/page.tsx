@@ -9,6 +9,7 @@ import { getLatestEditorialArticles } from '@/lib/editorial/NewsArticleModel';
 import { fetchTrendingArtists, type TrendingArtist } from '@/lib/api/homepage';
 import SponsorRail from '@/components/sponsors/SponsorRail';
 import EventReel from '@/components/events/EventReel';
+import BillboardLiveWall from '@/components/media/BillboardLiveWall';
 
 const SEED_SPONSORS = [
   { id: 'amplify',   name: 'AMPLIFY RECORDS',     tagline: 'Platinum Partner' },
@@ -694,32 +695,17 @@ export default function Home12Page() {
 
       <SponsorRail sponsors={SEED_SPONSORS} zone="home-1-2-top" />
 
-      {/* 3D MAGAZINE ENGINE HERO */}
-      <style dangerouslySetInnerHTML={{ __html: `
-        .tmi-3d-btn { background: rgba(4,4,14,0.88); border: 1px solid rgba(255,107,0,0.38); color: #FF6B00; padding: 8px 20px; cursor: pointer; font-family: 'Courier New', monospace; font-size: 9px; letter-spacing: 3px; text-transform: uppercase; transition: background 0.18s, border-color 0.18s; }
-        .tmi-3d-btn:hover:not(:disabled) { background: rgba(255,107,0,0.12); border-color: #FF6B00; }
-        .tmi-3d-btn:disabled { opacity: 0.2; cursor: default; }
-        .tmi-3d-dot { width: 5px; height: 5px; border-radius: 50%; background: rgba(255,255,255,0.14); cursor: pointer; transition: all 0.24s; }
-        .tmi-3d-dot.active { background: #FF6B00; box-shadow: 0 0 7px #FF6B00; }
-        @keyframes tmi-fh { 0% { opacity: 1 } 60% { opacity: 1 } 100% { opacity: 0 } }
-      `}} />
-      <div id="tmi-3d-wrap" style={{ width: '100%', height: '580px', position: 'relative', overflow: 'hidden', background: '#050508', marginTop: '10px' }}>
-        <div id="tmi-3d-canvas" style={{ position: 'absolute', inset: 0 }}></div>
-        <div id="tmi-3d-load" style={{ position: 'absolute', inset: 0, zIndex: 999, background: '#050508', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '13px', fontFamily: "'Courier New', monospace", transition: 'opacity 0.5s' }}>
-          <div style={{ fontSize: '9px', letterSpacing: '5px', color: 'rgba(0,255,255,0.48)' }}>INITIALIZING 3D ENGINE</div>
-          <div style={{ width: '150px', height: '1px', background: 'rgba(255,255,255,0.07)' }}><div id="tmi-3d-lf" style={{ height: '100%', width: '0%', background: '#FF6B00', transition: 'width 0.3s' }}></div></div>
-          <div id="tmi-3d-ls" style={{ fontSize: '8px', letterSpacing: '3px', color: 'rgba(255,255,255,0.22)' }}>COMPILING SHADERS</div>
-        </div>
-        <div id="tmi-3d-hud" style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '16px 20px', pointerEvents: 'none', fontFamily: "'Courier New', monospace" }}>
-          <div style={{ display: 'flex', justifyContent: 'center' }}><div style={{ fontSize: '9px', letterSpacing: '5px', color: 'rgba(0,255,255,0.45)', border: '1px solid rgba(0,255,255,0.12)', padding: '5px 14px', textTransform: 'uppercase' }}>TMI · 3D PAGE ENGINE · THE INDEX</div></div>
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '16px', pointerEvents: 'all' }}>
-            <button id="tmi-3d-bp" className="tmi-3d-btn">◀ PREV</button>
-            <div id="tmi-3d-pi" style={{ fontSize: '9px', letterSpacing: '3px', color: 'rgba(255,255,255,0.28)', minWidth: '118px', textAlign: 'center' }}>SPREAD 1 / 3</div>
-            <button id="tmi-3d-bn" className="tmi-3d-btn">NEXT ▶</button>
+      {/* BILLBOARD LIVE WALL — canonical home/1-2 channel identity */}
+      <div style={{ position: 'relative', zIndex: 10, padding: '12px 0 0' }}>
+        <div style={{ textAlign: 'center', marginBottom: 12 }}>
+          <div style={{ fontFamily: 'var(--font-orbitron)', fontSize: 11, fontWeight: 900, color: theme.accent, letterSpacing: '0.3em', textTransform: 'uppercase', textShadow: `0 0 14px ${theme.glow}` }}>
+            ● GLOBAL BILLBOARD — LIVE RANKINGS
+          </div>
+          <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.2em', marginTop: 3 }}>
+            TOP PERFORMERS · LIVE NOW · RISING ARTISTS
           </div>
         </div>
-        <div id="tmi-3d-dots" style={{ position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)', display: 'flex', flexDirection: 'column', gap: '9px', pointerEvents: 'all' }}></div>
-        <div id="tmi-3d-hint" style={{ position: 'absolute', bottom: '68px', left: '50%', transform: 'translateX(-50%)', fontFamily: "'Courier New', monospace", fontSize: '8px', letterSpacing: '3px', color: 'rgba(255,255,255,0.18)', pointerEvents: 'none', animation: 'tmi-fh 4s ease forwards' }}>DRAG OR USE ARROW KEYS TO TURN</div>
+        <BillboardLiveWall mode="home" maxTiles={18} showActions />
       </div>
 
       {/* Main content */}

@@ -405,6 +405,10 @@ export default function Home1CoverPage() {
           5%, 75%   { opacity: 1; max-width: 300px; letter-spacing: 0.35em; }
           90%, 100% { opacity: 0; max-width: 300px; letter-spacing: 0.35em; }
         }
+        @keyframes h1TabloidScroll {
+          from { transform: translateX(-50%); }
+          to   { transform: translateX(0%); }
+        }
       `}</style>
 
       {/* ── Background confetti triangles ── */}
@@ -426,49 +430,79 @@ export default function Home1CoverPage() {
         />
       ))}
 
-      {/* ── Neon blob underlay — matches blueprint tmi_home1_orbital_with_underlay_panels ── */}
+      {/* ── TABLOID MAGAZINE UNDERLAY — blueprint tmi_home1_complete_80s_magazine_final ── */}
       <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0, overflow: 'hidden' }}>
-        {/* Pink blob — top left */}
+        {/* Scrolling tabloid panels — opacity .9 as specified in blueprint */}
         <div style={{
-          position: 'absolute', borderRadius: '50%', filter: 'blur(80px)', opacity: 0.55,
-          width: 460, height: 460,
-          background: 'radial-gradient(circle, rgba(255,45,170,0.55) 0%, transparent 70%)',
-          top: -60, left: '5%',
-          animation: 'h1BlobA 9s ease-in-out infinite',
-        }} />
-        {/* Gold blob — top right */}
+          display: 'flex',
+          whiteSpace: 'nowrap',
+          animation: 'h1TabloidScroll 16s linear infinite',
+          opacity: 0.9,
+          height: '100%',
+          alignItems: 'center',
+        }}>
+          {/* 3 repetitions of 5 panels = seamless loop */}
+          {[0, 1, 2].map(rep => (
+            [
+              { bg: '#FFD700', hdr: '#FF1493', title: 'WHO TOOK THE CROWN?',    sub: 'COVER PERFORMER', artist: 'BIG ACE',    tag: 'HIP-HOP · 4,812 VOTES',       cta: 'CYPHER OPEN',        c1: '#00BFFF' },
+              { bg: '#FF1493', hdr: '#000000', title: 'BATTLE NIGHT CHAMPION',   sub: 'REIGNING CHAMP',  artist: 'WAVETEK',    tag: '47 WINS · HIP-HOP',           cta: '⚔️ CHALLENGE 8PM',   c1: '#FFD700' },
+              { bg: '#00BFFF', hdr: '#000000', title: "WHO'S GOT THE BARS?",     sub: 'ON THE MIC NOW',  artist: 'NOVA CIPHER',tag: 'CYPHER OPEN · 841 WATCHING',   cta: 'DROP IN ANYTIME',    c1: '#FF1493' },
+              { bg: '#000000', hdr: '#FFD700', title: 'CHALLENGE THE CROWN',     sub: 'DEFENDING NOW',   artist: 'BEAT THE BEAT',tag:'WAVETEK · 841 VOTES',          cta: 'ARENA SEATS 18,500', c1: '#FF1493' },
+              { bg: '#9B59B6', hdr: '#FFD700', title: 'DJ BATTLE NIGHT',         sub: 'CURRENT #1 DJ',   artist: 'DJ KRAZE',   tag: 'DJ · TURNTABLIST',             cta: 'JOIN BATTLE QUEUE',  c1: '#00BFFF' },
+            ].map((p, i) => (
+              <div key={`${rep}-${i}`} style={{
+                display: 'inline-flex',
+                flexDirection: 'column',
+                width: 210,
+                flexShrink: 0,
+                border: '3px solid #000',
+                overflow: 'hidden',
+                verticalAlign: 'top',
+                background: p.bg,
+                height: 200,
+              }}>
+                <div style={{ background: p.hdr, padding: '6px 8px' }}>
+                  <div style={{ fontSize: 6, fontWeight: 700, color: 'rgba(255,255,255,0.6)', fontFamily: "'Anton', sans-serif" }}>
+                    THE MUSICIAN&apos;S INDEX · VOL.1 · $4.99
+                  </div>
+                </div>
+                <div style={{ padding: '10px 8px', flex: 1 }}>
+                  <div style={{
+                    fontFamily: "'Anton', 'Impact', sans-serif",
+                    fontSize: 22,
+                    color: p.hdr === '#000000' ? (p.bg === '#FF1493' ? '#FFD700' : p.bg === '#000000' ? '#FFD700' : '#000') : '#000',
+                    lineHeight: 1,
+                    marginBottom: 5,
+                  }}>{p.title}</div>
+                  <div style={{ background: p.c1, padding: '4px 6px', marginBottom: 3 }}>
+                    <div style={{ fontSize: 7, fontWeight: 800, color: '#000' }}>{p.sub}</div>
+                    <div style={{ fontFamily: "'Anton', 'Impact', sans-serif", fontSize: 14, color: '#000' }}>{p.artist}</div>
+                  </div>
+                  <div style={{ fontSize: 7, color: 'rgba(0,0,0,0.6)' }}>{p.tag}</div>
+                </div>
+                <div style={{
+                  background: '#000',
+                  padding: '4px 8px',
+                  fontSize: 7,
+                  fontWeight: 700,
+                  color: p.hdr === '#000000' ? p.c1 : '#FFD700',
+                }}>{p.cta}</div>
+              </div>
+            ))
+          ))}
+        </div>
+        {/* Radial vignette — clears the orbital center */}
         <div style={{
-          position: 'absolute', borderRadius: '50%', filter: 'blur(80px)', opacity: 0.45,
-          width: 480, height: 480,
-          background: 'radial-gradient(circle, rgba(255,215,0,0.45) 0%, transparent 70%)',
-          top: 80, right: -60,
-          animation: 'h1BlobB 12s ease-in-out infinite',
+          position: 'absolute', inset: 0,
+          background: 'radial-gradient(ellipse 72% 88% at center, transparent 20%, rgba(6,2,26,0.88) 100%)',
+          pointerEvents: 'none',
         }} />
-        {/* Cyan blob — bottom center */}
+        {/* Left/right linear fade */}
         <div style={{
-          position: 'absolute', borderRadius: '50%', filter: 'blur(80px)', opacity: 0.35,
-          width: 400, height: 400,
-          background: 'radial-gradient(circle, rgba(0,229,255,0.3) 0%, transparent 70%)',
-          bottom: -40, left: '30%',
-          animation: 'h1BlobC 15s ease-in-out infinite',
+          position: 'absolute', inset: 0,
+          background: 'linear-gradient(90deg, rgba(6,2,26,0.92) 0%, transparent 18%, transparent 82%, rgba(6,2,26,0.92) 100%)',
+          pointerEvents: 'none',
         }} />
-        {/* Purple blob — bottom right */}
-        <div style={{
-          position: 'absolute', borderRadius: '50%', filter: 'blur(80px)', opacity: 0.4,
-          width: 320, height: 320,
-          background: 'radial-gradient(circle, rgba(155,89,182,0.4) 0%, transparent 70%)',
-          bottom: 80, right: '15%',
-          animation: 'h1BlobA 18s ease-in-out infinite reverse',
-        }} />
-        {/* SVG grid lines */}
-        <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0.06 }} preserveAspectRatio="none">
-          <defs>
-            <pattern id="tmiGrid" width="48" height="48" patternUnits="userSpaceOnUse">
-              <path d="M48 0L0 0 0 48" fill="none" stroke="#FFD700" strokeWidth="0.5"/>
-            </pattern>
-          </defs>
-          <rect width="100%" height="100%" fill="url(#tmiGrid)"/>
-        </svg>
       </div>
 
       {/* ── Genre badge top left ── */}
