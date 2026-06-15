@@ -453,12 +453,12 @@ export default function Home1CoverPage() {
       ))}
 
       {/* ── TABLOID MAGAZINE UNDERLAY — blueprint tmi_home1_complete_80s_magazine_final ── */}
-      <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0, overflow: 'hidden' }}>
+      <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0, overflow: 'hidden' }}>
         {/* Scrolling tabloid panels — opacity .9 as specified in blueprint */}
         <div style={{
           display: 'flex',
           whiteSpace: 'nowrap',
-          animation: 'h1TabloidScroll 16s linear infinite',
+          animation: 'h1TabloidScroll 22s linear infinite',
           opacity: 0.9,
           height: '100%',
           alignItems: 'stretch',
@@ -475,7 +475,7 @@ export default function Home1CoverPage() {
               <div key={`${rep}-${i}`} style={{
                 display: 'inline-flex',
                 flexDirection: 'column',
-                width: 210,
+                width: 260,
                 flexShrink: 0,
                 border: '3px solid #000',
                 overflow: 'hidden',
@@ -483,46 +483,48 @@ export default function Home1CoverPage() {
                 background: p.bg,
                 height: '100%',
               }}>
-                <div style={{ background: p.hdr, padding: '6px 8px' }}>
-                  <div style={{ fontSize: 6, fontWeight: 700, color: 'rgba(255,255,255,0.6)', fontFamily: "'Anton', sans-serif" }}>
+                <div style={{ background: p.hdr, padding: '7px 10px' }}>
+                  <div style={{ fontSize: 7, fontWeight: 700, color: 'rgba(255,255,255,0.65)', fontFamily: "'Anton', sans-serif", letterSpacing: '0.08em' }}>
                     THE MUSICIAN&apos;S INDEX · VOL.1 · $4.99
                   </div>
                 </div>
-                <div style={{ padding: '10px 8px', flex: 1 }}>
+                <div style={{ padding: '12px 10px', flex: 1 }}>
                   <div style={{
                     fontFamily: "'Anton', 'Impact', sans-serif",
-                    fontSize: 22,
+                    fontSize: 26,
                     color: p.hdr === '#000000' ? (p.bg === '#FF1493' ? '#FFD700' : p.bg === '#000000' ? '#FFD700' : '#000') : '#000',
-                    lineHeight: 1,
-                    marginBottom: 5,
+                    lineHeight: 0.95,
+                    marginBottom: 8,
+                    textTransform: 'uppercase',
                   }}>{p.title}</div>
-                  <div style={{ background: p.c1, padding: '4px 6px', marginBottom: 3 }}>
-                    <div style={{ fontSize: 7, fontWeight: 800, color: '#000' }}>{p.sub}</div>
-                    <div style={{ fontFamily: "'Anton', 'Impact', sans-serif", fontSize: 14, color: '#000' }}>{p.artist}</div>
+                  <div style={{ background: p.c1, padding: '5px 8px', marginBottom: 4 }}>
+                    <div style={{ fontSize: 8, fontWeight: 800, color: '#000', letterSpacing: '0.05em' }}>{p.sub}</div>
+                    <div style={{ fontFamily: "'Anton', 'Impact', sans-serif", fontSize: 17, color: '#000', letterSpacing: '0.02em' }}>{p.artist}</div>
                   </div>
-                  <div style={{ fontSize: 7, color: 'rgba(0,0,0,0.6)' }}>{p.tag}</div>
+                  <div style={{ fontSize: 8, color: 'rgba(0,0,0,0.65)', fontWeight: 600 }}>{p.tag}</div>
                 </div>
                 <div style={{
                   background: '#000',
-                  padding: '4px 8px',
-                  fontSize: 7,
+                  padding: '5px 10px',
+                  fontSize: 8,
                   fontWeight: 700,
                   color: p.hdr === '#000000' ? p.c1 : '#FFD700',
+                  letterSpacing: '0.06em',
                 }}>{p.cta}</div>
               </div>
             ))
           ))}
         </div>
-        {/* Radial vignette — clears the orbital center */}
+        {/* Radial vignette — clears the orbital center, lighter to show tabloid panels */}
         <div style={{
           position: 'absolute', inset: 0,
-          background: 'radial-gradient(ellipse 72% 88% at center, transparent 20%, rgba(6,2,26,0.88) 100%)',
+          background: 'radial-gradient(ellipse 65% 78% at center, transparent 30%, rgba(6,2,26,0.58) 100%)',
           pointerEvents: 'none',
         }} />
-        {/* Left/right linear fade */}
+        {/* Left/right linear fade — lighter so edge panels remain visible */}
         <div style={{
           position: 'absolute', inset: 0,
-          background: 'linear-gradient(90deg, rgba(6,2,26,0.92) 0%, transparent 18%, transparent 82%, rgba(6,2,26,0.92) 100%)',
+          background: 'linear-gradient(90deg, rgba(6,2,26,0.62) 0%, transparent 22%, transparent 78%, rgba(6,2,26,0.62) 100%)',
           pointerEvents: 'none',
         }} />
       </div>
@@ -608,6 +610,8 @@ export default function Home1CoverPage() {
           flexDirection: 'column',
           alignItems: 'center',
           minHeight: '100vh',
+          position: 'relative',
+          zIndex: 1,
         }}
       >
 
