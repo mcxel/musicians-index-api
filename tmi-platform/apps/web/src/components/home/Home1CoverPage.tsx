@@ -271,13 +271,15 @@ function PerformerMonitor({
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-const TMI_HUB_PHRASES = [
-  { line1: 'WHO TOOK', line2: 'THE CROWN?' },
-  { line1: 'GENRE', line2: 'BATTLE!' },
-  { line1: 'CYPHER ARENA', line2: 'OPEN NOW' },
-  { line1: 'VOTING', line2: 'LIVE!' },
-  { line1: 'CHALLENGE', line2: 'THE CROWN' },
-  { line1: 'BATTLE NIGHT', line2: 'ARENA' },
+const HERO_PHRASES = [
+  'WHO TOOK THE CROWN?',
+  "THE WORLD'S STAGE",
+  "WHO'S NEXT?",
+  'DISCOVER THE FUTURE',
+  'FANS • PERFORMERS • VENUES',
+  'LIVE • BATTLE • CYPHER • WIN',
+  'YOUR JOURNEY STARTS HERE',
+  "THE MUSICIAN'S INDEX",
 ];
 
 export default function Home1CoverPage() {
@@ -286,8 +288,8 @@ export default function Home1CoverPage() {
   const [voteCount, setVoteCount] = useState(4812);
   const [activeIdx, setActiveIdx] = useState<number | null>(null);
   const [starburst, setStarburst] = useState(false);
-  const [phraseIdx, setPhraseIdx] = useState(0);
-  const [showPhrase, setShowPhrase] = useState(false);
+  const [heroIdx, setHeroIdx] = useState(0);
+  const [heroVisible, setHeroVisible] = useState(true);
   const rafRef = useRef<number | null>(null);
   const lastRef = useRef<number>(0);
 
@@ -332,14 +334,15 @@ export default function Home1CoverPage() {
     return () => clearInterval(id);
   }, []);
 
-  // Hub phrase rotation — alternates between performer display and TMI phrases every 3.5s
+  // Hero headline rotation — cycles brand phrases every 4s with fade
   useEffect(() => {
     const id = setInterval(() => {
-      setShowPhrase((prev) => {
-        if (prev) setPhraseIdx((i) => (i + 1) % TMI_HUB_PHRASES.length);
-        return !prev;
-      });
-    }, 3500);
+      setHeroVisible(false);
+      setTimeout(() => {
+        setHeroIdx((i) => (i + 1) % HERO_PHRASES.length);
+        setHeroVisible(true);
+      }, 380);
+    }, 4000);
     return () => clearInterval(id);
   }, []);
 
@@ -681,9 +684,12 @@ export default function Home1CoverPage() {
               WebkitTextFillColor: 'transparent',
               letterSpacing: '0.04em',
               lineHeight: 1,
+              opacity: heroVisible ? 1 : 0,
+              transition: 'opacity 0.38s ease',
+              minHeight: '1.1em',
             }}
           >
-            WHO TOOK THE CROWN?
+            {HERO_PHRASES[heroIdx]}
           </div>
           <div
             style={{
@@ -865,59 +871,29 @@ export default function Home1CoverPage() {
               >
                 {crowdHolder.emoji}
               </div>
-              {showPhrase ? (
-                <>
-                  <div style={{
-                    fontSize: 'min(8px, 1.6vw)',
-                    fontWeight: 900,
-                    color: '#FFD700',
-                    letterSpacing: '0.04em',
-                    textAlign: 'center',
-                    fontFamily: "'Inter', sans-serif",
-                    marginTop: 2,
-                    lineHeight: 1.2,
-                  }}>
-                    {TMI_HUB_PHRASES[phraseIdx]?.line1}
-                  </div>
-                  <div style={{
-                    fontSize: 'min(8px, 1.6vw)',
-                    fontWeight: 900,
-                    color: '#FF2DAA',
-                    letterSpacing: '0.04em',
-                    textAlign: 'center',
-                    fontFamily: "'Inter', sans-serif",
-                    lineHeight: 1.2,
-                  }}>
-                    {TMI_HUB_PHRASES[phraseIdx]?.line2}
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div style={{
-                    fontSize: 'min(9px, 1.8vw)',
-                    fontWeight: 900,
-                    color: '#fff',
-                    letterSpacing: '0.05em',
-                    textAlign: 'center',
-                    fontFamily: "'Inter', sans-serif",
-                    marginTop: 2,
-                    maxWidth: '80%',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                  }}>
-                    {crowdHolder.name}
-                  </div>
-                  <div style={{
-                    fontSize: 'min(8px, 1.5vw)',
-                    fontWeight: 700,
-                    color: '#FFD700',
-                    fontFamily: "'Inter', sans-serif",
-                  }}>
-                    #1 {genreKey}
-                  </div>
-                </>
-              )}
+              <div style={{
+                fontSize: 'min(9px, 1.8vw)',
+                fontWeight: 900,
+                color: '#fff',
+                letterSpacing: '0.05em',
+                textAlign: 'center',
+                fontFamily: "'Inter', sans-serif",
+                marginTop: 2,
+                maxWidth: '80%',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}>
+                {crowdHolder.name}
+              </div>
+              <div style={{
+                fontSize: 'min(8px, 1.5vw)',
+                fontWeight: 700,
+                color: '#FFD700',
+                fontFamily: "'Inter', sans-serif",
+              }}>
+                #1 {genreKey}
+              </div>
             </div>
           </Link>
 
