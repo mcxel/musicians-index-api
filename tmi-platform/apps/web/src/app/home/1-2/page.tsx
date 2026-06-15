@@ -7,6 +7,10 @@ import { getLatestEditorialArticles } from '@/lib/editorial/NewsArticleModel';
 import { fetchTrendingArtists, type TrendingArtist } from '@/lib/api/homepage';
 import SponsorRail from '@/components/sponsors/SponsorRail';
 import EventReel from '@/components/events/EventReel';
+import {
+  PERFORMER_REGISTRY,
+  getPerformerById,
+} from '@/lib/performers/PerformerRegistry';
 
 const SEED_SPONSORS = [
   { id: 'amplify',   name: 'AMPLIFY RECORDS',     tagline: 'Platinum Partner' },
@@ -112,13 +116,12 @@ function BillboardPortraitCard({
   const tierColor = tierColors[item.tier] || '#fff';
 
   return (
-    <div
-      style={{
-        width: '100%', borderRadius: 10, overflow: 'hidden',
-        border: `1px solid ${theme.accent}33`, background: 'rgba(5,5,16,0.85)',
-        boxShadow: `0 0 20px ${theme.glow}`, display: 'flex',
-        flexDirection: 'column', transition: 'transform 0.2s, box-shadow 0.2s', cursor: 'pointer',
-      }}
+    <div style={{
+      width: '100%', borderRadius: 10, overflow: 'hidden',
+      border: `1px solid ${theme.accent}33`, background: 'rgba(5,5,16,0.85)',
+      boxShadow: `0 0 20px ${theme.glow}`, display: 'flex',
+      flexDirection: 'column', transition: 'transform 0.2s, box-shadow 0.2s', cursor: 'pointer',
+    }}
       onMouseEnter={e => {
         (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-4px)';
         (e.currentTarget as HTMLDivElement).style.boxShadow = `0 8px 32px ${theme.glow}`;
@@ -146,8 +149,7 @@ function BillboardPortraitCard({
           <div style={{ position: 'absolute', bottom: 8, left: 8, background: 'rgba(0,0,0,0.8)',
             color: '#00FF88', fontWeight: 800, fontSize: 9, padding: '3px 8px', borderRadius: 4,
             display: 'flex', alignItems: 'center', gap: 4, letterSpacing: '0.05em' }}>
-            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#00FF88',
-              display: 'inline-block', animation: 'pulse 1.5s ease-in-out infinite' }} />
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#00FF88', display: 'inline-block' }} />
             LIVE
           </div>
         )}
@@ -186,33 +188,9 @@ function BillboardPortraitCard({
   );
 }
 
-// ─── Blueprint live session tile (native CSS — no MaskedVideoTile) ─────────────
-
-type SessionType = 'performer' | 'battle' | 'cypher' | 'fan' | 'venue' | 'magazine' | 'vip' | 'sponsor';
-
-interface LiveSession {
-  id: string; name: string; genre: string; type: SessionType;
-  event: string; access: 'FREE' | 'PAID' | 'DIAMOND' | 'SPONSORED_FREE';
-  vc: number; hype: number; tip: number; sponsored: boolean;
-  shape: 'oct' | 'hex' | 'circle' | 'ticket' | 'torn' | 'ribbon' | 'cinema';
-  emoji: string; accent: string;
-  route: string;
-}
-
-const LIVE_SESSIONS: LiveSession[] = [
-  { id:'s1',  name:'Wavetek',                     genre:'Hip-Hop',    type:'performer', event:'Public Live',      access:'FREE',           vc:2841, hype:94, tip:340, sponsored:false, shape:'oct',    emoji:'🎤', accent:'#00E5FF', route:'/live/rooms/s1'      },
-  { id:'s2',  name:'Astra Nova',                  genre:'R&B',        type:'performer', event:'Public Live',      access:'FREE',           vc:1204, hype:87, tip:89,  sponsored:true,  shape:'oct',    emoji:'🎵', accent:'#FFD700', route:'/live/rooms/s2'      },
-  { id:'s3',  name:'DJ Kraze',                    genre:'DJ',         type:'performer', event:'World Dance Party', access:'FREE',          vc:3200, hype:98, tip:562, sponsored:true,  shape:'cinema', emoji:'🎧', accent:'#00FF88', route:'/live/rooms/s3'      },
-  { id:'s4',  name:'Bar God vs Nova Cipher',      genre:'Hip-Hop',    type:'battle',    event:'Battle',           access:'FREE',           vc:1840, hype:96, tip:0,   sponsored:false, shape:'hex',    emoji:'⚔️', accent:'#FF2DAA', route:'/battles/live/s4'    },
-  { id:'s5',  name:'Lagos Burst vs Verse XL',     genre:'Afrobeats',  type:'cypher',    event:'Cypher',           access:'FREE',           vc:940,  hype:88, tip:0,   sponsored:false, shape:'hex',    emoji:'🌍', accent:'#00E5FF', route:'/cypher/stage?room=s5'},
-  { id:'s6',  name:'Fan Lobby — Party Night',     genre:'R&B',        type:'fan',       event:'Fan Live',         access:'FREE',           vc:124,  hype:65, tip:0,   sponsored:false, shape:'circle', emoji:'💃', accent:'#AA2DFF', route:'/live/rooms/s6'      },
-  { id:'s7',  name:'Avatar Heavy',                genre:'Dance',      type:'fan',       event:'Fan Live',         access:'FREE',           vc:88,   hype:71, tip:0,   sponsored:false, shape:'circle', emoji:'🕺', accent:'#FF2DAA', route:'/live/rooms/s7'      },
-  { id:'s8',  name:'Arena Prime — Concerts',      genre:'Pop',        type:'venue',     event:'Concert',          access:'PAID',           vc:8200, hype:99, tip:0,   sponsored:true,  shape:'ticket', emoji:'⭐', accent:'#FFD700', route:'/venues/room/s8'     },
-  { id:'s9',  name:'MONTHLY IDOL Finals!',        genre:'All',        type:'magazine',  event:'Monthly Idol',     access:'FREE',           vc:5400, hype:97, tip:0,   sponsored:true,  shape:'torn',   emoji:'👑', accent:'#FF2DAA', route:'/events/monthly-idol' },
-  { id:'s10', name:'VIP Diamond Lounge',          genre:'Exclusive',  type:'vip',       event:'Diamond Surf',     access:'DIAMOND',        vc:340,  hype:90, tip:280, sponsored:true,  shape:'oct',    emoji:'💎', accent:'#00E5FF', route:'/live/rooms/s10'     },
-  { id:'s11', name:'Beats By TMX — Promo',        genre:'Sponsor',    type:'sponsor',   event:'Sponsor Event',    access:'SPONSORED_FREE', vc:1200, hype:82, tip:0,   sponsored:true,  shape:'ribbon', emoji:'📢', accent:'#FFD700', route:'/sponsors/events/s11'},
-  { id:'s12', name:'Flex King Dance Showcase',    genre:'Dance',      type:'performer', event:'Dance-Off',        access:'FREE',           vc:670,  hype:85, tip:43,  sponsored:false, shape:'hex',    emoji:'💃', accent:'#00FF88', route:'/live/rooms/s12'     },
-];
+// ─── Unified performer identity system ────────────────────────────────────────
+// The same BillboardCard object powers both the live lobby wall shaped tiles
+// AND the portrait cards. One performer = one identity everywhere on this page.
 
 const SHAPE_CLIP: Record<string, string> = {
   oct:    'polygon(30% 0%,70% 0%,100% 30%,100% 70%,70% 100%,30% 100%,0% 70%,0% 30%)',
@@ -224,102 +202,111 @@ const SHAPE_CLIP: Record<string, string> = {
   cinema: 'none',
 };
 
-function LiveSessionTile({ s, onJoin }: { s: LiveSession; onJoin: (id: string) => void }) {
-  const clip = SHAPE_CLIP[s.shape] || 'none';
-  const isHex = s.shape === 'hex';
-  const isCinema = s.shape === 'cinema';
-  const size = isCinema ? 'auto' : (s.shape === 'circle' ? 90 : s.shape === 'ribbon' ? 80 : 100);
+function getCardShape(card: BillboardCard): string {
+  const cat = card.category.toLowerCase();
+  if (cat === 'venues' || cat === 'promoters') return 'ticket';
+  if (['dance crews','hip hop dance','ballet','breakdance','popping/locking'].includes(cat)) return 'hex';
+  if (cat === 'sponsors') return 'ribbon';
+  if (card.name.toLowerCase().includes(' vs ')) return 'hex';
+  if (cat === 'gospel' && card.audienceCount > 4000) return 'torn';
+  if (cat === 'djs' && card.audienceCount > 2500) return 'cinema';
+  return 'oct';
+}
+
+function getCardAccent(card: BillboardCard): string {
+  const map: Record<string, string> = {
+    Diamond: '#00E5FF', Platinum: '#E5E4E2', Gold: '#FFD700', Silver: '#C0C0C0', RUBY: '#FF2DAA',
+  };
+  return map[card.tier] ?? '#FF2DAA';
+}
+
+// Wall tiles and portrait cards both read from the same PerformerRegistry.
+// One performer = one identity everywhere — no inline duplicate arrays.
+const GLOBAL_LIVE_POOL: BillboardCard[] = PERFORMER_REGISTRY;
+
+type WallFilter = 'global' | 'performer' | 'fan' | 'battle' | 'venue' | 'magazine';
+
+function filterLivePool(wall: WallFilter): BillboardCard[] {
+  if (wall === 'global')    return GLOBAL_LIVE_POOL;
+  if (wall === 'performer') return GLOBAL_LIVE_POOL.filter(c => !['Venues','Sponsors','Dance Crews','Hip Hop Dance','Breakdance','Ballet','Popping/Locking'].includes(c.category));
+  if (wall === 'fan')       return GLOBAL_LIVE_POOL.filter(c => c.audienceCount < 250);
+  if (wall === 'battle')    return GLOBAL_LIVE_POOL.filter(c => c.name.toLowerCase().includes(' vs ') || c.category === 'Rap');
+  if (wall === 'venue')     return GLOBAL_LIVE_POOL.filter(c => c.category === 'Venues');
+  if (wall === 'magazine')  return GLOBAL_LIVE_POOL.filter(c => c.audienceCount > 3000);
+  return GLOBAL_LIVE_POOL;
+}
+
+// ─── Performer live tile ───────────────────────────────────────────────────────
+
+function PerformerLiveTile({ card, onJoin }: { card: BillboardCard; onJoin: (id: string) => void }) {
+  const shape = getCardShape(card);
+  const accent = getCardAccent(card);
+  const clip = SHAPE_CLIP[shape] ?? 'none';
+  const isWide = shape === 'cinema';
+  const isBattle = card.name.toLowerCase().includes(' vs ');
+  const size = isWide ? 'auto' : (shape === 'circle' ? 88 : shape === 'ribbon' ? 80 : 102);
 
   return (
     <div
-      onClick={() => onJoin(s.id)}
+      onClick={() => onJoin(card.id)}
       style={{
         position: 'relative',
-        width: isCinema ? '100%' : size,
-        height: isCinema ? 60 : size,
+        width: isWide ? '100%' : size,
+        height: isWide ? 62 : size,
         clipPath: clip,
-        background: `linear-gradient(135deg,rgba(0,0,0,.8),rgba(5,5,16,.95))`,
-        border: `2px solid ${s.accent}`,
+        backgroundImage: `url(${card.profileImageUrl})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundColor: 'rgba(5,5,16,0.95)',
+        border: `2px solid ${accent}`,
         cursor: 'pointer',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: isCinema ? '0 12px' : 4,
-        boxShadow: `0 0 12px ${s.accent}44`,
-        transition: 'transform .18s, box-shadow .18s',
         flexShrink: 0,
         overflow: 'hidden',
+        boxShadow: `0 0 14px ${accent}44`,
+        transition: 'transform .18s, box-shadow .18s',
       }}
       onMouseEnter={e => {
         (e.currentTarget as HTMLDivElement).style.transform = 'scale(1.08)';
-        (e.currentTarget as HTMLDivElement).style.boxShadow = `0 0 28px ${s.accent}99`;
+        (e.currentTarget as HTMLDivElement).style.boxShadow = `0 0 28px ${accent}99`;
       }}
       onMouseLeave={e => {
         (e.currentTarget as HTMLDivElement).style.transform = 'scale(1)';
-        (e.currentTarget as HTMLDivElement).style.boxShadow = `0 0 12px ${s.accent}44`;
+        (e.currentTarget as HTMLDivElement).style.boxShadow = `0 0 14px ${accent}44`;
       }}
     >
-      {/* LIVE badge */}
-      <div style={{ position: 'absolute', top: 5, left: isCinema ? 8 : 5,
-        background: '#E63000', color: '#fff', fontSize: 7, fontWeight: 800,
-        padding: '2px 5px', borderRadius: 3, letterSpacing: '.08em', zIndex: 5 }}>
+      <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.18) 55%, transparent 100%)', pointerEvents: 'none', zIndex: 1 }} />
+      <div style={{ position: 'absolute', top: 4, left: isWide ? 8 : 4, background: '#E63000', color: '#fff', fontSize: 7, fontWeight: 800, padding: '1px 5px', borderRadius: 3, letterSpacing: '.08em', zIndex: 5 }}>
         LIVE
       </div>
-      {/* Viewer count */}
-      <div style={{ position: 'absolute', top: 5, right: isCinema ? 8 : 5,
-        background: 'rgba(0,0,0,.7)', color: '#00E5FF', fontSize: 8,
-        padding: '1px 5px', borderRadius: 3, zIndex: 5, fontWeight: 500 }}>
-        👁 {s.vc.toLocaleString()}
+      <div style={{ position: 'absolute', top: 4, right: isWide ? 8 : 4, background: 'rgba(0,0,0,.72)', color: '#00E5FF', fontSize: 7, padding: '1px 5px', borderRadius: 3, zIndex: 5, fontWeight: 600 }}>
+        👁 {card.audienceCount.toLocaleString()}
       </div>
-      {/* VS badge for battles */}
-      {isHex && s.type === 'battle' && (
-        <div style={{ position: 'absolute', top: '50%', left: '50%',
-          transform: 'translate(-50%,-50%)', background: 'rgba(0,0,0,.7)',
-          color: '#FF1493', fontSize: 11, fontWeight: 900, padding: '3px 7px',
-          borderRadius: 4, zIndex: 5, border: '1px solid rgba(255,20,147,.4)' }}>
+      {isBattle && (
+        <div style={{ position: 'absolute', top: '38%', left: '50%', transform: 'translate(-50%,-50%)', background: 'rgba(0,0,0,.78)', color: '#FF1493', fontSize: 10, fontWeight: 900, padding: '2px 7px', borderRadius: 4, zIndex: 5, border: '1px solid rgba(255,20,147,.4)' }}>
           VS
         </div>
       )}
-      {isHex && s.type === 'cypher' && (
-        <div style={{ position: 'absolute', top: '50%', left: '50%',
-          transform: 'translate(-50%,-50%)', background: 'rgba(0,0,0,.7)',
-          color: '#00E5FF', fontSize: 9, fontWeight: 900, padding: '3px 7px',
-          borderRadius: 4, zIndex: 5 }}>
-          CYPHER
+      <div style={{ position: 'absolute', bottom: isWide ? 22 : 18, right: isWide ? 8 : 4, zIndex: 5 }}>
+        <span style={{ background: 'rgba(0,0,0,.72)', color: accent, fontSize: 6, fontWeight: 800, padding: '1px 4px', borderRadius: 3, letterSpacing: '.06em', textTransform: 'uppercase' }}>
+          {card.tier === 'RUBY' ? 'Ruby' : card.tier}
+        </span>
+      </div>
+      <div style={{ position: 'absolute', bottom: isWide ? 6 : 4, left: isWide ? 8 : 4, right: isWide ? 8 : 4, zIndex: 5 }}>
+        <div style={{ color: '#fff', fontSize: isWide ? 10 : 8, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textShadow: '0 1px 3px rgba(0,0,0,.95)', lineHeight: 1.2 }}>
+          {card.name}
         </div>
-      )}
-      {/* Emoji center */}
-      {!isHex && (
-        <div style={{ fontSize: isCinema ? 18 : 22, opacity: .45, position: 'absolute',
-          inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-          {s.emoji}
-        </div>
-      )}
-      {/* Name + genre */}
-      <div style={{ position: 'absolute', bottom: isCinema ? 6 : 20, left: isCinema ? 8 : 6,
-        right: isCinema ? 8 : 6, zIndex: 5 }}>
-        <div style={{ color: '#fff', fontSize: isCinema ? 10 : 9, fontWeight: 700,
-          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-          textShadow: '0 1px 3px rgba(0,0,0,.8)' }}>
-          {s.name}
-        </div>
-        {!isCinema && (
-          <div style={{ color: 'rgba(255,255,255,.6)', fontSize: 7 }}>{s.genre}</div>
+        {!isWide && (
+          <div style={{ color: 'rgba(255,255,255,.55)', fontSize: 6, lineHeight: 1.2 }}>{card.category}</div>
         )}
       </div>
-      {/* Sponsor dot */}
-      {s.sponsored && (
-        <div style={{ position: 'absolute', bottom: 5, right: 6, width: 8, height: 8,
-          borderRadius: '50%', background: '#FFD700', zIndex: 5 }} />
+      {card.category === 'Sponsors' && (
+        <div style={{ position: 'absolute', bottom: 4, right: 4, width: 7, height: 7, borderRadius: '50%', background: '#FFD700', zIndex: 5 }} />
       )}
     </div>
   );
 }
 
-// ─── Wall type tabs ────────────────────────────────────────────────────────────
-
-type WallFilter = 'global' | 'performer' | 'fan' | 'battle' | 'venue' | 'magazine';
+// ─── Wall tabs ─────────────────────────────────────────────────────────────────
 
 const WALL_TABS: { key: WallFilter; label: string }[] = [
   { key: 'global',    label: '🌐 Global Live'    },
@@ -329,16 +316,6 @@ const WALL_TABS: { key: WallFilter; label: string }[] = [
   { key: 'venue',     label: '🏟️ Venue Wall'      },
   { key: 'magazine',  label: '📰 Magazine Wall'   },
 ];
-
-function filterSessions(wall: WallFilter): LiveSession[] {
-  if (wall === 'global')    return LIVE_SESSIONS;
-  if (wall === 'performer') return LIVE_SESSIONS.filter(s => s.type === 'performer');
-  if (wall === 'fan')       return LIVE_SESSIONS.filter(s => s.type === 'fan');
-  if (wall === 'battle')    return LIVE_SESSIONS.filter(s => s.type === 'battle' || s.type === 'cypher');
-  if (wall === 'venue')     return LIVE_SESSIONS.filter(s => s.type === 'venue');
-  if (wall === 'magazine')  return LIVE_SESSIONS.filter(s => s.type === 'magazine' || s.type === 'vip');
-  return LIVE_SESSIONS;
-}
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
@@ -359,14 +336,12 @@ export default function Home12Page() {
     }, 200);
   }, []);
 
-  // Auto-rotate categories every 8s
   useEffect(() => {
     if (isPaused) return;
     const timer = setInterval(() => advanceCat(1), 8000);
     return () => clearInterval(timer);
   }, [isPaused, advanceCat]);
 
-  // Tick live count
   useEffect(() => {
     const id = setInterval(() => setLiveCount(n => n + Math.floor(Math.random() * 3 - 1)), 4000);
     return () => clearInterval(id);
@@ -388,15 +363,21 @@ export default function Home12Page() {
   const latestNews = getLatestEditorialArticles(5);
   const tickerStr = latestNews.map(a => `[${a.category.toUpperCase()}] ${a.headline}`).join('  ⚡  ');
 
-  const wallSessions = filterSessions(wallFilter);
+  const wallCards = filterLivePool(wallFilter);
 
-  function handleJoinSession(id: string) {
-    const s = LIVE_SESSIONS.find(x => x.id === id);
-    if (!s) return;
+  function handleJoinCard(id: string) {
+    const card = getPerformerById(id) ?? items.find(x => x.id === id);
+    if (!card) return;
     setPendingRoom({
-      id: s.id, title: s.name, viewers: s.vc, status: 'live',
-      access: s.access === 'DIAMOND' ? 'vip' : s.access === 'PAID' ? 'vip' : 'free',
-      accentColor: s.accent, roomRoute: s.route, venueIndex: 0, shape: 'hex',
+      id: `${card.id}-live`,
+      title: card.name,
+      viewers: card.audienceCount,
+      status: 'live',
+      access: (card.tier === 'Diamond' || card.tier === 'Platinum') ? 'vip' : 'free',
+      accentColor: getCardAccent(card),
+      roomRoute: `/live/rooms/${encodeURIComponent(card.id)}?from=billboard`,
+      venueIndex: 0,
+      shape: 'hex',
     });
   }
 
@@ -404,12 +385,10 @@ export default function Home12Page() {
     <main style={{ background: '#050510', minHeight: '100vh', color: '#fff', position: 'relative' }}>
       {pendingRoom && <LobbyEntryFlow room={pendingRoom} onClose={() => setPendingRoom(null)} />}
 
-      {/* Ambient background glow */}
       <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0,
         background: `radial-gradient(ellipse at 30% 40%, ${theme.glow}, transparent 60%)`,
         transition: 'background 1s' }} />
 
-      {/* Top nav */}
       <div style={{ position: 'relative', zIndex: 10, display: 'flex', alignItems: 'center',
         justifyContent: 'space-between', padding: '12px 20px',
         borderBottom: '1px solid rgba(255,255,255,.07)', background: 'rgba(5,5,16,.9)',
@@ -426,7 +405,6 @@ export default function Home12Page() {
               background: n === '1-2' ? `${theme.accent}20` : 'transparent',
               color: n === '1-2' ? theme.accent : 'rgba(255,255,255,.45)',
               border: `1px solid ${n === '1-2' ? theme.accent : 'rgba(255,255,255,.1)'}`,
-              transition: 'all .2s',
             }}>
               {n}
             </Link>
@@ -434,10 +412,8 @@ export default function Home12Page() {
         </div>
       </div>
 
-      {/* News ticker */}
       <div style={{ position: 'relative', zIndex: 10, overflow: 'hidden',
-        background: 'rgba(0,0,0,.6)', borderBottom: '1px solid rgba(255,255,255,.05)',
-        padding: '5px 0' }}>
+        background: 'rgba(0,0,0,.6)', borderBottom: '1px solid rgba(255,255,255,.05)', padding: '5px 0' }}>
         <div style={{ display: 'inline-flex', gap: 60, whiteSpace: 'nowrap', paddingLeft: 40,
           animation: 'scrollLeft 38s linear infinite', fontSize: 10, color: 'rgba(255,255,255,.55)' }}>
           {tickerStr}&nbsp;&nbsp;⚡&nbsp;&nbsp;TMI BILLBOARD WORLD — {CATEGORIES.length} CATEGORIES&nbsp;&nbsp;⚡&nbsp;&nbsp;GLOBAL RANKINGS LIVE
@@ -449,17 +425,17 @@ export default function Home12Page() {
       <style>{`
         @keyframes scrollLeft { from { transform: translateX(0); } to { transform: translateX(-50%); } }
         @keyframes blink12 { 0%,100% { opacity:1; } 50% { opacity:.2; } }
-        @keyframes pulse12 { 0%,100% { opacity:1; } 50% { opacity:.5; } }
       `}</style>
 
       <div style={{ position: 'relative', zIndex: 10 }}>
         <SponsorRail sponsors={SEED_SPONSORS} zone="home-1-2-top" />
       </div>
 
-      {/* ══ BILLBOARD LIVE LOBBY WALL MASTHEAD ══ */}
+      {/* ══ BILLBOARD LIVE LOBBY WALL ══ */}
       <div style={{ position: 'relative', zIndex: 10,
         background: 'linear-gradient(180deg,rgba(0,229,255,.1),rgba(5,8,21,.98))',
         borderBottom: '2px solid rgba(0,229,255,.25)', padding: '14px 20px' }}>
+
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
           <div>
@@ -481,8 +457,7 @@ export default function Home12Page() {
           </div>
         </div>
 
-        {/* Wall type tabs */}
-        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 12 }}>
+        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 14 }}>
           {WALL_TABS.map(t => (
             <button key={t.key} onClick={() => setWallFilter(t.key)} style={{
               padding: '5px 10px', borderRadius: 6,
@@ -498,46 +473,36 @@ export default function Home12Page() {
           ))}
         </div>
 
-        {/* Live session tiles */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center', minHeight: 120 }}>
-          {wallSessions.length === 0 ? (
+        {/* Live tiles — same BillboardCard identity as portrait grid */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, alignItems: 'center', minHeight: 116 }}>
+          {wallCards.length === 0 ? (
             <div style={{ color: 'rgba(255,255,255,.35)', fontSize: 11, padding: '20px 0' }}>
-              No sessions in this wall right now
+              No live performers in this view right now
             </div>
-          ) : wallSessions.map(s => (
-            <LiveSessionTile key={s.id} s={s} onJoin={handleJoinSession} />
+          ) : wallCards.map(card => (
+            <PerformerLiveTile key={card.id} card={card} onJoin={handleJoinCard} />
           ))}
         </div>
 
-        {/* Route flow bar */}
         <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 6,
-          fontSize: 9, color: 'rgba(255,255,255,.35)', flexWrap: 'wrap' }}>
-          <span>User goes live</span>
-          <span>→</span>
-          <span>Public room created</span>
-          <span>→</span>
-          <span>Venue scene loads</span>
-          <span>→</span>
-          <span>AudienceScene + bots</span>
-          <span>→</span>
-          <span>Live tile appears here</span>
-          <span>→</span>
+          fontSize: 9, color: 'rgba(255,255,255,.3)', flexWrap: 'wrap' }}>
+          <span>User goes live</span><span>→</span>
+          <span>Public room created</span><span>→</span>
+          <span>AudienceScene + bots</span><span>→</span>
+          <span>Live tile appears here</span><span>→</span>
           <span style={{ color: '#00E5FF' }}>Profile shows LIVE</span>
         </div>
       </div>
 
-      {/* ══ GENRE BILLBOARD — portrait card grid ══ */}
-      <div
-        style={{ position: 'relative', zIndex: 10, paddingTop: 28 }}
+      {/* ══ GENRE BILLBOARD — portrait cards ══ */}
+      <div style={{ position: 'relative', zIndex: 10, paddingTop: 28 }}
         onMouseEnter={() => setIsPaused(true)}
         onMouseLeave={() => setIsPaused(false)}
       >
-        {/* Section header */}
         <div style={{ maxWidth: 1400, margin: '0 auto', padding: '0 24px 16px',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
           <div>
-            <div style={{ fontSize: 9, letterSpacing: '.3em', color: theme.accent,
-              fontWeight: 800, marginBottom: 4 }}>
+            <div style={{ fontSize: 9, letterSpacing: '.3em', color: theme.accent, fontWeight: 800, marginBottom: 4 }}>
               GLOBAL BILLBOARD — TOP PERFORMERS
             </div>
             <div style={{ fontFamily: 'var(--font-orbitron,"Orbitron",sans-serif)',
@@ -567,7 +532,6 @@ export default function Home12Page() {
           </div>
         </div>
 
-        {/* Category pills */}
         <div style={{ display: 'flex', justifyContent: 'center', gap: 5, flexWrap: 'wrap',
           padding: '0 24px 20px', maxWidth: 1400, margin: '0 auto' }}>
           {CATEGORIES.map((cat, i) => (
@@ -586,7 +550,6 @@ export default function Home12Page() {
           ))}
         </div>
 
-        {/* Portrait card grid */}
         <div style={{
           maxWidth: 1400, margin: '0 auto', padding: '0 24px 60px',
           display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 16,
@@ -595,16 +558,8 @@ export default function Home12Page() {
           transition: 'opacity 0.3s ease-out, transform 0.4s cubic-bezier(0.25,1,0.5,1)',
         }}>
           {items.map(item => item.isLive ? (
-            <button key={item.id} onClick={() => setPendingRoom({
-              id: `${item.id}-live`, title: item.name, viewers: item.audienceCount,
-              status: 'live',
-              access: (item.tier === 'Diamond' || item.tier === 'Platinum' || item.tier === 'Gold') ? 'vip' : 'free',
-              accentColor: theme.accent,
-              roomRoute: `/live/rooms/${encodeURIComponent(item.id)}-live?from=billboard`,
-              venueIndex: 0, shape: 'hex',
-            })}
-              style={{ textDecoration: 'none', background: 'none', border: 'none',
-                cursor: 'pointer', padding: 0, display: 'block' }}
+            <button key={item.id} onClick={() => handleJoinCard(item.id)}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'block' }}
               aria-label={`Join live room for ${item.name}`}
             >
               <BillboardPortraitCard item={item} theme={theme} />
