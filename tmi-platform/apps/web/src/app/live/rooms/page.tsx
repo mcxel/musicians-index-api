@@ -5,8 +5,6 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import TMIUniversalPlayer from '@/components/media/TMIUniversalPlayer';
 import type { FrameStyle, SizePreset } from '@/components/media/TMIUniversalPlayer';
-import { MemoryWallEngine } from '@/lib/memory/MemoryWallEngine';
-
 export const dynamic = 'force-dynamic';
 
 // ── All live rooms on the billboard wall ──────────────────────────────────────
@@ -69,7 +67,6 @@ export default function BillboardLobbyWallPage() {
 
   const handleJoin = useCallback((slug: string, idx: number) => {
     setJustJoined(idx);
-    void MemoryWallEngine.captureLiveMoment('current-user', ALL_ROOMS[idx].id, '', `Attended ${ALL_ROOMS[idx].label}`);
     setTimeout(() => router.push(roomHref(slug)), 300);
   }, [router]);
 
