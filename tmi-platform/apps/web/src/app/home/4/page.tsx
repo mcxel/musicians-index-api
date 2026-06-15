@@ -1,5 +1,6 @@
 import Home4AdMagazine from "@/components/home/Home4AdMagazine";
 import SponsorRail from '@/components/sponsors/SponsorRail';
+import EventReel from '@/components/events/EventReel';
 
 const SEED_SPONSORS = [
   { id: 'amplify',   name: 'AMPLIFY RECORDS',     tagline: 'Platinum Partner' },
@@ -17,6 +18,7 @@ export default function Home4Page() {
     <>
       <SponsorRail sponsors={SEED_SPONSORS} zone="home-4-top" />
       <Home4AdMagazine />
+      <EventReel zone="home-4" />
     </>
   );
 }

@@ -400,6 +400,11 @@ export default function Home1CoverPage() {
           from { transform: scaleX(0); }
           to   { transform: scaleX(1); }
         }
+        @keyframes h1MagType {
+          0%        { opacity: 0; max-width: 0; letter-spacing: 0.5em; }
+          5%, 75%   { opacity: 1; max-width: 300px; letter-spacing: 0.35em; }
+          90%, 100% { opacity: 0; max-width: 300px; letter-spacing: 0.35em; }
+        }
       `}</style>
 
       {/* ── Background confetti triangles ── */}
@@ -579,6 +584,33 @@ export default function Home1CoverPage() {
                 {char}
               </span>
             ))}
+          </div>
+          {/* MAGAZINE typewriter — types in, holds, fades out, loops ~3s */}
+          <div
+            style={{
+              overflow: 'hidden',
+              height: 18,
+              display: 'flex',
+              justifyContent: 'center',
+              marginBottom: 4,
+            }}
+          >
+            <span
+              style={{
+                fontSize: 11,
+                fontWeight: 900,
+                color: accentColor,
+                letterSpacing: '0.35em',
+                fontFamily: "'Inter', sans-serif",
+                textTransform: 'uppercase',
+                display: 'inline-block',
+                overflow: 'hidden',
+                animation: 'h1MagType 3.2s ease-in-out infinite',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              MAGAZINE
+            </span>
           </div>
           <div
             style={{

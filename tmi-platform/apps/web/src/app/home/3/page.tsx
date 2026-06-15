@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Home3LiveWorldSurface from "@/components/home/Home3LiveWorldSurface";
 import SponsorRail from '@/components/sponsors/SponsorRail';
+import EventReel from '@/components/events/EventReel';
 
 const SEED_SPONSORS = [
   { id: 'amplify',   name: 'AMPLIFY RECORDS',     tagline: 'Platinum Partner' },
@@ -36,6 +37,7 @@ export default function Home3Page() {
     <>
       <SponsorRail sponsors={SEED_SPONSORS} zone="home-3-top" />
       <Home3LiveWorldSurface />
+      <EventReel zone="home-3" />
     </>
   );
 }

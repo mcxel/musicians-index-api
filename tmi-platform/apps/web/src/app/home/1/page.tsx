@@ -1,6 +1,7 @@
 import React from 'react';
 import Home1CoverPage from '@/components/home/Home1CoverPage';
 import SponsorRail from '@/components/sponsors/SponsorRail';
+import EventReel from '@/components/events/EventReel';
 
 const SEED_SPONSORS = [
   { id: 'amplify',   name: 'AMPLIFY RECORDS',       tagline: 'Platinum Partner' },
@@ -18,6 +19,7 @@ export default function Home1Route() {
     <>
       <SponsorRail sponsors={SEED_SPONSORS} zone="home-1-top" />
       <Home1CoverPage />
+      <EventReel zone="home-1" />
     </>
   );
 }

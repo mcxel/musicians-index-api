@@ -8,6 +8,7 @@ import styles from './Home12.module.css';
 import { getLatestEditorialArticles } from '@/lib/editorial/NewsArticleModel';
 import { fetchTrendingArtists, type TrendingArtist } from '@/lib/api/homepage';
 import SponsorRail from '@/components/sponsors/SponsorRail';
+import EventReel from '@/components/events/EventReel';
 
 const SEED_SPONSORS = [
   { id: 'amplify',   name: 'AMPLIFY RECORDS',     tagline: 'Platinum Partner' },
@@ -827,6 +828,7 @@ export default function Home12Page() {
           ))}
         </div>
       </div>
+      <EventReel zone="home-1-2" />
     </main>
   );
 }

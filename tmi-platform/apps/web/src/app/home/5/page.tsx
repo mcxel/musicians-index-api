@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Home5BattleCypherSurface from "@/components/home/Home5BattleCypherSurface";
 import SponsorRail from '@/components/sponsors/SponsorRail';
+import EventReel from '@/components/events/EventReel';
 
 const SEED_SPONSORS = [
   { id: 'amplify',   name: 'AMPLIFY RECORDS',     tagline: 'Platinum Partner' },
@@ -36,6 +37,7 @@ export default function Home5Page() {
     <>
       <SponsorRail sponsors={SEED_SPONSORS} zone="home-5-top" />
       <Home5BattleCypherSurface />
+      <EventReel zone="home-5" />
     </>
   );
 }

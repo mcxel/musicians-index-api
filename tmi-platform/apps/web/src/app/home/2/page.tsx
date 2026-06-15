@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Home2NewsDeskSurface from "@/components/home/Home2NewsDeskSurface";
 import SponsorRail from '@/components/sponsors/SponsorRail';
+import EventReel from '@/components/events/EventReel';
 
 const SEED_SPONSORS = [
   { id: 'amplify',   name: 'AMPLIFY RECORDS',     tagline: 'Platinum Partner' },
@@ -36,6 +37,7 @@ export default function Home2Page() {
     <>
       <SponsorRail sponsors={SEED_SPONSORS} zone="home-2-top" />
       <Home2NewsDeskSurface />
+      <EventReel zone="home-2" />
     </>
   );
 }
