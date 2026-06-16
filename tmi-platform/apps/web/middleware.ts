@@ -20,6 +20,12 @@ const AUTH_WHITELIST = [
   '/api/auth',
   '/health',
   '/support/account-recovery',
+  // Stripe calls these directly — it authenticates via Stripe-Signature
+  // header verification inside the route handler, never a session cookie.
+  // Blocking these with the generic /api/stripe session check returns 401
+  // to every webhook delivery before signature verification can even run.
+  '/api/stripe/webhook',
+  '/api/stripe/webhook-health',
 ];
 
 // These paths are always reachable regardless of platform visibility
@@ -34,6 +40,9 @@ const VISIBILITY_WHITELIST = [
   '/contest',
   '/_next',
   '/favicon.ico',
+  // Stripe must always be able to deliver webhooks, even in private/coming-soon mode
+  '/api/stripe/webhook',
+  '/api/stripe/webhook-health',
 ];
 
 function matchesAny(pathname: string, prefixes: string[]): boolean {
