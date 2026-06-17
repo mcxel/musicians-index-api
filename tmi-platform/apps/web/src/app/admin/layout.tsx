@@ -12,7 +12,7 @@ const ADMIN_ROLES = new Set(["admin", "superadmin", "owner", "ADMIN"]);
 type AuthStatus = "checking" | "authorized" | "denied";
 
 type OperatorPolicy = {
-  key: "marcel" | "big-ace" | "justin" | "jay" | "micha" | "admin";
+  key: "marcel" | "big-ace" | "justin" | "jay" | "admin";
   label: string;
   fullControl: boolean;
   canAutoApplyFixes: boolean;
@@ -31,9 +31,6 @@ function resolveOperatorPolicy(identity: string): OperatorPolicy {
   }
   if (v.includes("jay") || v.includes("jaypaul")) {
     return { key: "jay", label: "Jay", fullControl: false, canAutoApplyFixes: false };
-  }
-  if (v.includes("micha") || v.includes("micah")) {
-    return { key: "micha", label: "Micha", fullControl: false, canAutoApplyFixes: false };
   }
   return { key: "admin", label: "Admin", fullControl: false, canAutoApplyFixes: false };
 }

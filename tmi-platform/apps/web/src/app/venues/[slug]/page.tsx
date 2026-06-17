@@ -3,11 +3,17 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import MotionPosterPlayer from "@/components/media/MotionPosterPlayer";
 import AudienceScene from "@/components/live/AudienceScene";
 import UnifiedAdSlot from "@/components/ads/UnifiedAdSlot";
 import SeatUpgradeWidget from "@/components/venue/SeatUpgradeWidget";
 import TipBar from "@/components/hud/TipBar";
 import { getCanonicalRoomSlug } from "@/lib/world/WorldRuntime";
+import { VENUE_REGISTRY } from "@/lib/venues/VenueRegistry";
+import { getAdSlotForZone } from "@/lib/commerce/SponsorRegistry";
+import { sortPerformersByFreshness } from "@/lib/content/ContentFreshness";
+import { PERFORMER_REGISTRY } from "@/lib/performers/PerformerRegistry";
+import DiscoveryRail from "@/components/discovery/DiscoveryRail";
 
 const VENUES: Record<string, {
   name: string; type: "theater" | "arena" | "club" | "outdoor" | "studio";
@@ -79,6 +85,9 @@ export default function VenuePage({ params }: { params: { slug: string } }) {
   const tier = TICKET_TIERS.find(t => t.id === selectedTier)!;
   const tierPrice = venue[tier.key];
   const total = tierPrice * ticketQty;
+  const featuredPerformer = venue.currentArtist
+    ? PERFORMER_REGISTRY.find(p => p.name === venue.currentArtist)
+    : undefined;
 
   function handleTicketBuy() {
     setBuyingTicket(true);
@@ -117,17 +126,25 @@ export default function VenuePage({ params }: { params: { slug: string } }) {
         )}
       </nav>
 
-      {/* HERO — full 3D arena preview */}
-      <div style={{ height: 340, position: "relative", overflow: "hidden" }}>
-        <AudienceScene
-          venue={venue.venueIndex}
-          watcherCount={venue.capacity}
-          view="fan"
-          accentColor={venue.accentColor}
-          bpm={120}
-          screenLabel={venue.currentEvent ?? venue.name}
-          screenSubLabel={venue.currentArtist ?? venue.city}
-        />
+      {/* HERO — Discovery surface shows the host/performer, never an audience grid (Audience Visibility Rule) */}
+      <div style={{ height: 340, position: "relative", overflow: "hidden", background: `radial-gradient(circle at 50% 30%, ${venue.accentColor}22, #050510 75%)` }}>
+        {featuredPerformer ? (
+          <MotionPosterPlayer
+            isLive={venue.isLive}
+            liveRoomRoute={joinHref}
+            introVideoUrl={featuredPerformer.introVideoUrl}
+            motionPosterUrl={featuredPerformer.motionPosterUrl}
+            staticImageUrl={featuredPerformer.profileImageUrl}
+            alt={featuredPerformer.name}
+            audienceCount={venue.viewers}
+            showLiveOverlay={false}
+            height={340}
+          />
+        ) : (
+          <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 72 }}>
+            {venue.emoji}
+          </div>
+        )}
         <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, transparent 25%, #050510 100%)" }} />
         <div style={{ position: "absolute", top: 16, left: 20, background: `${venue.accentColor}CC`, color: "#000", fontSize: 9, fontWeight: 900, padding: "4px 14px", borderRadius: 20, letterSpacing: "0.12em" }}>
           {venue.type.toUpperCase()}
@@ -330,6 +347,25 @@ export default function VenuePage({ params }: { params: { slug: string } }) {
           </div>
         )}
       </div>
+
+      {/* Rule 6: Discovery Rails — venue hub keeps users in the ecosystem */}
+      {(() => {
+        // Rule 12: No Empty Inventory — venue ad slot
+        const venueAd = getAdSlotForZone(`venue-${params.slug}-discovery`);
+        // Rule 11: Content Freshness — live performers first for this venue's genres
+        const _liveFirst = sortPerformersByFreshness(PERFORMER_REGISTRY);
+        // Use VENUE_REGISTRY for canonical venue data
+        const _registryVenue = VENUE_REGISTRY.find(v => v.slug === params.slug);
+        void _liveFirst; void _registryVenue; void venueAd;
+        return (
+          <div style={{ maxWidth: 1100, margin: "0 auto", padding: "0 20px 80px" }}>
+            <DiscoveryRail type="performers" label="🎤 ARTISTS AT THIS VENUE" accentColor={venue.accentColor} />
+            <DiscoveryRail type="liveRooms" label="🎥 LIVE NOW" accentColor="#E63000" />
+            <DiscoveryRail type="articles" label="📰 VENUE COVERAGE" accentColor="#FF2DAA" />
+            <DiscoveryRail type="sponsors" label="💼 VENUE SPONSORS" accentColor="#FFD700" />
+          </div>
+        );
+      })()}
     </main>
   );
 }

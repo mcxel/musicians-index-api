@@ -4,19 +4,11 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect, useCallback } from "react";
 import LiveMagazineVoiceTicker from "./LiveMagazineVoiceTicker";
+import { VENUE_REGISTRY } from '@/lib/venues/VenueRegistry';
 import RoomContainer from '@/components/room/RoomContainer';
-import ActionCanister from '@/components/room/ActionCanister';
 import WidgetDrawer from '@/components/room/WidgetDrawer';
 import NeonWaveUnderlay from '@/components/atmosphere/NeonWaveUnderlay';
 import UnifiedAdSlot from '@/components/ads/UnifiedAdSlot';
-
-const HOME4_ACTIONS = [
-  { id: 'sponsors',      icon: '🤝', label: 'Sponsors'      },
-  { id: 'revenue',       icon: '💰', label: 'Revenue'       },
-  { id: 'bookings',      icon: '📅', label: 'Bookings'      },
-  { id: 'messages',      icon: '💬', label: 'Messages'      },
-  { id: 'notifications', icon: '🔔', label: 'Notifications' },
-];
 
 // ─── Sponsor sticker chaos — race car jacket layout ───────────────────────────
 
@@ -67,16 +59,21 @@ const BILLBOARD_ADS = [
   { id: "b4", headline: "WORLD DANCE PARTY",    sub: "3,000+ Fans. 60+ Countries. One Stage.",  cta: "JOIN THE PARTY",  ctaHref: "/events/world-dance-party",  accent: "#AA2DFF", bg: "linear-gradient(135deg, #0a0515 0%, #12051a 40%, #050510 100%)", badge: "GLOBAL" },
 ];
 
-// ─── Venue / ticket sales ─────────────────────────────────────────────────────
+// ─── Venue / ticket sales — registry-driven ──────────────────────────────────
 
-const VENUES = [
-  { id: "v1", name: "CYPHER FEST 2026",        date: "JUN 14 · ATLANTA",         price: "$45",  sold: 72,  href: "/events/cypher-fest",            accent: "#00FFFF", icon: "🎤" },
-  { id: "v2", name: "MONDAY NIGHT STAGE",      date: "EVERY MON · ONLINE",       price: "FREE", sold: 91,  href: "/events/monday-night-stage",     accent: "#FF2DAA", icon: "🎶" },
-  { id: "v3", name: "WORLD DANCE PARTY",       date: "JUN 22 · GLOBAL STREAM",   price: "$12",  sold: 58,  href: "/events/world-dance-party",      accent: "#AA2DFF", icon: "💃" },
-  { id: "v4", name: "DEALER FEUD 1000 FINALS", date: "JUL 5 · ONLINE",           price: "$8",   sold: 44,  href: "/events/dealer-feud-finals",     accent: "#FFD700", icon: "🎯" },
-  { id: "v5", name: "MONTHLY IDOL SHOWCASE",   date: "LAST SAT · ONLINE",        price: "FREE", sold: 83,  href: "/events/monthly-idol",           accent: "#FF6B35", icon: "⭐" },
-  { id: "v6", name: "NAME THAT TUNE — LIVE",   date: "FRI NIGHTS · ONLINE",      price: "$5",   sold: 67,  href: "/events/name-that-tune",         accent: "#00FFFF", icon: "🎵" },
-];
+const VENUE_TIER_COLORS: Record<string, string> = { Diamond: '#00FFFF', Platinum: '#FF2DAA', Gold: '#FFD700', Silver: '#C0C0C0', RUBY: '#FF6B35' };
+const VENUE_CAT_ICONS: Record<string, string> = { Arena: '🏟️', Stadium: '🏆', Theater: '🎭', Club: '🎤', Studio: '🎛️', Lounge: '🛋️', Outdoor: '🌿', Virtual: '🌐' };
+
+const VENUES = VENUE_REGISTRY.slice(0, 6).map((v) => ({
+  id: v.id,
+  name: v.name.toUpperCase(),
+  date: `${v.city}${v.isLive ? ' · LIVE NOW' : ' · UPCOMING'}`,
+  price: v.ticketPriceUsd === 0 ? 'FREE' : `$${v.ticketPriceUsd}`,
+  sold: v.occupancyPct,
+  href: v.ticketRoute,
+  accent: VENUE_TIER_COLORS[v.tier] ?? '#FFD700',
+  icon: VENUE_CAT_ICONS[v.category] ?? '🎵',
+}));
 
 // ─── Animated billboard hero ──────────────────────────────────────────────────
 
@@ -591,7 +588,6 @@ export default function Home4AdMagazine() {
       {/* ── AD — sponsor marketplace footer banner ── */}
       <UnifiedAdSlot venue="home-4" slotKey="homepageBanner" format="horizontal" label="ADVERTISEMENT" style={{ margin: '0 24px 24px', minHeight: 90 }} accentColor="#FFD700" />
 
-      <ActionCanister actions={HOME4_ACTIONS} />
       <WidgetDrawer />
     </div>
     </RoomContainer>

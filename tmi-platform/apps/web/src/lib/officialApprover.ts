@@ -4,7 +4,6 @@ import { authOptions } from "@/lib/authOptions";
 const OFFICIAL_APPROVER_EMAILS = new Set(
   [
     "marcel@example.com",
-    "micah@example.com",
     "jpaul@example.com",
   ].map((s) => s.toLowerCase())
 );

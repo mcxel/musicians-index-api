@@ -22,9 +22,15 @@
  *  - Typecheck-safe, no external deps beyond Next.js
  */
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { getCrownHolder } from '@/lib/performers/PerformerRegistry';
+import { LobbyEntryFlow, type UniversalRoom } from '@/components/room/UniversalLobbyEntry';
+import { getCrownHolder, PERFORMER_REGISTRY, getFeaturedFreePerformers, type PerformerIdentity } from '@/lib/performers/PerformerRegistry';
+import { getVenueBookingSlots, type VenueBookingSlot } from '@/lib/venues/VenueRegistry';
+import { fetchUpcomingEvents } from '@/lib/api/homepage';
+import AdSenseSlot, { AD_SLOTS } from '@/components/ads/AdSenseSlot';
+import { getActiveSponsorForZone } from '@/lib/commerce/SponsorRegistry';
+import MotionPosterPlayer from '@/components/media/MotionPosterPlayer';
 
 // ─── Genre + performer data (10 per genre) ────────────────────────────────────
 
@@ -35,148 +41,58 @@ interface Performer {
   rank: number;
   score: number;
   genre: string;
+  image?: string;
+  isLive?: boolean;
+  liveRoomRoute?: string;
 }
 
-const GENRE_DATA: Record<string, { color: string; bg: string; emoji: string; performers: Performer[] }> = {
-  'Hip-Hop': {
-    color: '#FFD700',
-    bg: '#2D1A00',
-    emoji: '🎤',
-    performers: [
-      { slug: 'big-ace', name: 'Big Ace', emoji: '🎤', rank: 1, score: 9840, genre: 'Hip-Hop' },
-      { slug: 'charro-ace', name: 'Charro Ace', emoji: '👑', rank: 2, score: 8910, genre: 'Hip-Hop' },
-      { slug: 'flow-jamz', name: 'Flow Jamz', emoji: '🎶', rank: 3, score: 7830, genre: 'Hip-Hop' },
-      { slug: 'yung-tuck', name: 'Yung Tuck', emoji: '🤙', rank: 4, score: 6720, genre: 'Hip-Hop' },
-      { slug: 'urban-scholar', name: 'Urban Scholar', emoji: '📚', rank: 5, score: 5940, genre: 'Hip-Hop' },
-      { slug: 'max-flare', name: 'Max Flare', emoji: '⚡', rank: 6, score: 4880, genre: 'Hip-Hop' },
-      { slug: 'mc-nova', name: 'MC Nova', emoji: '🌟', rank: 7, score: 3760, genre: 'Hip-Hop' },
-      { slug: 'leeze', name: 'Leeze', emoji: '🎯', rank: 8, score: 3120, genre: 'Hip-Hop' },
-      { slug: 'retro-rick', name: 'Retro Rick', emoji: '🎸', rank: 9, score: 2480, genre: 'Hip-Hop' },
-      { slug: 'trovor-rw', name: 'Trovor RW', emoji: '🔊', rank: 10, score: 1940, genre: 'Hip-Hop' },
-    ],
-  },
-  'R&B': {
-    color: '#FF2DAA',
-    bg: '#2D001A',
-    emoji: '🎵',
-    performers: [
-      { slug: 'lani-flame', name: 'Lani Flame', emoji: '🔥', rank: 1, score: 9210, genre: 'R&B' },
-      { slug: 'mia-jay', name: 'Mia Jay', emoji: '💜', rank: 2, score: 8340, genre: 'R&B' },
-      { slug: 'nova-sky', name: 'Nova Sky', emoji: '⭐', rank: 3, score: 7200, genre: 'R&B' },
-      { slug: 'diana-electro', name: 'Diana E.', emoji: '💙', rank: 4, score: 6100, genre: 'R&B' },
-      { slug: 'trina-sky', name: 'Trina Sky', emoji: '🌸', rank: 5, score: 5280, genre: 'R&B' },
-      { slug: 'lucy-sky', name: 'Lucy Sky', emoji: '🎀', rank: 6, score: 4430, genre: 'R&B' },
-      { slug: 'rosa-vibes', name: 'Rosa Vibes', emoji: '🌹', rank: 7, score: 3610, genre: 'R&B' },
-      { slug: 'axalla-cosmo', name: 'Axalla Cosmo', emoji: '🌙', rank: 8, score: 2940, genre: 'R&B' },
-      { slug: 'mona-chromatic', name: 'Mona Chroma', emoji: '🎭', rank: 9, score: 2240, genre: 'R&B' },
-      { slug: 'lily88', name: 'Lily 88', emoji: '🌺', rank: 10, score: 1820, genre: 'R&B' },
-    ],
-  },
-  'Gospel': {
-    color: '#00FF88',
-    bg: '#001A0D',
-    emoji: '🙏',
-    performers: [
-      { slug: 'blessed-voice', name: 'Blessed Voice', emoji: '🙏', rank: 1, score: 8800, genre: 'Gospel' },
-      { slug: 'grace-notes', name: 'Grace Notes', emoji: '🕊️', rank: 2, score: 7920, genre: 'Gospel' },
-      { slug: 'light-bringer', name: 'Light Bringer', emoji: '✨', rank: 3, score: 6980, genre: 'Gospel' },
-      { slug: 'choir-king', name: 'Choir King', emoji: '🎼', rank: 4, score: 5830, genre: 'Gospel' },
-      { slug: 'spirit-wave', name: 'Spirit Wave', emoji: '🌊', rank: 5, score: 4760, genre: 'Gospel' },
-      { slug: 'amen-flow', name: 'Amen Flow', emoji: '🌅', rank: 6, score: 3920, genre: 'Gospel' },
-      { slug: 'holy-bars', name: 'Holy Bars', emoji: '📖', rank: 7, score: 3140, genre: 'Gospel' },
-      { slug: 'faith-first', name: 'Faith First', emoji: '⛪', rank: 8, score: 2560, genre: 'Gospel' },
-      { slug: 'heavenly-sound', name: 'Heavenly Sound', emoji: '🎷', rank: 9, score: 1990, genre: 'Gospel' },
-      { slug: 'worship-wave', name: 'Worship Wave', emoji: '🎺', rank: 10, score: 1540, genre: 'Gospel' },
-    ],
-  },
-  'Jazz': {
-    color: '#AA2DFF',
-    bg: '#1A001A',
-    emoji: '🎷',
-    performers: [
-      { slug: 'global-vibes', name: 'Global Vibes', emoji: '🎷', rank: 1, score: 8400, genre: 'Jazz' },
-      { slug: 'phat-bass', name: 'Phat Bass', emoji: '🎸', rank: 2, score: 7560, genre: 'Jazz' },
-      { slug: 'midnight-groove', name: 'Midnight Groove', emoji: '🌑', rank: 3, score: 6620, genre: 'Jazz' },
-      { slug: 'brass-king', name: 'Brass King', emoji: '🎺', rank: 4, score: 5480, genre: 'Jazz' },
-      { slug: 'swing-city', name: 'Swing City', emoji: '🎻', rank: 5, score: 4340, genre: 'Jazz' },
-      { slug: 'blue-notes', name: 'Blue Notes', emoji: '💙', rank: 6, score: 3510, genre: 'Jazz' },
-      { slug: 'smooth-synth', name: 'Smooth Synth', emoji: '🎹', rank: 7, score: 2880, genre: 'Jazz' },
-      { slug: 'bebop-jones', name: 'Bebop Jones', emoji: '🎵', rank: 8, score: 2210, genre: 'Jazz' },
-      { slug: 'cool-cat', name: 'Cool Cat', emoji: '😎', rank: 9, score: 1760, genre: 'Jazz' },
-      { slug: 'vibe-check', name: 'Vibe Check', emoji: '✅', rank: 10, score: 1340, genre: 'Jazz' },
-    ],
-  },
-  'EDM': {
-    color: '#00C8FF',
-    bg: '#001A2D',
-    emoji: '🎧',
-    performers: [
-      { slug: 'dj-blend', name: 'DJ Blend', emoji: '🎧', rank: 1, score: 9100, genre: 'EDM' },
-      { slug: 'crystal-fizz', name: 'Crystal Fizz', emoji: '💎', rank: 2, score: 8080, genre: 'EDM' },
-      { slug: 'neon-city', name: 'Neon City', emoji: '🌆', rank: 3, score: 7040, genre: 'EDM' },
-      { slug: 'bass-drop', name: 'Bass Drop', emoji: '💥', rank: 4, score: 5930, genre: 'EDM' },
-      { slug: 'dj-synch', name: 'DJ Synch', emoji: '🔄', rank: 5, score: 5020, genre: 'EDM' },
-      { slug: 'wave-rider', name: 'Wave Rider', emoji: '🌊', rank: 6, score: 4120, genre: 'EDM' },
-      { slug: 'hyper-drop', name: 'Hyper Drop', emoji: '⚡', rank: 7, score: 3380, genre: 'EDM' },
-      { slug: 'sonic-burst', name: 'Sonic Burst', emoji: '💫', rank: 8, score: 2640, genre: 'EDM' },
-      { slug: 'echo-zone', name: 'Echo Zone', emoji: '🔊', rank: 9, score: 2010, genre: 'EDM' },
-      { slug: 'pulse-unit', name: 'Pulse Unit', emoji: '📡', rank: 10, score: 1570, genre: 'EDM' },
-    ],
-  },
-  'Pop': {
-    color: '#FF6B35',
-    bg: '#2D1000',
-    emoji: '🎀',
-    performers: [
-      { slug: 'poptronica', name: 'Poptronica', emoji: '🎀', rank: 1, score: 8750, genre: 'Pop' },
-      { slug: 'mfts', name: 'MFTS', emoji: '🌟', rank: 2, score: 7830, genre: 'Pop' },
-      { slug: 'sky-drop', name: 'Sky Drop', emoji: '🌤️', rank: 3, score: 6900, genre: 'Pop' },
-      { slug: 'sweet-harmony', name: 'Sweet Harmony', emoji: '🍬', rank: 4, score: 5770, genre: 'Pop' },
-      { slug: 'neon-angel', name: 'Neon Angel', emoji: '😇', rank: 5, score: 4810, genre: 'Pop' },
-      { slug: 'cover-climber', name: 'Cover Climber', emoji: '📈', rank: 6, score: 3920, genre: 'Pop' },
-      { slug: 'radio-burst', name: 'Radio Burst', emoji: '📻', rank: 7, score: 3180, genre: 'Pop' },
-      { slug: 'chart-queen', name: 'Chart Queen', emoji: '👸', rank: 8, score: 2530, genre: 'Pop' },
-      { slug: 'top-drop', name: 'Top Drop', emoji: '🎯', rank: 9, score: 1960, genre: 'Pop' },
-      { slug: 'brit-wave', name: 'Brit Wave', emoji: '🇬🇧', rank: 10, score: 1440, genre: 'Pop' },
-    ],
-  },
-  'Soul': {
-    color: '#FFB800',
-    bg: '#2D1F00',
-    emoji: '🕯️',
-    performers: [
-      { slug: 'darkwave-diva', name: 'Darkwave Diva', emoji: '🌑', rank: 1, score: 8200, genre: 'Soul' },
-      { slug: 'groove-master', name: 'Groove Master', emoji: '🕺', rank: 2, score: 7340, genre: 'Soul' },
-      { slug: 'deep-roots', name: 'Deep Roots', emoji: '🌳', rank: 3, score: 6410, genre: 'Soul' },
-      { slug: 'soulfire', name: 'Soulfire', emoji: '🔥', rank: 4, score: 5360, genre: 'Soul' },
-      { slug: 'velvet-voice', name: 'Velvet Voice', emoji: '🎙️', rank: 5, score: 4420, genre: 'Soul' },
-      { slug: 'rhythm-king', name: 'Rhythm King', emoji: '♟️', rank: 6, score: 3580, genre: 'Soul' },
-      { slug: 'motown-echo', name: 'Motown Echo', emoji: '📼', rank: 7, score: 2870, genre: 'Soul' },
-      { slug: 'warm-notes', name: 'Warm Notes', emoji: '☀️', rank: 8, score: 2210, genre: 'Soul' },
-      { slug: 'church-groove', name: 'Church Groove', emoji: '⛪', rank: 9, score: 1730, genre: 'Soul' },
-      { slug: 'old-school', name: 'Old School', emoji: '📡', rank: 10, score: 1280, genre: 'Soul' },
-    ],
-  },
-  'Rap': {
-    color: '#39FF14',
-    bg: '#001A00',
-    emoji: '💬',
-    performers: [
-      { slug: 'bobby-stanley', name: 'Bobby Stanley', emoji: '🎙️', rank: 1, score: 8960, genre: 'Rap' },
-      { slug: 'night-rider-beats', name: 'NightRider', emoji: '🌙', rank: 2, score: 7980, genre: 'Rap' },
-      { slug: 'rapid-fire', name: 'Rapid Fire', emoji: '💨', rank: 3, score: 6840, genre: 'Rap' },
-      { slug: 'word-smith', name: 'Word Smith', emoji: '✏️', rank: 4, score: 5710, genre: 'Rap' },
-      { slug: 'street-poet', name: 'Street Poet', emoji: '📝', rank: 5, score: 4690, genre: 'Rap' },
-      { slug: 'lyric-lord', name: 'Lyric Lord', emoji: '📜', rank: 6, score: 3830, genre: 'Rap' },
-      { slug: 'punch-line', name: 'Punch Line', emoji: '👊', rank: 7, score: 3060, genre: 'Rap' },
-      { slug: 'mic-wreck', name: 'Mic Wreck', emoji: '🎤', rank: 8, score: 2430, genre: 'Rap' },
-      { slug: 'flow-state', name: 'Flow State', emoji: '🌊', rank: 9, score: 1900, genre: 'Rap' },
-      { slug: 'cold-bars', name: 'Cold Bars', emoji: '🧊', rank: 10, score: 1450, genre: 'Rap' },
-    ],
-  },
+const GENRE_CONFIG: Record<string, { color: string; bg: string; emoji: string }> = {
+  'Hip-Hop': { color: '#FFD700', bg: '#2D1A00', emoji: '🎤' },
+  'R&B':     { color: '#FF2DAA', bg: '#2D001A', emoji: '🎵' },
+  'Gospel':  { color: '#00FF88', bg: '#001A0D', emoji: '🙏' },
+  'Jazz':    { color: '#AA2DFF', bg: '#1A001A', emoji: '🎷' },
+  'EDM':     { color: '#00C8FF', bg: '#001A2D', emoji: '🎧' },
+  'Pop':     { color: '#FF6B35', bg: '#2D1000', emoji: '🎀' },
+  'Soul':    { color: '#FFB800', bg: '#2D1F00', emoji: '🕯️' },
+  'Rap':     { color: '#39FF14', bg: '#001A00', emoji: '💬' },
 };
 
-const GENRE_KEYS = Object.keys(GENRE_DATA);
+// GENRE_KEYS must come from GENRE_CONFIG (GENRE_DATA doesn't exist yet at this point)
+const GENRE_KEYS = Object.keys(GENRE_CONFIG);
+
+const GENRE_DATA = GENRE_KEYS.reduce((acc, key) => {
+  const config = GENRE_CONFIG[key]!;
+  const matched = PERFORMER_REGISTRY.filter((p: PerformerIdentity) => p.category === key);
+
+  const performers: Performer[] = Array.from({ length: 10 }).map((_, i) => {
+    const p = matched[i];
+    if (p) {
+      return {
+        slug: p.slug,
+        name: p.name,
+        emoji: '👤', // Use a generic emoji, image is now primary
+        rank: p.rank,
+        score: p.xp,
+        genre: key,
+        image: p.profileImageUrl,
+        isLive: p.isLive,
+        liveRoomRoute: p.liveRoomRoute,
+      };
+    }
+    return {
+      slug: `rising-${key.toLowerCase()}-${i}`,
+      name: `Rising ${key}`,
+      emoji: '✨',
+      rank: i + 1,
+      score: Math.max(100, 1000 - i * 100),
+      genre: key,
+      image: `https://i.pravatar.cc/150?u=${key}-${i}`,
+    };
+  });
+
+  acc[key] = { ...config, performers };
+  return acc;
+}, {} as Record<string, { color: string; bg: string; emoji: string; performers: Performer[] }>);
 
 // Positions for 10 orbit cards (angle in degrees, radius 44% of container)
 function getOrbitPos(i: number, total: number, radius: number) {
@@ -291,15 +207,47 @@ export default function Home1CoverPage() {
   const [starburst, setStarburst] = useState(false);
   const [heroIdx, setHeroIdx] = useState(0);
   const [heroVisible, setHeroVisible] = useState(true);
+  const [leftTab, setLeftTab] = useState(0);
+  const [rightTab, setRightTab] = useState(0);
+  const [leftOpen, setLeftOpen] = useState(true);
+  const [rightOpen, setRightOpen] = useState(true);
+  const [underlayDir, setUnderlayDir] = useState<'left' | 'right'>('right');
+  const [pendingOrbit, setPendingOrbit] = useState<UniversalRoom | null>(null);
   const rafRef = useRef<number | null>(null);
   const lastRef = useRef<number>(0);
+
+  const [venues, setVenues] = useState<VenueBookingSlot[]>(() => getVenueBookingSlots(3));
+
+  useEffect(() => {
+    // Try to upgrade to real upcoming event data from the API.
+    // Falls back silently to VenueRegistry data already in state.
+    fetchUpcomingEvents(3).then(events => {
+      if (events && events.length > 0) {
+        const days = ['SUN','MON','TUE','WED','THU','FRI','SAT'] as const;
+        setVenues(events.map(e => {
+          const date = new Date(e.startsAt);
+          return { day: days[date.getDay()]!, venue: e.venue ?? 'Main Arena', slug: e.id, bookRoute: `/venues/book?venue=${e.id}` };
+        }));
+      }
+    }).catch(() => {});
+  }, []);
 
   const genreKey = GENRE_KEYS[genreIdx % GENRE_KEYS.length]!;
   const genre = GENRE_DATA[genreKey]!;
   const performers = genre.performers;
   // Crown holder always comes from the PerformerRegistry — the real global #1 by XP.
   const crownData = getCrownHolder();
-  const crowdHolder = { slug: crownData.slug, name: crownData.name, profileImageUrl: crownData.profileImageUrl, profileRoute: crownData.profileRoute };
+  const crowdHolder = {
+    slug: crownData.slug,
+    name: crownData.name,
+    profileImageUrl: crownData.profileImageUrl,
+    profileRoute: crownData.profileRoute,
+    introVideoUrl: crownData.introVideoUrl,
+    motionPosterUrl: crownData.motionPosterUrl,
+    isLive: crownData.isLive,
+    liveRoomRoute: crownData.liveRoomRoute,
+    audienceCount: crownData.audienceCount,
+  };
 
   // Orbit spin
   useEffect(() => {
@@ -353,6 +301,8 @@ export default function Home1CoverPage() {
   const bgColor = genre.bg;
 
   return (
+    <>
+    {pendingOrbit && <LobbyEntryFlow room={pendingOrbit} onClose={() => setPendingOrbit(null)} />}
     <div
       style={{
         minHeight: '100vh',
@@ -372,17 +322,25 @@ export default function Home1CoverPage() {
           0%, 100% { transform: translateY(0px) scale(1); }
           50% { transform: translateY(-8px) scale(1.05); }
         }
-        @keyframes h1Typewriter {
-          0%, 5% { opacity: 0; transform: translateY(4px); }
-          10%, 80% { opacity: 1; transform: translateY(0); }
-          90%, 100% { opacity: 0; transform: translateY(-4px); }
-        }
         @keyframes h1TypeColor {
-          0%, 19% { color: #00FF7F; text-shadow: 0 0 12px rgba(0,255,127,0.6); }
-          20%, 39% { color: #00E5FF; text-shadow: 0 0 12px rgba(0,229,255,0.6); }
-          40%, 59% { color: #FFD700; text-shadow: 0 0 12px rgba(255,215,0,0.6); }
-          60%, 79% { color: #E63000; text-shadow: 0 0 12px rgba(230,48,0,0.6); }
-          80%, 100% { color: #FF8C00; text-shadow: 0 0 12px rgba(255,140,0,0.6); }
+          0%   { color: #fff;    text-shadow: 0 0 8px rgba(255,255,255,0.4); }
+          25%  { color: #FFD700; text-shadow: 0 0 14px rgba(255,215,0,0.8); }
+          50%  { color: #00FF7F; text-shadow: 0 0 14px rgba(0,255,127,0.8); }
+          75%  { color: #E63000; text-shadow: 0 0 14px rgba(230,48,0,0.8); }
+          100% { color: #fff;    text-shadow: 0 0 8px rgba(255,255,255,0.4); }
+        }
+        @keyframes h1ColorBg {
+          0%   { background-position: 0% 50%; }
+          50%  { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+        @keyframes h1RailRight {
+          from { transform: translateX(-50%); }
+          to   { transform: translateX(0%); }
+        }
+        @keyframes h1BadgePulse {
+          0%,100% { box-shadow: 0 0 6px rgba(255,45,170,0.4); border-color: rgba(255,45,170,0.6); }
+          50%     { box-shadow: 0 0 16px rgba(255,45,170,0.9); border-color: rgba(255,45,170,1); }
         }
         @keyframes h1Pulse {
           0%, 100% { box-shadow: 0 0 20px ${accentColor}55; }
@@ -437,6 +395,10 @@ export default function Home1CoverPage() {
           from { transform: translateX(-50%); }
           to   { transform: translateX(0%); }
         }
+        @keyframes h1FloatStar {
+          0%, 100% { transform: translateY(0px) scale(1); opacity: 0.45; }
+          50%       { transform: translateY(-8px) scale(1.15); opacity: 0.75; }
+        }
       `}</style>
 
       {/* ── Background confetti triangles ── */}
@@ -458,108 +420,11 @@ export default function Home1CoverPage() {
         />
       ))}
 
-      {/* ── TABLOID MAGAZINE UNDERLAY — blueprint tmi_home1_complete_80s_magazine_final ── */}
-      <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0, overflow: 'hidden' }}>
-        {/* Scrolling tabloid panels — opacity .9 as specified in blueprint */}
-        <div style={{
-          display: 'flex',
-          whiteSpace: 'nowrap',
-          animation: 'h1TabloidScroll 22s linear infinite',
-          opacity: 0.65,
-          height: '100%',
-          alignItems: 'stretch',
-        }}>
-          {/* 3 repetitions of 5 panels = seamless loop */}
-          {[0, 1, 2].map(rep => (
-            [
-              { bg: '#FFD700', hdr: '#FF1493', title: 'WHO TOOK THE CROWN?',    sub: 'COVER PERFORMER', artist: 'BIG ACE',    tag: 'HIP-HOP · 4,812 VOTES',       cta: 'CYPHER OPEN',        c1: '#00BFFF' },
-              { bg: '#FF1493', hdr: '#000000', title: 'BATTLE NIGHT CHAMPION',   sub: 'REIGNING CHAMP',  artist: 'WAVETEK',    tag: '47 WINS · HIP-HOP',           cta: '⚔️ CHALLENGE 8PM',   c1: '#FFD700' },
-              { bg: '#00BFFF', hdr: '#000000', title: "WHO'S GOT THE BARS?",     sub: 'ON THE MIC NOW',  artist: 'NOVA CIPHER',tag: 'CYPHER OPEN · 841 WATCHING',   cta: 'DROP IN ANYTIME',    c1: '#FF1493' },
-              { bg: '#000000', hdr: '#FFD700', title: 'CHALLENGE THE CROWN',     sub: 'DEFENDING NOW',   artist: 'BEAT THE BEAT',tag:'WAVETEK · 841 VOTES',          cta: 'ARENA SEATS 18,500', c1: '#FF1493' },
-              { bg: '#9B59B6', hdr: '#FFD700', title: 'DJ BATTLE NIGHT',         sub: 'CURRENT #1 DJ',   artist: 'DJ KRAZE',   tag: 'DJ · TURNTABLIST',             cta: 'JOIN BATTLE QUEUE',  c1: '#00BFFF' },
-            ].map((p, i) => (
-              <div key={`${rep}-${i}`} style={{
-                display: 'inline-flex',
-                flexDirection: 'column',
-                width: 190,
-                flexShrink: 0,
-                border: '3px solid #000',
-                overflow: 'hidden',
-                verticalAlign: 'top',
-                background: p.bg,
-                height: '100%',
-              }}>
-                <div style={{ background: p.hdr, padding: '7px 10px' }}>
-                  <div style={{ fontSize: 7, fontWeight: 700, color: 'rgba(255,255,255,0.65)', fontFamily: "'Anton', sans-serif", letterSpacing: '0.08em' }}>
-                    THE MUSICIAN&apos;S INDEX · VOL.1 · $4.99
-                  </div>
-                </div>
-                <div style={{ padding: '12px 10px', flex: 1 }}>
-                  <div style={{
-                    fontFamily: "'Anton', 'Impact', sans-serif",
-                    fontSize: 26,
-                    color: p.hdr === '#000000' ? (p.bg === '#FF1493' ? '#FFD700' : p.bg === '#000000' ? '#FFD700' : '#000') : '#000',
-                    lineHeight: 0.95,
-                    marginBottom: 8,
-                    textTransform: 'uppercase',
-                  }}>{p.title}</div>
-                  <div style={{ background: p.c1, padding: '5px 8px', marginBottom: 4 }}>
-                    <div style={{ fontSize: 8, fontWeight: 800, color: '#000', letterSpacing: '0.05em' }}>{p.sub}</div>
-                    <div style={{ fontFamily: "'Anton', 'Impact', sans-serif", fontSize: 17, color: '#000', letterSpacing: '0.02em' }}>{p.artist}</div>
-                  </div>
-                  <div style={{ fontSize: 8, color: 'rgba(0,0,0,0.65)', fontWeight: 600 }}>{p.tag}</div>
-                </div>
-                <div style={{
-                  background: '#000',
-                  padding: '5px 10px',
-                  fontSize: 8,
-                  fontWeight: 700,
-                  color: p.hdr === '#000000' ? p.c1 : '#FFD700',
-                  letterSpacing: '0.06em',
-                }}>{p.cta}</div>
-              </div>
-            ))
-          ))}
-        </div>
-        {/* Radial vignette — clears the orbital center, lighter to show tabloid panels */}
-        <div style={{
-          position: 'absolute', inset: 0,
-          background: 'radial-gradient(ellipse 65% 78% at center, transparent 40%, rgba(6,2,26,0.85) 100%)',
-          pointerEvents: 'none',
-        }} />
-        {/* Left/right linear fade — lighter so edge panels remain visible */}
-        <div style={{
-          position: 'absolute', inset: 0,
-          background: 'linear-gradient(90deg, rgba(6,2,26,0.85) 0%, transparent 28%, transparent 72%, rgba(6,2,26,0.85) 100%)',
-          pointerEvents: 'none',
-        }} />
-      </div>
-
-      {/* ── Genre badge top left ── */}
-      <div
-        style={{
-          position: 'absolute',
-          top: 18,
-          left: 20,
-          zIndex: 50,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-        }}
-      >
-        <Link href="/home/1" style={{ textDecoration: 'none' }}>
-          <div
-            style={{
-              fontSize: 11,
-              fontWeight: 900,
-              letterSpacing: '0.2em',
-              color: 'rgba(255,255,255,0.5)',
-              fontFamily: "'Inter', sans-serif",
-            }}
-          >
-            ← BACK
-          </div>
-        </Link>
+      {/* ══ BETA BAR — top of page ══ */}
+      <div style={{ background: 'rgba(230,48,0,0.18)', borderBottom: '1px solid rgba(230,48,0,0.32)', padding: '3px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 8 }}>
+        <div style={{ color: '#E63000', fontWeight: 700, letterSpacing: '0.12em', fontFamily: "'Inter',sans-serif" }}>✦ TMI BETA SEASON</div>
+        <div style={{ color: 'rgba(255,255,255,0.45)', fontFamily: "'Inter',sans-serif" }}>Founding Beta Member · Purchases &amp; unlocks persist permanently</div>
+        <Link href="/about/beta" style={{ textDecoration: 'none', color: '#FFD700', fontWeight: 700, fontFamily: "'Inter',sans-serif" }}>DETAILS →</Link>
       </div>
 
       {/* ── Voting LIVE banner ── */}
@@ -611,7 +476,7 @@ export default function Home1CoverPage() {
       {/* ── Main content ── */}
       <div
         style={{
-          paddingTop: 52,
+          paddingTop: 28,
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
@@ -621,19 +486,51 @@ export default function Home1CoverPage() {
         }}
       >
 
+        {/* ── Geometric 80s background accents (pointer-events:none, no layout impact) ── */}
+        <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0, overflow: 'hidden' }}>
+          {/* Gold diamond */}
+          <div style={{ position: 'absolute', top: '8%', left: '3%', width: 28, height: 28, background: 'rgba(255,215,0,0.18)', transform: 'rotate(45deg)', border: '1px solid rgba(255,215,0,0.35)' }} />
+          {/* Pink triangle */}
+          <div style={{ position: 'absolute', top: '12%', right: '4%', width: 0, height: 0, borderLeft: '18px solid transparent', borderRight: '18px solid transparent', borderBottom: '32px solid rgba(255,45,170,0.15)' }} />
+          {/* Cyan triangle */}
+          <div style={{ position: 'absolute', top: '35%', left: '1%', width: 0, height: 0, borderLeft: '14px solid transparent', borderRight: '14px solid transparent', borderBottom: '24px solid rgba(0,229,255,0.12)' }} />
+          {/* Purple circle */}
+          <div style={{ position: 'absolute', bottom: '30%', right: '2%', width: 36, height: 36, borderRadius: '50%', border: '1px solid rgba(170,45,255,0.22)', background: 'rgba(170,45,255,0.06)' }} />
+          {/* Gold diamond bottom-left */}
+          <div style={{ position: 'absolute', bottom: '18%', left: '2%', width: 18, height: 18, background: 'rgba(255,215,0,0.12)', transform: 'rotate(45deg)', border: '1px solid rgba(255,215,0,0.2)' }} />
+          {/* Cyan rectangle accent */}
+          <div style={{ position: 'absolute', top: '55%', right: '1.5%', width: 8, height: 40, background: 'rgba(0,229,255,0.09)', border: '1px solid rgba(0,229,255,0.18)' }} />
+          {/* Pink small square */}
+          <div style={{ position: 'absolute', top: '68%', left: '1%', width: 12, height: 12, background: 'rgba(255,45,170,0.12)', transform: 'rotate(20deg)' }} />
+        </div>
+
         {/* ── Masthead ── */}
-        <div style={{ textAlign: 'center', marginTop: 24, marginBottom: 8, zIndex: 10 }}>
+        <div style={{ textAlign: 'center', marginTop: 10, marginBottom: 16, zIndex: 10, position: 'relative', maxHeight: '250px' }}>
+          {/* Floating star decorations */}
+          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, pointerEvents: 'none', zIndex: 0 }}>
+            {[
+              { top: 10, left: '8%',  size: 12, delay: '0s',    char: '⭐' },
+              { top: 22, left: '15%', size: 9,  delay: '0.6s',  char: '✦' },
+              { top: 6,  left: '85%', size: 11, delay: '1.1s',  char: '⭐' },
+              { top: 18, left: '78%', size: 8,  delay: '0.3s',  char: '✦' },
+              { top: 38, left: '5%',  size: 8,  delay: '1.8s',  char: '✦' },
+              { top: 34, left: '91%', size: 9,  delay: '0.9s',  char: '✦' },
+            ].map((s, i) => (
+              <span key={i} style={{ position: 'absolute', top: s.top, left: s.left, fontSize: s.size, opacity: 0.45, animation: `h1FloatStar 3s ease-in-out infinite`, animationDelay: s.delay, display: 'inline-block' }}>{s.char}</span>
+            ))}
+          </div>
+
           <div
             style={{
               display: 'flex',
               justifyContent: 'center',
               whiteSpace: 'nowrap',
               overflow: 'visible',
-              fontSize: 'clamp(14px, 3.5vw, 24px)',
+              fontSize: 'clamp(12px, 2.8vw, 19px)',
               fontWeight: 900,
-              letterSpacing: '0.35em',
+              letterSpacing: '0.3em',
               fontFamily: "'Inter', sans-serif",
-              marginBottom: 12,
+              marginBottom: 4,
             }}
           >
             {"THE MUSICIAN'S INDEX".split('').map((char, index) => (
@@ -642,9 +539,8 @@ export default function Home1CoverPage() {
                 style={{
                   display: 'inline-block',
                   minWidth: char === ' ' ? '0.5em' : 'auto',
-                  opacity: 0,
-                  animation: 'h1Typewriter 7s infinite, h1TypeColor 7s infinite',
-                  animationDelay: `${index * 0.1}s, ${index * 0.1}s`,
+                  animation: 'h1TypeColor 4s ease-in-out infinite',
+                  animationDelay: `${index * 0.07}s`,
                 }}
               >
                 {char}
@@ -655,10 +551,10 @@ export default function Home1CoverPage() {
           <div
             style={{
               overflow: 'hidden',
-              height: 18,
+              height: 14,
               display: 'flex',
               justifyContent: 'center',
-              marginBottom: 4,
+              marginBottom: 2,
             }}
           >
             <span
@@ -680,7 +576,7 @@ export default function Home1CoverPage() {
           </div>
           <div
             style={{
-              fontSize: 'clamp(28px, 6vw, 48px)',
+              fontSize: 'clamp(20px, 4.2vw, 32px)',
               fontFamily: "'Bebas Neue', 'Impact', sans-serif",
               background: `linear-gradient(135deg, #fff 0%, ${accentColor} 100%)`,
               WebkitBackgroundClip: 'text',
@@ -697,7 +593,7 @@ export default function Home1CoverPage() {
           <div
             style={{
               display: 'inline-block',
-              marginTop: 6,
+              marginTop: 3,
               padding: '3px 16px',
               background: `${accentColor}22`,
               border: `1px solid ${accentColor}55`,
@@ -711,6 +607,90 @@ export default function Home1CoverPage() {
           >
             {genre.emoji} {genreKey.toUpperCase()} · WEEK {Math.ceil((Date.now() / (7 * 24 * 60 * 60 * 1000)) % 52) || 1}
           </div>
+
+          {/* ── Status badges row: VOTING LIVE | VOTES | CROWN UPDATING ── */}
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginTop: 5, flexWrap: 'wrap' }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'rgba(255,45,170,0.18)', border: '1px solid rgba(255,45,170,0.6)', borderRadius: 4, padding: '3px 10px', animation: 'h1BadgePulse 2s ease-in-out infinite' }}>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#FF2DAA', display: 'inline-block', animation: 'h1Pulse 1s infinite' }} />
+              <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.1em', color: '#FF2DAA', fontFamily: "'Inter',sans-serif" }}>VOTING LIVE</span>
+            </div>
+            <div style={{ background: 'rgba(255,215,0,0.14)', border: '1px solid rgba(255,215,0,0.5)', borderRadius: 4, padding: '3px 12px', fontFamily: "'Inter',sans-serif", fontSize: 10, fontWeight: 700, color: '#FFD700' }}>
+              {voteCount.toLocaleString()} VOTES
+            </div>
+            <div style={{ background: 'rgba(230,48,0,0.18)', border: '1px solid rgba(230,48,0,0.5)', borderRadius: 4, padding: '3px 10px', fontSize: 9, fontWeight: 800, letterSpacing: '0.1em', color: '#E63000', fontFamily: "'Inter',sans-serif" }}>CROWN UPDATING</div>
+          </div>
+
+          {/* ── Challenge banner slider ── */}
+          <div style={{ background: 'rgba(123,0,255,0.18)', border: '1px solid rgba(123,0,255,0.4)', borderRadius: 6, padding: '5px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 5, maxWidth: 600, width: '100%' }}>
+            <button style={{ background: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 4, padding: '3px 8px', fontSize: 9, cursor: 'pointer' }}>◀</button>
+            <div style={{ textAlign: 'center', flex: 1 }}>
+              <div style={{ fontSize: 11, fontWeight: 800, color: '#fff', letterSpacing: '0.08em', fontFamily: "'Inter',sans-serif" }}>CHALLENGE YOUR SONG HERE</div>
+              <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.4)', fontFamily: "'Inter',sans-serif" }}>SONG FOR SONG · WORK FOR WORK</div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Link href="/battles/challenge" style={{ fontSize: 9, fontWeight: 700, color: '#00E5FF', textDecoration: 'none', fontFamily: "'Inter',sans-serif" }}>START NOW</Link>
+              <button style={{ background: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 4, padding: '3px 8px', fontSize: 9, cursor: 'pointer' }}>▶</button>
+            </div>
+          </div>
+
+          {/* ── Action buttons: 7 clickable buttons ── */}
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 5, marginTop: 5, flexWrap: 'wrap' }}>
+            {[
+              { label: 'JOIN FREE',       href: '/signup',             bg: 'rgba(0,255,127,0.14)', color: '#00FF7F', border: 'rgba(0,255,127,0.4)' },
+              { label: 'LOGIN',           href: '/login',              bg: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.7)', border: 'rgba(255,255,255,0.2)' },
+              { label: 'CHALLENGE SONG',  href: '/battles/challenge',  bg: 'rgba(255,215,0,0.14)', color: '#FFD700', border: 'rgba(255,215,0,0.35)' },
+              { label: 'CYPHER ARENA',    href: '/live/rooms/cypher-arena', bg: 'rgba(0,229,255,0.12)', color: '#00E5FF', border: 'rgba(0,229,255,0.3)' },
+              { label: 'MAGAZINE',        href: '/magazine',           bg: 'rgba(255,45,170,0.12)', color: '#FF2DAA', border: 'rgba(255,45,170,0.3)' },
+              { label: 'SPONSOR',         href: '/sponsors/apply',     bg: 'rgba(155,89,182,0.12)', color: '#9B59B6', border: 'rgba(155,89,182,0.3)' },
+              { label: 'ADVERTISE',       href: '/sponsors/advertise', bg: 'rgba(230,48,0,0.12)',  color: '#E63000', border: 'rgba(230,48,0,0.3)' },
+            ].map((btn) => (
+              <Link key={btn.label} href={btn.href} style={{ textDecoration: 'none' }}>
+                <button style={{ background: btn.bg, color: btn.color, border: `1px solid ${btn.border}`, borderRadius: 5, padding: '5px 11px', fontSize: 9, fontWeight: 800, cursor: 'pointer', fontFamily: "'Inter',sans-serif", letterSpacing: '0.05em' }}>{btn.label}</button>
+              </Link>
+            ))}
+          </div>
+        </div>
+
+        {/* ── Orbital section wrapper — tabloid underlay lives here (position:absolute) ── */}
+        <div style={{ position: 'relative', width: '100%', overflow: 'hidden' }}>
+
+        {/* TABLOID MAGAZINE UNDERLAY — scrolls behind the orbital (blueprint spec) */}
+        <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0, overflow: 'hidden' }}>
+          <div style={{ display: 'flex', whiteSpace: 'nowrap', animation: `${underlayDir === 'left' ? 'h1TabloidScroll' : 'h1RailRight'} 18s linear infinite`, opacity: 0.75, height: '100%', alignItems: 'stretch' }}>
+            {[0, 1, 2].map(rep =>
+              [
+                { bg: '#FFD700', hdr: '#FF1493', title: 'WHO TOOK THE CROWN?',   sub: 'COVER PERFORMER', artist: 'BIG ACE',     tag: 'HIP-HOP · 4,812 VOTES',      cta: 'CYPHER OPEN',       c1: '#00BFFF' },
+                { bg: '#FF1493', hdr: '#000000', title: 'BATTLE NIGHT CHAMPION',  sub: 'REIGNING CHAMP',  artist: 'WAVETEK',     tag: '47 WINS · HIP-HOP',          cta: '⚔️ CHALLENGE 8PM',  c1: '#FFD700' },
+                { bg: '#00BFFF', hdr: '#000000', title: "WHO'S GOT THE BARS?",    sub: 'ON THE MIC NOW',  artist: 'NOVA CIPHER', tag: 'CYPHER OPEN · 841 WATCHING',  cta: 'DROP IN ANYTIME',   c1: '#FF1493' },
+                { bg: '#000000', hdr: '#FFD700', title: 'CHALLENGE THE CROWN',    sub: 'DEFENDING NOW',   artist: 'BEAT THE BEAT',tag:'WAVETEK · 841 VOTES',         cta: 'ARENA SEATS 18,500',c1: '#FF1493' },
+                { bg: '#9B59B6', hdr: '#FFD700', title: 'DJ BATTLE NIGHT',        sub: 'CURRENT #1 DJ',   artist: 'DJ KRAZE',    tag: 'DJ · TURNTABLIST',            cta: 'JOIN BATTLE QUEUE', c1: '#00BFFF' },
+              ].map((p, i) => (
+                <div key={`${rep}-${i}`} style={{ display: 'inline-flex', flexDirection: 'column', width: 190, flexShrink: 0, border: '3px solid #000', overflow: 'hidden', background: p.bg, height: '100%' }}>
+                  <div style={{ background: p.hdr, padding: '6px 8px' }}>
+                    <div style={{ fontSize: 6, fontWeight: 700, color: p.hdr === '#000000' ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)', letterSpacing: '0.06em' }}>THE MUSICIAN&apos;S INDEX · VOL.1 · $4.99</div>
+                  </div>
+                  <div style={{ padding: '10px 8px', flex: 1 }}>
+                    <div style={{ fontFamily: "'Anton','Impact',sans-serif", fontSize: 22, color: p.hdr === '#000000' ? (p.bg === '#000000' ? '#FFD700' : '#FFD700') : '#000', lineHeight: 1, marginBottom: 6 }}>{p.title}</div>
+                    <div style={{ background: p.c1, padding: '4px 6px', marginBottom: 3 }}>
+                      <div style={{ fontSize: 7, fontWeight: 800, color: '#000' }}>{p.sub}</div>
+                      <div style={{ fontFamily: "'Anton','Impact',sans-serif", fontSize: 14, color: '#000' }}>{p.artist}</div>
+                    </div>
+                    <div style={{ fontSize: 7, color: 'rgba(0,0,0,0.6)', fontWeight: 600 }}>{p.tag}</div>
+                  </div>
+                  <div style={{ background: '#000', padding: '4px 8px', fontSize: 7, fontWeight: 700, color: p.hdr === '#000000' ? p.c1 : '#FFD700', letterSpacing: '0.05em' }}>{p.cta}</div>
+                </div>
+              ))
+            )}
+          </div>
+          {/* Radial vignette keeps center readable */}
+          <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 60% 80% at center, transparent 35%, rgba(6,2,26,0.88) 100%)', pointerEvents: 'none' }} />
+          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(90deg, rgba(6,2,26,0.9) 0%, transparent 22%, transparent 78%, rgba(6,2,26,0.9) 100%)', pointerEvents: 'none' }} />
+        </div>
+
+        {/* ── Underlay direction toggle ── */}
+        <div style={{ position: 'absolute', top: 6, left: '50%', transform: 'translateX(-50%)', zIndex: 30, display: 'flex', gap: 4, alignItems: 'center' }}>
+          <button onClick={() => setUnderlayDir('left')} style={{ background: underlayDir === 'left' ? 'rgba(255,215,0,0.8)' : 'rgba(255,215,0,0.15)', color: underlayDir === 'left' ? '#000' : '#FFD700', border: '1px solid rgba(255,215,0,0.35)', borderRadius: 4, fontSize: 7, fontWeight: 800, padding: '2px 7px', cursor: 'pointer', letterSpacing: '0.06em', fontFamily: "'Inter',sans-serif" }}>◀ TABLOID</button>
+          <button onClick={() => setUnderlayDir('right')} style={{ background: underlayDir === 'right' ? 'rgba(255,215,0,0.8)' : 'rgba(255,215,0,0.15)', color: underlayDir === 'right' ? '#000' : '#FFD700', border: '1px solid rgba(255,215,0,0.35)', borderRadius: 4, fontSize: 7, fontWeight: 800, padding: '2px 7px', cursor: 'pointer', letterSpacing: '0.06em', fontFamily: "'Inter',sans-serif" }}>TABLOID ▶</button>
         </div>
 
         {/* ── Cinematic 3-Rail Grid — LEFT PANEL | ORBITAL | RIGHT PANEL ── */}
@@ -722,65 +702,84 @@ export default function Home1CoverPage() {
             alignItems: 'start',
             gap: 10,
             padding: '0 10px',
+            position: 'relative',
+            zIndex: 2,
           }}
         >
-          {/* ════ LEFT PANEL ════ */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingTop: 8 }}>
-            {/* Free Promotion */}
-            <div style={{ background: 'rgba(5,8,21,0.88)', border: '1px solid rgba(255,45,170,0.25)', borderRadius: 8, padding: '10px 12px' }}>
-              <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.15em', color: '#FF2DAA', textTransform: 'uppercase', marginBottom: 6, fontFamily: "'Inter',sans-serif" }}>⭐ Free Promotion</div>
-              <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.4)', marginBottom: 8, fontFamily: "'Inter',sans-serif" }}>Artists — get featured free.</div>
-              {[{ name: 'Lagos Burst', genre: 'Afrobeat', views: '2,140', color: '#00FF88', slug: 'lagos-burst' }, { name: 'Nova Laugh', genre: 'Comedy', views: '980', color: '#AA2DFF', slug: 'nova-laugh' }].map((p) => (
-                <Link key={p.name} href={`/performers/${p.slug}`} style={{ textDecoration: 'none' }}>
-                  <div style={{ background: 'rgba(12,20,50,0.92)', border: `1px solid rgba(255,45,170,0.18)`, borderRadius: 6, padding: '7px 9px', marginBottom: 6, cursor: 'pointer' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 3 }}>
-                      <div style={{ fontSize: 10, fontWeight: 700, color: '#fff', fontFamily: "'Inter',sans-serif" }}>{p.name}</div>
-                      <span style={{ fontSize: 7, fontWeight: 700, padding: '2px 6px', borderRadius: 10, background: `${p.color}18`, border: `1px solid ${p.color}44`, color: p.color, fontFamily: "'Inter',sans-serif" }}>{p.genre}</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
-                      <span style={{ fontSize: 8, color: '#00FF88', fontFamily: "'Inter',sans-serif" }}>▲ {p.views}</span>
-                      <span style={{ fontSize: 7, fontWeight: 700, padding: '2px 6px', border: '1px solid rgba(255,45,170,0.5)', background: 'transparent', color: '#FF2DAA', borderRadius: 3, fontFamily: "'Inter',sans-serif" }}>BOOST</span>
-                    </div>
-                  </div>
-                </Link>
-              ))}
-              <Link href="/sponsors/claim-slot" style={{ textDecoration: 'none' }}>
-                <div style={{ border: '1px dashed rgba(255,215,0,0.3)', background: 'rgba(255,215,0,0.04)', borderRadius: 6, padding: '8px', textAlign: 'center', cursor: 'pointer' }}>
-                  <div style={{ fontSize: 16, marginBottom: 2 }}>+</div>
-                  <div style={{ fontSize: 8, color: '#FFD700', fontWeight: 700, fontFamily: "'Inter',sans-serif" }}>Claim Free Slot</div>
+          {/* ════ LEFT PANEL — PROMO/VENUE/ADS tabs + collapse ════ */}
+          <div style={{ display: 'flex', alignItems: 'stretch', paddingTop: 8 }}>
+            <div style={{ width: leftOpen ? 'clamp(120px,15vw,160px)' : 0, overflow: 'hidden', transition: 'width 0.3s ease', flexShrink: 0 }}>
+              <div style={{ background: 'rgba(6,2,26,0.95)', border: '1px solid rgba(255,45,170,0.35)', borderRadius: '8px 0 0 8px', height: '100%', display: 'flex', flexDirection: 'column', minHeight: 320 }}>
+                {/* Tab bar */}
+                <div style={{ display: 'flex', gap: 2, padding: '5px 5px 4px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                  {(['PROMO','VENUE','ADS'] as const).map((label, i) => (
+                    <button key={label} onClick={() => setLeftTab(i)} style={{ flex: 1, fontSize: 7, fontWeight: 800, cursor: 'pointer', borderRadius: 4, padding: '3px 4px', border: 'none', textTransform: 'uppercase', letterSpacing: '0.06em', background: leftTab === i ? 'rgba(255,45,170,0.25)' : 'rgba(255,255,255,0.06)', color: leftTab === i ? '#FF2DAA' : 'rgba(255,255,255,0.4)', fontFamily: "'Inter',sans-serif" }}>{label}</button>
+                  ))}
                 </div>
-              </Link>
-            </div>
-            {/* Sponsor Spotlight */}
-            <div style={{ background: 'rgba(5,8,21,0.88)', border: '1px solid rgba(0,229,255,0.2)', borderRadius: 8, padding: '10px 12px' }}>
-              <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.15em', color: '#00E5FF', textTransform: 'uppercase', marginBottom: 6, fontFamily: "'Inter',sans-serif" }}>💼 Sponsor Spotlight</div>
-              <div style={{ background: 'rgba(12,20,50,0.92)', border: '1px solid rgba(0,229,255,0.2)', borderRadius: 6, padding: '8px 9px' }}>
-                <div style={{ fontSize: 9, fontWeight: 700, color: '#00E5FF', fontFamily: "'Inter',sans-serif" }}>Beats By TMX</div>
-                <div style={{ fontSize: 7, color: 'rgba(255,255,255,0.4)', margin: '2px 0 5px', fontFamily: "'Inter',sans-serif" }}>Official Season 1 Partner</div>
-                <div style={{ height: 3, background: 'rgba(0,229,255,0.15)', borderRadius: 2, overflow: 'hidden' }}>
-                  <div style={{ height: 3, background: '#00E5FF', borderRadius: 2, width: '72%' }} />
+                {/* Tab content */}
+                <div style={{ flex: 1, overflow: 'hidden', padding: '8px 8px 6px', fontSize: 9 }}>
+                  {leftTab === 0 && (
+                    <>
+                      <div style={{ fontSize: 7, fontWeight: 800, color: '#FF2DAA', letterSpacing: '0.12em', marginBottom: 6 }}>⭐ FREE PROMO SLOTS</div>
+                      {getFeaturedFreePerformers(3).map((p) => {
+                        const pColor = '#FF2DAA';
+                        return (
+                          <Link key={p.slug} href={`/performers/${p.slug}`} style={{ textDecoration: 'none' }}>
+                            <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,45,170,0.2)', borderRadius: 5, padding: 5, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 5 }}>
+                              {p.profileImageUrl && <img src={p.profileImageUrl} alt={p.name} style={{ width: 20, height: 20, borderRadius: '50%', objectFit: 'cover', border: `1px solid ${pColor}44`, flexShrink: 0 }} />}
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ fontSize: 8, fontWeight: 700, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</div>
+                                <div style={{ fontSize: 7, color: '#00FF88' }}>▲ {(p.fanCount ?? p.score ?? 0).toLocaleString()}</div>
+                              </div>
+                              <span style={{ fontSize: 6, fontWeight: 700, color: '#FF2DAA', border: '1px solid rgba(255,45,170,0.5)', borderRadius: 3, padding: '1px 4px' }}>BOOST</span>
+                            </div>
+                          </Link>
+                        );
+                      })}
+                      <Link href="/sponsors/claim-slot" style={{ textDecoration: 'none' }}>
+                        <div style={{ border: '1px dashed rgba(255,215,0,0.3)', background: 'rgba(255,215,0,0.04)', borderRadius: 5, padding: '6px', textAlign: 'center', cursor: 'pointer', marginTop: 2 }}>
+                          <div style={{ fontSize: 14, marginBottom: 1 }}>+</div>
+                          <div style={{ fontSize: 7, color: '#FFD700', fontWeight: 700 }}>Claim Free Slot</div>
+                        </div>
+                      </Link>
+                    </>
+                  )}
+                  {leftTab === 1 && (
+                    <>
+                      <div style={{ fontSize: 7, fontWeight: 800, color: '#FF8C00', letterSpacing: '0.12em', marginBottom: 6 }}>🏟 VENUE BOOKING</div>
+                      {venues.map((v, i) => (
+                        <div key={v.day} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,140,0,0.18)', borderRadius: 5, padding: '5px 6px', marginBottom: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div>
+                            <div style={{ fontSize: 8, fontWeight: 700, color: '#FF8C00' }}>{v.day} · {v.venue}</div>
+                          </div>
+                          <Link href={v.bookRoute} style={{ textDecoration: 'none' }}>
+                            <span style={{ fontSize: 6, fontWeight: 700, color: '#00FF88', border: '1px solid rgba(0,255,136,0.4)', borderRadius: 3, padding: '1px 5px', cursor: 'pointer' }}>BOOK</span>
+                          </Link>
+                        </div>
+                      ))}
+                      <Link href="/venues" style={{ textDecoration: 'none' }}>
+                        <button style={{ width: '100%', background: '#FF8C00', color: '#000', fontSize: 7, fontWeight: 800, border: 'none', borderRadius: 4, padding: '5px', cursor: 'pointer', marginTop: 3, letterSpacing: '0.06em' }}>Browse Dates</button>
+                      </Link>
+                    </>
+                  )}
+                  {leftTab === 2 && (
+                    <AdSenseSlot slot={AD_SLOTS.homepageMid} format="auto" style={{ minHeight: 200 }} />
+                  )}
                 </div>
-                <div style={{ fontSize: 7, color: 'rgba(255,255,255,0.3)', marginTop: 3, fontFamily: "'Inter',sans-serif" }}>Campaign 72%</div>
               </div>
-              <Link href="/sponsors/apply" style={{ textDecoration: 'none' }}>
-                <button style={{ width: '100%', marginTop: 6, padding: '4px', fontSize: 7, fontWeight: 700, border: '1px solid rgba(0,229,255,0.4)', background: 'transparent', color: '#00E5FF', borderRadius: 4, cursor: 'pointer', fontFamily: "'Inter',sans-serif", letterSpacing: '0.06em' }}>BECOME A SPONSOR</button>
-              </Link>
             </div>
-            {/* Venue Booking */}
-            <div style={{ background: 'rgba(5,8,21,0.88)', border: '1px solid rgba(255,140,0,0.2)', borderRadius: 8, padding: '10px 12px' }}>
-              <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.15em', color: '#FF8C00', textTransform: 'uppercase', marginBottom: 6, fontFamily: "'Inter',sans-serif" }}>🏟 Venue Booking</div>
-              {[{ day: 'SAT', venue: 'Main Arena', slug: 'arena-prime' }, { day: 'SUN', venue: 'Theater', slug: 'cypher-dome' }, { day: 'FRI', venue: 'Club Room', slug: 'neon-pit' }].map((v) => (
-                <div key={v.day} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 0', borderBottom: '1px solid rgba(255,255,255,0.05)', fontSize: 9 }}>
-                  <span style={{ color: '#FF8C00', fontWeight: 700, fontFamily: "'Inter',sans-serif", minWidth: 24 }}>{v.day}</span>
-                  <span style={{ flex: 1, color: 'rgba(255,255,255,0.7)', fontFamily: "'Inter',sans-serif" }}>{v.venue}</span>
-                  <Link href={`/venues/book?venue=${v.slug}`} style={{ textDecoration: 'none' }}>
-                    <span style={{ fontSize: 7, padding: '2px 6px', border: '1px solid rgba(0,255,136,0.5)', background: 'transparent', color: '#00FF88', borderRadius: 3, cursor: 'pointer', fontFamily: "'Inter',sans-serif" }}>Book</span>
-                  </Link>
-                </div>
-              ))}
+            {/* Collapse toggle strip */}
+            <div onClick={() => setLeftOpen(!leftOpen)} style={{ background: 'rgba(255,45,170,0.18)', border: '1px solid rgba(255,45,170,0.4)', borderRadius: leftOpen ? '0 5px 5px 0' : '5px', width: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', writingMode: 'vertical-lr', fontSize: 7, fontWeight: 800, color: '#FF2DAA', letterSpacing: '0.1em', userSelect: 'none', flexShrink: 0 }}>
+              {leftOpen ? '◂ PANEL' : 'PANEL ▸'}
             </div>
           </div>
           
+          {/* ── WEEKLY CROWN ORBIT label ── */}
+          <div style={{ textAlign: 'center', padding: '8px 0 4px', position: 'relative', zIndex: 5 }}>
+            <div style={{ fontFamily: "'Orbitron','Inter',sans-serif", fontSize: 13, fontWeight: 900, color: '#FFD700', textShadow: '0 0 15px rgba(255,215,0,0.6)', letterSpacing: '0.08em' }}>WEEKLY CROWN ORBIT</div>
+            <div style={{ fontSize: 7, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.15em', marginTop: 1 }}>TOP RANKED · LIVE NOW · REAL TIME</div>
+          </div>
+
           {/* ── Orbital ring ── */}
           <div
             style={{
@@ -835,9 +834,9 @@ export default function Home1CoverPage() {
             }}
           />
 
-          {/* Center: Crown holder */}
+          {/* Center: Crown holder — LIVE routes to seat-join flow, else → profile */}
           <Link
-            href={crowdHolder.profileRoute}
+            href={crowdHolder.isLive && crowdHolder.liveRoomRoute ? `${crowdHolder.liveRoomRoute}?from=home-1` : crowdHolder.profileRoute}
             style={{
               position: 'absolute',
               top: '50%',
@@ -846,6 +845,20 @@ export default function Home1CoverPage() {
               textDecoration: 'none',
               zIndex: 20,
             }}
+            onClick={crowdHolder.isLive && crowdHolder.liveRoomRoute ? (e: React.MouseEvent) => {
+              e.preventDefault();
+              setPendingOrbit({
+                id: crowdHolder.slug,
+                title: `${crowdHolder.name} — LIVE`,
+                viewers: crowdHolder.audienceCount ?? 0,
+                status: 'live',
+                access: 'free',
+                accentColor: '#E63000',
+                roomRoute: `${crowdHolder.liveRoomRoute}?from=home-1`,
+                venueIndex: 1,
+                shape: 'circle',
+              });
+            } : undefined}
           >
             <div
               style={{
@@ -874,12 +887,24 @@ export default function Home1CoverPage() {
               >
                 👑
               </div>
-              <img
-                src={crowdHolder.profileImageUrl}
+              {/* Rule 2: Crown holder — LIVE VIDEO → MOTION POSTER → STATIC */}
+              <MotionPosterPlayer
+                isLive={crowdHolder.isLive}
+                liveRoomRoute={crowdHolder.liveRoomRoute}
+                introVideoUrl={crowdHolder.introVideoUrl}
+                motionPosterUrl={crowdHolder.motionPosterUrl}
+                staticImageUrl={crowdHolder.profileImageUrl}
                 alt={crowdHolder.name}
+                audienceCount={crowdHolder.audienceCount}
+                showLiveOverlay={false}
+                replayOnHover
                 style={{
-                  width: 'min(50px, 9vw)', height: 'min(50px, 9vw)', borderRadius: '50%',
-                  objectFit: 'cover', marginBottom: 4, border: `2px solid ${accentColor}`
+                  width: 'min(50px, 9vw)',
+                  height: 'min(50px, 9vw)',
+                  borderRadius: '50%',
+                  border: `2px solid ${accentColor}`,
+                  marginBottom: 4,
+                  flexShrink: 0,
                 }}
               />
               <div style={{
@@ -908,15 +933,29 @@ export default function Home1CoverPage() {
             </div>
           </Link>
 
-          {/* 10 orbit cards */}
+          {/* 10 orbit cards — live → seat-join flow; not live → performer profile */}
           {performers.map((p, i) => {
             const pos = getOrbitPos(i, 10, 44);
             const cardSize = i === 0 ? 80 : 68;
             return (
               <Link
                 key={p.slug}
-                href={`/articles/performer/${p.slug}`}
+                href={p.isLive && p.liveRoomRoute ? `${p.liveRoomRoute}?from=home-1` : `/performers/${p.slug}`}
                 style={{ textDecoration: 'none' }}
+                onClick={p.isLive && p.liveRoomRoute ? (e: React.MouseEvent) => {
+                  e.preventDefault();
+                  setPendingOrbit({
+                    id: p.slug,
+                    title: `${p.name} LIVE`,
+                    viewers: 0,
+                    status: 'live',
+                    access: 'free',
+                    accentColor: accentColor,
+                    roomRoute: `${p.liveRoomRoute}?from=home-1`,
+                    venueIndex: 1,
+                    shape: 'oct',
+                  });
+                } : undefined}
               >
                 <div
                   style={{
@@ -983,14 +1022,14 @@ export default function Home1CoverPage() {
                     {p.rank <= 3 && (
                       <div style={{ position: 'absolute', top: 3, right: 3, width: 5, height: 5, borderRadius: '50%', background: '#E63000', boxShadow: '0 0 5px #E63000', animation: 'h1Pulse 1.5s infinite' }} />
                     )}
-                    {/* Performer Avatar */}
-                    <img 
-                      src={`https://i.pravatar.cc/150?u=${p.slug}`} 
-                      alt={p.name} 
-                      style={{ 
-                        width: cardSize * 0.45, height: cardSize * 0.45, borderRadius: '50%', 
-                        objectFit: 'cover', marginBottom: 4, border: `1px solid ${accentColor}55`, zIndex: 1 
-                      }} 
+                    {/* Performer Avatar — motion poster freeze frame if available, else profile image */}
+                    <img
+                      src={p.image ?? `https://i.pravatar.cc/150?u=${p.slug}`}
+                      alt={p.name}
+                      style={{
+                        width: cardSize * 0.45, height: cardSize * 0.45, borderRadius: '50%',
+                        objectFit: 'cover', marginBottom: 4, border: `1px solid ${accentColor}55`, zIndex: 1
+                      }}
                     />
                     {/* Name */}
                     <div style={{ fontSize: Math.max(cardSize * 0.1, 7), fontWeight: 900, color: '#fff', textAlign: 'center', fontFamily: "'Inter',sans-serif", maxWidth: '90%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -1111,54 +1150,109 @@ export default function Home1CoverPage() {
               🗳️ VOTING OPEN: VOTE FOR #4!
             </div>
           </Link>
+
+          {/* ── BACK / NEXT orbit navigation ── */}
+          <div style={{ position: 'absolute', left: 0, bottom: 8, zIndex: 45 }}>
+            <button
+              onClick={() => setActiveIdx((prev) => ((prev ?? 0) - 1 + performers.length) % performers.length)}
+              style={{ background: 'rgba(10,6,20,0.85)', border: `1px solid ${accentColor}55`, color: accentColor, fontSize: 9, fontWeight: 900, padding: '4px 9px', borderRadius: 4, cursor: 'pointer', fontFamily: "'Inter',sans-serif", letterSpacing: '0.08em', backdropFilter: 'blur(4px)' }}
+            >
+              ◀ BACK
+            </button>
+          </div>
+          <div style={{ position: 'absolute', right: 0, bottom: 8, zIndex: 45 }}>
+            <button
+              onClick={() => setActiveIdx((prev) => ((prev ?? 0) + 1) % performers.length)}
+              style={{ background: 'rgba(10,6,20,0.85)', border: `1px solid ${accentColor}55`, color: accentColor, fontSize: 9, fontWeight: 900, padding: '4px 9px', borderRadius: 4, cursor: 'pointer', fontFamily: "'Inter',sans-serif", letterSpacing: '0.08em', backdropFilter: 'blur(4px)' }}
+            >
+              NEXT ▶
+            </button>
+          </div>
         </div>
         
-          {/* ════ RIGHT PANEL ════ */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingTop: 8 }}>
-            {/* Live Rankings */}
-            <div style={{ background: 'rgba(5,8,21,0.88)', border: `1px solid ${accentColor}33`, borderRadius: 8, padding: '10px 12px' }}>
-              <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.15em', color: accentColor, textTransform: 'uppercase', marginBottom: 8, fontFamily: "'Inter',sans-serif" }}>🏆 Live Rankings</div>
-              {performers.slice(0, 5).map((p, i) => (
-                <div key={p.slug} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                  <span style={{ fontSize: 9, fontWeight: 900, color: i === 0 ? '#FFD700' : i === 1 ? '#C0C0C0' : i === 2 ? '#CD7F32' : 'rgba(255,255,255,0.4)', minWidth: 14, fontFamily: "'Inter',sans-serif" }}>#{p.rank}</span>
-                  <span style={{ fontSize: 10, lineHeight: 1 }}>{p.emoji}</span>
-                  <span style={{ flex: 1, fontSize: 8, fontWeight: 700, color: '#fff', fontFamily: "'Inter',sans-serif", overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
+          {/* ════ RIGHT PANEL — RANKS/ADS/PROMO tabs + collapse ════ */}
+          <div style={{ display: 'flex', alignItems: 'stretch', paddingTop: 8 }}>
+            {/* Collapse toggle strip */}
+            <div onClick={() => setRightOpen(!rightOpen)} style={{ background: 'rgba(255,215,0,0.18)', border: '1px solid rgba(255,215,0,0.4)', borderRadius: rightOpen ? '5px 0 0 5px' : '5px', width: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', writingMode: 'vertical-lr', fontSize: 7, fontWeight: 800, color: '#FFD700', letterSpacing: '0.1em', userSelect: 'none', flexShrink: 0, transform: 'rotate(180deg)' }}>
+              {rightOpen ? '◂ PANEL' : 'PANEL ▸'}
+            </div>
+            <div style={{ width: rightOpen ? 'clamp(120px,15vw,160px)' : 0, overflow: 'hidden', transition: 'width 0.3s ease', flexShrink: 0 }}>
+              <div style={{ background: 'rgba(6,2,26,0.95)', border: '1px solid rgba(255,215,0,0.35)', borderRadius: '0 8px 8px 0', height: '100%', display: 'flex', flexDirection: 'column', minHeight: 320 }}>
+                {/* Tab bar */}
+                <div style={{ display: 'flex', gap: 2, padding: '5px 5px 4px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                  {(['RANKS','ADS','PROMO'] as const).map((label, i) => (
+                    <button key={label} onClick={() => setRightTab(i)} style={{ flex: 1, fontSize: 7, fontWeight: 800, cursor: 'pointer', borderRadius: 4, padding: '3px 4px', border: 'none', textTransform: 'uppercase', letterSpacing: '0.06em', background: rightTab === i ? 'rgba(255,215,0,0.25)' : 'rgba(255,255,255,0.06)', color: rightTab === i ? '#FFD700' : 'rgba(255,255,255,0.4)', fontFamily: "'Inter',sans-serif" }}>{label}</button>
+                  ))}
                 </div>
-              ))}
-              <Link href="/rankings" style={{ textDecoration: 'none' }}>
-                <button style={{ width: '100%', marginTop: 6, padding: '4px', fontSize: 7, fontWeight: 700, border: `1px solid ${accentColor}44`, background: 'transparent', color: accentColor, borderRadius: 4, cursor: 'pointer', fontFamily: "'Inter',sans-serif", letterSpacing: '0.06em' }}>SEE ALL RANKS</button>
-              </Link>
-            </div>
-            {/* Live Activity */}
-            <div style={{ background: 'rgba(5,8,21,0.88)', border: '1px solid rgba(255,45,170,0.25)', borderRadius: 8, padding: '10px 12px' }}>
-              <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.15em', color: '#FF2DAA', textTransform: 'uppercase', marginBottom: 8, fontFamily: "'Inter',sans-serif" }}>🔴 Live Now</div>
-              {[
-                { name: 'Cypher Arena', viewers: '841', color: '#00E5FF', href: '/live/rooms/cypher-arena' },
-                { name: 'Battle Stage', viewers: '2,130', color: '#FF2DAA', href: '/live/rooms/battle-stage' },
-                { name: 'Stream & Win', viewers: '3,412', color: '#FFD700', href: '/live/lobby?filter=stream-win' },
-              ].map((item) => (
-                <Link key={item.name} href={item.href} style={{ textDecoration: 'none' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0', borderBottom: '1px solid rgba(255,255,255,0.05)', cursor: 'pointer' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                      <div style={{ width: 6, height: 6, borderRadius: '50%', background: item.color, boxShadow: `0 0 6px ${item.color}` }} />
-                      <span style={{ fontSize: 9, color: '#fff', fontFamily: "'Inter',sans-serif" }}>{item.name}</span>
-                    </div>
-                    <span style={{ fontSize: 8, color: 'rgba(255,255,255,0.4)', fontFamily: "'Inter',sans-serif" }}>{item.viewers}</span>
-                  </div>
-                </Link>
-              ))}
-            </div>
-            {/* Ad Slot */}
-            <Link href="/sponsors/advertise" style={{ textDecoration: 'none' }}>
-              <div style={{ background: 'rgba(5,8,21,0.88)', border: '1px solid rgba(255,215,0,0.2)', borderRadius: 8, padding: '10px 12px', textAlign: 'center', cursor: 'pointer' }}>
-                <div style={{ fontSize: 7, color: 'rgba(255,255,255,0.25)', letterSpacing: '0.15em', marginBottom: 6, fontFamily: "'Inter',sans-serif" }}>ADVERTISEMENT</div>
-                <div style={{ fontSize: 10, color: '#FFD700', fontWeight: 700, marginBottom: 4, fontFamily: "'Inter',sans-serif" }}>Advertise Here</div>
-                <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.35)', marginBottom: 8, fontFamily: "'Inter',sans-serif" }}>Reach live audiences from $25</div>
-                <button style={{ width: '100%', padding: '5px', fontSize: 8, fontWeight: 700, border: '1px solid rgba(255,215,0,0.4)', background: 'rgba(255,215,0,0.08)', color: '#FFD700', borderRadius: 4, cursor: 'pointer', fontFamily: "'Inter',sans-serif" }}>GET STARTED</button>
+                {/* Tab content */}
+                <div style={{ flex: 1, overflow: 'hidden', padding: '8px 8px 6px', fontSize: 9 }}>
+                  {rightTab === 0 && (
+                    <>
+                      <div style={{ fontSize: 7, fontWeight: 800, color: '#FFD700', letterSpacing: '0.12em', marginBottom: 6 }}>👑 LIVE RANKINGS</div>
+                      {performers.slice(0, 8).map((p, i) => (
+                        <Link key={p.slug} href={`/articles/performer/${p.slug}`} style={{ textDecoration: 'none' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                            <div style={{ width: 18, height: 18, borderRadius: '50%', background: i === 0 ? 'rgba(255,45,170,0.18)' : 'rgba(255,215,0,0.12)', border: `1px solid ${i === 0 ? 'rgba(255,45,170,0.4)' : 'rgba(255,215,0,0.3)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, flexShrink: 0 }}>{p.emoji}</div>
+                            <span style={{ color: i === 0 ? '#FFD700' : i === 1 ? '#C0C0C0' : i === 2 ? '#CD7F32' : 'rgba(255,255,255,0.5)', fontWeight: 800, fontSize: 8, minWidth: 14 }}>{i + 1}</span>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: 8, fontWeight: 700, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</div>
+                              <div style={{ fontSize: 6, color: 'rgba(255,255,255,0.35)' }}>{p.genre}</div>
+                            </div>
+                            {i < 3 && <div style={{ width: 4, height: 4, borderRadius: '50%', background: '#E63000', boxShadow: '0 0 4px #E63000', animation: 'h1Pulse 1s infinite', flexShrink: 0 }} />}
+                          </div>
+                        </Link>
+                      ))}
+                      <Link href="/rankings" style={{ textDecoration: 'none' }}>
+                        <button style={{ width: '100%', background: 'rgba(255,215,0,0.12)', color: '#FFD700', border: '1px solid rgba(255,215,0,0.25)', borderRadius: 4, fontSize: 7, fontWeight: 700, padding: '4px', cursor: 'pointer', marginTop: 5, letterSpacing: '0.06em' }}>Full Leaderboard →</button>
+                      </Link>
+                    </>
+                  )}
+                  {rightTab === 1 && (
+                    <AdSenseSlot slot={AD_SLOTS.homepageMid} format="auto" style={{ minHeight: 200 }} />
+                  )}
+                  {rightTab === 2 && (
+                    <>
+                      <div style={{ fontSize: 7, fontWeight: 800, color: '#FF2DAA', letterSpacing: '0.12em', marginBottom: 6 }}>📢 PROMO SPOTS</div>
+                      {[
+                        { name: 'Cypher Arena', viewers: '841', color: '#00E5FF', href: '/live/rooms/cypher-arena' },
+                        { name: 'Battle Stage', viewers: '2,130', color: '#FF2DAA', href: '/live/rooms/battle-stage' },
+                        { name: 'Stream & Win', viewers: '3,412', color: '#FFD700', href: '/live/lobby?filter=stream-win' },
+                        { name: 'Monday Stage', viewers: '412', color: '#00FF7F', href: '/games/monday-night' },
+                      ].map((item) => (
+                        <Link key={item.name} href={item.href} style={{ textDecoration: 'none' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '3px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                              <div style={{ width: 5, height: 5, borderRadius: '50%', background: item.color, boxShadow: `0 0 4px ${item.color}`, flexShrink: 0 }} />
+                              <span style={{ fontSize: 8, color: '#fff' }}>{item.name}</span>
+                            </div>
+                            <span style={{ fontSize: 7, color: 'rgba(255,255,255,0.4)' }}>{item.viewers}</span>
+                          </div>
+                        </Link>
+                      ))}
+                      <Link href="/sponsors/advertise" style={{ textDecoration: 'none' }}>
+                        <button style={{ width: '100%', marginTop: 8, padding: '5px', fontSize: 7, fontWeight: 700, border: '1px solid rgba(255,215,0,0.4)', background: 'rgba(255,215,0,0.08)', color: '#FFD700', borderRadius: 4, cursor: 'pointer', letterSpacing: '0.06em' }}>GET STARTED</button>
+                      </Link>
+                    </>
+                  )}
+                </div>
               </div>
-            </Link>
+            </div>
           </div>
-        </div> {/* End Cinematic Wrapper */}
+        </div> {/* End Cinematic 3-Rail Grid */}
+        </div> {/* End orbital section wrapper */}
+
+        {/* ══ MOVING RAIL #2 — scrolls RIGHT (opposite direction), rainbow animated bg ══ */}
+        <div style={{ width: '100%', background: 'linear-gradient(90deg,#FF2DAA,#AA2DFF,#00E5FF,#FFD700,#FF2DAA)', backgroundSize: '400% 100%', animation: 'h1ColorBg 8s ease infinite', overflow: 'hidden', height: 24, position: 'relative', borderTop: '1px solid rgba(255,255,255,0.14)', borderBottom: '1px solid rgba(255,255,255,0.14)' }}>
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)' }} />
+          <div style={{ position: 'relative', zIndex: 2, display: 'inline-block', whiteSpace: 'nowrap', animation: 'h1RailRight 20s linear infinite' }}>
+            {['★ BREAKING: CROWN UPDATE — SEE WHO LEADS', '▶ LATEST BATTLES TONIGHT — TUNE IN NOW', '◆ MUSIC NEWS LIVE — WAVETEK DEFENDS', '● TMI MAGAZINE ISSUE 1 OUT NOW', '◉ BEAT MARKETPLACE OPEN — BUY/SELL BEATS', '▷ WORLD PREMIERE DROPPING TONIGHT AT MIDNIGHT', '◈ CYPHER CHAMPIONS — FINALS THIS SATURDAY', '◆ SPONSOR SPOTLIGHT — BEATS BY TMX ON TMI', '★ NEW ARTISTS JOINING — DISCOVERY CHARTS LIVE', '▶ AUDITIONS OPEN — ALL GENRES ACCEPTED'].map((msg, i) => (
+              <span key={i} style={{ fontSize: 9, fontWeight: 700, color: '#fff', padding: '0 24px', lineHeight: '24px', whiteSpace: 'nowrap' }}>{msg}</span>
+            ))}
+            {['★ BREAKING: CROWN UPDATE — SEE WHO LEADS', '▶ LATEST BATTLES TONIGHT — TUNE IN NOW', '◆ MUSIC NEWS LIVE — WAVETEK DEFENDS', '● TMI MAGAZINE ISSUE 1 OUT NOW', '◉ BEAT MARKETPLACE OPEN — BUY/SELL BEATS', '▷ WORLD PREMIERE DROPPING TONIGHT AT MIDNIGHT', '◈ CYPHER CHAMPIONS — FINALS THIS SATURDAY', '◆ SPONSOR SPOTLIGHT — BEATS BY TMX ON TMI', '★ NEW ARTISTS JOINING — DISCOVERY CHARTS LIVE', '▶ AUDITIONS OPEN — ALL GENRES ACCEPTED'].map((msg, i) => (
+              <span key={`d-${i}`} style={{ fontSize: 9, fontWeight: 700, color: '#fff', padding: '0 24px', lineHeight: '24px', whiteSpace: 'nowrap' }}>{msg}</span>
+            ))}
+          </div>
+        </div>
 
         {/* ── P6: Three independent video monitors (9500 / 13200 / 17000 ms, 2300ms stagger) ── */}
         <div style={{ width: '100%', maxWidth: 900, padding: '12px 10px 0', display: 'flex', gap: 10 }}>
@@ -1166,6 +1260,35 @@ export default function Home1CoverPage() {
           <PerformerMonitor performers={performers} offsetIdx={3} intervalMs={13200} accentColor={accentColor} delayMs={2300} channelNum={2} />
           <PerformerMonitor performers={performers} offsetIdx={6} intervalMs={17000} accentColor={accentColor} delayMs={4600} channelNum={3} />
         </div>
+
+        {/* ── Sponsor Ad Rail — Paid → Internal Promo → Advertise CTA ── */}
+        {(() => {
+          const INTERNAL_PROMOS = [
+            { label: '🎵 Beat Marketplace', href: '/beats', color: '#FFD700' },
+            { label: '🎙 Submit Your Track', href: '/upload', color: '#00E5FF' },
+            { label: '🏆 Join This Week\'s Battle', href: '/battles', color: '#AA2DFF' },
+          ] as const;
+          const slots = [0, 1, 2].map((i) => {
+            const paid = getActiveSponsorForZone(`home-1-sponsorRail-${i}`);
+            if (paid) return { label: paid.name, href: paid.ctaHref, cta: paid.ctaLabel, color: paid.accentColor, isPaid: true };
+            const promo = INTERNAL_PROMOS[i]!;
+            return { label: promo.label, href: promo.href, cta: i === 2 ? '→' : 'VIEW', color: promo.color, isPaid: false };
+          });
+          const advertiseSlot = getActiveSponsorForZone('home-1-sponsorRail-2') ? null : { label: '📢 ADVERTISE FROM $25', href: '/sponsors/advertise', cta: '→', color: '#FF2DAA' };
+          const displaySlots = advertiseSlot ? [...slots.slice(0, 2), advertiseSlot] : slots;
+          return (
+            <div style={{ width: '100%', maxWidth: 900, padding: '8px 10px 0', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6 }}>
+              {displaySlots.map((slot, i) => (
+                <div key={i} style={{ background: `rgba(${slot.color === '#FFD700' ? '255,215,0' : slot.color === '#00E5FF' ? '0,229,255' : slot.color === '#AA2DFF' ? '170,45,255' : '255,45,170'},0.06)`, border: `1px solid ${slot.color}33`, borderRadius: 5, padding: '6px 8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: 8, color: 'rgba(255,255,255,0.55)', fontFamily: "'Inter',sans-serif", overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, marginRight: 4 }}>{slot.label}</span>
+                  <Link href={slot.href} style={{ textDecoration: 'none', flexShrink: 0 }}>
+                    <button style={{ background: `${slot.color}22`, color: slot.color, border: `1px solid ${slot.color}44`, borderRadius: 3, fontSize: 7, padding: '2px 6px', cursor: 'pointer', fontWeight: 700 }}>{slot.cta}</button>
+                  </Link>
+                </div>
+              ))}
+            </div>
+          );
+        })()}
 
         {/* ── Genre navigation dots ── */}
         <div
@@ -1446,7 +1569,89 @@ export default function Home1CoverPage() {
           </div>
         </Link>
 
+        {/* ══ NEWS BELT + INTERVIEWS — 2-column section ══ */}
+        <div style={{ width: '100%', maxWidth: 900, padding: '16px 10px 0', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          {/* Left: News Belt */}
+          <div style={{ background: 'rgba(255,215,0,0.04)', border: '1px solid rgba(255,215,0,0.15)', borderRadius: 6, padding: '10px 12px' }}>
+            <div style={{ fontSize: 8, fontWeight: 800, color: '#FFD700', letterSpacing: '0.18em', marginBottom: 8, fontFamily: "'Inter',sans-serif" }}>◆ NEWS BELT</div>
+            {[
+              { text: 'WAVETEK DEFENDS CROWN IN OVERTIME BATTLE — 3RD TITLE', href: '/battles' },
+              { text: 'CYPHER ARENA RECORD BROKEN — 24 BARS NON-STOP', href: '/battles/cypher' },
+              { text: 'MAGAZINE ISSUE 2 DROPS FRIDAY — COVER REVEAL', href: '/magazine' },
+              { text: 'BEAT MARKETPLACE PASSES 500 TRACKS — BROWSE NOW', href: '/beats' },
+            ].map((item, i) => (
+              <Link key={i} href={item.href} style={{ textDecoration: 'none', display: 'block', marginBottom: 6 }}>
+                <div style={{ fontSize: 8.5, color: 'rgba(255,255,255,0.75)', lineHeight: 1.5, borderLeft: '2px solid rgba(255,215,0,0.3)', paddingLeft: 6, fontFamily: "'Inter',sans-serif" }}>
+                  {item.text}
+                </div>
+              </Link>
+            ))}
+          </div>
+          {/* Right: Interviews */}
+          <div style={{ background: 'rgba(0,229,255,0.04)', border: '1px solid rgba(0,229,255,0.15)', borderRadius: 6, padding: '10px 12px' }}>
+            <div style={{ fontSize: 8, fontWeight: 800, color: '#00E5FF', letterSpacing: '0.18em', marginBottom: 8, fontFamily: "'Inter',sans-serif" }}>🎙 INTERVIEWS</div>
+            <div style={{ marginBottom: 8 }}>
+              <div style={{ fontSize: 10, fontWeight: 800, color: '#fff', fontFamily: "'Inter',sans-serif" }}>WAVETEK</div>
+              <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.55)', lineHeight: 1.5, marginTop: 3, fontFamily: "'Inter',sans-serif" }}>
+                &ldquo;I came to TMI with 3 songs. Now I have 3 titles. The crowd here doesn&apos;t play. You gotta be ready every night.&rdquo;
+              </div>
+              <Link href="/articles/performer/wavetek" style={{ textDecoration: 'none' }}><div style={{ fontSize: 7, color: '#00E5FF', marginTop: 4, fontWeight: 700, fontFamily: "'Inter',sans-serif" }}>READ FULL INTERVIEW →</div></Link>
+            </div>
+            <div>
+              <div style={{ fontSize: 10, fontWeight: 800, color: '#fff', fontFamily: "'Inter',sans-serif" }}>DJ RECKLESS</div>
+              <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.55)', lineHeight: 1.5, marginTop: 3, fontFamily: "'Inter',sans-serif" }}>
+                &ldquo;The vibe at TMI is different. Sponsors, live crowds, and real money. This is the future of music.&rdquo;
+              </div>
+              <Link href="/articles/performer/dj-reckless" style={{ textDecoration: 'none' }}><div style={{ fontSize: 7, color: '#00E5FF', marginTop: 4, fontWeight: 700, fontFamily: "'Inter',sans-serif" }}>READ FULL INTERVIEW →</div></Link>
+            </div>
+          </div>
+        </div>
+
+        {/* ══ BIG CTA BUTTONS — 7 full-width ══ */}
+        <div style={{ width: '100%', maxWidth: 900, padding: '14px 10px 0', display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 6 }}>
+          {[
+            { label: '🎤 JOIN TMI', href: '/signup', bg: 'rgba(255,45,170,0.18)', color: '#FF2DAA', border: 'rgba(255,45,170,0.5)' },
+            { label: '📰 READ MAGAZINE', href: '/magazine', bg: 'rgba(255,215,0,0.12)', color: '#FFD700', border: 'rgba(255,215,0,0.4)' },
+            { label: '⚡ VOTE LIVE', href: '/battles', bg: 'rgba(230,48,0,0.15)', color: '#E63000', border: 'rgba(230,48,0,0.4)' },
+            { label: '🥊 JOIN BATTLE', href: '/battles/challenge', bg: 'rgba(170,45,255,0.15)', color: '#AA2DFF', border: 'rgba(170,45,255,0.4)' },
+            { label: '🎭 SEE ROOMS', href: '/live/lobby', bg: 'rgba(0,229,255,0.1)', color: '#00E5FF', border: 'rgba(0,229,255,0.35)' },
+            { label: '🔥 CYPHER', href: '/battles/cypher', bg: 'rgba(0,255,127,0.1)', color: '#00FF7F', border: 'rgba(0,255,127,0.35)' },
+            { label: '💰 SPONSOR', href: '/sponsors', bg: 'rgba(255,215,0,0.08)', color: '#FFD700', border: 'rgba(255,215,0,0.3)' },
+          ].map((btn) => (
+            <Link key={btn.label} href={btn.href} style={{ textDecoration: 'none', gridColumn: btn.label.includes('CYPHER') ? 'span 1' : undefined }}>
+              <div style={{ background: btn.bg, border: `1px solid ${btn.border}`, borderRadius: 6, padding: '8px 4px', textAlign: 'center', fontSize: 8, fontWeight: 800, color: btn.color, letterSpacing: '0.08em', fontFamily: "'Inter',sans-serif", cursor: 'pointer' }}>
+                {btn.label}
+              </div>
+            </Link>
+          ))}
+        </div>
+
+        {/* ══ LIVE STATS BAR — ticking counters ══ */}
+        <div style={{ width: '100%', maxWidth: 900, padding: '10px 10px 0', display: 'flex', gap: 6, justifyContent: 'space-between' }}>
+          {[
+            { label: 'LIVE VENUES', value: venues.length, color: '#00E5FF', icon: '🏟' },
+            { label: 'WATCHING', value: (voteCount * 8).toLocaleString(), color: '#FF2DAA', icon: '👁' },
+            { label: 'TIPS SENT', value: `$${(voteCount * 0.5).toFixed(0)}`, color: '#FFD700', icon: '💰' },
+            { label: 'VOTES CAST', value: voteCount.toLocaleString(), color: '#AA2DFF', icon: '⚡' },
+          ].map((stat) => (
+            <div key={stat.label} style={{ flex: 1, background: `${stat.color}08`, border: `1px solid ${stat.color}25`, borderRadius: 5, padding: '6px 6px', textAlign: 'center' }}>
+              <div style={{ fontSize: 13 }}>{stat.icon}</div>
+              <div style={{ fontSize: 11, fontWeight: 800, color: stat.color, fontFamily: "'Inter',sans-serif", lineHeight: 1.2 }}>{stat.value}</div>
+              <div style={{ fontSize: 7, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.1em', fontFamily: "'Inter',sans-serif", marginTop: 1 }}>{stat.label}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* ══ BOTTOM NAV BAR ══ */}
+        <div style={{ width: '100%', marginTop: 20, background: 'rgba(6,2,26,0.96)', borderTop: '1px solid rgba(255,255,255,0.08)', padding: '8px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+          <Link href="/login" style={{ textDecoration: 'none' }}><div style={{ fontSize: 9, fontWeight: 700, color: '#00E5FF', letterSpacing: '0.1em', fontFamily: "'Inter',sans-serif" }}>SIGN IN</div></Link>
+          <Link href="/signup" style={{ textDecoration: 'none' }}><div style={{ fontSize: 9, fontWeight: 800, color: '#FF2DAA', border: '1px solid rgba(255,45,170,0.4)', borderRadius: 4, padding: '3px 8px', letterSpacing: '0.08em', fontFamily: "'Inter',sans-serif" }}>+ SUBMIT</div></Link>
+          <Link href="/about/guide" style={{ textDecoration: 'none' }}><div style={{ fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,0.55)', letterSpacing: '0.1em', fontFamily: "'Inter',sans-serif" }}>OPEN GUIDE</div></Link>
+          <Link href="/about/beta" style={{ textDecoration: 'none' }}><div style={{ fontSize: 9, fontWeight: 700, color: '#FFD700', letterSpacing: '0.1em', fontFamily: "'Inter',sans-serif" }}>BETA FEEDBACK</div></Link>
+        </div>
+
       </div>
     </div>
+    </>
   );
 }

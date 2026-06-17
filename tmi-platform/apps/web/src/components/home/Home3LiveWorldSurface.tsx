@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from 'react';
+import MotionPosterPlayer from '@/components/media/MotionPosterPlayer';
+import { getLivePerformers } from '@/lib/performers/PerformerRegistry';
 import { LobbyEntryFlow, type UniversalRoom } from '@/components/room/UniversalLobbyEntry';
 import Home3MainPreviewLobby from './Home3MainPreviewLobby';
 import Home3LivewallGrid from './Home3LobbyWallGrid';
@@ -22,47 +24,51 @@ import AvatarMiniPreview from '@/components/avatar/AvatarMiniPreview';
 import WeeklyContestRail from './WeeklyContestRail';
 import WinnerReplayWall from './WinnerReplayWall';
 import LiveMagazineVoiceTicker from './LiveMagazineVoiceTicker';
-import HomeLobbyVideoWall from './HomeLobbyVideoWall';
 import { enforceRouteOwnership } from '@/lib/routes/TmiVisualRouteMap';
 import { getVisualSlot } from '@/lib/visuals/TmiVisualSlotRegistry';
-import LiveMediaWall from '@/components/media/LiveMediaWall';
+import BillboardLiveWall from '@/components/media/BillboardLiveWall';
 import BroadcastDeckWall from '@/components/broadcast/BroadcastDeckWall';
+import { getLiveVenues } from '@/lib/venues/VenueRegistry';
 import { HOME3_DECK_SEQUENCE } from '@/lib/broadcast/BroadcastRotationEngine';
 import RoomContainer from '@/components/room/RoomContainer';
-import ActionCanister from '@/components/room/ActionCanister';
 import WidgetDrawer from '@/components/room/WidgetDrawer';
 import NeonWaveUnderlay from '@/components/atmosphere/NeonWaveUnderlay';
 import UnifiedAdSlot from '@/components/ads/UnifiedAdSlot';
-
-const HOME3_ACTIONS = [
-  { id: 'live-rooms',  icon: '🎭', label: 'Live Rooms'  },
-  { id: 'messages',    icon: '💬', label: 'Messages'    },
-  { id: 'bookings',    icon: '📅', label: 'Bookings'    },
-  { id: 'revenue',     icon: '💰', label: 'Revenue'     },
-  { id: 'friends',     icon: '👥', label: 'Friends'     },
-];
+import AudienceDirectorWindow from '@/components/live/AudienceDirectorWindow';
 
 export default function Home3LiveWorldSurface() {
   enforceRouteOwnership('/home/3');
   getVisualSlot('home-3-hero');
 
   const [pending, setPending] = useState<UniversalRoom | null>(null);
+  const featuredPerformer = getLivePerformers()[0];
 
   function openRoom(id: string, title: string, color: string) {
     setPending({ id, title, viewers: 0, status: 'live', access: 'free', accentColor: color, roomRoute: `/live/rooms/${id}?from=lobby-wall`, venueIndex: 0, shape: 'hex' });
   }
 
-  const roomStack = [
-    { id: 'monthly-idol', title: 'Main Lobby',   occupancy: '84%', tickets: '120', color: '#00FFFF', glyph: '🏟️' },
-    { id: 'cypher-arena', title: 'Cypher East',  occupancy: '71%', tickets: '42',  color: '#FF2DAA', glyph: '🎤' },
-    { id: 'venue-room',   title: 'Producer Lab', occupancy: '67%', tickets: '35',  color: '#FFD700', glyph: '🎛️' },
-  ];
+  const liveVenues = getLiveVenues().slice(0, 3);
+  const VENUE_GLYPHS: Record<string, string> = { Arena: '🏟️', Club: '🎤', Stadium: '🏆', Studio: '🎛️', Theater: '🎭', Lounge: '🛋️', Outdoor: '🌿', Virtual: '🌐' };
+  const VENUE_COLORS = ['#00FFFF', '#FF2DAA', '#FFD700'];
+  const BURST_COLORS = ['#AA2DFF', '#00FF88', '#FF6B35'];
 
-  const burstRooms = [
-    { id: 'monday-night-stage', href: '/live/rooms/vip-lounge',   title: 'VIP Lounge',     subtitle: 'Host interviews',      color: '#AA2DFF', glyph: '🛋️' },
-    { id: 'deal-or-feud',       href: '/live/rooms/battle-floor', title: 'Battle Floor',   subtitle: 'Crowd vote live',       color: '#00FF88', glyph: '🥊' },
-    { id: '',                   href: '/live/lobby', title: 'Event Timeline', subtitle: 'Premieres + lock times', color: '#FF6B35', glyph: '🗓️' },
-  ];
+  const roomStack = liveVenues.map((v, i) => ({
+    id: v.roomId,
+    title: v.name,
+    occupancy: `${v.occupancyPct}%`,
+    tickets: String(v.openTickets),
+    color: VENUE_COLORS[i] ?? '#00FFFF',
+    glyph: VENUE_GLYPHS[v.category] ?? '🎤',
+  }));
+
+  const burstRooms = liveVenues.map((v, i) => ({
+    id: v.roomId,
+    href: v.liveRoomRoute,
+    title: v.name,
+    subtitle: `${v.audienceCount.toLocaleString()} watching`,
+    color: BURST_COLORS[i] ?? '#AA2DFF',
+    glyph: VENUE_GLYPHS[v.category] ?? '🎤',
+  }));
 
   return (
     <RoomContainer roomId="home-3" title="Live World" accentColor="#00FF88" bpm={128}>
@@ -141,12 +147,36 @@ export default function Home3LiveWorldSurface() {
             ))}
           </div>
 
-          <button onClick={() => openRoom('monthly-idol', 'Main Lobby', '#00FFFF')} style={{ textDecoration: 'none', color: '#fff', background: 'none', border: 'none', cursor: 'pointer', padding: 0, width: '100%', textAlign: 'left' }}>
-            <div style={{ minHeight: 220, borderRadius: 12, overflow: 'hidden', border: '1px solid rgba(0,255,255,0.35)', background: 'linear-gradient(145deg, rgba(0,255,255,0.25), rgba(5,5,16,0.82))', padding: 16, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-              <div style={{ display: 'inline-flex', fontSize: 8, letterSpacing: '0.14em', color: '#00FFFF', border: '1px solid rgba(0,255,255,0.45)', borderRadius: 4, padding: '3px 6px', width: 'fit-content' }}>JOIN ROOM RUNTIME</div>
-              <div>
-                <h1 style={{ margin: 0, fontSize: 'clamp(1.2rem,2.8vw,2.1rem)' }}>Enter Live Venue World</h1>
-                <p style={{ margin: '6px 0 0', fontSize: 12, color: 'rgba(255,255,255,0.78)' }}>Join room, interact, tip, and return to Home 3 in one continuous flow.</p>
+          <button
+            onClick={() => featuredPerformer
+              ? openRoom(featuredPerformer.roomId, featuredPerformer.name, '#00FFFF')
+              : openRoom('monthly-idol', 'Main Lobby', '#00FFFF')}
+            style={{ textDecoration: 'none', color: '#fff', background: 'none', border: 'none', cursor: 'pointer', padding: 0, width: '100%', textAlign: 'left' }}
+          >
+            <div style={{ minHeight: 220, borderRadius: 12, overflow: 'hidden', border: '1px solid rgba(0,255,255,0.35)', position: 'relative' }}>
+              {/* Discovery surface — performer/host video first, never an audience grid (Audience Visibility Rule) */}
+              <MotionPosterPlayer
+                isLive={featuredPerformer?.isLive ?? true}
+                liveRoomRoute={featuredPerformer?.liveRoomRoute}
+                introVideoUrl={featuredPerformer?.introVideoUrl}
+                motionPosterUrl={featuredPerformer?.motionPosterUrl}
+                staticImageUrl={featuredPerformer?.profileImageUrl ?? '/images/tmi-placeholder.jpg'}
+                alt={featuredPerformer?.name ?? 'Live performer'}
+                audienceCount={featuredPerformer?.audienceCount}
+                height={220}
+                showLiveOverlay={false}
+              />
+              {/* Overlay text */}
+              <div style={{ position: 'absolute', inset: 0, zIndex: 1, padding: 16, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: 220, background: 'linear-gradient(to top, rgba(5,5,16,0.82) 0%, transparent 60%)', pointerEvents: 'none' }}>
+                <div style={{ display: 'inline-flex', fontSize: 8, letterSpacing: '0.14em', color: '#00FFFF', border: '1px solid rgba(0,255,255,0.45)', borderRadius: 4, padding: '3px 6px', width: 'fit-content', background: 'rgba(5,5,16,0.6)' }}>🔴 {featuredPerformer ? `${featuredPerformer.name.toUpperCase()} · LIVE` : 'JOIN ROOM RUNTIME'}</div>
+                <div>
+                  <h2 style={{ margin: 0, fontSize: 'clamp(1.1rem,2.5vw,1.8rem)', fontWeight: 900, textShadow: '0 2px 12px rgba(0,255,255,0.4)' }}>
+                    {featuredPerformer ? `${featuredPerformer.name} is live` : 'Enter Live Venue World'}
+                  </h2>
+                  <p style={{ margin: '6px 0 0', fontSize: 11, color: 'rgba(255,255,255,0.78)' }}>
+                    {featuredPerformer ? `${featuredPerformer.audienceCount.toLocaleString()} watching · join the room and seat yourself.` : 'Join room, interact, tip, and return in one continuous flow.'}
+                  </p>
+                </div>
               </div>
             </div>
           </button>
@@ -167,6 +197,25 @@ export default function Home3LiveWorldSurface() {
               );
             })}
           </div>
+        </div>
+      </section>
+
+      {/* ── AUDIENCE PREVIEW WINDOWS — Broadcast Director System (Audience Visibility Rule v2) ──
+          Rotating crowd shots (wide/cluster/VIP/dance-floor/reaction), never a static seat grid. */}
+      <section style={{ maxWidth: 1100, margin: '0 auto', padding: '0 24px 24px' }}>
+        <div style={{ fontSize: 9, letterSpacing: '0.35em', color: '#FF2DAA', fontWeight: 800, marginBottom: 14 }}>
+          AUDIENCE CAM · LIVE CROWD PREVIEW
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
+          {roomStack.map((room) => (
+            <AudienceDirectorWindow
+              key={room.id}
+              roomId={room.id}
+              label={room.title}
+              accentColor={room.color}
+              onJoin={() => openRoom(room.id, room.title, room.color)}
+            />
+          ))}
         </div>
       </section>
 
@@ -191,13 +240,11 @@ export default function Home3LiveWorldSurface() {
       {/* Main preview lobby */}
       <Home3MainPreviewLobby />
 
-      {/* Live world video wall */}
+      {/* ══ LIVE WORLD WALL — registry-driven performer tiles ══ */}
       <section style={{ maxWidth: 1100, margin: '0 auto', padding: '0 24px 28px' }}>
-        <LiveMediaWall roomId="R-101" title="LIVE WORLD FEED — ALL ROOMS" mode="billboard" nodeCount={9} accentColor="#00FFFF" enterHref="/live/rooms" />
+        <BillboardLiveWall mode="home" maxTiles={9} title="LIVE WORLD FEED — ALL ROOMS" showActions />
       </section>
 
-      {/* Lobby wall grid */}
-      <HomeLobbyVideoWall accentColor="#00FFFF" />
       <Home3LivewallGrid />
 
       {/* Live events */}
@@ -227,7 +274,6 @@ export default function Home3LiveWorldSurface() {
 
       {/* Global live belt */}
       <GlobalLiveBelt />
-      <ActionCanister actions={HOME3_ACTIONS} />
       <WidgetDrawer />
     </main>
     </RoomContainer>

@@ -71,21 +71,21 @@ function roleDashboardPath(role: string): string {
       return '/admin';
     case 'PERFORMER':
     case 'ARTIST':
-      return '/performer/dashboard';
+      return '/hub/performer';
     case 'FAN':
-      return '/fan/dashboard';
+      return '/hub/fan';
     case 'SPONSOR':
-      return '/sponsor';
+      return '/hub/sponsor';
     case 'PROMOTER':
-      return '/promoter/dashboard';
+      return '/hub/promoter';
     case 'ADVERTISER':
-      return '/advertiser/dashboard';
+      return '/hub/advertiser';
     case 'VENUE':
-      return '/venue/dashboard';
+      return '/hub/venue';
     case 'WRITER':
-      return '/writer/dashboard';
+      return '/hub/writer';
     default:
-      return '/dashboard';
+      return '/hub/fan';
   }
 }
 
@@ -152,6 +152,20 @@ export function middleware(req: NextRequest) {
       }
       return NextResponse.redirect(new URL('/home/1', req.url), 307);
     }
+  }
+
+  const LEGACY_REDIRECTS: Record<string, string> = {
+    '/dashboard/fan': '/hub/fan',
+    '/dashboard/performer': '/hub/performer',
+    '/dashboard/sponsor': '/hub/sponsor',
+    '/dashboard/advertiser': '/hub/advertiser',
+    '/dashboard/venue': '/hub/venue',
+    '/dashboard/writer': '/hub/writer',
+    '/dashboard/promoter': '/hub/promoter',
+    '/fan/theater': '/hub/fan',
+  };
+  if (LEGACY_REDIRECTS[pathname]) {
+    return NextResponse.redirect(new URL(LEGACY_REDIRECTS[pathname], req.url), 301);
   }
 
   if (pathname === '/account/recovery') {
@@ -252,6 +266,6 @@ export function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon\\.ico).*)',
+    '/((?!_next/static|_next/image|favicon\\.ico|google27b9fc359205edb8\\.html|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };

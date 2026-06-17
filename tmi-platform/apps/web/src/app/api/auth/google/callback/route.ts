@@ -31,13 +31,13 @@ const COOKIE_OPTS = {
 
 function roleToHub(role: string): string {
   if (role === 'admin' || role === 'staff') return '/admin';
-  if (role === 'performer') return '/dashboard/performer';
-  if (role === 'sponsor')   return '/dashboard/sponsor';
-  if (role === 'advertiser') return '/dashboard/advertiser';
-  if (role === 'venue')     return '/dashboard/venue';
-  if (role === 'writer')    return '/dashboard/writer';
-  if (role === 'promoter')  return '/dashboard/fan';
-  return '/dashboard/fan';
+  if (role === 'performer') return '/hub/performer';
+  if (role === 'sponsor')   return '/hub/sponsor';
+  if (role === 'advertiser') return '/hub/advertiser';
+  if (role === 'venue')     return '/hub/venue';
+  if (role === 'writer')    return '/hub/writer';
+  if (role === 'promoter')  return '/hub/fan';
+  return '/hub/fan';
 }
 
 interface GoogleTokenResponse {

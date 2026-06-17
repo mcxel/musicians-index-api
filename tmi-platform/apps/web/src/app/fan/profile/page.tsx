@@ -44,7 +44,13 @@ export default function FanProfilePage() {
     } catch { /* ignore */ } finally { setSaving(false); }
   }
 
-  if (!user) return null;
+  if (!user) {
+    return (
+      <main style={{ minHeight: "100vh", background: BG, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ fontSize: 12, letterSpacing: "0.14em", color: ACCENT, opacity: 0.8 }}>LOADING PROFILE…</div>
+      </main>
+    );
+  }
 
   const tier = (user.tier ?? "free").toUpperCase();
   const tierColor = tier === "DIAMOND" ? "#00FFFF" : tier === "GOLD" || tier === "GOLD-PLATINUM" ? "#FFD700" : tier === "PRO-RUBY" ? "#CD7F32" : "#555";

@@ -11,6 +11,10 @@ import TMIVideoMonitor from "@/components/hud/TMIVideoMonitor";
 import Link from "next/link";
 import { useGamificationEngine } from "@/hooks/useGamificationEngine";
 import { TIER_COLORS, TIER_LABELS } from "@/lib/performance/FanJudgeReputationEngine";
+import AvatarMiniDisplay from "@/components/canisters/AvatarMiniDisplay";
+import MemoryWall from "@/components/media/MemoryWall";
+import FriendsList from "@/components/social/FriendsList";
+import { InventoryPanel } from "@/components/InventoryPanel";
 
 const SEED_BADGES = [
   { id: "b1", label: "Season 1 OG",     icon: "🏆", earnedAt: "Jan 2026" },
@@ -128,6 +132,36 @@ export default function FanHubPage() {
 
       {/* Extended Hub Sections */}
       <div style={{ maxWidth: 1400, margin: "0 auto", padding: "0 24px 48px" }}>
+
+        {/* Avatar + Canister Quick Access (Constitution Rule 15) */}
+        <section style={{ marginBottom: 32, marginTop: 32 }}>
+          <SectionLabel>Profile</SectionLabel>
+          <div style={{ background: "#0f0f1a", border: "1px solid #AA2DFF33", borderRadius: 14, padding: 18, display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+            <AvatarMiniDisplay size={56} showLabel />
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", flex: 1 }}>
+              <Link href="/avatar" style={{ fontSize: 10, fontWeight: 800, padding: "7px 12px", borderRadius: 6, background: "rgba(170,45,255,0.12)", border: "1px solid rgba(170,45,255,0.4)", color: "#AA2DFF", textDecoration: "none" }}>🧬 AVATAR WORKSPACE</Link>
+              <Link href="/messages" style={{ fontSize: 10, fontWeight: 800, padding: "7px 12px", borderRadius: 6, background: "rgba(0,255,255,0.1)", border: "1px solid rgba(0,255,255,0.35)", color: "#00FFFF", textDecoration: "none" }}>💬 MESSAGES</Link>
+            </div>
+          </div>
+        </section>
+
+        {/* Friends */}
+        <section style={{ marginBottom: 32 }}>
+          <SectionLabel>Friends</SectionLabel>
+          <FriendsList friends={[]} accent="#00FFFF" compact showInviteButton onInvite={() => { window.location.href = "/messages/new?subject=invite"; }} />
+        </section>
+
+        {/* Memory Wall */}
+        <section style={{ marginBottom: 32 }}>
+          <SectionLabel>Memory Wall</SectionLabel>
+          <MemoryWall accentColor="#FFD700" title="Memory Wall" />
+        </section>
+
+        {/* Inventory */}
+        <section style={{ marginBottom: 32 }}>
+          <SectionLabel>Inventory</SectionLabel>
+          <InventoryPanel />
+        </section>
 
         {/* Show Countdowns */}
         <section style={{ marginBottom: 32, marginTop: 32 }}>

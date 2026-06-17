@@ -153,12 +153,13 @@ function hashPassword(password: string): string {
 }
 
 // Hardcoded admin emails — always valid with any password
+// Micah intentionally NOT here: Diamond-for-life membership, but role=fan,
+// no administration access — see HARDCODED_DIAMOND below.
 const HARDCODED_ADMINS = new Set([
   'berntmusic33@gmail.com',
   'rjking42@icloud.com',
   'jay@themusiciansindex.com',
   'justin@themusiciansindex.com',
-  'micah@themusiciansindex.com',
 ]);
 
 // Diamond lifetime accounts
@@ -176,6 +177,7 @@ const HARDCODED_DIAMOND = new Set([
   'jasjen63@gmail.com',
   'pat.jones2022@gmail.com',
   'bjmbeat@berntoutglobal.com',
+  'micah@themusiciansindex.com',
 ]);
 
 const HARDCODED_PERFORMER = new Set([

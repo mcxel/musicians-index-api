@@ -14,23 +14,13 @@ import Home2NewsDensityRail from './Home2NewsDensityRail';
 import Home2LiveLobbyStrip from './Home2LiveLobbyStrip';
 import WorldTrendingBelt from './WorldTrendingBelt';
 import LiveMagazineVoiceTicker from './LiveMagazineVoiceTicker';
-import HomeLobbyVideoWall from './HomeLobbyVideoWall';
 import { enforceRouteOwnership } from '@/lib/routes/TmiVisualRouteMap';
 import { getVisualSlot } from '@/lib/visuals/TmiVisualSlotRegistry';
-import LiveMediaWall from '@/components/media/LiveMediaWall';
+import BillboardLiveWall from '@/components/media/BillboardLiveWall';
 import RoomContainer from '@/components/room/RoomContainer';
-import ActionCanister from '@/components/room/ActionCanister';
 import WidgetDrawer from '@/components/room/WidgetDrawer';
 import NeonWaveUnderlay from '@/components/atmosphere/NeonWaveUnderlay';
 import UnifiedAdSlot from '@/components/ads/UnifiedAdSlot';
-
-const HOME2_ACTIONS = [
-  { id: 'messages',       icon: '💬', label: 'Messages'       },
-  { id: 'notifications',  icon: '🔔', label: 'Notifications'  },
-  { id: 'bookings',       icon: '📅', label: 'Bookings'       },
-  { id: 'revenue',        icon: '💰', label: 'Revenue'        },
-  { id: 'friends',        icon: '👥', label: 'Friends'        },
-];
 import "@/styles/tmiTypography.css";
 
 export default function Home2NewsDeskSurface() {
@@ -137,17 +127,23 @@ export default function Home2NewsDeskSurface() {
       {/* Live lobby windows — rotating live rooms above editorial */}
       <Home2LiveLobbyStrip />
 
-      {/* Chaotic live arena wall */}
-      <HomeLobbyVideoWall accentColor="#AA2DFF" />
+      {/* ══ MAGAZINE LIVE WALL — registry-driven performer tiles ══ */}
+      <section style={{ maxWidth: 1100, margin: '0 auto', padding: '0 24px 28px' }}>
+        <BillboardLiveWall mode="magazine" maxTiles={9} title="LIVE NOW — MAGAZINE LOBBY" showActions />
+      </section>
 
       {/* Editorial rail */}
-      <Home2EditorialRail />
+      <div id="editorial">
+        <Home2EditorialRail />
+      </div>
 
       {/* ── AD BREAK 2 — rectangle between editorial and discovery ── */}
       <UnifiedAdSlot venue="home-2" slotKey="homepageMid" format="rectangle" label="ADVERTISEMENT" style={{ margin: '0 24px 8px', minHeight: 250 }} accentColor="#00FFFF" />
 
       {/* Discovery rail */}
-      <Home2DiscoveryRail />
+      <div id="discovery">
+        <Home2DiscoveryRail />
+      </div>
 
       {/* Premieres rail */}
       <Home2PremieresRail />
@@ -158,10 +154,6 @@ export default function Home2NewsDeskSurface() {
       {/* Marketplace rail */}
       <Home2MarketplaceRail />
 
-      {/* Live room video wall — billboard chaos */}
-      <section style={{ maxWidth: 1100, margin: '0 auto', padding: '0 24px 28px' }}>
-        <LiveMediaWall roomId="R-101" title="LIVE NOW — WORLD DANCE PARTY" mode="billboard" nodeCount={9} accentColor="#FF2DAA" enterHref="/live/rooms" />
-      </section>
 
       {/* Sponsor Article Strip */}
       <Home2SponsorArticleStrip />
@@ -174,7 +166,6 @@ export default function Home2NewsDeskSurface() {
 
       {/* World trending global belt */}
       <WorldTrendingBelt />
-      <ActionCanister actions={HOME2_ACTIONS} />
       <WidgetDrawer />
     </main>
     </RoomContainer>

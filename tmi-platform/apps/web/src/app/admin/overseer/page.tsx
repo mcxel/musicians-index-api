@@ -1,5 +1,6 @@
 "use client";
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import MediaMonitor from '@/components/video/MediaMonitor';
 import TrustKillerFeed from '@/components/admin/TrustKillerFeed';
@@ -52,15 +53,17 @@ const BILLBOARD_RANKINGS = [
 const REV_BARS = [30, 45, 62, 80, 96, 76, 86];
 
 const TV_ROOMS = [
-  { label: '🎤 Main Stage',   bg: '#0a0002', live: true  },
-  { label: '⚔️ Battle Arena', bg: '#030a0a', live: true  },
-  { label: '🎤 Cypher Lounge', bg: '#00050a', live: true  },
-  { label: '🎵 Chill Beats',  bg: '#00080a', live: false },
+  { label: '🎤 Main Stage',   bg: '#0a0002', live: true,  route: '/live/lobby' },
+  { label: '⚔️ Battle Arena', bg: '#030a0a', live: true,  route: '/battles'    },
+  { label: '🎤 Cypher Lounge', bg: '#00050a', live: true,  route: '/cypher'     },
+  { label: '🎵 Chill Beats',  bg: '#00080a', live: false, route: '/live/lobby' },
 ];
 
 export default function OverseerDeckPage() {
+  const router = useRouter();
   const [feedFilter, setFeedFilter] = useState<'live' | 'genre' | 'trending'>('live');
   const [feedSearch, setFeedSearch] = useState('');
+  const [lastPulse, setLastPulse] = useState<string | null>(null);
 
   return (
     <div style={{ minHeight: '100vh', background: '#020205', color: '#fff', padding: 16, fontFamily: "'Inter', sans-serif" }}>
@@ -88,9 +91,14 @@ export default function OverseerDeckPage() {
             <span style={{ fontSize: 8, color: '#00FF88' }}>LIVE</span>
           </div>
           <span style={{ fontSize: 8, color: 'rgba(255,140,0,.4)' }}>11:45 AM EST</span>
-          <button style={{ fontSize: 7, padding: '3px 8px', background: 'transparent', border: '1px solid rgba(220,70,0,.5)', color: 'rgba(255,140,0,.8)', borderRadius: 4, cursor: 'pointer', fontWeight: 700 }}>⚡ CHAIN PULSE</button>
+          <button
+            onClick={() => { router.refresh(); setLastPulse(new Date().toLocaleTimeString()); }}
+            style={{ fontSize: 7, padding: '3px 8px', background: 'transparent', border: '1px solid rgba(220,70,0,.5)', color: 'rgba(255,140,0,.8)', borderRadius: 4, cursor: 'pointer', fontWeight: 700 }}
+          >
+            ⚡ CHAIN PULSE{lastPulse ? ` · ${lastPulse}` : ''}
+          </button>
           <Link href="/hub/artist" style={{ fontSize: 7, padding: '3px 8px', background: 'transparent', border: '1px solid rgba(220,70,0,.5)', color: 'rgba(255,140,0,.8)', borderRadius: 4, textDecoration: 'none', fontWeight: 700 }}>🤖 Summon Big Ace</Link>
-          <button style={{ fontSize: 7, padding: '3px 8px', background: 'rgba(220,70,0,.15)', border: '1px solid #E63000', color: '#FF9500', borderRadius: 4, cursor: 'pointer', fontWeight: 700 }}>Approve Digest</button>
+          <Link href="/admin/inbox" style={{ fontSize: 7, padding: '3px 8px', background: 'rgba(220,70,0,.15)', border: '1px solid #E63000', color: '#FF9500', borderRadius: 4, textDecoration: 'none', fontWeight: 700 }}>Approve Digest</Link>
         </div>
       </div>
 
@@ -175,7 +183,7 @@ export default function OverseerDeckPage() {
             <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: '.12em', color: 'rgba(255,140,0,.7)', textTransform: 'uppercase', marginBottom: 6 }}>TV Screen Router — Boardroom Live</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 5 }}>
               {TV_ROOMS.map(room => (
-                <div key={room.label} style={{ height: 60, background: room.bg, border: `1px solid ${room.live ? '#E63000' : 'rgba(220,70,0,.3)'}`, borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', position: 'relative', fontSize: 9, color: room.live ? '#FFD700' : 'rgba(255,255,255,.4)' }}>
+                <div key={room.label} onClick={() => router.push(room.route)} role="button" tabIndex={0} style={{ height: 60, background: room.bg, border: `1px solid ${room.live ? '#E63000' : 'rgba(220,70,0,.3)'}`, borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', position: 'relative', fontSize: 9, color: room.live ? '#FFD700' : 'rgba(255,255,255,.4)' }}>
                   {room.label}
                   {room.live && (
                     <div style={{ position: 'absolute', top: 4, left: 4, display: 'flex', alignItems: 'center', gap: 2 }}>

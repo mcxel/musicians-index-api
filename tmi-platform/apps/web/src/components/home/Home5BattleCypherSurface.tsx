@@ -23,10 +23,8 @@ import Home5BattleOfWeekRail from "@/components/home/Home5BattleOfWeekRail";
 import Home5CypherOfWeekRail from "@/components/home/Home5CypherOfWeekRail";
 import Home5XPLadderRail from "@/components/home/Home5XPLadderRail";
 import Home5OpenRoomsGrid from "@/components/home/Home5OpenRoomsGrid";
-import HomeLobbyVideoWall from "@/components/home/HomeLobbyVideoWall";
 import { enforceRouteOwnership } from '@/lib/routes/TmiVisualRouteMap';
 import { getVisualSlot } from '@/lib/visuals/TmiVisualSlotRegistry';
-import LiveMediaWall from '@/components/media/LiveMediaWall';
 import "@/styles/tmiTypography.css";
 import { battleChallengeRequestEngine } from "@/lib/competition/BattleChallengeRequestEngine";
 import { battleChallengeEconomyEngine, CHALLENGE_ENTRY_FEE_POINTS } from "@/lib/competition/BattleChallengeEconomyEngine";
@@ -37,19 +35,12 @@ import { CATEGORY_LABELS, CATEGORY_ICONS } from "@/lib/competition/ChampionshipY
 import GlobalLiveBelt from "@/components/home/GlobalLiveBelt";
 import SmartCameraDirector from "@/components/stage/SmartCameraDirector";
 import AudienceField from "@/components/live/AudienceField";
+import BillboardLiveWall from '@/components/media/BillboardLiveWall';
+import { PERFORMER_REGISTRY } from '@/lib/performers/PerformerRegistry';
 import RoomContainer from '@/components/room/RoomContainer';
-import ActionCanister from '@/components/room/ActionCanister';
 import WidgetDrawer from '@/components/room/WidgetDrawer';
 import NeonWaveUnderlay from '@/components/atmosphere/NeonWaveUnderlay';
 import UnifiedAdSlot from '@/components/ads/UnifiedAdSlot';
-
-const HOME5_ACTIONS = [
-  { id: 'revenue',    icon: '💰', label: 'Revenue'    },
-  { id: 'messages',   icon: '💬', label: 'Messages'   },
-  { id: 'inventory',  icon: '💎', label: 'Vault'      },
-  { id: 'friends',    icon: '👥', label: 'Friends'    },
-  { id: 'bookings',   icon: '📅', label: 'Bookings'   },
-];
 
 // ─── Championship categories displayed on Home 5 ─────────────────────────────
 
@@ -62,13 +53,22 @@ const CHAMPIONSHIP_CATEGORIES = [
   { category: "dj" as const,                 prize: "$1,000", sponsors: 5,  accent: "#00FF88" },
 ] as const;
 
-// ─── Challenge targets (demo) ─────────────────────────────────────────────────
+// ─── Challenge targets — registry-driven ─────────────────────────────────────
 
-const challengeTargets: BattleActor[] = [
-  { userId: "artist-neon-07", displayName: "Neon Verse",  tier: "silver",   role: "artist",    ageVerified: true },
-  { userId: "artist-crown-11", displayName: "Crown Mic",  tier: "gold",     role: "performer", ageVerified: true },
-  { userId: "artist-delta-29", displayName: "Delta Flame",tier: "platinum", role: "artist",    ageVerified: true },
-];
+const TIER_MAP: Record<string, BattleActor['tier']> = {
+  RUBY: 'RUBY', Silver: 'silver', Gold: 'gold', Platinum: 'platinum', Diamond: 'diamond',
+};
+
+const challengeTargets: BattleActor[] = PERFORMER_REGISTRY
+  .filter((p) => p.category === 'Rap' || p.category === 'Hip-Hop')
+  .slice(0, 3)
+  .map((p) => ({
+    userId: p.id,
+    displayName: p.name,
+    tier: TIER_MAP[p.tier] ?? 'silver',
+    role: 'artist' as const,
+    ageVerified: true,
+  }));
 
 const currentActor: BattleActor = {
   userId: "artist-home5-host",
@@ -648,19 +648,17 @@ export default function Home5BattleCypherSurface() {
         </div>
       </div>
 
-      {/* Battle arena live wall */}
+      {/* ══ BATTLE ARENA WALL — registry-driven performer tiles ══ */}
       <section style={{ maxWidth: 1100, margin: '0 auto', padding: '0 24px 28px' }}>
-        <LiveMediaWall roomId="R-307" title="BATTLE ARENA · LIVE NOW" mode="spotlight" nodeCount={8} accentColor="#FF2DAA" enterHref="/battles/live" />
+        <BillboardLiveWall mode="battle" maxTiles={8} title="BATTLE ARENA · LIVE NOW" showActions />
       </section>
 
-      <HomeLobbyVideoWall accentColor="#FF2DAA" />
       <Home5OpenRoomsGrid />
 
       {/* ── AD BREAK 2 — mid-page rectangle before live belt ── */}
       <UnifiedAdSlot venue="home-5" slotKey="homepageMid" format="rectangle" label="ADVERTISEMENT" style={{ margin: '0 24px 8px', minHeight: 250 }} accentColor="#FF2DAA" />
 
       <GlobalLiveBelt />
-      <ActionCanister actions={HOME5_ACTIONS} />
       <WidgetDrawer />
     </main>
     </RoomContainer>

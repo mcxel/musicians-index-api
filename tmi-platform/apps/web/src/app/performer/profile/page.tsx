@@ -7,6 +7,10 @@ import PerformerMediaLibrary from "@/components/media/PerformerMediaLibrary";
 import MemoryWall from "@/components/media/MemoryWall";
 import OmniPresenceEngine from "@/components/presence/OmniPresenceEngine";
 import { LobbyEntryFlow, type UniversalRoom } from "@/components/room/UniversalLobbyEntry";
+import AvatarUploadPipeline from "@/components/profile/AvatarUploadPipeline";
+import MyContentManager from "@/components/profile/MyContentManager";
+import { AvatarWorkspaceCanister } from "@/components/canisters/AvatarWorkspaceCanister";
+import AvatarMiniDisplay from "@/components/canisters/AvatarMiniDisplay";
 
 const ACCENT = "#AA2DFF";
 const BG = "#050510";
@@ -19,6 +23,7 @@ interface MeUser {
   tier?: string; 
   isLive?: boolean; 
   liveRoomId?: string; 
+  image?: string | null;
 }
 
 export default function PerformerProfilePage() {
@@ -72,7 +77,13 @@ export default function PerformerProfilePage() {
     }
   }
 
-  if (!user) return null;
+  if (!user) {
+    return (
+      <main style={{ minHeight: "100vh", background: BG, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ fontSize: 12, letterSpacing: "0.14em", color: ACCENT, opacity: 0.8 }}>LOADING PROFILE…</div>
+      </main>
+    );
+  }
 
   const stats = [
     { label: "Rank",          value: "—",  color: "#FFD700" },
@@ -101,7 +112,17 @@ export default function PerformerProfilePage() {
 
         {/* Profile hero */}
         <div style={{ display: "flex", gap: 24, alignItems: "flex-start", padding: "28px 28px", background: `linear-gradient(135deg, ${ACCENT}10, rgba(5,5,16,0.95))`, border: `1px solid ${ACCENT}28`, borderRadius: 20, marginBottom: 24, flexWrap: "wrap" }}>
-          <div style={{ width: 88, height: 88, borderRadius: "50%", background: `linear-gradient(135deg, ${ACCENT}, #FF2DAA)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 36, flexShrink: 0, boxShadow: `0 0 28px ${ACCENT}40` }}>🎤</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "center" }}>
+            <AvatarUploadPipeline
+              userId={user.id}
+              currentImage={user.image}
+              fallbackEmoji="🎤"
+              size={88}
+              accentColor={ACCENT}
+              onUploadSuccess={(url) => setUser({ ...user, image: url })}
+            />
+            <AvatarMiniDisplay size={44} showLabel />
+          </div>
           <div style={{ flex: 1, minWidth: 200 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
               <div style={{ fontSize: 9, letterSpacing: "0.25em", color: ACCENT, fontWeight: 800 }}>PERFORMER · {(user.tier ?? "FREE").toUpperCase()}</div>
@@ -242,7 +263,7 @@ export default function PerformerProfilePage() {
           {[
             { href: "/hub/performer",    label: "Control Room",    color: ACCENT    },
             { href: "/battles/new",      label: "New Challenge",   color: "#FFD700" },
-            { href: "/beat-vault",       label: "Beat Vault",      color: "#00FFFF" },
+            { href: "/dashboard/beats",    label: "Beat Vault",      color: "#00FFFF" },
             { href: "/nft/mint",         label: "Mint NFT",        color: "#FF2DAA" },
             { href: "/performer/studio", label: "Go Live Studio",  color: "#00FF88" },
             { href: "/settings",         label: "Account Settings",color: "#AA2DFF" },
@@ -251,6 +272,16 @@ export default function PerformerProfilePage() {
               {a.label}
             </Link>
           ))}
+        </div>
+
+        {/* Avatar Workspace — save bobblehead config, persists to DB */}
+        <div style={{ marginBottom: 20, marginTop: 20 }}>
+          <AvatarWorkspaceCanister accentColor={ACCENT} />
+        </div>
+
+        {/* My Content Manager — DB-backed CRUD for Songs, Videos, Playlists */}
+        <div style={{ marginBottom: 20 }}>
+          <MyContentManager accentColor={ACCENT} />
         </div>
 
         {/* Media library */}

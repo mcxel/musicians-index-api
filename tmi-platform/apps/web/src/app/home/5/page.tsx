@@ -2,17 +2,8 @@ import type { Metadata } from 'next';
 import Home5BattleCypherSurface from "@/components/home/Home5BattleCypherSurface";
 import SponsorRail from '@/components/sponsors/SponsorRail';
 import EventReel from '@/components/events/EventReel';
-
-const SEED_SPONSORS = [
-  { id: 'amplify',   name: 'AMPLIFY RECORDS',     tagline: 'Platinum Partner' },
-  { id: 'beatlab',   name: 'BEATLAB STUDIOS',      tagline: 'Gold Partner'    },
-  { id: 'velocity',  name: 'VELOCITY AUDIO',       tagline: 'Gold Partner'    },
-  { id: 'nova',      name: 'NOVA MEDIA GROUP',     tagline: 'Silver Partner'  },
-  { id: 'crown',     name: 'CROWN & CO.',          tagline: ''                },
-  { id: 'frequency', name: 'FREQUENCY LABS',       tagline: ''                },
-  { id: 'vault',     name: 'THE VAULT COLLECTIVE', tagline: ''                },
-  { id: 'sonic',     name: 'SONIC AXIS',           tagline: ''                },
-];
+import DiscoveryRail from '@/components/discovery/DiscoveryRail';
+import { getRailSponsors } from '@/lib/commerce/SponsorRegistry';
 
 export const metadata: Metadata = {
   title: "CBC Arena — Battles, Challenges & Cyphers",
@@ -33,10 +24,15 @@ export const metadata: Metadata = {
 };
 
 export default function Home5Page() {
+  const sponsors = getRailSponsors('home-5');
   return (
     <>
-      <SponsorRail sponsors={SEED_SPONSORS} zone="home-5-top" />
+      <SponsorRail sponsors={sponsors} zone="home-5-top" />
       <Home5BattleCypherSurface />
+      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 24px 28px' }}>
+        <DiscoveryRail type="games" label="⚔️ MORE BATTLES & CYPHERS" accentColor="#FF2DAA" />
+        <DiscoveryRail type="performers" label="🎤 TOP COMPETITORS" accentColor="#FFD700" />
+      </div>
       <EventReel zone="home-5" />
     </>
   );
