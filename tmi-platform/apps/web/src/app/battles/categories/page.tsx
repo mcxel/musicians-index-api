@@ -43,7 +43,18 @@ const BATTLE_CLASSES = [
     ],
   },
   {
-    class: "dirty-dozens", label: "Dirty Dozens Formats", color: "#AA2DFF", icon: "😤",
+    class: "production", label: "Production & Collaboration Battles", color: "#AA2DFF", icon: "🎛️",
+    types: [
+      { id: "acapella-battle", label: "Acapella Only Battle", audioRule: "No instrumentals — voice/breath/body only", prize: "$500" },
+      { id: "byob", label: "Bring Your Own Beat", audioRule: "Each performer supplies their own backing — no shared beat", prize: "$500" },
+      { id: "producer-mc", label: "Producer + MC Battle", audioRule: "Producer submits original beat · MC performs over it live", prize: "$1,000" },
+      { id: "dj-mc", label: "DJ + MC Battle", audioRule: "DJ plays live set · MC freestyles over it — real-time collab", prize: "$750" },
+      { id: "beat-submission", label: "Beat Submission Battle", audioRule: "Both submit original beats · Judges vote on production alone", prize: "$750" },
+      { id: "flip-battle", label: "Sample Flip Battle", audioRule: "Same sample provided · Each producer flips it differently", prize: "$500" },
+    ],
+  },
+  {
+    class: "dirty-dozens", label: "Dirty Dozens Formats", color: "#FF2DAA", icon: "😤",
     types: [
       { id: "yo-mama", label: "Yo Mama Rounds", audioRule: "No beat — words only", prize: "$500" },
       { id: "roast", label: "Comedy Roast", audioRule: "No beat required", prize: "$500" },
@@ -75,6 +86,9 @@ export default function BattleCategoriesPage() {
           </Link>
           <Link href="/battles" style={{ padding: "10px 24px", fontSize: 10, fontWeight: 800, letterSpacing: "0.15em", color: "#FF2DAA", border: "1px solid rgba(255,45,170,0.4)", borderRadius: 8, textDecoration: "none" }}>
             VIEW LIVE BATTLES
+          </Link>
+          <Link href="/battles/formats" style={{ padding: "10px 24px", fontSize: 10, fontWeight: 800, letterSpacing: "0.15em", color: "#AA2DFF", border: "1px solid rgba(170,45,255,0.4)", borderRadius: 8, textDecoration: "none" }}>
+            AUDIO RULE GUIDE
           </Link>
         </div>
       </section>

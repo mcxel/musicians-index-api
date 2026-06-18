@@ -1,37 +1,55 @@
 "use client";
 
-// Canon source: Tmi Homepage 2.png — Weekly Crown Winner orbit display
-// Structure: central crown glyph + orbiting artist bubbles + live vote counter
-// Motion: artist bubbles orbit the crown at varying radii + speeds
-//         crown holder bubble is larger and glows gold
-
 import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { computeRanks, getTierColor } from "@/lib/performers/PerformerRegistry";
+import MotionPosterPlayer from "@/components/media/MotionPosterPlayer";
 
 interface CrownContender {
   id: string;
   name: string;
   votes: number;
   isCrownHolder?: boolean;
-  orbitRadius?: number;   // px, default assigned per index
-  orbitSpeed?: number;    // seconds per revolution, default assigned
+  orbitRadius?: number;
+  orbitSpeed?: number;
   href: string;
+  // Rule 2: Media chain
+  imageUrl?: string;
+  introVideoUrl?: string;
+  motionPosterUrl?: string;
+  isLive?: boolean;
+  liveRoomRoute?: string;
+  audienceCount?: number;
+  accentColor?: string;
 }
 
 interface MagazineCrownOrbitProps {
   contenders?: CrownContender[];
   totalVotes?: number;
-  votingClosesIn?: string;   // e.g. "2d 14h"
+  votingClosesIn?: string;
   onVote?: (id: string) => void;
 }
 
-const DEFAULT_CONTENDERS: CrownContender[] = [
-  { id: "kova",         name: "KOVA",         votes: 9820, isCrownHolder: true,  orbitRadius: 80,  orbitSpeed: 18, href: "/artists/kova" },
-  { id: "blaze-cartel", name: "BLAZE",        votes: 9590, orbitRadius: 100, orbitSpeed: 24, href: "/artists/blaze-cartel" },
-  { id: "solara",       name: "SOLARA",       votes: 8770, orbitRadius: 115, orbitSpeed: 30, href: "/artists/solara" },
-  { id: "drift-sound",  name: "DRIFT",        votes: 8340, orbitRadius: 130, orbitSpeed: 20, href: "/artists/drift-sound" },
-  { id: "asha-wave",    name: "ASHA",         votes: 7910, orbitRadius: 95,  orbitSpeed: 28, href: "/artists/asha-wave" },
-];
+// Rule 3 + Rule 8: Rankings driven by computeRanks(), never hardcoded
+const ORBIT_RADII  = [80, 100, 115, 130, 95];
+const ORBIT_SPEEDS = [18, 24, 30, 20, 28];
+
+const DEFAULT_CONTENDERS: CrownContender[] = computeRanks().slice(0, 5).map((p, i) => ({
+  id: p.slug,
+  name: p.name.split(' ')[0]!.toUpperCase(),
+  votes: p.xp,
+  isCrownHolder: i === 0,
+  orbitRadius: ORBIT_RADII[i],
+  orbitSpeed: ORBIT_SPEEDS[i],
+  href: p.profileRoute,
+  imageUrl: p.profileImageUrl,
+  introVideoUrl: p.introVideoUrl,
+  motionPosterUrl: p.motionPosterUrl,
+  isLive: p.isLive,
+  liveRoomRoute: p.liveRoomRoute,
+  audienceCount: p.audienceCount,
+  accentColor: getTierColor(p.tier),
+}));
 
 // ─── Orbit animation using requestAnimationFrame ──────────────────────────────
 
@@ -145,9 +163,9 @@ export default function MagazineCrownOrbit({
           const size = c.isCrownHolder ? 42 : 32;
 
           return (
-            <Link key={c.id} href={c.href} style={{ textDecoration: "none" }}>
+            <Link key={c.id} href={c.isLive && c.liveRoomRoute ? c.liveRoomRoute : c.href} style={{ textDecoration: "none" }}>
               <div
-                aria-label={`${c.name} — ${c.votes.toLocaleString()} votes`}
+                aria-label={`${c.name} — ${c.votes.toLocaleString()} XP`}
                 style={{
                   position: "absolute",
                   top: y - size / 2,
@@ -155,33 +173,40 @@ export default function MagazineCrownOrbit({
                   width: size,
                   height: size,
                   borderRadius: "50%",
-                  background: c.isCrownHolder
-                    ? "linear-gradient(135deg, rgba(255,215,0,0.3), rgba(255,45,170,0.2))"
-                    : "rgba(255,255,255,0.06)",
-                  border: `${c.isCrownHolder ? "2px" : "1px"} solid ${c.isCrownHolder ? "#FFD700" : "rgba(255,255,255,0.2)"}`,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  cursor: "pointer",
-                  boxShadow: c.isCrownHolder ? "0 0 12px rgba(255,215,0,0.5)" : "none",
+                  overflow: "hidden",
+                  border: `${c.isCrownHolder ? "2px" : "1px"} solid ${c.isCrownHolder ? "#FFD700" : (c.accentColor ?? "rgba(255,255,255,0.2)")}`,
+                  boxShadow: c.isCrownHolder ? "0 0 14px rgba(255,215,0,0.55)" : c.isLive ? "0 0 8px rgba(230,48,0,0.5)" : "none",
                   zIndex: c.isCrownHolder ? 9 : 5,
+                  cursor: "pointer",
                   transition: "box-shadow 0.2s",
                 }}
-                title={`${c.name}: ${c.votes.toLocaleString()} votes`}
+                title={`${c.name}: ${c.votes.toLocaleString()} XP`}
               >
-                <span
-                  style={{
-                    fontSize: c.isCrownHolder ? 7 : 6,
-                    fontWeight: 900,
-                    color: c.isCrownHolder ? "#FFD700" : "rgba(255,255,255,0.8)",
-                    textAlign: "center",
-                    letterSpacing: "0.06em",
-                    lineHeight: 1.1,
-                    padding: "0 2px",
-                  }}
-                >
-                  {c.name}
-                </span>
+                {/* Rule 2: Crown holder gets motion poster — others get static profile image */}
+                {c.isCrownHolder && c.imageUrl ? (
+                  <MotionPosterPlayer
+                    isLive={c.isLive}
+                    liveRoomRoute={c.liveRoomRoute}
+                    introVideoUrl={c.introVideoUrl}
+                    motionPosterUrl={c.motionPosterUrl}
+                    staticImageUrl={c.imageUrl}
+                    alt={c.name}
+                    audienceCount={c.audienceCount}
+                    showLiveOverlay={false}
+                    replayOnHover
+                    width={size}
+                    height={size}
+                    objectFit="cover"
+                  />
+                ) : c.imageUrl ? (
+                  <img src={c.imageUrl} alt={c.name} style={{ width: size, height: size, objectFit: "cover", display: "block" }} />
+                ) : (
+                  <div style={{ width: size, height: size, background: c.isCrownHolder ? "rgba(255,215,0,0.2)" : "rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <span style={{ fontSize: c.isCrownHolder ? 7 : 6, fontWeight: 900, color: c.isCrownHolder ? "#FFD700" : "rgba(255,255,255,0.8)", textAlign: "center", letterSpacing: "0.06em", lineHeight: 1.1, padding: "0 2px" }}>
+                      {c.name}
+                    </span>
+                  </div>
+                )}
               </div>
             </Link>
           );

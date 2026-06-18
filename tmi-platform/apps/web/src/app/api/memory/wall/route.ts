@@ -43,6 +43,68 @@ export async function GET(req: NextRequest) {
   }
 }
 
+// PATCH — edit caption/title/description/privacy on an existing memory
+export async function PATCH(req: NextRequest) {
+  const email = req.cookies.get('tmi_user_email')?.value;
+  if (!email) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  try {
+    const user = await prisma.user.findUnique({ where: { email }, select: { id: true } });
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const body = await req.json() as { memoryId: string; title?: string; description?: string; isPublic?: boolean };
+    if (!body.memoryId) return NextResponse.json({ error: 'memoryId required' }, { status: 400 });
+
+    const allRecords = await prisma.feedItem.findMany({
+      where: { userId: user.id, type: MEMORY_TYPE },
+      select: { id: true, data: true },
+    });
+    const target = allRecords.find(r => (r.data as { memoryId?: string }).memoryId === body.memoryId);
+    if (!target) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+
+    const current = target.data as unknown as MemoryItem;
+    const updated: MemoryItem = {
+      ...current,
+      title: body.title?.trim() ?? current.title,
+      description: body.description !== undefined ? body.description.trim() : current.description,
+      isPublic: body.isPublic !== undefined ? body.isPublic : current.isPublic,
+    };
+
+    await prisma.feedItem.update({ where: { id: target.id }, data: { data: updated as object } });
+    return NextResponse.json({ memory: updated });
+  } catch (err) {
+    console.error('[memory/wall PATCH]', err);
+    return NextResponse.json({ error: 'Update failed' }, { status: 500 });
+  }
+}
+
+// DELETE — remove a memory by memoryId (owner only)
+export async function DELETE(req: NextRequest) {
+  const email = req.cookies.get('tmi_user_email')?.value;
+  if (!email) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  try {
+    const user = await prisma.user.findUnique({ where: { email }, select: { id: true } });
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const { memoryId } = await req.json() as { memoryId: string };
+    if (!memoryId) return NextResponse.json({ error: 'memoryId required' }, { status: 400 });
+
+    const allRecords = await prisma.feedItem.findMany({
+      where: { userId: user.id, type: MEMORY_TYPE },
+      select: { id: true, data: true },
+    });
+    const target = allRecords.find(r => (r.data as { memoryId?: string }).memoryId === memoryId);
+    if (!target) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+
+    await prisma.feedItem.delete({ where: { id: target.id } });
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    console.error('[memory/wall DELETE]', err);
+    return NextResponse.json({ error: 'Delete failed' }, { status: 500 });
+  }
+}
+
 export async function POST(req: NextRequest) {
   const email = req.cookies.get('tmi_user_email')?.value;
   if (!email) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

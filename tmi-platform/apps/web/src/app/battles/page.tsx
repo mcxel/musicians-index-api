@@ -44,8 +44,14 @@ export default function BattlesPage() {
           layout="row"
         />
         <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap", marginTop: 16 }}>
-          <Link href="/compete" style={{ padding: "9px 22px", fontSize: 9, fontWeight: 800, letterSpacing: "0.15em", color: "#FF2DAA", border: "1px solid rgba(255,45,170,0.35)", borderRadius: 8, textDecoration: "none" }}>
-            ⚔️ ALL ARENAS
+          <Link href="/battles/create" style={{ padding: "9px 22px", fontSize: 9, fontWeight: 800, letterSpacing: "0.15em", color: "#050510", background: "#FF2DAA", borderRadius: 8, textDecoration: "none" }}>
+            ⚔️ CREATE BATTLE
+          </Link>
+          <Link href="/battles/categories" style={{ padding: "9px 22px", fontSize: 9, fontWeight: 800, letterSpacing: "0.15em", color: "#FF2DAA", border: "1px solid rgba(255,45,170,0.35)", borderRadius: 8, textDecoration: "none" }}>
+            ALL CATEGORIES
+          </Link>
+          <Link href="/battles/formats" style={{ padding: "9px 22px", fontSize: 9, fontWeight: 800, letterSpacing: "0.15em", color: "#AA2DFF", border: "1px solid rgba(170,45,255,0.35)", borderRadius: 8, textDecoration: "none" }}>
+            FORMAT GUIDE
           </Link>
           <Link href="/cyphers" style={{ padding: "9px 22px", fontSize: 9, fontWeight: 800, letterSpacing: "0.15em", color: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 8, textDecoration: "none" }}>
             CYPHER

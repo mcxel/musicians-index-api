@@ -71,7 +71,7 @@ export default function Home2EditorialRail({
 
               <div
                 style={{
-                  background: 'rgba(255,255,255,0.03)',
+                  background: `linear-gradient(135deg, ${accentColor}10, rgba(5,5,16,0.92))`,
                   border: `1px solid ${accentColor}15`,
                   borderRadius: 10,
                   padding: '16px 18px',
@@ -89,7 +89,7 @@ export default function Home2EditorialRail({
                 }}
                 onMouseLeave={(e) => {
                   const el = e.currentTarget;
-                  el.style.background = 'rgba(255,255,255,0.03)';
+                  el.style.background = `linear-gradient(135deg, ${accentColor}10, rgba(5,5,16,0.92))`;
                   el.style.borderColor = accentColor + '15';
                 }}
               >

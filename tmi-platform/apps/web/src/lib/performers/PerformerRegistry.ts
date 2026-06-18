@@ -15,15 +15,47 @@ export type PerformerCategory =
   | 'Dancehall' | 'Country' | 'Indie' | 'Electronic' | 'Dance Crews'
   | 'Venues' | 'Sponsors' | 'Hip Hop Dance';
 
+export interface PerformerSong {
+  title: string;
+  durationSec: number;
+  audioUrl?: string;
+  coverUrl?: string;
+  streams?: number;
+}
+
+export interface PerformerMerchItem {
+  name: string;
+  price: number;
+  imageUrl?: string;
+  purchaseUrl: string;
+}
+
 export interface PerformerIdentity {
   /** Stable unique key — used as URL segment, room ID prefix, and lookup key */
   id: string;
   slug: string;
   name: string;
 
-  /** Images */
+  /** Images — all originate from Dashboard Upload → PerformerRegistry → everywhere */
   profileImageUrl: string;
   coverImageUrl: string;
+
+  /**
+   * Motion Poster Pipeline (Rule 2):
+   * Priority order when rendering: introVideoUrl → motionPosterUrl → profileImageUrl
+   * 2-3 second animated intro (NBA/NFL/UFC style). Optional until artist uploads.
+   */
+  introVideoUrl?: string;
+  motionPosterUrl?: string;
+
+  /** Bio — single source, shows on profile + article + discovery cards */
+  bio?: string;
+
+  /** Catalog — uploaded via dashboard, surfaces on profile + article + playlist */
+  songs?: PerformerSong[];
+
+  /** Merch — links to external store or TMI merch engine */
+  merch?: PerformerMerchItem[];
 
   /** Location */
   city: string;
@@ -33,6 +65,12 @@ export interface PerformerIdentity {
   /** Platform identity */
   category: PerformerCategory;
   tier: PerformerTier;
+
+  /**
+   * Rank is XP-driven (Rule 4). Never set manually.
+   * Use computeRanks() or derive from XP sort position.
+   * Stored here for read performance but must match XP ordering.
+   */
   rank: number;
   xp: number;
 
@@ -40,7 +78,7 @@ export interface PerformerIdentity {
   fanCount: number;
   likes: number;
 
-  /** Live state */
+  /** Live state (Rule 3): if isLive, all pages must surface live panel over static image */
   isLive: boolean;
   audienceCount: number;
   timeLive: string;
@@ -53,6 +91,12 @@ export interface PerformerIdentity {
   profileRoute: string;
   liveRoomRoute: string;
   articleIds: string[];
+
+  /**
+   * Crown rotation (Rule 5): track when this performer first reached rank 1.
+   * After 2 months, admin opens the rotation window.
+   */
+  crownSince?: string; // ISO date string
 }
 
 // ── Registry data ─────────────────────────────────────────────────────────────
@@ -279,4 +323,105 @@ export function getPerformersByCategory(category: PerformerCategory): PerformerI
 
 export function getCrownHolder(): PerformerIdentity {
   return PERFORMER_REGISTRY.reduce((best, p) => (p.xp > best.xp ? p : best), PERFORMER_REGISTRY[0]!);
+}
+
+// ── Genre adapter (for Home 1 orbital + rankings) ─────────────────────────────
+
+export interface GenrePerformer {
+  slug: string;
+  name: string;
+  emoji: string;
+  rank: number;
+  score: number;   // mapped from xp
+  genre: string;
+  fanCount: number;
+  profileImageUrl: string;
+}
+
+const GENRE_EMOJI: Partial<Record<PerformerCategory, string>> = {
+  'Hip-Hop': '🎤', 'R&B': '💜', 'Rap': '🎙️', 'EDM': '🎧',
+  'Pop': '🌟', 'Gospel': '🙏', 'Jazz': '🎷', 'Soul': '🕯️',
+  'Afrobeats': '🥁', 'Dance Crews': '💃', 'Hip Hop Dance': '💃',
+  'Funk': '🎸', 'Blues': '🎵', 'Rock': '🎸', 'Latin': '🎺',
+};
+
+const GENRE_TO_CATEGORIES: Record<string, PerformerCategory[]> = {
+  'Hip-Hop': ['Hip-Hop'],
+  'R&B':     ['R&B'],
+  'Rap':     ['Rap'],
+  'EDM':     ['EDM', 'Electronic'],
+  'Gospel':  ['Gospel'],
+  'Jazz':    ['Jazz'],
+  'Soul':    ['Soul', 'Funk'],
+  'Pop':     ['Pop'],
+};
+
+// Returns registry performers adapted for the Home 1 orbital Performer shape.
+// Falls back to an empty array for genres with no registry entries.
+export function getGenrePerformers(genre: string, n = 10): GenrePerformer[] {
+  const cats = GENRE_TO_CATEGORIES[genre] ?? [];
+  if (cats.length === 0) return [];
+  return PERFORMER_REGISTRY
+    .filter((p) => (cats as PerformerCategory[]).includes(p.category))
+    .sort((a, b) => b.xp - a.xp)
+    .slice(0, n)
+    .map((p) => ({
+      slug: p.slug,
+      name: p.name,
+      emoji: GENRE_EMOJI[p.category] ?? '🎵',
+      rank: p.rank,
+      score: p.xp,
+      genre: p.category,
+      fanCount: p.fanCount,
+      profileImageUrl: p.profileImageUrl,
+    }));
+}
+
+// Returns lower-tier performers for the Free Promotion panel on Home 1.
+export function getFeaturedFreePerformers(n = 2): GenrePerformer[] {
+  return PERFORMER_REGISTRY
+    .filter((p) => ['FREE', 'PRO', 'Silver', 'RUBY'].includes(p.tier))
+    .sort((a, b) => b.fanCount - a.fanCount)
+    .slice(0, n)
+    .map((p) => ({
+      slug: p.slug,
+      name: p.name,
+      emoji: GENRE_EMOJI[p.category] ?? '🎵',
+      rank: p.rank,
+      score: p.xp,
+      genre: p.category,
+      fanCount: p.fanCount,
+      profileImageUrl: p.profileImageUrl,
+    }));
+}
+
+/**
+ * computeRanks — Rule 4 (XP-driven rankings, never manual).
+ * Returns a new array sorted by XP descending with rank field set to position.
+ * Call this instead of reading .rank directly when you need accurate live ranking.
+ */
+export function computeRanks(): PerformerIdentity[] {
+  return [...PERFORMER_REGISTRY]
+    .sort((a, b) => b.xp - a.xp)
+    .map((p, i) => ({ ...p, rank: i + 1 }));
+}
+
+/**
+ * getCrownRotationStatus — Rule 5 (Crown rotation after 2 months).
+ * Returns whether the current crown holder has exceeded their 2-month window.
+ */
+export function getCrownRotationStatus(): { holder: PerformerIdentity; daysHeld: number; rotationDue: boolean } | null {
+  const crown = getCrownHolder();
+  if (!crown.crownSince) return null;
+  const held = Math.floor((Date.now() - new Date(crown.crownSince).getTime()) / (1000 * 60 * 60 * 24));
+  return { holder: crown, daysHeld: held, rotationDue: held >= 60 };
+}
+
+// Tier → accent color (used for promotion panel badges)
+export function getTierColor(tier: PerformerTier): string {
+  const map: Record<PerformerTier, string> = {
+    Diamond: '#00E5FF', Platinum: '#E5E4E2', Gold: '#FFD700',
+    Silver: '#C0C0C0', RUBY: '#FF2DAA', PRO: '#AA2DFF', FREE: '#00FF88',
+  };
+  return map[tier] ?? '#00FF88';
 }

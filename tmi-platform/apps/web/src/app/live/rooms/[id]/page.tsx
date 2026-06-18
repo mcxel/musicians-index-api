@@ -19,6 +19,8 @@ import { recordProfileLoopAction } from "@/lib/profile/ProfileSessionStore";
 import { startPerformerSession, recordFanEntry } from "@/lib/performer/PerformerAnalyticsEngine";
 import RoomWarpTransition from "@/components/live/RoomWarpTransition";
 import BotRoomActivator from "@/components/bots/BotRoomActivator";
+import { getAdSlotForZone } from "@/lib/commerce/SponsorRegistry";
+import DiscoveryRail from "@/components/discovery/DiscoveryRail";
 
 // Referrers that grant direct room entry (passed via ?from= query param)
 const LOBBY_AUTHORIZED_ORIGINS = new Set([
@@ -107,6 +109,9 @@ export default async function LiveRoomPage({ params, searchParams }: LiveRoomPag
     registerPresence({ sessionId: sid, userId: 'fan-user', roomId: id, role: 'fan', joinedAtMs: Date.now() });
   }
 
+  // Rule 12: No Empty Inventory
+  const roomAd = getAdSlotForZone(`live-room-${id}`);
+
   return (
     <main style={{ minHeight: "100vh", background: "#050510", color: "#fff", padding: "34px 18px" }}>
       <RoomWarpTransition roomId={id} hostName={`Room ${id}`} />
@@ -136,6 +141,34 @@ export default async function LiveRoomPage({ params, searchParams }: LiveRoomPag
           </div>
           <RouteRecoveryCard route="/live/rooms/[id]" />
           <SlugFallbackPanel entity="event" slug={id} />
+        </div>
+
+        {/* Rule 12: No Empty Inventory — platform promo between room and discovery */}
+        {roomAd.type === 'platform' && roomAd.platformPromo && (
+          <div style={{ margin: "20px 0", background: `${roomAd.platformPromo.accentColor}0a`, border: `1px solid ${roomAd.platformPromo.accentColor}33`, borderRadius: 10, padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 900, color: roomAd.platformPromo.accentColor }}>{roomAd.platformPromo.headline}</div>
+              <div style={{ fontSize: 9, color: "rgba(255,255,255,0.45)", marginTop: 2 }}>{roomAd.platformPromo.body}</div>
+            </div>
+            <a href={roomAd.platformPromo.ctaHref} style={{ padding: "7px 16px", background: roomAd.platformPromo.accentColor, borderRadius: 7, fontSize: 9, fontWeight: 900, color: "#050310", textDecoration: "none", flexShrink: 0 }}>
+              {roomAd.platformPromo.ctaLabel}
+            </a>
+          </div>
+        )}
+        {roomAd.type === 'advertise-cta' && (
+          <div style={{ margin: "16px 0", textAlign: "center" }}>
+            <a href="/sponsors/advertise" style={{ fontSize: 9, color: "rgba(255,255,255,0.25)", textDecoration: "none", letterSpacing: "0.08em", fontWeight: 700 }}>
+              ADVERTISE ON TMI · FROM $25
+            </a>
+          </div>
+        )}
+
+        {/* Rule 6: Discovery Rails — keep fans in the content graph after the room */}
+        <div style={{ marginTop: 32, paddingBottom: 60 }}>
+          <DiscoveryRail type="liveRooms" exclude={id} accentColor="#E63000" label="OTHER LIVE ROOMS" />
+          <DiscoveryRail type="performers" accentColor="#00E5FF" label="FEATURED PERFORMERS" />
+          <DiscoveryRail type="games" accentColor="#AA2DFF" label="BATTLES & GAMES" />
+          <DiscoveryRail type="sponsors" accentColor="#FFD700" label="PLATFORM PARTNERS" />
         </div>
       </div>
     </main>

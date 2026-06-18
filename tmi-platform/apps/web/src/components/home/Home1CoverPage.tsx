@@ -94,9 +94,11 @@ const GENRE_DATA = GENRE_KEYS.reduce((acc, key) => {
   return acc;
 }, {} as Record<string, { color: string; bg: string; emoji: string; performers: Performer[] }>);
 
-// Positions for 10 orbit cards (angle in degrees, radius 44% of container)
-function getOrbitPos(i: number, total: number, radius: number) {
-  const angle = (i / total) * 360 - 90; // start from top
+// Positions for 10 orbit cards (angle in degrees, radius 44% of container).
+// rotationDeg (optional) slowly drifts every card's angle over time so the
+// wheel visibly orbits instead of sitting in fixed positions forever.
+function getOrbitPos(i: number, total: number, radius: number, rotationDeg = 0) {
+  const angle = (i / total) * 360 - 90 + rotationDeg; // start from top
   const rad = (angle * Math.PI) / 180;
   return {
     x: 50 + radius * Math.cos(rad),
@@ -430,11 +432,7 @@ export default function Home1CoverPage() {
       {/* ── Voting LIVE banner ── */}
       <div
         style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          zIndex: 100,
+          position: 'relative',
           background: `linear-gradient(90deg, #1a0050 0%, ${accentColor}33 50%, #1a0050 100%)`,
           borderBottom: `2px solid ${accentColor}`,
           display: 'flex',
@@ -476,7 +474,7 @@ export default function Home1CoverPage() {
       {/* ── Main content ── */}
       <div
         style={{
-          paddingTop: 28,
+          paddingTop: 8,
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
@@ -505,7 +503,7 @@ export default function Home1CoverPage() {
         </div>
 
         {/* ── Masthead ── */}
-        <div style={{ textAlign: 'center', marginTop: 10, marginBottom: 16, zIndex: 10, position: 'relative', maxHeight: '250px' }}>
+        <div style={{ textAlign: 'center', marginTop: 0, marginBottom: 8, zIndex: 10, position: 'relative', maxHeight: '150px' }}>
           {/* Floating star decorations */}
           <div style={{ position: 'absolute', top: 0, left: 0, right: 0, pointerEvents: 'none', zIndex: 0 }}>
             {[
@@ -576,10 +574,12 @@ export default function Home1CoverPage() {
           </div>
           <div
             style={{
-              fontSize: 'clamp(20px, 4.2vw, 32px)',
+              fontSize: 'clamp(18px, 3.5vw, 26px)',
               fontFamily: "'Bebas Neue', 'Impact', sans-serif",
               background: `linear-gradient(135deg, #fff 0%, ${accentColor} 100%)`,
+              backgroundClip: 'text',
               WebkitBackgroundClip: 'text',
+              color: 'transparent',
               WebkitTextFillColor: 'transparent',
               letterSpacing: '0.04em',
               lineHeight: 1,
@@ -609,7 +609,7 @@ export default function Home1CoverPage() {
           </div>
 
           {/* ── Status badges row: VOTING LIVE | VOTES | CROWN UPDATING ── */}
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginTop: 5, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'rgba(255,45,170,0.18)', border: '1px solid rgba(255,45,170,0.6)', borderRadius: 4, padding: '3px 10px', animation: 'h1BadgePulse 2s ease-in-out infinite' }}>
               <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#FF2DAA', display: 'inline-block', animation: 'h1Pulse 1s infinite' }} />
               <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.1em', color: '#FF2DAA', fontFamily: "'Inter',sans-serif" }}>VOTING LIVE</span>
@@ -621,7 +621,7 @@ export default function Home1CoverPage() {
           </div>
 
           {/* ── Challenge banner slider ── */}
-          <div style={{ background: 'rgba(123,0,255,0.18)', border: '1px solid rgba(123,0,255,0.4)', borderRadius: 6, padding: '5px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 5, maxWidth: 600, width: '100%' }}>
+          <div style={{ background: 'rgba(123,0,255,0.18)', border: '1px solid rgba(123,0,255,0.4)', borderRadius: 6, padding: '4px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4, maxWidth: 500, width: '100%', marginInline: 'auto' }}>
             <button style={{ background: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 4, padding: '3px 8px', fontSize: 9, cursor: 'pointer' }}>◀</button>
             <div style={{ textAlign: 'center', flex: 1 }}>
               <div style={{ fontSize: 11, fontWeight: 800, color: '#fff', letterSpacing: '0.08em', fontFamily: "'Inter',sans-serif" }}>CHALLENGE YOUR SONG HERE</div>
@@ -634,7 +634,7 @@ export default function Home1CoverPage() {
           </div>
 
           {/* ── Action buttons: 7 clickable buttons ── */}
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 5, marginTop: 5, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 5, marginTop: 4, flexWrap: 'wrap' }}>
             {[
               { label: 'JOIN FREE',       href: '/signup',             bg: 'rgba(0,255,127,0.14)', color: '#00FF7F', border: 'rgba(0,255,127,0.4)' },
               { label: 'LOGIN',           href: '/login',              bg: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.7)', border: 'rgba(255,255,255,0.2)' },
@@ -935,7 +935,7 @@ export default function Home1CoverPage() {
 
           {/* 10 orbit cards — live → seat-join flow; not live → performer profile */}
           {performers.map((p, i) => {
-            const pos = getOrbitPos(i, 10, 44);
+            const pos = getOrbitPos(i, 10, 44, orbitDeg * 0.08);
             const cardSize = i === 0 ? 80 : 68;
             return (
               <Link

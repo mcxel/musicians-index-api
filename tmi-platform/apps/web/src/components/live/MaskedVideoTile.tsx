@@ -41,6 +41,7 @@ export const MaskedVideoTile: React.FC<MaskedVideoTileProps> = ({
   viewerCount,
   genre,
   avatarEmoji,
+  avatarUrl,
   accentColor = '#00FFFF',
   size = 200,
   shape = 'octagon',
@@ -93,7 +94,11 @@ export const MaskedVideoTile: React.FC<MaskedVideoTileProps> = ({
                </>
              ) : (
                <>
-                 {avatarEmoji && <span className="text-5xl drop-shadow-[0_0_15px_rgba(255,255,255,0.4)] mb-2 animate-pulse">{avatarEmoji}</span>}
+                 {avatarUrl ? (
+                   <img src={avatarUrl} alt={displayName} className="w-20 h-20 rounded-full object-cover mb-3 border-2 animate-pulse shadow-[0_0_20px_rgba(255,255,255,0.2)]" style={{ borderColor: accentColor }} />
+                 ) : (
+                   avatarEmoji && <span className="text-5xl drop-shadow-[0_0_15px_rgba(255,255,255,0.4)] mb-2 animate-pulse">{avatarEmoji}</span>
+                 )}
                  <span className="font-bold tracking-widest text-[9px] uppercase" style={{ color: accentColor }}>Waiting for Feed</span>
                </>
              )}

@@ -187,7 +187,7 @@ export default function VenueProfilePage({ params }: Props) {
       />
 
       <div style={{ padding: "0 24px 16px" }}>
-        <MemoryWall accentColor={GREEN} title={`${venue.displayName} — Memory Wall`} />
+        <MemoryWall accentColor={GREEN} title={`${venue.displayName} — Memory Wall`} entityId={params.slug} entityType="venue" />
       </div>
     </ProfileShell>
   );

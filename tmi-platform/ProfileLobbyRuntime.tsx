@@ -45,6 +45,12 @@ export default function ProfileLobbyRuntime({
 
   return (
     <main className="min-h-screen bg-[#050510] text-white pb-20 font-sans">
+      {/* Universal Navigation Controls (Rule 15 / Platform Standard) */}
+      <div className="absolute top-4 left-4 z-50 flex items-center gap-3">
+        <button onClick={() => window.history.back()} className="bg-black/60 hover:bg-black/90 text-white/70 hover:text-white px-3 py-1.5 rounded border border-white/10 text-[10px] font-black tracking-widest backdrop-blur-md transition-all">◀ BACK</button>
+        <Link href="/home/1" className="bg-black/60 hover:bg-black/90 text-white/70 hover:text-white px-3 py-1.5 rounded border border-white/10 text-[10px] font-black tracking-widest backdrop-blur-md transition-all">⌂ HOME</Link>
+      </div>
+
       {/* Layer 1: Pinned Video/Stage */}
       <StickyStage isLive={isLive} activePerformer={displayName} accentColor={accentColor}>
         {videoSrc && (

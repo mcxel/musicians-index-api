@@ -1,9 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PersonaSwitcher } from "@/components/hud/PersonaSwitcher";
 import PerformerHubDashboard from "@/components/performer/PerformerHubDashboard";
-import LiveMediaWall from "@/components/media/LiveMediaWall";
 import Link from "next/link";
 import { HubBackNav } from "@/components/nav/HubBackNav";
 import RoomContainer from "@/components/room/RoomContainer";
@@ -14,6 +13,10 @@ import UnifiedAdSlot from "@/components/ads/UnifiedAdSlot";
 import TipBar from "@/components/hud/TipBar";
 import TokenBalance from "@/components/hud/TokenBalance";
 import MixtapeShareCard from "@/components/mixtape/MixtapeShareCard";
+import MonitorSatelliteSystem from "@/components/canisters/MonitorSatelliteSystem";
+import CollapsibleCanister from "@/components/canisters/CollapsibleCanister";
+import MemoryWall from "@/components/media/MemoryWall";
+import PlaylistArtifact from "@/components/artifacts/PlaylistArtifact";
 
 const NAV_LINKS = [
   { href: "/hub/performer",     label: "Control Room" },
@@ -36,7 +39,43 @@ const PERFORMER_ACTIONS = [
   { id: "bookings",   icon: "📅", label: "Bookings" },
 ];
 
+interface BookingRow {
+  bookingId: string;
+  venueSlug: string;
+  eventDate: string;
+  eventType: string;
+  status: string;
+}
+
+interface MessageThreadRow {
+  threadId: string;
+  participantName: string;
+  lastMessageBody: string | null;
+}
+
 export default function PerformerHubPage() {
+  const [bookings, setBookings] = useState<BookingRow[] | null>(null);
+  const [threads, setThreads]   = useState<MessageThreadRow[] | null>(null);
+
+  useEffect(() => {
+    fetch("/api/booking/create")
+      .then((r) => r.json())
+      .then((d: { requests?: BookingRow[] }) => setBookings(d.requests ?? []))
+      .catch(() => setBookings([]));
+
+    fetch("/api/messages", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : { threads: [] }))
+      .then((d: { threads?: { threadId: string; participants: { displayName: string }[]; lastMessage: { body: string } | null }[] }) => {
+        const rows = (d.threads ?? []).map((t) => ({
+          threadId: t.threadId,
+          participantName: t.participants[0]?.displayName ?? "Fan",
+          lastMessageBody: t.lastMessage?.body ?? null,
+        }));
+        setThreads(rows);
+      })
+      .catch(() => setThreads([]));
+  }, []);
+
   return (
     <RoomContainer roomId="performer-hub" title="Performer Hub" accentColor="#AA2DFF" bpm={120}>
       <div style={{ fontFamily: "'Inter', sans-serif", background: "#050510", minHeight: "100vh", position: "relative" }}>
@@ -87,9 +126,18 @@ export default function PerformerHubPage() {
               {/* Live monitor */}
               <div style={{ background: "rgba(170,45,255,0.06)", border: "1px solid rgba(170,45,255,0.2)", borderRadius: 16, padding: "20px" }}>
                 <div style={{ fontSize: 9, letterSpacing: "0.2em", color: "#AA2DFF", fontWeight: 800, marginBottom: 12 }}>🎥 LIVE MONITOR</div>
-                <LiveMediaWall roomId="performer-hub" title="" mode="wall" nodeCount={4} accentColor="#AA2DFF" enterHref="/performer/studio" compact />
-                <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-                  <Link href="/performer/studio" style={{ flex: 1, padding: "10px", background: "linear-gradient(135deg, #AA2DFF, #FF2DAA)", color: "#fff", borderRadius: 8, fontWeight: 900, fontSize: 10, textDecoration: "none", textAlign: "center", letterSpacing: "0.1em" }}>🔴 GO LIVE</Link>
+                <MonitorSatelliteSystem
+                  mainLabel="Main Stage Camera"
+                  isLive={false}
+                  staticImageUrl="/images/tmi-placeholder.jpg"
+                  accentColor="#AA2DFF"
+                  adZone="hub-performer"
+                  showAudienceMonitor
+                  audienceCount={0}
+                />
+
+                <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
+                  <Link href="/performer/studio" style={{ flex: 2, padding: "10px", background: "linear-gradient(135deg, #AA2DFF, #FF2DAA)", color: "#fff", borderRadius: 8, fontWeight: 900, fontSize: 10, textDecoration: "none", textAlign: "center", letterSpacing: "0.1em" }}>🔴 GO LIVE TO ARENA</Link>
                   <Link href="/live/rooms" style={{ flex: 1, padding: "10px", background: "rgba(170,45,255,0.12)", border: "1px solid rgba(170,45,255,0.3)", color: "#AA2DFF", borderRadius: 8, fontWeight: 800, fontSize: 10, textDecoration: "none", textAlign: "center" }}>📡 ROOMS</Link>
                 </div>
               </div>
@@ -124,17 +172,19 @@ export default function PerformerHubPage() {
               {/* Booking desk */}
               <div style={{ background: "rgba(255,215,0,0.04)", border: "1px solid rgba(255,215,0,0.15)", borderRadius: 16, padding: "20px" }}>
                 <div style={{ fontSize: 9, letterSpacing: "0.2em", color: "#FFD700", fontWeight: 800, marginBottom: 12 }}>📅 BOOKING DESK</div>
-                {[
-                  { venue: "Main Stage",     date: "Jun 8",  time: "8:00 PM", status: "CONFIRMED", color: "#00FF88" },
-                  { venue: "Cypher Theater", date: "Jun 12", time: "9:00 PM", status: "PENDING",   color: "#FFD700" },
-                  { venue: "Underground",    date: "Jun 15", time: "10 PM",   status: "OPEN",      color: "#00FFFF" },
-                ].map(b => (
-                  <div key={b.venue} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                {bookings === null && (
+                  <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", padding: "8px 0" }}>Loading…</div>
+                )}
+                {bookings !== null && bookings.length === 0 && (
+                  <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", padding: "8px 0" }}>No booking requests yet.</div>
+                )}
+                {(bookings ?? []).map(b => (
+                  <div key={b.bookingId} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
                     <div>
-                      <div style={{ fontSize: 11, fontWeight: 700 }}>{b.venue}</div>
-                      <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)" }}>{b.date} · {b.time}</div>
+                      <div style={{ fontSize: 11, fontWeight: 700 }}>{b.venueSlug}</div>
+                      <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)" }}>{b.eventDate} · {b.eventType}</div>
                     </div>
-                    <span style={{ fontSize: 7, fontWeight: 900, color: b.color, background: `${b.color}15`, border: `1px solid ${b.color}30`, padding: "2px 8px", borderRadius: 10, letterSpacing: "0.1em" }}>{b.status}</span>
+                    <span style={{ fontSize: 7, fontWeight: 900, color: "#FFD700", background: "rgba(255,215,0,0.15)", border: "1px solid rgba(255,215,0,0.3)", padding: "2px 8px", borderRadius: 10, letterSpacing: "0.1em" }}>{b.status.toUpperCase()}</span>
                   </div>
                 ))}
                 <Link href="/performer/dashboard" style={{ display: "block", marginTop: 10, fontSize: 10, color: "#FFD700", textDecoration: "none", fontWeight: 700 }}>View all bookings →</Link>
@@ -143,21 +193,33 @@ export default function PerformerHubPage() {
               {/* Fan messages */}
               <div style={{ background: "rgba(255,45,170,0.04)", border: "1px solid rgba(255,45,170,0.15)", borderRadius: 16, padding: "20px" }}>
                 <div style={{ fontSize: 9, letterSpacing: "0.2em", color: "#FF2DAA", fontWeight: 800, marginBottom: 12 }}>💬 FAN MESSAGES</div>
-                {[
-                  { fan: "SkyFan94",   msg: "Can't wait for tonight!! 🔥", time: "2m" },
-                  { fan: "MusicLvr22", msg: "Please play Big Moves first!", time: "5m" },
-                  { fan: "BeatHead33", msg: "Ready to tip heavy tonight 💰", time: "8m" },
-                ].map(m => (
-                  <div key={m.fan} style={{ display: "flex", gap: 10, padding: "8px 0", borderBottom: "1px solid rgba(255,255,255,0.05)", alignItems: "flex-start" }}>
+                {threads === null && (
+                  <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", padding: "8px 0" }}>Loading…</div>
+                )}
+                {threads !== null && threads.length === 0 && (
+                  <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", padding: "8px 0" }}>No messages yet.</div>
+                )}
+                {(threads ?? []).map(m => (
+                  <div key={m.threadId} style={{ display: "flex", gap: 10, padding: "8px 0", borderBottom: "1px solid rgba(255,255,255,0.05)", alignItems: "flex-start" }}>
                     <div style={{ width: 28, height: 28, borderRadius: "50%", background: "rgba(255,45,170,0.2)", border: "1px solid rgba(255,45,170,0.4)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, flexShrink: 0 }}>🎧</div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 10, fontWeight: 800, color: "#FF2DAA" }}>{m.fan} <span style={{ color: "rgba(255,255,255,0.3)", fontWeight: 400 }}>{m.time}</span></div>
-                      <div style={{ fontSize: 11, color: "rgba(255,255,255,0.65)", marginTop: 2 }}>{m.msg}</div>
+                      <div style={{ fontSize: 10, fontWeight: 800, color: "#FF2DAA" }}>{m.participantName}</div>
+                      <div style={{ fontSize: 11, color: "rgba(255,255,255,0.65)", marginTop: 2 }}>{m.lastMessageBody ?? "—"}</div>
                     </div>
                   </div>
                 ))}
                 <Link href="/messages" style={{ display: "block", marginTop: 10, fontSize: 10, color: "#FF2DAA", textDecoration: "none", fontWeight: 700 }}>View all messages →</Link>
               </div>
+            </div>
+
+            {/* Pop-out canisters — Playlist + Memory Wall (Constitution Rule 15) */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <CollapsibleCanister icon="🎵" label="Playlist" accentColor="#FF2DAA">
+                <PlaylistArtifact artifactId="current-user-playlist" skin="submarine" title="Performer Playlist" />
+              </CollapsibleCanister>
+              <CollapsibleCanister icon="🖼️" label="Memory Wall" accentColor="#FFD700">
+                <MemoryWall accentColor="#FFD700" title="Memory Wall" entityId="current-user" entityType="performer" />
+              </CollapsibleCanister>
             </div>
 
             {/* Merch Wall + Sponsor Wall */}

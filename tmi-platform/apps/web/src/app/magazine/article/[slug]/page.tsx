@@ -1,7 +1,10 @@
 import { redirect } from "next/navigation";
 import { getArticleBySlug, MAGAZINE_ISSUE_1 } from "@/lib/magazine/magazineIssueData";
 import { getEditorialArticleBySlug } from "@/lib/editorial/NewsArticleModel";
+import { getPerformerBySlug } from "@/lib/performers/PerformerRegistry";
+import { getAdSlotForZone } from "@/lib/commerce/SponsorRegistry";
 import MagazineSpreadRenderer from "@/components/editorial/MagazineSpreadRenderer";
+import DiscoveryRail from "@/components/discovery/DiscoveryRail";
 import XPTrigger from "@/components/common/XPTrigger";
 import AdRailSlot from "@/components/ads/AdRailSlot";
 import UnifiedAdSlot from "@/components/ads/UnifiedAdSlot";
@@ -133,6 +136,75 @@ export default async function ArticlePage({ params }: Props) {
         {/* ── AD — end of article ── */}
         <UnifiedAdSlot venue="magazine" slotKey="magazineArticleEnd" format="rectangle" label="ADVERTISEMENT" style={{ marginTop: 16, minHeight: 250 }} accentColor="#FF2DAA" />
       </div>
+
+      {/* ── Rule 13: Article Hub — every article is a destination, not a dead end ── */}
+      {(() => {
+        const performer = article.performerSlug ? getPerformerBySlug(article.performerSlug) : null;
+        const ac = article.heroColor;
+        // Rule 12: ad slot for article bottom
+        const bottomAd = getAdSlotForZone(`magazine-article-${article.slug}-bottom`);
+        return (
+          <div style={{ maxWidth: 900, margin: "0 auto", padding: "0 24px" }}>
+            {/* Performer commerce rail — only if article links to a performer */}
+            {performer && (
+              <div style={{ margin: "24px 0", background: `${ac}08`, border: `1px solid ${ac}22`, borderRadius: 12, padding: "16px 20px" }}>
+                <div style={{ fontSize: 9, fontWeight: 900, color: ac, letterSpacing: "0.2em", marginBottom: 12 }}>
+                  SUPPORT {performer.name.toUpperCase()}
+                </div>
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
+                  <Link href={`/checkout/tip/${performer.slug}`} style={{ padding: "9px 18px", background: ac, borderRadius: 8, fontSize: 10, fontWeight: 900, color: "#050310", textDecoration: "none", letterSpacing: "0.06em" }}>
+                    💸 SEND TIP
+                  </Link>
+                  <Link href={`/fan-club/${performer.slug}`} style={{ padding: "9px 18px", background: "rgba(255,45,170,0.1)", border: "1.5px solid rgba(255,45,170,0.45)", borderRadius: 8, fontSize: 10, fontWeight: 900, color: "#FF2DAA", textDecoration: "none", letterSpacing: "0.06em" }}>
+                    ⭐ JOIN FAN CLUB
+                  </Link>
+                  <Link href={`/merch/${performer.slug}`} style={{ padding: "9px 18px", background: "rgba(255,215,0,0.08)", border: "1.5px solid rgba(255,215,0,0.3)", borderRadius: 8, fontSize: 10, fontWeight: 900, color: "#FFD700", textDecoration: "none", letterSpacing: "0.06em" }}>
+                    🛍️ BUY MERCH
+                  </Link>
+                  <Link href={performer.liveRoomRoute} style={{ padding: "9px 18px", background: performer.isLive ? "rgba(230,48,0,0.15)" : "rgba(255,255,255,0.04)", border: `1.5px solid ${performer.isLive ? "rgba(230,48,0,0.6)" : "rgba(255,255,255,0.15)"}`, borderRadius: 8, fontSize: 10, fontWeight: 900, color: performer.isLive ? "#E63000" : "rgba(255,255,255,0.5)", textDecoration: "none", letterSpacing: "0.06em" }}>
+                    {performer.isLive ? "🔴 JOIN LIVE" : "🎥 LIVE ROOM"}
+                  </Link>
+                  <Link href={performer.profileRoute} style={{ padding: "9px 18px", background: "transparent", border: `1.5px solid ${ac}44`, borderRadius: 8, fontSize: 10, fontWeight: 900, color: ac, textDecoration: "none", letterSpacing: "0.06em" }}>
+                    VIEW PROFILE →
+                  </Link>
+                </div>
+                {performer.isLive && (
+                  <div style={{ fontSize: 9, color: "#E63000", fontWeight: 700 }}>
+                    🔴 {performer.name} is LIVE RIGHT NOW with {performer.audienceCount.toLocaleString()} watching
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Rule 12: Bottom ad slot — Paid → Platform Promo → AdSense → Advertise CTA */}
+            {bottomAd.type === 'platform' && bottomAd.platformPromo && (
+              <div style={{ margin: "16px 0", background: `${bottomAd.platformPromo.accentColor}0a`, border: `1px solid ${bottomAd.platformPromo.accentColor}33`, borderRadius: 10, padding: "14px 18px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 900, color: bottomAd.platformPromo.accentColor, marginBottom: 3 }}>{bottomAd.platformPromo.headline}</div>
+                  <div style={{ fontSize: 9, color: "rgba(255,255,255,0.5)" }}>{bottomAd.platformPromo.body}</div>
+                </div>
+                <Link href={bottomAd.platformPromo.ctaHref} style={{ padding: "7px 16px", background: bottomAd.platformPromo.accentColor, borderRadius: 7, fontSize: 9, fontWeight: 900, color: "#050310", textDecoration: "none", letterSpacing: "0.06em", flexShrink: 0 }}>
+                  {bottomAd.platformPromo.ctaLabel}
+                </Link>
+              </div>
+            )}
+            {bottomAd.type === 'advertise-cta' && (
+              <div style={{ margin: "16px 0", textAlign: "center" }}>
+                <Link href="/sponsors/advertise" style={{ fontSize: 9, color: "rgba(255,255,255,0.25)", textDecoration: "none", letterSpacing: "0.08em", fontWeight: 700 }}>
+                  ADVERTISE ON TMI · FROM $25
+                </Link>
+              </div>
+            )}
+
+            {/* Rule 6: Discovery Rails — article hub content graph */}
+            <DiscoveryRail type="articles" tags={article.tags} exclude={article.slug} accentColor={ac} label="MORE LIKE THIS" />
+            {performer && <DiscoveryRail type="performers" tags={[performer.category]} exclude={performer.slug} accentColor={ac} label="MORE ARTISTS" />}
+            {!performer && <DiscoveryRail type="performers" accentColor="#00E5FF" label="FEATURED ARTISTS" />}
+            <DiscoveryRail type="liveRooms" accentColor="#E63000" label="LIVE NOW" />
+            <DiscoveryRail type="games" accentColor="#AA2DFF" label="BATTLES & GAMES" />
+          </div>
+        );
+      })()}
 
       {/* Reader continuity footer */}
       <nav style={{

@@ -2,8 +2,8 @@
 /**
  * PersonaSwitcher.tsx
  *
- * Universal persona switching HUD — works for every TMI user.
- * No logout. Session token unchanged. Role cookie updates to match active persona.
+ * Universal workspace switching HUD — one identity, many workspaces, works for every TMI user.
+ * No logout. Session token unchanged. Role cookie updates to match active workspace.
  *
  * Usage:
  *   <PersonaSwitcher userId={userId} currentRole={role} />
@@ -138,7 +138,7 @@ export function PersonaSwitcher({ userId, currentRole, compact = false, showAdd 
 
         {open && (
           <div style={dropdownStyle()}>
-            <div style={dropdownHeaderStyle}>Persona</div>
+            <div style={dropdownHeaderStyle}>Workspace</div>
 
             {quickSwitchTargets.length > 0 && (
               <div style={{ display: 'flex', gap: 6, padding: '0 8px 8px', flexWrap: 'wrap' }}>
@@ -189,7 +189,7 @@ export function PersonaSwitcher({ userId, currentRole, compact = false, showAdd 
                   onClick={() => { setAddOpen(!addOpen); }}
                   style={{ ...menuItemStyle(false, 'rgba(255,255,255,0.3)'), fontSize: 11 }}
                 >
-                  <span>+</span> Add Persona
+                  <span>+</span> Add Workspace
                 </button>
                 {addOpen && addable.map((pt) => {
                   const meta = PERSONA_META[pt];
@@ -236,7 +236,7 @@ export function PersonaSwitcher({ userId, currentRole, compact = false, showAdd 
       >
         <span style={{ fontSize: 22 }}>{activeMeta.icon}</span>
         <div style={{ flex: 1, textAlign: 'left' }}>
-          <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 2 }}>Active Persona</div>
+          <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 2 }}>Active Workspace</div>
           <div style={{ fontSize: 14, fontWeight: 700, color: activeMeta.color }}>{activeMeta.label}</div>
           <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)' }}>{activeMeta.description}</div>
         </div>
@@ -245,7 +245,7 @@ export function PersonaSwitcher({ userId, currentRole, compact = false, showAdd 
 
       {open && (
         <div style={{ marginTop: 8, background: '#0d1117', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, padding: 10, boxShadow: '0 12px 48px rgba(0,0,0,0.7)' }}>
-          <div style={dropdownHeaderStyle}>Switch Persona</div>
+          <div style={dropdownHeaderStyle}>Switch Workspace</div>
 
           {userPersonas.map((pt) => {
             const meta     = PERSONA_META[pt];
@@ -270,7 +270,7 @@ export function PersonaSwitcher({ userId, currentRole, compact = false, showAdd 
                 onClick={() => setAddOpen(!addOpen)}
                 style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '9px 14px', background: 'transparent', border: '1px dashed rgba(255,255,255,0.15)', borderRadius: 9, cursor: 'pointer', color: 'rgba(255,255,255,0.4)', fontSize: 12, fontWeight: 600 }}
               >
-                <span style={{ fontSize: 16 }}>+</span> Add New Persona
+                <span style={{ fontSize: 16 }}>+</span> Add New Workspace
                 <span style={{ marginLeft: 'auto', opacity: 0.5, fontSize: 9 }}>{addOpen ? '▲' : '▼'}</span>
               </button>
               {addOpen && (

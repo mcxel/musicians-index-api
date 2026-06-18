@@ -157,12 +157,14 @@ export function middleware(req: NextRequest) {
   const LEGACY_REDIRECTS: Record<string, string> = {
     '/dashboard/fan': '/hub/fan',
     '/dashboard/performer': '/hub/performer',
+    '/dashboard/artist': '/hub/performer',
     '/dashboard/sponsor': '/hub/sponsor',
     '/dashboard/advertiser': '/hub/advertiser',
     '/dashboard/venue': '/hub/venue',
     '/dashboard/writer': '/hub/writer',
     '/dashboard/promoter': '/hub/promoter',
     '/fan/theater': '/hub/fan',
+    '/fan/dashboard': '/hub/fan',
   };
   if (LEGACY_REDIRECTS[pathname]) {
     return NextResponse.redirect(new URL(LEGACY_REDIRECTS[pathname], req.url), 301);

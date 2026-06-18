@@ -29,7 +29,7 @@ const TYPE_ICONS: Record<CalendarEvent["type"], string> = {
 
 export default function Home3EventCalendarCard() {
   return (
-    <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.02)" }}>
+    <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid rgba(0,255,255,0.15)", background: "linear-gradient(135deg, rgba(0,255,255,0.06), rgba(5,5,16,0.95))" }}>
       {/* Header */}
       <div style={{ padding: "8px 12px 6px", borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
         <div style={{ fontSize: 6, fontWeight: 900, letterSpacing: "0.24em", color: "rgba(255,255,255,0.35)", textTransform: "uppercase" }}>

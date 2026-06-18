@@ -245,7 +245,7 @@ export default function ArtistProfilePage({ params }: Props) {
 
       {/* Memory Wall — photos, videos, audio, moments */}
       <div style={{ padding: "0 24px 16px" }}>
-        <MemoryWall accentColor={CYAN} title={`${artist.displayName} — Memory Wall`} />
+        <MemoryWall accentColor={CYAN} title={`${artist.displayName} — Memory Wall`} entityId={params.slug} entityType="artist" />
       </div>
 
       {/* Ad slot — free visitors see this */}

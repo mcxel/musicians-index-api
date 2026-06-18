@@ -41,7 +41,7 @@ export default function MediaDashboardPage() {
           <div style={{ fontSize: 14, fontWeight: 900 }}>🗂️ Media Library · {totalSize} used</div>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
-          <button onClick={() => showToast("Upload modal")} style={{ fontSize: 10, fontWeight: 800, color: "#000", background: ACCENT, border: "none", padding: "6px 16px", borderRadius: 6, cursor: "pointer" }}>+ UPLOAD</button>
+          <Link href="/beats/submit" style={{ fontSize: 10, fontWeight: 800, color: "#000", background: ACCENT, padding: "6px 16px", borderRadius: 6, textDecoration: "none", display: "inline-block" }}>+ UPLOAD</Link>
           <Link href="/dashboard/admin" style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", border: "1px solid rgba(255,255,255,0.1)", padding: "6px 12px", borderRadius: 6, textDecoration: "none", fontWeight: 700 }}>← Admin</Link>
         </div>
       </div>
@@ -86,7 +86,7 @@ export default function MediaDashboardPage() {
                   <div style={{ fontSize: 11, fontWeight: 700 }}>{m.used.toLocaleString()}</div>
                   <div style={{ fontSize: 9, color: "rgba(255,255,255,0.3)" }}>uses</div>
                 </div>
-                <button onClick={() => showToast(`Copied: ${m.url}`)} style={{ padding: "5px 10px", fontSize: 9, fontWeight: 800, background: "transparent", border: "1px solid rgba(56,189,248,0.25)", color: ACCENT, borderRadius: 6, cursor: "pointer" }}>COPY URL</button>
+                <button onClick={() => { navigator.clipboard.writeText(m.url).catch(() => {}); showToast(`Copied: ${m.url}`); }} style={{ padding: "5px 10px", fontSize: 9, fontWeight: 800, background: "transparent", border: "1px solid rgba(56,189,248,0.25)", color: ACCENT, borderRadius: 6, cursor: "pointer" }}>COPY URL</button>
                 <button onClick={() => showToast(`Deleted: ${m.name}`)} style={{ padding: "5px 10px", fontSize: 9, fontWeight: 800, background: "transparent", border: "1px solid rgba(239,68,68,0.2)", color: "#EF4444", borderRadius: 6, cursor: "pointer" }}>DELETE</button>
               </div>
             );

@@ -1,11 +1,6 @@
-import { ImageSlotWrapper } from '@/components/visual-enforcement';
-// ArticleCard — Slice 0 placeholder
-// Magazine article card component, dark theme, PDF-style layout
-// Non-obstructive sponsor/ad slot at bottom edge only
-// Wired to real article data in Slice 4 (Editorial)
-
 import type { CSSProperties } from "react";
 import Link from "next/link";
+import MotionPosterPlayer from "@/components/media/MotionPosterPlayer";
 
 export interface ArticleCardProps {
   slug: string;
@@ -15,6 +10,9 @@ export interface ArticleCardProps {
   writerSlug?: string;
   category?: string;
   imageUrl?: string;
+  // Rule 2: Motion Poster chain — if article links a performer, their intro fires on hover
+  introVideoUrl?: string;
+  motionPosterUrl?: string;
   publishedAt?: string;
   rank?: number;
   sponsorLabel?: string;
@@ -30,6 +28,8 @@ export default function ArticleCard({
   writerSlug,
   category,
   imageUrl,
+  introVideoUrl,
+  motionPosterUrl,
   publishedAt,
   rank,
   sponsorLabel,
@@ -56,7 +56,7 @@ export default function ArticleCard({
       data-article-slug={slug}
       data-article-variant={variant}
     >
-      {/* Image area */}
+      {/* Image area — Rule 2: Motion Cover → Freeze Frame → Static Thumbnail */}
       {imageUrl && !isCompact && (
         <div
           style={{
@@ -68,7 +68,15 @@ export default function ArticleCard({
             flexShrink: 0,
           }}
         >
-          <ImageSlotWrapper imageId="img-qk0vjd" roomId="runtime-surface" priority="normal" className="w-full h-full object-cover" altText="Content image" containerStyle={{ width: '100%', height: '100%' }} />
+          <MotionPosterPlayer
+            introVideoUrl={introVideoUrl}
+            motionPosterUrl={motionPosterUrl}
+            staticImageUrl={imageUrl}
+            alt={title}
+            showLiveOverlay={false}
+            width="100%"
+            height="100%"
+          />
         </div>
       )}
 

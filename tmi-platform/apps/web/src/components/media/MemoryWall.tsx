@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import type { MemoryItem } from "@/lib/profiles/MemoryWallEngine";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -25,10 +26,6 @@ const TAB_CONFIG: { id: MemoryTab; icon: string; label: string; color: string }[
   { id: "sponsors",     icon: "🏷️", label: "Sponsors",     color: "#FF6B35" },
   { id: "orbit",        icon: "🌀", label: "Orbit",        color: "#9B59FF" },
   { id: "booking",      icon: "📍", label: "Booking Map",  color: "#00FF88" },
-];
-
-const SEED_MOMENTS = [
-  "Cypher finals", "First tip received", "100 followers", "Battle win", "Diamond tier", "First collab",
 ];
 
 const SEED_ACHIEVEMENTS = [
@@ -300,48 +297,64 @@ function AudioSection({ accentColor }: { accentColor: string }) {
   );
 }
 
-// ── Moments section ───────────────────────────────────────────────────────────
+// ── Moments section — Memory Wall social-proof feed (real data, Rule 14) ───────
 
-function MomentsSection({ accentColor }: { accentColor: string }) {
-  const [items, setItems] = useState(SEED_MOMENTS);
-  const [input, setInput] = useState("");
+const MOMENT_ICONS: Record<string, string> = {
+  photo: "📸", video: "🎬", screenshot: "🖼️", achievement: "🏆",
+  "ticket-stub": "🎟️", "battle-win": "⚔️", "cypher-moment": "🎤",
+  "meet-and-greet": "🤝", "event-attendance": "🎫", merchandise: "🛍️",
+  nft: "💎", sponsored: "🏷️",
+};
 
-  const add = () => {
-    const t = input.trim();
-    if (!t) return;
-    setItems((p) => [t, ...p]);
-    setInput("");
-  };
+function MomentsSection({ accentColor, entityId, entityType }: { accentColor: string; entityId?: string; entityType?: string }) {
+  const [memories, setMemories] = useState<MemoryItem[] | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!entityId) { setMemories(null); return; }
+    let cancelled = false;
+    setLoading(true);
+    fetch(`/api/memory/wall?entitySlug=${encodeURIComponent(entityId)}&entityType=${encodeURIComponent(entityType ?? "fan")}`)
+      .then((r) => r.json())
+      .then((d: { memories?: MemoryItem[] }) => { if (!cancelled) setMemories(d.memories ?? []); })
+      .catch(() => { if (!cancelled) setMemories([]); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [entityId, entityType]);
+
+  if (!entityId) {
+    return (
+      <div style={{ padding: 20, textAlign: "center", fontSize: 11, color: "rgba(255,255,255,0.35)" }}>
+        Memory Wall needs a profile to load — no entity context provided.
+      </div>
+    );
+  }
+
+  if (loading) {
+    return <div style={{ padding: 20, textAlign: "center", fontSize: 11, color: "rgba(255,255,255,0.35)" }}>Loading memories…</div>;
+  }
+
+  if (!memories || memories.length === 0) {
+    return (
+      <div style={{ padding: 20, textAlign: "center" }}>
+        <div style={{ fontSize: 24, marginBottom: 8 }}>✨</div>
+        <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.5)" }}>No memories captured yet</div>
+        <div style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", marginTop: 4 }}>Battle wins, live moments, and milestones will appear here automatically.</div>
+      </div>
+    );
+  }
 
   return (
-    <div>
-      <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-        <input
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && add()}
-          placeholder="Add a memory moment…"
-          style={{ flex: 1, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,215,0,0.2)", borderRadius: 8, padding: "7px 10px", color: "#fff", fontSize: 11, outline: "none" }}
-        />
-        <button
-          onClick={add}
-          style={{ padding: "7px 14px", borderRadius: 8, fontSize: 10, fontWeight: 800, background: "rgba(255,215,0,0.15)", border: "1px solid rgba(255,215,0,0.3)", color: "#FFD700", cursor: "pointer" }}
-        >+ ADD</button>
-      </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
-        {items.map((m, i) => (
-          <div
-            key={m + i}
-            style={{ padding: "10px", borderRadius: 8, background: "rgba(255,215,0,0.06)", border: "1px solid rgba(255,215,0,0.14)", fontSize: 10, fontWeight: 700, color: "#e2e8f0", display: "flex", alignItems: "center", gap: 6 }}
-          >
-            <span>✨</span>
-            <span style={{ flex: 1 }}>{m}</span>
-            {i >= SEED_MOMENTS.length ? (
-              <button onClick={() => setItems((p) => p.filter((_, j) => j !== i))} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.2)", fontSize: 13, cursor: "pointer" }}>×</button>
-            ) : null}
-          </div>
-        ))}
-      </div>
+    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+      {memories.map((m) => (
+        <div
+          key={m.memoryId}
+          style={{ padding: "10px", borderRadius: 8, background: "rgba(255,215,0,0.06)", border: "1px solid rgba(255,215,0,0.14)", fontSize: 10, fontWeight: 700, color: "#e2e8f0", display: "flex", alignItems: "center", gap: 6 }}
+        >
+          <span>{MOMENT_ICONS[m.contentType] ?? "✨"}</span>
+          <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.title}</span>
+        </div>
+      ))}
     </div>
   );
 }
@@ -553,7 +566,7 @@ interface MemoryWallProps {
   entityType?: string;
 }
 
-export default function MemoryWall({ accentColor = "#00FFFF", title = "Memory Wall" }: MemoryWallProps) {
+export default function MemoryWall({ accentColor = "#00FFFF", title = "Memory Wall", entityId, entityType }: MemoryWallProps) {
   const [activeTab, setActiveTab] = useState<MemoryTab>("photos");
   const activeConfig = TAB_CONFIG.find((t) => t.id === activeTab)!;
 
@@ -625,7 +638,7 @@ export default function MemoryWall({ accentColor = "#00FFFF", title = "Memory Wa
             {activeTab === "photos"       && <PhotoSection accentColor={activeConfig.color} />}
             {activeTab === "videos"       && <VideoSection accentColor={activeConfig.color} />}
             {activeTab === "audio"        && <AudioSection accentColor={activeConfig.color} />}
-            {activeTab === "moments"      && <MomentsSection accentColor={activeConfig.color} />}
+            {activeTab === "moments"      && <MomentsSection accentColor={activeConfig.color} entityId={entityId} entityType={entityType} />}
             {activeTab === "achievements" && <AchievementsSection accentColor={activeConfig.color} />}
             {activeTab === "sponsors"     && <SponsorStampWall accentColor={activeConfig.color} />}
             {activeTab === "orbit"        && <SponsorOrbit accentColor={activeConfig.color} />}

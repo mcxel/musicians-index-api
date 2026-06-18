@@ -115,8 +115,8 @@ export default function OverseerDeckPage() {
         ))}
       </div>
 
-      {/* Main 3-column grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: '190px 1fr 210px', gap: 8, marginBottom: 10 }}>
+      {/* Main 3-column grid — video wall (center) is the dominant element, sidebars are secondary */}
+      <div style={{ display: 'grid', gridTemplateColumns: '180px 3fr 190px', gap: 8, marginBottom: 10 }}>
 
         {/* LEFT RAIL */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -178,17 +178,20 @@ export default function OverseerDeckPage() {
         {/* CENTRE */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
 
-          {/* TV Screen Router */}
-          <div style={{ background: 'rgba(8,14,38,.95)', border: '1px solid rgba(220,70,0,.4)', borderRadius: 6, padding: 8 }}>
-            <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: '.12em', color: 'rgba(255,140,0,.7)', textTransform: 'uppercase', marginBottom: 6 }}>TV Screen Router — Boardroom Live</div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 5 }}>
+          {/* TV Screen Router — primary video wall, broadcast-control-room scale */}
+          <div style={{ background: 'rgba(8,14,38,.95)', border: '1px solid rgba(220,70,0,.4)', borderRadius: 6, padding: 10 }}>
+            <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '.14em', color: 'rgba(255,140,0,.85)', textTransform: 'uppercase', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span className="ov-blink" style={{ width: 6, height: 6, borderRadius: '50%', background: '#E63000', boxShadow: '0 0 6px #E63000', display: 'inline-block' }} />
+              ON AIR — TV Screen Router · Boardroom Live
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
               {TV_ROOMS.map(room => (
-                <div key={room.label} onClick={() => router.push(room.route)} role="button" tabIndex={0} style={{ height: 60, background: room.bg, border: `1px solid ${room.live ? '#E63000' : 'rgba(220,70,0,.3)'}`, borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', position: 'relative', fontSize: 9, color: room.live ? '#FFD700' : 'rgba(255,255,255,.4)' }}>
+                <div key={room.label} onClick={() => router.push(room.route)} role="button" tabIndex={0} style={{ height: 150, background: room.bg, border: `1px solid ${room.live ? '#E63000' : 'rgba(220,70,0,.3)'}`, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', position: 'relative', fontSize: 13, fontWeight: 800, color: room.live ? '#FFD700' : 'rgba(255,255,255,.4)' }}>
                   {room.label}
                   {room.live && (
-                    <div style={{ position: 'absolute', top: 4, left: 4, display: 'flex', alignItems: 'center', gap: 2 }}>
-                      <span className="ov-blink" style={{ width: 4, height: 4, borderRadius: '50%', background: '#00FF88', boxShadow: '0 0 4px #00FF88', display: 'inline-block' }} />
-                      <span style={{ fontSize: 6, color: '#00FF88' }}>LIVE</span>
+                    <div style={{ position: 'absolute', top: 8, left: 8, display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <span className="ov-blink" style={{ width: 6, height: 6, borderRadius: '50%', background: '#00FF88', boxShadow: '0 0 6px #00FF88', display: 'inline-block' }} />
+                      <span style={{ fontSize: 9, fontWeight: 800, color: '#00FF88', letterSpacing: '.08em' }}>LIVE</span>
                     </div>
                   )}
                 </div>
@@ -196,18 +199,18 @@ export default function OverseerDeckPage() {
             </div>
           </div>
 
-          {/* Live Room Monitors — existing Claude components */}
-          <div style={{ background: 'rgba(5,5,16,.6)', border: '1px solid rgba(0,255,255,.2)', borderRadius: 8, padding: 10 }}>
-            <div style={{ fontSize: 9, fontWeight: 900, color: '#00FFFF', letterSpacing: '.15em', marginBottom: 10 }}>LIVE ROOM MONITORS</div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          {/* Live Room Monitors — existing Claude components, enlarged to video-wall scale */}
+          <div style={{ background: 'rgba(5,5,16,.6)', border: '1px solid rgba(0,255,255,.2)', borderRadius: 8, padding: 12 }}>
+            <div style={{ fontSize: 10, fontWeight: 900, color: '#00FFFF', letterSpacing: '.16em', marginBottom: 10 }}>LIVE ROOM MONITORS</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               {[
                 { label: 'ROOM 1: CYPHER ARENA',     mode: 'standby' as const,     active: false },
                 { label: 'ROOM 2: NOVA CIPHER (LIVE)', mode: 'remote-view' as const, active: true  },
                 { label: 'ROOM 3: FAN THEATER',       mode: 'standby' as const,     active: false },
                 { label: 'ROOM 4: MONDAY STAGE',      mode: 'standby' as const,     active: false },
               ].map(m => (
-                <div key={m.label} style={{ position: 'relative', borderRadius: 6, overflow: 'hidden', border: '1px solid rgba(255,255,255,.08)' }}>
-                  <div style={{ position: 'absolute', top: 6, left: 6, zIndex: 10, background: 'rgba(0,0,0,.8)', padding: '3px 6px', borderRadius: 3, fontSize: 8, color: '#fff', fontWeight: 800 }}>{m.label}</div>
+                <div key={m.label} style={{ position: 'relative', borderRadius: 8, overflow: 'hidden', border: '1px solid rgba(255,255,255,.1)', aspectRatio: '16/9' }}>
+                  <div style={{ position: 'absolute', top: 8, left: 8, zIndex: 10, background: 'rgba(0,0,0,.85)', padding: '4px 8px', borderRadius: 4, fontSize: 10, color: '#fff', fontWeight: 800 }}>{m.label}</div>
                   <MediaMonitor mode={m.mode} isActive={m.active} />
                 </div>
               ))}

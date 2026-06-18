@@ -284,8 +284,8 @@ export default function BillboardLiveWall({
                 avatarUrl={p.avatarUrl}
                 showActions={showActions}
                 onJoin={showActions ? () => handleJoinClick(p) : undefined}
-                onTip={showActions ? () => alert(`Tip ${p.name}`) : undefined}
-                onMessage={showActions ? () => alert(`Message ${p.name}`) : undefined}
+                onTip={showActions ? () => { window.location.href = `/checkout?type=tip&artist=${encodeURIComponent(p.slug ?? p.name)}&amount=500&productName=${encodeURIComponent(`Tip for ${p.name}`)}`; } : undefined}
+                onMessage={showActions ? () => { window.location.href = `/messages/new?to=${encodeURIComponent(p.slug ?? p.name)}`; } : undefined}
               />
 
               {/* Sponsor strip below performer hub tiles */}

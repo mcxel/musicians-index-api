@@ -38,7 +38,7 @@ export default function Home3LiveEvents({ title = 'LIVE & EVENTS' }: Home3LiveEv
             <Link href={event.href} style={{ textDecoration: 'none', color: 'inherit' }}>
               <div
                 style={{
-                  background: 'rgba(255,255,255,0.03)',
+                  background: `linear-gradient(135deg, ${event.color}10, rgba(5,5,16,0.92))`,
                   border: `1px solid ${event.color}25`,
                   borderRadius: 10,
                   padding: '20px 18px',
@@ -54,7 +54,7 @@ export default function Home3LiveEvents({ title = 'LIVE & EVENTS' }: Home3LiveEv
                 }}
                 onMouseLeave={(e) => {
                   const el = e.currentTarget;
-                  el.style.background = 'rgba(255,255,255,0.03)';
+                  el.style.background = `linear-gradient(135deg, ${event.color}10, rgba(5,5,16,0.92))`;
                   el.style.borderColor = event.color + '25';
                   el.style.boxShadow = 'none';
                 }}

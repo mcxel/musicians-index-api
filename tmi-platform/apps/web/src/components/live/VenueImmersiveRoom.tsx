@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import StageCurtain from '@/components/live/StageCurtain';
+import AudienceScene from '@/components/live/AudienceScene';
 import {
   startCountdown,
   openCurtain,
@@ -58,33 +59,6 @@ interface Props {
   mode: 'fan' | 'performer';
 }
 
-// ── Seat layout ───────────────────────────────────────────────────────────────
-
-const SEAT_ROWS: { label: string; count: number }[] = [
-  { label: 'A', count: 5 },
-  { label: 'B', count: 6 },
-  { label: 'C', count: 7 },
-  { label: 'D', count: 7 },
-  { label: 'E', count: 5 },
-];
-
-let _seatCounter = 0;
-const VENUE_SEAT_ROWS = SEAT_ROWS.map((row) => ({
-  ...row,
-  seats: Array.from({ length: row.count }, () => `seat-${++_seatCounter}`),
-}));
-
-const GHOST_NAMES = ['NeonFan', 'BeatRider', 'WaveBreaker', 'CrownWatch', 'PulseHead', 'GrooveBot', 'RhymeGhost', 'CypherBot', 'StageEye', 'ArenaFam'];
-const GHOST_AVATARS = ['🎧', '🔥', '🎶', '✨', '🎤', '💫', '🪩', '👑', '🤖', '🎸', '🧑🏾', '👩🏽', '🧑🏿', '👦🏼', '🧒🏻'];
-const ROLE_EMOJI: Record<string, string> = { fan: '🎧', bot: '🤖', host: '🌟', artist: '🎤' };
-
-function ghostForSeat(seatId: string) {
-  const h = seatId.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
-  return {
-    name: GHOST_NAMES[h % GHOST_NAMES.length]!,
-    avatar: GHOST_AVATARS[h % GHOST_AVATARS.length]!,
-  };
-}
 
 function publicName(name: string): string {
   if (!name.includes('@')) return name;
@@ -159,6 +133,9 @@ export default function VenueImmersiveRoom({ roomId, mode }: Props) {
   useEffect(() => {
     if (mode !== 'fan' || !userId) return;
 
+    const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+    const groupId = searchParams?.get('groupId') ?? null;
+
     void fetch('/api/live/audience', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -170,6 +147,7 @@ export default function VenueImmersiveRoom({ roomId, mode }: Props) {
           displayName,
           role: 'fan',
           seatId: null,
+          groupId,
           captureEnabled: false,
           viewpoint: { yaw: 0, pitch: 0, updatedAt: Date.now() },
         },
@@ -221,10 +199,6 @@ export default function VenueImmersiveRoom({ roomId, mode }: Props) {
 
   const members = useMemo(() => snapshot?.activeMembers ?? [], [snapshot?.activeMembers]);
   const messages = useMemo(() => snapshot?.messages ?? [], [snapshot?.messages]);
-  const seatMap = useMemo(
-    () => new Map(members.filter((m) => m.seatId).map((m) => [m.seatId!, m])),
-    [members],
-  );
 
   const isOpen = curtainState === 'CAMERA_LIVE' || curtainState === 'INTERMISSION';
 
@@ -318,17 +292,8 @@ export default function VenueImmersiveRoom({ roomId, mode }: Props) {
             )}
           </div>
 
-          {/* Seat floor — tilted toward viewer */}
-          <div
-            style={{
-              width: '100%',
-              maxWidth: 640,
-              margin: '0 auto',
-              transform: 'rotateX(28deg)',
-              transformOrigin: 'top center',
-              paddingBottom: 40,
-            }}
-          >
+          {/* 3D audience — canonical AudienceScene renderer (replaces old CSS seat grid) */}
+          <div style={{ width: '100%', maxWidth: 640, margin: '0 auto', paddingBottom: 24 }}>
             <div
               style={{
                 fontSize: 8,
@@ -345,120 +310,61 @@ export default function VenueImmersiveRoom({ roomId, mode }: Props) {
                 : `Live venue · ${snapshot?.present ?? 0} in seats`}
             </div>
 
-            {VENUE_SEAT_ROWS.map((row, rowIdx) => (
-              <div
-                key={row.label}
-                style={{
-                  display: 'flex',
-                  justifyContent: 'center',
-                  gap: 5,
-                  marginBottom: 7,
-                  // Row A (idx 0, near stage) scaled smaller; Row E (idx 4, near viewer) full size
-                  transform: `scale(${0.72 + rowIdx * 0.07})`,
-                  transformOrigin: 'center bottom',
-                }}
-              >
+            <div style={{ position: 'relative' }}>
+              <AudienceScene
+                view={mode}
+                venue={1}
+                watcherCount={snapshot?.present}
+                occupancyRatio={snapshot ? Math.min(1, snapshot.present / Math.max(1, snapshot.capacity)) : 0.08}
+                onReaction={sendReaction}
+                hideControls
+                accentColor={mode === 'performer' ? '#FFD700' : '#00FFFF'}
+              />
+
+              {/* Real seated members — named, identity-bound overlay on top of the ambient crowd.
+                  AudienceScene has no concept of individual users; this strip is the only place
+                  real seatId/displayName/role data (from /api/live/audience) is actually visible. */}
+              {members.length > 0 && (
                 <div
                   style={{
-                    fontSize: 7,
-                    color: 'rgba(255,215,0,0.4)',
-                    fontWeight: 800,
-                    width: 14,
+                    position: 'absolute',
+                    left: 0, right: 0, bottom: 6,
                     display: 'flex',
-                    alignItems: 'center',
+                    gap: 5,
                     justifyContent: 'center',
-                    flexShrink: 0,
+                    flexWrap: 'wrap',
+                    padding: '0 8px',
+                    pointerEvents: 'none',
                   }}
                 >
-                  {row.label}
-                </div>
-                {row.seats.map((seatId) => {
-                  const member = seatMap.get(seatId);
-                  const isMe = seatId === mySeatId;
-                  const ghost = ghostForSeat(seatId);
-                  const emoji = member ? (ROLE_EMOJI[member.role] ?? '🎧') : ghost.avatar;
-                  const rawName = member ? (member.displayName.split('|')[0] ?? '') : ghost.name;
-                  const name = rawName.length > 5 ? rawName.slice(0, 5) : rawName;
-
-                  return (
-                    <div
-                      key={seatId}
-                      title={member ? `${member.displayName} — ${member.role}` : `${ghost.name} (ghost)`}
-                      style={{
-                        width: 34,
-                        height: 34,
-                        borderRadius: 7,
-                        flexShrink: 0,
-                        border: isMe
-                          ? '2px solid #00FFFF'
-                          : member
-                            ? member.role === 'bot'
-                              ? '1px solid rgba(170,45,255,0.5)'
-                              : '1px solid rgba(0,255,136,0.5)'
-                            : '1px solid rgba(255,255,255,0.06)',
-                        background: isMe
-                          ? 'rgba(0,255,255,0.22)'
-                          : member
-                            ? member.role === 'bot'
-                              ? 'rgba(170,45,255,0.14)'
-                              : 'rgba(0,255,136,0.1)'
-                            : 'rgba(255,255,255,0.02)',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: 12,
-                        position: 'relative',
-                        opacity: member ? 1 : 0.35,
-                        animation: isMe ? 'venueSeatGlow 2s ease-in-out infinite' : undefined,
-                        transition: 'all 0.3s ease',
-                      }}
-                    >
-                      {emoji}
-                      <span
+                  {members.slice(0, 16).map((m) => {
+                    const isMe = m.seatId === mySeatId;
+                    const roleEmoji = m.role === 'bot' ? '🤖' : m.role === 'host' ? '🌟' : m.role === 'artist' ? '🎤' : '🎧';
+                    const shortName = m.displayName.split('|')[0]?.slice(0, 8) ?? 'Fan';
+                    return (
+                      <div
+                        key={m.userId}
+                        title={`${m.displayName} — ${m.role}${m.seatId ? ` · ${m.seatId.toUpperCase()}` : ''}`}
                         style={{
-                          fontSize: 5.5,
-                          color: 'rgba(255,255,255,0.5)',
-                          lineHeight: 1,
-                          marginTop: 1,
-                          fontWeight: 700,
+                          display: 'flex', alignItems: 'center', gap: 3,
+                          padding: '2px 7px',
+                          borderRadius: 999,
+                          fontSize: 8,
+                          fontWeight: 800,
+                          letterSpacing: '0.02em',
+                          background: isMe ? 'rgba(0,255,255,0.22)' : 'rgba(0,0,0,0.55)',
+                          border: isMe ? '1px solid #00FFFF' : '1px solid rgba(255,255,255,0.12)',
+                          color: isMe ? '#00FFFF' : 'rgba(255,255,255,0.75)',
+                          backdropFilter: 'blur(3px)',
                         }}
                       >
-                        {name}
-                      </span>
-                      {isMe && (
-                        <span
-                          style={{
-                            position: 'absolute',
-                            top: -9,
-                            left: '50%',
-                            transform: 'translateX(-50%)',
-                            fontSize: 6.5,
-                            color: '#00FFFF',
-                            fontWeight: 900,
-                            whiteSpace: 'nowrap',
-                          }}
-                        >
-                          YOU
-                        </span>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            ))}
-
-            {/* Seat legend */}
-            <div
-              style={{
-                textAlign: 'center',
-                marginTop: 8,
-                fontSize: 7.5,
-                color: 'rgba(255,255,255,0.22)',
-                letterSpacing: '0.1em',
-              }}
-            >
-              🟢 FANS &nbsp;|&nbsp; 🤖 BOTS &nbsp;|&nbsp; 🎤 ARTISTS &nbsp;|&nbsp; ○ EMPTY
+                        <span>{roleEmoji}</span>
+                        <span>{isMe ? 'YOU' : shortName}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
         </div>

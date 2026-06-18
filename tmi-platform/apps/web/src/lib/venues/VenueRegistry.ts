@@ -196,3 +196,29 @@ export function getAllVenues(): VenueIdentity[] {
 export function getVenuesByCategory(category: VenueCategory): VenueIdentity[] {
   return VENUE_REGISTRY.filter((v) => v.category === category);
 }
+
+// ── Home 1 booking panel adapter ──────────────────────────────────────────────
+
+export interface VenueBookingSlot {
+  day: string;
+  venue: string;
+  slug: string;
+  bookRoute: string;
+}
+
+const BOOKING_DAY_LABELS = ['SAT', 'SUN', 'FRI'] as const;
+
+// Returns up to `count` venues for Home 1's Venue Booking panel.
+// Live venues appear first; each slot gets a day label (SAT/SUN/FRI).
+export function getVenueBookingSlots(count = 3): VenueBookingSlot[] {
+  const ordered = [
+    ...VENUE_REGISTRY.filter((v) => v.isLive),
+    ...VENUE_REGISTRY.filter((v) => !v.isLive),
+  ];
+  return ordered.slice(0, count).map((v, i) => ({
+    day: BOOKING_DAY_LABELS[i] ?? BOOKING_DAY_LABELS[0]!,
+    venue: v.name,
+    slug: v.slug,
+    bookRoute: `/venues/book?venue=${v.slug}`,
+  }));
+}

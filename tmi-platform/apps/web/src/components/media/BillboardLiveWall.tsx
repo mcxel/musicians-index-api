@@ -20,6 +20,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { MaskedVideoTile, type TileShape } from '@/components/live/MaskedVideoTile';
 import Link from 'next/link';
 import { LobbyEntryFlow, type UniversalRoom } from '@/components/room/UniversalLobbyEntry';
+import { PERFORMER_REGISTRY } from '@/lib/performers/PerformerRegistry';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -68,31 +69,6 @@ const ACCENT_PALETTE = [
   '#00C8FF', '#FF4466', '#39FF14', '#FFB800',
 ];
 
-// ─── Seeded performer data (replace with real API call) ───────────────────────
-
-function seedPerformers(): PerformerSlot[] {
-  return [
-    { id: 'p1', name: 'Big Ace', slug: 'big-ace', rank: 1, isLive: true, viewerCount: 2147, genre: 'Hip-Hop', avatarEmoji: '🎤', accentColor: '#FFD700', sponsorCount: 7 },
-    { id: 'p2', name: 'Lani Flame', slug: 'lani-flame', rank: 2, isLive: true, viewerCount: 1863, genre: 'R&B', avatarEmoji: '🔥', accentColor: '#FF2DAA', sponsorCount: 4 },
-    { id: 'p3', name: 'DJ Blend', slug: 'dj-blend', rank: 3, isLive: true, viewerCount: 1204, genre: 'DJ', avatarEmoji: '🎧', accentColor: '#00FFFF', sponsorCount: 3 },
-    { id: 'p4', name: 'Mia Jay', slug: 'mia-jay', rank: 4, isLive: false, viewerCount: 889, genre: 'Pop', avatarEmoji: '🎵', accentColor: '#AA2DFF', sponsorCount: 2 },
-    { id: 'p5', name: 'Charro Ace', slug: 'charro-ace', rank: 5, isLive: true, viewerCount: 743, genre: 'Hip-Hop', avatarEmoji: '👑', accentColor: '#FF6B35', sponsorCount: 5 },
-    { id: 'p6', name: 'Nova Sky', slug: 'nova-sky', rank: 6, isLive: false, viewerCount: 621, genre: 'R&B', avatarEmoji: '⭐', accentColor: '#00FF88', sponsorCount: 1 },
-    { id: 'p7', name: 'Retro Rick', slug: 'retro-rick', rank: 7, isLive: true, viewerCount: 512, genre: 'Soul', avatarEmoji: '🎸', accentColor: '#FFB800', sponsorCount: 2 },
-    { id: 'p8', name: 'Crystal Fizz', slug: 'crystal-fizz', rank: 8, isLive: false, viewerCount: 398, genre: 'EDM', avatarEmoji: '💎', accentColor: '#00C8FF', sponsorCount: 0 },
-    { id: 'p9', name: 'Flow Jamz', slug: 'flow-jamz', rank: 9, isLive: true, viewerCount: 287, genre: 'Rap', avatarEmoji: '🎶', accentColor: '#FF4466', sponsorCount: 3 },
-    { id: 'p10', name: 'Trina Sky', slug: 'trina-sky', rank: 10, isLive: false, viewerCount: 214, genre: 'Gospel', avatarEmoji: '🙏', accentColor: '#39FF14', sponsorCount: 1 },
-    { id: 'p11', name: 'Max Flare', slug: 'max-flare', rank: 11, isLive: false, viewerCount: 189, genre: 'Rock', avatarEmoji: '⚡', accentColor: '#FF2DAA', sponsorCount: 0 },
-    { id: 'p12', name: 'Urban Scholar', slug: 'urban-scholar', rank: 12, isLive: true, viewerCount: 152, genre: 'Hip-Hop', avatarEmoji: '📚', accentColor: '#AA2DFF', sponsorCount: 2 },
-    { id: 'p13', name: 'Darkwave Diva', slug: 'darkwave-diva', rank: 13, isLive: false, viewerCount: 131, genre: 'Alt', avatarEmoji: '🌑', accentColor: '#00FFFF', sponsorCount: 1 },
-    { id: 'p14', name: 'Poptronica', slug: 'poptronica', rank: 14, isLive: true, viewerCount: 98, genre: 'Pop', avatarEmoji: '🎀', accentColor: '#FFD700', sponsorCount: 4 },
-    { id: 'p15', name: 'NightRider', slug: 'night-rider', rank: 15, isLive: false, viewerCount: 76, genre: 'Beats', avatarEmoji: '🌙', accentColor: '#FF6B35', sponsorCount: 0 },
-    { id: 'p16', name: 'Yung Tuck', slug: 'yung-tuck', rank: 16, isLive: false, viewerCount: 64, genre: 'Rap', avatarEmoji: '🤙', accentColor: '#00FF88', sponsorCount: 2 },
-    { id: 'p17', name: 'Diana Electro', slug: 'diana-electro', rank: 17, isLive: true, viewerCount: 52, genre: 'EDM', avatarEmoji: '💙', accentColor: '#00C8FF', sponsorCount: 1 },
-    { id: 'p18', name: 'Bobby Stanley', slug: 'bobby-stanley', rank: 18, isLive: false, viewerCount: 41, genre: 'Host', avatarEmoji: '🎙️', accentColor: '#FFB800', sponsorCount: 3 },
-  ];
-}
-
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function BillboardLiveWall({
@@ -109,7 +85,20 @@ export default function BillboardLiveWall({
 
   // Load + sort performers: live first, then by rank
   useEffect(() => {
-    const all = seedPerformers();
+    const all: PerformerSlot[] = (PERFORMER_REGISTRY as any[]).map((p, i) => ({
+      id: p.id,
+      name: p.name,
+      slug: p.slug ?? p.id,
+      rank: p.rank ?? (i + 1),
+      isLive: p.isLive ?? (i % 3 !== 0),
+      viewerCount: p.audienceCount ?? p.fanCount ?? 500,
+      genre: p.category ?? p.genre ?? 'Live',
+      avatarEmoji: p.avatarEmoji ?? '👤',
+      avatarUrl: p.profileImageUrl ?? p.avatarUrl,
+      accentColor: ACCENT_PALETTE[i % ACCENT_PALETTE.length],
+      sponsorCount: i % 4 === 0 ? 2 : 0
+    }));
+
     const sorted = [...all].sort((a, b) => {
       if (a.isLive && !b.isLive) return -1;
       if (!a.isLive && b.isLive) return 1;
@@ -284,8 +273,8 @@ export default function BillboardLiveWall({
                 avatarUrl={p.avatarUrl}
                 showActions={showActions}
                 onJoin={showActions ? () => handleJoinClick(p) : undefined}
-                onTip={showActions ? () => alert(`Tip ${p.name}`) : undefined}
-                onMessage={showActions ? () => alert(`Message ${p.name}`) : undefined}
+                onTip={showActions ? () => { window.location.href = `/checkout?type=tip&artist=${encodeURIComponent(p.slug ?? p.name)}&amount=500&productName=${encodeURIComponent(`Tip for ${p.name}`)}`; } : undefined}
+                onMessage={showActions ? () => { window.location.href = `/messages/new?to=${encodeURIComponent(p.slug ?? p.name)}`; } : undefined}
               />
 
               {/* Sponsor strip below performer hub tiles */}

@@ -2,17 +2,10 @@ import type { Metadata } from 'next';
 import Home3LiveWorldSurface from "@/components/home/Home3LiveWorldSurface";
 import SponsorRail from '@/components/sponsors/SponsorRail';
 import EventReel from '@/components/events/EventReel';
-
-const SEED_SPONSORS = [
-  { id: 'amplify',   name: 'AMPLIFY RECORDS',     tagline: 'Platinum Partner' },
-  { id: 'beatlab',   name: 'BEATLAB STUDIOS',      tagline: 'Gold Partner'    },
-  { id: 'velocity',  name: 'VELOCITY AUDIO',       tagline: 'Gold Partner'    },
-  { id: 'nova',      name: 'NOVA MEDIA GROUP',     tagline: 'Silver Partner'  },
-  { id: 'crown',     name: 'CROWN & CO.',          tagline: ''                },
-  { id: 'frequency', name: 'FREQUENCY LABS',       tagline: ''                },
-  { id: 'vault',     name: 'THE VAULT COLLECTIVE', tagline: ''                },
-  { id: 'sonic',     name: 'SONIC AXIS',           tagline: ''                },
-];
+import DiscoveryRail from '@/components/discovery/DiscoveryRail';
+import { getAdSlotForZone } from '@/lib/commerce/SponsorRegistry';
+import { sortPerformersByFreshness } from '@/lib/content/ContentFreshness';
+import { PERFORMER_REGISTRY } from '@/lib/performers/PerformerRegistry';
 
 export const metadata: Metadata = {
   title: "Live World — Active Rooms, Events & Live Shows",
@@ -32,12 +25,35 @@ export const metadata: Metadata = {
   },
 };
 
+// Rule 12: No Empty Inventory
+function buildSponsorEntry(zone: string) {
+  const slot = getAdSlotForZone(zone);
+  if (slot.type === 'paid' && slot.sponsor) return { id: zone, name: slot.sponsor.name, tagline: slot.sponsor.tagline };
+  if (slot.type === 'platform' && slot.platformPromo) return { id: zone, name: slot.platformPromo.headline, tagline: slot.platformPromo.ctaLabel };
+  return { id: zone, name: 'ADVERTISE ON TMI', tagline: 'Reach live audiences · from $25' };
+}
+
 export default function Home3Page() {
+  // Rule 11: Content Freshness — live rooms first (LIVE > RECENT > POPULAR > ARCHIVE)
+  const liveFirstPerformers = sortPerformersByFreshness(PERFORMER_REGISTRY);
+  const liveCount = liveFirstPerformers.filter(p => p.isLive).length;
+
+  const sponsors = ['home-3-sp-0','home-3-sp-1','home-3-sp-2','home-3-sp-3',
+                    'home-3-sp-4','home-3-sp-5','home-3-sp-6','home-3-sp-7'].map(buildSponsorEntry);
+
   return (
     <>
-      <SponsorRail sponsors={SEED_SPONSORS} zone="home-3-top" />
+      <SponsorRail sponsors={sponsors} zone="home-3-top" />
       <Home3LiveWorldSurface />
       <EventReel zone="home-3" />
+
+      {/* Rule 6: Discovery Rails — Live World keeps users in the live ecosystem */}
+      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 20px 80px' }}>
+        <DiscoveryRail type="liveRooms" label={`🔴 ${liveCount} LIVE — JOIN NOW`} accentColor="#E63000" />
+        <DiscoveryRail type="performers" label="🎤 ALL ARTISTS" accentColor="#00E5FF" />
+        <DiscoveryRail type="games" label="⚔️ BATTLES & CYPHERS" accentColor="#AA2DFF" />
+        <DiscoveryRail type="venues" label="🏟️ VENUES" accentColor="#FF6B35" />
+      </div>
     </>
   );
 }

@@ -3,6 +3,8 @@ import UniversalMediaPanel from "@/components/media/UniversalMediaPanel";
 import { EDITORIAL_ARTICLES } from "@/lib/editorial/NewsArticleModel";
 import { profileToArticleRoute } from "@/lib/editorial/editorialRoutingResolver";
 import { getSponsorPlacementsByZone } from "@/lib/editorial/SponsorPlacementModel";
+import { getAdSlotForZone } from "@/lib/commerce/SponsorRegistry";
+import DiscoveryRail from "@/components/discovery/DiscoveryRail";
 import Link from "next/link";
 import MemoryWall from "@/components/media/MemoryWall";
 
@@ -58,6 +60,8 @@ export default function SponsorProfilePage({ params }: Props) {
   const sponsor = seedSponsor(params.slug);
 
   const articleRoute = findArticleRoute(params.slug);
+  // Rule 12: No Empty Inventory
+  const sponsorAd = getAdSlotForZone(`sponsor-profile-${params.slug}`);
   const placements = getSponsorPlacementsByZone("mid-article")
     .concat(getSponsorPlacementsByZone("side-rail"))
     .concat(getSponsorPlacementsByZone("full-page"))
@@ -154,7 +158,37 @@ export default function SponsorProfilePage({ params }: Props) {
       />
 
       <div style={{ padding: "0 24px 16px" }}>
-        <MemoryWall accentColor="#AA2DFF" title={`${sponsor.displayName} — Memory Wall`} />
+        <MemoryWall accentColor="#AA2DFF" title={`${sponsor.displayName} — Memory Wall`} entityId={params.slug} entityType="sponsor" />
+      </div>
+
+      {/* Rule 12: No Empty Inventory — platform promo if no paid sponsor in slot */}
+      {sponsorAd.type === 'platform' && sponsorAd.platformPromo && (
+        <div style={{ padding: "0 24px 16px" }}>
+          <div style={{ background: `${sponsorAd.platformPromo.accentColor}0a`, border: `1px solid ${sponsorAd.platformPromo.accentColor}33`, borderRadius: 10, padding: "14px 18px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 900, color: sponsorAd.platformPromo.accentColor }}>{sponsorAd.platformPromo.headline}</div>
+              <div style={{ fontSize: 9, color: "rgba(255,255,255,0.45)", marginTop: 2 }}>{sponsorAd.platformPromo.body}</div>
+            </div>
+            <Link href={sponsorAd.platformPromo.ctaHref} style={{ padding: "7px 16px", background: sponsorAd.platformPromo.accentColor, borderRadius: 7, fontSize: 9, fontWeight: 900, color: "#050310", textDecoration: "none", flexShrink: 0 }}>
+              {sponsorAd.platformPromo.ctaLabel}
+            </Link>
+          </div>
+        </div>
+      )}
+      {sponsorAd.type === 'advertise-cta' && (
+        <div style={{ padding: "0 24px 12px", textAlign: "center" }}>
+          <Link href="/sponsors/advertise" style={{ fontSize: 9, color: "rgba(255,255,255,0.25)", textDecoration: "none", letterSpacing: "0.08em", fontWeight: 700 }}>
+            ADVERTISE ON TMI · FROM $25
+          </Link>
+        </div>
+      )}
+
+      {/* Rule 6: Discovery Rails — sponsor profile keeps users in content graph */}
+      <div style={{ padding: "0 0 60px" }}>
+        <DiscoveryRail type="performers" accentColor="#00E5FF" label="FEATURED ARTISTS" />
+        <DiscoveryRail type="articles" accentColor="#AA2DFF" label="PRESS & FEATURES" />
+        <DiscoveryRail type="liveRooms" accentColor="#E63000" label="LIVE NOW" />
+        <DiscoveryRail type="sponsors" exclude={params.slug} accentColor="#FFD700" label="OTHER SPONSORS" />
       </div>
     </ProfileShell>
   );

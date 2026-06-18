@@ -20,9 +20,15 @@ import dynamic from "next/dynamic";
 import type React from "react";
 
 // ── AudienceScene (loaded only at step 4) ────────────────────────────────────
-type AudienceSceneProps = { view?: string; venue?: number; onReaction?: () => void };
+type AudienceSceneProps = { view?: string; venue?: number; onReaction?: () => void; occupancyRatio?: number };
 const AudienceSceneLazy = dynamic(
   () => (import("@/components/live/AudienceScene") as Promise<{ default: React.ComponentType<AudienceSceneProps> }>),
+  { ssr: false },
+);
+
+// ── AvatarMiniDisplay (loaded at seat step, shows user bobblehead) ────────────
+const AvatarMiniDisplayLazy = dynamic(
+  () => import("@/components/canisters/AvatarMiniDisplay"),
   { ssr: false },
 );
 
@@ -100,7 +106,26 @@ interface LobbyEntryFlowProps {
 export function LobbyEntryFlow({ room, onClose }: LobbyEntryFlowProps) {
   const [step, setStep] = useState<Step>("preview");
   const [seatRow, setSeatRow] = useState<string | null>(null);
+  const [occupancyRatio, setOccupancyRatio] = useState(0.08);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const fillTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Progressive stadium-fill animation when audience step is active
+  useEffect(() => {
+    if (step !== "audience") return;
+    setOccupancyRatio(0.08);
+    fillTimerRef.current = setInterval(() => {
+      setOccupancyRatio(prev => {
+        const next = prev + 0.06;
+        if (next >= 0.92) {
+          if (fillTimerRef.current) clearInterval(fillTimerRef.current);
+          return 0.92;
+        }
+        return next;
+      });
+    }, 250);
+    return () => { if (fillTimerRef.current) clearInterval(fillTimerRef.current); };
+  }, [step]);
 
   const ac = room.accentColor;
   const statusCfg = STATUS_COLORS[room.status];
@@ -243,7 +268,7 @@ export function LobbyEntryFlow({ room, onClose }: LobbyEntryFlowProps) {
           {/* ── STEP: SEAT ASSIGNMENT ── */}
           {step === "seat" && (
             <div style={s({ display: "flex", flexDirection: "column", alignItems: "center", gap: 16, padding: "24px 0" })}>
-              <div style={s({ fontSize: 32, animation: "spin 1s linear infinite" })}>🎭</div>
+              <AvatarMiniDisplayLazy size={64} fallback={<div style={{ fontSize: 32 }}>🎭</div>} showLabel />
               <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
               <div style={s({ fontSize: 13, fontWeight: 900, color: "#fff" })}>Finding Your Seat…</div>
               {seatRow && <div style={s({ fontSize: 11, color: ac, fontWeight: 800, letterSpacing: "0.1em" })}>Assigned: {seatRow}</div>}
@@ -261,7 +286,7 @@ export function LobbyEntryFlow({ room, onClose }: LobbyEntryFlowProps) {
                 VENUE LOADED — {seatRow ?? "GENERAL ADMISSION"}
               </div>
               <div style={s({ borderRadius: 10, overflow: "hidden", border: `1px solid ${ac}33` })}>
-                <AudienceSceneLazy view="fan" venue={room.venueIndex ?? 0} />
+                <AudienceSceneLazy view="fan" venue={room.venueIndex ?? 0} occupancyRatio={occupancyRatio} />
               </div>
               <button
                 onClick={() => advance("enter")}

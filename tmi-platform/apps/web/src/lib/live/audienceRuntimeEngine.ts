@@ -8,6 +8,8 @@ export type AudienceMember = {
   seatId: string | null;
   active: boolean;
   captureEnabled: boolean;
+  /** Friend-cluster key — members sharing a groupId are seated adjacent to each other when possible. */
+  groupId?: string | null;
   viewpoint: {
     yaw: number;
     pitch: number;
@@ -87,6 +89,7 @@ export function joinAudience(venueSlug: string, member: {
   role: "fan" | "artist" | "host" | "bot";
   seatId: string | null;
   captureEnabled?: boolean;
+  groupId?: string | null;
   viewpoint?: {
     yaw: number;
     pitch: number;
@@ -101,11 +104,13 @@ export function joinAudience(venueSlug: string, member: {
     existing.role = member.role;
     existing.captureEnabled = member.captureEnabled ?? existing.captureEnabled;
     existing.seatId = member.seatId;
+    existing.groupId = member.groupId ?? existing.groupId ?? null;
     existing.viewpoint = member.viewpoint ?? existing.viewpoint;
     return occ;
   }
   occ.members.push({
     ...member,
+    groupId: member.groupId ?? null,
     joinedAt: Date.now(),
     active: true,
     viewpoint: member.viewpoint ?? { yaw: 0, pitch: 0, updatedAt: Date.now() },
@@ -254,14 +259,55 @@ export function listAllOccupancies(): VenueOccupancy[] {
 
 // ── Seat auto-assignment ─────────────────────────────────────────────────────
 
-export function assignNextSeat(venueSlug: string): string {
-  const occ = getVenueOccupancy(venueSlug);
-  const taken = new Set(occ.members.filter((m) => m.active && m.seatId).map((m) => m.seatId));
+function seatNumber(seatId: string): number | null {
+  const m = /^seat-(\d+)$/.exec(seatId);
+  return m ? Number(m[1]) : null;
+}
+
+function firstFreeSeat(taken: Set<string>): string {
   for (let i = 1; i <= DEFAULT_CAPACITY; i++) {
     const id = `seat-${i}`;
     if (!taken.has(id)) return id;
   }
   return `seat-${Date.now()}`;
+}
+
+/**
+ * FriendClusterEngine (minimal) — when groupId is supplied and another active
+ * member of that group already has a seat, seats the new joiner in the
+ * nearest free seat to that group member (expanding outward) instead of the
+ * first globally-free seat. Falls back to normal sequential assignment when
+ * no groupId is given or no group member is seated yet.
+ */
+export function assignNextSeat(venueSlug: string, groupId?: string | null): string {
+  const occ = getVenueOccupancy(venueSlug);
+  const taken = new Set(
+    occ.members
+      .map((m) => (m.active ? m.seatId : null))
+      .filter((id): id is string => id !== null),
+  );
+
+  if (groupId) {
+    const groupSeats = occ.members
+      .filter((m) => m.active && m.groupId === groupId && m.seatId)
+      .map((m) => seatNumber(m.seatId!))
+      .filter((n): n is number => n !== null);
+
+    if (groupSeats.length > 0) {
+      const anchor = Math.min(...groupSeats);
+      for (let offset = 1; offset <= DEFAULT_CAPACITY; offset++) {
+        const right = `seat-${anchor + offset}`;
+        if (!taken.has(right)) return right;
+        const left = anchor - offset;
+        if (left >= 1) {
+          const leftId = `seat-${left}`;
+          if (!taken.has(leftId)) return leftId;
+        }
+      }
+    }
+  }
+
+  return firstFreeSeat(taken);
 }
 
 // ── Bot roster for seeding ───────────────────────────────────────────────────

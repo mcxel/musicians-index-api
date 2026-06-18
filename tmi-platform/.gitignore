@@ -80,3 +80,4 @@ humanity-benchmark.js
 # MIGRATIONS BACKUP
 # =============================
 packages/db/prisma/migrations_backup/
+.vercel

@@ -192,7 +192,7 @@ export default function FanProfilePage({ params }: Props) {
 
         {/* Memory Wall */}
         <div style={{ padding: "0 24px 16px" }}>
-          <MemoryWall accentColor={tierConfig.color} title={`${fan.displayName} — Memory Wall`} />
+          <MemoryWall accentColor={tierConfig.color} title={`${fan.displayName} — Memory Wall`} entityId={params.slug} entityType="fan" />
         </div>
 
         {/* Ad slot below memory wall — free/pro only */}

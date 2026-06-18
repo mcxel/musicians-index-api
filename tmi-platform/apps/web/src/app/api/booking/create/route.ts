@@ -2,6 +2,11 @@ import { NextResponse } from "next/server";
 import { bookingContractEngine, type ContractTerms } from "@/lib/booking/BookingContractEngine";
 import EmailProviderEngine from "@/lib/email/EmailProviderEngine";
 import { VenueBookingRegistry } from "@/lib/registries/VenueBookingRegistry";
+import { canonicalEcosystemEngine } from "@/lib/playlists/CanonicalEcosystemEngine";
+
+function titleCase(slug: string): string {
+  return slug.split("-").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+}
 
 function slugify(input: string): string {
   return input
@@ -74,6 +79,16 @@ export async function POST(request: Request) {
     }
 
     const bookingId = booking?.bookingId ?? `BK-${Math.random().toString(36).slice(2, 10).toUpperCase()}`;
+
+    void canonicalEcosystemEngine.dispatch({
+      type:        "BOOKING_COMPLETED",
+      artistId:    artistSlug,
+      artistName:  String(artistName),
+      venueId:     String(venueSlug),
+      venueName:   titleCase(String(venueSlug)),
+      eventId:     bookingId,
+      eventDate:   String(eventDate),
+    });
 
     const alertEmail = process.env.BOOKING_ALERT_EMAIL?.trim();
     if (alertEmail) {

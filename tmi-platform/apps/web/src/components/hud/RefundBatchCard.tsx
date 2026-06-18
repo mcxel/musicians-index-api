@@ -10,6 +10,7 @@ type RefundRow = {
   createdAt: string
   orderId?: string
   ticketId?: string
+  chargeId?: string
   amountCents: number
   status: RefundStatus
   reason: RefundReason
@@ -71,6 +72,30 @@ export default function RefundBatchCard() {
   }
   function cancelSelected(ids: string[]) {
     setRows((prev) => prev.map((r) => (ids.includes(r.id) ? { ...r, status: 'CANCELED' } : r)))
+  }
+
+  const [processing, setProcessing] = useState(false)
+  async function processBatch(ids: string[]) {
+    const approved = rows.filter((r) => ids.includes(r.id) && r.status === 'APPROVED')
+    if (!approved.length) return
+    setProcessing(true)
+    setRows((prev) => prev.map((r) => ids.includes(r.id) && r.status === 'APPROVED' ? { ...r, status: 'PROCESSING' } : r))
+    try {
+      const res = await fetch('/api/admin/refunds/batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rows: approved.map((r) => ({ id: r.id, chargeId: r.chargeId, amountCents: r.amountCents })) }),
+      })
+      const { results } = await res.json() as { results: { id: string; status: string }[] }
+      setRows((prev) => prev.map((r) => {
+        const result = results.find((x) => x.id === r.id)
+        return result ? { ...r, status: result.status as RefundStatus } : r
+      }))
+    } catch {
+      setRows((prev) => prev.map((r) => ids.includes(r.id) && r.status === 'PROCESSING' ? { ...r, status: 'FAILED' } : r))
+    } finally {
+      setProcessing(false)
+    }
   }
 
   const [selected, setSelected] = useState<Record<string, boolean>>({})
@@ -157,10 +182,11 @@ export default function RefundBatchCard() {
               Cancel
             </button>
             <button
-              onClick={() => alert('Next: Process batch → Stripe bridge/escrow + idempotency')}
-              className="rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-white/80"
+              onClick={() => processBatch(selectedIds)}
+              disabled={selectedIds.length === 0 || processing}
+              className="rounded-xl border border-cyan-400/30 bg-cyan-500/10 px-3 py-2 text-sm text-cyan-200 disabled:opacity-40"
             >
-              Process Batch
+              {processing ? 'Processing…' : 'Process Batch'}
             </button>
           </div>
         </div>

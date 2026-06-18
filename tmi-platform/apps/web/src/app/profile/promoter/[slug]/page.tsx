@@ -133,7 +133,7 @@ export default function PromoterProfilePage({ params }: Props) {
       />
 
       <div style={{ padding: "0 24px 16px" }}>
-        <MemoryWall accentColor={ACCENT} title={`${promoter.displayName} — Memory Wall`} />
+        <MemoryWall accentColor={ACCENT} title={`${promoter.displayName} — Memory Wall`} entityId={params.slug} entityType="promoter" />
       </div>
     </ProfileShell>
   );

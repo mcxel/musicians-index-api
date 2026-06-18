@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { WinnerBadge } from '@/components/editorial/WinnerBadge';
 import { VoteResults } from '@/components/editorial/VoteResults';
-import { StructuredData } from '@/components/seo/StructuredData';
+import StructuredData from '@/components/seo/StructuredData';
 import { JsonContentRenderer } from '@/components/editorial/JsonContentRenderer';
 import { getEditorialArticleBySlug, getLatestEditorialArticles, type NewsArticle } from '@/lib/editorial/NewsArticleModel';
 import { getLocalArticleBySlug, getLatestLocalArticles, type LocalArticle } from '@/lib/editorial/localArticleCatalog';

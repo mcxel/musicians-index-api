@@ -44,7 +44,7 @@ function Tag({ text, color, pulse }: { text: string; color: string; pulse?: bool
 }
 
 function Cell({ label, value, color }: { label: string; value: string; color: string }) {
-  return <div style={{ border: `1px solid ${color}55`, borderRadius: 8, padding: '6px 8px', background: 'rgba(255,255,255,0.03)' }}><div style={{ fontSize: 8, letterSpacing: '0.12em', fontWeight: 800, color }}>{label}</div><div style={{ fontSize: 14, fontWeight: 900, color: '#fff' }}>{value}</div></div>;
+  return <div style={{ border: `1px solid ${color}55`, borderRadius: 8, padding: '6px 8px', background: `linear-gradient(135deg, ${color}14, rgba(5,5,16,0.9))` }}><div style={{ fontSize: 8, letterSpacing: '0.12em', fontWeight: 800, color }}>{label}</div><div style={{ fontSize: 14, fontWeight: 900, color: '#fff' }}>{value}</div></div>;
 }
 
 function Action({ href, label, color }: { href: string; label: string; color: string }) {

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import MonitorSatelliteSystem from '@/components/canisters/MonitorSatelliteSystem';
 
 export default function OmniDashboards() {
   const [activeTab, setActiveTab] = useState<'fan' | 'artist' | 'overseer' | 'admin'>('admin');
@@ -30,18 +31,83 @@ export default function OmniDashboards() {
       </div>
 
       <div style={{ padding: '24px' }}>
-        {/* ADMIN HUB */}
-        {activeTab === 'admin' && (
+        {/* OVERSEER DECK - BROADCAST COMMAND CENTER */}
+        {activeTab === 'overseer' && (
           <div className="fade-in">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(8,14,38,0.95)', border: '1px solid rgba(220,70,0,0.5)', padding: '12px 20px', borderRadius: '8px', marginBottom: '20px' }}>
-              <h2 style={{ color: '#E63000', margin: 0, textTransform: 'uppercase', letterSpacing: '2px' }}>BerntoutGlobal — Administration Hub</h2>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(8,14,38,0.95)', border: '1px solid rgba(0,255,255,0.5)', padding: '12px 20px', borderRadius: '8px', marginBottom: '16px' }}>
+              <h2 style={{ color: '#00FFFF', margin: 0, textTransform: 'uppercase', letterSpacing: '2px' }}>OVERSEER DECK — BROADCAST COMMAND CENTER</h2>
               <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                <span style={{ color: '#00FF7F', fontSize: '12px', fontWeight: 800 }}>● SYSTEM ONLINE</span>
-                <button style={{ background: '#E63000', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '4px', fontWeight: 800, cursor: 'pointer' }}>⚠ Trust Killer Feed</button>
+                <span style={{ color: '#00FF7F', fontSize: '12px', fontWeight: 800 }}>● NETWORK LIVE</span>
+                <button style={{ background: '#E63000', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '4px', fontWeight: 800, cursor: 'pointer', letterSpacing: '1px' }}>⚠ TRUST KILLER FEED</button>
               </div>
             </div>
 
-            {/* Live Telemetry Stats */}
+            {/* Multi-Monitor Observatory Grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+              <MonitorSatelliteSystem 
+                mainLabel="ARENA TELEMETRY" 
+                isLive={true} 
+                staticImageUrl="/assets/generated/venues/the-underground-profile.jpg"
+                accentColor="#E63000"
+                adZone="admin-overseer-1"
+                audienceCount={18500}
+              />
+              <MonitorSatelliteSystem 
+                mainLabel="CYPHER FEED" 
+                isLive={true} 
+                staticImageUrl="/assets/generated/venues/cypher-dome-profile.jpg"
+                accentColor="#00FFFF"
+                adZone="admin-overseer-2"
+                audienceCount={2730}
+              />
+              <MonitorSatelliteSystem 
+                mainLabel="CHALLENGE FEED" 
+                isLive={true} 
+                staticImageUrl="/assets/generated/venues/battle-amphitheater-profile.jpg"
+                accentColor="#FFD700"
+                adZone="admin-overseer-3"
+                audienceCount={5000}
+              />
+              <MonitorSatelliteSystem 
+                mainLabel="FAN LOBBY FEED" 
+                isLive={true} 
+                staticImageUrl="/assets/generated/venues/neon-pit-profile.jpg"
+                accentColor="#FF2DAA"
+                adZone="admin-overseer-4"
+                audienceCount={800}
+              />
+            </div>
+
+            {/* Broadcast Telemetry */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px', marginBottom: '24px' }}>
+              {[
+                { icon: '👥', label: 'Network Audience', val: '27,030', trend: 'Live', color: '#00FF7F' },
+                { icon: '🎤', label: 'Active Streams', val: '42', trend: '+5', color: '#00FFFF' },
+                { icon: '⚔️', label: 'Battles Now', val: '8', trend: 'Steady', color: '#FFD700' },
+                { icon: '🔥', label: 'Cyphers Now', val: '14', trend: '+2', color: '#FF2DAA' },
+              ].map(stat => (
+                <div key={stat.label} style={{ background: 'rgba(8,14,38,0.95)', border: '1px solid rgba(0,255,255,0.3)', padding: '16px', borderRadius: '8px', textAlign: 'center' }}>
+                  <div style={{ fontSize: '24px', marginBottom: '8px' }}>{stat.icon}</div>
+                  <div style={{ fontSize: '10px', color: 'rgba(0,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>{stat.label}</div>
+                  <div style={{ fontSize: '20px', color: '#fff', fontWeight: 900 }}>{stat.val}</div>
+                  <div style={{ fontSize: '10px', color: stat.color, marginTop: '4px', fontWeight: 800 }}>{stat.trend}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ADMIN HUB */}
+        {activeTab === 'admin' && (
+          <div className="fade-in">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(8,14,38,0.95)', border: '1px solid rgba(220,70,0,0.5)', padding: '12px 20px', borderRadius: '8px', marginBottom: '16px' }}>
+              <h2 style={{ color: '#E63000', margin: 0, textTransform: 'uppercase', letterSpacing: '2px' }}>SYSTEM ADMINISTRATION</h2>
+              <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                <span style={{ color: '#00FF7F', fontSize: '12px', fontWeight: 800 }}>● CORE HEALTHY</span>
+              </div>
+            </div>
+
+            {/* Financial & User Stats */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px', marginBottom: '24px' }}>
               {[
                 { icon: '👥', label: 'Total Users', val: '12,841', trend: '+124', color: '#00FF7F' },
@@ -91,7 +157,7 @@ export default function OmniDashboards() {
         )}
         
         {/* Other tabs can be expanded similarly */}
-        {activeTab !== 'admin' && <div style={{ color: '#FFD700', textAlign: 'center', padding: '40px', fontSize: '18px', fontWeight: 900 }}>[ {activeTab.toUpperCase()} MODULE LOADED ]</div>}
+        {activeTab !== 'admin' && activeTab !== 'overseer' && <div style={{ color: '#FFD700', textAlign: 'center', padding: '40px', fontSize: '18px', fontWeight: 900 }}>[ {activeTab.toUpperCase()} MODULE LOADED ]</div>}
       </div>
     </div>
   );

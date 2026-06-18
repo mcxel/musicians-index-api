@@ -181,7 +181,7 @@ export default function ProfileSocialSection({
           onMessage={(f) => openDM(f.id, f.name)}
           accent={accent}
           showInviteButton
-          onInvite={() => {/* TODO: open invite modal */}}
+          onInvite={() => { window.location.href = '/messages/new?subject=invite'; }}
         />
       )}
 

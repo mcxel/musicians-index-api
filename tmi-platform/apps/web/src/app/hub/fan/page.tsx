@@ -7,7 +7,6 @@ import FanSocialRail from "@/components/fan/FanSocialRail";
 import FanWalletRail from "@/components/fan/FanWalletRail";
 import { SeasonPassProgress } from "@/components/fan/SeasonPassProgress";
 import type { UserSeasonPass, SeasonPassReward } from "@/lib/gamification/SeasonPassEngine";
-import TMIVideoMonitor from "@/components/hud/TMIVideoMonitor";
 import Link from "next/link";
 import { useGamificationEngine } from "@/hooks/useGamificationEngine";
 import { TIER_COLORS, TIER_LABELS } from "@/lib/performance/FanJudgeReputationEngine";
@@ -15,6 +14,10 @@ import AvatarMiniDisplay from "@/components/canisters/AvatarMiniDisplay";
 import MemoryWall from "@/components/media/MemoryWall";
 import FriendsList from "@/components/social/FriendsList";
 import { InventoryPanel } from "@/components/InventoryPanel";
+import CollapsibleCanister from "@/components/canisters/CollapsibleCanister";
+import { getLivePerformers } from "@/lib/performers/PerformerRegistry";
+import MonitorSatelliteSystem from "@/components/canisters/MonitorSatelliteSystem";
+import PlaylistArtifact from "@/components/artifacts/PlaylistArtifact";
 
 const SEED_BADGES = [
   { id: "b1", label: "Season 1 OG",     icon: "🏆", earnedAt: "Jan 2026" },
@@ -106,6 +109,8 @@ const QUESTS = [
 
 export default function FanHubPage() {
   const { totalXp, walletCredits, currentLevel } = useGamificationEngine();
+  const featuredLive = getLivePerformers()[0];
+
   return (
     <div style={{ fontFamily: "'Inter', sans-serif", background: "#07071a", color: "#e2e8f0", minHeight: "100vh" }}>
 
@@ -133,6 +138,22 @@ export default function FanHubPage() {
       {/* Extended Hub Sections */}
       <div style={{ maxWidth: 1400, margin: "0 auto", padding: "0 24px 48px" }}>
 
+        {/* Monitor Satellite System — main video + audio panel + PIP camera */}
+        <section style={{ marginBottom: 32, marginTop: 32 }}>
+          <SectionLabel>Watch</SectionLabel>
+          <MonitorSatelliteSystem
+            mainLabel={featuredLive?.name ?? "TMI Live World"}
+            isLive={Boolean(featuredLive)}
+            liveRoomRoute={featuredLive?.liveRoomRoute}
+            introVideoUrl={featuredLive?.introVideoUrl}
+            motionPosterUrl={featuredLive?.motionPosterUrl}
+            staticImageUrl={featuredLive?.profileImageUrl ?? "/images/tmi-placeholder.jpg"}
+            audienceCount={featuredLive?.audienceCount}
+            accentColor="#FF2DAA"
+            adZone="hub-fan"
+          />
+        </section>
+
         {/* Avatar + Canister Quick Access (Constitution Rule 15) */}
         <section style={{ marginBottom: 32, marginTop: 32 }}>
           <SectionLabel>Profile</SectionLabel>
@@ -145,22 +166,20 @@ export default function FanHubPage() {
           </div>
         </section>
 
-        {/* Friends */}
-        <section style={{ marginBottom: 32 }}>
-          <SectionLabel>Friends</SectionLabel>
-          <FriendsList friends={[]} accent="#00FFFF" compact showInviteButton onInvite={() => { window.location.href = "/messages/new?subject=invite"; }} />
-        </section>
-
-        {/* Memory Wall */}
-        <section style={{ marginBottom: 32 }}>
-          <SectionLabel>Memory Wall</SectionLabel>
-          <MemoryWall accentColor="#FFD700" title="Memory Wall" />
-        </section>
-
-        {/* Inventory */}
-        <section style={{ marginBottom: 32 }}>
-          <SectionLabel>Inventory</SectionLabel>
-          <InventoryPanel />
+        {/* Pop-out canisters — never long static bars (Profile Hub Blueprint) */}
+        <section style={{ marginBottom: 32, display: "flex", flexDirection: "column", gap: 8 }}>
+          <CollapsibleCanister icon="🎵" label="Playlist" accentColor="#FF2DAA">
+            <PlaylistArtifact artifactId="demo-fan-playlist" skin="submarine" title="My Playlist" />
+          </CollapsibleCanister>
+          <CollapsibleCanister icon="👥" label="Friends" accentColor="#00FFFF">
+            <FriendsList friends={[]} accent="#00FFFF" compact showInviteButton onInvite={() => { window.location.href = "/messages/new?subject=invite"; }} />
+          </CollapsibleCanister>
+          <CollapsibleCanister icon="🖼️" label="Memory Wall" accentColor="#FFD700">
+            <MemoryWall accentColor="#FFD700" title="Memory Wall" entityId="demo-fan" entityType="fan" />
+          </CollapsibleCanister>
+          <CollapsibleCanister icon="🎒" label="Inventory" accentColor="#AA2DFF">
+            <InventoryPanel />
+          </CollapsibleCanister>
         </section>
 
         {/* Show Countdowns */}
@@ -322,7 +341,6 @@ export default function FanHubPage() {
         <FanWalletRail tipBalance={walletCredits / 100} voteCredits={currentLevel.level * 3} transactions={SEED_TRANSACTIONS} fanSlug="demo-fan" />
 
       </div>
-      <TMIVideoMonitor label="FAN CAM" position="bottom-right" />
     </div>
   );
 }

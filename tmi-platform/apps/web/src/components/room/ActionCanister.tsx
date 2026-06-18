@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useDrawer } from "./DrawerContext";
 
 export interface CanisterAction {
@@ -10,6 +11,7 @@ export interface CanisterAction {
 
 export default function ActionCanister({ actions }: { actions: CanisterAction[] }) {
   const { activeDrawer, toggleDrawer } = useDrawer();
+  const [collapsed, setCollapsed] = useState(true);
 
   return (
     <div style={{
@@ -19,9 +21,31 @@ export default function ActionCanister({ actions }: { actions: CanisterAction[] 
       borderRadius: 14, padding: 'clamp(4px, 1vw, 8px)', backdropFilter: 'blur(16px)',
       boxShadow: '0 10px 30px rgba(0,0,0,0.6)',
       position: 'fixed', left: 'clamp(4px, 2vw, 16px)', top: '50%', transform: 'translateY(-50%)',
-      zIndex: 9999 /* Bumped z-index to ensure it never gets trapped under canvas layers */
+      zIndex: 9999, /* Bumped z-index to ensure it never gets trapped under canvas layers */
+      transition: 'all 0.2s ease',
     }}>
-      {actions.map(a => {
+      <button
+        onClick={() => setCollapsed((c) => !c)}
+        title={collapsed ? "Expand menu" : "Collapse menu"}
+        aria-label={collapsed ? "Expand menu" : "Collapse menu"}
+        style={{
+          background: 'transparent',
+          border: '1px solid rgba(255,255,255,0.15)',
+          color: 'rgba(255,255,255,0.5)',
+          borderRadius: 8,
+          padding: '6px',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: 12,
+          marginBottom: collapsed ? 0 : 2,
+        }}
+      >
+        {collapsed ? '▶' : '◀'}
+      </button>
+
+      {!collapsed && actions.map(a => {
         const isActive = activeDrawer === a.id;
         return (
           <button

@@ -64,8 +64,9 @@ export async function POST(req: NextRequest) {
     switch (action) {
       case "join": {
         if (!member) return NextResponse.json({ error: "member required" }, { status: 400 });
-        // Auto-assign a seat if none requested — every real person gets a specific seat
-        const assignedSeatId = member.seatId ?? assignNextSeat(venueSlug);
+        // Auto-assign a seat if none requested — every real person gets a specific seat.
+        // groupId (friend cluster) seats this member next to others already in the same group.
+        const assignedSeatId = member.seatId ?? assignNextSeat(venueSlug, member.groupId ?? null);
         const occupancy = joinAudience(venueSlug, { ...member, seatId: assignedSeatId });
         return NextResponse.json({ ...occupancy, assignedSeatId });
       }

@@ -568,7 +568,7 @@ export default function PerformerProfilePage({ params }: Props) {
 
         {/* Memory Wall — photos, videos, audio, moments */}
         <div style={{ marginTop: 14 }}>
-          <MemoryWall accentColor={ACCENT} title={`${performer.displayName} — Memory Wall`} />
+          <MemoryWall accentColor={ACCENT} title={`${performer.displayName} — Memory Wall`} entityId={params.slug} entityType="performer" />
         </div>
 
         {/* Ad slot — free visitors see this */}

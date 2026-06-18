@@ -189,6 +189,10 @@ interface AudienceSceneProps {
   accentColor?: string;
   screenLabel?: string;
   screenSubLabel?: string;
+  /** 0.0–1.0 — fraction of seats occupied. Default 1.0 (full house).
+   *  Values below 1.0 show empty seat outlines for unoccupied positions.
+   *  Animate this from 0 → target over time for the stadium-fill effect. */
+  occupancyRatio?: number;
 }
 
 interface SceneState {
@@ -219,6 +223,7 @@ export default function AudienceScene({
   accentColor,
   screenLabel,
   screenSubLabel,
+  occupancyRatio = 1.0,
 }: AudienceSceneProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const timeRef   = useRef(0);
@@ -234,6 +239,11 @@ export default function AudienceScene({
     const v = VENUES[venue] ?? VENUES[0];
     const t = timeRef.current++;
     const s = stateRef.current;
+    // Total seats across all rows for occupancy calculation
+    const FAN_TOTAL_SEATS = 84;   // 7 rows × avg 12 seats
+    const PERF_TOTAL_SEATS = 114; // 8 rows × avg 14 seats
+    const totalSeats = view === "fan" ? FAN_TOTAL_SEATS : PERF_TOTAL_SEATS;
+    const occupiedUpTo = Math.floor(totalSeats * Math.max(0, Math.min(1, occupancyRatio)));
 
     // BPM beat phase — 0→1 per beat
     const beatDur = (60 / bpm) * 60; // frames per beat at ~60fps
@@ -324,6 +334,7 @@ export default function AudienceScene({
         { y: 418, seats: 10, sw: 74, sz: 17.5, lit: 0.72 },
         { y: 440, seats: 9,  sw: 80, sz: 18.5, lit: 0.85 },
       ];
+      let fanSeatIdx = 0;
       fanRows.forEach((row, ri) => {
         const sx = (W - row.seats * row.sw) / 2;
         for (let c = 0; c < row.seats; c++) {
@@ -335,19 +346,31 @@ export default function AudienceScene({
           const beatBob = beatPulse * -2.5 * row.lit;
           const hy = row.y + wb + jb + beatBob;
 
-          drawHead(ctx, px, hy, row.sz, SKINS[(idx*7+c*3) % SKINS.length]!, HAIR[(idx*5+ri*2) % HAIR.length]!, t*0.025+(c*0.4)+(ri*0.2), false, row.lit);
-
-          // Phone/lighter glow — 65% show phones, 12% show lighters
-          const phoneRoll = (seed * 6271) % 100;
-          if (phoneRoll < 65 && row.lit > 0.3) {
-            const [pr,pg,pb] = phoneGlowColor(idx);
-            const swayX = px + Math.sin(t * 0.022 + seed) * row.sz * 0.8;
-            const glowAlpha = (0.45 + Math.sin(t * 0.04 + seed) * 0.2) * (row.lit * 0.8);
-            drawPhoneGlow(ctx, swayX, hy - row.sz * 0.8, pr, pg, pb, glowAlpha, row.sz * 0.55);
-          } else if (phoneRoll < 77 && row.lit > 0.5) {
-            const lighterAlpha = (0.55 + Math.sin(t * 0.03 + seed) * 0.25) * row.lit;
-            const swayX = px + Math.sin(t * 0.019 + seed) * row.sz * 0.5;
-            drawLighterGlow(ctx, swayX, hy - row.sz * 1.2, lighterAlpha, row.sz * 0.7, t, seed);
+          if (fanSeatIdx++ < occupiedUpTo) {
+            drawHead(ctx, px, hy, row.sz, SKINS[(idx*7+c*3) % SKINS.length]!, HAIR[(idx*5+ri*2) % HAIR.length]!, t*0.025+(c*0.4)+(ri*0.2), false, row.lit);
+            // Phone/lighter glow — 65% show phones, 12% show lighters
+            const phoneRoll = (seed * 6271) % 100;
+            if (phoneRoll < 65 && row.lit > 0.3) {
+              const [pr,pg,pb] = phoneGlowColor(idx);
+              const swayX = px + Math.sin(t * 0.022 + seed) * row.sz * 0.8;
+              const glowAlpha = (0.45 + Math.sin(t * 0.04 + seed) * 0.2) * (row.lit * 0.8);
+              drawPhoneGlow(ctx, swayX, hy - row.sz * 0.8, pr, pg, pb, glowAlpha, row.sz * 0.55);
+            } else if (phoneRoll < 77 && row.lit > 0.5) {
+              const lighterAlpha = (0.55 + Math.sin(t * 0.03 + seed) * 0.25) * row.lit;
+              const swayX = px + Math.sin(t * 0.019 + seed) * row.sz * 0.5;
+              drawLighterGlow(ctx, swayX, hy - row.sz * 1.2, lighterAlpha, row.sz * 0.7, t, seed);
+            }
+          } else {
+            // Empty seat — subtle dark outline so stadium feels spacious, not broken
+            ctx.save();
+            ctx.globalAlpha = 0.18 * row.lit;
+            ctx.strokeStyle = `rgba(${aR},${aG},${aB},0.4)`;
+            ctx.lineWidth = 0.8;
+            ctx.beginPath();
+            ctx.ellipse(px, hy + row.sz * 0.5, row.sz * 0.7, row.sz * 0.55, 0, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.globalAlpha = 1;
+            ctx.restore();
           }
         }
       });
@@ -409,6 +432,9 @@ export default function AudienceScene({
         { ri: 6, yB: H*0.79, seats: 8,  sw: 70, sz: 17.5, lit: 0.97 },
         { ri: 7, yB: H*0.86, seats: 6,  sw: 80, sz: 19,   lit: 1    },
       ];
+      // Fill front rows first (closest to performer = highest energy = fills first)
+      const perfSeatIdx = PERF_TOTAL_SEATS - occupiedUpTo;
+      let perfGlobalIdx = 0;
       perfRows.forEach(row => {
         const sx = (W - row.seats * row.sw) / 2;
         for (let c = 0; c < row.seats; c++) {
@@ -421,19 +447,31 @@ export default function AudienceScene({
           const beatBob = beatPulse * -3 * row.lit;
           const hy = row.yB + wb + jb + hb + beatBob;
 
-          drawHead(ctx, px, hy, row.sz, SKINS[(idx*7+c*3)%SKINS.length]!, HAIR[(idx*5+row.ri*2)%HAIR.length]!, t*0.028+(c*0.35)+(row.ri*0.15), true, row.lit);
-
-          // Phone/lighter glow (performer sees crowd lit up)
-          const phoneRoll = (seed * 6271) % 100;
-          if (phoneRoll < 70) {
-            const [pr,pg,pb] = phoneGlowColor(idx);
-            const swayX = px + Math.sin(t * 0.02 + seed) * row.sz * 0.9;
-            const glowAlpha = (0.4 + Math.sin(t * 0.035 + seed) * 0.2) * (0.5 + row.lit * 0.5);
-            drawPhoneGlow(ctx, swayX, hy - row.sz * 0.7, pr, pg, pb, glowAlpha, row.sz * 0.5);
-          } else if (phoneRoll < 82) {
-            const lighterAlpha = (0.6 + Math.sin(t * 0.028 + seed) * 0.25);
-            const swayX = px + Math.sin(t * 0.017 + seed) * row.sz * 0.5;
-            drawLighterGlow(ctx, swayX, hy - row.sz * 1.1, lighterAlpha * row.lit, row.sz * 0.8, t, seed);
+          if (perfGlobalIdx++ >= perfSeatIdx) {
+            drawHead(ctx, px, hy, row.sz, SKINS[(idx*7+c*3)%SKINS.length]!, HAIR[(idx*5+row.ri*2)%HAIR.length]!, t*0.028+(c*0.35)+(row.ri*0.15), true, row.lit);
+            // Phone/lighter glow (performer sees crowd lit up)
+            const phoneRoll = (seed * 6271) % 100;
+            if (phoneRoll < 70) {
+              const [pr,pg,pb] = phoneGlowColor(idx);
+              const swayX = px + Math.sin(t * 0.02 + seed) * row.sz * 0.9;
+              const glowAlpha = (0.4 + Math.sin(t * 0.035 + seed) * 0.2) * (0.5 + row.lit * 0.5);
+              drawPhoneGlow(ctx, swayX, hy - row.sz * 0.7, pr, pg, pb, glowAlpha, row.sz * 0.5);
+            } else if (phoneRoll < 82) {
+              const lighterAlpha = (0.6 + Math.sin(t * 0.028 + seed) * 0.25);
+              const swayX = px + Math.sin(t * 0.017 + seed) * row.sz * 0.5;
+              drawLighterGlow(ctx, swayX, hy - row.sz * 1.1, lighterAlpha * row.lit, row.sz * 0.8, t, seed);
+            }
+          } else {
+            // Empty seat outline
+            ctx.save();
+            ctx.globalAlpha = 0.15 * row.lit;
+            ctx.strokeStyle = `rgba(${aR},${aG},${aB},0.35)`;
+            ctx.lineWidth = 0.8;
+            ctx.beginPath();
+            ctx.ellipse(px, hy + row.sz * 0.4, row.sz * 0.6, row.sz * 0.5, 0, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.globalAlpha = 1;
+            ctx.restore();
           }
         }
       });
@@ -474,7 +512,7 @@ export default function AudienceScene({
     }
 
     frameRef.current = requestAnimationFrame(render);
-  }, [view, venue, watcherCount, bpm, accentColor, screenLabel, screenSubLabel]);
+  }, [view, venue, watcherCount, bpm, accentColor, screenLabel, screenSubLabel, occupancyRatio]);
 
   useEffect(() => {
     frameRef.current = requestAnimationFrame(render);

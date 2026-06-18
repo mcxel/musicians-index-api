@@ -24,6 +24,7 @@ import BetaStatusChip from "@/components/launch/BetaStatusChip";
 import LiveFeedbackPanel from "@/components/feedback/LiveFeedbackPanel";
 import { MonitorRuntimeProvider } from "@/components/monitor/MonitorRuntimeContext";
 import MonitorRuntime from "@/components/monitor/MonitorRuntime";
+import PlatformFooter from "@/components/layout/PlatformFooter";
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -192,6 +193,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <BetaStatusChip />
               <BotProvider>
                 {children}
+                <PlatformFooter />
               </BotProvider>
               <PWAInstallPrompt />
               <NavigationRail />

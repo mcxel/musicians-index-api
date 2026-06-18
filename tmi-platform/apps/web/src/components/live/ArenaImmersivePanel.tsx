@@ -319,6 +319,10 @@ export default function ArenaImmersivePanel({ roomId, mode }: Props) {
 
   useEffect(() => {
     if (mode !== 'audience' || !joined) return;
+
+    const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+    const groupId = searchParams?.get('groupId') ?? null;
+
     void fetch('/api/live/audience', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -331,6 +335,7 @@ export default function ArenaImmersivePanel({ roomId, mode }: Props) {
           role: 'fan',
           seatId: null, // server auto-assigns
           captureEnabled,
+          groupId,
           viewpoint: { yaw: 0, pitch: 0, updatedAt: Date.now() },
         },
       }),

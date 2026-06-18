@@ -1,32 +1,41 @@
 "use client";
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 
 interface TipArtistBoxProps {
   artistName: string;
+  artistSlug?: string;
   avatarEmoji?: string;
   onTip?: (amount: number) => void;
 }
 
 const PRESET_TIPS = [1, 5, 10, 25, 50, 100];
 
-export default function TipArtistBox({ artistName, avatarEmoji = '🎤', onTip }: TipArtistBoxProps) {
+export default function TipArtistBox({ artistName, artistSlug, avatarEmoji = '🎤', onTip }: TipArtistBoxProps) {
   const [amount, setAmount] = useState(5);
   const [custom, setCustom] = useState('');
   const [isCustom, setIsCustom] = useState(false);
   const [sending, setSending] = useState(false);
-  const [sent, setSent] = useState(false);
 
   const finalAmount = isCustom ? parseFloat(custom) || 0 : amount;
+  const slug = artistSlug ?? artistName.toLowerCase().replace(/\s+/g, '-');
 
   const handleTip = async () => {
     if (finalAmount <= 0) return;
     setSending(true);
-    await new Promise(r => setTimeout(r, 900));
-    setSending(false);
-    setSent(true);
     onTip?.(finalAmount);
-    setTimeout(() => setSent(false), 3000);
+    try {
+      const res = await fetch('/api/stripe/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ product: 'TIP', artistSlug: slug, amount: Math.round(finalAmount * 100) }),
+      });
+      const data = await res.json() as { url?: string; error?: string };
+      if (data.url) { window.location.href = data.url; return; }
+      throw new Error(data.error ?? 'No session URL');
+    } catch {
+      setSending(false);
+    }
   };
 
   return (
@@ -96,33 +105,20 @@ export default function TipArtistBox({ artistName, avatarEmoji = '🎤', onTip }
           />
         )}
 
-        <AnimatePresence mode="wait">
-          {sent ? (
-            <motion.div key="sent"
-              initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
-              style={{
-                padding: 10, textAlign: 'center',
-                background: '#001008', border: '1px solid #00FF8844',
-                borderRadius: 8, color: '#00FF88', fontWeight: 700, fontSize: 13,
-              }}
-            >💸 TIP SENT!</motion.div>
-          ) : (
-            <motion.button key="tip"
-              whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
-              onClick={handleTip}
-              disabled={sending || finalAmount <= 0}
-              style={{
-                width: '100%', padding: '11px',
-                background: sending ? '#333' : 'linear-gradient(135deg, #FF2DAA, #FF9500)',
-                border: 'none', borderRadius: 8,
-                color: '#FFF', fontWeight: 700, cursor: sending ? 'default' : 'pointer',
-                fontSize: 14, letterSpacing: 1,
-              }}
-            >
-              {sending ? 'SENDING...' : `💸 TIP $${finalAmount}`}
-            </motion.button>
-          )}
-        </AnimatePresence>
+        <motion.button
+          whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+          onClick={() => void handleTip()}
+          disabled={sending || finalAmount <= 0}
+          style={{
+            width: '100%', padding: '11px',
+            background: sending ? '#333' : 'linear-gradient(135deg, #FF2DAA, #FF9500)',
+            border: 'none', borderRadius: 8,
+            color: '#FFF', fontWeight: 700, cursor: sending ? 'default' : 'pointer',
+            fontSize: 14, letterSpacing: 1,
+          }}
+        >
+          {sending ? 'REDIRECTING TO STRIPE...' : `💸 TIP $${finalAmount}`}
+        </motion.button>
       </div>
     </div>
   );
