@@ -28,13 +28,16 @@ function Ticker({ text, color }: { text: string; color: string }) {
 
 function MonitorDisplay({
   tracks, currentIdx, isPlaying, points, primary, accent, listeners,
-  streams, shares, rank,
-  onPrev, onPlay, onNext, onLike,
+  streams, shares, rank, progress,
+  onPrev, onPlay, onNext, onLike, onSeek,
 }: {
   tracks: ArtifactTrack[]; currentIdx: number; isPlaying: boolean;
   points: number; primary: string; accent: string; listeners: number;
   streams?: number; shares?: number; rank?: number;
+  /** Real playback position, 0-1. Undefined when track isn't natively playable. */
+  progress?: number;
   onPrev: () => void; onPlay: () => void; onNext: () => void; onLike: () => void;
+  onSeek: (ratio: number) => void;
 }) {
   const track = tracks[currentIdx];
   const total = tracks.length;
@@ -73,14 +76,17 @@ function MonitorDisplay({
         ))}
       </div>
 
-      {/* Progress bar */}
+      {/* Progress bar — real playback position when natively playable, click to seek */}
       <div style={{ padding: "0 8px 2px" }}>
-        <div style={{ height: 3, borderRadius: 2, background: "rgba(255,255,255,0.1)", overflow: "hidden" }}>
-          <motion.div
-            animate={isPlaying ? { width: ["0%", "100%"] } : {}}
-            transition={isPlaying ? { duration: 240, ease: "linear", repeat: Infinity } : {}}
-            style={{ height: "100%", background: `linear-gradient(90deg, ${primary}, ${accent})`, borderRadius: 2 }}
-          />
+        <div
+          onClick={(e) => {
+            if (progress === undefined) return;
+            const rect = e.currentTarget.getBoundingClientRect();
+            onSeek(Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width)));
+          }}
+          style={{ height: 3, borderRadius: 2, background: "rgba(255,255,255,0.1)", overflow: "hidden", cursor: progress === undefined ? "default" : "pointer" }}
+        >
+          <div style={{ height: "100%", width: `${(progress ?? 0) * 100}%`, background: `linear-gradient(90deg, ${primary}, ${accent})`, borderRadius: 2, transition: "width 0.1s linear" }} />
         </div>
       </div>
 
@@ -690,6 +696,14 @@ export default function PlaylistArtifact({
   const [liked,         setLiked]        = useState(false);
   const [addedLibrary,  setAddedLibrary]  = useState(false);
   const pointsTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Embed-only platforms (Spotify/YouTube/SoundCloud/Apple) require their own
+  // player SDK/iframe — sourceUrl there is a webpage link, not an audio file.
+  // "tmi" (self-hosted upload) and "link" (direct file URL) play natively.
+  const currentTrack = tracks[currentIdx];
+  const isNativelyPlayable = currentTrack && (currentTrack.source === "tmi" || currentTrack.source === "link") && currentTrack.sourceUrl !== "#";
+  const [playProgress, setPlayProgress] = useState(0);
 
   useEffect(() => {
     if (isPlaying) {
@@ -702,12 +716,29 @@ export default function PlaylistArtifact({
     return () => { if (pointsTimer.current) clearInterval(pointsTimer.current); };
   }, [isPlaying]);
 
+  // Real audio playback for natively-playable tracks
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (!isNativelyPlayable) { audio.pause(); setPlayProgress(0); return; }
+    if (audio.src !== currentTrack!.sourceUrl) { audio.src = currentTrack!.sourceUrl; setPlayProgress(0); }
+    audio.volume = eq.volume / 100;
+    if (isPlaying) void audio.play().catch(() => setIsPlaying(false));
+    else audio.pause();
+  }, [isPlaying, currentIdx, isNativelyPlayable, currentTrack, eq.volume]);
+
   const handleAddTrack = useCallback((t: ArtifactTrack) => {
     setTracks((prev) => interleaveTMI([t, ...prev.filter((x) => !x.id.startsWith("tmi-"))]));
   }, []);
 
   return (
     <div style={{ position: "relative", display: "inline-flex", flexDirection: "column", alignItems: "center", gap: 0 }}>
+      <audio
+        ref={audioRef}
+        onEnded={() => { setCurrentIdx((i) => (i + 1) % Math.max(tracks.length, 1)); setStreamCount((n) => n + 1); setPlayProgress(0); }}
+        onTimeUpdate={(e) => { const a = e.currentTarget; if (a.duration) setPlayProgress(a.currentTime / a.duration); }}
+        style={{ display: "none" }}
+      />
       {/* +10 XP flash */}
       <AnimatePresence>
         {xpFlash && (
@@ -729,9 +760,19 @@ export default function PlaylistArtifact({
           points={points} primary={meta.primary} accent={meta.accent} listeners={listeners}
           streams={streamCount} shares={shares} rank={rank}
           onPrev={() => setCurrentIdx((i) => (i - 1 + tracks.length) % Math.max(tracks.length, 1))}
-          onPlay={() => { setIsPlaying(p => { if (!p) setStreamCount(n => n + 1); return !p; }); }}
+          onPlay={() => {
+            // External platform tracks (Spotify/YouTube/SoundCloud/Apple) can't play
+            // inline — open the real source instead of faking a play state.
+            if (!isNativelyPlayable) {
+              if (currentTrack && currentTrack.sourceUrl !== "#") window.open(currentTrack.sourceUrl, "_blank", "noopener,noreferrer");
+              return;
+            }
+            setIsPlaying(p => { if (!p) setStreamCount(n => n + 1); return !p; });
+          }}
           onNext={() => { setCurrentIdx((i) => (i + 1) % Math.max(tracks.length, 1)); setPoints((p) => p + 10); setStreamCount(n => n + 1); }}
           onLike={() => setLiked(!liked)}
+          progress={isNativelyPlayable ? playProgress : undefined}
+          onSeek={(ratio) => { if (audioRef.current && isNativelyPlayable && audioRef.current.duration) audioRef.current.currentTime = ratio * audioRef.current.duration; }}
         />
       </SkinComponent>
 
@@ -755,7 +796,12 @@ export default function PlaylistArtifact({
               {/* Track list */}
               <div style={{ maxHeight: 180, overflowY: "auto" }}>
                 {tracks.map((t, i) => (
-                  <div key={t.id} onClick={() => { setCurrentIdx(i); setIsPlaying(true); }}
+                  <div key={t.id} onClick={() => {
+                    setCurrentIdx(i);
+                    const playable = (t.source === "tmi" || t.source === "link") && t.sourceUrl !== "#";
+                    if (playable) setIsPlaying(true);
+                    else if (t.sourceUrl !== "#") window.open(t.sourceUrl, "_blank", "noopener,noreferrer");
+                  }}
                     style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 12px", cursor: "pointer", background: i === currentIdx ? `${meta.primary}11` : "transparent", borderLeft: i === currentIdx ? `2px solid ${meta.primary}` : "2px solid transparent" }}>
                     <span style={{ fontSize: 9, color: "rgba(255,255,255,0.2)", width: 16, textAlign: "right", flexShrink: 0 }}>{i + 1}</span>
                     <div style={{ flex: 1, minWidth: 0 }}>
