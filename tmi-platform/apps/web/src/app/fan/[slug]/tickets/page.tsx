@@ -8,7 +8,6 @@ import {
   upgradeTicket,
   redeemTicket,
 } from "@/lib/tickets/ticketEngine";
-import { createTicket } from "@/lib/tickets/ticketEngine";
 import TicketPrintEngine from "@/components/venues/TicketPrintEngine";
 import type { TicketRecord } from "@/lib/tickets/ticketCore";
 
@@ -30,19 +29,9 @@ const TIER_COLOR: Record<string, string> = {
   RAFFLE_PASS:    "#94a3b8",
 };
 
-function seedDemoTickets(slug: string): TicketRecord[] {
-  const existing = getOwnedTickets(slug);
-  if (existing.length > 0) return existing;
-  return [
-    createTicket({ ownerId: slug, venueSlug: "crown-stage",    eventSlug: "tmi-finale-s3",    tier: "VIP",      faceValue: 250 }),
-    createTicket({ ownerId: slug, venueSlug: "electric-blue",  eventSlug: "cypher-night-12",  tier: "STANDARD", faceValue: 75  }),
-    createTicket({ ownerId: slug, venueSlug: "pulse-arena",    eventSlug: "battle-royale-4",  tier: "BACKSTAGE",faceValue: 180 }),
-  ];
-}
-
 export default function FanTicketWalletPage({ params }: { params: { slug: string } }) {
   const { slug } = params;
-  const [tickets, setTickets] = useState<TicketRecord[]>(() => seedDemoTickets(slug));
+  const [tickets, setTickets] = useState<TicketRecord[]>(() => getOwnedTickets(slug));
   const [selected, setSelected] = useState<TicketRecord | null>(null);
   const [transferTo, setTransferTo] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
@@ -126,7 +115,12 @@ export default function FanTicketWalletPage({ params }: { params: { slug: string
           {/* Ticket list */}
           <div style={{ display: "grid", gap: 8 }}>
             {tickets.length === 0 && (
-              <p style={{ color: "#475569", fontSize: 11, textAlign: "center", padding: "40px 0" }}>No tickets in wallet.</p>
+              <div style={{ textAlign: "center", padding: "48px 0" }}>
+                <p style={{ color: "#475569", fontSize: 11, margin: "0 0 14px" }}>No tickets in your wallet yet.</p>
+                <Link href="/venues" style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.1em", color: "#fcd34d", border: "1px solid rgba(251,191,36,0.4)", borderRadius: 6, padding: "8px 18px", textDecoration: "none" }}>
+                  BROWSE EVENTS →
+                </Link>
+              </div>
             )}
             {tickets.map((ticket) => {
               const accent = TIER_COLOR[ticket.template.tier] ?? "#fcd34d";

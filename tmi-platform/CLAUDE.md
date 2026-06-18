@@ -445,9 +445,47 @@ Do not use a single universal probability table. The camera system must be aware
 
 ---
 
+### Rule 17 — Ticket & Merchandise Inventory Authority
+
+Performers are distributors of event inventory, never creators of it. Only Venues and Promoters can mint ticket or merchandise inventory; Admin can on their behalf.
+
+**Authority matrix:**
+
+| Action | Fan | Performer | Promoter | Venue | Sponsor | Advertiser | Admin |
+|---|---|---|---|---|---|---|---|
+| Create Event | ❌ | Limited | ✅ | ✅ | ❌ | ❌ | ✅ |
+| Create Ticket/Merch Inventory | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ | ✅ |
+| Allocate Inventory | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ | ✅ |
+| Sell Allocated Inventory | ❌ | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ |
+| Sponsor Artist/Event/Venue | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ✅ |
+| Buy Ad Placements | ❌ | Optional | Optional | Optional | Optional | ✅ | ✅ |
+| Create Ad Inventory | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
+
+**Ticket Allocation Engine flow:**
+```
+Venue Creates Event
+  ↓ Venue Creates Inventory (quantity, tiers, pricing)
+  ↓ Promoter Receives Allocation (optional)
+  ↓ Performer Receives Allocation
+  ↓ Fan Purchases / Receives Gifted Ticket
+  ↓ Ticket Redeemed
+  ↓ Revenue Settlement
+```
+
+A performer-facing UI must never show "Create Ticket." It shows: **Request Ticket Allocation**, **Manage Allocated Tickets**, **Sell Tickets**, **Gift Tickets** — communicating that they distribute inventory, not originate it. Same model applies to merchandise: Artist/Venue/Promoter/Brand create merch; an Affiliate Seller (e.g. a performer) receives allocated inventory and sells it, never mints new stock.
+
+**Every ticket tracks:** Ticket ID, Event ID, Venue ID, Promoter ID, Current Owner, Original Inventory Source, Price, Status, Redeemed?, Transfer History.
+**Every allocation tracks:** Allocation ID, Created By, Assigned To, Quantity, Remaining, Sold, Gifted, Revenue Generated.
+
+**Known gap as of 2026-06-18**: `lib/tickets/ticketEngine.ts`'s `createTicket()` currently has zero authority checks and zero inventory/capacity tracking — any caller can mint unlimited tickets of any tier. This rule is not yet enforced in code; the Ticket Allocation Engine implementing it has not been built.
+
+*Established 2026-06-18 by Marcel Dickens.*
+
+---
+
 ### Platform Constitution Summary
 
-16 rules. Non-negotiable. Applies forever.
+17 rules. Non-negotiable. Applies forever.
 
 | # | Rule | Key File |
 |---|------|----------|
@@ -468,3 +506,4 @@ Do not use a single universal probability table. The camera system must be aware
 | 14 | No Empty Surface — every button, link, card, image resolves to a real destination | All surfaces |
 | 15 | Canister Integration — every profile/lobby/room includes Playlist+MemoryWall+Booking+Messaging+Store+Avatar+Inventory+Lobby canisters | components/canisters/ |
 | 16 | Broadcast Preview Canon v2 — 70% Audience, 20% Backstage/DJ, 10% AI Host rotation | BroadcastDirectorEngine.ts |
+| 17 | Ticket & Merchandise Inventory Authority — Venue/Promoter create+allocate, Performer distributes only | ticketEngine.ts |
