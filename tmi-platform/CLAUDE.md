@@ -483,9 +483,27 @@ A performer-facing UI must never show "Create Ticket." It shows: **Request Ticke
 
 ---
 
+### Rule 18 — Visual Identity Formula + Profile/Avatar/Route Integrity
+
+**The TMI Visual Formula (locked):** 40% 1980s Entertainment Magazine (Rolling Stone/Billboard/Source/Vibe/XXL covers, big typography, bold cover art) + 30% Vice City nightlife (hot pink, electric cyan, neon purple, sunset gradients, reflective glass) + 20% Live Broadcast (LIVE indicators, audience counts, lower thirds, tickers — award show / sports broadcast / PPV energy) + 10% Spatial World (bobblehead avatars, seated audiences, lobby spaces, friend clusters — a living venue, not a game).
+
+Master statement: *"TMI should feel like walking through a living 1980s entertainment magazine inside a neon Vice City nightlife district, while every concert, battle, article, lobby, and audience exists inside a shared 3D broadcast universe populated by ultra-realistic bobblehead versions of real people."*
+
+Per-surface targets: Home 1 = "1985 MTV + Vice City Boulevard + Magazine Cover." Home 2 = "Magazine Headquarters." Home 3 = "Broadcast Control Center." Home 4 = "Entertainment District." Home 5 = "Fight Night + Apollo Theater + Battle Arena." No flat grey panels (use glass/glow/neon-edge/broadcast frames), no empty space (every space carries motion/discovery/audience/media/live content — see Rule 14), no dead buttons.
+
+**Avatar standard:** Not anime, not cartoon, not Fortnite/Roblox/MetaHuman style. Target is **Ultra-Realistic Bobblehead** — real face proportions, recognizable likeness, slightly oversized head, expressive eyes, stylized realism, high-quality materials/hair/clothing. A face scan of a real person must produce a recognizable bobblehead of that person, never a generic numbered avatar. Pipeline: Phone Face Scan → Face Identity Engine → Bobblehead Avatar Builder → Wardrobe/Props/Emotes → Venue Seat Binding → Video Presence Overlay → Memory Wall/Profile Display. Every avatar — human, bot, audience, performer, fan — uses this same runtime; bots are never flat icons.
+
+**No Orphan Routes/Roles/Cards rule:** every account type (Fan, Performer, Sponsor, Advertiser, Promoter, Venue) must have its own real, wired destination set — not a shared generic dashboard. Every route, card, button, widget, canister, dashboard, and profile page must either (1) route to the correct role page, (2) be wired into the correct dashboard, (3) be converted into current design, or (4) be deleted. Nothing sits unused. Finish function first (real data, real wiring — Rules 8 and 14), then apply the visual layer last.
+
+**Known gap as of 2026-06-18**: the bobblehead avatar pipeline does not exist in the codebase — confirmed via direct audit (see [[project_blueprint_vs_reality_2026_06_18]] memory and the avatar-system audit earlier this session). What exists are ~50 avatar-related components (creation studios, customizers, inventory rails) using flat/emoji/2D representations, not face-scan-driven 3D bobbleheads. This is real, unbuilt, multi-session work, not a wiring task.
+
+*Established 2026-06-18 by Marcel Dickens.*
+
+---
+
 ### Platform Constitution Summary
 
-17 rules. Non-negotiable. Applies forever.
+18 rules. Non-negotiable. Applies forever.
 
 | # | Rule | Key File |
 |---|------|----------|
@@ -507,3 +525,4 @@ A performer-facing UI must never show "Create Ticket." It shows: **Request Ticke
 | 15 | Canister Integration — every profile/lobby/room includes Playlist+MemoryWall+Booking+Messaging+Store+Avatar+Inventory+Lobby canisters | components/canisters/ |
 | 16 | Broadcast Preview Canon v2 — 70% Audience, 20% Backstage/DJ, 10% AI Host rotation | BroadcastDirectorEngine.ts |
 | 17 | Ticket & Merchandise Inventory Authority — Venue/Promoter create+allocate, Performer distributes only | ticketEngine.ts |
+| 18 | Visual Identity Formula (40% Magazine/30% Vice City/20% Broadcast/10% Spatial) + Ultra-Realistic Bobblehead avatars + No Orphan Routes/Roles | All surfaces, avatar pipeline |

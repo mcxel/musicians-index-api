@@ -1,5 +1,8 @@
+'use client';
+
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { PERFORMER_REGISTRY, getLivePerformers } from '@/lib/performers/PerformerRegistry';
+import { PERFORMER_REGISTRY, getPerformerById, type PerformerIdentity } from '@/lib/performers/PerformerRegistry';
 import { VENUE_REGISTRY, getLiveVenues } from '@/lib/venues/VenueRegistry';
 import { MAGAZINE_ISSUE_1 } from '@/lib/magazine/magazineIssueData';
 import { getActiveSponsorForZone } from '@/lib/commerce/SponsorRegistry';
@@ -56,9 +59,38 @@ function cardBase(accentColor: string) {
   };
 }
 
+interface LiveApiSession {
+  userId: string;
+}
+
 export default function DiscoveryRail({ type, tags = [], exclude, limit = 6, label, accentColor = '#00FFFF' }: Props) {
   let title = label;
   let content: React.ReactNode = null;
+
+  // Real GlobalLiveSessionRegistry data via /api/live/go — not the static
+  // PERFORMER_REGISTRY.isLive seed flag, which never reflects an actual broadcast.
+  // Only matches sessions whose broadcaster is also a known PERFORMER_REGISTRY entry.
+  const [livePerformers, setLivePerformers] = useState<PerformerIdentity[]>([]);
+  useEffect(() => {
+    if (type !== 'performers' && type !== 'liveRooms') return;
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const res = await fetch('/api/live/go', { cache: 'no-store' });
+        const data = await res.json() as { sessions?: LiveApiSession[] };
+        const matched = (data.sessions ?? [])
+          .map((s) => getPerformerById(s.userId))
+          .filter((p): p is PerformerIdentity => Boolean(p))
+          .map((p): PerformerIdentity => ({ ...p, isLive: true }));
+        if (!cancelled) setLivePerformers(matched);
+      } catch {
+        if (!cancelled) setLivePerformers([]);
+      }
+    };
+    void load();
+    const id = setInterval(() => void load(), 10000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, [type]);
 
   // ── ARTICLES ───────────────────────────────────────────────────────────────
   if (type === 'articles') {
@@ -95,8 +127,8 @@ export default function DiscoveryRail({ type, tags = [], exclude, limit = 6, lab
   // ── PERFORMERS ─────────────────────────────────────────────────────────────
   if (type === 'performers') {
     title = title ?? '🎤 FEATURED ARTISTS';
-    const live = getLivePerformers();
-    const all = [...live, ...PERFORMER_REGISTRY.filter(p => !p.isLive)];
+    const liveIds = new Set(livePerformers.map((p) => p.id));
+    const all = [...livePerformers, ...PERFORMER_REGISTRY.filter(p => !liveIds.has(p.id))];
     const filtered = all
       .filter(p => p.slug !== exclude)
       .filter(p => tags.length === 0 || tags.some(t => p.category.toLowerCase().includes(t.toLowerCase())))
@@ -140,7 +172,7 @@ export default function DiscoveryRail({ type, tags = [], exclude, limit = 6, lab
   // ── LIVE ROOMS ─────────────────────────────────────────────────────────────
   if (type === 'liveRooms') {
     title = title ?? '🎥 LIVE NOW';
-    const performers = getLivePerformers().slice(0, limit);
+    const performers = livePerformers.slice(0, limit);
 
     content = (
       <div style={{ display: 'flex', gap: 10, overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: 4 }}>

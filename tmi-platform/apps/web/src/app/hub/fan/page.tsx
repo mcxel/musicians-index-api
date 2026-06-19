@@ -1,4 +1,5 @@
 'use client';
+import { useEffect, useState } from 'react';
 import { PersonaSwitcher } from '@/components/hud/PersonaSwitcher';
 import { HubBackNav } from '@/components/nav/HubBackNav';
 import FanHubShell from "@/components/fan/FanHubShell";
@@ -15,7 +16,7 @@ import MemoryWall from "@/components/media/MemoryWall";
 import FriendsList from "@/components/social/FriendsList";
 import { InventoryPanel } from "@/components/InventoryPanel";
 import CollapsibleCanister from "@/components/canisters/CollapsibleCanister";
-import { getLivePerformers } from "@/lib/performers/PerformerRegistry";
+import { getPerformerById } from "@/lib/performers/PerformerRegistry";
 import MonitorSatelliteSystem from "@/components/canisters/MonitorSatelliteSystem";
 import PlaylistArtifact from "@/components/artifacts/PlaylistArtifact";
 
@@ -107,9 +108,55 @@ const QUESTS = [
   { label: "Invite a friend to TMI",    progress: 0, max: 1, reward: "Backstage Access", accent: "#f59e0b" },
 ];
 
+interface FeaturedLive {
+  name: string;
+  liveRoomRoute: string;
+  introVideoUrl?: string;
+  motionPosterUrl?: string;
+  profileImageUrl?: string;
+  audienceCount: number;
+}
+
+interface LiveApiSession {
+  userId: string;
+  displayName: string;
+  roomId: string;
+  viewerCount: number;
+  avatarUrl: string | null;
+}
+
 export default function FanHubPage() {
   const { totalXp, walletCredits, currentLevel } = useGamificationEngine();
-  const featuredLive = getLivePerformers()[0];
+  const [featuredLive, setFeaturedLive] = useState<FeaturedLive | null>(null);
+
+  // Real GlobalLiveSessionRegistry data via /api/live/go — not the static
+  // PERFORMER_REGISTRY.isLive seed flag, which never reflects an actual broadcast.
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const res = await fetch('/api/live/go', { cache: 'no-store' });
+        const data = await res.json() as { sessions?: LiveApiSession[] };
+        const top = data.sessions?.[0];
+        if (cancelled) return;
+        if (!top) { setFeaturedLive(null); return; }
+        const profile = getPerformerById(top.userId);
+        setFeaturedLive({
+          name: profile?.name ?? top.displayName,
+          liveRoomRoute: profile?.liveRoomRoute ?? `/live/rooms/${top.roomId}`,
+          introVideoUrl: profile?.introVideoUrl,
+          motionPosterUrl: profile?.motionPosterUrl,
+          profileImageUrl: profile?.profileImageUrl ?? top.avatarUrl ?? undefined,
+          audienceCount: top.viewerCount,
+        });
+      } catch {
+        if (!cancelled) setFeaturedLive(null);
+      }
+    };
+    void load();
+    const id = setInterval(() => void load(), 10000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, []);
 
   return (
     <div style={{ fontFamily: "'Inter', sans-serif", background: "#07071a", color: "#e2e8f0", minHeight: "100vh" }}>

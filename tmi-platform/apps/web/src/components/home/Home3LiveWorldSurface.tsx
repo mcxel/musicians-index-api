@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import MotionPosterPlayer from '@/components/media/MotionPosterPlayer';
-import { getLivePerformers } from '@/lib/performers/PerformerRegistry';
+import { getPerformerById } from '@/lib/performers/PerformerRegistry';
 import { LobbyEntryFlow, type UniversalRoom } from '@/components/room/UniversalLobbyEntry';
 import Home3MainPreviewLobby from './Home3MainPreviewLobby';
 import Home3LivewallGrid from './Home3LobbyWallGrid';
@@ -36,12 +36,62 @@ import NeonWaveUnderlay from '@/components/atmosphere/NeonWaveUnderlay';
 import UnifiedAdSlot from '@/components/ads/UnifiedAdSlot';
 import AudienceDirectorWindow from '@/components/live/AudienceDirectorWindow';
 
+interface FeaturedPerformer {
+  roomId: string;
+  name: string;
+  isLive: boolean;
+  liveRoomRoute: string;
+  introVideoUrl?: string;
+  motionPosterUrl?: string;
+  profileImageUrl?: string;
+  audienceCount: number;
+}
+
+interface LiveApiSession {
+  userId: string;
+  displayName: string;
+  roomId: string;
+  viewerCount: number;
+  avatarUrl: string | null;
+}
+
 export default function Home3LiveWorldSurface() {
   enforceRouteOwnership('/home/3');
   getVisualSlot('home-3-hero');
 
   const [pending, setPending] = useState<UniversalRoom | null>(null);
-  const featuredPerformer = getLivePerformers()[0];
+  const [featuredPerformer, setFeaturedPerformer] = useState<FeaturedPerformer | null>(null);
+
+  // Real GlobalLiveSessionRegistry data via /api/live/go — not the static
+  // PERFORMER_REGISTRY.isLive seed flag, which never reflects an actual broadcast.
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const res = await fetch('/api/live/go', { cache: 'no-store' });
+        const data = await res.json() as { sessions?: LiveApiSession[] };
+        const top = data.sessions?.[0];
+        if (cancelled) return;
+        if (!top) { setFeaturedPerformer(null); return; }
+        const profile = getPerformerById(top.userId);
+        setFeaturedPerformer({
+          roomId: top.roomId,
+          name: profile?.name ?? top.displayName,
+          isLive: true,
+          liveRoomRoute: profile?.liveRoomRoute ?? `/live/rooms/${top.roomId}`,
+          introVideoUrl: profile?.introVideoUrl,
+          motionPosterUrl: profile?.motionPosterUrl,
+          profileImageUrl: profile?.profileImageUrl ?? top.avatarUrl ?? undefined,
+          audienceCount: top.viewerCount,
+        });
+      } catch {
+        if (!cancelled) setFeaturedPerformer(null);
+      }
+    };
+    void load();
+    const id = setInterval(() => void load(), 10000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, []);
 
   function openRoom(id: string, title: string, color: string) {
     setPending({ id, title, viewers: 0, status: 'live', access: 'free', accentColor: color, roomRoute: `/live/rooms/${id}?from=lobby-wall`, venueIndex: 0, shape: 'hex' });
@@ -156,7 +206,7 @@ export default function Home3LiveWorldSurface() {
             <div style={{ minHeight: 220, borderRadius: 12, overflow: 'hidden', border: '1px solid rgba(0,255,255,0.35)', position: 'relative' }}>
               {/* Discovery surface — performer/host video first, never an audience grid (Audience Visibility Rule) */}
               <MotionPosterPlayer
-                isLive={featuredPerformer?.isLive ?? true}
+                isLive={featuredPerformer?.isLive ?? false}
                 liveRoomRoute={featuredPerformer?.liveRoomRoute}
                 introVideoUrl={featuredPerformer?.introVideoUrl}
                 motionPosterUrl={featuredPerformer?.motionPosterUrl}
