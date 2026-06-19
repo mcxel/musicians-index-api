@@ -10,6 +10,8 @@ import {
   endLiveSession,
   pingSessionWithTelemetry,
   getAllSessions,
+  getSession,
+  getSessionsByCategory,
   type GoLivePayload,
   type LivePingPayload,
 } from '@/lib/broadcast/GlobalLiveSessionRegistry';
@@ -51,6 +53,22 @@ export async function POST(req: NextRequest) {
     accentColor:   body.accentColor,
     performerTier: body.performerTier,
   });
+
+  // ── Atomic Discovery Emitter (Rule: Session Exists AND Discovery Tile Exists = PUBLIC) ──
+  // Read the session back through the exact same paths every discovery wall uses
+  // (getSession, getSessionsByCategory). If it isn't actually retrievable there,
+  // the registry write is rolled back and the request fails — "live but
+  // undiscoverable" is treated as a runtime failure, not a partial success.
+  const verifiedSession = getSession(userId);
+  const discoverableInCategory = getSessionsByCategory(session.category).some((s) => s.userId === userId);
+  if (!verifiedSession || !discoverableInCategory) {
+    endLiveSession(userId);
+    console.error('[api/live/go] RUNTIME_FAIL: session registered but not discoverable', { userId, category: session.category });
+    return NextResponse.json(
+      { ok: false, error: 'Could not verify your stream is discoverable. Please try going live again.', code: 'RUNTIME_FAIL', reason: 'discovery_tile_not_verified' },
+      { status: 409 },
+    );
+  }
 
   // Persist live state to DB so serverless cold starts don't drop the session
   await prisma.user.updateMany({
