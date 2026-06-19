@@ -49,6 +49,18 @@ interface BillboardLiveWallProps {
   /** Title shown above the wall */
   title?: string;
   className?: string;
+  /** Filter to a single GlobalLiveSessionRegistry category (battle/cypher/concert/challenge/live/game/session) */
+  category?: string;
+}
+
+interface LiveApiSession {
+  userId: string;
+  displayName: string;
+  category: string;
+  roomId: string;
+  viewerCount: number;
+  avatarUrl: string | null;
+  accentColor: string;
 }
 
 // ─── Shape rotation by mode ───────────────────────────────────────────────────
@@ -78,34 +90,71 @@ export default function BillboardLiveWall({
   forceShape,
   title,
   className = '',
+  category,
 }: BillboardLiveWallProps) {
   const [performers, setPerformers] = useState<PerformerSlot[]>([]);
   const [justJoinedIdx, setJustJoinedIdx] = useState<number | null>(null);
   const [activeFlowRoom, setActiveFlowRoom] = useState<UniversalRoom | null>(null);
 
-  // Load + sort performers: live first, then by rank
+  // Real liveness from GlobalLiveSessionRegistry (via /api/live/go) — live tiles first,
+  // then PERFORMER_REGISTRY fills remaining slots as honestly-offline discovery tiles.
+  // Never fabricates "isLive" from array index — Rule 14.
   useEffect(() => {
-    const all: PerformerSlot[] = (PERFORMER_REGISTRY as any[]).map((p, i) => ({
-      id: p.id,
-      name: p.name,
-      slug: p.slug ?? p.id,
-      rank: p.rank ?? (i + 1),
-      isLive: p.isLive ?? (i % 3 !== 0),
-      viewerCount: p.audienceCount ?? p.fanCount ?? 500,
-      genre: p.category ?? p.genre ?? 'Live',
-      avatarEmoji: p.avatarEmoji ?? '👤',
-      avatarUrl: p.profileImageUrl ?? p.avatarUrl,
-      accentColor: ACCENT_PALETTE[i % ACCENT_PALETTE.length],
-      sponsorCount: i % 4 === 0 ? 2 : 0
-    }));
+    let cancelled = false;
 
-    const sorted = [...all].sort((a, b) => {
-      if (a.isLive && !b.isLive) return -1;
-      if (!a.isLive && b.isLive) return 1;
-      return (a.rank ?? 99) - (b.rank ?? 99);
-    });
-    setPerformers(sorted.slice(0, maxTiles));
-  }, [maxTiles]);
+    const load = async () => {
+      let sessions: LiveApiSession[] = [];
+      try {
+        const res = await fetch('/api/live/go', { cache: 'no-store' });
+        const data = await res.json() as { sessions?: LiveApiSession[] };
+        sessions = data.sessions ?? [];
+      } catch {
+        sessions = [];
+      }
+      if (cancelled) return;
+
+      const filtered = category ? sessions.filter((s) => s.category === category) : sessions;
+
+      const liveTiles: PerformerSlot[] = filtered.map((s, i) => ({
+        id: s.userId,
+        name: s.displayName,
+        slug: s.userId,
+        isLive: true,
+        viewerCount: s.viewerCount,
+        genre: s.category,
+        avatarEmoji: '🎤',
+        avatarUrl: s.avatarUrl ?? undefined,
+        accentColor: s.accentColor || ACCENT_PALETTE[i % ACCENT_PALETTE.length],
+        sponsorCount: 0,
+      }));
+
+      const liveIds = new Set(liveTiles.map((t) => t.id));
+      const offline: PerformerSlot[] = category
+        ? [] // category-filtered walls only show real sessions in that category
+        : (PERFORMER_REGISTRY as any[])
+            .filter((p) => !liveIds.has(p.id))
+            .map((p, i): PerformerSlot => ({
+              id: p.id,
+              name: p.name,
+              slug: p.slug ?? p.id,
+              rank: p.rank ?? (i + 1),
+              isLive: false,
+              viewerCount: p.audienceCount ?? p.fanCount ?? 0,
+              genre: p.category ?? p.genre ?? 'Live',
+              avatarEmoji: p.avatarEmoji ?? '👤',
+              avatarUrl: p.profileImageUrl ?? p.avatarUrl,
+              accentColor: ACCENT_PALETTE[i % ACCENT_PALETTE.length],
+              sponsorCount: 0,
+            }))
+            .sort((a, b) => (a.rank ?? 99) - (b.rank ?? 99));
+
+      setPerformers([...liveTiles, ...offline].slice(0, maxTiles));
+    };
+
+    void load();
+    const id = setInterval(() => void load(), 8000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, [maxTiles, category]);
 
   // "Just joined" flash every 9s
   useEffect(() => {

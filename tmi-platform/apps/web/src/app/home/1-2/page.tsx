@@ -83,7 +83,8 @@ const buildFallback = (category: string): BillboardCard[] =>
       profileImageUrl: `https://i.pravatar.cc/400?u=${encodeURIComponent(category)}-${i}`,
       city: loc.city, countryName: loc.country, flag: loc.flag, category,
       rank: i + 1, fanCount: 4000 + i * 1800, likes: 6000 + i * 2300,
-      isLive: i % 3 !== 0, tier: TIERS[i % TIERS.length]!,
+      // Synthetic fallback cards have no real session — never claim live.
+      isLive: false, tier: TIERS[i % TIERS.length]!,
       audienceCount: 800 + i * 640, timeLive: `${5 + i * 7}m`,
     };
   });
@@ -101,7 +102,8 @@ function mapTrending(category: string, rows: TrendingArtist[] | null): Billboard
       category: r.genres?.[0] || category, rank: i + 1,
       fanCount: Math.max(2000, r.followers || 0),
       likes: Math.max(1500, r.views || 0),
-      isLive: i % 3 !== 0,
+      // Real liveness from the registry, not a fabricated pattern.
+      isLive: regP?.isLive ?? false,
       tier: TIERS[i % TIERS.length]!,
       audienceCount: Math.max(600, Math.floor((r.views || 0) / 4)),
       timeLive: `${5 + i * 7}m`,

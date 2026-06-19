@@ -70,8 +70,9 @@ function seedVenue(slug: string): SeedVenue {
     capacity: 300 + (hash % 4700),
     genres: [["Hip-Hop", "R&B"], ["EDM", "Pop"], ["Jazz", "Soul"], ["Trap", "Afrobeats"]][hash % 4]!,
     showsThisMonth: hash % 20,
-    isLive: hash % 3 === 0,
-    activeRooms: hash % 4,
+    // Synthetic fallback venue — not a real registry entry, never claim live.
+    isLive: false,
+    activeRooms: 0,
   };
 }
 

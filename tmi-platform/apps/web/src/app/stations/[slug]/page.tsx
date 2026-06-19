@@ -15,7 +15,8 @@ function seedStation(slug: string) {
     genre: genres[h % genres.length]!,
     accent: accents[h % accents.length]!,
     listeners: 200 + (h % 4800),
-    isLive: h % 3 === 0,
+    // Synthetic fallback station — not a real registry entry, never claim live.
+    isLive: false,
   };
 }
 

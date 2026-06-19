@@ -5,7 +5,7 @@
  *
  * DROP FILE AT:
  *   apps/web/src/components/home/Home1CoverPage.tsx
- *
+ * 
  * THEN IN apps/web/src/app/home/1/page.tsx replace:
  *   import Home1OrbitalMagazine from '@/components/home/Home1OrbitalMagazine';
  * with:
@@ -25,7 +25,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { LobbyEntryFlow, type UniversalRoom } from '@/components/room/UniversalLobbyEntry';
-import { getCrownHolder, PERFORMER_REGISTRY, getFeaturedFreePerformers, type PerformerIdentity } from '@/lib/performers/PerformerRegistry';
+import { getCrownHolder, getLivePerformers, getPerformersByCategory, getFeaturedFreePerformers, type PerformerIdentity, type PerformerCategory } from '@/lib/performers/PerformerRegistry';
 import { getVenueBookingSlots, type VenueBookingSlot } from '@/lib/venues/VenueRegistry';
 import { fetchUpcomingEvents } from '@/lib/api/homepage';
 import AdSenseSlot, { AD_SLOTS } from '@/components/ads/AdSenseSlot';
@@ -59,40 +59,6 @@ const GENRE_CONFIG: Record<string, { color: string; bg: string; emoji: string }>
 
 // GENRE_KEYS must come from GENRE_CONFIG (GENRE_DATA doesn't exist yet at this point)
 const GENRE_KEYS = Object.keys(GENRE_CONFIG);
-
-const GENRE_DATA = GENRE_KEYS.reduce((acc, key) => {
-  const config = GENRE_CONFIG[key]!;
-  const matched = PERFORMER_REGISTRY.filter((p: PerformerIdentity) => p.category === key);
-
-  const performers: Performer[] = Array.from({ length: 10 }).map((_, i) => {
-    const p = matched[i];
-    if (p) {
-      return {
-        slug: p.slug,
-        name: p.name,
-        emoji: '👤', // Use a generic emoji, image is now primary
-        rank: p.rank,
-        score: p.xp,
-        genre: key,
-        image: p.profileImageUrl,
-        isLive: p.isLive,
-        liveRoomRoute: p.liveRoomRoute,
-      };
-    }
-    return {
-      slug: `rising-${key.toLowerCase()}-${i}`,
-      name: `Rising ${key}`,
-      emoji: '✨',
-      rank: i + 1,
-      score: Math.max(100, 1000 - i * 100),
-      genre: key,
-      image: `https://i.pravatar.cc/150?u=${key}-${i}`,
-    };
-  });
-
-  acc[key] = { ...config, performers };
-  return acc;
-}, {} as Record<string, { color: string; bg: string; emoji: string; performers: Performer[] }>);
 
 // Positions for 10 orbit cards (angle in degrees, radius 44% of container).
 // rotationDeg (optional) slowly drifts every card's angle over time so the
@@ -235,8 +201,26 @@ export default function Home1CoverPage() {
   }, []);
 
   const genreKey = GENRE_KEYS[genreIdx % GENRE_KEYS.length]!;
-  const genre = GENRE_DATA[genreKey]!;
-  const performers = genre.performers;
+  const genreConfig = GENRE_CONFIG[genreKey]!;
+
+  // UNIFICATION: Replace static GENRE_DATA with live data from PerformerRegistry
+  const [performers, setPerformers] = useState<Performer[]>([]);
+  useEffect(() => {
+    const liveData = getPerformersByCategory(genreKey as PerformerCategory);
+    const adapted: Performer[] = liveData.slice(0, 10).map(p => ({
+      slug: p.slug,
+      name: p.name,
+      emoji: '👤',
+      rank: p.rank,
+      score: p.xp,
+      genre: p.category,
+      image: p.profileImageUrl,
+      isLive: p.isLive,
+      liveRoomRoute: p.liveRoomRoute,
+    }));
+    setPerformers(adapted);
+  }, [genreKey]);
+
   // Crown holder always comes from the PerformerRegistry — the real global #1 by XP.
   const crownData = getCrownHolder();
   const crowdHolder = {
@@ -299,8 +283,8 @@ export default function Home1CoverPage() {
     return () => clearInterval(id);
   }, []);
 
-  const accentColor = genre.color;
-  const bgColor = genre.bg;
+  const accentColor = genreConfig.color;
+  const bgColor = genreConfig.bg;
 
   return (
     <>
@@ -605,7 +589,7 @@ export default function Home1CoverPage() {
               fontFamily: "'Inter', sans-serif",
             }}
           >
-            {genre.emoji} {genreKey.toUpperCase()} · WEEK {Math.ceil((Date.now() / (7 * 24 * 60 * 60 * 1000)) % 52) || 1}
+            {genreConfig.emoji} {genreKey.toUpperCase()} · WEEK {Math.ceil((Date.now() / (7 * 24 * 60 * 60 * 1000)) % 52) || 1}
           </div>
 
           {/* ── Status badges row: VOTING LIVE | VOTES | CROWN UPDATING ── */}
@@ -621,7 +605,7 @@ export default function Home1CoverPage() {
           </div>
 
           {/* ── Challenge banner slider ── */}
-          <div style={{ background: 'rgba(123,0,255,0.18)', border: '1px solid rgba(123,0,255,0.4)', borderRadius: 6, padding: '4px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4, maxWidth: 500, width: '100%', marginInline: 'auto' }}>
+          <div style={{ background: 'rgba(123,0,255,0.18)', border: '1px solid rgba(123,0,255,0.4)', borderRadius: 6, padding: '4px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 18, maxWidth: 500, width: '100%', marginInline: 'auto' }}>
             <button style={{ background: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 4, padding: '3px 8px', fontSize: 9, cursor: 'pointer' }}>◀</button>
             <div style={{ textAlign: 'center', flex: 1 }}>
               <div style={{ fontSize: 11, fontWeight: 800, color: '#fff', letterSpacing: '0.08em', fontFamily: "'Inter',sans-serif" }}>CHALLENGE YOUR SONG HERE</div>
@@ -656,7 +640,7 @@ export default function Home1CoverPage() {
 
         {/* TABLOID MAGAZINE UNDERLAY — scrolls behind the orbital (blueprint spec) */}
         <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0, overflow: 'hidden' }}>
-          <div style={{ display: 'flex', whiteSpace: 'nowrap', animation: `${underlayDir === 'left' ? 'h1TabloidScroll' : 'h1RailRight'} 18s linear infinite`, opacity: 0.75, height: '100%', alignItems: 'stretch' }}>
+          <div style={{ display: 'flex', whiteSpace: 'nowrap', animation: `${underlayDir === 'left' ? 'h1TabloidScroll' : 'h1RailRight'} 18s linear infinite`, opacity: 0.35, height: '100%', alignItems: 'stretch' }}>
             {[0, 1, 2].map(rep =>
               [
                 { bg: '#FFD700', hdr: '#FF1493', title: 'WHO TOOK THE CROWN?',   sub: 'COVER PERFORMER', artist: 'BIG ACE',     tag: 'HIP-HOP · 4,812 VOTES',      cta: 'CYPHER OPEN',       c1: '#00BFFF' },
@@ -785,8 +769,8 @@ export default function Home1CoverPage() {
             style={{
               position: 'relative',
               width: '100%',
-              minWidth: 'min(300px, 92vw)',
-              maxWidth: '700px',
+              minWidth: 'min(300px, 70vw)',
+              maxWidth: 'min(900px, 70vw)',
               aspectRatio: '1 / 1',
               margin: '0 auto',
               flexShrink: 0,
@@ -1096,7 +1080,7 @@ export default function Home1CoverPage() {
               whiteSpace: 'nowrap',
             }}
           >
-            {genre.emoji} {genreKey} GENRE BATTLE!
+            {genreConfig.emoji} {genreKey} GENRE BATTLE!
           </div>
 
           <Link href="/live/rooms/cypher-arena" style={{ textDecoration: 'none' }}>
@@ -1303,7 +1287,7 @@ export default function Home1CoverPage() {
           }}
         >
           {GENRE_KEYS.map((g, i) => {
-            const gd = GENRE_DATA[g]!;
+            const gd = GENRE_CONFIG[g]!;
             const active = i === genreIdx % GENRE_KEYS.length;
             return (
               <button
@@ -1385,7 +1369,7 @@ export default function Home1CoverPage() {
               textTransform: 'uppercase',
             }}
           >
-            {genre.emoji} Top 10 — {genreKey} · Click any card to read their article
+            {genreConfig.emoji} Top 10 — {genreKey} · Click any card to read their article
           </div>
 
           <div
