@@ -26,17 +26,17 @@ import Home5OpenRoomsGrid from "@/components/home/Home5OpenRoomsGrid";
 import { enforceRouteOwnership } from '@/lib/routes/TmiVisualRouteMap';
 import { getVisualSlot } from '@/lib/visuals/TmiVisualSlotRegistry';
 import "@/styles/tmiTypography.css";
-import { battleChallengeRequestEngine } from "@/lib/competition/BattleChallengeRequestEngine";
-import { battleChallengeEconomyEngine, CHALLENGE_ENTRY_FEE_POINTS } from "@/lib/competition/BattleChallengeEconomyEngine";
-import { BattleActor } from "@/lib/competition/BattleEligibilityEngine";
-import { battleBillboardLobbyWallEngine } from "@/lib/competition/BattleBillboardLobbyWallEngine";
-import { battleMatchLifecycleEngine, UNIVERSAL_BATTLE_WINDOW_SECONDS } from "@/lib/competition/BattleMatchLifecycleEngine";
+import { battleChallengeRequestEngine } from '@/lib/competition/BattleChallengeRequestEngine';
+import { battleChallengeEconomyEngine, CHALLENGE_ENTRY_FEE_POINTS } from '@/lib/competition/BattleChallengeEconomyEngine';
+import { BattleActor } from '@/lib/competition/BattleEligibilityEngine';
+import { battleMatchLifecycleEngine, UNIVERSAL_BATTLE_WINDOW_SECONDS } from '@/lib/competition/BattleMatchLifecycleEngine';
 import { CATEGORY_LABELS, CATEGORY_ICONS } from "@/lib/competition/ChampionshipYearlyEngine";
 import GlobalLiveBelt from "@/components/home/GlobalLiveBelt";
 import SmartCameraDirector from "@/components/stage/SmartCameraDirector";
 import AudienceField from "@/components/live/AudienceField";
 import BillboardLiveWall from '@/components/media/BillboardLiveWall';
-import { PERFORMER_REGISTRY } from '@/lib/performers/PerformerRegistry';
+import { getSessionsByCategory } from '@/lib/broadcast/GlobalLiveSessionRegistry'; // UNIFICATION
+import { getPerformerById, type PerformerIdentity, PERFORMER_REGISTRY } from '@/lib/performers/PerformerRegistry'; // UNIFICATION
 import RoomContainer from '@/components/room/RoomContainer';
 import WidgetDrawer from '@/components/room/WidgetDrawer';
 import NeonWaveUnderlay from '@/components/atmosphere/NeonWaveUnderlay';
@@ -85,12 +85,28 @@ export default function Home5BattleCypherSurface() {
   const [challengeNotice, setChallengeNotice] = useState<string>("");
   const [challengeFeedVersion, setChallengeFeedVersion] = useState(0);
   const [challengeActionBusy, setChallengeActionBusy] = useState(false);
+  const [liveBattles, setLiveBattles] = useState<PerformerIdentity[]>([]);
+  const [liveCyphers, setLiveCyphers] = useState<PerformerIdentity[]>([]);
 
   useEffect(() => {
+    // --- COMPETITION LAYER (PRESERVED) ---
     battleChallengeEconomyEngine.seedUser(currentActor.userId, 120);
     challengeTargets.forEach((target, index) => {
       battleChallengeEconomyEngine.seedUser(target.userId, 90 - index * 10);
     });
+
+    // --- DISCOVERY LAYER (UNIFIED) ---
+    const fetchLiveSessions = () => {
+      const battles = getSessionsByCategory('battle').map(s => getPerformerById(s.userId)).filter((p): p is PerformerIdentity => !!p);
+      const cyphers = getSessionsByCategory('cypher').map(s => getPerformerById(s.userId)).filter((p): p is PerformerIdentity => !!p);
+      setLiveBattles(battles);
+      setLiveCyphers(cyphers);
+    };
+
+    fetchLiveSessions();
+    const intervalId = setInterval(fetchLiveSessions, 5000); // Poll every 5 seconds
+
+    return () => clearInterval(intervalId);
   }, []);
 
   const refreshChallengeFeed = () => setChallengeFeedVersion((v) => v + 1);
@@ -127,8 +143,6 @@ export default function Home5BattleCypherSurface() {
 
   const currentBalance = battleChallengeEconomyEngine.getBalance(currentActor.userId);
   const activeChallenges = battleChallengeRequestEngine.listActiveRequests();
-  const liveWallCards = battleBillboardLobbyWallEngine.getCards().slice(0, 3);
-  const liveRooms = battleBillboardLobbyWallEngine.getLiveRoomCards().slice(0, 2);
 
   return (
     <RoomContainer roomId="home-5" title="Battles & Cyphers" accentColor="#FF2DAA" bpm={140}>
@@ -404,18 +418,12 @@ export default function Home5BattleCypherSurface() {
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
             <TmiBadgeLabel color="#FF2DAA">Live Battle Economy</TmiBadgeLabel>
             <span style={{ fontSize: 11, color: "#FFD700", letterSpacing: "0.06em" }}>
-              Window: {Math.floor(UNIVERSAL_BATTLE_WINDOW_SECONDS / 60)}m · Entry: {CHALLENGE_ENTRY_FEE_POINTS} pts
+              Window: {Math.floor(UNIVERSAL_BATTLE_WINDOW_SECONDS / 60)}m
             </span>
             <span style={{ fontSize: 11, color: "#00FF88" }}>Gold+ direct challenge enabled</span>
           </div>
 
           <div data-cbc-grid style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: 10 }}>
-            {/* Wallet */}
-            <article style={{ border: "1px solid rgba(255,215,0,0.28)", borderRadius: 10, background: "rgba(5,5,16,0.68)", padding: 14, display: "grid", gap: 5 }}>
-              <strong style={{ fontSize: 12, color: "#FFD700" }}>Your Wallet</strong>
-              <span style={{ fontSize: 11, opacity: 0.88 }}>Available: {currentBalance.availableEarnedPoints} pts</span>
-              <span style={{ fontSize: 11, opacity: 0.88 }}>Reserved: {currentBalance.reservedPoints} pts</span>
-            </article>
             {/* Format Rotation */}
             <article style={{ border: "1px solid rgba(0,255,255,0.3)", borderRadius: 10, background: "rgba(5,5,16,0.68)", padding: 14, display: "grid", gap: 5 }}>
               <strong style={{ fontSize: 12, color: "#00FFFF" }}>Battle Formats</strong>
@@ -423,7 +431,7 @@ export default function Home5BattleCypherSurface() {
               <span style={{ fontSize: 11, opacity: 0.88 }}>solo · duo · group · band-vs-band</span>
             </article>
             {/* Action console */}
-            <article style={{ border: "1px solid rgba(0,255,136,0.3)", borderRadius: 10, background: "rgba(5,5,16,0.68)", padding: 14, display: "grid", gap: 8 }}>
+            <article style={{ gridColumn: 'span 2', border: "1px solid rgba(0,255,136,0.3)", borderRadius: 10, background: "rgba(5,5,16,0.68)", padding: 14, display: "grid", gap: 8 }}>
               <strong style={{ fontSize: 12, color: "#00FF88" }}>Launch a Battle</strong>
               <button onClick={() => launchChallenge("open")} disabled={challengeActionBusy}
                 style={{ border: "1px solid rgba(255,45,170,0.55)", borderRadius: 7, background: "rgba(255,45,170,0.2)", color: "#fff", padding: "8px 10px", fontSize: 11, cursor: "pointer", textAlign: "left" }}>
@@ -446,18 +454,18 @@ export default function Home5BattleCypherSurface() {
           <div data-cbc-grid style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }} key={challengeFeedVersion}>
             <div style={{ border: "1px solid rgba(255,45,170,0.32)", borderRadius: 8, padding: 10, background: "rgba(5,6,16,0.7)", display: "grid", gap: 6 }}>
               <strong style={{ fontSize: 11, color: "#FF2DAA" }}>Live Battle Feed</strong>
-              {liveWallCards.length === 0 ? (
+              {liveBattles.length === 0 ? (
                 <span style={{ fontSize: 11, opacity: 0.6 }}>No active battles yet.</span>
-              ) : liveWallCards.map((c) => (
-                <Link key={c.battleId} href={c.route} style={{ fontSize: 11, color: "#fff", textDecoration: "none", border: "1px solid rgba(255,45,170,0.25)", borderRadius: 6, padding: "6px 8px", background: "rgba(255,45,170,0.06)" }}>
-                  {c.challengerName} vs {c.targetName} · {c.formatLabel}
+              ) : liveBattles.slice(0, 3).map(p => (
+                <Link key={p.id} href={p.liveRoomRoute ?? '#'} style={{ fontSize: 11, color: "#fff", textDecoration: "none", border: "1px solid rgba(255,45,170,0.25)", borderRadius: 6, padding: "6px 8px", background: "rgba(255,45,170,0.06)" }}>
+                  {p.name} · {p.audienceCount} watching
                 </Link>
               ))}
             </div>
             <div style={{ border: "1px solid rgba(0,255,255,0.32)", borderRadius: 8, padding: 10, background: "rgba(5,6,16,0.7)", display: "grid", gap: 6 }}>
               <strong style={{ fontSize: 11, color: "#00FFFF" }}>Pending Challenges</strong>
               <span style={{ fontSize: 11, opacity: 0.84 }}>Active: {activeChallenges.length}</span>
-              {activeChallenges.slice(0, 3).map((r) => (
+              {activeChallenges.slice(0, 3).map(r => (
                 <span key={r.challengeId} style={{ fontSize: 11, opacity: 0.88 }}>
                   {r.challenger.displayName} → {r.target.displayName} ({r.status})
                 </span>
@@ -465,11 +473,11 @@ export default function Home5BattleCypherSurface() {
             </div>
             <div style={{ border: "1px solid rgba(0,255,136,0.32)", borderRadius: 8, padding: 10, background: "rgba(5,6,16,0.7)", display: "grid", gap: 6 }}>
               <strong style={{ fontSize: 11, color: "#00FF88" }}>Live Rooms</strong>
-              {liveRooms.length === 0 ? (
+              {liveCyphers.length === 0 ? (
                 <span style={{ fontSize: 11, opacity: 0.6 }}>No rooms yet.</span>
-              ) : liveRooms.map((r) => (
-                <Link key={r.roomId} href={r.roomRoute} style={{ fontSize: 11, color: "#fff", textDecoration: "none", border: "1px solid rgba(0,255,136,0.25)", borderRadius: 6, padding: "6px 8px", background: "rgba(0,255,136,0.06)" }}>
-                  {r.headline} · {r.isLive ? "LIVE" : "PREP"}
+              ) : liveCyphers.slice(0, 3).map(p => (
+                <Link key={p.id} href={p.liveRoomRoute ?? '#'} style={{ fontSize: 11, color: "#fff", textDecoration: "none", border: "1px solid rgba(0,255,136,0.25)", borderRadius: 6, padding: "6px 8px", background: "rgba(0,255,136,0.06)" }}>
+                  {p.name} · LIVE
                 </Link>
               ))}
             </div>
