@@ -25,6 +25,7 @@ import LiveFeedbackPanel from "@/components/feedback/LiveFeedbackPanel";
 import { MonitorRuntimeProvider } from "@/components/monitor/MonitorRuntimeContext";
 import MonitorRuntime from "@/components/monitor/MonitorRuntime";
 import PlatformFooter from "@/components/layout/PlatformFooter";
+import DiscoverySidePanel from "@/components/discovery/DiscoverySidePanel";
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -208,6 +209,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <VoiceDirector />
               <LiveFeedbackPanel />
               <MonitorRuntime />
+              <DiscoverySidePanel />
             </HudRuntimeProvider>
             </MonitorRuntimeProvider>
           </TmiSessionProvider>
