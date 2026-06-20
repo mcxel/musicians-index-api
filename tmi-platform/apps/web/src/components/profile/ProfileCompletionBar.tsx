@@ -104,7 +104,7 @@ export const PERFORMER_FIELDS = (done: Record<string, boolean>): Field[] => [
 export const PROMOTER_FIELDS = (done: Record<string, boolean>): Field[] => [
   { label: "Company name",      done: !!done.company,    href: "/settings" },
   { label: "City / market",     done: !!done.city,       href: "/settings" },
-  { label: "First event created", done: !!done.event,    href: "/promoter/events" },
+  { label: "First event created", done: !!done.event,    href: "/promoter/dashboard" },
   { label: "Stripe Connect payout", done: !!done.stripe, href: "/venues/sell" },
   { label: "Tickets published", done: !!done.tickets,    href: "/tickets" },
 ];

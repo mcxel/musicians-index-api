@@ -17,11 +17,11 @@ const BOT_BAR = [
 
 const QUICK_ACTIONS = [
   { href: '/performer/studio',    icon: '⬆',  label: 'UPLOAD',      color: '#00FFFF' },
-  { href: '/performer/shows',     icon: '📅',  label: 'SET UP SHOW', color: '#FF2DAA' },
-  { href: '/sponsor',             icon: '💼',  label: 'GET SPONSOR', color: '#FFD700' },
+  { href: '/venues',               icon: '📅',  label: 'SET UP SHOW', color: '#FF2DAA' },
+  { href: '/sponsors',             icon: '💼',  label: 'GET SPONSOR', color: '#FFD700' },
   { href: '/cypher',              icon: '⚡',  label: 'JOIN CYPHER', color: '#AA2DFF' },
   { href: '/battles',             icon: '🥊',  label: 'BEAT BATTLE', color: '#FF2DAA' },
-  { href: '/performer/payments',  icon: '💵',  label: 'PAYOUTS',     color: '#00FF88' },
+  { href: '/wallet',              icon: '💵',  label: 'PAYOUTS',     color: '#00FF88' },
   { href: '/performer/analytics', icon: '📊',  label: 'ANALYTICS',   color: '#00FFFF' },
   { href: '/performer/profile',   icon: '✏️',  label: 'EDIT PROFILE',color: '#AA2DFF' },
 ];
@@ -102,7 +102,7 @@ export default function PerformerDashboardPage() {
             <Link href="/performer/studio" style={{ padding: '8px 12px', background: 'transparent', border: '1px solid rgba(170,45,255,.5)', color: '#AA2DFF', fontSize: 10, fontWeight: 700, letterSpacing: '.05em', textTransform: 'uppercase', textDecoration: 'none', borderRadius: 4 }}>
               ⬆ UPLOAD
             </Link>
-            <Link href="/performer/shows" style={{ padding: '8px 12px', background: 'transparent', border: '1px solid rgba(170,45,255,.5)', color: '#AA2DFF', fontSize: 10, fontWeight: 700, letterSpacing: '.05em', textTransform: 'uppercase', textDecoration: 'none', borderRadius: 4 }}>
+            <Link href="/venues" style={{ padding: '8px 12px', background: 'transparent', border: '1px solid rgba(170,45,255,.5)', color: '#AA2DFF', fontSize: 10, fontWeight: 700, letterSpacing: '.05em', textTransform: 'uppercase', textDecoration: 'none', borderRadius: 4 }}>
               📅 BOOK SHOW
             </Link>
           </div>
@@ -191,7 +191,7 @@ export default function PerformerDashboardPage() {
             <div style={{ background: 'rgba(8,14,38,.95)', border: '1px solid rgba(170,45,255,.4)', borderRadius: 6, padding: '10px 12px' }}>
               <div style={{ fontSize: 8, fontWeight: 700, color: 'rgba(170,45,255,.5)', letterSpacing: '.1em', textTransform: 'uppercase', marginBottom: 8 }}>Quick Links</div>
               {[
-                { href: '/performer/hub',       label: '← Performer Hub' },
+                { href: '/hub/performer',       label: '← Performer Hub' },
                 { href: '/performer/profile',   label: 'Edit Profile' },
                 { href: '/admin',               label: 'Admin' },
               ].map(l => (

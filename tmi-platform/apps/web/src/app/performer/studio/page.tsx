@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { usePresenceEngine } from "@/lib/live/presenceEngine";
 import ActionCanister from "@/components/room/ActionCanister";
 import WidgetDrawer from "@/components/room/WidgetDrawer";
 import { DrawerProvider } from "@/components/room/DrawerContext";
@@ -281,11 +280,11 @@ function StatCard({ label, value, color }: { label: string; value: string | numb
 
 // ── Live Mode Panel ────────────────────────────────────────────────────────────
 function LiveModePanel({
-  presence,
+  viewerCount,
   reactions,
   onReact,
 }: {
-  presence: ReturnType<typeof usePresenceEngine>;
+  viewerCount: number;
   reactions: FloatReaction[];
   onReact: (emoji: string) => void;
 }) {
@@ -295,11 +294,6 @@ function LiveModePanel({
     { emoji: "💡", label: "Flicker" },
     { emoji: "🎉", label: "Confetti" },
     { emoji: "⚡", label: "Spark" },
-  ];
-  const TIPS = [
-    { name: "JamesSky", amount: "$20" },
-    { name: "Lily88",   amount: "$15" },
-    { name: "Alex94",   amount: "$10" },
   ];
 
   return (
@@ -382,22 +376,15 @@ function LiveModePanel({
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
         <div style={{ background: C.card, border: `1px solid ${C.gold}33`, borderRadius: 10, padding: 12 }}>
           <div className="orbitron" style={{ fontSize: 9, color: C.gold, letterSpacing: "0.14em", marginBottom: 8 }}>LIVE TIPS</div>
-          {TIPS.map(t => (
-            <div key={t.name} style={{ display: "flex", justifyContent: "space-between", fontSize: 11, marginBottom: 6 }}>
-              <span className="exo2" style={{ color: C.muted }}>{t.name}</span>
-              <span className="orbitron" style={{ color: C.green, fontWeight: 700 }}>+{t.amount}</span>
-            </div>
-          ))}
+          <div className="exo2" style={{ fontSize: 10, color: C.muted }}>No tips yet — they&apos;ll show up here in real time.</div>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
             <div style={{ flex: 1 }}>
-              <StatCard label="VIEWERS" value={presence.watching} color={C.cyan} />
+              <StatCard label="VIEWERS" value={viewerCount} color={C.cyan} />
             </div>
             <LiveVuMeter />
           </div>
-          <StatCard label="TIPS"    value="$45"              color={C.green} />
-          <StatCard label="RATING"  value="4.9★"             color={C.gold} />
         </div>
       </div>
     </div>
@@ -700,12 +687,27 @@ export default function ArtistStudioPage() {
   const [activeTab, setActiveTab] = useState<Tab>("BROADCAST");
   const [reactions, setReactions] = useState<FloatReaction[]>([]);
   const reactionId                = useRef(0);
+  const [viewerCount, setViewerCount] = useState(0);
 
-  const presence = usePresenceEngine(
-    "broadcast-studio",
-    8000,
-    isLive ? "performance" : "private",
-  );
+  // Real viewer count for THIS broadcast — polls the same GlobalLiveSessionRegistry
+  // every other live surface reads, matched by this session's own roomId.
+  useEffect(() => {
+    if (!isLive || !liveRoomId) { setViewerCount(0); return; }
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const res = await fetch('/api/live/go', { cache: 'no-store' });
+        const data = await res.json() as { sessions?: { roomId: string; viewerCount: number }[] };
+        const mine = data.sessions?.find((s) => s.roomId === liveRoomId);
+        if (!cancelled) setViewerCount(mine?.viewerCount ?? 0);
+      } catch {
+        if (!cancelled) setViewerCount(0);
+      }
+    };
+    void load();
+    const id = setInterval(load, 8000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, [isLive, liveRoomId]);
 
   const toggleLive = async () => {
     if (!isLive) {
@@ -804,8 +806,8 @@ export default function ArtistStudioPage() {
 
           <div style={{ display: "flex", gap: 8, marginLeft: 8 }}>
             {[
-              { label: "⬆ Upload",       href: "/performer/upload" },
-              { label: "🎭 Set Up Show",  href: "/performer/setup-show" },
+              { label: "⬆ Upload",       href: "/performer/profile" },
+              { label: "🎭 Set Up Show",  href: "/venues" },
               { label: "🤝 Sponsor",      href: "/sponsors" },
             ].map(btn => (
               <a
@@ -888,7 +890,7 @@ export default function ArtistStudioPage() {
                   exit={{ opacity: 0, y: -8 }}
                   transition={{ duration: 0.25 }}
                 >
-                  <LiveModePanel presence={presence} reactions={reactions} onReact={fireReaction} />
+                  <LiveModePanel viewerCount={viewerCount} reactions={reactions} onReact={fireReaction} />
                 </motion.div>
               ) : (
                 <motion.div

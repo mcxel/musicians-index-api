@@ -501,7 +501,7 @@ export default function Home4AdMagazine() {
           <div style={{ background: 'rgba(170,45,255,.07)', border: '1px solid rgba(170,45,255,.25)', borderRadius: 10, padding: '14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
             <div style={{ fontSize: 8, fontWeight: 900, color: '#AA2DFF', letterSpacing: '.15em' }}>SPONSORED ARTIST</div>
             <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(170,45,255,.05)', border: '1px dashed rgba(170,45,255,.2)', borderRadius: 8, minHeight: 60, fontSize: 20 }}>🎤</div>
-            <Link href="/advertiser/artist-spotlight" style={{ display: 'block', textAlign: 'center', padding: '6px', background: 'rgba(170,45,255,.15)', border: '1px solid rgba(170,45,255,.3)', borderRadius: 5, color: '#AA2DFF', textDecoration: 'none', fontSize: 9, fontWeight: 900 }}>
+            <Link href="/advertiser/buy" style={{ display: 'block', textAlign: 'center', padding: '6px', background: 'rgba(170,45,255,.15)', border: '1px solid rgba(170,45,255,.3)', borderRadius: 5, color: '#AA2DFF', textDecoration: 'none', fontSize: 9, fontWeight: 900 }}>
               BUY PRE-ROLL AD
             </Link>
           </div>
@@ -512,9 +512,9 @@ export default function Home4AdMagazine() {
           {[
             { label: 'BUY AD PLACEMENT', href: '/advertiser/buy', color: '#FF2DAA' },
             { label: 'CAMPAIGN BUILDER', href: '/advertiser/campaigns', color: '#FFD700' },
-            { label: 'AUDIENCE TARGETING', href: '/advertiser/targeting', color: '#00E5FF' },
-            { label: 'EVENT SPONSORSHIPS', href: '/events/sponsor', color: '#AA2DFF' },
-            { label: 'LIVESTREAM SPONSORSHIPS', href: '/live/sponsor', color: '#00FF88' },
+            { label: 'AUDIENCE TARGETING', href: '/advertiser/campaigns', color: '#00E5FF' },
+            { label: 'EVENT SPONSORSHIPS', href: '/sponsor/shows', color: '#AA2DFF' },
+            { label: 'LIVESTREAM SPONSORSHIPS', href: '/sponsor/rooms', color: '#00FF88' },
           ].map((btn) => (
             <Link key={btn.href} href={btn.href} style={{ textDecoration: 'none', padding: '6px 12px', borderRadius: 5, border: `1px solid ${btn.color}55`, background: `${btn.color}12`, color: btn.color, fontSize: 8, fontWeight: 900, letterSpacing: '.08em', whiteSpace: 'nowrap' }}>
               {btn.label}

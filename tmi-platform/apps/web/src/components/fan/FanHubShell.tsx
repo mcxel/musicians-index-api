@@ -49,12 +49,48 @@ const TRACKS = [
   { num: 5, title: "Sound Pressure",   artist: "BJM The Rapper",   label: "BJM Beats",            dur: "2:58", active: false },
 ];
 
-const ROOMS = [
-  { id: "main-stage",    name: "Main Stage Room",  genre: "Hip-Hop · Chario Ace",   icon: "🎤", viewers: 1204, isLive: true,  featured: true,  slug: "main-stage"    },
-  { id: "battle-a",     name: "Battle Arena A",    genre: "Rap Battle · Open",      icon: "⚔️", viewers: 876,  isLive: true,  featured: false, slug: "battle-arena-a" },
-  { id: "cypher-lounge",name: "Cypher Lounge",     genre: "Open Mic · All genres",  icon: "🎤", viewers: 432,  isLive: true,  featured: false, slug: "cypher-lounge"  },
-  { id: "chill-zone",   name: "Chill Zone",        genre: "R&B · Neo Soul",         icon: "🎶", viewers: 218,  isLive: false, featured: false, slug: "chill-zone"     },
+// Static room shells — name/genre/icon/slug are display metadata only.
+// isLive/viewers are NEVER hardcoded here; they're derived at render time
+// from real GlobalLiveSessionRegistry sessions via /api/live/go (see
+// useLiveRoomData below). A room with no matching live session stays
+// honestly offline rather than claiming a fabricated viewer count.
+const ROOM_SHELLS = [
+  { id: "main-stage",     name: "Main Stage Room",  genre: "Hip-Hop · Live Sets",    icon: "🎤", featured: true,  slug: "main-stage",     categories: ["live", "concert"] },
+  { id: "battle-a",       name: "Battle Arena A",   genre: "Rap Battle · Open",      icon: "⚔️", featured: false, slug: "battle-arena-a", categories: ["battle"]          },
+  { id: "cypher-lounge",  name: "Cypher Lounge",    genre: "Open Mic · All genres",  icon: "🎤", featured: false, slug: "cypher-lounge",  categories: ["cypher"]          },
+  { id: "chill-zone",     name: "Chill Zone",       genre: "R&B · Neo Soul",         icon: "🎶", featured: false, slug: "chill-zone",     categories: [] as string[]       },
 ];
+
+interface LiveApiSession { category: string; viewerCount: number; }
+
+function useLiveRoomData() {
+  const [sessions, setSessions] = useState<LiveApiSession[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const res = await fetch('/api/live/go', { cache: 'no-store' });
+        const data = await res.json() as { sessions?: LiveApiSession[] };
+        if (!cancelled) setSessions(data.sessions ?? []);
+      } catch {
+        if (!cancelled) setSessions([]);
+      }
+    };
+    void load();
+    const id = setInterval(() => void load(), 10000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, []);
+
+  return ROOM_SHELLS.map((shell) => {
+    const matches = sessions.filter((s) => shell.categories.includes(s.category));
+    const isLive = matches.length > 0;
+    return {
+      ...shell,
+      isLive,
+      viewers: matches.reduce((sum, s) => sum + s.viewerCount, 0),
+    };
+  });
+}
 
 const BOBBLE_COLORS = [
   { head: "#5C2A00", body: "#3d1a00", border: C.amber },
@@ -109,6 +145,7 @@ export default function FanHubShell({
   const [activeTrack, setActiveTrack] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
   const [roomFilter, setRoomFilter] = useState("ALL");
+  const rooms = useLiveRoomData();
   const spinLocked = tier === "free";
 
   const goToShow = useCallback(() => {
@@ -467,7 +504,7 @@ export default function FanHubShell({
 
           {/* Room cards grid */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 7 }}>
-            {ROOMS.map((room) => (
+            {rooms.map((room) => (
               <div key={room.id} className={`fan-room-card${room.featured ? " featured" : ""}`} onClick={() => router.push(`/live/rooms/${room.slug}`)}>
                 <div style={{ height: 64, background: room.featured ? "#0a0002" : "#03080a", position: "relative", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24 }}>
                   {room.icon}

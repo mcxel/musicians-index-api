@@ -12,7 +12,9 @@ export type HostRole =
   | 'PRIZE_HOST'
   | 'CROWD_HYPE'
   | 'SPONSOR_READ'
-  | 'DIRTY_DOZENS_JUDGE';
+  | 'DIRTY_DOZENS_JUDGE'
+  /** Platform authority figure (e.g. Big Ace) — never appears as an in-show host/performer character. */
+  | 'PLATFORM_AUTHORITY';
 
 export interface HostDefinition {
   id: string;

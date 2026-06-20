@@ -74,9 +74,9 @@ export function buildOutreachMessagePack(targetType: TicketSellerTargetType): Ou
     valueBullets: CORE_VALUE_BULLETS,
     callToAction: "Start by creating your host account, then launch your first event in minutes.",
     routeLinks: {
-      eventHostSignup: "/event-hosts/signup",
-      venueSignup: "/venues/signup",
-      promoterSignup: "/promoters/signup",
+      eventHostSignup: "/signup/host",
+      venueSignup: "/signup?role=venue",
+      promoterSignup: "/signup?role=promoter",
       ticketCreation: "/events/new",
       eventPromotion: "/events/promote",
       supportContact: "/events/support/contact",

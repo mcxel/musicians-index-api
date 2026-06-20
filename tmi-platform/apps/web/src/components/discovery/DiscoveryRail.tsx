@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import { PERFORMER_REGISTRY, getPerformerById, type PerformerIdentity } from '@/lib/performers/PerformerRegistry';
 import { VENUE_REGISTRY, getLiveVenues } from '@/lib/venues/VenueRegistry';
@@ -67,26 +67,31 @@ export default function DiscoveryRail({ type, tags = [], exclude, limit = 6, lab
   let title = label;
   let content: React.ReactNode = null;
 
-  // Real GlobalLiveSessionRegistry data via /api/live/go — not the static
-  // PERFORMER_REGISTRY.isLive seed flag, which never reflects an actual broadcast.
-  // Only matches sessions whose broadcaster is also a known PERFORMER_REGISTRY entry.
+  // UNIFICATION: Real liveness from GlobalLiveSessionRegistry via /api/live/go.
+  // This replaces the static getLivePerformers() which read from hardcoded `isLive: true` flags.
   const [livePerformers, setLivePerformers] = useState<PerformerIdentity[]>([]);
   useEffect(() => {
+    // Only fetch live data if the rail type needs it.
     if (type !== 'performers' && type !== 'liveRooms') return;
+
     let cancelled = false;
     const load = async () => {
       try {
         const res = await fetch('/api/live/go', { cache: 'no-store' });
         const data = await res.json() as { sessions?: LiveApiSession[] };
+        // Hydration Path: Session ID -> PerformerRegistry -> Full Identity
         const matched = (data.sessions ?? [])
           .map((s) => getPerformerById(s.userId))
           .filter((p): p is PerformerIdentity => Boolean(p))
+          // IMPORTANT: Override the static `isLive: false` from the registry with `true` for real sessions.
           .map((p): PerformerIdentity => ({ ...p, isLive: true }));
+
         if (!cancelled) setLivePerformers(matched);
       } catch {
         if (!cancelled) setLivePerformers([]);
       }
     };
+
     void load();
     const id = setInterval(() => void load(), 10000);
     return () => { cancelled = true; clearInterval(id); };
@@ -127,7 +132,7 @@ export default function DiscoveryRail({ type, tags = [], exclude, limit = 6, lab
   // ── PERFORMERS ─────────────────────────────────────────────────────────────
   if (type === 'performers') {
     title = title ?? '🎤 FEATURED ARTISTS';
-    const liveIds = new Set(livePerformers.map((p) => p.id));
+    const liveIds = useMemo(() => new Set(livePerformers.map((p) => p.id)), [livePerformers]);
     const all = [...livePerformers, ...PERFORMER_REGISTRY.filter(p => !liveIds.has(p.id))];
     const filtered = all
       .filter(p => p.slug !== exclude)
@@ -172,11 +177,10 @@ export default function DiscoveryRail({ type, tags = [], exclude, limit = 6, lab
   // ── LIVE ROOMS ─────────────────────────────────────────────────────────────
   if (type === 'liveRooms') {
     title = title ?? '🎥 LIVE NOW';
-    const performers = livePerformers.slice(0, limit);
 
     content = (
       <div style={{ display: 'flex', gap: 10, overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: 4 }}>
-        {performers.map(p => (
+        {livePerformers.slice(0, limit).map(p => (
           <Link key={p.roomId} href={p.liveRoomRoute} style={{ textDecoration: 'none' }}>
             <div style={{ ...cardBase('#E63000'), width: 170 }}>
               {/* Rule 2: LIVE VIDEO → MOTION POSTER → STATIC IMAGE with live overlay */}

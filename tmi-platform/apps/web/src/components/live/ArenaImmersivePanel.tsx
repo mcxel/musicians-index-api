@@ -1,5 +1,15 @@
 'use client';
 
+// LEGACY_CANDIDATE (Rule 21, 2026-06-20): superseded by UniversalVenueRenderer,
+// which inherited this component's real capabilities (WebRTC, moderation,
+// capture monitor, sponsor reveal, recognition/relationship tracking, curtain
+// flow) plus VenueImmersiveRoom's AudienceScene/reactions. All 4 former
+// consumers (ArenaEventShell, the room page, GoLiveStudio, live/audience,
+// live/arena/[id]) are now migrated to UniversalVenueRenderer — confirmed via
+// repo-wide grep, zero remaining imports of this file outside itself. Left
+// running, not deleted, until a real browser verification pass confirms
+// UniversalVenueRenderer works correctly across all 5 surfaces.
+
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useStageWebRTC } from '@/hooks/useStageWebRTC';
 import { useLiveSessionHeartbeat } from '@/hooks/useLiveSessionHeartbeat';

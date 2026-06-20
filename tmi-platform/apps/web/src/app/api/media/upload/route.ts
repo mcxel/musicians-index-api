@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { MediaEngine } from "@/lib/media/MediaAssetEngine";
 import type { UploadRequest, MediaType } from "@/lib/media/MediaAssetEngine";
+import prisma from "@/lib/prisma";
 
 const UI_TYPE_MAP: Record<string, MediaType> = {
   Video: "video", Audio: "song", Beat: "beat", "Beat Pack": "beat",
@@ -50,6 +51,45 @@ export async function POST(req: NextRequest) {
 
     const result = await MediaEngine.upload(uploadReq);
     if (!result.ok) return NextResponse.json(result, { status: 400 });
+
+    // Persist to DB so CRUD routes (/api/songs/[id], /api/videos/[id]) can manage it
+    if (result.assetId && result.url) {
+      const dbUser = cookieEmail
+        ? await prisma.user.findUnique({ where: { email: cookieEmail }, select: { id: true } })
+        : null;
+      if (dbUser) {
+        const isVideo = mediaType === "video" || mediaType === "interview" || mediaType === "venue_promo";
+        try {
+          if (isVideo) {
+            await prisma.video.create({
+              data: {
+                id: result.assetId,
+                uploaderId: dbUser.id,
+                title: uploadReq.title,
+                videoUrl: result.url,
+                genre: uploadReq.genre,
+                status: 'ACTIVE',
+              },
+            });
+          } else if (mediaType === "song" || mediaType === "beat") {
+            await prisma.song.create({
+              data: {
+                id: result.assetId,
+                uploaderId: dbUser.id,
+                title: uploadReq.title,
+                audioUrl: result.url,
+                genre: uploadReq.genre,
+                bpm: uploadReq.bpm,
+                status: 'ACTIVE',
+              },
+            });
+          }
+        } catch {
+          // Non-fatal: in-memory asset already created; DB write fails gracefully
+        }
+      }
+    }
+
     return NextResponse.json(result, { status: 201 });
   } catch (err) {
     console.error("[media/upload]", err);

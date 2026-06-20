@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import ArenaRadar from '@/components/arena/ArenaRadar';
+import { messageThreadEngine, type MessageThread } from '@/lib/messaging/MessageThreadEngine';
 
 const C = {
   bg: "#070714", card: "#0D0D24", panel: "#111130",
@@ -18,19 +19,49 @@ interface OmniPresenceEngineProps {
   defaultTab?: 'videotiles' | 'audio' | 'live' | 'messages' | 'radar';
 }
 
-const MOCK_MESSAGES = [
-  { id: 'chario-ace',   recipientId: 'chario-ace',   from: 'Chario Ace',   avatar: '🎤', text: 'Great set last night! Want to collab?', time: '2m ago',  unread: true  },
-  { id: 'tmi-booking',  recipientId: 'tmi-booking',  from: 'TMI Booking',  avatar: '📅', text: 'New venue request from Club Nova',      time: '18m ago', unread: true  },
-  { id: 'wavetek',      recipientId: 'wavetek',      from: 'Wavetek',      avatar: '🎵', text: 'Sent you a beat pack to check out',     time: '1h ago',  unread: false },
-  { id: 'fan-support',  recipientId: 'tmi-support',  from: 'Fan Support',  avatar: '💬', text: '3 new fan messages in your inbox',      time: '2h ago',  unread: false },
-];
+function timeAgo(ts: number): string {
+  const diffMs = Date.now() - ts;
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return 'now';
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return `${Math.floor(hours / 24)}d ago`;
+}
 
-export default function OmniPresenceEngine({ displayName = 'Artist', defaultTab = 'videotiles' }: OmniPresenceEngineProps) {
+interface InboxRow { id: string; recipientId: string; from: string; avatar: string; text: string; time: string; unread: boolean; }
+
+function threadToRow(thread: MessageThread, currentUserId: string): InboxRow {
+  const other = thread.participants.find((p) => p.userId !== currentUserId) ?? thread.participants[0];
+  const last = thread.lastMessage;
+  const unread = !!last && last.senderId !== currentUserId && !last.readBy.has(currentUserId);
+  return {
+    id: thread.threadId,
+    recipientId: other?.userId ?? thread.threadId,
+    from: other?.displayName ?? 'Unknown',
+    avatar: other?.role === 'artist' ? '🎤' : other?.role === 'sponsor' ? '💼' : other?.role === 'admin' ? '🛡️' : '💬',
+    text: last?.body ?? '',
+    time: last ? timeAgo(last.createdAt) : '',
+    unread,
+  };
+}
+
+export default function OmniPresenceEngine({ slug, displayName = 'Artist', defaultTab = 'videotiles' }: OmniPresenceEngineProps) {
   const [activeTab, setActiveTab] = useState<'videotiles' | 'audio' | 'live' | 'messages' | 'radar'>(defaultTab);
   const [voiceVol, setVoiceVol] = useState(75);
   const [beatVol, setBeatVol] = useState(65);
   const [msgInput, setMsgInput] = useState('');
+  const [inboxRows, setInboxRows] = useState<InboxRow[]>([]);
   const router = useRouter();
+
+  // Real inbox — replaces a hardcoded MOCK_MESSAGES array that showed the
+  // same four fake senders ("Chario Ace", "Wavetek"...) on every profile
+  // regardless of whose inbox it actually was.
+  useEffect(() => {
+    if (!slug) { setInboxRows([]); return; }
+    const threads = messageThreadEngine.getUserThreads(slug);
+    setInboxRows(threads.map((t) => threadToRow(t, slug)));
+  }, [slug]);
 
   const duckedBeat = voiceVol > 70 ? Math.max(20, beatVol - Math.round((voiceVol - 70) * 0.75)) : beatVol;
 
@@ -76,8 +107,11 @@ export default function OmniPresenceEngine({ displayName = 'Artist', defaultTab 
                 OPEN INBOX →
               </Link>
             </div>
+            {inboxRows.length === 0 && (
+              <div style={{ fontSize: 10, color: C.mt, padding: '10px 0 16px' }}>No messages yet.</div>
+            )}
             <div style={{ display: 'grid', gap: 8, marginBottom: 16 }}>
-              {MOCK_MESSAGES.map(msg => (
+              {inboxRows.map(msg => (
                 <button
                   key={msg.id}
                   onClick={() => router.push(`/messages/${msg.recipientId}`)}

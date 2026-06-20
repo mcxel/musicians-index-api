@@ -38,6 +38,19 @@ export function userOwnsBeat(beatId: string, userId: string, license: BeatLicens
   return _ownership.get(key)?.has(userId) ?? false;
 }
 
+/**
+ * Has this beat's exclusive slot been claimed? CompetitionMusicEngine must
+ * consult this before offering a beat for battle/cypher use — an exclusive
+ * marketplace sale should block competition use, never silently coexist
+ * with it. Locked 2026-06-19 by Marcel Dickens after the beat/store
+ * architecture audit found zero cross-checking between the marketplace and
+ * competition beat registries.
+ */
+export function isBeatExclusivelySold(beatId: string): boolean {
+  const key = `${beatId}::exclusive`;
+  return (_ownership.get(key)?.size ?? 0) > 0;
+}
+
 // ─── Inventory snapshot ───────────────────────────────────────────────────────
 
 const LICENSE_SLOTS: Record<BeatLicenseType, number> = {

@@ -20,16 +20,42 @@ export type HostDef = {
   fallbackPriority: number; // lower = called first when primary unavailable
 };
 
-/** Show → host assignment contract (single source of truth) */
+/**
+ * Show → host assignment contract.
+ *
+ * "monday-night-stage" intentionally removed (2026-06-20, Host
+ * Canonicalization Pass, runtime-wins rule): this entry claimed Tiara/
+ * Gregory Marcel, but nothing in the app ever called getHostForShow() for
+ * this show (confirmed via repo-wide grep — its only real caller is
+ * dirty-dozens), and the actual production runtime
+ * (lib/shows/MondayNightStageEngine.ts + components/shows/MondayNightStagePanel.tsx)
+ * mechanically operates Bebo (hook prop) + Kira (walkaround) — consistent
+ * with the canonical assignment in HostShowAssignmentEngine.ts
+ * (mainHostId: bobby-stanley, coHostIds: [kira, bebo]), which uses
+ * HostIdentityRegistry.ts ids that don't exist as entries in THIS registry's
+ * `hostRegistry` object below. Retired here rather than guessed into a
+ * dangling id — the real source for this show is
+ * HostShowAssignmentEngine.getShowHosts("monday-night-stage").
+ *
+ * "deal-or-feud" also removed (2026-06-20, Marcel Dickens correction:
+ * "Bobby Stanley is the host for Deal or Feud 1000"). Same dangling-id
+ * situation as monday-night-stage — bobby-stanley isn't an entry in this
+ * registry's `hostRegistry` object. Canonical source is now
+ * HostShowAssignmentEngine.getShowHosts("deal-or-feud") (mainHostId updated
+ * to bobby-stanley) + HostIdentityRegistry.ts.
+ *
+ * Note: "monthly-idol" below still claims ray-journey/tiara, which conflicts
+ * with HostShowAssignmentEngine.ts's gregory-marcel/mindy-jean-long — NOT
+ * fixed here, no explicit correction given for the main-host slot (only the
+ * judge slot was corrected separately). Flagged, not guessed.
+ */
 export const showHostMap: Record<string, { primary: string; backup: string }> = {
-  "monday-night-stage":   { primary: "tiara",            backup: "gregory-marcel" },
   "yearly-contest":        { primary: "tiara",            backup: "ray-journey" },
   "battle-of-the-bands":  { primary: "michael-gregory",  backup: "tiara" },
-  "monthly-idol":          { primary: "ray-journey",      backup: "tiara" },
+  "monthly-idol":          { primary: "ray-journey",      backup: "tiara" }, // CANONICALIZATION_REQUIRED — see note above
   "world-dance-party":     { primary: "finny-maxwell",    backup: "record-ralph" },
   "cypher-arena":          { primary: "gregory-marcel",   backup: "michael-gregory" },
   "name-that-tune":        { primary: "finny-maxwell",    backup: "ray-journey" },
-  "deal-or-feud":          { primary: "ray-journey",      backup: "gregory-marcel" },
   "circles-squares":       { primary: "finny-maxwell",    backup: "tiara" },
   "dirty-dozens":          { primary: "gregory-marcel",   backup: "michael-gregory" },
   "crown-reveal":          { primary: "tiara",            backup: "ray-journey" },
@@ -40,13 +66,15 @@ export const showHostMap: Record<string, { primary: string; backup: string }> = 
 export const hostRegistry: Record<string, HostDef> = {
   "tiara": {
     id: "tiara",
+    // 2026-06-20 (Host Canonicalization Pass): "Monday Night Stage Host"
+    // removed from role text + primaryShows — see showHostMap comment above.
     name: "Tiara",
-    role: "Monday Night Stage Host / Yearly Contest Host",
+    role: "Yearly Contest Host",
     avatarClass: "human",
     personalityCore: "Commanding, warm, magnetic stage presence — crowd connector",
     voiceProfile: "powerful-r&b-cadence",
     avatarAsset: "/tmi-curated/host-2.png",
-    primaryShows: ["monday-night-stage", "yearly-contest", "crown-reveal"],
+    primaryShows: ["yearly-contest", "crown-reveal"],
     backupShows: ["monthly-idol", "battle-of-the-bands", "cypher-arena"],
     dialoguePackRefs: ["monday-open", "crown-handoff", "crowd-warmup", "contest-finals", "winner-announcement"],
     activeStatus: "active",
@@ -69,13 +97,16 @@ export const hostRegistry: Record<string, HostDef> = {
   "gregory-marcel": {
     id: "gregory-marcel",
     name: "Gregory Marcel",
-    role: "Monday Stage Host / Cypher Host",
+    // 2026-06-20: "Monday Stage Host" dropped from role text — see
+    // showHostMap comments above (Bobby Stanley + Kira + Bebo are canonical
+    // for Monday Night Stage; Bobby Stanley is canonical for Deal or Feud).
+    role: "Cypher Host",
     avatarClass: "human",
     personalityCore: "Slick, polished, charismatic",
     voiceProfile: "smooth-alabama-cadence",
     avatarAsset: "/tmi-curated/host-main.png",
     primaryShows: ["cypher-arena", "dirty-dozens"],
-    backupShows: ["monday-night-stage", "deal-or-feud"],
+    backupShows: [],
     dialoguePackRefs: ["monday-intro", "crowd-rescue", "robot-trigger", "cypher-open"],
     activeStatus: "active",
     fallbackPriority: 3,
@@ -88,7 +119,8 @@ export const hostRegistry: Record<string, HostDef> = {
     personalityCore: "Professional, elevated, dramatic",
     voiceProfile: "upbeat-announcer",
     avatarAsset: "/tmi-curated/host-4.png",
-    primaryShows: ["monthly-idol", "deal-or-feud"],
+    // "deal-or-feud" removed 2026-06-20 — Bobby Stanley is canonical there.
+    primaryShows: ["monthly-idol"],
     backupShows: ["yearly-contest", "circles-squares"],
     dialoguePackRefs: ["contestant-intro", "prize-reveal", "finals-transition", "idol-judging"],
     activeStatus: "active",

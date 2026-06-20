@@ -1,8 +1,8 @@
 "use client";
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import ArenaImmersivePanel from "@/components/live/ArenaImmersivePanel";
-import AudienceScene from "@/components/live/AudienceScene";
+import UniversalVenueRenderer from "@/components/live/UniversalVenueRenderer";
+import type { VenueIndex } from "@/components/live/AudienceScene";
 
 type AudienceSnapshot = {
   venueSlug: string;
@@ -107,23 +107,22 @@ export default function LiveAudiencePage() {
               <div style={{ fontSize: 11, color: "#666" }}>{snapshot.occupancyPct}% capacity used</div>
             </div>
 
-            {/* 3D live audience canvas — fan POV looking at the stage */}
+            {/* UniversalVenueRenderer — AudienceScene + WebRTC + chat + reactions + moderation, all in one (Phase 3B) */}
             <div style={{ marginBottom: 28 }}>
               <div style={{ fontSize: 11, color: "#aaa", fontWeight: 800, letterSpacing: "0.1em", marginBottom: 12 }}>
                 LIVE AUDIENCE VIEW
               </div>
-              <AudienceScene
-                view="fan"
-                venue={(
+              <UniversalVenueRenderer
+                roomId={venueSlug}
+                mode="audience"
+                venueIndex={(
                   venueSlug === "battle-zone" ? 1 :
                   venueSlug === "cypher-room" ? 2 :
                   venueSlug === "concert-hall" ? 0 :
                   0
-                ) as 0 | 1 | 2 | 3 | 4}
+                ) as VenueIndex}
               />
             </div>
-
-            <ArenaImmersivePanel roomId={venueSlug} mode="audience" />
 
             {snapshot.activeMembers.length > 0 && (
               <div style={{ marginBottom: 28 }}>

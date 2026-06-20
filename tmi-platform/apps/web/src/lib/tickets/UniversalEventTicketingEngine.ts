@@ -364,10 +364,10 @@ export function buildUniversalEventRoutes(eventId: string): UniversalEventRoutes
     buyTicketRoute: `${base}/tickets/buy`,
     printTicketRoute: `${base}/tickets/print`,
     promoteEventRoute: `${base}/promote`,
-    venueSignupRoute: `/venues/signup`,
-    hostSignupRoute: `/event-hosts/signup`,
+    venueSignupRoute: `/signup?role=venue`,
+    hostSignupRoute: `/signup/host`,
     magazinePromotionUpsellRoute: `${base}/promote/magazine-upsell`,
-    contactSupportRoute: `/events/support/contact`,
+    contactSupportRoute: `/support`,
   };
 }
 

@@ -14,7 +14,7 @@ const STATS = [
 ];
 
 const QUICK_ACTIONS = [
-  { label: "PROMOTE EVENT",   icon: "📣", href: "/promoter/events",    color: "#00FF88", desc: "Launch event campaign" },
+  { label: "PROMOTE EVENT",   icon: "📣", href: "/promoter/dashboard",    color: "#00FF88", desc: "Launch event campaign" },
   { label: "BOOK ARTIST",     icon: "🎤", href: "/booking",            color: "#00FFFF", desc: "Contract performers" },
   { label: "LIVE LOBBY",      icon: "🏟️", href: "/live/rooms",        color: "#AA2DFF", desc: "Open pre-show space" },
   { label: "VENUES",          icon: "🏢", href: "/venues",             color: "#FFD700", desc: "Find partner venues" },

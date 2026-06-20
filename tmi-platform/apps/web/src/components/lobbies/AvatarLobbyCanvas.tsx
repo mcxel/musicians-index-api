@@ -41,7 +41,7 @@ const SEED_CROWD: LobbyAvatar[] = [
   { id: "s1",  name: "Skywave",  emoji: "🎧", color: "#00FFFF", role: "fan",       seat: "G-R12", tier: "SILVER"  },
   { id: "s2",  name: "VenusRhym",emoji: "💎", color: "#FFD700", role: "vip",       seat: "VIP-2",  tier: "DIAMOND" },
   { id: "s3",  name: "BeatLvr",  emoji: "🔥", color: "#FF2DAA", role: "fan",       seat: "G-R8",   tier: "FREE"   },
-  { id: "s4",  name: "NovaMix",  emoji: "🎤", color: "#AA2DFF", role: "performer", isLive: true,   tier: "GOLD"   },
+  { id: "s4",  name: "NovaMix",  emoji: "🎤", color: "#AA2DFF", role: "performer", seat: "F-R1",   tier: "GOLD"   },
   { id: "s5",  name: "EchoStar", emoji: "⚡", color: "#00FF88", role: "artist",    seat: "F-R3",   tier: "GOLD"   },
   { id: "s6",  name: "CrownKng", emoji: "👑", color: "#FFD700", role: "vip",       seat: "VIP-1",  tier: "DIAMOND" },
   { id: "s7",  name: "RhymeXL",  emoji: "🎵", color: "#FF6B35", role: "fan",       seat: "G-R20",  tier: "FREE"   },

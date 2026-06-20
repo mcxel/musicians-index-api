@@ -5,22 +5,13 @@ import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import TMILiveMediaWidget from "@/components/media/TMILiveMediaWidget";
 import { LobbyEntryFlow, type UniversalRoom } from "@/components/room/UniversalLobbyEntry";
-
-// ─── Simulated live lobby data (replaced by real useLiveSync in prod) ─────────
-
-const LIVE_LOBBIES = [
-  { id: "lv-001", performerId: "kreach-001",   performerName: "Kreach",       genre: "Hip Hop",  roomId: "R-101", accentColor: "#FF2DAA", viewers: 312,  isLive: true },
-  { id: "lv-002", performerId: "nova-wave-02",  performerName: "Nova Wave",    genre: "R&B",      roomId: "R-204", accentColor: "#00FFFF", viewers: 188,  isLive: true },
-  { id: "lv-003", performerId: "djspiral-007",  performerName: "DJ Spiral",    genre: "Electronic",roomId: "R-312",accentColor: "#AA2DFF", viewers: 441,  isLive: true },
-  { id: "lv-004", performerId: "soulfix-003",   performerName: "Soul Fix",     genre: "Soul",     roomId: "R-099", accentColor: "#FFD700", viewers: 97,   isLive: true },
-  { id: "lv-005", performerId: "blazefront-08", performerName: "Blaze Front",  genre: "Trap",     roomId: "R-418", accentColor: "#FF6B35", viewers: 267,  isLive: true },
-  { id: "lv-006", performerId: "lyrix-queen",   performerName: "Lyrix Queen",  genre: "Pop",      roomId: "R-511", accentColor: "#00FF88", viewers: 524,  isLive: true },
-];
+import { useLiveSync } from "@/lib/media/useLiveSync";
+import type { LiveFeedItem } from "@/components/billboard/TMIBillboardLiveWall";
 
 const ROTATE_INTERVAL_MS = 7000;
 const VISIBLE_COUNT = 4;
 
-type LobbyItem = typeof LIVE_LOBBIES[number];
+type LobbyItem = LiveFeedItem;
 
 function lobbyToRoom(lobby: LobbyItem): UniversalRoom {
   return {
@@ -38,23 +29,28 @@ function lobbyToRoom(lobby: LobbyItem): UniversalRoom {
 }
 
 export default function Home2LiveLobbyStrip() {
+  const { feed } = useLiveSync();
+  const liveLobbies = feed.filter((f) => f.isLive);
   const [startIdx, setStartIdx] = useState(0);
   const [direction, setDirection] = useState(1);
   const [pending, setPending] = useState<UniversalRoom | null>(null);
 
   const advance = useCallback(() => {
     setDirection(1);
-    setStartIdx((i) => (i + 1) % LIVE_LOBBIES.length);
-  }, []);
+    setStartIdx((i) => (liveLobbies.length > 0 ? (i + 1) % liveLobbies.length : 0));
+  }, [liveLobbies.length]);
 
   useEffect(() => {
+    if (liveLobbies.length === 0) return;
     const t = setInterval(advance, ROTATE_INTERVAL_MS);
     return () => clearInterval(t);
-  }, [advance]);
+  }, [advance, liveLobbies.length]);
+
+  if (liveLobbies.length === 0) return null;
 
   // Grab VISIBLE_COUNT lobbies starting at startIdx (wrap around)
-  const visible = Array.from({ length: VISIBLE_COUNT }, (_, i) =>
-    LIVE_LOBBIES[(startIdx + i) % LIVE_LOBBIES.length]!
+  const visible = Array.from({ length: Math.min(VISIBLE_COUNT, liveLobbies.length) }, (_, i) =>
+    liveLobbies[(startIdx + i) % liveLobbies.length]!
   );
 
   return (
@@ -69,7 +65,7 @@ export default function Home2LiveLobbyStrip() {
             style={{ width: 8, height: 8, borderRadius: "50%", background: "#FF2DAA", display: "inline-block", boxShadow: "0 0 8px #FF2DAA" }}
           />
           <span style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.3em", color: "#FF2DAA", textTransform: "uppercase" }}>
-            Live Now — {LIVE_LOBBIES.length} Rooms Open
+            Live Now — {liveLobbies.length} Rooms Open
           </span>
         </div>
         <Link href="/live" style={{ textDecoration: "none", fontSize: 8, fontWeight: 800, color: "rgba(255,255,255,0.4)", letterSpacing: "0.1em" }}>
@@ -151,15 +147,15 @@ export default function Home2LiveLobbyStrip() {
 
       {/* Rotation dots */}
       <div style={{ display: "flex", justifyContent: "center", gap: 6, marginTop: 12 }}>
-        {LIVE_LOBBIES.map((_, i) => (
+        {liveLobbies.map((_, i) => (
           <button
             key={i}
             type="button"
             onClick={() => { setDirection(i > startIdx ? 1 : -1); setStartIdx(i); }}
             style={{
-              width: i === startIdx % LIVE_LOBBIES.length ? 18 : 6, height: 6,
+              width: i === startIdx % liveLobbies.length ? 18 : 6, height: 6,
               borderRadius: 999,
-              background: i === startIdx % LIVE_LOBBIES.length ? "#FF2DAA" : "rgba(255,255,255,0.2)",
+              background: i === startIdx % liveLobbies.length ? "#FF2DAA" : "rgba(255,255,255,0.2)",
               border: "none", cursor: "pointer", padding: 0,
               transition: "all 0.3s ease",
             }}

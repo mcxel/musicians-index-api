@@ -10,6 +10,12 @@ export type AudienceMember = {
   captureEnabled: boolean;
   /** Friend-cluster key — members sharing a groupId are seated adjacent to each other when possible. */
   groupId?: string | null;
+  /**
+   * Phase 3A — Seat Persistence Convergence (2026-06-20): inherited from
+   * SeatingMeshEngine's avatar-seat binding capability rather than running a
+   * second seat data model. Real avatar URL only — never a placeholder.
+   */
+  avatarUrl?: string | null;
   viewpoint: {
     yaw: number;
     pitch: number;
@@ -90,6 +96,7 @@ export function joinAudience(venueSlug: string, member: {
   seatId: string | null;
   captureEnabled?: boolean;
   groupId?: string | null;
+  avatarUrl?: string | null;
   viewpoint?: {
     yaw: number;
     pitch: number;
@@ -105,12 +112,14 @@ export function joinAudience(venueSlug: string, member: {
     existing.captureEnabled = member.captureEnabled ?? existing.captureEnabled;
     existing.seatId = member.seatId;
     existing.groupId = member.groupId ?? existing.groupId ?? null;
+    existing.avatarUrl = member.avatarUrl ?? existing.avatarUrl ?? null;
     existing.viewpoint = member.viewpoint ?? existing.viewpoint;
     return occ;
   }
   occ.members.push({
     ...member,
     groupId: member.groupId ?? null,
+    avatarUrl: member.avatarUrl ?? null,
     joinedAt: Date.now(),
     active: true,
     viewpoint: member.viewpoint ?? { yaw: 0, pitch: 0, updatedAt: Date.now() },

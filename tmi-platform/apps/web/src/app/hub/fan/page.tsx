@@ -17,8 +17,13 @@ import FriendsList from "@/components/social/FriendsList";
 import { InventoryPanel } from "@/components/InventoryPanel";
 import CollapsibleCanister from "@/components/canisters/CollapsibleCanister";
 import { getPerformerById } from "@/lib/performers/PerformerRegistry";
+import { listFollowingForUser } from "@/lib/social/FollowEngine";
+import type { Friend } from "@/components/social/FriendsList";
 import MonitorSatelliteSystem from "@/components/canisters/MonitorSatelliteSystem";
 import PlaylistArtifact from "@/components/artifacts/PlaylistArtifact";
+import InboxPanel from "@/components/messaging/InboxPanel";
+import RecentlyVisitedRail from "@/components/presence/RecentlyVisitedRail";
+import { useWatchSession } from "@/lib/presence/WatchSessionContext";
 
 const SEED_BADGES = [
   { id: "b1", label: "Season 1 OG",     icon: "🏆", earnedAt: "Jan 2026" },
@@ -128,6 +133,25 @@ interface LiveApiSession {
 export default function FanHubPage() {
   const { totalXp, walletCredits, currentLevel } = useGamificationEngine();
   const [featuredLive, setFeaturedLive] = useState<FeaturedLive | null>(null);
+  const { current: nowPlaying } = useWatchSession();
+
+  // Real follow relationships (FollowEngine) mapped through PerformerRegistry
+  // for display data — replaces a hardcoded friends={[]} that never showed
+  // anyone real regardless of who the fan actually followed.
+  const followingFriends: Friend[] = listFollowingForUser("demo-fan")
+    .map((id) => getPerformerById(id))
+    .filter((p): p is NonNullable<typeof p> => Boolean(p))
+    .map((p) => ({
+      id: p.id,
+      name: p.name,
+      slug: p.slug,
+      role: "PERFORMER",
+      isOnline: false,
+      isLive: p.isLive,
+      liveRoomId: p.isLive ? p.roomId : undefined,
+      genre: p.category,
+      avatarEmoji: undefined,
+    }));
 
   // Real GlobalLiveSessionRegistry data via /api/live/go — not the static
   // PERFORMER_REGISTRY.isLive seed flag, which never reflects an actual broadcast.
@@ -185,9 +209,109 @@ export default function FanHubPage() {
       {/* Extended Hub Sections */}
       <div style={{ maxWidth: 1400, margin: "0 auto", padding: "0 24px 48px" }}>
 
-        {/* Monitor Satellite System — main video + audio panel + PIP camera */}
-        <section style={{ marginBottom: 32, marginTop: 32 }}>
-          <SectionLabel>Watch</SectionLabel>
+        {/* ════ Fan Hub Command Layer — Live Discovery | Memory Wall hero | Active
+            Utility. Locked 2026-06-19 by Marcel Dickens: the front face must
+            answer "what's live", "who can I return to", "what's playing", and
+            "what have I attended/saved" without leaving the page. Replaces the
+            old Watch/Recently-Visited/Profile/Canister-stack sections — same
+            real components, arranged around one center of gravity instead of
+            scattered equally-weighted sections. ════ */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(220px, 280px) minmax(0, 1fr) minmax(240px, 320px)', gap: 16, marginTop: 32, marginBottom: 32, alignItems: 'start' }}>
+
+          {/* ── LEFT — Live Discovery rail ── */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ background: '#0f0f1a', border: '1px solid #FF2DAA33', borderRadius: 12, padding: 14 }}>
+              <SectionLabel>🔴 Live Now</SectionLabel>
+              {featuredLive ? (
+                <Link href={featuredLive.liveRoomRoute} style={{ textDecoration: 'none' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0' }}>
+                    {featuredLive.profileImageUrl && <img src={featuredLive.profileImageUrl} alt={featuredLive.name} style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover', border: '1px solid #FF2DAA66' }} />}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 12, fontWeight: 800, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{featuredLive.name}</div>
+                      <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)' }}>👁 {featuredLive.audienceCount.toLocaleString()} watching</div>
+                    </div>
+                  </div>
+                </Link>
+              ) : (
+                <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', padding: '8px 0' }}>Nobody&apos;s live right now — check back soon.</div>
+              )}
+              <Link href="/live/lobby" style={{ display: 'block', textAlign: 'center', fontSize: 9, fontWeight: 800, color: '#FF2DAA', textDecoration: 'none', marginTop: 8, letterSpacing: '0.08em' }}>BROWSE ALL LIVE →</Link>
+            </div>
+
+            <div style={{ background: '#0f0f1a', border: '1px solid #00FFFF33', borderRadius: 12, padding: 14 }}>
+              <SectionLabel>Friends Live</SectionLabel>
+              {followingFriends.filter((f) => f.isLive).length === 0 ? (
+                <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', padding: '4px 0' }}>None of your favorites are live right now.</div>
+              ) : (
+                followingFriends.filter((f) => f.isLive).map((f) => (
+                  <Link key={f.id} href={f.liveRoomId ? `/live/rooms/${f.liveRoomId}?from=lobby-wall` : `/performers/${f.slug}`} style={{ textDecoration: 'none' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 0', fontSize: 11, color: '#fff' }}>
+                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#E63000', boxShadow: '0 0 5px #E63000', flexShrink: 0 }} />
+                      {f.name}
+                    </div>
+                  </Link>
+                ))
+              )}
+            </div>
+
+            <div style={{ background: '#0f0f1a', border: '1px solid #FFD70033', borderRadius: 12, padding: 14 }}>
+              <SectionLabel>Recently Visited</SectionLabel>
+              <RecentlyVisitedRail />
+            </div>
+
+            <div style={{ background: '#0f0f1a', border: '1px solid #00FFFF33', borderRadius: 12, padding: 14 }}>
+              <SectionLabel>Favorite Performers</SectionLabel>
+              <FriendsList friends={followingFriends} accent="#00FFFF" compact showInviteButton onInvite={() => { window.location.href = "/messages/new?subject=invite"; }} />
+            </div>
+          </div>
+
+          {/* ── CENTER — Memory Wall hero. Front and visible, not a collapsed
+              canister — this is the page's identity, per Marcel's directive that
+              a fan's photos/clips/memories should never require a click to find. ── */}
+          <div style={{ background: 'linear-gradient(160deg, rgba(255,215,0,0.05), #0f0f1a)', border: '1px solid #FFD70044', borderRadius: 16, padding: 20 }}>
+            <div style={{ fontSize: 13, fontWeight: 900, letterSpacing: '0.1em', color: '#FFD700', marginBottom: 4 }}>🖼️ MEMORY WALL</div>
+            <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', marginBottom: 16 }}>Your entertainment history — shows attended, clips saved, moments captured.</div>
+            <MemoryWall accentColor="#FFD700" title="" entityId="demo-fan" entityType="fan" />
+          </div>
+
+          {/* ── RIGHT — Active Utility: now playing, messages, upcoming shows ── */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ background: '#0f0f1a', border: '1px solid #FF2DAA33', borderRadius: 12, padding: 14 }}>
+              <SectionLabel>Now Playing</SectionLabel>
+              {nowPlaying ? (
+                <Link href={`/live/rooms/${nowPlaying.roomId}?from=lobby-wall`} style={{ textDecoration: 'none' }}>
+                  <div style={{ fontSize: 12, fontWeight: 800, color: '#fff', marginBottom: 2 }}>{nowPlaying.title}</div>
+                  <div style={{ fontSize: 10, color: nowPlaying.accentColor }}>▶ Return to Show</div>
+                </Link>
+              ) : (
+                <PlaylistArtifact artifactId="demo-fan-playlist" skin="submarine" title="My Playlist" />
+              )}
+            </div>
+
+            <CollapsibleCanister icon="💬" label="Messages" accentColor="#00FFFF" defaultOpen>
+              <InboxPanel currentUser={{ userId: "demo-fan", displayName: "Fan", avatarUrl: "", role: "fan" }} />
+            </CollapsibleCanister>
+
+            <div style={{ background: '#0f0f1a', border: '1px solid #AA2DFF33', borderRadius: 12, padding: 14 }}>
+              <SectionLabel>Profile</SectionLabel>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                <AvatarMiniDisplay size={40} showLabel />
+                <Link href="/avatar" style={{ fontSize: 9, fontWeight: 800, color: '#AA2DFF', textDecoration: 'none' }}>🧬 AVATAR →</Link>
+              </div>
+            </div>
+
+            <CollapsibleCanister icon="🎒" label="Inventory" accentColor="#AA2DFF">
+              <InventoryPanel />
+            </CollapsibleCanister>
+          </div>
+        </div>
+
+        {/* Camera / audio monitor — secondary to the command layer above, not
+            part of the front-face acceptance criteria, but real working
+            functionality (self-capture to Memory Wall, audio toggle, lobby
+            browse, ad slot) that shouldn't be deleted just to make room. */}
+        <section style={{ marginBottom: 32 }}>
+          <SectionLabel>Camera &amp; Audio</SectionLabel>
           <MonitorSatelliteSystem
             mainLabel={featuredLive?.name ?? "TMI Live World"}
             isLive={Boolean(featuredLive)}
@@ -199,34 +323,6 @@ export default function FanHubPage() {
             accentColor="#FF2DAA"
             adZone="hub-fan"
           />
-        </section>
-
-        {/* Avatar + Canister Quick Access (Constitution Rule 15) */}
-        <section style={{ marginBottom: 32, marginTop: 32 }}>
-          <SectionLabel>Profile</SectionLabel>
-          <div style={{ background: "#0f0f1a", border: "1px solid #AA2DFF33", borderRadius: 14, padding: 18, display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
-            <AvatarMiniDisplay size={56} showLabel />
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", flex: 1 }}>
-              <Link href="/avatar" style={{ fontSize: 10, fontWeight: 800, padding: "7px 12px", borderRadius: 6, background: "rgba(170,45,255,0.12)", border: "1px solid rgba(170,45,255,0.4)", color: "#AA2DFF", textDecoration: "none" }}>🧬 AVATAR WORKSPACE</Link>
-              <Link href="/messages" style={{ fontSize: 10, fontWeight: 800, padding: "7px 12px", borderRadius: 6, background: "rgba(0,255,255,0.1)", border: "1px solid rgba(0,255,255,0.35)", color: "#00FFFF", textDecoration: "none" }}>💬 MESSAGES</Link>
-            </div>
-          </div>
-        </section>
-
-        {/* Pop-out canisters — never long static bars (Profile Hub Blueprint) */}
-        <section style={{ marginBottom: 32, display: "flex", flexDirection: "column", gap: 8 }}>
-          <CollapsibleCanister icon="🎵" label="Playlist" accentColor="#FF2DAA">
-            <PlaylistArtifact artifactId="demo-fan-playlist" skin="submarine" title="My Playlist" />
-          </CollapsibleCanister>
-          <CollapsibleCanister icon="👥" label="Friends" accentColor="#00FFFF">
-            <FriendsList friends={[]} accent="#00FFFF" compact showInviteButton onInvite={() => { window.location.href = "/messages/new?subject=invite"; }} />
-          </CollapsibleCanister>
-          <CollapsibleCanister icon="🖼️" label="Memory Wall" accentColor="#FFD700">
-            <MemoryWall accentColor="#FFD700" title="Memory Wall" entityId="demo-fan" entityType="fan" />
-          </CollapsibleCanister>
-          <CollapsibleCanister icon="🎒" label="Inventory" accentColor="#AA2DFF">
-            <InventoryPanel />
-          </CollapsibleCanister>
         </section>
 
         {/* Show Countdowns */}
@@ -361,7 +457,7 @@ export default function FanHubPage() {
                 </div>
                 <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>Vote weight: 1.2× — your votes count more</div>
               </div>
-              <Link href="/judge" style={{ marginLeft: "auto", fontSize: 10, color: "#FFD700", textDecoration: "none", border: "1px solid #FFD70033", borderRadius: 6, padding: "6px 12px", fontWeight: 700 }}>
+              <Link href="/battles/judge" style={{ marginLeft: "auto", fontSize: 10, color: "#FFD700", textDecoration: "none", border: "1px solid #FFD70033", borderRadius: 6, padding: "6px 12px", fontWeight: 700 }}>
                 JUDGE LEADERBOARD →
               </Link>
             </div>

@@ -18,8 +18,8 @@
  *   monday-stage → Theater(0)— weekly flagship
  */
 
-import AudienceScene, { type VenueIndex } from "@/components/live/AudienceScene";
-import ArenaImmersivePanel from "@/components/live/ArenaImmersivePanel";
+import type { VenueIndex } from "@/components/live/AudienceScene";
+import UniversalVenueRenderer from "@/components/live/UniversalVenueRenderer";
 import AvatarVenueAnchor from "@/components/avatar/AvatarVenueAnchor";
 
 export type ArenaEventType =
@@ -111,24 +111,16 @@ export default function ArenaEventShell({
         )}
       </div>
 
-      {/* ── 3D canvas + hero overlay ── */}
-      <div style={{ position: "relative" }}>
-        <AudienceScene
-          view={mode === "performer" ? "performer" : "fan"}
-          venue={venueIndex}
-          watcherCount={watcherCount}
-          hideControls={mode === "performer"}
-        />
-        {showHeroes && (
-          <AvatarVenueAnchor
-            venueSlug={venueSlug}
-            venueIndex={venueIndex}
-          />
-        )}
-      </div>
+      {/* ── Hero overlay sits above the renderer's own AudienceScene ── */}
+      {showHeroes && (
+        <div style={{ position: "relative" }}>
+          <AvatarVenueAnchor venueSlug={venueSlug} venueIndex={venueIndex} />
+        </div>
+      )}
 
-      {/* ── Full arena panel: seats, chat, moderation, performer controls ── */}
-      <ArenaImmersivePanel roomId={roomId} mode={mode} />
+      {/* ── Universal Venue Renderer: AudienceScene + seats + chat + moderation +
+           performer controls, all in one (Phase 3B convergence, 2026-06-20) ── */}
+      <UniversalVenueRenderer roomId={roomId} mode={mode} venueIndex={venueIndex} />
     </div>
   );
 }

@@ -1,5 +1,11 @@
 'use client';
 
+// LEGACY_CANDIDATE (Rule 21, 2026-06-20): superseded by UniversalVenueRenderer
+// (components/live/UniversalVenueRenderer.tsx), now used by the room page and
+// ArenaEventShell. This file is left running as-is — no other call site
+// referenced it (confirmed via repo-wide grep), but it is not deleted until
+// UniversalVenueRenderer is verified in a real browser session.
+
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import StageCurtain from '@/components/live/StageCurtain';
 import AudienceScene from '@/components/live/AudienceScene';

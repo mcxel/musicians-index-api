@@ -1,6 +1,5 @@
 import Link from "next/link";
-import ArenaImmersivePanel from "@/components/live/ArenaImmersivePanel";
-import AudienceScene from "@/components/live/AudienceScene";
+import UniversalVenueRenderer from "@/components/live/UniversalVenueRenderer";
 import type { VenueIndex } from "@/components/live/AudienceScene";
 
 interface LiveArenaPageProps {
@@ -41,7 +40,7 @@ export default async function LiveArenaPage({ params, searchParams }: LiveArenaP
       </nav>
 
       <div style={{ maxWidth: 1100, margin: "0 auto", padding: "24px 20px", display: "grid", gap: 16 }}>
-        {/* 3D Arena canvas — full width above the panel */}
+        {/* Arena header — UniversalVenueRenderer below renders the real 3D crowd + panel together */}
         <div style={{ borderRadius: 16, overflow: "hidden", border: "1px solid rgba(255,255,255,0.08)", background: "#050510" }}>
           <div style={{ padding: "8px 14px", background: "rgba(0,0,0,0.6)", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", gap: 10 }}>
             <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#FF2020", display: "inline-block" }} />
@@ -52,14 +51,10 @@ export default async function LiveArenaPage({ params, searchParams }: LiveArenaP
               {mode === "performer" ? "Stage view — your crowd" : "Audience view — house left to right"}
             </span>
           </div>
-          {/* AudienceScene is client-only — render as a client island via the panel */}
-          <div style={{ fontSize: 10, color: "rgba(255,255,255,0.2)", padding: "8px 14px", textAlign: "center", display: "none" }}>
-            3D arena loading…
-          </div>
         </div>
 
-        {/* ArenaImmersivePanel — WebRTC, chat, reactions, moderation */}
-        <ArenaImmersivePanel roomId={id} mode={mode} />
+        {/* UniversalVenueRenderer — AudienceScene + WebRTC + chat + reactions + moderation, all in one (Phase 3B) */}
+        <UniversalVenueRenderer roomId={id} mode={mode} venueIndex={venueIndex} />
       </div>
     </main>
   );

@@ -12,3 +12,12 @@ export function unfollowUser(followerId: string, targetId: string): void {
 export function listFollowersForUser(targetId: string): string[] {
   return [...(followersMap.get(targetId) ?? new Set<string>())];
 }
+
+/** Who does this user follow — the reverse lookup of listFollowersForUser. */
+export function listFollowingForUser(followerId: string): string[] {
+  const following: string[] = [];
+  for (const [targetId, followers] of followersMap) {
+    if (followers.has(followerId)) following.push(targetId);
+  }
+  return following;
+}

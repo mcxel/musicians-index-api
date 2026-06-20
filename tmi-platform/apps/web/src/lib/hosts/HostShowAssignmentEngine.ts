@@ -17,7 +17,13 @@ export const SHOW_HOST_ASSIGNMENTS: Record<string, ShowHostAssignment> = {
     showId: 'monthly-idol',
     mainHostId: 'gregory-marcel',
     coHostIds: ['mindy-jean-long'],
-    judgeIds: ['jack-obrien', 'hector-lvanos'],
+    // jack-obrien/hector-lvanos removed (2026-06-20, Marcel Dickens correction):
+    // this was a copy-paste of cypher-arena's judgeIds below — both lists were
+    // byte-identical. Jack O'Brien and Hector Lvanos are championship/yearly-
+    // contest judges (see their real showAssignments in HostIdentityRegistry.ts),
+    // not Monthly Idol judges. No real third/judge identity for Monthly Idol
+    // exists in any registry yet — honest empty, not invented.
+    judgeIds: [],
     prizeHostId: 'mindy-jean-long',
     paAnnouncerId: 'aura-pa',
   },
@@ -32,7 +38,9 @@ export const SHOW_HOST_ASSIGNMENTS: Record<string, ShowHostAssignment> = {
 
   'deal-or-feud': {
     showId: 'deal-or-feud',
-    mainHostId: 'gregory-marcel',
+    // 2026-06-20 (Marcel Dickens correction): "Bobby Stanley is the host for
+    // Deal or Feud 1000" — was gregory-marcel.
+    mainHostId: 'bobby-stanley',
     coHostIds: ['mindy-jean-long'],
     judgeIds: [],
     prizeHostId: 'mindy-jean-long',

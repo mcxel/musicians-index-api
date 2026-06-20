@@ -22,7 +22,7 @@ const ROLE_CONFIG: Record<ProfileRole, { accent: string; label: string; icon: st
   sponsor:    { accent: "#AA2DFF", label: "Sponsor",    icon: "🏆", backRoute: "/sponsors" },
   advertiser: { accent: "#00E5FF", label: "Advertiser", icon: "📣", backRoute: "/advertisers" },
   venue:      { accent: "#FF8C00", label: "Venue",      icon: "🏟", backRoute: "/venues" },
-  promoter:   { accent: "#00FF88", label: "Promoter",  icon: "🎟️", backRoute: "/promoters" },
+  promoter:   { accent: "#00FF88", label: "Promoter",  icon: "🎟️", backRoute: "/hub/promoter" },
 };
 
 interface ProfileShellProps {

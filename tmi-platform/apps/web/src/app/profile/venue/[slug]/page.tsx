@@ -59,18 +59,21 @@ function titleCase(slug: string) {
   return slug.split("-").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
 }
 
+// Rule 20 — no plausible-looking fabricated numbers for venues outside the
+// 3 explicit curated entries above. city/capacity/genres/showsThisMonth were
+// previously hash-derived from the slug (e.g. "capacity: 300 + hash%4700"),
+// which is exactly the fake-Diamond-tier bug class found on the fan profile.
+// Honest defaults until a real Venue registry/DB record backs this slug.
 function seedVenue(slug: string): SeedVenue {
   if (SEED_VENUES[slug]) return SEED_VENUES[slug]!;
-  const hash = slug.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
   return {
     displayName: titleCase(slug),
     tagline: `Live music venue on The Musician's Index.`,
     isVerified: false,
-    city: ["Atlanta, GA", "Los Angeles, CA", "New York, NY", "Houston, TX", "Chicago, IL"][hash % 5]!,
-    capacity: 300 + (hash % 4700),
-    genres: [["Hip-Hop", "R&B"], ["EDM", "Pop"], ["Jazz", "Soul"], ["Trap", "Afrobeats"]][hash % 4]!,
-    showsThisMonth: hash % 20,
-    // Synthetic fallback venue — not a real registry entry, never claim live.
+    city: "Not set",
+    capacity: 0,
+    genres: [],
+    showsThisMonth: 0,
     isLive: false,
     activeRooms: 0,
   };

@@ -96,16 +96,14 @@ const TAG_COLORS: Record<string, string> = {
   'ANALYTICS':    '#FFD700',
 };
 
-function seedClips(slug: string, role: string, displayName: string) {
-  const h = slug.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
-  const emojis = EMOJI_MAP[role] ?? EMOJI_MAP.fan!;
-  const tags   = TAG_MAP[role]   ?? TAG_MAP.fan!;
-  return [
-    { id: `${slug}-m0`, emoji: emojis[h % emojis.length],     tag: tags[h % tags.length],           title: `${displayName} — ${tags[h % tags.length]}`,              views: 1100 + (h % 40000), dur: '1:52' },
-    { id: `${slug}-m1`, emoji: emojis[(h+1) % emojis.length], tag: tags[(h+1) % tags.length],       title: `${displayName} — ${tags[(h+1) % tags.length]}`,          views:  800 + (h % 25000),  dur: '2:31' },
-    { id: `${slug}-m2`, emoji: emojis[(h+2) % emojis.length], tag: tags[(h+2) % tags.length],       title: `${displayName} — ${tags[(h+2) % tags.length]}`,          views:  400 + (h % 12000),  dur: '3:07' },
-    { id: `${slug}-m3`, emoji: emojis[(h+3) % emojis.length], tag: tags[(h+3) % tags.length],       title: `${displayName} — ${tags[(h+3) % tags.length]}`,          views:  200 + (h % 8000),   dur: '4:44' },
-  ];
+// No real "saved clips" data source exists for any role yet (checked: no
+// Prisma model tracks per-user saved/reaction/highlight clips). This
+// previously fabricated 4 clips with fake view counts from a hash of the
+// slug — removed entirely rather than inventing a second fake dataset.
+// Real clips will render here once a real capture/save pipeline exists;
+// until then the empty-state CTA tile below is the honest front face.
+function seedClips(_slug: string, _role: string, _displayName: string): Array<{ id: string; emoji: string; tag: string; title: string; views: number; dur: string }> {
+  return [];
 }
 
 // ─── Role-specific section header copy ────────────────────────────────────────
@@ -245,6 +243,9 @@ export default function UniversalMediaPanel({
       )}
 
       {/* Media clip grid */}
+      {clips.length === 0 && (
+        <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', marginBottom: 10 }}>No saved clips yet.</div>
+      )}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: 10 }}>
         {clips.map((clip) => {
           const tagColor = TAG_COLORS[clip.tag] ?? accent;

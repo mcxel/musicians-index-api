@@ -1,5 +1,15 @@
 "use client";
 
+/**
+ * Dirty Dozens Runtime Resolution (2026-06-20, Rule 21): /rooms/dirty-dozens
+ * is now the canonical room — it has this same dirtyDozensBattleEngine PLUS
+ * real ArenaEventShell/audience-room integration this route never had. This
+ * route is kept running as-is (not deleted, not redirected) until that
+ * canonical route is verified in production, per Rule 21's "replace first,
+ * delete second" doctrine. Do not delete or redirect without verifying
+ * /rooms/dirty-dozens first.
+ */
+
 import { useEffect, useReducer, useRef, useState } from "react";
 import Link from "next/link";
 import { dirtyDozensBattleEngine } from "@/lib/shows/DirtyDozensBattleEngine";

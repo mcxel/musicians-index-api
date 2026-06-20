@@ -39,42 +39,111 @@ export interface ArtifactTrack {
 // ─── Skins ────────────────────────────────────────────────────────────────────
 
 export type ArtifactSkinId =
-  | "submarine"
+  // Free starters
+  | "tmi_classic"
+  | "tmi_dark"
+  | "tmi_neon"
+  // Tier-reward prestige skins
+  | "chrome"
+  | "vice_neon"
+  | "broadcast"
+  | "signature"
+  // Points tier (common)
   | "tree"
-  | "rocket"
-  | "ufo"
-  | "train"
-  | "house"
-  | "robot"
-  | "shark"
-  | "car"
-  | "helicopter"
-  | "hand"
   | "baby"
-  | "dj_face";
+  | "house"
+  | "hand"
+  | "train"
+  | "car"
+  // Premium tier (real money)
+  | "submarine"
+  | "rocket"
+  | "shark"
+  | "dj_face"
+  | "helicopter"
+  | "ufo"
+  | "robot";
+
+export type PlaylistSkinTier = "SILVER" | "GOLD" | "PLATINUM" | "DIAMOND";
+
+/**
+ * Skin Economy — locked 2026-06-19 by Marcel Dickens: every cosmetic must be
+ * obtainable through at least one of four paths. "free" and "tier" are
+ * obtained without spending anything (signup default / membership reward —
+ * tier ones can ALSO be bot-gifted or awarded as tournament prizes, which is
+ * a fulfillment path handled by whatever engine grants the skin, not a
+ * registry field). "points" and "premium" are the two purchasable tiers —
+ * premium is real money via Stripe, points is platform activity currency.
+ */
+export type SkinUnlockMethod = "free" | "points" | "premium" | "tier";
 
 export const SKIN_REGISTRY: Record<ArtifactSkinId, {
   label:       string;
   icon:        string;
   theme:       string;    // Background color for the card
   accent:      string;    // Neon accent
-  cost:        number;    // Points to unlock (0 = free)
-  visualizerStyle: "sonar" | "bars" | "stars" | "leaves" | "fire" | "circuit" | "bubbles" | "radar";
+  visualizerStyle: "sonar" | "bars" | "stars" | "leaves" | "fire" | "circuit" | "bubbles" | "radar" | "broadcast" | "chrome" | "signature";
+  unlockMethod: SkinUnlockMethod;
+  pointsCost?: number;     // set when unlockMethod === "points"
+  priceUsd?:   number;     // set when unlockMethod === "premium"
+  tierRequired?: PlaylistSkinTier; // set when unlockMethod === "tier"
+  animated?:   boolean;
 }> = {
-  submarine:   { label: "Submarine",   icon: "🚢", theme: "#0a1a0a", accent: "#FFD700", cost: 0,    visualizerStyle: "sonar"   },
-  tree:        { label: "Tree",        icon: "🌳", theme: "#0a1a08", accent: "#FFD700", cost: 100,  visualizerStyle: "leaves"  },
-  rocket:      { label: "Rocket",      icon: "🚀", theme: "#050818", accent: "#FF9500", cost: 250,  visualizerStyle: "stars"   },
-  ufo:         { label: "UFO",         icon: "🛸", theme: "#05050e", accent: "#AA2DFF", cost: 400,  visualizerStyle: "radar"   },
-  train:       { label: "Train",       icon: "🚂", theme: "#100808", accent: "#FF4422", cost: 200,  visualizerStyle: "bars"    },
-  house:       { label: "House",       icon: "🏠", theme: "#0c0a06", accent: "#FFB84A", cost: 150,  visualizerStyle: "bars"    },
-  robot:       { label: "Robot",       icon: "🤖", theme: "#050a10", accent: "#00FFFF", cost: 500,  visualizerStyle: "circuit" },
-  shark:       { label: "Shark",       icon: "🦈", theme: "#040c18", accent: "#00FFFF", cost: 300,  visualizerStyle: "bubbles" },
-  car:         { label: "Car",         icon: "🚗", theme: "#0a0810", accent: "#FF2DAA", cost: 200,  visualizerStyle: "bars"    },
-  helicopter:  { label: "Helicopter",  icon: "🚁", theme: "#080810", accent: "#00FF88", cost: 350,  visualizerStyle: "radar"   },
-  hand:        { label: "Hand",        icon: "✋", theme: "#100810", accent: "#FF9500", cost: 150,  visualizerStyle: "bars"    },
-  baby:        { label: "Baby",        icon: "👶", theme: "#0a0a14", accent: "#FF88AA", cost: 100,  visualizerStyle: "bubbles" },
-  dj_face:     { label: "DJ",          icon: "🎧", theme: "#080510", accent: "#FF2DAA", cost: 300,  visualizerStyle: "bars"    },
+  // ── Free starters — every account gets these on signup, no unlock needed ──
+  tmi_classic: { label: "TMI Classic", icon: "🎵", theme: "#0a0614", accent: "#00FFFF", visualizerStyle: "bars",   unlockMethod: "free" },
+  tmi_dark:    { label: "TMI Dark",    icon: "🌑", theme: "#050505", accent: "#888888", visualizerStyle: "bars",   unlockMethod: "free" },
+  tmi_neon:    { label: "TMI Neon",    icon: "✨", theme: "#0a0614", accent: "#FF2DAA", visualizerStyle: "stars",  unlockMethod: "free" },
+
+  // ── Tier-reward prestige skins — Silver→Chrome, Gold→Vice Neon, ───────────
+  // Platinum→Broadcast, Diamond→Signature. Also obtainable via bot gifts /
+  // tournament prizes per the Skin Economy rule above.
+  chrome:      { label: "Chrome",      icon: "⚙️", theme: "#1a1a1f", accent: "#C0C0C0", visualizerStyle: "chrome",    unlockMethod: "tier", tierRequired: "SILVER" },
+  vice_neon:   { label: "Vice Neon",   icon: "🌴", theme: "#1a0a2e", accent: "#FF2DAA", visualizerStyle: "bars",      unlockMethod: "tier", tierRequired: "GOLD" },
+  broadcast:   { label: "Broadcast",   icon: "📡", theme: "#0a1424", accent: "#00E5FF", visualizerStyle: "broadcast", unlockMethod: "tier", tierRequired: "PLATINUM" },
+  signature:   { label: "Signature",   icon: "👑", theme: "#14060a", accent: "#FFD700", visualizerStyle: "signature", unlockMethod: "tier", tierRequired: "DIAMOND", animated: true },
+
+  // ── Points tier (common — 250-500 points via platform activity) ──────────
+  tree:        { label: "Tree",        icon: "🌳", theme: "#0a1a08", accent: "#FFD700", visualizerStyle: "leaves",  unlockMethod: "points", pointsCost: 250 },
+  baby:        { label: "Baby",        icon: "👶", theme: "#0a0a14", accent: "#FF88AA", visualizerStyle: "bubbles", unlockMethod: "points", pointsCost: 250 },
+  house:       { label: "House",       icon: "🏠", theme: "#0c0a06", accent: "#FFB84A", visualizerStyle: "bars",    unlockMethod: "points", pointsCost: 350 },
+  hand:        { label: "Hand",        icon: "✋", theme: "#100810", accent: "#FF9500", visualizerStyle: "bars",    unlockMethod: "points", pointsCost: 350 },
+  train:       { label: "Train",       icon: "🚂", theme: "#100808", accent: "#FF4422", visualizerStyle: "bars",    unlockMethod: "points", pointsCost: 500 },
+  car:         { label: "Car",         icon: "🚗", theme: "#0a0810", accent: "#FF2DAA", visualizerStyle: "bars",    unlockMethod: "points", pointsCost: 500 },
+
+  // ── Premium tier (real money — $0.99 to $3.99 by rarity) ──────────────────
+  submarine:   { label: "Submarine",   icon: "🚢", theme: "#0a1a0a", accent: "#FFD700", visualizerStyle: "sonar",   unlockMethod: "premium", priceUsd: 0.99 },
+  rocket:      { label: "Rocket",      icon: "🚀", theme: "#050818", accent: "#FF9500", visualizerStyle: "stars",   unlockMethod: "premium", priceUsd: 0.99 },
+  shark:       { label: "Shark",       icon: "🦈", theme: "#040c18", accent: "#00FFFF", visualizerStyle: "bubbles", unlockMethod: "premium", priceUsd: 1.99 },
+  dj_face:     { label: "DJ",          icon: "🎧", theme: "#080510", accent: "#FF2DAA", visualizerStyle: "bars",    unlockMethod: "premium", priceUsd: 1.99 },
+  helicopter:  { label: "Helicopter",  icon: "🚁", theme: "#080810", accent: "#00FF88", visualizerStyle: "radar",   unlockMethod: "premium", priceUsd: 2.99 },
+  ufo:         { label: "UFO",         icon: "🛸", theme: "#05050e", accent: "#AA2DFF", visualizerStyle: "radar",   unlockMethod: "premium", priceUsd: 2.99 },
+  robot:       { label: "Robot",       icon: "🤖", theme: "#050a10", accent: "#00FFFF", visualizerStyle: "circuit", unlockMethod: "premium", priceUsd: 3.99 },
 };
+
+const TIER_RANK: Record<PlaylistSkinTier | "FREE" | "PRO" | "RUBY", number> = {
+  FREE: 0, PRO: 1, RUBY: 2, SILVER: 3, GOLD: 4, PLATINUM: 5, DIAMOND: 6,
+};
+
+/**
+ * Can this account equip the given skin? "free" skins always pass. "tier"
+ * skins need the account's membership tier to be at or above tierRequired
+ * (or the skin to already be in ownedSkinIds, e.g. from a bot gift /
+ * tournament prize). "points"/"premium" skins need prior purchase, tracked
+ * the same way regardless of which currency paid for them.
+ */
+export function canEquipSkin(
+  skinId: ArtifactSkinId,
+  accountTier: keyof typeof TIER_RANK,
+  ownedSkinIds: ArtifactSkinId[],
+): boolean {
+  const skin = SKIN_REGISTRY[skinId];
+  if (skin.unlockMethod === "free") return true;
+  if (ownedSkinIds.includes(skinId)) return true;
+  if (skin.unlockMethod === "tier" && skin.tierRequired) {
+    return TIER_RANK[accountTier] >= TIER_RANK[skin.tierRequired];
+  }
+  return false;
+}
 
 // ─── Artifact ─────────────────────────────────────────────────────────────────
 
@@ -241,7 +310,7 @@ export function resolveTrackUrl(track: ArtifactTrack): string | null {
 // ─── Mock factory ─────────────────────────────────────────────────────────────
 
 export function makeMockArtifact(
-  skinId: ArtifactSkinId = "submarine",
+  skinId: ArtifactSkinId = "tmi_classic",
   category  = "Top Charts — Pop",
 ): PlaylistArtifact {
   const id = `artifact_${skinId}_${Date.now()}`;

@@ -23,11 +23,15 @@ export const HOST_IDENTITY_REGISTRY: HostIdentity[] = [
     id: 'big-ace',
     name: 'Big Ace',
     shortName: 'Big Ace',
-    role: 'MAIN_HOST',
+    // 2026-06-20 (Marcel Dickens correction): Big Ace is platform/system
+    // authority, not an in-show host — cleared showAssignments accordingly.
+    // He operates the admin/overseer deck; he does not appear as a host
+    // character inside any show.
+    role: 'PLATFORM_AUTHORITY',
     colorHex: '#FFD700',
     accentColorHex: '#03020b',
     description: 'The silent supreme authority — operates the admin/overseer deck and commands every show from above.',
-    showAssignments: ['monthly-idol', 'monday-night-stage', 'deal-or-feud', 'name-that-tune', 'circle-squares', 'cypher-arena'],
+    showAssignments: [],
     voiceTag: 'deep-authority-v1',
     motionTag: 'overseer-stance',
     eraStyle: 'timeless — classic power suit, gold accents',
@@ -40,7 +44,8 @@ export const HOST_IDENTITY_REGISTRY: HostIdentity[] = [
     colorHex: '#FF2DAA',
     accentColorHex: '#FFD700',
     description: 'Smooth veteran MC who commands any room with equal parts charm and authority — the crowd never loses interest when Bobby speaks.',
-    showAssignments: ['monday-night-stage'],
+    // 2026-06-20 (Marcel Dickens correction): also hosts Deal or Feud 1000.
+    showAssignments: ['monday-night-stage', 'deal-or-feud'],
     voiceTag: 'smooth-veteran-v1',
     motionTag: 'commander-strut',
     eraStyle: '90s-urban — sharp blazer, high-top fade, mic in hand',
@@ -79,7 +84,9 @@ export const HOST_IDENTITY_REGISTRY: HostIdentity[] = [
     colorHex: '#c4b5fd',
     accentColorHex: '#FFD700',
     description: 'Sharp-witted battle rap veteran whose dry commentary cuts deeper than any punchline.',
-    showAssignments: ['cypher-arena'],
+    // 2026-06-20 (Marcel Dickens correction): also judges championship/
+    // yearly-contest/belt/trophy/challenge events — not just cypher-arena.
+    showAssignments: ['cypher-arena', 'yearly-contest'],
     voiceTag: 'sharp-critic-v1',
     motionTag: 'judge-lean',
     eraStyle: '90s-urban — fitted cap, chain, judge\'s notepad always in hand',
@@ -92,7 +99,8 @@ export const HOST_IDENTITY_REGISTRY: HostIdentity[] = [
     colorHex: '#00FF88',
     accentColorHex: '#c4b5fd',
     description: 'Deep hip-hop historian whose authoritative verdicts trace back to every golden era — when Hector speaks, the room goes silent.',
-    showAssignments: ['cypher-arena'],
+    // 2026-06-20 (Marcel Dickens correction): see jack-obrien above.
+    showAssignments: ['cypher-arena', 'yearly-contest'],
     voiceTag: 'authoritative-historian-v1',
     motionTag: 'judge-deliberate',
     eraStyle: '80s-neon — old-school leather, boom-box motif, reading glasses always on',

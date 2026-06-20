@@ -103,7 +103,15 @@ export function HostMotionAvatar({
 				className={`relative w-24 h-24 rounded-full border-4 overflow-hidden transition-all duration-300 ${emotionBorder[emotionalState] ?? 'border-white/20'}`}
 			>
 				{avatarSrc ? (
-					<ImageSlotWrapper imageId="img-gij7gk" roomId="runtime-surface" priority="normal" className="w-full h-full object-cover" altText="Content image" containerStyle={{ width: '100%', height: '100%' }} />
+					<ImageSlotWrapper
+						imageId={`host-${hostId}`}
+						roomId="runtime-surface"
+						priority="normal"
+						fallbackUrl={avatarSrc}
+						className="w-full h-full object-cover"
+						altText={`${displayName} portrait`}
+						containerStyle={{ width: '100%', height: '100%' }}
+					/>
 				) : (
 					<div className="w-full h-full bg-neutral-800 flex items-center justify-center text-3xl">
 						🎙️

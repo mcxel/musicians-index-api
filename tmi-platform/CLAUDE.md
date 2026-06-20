@@ -447,39 +447,41 @@ Do not use a single universal probability table. The camera system must be aware
 
 ### Rule 17 — Ticket & Merchandise Inventory Authority
 
-Performers are distributors of event inventory, never creators of it. Only Venues and Promoters can mint ticket or merchandise inventory; Admin can on their behalf.
+**The ticket system belongs to Venues and Promoters only — TMI is the alternative to Ticketmaster, not a fan/performer feature.** Ticket inventory, allocation, and sale authority are never associated with Fan or Performer accounts in any way. Only Venues and Promoters can create, allocate, or sell ticket inventory; Admin can on their behalf. Performers do not request, manage, distribute, or sell tickets — that capability was removed from the performer role entirely (it previously existed in a "distribute allocated tickets" form; it no longer does).
 
 **Authority matrix:**
 
 | Action | Fan | Performer | Promoter | Venue | Sponsor | Advertiser | Admin |
 |---|---|---|---|---|---|---|---|
-| Create Event | ❌ | Limited | ✅ | ✅ | ❌ | ❌ | ✅ |
-| Create Ticket/Merch Inventory | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ | ✅ |
-| Allocate Inventory | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ | ✅ |
-| Sell Allocated Inventory | ❌ | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ |
+| Create Event | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ | ✅ |
+| Create Ticket Inventory | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ | ✅ |
+| Allocate Ticket Inventory | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ | ✅ |
+| Sell Ticket Inventory | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ | ✅ |
+| Buy/Own a Ticket | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Sponsor Artist/Event/Venue | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ✅ |
 | Buy Ad Placements | ❌ | Optional | Optional | Optional | Optional | ✅ | ✅ |
 | Create Ad Inventory | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
+
+Note: a performer (or anyone) can still *buy/own/redeem* a ticket like any consumer — that's the "Buy/Own a Ticket" row. What's removed is any role in the inventory/allocation/selling side of the system.
 
 **Ticket Allocation Engine flow:**
 ```
 Venue Creates Event
   ↓ Venue Creates Inventory (quantity, tiers, pricing)
   ↓ Promoter Receives Allocation (optional)
-  ↓ Performer Receives Allocation
-  ↓ Fan Purchases / Receives Gifted Ticket
+  ↓ Venue/Promoter Sells Directly to Fans
   ↓ Ticket Redeemed
   ↓ Revenue Settlement
 ```
 
-A performer-facing UI must never show "Create Ticket." It shows: **Request Ticket Allocation**, **Manage Allocated Tickets**, **Sell Tickets**, **Gift Tickets** — communicating that they distribute inventory, not originate it. Same model applies to merchandise: Artist/Venue/Promoter/Brand create merch; an Affiliate Seller (e.g. a performer) receives allocated inventory and sells it, never mints new stock.
+There is no performer step in this pipeline. A performer-facing UI must never show any ticket creation, allocation, distribution, or selling controls — not even a "Sell Tickets" or "Gift Tickets" affordance. (Merchandise is a separate system from tickets and is not covered by this restriction — Rule 17's prior "Affiliate Seller" model for merch, where a performer receives allocated merch inventory from Artist/Venue/Promoter/Brand and sells it without minting new stock, is unchanged.)
 
-**Every ticket tracks:** Ticket ID, Event ID, Venue ID, Promoter ID, Current Owner, Original Inventory Source, Price, Status, Redeemed?, Transfer History.
-**Every allocation tracks:** Allocation ID, Created By, Assigned To, Quantity, Remaining, Sold, Gifted, Revenue Generated.
+**Every ticket tracks:** Ticket ID, Event ID, Venue ID, Promoter ID, Current Owner, Original Inventory Source, Price, Status, Redeemed?, Transfer History — Current Owner may be a Fan (the buyer); no other step in the ticket's lifecycle ever references a Fan or Performer account.
+**Every allocation tracks:** Allocation ID, Created By, Assigned To, Quantity, Remaining, Sold, Gifted, Revenue Generated — Created By and Assigned To are always Venue, Promoter, or Admin.
 
 **Known gap as of 2026-06-18**: `lib/tickets/ticketEngine.ts`'s `createTicket()` currently has zero authority checks and zero inventory/capacity tracking — any caller can mint unlimited tickets of any tier. This rule is not yet enforced in code; the Ticket Allocation Engine implementing it has not been built.
 
-*Established 2026-06-18 by Marcel Dickens.*
+*Established 2026-06-18 by Marcel Dickens. Performer-association removed 2026-06-19 by Marcel Dickens.*
 
 ---
 
@@ -497,13 +499,100 @@ Per-surface targets: Home 1 = "1985 MTV + Vice City Boulevard + Magazine Cover."
 
 **Known gap as of 2026-06-18**: the bobblehead avatar pipeline does not exist in the codebase — confirmed via direct audit (see [[project_blueprint_vs_reality_2026_06_18]] memory and the avatar-system audit earlier this session). What exists are ~50 avatar-related components (creation studios, customizers, inventory rails) using flat/emoji/2D representations, not face-scan-driven 3D bobbleheads. This is real, unbuilt, multi-session work, not a wiring task.
 
-*Established 2026-06-18 by Marcel Dickens.*
+**Asset Realization Directive (2026-06-20)**: uploaded reference folders (`_converted_webp visual Blueprint`, `Dashboard and venues`, `game show and venue skins` — host portraits for Julius/Record Ralph/Tiana/Host 1-4/Bebo, bobblehead concept art, venue/dashboard HTML mockups, magazine page mockups) are **concept references, not finished systems**. None of the uploaded PNGs/JPGs/HTML mockups are runtime code; nothing should be treated as a "use this image" task. The locked long-term target, expanding the Rule 18 avatar pipeline above into five runtime systems:
+
+- **HostCharacterRuntime** — Julius/Record Ralph/Tiana/etc. become real entities with idle animation, blink/breathe/gesture, introductions, announcements, audience interaction, event hosting, queue management. Not static portraits.
+- **AvatarRuntime** — the face-scan→bobblehead pipeline (Rule 18) made concrete: face capture → Face Identity Layer (proportions/eyes/nose/jaw/beard/hair/glasses) → a shared `TMI Base Body` (5 male + 5 female builds) wearing the user's face → a shared `TMI Humanoid Rig` (walk/run/jump/sit/stand/dance/wave/point/clap/cheer/laugh/celebrate/bow) → facial animation (blink/smile/laugh/surprise/talk) → lip sync tied to voice. Target likeness: **85-95% recognizable, not photorealistic** — "Real Human + Premium Collectible Figure + subtle bobblehead (10-15% oversized head, not a cartoon head)." Seated behavior (lean back, look at stage, clap, talk to neighbors, glow sticks) and stage behavior (seat→stand→walk→stage, not a teleport) are both required, not just a static seated pose.
+- **VenueRuntime** — stage/seating/audience/lighting/props/screens/sponsor displays as one explorable environment, not a background image. This is the same Venue Runtime already being converged this session (`UniversalVenueRenderer`/`ArenaEventShell`) — this directive does not introduce a second venue system, it's the same one.
+- **AudienceRuntime** — same canonical seat/presence/reaction systems already being converged this session (`audienceRuntimeEngine`, `tmiFanAvatarSeatAssignment`+friends, `SeatingMeshEngine` capability), expanded with avatar occupancy. Every seat is still a real user or a clearly-labeled system character — never fake attendance (Rule 14/20/21 apply unchanged).
+- **GameShowRuntime** — contestants/host/audience/scoring/timers/rounds/automation/broadcasting as one functioning interactive system (overlaps with Rule 21's Official Automated Events).
+- LOD for crowd performance (full avatar → simplified → billboard → point-cloud at distance) remains correctly staged as *after* the above runtime systems exist (per the SeatingMeshEngine/point-cloud staging decision already locked this session) — do not build LOD before there's a real avatar to downgrade.
+
+**Scope honesty**: a real face-capture → rigged-3D-avatar → lip-synced pipeline is a computer-vision + 3D-animation engineering project requiring dedicated 3D/ML specialists and tooling (rigging software, a face-mesh/landmark model, a render pipeline) — this is not achievable by wiring existing repository files, and is explicitly **not** something to fake a stub version of (a flat-image "avatar" presented as if it does facial animation would itself be a Rule 20 violation). The realistic near-term assembly-director work is: (1) wire the existing reference host portraits as static sprites into a real, simple idle-motion component (CSS/Framer Motion blink/sway) using already-installed `framer-motion` — a real, honest, smaller step toward `HostCharacterRuntime`, not the full vision — and (2) keep the Venue/Audience Runtime convergence already underway moving, since AvatarRuntime depends on it existing first. Building the actual face-capture/rigging/lip-sync pipeline is multi-session, likely multi-specialist work to scope separately, not something to begin speculatively inside an assembly session.
+
+*Established 2026-06-18 by Marcel Dickens. Asset Realization Directive added 2026-06-20.*
+
+---
+
+### Rule 19 — Beat System Separation + Store Role Split + Playlist Skin Economy
+
+**Beat systems — three engines, never merged:** `BeatSubmissionRouter.ts`/`BeatQueueEngine.ts` (Producer Submission Vault — intake, review, routes approved beats to one or both destinations below), `BeatStoreCommerceEngine.ts`/`BeatInventoryEngine.ts` (Beat Marketplace — leases, exclusives, commerce), `CompetitionMusicEngine.ts` (Competition Beat Vault — runtime music for battles/cyphers/challenges/game shows). **A beat sold exclusively in the Marketplace must never remain usable in competitions** — enforced via `isBeatExclusivelySold()` in `BeatInventoryEngine.ts`, consulted by `getBeatsByGenreForBattle()`/`getBeatsByGenreForCypher()` in `CompetitionMusicEngine.ts`. These three engines currently use different data/ID schemes (the Competition Vault's `BEAT_REGISTRY_SEED` doesn't yet share IDs with real Marketplace beats) — the exclusivity check is real and wired, but a full canonical-beat unification (one `beatId` across all three, a real rights-policy schema distinguishing commercial license from runtime/competition license) is a separate, larger build, not yet done.
+
+**Store role split:**
+- **Fan Store** — avatar cosmetics, **Avatar Lobby Skins** (the fan's personal pre-show hangout space — explicitly modeled as a movie theater lobby / concert entrance / VIP lounge, where fans socialize with friends and listen to playlists before a show starts, not a venue itself), emotes, props.
+- **Performer Store** — **Venue Skins** (the actual stage/show environment), stage effects, lighting, Beat Marketplace access, producer services, promotion tools.
+- **Shared Store** — Playlist Skins, Memory Wall frames, seasonal/cosmetic packs — both Fan and Performer buy from this one.
+- Beat licenses are never sold in the Fan Store — they're a Performer/Producer commerce domain (contracts, rights tracking, payouts), not a cosmetic.
+
+**Playlist Skin Economy — every skin obtainable via exactly one of four paths** (built in `lib/artifacts/PlaylistArtifactEngine.ts`'s `SKIN_REGISTRY` + `canEquipSkin()`):
+1. **Free** — `tmi_classic`, `tmi_dark`, `tmi_neon`. Every account gets these on signup.
+2. **Tier reward** — `chrome` (Silver), `vice_neon` (Gold), `broadcast` (Platinum), `signature` (Diamond). Unlocked by reaching that membership tier, or by bot gift / tournament prize.
+3. **Points** (common, 250-500 points) — `tree`, `baby`, `house`, `hand`, `train`, `car`.
+4. **Premium** (real money, $0.99-$3.99 by rarity) — `submarine`/`rocket` ($0.99), `shark`/`dj_face` ($1.99), `helicopter`/`ufo` ($2.99), `robot` ($3.99).
+
+**Known gap as of 2026-06-19**: the playlist skin engine/data model is built; no purchase UI (Stripe checkout, points-spend flow, or skin-picker) exists yet to actually buy or equip any of this.
+
+**Legal note**: the beat marketplace's licensing model (creator retains ownership, platform gets a promotion + commerce + runtime license, exclusive sales handled via written/clickwrap consent, minors require parent/guardian-cosigned agreements, DMCA takedown workflow required) needs **real legal counsel** before launch — this is regulatory/contract law (COPPA, copyright transfer formalities, state minor-contract rules, DMCA safe harbor), not a technical decision Claude can make or implement as binding terms. The technical data model can and should support whatever an attorney specifies (contract-version-accepted timestamps, guardian-consent records, DMCA agent workflow), but the agreement text itself is out of scope for this assembly-director role.
+
+*Established 2026-06-19 by Marcel Dickens.*
+
+---
+
+### Rule 20 — Launch Certification Standard (aka "the Reality Rule")
+
+This is the final gate, not a new principle — it formalizes Rules 14/17 (No Empty Surface, no fake live/data) into an explicit checklist for declaring any page, route, or system actually launch-ready. Marcel independently named this same standard "the Reality Rule" on 2026-06-20 — same rule, not a second one (per Rule 21/8's own anti-duplication doctrine, applied here to documentation rather than code). A page is **certified** only when all of the following are true:
+
+1. **No Fake Data** — no mock users/performers/viewer counts/live status/room counts/tickets/purchases/revenue/messages/playlists/statistics/rankings. If real data doesn't exist yet, show an honest empty state (`No active rooms`, `No messages yet`, `No saved clips yet`) — never a plausible-looking fabricated number. The hash-of-the-slug fake "Diamond" tier and fake view-count clips found and removed on 2026-06-19 (see [[project_public_fan_profile_fix_2026_06_19]]) are the canonical example of what this rule forbids.
+2. **No Dead Buttons** — every control must Open (canister/drawer/panel/overlay/modal), Route (to a real page), Execute (a real action), Connect (to a real engine), or show an honest empty state. If it does none of those, delete it.
+3. **No Fake Live** — a LIVE badge must come from `GlobalLiveSessionRegistry` (or whatever the canonical Live Engine becomes after Tier-1 convergence), never `isLive: true`, `Math.random()`, or a hash value.
+4. **Every Monitor Must Be Real** — every video panel/monitor/broadcast wall/preview screen must display a real live stream, playlist, memory clip, avatar scene, room preview, or real video — or honestly say `No media available`. Never a placeholder/demo/stock image presented as live content.
+5. **Every Profile Must Be Functional** — for each role (Fan/Performer/Writer/Producer/Venue/Sponsor/Admin), confirm the profile can actually upload, message, save memories, use playlists, manage media, go live, join rooms, view rooms, and return to rooms. Finish the control or remove it — never leave it half-wired.
+6. **Every Route Must Be Certified** — maintain a route ledger (KEEP / REMOVE / MERGE / REDIRECT) per the Route + Role + File Orphan Audit methodology (see [[project_route_orphan_audit_2026_06_19]]). No orphan routes, no forgotten prototypes.
+7. **One Source of Truth Per Engine** — Discovery, Live, Profile, Memory, Playlist, Messaging, Avatar, Ticket. When duplicates are found: inventory strengths → merge → redirect old surfaces to the canonical version → delete the old version only after the replacement is verified. Never run two competing systems indefinitely (see Rule 19 for the Beat System's three-engines-by-design exception — that one is intentional separation, not duplication).
+8. **Visual Honesty** — no `Revenue Today: $12,000`, no `3,000 viewers`, no `Diamond Member` badge unless it is backed by a real number/status. A page that *looks* finished is not the bar — a page that *is* real is.
+
+**The Four Acceptable States**: every widget, panel, monitor, card, and button must be in exactly one of these — Real Data (`3 messages`, `2 playlists`), Loading (`Loading playlists…`), Empty (`No playlists yet. Create your first playlist.`), or Error (`Unable to load playlists. Retry.`). No fabricated middle state. Before adding any data to a surface, the test is: *where does this come from* — Database, API, Engine, Registry, User Upload, Live Session, Payment System? If that question has no answer, the data doesn't belong on the page.
+
+A page or system is launch-certified only when every button, monitor, video panel, route, upload, playlist, memory save, message, live indicator, profile, ticket, purchase, ranking, and statistic on it is real — and every placeholder, stub, mock object, and fake-success state has been removed, not just visually hidden.
+
+*Established 2026-06-19 by Marcel Dickens.*
+
+---
+
+### Rule 21 — Venue Runtime Convergence + Official Automated Events
+
+**Core law: there is one Venue Runtime, not separate products per event type.** Go Live, Mini Concert, World Concert, Mini Release, World Release, Battle, Cypher, Challenge, Comedy Show, Game Show, Fan Lobby, and Dance Party are all **modes** of the same runtime — the runtime stays the same, only the mode changes. Do not build `ConcertRuntime`, `BattleRuntime`, `CypherRuntime` etc. as separate systems.
+
+**Audience System Law**: there must be exactly one membership system, one seat system, one presence system, one reaction system, one avatar system, one audience-perspective system platform-wide. Never let "Audience System A/B/C/D" evolve in parallel — but convergence means **inheriting the strongest capability from each duplicate into the canonical system, never just deleting the "losing" one** (see [[project_audience_runtime_wiring_2026_06_19]] for the case study: `SeatingMeshEngine`, found 2026-06-20, looked like a duplicate to retire, but actually held real capabilities — seat reclaim-on-return, client-persisted claims, avatar-seat binding — missing from the canonical `audienceRuntimeEngine`. The fix was inheriting those capabilities into the canonical engine via the existing `useSeatSession` hook, not deleting either system). **Known gap as of 2026-06-20**: a Venue Runtime Divergence Audit found **four independent seat-assignment systems** — `audienceRuntimeEngine.ts`/`/api/live/audience` (canonical, most-adopted: ArenaImmersivePanel, VenueImmersiveRoom, UniversalLobbyEntry, chat — now also carries real seat-reclaim + avatar-binding, inherited from SeatingMeshEngine), `tmiFanAvatarSeatAssignment.ts`+`tmiAudienceSeatPresenceEngine.ts`/`/api/live/seat-presence` (converged onto the canonical one's seatId), `SeatingMeshEngine`/`/api/seats/[roomId]` (World Concert's persistent reservation system, tied to a `TicketRecord` type — its data model not yet merged, just its capability; still flagged for Rule 17 review before any deeper merge), and Monthly Idol's custom occupancy-percentage model (`ShowRoomEnvironmentShell` — no seat objects at all, lowest priority to converge).
+
+**Duplicate Route Convergence rule**: when multiple routes/components accomplish the same thing (confirmed for Cypher: 15 candidate routes; Dirty Dozens: 5; Monthly Idol: 4; World Concert: 3 — see [[project_audience_runtime_wiring_2026_06_19]] for the located canonical path per type), do not arbitrarily delete down to one. Analyze each candidate's strengths (audience handling, camera, chat, monetization, reliability) and **inherit the best of each into the canonical route** — `Canonical = A's audience handling + B's camera + C's chat + D's monetization`, not "delete everything but A." **Mark superseded systems `LEGACY` in code comments; never delete until the replacement is verified working.** Replace first, delete second.
+
+**Official Automated Events** (platform-owned flagship events — Monday Night Stage, Monthly Idol, Battle of the Bands, World Championships, Dirty Dozens Championship, Seasonal/Annual events): these are created, scheduled, hosted, judged, and broadcast-directed by TMI's own bot/host systems, not dependent on a human host. TMI Event Bots are responsible for the full lifecycle — pre-event (create/schedule/registration/brackets/promo), live operations (seating, round/timer/transition control, judging, rule enforcement), broadcast direction (camera switching, replays, highlights — no human director required), competition management (brackets, ties, no-shows, re-seeding, rankings), and post-event (winners, trophies, XP, memory wall archives, leaderboards). Humans remain contestants, performers, audience, optional judges, sponsors, VIP guests — never operations staff for an Official event. **Outcomes must still come from real rules** (real votes, real judging criteria, real participation/competition results) — bots run the *operation*, never fabricate the *result*. This is a large, multi-session build; check for existing partial implementations (`HostShowAssignmentEngine.ts`, `HostIdentityRegistry.ts`, `ShowHostRegistry.ts`, `hostEngine.ts`, `BattleFormatRulesEngine.ts` were found to already exist as of 2026-06-20, unaudited for wiring) before building anything new — this rule does not override Rule 8 (Registry First) or the "you are an assembly director, not a system builder" directive at the top of this file.
+
+**Event Creation Matrix** (non-Official events unless noted):
+
+| Who | Can Create | Can Always Join Instead |
+|---|---|---|
+| Anyone (any tier) | — | Cyphers, Battles, Challenges, Dance Parties, Concerts, Releases |
+| Gold Performer | Mini Concerts, Mini Releases, Mini Cyphers, Mini Battles, Dirty Dozens, Dance-Offs, Comedy Rooms, Talent Showcases | any existing event instead |
+| Gold DJ | World/Mini Dance Parties, Dance Halls, Genre Rooms, Listening/Release Parties | — |
+| Gold Dancer | Dance-Offs, World/Mini Dance Parties | — |
+| Gold Comedian | Comedy Rooms, Comedy Battles, Comedy Challenges, Talent Showcases | — |
+| Official TMI Bots only | Monday Night Stage, Monthly Idol, Battle of the Bands, World Championships, Seasonal/Annual Events, Official Game Shows | n/a — these are bot-created by design |
+
+Official Game Shows (Deal or Feud, Name That Tune, Circle and Squares, Championship Shows) remain platform/bot-host-only — users participate but never create the official format.
+
+**Event Runtime is the sole authority for event creation.** A performer (or DJ/Dancer/Comedian per the matrix above) only *requests* an event — Go Live, Mini Concert, Mini Release, Mini Cypher, Mini Battle, etc. The Event Runtime is what actually creates the event record, issues its ID, and registers it with every dependent system (ticketing, seat assignment, rankings, automation). A performer never creates an event record directly. This is the same principle as ticket issuance below, generalized: **tickets are platform-issued, seats are platform-assigned, revenue is platform-settled, event records are platform-created — never performer-issued/assigned/calculated/created.** A pasted "Automatic Ticket Engine" proposal received 2026-06-20 described performers directly creating events and setting ticket price/capacity — that contradicts this rule and Rule 17 both; flagged, not implemented. The correct model is Performer *requests* → Venue Runtime/Ticket Engine/Seat Engine/Revenue Engine (Venue/Promoter/Admin-authoritative per Rule 17) *creates and owns* the record.
+
+**No Empty Platform rule (extends Rule 14, never weakens it)**: if participation is low, the platform's job is to generate more real opportunities — rotate genres/regions/challenge types, open the next scheduled matchup, surface a fresh bot-hosted event — never to fabricate users, viewers, or applause. A room that fails to fill in its time window rotates to the next opportunity rather than sitting empty or faking a crowd. This is the same rule as Rules 14/20, applied to event *supply* rather than just surface *content*.
+
+*Established 2026-06-20 by Marcel Dickens.*
 
 ---
 
 ### Platform Constitution Summary
 
-18 rules. Non-negotiable. Applies forever.
+22 rules. Non-negotiable. Applies forever.
 
 | # | Rule | Key File |
 |---|------|----------|
@@ -524,5 +613,21 @@ Per-surface targets: Home 1 = "1985 MTV + Vice City Boulevard + Magazine Cover."
 | 14 | No Empty Surface — every button, link, card, image resolves to a real destination | All surfaces |
 | 15 | Canister Integration — every profile/lobby/room includes Playlist+MemoryWall+Booking+Messaging+Store+Avatar+Inventory+Lobby canisters | components/canisters/ |
 | 16 | Broadcast Preview Canon v2 — 70% Audience, 20% Backstage/DJ, 10% AI Host rotation | BroadcastDirectorEngine.ts |
-| 17 | Ticket & Merchandise Inventory Authority — Venue/Promoter create+allocate, Performer distributes only | ticketEngine.ts |
+| 17 | Ticket Authority — Venue/Promoter only, no Fan/Performer association anywhere in the pipeline; merch's performer-affiliate-seller model is unchanged | ticketEngine.ts |
 | 18 | Visual Identity Formula (40% Magazine/30% Vice City/20% Broadcast/10% Spatial) + Ultra-Realistic Bobblehead avatars + No Orphan Routes/Roles | All surfaces, avatar pipeline |
+| 19 | Beat System Separation (Submission Vault/Marketplace/Competition Vault never merged) + Store Role Split (Fan/Performer/Shared) + Playlist Skin Economy (free/points/premium/tier) | BeatInventoryEngine.ts, CompetitionMusicEngine.ts, PlaylistArtifactEngine.ts |
+| 20 | Launch Certification Standard — no fake data/dead buttons/fake live/fake monitors; every profile functional; route ledger; one engine per system; visual honesty | All surfaces, final launch gate |
+| 21 | Venue Runtime Convergence — one runtime, many modes; one audience/seat/presence system (4 found, 2 converged); inherit-best-of-breed on duplicate routes, mark LEGACY don't delete; Official Automated Events run by bots on real outcomes; No Empty Platform = rotate opportunities, never fake crowds | audienceRuntimeEngine.ts, ArenaEventShell.tsx |
+| 22 | Adaptive Platform Rule — every major runtime may Observe/Measure/Recommend, never silently rewrite; major behavioral changes require Build Director approval; canonical registries stay source of truth while runtimes learn | All runtimes, future analytics layer |
+
+---
+
+### Rule 22 — Adaptive Platform Rule (locked 2026-06-20, not yet implemented)
+
+**Every major runtime (Event, Host, Avatar, Venue, Audience) should eventually support a learning loop**: Observe (what happened) → Measure (analytics — retention, votes, tips, chat activity, XP) → Recommend (what worked better) → Improve (apply, with approval). This is a **future-phase capability, not something built today** — no analytics pipeline, no recommendation engine, and no "Build Director approval" workflow exist yet in this codebase. Locking this here is documentation of intent, not a claim that it's implemented; do not build a fake/stub version of "the platform learns" that doesn't actually learn (that would itself violate Rule 20).
+
+**The non-negotiable boundary, regardless of when this gets built**: AI may recommend improvements; AI may never silently rewrite core platform rules, canonical registries, or host/show assignments. The Host Canonicalization work (see [[project_host_canonicalization_2026_06_20]]) is the explicit example of what "canonical registries remain the source of truth" protects — future learning/optimization systems must read FROM that canonical ledger, never silently re-derive or overwrite it. Major behavioral changes always require explicit owner (Build Director) approval, the same standard already applied throughout this session to every registry conflict resolved.
+
+**Event Runtime ≠ Host Runtime** (locked same day): Mini/casual events (Mini Battle, Mini Cypher, Mini Dance-Off, Mini Challenge, Mini Concert, Mini Comedy Show, Mini Showcase) get the full Event Engine (scoring, rankings, VS animations, sound effects, audience reactions, XP, rewards) with **host optional** — an Automated Announcer covers the no-host case ("Round One begins now," "Voting is open," "Winner detected"). Official branded shows (Monthly Idol, Monday Night Stage, Deal or Feud 1000, Circle & Squares, Battle of the Bands, Yearly Championships, Dirty Dozens Finals) get the same Event Engine **plus** real hosts/judges/commentary/personality on top. Host backup coverage is required for the branded-show list above; casual/quick events do not require a host at all. Neither the Event Runtime nor the Hosted/Automated split exist as code yet — locked as direction, not built.
+
+*Established 2026-06-20 by Marcel Dickens.*

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { checkRateLimit } from '@/lib/security/TMISecurityEngine';
+import prisma from '@/lib/prisma';
 
 const ALLOWED_AUDIO = ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/ogg', 'audio/m4a', 'audio/aac', 'audio/flac', 'audio/webm', 'audio/x-m4a'];
 const ALLOWED_VIDEO = ['video/mp4', 'video/webm', 'video/quicktime', 'video/x-msvideo', 'video/ogg'];
@@ -40,25 +41,38 @@ export async function POST(req: NextRequest) {
   }
 
   // Use Vercel Blob when token is present; fall back to a mock CDN URL
+  const email = req.cookies.get('tmi_user_email')?.value;
+  const dbUser = email
+    ? await prisma.user.findUnique({ where: { email }, select: { id: true } }).catch(() => null)
+    : null;
+
+  const isAudio = ALLOWED_AUDIO.includes(file.type);
+  const isVideo = ALLOWED_VIDEO.includes(file.type);
+  const title = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
+
+  async function persistToDB(url: string) {
+    if (!dbUser) return;
+    try {
+      if (isVideo) {
+        await prisma.video.create({ data: { uploaderId: dbUser.id, title, videoUrl: url, status: 'ACTIVE' } });
+      } else if (isAudio) {
+        await prisma.song.create({ data: { uploaderId: dbUser.id, title, audioUrl: url, status: 'ACTIVE' } });
+      }
+    } catch { /* non-fatal */ }
+  }
+
   if (process.env.BLOB_READ_WRITE_TOKEN) {
     const { put } = await import('@vercel/blob');
     const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
     const pathname = `tmi-media/${Date.now()}-${safeName}`;
     const blob = await put(pathname, file, { access: 'public' });
-    return NextResponse.json({
-      url: blob.url,
-      isAudio: ALLOWED_AUDIO.includes(file.type),
-      isVideo: ALLOWED_VIDEO.includes(file.type),
-    });
+    await persistToDB(blob.url);
+    return NextResponse.json({ url: blob.url, isAudio, isVideo });
   }
 
   // Fallback: return a placeholder URL so UI doesn't break during dev
   const ext = file.name.split('.').pop() ?? 'mp3';
   const mockUrl = `https://cdn.themusiciansindex.com/media/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-  return NextResponse.json({
-    url: mockUrl,
-    isAudio: ALLOWED_AUDIO.includes(file.type),
-    isVideo: ALLOWED_VIDEO.includes(file.type),
-    _mock: true,
-  });
+  await persistToDB(mockUrl);
+  return NextResponse.json({ url: mockUrl, isAudio, isVideo, _mock: true });
 }

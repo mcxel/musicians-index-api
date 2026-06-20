@@ -6,6 +6,7 @@ import BillboardLiveWall from "@/components/media/BillboardLiveWall";
 import UnifiedAdSlot from "@/components/ads/UnifiedAdSlot";
 import ActionRail from "@/components/canisters/ActionRail";
 import AudienceScene from "@/components/live/AudienceScene";
+import { shouldShowAd, type MembershipTier } from "@/lib/commerce/AdFrequencyEngine";
 
 interface MonitorSatelliteSystemProps {
   mainLabel: string;
@@ -18,6 +19,10 @@ interface MonitorSatelliteSystemProps {
   accentColor?: string;
   /** zone/slotKey for the sponsor-commercial fallback ad (Rule 12) */
   adZone?: string;
+  /** Viewer's membership tier — governs how often the ad rail actually
+   *  shows an ad (FREE/PRO always, DIAMOND "once in a blue moon"). Defaults
+   *  to FREE so callers that don't pass it get today's existing behavior. */
+  viewerTier?: MembershipTier;
   /** Audience Visibility Rule v4: performer/host surfaces must show a live
    *  Audience Monitor the instant they go live — pass true for Performer Hub,
    *  Producer HQ, host-facing surfaces. Fan-facing surfaces can omit it. */
@@ -43,8 +48,12 @@ export default function MonitorSatelliteSystem({
   accentColor = "#00FFFF",
   adZone = "monitor-satellite",
   showAudienceMonitor = false,
+  viewerTier = "FREE",
 }: MonitorSatelliteSystemProps) {
   const [mainMode, setMainMode] = useState<MainMode>("feed");
+  // Rolled once per mount, not per render, so the ad doesn't flicker in/out
+  // on unrelated state changes (mute toggle, capture state, etc.).
+  const [showAdThisSession] = useState(() => shouldShowAd(viewerTier));
   const [muted, setMuted] = useState(false);
   const [micLive, setMicLive] = useState(false);
   const [cameraOn, setCameraOn] = useState(true);
@@ -142,7 +151,7 @@ export default function MonitorSatelliteSystem({
             <BillboardLiveWall mode="home" maxTiles={6} title="BROWSE LIVE LOBBY WALLS" />
           </div>
         )}
-        {!isLive && mainMode === "feed" && (
+        {!isLive && mainMode === "feed" && showAdThisSession && (
           <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
             <UnifiedAdSlot venue={adZone} slotKey="homepageBanner" format="horizontal" label="" style={{ position: "absolute", bottom: 8, left: 8, right: 8, minHeight: 0, pointerEvents: "auto" }} accentColor={accentColor} />
           </div>

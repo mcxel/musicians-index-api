@@ -36,9 +36,9 @@ const bots: TicketSellerAcquisitionBot[] = [];
 let botCounter = 0;
 
 const DEFAULT_ROUTES: TicketSellerLeadRouteSet = {
-  eventHostSignupRoute: "/event-hosts/signup",
-  venueSignupRoute: "/venues/signup",
-  promoterSignupRoute: "/promoters/signup",
+  eventHostSignupRoute: "/signup/host",
+  venueSignupRoute: "/signup?role=venue",
+  promoterSignupRoute: "/signup?role=promoter",
   ticketCreationRoute: "/events/new",
   eventPromotionRoute: "/events/promote",
   supportContactRoute: "/events/support/contact",

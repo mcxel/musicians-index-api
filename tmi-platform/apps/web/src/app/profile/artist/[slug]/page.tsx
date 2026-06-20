@@ -68,19 +68,20 @@ function titleCase(slug: string) {
   return slug.split("-").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
 }
 
+// Rule 20 — honest defaults for artists outside the explicit curated
+// entries above. rank/monthlyListeners were previously hash-derived from
+// the slug — the same fake-Diamond-tier bug class found on the fan profile.
 function seedArtist(slug: string) {
   if (KNOWN_ARTISTS[slug]) return KNOWN_ARTISTS[slug]!;
-  const hash = slug.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
-  const genrePool = [["Hip-Hop", "R&B"], ["EDM", "Pop"], ["Jazz", "Soul"], ["Trap", "Afrobeats"]];
   return {
     displayName: titleCase(slug),
     tagline: `Independent artist on The Musician's Index.`,
-    rank: 20 + (hash % 80),
+    rank: 0,
     isVerified: false,
-    genres: genrePool[hash % genrePool.length]!,
+    genres: [] as string[],
     isLive: false,
     hasArticle: false,
-    monthlyListeners: 1000 + (hash % 49000),
+    monthlyListeners: 0,
   };
 }
 

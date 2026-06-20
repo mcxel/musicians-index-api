@@ -18,6 +18,10 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import type React from "react";
+import { playSound } from "@/lib/sound/playSound";
+import { useWatchSession } from "@/lib/presence/WatchSessionContext";
+import { useSeatSession } from "@/lib/seats/useSeatSession";
+import { getGuestId } from "@/lib/identity/getGuestId";
 
 // ── AudienceScene (loaded only at step 4) ────────────────────────────────────
 type AudienceSceneProps = { view?: string; venue?: number; onReaction?: () => void; occupancyRatio?: number };
@@ -95,6 +99,18 @@ const STATUS_COLORS: Record<RoomStatus, { bg: string; label: string }> = {
 // ── Inline styles helper ──────────────────────────────────────────────────────
 const s = (styles: React.CSSProperties): React.CSSProperties => styles;
 
+// Real, deterministic row/seat label derived from the actual assigned seatId
+// (e.g. "seat-23") — never randomized.
+function formatSeatLabel(seatId: string): string {
+  const m = /^seat-(\d+)$/.exec(seatId);
+  if (!m) return seatId;
+  const n = parseInt(m[1]!, 10);
+  const rows = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"];
+  const rowIdx = Math.floor((n - 1) / 10) % rows.length;
+  const seatInRow = ((n - 1) % 10) + 1;
+  return `Row ${rows[rowIdx]}, Seat ${seatInRow}`;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // LobbyEntryFlow — the 5-step overlay
 // ─────────────────────────────────────────────────────────────────────────────
@@ -106,9 +122,24 @@ interface LobbyEntryFlowProps {
 export function LobbyEntryFlow({ room, onClose }: LobbyEntryFlowProps) {
   const [step, setStep] = useState<Step>("preview");
   const [seatRow, setSeatRow] = useState<string | null>(null);
+  const [seatId, setSeatId] = useState<string | null>(null);
   const [occupancyRatio, setOccupancyRatio] = useState(0.08);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fillTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const { startWatching } = useWatchSession();
+  // Phase 3A — Seat Persistence Convergence (2026-06-20): inherited from
+  // SeatingMeshEngine's reclaim-on-return capability. Real seat-claim memory
+  // across visits, not a new seat system — the canonical /api/live/audience
+  // engine already reuses a given seatId, it just was never given one before.
+  const seatSession = useSeatSession(room.id, getGuestId());
+
+  // Register the Universal Presence System's watch session the moment the
+  // fan commits to entering — this is what lets the mini player bring them
+  // back to THIS room later instead of a generic lobby.
+  useEffect(() => {
+    if (step !== "enter") return;
+    startWatching({ roomId: room.id, title: room.title, accentColor: room.accentColor, viewers: room.viewers, venueIndex: room.venueIndex, seatId: seatId ?? undefined });
+  }, [step, room.id, room.title, room.accentColor, room.viewers, room.venueIndex, seatId, startWatching]);
 
   // Progressive stadium-fill animation when audience step is active
   useEffect(() => {
@@ -127,6 +158,14 @@ export function LobbyEntryFlow({ room, onClose }: LobbyEntryFlowProps) {
     return () => { if (fillTimerRef.current) clearInterval(fillTimerRef.current); };
   }, [step]);
 
+  // Crowd-reaction sound on entering the audience step for concert-type rooms —
+  // the anticipation moment right before a performer comes on.
+  useEffect(() => {
+    if (step !== "audience") return;
+    if ((room.genre ?? "").toLowerCase() !== "concert") return;
+    playSound(room.venueIndex === 1 ? "crowd_cheering_stadium" : "crowd_cheer_auditorium");
+  }, [step, room.genre, room.venueIndex]);
+
   const ac = room.accentColor;
   const statusCfg = STATUS_COLORS[room.status];
 
@@ -139,16 +178,39 @@ export function LobbyEntryFlow({ room, onClose }: LobbyEntryFlowProps) {
     }
   }, []);
 
-  // Auto-assign seat label
+  // Real seat assignment — calls the same assignNextSeat() engine the
+  // /api/live/audience join action uses, instead of fabricating a plausible-
+  // looking "Row C, Seat 17" from Math.random() (a Rule 20 violation: a real
+  // seat-assignment engine already existed and simply wasn't wired here).
   useEffect(() => {
-    if (step === "seat") {
-      const rows = ["A", "B", "C", "D", "E", "F", "G", "H"];
-      const row  = rows[Math.floor(Math.random() * rows.length)]!;
-      const num  = Math.floor(Math.random() * 40) + 1;
-      setSeatRow(`Row ${row}, Seat ${num}`);
-      advance("audience", 1600);
-    }
-  }, [step, advance]);
+    if (step !== "seat") return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/live/audience", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "join",
+            venueSlug: room.id,
+            member: { userId: getGuestId(), displayName: "Fan", role: "fan", seatId: seatSession.seatId },
+          }),
+        });
+        const data = await res.json();
+        const assigned = typeof data?.assignedSeatId === "string" ? data.assignedSeatId : null;
+        if (!cancelled) {
+          setSeatId(assigned);
+          setSeatRow(assigned ? formatSeatLabel(assigned) : "General Admission");
+          if (assigned) seatSession.claim(assigned);
+        }
+      } catch {
+        if (!cancelled) setSeatRow("General Admission");
+      } finally {
+        if (!cancelled) advance("audience", 1600);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [step, advance, room.id]);
 
   useEffect(() => {
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
@@ -299,7 +361,10 @@ export function LobbyEntryFlow({ room, onClose }: LobbyEntryFlowProps) {
 
           {/* ── STEP: ENTERING ── */}
           {step === "enter" && (
-            <Link href={room.roomRoute} style={{ textDecoration: "none" }}>
+            <Link
+              href={`${room.roomRoute}${room.roomRoute.includes("?") ? "&" : "?"}from=lobby-wall`}
+              style={{ textDecoration: "none" }}
+            >
               <div style={s({ display: "flex", flexDirection: "column", alignItems: "center", gap: 14, padding: "24px 0", cursor: "pointer" })}>
                 <div style={s({ fontSize: 32 })}>🚪</div>
                 <div style={s({ fontSize: 14, fontWeight: 900, color: "#fff" })}>Entering Room…</div>

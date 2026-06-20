@@ -1,5 +1,13 @@
 'use client';
 
+// LEGACY_CANDIDATE (Rule 21, 2026-06-20): this page has zero inbound links
+// anywhere in the codebase (confirmed via repo-wide grep) — the real user
+// path is /battles -> /battles/[id] -> /live/rooms/[id] (now UniversalVenueRenderer
+// in Battle Mode). This page's real engines (SplitStreamMatrix,
+// PerformanceVotePanel, BattleVoteClosureEngine, XP rewards) were inherited
+// into that canonical path, not deleted from here. Left running for
+// reference/testing until the canonical path is browser-verified.
+
 import { useState, useCallback } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';

@@ -219,6 +219,6 @@ export function getVenueBookingSlots(count = 3): VenueBookingSlot[] {
     day: BOOKING_DAY_LABELS[i] ?? BOOKING_DAY_LABELS[0]!,
     venue: v.name,
     slug: v.slug,
-    bookRoute: `/venues/book?venue=${v.slug}`,
+    bookRoute: `/venues/${v.slug}/booking`,
   }));
 }

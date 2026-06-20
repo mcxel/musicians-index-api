@@ -50,22 +50,22 @@ function titleCase(slug: string) {
   return slug.split("-").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
 }
 
+// Rule 20 — honest defaults for promoters outside the 2 explicit curated
+// entries above. Every stat here was previously hash-derived from the slug
+// (e.g. "Tickets Sold: 1+hash%99 k") — the same fake-Diamond-tier bug class.
 function seedPromoter(slug: string): SeedPromoter {
   if (SEED_PROMOTERS[slug]) return SEED_PROMOTERS[slug]!;
-  const hash = slug.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
-  const cities = ["New York, NY", "Atlanta, GA", "Los Angeles, CA", "Houston, TX", "Chicago, IL", "Miami, FL"];
-  const genres = ["Hip-Hop / Rap", "R&B / Soul", "Multi-Genre", "EDM / Electronic", "Trap", "Afrobeats"];
   return {
     displayName: titleCase(slug),
     tagline: "Independent music promoter on The Musician's Index.",
-    city: cities[hash % cities.length]!,
-    focus: genres[hash % genres.length]!,
+    city: "Not set",
+    focus: "Not set",
     isVerified: false,
     stats: [
-      { label: "Events Promoted", value: (10 + (hash % 90)).toString() },
-      { label: "Tickets Sold",    value: `${1 + (hash % 99)}k` },
-      { label: "Artists Booked",  value: (5 + (hash % 40)).toString() },
-      { label: "Avg. Attendance", value: `${70 + (hash % 28)}%` },
+      { label: "Events Promoted", value: "0" },
+      { label: "Tickets Sold",    value: "0" },
+      { label: "Artists Booked",  value: "0" },
+      { label: "Avg. Attendance", value: "—" },
     ],
   };
 }

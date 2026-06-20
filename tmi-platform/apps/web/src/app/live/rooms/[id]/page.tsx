@@ -11,8 +11,7 @@ import { resolveSlug } from "@/lib/routing/SlugRecoveryEngine";
 import SocketRecoveryEngine from "@/lib/routing/SocketRecoveryEngine";
 import RoomInteractionLayout from "@/components/live/RoomInteractionLayout";
 import LiveRoomWebRTCLayer from "@/components/live/LiveRoomWebRTCLayer";
-import ArenaImmersivePanel from "@/components/live/ArenaImmersivePanel";
-import VenueImmersiveRoom from "@/components/live/VenueImmersiveRoom";
+import UniversalVenueRenderer from "@/components/live/UniversalVenueRenderer";
 import LiveSessionHeartbeat from "@/components/live/LiveSessionHeartbeat";
 import { registerPresence } from "@/lib/rooms/RoomSessionBridge";
 import { recordProfileLoopAction } from "@/lib/profile/ProfileSessionStore";
@@ -21,6 +20,10 @@ import RoomWarpTransition from "@/components/live/RoomWarpTransition";
 import BotRoomActivator from "@/components/bots/BotRoomActivator";
 import { getAdSlotForZone } from "@/lib/commerce/SponsorRegistry";
 import DiscoveryRail from "@/components/discovery/DiscoveryRail";
+import UnifiedAudienceShell from "@/components/live/UnifiedAudienceShell";
+import TmiAudiencePerspectiveShell from "@/components/audience/TmiAudiencePerspectiveShell";
+import SplitStreamMatrix from "@/components/media/SplitStreamMatrix";
+import PerformanceVotePanel from "@/components/arena/PerformanceVotePanel";
 
 // Referrers that grant direct room entry (passed via ?from= query param)
 const LOBBY_AUTHORIZED_ORIGINS = new Set([
@@ -52,6 +55,16 @@ export default async function LiveRoomPage({ params, searchParams }: LiveRoomPag
   const performerSid = performerSlug
     ? (typeof sp['sid'] === 'string' ? sp['sid'] : Array.isArray(sp['sid']) ? sp['sid'][0] : null)
     : null;
+  // Battle Mode (Phase 4 convergence, 2026-06-20) — real battle context
+  // passed from /battles/[id]'s "WATCH & VOTE LIVE" link. Renders the real
+  // split-stream + vote-closure engines (previously only reachable on the
+  // orphaned, zero-inbound-links /battles/live page) as a mode of this same
+  // canonical room, instead of a separate battle page or audience renderer.
+  const battleId = typeof sp['battleId'] === 'string' ? sp['battleId'] : Array.isArray(sp['battleId']) ? sp['battleId'][0] : null;
+  const opponentA = typeof sp['opponentA'] === 'string' ? sp['opponentA'] : Array.isArray(sp['opponentA']) ? sp['opponentA'][0] : null;
+  const opponentB = typeof sp['opponentB'] === 'string' ? sp['opponentB'] : Array.isArray(sp['opponentB']) ? sp['opponentB'][0] : null;
+  const battleAccentA = typeof sp['accentA'] === 'string' ? sp['accentA'] : Array.isArray(sp['accentA']) ? sp['accentA'][0] : undefined;
+  const isBattleMode = Boolean(battleId && opponentA && opponentB);
   const returnHref = performerSlug && performerSid
     ? `/performers/${encodeURIComponent(performerSlug)}/dashboard?returnedFrom=${encodeURIComponent(id)}&sid=${encodeURIComponent(performerSid)}`
     : fanSlug
@@ -126,12 +139,58 @@ export default async function LiveRoomPage({ params, searchParams }: LiveRoomPag
 
         {performerSlug && <LiveSessionHeartbeat enabled={true} intervalMs={15_000} stageState="live" roomId={id} />}
 
-        {performerSlug
-          ? <ArenaImmersivePanel roomId={id} mode="performer" />
-          : <VenueImmersiveRoom roomId={id} mode="fan" />}
+        {/* Battle Mode (Phase 4 convergence, 2026-06-20) — the real
+            split-stream + vote-closure engines, inherited from the orphaned
+            /battles/live page, now render as a mode of this canonical room
+            instead of a separate page or a duplicate audience renderer. */}
+        {isBattleMode && opponentA && opponentB && (
+          <div style={{ marginTop: 16 }}>
+            <SplitStreamMatrix mode="SPLIT" isBattle battleOpponentLabel={opponentB} />
+            <div style={{ marginTop: 12 }}>
+              <PerformanceVotePanel
+                battleId={battleId!}
+                artistALabel={opponentA}
+                artistBLabel={opponentB}
+                accentA={battleAccentA}
+                autoOpenVoting
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Universal Venue Renderer (Phase 3B convergence, 2026-06-20) —
+            replaces the old ArenaImmersivePanel/VenueImmersiveRoom branch.
+            fanIdOverride and TmiAudiencePerspectiveShell's fanId below share
+            the same resolution (fanSlug/sessionId, or undefined so both
+            client components fall back to the identical getGuestId()) —
+            previously they used two different hardcoded guest literals,
+            producing two audience entries for one real visitor (found via
+            the Phase 3C browser certification, 2026-06-20). */}
+        <UniversalVenueRenderer
+          roomId={id}
+          mode={performerSlug ? "performer" : "audience"}
+          fanIdOverride={fanSlug ?? sessionId ?? undefined}
+        />
+
+        {/* Real seat-bound audience view — assignSeatForFan()/joinAudienceSeat()
+            engines already existed in lib/audience/ but were never wired into
+            a route. Every seat here is a real fanId, never a fabricated count. */}
+        {!performerSlug && (
+          <div style={{ marginTop: 16 }}>
+            <TmiAudiencePerspectiveShell roomId={id} fanId={fanSlug ?? sessionId ?? undefined} />
+          </div>
+        )}
 
         <BotRoomActivator roomId={id} fanId={fanSlug ?? sessionId ?? "fan-guest"} />
         <RoomInteractionLayout roomId={id} sessionId={sessionId ?? undefined} />
+
+        {/* Unified Audience Shell — Messages/Playlist/Memory Wall/Avatar/
+            Inventory/Rooms as docked overlays, never a route change */}
+        <UnifiedAudienceShell
+          roomId={id}
+          userId={fanSlug ?? sessionId ?? performerSid ?? "fan-guest"}
+          accentColor={performerSlug ? "#FF2DAA" : "#00FFFF"}
+        />
 
         <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
           <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>

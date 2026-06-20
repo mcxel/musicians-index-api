@@ -17,6 +17,12 @@ export function useStageWebRTC({ video, audio, hd = true }: WebRTCConfig) {
     let mounted = true;
 
     const initStream = async () => {
+      // getUserMedia throws if neither audio nor video is requested — this is
+      // the normal case for an audience-mode viewer who hasn't opted into
+      // camera capture. Skip entirely rather than letting it throw, which
+      // was surfacing as a permanent false "RECONNECTING TO LIVE SESSION…"
+      // banner (found via real browser certification, 2026-06-20).
+      if (!video && !audio) return;
       try {
         // Enforce HD constraints for premium quality
         const constraints: MediaStreamConstraints = {

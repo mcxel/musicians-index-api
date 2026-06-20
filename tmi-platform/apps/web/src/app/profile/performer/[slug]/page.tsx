@@ -55,7 +55,10 @@ const KNOWN_PERFORMERS: Record<
     currentStreak: 8,
     longestStreak: 8,
     hasArticle: true,
-    isLive: true,
+    // Rule 14/20 — never hardcode isLive:true on a named seed entry; real
+    // liveness must come from GlobalLiveSessionRegistry (same fix already
+    // applied to PerformerRegistry.ts and VenueRegistry.ts this session).
+    isLive: false,
     liveVenueName: "Cypher Arena",
     openToMeetGreet: true,
     openToBooking: true,

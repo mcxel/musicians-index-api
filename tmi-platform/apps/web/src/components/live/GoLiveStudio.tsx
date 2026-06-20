@@ -5,9 +5,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { DailyCall } from '@daily-co/daily-js';
 import MaskedVideoTile from '@/components/media/MaskedVideoTile';
-import ArenaImmersivePanel from '@/components/live/ArenaImmersivePanel';
+import UniversalVenueRenderer from '@/components/live/UniversalVenueRenderer';
 import PerformerVideoOrbit from '@/components/live/PerformerVideoOrbit';
-import AudienceScene from '@/components/live/AudienceScene';
 import {
   startCountdown,
   openCurtain,
@@ -574,9 +573,7 @@ export default function GoLiveStudio() {
             </div>
           </section>
 
-          <ArenaImmersivePanel roomId="main-stage" mode="performer" />
-
-          {/* ── LIVE AUDIENCE VIEW — 3D crowd looking up at the performer ── */}
+          {/* UniversalVenueRenderer — AudienceScene + WebRTC + chat + reactions + moderation, all in one (Phase 3B) */}
           <section style={{ marginBottom: 20 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
               <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#FF2020', display: 'inline-block', animation: 'tmiLivePulse 1s ease-in-out infinite' }} />
@@ -585,11 +582,7 @@ export default function GoLiveStudio() {
                 · {viewerCount} watching
               </div>
             </div>
-            <AudienceScene
-              view="performer"
-              venue={0}
-              watcherCount={viewerCount}
-            />
+            <UniversalVenueRenderer roomId="main-stage" mode="performer" venueIndex={0} />
           </section>
         </>
       )}

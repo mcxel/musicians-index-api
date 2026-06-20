@@ -3,31 +3,42 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 
-export default function Home3LiveDensityRail() {
-  const [tick, setTick] = useState(0);
+interface LiveApiSession { category: string; }
 
+export default function Home3LiveDensityRail() {
+  const [sessions, setSessions] = useState<LiveApiSession[]>([]);
+
+  // Real room/cypher counts from GlobalLiveSessionRegistry — replaces a prior
+  // version that derived all four stats from a local setInterval tick with no
+  // connection to real data at all.
   useEffect(() => {
-    const id = window.setInterval(() => setTick((t) => t + 1), 2400);
-    return () => window.clearInterval(id);
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const res = await fetch('/api/live/go', { cache: 'no-store' });
+        const data = await res.json() as { sessions?: LiveApiSession[] };
+        if (!cancelled) setSessions(data.sessions ?? []);
+      } catch {
+        if (!cancelled) setSessions([]);
+      }
+    };
+    void load();
+    const id = setInterval(() => void load(), 10000);
+    return () => { cancelled = true; clearInterval(id); };
   }, []);
 
-  const rooms = 10 + (tick % 8);
-  const occupancy = 64 + (tick % 23);
-  const joinBurst = 14 + (tick % 10);
+  const rooms = sessions.length;
+  const cyphers = sessions.filter((s) => s.category === 'cypher').length;
 
   return (
     <section style={{ maxWidth: 1100, margin: '0 auto', padding: '8px 24px 10px' }}>
       <div style={{ border: '1px solid rgba(0,255,255,0.35)', borderRadius: 10, background: 'linear-gradient(165deg, rgba(8,26,40,0.94), rgba(5,5,16,0.96))', padding: '10px 12px', display: 'grid', gap: 8 }}>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-          <Tag text='LIVE NOW' color='#00FFFF' pulse />
-          <Tag text='ROOM BURST' color='#FF2DAA' />
-          <Tag text='PREMIERES ACTIVE' color='#FFD700' />
+          <Tag text='LIVE NOW' color='#00FFFF' pulse={rooms > 0} />
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 8 }}>
           <Cell label='Open Rooms' value={rooms.toString()} color='#00FFFF' />
-          <Cell label='Avg Occupancy' value={`${occupancy}%`} color='#FFD700' />
-          <Cell label='Join Burst' value={`+${joinBurst}/min`} color='#FF2DAA' />
-          <Cell label='Cypher Queue' value={`${3 + (tick % 6)}`} color='#00FF88' />
+          <Cell label='Cyphers Live' value={cyphers.toString()} color='#00FF88' />
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <Action href='/live/lobby' label='Open Lobby' color='#00FFFF' />

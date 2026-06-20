@@ -12,7 +12,7 @@ export default function PromoterProfilePage() {
   if (loading) return <div style={{ background: C.bg, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.dim }}>Loading…</div>;
   const name = session?.user?.displayName ?? session?.user?.email?.split('@')[0] ?? 'Promoter';
   const ACTIONS = [
-    { label: 'Promote Event', icon: '📣', href: '/promoter/events',    color: C.accent  },
+    { label: 'Promote Event', icon: '📣', href: '/promoter/dashboard',    color: C.accent  },
     { label: 'Book Artist',   icon: '🎤', href: '/booking',            color: C.fuchsia },
     { label: 'Live Lobby',    icon: '🏟', href: '/live/rooms',          color: C.purple  },
     { label: 'Print Tickets', icon: '🎟', href: '/tickets',            color: C.gold    },

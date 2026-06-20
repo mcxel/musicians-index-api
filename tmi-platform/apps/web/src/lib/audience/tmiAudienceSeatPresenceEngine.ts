@@ -77,3 +77,33 @@ export function getAudiencePresence(roomId: string, fanId: string): TmiSeatedAud
 export function listAudiencePresence(roomId: string): TmiSeatedAudiencePresence[] {
   return [...PRESENCE.values()].filter((entry) => entry.roomId === roomId);
 }
+
+/**
+ * Venue Runtime Divergence Audit (2026-06-20) found this engine was running
+ * its own independent seat pool via joinAudienceSeat()/assignSeatForFan(),
+ * separate from the canonical room-membership engine (audienceRuntimeEngine.ts,
+ * already adopted by ArenaImmersivePanel/VenueImmersiveRoom/UniversalLobbyEntry).
+ * A fan could end up holding two different, disconnected "seats" in the same
+ * room depending on which panel rendered them. seatFanAtPosition() is the fix:
+ * it records presence/reactions against seat geometry computed FROM the real
+ * seatId audienceRuntimeEngine already assigned, instead of minting a second
+ * independent one. joinAudienceSeat() above is left in place (harmless, pure)
+ * for any standalone/demo usage, but the production path no longer calls it.
+ */
+export function seatFanAtPosition(
+  fanId: string,
+  roomId: string,
+  tier: TmiSeatTier,
+  seat: TmiSeatPosition,
+): TmiSeatedAudiencePresence {
+  const existing = PRESENCE.get(key(roomId, fanId));
+  const presence: TmiSeatedAudiencePresence = {
+    fanId,
+    roomId,
+    assignment: { fanId, roomId, tier, seat },
+    state: existing?.state ?? "seated-idle",
+    updatedAt: Date.now(),
+  };
+  PRESENCE.set(key(roomId, fanId), presence);
+  return presence;
+}

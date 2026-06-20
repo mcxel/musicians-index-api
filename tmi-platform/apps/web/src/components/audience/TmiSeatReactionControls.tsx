@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { emitAudienceReaction, type TmiAudienceReaction } from "@/lib/audience/tmiAudienceReactionEngine";
+import type { TmiAudienceReaction } from "@/lib/audience/tmiAudienceReactionEngine";
 
 const REACTIONS: TmiAudienceReaction[] = ["heart", "fire", "cheer", "clap", "vote", "tip", "chat", "spin", "cypher-join"];
 
@@ -25,7 +25,11 @@ export default function TmiSeatReactionControls({
             key={reaction}
             type="button"
             onClick={() => {
-              emitAudienceReaction({ roomId, fanId, reaction });
+              fetch("/api/live/seat-presence", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ action: "reaction", roomId, fanId, reaction }),
+              }).catch(() => { /* honest no-op — UI still reflects the tap locally */ });
               setActive(reaction);
               onReaction?.(reaction);
             }}

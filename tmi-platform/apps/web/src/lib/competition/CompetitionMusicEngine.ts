@@ -10,6 +10,8 @@
  * Wires: Beat Registry → Room Creation → Playlist Engine → Battle/Cypher Runtime
  */
 
+import { isBeatExclusivelySold } from "@/lib/beats/BeatInventoryEngine";
+
 // ─── Competition lanes ────────────────────────────────────────────────────────
 
 export type CompetitionType = 'battle' | 'cypher' | 'challenge' | 'showcase';
@@ -303,16 +305,23 @@ export const BEAT_REGISTRY_SEED: BeatRegistryEntry[] = [
   { id: 'beat-006', title: 'EDM Drop Zone', ownerId: 'sys-tmi', licenseType: 'community', genre: 'EDM', bpm: 128, audioUrl: '/beats/edm-drop-zone.mp3', tags: ['edm', 'dance', 'drop'], usageCount: 0, isAvailableForBattle: true, isAvailableForCypher: true },
 ];
 
+// A beat sold exclusively in the Beat Marketplace must never be offered for
+// competition use, even though these are deliberately separate registries
+// (apps/web/src/lib/beats/BeatInventoryEngine.ts) — see isBeatExclusivelySold.
+function excludeExclusivelySoldBeats(beats: BeatRegistryEntry[]): BeatRegistryEntry[] {
+  return beats.filter((b) => !isBeatExclusivelySold(b.id));
+}
+
 export function getBeatsByGenreForBattle(genre: string): BeatRegistryEntry[] {
-  return competitionMusicEngine.filterBeatsByGenre(
+  return excludeExclusivelySoldBeats(competitionMusicEngine.filterBeatsByGenre(
     BEAT_REGISTRY_SEED.filter(b => b.isAvailableForBattle),
     genre,
-  );
+  ));
 }
 
 export function getBeatsByGenreForCypher(genre: string): BeatRegistryEntry[] {
-  return competitionMusicEngine.filterBeatsByGenre(
+  return excludeExclusivelySoldBeats(competitionMusicEngine.filterBeatsByGenre(
     BEAT_REGISTRY_SEED.filter(b => b.isAvailableForCypher),
     genre,
-  );
+  ));
 }

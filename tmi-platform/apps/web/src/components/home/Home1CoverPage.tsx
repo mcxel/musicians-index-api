@@ -120,8 +120,9 @@ function PerformerMonitor({
   delayMs: number;
   channelNum: number;
 }) {
-  const [idx, setIdx] = useState(offsetIdx % performers.length);
+  const [idx, setIdx] = useState(performers.length > 0 ? offsetIdx % performers.length : 0);
   useEffect(() => {
+    if (performers.length === 0) return;
     let iid: ReturnType<typeof setInterval>;
     const tid = setTimeout(() => {
       iid = setInterval(() => setIdx((x) => (x + 1) % performers.length), intervalMs);
@@ -129,7 +130,10 @@ function PerformerMonitor({
     return () => { clearTimeout(tid); clearInterval(iid); };
   }, [performers.length, intervalMs, delayMs]);
 
-  const p = performers[idx]!;
+  // performers starts empty until the parent's data effect runs — render
+  // nothing rather than crash on performers[idx] while it's still [].
+  if (performers.length === 0) return null;
+  const p = performers[idx % performers.length]!;
   return (
     <div style={{ flex: 1, background: 'rgba(5,8,21,0.92)', border: `2px solid ${accentColor}44`, borderRadius: 8, overflow: 'hidden', position: 'relative', minHeight: 110 }}>
       {/* Scanline overlay */}
@@ -184,6 +188,18 @@ export default function Home1CoverPage() {
   const rafRef = useRef<number | null>(null);
   const lastRef = useRef<number>(0);
 
+  // The LEFT PANEL | ORBITAL | RIGHT PANEL grid is desktop-width math (two
+  // 120-170px rails + an orbital that demands min(300px, 70vw)). On phone
+  // viewports that sum exceeds the screen and pushes the orbital + right
+  // panel off-screen. Collapse both rails by default below tablet width;
+  // the existing collapse toggle still lets anyone reopen them.
+  useEffect(() => {
+    if (window.innerWidth < 768) {
+      setLeftOpen(false);
+      setRightOpen(false);
+    }
+  }, []);
+
   const [venues, setVenues] = useState<VenueBookingSlot[]>(() => getVenueBookingSlots(3));
 
   useEffect(() => {
@@ -194,7 +210,7 @@ export default function Home1CoverPage() {
         const days = ['SUN','MON','TUE','WED','THU','FRI','SAT'] as const;
         setVenues(events.map(e => {
           const date = new Date(e.startsAt);
-          return { day: days[date.getDay()]!, venue: e.venue ?? 'Main Arena', slug: e.id, bookRoute: `/venues/book?venue=${e.id}` };
+          return { day: days[date.getDay()]!, venue: e.venue ?? 'Main Arena', slug: e.id, bookRoute: `/venues/${e.id}/booking` };
         }));
       }
     }).catch(() => {});
@@ -681,7 +697,13 @@ export default function Home1CoverPage() {
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'clamp(120px, 15vw, 170px) 1fr clamp(120px, 15vw, 170px)',
+            // Grid tracks must follow the same open/closed state as the panel
+            // content (line ~695/~1163) — clamp(120px,...) has a 120px floor
+            // that doesn't shrink for phone widths, so a collapsed panel still
+            // reserved 120-170px of empty track and pushed the orbital + the
+            // other rail off-screen. 14px matches the always-visible collapse
+            // toggle strip width.
+            gridTemplateColumns: `${leftOpen ? 'clamp(120px, 15vw, 170px)' : '14px'} 1fr ${rightOpen ? 'clamp(120px, 15vw, 170px)' : '14px'}`,
             width: '100%',
             alignItems: 'start',
             gap: 10,
