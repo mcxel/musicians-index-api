@@ -160,6 +160,12 @@ model User {
   participationLedgers   ParticipationLedger[]
   participationSessions  ParticipationSession[]
   challengeAnswers       ChallengeAnswer[]
+
+  // Content Lifecycle — Phase A/B/C
+  playlists              Playlist[]
+  songs                  Song[]
+  videos                 Video[]
+  avatarConfig           AvatarConfig?
 }
 
 model Account {
@@ -2754,4 +2760,103 @@ model RoomPresence {
   @@unique([roomId, userId])
   @@index([roomId])
   @@index([lastSeenAt])
+}
+
+// ── Content Lifecycle — Phase A: Playlist + Song ──────────────────────────────
+
+model Playlist {
+  id          String         @id @default(cuid())
+  creatorId   String
+  creator     User           @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  coverUrl    String?
+  isPublic    Boolean        @default(true)
+  isMixtape   Boolean        @default(false)
+  shareToken  String?        @unique @default(cuid())
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  items       PlaylistItem[]
+
+  @@index([creatorId])
+  @@map("playlists")
+}
+
+model PlaylistItem {
+  id         String   @id @default(cuid())
+  playlistId String
+  playlist   Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+  songId     String
+  song       Song     @relation(fields: [songId], references: [id], onDelete: Cascade)
+  position   Int      @default(0)
+  addedAt    DateTime @default(now())
+
+  @@unique([playlistId, songId])
+  @@index([playlistId])
+  @@map("playlist_items")
+}
+
+model Song {
+  id          String         @id @default(cuid())
+  uploaderId  String
+  uploader    User           @relation(fields: [uploaderId], references: [id], onDelete: Cascade)
+  title       String
+  artistName  String?
+  audioUrl    String
+  coverUrl    String?
+  duration    Int?
+  genre       String?
+  bpm         Int?
+  key         String?
+  isPublic    Boolean        @default(true)
+  playCount   Int            @default(0)
+  status      String         @default("ACTIVE")
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  playlists   PlaylistItem[]
+
+  @@index([uploaderId])
+  @@index([genre])
+  @@map("songs")
+}
+
+// ── Content Lifecycle — Phase B: Video ───────────────────────────────────────
+
+model Video {
+  id           String   @id @default(cuid())
+  uploaderId   String
+  uploader     User     @relation(fields: [uploaderId], references: [id], onDelete: Cascade)
+  title        String
+  description  String?  @db.Text
+  videoUrl     String
+  thumbnailUrl String?
+  duration     Int?
+  genre        String?
+  isPublic     Boolean  @default(true)
+  viewCount    Int      @default(0)
+  status       String   @default("ACTIVE")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([uploaderId])
+  @@index([genre])
+  @@map("videos")
+}
+
+// ── Content Lifecycle — Phase C: Avatar ──────────────────────────────────────
+
+model AvatarConfig {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  meshUrl         String?
+  textureUrl      String?
+  faceScanUrl     String?
+  bobbleheadConfig Json?
+  previewImageUrl String?
+  isComplete      Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("avatar_configs")
 }
