@@ -1,5 +1,12 @@
 "use client";
 
+// LEGACY_CANDIDATE (2026-06-20): hardcoded fake contacts (RECENT_CALLS,
+// CONTACTS below) and a "START VIDEO CALL" button with no onClick — never
+// actually starts a call. The real, working 1-on-1 video flow is
+// /video/rooms/new (creates a real Daily.co room via /api/video/rooms,
+// falls back to the TMI live-room system). Not deleted per the
+// inherit-best-of-breed/mark-LEGACY-don't-delete doctrine — no inbound
+// links confirmed yet, flag for removal once verified zero traffic.
 import { useState } from "react";
 import Link from "next/link";
 

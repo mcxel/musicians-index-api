@@ -159,31 +159,22 @@ export default function OmniPresenceEngine({ slug, displayName = 'Artist', defau
           </div>
         )}
 
-        {/* Video tiles tab */}
+        {/* Video tiles tab — replaces a hardcoded fake-participant array
+            ("Tiana (TG)", "Julius", "Redbeard", "SByeeGil") that rendered on
+            every profile regardless of whether a call was active. No active-
+            call session source exists here yet, so this is an honest empty
+            state with a real action, not synthetic attendance (Rule 20). */}
         {activeTab === 'videotiles' && (
           <div>
             <div style={{ fontSize: 10, fontWeight: 800, color: C.cy, letterSpacing: '0.1em', marginBottom: 14 }}>VIDEO TILE ENGINE</div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 14 }}>
-              {[
-                { name: 'Tiana (TG)', role: 'Performer', em: '🎤', gold: true  },
-                { name: 'Julius',     role: 'Hype Master',em: '🦦', gold: false },
-                { name: 'Redbeard',  role: 'Co-Host',    em: '🎙', gold: false },
-                { name: 'SByeeGil',  role: 'Fan',        em: '⭐', gold: false },
-              ].map(p => (
-                <div key={p.name} style={{
-                  background: C.panel, borderRadius: 10, overflow: 'hidden',
-                  border: p.gold ? `2px solid ${C.gd}` : `1px solid ${C.bd}`,
-                  boxShadow: p.gold ? `0 0 12px ${C.gd}33` : 'none',
-                }}>
-                  <div style={{ height: 100, background: 'rgba(255,255,255,0.04)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 30 }}>
-                    {p.em}
-                  </div>
-                  <div style={{ padding: '8px 10px', background: C.card }}>
-                    <div style={{ fontSize: 11, fontWeight: 900, color: C.tx }}>{p.name}</div>
-                    <div style={{ fontSize: 9, color: C.mt, marginTop: 2 }}>{p.role}</div>
-                  </div>
-                </div>
-              ))}
+            <div style={{ background: C.panel, border: `1px solid ${C.bd}`, borderRadius: 10, padding: '28px 16px', textAlign: 'center' }}>
+              <div style={{ fontSize: 11, color: C.mt, marginBottom: 14 }}>No active video call right now.</div>
+              <button
+                onClick={() => router.push(slug ? `/video/rooms/new?inviteId=${slug}&name=${encodeURIComponent(displayName)}` : '/video/rooms/new')}
+                style={{ background: C.cy, color: '#001018', border: 'none', borderRadius: 7, padding: '9px 18px', fontWeight: 900, fontSize: 11, cursor: 'pointer', letterSpacing: '0.05em' }}
+              >
+                🎥 Start Video Call
+              </button>
             </div>
           </div>
         )}
@@ -217,14 +208,21 @@ export default function OmniPresenceEngine({ slug, displayName = 'Artist', defau
           <div>
             <div style={{ fontSize: 10, fontWeight: 800, color: C.rd, letterSpacing: '0.1em', marginBottom: 14 }}>INSTANT LIVE ROUTING</div>
             <div style={{ background: `${C.rd}11`, border: `1px solid ${C.rd}`, padding: 24, borderRadius: 10, textAlign: 'center', marginBottom: 14 }}>
-              <button style={{ background: C.rd, color: '#fff', border: 'none', padding: '14px 28px', fontSize: 14, fontWeight: 900, borderRadius: 8, letterSpacing: 2, cursor: 'pointer', boxShadow: `0 0 18px ${C.rd}55` }}>
+              <button
+                onClick={() => router.push('/go-live')}
+                style={{ background: C.rd, color: '#fff', border: 'none', padding: '14px 28px', fontSize: 14, fontWeight: 900, borderRadius: 8, letterSpacing: 2, cursor: 'pointer', boxShadow: `0 0 18px ${C.rd}55` }}
+              >
                 ⏺ GO LIVE NOW
               </button>
               <div style={{ fontSize: 9, color: C.mt, marginTop: 10 }}>Broadcasts to all connected surfaces</div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8 }}>
-              {['🎭 Fan Theater', '🔴 Battle Arena', '🌀 Cypher Room'].map(dest => (
-                <button key={dest} style={{ background: C.panel, border: `1px solid ${C.bd}`, borderRadius: 7, padding: '8px 6px', color: C.mt, fontSize: 9, fontWeight: 700, cursor: 'pointer' }}>{dest}</button>
+              {[
+                { label: '🎭 Fan Theater', href: '/fan/theater' },
+                { label: '🔴 Battle Arena', href: '/rooms/battle-arena' },
+                { label: '🌀 Cypher Room', href: '/rooms/cypher-arena' },
+              ].map(dest => (
+                <button key={dest.href} onClick={() => router.push(dest.href)} style={{ background: C.panel, border: `1px solid ${C.bd}`, borderRadius: 7, padding: '8px 6px', color: C.mt, fontSize: 9, fontWeight: 700, cursor: 'pointer' }}>{dest.label}</button>
               ))}
             </div>
           </div>
