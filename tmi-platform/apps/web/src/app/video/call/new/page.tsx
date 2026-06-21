@@ -1,35 +1,37 @@
 "use client";
-
-// LEGACY_CANDIDATE (2026-06-20): hardcoded fake contacts (RECENT_CALLS,
-// CONTACTS below) and a "START VIDEO CALL" button with no onClick — never
-// actually starts a call. The real, working 1-on-1 video flow is
-// /video/rooms/new (creates a real Daily.co room via /api/video/rooms,
-// falls back to the TMI live-room system). Not deleted per the
-// inherit-best-of-breed/mark-LEGACY-don't-delete doctrine — no inbound
-// links confirmed yet, flag for removal once verified zero traffic.
+// Video call entry point — contacts pulled from PERFORMER_REGISTRY (no fake names).
+// START VIDEO CALL routes through /video/rooms/new (real Daily.co room creation).
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { PERFORMER_REGISTRY } from "@/lib/performers/PerformerRegistry";
 
-const RECENT_CALLS = [
-  { name: "Zion Freq",  avatar: "🎤", time: "2h ago",  slug: "zion-freq"  },
-  { name: "DJ Lumi",    avatar: "🎧", time: "Yesterday", slug: "dj-lumi"  },
-  { name: "Astra Nova", avatar: "🎼", time: "3d ago",  slug: "astra-nova" },
-];
-const CONTACTS = [
-  { name: "Nova Cipher", avatar: "👑", genre: "EDM",     slug: "nova-cipher" },
-  { name: "Wave Tek",    avatar: "🎸", genre: "Afrobeats",slug: "wave-tek"   },
-  { name: "Veron Koi",   avatar: "🎹", genre: "Neo-Soul", slug: "veron-koi"  },
-  { name: "Pulse Max",   avatar: "🎛️", genre: "Trap",     slug: "pulse-max"  },
-  { name: "Big Ace",     avatar: "🎤", genre: "Hip-Hop",  slug: "big-ace"    },
-];
+// No hardcoded fake contacts. Contacts are real registered performers from the registry.
+// Recent calls: none until real call history is persisted — show honest empty state.
+const RECENT_CALLS: { name: string; avatar: string; time: string; slug: string }[] = [];
+
+// Use real performer registry as contact list
+const CONTACTS = PERFORMER_REGISTRY.slice(0, 12).map((p) => ({
+  name: p.name,
+  avatar: "🎤",
+  genre: p.category,
+  slug: p.slug,
+}));
 
 export default function NewVideoCallPage() {
   const [search, setSearch] = useState("");
   const [callee, setCallee] = useState("");
+  const router = useRouter();
 
   const filtered = CONTACTS.filter(
     (c) => !search || c.name.toLowerCase().includes(search.toLowerCase())
   );
+
+  function startCall() {
+    if (!callee) return;
+    // Route to real video room creation with the callee as a query param
+    router.push(`/video/rooms/new?invite=${encodeURIComponent(callee)}`);
+  }
 
   return (
     <main style={{ minHeight: "100vh", background: "#050510", color: "#fff", fontFamily: "'Inter', sans-serif", paddingBottom: 80 }}>
@@ -105,6 +107,7 @@ export default function NewVideoCallPage() {
 
         <button
           disabled={!callee}
+          onClick={startCall}
           style={{
             width: "100%", padding: "15px", borderRadius: 12, fontSize: 14, fontWeight: 900, letterSpacing: "0.1em", cursor: callee ? "pointer" : "not-allowed", border: "none",
             background: callee ? "linear-gradient(135deg, #00FF88, #00FFFF)" : "rgba(255,255,255,0.06)",

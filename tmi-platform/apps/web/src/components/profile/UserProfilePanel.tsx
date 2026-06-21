@@ -133,14 +133,14 @@ export default function UserProfilePanel({ user, onClose, anchorEl }: UserProfil
             💬 Message
           </Link>
           <Link
-            href={`/messages/${slug}?call=video`}
+            href={`/video/rooms/new?invite=${encodeURIComponent(slug)}`}
             onClick={onClose}
             style={actionStyle("#00C896")}
           >
             🎥 Video Call
           </Link>
           <Link
-            href={`/messages/${slug}?call=voice`}
+            href={`/video/rooms/new?invite=${encodeURIComponent(slug)}&mode=voice`}
             onClick={onClose}
             style={actionStyle("#AA2DFF")}
           >

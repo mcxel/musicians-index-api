@@ -6,21 +6,19 @@ import { getLatestEditorialArticles } from '@/lib/editorial/NewsArticleModel';
 import { fetchTrendingArtists, type TrendingArtist } from '@/lib/api/homepage';
 import SponsorRail from '@/components/sponsors/SponsorRail';
 import EventReel from '@/components/events/EventReel';
-import { getPerformerById, getTopPerformers } from '@/lib/performers/PerformerRegistry';
+import { getPerformerById, getTopPerformers, PERFORMER_REGISTRY } from '@/lib/performers/PerformerRegistry';
 import MotionPosterPlayer from '@/components/media/MotionPosterPlayer';
 import UnifiedAdSlot from '@/components/ads/UnifiedAdSlot';
 import DiscoveryRail from '@/components/discovery/DiscoveryRail';
+import { ACTIVE_SPONSOR_ZONES } from '@/lib/commerce/SponsorRegistry';
 
-const SEED_SPONSORS = [
-  { id: 'amplify', name: 'AMPLIFY RECORDS', tagline: 'Platinum Partner' },
-  { id: 'beatlab', name: 'BEATLAB STUDIOS', tagline: 'Gold Partner' },
-  { id: 'velocity', name: 'VELOCITY AUDIO', tagline: 'Gold Partner' },
-  { id: 'nova', name: 'NOVA MEDIA GROUP', tagline: 'Silver Partner' },
-  { id: 'crown', name: 'CROWN & CO.', tagline: '' },
-  { id: 'frequency', name: 'FREQUENCY LABS', tagline: '' },
-  { id: 'vault', name: 'THE VAULT COLLECTIVE', tagline: '' },
-  { id: 'sonic', name: 'SONIC AXIS', tagline: '' },
-];
+// Sponsor rail uses only real paid sponsors from ACTIVE_SPONSOR_ZONES.
+// When no sponsors are purchased, SponsorRail returns null (no fake rows).
+const REAL_SPONSORS = Object.entries(ACTIVE_SPONSOR_ZONES).map(([zone, s]) => ({
+  id: zone,
+  name: s.name,
+  tagline: s.tagline,
+}));
 
 const GENRE_FILTERS = [
   'Hip Hop', 'R&B', 'Pop', 'EDM', 'Gospel', 'Country', 'Rock', 'Jazz', 'Blues', 'Reggae', 'Latin',
@@ -457,6 +455,213 @@ function InstrumentBillboardCard({ feature, accent }: { feature: InstrumentFeatu
   );
 }
 
+// ── LEFT RAIL: Discovery Feed (New Performers, Live Now, Open Opportunities) ─
+// ── RIGHT RAIL: Rotating Category Champions ───────────────────────────────────
+const RIGHT_CATEGORIES = [
+  { label: 'Top DJs',           cat: 'DJ'         },
+  { label: 'Top Comedians',     cat: 'Comedy'     },
+  { label: 'Top Dancers',       cat: 'Dance'      },
+  { label: 'Top Writers',       cat: 'Writer'     },
+  { label: 'Top Producers',     cat: 'Producer'   },
+  { label: 'Top Beatmakers',    cat: 'Beat'       },
+  { label: 'Top Venues',        cat: 'Venue'      },
+  { label: 'Top Promoters',     cat: 'Promoter'   },
+  { label: 'Top Instrumentalists', cat: 'Instrument' },
+  { label: 'Top Rappers',       cat: 'Rap'        },
+  { label: 'Top R&B Artists',   cat: 'R&B'        },
+  { label: 'Top Gospel Artists', cat: 'Gospel'    },
+];
+
+const LEFT_OPPORTUNITIES = [
+  'Seeking DJs 🎧',
+  'Seeking Comedians 😂',
+  'Seeking Dancers 💃',
+  'Seeking Writers ✍️',
+  'Seeking Venues 🏟️',
+  'Seeking Producers 🎛️',
+  'Seeking Beatmakers 🥁',
+  'Seeking Instrumentalists 🎸',
+  'Seeking Hosts 🎤',
+  'All Genres Welcome 🌐',
+];
+
+function DiscoveryAndCategoryRails({
+  topRegistry,
+  theme,
+  boardPageIndex,
+}: {
+  topRegistry: BillboardCard[];
+  theme: ReturnType<typeof getTheme>;
+  boardPageIndex: number;
+}) {
+  const [rightCatIdx, setRightCatIdx] = useState(0);
+  const [oppIdx, setOppIdx] = useState(0);
+
+  useEffect(() => {
+    const t = setInterval(() => setRightCatIdx((p) => (p + 1) % RIGHT_CATEGORIES.length), 6000);
+    return () => clearInterval(t);
+  }, []);
+
+  useEffect(() => {
+    const t = setInterval(() => setOppIdx((p) => (p + 1) % LEFT_OPPORTUNITIES.length), 3500);
+    return () => clearInterval(t);
+  }, []);
+
+  const rightCat = RIGHT_CATEGORIES[rightCatIdx]!;
+  const rightEntries = topRegistry
+    .filter((c) => c.category.toLowerCase().includes(rightCat.cat.toLowerCase()))
+    .slice(0, 6);
+
+  // New performers: last 6 in registry (simplest proxy until real signup date sorting exists)
+  const newPerformers = PERFORMER_REGISTRY.slice().reverse().slice(0, 5);
+  // Live now: any performer with isLive=true
+  const liveNow = PERFORMER_REGISTRY.filter((p) => p.isLive).slice(0, 5);
+  const currentOpp = LEFT_OPPORTUNITIES[oppIdx]!;
+
+  const railCardStyle = (accent: string): React.CSSProperties => ({
+    display: 'grid',
+    gridTemplateColumns: '44px 1fr',
+    gap: 8,
+    alignItems: 'center',
+    padding: '9px 10px',
+    borderRadius: 10,
+    background: 'rgba(5,5,16,0.72)',
+    border: `1px solid ${accent}22`,
+    backdropFilter: 'blur(10px)',
+    transition: 'border-color 0.2s, background 0.2s',
+    cursor: 'pointer',
+    textDecoration: 'none',
+    color: 'inherit',
+  });
+
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr 260px', gap: 18, marginBottom: 28, alignItems: 'start' }}>
+      {/* ── LEFT RAIL ─────────────────────────────────────────────── */}
+      <aside style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {/* Discovery Feed */}
+        <div style={{ borderRadius: 16, overflow: 'hidden', border: `1px solid rgba(0,255,136,0.2)`, background: 'linear-gradient(160deg, rgba(0,255,136,0.06), rgba(5,5,16,0.9))', padding: 14 }}>
+          <div style={{ fontSize: 9, letterSpacing: '.22em', color: '#00FF88', fontWeight: 800, marginBottom: 10 }}>🆕 NEW PERFORMERS</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+            {newPerformers.length > 0 ? newPerformers.map((p) => (
+              <Link key={p.id} href={p.profileRoute} style={railCardStyle('#00FF88')}>
+                <div style={{ width: 44, height: 52, borderRadius: 8, overflow: 'hidden', border: '1px solid rgba(0,255,136,0.25)' }}>
+                  <img src={p.profileImageUrl || '/images/tmi-placeholder.jpg'} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                </div>
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</div>
+                  <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', marginTop: 2 }}>{p.category}</div>
+                </div>
+              </Link>
+            )) : (
+              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', textAlign: 'center', padding: '12px 0' }}>No new performers yet.<br />Be the first to join.</div>
+            )}
+          </div>
+          <Link href="/performers" style={{ display: 'block', marginTop: 10, fontSize: 9, textAlign: 'center', color: '#00FF88', letterSpacing: '.12em', fontWeight: 700, textDecoration: 'none' }}>VIEW ALL PERFORMERS →</Link>
+        </div>
+
+        {/* Live Now */}
+        <div style={{ borderRadius: 16, overflow: 'hidden', border: `1px solid rgba(255,45,170,0.2)`, background: 'linear-gradient(160deg, rgba(255,45,170,0.06), rgba(5,5,16,0.9))', padding: 14 }}>
+          <div style={{ fontSize: 9, letterSpacing: '.22em', color: '#FF2DAA', fontWeight: 800, marginBottom: 10 }}>🔴 LIVE NOW</div>
+          {liveNow.length > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+              {liveNow.map((p) => (
+                <Link key={p.id} href={p.liveRoomRoute} style={railCardStyle('#FF2DAA')}>
+                  <div style={{ position: 'relative', width: 44, height: 52, borderRadius: 8, overflow: 'hidden', border: '1px solid rgba(255,45,170,0.35)' }}>
+                    <img src={p.profileImageUrl || '/images/tmi-placeholder.jpg'} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <div style={{ position: 'absolute', top: 3, right: 3, width: 7, height: 7, borderRadius: '50%', background: '#FF2DAA', animation: 'pulse 1.5s infinite' }} />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 800, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</div>
+                    <div style={{ fontSize: 9, color: '#FF2DAA', marginTop: 2, fontWeight: 700 }}>LIVE · {p.timeLive ?? ''}</div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', textAlign: 'center', padding: '12px 0' }}>No active streams right now.</div>
+          )}
+          <Link href="/live/rooms" style={{ display: 'block', marginTop: 10, fontSize: 9, textAlign: 'center', color: '#FF2DAA', letterSpacing: '.12em', fontWeight: 700, textDecoration: 'none' }}>ALL LIVE ROOMS →</Link>
+        </div>
+
+        {/* Open Opportunities — rotates every 3.5s */}
+        <div style={{ borderRadius: 16, border: '1px solid rgba(255,215,0,0.2)', background: 'linear-gradient(160deg, rgba(255,215,0,0.06), rgba(5,5,16,0.9))', padding: 14 }}>
+          <div style={{ fontSize: 9, letterSpacing: '.22em', color: '#FFD700', fontWeight: 800, marginBottom: 10 }}>📣 OPEN OPPORTUNITIES</div>
+          <div style={{ minHeight: 48, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 10, background: 'rgba(255,215,0,0.06)', border: '1px solid rgba(255,215,0,0.18)', padding: '10px 14px', transition: 'all 0.4s' }}>
+            <span style={{ fontSize: 13, fontWeight: 800, color: '#FFD700', textAlign: 'center' }}>{currentOpp}</span>
+          </div>
+          <Link href="/performers" style={{ display: 'block', marginTop: 10, fontSize: 9, textAlign: 'center', color: '#FFD700', letterSpacing: '.12em', fontWeight: 700, textDecoration: 'none' }}>JOIN THE NETWORK →</Link>
+        </div>
+      </aside>
+
+      {/* ── CENTER: Feature Spread placeholder column (content handled below) ─── */}
+      <div style={{ minHeight: 200 }} />
+
+      {/* ── RIGHT RAIL ────────────────────────────────────────────── */}
+      <aside style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ borderRadius: 16, overflow: 'hidden', border: `1px solid ${theme.accent}22`, background: `linear-gradient(160deg, ${theme.accent}07, rgba(5,5,16,0.9))`, padding: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+            <div style={{ fontSize: 9, letterSpacing: '.22em', color: theme.accent, fontWeight: 800 }}>{rightCat.label.toUpperCase()}</div>
+            <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.3)', letterSpacing: '.1em' }}>Auto cycling</div>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+            {rightEntries.length > 0 ? rightEntries.map((entry, idx) => (
+              <Link key={entry.id} href={entry.profileHref} style={railCardStyle(theme.accent)}>
+                <div style={{ width: 44, height: 52, borderRadius: 8, overflow: 'hidden', border: `1px solid ${theme.accent}25` }}>
+                  <MotionPosterPlayer
+                    isLive={entry.isLive}
+                    liveRoomRoute={undefined}
+                    introVideoUrl={entry.introVideoUrl}
+                    motionPosterUrl={entry.motionPosterUrl}
+                    staticImageUrl={entry.profileImageUrl || '/images/tmi-placeholder.jpg'}
+                    alt={entry.name}
+                    audienceCount={undefined}
+                    showLiveOverlay={false}
+                    width="100%"
+                    height="100%"
+                  />
+                </div>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <span style={{ fontFamily: 'var(--font-orbitron, monospace)', fontSize: 10, fontWeight: 900, color: theme.accent }}>#{idx + 1}</span>
+                    <span style={{ fontSize: 11, fontWeight: 800, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{entry.name}</span>
+                  </div>
+                  <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.45)', marginTop: 2 }}>{entry.category}</div>
+                </div>
+              </Link>
+            )) : (
+              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.38)', textAlign: 'center', padding: '16px 0', lineHeight: 1.6 }}>
+                Be the first {rightCat.label.replace('Top ', '')} on TMI.<br />
+                <Link href="/signup" style={{ color: theme.accent, fontWeight: 800, textDecoration: 'none', fontSize: 10 }}>Join Now →</Link>
+              </div>
+            )}
+          </div>
+          <Link href={`/performers?category=${encodeURIComponent(rightCat.cat)}`} style={{ display: 'block', marginTop: 10, fontSize: 9, textAlign: 'center', color: theme.accent, letterSpacing: '.12em', fontWeight: 700, textDecoration: 'none' }}>SEE ALL {rightCat.label.replace('Top ', '').toUpperCase()} →</Link>
+        </div>
+
+        {/* Quick links */}
+        <div style={{ borderRadius: 16, border: '1px solid rgba(170,45,255,0.2)', background: 'rgba(5,5,16,0.7)', padding: 14 }}>
+          <div style={{ fontSize: 9, letterSpacing: '.22em', color: '#AA2DFF', fontWeight: 800, marginBottom: 10 }}>🏆 QUICK LINKS</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {[
+              { label: 'Rankings', href: '/rankings', color: '#AA2DFF' },
+              { label: 'Live Battles', href: '/battles', color: '#FF2DAA' },
+              { label: 'Cyphers', href: '/cyphers', color: '#00FFFF' },
+              { label: 'Beat Marketplace', href: '/marketplace', color: '#FFD700' },
+              { label: 'Join Live Room', href: '/live/rooms', color: '#00FF88' },
+              { label: 'Advertise With Us', href: '/sponsors/advertise', color: '#FF6B35' },
+            ].map((link) => (
+              <Link key={link.href} href={link.href} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 10px', borderRadius: 8, background: `${link.color}0a`, border: `1px solid ${link.color}22`, color: link.color, textDecoration: 'none', fontSize: 11, fontWeight: 700, transition: 'background 0.2s' }}>
+                {link.label}
+                <span style={{ fontSize: 9 }}>→</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </aside>
+    </div>
+  );
+}
+
 export default function Home12Page() {
   const [catIndex, setCatIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
@@ -592,7 +797,7 @@ export default function Home12Page() {
       `}</style>
 
       <div style={{ position: 'relative', zIndex: 10 }}>
-        <SponsorRail sponsors={SEED_SPONSORS} zone="home-1-2-top" />
+        <SponsorRail sponsors={REAL_SPONSORS} zone="home-1-2-top" />
       </div>
 
       <div style={{ position: 'relative', maxWidth: 1440, margin: '0 auto', padding: '26px 24px 8px' }}>
@@ -701,6 +906,9 @@ export default function Home12Page() {
         </div>
 
         <div style={{ maxWidth: 1400, margin: '0 auto', padding: '0 24px 34px' }}>
+          {/* ── DISCOVERY + CATEGORY RAILS (Left / Right) ──────────────────────── */}
+          <DiscoveryAndCategoryRails topRegistry={topRegistry} theme={theme} boardPageIndex={boardPageIndex} />
+
           <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.22em', color: '#fff', marginBottom: 14 }}>MAGAZINE FEATURE SPREAD</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16, marginBottom: 28 }}>
             {featureSpread.map((feature) => (
