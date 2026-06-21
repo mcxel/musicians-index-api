@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { isFounderDiamondEmail } from '@/lib/promos/FounderDiamondPassEngine';
 
 /**
  * P0 identity hardening:
@@ -37,8 +38,9 @@ export async function GET(req: NextRequest) {
   const sessionId = req.cookies.get('tmi_session_id')?.value;
   const sessionToken = req.cookies.get('tmi_session')?.value;
   const role = (req.cookies.get('tmi_role')?.value ?? 'USER').toUpperCase();
-  const tier = req.cookies.get('tmi_tier')?.value ?? 'FREE';
+  const cookieTier = req.cookies.get('tmi_tier')?.value ?? 'FREE';
   const rawEmail = req.cookies.get('tmi_user_email')?.value ?? '';
+  const tier = isFounderDiamondEmail(rawEmail) ? 'DIAMOND' : cookieTier;
 
   const csrfToken = 'tmi-phase1-csrf';
 

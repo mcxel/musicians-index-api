@@ -68,6 +68,17 @@ const FOUNDER_PASSES: DiamondPassHolder[] = [
     role: "fan",
     active: true,
   },
+  {
+    email: "angelinaymoreno@yahoo.com",
+    name: "Angelina Moreno",
+    grantedBy: "Marcel Dickens — Founder",
+    grantedAt: new Date("2026-06-21"),
+    code: "DIAMOND-ANGELINA-LIFETIME",
+    tier: "diamond",
+    duration: "lifetime",
+    role: "fan",
+    active: true,
+  },
 ];
 
 let initialized = false;

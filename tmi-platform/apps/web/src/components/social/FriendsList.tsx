@@ -2,7 +2,6 @@
 
 import { useState, useCallback } from "react";
 import Link from "next/link";
-import FollowButton from "./FollowButton";
 
 export interface Friend {
   id: string;
@@ -26,6 +25,10 @@ interface FriendsListProps {
   accent?: string;
   compact?: boolean;
   showInviteButton?: boolean;
+  emptyAllLabel?: string;
+  emptyOnlineLabel?: string;
+  addActionLabel?: string;
+  addActionHref?: string;
 }
 
 const ROLE_COLORS: Record<string, string> = {
@@ -43,13 +46,22 @@ export default function FriendsList({
   accent = "#00FFFF",
   compact = false,
   showInviteButton = true,
+  emptyAllLabel = "No known fans or performers added yet.",
+  emptyOnlineLabel = "No friends online right now.",
+  addActionLabel = "+ Add",
+  addActionHref,
 }: FriendsListProps) {
   const [tab, setTab] = useState<Tab>("online");
   const [search, setSearch] = useState("");
 
-  const online  = friends.filter((f) => f.isOnline);
-  const all     = friends;
-  const display = tab === "online" ? online : tab === "all" ? all : pending;
+  const all = friends.filter((f) => {
+    const hasCoreIdentity = Boolean(f.id && f.name?.trim());
+    const hasNavigableDestination = Boolean((f.slug && f.slug.trim()) || (f.isLive && f.liveRoomId));
+    return hasCoreIdentity && hasNavigableDestination;
+  });
+  const online = all.filter((f) => f.isOnline);
+  const requestItems = pending.filter((f) => Boolean(f.id && f.name?.trim()));
+  const display = tab === "online" ? online : tab === "all" ? all : requestItems;
   const filtered = search
     ? display.filter((f) => f.name.toLowerCase().includes(search.toLowerCase()))
     : display;
@@ -72,7 +84,7 @@ export default function FriendsList({
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
         <div style={{ display: "flex", gap: 2 }}>
           {(["online", "all", "requests"] as Tab[]).map((t) => {
-            const count = t === "online" ? online.length : t === "all" ? all.length : pending.length;
+            const count = t === "online" ? online.length : t === "all" ? all.length : requestItems.length;
             return (
               <button
                 key={t}
@@ -105,7 +117,7 @@ export default function FriendsList({
       </div>
 
       {/* Search */}
-      {!compact && friends.length > 5 && (
+      {!compact && all.length > 5 && (
         <input
           type="search"
           value={search}
@@ -118,8 +130,32 @@ export default function FriendsList({
       {/* List */}
       <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
         {filtered.length === 0 ? (
-          <div style={{ padding: "20px 0", textAlign: "center", fontSize: 12, color: "rgba(255,255,255,0.2)" }}>
-            {tab === "online" ? "No friends online right now." : tab === "requests" ? "No pending requests." : "No friends yet."}
+          <div style={{ padding: "20px 0", textAlign: "center", fontSize: 12, color: "rgba(255,255,255,0.2)", display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+            <div>
+              {tab === "online" ? emptyOnlineLabel : tab === "requests" ? "No pending requests." : emptyAllLabel}
+            </div>
+            {tab !== "requests" && addActionHref && (
+              <Link
+                href={addActionHref}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  padding: "6px 10px",
+                  borderRadius: 8,
+                  border: `1px solid ${accent}44`,
+                  background: `${accent}18`,
+                  color: accent,
+                  fontSize: 10,
+                  fontWeight: 800,
+                  letterSpacing: "0.08em",
+                  textDecoration: "none",
+                  textTransform: "uppercase",
+                }}
+              >
+                {addActionLabel}
+              </Link>
+            )}
           </div>
         ) : filtered.map((f) => {
           const roleColor = ROLE_COLORS[f.role] ?? "#888";

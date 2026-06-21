@@ -71,7 +71,30 @@ export default function FanSocialRail({
         </div>
 
         {followedArtists.length === 0 ? (
-          <p style={{ fontSize: 11, color: "rgba(255,255,255,0.25)", margin: 0 }}>Not following any artists yet.</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <p style={{ fontSize: 11, color: "rgba(255,255,255,0.25)", margin: 0 }}>No favorite performers added yet.</p>
+            <Link
+              href="/performers"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: "fit-content",
+                padding: "6px 10px",
+                borderRadius: 8,
+                border: `1px solid ${ACCENT}55`,
+                background: `${ACCENT}1a`,
+                color: ACCENT,
+                fontSize: 10,
+                fontWeight: 800,
+                letterSpacing: "0.08em",
+                textDecoration: "none",
+                textTransform: "uppercase",
+              }}
+            >
+              + Add Performer
+            </Link>
+          </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {followedArtists.slice(0, 5).map((artist) => (

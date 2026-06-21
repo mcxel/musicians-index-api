@@ -6,8 +6,6 @@ import FanHubShell from "@/components/fan/FanHubShell";
 import FanRewardsRail from "@/components/fan/FanRewardsRail";
 import FanSocialRail from "@/components/fan/FanSocialRail";
 import FanWalletRail from "@/components/fan/FanWalletRail";
-import { SeasonPassProgress } from "@/components/fan/SeasonPassProgress";
-import type { UserSeasonPass, SeasonPassReward } from "@/lib/gamification/SeasonPassEngine";
 import Link from "next/link";
 import { useGamificationEngine } from "@/hooks/useGamificationEngine";
 import { TIER_COLORS, TIER_LABELS } from "@/lib/performance/FanJudgeReputationEngine";
@@ -26,54 +24,6 @@ import RecentlyVisitedRail from "@/components/presence/RecentlyVisitedRail";
 import { useWatchSession } from "@/lib/presence/WatchSessionContext";
 import HeadquartersCommunicationDock from "@/components/headquarters/HeadquartersCommunicationDock";
 import { useTmiSession } from "@/hooks/SessionContext";
-
-const SEED_BADGES = [
-  { id: "b1", label: "Season 1 OG",     icon: "🏆", earnedAt: "Jan 2026" },
-  { id: "b2", label: "10-Vote Streak",  icon: "🔥", earnedAt: "Feb 2026" },
-  { id: "b3", label: "First Tip",       icon: "💎", earnedAt: "Mar 2026" },
-  { id: "b4", label: "Cypher Watcher",  icon: "👁️", earnedAt: "Apr 2026" },
-];
-
-const SEED_REWARDS = [
-  { id: "r1", label: "Backstage Pass",       description: "1hr exclusive post-show meet",  cost: 2000, redeemRoute: "/rewards/backstage-pass",  available: true  },
-  { id: "r2", label: "Avatar Upgrade",       description: "Unlock platinum frame + glow",  cost: 800,  redeemRoute: "/rewards/avatar-upgrade",    available: true  },
-  { id: "r3", label: "Season 2 Early Access", description: "7-day early ticket window",    cost: 1500, redeemRoute: "/rewards/early-access",      available: false },
-];
-
-const SEED_VOTED_BATTLES = [
-  { id: "bv1", label: "Nova vs FlowState (Cypher)",    artistSlug: "nova-cipher", artistName: "Nova Cipher", outcome: "won"     as const, date: "May 1 2026"  },
-  { id: "bv2", label: "Ari Volt vs Mako (Freestyle)",  artistSlug: "ari-volt",    artistName: "Ari Volt",    outcome: "pending" as const, date: "May 10 2026" },
-  { id: "bv3", label: "Nova vs Phase Two (Rap)",        artistSlug: "nova-cipher", artistName: "Nova Cipher", outcome: "won"     as const, date: "Apr 28 2026" },
-];
-
-const SEED_TRANSACTIONS = [
-  { id: "t1", label: "Tip to Nova Cipher",  amount: 5.00,  type: "debit"  as const, date: "May 2 2026"  },
-  { id: "t2", label: "Watch & Earn",        amount: 2.50,  type: "credit" as const, date: "May 1 2026"  },
-  { id: "t3", label: "Battle Vote Reward",  amount: 1.00,  type: "credit" as const, date: "Apr 30 2026" },
-  { id: "t4", label: "Season Pass Bonus",   amount: 10.00, type: "credit" as const, date: "Apr 28 2026" },
-];
-
-const SEED_SEASON_PASS: UserSeasonPass = {
-  userId: "demo-fan",
-  seasonId: "season-2",
-  tier: "VIP_PASS",
-  xpEarned: 4200,    // overridden at runtime via totalXp below
-  xpGoal: 12000,
-  claimedRewardIds: ["sp-emote-1"],
-  activatedAtMs: Date.now() - 30 * 24 * 60 * 60 * 1000,
-  expiresAtMs: Date.now() + 60 * 24 * 60 * 60 * 1000,
-};
-
-const CLAIMABLE_REWARDS: SeasonPassReward[] = [
-  { id: "sp-avatar-1", title: "Gold VIP Skin", description: "Gold avatar skin for the season", requiredTier: "VIP_PASS", xpThreshold: 1000, type: "avatar_skin", claimable: true },
-  { id: "sp-credit-1", title: "$10 TMI Store Credit", description: "Spend anywhere in the TMI store", requiredTier: "FAN_PASS", xpThreshold: 1500, type: "store_credit", claimable: true },
-];
-
-const COLLECTIBLES = [
-  { id: "c1", title: "Nova Cipher S1 Card",    rarity: "Legendary", route: "/collectibles/nova-cipher-s1-card",   accent: "#f59e0b" },
-  { id: "c2", title: "Cypher Arena Mint #003", rarity: "Rare",      route: "/collectibles/cypher-arena-mint-003", accent: "#a78bfa" },
-  { id: "c3", title: "FlowState Battle Clip",  rarity: "Common",    route: "/collectibles/flowstate-battle-clip", accent: "#06b6d4" },
-];
 
 const MAGAZINE_ARTICLES = [
   { title: "Nova Cipher: The 8-Streak Story",  route: "/magazine/articles/nova-cipher-rise",  thumb: "🎤" },
@@ -99,13 +49,6 @@ const CYPHER_WATCHLIST: Array<{ title: string; status: "live" | "soon" | "replay
   { title: "Open Cypher",                 status: "live",   viewers: null, route: "/cypher/live"       },
   { title: "Cypher Stage",                status: "soon",   viewers: null, route: "/cypher/stage"      },
   { title: "Cypher Lobby Wall",           status: "replay", viewers: null, route: "/cypher/lobby-wall" },
-];
-
-const QUESTS = [
-  { label: "Watch 3 Lives this week",   progress: 2, max: 3, reward: "250 pts",      accent: "#06b6d4" },
-  { label: "Vote in 5 battles",         progress: 3, max: 5, reward: "500 pts",      accent: "#a78bfa" },
-  { label: "Send a tip to a performer", progress: 1, max: 1, reward: "Badge",        accent: "#22c55e" },
-  { label: "Invite a friend to TMI",    progress: 0, max: 1, reward: "Backstage Access", accent: "#f59e0b" },
 ];
 
 interface FeaturedLive {
@@ -207,9 +150,9 @@ export default function FanHubPage() {
       <FanHubShell
         fanSlug={fanId}
         displayName={fanDisplayName}
-        tier="gold-platinum"
-        tagline="Gold tier member · 3 seasons · TMI OG"
-        startingPoints={totalXp || 4200}
+        tier="free"
+        tagline="Live network member"
+        startingPoints={totalXp}
       />
 
       {/* Extended Hub Sections */}
@@ -267,7 +210,17 @@ export default function FanHubPage() {
 
             <div style={{ background: '#0f0f1a', border: '1px solid #00FFFF33', borderRadius: 12, padding: 14 }}>
               <SectionLabel>Favorite Performers</SectionLabel>
-              <FriendsList friends={followingFriends} accent="#00FFFF" compact showInviteButton onInvite={() => { window.location.href = "/messages/new?subject=invite"; }} />
+              <FriendsList
+                friends={followingFriends}
+                accent="#00FFFF"
+                compact
+                showInviteButton
+                onInvite={() => { window.location.href = "/messages/new?subject=invite"; }}
+                emptyAllLabel="No favorite performers added yet."
+                emptyOnlineLabel="No favorite performers online right now."
+                addActionLabel="+ Add Performer"
+                addActionHref="/performers"
+              />
             </div>
           </div>
 
@@ -350,22 +303,19 @@ export default function FanHubPage() {
         {/* Season Pass Progress */}
         <section style={{ marginBottom: 32 }}>
           <SectionLabel>Season Pass</SectionLabel>
-          <SeasonPassProgress pass={{ ...SEED_SEASON_PASS, xpEarned: totalXp || SEED_SEASON_PASS.xpEarned }} claimableRewards={CLAIMABLE_REWARDS} />
+          <div style={{ background: "rgba(2,6,23,0.9)", border: "1px solid rgba(51,65,85,0.6)", borderRadius: 14, padding: "24px", color: "#94a3b8" }}>
+            <div style={{ fontSize: 12, marginBottom: 8 }}>Season pass activity is not available on this surface yet.</div>
+            <Link href="/season-pass" style={{ fontSize: 11, color: "#FFD700", textDecoration: "none", fontWeight: 700 }}>Open Season Pass →</Link>
+          </div>
         </section>
 
         {/* Collectible Showcase */}
         <section style={{ marginBottom: 32 }}>
           <SectionLabel>Collectibles</SectionLabel>
           <div style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 8 }}>
-            {COLLECTIBLES.map(c => (
-              <Link key={c.id} href={c.route} style={{ textDecoration: "none", flexShrink: 0 }}>
-                <div style={{ width: 160, background: "#0f0f1a", border: `1px solid ${c.accent}55`, borderRadius: 12, padding: "16px 14px", textAlign: "center" }}>
-                  <div style={{ fontSize: 32, marginBottom: 8 }}>🎴</div>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: "#e2e8f0" }}>{c.title}</div>
-                  <div style={{ fontSize: 10, color: c.accent, marginTop: 4, fontWeight: 600 }}>{c.rarity}</div>
-                </div>
-              </Link>
-            ))}
+            <div style={{ width: 220, background: "#0f0f1a", border: "1px solid #1e1e3a", borderRadius: 12, padding: "16px 14px", textAlign: "center" }}>
+              <div style={{ fontSize: 12, color: "#94a3b8" }}>No collectibles earned yet.</div>
+            </div>
             <Link href="/collectibles" style={{ textDecoration: "none", flexShrink: 0 }}>
               <div style={{ width: 140, background: "#0f0f1a", border: "1px solid #1e1e3a", borderRadius: 12, padding: "16px 14px", textAlign: "center", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", minHeight: 120 }}>
                 <div style={{ fontSize: 24, marginBottom: 8 }}>+</div>
@@ -378,19 +328,8 @@ export default function FanHubPage() {
         {/* Active Quests */}
         <section style={{ marginBottom: 32 }}>
           <SectionLabel>Active Quests</SectionLabel>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 12 }}>
-            {QUESTS.map(quest => (
-              <div key={quest.label} style={{ background: "#0f0f1a", border: `1px solid ${quest.accent}33`, borderRadius: 12, padding: "14px 16px" }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: "#e2e8f0", marginBottom: 8 }}>{quest.label}</div>
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                  <span style={{ fontSize: 11, color: "#64748b" }}>{quest.progress}/{quest.max}</span>
-                  <span style={{ fontSize: 11, color: quest.accent, fontWeight: 700 }}>{quest.reward}</span>
-                </div>
-                <div style={{ background: "#1a1a2e", borderRadius: 4, height: 6, overflow: "hidden" }}>
-                  <div style={{ width: `${Math.min(100, (quest.progress / quest.max) * 100)}%`, height: "100%", background: quest.accent }} />
-                </div>
-              </div>
-            ))}
+          <div style={{ background: "#0f0f1a", border: "1px solid #1e1e3a", borderRadius: 12, padding: "16px" }}>
+            <div style={{ fontSize: 12, color: "#94a3b8" }}>No active quests available yet.</div>
           </div>
         </section>
 
@@ -417,7 +356,7 @@ export default function FanHubPage() {
         {/* Performer Favorites + Vote History */}
         <FanSocialRail
           followedArtists={followingFriends.map((f) => ({ slug: f.slug, displayName: f.name }))}
-          votedBattles={SEED_VOTED_BATTLES}
+          votedBattles={[]}
           fanSlug={fanId}
         />
 
@@ -498,10 +437,10 @@ export default function FanHubPage() {
         </section>
 
         {/* Loyalty Rewards */}
-        <FanRewardsRail badges={SEED_BADGES} rewards={SEED_REWARDS} currentStreak={7} totalVotesCast={34} fanSlug={fanId} />
+        <FanRewardsRail badges={[]} rewards={[]} currentStreak={0} totalVotesCast={0} fanSlug={fanId} />
 
         {/* Wallet */}
-        <FanWalletRail tipBalance={walletCredits / 100} voteCredits={currentLevel.level * 3} transactions={SEED_TRANSACTIONS} fanSlug={fanId} />
+        <FanWalletRail tipBalance={walletCredits / 100} voteCredits={currentLevel.level * 3} transactions={[]} fanSlug={fanId} />
 
       </div>
 

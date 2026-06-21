@@ -9,6 +9,7 @@ import { sendEmail } from '@/lib/email/TMIEmailSystem';
 import { DiamondInviteEngine } from '@/lib/auth/DiamondInviteEngine';
 import { checkRateLimit, validateSignupEmail } from '@/lib/security/TMISecurityEngine';
 import { emitAdminLiveEvent } from '@/lib/admin/AdminLiveEventEngine';
+import { isFounderDiamondEmail } from '@/lib/promos/FounderDiamondPassEngine';
 
 const COOKIE_OPTS = {
   httpOnly: true,
@@ -72,13 +73,15 @@ export async function POST(req: NextRequest) {
 
     const hashedPassword = await hash(password, 10);
 
+    const resolvedTier = isFounderDiamondEmail(email) ? 'DIAMOND' : 'FREE';
+
     const user = await prisma.user.create({
       data: {
         email,
         passwordHash: hashedPassword,
         displayName: displayName || email.split('@')[0],
         role: platformRole === '' ? 'USER' : (platformRole.toUpperCase() as any),
-        tier: 'FREE'
+        tier: resolvedTier
       }
     });
 
@@ -176,7 +179,7 @@ export async function POST(req: NextRequest) {
     response.cookies.set('tmi_session_id', sessionId, COOKIE_OPTS);
     response.cookies.set('tmi_session', sessionToken, COOKIE_OPTS);
     response.cookies.set('tmi_role', user.role, COOKIE_OPTS);
-    response.cookies.set('tmi_tier', user.tier, COOKIE_OPTS);
+    response.cookies.set('tmi_tier', resolvedTier, COOKIE_OPTS);
     response.cookies.set('tmi_user_email', email, {
       httpOnly: false,
       secure: process.env.NODE_ENV === 'production',
