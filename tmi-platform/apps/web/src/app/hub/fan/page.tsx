@@ -24,6 +24,8 @@ import PlaylistArtifact from "@/components/artifacts/PlaylistArtifact";
 import InboxPanel from "@/components/messaging/InboxPanel";
 import RecentlyVisitedRail from "@/components/presence/RecentlyVisitedRail";
 import { useWatchSession } from "@/lib/presence/WatchSessionContext";
+import HeadquartersCommunicationDock from "@/components/headquarters/HeadquartersCommunicationDock";
+import { useTmiSession } from "@/hooks/SessionContext";
 
 const SEED_BADGES = [
   { id: "b1", label: "Season 1 OG",     icon: "🏆", earnedAt: "Jan 2026" },
@@ -36,13 +38,6 @@ const SEED_REWARDS = [
   { id: "r1", label: "Backstage Pass",       description: "1hr exclusive post-show meet",  cost: 2000, redeemRoute: "/rewards/backstage-pass",  available: true  },
   { id: "r2", label: "Avatar Upgrade",       description: "Unlock platinum frame + glow",  cost: 800,  redeemRoute: "/rewards/avatar-upgrade",    available: true  },
   { id: "r3", label: "Season 2 Early Access", description: "7-day early ticket window",    cost: 1500, redeemRoute: "/rewards/early-access",      available: false },
-];
-
-const SEED_ARTISTS = [
-  { slug: "nova-cipher",  displayName: "Nova Cipher",  rank: 1, accentColor: "#06b6d4" },
-  { slug: "ari-volt",     displayName: "Ari Volt",     rank: 3, accentColor: "#a78bfa" },
-  { slug: "flowstate-j",  displayName: "FlowState.J",  rank: 5, accentColor: "#f59e0b" },
-  { slug: "yung-mako",    displayName: "Yung Mako",    rank: 9, accentColor: "#ec4899" },
 ];
 
 const SEED_VOTED_BATTLES = [
@@ -95,15 +90,15 @@ const BACKSTAGE_UNLOCKS = [
 ];
 
 const UPCOMING_SHOWS = [
-  { label: "Nova Cipher LIVE",       time: "Tonight · 9:00 PM ET", route: "/shows/nova-cipher-live",  accent: "#06b6d4" },
-  { label: "Cypher Arena Open",      time: "May 12 · 7:00 PM ET",  route: "/shows/cypher-arena-open", accent: "#a78bfa" },
-  { label: "Season 2 Finals",        time: "May 20 · 8:00 PM ET",  route: "/shows/season-2-finals",   accent: "#f59e0b" },
+  { label: "Monday Night Stage",     time: "Tonight · 9:00 PM ET", route: "/shows/monday-night-stage", accent: "#06b6d4" },
+  { label: "Monthly Idol",           time: "This Week",            route: "/shows/monthly-idol",       accent: "#a78bfa" },
+  { label: "Today\'s Shows",          time: "Now Streaming",        route: "/shows/today",              accent: "#f59e0b" },
 ];
 
-const CYPHER_WATCHLIST = [
-  { title: "Open Cypher — Fri Night",     status: "live",   viewers: 1240, route: "/cypher/open-fri-night"   },
-  { title: "TMI Season 2 Qualifier",      status: "soon",   viewers: 870,  route: "/cypher/s2-qualifier"     },
-  { title: "Freestyle Underground Vol 7", status: "replay", viewers: 6100, route: "/cypher/underground-vol7" },
+const CYPHER_WATCHLIST: Array<{ title: string; status: "live" | "soon" | "replay"; viewers: number | null; route: string }> = [
+  { title: "Open Cypher",                 status: "live",   viewers: null, route: "/cypher/live"       },
+  { title: "Cypher Stage",                status: "soon",   viewers: null, route: "/cypher/stage"      },
+  { title: "Cypher Lobby Wall",           status: "replay", viewers: null, route: "/cypher/lobby-wall" },
 ];
 
 const QUESTS = [
@@ -135,10 +130,17 @@ export default function FanHubPage() {
   const [featuredLive, setFeaturedLive] = useState<FeaturedLive | null>(null);
   const { current: nowPlaying } = useWatchSession();
 
+  // Real authenticated user — this page was previously hardcoded to "demo-fan"
+  // everywhere regardless of who was actually logged in, meaning every fan
+  // saw the exact same hub. useTmiSession() already fetches /api/auth/me and
+  // is mounted globally; "guest_user" is its own built-in unauthenticated
+  // fallback, not a new fabrication.
+  const { userId: fanId, userName: fanDisplayName } = useTmiSession();
+
   // Real follow relationships (FollowEngine) mapped through PerformerRegistry
   // for display data — replaces a hardcoded friends={[]} that never showed
   // anyone real regardless of who the fan actually followed.
-  const followingFriends: Friend[] = listFollowingForUser("demo-fan")
+  const followingFriends: Friend[] = listFollowingForUser(fanId)
     .map((id) => getPerformerById(id))
     .filter((p): p is NonNullable<typeof p> => Boolean(p))
     .map((p) => ({
@@ -197,10 +199,14 @@ export default function FanHubPage() {
         </div>
       </div>
 
-      {/* Primary Hub Shell — live stage, avatar, reactions, tip, playlist, HUD */}
+      {/* Primary Hub Shell — live stage, avatar, reactions, tip, playlist, HUD.
+          tier/tagline are still hardcoded — useTmiSession()'s economyState is a
+          local default, not real subscription-tier data from /api/auth/me;
+          fixing that means extending the globally-shared SessionContext
+          (used platform-wide), which is its own separate task, not a one-file fix. */}
       <FanHubShell
-        fanSlug="demo-fan"
-        displayName="Fan"
+        fanSlug={fanId}
+        displayName={fanDisplayName}
         tier="gold-platinum"
         tagline="Gold tier member · 3 seasons · TMI OG"
         startingPoints={totalXp || 4200}
@@ -271,7 +277,7 @@ export default function FanHubPage() {
           <div style={{ background: 'linear-gradient(160deg, rgba(255,215,0,0.05), #0f0f1a)', border: '1px solid #FFD70044', borderRadius: 16, padding: 20 }}>
             <div style={{ fontSize: 13, fontWeight: 900, letterSpacing: '0.1em', color: '#FFD700', marginBottom: 4 }}>🖼️ MEMORY WALL</div>
             <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', marginBottom: 16 }}>Your entertainment history — shows attended, clips saved, moments captured.</div>
-            <MemoryWall accentColor="#FFD700" title="" entityId="demo-fan" entityType="fan" />
+            <MemoryWall accentColor="#FFD700" title="" entityId={fanId} entityType="fan" />
           </div>
 
           {/* ── RIGHT — Active Utility: now playing, messages, upcoming shows ── */}
@@ -284,12 +290,12 @@ export default function FanHubPage() {
                   <div style={{ fontSize: 10, color: nowPlaying.accentColor }}>▶ Return to Show</div>
                 </Link>
               ) : (
-                <PlaylistArtifact artifactId="demo-fan-playlist" skin="submarine" title="My Playlist" />
+                <PlaylistArtifact artifactId={`${fanId}-playlist`} skin="submarine" title="My Playlist" />
               )}
             </div>
 
             <CollapsibleCanister icon="💬" label="Messages" accentColor="#00FFFF" defaultOpen>
-              <InboxPanel currentUser={{ userId: "demo-fan", displayName: "Fan", avatarUrl: "", role: "fan" }} />
+              <InboxPanel currentUser={{ userId: fanId, displayName: fanDisplayName, avatarUrl: "", role: "fan" }} />
             </CollapsibleCanister>
 
             <div style={{ background: '#0f0f1a', border: '1px solid #AA2DFF33', borderRadius: 12, padding: 14 }}>
@@ -399,7 +405,9 @@ export default function FanHubPage() {
                     {cypher.status.toUpperCase()}
                   </div>
                   <div style={{ fontSize: 13, fontWeight: 700, color: "#e2e8f0", marginBottom: 4 }}>{cypher.title}</div>
-                  <div style={{ fontSize: 11, color: "#64748b" }}>{cypher.viewers.toLocaleString()} viewers</div>
+                  <div style={{ fontSize: 11, color: "#64748b" }}>
+                    {typeof cypher.viewers === "number" ? `${cypher.viewers.toLocaleString()} viewers` : "Viewer count available in room"}
+                  </div>
                 </div>
               </Link>
             ))}
@@ -407,7 +415,11 @@ export default function FanHubPage() {
         </section>
 
         {/* Performer Favorites + Vote History */}
-        <FanSocialRail followedArtists={SEED_ARTISTS} votedBattles={SEED_VOTED_BATTLES} fanSlug="demo-fan" />
+        <FanSocialRail
+          followedArtists={followingFriends.map((f) => ({ slug: f.slug, displayName: f.name }))}
+          votedBattles={SEED_VOTED_BATTLES}
+          fanSlug={fanId}
+        />
 
         {/* Magazine Wall */}
         <section style={{ marginBottom: 32 }}>
@@ -445,17 +457,25 @@ export default function FanHubPage() {
           </div>
         </section>
 
-        {/* Judge Reputation */}
+        {/* Judge Reputation — FanJudgeReputationEngine has the same gap as the
+            messaging system (PlatformCertificationLedger.md): it's a real
+            engine but stores in an in-memory Map with no API route exposing
+            it to client components, so it can't be called from here yet.
+            Previously this showed a fabricated "TRUSTED" tier with invented
+            34 votes/71%/streak numbers for every fan regardless of real
+            activity. Showing the engine's own real zero-state default
+            (getJudgeProfile's fallback: ROOKIE, 0 votes, 0 streak) instead
+            of fake numbers, until a /api/judge/profile route exists. */}
         <section style={{ marginBottom: 32 }}>
           <SectionLabel>Judge Reputation</SectionLabel>
           <div style={{ background: "#0f0f1a", border: "1px solid #FFD70033", borderRadius: 14, padding: "20px 24px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 20 }}>
               <div style={{ fontSize: 40 }}>⚖️</div>
               <div>
-                <div style={{ fontSize: 12, color: TIER_COLORS["TRUSTED"], fontWeight: 800, letterSpacing: 2 }}>
-                  {TIER_LABELS["TRUSTED"]}
+                <div style={{ fontSize: 12, color: TIER_COLORS["ROOKIE"], fontWeight: 800, letterSpacing: 2 }}>
+                  {TIER_LABELS["ROOKIE"]}
                 </div>
-                <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>Vote weight: 1.2× — your votes count more</div>
+                <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>Cast your first battle vote to start building reputation.</div>
               </div>
               <Link href="/battles/judge" style={{ marginLeft: "auto", fontSize: 10, color: "#FFD700", textDecoration: "none", border: "1px solid #FFD70033", borderRadius: 6, padding: "6px 12px", fontWeight: 700 }}>
                 JUDGE LEADERBOARD →
@@ -463,10 +483,10 @@ export default function FanHubPage() {
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 12 }}>
               {[
-                { label: "Votes Cast",  val: "34",  color: "#00FFFF" },
-                { label: "Accuracy",    val: "71%", color: "#00FF88" },
-                { label: "Streak",      val: "4",   color: "#FFD700" },
-                { label: "Best Streak", val: "7",   color: "#FF2DAA" },
+                { label: "Votes Cast",  val: "0",  color: "#00FFFF" },
+                { label: "Accuracy",    val: "—",  color: "#00FF88" },
+                { label: "Streak",      val: "0",  color: "#FFD700" },
+                { label: "Best Streak", val: "0",  color: "#FF2DAA" },
               ].map(stat => (
                 <div key={stat.label} style={{ background: "#07071a", borderRadius: 10, padding: "12px 14px", border: "1px solid #1e1e3a" }}>
                   <div style={{ fontSize: 20, fontWeight: 900, color: stat.color }}>{stat.val}</div>
@@ -478,12 +498,21 @@ export default function FanHubPage() {
         </section>
 
         {/* Loyalty Rewards */}
-        <FanRewardsRail badges={SEED_BADGES} rewards={SEED_REWARDS} currentStreak={7} totalVotesCast={34} fanSlug="demo-fan" />
+        <FanRewardsRail badges={SEED_BADGES} rewards={SEED_REWARDS} currentStreak={7} totalVotesCast={34} fanSlug={fanId} />
 
         {/* Wallet */}
-        <FanWalletRail tipBalance={walletCredits / 100} voteCredits={currentLevel.level * 3} transactions={SEED_TRANSACTIONS} fanSlug="demo-fan" />
+        <FanWalletRail tipBalance={walletCredits / 100} voteCredits={currentLevel.level * 3} transactions={SEED_TRANSACTIONS} fanSlug={fanId} />
 
       </div>
+
+      <HeadquartersCommunicationDock
+        currentUser={{
+          userId: fanId,
+          displayName: fanDisplayName,
+          role: "fan",
+        }}
+        accentColor="#FF2DAA"
+      />
     </div>
   );
 }
