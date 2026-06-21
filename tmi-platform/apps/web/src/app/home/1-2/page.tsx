@@ -2,36 +2,42 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { LobbyEntryFlow, type UniversalRoom } from '@/components/room/UniversalLobbyEntry';
 import { getLatestEditorialArticles } from '@/lib/editorial/NewsArticleModel';
 import { fetchTrendingArtists, type TrendingArtist } from '@/lib/api/homepage';
 import SponsorRail from '@/components/sponsors/SponsorRail';
 import EventReel from '@/components/events/EventReel';
-import BillboardLiveWall from '@/components/media/BillboardLiveWall';
-import { getPerformerById } from '@/lib/performers/PerformerRegistry';
+import { getPerformerById, getTopPerformers } from '@/lib/performers/PerformerRegistry';
 import MotionPosterPlayer from '@/components/media/MotionPosterPlayer';
 import UnifiedAdSlot from '@/components/ads/UnifiedAdSlot';
 import DiscoveryRail from '@/components/discovery/DiscoveryRail';
 
 const SEED_SPONSORS = [
-  { id: 'amplify',   name: 'AMPLIFY RECORDS',     tagline: 'Platinum Partner' },
-  { id: 'beatlab',   name: 'BEATLAB STUDIOS',      tagline: 'Gold Partner'    },
-  { id: 'velocity',  name: 'VELOCITY AUDIO',       tagline: 'Gold Partner'    },
-  { id: 'nova',      name: 'NOVA MEDIA GROUP',     tagline: 'Silver Partner'  },
-  { id: 'crown',     name: 'CROWN & CO.',          tagline: ''                },
-  { id: 'frequency', name: 'FREQUENCY LABS',       tagline: ''                },
-  { id: 'vault',     name: 'THE VAULT COLLECTIVE', tagline: ''                },
-  { id: 'sonic',     name: 'SONIC AXIS',           tagline: ''                },
+  { id: 'amplify', name: 'AMPLIFY RECORDS', tagline: 'Platinum Partner' },
+  { id: 'beatlab', name: 'BEATLAB STUDIOS', tagline: 'Gold Partner' },
+  { id: 'velocity', name: 'VELOCITY AUDIO', tagline: 'Gold Partner' },
+  { id: 'nova', name: 'NOVA MEDIA GROUP', tagline: 'Silver Partner' },
+  { id: 'crown', name: 'CROWN & CO.', tagline: '' },
+  { id: 'frequency', name: 'FREQUENCY LABS', tagline: '' },
+  { id: 'vault', name: 'THE VAULT COLLECTIVE', tagline: '' },
+  { id: 'sonic', name: 'SONIC AXIS', tagline: '' },
 ];
 
-const CATEGORIES = [
-  'Hip Hop','R&B','Pop','EDM','Gospel','Rap','Soul','Funk','Jazz','Blues',
-  'Rock','Metal','Latin','Reggae','Afrobeats','Dancehall','Country','Folk',
-  'Indie','Alternative','Classical','Opera','Spoken Word','Poetry Slam',
-  'Stand-Up Comedy','Improv Comedy','Sketch Comedy','Dance Crews','Ballet',
-  'Hip Hop Dance','Popping/Locking','Breakdance','DJs','Turntablists',
-  'Beat Producers','Instrumentalists','Bands','Groups','A Cappella','Choirs',
-  'Magicians','Actors','Spoken Artists','Venues','Promoters',
+const GENRE_FILTERS = [
+  'Hip Hop', 'R&B', 'Pop', 'EDM', 'Gospel', 'Country', 'Rock', 'Jazz', 'Blues', 'Reggae', 'Latin',
+  'Afrobeat', 'Dancehall', 'Classical', 'Folk', 'Indie', 'Alternative',
+];
+
+const PERFORMANCE_CATEGORIES = [
+  'Vocalists', 'Singers', 'Rappers', 'DJs', 'Producers', 'Beatmakers', 'Songwriters', 'Writers',
+  'Comedians', 'Dancers', 'Actors', 'Magicians', 'Spoken Word', 'Poets', 'Bands', 'Choirs',
+  'Instrumentalists', 'Hosts', 'Venues', 'Promoters', 'Advertisers',
+];
+
+const GLOBAL_INSTRUMENT_INDEX = [
+  'Guitar', 'Bass', 'Drums', 'Piano', 'Keyboard', 'Violin', 'Viola', 'Cello', 'Harp', 'Flute',
+  'Clarinet', 'Oboe', 'Bassoon', 'Saxophone', 'Trumpet', 'Trombone', 'French Horn', 'Tuba',
+  'Banjo', 'Mandolin', 'Ukulele', 'Accordion', 'Harmonica', 'Percussion', 'Turntables',
+  'Beat Production', 'Electronic Music',
 ];
 
 const CAT_THEMES = [
@@ -42,167 +48,410 @@ const CAT_THEMES = [
   { accent: '#00FF88', glow: '#00FF8844', badge: '#FF2DAA' },
 ];
 
-function getTheme(catIndex: number) {
-  return CAT_THEMES[catIndex % CAT_THEMES.length]!;
-}
+const GENRE_PERSONALITY: Record<string, {
+  accent: string;
+  glow: string;
+  badge: string;
+  surface: string;
+  spotlight: string;
+}> = {
+  'Hip Hop': { accent: '#FFD700', glow: '#FF2DAA66', badge: '#FF2DAA', surface: 'linear-gradient(135deg, rgba(255,215,0,0.22), rgba(255,45,170,0.12) 55%, rgba(5,5,16,0.96))', spotlight: 'radial-gradient(circle at top left, rgba(255,215,0,0.22), transparent 55%)' },
+  'R&B': { accent: '#FF2DAA', glow: '#FFD70055', badge: '#FFD700', surface: 'linear-gradient(135deg, rgba(255,45,170,0.24), rgba(255,215,0,0.12) 60%, rgba(5,5,16,0.96))', spotlight: 'radial-gradient(circle at top left, rgba(255,45,170,0.22), transparent 55%)' },
+  Pop: { accent: '#00FFFF', glow: '#FF2DAA55', badge: '#FFD700', surface: 'linear-gradient(135deg, rgba(0,255,255,0.18), rgba(255,45,170,0.1) 55%, rgba(5,5,16,0.96))', spotlight: 'radial-gradient(circle at top left, rgba(0,255,255,0.22), transparent 55%)' },
+  EDM: { accent: '#00FFFF', glow: '#AA2DFF66', badge: '#AA2DFF', surface: 'linear-gradient(135deg, rgba(0,255,255,0.18), rgba(170,45,255,0.14) 58%, rgba(5,5,16,0.96))', spotlight: 'radial-gradient(circle at top left, rgba(0,255,255,0.24), transparent 55%)' },
+  Gospel: { accent: '#FFD700', glow: '#00FFFF44', badge: '#00FFFF', surface: 'linear-gradient(135deg, rgba(255,215,0,0.18), rgba(0,255,255,0.1) 60%, rgba(5,5,16,0.96))', spotlight: 'radial-gradient(circle at top left, rgba(255,215,0,0.2), transparent 55%)' },
+  Country: { accent: '#FFB347', glow: '#8B5A2B66', badge: '#8B5A2B', surface: 'linear-gradient(135deg, rgba(255,179,71,0.18), rgba(139,90,43,0.15) 58%, rgba(5,5,16,0.96))', spotlight: 'radial-gradient(circle at top left, rgba(255,179,71,0.2), transparent 55%)' },
+  Rock: { accent: '#FF4D4D', glow: '#00000088', badge: '#AA2DFF', surface: 'linear-gradient(135deg, rgba(255,77,77,0.18), rgba(0,0,0,0.32) 58%, rgba(5,5,16,0.98))', spotlight: 'radial-gradient(circle at top left, rgba(255,77,77,0.22), transparent 55%)' },
+  Jazz: { accent: '#3FA7FF', glow: '#FFD70055', badge: '#FFD700', surface: 'linear-gradient(135deg, rgba(63,167,255,0.18), rgba(255,215,0,0.12) 58%, rgba(5,5,16,0.96))', spotlight: 'radial-gradient(circle at top left, rgba(63,167,255,0.22), transparent 55%)' },
+  Blues: { accent: '#4D7CFE', glow: '#00FFFF44', badge: '#00FFFF', surface: 'linear-gradient(135deg, rgba(77,124,254,0.18), rgba(0,255,255,0.1) 58%, rgba(5,5,16,0.96))', spotlight: 'radial-gradient(circle at top left, rgba(77,124,254,0.22), transparent 55%)' },
+  Reggae: { accent: '#00FF88', glow: '#FFD70055', badge: '#FFD700', surface: 'linear-gradient(135deg, rgba(0,255,136,0.2), rgba(255,215,0,0.12) 58%, rgba(5,5,16,0.96))', spotlight: 'radial-gradient(circle at top left, rgba(0,255,136,0.24), transparent 55%)' },
+  Latin: { accent: '#FF6B35', glow: '#FFD70055', badge: '#FFD700', surface: 'linear-gradient(135deg, rgba(255,107,53,0.22), rgba(255,215,0,0.1) 58%, rgba(5,5,16,0.96))', spotlight: 'radial-gradient(circle at top left, rgba(255,107,53,0.24), transparent 55%)' },
+  Afrobeat: { accent: '#FFD700', glow: '#00FF8844', badge: '#00FF88', surface: 'linear-gradient(135deg, rgba(255,215,0,0.2), rgba(0,255,136,0.12) 58%, rgba(5,5,16,0.96))', spotlight: 'radial-gradient(circle at top left, rgba(255,215,0,0.24), transparent 55%)' },
+  Dancehall: { accent: '#00FF88', glow: '#FF2DAA55', badge: '#FF2DAA', surface: 'linear-gradient(135deg, rgba(0,255,136,0.18), rgba(255,45,170,0.12) 58%, rgba(5,5,16,0.96))', spotlight: 'radial-gradient(circle at top left, rgba(0,255,136,0.24), transparent 55%)' },
+  Classical: { accent: '#D4AF37', glow: '#F8F4E366', badge: '#F8F4E3', surface: 'linear-gradient(135deg, rgba(212,175,55,0.18), rgba(248,244,227,0.18) 58%, rgba(5,5,16,0.96))', spotlight: 'radial-gradient(circle at top left, rgba(248,244,227,0.22), transparent 55%)' },
+  Folk: { accent: '#C08457', glow: '#FFD7A855', badge: '#FFD7A8', surface: 'linear-gradient(135deg, rgba(192,132,87,0.18), rgba(255,215,168,0.14) 58%, rgba(5,5,16,0.96))', spotlight: 'radial-gradient(circle at top left, rgba(255,215,168,0.2), transparent 55%)' },
+  Indie: { accent: '#9B5DE5', glow: '#00FFFF44', badge: '#00FFFF', surface: 'linear-gradient(135deg, rgba(155,93,229,0.18), rgba(0,255,255,0.1) 58%, rgba(5,5,16,0.96))', spotlight: 'radial-gradient(circle at top left, rgba(155,93,229,0.2), transparent 55%)' },
+  Alternative: { accent: '#AA2DFF', glow: '#FF4D4D55', badge: '#FF4D4D', surface: 'linear-gradient(135deg, rgba(170,45,255,0.18), rgba(255,77,77,0.1) 58%, rgba(5,5,16,0.96))', spotlight: 'radial-gradient(circle at top left, rgba(170,45,255,0.22), transparent 55%)' },
+};
 
 type BillboardCard = {
-  id: string; name: string; profileImageUrl: string; city: string;
-  countryName: string; flag: string; category: string; rank: number;
-  fanCount: number; likes: number; isLive: boolean; tier: string;
-  audienceCount: number; timeLive: string;
-  // Rule 2: Motion Poster chain
+  id: string;
+  name: string;
+  profileImageUrl: string;
+  category: string;
+  rank: number;
+  xp: number | null;
+  votes: number | null;
+  audience: number | null;
+  tips: number | null;
+  engagement: number | null;
+  challengesWon: number | null;
+  battlesWon: number | null;
+  cyphersWon: number | null;
+  achievements: number | null;
+  isLive: boolean;
+  tier: string;
+  profileHref: string;
   introVideoUrl?: string;
   motionPosterUrl?: string;
 };
 
-const FALLBACK_NAMES = [
-  'Nova Cipher','Verse.XL','FlowState.J','Ari Volt','Punchline.K',
-  'BarGod.T','Vocab.X','Ray Journey','DJ Apex','Lyric.M','SoulFire','Echo.Prime',
-];
+type DisplayTheme = {
+  accent: string;
+  glow: string;
+  badge: string;
+  surface?: string;
+  spotlight?: string;
+};
 
-const CITIES = [
-  { city: 'Atlanta, GA', country: 'United States', flag: '🇺🇸' },
-  { city: 'London, UK',  country: 'United Kingdom', flag: '🇬🇧' },
-  { city: 'Tokyo, JP',   country: 'Japan',          flag: '🇯🇵' },
-  { city: 'Los Angeles', country: 'United States',  flag: '🇺🇸' },
-  { city: 'Toronto, CA', country: 'Canada',         flag: '🇨🇦' },
-  { city: 'Lagos, NG',   country: 'Nigeria',        flag: '🇳🇬' },
-  { city: 'Paris, FR',   country: 'France',         flag: '🇫🇷' },
-  { city: 'Miami, FL',   country: 'United States',  flag: '🇺🇸' },
-];
+type BoardView = {
+  label: string;
+  entries: BillboardCard[];
+};
 
-const TIERS = ['RUBY','Silver','Gold','Platinum','Diamond'];
+type InstrumentFeature = {
+  label: string;
+  topRanked: BillboardCard | null;
+  risingStar: BillboardCard | null;
+  mostActive: BillboardCard | null;
+};
 
-const buildFallback = (category: string): BillboardCard[] =>
-  Array.from({ length: 12 }).map((_, i) => {
-    const loc = CITIES[i % CITIES.length]!;
-    return {
-      id: `${category.replace(/\s+/g, '-').toLowerCase()}-${i}`,
-      name: FALLBACK_NAMES[i % FALLBACK_NAMES.length]!,
-      profileImageUrl: `https://i.pravatar.cc/400?u=${encodeURIComponent(category)}-${i}`,
-      city: loc.city, countryName: loc.country, flag: loc.flag, category,
-      rank: i + 1, fanCount: 4000 + i * 1800, likes: 6000 + i * 2300,
-      // Synthetic fallback cards have no real session — never claim live.
-      isLive: false, tier: TIERS[i % TIERS.length]!,
-      audienceCount: 800 + i * 640, timeLive: `${5 + i * 7}m`,
-    };
-  });
+function getTheme(catIndex: number) {
+  return CAT_THEMES[catIndex % CAT_THEMES.length]!;
+}
+
+function getGenreTheme(label: string, fallback: DisplayTheme) {
+  const personality = GENRE_PERSONALITY[label];
+  if (personality) return personality;
+  return {
+    accent: fallback.accent,
+    glow: fallback.glow,
+    badge: fallback.badge,
+    surface: `linear-gradient(135deg, ${fallback.accent}22, rgba(5,5,16,0.96) 60%)`,
+    spotlight: `radial-gradient(circle at top left, ${fallback.accent}22, transparent 55%)`,
+  };
+}
 
 function mapTrending(category: string, rows: TrendingArtist[] | null): BillboardCard[] {
-  if (!rows || rows.length === 0) return buildFallback(category);
-  return rows.slice(0, 12).map((r, i) => {
-    const loc = CITIES[i % CITIES.length]!;
-    const regP = r.id ? getPerformerById(r.id) : undefined;
+  if (!rows || rows.length === 0) return [];
+  return rows.slice(0, 12).map((row, index) => {
+    const performer = row.id ? getPerformerById(row.id) : undefined;
     return {
-      id: r.id || `${category}-${i}`,
-      name: r.stageName || FALLBACK_NAMES[i % FALLBACK_NAMES.length]!,
-      profileImageUrl: r.image || regP?.profileImageUrl || `https://i.pravatar.cc/400?u=${encodeURIComponent(r.slug ?? `${i}`)}`,
-      city: loc.city, countryName: loc.country, flag: loc.flag,
-      category: r.genres?.[0] || category, rank: i + 1,
-      fanCount: Math.max(2000, r.followers || 0),
-      likes: Math.max(1500, r.views || 0),
-      // Real liveness from the registry, not a fabricated pattern.
-      isLive: regP?.isLive ?? false,
-      tier: TIERS[i % TIERS.length]!,
-      audienceCount: Math.max(600, Math.floor((r.views || 0) / 4)),
-      timeLive: `${5 + i * 7}m`,
-      introVideoUrl: regP?.introVideoUrl,
-      motionPosterUrl: regP?.motionPosterUrl,
+      id: row.id || `${category}-${index}`,
+      name: row.stageName,
+      profileImageUrl: row.image || performer?.profileImageUrl || '',
+      category: row.genres?.[0] || category,
+      rank: index + 1,
+      xp: typeof performer?.xp === 'number' ? performer.xp : null,
+      votes: null,
+      audience: typeof performer?.audienceCount === 'number' ? performer.audienceCount : null,
+      tips: null,
+      engagement: typeof performer?.likes === 'number' ? performer.likes : null,
+      challengesWon: null,
+      battlesWon: null,
+      cyphersWon: null,
+      achievements: Array.isArray(performer?.achievementIds) ? performer.achievementIds.length : null,
+      isLive: performer?.isLive ?? false,
+      tier: performer?.tier ?? 'FREE',
+      profileHref: row.slug ? `/performers/${encodeURIComponent(row.slug)}` : `/performers/${encodeURIComponent(row.id)}`,
+      introVideoUrl: performer?.introVideoUrl,
+      motionPosterUrl: performer?.motionPosterUrl,
     };
   });
 }
 
-// ─── Portrait card ─────────────────────────────────────────────────────────────
+function getMovementBadge(item: BillboardCard) {
+  if (typeof item.votes === 'number' && item.votes > 0) return { label: `▲ +${item.votes}`, color: '#00FF88' };
+  if (typeof item.votes === 'number' && item.votes < 0) return { label: `▼ ${item.votes}`, color: '#FF6B6B' };
+  if (typeof item.votes === 'number' && item.votes === 0) return { label: '► 0', color: '#FFD700' };
+  return { label: 'No ranking history available', color: 'rgba(255,255,255,0.62)' };
+}
 
-function BillboardPortraitCard({
-  item, theme,
-}: { item: BillboardCard; theme: { accent: string; glow: string; badge: string } }) {
+function getPagedEntries(entries: BillboardCard[], pageIndex: number, pageSize: number) {
+  if (entries.length === 0) return [];
+  if (entries.length <= pageSize) return entries;
+  const totalPages = Math.ceil(entries.length / pageSize);
+  const start = (pageIndex % totalPages) * pageSize;
+  return entries.slice(start, start + pageSize);
+}
+
+function matchesRankingCategory(card: BillboardCard, label: string): boolean {
+  const category = card.category.toLowerCase();
+  const normalized = label.toLowerCase();
+  if (normalized === 'vocalists') return category.includes('vocal') || category.includes('singer') || category.includes('r&b') || category.includes('gospel') || category.includes('pop');
+  if (normalized === 'rappers') return category.includes('rap') || category.includes('hip-hop') || category.includes('hip hop');
+  if (normalized === 'singers') return category.includes('r&b') || category.includes('gospel') || category.includes('pop') || category.includes('singer');
+  if (normalized === 'producers') return category.includes('producer') || category.includes('beat') || category.includes('electronic');
+  if (normalized === 'beatmakers') return category.includes('beatmaker') || category.includes('beat producer') || category.includes('beat');
+  if (normalized === 'songwriters') return category.includes('writer') || category.includes('songwriter');
+  if (normalized === 'writers') return category.includes('writer') || category.includes('poet') || category.includes('spoken');
+  if (normalized === 'djs') return category.includes('dj') || category.includes('turntab');
+  if (normalized === 'bands') return category.includes('band') || category.includes('group');
+  if (normalized === 'dancers') return category.includes('dance') || category.includes('ballet') || category.includes('break') || category.includes('hip hop dance');
+  if (normalized === 'comedians') return category.includes('comedy') || category.includes('comedian');
+  if (normalized === 'actors') return category.includes('actor');
+  if (normalized === 'magicians') return category.includes('magician');
+  if (normalized === 'spoken word') return category.includes('spoken');
+  if (normalized === 'poets') return category.includes('poet') || category.includes('poetry');
+  if (normalized === 'choirs') return category.includes('choir') || category.includes('a cappella');
+  if (normalized === 'instrumentalists') return category.includes('instrumentalist');
+  if (normalized === 'hosts') return category.includes('host');
+  if (normalized === 'venues') return category.includes('venue');
+  if (normalized === 'promoters') return category.includes('promoter');
+  if (normalized === 'advertisers') return category.includes('advertiser') || category.includes('sponsor');
+  return category.includes(normalized);
+}
+
+function BillboardPortraitCard({ item, theme }: { item: BillboardCard; theme: DisplayTheme }) {
   const tierColors: Record<string, string> = {
-    Diamond: '#00FFFF', Platinum: '#E5E4E2', Gold: '#FFD700',
-    Silver: '#C0C0C0', RUBY: '#E0115F',
+    Diamond: '#00FFFF',
+    Platinum: '#E5E4E2',
+    Gold: '#FFD700',
+    Silver: '#C0C0C0',
+    RUBY: '#E0115F',
   };
   const tierColor = tierColors[item.tier] || '#fff';
+  const movement = getMovementBadge(item);
 
   return (
-    <div style={{
-      width: '100%', borderRadius: 10, overflow: 'hidden',
-      border: `1px solid ${theme.accent}33`, background: 'rgba(5,5,16,0.85)',
-      boxShadow: `0 0 20px ${theme.glow}`, display: 'flex',
-      flexDirection: 'column', transition: 'transform 0.2s, box-shadow 0.2s', cursor: 'pointer',
-    }}
-      onMouseEnter={e => {
-        (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-4px)';
-        (e.currentTarget as HTMLDivElement).style.boxShadow = `0 8px 32px ${theme.glow}`;
+    <div
+      style={{
+        width: '100%',
+        borderRadius: 14,
+        overflow: 'hidden',
+        border: `1px solid ${theme.accent}33`,
+        background: 'rgba(5,5,16,0.85)',
+        boxShadow: `0 0 20px ${theme.glow}`,
+        display: 'flex',
+        flexDirection: 'column',
+        transition: 'transform 0.2s, box-shadow 0.2s',
+        cursor: 'pointer',
       }}
-      onMouseLeave={e => {
-        (e.currentTarget as HTMLDivElement).style.transform = 'translateY(0)';
-        (e.currentTarget as HTMLDivElement).style.boxShadow = `0 0 20px ${theme.glow}`;
+      onMouseEnter={(event) => {
+        (event.currentTarget as HTMLDivElement).style.transform = 'translateY(-4px)';
+        (event.currentTarget as HTMLDivElement).style.boxShadow = `0 10px 34px ${theme.glow}`;
+      }}
+      onMouseLeave={(event) => {
+        (event.currentTarget as HTMLDivElement).style.transform = 'translateY(0)';
+        (event.currentTarget as HTMLDivElement).style.boxShadow = `0 0 20px ${theme.glow}`;
       }}
     >
       <div style={{ position: 'relative', width: '100%', aspectRatio: '4/5', overflow: 'hidden' }}>
-        {/* Rule 2: LIVE VIDEO → MOTION POSTER → STATIC IMAGE */}
         <MotionPosterPlayer
           isLive={item.isLive}
-          liveRoomRoute={`/live/rooms/${encodeURIComponent(item.id)}?from=billboard`}
+          liveRoomRoute={undefined}
           introVideoUrl={item.introVideoUrl}
           motionPosterUrl={item.motionPosterUrl}
-          staticImageUrl={item.profileImageUrl}
+          staticImageUrl={item.profileImageUrl || '/images/tmi-placeholder.jpg'}
           alt={item.name}
-          audienceCount={item.audienceCount}
+          audienceCount={undefined}
           showLiveOverlay={false}
           width="100%"
           height="100%"
         />
-        <div style={{ position: 'absolute', top: 8, left: 8, background: `${theme.accent}DD`,
-          color: '#000', fontWeight: 900, fontSize: 11, padding: '3px 7px', borderRadius: 4,
-          fontFamily: 'var(--font-orbitron, monospace)', letterSpacing: '0.05em' }}>
+        <div style={{ position: 'absolute', top: 8, left: 8, background: `${theme.accent}DD`, color: '#000', fontWeight: 900, fontSize: 11, padding: '3px 7px', borderRadius: 4, fontFamily: 'var(--font-orbitron, monospace)', letterSpacing: '0.05em' }}>
           #{item.rank}
         </div>
-        <div style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(0,0,0,0.75)',
-          color: tierColor, fontWeight: 800, fontSize: 9, padding: '3px 7px', borderRadius: 4,
-          border: `1px solid ${tierColor}55`, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+        <div style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(0,0,0,0.75)', color: tierColor, fontWeight: 800, fontSize: 9, padding: '3px 7px', borderRadius: 4, border: `1px solid ${tierColor}55`, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
           {item.tier === 'RUBY' ? 'Ruby' : item.tier}
         </div>
+        <div style={{ position: 'absolute', left: 8, bottom: 8, background: 'rgba(0,0,0,0.75)', color: movement.color, fontWeight: 800, fontSize: 9, padding: '3px 7px', borderRadius: 4, letterSpacing: '0.05em' }}>
+          {movement.label}
+        </div>
         {item.isLive && (
-          <div style={{ position: 'absolute', bottom: 8, left: 8, background: 'rgba(0,0,0,0.8)',
-            color: '#00FF88', fontWeight: 800, fontSize: 9, padding: '3px 8px', borderRadius: 4,
-            display: 'flex', alignItems: 'center', gap: 4, letterSpacing: '0.05em' }}>
-            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#00FF88',
-              display: 'inline-block', animation: 'pulse 1.5s ease-in-out infinite' }} />
+          <div style={{ position: 'absolute', right: 8, bottom: 8, background: 'rgba(0,0,0,0.8)', color: '#00FF88', fontWeight: 800, fontSize: 9, padding: '3px 8px', borderRadius: 4, display: 'flex', alignItems: 'center', gap: 4, letterSpacing: '0.05em' }}>
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#00FF88', display: 'inline-block', animation: 'pulse 1.5s ease-in-out infinite' }} />
             LIVE
           </div>
         )}
-        {item.isLive && (
-          <div style={{ position: 'absolute', bottom: 8, right: 8, background: 'rgba(0,0,0,0.75)',
-            color: '#fff', fontSize: 9, fontWeight: 700, padding: '3px 7px', borderRadius: 4 }}>
-            👁 {item.audienceCount.toLocaleString()}
-          </div>
-        )}
-        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '40%',
-          background: 'linear-gradient(transparent, rgba(0,0,0,0.9))', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '45%', background: 'linear-gradient(transparent, rgba(0,0,0,0.92))', pointerEvents: 'none' }} />
       </div>
       <div style={{ padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 5 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span style={{ fontFamily: 'var(--font-orbitron, monospace)', fontWeight: 900, fontSize: 11,
-            color: theme.accent, letterSpacing: '0.04em', overflow: 'hidden',
-            textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '65%' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontFamily: 'var(--font-orbitron, monospace)', fontWeight: 900, fontSize: 11, color: theme.accent, letterSpacing: '0.04em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '72%' }}>
             {item.name}
           </span>
-          <span style={{ fontSize: 14 }}>{item.flag}</span>
+          <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.65)', textTransform: 'uppercase' }}>{item.category}</span>
         </div>
-        <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', letterSpacing: '0.03em' }}>
-          {item.city}
+        <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: `1px solid ${theme.accent}22`, paddingTop: 5, marginTop: 2 }}>
+          <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)' }}>XP <strong style={{ color: '#fff' }}>{typeof item.xp === 'number' ? item.xp.toLocaleString() : 'N/A'}</strong></span>
+          <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)' }}>Audience <strong style={{ color: '#fff' }}>{typeof item.audience === 'number' ? item.audience.toLocaleString() : 'Not Available Yet'}</strong></span>
         </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between',
-          borderTop: `1px solid ${theme.accent}22`, paddingTop: 5, marginTop: 2 }}>
-          <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)' }}>
-            ❤ <strong style={{ color: '#fff' }}>{(item.fanCount / 1000).toFixed(1)}k</strong>
-          </span>
-          <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)' }}>
-            👍 <strong style={{ color: '#fff' }}>{(item.likes / 1000).toFixed(1)}k</strong>
-          </span>
+        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+          <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)' }}>Engagement <strong style={{ color: '#fff' }}>{typeof item.engagement === 'number' ? item.engagement.toLocaleString() : 'Not Available Yet'}</strong></span>
+          <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)' }}>Votes <strong style={{ color: '#fff' }}>{typeof item.votes === 'number' ? item.votes.toLocaleString() : 'Not Available Yet'}</strong></span>
         </div>
+        <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+          <Link href={item.profileHref} style={{ textDecoration: 'none', flex: 1 }}>
+            <button style={{ width: '100%', background: `${theme.accent}1f`, color: theme.accent, border: `1px solid ${theme.accent}55`, borderRadius: 4, fontSize: 9, fontWeight: 700, padding: '4px 6px', cursor: 'pointer' }}>
+              View Profile
+            </button>
+          </Link>
+          <Link href={`/rankings/vote?candidate=${encodeURIComponent(item.id)}`} style={{ textDecoration: 'none', flex: 1 }}>
+            <button style={{ width: '100%', background: 'rgba(255,45,170,0.18)', color: '#FF2DAA', border: '1px solid rgba(255,45,170,0.45)', borderRadius: 4, fontSize: 9, fontWeight: 700, padding: '4px 6px', cursor: 'pointer' }}>
+              Vote
+            </button>
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BillboardFeatureCard({ title, item, theme, kicker }: { title: string; item: BillboardCard | null; theme: ReturnType<typeof getGenreTheme>; kicker: string }) {
+  if (!item) {
+    return (
+      <div style={{ position: 'relative', minHeight: 280, borderRadius: 20, overflow: 'hidden', border: `1px solid ${theme.accent}33`, background: theme.surface, boxShadow: `0 24px 80px ${theme.glow}`, padding: 22 }}>
+        <div style={{ position: 'absolute', inset: 0, background: theme.spotlight, pointerEvents: 'none' }} />
+        <div style={{ position: 'relative', zIndex: 1 }}>
+          <div style={{ fontSize: 10, letterSpacing: '.3em', color: theme.accent, fontWeight: 800 }}>{kicker}</div>
+          <div style={{ fontFamily: 'var(--font-orbitron, monospace)', fontSize: 26, fontWeight: 900, marginTop: 10 }}>{title}</div>
+          <div style={{ marginTop: 18, fontSize: 13, color: 'rgba(255,255,255,0.7)', maxWidth: 340 }}>No ranked entries yet. This spread stays honest until performers in this category generate enough activity.</div>
+        </div>
+      </div>
+    );
+  }
+
+  const movement = getMovementBadge(item);
+  return (
+    <Link href={item.profileHref} style={{ textDecoration: 'none', color: 'inherit' }}>
+      <div style={{ position: 'relative', minHeight: 280, borderRadius: 20, overflow: 'hidden', border: `1px solid ${theme.accent}44`, background: theme.surface, boxShadow: `0 24px 80px ${theme.glow}` }}>
+        <div style={{ position: 'absolute', inset: 0, background: theme.spotlight, pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', inset: 0 }}>
+          <MotionPosterPlayer
+            isLive={item.isLive}
+            liveRoomRoute={undefined}
+            introVideoUrl={item.introVideoUrl}
+            motionPosterUrl={item.motionPosterUrl}
+            staticImageUrl={item.profileImageUrl || '/images/tmi-placeholder.jpg'}
+            alt={item.name}
+            audienceCount={item.audience ?? undefined}
+            showLiveOverlay={false}
+            width="100%"
+            height="100%"
+          />
+        </div>
+        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(5,5,16,0.12), rgba(5,5,16,0.92))', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', top: 16, left: 16, background: `${theme.accent}e6`, color: '#050510', fontWeight: 900, fontSize: 13, borderRadius: 999, padding: '5px 10px', letterSpacing: '.08em' }}>#{item.rank}</div>
+        <div style={{ position: 'absolute', top: 16, right: 16, padding: '5px 10px', borderRadius: 999, background: 'rgba(5,5,16,0.72)', border: `1px solid ${theme.accent}33`, color: movement.color, fontSize: 10, fontWeight: 800, letterSpacing: '.08em' }}>{movement.label}</div>
+        <div style={{ position: 'relative', zIndex: 1, display: 'flex', minHeight: 280, alignItems: 'end', padding: 22 }}>
+          <div>
+            <div style={{ fontSize: 10, letterSpacing: '.3em', color: theme.accent, fontWeight: 800 }}>{kicker}</div>
+            <div style={{ fontFamily: 'var(--font-orbitron, monospace)', fontSize: 26, fontWeight: 900, marginTop: 10, textShadow: `0 0 20px ${theme.glow}` }}>{title}</div>
+            <div style={{ fontSize: 18, fontWeight: 800, marginTop: 12 }}>{item.name}</div>
+            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase', letterSpacing: '.12em', marginTop: 6 }}>{item.category}</div>
+            <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginTop: 14, fontSize: 11 }}>
+              <span>XP <strong style={{ color: '#fff' }}>{typeof item.xp === 'number' ? item.xp.toLocaleString() : 'N/A'}</strong></span>
+              <span>Audience <strong style={{ color: '#fff' }}>{typeof item.audience === 'number' ? item.audience.toLocaleString() : 'Not Available Yet'}</strong></span>
+              <span>Engagement <strong style={{ color: '#fff' }}>{typeof item.engagement === 'number' ? item.engagement.toLocaleString() : 'Not Available Yet'}</strong></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+function BillboardCycleBoard({ board, theme, pageIndex }: { board: BoardView; theme: ReturnType<typeof getGenreTheme>; pageIndex: number }) {
+  const paged = getPagedEntries(board.entries, pageIndex, 3);
+
+  return (
+    <div style={{ position: 'relative', borderRadius: 16, overflow: 'hidden', border: `1px solid ${theme.accent}2f`, background: theme.surface, boxShadow: `0 14px 40px ${theme.glow}`, padding: 14, minHeight: 250 }}>
+      <div style={{ position: 'absolute', inset: 0, background: theme.spotlight, pointerEvents: 'none' }} />
+      <div style={{ position: 'relative', zIndex: 1 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 10 }}>
+          <div>
+            <div style={{ fontSize: 9, letterSpacing: '.22em', color: theme.accent, fontWeight: 800 }}>LIVE BILLBOARD</div>
+            <div style={{ fontFamily: 'var(--font-orbitron, monospace)', fontSize: 15, fontWeight: 900, color: '#fff' }}>{board.label.toUpperCase()}</div>
+          </div>
+          <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '.12em' }}>Auto cycling</div>
+        </div>
+        {paged.length > 0 ? (
+          <div key={`${board.label}-${pageIndex}`} style={{ display: 'grid', gap: 10, animation: 'billboardSlideUp 0.6s cubic-bezier(0.25,1,0.5,1)' }}>
+            {paged.map((entry) => {
+              const movement = getMovementBadge(entry);
+              return (
+                <Link key={`${board.label}-${entry.id}`} href={entry.profileHref} style={{ textDecoration: 'none', color: 'inherit' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '56px 1fr auto', gap: 10, alignItems: 'center', padding: 10, borderRadius: 12, background: 'rgba(5,5,16,0.68)', border: `1px solid ${theme.accent}22`, backdropFilter: 'blur(10px)' }}>
+                    <div style={{ position: 'relative', width: 56, height: 68, borderRadius: 10, overflow: 'hidden', border: `1px solid ${theme.accent}33` }}>
+                      <MotionPosterPlayer
+                        isLive={entry.isLive}
+                        liveRoomRoute={undefined}
+                        introVideoUrl={entry.introVideoUrl}
+                        motionPosterUrl={entry.motionPosterUrl}
+                        staticImageUrl={entry.profileImageUrl || '/images/tmi-placeholder.jpg'}
+                        alt={entry.name}
+                        audienceCount={entry.audience ?? undefined}
+                        showLiveOverlay={false}
+                        width="100%"
+                        height="100%"
+                      />
+                    </div>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontFamily: 'var(--font-orbitron, monospace)', fontSize: 14, fontWeight: 900, color: theme.accent }}>#{entry.rank}</span>
+                        <span style={{ fontSize: 12, fontWeight: 800, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{entry.name}</span>
+                      </div>
+                      <div style={{ marginTop: 4, fontSize: 10, color: 'rgba(255,255,255,0.68)', textTransform: 'uppercase', letterSpacing: '.1em' }}>{entry.category}</div>
+                      <div style={{ marginTop: 6, fontSize: 10, color: 'rgba(255,255,255,0.72)' }}>XP {typeof entry.xp === 'number' ? entry.xp.toLocaleString() : 'N/A'}</div>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: 10, fontWeight: 800, color: movement.color }}>{movement.label}</div>
+                      {entry.isLive && <div style={{ marginTop: 6, fontSize: 9, color: '#00FF88', letterSpacing: '.1em' }}>LIVE</div>}
+                    </div>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        ) : (
+          <div style={{ padding: '28px 10px', textAlign: 'center', fontSize: 11, color: 'rgba(255,255,255,0.7)' }}>No ranking history available</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function InstrumentBillboardCard({ feature, accent }: { feature: InstrumentFeature; accent: string }) {
+  const rows = [
+    { label: 'Top Ranked', value: feature.topRanked },
+    { label: 'Rising Star', value: feature.risingStar },
+    { label: 'Most Active', value: feature.mostActive },
+  ];
+
+  return (
+    <div style={{ position: 'relative', borderRadius: 16, overflow: 'hidden', border: `1px solid ${accent}33`, background: `linear-gradient(160deg, ${accent}18, rgba(5,5,16,0.94) 62%)`, boxShadow: `0 16px 44px ${accent}24`, padding: 14, minHeight: 205 }}>
+      <div style={{ fontFamily: 'var(--font-orbitron, monospace)', fontSize: 13, fontWeight: 900, color: accent, letterSpacing: '.08em' }}>{feature.label.toUpperCase()}</div>
+      <div style={{ marginTop: 12, display: 'grid', gap: 8 }}>
+        {rows.map((row) => (
+          <div key={`${feature.label}-${row.label}`} style={{ borderRadius: 10, background: 'rgba(5,5,16,0.74)', border: `1px solid ${accent}22`, padding: 10 }}>
+            <div style={{ fontSize: 9, letterSpacing: '.12em', color: accent, textTransform: 'uppercase', fontWeight: 800 }}>{row.label}</div>
+            {row.value ? (
+              <div style={{ display: 'grid', gridTemplateColumns: '40px 1fr', gap: 8, alignItems: 'center', marginTop: 8 }}>
+                <div style={{ position: 'relative', width: 40, height: 48, borderRadius: 8, overflow: 'hidden', border: `1px solid ${accent}33` }}>
+                  <MotionPosterPlayer
+                    isLive={row.value.isLive}
+                    liveRoomRoute={undefined}
+                    introVideoUrl={row.value.introVideoUrl}
+                    motionPosterUrl={row.value.motionPosterUrl}
+                    staticImageUrl={row.value.profileImageUrl || '/images/tmi-placeholder.jpg'}
+                    alt={row.value.name}
+                    audienceCount={row.value.audience ?? undefined}
+                    showLiveOverlay={false}
+                    width="100%"
+                    height="100%"
+                  />
+                </div>
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.value.name}</div>
+                  <div style={{ marginTop: 3, fontSize: 10, color: 'rgba(255,255,255,0.66)' }}>#{row.value.rank} · {typeof row.value.xp === 'number' ? `${row.value.xp.toLocaleString()} XP` : 'XP N/A'}</div>
+                </div>
+              </div>
+            ) : (
+              <div style={{ marginTop: 8, fontSize: 10, color: 'rgba(255,255,255,0.62)' }}>No ranking data available yet.</div>
+            )}
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -211,13 +460,14 @@ function BillboardPortraitCard({
 export default function Home12Page() {
   const [catIndex, setCatIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
-  const [items, setItems] = useState<BillboardCard[]>(() => buildFallback(CATEGORIES[0]!));
+  const [items, setItems] = useState<BillboardCard[]>([]);
   const [transitioning, setTransitioning] = useState(false);
-  const [pendingRoom, setPendingRoom] = useState<UniversalRoom | null>(null);
+  const [boardPageIndex, setBoardPageIndex] = useState(0);
+
   const advanceCat = useCallback((dir: 1 | -1) => {
     setTransitioning(true);
     setTimeout(() => {
-      setCatIndex(prev => (prev + dir + CATEGORIES.length) % CATEGORIES.length);
+      setCatIndex((prev) => (prev + dir + GENRE_FILTERS.length) % GENRE_FILTERS.length);
       setTransitioning(false);
     }, 200);
   }, []);
@@ -228,8 +478,15 @@ export default function Home12Page() {
     return () => clearInterval(timer);
   }, [isPaused, advanceCat]);
 
-  const currentCategory = CATEGORIES[catIndex]!;
+  useEffect(() => {
+    if (isPaused) return;
+    const timer = setInterval(() => setBoardPageIndex((prev) => prev + 1), 5000);
+    return () => clearInterval(timer);
+  }, [isPaused]);
+
+  const currentCategory = GENRE_FILTERS[catIndex]!;
   const theme = getTheme(catIndex);
+  const genreTheme = getGenreTheme(currentCategory, theme);
 
   useEffect(() => {
     let alive = true;
@@ -238,168 +495,251 @@ export default function Home12Page() {
       if (!alive) return;
       setItems(mapTrending(currentCategory, rows));
     })();
-    return () => { alive = false; };
+    return () => {
+      alive = false;
+    };
   }, [currentCategory]);
 
   const latestNews = getLatestEditorialArticles(5);
-  const tickerStr = latestNews.map(a => `[${a.category.toUpperCase()}] ${a.headline}`).join('  ⚡  ');
+  const tickerStr = latestNews.map((article) => `[${article.category.toUpperCase()}] ${article.headline}`).join('  ⚡  ');
 
-  function handleJoinCard(id: string) {
-    const card = getPerformerById(id) ?? items.find(x => x.id === id);
-    if (!card) return;
-    const tierColors: Record<string, string> = {
-      Diamond: '#00E5FF', Platinum: '#E5E4E2', Gold: '#FFD700',
-      Silver: '#C0C0C0', RUBY: '#FF2DAA',
-    };
-    setPendingRoom({
-      id: `${card.id}-live`,
-      title: card.name,
-      viewers: card.audienceCount,
-      status: 'live',
-      access: (card.tier === 'Diamond' || card.tier === 'Platinum') ? 'vip' : 'free',
-      accentColor: tierColors[card.tier] || '#FF2DAA',
-      roomRoute: `/live/rooms/${encodeURIComponent(card.id)}?from=billboard`,
-      venueIndex: 0,
-      shape: 'hex',
-    });
-  }
+  const topRegistry = getTopPerformers(100).map((performer, index): BillboardCard => ({
+    id: performer.id,
+    name: performer.name,
+    profileImageUrl: performer.profileImageUrl,
+    category: performer.category,
+    rank: index + 1,
+    xp: performer.xp,
+    votes: null,
+    audience: performer.audienceCount,
+    tips: null,
+    engagement: performer.likes,
+    challengesWon: null,
+    battlesWon: null,
+    cyphersWon: null,
+    achievements: performer.achievementIds?.length ?? null,
+    isLive: performer.isLive,
+    tier: performer.tier,
+    profileHref: `/performers/${encodeURIComponent(performer.slug)}`,
+    introVideoUrl: performer.introVideoUrl,
+    motionPosterUrl: performer.motionPosterUrl,
+  }));
+
+  const trendingPerformers = items.filter((item) => !currentCategory || item.category.toLowerCase().includes(currentCategory.toLowerCase()));
+
+  const genreBoards: BoardView[] = GENRE_FILTERS.map((label) => ({
+    label,
+    entries: topRegistry.filter((card) => card.category.toLowerCase().includes(label.toLowerCase())).slice(0, 9),
+  }));
+
+  const categoryBoards: BoardView[] = PERFORMANCE_CATEGORIES.map((label) => ({
+    label,
+    entries: topRegistry.filter((card) => matchesRankingCategory(card, label)).slice(0, 9),
+  }));
+
+  const instrumentBoards: BoardView[] = GLOBAL_INSTRUMENT_INDEX.map((label) => ({
+    label,
+    entries: topRegistry.filter((card) => card.category.toLowerCase().includes(label.toLowerCase())).slice(0, 6),
+  }));
+
+  const featureSpread = [
+    { title: 'TOP HIP HOP ARTISTS', kicker: 'Magazine Cover', item: genreBoards.find((board) => board.label === 'Hip Hop')?.entries[0] ?? null, theme: getGenreTheme('Hip Hop', theme) },
+    { title: 'TOP PRODUCERS', kicker: 'Studio Power', item: categoryBoards.find((board) => board.label === 'Producers')?.entries[0] ?? null, theme: getGenreTheme('EDM', theme) },
+    { title: 'TOP COMEDIANS', kicker: 'Crowd Control', item: categoryBoards.find((board) => board.label === 'Comedians')?.entries[0] ?? null, theme: getGenreTheme('Rock', theme) },
+    { title: 'TOP DJS', kicker: 'Night Signal', item: categoryBoards.find((board) => board.label === 'DJs')?.entries[0] ?? null, theme: getGenreTheme('EDM', theme) },
+    { title: 'TOP WRITERS', kicker: 'Editorial Heat', item: categoryBoards.find((board) => board.label === 'Writers')?.entries[0] ?? null, theme: getGenreTheme('Jazz', theme) },
+    { title: 'TOP VENUES', kicker: 'Stage Authority', item: categoryBoards.find((board) => board.label === 'Venues')?.entries[0] ?? null, theme: getGenreTheme('Country', theme) },
+    { title: 'TOP PROMOTERS', kicker: 'Street Pulse', item: categoryBoards.find((board) => board.label === 'Promoters')?.entries[0] ?? null, theme: getGenreTheme('Latin', theme) },
+    { title: 'TOP ADVERTISERS', kicker: 'Revenue Spotlight', item: categoryBoards.find((board) => board.label === 'Advertisers')?.entries[0] ?? null, theme: getGenreTheme('Classical', theme) },
+  ];
+
+  const instrumentFeatures: InstrumentFeature[] = instrumentBoards.map((board) => ({
+    label: board.label,
+    topRanked: board.entries[0] ?? null,
+    risingStar: board.entries[1] ?? null,
+    mostActive: board.entries.slice().sort((left, right) => (right.audience ?? -1) - (left.audience ?? -1))[0] ?? null,
+  }));
 
   return (
     <main style={{ background: '#050510', minHeight: '100vh', color: '#fff', position: 'relative' }}>
-      {pendingRoom && <LobbyEntryFlow room={pendingRoom} onClose={() => setPendingRoom(null)} />}
-
-      <div style={{ position: 'relative', zIndex: 10, display: 'flex', alignItems: 'center',
-        justifyContent: 'space-between', padding: '12px 20px',
-        borderBottom: '1px solid rgba(255,255,255,.07)', background: 'rgba(5,5,16,.9)',
-        backdropFilter: 'blur(8px)' }}>
-        <div style={{ fontFamily: 'var(--font-orbitron)', fontSize: 14, fontWeight: 900,
-          color: theme.accent, transition: 'color 0.5s', textShadow: `0 0 12px ${theme.glow}` }}>
+      <div style={{ position: 'relative', zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', borderBottom: '1px solid rgba(255,255,255,.07)', background: 'rgba(5,5,16,.9)', backdropFilter: 'blur(8px)' }}>
+        <div style={{ fontFamily: 'var(--font-orbitron)', fontSize: 14, fontWeight: 900, color: theme.accent, transition: 'color 0.5s', textShadow: `0 0 12px ${theme.glow}` }}>
           TMI BILLBOARD WORLD
         </div>
         <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-          {['1','1-2','2','3','4','5'].map(n => (
-            <Link key={n} href={`/home/${n}`} style={{
-              padding: '5px 10px', borderRadius: 5, fontSize: 11, fontWeight: 700,
-              textDecoration: 'none', letterSpacing: '.05em',
-              background: n === '1-2' ? `${theme.accent}20` : 'transparent',
-              color: n === '1-2' ? theme.accent : 'rgba(255,255,255,.45)',
-              border: `1px solid ${n === '1-2' ? theme.accent : 'rgba(255,255,255,.1)'}`,
-            }} >
-              {n}
+          {['1', '1-2', '2', '3', '4', '5'].map((item) => (
+            <Link key={item} href={`/home/${item}`} style={{ padding: '5px 10px', borderRadius: 5, fontSize: 11, fontWeight: 700, textDecoration: 'none', letterSpacing: '.05em', background: item === '1-2' ? `${theme.accent}20` : 'transparent', color: item === '1-2' ? theme.accent : 'rgba(255,255,255,.45)', border: `1px solid ${item === '1-2' ? theme.accent : 'rgba(255,255,255,.1)'}` }}>
+              {item}
             </Link>
           ))}
         </div>
       </div>
 
-      <div style={{ position: 'relative', zIndex: 10, overflow: 'hidden',
-        background: 'rgba(0,0,0,.6)', borderBottom: '1px solid rgba(255,255,255,.05)', padding: '5px 0' }}>
-        <div style={{ display: 'inline-flex', gap: 60, whiteSpace: 'nowrap', paddingLeft: 40,
-          animation: 'scrollLeft 38s linear infinite', fontSize: 10, color: 'rgba(255,255,255,.55)' }}>
-          {tickerStr}&nbsp;&nbsp;⚡&nbsp;&nbsp;TMI BILLBOARD WORLD — {CATEGORIES.length} CATEGORIES&nbsp;&nbsp;⚡&nbsp;&nbsp;GLOBAL RANKINGS LIVE
+      <div style={{ position: 'relative', zIndex: 10, overflow: 'hidden', background: 'rgba(0,0,0,.6)', borderBottom: '1px solid rgba(255,255,255,.05)', padding: '5px 0' }}>
+        <div style={{ display: 'inline-flex', gap: 60, whiteSpace: 'nowrap', paddingLeft: 40, animation: 'scrollLeft 38s linear infinite', fontSize: 10, color: 'rgba(255,255,255,.55)' }}>
+          {tickerStr}&nbsp;&nbsp;⚡&nbsp;&nbsp;TMI BILLBOARD WORLD — {GENRE_FILTERS.length} FILTERS&nbsp;&nbsp;⚡&nbsp;&nbsp;GLOBAL RANKINGS LIVE
           &nbsp;&nbsp;&nbsp;&nbsp;
-          {tickerStr}&nbsp;&nbsp;⚡&nbsp;&nbsp;TMI BILLBOARD WORLD — {CATEGORIES.length} CATEGORIES&nbsp;&nbsp;⚡&nbsp;&nbsp;GLOBAL RANKINGS LIVE
+          {tickerStr}&nbsp;&nbsp;⚡&nbsp;&nbsp;TMI BILLBOARD WORLD — {GENRE_FILTERS.length} FILTERS&nbsp;&nbsp;⚡&nbsp;&nbsp;GLOBAL RANKINGS LIVE
         </div>
       </div>
 
       <style>{`
         @keyframes scrollLeft { from { transform: translateX(0); } to { transform: translateX(-50%); } }
         @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:.5; } }
+        @keyframes billboardSlideUp { 0% { opacity: 0; transform: translateY(28px); } 100% { opacity: 1; transform: translateY(0); } }
+        @keyframes billboardFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+        @keyframes billboardSpark { 0% { transform: translateY(0) scale(0.9); opacity: 0; } 30% { opacity: 0.8; } 100% { transform: translateY(-28px) scale(1.05); opacity: 0; } }
       `}</style>
 
       <div style={{ position: 'relative', zIndex: 10 }}>
         <SponsorRail sponsors={SEED_SPONSORS} zone="home-1-2-top" />
       </div>
 
-      <BillboardLiveWall mode="home" maxTiles={12} title="BILLBOARD LIVE LOBBY WALL" showActions className="p-5 bg-gradient-to-b from-cyan-500/10 to-blue-900/50 border-b-2 border-cyan-500/40" />
-
-      {/* ══ GENRE BILLBOARD — portrait cards ══ */}
-      <div style={{ position: 'relative', zIndex: 10, paddingTop: 28 }}
-        onMouseEnter={() => setIsPaused(true)}
-        onMouseLeave={() => setIsPaused(false)}
-      >
-        <div style={{ maxWidth: 1400, margin: '0 auto', padding: '0 24px 16px',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-          <div>
-            <div style={{ fontSize: 9, letterSpacing: '.3em', color: theme.accent, fontWeight: 800, marginBottom: 4 }}>
-              GLOBAL BILLBOARD — TOP PERFORMERS
+      <div style={{ position: 'relative', maxWidth: 1440, margin: '0 auto', padding: '26px 24px 8px' }}>
+        <div style={{ position: 'relative', overflow: 'hidden', borderRadius: 26, padding: '28px 26px 30px', background: genreTheme.surface, border: `1px solid ${genreTheme.accent}33`, boxShadow: `0 30px 100px ${genreTheme.glow}` }}>
+          <div style={{ position: 'absolute', inset: 0, background: genreTheme.spotlight, pointerEvents: 'none' }} />
+          {[0, 1, 2, 3, 4, 5].map((index) => (
+            <div key={index} style={{ position: 'absolute', width: 8, height: 8, borderRadius: '50%', background: genreTheme.accent, top: `${18 + index * 12}%`, left: `${12 + (index % 3) * 27}%`, opacity: 0.32, filter: 'blur(0.5px)', animation: `billboardSpark ${4 + index * 0.35}s ease-in-out infinite`, animationDelay: `${index * 0.45}s` }} />
+          ))}
+          <div style={{ position: 'relative', zIndex: 1, display: 'grid', gridTemplateColumns: 'minmax(0, 1.3fr) minmax(340px, 0.9fr)', gap: 22, alignItems: 'stretch' }}>
+            <div>
+              <div style={{ fontSize: 10, letterSpacing: '.34em', color: genreTheme.accent, fontWeight: 800 }}>BILLBOARD WORLD</div>
+              <div style={{ fontFamily: 'var(--font-orbitron,"Orbitron",sans-serif)', fontSize: 'clamp(24px,4vw,44px)', fontWeight: 900, letterSpacing: '.06em', marginTop: 10, textShadow: `0 0 24px ${genreTheme.glow}` }}>
+                {currentCategory.toUpperCase()} RANKINGS IN MOTION
+              </div>
+              <div style={{ marginTop: 14, maxWidth: 620, fontSize: 14, lineHeight: 1.6, color: 'rgba(255,255,255,0.78)' }}>
+                Billboard World now leads with faces, motion posters, live ranking cards, and category lighting. The ranking engine stays intact; the presentation now behaves like a magazine spread instead of a report.
+              </div>
+              <div style={{ marginTop: 18, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
+                {[
+                  { label: 'Spotlight Color', value: currentCategory },
+                  { label: 'Cycle Rate', value: 'Every 5 seconds' },
+                  { label: 'Rank History', value: 'Honest when unavailable' },
+                ].map((stat) => (
+                  <div key={stat.label} style={{ borderRadius: 14, background: 'rgba(5,5,16,0.62)', border: `1px solid ${genreTheme.accent}22`, padding: '12px 14px', backdropFilter: 'blur(10px)' }}>
+                    <div style={{ fontSize: 9, letterSpacing: '.18em', color: genreTheme.accent, textTransform: 'uppercase', fontWeight: 800 }}>{stat.label}</div>
+                    <div style={{ marginTop: 6, fontSize: 14, fontWeight: 800 }}>{stat.value}</div>
+                  </div>
+                ))}
+              </div>
             </div>
-            <div style={{ fontFamily: 'var(--font-orbitron,"Orbitron",sans-serif)',
-              fontSize: 'clamp(13px,2.5vw,20px)', fontWeight: 900, color: '#fff',
-              letterSpacing: '.06em', textShadow: `0 0 16px ${theme.glow}` }}>
-              WHO IS HERE?
+            <div style={{ position: 'relative', minHeight: 320, borderRadius: 22, overflow: 'hidden', border: `1px solid ${genreTheme.accent}33`, background: 'rgba(5,5,16,0.54)', backdropFilter: 'blur(12px)' }}>
+              <div style={{ position: 'absolute', inset: 0, animation: 'billboardFloat 6s ease-in-out infinite' }}>
+                {trendingPerformers[0] ? (
+                  <MotionPosterPlayer
+                    isLive={trendingPerformers[0].isLive}
+                    liveRoomRoute={undefined}
+                    introVideoUrl={trendingPerformers[0].introVideoUrl}
+                    motionPosterUrl={trendingPerformers[0].motionPosterUrl}
+                    staticImageUrl={trendingPerformers[0].profileImageUrl || '/images/tmi-placeholder.jpg'}
+                    alt={trendingPerformers[0].name}
+                    audienceCount={trendingPerformers[0].audience ?? undefined}
+                    showLiveOverlay={false}
+                    width="100%"
+                    height="100%"
+                  />
+                ) : null}
+              </div>
+              <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(5,5,16,0.05), rgba(5,5,16,0.92))', pointerEvents: 'none' }} />
+              <div style={{ position: 'absolute', inset: 18, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', zIndex: 1 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+                  <div style={{ background: `${genreTheme.accent}e6`, color: '#050510', fontWeight: 900, borderRadius: 999, padding: '6px 10px', fontSize: 12, letterSpacing: '.08em' }}>FEATURE COVER</div>
+                  <div style={{ background: 'rgba(5,5,16,0.72)', color: '#fff', borderRadius: 999, padding: '6px 10px', fontSize: 10, letterSpacing: '.12em', border: `1px solid ${genreTheme.accent}33` }}>#{trendingPerformers[0]?.rank ?? '—'}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 10, letterSpacing: '.28em', color: genreTheme.accent, fontWeight: 800 }}>CURRENT COVER STAR</div>
+                  <div style={{ marginTop: 8, fontFamily: 'var(--font-orbitron, monospace)', fontSize: 28, fontWeight: 900 }}>{trendingPerformers[0]?.name ?? 'No ranked performer yet'}</div>
+                  <div style={{ marginTop: 8, fontSize: 12, color: 'rgba(255,255,255,0.72)', textTransform: 'uppercase', letterSpacing: '.12em' }}>{trendingPerformers[0]?.category ?? currentCategory}</div>
+                </div>
+              </div>
             </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <button onClick={() => advanceCat(-1)} style={{
-              background: 'transparent', border: `1px solid ${theme.accent}55`,
-              borderRadius: 6, color: theme.accent, padding: '7px 14px',
-              fontSize: 11, cursor: 'pointer', fontWeight: 700, letterSpacing: '.1em' }}>
-              ‹ PREV
-            </button>
-            <span style={{ fontFamily: 'var(--font-orbitron)', fontSize: 'clamp(12px,2.5vw,18px)',
-              fontWeight: 900, color: theme.accent, textShadow: `0 0 18px ${theme.glow}`,
-              letterSpacing: '.1em', textTransform: 'uppercase', transition: 'color .4s' }}>
-              [{currentCategory}]
-            </span>
-            <button onClick={() => advanceCat(1)} style={{
-              background: 'transparent', border: `1px solid ${theme.accent}55`,
-              borderRadius: 6, color: theme.accent, padding: '7px 14px',
-              fontSize: 11, cursor: 'pointer', fontWeight: 700, letterSpacing: '.1em' }}>
-              NEXT ›
-            </button>
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', justifyContent: 'center', gap: 5, flexWrap: 'wrap',
-          padding: '0 24px 20px', maxWidth: 1400, margin: '0 auto' }}>
-          {CATEGORIES.map((cat, i) => (
-            <button key={cat} onClick={() => {
-              setTransitioning(true);
-              setTimeout(() => { setCatIndex(i); setTransitioning(false); }, 150);
-            }} style={{
-              background: i === catIndex ? `${theme.accent}22` : 'transparent',
-              border: `1px solid ${i === catIndex ? theme.accent : 'rgba(255,255,255,0.1)'}`,
-              borderRadius: 20, color: i === catIndex ? theme.accent : 'rgba(255,255,255,0.45)',
-              fontSize: 9, fontWeight: i === catIndex ? 800 : 500, padding: '4px 10px',
-              cursor: 'pointer', letterSpacing: '.06em', textTransform: 'uppercase', transition: 'all .2s',
-            }}>
-              {cat}
-            </button>
-          ))}
-        </div>
-
-        <div style={{
-          maxWidth: 1400, margin: '0 auto', padding: '0 24px 60px',
-          display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 16,
-          opacity: transitioning ? 0 : 1,
-          transform: transitioning ? 'translateY(22px)' : 'translateY(0)',
-          transition: 'opacity 0.3s ease-out, transform 0.4s cubic-bezier(0.25,1,0.5,1)',
-        }}>
-          {items.map(item => item.isLive ? (
-            <button key={item.id} onClick={() => handleJoinCard(item.id)} style={{ textDecoration: 'none', background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'block' }}
-              aria-label={`Join live room for ${item.name}`}
-            >
-              <BillboardPortraitCard item={item} theme={theme} />
-            </button>
-          ) : (
-            <Link key={item.id} href={`/performers/${encodeURIComponent(item.id)}`} style={{ textDecoration: 'none' }}
-              aria-label={`Open performer ${item.name}`}
-            >
-              <BillboardPortraitCard item={item} theme={theme} />
-            </Link>
-          ))}
         </div>
       </div>
 
-      {/* Rule 12: No Empty Inventory — ad slot before the discovery rails */}
+      <div style={{ position: 'relative', zIndex: 10, paddingTop: 28 }} onMouseEnter={() => setIsPaused(true)} onMouseLeave={() => setIsPaused(false)}>
+        <div style={{ maxWidth: 1400, margin: '0 auto', padding: '0 24px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+          <div>
+            <div style={{ fontSize: 9, letterSpacing: '.3em', color: theme.accent, fontWeight: 800, marginBottom: 4 }}>GLOBAL BILLBOARD — RANKINGS & DISCOVERY</div>
+            <div style={{ fontFamily: 'var(--font-orbitron,"Orbitron",sans-serif)', fontSize: 'clamp(13px,2.5vw,20px)', fontWeight: 900, color: '#fff', letterSpacing: '.06em', textShadow: `0 0 16px ${theme.glow}` }}>TRENDING PERFORMERS</div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <button onClick={() => advanceCat(-1)} style={{ background: 'transparent', border: `1px solid ${theme.accent}55`, borderRadius: 6, color: theme.accent, padding: '7px 14px', fontSize: 11, cursor: 'pointer', fontWeight: 700, letterSpacing: '.1em' }}>‹ PREV</button>
+            <span style={{ fontFamily: 'var(--font-orbitron)', fontSize: 'clamp(12px,2.5vw,18px)', fontWeight: 900, color: theme.accent, textShadow: `0 0 18px ${theme.glow}`, letterSpacing: '.1em', textTransform: 'uppercase', transition: 'color .4s' }}>[{currentCategory}]</span>
+            <button onClick={() => advanceCat(1)} style={{ background: 'transparent', border: `1px solid ${theme.accent}55`, borderRadius: 6, color: theme.accent, padding: '7px 14px', fontSize: 11, cursor: 'pointer', fontWeight: 700, letterSpacing: '.1em' }}>NEXT ›</button>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 5, flexWrap: 'wrap', padding: '0 24px 20px', maxWidth: 1400, margin: '0 auto' }}>
+          {GENRE_FILTERS.map((category, index) => (
+            <button
+              key={category}
+              onClick={() => {
+                setTransitioning(true);
+                setTimeout(() => {
+                  setCatIndex(index);
+                  setTransitioning(false);
+                }, 150);
+              }}
+              style={{ background: index === catIndex ? `${theme.accent}22` : 'transparent', border: `1px solid ${index === catIndex ? theme.accent : 'rgba(255,255,255,0.1)'}`, borderRadius: 20, color: index === catIndex ? theme.accent : 'rgba(255,255,255,0.45)', fontSize: 9, fontWeight: index === catIndex ? 800 : 500, padding: '4px 10px', cursor: 'pointer', letterSpacing: '.06em', textTransform: 'uppercase', transition: 'all .2s' }}
+            >
+              {category}
+            </button>
+          ))}
+        </div>
+
+        <div style={{ maxWidth: 1400, margin: '0 auto', padding: '0 24px 60px', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 16, opacity: transitioning ? 0 : 1, transform: transitioning ? 'translateY(22px)' : 'translateY(0)', transition: 'opacity 0.3s ease-out, transform 0.4s cubic-bezier(0.25,1,0.5,1)' }}>
+          {trendingPerformers.length > 0 ? trendingPerformers.map((item) => (
+            <div key={item.id} style={{ textDecoration: 'none' }} aria-label={`Open performer ${item.name}`}>
+              <BillboardPortraitCard item={item} theme={theme} />
+            </div>
+          )) : (
+            <div style={{ gridColumn: '1 / -1', border: `1px dashed ${theme.accent}66`, borderRadius: 10, padding: 20, textAlign: 'center', color: 'rgba(255,255,255,0.68)' }}>
+              No ranking data for {currentCategory} yet. Check back after more activity.
+            </div>
+          )}
+        </div>
+
+        <div style={{ maxWidth: 1400, margin: '0 auto', padding: '0 24px 34px' }}>
+          <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.22em', color: '#fff', marginBottom: 14 }}>MAGAZINE FEATURE SPREAD</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16, marginBottom: 28 }}>
+            {featureSpread.map((feature) => (
+              <BillboardFeatureCard key={feature.title} title={feature.title} item={feature.item} theme={feature.theme} kicker={feature.kicker} />
+            ))}
+          </div>
+
+          <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.12em', color: '#00FF88', marginBottom: 10 }}>GENRE LEADERBOARDS</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(290px, 1fr))', gap: 14, marginBottom: 22 }}>
+            {genreBoards.map((board) => (
+              <BillboardCycleBoard key={board.label} board={board} theme={getGenreTheme(board.label, theme)} pageIndex={boardPageIndex} />
+            ))}
+          </div>
+
+          <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.12em', color: '#FFD700', marginBottom: 10 }}>PERFORMANCE CATEGORY LEADERBOARDS</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(290px, 1fr))', gap: 14 }}>
+            {categoryBoards.map((board, index) => (
+              <BillboardCycleBoard key={board.label} board={board} theme={getGenreTheme(GENRE_FILTERS[index % GENRE_FILTERS.length]!, theme)} pageIndex={boardPageIndex} />
+            ))}
+          </div>
+        </div>
+
+        <div style={{ maxWidth: 1400, margin: '0 auto', padding: '0 24px 36px' }}>
+          <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.12em', color: '#00FFFF', marginBottom: 10 }}>GLOBAL INSTRUMENT INDEX</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 14 }}>
+            {instrumentFeatures.map((feature, index) => (
+              <InstrumentBillboardCard key={feature.label} feature={feature} accent={CAT_THEMES[index % CAT_THEMES.length]!.accent} />
+            ))}
+          </div>
+        </div>
+      </div>
+
       <div style={{ position: 'relative', zIndex: 10, maxWidth: 1100, margin: '0 auto' }}>
         <UnifiedAdSlot venue="home-1-2" slotKey="homepageMid" format="rectangle" label="ADVERTISEMENT" style={{ margin: '0 24px 24px', minHeight: 250 }} accentColor={theme.accent} />
       </div>
 
-      {/* Rule 6: Discovery Rails — no dead ends on the billboard surface */}
       <div style={{ position: 'relative', zIndex: 10, maxWidth: 1100, margin: '0 auto', padding: '0 24px 28px' }}>
-        <DiscoveryRail type="performers" label="🌐 WHO ELSE IS HERE" accentColor="#00FFFF" />
-        <DiscoveryRail type="liveRooms" label="🎥 LIVE NOW" accentColor="#E63000" />
+        <DiscoveryRail type="performers" label="🌐 GLOBAL DISCOVERY GRID" accentColor="#00FFFF" enableLiveStatus={false} />
+        <DiscoveryRail type="articles" label="📰 TRENDING ARTICLES" accentColor="#FF2DAA" />
       </div>
 
       <div style={{ position: 'relative', zIndex: 10 }}>

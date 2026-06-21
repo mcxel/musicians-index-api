@@ -25,7 +25,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { LobbyEntryFlow, type UniversalRoom } from '@/components/room/UniversalLobbyEntry';
-import { getCrownHolder, getLivePerformers, getPerformersByCategory, getFeaturedFreePerformers, type PerformerIdentity, type PerformerCategory } from '@/lib/performers/PerformerRegistry';
+import { getCrownHolder, getLivePerformers, getPerformersByCategory, getFeaturedFreePerformers, getTopPerformers, type PerformerCategory } from '@/lib/performers/PerformerRegistry';
 import { getVenueBookingSlots, type VenueBookingSlot } from '@/lib/venues/VenueRegistry';
 import { fetchUpcomingEvents } from '@/lib/api/homepage';
 import AdSenseSlot, { AD_SLOTS } from '@/components/ads/AdSenseSlot';
@@ -62,6 +62,28 @@ const GENRE_CONFIG: Record<string, { color: string; bg: string; emoji: string }>
 
 // GENRE_KEYS must come from GENRE_CONFIG (GENRE_DATA doesn't exist yet at this point)
 const GENRE_KEYS = Object.keys(GENRE_CONFIG);
+
+function buildOrbitPerformers(genreKey: string): Performer[] {
+  const byGenre = getPerformersByCategory(genreKey as PerformerCategory);
+  const liveFill = getLivePerformers().filter(p => !byGenre.some(g => g.slug === p.slug));
+  const topFill = getTopPerformers(24).filter(p => !byGenre.some(g => g.slug === p.slug) && !liveFill.some(l => l.slug === p.slug));
+  const resolved = [...byGenre, ...liveFill, ...topFill].slice(0, 10);
+
+  return resolved.map(p => ({
+    slug: p.slug,
+    name: p.name,
+    emoji: '👤',
+    rank: p.rank,
+    score: p.xp,
+    genre: p.category,
+    image: p.profileImageUrl,
+    avatarImage: p.profileImageUrl,
+    voteCount: null,
+    audienceCount: p.audienceCount,
+    isLive: p.isLive,
+    liveRoomRoute: p.liveRoomRoute,
+  }));
+}
 
 // Positions for 10 orbit cards (angle in degrees, radius 44% of container).
 // rotationDeg (optional) slowly drifts every card's angle over time so the
@@ -104,7 +126,7 @@ const TICKER_MSGS = [
   '⚔️ JOIN BATTLE ARENA — COMPETE TONIGHT',
   '🎤 CYPHER ARENA OPEN — DROP IN ANYTIME',
   '🔥 DRUM BATTLE LIVE RIGHT NOW',
-  '👑 WHO TOOK THE CROWN? VOTE NOW',
+  '🎤 SINGERS WANTED — VOCAL SHOWCASE OPEN',
   '💥 GENRE BATTLE — HIP-HOP VS R&B',
   '🚀 NEW PERFORMERS JUST INDEXED',
   '🗳️ VOTING LIVE — CROWN SHIFTING',
@@ -164,7 +186,7 @@ function PerformerMonitor({
 // ─── Component ────────────────────────────────────────────────────────────────
 
 const HERO_PHRASES = [
-  'WHO TOOK THE CROWN?',
+  'ALL INSTRUMENTS WELCOME',
   "THE WORLD'S STAGE",
   "WHO'S NEXT?",
   'DISCOVER THE FUTURE',
@@ -224,25 +246,17 @@ export default function Home1CoverPage() {
   const genreConfig = GENRE_CONFIG[genreKey]!;
 
   // UNIFICATION: Replace static GENRE_DATA with live data from PerformerRegistry
-  const [performers, setPerformers] = useState<Performer[]>([]);
+  const [performers, setPerformers] = useState<Performer[]>(() => buildOrbitPerformers(GENRE_KEYS[0]!));
   useEffect(() => {
-    const liveData = getPerformersByCategory(genreKey as PerformerCategory);
-    const adapted: Performer[] = liveData.slice(0, 10).map(p => ({
-      slug: p.slug,
-      name: p.name,
-      emoji: '👤',
-      rank: p.rank,
-      score: p.xp,
-      genre: p.category,
-      image: p.profileImageUrl,
-      avatarImage: p.profileImageUrl,
-      voteCount: null,
-      audienceCount: p.audienceCount,
-      isLive: p.isLive,
-      liveRoomRoute: p.liveRoomRoute,
-    }));
-    setPerformers(adapted);
+    setPerformers(buildOrbitPerformers(genreKey));
   }, [genreKey]);
+
+  useEffect(() => {
+    if (process.env.NODE_ENV !== 'production' && performers.length === 0) {
+      // Development signal to catch unexpected registry/category mismatches.
+      console.warn('[Home1CoverPage] orbit performers empty for genre', genreKey);
+    }
+  }, [performers.length, genreKey]);
 
   // Crown holder always comes from the PerformerRegistry — the real global #1 by XP.
   const crownData = getCrownHolder();
@@ -484,11 +498,11 @@ export default function Home1CoverPage() {
       {/* ── Main content ── */}
       <div
         style={{
-          paddingTop: 50,
+          paddingTop: 18,
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          minHeight: '100vh',
+          minHeight: '64vh',
           position: 'relative',
           zIndex: 1,
         }}
@@ -661,19 +675,46 @@ export default function Home1CoverPage() {
           </div>
         </div>
 
-        {/* ── Orbital section wrapper — tabloid underlay lives here (position:absolute) ── */}
-        <div style={{ position: 'relative', width: '100%', overflow: 'hidden' }}>
+        {/* ── Orbital section wrapper — tabloid underlay lives here (position:absolute) ──
+             marginTop is a POSITIVE 48px here, not negative — a prior pass had this at
+             -46 (pulling the section UP into the masthead). Build Director correction
+             (2026-06-20): crown/orbit must sit 40-60px LOWER, not higher. ── */}
+        <div style={{ position: 'relative', width: '100%', overflow: 'hidden', marginTop: 136, paddingBottom: 4 }}>
 
-        {/* TABLOID MAGAZINE UNDERLAY — scrolls behind the orbital (blueprint spec) */}
-        <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0, overflow: 'hidden' }}>
-          <div style={{ display: 'flex', whiteSpace: 'nowrap', animation: `${underlayDir === 'left' ? 'h1TabloidScroll' : 'h1RailRight'} 18s linear infinite`, opacity: 0.35, height: '100%', alignItems: 'stretch' }}>
+        {/* TABLOID MAGAZINE UNDERLAY — scrolls behind the orbital (blueprint spec).
+             Build Director correction (2026-06-20): the orbit must be the visual
+             focus, the underlay only supports it — reduced height (top/bottom
+             insets instead of full inset:0) and opacity so it recedes. */}
+        <div style={{ position: 'absolute', top: '18%', bottom: '18%', left: 0, right: 0, pointerEvents: 'none', zIndex: 0, overflow: 'hidden' }}>
+          <div style={{ display: 'flex', whiteSpace: 'nowrap', animation: `${underlayDir === 'left' ? 'h1TabloidScroll' : 'h1RailRight'} 18s linear infinite`, opacity: 0.22, height: '100%', alignItems: 'stretch' }}>
+            {/* Build Director correction (2026-06-20): these were legacy
+              single-performer battle placeholders that do not belong on a
+              public recruitment/discovery surface. Replaced with rotating
+              recruitment categories so every performer type sees themselves
+              here, not only rappers/singers. */}
             {[0, 1, 2].map(rep =>
               [
-                { bg: '#FFD700', hdr: '#FF1493', title: 'WHO TOOK THE CROWN?',   sub: 'COVER PERFORMER', artist: 'BIG ACE',     tag: 'HIP-HOP · 4,812 VOTES',      cta: 'CYPHER OPEN',       c1: '#00BFFF' },
-                { bg: '#FF1493', hdr: '#000000', title: 'BATTLE NIGHT CHAMPION',  sub: 'REIGNING CHAMP',  artist: 'WAVETEK',     tag: '47 WINS · HIP-HOP',          cta: '⚔️ CHALLENGE 8PM',  c1: '#FFD700' },
-                { bg: '#00BFFF', hdr: '#000000', title: "WHO'S GOT THE BARS?",    sub: 'ON THE MIC NOW',  artist: 'NOVA CIPHER', tag: 'CYPHER OPEN · 841 WATCHING',  cta: 'DROP IN ANYTIME',   c1: '#FF1493' },
-                { bg: '#000000', hdr: '#FFD700', title: 'CHALLENGE THE CROWN',    sub: 'DEFENDING NOW',   artist: 'BEAT THE BEAT',tag:'WAVETEK · 841 VOTES',         cta: 'ARENA SEATS 18,500',c1: '#FF1493' },
-                { bg: '#9B59B6', hdr: '#FFD700', title: 'DJ BATTLE NIGHT',        sub: 'CURRENT #1 DJ',   artist: 'DJ KRAZE',    tag: 'DJ · TURNTABLIST',            cta: 'JOIN BATTLE QUEUE', c1: '#00BFFF' },
+                { bg: '#FFD700', hdr: '#FF1493', title: 'SINGERS WANTED',            sub: 'VOCALISTS NEEDED',       artist: 'R&B · POP · GOSPEL',         tag: 'JOIN LIVE SHOWCASES TONIGHT',       cta: 'SIGN UP FREE',       c1: '#00BFFF' },
+                { bg: '#FF1493', hdr: '#000000', title: 'DJs WANTED',                sub: 'TURNTABLES + SETS',      artist: 'CLUB · BATTLE · CYPHER',     tag: 'DJ DISCOVERY CHARTS ARE LIVE',      cta: 'JOIN DJ FLOOR',      c1: '#FFD700' },
+                { bg: '#00BFFF', hdr: '#000000', title: 'COMEDIANS NEEDED',          sub: 'OPEN MIC NIGHTS',        artist: 'STAND-UP · SKETCH · IMPROV', tag: 'COMEDY SHOWCASES STREAMING',         cta: 'APPLY NOW',          c1: '#FF1493' },
+                { bg: '#000000', hdr: '#FFD700', title: 'DANCERS WANTED',            sub: 'CREWS + SOLO DANCERS',   artist: 'HIP-HOP · BREAK · BALLET',   tag: 'DANCE BATTLES OPEN THIS WEEK',       cta: 'JOIN A CREW',        c1: '#FF1493' },
+                { bg: '#9B59B6', hdr: '#FFD700', title: 'WRITERS NEEDED',            sub: 'SONGWRITERS + POETS',    artist: 'LYRICS · SPOKEN WORD',       tag: 'WRITE FOR ARTISTS + MAGAZINE',       cta: 'SUBMIT WRITING',     c1: '#00BFFF' },
+                { bg: '#FFD700', hdr: '#000000', title: 'ADVERTISERS WANTED',        sub: 'REACH LIVE FANS',        artist: 'SPOTS FROM $25',             tag: 'PLACEMENTS ACROSS TMI SURFACES',     cta: 'ADVERTISE NOW',      c1: '#FF2DAA' },
+                { bg: '#FF1493', hdr: '#FFD700', title: 'PRODUCERS WANTED',          sub: 'BUILD BEAT CATALOGS',    artist: 'MIX + MASTER + RELEASE',     tag: 'GLOBAL PRODUCER RANKINGS OPEN',      cta: 'JOIN PRODUCER HUB',  c1: '#00BFFF' },
+                { bg: '#00BFFF', hdr: '#000000', title: 'BEATMAKERS WANTED',         sub: 'SELL + FEATURE BEATS',   artist: 'LEASES + EXCLUSIVES',        tag: 'BEAT MARKETPLACE IS ACTIVE',         cta: 'UPLOAD BEATS',       c1: '#FFD700' },
+                { bg: '#000000', hdr: '#FFD700', title: 'ACTORS WANTED',             sub: 'LIVE PERFORMANCE ROOMS', artist: 'SCENES + MONOLOGUES',        tag: 'SHOWCASE YOUR TALENT LIVE',           cta: 'BOOK A SLOT',        c1: '#AA2DFF' },
+                { bg: '#9B59B6', hdr: '#FFD700', title: 'MAGICIANS WANTED',          sub: 'ILLUSION + STAGE ACTS',  artist: 'FAMILY + PRIME-TIME SETS',   tag: 'UNIQUE ACTS GET FEATURED FAST',       cta: 'APPLY PERFORMANCE',  c1: '#00FFFF' },
+                { bg: '#FFD700', hdr: '#000000', title: 'VENUES WANTED',             sub: 'HOST GLOBAL EVENTS',     artist: 'BOOK TALENT DIRECT',         tag: 'VENUE BOOKING ENGINE IS LIVE',        cta: 'LIST YOUR VENUE',    c1: '#00BFFF' },
+                { bg: '#FF1493', hdr: '#000000', title: 'HOSTS WANTED',              sub: 'MC + EVENT HOSTING',     artist: 'ARENAS + AWARD NIGHTS',      tag: 'HOST MONTHLY + WEEKLY SHOWS',         cta: 'BECOME A HOST',      c1: '#FFD700' },
+                { bg: '#00BFFF', hdr: '#000000', title: 'TOP GUITARISTS',            sub: 'GLOBAL INSTRUMENT INDEX',artist: 'LEAD + RHYTHM + SOLO',        tag: 'RANKED BY XP + ENGAGEMENT',           cta: 'VIEW RANKINGS',      c1: '#FF1493' },
+                { bg: '#000000', hdr: '#FFD700', title: 'TOP DRUMMERS',              sub: 'LIVE RHYTHM LEADERS',    artist: 'KIT + PERCUSSION',           tag: 'TRENDING DRUM ARTISTS WORLDWIDE',     cta: 'SEE TOP 10',         c1: '#00BFFF' },
+                { bg: '#9B59B6', hdr: '#FFD700', title: 'TOP PIANISTS',              sub: 'KEYS + COMPOSITION',     artist: 'JAZZ + CLASSICAL + POP',     tag: 'LEADERBOARDS UPDATE DAILY',           cta: 'OPEN BOARD',         c1: '#00FFFF' },
+                { bg: '#FFD700', hdr: '#FF1493', title: 'TOP VIOLINISTS',            sub: 'STRINGS SPOTLIGHT',      artist: 'SOLO + ENSEMBLE',            tag: 'DISCOVERY + VENUE BOOKINGS',          cta: 'VIEW TALENT',        c1: '#00BFFF' },
+                { bg: '#FF1493', hdr: '#000000', title: 'TOP SAX PLAYERS',           sub: 'JAZZ + FUSION LEADERS',  artist: 'LIVE IMPROV SHOWCASE',       tag: 'GLOBAL SAXOPHONE CHARTS',             cta: 'JOIN CHARTS',        c1: '#FFD700' },
+                { bg: '#00BFFF', hdr: '#000000', title: 'TOP DJs',                   sub: 'TURNTABLE RANKINGS',     artist: 'LIVE SET POWER INDEX',       tag: 'DJ SCORES MOVE BY FAN RESPONSE',      cta: 'TRACK RANK',         c1: '#FF1493' },
+                { bg: '#000000', hdr: '#FFD700', title: 'TOP BEATMAKERS',            sub: 'PRODUCTION CHARTS',      artist: 'SELL + STREAM + BATTLES',    tag: 'RANKED BY XP + USAGE + WINS',         cta: 'OPEN CHART',         c1: '#00BFFF' },
+                { bg: '#9B59B6', hdr: '#FFD700', title: 'TOP COMEDIANS',             sub: 'COMEDY LEADERBOARDS',    artist: 'VOTES + AUDIENCE + REPLAYS', tag: 'GLOBAL COMEDY IMPACT RANKING',        cta: 'VIEW LEADERS',       c1: '#00FFFF' },
+                { bg: '#FFD700', hdr: '#000000', title: 'TOP DANCERS',               sub: 'DANCE WORLD RANKINGS',   artist: 'CREWS + SOLO MOVERS',        tag: 'CYBERS + BATTLES + LIVE CROWDS',      cta: 'SEE DANCERS',        c1: '#FF1493' },
               ].map((p, i) => (
                 <div key={`${rep}-${i}`} style={{ display: 'inline-flex', flexDirection: 'column', width: 190, flexShrink: 0, border: '3px solid #000', overflow: 'hidden', background: p.bg, height: '100%' }}>
                   <div style={{ background: p.hdr, padding: '6px 8px' }}>
@@ -692,9 +733,12 @@ export default function Home1CoverPage() {
               ))
             )}
           </div>
-          {/* Radial vignette keeps center readable */}
-          <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 46% 62% at center, transparent 44%, rgba(6,2,26,0.68) 100%)', pointerEvents: 'none', filter: 'blur(3px)' }} />
-          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(90deg, rgba(6,2,26,0.72) 0%, transparent 24%, transparent 76%, rgba(6,2,26,0.72) 100%)', pointerEvents: 'none' }} />
+          {/* Radial vignette keeps center readable — filter:blur() removed, it was
+              softening/blurring the tabloid text underneath rather than just the
+              gradient edge (Build Director correction 2026-06-20: "remove blur,
+              improve sharpness, broadcast readability"). */}
+          <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 44% 58% at center, transparent 46%, rgba(6,2,26,0.68) 100%)', pointerEvents: 'none' }} />
+          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(90deg, rgba(6,2,26,0.7) 0%, transparent 24%, transparent 76%, rgba(6,2,26,0.7) 100%)', pointerEvents: 'none' }} />
         </div>
 
         {/* ── Underlay direction toggle ── */}
@@ -718,7 +762,6 @@ export default function Home1CoverPage() {
             alignItems: 'start',
             gap: 10,
             padding: '0 10px',
-            marginTop: 44,
             position: 'relative',
             zIndex: 2,
           }}
@@ -764,7 +807,7 @@ export default function Home1CoverPage() {
                   {leftTab === 1 && (
                     <>
                       <div style={{ fontSize: 7, fontWeight: 800, color: '#FF8C00', letterSpacing: '0.12em', marginBottom: 6 }}>🏟 VENUE BOOKING</div>
-                      {venues.map((v, i) => (
+                      {venues.map((v) => (
                         <div key={v.day} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,140,0,0.18)', borderRadius: 5, padding: '5px 6px', marginBottom: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <div>
                             <div style={{ fontSize: 8, fontWeight: 700, color: '#FF8C00' }}>{v.day} · {v.venue}</div>
@@ -797,7 +840,7 @@ export default function Home1CoverPage() {
                separate direct children of the grid, which pushed the orbital into the
                right-rail track (overflowing off-screen) and wrapped the right panel
                into a new implicit row under the left rail. ════ */}
-          <div style={{ minWidth: 0 }}>
+          <div style={{ minWidth: 0, position: 'relative', zIndex: 8, isolation: 'isolate' }}>
 
           {/* ── WEEKLY CROWN ORBIT label ── */}
           <div style={{ textAlign: 'center', padding: '8px 0 4px', position: 'relative', zIndex: 5 }}>
@@ -805,16 +848,22 @@ export default function Home1CoverPage() {
             <div style={{ fontSize: 7, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.15em', marginTop: 1 }}>TOP RANKED · LIVE NOW · REAL TIME</div>
           </div>
 
-          {/* ── Orbital ring ── */}
+          {/* ── Orbital ring ──
+               Build Director correction (2026-06-20): orbit/crown scale target is
+               ~15-20% smaller overall — maxWidth 900px was already cut to 820px
+               (only ~9%) in a prior pass; cutting further to 740px brings the
+               container in line with the crown circle (-17%) and card sizes
+               (-15-18%) already applied below. */}
           <div
             style={{
               position: 'relative',
               width: '100%',
-              minWidth: 'min(250px, 56vw)',
-              maxWidth: 'min(760px, 56vw)',
+              minWidth: 'min(280px, 58vw)',
+              maxWidth: 'min(740px, 60vw)',
               aspectRatio: '1 / 1',
               margin: '0 auto',
               flexShrink: 0,
+              zIndex: 10,
             }}
           >
           {/* Starburst transition overlay */}
@@ -840,10 +889,10 @@ export default function Home1CoverPage() {
           <div
             style={{
               position: 'absolute',
-              inset: '12%',
+              inset: '15%',
               borderRadius: '50%',
-              border: `1px solid ${accentColor}1f`,
-              boxShadow: `0 0 28px ${accentColor}14`,
+              border: `1px solid ${accentColor}0f`,
+              boxShadow: `0 0 20px ${accentColor}0c`,
               transform: `rotate(${orbitDeg}deg)`,
               transition: 'transform 0.016s linear',
             }}
@@ -851,9 +900,9 @@ export default function Home1CoverPage() {
           <div
             style={{
               position: 'absolute',
-              inset: '16%',
+              inset: '19%',
               borderRadius: '50%',
-              border: `1px dashed ${accentColor}14`,
+              border: `1px dashed ${accentColor}0c`,
               transform: `rotate(${-orbitDeg * 0.6}deg)`,
               transition: 'transform 0.016s linear',
             }}
@@ -960,8 +1009,8 @@ export default function Home1CoverPage() {
 
           {/* 10 orbit cards — live → seat-join flow; not live → performer profile */}
           {performers.map((p, i) => {
-            const pos = getOrbitPos(i, 10, 36, orbitDeg * 0.08);
-            const cardSize = i === 0 ? 64 : 56;
+            const pos = getOrbitPos(i, 10, 37, orbitDeg * 0.08);
+            const cardSize = i === 0 ? 66 : 58;
             const hasImage = Boolean((p.image ?? p.avatarImage)?.trim()) && !brokenOrbitImages[p.slug];
             const initials = p.name
               .split(' ')
@@ -990,12 +1039,15 @@ export default function Home1CoverPage() {
                 } : undefined}
               >
                 <div
+                  data-testid="home1-orbit-card"
+                  data-performer-name={p.name}
+                  data-avatar-url={p.image ?? p.avatarImage ?? ''}
                   style={{
                     position: 'absolute',
                     left: `${pos.x}%`,
                     top: `${pos.y}%`,
                     transform: 'translate(-50%, -50%)',
-                    zIndex: activeIdx === i ? 30 : 10,
+                    zIndex: activeIdx === i ? 45 : 34,
                     cursor: 'pointer',
                     transition: 'transform 0.2s ease',
                   }}
@@ -1036,7 +1088,7 @@ export default function Home1CoverPage() {
                       width: cardSize,
                       height: Math.round(cardSize * 1.28),
                       borderRadius: 5,
-                      background: `linear-gradient(160deg, ${accentColor}28, ${bgColor})`,
+                      background: `linear-gradient(160deg, ${accentColor}35, rgba(5,5,16,0.96))`,
                       border: `2px solid ${accentColor}${activeIdx === i ? 'cc' : '55'}`,
                       boxShadow: activeIdx === i ? `0 0 24px ${accentColor}88` : `0 0 8px ${accentColor}22`,
                       transition: 'box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease',
@@ -1057,6 +1109,7 @@ export default function Home1CoverPage() {
                     {/* Performer image with honest fallback when media is unavailable */}
                     {hasImage ? (
                       <img
+                        data-testid="home1-orbit-image"
                         src={p.image ?? p.avatarImage}
                         alt={p.name}
                         onError={() => setBrokenOrbitImages(prev => ({ ...prev, [p.slug]: true }))}
@@ -1308,14 +1361,14 @@ export default function Home1CoverPage() {
         </div> {/* End orbital section wrapper */}
 
         {/* ══ MOVING RAIL #2 — scrolls RIGHT (opposite direction), rainbow animated bg ══ */}
-        <div style={{ width: '100%', background: 'linear-gradient(90deg,#FF2DAA,#AA2DFF,#00E5FF,#FFD700,#FF2DAA)', backgroundSize: '400% 100%', animation: 'h1ColorBg 8s ease infinite', overflow: 'hidden', height: 24, position: 'relative', borderTop: '1px solid rgba(255,255,255,0.14)', borderBottom: '1px solid rgba(255,255,255,0.14)' }}>
+        <div style={{ width: '100%', background: 'linear-gradient(90deg,#FF2DAA,#AA2DFF,#00E5FF,#FFD700,#FF2DAA)', backgroundSize: '400% 100%', animation: 'h1ColorBg 22s linear infinite', overflow: 'hidden', height: 26, position: 'relative', borderTop: '1px solid rgba(255,255,255,0.18)', borderBottom: '1px solid rgba(255,255,255,0.18)' }}>
           <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)' }} />
-          <div style={{ position: 'relative', zIndex: 2, display: 'inline-block', whiteSpace: 'nowrap', animation: 'h1RailRight 20s linear infinite' }}>
-            {['★ BREAKING: CROWN UPDATE — SEE WHO LEADS', '▶ LATEST BATTLES TONIGHT — TUNE IN NOW', '◆ MUSIC NEWS LIVE — WAVETEK DEFENDS', '● TMI MAGAZINE ISSUE 1 OUT NOW', '◉ BEAT MARKETPLACE OPEN — BUY/SELL BEATS', '▷ WORLD PREMIERE DROPPING TONIGHT AT MIDNIGHT', '◈ CYPHER CHAMPIONS — FINALS THIS SATURDAY', '◆ SPONSOR SPOTLIGHT — BEATS BY TMX ON TMI', '★ NEW ARTISTS JOINING — DISCOVERY CHARTS LIVE', '▶ AUDITIONS OPEN — ALL GENRES ACCEPTED'].map((msg, i) => (
-              <span key={i} style={{ fontSize: 9, fontWeight: 700, color: '#fff', padding: '0 24px', lineHeight: '24px', whiteSpace: 'nowrap' }}>{msg}</span>
+          <div style={{ position: 'relative', zIndex: 2, display: 'inline-block', whiteSpace: 'nowrap', animation: 'h1RailRight 56s linear infinite', willChange: 'transform' }}>
+            {['★ SINGERS WANTED — VOCAL SHOWCASE OPEN', '▶ DJS WANTED — GLOBAL MIXES LIVE', '◆ COMEDIANS NEEDED — JOKE-OFF ROOMS OPEN', '● DANCERS WANTED — DANCE CREWS STEP IN', '◉ WRITERS NEEDED — STORYTELLERS WELCOME', '▷ ADVERTISERS WANTED — REACH LIVE AUDIENCES', '◈ PRODUCERS WANTED — BEAT BATTLES TONIGHT', '◆ BEATMAKERS WANTED — SUBMIT YOUR SOUND', '★ ALL INSTRUMENTS WELCOME — GLOBAL INDEX OPEN', '▶ DISCOVERY CHARTS LIVE — NEW TALENT INDEXED'].map((msg, i) => (
+              <span key={i} style={{ fontSize: 11, fontWeight: 900, color: '#F8FAFF', padding: '0 34px', lineHeight: '26px', whiteSpace: 'nowrap', letterSpacing: '0.045em', textShadow: '0 1px 0 rgba(0,0,0,0.72)', fontFamily: "'Inter',sans-serif" }}>{msg}</span>
             ))}
-            {['★ BREAKING: CROWN UPDATE — SEE WHO LEADS', '▶ LATEST BATTLES TONIGHT — TUNE IN NOW', '◆ MUSIC NEWS LIVE — WAVETEK DEFENDS', '● TMI MAGAZINE ISSUE 1 OUT NOW', '◉ BEAT MARKETPLACE OPEN — BUY/SELL BEATS', '▷ WORLD PREMIERE DROPPING TONIGHT AT MIDNIGHT', '◈ CYPHER CHAMPIONS — FINALS THIS SATURDAY', '◆ SPONSOR SPOTLIGHT — BEATS BY TMX ON TMI', '★ NEW ARTISTS JOINING — DISCOVERY CHARTS LIVE', '▶ AUDITIONS OPEN — ALL GENRES ACCEPTED'].map((msg, i) => (
-              <span key={`d-${i}`} style={{ fontSize: 9, fontWeight: 700, color: '#fff', padding: '0 24px', lineHeight: '24px', whiteSpace: 'nowrap' }}>{msg}</span>
+            {['★ SINGERS WANTED — VOCAL SHOWCASE OPEN', '▶ DJS WANTED — GLOBAL MIXES LIVE', '◆ COMEDIANS NEEDED — JOKE-OFF ROOMS OPEN', '● DANCERS WANTED — DANCE CREWS STEP IN', '◉ WRITERS NEEDED — STORYTELLERS WELCOME', '▷ ADVERTISERS WANTED — REACH LIVE AUDIENCES', '◈ PRODUCERS WANTED — BEAT BATTLES TONIGHT', '◆ BEATMAKERS WANTED — SUBMIT YOUR SOUND', '★ ALL INSTRUMENTS WELCOME — GLOBAL INDEX OPEN', '▶ DISCOVERY CHARTS LIVE — NEW TALENT INDEXED'].map((msg, i) => (
+              <span key={`d-${i}`} style={{ fontSize: 11, fontWeight: 900, color: '#F8FAFF', padding: '0 34px', lineHeight: '26px', whiteSpace: 'nowrap', letterSpacing: '0.045em', textShadow: '0 1px 0 rgba(0,0,0,0.72)', fontFamily: "'Inter',sans-serif" }}>{msg}</span>
             ))}
           </div>
         </div>
@@ -1406,7 +1459,7 @@ export default function Home1CoverPage() {
             padding: '6px 0',
             marginTop: 16,
             overflow: 'hidden',
-            height: 30,
+            height: 32,
             position: 'relative',
           }}
         >
@@ -1414,20 +1467,22 @@ export default function Home1CoverPage() {
             style={{
               display: 'inline-block',
               whiteSpace: 'nowrap',
-              fontSize: 10,
+              fontSize: 11,
               fontWeight: 900,
-              color: accentColor,
-              letterSpacing: '0.15em',
+              color: '#FFD700',
+              letterSpacing: '0.17em',
               fontFamily: "'Inter', sans-serif",
-              animation: 'h1TickerScroll 45s linear infinite',
+              textShadow: '0 1px 0 rgba(0,0,0,0.78)',
+              animation: 'h1TickerScroll 130s linear infinite',
+              willChange: 'transform',
             }}
           >
             {TICKER_MSGS.map((msg, i) => (
-              <span key={i} style={{ marginRight: '4em' }}>{msg}</span>
+              <span key={i} style={{ marginRight: '8em' }}>{msg}</span>
             ))}
             {/* Duplicate for seamless loop */}
             {TICKER_MSGS.map((msg, i) => (
-              <span key={`d-${i}`} style={{ marginRight: '4em' }}>{msg}</span>
+              <span key={`d-${i}`} style={{ marginRight: '8em' }}>{msg}</span>
             ))}
           </div>
         </div>
@@ -1617,7 +1672,7 @@ export default function Home1CoverPage() {
                   letterSpacing: '0.04em',
                 }}
               >
-                Weekly Cyphers!
+                Discovery Spotlight
               </div>
               <div
                 style={{
@@ -1628,7 +1683,7 @@ export default function Home1CoverPage() {
                   fontFamily: "'Inter', sans-serif",
                 }}
               >
-                Who took the crown this week? → Read all articles
+                Singers Wanted • DJs Wanted • Comedians Needed • All Instruments Welcome
               </div>
             </div>
             <span style={{ fontSize: 18 }}>⚡</span>
@@ -1641,10 +1696,10 @@ export default function Home1CoverPage() {
           <div style={{ background: 'rgba(255,215,0,0.04)', border: '1px solid rgba(255,215,0,0.15)', borderRadius: 6, padding: '10px 12px' }}>
             <div style={{ fontSize: 8, fontWeight: 800, color: '#FFD700', letterSpacing: '0.18em', marginBottom: 8, fontFamily: "'Inter',sans-serif" }}>◆ NEWS BELT</div>
             {[
-              { text: 'WAVETEK DEFENDS CROWN IN OVERTIME BATTLE — 3RD TITLE', href: '/battles' },
-              { text: 'CYPHER ARENA RECORD BROKEN — 24 BARS NON-STOP', href: '/battles/cypher' },
-              { text: 'MAGAZINE ISSUE 2 DROPS FRIDAY — COVER REVEAL', href: '/magazine' },
-              { text: 'BEAT MARKETPLACE PASSES 500 TRACKS — BROWSE NOW', href: '/beats' },
+              { text: 'SINGERS WANTED — VOCAL SHOWCASE SIGNUPS OPEN NOW', href: '/signup?role=artist' },
+              { text: 'DJS WANTED — GLOBAL MIX ROOMS ACCEPTING SETS', href: '/signup?role=artist' },
+              { text: 'COMEDIANS NEEDED — OPEN MIC CHALLENGES LIVE', href: '/signup?role=artist' },
+              { text: 'ALL INSTRUMENTS WELCOME — JOIN THE GLOBAL INDEX', href: '/home/1-2' },
             ].map((item, i) => (
               <Link key={i} href={item.href} style={{ textDecoration: 'none', display: 'block', marginBottom: 6 }}>
                 <div style={{ fontSize: 8.5, color: 'rgba(255,255,255,0.75)', lineHeight: 1.5, borderLeft: '2px solid rgba(255,215,0,0.3)', paddingLeft: 6, fontFamily: "'Inter',sans-serif" }}>
@@ -1657,18 +1712,18 @@ export default function Home1CoverPage() {
           <div style={{ background: 'rgba(0,229,255,0.04)', border: '1px solid rgba(0,229,255,0.15)', borderRadius: 6, padding: '10px 12px' }}>
             <div style={{ fontSize: 8, fontWeight: 800, color: '#00E5FF', letterSpacing: '0.18em', marginBottom: 8, fontFamily: "'Inter',sans-serif" }}>🎙 INTERVIEWS</div>
             <div style={{ marginBottom: 8 }}>
-              <div style={{ fontSize: 10, fontWeight: 800, color: '#fff', fontFamily: "'Inter',sans-serif" }}>WAVETEK</div>
+              <div style={{ fontSize: 10, fontWeight: 800, color: '#fff', fontFamily: "'Inter',sans-serif" }}>DISCOVERY DESK</div>
               <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.55)', lineHeight: 1.5, marginTop: 3, fontFamily: "'Inter',sans-serif" }}>
-                &ldquo;I came to TMI with 3 songs. Now I have 3 titles. The crowd here doesn&apos;t play. You gotta be ready every night.&rdquo;
+                &ldquo;Singers, DJs, comedians, dancers, writers, producers, beatmakers, advertisers, and instrumentalists all have live discovery lanes on TMI right now.&rdquo;
               </div>
-              <Link href="/articles/performer/wavetek" style={{ textDecoration: 'none' }}><div style={{ fontSize: 7, color: '#00E5FF', marginTop: 4, fontWeight: 700, fontFamily: "'Inter',sans-serif" }}>READ FULL INTERVIEW →</div></Link>
+              <Link href="/signup" style={{ textDecoration: 'none' }}><div style={{ fontSize: 7, color: '#00E5FF', marginTop: 4, fontWeight: 700, fontFamily: "'Inter',sans-serif" }}>JOIN THE NETWORK →</div></Link>
             </div>
             <div>
-              <div style={{ fontSize: 10, fontWeight: 800, color: '#fff', fontFamily: "'Inter',sans-serif" }}>DJ RECKLESS</div>
+              <div style={{ fontSize: 10, fontWeight: 800, color: '#fff', fontFamily: "'Inter',sans-serif" }}>RECRUITMENT BOARD</div>
               <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.55)', lineHeight: 1.5, marginTop: 3, fontFamily: "'Inter',sans-serif" }}>
-                &ldquo;The vibe at TMI is different. Sponsors, live crowds, and real money. This is the future of music.&rdquo;
+                &ldquo;Dancers wanted. Writers needed. Advertisers wanted. Producers wanted. Beatmakers wanted. All instruments welcome.&rdquo;
               </div>
-              <Link href="/articles/performer/dj-reckless" style={{ textDecoration: 'none' }}><div style={{ fontSize: 7, color: '#00E5FF', marginTop: 4, fontWeight: 700, fontFamily: "'Inter',sans-serif" }}>READ FULL INTERVIEW →</div></Link>
+              <Link href="/home/1-2" style={{ textDecoration: 'none' }}><div style={{ fontSize: 7, color: '#00E5FF', marginTop: 4, fontWeight: 700, fontFamily: "'Inter',sans-serif" }}>VIEW RANKINGS →</div></Link>
             </div>
           </div>
         </div>
