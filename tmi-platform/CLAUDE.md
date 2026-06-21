@@ -592,7 +592,7 @@ Official Game Shows (Deal or Feud, Name That Tune, Circle and Squares, Champions
 
 ### Platform Constitution Summary
 
-22 rules. Non-negotiable. Applies forever.
+23 rules. Non-negotiable. Applies forever.
 
 | # | Rule | Key File |
 |---|------|----------|
@@ -619,6 +619,7 @@ Official Game Shows (Deal or Feud, Name That Tune, Circle and Squares, Champions
 | 20 | Launch Certification Standard — no fake data/dead buttons/fake live/fake monitors; every profile functional; route ledger; one engine per system; visual honesty | All surfaces, final launch gate |
 | 21 | Venue Runtime Convergence — one runtime, many modes; one audience/seat/presence system (4 found, 2 converged); inherit-best-of-breed on duplicate routes, mark LEGACY don't delete; Official Automated Events run by bots on real outcomes; No Empty Platform = rotate opportunities, never fake crowds | audienceRuntimeEngine.ts, ArenaEventShell.tsx |
 | 22 | Adaptive Platform Rule — every major runtime may Observe/Measure/Recommend, never silently rewrite; major behavioral changes require Build Director approval; canonical registries stay source of truth while runtimes learn | All runtimes, future analytics layer |
+| 23 | Revenue-First Rewards Governor — 3 reward phases (Launch=XP/cosmetics, Growth=platform credits, Cash=real money) gated by real financial health checks; no payout system may ever place the platform in a loss position; auto scale-down, not human-approved | Future RewardsEngine, PrizeBudgetEngine |
 
 ---
 
@@ -631,3 +632,25 @@ Official Game Shows (Deal or Feud, Name That Tune, Circle and Squares, Champions
 **Event Runtime ≠ Host Runtime** (locked same day): Mini/casual events (Mini Battle, Mini Cypher, Mini Dance-Off, Mini Challenge, Mini Concert, Mini Comedy Show, Mini Showcase) get the full Event Engine (scoring, rankings, VS animations, sound effects, audience reactions, XP, rewards) with **host optional** — an Automated Announcer covers the no-host case ("Round One begins now," "Voting is open," "Winner detected"). Official branded shows (Monthly Idol, Monday Night Stage, Deal or Feud 1000, Circle & Squares, Battle of the Bands, Yearly Championships, Dirty Dozens Finals) get the same Event Engine **plus** real hosts/judges/commentary/personality on top. Host backup coverage is required for the branded-show list above; casual/quick events do not require a host at all. Neither the Event Runtime nor the Hosted/Automated split exist as code yet — locked as direction, not built.
 
 *Established 2026-06-20 by Marcel Dickens.*
+
+---
+
+### Rule 23 — Revenue-First Rewards Governor (locked 2026-06-21, not yet implemented)
+
+**No contest, reward, payout, scholarship, giveaway, or prize pool may ever place the platform into a loss position.** The platform pays operating costs first, infrastructure second, reserves third, rewards last. This is a permanent financial safety rule, not a launch-only restriction — it governs every future reward/prize system TMI ever builds.
+
+**Three reward phases, gated by real financial state, not by calendar or ambition:**
+
+1. **Launch Mode (current, bank balance low/unknown)** — contest rewards are XP, badges, titles, trophies, crown points, ranking points, profile cosmetics, special frames, exclusive emotes, playlist placement, homepage/billboard/magazine features, season pass progress, founder rewards, digital collectibles. **No automatic cash payouts of any kind.** Example: 1st place = +10,000 XP + Billboard feature + Magazine article + Gold trophy. Costs the platform almost nothing.
+2. **Growth Mode** — unlocks only after a real, measured trigger (e.g., monthly revenue exceeds a set floor AND operating reserve covers a set number of months). Adds gift cards, merch credits, ticket credits, platform credits, sponsor rewards — money stays inside the TMI ecosystem, still no large cash payouts.
+3. **Cash Prize Mode** — unlocks only after reserve account funded, infrastructure funded, taxes reserved, emergency reserve funded, and monthly profit is positive. Only then: cash prizes, revenue shares, tournament pools.
+
+**Automatic Safety Governor**: if at any point cash reserve drops below minimum, OR monthly profit goes negative, OR emergency fund drops below threshold — cash rewards disable automatically and every contest converts back to XP/titles/features/credits/trophies. **No human approval required for the scale-down; it is automatic.** This is the same "AI may recommend, never silently override platform health" boundary as Rule 22, applied to money specifically: the governor can only ever scale rewards *down* to protect the platform, never authorize new cash exposure on its own.
+
+**Prize Budget Engine**: every contest has a budget derived from real revenue, never an arbitrary promise. `PrizePool = ContestRevenue × AllocationRate`, and the pool may never be exceeded. For venue-hosted contests, the venue sets prize budget / ticket price / free-ticket count / backstage count / VIP count at creation time, and the system validates affordability before publishing — reject, don't publish, if the venue can't cover what it's promising.
+
+**Ticket/access credits over cash at launch**: concert tickets, VIP passes, backstage access, meet & greets, digital season passes, premium membership time, and merch credits are the preferred reward currency before Phase 3 — they feel valuable to the winner while costing the platform very little, since they're drawn from existing inventory/access rather than the bank account.
+
+**Scope honesty**: none of this — RewardsEngine, PrizeBudgetEngine, the phase-gating logic, the automatic governor — exists as code yet. Locking this here is documentation of intent and a permanent financial guardrail for whenever a rewards/prize/payout system gets built, the same treatment as Rule 22's Adaptive Platform Rule. Do not build a stub/fake version of "the governor protects the platform" that doesn't actually check real financial data (that would itself violate Rule 20).
+
+*Established 2026-06-21 by Marcel Dickens.*

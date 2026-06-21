@@ -53,11 +53,34 @@ type Props = {
 export default function LiveMagazineVoiceTicker({ pageId, intervalMs = 5000, accent = "#00FFFF" }: Props) {
   const bank = COPY_BANKS[pageId] ?? COPY_BANKS["home-1"]!;
   const [idx, setIdx] = useState(0);
+  // framer-motion's <AnimatePresence> does its own DOM bookkeeping for
+  // enter/exit that the SSR pass can't replicate, which was producing a
+  // real "Text content does not match server-rendered HTML" hydration
+  // mismatch (React #425/#422) on every load of this component. Render a
+  // plain, static version (same text/styling, no motion wrapper) until
+  // after mount — that's what SSR and the client's first paint both see,
+  // so they match exactly — then upgrade to the animated version.
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     const t = setInterval(() => setIdx((i) => (i + 1) % bank.length), intervalMs);
     return () => clearInterval(t);
   }, [bank.length, intervalMs]);
+
+  const textStyle: React.CSSProperties = {
+    fontSize: 10,
+    fontWeight: 900,
+    letterSpacing: "0.12em",
+    color: accent,
+    textTransform: "uppercase",
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+  };
 
   return (
     <div style={{
@@ -68,27 +91,22 @@ export default function LiveMagazineVoiceTicker({ pageId, intervalMs = 5000, acc
       display: "flex",
       alignItems: "center",
     }}>
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={idx}
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -8 }}
-          transition={{ duration: 0.28, ease: "easeOut" }}
-          style={{
-            fontSize: 10,
-            fontWeight: 900,
-            letterSpacing: "0.12em",
-            color: accent,
-            textTransform: "uppercase",
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-          }}
-        >
-          {bank[idx]}
-        </motion.div>
-      </AnimatePresence>
+      {mounted ? (
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={idx}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.28, ease: "easeOut" }}
+            style={textStyle}
+          >
+            {bank[idx]}
+          </motion.div>
+        </AnimatePresence>
+      ) : (
+        <div style={textStyle}>{bank[idx]}</div>
+      )}
     </div>
   );
 }
