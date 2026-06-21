@@ -17,6 +17,9 @@ import MonitorSatelliteSystem from "@/components/canisters/MonitorSatelliteSyste
 import CollapsibleCanister from "@/components/canisters/CollapsibleCanister";
 import MemoryWall from "@/components/media/MemoryWall";
 import PlaylistArtifact from "@/components/artifacts/PlaylistArtifact";
+import HeadquartersCommunicationDock from "@/components/headquarters/HeadquartersCommunicationDock";
+import { useTmiSession } from "@/hooks/SessionContext";
+import { getLatestEditorialArticles } from "@/lib/editorial/NewsArticleModel";
 
 const NAV_LINKS = [
   { href: "/hub/performer",     label: "Control Room" },
@@ -56,6 +59,9 @@ interface MessageThreadRow {
 export default function PerformerHubPage() {
   const [bookings, setBookings] = useState<BookingRow[] | null>(null);
   const [threads, setThreads]   = useState<MessageThreadRow[] | null>(null);
+  const [liveStatus, setLiveStatus] = useState<{ isLive: boolean; audienceCount: number }>({ isLive: false, audienceCount: 0 });
+  const { userId, userName } = useTmiSession();
+  const magazineFeatures = getLatestEditorialArticles(3);
 
   useEffect(() => {
     fetch("/api/booking/create")
@@ -75,6 +81,26 @@ export default function PerformerHubPage() {
       })
       .catch(() => setThreads([]));
   }, []);
+
+  // Real liveness — this monitor previously hardcoded isLive={false} always,
+  // even while the performer was actually broadcasting. Same
+  // GlobalLiveSessionRegistry source used by Fan HQ's Live Now panel.
+  useEffect(() => {
+    let cancelled = false;
+    const checkLive = () => {
+      fetch('/api/live/go', { cache: 'no-store' })
+        .then((r) => r.json())
+        .then((d: { sessions?: { userId: string; viewerCount: number }[] }) => {
+          if (cancelled) return;
+          const mine = d.sessions?.find((s) => s.userId === userId);
+          setLiveStatus(mine ? { isLive: true, audienceCount: mine.viewerCount } : { isLive: false, audienceCount: 0 });
+        })
+        .catch(() => { if (!cancelled) setLiveStatus({ isLive: false, audienceCount: 0 }); });
+    };
+    checkLive();
+    const id = setInterval(checkLive, 10000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, [userId]);
 
   return (
     <RoomContainer roomId="performer-hub" title="Performer Hub" accentColor="#AA2DFF" bpm={120}>
@@ -117,9 +143,41 @@ export default function PerformerHubPage() {
         </div>
 
         <div style={{ position: "relative", zIndex: 1 }}>
-          <PerformerHubDashboard performerId="current-user" displayName="Your Profile" />
+          <PerformerHubDashboard performerId={userId} displayName={userName || "Your Profile"} />
 
           <div style={{ maxWidth: 1300, margin: "0 auto", padding: "0 24px 40px", display: "flex", flexDirection: "column", gap: 32 }}>
+
+            {/* Primary controls stay visible on the main surface (not hidden in canisters). */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(6, minmax(120px, 1fr))", gap: 10 }}>
+              {[
+                { href: "/performer/studio", label: "Camera", tone: "#00FFFF" },
+                { href: "/performer/studio", label: "Audio", tone: "#00E5FF" },
+                { href: "/performer/studio", label: "Upload", tone: "#AA2DFF" },
+                { href: "/messages", label: "Messaging", tone: "#FF2DAA" },
+                { href: "/playlists", label: "Playlist", tone: "#FFD700" },
+                { href: "/performer/profile", label: "Memory", tone: "#FF6B35" },
+              ].map((action) => (
+                <Link
+                  key={action.label}
+                  href={action.href}
+                  style={{
+                    textDecoration: "none",
+                    border: `1px solid ${action.tone}55`,
+                    background: `${action.tone}12`,
+                    color: action.tone,
+                    borderRadius: 10,
+                    padding: "10px 12px",
+                    textAlign: "center",
+                    fontSize: 10,
+                    fontWeight: 800,
+                    letterSpacing: "0.08em",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  {action.label}
+                </Link>
+              ))}
+            </div>
 
             {/* Live monitor + Backstage / Green Room */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
@@ -128,12 +186,12 @@ export default function PerformerHubPage() {
                 <div style={{ fontSize: 9, letterSpacing: "0.2em", color: "#AA2DFF", fontWeight: 800, marginBottom: 12 }}>🎥 LIVE MONITOR</div>
                 <MonitorSatelliteSystem
                   mainLabel="Main Stage Camera"
-                  isLive={false}
+                  isLive={liveStatus.isLive}
                   staticImageUrl="/images/tmi-placeholder.jpg"
                   accentColor="#AA2DFF"
                   adZone="hub-performer"
                   showAudienceMonitor
-                  audienceCount={0}
+                  audienceCount={liveStatus.audienceCount}
                 />
 
                 <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
@@ -161,7 +219,7 @@ export default function PerformerHubPage() {
                     <Link href="/rooms/fan-meetup" style={{ flex: 1, padding: "8px", background: "rgba(0,229,255,0.08)", border: "1px solid rgba(0,229,255,0.2)", color: "#00E5FF", borderRadius: 8, fontWeight: 800, fontSize: 9, textDecoration: "none", textAlign: "center" }}>💬 FAN CHAT</Link>
                   </div>
                   <div style={{ marginTop: 10 }}>
-                    <TipBar performerId="current-user" performerName="Your Stage" accentColor="#00E5FF" compact />
+                    <TipBar performerId={userId} performerName={userName || "Your Stage"} accentColor="#00E5FF" compact />
                   </div>
                 </div>
               </div>
@@ -214,11 +272,11 @@ export default function PerformerHubPage() {
 
             {/* Pop-out canisters — Playlist + Memory Wall (Constitution Rule 15) */}
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <CollapsibleCanister icon="🎵" label="Playlist" accentColor="#FF2DAA">
-                <PlaylistArtifact artifactId="current-user-playlist" skin="submarine" title="Performer Playlist" />
+              <CollapsibleCanister icon="🎵" label="Playlist" accentColor="#FF2DAA" defaultOpen>
+                <PlaylistArtifact artifactId={`${userId}-playlist`} skin="submarine" title="Performer Playlist" />
               </CollapsibleCanister>
-              <CollapsibleCanister icon="🖼️" label="Memory Wall" accentColor="#FFD700">
-                <MemoryWall accentColor="#FFD700" title="Memory Wall" entityId="current-user" entityType="performer" />
+              <CollapsibleCanister icon="🖼️" label="Memory Wall" accentColor="#FFD700" defaultOpen>
+                <MemoryWall accentColor="#FFD700" title="Memory Wall" entityId={userId} entityType="performer" />
               </CollapsibleCanister>
             </div>
 
@@ -230,19 +288,12 @@ export default function PerformerHubPage() {
                   <div style={{ fontSize: 9, letterSpacing: "0.2em", color: "#00FF88", fontWeight: 800 }}>🛒 MERCH WALL</div>
                   <Link href="/store" style={{ fontSize: 9, color: "#00FF88", textDecoration: "none", fontWeight: 700 }}>MANAGE →</Link>
                 </div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
-                  {[
-                    { item: "Crown Tee", price: "—", sold: 0, emoji: "👕" },
-                    { item: "Beat Pack", price: "—", sold: 0, emoji: "🎛️" },
-                    { item: "NFT Drop",  price: "—", sold: 0, emoji: "🖼️" },
-                  ].map(m => (
-                    <div key={m.item} style={{ background: "rgba(255,255,255,0.03)", borderRadius: 10, padding: "10px 8px", textAlign: "center" }}>
-                      <div style={{ fontSize: 22, marginBottom: 4 }}>{m.emoji}</div>
-                      <div style={{ fontSize: 9, fontWeight: 700, marginBottom: 2 }}>{m.item}</div>
-                      <div style={{ fontSize: 11, fontWeight: 900, color: "#00FF88" }}>{m.price}</div>
-                      <div style={{ fontSize: 8, color: "rgba(255,255,255,0.35)", marginTop: 2 }}>{m.sold} sold</div>
-                    </div>
-                  ))}
+                {/* Previously 3 invented catalog items ("Crown Tee", "Beat
+                    Pack", "NFT Drop") styled as if real, with 0 sold/—
+                    price. No per-performer store/inventory API exists yet
+                    to list real items — honest empty state instead. */}
+                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", padding: "16px 0", textAlign: "center" }}>
+                  No merch listed yet.
                 </div>
                 <Link href="/nft" style={{ display: "block", marginTop: 10, padding: "8px", background: "rgba(0,255,136,0.1)", border: "1px solid rgba(0,255,136,0.3)", color: "#00FF88", borderRadius: 8, fontSize: 9, fontWeight: 800, textDecoration: "none", textAlign: "center" }}>🎨 MINT NEW NFT</Link>
               </div>
@@ -279,14 +330,12 @@ export default function PerformerHubPage() {
                   <div style={{ fontSize: 9, letterSpacing: "0.2em", color: "#FFD700", fontWeight: 800 }}>📰 MAGAZINE FEATURES</div>
                   <Link href="/magazine" style={{ fontSize: 9, color: "#FFD700", textDecoration: "none", fontWeight: 700 }}>READ ALL →</Link>
                 </div>
-                {[
-                  { title: "Rise of the Underground Performer: 2026 Edition", issue: "Issue 01 · Cover Feature",  color: "#FFD700",  href: "/articles/performer" },
-                  { title: "Top 10 Cypher Moments of 2026",                   issue: "Issue 01 · Feature",        color: "#00FFFF",  href: "/magazine" },
-                  { title: "Battle Night — Full Season 1 Recap",               issue: "Issue 01 · Recap",          color: "#FF2DAA",  href: "/magazine" },
-                ].map(a => (
-                  <Link key={a.title} href={a.href} style={{ display: "block", padding: "8px 0", borderBottom: "1px solid rgba(255,255,255,0.05)", textDecoration: "none" }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: "#fff", marginBottom: 2, lineHeight: 1.3 }}>{a.title}</div>
-                    <div style={{ fontSize: 9, color: a.color }}>{a.issue}</div>
+                {magazineFeatures.length === 0 ? (
+                  <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", padding: "8px 0" }}>No articles published yet.</div>
+                ) : magazineFeatures.map((a) => (
+                  <Link key={a.slug} href={`/magazine/article/${a.slug}`} style={{ display: "block", padding: "8px 0", borderBottom: "1px solid rgba(255,255,255,0.05)", textDecoration: "none" }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: "#fff", marginBottom: 2, lineHeight: 1.3 }}>{a.headline}</div>
+                    <div style={{ fontSize: 9, color: "#FFD700" }}>{a.category}</div>
                   </Link>
                 ))}
               </div>
@@ -300,8 +349,17 @@ export default function PerformerHubPage() {
 
         {/* Mixtape share — send beats/tracks as a package */}
         <div style={{ padding: "0 18px 80px" }}>
-          <MixtapeShareCard curatorId="current-user" curatorName="Your Mixtape" />
+          <MixtapeShareCard curatorId={userId} curatorName={`${userName || "Your"} Mixtape`} />
         </div>
+
+        <HeadquartersCommunicationDock
+          currentUser={{
+            userId,
+            displayName: userName || "Performer",
+            role: "artist",
+          }}
+          accentColor="#AA2DFF"
+        />
       </div>
     </RoomContainer>
   );
