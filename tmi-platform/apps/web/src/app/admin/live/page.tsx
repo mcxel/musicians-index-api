@@ -13,7 +13,7 @@ import {
   CURRENT_PHASE,
   PHASE_1_BOTS,
 } from "@/lib/bots/Phase1LaunchConfig";
-import { getFeedbackSummary } from "@/app/api/feedback/report/route";
+import { getFeedbackSummary } from "@/lib/feedback/FeedbackStore";
 
 export const metadata: Metadata = { title: "Phase 1 Live Monitor | TMI Admin" };
 
