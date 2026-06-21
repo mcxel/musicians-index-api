@@ -780,6 +780,14 @@ export default function Home1CoverPage() {
             </div>
           </div>
           
+          {/* ════ CENTER COLUMN — label + orbital ring, wrapped as ONE grid child so the
+               3-col grid (left rail | center | right rail) doesn't auto-place a 4th
+               item into a phantom row. Previously the label and orbital ring were two
+               separate direct children of the grid, which pushed the orbital into the
+               right-rail track (overflowing off-screen) and wrapped the right panel
+               into a new implicit row under the left rail. ════ */}
+          <div style={{ minWidth: 0 }}>
+
           {/* ── WEEKLY CROWN ORBIT label ── */}
           <div style={{ textAlign: 'center', padding: '8px 0 4px', position: 'relative', zIndex: 5 }}>
             <div style={{ fontFamily: "'Orbitron','Inter',sans-serif", fontSize: 13, fontWeight: 900, color: '#FFD700', textShadow: '0 0 15px rgba(255,215,0,0.6)', letterSpacing: '0.08em' }}>WEEKLY CROWN ORBIT</div>
@@ -1175,7 +1183,8 @@ export default function Home1CoverPage() {
             </button>
           </div>
         </div>
-        
+
+          </div>
           {/* ════ RIGHT PANEL — RANKS/ADS/PROMO tabs + collapse ════ */}
           <div style={{ display: 'flex', alignItems: 'stretch', paddingTop: 8 }}>
             {/* Collapse toggle strip */}
