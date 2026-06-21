@@ -42,6 +42,9 @@ interface Performer {
   score: number;
   genre: string;
   image?: string;
+  avatarImage?: string;
+  voteCount?: number | null;
+  audienceCount?: number;
   isLive?: boolean;
   liveRoomRoute?: string;
 }
@@ -185,6 +188,7 @@ export default function Home1CoverPage() {
   const [rightOpen, setRightOpen] = useState(true);
   const [underlayDir, setUnderlayDir] = useState<'left' | 'right'>('right');
   const [pendingOrbit, setPendingOrbit] = useState<UniversalRoom | null>(null);
+  const [brokenOrbitImages, setBrokenOrbitImages] = useState<Record<string, boolean>>({});
   const rafRef = useRef<number | null>(null);
   const lastRef = useRef<number>(0);
 
@@ -231,6 +235,9 @@ export default function Home1CoverPage() {
       score: p.xp,
       genre: p.category,
       image: p.profileImageUrl,
+      avatarImage: p.profileImageUrl,
+      voteCount: null,
+      audienceCount: p.audienceCount,
       isLive: p.isLive,
       liveRoomRoute: p.liveRoomRoute,
     }));
@@ -256,7 +263,7 @@ export default function Home1CoverPage() {
     const spin = (ts: number) => {
       if (lastRef.current) {
         const dt = ts - lastRef.current;
-        setOrbitDeg((d) => (d + dt * 0.015) % 360);
+        setOrbitDeg((d) => (d - dt * 0.015) % 360);
       }
       lastRef.current = ts;
       rafRef.current = requestAnimationFrame(spin);
@@ -315,7 +322,10 @@ export default function Home1CoverPage() {
         position: 'relative',
       }}
     >
-      <style>{`
+      {/* dangerouslySetInnerHTML avoids React HTML-escaping the @import's quotes/
+          ampersands into &#x27;/&amp; (which corrupts the font URL) — JSX text
+          children of <style> get escaped same as any other text node. */}
+      <style dangerouslySetInnerHTML={{ __html: `
         @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;700;900&display=swap');
 
         @keyframes h1Spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
@@ -401,7 +411,7 @@ export default function Home1CoverPage() {
           0%, 100% { transform: translateY(0px) scale(1); opacity: 0.45; }
           50%       { transform: translateY(-8px) scale(1.15); opacity: 0.75; }
         }
-      `}</style>
+      ` }} />
 
       {/* ── Background confetti triangles ── */}
       {[...Array(24)].map((_, i) => (
@@ -474,7 +484,7 @@ export default function Home1CoverPage() {
       {/* ── Main content ── */}
       <div
         style={{
-          paddingTop: 8,
+          paddingTop: 50,
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
@@ -683,8 +693,8 @@ export default function Home1CoverPage() {
             )}
           </div>
           {/* Radial vignette keeps center readable */}
-          <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 60% 80% at center, transparent 35%, rgba(6,2,26,0.88) 100%)', pointerEvents: 'none' }} />
-          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(90deg, rgba(6,2,26,0.9) 0%, transparent 22%, transparent 78%, rgba(6,2,26,0.9) 100%)', pointerEvents: 'none' }} />
+          <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 46% 62% at center, transparent 44%, rgba(6,2,26,0.68) 100%)', pointerEvents: 'none', filter: 'blur(3px)' }} />
+          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(90deg, rgba(6,2,26,0.72) 0%, transparent 24%, transparent 76%, rgba(6,2,26,0.72) 100%)', pointerEvents: 'none' }} />
         </div>
 
         {/* ── Underlay direction toggle ── */}
@@ -708,6 +718,7 @@ export default function Home1CoverPage() {
             alignItems: 'start',
             gap: 10,
             padding: '0 10px',
+            marginTop: 44,
             position: 'relative',
             zIndex: 2,
           }}
@@ -799,8 +810,8 @@ export default function Home1CoverPage() {
             style={{
               position: 'relative',
               width: '100%',
-              minWidth: 'min(300px, 70vw)',
-              maxWidth: 'min(900px, 70vw)',
+              minWidth: 'min(250px, 56vw)',
+              maxWidth: 'min(760px, 56vw)',
               aspectRatio: '1 / 1',
               margin: '0 auto',
               flexShrink: 0,
@@ -829,10 +840,10 @@ export default function Home1CoverPage() {
           <div
             style={{
               position: 'absolute',
-              inset: '5%',
+              inset: '12%',
               borderRadius: '50%',
-              border: `1px solid ${accentColor}22`,
-              boxShadow: `0 0 40px ${accentColor}18`,
+              border: `1px solid ${accentColor}1f`,
+              boxShadow: `0 0 28px ${accentColor}14`,
               transform: `rotate(${orbitDeg}deg)`,
               transition: 'transform 0.016s linear',
             }}
@@ -840,7 +851,7 @@ export default function Home1CoverPage() {
           <div
             style={{
               position: 'absolute',
-              inset: '8%',
+              inset: '16%',
               borderRadius: '50%',
               border: `1px dashed ${accentColor}14`,
               transform: `rotate(${-orbitDeg * 0.6}deg)`,
@@ -876,8 +887,8 @@ export default function Home1CoverPage() {
           >
             <div
               style={{
-                width: 'min(130px, 22vw)',
-                height: 'min(130px, 22vw)',
+                width: 'min(108px, 18vw)',
+                height: 'min(108px, 18vw)',
                 borderRadius: '50%',
                 background: `radial-gradient(circle at 40% 35%, ${accentColor}55, ${bgColor})`,
                 border: `3px solid ${accentColor}`,
@@ -949,8 +960,15 @@ export default function Home1CoverPage() {
 
           {/* 10 orbit cards — live → seat-join flow; not live → performer profile */}
           {performers.map((p, i) => {
-            const pos = getOrbitPos(i, 10, 44, orbitDeg * 0.08);
-            const cardSize = i === 0 ? 80 : 68;
+            const pos = getOrbitPos(i, 10, 36, orbitDeg * 0.08);
+            const cardSize = i === 0 ? 64 : 56;
+            const hasImage = Boolean((p.image ?? p.avatarImage)?.trim()) && !brokenOrbitImages[p.slug];
+            const initials = p.name
+              .split(' ')
+              .map(part => part.charAt(0))
+              .join('')
+              .slice(0, 2)
+              .toUpperCase();
             return (
               <Link
                 key={p.slug}
@@ -1036,15 +1054,45 @@ export default function Home1CoverPage() {
                     {p.rank <= 3 && (
                       <div style={{ position: 'absolute', top: 3, right: 3, width: 5, height: 5, borderRadius: '50%', background: '#E63000', boxShadow: '0 0 5px #E63000', animation: 'h1Pulse 1.5s infinite' }} />
                     )}
-                    {/* Performer Avatar — motion poster freeze frame if available, else profile image */}
-                    <img
-                      src={p.image ?? `https://i.pravatar.cc/150?u=${p.slug}`}
-                      alt={p.name}
-                      style={{
-                        width: cardSize * 0.45, height: cardSize * 0.45, borderRadius: '50%',
-                        objectFit: 'cover', marginBottom: 4, border: `1px solid ${accentColor}55`, zIndex: 1
-                      }}
-                    />
+                    {/* Performer image with honest fallback when media is unavailable */}
+                    {hasImage ? (
+                      <img
+                        src={p.image ?? p.avatarImage}
+                        alt={p.name}
+                        onError={() => setBrokenOrbitImages(prev => ({ ...prev, [p.slug]: true }))}
+                        style={{
+                          width: cardSize * 0.62,
+                          height: cardSize * 0.72,
+                          borderRadius: 6,
+                          objectFit: 'cover',
+                          marginBottom: 4,
+                          border: `1px solid ${accentColor}55`,
+                          zIndex: 1,
+                          background: 'rgba(255,255,255,0.05)'
+                        }}
+                      />
+                    ) : (
+                      <div
+                        style={{
+                          width: cardSize * 0.62,
+                          height: cardSize * 0.72,
+                          borderRadius: 6,
+                          marginBottom: 4,
+                          border: `1px dashed ${accentColor}66`,
+                          background: 'linear-gradient(160deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02))',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: 2,
+                          zIndex: 1,
+                        }}
+                      >
+                        <div style={{ fontSize: Math.max(cardSize * 0.18, 10), fontWeight: 900, color: '#fff', fontFamily: "'Inter',sans-serif" }}>{initials || '??'}</div>
+                        <div style={{ fontSize: 6, color: 'rgba(255,255,255,0.55)', letterSpacing: '0.06em', fontFamily: "'Inter',sans-serif" }}>NO IMAGE</div>
+                        <div style={{ fontSize: 8, opacity: 0.7 }} aria-label="empty-state-avatar">👤</div>
+                      </div>
+                    )}
                     {/* Name */}
                     <div style={{ fontSize: Math.max(cardSize * 0.1, 7), fontWeight: 900, color: '#fff', textAlign: 'center', fontFamily: "'Inter',sans-serif", maxWidth: '90%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {p.name.split(' ')[0]}
@@ -1053,9 +1101,12 @@ export default function Home1CoverPage() {
                     <div style={{ fontSize: Math.max(cardSize * 0.08, 6), color: accentColor, background: `${accentColor}18`, borderRadius: 8, padding: '1px 4px', fontFamily: "'Inter',sans-serif" }}>
                       {p.genre}
                     </div>
-                    {/* Audience count */}
-                    <div style={{ fontSize: Math.max(cardSize * 0.08, 6), color: 'rgba(255,255,255,0.3)', fontFamily: "'Inter',sans-serif" }}>
-                      👁 {(Math.round(p.score / 10) * 10).toLocaleString()}
+                    {/* XP and vote count */}
+                    <div style={{ fontSize: Math.max(cardSize * 0.08, 6), color: 'rgba(255,255,255,0.42)', fontFamily: "'Inter',sans-serif" }}>
+                      XP {p.score.toLocaleString()}
+                    </div>
+                    <div style={{ fontSize: Math.max(cardSize * 0.08, 6), color: 'rgba(255,255,255,0.32)', fontFamily: "'Inter',sans-serif" }}>
+                      {typeof p.voteCount === 'number' ? `Votes ${p.voteCount.toLocaleString()}` : 'Votes: N/A'}
                     </div>
                   </div>
 
