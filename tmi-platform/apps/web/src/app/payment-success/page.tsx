@@ -72,7 +72,7 @@ export default function PaymentSuccessPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ priceId }),
+        body: JSON.stringify({ sessionId }),
       }).catch(() => undefined);
       setStatus('pass');
       return;

@@ -2,45 +2,59 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { updateUserTier } from '@/lib/auth/UserStore';
 import { prisma } from '@/lib/prisma';
-import type { UserTier } from '@/lib/auth/UserStore';
+import { getStripe } from '@/lib/stripe/client';
+import { tierForPriceId } from '@/lib/stripe/tierMapping';
 
-function tierFromPriceId(priceId: string): UserTier {
-  const map: Record<string, UserTier> = {
-    [process.env.NEXT_PUBLIC_STRIPE_PRICE_FAN_RUBY      ?? 'price_fan_ruby']:         'RUBY',
-    [process.env.NEXT_PUBLIC_STRIPE_PRICE_FAN_SILVER    ?? 'price_fan_silver']:       'SILVER',
-    [process.env.NEXT_PUBLIC_STRIPE_PRICE_FAN_GOLD      ?? 'price_fan_gold']:         'GOLD',
-    [process.env.NEXT_PUBLIC_STRIPE_PRICE_FAN_PLATINUM  ?? 'price_fan_platinum']:     'PLATINUM',
-    [process.env.NEXT_PUBLIC_STRIPE_PRICE_FAN_DIAMOND   ?? 'price_fan_diamond']:      'DIAMOND',
-    [process.env.NEXT_PUBLIC_STRIPE_PRICE_FAN_FAMILY    ?? 'price_fan_family']:       'DIAMOND',
-    [process.env.NEXT_PUBLIC_STRIPE_PRICE_PERFORMER_RUBY     ?? 'price_perf_ruby']:   'RUBY',
-    [process.env.NEXT_PUBLIC_STRIPE_PRICE_PERFORMER_SILVER   ?? 'price_perf_silver']: 'SILVER',
-    [process.env.NEXT_PUBLIC_STRIPE_PRICE_PERFORMER_GOLD     ?? 'price_perf_gold']:   'GOLD',
-    [process.env.NEXT_PUBLIC_STRIPE_PRICE_PERFORMER_PLATINUM ?? 'price_perf_plat']:   'PLATINUM',
-    [process.env.NEXT_PUBLIC_STRIPE_PRICE_PERFORMER_DIAMOND  ?? 'price_perf_diamond']:'DIAMOND',
-    [process.env.NEXT_PUBLIC_STRIPE_PRICE_PERFORMER_BAND     ?? 'price_perf_band']:   'DIAMOND',
-    [process.env.NEXT_PUBLIC_STRIPE_PRICE_SPONSOR_BASIC    ?? 'price_sponsor_basic']:   'PRO',
-    [process.env.NEXT_PUBLIC_STRIPE_PRICE_SPONSOR_STANDARD ?? 'price_sponsor_std']:     'GOLD',
-    [process.env.NEXT_PUBLIC_STRIPE_PRICE_SPONSOR_PREMIUM  ?? 'price_sponsor_premium']: 'PLATINUM',
-    [process.env.NEXT_PUBLIC_STRIPE_PRICE_SPONSOR_DIAMOND  ?? 'price_sponsor_diamond']: 'DIAMOND',
-  };
-  return map[priceId] ?? 'PRO';
-}
-
+// Revenue protection guardrail: this endpoint exists so the payment-success
+// page can confirm a tier upgrade has landed (the Stripe webhook is the
+// actual grant path). It must NEVER grant a tier from a client-supplied
+// priceId — that field is attacker-controlled and the price IDs themselves
+// are NEXT_PUBLIC_ env vars, visible in the browser bundle. Every grant here
+// is re-derived server-side from a real, paid Stripe Checkout Session.
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json() as { priceId?: string };
-    const priceId = body.priceId ?? '';
+    const body = await req.json() as { sessionId?: string };
+    const sessionId = (body.sessionId ?? '').trim();
     const email = req.cookies.get('tmi_user_email')?.value ?? '';
 
     if (!email) {
       return NextResponse.json({ ok: false, error: 'not authenticated' }, { status: 401 });
     }
+    if (!sessionId) {
+      return NextResponse.json({ ok: false, error: 'missing sessionId' }, { status: 400 });
+    }
 
-    const tier = tierFromPriceId(priceId);
+    const stripe = getStripe();
+    if (!stripe) {
+      return NextResponse.json({ ok: false, error: 'payments not configured' }, { status: 503 });
+    }
+
+    const session = await stripe.checkout.sessions.retrieve(sessionId, {
+      expand: ['subscription'],
+    });
+
+    if (session.payment_status !== 'paid' && session.status !== 'complete') {
+      return NextResponse.json({ ok: false, error: 'payment not confirmed' }, { status: 402 });
+    }
+
+    const sessionEmail = (session.customer_details?.email ?? session.customer_email ?? '').toLowerCase().trim();
+    if (!sessionEmail || sessionEmail !== email.toLowerCase().trim()) {
+      return NextResponse.json({ ok: false, error: 'session does not match authenticated user' }, { status: 403 });
+    }
+
+    const subscription = session.subscription;
+    const priceId = typeof subscription === 'object' && subscription !== null
+      ? subscription.items.data[0]?.price?.id ?? ''
+      : '';
+
+    const tier = tierForPriceId(priceId);
+    if (!tier) {
+      return NextResponse.json({ ok: false, error: 'unrecognized price' }, { status: 422 });
+    }
 
     updateUserTier(email, tier);
 
-    prisma.user.updateMany({
+    await prisma.user.updateMany({
       where: { email: email.toLowerCase() },
       data: { tier },
     }).catch(() => undefined);

@@ -130,7 +130,7 @@ export function registerArrival(
 export function qualifyReferral(
   token: string,
   invitedId: string,
-  staySeconds: number,
+  _staySeconds: number,
   actionCount: number,
   inviteeTier: InviteeTier = 'free',
   nowMs = Date.now(),
@@ -149,9 +149,20 @@ export function qualifyReferral(
   if (record.qualifiedAt !== null) {
     return { qualified: true, pointsAwarded: 0, milestoneBonus: 0, launchBonus: false, reason: 'Already qualified' };
   }
-  if (staySeconds < MIN_STAY_SECONDS) {
+
+  // Revenue protection guardrail: staySeconds used to be trusted directly
+  // from the client, letting a caller claim an arbitrary stay duration and
+  // self-qualify referrals instantly. The only trustworthy stay duration is
+  // real wall-clock time elapsed since the server recorded the arrival.
+  const realStaySeconds = Math.floor((nowMs - record.arrivedAt) / 1000);
+  if (realStaySeconds < MIN_STAY_SECONDS) {
     return { qualified: false, pointsAwarded: 0, milestoneBonus: 0, launchBonus: false, reason: `Must stay at least ${MIN_STAY_SECONDS}s` };
   }
+  // Known gap: actionCount is still client-reported — there is no
+  // server-tracked action counter yet. Low-severity given the real-time
+  // gate above now requires genuine elapsed time per referral, but this
+  // should be replaced with a server-verified action source before scaling
+  // referral rewards.
   if (actionCount < MIN_ACTIONS) {
     return { qualified: false, pointsAwarded: 0, milestoneBonus: 0, launchBonus: false, reason: 'Must perform at least 1 action' };
   }
