@@ -590,9 +590,33 @@ Official Game Shows (Deal or Feud, Name That Tune, Circle and Squares, Champions
 
 ---
 
+### Rule 24 — Three-Lane Rewards Ecosystem + Sponsor Prize Distribution + Discovery Missions (locked 2026-06-21, not yet implemented)
+
+TMI rewards everyone who contributes to the ecosystem, not creators/competitors only. This extends Rule 9 (Everything Earns XP) by organizing reward-earning activity into three lanes, and extends Rule 23 (Revenue-First Rewards Governor) by giving those lanes a currency/payout model to plug into — it does not loosen Rule 23's financial gating. A fan who streams 100 songs this month should feel as rewarded as a performer competing on stage.
+
+**The three lanes:**
+
+1. **Competitive Rewards** — Battles, Cyphers, Dance-Offs, Joke-Offs, talent challenges, game shows. Rewards: cash prizes (Cash Prize Mode only, per Rule 23), sponsor prizes, VIP tickets, equipment, featured placement.
+2. **Engagement Rewards** — listening to songs, watching performances, attending live rooms, voting, reviewing music, reading magazine articles, sharing content. Rewards: XP, coins, reward points, sponsor giveaways, merch drawings, premium membership trials, meet & greets.
+3. **Community Rewards** — helping new users, moderating rooms, inviting friends, supporting artists, positive participation. Rewards: community badges, VIP access, early feature access, exclusive events, sponsor gifts.
+
+**Sponsor Prize Distribution**: when a sponsor donates a prize pool (e.g. headphones, gift cards, merch bundles), the same pool can be auto-distributed across multiple activity types in one pass — battle winners, top listeners, random attendees, most active voters, most supportive fans — rather than being tied to a single contest. Goal: "you don't have to be the best performer to win something."
+
+**Discovery Missions**: lightweight quests that turn platform-wide exploration into a reward loop — e.g. "Discover 10 New Artists" (XP + sponsor raffle entry + badge), "Listen to 25 New Songs" (VIP drawing entry + profile frame + Diamond trial), "Read 5 Magazine Features" (coins + merch raffle + backstage pass drawing).
+
+**Anti-Pay-to-Win**: none of these three lanes may let a paid tier purchase competitive advantage in judged outcomes (votes, rankings, battle results) — paid tiers may unlock cosmetic/access perks and bonus engagement-lane multipliers, never a competitive-lane outcome. This is the same boundary Rule 23's Cash Prize Mode already respects (bots run the operation, never fabricate the result — see Rule 21's Official Automated Events) extended to the reward layer.
+
+**XP / Coin / Cash separation**: XP (progression/rank, Rule 3/9) and Coins (engagement-lane currency, spendable on cosmetics per Rule 19's Playlist Skin Economy or similar) are platform-internal and may be granted freely in Launch Mode. Cash and cash-equivalent prizes remain fully gated by Rule 23's phase model and Prize Budget Engine — this rule adds *where rewards come from* (three lanes + sponsor pools + missions), Rule 23 still governs *what currency may be paid out and when*.
+
+**Scope honesty**: none of this exists as code yet — no Sponsor Prize Distribution Engine, no Discovery Missions Engine, no lane-aware reward router. This is documented direction only, status **FUTURE APPROVED FEATURE**, **Priority: Post Soft Launch**, **Certification Impact: NONE**. Do not build any part of this before the current soft-launch certification priorities (signup/login, profiles, messaging, live rooms, video/audio, discovery, magazine, rankings, Stripe/monetization, tickets, bookings, Home 1-5 stabilization, avatar system restoration, production deployment) are done. Do not build a stub/fake version of any of these engines (that would violate Rule 20).
+
+*Established 2026-06-21 by Marcel Dickens.*
+
+---
+
 ### Platform Constitution Summary
 
-23 rules. Non-negotiable. Applies forever.
+24 rules. Non-negotiable. Applies forever.
 
 | # | Rule | Key File |
 |---|------|----------|
@@ -620,6 +644,7 @@ Official Game Shows (Deal or Feud, Name That Tune, Circle and Squares, Champions
 | 21 | Venue Runtime Convergence — one runtime, many modes; one audience/seat/presence system (4 found, 2 converged); inherit-best-of-breed on duplicate routes, mark LEGACY don't delete; Official Automated Events run by bots on real outcomes; No Empty Platform = rotate opportunities, never fake crowds | audienceRuntimeEngine.ts, ArenaEventShell.tsx |
 | 22 | Adaptive Platform Rule — every major runtime may Observe/Measure/Recommend, never silently rewrite; major behavioral changes require Build Director approval; canonical registries stay source of truth while runtimes learn | All runtimes, future analytics layer |
 | 23 | Revenue-First Rewards Governor — 3 reward phases (Launch=XP/cosmetics, Growth=platform credits, Cash=real money) gated by real financial health checks; no payout system may ever place the platform in a loss position; auto scale-down, not human-approved | Future RewardsEngine, PrizeBudgetEngine |
+| 24 | Three-Lane Rewards Ecosystem — Competitive/Engagement/Community lanes reward performers AND fans/listeners/readers/voters/sponsors/venues; sponsor prize pools auto-distribute across activity types; Discovery Missions quest layer; anti-pay-to-win; XP/Coin/Cash separation (Cash still Rule-23-gated). Post soft-launch, certification-impact none | Future SponsorPrizeDistributionEngine, DiscoveryMissionsEngine |
 
 ---
 
