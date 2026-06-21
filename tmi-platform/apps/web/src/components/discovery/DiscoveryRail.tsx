@@ -24,6 +24,7 @@ interface Props {
   limit?: number;
   label?: string;
   accentColor?: string;
+  enableLiveStatus?: boolean;
 }
 
 // ── Games seed — static until a GameRegistry exists ──────────────────────────
@@ -63,7 +64,7 @@ interface LiveApiSession {
   userId: string;
 }
 
-export default function DiscoveryRail({ type, tags = [], exclude, limit = 6, label, accentColor = '#00FFFF' }: Props) {
+export default function DiscoveryRail({ type, tags = [], exclude, limit = 6, label, accentColor = '#00FFFF', enableLiveStatus = true }: Props) {
   let title = label;
   let content: React.ReactNode = null;
 
@@ -72,7 +73,7 @@ export default function DiscoveryRail({ type, tags = [], exclude, limit = 6, lab
   const [livePerformers, setLivePerformers] = useState<PerformerIdentity[]>([]);
   useEffect(() => {
     // Only fetch live data if the rail type needs it.
-    if (type !== 'performers' && type !== 'liveRooms') return;
+    if (!enableLiveStatus || (type !== 'performers' && type !== 'liveRooms')) return;
 
     let cancelled = false;
     const load = async () => {
@@ -95,7 +96,7 @@ export default function DiscoveryRail({ type, tags = [], exclude, limit = 6, lab
     void load();
     const id = setInterval(() => void load(), 10000);
     return () => { cancelled = true; clearInterval(id); };
-  }, [type]);
+  }, [enableLiveStatus, type]);
 
   // ── ARTICLES ───────────────────────────────────────────────────────────────
   if (type === 'articles') {
@@ -133,7 +134,9 @@ export default function DiscoveryRail({ type, tags = [], exclude, limit = 6, lab
   if (type === 'performers') {
     title = title ?? '🎤 FEATURED ARTISTS';
     const liveIds = useMemo(() => new Set(livePerformers.map((p) => p.id)), [livePerformers]);
-    const all = [...livePerformers, ...PERFORMER_REGISTRY.filter(p => !liveIds.has(p.id))];
+    const all = enableLiveStatus
+      ? [...livePerformers, ...PERFORMER_REGISTRY.filter(p => !liveIds.has(p.id))]
+      : [...PERFORMER_REGISTRY];
     const filtered = all
       .filter(p => p.slug !== exclude)
       .filter(p => tags.length === 0 || tags.some(t => p.category.toLowerCase().includes(t.toLowerCase())))
@@ -142,7 +145,7 @@ export default function DiscoveryRail({ type, tags = [], exclude, limit = 6, lab
     content = (
       <div style={{ display: 'flex', gap: 10, overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: 4 }}>
         {filtered.map(p => (
-          <Link key={p.slug} href={p.isLive ? p.liveRoomRoute : p.profileRoute} style={{ textDecoration: 'none' }}>
+          <Link key={p.slug} href={enableLiveStatus && p.isLive ? p.liveRoomRoute : p.profileRoute} style={{ textDecoration: 'none' }}>
             <div style={{ ...cardBase(accentColor), width: 150 }}>
               {/* Rule 2: LIVE VIDEO → MOTION POSTER → STATIC IMAGE */}
               <div style={{ position: 'relative' }}>
@@ -164,7 +167,7 @@ export default function DiscoveryRail({ type, tags = [], exclude, limit = 6, lab
                 <div style={{ fontSize: 11, fontWeight: 900, color: '#fff', marginBottom: 2 }}>{p.name}</div>
                 <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.4)', marginBottom: 6 }}>{p.category} · {p.city}</div>
                 <div style={{ fontSize: 8, fontWeight: 700, color: accentColor, letterSpacing: '0.06em' }}>
-                  {p.isLive ? 'JOIN LIVE →' : 'VIEW PROFILE →'}
+                  {enableLiveStatus && p.isLive ? 'JOIN LIVE →' : 'VIEW PROFILE →'}
                 </div>
               </div>
             </div>
