@@ -39,6 +39,7 @@ async function getFanData(slug: string) {
   if (!user) {
     return {
       displayName: titleCase(slug),
+      avatarUrl: null as string | null,
       tier: "free",
       points: 0,
       favGenres: [] as string[],
@@ -52,6 +53,7 @@ async function getFanData(slug: string) {
   const joinedMs = Date.now() - user.userCreatedAt.getTime();
   return {
     displayName: user.userProfile?.displayName ?? user.displayName ?? user.name ?? titleCase(slug),
+    avatarUrl: user.userProfile?.avatarUrl ?? null,
     tier: user.tier.toLowerCase(),
     points: user.userStats?.xp ?? 0,
     favGenres: user.fanProfile?.favoriteGenres ?? [],
@@ -83,6 +85,7 @@ export default async function FanProfilePage({ params }: Props) {
         <div style={{ maxWidth: 1200, margin: "0 auto", display: "flex", alignItems: "center", gap: 20 }}>
           {/* Avatar */}
           <HighFidelityAvatar
+            imageUrl={fan.avatarUrl ?? undefined}
             name={fan.displayName}
             size={72}
             tierColor={tierConfig.color}

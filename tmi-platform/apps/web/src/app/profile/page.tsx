@@ -6,7 +6,7 @@ import Link from "next/link";
 
 interface SessionData {
   authenticated: boolean;
-  user: { id: string; email: string } | null;
+  user: { id: string; email: string; avatarUrl?: string | null } | null;
   role: string;
   tier: string;
 }
@@ -61,6 +61,7 @@ export default function MyProfilePage() {
   const email = session.user?.email ?? "";
   const displayName = email.split("@")[0] ?? "User";
   const accentColor = ROLE_COLOR[role] ?? "#00FFFF";
+  const avatarUrl = session.user?.avatarUrl ?? null;
 
   return (
     <main style={{ minHeight: "100vh", background: "#060410", color: "#fff", paddingBottom: 80 }}>
@@ -75,12 +76,17 @@ export default function MyProfilePage() {
           <div style={{ display: "flex", alignItems: "center", gap: 18, marginBottom: 16 }}>
             <div style={{
               width: 64, height: 64, borderRadius: "50%",
-              background: `${accentColor}22`, border: `2px solid ${accentColor}66`,
+              background: avatarUrl ? "#000" : `${accentColor}22`, border: `2px solid ${accentColor}66`,
               display: "flex", alignItems: "center", justifyContent: "center",
               fontSize: 26, fontWeight: 900, color: accentColor,
-              flexShrink: 0,
+              flexShrink: 0, overflow: "hidden",
             }}>
-              {displayName.charAt(0).toUpperCase()}
+              {avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              ) : (
+                displayName.charAt(0).toUpperCase()
+              )}
             </div>
             <div>
               <h1 style={{ fontSize: 20, fontWeight: 900, margin: "0 0 4px", letterSpacing: "-0.3px" }}>

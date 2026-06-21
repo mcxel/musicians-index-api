@@ -5,7 +5,7 @@ import { useEffect, useState, useCallback } from 'react';
 
 interface SessionState {
   authenticated: boolean;
-  user?: { id?: string; role?: string; tier?: string };
+  user?: { id?: string; role?: string; tier?: string; avatarUrl?: string | null };
 }
 
 const ROLE_COLOR: Record<string, string> = {
@@ -89,6 +89,7 @@ export default function TMIGlobalNav() {
   const role            = (user?.role ?? 'default').toLowerCase();
   const userId          = user?.id ?? '';
   const userInitial     = userId.charAt(0).toUpperCase() || '?';
+  const avatarUrl       = user?.avatarUrl ?? null;
   const roleColor       = ROLE_COLOR[role] ?? ROLE_COLOR.default!;
   const profileBase     = ROLE_PROFILE[role] ?? '/profile';
   const profileHref     = isAuthenticated ? `${profileBase}/${userId}` : '/auth/signin';
@@ -125,15 +126,22 @@ export default function TMIGlobalNav() {
           style={{
             width: 34, height: 34, borderRadius: '50%', flexShrink: 0,
             border:   `2px solid ${roleColor}`,
-            background: `${roleColor}22`,
+            background: avatarUrl ? '#000' : `${roleColor}22`,
             cursor:   'pointer',
             fontSize: 12, fontWeight: 900, color: roleColor,
             display:  'flex', alignItems: 'center', justifyContent: 'center',
             boxShadow: `0 0 10px ${roleColor}44`,
             transition: 'all 0.2s',
+            overflow: 'hidden',
+            padding: 0,
           }}
         >
-          {userInitial}
+          {avatarUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
+          ) : (
+            userInitial
+          )}
         </button>
       ) : (
         <button

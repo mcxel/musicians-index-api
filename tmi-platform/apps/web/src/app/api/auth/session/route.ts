@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { isFounderDiamondEmail } from '@/lib/promos/FounderDiamondPassEngine';
+import prisma from '@/lib/prisma';
 
 /**
  * P0 identity hardening:
@@ -48,19 +49,43 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ authenticated: false, csrfToken, user: null, expires: null });
   }
 
+  let canonicalUserId = sessionId.substring(0, 8);
+  let isLive = false;
+  let liveRoomId: string | null = null;
+  let avatarUrl: string | null = null;
+
+  if (rawEmail) {
+    try {
+      const dbUser = await prisma.user.findUnique({
+        where: { email: rawEmail },
+        select: { id: true, isLive: true, liveRoomId: true, userProfile: { select: { avatarUrl: true } } },
+      });
+      if (dbUser) {
+        canonicalUserId = dbUser.id;
+        isLive = dbUser.isLive;
+        liveRoomId = dbUser.liveRoomId;
+        avatarUrl = dbUser.userProfile?.avatarUrl ?? null;
+      }
+    } catch {
+      // Keep session fallback identity if DB is temporarily unavailable.
+    }
+  }
+
   const scopedEmail = redactEmailForRole(rawEmail, role);
-  const userId = sessionId.substring(0, 8);
-  const displayName = scopedEmail ? scopedEmail.split('@')[0] : userId;
+  const displayName = scopedEmail ? scopedEmail.split('@')[0] : canonicalUserId.substring(0, 8);
 
   return NextResponse.json({
     authenticated: true,
     csrfToken,
     user: {
-      id: userId,
+      id: canonicalUserId,
       email: scopedEmail,
       name: displayName,
       role,
       tier,
+      isLive,
+      liveRoomId,
+      avatarUrl,
       onboardingState: 'complete',
     },
     role,
