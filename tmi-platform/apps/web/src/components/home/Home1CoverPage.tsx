@@ -22,15 +22,17 @@
  *  - Typecheck-safe, no external deps beyond Next.js
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { LobbyEntryFlow, type UniversalRoom } from '@/components/room/UniversalLobbyEntry';
-import { getCrownHolder, getLivePerformers, getPerformersByCategory, getFeaturedFreePerformers, getTopPerformers, type PerformerCategory } from '@/lib/performers/PerformerRegistry';
+import { getCrownHolder, getLivePerformers, getPerformersByCategory, getFeaturedFreePerformers, getTopPerformers, PERFORMER_REGISTRY, type PerformerCategory } from '@/lib/performers/PerformerRegistry';
 import { getVenueBookingSlots, type VenueBookingSlot } from '@/lib/venues/VenueRegistry';
 import { fetchUpcomingEvents } from '@/lib/api/homepage';
-import AdSenseSlot, { AD_SLOTS } from '@/components/ads/AdSenseSlot';
 import { getActiveSponsorForZone } from '@/lib/commerce/SponsorRegistry';
 import MotionPosterPlayer from '@/components/media/MotionPosterPlayer';
+import { hasRole } from '@/lib/auth/session';
+import { OFFICIAL_HOME_ORBIT_BOT_ACCOUNTS } from '@/lib/bots/homeOrbitBotAccounts';
 
 // ─── Genre + performer data (10 per genre) ────────────────────────────────────
 
@@ -43,6 +45,14 @@ interface Performer {
   genre: string;
   image?: string;
   avatarImage?: string;
+  profileRoute: string;
+  accountType: 'diamond-member' | 'real-member' | 'verified-performer' | 'system-bot' | 'system-actor' | 'empty-slot';
+  botRole?: string;
+  activityType?: string;
+  dashboardRoute?: string;
+  activityPurpose?: string;
+  systemFunction?: string;
+  avatarPlaceholder?: string;
   voteCount?: number | null;
   audienceCount?: number;
   isLive?: boolean;
@@ -63,26 +73,190 @@ const GENRE_CONFIG: Record<string, { color: string; bg: string; emoji: string }>
 // GENRE_KEYS must come from GENRE_CONFIG (GENRE_DATA doesn't exist yet at this point)
 const GENRE_KEYS = Object.keys(GENRE_CONFIG);
 
-function buildOrbitPerformers(genreKey: string): Performer[] {
-  const byGenre = getPerformersByCategory(genreKey as PerformerCategory);
-  const liveFill = getLivePerformers().filter(p => !byGenre.some(g => g.slug === p.slug));
-  const topFill = getTopPerformers(24).filter(p => !byGenre.some(g => g.slug === p.slug) && !liveFill.some(l => l.slug === p.slug));
-  const resolved = [...byGenre, ...liveFill, ...topFill].slice(0, 10);
+const DEFAULT_PROFILE_PLACEHOLDERS = new Set(['/images/tmi-placeholder.jpg']);
 
-  return resolved.map(p => ({
+function hasUploadedProfileImage(url?: string): boolean {
+  if (!url) return false;
+  return !DEFAULT_PROFILE_PLACEHOLDERS.has(url.trim());
+}
+
+function buildDiamondOrbitMembers(): Performer[] {
+  return PERFORMER_REGISTRY
+    .filter((p) => p.tier === 'Diamond')
+    .sort((a, b) => b.xp - a.xp)
+    .map((p) => ({
+      slug: p.slug,
+      name: p.name,
+      emoji: '💎',
+      rank: p.rank,
+      score: p.xp,
+      genre: p.category,
+      image: p.profileImageUrl,
+      avatarImage: p.profileImageUrl,
+      profileRoute: hasUploadedProfileImage(p.profileImageUrl) ? p.profileRoute : `${p.profileRoute}?prompt=upload-image`,
+      accountType: 'diamond-member',
+      voteCount: null,
+      audienceCount: p.audienceCount,
+      isLive: p.isLive,
+      liveRoomRoute: p.liveRoomRoute,
+    }));
+}
+
+function isVerifiedPerformer(achievementIds: string[] | undefined): boolean {
+  if (!achievementIds || achievementIds.length === 0) return false;
+  return achievementIds.some((id) =>
+    id === 'top-100' ||
+    id === 'battle-finalist' ||
+    id === 'regional-champion' ||
+    id === 'platinum-tier' ||
+    id === 'gold-tier'
+  );
+}
+
+function buildRealMemberProfileRing(genreKey: string): Performer[] {
+  const byGenre = getPerformersByCategory(genreKey as PerformerCategory)
+    .filter((p) => p.tier !== 'Diamond' && hasUploadedProfileImage(p.profileImageUrl));
+  const profiledFallback = PERFORMER_REGISTRY
+    .filter((p) => p.tier !== 'Diamond' && hasUploadedProfileImage(p.profileImageUrl) && !byGenre.some((g) => g.slug === p.slug))
+    .sort((a, b) => b.xp - a.xp);
+  return [...byGenre, ...profiledFallback].slice(0, 4).map((p) => ({
     slug: p.slug,
     name: p.name,
-    emoji: '👤',
+    emoji: '👥',
     rank: p.rank,
     score: p.xp,
     genre: p.category,
     image: p.profileImageUrl,
     avatarImage: p.profileImageUrl,
+    profileRoute: p.profileRoute,
+    accountType: 'real-member',
     voteCount: null,
     audienceCount: p.audienceCount,
     isLive: p.isLive,
     liveRoomRoute: p.liveRoomRoute,
   }));
+}
+
+function buildVerifiedPerformerRing(genreKey: string): Performer[] {
+  const byGenre = getPerformersByCategory(genreKey as PerformerCategory)
+    .filter((p) => p.tier !== 'Diamond' && hasUploadedProfileImage(p.profileImageUrl) && isVerifiedPerformer(p.achievementIds));
+  const verifiedFallback = PERFORMER_REGISTRY
+    .filter((p) => p.tier !== 'Diamond' && hasUploadedProfileImage(p.profileImageUrl) && isVerifiedPerformer(p.achievementIds) && !byGenre.some((g) => g.slug === p.slug))
+    .sort((a, b) => b.xp - a.xp);
+
+  return [...byGenre, ...verifiedFallback].slice(0, 4).map((p) => ({
+    slug: p.slug,
+    name: p.name,
+    emoji: '🎤',
+    rank: p.rank,
+    score: p.xp,
+    genre: p.category,
+    image: p.profileImageUrl,
+    avatarImage: p.profileImageUrl,
+    profileRoute: p.profileRoute,
+    accountType: 'verified-performer',
+    voteCount: null,
+    audienceCount: p.audienceCount,
+    isLive: p.isLive,
+    liveRoomRoute: p.liveRoomRoute,
+  }));
+}
+
+function buildSystemBotRing(): Performer[] {
+  return OFFICIAL_HOME_ORBIT_BOT_ACCOUNTS
+    .filter((bot) => bot.accountType === 'OPERATIONS_AGENT' || bot.accountType === 'SIMULATION_AGENT')
+    .map((bot, index) => ({
+    slug: bot.slug,
+    name: bot.name,
+    emoji: '🤖',
+    rank: index + 1,
+    score: 0,
+    genre: 'System Bot',
+    image: bot.image,
+    avatarImage: bot.image,
+    profileRoute: bot.profileRoute,
+    accountType: 'system-bot',
+    botRole: bot.botRole,
+    activityType: bot.activityType,
+    dashboardRoute: bot.dashboardRoute,
+    activityPurpose: bot.activityPurpose,
+    systemFunction: bot.systemFunction,
+    avatarPlaceholder: bot.avatarPlaceholder,
+    voteCount: null,
+    audienceCount: 0,
+    isLive: false,
+  }));
+}
+
+function buildSystemActorRing(): Performer[] {
+  return OFFICIAL_HOME_ORBIT_BOT_ACCOUNTS
+    .filter((bot) => bot.accountType === 'SYSTEM_ACTOR')
+    .map((bot, index) => ({
+    slug: bot.slug,
+    name: bot.name,
+    emoji: '🛠',
+    rank: index + 1,
+    score: 0,
+    genre: 'System Actor',
+    image: bot.image,
+    avatarImage: bot.image,
+    profileRoute: bot.profileRoute,
+    accountType: 'system-actor',
+    botRole: bot.botRole,
+    activityType: bot.activityType,
+    dashboardRoute: bot.dashboardRoute,
+    activityPurpose: bot.activityPurpose,
+    systemFunction: bot.systemFunction,
+    avatarPlaceholder: bot.avatarPlaceholder,
+    voteCount: null,
+    audienceCount: 0,
+    isLive: false,
+  }));
+}
+
+function buildHonestEmptySlots(count: number): Performer[] {
+  const openPositions = [
+    { name: 'Diamond Position Available', route: '/signup?tier=Diamond' },
+    { name: 'Top Band Position Available', route: '/signup?focus=band' },
+    { name: 'Choir Position Available', route: '/signup?focus=choir' },
+    { name: 'Marching Band Position Available', route: '/signup?focus=marching-band' },
+  ] as const;
+
+  return Array.from({ length: count }).map((_, idx) => {
+    const slot = openPositions[idx % openPositions.length]!;
+    return {
+      slug: `open-orbit-slot-${idx + 1}`,
+      name: slot.name,
+      emoji: '⭐',
+      rank: 0,
+      score: 0,
+      genre: 'No data available yet',
+      profileRoute: slot.route,
+      accountType: 'empty-slot',
+      voteCount: null,
+      audienceCount: 0,
+      isLive: false,
+    };
+  });
+}
+
+function buildOrbitPerformers(genreKey: string): Performer[] {
+  // Orbit priority:
+  // 1) Real Diamond Member
+  // 2) Real Verified Performer
+  // 3) Real Member with profile image
+  // 4) Official TMI System Actor
+  // 5) Official TMI Bot Account
+  // 6) Honest Empty Slot
+  const ring1 = buildDiamondOrbitMembers();
+  const ring2 = buildVerifiedPerformerRing(genreKey);
+  const ring3 = buildRealMemberProfileRing(genreKey);
+  const ring4 = buildSystemActorRing();
+  const ring5 = buildSystemBotRing();
+  const merged = [...ring1, ...ring2, ...ring3, ...ring4, ...ring5];
+  const unique = merged.filter((p, idx, arr) => arr.findIndex((x) => x.slug === p.slug) === idx);
+  if (unique.length >= 10) return unique.slice(0, 10);
+  return [...unique, ...buildHonestEmptySlots(10 - unique.length)];
 }
 
 // Positions for 10 orbit cards (angle in degrees, radius 44% of container).
@@ -97,10 +271,203 @@ function getOrbitPos(i: number, total: number, radius: number, rotationDeg = 0) 
   };
 }
 
+interface OrbitCardProps {
+  performer: Performer;
+  index: number;
+  total: number;
+  radius: number;
+  compactMode: boolean;
+  accentColor: string;
+  isBrokenImage: boolean;
+  onImageError: (slug: string) => void;
+  onOpenLive: (performer: Performer) => void;
+}
+
+const OrbitCard = memo(function OrbitCard({
+  performer,
+  index,
+  total,
+  radius,
+  compactMode,
+  accentColor,
+  isBrokenImage,
+  onImageError,
+  onOpenLive,
+}: OrbitCardProps) {
+  const pos = getOrbitPos(index, total, radius, 0);
+  const cardSize = compactMode ? (index === 0 ? 52 : 44) : (index === 0 ? 62 : 52);
+  const rawAvatar = performer.image ?? performer.avatarImage;
+  const hasImage = Boolean(rawAvatar?.trim()) && !isBrokenImage && (performer.accountType === 'system-bot' || performer.accountType === 'system-actor' || hasUploadedProfileImage(rawAvatar));
+  const initials = performer.name
+    .split(' ')
+    .map(part => part.charAt(0))
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
+  const profileHref = performer.accountType === 'empty-slot'
+    ? performer.profileRoute
+    : (performer.isLive && performer.liveRoomRoute ? `${performer.liveRoomRoute}?from=home-1` : performer.profileRoute);
+
+  return (
+    <Link
+      href={profileHref}
+      style={{ textDecoration: 'none' }}
+      onClick={performer.isLive && performer.liveRoomRoute ? (e: React.MouseEvent) => {
+        e.preventDefault();
+        onOpenLive(performer);
+      } : undefined}
+    >
+      <div
+        data-testid="home1-orbit-card"
+        data-performer-name={performer.name}
+        data-avatar-url={performer.image ?? performer.avatarImage ?? ''}
+        style={{
+          position: 'absolute',
+          left: `${pos.x}%`,
+          top: `${pos.y}%`,
+          transform: 'translate3d(-50%, -50%, 0)',
+          zIndex: 34,
+          cursor: 'pointer',
+          willChange: 'transform',
+          backfaceVisibility: 'hidden',
+          WebkitBackfaceVisibility: 'hidden',
+          pointerEvents: 'auto',
+        }}
+      >
+        <div
+          style={{
+            position: 'absolute',
+            top: -10,
+            left: -4,
+            zIndex: 5,
+            width: 20,
+            height: 20,
+            borderRadius: '50%',
+            background:
+              performer.rank === 1
+                ? 'linear-gradient(135deg, #FFD700, #FF9500)'
+                : `${accentColor}33`,
+            border: `1.5px solid ${performer.rank === 1 ? '#FFD700' : accentColor}`,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: 8,
+            fontWeight: 900,
+            color: performer.rank === 1 ? '#050510' : accentColor,
+            fontFamily: "'Inter', sans-serif",
+            boxShadow: `0 0 8px ${performer.rank === 1 ? '#FFD700' : accentColor}66`,
+          }}
+        >
+          {performer.rank}
+        </div>
+
+        <div
+          style={{
+            width: cardSize,
+            height: Math.round(cardSize * 1.28),
+            borderRadius: 5,
+            background: `linear-gradient(160deg, ${accentColor}35, rgba(5,5,16,0.96))`,
+            border: `2px solid ${accentColor}55`,
+            boxShadow: `0 0 10px ${accentColor}33`,
+            transition: 'box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease',
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 2,
+            position: 'relative',
+            transform: 'translateZ(0)',
+            willChange: 'transform',
+            backfaceVisibility: 'hidden',
+          }}
+        >
+          {performer.rank <= 3 && (
+            <div style={{ position: 'absolute', top: 3, right: 3, width: 5, height: 5, borderRadius: '50%', background: '#E63000', boxShadow: '0 0 5px #E63000', animation: 'h1Pulse 1.5s infinite' }} />
+          )}
+
+          {hasImage ? (
+            <Image
+              data-testid="home1-orbit-image"
+              src={String(rawAvatar ?? '/images/tmi-placeholder.jpg')}
+              alt={performer.name}
+              unoptimized
+              width={Math.round(cardSize * 0.62)}
+              height={Math.round(cardSize * 0.72)}
+              onError={() => onImageError(performer.slug)}
+              style={{
+                width: cardSize * 0.62,
+                height: cardSize * 0.72,
+                borderRadius: 6,
+                objectFit: 'cover',
+                marginBottom: 4,
+                border: `1px solid ${accentColor}55`,
+                zIndex: 1,
+                background: 'rgba(255,255,255,0.05)',
+              }}
+            />
+          ) : (
+            <div
+              style={{
+                width: cardSize * 0.62,
+                height: cardSize * 0.72,
+                borderRadius: 6,
+                marginBottom: 4,
+                border: `1px dashed ${accentColor}66`,
+                background: 'linear-gradient(160deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02))',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 2,
+                zIndex: 1,
+              }}
+            >
+              <div style={{ fontSize: Math.max(cardSize * 0.18, 10), fontWeight: 900, color: '#fff', fontFamily: "'Inter',sans-serif" }}>{initials || '??'}</div>
+              <div style={{ fontSize: 6, color: 'rgba(255,255,255,0.55)', letterSpacing: '0.06em', fontFamily: "'Inter',sans-serif" }}>
+                {performer.accountType === 'diamond-member' || performer.accountType === 'real-member' || performer.accountType === 'verified-performer' ? 'UPLOAD PENDING' : performer.accountType === 'empty-slot' ? 'NO DATA YET' : 'NO IMAGE'}
+              </div>
+              <div style={{ fontSize: 8, opacity: 0.7 }} aria-label="empty-state-avatar">👤</div>
+            </div>
+          )}
+
+          <div style={{ fontSize: Math.max(cardSize * 0.1, 7), fontWeight: 900, color: '#fff', textAlign: 'center', fontFamily: "'Inter',sans-serif", maxWidth: '90%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {performer.name.split(' ').slice(0, 2).join(' ')}
+          </div>
+          <div style={{ fontSize: Math.max(cardSize * 0.08, 6), color: accentColor, background: `${accentColor}18`, borderRadius: 8, padding: '1px 4px', fontFamily: "'Inter',sans-serif" }}>
+            {performer.accountType === 'diamond-member'
+              ? 'Diamond Member'
+              : performer.accountType === 'verified-performer'
+                ? 'Verified Performer'
+                : performer.accountType === 'real-member'
+                  ? 'Member'
+                  : performer.accountType === 'system-actor'
+                    ? 'System Actor'
+                    : performer.accountType === 'system-bot'
+                      ? 'TMI Assistant'
+                      : 'Position Available'}
+          </div>
+          <div style={{ fontSize: Math.max(cardSize * 0.08, 6), color: 'rgba(255,255,255,0.42)', fontFamily: "'Inter',sans-serif" }}>
+            {performer.accountType === 'system-bot' || performer.accountType === 'system-actor' ? `${performer.activityType ?? 'system'} · ${performer.systemFunction ?? 'system actor'}` : `XP ${performer.score.toLocaleString()}`}
+          </div>
+          <div style={{ fontSize: Math.max(cardSize * 0.08, 6), color: 'rgba(255,255,255,0.32)', fontFamily: "'Inter',sans-serif" }}>
+            {(performer.accountType === 'diamond-member' || performer.accountType === 'real-member' || performer.accountType === 'verified-performer') && !hasUploadedProfileImage(rawAvatar)
+              ? 'Add profile image in HQ'
+              : performer.accountType === 'empty-slot'
+                ? 'No data available yet'
+                : (typeof performer.voteCount === 'number' ? `Votes ${performer.voteCount.toLocaleString()}` : 'Votes: N/A')}
+          </div>
+        </div>
+      </div>
+    </Link>
+  );
+});
+
 // ─── Full CHANNEL_ROTATION — 31 messages covering all roles + B2B ────────────
 
 const TICKER_MSGS = [
-  '🎵 ALL PERFORMERS WELCOME — JOIN NOW',
+  '🎵 ALL CREATORS WELCOME — JOIN NOW',
+  '🥁 MARCHING BANDS + CHOIRS WANTED — JOIN THE INDEX',
   '🌍 FREE GLOBAL PROMOTION FOR ALL ARTISTS',
   '📈 CLIMB THE GLOBAL RANKINGS TODAY',
   '🔍 GET DISCOVERED WORLDWIDE — SIGN UP FREE',
@@ -115,6 +482,7 @@ const TICKER_MSGS = [
   '🎸 BANDS WANTED — LIVE PERFORMANCE SLOTS OPEN',
   '🥁 ALL INSTRUMENTALISTS WELCOME',
   '🎭 ACTORS · MAGICIANS · SPOKEN WORD ARTISTS',
+  '📰 BLOGGERS · NEWS WRITERS · STREAMERS WELCOME',
   '🏢 VENUES WANTED — BOOK TALENT DIRECT',
   '📣 PROMOTERS WANTED — PROMOTE SHOWS WORLDWIDE',
   '💼 SPONSORS WANTED — ADVERTISE FROM $25',
@@ -186,7 +554,8 @@ function PerformerMonitor({
 // ─── Component ────────────────────────────────────────────────────────────────
 
 const HERO_PHRASES = [
-  'ALL INSTRUMENTS WELCOME',
+  'CHOIRS • MARCHING BANDS • CREATORS WELCOME',
+  "WHO'S HOT RIGHT NOW",
   "THE WORLD'S STAGE",
   "WHO'S NEXT?",
   'DISCOVER THE FUTURE',
@@ -198,21 +567,26 @@ const HERO_PHRASES = [
 
 export default function Home1CoverPage() {
   const [genreIdx, setGenreIdx] = useState(0);
-  const [orbitDeg, setOrbitDeg] = useState(0);
   const [voteCount, setVoteCount] = useState(4812);
-  const [activeIdx, setActiveIdx] = useState<number | null>(null);
   const [starburst, setStarburst] = useState(false);
   const [heroIdx, setHeroIdx] = useState(0);
   const [heroVisible, setHeroVisible] = useState(true);
-  const [leftTab, setLeftTab] = useState(0);
-  const [rightTab, setRightTab] = useState(0);
+  const [leftRailIndex, setLeftRailIndex] = useState(0);
+  const [rightRailIndex, setRightRailIndex] = useState(0);
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true);
   const [underlayDir, setUnderlayDir] = useState<'left' | 'right'>('right');
   const [pendingOrbit, setPendingOrbit] = useState<UniversalRoom | null>(null);
   const [brokenOrbitImages, setBrokenOrbitImages] = useState<Record<string, boolean>>({});
-  const rafRef = useRef<number | null>(null);
-  const lastRef = useRef<number>(0);
+  const [isMobileViewport, setIsMobileViewport] = useState(false);
+  const [canSubmitPromoSlot, setCanSubmitPromoSlot] = useState(false);
+
+  useEffect(() => {
+    const updateViewport = () => setIsMobileViewport(window.innerWidth < 768);
+    updateViewport();
+    window.addEventListener('resize', updateViewport);
+    return () => window.removeEventListener('resize', updateViewport);
+  }, []);
 
   // The LEFT PANEL | ORBITAL | RIGHT PANEL grid is desktop-width math (two
   // 120-170px rails + an orbital that demands min(300px, 70vw)). On phone
@@ -224,6 +598,10 @@ export default function Home1CoverPage() {
       setLeftOpen(false);
       setRightOpen(false);
     }
+  }, []);
+
+  useEffect(() => {
+    setCanSubmitPromoSlot(hasRole('ADMIN', 'SPONSOR', 'ADVERTISER'));
   }, []);
 
   const [venues, setVenues] = useState<VenueBookingSlot[]>(() => getVenueBookingSlots(3));
@@ -258,6 +636,15 @@ export default function Home1CoverPage() {
     }
   }, [performers.length, genreKey]);
 
+  useEffect(() => {
+    const leftId = setInterval(() => setLeftRailIndex((v) => v + 1), 4800);
+    const rightId = setInterval(() => setRightRailIndex((v) => v + 1), 5200);
+    return () => {
+      clearInterval(leftId);
+      clearInterval(rightId);
+    };
+  }, []);
+
   // Crown holder always comes from the PerformerRegistry — the real global #1 by XP.
   const crownData = getCrownHolder();
   const crowdHolder = {
@@ -272,21 +659,8 @@ export default function Home1CoverPage() {
     audienceCount: crownData.audienceCount,
   };
 
-  // Orbit spin
-  useEffect(() => {
-    const spin = (ts: number) => {
-      if (lastRef.current) {
-        const dt = ts - lastRef.current;
-        setOrbitDeg((d) => (d - dt * 0.015) % 360);
-      }
-      lastRef.current = ts;
-      rafRef.current = requestAnimationFrame(spin);
-    };
-    rafRef.current = requestAnimationFrame(spin);
-    return () => {
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    };
-  }, []);
+  const visibleOrbitCards = performers.slice(0, isMobileViewport ? 6 : 10);
+  const orbitRadius = isMobileViewport ? 34 : 33;
 
   // Genre cycle every 6s with starburst flash
   useEffect(() => {
@@ -322,6 +696,58 @@ export default function Home1CoverPage() {
 
   const accentColor = genreConfig.color;
   const bgColor = genreConfig.bg;
+  const topPerformers = getTopPerformers(20);
+  const livePerformers = getLivePerformers();
+  const diamondMembers = PERFORMER_REGISTRY.filter((p) => p.tier === 'Diamond').sort((a, b) => b.xp - a.xp);
+
+  const genreDiscoveryRails = [
+    { label: 'Top Bands', categoryHint: 'Rock', route: '/rankings?category=bands', filter: (p: Performer) => /band|group|ensemble|orchestra/i.test(`${p.name} ${p.genre}`) },
+    { label: 'Top Choirs', categoryHint: 'Gospel', route: '/rankings?category=choirs', filter: (p: Performer) => /choir/i.test(`${p.name} ${p.genre}`) },
+    { label: 'Top Marching Bands', categoryHint: 'Marching Band', route: '/rankings?category=marching-bands', filter: (p: Performer) => /marching/i.test(`${p.name} ${p.genre}`) },
+    { label: 'Top Dance Crews', categoryHint: 'Hip Hop Dance', route: '/rankings?category=dance-crews', filter: (p: Performer) => /dance crew|dance crews|hip hop dance|break|popping|locking/i.test(`${p.name} ${p.genre}`) },
+    { label: 'Top Streamers', categoryHint: 'Creator', route: '/coming-soon/streamers', filter: (p: Performer) => /stream|broadcaster|commentator|interviewer|podcast/i.test(`${p.name} ${p.genre}`) },
+    { label: 'Top Writers', categoryHint: 'Writers', route: '/rankings?category=writers', filter: (p: Performer) => /writer|blog|journalist|editor|critic|news/i.test(`${p.name} ${p.genre}`) },
+    { label: 'Top Venues', categoryHint: 'Venues', route: '/venues', filter: (p: Performer) => /venues/i.test(p.genre) },
+    { label: 'Top Fans', categoryHint: 'Fans', route: '/coming-soon/fans', filter: () => false },
+  ] as const;
+  const activeDiscovery = genreDiscoveryRails[leftRailIndex % genreDiscoveryRails.length]!;
+  const discoveryEntries = performers.filter(activeDiscovery.filter).slice(0, 3);
+  const discoveryFallbackBots = buildSystemBotRing().filter((p) => ['discovery-bot', 'helper-bot', 'welcome-bot'].includes(p.botRole ?? '')).slice(0, 3);
+  const renderedDiscoveryEntries = discoveryEntries.length > 0 ? discoveryEntries : discoveryFallbackBots;
+
+  const rightRailViews = [
+    { label: 'Trending Artists', route: '/rankings', entries: topPerformers.slice(0, 4).map((p) => ({ name: p.name, sub: `${p.category}`, href: p.profileRoute })) },
+    { label: 'Active Rooms', route: '/live/lobby', entries: livePerformers.slice(0, 4).map((p) => ({ name: p.name, sub: `${p.audienceCount} in room`, href: p.liveRoomRoute })) },
+    { label: 'Top Rising Artists', route: '/rankings?rising=true', entries: getFeaturedFreePerformers(4).map((p) => ({ name: p.name, sub: p.genre, href: `/performers/${p.slug}` })) },
+    { label: 'Newest Diamond Members', route: '/rankings?tier=Diamond', entries: diamondMembers.slice(0, 4).map((p) => ({ name: p.name, sub: p.category, href: hasUploadedProfileImage(p.profileImageUrl) ? p.profileRoute : `${p.profileRoute}?prompt=upload-image` })) },
+    { label: 'Featured Venue', route: '/venues', entries: venues.slice(0, 1).map((v) => ({ name: v.venue, sub: `${v.day} booking`, href: v.bookRoute })) },
+    {
+      label: 'Featured Sponsor',
+      route: '/sponsors/advertise',
+      entries: (() => {
+        const s = getActiveSponsorForZone('home-1-sponsorRail-0');
+        return s ? [{ name: s.name, sub: s.tagline, href: s.ctaHref }] : [];
+      })(),
+    },
+    {
+      label: 'Diamond Members',
+      route: '/rankings?tier=Diamond',
+      entries: diamondMembers.slice(0, 4).map((p) => ({ name: p.name, sub: hasUploadedProfileImage(p.profileImageUrl) ? 'Diamond member' : 'Upload pending', href: hasUploadedProfileImage(p.profileImageUrl) ? p.profileRoute : `${p.profileRoute}?prompt=upload-image` })),
+    },
+    {
+      label: 'Top Fans',
+      route: '/coming-soon/fans',
+      entries: getFeaturedFreePerformers(4).map((p) => ({ name: p.name, sub: 'Community supporter', href: `/performers/${p.slug}` })),
+    },
+    {
+      label: 'New Members',
+      route: '/coming-soon/new-members',
+      entries: topPerformers.slice(-4).map((p) => ({ name: p.name, sub: 'New in rotation', href: p.profileRoute })),
+    },
+  ] as const;
+  const activeRightRail = rightRailViews[rightRailIndex % rightRailViews.length]!;
+  const rightRailFallback = buildSystemBotRing().slice(0, 3).map((b) => ({ name: b.name, sub: b.systemFunction ?? 'System actor', href: b.profileRoute }));
+  const rightRailEntries = activeRightRail.entries.length > 0 ? activeRightRail.entries : rightRailFallback;
 
   return (
     <>
@@ -344,6 +770,8 @@ export default function Home1CoverPage() {
 
         @keyframes h1Spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         @keyframes h1CounterSpin { from { transform: rotate(0deg); } to { transform: rotate(-360deg); } }
+        @keyframes h1OrbitRotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes h1OrbitRotateReverse { from { transform: rotate(0deg); } to { transform: rotate(-360deg); } }
         @keyframes h1CrownFloat {
           0%, 100% { transform: translateY(0px) scale(1); }
           50% { transform: translateY(-8px) scale(1.05); }
@@ -645,15 +1073,15 @@ export default function Home1CoverPage() {
           </div>
 
           {/* ── Challenge banner slider ── */}
-          <div style={{ background: 'rgba(123,0,255,0.18)', border: '1px solid rgba(123,0,255,0.4)', borderRadius: 6, padding: '4px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 18, maxWidth: 500, width: '100%', marginInline: 'auto' }}>
-            <button style={{ background: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 4, padding: '3px 8px', fontSize: 9, cursor: 'pointer' }}>◀</button>
+          <div style={{ background: 'rgba(123,0,255,0.16)', border: '1px solid rgba(123,0,255,0.34)', borderRadius: 6, padding: '3px 8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, maxWidth: 440, width: '100%', marginInline: 'auto' }}>
+            <button style={{ background: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 4, padding: '2px 6px', fontSize: 8, cursor: 'pointer' }}>◀</button>
             <div style={{ textAlign: 'center', flex: 1 }}>
-              <div style={{ fontSize: 11, fontWeight: 800, color: '#fff', letterSpacing: '0.08em', fontFamily: "'Inter',sans-serif" }}>CHALLENGE YOUR SONG HERE</div>
-              <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.4)', fontFamily: "'Inter',sans-serif" }}>SONG FOR SONG · WORK FOR WORK</div>
+              <div style={{ fontSize: 10, fontWeight: 800, color: '#fff', letterSpacing: '0.07em', fontFamily: "'Inter',sans-serif" }}>CHALLENGE YOUR SONG HERE</div>
+              <div style={{ fontSize: 7, color: 'rgba(255,255,255,0.4)', fontFamily: "'Inter',sans-serif" }}>SONG FOR SONG · WORK FOR WORK</div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Link href="/battles/challenge" style={{ fontSize: 9, fontWeight: 700, color: '#00E5FF', textDecoration: 'none', fontFamily: "'Inter',sans-serif" }}>START NOW</Link>
-              <button style={{ background: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 4, padding: '3px 8px', fontSize: 9, cursor: 'pointer' }}>▶</button>
+              <Link href="/battles/challenge" style={{ fontSize: 8, fontWeight: 700, color: '#00E5FF', textDecoration: 'none', fontFamily: "'Inter',sans-serif" }}>START NOW</Link>
+              <button style={{ background: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 4, padding: '2px 6px', fontSize: 8, cursor: 'pointer' }}>▶</button>
             </div>
           </div>
 
@@ -679,7 +1107,7 @@ export default function Home1CoverPage() {
              marginTop is a POSITIVE 48px here, not negative — a prior pass had this at
              -46 (pulling the section UP into the masthead). Build Director correction
              (2026-06-20): crown/orbit must sit 40-60px LOWER, not higher. ── */}
-        <div style={{ position: 'relative', width: '100%', overflow: 'hidden', marginTop: 136, paddingBottom: 4 }}>
+        <div style={{ position: 'relative', width: '100%', overflow: 'visible', marginTop: 62, paddingBottom: 4 }}>
 
         {/* TABLOID MAGAZINE UNDERLAY — scrolls behind the orbital (blueprint spec).
              Build Director correction (2026-06-20): the orbit must be the visual
@@ -770,60 +1198,34 @@ export default function Home1CoverPage() {
           <div style={{ display: 'flex', alignItems: 'stretch', paddingTop: 8 }}>
             <div style={{ width: leftOpen ? 'clamp(120px,15vw,160px)' : 0, overflow: 'hidden', transition: 'width 0.3s ease', flexShrink: 0 }}>
               <div style={{ background: 'rgba(6,2,26,0.95)', border: '1px solid rgba(255,45,170,0.35)', borderRadius: '8px 0 0 8px', height: '100%', display: 'flex', flexDirection: 'column', minHeight: 320 }}>
-                {/* Tab bar */}
-                <div style={{ display: 'flex', gap: 2, padding: '5px 5px 4px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-                  {(['PROMO','VENUE','ADS'] as const).map((label, i) => (
-                    <button key={label} onClick={() => setLeftTab(i)} style={{ flex: 1, fontSize: 7, fontWeight: 800, cursor: 'pointer', borderRadius: 4, padding: '3px 4px', border: 'none', textTransform: 'uppercase', letterSpacing: '0.06em', background: leftTab === i ? 'rgba(255,45,170,0.25)' : 'rgba(255,255,255,0.06)', color: leftTab === i ? '#FF2DAA' : 'rgba(255,255,255,0.4)', fontFamily: "'Inter',sans-serif" }}>{label}</button>
-                  ))}
+                <div style={{ padding: '6px 7px 5px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                  <div style={{ fontSize: 7, fontWeight: 900, color: '#FF2DAA', letterSpacing: '0.11em', marginBottom: 3 }}>GENRE DISCOVERY</div>
+                  <div style={{ fontSize: 7, fontWeight: 800, color: '#FFD700', letterSpacing: '0.06em' }}>{activeDiscovery.categoryHint.toUpperCase()} · {activeDiscovery.label.toUpperCase()}</div>
                 </div>
-                {/* Tab content */}
                 <div style={{ flex: 1, overflow: 'hidden', padding: '8px 8px 6px', fontSize: 9 }}>
-                  {leftTab === 0 && (
-                    <>
-                      <div style={{ fontSize: 7, fontWeight: 800, color: '#FF2DAA', letterSpacing: '0.12em', marginBottom: 6 }}>⭐ FREE PROMO SLOTS</div>
-                      {getFeaturedFreePerformers(3).map((p) => {
-                        const pColor = '#FF2DAA';
-                        return (
-                          <Link key={p.slug} href={`/performers/${p.slug}`} style={{ textDecoration: 'none' }}>
-                            <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,45,170,0.2)', borderRadius: 5, padding: 5, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 5 }}>
-                              {p.profileImageUrl && <img src={p.profileImageUrl} alt={p.name} style={{ width: 20, height: 20, borderRadius: '50%', objectFit: 'cover', border: `1px solid ${pColor}44`, flexShrink: 0 }} />}
-                              <div style={{ flex: 1, minWidth: 0 }}>
-                                <div style={{ fontSize: 8, fontWeight: 700, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</div>
-                                <div style={{ fontSize: 7, color: '#00FF88' }}>▲ {(p.fanCount ?? p.score ?? 0).toLocaleString()}</div>
-                              </div>
-                              <span style={{ fontSize: 6, fontWeight: 700, color: '#FF2DAA', border: '1px solid rgba(255,45,170,0.5)', borderRadius: 3, padding: '1px 4px' }}>BOOST</span>
-                            </div>
-                          </Link>
-                        );
-                      })}
-                      <Link href="/sponsors/claim-slot" style={{ textDecoration: 'none' }}>
-                        <div style={{ border: '1px dashed rgba(255,215,0,0.3)', background: 'rgba(255,215,0,0.04)', borderRadius: 5, padding: '6px', textAlign: 'center', cursor: 'pointer', marginTop: 2 }}>
-                          <div style={{ fontSize: 14, marginBottom: 1 }}>+</div>
-                          <div style={{ fontSize: 7, color: '#FFD700', fontWeight: 700 }}>Claim Free Slot</div>
+                  {renderedDiscoveryEntries.length > 0 ? renderedDiscoveryEntries.map((p) => (
+                    <Link key={p.slug} href={p.profileRoute} style={{ textDecoration: 'none' }}>
+                      <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,45,170,0.2)', borderRadius: 5, padding: 5, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <div style={{ width: 20, height: 20, borderRadius: '50%', border: '1px solid rgba(255,45,170,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: '#fff', background: 'rgba(255,45,170,0.1)', flexShrink: 0 }}>
+                          {p.name.slice(0, 1).toUpperCase()}
                         </div>
-                      </Link>
-                    </>
-                  )}
-                  {leftTab === 1 && (
-                    <>
-                      <div style={{ fontSize: 7, fontWeight: 800, color: '#FF8C00', letterSpacing: '0.12em', marginBottom: 6 }}>🏟 VENUE BOOKING</div>
-                      {venues.map((v) => (
-                        <div key={v.day} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,140,0,0.18)', borderRadius: 5, padding: '5px 6px', marginBottom: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <div>
-                            <div style={{ fontSize: 8, fontWeight: 700, color: '#FF8C00' }}>{v.day} · {v.venue}</div>
-                          </div>
-                          <Link href={v.bookRoute} style={{ textDecoration: 'none' }}>
-                            <span style={{ fontSize: 6, fontWeight: 700, color: '#00FF88', border: '1px solid rgba(0,255,136,0.4)', borderRadius: 3, padding: '1px 5px', cursor: 'pointer' }}>BOOK</span>
-                          </Link>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 8, fontWeight: 700, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</div>
+                          <div style={{ fontSize: 7, color: 'rgba(255,255,255,0.5)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.genre}</div>
                         </div>
-                      ))}
-                      <Link href="/venues" style={{ textDecoration: 'none' }}>
-                        <button style={{ width: '100%', background: '#FF8C00', color: '#000', fontSize: 7, fontWeight: 800, border: 'none', borderRadius: 4, padding: '5px', cursor: 'pointer', marginTop: 3, letterSpacing: '0.06em' }}>Browse Dates</button>
-                      </Link>
-                    </>
+                        <span style={{ fontSize: 6, fontWeight: 700, color: '#FF2DAA', border: '1px solid rgba(255,45,170,0.5)', borderRadius: 3, padding: '1px 4px' }}>OPEN</span>
+                      </div>
+                    </Link>
+                  )) : (
+                    <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.55)', textAlign: 'center', paddingTop: 12 }}>No data available yet</div>
                   )}
-                  {leftTab === 2 && (
-                    <AdSenseSlot slot={AD_SLOTS.homepageMid} format="auto" style={{ minHeight: 200 }} />
+                  <Link href={activeDiscovery.route} style={{ textDecoration: 'none' }}>
+                    <button style={{ width: '100%', background: 'rgba(255,45,170,0.12)', color: '#FF2DAA', border: '1px solid rgba(255,45,170,0.35)', borderRadius: 4, fontSize: 7, fontWeight: 800, padding: '5px', cursor: 'pointer', marginTop: 5, letterSpacing: '0.06em' }}>VIEW CATEGORY</button>
+                  </Link>
+                  {canSubmitPromoSlot && (
+                    <Link href="/sponsors/claim-slot" style={{ textDecoration: 'none' }}>
+                      <button style={{ width: '100%', marginTop: 6, padding: '5px', fontSize: 7, fontWeight: 800, border: '1px dashed rgba(255,215,0,0.5)', background: 'rgba(255,215,0,0.08)', color: '#FFD700', borderRadius: 4, cursor: 'pointer', letterSpacing: '0.06em' }}>SUBMIT PROMO SLOT</button>
+                    </Link>
                   )}
                 </div>
               </div>
@@ -844,8 +1246,8 @@ export default function Home1CoverPage() {
 
           {/* ── WEEKLY CROWN ORBIT label ── */}
           <div style={{ textAlign: 'center', padding: '8px 0 4px', position: 'relative', zIndex: 5 }}>
-            <div style={{ fontFamily: "'Orbitron','Inter',sans-serif", fontSize: 13, fontWeight: 900, color: '#FFD700', textShadow: '0 0 15px rgba(255,215,0,0.6)', letterSpacing: '0.08em' }}>WEEKLY CROWN ORBIT</div>
-            <div style={{ fontSize: 7, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.15em', marginTop: 1 }}>TOP RANKED · LIVE NOW · REAL TIME</div>
+            <div style={{ fontFamily: "'Orbitron','Inter',sans-serif", fontSize: 13, fontWeight: 900, color: '#FFD700', textShadow: '0 0 15px rgba(255,215,0,0.6)', letterSpacing: '0.08em' }}>WHO&apos;S HOT RIGHT NOW</div>
+            <div style={{ fontSize: 7, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.12em', marginTop: 1 }}>TOP SINGERS · BANDS · CHOIRS · MARCHING BANDS · DJS · PRODUCERS · COMEDIANS · DANCERS · ACTORS · STREAMERS · WRITERS · PROMOTERS · VENUES · FANS</div>
           </div>
 
           {/* ── Orbital ring ──
@@ -857,13 +1259,14 @@ export default function Home1CoverPage() {
           <div
             style={{
               position: 'relative',
-              width: '100%',
-              minWidth: 'min(280px, 58vw)',
-              maxWidth: 'min(740px, 60vw)',
+              width: 'min(100%, 92vw)',
+              minWidth: isMobileViewport ? 260 : 'min(280px, 58vw)',
+              maxWidth: isMobileViewport ? 520 : 'min(740px, 60vw)',
               aspectRatio: '1 / 1',
               margin: '0 auto',
               flexShrink: 0,
               zIndex: 10,
+              overflow: 'visible',
             }}
           >
           {/* Starburst transition overlay */}
@@ -893,8 +1296,10 @@ export default function Home1CoverPage() {
               borderRadius: '50%',
               border: `1px solid ${accentColor}0f`,
               boxShadow: `0 0 20px ${accentColor}0c`,
-              transform: `rotate(${orbitDeg}deg)`,
-              transition: 'transform 0.016s linear',
+              animation: 'h1OrbitRotate 10s linear infinite',
+              willChange: 'transform',
+              transform: 'translateZ(0)',
+              zIndex: 12,
             }}
           />
           <div
@@ -903,8 +1308,10 @@ export default function Home1CoverPage() {
               inset: '19%',
               borderRadius: '50%',
               border: `1px dashed ${accentColor}0c`,
-              transform: `rotate(${-orbitDeg * 0.6}deg)`,
-              transition: 'transform 0.016s linear',
+              animation: 'h1OrbitRotateReverse 14s linear infinite',
+              willChange: 'transform',
+              transform: 'translateZ(0)',
+              zIndex: 13,
             }}
           />
 
@@ -917,7 +1324,7 @@ export default function Home1CoverPage() {
               left: '50%',
               transform: 'translate(-50%, -50%)',
               textDecoration: 'none',
-              zIndex: 20,
+              zIndex: 30,
             }}
             onClick={crowdHolder.isLive && crowdHolder.liveRoomRoute ? (e: React.MouseEvent) => {
               e.preventDefault();
@@ -1007,24 +1414,30 @@ export default function Home1CoverPage() {
             </div>
           </Link>
 
-          {/* 10 orbit cards — live → seat-join flow; not live → performer profile */}
-          {performers.map((p, i) => {
-            const pos = getOrbitPos(i, 10, 37, orbitDeg * 0.08);
-            const cardSize = i === 0 ? 66 : 58;
-            const hasImage = Boolean((p.image ?? p.avatarImage)?.trim()) && !brokenOrbitImages[p.slug];
-            const initials = p.name
-              .split(' ')
-              .map(part => part.charAt(0))
-              .join('')
-              .slice(0, 2)
-              .toUpperCase();
-            return (
-              <Link
-                key={p.slug}
-                href={p.isLive && p.liveRoomRoute ? `${p.liveRoomRoute}?from=home-1` : `/performers/${p.slug}`}
-                style={{ textDecoration: 'none' }}
-                onClick={p.isLive && p.liveRoomRoute ? (e: React.MouseEvent) => {
-                  e.preventDefault();
+          {/* Orbit cards — CSS-driven rotation for smoother mobile runtime */}
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              animation: 'h1OrbitRotate 10s linear infinite',
+              willChange: 'transform',
+              transform: 'translateZ(0)',
+              zIndex: 22,
+              pointerEvents: 'none',
+            }}
+          >
+            {visibleOrbitCards.map((performer, i) => (
+              <OrbitCard
+                key={performer.slug}
+                performer={performer}
+                index={i}
+                total={visibleOrbitCards.length}
+                radius={orbitRadius}
+                compactMode={isMobileViewport}
+                accentColor={accentColor}
+                isBrokenImage={Boolean(brokenOrbitImages[performer.slug])}
+                onImageError={(slug) => setBrokenOrbitImages(prev => ({ ...prev, [slug]: true }))}
+                onOpenLive={(p) => {
                   setPendingOrbit({
                     id: p.slug,
                     title: `${p.name} LIVE`,
@@ -1036,162 +1449,10 @@ export default function Home1CoverPage() {
                     venueIndex: 1,
                     shape: 'oct',
                   });
-                } : undefined}
-              >
-                <div
-                  data-testid="home1-orbit-card"
-                  data-performer-name={p.name}
-                  data-avatar-url={p.image ?? p.avatarImage ?? ''}
-                  style={{
-                    position: 'absolute',
-                    left: `${pos.x}%`,
-                    top: `${pos.y}%`,
-                    transform: 'translate(-50%, -50%)',
-                    zIndex: activeIdx === i ? 45 : 34,
-                    cursor: 'pointer',
-                    transition: 'transform 0.2s ease',
-                  }}
-                  onMouseEnter={() => setActiveIdx(i)}
-                  onMouseLeave={() => setActiveIdx(null)}
-                >
-                  {/* Rank badge */}
-                  <div
-                    style={{
-                      position: 'absolute',
-                      top: -10,
-                      left: -4,
-                      zIndex: 5,
-                      width: 20,
-                      height: 20,
-                      borderRadius: '50%',
-                      background:
-                        p.rank === 1
-                          ? 'linear-gradient(135deg, #FFD700, #FF9500)'
-                          : `${accentColor}33`,
-                      border: `1.5px solid ${p.rank === 1 ? '#FFD700' : accentColor}`,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: 8,
-                      fontWeight: 900,
-                      color: p.rank === 1 ? '#050510' : accentColor,
-                      fontFamily: "'Inter', sans-serif",
-                      boxShadow: `0 0 8px ${p.rank === 1 ? '#FFD700' : accentColor}66`,
-                    }}
-                  >
-                    {p.rank}
-                  </div>
-
-                  {/* P7: 4:5 portrait card */}
-                  <div
-                    style={{
-                      width: cardSize,
-                      height: Math.round(cardSize * 1.28),
-                      borderRadius: 5,
-                      background: `linear-gradient(160deg, ${accentColor}35, rgba(5,5,16,0.96))`,
-                      border: `2px solid ${accentColor}${activeIdx === i ? 'cc' : '55'}`,
-                      boxShadow: activeIdx === i ? `0 0 24px ${accentColor}88` : `0 0 8px ${accentColor}22`,
-                      transition: 'box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease',
-                      transform: activeIdx === i ? 'scale(1.12)' : 'scale(1)',
-                      overflow: 'hidden',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: 2,
-                      position: 'relative',
-                    }}
-                  >
-                    {/* Live dot — top-right for top 3 */}
-                    {p.rank <= 3 && (
-                      <div style={{ position: 'absolute', top: 3, right: 3, width: 5, height: 5, borderRadius: '50%', background: '#E63000', boxShadow: '0 0 5px #E63000', animation: 'h1Pulse 1.5s infinite' }} />
-                    )}
-                    {/* Performer image with honest fallback when media is unavailable */}
-                    {hasImage ? (
-                      <img
-                        data-testid="home1-orbit-image"
-                        src={p.image ?? p.avatarImage}
-                        alt={p.name}
-                        onError={() => setBrokenOrbitImages(prev => ({ ...prev, [p.slug]: true }))}
-                        style={{
-                          width: cardSize * 0.62,
-                          height: cardSize * 0.72,
-                          borderRadius: 6,
-                          objectFit: 'cover',
-                          marginBottom: 4,
-                          border: `1px solid ${accentColor}55`,
-                          zIndex: 1,
-                          background: 'rgba(255,255,255,0.05)'
-                        }}
-                      />
-                    ) : (
-                      <div
-                        style={{
-                          width: cardSize * 0.62,
-                          height: cardSize * 0.72,
-                          borderRadius: 6,
-                          marginBottom: 4,
-                          border: `1px dashed ${accentColor}66`,
-                          background: 'linear-gradient(160deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02))',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: 2,
-                          zIndex: 1,
-                        }}
-                      >
-                        <div style={{ fontSize: Math.max(cardSize * 0.18, 10), fontWeight: 900, color: '#fff', fontFamily: "'Inter',sans-serif" }}>{initials || '??'}</div>
-                        <div style={{ fontSize: 6, color: 'rgba(255,255,255,0.55)', letterSpacing: '0.06em', fontFamily: "'Inter',sans-serif" }}>NO IMAGE</div>
-                        <div style={{ fontSize: 8, opacity: 0.7 }} aria-label="empty-state-avatar">👤</div>
-                      </div>
-                    )}
-                    {/* Name */}
-                    <div style={{ fontSize: Math.max(cardSize * 0.1, 7), fontWeight: 900, color: '#fff', textAlign: 'center', fontFamily: "'Inter',sans-serif", maxWidth: '90%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {p.name.split(' ')[0]}
-                    </div>
-                    {/* Genre pill */}
-                    <div style={{ fontSize: Math.max(cardSize * 0.08, 6), color: accentColor, background: `${accentColor}18`, borderRadius: 8, padding: '1px 4px', fontFamily: "'Inter',sans-serif" }}>
-                      {p.genre}
-                    </div>
-                    {/* XP and vote count */}
-                    <div style={{ fontSize: Math.max(cardSize * 0.08, 6), color: 'rgba(255,255,255,0.42)', fontFamily: "'Inter',sans-serif" }}>
-                      XP {p.score.toLocaleString()}
-                    </div>
-                    <div style={{ fontSize: Math.max(cardSize * 0.08, 6), color: 'rgba(255,255,255,0.32)', fontFamily: "'Inter',sans-serif" }}>
-                      {typeof p.voteCount === 'number' ? `Votes ${p.voteCount.toLocaleString()}` : 'Votes: N/A'}
-                    </div>
-                  </div>
-
-                  {/* Hover tooltip */}
-                  {activeIdx === i && (
-                    <div
-                      style={{
-                        position: 'absolute',
-                        bottom: -36,
-                        left: '50%',
-                        transform: 'translateX(-50%)',
-                        background: 'rgba(10,6,20,0.95)',
-                        border: `1px solid ${accentColor}55`,
-                        borderRadius: 8,
-                        padding: '5px 10px',
-                        whiteSpace: 'nowrap',
-                        zIndex: 50,
-                        animation: 'h1StickerPop 0.25s ease',
-                      }}
-                    >
-                      <div style={{ fontSize: 9, fontWeight: 900, color: accentColor, fontFamily: "'Inter', sans-serif" }}>
-                        {p.name}
-                      </div>
-                      <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.5)', fontFamily: "'Inter', sans-serif" }}>
-                        #{p.rank} · {p.score.toLocaleString()} pts → Read Article
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </Link>
-            );
-          })}
+                }}
+              />
+            ))}
+          </div>
 
           {/* Sticker overlays */}
           <div
@@ -1272,7 +1533,7 @@ export default function Home1CoverPage() {
           {/* ── BACK / NEXT orbit navigation ── */}
           <div style={{ position: 'absolute', left: 0, bottom: 8, zIndex: 45 }}>
             <button
-              onClick={() => setActiveIdx((prev) => ((prev ?? 0) - 1 + performers.length) % performers.length)}
+              onClick={() => setGenreIdx((i) => (i - 1 + GENRE_KEYS.length) % GENRE_KEYS.length)}
               style={{ background: 'rgba(10,6,20,0.85)', border: `1px solid ${accentColor}55`, color: accentColor, fontSize: 9, fontWeight: 900, padding: '4px 9px', borderRadius: 4, cursor: 'pointer', fontFamily: "'Inter',sans-serif", letterSpacing: '0.08em', backdropFilter: 'blur(4px)' }}
             >
               ◀ BACK
@@ -1280,7 +1541,7 @@ export default function Home1CoverPage() {
           </div>
           <div style={{ position: 'absolute', right: 0, bottom: 8, zIndex: 45 }}>
             <button
-              onClick={() => setActiveIdx((prev) => ((prev ?? 0) + 1) % performers.length)}
+              onClick={() => setGenreIdx((i) => (i + 1) % GENRE_KEYS.length)}
               style={{ background: 'rgba(10,6,20,0.85)', border: `1px solid ${accentColor}55`, color: accentColor, fontSize: 9, fontWeight: 900, padding: '4px 9px', borderRadius: 4, cursor: 'pointer', fontFamily: "'Inter',sans-serif", letterSpacing: '0.08em', backdropFilter: 'blur(4px)' }}
             >
               NEXT ▶
@@ -1297,62 +1558,27 @@ export default function Home1CoverPage() {
             </div>
             <div style={{ width: rightOpen ? 'clamp(120px,15vw,160px)' : 0, overflow: 'hidden', transition: 'width 0.3s ease', flexShrink: 0 }}>
               <div style={{ background: 'rgba(6,2,26,0.95)', border: '1px solid rgba(255,215,0,0.35)', borderRadius: '0 8px 8px 0', height: '100%', display: 'flex', flexDirection: 'column', minHeight: 320 }}>
-                {/* Tab bar */}
-                <div style={{ display: 'flex', gap: 2, padding: '5px 5px 4px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-                  {(['RANKS','ADS','PROMO'] as const).map((label, i) => (
-                    <button key={label} onClick={() => setRightTab(i)} style={{ flex: 1, fontSize: 7, fontWeight: 800, cursor: 'pointer', borderRadius: 4, padding: '3px 4px', border: 'none', textTransform: 'uppercase', letterSpacing: '0.06em', background: rightTab === i ? 'rgba(255,215,0,0.25)' : 'rgba(255,255,255,0.06)', color: rightTab === i ? '#FFD700' : 'rgba(255,255,255,0.4)', fontFamily: "'Inter',sans-serif" }}>{label}</button>
-                  ))}
+                <div style={{ padding: '6px 7px 5px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                  <div style={{ fontSize: 7, fontWeight: 900, color: '#FFD700', letterSpacing: '0.11em', marginBottom: 3 }}>LIVE ACTIVITY</div>
+                  <div style={{ fontSize: 7, fontWeight: 800, color: '#00E5FF', letterSpacing: '0.06em' }}>{activeRightRail.label.toUpperCase()}</div>
                 </div>
-                {/* Tab content */}
                 <div style={{ flex: 1, overflow: 'hidden', padding: '8px 8px 6px', fontSize: 9 }}>
-                  {rightTab === 0 && (
-                    <>
-                      <div style={{ fontSize: 7, fontWeight: 800, color: '#FFD700', letterSpacing: '0.12em', marginBottom: 6 }}>👑 LIVE RANKINGS</div>
-                      {performers.slice(0, 8).map((p, i) => (
-                        <Link key={p.slug} href={`/articles/performer/${p.slug}`} style={{ textDecoration: 'none' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                            <div style={{ width: 18, height: 18, borderRadius: '50%', background: i === 0 ? 'rgba(255,45,170,0.18)' : 'rgba(255,215,0,0.12)', border: `1px solid ${i === 0 ? 'rgba(255,45,170,0.4)' : 'rgba(255,215,0,0.3)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, flexShrink: 0 }}>{p.emoji}</div>
-                            <span style={{ color: i === 0 ? '#FFD700' : i === 1 ? '#C0C0C0' : i === 2 ? '#CD7F32' : 'rgba(255,255,255,0.5)', fontWeight: 800, fontSize: 8, minWidth: 14 }}>{i + 1}</span>
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{ fontSize: 8, fontWeight: 700, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</div>
-                              <div style={{ fontSize: 6, color: 'rgba(255,255,255,0.35)' }}>{p.genre}</div>
-                            </div>
-                            {i < 3 && <div style={{ width: 4, height: 4, borderRadius: '50%', background: '#E63000', boxShadow: '0 0 4px #E63000', animation: 'h1Pulse 1s infinite', flexShrink: 0 }} />}
-                          </div>
-                        </Link>
-                      ))}
-                      <Link href="/rankings" style={{ textDecoration: 'none' }}>
-                        <button style={{ width: '100%', background: 'rgba(255,215,0,0.12)', color: '#FFD700', border: '1px solid rgba(255,215,0,0.25)', borderRadius: 4, fontSize: 7, fontWeight: 700, padding: '4px', cursor: 'pointer', marginTop: 5, letterSpacing: '0.06em' }}>Full Leaderboard →</button>
-                      </Link>
-                    </>
+                  {rightRailEntries.length > 0 ? rightRailEntries.map((item, i) => (
+                    <Link key={`${activeRightRail.label}-${item.name}-${i}`} href={item.href} style={{ textDecoration: 'none' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                        <div style={{ width: 4, height: 4, borderRadius: '50%', background: i % 2 === 0 ? '#FFD700' : '#00E5FF', boxShadow: i % 2 === 0 ? '0 0 5px #FFD700' : '0 0 5px #00E5FF', flexShrink: 0 }} />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 8, fontWeight: 700, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</div>
+                          <div style={{ fontSize: 6, color: 'rgba(255,255,255,0.42)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.sub}</div>
+                        </div>
+                      </div>
+                    </Link>
+                  )) : (
+                    <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.55)', textAlign: 'center', paddingTop: 12 }}>No data available yet</div>
                   )}
-                  {rightTab === 1 && (
-                    <AdSenseSlot slot={AD_SLOTS.homepageMid} format="auto" style={{ minHeight: 200 }} />
-                  )}
-                  {rightTab === 2 && (
-                    <>
-                      <div style={{ fontSize: 7, fontWeight: 800, color: '#FF2DAA', letterSpacing: '0.12em', marginBottom: 6 }}>📢 PROMO SPOTS</div>
-                      {[
-                        { name: 'Cypher Arena', viewers: '841', color: '#00E5FF', href: '/live/rooms/cypher-arena' },
-                        { name: 'Battle Stage', viewers: '2,130', color: '#FF2DAA', href: '/live/rooms/battle-stage' },
-                        { name: 'Stream & Win', viewers: '3,412', color: '#FFD700', href: '/live/lobby?filter=stream-win' },
-                        { name: 'Monday Stage', viewers: '412', color: '#00FF7F', href: '/games/monday-night' },
-                      ].map((item) => (
-                        <Link key={item.name} href={item.href} style={{ textDecoration: 'none' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '3px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                              <div style={{ width: 5, height: 5, borderRadius: '50%', background: item.color, boxShadow: `0 0 4px ${item.color}`, flexShrink: 0 }} />
-                              <span style={{ fontSize: 8, color: '#fff' }}>{item.name}</span>
-                            </div>
-                            <span style={{ fontSize: 7, color: 'rgba(255,255,255,0.4)' }}>{item.viewers}</span>
-                          </div>
-                        </Link>
-                      ))}
-                      <Link href="/sponsors/advertise" style={{ textDecoration: 'none' }}>
-                        <button style={{ width: '100%', marginTop: 8, padding: '5px', fontSize: 7, fontWeight: 700, border: '1px solid rgba(255,215,0,0.4)', background: 'rgba(255,215,0,0.08)', color: '#FFD700', borderRadius: 4, cursor: 'pointer', letterSpacing: '0.06em' }}>GET STARTED</button>
-                      </Link>
-                    </>
-                  )}
+                  <Link href={activeRightRail.route} style={{ textDecoration: 'none' }}>
+                    <button style={{ width: '100%', marginTop: 7, padding: '5px', fontSize: 7, fontWeight: 800, border: '1px solid rgba(255,215,0,0.35)', background: 'rgba(255,215,0,0.08)', color: '#FFD700', borderRadius: 4, cursor: 'pointer', letterSpacing: '0.06em' }}>OPEN VIEW</button>
+                  </Link>
                 </div>
               </div>
             </div>
@@ -1364,10 +1590,10 @@ export default function Home1CoverPage() {
         <div style={{ width: '100%', background: 'linear-gradient(90deg,#FF2DAA,#AA2DFF,#00E5FF,#FFD700,#FF2DAA)', backgroundSize: '400% 100%', animation: 'h1ColorBg 22s linear infinite', overflow: 'hidden', height: 26, position: 'relative', borderTop: '1px solid rgba(255,255,255,0.18)', borderBottom: '1px solid rgba(255,255,255,0.18)' }}>
           <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)' }} />
           <div style={{ position: 'relative', zIndex: 2, display: 'inline-block', whiteSpace: 'nowrap', animation: 'h1RailRight 56s linear infinite', willChange: 'transform' }}>
-            {['★ SINGERS WANTED — VOCAL SHOWCASE OPEN', '▶ DJS WANTED — GLOBAL MIXES LIVE', '◆ COMEDIANS NEEDED — JOKE-OFF ROOMS OPEN', '● DANCERS WANTED — DANCE CREWS STEP IN', '◉ WRITERS NEEDED — STORYTELLERS WELCOME', '▷ ADVERTISERS WANTED — REACH LIVE AUDIENCES', '◈ PRODUCERS WANTED — BEAT BATTLES TONIGHT', '◆ BEATMAKERS WANTED — SUBMIT YOUR SOUND', '★ ALL INSTRUMENTS WELCOME — GLOBAL INDEX OPEN', '▶ DISCOVERY CHARTS LIVE — NEW TALENT INDEXED'].map((msg, i) => (
+            {['★ SINGERS WANTED — VOCAL SHOWCASE OPEN', '▶ DJS WANTED — GLOBAL MIXES LIVE', '◆ COMEDIANS NEEDED — JOKE-OFF ROOMS OPEN', '● DANCERS WANTED — DANCE CREWS STEP IN', '◉ WRITERS NEEDED — STORYTELLERS WELCOME', '▷ ADVERTISERS WANTED — REACH LIVE AUDIENCES', '◈ PRODUCERS WANTED — BEAT BATTLES TONIGHT', '◆ CHOIRS + MARCHING BANDS WANTED — JOIN NOW', '★ BLOGGERS + NEWS WRITERS + STREAMERS WELCOME', '▶ DISCOVERY CHARTS LIVE — NEW TALENT INDEXED'].map((msg, i) => (
               <span key={i} style={{ fontSize: 11, fontWeight: 900, color: '#F8FAFF', padding: '0 34px', lineHeight: '26px', whiteSpace: 'nowrap', letterSpacing: '0.045em', textShadow: '0 1px 0 rgba(0,0,0,0.72)', fontFamily: "'Inter',sans-serif" }}>{msg}</span>
             ))}
-            {['★ SINGERS WANTED — VOCAL SHOWCASE OPEN', '▶ DJS WANTED — GLOBAL MIXES LIVE', '◆ COMEDIANS NEEDED — JOKE-OFF ROOMS OPEN', '● DANCERS WANTED — DANCE CREWS STEP IN', '◉ WRITERS NEEDED — STORYTELLERS WELCOME', '▷ ADVERTISERS WANTED — REACH LIVE AUDIENCES', '◈ PRODUCERS WANTED — BEAT BATTLES TONIGHT', '◆ BEATMAKERS WANTED — SUBMIT YOUR SOUND', '★ ALL INSTRUMENTS WELCOME — GLOBAL INDEX OPEN', '▶ DISCOVERY CHARTS LIVE — NEW TALENT INDEXED'].map((msg, i) => (
+            {['★ SINGERS WANTED — VOCAL SHOWCASE OPEN', '▶ DJS WANTED — GLOBAL MIXES LIVE', '◆ COMEDIANS NEEDED — JOKE-OFF ROOMS OPEN', '● DANCERS WANTED — DANCE CREWS STEP IN', '◉ WRITERS NEEDED — STORYTELLERS WELCOME', '▷ ADVERTISERS WANTED — REACH LIVE AUDIENCES', '◈ PRODUCERS WANTED — BEAT BATTLES TONIGHT', '◆ CHOIRS + MARCHING BANDS WANTED — JOIN NOW', '★ BLOGGERS + NEWS WRITERS + STREAMERS WELCOME', '▶ DISCOVERY CHARTS LIVE — NEW TALENT INDEXED'].map((msg, i) => (
               <span key={`d-${i}`} style={{ fontSize: 11, fontWeight: 900, color: '#F8FAFF', padding: '0 34px', lineHeight: '26px', whiteSpace: 'nowrap', letterSpacing: '0.045em', textShadow: '0 1px 0 rgba(0,0,0,0.72)', fontFamily: "'Inter',sans-serif" }}>{msg}</span>
             ))}
           </div>
@@ -1506,7 +1732,7 @@ export default function Home1CoverPage() {
               textTransform: 'uppercase',
             }}
           >
-            {genreConfig.emoji} Top 10 — {genreKey} · Click any card to read their article
+            {genreConfig.emoji} Top 10 — {genreKey} · Bands · Choirs · Marching Bands · Creators
           </div>
 
           <div
@@ -1683,7 +1909,7 @@ export default function Home1CoverPage() {
                   fontFamily: "'Inter', sans-serif",
                 }}
               >
-                Singers Wanted • DJs Wanted • Comedians Needed • All Instruments Welcome
+                Singers • Choirs • Marching Bands • Writers • Bloggers • News Writers • Actors • Streamers Welcome
               </div>
             </div>
             <span style={{ fontSize: 18 }}>⚡</span>
