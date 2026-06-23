@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useBroadcastRotation } from "@/lib/broadcast/BroadcastRotationEngine";
 import type { BroadcastFeedKind } from "@/types/broadcast";
 import { KIND_TO_SHAPE } from "@/types/broadcast";
-import MaskedVideoTile from "@/components/media/MaskedVideoTile";
+import { MaskedVideoTile, type BroadcastTileStatus } from "@/components/live/MaskedVideoTile";
 import FanLobbyWall from "@/components/lobby/FanLobbyWall";
 import PerformerLobbyWall from "@/components/lobby/PerformerLobbyWall";
 import MixedLobbyWall from "@/components/lobby/MixedLobbyWall";
