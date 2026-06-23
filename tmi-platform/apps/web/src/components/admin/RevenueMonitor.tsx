@@ -1,3 +1,7 @@
+// LEGACY — all values in this component are hardcoded demo data.
+// For real revenue data use AdminRevenuePanel (components/admin/AdminRevenuePanel.tsx)
+// which fetches from /api/admin/revenue (Stripe live + webhook telemetry).
+// This file is retained for reference only and must not be added to new surfaces.
 "use client";
 
 import { useEffect, useRef, useState } from "react";

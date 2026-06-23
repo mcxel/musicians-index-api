@@ -278,6 +278,20 @@ export default function RoomWarpTransition({
     window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   useEffect(() => {
+    const handoffStartedAtRaw = typeof window !== "undefined" ? sessionStorage.getItem("tmi_handoff_started_at") : null;
+    if (typeof window !== "undefined") {
+      sessionStorage.removeItem("tmi_handoff_started_at");
+      sessionStorage.removeItem("tmi_handoff_room_id");
+    }
+    const handoffElapsed = handoffStartedAtRaw ? Date.now() - Number(handoffStartedAtRaw) : null;
+
+    // Fast-path handoff: if connection transition is already under perception threshold,
+    // skip cinematic warp so entry feels instantaneous.
+    if (handoffElapsed !== null && handoffElapsed < 50) {
+      const t = setTimeout(() => { setPhase("done"); onComplete?.(); }, 80);
+      return () => clearTimeout(t);
+    }
+
     if (reducedMotion) {
       const t = setTimeout(() => { setPhase("done"); onComplete?.(); }, 600);
       return () => clearTimeout(t);

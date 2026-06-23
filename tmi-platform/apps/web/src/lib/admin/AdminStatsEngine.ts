@@ -1,5 +1,6 @@
 import { getUserCount, getAllUsers } from '@/lib/auth/UserStore';
 import { getRecentEvents } from '@/lib/stripe/stripe-telemetry-store';
+import { getActiveSessions } from '@/lib/broadcast/GlobalLiveSessionRegistry';
 
 export interface TMIAdminStats {
   users: {
@@ -87,6 +88,10 @@ export async function getAdminStats(): Promise<TMIAdminStats> {
     'Dirty Dozens', 'World Music Hall', 'Broadcast Studio',
   ];
 
+  const activeSessions = getActiveSessions();
+  const activeRoomCount = activeSessions.length;
+  const topRoom = activeSessions[0]?.title ?? activeSessions[0]?.displayName ?? (activeRoomCount === 0 ? 'No active rooms' : ROOMS[0] ?? 'Unknown');
+
   return {
     users: {
       total,
@@ -98,11 +103,11 @@ export async function getAdminStats(): Promise<TMIAdminStats> {
     },
     rooms: {
       total: ROOMS.length,
-      active: 4,
-      topRoom: 'World Dance Party',
+      active: activeRoomCount,
+      topRoom,
     },
     stream: {
-      activeListeners: Math.max(0, Math.floor(total * 0.05)),
+      activeListeners: activeSessions.reduce((sum, s) => sum + s.viewerCount, 0),
       totalMinutesToday: 0,
       xpPerMinute: 0,
     },

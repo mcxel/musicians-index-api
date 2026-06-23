@@ -53,11 +53,13 @@ export default function TicketingPage() {
   }, []);
 
   async function buyTicket(event: LiveEvent) {
+    // Rule 17: fans purchase through /api/tickets/purchase (Stripe Checkout),
+    // never through /api/tickets/create which is Venue/Promoter/Admin only.
     if (!event.price || purchasing) return;
     setPurchasing(event.slug);
-    setPurchaseStatus((p) => ({ ...p, [event.slug]: "Processing…" }));
+    setPurchaseStatus((p) => ({ ...p, [event.slug]: "Opening checkout…" }));
 
-    const res = await fetch("/api/tickets/create", {
+    const res = await fetch("/api/tickets/purchase", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -65,18 +67,24 @@ export default function TicketingPage() {
         eventSlug: event.slug,
         tier: event.tier ?? "STANDARD",
         faceValue: event.price,
-        eventBranding: event.title,
+        quantity: 1,
       }),
     });
 
-    const data = await res.json();
-    if (res.ok && data.ok) {
-      setPurchaseStatus((p) => ({ ...p, [event.slug]: "✓ Ticket issued!" }));
-      setMyTickets((t) => [...t, data.ticket]);
+    const data = await res.json() as { ok?: boolean; url?: string | null; error?: string };
+    if (res.ok && data.ok && data.url) {
+      // Redirect to Stripe Checkout — ticket record created by webhook on success
+      window.location.href = data.url;
+    } else if (res.status === 401) {
+      setPurchaseStatus((p) => ({ ...p, [event.slug]: "Sign in to buy tickets" }));
+      setPurchasing(null);
+    } else if (res.status === 503) {
+      setPurchaseStatus((p) => ({ ...p, [event.slug]: "Payments not yet configured" }));
+      setPurchasing(null);
     } else {
       setPurchaseStatus((p) => ({ ...p, [event.slug]: data.error ?? "Purchase failed" }));
+      setPurchasing(null);
     }
-    setPurchasing(null);
   }
 
   return (

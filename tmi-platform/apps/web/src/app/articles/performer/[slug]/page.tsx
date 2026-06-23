@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { redirect } from 'next/navigation';
 import { Metadata } from 'next';
 import { getPerformerBySlug, PERFORMER_REGISTRY, getTierColor } from '@/lib/performers/PerformerRegistry';
 import { MAGAZINE_ISSUE_1 } from '@/lib/magazine/magazineIssueData';
@@ -28,7 +28,7 @@ export async function generateMetadata({ params }: { params: { slug: string } })
 
 export default function PerformerArticlePage({ params }: { params: { slug: string } }) {
   const p = getPerformerBySlug(params.slug);
-  if (!p) notFound();
+  if (!p) redirect('/performers');
 
   const ac = getTierColor(p.tier);
   const currentTier = getTierFromXp(p.xp);

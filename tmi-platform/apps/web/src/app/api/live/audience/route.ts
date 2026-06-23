@@ -16,7 +16,22 @@ import {
   assignNextSeat,
 } from "@/lib/live/audienceRuntimeEngine";
 import { emitAdminLiveEvent } from "@/lib/admin/AdminLiveEventEngine";
+import { participationEconomyEngine } from "@/lib/economy/ParticipationEconomyEngine";
+import { prisma } from "@/lib/prisma";
+import { getActiveSessions, updateViewerCount } from "@/lib/broadcast/GlobalLiveSessionRegistry";
 import type { AudienceMember } from "@/lib/live/audienceRuntimeEngine";
+
+// Bridge: audienceRuntimeEngine tracks real per-venue occupancy (joins/leaves),
+// but GlobalLiveSessionRegistry — the source every discovery surface (Home 1/3,
+// LiveLobbyWallCanister, MixedLobbyWall) reads viewerCount from — only changes
+// when a session is explicitly pinged. Without this, a real audience join/leave
+// never moves the viewer count shown anywhere on the platform. Match on
+// roomId === venueSlug since both the ad-hoc go-live roomId and the fixed
+// venue ids (cypher, battle-arena, etc.) are passed as venueSlug by callers.
+function syncViewerCountToBroadcastRegistry(venueSlug: string, present: number): void {
+  const session = getActiveSessions().find((s) => s.roomId === venueSlug);
+  if (session) updateViewerCount(session.userId, present);
+}
 
 function hasModeratorAccess(req: NextRequest): boolean {
   const role = (req.cookies.get('tmi_role')?.value ?? '').toLowerCase();
@@ -26,6 +41,17 @@ function hasModeratorAccess(req: NextRequest): boolean {
 function actorId(req: NextRequest): string {
   const sid = req.cookies.get('tmi_session_id')?.value ?? 'unknown';
   return sid.slice(0, 8) || 'unknown';
+}
+
+async function resolveAuthedUserId(req: NextRequest): Promise<string | null> {
+  const email = req.cookies.get('tmi_user_email')?.value;
+  if (email) {
+    const user = await prisma.user.findUnique({ where: { email }, select: { id: true } }).catch(() => null);
+    if (user?.id) return user.id;
+  }
+
+  const sid = req.cookies.get('tmi_session_id')?.value;
+  return sid ? sid.slice(0, 8) : null;
 }
 
 export async function GET(req: NextRequest) {
@@ -68,11 +94,32 @@ export async function POST(req: NextRequest) {
         // groupId (friend cluster) seats this member next to others already in the same group.
         const assignedSeatId = member.seatId ?? assignNextSeat(venueSlug, member.groupId ?? null);
         const occupancy = joinAudience(venueSlug, { ...member, seatId: assignedSeatId });
+        syncViewerCountToBroadcastRegistry(venueSlug, occupancy.present);
+
+        const authedUserId = await resolveAuthedUserId(req);
+        if (authedUserId) {
+          const role = (req.cookies.get('tmi_role')?.value ?? '').toLowerCase();
+          if (role === 'performer' || role === 'artist') {
+            participationEconomyEngine.earn(authedUserId, 'performer', 'audience_engagement', {
+              venueSlug,
+              seatId: assignedSeatId,
+            });
+          } else {
+            participationEconomyEngine.earn(authedUserId, 'fan', 'join_live_room', {
+              venueSlug,
+              seatId: assignedSeatId,
+            });
+          }
+        }
+
         return NextResponse.json({ ...occupancy, assignedSeatId });
       }
-      case "leave":
+      case "leave": {
         if (!userId) return NextResponse.json({ error: "userId required" }, { status: 400 });
-        return NextResponse.json(leaveAudience(venueSlug, userId));
+        const afterLeave = leaveAudience(venueSlug, userId);
+        syncViewerCountToBroadcastRegistry(venueSlug, afterLeave.present);
+        return NextResponse.json(afterLeave);
+      }
       case "message":
         if (!userId || !text) return NextResponse.json({ error: "userId and text required" }, { status: 400 });
         const validation = validateAudienceMessage(venueSlug, userId, text);

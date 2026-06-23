@@ -154,11 +154,6 @@ const KIND_COLORS: Record<MediaKind, string> = {
   song: '#AA2DFF', video: '#FF2DAA', live: '#CC2200', podcast: '#00FFCC',
 };
 
-const DEMO_ENTRIES: PlaylistEntry[] = [
-  { id: 'demo-1', kind: 'song', url: 'https://open.spotify.com/track/example', title: 'Add your first song', artist: 'Artist Name', platform: 'Spotify', addedAt: new Date().toISOString(), duration: '3:42' },
-  { id: 'demo-2', kind: 'video', url: 'https://youtube.com/watch?v=dQw4w9WgXcQ', title: 'Add your video here', artist: 'Channel Name', platform: 'YouTube', addedAt: new Date().toISOString(), duration: '4:15' },
-];
-
 // ── Main component ─────────────────────────────────────────────────────────────
 export default function ProfilePlaylist({
   writerId,
@@ -184,7 +179,7 @@ export default function ProfilePlaylist({
         if (saved) return JSON.parse(saved) as PlaylistEntry[];
       } catch { /* ignore */ }
     }
-    return initialEntries ?? DEMO_ENTRIES;
+    return initialEntries ?? [];
   });
   const [activeSkinId,   setActiveSkinId]   = useState<SkinId>(initialSkin);
   const [nowPlayingId,   setNowPlayingId]   = useState<string | null>(null);

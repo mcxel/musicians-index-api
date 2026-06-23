@@ -67,13 +67,17 @@ export async function POST(req: NextRequest) {
     }));
 
     const seatIds = seats.map((s) => s.id).join(',');
+    const fanEmail = req.cookies.get('tmi_user_email')?.value ?? '';
+    // Webhook fulfillment needs id+tier per seat to create one Ticket row and
+    // lock one RoomSeatState per seat — a joined id list alone isn't enough.
+    const seatManifest = JSON.stringify(seats.map((s) => ({ id: s.id, tier: s.tier })));
 
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
       line_items,
       success_url: `${resolvedSuccess}&seats=${encodeURIComponent(seatIds)}&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: resolvedCancel,
-      metadata: { seats: seatIds, type: 'ticket' },
+      metadata: { type: 'ticket', seats: seatManifest, fanEmail },
     });
 
     return NextResponse.json({ url: session.url });

@@ -24,7 +24,16 @@ export async function GET(req: NextRequest) {
 
   try {
     // Verify purchase exists for this user
-    const buyerId = sessionId.substring(0, 8);
+    const email = req.cookies.get('tmi_user_email')?.value;
+    let buyerId = sessionId;
+    if (email) {
+      try {
+        const dbUser = await prisma.user.findUnique({ where: { email }, select: { id: true } });
+        if (dbUser?.id) buyerId = dbUser.id;
+      } catch {
+        // Keep full session ID fallback
+      }
+    }
 
     if (assetType === 'beat') {
       const order = await prisma.order.findFirst({

@@ -1,20 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
-
-// Full 62-bot roster — mirrors BotActivationEngine definitions
-// Status reflects real initialization; updatedAt resets on each request
-const BOT_CATEGORIES = [
-  { category: "PromoBot",       count: 10, icon: "📢", description: "Handles sponsor, event, merch, NFT, and subscription promotions" },
-  { category: "EngagementBot",  count: 10, icon: "⚡", description: "Crowd energy, live reactions, tips, votes, shoutouts, XP awards" },
-  { category: "ContentBot",     count: 10, icon: "✍️", description: "Magazine, articles, beats, NFT metadata, charts, playlists, visuals" },
-  { category: "ModerationBot",  count: 8,  icon: "🛡️", description: "Sentinel shields, room moderation, kick votes, fraud detection, spam" },
-  { category: "SupportBot",     count: 8,  icon: "🤝", description: "Welcome onboarding, artist onboarding, ticket support, payment recovery" },
-  { category: "NewsBot",        count: 6,  icon: "📰", description: "Belt feed, artist news, industry news, event alerts, winner announcements" },
-  { category: "AnalyticsBot",   count: 5,  icon: "📊", description: "Revenue impact, live stats, performance scores, user behaviour" },
-  { category: "RevenueBot",     count: 5,  icon: "💰", description: "Tip routing, subscription billing, payout scheduling, royalty splits" },
-  { category: "RecoveryBot",    count: 3,  icon: "🔄", description: "Feed recovery, overlay sync repair, runtime watchdog" },
-  { category: "SentinelBot",    count: 3,  icon: "🔮", description: "Platform Alpha/Beta/Escalation sentinels — admin and platform-wide" },
-];
+import { activateDefaultBots, getHealthSummary } from '@/lib/bots/BotActivationEngine';
+import { getBotOrchestrator } from '@/lib/bots/TMIBotOrchestrator';
 
 const NAMED_AGENTS = [
   { id: "big-ace",          name: "Big Ace",          type: "COMMAND",     status: "ONLINE",   icon: "🎯", description: "AI Umbrella CEO — BerntoutGlobal" },
@@ -30,20 +17,44 @@ const NAMED_AGENTS = [
 ];
 
 export async function GET() {
-  const totalBots = BOT_CATEGORIES.reduce((s, c) => s + c.count, 0);
+  // activateDefaultBots() is idempotent — ensures bots are live before reporting status
+  const allBots = activateDefaultBots();
+  const health = getHealthSummary();
+
+  const orchestrator = getBotOrchestrator();
+  const orchStats = orchestrator.getStats();
+
+  // Build per-category summary from real BotActivationEngine data
+  const categoryMap = new Map<string, { count: number; healthy: number; degraded: number; offline: number }>();
+  for (const bot of allBots) {
+    const entry = categoryMap.get(bot.category) ?? { count: 0, healthy: 0, degraded: 0, offline: 0 };
+    entry.count++;
+    if (bot.health === 'HEALTHY') entry.healthy++;
+    else if (bot.health === 'DEGRADED') entry.degraded++;
+    else if (bot.health === 'OFFLINE') entry.offline++;
+    categoryMap.set(bot.category, entry);
+  }
+
+  const categories = Array.from(categoryMap.entries()).map(([category, stats]) => ({
+    category,
+    ...stats,
+  }));
 
   return NextResponse.json({
-    total: totalBots,
+    total: health.total,
+    active: health.active,
     namedAgentCount: NAMED_AGENTS.length,
-    allActive: true,
+    orchestratorBotCount: orchStats.total,
+    allActive: health.active === health.total,
     summary: {
-      healthy: totalBots,
-      degraded: 0,
-      offline: 0,
-      restarting: 0,
+      healthy: health.healthy,
+      degraded: health.degraded,
+      offline: health.offline,
+      restarting: health.restarting,
     },
-    categories: BOT_CATEGORIES,
+    categories,
     namedAgents: NAMED_AGENTS,
+    orchestrator: orchStats,
     updatedAt: Date.now(),
   });
 }

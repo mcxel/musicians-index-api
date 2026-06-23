@@ -15,12 +15,12 @@ const ACCENT = "#22c55e";
 const BG = "#050510";
 
 const STATS = [
-  { label: "Rooms Active",    value: "6",      sub: "Live right now",       color: "#22c55e" },
-  { label: "Tickets Sold",    value: "1,840",  sub: "This month",           color: "#00FFFF" },
-  { label: "Avg Occupancy",   value: "74%",    sub: "Across all rooms",     color: "#FFD700" },
-  { label: "Revenue",         value: "$18.4K", sub: "Ticket + room sales",  color: "#FF2DAA" },
-  { label: "Events Booked",   value: "23",     sub: "Next 30 days",         color: "#00FF88" },
-  { label: "Fan Capacity",    value: "4,200",  sub: "Combined max seating", color: "#AA2DFF" },
+  { label: "Rooms Active",    value: "0",  sub: "No active rooms",        color: "#22c55e" },
+  { label: "Tickets Sold",    value: "0",  sub: "This month",             color: "#00FFFF" },
+  { label: "Avg Occupancy",   value: "—",  sub: "No events yet",          color: "#FFD700" },
+  { label: "Revenue",         value: "$0", sub: "Ticket + room sales",    color: "#FF2DAA" },
+  { label: "Events Booked",   value: "0",  sub: "Next 30 days",           color: "#00FF88" },
+  { label: "Fan Capacity",    value: "—",  sub: "Configure venue profile", color: "#AA2DFF" },
 ];
 
 const QUICK_LINKS = [
@@ -34,14 +34,10 @@ const QUICK_LINKS = [
   { href: "/venue/profile",     label: "Venue Profile",icon: "🏢", color: "#22c55e" },
 ];
 
-const LIVE_ROOMS = [
-  { name: "Main Stage",        capacity: 800, occupancy: 92, accent: "#22c55e" },
-  { name: "VIP Lounge",        capacity: 120, occupancy: 67, accent: "#FFD700" },
-  { name: "Cypher Zone",       capacity: 200, occupancy: 84, accent: "#00FFFF" },
-  { name: "Producer Booth",    capacity:  50, occupancy: 44, accent: "#AA2DFF" },
-  { name: "Backstage Lounge",  capacity:  60, occupancy: 30, accent: "#FF6B35" },
-  { name: "Watch Party Room",  capacity: 300, occupancy: 71, accent: "#FF2DAA" },
-];
+// LIVE_ROOMS is intentionally empty — real room occupancy comes from
+// GlobalLiveSessionRegistry via /api/live/go, not hardcoded data.
+// The LiveMediaWall below the shell fetches real sessions from the registry.
+const LIVE_ROOMS: { name: string; capacity: number; occupancy: number; accent: string }[] = [];
 
 export default function VenueHubShell() {
   return (
@@ -96,25 +92,30 @@ export default function VenueHubShell() {
         <div style={{ padding: "20px 24px", background: "rgba(255,255,255,0.02)", border: `1px solid ${ACCENT}18`, borderRadius: 16, marginBottom: 24 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#FF2020", display: "inline-block" }} />
               <span style={{ fontSize: 9, letterSpacing: "0.22em", color: ACCENT, fontWeight: 800 }}>LIVE ROOM STATUS</span>
             </div>
             <Link href="/venue/rooms" style={{ fontSize: 9, color: "rgba(255,255,255,0.3)", textDecoration: "none" }}>MANAGE ALL →</Link>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 8 }}>
-            {LIVE_ROOMS.map((r) => (
-              <div key={r.name} style={{ padding: "12px 14px", background: `${r.accent}08`, border: `1px solid ${r.accent}28`, borderRadius: 10 }}>
-                <div style={{ fontSize: 12, fontWeight: 800, marginBottom: 6 }}>{r.name}</div>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                  <span style={{ fontSize: 9, color: "rgba(255,255,255,0.4)" }}>{r.occupancy}% full</span>
-                  <span style={{ fontSize: 9, color: r.accent, fontWeight: 700 }}>{Math.round(r.capacity * r.occupancy / 100)}/{r.capacity}</span>
+          {LIVE_ROOMS.length === 0 ? (
+            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", padding: "16px 0", textAlign: "center" }}>
+              No active rooms right now. <Link href="/venue/rooms" style={{ color: ACCENT, textDecoration: "none", fontWeight: 700 }}>Open a room →</Link>
+            </div>
+          ) : (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 8 }}>
+              {LIVE_ROOMS.map((r) => (
+                <div key={r.name} style={{ padding: "12px 14px", background: `${r.accent}08`, border: `1px solid ${r.accent}28`, borderRadius: 10 }}>
+                  <div style={{ fontSize: 12, fontWeight: 800, marginBottom: 6 }}>{r.name}</div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                    <span style={{ fontSize: 9, color: "rgba(255,255,255,0.4)" }}>{r.occupancy}% full</span>
+                    <span style={{ fontSize: 9, color: r.accent, fontWeight: 700 }}>{Math.round(r.capacity * r.occupancy / 100)}/{r.capacity}</span>
+                  </div>
+                  <div style={{ height: 3, background: "rgba(255,255,255,0.08)", borderRadius: 2, overflow: "hidden" }}>
+                    <div style={{ height: "100%", width: `${r.occupancy}%`, background: r.accent, borderRadius: 2 }} />
+                  </div>
                 </div>
-                <div style={{ height: 3, background: "rgba(255,255,255,0.08)", borderRadius: 2, overflow: "hidden" }}>
-                  <div style={{ height: "100%", width: `${r.occupancy}%`, background: r.accent, borderRadius: 2 }} />
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* 3D Venue + Rails grid */}

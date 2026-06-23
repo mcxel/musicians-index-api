@@ -16,18 +16,24 @@ import {
   type LivePingPayload,
 } from '@/lib/broadcast/GlobalLiveSessionRegistry';
 import { seedRoomWithBots } from '@/lib/live/audienceRuntimeEngine';
+import { botCrowdFillEngine } from '@/lib/live/BotCrowdFillEngine';
 import { prisma } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
 
-function sessionUserId(req: NextRequest): string | null {
+async function sessionUserId(req: NextRequest): Promise<string | null> {
+  const email = req.cookies.get('tmi_user_email')?.value;
+  if (email) {
+    const dbUser = await prisma.user.findUnique({ where: { email }, select: { id: true } }).catch(() => null);
+    if (dbUser?.id) return dbUser.id;
+  }
   const sessionId = req.cookies.get('tmi_session_id')?.value;
   if (!sessionId) return null;
-  return sessionId.substring(0, 8);
+  return sessionId;
 }
 
 export async function POST(req: NextRequest) {
-  const userId = sessionUserId(req);
+  const userId = await sessionUserId(req);
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   let body: Partial<GoLivePayload> & { action?: string } & LivePingPayload = {};
@@ -84,14 +90,31 @@ export async function POST(req: NextRequest) {
   // Auto-seed 20 bots into the room so performer never sees an empty venue
   seedRoomWithBots(session.roomId, 20);
 
+  // Wire BotCrowdFillEngine: activate progressive fill (Rule 15 — 92% max, fill if real audience < 5)
+  // and start periodic bot activity (reactions, state changes every 8s).
+  botCrowdFillEngine.activate({
+    roomId: session.roomId,
+    minimumFillRatio: 0.4,
+    minimumRealThreshold: 5,
+    maxBotCount: 92, // 92% of a 100-seat room — Rule 15 hard cap
+  });
+  botCrowdFillEngine.startActivity(session.roomId);
+
   return NextResponse.json({ ok: true, session }, { status: 200 });
 }
 
 export async function DELETE(req: NextRequest) {
-  const userId = sessionUserId(req);
+  const userId = await sessionUserId(req);
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+  // Look up the session before ending it so we can deactivate the correct roomId
+  const session = getSession(userId);
   endLiveSession(userId);
+
+  // Stop bot activity for this room
+  if (session?.roomId) {
+    botCrowdFillEngine.deactivate(session.roomId);
+  }
 
   // Clear DB live state so the billboard stops showing this performer
   await prisma.user.updateMany({
@@ -112,6 +135,7 @@ export async function GET() {
       genre:       s.category,
       role:        'performer' as const,
       viewerCount: s.viewerCount,
+      roomId:      s.roomId,
       avatarUrl:   s.avatarUrl ?? undefined,
       accentColor: s.accentColor,
     }));

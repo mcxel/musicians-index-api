@@ -41,3 +41,22 @@ export function isPerformerLiveInRoom(roomId: string): boolean {
 export function getPresenceCount(): number {
   return presenceMap.size;
 }
+
+export function getPresenceBreakdown(): { fan: number; performer: number; bot: number; total: number } {
+  let fan = 0;
+  let performer = 0;
+  let bot = 0;
+
+  for (const presence of presenceMap.values()) {
+    if (presence.role === 'fan') fan += 1;
+    else if (presence.role === 'performer') performer += 1;
+    else if (presence.role === 'bot') bot += 1;
+  }
+
+  return {
+    fan,
+    performer,
+    bot,
+    total: fan + performer + bot,
+  };
+}

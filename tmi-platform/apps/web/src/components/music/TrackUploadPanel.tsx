@@ -98,15 +98,68 @@ export default function TrackUploadPanel({ onUpload, onCancel, accent = "#FF2DAA
   };
 
   const submit = useCallback(async () => {
-    if (!meta.title.trim()) return;
+    if (!meta.title.trim() || !meta.file) return;
     setUploading(true);
-    // Simulate progress
-    for (let p = 0; p <= 100; p += 10) {
-      await new Promise((r) => setTimeout(r, 80));
-      setProgress(p);
+    setProgress(0);
+
+    const formData = new FormData();
+    formData.append("file", meta.file);
+    formData.append("title", meta.title);
+    formData.append("type", "Audio");
+    formData.append("genre", meta.genre || "");
+    if (meta.bpm) formData.append("bpm", String(meta.bpm));
+    if (meta.mood) formData.append("mood", meta.mood);
+    if (meta.tags.length > 0) formData.append("tags", JSON.stringify(meta.tags));
+    if (meta.licenseType) formData.append("licenseType", meta.licenseType);
+
+    try {
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", "/api/media/upload");
+
+      xhr.upload.addEventListener("progress", (e) => {
+        if (e.lengthComputable) {
+          setProgress(Math.round((e.loaded / e.total) * 100));
+        }
+      });
+
+      xhr.addEventListener("load", () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            const data = JSON.parse(xhr.responseText) as { ok?: boolean; assetId?: string; url?: string; status?: string };
+            if (data.ok && data.assetId) {
+              setProgress(100);
+              onUpload?.(meta);
+              setStep("drop");
+              setMeta({
+                title: "", genre: "", tags: [], isInstrumental: false,
+                forSale: false, licenseType: "basic", externalLinks: [],
+              });
+            } else {
+              console.error("Upload response error:", data);
+              setProgress(0);
+            }
+          } catch (err) {
+            console.error("Parse error:", err);
+            setProgress(0);
+          }
+        } else {
+          console.error("Upload failed:", xhr.status);
+          setProgress(0);
+        }
+        setUploading(false);
+      });
+
+      xhr.addEventListener("error", () => {
+        console.error("Network error");
+        setProgress(0);
+        setUploading(false);
+      });
+
+      xhr.send(formData);
+    } catch (err) {
+      console.error("Submit error:", err);
+      setUploading(false);
     }
-    onUpload?.(meta);
-    setUploading(false);
   }, [meta, onUpload]);
 
   const BG = "#06080f";
@@ -280,8 +333,8 @@ export default function TrackUploadPanel({ onUpload, onCancel, accent = "#FF2DAA
             Cancel
           </button>
         )}
-        <button type="button" onClick={() => void submit()} disabled={!meta.title.trim() || uploading}
-          style={{ flex: 2, padding: "11px", background: meta.title.trim() ? accent : "rgba(255,255,255,0.06)", border: "none", borderRadius: 9, cursor: meta.title.trim() ? "pointer" : "not-allowed", fontSize: 12, fontWeight: 900, color: "#fff", letterSpacing: "0.06em", opacity: uploading ? 0.6 : 1 }}>
+        <button type="button" onClick={() => void submit()} disabled={!meta.title.trim() || !meta.file || uploading}
+          style={{ flex: 2, padding: "11px", background: (meta.title.trim() && meta.file && !uploading) ? accent : "rgba(255,255,255,0.06)", border: "none", borderRadius: 9, cursor: (meta.title.trim() && meta.file && !uploading) ? "pointer" : "not-allowed", fontSize: 12, fontWeight: 900, color: "#fff", letterSpacing: "0.06em", opacity: uploading ? 0.6 : 1 }}>
           {uploading ? `Uploading… ${progress}%` : "Publish Track"}
         </button>
       </div>

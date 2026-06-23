@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import AdRailSlot from '@/components/ads/AdRailSlot';
+import { LobbyEntryFlow, type UniversalRoom } from '@/components/room/UniversalLobbyEntry';
 
 // ─── Crayon-box palette — every room gets a unique vivid color ────────────────
 
@@ -42,7 +43,7 @@ type LiveLobbyWallGridProps = {
 
 // ─── Single Brady-Bunch cell ──────────────────────────────────────────────────
 
-function LobbyCell({ room, colorIndex, onJoin }: { room: LobbyRoom; colorIndex: number; onJoin: (room: LobbyRoom) => void }) {
+function LobbyCell({ room, colorIndex, onJoin, onPrewarm }: { room: LobbyRoom; colorIndex: number; onJoin: (room: LobbyRoom) => void; onPrewarm: (room: LobbyRoom) => void }) {
   const bg = roomColor(colorIndex);
   const [pulse, setPulse] = useState(false);
 
@@ -58,6 +59,8 @@ function LobbyCell({ room, colorIndex, onJoin }: { room: LobbyRoom; colorIndex: 
       transition={{ duration: 0.35, delay: colorIndex * 0.04 }}
       whileHover={{ scale: 1.04, zIndex: 10 }}
       onClick={() => onJoin(room)}
+      onMouseEnter={() => onPrewarm(room)}
+      onTouchStart={() => onPrewarm(room)}
       style={{
         position: 'relative',
         borderRadius: 12,
@@ -159,6 +162,8 @@ function LobbyCell({ room, colorIndex, onJoin }: { room: LobbyRoom; colorIndex: 
 export default function LiveLobbyWallGrid({ rooms, title, accentColor = '#00FFFF', typeLabel = 'LIVE' }: LiveLobbyWallGridProps) {
   const router = useRouter();
   const [colorOffset, setColorOffset] = useState(0);
+  // Rule 15: All entries go through LobbyEntryFlow — never directly to the room URL
+  const [activeFlowRoom, setActiveFlowRoom] = useState<UniversalRoom | null>(null);
   const liveRooms = rooms.filter((r) => r.status !== 'ended');
 
   // Rotate color assignments every 30 seconds so rooms periodically change shade
@@ -167,21 +172,49 @@ export default function LiveLobbyWallGrid({ rooms, title, accentColor = '#00FFFF
     return () => clearInterval(t);
   }, []);
 
+  // Convert LobbyRoom → UniversalRoom and open the 5-step LobbyEntryFlow overlay.
+  // Previously this called router.push() directly, bypassing seat assignment (Rule 15).
   const joinRoom = useCallback((room: LobbyRoom) => {
-    // Append from=lobby-wall so the room's audience gate grants entry
-    const sep = room.href.includes('?') ? '&' : '?';
-    router.push(`${room.href}${sep}from=lobby-wall`);
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('tmi_handoff_started_at', String(Date.now()));
+      sessionStorage.setItem('tmi_handoff_room_id', room.id);
+    }
+    const roomSlug = room.href.split('/').filter(Boolean).pop() ?? room.id;
+    setActiveFlowRoom({
+      id:          room.id,
+      title:       room.name,
+      hostName:    room.performerName,
+      genre:       room.genre,
+      viewers:     room.viewerCount,
+      seatsOpen:   undefined,
+      status:      room.status === 'live' ? 'live' : room.status === 'starting' ? 'starting-soon' : 'upcoming',
+      access:      'free',
+      accentColor: roomColor(0),
+      prizeLabel:  room.prizePool,
+      roomRoute:   `/live/rooms/${roomSlug}`,
+      venueIndex:  0,
+    });
+  }, []);
+
+  const prewarmRoom = useCallback((room: LobbyRoom) => {
+    router.prefetch(room.href);
+    // Warm audience session path so seat assignment and presence cache are primed.
+    const roomSlug = room.href.split('/').filter(Boolean).pop() ?? room.id;
+    void fetch(`/api/live/audience?venue=${encodeURIComponent(roomSlug)}`, { cache: 'no-store' }).catch(() => {});
   }, [router]);
 
   const joinRandom = useCallback(() => {
     if (liveRooms.length === 0) return;
     const pick = liveRooms[Math.floor(Math.random() * liveRooms.length)];
-    const sep = pick.href.includes('?') ? '&' : '?';
-    router.push(`${pick.href}${sep}from=lobby-wall`);
-  }, [liveRooms, router]);
+    if (pick) joinRoom(pick);
+  }, [liveRooms, joinRoom]);
 
   return (
     <div style={{ minHeight: '100vh', background: '#050510', color: '#fff', paddingBottom: 80 }}>
+      {/* Rule 15: LobbyEntryFlow overlay — seat assignment before entering any room */}
+      {activeFlowRoom && (
+        <LobbyEntryFlow room={activeFlowRoom} onClose={() => setActiveFlowRoom(null)} />
+      )}
       {/* Header */}
       <div style={{ position: 'sticky', top: 0, zIndex: 20, background: 'linear-gradient(180deg, rgba(5,5,16,0.95) 0%, rgba(5,5,16,0.8) 100%)', backdropFilter: 'blur(20px)', borderBottom: `1px solid rgba(255,255,255,0.1)`, boxShadow: '0 10px 30px rgba(0,0,0,0.5)', padding: '14px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
@@ -244,6 +277,7 @@ export default function LiveLobbyWallGrid({ rooms, title, accentColor = '#00FFFF
                   room={room}
                   colorIndex={(idx + colorOffset) % CRAYON_PALETTE.length}
                   onJoin={joinRoom}
+                  onPrewarm={prewarmRoom}
                 />
               ))}
             </AnimatePresence>

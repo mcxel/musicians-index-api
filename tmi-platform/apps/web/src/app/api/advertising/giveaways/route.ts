@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revenueFirstRewardsGovernor } from '@/lib/economy/RevenueFirstRewardsGovernor';
 
 interface Giveaway {
   id: string;
@@ -83,6 +84,24 @@ export async function POST(request: Request) {
     if (!advertiserId || !title || !prizeValue) {
       return NextResponse.json({ error: "advertiserId, title, and prizeValue required" }, { status: 400 });
     }
+
+    const prizePoolCents = Math.floor(Math.max(0, Number(prizeValue)) * 100) * Math.max(1, Number(maxClaims ?? 1));
+    const economics = revenueFirstRewardsGovernor.assessEventEconomics({
+      expectedRevenueCents: Math.max(0, Number((body as { expectedRevenueCents?: number }).expectedRevenueCents ?? 0)),
+      expectedOperatingCostCents: Math.max(0, Number((body as { expectedOperatingCostCents?: number }).expectedOperatingCostCents ?? 0)),
+      expectedInfrastructureCostCents: Math.max(0, Number((body as { expectedInfrastructureCostCents?: number }).expectedInfrastructureCostCents ?? 0)),
+      expectedPrizePoolCents: Math.max(prizePoolCents, Number((body as { expectedPrizePoolCents?: number }).expectedPrizePoolCents ?? 0)),
+    });
+
+    if (!economics.allowed) {
+      return NextResponse.json({
+        ok: false,
+        error: 'Giveaway creation rejected by revenue governor',
+        code: 'EVENT_ECONOMICS_GATE_REJECTED',
+        economics,
+      }, { status: 409 });
+    }
+
     const giveaway: Giveaway = {
       id: `g_${Date.now()}`,
       advertiserId,
@@ -98,7 +117,7 @@ export async function POST(request: Request) {
       expiresAt: new Date(Date.now() + (expiresInHours ?? 24) * 60 * 60 * 1000).toISOString(),
     };
     giveaways.set(giveaway.id, giveaway);
-    return NextResponse.json({ success: true, giveaway }, { status: 201 });
+    return NextResponse.json({ success: true, giveaway, economics }, { status: 201 });
   } catch {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }

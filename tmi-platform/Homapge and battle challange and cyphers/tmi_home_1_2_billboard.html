@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TMI — Home 1-2 | Billboard Rankings</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Exo+2:wght@400;700;900&family=Anton&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#2A0A5E;font-family:'Exo 2',sans-serif;overflow-x:hidden;min-height:100vh}
+
+/* BACKGROUND */
+.bg-layer{position:fixed;inset:0;z-index:0;background:linear-gradient(135deg,#3D0D80 0%,#1A0A3D 40%,#0D2B4E 100%);overflow:hidden}
+.bg-layer::before{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='600' height='600' viewBox='0 0 600 600' xmlns='http://www.w3.org/2000/svg'%3E%3Cpolygon points='0,0 120,0 60,100' fill='%23FFD700' opacity='0.15'/%3E%3Cpolygon points='500,0 600,0 600,120' fill='%2300E5FF' opacity='0.12'/%3E%3Cpolygon points='0,500 120,600 0,600' fill='%23FF2DAA' opacity='0.12'/%3E%3Cpolygon points='480,600 600,500 600,600' fill='%23FFD700' opacity='0.15'/%3E%3Cpolygon points='200,50 280,50 240,130' fill='%23FF2DAA' opacity='0.1'/%3E%3Cpolygon points='400,400 480,400 440,480' fill='%2300E5FF' opacity='0.1'/%3E%3C/svg%3E") repeat}
+
+/* NAV */
+nav{position:relative;z-index:10;background:#0D0820;border-bottom:2px solid #FFD700;padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between}
+.nav-logo{font-family:'Anton',sans-serif;font-size:14px;color:#FFD700;line-height:1.2;letter-spacing:.04em}
+.nav-logo span{display:block;font-size:10px;color:#00E5FF;letter-spacing:.15em}
+.nav-links{display:flex;gap:24px;list-style:none}
+.nav-links a{color:#fff;text-decoration:none;font-weight:700;font-size:11px;letter-spacing:.12em;text-transform:uppercase;transition:color .2s}
+.nav-links a:hover{color:#FFD700}
+.nav-login{display:flex;align-items:center;gap:8px;background:rgba(255,215,0,.1);border:1px solid rgba(255,215,0,.4);padding:6px 14px;border-radius:20px;cursor:pointer;color:#FFD700;font-size:11px;font-weight:700;letter-spacing:.1em}
+.nav-avatar{width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,#FFD700,#FF9500);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900}
+
+/* ISSUE BAR */
+.issue-bar{position:relative;z-index:10;background:#1A0A3D;border-bottom:1px solid rgba(255,215,0,.2);padding:6px 24px;display:flex;align-items:center;justify-content:space-between}
+.issue-label{font-size:9px;color:rgba(255,255,255,.5);letter-spacing:.15em;text-transform:uppercase}
+.issue-val{font-size:13px;font-weight:700;color:#FF2DAA;letter-spacing:.06em}
+.crown-badge{display:flex;align-items:center;gap:8px;background:rgba(255,215,0,.1);border:1px solid rgba(255,215,0,.35);padding:3px 12px;border-radius:4px}
+.crown-text{font-size:10px;color:rgba(255,255,255,.6);letter-spacing:.08em}
+.crown-name{font-size:11px;font-weight:700;color:#FFD700}
+.crown-icon{width:18px;height:18px;background:#FFD700;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;animation:crownPulse 2s ease-in-out infinite}
+@keyframes crownPulse{0%,100%{box-shadow:0 0 4px rgba(255,215,0,.4)}50%{box-shadow:0 0 14px rgba(255,215,0,.9),0 0 24px rgba(255,215,0,.4)}}
+.nav-icons{display:flex;gap:16px;align-items:center}
+.nav-icon-btn{background:none;border:none;cursor:pointer;color:rgba(255,255,255,.7);font-size:11px;letter-spacing:.1em;display:flex;flex-direction:column;align-items:center;gap:2px}
+.nav-icon-btn span{font-size:7px;color:rgba(255,255,255,.4)}
+
+/* GENRE CYCLE STRIP */
+.genre-strip{position:relative;z-index:10;background:linear-gradient(90deg,#FFD700,#FF9500);padding:5px 24px;display:flex;align-items:center;justify-content:center;gap:16px;overflow:hidden}
+.genre-strip-inner{display:flex;gap:12px;align-items:center;animation:scrollStrip 30s linear infinite}
+@keyframes scrollStrip{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+.genre-pill{font-size:9px;font-weight:900;color:#0D0820;letter-spacing:.15em;text-transform:uppercase;white-space:nowrap;padding:1px 8px;background:rgba(0,0,0,.1);border-radius:10px}
+
+/* GENRE ROTATION INDICATOR */
+.rotation-bar{position:relative;z-index:10;background:#0D0820;border-bottom:1px solid rgba(0,229,255,.2);padding:8px 24px;display:flex;align-items:center;justify-content:space-between}
+.rotation-label{font-size:8px;color:rgba(255,255,255,.4);letter-spacing:.15em;text-transform:uppercase}
+.genre-dots{display:flex;gap:6px}
+.gdot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.2);transition:all .4s ease;cursor:pointer}
+.gdot.active{background:#00E5FF;box-shadow:0 0 8px rgba(0,229,255,.7)}
+.rotation-timer{display:flex;align-items:center;gap:6px}
+.timer-bar{width:80px;height:3px;background:rgba(255,255,255,.15);border-radius:2px;overflow:hidden}
+.timer-fill{height:100%;background:linear-gradient(90deg,#00E5FF,#FF2DAA);border-radius:2px;transition:width .1s linear}
+.rotating-txt{font-size:8px;color:rgba(0,229,255,.7);letter-spacing:.1em}
+
+/* MAIN CONTENT */
+.main{position:relative;z-index:5;padding:16px 20px 40px}
+
+/* BOOK CONTAINER */
+.book-outer{max-width:1100px;margin:0 auto;perspective:1200px}
+.book-wrap{position:relative;display:flex;align-items:center;justify-content:center}
+.book-shadow{position:absolute;bottom:-20px;left:10%;right:10%;height:30px;background:radial-gradient(ellipse,rgba(0,0,0,.6) 0%,transparent 70%);filter:blur(8px)}
+
+/* BOOK SPREAD */
+.book{display:grid;grid-template-columns:1fr 28px 1fr;width:100%;border-radius:4px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.7),0 0 40px rgba(255,215,0,.15)}
+
+/* PAGE STYLES */
+.page{background:#F5E56B;padding:16px 14px;min-height:620px;position:relative}
+.page-left{background:linear-gradient(180deg,#F7E76C 0%,#EDD84A 100%)}
+.page-right{background:linear-gradient(180deg,#EDD84A 0%,#F7E76C 100%)}
+
+/* PAGE CURL EFFECT */
+.page-left::after,.page-right::before{content:'';position:absolute;top:0;bottom:0;width:8px;background:linear-gradient(90deg,rgba(0,0,0,.12),transparent)}
+.page-left::after{right:0}
+.page-right::before{left:0;background:linear-gradient(270deg,rgba(0,0,0,.12),transparent)}
+
+/* BOOK SPINE */
+.book-spine{background:linear-gradient(90deg,#1A0A3D,#2D1B69,#1A0A3D);width:28px;position:relative;display:flex;align-items:center;justify-content:center}
+.spine-text{writing-mode:vertical-rl;font-size:7px;font-weight:700;color:rgba(255,215,0,.5);letter-spacing:.2em;text-transform:uppercase}
+
+/* GENRE HEADER */
+.genre-header{padding:10px 12px;border-radius:6px;margin-bottom:12px;text-align:center;font-family:'Anton',sans-serif;font-size:17px;letter-spacing:.04em;color:#fff;text-shadow:1px 1px 3px rgba(0,0,0,.5);transition:background .4s ease}
+.genre-header.left{background:linear-gradient(135deg,#4A1B8C,#7B3ABF)}
+.genre-header.right{background:linear-gradient(135deg,#007A9E,#00B8D4)}
+
+/* PERFORMERS GRID */
+.performers-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+
+/* PERFORMER ROW */
+.performer-row{display:flex;align-items:center;gap:7px;background:rgba(0,50,60,.75);border:1.5px solid rgba(0,229,255,.3);border-radius:7px;padding:5px 7px;cursor:pointer;transition:all .2s;position:relative;overflow:hidden}
+.performer-row:hover{border-color:rgba(0,229,255,.7);background:rgba(0,60,80,.9)}
+.performer-row.rising{animation:riseUp .5s ease forwards}
+.performer-row.exiting{animation:slideDown .35s ease forwards}
+@keyframes riseUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
+@keyframes slideDown{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(-20px)}}
+
+.rank-num{font-family:'Anton',sans-serif;font-size:15px;color:#FFD700;min-width:16px;text-align:center;text-shadow:0 0 8px rgba(255,215,0,.5)}
+.rank-num.top3{font-size:17px}
+.p-photo{width:36px;height:36px;border-radius:50%;object-fit:cover;border:1.5px solid rgba(0,229,255,.5);flex-shrink:0}
+.p-info{flex:1;min-width:0}
+.p-name{font-size:9px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:.04em}
+.p-genre{font-size:7px;color:rgba(0,229,255,.8);letter-spacing:.08em}
+.p-actions{display:flex;gap:3px;align-items:center}
+.icon-btn{background:none;border:none;cursor:pointer;color:rgba(255,255,255,.6);font-size:11px;padding:2px;transition:color .15s}
+.icon-btn:hover{color:#FFD700}
+.action-btns{display:flex;gap:3px}
+.btn-view{font-size:6px;font-weight:700;letter-spacing:.06em;color:#0D0820;background:#00E5FF;border:none;border-radius:3px;padding:2px 4px;cursor:pointer;white-space:nowrap}
+.btn-vote{font-size:6px;font-weight:700;letter-spacing:.06em;color:#fff;background:#FF2DAA;border:none;border-radius:3px;padding:2px 4px;cursor:pointer}
+
+/* PAGE NUMBER */
+.page-num{position:absolute;bottom:10px;right:12px;width:20px;height:20px;background:#FFD700;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;color:#0D0820}
+
+/* DECORATIVE ELEMENTS */
+.sparkle{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);font-size:20px;opacity:.3}
+
+/* SIDE PANELS */
+.side-panel{position:relative;z-index:10;background:rgba(13,8,32,.95);border-top:1px solid rgba(255,215,0,.15);padding:10px 24px;display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px}
+.sp-card{background:rgba(255,255,255,.04);border:1px solid rgba(0,229,255,.2);border-radius:8px;padding:10px 12px;text-align:center}
+.sp-val{font-size:18px;font-weight:700;color:#00E5FF}
+.sp-label{font-size:8px;color:rgba(255,255,255,.4);letter-spacing:.12em;text-transform:uppercase;margin-top:2px}
+
+/* BOTTOM NAV */
+.bottom-nav{position:relative;z-index:10;background:#0D0820;border-top:1px solid rgba(255,215,0,.15);padding:8px 24px;display:flex;align-items:center;justify-content:space-between}
+.bnav-link{font-size:9px;font-weight:700;color:rgba(255,255,255,.5);letter-spacing:.1em;text-transform:uppercase;cursor:pointer;padding:4px 10px;border-radius:4px;transition:all .2s}
+.bnav-link:hover,.bnav-link.active{color:#FFD700;background:rgba(255,215,0,.1)}
+.bnav-cta{background:#FF2DAA;color:#fff;font-size:9px;font-weight:900;letter-spacing:.1em;padding:5px 16px;border-radius:12px;border:none;cursor:pointer;text-transform:uppercase}
+
+/* TRANSITION OVERLAY */
+.transition-overlay{position:fixed;inset:0;z-index:100;pointer-events:none;opacity:0}
+.transition-overlay.active{animation:starburstFlash .6s ease forwards}
+@keyframes starburstFlash{0%{opacity:0}30%{opacity:.3}100%{opacity:0}}
+.starburst-rays{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)}
+.ray{position:absolute;width:3px;height:200px;background:linear-gradient(to top,transparent,#FFD700);transform-origin:bottom center;opacity:.5}
+</style>
+</head>
+<body>
+
+<div class="bg-layer"></div>
+<div class="transition-overlay" id="transOverlay"></div>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo">THE<br><span>MUSICIAN'S INDEX</span></div>
+  <ul class="nav-links">
+    <li><a href="/magazine">READ MAGAZINE</a></li>
+    <li><a href="/live">LIVE WORLD</a></li>
+    <li><a href="/games">PLAY GAMES</a></li>
+    <li><a href="/marketplace">MARKETPLACE</a></li>
+    <li><a href="/about">ABOUT US</a></li>
+  </ul>
+  <div class="nav-login"><div class="nav-avatar">M</div> LOG IN</div>
+</nav>
+
+<!-- ISSUE BAR -->
+<div class="issue-bar">
+  <div>
+    <div class="issue-label">Issue:</div>
+    <div class="issue-val">CURRENT WEEK</div>
+  </div>
+  <div class="crown-badge">
+    <div>
+      <div class="crown-text">Weekly Crown Winner</div>
+      <div class="crown-name">Glows <span style="background:#FFD700;color:#000;padding:1px 8px;border-radius:3px;font-size:10px">CROWN</span></div>
+    </div>
+    <div class="crown-icon">👑</div>
+  </div>
+  <div class="nav-icons">
+    <div class="nav-icon-btn">🔍<span>SEARCH</span></div>
+    <div class="nav-icon-btn">🔔<span>ALERTS</span></div>
+    <div class="nav-icon-btn">👤<span>PROFILE</span></div>
+  </div>
+</div>
+
+<!-- GENRE STRIP -->
+<div class="genre-strip">
+  <div class="genre-strip-inner" id="genreStrip"></div>
+</div>
+
+<!-- ROTATION BAR -->
+<div class="rotation-bar">
+  <div>
+    <div class="rotation-label">Billboard Rotating</div>
+    <div style="font-size:11px;font-weight:700;color:#fff;margin-top:2px" id="currentGenreLabel">TOP TEN: HIP HOP CYPHERS ↔ ELECTRONIC DREAMS</div>
+  </div>
+  <div class="genre-dots" id="genreDots"></div>
+  <div class="rotation-timer">
+    <span class="rotating-txt">NEXT GENRE</span>
+    <div class="timer-bar"><div class="timer-fill" id="timerFill" style="width:100%"></div></div>
+  </div>
+</div>
+
+<!-- MAIN BOOK -->
+<div class="main">
+  <div class="book-outer">
+    <div class="book-wrap">
+      <div class="book" id="bookSpread">
+        <!-- LEFT PAGE -->
+        <div class="page page-left">
+          <div class="genre-header left" id="headerLeft">TOP TEN: HIP HOP CYPHERS</div>
+          <div class="performers-grid" id="gridLeft"></div>
+          <div class="sparkle">✦</div>
+          <div class="page-num">1</div>
+        </div>
+        <!-- SPINE -->
+        <div class="book-spine"><div class="spine-text">THE MUSICIAN'S INDEX</div></div>
+        <!-- RIGHT PAGE -->
+        <div class="page page-right">
+          <div class="genre-header right" id="headerRight">TOP TEN: ELECTRONIC DREAMS</div>
+          <div class="performers-grid" id="gridRight"></div>
+          <div class="sparkle">✦</div>
+          <div class="page-num">2</div>
+        </div>
+      </div>
+      <div class="book-shadow"></div>
+    </div>
+  </div>
+</div>
+
+<!-- STATS BAR -->
+<div class="side-panel">
+  <div class="sp-card"><div class="sp-val" id="stVotes">4,948</div><div class="sp-label">Total Votes</div></div>
+  <div class="sp-card"><div class="sp-val" id="stPerf">2,841</div><div class="sp-label">Performers Ranked</div></div>
+  <div class="sp-card"><div class="sp-val" id="stWatching">9,320</div><div class="sp-label">Watching Now</div></div>
+  <div class="sp-card"><div class="sp-val">18</div><div class="sp-label">Genre Categories</div></div>
+</div>
+
+<!-- BOTTOM NAV -->
+<div class="bottom-nav">
+  <span class="bnav-link" onclick="window.location='/home/1'">← DISCOVERY HUB</span>
+  <div style="display:flex;gap:6px">
+    <span class="bnav-link active">BILLBOARD</span>
+    <span class="bnav-link" onclick="window.location='/home/2'">MAGAZINE</span>
+    <span class="bnav-link" onclick="window.location='/home/3'">LIVE WORLD</span>
+    <span class="bnav-link" onclick="window.location='/home/4'">MARKETPLACE</span>
+    <span class="bnav-link" onclick="window.location='/home/5'">ARENA</span>
+  </div>
+  <button class="bnav-cta">GET RANKED ↗</button>
+</div>
+
+<script>
+const GENRE_PAIRS = [
+  {left:'HIP HOP CYPHERS',right:'ELECTRONIC DREAMS',lc:'linear-gradient(135deg,#4A1B8C,#7B3ABF)',rc:'linear-gradient(135deg,#007A9E,#00B8D4)',cat1:'Hip-Hop',cat2:'EDM'},
+  {left:'R&B SHOWCASE',right:'ROCK LEGENDS',lc:'linear-gradient(135deg,#8C1B4A,#BF3A70)',rc:'linear-gradient(135deg,#7A2B00,#C44E0A)',cat1:'R&B',cat2:'Rock'},
+  {left:'COMEDY KINGS',right:'DANCE WARRIORS',lc:'linear-gradient(135deg,#1B5E8C,#2E86C1)',rc:'linear-gradient(135deg,#4A008C,#8C3ABF)',cat1:'Comedy',cat2:'Dance'},
+  {left:'DJ BATTLE CHAMPS',right:'PRODUCER LEGENDS',lc:'linear-gradient(135deg,#005C45,#00A37A)',rc:'linear-gradient(135deg,#7A5000,#C48000)',cat1:'DJ',cat2:'Producers'},
+  {left:'VOCAL STARS',right:'JAZZ & BLUES',lc:'linear-gradient(135deg,#8C0000,#BF2626)',rc:'linear-gradient(135deg,#003878,#005FC4)',cat1:'Vocals',cat2:'Jazz'},
+  {left:'CYPHER CHAMPIONS',right:'BAND BATTLES',lc:'linear-gradient(135deg,#5C4400,#9C7500)',rc:'linear-gradient(135deg,#003B5C,#006699)',cat1:'Cypher',cat2:'Bands'},
+  {left:'FAN FAVORITES',right:'SPOKEN WORD',lc:'linear-gradient(135deg,#3D005C,#7A0099)',rc:'linear-gradient(135deg,#004D00,#007700)',cat1:'Fans',cat2:'Spoken Word'},
+  {left:'WORLD MUSIC',right:'GOSPEL & SPIRITUAL',lc:'linear-gradient(135deg,#004D40,#00796B)',rc:'linear-gradient(135deg,#5D0037,#8D0052)',cat1:'World',cat2:'Gospel'},
+];
+
+const PERFORMER_NAMES = [
+  ['DJ Kraze','NovaQueen','WaveTek','Bar God','Lyric Storm','Prism Vex','Zion Freq','Flex King','Lagos Burst','Nova Laugh'],
+  ['Astra Nova','Beat Maker X','Soul Sister','Groove King','Dance Crew','Comedy G','The Wizard','Jazz Cat','Blues Man','Pop Star'],
+  ['MC Supreme','Vocal Queen','Bass Heavy','The Showman','World Beat','Gospel Fire','Rap God','Singer X','Drummer Boy','Piano Man'],
+];
+const GENRES = ['Hip-Hop','EDM','R&B','Rock','DJ','Comedy','Dance','Cypher','Vocals','Gospel','Jazz','World'];
+
+let currentPairIdx = 0;
+let timerVal = 100;
+let timerInterval = null;
+
+function getPhotoUrl(seed){return `https://i.pravatar.cc/64?img=${seed}`}
+
+function buildPerformers(names,cat,startRank=1,photoOffset=0){
+  const rows = [];
+  for(let i=0;i<10;i++){
+    const rank = startRank+i;
+    const isTop3 = rank<=3;
+    const photoSeed = (photoOffset+i+1)%70+1;
+    rows.push(`
+    <div class="performer-row" style="animation-delay:${i*50}ms">
+      <div class="rank-num${isTop3?' top3':''}"> ${rank}</div>
+      <img class="p-photo" src="${getPhotoUrl(photoSeed)}" alt="" loading="lazy" onerror="this.src='data:image/svg+xml,%3Csvg width=36 height=36 viewBox=0 0 36 36 xmlns=http://www.w3.org/2000/svg%3E%3Ccircle cx=18 cy=18 r=18 fill=%23444/%3E%3C/svg%3E'">
+      <div class="p-info">
+        <div class="p-name">${names[i]||'Artist '+(rank)}</div>
+        <div class="p-genre">${cat}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:3px;align-items:flex-end">
+        <div style="display:flex;gap:3px">
+          <button class="icon-btn" title="Views">👁</button>
+          <button class="icon-btn" title="Like">👍</button>
+        </div>
+        <div class="action-btns">
+          <button class="btn-view">VIEW</button>
+          <button class="btn-vote">VOTE</button>
+        </div>
+      </div>
+    </div>`);
+  }
+  return rows.join('');
+}
+
+function updatePages(pairIdx,animate=false){
+  const pair = GENRE_PAIRS[pairIdx];
+  const hl = document.getElementById('headerLeft');
+  const hr = document.getElementById('headerRight');
+  const gl = document.getElementById('gridLeft');
+  const gr = document.getElementById('gridRight');
+  const lbl = document.getElementById('currentGenreLabel');
+  
+  if(animate){
+    gl.style.opacity='0';gr.style.opacity='0';
+    gl.style.transform='translateY(20px)';gr.style.transform='translateY(20px)';
+    setTimeout(()=>{
+      doUpdate();
+      gl.style.transition='all .5s ease';gr.style.transition='all .5s ease';
+      gl.style.opacity='1';gr.style.opacity='1';
+      gl.style.transform='translateY(0)';gr.style.transform='translateY(0)';
+    },350);
+  } else {
+    doUpdate();
+  }
+  
+  function doUpdate(){
+    hl.textContent='TOP TEN: '+pair.left;
+    hr.textContent='TOP TEN: '+pair.right;
+    hl.style.background=pair.lc;
+    hr.style.background=pair.rc;
+    const pnames1 = PERFORMER_NAMES[pairIdx%3];
+    const pnames2 = PERFORMER_NAMES[(pairIdx+1)%3];
+    gl.innerHTML=buildPerformers(pnames1,pair.cat1,1,pairIdx*10);
+    gr.innerHTML=buildPerformers(pnames2,pair.cat2,1,(pairIdx+1)*10);
+    lbl.textContent=`TOP TEN: ${pair.left}  ↔  TOP TEN: ${pair.right}`;
+    
+    // Update dots
+    document.querySelectorAll('.gdot').forEach((d,i)=>d.classList.toggle('active',i===pairIdx));
+  }
+}
+
+function nextGenre(){
+  // Starburst flash
+  const overlay = document.getElementById('transOverlay');
+  overlay.style.background='radial-gradient(ellipse at center, rgba(255,215,0,0.3) 0%, transparent 70%)';
+  overlay.style.opacity='1';
+  setTimeout(()=>{overlay.style.opacity='0';},400);
+  
+  currentPairIdx = (currentPairIdx+1) % GENRE_PAIRS.length;
+  updatePages(currentPairIdx,true);
+  timerVal=100;
+}
+
+function buildDots(){
+  const dots = document.getElementById('genreDots');
+  dots.innerHTML = GENRE_PAIRS.map((_,i)=>`<div class="gdot${i===0?' active':''}" onclick="jumpToGenre(${i})"></div>`).join('');
+}
+
+function jumpToGenre(idx){
+  currentPairIdx=idx;
+  updatePages(idx,true);
+  timerVal=100;
+}
+
+function buildGenreStrip(){
+  const strip = document.getElementById('genreStrip');
+  const allGenres = GENRE_PAIRS.flatMap(p=>[p.left,p.right]).concat(GENRE_PAIRS.flatMap(p=>[p.left,p.right]));
+  strip.innerHTML = allGenres.map(g=>`<span class="genre-pill">${g}</span>`).join('');
+}
+
+// Live stats tick
+setInterval(()=>{
+  document.getElementById('stVotes').textContent=(parseInt(document.getElementById('stVotes').textContent.replace(',',''))+Math.floor(Math.random()*8)+2).toLocaleString();
+  document.getElementById('stWatching').textContent=(parseInt(document.getElementById('stWatching').textContent.replace(',',''))+Math.floor((Math.random()-.4)*30)).toLocaleString();
+},3000);
+
+// Timer
+timerInterval = setInterval(()=>{
+  timerVal = Math.max(0,timerVal-0.5);
+  document.getElementById('timerFill').style.width=timerVal+'%';
+  if(timerVal<=0) nextGenre();
+},100);
+
+// Init
+buildDots();
+buildGenreStrip();
+updatePages(0,false);
+</script>
+</body>
+</html>

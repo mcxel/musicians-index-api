@@ -26,13 +26,14 @@ import { memo, useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { LobbyEntryFlow, type UniversalRoom } from '@/components/room/UniversalLobbyEntry';
-import { getCrownHolder, getLivePerformers, getPerformersByCategory, getFeaturedFreePerformers, getTopPerformers, PERFORMER_REGISTRY, type PerformerCategory } from '@/lib/performers/PerformerRegistry';
+import { getCrownHolder, getPerformerById, getPerformersByCategory, getFeaturedFreePerformers, getTopPerformers, PERFORMER_REGISTRY, type PerformerCategory, type PerformerIdentity } from '@/lib/performers/PerformerRegistry';
 import { getVenueBookingSlots, type VenueBookingSlot } from '@/lib/venues/VenueRegistry';
 import { fetchUpcomingEvents } from '@/lib/api/homepage';
 import { getActiveSponsorForZone } from '@/lib/commerce/SponsorRegistry';
 import MotionPosterPlayer from '@/components/media/MotionPosterPlayer';
 import { hasRole } from '@/lib/auth/session';
 import { OFFICIAL_HOME_ORBIT_BOT_ACCOUNTS } from '@/lib/bots/homeOrbitBotAccounts';
+import { onSessionsChanged, getActiveSessions, type LiveSession } from '@/lib/broadcast/GlobalLiveSessionRegistry';
 
 // ─── Genre + performer data (10 per genre) ────────────────────────────────────
 
@@ -57,6 +58,11 @@ interface Performer {
   audienceCount?: number;
   isLive?: boolean;
   liveRoomRoute?: string;
+  lineupType?: 'solo' | 'duo' | 'band' | 'group';
+  roomId?: string;
+  viewerCount?: number;
+  category?: string;
+  title?: string;
 }
 
 const GENRE_CONFIG: Record<string, { color: string; bg: string; emoji: string }> = {
@@ -74,6 +80,15 @@ const GENRE_CONFIG: Record<string, { color: string; bg: string; emoji: string }>
 const GENRE_KEYS = Object.keys(GENRE_CONFIG);
 
 const DEFAULT_PROFILE_PLACEHOLDERS = new Set(['/images/tmi-placeholder.jpg']);
+
+// Honest "no photo yet" silhouettes by lineup shape — never a real photo
+// pretending to exist (Rule 20). Falls back to a generic mic for unknown types.
+const LINEUP_ICON: Record<'solo' | 'duo' | 'band' | 'group', string> = {
+  solo: '🎤',
+  duo: '🎙️',
+  band: '🎸',
+  group: '🧑‍🤝‍🧑',
+};
 
 function hasUploadedProfileImage(url?: string): boolean {
   if (!url) return false;
@@ -99,6 +114,7 @@ function buildDiamondOrbitMembers(): Performer[] {
       audienceCount: p.audienceCount,
       isLive: p.isLive,
       liveRoomRoute: p.liveRoomRoute,
+      lineupType: p.lineupType,
     }));
 }
 
@@ -134,6 +150,7 @@ function buildRealMemberProfileRing(genreKey: string): Performer[] {
     audienceCount: p.audienceCount,
     isLive: p.isLive,
     liveRoomRoute: p.liveRoomRoute,
+    lineupType: p.lineupType,
   }));
 }
 
@@ -159,6 +176,7 @@ function buildVerifiedPerformerRing(genreKey: string): Performer[] {
     audienceCount: p.audienceCount,
     isLive: p.isLive,
     liveRoomRoute: p.liveRoomRoute,
+    lineupType: p.lineupType,
   }));
 }
 
@@ -423,11 +441,13 @@ const OrbitCard = memo(function OrbitCard({
                 zIndex: 1,
               }}
             >
-              <div style={{ fontSize: Math.max(cardSize * 0.18, 10), fontWeight: 900, color: '#fff', fontFamily: "'Inter',sans-serif" }}>{initials || '??'}</div>
+              <div style={{ fontSize: Math.max(cardSize * 0.22, 13), opacity: 0.85 }} aria-label={performer.lineupType ? `${performer.lineupType}-placeholder` : 'empty-state-avatar'}>
+                {performer.lineupType ? LINEUP_ICON[performer.lineupType] : '👤'}
+              </div>
+              <div style={{ fontSize: Math.max(cardSize * 0.14, 9), fontWeight: 900, color: '#fff', fontFamily: "'Inter',sans-serif" }}>{initials || '??'}</div>
               <div style={{ fontSize: 6, color: 'rgba(255,255,255,0.55)', letterSpacing: '0.06em', fontFamily: "'Inter',sans-serif" }}>
                 {performer.accountType === 'diamond-member' || performer.accountType === 'real-member' || performer.accountType === 'verified-performer' ? 'UPLOAD PENDING' : performer.accountType === 'empty-slot' ? 'NO DATA YET' : 'NO IMAGE'}
               </div>
-              <div style={{ fontSize: 8, opacity: 0.7 }} aria-label="empty-state-avatar">👤</div>
             </div>
           )}
 
@@ -567,7 +587,9 @@ const HERO_PHRASES = [
 
 export default function Home1CoverPage() {
   const [genreIdx, setGenreIdx] = useState(0);
-  const [voteCount, setVoteCount] = useState(4812);
+  // Rule 20: voteCount must come from a real voting API, not a fake incrementing counter.
+  // Initialized to 0 (no votes cast yet). A future /api/rankings/votes endpoint can populate this.
+  const [voteCount, setVoteCount] = useState(0);
   const [starburst, setStarburst] = useState(false);
   const [heroIdx, setHeroIdx] = useState(0);
   const [heroVisible, setHeroVisible] = useState(true);
@@ -645,8 +667,24 @@ export default function Home1CoverPage() {
     };
   }, []);
 
+  // Real liveness from GlobalLiveSessionRegistry — subscribe to changes rather than polling.
+  // Carry full session metadata (roomId, viewerCount, category, title) for future enhancements
+  // like "🔴 LIVE 42 viewers Battle Thunder Dome" orbit badges.
+  const [livePerformers, setLivePerformers] = useState<LiveSession[]>([]);
+  useEffect(() => {
+    // Get initial state
+    setLivePerformers(getActiveSessions());
+    // Subscribe to live session changes
+    const unsubscribe = onSessionsChanged((sessions) => {
+      setLivePerformers(sessions);
+    });
+    return () => unsubscribe();
+  }, []);
+
   // Crown holder always comes from the PerformerRegistry — the real global #1 by XP.
   const crownData = getCrownHolder();
+  const crownIsLive = livePerformers.some((s) => s.userId === crownData.id);
+  const crownLiveSession = livePerformers.find((s) => s.userId === crownData.id);
   const crowdHolder = {
     slug: crownData.slug,
     name: crownData.name,
@@ -654,12 +692,40 @@ export default function Home1CoverPage() {
     profileRoute: crownData.profileRoute,
     introVideoUrl: crownData.introVideoUrl,
     motionPosterUrl: crownData.motionPosterUrl,
-    isLive: crownData.isLive,
-    liveRoomRoute: crownData.liveRoomRoute,
-    audienceCount: crownData.audienceCount,
+    isLive: crownIsLive || crownData.isLive,
+    liveRoomRoute: crownLiveSession?.roomId ? `/live/rooms/${crownLiveSession.roomId}` : crownData.liveRoomRoute,
+    audienceCount: crownLiveSession?.viewerCount ?? crownData.audienceCount,
   };
 
-  const visibleOrbitCards = performers.slice(0, isMobileViewport ? 6 : 10);
+  // Overlay real liveness from livePerformers (GlobalLiveSessionRegistry) onto the
+  // orbit ring — buildOrbitPerformers()/PERFORMER_REGISTRY only carries the static
+  // seed isLive flag, which never reflects an actual broadcast. Live performers also
+  // sort to the front so a real broadcaster isn't cut off by the 6/10-card slice
+  // (Rule 11: Content Freshness — LIVE first).
+  // Map LiveSession objects by userId to find matching performers.
+  const liveByUserId = new Map(livePerformers.map((s) => {
+    const performer = getPerformerById(s.userId);
+    return [s.userId, { session: s, performer }];
+  }));
+  const performersWithRealLiveness = performers
+    .map((p) => {
+      const live = Array.from(liveByUserId.values()).find((item) => item.performer?.slug === p.slug);
+      if (live) {
+        return {
+          ...p,
+          isLive: true,
+          liveRoomRoute: live.session.roomId ? `/live/rooms/${live.session.roomId}` : p.liveRoomRoute,
+          roomId: live.session.roomId,
+          viewerCount: live.session.viewerCount,
+          category: live.session.category,
+          title: live.session.title,
+        };
+      }
+      return p;
+    })
+    .sort((a, b) => (b.isLive ? 1 : 0) - (a.isLive ? 1 : 0));
+
+  const visibleOrbitCards = performersWithRealLiveness.slice(0, isMobileViewport ? 6 : 10);
   const orbitRadius = isMobileViewport ? 34 : 33;
 
   // Genre cycle every 6s with starburst flash
@@ -674,13 +740,7 @@ export default function Home1CoverPage() {
     return () => clearInterval(id);
   }, []);
 
-  // Vote count tick
-  useEffect(() => {
-    const id = setInterval(() => {
-      setVoteCount((v) => v + Math.floor(Math.random() * 7 + 1));
-    }, 820);
-    return () => clearInterval(id);
-  }, []);
+  // Vote count tick removed — Rule 20: no fake-incrementing counters presented as real live data.
 
   // Hero headline rotation — cycles brand phrases every 4s with fade
   useEffect(() => {
@@ -697,7 +757,6 @@ export default function Home1CoverPage() {
   const accentColor = genreConfig.color;
   const bgColor = genreConfig.bg;
   const topPerformers = getTopPerformers(20);
-  const livePerformers = getLivePerformers();
   const diamondMembers = PERFORMER_REGISTRY.filter((p) => p.tier === 'Diamond').sort((a, b) => b.xp - a.xp);
 
   const genreDiscoveryRails = [
@@ -717,7 +776,7 @@ export default function Home1CoverPage() {
 
   const rightRailViews = [
     { label: 'Trending Artists', route: '/rankings', entries: topPerformers.slice(0, 4).map((p) => ({ name: p.name, sub: `${p.category}`, href: p.profileRoute })) },
-    { label: 'Active Rooms', route: '/live/lobby', entries: livePerformers.slice(0, 4).map((p) => ({ name: p.name, sub: `${p.audienceCount} in room`, href: p.liveRoomRoute })) },
+    { label: 'Active Rooms', route: '/live/lobby', entries: livePerformers.slice(0, 4).map((s) => ({ name: s.displayName, sub: `${s.viewerCount} in room`, href: `/live/rooms/${s.roomId}` })) },
     { label: 'Top Rising Artists', route: '/rankings?rising=true', entries: getFeaturedFreePerformers(4).map((p) => ({ name: p.name, sub: p.genre, href: `/performers/${p.slug}` })) },
     { label: 'Newest Diamond Members', route: '/rankings?tier=Diamond', entries: diamondMembers.slice(0, 4).map((p) => ({ name: p.name, sub: p.category, href: hasUploadedProfileImage(p.profileImageUrl) ? p.profileRoute : `${p.profileRoute}?prompt=upload-image` })) },
     { label: 'Featured Venue', route: '/venues', entries: venues.slice(0, 1).map((v) => ({ name: v.venue, sub: `${v.day} booking`, href: v.bookRoute })) },
@@ -907,7 +966,7 @@ export default function Home1CoverPage() {
         </span>
         <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 10 }}>|</span>
         <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.8)', fontFamily: "'Inter', sans-serif" }}>
-          CROWN UPDATING IN REAL-TIME... {voteCount.toLocaleString()} votes cast
+          CROWN VOTING OPENS AT LAUNCH
         </span>
         <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 10 }}>|</span>
         <span
@@ -1067,7 +1126,7 @@ export default function Home1CoverPage() {
               <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.1em', color: '#FF2DAA', fontFamily: "'Inter',sans-serif" }}>VOTING LIVE</span>
             </div>
             <div style={{ background: 'rgba(255,215,0,0.14)', border: '1px solid rgba(255,215,0,0.5)', borderRadius: 4, padding: '3px 12px', fontFamily: "'Inter',sans-serif", fontSize: 10, fontWeight: 700, color: '#FFD700' }}>
-              {voteCount.toLocaleString()} VOTES
+              {voteCount > 0 ? `${voteCount.toLocaleString()} VOTES` : 'VOTING OPENS SOON'}
             </div>
             <div style={{ background: 'rgba(230,48,0,0.18)', border: '1px solid rgba(230,48,0,0.5)', borderRadius: 4, padding: '3px 10px', fontSize: 9, fontWeight: 800, letterSpacing: '0.1em', color: '#E63000', fontFamily: "'Inter',sans-serif" }}>CROWN UPDATING</div>
           </div>
@@ -1223,7 +1282,12 @@ export default function Home1CoverPage() {
                     <button style={{ width: '100%', background: 'rgba(255,45,170,0.12)', color: '#FF2DAA', border: '1px solid rgba(255,45,170,0.35)', borderRadius: 4, fontSize: 7, fontWeight: 800, padding: '5px', cursor: 'pointer', marginTop: 5, letterSpacing: '0.06em' }}>VIEW CATEGORY</button>
                   </Link>
                   {canSubmitPromoSlot && (
-                    <Link href="/sponsors/claim-slot" style={{ textDecoration: 'none' }}>
+                    // /sponsors/claim-slot had no real page — it fell through
+                    // to the dynamic /sponsors/[slug] -> /profile/sponsor/[slug]
+                    // route, which rendered "claim-slot" as if it were a real
+                    // sponsor's name. /submit is the real, working submission
+                    // system (8 lanes, real form, real XP/rotation loop).
+                    <Link href="/submit" style={{ textDecoration: 'none' }}>
                       <button style={{ width: '100%', marginTop: 6, padding: '5px', fontSize: 7, fontWeight: 800, border: '1px dashed rgba(255,215,0,0.5)', background: 'rgba(255,215,0,0.08)', color: '#FFD700', borderRadius: 4, cursor: 'pointer', letterSpacing: '0.06em' }}>SUBMIT PROMO SLOT</button>
                     </Link>
                   )}
@@ -1977,9 +2041,9 @@ export default function Home1CoverPage() {
         <div style={{ width: '100%', maxWidth: 900, padding: '10px 10px 0', display: 'flex', gap: 6, justifyContent: 'space-between' }}>
           {[
             { label: 'LIVE VENUES', value: venues.length, color: '#00E5FF', icon: '🏟' },
-            { label: 'WATCHING', value: (voteCount * 8).toLocaleString(), color: '#FF2DAA', icon: '👁' },
-            { label: 'TIPS SENT', value: `$${(voteCount * 0.5).toFixed(0)}`, color: '#FFD700', icon: '💰' },
-            { label: 'VOTES CAST', value: voteCount.toLocaleString(), color: '#AA2DFF', icon: '⚡' },
+            { label: 'LIVE STREAMS', value: livePerformers.length, color: '#FF2DAA', icon: '👁' },
+            { label: 'TIPS SENT', value: '$0', color: '#FFD700', icon: '💰' },
+            { label: 'VOTES CAST', value: voteCount > 0 ? voteCount.toLocaleString() : '—', color: '#AA2DFF', icon: '⚡' },
           ].map((stat) => (
             <div key={stat.label} style={{ flex: 1, background: `${stat.color}08`, border: `1px solid ${stat.color}25`, borderRadius: 5, padding: '6px 6px', textAlign: 'center' }}>
               <div style={{ fontSize: 13 }}>{stat.icon}</div>

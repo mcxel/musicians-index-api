@@ -10,6 +10,12 @@ import AdRailSlot from "@/components/ads/AdRailSlot";
 import UnifiedAdSlot from "@/components/ads/UnifiedAdSlot";
 import Link from "next/link";
 import TMIGeoBlock from "@/components/shared/TMIGeoBlock";
+// ── Rule 15 Canisters ──────────────────────────────────────────────────────────
+import { PlaylistCanister } from "@/components/canisters/PlaylistCanister";
+import { MemoryWallCanister } from "@/components/canisters/MemoryWallCanister";
+import { BookingCanister } from "@/components/canisters/BookingCanister";
+import { StoreCanister } from "@/components/canisters/StoreCanister";
+import { LiveLobbyWallCanister } from "@/components/canisters/LiveLobbyWallCanister";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -239,6 +245,43 @@ export default async function ArticlePage({ params }: Props) {
           )}
         </div>
       </nav>
+
+      {/* ── Rule 15 Canister Section — every article is a hub ── */}
+      <div style={{ maxWidth: 900, margin: "0 auto", padding: "24px 24px 60px", display: "flex", flexDirection: "column", gap: 20 }}>
+        {/* Playlist — listen while you read */}
+        <PlaylistCanister
+          entityId={article.performerSlug ?? article.slug}
+          entityName={article.performerSlug ?? undefined}
+          accentColor="#AA2DFF"
+        />
+        {/* Memory Wall — moments from this article/event */}
+        <MemoryWallCanister
+          entityId={article.slug}
+          entityType="article"
+          title={`${article.title} — Memories`}
+          accentColor="#FF2DAA"
+        />
+        {/* Booking — book the performer featured in this article */}
+        {article.performerSlug && (
+          <BookingCanister
+            entityId={article.performerSlug}
+            entityType="performer"
+            accentColor="#00FF88"
+            showRequestForm={true}
+          />
+        )}
+        {/* Store — support the performer */}
+        {article.performerSlug && (
+          <StoreCanister
+            entityId={article.performerSlug}
+            storeType="performer"
+            accentColor="#FFD700"
+            maxItems={4}
+          />
+        )}
+        {/* Live Lobby Wall — see who's live right now */}
+        <LiveLobbyWallCanister accentColor="#FF2DAA" maxRooms={4} />
+      </div>
     </>
   );
 }

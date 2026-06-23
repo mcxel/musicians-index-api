@@ -31,9 +31,11 @@ import SeatProfileOverlay, { type SeatProfile } from "@/components/live/SeatProf
 
 type LobbyShellProps = {
   slug: string;
+  /** Performer slug — when provided, tip buttons trigger a real Stripe checkout */
+  performerSlug?: string;
 };
 
-export default function LobbyShell({ slug }: LobbyShellProps) {
+export default function LobbyShell({ slug, performerSlug }: LobbyShellProps) {
   const [map, setMap] = useState<LobbySeatMap>(() => createSeatMap(slug));
   const [presence, setPresence] = useState(() => createInitialPresence());
   const [selectedSeatId, setSelectedSeatId] = useState<string | null>(null);
@@ -92,6 +94,20 @@ export default function LobbyShell({ slug }: LobbyShellProps) {
   const handleTip = (amount: number) => {
     setPresence((prev) => sendTip(prev, amount));
     pushBubble(`Tip received: $${amount}`, "tip");
+    // If we know who's performing, open a real Stripe checkout for the tip.
+    // amount is in dollars; Stripe expects cents.
+    if (performerSlug) {
+      fetch("/api/stripe/checkout", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ product: "TIP", artistSlug: performerSlug, amount: amount * 100 }),
+      })
+        .then((res) => res.json())
+        .then((data: { url?: string }) => {
+          if (data.url) window.location.href = data.url;
+        })
+        .catch((err) => console.error("[LobbyShell] tip checkout error:", err));
+    }
   };
 
   const handlePost = (message: string) => {

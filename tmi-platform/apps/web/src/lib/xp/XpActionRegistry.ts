@@ -52,6 +52,10 @@ export type XpActionKey =
   | 'complete_profile'
   | 'verify_account'
   | 'refer_new_user'
+  // ── Fan engagement ────────────────────────────────────────────────────────
+  | 'vote_battle'
+  | 'attend_live_room'
+  | 'book_performer'
   // ── Magazine / content creation ────────────────────────────────────────────
   | 'article_featured'
   | 'article_gets_1000_reads';
@@ -118,6 +122,11 @@ export const XP_ACTIONS: XpAction[] = [
   // ── Content creation ─────────────────────────────────────────────────────
   { key: 'article_featured',     label: 'Get featured in magazine',       xp: 1500, category: 'content',     repeatable: true,  cooldownHours: 0,   achievementUnlock: 'magazine-featured' },
   { key: 'article_gets_1000_reads', label: 'Article reaches 1,000 reads', xp: 2500, category: 'content',    repeatable: true,  cooldownHours: 0,   achievementUnlock: 'viral-article' },
+
+  // ── Fan engagement ───────────────────────────────────────────────────────
+  { key: 'vote_battle',          label: 'Vote in a battle',               xp: 15,   category: 'competitive', repeatable: true,  cooldownHours: 0.25 },
+  { key: 'attend_live_room',     label: 'Attend a live room',             xp: 20,   category: 'consumption', repeatable: true,  cooldownHours: 1 },
+  { key: 'book_performer',       label: 'Book a performer',               xp: 200,  category: 'financial',   repeatable: true,  cooldownHours: 0 },
 ];
 
 // ── Lookup helpers ────────────────────────────────────────────────────────────

@@ -142,17 +142,30 @@ const ROOM_GRADIENTS: string[] = [
 
 /* ─── Room monitor card ─────────────────────────────────────────────────────── */
 function RoomMonitor({ roomId, label, idx = 0 }: { roomId: string; label: string; idx?: number }) {
-  const [viewers, setViewers] = useState(Math.floor(Math.random() * 40));
-  const [isLive] = useState(Math.random() < 0.6);
+  const [viewers, setViewers] = useState<number | null>(null);
+  const [isLive, setIsLive] = useState(false);
   const bg = ROOM_GRADIENTS[idx % ROOM_GRADIENTS.length];
 
+  // Fetch real room presence from the audience runtime API
   useEffect(() => {
-    if (!isLive) return;
-    const i = setInterval(() => {
-      setViewers((v) => Math.max(0, v + Math.floor((Math.random() - 0.4) * 3)));
-    }, 5000);
-    return () => clearInterval(i);
-  }, [isLive]);
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const res = await fetch(`/api/live/audience?roomId=${encodeURIComponent(roomId)}`, { cache: 'no-store' });
+        if (!res.ok) return;
+        const data = await res.json() as { present?: number; isLive?: boolean };
+        if (!cancelled) {
+          setViewers(data.present ?? 0);
+          setIsLive(Boolean(data.isLive));
+        }
+      } catch {
+        if (!cancelled) setViewers(0);
+      }
+    };
+    void load();
+    const timer = setInterval(() => { void load(); }, 10_000);
+    return () => { cancelled = true; clearInterval(timer); };
+  }, [roomId]);
 
   return (
     <div style={{ borderRadius: 10, border: '1px solid rgba(255,255,255,0.08)', overflow: 'hidden' }}>
@@ -192,7 +205,7 @@ function RoomMonitor({ roomId, label, idx = 0 }: { roomId: string; label: string
         {/* Viewer count */}
         {isLive && (
           <div style={{ position: 'absolute', top: 8, right: 8, zIndex: 10, fontSize: 8, fontFamily: 'monospace', color: 'rgba(255,255,255,0.5)', background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', padding: '2px 6px', borderRadius: 4 }}>
-            {viewers} watching
+            {viewers === null ? '…' : `${viewers} watching`}
           </div>
         )}
 
@@ -221,7 +234,7 @@ export default function TMIAdminOverseer() {
   const [payouts, setPayouts] = useState<PayoutItem[]>(MOCK_PAYOUTS);
   const [alerts, setAlerts] = useState<SystemAlert[]>(MOCK_ALERTS);
   const [activeTab, setActiveTab] = useState<"monitors" | "users" | "bots" | "payouts" | "alerts">("monitors");
-  const [revenue, setRevenue] = useState(18420);
+  const [revenue, setRevenue] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
 
   /* Fetch real users */
@@ -235,12 +248,15 @@ export default function TMIAdminOverseer() {
       .catch(() => setLoading(false));
   }, []);
 
-  /* Simulated revenue tick */
+  /* Fetch real revenue from Stripe-backed admin endpoint */
   useEffect(() => {
-    const i = setInterval(() => {
-      setRevenue((v) => v + Math.floor(Math.random() * 15));
-    }, 3000);
-    return () => clearInterval(i);
+    fetch("/api/admin/revenue", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((data: { totals?: { todayCents?: number } }) => {
+        const cents = data?.totals?.todayCents ?? 0;
+        setRevenue(Math.round(cents / 100));
+      })
+      .catch(() => setRevenue(0));
   }, []);
 
   function approvePayoutBigAce(payoutId: string) {
@@ -286,7 +302,7 @@ export default function TMIAdminOverseer() {
 
       {/* Quick stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 px-4 py-3">
-        <StatCard label="Total Revenue" value={`$${revenue.toLocaleString()}`} color="#22c55e" sub="↑ Live ticker" />
+        <StatCard label="Today's Revenue" value={revenue === null ? "Loading…" : `$${revenue.toLocaleString()}`} color="#22c55e" sub="↑ Real Stripe data" />
         <StatCard label="Active Users"  value={users.length}                   color="#06b6d4" />
         <StatCard label="Live Rooms"    value={4}                              color="#ef4444" sub="2 battles, 2 cyphers" />
         <StatCard label="Bot Tasks Done" value={MOCK_BOTS.tasksCompleted}      color="#a855f7" sub={`Queue: ${MOCK_BOTS.queueDepth}`} />

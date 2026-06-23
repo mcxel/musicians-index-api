@@ -3,6 +3,7 @@ import { bookingContractEngine, type ContractTerms } from "@/lib/booking/Booking
 import EmailProviderEngine from "@/lib/email/EmailProviderEngine";
 import { VenueBookingRegistry } from "@/lib/registries/VenueBookingRegistry";
 import { canonicalEcosystemEngine } from "@/lib/playlists/CanonicalEcosystemEngine";
+import { sendEmail } from "@/lib/email/TMIEmailSystem";
 
 function titleCase(slug: string): string {
   return slug.split("-").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
@@ -101,6 +102,20 @@ export async function POST(request: Request) {
         replyTo: String(contactEmail),
       });
     }
+
+    // Send booking_request confirmation email to the artist/contact
+    void sendEmail({
+      to: String(contactEmail),
+      type: "booking_request",
+      data: {
+        bookingId,
+        venueName: titleCase(String(venueSlug)),
+        eventDate: String(eventDate),
+        eventType: String(eventType ?? "concert"),
+        estimatedTotal: totalUsd,
+        contractId: contract.id,
+      },
+    }).catch(() => {});
 
     return NextResponse.json({
       success:        true,

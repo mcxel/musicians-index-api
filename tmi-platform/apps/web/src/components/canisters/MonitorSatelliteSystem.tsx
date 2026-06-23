@@ -27,9 +27,55 @@ interface MonitorSatelliteSystemProps {
    *  Audience Monitor the instant they go live — pass true for Performer Hub,
    *  Producer HQ, host-facing surfaces. Fan-facing surfaces can omit it. */
   showAudienceMonitor?: boolean;
+  /** Optional real-time fan entry events from live registry telemetry. */
+  audienceEntryEvents?: AudienceEntryEvent[];
+  /** Optional country distribution from live registry telemetry. */
+  audienceCountryDistribution?: AudienceCountrySlice[];
+  /** Enables pulse overlays without forcing the audience monitor itself on. */
+  showAudiencePulse?: boolean;
 }
 
 type MainMode = "feed" | "lobbyWall";
+
+interface AudienceEntryEvent {
+  id: string;
+  at: number;
+  countryCode: string;
+  countryName: string;
+  viewerCount: number;
+}
+
+interface AudienceCountrySlice {
+  countryCode: string;
+  countryName: string;
+  count: number;
+}
+
+const AUDIENCE_MILESTONES = [1, 5, 10, 25, 50, 100, 250, 500, 1000] as const;
+
+function countryCodeToFlag(countryCode: string): string {
+  const code = countryCode.trim().toUpperCase();
+  if (!/^[A-Z]{2}$/.test(code)) return "🏳️";
+  const base = 127397;
+  return String.fromCodePoint(...code.split("").map((c) => base + c.charCodeAt(0)));
+}
+
+function resolveEnergyState(audienceCount: number): { label: string; color: string } {
+  if (audienceCount >= 500) return { label: "Frenzy", color: "#FF2DAA" };
+  if (audienceCount >= 100) return { label: "Electric", color: "#FFD700" };
+  if (audienceCount >= 25) return { label: "Building", color: "#00FFFF" };
+  if (audienceCount >= 5) return { label: "Warming", color: "#00FF88" };
+  return { label: "Calm", color: "rgba(255,255,255,0.65)" };
+}
+
+function resolveEvolutionProgress(audienceCount: number): { previous: number; next: number; progressPct: number } {
+  const current = Math.max(0, audienceCount);
+  const previous = [...AUDIENCE_MILESTONES].reverse().find((n) => n <= current) ?? 0;
+  const next = AUDIENCE_MILESTONES.find((n) => n > current) ?? AUDIENCE_MILESTONES[AUDIENCE_MILESTONES.length - 1];
+  if (next <= previous) return { previous, next, progressPct: 100 };
+  const ratio = (current - previous) / (next - previous);
+  return { previous, next, progressPct: Math.max(0, Math.min(100, ratio * 100)) };
+}
 
 /**
  * Monitor Satellite System (Profile Hub Blueprint): one large main monitor
@@ -49,6 +95,9 @@ export default function MonitorSatelliteSystem({
   adZone = "monitor-satellite",
   showAudienceMonitor = false,
   viewerTier = "FREE",
+  audienceEntryEvents,
+  audienceCountryDistribution,
+  showAudiencePulse,
 }: MonitorSatelliteSystemProps) {
   const [mainMode, setMainMode] = useState<MainMode>("feed");
   // Rolled once per mount, not per render, so the ad doesn't flicker in/out
@@ -58,10 +107,89 @@ export default function MonitorSatelliteSystem({
   const [micLive, setMicLive] = useState(false);
   const [cameraOn, setCameraOn] = useState(true);
   const [captureState, setCaptureState] = useState<"idle" | "ready" | "saving" | "saved" | "error">("idle");
+  const [arrivalToasts, setArrivalToasts] = useState<AudienceEntryEvent[]>([]);
+  const [milestoneToast, setMilestoneToast] = useState<{ milestone: number; audienceCount: number } | null>(null);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const lastAudienceCountRef = useRef(audienceCount ?? 0);
+  const reachedMilestonesRef = useRef<Set<number>>(new Set());
+  const seenArrivalIdsRef = useRef<Set<string>>(new Set());
+
+  const shouldShowPulse = showAudiencePulse ?? showAudienceMonitor;
+
+  useEffect(() => {
+    if (!shouldShowPulse) return;
+    const current = audienceCount ?? 0;
+    const previous = lastAudienceCountRef.current;
+    lastAudienceCountRef.current = current;
+    if (!isLive || current <= previous) return;
+
+    const nextSyntheticEntries: AudienceEntryEvent[] = [];
+    const increase = Math.min(3, current - previous);
+    for (let i = 0; i < increase; i += 1) {
+      nextSyntheticEntries.push({
+        id: `count-${Date.now()}-${i}`,
+        at: Date.now(),
+        countryCode: "ZZ",
+        countryName: "Unknown",
+        viewerCount: current,
+      });
+    }
+    if (nextSyntheticEntries.length > 0) {
+      setArrivalToasts((prev) => [...nextSyntheticEntries, ...prev].slice(0, 4));
+    }
+  }, [audienceCount, isLive, shouldShowPulse]);
+
+  useEffect(() => {
+    if (!shouldShowPulse || !audienceEntryEvents || audienceEntryEvents.length === 0) return;
+    const fresh = audienceEntryEvents
+      .slice()
+      .sort((a, b) => b.at - a.at)
+      .filter((entry) => {
+        if (seenArrivalIdsRef.current.has(entry.id)) return false;
+        seenArrivalIdsRef.current.add(entry.id);
+        return true;
+      })
+      .slice(0, 4);
+
+    if (fresh.length > 0) {
+      setArrivalToasts((prev) => [...fresh, ...prev].slice(0, 4));
+    }
+  }, [audienceEntryEvents, shouldShowPulse]);
+
+  useEffect(() => {
+    if (!shouldShowPulse) return;
+    if (!milestoneToast) return;
+    const id = window.setTimeout(() => setMilestoneToast(null), 2500);
+    return () => window.clearTimeout(id);
+  }, [milestoneToast, shouldShowPulse]);
+
+  useEffect(() => {
+    if (!shouldShowPulse) return;
+    const current = audienceCount ?? 0;
+    const reached = AUDIENCE_MILESTONES.filter((m) => current >= m && !reachedMilestonesRef.current.has(m));
+    if (reached.length === 0) return;
+    const newest = reached[reached.length - 1]!;
+    reached.forEach((m) => reachedMilestonesRef.current.add(m));
+    setMilestoneToast({ milestone: newest, audienceCount: current });
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("tmi:audience-pulse-milestone", {
+          detail: { milestone: newest, audienceCount: current },
+        }),
+      );
+    }
+  }, [audienceCount, shouldShowPulse]);
+
+  useEffect(() => {
+    if (arrivalToasts.length === 0) return;
+    const id = window.setTimeout(() => {
+      setArrivalToasts((prev) => prev.slice(0, -1));
+    }, 2800);
+    return () => window.clearTimeout(id);
+  }, [arrivalToasts]);
 
   useEffect(() => {
     let cancelled = false;
@@ -126,6 +254,11 @@ export default function MonitorSatelliteSystem({
     }
   }
 
+  const effectiveAudienceCount = audienceCount ?? 0;
+  const topCountries = (audienceCountryDistribution ?? []).slice(0, 5);
+  const energy = resolveEnergyState(effectiveAudienceCount);
+  const evolution = resolveEvolutionProgress(effectiveAudienceCount);
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       {/* Main monitor */}
@@ -166,11 +299,57 @@ export default function MonitorSatelliteSystem({
 
       {/* Audience Monitor — Audience Visibility Rule v4: visible the instant a performer/host goes live */}
       {showAudienceMonitor && (
-        <div style={{ borderRadius: 10, overflow: "hidden", border: "1px solid rgba(0,255,255,0.3)" }}>
+        <div style={{ borderRadius: 10, overflow: "hidden", border: "1px solid rgba(0,255,255,0.3)", position: "relative" }}>
           <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.1em", color: accentColor, padding: "8px 12px", background: "#0f0f1a" }}>
             👥 AUDIENCE MONITOR {audienceCount != null ? `· ${audienceCount.toLocaleString()} WATCHING` : ""}
           </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 12px", background: "rgba(255,255,255,0.02)", borderBottom: "1px solid rgba(255,255,255,0.06)", overflowX: "auto" }}>
+            {topCountries.length > 0 ? (
+              topCountries.map((country) => (
+                <div key={country.countryCode} style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "3px 8px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.14)", background: "rgba(5,5,16,0.55)", fontSize: 9, whiteSpace: "nowrap" }}>
+                  <span>{countryCodeToFlag(country.countryCode)}</span>
+                  <span style={{ color: "rgba(255,255,255,0.78)" }}>{country.countryName}</span>
+                  <span style={{ color: accentColor, fontWeight: 800 }}>{country.count}</span>
+                </div>
+              ))
+            ) : (
+              <span style={{ fontSize: 9, color: "rgba(255,255,255,0.45)" }}>No audience country signals yet</span>
+            )}
+          </div>
           <AudienceScene view="performer" venue={0} watcherCount={audienceCount ?? 0} bpm={120} accentColor={accentColor} occupancyRatio={isLive ? Math.min(1, (audienceCount ?? 0) / 200 || 0.3) : 0} hideControls />
+          {shouldShowPulse && (
+            <>
+              {milestoneToast && (
+                <div style={{ position: "absolute", top: 56, right: 14, zIndex: 3, borderRadius: 10, border: "1px solid rgba(255,215,0,0.45)", background: "rgba(5,5,16,0.92)", padding: "8px 10px", boxShadow: "0 0 16px rgba(255,215,0,0.2)", textAlign: "right" }}>
+                  <div style={{ fontSize: 9, letterSpacing: "0.12em", color: "#FFD700", fontWeight: 900 }}>MILESTONE HIT</div>
+                  <div style={{ fontSize: 13, color: "#fff", fontWeight: 900 }}>{milestoneToast.milestone.toLocaleString()} LIVE</div>
+                </div>
+              )}
+
+              <div style={{ position: "absolute", right: 8, top: 118, bottom: 56, width: 36, display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none" }}>
+                <div style={{ width: 12, height: "100%", borderRadius: 999, border: "1px solid rgba(255,255,255,0.2)", background: "rgba(0,0,0,0.5)", overflow: "hidden", display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
+                  <div style={{ height: `${evolution.progressPct}%`, background: `linear-gradient(180deg, ${accentColor}, #FF2DAA)`, boxShadow: `0 0 10px ${accentColor}55` }} />
+                </div>
+                <div style={{ position: "absolute", right: 18, top: "50%", transform: "translateY(-50%) rotate(90deg)", transformOrigin: "right center", fontSize: 8, letterSpacing: "0.12em", color: "rgba(255,255,255,0.65)", whiteSpace: "nowrap" }}>
+                  EVOLUTION {evolution.previous} → {evolution.next}
+                </div>
+              </div>
+
+              <div style={{ position: "absolute", left: 10, bottom: 12, zIndex: 3, display: "grid", gap: 6, maxWidth: 240 }}>
+                {arrivalToasts.map((entry) => (
+                  <div key={entry.id} style={{ borderRadius: 8, border: "1px solid rgba(0,255,255,0.35)", background: "rgba(5,5,16,0.86)", padding: "6px 8px", fontSize: 10, boxShadow: "0 0 14px rgba(0,255,255,0.12)" }}>
+                    <span>{countryCodeToFlag(entry.countryCode)}</span>
+                    <span style={{ marginLeft: 6, color: "#fff", fontWeight: 700 }}>{entry.countryName}</span>
+                    <span style={{ marginLeft: 6, color: "rgba(255,255,255,0.65)", fontSize: 9 }}>joined · {entry.viewerCount.toLocaleString()}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ position: "absolute", bottom: 12, right: 54, zIndex: 3, borderRadius: 999, border: `1px solid ${energy.color}66`, background: "rgba(5,5,16,0.88)", padding: "4px 10px", fontSize: 9, color: energy.color, fontWeight: 900, letterSpacing: "0.08em" }}>
+                CROWD ENERGY · {energy.label}
+              </div>
+            </>
+          )}
         </div>
       )}
 

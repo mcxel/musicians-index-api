@@ -17,6 +17,30 @@ export type StreamHealth = "excellent" | "good" | "degraded" | "critical" | "unk
 export type StageState   = "pre-show" | "live" | "intermission" | "post-show";
 export type StreamCategory = "cypher" | "battle" | "concert" | "challenge" | "live" | "game" | "session";
 
+export interface AudienceCountrySlice {
+  countryCode: string;
+  countryName: string;
+  count: number;
+}
+
+export interface AudienceEntryEvent {
+  id: string;
+  at: number;
+  countryCode: string;
+  countryName: string;
+  viewerCount: number;
+  viewerId?: string;
+  source?: string;
+}
+
+export interface AudienceEntryPayload {
+  roomId: string;
+  viewerId?: string;
+  countryCode?: string;
+  countryName?: string;
+  source?: string;
+}
+
 export interface LiveSession {
   // Identity
   userId:        string;
@@ -49,6 +73,11 @@ export interface LiveSession {
   droppedFramesPct: number;
   rttMs:            number;
   audioOk:          boolean;
+
+  // Audience pulse telemetry
+  audienceCountries: AudienceCountrySlice[];
+  recentAudienceEntries: AudienceEntryEvent[];
+  lastAudienceEntryAt: number | null;
 }
 
 export interface LivePingPayload {
@@ -67,9 +96,25 @@ const handlers = new Set<(sessions: LiveSession[]) => void>();
 
 const ACCENT_POOL = ["#00FFFF", "#FF2DAA", "#FFD700", "#AA2DFF", "#00FF88", "#FF6B35", "#38bdf8", "#c084fc"];
 
+const MAX_AUDIENCE_COUNTRIES = 8;
+const MAX_AUDIENCE_ENTRIES = 12;
+const AUDIENCE_DUPLICATE_WINDOW_MS = 20_000;
+
 function pickAccent(userId: string): string {
   const hash = userId.split("").reduce((acc, c) => acc + c.charCodeAt(0), 0);
   return ACCENT_POOL[hash % ACCENT_POOL.length] ?? "#00FFFF";
+}
+
+function normalizeCountryCode(code?: string): string {
+  const trimmed = (code ?? "").trim().toUpperCase();
+  if (/^[A-Z]{2}$/.test(trimmed)) return trimmed;
+  return "ZZ";
+}
+
+function normalizeCountryName(name: string | undefined, countryCode: string): string {
+  const trimmed = (name ?? "").trim();
+  if (trimmed.length > 0) return trimmed;
+  return countryCode === "ZZ" ? "Unknown" : countryCode;
 }
 
 function broadcast(): void {
@@ -120,6 +165,9 @@ export function registerLiveSession(payload: GoLivePayload): LiveSession {
     droppedFramesPct: 0,
     rttMs:            0,
     audioOk:          true,
+    audienceCountries: [],
+    recentAudienceEntries: [],
+    lastAudienceEntryAt: null,
   };
 
   sessions.set(payload.userId, session);
@@ -224,6 +272,49 @@ export function updateStageState(userId: string, state: StageState): void {
   if (s) { s.stageState = state; broadcast(); }
 }
 
+export function registerAudienceEntry(payload: AudienceEntryPayload): LiveSession | null {
+  const session = Array.from(sessions.values()).find((s) => s.roomId === payload.roomId);
+  if (!session) return null;
+
+  const now = Date.now();
+  const viewerId = payload.viewerId?.trim();
+  if (viewerId) {
+    const duplicate = session.recentAudienceEntries.find(
+      (entry) => entry.viewerId === viewerId && now - entry.at < AUDIENCE_DUPLICATE_WINDOW_MS,
+    );
+    if (duplicate) return session;
+  }
+
+  const countryCode = normalizeCountryCode(payload.countryCode);
+  const countryName = normalizeCountryName(payload.countryName, countryCode);
+
+  const idx = session.audienceCountries.findIndex((c) => c.countryCode === countryCode);
+  if (idx >= 0) {
+    session.audienceCountries[idx]!.count += 1;
+  } else {
+    session.audienceCountries.push({ countryCode, countryName, count: 1 });
+  }
+  session.audienceCountries = session.audienceCountries
+    .slice()
+    .sort((a, b) => b.count - a.count)
+    .slice(0, MAX_AUDIENCE_COUNTRIES);
+
+  const entry: AudienceEntryEvent = {
+    id: `${payload.roomId}-${now}-${Math.random().toString(36).slice(2, 8)}`,
+    at: now,
+    countryCode,
+    countryName,
+    viewerCount: session.viewerCount,
+    viewerId,
+    source: payload.source,
+  };
+
+  session.recentAudienceEntries = [entry, ...session.recentAudienceEntries].slice(0, MAX_AUDIENCE_ENTRIES);
+  session.lastAudienceEntryAt = now;
+  broadcast();
+  return session;
+}
+
 export function getSession(userId: string): LiveSession | null {
   return sessions.get(userId) ?? null;
 }
@@ -286,6 +377,9 @@ export function getSeedSessions(): LiveSession[] {
       droppedFramesPct: 0,
       rttMs:            0,
       audioOk:          true,
+      audienceCountries: [],
+      recentAudienceEntries: [],
+      lastAudienceEntryAt: null,
     }));
 }
 

@@ -5,5 +5,5 @@ interface Props {
 }
 
 export default function VenueSlugPage({ params }: Props) {
-  redirect(`/venues/${params.slug}`);
+  redirect(`/venue/${params.slug}`);
 }

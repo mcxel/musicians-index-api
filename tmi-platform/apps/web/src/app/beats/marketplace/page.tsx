@@ -1,6 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { listBeatCatalog, type BeatCatalogEntry } from "@/lib/beats/BeatStoreEngine";
 import TieredAdSlot from "@/components/ads/TieredAdSlot";
 
@@ -16,6 +18,65 @@ const LICENSE_TIERS: { key: "mp3-lease" | "wav-lease" | "unlimited-lease" | "exc
 
 function fmt(cents: number) {
   return `$${(cents / 100).toFixed(0)}`;
+}
+
+function BeatCheckoutButton({
+  beatId,
+  licenseType,
+  price,
+  label,
+  color,
+}: {
+  beatId: string;
+  licenseType: string;
+  price: number;
+  label: string;
+  color: string;
+}) {
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
+
+  async function handleBuy() {
+    if (loading) return;
+    setLoading(true);
+    try {
+      const res = await fetch("/api/beats/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ beatId, licenseType, price }),
+        credentials: "include",
+      });
+      const data = await res.json() as { ok?: boolean; url?: string; error?: string };
+      if (data.url) {
+        router.push(data.url);
+      } else {
+        setLoading(false);
+      }
+    } catch {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <button
+      onClick={() => void handleBuy()}
+      disabled={loading}
+      style={{
+        textAlign: "center",
+        padding: "8px 4px",
+        fontSize: 9,
+        fontWeight: 800,
+        color: loading ? "rgba(255,255,255,0.3)" : color,
+        border: `1px solid ${color}55`,
+        borderRadius: 7,
+        background: loading ? "rgba(255,255,255,0.04)" : `${color}08`,
+        cursor: loading ? "not-allowed" : "pointer",
+        width: "100%",
+      }}
+    >
+      {label}<br />{loading ? "…" : fmt(price)}
+    </button>
+  );
 }
 
 function BeatCard({ beat, index }: { beat: BeatCatalogEntry; index: number }) {
@@ -55,17 +116,14 @@ function BeatCard({ beat, index }: { beat: BeatCatalogEntry; index: number }) {
         {LICENSE_TIERS.map(({ key, label, color }) => {
           const price = beat.licensePricing[key];
           return (
-            <Link
+            <BeatCheckoutButton
               key={key}
-              href={`/api/stripe/checkout?beatId=${beat.beatId}&license=${key}&price=${price}`}
-              style={{
-                textAlign: "center", padding: "8px 4px", fontSize: 9, fontWeight: 800,
-                color, border: `1px solid ${color}55`, borderRadius: 7, textDecoration: "none",
-                background: `${color}08`,
-              }}
-            >
-              {label}<br />{fmt(price)}
-            </Link>
+              beatId={beat.beatId}
+              licenseType={key}
+              price={price}
+              label={label}
+              color={color}
+            />
           );
         })}
       </div>

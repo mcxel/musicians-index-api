@@ -14,12 +14,12 @@ const ACCENT = "#FFD700";
 const BG = "#050510";
 
 const STATS = [
-  { label: "Active Campaigns", value: "7",       sub: "Running now",          color: "#FFD700" },
-  { label: "Total Impressions", value: "2.4M",   sub: "Last 30 days",         color: "#00FFFF" },
-  { label: "Artists Sponsored", value: "18",     sub: "Active agreements",    color: "#AA2DFF" },
-  { label: "Budget Deployed",   value: "$42K",   sub: "This season",          color: "#FF2DAA" },
-  { label: "Avg Engagement",    value: "8.3%",   sub: "Click-through rate",   color: "#00FF88" },
-  { label: "ROI",               value: "3.7×",   sub: "Return on spend",      color: "#FFD700" },
+  { label: "Active Campaigns", value: "0",  sub: "Launch your first campaign", color: "#FFD700" },
+  { label: "Total Impressions", value: "0", sub: "Impressions this period",    color: "#00FFFF" },
+  { label: "Artists Sponsored", value: "0", sub: "Active agreements",          color: "#AA2DFF" },
+  { label: "Budget Deployed",   value: "$0",sub: "This season",                color: "#FF2DAA" },
+  { label: "Avg Engagement",    value: "—", sub: "No campaigns yet",           color: "#00FF88" },
+  { label: "ROI",               value: "—", sub: "No spend recorded",          color: "#FFD700" },
 ];
 
 const QUICK_LINKS = [
@@ -33,12 +33,9 @@ const QUICK_LINKS = [
   { href: "/sponsor/profile",     label: "Brand Profile",   icon: "🏢", color: "#AA2DFF" },
 ];
 
-const TOP_ARTISTS = [
-  { name: "Nova Cipher",  genre: "EDM",      engagement: "9.4%", slug: "nova-cipher",  color: "#FFD700" },
-  { name: "Astra Nova",   genre: "R&B",      engagement: "8.1%", slug: "astra-nova",   color: "#FF2DAA" },
-  { name: "Zion Freq",    genre: "Hip-Hop",  engagement: "7.8%", slug: "zion-freq",    color: "#00FFFF" },
-  { name: "DJ Lumi",      genre: "House",    engagement: "7.2%", slug: "dj-lumi",      color: "#AA2DFF" },
-];
+// TOP_ARTISTS intentionally empty — no fabricated sponsorship data; real sponsored
+// artists will appear here once campaigns are live and fetched from the API.
+const TOP_ARTISTS: { name: string; genre: string; engagement: string; slug: string; color: string }[] = [];
 
 function RailSkeleton() {
   return (
@@ -101,20 +98,26 @@ export default function SponsorHubShell() {
             <div style={{ fontSize: 9, letterSpacing: "0.22em", color: ACCENT, fontWeight: 800 }}>TOP SPONSORED ARTISTS</div>
             <Link href="/artists" style={{ fontSize: 9, color: "rgba(255,255,255,0.3)", textDecoration: "none", letterSpacing: "0.08em" }}>BROWSE ALL →</Link>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 10 }}>
-            {TOP_ARTISTS.map((a) => (
-              <Link key={a.slug} href={`/artist/${a.slug}`} style={{ textDecoration: "none", color: "#fff" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", background: `${a.color}0A`, border: `1px solid ${a.color}28`, borderRadius: 10 }}>
-                  <div style={{ width: 36, height: 36, borderRadius: "50%", background: `linear-gradient(135deg, ${a.color}, ${BG})`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>🎤</div>
-                  <div>
-                    <div style={{ fontSize: 12, fontWeight: 800 }}>{a.name}</div>
-                    <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", marginTop: 1 }}>{a.genre}</div>
-                    <div style={{ fontSize: 9, color: a.color, fontWeight: 700, marginTop: 2 }}>{a.engagement} CTR</div>
+          {TOP_ARTISTS.length === 0 ? (
+            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", padding: "16px 0", textAlign: "center" }}>
+              No sponsored artists yet. <Link href="/artists" style={{ color: ACCENT, textDecoration: "none", fontWeight: 700 }}>Browse artists →</Link>
+            </div>
+          ) : (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 10 }}>
+              {TOP_ARTISTS.map((a) => (
+                <Link key={a.slug} href={`/artist/${a.slug}`} style={{ textDecoration: "none", color: "#fff" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", background: `${a.color}0A`, border: `1px solid ${a.color}28`, borderRadius: 10 }}>
+                    <div style={{ width: 36, height: 36, borderRadius: "50%", background: `linear-gradient(135deg, ${a.color}, ${BG})`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>🎤</div>
+                    <div>
+                      <div style={{ fontSize: 12, fontWeight: 800 }}>{a.name}</div>
+                      <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", marginTop: 1 }}>{a.genre}</div>
+                      <div style={{ fontSize: 9, color: a.color, fontWeight: 700, marginTop: 2 }}>{a.engagement} CTR</div>
+                    </div>
                   </div>
-                </div>
-              </Link>
-            ))}
-          </div>
+                </Link>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Rails */}

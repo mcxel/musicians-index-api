@@ -5,6 +5,7 @@ import Link from 'next/link';
 import MediaMonitor from '@/components/video/MediaMonitor';
 import TrustKillerFeed from '@/components/admin/TrustKillerFeed';
 import UnifiedInbox from '@/components/admin/overseer/UnifiedInbox';
+import OverseerDeck from '@/components/admin/OverseerDeck';
 
 const SYSTEM_HEALTH = [
   { id: 'auth',     label: 'AUTH',     status: 'GREEN', color: '#00FF88' },
@@ -113,6 +114,11 @@ export default function OverseerDeckPage() {
             </div>
           </div>
         ))}
+      </div>
+
+      {/* 8-Monitor Telemetry Wall — real data from observatory-summary */}
+      <div style={{ marginBottom: 12 }}>
+        <OverseerDeck />
       </div>
 
       {/* Main 3-column grid — video wall (center) is the dominant element, sidebars are secondary */}

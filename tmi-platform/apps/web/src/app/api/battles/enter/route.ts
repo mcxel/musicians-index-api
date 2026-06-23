@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getStripe } from '@/lib/stripe/client';
 import { battleChallengeEconomyEngine } from '@/lib/competition/BattleChallengeEconomyEngine';
+import { seedRoomWithBots } from '@/lib/live/audienceRuntimeEngine';
 
 const ENTRY_FEES = {
   free:     0,
@@ -35,7 +36,10 @@ export async function POST(req: NextRequest) {
       }
       battleChallengeEconomyEngine.spendPoints(challengerId, pointCost);
     }
-    return NextResponse.json({ ok: true, method: 'points', battleId, entryTier });
+    // Seed engagement bots into the battle room so it feels populated on entry
+    const battleRoomId = `battle-${battleId}`;
+    seedRoomWithBots(battleRoomId, 15);
+    return NextResponse.json({ ok: true, method: 'points', battleId, entryTier, battleRoomId });
   }
 
   // Stripe checkout

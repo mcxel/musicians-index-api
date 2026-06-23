@@ -67,6 +67,19 @@ export async function POST(req: NextRequest) {
       maxAge: 60 * 60 * 24 * 30,
       path: '/',
     });
+
+    // Set Stripe customer ID cookie so the customer portal can redirect properly
+    const stripeCustomerId = typeof session.customer === 'string' ? session.customer : '';
+    if (stripeCustomerId) {
+      res.cookies.set('tmi_stripe_customer_id', stripeCustomerId, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 60 * 60 * 24 * 365, // 1 year — customer ID is stable
+        path: '/',
+      });
+    }
+
     return res;
   } catch (err) {
     console.error('[subscriptions/activate]', err);

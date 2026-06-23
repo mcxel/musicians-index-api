@@ -55,6 +55,26 @@ function normalizeRef(input: string | null): string | null {
   return value || null;
 }
 
+// Extract all user roles from tmi_roles cookie (multi-role support)
+function getUserRoles(req: NextRequest): string[] {
+  try {
+    const rolesJson = req.cookies.get('tmi_roles')?.value;
+    if (rolesJson) {
+      const parsed = JSON.parse(rolesJson);
+      return Array.isArray(parsed) ? parsed : [];
+    }
+  } catch {}
+
+  // Fallback: single role cookie
+  const singleRole = req.cookies.get('tmi_role')?.value;
+  return singleRole ? [singleRole] : [];
+}
+
+// Check if user has any of the required roles
+function hasAnyRole(userRoles: string[], requiredRoles: string[]): boolean {
+  return userRoles.some(r => requiredRoles.includes(r.toUpperCase()));
+}
+
 function isPlaylistSurface(pathname: string): boolean {
   return (
     pathname.startsWith('/playlist') ||
@@ -135,7 +155,8 @@ export function middleware(req: NextRequest) {
 
   if (isExplicitAdminPath) {
     const sessionCookie = req.cookies.get('tmi_session')?.value;
-    const tokenRole = (req.cookies.get('tmi_role')?.value ?? '').toUpperCase();
+    const userRoles = getUserRoles(req);
+    const hasAdminAccess = hasAnyRole(userRoles, ['ADMIN', 'STAFF']);
 
     if (!sessionCookie) {
       if (pathname.startsWith('/api/')) {
@@ -146,7 +167,7 @@ export function middleware(req: NextRequest) {
       return NextResponse.redirect(signin, 307);
     }
 
-    if (tokenRole !== 'ADMIN' && tokenRole !== 'STAFF') {
+    if (!hasAdminAccess) {
       if (pathname.startsWith('/api/')) {
         return NextResponse.json({ error: 'Forbidden: admin role required' }, { status: 403 });
       }
@@ -170,6 +191,43 @@ export function middleware(req: NextRequest) {
     return NextResponse.redirect(new URL(LEGACY_REDIRECTS[pathname], req.url), 301);
   }
 
+  // Hub path multi-role routing: verify user has the role they're accessing
+  const hubMatch = pathname.match(/^\/hub\/([a-z-]+)/);
+  if (hubMatch) {
+    const sessionCookie = req.cookies.get('tmi_session')?.value;
+    if (sessionCookie) {
+      const requestedRole = hubMatch[1]; // 'fan', 'performer', 'sponsor', etc.
+      const userRoles = getUserRoles(req);
+
+      // Map dashboard path to required roles
+      const roleMap: Record<string, string[]> = {
+        'fan': ['FAN'],
+        'performer': ['PERFORMER', 'ARTIST'],
+        'sponsor': ['SPONSOR'],
+        'advertiser': ['ADVERTISER'],
+        'venue': ['VENUE'],
+        'writer': ['WRITER'],
+        'promoter': ['PROMOTER'],
+      };
+
+      const allowedRoles = roleMap[requestedRole] || [];
+      const hasAccess = hasAnyRole(userRoles, allowedRoles);
+
+      if (!hasAccess) {
+        // Redirect to first available HQ path based on user's roles
+        let redirectPath = '/hub/fan'; // Default fallback
+        if (hasAnyRole(userRoles, ['PERFORMER', 'ARTIST'])) redirectPath = '/hub/performer';
+        else if (hasAnyRole(userRoles, ['SPONSOR'])) redirectPath = '/hub/sponsor';
+        else if (hasAnyRole(userRoles, ['ADVERTISER'])) redirectPath = '/hub/advertiser';
+        else if (hasAnyRole(userRoles, ['VENUE'])) redirectPath = '/hub/venue';
+        else if (hasAnyRole(userRoles, ['WRITER'])) redirectPath = '/hub/writer';
+        else if (hasAnyRole(userRoles, ['PROMOTER'])) redirectPath = '/hub/promoter';
+
+        return NextResponse.redirect(new URL(redirectPath, req.url), 307);
+      }
+    }
+  }
+
   if (pathname === '/account/recovery') {
     return NextResponse.redirect(
       new URL('/support/account-recovery' + (search || ''), req.url),
@@ -186,7 +244,8 @@ export function middleware(req: NextRequest) {
 
   if (pathname === '/contest/admin' || pathname.startsWith('/contest/admin/')) {
     const sessionCookie = req.cookies.get('tmi_session')?.value;
-    const tokenRole = (req.cookies.get('tmi_role')?.value ?? '').toUpperCase();
+    const userRoles = getUserRoles(req);
+    const hasAdminAccess = hasAnyRole(userRoles, ['ADMIN', 'STAFF']);
 
     if (!sessionCookie) {
       const signin = new URL('/auth/signin', req.url);
@@ -194,7 +253,7 @@ export function middleware(req: NextRequest) {
       return NextResponse.redirect(signin, 307);
     }
 
-    if (tokenRole !== 'ADMIN' && tokenRole !== 'STAFF') {
+    if (!hasAdminAccess) {
       return NextResponse.redirect(new URL('/home/1', req.url), 307);
     }
   }
@@ -211,9 +270,20 @@ export function middleware(req: NextRequest) {
 
   if (isAuthSurface) {
     const sessionCookie = req.cookies.get('tmi_session')?.value;
-    const tokenRole = (req.cookies.get('tmi_role')?.value ?? '').toUpperCase();
     if (sessionCookie) {
-      const target = nextParam || roleDashboardPath(tokenRole);
+      const userRoles = getUserRoles(req);
+
+      // Determine redirect path based on available roles
+      let redirectPath = '/hub/fan'; // Default
+      if (hasAnyRole(userRoles, ['PERFORMER', 'ARTIST'])) redirectPath = '/hub/performer';
+      else if (hasAnyRole(userRoles, ['SPONSOR'])) redirectPath = '/hub/sponsor';
+      else if (hasAnyRole(userRoles, ['ADVERTISER'])) redirectPath = '/hub/advertiser';
+      else if (hasAnyRole(userRoles, ['VENUE'])) redirectPath = '/hub/venue';
+      else if (hasAnyRole(userRoles, ['WRITER'])) redirectPath = '/hub/writer';
+      else if (hasAnyRole(userRoles, ['PROMOTER'])) redirectPath = '/hub/promoter';
+      else if (hasAnyRole(userRoles, ['ADMIN', 'STAFF'])) redirectPath = '/admin';
+
+      const target = nextParam || redirectPath;
       return NextResponse.redirect(new URL(target, req.url), 307);
     }
   }
@@ -223,8 +293,8 @@ export function middleware(req: NextRequest) {
   // Default: allow (cookie absent = site has never been locked down).
   const visibility = req.cookies.get('tmi_visibility')?.value ?? 'public';
   if (visibility === 'private' && !matchesAny(pathname, VISIBILITY_WHITELIST)) {
-    const role = (req.cookies.get('tmi_role')?.value ?? '').toUpperCase();
-    const isAdminUser = role === 'ADMIN' || role === 'STAFF';
+    const userRoles = getUserRoles(req);
+    const isAdminUser = hasAnyRole(userRoles, ['ADMIN', 'STAFF']);
     if (!isAdminUser) {
       if (pathname.startsWith('/api/')) {
         return NextResponse.json({ error: 'Platform not yet public', code: 'PRIVATE_MODE' }, { status: 503 });
@@ -243,7 +313,7 @@ export function middleware(req: NextRequest) {
 
   if (isAdmin || isProtected) {
     const sessionCookie = req.cookies.get('tmi_session')?.value;
-    const tokenRole     = (req.cookies.get('tmi_role')?.value ?? '').toUpperCase();
+    const userRoles = getUserRoles(req);
 
     if (!sessionCookie) {
       if (pathname.startsWith('/api/')) {
@@ -254,7 +324,7 @@ export function middleware(req: NextRequest) {
       return NextResponse.redirect(signin, 307);
     }
 
-    if (isAdmin && tokenRole !== 'ADMIN' && tokenRole !== 'STAFF') {
+    if (isAdmin && !hasAnyRole(userRoles, ['ADMIN', 'STAFF'])) {
       if (pathname.startsWith('/api/')) {
         return NextResponse.json({ error: 'Forbidden: admin role required' }, { status: 403 });
       }

@@ -40,10 +40,34 @@ export default function PerformerProfilePage() {
   useEffect(() => {
     fetch("/api/auth/session", { credentials: "include" })
       .then(r => r.json())
-      .then((d: { authenticated?: boolean; user?: MeUser }) => {
+      .then(async (d: { authenticated?: boolean; user?: MeUser }) => {
         if (!d.authenticated || !d.user) { router.replace("/auth"); return; }
+        const fallbackName = d.user.name ?? d.user.email.split("@")[0] ?? "";
+        try {
+          const profileRes = await fetch("/api/profile/self", { credentials: "include", cache: "no-store" });
+          if (profileRes.ok) {
+            const profileData = await profileRes.json() as {
+              profile?: { id: string; displayName?: string | null; bio?: string | null; avatarUrl?: string | null; genres?: string[]; tier?: string | null };
+            };
+            if (profileData.profile) {
+              setUser({
+                ...d.user,
+                id: profileData.profile.id,
+                tier: profileData.profile.tier ?? d.user.tier,
+                image: profileData.profile.avatarUrl ?? null,
+              });
+              setDisplayName(profileData.profile.displayName ?? fallbackName);
+              setBio(profileData.profile.bio ?? "");
+              setGenres((profileData.profile.genres ?? []).join(", "));
+              return;
+            }
+          }
+        } catch {
+          // fall through to session-only values
+        }
+
         setUser(d.user);
-        setDisplayName(d.user.name ?? d.user.email.split("@")[0] ?? "");
+        setDisplayName(fallbackName);
       })
       .catch(() => router.replace("/auth"));
   }, [router]);
@@ -54,13 +78,18 @@ export default function PerformerProfilePage() {
     setSaveMsg("");
     try {
       const fd = new FormData(e.currentTarget);
-      await fetch("/api/profile/update", {
+      const rawGenres = String(fd.get("genres") ?? "")
+        .split(",")
+        .map((g) => g.trim())
+        .filter(Boolean);
+
+      const res = await fetch("/api/profile/update", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           displayName: fd.get("displayName"),
           bio: fd.get("bio"),
-          genres: fd.get("genres"),
+          genres: rawGenres,
           instagram: fd.get("instagram"),
           youtube: fd.get("youtube"),
           soundcloud: fd.get("soundcloud"),
@@ -68,8 +97,13 @@ export default function PerformerProfilePage() {
         }),
         credentials: "include",
       });
-      setSaveMsg("Saved!");
-      setEditing(false);
+      const data = await res.json() as { saved?: boolean };
+      if (res.ok && data.saved) {
+        setSaveMsg("Saved!");
+        setEditing(false);
+      } else {
+        setSaveMsg("Save failed — try again.");
+      }
     } catch {
       setSaveMsg("Save failed — try again.");
     } finally {

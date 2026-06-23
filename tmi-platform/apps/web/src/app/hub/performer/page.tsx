@@ -18,6 +18,7 @@ import CollapsibleCanister from "@/components/canisters/CollapsibleCanister";
 import MemoryWall from "@/components/media/MemoryWall";
 import PlaylistArtifact from "@/components/artifacts/PlaylistArtifact";
 import HeadquartersCommunicationDock from "@/components/headquarters/HeadquartersCommunicationDock";
+import OpportunityDockPanel from "@/components/hubs/OpportunityDockPanel";
 import { useTmiSession } from "@/hooks/SessionContext";
 import { getLatestEditorialArticles } from "@/lib/editorial/NewsArticleModel";
 
@@ -56,10 +57,31 @@ interface MessageThreadRow {
   lastMessageBody: string | null;
 }
 
+interface AudienceEntryEvent {
+  id: string;
+  at: number;
+  countryCode: string;
+  countryName: string;
+  viewerCount: number;
+}
+
+interface AudienceCountrySlice {
+  countryCode: string;
+  countryName: string;
+  count: number;
+}
+
+interface PerformerLiveStatus {
+  isLive: boolean;
+  audienceCount: number;
+  recentAudienceEntries: AudienceEntryEvent[];
+  audienceCountries: AudienceCountrySlice[];
+}
+
 export default function PerformerHubPage() {
   const [bookings, setBookings] = useState<BookingRow[] | null>(null);
   const [threads, setThreads]   = useState<MessageThreadRow[] | null>(null);
-  const [liveStatus, setLiveStatus] = useState<{ isLive: boolean; audienceCount: number }>({ isLive: false, audienceCount: 0 });
+  const [liveStatus, setLiveStatus] = useState<PerformerLiveStatus>({ isLive: false, audienceCount: 0, recentAudienceEntries: [], audienceCountries: [] });
   const { userId, userName } = useTmiSession();
   const magazineFeatures = getLatestEditorialArticles(3);
 
@@ -90,12 +112,25 @@ export default function PerformerHubPage() {
     const checkLive = () => {
       fetch('/api/live/go', { cache: 'no-store' })
         .then((r) => r.json())
-        .then((d: { sessions?: { userId: string; viewerCount: number }[] }) => {
+        .then((d: { sessions?: { userId: string; viewerCount: number; recentAudienceEntries?: AudienceEntryEvent[]; audienceCountries?: AudienceCountrySlice[] }[] }) => {
           if (cancelled) return;
           const mine = d.sessions?.find((s) => s.userId === userId);
-          setLiveStatus(mine ? { isLive: true, audienceCount: mine.viewerCount } : { isLive: false, audienceCount: 0 });
+          setLiveStatus(
+            mine
+              ? {
+                  isLive: true,
+                  audienceCount: mine.viewerCount,
+                  recentAudienceEntries: mine.recentAudienceEntries ?? [],
+                  audienceCountries: mine.audienceCountries ?? [],
+                }
+              : { isLive: false, audienceCount: 0, recentAudienceEntries: [], audienceCountries: [] },
+          );
         })
-        .catch(() => { if (!cancelled) setLiveStatus({ isLive: false, audienceCount: 0 }); });
+        .catch(() => {
+          if (!cancelled) {
+            setLiveStatus({ isLive: false, audienceCount: 0, recentAudienceEntries: [], audienceCountries: [] });
+          }
+        });
     };
     checkLive();
     const id = setInterval(checkLive, 10000);
@@ -147,6 +182,9 @@ export default function PerformerHubPage() {
 
           <div style={{ maxWidth: 1300, margin: "0 auto", padding: "0 24px 40px", display: "flex", flexDirection: "column", gap: 32 }}>
 
+            {/* Always-visible opportunity dock for battles/cyphers/challenges from live registry */}
+            <OpportunityDockPanel performerId={userId} compact={false} />
+
             {/* Primary controls stay visible on the main surface (not hidden in canisters). */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(6, minmax(120px, 1fr))", gap: 10 }}>
               {[
@@ -192,6 +230,9 @@ export default function PerformerHubPage() {
                   adZone="hub-performer"
                   showAudienceMonitor
                   audienceCount={liveStatus.audienceCount}
+                  audienceEntryEvents={liveStatus.recentAudienceEntries}
+                  audienceCountryDistribution={liveStatus.audienceCountries}
+                  showAudiencePulse
                 />
 
                 <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
@@ -316,11 +357,7 @@ export default function PerformerHubPage() {
                   <div style={{ fontSize: 9, letterSpacing: "0.2em", color: "#FF6B35", fontWeight: 800 }}>🎞️ MEMORY WALL</div>
                   <span style={{ fontSize: 8, color: "rgba(255,255,255,0.35)" }}>Videos · Photos · Audio</span>
                 </div>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
-                  {["🎤","🎵","⚔️","👑","🏆","🔥","💎","🎭"].map((e, i) => (
-                    <div key={i} style={{ aspectRatio: "1", background: "rgba(255,255,255,0.04)", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, cursor: "pointer", border: "1px solid rgba(255,255,255,0.07)" }}>{e}</div>
-                  ))}
-                </div>
+                <MemoryWall accentColor="#FF6B35" title="" entityId={userId} entityType="performer" />
                 <Link href="/fan/theater" style={{ display: "block", marginTop: 10, fontSize: 10, color: "#FF6B35", textDecoration: "none", fontWeight: 700 }}>View all memories →</Link>
               </div>
 

@@ -330,7 +330,7 @@ export default function Home5BattleCypherSurface() {
             { label: "⚔️ BATTLES WALL",   href: "/battles/lobby-wall",    accent: "#FF2DAA" },
             { label: "🎤 CIPHERS WALL",   href: "/cypher/lobby-wall",     accent: "#AA2DFF" },
             { label: "🏆 CHALLENGES WALL",href: "/challenges/lobby-wall", accent: "#00FFFF" },
-            { label: "🎮 GAMES WALL",     href: "/games/lobby-wall",      accent: "#FFD700" },
+            { label: "🎮 GAMES WALL",     href: "/games",      accent: "#FFD700" },
           ].map((w) => (
             <Link
               key={w.href}
@@ -384,10 +384,10 @@ export default function Home5BattleCypherSurface() {
 
           <div data-cbc-grid style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12 }}>
             {[
-              { label: "Active Challenges", value: "12",   color: "#AA2DFF" },
-              { label: "Open Submissions",  value: "3",    color: "#00FFFF" },
-              { label: "This Week's Pool",  value: "$400", color: "#FFD700" },
-              { label: "Fan Votes Cast",    value: "9,240",color: "#00FF88" },
+              { label: "Active Challenges", value: activeChallenges.length.toString(), color: "#AA2DFF" },
+              { label: "Open Submissions",  value: "—",    color: "#00FFFF" },
+              { label: "This Week's Pool",  value: "—", color: "#FFD700" },
+              { label: "Fan Votes Cast",    value: "—", color: "#00FF88" },
             ].map((m) => (
               <div key={m.label} style={{ background: "rgba(0,0,0,0.3)", border: `1px solid ${m.color}33`, borderRadius: 10, padding: "14px 16px", textAlign: "center" }}>
                 <div style={{ fontSize: 24, fontWeight: 900, color: m.color }}>{m.value}</div>
@@ -507,7 +507,7 @@ export default function Home5BattleCypherSurface() {
               { label: "XP Reward",      value: "400 XP", color: "#00FFFF" },
               { label: "Points",         value: "3,000",  color: "#FFD700" },
               { label: "Unlock",         value: "Badge",  color: "#AA2DFF" },
-              { label: "Styles Active",  value: "8",      color: "#00FF88" },
+              { label: "Styles Active",  value: liveCyphers.length > 0 ? liveCyphers.length.toString() : "—", color: "#00FF88" },
             ].map((m) => (
               <div key={m.label} style={{ background: "rgba(0,0,0,0.3)", border: `1px solid ${m.color}33`, borderRadius: 10, padding: "14px 16px", textAlign: "center" }}>
                 <div style={{ fontSize: 20, fontWeight: 900, color: m.color }}>{m.value}</div>
@@ -638,12 +638,12 @@ export default function Home5BattleCypherSurface() {
         <SmartCameraDirector />
       </div>
 
-      {/* ── Stat Metrics ── */}
+      {/* ── Stat Metrics — Rule 20: only real data, never hardcoded live stats ── */}
       <div style={{ maxWidth: 1100, margin: "0 auto", padding: "0 24px 24px" }}>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 10 }}>
-          <TmiMetric value="08"    label="Live Rooms"       color="#00FFFF" />
-          <TmiMetric value="1,240" label="Season XP Movers" color="#FFD700" />
-          <TmiMetric value="$38K"  label="Prize Pool"       color="#00FF88" />
+          <TmiMetric value={(liveBattles.length + liveCyphers.length).toString().padStart(2, '0')} label="Live Rooms" color="#00FFFF" />
+          <TmiMetric value="—" label="Season XP Movers" color="#FFD700" />
+          <TmiMetric value="—" label="Prize Pool" color="#00FF88" />
         </div>
       </div>
 

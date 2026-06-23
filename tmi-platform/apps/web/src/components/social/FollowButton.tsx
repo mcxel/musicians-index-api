@@ -39,10 +39,10 @@ export default function FollowButton({
 
     try {
       await fetch("/api/social/follow", {
-        method: next ? "POST" : "DELETE",
+        method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ targetUserId }),
+        body: JSON.stringify({ userId: targetUserId, action: next ? "follow" : "unfollow" }),
       });
     } catch {
       // Revert on network failure

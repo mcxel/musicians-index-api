@@ -2,6 +2,14 @@ import Link from "next/link";
 import ProfileShell from "@/components/profile/ProfileShell";
 import UniversalMediaPanel from "@/components/media/UniversalMediaPanel";
 import MemoryWall from "@/components/media/MemoryWall";
+import { getVenueBySlug } from "@/lib/venues/VenueRegistry";
+// ── Rule 15 Canisters ──────────────────────────────────────────────────────────
+import { PlaylistCanister } from "@/components/canisters/PlaylistCanister";
+import { BookingCanister } from "@/components/canisters/BookingCanister";
+import MessagingCanister from "@/components/canisters/MessagingCanister";
+import { PublicLobbyCanister } from "@/components/canisters/PublicLobbyCanister";
+import { PrivateLobbyCanister } from "@/components/canisters/PrivateLobbyCanister";
+import { LiveLobbyWallCanister } from "@/components/canisters/LiveLobbyWallCanister";
 
 interface Props {
   params: { slug: string };
@@ -19,53 +27,29 @@ interface SeedVenue {
   activeRooms: number;
 }
 
-const SEED_VENUES: Record<string, SeedVenue> = {
-  "cypher-arena": {
-    displayName: "Cypher Arena",
-    tagline: "TMI's premiere battle rap and cypher venue. Season 1 flagship.",
-    isVerified: true,
-    city: "Atlanta, GA",
-    capacity: 2500,
-    genres: ["Hip-Hop", "Battle Rap", "Cypher"],
-    showsThisMonth: 12,
-    isLive: true,
-    activeRooms: 3,
-  },
-  "thunder-world": {
-    displayName: "Thunder World",
-    tagline: "High-energy arena. Home of the weekly beat championship.",
-    isVerified: true,
-    city: "Los Angeles, CA",
-    capacity: 5000,
-    genres: ["Trap", "EDM", "Hip-Hop"],
-    showsThisMonth: 8,
-    isLive: false,
-    activeRooms: 1,
-  },
-  "the-underground": {
-    displayName: "The Underground",
-    tagline: "Intimate live sessions, open mics, and producer showcases.",
-    isVerified: false,
-    city: "New York, NY",
-    capacity: 400,
-    genres: ["Jazz", "R&B", "Soul", "Hip-Hop"],
-    showsThisMonth: 20,
-    isLive: false,
-    activeRooms: 0,
-  },
-};
-
 function titleCase(slug: string) {
   return slug.split("-").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
 }
 
-// Rule 20 — no plausible-looking fabricated numbers for venues outside the
-// 3 explicit curated entries above. city/capacity/genres/showsThisMonth were
-// previously hash-derived from the slug (e.g. "capacity: 300 + hash%4700"),
-// which is exactly the fake-Diamond-tier bug class found on the fan profile.
-// Honest defaults until a real Venue registry/DB record backs this slug.
+// Rule 1 (Upload Pipeline) + Rule 8 (Registry First): VenueRegistry is the
+// canonical source for venue identity — a title-cased slug shell should only
+// ever be the fallback for venues that genuinely have no registry entry yet.
 function seedVenue(slug: string): SeedVenue {
-  if (SEED_VENUES[slug]) return SEED_VENUES[slug]!;
+  const registered = getVenueBySlug(slug);
+  if (registered) {
+    return {
+      displayName: registered.name,
+      tagline: `${registered.category} venue on The Musician's Index.`,
+      isVerified: false,
+      city: registered.city,
+      capacity: registered.capacity,
+      genres: [registered.category],
+      showsThisMonth: registered.upcomingEventIds.length,
+      isLive: registered.isLive,
+      activeRooms: registered.isLive ? 1 : 0,
+    };
+  }
+
   return {
     displayName: titleCase(slug),
     tagline: `Live music venue on The Musician's Index.`,
@@ -192,6 +176,16 @@ export default function VenueProfilePage({ params }: Props) {
 
       <div style={{ padding: "0 24px 16px" }}>
         <MemoryWall accentColor={GREEN} title={`${venue.displayName} — Memory Wall`} entityId={params.slug} entityType="venue" />
+      </div>
+
+      {/* ── Rule 15 Canister Section ── */}
+      <div style={{ padding: "0 24px", display: "flex", flexDirection: "column", gap: 20, paddingBottom: 40 }}>
+        <PlaylistCanister entityId={params.slug} entityName={venue.displayName} accentColor="#AA2DFF" />
+        <BookingCanister entityId={params.slug} entityType="venue" accentColor={GREEN} showRequestForm={true} />
+        <MessagingCanister recipientId={params.slug} recipientName={venue.displayName} height={400} compact />
+        <PublicLobbyCanister entityId={params.slug} entityName={venue.displayName} accentColor={GREEN} />
+        <PrivateLobbyCanister entityId={params.slug} entityName={venue.displayName} accentColor={PURPLE} />
+        <LiveLobbyWallCanister accentColor={GREEN} maxRooms={6} />
       </div>
     </ProfileShell>
   );

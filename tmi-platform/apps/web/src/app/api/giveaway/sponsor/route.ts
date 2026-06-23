@@ -10,6 +10,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { sponsorGiveawayEngine } from '@/lib/giveaway/SponsorGiveawayEngine';
 import type { GiveawayPrize } from '@/lib/giveaway/SponsorGiveawayEngine';
+import { revenueFirstRewardsGovernor } from '@/lib/economy/RevenueFirstRewardsGovernor';
 
 function getSponsorId(req: NextRequest): string | null {
   const email = req.cookies.get('tmi_user_email')?.value ?? '';
@@ -40,6 +41,29 @@ export async function POST(req: NextRequest) {
     if (!title || !prizes || !Array.isArray(prizes) || prizes.length === 0) {
       return NextResponse.json({ error: 'title and prizes[] required' }, { status: 400 });
     }
+
+    const prizePoolCents = (prizes as GiveawayPrize[]).reduce((sum, prize) => {
+      const qty = Math.max(1, Number((prize as { quantity?: number }).quantity ?? 1));
+      const amount = Math.max(0, Number((prize as { amountCents?: number }).amountCents ?? 0));
+      return sum + (qty * amount);
+    }, 0);
+
+    const economics = revenueFirstRewardsGovernor.assessEventEconomics({
+      expectedRevenueCents: Math.max(0, Number((body as { expectedRevenueCents?: number }).expectedRevenueCents ?? 0)),
+      expectedOperatingCostCents: Math.max(0, Number((body as { expectedOperatingCostCents?: number }).expectedOperatingCostCents ?? 0)),
+      expectedInfrastructureCostCents: Math.max(0, Number((body as { expectedInfrastructureCostCents?: number }).expectedInfrastructureCostCents ?? 0)),
+      expectedPrizePoolCents: Math.max(prizePoolCents, Number((body as { expectedPrizePoolCents?: number }).expectedPrizePoolCents ?? 0)),
+    });
+
+    if (!economics.allowed) {
+      return NextResponse.json({
+        ok: false,
+        error: 'Giveaway creation rejected by revenue governor',
+        code: 'EVENT_ECONOMICS_GATE_REJECTED',
+        economics,
+      }, { status: 409 });
+    }
+
     const giveaway = sponsorGiveawayEngine.createGiveaway({
       sponsorId,
       sponsorName: (sponsorName as string) || sponsorId,
@@ -48,7 +72,7 @@ export async function POST(req: NextRequest) {
       prizes: prizes as GiveawayPrize[],
       maxEntries: typeof maxEntries === 'number' ? maxEntries : 10000,
     });
-    return NextResponse.json({ ok: true, giveaway });
+    return NextResponse.json({ ok: true, giveaway, economics });
   }
 
   if (action === 'open') {

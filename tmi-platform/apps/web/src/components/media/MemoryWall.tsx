@@ -91,29 +91,63 @@ function UploadZone({ accept, label, icon, color, onFiles }: {
 
 // ── Photo section ─────────────────────────────────────────────────────────────
 
-function PhotoSection({ accentColor }: { accentColor: string }) {
+function PhotoSection({ accentColor, entityId, entityType }: { accentColor: string; entityId?: string; entityType?: string }) {
   const [items, setItems] = useState<MediaItem[]>([]);
   const [lightbox, setLightbox] = useState<MediaItem | null>(null);
+  const [uploading, setUploading] = useState(false);
 
-  const handleFiles = (files: FileList) => {
-    const newItems: MediaItem[] = Array.from(files).map((f) => ({
-      id: `photo-${Date.now()}-${Math.random()}`,
-      name: f.name,
-      url: URL.createObjectURL(f),
-      size: f.size,
-      addedAt: Date.now(),
-    }));
-    setItems((p) => [...newItems, ...p]);
+  const handleFiles = async (files: FileList) => {
+    setUploading(true);
+    for (const f of Array.from(files)) {
+      const localId = `photo-${Date.now()}-${Math.random()}`;
+      const localUrl = URL.createObjectURL(f);
+      // Show local preview immediately for snappy UX
+      setItems((p) => [{ id: localId, name: f.name, url: localUrl, size: f.size, addedAt: Date.now() }, ...p]);
+
+      try {
+        const fd = new FormData();
+        fd.append('file', f);
+        fd.append('context', 'memory');
+        const res = await fetch('/api/upload', { method: 'POST', body: fd, credentials: 'include' });
+        if (res.ok) {
+          const data = await res.json() as { success?: boolean; url?: string };
+          if (data.url) {
+            // Swap local blob URL for the persisted remote URL
+            setItems((p) => p.map((x) => x.id === localId ? { ...x, url: data.url! } : x));
+            URL.revokeObjectURL(localUrl);
+            // Persist to Memory Wall if we have entity context
+            if (entityId) {
+              await fetch('/api/memory/wall', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({
+                  entityId,
+                  entityType: entityType ?? 'performer',
+                  contentType: 'photo',
+                  contentUrl: data.url,
+                  title: f.name.replace(/\.[^.]+$/, ''),
+                  isPublic: true,
+                }),
+              }).catch(() => {});
+            }
+          }
+        }
+      } catch {
+        // Keep local blob preview on upload failure — user can still see it this session
+      }
+    }
+    setUploading(false);
   };
 
   return (
     <div>
       <UploadZone
         accept="image/*"
-        label="UPLOAD PHOTOS"
+        label={uploading ? "UPLOADING…" : "UPLOAD PHOTOS"}
         icon="📸"
         color="#00FFFF"
-        onFiles={handleFiles}
+        onFiles={(files) => { void handleFiles(files); }}
       />
       {items.length === 0 ? (
         <div style={{ textAlign: "center", color: "rgba(255,255,255,0.2)", fontSize: 11, padding: "16px 0" }}>
@@ -162,29 +196,59 @@ function PhotoSection({ accentColor }: { accentColor: string }) {
 
 // ── Video section ─────────────────────────────────────────────────────────────
 
-function VideoSection({ accentColor }: { accentColor: string }) {
+function VideoSection({ accentColor, entityId, entityType }: { accentColor: string; entityId?: string; entityType?: string }) {
   const [items, setItems] = useState<MediaItem[]>([]);
   const [active, setActive] = useState<MediaItem | null>(null);
+  const [uploading, setUploading] = useState(false);
 
-  const handleFiles = (files: FileList) => {
-    const newItems: MediaItem[] = Array.from(files).map((f) => ({
-      id: `video-${Date.now()}-${Math.random()}`,
-      name: f.name,
-      url: URL.createObjectURL(f),
-      size: f.size,
-      addedAt: Date.now(),
-    }));
-    setItems((p) => [...newItems, ...p]);
+  const handleFiles = async (files: FileList) => {
+    setUploading(true);
+    for (const f of Array.from(files)) {
+      const localId = `video-${Date.now()}-${Math.random()}`;
+      const localUrl = URL.createObjectURL(f);
+      setItems((p) => [{ id: localId, name: f.name, url: localUrl, size: f.size, addedAt: Date.now() }, ...p]);
+
+      try {
+        const fd = new FormData();
+        fd.append('file', f);
+        const res = await fetch('/api/upload/media', { method: 'POST', body: fd, credentials: 'include' });
+        if (res.ok) {
+          const data = await res.json() as { url?: string; isVideo?: boolean };
+          if (data.url) {
+            setItems((p) => p.map((x) => x.id === localId ? { ...x, url: data.url! } : x));
+            URL.revokeObjectURL(localUrl);
+            if (entityId) {
+              await fetch('/api/memory/wall', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({
+                  entityId,
+                  entityType: entityType ?? 'performer',
+                  contentType: 'video-clip',
+                  contentUrl: data.url,
+                  title: f.name.replace(/\.[^.]+$/, ''),
+                  isPublic: true,
+                }),
+              }).catch(() => {});
+            }
+          }
+        }
+      } catch {
+        // Keep local blob preview on failure
+      }
+    }
+    setUploading(false);
   };
 
   return (
     <div>
       <UploadZone
         accept="video/mp4,video/webm,video/quicktime,video/*"
-        label="UPLOAD VIDEOS"
+        label={uploading ? "UPLOADING…" : "UPLOAD VIDEOS"}
         icon="🎬"
         color="#FF2DAA"
-        onFiles={handleFiles}
+        onFiles={(files) => { void handleFiles(files); }}
       />
       {items.length === 0 ? (
         <div style={{ textAlign: "center", color: "rgba(255,255,255,0.2)", fontSize: 11, padding: "16px 0" }}>
@@ -228,28 +292,58 @@ function VideoSection({ accentColor }: { accentColor: string }) {
 
 // ── Audio section ─────────────────────────────────────────────────────────────
 
-function AudioSection({ accentColor }: { accentColor: string }) {
+function AudioSection({ accentColor, entityId, entityType }: { accentColor: string; entityId?: string; entityType?: string }) {
   const [items, setItems] = useState<MediaItem[]>([]);
+  const [uploading, setUploading] = useState(false);
 
-  const handleFiles = (files: FileList) => {
-    const newItems: MediaItem[] = Array.from(files).map((f) => ({
-      id: `audio-${Date.now()}-${Math.random()}`,
-      name: f.name.replace(/\.[^.]+$/, ""),
-      url: URL.createObjectURL(f),
-      size: f.size,
-      addedAt: Date.now(),
-    }));
-    setItems((p) => [...newItems, ...p]);
+  const handleFiles = async (files: FileList) => {
+    setUploading(true);
+    for (const f of Array.from(files)) {
+      const localId = `audio-${Date.now()}-${Math.random()}`;
+      const localUrl = URL.createObjectURL(f);
+      setItems((p) => [{ id: localId, name: f.name.replace(/\.[^.]+$/, ''), url: localUrl, size: f.size, addedAt: Date.now() }, ...p]);
+
+      try {
+        const fd = new FormData();
+        fd.append('file', f);
+        const res = await fetch('/api/upload/media', { method: 'POST', body: fd, credentials: 'include' });
+        if (res.ok) {
+          const data = await res.json() as { url?: string; isAudio?: boolean };
+          if (data.url) {
+            setItems((p) => p.map((x) => x.id === localId ? { ...x, url: data.url! } : x));
+            URL.revokeObjectURL(localUrl);
+            if (entityId) {
+              await fetch('/api/memory/wall', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({
+                  entityId,
+                  entityType: entityType ?? 'performer',
+                  contentType: 'photo', // nearest available type for audio clips
+                  contentUrl: data.url,
+                  title: f.name.replace(/\.[^.]+$/, ''),
+                  isPublic: true,
+                }),
+              }).catch(() => {});
+            }
+          }
+        }
+      } catch {
+        // Keep local blob preview on failure
+      }
+    }
+    setUploading(false);
   };
 
   return (
     <div>
       <UploadZone
         accept="audio/mp3,audio/mpeg,audio/wav,audio/flac,audio/aac,audio/*"
-        label="UPLOAD AUDIO"
+        label={uploading ? "UPLOADING…" : "UPLOAD AUDIO"}
         icon="🎵"
         color="#AA2DFF"
-        onFiles={handleFiles}
+        onFiles={(files) => { void handleFiles(files); }}
       />
       {items.length === 0 ? (
         <div style={{ textAlign: "center", color: "rgba(255,255,255,0.2)", fontSize: 11, padding: "16px 0" }}>
@@ -568,7 +662,15 @@ interface MemoryWallProps {
 
 export default function MemoryWall({ accentColor = "#00FFFF", title = "Memory Wall", entityId, entityType }: MemoryWallProps) {
   const [activeTab, setActiveTab] = useState<MemoryTab>("photos");
-  const activeConfig = TAB_CONFIG.find((t) => t.id === activeTab)!;
+  const isFanSurface = entityType === "fan";
+  const visibleTabs = TAB_CONFIG.filter((tab) => !(isFanSurface && (tab.id === "orbit" || tab.id === "booking")));
+  const activeConfig = visibleTabs.find((t) => t.id === activeTab) ?? visibleTabs[0]!;
+
+  useEffect(() => {
+    if (!visibleTabs.some((tab) => tab.id === activeTab)) {
+      setActiveTab(visibleTabs[0]?.id ?? "photos");
+    }
+  }, [activeTab, visibleTabs]);
 
   const counts: Partial<Record<MemoryTab, number>> = {};
 
@@ -604,7 +706,7 @@ export default function MemoryWall({ accentColor = "#00FFFF", title = "Memory Wa
         background: "rgba(0,0,0,0.2)",
         overflowX: "auto",
       }}>
-        {TAB_CONFIG.map((tab) => (
+        {visibleTabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
@@ -635,9 +737,9 @@ export default function MemoryWall({ accentColor = "#00FFFF", title = "Memory Wa
             exit={{ opacity: 0, y: -4 }}
             transition={{ duration: 0.15 }}
           >
-            {activeTab === "photos"       && <PhotoSection accentColor={activeConfig.color} />}
-            {activeTab === "videos"       && <VideoSection accentColor={activeConfig.color} />}
-            {activeTab === "audio"        && <AudioSection accentColor={activeConfig.color} />}
+            {activeTab === "photos"       && <PhotoSection accentColor={activeConfig.color} entityId={entityId} entityType={entityType} />}
+            {activeTab === "videos"       && <VideoSection accentColor={activeConfig.color} entityId={entityId} entityType={entityType} />}
+            {activeTab === "audio"        && <AudioSection accentColor={activeConfig.color} entityId={entityId} entityType={entityType} />}
             {activeTab === "moments"      && <MomentsSection accentColor={activeConfig.color} entityId={entityId} entityType={entityType} />}
             {activeTab === "achievements" && <AchievementsSection accentColor={activeConfig.color} />}
             {activeTab === "sponsors"     && <SponsorStampWall accentColor={activeConfig.color} />}

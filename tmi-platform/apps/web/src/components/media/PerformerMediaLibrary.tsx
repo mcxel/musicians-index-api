@@ -31,25 +31,6 @@ const TYPE_COLOR: Partial<Record<MediaType, string>> = {
   cypher_entry:    "#00FF88",
 };
 
-// Seed with demo assets so the library isn't empty on first visit
-function seedDemoAssets(ownerId: string, ownerName: string): MediaAsset[] {
-  const base = {
-    ownerId, ownerName, ownerRole: "performer" as const,
-    plays: 0, downloads: 0, revenue: 0, tags: [], metadata: {},
-    status: "ready" as const, format: "mp3" as const, sizeBytes: 4_200_000,
-    createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
-  };
-  return [
-    { ...base, id: `demo-song-1-${ownerId}`,  type: "song",            title: "Neon Frequency",     genre: "Hip-Hop",  bpm: 142, durationSecs: 214, url: "#" },
-    { ...base, id: `demo-song-2-${ownerId}`,  type: "song",            title: "Crown Season",       genre: "Trap",     bpm: 138, durationSecs: 187, url: "#", plays: 3200 },
-    { ...base, id: `demo-beat-1-${ownerId}`,  type: "beat",            title: "Dark Matter Loop",   genre: "Trap",     bpm: 145, durationSecs: 180, url: "#" },
-    { ...base, id: `demo-vid-1-${ownerId}`,   type: "video",           title: "Stage Recap — May",  format: "mp4", sizeBytes: 22_000_000, durationSecs: 312, url: "#" },
-    { ...base, id: `demo-battle-1-${ownerId}`,type: "battle_entry",    title: "vs. Wave Tek",       genre: "Hip-Hop",  bpm: 95,  durationSecs: 160, url: "#", plays: 840 },
-    { ...base, id: `demo-cypher-1-${ownerId}`,type: "cypher_entry",    title: "Friday Cypher Verse",genre: "Hip-Hop",  durationSecs: 92,  url: "#" },
-    { ...base, id: `demo-chal-1-${ownerId}`,  type: "challenge_entry", title: "Arena Challenge #4", genre: "EDM",      durationSecs: 128, url: "#" },
-  ] as MediaAsset[];
-}
-
 export default function PerformerMediaLibrary({ ownerId, ownerName = "Performer", accentColor = "#AA2DFF", showUpload = true }: Props) {
   const [activeTab, setActiveTab] = useState<MediaType | "all">("all");
   const [assets, setAssets] = useState<MediaAsset[]>([]);
@@ -63,15 +44,12 @@ export default function PerformerMediaLibrary({ ownerId, ownerName = "Performer"
         if (res.ok) {
           const data = await res.json();
           const fetched: MediaAsset[] = data.assets ?? [];
-          // Merge with demo seeds; prefer real assets, deduplicate by id
-          const ids = new Set(fetched.map((a: MediaAsset) => a.id));
-          const seeds = seedDemoAssets(ownerId, ownerName).filter(a => !ids.has(a.id));
-          setAssets([...fetched, ...seeds]);
+          setAssets(fetched);
         } else {
-          setAssets(seedDemoAssets(ownerId, ownerName));
+          setAssets([]);
         }
       } catch {
-        setAssets(seedDemoAssets(ownerId, ownerName));
+        setAssets([]);
       }
     }
     load();

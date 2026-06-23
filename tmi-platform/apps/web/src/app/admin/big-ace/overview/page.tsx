@@ -1,6 +1,6 @@
 // /admin/big-ace/overview: Executive command center dashboard
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import AdminVisualCommandSummaryCard from '@/components/admin/AdminVisualCommandSummaryCard';
 import AdminVideoObservatorySummaryCard from '@/components/admin/AdminVideoObservatorySummaryCard';
 import AdminBotGovernanceSummaryCard from '@/components/admin/AdminBotGovernanceSummaryCard';
@@ -20,6 +20,13 @@ interface SystemMetrics {
   revenueMonth: number;
 }
 
+interface RewardGovernorDecision {
+  phase: 'launch' | 'growth' | 'cash';
+  allowCashRewards: boolean;
+  allowPlatformCredits: boolean;
+  reasons: string[];
+}
+
 const defaultMetrics: SystemMetrics = {
   liveUsers: 2847,
   liveRooms: 156,
@@ -36,6 +43,37 @@ const defaultMetrics: SystemMetrics = {
 
 export default function BigAceOverviewPage() {
   const [metrics] = useState<SystemMetrics>(defaultMetrics);
+  const [governorDecision, setGovernorDecision] = useState<RewardGovernorDecision | null>(null);
+
+  useEffect(() => {
+    let stopped = false;
+
+    async function loadGovernor() {
+      try {
+        const res = await fetch('/api/economy/reward-governor', { cache: 'no-store' });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!stopped) {
+          setGovernorDecision((data?.decision ?? null) as RewardGovernorDecision | null);
+        }
+      } catch {
+        // Keep dashboard resilient on transient API errors.
+      }
+    }
+
+    void loadGovernor();
+    const id = setInterval(() => {
+      void loadGovernor();
+    }, 5000);
+
+    return () => {
+      stopped = true;
+      clearInterval(id);
+    };
+  }, []);
+
+  const phase = governorDecision?.phase ?? 'launch';
+  const phaseColor = phase === 'cash' ? 'text-green-400 border-green-500' : phase === 'growth' ? 'text-yellow-400 border-yellow-500' : 'text-pink-400 border-pink-500';
 
   return (
     <div className="min-h-screen bg-black p-8">
@@ -54,6 +92,31 @@ export default function BigAceOverviewPage() {
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-white mb-2">Big Ace Command Center</h1>
           <p className="text-green-400">System Status: ACTIVE</p>
+        </div>
+
+        <div className="mb-8 bg-gray-900 border-2 border-cyan-500 rounded-lg p-6">
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <div>
+              <h3 className="text-cyan-300 font-mono text-sm mb-2">REVENUE GOVERNOR MODE</h3>
+              <div className={`inline-flex items-center gap-2 px-3 py-1 rounded border text-xs font-bold uppercase tracking-widest ${phaseColor}`}>
+                {phase}
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+              <div className="px-3 py-2 rounded border border-pink-500/40 bg-pink-500/10">
+                <div className="text-pink-300 font-semibold">Cash Rewards</div>
+                <div className="text-white font-bold">{governorDecision?.allowCashRewards ? 'Enabled' : 'Disabled'}</div>
+              </div>
+              <div className="px-3 py-2 rounded border border-yellow-500/40 bg-yellow-500/10">
+                <div className="text-yellow-300 font-semibold">Credits</div>
+                <div className="text-white font-bold">{governorDecision?.allowPlatformCredits ? 'Enabled' : 'Disabled'}</div>
+              </div>
+              <div className="px-3 py-2 rounded border border-cyan-500/40 bg-cyan-500/10">
+                <div className="text-cyan-300 font-semibold">XP / Trophies</div>
+                <div className="text-white font-bold">Enabled</div>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Live Metrics Grid */}

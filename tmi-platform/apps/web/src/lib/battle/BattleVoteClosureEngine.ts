@@ -230,7 +230,7 @@ export class BattleVoteClosureEngine {
 
         return {
           competitorId,
-          competitorName: `Competitor ${competitorId.substring(0, 8)}`,
+          competitorName: `Competitor ${competitorId.substring(0, 16)}`,
           voteCount,
           percentage: totalVotes > 0 ? (voteCount / totalVotes) * 100 : 0,
           deviceVariety: deviceCount,

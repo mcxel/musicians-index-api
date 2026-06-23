@@ -1,6 +1,18 @@
 'use client'; 
 
-export default function GlobalError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) { 
+import { useEffect } from 'react';
+
+export default function Error({
+  error,
+  reset,
+}: {
+  error: Error & { digest?: string };
+  reset: () => void;
+}) {
+  useEffect(() => {
+    console.error(error);
+  }, [error]);
+
   return (
     <html>
       <body style={{ margin: 0, padding: 0 }}>

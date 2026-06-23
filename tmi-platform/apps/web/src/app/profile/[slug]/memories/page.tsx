@@ -7,78 +7,10 @@ import MemoryItemModal from "@/components/hub/MemoryItemModal";
 import ImageUploader from "@/components/media/ImageUploader";
 import type { MemoryItem, ProLegacyItem } from "@/types/memory";
 
-// Seed memories for demo — in production: fetch from /api/profile/[slug]/memories
-function getSeedMemories(slug: string): MemoryItem[] {
-  return [
-    {
-      id: `ticket-1-${slug}`,
-      kind: "ticket",
-      title: "World Dance Party",
-      subtitle: "TMI Live Venue",
-      date: "June 21, 2026",
-      eventTitle: "World Dance Party",
-      venueName: "TMI Live Venue",
-      visibility: "public",
-      capturedAt: new Date().toISOString(),
-    },
-    {
-      id: `polaroid-1-${slug}`,
-      kind: "polaroid",
-      title: "Friday Night Cypher",
-      date: "May 30, 2026",
-      visibility: "public",
-      capturedAt: new Date().toISOString(),
-    },
-    {
-      id: `nft-1-${slug}`,
-      kind: "nft",
-      title: "Big Ace — Crown Season #12",
-      subtitle: "Hip-Hop · Edition 1 of 100",
-      date: "May 15, 2026",
-      visibility: "public",
-      capturedAt: new Date().toISOString(),
-    },
-    {
-      id: `prize-1-${slug}`,
-      kind: "prize",
-      title: "Song Challenge Winner",
-      subtitle: "$250 prize — Hip-Hop Round",
-      date: "May 10, 2026",
-      visibility: "public",
-      capturedAt: new Date().toISOString(),
-    },
-    {
-      id: `ticket-2-${slug}`,
-      kind: "ticket",
-      title: "Monday Night Stage",
-      subtitle: "Main Lobby",
-      date: "May 6, 2026",
-      visibility: "public",
-      capturedAt: new Date().toISOString(),
-    },
-    {
-      id: `badge-1-${slug}`,
-      kind: "badge",
-      title: "First Battle Completed",
-      subtitle: "Achievement Badge",
-      date: "April 29, 2026",
-      visibility: "public",
-      capturedAt: new Date().toISOString(),
-    },
-  ];
-}
-
-// Seed pro ledger items — in production: fetch from /api/profile/[slug]/ledger
-const SEED_LEDGER: ProLegacyItem[] = [
-  { id: "l1", userId: "demo", kind: "sponsor-gift", title: "Sponsored World Dance Party", eventTitle: "World Dance Party", metricImpact: { totalPaidOut: 500, audienceReached: 5800 }, verified: true, showcaseMode: true, displayMode: "holographic-card", createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString() },
-  { id: "l2", userId: "demo", kind: "promoter-win", title: "Sold Out: Monday Night Stage", eventTitle: "Monday Night Stage", metricImpact: { ticketsSold: 420, conversionRate: 84 }, verified: true, showcaseMode: true, displayMode: "holographic-card", createdAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString() },
-  { id: "l3", userId: "demo", kind: "advertiser-milestone", title: "Campaign: Hip-Hop June Drop", eventTitle: "Hip-Hop June Drop", metricImpact: { audienceReached: 12400, engagementRate: 22 }, verified: true, showcaseMode: true, displayMode: "holographic-card", createdAt: new Date(Date.now() - 21 * 24 * 60 * 60 * 1000).toISOString() },
-];
-
 type Tab = "memories" | "ledger";
 
 export default function ProfileMemoriesPage({ params }: { params: { slug: string } }) {
-  const [memories, setMemories] = useState<MemoryItem[]>(() => getSeedMemories(params.slug));
+  const [memories, setMemories] = useState<MemoryItem[]>([]);
   const [tab, setTab] = useState<Tab>("memories");
   const [newMemoryTitle, setNewMemoryTitle] = useState("");
   const [uploadMsg, setUploadMsg] = useState<string | null>(null);
@@ -179,16 +111,10 @@ export default function ProfileMemoriesPage({ params }: { params: { slug: string
             <p style={{ margin: "0 0 24px", fontSize: 12, color: "rgba(255,255,255,0.4)", lineHeight: 1.7 }}>
               Verified impact records generated automatically from sponsorships, ticket sales, and campaigns. Read-only — created by the platform.
             </p>
-            {SEED_LEDGER.length > 0 ? (
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
-                {SEED_LEDGER.map((item) => <HolographicCard key={item.id} item={item} />)}
-              </div>
-            ) : (
-              <div style={{ textAlign: "center", padding: "48px 24px", color: "rgba(255,255,255,0.2)" }}>
-                <div style={{ fontSize: 40, marginBottom: 12 }}>💼</div>
-                <p style={{ fontSize: 13, margin: 0 }}>No verified impact records yet. Sponsor an event or promote a show to start building your ledger.</p>
-              </div>
-            )}
+            <div style={{ textAlign: "center", padding: "48px 24px", color: "rgba(255,255,255,0.2)" }}>
+              <div style={{ fontSize: 40, marginBottom: 12 }}>💼</div>
+              <p style={{ fontSize: 13, margin: 0 }}>No verified impact records yet. Sponsor an event or promote a show to start building your ledger.</p>
+            </div>
           </>
         )}
       </div>

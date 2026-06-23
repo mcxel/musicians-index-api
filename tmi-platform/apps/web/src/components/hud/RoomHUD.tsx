@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import Link from 'next/link';
 import { ActivityTimelineCanister } from './ActivityTimelineCanister';
 import { SponsorStampWallCanister } from './SponsorStampWallCanister';
 import { SponsorBubbleOrbitCanister } from './SponsorBubbleOrbitCanister';
@@ -20,6 +21,7 @@ export const RoomHUD: React.FC<RoomHUDProps> = ({ venueId, venueClass }) => {
   const [sending, setSending] = useState(false);
   const [networkPanelOpen, setNetworkPanelOpen] = useState(false);
   const [networkTab, setNetworkTab] = useState<'CHAT' | 'FRIENDS'>('CHAT');
+  const [shareCopied, setShareCopied] = useState(false);
 
   const triggerTip = async (amountInCents: number) => {
     if (sending || amountInCents < 100) return;
@@ -47,8 +49,8 @@ export const RoomHUD: React.FC<RoomHUDProps> = ({ venueId, venueClass }) => {
     if (typeof window !== 'undefined' && navigator.clipboard) {
       try {
         await navigator.clipboard.writeText(window.location.href);
-        // TODO: Replace with a non-blocking toast notification in the future
-        alert("Stream link copied to clipboard!");
+        setShareCopied(true);
+        setTimeout(() => setShareCopied(false), 2500);
       } catch (err) {
         console.error("Failed to copy link: ", err);
       }
@@ -85,7 +87,7 @@ export const RoomHUD: React.FC<RoomHUDProps> = ({ venueId, venueClass }) => {
 
           <div className="flex gap-4 items-center pointer-events-auto">
             <button onClick={handleShareStream} className="bg-gray-900/80 hover:bg-gray-800 text-white px-8 py-3 rounded-full font-bold border border-gray-500 backdrop-blur-md transition-all uppercase text-xs tracking-widest shadow-lg min-h-[44px]">
-              Share Stream
+              {shareCopied ? '✓ Link Copied!' : 'Share Stream'}
             </button>
             <button onClick={() => setNetworkPanelOpen(!networkPanelOpen)} className="bg-gray-900/80 hover:bg-gray-800 text-[#00FFFF] px-8 py-3 rounded-full font-bold border border-[#00FFFF]/50 backdrop-blur-md transition-all uppercase text-xs tracking-widest shadow-[0_0_15px_rgba(0,255,255,0.2)] min-h-[44px]">
               Messages & Network
@@ -118,26 +120,25 @@ export const RoomHUD: React.FC<RoomHUDProps> = ({ venueId, venueClass }) => {
               {networkTab === 'CHAT' ? (
                 <div className="text-center mt-10">
                   <div className="text-2xl mb-2">💬</div>
-                  <div className="text-xs text-white/50 font-medium">Select a friend to start a secure Direct Message.</div>
+                  <div className="text-xs text-white/50 font-medium mb-4">Your direct messages with friends.</div>
+                  <Link href="/messages" className="text-[10px] bg-[#AA2DFF]/20 text-[#AA2DFF] border border-[#AA2DFF]/30 rounded px-4 py-2 uppercase tracking-wider hover:bg-[#AA2DFF] hover:text-white transition-colors">
+                    Open Messages →
+                  </Link>
                 </div>
               ) : (
-                <>
-                  {['B.J.M Beat', 'Nova Cipher', 'SkyFan94'].map((friend) => (
-                    <div key={friend} className="bg-white/5 border border-white/10 rounded-lg p-3 flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#00FFFF] to-[#FF2DAA] flex items-center justify-center text-xs font-bold">{friend.charAt(0)}</div>
-                        <div className="text-xs font-bold text-white">{friend}</div>
-                      </div>
-                      <div className="flex flex-col gap-1">
-                        <button className="text-[8px] bg-[#00FFFF]/20 text-[#00FFFF] border border-[#00FFFF]/30 rounded px-2 py-1 uppercase tracking-wider hover:bg-[#00FFFF] hover:text-black transition-colors">Invite to Room</button>
-                        <button className="text-[8px] bg-[#AA2DFF]/20 text-[#AA2DFF] border border-[#AA2DFF]/30 rounded px-2 py-1 uppercase tracking-wider hover:bg-[#AA2DFF] hover:text-white transition-colors">Message</button>
-                      </div>
-                    </div>
-                  ))}
-                  <button className="w-full mt-2 py-3 border border-dashed border-[#00FFFF]/40 rounded-lg text-[9px] text-[#00FFFF] font-bold tracking-widest uppercase hover:bg-[#00FFFF]/10 transition-colors">
-                    + Add New Friend
+                <div className="text-center mt-10">
+                  <div className="text-2xl mb-2">👥</div>
+                  <div className="text-xs text-white/50 font-medium mb-4">Invite friends to this room.</div>
+                  <button
+                    onClick={handleShareStream}
+                    className="text-[10px] bg-[#00FFFF]/20 text-[#00FFFF] border border-[#00FFFF]/30 rounded px-4 py-2 uppercase tracking-wider hover:bg-[#00FFFF] hover:text-black transition-colors block w-full mb-2"
+                  >
+                    {shareCopied ? '✓ Room Link Copied!' : 'Copy Room Link to Share'}
                   </button>
-                </>
+                  <Link href="/messages" className="text-[10px] text-[#AA2DFF]/60 hover:text-[#AA2DFF] transition-colors text-center block">
+                    Find friends in Messages →
+                  </Link>
+                </div>
               )}
             </div>
           </motion.div>

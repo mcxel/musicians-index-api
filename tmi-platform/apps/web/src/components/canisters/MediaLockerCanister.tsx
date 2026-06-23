@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import CollapsibleCanister from "./CollapsibleCanister";
 export type MediaLockerTab = "songs" | "videos" | "images" | "documents";
 
@@ -32,14 +32,58 @@ export default function MediaLockerCanister({
   const [activeTab, setActiveTab] = useState<MediaLockerTab>("songs");
   const [items, setItems] = useState<MediaItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    fetch("/api/media/locker")
+    fetch("/api/media/locker", { credentials: "include" })
       .then((r) => (r.ok ? r.json() : { items: [] }))
       .then((d) => setItems(d.items || []))
       .catch(() => setItems([]))
       .finally(() => setIsLoading(false));
   }, []);
+
+  const ACCEPT_MAP: Record<MediaLockerTab, string> = {
+    songs: "audio/mpeg,audio/mp3,audio/wav,audio/ogg,audio/m4a,audio/aac,audio/*",
+    videos: "video/mp4,video/webm,video/quicktime,video/*",
+    images: "image/jpeg,image/png,image/webp,image/*",
+    documents: "application/pdf,text/plain,application/msword,.pdf,.txt,.doc,.docx",
+  };
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploading(true);
+
+    try {
+      const isImage = file.type.startsWith("image/");
+      const endpoint = isImage ? "/api/upload" : "/api/upload/media";
+      const fd = new FormData();
+      fd.append("file", file);
+      if (isImage) fd.append("context", "media-locker");
+
+      const res = await fetch(endpoint, { method: "POST", body: fd, credentials: "include" });
+      if (res.ok) {
+        const data = await res.json() as { url?: string; success?: boolean };
+        if (data.url) {
+          const newItem: MediaItem = {
+            id: `uploaded-${Date.now()}`,
+            title: file.name.replace(/\.[^.]+$/, ""),
+            type: activeTab,
+            url: data.url,
+            addedAt: new Date().toISOString().slice(0, 10),
+          };
+          setItems((p) => [newItem, ...p]);
+        }
+      }
+    } catch {
+      // Silent fail — user can retry
+    } finally {
+      setIsUploading(false);
+      // Reset file input so the same file can be re-selected
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
 
   const tabs: { id: MediaLockerTab; label: string; icon: string }[] = [
     { id: "songs", label: "Audio", icon: "🎵" },
@@ -117,9 +161,19 @@ export default function MediaLockerCanister({
           )}
         </div>
 
-        <button style={{ width: "100%", padding: "10px", background: accentColor, color: "#000", fontWeight: 900, fontSize: 11, border: "none", borderRadius: 8, cursor: "pointer", letterSpacing: "0.1em" }}>
-          ⬆ UPLOAD NEW {activeTab.toUpperCase().slice(0, -1)}
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          disabled={isUploading}
+          style={{ width: "100%", padding: "10px", background: isUploading ? "rgba(0,255,255,0.3)" : accentColor, color: "#000", fontWeight: 900, fontSize: 11, border: "none", borderRadius: 8, cursor: isUploading ? "not-allowed" : "pointer", letterSpacing: "0.1em", opacity: isUploading ? 0.7 : 1 }}>
+          {isUploading ? "⏳ UPLOADING…" : `⬆ UPLOAD NEW ${activeTab.toUpperCase().slice(0, -1)}`}
         </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept={ACCEPT_MAP[activeTab]}
+          style={{ display: "none" }}
+          onChange={handleUpload}
+        />
       </div>
     </CollapsibleCanister>
   );

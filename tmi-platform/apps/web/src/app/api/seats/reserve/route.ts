@@ -26,12 +26,21 @@ async function cleanupExpiredSeatReservations(tx: any, roomId: string) {
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
   const sessionId = req.cookies.get("tmi_session_id")?.value;
-  
+  const email = req.cookies.get("tmi_user_email")?.value;
+
   if (!sessionId) {
     return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
   }
 
-  const fanId: string = sessionId.substring(0, 8);
+  let fanId: string = sessionId;
+  if (email) {
+    try {
+      const dbUser = await prisma.user.findUnique({ where: { email }, select: { id: true } });
+      if (dbUser?.id) fanId = dbUser.id;
+    } catch {
+      // Keep full session ID fallback
+    }
+  }
   const rawConcertId: string = typeof body.concertId === "string" ? body.concertId : "world-concert";
   const concertId = getCanonicalRoomSlug(rawConcertId);
   const seatId: string = body.seatId;
@@ -111,12 +120,21 @@ export async function POST(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
   const sessionId = req.cookies.get("tmi_session_id")?.value;
-  
+  const email = req.cookies.get("tmi_user_email")?.value;
+
   if (!sessionId) {
     return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
   }
 
-  const fanId: string = sessionId.substring(0, 8);
+  let fanId: string = sessionId;
+  if (email) {
+    try {
+      const dbUser = await prisma.user.findUnique({ where: { email }, select: { id: true } });
+      if (dbUser?.id) fanId = dbUser.id;
+    } catch {
+      // Keep full session ID fallback
+    }
+  }
   const rawConcertId: string = typeof body.concertId === "string" ? body.concertId : "world-concert";
   const concertId = getCanonicalRoomSlug(rawConcertId);
 

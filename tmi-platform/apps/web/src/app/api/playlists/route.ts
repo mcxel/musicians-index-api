@@ -12,6 +12,7 @@ import {
   BERNOUTGLOBAL_CATALOG,
   type PlaylistType,
 } from '@/lib/playlists/PlaylistEngine';
+import { recordMediaObservabilityEvent } from '@/lib/media/media-observability-store';
 
 // ── Seed default playlists on cold start ──────────────────────────────────────
 
@@ -101,6 +102,7 @@ export async function POST(req: NextRequest) {
   if (action === 'register-track') {
     const track = body.track as Parameters<typeof registerTrack>[0];
     if (!track?.id || !track?.catalog) {
+      recordMediaObservabilityEvent('playlist_import_failed', { reason: 'missing_track_fields' });
       return NextResponse.json({ error: 'Missing required track fields: id, catalog' }, { status: 400 });
     }
     registerTrack(track);
@@ -110,6 +112,7 @@ export async function POST(req: NextRequest) {
   if (action === 'register-playlist') {
     const { id, name, type, genre } = body as { id: string; name: string; type: PlaylistType; genre?: string };
     if (!id || !name || !type) {
+      recordMediaObservabilityEvent('playlist_import_failed', { reason: 'missing_playlist_fields' });
       return NextResponse.json({ error: 'Missing required fields: id, name, type' }, { status: 400 });
     }
     const playlist = buildPlaylist(id, name, type, { genre });
@@ -117,5 +120,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ created: true, playlistId: id, trackCount: playlist.entries.length });
   }
 
+  recordMediaObservabilityEvent('playlist_import_failed', { reason: 'unknown_action', action });
   return NextResponse.json({ error: `Unknown action: ${action}` }, { status: 400 });
 }

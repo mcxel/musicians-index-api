@@ -47,6 +47,91 @@ type LiveSessionHealth = {
   lastPingAt: number;
 };
 
+type ObservatorySummary = {
+  users: {
+    total: number;
+    online: number;
+    paid: number;
+    free: number;
+  };
+  membership: {
+    performer: {
+      pro: number;
+      silver: number;
+      gold: number;
+      platinum: number;
+      diamond: number;
+    };
+    fan: {
+      pro: number;
+      silver: number;
+      gold: number;
+      platinum: number;
+      diamond: number;
+    };
+  };
+  rooms: {
+    total: number;
+    active: number;
+    liveSessions: number;
+    occupancy: number;
+  };
+  liveActivity: {
+    liveRooms: number;
+    livePerformers: number;
+    liveFans: number;
+    battlesActive: number;
+    cyphersActive: number;
+    challengesActive: number;
+    radioRoomsActive: number;
+    playlistRoomsActive: number;
+  };
+  uploadHealth: {
+    imagesUploadedToday: number;
+    songsUploadedToday: number;
+    videosUploadedToday: number;
+    failedUploads: number;
+    failedTranscodes: number;
+    failedPlaylistImports: number;
+  };
+  business: {
+    revenueToday: number;
+    revenueMonth: number;
+  };
+  revenueHealth: {
+    revenueToday: number;
+    revenueWeek: number;
+    revenueMonth: number;
+    newSubscriptions: number;
+    renewals: number;
+    failedPayments: number;
+    pendingPayments: number;
+    stripeHealth: string;
+  };
+  commerce: {
+    tickets: number;
+    sponsors: number;
+  };
+  discoveryHealth: {
+    roomsVisibleOnDiscovery: number;
+    roomsMissingPreview: number;
+    roomsMissingThumbnails: number;
+    roomsMissingStreams: number;
+  };
+  observatory: {
+    hottestRoom: string | null;
+    activeGifts: number;
+    totalConflicts: number;
+  };
+};
+
+type RewardGovernorDecision = {
+  phase: 'launch' | 'growth' | 'cash';
+  allowCashRewards: boolean;
+  allowPlatformCredits: boolean;
+  reasons: string[];
+};
+
 const TABS: { id: Tab; label: string; color: string }[] = [
   { id: "scoreboard", label: "SCOREBOARD", color: "#AA2DFF" },
   { id: "live",       label: "LIVE",       color: "#00C896" },
@@ -84,6 +169,8 @@ export default function ObservatoryPage() {
   const [tick, setTick] = useState(0);
   const [liveSessions, setLiveSessions] = useState<LiveSessionHealth[]>([]);
   const [totalUsers, setTotalUsers] = useState<number>(0);
+  const [summary, setSummary] = useState<ObservatorySummary | null>(null);
+  const [governorDecision, setGovernorDecision] = useState<RewardGovernorDecision | null>(null);
 
   useEffect(() => {
     const id = setInterval(() => setTick(t => t + 1), 5000);
@@ -118,11 +205,39 @@ export default function ObservatoryPage() {
       }
     }
 
+    async function loadObservatorySummary() {
+      try {
+        const res = await fetch('/api/admin/observatory-summary', { cache: 'no-store' });
+        if (!res.ok) return;
+        const data = await res.json() as { summary?: ObservatorySummary };
+        if (!stopped && data.summary) setSummary(data.summary);
+      } catch {
+        // Keep observatory resilient if the summary endpoint is temporarily unavailable.
+      }
+    }
+
+    async function loadRewardGovernor() {
+      try {
+        const res = await fetch('/api/economy/reward-governor', { cache: 'no-store' });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!stopped) {
+          setGovernorDecision((data?.decision ?? null) as RewardGovernorDecision | null);
+        }
+      } catch {
+        // Keep observatory resilient if governor endpoint is temporarily unavailable.
+      }
+    }
+
     void loadLiveSessions();
     void loadUserCount();
+    void loadObservatorySummary();
+    void loadRewardGovernor();
     const pollId = setInterval(() => {
       void loadLiveSessions();
       void loadUserCount();
+      void loadObservatorySummary();
+      void loadRewardGovernor();
     }, 5000);
 
     return () => {
@@ -133,8 +248,30 @@ export default function ObservatoryPage() {
 
   const streaming  = MOCK_BOTS.filter(b => b.status === "streaming").length;
   const warnRoutes = ROUTE_HEALTH.filter(r => r.status !== "ok").length;
-  const activeTab  = TABS.find(t => t.id === tab)!;
   const criticalStreams = liveSessions.filter((s) => s.streamHealth === 'critical').length;
+  const governorPhase = governorDecision?.phase ?? 'launch';
+  const governorPhaseColor = governorPhase === 'cash' ? '#00C896' : governorPhase === 'growth' ? '#FFD700' : '#FF2DAA';
+  const totalAccounts = summary?.users.total ?? totalUsers;
+  const onlineUsers = summary?.users.online ?? 0;
+  const paidMembers = summary?.users.paid ?? 0;
+  const freeMembers = summary?.users.free ?? Math.max(0, totalAccounts - paidMembers);
+  const liveRooms = summary?.rooms.active ?? liveSessions.length;
+  const revenueToday = summary?.business.revenueToday ?? 0;
+  const revenueMonth = summary?.business.revenueMonth ?? 0;
+  const ticketCount = summary?.commerce.tickets ?? 0;
+  const sponsorCount = summary?.commerce.sponsors ?? 0;
+  const trackedRooms = summary?.rooms.total ?? 0;
+  const occupancy = summary?.rooms.occupancy ?? 0;
+  const tierRows = [
+    {
+      label: "PERFORMER",
+      data: summary?.membership.performer ?? { pro: 0, silver: 0, gold: 0, platinum: 0, diamond: 0 },
+    },
+    {
+      label: "FAN",
+      data: summary?.membership.fan ?? { pro: 0, silver: 0, gold: 0, platinum: 0, diamond: 0 },
+    },
+  ];
 
   return (
     <div style={{ minHeight: "100vh", background: "#050510", color: "#fff", fontFamily: "'Inter',sans-serif" }}>
@@ -144,10 +281,23 @@ export default function ObservatoryPage() {
         <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.35em", color: "#00C8FF" }}>TMI OBSERVATORY</div>
         <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
           {[
-            { label: "TOTAL ACCOUNTS", value: totalUsers,                              color: "#FFD700" },
+            { label: "TOTAL ACCOUNTS", value: totalAccounts,                          color: "#FFD700" },
+            { label: "ONLINE USERS", value: onlineUsers,                              color: "#00FFFF" },
+            { label: "PAID MEMBERS", value: paidMembers,                              color: "#00C896" },
+            { label: "FREE MEMBERS", value: freeMembers,                              color: "#AA2DFF" },
             { label: "STREAMING",  value: streaming,                                   color: "#00C896" },
-            { label: "LIVE SESSIONS", value: liveSessions.length,                        color: "#00FFFF" },
+            { label: "LIVE SESSIONS", value: liveSessions.length,                     color: "#00FFFF" },
+            { label: "ACTIVE ROOMS", value: liveRooms,                                  color: "#FF2DAA" },
+            { label: "TRACKED ROOMS", value: trackedRooms,                              color: "#AA2DFF" },
+            { label: "ROOM OCCUPANCY", value: occupancy,                                color: "#FFD700" },
             { label: "CRITICAL", value: criticalStreams,                                 color: criticalStreams > 0 ? "#FF2DAA" : "#00C896" },
+            { label: "REWARD PHASE", value: governorPhase.toUpperCase(),                 color: governorPhaseColor },
+            { label: "CASH REWARDS", value: governorDecision?.allowCashRewards ? 'ENABLED' : 'DISABLED', color: governorDecision?.allowCashRewards ? '#00C896' : '#FF2DAA' },
+            { label: "CREDITS", value: governorDecision?.allowPlatformCredits ? 'ENABLED' : 'DISABLED', color: governorDecision?.allowPlatformCredits ? '#FFD700' : '#64748b' },
+            { label: "REVENUE TODAY", value: `$${revenueToday.toFixed(2)}`,             color: "#FFD700" },
+            { label: "REV THIS MONTH", value: `$${revenueMonth.toFixed(2)}`,           color: "#00FF88" },
+            { label: "TICKETS", value: ticketCount,                                     color: "#FF9500" },
+            { label: "SPONSORS", value: sponsorCount,                                   color: "#FF2DAA" },
             { label: "BOTS ACTIVE",value: MOCK_BOTS.length,                            color: "#00C8FF" },
             { label: "ROUTE WARNS",value: warnRoutes,                                  color: warnRoutes > 0 ? "#FFD700" : "#00C896" },
             { label: "TOP ARTIST", value: TOP10_MOCK[0]?.name ?? "—",                  color: "#FF2DAA" },
@@ -160,6 +310,7 @@ export default function ObservatoryPage() {
           ))}
         </div>
         <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
+          <Link href="/admin/observatory/developer-hq" style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.15em", color: "#00FF88", textDecoration: "none", padding: "4px 10px", border: "1px solid rgba(0,255,136,0.3)" }}>DEVELOPER HQ</Link>
           <Link href="/admin/live" style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.15em", color: "#00C8FF", textDecoration: "none", padding: "4px 10px", border: "1px solid rgba(0,200,255,0.3)" }}>CONTROL ROOM</Link>
           <Link href="/admin" style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.15em", color: "rgba(255,255,255,0.3)", textDecoration: "none", padding: "4px 10px", border: "1px solid rgba(255,255,255,0.1)" }}>← ADMIN</Link>
         </div>
@@ -190,7 +341,79 @@ export default function ObservatoryPage() {
       <div style={{ padding: "28px clamp(16px,4vw,40px) 80px" }}>
 
         {/* ── SCOREBOARD ── */}
-        {tab === "scoreboard" && <BetaLaunchScoreboard />}
+        {tab === "scoreboard" && (
+          <div style={{ display: "grid", gap: 16 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: 12 }}>
+              <div style={{ border: "1px solid rgba(0,255,255,0.25)", borderRadius: 10, padding: 12, background: "rgba(0,255,255,0.05)" }}>
+                <div style={{ fontSize: 8, letterSpacing: "0.18em", color: "#00FFFF", fontWeight: 900, marginBottom: 10 }}>MEMBERSHIP BREAKDOWN</div>
+                {tierRows.map((row) => (
+                  <div key={row.label} style={{ marginBottom: 8 }}>
+                    <div style={{ fontSize: 9, color: "rgba(255,255,255,0.7)", marginBottom: 4 }}>{row.label}</div>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", fontSize: 10 }}>
+                      <span>PRO {row.data.pro}</span>
+                      <span>SILVER {row.data.silver}</span>
+                      <span>GOLD {row.data.gold}</span>
+                      <span>PLATINUM {row.data.platinum}</span>
+                      <span>DIAMOND {row.data.diamond}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ border: "1px solid rgba(0,200,150,0.25)", borderRadius: 10, padding: 12, background: "rgba(0,200,150,0.05)" }}>
+                <div style={{ fontSize: 8, letterSpacing: "0.18em", color: "#00C896", fontWeight: 900, marginBottom: 10 }}>LIVE ACTIVITY</div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, fontSize: 10 }}>
+                  <span>Live Rooms {summary?.liveActivity.liveRooms ?? 0}</span>
+                  <span>Live Performers {summary?.liveActivity.livePerformers ?? 0}</span>
+                  <span>Live Fans {summary?.liveActivity.liveFans ?? 0}</span>
+                  <span>Battles {summary?.liveActivity.battlesActive ?? 0}</span>
+                  <span>Cyphers {summary?.liveActivity.cyphersActive ?? 0}</span>
+                  <span>Challenges {summary?.liveActivity.challengesActive ?? 0}</span>
+                  <span>Radio Rooms {summary?.liveActivity.radioRoomsActive ?? 0}</span>
+                  <span>Playlist Rooms {summary?.liveActivity.playlistRoomsActive ?? 0}</span>
+                </div>
+              </div>
+
+              <div style={{ border: "1px solid rgba(255,45,170,0.25)", borderRadius: 10, padding: 12, background: "rgba(255,45,170,0.05)" }}>
+                <div style={{ fontSize: 8, letterSpacing: "0.18em", color: "#FF2DAA", fontWeight: 900, marginBottom: 10 }}>UPLOAD HEALTH</div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, fontSize: 10 }}>
+                  <span>Images Today {summary?.uploadHealth.imagesUploadedToday ?? 0}</span>
+                  <span>Songs Today {summary?.uploadHealth.songsUploadedToday ?? 0}</span>
+                  <span>Videos Today {summary?.uploadHealth.videosUploadedToday ?? 0}</span>
+                  <span>Failed Uploads {summary?.uploadHealth.failedUploads ?? 0}</span>
+                  <span>Failed Transcodes {summary?.uploadHealth.failedTranscodes ?? 0}</span>
+                  <span>Failed Playlist Imports {summary?.uploadHealth.failedPlaylistImports ?? 0}</span>
+                </div>
+              </div>
+
+              <div style={{ border: "1px solid rgba(255,215,0,0.25)", borderRadius: 10, padding: 12, background: "rgba(255,215,0,0.05)" }}>
+                <div style={{ fontSize: 8, letterSpacing: "0.18em", color: "#FFD700", fontWeight: 900, marginBottom: 10 }}>REVENUE HEALTH</div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, fontSize: 10 }}>
+                  <span>Today ${((summary?.revenueHealth.revenueToday ?? 0)).toFixed(2)}</span>
+                  <span>Week ${((summary?.revenueHealth.revenueWeek ?? 0)).toFixed(2)}</span>
+                  <span>Month ${((summary?.revenueHealth.revenueMonth ?? 0)).toFixed(2)}</span>
+                  <span>New Subs {summary?.revenueHealth.newSubscriptions ?? 0}</span>
+                  <span>Renewals {summary?.revenueHealth.renewals ?? 0}</span>
+                  <span>Failed Payments {summary?.revenueHealth.failedPayments ?? 0}</span>
+                  <span>Pending Payments {summary?.revenueHealth.pendingPayments ?? 0}</span>
+                  <span>Stripe {summary?.revenueHealth.stripeHealth ?? 'UNKNOWN'}</span>
+                </div>
+              </div>
+
+              <div style={{ border: "1px solid rgba(170,45,255,0.25)", borderRadius: 10, padding: 12, background: "rgba(170,45,255,0.05)" }}>
+                <div style={{ fontSize: 8, letterSpacing: "0.18em", color: "#AA2DFF", fontWeight: 900, marginBottom: 10 }}>DISCOVERY HEALTH</div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, fontSize: 10 }}>
+                  <span>Visible Rooms {summary?.discoveryHealth.roomsVisibleOnDiscovery ?? 0}</span>
+                  <span>Missing Preview {summary?.discoveryHealth.roomsMissingPreview ?? 0}</span>
+                  <span>Missing Thumbnails {summary?.discoveryHealth.roomsMissingThumbnails ?? 0}</span>
+                  <span>Missing Streams {summary?.discoveryHealth.roomsMissingStreams ?? 0}</span>
+                </div>
+              </div>
+            </div>
+
+            <BetaLaunchScoreboard />
+          </div>
+        )}
 
         {/* ── LIVE ── */}
         {tab === "live" && (

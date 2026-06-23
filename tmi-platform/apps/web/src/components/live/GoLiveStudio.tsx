@@ -15,6 +15,7 @@ import {
 } from '@/lib/live/StageLifecycleEngine';
 
 type BroadcastState = 'preview' | 'syncing' | 'live' | 'ending';
+type EventMode = 'LIVE_GENERAL' | 'LIVE_BATTLE' | 'LIVE_CHALLENGE' | 'LIVE_CONCERT' | 'LIVE_CYPHER';
 
 interface SessionUser {
   id?: string;
@@ -40,6 +41,7 @@ export default function GoLiveStudio() {
   const [cameraError,    setCameraError]    = useState('');
   const [displayName,    setDisplayName]    = useState('');
   const [genre,          setGenre]          = useState('Hip-Hop');
+  const [eventMode,      setEventMode]      = useState<EventMode>('LIVE_GENERAL');
   const [errorMsg,       setErrorMsg]       = useState('');
   const [actionError,    setActionError]    = useState('');
   const [viewerCount,    setViewerCount]    = useState(0);
@@ -106,12 +108,11 @@ export default function GoLiveStudio() {
   // Poll viewer count when live
   useEffect(() => {
     if (broadcastState !== 'live' || !userId) return;
-    const shortId = userId.substring(0, 8);
     const poll = async () => {
       try {
         const res  = await fetch('/api/live/go');
         const data = await res.json() as { live: { userId: string; viewerCount: number }[] };
-        const me   = data.live.find(u => u.userId === shortId);
+        const me   = data.live.find(u => u.userId === userId);
         if (me) setViewerCount(me.viewerCount);
       } catch { /* no-op */ }
     };
@@ -130,6 +131,14 @@ export default function GoLiveStudio() {
     if (track) { track.enabled = !camOn; setCamOn(v => !v); }
   }
 
+  function modeToCategory(mode: EventMode): 'live' | 'battle' | 'challenge' | 'concert' | 'cypher' {
+    if (mode === 'LIVE_BATTLE') return 'battle';
+    if (mode === 'LIVE_CHALLENGE') return 'challenge';
+    if (mode === 'LIVE_CONCERT') return 'concert';
+    if (mode === 'LIVE_CYPHER') return 'cypher';
+    return 'live';
+  }
+
   async function handleGoLive() {
     if (!displayName.trim()) { setErrorMsg('Enter your display name.'); return; }
     setErrorMsg('');
@@ -138,10 +147,11 @@ export default function GoLiveStudio() {
 
     window.dispatchEvent(new CustomEvent('tmi:live-syncing', {
       detail: {
-        userId: userId ? userId.substring(0, 8) : undefined,
+        userId: userId || undefined,
         displayName: displayName.trim(),
         role: (sessionUser?.role ?? 'performer').toLowerCase(),
         genre,
+        eventType: eventMode,
       },
     }));
 
@@ -184,6 +194,8 @@ export default function GoLiveStudio() {
         body: JSON.stringify({
           displayName: displayName.trim(),
           genre,
+          eventType: eventMode,
+          category: modeToCategory(eventMode),
           role: (sessionUser?.role ?? 'performer').toLowerCase(),
           ...(resolvedRoomId ? { roomId: resolvedRoomId } : {}),
         }),
@@ -211,10 +223,11 @@ export default function GoLiveStudio() {
       localStorage.setItem('tmi_is_live', 'true');
       window.dispatchEvent(new CustomEvent('tmi:golive', {
         detail: {
-          userId: userId ? userId.substring(0, 8) : undefined,
+          userId: userId || undefined,
           displayName: displayName.trim(),
           role: sessionUser?.role ?? 'performer',
           genre,
+          eventType: eventMode,
           roomId: resolvedRoomId || undefined,
         },
       }));
@@ -258,7 +271,7 @@ export default function GoLiveStudio() {
     localStorage.removeItem('tmi_is_live');
     window.dispatchEvent(new CustomEvent('tmi:endbroadcast', {
       detail: {
-        userId: userId ? userId.substring(0, 8) : undefined,
+        userId: userId || undefined,
         displayName: displayName.trim(),
         role: sessionUser?.role ?? 'performer',
       },
@@ -463,7 +476,7 @@ export default function GoLiveStudio() {
               🔴 YOU ARE LIVE ON THE LOBBY WALL
             </div>
             <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', lineHeight: 1.5 }}>
-              Fans can find you right now. Broadcasting as <strong style={{ color: '#fff' }}>{displayName}</strong> · {genre}
+              Fans can find you right now. Broadcasting as <strong style={{ color: '#fff' }}>{displayName}</strong> · {genre} · {eventMode.replace('LIVE_', '').replace('_', ' ')}
             </div>
           </div>
           <Link
@@ -619,6 +632,30 @@ export default function GoLiveStudio() {
               }}
             >
               {GENRES.map(g => <option key={g} value={g}>{g}</option>)}
+            </select>
+          </div>
+
+          <div style={{ marginBottom: 10 }}>
+            <select
+              value={eventMode}
+              onChange={e => setEventMode(e.target.value as EventMode)}
+              style={{
+                width: '100%',
+                background: 'rgba(255,255,255,0.07)',
+                border: '1px solid rgba(255,255,255,0.16)',
+                color: '#fff',
+                padding: '10px 14px',
+                fontSize: 13,
+                borderRadius: 8,
+                fontFamily: "'Inter', sans-serif",
+                cursor: 'pointer',
+              }}
+            >
+              <option value="LIVE_GENERAL">General Live (Mixed Genre Wall)</option>
+              <option value="LIVE_BATTLE">Battle Mode (Battle Wall)</option>
+              <option value="LIVE_CHALLENGE">Challenge Mode (Challenge Wall)</option>
+              <option value="LIVE_CONCERT">Concert Mode (Concert Wall)</option>
+              <option value="LIVE_CYPHER">Cypher Mode (Cypher Wall)</option>
             </select>
           </div>
 

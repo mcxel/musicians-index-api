@@ -1,0 +1,211 @@
+{
+  "metadata": {
+    "timestamp": "2026-06-22T00:00:00Z",
+    "phase": "Phase 0 Audit",
+    "totalAssets": 96,
+    "categories": 8,
+    "playableAssets": 48,
+    "sourceAssets": 48
+  },
+  "categories": {
+    "crowd": {
+      "count": 9,
+      "usageSurfaces": ["Live Rooms", "Battles", "Cyphers", "Challenges", "Game Shows", "Concerts", "Audiences", "Lobbies"],
+      "files": [
+        "crowd-clap-cheer.mp3",
+        "crowd-cheer-auditorium.mp3",
+        "crowd-small-reactions.mp3",
+        "crowd-laughing.mp3",
+        "crowd-cheering-1.mp3",
+        "crowd-cheers-2.mp3",
+        "crowd-disappointment.mp3",
+        "crowd-cheering-stadium.mp3",
+        "crowd-cheering-2.mp3"
+      ],
+      "audioSponsored": true,
+      "notes": "Audience reactions — triggered by voting, wins, moments; used to build energy in live venues"
+    },
+    "host": {
+      "count": 7,
+      "usageSurfaces": ["Game Shows", "Monthly Idol", "Radio DJ", "Host Announcements", "Event Commentary"],
+      "files": [
+        "host-male-banter-pack.mp3",
+        "host-male-eldude-pack.mp3",
+        "host-gameshow-mrhappy-pack.mp3",
+        "host-welcome-line.mp3",
+        "host-julius-voice-sample.mp3",
+        "host-robot-voice.mp3",
+        "host-alien-voice.mp3"
+      ],
+      "audioSponsored": true,
+      "notes": "Host/commentator lines — used in game shows, Official Automated Events, Radio DJ intros, announcements"
+    },
+    "battle": {
+      "count": 4,
+      "usageSurfaces": ["Battle Arena", "Cypher Arena", "Challenge Arena"],
+      "files": [
+        "battle-321-fight.mp3",
+        "battle-air-horn.mp3",
+        "battle-aggressive-hit.mp3",
+        "battle-beat-drop.mp3"
+      ],
+      "audioSponsored": true,
+      "notes": "Competition event sounds — round starts, transitions, dramatic moments; high emotional value for sponsor integration"
+    },
+    "gameshow": {
+      "count": 11,
+      "usageSurfaces": ["Game Shows", "Battles", "Cyphers", "Challenges", "Leaderboards"],
+      "files": [
+        "gameshow-correct.mp3",
+        "gameshow-incorrect.mp3",
+        "gameshow-winner-alert.mp3",
+        "gameshow-winner-bell.mp3",
+        "gameshow-buzzer.mp3",
+        "gameshow-you-lose.mp3",
+        "gameshow-game-over.mp3",
+        "gameshow-drum-roll.mp3",
+        "gameshow-quiz-pack.mp3",
+        "gameshow-winning-coins.mp3",
+        "gameshow-achievement-bling.mp3"
+      ],
+      "audioSponsored": true,
+      "notes": "Outcome & scoring sounds — wins, losses, achievements; high-frequency triggers, perfect for sponsor sonic branding"
+    },
+    "concert": {
+      "count": 8,
+      "usageSurfaces": ["Concerts", "World Concert", "Releases", "Performance Intros", "Event Openers"],
+      "files": [
+        "concert-intro-trap.mp3",
+        "concert-intro-tvshow.mp3",
+        "concert-intro-studio.mp3",
+        "concert-show-opener.mp3",
+        "concert-guitar-ident.mp3",
+        "concert-dark-engine-logo.mp3",
+        "concert-uplift-theme.mp3",
+        "concert-stinger.mp3"
+      ],
+      "audioSponsored": true,
+      "notes": "Performance & broadcast stings — used in concert intros, performance transitions; brand ID placement opportunity"
+    },
+    "ui": {
+      "count": 6,
+      "usageSurfaces": ["All Pages", "Interactive Elements", "Buttons", "Notifications", "Upload/Download"],
+      "files": [
+        "ui-menu-pack.mp3",
+        "ui-camera-shutter.mp3",
+        "ui-whoosh-bubbles.mp3",
+        "ui-digital-bell.mp3",
+        "ui-copper-bell.mp3",
+        "ui-positive-bell.mp3"
+      ],
+      "audioSponsored": false,
+      "notes": "Interface feedback — non-intrusive, high-frequency, non-sponsored (maintain UX clarity)"
+    },
+    "venue": {
+      "count": 3,
+      "usageSurfaces": ["Venues", "Lobbies", "Environments"],
+      "files": [
+        "venue-curtains.mp3",
+        "venue-siren-warning.mp3",
+        "venue-truck-signal.mp3"
+      ],
+      "audioSponsored": false,
+      "notes": "Ambient/environmental sounds — low-frequency use, venue-specific atmosphere"
+    },
+    "radio": {
+      "count": 0,
+      "usageSurfaces": ["SocialRadioRoomEngine"],
+      "files": [],
+      "audioSponsored": true,
+      "notes": "Commercial breaks, DJ transitions, station IDs — NOT YET RECORDED; Rule 25 infrastructure planned, audio assets gap"
+    }
+  },
+  "engineWiring": {
+    "SoundManifest": {
+      "location": "apps/web/src/lib/audio/SoundManifest.ts",
+      "status": "ACTIVE",
+      "functions": ["playSound(soundId)", "preloadCategory(category)", "stopSound(soundId)"]
+    },
+    "AudioRuntimeEngine": {
+      "location": "apps/web/src/lib/audio/AudioRuntimeEngine.ts",
+      "status": "PARTIALLY_ACTIVE",
+      "functions": ["playContextualSound(context, trigger)", "playBroadcastAudio(stream)", "mixAudio(sources)"],
+      "gaps": ["SocialRadioRoomEngine integration incomplete", "Commercial break audio not wired", "Radio DJ audio placeholder"]
+    },
+    "BotDJEngine": {
+      "location": "apps/web/src/engines/performance/BotDJEngine.ts",
+      "status": "ACTIVE",
+      "functions": ["announceRoom()", "playBeat()", "reactToSkip()", "hypePlayers()"],
+      "notes": "Existing host dialogue engine for battles; extends to radio DJ with minimal changes"
+    },
+    "VenueHUDOverlay": {
+      "location": "apps/web/src/components/lobbies/VenueHUDOverlay.tsx",
+      "status": "WIRED",
+      "audioHooks": ["Crowd reactions on joins/reactions", "Battle sting on round start", "Winner bell on end"]
+    }
+  },
+  "audioSponsoringOpportunities": {
+    "gameShowCorrectAnswer": {
+      "frequency": "High (every 5-30 seconds during gameplay)",
+      "sponsorValue": "High",
+      "implementation": "Sonic logo before bing sound, OR bing itself is sponsor brand sound",
+      "surfaces": ["Game Shows", "Battles (voting)", "Challenges"]
+    },
+    "battleRoundStart": {
+      "frequency": "Medium (once per round, 2-10 rounds per event)",
+      "sponsorValue": "High",
+      "implementation": "Sponsor sonic logo + announcer sting combo",
+      "surfaces": ["Battle Arena", "Cypher", "Challenge"]
+    },
+    "crowdCheer": {
+      "frequency": "Very High (multiple times per event)",
+      "sponsorValue": "Medium",
+      "implementation": "Pre-cheer sponsor tag OR post-cheer sponsor call-out",
+      "surfaces": ["All venues", "Lobbies", "Game shows"]
+    },
+    "hostCommentary": {
+      "frequency": "Very High (continuous during event)",
+      "sponsorValue": "Very High",
+      "implementation": "Host mentions sponsor in natural commentary ('powered by X', 'X presents', 'X battle mode')",
+      "surfaces": ["Game Shows", "Monthly Idol", "Official Events", "Radio DJ"]
+    },
+    "concertIntro": {
+      "frequency": "Medium (once per concert/performance)",
+      "sponsorValue": "High",
+      "implementation": "Sponsor sonic ID as part of performance opener",
+      "surfaces": ["World Concert", "Release events", "Live performances"]
+    },
+    "radioCommercialBreak": {
+      "frequency": "Very High (every 15-20 minutes)",
+      "sponsorValue": "Very High",
+      "implementation": "30-60 second sponsor audio integrated into RadioDialogueEngine",
+      "surfaces": ["Radio Stations", "SocialRadioRoomEngine"],
+      "status": "NOT YET BUILT — Rule 25 infrastructure"
+    }
+  },
+  "auditFindings": {
+    "readinessScore": "72%",
+    "wiredAudioTriggers": 25,
+    "plannedAudioTriggers": 12,
+    "gaps": [
+      "Radio commercial break assets (Rule 25, not yet implemented)",
+      "Commercial break separator audio (radio only)",
+      "Sponsor sonic logo templates (no standardized format for sponsor audio insertion)",
+      "DJ voice talents (Julius, Record Ralph, Tiana, host team voices not professionally recorded)",
+      "Live transition stings (between rooms, events, modes)"
+    ],
+    "nextSteps": [
+      "Phase 1: Record Julius, Record Ralph, Tiana, host team voice talents (professional studio quality)",
+      "Phase 1: Create sponsor sonic logo template + integration points",
+      "Phase 2: Build RadioDialogueEngine audio wiring for commercial breaks",
+      "Phase 2: Record radio station IDs + DJ transitions",
+      "Phase 3: Record live-event custom openers + sponsor integration samples"
+    ]
+  },
+  "byCategory": {
+    "playableCount": 48,
+    "sourceAssets": 48,
+    "recordedNotYetIntegrated": 8,
+    "plannedNotYetRecorded": 20
+  }
+}

@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import PasswordStrengthMeter from "./PasswordStrengthMeter";
 import RecoveryStatusCard from "./RecoveryStatusCard";
 
@@ -10,6 +11,7 @@ type Props = {
 };
 
 export default function ResetPasswordForm({ token, email }: Props) {
+  const router = useRouter();
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [status, setStatus] = useState<"idle" | "success" | "error" | "warning">("idle");
@@ -35,17 +37,19 @@ export default function ResetPasswordForm({ token, email }: Props) {
       if (!data.ok) {
         setStatus("error");
         switch (data.reason) {
-          case "expired_token":   setMessage("This reset token is expired. Request a new link."); break;
-          case "used_token":      setMessage("This reset token was already used."); break;
-          case "weak_password":   setMessage("Password too weak. Use upper/lowercase, number, and symbol."); break;
-          case "password_mismatch": setMessage("Passwords do not match."); break;
-          default:                setMessage("Invalid reset token.");
+          case "expired_token":      setMessage("This reset token is expired. Request a new link."); break;
+          case "used_token":         setMessage("This reset token was already used."); break;
+          case "weak_password":      setMessage("Password too weak. Use upper/lowercase, number, and symbol."); break;
+          case "password_mismatch":  setMessage("Passwords do not match."); break;
+          default:                   setMessage("Invalid reset token. Please request a new link.");
         }
         return;
       }
 
       setStatus("success");
-      setMessage("Password updated. You can now sign in with your new password.");
+      setMessage("Password updated successfully. Redirecting to sign in…");
+      // Redirect to signin after a short delay so the user sees the confirmation
+      setTimeout(() => router.replace("/auth/signin?reset=success"), 1800);
     } catch {
       setStatus("error");
       setMessage("Network error. Please try again.");

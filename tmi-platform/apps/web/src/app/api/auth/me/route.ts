@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { isFounderDiamondEmail } from '@/lib/promos/FounderDiamondPassEngine';
+import prisma from '@/lib/prisma';
 
 function isPrivilegedRole(role: string): boolean {
   const normalized = role.toUpperCase();
@@ -42,8 +43,16 @@ export async function GET(req: NextRequest) {
   }
 
   const email = redactEmailForRole(rawEmail, role);
-  const id = sessionId.substring(0, 8);
-  const name = email ? email.split('@')[0] : id;
+  let id = sessionId;
+  if (rawEmail) {
+    try {
+      const dbUser = await prisma.user.findUnique({ where: { email: rawEmail }, select: { id: true } });
+      if (dbUser?.id) id = dbUser.id;
+    } catch {
+      // Keep session fallback identity when DB is unavailable.
+    }
+  }
+  const name = email ? email.split('@')[0] : `user-${id.substring(0, 8)}`;
 
   return NextResponse.json(
     {

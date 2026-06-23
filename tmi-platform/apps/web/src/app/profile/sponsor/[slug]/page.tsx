@@ -7,41 +7,21 @@ import { getAdSlotForZone } from "@/lib/commerce/SponsorRegistry";
 import DiscoveryRail from "@/components/discovery/DiscoveryRail";
 import Link from "next/link";
 import MemoryWall from "@/components/media/MemoryWall";
+// ── Rule 15 Canisters ──────────────────────────────────────────────────────────
+import { BookingCanister } from "@/components/canisters/BookingCanister";
+import MessagingCanister from "@/components/canisters/MessagingCanister";
+import { StoreCanister } from "@/components/canisters/StoreCanister";
+import { LiveLobbyWallCanister } from "@/components/canisters/LiveLobbyWallCanister";
 
 interface Props {
   params: { slug: string };
 }
 
-interface SeedSponsor {
-  displayName: string;
-  tagline: string;
-  isVerified: boolean;
-}
-
-const SEED_SPONSORS: Record<string, SeedSponsor> = {
-  "soundwave-audio": {
-    displayName: "SoundWave Audio",
-    tagline: "Tier 3 TMI Sponsor · $10,000 Beat Vault Prize Pool · Season 1 Official Partner",
-    isVerified: true,
-  },
-  "beatmarket": {
-    displayName: "BeatMarket",
-    tagline: "TMI partner — $2,500 weekly cash prize for top battle performers",
-    isVerified: true,
-  },
-  "tmi-official": {
-    displayName: "TMI Official",
-    tagline: "The Musician's Index official account — Season 1 standings and news",
-    isVerified: true,
-  },
-};
-
 function titleCase(slug: string) {
   return slug.split("-").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
 }
 
-function seedSponsor(slug: string): SeedSponsor {
-  if (SEED_SPONSORS[slug]) return SEED_SPONSORS[slug]!;
+function seedSponsor(slug: string) {
   return {
     displayName: titleCase(slug),
     tagline: "Official sponsor on The Musician's Index — supporting independent artists worldwide.",
@@ -189,6 +169,14 @@ export default function SponsorProfilePage({ params }: Props) {
         <DiscoveryRail type="articles" accentColor="#AA2DFF" label="PRESS & FEATURES" />
         <DiscoveryRail type="liveRooms" accentColor="#E63000" label="LIVE NOW" />
         <DiscoveryRail type="sponsors" exclude={params.slug} accentColor="#FFD700" label="OTHER SPONSORS" />
+      </div>
+
+      {/* ── Rule 15 Canister Section ── */}
+      <div style={{ padding: "0 24px 48px", display: "flex", flexDirection: "column", gap: 20 }}>
+        <BookingCanister entityId={params.slug} entityType="sponsor" accentColor="#AA2DFF" showRequestForm={false} />
+        <MessagingCanister recipientId={params.slug} recipientName={sponsor.displayName} height={380} compact />
+        <StoreCanister entityId={params.slug} entityName={sponsor.displayName} storeType="shared" accentColor="#FFD700" />
+        <LiveLobbyWallCanister accentColor="#AA2DFF" maxRooms={4} />
       </div>
     </ProfileShell>
   );

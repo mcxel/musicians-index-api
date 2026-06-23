@@ -1,22 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Stripe from 'stripe';
+import { getStripe } from '@/lib/stripe/client';
 import { prisma } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
-
-// Initialize Stripe SDK
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
-  apiVersion: '2026-02-25.clover' as const,
-});
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { beatId, licenseType, price } = body;
-    
-    // Extract user session
-    const sessionId = req.cookies.get("tmi_session_id")?.value;
-    const buyerId = sessionId ? sessionId.substring(0, 8) : 'guest';
+
+    // Resolve buyer from the authenticated user cookie (email → DB user)
+    const fanEmail = req.cookies.get('tmi_user_email')?.value ?? '';
+    const buyerUser = fanEmail
+      ? await prisma.user.findFirst({ where: { email: fanEmail.toLowerCase() } })
+      : null;
+    const buyerId = buyerUser?.id ?? 'guest';
 
     if (!beatId || !licenseType || !price) {
       return NextResponse.json({ ok: false, error: 'Missing beat purchasing parameters' }, { status: 400 });
@@ -26,6 +24,13 @@ export async function POST(req: NextRequest) {
     if (!beat) {
       return NextResponse.json({ ok: false, error: 'Beat track not found in vault' }, { status: 404 });
     }
+
+    const stripe = getStripe();
+    if (!stripe) {
+      return NextResponse.json({ ok: false, error: 'Payments not configured' }, { status: 503 });
+    }
+
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXTAUTH_URL ?? 'http://localhost:3001';
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
@@ -37,7 +42,7 @@ export async function POST(req: NextRequest) {
             product_data: {
               name: `Beat License: ${beat.title} (${licenseType.toUpperCase()})`,
             },
-            unit_amount: price, // Handled in cents (e.g., 5000 = $50.00)
+            unit_amount: price, // in cents (e.g., 5000 = $50.00)
           },
           quantity: 1,
         },
@@ -48,13 +53,14 @@ export async function POST(req: NextRequest) {
         buyerId,
         licenseType,
       },
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3001'}/beats/marketplace?success=true`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3001'}/beats/marketplace?canceled=true`,
+      success_url: `${appUrl}/beats/marketplace?success=true`,
+      cancel_url: `${appUrl}/beats/marketplace?canceled=true`,
     });
 
     return NextResponse.json({ ok: true, url: session.url });
-  } catch (error: any) {
-    console.error('Stripe Checkout Error:', error);
-    return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error('Stripe Beat Checkout Error:', msg);
+    return NextResponse.json({ ok: false, error: msg }, { status: 500 });
   }
 }

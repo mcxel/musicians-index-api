@@ -92,6 +92,11 @@ export function listTicketsByOwner(ownerId: string): TicketRecord[] {
   return Array.from(ticketStore.values()).filter((t) => t.ownerId === ownerId);
 }
 
+export function listAllTickets(): TicketRecord[] {
+  evictExpiredTickets();
+  return Array.from(ticketStore.values());
+}
+
 export function getTicketById(ticketId: string): TicketRecord | undefined {
   evictExpiredTickets();
   return ticketStore.get(ticketId);

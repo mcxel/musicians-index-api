@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { checkRateLimit } from '@/lib/security/TMISecurityEngine';
+import { recordMediaObservabilityEvent } from '@/lib/media/media-observability-store';
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 const MAX_BYTES = 10 * 1024 * 1024;
@@ -8,6 +9,7 @@ export async function POST(req: NextRequest) {
   const clientIp = req.headers.get('x-forwarded-for') ?? '127.0.0.1';
   const { allowed } = checkRateLimit(`upload:image:${clientIp}`, 20, 60_000);
   if (!allowed) {
+    recordMediaObservabilityEvent('upload_failed', { mediaType: 'image', reason: 'rate_limit' });
     return NextResponse.json({ error: 'Rate limit exceeded. Please wait a moment.' }, { status: 429 });
   }
 
@@ -17,12 +19,15 @@ export async function POST(req: NextRequest) {
     const context    = (formData.get('context') as string | null) ?? 'profile';
 
     if (!file) {
+      recordMediaObservabilityEvent('upload_failed', { mediaType: 'image', reason: 'missing_file' });
       return NextResponse.json({ error: 'No image file provided.' }, { status: 400 });
     }
     if (!ALLOWED_TYPES.includes(file.type)) {
+      recordMediaObservabilityEvent('upload_failed', { mediaType: 'image', reason: 'unsupported_type', fileType: file.type });
       return NextResponse.json({ error: 'Only JPEG, PNG, WEBP, or GIF allowed.' }, { status: 400 });
     }
     if (file.size > MAX_BYTES) {
+      recordMediaObservabilityEvent('upload_failed', { mediaType: 'image', reason: 'file_too_large', bytes: file.size });
       return NextResponse.json({ error: 'Image size exceeds the 10 MB limit.' }, { status: 400 });
     }
 
@@ -33,16 +38,19 @@ export async function POST(req: NextRequest) {
     if (process.env.BLOB_READ_WRITE_TOKEN) {
       const { put } = await import('@vercel/blob');
       const blob = await put(fileName, file, { access: 'public' });
+      recordMediaObservabilityEvent('image_upload_success', { storage: 'blob', context });
       return NextResponse.json({ success: true, url: blob.url }, { status: 201 });
     }
 
     // Dev fallback: base64 data URL so previews work locally without blob storage
     const bytes   = await file.arrayBuffer();
     const dataUrl = `data:${file.type};base64,${Buffer.from(bytes).toString('base64')}`;
+    recordMediaObservabilityEvent('image_upload_success', { storage: 'data_url', context });
     return NextResponse.json({ success: true, url: dataUrl }, { status: 201 });
 
   } catch (error) {
     console.error('[TMI_UPLOAD_ERROR]', error);
+    recordMediaObservabilityEvent('upload_failed', { mediaType: 'image', reason: 'exception' });
     return NextResponse.json({ error: 'Upload failed.' }, { status: 500 });
   }
 }

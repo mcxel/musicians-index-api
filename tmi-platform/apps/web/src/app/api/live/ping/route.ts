@@ -6,15 +6,21 @@ import {
   pingSessionWithTelemetry,
   type LivePingPayload,
 } from '@/lib/broadcast/GlobalLiveSessionRegistry';
+import { prisma } from '@/lib/prisma';
 
-function sessionUserId(req: NextRequest): string | null {
+async function sessionUserId(req: NextRequest): Promise<string | null> {
+  const email = req.cookies.get('tmi_user_email')?.value;
+  if (email) {
+    const dbUser = await prisma.user.findUnique({ where: { email }, select: { id: true } }).catch(() => null);
+    if (dbUser?.id) return dbUser.id;
+  }
   const sessionId = req.cookies.get('tmi_session_id')?.value;
   if (!sessionId) return null;
-  return sessionId.substring(0, 8);
+  return sessionId;
 }
 
 export async function POST(req: NextRequest) {
-  const userId = sessionUserId(req);
+  const userId = await sessionUserId(req);
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const session = getSession(userId);

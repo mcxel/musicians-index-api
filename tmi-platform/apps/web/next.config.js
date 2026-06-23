@@ -3,6 +3,7 @@ const path = require("path");
 const fs = require("fs");
 
 const nextConfig = {
+  distDir: process.env.TMI_BUILD_VERIFY_DISTDIR || '.next',
   transpilePackages: [
     "@tmi/contracts",
     "@tmi/hud-core",

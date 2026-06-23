@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { useEffect, useState } from 'react';
 
 export type TileShape = 'octagon' | 'hexagon' | 'pentagon' | 'circle' | 'diamond' | 'torn-edge' | 'glitch-rect';
 
@@ -50,6 +51,19 @@ export const MaskedVideoTile: React.FC<MaskedVideoTileProps> = ({
   onTip,
   onMessage
 }) => {
+  const [hovered, setHovered] = useState(false);
+  const [avatarLoadFailed, setAvatarLoadFailed] = useState(false);
+  // Touch devices simulate :hover on tap with no reliable mouseleave, which
+  // left the Join/Tip/Msg buttons stuck floating/flickering on phones — the
+  // "little white things" showing up on every billboard tile. On devices
+  // with no real hover/pointer, show the action row plainly instead of
+  // gating it behind a hover state that touch can't cleanly enter/exit.
+  const [supportsHover, setSupportsHover] = useState(true);
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return;
+    setSupportsHover(window.matchMedia('(hover: hover) and (pointer: fine)').matches);
+  }, []);
+  const actionsVisible = supportsHover ? hovered : true;
   const activeStream = streamUrl || videoStreamUrl;
   const displayName = performerName || participantName || 'Unknown';
 
@@ -68,13 +82,24 @@ export const MaskedVideoTile: React.FC<MaskedVideoTileProps> = ({
 
   return (
     <div 
-      className={`group relative overflow-hidden transition-all duration-300 ease-in-out ${isAudioActive ? 'scale-[1.02] z-20 shadow-[0_0_30px_var(--accent)]' : 'hover:scale-[1.01] hover:shadow-[0_0_20px_var(--accent)] shadow-2xl'} bg-black`}
-      style={{ width: size, height: size, '--accent': accentColor } as any}
+      className={isAudioActive ? 'z-20' : ''}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        width: size,
+        height: size,
+        position: 'relative',
+        overflow: 'hidden',
+        background: '#000',
+        transition: 'transform 200ms ease, box-shadow 200ms ease',
+        transform: hovered || isAudioActive ? 'scale(1.01)' : 'scale(1)',
+        boxShadow: hovered || isAudioActive ? `0 0 20px ${accentColor}` : '0 14px 28px rgba(0,0,0,0.35)',
+      }}
     >
       {/* Masking Layer applied to the container itself */}
       <div className="absolute inset-0 z-0 bg-[#050510]" style={{ ...getShapeStyle(), border: `2px solid ${accentColor}` }}></div>
       
-      <div className="relative z-10 w-full h-full" style={getShapeStyle()}>
+      <div className="relative z-10 w-full h-full" style={{ ...getShapeStyle(), position: 'relative', width: '100%', height: '100%' }}>
         {/* CRT Scanline & Grain Overlay */}
         <div className="absolute inset-0 z-30 pointer-events-none bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPjxyZWN0IHdpZHRoPSI0IiBoZWlnaHQ9IjEiIGZpbGw9InJnYmEoMjU1LDI1NSwyNTUsMC4wNSkiLz48L3N2Zz4=')] opacity-30 mix-blend-overlay"></div>
         <div className="absolute inset-0 z-30 pointer-events-none shadow-[inset_0_0_60px_rgba(0,0,0,0.9)]"></div>
@@ -94,8 +119,14 @@ export const MaskedVideoTile: React.FC<MaskedVideoTileProps> = ({
                </>
              ) : (
                <>
-                 {avatarUrl ? (
-                   <img src={avatarUrl} alt={displayName} className="w-20 h-20 rounded-full object-cover mb-3 border-2 animate-pulse shadow-[0_0_20px_rgba(255,255,255,0.2)]" style={{ borderColor: accentColor }} />
+                 {avatarUrl && !avatarLoadFailed ? (
+                   <img
+                     src={avatarUrl}
+                     alt={displayName}
+                     className="w-20 h-20 rounded-full object-cover mb-3 border-2 animate-pulse shadow-[0_0_20px_rgba(255,255,255,0.2)]"
+                     style={{ borderColor: accentColor }}
+                     onError={() => setAvatarLoadFailed(true)}
+                   />
                  ) : (
                    avatarEmoji && <span className="text-5xl drop-shadow-[0_0_15px_rgba(255,255,255,0.4)] mb-2 animate-pulse">{avatarEmoji}</span>
                  )}
@@ -107,10 +138,45 @@ export const MaskedVideoTile: React.FC<MaskedVideoTileProps> = ({
 
         {/* Actions Menu (Hovers in over the video) */}
         {showActions && (
-          <div className="absolute inset-x-0 bottom-[35%] z-50 flex justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-            {onJoin && <button onClick={onJoin} className="bg-cyan-500 text-black px-2 py-1 rounded text-[10px] font-bold uppercase hover:scale-105 transition-transform shadow-[0_0_10px_#00E5FF]">Join</button>}
-            {onTip && <button onClick={onTip} className="bg-amber-500 text-black px-2 py-1 rounded text-[10px] font-bold uppercase hover:scale-105 transition-transform shadow-[0_0_10px_#FF8C00]">$ Tip</button>}
-            {onMessage && <button onClick={onMessage} className="bg-fuchsia-500 text-white px-2 py-1 rounded text-[10px] font-bold uppercase hover:scale-105 transition-transform shadow-[0_0_10px_#FF2DAA]">Msg</button>}
+          <div
+            style={{
+              position: 'absolute',
+              left: 0,
+              right: 0,
+              bottom: '35%',
+              zIndex: 50,
+              display: 'flex',
+              justifyContent: 'center',
+              gap: 8,
+              opacity: actionsVisible ? 1 : 0,
+              pointerEvents: actionsVisible ? 'auto' : 'none',
+              transition: 'opacity 180ms ease',
+            }}
+          >
+            {onJoin && (
+              <button
+                onClick={onJoin}
+                style={{ background: '#00E5FF', color: '#050510', padding: '4px 8px', borderRadius: 6, fontSize: 10, fontWeight: 800, textTransform: 'uppercase', border: '1px solid rgba(0,229,255,0.65)', cursor: 'pointer' }}
+              >
+                Join
+              </button>
+            )}
+            {onTip && (
+              <button
+                onClick={onTip}
+                style={{ background: '#FFB347', color: '#050510', padding: '4px 8px', borderRadius: 6, fontSize: 10, fontWeight: 800, textTransform: 'uppercase', border: '1px solid rgba(255,179,71,0.65)', cursor: 'pointer' }}
+              >
+                Tip
+              </button>
+            )}
+            {onMessage && (
+              <button
+                onClick={onMessage}
+                style={{ background: '#FF2DAA', color: '#fff', padding: '4px 8px', borderRadius: 6, fontSize: 10, fontWeight: 800, textTransform: 'uppercase', border: '1px solid rgba(255,45,170,0.65)', cursor: 'pointer' }}
+              >
+                Msg
+              </button>
+            )}
           </div>
         )}
 

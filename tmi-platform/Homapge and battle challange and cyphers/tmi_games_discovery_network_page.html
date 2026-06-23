@@ -1,0 +1,254 @@
+
+<h2 class="sr-only">TMI Live Games Discovery Network — Games page with all game types and audience routing</h2>
+<style>
+@keyframes livePulse{0%,100%{box-shadow:0 0 8px var(--gc,rgba(0,200,255,.4))}50%{box-shadow:0 0 22px var(--gc,rgba(0,200,255,.8))}}
+@keyframes scoreUp{from{transform:translateY(4px);opacity:0}to{transform:translateY(0);opacity:1}}
+@keyframes ticker13{0%,90%{opacity:1}95%,100%{opacity:0}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+@keyframes scanIn{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:scale(1)}}
+@keyframes heatPulse{0%,100%{width:var(--w,50%)}50%{width:calc(var(--w,50%) + 4%)}}
+.game-card{background:var(--color-background-primary);border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-lg);overflow:hidden;cursor:pointer;transition:border-color .2s,transform .18s,box-shadow .18s;animation:scanIn .3s ease-out}
+.game-card:hover{border-color:var(--color-border-info);transform:translateY(-3px);box-shadow:0 4px 16px rgba(0,0,0,.12)}
+.game-card.featured{border-width:1.5px;border-color:var(--color-border-warning)}
+.live-badge{background:#E63000;color:#fff;font-size:8px;font-weight:800;padding:2px 5px;border-radius:3px;letter-spacing:.08em;animation:blink 1.4s ease-in-out infinite}
+.join-btn{padding:5px 12px;border-radius:var(--border-radius-md);border:none;font-size:11px;font-weight:700;cursor:pointer;transition:all .15s}
+.join-btn:hover{transform:scale(1.04)}
+.watch-btn{padding:4px 10px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary);font-size:11px;cursor:pointer}
+.score-bar{height:6px;background:var(--color-border-tertiary);border-radius:3px;overflow:hidden;margin-top:3px}
+.score-fill{height:6px;border-radius:3px;transition:width .5s ease-out;animation:heatPulse 2s ease-in-out infinite}
+.cat-btn{padding:5px 10px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary);font-size:11px;cursor:pointer;background:var(--color-background-primary);transition:all .15s;white-space:nowrap}
+.cat-btn.on{background:var(--color-background-info);color:var(--color-text-info);border-color:var(--color-border-info);font-weight:500}
+.contestant-box{background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:5px 8px;display:flex;align-items:center;gap:5px;font-size:10px}
+.flow-step{display:flex;align-items:center;gap:6px;padding:5px;border-radius:var(--border-radius-md);background:var(--color-background-secondary);font-size:11px;border:0.5px solid var(--color-border-tertiary)}
+.flow-arrow{color:var(--color-text-tertiary);font-size:12px;align-self:center}
+.mag-insert{background:var(--color-background-primary);border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);padding:8px;cursor:pointer;transition:all .15s}
+.mag-insert:hover{border-color:var(--color-border-warning);background:var(--color-background-warning)}
+.ticker-bar{overflow:hidden;white-space:nowrap;background:var(--color-background-secondary);border-top:0.5px solid var(--color-border-tertiary);padding:4px 10px;font-size:10px;color:var(--color-text-secondary)}
+.ticker-inner{display:inline-flex;gap:40px;animation:scrollL 25s linear infinite}
+@keyframes scrollL{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+</style>
+
+<!-- HEADER -->
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+  <div>
+    <div style="font-size:16px;font-weight:500">TMI Live Games Discovery Network</div>
+    <div style="font-size:11px;color:var(--color-text-secondary)">Live preview broadcast · Nothing is a dead click · <span style="color:var(--color-text-danger)"><span id="activeGames">9</span> games active now</span></div>
+  </div>
+  <div style="display:flex;gap:5px;align-items:center">
+    <div style="font-size:10px;color:var(--color-text-secondary)">Rotating in <span id="rotGames" style="color:var(--color-text-warning);font-weight:700">13</span>s</div>
+    <button onclick="sendPrompt('Build the TMI Games Discovery Network page at /games — all games as live preview cards (not text lists), each routing into real environments with AudienceScene and seat assignment. Games: Deal or Feud 1000, Name That Tune, Monthly Idol, Marcels Monday Night Stage, Dirty Dozens, Joke-Off, Dance-Off, Song Challenge, World Dance Party, World Release Party, Stream and Win Radio Games, Circle and Squares, Trivia Night, Open Mic, Beat Battle. Flow: Games page → game card → game lobby → AudienceScene → seats assigned → video/audio/chat loaded → viewer joins audience. No placeholder pages. Magazine integration showing games as random inserts while flipping pages. All game cards route somewhere real. Live status, audience count, contestant previews, scoreboard previews, JOIN LOBBY and WATCH MODE buttons.')" style="font-size:10px;padding:4px 10px;background:var(--color-background-info);color:var(--color-text-info);border:0.5px solid var(--color-border-info);border-radius:var(--border-radius-md)">Build in repo ↗</button>
+  </div>
+</div>
+
+<!-- CATEGORY FILTER -->
+<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px">
+  <button class="cat-btn on" onclick="setCat('all',this)">🎮 All games</button>
+  <button class="cat-btn" onclick="setCat('music',this)">🎵 Music games</button>
+  <button class="cat-btn" onclick="setCat('social',this)">🤝 Social games</button>
+  <button class="cat-btn" onclick="setCat('competition',this)">🏆 Competition</button>
+  <button class="cat-btn" onclick="setCat('party',this)">🎉 Party / Dance</button>
+  <button class="cat-btn" onclick="setCat('comedy',this)">😂 Comedy</button>
+</div>
+
+<!-- FEATURED GAME (large) -->
+<div class="game-card featured" style="margin-bottom:10px">
+  <div style="display:grid;grid-template-columns:1.2fr 1fr;gap:0">
+    <!-- Live scoreboard preview -->
+    <div style="background:linear-gradient(135deg,#1a0a00,#2a1500);padding:14px;position:relative">
+      <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:8px">
+        <div>
+          <div style="font-family:monospace;font-size:13px;font-weight:700;color:var(--color-text-warning)">DEAL OR FEUD 1000</div>
+          <div style="font-size:9px;color:rgba(255,255,255,.5)">Live Scoreboard · Round 3/5</div>
+        </div>
+        <div class="live-badge">LIVE</div>
+      </div>
+      <!-- Teams -->
+      <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center;margin-bottom:8px">
+        <div style="background:rgba(255,45,170,.1);border:1px solid rgba(255,45,170,.3);border-radius:5px;padding:5px;text-align:center">
+          <div style="font-size:9px;font-weight:700;color:var(--color-text-danger)">TEAM A</div>
+          <div style="font-size:20px;font-weight:900;color:#fff">74</div>
+          <div style="font-size:7px;color:rgba(255,255,255,.4)">Live Scorers Team</div>
+        </div>
+        <div style="font-size:11px;font-weight:900;color:rgba(255,255,255,.5)">VS</div>
+        <div style="background:rgba(0,229,255,.08);border:1px solid rgba(0,229,255,.2);border-radius:5px;padding:5px;text-align:center">
+          <div style="font-size:9px;font-weight:700;color:var(--color-text-info)">TEAM B</div>
+          <div style="font-size:20px;font-weight:900;color:#fff">13</div>
+          <div style="font-size:7px;color:rgba(255,255,255,.4)">Ball Dominoes Group</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">
+        <div class="contestant-box"><i class="ti ti-user-circle" style="font-size:14px" aria-hidden="true"></i><span>Ygo</span></div>
+        <div class="contestant-box"><i class="ti ti-user-circle" style="font-size:14px" aria-hidden="true"></i><span>DK+S</span></div>
+        <div class="contestant-box"><i class="ti ti-user-circle" style="font-size:14px" aria-hidden="true"></i><span>Contestant 3</span></div>
+      </div>
+      <!-- Audience reaction meter -->
+      <div style="height:4px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden;margin-bottom:4px">
+        <div class="score-fill" style="width:74%;background:var(--color-border-danger);--w:74%"></div>
+      </div>
+      <div style="font-size:9px;color:rgba(255,255,255,.4)">👁 2,284 watching · 💬 Active chat</div>
+    </div>
+    <!-- Join panel -->
+    <div style="padding:14px;display:flex;flex-direction:column;justify-content:space-between">
+      <div>
+        <div style="font-size:13px;font-weight:500;margin-bottom:4px">Deal or Feud 1000</div>
+        <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:8px">Survey-style team competition · Teams guess top answers · Audience votes and reacts · Live scoreboard</div>
+        <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:10px">
+          <div style="font-size:11px;color:var(--color-text-secondary)"><i class="ti ti-users" style="color:var(--color-text-info)" aria-hidden="true"></i> 2,284 in audience · 438 seats open</div>
+          <div style="font-size:11px;color:var(--color-text-secondary)"><i class="ti ti-door-enter" style="color:var(--color-text-success)" aria-hidden="true"></i> FREE entry</div>
+          <div style="font-size:11px;color:var(--color-text-secondary)"><i class="ti ti-map-pin" style="color:var(--color-text-warning)" aria-hidden="true"></i> Arena — Cap 18,500</div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:5px">
+        <button class="join-btn" style="background:var(--color-background-warning);color:var(--color-text-warning);border:1px solid var(--color-border-warning)" onclick="joinGame('deal-or-feud-1000','AUDIENCE')"><i class="ti ti-users" aria-hidden="true"></i> Join audience — get seat</button>
+        <button class="join-btn" style="background:var(--color-background-info);color:var(--color-text-info);border:1px solid var(--color-border-info)" onclick="joinGame('deal-or-feud-1000','CONTESTANT')"><i class="ti ti-player-play" aria-hidden="true"></i> Enter as contestant</button>
+        <button class="watch-btn" onclick="joinGame('deal-or-feud-1000','WATCH')"><i class="ti ti-eye" aria-hidden="true"></i> Watch mode</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- GAMES GRID -->
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;margin-bottom:10px" id="gamesGrid">
+  <!-- Rendered by JS -->
+</div>
+
+<!-- SEAT JOIN FLOW -->
+<div style="background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:12px;margin-bottom:10px">
+  <div style="font-size:12px;font-weight:500;margin-bottom:8px"><i class="ti ti-arrow-right" aria-hidden="true"></i> Seat join flow — how clicking a game tile works</div>
+  <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">
+    <div class="flow-step"><i class="ti ti-device-gamepad" style="color:var(--color-text-info)" aria-hidden="true"></i> Click game tile</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step"><i class="ti ti-door-enter" style="color:var(--color-text-warning)" aria-hidden="true"></i> Access gate check</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step"><i class="ti ti-armchair" style="color:var(--color-text-success)" aria-hidden="true"></i> Reserve seat</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step"><i class="ti ti-user" style="color:var(--color-text-info)" aria-hidden="true"></i> Assign avatar position</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step"><i class="ti ti-building" style="color:var(--color-text-warning)" aria-hidden="true"></i> AudienceScene loads</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step"><i class="ti ti-video" style="color:var(--color-text-danger)" aria-hidden="true"></i> Live stream + game video</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step"><i class="ti ti-playlist" style="color:var(--color-text-success)" aria-hidden="true"></i> Playlist + chat sync</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step" style="background:var(--color-background-success);border-color:var(--color-border-success)"><i class="ti ti-check" style="color:var(--color-text-success)" aria-hidden="true"></i> <strong>You're inside!</strong></div>
+  </div>
+  <div style="font-size:10px;color:var(--color-text-tertiary);margin-top:6px">Route: /games/[gameId] → /games/[gameId]/lobby → /live/rooms/[sessionId] — no placeholder pages, no dead clicks</div>
+</div>
+
+<!-- MAGAZINE INTEGRATION -->
+<div style="background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:12px;margin-bottom:10px">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+    <div style="font-size:12px;font-weight:500"><i class="ti ti-book" aria-hidden="true"></i> Magazine integration — game discovery while flipping pages</div>
+    <div style="font-size:10px;color:var(--color-text-secondary)">Random game inserts per issue</div>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:6px">
+    <div class="mag-insert"><div style="font-size:10px;font-weight:600;color:var(--color-text-warning);margin-bottom:3px">👑 MONTHLY IDOL FINALS!</div><div style="font-size:9px;color:var(--color-text-secondary)">Click to join lobby →</div></div>
+    <div class="mag-insert"><div style="font-size:10px;font-weight:600;color:var(--color-text-info);margin-bottom:3px">🎵 DEAL OR FEUD 1000</div><div style="font-size:9px;color:var(--color-text-secondary)">Live now → enter room</div></div>
+    <div class="mag-insert"><div style="font-size:10px;font-weight:600;color:var(--color-text-success);margin-bottom:3px">💃 WORLD DANCE PARTY</div><div style="font-size:9px;color:var(--color-text-secondary)">Join the floor →</div></div>
+    <div class="mag-insert"><div style="font-size:10px;font-weight:600;color:var(--color-text-danger);margin-bottom:3px">😂 DIRTY DOZENS</div><div style="font-size:9px;color:var(--color-text-secondary)">75% hype → watch</div></div>
+    <div class="mag-insert"><div style="font-size:10px;font-weight:600;color:var(--color-text-warning);margin-bottom:3px">🎤 MONDAY NIGHT STAGE</div><div style="font-size:9px;color:var(--color-text-secondary)">Marcel is LIVE →</div></div>
+    <div class="mag-insert"><div style="font-size:10px;font-weight:600;color:var(--color-text-info);margin-bottom:3px">📻 STREAM &amp; WIN</div><div style="font-size:9px;color:var(--color-text-secondary)">Earn XP → tune in</div></div>
+  </div>
+  <div style="font-size:9px;color:var(--color-text-tertiary);margin-top:6px">When user clicks any magazine insert → routes directly to the game lobby → AudienceScene → seated</div>
+</div>
+
+<!-- ROTATING TICKER -->
+<div class="ticker-bar">
+  <div class="ticker-inner">
+    <span>⚡ Deal or Feud 1000 — LIVE · 2,284 watching</span>
+    <span>👑 Monthly Idol Finals — Round 3 of 5</span>
+    <span>🎵 Name That Tune — 840 players</span>
+    <span>💃 World Dance Party — 3,200 on the floor</span>
+    <span>😂 Dirty Dozens — 75% crowd meter</span>
+    <span>🎤 Marcel's Monday Night Stage — starting in 12 mins</span>
+    <span>⭐ Name That Lyric — Season 4 begins tonight</span>
+    <span>🎧 Stream &amp; Win Radio — 9,282 listening</span>
+    <span>⚡ Deal or Feud 1000 — LIVE · 2,284 watching</span>
+    <span>👑 Monthly Idol Finals — Round 3 of 5</span>
+    <span>🎵 Name That Tune — 840 players</span>
+    <span>💃 World Dance Party — 3,200 on the floor</span>
+  </div>
+</div>
+
+<script>
+const GAMES=[
+  {id:'name-that-tune',name:'Name That Tune',emoji:'🎵',cat:'music',desc:'Guess the song, artist, or lyrics',status:'LIVE',players:840,audience:1640,access:'FREE',score1:{label:'Solo',v:74},score2:{label:'Team',v:26},route:'/games/name-that-tune',color:'warning',hostNote:''},
+  {id:'monthly-idol',name:'Monthly Idol',emoji:'👑',cat:'competition',desc:'Seasonal elimination competition',status:'LIVE',players:12,audience:5400,access:'FREE',score1:{label:'Top Score',v:88},score2:{label:'Votes',v:72},route:'/games/monthly-idol',color:'success',hostNote:'Finals — Round 3/5'},
+  {id:'monday-night-stage',name:"Marcel's Monday Night Stage",emoji:'🎤',cat:'music',desc:'Weekly performer showcase hosted by Marcel',status:'STARTING',players:8,audience:0,access:'FREE',score1:{label:'Signups',v:60},score2:{label:'Slots left',v:40},route:'/games/monday-night-stage',color:'info',hostNote:'Starts in 12 mins'},
+  {id:'dirty-dozens',name:'Dirty Dozens',emoji:'😂',cat:'comedy',desc:'Comedy battle — crowd decides the winner',status:'LIVE',players:2,audience:980,access:'FREE',score1:{label:'Heat',v:75},score2:{label:'Crowd',v:68},route:'/games/dirty-dozens',color:'danger',hostNote:'75% crowd meter'},
+  {id:'joke-off',name:'Joke-Off',emoji:'🤣',cat:'comedy',desc:'Head-to-head comedian battle',status:'LIVE',players:2,audience:640,access:'FREE',score1:{label:'Comedian A',v:58},score2:{label:'Comedian B',v:42},route:'/games/joke-off',color:'warning',hostNote:''},
+  {id:'dance-off',name:'Dance-Off',emoji:'💃',cat:'party',desc:'Dancer vs dancer — audience votes live',status:'LIVE',players:4,audience:1200,access:'FREE',score1:{label:'Floor A',v:65},score2:{label:'Floor B',v:35},route:'/games/dance-off',color:'success',hostNote:''},
+  {id:'world-dance-party',name:'World Dance Party',emoji:'🌍',cat:'party',desc:'Global DJ party — no seats, DanceArena3D only',status:'LIVE',players:1,audience:3200,access:'FREE',score1:{label:'On floor',v:80},score2:{label:'Hype',v:98},route:'/games/world-dance-party',color:'info',hostNote:'DJ Kraze hosting'},
+  {id:'circle-squares',name:'Circle and Squares',emoji:'⬜',cat:'social',desc:'Video personality game — players in squares',status:'LIVE',players:6,audience:720,access:'FREE',score1:{label:'Round',v:50},score2:{label:'Votes',v:44},route:'/games/circle-squares',color:'warning',hostNote:''},
+  {id:'stream-win-radio',name:'Stream & Win Radio',emoji:'📻',cat:'music',desc:'Live radio — listen, earn XP, win prizes',status:'LIVE',players:0,audience:9282,access:'FREE',score1:{label:'XP active',v:92},score2:{label:'On air',v:100},route:'/games/stream-win',color:'success',hostNote:'DJ Blend on air'},
+  {id:'song-challenge',name:'Song Challenge',emoji:'🎶',cat:'competition',desc:'Song vs song — audience judges',status:'UPCOMING',players:0,audience:0,access:'FREE',score1:{label:'Entries',v:24},score2:{label:'Open',v:100},route:'/games/song-challenge',color:'info',hostNote:'Opens 8PM'},
+  {id:'world-release',name:'World Release Party',emoji:'🌐',cat:'music',desc:'New music premiere events',status:'UPCOMING',players:1,audience:0,access:'FREE',score1:{label:'Dropping in',v:30},score2:{label:'RSVP',v:55},route:'/games/world-release',color:'warning',hostNote:'Midnight drop'},
+  {id:'trivia',name:'Trivia Night',emoji:'❓',cat:'social',desc:'Music trivia — teams and solo modes',status:'LIVE',players:32,audience:440,access:'FREE',score1:{label:'Q7/12',v:58},score2:{label:'Leading',v:74},route:'/games/trivia',color:'secondary',hostNote:''},
+  {id:'open-mic',name:'Open Mic Night',emoji:'🎙️',cat:'music',desc:'Sign up, perform, get audience feedback',status:'LIVE',players:8,audience:380,access:'FREE',score1:{label:'Up next',v:40},score2:{label:'Performed',v:3},route:'/games/open-mic',color:'info',hostNote:'3 spots left'},
+  {id:'beat-battle',name:'Beat Battle',emoji:'🎹',cat:'competition',desc:'Producers go head-to-head — audience votes',status:'LIVE',players:2,audience:560,access:'FREE',score1:{label:'Beat A',v:62},score2:{label:'Beat B',v:38},route:'/games/beat-battle',color:'warning',hostNote:''},
+];
+
+function joinGame(gameId,mode){
+  const msgs={AUDIENCE:`Joining ${gameId} as audience member\n\nFlow:\n1. Access gate: FREE ✓\n2. Reserving seat...\n3. Avatar position assigned\n4. AudienceScene loading\n5. Live stream connecting\n6. Chat and playlist syncing\n7. You're seated!`,CONTESTANT:`Entering ${gameId} as contestant\n\nFlow:\n1. Access gate: check permissions\n2. Contestant slot reserved\n3. Stage position assigned\n4. Camera/mic enabled\n5. Game lobby loaded\n6. You're on stage!`,WATCH:`Watch mode: ${gameId}\n\nYou can:\n- Watch without a seat\n- React from sidelines\n- Tip contestants\n- Chat with audience\n- Join when a seat opens`};
+  alert(msgs[mode]||`Routing to ${gameId}`);
+}
+
+let curCat='all';
+function setCat(c,btn){
+  curCat=c;
+  document.querySelectorAll('.cat-btn').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  renderGames();
+}
+function renderGames(){
+  const filtered=curCat==='all'?GAMES:GAMES.filter(g=>g.cat===curCat||g.cat.includes(curCat));
+  const el=document.getElementById('gamesGrid');
+  el.innerHTML=filtered.map(g=>{
+    const statusColor=g.status==='LIVE'?'danger':g.status==='STARTING'?'warning':'secondary';
+    const statusBg=g.status==='LIVE'?'rgba(230,48,0,.85)':g.status==='STARTING'?'rgba(180,117,23,.85)':'rgba(80,80,80,.85)';
+    return `<div class="game-card" onclick="joinGame('${g.id}','AUDIENCE')">
+      <!-- Game preview header -->
+      <div style="background:linear-gradient(135deg,#0a0a1e,#0a1028);padding:10px;position:relative;min-height:70px">
+        <div style="position:absolute;top:6px;left:7px;background:${statusBg};color:#fff;font-size:8px;font-weight:800;padding:1px 5px;border-radius:3px;${g.status==='LIVE'?'animation:blink 1.4s ease-in-out infinite':''}">${g.status}</div>
+        <div style="position:absolute;top:6px;right:7px;background:rgba(0,0,0,.7);color:rgba(255,255,255,.7);font-size:8px;padding:1px 5px;border-radius:3px">👁 ${g.audience.toLocaleString()}</div>
+        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:26px;opacity:.35">${g.emoji}</div>
+        ${g.hostNote?`<div style="position:absolute;bottom:6px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.7);color:rgba(255,255,255,.6);font-size:8px;padding:1px 7px;border-radius:3px;white-space:nowrap">${g.hostNote}</div>`:''}
+        <!-- Mini score bars -->
+        <div style="position:absolute;bottom:0;left:0;right:0;padding:4px 6px;background:linear-gradient(0,rgba(0,0,0,.7),transparent)">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">
+            <div><div style="font-size:7px;color:rgba(255,255,255,.5)">${g.score1.label}</div>
+              <div class="score-bar"><div class="score-fill" style="width:${g.score1.v}%;background:var(--color-border-${g.color});--w:${g.score1.v}%"></div></div>
+            </div>
+            <div><div style="font-size:7px;color:rgba(255,255,255,.5)">${g.score2.label}</div>
+              <div class="score-bar"><div class="score-fill" style="width:${g.score2.v}%;background:var(--color-border-info);--w:${g.score2.v}%"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Game info -->
+      <div style="padding:8px 10px">
+        <div style="font-size:12px;font-weight:500;margin-bottom:2px">${g.name}</div>
+        <div style="font-size:10px;color:var(--color-text-secondary);margin-bottom:7px">${g.desc}</div>
+        <div style="display:flex;gap:5px">
+          <button class="join-btn" style="flex:1;background:var(--color-background-warning);color:var(--color-text-warning);border:1px solid var(--color-border-warning)" onclick="event.stopPropagation();joinGame('${g.id}','AUDIENCE')"><i class="ti ti-users" aria-hidden="true"></i> Join lobby</button>
+          <button class="watch-btn" onclick="event.stopPropagation();joinGame('${g.id}','WATCH')"><i class="ti ti-eye" aria-hidden="true"></i></button>
+        </div>
+        <div style="font-size:9px;color:var(--color-text-tertiary);margin-top:4px">Route: ${g.route}/lobby</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+renderGames();
+
+// Rotation countdown
+let gRot=13;
+setInterval(()=>{
+  gRot--;
+  if(gRot<=0){gRot=13;renderGames();}
+  const el=document.getElementById('rotGames');
+  if(el) el.textContent=gRot;
+  // Tick active game count
+  const ag=document.getElementById('activeGames');
+  if(ag){const n=parseInt(ag.textContent);ag.textContent=Math.max(5,n+Math.floor((Math.random()-.5)*1));}
+},1000);
+</script>

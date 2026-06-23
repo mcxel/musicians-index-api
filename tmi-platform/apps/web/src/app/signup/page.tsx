@@ -5,7 +5,12 @@ import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 
 type AccountType = "FAN" | "PERFORMER" | "ADVERTISER" | "SPONSOR" | "VENUE" | "PROMOTER";
-type Step = "TYPE" | "DETAILS" | "PROVISIONING" | "DONE";
+type Step = "TYPE" | "PERFORMER_TYPE" | "DETAILS" | "PROVISIONING" | "DONE";
+
+const PERFORMER_TYPES = [
+  "Rapper", "Singer", "DJ", "Producer", "Comedian", "Dancer",
+  "Musician", "Actor", "Band", "Magician", "Spoken Word", "Other",
+];
 
 const ACCOUNT_TYPES: Array<{
   type: AccountType; label: string; icon: string; color: string;
@@ -57,22 +62,43 @@ function SignupForm() {
   }, []);
 
   const [step, setStep] = useState<Step>(roleParam && ROLE_MAP[roleParam] ? "DETAILS" : "TYPE");
-  const [accountType, setAccountType] = useState<AccountType>(presetType);
+  const [selectedRoles, setSelectedRoles] = useState<AccountType[]>(
+    roleParam && ROLE_MAP[roleParam] ? [ROLE_MAP[roleParam]] : ["FAN"]
+  );
+  const [performerTypes, setPerformerTypes] = useState<string[]>([]);
   const [form, setForm] = useState({ name: "", email: "", password: "" });
   const [error, setError] = useState("");
   const [provSteps, setProvSteps] = useState<string[]>([]);
   const [copied, setCopied] = useState(false);
 
-  const sel = ACCOUNT_TYPES.find(t => t.type === accountType)!;
+  // For UI display — use first selected role or FAN as default
+  const primaryRole = selectedRoles[0] || "FAN";
+  const sel = ACCOUNT_TYPES.find(t => t.type === primaryRole)!;
 
   async function handleSignup() {
     setError("");
     if (!form.name || !form.email || !form.password) { setError("All fields required."); return; }
+    if (selectedRoles.length === 0) { setError("Please select at least one role."); return; }
     setStep("PROVISIONING");
     try {
       const regRes = await fetch("/api/auth/register", {
         method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ name: form.name, email: form.email, password: form.password, role: accountType, termsAccepted: true, inviteToken: vipToken || undefined, ref: refToken || undefined }),
+        body: JSON.stringify({
+          name: form.name,
+          email: form.email,
+          password: form.password,
+          // /api/auth/register only reads a single `role` string today — it
+          // has no `roles` array support yet, so primaryRole keeps signups
+          // working. `roles` is sent too, ready for when the backend (and
+          // the underlying single-enum User.role field) supports true
+          // multi-role identity.
+          role: primaryRole,
+          roles: selectedRoles,
+          termsAccepted: true,
+          inviteToken: vipToken || undefined,
+          ref: refToken || undefined,
+          performerTypes: selectedRoles.includes("PERFORMER") ? performerTypes : undefined
+        }),
       });
       const regData = await regRes.json().catch(() => ({})) as { ok?: boolean; userId?: string; user?: { id?: string }; token?: string; error?: string };
       if (!regRes.ok || !regData.ok) {
@@ -83,7 +109,7 @@ function SignupForm() {
       const userId = regData.userId ?? regData.user?.id ?? `stub_${Date.now()}`;
       const provRes = await fetch("/api/auth/provision", {
         method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ userId, accountType, vipToken: vipToken || undefined }),
+        body: JSON.stringify({ userId, roles: selectedRoles, vipToken: vipToken || undefined }),  // Pass roles array
       });
       const prov = await provRes.json() as { steps?: Array<{ step: string }> };
       setProvSteps((prov.steps ?? []).map((s) => s.step));
@@ -134,48 +160,107 @@ function SignupForm() {
 
           {step === "TYPE" && (
             <motion.div key="type" initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -18 }}>
-              <div style={{ fontSize: 8, letterSpacing: "0.2em", color: "rgba(255,255,255,0.3)", marginBottom: 14, textAlign: "center" }}>STEP 1 OF 2 — CHOOSE ACCOUNT TYPE</div>
+              <div style={{ fontSize: 8, letterSpacing: "0.2em", color: "rgba(255,255,255,0.3)", marginBottom: 14, textAlign: "center" }}>STEP 1 OF 2 — SELECT YOUR ROLES (CHOOSE ALL THAT APPLY)</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {ACCOUNT_TYPES.map(t => (
-                  <motion.button key={t.type} whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.98 }}
-                    onClick={() => setAccountType(t.type)}
-                    style={{
-                      display: "flex", alignItems: "center", gap: 14, padding: "12px 16px",
-                      borderRadius: 9, cursor: "pointer", textAlign: "left",
-                      background: accountType === t.type ? `${t.color}12` : "rgba(255,255,255,0.03)",
-                      border: `1px solid ${accountType === t.type ? t.color : "rgba(255,255,255,0.07)"}`,
-                    }}
-                  >
-                    <span style={{ fontSize: 26, flexShrink: 0 }}>{t.icon}</span>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 13, fontWeight: 800, color: accountType === t.type ? t.color : "#fff", marginBottom: 2 }}>{t.label}</div>
-                      <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)" }}>{t.tagline}</div>
-                    </div>
-                    {accountType === t.type && <div style={{ fontSize: 8, color: t.color, fontWeight: 800, letterSpacing: "0.1em" }}>SELECTED ✓</div>}
-                  </motion.button>
-                ))}
+                {ACCOUNT_TYPES.map(t => {
+                  const isSelected = selectedRoles.includes(t.type);
+                  return (
+                    <motion.button key={t.type} whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.98 }}
+                      onClick={() => setSelectedRoles(prev =>
+                        isSelected
+                          ? prev.filter(r => r !== t.type)  // Uncheck
+                          : [...prev, t.type]  // Check
+                      )}
+                      style={{
+                        display: "flex", alignItems: "center", gap: 14, padding: "12px 16px",
+                        borderRadius: 9, cursor: "pointer", textAlign: "left",
+                        background: isSelected ? `${t.color}12` : "rgba(255,255,255,0.03)",
+                        border: `1px solid ${isSelected ? t.color : "rgba(255,255,255,0.07)"}`,
+                      }}
+                    >
+                      <span style={{ fontSize: 26, flexShrink: 0 }}>{t.icon}</span>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 13, fontWeight: 800, color: isSelected ? t.color : "#fff", marginBottom: 2 }}>{t.label}</div>
+                        <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)" }}>{t.tagline}</div>
+                      </div>
+                      {isSelected && <div style={{ fontSize: 16, color: t.color }}>☑</div>}
+                    </motion.button>
+                  );
+                })}
               </div>
               <div style={{ margin: "14px 0", padding: "10px 14px", background: `${sel.color}08`, border: `1px solid ${sel.color}18`, borderRadius: 7 }}>
-                <div style={{ fontSize: 7, letterSpacing: "0.15em", color: sel.color, fontWeight: 700, marginBottom: 6 }}>INCLUDES</div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
-                  {sel.perks.map(p => <span key={p} style={{ fontSize: 9, color: "rgba(255,255,255,0.55)", background: "rgba(255,255,255,0.05)", borderRadius: 10, padding: "2px 8px" }}>{p}</span>)}
-                </div>
+                <div style={{ fontSize: 7, letterSpacing: "0.15em", color: sel.color, fontWeight: 700, marginBottom: 6 }}>SELECTED ROLES</div>
+                {selectedRoles.length > 0 ? (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+                    {selectedRoles.map(role => {
+                      const roleInfo = ACCOUNT_TYPES.find(t => t.type === role);
+                      return roleInfo ? (
+                        <span key={role} style={{ fontSize: 9, color: "rgba(255,255,255,0.55)", background: "rgba(255,255,255,0.05)", borderRadius: 10, padding: "2px 8px" }}>
+                          {roleInfo.icon} {roleInfo.label}
+                        </span>
+                      ) : null;
+                    })}
+                  </div>
+                ) : (
+                  <div style={{ fontSize: 9, color: "rgba(255,255,255,0.35)" }}>Choose at least one role to continue</div>
+                )}
               </div>
               <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
-                onClick={() => setStep("DETAILS")}
-                style={{ width: "100%", padding: "13px", minHeight: "44px", fontSize: 11, fontWeight: 800, letterSpacing: "0.15em", color: "#050510", background: `linear-gradient(135deg, ${sel.color}, ${sel.color}AA)`, border: "none", borderRadius: 7, cursor: "pointer" }}
-              >CONTINUE AS {sel.label.toUpperCase()} →</motion.button>
+                onClick={() => setStep(selectedRoles.includes("PERFORMER") ? "PERFORMER_TYPE" : "DETAILS")}
+                disabled={selectedRoles.length === 0}
+                style={{
+                  width: "100%", padding: "13px", minHeight: "44px", fontSize: 11, fontWeight: 800, letterSpacing: "0.15em",
+                  color: "#050510", background: `linear-gradient(135deg, ${sel.color}, ${sel.color}AA)`,
+                  border: "none", borderRadius: 7, cursor: selectedRoles.length === 0 ? "not-allowed" : "pointer",
+                  opacity: selectedRoles.length === 0 ? 0.5 : 1
+                }}
+              >CONTINUE →</motion.button>
               <div style={{ textAlign: "center", marginTop: 14, fontSize: 10, color: "rgba(255,255,255,0.28)" }}>
                 Already have an account? <Link href="/auth" style={{ color: "#00FFFF" }}>Sign in</Link>
               </div>
             </motion.div>
           )}
 
+          {step === "PERFORMER_TYPE" && (
+            <motion.div key="performer-type" initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -18 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18 }}>
+                <button onClick={() => setStep("TYPE")} style={{ background: "none", border: "none", color: "#00FFFF", cursor: "pointer", fontSize: 18 }}>←</button>
+                <div style={{ fontSize: 8, letterSpacing: "0.2em", color: "rgba(255,255,255,0.3)" }}>STEP 2 OF 3 — WHAT KIND OF PERFORMER?</div>
+              </div>
+              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", marginBottom: 14 }}>Select all that apply.</div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 18 }}>
+                {PERFORMER_TYPES.map((pt) => {
+                  const selected = performerTypes.includes(pt);
+                  return (
+                    <button
+                      key={pt}
+                      type="button"
+                      onClick={() => setPerformerTypes((prev) => (selected ? prev.filter((x) => x !== pt) : [...prev, pt]))}
+                      style={{
+                        padding: "9px 16px", borderRadius: 20, fontSize: 11, fontWeight: 700, cursor: "pointer",
+                        background: selected ? `${sel.color}1f` : "rgba(255,255,255,0.04)",
+                        border: `1px solid ${selected ? sel.color : "rgba(255,255,255,0.12)"}`,
+                        color: selected ? sel.color : "rgba(255,255,255,0.6)",
+                      }}
+                    >
+                      {selected ? "✓ " : ""}{pt}
+                    </button>
+                  );
+                })}
+              </div>
+              <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
+                onClick={() => setStep("DETAILS")}
+                disabled={performerTypes.length === 0}
+                style={{ width: "100%", padding: "13px", minHeight: "44px", fontSize: 11, fontWeight: 800, letterSpacing: "0.15em", color: "#050510", background: `linear-gradient(135deg, ${sel.color}, ${sel.color}AA)`, border: "none", borderRadius: 7, cursor: performerTypes.length === 0 ? "not-allowed" : "pointer", opacity: performerTypes.length === 0 ? 0.5 : 1 }}
+              >CONTINUE →</motion.button>
+            </motion.div>
+          )}
+
           {step === "DETAILS" && (
             <motion.div key="details" initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -18 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18 }}>
-                <button onClick={() => setStep("TYPE")} style={{ background: "none", border: "none", color: "#00FFFF", cursor: "pointer", fontSize: 18 }}>←</button>
-                <div style={{ fontSize: 8, letterSpacing: "0.2em", color: "rgba(255,255,255,0.3)" }}>STEP 2 OF 2 — {sel.icon} {sel.label.toUpperCase()} DETAILS</div>
+                <button onClick={() => setStep(selectedRoles.includes("PERFORMER") ? "PERFORMER_TYPE" : "TYPE")} style={{ background: "none", border: "none", color: "#00FFFF", cursor: "pointer", fontSize: 18 }}>←</button>
+                <div style={{ fontSize: 8, letterSpacing: "0.2em", color: "rgba(255,255,255,0.3)" }}>{selectedRoles.includes("PERFORMER") ? "STEP 3 OF 3" : "STEP 2 OF 2"} — ACCOUNT DETAILS</div>
               </div>
               {([["name","Display Name","text","Your name or artist alias"],["email","Email Address","email","you@example.com"],["password","Password","password","8+ characters"]] as [keyof typeof form, string, string, string][]).map(([key, lbl, type, ph]) => (
                 <div key={key} style={{ marginBottom: 12 }}>
@@ -190,7 +275,7 @@ function SignupForm() {
               <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
                 onClick={handleSignup}
                 style={{ width: "100%", padding: "13px", minHeight: "44px", fontSize: 11, fontWeight: 800, letterSpacing: "0.15em", color: "#050510", background: `linear-gradient(135deg, ${sel.color}, ${sel.color}AA)`, border: "none", borderRadius: 7, cursor: "pointer" }}
-              >CREATE {sel.label.toUpperCase()} ACCOUNT</motion.button>
+              >CREATE MY {selectedRoles.length > 1 ? "MULTI-ROLE WORKSPACE" : "ACCOUNT"}</motion.button>
             </motion.div>
           )}
 
@@ -206,7 +291,12 @@ function SignupForm() {
             <motion.div key="done" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} style={{ textAlign: "center", padding: "20px 0" }}>
               <motion.div animate={{ scale: [1, 1.15, 1] }} transition={{ duration: 0.6 }} style={{ fontSize: 52, marginBottom: 14 }}>✅</motion.div>
               <div style={{ fontSize: 15, fontWeight: 900, letterSpacing: 2, color: "#00FF88", marginBottom: 8 }}>WORKSPACE READY</div>
-              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginBottom: 20 }}>Your {sel.label} account is live. Bots assigned. Inventory loaded.</div>
+              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginBottom: 20 }}>
+                Your multi-role account is live.{selectedRoles.length > 0 && ` Roles: ${selectedRoles.map(r => {
+                  const role = ACCOUNT_TYPES.find(t => t.type === r);
+                  return role ? role.label : r;
+                }).join(", ")}.`} Bots assigned. Inventory loaded.
+              </div>
 
               {/* Photo upload CTA */}
               <motion.div
@@ -223,14 +313,14 @@ function SignupForm() {
                 </Link>
               </motion.div>
 
-              {/* Orbit announcement */}
+              {/* Multi-role announcement */}
               <motion.div
                 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
                 style={{ background: "linear-gradient(135deg, rgba(255,45,170,0.12), rgba(170,45,255,0.1))", border: "1.5px solid rgba(255,45,170,0.4)", borderRadius: 12, padding: "16px 18px", marginBottom: 16, textAlign: "left" }}
               >
-                <div style={{ fontSize: 11, fontWeight: 900, color: "#FF2DAA", letterSpacing: "0.1em", marginBottom: 6 }}>🔥 YOU&apos;RE LIVE ON THE HOMEPAGE ORBIT</div>
+                <div style={{ fontSize: 11, fontWeight: 900, color: "#FF2DAA", letterSpacing: "0.1em", marginBottom: 6 }}>🔄 MULTI-ROLE WORKSPACE ACTIVATED</div>
                 <div style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", lineHeight: 1.6 }}>
-                  Your profile is already rotating in the <strong style={{ color: "#fff" }}>Home #1 live orbit</strong>. Every visitor to the homepage can see you right now. Send your invite link and watch your rank climb.
+                  You can now <strong style={{ color: "#fff" }}>switch between roles</strong> from the HQ header. Each role has its own dashboard, controls, and analytics. Your identity is unified across all roles.
                 </div>
               </motion.div>
 
@@ -272,12 +362,12 @@ function SignupForm() {
               )}
 
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <Link href={`/onboarding/${accountType.toLowerCase()}`} style={{ padding: "13px 22px", fontSize: 11, fontWeight: 800, letterSpacing: "0.12em", background: `linear-gradient(135deg, ${sel.color}, ${sel.color}88)`, color: "#050510", textDecoration: "none", display: "block", textAlign: "center" }}>
-                  {sel.icon} SET UP YOUR {sel.label.toUpperCase()} PROFILE →
+                <Link href={`/onboarding/${selectedRoles[0]?.toLowerCase()}`} style={{ padding: "13px 22px", fontSize: 11, fontWeight: 800, letterSpacing: "0.12em", background: `linear-gradient(135deg, ${sel.color}, ${sel.color}88)`, color: "#050510", textDecoration: "none", display: "block", textAlign: "center" }}>
+                  {sel.icon} SET UP YOUR {selectedRoles[0]?.toUpperCase()} PROFILE →
                 </Link>
                 <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
                   <Link href="/home/1" style={{ padding: "10px 18px", fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", background: "rgba(255,255,255,0.06)", color: "#fff", borderRadius: 6, textDecoration: "none", flex: 1, textAlign: "center" }}>SEE ORBIT POSITION</Link>
-                  <Link href="/dashboard" style={{ padding: "10px 18px", fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.5)", borderRadius: 6, textDecoration: "none", flex: 1, textAlign: "center" }}>DASHBOARD</Link>
+                  <Link href="/hub/fan" style={{ padding: "10px 18px", fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.5)", borderRadius: 6, textDecoration: "none", flex: 1, textAlign: "center" }}>GO TO HUB</Link>
                 </div>
               </div>
             </motion.div>

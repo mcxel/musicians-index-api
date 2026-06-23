@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import HighFidelityAvatar from "@/components/avatar/HighFidelityAvatar";
@@ -17,20 +18,24 @@ const NAV_ITEMS: { id: Section; label: string; icon: string; color: string }[] =
 ];
 
 const SOCIAL_PLATFORMS = [
-  { id: "twitter",   label: "Twitter / X",  icon: "🐦", linked: true,  handle: "@wavetek_tmi" },
+  { id: "twitter",   label: "Twitter / X",  icon: "🐦", linked: false, handle: "" },
   { id: "instagram", label: "Instagram",    icon: "📸", linked: false, handle: "" },
-  { id: "spotify",   label: "Spotify",      icon: "🎵", linked: true,  handle: "Wavetek" },
+  { id: "spotify",   label: "Spotify",      icon: "🎵", linked: false, handle: "" },
   { id: "youtube",   label: "YouTube",      icon: "▶️", linked: false, handle: "" },
   { id: "tiktok",    label: "TikTok",       icon: "🎬", linked: false, handle: "" },
 ];
 
 export default function SettingsPage() {
+  const router = useRouter();
   const [activeSection, setActiveSection] = useState<Section>("profile");
   const [saved, setSaved] = useState<Section | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [showPhotoUploader, setShowPhotoUploader] = useState(false);
   const [uploadNotice, setUploadNotice] = useState<string | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState("");
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
   const [exportMsg, setExportMsg] = useState("");
   const [platforms, setPlatforms] = useState(SOCIAL_PLATFORMS);
 
@@ -46,6 +51,7 @@ export default function SettingsPage() {
   // Password state
   const [pwForm, setPwForm] = useState({ current: "", newPw: "", confirm: "" });
   const [pwError, setPwError] = useState("");
+  const [pwBusy, setPwBusy] = useState(false);
 
   useEffect(() => {
     fetch("/api/auth/session", { cache: "no-store", credentials: "include" })
@@ -69,6 +75,7 @@ export default function SettingsPage() {
   }, []);
 
   async function save(section: Section) {
+    setSaveError(null);
     if (section === "profile") {
       try {
         await fetch("/api/profile/update", {
@@ -76,6 +83,26 @@ export default function SettingsPage() {
           headers: { "Content-Type": "application/json" },
           credentials: "include",
           body: JSON.stringify({ displayName: profile.name, bio: profile.bio, website: profile.website, avatarUrl: profile.avatarUrl || undefined }),
+        });
+      } catch { /* non-blocking */ }
+    }
+    if (section === "notifications") {
+      try {
+        await fetch("/api/settings/notifications", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ preferences: notifs }),
+        });
+      } catch { /* non-blocking */ }
+    }
+    if (section === "privacy") {
+      try {
+        await fetch("/api/settings/privacy", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ privacy }),
         });
       } catch { /* non-blocking */ }
     }
@@ -108,25 +135,61 @@ export default function SettingsPage() {
     setPlatforms(prev => prev.map(p => p.id === id ? { ...p, linked: !p.linked, handle: !p.linked ? "@connected" : "" } : p));
   }
 
-  function confirmDeleteAccount() {
+  async function confirmDeleteAccount() {
     if (deleteConfirm !== "DELETE MY ACCOUNT") return;
-    setShowDeleteModal(false);
-    window.location.href = "/auth?deleted=1";
+    setDeleteBusy(true);
+    setDeleteError("");
+    try {
+      const res = await fetch("/api/auth/deactivate", {
+        method: "POST",
+        credentials: "include",
+      });
+      if (res.ok) {
+        setShowDeleteModal(false);
+        router.replace("/home/1?notice=account-deactivated");
+      } else {
+        const data = (await res.json().catch(() => ({}))) as { error?: string };
+        setDeleteError(data?.error ?? "Deactivation failed. Please try again.");
+        setDeleteBusy(false);
+      }
+    } catch {
+      setDeleteError("Network error. Please try again.");
+      setDeleteBusy(false);
+    }
   }
 
-  function handlePasswordSave(e: React.FormEvent) {
+  async function handlePasswordSave(e: React.FormEvent) {
     e.preventDefault();
     if (pwForm.newPw !== pwForm.confirm) { setPwError("Passwords don't match"); return; }
     if (pwForm.newPw.length < 8) { setPwError("Password must be at least 8 characters"); return; }
     setPwError("");
-    save("password");
-    setPwForm({ current: "", newPw: "", confirm: "" });
+    setPwBusy(true);
+    try {
+      const res = await fetch("/api/auth/change-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ currentPassword: pwForm.current, newPassword: pwForm.newPw }),
+      });
+      const data = (await res.json()) as { ok: boolean; error?: string };
+      if (!data.ok) {
+        setPwError(data.error ?? "Password change failed. Check your current password.");
+      } else {
+        setSaved("password");
+        setPwForm({ current: "", newPw: "", confirm: "" });
+        setTimeout(() => setSaved(null), 2500);
+      }
+    } catch {
+      setPwError("Network error. Please try again.");
+    } finally {
+      setPwBusy(false);
+    }
   }
 
-  const SaveButton = ({ section }: { section: Section }) => (
-    <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }} type="submit"
-      style={{ padding: "11px 24px", background: saved === section ? "rgba(0,255,136,0.2)" : "linear-gradient(135deg,#00FFFF,#00FF88)", color: saved === section ? "#00FF88" : "#050510", fontSize: 12, fontWeight: 800, letterSpacing: "0.06em", borderRadius: 8, border: saved === section ? "1px solid rgba(0,255,136,0.4)" : "none", cursor: "pointer" }}>
-      {saved === section ? "✓ Saved" : "Save Changes"}
+  const SaveButton = ({ section, busy }: { section: Section; busy?: boolean }) => (
+    <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }} type="submit" disabled={busy}
+      style={{ padding: "11px 24px", background: saved === section ? "rgba(0,255,136,0.2)" : "linear-gradient(135deg,#00FFFF,#00FF88)", color: saved === section ? "#00FF88" : "#050510", fontSize: 12, fontWeight: 800, letterSpacing: "0.06em", borderRadius: 8, border: saved === section ? "1px solid rgba(0,255,136,0.4)" : "none", cursor: busy ? "not-allowed" : "pointer", opacity: busy ? 0.6 : 1 }}>
+      {busy ? "Saving…" : saved === section ? "✓ Saved" : "Save Changes"}
     </motion.button>
   );
 
@@ -136,27 +199,36 @@ export default function SettingsPage() {
       <AnimatePresence>
         {showDeleteModal && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            onClick={() => setShowDeleteModal(false)}
+            onClick={() => { if (!deleteBusy) setShowDeleteModal(false); }}
             style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
             <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }}
               onClick={e => e.stopPropagation()}
               style={{ background: "#0a0010", border: "1px solid rgba(255,45,170,0.3)", borderRadius: 18, padding: "32px 28px", maxWidth: 420, width: "100%" }}>
               <div style={{ fontSize: 40, textAlign: "center", marginBottom: 14 }}>💀</div>
-              <div style={{ fontSize: 18, fontWeight: 900, textAlign: "center", color: "#FF2DAA", marginBottom: 10 }}>Delete Account</div>
+              <div style={{ fontSize: 18, fontWeight: 900, textAlign: "center", color: "#FF2DAA", marginBottom: 10 }}>Deactivate Account</div>
               <div style={{ fontSize: 13, color: "rgba(255,255,255,0.55)", textAlign: "center", marginBottom: 20, lineHeight: 1.7 }}>
-                This will permanently delete your account, all your content, earnings, and data. This cannot be undone.
+                This will deactivate your account and end your session. Your data is preserved — contact support to restore access.
               </div>
               <label style={{ ...labelStyle, marginBottom: 8 }}>TYPE &quot;DELETE MY ACCOUNT&quot; TO CONFIRM</label>
               <input value={deleteConfirm} onChange={e => setDeleteConfirm(e.target.value)}
-                placeholder="DELETE MY ACCOUNT" style={{ ...inputStyle, marginBottom: 16 }} />
+                placeholder="DELETE MY ACCOUNT"
+                disabled={deleteBusy}
+                style={{ ...inputStyle, marginBottom: 16 }} />
+              {deleteError && (
+                <div style={{ marginBottom: 12, fontSize: 12, color: "#ff8888", background: "rgba(255,45,45,0.1)", border: "1px solid rgba(255,45,45,0.3)", borderRadius: 8, padding: "8px 12px" }}>
+                  {deleteError}
+                </div>
+              )}
               <div style={{ display: "flex", gap: 10 }}>
-                <button onClick={() => setShowDeleteModal(false)}
-                  style={{ flex: 1, padding: "11px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, color: "rgba(255,255,255,0.6)", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
+                <button onClick={() => { if (!deleteBusy) setShowDeleteModal(false); }}
+                  disabled={deleteBusy}
+                  style={{ flex: 1, padding: "11px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, color: "rgba(255,255,255,0.6)", fontWeight: 700, fontSize: 12, cursor: deleteBusy ? "not-allowed" : "pointer" }}>
                   Cancel
                 </button>
-                <button disabled={deleteConfirm !== "DELETE MY ACCOUNT"} onClick={confirmDeleteAccount}
-                  style={{ flex: 1, padding: "11px", background: deleteConfirm === "DELETE MY ACCOUNT" ? "rgba(255,45,170,0.2)" : "rgba(255,255,255,0.03)", border: `1px solid ${deleteConfirm === "DELETE MY ACCOUNT" ? "rgba(255,45,170,0.5)" : "rgba(255,255,255,0.08)"}`, borderRadius: 8, color: deleteConfirm === "DELETE MY ACCOUNT" ? "#FF2DAA" : "rgba(255,255,255,0.2)", fontWeight: 800, fontSize: 12, cursor: deleteConfirm === "DELETE MY ACCOUNT" ? "pointer" : "not-allowed" }}>
-                  Delete Forever
+                <button disabled={deleteConfirm !== "DELETE MY ACCOUNT" || deleteBusy}
+                  onClick={() => void confirmDeleteAccount()}
+                  style={{ flex: 1, padding: "11px", background: deleteConfirm === "DELETE MY ACCOUNT" && !deleteBusy ? "rgba(255,45,170,0.2)" : "rgba(255,255,255,0.03)", border: `1px solid ${deleteConfirm === "DELETE MY ACCOUNT" ? "rgba(255,45,170,0.5)" : "rgba(255,255,255,0.08)"}`, borderRadius: 8, color: deleteConfirm === "DELETE MY ACCOUNT" && !deleteBusy ? "#FF2DAA" : "rgba(255,255,255,0.2)", fontWeight: 800, fontSize: 12, cursor: deleteConfirm === "DELETE MY ACCOUNT" && !deleteBusy ? "pointer" : "not-allowed" }}>
+                  {deleteBusy ? "Deactivating…" : "Deactivate"}
                 </button>
               </div>
             </motion.div>
@@ -192,7 +264,7 @@ export default function SettingsPage() {
 
             {/* PROFILE */}
             {activeSection === "profile" && (
-              <form onSubmit={e => { e.preventDefault(); save("profile"); }}>
+              <form onSubmit={e => { e.preventDefault(); void save("profile"); }}>
                 <div style={{ fontSize: 9, fontWeight: 800, color: "#00FFFF", letterSpacing: "0.2em", marginBottom: 24 }}>PROFILE</div>
                 {/* Avatar */}
                 <div style={{ display: "flex", gap: 16, alignItems: "center", marginBottom: 24 }}>
@@ -221,7 +293,7 @@ export default function SettingsPage() {
                   </div>
                   <div>
                     <label style={labelStyle}>EMAIL</label>
-                    <input type="email" value={profile.email} onChange={e => setProfile(p => ({ ...p, email: e.target.value }))} style={inputStyle} />
+                    <input type="email" value={profile.email} readOnly style={{ ...inputStyle, opacity: 0.6, cursor: "default" }} title="Email cannot be changed here" />
                   </div>
                 </div>
                 <div style={{ marginBottom: 14 }}>
@@ -232,13 +304,14 @@ export default function SettingsPage() {
                   <label style={labelStyle}>WEBSITE</label>
                   <input value={profile.website} onChange={e => setProfile(p => ({ ...p, website: e.target.value }))} placeholder="https://yoursite.com" style={inputStyle} />
                 </div>
+                {saveError && <div style={{ color: "#ff8888", fontSize: 12, marginBottom: 12 }}>{saveError}</div>}
                 <SaveButton section="profile" />
               </form>
             )}
 
             {/* NOTIFICATIONS */}
             {activeSection === "notifications" && (
-              <form onSubmit={e => { e.preventDefault(); save("notifications"); }}>
+              <form onSubmit={e => { e.preventDefault(); void save("notifications"); }}>
                 <div style={{ fontSize: 9, fontWeight: 800, color: "#FFD700", letterSpacing: "0.2em", marginBottom: 24 }}>NOTIFICATIONS</div>
                 {[
                   { key: "newFollowers",     label: "New followers",          sub: "When someone follows you" },
@@ -268,7 +341,7 @@ export default function SettingsPage() {
 
             {/* PRIVACY */}
             {activeSection === "privacy" && (
-              <form onSubmit={e => { e.preventDefault(); save("privacy"); }}>
+              <form onSubmit={e => { e.preventDefault(); void save("privacy"); }}>
                 <div style={{ fontSize: 9, fontWeight: 800, color: "#AA2DFF", letterSpacing: "0.2em", marginBottom: 24 }}>PRIVACY</div>
                 <div style={{ marginBottom: 16 }}>
                   <label style={labelStyle}>PROFILE VISIBILITY</label>
@@ -306,7 +379,7 @@ export default function SettingsPage() {
 
             {/* PASSWORD */}
             {activeSection === "password" && (
-              <form onSubmit={handlePasswordSave}>
+              <form onSubmit={e => void handlePasswordSave(e)}>
                 <div style={{ fontSize: 9, fontWeight: 800, color: "#00FF88", letterSpacing: "0.2em", marginBottom: 24 }}>CHANGE PASSWORD</div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: 20 }}>
                   <div>
@@ -323,8 +396,8 @@ export default function SettingsPage() {
                   </div>
                 </div>
                 {pwError && <div style={{ color: "#FF2DAA", fontSize: 12, marginBottom: 12 }}>{pwError}</div>}
-                {saved === "password" && <div style={{ color: "#00FF88", fontSize: 12, marginBottom: 12 }}>✓ Password updated successfully</div>}
-                <SaveButton section="password" />
+                {saved === "password" && <div style={{ color: "#00FF88", fontSize: 12, marginBottom: 12 }}>Password updated successfully.</div>}
+                <SaveButton section="password" busy={pwBusy} />
               </form>
             )}
 
@@ -333,23 +406,26 @@ export default function SettingsPage() {
               <div>
                 <div style={{ fontSize: 9, fontWeight: 800, color: "#FF9500", letterSpacing: "0.2em", marginBottom: 24 }}>LINKED ACCOUNTS</div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                  {SOCIAL_PLATFORMS.map(platform => (
+                  {platforms.map(platform => (
                     <div key={platform.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 16px", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10 }}>
                       <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
                         <span style={{ fontSize: 22 }}>{platform.icon}</span>
                         <div>
                           <div style={{ fontSize: 13, fontWeight: 700 }}>{platform.label}</div>
-                          {platforms.find(p => p.id === platform.id)?.linked && <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>{platforms.find(p => p.id === platform.id)?.handle}</div>}
+                          {platform.linked && <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>{platform.handle}</div>}
                         </div>
                       </div>
                       <button onClick={() => togglePlatform(platform.id)} style={{ padding: "7px 14px", borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: "pointer",
-                        background: platforms.find(p => p.id === platform.id)?.linked ? "rgba(255,45,170,0.08)" : "rgba(255,149,0,0.1)",
-                        border: `1px solid ${platforms.find(p => p.id === platform.id)?.linked ? "rgba(255,45,170,0.25)" : "rgba(255,149,0,0.3)"}`,
-                        color: platforms.find(p => p.id === platform.id)?.linked ? "#FF2DAA" : "#FF9500" }}>
-                        {platforms.find(p => p.id === platform.id)?.linked ? "Disconnect" : "Connect"}
+                        background: platform.linked ? "rgba(255,45,170,0.08)" : "rgba(255,149,0,0.1)",
+                        border: `1px solid ${platform.linked ? "rgba(255,45,170,0.25)" : "rgba(255,149,0,0.3)"}`,
+                        color: platform.linked ? "#FF2DAA" : "#FF9500" }}>
+                        {platform.linked ? "Disconnect" : "Connect"}
                       </button>
                     </div>
                   ))}
+                </div>
+                <div style={{ marginTop: 12, fontSize: 11, color: "rgba(255,255,255,0.35)" }}>
+                  OAuth social account linking coming soon.
                 </div>
               </div>
             )}
@@ -368,12 +444,12 @@ export default function SettingsPage() {
                     </button>
                   </div>
                   <div style={{ padding: "18px 16px", background: "rgba(255,45,170,0.08)", border: "1px solid rgba(255,45,170,0.3)", borderRadius: 12 }}>
-                    <div style={{ fontSize: 13, fontWeight: 800, color: "#FF2DAA", marginBottom: 4 }}>Delete Account</div>
-                    <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", marginBottom: 12 }}>Permanently delete your account and all associated data. This action cannot be undone.</div>
-                    <button onClick={() => setShowDeleteModal(true)}
-                      style={{ padding: "9px 18px", background: "rgba(255,45,170,0.15)", border: "1px solid rgba(255,45,170,0.4)", borderRadius: 7, color: "#FF2DAA", fontWeight: 800, fontSize: 12, cursor: "pointer" }}>
-                      Delete My Account
-                    </button>
+                    <div style={{ fontSize: 13, fontWeight: 800, color: "#FF2DAA", marginBottom: 4 }}>Deactivate Account</div>
+                    <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", marginBottom: 12 }}>Deactivate your account and end your session. Your data is preserved. Contact support to restore access.</div>
+                    <Link href="/account/deactivate"
+                      style={{ display: "inline-block", padding: "9px 18px", background: "rgba(255,45,170,0.15)", border: "1px solid rgba(255,45,170,0.4)", borderRadius: 7, color: "#FF2DAA", fontWeight: 800, fontSize: 12, textDecoration: "none" }}>
+                      Deactivate My Account
+                    </Link>
                   </div>
                 </div>
               </div>

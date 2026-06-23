@@ -550,9 +550,43 @@ function RightSidebar() {
 // ── Beat Locker tab ────────────────────────────────────────────────────────────
 function BeatLockerTab() {
   const [beats, setBeats] = useState<Beat[]>(SEED_BEATS);
+  const [isUploading, setIsUploading] = useState(false);
+  const beatInputRef = useRef<HTMLInputElement>(null);
   const LICENSES: LicenseType[] = ["Lease", "Premium", "Exclusive"];
   const licenseColor: Record<LicenseType, string> = {
     Lease: C.cyan, Premium: C.gold, Exclusive: C.red,
+  };
+
+  const handleBeatUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/upload/media", { method: "POST", body: fd, credentials: "include" });
+      if (res.ok) {
+        const data = await res.json() as { url?: string; isAudio?: boolean };
+        if (data.url && data.isAudio) {
+          const name = file.name.replace(/\.[^.]+$/, "").replace(/[-_]/g, " ");
+          const newBeat: Beat = {
+            id: Date.now(),
+            title: name,
+            genre: "Upload",
+            bpm: 0,
+            price: 29,
+            license: "Lease",
+            market: false,
+          };
+          setBeats((b) => [...b, newBeat]);
+        }
+      }
+    } catch {
+      // Silent — user can retry
+    } finally {
+      setIsUploading(false);
+      if (beatInputRef.current) beatInputRef.current.value = "";
+    }
   };
 
   const setLicense = (id: number, license: LicenseType) =>
@@ -564,13 +598,23 @@ function BeatLockerTab() {
     <div style={{ padding: "16px 0" }}>
       {/* Upload row */}
       <div style={{ display: "flex", gap: 10, marginBottom: 14, alignItems: "center" }}>
-        <button style={{
-          padding: "9px 18px", borderRadius: 9, fontSize: 10, fontWeight: 900, letterSpacing: "0.12em",
-          background: `${C.cyan}22`, border: `1px solid ${C.cyan}66`,
-          color: C.cyan, cursor: "pointer",
-        }} className="orbitron">
-          ⬆ UPLOAD BEAT
+        <button
+          onClick={() => beatInputRef.current?.click()}
+          disabled={isUploading}
+          style={{
+            padding: "9px 18px", borderRadius: 9, fontSize: 10, fontWeight: 900, letterSpacing: "0.12em",
+            background: `${C.cyan}22`, border: `1px solid ${C.cyan}66`,
+            color: C.cyan, cursor: isUploading ? "not-allowed" : "pointer", opacity: isUploading ? 0.6 : 1,
+          }} className="orbitron">
+          {isUploading ? "⏳ UPLOADING…" : "⬆ UPLOAD BEAT"}
         </button>
+        <input
+          ref={beatInputRef}
+          type="file"
+          accept="audio/mpeg,audio/mp3,audio/wav,audio/ogg,audio/m4a,audio/aac,audio/*"
+          style={{ display: "none" }}
+          onChange={handleBeatUpload}
+        />
         <div style={{
           flex: 1, padding: "9px 16px", borderRadius: 9, fontSize: 10,
           background: "rgba(255,255,255,0.03)", border: "2px dashed rgba(255,255,255,0.15)",
@@ -721,6 +765,7 @@ export default function ArtistStudioPage() {
             displayName:   'Performer',
             title:         'Live Session',
             category:      'live',
+            eventType:     'LIVE_GENERAL',
             roomId:        rid,
             privacy:       'PUBLIC',
             accentColor:   C.gold,

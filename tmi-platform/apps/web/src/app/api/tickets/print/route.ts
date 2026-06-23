@@ -7,6 +7,9 @@ export async function GET(req: NextRequest) {
   const ticketId = searchParams.get('ticketId') || `TMI-${Date.now().toString(36).toUpperCase()}`;
   const venueId = searchParams.get('venue') || 'World Concert Arena';
 
+  // QR code points to the real verify page so venue staff can scan at the door.
+  const verifyUrl = `${req.nextUrl.origin}/ticket/verify/${encodeURIComponent(ticketId)}`;
+
   // Thermal Printer Output Engine
   // Formatted for 80mm ESC/POS Brick and Mortar Printers
   const ticketPayload = {
@@ -15,14 +18,13 @@ export async function GET(req: NextRequest) {
     event: "LIVE MAIN STAGE",
     ticketId: ticketId,
     barcodeType: "QR_CODE",
-    barcodeData: `tmi://verify/${ticketId}`,
+    barcodeData: verifyUrl,
     issuedAt: new Date().toISOString(),
-    advisory: "Valid for single entry. TMI Platform Law #5 Enforced.",
+    advisory: "Valid for single entry. TMI Platform Rule 17 Enforced.",
     thermalPrintFormat: {
       width: "80mm",
       encoding: "base64",
-      // Base64 representation of a standard 80mm thermal print payload string
-      data: Buffer.from(`TMI TICKET\nID: ${ticketId}\nVENUE: ${venueId}`).toString('base64')
+      data: Buffer.from(`TMI TICKET\nID: ${ticketId}\nVENUE: ${venueId}\nVERIFY: ${verifyUrl}`).toString('base64')
     }
   };
 

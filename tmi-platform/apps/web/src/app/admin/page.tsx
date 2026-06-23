@@ -10,6 +10,7 @@ import BigAceVisualPanel from '@/components/agents/BigAceVisualPanel';
 import MichaelCharlieDashboard from '@/components/agents/MichaelCharlieDashboard';
 import AgentCommandCenter from '@/components/agents/AgentCommandCenter';
 import AdminUnifiedInbox from '@/components/admin/UnifiedInboxPanel';
+import RealTimeEventFeed from '@/components/admin/RealTimeEventFeed';
 
 interface PlatformStats {
   totalUsers: number;
@@ -291,6 +292,12 @@ export default function AdminDashboard() {
             </div>
           </div>
         )}
+
+        {/* Live Platform Event Feed */}
+        <div style={{ marginBottom: 28 }}>
+          <div style={{ fontSize: 9, letterSpacing: '0.2em', fontWeight: 800, color: '#FF2DAA', marginBottom: 12 }}>LIVE PLATFORM SIGNALS</div>
+          <RealTimeEventFeed />
+        </div>
 
         {/* Diagnostic quick links */}
         <div style={{ marginBottom: 36 }}>

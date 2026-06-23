@@ -4,6 +4,7 @@ import { getStripe } from '@/lib/stripe/client';
 import { getRegion, getRegionalPriceId, SUBSCRIPTION_TIERS } from '@/lib/stripe/regionalPricing';
 import { STRIPE_PRODUCTS } from '@/lib/stripe/products';
 import type { UserTier } from '@/lib/auth/UserStore';
+import { getPerformerBySlug } from '@/lib/performers/PerformerRegistry';
 
 // Lookup table: placeholder priceId → { price (cents), name, interval }
 const PRODUCT_BY_PRICE_ID: Record<string, { price: number; name: string; interval?: string }> =
@@ -117,6 +118,9 @@ export async function GET(req: NextRequest) {
       success_url: successUrl,
       cancel_url:  cancelUrl,
       allow_promotion_codes: true,
+      // Explicitly set customer_email so the webhook can always match the user
+      // regardless of whether Stripe auto-populates it during checkout.
+      ...(userEmail ? { customer_email: userEmail } : {}),
       metadata: {
         plan: planKey,
         tierUpgrade,
@@ -177,6 +181,9 @@ export async function POST(req: NextRequest) {
       const fanId = req.cookies.get('tmi_user_email')?.value ?? '';
       const fanDisplayName = fanId ? fanId.split('@')[0] : 'Fan';
       const { origin } = req.nextUrl;
+      // Webhook fulfillment keys off metadata.type === 'tip' + metadata.artistId —
+      // resolve the slug to the registry's stable id so the tip actually lands.
+      const artistId = getPerformerBySlug(body.artistSlug)?.id ?? body.artistSlug;
       const tipSession = await stripe.checkout.sessions.create({
         mode: 'payment',
         payment_method_types: ['card'],
@@ -191,7 +198,8 @@ export async function POST(req: NextRequest) {
         success_url: `${origin}/payment-success?type=tip&artist=${encodeURIComponent(body.artistSlug)}`,
         cancel_url: `${origin}/home/1`,
         metadata: {
-          product: 'TIP',
+          type: 'tip',
+          artistId,
           artistSlug: body.artistSlug,
           roomId: body.roomId ?? '',
           fanId,

@@ -29,8 +29,8 @@ export function TMIGlobalHUD() {
   const router = useRouter();
   const [user, setUser] = useState<SessionUser | null>(null);
   const [expanded, setExpanded] = useState(false);
-  const [notifCount, setNotifCount] = useState(3);
-  const [msgCount, setMsgCount] = useState(1);
+  const [notifCount, setNotifCount] = useState(0);
+  const [msgCount, setMsgCount] = useState(0);
   const [isLive, setIsLive] = useState(false);
   const [hudHovered, setHudHovered] = useState(false);
   const [submissionToast, setSubmissionToast] = useState<string>('');

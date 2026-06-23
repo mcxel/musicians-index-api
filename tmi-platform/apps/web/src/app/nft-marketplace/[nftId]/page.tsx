@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 
 // ── NFT data registry (mirrors nft-marketplace/page.tsx) ─────────────────────
 
@@ -42,6 +42,28 @@ export default function NFTDetailPage() {
   const [offerSent, setOfferSent] = useState(false);
   const [copied, setCopied] = useState(false);
   const [playing, setPlaying] = useState(false);
+  const [buying, setBuying] = useState(false);
+  const router = useRouter();
+
+  async function handleBuyNow() {
+    if (buying) return;
+    setBuying(true);
+    try {
+      const res = await fetch("/api/nft/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nftId: nft.id, title: nft.title, amount: nft.price, edition: nft.edition }),
+      });
+      const data = await res.json() as { url?: string };
+      if (data.url) {
+        router.push(data.url);
+      } else {
+        setBuying(false);
+      }
+    } catch {
+      setBuying(false);
+    }
+  }
 
   function handleShare() {
     if (typeof navigator !== "undefined" && navigator.clipboard) {
@@ -177,24 +199,27 @@ export default function NFTDetailPage() {
             <div style={{ background: `${nft.color}08`, border: `1px solid ${nft.color}25`, borderRadius: 14, padding: "20px 22px", marginBottom: 16 }}>
               <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", letterSpacing: "0.2em", fontWeight: 700, marginBottom: 6 }}>CURRENT PRICE</div>
               <div style={{ fontSize: 36, fontWeight: 900, color: nft.color, marginBottom: 16 }}>${nft.price}</div>
-              <Link
-                href={`/api/stripe/checkout?priceId=price_nft_mint_fee&mode=payment&nftId=${nft.id}`}
+              <button
+                onClick={() => void handleBuyNow()}
+                disabled={buying}
                 style={{
                   display: "block",
+                  width: "100%",
                   textAlign: "center",
                   padding: "14px",
                   fontSize: 12,
                   fontWeight: 800,
                   letterSpacing: "0.15em",
-                  color: "#050510",
-                  background: `linear-gradient(135deg, ${nft.color}, ${nft.color}99)`,
+                  color: buying ? "rgba(255,255,255,0.4)" : "#050510",
+                  background: buying ? "rgba(255,255,255,0.08)" : `linear-gradient(135deg, ${nft.color}, ${nft.color}99)`,
                   borderRadius: 10,
-                  textDecoration: "none",
+                  border: "none",
+                  cursor: buying ? "not-allowed" : "pointer",
                   marginBottom: 10,
                 }}
               >
-                BUY NOW — ${nft.price}
-              </Link>
+                {buying ? "PROCESSING…" : `BUY NOW — $${nft.price}`}
+              </button>
               <button
                 onClick={() => setOfferOpen(true)}
                 style={{

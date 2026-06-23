@@ -1,0 +1,361 @@
+
+<h2 class="sr-only">TMI separated fan/performer accounts, 3D avatar lobby, monitor satellite system, sponsor racetrack wall, animated earnings</h2>
+<style>
+@keyframes floatBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+@keyframes spin3d{from{transform:rotateY(0)}to{transform:rotateY(360deg)}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+@keyframes popOut{from{opacity:0;transform:scale(.5) translateY(20px)}to{opacity:1;transform:scale(1) translateY(0)}}
+@keyframes countUp{from{opacity:.3}to{opacity:1}}
+@keyframes scan{0%{top:-5%}100%{top:105%}}
+@keyframes pulse{0%,100%{box-shadow:0 0 6px var(--gc,rgba(0,180,255,.4))}50%{box-shadow:0 0 18px var(--gc,rgba(0,180,255,.8))}}
+@keyframes avatarWalk{0%,100%{transform:translateX(0)}50%{transform:translateX(8px)}}
+.tabs{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:12px}
+.tab{padding:5px 10px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary);font-size:11px;cursor:pointer;background:var(--color-background-primary);color:var(--color-text-secondary)}
+.tab.on{background:var(--color-background-tertiary);color:var(--color-text-primary);font-weight:500;border-color:var(--color-border-primary)}
+.pg{display:none}.pg.on{display:block;animation:popOut .25s ease-out}
+.account-card{border-radius:var(--border-radius-lg);padding:16px;text-align:center;border:2px solid var(--color-border-tertiary);cursor:pointer;transition:all .2s}
+.account-card.active{border-color:var(--color-border-warning);background:var(--color-background-warning)}
+.account-card:hover{transform:translateY(-2px)}
+.lobby3d{position:relative;background:radial-gradient(ellipse at 50% 30%,rgba(80,40,160,.25),rgba(10,10,25,.95));border-radius:var(--border-radius-lg);overflow:hidden;border:1.5px solid var(--color-border-secondary);perspective:600px}
+.floor3d{position:absolute;bottom:0;left:0;right:0;height:45%;background:linear-gradient(180deg,rgba(80,40,160,.15),rgba(20,10,40,.5));transform:perspective(500px) rotateX(55deg);transform-origin:bottom}
+.floor-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(150,100,255,.15) 1px,transparent 1px),linear-gradient(90deg,rgba(150,100,255,.15) 1px,transparent 1px);background-size:30px 30px}
+.avatar3d{position:absolute;display:flex;flex-direction:column;align-items:center;cursor:pointer;animation:floatBob 2.4s ease-in-out infinite;transition:left .6s ease,bottom .6s ease}
+.avatar-body{width:34px;height:50px;border-radius:14px 14px 8px 8px;position:relative;box-shadow:0 4px 10px rgba(0,0,0,.4)}
+.avatar-head{width:22px;height:22px;border-radius:50%;position:absolute;top:-16px;left:50%;transform:translateX(-50%);box-shadow:0 2px 6px rgba(0,0,0,.3)}
+.avatar-label{font-size:8px;color:rgba(255,255,255,.7);margin-top:4px;background:rgba(0,0,0,.5);padding:1px 5px;border-radius:3px;white-space:nowrap}
+.emote-bubble{position:absolute;top:-32px;left:50%;transform:translateX(-50%);font-size:16px;animation:floatBob 1s ease-in-out infinite}
+.monitor{position:relative;background:var(--color-background-tertiary);border:2px solid var(--color-border-secondary);border-radius:var(--border-radius-md);overflow:hidden;cursor:pointer}
+.monitor::after{content:'';position:absolute;top:-200%;left:0;right:0;height:1.5px;background:rgba(0,200,255,.25);animation:scan 3s linear infinite}
+.monitor .mlabel{position:absolute;bottom:4px;left:6px;font-size:8px;color:rgba(255,255,255,.6);z-index:3;background:rgba(0,0,0,.5);padding:1px 5px;border-radius:2px}
+.monitor .mbadge{position:absolute;top:4px;right:4px;font-size:8px;font-weight:600;padding:1px 5px;border-radius:2px;z-index:3}
+.monitor .micon{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;opacity:.25;font-size:28px}
+.canister{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);overflow:hidden}
+.canister-header{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;cursor:pointer;background:var(--color-background-secondary);font-size:12px;font-weight:500}
+.canister-header:hover{background:var(--color-background-tertiary)}
+.canister-body{padding:10px;animation:popOut .25s ease-out}
+.racetrack-wall{background:repeating-linear-gradient(45deg,var(--color-background-secondary) 0,var(--color-background-secondary) 10px,var(--color-background-tertiary) 10px,var(--color-background-tertiary) 20px);border-radius:var(--border-radius-md);padding:10px;border:1.5px solid var(--color-border-warning)}
+.sponsor-sticker{background:var(--color-background-primary);border:1px solid var(--color-border-secondary);border-radius:var(--border-radius-md);padding:5px 7px;font-size:9px;font-weight:600;display:flex;flex-direction:column;align-items:center;gap:2px;transform:rotate(var(--r,0deg));cursor:pointer;transition:transform .15s}
+.sponsor-sticker:hover{transform:rotate(0deg) scale(1.1);z-index:5}
+.money-counter{font-family:monospace;font-weight:800;letter-spacing:.02em}
+.digit{display:inline-block;animation:countUp .3s ease-out}
+.chart-bar{display:flex;align-items:flex-end;gap:3px;height:80px}
+.bar{flex:1;border-radius:3px 3px 0 0;transition:height .5s ease-out}
+.pie-wrap{width:90px;height:90px;border-radius:50%;position:relative}
+.mic-btn{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;border:2px solid var(--color-border-secondary);background:var(--color-background-primary);transition:all .2s}
+.mic-btn.live{border-color:var(--color-border-danger);background:var(--color-background-danger);animation:pulse 1.5s ease-in-out infinite;--gc:rgba(220,50,50,.5)}
+.season-badge{display:inline-flex;align-items:center;gap:4px;background:var(--color-background-warning);color:var(--color-text-warning);padding:3px 9px;border-radius:var(--border-radius-md);font-size:11px;font-weight:500}
+</style>
+
+<div class="tabs">
+  <button class="tab on" onclick="sw('accounts')"><i class="ti ti-users" aria-hidden="true"></i> Fan vs Performer accounts</button>
+  <button class="tab" onclick="sw('lobby')"><i class="ti ti-cube-3d-sphere" aria-hidden="true"></i> 3D avatar lobby</button>
+  <button class="tab" onclick="sw('monitors')"><i class="ti ti-device-tv" aria-hidden="true"></i> Monitor satellite system</button>
+  <button class="tab" onclick="sw('canisters')"><i class="ti ti-box" aria-hidden="true"></i> Canisters</button>
+  <button class="tab" onclick="sw('sponsor')"><i class="ti ti-flag" aria-hidden="true"></i> Sponsor racetrack</button>
+  <button class="tab" onclick="sw('analytics')"><i class="ti ti-chart-bar" aria-hidden="true"></i> Earnings &amp; analytics</button>
+</div>
+
+<!-- ═══ ACCOUNTS ═══ -->
+<div id="pg-accounts" class="pg on">
+  <p style="font-size:13px;font-weight:500;margin-bottom:4px">Fan and Performer accounts — fully separate</p>
+  <p style="font-size:11px;color:var(--color-text-secondary);margin-bottom:10px">Not connected. To switch, the user must sign out and log into the other account. One login = one role.</p>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:12px">
+    <div class="account-card active" id="acct-fan" onclick="pickAcct('fan')">
+      <i class="ti ti-heart" style="font-size:28px;color:var(--color-text-warning)" aria-hidden="true"></i>
+      <div style="font-size:14px;font-weight:500;margin:6px 0 2px">Fan account</div>
+      <div style="font-size:11px;color:var(--color-text-secondary)">berntmusic_fan@gmail.com</div>
+      <div class="season-badge" style="margin-top:8px"><i class="ti ti-crown" aria-hidden="true"></i> Fan Season Pass — Lvl 4</div>
+    </div>
+    <div class="account-card" id="acct-perf" onclick="pickAcct('perf')">
+      <i class="ti ti-microphone" style="font-size:28px;color:var(--color-text-info)" aria-hidden="true"></i>
+      <div style="font-size:14px;font-weight:500;margin:6px 0 2px">Performer account</div>
+      <div style="font-size:11px;color:var(--color-text-secondary)">berntmusic_performer@gmail.com</div>
+      <div class="season-badge" style="margin-top:8px;background:var(--color-background-info);color:var(--color-text-info)"><i class="ti ti-crown" aria-hidden="true"></i> Performer Season Pass — Lvl 3</div>
+    </div>
+  </div>
+  <div id="switchWarning" style="display:none;background:var(--color-background-danger);border-radius:var(--border-radius-md);padding:10px;margin-bottom:10px;font-size:12px;color:var(--color-text-danger);text-align:center">
+    <i class="ti ti-alert-triangle" aria-hidden="true"></i> To switch accounts you must sign out completely, then log in to the other account. Sessions are never linked.
+  </div>
+  <div style="display:flex;gap:8px;justify-content:center">
+    <button onclick="confirmSwitch()" style="font-size:12px;padding:7px 16px;background:var(--color-background-danger);color:var(--color-text-danger);border:0.5px solid var(--color-border-danger);border-radius:var(--border-radius-md)"><i class="ti ti-logout" aria-hidden="true"></i> Sign out &amp; switch account</button>
+  </div>
+  <div style="text-align:center;margin-top:10px">
+    <button onclick="sendPrompt('Enforce hard separation between Fan and Performer accounts. Each role requires its own login session — never share auth state in the same browser session. Add a SessionGuard middleware that, on attempting to access /hub/performer while a Fan session is active (or vice versa), forces a full sign-out before allowing login as the other role. Both Fan and Performer accounts get their own Season Pass instance (separate progress, separate rewards, separate instrument fretboard). Route fan login to /hub/fan and performer login to /hub/performer. No shared cookies or tokens between the two roles even if same email is reused.')" style="font-size:10px;padding:5px 12px;background:var(--color-background-info);color:var(--color-text-info);border:0.5px solid var(--color-border-info);border-radius:var(--border-radius-md)">Build account separation in repo ↗</button>
+  </div>
+</div>
+
+<!-- ═══ 3D AVATAR LOBBY ═══ -->
+<div id="pg-lobby" class="pg">
+  <p style="font-size:13px;font-weight:500;margin-bottom:4px">3D avatar lobby — big, movable, full-body avatars</p>
+  <p style="font-size:11px;color:var(--color-text-secondary);margin-bottom:8px">Avatars, not flat images. Move around, react, do emotes, see whole body and face.</p>
+  <div class="lobby3d" id="lobby3dEl" style="height:280px;margin-bottom:8px">
+    <div class="floor3d"><div class="floor-grid"></div></div>
+    <div id="avatarLayer"></div>
+  </div>
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;align-items:center">
+    <span style="font-size:11px;color:var(--color-text-secondary)">Move:</span>
+    <button onclick="moveAvatar('left')" style="font-size:11px;padding:5px 9px"><i class="ti ti-arrow-left" aria-hidden="true"></i></button>
+    <button onclick="moveAvatar('right')" style="font-size:11px;padding:5px 9px"><i class="ti ti-arrow-right" aria-hidden="true"></i></button>
+    <span style="font-size:11px;color:var(--color-text-secondary);margin-left:8px">Emote:</span>
+    <button onclick="doEmote('🎉')" style="font-size:14px;padding:4px 8px">🎉</button>
+    <button onclick="doEmote('🔥')" style="font-size:14px;padding:4px 8px">🔥</button>
+    <button onclick="doEmote('👏')" style="font-size:14px;padding:4px 8px">👏</button>
+    <button onclick="doEmote('❤️')" style="font-size:14px;padding:4px 8px">❤️</button>
+    <button onclick="doEmote('💃')" style="font-size:14px;padding:4px 8px">💃</button>
+  </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <div style="flex:1;min-width:140px;background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:8px;font-size:11px">
+      <strong>Props inventory:</strong> Sparkler, Jester hat, Sunglasses, Mic prop, Crown — equip from inventory canister
+    </div>
+    <div style="flex:1;min-width:140px;background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:8px;font-size:11px">
+      <strong>Customization:</strong> Skin tone, outfit, hairstyle — all changeable, full body + face visible
+    </div>
+  </div>
+  <div style="text-align:center;margin-top:10px">
+    <button onclick="sendPrompt('Build the 3D Avatar Lobby as a real movable 3D environment (React-Three-Fiber). Replace any flat avatar image lobby with full-body 3D avatars that users can walk around with arrow keys/joystick, see their whole body and face, perform emotes (celebration, fire, applause, heart, dance), and equip props (sparkler, jester hat, sunglasses, mic prop, crown) from their inventory. Avatars should be noticeably bigger than current — full body visible, not a small token. Floor grid with perspective depth. This lobby is the fan-theater/performer-room shared 3D space — same engine as AudienceScene but with free movement instead of fixed seats.')" style="font-size:10px;padding:5px 12px;background:var(--color-background-info);color:var(--color-text-info);border:0.5px solid var(--color-border-info);border-radius:var(--border-radius-md)">Build 3D avatar lobby in repo ↗</button>
+  </div>
+</div>
+
+<!-- ═══ MONITOR SATELLITE SYSTEM ═══ -->
+<div id="pg-monitors" class="pg">
+  <p style="font-size:13px;font-weight:500;margin-bottom:4px">Monitor satellite system — 1 big + 2 small connected</p>
+  <p style="font-size:11px;color:var(--color-text-secondary);margin-bottom:8px">Same style as the admin observatory — big monitor on top, two small ones bottom-left and bottom-right, not physically connected.</p>
+  <div style="position:relative;height:240px;margin-bottom:10px">
+    <div class="monitor" style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:62%;height:130px;border-color:var(--color-border-danger)">
+      <div class="micon"><i class="ti ti-microphone" aria-hidden="true"></i></div>
+      <div class="mbadge" style="background:rgba(230,48,0,.85);color:#fff"><span style="display:inline-block;width:4px;height:4px;border-radius:50%;background:#fff;margin-right:3px;animation:blink .9s ease-in-out infinite"></span>MAIN VIEW</div>
+      <div class="mlabel">Wavetek — live stage</div>
+    </div>
+    <div class="monitor" style="position:absolute;bottom:0;left:6%;width:34%;height:90px">
+      <div class="micon"><i class="ti ti-volume-3" aria-hidden="true"></i></div>
+      <div class="mbadge" style="background:rgba(180,117,23,.85);color:#fff">MUTE PANEL</div>
+      <div class="mlabel">Audio controls</div>
+    </div>
+    <div class="monitor" style="position:absolute;bottom:0;right:6%;width:34%;height:90px">
+      <div class="micon"><i class="ti ti-picture-in-picture" aria-hidden="true"></i></div>
+      <div class="mbadge" style="background:rgba(83,74,183,.85);color:#fff">PIP</div>
+      <div class="mlabel">Your camera feed</div>
+    </div>
+  </div>
+  <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
+    <button onclick="recordCam()" id="recBtn" style="font-size:11px;padding:6px 12px;background:var(--color-background-danger);color:var(--color-text-danger);border:0.5px solid var(--color-border-danger);border-radius:var(--border-radius-md)"><i class="ti ti-camera" aria-hidden="true"></i> Record clip</button>
+    <button style="font-size:11px;padding:6px 12px"><i class="ti ti-layout-grid" aria-hidden="true"></i> Browse lobby walls on monitor</button>
+    <div class="mic-btn" id="micBtn" onclick="toggleMic()" title="Talk to crowd"><i class="ti ti-microphone" id="micIcon" aria-hidden="true"></i></div>
+  </div>
+  <div id="recordResult" style="display:none;background:var(--color-background-success);border-radius:var(--border-radius-md);padding:8px;font-size:11px;color:var(--color-text-success);margin-bottom:8px">
+    <i class="ti ti-check" aria-hidden="true"></i> Clip captured! Save to:
+    <button onclick="saveClip('memory')" style="font-size:10px;padding:2px 8px;margin-left:6px;border-radius:var(--border-radius-md);background:var(--color-background-primary);border:0.5px solid var(--color-border-success)">Memory wall</button>
+    <button onclick="saveClip('playlist')" style="font-size:10px;padding:2px 8px;margin-left:4px;border-radius:var(--border-radius-md);background:var(--color-background-primary);border:0.5px solid var(--color-border-success)">Playlist</button>
+  </div>
+  <div style="font-size:10px;color:var(--color-text-tertiary)">Main monitor shows: live stream, billboard lobby walls (scrollable), sponsor commercials when no live content. Mute panel = audio controls. PIP = your own camera, can record straight to Memory Wall or Playlist.</div>
+  <div style="text-align:center;margin-top:10px">
+    <button onclick="sendPrompt('Build fan/performer profile Monitor Satellite System matching the admin observatory style: one large main monitor (top center) + two smaller monitors (bottom-left = mute/audio panel, bottom-right = PIP self-camera), visually independent/not connected by a frame. Main monitor cycles between: live stream content, Billboard Live Lobby Wall (scrollable so user can browse all live rooms from their profile), and sponsor commercial fallback when nothing is live. Wire camera capture (getUserMedia + MediaRecorder API) so users can record a clip and save it directly to Memory Wall or Playlist with one click. Add a push-to-talk microphone button so fans/performers can speak to the crowd (WebRTC audio channel), separate from text chat.')" style="font-size:10px;padding:5px 12px;background:var(--color-background-info);color:var(--color-text-info);border:0.5px solid var(--color-border-info);border-radius:var(--border-radius-md)">Build monitor system in repo ↗</button>
+  </div>
+</div>
+
+<!-- ═══ CANISTERS ═══ -->
+<div id="pg-canisters" class="pg">
+  <p style="font-size:13px;font-weight:500;margin-bottom:4px">Everything in pop-out canisters</p>
+  <p style="font-size:11px;color:var(--color-text-secondary);margin-bottom:8px">Playlist and Memory Wall are NOT a long bar across the screen — they live in compact canisters that pop out with animation, then collapse back.</p>
+  <div style="display:flex;flex-direction:column;gap:6px">
+    <div class="canister">
+      <div class="canister-header" onclick="toggleCan(this)"><span><i class="ti ti-playlist" aria-hidden="true"></i> Playlist — Submarine skin</span><i class="ti ti-chevron-down" aria-hidden="true"></i></div>
+      <div class="canister-body" style="display:none">Pops out as the full animated player (separate canister, built earlier). Closed state shows only current track + chevron — never a long static bar.</div>
+    </div>
+    <div class="canister">
+      <div class="canister-header" onclick="toggleCan(this)"><span><i class="ti ti-photo-album" aria-hidden="true"></i> Memory wall — 24 memories</span><i class="ti ti-chevron-down" aria-hidden="true"></i></div>
+      <div class="canister-body" style="display:none">Floating masonry collage pop-out. Avatar can pull a memory and share it to the room as a non-blocking PIP card.</div>
+    </div>
+    <div class="canister">
+      <div class="canister-header" onclick="toggleCan(this)"><span><i class="ti ti-layout-grid" aria-hidden="true"></i> Sponsor stamp wall</span><i class="ti ti-chevron-down" aria-hidden="true"></i></div>
+      <div class="canister-body" style="display:none">Racetrack-style sticker grid — see Sponsor Racetrack tab.</div>
+    </div>
+    <div class="canister">
+      <div class="canister-header" onclick="toggleCan(this)"><span><i class="ti ti-map-2" aria-hidden="true"></i> Booking map</span><i class="ti ti-chevron-down" aria-hidden="true"></i></div>
+      <div class="canister-body" style="display:none">Performer only — venue map + logistics estimate panel.</div>
+    </div>
+    <div class="canister">
+      <div class="canister-header" onclick="toggleCan(this)"><span><i class="ti ti-shirt" aria-hidden="true"></i> Inventory &amp; props</span><i class="ti ti-chevron-down" aria-hidden="true"></i></div>
+      <div class="canister-body" style="display:none">Avatar props, outfits, season pass unlocks — equip directly onto your 3D avatar.</div>
+    </div>
+  </div>
+  <div style="text-align:center;margin-top:10px">
+    <button onclick="sendPrompt('Convert the long horizontal Playlist bar and the long horizontal Memory Wall bar (from the original dashboard build) into compact chevron canisters consistent with PlaylistDashboardPanel and MemoryWallContainer already built. Closed state = small face showing current track or 3-5 memory thumbnails + chevron. Open state = full animated pop-out (scale + slide transition, never a hard jump). Apply this canister pattern to: Playlist, Memory Wall, Sponsor Stamp Wall, Booking Map, Inventory. None of these should render as a long static strip across the profile page anymore.')" style="font-size:10px;padding:5px 12px;background:var(--color-background-info);color:var(--color-text-info);border:0.5px solid var(--color-border-info);border-radius:var(--border-radius-md)">Convert to canisters in repo ↗</button>
+  </div>
+</div>
+
+<!-- ═══ SPONSOR RACETRACK ═══ -->
+<div id="pg-sponsor" class="pg">
+  <p style="font-size:13px;font-weight:500;margin-bottom:4px">Sponsor wall — NASCAR racetrack style</p>
+  <p style="font-size:11px;color:var(--color-text-secondary);margin-bottom:8px">Chaotic sticker coverage like a race car. Side panel that can pop up to share a sponsor with the audience without blocking the performer.</p>
+  <div class="racetrack-wall" style="margin-bottom:10px">
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:5px" id="racetrackGrid"></div>
+  </div>
+  <div style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap">
+    <div style="flex:1;min-width:180px">
+      <div style="font-size:11px;font-weight:500;margin-bottom:5px">Share sponsor with audience</div>
+      <select id="sponsorPick" style="width:100%;font-size:11px;margin-bottom:6px">
+        <option>Beats By TMX</option>
+        <option>BerntoutStudio AI</option>
+        <option>Lagos Sound</option>
+        <option>Neon Records</option>
+        <option>TMI Merch</option>
+      </select>
+      <button onclick="shareSponsor()" style="width:100%;font-size:11px;padding:6px;background:var(--color-background-warning);color:var(--color-text-warning);border:0.5px solid var(--color-border-warning);border-radius:var(--border-radius-md)"><i class="ti ti-share" aria-hidden="true"></i> Pop up to audience</button>
+    </div>
+    <div style="flex:1;min-width:180px;position:relative">
+      <div style="font-size:11px;font-weight:500;margin-bottom:5px">Live preview</div>
+      <div class="lobby3d" style="height:100px;display:flex;align-items:center;justify-content:center">
+        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:11px;color:rgba(255,255,255,.3)">Performer view — unobstructed</div>
+        <div id="sponsorPopup" style="display:none;position:absolute;right:6px;top:6px;width:90px;background:var(--color-background-primary);border:1.5px solid var(--color-border-warning);border-radius:var(--border-radius-md);padding:6px;font-size:9px;animation:popOut .3s ease-out;z-index:10">
+          <div style="font-weight:600" id="sponsorPopupName">Beats By TMX</div>
+          <div style="color:var(--color-text-secondary)">Side panel — non-blocking</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div style="text-align:center;margin-top:10px">
+    <button onclick="sendPrompt('Build SponsorRacetrackWall for performer profiles — chaotic, dense NASCAR-style sticker coverage (like a race car covered in sponsor decals), each sticker independently rotated at a slight angle for organic chaos, straightening on hover. Add a Share Sponsor control: performer selects which sponsor from a dropdown and triggers a non-blocking pop-up panel that appears on the SIDE of the live video (never covering the performer center-frame), animates in, displays for a few seconds, and can be dismissed. This connects to SponsorSlotRegistry and SponsorBubbleOrbitCanister already built — racetrack wall is the dense/compact display mode, bubble orbit is the cinematic display mode, performer can toggle between them.')" style="font-size:10px;padding:5px 12px;background:var(--color-background-warning);color:var(--color-text-warning);border:0.5px solid var(--color-border-warning);border-radius:var(--border-radius-md)">Build sponsor racetrack in repo ↗</button>
+  </div>
+</div>
+
+<!-- ═══ EARNINGS & ANALYTICS ═══ -->
+<div id="pg-analytics" class="pg">
+  <p style="font-size:13px;font-weight:500;margin-bottom:8px">Animated earnings counter + analytics (bar, pie, ruler, graphs)</p>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+    <div style="background:var(--color-background-secondary);border-radius:var(--border-radius-lg);padding:14px;text-align:center">
+      <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:4px">Earned today</div>
+      <div class="money-counter" id="todayMoney" style="font-size:26px;color:var(--color-text-warning)">$0.00</div>
+      <div style="font-size:10px;color:var(--color-text-tertiary);margin-top:3px">Updates in real time as tips/sales come in</div>
+    </div>
+    <div style="background:var(--color-background-secondary);border-radius:var(--border-radius-lg);padding:14px;text-align:center">
+      <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:4px">Earned this week</div>
+      <div class="money-counter" id="weekMoney" style="font-size:26px;color:var(--color-text-success)">$0.00</div>
+      <div style="font-size:10px;color:var(--color-text-tertiary);margin-top:3px">Bands / total acquired this week</div>
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px">
+    <div style="background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:10px">
+      <div style="font-size:11px;font-weight:500;margin-bottom:6px">Revenue by source (bar)</div>
+      <div class="chart-bar" id="barChart"></div>
+      <div style="display:flex;justify-content:space-between;font-size:8px;color:var(--color-text-tertiary);margin-top:3px"><span>Tips</span><span>Tickets</span><span>Beats</span><span>Merch</span></div>
+    </div>
+    <div style="background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:10px;display:flex;flex-direction:column;align-items:center">
+      <div style="font-size:11px;font-weight:500;margin-bottom:6px">Revenue split (pie)</div>
+      <svg viewBox="0 0 32 32" width="80" height="80">
+        <circle r="16" cx="16" cy="16" fill="var(--color-border-tertiary)"/>
+        <circle r="16" cx="16" cy="16" fill="transparent" stroke="var(--color-border-warning)" stroke-width="32" stroke-dasharray="40 60" transform="rotate(-90 16 16)"/>
+        <circle r="16" cx="16" cy="16" fill="transparent" stroke="var(--color-border-info)" stroke-width="32" stroke-dasharray="25 75" stroke-dashoffset="-40" transform="rotate(-90 16 16)"/>
+        <circle r="16" cx="16" cy="16" fill="transparent" stroke="var(--color-border-success)" stroke-width="32" stroke-dasharray="35 65" stroke-dashoffset="-65" transform="rotate(-90 16 16)"/>
+      </svg>
+      <div style="font-size:8px;color:var(--color-text-tertiary);margin-top:4px">Tips 40% · Tickets 25% · Beats 35%</div>
+    </div>
+    <div style="background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:10px">
+      <div style="font-size:11px;font-weight:500;margin-bottom:6px">XP ruler / level progress</div>
+      <div style="position:relative;height:14px;background:var(--color-border-tertiary);border-radius:7px;overflow:hidden;margin-top:18px">
+        <div style="height:14px;width:64%;background:var(--color-border-info);border-radius:7px"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:8px;color:var(--color-text-tertiary);margin-top:3px"><span>Lvl 4</span><span>850/1000 XP</span><span>Lvl 5</span></div>
+      <div style="margin-top:8px;font-size:10px;color:var(--color-text-secondary)">Last week's prize: <strong style="color:var(--color-text-warning)">🎁 Battle Ticket + Jester Hat</strong></div>
+    </div>
+  </div>
+  <div style="display:flex;gap:8px">
+    <button onclick="sendPrompt('Build animated digital earnings counter for Fan and Performer profiles using real-time number tween animation (digits roll up, not instant jump) showing: Earned Today, Earned This Week, Total Bands Acquired. For Fans: show last weekly prize won (item, ticket, season pass reward) with an avatar showcase slot. Build full analytics suite: bar charts (revenue by source: tips/tickets/beats/merch), pie chart (revenue split percentage), XP ruler/progress bar (level + numeric XP), line graph (revenue trend over 30 days). Use real data hooks, never static placeholder numbers in production — show $0.00 or — if no real data exists yet rather than fake numbers.')" style="flex:1;font-size:10px;padding:6px;background:var(--color-background-success);color:var(--color-text-success);border:0.5px solid var(--color-border-success);border-radius:var(--border-radius-md)">Build animated earnings + analytics in repo ↗</button>
+  </div>
+</div>
+
+<script>
+function sw(n){document.querySelectorAll('.pg').forEach(p=>p.classList.remove('on'));document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));document.getElementById('pg-'+n).classList.add('on');document.querySelectorAll('.tab')[{accounts:0,lobby:1,monitors:2,canisters:3,sponsor:4,analytics:5}[n]].classList.add('on');
+  if(n==='lobby'&&!window._lobbyInit){initLobby();window._lobbyInit=true;}
+  if(n==='sponsor'&&!window._raceInit){initRacetrack();window._raceInit=true;}
+  if(n==='analytics'&&!window._anInit){initAnalytics();window._anInit=true;}
+}
+function pickAcct(a){
+  document.getElementById('acct-fan').classList.toggle('active',a==='fan');
+  document.getElementById('acct-perf').classList.toggle('active',a==='perf');
+  document.getElementById('switchWarning').style.display=a==='perf'?'block':'none';
+}
+function confirmSwitch(){alert('Signing out of current session...\n\nYou must log in separately to access the other account. Fan and Performer sessions are never shared.');}
+
+const AVATARS=[{x:30,y:60,color:'#4A90D9',head:'#F2C29B',label:'You',emote:null},{x:60,y:50,color:'#E2447A',head:'#D9A877',label:'Astra Nova',emote:null},{x:78,y:65,color:'#3FAE6E',head:'#C68642',label:'Wavetek',emote:null}];
+function renderAvatars(){
+  const el=document.getElementById('avatarLayer');
+  el.innerHTML=AVATARS.map((a,i)=>`<div class="avatar3d" id="av-${i}" style="left:${a.x}%;bottom:${a.y}%">
+    ${a.emote?`<div class="emote-bubble">${a.emote}</div>`:''}
+    <div class="avatar-body" style="background:${a.color}"><div class="avatar-head" style="background:${a.head}"></div></div>
+    <div class="avatar-label">${a.label}</div>
+  </div>`).join('');
+}
+function initLobby(){renderAvatars();}
+function moveAvatar(dir){
+  AVATARS[0].x=Math.max(5,Math.min(90,AVATARS[0].x+(dir==='left'?-8:8)));
+  renderAvatars();
+}
+function doEmote(e){
+  AVATARS[0].emote=e;
+  renderAvatars();
+  setTimeout(()=>{AVATARS[0].emote=null;renderAvatars();},1500);
+}
+
+let recording=false;
+function recordCam(){
+  const btn=document.getElementById('recBtn');
+  if(!recording){
+    recording=true;
+    btn.innerHTML='<i class="ti ti-player-stop" aria-hidden="true"></i> Stop recording';
+    btn.style.background='var(--color-background-secondary)';
+  } else {
+    recording=false;
+    btn.innerHTML='<i class="ti ti-camera" aria-hidden="true"></i> Record clip';
+    btn.style.background='var(--color-background-danger)';
+    document.getElementById('recordResult').style.display='block';
+  }
+}
+function saveClip(dest){
+  const r=document.getElementById('recordResult');
+  r.innerHTML=`<i class="ti ti-check" aria-hidden="true"></i> Clip saved to ${dest==='memory'?'Memory Wall':'Playlist'}!`;
+  setTimeout(()=>{r.style.display='none';},2000);
+}
+let micOn=false;
+function toggleMic(){
+  micOn=!micOn;
+  document.getElementById('micBtn').classList.toggle('live',micOn);
+}
+
+const SPONSORS=['🎧 TMX','🤖 BSAi','🎵 Lagos','💿 Neon','👕 Merch','🎹 BeatBank','🏟️ VBoost','📻 RWave','🎟️ FanTk','💡 Stage','📸 Crowd','🎤 SoundCo','🔥 Heat','💎 GemRec'];
+function initRacetrack(){
+  const grid=document.getElementById('racetrackGrid');
+  SPONSORS.forEach((s,i)=>{
+    const rot=(i%2===0?1:-1)*(4+Math.random()*8);
+    grid.innerHTML+=`<div class="sponsor-sticker" style="--r:${rot}deg;background:${['var(--color-background-warning)','var(--color-background-info)','var(--color-background-success)','var(--color-background-secondary)'][i%4]}">${s}</div>`;
+  });
+}
+function shareSponsor(){
+  const name=document.getElementById('sponsorPick').value;
+  document.getElementById('sponsorPopupName').textContent=name;
+  const pop=document.getElementById('sponsorPopup');
+  pop.style.display='block';
+  setTimeout(()=>{pop.style.display='none';},3000);
+}
+
+function initAnalytics(){
+  animateMoney('todayMoney',342.50);
+  animateMoney('weekMoney',2840.00);
+  const bars=document.getElementById('barChart');
+  [62,38,80,45].forEach((v,i)=>{
+    const colors=['var(--color-border-warning)','var(--color-border-info)','var(--color-border-success)','var(--color-border-secondary)'];
+    bars.innerHTML+=`<div class="bar" style="height:0;background:${colors[i]}" data-h="${v}"></div>`;
+  });
+  setTimeout(()=>{document.querySelectorAll('#barChart .bar').forEach(b=>{b.style.height=b.dataset.h+'%';});},100);
+}
+function animateMoney(id,target){
+  const el=document.getElementById(id);
+  let cur=0;
+  const step=target/40;
+  const t=setInterval(()=>{
+    cur+=step;
+    if(cur>=target){cur=target;clearInterval(t);}
+    el.textContent='$'+cur.toFixed(2);
+  },25);
+}
+</script>

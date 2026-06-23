@@ -16,7 +16,10 @@ import FeedExplorer            from "@/components/admin/overseer/FeedExplorer";
 import SentinelWall            from "@/components/admin/overseer/SentinelWall";
 import AccountLinker           from "@/components/admin/overseer/AccountLinker";
 import MagazineAnalytics       from "@/components/admin/overseer/MagazineAnalytics";
-import RevenueAnalytics        from "@/components/admin/overseer/RevenueAnalytics";
+// RevenueAnalytics is LEGACY (hardcoded demo data, see file header) — the
+// real Stripe-backed replacement is AdminRevenuePanel. Wiring it in directly
+// so the Overseer Deck's revenue panel shows real telemetry, not fake numbers.
+import AdminRevenuePanel        from "@/components/admin/AdminRevenuePanel";
 import UnifiedInbox            from "@/components/admin/overseer/UnifiedInbox";
 import LiveFeedRouter          from "@/components/admin/overseer/LiveFeedRouter";
 import BotSummonDeck           from "@/components/admin/BotSummonDeck";
@@ -210,7 +213,10 @@ export default function CanonOverseerShell() {
             accent="#FFD700"
             style={{ flex: "1 1 auto", minHeight: 0 }}
           >
-            <RevenueAnalytics />
+            <AdminRevenuePanel
+              selectedId="billing"
+              onSelect={(id) => { window.location.href = id === "artist-analytics" ? "/admin/artist-analytics" : "/admin/revenue"; }}
+            />
           </OverseerPanel>
 
           {/* Panel 10–12: Magazine & Index Analytics */}

@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
+import prisma from '@/lib/prisma';
 
 const COOKIE_CLEAR = {
   httpOnly: true,
@@ -12,33 +13,40 @@ const COOKIE_CLEAR = {
 
 /**
  * POST /api/auth/deactivate
- * Clears all session cookies and marks the account as deactivated.
- * Proxies to the backend API if NEXT_PUBLIC_API_URL is set.
+ * Soft-deactivates the account: sets UserSettings.deletionRequestedAt, clears all session cookies.
+ * Hard delete is never performed — data is preserved for support recovery.
  */
 export async function POST(req: NextRequest) {
   const sessionCookie = req.cookies.get('tmi_session_id')?.value;
+  const userEmail = req.cookies.get('tmi_user_email')?.value;
 
   if (!sessionCookie) {
     return NextResponse.json({ ok: false, error: 'Not authenticated' }, { status: 401 });
   }
 
-  // Proxy to backend if available
-  const apiBase = process.env.NEXT_PUBLIC_API_URL;
-  if (apiBase) {
+  // Soft-deactivate: mark the account in DB so it's filterable
+  if (userEmail) {
     try {
-      const upstream = await fetch(`${apiBase}/auth/deactivate`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Cookie: req.headers.get('cookie') ?? '',
-        },
-        signal: AbortSignal.timeout(8000),
+      const user = await prisma.user.findUnique({
+        where: { email: userEmail },
+        select: { id: true },
       });
-      if (!upstream.ok) {
-        console.warn('[auth/deactivate] Upstream returned', upstream.status);
+      if (user) {
+        const now = new Date();
+        await prisma.userSettings.upsert({
+          where: { userId: user.id },
+          create: {
+            userId: user.id,
+            deletionRequestedAt: now,
+          },
+          update: {
+            deletionRequestedAt: now,
+          },
+        });
       }
     } catch (err) {
-      console.error('[auth/deactivate] Upstream unreachable:', err);
+      console.error('[auth/deactivate] DB soft-deactivate failed:', err);
+      // Non-fatal: still clear cookies so user is logged out
     }
   }
 

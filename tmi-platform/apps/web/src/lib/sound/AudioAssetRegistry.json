@@ -1,0 +1,51 @@
+{
+  "auditDate": "2026-06-22",
+  "phase": "Phase 0 — Inventory Only, No Wiring",
+  "canonicalRegistry": "apps/web/src/lib/sound/SoundManifest.ts",
+  "canonicalPlayer": "apps/web/src/lib/sound/playSound.ts",
+  "summary": "AudioAssetRegistry already exists as SoundManifest.ts (Rule 8 compliant). This file is the Phase 0 audit companion, not a second registry.",
+  "rawSourcePack": {
+    "path": "Sounds Pack/",
+    "totalFiles": 49,
+    "audioFiles": 48,
+    "nonAudioFiles": ["Sounds Pack.zip"],
+    "mappedIntoManifest": 48,
+    "unmappedFiles": 0,
+    "finding": "Every real audio file in the raw Sounds Pack is already cataloged in SoundManifest.ts. No hidden/unused sound files exist in this pack."
+  },
+  "categoriesPresent": ["crowd", "host", "battle", "gameshow", "concert", "ui", "venue"],
+  "categoriesMissing": {
+    "cypher": "No dedicated cypher-specific entry — cypher currently rides on the shared 'battle' category (battle_beat_drop's trigger mentions cypher_beat_drop, but no distinct cypher-category sound exists).",
+    "challenge": "No dedicated challenge-specific entry.",
+    "vs_announcer": "No 'VS' announcer/callout sound found in repo or raw pack.",
+    "player_turn": "No Player 1 / Player 2 turn-callout sounds found in repo or raw pack.",
+    "radio": "No radio category exists yet — expected, Rule 25 (Radio Network) is not built.",
+    "xp_levelup": "No dedicated XP-gained or Level-Up sound entry exists in the manifest at all."
+  },
+  "disconnectedEvents": [
+    {
+      "event": "tmi:level-up",
+      "dispatchedFrom": "apps/web/src/hooks/useGamificationEngine.ts",
+      "listenerExists": true,
+      "listenerFile": "apps/web/src/components/hud/GamificationHUD.tsx",
+      "listenerBehavior": "Sets visual toast state only — never calls playSound().",
+      "soundExpected": true,
+      "soundCurrentlyWired": false,
+      "honestReplacementAsset": "gameshow_achievement_bling",
+      "honestReplacementTrigger": "achievement_unlocked (real file, conceptually close to level-up)",
+      "priority": "High",
+      "fixComplexity": "Trivial (one playSound() call) — not implemented this pass per Phase 0 audit-only directive.",
+      "status": "documented_not_fixed"
+    },
+    {
+      "event": "tmi:rare-drop",
+      "dispatchedFrom": "apps/web/src/hooks/useGamificationEngine.ts",
+      "listenerExists": false,
+      "soundExpected": true,
+      "soundCurrentlyWired": false,
+      "honestReplacementAsset": null,
+      "priority": "Medium",
+      "status": "documented_not_fixed"
+    }
+  ]
+}

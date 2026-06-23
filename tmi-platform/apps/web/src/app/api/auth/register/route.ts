@@ -9,7 +9,6 @@ import { sendEmail } from '@/lib/email/TMIEmailSystem';
 import { DiamondInviteEngine } from '@/lib/auth/DiamondInviteEngine';
 import { checkRateLimit, validateSignupEmail } from '@/lib/security/TMISecurityEngine';
 import { emitAdminLiveEvent } from '@/lib/admin/AdminLiveEventEngine';
-import { isFounderDiamondEmail } from '@/lib/promos/FounderDiamondPassEngine';
 
 const COOKIE_OPTS = {
   httpOnly: true,
@@ -22,8 +21,12 @@ const COOKIE_OPTS = {
 export async function POST(req: NextRequest) {
   let parsed: {
     email?: string; password?: string; displayName?: string; name?: string;
-    dateOfBirth?: string; termsAccepted?: boolean; ref?: string; role?: string;
+    dateOfBirth?: string; termsAccepted?: boolean; ref?: string; roles?: string[];
     inviteToken?: string;
+    tier?: string;
+    paymentToken?: string;
+    promoCode?: string;
+    performerTypes?: string[];
   } = {};
 
   try {
@@ -35,6 +38,7 @@ export async function POST(req: NextRequest) {
   const email       = (parsed.email ?? '').trim().toLowerCase();
   const password    = parsed.password ?? '';
   const displayName = (parsed.displayName ?? parsed.name ?? '').trim();
+  const requestedTier = (parsed.tier ?? '').trim().toUpperCase();
   const clientIp = req.headers.get('x-forwarded-for') ?? req.headers.get('x-client-ip') ?? 'unknown';
 
   const rateLimit = checkRateLimit(`auth:signup:${clientIp}`, 20, 60_000);
@@ -42,14 +46,26 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Too many signup attempts. Please wait and try again.' }, { status: 429 });
   }
 
-  // Normalize account type / role to platform role
+  // Normalize account types / roles to platform roles
   const ROLE_MAP: Record<string, string> = {
     MEMBER: 'fan', FAN: 'fan', ARTIST: 'artist', PERFORMER: 'performer',
     SPONSOR: 'sponsor', ADVERTISER: 'advertiser', VENUE: 'venue',
     WRITER: 'writer', PROMOTER: 'promoter',
   };
-  const rawRole = (parsed.role ?? '').toUpperCase();
-  const platformRole = (ROLE_MAP[rawRole] ?? '') as import('@/lib/auth/UserStore').UserRole | '';
+
+  // Handle both single role (legacy) and multi-role (new)
+  const rawRoles = Array.isArray(parsed.roles)
+    ? parsed.roles.map(r => (r ?? '').toUpperCase())
+    : [];
+
+  const platformRoles = rawRoles
+    .map(r => ROLE_MAP[r])
+    .filter((r): r is string => r !== undefined && r.length > 0);
+
+  // Default to FAN if no roles provided
+  if (platformRoles.length === 0) {
+    platformRoles.push('fan');
+  }
 
   if (!email || !password) {
     return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
@@ -73,30 +89,104 @@ export async function POST(req: NextRequest) {
 
     const hashedPassword = await hash(password, 10);
 
-    const resolvedTier = isFounderDiamondEmail(email) ? 'DIAMOND' : 'FREE';
+    // Revenue protection guardrail:
+    // All fresh registrations start FREE unless an explicit post-create verifier
+    // (invite token/promo/payment webhook) upgrades them.
+    const resolvedTier = 'FREE';
 
+    if (requestedTier && requestedTier !== 'FREE') {
+      emitAdminLiveEvent({
+        type: 'alert',
+        message: `[${new Date().toLocaleTimeString()}] 🚫 Blocked premium tier assignment at signup (${requestedTier}) for ${email}`,
+        meta: {
+          email,
+          requestedTier,
+          hasInviteToken: Boolean(parsed.inviteToken),
+          hasPromoCode: Boolean(parsed.promoCode),
+          hasPaymentToken: Boolean(parsed.paymentToken),
+        },
+      });
+    }
+
+    // Create user with first role as primary (legacy compatibility)
     const user = await prisma.user.create({
       data: {
         email,
         passwordHash: hashedPassword,
         displayName: displayName || email.split('@')[0],
-        role: platformRole === '' ? 'USER' : (platformRole.toUpperCase() as any),
+        role: platformRoles[0].toUpperCase() as any,
+        activeRole: platformRoles[0].toUpperCase() as any,
         tier: resolvedTier
       }
     });
+
+    // Create UserRole records for all selected roles
+    await Promise.all(platformRoles.map(role =>
+      prisma.userRole.create({
+        data: {
+          userId: user.id,
+          role: role.toUpperCase() as any,
+        }
+      }).catch(err => {
+        if (err.code === 'P2002') {
+          // Unique constraint — role already assigned (no-op)
+          return;
+        }
+        throw err;
+      })
+    ));
 
     const userAgent = req.headers.get('user-agent') ?? '';
     const { sessionId, sessionToken } = createSession(user.id, user.role, clientIp, userAgent);
 
     const name = displayName || user.displayName || email.split('@')[0];
-    const isArtist = platformRole === 'artist' || platformRole === 'performer';
-    const emailType = isArtist ? 'welcome_artist'
-      : platformRole === 'sponsor' ? 'sponsor_confirmation'
-      : platformRole === 'venue' ? 'welcome_venue'
+    const hasPerformerRole = platformRoles.includes('artist') || platformRoles.includes('performer');
+
+    // Create performer types if PERFORMER role selected
+    if (hasPerformerRole) {
+      const performerTypes = Array.isArray(parsed.performerTypes)
+        ? parsed.performerTypes.filter((t): t is string => typeof t === 'string' && t.trim().length > 0).slice(0, 15)
+        : [];
+      // UI labels don't map 1:1 onto the PerformerType enum (no naive
+      // .toUpperCase() — "Spoken Word" -> "SPOKEN WORD" isn't a valid enum
+      // value, and "Musician" has no generic equivalent). Unmapped labels
+      // fall back to OTHER instead of throwing and failing the whole signup.
+      const PERFORMER_TYPE_MAP: Record<string, string> = {
+        RAPPER: 'RAPPER', SINGER: 'SINGER', DJ: 'DJ', PRODUCER: 'PRODUCER',
+        COMEDIAN: 'COMEDIAN', DANCER: 'DANCER', ACTOR: 'ACTOR', BAND: 'BAND',
+        MAGICIAN: 'MAGICIAN', 'SPOKEN WORD': 'SPOKEN_WORD', MUSICIAN: 'OTHER',
+        OTHER: 'OTHER', GUITARIST: 'GUITARIST', DRUMMER: 'DRUMMER',
+        ORCHESTRA: 'ORCHESTRA', CHOIR: 'CHOIR',
+      };
+      await Promise.all(performerTypes.map(type =>
+        prisma.userPerformerType.create({
+          data: {
+            userId: user.id,
+            type: (PERFORMER_TYPE_MAP[type.toUpperCase()] ?? 'OTHER') as any,
+          }
+        }).catch(err => {
+          if (err.code === 'P2002') return; // Already assigned
+          throw err;
+        })
+      ));
+
+      // Also create ArtistProfile for backwards compatibility
+      await prisma.artistProfile.create({
+        data: { userId: user.id, skills: performerTypes },
+      }).catch((err) => console.error('[register] ArtistProfile create failed', err));
+    }
+
+    // Determine email type based on primary role
+    const primaryRole = platformRoles[0];
+    const emailType = (primaryRole === 'artist' || primaryRole === 'performer') ? 'welcome_artist'
+      : primaryRole === 'sponsor' ? 'sponsor_confirmation'
+      : primaryRole === 'venue' ? 'welcome_venue'
+      : primaryRole === 'advertiser' ? 'welcome_advertiser'
+      : primaryRole === 'promoter' ? 'welcome_promoter'
       : 'welcome_fan';
     const emailData: Record<string, unknown> = { name, slug: user.id };
-    if (platformRole === 'venue') { emailData.venueName = name; emailData.venueSlug = user.id; }
-    if (platformRole === 'sponsor') {
+    if (primaryRole === 'venue') { emailData.venueName = name; emailData.venueSlug = user.id; }
+    if (primaryRole === 'sponsor') {
       emailData.sponsorName = name;
       emailData.packageName = 'Standard';
       emailData.monthlyBudget = '0';
@@ -151,8 +241,32 @@ export async function POST(req: NextRequest) {
       console.error('[TMI register email] exception', e);
     });
 
+    let effectiveTier: 'FREE' | 'DIAMOND' = 'FREE';
+
     if (parsed.inviteToken) {
-      void DiamondInviteEngine.validateAndRedeem(parsed.inviteToken, user.id);
+      const invite = DiamondInviteEngine.getInvite(parsed.inviteToken);
+      const normalizedInviteEmail = invite?.email?.toLowerCase();
+      const inviteAliases = (invite?.emailAliases ?? []).map((a) => a.toLowerCase());
+      const inviteMatchesEmail = normalizedInviteEmail === email || inviteAliases.includes(email);
+
+      const redeemed = inviteMatchesEmail
+        ? await DiamondInviteEngine.validateAndRedeem(parsed.inviteToken, user.id)
+        : false;
+
+      if (redeemed) {
+        await prisma.user.update({ where: { id: user.id }, data: { tier: 'DIAMOND' } });
+        effectiveTier = 'DIAMOND';
+      } else {
+        emitAdminLiveEvent({
+          type: 'alert',
+          message: `[${new Date().toLocaleTimeString()}] 🚫 Invalid diamond invite usage blocked for ${email}`,
+          meta: {
+            email,
+            inviteToken: parsed.inviteToken,
+            inviteMatchesEmail,
+          },
+        });
+      }
     }
 
     if (parsed.ref) {
@@ -172,14 +286,15 @@ export async function POST(req: NextRequest) {
     }
 
     const response = NextResponse.json(
-      { ok: true, userId: user.id, user: { id: user.id, email: user.email, tier: user.tier, role: user.role } },
+      { ok: true, userId: user.id, user: { id: user.id, email: user.email, tier: effectiveTier, role: user.role, roles: platformRoles } },
       { status: 201 }
     );
 
     response.cookies.set('tmi_session_id', sessionId, COOKIE_OPTS);
     response.cookies.set('tmi_session', sessionToken, COOKIE_OPTS);
     response.cookies.set('tmi_role', user.role, COOKIE_OPTS);
-    response.cookies.set('tmi_tier', resolvedTier, COOKIE_OPTS);
+    response.cookies.set('tmi_roles', JSON.stringify(platformRoles), COOKIE_OPTS);  // All roles
+    response.cookies.set('tmi_tier', effectiveTier, COOKIE_OPTS);
     response.cookies.set('tmi_user_email', email, {
       httpOnly: false,
       secure: process.env.NODE_ENV === 'production',

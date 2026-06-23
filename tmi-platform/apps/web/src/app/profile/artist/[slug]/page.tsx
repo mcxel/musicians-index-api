@@ -13,66 +13,34 @@ import ViralShareButton from "@/components/share/ViralShareButton";
 import MemoryWall from "@/components/media/MemoryWall";
 import TieredAdSlot from "@/components/ads/TieredAdSlot";
 import OmniPresenceEngine from "@/components/presence/OmniPresenceEngine";
+import { getPerformerBySlug } from "@/lib/performers/PerformerRegistry";
 
 interface Props {
   params: { slug: string };
 }
 
-const KNOWN_ARTISTS: Record<
-  string,
-  {
-    displayName: string;
-    tagline: string;
-    rank: number;
-    isVerified: boolean;
-    genres: string[];
-    isLive: boolean;
-    liveVenueName?: string;
-    hasArticle: boolean;
-    monthlyListeners: number;
-  }
-> = {
-  "kreach": {
-    displayName: "Kreach",
-    tagline: "Diamond producer. Multi-genre architect. TMI founding artist.",
-    rank: 1,
-    isVerified: true,
-    genres: ["Hip-Hop", "Trap", "R&B"],
-    isLive: false,
-    hasArticle: true,
-    monthlyListeners: 48200,
-  },
-  "kg": {
-    displayName: "KG",
-    tagline: "Diamond producer. Sonic innovator. TMI Season 1.",
-    rank: 2,
-    isVerified: true,
-    genres: ["Hip-Hop", "Soul"],
-    isLive: false,
-    hasArticle: false,
-    monthlyListeners: 32100,
-  },
-  "savage-guns": {
-    displayName: "Savage Guns",
-    tagline: "90-day diamond trial artist. Street-certified and chart-bound.",
-    rank: 5,
-    isVerified: false,
-    genres: ["Trap", "Hip-Hop"],
-    isLive: false,
-    hasArticle: false,
-    monthlyListeners: 18900,
-  },
-};
-
 function titleCase(slug: string) {
   return slug.split("-").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
 }
 
-// Rule 20 — honest defaults for artists outside the explicit curated
-// entries above. rank/monthlyListeners were previously hash-derived from
-// the slug — the same fake-Diamond-tier bug class found on the fan profile.
+// Rule 1 (Upload Pipeline): a registered performer's real identity must come
+// from PerformerRegistry, not a generic title-cased shell. Only synthesize a
+// blank "independent artist" seed when no registry entry exists yet.
 function seedArtist(slug: string) {
-  if (KNOWN_ARTISTS[slug]) return KNOWN_ARTISTS[slug]!;
+  const registered = getPerformerBySlug(slug);
+  if (registered) {
+    return {
+      displayName: registered.name,
+      tagline: `${registered.category} artist on The Musician's Index.`,
+      rank: registered.rank,
+      isVerified: registered.achievementIds.length > 0,
+      genres: [registered.category] as string[],
+      isLive: registered.isLive,
+      liveVenueName: registered.isLive ? registered.roomId : undefined,
+      hasArticle: registered.articleIds.length > 0,
+      monthlyListeners: registered.fanCount,
+    };
+  }
   return {
     displayName: titleCase(slug),
     tagline: `Independent artist on The Musician's Index.`,
@@ -80,39 +48,14 @@ function seedArtist(slug: string) {
     isVerified: false,
     genres: [] as string[],
     isLive: false,
+    liveVenueName: undefined,
     hasArticle: false,
     monthlyListeners: 0,
   };
 }
 
-// ─── Artist sponsor seed data ─────────────────────────────────────────────────
-
-const ARTIST_SEED_SPONSORS: Record<string, PerformerSponsor[]> = {
-  "kreach": [
-    { id: "kr-s1", merchantName: "Infinite Loops",  merchantCategory: "Music Tech",    sponsorClass: "local",  packageLabel: "Local Premium",  monthlyRateCents: 10000, status: "active",  color: "#00FFFF" },
-    { id: "kr-s2", merchantName: "AX Audio",         merchantCategory: "Audio Gear",    sponsorClass: "local",  packageLabel: "Local Standard", monthlyRateCents: 5000,  status: "active",  color: "#FF2DAA" },
-    { id: "kr-s3", merchantName: "Stage Nova",       merchantCategory: "Apparel",       sponsorClass: "local",  packageLabel: "Local Basic",    monthlyRateCents: 2500,  status: "active",  color: "#AA2DFF" },
-    { id: "kr-s4", merchantName: "SoundBlast Media", merchantCategory: "Media",         sponsorClass: "major",  packageLabel: "Major Standard", monthlyRateCents: 35000, status: "active",  color: "#FFD700" },
-    { id: "kr-s5", merchantName: "Flex Culture Co",  merchantCategory: "Fashion",       sponsorClass: "major",  packageLabel: "Major Basic",    monthlyRateCents: 15000, status: "active",  color: "#00FF88" },
-    { id: "kr-s6", merchantName: "NovaBrew",         merchantCategory: "Beverages",     sponsorClass: "local",  packageLabel: "Local Basic",    monthlyRateCents: 2500,  status: "pending", color: "#FF6B35" },
-  ],
-  "kg": [
-    { id: "kg-s1", merchantName: "SoulBox Studio",  merchantCategory: "Recording",     sponsorClass: "local",  packageLabel: "Local Standard", monthlyRateCents: 5000,  status: "active",  color: "#00FFFF" },
-    { id: "kg-s2", merchantName: "GridWave Gear",    merchantCategory: "Music Tech",    sponsorClass: "local",  packageLabel: "Local Basic",    monthlyRateCents: 2500,  status: "active",  color: "#FFD700" },
-    { id: "kg-s3", merchantName: "Apex Sound",       merchantCategory: "Audio Gear",    sponsorClass: "major",  packageLabel: "Major Basic",    monthlyRateCents: 15000, status: "pending", color: "#AA2DFF" },
-  ],
-  "savage-guns": [
-    { id: "sg-s1", merchantName: "Street Level",    merchantCategory: "Apparel",       sponsorClass: "local",  packageLabel: "Local Basic",    monthlyRateCents: 2500,  status: "active",  color: "#FF2DAA" },
-  ],
-};
-
 function seedArtistSponsors(slug: string): PerformerSponsor[] {
-  if (ARTIST_SEED_SPONSORS[slug]) return ARTIST_SEED_SPONSORS[slug]!;
-  const h = slug.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
-  return [
-    { id: `${slug}-as1`, merchantName: "Local Partner",  merchantCategory: "Local Business", sponsorClass: "local", packageLabel: "Local Basic",    monthlyRateCents: 2500,  status: "active",  color: "#00FFFF" },
-    { id: `${slug}-as2`, merchantName: "Brand Co",       merchantCategory: "Retail",          sponsorClass: "local", packageLabel: "Local Standard", monthlyRateCents: 5000,  status: h % 2 === 0 ? "active" : "pending", color: "#FFD700" },
-  ];
+  return [];
 }
 
 function buildArtistAuraSlots(sponsors: PerformerSponsor[]): SponsorSlot[] {

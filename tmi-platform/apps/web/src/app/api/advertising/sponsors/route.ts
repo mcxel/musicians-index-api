@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revenueFirstRewardsGovernor } from '@/lib/economy/RevenueFirstRewardsGovernor';
 
 interface SponsorCampaign {
   id: string;
@@ -27,11 +28,36 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const body = (await request.json()) as { sponsorId: string; sponsorName: string; budget: number; placements: string[] };
+    const body = (await request.json()) as {
+      sponsorId: string;
+      sponsorName: string;
+      budget: number;
+      placements: string[];
+      expectedOperatingCostCents?: number;
+      expectedInfrastructureCostCents?: number;
+      expectedPrizePoolCents?: number;
+    };
     const { sponsorId, sponsorName, budget, placements } = body;
     if (!sponsorId || !budget) {
       return NextResponse.json({ error: "sponsorId and budget required" }, { status: 400 });
     }
+
+    const economics = revenueFirstRewardsGovernor.assessEventEconomics({
+      expectedRevenueCents: Math.floor(Math.max(0, Number(budget)) * 100),
+      expectedOperatingCostCents: Math.max(0, Number(body.expectedOperatingCostCents ?? 0)),
+      expectedInfrastructureCostCents: Math.max(0, Number(body.expectedInfrastructureCostCents ?? 0)),
+      expectedPrizePoolCents: Math.max(0, Number(body.expectedPrizePoolCents ?? 0)),
+    });
+
+    if (!economics.allowed) {
+      return NextResponse.json({
+        ok: false,
+        error: 'Sponsor campaign rejected by revenue governor',
+        code: 'EVENT_ECONOMICS_GATE_REJECTED',
+        economics,
+      }, { status: 409 });
+    }
+
     const campaign: SponsorCampaign = {
       id: `sc_${Date.now()}`,
       sponsorId,
@@ -45,7 +71,7 @@ export async function POST(request: Request) {
       createdAt: new Date().toISOString(),
     };
     SEED_CAMPAIGNS.push(campaign);
-    return NextResponse.json({ success: true, campaign }, { status: 201 });
+    return NextResponse.json({ success: true, campaign, economics }, { status: 201 });
   } catch {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }

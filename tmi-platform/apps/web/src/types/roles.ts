@@ -7,6 +7,7 @@ export type TMIRole =
   | "FAN"
   | "PERFORMER"
   | "ARTIST"
+  | "PRODUCER"
   | "SPONSOR"
   | "ADVERTISER"
   | "VENUE"
@@ -19,11 +20,11 @@ export type TMIRole =
 export type TMIRoleLower = Lowercase<TMIRole>;
 
 export const ALL_ROLES: TMIRole[] = [
-  "FAN", "PERFORMER", "ARTIST", "SPONSOR", "ADVERTISER", "VENUE", "PROMOTER", "WRITER", "ADMIN", "STAFF",
+  "FAN", "PERFORMER", "ARTIST", "PRODUCER", "SPONSOR", "ADVERTISER", "VENUE", "PROMOTER", "WRITER", "ADMIN", "STAFF",
 ];
 
 export const REVENUE_ROLES: TMIRole[] = ["SPONSOR", "ADVERTISER", "VENUE", "PROMOTER"];
-export const CREATOR_ROLES: TMIRole[]  = ["PERFORMER", "ARTIST", "WRITER"];
+export const CREATOR_ROLES: TMIRole[]  = ["PERFORMER", "ARTIST", "PRODUCER", "WRITER"];
 export const ADMIN_ROLES: TMIRole[]    = ["ADMIN", "STAFF"];
 
 /** Dashboard route for each role */
@@ -31,6 +32,7 @@ export const ROLE_DASHBOARD: Record<TMIRoleLower, string> = {
   fan:        "/dashboard/fan",
   performer:  "/dashboard/performer",
   artist:     "/dashboard/artist",
+  producer:   "/dashboard/producer",
   sponsor:    "/dashboard/sponsor",
   advertiser: "/dashboard/advertiser",
   venue:      "/dashboard/venue",
@@ -45,6 +47,7 @@ export const ROLE_HUB: Record<TMIRoleLower, string> = {
   fan:        "/hub/fan",
   performer:  "/hub/performer",
   artist:     "/hub/artist",
+  producer:   "/hub/producer",
   sponsor:    "/hub/sponsor",
   advertiser: "/hub/advertiser",
   venue:      "/hub/venue",
@@ -59,6 +62,7 @@ export const ROLE_ONBOARDING: Record<TMIRoleLower, string> = {
   fan:        "/onboarding/fan",
   performer:  "/onboarding/performer",
   artist:     "/onboarding/artist",
+  producer:   "/onboarding/producer",
   sponsor:    "/onboarding/sponsor",
   advertiser: "/onboarding/advertiser",
   venue:      "/onboarding/venue",
@@ -73,6 +77,7 @@ export const ROLE_COLOR: Record<TMIRoleLower, string> = {
   fan:        "#FF2DAA",
   performer:  "#AA2DFF",
   artist:     "#00FFFF",
+  producer:   "#7CFF6B",
   sponsor:    "#FFD700",
   advertiser: "#FFA500",
   venue:      "#00FF88",
@@ -87,6 +92,7 @@ export const ROLE_ICON: Record<TMIRoleLower, string> = {
   fan:        "🎵",
   performer:  "🎭",
   artist:     "🎤",
+  producer:   "🎛️",
   sponsor:    "🤝",
   advertiser: "📢",
   venue:      "🏟️",

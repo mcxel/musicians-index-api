@@ -52,7 +52,8 @@ export default function BeatsPage() {
   const featured = BEATS.filter(b => b.featured);
 
   function buyBeat(beat: Beat) {
-    router.push(`/api/stripe/checkout?priceId=${beat.priceId}&mode=payment&name=${encodeURIComponent(beat.title)}`);
+    // Route to canonical Beat Marketplace where real Stripe checkout is wired
+    router.push(`/beats/marketplace`);
   }
 
   function toggleCart(id: string) {

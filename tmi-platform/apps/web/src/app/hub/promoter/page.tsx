@@ -30,17 +30,11 @@ const QUICK_ACTIONS = [
 
 type TicketTier = { id: string; name: string; price: number; inventory: number; sold: number; };
 
-const INITIAL_TIERS: TicketTier[] = [
-  { id: "ga",    name: "General Admission", price: 35,  inventory: 500, sold: 312 },
-  { id: "vip",   name: "VIP Floor",         price: 120, inventory: 120, sold: 79  },
-  { id: "ultra", name: "Ultra Lounge",      price: 260, inventory: 40,  sold: 19  },
-];
+// Ticket tiers start with no sold tickets — real sales tracked via /api/tickets
+const INITIAL_TIERS: TicketTier[] = [];
 
-const EVENTS = [
-  { id: "ev1", name: "Friday Neon Clash",       date: "May 30, 2026",  venue: "Cypher Arena",        status: "on_sale" },
-  { id: "ev2", name: "Season 2 Finals",         date: "Jun 14, 2026",  venue: "TMI Grand Stage",     status: "upcoming" },
-  { id: "ev3", name: "Underground Cypher Vol 8", date: "Jun 28, 2026", venue: "Warehouse District",  status: "draft" },
-];
+// Events start empty — real events created via /promoter/events and fetched from API
+const EVENTS: { id: string; name: string; date: string; venue: string; status: string }[] = [];
 
 const EVENT_STATUS: Record<string, { label: string; color: string }> = {
   on_sale:  { label: "ON SALE",  color: "#00FF88" },
@@ -161,6 +155,9 @@ export default function PromoterHubPage() {
 
           {/* Event selector */}
           <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
+            {EVENTS.length === 0 && (
+              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", padding: "10px 0" }}>No events created yet. Create an event to add ticket tiers.</div>
+            )}
             {EVENTS.map((ev) => {
               const s = EVENT_STATUS[ev.status];
               return (
@@ -171,9 +168,9 @@ export default function PromoterHubPage() {
                 </button>
               );
             })}
-            <button onClick={() => window.location.href = '/ticketing/create'} style={{ padding: "10px 16px", borderRadius: 10, border: "1px dashed rgba(0,255,136,0.25)", background: "transparent", color: "rgba(0,255,136,0.5)", fontSize: 11, fontWeight: 800, cursor: "pointer" }}>
+            <Link href="/promoter/events" style={{ display: "inline-flex", alignItems: "center", padding: "10px 16px", borderRadius: 10, border: "1px dashed rgba(0,255,136,0.25)", color: "rgba(0,255,136,0.5)", fontSize: 11, fontWeight: 800, textDecoration: "none" }}>
               + NEW EVENT
-            </button>
+            </Link>
           </div>
 
           {/* Sales totals */}
@@ -210,9 +207,11 @@ export default function PromoterHubPage() {
 
           {/* Ticket tiers */}
           <div style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 9, letterSpacing: "0.3em", color: "rgba(255,255,255,0.3)", fontWeight: 800, marginBottom: 10 }}>TICKET TIERS — {EVENTS.find(e => e.id === activeEvent)?.name ?? "Select Event"}</div>
+            <div style={{ fontSize: 9, letterSpacing: "0.3em", color: "rgba(255,255,255,0.3)", fontWeight: 800, marginBottom: 10 }}>TICKET TIERS — {EVENTS.find(e => e.id === activeEvent)?.name ?? "Create an event to add tiers"}</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {tiers.map((tier) => {
+              {tiers.length === 0 ? (
+                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", padding: "12px 0" }}>No ticket tiers yet. Use the form below to add your first tier.</div>
+              ) : tiers.map((tier) => {
                 const pct = Math.min(100, Math.round((tier.sold / tier.inventory) * 100));
                 const revenue = tier.sold * tier.price;
                 return (
@@ -294,7 +293,9 @@ export default function PromoterHubPage() {
           <div style={{ background: "rgba(0,255,136,0.04)", border: "1px solid rgba(0,255,136,0.14)", borderRadius: 14, padding: "18px" }}>
             <div style={{ fontSize: 9, letterSpacing: "0.35em", color: ACCENT, fontWeight: 800, marginBottom: 14 }}>ACTIVE EVENTS</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {EVENTS.map((ev) => {
+              {EVENTS.length === 0 ? (
+                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", padding: "8px 0" }}>No events yet. Create your first event to get started.</div>
+              ) : EVENTS.map((ev) => {
                 const s = EVENT_STATUS[ev.status];
                 return (
                   <div key={ev.id} style={{ padding: "10px 12px", background: "rgba(0,0,0,0.25)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 8 }}>

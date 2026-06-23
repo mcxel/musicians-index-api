@@ -244,10 +244,17 @@ function LiveTile({
   const ref = useRef<HTMLDivElement>(null);
   const [inViewport, setInViewport] = useState(false);
   const [hovered,    setHovered]    = useState(false);
+  // Touch devices simulate :hover on tap with no reliable mouseleave, which
+  // left the "Join"/price overlay stuck floating/flickering on phones. On
+  // devices with no real hover/pointer, treat the tile as always "hovered"
+  // for action visibility instead of gating it behind a state touch can't
+  // cleanly enter/exit.
+  const [supportsHover, setSupportsHover] = useState(true);
   const accent = item.accentColor;
   const totalScore = scoreItem(item);
   const maxScore = 500; // normalize for bar
   const scoreBar = Math.min(1, totalScore / maxScore);
+  const actionVisible = supportsHover ? hovered : true;
 
   useEffect(() => {
     const el = ref.current;
@@ -255,6 +262,11 @@ function LiveTile({
     const obs = new IntersectionObserver(([e]) => setInViewport(e.isIntersecting), { rootMargin: "80px" });
     obs.observe(el);
     return () => obs.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return;
+    setSupportsHover(window.matchMedia('(hover: hover) and (pointer: fine)').matches);
   }, []);
 
   return (
@@ -266,9 +278,9 @@ function LiveTile({
         border: `1.5px solid ${item.isLive ? accent + "70" : accent + "20"}`,
         aspectRatio: "1 / 1",
         transition: "transform 0.6s ease, box-shadow 0.3s ease",
-        transform: hovered ? "scale(1.05)" : "scale(1)",
+        transform: actionVisible ? "scale(1.05)" : "scale(1)",
         boxShadow: item.isLive
-          ? `0 0 ${hovered ? "20px" : "8px"} ${accent}60`
+          ? `0 0 ${actionVisible ? "20px" : "8px"} ${accent}60`
           : "none",
         willChange: "transform",
       }}
@@ -362,7 +374,7 @@ function LiveTile({
       </div>
 
       {/* Hover action */}
-      {hovered && (
+      {actionVisible && (
         <div
           className="absolute inset-0 z-20 flex items-center justify-center"
           style={{ background: "rgba(0,0,0,0.5)", backdropFilter: "blur(2px)" }}

@@ -1,4 +1,3 @@
-import { notFound } from "next/navigation";
 import Link from "next/link";
 import ProfileShell from "@/components/profile/ProfileShell";
 import UniversalMediaPanel from "@/components/media/UniversalMediaPanel";
@@ -9,37 +8,17 @@ import { getEarnedBadges } from "@/lib/writer/WriterBadgeSystem";
 
 interface Props { params: { slug: string } }
 
-interface SeedWriter {
-  displayName: string;
-  tagline: string;
-  specialty: string;
-  isVerified: boolean;
+function titleCase(slug: string) {
+  return slug.split("-").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
 }
 
-const SEED_WRITERS: Record<string, SeedWriter> = {
-  "m-dickens": {
-    displayName: "Marcel Dickens",
-    tagline: "Founder & Editor-in-Chief · TMI Magazine",
-    specialty: "Culture / Platform Strategy",
-    isVerified: true,
-  },
-  "nova-pen": {
-    displayName: "Nova Pen",
-    tagline: "Battle culture correspondent · 3x TMI Featured Writer",
-    specialty: "Battle Rap / Performer Features",
-    isVerified: true,
-  },
-  "lena-writes": {
-    displayName: "Lena Writes",
-    tagline: "R&B journalist · Soul section editor",
-    specialty: "R&B / Soul / Artist Profiles",
-    isVerified: false,
-  },
-};
-
 export default function WriterProfilePage({ params }: Props) {
-  const writer = SEED_WRITERS[params.slug];
-  if (!writer) notFound();
+  const writer = {
+    displayName: titleCase(params.slug),
+    tagline: "Independent writer on The Musician's Index.",
+    specialty: "Culture / Coverage",
+    isVerified: false,
+  };
 
   seedWriterWall(params.slug);
   const items  = getPublicItems(params.slug);

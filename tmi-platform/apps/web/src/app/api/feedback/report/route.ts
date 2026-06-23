@@ -11,8 +11,21 @@ import {
   pushToAutomatedPatchQueue,
   shouldRouteToAutomatedPatchQueue,
 } from '@/lib/feedback/FeedbackStore';
+import prisma from '@/lib/prisma';
+import { participationEconomyEngine } from '@/lib/economy/ParticipationEconomyEngine';
 
 export const dynamic = 'force-dynamic';
+
+async function resolveAuthedContext(req: NextRequest): Promise<{ userId: string; role: string } | null> {
+  const email = req.cookies.get('tmi_user_email')?.value;
+  if (!email) return null;
+
+  const user = await prisma.user.findUnique({ where: { email }, select: { id: true } }).catch(() => null);
+  if (!user?.id) return null;
+
+  const role = (req.cookies.get('tmi_role')?.value ?? '').toLowerCase();
+  return { userId: user.id, role };
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -56,6 +69,24 @@ export async function POST(req: NextRequest) {
     }
 
     const bucket = addReport(report);
+
+    const authed = await resolveAuthedContext(req);
+    if (authed) {
+      if (authed.role === 'performer' || authed.role === 'artist') {
+        participationEconomyEngine.earn(authed.userId, 'performer', 'audience_engagement', {
+          category,
+          severity,
+          classification,
+        });
+      } else {
+        participationEconomyEngine.earn(authed.userId, 'fan', 'write_review', {
+          category,
+          severity,
+          classification,
+        });
+      }
+    }
+
     return NextResponse.json({
       success: true,
       count: bucket.count,

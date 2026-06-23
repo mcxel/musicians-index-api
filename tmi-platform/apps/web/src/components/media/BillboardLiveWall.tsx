@@ -93,6 +93,7 @@ export default function BillboardLiveWall({
   category,
 }: BillboardLiveWallProps) {
   const [performers, setPerformers] = useState<PerformerSlot[]>([]);
+  const [loadedOnce, setLoadedOnce] = useState(false);
   const [justJoinedIdx, setJustJoinedIdx] = useState<number | null>(null);
   const [activeFlowRoom, setActiveFlowRoom] = useState<UniversalRoom | null>(null);
 
@@ -149,6 +150,7 @@ export default function BillboardLiveWall({
             .sort((a, b) => (a.rank ?? 99) - (b.rank ?? 99));
 
       setPerformers([...liveTiles, ...offline].slice(0, maxTiles));
+      setLoadedOnce(true);
     };
 
     void load();
@@ -193,10 +195,28 @@ export default function BillboardLiveWall({
     });
   };
 
-  if (performers.length === 0) {
+  if (!loadedOnce) {
     return (
       <div style={{ padding: 40, textAlign: 'center', color: 'rgba(255,255,255,0.3)', fontSize: 13 }}>
         Loading performers…
+      </div>
+    );
+  }
+
+  if (performers.length === 0) {
+    return (
+      <div style={{ padding: 20, border: '1px solid rgba(255,255,255,0.12)', borderRadius: 12, background: 'rgba(5,5,16,0.65)' }}>
+        <div style={{ fontSize: 12, fontWeight: 800, color: '#fff', marginBottom: 6, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+          No Live Billboard Rooms
+        </div>
+        <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', marginBottom: 12 }}>
+          Start a room or browse available arenas.
+        </div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <Link href="/live/lobby" style={{ textDecoration: 'none', padding: '7px 10px', borderRadius: 8, border: '1px solid rgba(0,255,255,0.5)', color: '#00FFFF', fontSize: 10, fontWeight: 800, letterSpacing: '0.06em' }}>JOIN ARENA</Link>
+          <Link href="/performers" style={{ textDecoration: 'none', padding: '7px 10px', borderRadius: 8, border: '1px solid rgba(255,215,0,0.5)', color: '#FFD700', fontSize: 10, fontWeight: 800, letterSpacing: '0.06em' }}>BROWSE PERFORMERS</Link>
+          <Link href="/live/rooms/new" style={{ textDecoration: 'none', padding: '7px 10px', borderRadius: 8, border: '1px solid rgba(255,45,170,0.5)', color: '#FF2DAA', fontSize: 10, fontWeight: 800, letterSpacing: '0.06em' }}>CREATE ROOM</Link>
+        </div>
       </div>
     );
   }

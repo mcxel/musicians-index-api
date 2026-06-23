@@ -49,7 +49,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ authenticated: false, csrfToken, user: null, expires: null });
   }
 
-  let canonicalUserId = sessionId.substring(0, 8);
+  let canonicalUserId = sessionId;
   let isLive = false;
   let liveRoomId: string | null = null;
   let avatarUrl: string | null = null;
@@ -72,7 +72,7 @@ export async function GET(req: NextRequest) {
   }
 
   const scopedEmail = redactEmailForRole(rawEmail, role);
-  const displayName = scopedEmail ? scopedEmail.split('@')[0] : canonicalUserId.substring(0, 8);
+  const displayName = scopedEmail ? scopedEmail.split('@')[0] : `user-${canonicalUserId.substring(0, 8)}`;
 
   return NextResponse.json({
     authenticated: true,

@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import Link from 'next/link';
 import PageShell from '@/components/layout/PageShell';
 import HUDFrame from '@/components/hud/HUDFrame';
@@ -18,29 +18,24 @@ interface Battler {
   votes: number;
 }
 
-const QUEUE_STUBS: Battler[] = [
-  { id: '1', name: 'JAYLEN CROSS',  genre: 'Hip-Hop',     emoji: '🎤', votes: 0 },
-  { id: '2', name: 'NOVA REIGN',    genre: 'Neo-Soul',    emoji: '👑', votes: 0 },
-  { id: '3', name: 'TRAXX MONROE',  genre: 'Trap',        emoji: '🎹', votes: 0 },
-  { id: '4', name: 'AMIRAH WELLS',  genre: 'R&B',         emoji: '🎶', votes: 0 },
-  { id: '5', name: 'DJ CYPHERS',    genre: 'Hip-Hop Mix', emoji: '🎧', votes: 0 },
-  { id: '6', name: 'DESTINED',      genre: 'Neo-Soul',    emoji: '✨', votes: 0 },
-];
+// Queue slot shape returned by /api/live/queue
+interface QueueSlotApiShape {
+  performerId: string;
+  performerName: string;
+  status: string;
+  priority: number;
+}
 
 const ROUND_LABEL = ['', 'ROUND 1', 'ROUND 2', 'ROUND 3 — FINAL'];
 const ROUND_DURATION = 30; // seconds per round
 
-const CHAT_STUBS = [
-  { user: 'cypher_heads', msg: 'This is FIRE 🔥' },
-  { user: 'nova_tribe',   msg: 'Nova about to bodybody this 👑' },
-  { user: 'trap_gang',    msg: 'JAYLEN NO CAP' },
-  { user: 'viewer_882',   msg: 'who voted Jaylen???' },
-];
-
 type ChatMsg = { user: string; msg: string };
 
+const EMOJI_POOL = ['🎤', '👑', '🎹', '🎶', '🎧', '✨', '🔥', '⚡', '💯', '🎵'];
+
 export default function CypherRoomPage() {
-  const [queue]               = useState<Battler[]>(QUEUE_STUBS);
+  const [queue, setQueue]       = useState<Battler[]>([]);
+  const [queueLoading, setQueueLoading] = useState(true);
   const [phase, setPhase]       = useState<BattlePhase>('QUEUE');
   const [round, setRound]       = useState(1);
   const [timer, setTimer]       = useState(ROUND_DURATION);
@@ -50,10 +45,53 @@ export default function CypherRoomPage() {
   const [rightVotes, setRightVotes] = useState(0);
   const [voted, setVoted]       = useState(false);
   const [winner, setWinner]     = useState<Battler | null>(null);
-  const [viewers]   = useState(0);
+  const [viewers, setViewers]   = useState(0);
   const [chatMsgs, setChatMsgs] = useState<ChatMsg[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [countdown, setCountdown] = useState(3);
+
+  // Load real queue from API, poll every 15s
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const res = await fetch('/api/live/queue?venue=cypher', { cache: 'no-store' });
+        const data = await res.json() as { slots?: QueueSlotApiShape[] };
+        if (cancelled) return;
+        const slots: QueueSlotApiShape[] = data.slots ?? [];
+        const battlers: Battler[] = slots.map((s, i) => ({
+          id: s.performerId,
+          name: s.performerName.toUpperCase(),
+          genre: 'Live',
+          emoji: EMOJI_POOL[i % EMOJI_POOL.length] ?? '🎤',
+          votes: 0,
+        }));
+        setQueue(battlers);
+      } catch {
+        if (!cancelled) setQueue([]);
+      } finally {
+        if (!cancelled) setQueueLoading(false);
+      }
+    };
+    void load();
+    const id = setInterval(load, 15_000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, []);
+
+  // Load real viewer count from audience engine
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const res = await fetch('/api/live/audience?venue=cypher', { cache: 'no-store' });
+        const data = await res.json() as { members?: unknown[] };
+        if (!cancelled) setViewers((data.members ?? []).length);
+      } catch { /* non-blocking */ }
+    };
+    void load();
+    const id = setInterval(load, 20_000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, []);
 
   // Round timer
   useEffect(() => {
@@ -73,6 +111,7 @@ export default function CypherRoomPage() {
 
   const startBattle = useCallback(() => {
     const [a, b] = queue;
+    if (!a || !b) return;
     setLeft(a); setRight(b);
     setLeftVotes(0); setRightVotes(0);
     setVoted(false); setWinner(null);
@@ -80,15 +119,25 @@ export default function CypherRoomPage() {
     setPhase('COUNTDOWN');
   }, [queue]);
 
-  const vote = (side: 'left' | 'right') => {
+  // Wire vote to real /api/vote endpoint (rate-limited by IP, in-memory totals)
+  const vote = useCallback(async (side: 'left' | 'right') => {
     if (voted) return;
     setVoted(true);
+    const performer = side === 'left' ? left : right;
     if (side === 'left') setLeftVotes((v) => v + 1);
     else setRightVotes((v) => v + 1);
-  };
+    if (performer) {
+      try {
+        await fetch('/api/vote', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ performerId: `cypher-${performer.id}` }),
+        });
+      } catch { /* non-blocking — local state is already updated */ }
+    }
+  }, [voted, left, right]);
 
   const endVote = () => {
-    const w = (leftVotes + (voted && right ? 0 : 0)) >= rightVotes ? left : right;
     if (round < 3) {
       setRound((r) => r + 1);
       setLeftVotes(0); setRightVotes(0);
@@ -146,24 +195,38 @@ export default function CypherRoomPage() {
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
                   style={{ background: '#0a0a14', border: '1px solid #1a1a2e', borderRadius: 14, padding: '24px 24px 20px' }}>
                   <div style={{ fontSize: 9, letterSpacing: 4, color: '#AA2DFF', fontWeight: 800, marginBottom: 20 }}>BATTLE QUEUE</div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
-                    {queue.map((b, i) => (
-                      <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '10px 14px', borderRadius: 10,
-                        background: i < 2 ? '#AA2DFF0A' : 'transparent', border: `1px solid ${i < 2 ? '#AA2DFF33' : '#1a1a2e'}` }}>
-                        <div style={{ fontSize: 9, color: '#555', minWidth: 20, fontWeight: 700 }}>#{i + 1}</div>
-                        <div style={{ fontSize: 24 }}>{b.emoji}</div>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: 13, fontWeight: 700, color: i < 2 ? '#fff' : '#888' }}>{b.name}</div>
-                          <div style={{ fontSize: 10, color: '#555' }}>{b.genre}</div>
-                        </div>
-                        {i < 2 && <div style={{ fontSize: 9, color: '#AA2DFF', fontWeight: 800, letterSpacing: 2 }}>NEXT UP</div>}
+                  {queueLoading && (
+                    <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: 12, textAlign: 'center', padding: '24px 0' }}>Loading queue…</div>
+                  )}
+                  {!queueLoading && queue.length === 0 && (
+                    <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: 12, textAlign: 'center', padding: '24px 0' }}>
+                      No performers in queue right now. Check back soon or join the queue from your Performer Dashboard.
+                    </div>
+                  )}
+                  {!queueLoading && queue.length > 0 && (
+                    <>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
+                        {queue.map((b, i) => (
+                          <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '10px 14px', borderRadius: 10,
+                            background: i < 2 ? '#AA2DFF0A' : 'transparent', border: `1px solid ${i < 2 ? '#AA2DFF33' : '#1a1a2e'}` }}>
+                            <div style={{ fontSize: 9, color: '#555', minWidth: 20, fontWeight: 700 }}>#{i + 1}</div>
+                            <div style={{ fontSize: 24 }}>{b.emoji}</div>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontSize: 13, fontWeight: 700, color: i < 2 ? '#fff' : '#888' }}>{b.name}</div>
+                              <div style={{ fontSize: 10, color: '#555' }}>{b.genre}</div>
+                            </div>
+                            {i < 2 && <div style={{ fontSize: 9, color: '#AA2DFF', fontWeight: 800, letterSpacing: 2 }}>NEXT UP</div>}
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                  <button onClick={startBattle}
-                    style={{ width: '100%', padding: '14px', borderRadius: 10, background: 'linear-gradient(90deg, #AA2DFF, #FF2DAA)', border: 'none', color: '#fff', fontSize: 12, fontWeight: 900, letterSpacing: 3, cursor: 'pointer' }}>
-                    START BATTLE
-                  </button>
+                      {queue.length >= 2 && (
+                        <button onClick={startBattle}
+                          style={{ width: '100%', padding: '14px', borderRadius: 10, background: 'linear-gradient(90deg, #AA2DFF, #FF2DAA)', border: 'none', color: '#fff', fontSize: 12, fontWeight: 900, letterSpacing: 3, cursor: 'pointer' }}>
+                          START BATTLE
+                        </button>
+                      )}
+                    </>
+                  )}
                 </motion.div>
               )}
 
@@ -280,6 +343,9 @@ export default function CypherRoomPage() {
                   <div style={{ fontSize: 9, color: '#555' }}>{viewers} live</div>
                 </div>
                 <div style={{ height: 320, overflowY: 'auto', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {chatMsgs.length === 0 && (
+                    <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.2)', textAlign: 'center', paddingTop: 24 }}>No messages yet. Say something!</div>
+                  )}
                   {chatMsgs.map((m, i) => (
                     <div key={i} style={{ fontSize: 12 }}>
                       <span style={{ color: '#AA2DFF', fontWeight: 700, marginRight: 6 }}>{m.user}</span>

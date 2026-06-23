@@ -4,49 +4,115 @@ import React, { useEffect, useState } from 'react';
 import LobbyQueueRail, { type LobbyQueueEntry } from './LobbyQueueRail';
 import LobbyReactionRail from './LobbyReactionRail';
 import LobbyTipRail from './LobbyTipRail';
-import LobbySeatGrid, { type TheaterSeat } from './LobbySeatGrid';
 import {
   getLobbyFeedSnapshot,
   subscribeLobbyFeed,
   deriveVenueRankings,
 } from '@/lib/lobby/LobbyFeedBus';
-
-const SCAFFOLD_SEATS: TheaterSeat[] = [
-  { id: 'MID-1', row: 'MID', index: 1, visualState: 'occupied', occupantName: 'NovaK' },
-  { id: 'MID-2', row: 'MID', index: 2, visualState: 'vip', occupantName: undefined },
-  { id: 'REAR-1', row: 'REAR', index: 1, visualState: 'open', occupantName: undefined },
-  { id: 'REAR-2', row: 'REAR', index: 2, visualState: 'reserved', occupantName: 'Late Entry' },
-];
+import {
+  advanceQueue,
+  getQueueSnapshot,
+  joinQueue as joinQueueEngine,
+  removeFromQueue,
+  type QueueSlot,
+} from '@/lib/live/queueEngine';
+import { CheckoutPaymentEngine } from '@/lib/stripe/CheckoutPaymentEngine';
 
 export const VenueHUDOverlay = () => {
-  // B3: Subscribe to LobbyFeedBus — live ranking feeds
+  // Subscribe to LobbyFeedBus — live ranking feeds
   const [feed, setFeed] = useState(() => getLobbyFeedSnapshot());
+  const [tipTotal, setTipTotal] = useState(0);
+  const [reactionCount, setReactionCount] = useState(0);
+  const [queueEntries, setQueueEntries] = useState<LobbyQueueEntry[]>([]);
+
   useEffect(() => subscribeLobbyFeed(setFeed), []);
+
+  const venueSlug = feed.slug || 'default-room';
+
+  // Sync queue from engine when slug is available
+  useEffect(() => {
+    if (!venueSlug) return;
+    const { slots } = getQueueSnapshot(venueSlug);
+    setQueueEntries(
+      slots.map((s) => ({
+        slotId: s.slotId,
+        performerId: s.performerId,
+        performerName: s.performerName,
+        state: s.status === 'on-stage' ? 'live' : s.status === 'done' ? 'complete' : s.status === 'next-up' || s.status === 'staging' ? 'onDeck' : 'waiting',
+      } as import('./LobbyQueueRail').LobbyQueueEntry))
+    );
+  }, [venueSlug]);
+
   const rankings = deriveVenueRankings(feed);
+
+  // Queue handlers — wired to real queue engine
+  const handleJoinQueue = (performerId: string, performerName: string) => {
+    const slot = joinQueueEngine(venueSlug, performerId, performerName, 5);
+    setQueueEntries((prev) => [
+      ...prev,
+      {
+        slotId: slot.slotId,
+        performerId,
+        performerName,
+        state: 'waiting' as const,
+      },
+    ]);
+  };
+
+  const handleLeaveQueue = (performerId: string) => {
+    removeFromQueue(venueSlug, performerId);
+    setQueueEntries((prev) => prev.filter((e) => e.performerId !== performerId));
+  };
+
+  const handleNextPerformer = () => {
+    advanceQueue(venueSlug);
+    const { slots: updatedSlots } = getQueueSnapshot(venueSlug);
+    setQueueEntries(
+      updatedSlots.map((s) => ({
+        slotId: s.slotId,
+        performerId: s.performerId,
+        performerName: s.performerName,
+        state: s.status === 'on-stage' ? 'live' : s.status === 'done' ? 'complete' : s.status === 'next-up' || s.status === 'staging' ? 'onDeck' : 'waiting',
+      } as import('./LobbyQueueRail').LobbyQueueEntry))
+    );
+  };
+
+  // Tip handler — dispatches custom event so parent pages can respond
+  const handleSendTip = (amount: number) => {
+    setTipTotal((t) => t + amount);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent('tmi:tip', { detail: { venueSlug, amountCents: amount } })
+      );
+    }
+  };
+
+  // Reaction handler — dispatches custom event
+  const handleSendReaction = (type: string) => {
+    setReactionCount((n) => n + 1);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent('tmi:reaction', { detail: { venueSlug, type } })
+      );
+    }
+  };
+
   return (
     <div className="pointer-events-none absolute inset-0 z-40 flex flex-col justify-between overflow-hidden">
       {/* Top / Sides Drawer Container */}
       <div className="flex flex-1 justify-between p-4 md:p-6 overflow-hidden">
-        
-        {/* Left Drawer: Active Queue & Legacy Grid Fallback */}
+
+        {/* Left Drawer: Queue Rail + Live Rankings */}
         <div className="pointer-events-auto w-64 flex flex-col gap-4 max-h-full">
           <div className="bg-black/60 backdrop-blur-md border border-white/5 rounded-xl overflow-hidden shrink-0 flex flex-col max-h-[50%]">
              <LobbyQueueRail
-              entries={[] as LobbyQueueEntry[]}
-              onJoinQueue={() => undefined}
-              onLeaveQueue={() => undefined}
-              onNextPerformer={() => undefined}
-              onHostOverride={() => undefined}
-              onFailedEntry={() => undefined}
+              entries={queueEntries}
+              onJoinQueue={handleJoinQueue}
+              onLeaveQueue={handleLeaveQueue}
+              onNextPerformer={handleNextPerformer}
+              onHostOverride={handleNextPerformer}
+              onFailedEntry={(id) => handleLeaveQueue(id)}
              />
-          </div>
-          <div className="bg-black/60 backdrop-blur-md border border-white/5 rounded-xl overflow-hidden flex-1 flex flex-col">
-             <div className="p-3 border-b border-white/5">
-               <h3 className="text-[10px] font-black tracking-[0.2em] text-zinc-500 uppercase">Seat Grid Map (Admin/Fallback)</h3>
-             </div>
-             <div className="p-4 overflow-y-auto flex-1">
-               <LobbySeatGrid seats={SCAFFOLD_SEATS} selectedSeatId={null} onSelectSeat={() => undefined} />
-             </div>
           </div>
 
           {/* B3: Live rankings strip — wired to LobbyFeedBus */}
@@ -80,17 +146,31 @@ export const VenueHUDOverlay = () => {
               ))}
             </div>
           </div>
+
+          {/* Occupancy strip from LobbyFeedBus */}
+          {feed.occupancyPct > 0 && (
+            <div className="bg-black/60 backdrop-blur-md border border-white/5 rounded-xl p-3 shrink-0">
+              <div className="text-[9px] font-black tracking-[0.2em] text-zinc-500 uppercase mb-2">Occupancy</div>
+              <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-[#00FFFF] to-[#AA2DFF]"
+                  style={{ width: `${Math.min(100, feed.occupancyPct)}%`, transition: 'width 0.5s ease' }}
+                />
+              </div>
+              <div className="text-[9px] text-white/40 mt-1">{feed.occupancyPct.toFixed(0)}% ({feed.occupancy} present)</div>
+            </div>
+          )}
         </div>
 
         {/* Right Drawer: Tip Rail */}
         <div className="pointer-events-auto w-72 bg-black/60 backdrop-blur-md border border-white/5 rounded-xl overflow-hidden max-h-full">
-          <LobbyTipRail onSendTip={() => undefined} tipTotal={41} />
+          <LobbyTipRail onSendTip={handleSendTip} tipTotal={tipTotal} />
         </div>
       </div>
 
       {/* Bottom Action Bar: Global Reactions */}
       <div className="pointer-events-auto bg-black/80 backdrop-blur-md border-t border-white/5 p-4 md:p-6 shrink-0">
-        <LobbyReactionRail onSendReaction={() => undefined} reactionCount={128} />
+        <LobbyReactionRail onSendReaction={handleSendReaction} reactionCount={reactionCount} />
       </div>
     </div>
   );

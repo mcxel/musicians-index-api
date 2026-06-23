@@ -39,6 +39,16 @@ const TAGS: { value: FeedbackTag; label: string }[] = [
 
 type Step = "liked" | "originality" | "tags" | "done";
 
+function mapTagToSongDnaPart(tag: FeedbackTag): 'hook' | 'beat' | 'vocals' | 'lyrics' | 'energy' | 'mix' | 'overall' {
+  if (tag === 'HOOK') return 'hook';
+  if (tag === 'BEAT') return 'beat';
+  if (tag === 'VOICE' || tag === 'STAGE_PRESENCE') return 'vocals';
+  if (tag === 'LYRICS' || tag === 'FLOW') return 'lyrics';
+  if (tag === 'ENERGY') return 'energy';
+  if (tag === 'MIXING') return 'mix';
+  return 'overall';
+}
+
 export default function SongOriginalityPoll({
   songId,
   artistId,
@@ -72,6 +82,24 @@ export default function SongOriginalityPoll({
       originalityRating,
       feedbackTags: selectedTags,
     });
+
+    const bestPart = selectedTags.length > 0 ? mapTagToSongDnaPart(selectedTags[0]) : 'overall';
+    const needsWork = liked
+      ? 'none'
+      : (selectedTags.length > 0 ? mapTagToSongDnaPart(selectedTags[0]) : 'overall');
+
+    void fetch('/api/analytics/song-dna', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        songId,
+        artistId,
+        bestPart,
+        needsWork,
+        listenAgainTomorrow: liked,
+      }),
+    }).catch(() => null);
+
     const s = getSongStats(songId);
     setStats(s);
     setStep("done");

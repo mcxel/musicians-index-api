@@ -1,0 +1,311 @@
+
+<h2 class="sr-only">TMI Billboard Live Lobby Wall System — live broadcast discovery network</h2>
+<style>
+@keyframes livePulse{0%,100%{box-shadow:0 0 6px var(--gc,rgba(0,200,255,.5))}50%{box-shadow:0 0 20px var(--gc,rgba(0,200,255,.9)),0 0 40px var(--gc,rgba(0,200,255,.3))}}
+@keyframes tickUp{0%{opacity:0;transform:translateY(6px)}100%{opacity:1;transform:translateY(0)}}
+@keyframes broadcastIn{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:scale(1)}}
+@keyframes scanBar{0%{top:0%}100%{top:100%}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+@keyframes slideRoute{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:translateX(0)}}
+.live-tile{position:relative;cursor:pointer;overflow:hidden;transition:transform .2s,box-shadow .2s;background:var(--color-background-secondary);animation:broadcastIn .3s ease-out}
+.live-tile:hover{transform:scale(1.04);z-index:10}
+.live-tile::after{content:'';position:absolute;top:-200%;left:0;right:0;height:1.5px;background:rgba(0,220,255,.2);animation:scanBar 3s linear infinite}
+.tile-oct{clip-path:polygon(25% 0%,75% 0%,100% 25%,100% 75%,75% 100%,25% 100%,0% 75%,0% 25%)}
+.tile-hex{clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%)}
+.tile-circle{border-radius:50%;aspect-ratio:1}
+.tile-ticket{clip-path:polygon(0 10%,5% 0,95% 0,100% 10%,100% 90%,95% 100%,5% 100%,0 90%)}
+.tile-diamond-wrap{width:100%;aspect-ratio:1;position:relative}
+.tile-diamond{position:absolute;inset:15%;clip-path:polygon(50% 0%,100% 50%,50% 100%,0% 50%)}
+.tile-cinema{border-radius:4px;aspect-ratio:21/9}
+.tile-ribbon{border-radius:4px;border-left:4px solid var(--color-border-warning)}
+.tile-torn{clip-path:polygon(0 0,100% 0,100% 85%,95% 90%,90% 85%,85% 90%,80% 85%,75% 90%,70% 85%,65% 90%,60% 85%,55% 90%,50% 85%,45% 90%,40% 85%,35% 90%,30% 85%,25% 90%,20% 85%,15% 90%,10% 85%,5% 90%,0 85%)}
+.live-badge{position:absolute;top:5px;left:6px;background:#E63000;color:#fff;font-size:8px;font-weight:800;padding:2px 5px;border-radius:3px;z-index:5;animation:blink 1.4s ease-in-out infinite;letter-spacing:.08em}
+.vc{position:absolute;top:5px;right:6px;background:rgba(0,0,0,.7);color:#00E5FF;font-size:8px;padding:1px 5px;border-radius:3px;z-index:5;font-weight:500}
+.tname{position:absolute;bottom:22px;left:6px;color:#fff;font-size:9px;font-weight:700;z-index:5;text-shadow:0 1px 3px rgba(0,0,0,.8)}
+.tgenre{position:absolute;bottom:6px;left:6px;color:rgba(255,255,255,.6);font-size:7px;z-index:5}
+.tile-btns{position:absolute;bottom:5px;right:5px;display:none;gap:3px;z-index:6}
+.live-tile:hover .tile-btns{display:flex}
+.tb{font-size:9px;padding:2px 5px;border-radius:3px;border:none;cursor:pointer;white-space:nowrap;font-weight:500}
+.vs-badge{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,.7);color:#FF1493;font-size:11px;font-weight:900;padding:3px 7px;border-radius:4px;z-index:5;border:1px solid rgba(255,20,147,.4)}
+.vtop{position:absolute;top:3px;left:0;right:0;display:flex;justify-content:space-between;padding:0 5px;z-index:5}
+.sponsor-dot{position:absolute;bottom:5px;right:6px;width:8px;height:8px;border-radius:50%;background:var(--color-border-warning);animation:blink 2s ease-in-out infinite}
+.wall-tab{padding:5px 10px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary);font-size:10px;cursor:pointer;background:var(--color-background-primary);color:var(--color-text-secondary);white-space:nowrap;transition:all .15s}
+.wall-tab.on{background:var(--color-background-info);color:var(--color-text-info);border-color:var(--color-border-info);font-weight:500}
+.season-btn{padding:4px 8px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary);font-size:10px;cursor:pointer;background:var(--color-background-primary);transition:all .15s}
+.season-btn.on{font-weight:600;border-width:1.5px}
+.route-step{display:flex;align-items:center;gap:6px;padding:4px 0;font-size:11px;animation:slideRoute .3s ease-out;border-bottom:0.5px solid var(--color-border-tertiary)}
+.route-step:last-child{border-bottom:none}
+.route-arrow{color:var(--color-text-tertiary);font-size:10px}
+.mode-btn{padding:5px 10px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary);font-size:10px;cursor:pointer;background:var(--color-background-primary);transition:all .15s;white-space:nowrap}
+.mode-btn.on{background:var(--color-background-warning);color:var(--color-text-warning);border-color:var(--color-border-warning);font-weight:500}
+.genre-chip{padding:3px 8px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary);font-size:10px;cursor:pointer;background:var(--color-background-primary);transition:all .15s}
+.genre-chip.on{background:var(--color-background-info);color:var(--color-text-info);border-color:var(--color-border-info)}
+.access-badge{position:absolute;top:5px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.7);color:var(--color-text-warning);font-size:7px;font-weight:700;padding:1px 5px;border-radius:3px;z-index:5}
+</style>
+
+<div style="display:flex;flex-direction:column;gap:10px">
+
+<!-- Header -->
+<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+  <div>
+    <div style="font-size:16px;font-weight:500">Billboard Live Lobby Wall System</div>
+    <div style="font-size:11px;color:var(--color-text-secondary)">The live broadcast network of TMI — <span id="liveCount" style="color:var(--color-text-danger)">21 rooms live now</span></div>
+  </div>
+  <!-- Magazine Season Themes -->
+  <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">
+    <span style="font-size:10px;color:var(--color-text-secondary)">Season:</span>
+    <button class="season-btn on" id="s-spring" onclick="setSeason('spring')" style="color:#FF69B4;border-color:#FF69B4">🌸 Spring</button>
+    <button class="season-btn" id="s-summer" onclick="setSeason('summer')" style="color:#FF8C00;border-color:#FF8C00">☀️ Summer</button>
+    <button class="season-btn" id="s-fall" onclick="setSeason('fall')" style="color:#8B0000;border-color:#8B0000">🍂 Fall</button>
+    <button class="season-btn" id="s-winter" onclick="setSeason('winter')" style="color:#00BFFF;border-color:#00BFFF">❄️ Winter</button>
+  </div>
+</div>
+
+<!-- Broadcast Mode -->
+<div style="background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:8px 12px">
+  <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+    <span style="font-size:11px;font-weight:500"><i class="ti ti-broadcast" aria-hidden="true"></i> Broadcast mode:</span>
+    <button class="mode-btn on" onclick="setMode('global','ALL LIVE')">🌐 Global live</button>
+    <button class="mode-btn" onclick="setMode('hiphop','HIP-HOP TAKEOVER')">🎤 Hip-Hop takeover</button>
+    <button class="mode-btn" onclick="setMode('games','GAMES NETWORK')">🎮 Games network</button>
+    <button class="mode-btn" onclick="setMode('concert','CONCERT MODE')">🎪 Concert mode</button>
+    <button class="mode-btn" onclick="setMode('idol','MONTHLY IDOL')">👑 Monthly Idol</button>
+    <div style="margin-left:auto;font-size:10px;color:var(--color-text-secondary)">Rotates in <span id="rotTimer" style="color:var(--color-text-warning);font-weight:700">13</span>s</div>
+  </div>
+  <div style="margin-top:4px;font-size:10px;color:var(--color-text-secondary)" id="modeDesc">All public live sessions across the platform</div>
+</div>
+
+<!-- Wall type tabs -->
+<div style="display:flex;gap:4px;flex-wrap:wrap">
+  <button class="wall-tab on" onclick="setWall('global',this)">🌐 Global live</button>
+  <button class="wall-tab" onclick="setWall('genre',this)">🎵 Genre walls</button>
+  <button class="wall-tab" onclick="setWall('performer',this)">🎤 Performer live</button>
+  <button class="wall-tab" onclick="setWall('fan',this)">💃 Fan live</button>
+  <button class="wall-tab" onclick="setWall('battle',this)">⚔️ Battle wall</button>
+  <button class="wall-tab" onclick="setWall('venue',this)">🏟️ Venue wall</button>
+  <button class="wall-tab" onclick="setWall('magazine',this)">📰 Magazine wall</button>
+  <button class="wall-tab" onclick="setWall('sponsor',this)">💼 Sponsor wall</button>
+</div>
+
+<!-- Main layout: sidebar + wall -->
+<div style="display:grid;grid-template-columns:160px 1fr;gap:10px;align-items:start">
+
+  <!-- Routing sidebar -->
+  <div style="background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:10px">
+    <div style="font-size:11px;font-weight:500;margin-bottom:8px;color:var(--color-text-secondary)">Live routing flow</div>
+    <div class="route-step"><i class="ti ti-video" style="font-size:13px;color:var(--color-text-danger)" aria-hidden="true"></i><span>User goes live</span></div>
+    <div style="padding:2px 0 2px 18px;font-size:9px;color:var(--color-text-tertiary)">↓</div>
+    <div class="route-step"><i class="ti ti-door-enter" style="font-size:13px;color:var(--color-text-info)" aria-hidden="true"></i><span>Public room created</span></div>
+    <div style="padding:2px 0 2px 18px;font-size:9px;color:var(--color-text-tertiary)">↓</div>
+    <div class="route-step"><i class="ti ti-building" style="font-size:13px;color:var(--color-text-warning)" aria-hidden="true"></i><span>Venue scene loads</span></div>
+    <div style="padding:2px 0 2px 18px;font-size:9px;color:var(--color-text-tertiary)">↓</div>
+    <div class="route-step"><i class="ti ti-users" style="font-size:13px;color:var(--color-text-success)" aria-hidden="true"></i><span>AudienceScene + bots</span></div>
+    <div style="padding:2px 0 2px 18px;font-size:9px;color:var(--color-text-tertiary)">↓</div>
+    <div class="route-step"><i class="ti ti-rectangle" style="font-size:13px;color:var(--color-text-info)" aria-hidden="true"></i><span>Live tile appears</span></div>
+    <div style="padding:2px 0 2px 18px;font-size:9px;color:var(--color-text-tertiary)">↓</div>
+    <div class="route-step"><i class="ti ti-home" style="font-size:13px;color:var(--color-text-warning)" aria-hidden="true"></i><span>Homes 1/1-2/3 update</span></div>
+    <div style="padding:2px 0 2px 18px;font-size:9px;color:var(--color-text-tertiary)">↓</div>
+    <div class="route-step"><i class="ti ti-user-check" style="font-size:13px;color:var(--color-text-danger)" aria-hidden="true"></i><span>Profile shows LIVE</span></div>
+    <div style="padding:2px 0 2px 18px;font-size:9px;color:var(--color-text-tertiary)">↓</div>
+    <div class="route-step"><i class="ti ti-shield" style="font-size:13px;color:var(--color-text-secondary)" aria-hidden="true"></i><span>Admin observatory</span></div>
+    <div style="margin-top:8px;padding:6px;background:var(--color-background-success);border-radius:var(--border-radius-md)">
+      <div style="font-size:9px;font-weight:500;color:var(--color-text-success)">One LiveSessionRegistry</div>
+      <div style="font-size:9px;color:var(--color-text-success)">feeds all surfaces — no duplicate systems</div>
+    </div>
+  </div>
+
+  <!-- Live wall display -->
+  <div id="wallDisplay">
+    <!-- Rendered by JS -->
+  </div>
+</div>
+
+<!-- Genre filter (shows when genre wall active) -->
+<div id="genreStrip" style="display:none;flex-wrap:wrap;gap:4px">
+  <span style="font-size:11px;color:var(--color-text-secondary);align-self:center">Genre:</span>
+  <button class="genre-chip on" onclick="setGenre('Hip-Hop',this)">🎤 Hip-Hop</button>
+  <button class="genre-chip" onclick="setGenre('R&B',this)">🎵 R&amp;B</button>
+  <button class="genre-chip" onclick="setGenre('Gospel',this)">✝️ Gospel</button>
+  <button class="genre-chip" onclick="setGenre('Comedy',this)">😂 Comedy</button>
+  <button class="genre-chip" onclick="setGenre('Dance',this)">💃 Dance</button>
+  <button class="genre-chip" onclick="setGenre('DJ',this)">🎧 DJ</button>
+  <button class="genre-chip" onclick="setGenre('Jazz',this)">🎺 Jazz</button>
+  <button class="genre-chip" onclick="setGenre('Rock',this)">🎸 Rock</button>
+  <button class="genre-chip" onclick="setGenre('Poetry',this)">✍️ Poetry</button>
+  <button class="genre-chip" onclick="setGenre('Producer',this)">🎹 Producer</button>
+</div>
+
+<!-- Magazine integration strip -->
+<div style="background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:10px">
+  <div style="font-size:12px;font-weight:500;margin-bottom:6px"><i class="ti ti-book" aria-hidden="true"></i> Magazine integration — live inserts while flipping pages</div>
+  <div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px" id="magStrip"></div>
+  <div style="font-size:10px;color:var(--color-text-tertiary);margin-top:4px">Every live tile in the magazine routes to its real room — no dead cards</div>
+</div>
+
+<!-- Build directive -->
+<div style="text-align:center">
+  <button onclick="sendPrompt('Build the Billboard Live Lobby Wall System using existing BillboardLiveWall.tsx, MaskedVideoTile.tsx, AudienceScene.jsx, OmniPresenceEngine.tsx, LiveSessionRegistry. Wall types: Global Live, Genre Walls (one per genre: Hip-Hop/R&B/Gospel/Country/Rock/Pop/Jazz/Comedy/Dance/Magic/Poetry/Instrumental/DJ/Producer), Performer Live, Fan Live, Battle, Venue, Magazine, Sponsor, Admin. Tile shapes by type: Octagon (normal live), Hexagon (battle/cypher/challenge), Circle (fan live), Ticket-shape (paid venue), Diamond (VIP/Diamond rooms), Wide cinematic (concerts), Torn-edge (magazine live), Ribbon (sponsor). Each tile: live video preview or motion poster fallback, avatar/portrait, name, genre, room type, viewer count, live badge, tips, hype score, sponsor badge, entry type (Free/Paid/Diamond/Invite-only/Private), JOIN/View Profile/Message/Save buttons. Routing rules: performer → /live/rooms/[sessionId], battle → /battles/live/[sessionId], cypher → /cypher/stage?room=[sessionId], venue → /venues/[venueId]/rooms/[sessionId]. Seat join flow: click tile → access gate → reserve seat → assign avatar seat → load AudienceScene → load venue scene → load stream → load playlist and chat. Bot/maintenance audience: 3-12 bots seated when performer goes live, replaced visually by real users as they join. Magazine season themes every 3 months changing: tile shapes, colors, borders, motion style, typography. Broadcast Director AI selects featured rooms every 13 seconds based on trending/sponsored/editor picks/genre/engagement. Do NOT create duplicate systems. One LiveSessionRegistry feeds all surfaces.')">Build Billboard Live Lobby Wall in repo ↗</button>
+</div>
+
+</div>
+
+<script>
+const SESSIONS=[
+  {id:'s1',name:'Wavetek',genre:'Hip-Hop',type:'performer',event:'Public Live',access:'FREE',vc:2841,hype:94,tip:340,sponsored:false,shape:'oct',color:'info'},
+  {id:'s2',name:'Astra Nova',genre:'R&B',type:'performer',event:'Public Live',access:'FREE',vc:1204,hype:87,tip:89,sponsored:true,shape:'oct',color:'warning'},
+  {id:'s3',name:'DJ Kraze',genre:'DJ',type:'performer',event:'World Dance Party',access:'FREE',vc:3200,hype:98,tip:562,sponsored:true,shape:'cinema',color:'success'},
+  {id:'s4',name:'Bar God vs Nova',genre:'Hip-Hop',type:'battle',event:'Battle',access:'FREE',vc:1840,hype:96,tip:0,sponsored:false,shape:'hex',color:'danger'},
+  {id:'s5',name:'Lagos Burst vs Verse XL',genre:'Afrobeat',type:'cypher',event:'Cypher',access:'FREE',vc:940,hype:88,tip:0,sponsored:false,shape:'hex',color:'info'},
+  {id:'s6',name:'Fan Lobby — Party Night',genre:'R&B',type:'fan',event:'Fan Live',access:'FREE',vc:124,hype:65,tip:0,sponsored:false,shape:'circle',color:'secondary'},
+  {id:'s7',name:'Avatar Heavy',genre:'Dance',type:'fan',event:'Fan Live',access:'FREE',vc:88,hype:71,tip:0,sponsored:false,shape:'circle',color:'info'},
+  {id:'s8',name:'Arena Prime — Concerts',genre:'Pop',type:'venue',event:'Concert',access:'PAID',vc:8200,hype:99,tip:0,sponsored:true,shape:'ticket',color:'warning'},
+  {id:'s9',name:'MONTHLY IDOL Finals!',genre:'All',type:'magazine',event:'Monthly Idol',access:'FREE',vc:5400,hype:97,tip:0,sponsored:true,shape:'torn',color:'success'},
+  {id:'s10',name:'VIP Diamond Lounge',genre:'Exclusive',type:'vip',event:'Diamond Surf',access:'DIAMOND',vc:340,hype:90,tip:280,sponsored:true,shape:'diamond',color:'info'},
+  {id:'s11',name:'Beats By TMX — Promo',genre:'Sponsor',type:'sponsor',event:'Sponsor Event',access:'SPONSORED_FREE',vc:1200,hype:82,tip:0,sponsored:true,shape:'ribbon',color:'warning'},
+  {id:'s12',name:'Flex King Dance Showcase',genre:'Dance',type:'performer',event:'Dance-Off',access:'FREE',vc:670,hype:85,tip:43,sponsored:false,shape:'hex',color:'success'},
+];
+const ACCESS_COLORS={FREE:'success',PAID:'warning',DIAMOND:'info',INVITE_ONLY:'secondary',SPONSORED_FREE:'warning'};
+const EMOJIS={'Hip-Hop':'🎤','R&B':'🎵','DJ':'🎧','Afrobeat':'🌍','Dance':'💃','Pop':'⭐','All':'🌐','Exclusive':'💎','Sponsor':'📢','Gospel':'✝️','Jazz':'🎺','Comedy':'😂'};
+const ROUTES={performer:'/live/rooms/',battle:'/battles/live/',cypher:'/cypher/stage?room=',fan:'/fan/live/',venue:'/venues/room/',magazine:'/magazine/live/',vip:'/live/rooms/',sponsor:'/sponsors/events/'};
+
+function makeTile(s,sizeClass){
+  const emoji=EMOJIS[s.genre]||'🎵';
+  const shapeClass=s.shape==='oct'?'tile-oct':s.shape==='hex'?'tile-hex':s.shape==='circle'?'tile-circle':s.shape==='ticket'?'tile-ticket':s.shape==='torn'?'tile-torn':s.shape==='ribbon'?'tile-ribbon':s.shape==='cinema'?'tile-cinema':'tile-oct';
+  const bgGrad={info:'linear-gradient(135deg,#0a1a2c,#0a2040)',warning:'linear-gradient(135deg,#1a0a00,#1a1500)',danger:'linear-gradient(135deg,#2a0000,#1a0015)',success:'linear-gradient(135deg,#001a0a,#002015)',secondary:'linear-gradient(135deg,#0a0a0a,#1a1a1a)'};
+  const bg=bgGrad[s.color]||bgGrad.info;
+  const route=ROUTES[s.type]||'/live/rooms/';
+  const borderColor=s.shape==='hex'?'var(--color-border-danger)':s.shape==='circle'?'var(--color-border-info)':s.shape==='diamond'?'var(--color-border-info)':s.shape==='ticket'?'var(--color-border-warning)':'var(--color-border-'+s.color+')';
+  return `<div class="live-tile ${shapeClass} ${sizeClass}" style="background:${bg};border:2px solid ${borderColor};--gc:rgba(${s.color==='danger'?'200,50,50':s.color==='info'?'0,150,200':s.color==='warning'?'180,120,0':s.color==='success'?'0,150,80':'100,100,100'},.4);animation:livePulse 2.5s ease-in-out infinite" onclick="joinRoom('${route}${s.id}','${s.access}')">
+    <div class="live-badge">LIVE</div>
+    <div class="vc">👁 ${s.vc.toLocaleString()}</div>
+    ${s.access!=='FREE'?`<div class="access-badge">${s.access==='PAID'?'🎟 PAID':s.access==='DIAMOND'?'💎 DIAMOND':s.access==='SPONSORED_FREE'?'🎁 SPONSORED':s.access}</div>`:''}
+    ${s.shape==='hex'&&s.type==='battle'?'<div class="vs-badge">VS</div>':''}
+    ${s.shape==='hex'&&s.type==='cypher'?'<div class="vs-badge" style="color:#00E5FF">CYPHER</div>':''}
+    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:28px;opacity:.4">${emoji}</div>
+    <div class="tname">${s.name}</div>
+    <div class="tgenre">${s.genre} · ${s.event}</div>
+    ${s.sponsored?'<div class="sponsor-dot" title="Sponsored"></div>':''}
+    <div class="tile-btns">
+      <button class="tb" style="background:rgba(0,200,255,.8);color:#000" onclick="event.stopPropagation();joinRoom('${route}${s.id}','${s.access}')">JOIN</button>
+      <button class="tb" style="background:rgba(255,255,255,.15);color:#fff">PROFILE</button>
+      <button class="tb" style="background:rgba(255,255,255,.1);color:#fff">MSG</button>
+    </div>
+  </div>`;
+}
+
+const WALLS={
+  global:{label:'Global Live',desc:'All public live sessions',sessions:SESSIONS,layout:'mixed'},
+  genre:{label:'Genre Walls',desc:'Hip-Hop live — click genre to switch',sessions:SESSIONS.filter(s=>['performer','fan'].includes(s.type)),layout:'grid'},
+  performer:{label:'Performer Live',desc:'Active performer livestreams',sessions:SESSIONS.filter(s=>s.type==='performer'),layout:'grid'},
+  fan:{label:'Fan Live',desc:'Fan public lobbies',sessions:SESSIONS.filter(s=>s.type==='fan'),layout:'circles'},
+  battle:{label:'Battle Wall',desc:'Active battles, cyphers, challenges',sessions:SESSIONS.filter(s=>['battle','cypher'].includes(s.type)),layout:'hex'},
+  venue:{label:'Venue Wall',desc:'Live venues, concerts, ticketed events',sessions:SESSIONS.filter(s=>s.type==='venue'||s.event==='Concert'),layout:'cinema'},
+  magazine:{label:'Magazine Live',desc:'Live interviews, features, release parties',sessions:SESSIONS.filter(s=>s.type==='magazine'),layout:'torn'},
+  sponsor:{label:'Sponsor Wall',desc:'Sponsored rooms and brand takeovers',sessions:SESSIONS.filter(s=>s.sponsored),layout:'grid'},
+};
+let curWall='global',curGenre='Hip-Hop',rotSeconds=13;
+
+function renderWall(wallKey){
+  const wall=WALLS[wallKey]||WALLS.global;
+  const el=document.getElementById('wallDisplay');
+  const sessions=wall.sessions.length>0?wall.sessions:SESSIONS.slice(0,6);
+  
+  let html=`<div style="font-size:11px;font-weight:500;margin-bottom:7px;color:var(--color-text-secondary)">${wall.label} · ${wall.desc}</div>`;
+
+  if(wallKey==='battle'){
+    // Hexagon battle display
+    html+=`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">`;
+    sessions.forEach(s=>{html+=`<div style="height:110px">${makeTile(s,'')}</div>`;});
+    if(sessions.length<3) {
+      for(let i=sessions.length;i<6;i++){
+        const demo={...SESSIONS[3],id:'d'+i,name:`Battle Room #${i+1}`,vc:Math.floor(Math.random()*2000+200)};
+        html+=`<div style="height:110px">${makeTile(demo,'')}</div>`;
+      }
+    }
+    html+=`</div>`;
+  } else if(wallKey==='fan'){
+    // Circles layout
+    html+=`<div style="display:flex;flex-wrap:wrap;gap:14px;justify-content:flex-start">`;
+    sessions.forEach(s=>{html+=`<div style="width:100px;height:100px">${makeTile(s,'')}</div>`;});
+    SESSIONS.slice(5,8).forEach((s,i)=>{const d={...s,type:'fan',shape:'circle',id:'fc'+i};html+=`<div style="width:100px;height:100px">${makeTile(d,'')}</div>`;});
+    html+=`</div>`;
+  } else if(wallKey==='venue'){
+    // Cinematic wide tiles
+    html+=`<div style="display:flex;flex-direction:column;gap:8px">`;
+    [...sessions,...SESSIONS.slice(0,2).map((s,i)=>({...s,shape:'cinema',type:'venue',id:'vc'+i,event:'Concert',access:'PAID'}))].slice(0,4).forEach(s=>{
+      html+=`<div style="height:70px">${makeTile(s,'')}</div>`;
+    });
+    html+=`</div>`;
+  } else if(wallKey==='magazine'){
+    html+=`<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px">`;
+    [...sessions,...SESSIONS.slice(0,4).map((s,i)=>({...s,shape:'torn',type:'magazine',id:'mc'+i}))].slice(0,4).forEach(s=>{
+      html+=`<div style="height:90px">${makeTile(s,'')}</div>`;
+    });
+    html+=`</div>`;
+  } else {
+    // Default mixed grid
+    html+=`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">`;
+    sessions.slice(0,9).forEach(s=>{html+=`<div style="height:90px">${makeTile(s,'')}</div>`;});
+    html+=`</div>`;
+  }
+  el.innerHTML=html;
+}
+
+function setWall(w,btn){
+  curWall=w;
+  document.querySelectorAll('.wall-tab').forEach(t=>t.classList.remove('on'));
+  btn.classList.add('on');
+  document.getElementById('genreStrip').style.display=w==='genre'?'flex':'none';
+  renderWall(w);
+}
+function setGenre(g,btn){
+  curGenre=g;
+  document.querySelectorAll('.genre-chip').forEach(c=>c.classList.remove('on'));
+  btn.classList.add('on');
+  renderWall('genre');
+}
+function setMode(m,label){
+  document.querySelectorAll('.mode-btn').forEach(b=>b.classList.remove('on'));
+  event.target.classList.add('on');
+  const descs={global:'All public live sessions across the platform',hiphop:'Hip-Hop takeover — all surfaces show Hip-Hop content',games:'Games network — deal or feud, name that tune, monthly idol',concert:'Concert mode — all venues and world releases featured',idol:'Monthly Idol live — all rounds, contestants, and judges'};
+  document.getElementById('modeDesc').textContent=descs[m]||'Live broadcast network';
+  rotSeconds=13;
+}
+function setSeason(s){
+  document.querySelectorAll('.season-btn').forEach(b=>b.classList.remove('on'));
+  document.getElementById('s-'+s).classList.add('on');
+}
+function joinRoom(route,access){
+  const msg=access==='PAID'?'🎟 Paid entry — checkout before seat assignment':access==='DIAMOND'?'💎 Diamond surf — instant entry':access==='INVITE_ONLY'?'🔒 Invite token required':'✅ Free — assigning your seat...';
+  alert(`Joining room:\n${route}\n\nAccess: ${msg}\n\nFlow: Access gate → Reserve seat → AudienceScene → Venue loads → You're in!`);
+}
+// Magazine strip
+function buildMagStrip(){
+  const el=document.getElementById('magStrip');
+  const items=[{label:'Live Performer',icon:'ti-microphone',color:'danger'},{label:'Fan Lobby',icon:'ti-users',color:'info'},{label:'Battle',icon:'ti-swords',color:'danger'},{label:'Cypher',icon:'ti-microphone-2',color:'info'},{label:'Game Room',icon:'ti-device-gamepad',color:'success'},{label:'Venue Live',icon:'ti-building',color:'warning'},{label:'Playlist',icon:'ti-playlist',color:'info'},{label:'Memory Wall',icon:'ti-photo-album',color:'secondary'}];
+  items.forEach(item=>{
+    el.innerHTML+=`<div style="background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:6px 10px;display:flex;align-items:center;gap:5px;cursor:pointer;flex-shrink:0;font-size:10px;transition:border-color .15s" onmouseenter="this.style.borderColor='var(--color-border-info)'" onmouseleave="this.style.borderColor='var(--color-border-tertiary)'">
+      <i class="ti ${item.icon}" style="color:var(--color-text-${item.color});font-size:14px" aria-hidden="true"></i>
+      <span>${item.label}</span>
+      <i class="ti ti-arrow-right" style="font-size:10px;color:var(--color-text-tertiary)" aria-hidden="true"></i>
+    </div>`;
+  });
+}
+// Rotation countdown
+setInterval(()=>{
+  rotSeconds--;
+  if(rotSeconds<=0){rotSeconds=13;}
+  const el=document.getElementById('rotTimer');
+  if(el) el.textContent=rotSeconds;
+  // Tick viewer counts
+  document.querySelectorAll('.vc').forEach(el=>{
+    const v=parseInt(el.textContent.replace(/[^0-9]/g,''))||500;
+    el.innerHTML='👁 '+(Math.max(10,v+Math.floor((Math.random()-.4)*80))).toLocaleString();
+  });
+  // Tick live count
+  const lc=document.getElementById('liveCount');
+  if(lc){const n=parseInt(lc.textContent)+Math.floor((Math.random()-.4)*1);lc.textContent=Math.max(10,n)+' rooms live now';}
+},1000);
+renderWall('global');
+buildMagStrip();
+</script>

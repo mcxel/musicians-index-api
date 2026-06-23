@@ -18,7 +18,8 @@ export default function BeatDetailPage() {
   const [previewing, setPreviewing] = useState(false);
 
   function buyTier(tier: typeof LICENSE_TIERS[0]) {
-    router.push(`/api/stripe/checkout?priceId=price_beat_${tier.id}&mode=payment&name=${encodeURIComponent(title + ' - ' + tier.label)}`);
+    // Route to canonical Beat Marketplace where real Stripe checkout is wired
+    router.push(`/beats/marketplace`);
   }
 
   return (

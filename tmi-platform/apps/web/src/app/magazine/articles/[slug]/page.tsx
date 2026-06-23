@@ -1,12 +1,16 @@
 import { ARTIST_SEED } from "@/lib/artists/artistSeed";
 import MagazineArticleSurface from "@/components/magazine/MagazineArticleSurface";
-import { getArticleBySlug } from "@/lib/magazine/magazineIssueData";
+import { getArticleBySlug, MAGAZINE_ISSUE_1 } from "@/lib/magazine/magazineIssueData";
 import { redirect } from "next/navigation";
 
 type MagazineArticlePageProps = {
   params: Promise<{ slug: string }>;
   searchParams?: Promise<{ from?: string }>;
 };
+
+export function generateStaticParams() {
+  return MAGAZINE_ISSUE_1.map(a => ({ slug: a.slug }));
+}
 
 export default async function MagazineArticlePage({ params, searchParams }: MagazineArticlePageProps) {
   const { slug } = await params;

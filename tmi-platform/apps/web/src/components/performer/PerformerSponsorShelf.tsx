@@ -146,13 +146,41 @@ function OpenSlot({
   performerName: string;
 }) {
   const [hovered, setHovered] = useState(false);
+  const [claiming, setClaiming] = useState(false);
   const accent = sponsorClass === 'major' ? '#FFD700' : '#00FFFF';
   const earning = SLOT_EARNING[sponsorClass]!;
 
+  // Claiming a slot is a real, priced action — posts to the real checkout
+  // route (which knows this performer's actual price by lineup type) and
+  // redirects to a real Stripe Checkout Session, not a generic sponsor hub.
+  const claimSlot = async () => {
+    setClaiming(true);
+    try {
+      const res = await fetch('/api/sponsors/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ performerSlug, sponsorClass }),
+      });
+      const data = await res.json() as { url?: string; error?: string };
+      if (data.url) {
+        window.location.href = data.url;
+        return;
+      }
+      if (data.error === 'not_authenticated') {
+        window.location.href = `/auth?next=${encodeURIComponent(`/performers/${performerSlug}`)}`;
+        return;
+      }
+    } finally {
+      setClaiming(false);
+    }
+  };
+
   return (
-    <Link
-      href={`/hub/sponsor?target=performer&slug=${performerSlug}&class=${sponsorClass}&slot=${index}`}
-      style={{ textDecoration: 'none', display: 'block' }}
+    <button
+      type="button"
+      onClick={() => void claimSlot()}
+      disabled={claiming}
+      style={{ textDecoration: 'none', display: 'block', width: '100%', textAlign: 'left', background: 'none', border: 'none', padding: 0, cursor: claiming ? 'wait' : 'pointer' }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
@@ -220,10 +248,10 @@ function OpenSlot({
           letterSpacing: '0.06em',
           flexShrink: 0,
         }}>
-          {hovered ? 'Claim Spot →' : 'Available'}
+          {claiming ? 'Processing…' : hovered ? 'Claim Spot →' : 'Available'}
         </div>
       </div>
-    </Link>
+    </button>
   );
 }
 

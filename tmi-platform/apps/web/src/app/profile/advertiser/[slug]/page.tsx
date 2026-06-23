@@ -9,26 +9,11 @@ interface Props {
   params: { slug: string };
 }
 
-interface SeedAdvertiser {
-  displayName: string;
-  tagline: string;
-  isVerified: boolean;
-}
-
-const SEED_ADVERTISERS: Record<string, SeedAdvertiser> = {
-  "beatmarket": {
-    displayName: "BeatMarket",
-    tagline: "12,000+ beats · $2,500 weekly prize for top TMI battle performers",
-    isVerified: true,
-  },
-};
-
 function titleCase(slug: string) {
   return slug.split("-").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
 }
 
-function seedAdvertiser(slug: string): SeedAdvertiser {
-  if (SEED_ADVERTISERS[slug]) return SEED_ADVERTISERS[slug]!;
+function seedAdvertiser(slug: string) {
   return {
     displayName: titleCase(slug),
     tagline: "Advertising partner on The Musician's Index — reaching music creators worldwide.",

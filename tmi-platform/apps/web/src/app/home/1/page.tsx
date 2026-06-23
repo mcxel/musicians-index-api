@@ -5,7 +5,8 @@ import EventReel from '@/components/events/EventReel';
 import DiscoveryRail from '@/components/discovery/DiscoveryRail';
 import { getAdSlotForZone } from '@/lib/commerce/SponsorRegistry';
 import { sortPerformersByFreshness } from '@/lib/content/ContentFreshness';
-import { PERFORMER_REGISTRY } from '@/lib/performers/PerformerRegistry';
+import { PERFORMER_REGISTRY, type PerformerIdentity } from '@/lib/performers/PerformerRegistry';
+import { getActiveSessions } from '@/lib/broadcast/GlobalLiveSessionRegistry';
 
 // Rule 12: No Empty Inventory — derive sponsor rail from registry, not hardcoded strings
 const RAIL_ZONES = [
@@ -24,9 +25,40 @@ function buildSponsorEntry(zone: string) {
   return { id: zone, name: 'ADVERTISE ON TMI', tagline: 'Reach live audiences · from $25' };
 }
 
-export default function Home1Route() {
+async function fetchPerformersWithRealAvatars(): Promise<PerformerIdentity[]> {
+  try {
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002';
+    const res = await fetch(`${baseUrl}/api/performers`, {
+      cache: 'no-store', // Always fresh for avatar propagation
+    });
+    if (!res.ok) throw new Error('Failed to fetch performers');
+    const data = await res.json() as { performers?: PerformerIdentity[] };
+    return data.performers || PERFORMER_REGISTRY;
+  } catch (error) {
+    // Fallback to hardcoded registry if API fails
+    console.warn('Failed to fetch dynamic performers, using registry fallback:', error);
+    return PERFORMER_REGISTRY;
+  }
+}
+
+function enrichPerformersWithRealLiveness(performers: PerformerIdentity[]): PerformerIdentity[] {
+  const liveSessions = getActiveSessions();
+  const liveUserIds = new Set(liveSessions.map(s => s.userId));
+  return performers.map(p => ({
+    ...p,
+    isLive: liveUserIds.has(p.id),
+  }));
+}
+
+export default async function Home1Route() {
+  // P0 Avatar Certification: Fetch performers with real avatar data from Prisma
+  const performers = await fetchPerformersWithRealAvatars();
+
+  // A1: Merge real liveness from GlobalLiveSessionRegistry (not hardcoded PerformerRegistry.isLive)
+  const enrichedPerformers = enrichPerformersWithRealLiveness(performers);
+
   // Rule 11: Content Freshness — LIVE → RECENT → POPULAR → ARCHIVE
-  const liveFirstPerformers = sortPerformersByFreshness(PERFORMER_REGISTRY);
+  const liveFirstPerformers = sortPerformersByFreshness(enrichedPerformers);
   const liveCount = liveFirstPerformers.filter(p => p.isLive).length;
   const sponsors = RAIL_ZONES.map(buildSponsorEntry);
 

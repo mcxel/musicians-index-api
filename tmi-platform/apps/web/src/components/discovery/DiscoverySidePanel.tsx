@@ -141,7 +141,7 @@ export default function DiscoverySidePanel() {
 
         {/* Content — pulls the exact same registry-backed data as Home 1/3/5 */}
         <div style={{ flex: 1, overflowY: "auto", padding: "16px" }}>
-          {active.id === "venues" ? (
+          {!open ? null : active.id === "venues" ? (
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {liveVenues.length === 0 && (
                 <p style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", textAlign: "center", padding: "24px 0" }}>No venues live right now.</p>

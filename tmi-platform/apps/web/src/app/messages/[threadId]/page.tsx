@@ -7,86 +7,6 @@ import { useGamificationEngine } from "@/hooks/useGamificationEngine";
 
 type Msg = { id: string; from: string; text: string; mine: boolean; ts: number };
 
-const CONTACTS: Record<string, { name: string; role: string; icon: string; color: string; online: boolean }> = {
-  // Early access VIP cohort
-  kreach: { name: "Kreach",      role: "ARTIST",   icon: "🎵", color: "#AA2DFF", online: true  },
-  kg:     { name: "KG",          role: "PRODUCER", icon: "🎹", color: "#FFD700", online: true  },
-  savage: { name: "Savage Guns", role: "ARTIST",   icon: "🔥", color: "#FF2DAA", online: false },
-  jason:  { name: "Jason Smith", role: "PROMOTER", icon: "⭐", color: "#00FF88", online: true  },
-  // General contacts
-  c1: { name: "Wavetek",     role: "ARTIST",  icon: "🎤", color: "#FF2DAA", online: true  },
-  c2: { name: "TMI Support", role: "SUPPORT", icon: "🛡️", color: "#00FFFF", online: true  },
-  c3: { name: "Zuri Bloom",  role: "ARTIST",  icon: "🌍", color: "#00FF88", online: false },
-  c4: { name: "Neon Vibe",   role: "DJ",      icon: "🎧", color: "#00FFFF", online: true  },
-  c5: { name: "Krypt",       role: "ARTIST",  icon: "🔒", color: "#AA2DFF", online: false },
-  c6: { name: "TMI Booking", role: "SYSTEM",  icon: "📋", color: "#FFD700", online: true  },
-};
-
-const SEED: Record<string, Msg[]> = {
-  kreach: [
-    { id: "s1", from: "Kreach", text: "Yo, I got the VIP token — platform looking clean 🔥", mine: false, ts: Date.now() - 360000 },
-    { id: "s2", from: "Kreach", text: "Let me know when you ready to lock in the collab 🎵",  mine: false, ts: Date.now() - 60000  },
-  ],
-  kg: [
-    { id: "s1", from: "KG", text: "New beat pack just dropped. You want the stems?", mine: false, ts: Date.now() - 540000 },
-  ],
-  savage: [
-    { id: "s1", from: "Savage Guns", text: "Check the new freestyle I just posted on the feed", mine: false, ts: Date.now() - 3600000 },
-  ],
-  jason: [
-    { id: "s1", from: "Jason Smith", text: "We're live on TMI. Let's get the booking locked in.", mine: false, ts: Date.now() - 10800000 },
-    { id: "s2", from: "Jason Smith", text: "Reach out when you have the date — I'm on both accounts ⭐", mine: false, ts: Date.now() - 9000000 },
-  ],
-  c1: [
-    { id: "s1", from: "Wavetek",     text: "Yo, you coming to the cypher tonight?",          mine: false, ts: Date.now() - 120000   },
-    { id: "s2", from: "You",         text: "For sure, what time does it start?",              mine: true,  ts: Date.now() - 115000   },
-    { id: "s3", from: "Wavetek",     text: "9pm. Hit the link in bio for the room code.",    mine: false, ts: Date.now() - 110000   },
-  ],
-  c2: [
-    { id: "s1", from: "TMI Support", text: "Your payout has been processed successfully.",   mine: false, ts: Date.now() - 3600000  },
-    { id: "s2", from: "You",         text: "Thanks! How long until it clears?",              mine: true,  ts: Date.now() - 3580000  },
-    { id: "s3", from: "TMI Support", text: "Typically 2–3 business days via Stripe.",        mine: false, ts: Date.now() - 3570000  },
-  ],
-  c3: [{ id: "s1", from: "Zuri Bloom",  text: "Loved your set last night, let's collab!",   mine: false, ts: Date.now() - 10800000 }],
-  c4: [{ id: "s1", from: "Neon Vibe",   text: "I'll send you the stems tonight",             mine: false, ts: Date.now() - 86400000 }],
-  c5: [{ id: "s1", from: "Krypt",       text: "Beat's in the folder, check it out",          mine: false, ts: Date.now() - 172800000}],
-  c6: [
-    { id: "s1", from: "TMI Booking", text: "Venue request from venue1 — review now",        mine: false, ts: Date.now() - 259200000},
-    { id: "s2", from: "You",         text: "Reviewing it now, thanks.",                      mine: true,  ts: Date.now() - 259000000},
-    { id: "s3", from: "TMI Booking", text: "Confirmed. Contract draft is in your dashboard.",mine: false, ts: Date.now() - 258000000},
-  ],
-};
-
-const AUTO_REPLIES: Record<string, string[]> = {
-  kreach: ["say less 🎵", "on the way 💜", "I'm in the lab rn", "bet, let's get it"],
-  kg:     ["🎹🔥", "stems coming tonight", "new pack just dropped bro", "feel that 💛"],
-  savage: ["🔥", "we got hits bro", "in the booth rn", "facts"],
-  jason:  ["Confirmed ✅", "Let's make it happen", "Reaching out now", "Booking on deck ⭐"],
-  c1: ["fire 🔥", "say less", "bet, see you there 🎤", "you know how we do 💯"],
-  c2: ["Got it! Anything else we can help with?", "Happy to help. Let us know.", "We'll follow up shortly."],
-  c3: ["Yes! Let's set something up 🌍", "DM me your schedule", "When are you free this week?"],
-  c4: ["👌", "sending tonight for real", "check the folder in an hour"],
-  c5: ["🔒", "it's in there bro", "check the drop folder"],
-  c6: ["Noted. Dashboard is updated.", "Booking confirmed.", "Any other questions on this?"],
-};
-
-function normalizeMessages(data: unknown, fallback: Msg[]): Msg[] {
-  // Handle real API response: { messages: [...] }
-  const arr = Array.isArray(data)
-    ? data
-    : Array.isArray((data as Record<string, unknown>)?.messages)
-      ? (data as Record<string, unknown[]>).messages
-      : null;
-  if (!arr || arr.length === 0) return fallback;
-  return (arr as Record<string, unknown>[]).map((m, i) => ({
-    id:   String(m.messageId ?? m.id ?? `m-${i}`),
-    from: String(m.senderName ?? m.from ?? "Unknown"),
-    text: String(m.body ?? m.content ?? m.text ?? ""),
-    mine: Boolean(m.isOwn ?? m.isMine ?? m.mine ?? false),
-    ts:   typeof m.createdAt === "string" ? new Date(m.createdAt).getTime() : (Number(m.createdAt) || Number(m.ts) || Date.now()),
-  }));
-}
-
 function fmt(ts: number): string {
   const d = Date.now() - ts;
   if (d < 60000)    return "just now";
@@ -95,62 +15,80 @@ function fmt(ts: number): string {
   return `${Math.floor(d / 86400000)}d ago`;
 }
 
+function normalizeMessages(data: unknown): Msg[] {
+  const arr = Array.isArray(data)
+    ? data
+    : Array.isArray((data as Record<string, unknown>)?.messages)
+      ? (data as Record<string, unknown[]>).messages
+      : null;
+  if (!arr || arr.length === 0) return [];
+  return (arr as Record<string, unknown>[]).map((m, i) => ({
+    id:   String(m.messageId ?? m.id ?? `m-${i}`),
+    from: String(m.senderName ?? m.from ?? "Unknown"),
+    text: String(m.body ?? m.content ?? m.text ?? ""),
+    mine: Boolean(m.isOwn ?? m.mine ?? false),
+    ts:   typeof m.createdAt === "string" ? new Date(m.createdAt).getTime() : (Number(m.createdAt) || Number(m.ts) || Date.now()),
+  }));
+}
+
 export default function MessageThreadPage({ params }: { params: { threadId: string } }) {
   const { threadId } = params;
-  const contact = CONTACTS[threadId] ?? { name: threadId, role: "USER", icon: "💬", color: "#00FFFF", online: false };
   const { trackAction } = useGamificationEngine();
+
+  // Contact metadata loaded from the thread API
+  const [contactName, setContactName] = useState(threadId);
+  const [contactRole, setContactRole] = useState("USER");
 
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input,    setInput]    = useState("");
-  const [typing,      setTyping]      = useState(false);
-  const [ready,       setReady]       = useState(false);
-  const [apiMode,     setApiMode]     = useState(false);
+  const [ready,    setReady]    = useState(false);
+  const [sending,  setSending]  = useState(false);
   const [safetyReason, setSafetyReason] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const pollRef   = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Load thread — real MessageThreadEngine API, fall back to seed for demo contacts
-  useEffect(() => {
-    let active = true;
-
-    fetch(`/api/messages/${threadId}`, { cache: "no-store", credentials: "include" })
-      .then(r => r.ok ? r.json() : null)
-      .then((d: unknown) => {
-        if (!active) return;
-        const normalized = normalizeMessages(d, SEED[threadId] ?? []);
-        setMessages(normalized);
-        setApiMode(!!d && (d as Record<string, unknown[]>).messages?.length > 0);
-        setReady(true);
-      })
-      .catch(() => {
-        if (!active) return;
-        setMessages(SEED[threadId] ?? []);
-        setReady(true);
-      });
-
-    return () => { active = false; };
-  }, [threadId]);
-
-  useEffect(() => {
-    if (ready) bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, typing, ready]);
-
-  const sendViaApi = useCallback(async (text: string): Promise<boolean> => {
+  const loadMessages = useCallback(async () => {
     try {
-      const res = await fetch(`/api/messages/${threadId}`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ body: text, type: "text" }),
-      });
-      return res.ok;
+      const res = await fetch(`/api/messages/${threadId}`, { cache: "no-store", credentials: "include" });
+      if (!res.ok) { setReady(true); return; }
+      const data = await res.json() as Record<string, unknown>;
+      const normalized = normalizeMessages(data);
+      setMessages(normalized);
+
+      // Extract contact name/role from participants
+      const participants = (data.participants as { userId: string; displayName: string; role: string }[]) ?? [];
+      const currentUserId = (data.currentUserId as string) ?? "";
+      const other = participants.find(p => p.userId !== currentUserId) ?? participants[0];
+      if (other) {
+        setContactName(other.displayName ?? threadId);
+        setContactRole(other.role?.toUpperCase() ?? "USER");
+      }
+      setReady(true);
     } catch {
-      return false;
+      setReady(true);
     }
   }, [threadId]);
 
-  function send() {
+  // Initial load
+  useEffect(() => {
+    void loadMessages();
+  }, [loadMessages]);
+
+  // 5-second poll for new messages
+  useEffect(() => {
+    if (pollRef.current) clearInterval(pollRef.current);
+    pollRef.current = setInterval(() => { void loadMessages(); }, 5000);
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+  }, [loadMessages]);
+
+  useEffect(() => {
+    if (ready) bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, ready]);
+
+  async function send() {
     const text = input.trim();
-    if (!text) return;
+    if (!text || sending) return;
 
     const decision = enforceAdultTeenContactBlock({
       source: "messages:thread",
@@ -159,38 +97,42 @@ export default function MessageThreadPage({ params }: { params: { threadId: stri
       target: { userId: threadId,     ageClass: "unknown", familyMember: true,   guardianLink: true    },
     });
 
-    if (!decision.allowed) {
-      setSafetyReason(decision.reason);
-      return;
-    }
-
+    if (!decision.allowed) { setSafetyReason(decision.reason); return; }
     setSafetyReason(null);
+    setError(null);
+    setSending(true);
 
+    // Optimistic append
     const outgoing: Msg = { id: `u${Date.now()}`, from: "You", text, mine: true, ts: Date.now() };
     setMessages(prev => [...prev, outgoing]);
     setInput("");
     trackAction('SEND_MESSAGE');
 
-    // Real threads (UUID-format) always persist via API; seed demo contacts use local sim only
-    const isRealThread = !CONTACTS[threadId];
-    if (apiMode || isRealThread) {
-      void sendViaApi(text);
-    }
-
-    // Simulate reply for known seed contacts
-    const replies = AUTO_REPLIES[threadId];
-    if (replies && contact.online) {
-      setTyping(true);
-      setTimeout(() => {
-        const reply = replies[Math.floor(Math.random() * replies.length)];
-        setMessages(prev => [
-          ...prev,
-          { id: `r${Date.now()}`, from: contact.name, text: reply, mine: false, ts: Date.now() },
-        ]);
-        setTyping(false);
-      }, 1400 + Math.random() * 1200);
+    try {
+      const res = await fetch(`/api/messages/${threadId}`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ body: text, type: "text" }),
+      });
+      if (!res.ok) setError("Failed to send. Please try again.");
+    } catch {
+      setError("Network error. Please try again.");
+    } finally {
+      setSending(false);
     }
   }
+
+  const roleColor = (role: string): string => {
+    if (role === "ARTIST" || role === "PERFORMER") return "#AA2DFF";
+    if (role === "SPONSOR") return "#FFD700";
+    if (role === "VENUE") return "#00FF88";
+    if (role === "PROMOTER") return "#FF6B35";
+    if (role === "ADMIN") return "#FF2DAA";
+    return "#00FFFF";
+  };
+
+  const color = roleColor(contactRole);
 
   return (
     <main style={{ height: "100vh", background: "#050510", color: "#fff", display: "flex", flexDirection: "column", paddingTop: 56 }}>
@@ -200,26 +142,18 @@ export default function MessageThreadPage({ params }: { params: { threadId: stri
           ← INBOX
         </Link>
         <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1 }}>
-          <div style={{ position: "relative" }}>
-            <div style={{ width: 38, height: 38, background: `${contact.color}15`, border: `2px solid ${contact.color}40`, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>
-              {contact.icon}
-            </div>
-            {contact.online && (
-              <div style={{ position: "absolute", bottom: 1, right: 1, width: 9, height: 9, background: "#00FF88", borderRadius: "50%", border: "2px solid #050510" }} />
-            )}
+          <div style={{ width: 38, height: 38, background: `${color}15`, border: `2px solid ${color}40`, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>
+            💬
           </div>
           <div>
-            <div style={{ fontSize: 13, fontWeight: 800 }}>{contact.name}</div>
-            <div style={{ fontSize: 9, fontWeight: 700, color: contact.online ? "#00FF88" : "rgba(255,255,255,0.3)" }}>
-              {contact.online ? "● ONLINE" : "○ OFFLINE"} · {contact.role}
-            </div>
+            <div style={{ fontSize: 13, fontWeight: 800 }}>{contactName}</div>
+            {contactRole !== "USER" && (
+              <div style={{ fontSize: 9, fontWeight: 700, color, letterSpacing: "0.1em" }}>{contactRole}</div>
+            )}
           </div>
         </div>
-        {!apiMode && ready && (
-          <span style={{ fontSize: 8, color: "#FFD700", letterSpacing: "0.1em", fontWeight: 700 }}>PREVIEW</span>
-        )}
         <Link
-          href={`/video/rooms/new?inviteId=${threadId}&name=${encodeURIComponent(contact.name)}`}
+          href={`/video/rooms/new?inviteId=${threadId}&name=${encodeURIComponent(contactName)}`}
           style={{
             display: "flex", alignItems: "center", justifyContent: "center",
             width: 34, height: 34, borderRadius: "50%",
@@ -234,6 +168,7 @@ export default function MessageThreadPage({ params }: { params: { threadId: stri
 
       {/* Message list */}
       <div style={{ flex: 1, overflowY: "auto", padding: "16px 20px 8px", display: "flex", flexDirection: "column", gap: 10, maxWidth: 760, width: "100%", margin: "0 auto" }}>
+        {/* Loading skeleton */}
         {!ready && (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {[1, 2, 3].map(i => (
@@ -241,6 +176,16 @@ export default function MessageThreadPage({ params }: { params: { threadId: stri
                 <div style={{ width: "55%", height: 42, borderRadius: 12, background: "rgba(255,255,255,0.04)" }} />
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Empty state */}
+        {ready && messages.length === 0 && (
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, padding: 40 }}>
+            <div style={{ fontSize: 32 }}>💬</div>
+            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", textAlign: "center" }}>
+              No messages yet. Send the first message below.
+            </div>
           </div>
         )}
 
@@ -252,6 +197,9 @@ export default function MessageThreadPage({ params }: { params: { threadId: stri
               background: msg.mine ? "rgba(255,45,170,0.13)" : "rgba(255,255,255,0.05)",
               border: `1px solid ${msg.mine ? "rgba(255,45,170,0.35)" : "rgba(255,255,255,0.08)"}`,
             }}>
+              {!msg.mine && (
+                <div style={{ fontSize: 9, fontWeight: 700, color: "#AA2DFF", marginBottom: 3 }}>{msg.from}</div>
+              )}
               <div style={{ fontSize: 14, lineHeight: 1.5 }}>{msg.text}</div>
               <div style={{ fontSize: 8, color: "rgba(255,255,255,0.25)", marginTop: 4, textAlign: msg.mine ? "right" : "left" }}>
                 {fmt(msg.ts)}
@@ -260,46 +208,42 @@ export default function MessageThreadPage({ params }: { params: { threadId: stri
           </div>
         ))}
 
-        {typing && (
-          <div style={{ display: "flex", justifyContent: "flex-start" }}>
-            <div style={{ padding: "10px 14px", borderRadius: "14px 14px 14px 2px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", display: "flex", alignItems: "center", gap: 8 }}>
-              <div style={{ display: "flex", gap: 4 }}>
-                {[0, 1, 2].map(i => (
-                  <div key={i} style={{ width: 6, height: 6, borderRadius: "50%", background: contact.color, opacity: 0.8 }} />
-                ))}
-              </div>
-              <span style={{ fontSize: 9, color: "rgba(255,255,255,0.35)" }}>{contact.name} is typing...</span>
-            </div>
-          </div>
-        )}
-
         <div ref={bottomRef} />
       </div>
 
       {/* Compose */}
       <div style={{ padding: "12px 20px 20px", borderTop: "1px solid rgba(255,255,255,0.06)", background: "rgba(5,5,16,0.97)", flexShrink: 0, maxWidth: 760, width: "100%", margin: "0 auto" }}>
-        {safetyReason ? <div style={{ marginBottom: 8, fontSize: 11, color: "#fca5a5", padding: "6px 10px", borderRadius: 6, background: "rgba(252,165,165,0.08)" }}>⚠️ {safetyReason}</div> : null}
+        {safetyReason && (
+          <div style={{ marginBottom: 8, fontSize: 11, color: "#fca5a5", padding: "6px 10px", borderRadius: 6, background: "rgba(252,165,165,0.08)" }}>
+            ⚠️ {safetyReason}
+          </div>
+        )}
+        {error && (
+          <div style={{ marginBottom: 8, fontSize: 11, color: "#fca5a5", padding: "6px 10px", borderRadius: 6, background: "rgba(252,165,165,0.08)" }}>
+            {error}
+          </div>
+        )}
         <div style={{ display: "flex", gap: 10, alignItems: "flex-end" }}>
           <textarea
             value={input}
             onChange={e => setInput(e.target.value)}
-            onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
-            placeholder={`Message ${contact.name}…`}
+            onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void send(); } }}
+            placeholder={`Message ${contactName}…`}
             rows={2}
             style={{ flex: 1, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.10)", borderRadius: 12, padding: "10px 14px", color: "#fff", fontSize: 13, outline: "none", resize: "none", fontFamily: "inherit" }}
           />
           <button
-            onClick={send}
-            disabled={!input.trim()}
+            onClick={() => void send()}
+            disabled={!input.trim() || sending}
             style={{
               padding: "10px 20px", fontSize: 10, fontWeight: 800, letterSpacing: "0.1em", flexShrink: 0, borderRadius: 10, border: "none",
-              color:      input.trim() ? "#050510"                                  : "rgba(255,255,255,0.2)",
-              background: input.trim() ? "linear-gradient(135deg,#FF2DAA,#AA2DFF)" : "rgba(255,255,255,0.06)",
-              cursor:     input.trim() ? "pointer"                                  : "default",
+              color:      input.trim() && !sending ? "#050510"                              : "rgba(255,255,255,0.2)",
+              background: input.trim() && !sending ? "linear-gradient(135deg,#FF2DAA,#AA2DFF)" : "rgba(255,255,255,0.06)",
+              cursor:     input.trim() && !sending ? "pointer"                              : "default",
               transition: "all 0.2s",
             }}
           >
-            SEND
+            {sending ? "…" : "SEND"}
           </button>
         </div>
       </div>

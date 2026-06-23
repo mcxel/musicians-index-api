@@ -45,7 +45,6 @@ const ICE_SERVERS: RTCIceServer[] = [
 
 const SIGNAL_POLL_INTERVAL_MS = 1500;
 const MAX_RECONNECT_ATTEMPTS = 3;
-const SIMULATED_VIEWER_BASE = 12;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -61,7 +60,6 @@ export class WebRTCBroadcastEngine {
   private localStream: MediaStream | null = null;
   private handlers: BroadcastEventHandler[] = [];
   private pollTimer: ReturnType<typeof setInterval> | null = null;
-  private viewerSimTimer: ReturnType<typeof setInterval> | null = null;
 
   // ── Public API ────────────────────────────────────────────────────────────
 
@@ -100,7 +98,7 @@ export class WebRTCBroadcastEngine {
       peerId,
       role: "BROADCASTER",
       status: "CONNECTING",
-      viewerCount: SIMULATED_VIEWER_BASE,
+      viewerCount: 0,
       startedAtMs: null,
       errorMessage: null,
       reconnectCount: 0,
@@ -133,9 +131,6 @@ export class WebRTCBroadcastEngine {
 
       // Start polling for answer
       this._startPolling(roomId, peerId);
-
-      // Simulate viewer count growth
-      this._startViewerSimulation();
 
       this._updateSession({ status: "CONNECTED", startedAtMs: Date.now() });
       this._emit("connected");
@@ -322,24 +317,21 @@ export class WebRTCBroadcastEngine {
     }
   }
 
-  // ── Private: viewer simulation ────────────────────────────────────────────
+  // ── Private: viewer count (updated from real signaling/API) ──────────────
 
-  private _startViewerSimulation(): void {
-    this.viewerSimTimer = setInterval(() => {
-      if (!this.session) return;
-      const delta = Math.floor(Math.random() * 5) - 1;
-      const newCount = Math.max(1, (this.session.viewerCount ?? 0) + delta);
-      this._updateSession({ viewerCount: newCount });
-      if (delta > 0) this._emit("viewer_joined");
-      if (delta < 0) this._emit("viewer_left");
-    }, 8000);
+  /** Call this when the signal server reports a real viewer-count update. */
+  updateViewerCount(count: number): void {
+    if (!this.session) return;
+    const prev = this.session.viewerCount;
+    this._updateSession({ viewerCount: count });
+    if (count > prev) this._emit("viewer_joined");
+    else if (count < prev) this._emit("viewer_left");
   }
 
   // ── Private: teardown ─────────────────────────────────────────────────────
 
   private _teardown(stopStream: boolean): void {
     if (this.pollTimer) { clearInterval(this.pollTimer); this.pollTimer = null; }
-    if (this.viewerSimTimer) { clearInterval(this.viewerSimTimer); this.viewerSimTimer = null; }
     if (this.peerConn) { this.peerConn.close(); this.peerConn = null; }
     if (stopStream && this.localStream) {
       this.localStream.getTracks().forEach((t) => t.stop());

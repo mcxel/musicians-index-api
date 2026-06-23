@@ -1,55 +1,93 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { PersonaSwitcher } from "@/components/hud/PersonaSwitcher";
 
 const ACCENT = "#FF2DAA";
 
-const DRAFT_ARTICLES = [
-  { id: "d1", title: "The Rise of Battle Culture in 2026", category: "culture", status: "draft",    words: 1240, updated: "2h ago" },
-  { id: "d2", title: "Nova Cipher: Behind the 8-Streak",   category: "artist",  status: "review",   words: 2100, updated: "1d ago" },
-  { id: "d3", title: "TMI Season 2 — What to Expect",      category: "news",    status: "approved", words: 800,  updated: "3d ago" },
-];
+type ArticleRow = {
+  id: string;
+  title: string;
+  slug: string;
+  status: string;
+  updatedAt: string;
+};
+
+type WriterStats = {
+  published: number;
+  drafts: number;
+  archived: number;
+  total: number;
+};
+
+const STATUS_COLOR: Record<string, string> = {
+  draft:     "#64748b",
+  published: "#00FF88",
+  archived:  "#AA2DFF",
+};
 
 const QUICK_ACTIONS = [
-  { label: "NEW ARTICLE",     icon: "✏️", href: "/editorial/write",        color: "#FF2DAA", desc: "Start a new piece" },
-  { label: "MY DRAFTS",       icon: "📝", href: "/editorial/drafts",        color: "#AA2DFF", desc: "View all drafts" },
-  { label: "MY WORK WALL",    icon: "📌", href: "/hub/writer/works",        color: "#00FFFF", desc: "Portfolio + published articles" },
-  { label: "PITCH ARTICLE",   icon: "🚀", href: "/hub/writer/pitches",      color: "#FFD700", desc: "Submit article idea to editors" },
-  { label: "SUBMISSIONS",     icon: "📬", href: "/hub/writer/submissions",  color: "#00FF88", desc: "Track pitch + submission status" },
-  { label: "MAGAZINE",        icon: "📰", href: "/magazine",                color: "#00FFFF", desc: "Live magazine issue" },
-  { label: "EDITORIAL DESK",  icon: "🗞️", href: "/editorial",              color: "#FFD700", desc: "Full editorial suite" },
-  { label: "ARTICLE HEALTH",  icon: "🔍", href: "/admin/articles",         color: "#00FF88", desc: "Sync status check" },
-  { label: "CONTRIBUTORS",    icon: "👥", href: "/editorial/contributors",  color: "#FF2DAA", desc: "Writer roster" },
-  { label: "ANALYTICS",       icon: "📊", href: "/editorial/analytics",     color: "#AA2DFF", desc: "Reads, shares, time-on-page" },
-  { label: "SETTINGS",        icon: "⚙️", href: "/settings",               color: "#555",    desc: "Account preferences" },
+  { label: "NEW ARTICLE",     icon: "✏️", href: "/editorial/write",       color: "#FF2DAA", desc: "Start a new piece" },
+  { label: "MY DRAFTS",       icon: "📝", href: "/editorial/drafts",       color: "#AA2DFF", desc: "View all drafts" },
+  { label: "MY WORK WALL",    icon: "📌", href: "/hub/writer/works",       color: "#00FFFF", desc: "Portfolio + published articles" },
+  { label: "PITCH ARTICLE",   icon: "🚀", href: "/hub/writer/pitches",     color: "#FFD700", desc: "Submit article idea to editors" },
+  { label: "SUBMISSIONS",     icon: "📬", href: "/hub/writer/submissions", color: "#00FF88", desc: "Track pitch + submission status" },
+  { label: "MAGAZINE",        icon: "📰", href: "/magazine",               color: "#00FFFF", desc: "Live magazine issue" },
+  { label: "EDITORIAL DESK",  icon: "🗞️", href: "/editorial",             color: "#FFD700", desc: "Full editorial suite" },
+  { label: "ARTICLE HEALTH",  icon: "🔍", href: "/admin/articles",        color: "#00FF88", desc: "Sync status check" },
+  { label: "CONTRIBUTORS",    icon: "👥", href: "/editorial/contributors", color: "#FF2DAA", desc: "Writer roster" },
+  { label: "ANALYTICS",       icon: "📊", href: "/editorial/analytics",    color: "#AA2DFF", desc: "Reads, shares, time-on-page" },
+  { label: "SETTINGS",        icon: "⚙️", href: "/settings",              color: "#555",    desc: "Account preferences" },
 ];
 
 const CATEGORIES = [
-  { label: "Artist Spotlight",    count: 4, href: "/articles/artist",    color: "#00FFFF" },
-  { label: "Performer Features",  count: 3, href: "/articles/performer", color: "#AA2DFF" },
-  { label: "Culture & News",      count: 7, href: "/articles/news",      color: "#FFD700" },
-  { label: "Reviews",             count: 2, href: "/articles/reviews",   color: "#FF2DAA" },
-  { label: "Interviews",          count: 1, href: "/articles/interviews",color: "#00FF88" },
+  { label: "Artist Spotlight",   count: null, href: "/articles/artist",    color: "#00FFFF" },
+  { label: "Performer Features", count: null, href: "/articles/performer", color: "#AA2DFF" },
+  { label: "Culture & News",     count: null, href: "/articles/news",      color: "#FFD700" },
+  { label: "Reviews",            count: null, href: "/articles/reviews",   color: "#FF2DAA" },
+  { label: "Interviews",         count: null, href: "/articles/interviews",color: "#00FF88" },
 ];
 
-const STATS = [
-  { label: "Articles Published", value: "17",    icon: "📰", color: "#FF2DAA" },
-  { label: "Drafts In Progress", value: "3",     icon: "✏️", color: "#AA2DFF" },
-  { label: "Total Reads",        value: "24.3K", icon: "👁️", color: "#00FFFF" },
-  { label: "Avg. Read Time",     value: "4.2m",  icon: "⏱️", color: "#FFD700" },
-];
-
-const STATUS_COLOR: Record<string, string> = {
-  draft: "#64748b",
-  review: "#FFD700",
-  approved: "#00FF88",
-};
+function formatRelativeTime(isoDate: string): string {
+  const diff = Date.now() - new Date(isoDate).getTime();
+  const mins  = Math.floor(diff / 60_000);
+  const hours = Math.floor(diff / 3_600_000);
+  const days  = Math.floor(diff / 86_400_000);
+  if (mins < 60)  return `${mins}m ago`;
+  if (hours < 24) return `${hours}h ago`;
+  return `${days}d ago`;
+}
 
 export default function WriterHubPage() {
-  const [filter, setFilter] = useState<"all" | "draft" | "review" | "approved">("all");
-  const visible = DRAFT_ARTICLES.filter((a) => filter === "all" || a.status === filter);
+  const [filter, setFilter] = useState<"all" | "draft" | "published" | "archived">("all");
+  const [stats, setStats] = useState<WriterStats | null>(null);
+  const [articles, setArticles] = useState<ArticleRow[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/writer/stats", { credentials: "include", cache: "no-store" })
+      .then(r => r.json())
+      .then((d: { ok?: boolean; stats?: WriterStats; recentArticles?: ArticleRow[] }) => {
+        if (d.ok) {
+          setStats(d.stats ?? null);
+          setArticles(d.recentArticles ?? []);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  const visible = articles.filter(a => filter === "all" || a.status === filter);
+
+  const statCards = stats
+    ? [
+        { label: "Articles Published", value: String(stats.published), icon: "📰", color: "#FF2DAA" },
+        { label: "Drafts In Progress",  value: String(stats.drafts),    icon: "✏️", color: "#AA2DFF" },
+        { label: "Total Articles",      value: String(stats.total),     icon: "📄", color: "#00FFFF" },
+        { label: "Archived",            value: String(stats.archived),  icon: "🗂️", color: "#FFD700" },
+      ]
+    : null;
 
   return (
     <main style={{ minHeight: "100vh", background: "#050510", color: "#fff", fontFamily: "'Inter', sans-serif" }}>
@@ -71,14 +109,22 @@ export default function WriterHubPage() {
 
         {/* Stats */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12, marginBottom: 32 }}>
-          {STATS.map((s) => (
+          {loading ? (
+            <div style={{ gridColumn: "1/-1", padding: "28px 0", color: "rgba(255,255,255,0.3)", fontSize: 13, textAlign: "center" }}>
+              Loading stats…
+            </div>
+          ) : statCards ? statCards.map((s) => (
             <div key={s.label} style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${s.color}30`, borderRadius: 12, padding: "18px", position: "relative", overflow: "hidden" }}>
               <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: s.color }} />
               <div style={{ fontSize: 24, marginBottom: 4 }}>{s.icon}</div>
               <div style={{ fontSize: 24, fontWeight: 900, color: s.color }}>{s.value}</div>
               <div style={{ fontSize: 10, letterSpacing: 2, color: "#555", marginTop: 4, textTransform: "uppercase" }}>{s.label}</div>
             </div>
-          ))}
+          )) : (
+            <div style={{ gridColumn: "1/-1", padding: "20px", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, color: "rgba(255,255,255,0.4)", fontSize: 13 }}>
+              No stats available yet. Start writing your first article.
+            </div>
+          )}
         </div>
 
         {/* CTA hero */}
@@ -116,9 +162,9 @@ export default function WriterHubPage() {
           {/* Article Queue */}
           <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,45,170,0.15)", borderRadius: 14, padding: "20px" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-              <div style={{ fontSize: 9, letterSpacing: "0.35em", color: ACCENT, fontWeight: 800 }}>ARTICLE QUEUE</div>
+              <div style={{ fontSize: 9, letterSpacing: "0.35em", color: ACCENT, fontWeight: 800 }}>MY ARTICLES</div>
               <div style={{ display: "flex", gap: 6 }}>
-                {(["all", "draft", "review", "approved"] as const).map((f) => (
+                {(["all", "draft", "published", "archived"] as const).map((f) => (
                   <button key={f} onClick={() => setFilter(f)} style={{ padding: "3px 8px", borderRadius: 4, border: `1px solid ${filter === f ? ACCENT : "rgba(255,255,255,0.1)"}`, background: filter === f ? `${ACCENT}18` : "transparent", color: filter === f ? ACCENT : "rgba(255,255,255,0.35)", fontSize: 9, fontWeight: 700, cursor: "pointer", textTransform: "uppercase", letterSpacing: "0.1em" }}>
                     {f}
                   </button>
@@ -126,19 +172,22 @@ export default function WriterHubPage() {
               </div>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {visible.map((a) => (
+              {loading ? (
+                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", textAlign: "center", padding: "20px 0" }}>Loading articles…</div>
+              ) : visible.length > 0 ? visible.map((a) => (
                 <Link key={a.id} href={`/editorial/drafts/${a.id}`} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 14px", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 9, textDecoration: "none" }}>
                   <div>
                     <div style={{ fontSize: 13, fontWeight: 700, color: "#fff", marginBottom: 3 }}>{a.title}</div>
-                    <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)" }}>{a.category} · {a.words.toLocaleString()} words · {a.updated}</div>
+                    <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)" }}>{formatRelativeTime(a.updatedAt)}</div>
                   </div>
                   <span style={{ fontSize: 9, fontWeight: 800, color: STATUS_COLOR[a.status] ?? "#fff", letterSpacing: "0.15em", textTransform: "uppercase", border: `1px solid ${STATUS_COLOR[a.status] ?? "#fff"}30`, padding: "3px 8px", borderRadius: 4 }}>
                     {a.status}
                   </span>
                 </Link>
-              ))}
-              {visible.length === 0 && (
-                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.25)", textAlign: "center", padding: "20px 0" }}>No articles in this state.</div>
+              )) : (
+                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.25)", textAlign: "center", padding: "24px 0" }}>
+                  {filter === "all" ? "No articles yet. Start writing your first piece." : `No ${filter} articles.`}
+                </div>
               )}
             </div>
             <Link href="/editorial/write" style={{ display: "block", marginTop: 12, textAlign: "center", padding: "10px", background: `${ACCENT}10`, border: `1px solid ${ACCENT}30`, borderRadius: 8, color: ACCENT, fontWeight: 800, fontSize: 11, textDecoration: "none", letterSpacing: "0.1em" }}>
@@ -153,7 +202,7 @@ export default function WriterHubPage() {
               {CATEGORIES.map((c) => (
                 <Link key={c.label} href={c.href} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 12px", background: `${c.color}08`, border: `1px solid ${c.color}20`, borderRadius: 8, textDecoration: "none" }}>
                   <span style={{ fontSize: 12, fontWeight: 700, color: c.color }}>{c.label}</span>
-                  <span style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", fontWeight: 600 }}>{c.count} articles</span>
+                  <span style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", fontWeight: 600 }}>Browse →</span>
                 </Link>
               ))}
             </div>

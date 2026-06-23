@@ -3,6 +3,8 @@
  * Manages prize distribution for shows, battles, and contests.
  */
 
+import { revenueFirstRewardsGovernor, type FinancialHealthSnapshot, type RewardGovernorDecision } from '@/lib/economy/RevenueFirstRewardsGovernor';
+
 const MAX_PAYOUT_RATIO = 0.40; // Max 40% of revenue goes to prizes
 
 /**
@@ -42,6 +44,14 @@ export interface PayoutRecord {
   completedAt?: number;
   failureReason?: string;
   transactionRef?: string;
+  rewardPhase?: RewardGovernorDecision['phase'];
+  governanceNotes?: string[];
+}
+
+export interface PayoutFundingContext {
+  contestRevenueCents?: number;
+  prizeAllocationRate?: number;
+  snapshotOverride?: Partial<FinancialHealthSnapshot>;
 }
 
 const DEFAULT_PRIZE_STRUCTURE: PrizeTier[] = [
@@ -80,14 +90,51 @@ export class PrizePayoutEngine {
     displayName: string,
     place: number,
     method: PayoutMethod = "cash",
+    fundingContext?: PayoutFundingContext,
   ): PayoutRecord | null {
     const tiers = this.getStructure(showId);
     const tier = tiers.find((t) => t.place === place);
     if (!tier) return null;
 
-    // Example Revenue Protection Check Hook 
-    // If we knew total show revenue here, we would run:
-    // validatePayout(showRevenue, tier.cashUsd);
+    const governorDecision = revenueFirstRewardsGovernor.evaluate(fundingContext?.snapshotOverride);
+
+    const governanceNotes: string[] = [];
+    let effectiveMethod: PayoutMethod = method;
+    let effectiveCashCents = tier.cashUsd * 100;
+    let effectiveStatus: PayoutStatus = 'pending';
+    let failureReason: string | undefined;
+
+    if (!governorDecision.allowCashRewards && effectiveCashCents > 0) {
+      effectiveMethod = governorDecision.allowPlatformCredits ? 'store-credit' : 'tmicoin';
+      effectiveCashCents = 0;
+      effectiveStatus = 'on-hold';
+      failureReason = 'cash_rewards_locked_by_revenue_governor';
+      governanceNotes.push(
+        `cash reward converted to ${effectiveMethod} (${governorDecision.phase} phase)`
+      );
+    }
+
+    if (
+      effectiveCashCents > 0 &&
+      typeof fundingContext?.contestRevenueCents === 'number'
+    ) {
+      const budget = revenueFirstRewardsGovernor.assessContestBudget({
+        contestRevenueCents: fundingContext.contestRevenueCents,
+        proposedPrizePoolCents: effectiveCashCents,
+        allocationRate: fundingContext.prizeAllocationRate,
+        snapshotOverride: fundingContext.snapshotOverride,
+      });
+
+      if (!budget.allowed) {
+        effectiveMethod = governorDecision.allowPlatformCredits ? 'store-credit' : 'tmicoin';
+        effectiveCashCents = 0;
+        effectiveStatus = 'on-hold';
+        failureReason = 'contest_budget_gate_rejected_cash_reward';
+        governanceNotes.push(...budget.reasons);
+      } else {
+        validatePayout(budget.contestRevenueCents / 100, effectiveCashCents / 100);
+      }
+    }
 
     const record: PayoutRecord = {
       id: Math.random().toString(36).slice(2),
@@ -96,11 +143,14 @@ export class PrizePayoutEngine {
       displayName,
       place,
       prizeTier: tier,
-      method,
-      cashAmountCents: tier.cashUsd * 100,
+      method: effectiveMethod,
+      cashAmountCents: effectiveCashCents,
       tmicoinAmount: tier.tmicoin,
-      status: "pending",
+      status: effectiveStatus,
       initiatedAt: Date.now(),
+      failureReason,
+      rewardPhase: governorDecision.phase,
+      governanceNotes,
     };
 
     this._payouts.set(record.id, record);
@@ -108,13 +158,33 @@ export class PrizePayoutEngine {
     return record;
   }
 
-  processPayouts(showId: string, results: { userId: string; displayName: string; place: number }[]): PayoutRecord[] {
+  processPayouts(
+    showId: string,
+    results: { userId: string; displayName: string; place: number }[],
+    method: PayoutMethod = 'cash',
+    fundingContext?: PayoutFundingContext,
+  ): PayoutRecord[] {
     const records: PayoutRecord[] = [];
     for (const result of results) {
-      const record = this.initiatePayout(showId, result.userId, result.displayName, result.place);
+      const record = this.initiatePayout(
+        showId,
+        result.userId,
+        result.displayName,
+        result.place,
+        method,
+        fundingContext,
+      );
       if (record) records.push(record);
     }
     return records;
+  }
+
+  setFinancialSnapshot(snapshot: Partial<FinancialHealthSnapshot>): FinancialHealthSnapshot {
+    return revenueFirstRewardsGovernor.setFinancialSnapshot(snapshot);
+  }
+
+  getRewardGovernorStatus(snapshotOverride?: Partial<FinancialHealthSnapshot>): RewardGovernorDecision {
+    return revenueFirstRewardsGovernor.evaluate(snapshotOverride);
   }
 
   markPaid(payoutId: string, transactionRef: string): PayoutRecord | null {

@@ -31,14 +31,8 @@ export default function BeatVaultPage() {
   const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   function handleBuy(beat: typeof BEATS[0]) {
-    setBuying(beat.id);
-    const params = new URLSearchParams({
-      priceId: 'price_beat_basic',
-      amount: String(beat.price * 100),
-      productName: `Beat: ${beat.title} by ${beat.producer}`,
-      mode: 'payment',
-    });
-    router.push(`/api/stripe/checkout?${params.toString()}`);
+    // Route to canonical Beat Marketplace where real Stripe checkout is wired
+    router.push(`/beats/marketplace`);
   }
 
   const handleUniversalUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {

@@ -6,6 +6,8 @@
  * and the booking engine all read from here.
  */
 
+import { getActiveSessions } from '@/lib/broadcast/GlobalLiveSessionRegistry';
+
 export type VenueTier = 'RUBY' | 'Silver' | 'Gold' | 'Platinum' | 'Diamond';
 export type VenueCategory = 'Club' | 'Arena' | 'Stadium' | 'Studio' | 'Lounge' | 'Outdoor' | 'Theater' | 'Virtual';
 
@@ -186,7 +188,16 @@ export function getVenueBySlug(slug: string): VenueIdentity | null {
 }
 
 export function getLiveVenues(): VenueIdentity[] {
-  return VENUE_REGISTRY.filter((v) => v.isLive).sort((a, b) => b.audienceCount - a.audienceCount);
+  // A1: Cross-reference GlobalLiveSessionRegistry by roomId — never hardcoded isLive
+  const liveSessions = getActiveSessions();
+  const liveByRoomId = new Map(liveSessions.map(s => [s.roomId, s]));
+  return VENUE_REGISTRY
+    .filter(v => liveByRoomId.has(v.roomId))
+    .map(v => {
+      const session = liveByRoomId.get(v.roomId)!;
+      return { ...v, isLive: true, audienceCount: session.viewerCount };
+    })
+    .sort((a, b) => b.audienceCount - a.audienceCount);
 }
 
 export function getAllVenues(): VenueIdentity[] {

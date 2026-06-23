@@ -50,18 +50,21 @@ export default function CollapsibleCanister({
           {summary && <span style={{ fontSize: 11, color: accentColor }}>{summary}</span>}
         </span>
         <span
-          aria-label={open ? "Close" : "Open"}
-          title={open ? "Close" : "Open"}
+          aria-label={open ? "Close module" : "Open module"}
+          title={open ? "Close module" : "Open module"}
           style={{
             fontSize: open ? 14 : 12,
             fontWeight: open ? 900 : 400,
-            color: open ? "#E63000" : "rgba(255,255,255,0.4)",
-            width: 20,
-            height: 20,
+            color: open ? "#FF2DAA" : "rgba(255,255,255,0.55)",
+            border: open ? "1px solid rgba(255,45,170,0.7)" : "1px solid rgba(255,255,255,0.2)",
+            borderRadius: 999,
+            width: 26,
+            height: 26,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             flexShrink: 0,
+            background: open ? "rgba(255,45,170,0.15)" : "rgba(255,255,255,0.03)",
           }}
         >
           {open ? "✕" : "▾"}
@@ -81,10 +84,10 @@ export default function CollapsibleCanister({
               marginTop: 10,
               padding: "7px 0",
               fontSize: 10,
-              fontWeight: 700,
-              color: "rgba(255,255,255,0.4)",
-              background: "rgba(255,255,255,0.03)",
-              border: "1px solid rgba(255,255,255,0.08)",
+              fontWeight: 800,
+              color: "#FF2DAA",
+              background: "linear-gradient(135deg, rgba(255,45,170,0.15), rgba(0,255,255,0.08))",
+              border: "1px solid rgba(255,45,170,0.45)",
               borderRadius: 8,
               cursor: "pointer",
             }}

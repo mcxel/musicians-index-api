@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 
@@ -20,19 +20,68 @@ export default function ChallengeDetailPage() {
   const ch = SEED[id] ?? SEED["ch1"];
 
   const [voted, setVoted] = useState<string | null>(null);
+  const [voteError, setVoteError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [fileLabel, setFileLabel] = useState("");
+  const performerNameRef = useRef<HTMLInputElement>(null);
+  // Stable guest voter ID for rate-limiting (session only)
+  const voterIdRef = useRef(`guest-${Math.random().toString(36).slice(2, 10)}`);
 
-  function handleVote(name: string) {
+  async function handleVote(name: string) {
+    if (voted) return;
     setVoted(name);
-    // In production: POST /api/vote { challengeId: id, entryName: name }
+    setVoteError(null);
+    try {
+      const res = await fetch("/api/rooms/challenges/vote", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          challengeId: id,
+          voterId: voterIdRef.current,
+          contestantId: name,
+          weight: 1,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json() as { error?: string };
+        setVoteError(data.error ?? "Vote failed. Try again.");
+        setVoted(null);
+      }
+    } catch {
+      setVoteError("Could not reach vote server. Your vote was not recorded.");
+      setVoted(null);
+    }
   }
 
   async function handleSubmit() {
+    if (submitted) return;
     setSubmitted(true);
-    // In production: POST /api/challenge/submit { challengeId: id, fileUrl }
-    await new Promise(r => setTimeout(r, 800));
-    router.push("/challenge?submitted=1");
+    setSubmitError(null);
+    const performerName = performerNameRef.current?.value?.trim() ?? "";
+    try {
+      const res = await fetch("/api/challenges/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "live",
+          genre: ch?.genre ?? "Hip-Hop",
+          title: performerName ? `${performerName} — ${ch?.title ?? "Challenge Entry"}` : (ch?.title ?? "Challenge Entry"),
+          opponentSlug: id,
+          pointsWager: 0,
+        }),
+      });
+      const data = await res.json() as { ok?: boolean; challengeId?: string; error?: string };
+      if (data.ok) {
+        router.push("/challenge?submitted=1");
+      } else {
+        setSubmitError(data.error ?? "Submission failed. Try again.");
+        setSubmitted(false);
+      }
+    } catch {
+      setSubmitError("Could not reach submission server. Try again.");
+      setSubmitted(false);
+    }
   }
 
   return (
@@ -73,7 +122,10 @@ export default function ChallengeDetailPage() {
             >
               {fileLabel ? `✓ ${fileLabel}` : "Click to upload your track (MP3/WAV/MP4)"}
             </div>
-            <input placeholder="Your performer name…" style={{ width: "100%", padding: "10px 12px", background: "rgba(255,255,255,0.05)", border: `1px solid ${ch.color}33`, borderRadius: 8, color: "#fff", fontSize: 13, outline: "none", marginBottom: 10, boxSizing: "border-box" }} />
+            <input ref={performerNameRef} placeholder="Your performer name…" style={{ width: "100%", padding: "10px 12px", background: "rgba(255,255,255,0.05)", border: `1px solid ${ch.color}33`, borderRadius: 8, color: "#fff", fontSize: 13, outline: "none", marginBottom: 10, boxSizing: "border-box" }} />
+            {submitError && (
+              <div style={{ fontSize: 10, color: "#E63000", marginBottom: 8 }}>{submitError}</div>
+            )}
             <button
               onClick={handleSubmit}
               disabled={!fileLabel || submitted}
@@ -87,6 +139,9 @@ export default function ChallengeDetailPage() {
         {/* Leaderboard */}
         <div style={{ marginTop: 24 }}>
           <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.14em", color: "rgba(255,255,255,0.4)", marginBottom: 14 }}>CURRENT LEADERBOARD</div>
+          {voteError && (
+            <div style={{ fontSize: 10, color: "#E63000", marginBottom: 10 }}>{voteError}</div>
+          )}
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {ch.entries.map((e, i) => (
               <div key={e.name} style={{ display: "flex", gap: 14, alignItems: "center", padding: "14px 18px", background: i === 0 ? `${ch.color}0D` : "rgba(255,255,255,0.02)", border: `1px solid ${i === 0 ? ch.color + "44" : "rgba(255,255,255,0.07)"}`, borderRadius: 12 }}>

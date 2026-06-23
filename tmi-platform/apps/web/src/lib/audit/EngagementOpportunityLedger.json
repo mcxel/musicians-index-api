@@ -1,0 +1,46 @@
+{
+  "auditDate": "2026-06-22",
+  "phase": "Phase 0 — Inventory Only, No Wiring",
+  "purpose": "Tracks real engagement-feedback gaps found during Phase 0 audits — moments where a real user action/event already fires but has no corresponding feedback (sound, animation, notification). Feeds Rule 25's future Opportunity Engine; not itself an implementation.",
+  "findings": [
+    {
+      "id": "levelup-sound-disconnected",
+      "category": "audio-feedback",
+      "event": "tmi:level-up",
+      "description": "Real level-up event already dispatches and is already listened to for a visual toast, but no sound plays. A genuine player earns a level and gets silence.",
+      "realAssetAvailable": true,
+      "assetId": "gameshow_achievement_bling",
+      "priority": "High",
+      "blocksAudit": false,
+      "blocksPlatform": false,
+      "status": "documented_not_fixed",
+      "fixScope": "trivial — single playSound() call in GamificationHUD.tsx"
+    },
+    {
+      "id": "raredrop-no-listener",
+      "category": "audio-feedback",
+      "event": "tmi:rare-drop",
+      "description": "Rare-drop XP multiplier event dispatches from useGamificationEngine.ts but has zero listeners anywhere in the app — the event is dead on arrival, no visual or audio feedback at all for a rare moment that should feel special.",
+      "realAssetAvailable": false,
+      "assetId": null,
+      "priority": "Medium",
+      "blocksAudit": false,
+      "blocksPlatform": false,
+      "status": "documented_not_fixed",
+      "fixScope": "needs a listener built, plus a real sound asset sourced (none exists yet)"
+    }
+  ],
+  "monetizationLedgerCrossRef": {
+    "canonical": ["components/ads/UnifiedAdSlot.tsx", "lib/sponsors/SponsorRegistry.ts#getAdSlotForZone"],
+    "needsConvergenceReview": ["components/ads/TieredAdSlot.tsx"],
+    "orphaned": [
+      "components/ads/AdSlot.tsx",
+      "components/ads/AdSlotRotator.tsx",
+      "lib/registry/SponsorSlotRegistry.ts",
+      "components/environments/SponsorSlotWall.tsx",
+      "components/placement/SponsorSlot.tsx",
+      "lib/living-magazine/MagazineAdSlotEngine.ts",
+      "lib/living-magazine/MagazineSponsorSlotEngine.ts"
+    ]
+  }
+}

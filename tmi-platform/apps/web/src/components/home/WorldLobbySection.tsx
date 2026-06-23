@@ -5,29 +5,29 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import AudienceScene from "@/components/live/AudienceScene";
 import AvatarVenueAnchor from "@/components/avatar/AvatarVenueAnchor";
+import { getActiveSessions, onSessionsChanged, type LiveSession } from "@/lib/broadcast/GlobalLiveSessionRegistry";
 
-// ── Venue catalog with live data ───────────────────────────────────────────
-const VENUES = [
-  { id: "world-concert",   name: "World Concert",     type: "CONCERT",   color: "#FFD700", venueIndex: 1 as const, cap: 18500, bpm: 120, viewers: 3400, isLive: true,  dance: false, href: "/rooms/world-concert?autoSeat=1",     tipHref: "/api/stripe/checkout?priceId=price_tip&amount=500&productName=Tip+World+Concert&mode=payment" },
-  { id: "battle-arena",   name: "Battle Arena",       type: "BATTLE",    color: "#FF2DAA", venueIndex: 1 as const, cap: 18500, bpm: 145, viewers: 2100, isLive: true,  dance: false, href: "/battles/live",                        tipHref: "/api/stripe/checkout?priceId=price_tip&amount=500&productName=Tip+Battle+Arena&mode=payment" },
-  { id: "challenge-arena",name: "Challenge Arena",    type: "CHALLENGE", color: "#FFD700", venueIndex: 1 as const, cap: 18500, bpm: 130, viewers: 1640, isLive: true,  dance: false, href: "/challenge",                           tipHref: "/api/stripe/checkout?priceId=price_tip&amount=500&productName=Tip+Challenge+Arena&mode=payment" },
-  { id: "cypher",         name: "Cypher Arena",       type: "CYPHER",    color: "#00FFFF", venueIndex: 0 as const, cap: 2730,  bpm: 118, viewers: 841,  isLive: true,  dance: false, href: "/rooms/cypher?autoSeat=1",             tipHref: "/api/stripe/checkout?priceId=price_tip&amount=500&productName=Tip+Cypher+Arena&mode=payment" },
-  { id: "monthly-idol",   name: "Monthly Idol",       type: "GAME SHOW", color: "#FF9500", venueIndex: 0 as const, cap: 2730,  bpm: 110, viewers: 1204, isLive: true,  dance: false, href: "/rooms/monthly-idol?autoSeat=1",       tipHref: "/api/stripe/checkout?priceId=price_tip&amount=500&productName=Tip+Monthly+Idol&mode=payment" },
-  { id: "dirty-dozens",   name: "Dirty Dozens",       type: "GAME SHOW", color: "#AA2DFF", venueIndex: 1 as const, cap: 18500, bpm: 120, viewers: 920,  isLive: false, dance: false, href: "/rooms/dirty-dozens?autoSeat=1",       tipHref: "" },
-  { id: "monday-stage",   name: "Monday Night Stage", type: "CONCERT",   color: "#00FF88", venueIndex: 0 as const, cap: 2730,  bpm: 118, viewers: 0,    isLive: false, dance: false, href: "/rooms/monday-stage?autoSeat=1",       tipHref: "" },
-  { id: "world-dance-party", name: "World Dance Party", type: "DANCE",  color: "#FF2DAA", venueIndex: 2 as const, cap: 5000,  bpm: 138, viewers: 888,  isLive: true,  dance: true,  href: "/rooms/world-dance-party?autoSeat=1",  tipHref: "/api/stripe/checkout?priceId=price_tip&amount=500&productName=Tip+Dance+Party&mode=payment" },
+// ── Official TMI venues (infrastructure) ───────────────────────────────────
+const VENUE_DEFINITIONS = [
+  { id: "world-concert",   name: "World Concert",     type: "CONCERT",   color: "#FFD700", venueIndex: 1 as const, cap: 18500, bpm: 120, dance: false, href: "/rooms/world-concert?autoSeat=1",     tipHref: "/api/stripe/checkout?priceId=price_tip&amount=500&productName=Tip+World+Concert&mode=payment" },
+  { id: "battle-arena",   name: "Battle Arena",       type: "BATTLE",    color: "#FF2DAA", venueIndex: 1 as const, cap: 18500, bpm: 145, dance: false, href: "/battles/live",                        tipHref: "/api/stripe/checkout?priceId=price_tip&amount=500&productName=Tip+Battle+Arena&mode=payment" },
+  { id: "challenge-arena",name: "Challenge Arena",    type: "CHALLENGE", color: "#FFD700", venueIndex: 1 as const, cap: 18500, bpm: 130, dance: false, href: "/challenge",                           tipHref: "/api/stripe/checkout?priceId=price_tip&amount=500&productName=Tip+Challenge+Arena&mode=payment" },
+  { id: "cypher",         name: "Cypher Arena",       type: "CYPHER",    color: "#00FFFF", venueIndex: 0 as const, cap: 2730,  bpm: 118, dance: false, href: "/rooms/cypher?autoSeat=1",             tipHref: "/api/stripe/checkout?priceId=price_tip&amount=500&productName=Tip+Cypher+Arena&mode=payment" },
+  { id: "monthly-idol",   name: "Monthly Idol",       type: "GAME SHOW", color: "#FF9500", venueIndex: 0 as const, cap: 2730,  bpm: 110, dance: false, href: "/rooms/monthly-idol?autoSeat=1",       tipHref: "/api/stripe/checkout?priceId=price_tip&amount=500&productName=Tip+Monthly+Idol&mode=payment" },
+  { id: "dirty-dozens",   name: "Dirty Dozens",       type: "GAME SHOW", color: "#AA2DFF", venueIndex: 1 as const, cap: 18500, bpm: 120, dance: false, href: "/rooms/dirty-dozens?autoSeat=1",       tipHref: "" },
+  { id: "monday-stage",   name: "Monday Night Stage", type: "CONCERT",   color: "#00FF88", venueIndex: 0 as const, cap: 2730,  bpm: 118, dance: false, href: "/rooms/monday-stage?autoSeat=1",       tipHref: "" },
+  { id: "world-dance-party", name: "World Dance Party", type: "DANCE",  color: "#FF2DAA", venueIndex: 2 as const, cap: 5000,  bpm: 138, dance: true,  href: "/rooms/world-dance-party?autoSeat=1",  tipHref: "/api/stripe/checkout?priceId=price_tip&amount=500&productName=Tip+Dance+Party&mode=payment" },
 ];
 
-function VenueCard({ v }: { v: typeof VENUES[0] }) {
-  const router = useRouter();
-  const [viewers, setViewers] = useState(v.viewers);
-  const [hovered, setHovered] = useState(false);
+interface VenueCardProps {
+  v: typeof VENUE_DEFINITIONS[0];
+  isLive: boolean;
+  viewers: number;
+}
 
-  useEffect(() => {
-    if (!v.isLive) return;
-    const id = setInterval(() => setViewers(n => Math.max(5, n + Math.floor((Math.random() - 0.38) * 28))), 3500);
-    return () => clearInterval(id);
-  }, [v.isLive]);
+function VenueCard({ v, isLive, viewers }: VenueCardProps) {
+  const router = useRouter();
+  const [hovered, setHovered] = useState(false);
 
   return (
     <div
@@ -49,8 +49,8 @@ function VenueCard({ v }: { v: typeof VENUES[0] }) {
         )}
         <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, transparent 40%, #050510 100%)" }} />
         <div style={{ position: "absolute", top: 7, left: 8, display: "flex", alignItems: "center", gap: 3, background: "rgba(0,0,0,0.7)", borderRadius: 4, padding: "2px 7px", backdropFilter: "blur(4px)" }}>
-          <span style={{ width: 5, height: 5, borderRadius: "50%", background: v.isLive ? "#FF2020" : "#FFD700", display: "inline-block" }} />
-          <span style={{ fontSize: 7, fontWeight: 900, color: "#fff", letterSpacing: "0.1em" }}>{v.isLive ? "LIVE" : "SOON"}</span>
+          <span style={{ width: 5, height: 5, borderRadius: "50%", background: isLive ? "#FF2020" : "#FFD700", display: "inline-block" }} />
+          <span style={{ fontSize: 7, fontWeight: 900, color: "#fff", letterSpacing: "0.1em" }}>{isLive ? "LIVE" : "SOON"}</span>
         </div>
         <div style={{ position: "absolute", top: 7, right: 8, fontSize: 7, color: "rgba(255,255,255,0.55)", background: "rgba(0,0,0,0.6)", padding: "2px 6px", borderRadius: 4 }}>{viewers.toLocaleString()} 👁</div>
       </div>
@@ -64,7 +64,7 @@ function VenueCard({ v }: { v: typeof VENUES[0] }) {
 
         {/* Revenue hooks */}
         <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
-          {v.isLive && v.tipHref && (
+          {isLive && v.tipHref && (
             <Link href={v.tipHref} onClick={e => e.stopPropagation()} style={{ fontSize: 7, color: "#FFD700", background: "rgba(255,215,0,0.1)", border: "1px solid rgba(255,215,0,0.25)", padding: "2px 8px", borderRadius: 6, textDecoration: "none", fontWeight: 800 }}>💰 TIP</Link>
           )}
           <Link href={`/tickets?event=${v.id}`} onClick={e => e.stopPropagation()} style={{ fontSize: 7, color: v.color, background: `${v.color}10`, border: `1px solid ${v.color}25`, padding: "2px 8px", borderRadius: 6, textDecoration: "none", fontWeight: 800 }}>🎫 TICKET</Link>
@@ -75,7 +75,7 @@ function VenueCard({ v }: { v: typeof VENUES[0] }) {
           onClick={() => router.push(v.href)}
           style={{ width: "100%", padding: "7px 0", borderRadius: 8, border: "none", background: hovered ? v.color : `${v.color}18`, color: hovered ? "#000" : v.color, fontSize: 9, fontWeight: 900, cursor: "pointer", letterSpacing: "0.1em", transition: "all 0.15s" }}
         >
-          {v.isLive ? "▶ ENTER + SIT" : "📅 SCHEDULE"}
+          {isLive ? "▶ ENTER + SIT" : "📅 SCHEDULE"}
         </button>
       </div>
     </div>
@@ -83,12 +83,43 @@ function VenueCard({ v }: { v: typeof VENUES[0] }) {
 }
 
 export default function WorldLobbySection() {
-  const [totalViewers, setTotalViewers] = useState(VENUES.reduce((s, v) => s + v.viewers, 0));
+  const [sessions, setSessions] = useState<LiveSession[]>([]);
+  const [totalViewers, setTotalViewers] = useState(0);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    const id = setInterval(() => setTotalViewers(v => Math.max(0, v + Math.floor((Math.random() - 0.35) * 60))), 3000);
-    return () => clearInterval(id);
+    setMounted(true);
+
+    // Subscribe to live session updates
+    const unsubscribe = onSessionsChanged((liveSessions) => {
+      setSessions(liveSessions);
+      const total = liveSessions.reduce((sum, s) => sum + s.viewerCount, 0);
+      setTotalViewers(total);
+    });
+
+    // Get initial state
+    const initial = getActiveSessions();
+    setSessions(initial);
+    setTotalViewers(initial.reduce((sum, s) => sum + s.viewerCount, 0));
+
+    return unsubscribe;
   }, []);
+
+  // Map live sessions to venue cards where applicable
+  const displayVenues = VENUE_DEFINITIONS.map(venue => {
+    const liveSession = sessions.find(s => s.roomId === venue.id);
+    return {
+      ...venue,
+      isLive: !!liveSession,
+      viewers: liveSession?.viewerCount ?? 0,
+    };
+  });
+
+  if (!mounted) {
+    return null;
+  }
+
+  const venueLiveCount = displayVenues.filter(v => v.isLive).length;
 
   return (
     <section style={{ background: "#050510", color: "#fff", fontFamily: "'Inter', sans-serif", paddingBottom: 80, position: "relative", overflow: "hidden" }}>
@@ -100,9 +131,9 @@ export default function WorldLobbySection() {
         <h2 style={{ margin: "0 0 10px", fontSize: "clamp(20px,3vw,34px)", fontWeight: 900 }}>THE WORLD IS LIVE</h2>
         <div style={{ display: "flex", justifyContent: "center", gap: 24, flexWrap: "wrap" }}>
           {[
-            { v: VENUES.filter(v => v.isLive).length.toString(), l: "VENUES LIVE", c: "#FF2020" },
+            { v: venueLiveCount.toString(), l: "VENUES LIVE", c: "#FF2020" },
             { v: totalViewers.toLocaleString(), l: "TOTAL WATCHING", c: "#FFD700" },
-            { v: VENUES.length.toString(), l: "WORLDS OPEN", c: "#00FFFF" },
+            { v: VENUE_DEFINITIONS.length.toString(), l: "WORLDS OPEN", c: "#00FFFF" },
           ].map(s => (
             <div key={s.l} style={{ textAlign: "center" }}>
               <div style={{ fontSize: 20, fontWeight: 900, color: s.c }}>{s.v}</div>
@@ -132,7 +163,7 @@ export default function WorldLobbySection() {
 
         {/* All venues grid */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(230px, 1fr))", gap: 12, marginBottom: 24 }}>
-          {VENUES.map(v => <VenueCard key={v.id} v={v} />)}
+          {displayVenues.map(v => <VenueCard key={v.id} v={v} isLive={v.isLive} viewers={v.viewers} />)}
         </div>
 
         {/* Bottom nav */}

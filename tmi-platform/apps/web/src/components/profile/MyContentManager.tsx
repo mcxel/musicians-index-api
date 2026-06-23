@@ -89,6 +89,7 @@ function PlaylistTracksPanel({ playlistId, userSongs }: { playlistId: string; us
           <span style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", minWidth: 18 }}>{t.position + 1}</span>
           <span style={{ flex: 1, fontSize: 11, color: "#fff", fontWeight: 600 }}>{t.song.title}</span>
           <span style={{ fontSize: 10, color: "rgba(255,255,255,0.3)" }}>{t.song.genre}</span>
+          <audio controls preload="none" src={t.song.audioUrl} style={{ height: 24, width: 160 }} />
           <button onClick={() => removeTrack(t.id)} style={{ fontSize: 9, padding: "3px 8px", borderRadius: 5, border: "1px solid rgba(255,68,68,0.3)", background: "transparent", color: "#FF4444", cursor: "pointer", fontWeight: 700 }}>✕</button>
         </div>
       ))}
@@ -268,6 +269,7 @@ export default function MyContentManager({ accentColor = ACCENT }: { accentColor
                 </div>
                 {editingId !== s.id && (
                   <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                    <audio controls preload="none" src={s.audioUrl} style={{ height: 24, width: 170 }} />
                     <button onClick={() => toggleSongPrivacy(s)} style={actionBtn(s.isPublic ? "#00FF88" : "#FF8800")}>{s.isPublic ? "PUBLIC" : "PRIVATE"}</button>
                     <button onClick={() => setEditingId(s.id)} style={actionBtn("#00FFFF")}>EDIT</button>
                     <ShareBar url={`${typeof window !== "undefined" ? window.location.origin : ""}/song/${s.id}`} />

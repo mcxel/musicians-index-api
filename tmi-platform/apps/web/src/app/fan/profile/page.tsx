@@ -5,11 +5,12 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import MemoryWall from "@/components/media/MemoryWall";
 import OmniPresenceEngine from "@/components/presence/OmniPresenceEngine";
+import AvatarUploadPipeline from "@/components/profile/AvatarUploadPipeline";
 
 const ACCENT = "#00FFFF";
 const BG = "#050510";
 
-interface MeUser { id: string; email: string; name?: string; role: string; tier?: string; fanPoints?: number; }
+interface MeUser { id: string; email: string; name?: string; role: string; tier?: string; fanPoints?: number; image?: string | null; }
 
 export default function FanProfilePage() {
   const router = useRouter();
@@ -22,10 +23,33 @@ export default function FanProfilePage() {
   useEffect(() => {
     fetch("/api/auth/session", { credentials: "include" })
       .then(r => r.json())
-      .then((d: { authenticated?: boolean; user?: MeUser }) => {
+      .then(async (d: { authenticated?: boolean; user?: MeUser }) => {
         if (!d.authenticated || !d.user) { router.replace("/auth"); return; }
+        const fallbackName = d.user.name ?? d.user.email.split("@")[0] ?? "";
+        try {
+          const profileRes = await fetch("/api/profile/self", { credentials: "include", cache: "no-store" });
+          if (profileRes.ok) {
+            const profileData = await profileRes.json() as {
+              profile?: { id: string; displayName?: string | null; bio?: string | null; avatarUrl?: string | null; tier?: string | null };
+            };
+            if (profileData.profile) {
+              setUser({
+                ...d.user,
+                id: profileData.profile.id,
+                tier: profileData.profile.tier ?? d.user.tier,
+                image: profileData.profile.avatarUrl ?? null,
+              });
+              setDisplayName(profileData.profile.displayName ?? fallbackName);
+              setBio(profileData.profile.bio ?? "");
+              return;
+            }
+          }
+        } catch {
+          // fall through to session-only values
+        }
+
         setUser(d.user);
-        setDisplayName(d.user.name ?? d.user.email.split("@")[0] ?? "");
+        setDisplayName(fallbackName);
       })
       .catch(() => router.replace("/auth"));
   }, [router]);
@@ -34,13 +58,16 @@ export default function FanProfilePage() {
     e.preventDefault();
     setSaving(true);
     try {
-      await fetch("/api/profile/update", {
+      const res = await fetch("/api/profile/update", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ displayName, bio }),
         credentials: "include",
       });
-      setEditing(false);
+      const data = await res.json() as { saved?: boolean };
+      if (res.ok && data.saved) {
+        setEditing(false);
+      }
     } catch { /* ignore */ } finally { setSaving(false); }
   }
 
@@ -80,7 +107,14 @@ export default function FanProfilePage() {
 
         {/* Profile hero */}
         <div style={{ display: "flex", gap: 24, alignItems: "flex-start", padding: "28px", background: `linear-gradient(135deg, ${ACCENT}0E, rgba(5,5,16,0.95))`, border: `1px solid ${ACCENT}28`, borderRadius: 20, marginBottom: 24, flexWrap: "wrap" }}>
-          <div style={{ width: 88, height: 88, borderRadius: "50%", background: `linear-gradient(135deg, ${ACCENT}, #AA2DFF)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 36, flexShrink: 0 }}>⭐</div>
+          <AvatarUploadPipeline
+            userId={user.id}
+            currentImage={user.image}
+            fallbackEmoji="⭐"
+            size={88}
+            accentColor={ACCENT}
+            onUploadSuccess={(url) => setUser({ ...user, image: url })}
+          />
           <div style={{ flex: 1, minWidth: 200 }}>
             <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 4 }}>
               <div style={{ fontSize: 9, letterSpacing: "0.25em", color: ACCENT, fontWeight: 800 }}>FAN · {tier} TIER</div>

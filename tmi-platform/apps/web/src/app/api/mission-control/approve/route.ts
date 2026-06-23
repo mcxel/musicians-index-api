@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { approveTask, rejectTask, addTask } from "@/app/api/mission-control/route";
+import { approveTask, rejectTask, addTask } from "@/lib/admin/MissionControlTaskStore";
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));

@@ -107,12 +107,12 @@ export default function ProfileLobbyRuntime({
               <h3 className="text-[10px] font-black tracking-[0.2em] text-white/50 uppercase mb-4 border-b border-white/10 pb-2">Support & Action</h3>
               
               <div className="flex flex-col gap-3">
-                <button className="w-full py-3 rounded-lg font-black text-xs tracking-widest text-black transition-transform hover:scale-[1.02]" style={{ background: accentColor }}>
+                <Link href="/subscriptions" className="w-full py-3 rounded-lg font-black text-xs tracking-widest text-black transition-transform hover:scale-[1.02] text-center" style={{ background: accentColor }}>
                   SUBSCRIBE / FOLLOW
-                </button>
-                <button className="w-full py-3 rounded-lg font-black text-xs tracking-widest text-white border border-white/20 transition-colors hover:bg-white/10">
+                </Link>
+                <Link href="/tip" className="w-full py-3 rounded-lg font-black text-xs tracking-widest text-white border border-white/20 transition-colors hover:bg-white/10 text-center">
                   SEND TIP 💰
-                </button>
+                </Link>
               </div>
             </div>
           </aside>

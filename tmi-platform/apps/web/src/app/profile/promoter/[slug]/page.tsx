@@ -17,44 +17,11 @@ interface SeedPromoter {
   stats: { label: string; value: string }[];
 }
 
-const SEED_PROMOTERS: Record<string, SeedPromoter> = {
-  "uptown-events": {
-    displayName: "Uptown Events",
-    tagline: "NYC's premier hip-hop promoter · 200+ events · 500k+ tickets sold",
-    city: "New York, NY",
-    focus: "Hip-Hop / Rap",
-    isVerified: true,
-    stats: [
-      { label: "Events Promoted", value: "212" },
-      { label: "Tickets Sold", value: "512k" },
-      { label: "Artists Booked", value: "84" },
-      { label: "Avg. Attendance", value: "94%" },
-    ],
-  },
-  "soundcheck-atl": {
-    displayName: "Soundcheck ATL",
-    tagline: "Atlanta's loudest nights — 3x TMI Promoter of the Month",
-    city: "Atlanta, GA",
-    focus: "Multi-Genre",
-    isVerified: true,
-    stats: [
-      { label: "Events Promoted", value: "67" },
-      { label: "Tickets Sold", value: "94k" },
-      { label: "Artists Booked", value: "31" },
-      { label: "Avg. Attendance", value: "88%" },
-    ],
-  },
-};
-
 function titleCase(slug: string) {
   return slug.split("-").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
 }
 
-// Rule 20 — honest defaults for promoters outside the 2 explicit curated
-// entries above. Every stat here was previously hash-derived from the slug
-// (e.g. "Tickets Sold: 1+hash%99 k") — the same fake-Diamond-tier bug class.
 function seedPromoter(slug: string): SeedPromoter {
-  if (SEED_PROMOTERS[slug]) return SEED_PROMOTERS[slug]!;
   return {
     displayName: titleCase(slug),
     tagline: "Independent music promoter on The Musician's Index.",

@@ -8,6 +8,13 @@ import MemoryWall from "@/components/media/MemoryWall";
 import TieredAdSlot from "@/components/ads/TieredAdSlot";
 import OmniPresenceEngine from "@/components/presence/OmniPresenceEngine";
 import { prisma } from "@/lib/prisma";
+// ── Rule 15 Canisters ──────────────────────────────────────────────────────────
+import { PlaylistCanister } from "@/components/canisters/PlaylistCanister";
+import AvatarCreationCenter from "@/components/canisters/AvatarCreationCenter";
+import { AvatarWorkspaceCanister } from "@/components/canisters/AvatarWorkspaceCanister";
+import { InventoryCanister } from "@/components/canisters/InventoryCanister";
+import { PublicLobbyCanister } from "@/components/canisters/PublicLobbyCanister";
+import { LiveLobbyWallCanister } from "@/components/canisters/LiveLobbyWallCanister";
 
 interface Props { params: { slug: string } }
 
@@ -254,6 +261,31 @@ export default async function FanProfilePage({ params }: Props) {
           role="fan"
           accentColor={tierConfig.color}
         />
+
+        {/* ── Rule 15 Canister Section ── */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 20, marginTop: 20 }}>
+          {/* Playlist */}
+          <PlaylistCanister
+            entityId={params.slug}
+            entityName={fan.displayName}
+            accentColor={tierConfig.color}
+            isOwner={false}
+          />
+          {/* Avatar Creation Center */}
+          <AvatarCreationCenter accentColor={tierConfig.color} />
+          {/* Avatar Workspace */}
+          <AvatarWorkspaceCanister accentColor={tierConfig.color} />
+          {/* Inventory */}
+          <InventoryCanister accentColor="#FF6B35" />
+          {/* Public Lobby */}
+          <PublicLobbyCanister
+            entityId={params.slug}
+            entityName={fan.displayName}
+            accentColor="#00FF88"
+          />
+          {/* Live Lobby Wall */}
+          <LiveLobbyWallCanister accentColor={tierConfig.color} maxRooms={6} />
+        </div>
       </div>
     </main>
   );

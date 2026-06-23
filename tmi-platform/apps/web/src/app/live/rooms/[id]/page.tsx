@@ -24,6 +24,16 @@ import UnifiedAudienceShell from "@/components/live/UnifiedAudienceShell";
 import TmiAudiencePerspectiveShell from "@/components/audience/TmiAudiencePerspectiveShell";
 import SplitStreamMatrix from "@/components/media/SplitStreamMatrix";
 import PerformanceVotePanel from "@/components/arena/PerformanceVotePanel";
+import AudienceEntryBeacon from "@/components/live/AudienceEntryBeacon";
+// ── Rule 15 Canisters ──────────────────────────────────────────────────────────
+import { PlaylistCanister } from "@/components/canisters/PlaylistCanister";
+import { MemoryWallCanister } from "@/components/canisters/MemoryWallCanister";
+import MessagingCanister from "@/components/canisters/MessagingCanister";
+import { StoreCanister } from "@/components/canisters/StoreCanister";
+import AvatarCreationCenter from "@/components/canisters/AvatarCreationCenter";
+import { AvatarWorkspaceCanister } from "@/components/canisters/AvatarWorkspaceCanister";
+import { InventoryCanister } from "@/components/canisters/InventoryCanister";
+import { PrivateLobbyCanister } from "@/components/canisters/PrivateLobbyCanister";
 
 // Referrers that grant direct room entry (passed via ?from= query param)
 const LOBBY_AUTHORIZED_ORIGINS = new Set([
@@ -177,6 +187,7 @@ export default async function LiveRoomPage({ params, searchParams }: LiveRoomPag
             a route. Every seat here is a real fanId, never a fabricated count. */}
         {!performerSlug && (
           <div style={{ marginTop: 16 }}>
+            <AudienceEntryBeacon roomId={id} viewerId={fanSlug ?? sessionId ?? undefined} source={fromValue || "live-room"} />
             <TmiAudiencePerspectiveShell roomId={id} fanId={fanSlug ?? sessionId ?? undefined} />
           </div>
         )}
@@ -223,11 +234,35 @@ export default async function LiveRoomPage({ params, searchParams }: LiveRoomPag
         )}
 
         {/* Rule 6: Discovery Rails — keep fans in the content graph after the room */}
-        <div style={{ marginTop: 32, paddingBottom: 60 }}>
+        <div style={{ marginTop: 32 }}>
           <DiscoveryRail type="liveRooms" exclude={id} accentColor="#E63000" label="OTHER LIVE ROOMS" />
           <DiscoveryRail type="performers" accentColor="#00E5FF" label="FEATURED PERFORMERS" />
           <DiscoveryRail type="games" accentColor="#AA2DFF" label="BATTLES & GAMES" />
           <DiscoveryRail type="sponsors" accentColor="#FFD700" label="PLATFORM PARTNERS" />
+        </div>
+
+        {/* ── Rule 15 Canister Section ── */}
+        <div style={{ marginTop: 32, paddingBottom: 60, display: "flex", flexDirection: "column", gap: 20 }}>
+          {/* Playlist — listen while watching */}
+          <PlaylistCanister entityId={performerSlug ?? id} accentColor="#AA2DFF" />
+          {/* Memory Wall — capture moments from this room */}
+          <MemoryWallCanister entityId={id} entityType="room" title="Room Memories" accentColor="#FF2DAA" />
+          {/* Messaging — DM the performer or other fans */}
+          <MessagingCanister recipientId={performerSlug ?? id} height={340} compact />
+          {/* Store — support the performer */}
+          {performerSlug && (
+            <StoreCanister entityId={performerSlug} storeType="performer" accentColor="#FFD700" maxItems={4} />
+          )}
+          {/* Avatar Creation Center */}
+          <AvatarCreationCenter accentColor="#AA2DFF" />
+          {/* Avatar Workspace */}
+          <AvatarWorkspaceCanister accentColor="#00FFFF" />
+          {/* Inventory */}
+          <InventoryCanister accentColor="#FF6B35" />
+          {/* Private Lobby */}
+          {performerSlug && (
+            <PrivateLobbyCanister entityId={performerSlug} accentColor="#AA2DFF" />
+          )}
         </div>
       </div>
     </main>

@@ -38,6 +38,25 @@ enum OnboardingState {
   COMPLETE
 }
 
+// Performer specialization types (for performers who select multiple types)
+enum PerformerType {
+  RAPPER
+  SINGER
+  DJ
+  PRODUCER
+  GUITARIST
+  DRUMMER
+  COMEDIAN
+  DANCER
+  ACTOR
+  MAGICIAN
+  SPOKEN_WORD
+  BAND
+  ORCHESTRA
+  CHOIR
+  OTHER
+}
+
 model User {
   id                             String          @id @default(cuid())
   name                           String?
@@ -46,6 +65,9 @@ model User {
   emailVerified                  DateTime?
   image                          String?
   role                           Role            @default(USER)
+  activeRole                     Role?                      // Currently viewing/active role
+  userRoles                      UserRole[]     @relation("UserToRoles")  // All roles assigned to this user
+  performerTypes                 UserPerformerType[] @relation("UserToPerformerTypes")  // Performer type specializations
   onboardingState                OnboardingState @default(NO_ROLE_SELECTED)
   onboardingCompletedAt          DateTime?
   acceptedOriginalityAgreementAt DateTime?
@@ -76,6 +98,9 @@ model User {
 
   // Ledger
   ledgerEntries LedgerEntry[]
+
+  // Performer Sponsorship (Type A: local business sponsors a performer)
+  performerSponsorships PerformerSponsorship[]
 
   // Relations added for schema additions
   musicLinksAdded   MusicLink[]    @relation("MusicLinkAddedBy")
@@ -166,6 +191,16 @@ model User {
   songs                  Song[]
   videos                 Video[]
   avatarConfig           AvatarConfig?
+
+  // Auth: password reset tokens
+  passwordResetTokens    PasswordResetToken[]
+
+  // Social following graph
+  followers              Follow[]            @relation("FollowingUser")
+  following              Follow[]            @relation("FollowerUser")
+
+  // Season passes
+  seasonPassOwnerships   SeasonPassOwnership[]
 }
 
 model Account {
@@ -201,6 +236,29 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+}
+
+// Multi-role support: track all roles assigned to a user
+model UserRole {
+  id        String   @id @default(cuid())
+  userId    String
+  role      Role
+  createdAt DateTime @default(now())
+  user      User     @relation("UserToRoles", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, role])
+  @@index([userId])
+}
+
+// Performer type specializations (when user has PERFORMER role)
+model UserPerformerType {
+  id         String        @id @default(cuid())
+  userId     String
+  type       PerformerType
+  user       User          @relation("UserToPerformerTypes", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, type])
+  @@index([userId])
 }
 
 // ==============================================================================
@@ -755,6 +813,40 @@ model SponsorPackage {
   isActive    Boolean @default(true)
 
   @@map("sponsor_packages")
+}
+
+// ─── Performer Sponsorship (Type A: local business sponsors a performer) ─────
+// performerSlug references PerformerRegistry — performers are static seed
+// data, not a Prisma table, so this is a plain string, not a @relation.
+model PerformerSponsorship {
+  id String @id @default(cuid())
+
+  sponsorUserId String
+  sponsorUser   User   @relation(fields: [sponsorUserId], references: [id])
+
+  performerSlug String
+  sponsorClass  String // 'local' | 'major'
+  tier          String // e.g. 'solo' | 'group'
+  monthlyPriceCents Int
+
+  status    String   @default("active") // active | cancelled | expired | payment_failed
+  startedAt DateTime @default(now())
+  endsAt    DateTime?
+
+  stripeSubscriptionId String?
+  stripeCustomerId     String?
+
+  sponsorMessage String?
+  sponsorLogoUrl String?
+  sponsorUrl     String?
+
+  impressions Int @default(0)
+  clicks      Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("performer_sponsorships")
 }
 
 // ─── Contest Round ───────────────────────────────────────────────────────────
@@ -2762,6 +2854,48 @@ model RoomPresence {
   @@index([lastSeenAt])
 }
 
+// ==============================================================================
+// MESSAGING SYSTEM — DB-backed threads and messages
+// Migration needed: npx prisma migrate dev --name add_messaging
+// ==============================================================================
+
+model Conversation {
+  id             String    @id @default(cuid())
+  kind           String    @default("fan-fan")
+  // Participants stored as userId array for fast lookup
+  participantIds String[]
+  isArchived     Boolean   @default(false)
+  isBlocked      Boolean   @default(false)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  messages       Message[]
+
+  @@index([participantIds])
+  @@map("conversations")
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId       String
+  senderName     String
+  body           String       @db.Text
+  messageType    String       @default("text")
+  valueUsdCents  Int?
+  mediaUrl       String?
+  isDeleted      Boolean      @default(false)
+  // userIds who have read this message — stored as String array
+  readByIds      String[]
+  createdAt      DateTime     @default(now())
+  editedAt       DateTime?
+  deletedAt      DateTime?
+
+  @@index([conversationId, createdAt])
+  @@index([senderId])
+  @@map("messages")
+}
+
 // ── Content Lifecycle — Phase A: Playlist + Song ──────────────────────────────
 
 model Playlist {
@@ -2841,6 +2975,73 @@ model Video {
   @@index([uploaderId])
   @@index([genre])
   @@map("videos")
+}
+
+// ── Auth: Password Reset ─────────────────────────────────────────────────────
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@map("password_reset_tokens")
+}
+
+// ── Social Graph: Follow ─────────────────────────────────────────────────────
+
+model Follow {
+  id          String   @id @default(cuid())
+  followerId  String
+  followingId String
+  follower    User     @relation("FollowerUser", fields: [followerId], references: [id], onDelete: Cascade)
+  following   User     @relation("FollowingUser", fields: [followingId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+
+  @@unique([followerId, followingId])
+  @@index([followerId])
+  @@index([followingId])
+  @@map("follows")
+}
+
+// ── Season Passes ────────────────────────────────────────────────────────────
+
+model SeasonPass {
+  id          String              @id @default(cuid())
+  name        String
+  description String?             @db.Text
+  price       Int                 // in cents
+  currency    String              @default("usd")
+  tier        String              // FREE, PRO, GOLD, PLATINUM, DIAMOND
+  startDate   DateTime
+  endDate     DateTime
+  maxHolders  Int?
+  isActive    Boolean             @default(true)
+  stripePriceId String?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  ownerships  SeasonPassOwnership[]
+
+  @@map("season_passes")
+}
+
+model SeasonPassOwnership {
+  id           String      @id @default(cuid())
+  userId       String
+  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  seasonPassId String
+  seasonPass   SeasonPass  @relation(fields: [seasonPassId], references: [id], onDelete: Cascade)
+  purchasedAt  DateTime    @default(now())
+  stripePaymentId String?
+  isActive     Boolean     @default(true)
+
+  @@unique([userId, seasonPassId])
+  @@index([userId])
+  @@map("season_pass_ownerships")
 }
 
 // ── Content Lifecycle — Phase C: Avatar ──────────────────────────────────────

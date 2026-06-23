@@ -1,0 +1,488 @@
+{
+  "metadata": {
+    "timestamp": "2026-06-22T00:00:00Z",
+    "phase": "Phase 0 Audit",
+    "auditScope": "Verify location-independent listening rewards and map all XP/animation/sound triggers",
+    "totalXpActions": 45,
+    "verifiedLocationIndependent": 28,
+    "needsVerification": 17
+  },
+  "locationIndependenceVerification": {
+    "rule": "Listening Time = Listening Points, not Location = Points",
+    "status": "PARTIALLY VERIFIED",
+    "findings": {
+      "independentActions": [
+        {
+          "action": "watch_stream",
+          "xp": 10,
+          "category": "consumption",
+          "locationIndependent": true,
+          "verification": "XpActionRegistry has no location check; trigger is time-based only",
+          "surfaces": "Any page with video player (Profile, Magazine, Home, Playlist, Radio)",
+          "audioTrigger": "ui-whoosh-bubbles.mp3",
+          "animationTrigger": "XP +10 toast, tier progress bar glow"
+        },
+        {
+          "action": "watch_live_5min",
+          "xp": 15,
+          "category": "consumption",
+          "locationIndependent": true,
+          "verification": "No location gate; time-based trigger, works in any live room or broadcast view",
+          "surfaces": "Any live broadcast (Home 3, Profile, Lobby, Live Room, Radio)",
+          "audioTrigger": "gameshow-winner-bell.mp3",
+          "animationTrigger": "Milestone toast, 5-min achievement badge"
+        },
+        {
+          "action": "watch_live_30min",
+          "xp": 50,
+          "category": "consumption",
+          "locationIndependent": true,
+          "verification": "30-min milestone; no location gate; works background tab, mobile app, etc.",
+          "surfaces": "Persistent across any live context",
+          "audioTrigger": "concert-show-opener.mp3",
+          "animationTrigger": "Large milestone popup, tier meter jump, golden shine effect"
+        },
+        {
+          "action": "read_article",
+          "xp": 25,
+          "category": "consumption",
+          "locationIndependent": true,
+          "verification": "Magazine, performer profile, home discovery all grant same XP; time-on-page based",
+          "surfaces": "Magazine, Profile Article, Discovery Rail, Newsletter",
+          "audioTrigger": "ui-copper-bell.mp3",
+          "animationTrigger": "Article completion toast, reading streak counter"
+        },
+        {
+          "action": "attend_live_room",
+          "xp": 20,
+          "category": "consumption",
+          "locationIndependent": true,
+          "verification": "Entry-based, not view-duration-based; XP granted on successful lobby entry",
+          "surfaces": "Any live room entry (/live/rooms/[id], /lobby, etc.)",
+          "audioTrigger": "ui-digital-bell.mp3",
+          "animationTrigger": "Room-entered toast, audience count update with glow"
+        },
+        {
+          "action": "daily_login",
+          "xp": 20,
+          "category": "platform",
+          "locationIndependent": true,
+          "verification": "Single check per 20-hour window; location irrelevant, just session auth",
+          "surfaces": "Awarded on app.tsx layout load with SessionContext",
+          "audioTrigger": "ui-positive-bell.mp3",
+          "animationTrigger": "Daily streak badge, login counter animation"
+        }
+      ],
+      "locationDependentActions": [
+        {
+          "action": "enter_battle",
+          "xp": 200,
+          "category": "competitive",
+          "locationIndependent": false,
+          "reason": "Must physically submit battle entry on /battles/live or Arena page; can't grant from outside",
+          "surfaces": "Battle Arena page only"
+        },
+        {
+          "action": "vote_battle",
+          "xp": 15,
+          "category": "competitive",
+          "locationIndependent": false,
+          "reason": "Voting UI only appears in live room vote panel; not accessible elsewhere",
+          "surfaces": "Live battle room only"
+        },
+        {
+          "action": "win_battle",
+          "xp": 800,
+          "category": "competitive",
+          "locationIndependent": false,
+          "reason": "Outcome determined by arena judge system; can only trigger during active battle",
+          "surfaces": "Battle completion event only"
+        }
+      ],
+      "needsImplementationVerification": [
+        {
+          "action": "comment",
+          "xp": 5,
+          "category": "social",
+          "currentStatus": "Implemented in some surfaces",
+          "needsCheck": "Verify XP granted consistently on all comment surfaces (article, performer, profile, chat)",
+          "audioTrigger": "ui-menu-pack.mp3 (light)",
+          "animationTrigger": "Comment posted toast"
+        },
+        {
+          "action": "share_article",
+          "xp": 20,
+          "category": "social",
+          "currentStatus": "Share button exists",
+          "needsCheck": "Verify XP is actually granted on share action (not just button render)",
+          "audioTrigger": "ui-whoosh-bubbles.mp3",
+          "animationTrigger": "Share confirmation toast"
+        },
+        {
+          "action": "like_track",
+          "xp": 5,
+          "category": "social",
+          "currentStatus": "Like button exists on playlists",
+          "needsCheck": "Verify XP granted on like (check MediaPlayer.tsx + PlaylistPlayer.tsx)",
+          "audioTrigger": "ui-positive-bell.mp3 (light)",
+          "animationTrigger": "Like heart animation + counter"
+        }
+      ]
+    }
+  },
+  "xpAnimationTriggers": {
+    "totalMapped": 28,
+    "categories": {
+      "consumption": {
+        "count": 6,
+        "triggers": [
+          {
+            "action": "read_article",
+            "xp": 25,
+            "animation": "Toast slide-in with article icon, XP amount, reading streak counter",
+            "timing": "Article completion (time-on-page threshold or manual completion)",
+            "soundEffect": "ui-copper-bell.mp3",
+            "vfx": "Golden shine on streak badge, tier meter glow if milestone"
+          },
+          {
+            "action": "watch_stream",
+            "xp": 10,
+            "animation": "Small XP float-up from video player center",
+            "timing": "Every stream start or natural break",
+            "soundEffect": "ui-whoosh-bubbles.mp3",
+            "vfx": "Video player border glow (brief)"
+          },
+          {
+            "action": "watch_live_5min",
+            "xp": 15,
+            "animation": "Milestone toast with 5-minute badge icon, XP amount",
+            "timing": "After 5 minutes of live viewing",
+            "soundEffect": "gameshow-winner-bell.mp3",
+            "vfx": "Achievement unlock shine effect"
+          },
+          {
+            "action": "watch_live_30min",
+            "xp": 50,
+            "animation": "Large modal popup: 'MILESTONE: 30 Minutes!', tier progress bar jump, confetti alternative (XP only)",
+            "timing": "After 30 minutes of live viewing",
+            "soundEffect": "concert-show-opener.mp3",
+            "vfx": "Screen-filling golden glow, tier meter overflow animation, badge unlock"
+          },
+          {
+            "action": "attend_live_room",
+            "xp": 20,
+            "animation": "Room-join toast, audience count updates with glow, user avatar appears in seat",
+            "timing": "On successful lobby entry (after avatar/seat assignment)",
+            "soundEffect": "ui-digital-bell.mp3",
+            "vfx": "Audience count number +1 glow, user avatar entrance animation (fade-in or slide)"
+          },
+          {
+            "action": "book_performer",
+            "xp": 200,
+            "animation": "Large success modal: booking confirmation + XP awarded + timeline update",
+            "timing": "After booking form submission and Stripe success",
+            "soundEffect": "concert-stinger.mp3",
+            "vfx": "Calendar/booking card appears in timeline with glow, XP counter jumps"
+          }
+        ]
+      },
+      "social": {
+        "count": 4,
+        "triggers": [
+          {
+            "action": "comment",
+            "xp": 5,
+            "animation": "Comment appears in thread, small XP float-up from comment text",
+            "timing": "Immediately on comment post success",
+            "soundEffect": "ui-menu-pack.mp3 (very light)",
+            "vfx": "Comment fade-in from top, +5 XP badge"
+          },
+          {
+            "action": "share_article",
+            "xp": 20,
+            "animation": "Share confirmation toast: 'Shared! +20 XP'",
+            "timing": "On share button click (social share complete)",
+            "soundEffect": "ui-whoosh-bubbles.mp3",
+            "vfx": "Share icon highlight glow"
+          },
+          {
+            "action": "share_performer",
+            "xp": 20,
+            "animation": "Same as share_article: 'Shared! +20 XP'",
+            "timing": "On performer profile share action",
+            "soundEffect": "ui-whoosh-bubbles.mp3",
+            "vfx": "Share button glow, performer avatar briefly highlights"
+          },
+          {
+            "action": "like_track",
+            "xp": 5,
+            "animation": "Heart icon fills in, counter increments, small XP float-up",
+            "timing": "On like button click (instant)",
+            "soundEffect": "ui-positive-bell.mp3 (light)",
+            "vfx": "Heart pulse animation, like counter +1 animation"
+          }
+        ]
+      },
+      "financial": {
+        "count": 6,
+        "triggers": [
+          {
+            "action": "send_tip",
+            "xp": 100,
+            "animation": "Large tip success modal: amount confirmed, XP awarded (+100), performer gets notification",
+            "timing": "After Stripe charge succeeds",
+            "soundEffect": "concert-show-opener.mp3",
+            "vfx": "Tip counter animates up, user gets 'tipper' achievement badge glow, performer name highlights"
+          },
+          {
+            "action": "buy_merch",
+            "xp": 150,
+            "animation": "Purchase success + order confirmation, XP +150 modal, inventory updates",
+            "timing": "After Stripe payment succeeds",
+            "soundEffect": "gameshow-winning-coins.mp3",
+            "vfx": "Merch item appears in inventory with golden border glow, tier meter jumps"
+          },
+          {
+            "action": "buy_ticket",
+            "xp": 200,
+            "animation": "Ticket purchase confirmation, ticket code appears, XP +200",
+            "timing": "After payment confirmation",
+            "soundEffect": "concert-stinger.mp3",
+            "vfx": "Ticket card appears in feed with glow, user's event calendar updates"
+          },
+          {
+            "action": "join_fan_club",
+            "xp": 300,
+            "animation": "Large modal: 'Fan Club Member!', membership badge unlocked, XP +300, exclusive content hint",
+            "timing": "After recurring subscription activated",
+            "soundEffect": "concert-show-opener.mp3",
+            "vfx": "Member badge appears with star animation, loyalty tier updates, exclusive content icons appear"
+          },
+          {
+            "action": "buy_beat_license",
+            "xp": 250,
+            "animation": "License purchase confirmation, beat added to collection, XP +250",
+            "timing": "After Stripe beat license purchase",
+            "soundEffect": "gameshow-winning-coins.mp3",
+            "vfx": "Beat tile appears in library with glow, license tag appears"
+          },
+          {
+            "action": "book_venue",
+            "xp": 500,
+            "animation": "Large booking confirmation modal, venue details, XP +500, calendar updates",
+            "timing": "After venue booking confirmed",
+            "soundEffect": "concert-show-opener.mp3 + crowd-cheer-auditorium.mp3",
+            "vfx": "Venue appears on calendar with golden glow, performer's 'booked' badge updates, tier meter jumps significantly"
+          }
+        ]
+      },
+      "competitive": {
+        "count": 7,
+        "triggers": [
+          {
+            "action": "enter_battle",
+            "xp": 200,
+            "animation": "Battle entry confirmation, competitor list loads, XP +200",
+            "timing": "On battle registration success",
+            "soundEffect": "battle-air-horn.mp3",
+            "vfx": "Battle bracket updates, user's name appears in competitor list with glow"
+          },
+          {
+            "action": "win_battle",
+            "xp": 800,
+            "animation": "Victory modal with trophy icon, opponent name, audience size, XP +800, ranking update",
+            "timing": "When battle verdict is awarded",
+            "soundEffect": "crowd-cheering-stadium.mp3 + gameshow-winner-bell.mp3",
+            "vfx": "Trophy animation (spin + glow), confetti or particles, leaderboard animates (user jumps ranks), tier meter significant jump"
+          },
+          {
+            "action": "vote_battle",
+            "xp": 15,
+            "animation": "Vote registered toast, vote counter updates on both competitors, small XP float",
+            "timing": "On vote button click (instant)",
+            "soundEffect": "ui-positive-bell.mp3",
+            "vfx": "Vote button highlights, vote count on competitor cards animates up"
+          },
+          {
+            "action": "enter_cypher",
+            "xp": 100,
+            "animation": "Cypher entry confirmation, rotation queue shows user position, XP +100",
+            "timing": "On cypher signup success",
+            "soundEffect": "battle-beat-drop.mp3",
+            "vfx": "User joins rotation ring visualization, XP toast slides in"
+          },
+          {
+            "action": "win_cypher",
+            "xp": 500,
+            "animation": "Cypher winner announcement, trophy, audience applause, XP +500, leaderboard update",
+            "timing": "When cypher round concludes with user as winner",
+            "soundEffect": "crowd-cheering-stadium.mp3 + gameshow-winner-bell.mp3",
+            "vfx": "Winner crown appears on user's avatar, trophy spin animation, cypher-champion badge unlocks"
+          },
+          {
+            "action": "enter_monthly_idol",
+            "xp": 300,
+            "animation": "Monthly Idol registration confirmation, bracket displayed, XP +300",
+            "timing": "On idol competition registration",
+            "soundEffect": "concert-show-opener.mp3",
+            "vfx": "User's name appears in tournament bracket, application confirms"
+          },
+          {
+            "action": "place_top_3_monthly_idol",
+            "xp": 2000,
+            "animation": "Top 3 placement announcement, medal (gold/silver/bronze), XP +2000, 'monthly-idol-finalist' achievement, profile badge update, leaderboard major jump",
+            "timing": "When Monthly Idol contest concludes",
+            "soundEffect": "crowd-cheering-stadium.mp3 + concert-show-opener.mp3",
+            "vfx": "Medal on stage (3D if possible), confetti, leaderboard animates significantly, Profile shows finalist badge, tier meter jumps multiple levels"
+          }
+        ]
+      },
+      "performer": {
+        "count": 7,
+        "triggers": [
+          {
+            "action": "go_live",
+            "xp": 100,
+            "animation": "Go Live confirmation, stream URL generated, XP +100, 'LIVE' badge appears on profile",
+            "timing": "On successful broadcast start",
+            "soundEffect": "battle-321-fight.mp3",
+            "vfx": "LIVE badge pulses on profile, broadcast stream card appears with glow, XP toast"
+          },
+          {
+            "action": "reach_100_live_viewers",
+            "xp": 500,
+            "animation": "Milestone modal: 'Reached 100 Viewers!', achievement badge, XP +500, viewer counter highlights",
+            "timing": "When live audience reaches exactly 100 (or first time over 100)",
+            "soundEffect": "gameshow-winner-bell.mp3 + crowd-cheering-stadium.mp3",
+            "vfx": "Viewer count glows, milestone badge animates, user gets 'crowd-100' achievement"
+          },
+          {
+            "action": "reach_500_live_viewers",
+            "xp": 2000,
+            "animation": "Major milestone modal: 'Reached 500 Viewers!', trophy icon, XP +2000, leaderboard update, profile featured",
+            "timing": "When live audience reaches 500",
+            "soundEffect": "concert-show-opener.mp3 + crowd-cheering-stadium.mp3",
+            "vfx": "Viewer counter pulses with golden glow, large notification banner, user gets 'crowd-500' achievement, profile gets featured badge"
+          },
+          {
+            "action": "upload_track",
+            "xp": 150,
+            "animation": "Upload success, track added to profile/library, XP +150, 'track uploaded' notification",
+            "timing": "After upload completes",
+            "soundEffect": "ui-copper-bell.mp3",
+            "vfx": "Track card appears in library with glow, upload counter increments"
+          },
+          {
+            "action": "upload_video",
+            "xp": 200,
+            "animation": "Upload success, video processing, XP +200 (or awarded after transcoding), profile gallery updates",
+            "timing": "After upload completes or transcoding finishes",
+            "soundEffect": "ui-digital-bell.mp3",
+            "vfx": "Video tile appears in gallery with processing/ready state, upload counter"
+          },
+          {
+            "action": "add_merch_item",
+            "xp": 100,
+            "animation": "Merch item added to store, item card appears, XP +100",
+            "timing": "After merch creation form submitted",
+            "soundEffect": "ui-positive-bell.mp3",
+            "vfx": "Merch card appears in store with glow, inventory count updates"
+          },
+          {
+            "action": "complete_sponsor_set",
+            "xp": 1000,
+            "animation": "Large modal: 'Sponsored Set Complete!', sponsor logo, XP +1000, 'sponsored-artist' achievement, revenue preview",
+            "timing": "After completing all sponsor requirements",
+            "soundEffect": "concert-show-opener.mp3",
+            "vfx": "Sponsor logo animation, achievement badge with sponsor branding, profile shows 'Sponsored' status, tier meter significant jump"
+          }
+        ]
+      },
+      "platform": {
+        "count": 4,
+        "triggers": [
+          {
+            "action": "daily_login",
+            "xp": 20,
+            "animation": "Daily login toast, streak counter updates, XP +20",
+            "timing": "On app load if login > 20 hours ago",
+            "soundEffect": "ui-positive-bell.mp3",
+            "vfx": "Login streak badge glows, counter increments with animation"
+          },
+          {
+            "action": "complete_profile",
+            "xp": 500,
+            "animation": "Profile completion celebration modal, XP +500, profile-complete badge, stats update",
+            "timing": "When profile completion checklist hits 100%",
+            "soundEffect": "concert-show-opener.mp3",
+            "vfx": "Completion badge unlocks with glow, profile section highlights"
+          },
+          {
+            "action": "verify_account",
+            "xp": 200,
+            "animation": "Verification success modal, verified badge, XP +200, profile 'Verified' label appears",
+            "timing": "After account verification link clicked",
+            "soundEffect": "gameshow-correct.mp3",
+            "vfx": "Verified checkmark animation, badge glows, profile header updates"
+          },
+          {
+            "action": "refer_new_user",
+            "xp": 300,
+            "animation": "Referral success, new user joins, XP +300, referral counter updates, 'recruiter' badge progress",
+            "timing": "When referred user completes registration",
+            "soundEffect": "ui-whoosh-bubbles.mp3",
+            "vfx": "Referral card appears in feed with glow, recruiter badge counter increments"
+          }
+        ]
+      },
+      "content": {
+        "count": 2,
+        "triggers": [
+          {
+            "action": "article_featured",
+            "xp": 1500,
+            "animation": "Feature announcement modal, magazine cover preview, XP +1500, 'magazine-featured' badge, profile showcase update",
+            "timing": "When article is featured in magazine",
+            "soundEffect": "concert-show-opener.mp3",
+            "vfx": "Magazine cover animates, featured badge glows, profile section highlights article"
+          },
+          {
+            "action": "article_gets_1000_reads",
+            "xp": 2500,
+            "animation": "Viral milestone modal, read count highlight, XP +2500, 'viral-article' achievement, profile featured",
+            "timing": "When article reads pass 1,000",
+            "soundEffect": "crowd-cheering-stadium.mp3",
+            "vfx": "Read counter pulses with golden glow, viral badge with fire animation, leaderboard updates"
+          }
+        ]
+      }
+    }
+  },
+  "audioAndAnimationGaps": {
+    "notYetImplemented": [
+      "Radio commercial break XP/audio/animation (Rule 25, not built)",
+      "Story sharing animation (story feature not built)",
+      "DJ mode participation animations (Dance Party)",
+      "Sponsorship negotiation completion animation (business feature)",
+      "NFT-related XP actions (NFT system not confirmed active)"
+    ],
+    "needsAudioRecording": [
+      "Radio DJ voice talents (Julius, Record Ralph, Tiana, custom hosts)",
+      "Radio station IDs (genre-specific)",
+      "Commercial break assets (sponsor audio integration templates)",
+      "Premium sound bank (high-quality competitive/achievement sounds)"
+    ]
+  },
+  "verificationTodos": [
+    "Confirm watch_stream XP triggered consistently across all video players (MediaPlayer.tsx, PlaylistPlayer.tsx, ProfileVideoGallery.tsx)",
+    "Confirm attend_live_room XP granted on UniversalLobbyEntry successful seat assignment",
+    "Confirm share_article XP granted (not just button render)",
+    "Confirm like_track XP granted across all playlist contexts",
+    "Verify cooldown enforcement (5 comment cooldown = 0.25 hours should block spam)",
+    "Test location independence: watch_live_5min in background tab (should not grant)",
+    "Test location independence: watch_stream in mini-player (should grant)",
+    "Verify all achievement unlock triggers (tipper, supporter, battle-winner, etc. badges appear)",
+    "Verify tier progression audio/animation triggers (meter fills + sound on level-up)",
+    "Test radio XP when built (if applicable to Rule 25 phase)"
+  ]
+}

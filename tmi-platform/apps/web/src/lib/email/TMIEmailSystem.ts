@@ -12,6 +12,7 @@ import { isUnsubscribed } from "./unsubscribeStore";
 /* ─── Types ─────────────────────────────────────────────────────────────── */
 export type EmailType =
   | "welcome_artist" | "welcome_fan" | "welcome_venue" | "welcome_diamond" | "welcome_admin"
+  | "welcome_advertiser" | "welcome_promoter"
   | "verify_email" | "password_reset"
   | "invite" | "profile_reminder"
   | "battle_invite" | "contest_win" | "contest_loss"
@@ -22,7 +23,8 @@ export type EmailType =
   | "sponsor_confirmation"
   | "weekly_digest" | "magazine_drop"
   | "payout_queued" | "payout_approved"
-  | "streak_warning";
+  | "streak_warning"
+  | "payment_failed" | "booking_request" | "booking_confirmed";
 
 interface EmailPayload {
   to: string;
@@ -578,6 +580,92 @@ const TEMPLATES: Record<string, (data: Record<string, unknown>, email: string) =
       ${p("Tomorrow the multiplier resets. Today it stays yours.")}
     `, email, "#FF2DAA"),
   }),
+
+  welcome_advertiser: (d, email) => ({
+    subject: "TMI Advertiser Account Activated — Start Your Campaign 📢",
+    html: baseHtml(`
+      ${labelChip("ADVERTISER ACCOUNT ACTIVE", "#FF2DAA")}
+      ${h1(`Welcome, ${d.name}! Your campaign is ready. 📢`)}
+      ${p("Your TMI advertiser account gives you direct access to one of the most engaged music audiences on the internet — real fans, real performers, real events.")}
+      <ul style="color:rgba(255,255,255,0.6);font-size:12px;line-height:2.2;padding-left:18px;">
+        <li>Place ads across Discovery Rails, Magazine, and Live Rooms</li>
+        <li>Target by genre, region, tier, and event type</li>
+        <li>Real-time impression and click reporting</li>
+        <li>Ad slots never go empty — your brand is always visible</li>
+      </ul>
+      ${btn("Open Advertiser Dashboard", `${BASE_URL}/hub/advertiser`, "#FF2DAA")}
+      ${p('<span style="font-size:10px;color:rgba(255,255,255,0.25);">Questions about placements? Contact advertisers@themusiciansindex.com</span>')}
+    `, email, "#FF2DAA"),
+  }),
+
+  welcome_promoter: (d, email) => ({
+    subject: "TMI Promoter Account Activated — List Your First Event 🎟️",
+    html: baseHtml(`
+      ${labelChip("PROMOTER ACCOUNT ACTIVE", "#00FF88")}
+      ${h1(`Welcome, ${d.name}! Your promoter tools are live. 🎟️`)}
+      ${p("Your TMI promoter account gives you the full ticketing and event management stack — create events, sell tickets directly to fans, manage your performer lineup, and track attendance in real time.")}
+      <ul style="color:rgba(255,255,255,0.6);font-size:12px;line-height:2.2;padding-left:18px;">
+        <li>Create unlimited events with tiered ticket pricing</li>
+        <li>Sell tickets with zero TMI platform fees</li>
+        <li>Allocate ticket inventory to any venue partner</li>
+        <li>Track purchases, scans, and attendance live</li>
+        <li>Integrated with performer booking system</li>
+      </ul>
+      ${btn("Open Promoter Dashboard", `${BASE_URL}/hub/promoter`, "#00FF88")}
+      ${p('<span style="font-size:10px;color:rgba(255,255,255,0.25);">Standard payment processing fees may apply. You keep everything else.</span>')}
+    `, email, "#00FF88"),
+  }),
+
+  payment_failed: (d, email) => ({
+    subject: "⚠️ TMI — Action Required: Payment Failed",
+    html: baseHtml(`
+      ${badge("PAYMENT FAILED", "#ef4444")}
+      ${h1("Your payment didn't go through.")}
+      ${p(`We weren't able to charge your card for your <strong style="color:#fff;">${d.plan ?? "TMI"} subscription</strong>. Your account has been temporarily downgraded to Free.`)}
+      ${d.failureReason ? p(`Reason: <em style="color:rgba(255,255,255,0.5);">${d.failureReason}</em>`) : ""}
+      ${p("Update your payment method to restore your access immediately.")}
+      ${btn("Update Payment Method", String(d.updateUrl ?? `${BASE_URL}/settings/billing`), "#ef4444")}
+      ${p('<span style="font-size:11px;color:rgba(255,255,255,0.3);">Your content, XP, and follower data are safe and waiting for you. This only affects paid features.</span>')}
+    `, email, "#ef4444"),
+  }),
+
+  booking_request: (d, email) => ({
+    subject: `📅 Booking Request Received — ${d.venueName ?? "TMI Venue"}`,
+    html: baseHtml(`
+      ${labelChip("BOOKING REQUEST CONFIRMED", "#00FFFF")}
+      ${h1(`Your booking request is in! 📅`)}
+      ${p(`We've received your request to perform at <strong style="color:#fff;">${d.venueName ?? "the venue"}</strong>. The venue team will review and respond within 24 hours.`)}
+      ${statBlock([
+        ["Booking ID", String(d.bookingId ?? "Pending")],
+        ["Venue", String(d.venueName ?? "—")],
+        ["Event Date", String(d.eventDate ?? "—")],
+        ["Event Type", String(d.eventType ?? "Concert")],
+        ["Estimated Total", `$${d.estimatedTotal ?? 0}`],
+      ], "#00FFFF")}
+      ${d.contractId ? p(`Contract reference: <code style="color:rgba(255,255,255,0.5);font-size:11px;">${d.contractId}</code>`) : ""}
+      ${btn("View Booking Status", `${BASE_URL}/bookings/${d.bookingId ?? ""}`, "#00FFFF")}
+      ${p('<span style="font-size:10px;color:rgba(255,255,255,0.25);">Questions? Reply to this email or visit the venue\'s profile on TMI.</span>')}
+    `, email, "#00FFFF"),
+  }),
+
+  booking_confirmed: (d, email) => ({
+    subject: `✅ Booking Confirmed — ${d.showTitle ?? "Your TMI Event"}`,
+    html: baseHtml(`
+      ${badge("BOOKING CONFIRMED", "#22c55e")}
+      ${h1(`You're booked! ✅`)}
+      ${p(`Your booking for <strong style="color:#fff;">${d.showTitle ?? "the event"}</strong> has been confirmed by the venue. Get ready to perform.`)}
+      ${statBlock([
+        ["Event", String(d.showTitle ?? "—")],
+        ["Venue", String(d.venueName ?? "—")],
+        ["Date", String(d.showDate ?? "—")],
+        ["Time", String(d.showTime ?? "—")],
+        ["Artist", String(d.artistName ?? "—")],
+        ["Guarantee", d.fee ? `$${d.fee}` : "TBD"],
+      ], "#22c55e")}
+      ${btn("View Booking Details", String(d.ticketUrl ?? `${BASE_URL}/bookings`), "#22c55e")}
+      ${p('<span style="font-size:10px;color:rgba(255,255,255,0.25);">Soundcheck details and rider confirmation will follow from the venue directly.</span>')}
+    `, email, "#22c55e"),
+  }),
 };
 
 /* ─── Email category classification ─────────────────────────────────────── */
@@ -587,7 +675,8 @@ const TRANSACTIONAL_TYPES = new Set<EmailType>([
   "subscription_start", "subscription_renew", "subscription_cancel", "subscription_upgrade",
   "payout_queued", "payout_approved", "contest_win", "contest_loss",
   "battle_invite", "welcome_diamond", "welcome_admin", "sponsor_confirmation",
-  "welcome_artist", "welcome_fan", "welcome_venue", "streak_warning", "invite",
+  "welcome_artist", "welcome_fan", "welcome_venue", "welcome_advertiser", "welcome_promoter",
+  "streak_warning", "invite", "payment_failed", "booking_request", "booking_confirmed",
 ]);
 
 function emailCategoryFor(type: EmailType): "transactional" | "marketing" | "newsletter" {

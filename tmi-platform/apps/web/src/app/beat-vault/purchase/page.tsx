@@ -11,13 +11,8 @@ function PurchaseContent() {
   const price    = parseInt(params?.get("price") ?? "0", 10);
 
   function handlePay() {
-    const qs = new URLSearchParams({
-      priceId: "price_beat_basic",
-      amount: String(price * 100),
-      productName: `Beat: ${title} by ${producer}`,
-      mode: "payment",
-    });
-    router.push(`/api/stripe/checkout?${qs.toString()}`);
+    // Route to canonical Beat Marketplace where real Stripe checkout is wired
+    router.push(`/beats/marketplace`);
   }
 
   return (

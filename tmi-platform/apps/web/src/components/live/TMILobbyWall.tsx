@@ -66,18 +66,10 @@ const SEAT_COLORS: Record<SeatSection, string> = {
   balcony:   "#8b5cf6",
 };
 
-/* ─── Mock seat data (replace with real API data) ───────────────────────── */
+/* ─── Initialize empty seats (populate from real audience data via props/context) ───── */
 function generateSeats(total: number): Seat[] {
-  const names = [
-    "Kreach", "KG Supreme", "NovaStar", "Freq Wave", "Savage",
-    "DJ Marcel", "B.J. M Beat", "Lagos King", "AtlFan22", "ChicoVibes",
-    "FreqRider", "ZuriBloom", "Krypt_Rider", "MusicHead", "BeatSeeker",
-  ];
-  const tiers = ["Diamond", "Gold", "Silver", "Free"];
-  const colors = ["#06b6d4", "#f59e0b", "#a855f7", "#22c55e", "#ef4444", "#ff6600"];
-
+  // Return all empty seats. Actual occupancy comes from audienceRuntimeEngine via props.
   return Array.from({ length: total }, (_, i) => {
-    const occupied = Math.random() < 0.72;
     const section: SeatSection =
       i < total * 0.15
         ? "front_row"
@@ -87,24 +79,16 @@ function generateSeats(total: number): Seat[] {
     return {
       id: `seat-${i + 1}`,
       section,
-      userId: occupied ? `user_${i}` : undefined,
-      userName: occupied ? names[i % names.length] : undefined,
-      avatarColor: occupied ? colors[i % colors.length] : undefined,
-      isLive: occupied && Math.random() < 0.3,
-      tier: tiers[Math.floor(Math.random() * tiers.length)],
+      userId: undefined,
+      userName: undefined,
+      avatarColor: undefined,
+      isLive: false,
+      tier: "Free",
     };
   });
 }
 
 /* ─── Live chat seed ─────────────────────────────────────────────────────── */
-const CHAT_SEED: ChatMessage[] = [
-  { id: "c1", userId: "u1", userName: "Kreach", text: "Fire!! 🔥", ts: Date.now() - 45000, type: "chat" },
-  { id: "c2", userId: "u2", userName: "NovaStar", text: "This beat is hard", ts: Date.now() - 38000, type: "chat" },
-  { id: "c3", userId: "u3", userName: "Lagos King", text: "", ts: Date.now() - 30000, type: "reaction", emoji: "👑" },
-  { id: "c4", userId: "u4", userName: "ZuriBloom", text: "Sent $10 tip!", ts: Date.now() - 22000, type: "tip", amount: 10 },
-  { id: "c5", userId: "u5", userName: "Freq Wave", text: "When's the battle starting?", ts: Date.now() - 15000, type: "chat" },
-  { id: "c6", userId: "u6", userName: "ChicoVibes", text: "", ts: Date.now() - 8000, type: "reaction", emoji: "🎤" },
-];
 
 /* ─── Chat message row ───────────────────────────────────────────────────── */
 function ChatRow({ msg }: { msg: ChatMessage }) {
@@ -190,7 +174,7 @@ export default function TMILobbyWall({
 }: LobbyWallProps) {
   const [view,         setView]         = useState<View>("audience");
   const [seats]                         = useState(() => generateSeats(totalSeats));
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>(CHAT_SEED);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput,    setChatInput]    = useState("");
   const [showPiP,      setShowPiP]      = useState(false);
   const [selectedSection, setSelectedSection] = useState<SeatSection | "all">("all");
@@ -203,30 +187,6 @@ export default function TMILobbyWall({
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatMessages]);
-
-  /* Simulated incoming messages */
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const reactions = ["🔥", "💎", "🎤", "👑", "⚡", "🏆"];
-      const names = ["AtlFan22", "BeatSeeker", "MusicHead", "FreqRider"];
-      const id = `msg-${Date.now()}`;
-      const isReaction = Math.random() < 0.4;
-
-      setChatMessages((prev) => [
-        ...prev.slice(-40),
-        {
-          id,
-          userId: `u${Date.now()}`,
-          userName: names[Math.floor(Math.random() * names.length)],
-          text: isReaction ? "" : ["That verse!! 🔥", "Keep it going!", "TMI is different", "Live right now!"][Math.floor(Math.random() * 4)],
-          ts: Date.now(),
-          type: isReaction ? "reaction" : "chat",
-          emoji: isReaction ? reactions[Math.floor(Math.random() * reactions.length)] : undefined,
-        },
-      ]);
-    }, 4500);
-    return () => clearInterval(interval);
-  }, []);
 
   function sendChat(e: React.FormEvent) {
     e.preventDefault();
@@ -372,8 +332,16 @@ export default function TMILobbyWall({
               <p className="text-[9px] font-black uppercase tracking-widest text-white/40">Live Chat</p>
             </div>
             <div className="flex-1 overflow-y-auto px-3 py-2 space-y-0.5">
-              {chatMessages.map((msg) => <ChatRow key={msg.id} msg={msg} />)}
-              <div ref={chatEndRef} />
+              {chatMessages.length === 0 ? (
+                <div className="flex items-center justify-center h-full text-white/40 text-[10px]">
+                  No messages yet
+                </div>
+              ) : (
+                <>
+                  {chatMessages.map((msg) => <ChatRow key={msg.id} msg={msg} />)}
+                  <div ref={chatEndRef} />
+                </>
+              )}
             </div>
             <form onSubmit={sendChat} className="p-2 border-t border-white/10 flex gap-1.5">
               <input

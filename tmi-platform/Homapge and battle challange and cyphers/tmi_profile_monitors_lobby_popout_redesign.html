@@ -1,0 +1,311 @@
+
+<h2 class="sr-only">TMI fan and performer profile redesign — three independent monitors, 3D pop-out live lobby with bigger avatars, camera capture to memory wall or playlist, and collapsible canisters</h2>
+<style>
+@keyframes scan{0%{top:-5%}100%{top:105%}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+@keyframes floatBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+@keyframes popOut{from{opacity:0;transform:scale(.9) translateY(10px)}to{opacity:1;transform:scale(1) translateY(0)}}
+@keyframes ringPulse{0%,100%{box-shadow:0 0 0 0 var(--rc,rgba(0,200,255,.4))}70%{box-shadow:0 0 0 8px rgba(0,0,0,0)}}
+@keyframes recDot{0%,100%{opacity:1}50%{opacity:.3}}
+.tabs{display:flex;gap:4px;margin-bottom:12px}
+.tab{padding:5px 10px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary);font-size:11px;cursor:pointer;background:var(--color-background-primary);color:var(--color-text-secondary)}
+.tab.on{background:var(--color-background-tertiary);color:var(--color-text-primary);font-weight:500;border-color:var(--color-border-primary)}
+.pg{display:none}.pg.on{display:block}
+.monitor{position:relative;background:var(--color-background-tertiary);border:1.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);overflow:hidden;cursor:pointer;transition:border-color .15s}
+.monitor:hover{border-color:var(--color-border-primary)}
+.monitor .scan{position:absolute;top:-200%;left:0;right:0;height:1px;background:rgba(0,180,200,.2);animation:scan 3s linear infinite;z-index:2}
+.monitor .micon{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+.monitor .micon i{font-size:26px;color:rgba(150,150,150,.25)}
+.monitor .mlabel{position:absolute;bottom:5px;left:7px;font-size:9px;color:rgba(255,255,255,.6);z-index:3;background:rgba(0,0,0,.45);padding:1px 5px;border-radius:3px}
+.monitor .mbadge{position:absolute;top:5px;right:6px;font-size:8px;font-weight:500;padding:1px 5px;border-radius:3px;z-index:3}
+.monitor .mctrl{position:absolute;top:5px;left:6px;display:flex;gap:3px;z-index:3}
+.mctrl-btn{width:16px;height:16px;border-radius:50%;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;cursor:pointer;border:none}
+.mctrl-btn i{font-size:9px;color:rgba(255,255,255,.8)}
+.chevron-tog{display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:9px 12px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-tertiary);background:var(--color-background-primary);transition:background .15s}
+.chevron-tog:hover{background:var(--color-background-secondary)}
+.avatar3d{width:54px;height:74px;display:flex;flex-direction:column;align-items:center;animation:floatBob 3.5s ease-in-out infinite;flex-shrink:0;cursor:pointer;transition:transform .15s}
+.avatar3d:hover{transform:scale(1.08)}
+.avatar3d .head{width:34px;height:34px;border-radius:50%;border:2.5px solid var(--ac,var(--color-border-info));margin-bottom:2px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:500}
+.avatar3d .body{width:26px;height:30px;border-radius:8px 8px 4px 4px;border:2px solid var(--ac,var(--color-border-info));opacity:.7}
+.avatar3d .nm{font-size:8px;margin-top:3px;color:var(--color-text-secondary);text-align:center;max-width:60px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lobby-popout{border-radius:var(--border-radius-lg);border:1.5px solid var(--color-border-info);padding:16px;background:var(--color-background-secondary);animation:popOut .3s ease-out;position:relative;overflow:hidden}
+.lobby-popout::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 50% 30%,rgba(0,150,200,.06),transparent 60%);pointer-events:none}
+.rec-btn{display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:var(--border-radius-md);border:1.5px solid var(--color-border-danger);background:var(--color-background-danger);color:var(--color-text-danger);font-size:11px;font-weight:500;cursor:pointer}
+.rec-dot{width:8px;height:8px;border-radius:50%;background:var(--color-text-danger);animation:recDot 1s ease-in-out infinite}
+.save-pill{padding:5px 10px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary);font-size:11px;cursor:pointer;background:var(--color-background-primary);display:flex;align-items:center;gap:5px}
+.save-pill:hover{background:var(--color-background-secondary)}
+.canister-row{display:flex;gap:6px;flex-wrap:wrap}
+.canister-trigger{flex:1;min-width:140px;display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-tertiary);background:var(--color-background-primary);cursor:pointer;transition:border-color .15s}
+.canister-trigger:hover{border-color:var(--color-border-info)}
+.canister-popout{margin-top:6px;border:1.5px solid var(--color-border-info);border-radius:var(--border-radius-lg);padding:12px;background:var(--color-background-primary);animation:popOut .25s ease-out}
+.threeway-step{display:flex;align-items:center;gap:6px;padding:5px;font-size:11px}
+.threeway-arrow{color:var(--color-text-tertiary);font-size:11px}
+</style>
+
+<div class="tabs">
+  <button class="tab on" onclick="sw('fan')"><i class="ti ti-user" aria-hidden="true"></i> Fan profile</button>
+  <button class="tab" onclick="sw('perf')"><i class="ti ti-microphone" aria-hidden="true"></i> Performer profile</button>
+  <button class="tab" onclick="sw('flow')"><i class="ti ti-route" aria-hidden="true"></i> Three-way flow</button>
+</div>
+
+<!-- ═══════════ FAN PROFILE ═══════════ -->
+<div id="pg-fan" class="pg on">
+
+  <!-- MONITOR TRIAD: 1 big top, 2 small independent bottom -->
+  <div style="margin-bottom:12px">
+    <div style="font-size:11px;font-weight:500;color:var(--color-text-secondary);margin-bottom:6px">Media monitors — three independent screens</div>
+    <div class="monitor" style="aspect-ratio:16/7;margin-bottom:6px" onclick="cycleMonitor('main')">
+      <div class="scan"></div>
+      <div class="micon"><i class="ti ti-device-tv" id="mainIcon" aria-hidden="true"></i></div>
+      <div class="mbadge" id="mainBadge" style="background:rgba(230,48,0,.85);color:#fff">LIVE STAGE</div>
+      <div class="mlabel" id="mainLabel">Main monitor — Wavetek performing · 2,841 watching</div>
+      <div class="mctrl">
+        <button class="mctrl-btn" onclick="event.stopPropagation();cycleMonitor('main')" aria-label="Switch feed"><i class="ti ti-switch-3" aria-hidden="true"></i></button>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+      <div class="monitor" style="aspect-ratio:16/9" onclick="cycleMonitor('left')">
+        <div class="scan"></div>
+        <div class="micon"><i class="ti ti-volume-3" id="leftIcon" aria-hidden="true"></i></div>
+        <div class="mbadge" id="leftBadge" style="background:rgba(83,74,183,.8);color:#fff">MUTE VIEW</div>
+        <div class="mlabel" id="leftLabel">Bottom left — muted ambient feed</div>
+        <div class="mctrl"><button class="mctrl-btn" onclick="event.stopPropagation();cycleMonitor('left')" aria-label="Switch"><i class="ti ti-switch-3" aria-hidden="true"></i></button></div>
+      </div>
+      <div class="monitor" style="aspect-ratio:16/9" onclick="cycleMonitor('right')">
+        <div class="scan"></div>
+        <div class="micon"><i class="ti ti-picture-in-picture" id="rightIcon" aria-hidden="true"></i></div>
+        <div class="mbadge" id="rightBadge" style="background:rgba(0,140,180,.8);color:#fff">PIP — YOU</div>
+        <div class="mlabel" id="rightLabel">Bottom right — your camera PIP</div>
+        <div class="mctrl"><button class="mctrl-btn" onclick="event.stopPropagation();cycleMonitor('right')" aria-label="Switch"><i class="ti ti-switch-3" aria-hidden="true"></i></button></div>
+      </div>
+    </div>
+    <div style="font-size:9px;color:var(--color-text-tertiary);margin-top:5px">Each monitor is independent — click to cycle: Live stage / Lobby billboard wall / Commercial / Audience view</div>
+  </div>
+
+  <!-- CAMERA CAPTURE -->
+  <div style="background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:10px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+    <div style="display:flex;align-items:center;gap:8px">
+      <div style="width:40px;height:40px;border-radius:50%;background:var(--color-background-secondary);border:1.5px solid var(--color-border-secondary);display:flex;align-items:center;justify-content:center"><i class="ti ti-camera" style="font-size:18px" aria-hidden="true"></i></div>
+      <div>
+        <div style="font-size:12px;font-weight:500">Your camera</div>
+        <div style="font-size:10px;color:var(--color-text-secondary)" id="recStatus">Ready to record</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:6px;align-items:center" id="camActions">
+      <button class="rec-btn" onclick="toggleRec()" id="recBtn"><span class="rec-dot" id="recDotEl" style="display:none"></span><i class="ti ti-circle" id="recIcon" aria-hidden="true"></i> Record</button>
+      <button class="save-pill" onclick="saveCapture('memory')" id="saveMemBtn" style="display:none"><i class="ti ti-photo-album" aria-hidden="true"></i> Save to memory wall</button>
+      <button class="save-pill" onclick="saveCapture('playlist')" id="savePlBtn" style="display:none"><i class="ti ti-playlist" aria-hidden="true"></i> Save to playlist</button>
+    </div>
+  </div>
+
+  <!-- LIVE LOBBY — pop-out 3D style with bigger avatars -->
+  <div style="margin-bottom:10px">
+    <div class="chevron-tog" onclick="toggleLobby()">
+      <div style="display:flex;align-items:center;gap:9px">
+        <i class="ti ti-door-enter" style="font-size:16px" aria-hidden="true"></i>
+        <span style="font-size:13px;font-weight:500">Live lobby</span>
+        <span style="font-size:11px;color:var(--color-text-secondary)">2,730 fans inside</span>
+      </div>
+      <i class="ti ti-chevron-down" id="lobbyChevron" style="font-size:16px;transition:transform .25s" aria-hidden="true"></i>
+    </div>
+    <div id="lobbyBody" style="display:none;margin-top:6px">
+      <div class="lobby-popout">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <span style="font-size:12px;font-weight:500"><i class="ti ti-cube-3d-sphere" aria-hidden="true"></i> 3D audience — bigger avatars, your view</span>
+          <div style="display:flex;gap:4px">
+            <button class="save-pill" style="font-size:10px;padding:3px 8px">All rooms</button>
+            <button class="save-pill" style="font-size:10px;padding:3px 8px">Hip-Hop</button>
+            <button class="save-pill" style="font-size:10px;padding:3px 8px">Battles</button>
+          </div>
+        </div>
+        <!-- Bigger avatar crowd -->
+        <div style="display:flex;justify-content:space-between;align-items:flex-end;padding:6px 10px;overflow-x:auto" id="avatarRow"></div>
+        <div style="height:2px;background:linear-gradient(90deg,transparent,var(--color-border-info),transparent);margin:8px 0"></div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">
+          <div style="background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:7px;text-align:center;cursor:pointer">
+            <div style="font-size:18px;margin-bottom:2px">🎤</div>
+            <div style="font-size:10px;font-weight:500">Main Stage</div>
+            <div style="font-size:9px;color:var(--color-text-secondary)">1,204 watching</div>
+          </div>
+          <div style="background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:7px;text-align:center;cursor:pointer">
+            <div style="font-size:18px;margin-bottom:2px">⚔️</div>
+            <div style="font-size:10px;font-weight:500">Battle Arena</div>
+            <div style="font-size:9px;color:var(--color-text-secondary)">876 watching</div>
+          </div>
+          <div style="background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:7px;text-align:center;cursor:pointer">
+            <div style="font-size:18px;margin-bottom:2px">🎵</div>
+            <div style="font-size:10px;font-weight:500">Cypher Lounge</div>
+            <div style="font-size:9px;color:var(--color-text-secondary)">432 watching</div>
+          </div>
+        </div>
+        <button style="width:100%;margin-top:8px;padding:7px;font-size:11px;background:var(--color-background-info);color:var(--color-text-info);border:0.5px solid var(--color-border-info);border-radius:var(--border-radius-md)"><i class="ti ti-door-enter" aria-hidden="true"></i> Enter as my avatar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- COLLAPSIBLE CANISTERS — playlist + memory wall (removed from inline, now pop-out) -->
+  <div class="canister-row">
+    <div class="canister-trigger" onclick="toggleCanister('plFan')">
+      <i class="ti ti-playlist" style="font-size:16px;color:var(--color-text-info)" aria-hidden="true"></i>
+      <div style="flex:1"><div style="font-size:11px;font-weight:500">Playlist</div><div style="font-size:9px;color:var(--color-text-secondary)">Submarine skin · 8 tracks</div></div>
+      <i class="ti ti-chevron-down" aria-hidden="true"></i>
+    </div>
+    <div class="canister-trigger" onclick="toggleCanister('mwFan')">
+      <i class="ti ti-photo-album" style="font-size:16px;color:var(--color-text-warning)" aria-hidden="true"></i>
+      <div style="flex:1"><div style="font-size:11px;font-weight:500">Memory wall</div><div style="font-size:9px;color:var(--color-text-secondary)">24 memories · Neon theme</div></div>
+      <i class="ti ti-chevron-down" aria-hidden="true"></i>
+    </div>
+  </div>
+  <div id="plFan-body" class="canister-popout" style="display:none">
+    <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:6px">This is the full PlaylistDashboardPanel canister — animated skin stage, equalizer, track list.</div>
+    <div style="display:flex;align-items:center;gap:8px;background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:8px">
+      <i class="ti ti-disc" style="font-size:20px;color:var(--color-text-info)" aria-hidden="true"></i>
+      <div style="flex:1"><div style="font-size:11px;font-weight:500">Now playing: Neon Pulse Beat</div><div style="font-size:10px;color:var(--color-text-secondary)">Jay Paul Sanchez</div></div>
+      <i class="ti ti-player-play" aria-hidden="true"></i>
+    </div>
+  </div>
+  <div id="mwFan-body" class="canister-popout" style="display:none">
+    <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:6px">This is the full MemoryWallContainer canister — floating masonry collage.</div>
+    <div style="display:flex;gap:6px">
+      <div style="width:50px;height:50px;background:var(--color-background-warning);border-radius:var(--border-radius-md);display:flex;align-items:center;justify-content:center"><i class="ti ti-trophy" aria-hidden="true"></i></div>
+      <div style="width:50px;height:50px;background:var(--color-background-secondary);border-radius:var(--border-radius-md);display:flex;align-items:center;justify-content:center"><i class="ti ti-photo" aria-hidden="true"></i></div>
+      <div style="width:50px;height:50px;background:var(--color-background-info);border-radius:var(--border-radius-md);display:flex;align-items:center;justify-content:center"><i class="ti ti-ticket" aria-hidden="true"></i></div>
+    </div>
+  </div>
+
+  <div style="text-align:center;margin-top:12px">
+    <button onclick="sendPrompt('Redesign the Fan Profile/Dashboard page — remove the long horizontal bobblehead lobby line and inline playlist/memory wall sections from tmi_complete_all_four_dashboards_v2.html. Replace with: (1) Three independent media monitors — one large top monitor (16:7) showing live stage/billboard wall/commercial in rotation, two smaller bottom monitors (left=mute/ambient view, right=PIP self camera) each independently switchable, not synced to each other, matching the admin observatory monitor style already built. (2) Camera capture widget with Record button, then on stop reveals Save to Memory Wall and Save to Playlist buttons routing the clip to MemoryWallEngine or PlaylistEngine. (3) Live Lobby as a collapsible chevron canister that pops out with animation revealing a 3D-style audience row with BIGGER avatars (54x74px head+body, floating bob animation, not tiny 20px bobbleheads), room cards below. (4) Playlist and Memory Wall fully removed from inline display, now collapsible canister triggers that pop out the existing PlaylistDashboardPanel and MemoryWallContainer components when clicked. Preserve the three-way experience: Fan Theater portal stays as entry point routing into Performer view. Do NOT rebuild the admin Overseer Deck — already complete.')">Build redesigned fan profile in repo ↗</button>
+  </div>
+</div>
+
+<!-- ═══════════ PERFORMER PROFILE ═══════════ -->
+<div id="pg-perf" class="pg">
+  <div style="margin-bottom:12px">
+    <div style="font-size:11px;font-weight:500;color:var(--color-text-secondary);margin-bottom:6px">Performer media monitors — independent triad</div>
+    <div class="monitor" style="aspect-ratio:16/7;margin-bottom:6px;border-color:var(--color-border-danger)">
+      <div class="scan"></div>
+      <div class="micon"><i class="ti ti-broadcast" aria-hidden="true"></i></div>
+      <div class="mbadge" style="background:rgba(230,48,0,.85);color:#fff">YOUR LIVE STREAM</div>
+      <div class="mlabel">Main — your stage, 2,841 watching</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+      <div class="monitor" style="aspect-ratio:16/9">
+        <div class="scan"></div>
+        <div class="micon"><i class="ti ti-users" aria-hidden="true"></i></div>
+        <div class="mbadge" style="background:rgba(0,140,180,.8);color:#fff">AUDIENCE</div>
+        <div class="mlabel">Bottom left — crowd view</div>
+      </div>
+      <div class="monitor" style="aspect-ratio:16/9">
+        <div class="scan"></div>
+        <div class="micon"><i class="ti ti-rectangle" aria-hidden="true"></i></div>
+        <div class="mbadge" style="background:rgba(180,117,23,.8);color:#fff">BILLBOARD</div>
+        <div class="mlabel">Bottom right — lobby wall scroll</div>
+      </div>
+    </div>
+  </div>
+  <div style="background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:10px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between">
+    <div style="display:flex;align-items:center;gap:8px">
+      <div style="width:40px;height:40px;border-radius:50%;background:var(--color-background-secondary);border:1.5px solid var(--color-border-secondary);display:flex;align-items:center;justify-content:center"><i class="ti ti-camera" style="font-size:18px" aria-hidden="true"></i></div>
+      <div><div style="font-size:12px;font-weight:500">Stage camera</div><div style="font-size:10px;color:var(--color-text-secondary)">Recording saves to your memory wall</div></div>
+    </div>
+    <button class="rec-btn"><i class="ti ti-circle" aria-hidden="true"></i> Go live</button>
+  </div>
+  <div class="canister-row">
+    <div class="canister-trigger" onclick="toggleCanister('plPerf')"><i class="ti ti-playlist" style="font-size:16px;color:var(--color-text-info)" aria-hidden="true"></i><div style="flex:1"><div style="font-size:11px;font-weight:500">Playlist</div></div><i class="ti ti-chevron-down" aria-hidden="true"></i></div>
+    <div class="canister-trigger" onclick="toggleCanister('mwPerf')"><i class="ti ti-photo-album" style="font-size:16px;color:var(--color-text-warning)" aria-hidden="true"></i><div style="flex:1"><div style="font-size:11px;font-weight:500">Memory wall</div></div><i class="ti ti-chevron-down" aria-hidden="true"></i></div>
+    <div class="canister-trigger" onclick="toggleCanister('spPerf')"><i class="ti ti-layout-grid" style="font-size:16px;color:var(--color-text-success)" aria-hidden="true"></i><div style="flex:1"><div style="font-size:11px;font-weight:500">Sponsor wall</div></div><i class="ti ti-chevron-down" aria-hidden="true"></i></div>
+  </div>
+  <div id="plPerf-body" class="canister-popout" style="display:none">Performer playlist — beats, songs, live set tracks.</div>
+  <div id="mwPerf-body" class="canister-popout" style="display:none">Performer memory wall — battle wins, concerts, milestones.</div>
+  <div id="spPerf-body" class="canister-popout" style="display:none">Sponsor Stamp Wall canister — performer only.</div>
+  <div style="text-align:center;margin-top:12px">
+    <button onclick="sendPrompt('Apply the same redesign pattern to the Performer Profile/Dashboard: three independent monitors (main live stream + bottom-left audience view + bottom-right billboard lobby wall scroll), camera/Go Live control that saves recordings to memory wall, and Playlist/Memory Wall/Sponsor Stamp Wall as collapsible pop-out canisters instead of inline sections. Keep GoLiveStudio and Sponsor Orbit/Booking Map canisters already built.')">Build redesigned performer profile in repo ↗</button>
+  </div>
+</div>
+
+<!-- ═══════════ THREE-WAY FLOW ═══════════ -->
+<div id="pg-flow" class="pg">
+  <p style="font-size:13px;font-weight:500;margin-bottom:10px">The three-way experience — preserved exactly as built</p>
+  <div style="display:flex;flex-direction:column;gap:4px;max-width:420px">
+    <div class="threeway-step"><i class="ti ti-door" style="color:var(--color-text-info)" aria-hidden="true"></i> Portal — entry point</div>
+    <div style="padding-left:18px" class="threeway-arrow">↓</div>
+    <div class="threeway-step"><i class="ti ti-theater" style="color:var(--color-text-warning)" aria-hidden="true"></i> Fan Theater — fan view of stage</div>
+    <div style="padding-left:18px" class="threeway-arrow">↓</div>
+    <div class="threeway-step"><i class="ti ti-microphone" style="color:var(--color-text-danger)" aria-hidden="true"></i> Performer view — stage looking at crowd</div>
+  </div>
+  <div style="background:var(--color-background-success);border-radius:var(--border-radius-md);padding:8px;margin-top:10px;font-size:11px;color:var(--color-text-success);max-width:420px">
+    This flow is NOT being rebuilt. The Overseer admin deck is also already complete — not touched. Only the fan and performer profile pages get the monitor triad, camera capture, and canister redesign described above.
+  </div>
+</div>
+
+<script>
+function sw(n){document.querySelectorAll('.pg').forEach(p=>p.classList.remove('on'));document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));document.getElementById('pg-'+n).classList.add('on');document.querySelectorAll('.tab')[{fan:0,perf:1,flow:2}[n]].classList.add('on');}
+
+const MAIN_STATES=[
+  {icon:'ti-device-tv',badge:'LIVE STAGE',badgeColor:'rgba(230,48,0,.85)',label:'Main monitor — Wavetek performing · 2,841 watching'},
+  {icon:'ti-layout-grid',badge:'BILLBOARD WALL',badgeColor:'rgba(180,117,23,.85)',label:'Main monitor — Live Lobby Billboard Wall scrolling'},
+  {icon:'ti-speakerphone',badge:'COMMERCIAL',badgeColor:'rgba(0,110,86,.85)',label:'Main monitor — Sponsor commercial break'},
+];
+const LEFT_STATES=[
+  {icon:'ti-volume-3',badge:'MUTE VIEW',badgeColor:'rgba(83,74,183,.8)',label:'Bottom left — muted ambient feed'},
+  {icon:'ti-users',badge:'AUDIENCE',badgeColor:'rgba(0,140,180,.8)',label:'Bottom left — full audience wide shot'},
+];
+const RIGHT_STATES=[
+  {icon:'ti-picture-in-picture',badge:'PIP — YOU',badgeColor:'rgba(0,140,180,.8)',label:'Bottom right — your camera PIP'},
+  {icon:'ti-message-circle',badge:'CHAT',badgeColor:'rgba(83,74,183,.8)',label:'Bottom right — live chat overlay'},
+];
+let mainIdx=0,leftIdx=0,rightIdx=0;
+function cycleMonitor(which){
+  if(which==='main'){mainIdx=(mainIdx+1)%MAIN_STATES.length;const s=MAIN_STATES[mainIdx];document.getElementById('mainIcon').className='ti '+s.icon;document.getElementById('mainBadge').textContent=s.badge;document.getElementById('mainBadge').style.background=s.badgeColor;document.getElementById('mainLabel').textContent=s.label;}
+  if(which==='left'){leftIdx=(leftIdx+1)%LEFT_STATES.length;const s=LEFT_STATES[leftIdx];document.getElementById('leftIcon').className='ti '+s.icon;document.getElementById('leftBadge').textContent=s.badge;document.getElementById('leftBadge').style.background=s.badgeColor;document.getElementById('leftLabel').textContent=s.label;}
+  if(which==='right'){rightIdx=(rightIdx+1)%RIGHT_STATES.length;const s=RIGHT_STATES[rightIdx];document.getElementById('rightIcon').className='ti '+s.icon;document.getElementById('rightBadge').textContent=s.badge;document.getElementById('rightBadge').style.background=s.badgeColor;document.getElementById('rightLabel').textContent=s.label;}
+}
+
+let recording=false;
+function toggleRec(){
+  recording=!recording;
+  const dot=document.getElementById('recDotEl'),icon=document.getElementById('recIcon'),btn=document.getElementById('recBtn'),status=document.getElementById('recStatus');
+  if(recording){
+    dot.style.display='inline-block';icon.className='ti ti-player-stop';btn.lastChild.textContent=' Stop';status.textContent='Recording...';
+    document.getElementById('saveMemBtn').style.display='none';document.getElementById('savePlBtn').style.display='none';
+  } else {
+    dot.style.display='none';icon.className='ti ti-circle';btn.lastChild.textContent=' Record';status.textContent='Clip ready — choose where to save';
+    document.getElementById('saveMemBtn').style.display='flex';document.getElementById('savePlBtn').style.display='flex';
+  }
+}
+function saveCapture(dest){
+  const status=document.getElementById('recStatus');
+  status.textContent=dest==='memory'?'Saved to your Memory Wall ✓':'Saved to your Playlist ✓';
+  document.getElementById('saveMemBtn').style.display='none';
+  document.getElementById('savePlBtn').style.display='none';
+}
+
+let lobbyOpen=false;
+function toggleLobby(){
+  lobbyOpen=!lobbyOpen;
+  document.getElementById('lobbyBody').style.display=lobbyOpen?'block':'none';
+  document.getElementById('lobbyChevron').style.transform=lobbyOpen?'rotate(180deg)':'rotate(0)';
+  if(lobbyOpen) buildAvatarRow();
+}
+const AVATAR_NAMES=['Wavetek','Astra Nova','DJ Kraze','Lagos B.','Nova C.','Flex King','Verse XL','MC Heavy'];
+const AVATAR_COLORS=['info','warning','danger','success','secondary'];
+function buildAvatarRow(){
+  const el=document.getElementById('avatarRow');
+  if(el.innerHTML) return;
+  AVATAR_NAMES.forEach((n,i)=>{
+    const c=AVATAR_COLORS[i%AVATAR_COLORS.length];
+    const d=document.createElement('div');
+    d.className='avatar3d';
+    d.style.animationDelay=(i*.2)+'s';
+    d.style.setProperty('--ac','var(--color-border-'+c+')');
+    d.innerHTML=`<div class="head" style="background:var(--color-background-${c});color:var(--color-text-${c})">${n[0]}</div><div class="body" style="background:var(--color-background-${c})"></div><div class="nm">${n}</div>`;
+    el.appendChild(d);
+  });
+}
+
+function toggleCanister(id){
+  const body=document.getElementById(id+'-body');
+  const open=body.style.display==='block';
+  body.style.display=open?'none':'block';
+}
+</script>

@@ -1,0 +1,285 @@
+
+<h2 class="sr-only">TMI final audit — PIP monitors, corrected fan hub, performer hub, producer mission board</h2>
+<style>
+.tabs{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px}
+.tab{padding:5px 10px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary);font-size:11px;cursor:pointer;background:var(--color-background-primary);color:var(--color-text-secondary);white-space:nowrap}
+.tab.on{background:var(--color-background-tertiary);color:var(--color-text-primary);font-weight:500;border-color:var(--color-border-primary)}
+.pg{display:none}.pg.on{display:block}
+.monitor{position:relative;background:var(--color-background-tertiary);border:1.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);overflow:hidden;cursor:pointer;transition:border-color .2s}
+.monitor:hover{border-color:var(--color-border-primary)}
+.monitor .scan{position:absolute;top:-200%;left:0;right:0;height:1px;background:rgba(0,180,200,.25);animation:scan 3s linear infinite;z-index:2}
+@keyframes scan{0%{top:-5%}100%{top:105%}}
+.monitor .mlabel{position:absolute;bottom:4px;left:6px;font-size:8px;color:rgba(255,255,255,.5);z-index:3;background:rgba(0,0,0,.5);padding:1px 4px;border-radius:2px}
+.monitor .mbadge{position:absolute;top:4px;right:4px;font-size:8px;font-weight:500;padding:1px 5px;border-radius:2px;z-index:3}
+.monitor .micon{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+.monitor .micon i{font-size:24px;color:rgba(180,180,180,.2)}
+.live-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:#E24B4A;vertical-align:middle;margin-right:3px;animation:blink .9s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+.pip-card{position:absolute;top:8px;right:8px;width:90px;background:var(--color-background-primary);border:1.5px solid var(--color-border-warning);border-radius:var(--border-radius-md);padding:6px;font-size:9px;z-index:20;animation:popIn .4s ease-out}
+@keyframes popIn{from{transform:scale(.4);opacity:0}to{transform:scale(1);opacity:1}}
+.canister{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);overflow:hidden}
+.canister-header{display:flex;align-items:center;justify-content:space-between;padding:7px 10px;cursor:pointer;background:var(--color-background-secondary);font-size:12px;font-weight:500}
+.canister-body{padding:8px 10px;font-size:11px;color:var(--color-text-secondary)}
+.traffic{width:10px;height:10px;border-radius:50%;flex-shrink:0;animation:blink 1.5s ease-in-out infinite}
+.mission-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:0.5px solid var(--color-border-tertiary);font-size:11px}
+.fix-row{display:flex;align-items:center;gap:8px;padding:4px 0;font-size:11px}
+.fix-row.done{color:var(--color-text-success)}
+.fix-row.pending{color:var(--color-text-warning)}
+.fix-row.p0{color:var(--color-text-danger)}
+</style>
+
+<div class="tabs">
+  <button class="tab on" onclick="sw('audit')"><i class="ti ti-clipboard-check" aria-hidden="true"></i> Full audit</button>
+  <button class="tab" onclick="sw('pip')"><i class="ti ti-device-tv" aria-hidden="true"></i> PIP monitors</button>
+  <button class="tab" onclick="sw('fanhub')"><i class="ti ti-user" aria-hidden="true"></i> Corrected fan hub</button>
+  <button class="tab" onclick="sw('perfhub')"><i class="ti ti-microphone" aria-hidden="true"></i> Performer hub</button>
+  <button class="tab" onclick="sw('producer')"><i class="ti ti-music" aria-hidden="true"></i> Producer HQ</button>
+</div>
+
+<!-- FULL AUDIT -->
+<div id="pg-audit" class="pg on">
+  <p style="font-size:13px;font-weight:500;margin-bottom:10px">TMI Platform — 100% Completion Audit</p>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+    <div>
+      <p style="font-size:11px;font-weight:500;margin-bottom:6px;color:var(--color-text-secondary)">BUILT ✓ (Claude designed)</p>
+      <div style="display:flex;flex-direction:column;gap:3px">
+        <div class="fix-row done"><i class="ti ti-check" aria-hidden="true"></i> Home 1 orbital + underlay + 3 rails + typewriter</div>
+        <div class="fix-row done"><i class="ti ti-check" aria-hidden="true"></i> Home 1-2 billboard genre rotation</div>
+        <div class="fix-row done"><i class="ti ti-check" aria-hidden="true"></i> Home 2 magazine 3-belt system</div>
+        <div class="fix-row done"><i class="ti ti-check" aria-hidden="true"></i> Home 3 live world 8+12 tile walls</div>
+        <div class="fix-row done"><i class="ti ti-check" aria-hidden="true"></i> Home 4 marketplace + sponsor spotlight</div>
+        <div class="fix-row done"><i class="ti ti-check" aria-hidden="true"></i> Home 5 advertisers world</div>
+        <div class="fix-row done"><i class="ti ti-check" aria-hidden="true"></i> Marcel admin hub</div>
+        <div class="fix-row done"><i class="ti ti-check" aria-hidden="true"></i> Big Ace CEO hub</div>
+        <div class="fix-row done"><i class="ti ti-check" aria-hidden="true"></i> Jay Paul producer hub</div>
+        <div class="fix-row done"><i class="ti ti-check" aria-hidden="true"></i> Justin observer hub</div>
+        <div class="fix-row done"><i class="ti ti-check" aria-hidden="true"></i> Fan sign-up + Artist + Sponsor + Advertiser</div>
+        <div class="fix-row done"><i class="ti ti-check" aria-hidden="true"></i> Season Pass animated fretboard</div>
+        <div class="fix-row done"><i class="ti ti-check" aria-hidden="true"></i> Playlist Engine (10 skins + AI generator)</div>
+        <div class="fix-row done"><i class="ti ti-check" aria-hidden="true"></i> Memory Wall system (Fan + Performer)</div>
+        <div class="fix-row done"><i class="ti ti-check" aria-hidden="true"></i> Billboard Live Lobby Wall (10 wall types)</div>
+        <div class="fix-row done"><i class="ti ti-check" aria-hidden="true"></i> Games Discovery Network (14 games)</div>
+        <div class="fix-row done"><i class="ti ti-check" aria-hidden="true"></i> Sponsor Stamp + Orbit + Booking Map canisters</div>
+        <div class="fix-row done"><i class="ti ti-check" aria-hidden="true"></i> System Architecture Blueprint doc</div>
+        <div class="fix-row done"><i class="ti ti-check" aria-hidden="true"></i> AudienceScene wired to cypher stage</div>
+        <div class="fix-row done"><i class="ti ti-check" aria-hidden="true"></i> Fan theater → real AudienceScene canvas</div>
+      </div>
+    </div>
+    <div>
+      <p style="font-size:11px;font-weight:500;margin-bottom:6px;color:var(--color-text-danger)">MISSING / FIX REQUIRED</p>
+      <div style="display:flex;flex-direction:column;gap:3px">
+        <div class="fix-row p0"><i class="ti ti-alert-triangle" aria-hidden="true"></i> P0: /dashboard/fan → still routing to Fan Theater</div>
+        <div class="fix-row p0"><i class="ti ti-alert-triangle" aria-hidden="true"></i> P0: Google OAuth → /hub/[role] not wired</div>
+        <div class="fix-row p0"><i class="ti ti-alert-triangle" aria-hidden="true"></i> P0: Home 1 banner too large — shrink to ~250px</div>
+        <div class="fix-row p0"><i class="ti ti-alert-triangle" aria-hidden="true"></i> P0: Legacy utility widget (Revenue/Bookings) — remove</div>
+        <div class="fix-row p0"><i class="ti ti-alert-triangle" aria-hidden="true"></i> P0: Micah admin page — remove (Diamond account only)</div>
+        <div class="fix-row pending"><i class="ti ti-alert-circle" aria-hidden="true"></i> P1: PIP monitors missing from all hubs</div>
+        <div class="fix-row pending"><i class="ti ti-alert-circle" aria-hidden="true"></i> P1: Fan hub: avatar lobby, messaging, inventory not visible</div>
+        <div class="fix-row pending"><i class="ti ti-alert-circle" aria-hidden="true"></i> P1: ProducerSupplyEngine — Jay Paul mission board</div>
+        <div class="fix-row pending"><i class="ti ti-alert-circle" aria-hidden="true"></i> P1: CompetitionMusicEngine — beat binding to rooms</div>
+        <div class="fix-row pending"><i class="ti ti-alert-circle" aria-hidden="true"></i> P1: CulturalChallengeEngine — daily matchup generator</div>
+        <div class="fix-row pending"><i class="ti ti-alert-circle" aria-hidden="true"></i> P1: Ad slot fallback (sponsor → AdSense → CTA)</div>
+        <div class="fix-row pending"><i class="ti ti-alert-circle" aria-hidden="true"></i> P1: SEO — submit to Bing Webmaster Tools</div>
+        <div class="fix-row pending"><i class="ti ti-alert-circle" aria-hidden="true"></i> P1: Profile pages: LIVE NOW section with join button</div>
+        <div class="fix-row pending"><i class="ti ti-alert-circle" aria-hidden="true"></i> P1: Playwright 43/43 green (currently 26/43)</div>
+        <div class="fix-row pending"><i class="ti ti-alert-circle" aria-hidden="true"></i> P2: Beat magazine motion video (2-3s clips like NFL starters)</div>
+        <div class="fix-row pending"><i class="ti ti-alert-circle" aria-hidden="true"></i> P2: Performer articles motion video header</div>
+      </div>
+    </div>
+  </div>
+  <div style="text-align:center;margin-top:10px">
+    <button onclick="sendPrompt('BLACKBOX PRIORITY ORDER — execute in this exact sequence: PASS 1 P0: Fix middleware.ts redirects (/dashboard/fan → /hub/fan, /dashboard/performer → /hub/performer, /fan/theater → /hub/fan). Fix Google OAuth callback to route to /hub/[role]. Remove Fan Theater as default landing. Remove legacy utility menu widget (Revenue/Bookings/Messages/Notifications) from all public pages. Remove Micah admin page, give Diamond account. PASS 2 P0: Shrink Home 1 masthead banner to max 250px positioned near orbital wheel — do not touch OrbitalWheel, WorldUnderlay, two rails, typewriter animation. PASS 3 P1: Create PIPMonitor.tsx component with 1-large-4-small layout and group meet/call buttons, wire to all 4 admin hubs and performer hub. PASS 4 P1: Fan hub /hub/fan — add avatar lobby, PIPMonitor, MessagingPanel, InventoryPanel, NotificationCenter. PASS 5 P1: ProducerSupplyEngine, CompetitionMusicEngine, CulturalChallengeEngine skeletons. PASS 6: AdRenderer fallback chain. PASS 7: SEO submit to Bing. PASS 8: Full Playwright run.')" style="font-size:10px;padding:6px 14px;background:var(--color-background-danger);color:var(--color-text-danger);border:0.5px solid var(--color-border-danger);border-radius:var(--border-radius-md)">Send complete P0→P8 order to BlackBox ↗</button>
+  </div>
+</div>
+
+<!-- PIP MONITORS -->
+<div id="pg-pip" class="pg">
+  <p style="font-size:13px;font-weight:500;margin-bottom:8px">PIPMonitor.tsx — Picture-in-Picture Monitor System</p>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+    <!-- Admin Hub layout: 1 large + 4 small -->
+    <div>
+      <p style="font-size:11px;font-weight:500;margin-bottom:6px;color:var(--color-text-secondary)">Admin hub layout (1 large + 4 small)</p>
+      <div style="display:flex;flex-direction:column;gap:5px">
+        <div class="monitor" style="aspect-ratio:16/6;border-color:var(--color-border-danger)">
+          <div class="scan"></div>
+          <div class="micon"><i class="ti ti-device-desktop-analytics" aria-hidden="true"></i></div>
+          <div class="mbadge" style="background:rgba(230,48,0,.85);color:#fff">BOARDROOM LIVE</div>
+          <div class="mlabel">Main — Platform overview</div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px">
+          <div class="monitor" style="aspect-ratio:16/9"><div class="scan"></div><div class="micon"><i class="ti ti-microphone" aria-hidden="true"></i></div><div class="mbadge" style="background:rgba(230,48,0,.7);color:#fff">LIVE</div><div class="mlabel">Stage A</div></div>
+          <div class="monitor" style="aspect-ratio:16/9"><div class="scan"></div><div class="micon"><i class="ti ti-users" aria-hidden="true"></i></div><div class="mbadge" style="background:rgba(0,140,180,.7);color:#fff">FEED</div><div class="mlabel">Lobby wall</div></div>
+          <div class="monitor" style="aspect-ratio:16/9"><div class="scan"></div><div class="micon"><i class="ti ti-chart-bar" aria-hidden="true"></i></div><div class="mbadge" style="background:rgba(180,117,23,.8);color:#fff">STATS</div><div class="mlabel">Analytics</div></div>
+          <div class="monitor" style="aspect-ratio:16/9"><div class="scan"></div><div class="micon"><i class="ti ti-message-circle" aria-hidden="true"></i></div><div class="mbadge" style="background:rgba(83,74,183,.8);color:#fff">MSG</div><div class="mlabel">Messages</div></div>
+        </div>
+        <div style="display:flex;gap:5px">
+          <button style="flex:1;font-size:10px;padding:4px"><i class="ti ti-video" aria-hidden="true"></i> Group meet</button>
+          <button style="flex:1;font-size:10px;padding:4px"><i class="ti ti-switch" aria-hidden="true"></i> Switch feed</button>
+          <button style="flex:1;font-size:10px;padding:4px"><i class="ti ti-phone" aria-hidden="true"></i> Call Big Ace</button>
+        </div>
+      </div>
+    </div>
+    <!-- Fan hub: 1 watch panel -->
+    <div>
+      <p style="font-size:11px;font-weight:500;margin-bottom:6px;color:var(--color-text-secondary)">Fan hub watch panel</p>
+      <div style="display:flex;flex-direction:column;gap:5px">
+        <div class="monitor" style="aspect-ratio:16/9;position:relative">
+          <div class="scan"></div>
+          <div class="micon"><i class="ti ti-microphone" aria-hidden="true"></i></div>
+          <div class="mbadge" style="background:rgba(230,48,0,.85);color:#fff"><span class="live-dot" style="width:4px;height:4px;margin:0;margin-right:3px"></span>LIVE</div>
+          <div class="mlabel">Wavetek — 2,841 watching</div>
+          <!-- PIP card example (non-blocking) -->
+          <div class="pip-card">
+            <div style="font-weight:500;margin-bottom:2px"><i class="ti ti-photo" aria-hidden="true"></i> Memory shared</div>
+            <div style="color:var(--color-text-secondary)">Astra Nova: 🎤 Concert Night</div>
+            <div style="margin-top:3px;display:flex;gap:3px;font-size:11px">❤️🔥👏</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:5px">
+          <button style="flex:1;font-size:10px;padding:4px;background:var(--color-background-warning);color:var(--color-text-warning);border:0.5px solid var(--color-border-warning);border-radius:var(--border-radius-md)"><i class="ti ti-door-enter" aria-hidden="true"></i> Join room</button>
+          <button style="flex:1;font-size:10px;padding:4px"><i class="ti ti-switch" aria-hidden="true"></i> Switch</button>
+        </div>
+        <div style="background:var(--color-background-info);border-radius:var(--border-radius-md);padding:7px;font-size:10px;color:var(--color-text-info)">
+          <strong>PIP Card rule:</strong> Avatar/memory shares appear as non-blocking floating card top-right. Auto-dismiss 10s. Never blocks: avatars, chat, lobby wall, cameras, performer panel.
+        </div>
+      </div>
+    </div>
+  </div>
+  <div style="text-align:center">
+    <button onclick="sendPrompt('Create PIPMonitor.tsx at apps/web/src/components/media/PIPMonitor.tsx — props: feeds array (id, label, type: boardroom/stage/analytics/messages/lobby/audience, feedUrl?, isLive?, viewerCount?), layout: 1-large-4-small or 2x2 or 3-strip, onSwitchFeed, onGroupMeet, onCallPerson. Admin hub: 1 large main monitor + 4 smaller independent monitors each showing DIFFERENT content (Stage A live feed, Lobby Wall feed, Analytics feed, Messages feed). Each monitor has: scan line animation, live badge, feed label, viewer count tick. Controls: Switch feed button, Group meet button (calls OmniPresenceEngine), Call [person] button. Also create PIPCard.tsx for non-blocking room shares: position top-right, autoClose 10s, reactions, MUST NOT block avatars/chat/lobby wall/cameras. Wire PIPMonitor to all 4 admin hubs and performer hub. Wire PIPCard to live room share events.')" style="font-size:10px;padding:5px 12px;background:var(--color-background-info);color:var(--color-text-info);border:0.5px solid var(--color-border-info);border-radius:var(--border-radius-md)">Build PIPMonitor in repo ↗</button>
+  </div>
+</div>
+
+<!-- CORRECTED FAN HUB -->
+<div id="pg-fanhub" class="pg">
+  <p style="font-size:13px;font-weight:500;margin-bottom:6px">Corrected Fan Hub — /hub/fan (what it SHOULD look like)</p>
+  <div style="background:var(--color-background-danger);border-radius:var(--border-radius-md);padding:7px;margin-bottom:8px;font-size:11px;color:var(--color-text-danger)">
+    <strong>Current bug:</strong> /dashboard/fan still routes to Fan Theater (BlackBox). Must redirect to /hub/fan which shows this design.
+  </div>
+  <div style="display:grid;grid-template-columns:160px 1fr;gap:8px">
+    <!-- Sidebar canisters (chevron) -->
+    <div style="display:flex;flex-direction:column;gap:5px">
+      <div class="canister">
+        <div class="canister-header" onclick="toggleC(this)"><span><i class="ti ti-playlist" aria-hidden="true"></i> Playlist</span><i class="ti ti-chevron-down" aria-hidden="true"></i></div>
+        <div class="canister-body">Current skin: Submarine · 8 tracks</div>
+      </div>
+      <div class="canister">
+        <div class="canister-header" onclick="toggleC(this)"><span><i class="ti ti-photo-album" aria-hidden="true"></i> Memory wall</span><i class="ti ti-chevron-down" aria-hidden="true"></i></div>
+        <div class="canister-body">24 memories · Neon theme</div>
+      </div>
+      <div class="canister">
+        <div class="canister-header" onclick="toggleC(this)"><span><i class="ti ti-shirt" aria-hidden="true"></i> Inventory</span><i class="ti ti-chevron-down" aria-hidden="true"></i></div>
+        <div class="canister-body">14 items · 3 equipped</div>
+      </div>
+      <div class="canister">
+        <div class="canister-header" onclick="toggleC(this)"><span><i class="ti ti-message-circle" aria-hidden="true"></i> Messages</span><i class="ti ti-chevron-down" aria-hidden="true"></i></div>
+        <div class="canister-body">7 unread</div>
+      </div>
+      <div class="canister">
+        <div class="canister-header" onclick="toggleC(this)"><span><i class="ti ti-users" aria-hidden="true"></i> Friends</span><i class="ti ti-chevron-down" aria-hidden="true"></i></div>
+        <div class="canister-body">23 friends · 8 online</div>
+      </div>
+    </div>
+    <!-- Main area -->
+    <div style="display:flex;flex-direction:column;gap:7px">
+      <!-- PIP watch panel -->
+      <div class="monitor" style="aspect-ratio:16/7">
+        <div class="scan"></div>
+        <div class="micon"><i class="ti ti-microphone" aria-hidden="true"></i></div>
+        <div class="mbadge" style="background:rgba(230,48,0,.85);color:#fff"><span class="live-dot" style="width:4px;height:4px;margin:0;margin-right:3px"></span>NOW LIVE</div>
+        <div class="mlabel">Wavetek — 2,841 watching · Fan watch panel</div>
+      </div>
+      <!-- Avatar lobby entry -->
+      <div style="background:var(--color-background-secondary);border:0.5px solid var(--color-border-info);border-radius:var(--border-radius-md);padding:10px;display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div style="font-size:12px;font-weight:500;margin-bottom:2px"><i class="ti ti-user" aria-hidden="true"></i> Avatar lobby</div>
+          <div style="font-size:11px;color:var(--color-text-secondary)">Join a room as your avatar — AudienceScene fan view</div>
+        </div>
+        <button style="font-size:11px;padding:6px 12px;background:var(--color-background-info);color:var(--color-text-info);border:0.5px solid var(--color-border-info);border-radius:var(--border-radius-md)"><i class="ti ti-door-enter" aria-hidden="true"></i> Enter lobby</button>
+      </div>
+      <!-- Mini lobby wall -->
+      <div>
+        <div style="font-size:11px;font-weight:500;margin-bottom:5px;color:var(--color-text-secondary)">Lobby wall — feedType: fans</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px" id="fanLW"></div>
+      </div>
+      <!-- Tickets + Rewards row -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+        <div style="background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:8px">
+          <div style="font-size:10px;font-weight:500;margin-bottom:3px"><i class="ti ti-ticket" aria-hidden="true"></i> Tickets</div>
+          <div style="font-size:13px;font-weight:500;color:var(--color-text-warning)">3</div>
+          <div style="font-size:9px;color:var(--color-text-secondary)">active tickets</div>
+        </div>
+        <div style="background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:8px">
+          <div style="font-size:10px;font-weight:500;margin-bottom:3px"><i class="ti ti-star" aria-hidden="true"></i> XP</div>
+          <div style="font-size:13px;font-weight:500;color:var(--color-text-info)">850</div>
+          <div style="font-size:9px;color:var(--color-text-secondary)">pts · Lvl 4</div>
+        </div>
+        <div style="background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:8px">
+          <div style="font-size:10px;font-weight:500;margin-bottom:3px"><i class="ti ti-crown" aria-hidden="true"></i> Season pass</div>
+          <div style="font-size:13px;font-weight:500;color:var(--color-text-warning)">Lvl 3</div>
+          <div style="font-size:9px;color:var(--color-text-secondary)">New song unlocked</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div style="text-align:center;margin-top:8px">
+    <button onclick="sendPrompt('Fix /hub/fan to show the Claude-designed Fan Hub. Add redirect: /dashboard/fan → /hub/fan. Remove Fan Theater as default landing. Fan Hub must include: PIPMonitor (1 watch panel), AudienceScene avatar lobby entry (fan view), PlaylistDashboardPanel canister, MemoryWallContainer canister, InventoryPanel canister, MessagingPanel canister, FriendsList, BroadcastLobbyWall feedType=fans, TicketsPanel, XP+SeasonPassWidget, NotificationCenter. Remove all BlackBox placeholder panels. Verify after change: Google signup → /hub/fan → all panels visible → no console errors → no Fan Theater.')" style="font-size:10px;padding:5px 12px;background:var(--color-background-warning);color:var(--color-text-warning);border:0.5px solid var(--color-border-warning);border-radius:var(--border-radius-md)">Fix /hub/fan in repo ↗</button>
+  </div>
+</div>
+
+<!-- PERFORMER HUB -->
+<div id="pg-perfhub" class="pg">
+  <p style="font-size:13px;font-weight:500;margin-bottom:8px">Performer Hub — /hub/performer</p>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+    <div>
+      <p style="font-size:11px;font-weight:500;margin-bottom:6px;color:var(--color-text-secondary)">PIP monitors (1 large + 4 small)</p>
+      <div class="monitor" style="aspect-ratio:16/6;margin-bottom:5px;border-color:var(--color-border-danger)">
+        <div class="scan"></div><div class="micon"><i class="ti ti-video" aria-hidden="true"></i></div>
+        <div class="mbadge" style="background:rgba(230,48,0,.85);color:#fff">MY LIVE STREAM</div>
+        <div class="mlabel">Your stage — 2,841 watching</div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:6px">
+        <div class="monitor" style="aspect-ratio:16/9"><div class="scan"></div><div class="micon"><i class="ti ti-users" aria-hidden="true"></i></div><div class="mbadge" style="background:rgba(0,140,180,.7);color:#fff">AUD</div><div class="mlabel">Audience</div></div>
+        <div class="monitor" style="aspect-ratio:16/9"><div class="scan"></div><div class="micon"><i class="ti ti-chart-bar" aria-hidden="true"></i></div><div class="mbadge" style="background:rgba(180,117,23,.8);color:#fff">TIPS</div><div class="mlabel">Revenue</div></div>
+        <div class="monitor" style="aspect-ratio:16/9"><div class="scan"></div><div class="micon"><i class="ti ti-message-circle" aria-hidden="true"></i></div><div class="mbadge" style="background:rgba(83,74,183,.8);color:#fff">CHAT</div><div class="mlabel">Room chat</div></div>
+        <div class="monitor" style="aspect-ratio:16/9"><div class="scan"></div><div class="micon"><i class="ti ti-speakerphone" aria-hidden="true"></i></div><div class="mbadge" style="background:rgba(0,140,100,.8);color:#fff">PROMO</div><div class="mlabel">Sponsor orbit</div></div>
+      </div>
+      <div style="display:flex;gap:5px">
+        <button style="flex:1;font-size:10px;padding:5px;background:var(--color-background-danger);color:var(--color-text-danger);border:0.5px solid var(--color-border-danger);border-radius:var(--border-radius-md)"><i class="ti ti-broadcast" aria-hidden="true"></i> Go Live</button>
+        <button style="flex:1;font-size:10px;padding:5px"><i class="ti ti-video" aria-hidden="true"></i> Group meet</button>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">
+        <div class="canister"><div class="canister-header" onclick="toggleC(this)"><span><i class="ti ti-layout-grid" aria-hidden="true"></i> Sponsor stamps</span></div></div>
+        <div class="canister"><div class="canister-header" onclick="toggleC(this)"><span><i class="ti ti-circles-relation" aria-hidden="true"></i> Sponsor orbit</span></div></div>
+        <div class="canister"><div class="canister-header" onclick="toggleC(this)"><span><i class="ti ti-map-2" aria-hidden="true"></i> Booking map</span></div></div>
+        <div class="canister"><div class="canister-header" onclick="toggleC(this)"><span><i class="ti ti-playlist" aria-hidden="true"></i> Playlist</span></div></div>
+      </div>
+      <div class="canister"><div class="canister-header"><span><i class="ti ti-photo-album" aria-hidden="true"></i> Memory wall</span></div></div>
+      <div style="background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:8px">
+        <div style="font-size:11px;font-weight:500;margin-bottom:5px">Revenue (Big Ace payout gate)</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px">
+          <div class="stat" style="text-align:center;background:var(--color-background-warning);border-radius:var(--border-radius-md);padding:6px"><div style="font-size:14px;font-weight:500;color:var(--color-text-warning)">$2.4K</div><div style="font-size:9px;color:var(--color-text-secondary)">Tips</div></div>
+          <div class="stat" style="text-align:center;background:var(--color-background-success);border-radius:var(--border-radius-md);padding:6px"><div style="font-size:14px;font-weight:500;color:var(--color-text-success)">$890</div><div style="font-size:9px;color:var(--color-text-secondary)">Beat sales</div></div>
+          <div class="stat" style="text-align:center;background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:6px"><div style="font-size:14px;font-weight:500">$340</div><div style="font-size:9px;color:var(--color-text-danger)">Pending ✓BA</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PRODUCER HQ -->
+<div id="pg-producer" class="pg">
+  <p style="font-size:13px;font-weight:500;margin-bottom:6px">Producer HQ — Jay Paul Sanchez — /hub/producer</p>
+  <div style="background:var(--color-background-info);border-radius:var(--border-radius-md);padding:6px;margin-bottom:8px;font-size:10px;color:var(--color-text-info)">Producer HQ ≠ Admin page. This is a production supply hub, not platform administration.</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+    <!-- Mission board -->
+    <div>
+      <p style="font-size:11px;font-weight:500;margin-bottom:6px">Mission board — ProducerSupplyEngine</p>
+      <div style="display:flex;flex-direction:column;gap:3px">
+        <div class="mission-row"><div class="traffic" style="background:#00C853"></div><span>Hip-Hop Beats</span><span style="margin-left:auto;font-size:10px;color:var(--color-text-success)">800 available</span></div>
+        <div class="mission-row"><div class="traffic" style="background:#00C853"></div><span>R&amp;B Instrumentals</span><span style="margin-left:auto;font-size:10px;color:var(--color-text-success)">420 available</span></div>
+        <div class="mission-row"><div class="traffic" style="background:#FFB300"></div><span>Country Instrumentals</span><span style="margin-left:auto;font-size:10px;color:var(--color-text-warning)">6 available — needed soon</span></div>
+        <div class="mission-row"><div class="traffic" style="background:#FF1744;animation:blink .7s ease-in-out infinite"></div><span>EDM Battle Beats</span><span style="margin-left:auto;font-size:10px;color:var(--color-text-danger)">0 available — URGENT</span></div>
+        <div class="mission-row"><div class="traffic" style="background:#FF1744

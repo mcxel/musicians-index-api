@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 export type TrackType = "upload" | "link";
@@ -36,18 +36,71 @@ export default function TrackUploadPanel({
   const [url, setUrl] = useState("");
   const [genre, setGenre] = useState("");
   const [error, setError] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [file, setFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     setError("");
     if (!title.trim()) { setError("Track title required"); return; }
     if (!artist.trim()) { setError("Artist name required"); return; }
-    if (mode === "link" && !url.trim()) { setError("URL required"); return; }
+    
+    let finalUrl = url;
+    
+    // If mode is "upload", POST the file to API
+    if (mode === "upload") {
+      if (!file) { setError("Please select a file"); return; }
+      
+      setUploading(true);
+      setUploadProgress(0);
+      
+      try {
+        const formData = new FormData();
+        formData.append("file", file);
+        
+        const xhr = new XMLHttpRequest();
+        xhr.upload.addEventListener("progress", (e) => {
+          if (e.lengthComputable) {
+            setUploadProgress(Math.round((e.loaded / e.total) * 100));
+          }
+        });
+        
+        const uploadPromise = new Promise<string>((resolve, reject) => {
+          xhr.onload = () => {
+            if (xhr.status === 200) {
+              try {
+                const data = JSON.parse(xhr.responseText) as { url?: string; error?: string };
+                if (data.error) reject(new Error(data.error));
+                else resolve(data.url || "");
+              } catch (e) {
+                reject(new Error("Failed to parse upload response"));
+              }
+            } else {
+              reject(new Error(`Upload failed: ${xhr.status}`));
+            }
+          };
+          xhr.onerror = () => reject(new Error("Upload failed"));
+          xhr.open("POST", "/api/upload/media");
+          xhr.send(formData);
+        });
+        
+        finalUrl = await uploadPromise;
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Upload failed");
+        setUploading(false);
+        return;
+      }
+    } else {
+      // Link mode requires URL
+      if (!url.trim()) { setError("URL required"); return; }
+    }
 
     const entry: TrackEntry = {
       id: `track-${Date.now()}`,
       title: title.trim(),
       artist: artist.trim(),
-      url: url.trim() || "#",
+      url: finalUrl.trim() || "#",
       type: mode,
       genre: genre.trim() || undefined,
       addedAt: Date.now(),
@@ -56,8 +109,11 @@ export default function TrackUploadPanel({
     const next = [entry, ...tracks];
     setTracks(next);
     onAdd?.(entry);
-    setTitle(""); setArtist(""); setUrl(""); setGenre("");
+    setTitle(""); setArtist(""); setUrl(""); setGenre(""); setFile(null);
+    setUploadProgress(0);
+    setUploading(false);
     setOpen(false);
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   return (
@@ -142,12 +198,21 @@ export default function TrackUploadPanel({
               ) : (
                 <label style={{ display: "block", marginBottom: 8, cursor: "pointer" }}>
                   <div style={{ border: "1px dashed rgba(255,255,255,0.15)", borderRadius: 7, padding: "14px", textAlign: "center", fontSize: 11, color: "rgba(255,255,255,0.35)" }}>
-                    Click to upload audio file (MP3, WAV, FLAC)
+                    {file ? `📁 ${file.name}` : "Click to upload audio file (MP3, WAV, FLAC)"}
                   </div>
-                  <input type="file" accept="audio/*" style={{ display: "none" }} onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f) { setUrl(URL.createObjectURL(f)); setTitle(f.name.replace(/\.[^.]+$/, "")); }
-                  }} />
+                  <input 
+                    ref={fileInputRef}
+                    type="file" 
+                    accept="audio/*" 
+                    style={{ display: "none" }} 
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) { 
+                        setFile(f);
+                        setTitle(f.name.replace(/\.[^.]+$/, ""));
+                      }
+                    }} 
+                  />
                 </label>
               )}
 
@@ -159,17 +224,28 @@ export default function TrackUploadPanel({
               />
 
               {error && <div style={{ marginBottom: 8, fontSize: 11, color: "#fca5a5" }}>{error}</div>}
+              
+              {uploading && (
+                <div style={{ marginBottom: 10 }}>
+                  <div style={{ fontSize: 10, color: accentColor, marginBottom: 4 }}>Uploading {uploadProgress}%</div>
+                  <div style={{ width: "100%", height: 6, background: "rgba(255,255,255,0.1)", borderRadius: 3, overflow: "hidden" }}>
+                    <div style={{ width: `${uploadProgress}%`, height: "100%", background: accentColor, transition: "width 0.2s" }} />
+                  </div>
+                </div>
+              )}
 
               <div style={{ display: "flex", gap: 8 }}>
                 <button
                   onClick={handleAdd}
-                  style={{ flex: 1, padding: "8px", borderRadius: 8, fontSize: 11, fontWeight: 800, cursor: "pointer", background: `${accentColor}33`, border: `1px solid ${accentColor}55`, color: accentColor, letterSpacing: "0.08em" }}
+                  disabled={uploading}
+                  style={{ flex: 1, padding: "8px", borderRadius: 8, fontSize: 11, fontWeight: 800, cursor: uploading ? "default" : "pointer", background: `${accentColor}33`, border: `1px solid ${accentColor}55`, color: accentColor, letterSpacing: "0.08em", opacity: uploading ? 0.6 : 1 }}
                 >
-                  ADD TO PLAYLIST
+                  {uploading ? "UPLOADING..." : "ADD TO PLAYLIST"}
                 </button>
                 <button
                   onClick={() => setOpen(false)}
-                  style={{ padding: "8px 14px", borderRadius: 8, fontSize: 11, cursor: "pointer", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.4)" }}
+                  disabled={uploading}
+                  style={{ padding: "8px 14px", borderRadius: 8, fontSize: 11, cursor: uploading ? "default" : "pointer", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.4)", opacity: uploading ? 0.6 : 1 }}
                 >
                   Cancel
                 </button>

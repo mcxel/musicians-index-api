@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { useState } from "react";
 import ProfilePlaylistSection from "@/components/profile/ProfilePlaylistSection";
 import TmiProfileLobby from "@/components/profile/TmiProfileLobby";
 import { EDITORIAL_ARTICLES } from "@/lib/editorial/NewsArticleModel";
@@ -17,96 +20,57 @@ import PerformerSponsorShelf, {
 import type { SponsorSlot } from "@/components/performer/DynamicRadialAura";
 import ViralShareButton from "@/components/share/ViralShareButton";
 import SocialDock from "@/components/social/SocialDock";
-import TrackUploadPanel from "@/components/social/TrackUploadPanel";
+import TrackUploadPanel, { type TrackEntry } from "@/components/social/TrackUploadPanel";
 import MemoryWall from "@/components/media/MemoryWall";
 import TieredAdSlot from "@/components/ads/TieredAdSlot";
 import OmniPresenceEngine from "@/components/presence/OmniPresenceEngine";
+import { getPerformerBySlug } from "@/lib/performers/PerformerRegistry";
+// ── Rule 15 Canisters ──────────────────────────────────────────────────────────
+import { StoreCanister } from "@/components/canisters/StoreCanister";
+import { AvatarWorkspaceCanister } from "@/components/canisters/AvatarWorkspaceCanister";
+import { InventoryCanister } from "@/components/canisters/InventoryCanister";
+import { PublicLobbyCanister } from "@/components/canisters/PublicLobbyCanister";
+import { PrivateLobbyCanister } from "@/components/canisters/PrivateLobbyCanister";
+import { LiveLobbyWallCanister } from "@/components/canisters/LiveLobbyWallCanister";
 
 interface Props {
   params: { slug: string };
 }
 
-const KNOWN_PERFORMERS: Record<
-  string,
-  {
-    displayName: string;
-    tagline: string;
-    rank: number;
-    wins: number;
-    losses: number;
-    isVerified: boolean;
-    currentStreak: number;
-    longestStreak: number;
-    hasArticle: boolean;
-    isLive: boolean;
-    liveVenueName?: string;
-    openToMeetGreet: boolean;
-    openToBooking: boolean;
-    genres: string[];
-  }
-> = {
-  "nova-cipher": {
-    displayName: "Nova Cipher",
-    tagline: "8-streak battle champion. TMI Season 1 frontrunner.",
-    rank: 1,
-    wins: 8,
-    losses: 0,
-    isVerified: true,
-    currentStreak: 8,
-    longestStreak: 8,
-    hasArticle: true,
-    // Rule 14/20 — never hardcode isLive:true on a named seed entry; real
-    // liveness must come from GlobalLiveSessionRegistry (same fix already
-    // applied to PerformerRegistry.ts and VenueRegistry.ts this session).
-    isLive: false,
-    liveVenueName: "Cypher Arena",
-    openToMeetGreet: true,
-    openToBooking: true,
-    genres: ["hip-hop", "cypher", "battle-rap"],
-  },
-  "flowstate-j": {
-    displayName: "FlowState.J",
-    tagline: "Cypher artist, viral content creator, #4 ranked performer",
-    rank: 4,
-    wins: 5,
-    losses: 2,
-    isVerified: false,
-    currentStreak: 3,
-    longestStreak: 5,
-    hasArticle: false,
-    isLive: false,
-    openToMeetGreet: true,
-    openToBooking: true,
-    genres: ["hip-hop", "freestyle"],
-  },
-  test: {
-    displayName: "Test Performer",
-    tagline: "Deterministic smoke fixture for performer profile route proof.",
-    rank: 99,
-    wins: 1,
-    losses: 1,
-    isVerified: false,
-    currentStreak: 1,
-    longestStreak: 1,
-    hasArticle: false,
-    isLive: false,
-    openToMeetGreet: false,
-    openToBooking: false,
-    genres: [],
-  },
-};
-
+// Rule 1 (Upload Pipeline): a registered performer's real identity comes from
+// PerformerRegistry, not a title-cased slug shell. Battle record fields
+// (wins/losses/streaks) aren't modeled in the registry yet, so they stay
+// honestly at 0 rather than being fabricated either way.
 function seedPerformer(slug: string) {
-  if (KNOWN_PERFORMERS[slug]) return KNOWN_PERFORMERS[slug];
   const display = slug
     .split("-")
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
     .join(" ");
 
+  const registered = getPerformerBySlug(slug);
+  if (registered) {
+    return {
+      displayName: registered.name,
+      tagline: `${registered.category} performer on The Musician's Index.`,
+      rank: registered.rank,
+      wins: 0,
+      losses: 0,
+      isVerified: registered.achievementIds.length > 0,
+      currentStreak: 0,
+      longestStreak: 0,
+      hasArticle: registered.articleIds.length > 0,
+      isLive: registered.isLive,
+      liveVenueName: registered.isLive ? registered.roomId : undefined,
+      openToMeetGreet: false,
+      openToBooking: false,
+      genres: [registered.category],
+    };
+  }
+
   return {
     displayName: display,
     tagline: `Performer profile for ${display}.`,
-    rank: 50,
+    rank: 0,
     wins: 0,
     losses: 0,
     isVerified: false,
@@ -114,39 +78,15 @@ function seedPerformer(slug: string) {
     longestStreak: 0,
     hasArticle: false,
     isLive: false,
+    liveVenueName: undefined,
     openToMeetGreet: false,
-    openToBooking: true,
+    openToBooking: false,
     genres: [],
   };
 }
 
-// ─── Seed sponsor data per performer ─────────────────────────────────────────
-
-const SEED_SPONSORS: Record<string, PerformerSponsor[]> = {
-  "nova-cipher": [
-    { id: "nc-s1", merchantName: "BeatBox Labs",   merchantCategory: "Music Tech",    sponsorClass: "local",  packageLabel: "Local Premium",  monthlyRateCents: 10000,  status: "active",  color: "#00FFFF" },
-    { id: "nc-s2", merchantName: "FlexFit Gear",   merchantCategory: "Apparel",       sponsorClass: "local",  packageLabel: "Local Standard", monthlyRateCents: 5000,   status: "active",  color: "#FF2DAA" },
-    { id: "nc-s3", merchantName: "CyberDrip Co",   merchantCategory: "Fashion",       sponsorClass: "local",  packageLabel: "Local Standard", monthlyRateCents: 5000,   status: "active",  color: "#AA2DFF" },
-    { id: "nc-s4", merchantName: "SoundWave Pro",  merchantCategory: "Audio Gear",    sponsorClass: "major",  packageLabel: "Major Basic",    monthlyRateCents: 15000,  status: "active",  color: "#FFD700" },
-    { id: "nc-s5", merchantName: "Urban Media Grp",merchantCategory: "Media",         sponsorClass: "major",  packageLabel: "Major Standard", monthlyRateCents: 35000,  status: "active",  color: "#00FF88" },
-    { id: "nc-s6", merchantName: "NovaNest Drinks", merchantCategory: "Beverages",    sponsorClass: "local",  packageLabel: "Local Basic",    monthlyRateCents: 2500,   status: "pending", color: "#FF6B35" },
-  ],
-  "flowstate-j": [
-    { id: "fj-s1", merchantName: "Verse Kicks",    merchantCategory: "Footwear",      sponsorClass: "local",  packageLabel: "Local Standard", monthlyRateCents: 5000,   status: "active",  color: "#00FFFF" },
-    { id: "fj-s2", merchantName: "FreeStyle Fuel",  merchantCategory: "Energy Drinks", sponsorClass: "local",  packageLabel: "Local Basic",    monthlyRateCents: 2500,   status: "active",  color: "#FFD700" },
-    { id: "fj-s3", merchantName: "GridLock Studios",merchantCategory: "Recording",     sponsorClass: "major",  packageLabel: "Major Basic",    monthlyRateCents: 15000,  status: "pending", color: "#AA2DFF" },
-  ],
-};
-
-// Default seed sponsors for unknown performers (shows 2 actives, rest open)
 function seedSponsors(slug: string): PerformerSponsor[] {
-  if (SEED_SPONSORS[slug]) return SEED_SPONSORS[slug];
-  // Generic placeholders so every profile has something to show
-  const h = slug.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
-  return [
-    { id: `${slug}-s1`, merchantName: "Local Biz Co",    merchantCategory: "Local Business", sponsorClass: "local", packageLabel: "Local Basic",    monthlyRateCents: 2500,  status: "active",  color: "#00FFFF" },
-    { id: `${slug}-s2`, merchantName: "Brand Partner",   merchantCategory: "Retail",          sponsorClass: "local", packageLabel: "Local Standard", monthlyRateCents: 5000,  status: h % 2 === 0 ? "active" : "pending", color: "#FF2DAA" },
-  ];
+  return [];
 }
 
 // Build aura slots from active sponsors only (shown orbiting avatar)
@@ -178,6 +118,7 @@ const GOLD = "#facc15";
 const CYAN = "#00f5ff";
 
 export default function PerformerProfilePage({ params }: Props) {
+  const [uploadedTracks, setUploadedTracks] = useState<TrackEntry[]>([]);
   const performer = seedPerformer(params.slug);
   const articleRoute = performer.hasArticle ? profileToArticleRoute("performer", params.slug) : undefined;
 
@@ -566,8 +507,40 @@ export default function PerformerProfilePage({ params }: Props) {
           <TrackUploadPanel
             playlistName={`${performer.displayName} — Playlist`}
             accentColor={ACCENT}
+            onAdd={(track) => setUploadedTracks(prev => [track, ...prev])}
+            initialTracks={uploadedTracks}
           />
         </div>
+
+        {/* Show recently uploaded tracks with playback */}
+        {uploadedTracks.length > 0 && (
+          <div style={{ marginTop: 14, border: `1px solid ${ACCENT}33`, borderRadius: 12, background: "rgba(10,5,20,0.8)", padding: 14 }}>
+            <div style={{ fontSize: 12, fontWeight: 800, color: ACCENT, marginBottom: 12, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+              📊 Your Uploads ({uploadedTracks.length})
+            </div>
+            <div style={{ display: "grid", gap: 8, maxHeight: 280, overflowY: "auto" }}>
+              {uploadedTracks.map((track, i) => (
+                <div key={track.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", background: "rgba(255,255,255,0.02)", borderRadius: 8, border: `1px solid ${ACCENT}11` }}>
+                  <span style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", width: 20, textAlign: "right" }}>{i + 1}</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: "#e2e8f0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{track.title}</div>
+                    <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)" }}>{track.artist}{track.genre ? ` · ${track.genre}` : ""}</div>
+                  </div>
+                  {track.type === "upload" && track.url !== "#" && (
+                    <div style={{ flexShrink: 0 }}>
+                      <audio controls style={{ height: 20, width: 120 }} src={track.url} />
+                    </div>
+                  )}
+                  {track.type === "link" && track.url !== "#" && (
+                    <a href={track.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 10, color: ACCENT, textDecoration: "none", flexShrink: 0, fontWeight: 700 }}>
+                      LISTEN ↗
+                    </a>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Memory Wall — photos, videos, audio, moments */}
         <div style={{ marginTop: 14 }}>
@@ -591,6 +564,36 @@ export default function PerformerProfilePage({ params }: Props) {
           role="performer"
           accentColor={ACCENT}
         />
+
+        {/* ── Rule 15 Canister Section ── */}
+        <div style={{ marginTop: 28, display: "flex", flexDirection: "column", gap: 20 }}>
+          {/* Store */}
+          <StoreCanister
+            entityId={params.slug}
+            entityName={performer.displayName}
+            storeType="performer"
+            accentColor="#FFD700"
+          />
+          {/* Avatar Workspace */}
+          <AvatarWorkspaceCanister accentColor={ACCENT} />
+          {/* Inventory */}
+          <InventoryCanister accentColor="#FF6B35" />
+          {/* Public Lobby */}
+          <PublicLobbyCanister
+            entityId={params.slug}
+            entityName={performer.displayName}
+            accentColor="#00FF88"
+            liveRoomRoute={performer.isLive ? `/live/rooms/performer-${params.slug}` : undefined}
+          />
+          {/* Private Lobby */}
+          <PrivateLobbyCanister
+            entityId={params.slug}
+            entityName={performer.displayName}
+            accentColor="#AA2DFF"
+          />
+          {/* Live Lobby Wall */}
+          <LiveLobbyWallCanister accentColor={ACCENT} maxRooms={6} />
+        </div>
       </PerformerProfileShell>
     </>
   );

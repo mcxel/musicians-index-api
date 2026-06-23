@@ -11,15 +11,6 @@ type CommerceItem = {
   stock: number;
 };
 
-type CheckoutResult = {
-  checkoutId: string;
-  subtotal: number;
-  creatorRoyalty: number;
-  sponsorSplit: number;
-  venueCut: number;
-  platformNet: number;
-};
-
 export default function StoreCategoryClient({ category, title }: { category: CommerceCategory; title: string }) {
   const [items, setItems] = useState<CommerceItem[]>([]);
   const [status, setStatus] = useState("");
@@ -34,6 +25,8 @@ export default function StoreCategoryClient({ category, title }: { category: Com
     void loadItems();
   }, [category]);
 
+  // Redirects to a real Stripe Checkout Session — stock only decrements
+  // after the webhook confirms the payment actually went through.
   const buy = async (itemId: string) => {
     setStatus("Processing checkout...");
     const response = await fetch("/api/store/checkout", {
@@ -42,17 +35,13 @@ export default function StoreCategoryClient({ category, title }: { category: Com
       body: JSON.stringify({ items: [{ itemId, qty: 1 }] }),
     });
 
-    const payload = await response.json();
-    if (!response.ok) {
+    const payload = await response.json() as { ok: boolean; url?: string; error?: string };
+    if (!response.ok || !payload.url) {
       setStatus(payload.error ?? "checkout_failed");
       return;
     }
 
-    const checkout = payload.checkout as CheckoutResult;
-    setStatus(
-      `Checkout ${checkout.checkoutId} | subtotal $${checkout.subtotal.toFixed(2)} | creator $${checkout.creatorRoyalty.toFixed(2)} | venue $${checkout.venueCut.toFixed(2)}`,
-    );
-    await loadItems();
+    window.location.href = payload.url;
   };
 
   return (

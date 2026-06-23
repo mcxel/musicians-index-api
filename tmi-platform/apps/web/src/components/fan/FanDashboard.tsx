@@ -1,5 +1,6 @@
 "use client";
 import React, { useState } from "react";
+import Link from "next/link";
 import type { FanProfile } from "@/lib/fan/FanProfileEngine";
 import type { Achievement } from "@/lib/gamification/AchievementEngine";
 import type { FanNotification } from "@/lib/fan/FanNotificationEngine";
@@ -29,12 +30,13 @@ export function FanDashboard({ profile, unlockedAchievements, notifications, onF
 
   const levelColor = LEVEL_COLORS[Math.min(profile.level, LEVEL_COLORS.length - 1)];
   const unreadCount = notifications.filter((n) => !n.readAtMs).length;
+  const validFollowing = profile.following.filter((f) => Boolean(f.targetId && f.targetName?.trim()));
 
   const tabs: Array<{ id: DashTab; label: string; badge?: number }> = [
     { id: "overview", label: "Overview" },
     { id: "achievements", label: "Achievements", badge: unlockedAchievements.length },
     { id: "history", label: "History" },
-    { id: "following", label: "Following", badge: profile.following.length },
+    { id: "following", label: "Following", badge: validFollowing.length },
     { id: "notifications", label: "Alerts", badge: unreadCount > 0 ? unreadCount : undefined },
   ];
 
@@ -281,10 +283,32 @@ export function FanDashboard({ profile, unlockedAchievements, notifications, onF
         {/* Following */}
         {activeTab === "following" && (
           <div>
-            {profile.following.length === 0 && (
-              <div style={{ color: "#64748b", textAlign: "center", padding: "40px 0" }}>Not following anyone yet.</div>
+            {validFollowing.length === 0 && (
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, color: "#64748b", textAlign: "center", padding: "40px 0" }}>
+                <div>No performers followed yet.</div>
+                <Link
+                  href="/performers"
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    padding: "6px 12px",
+                    borderRadius: 8,
+                    border: "1px solid rgba(0,255,255,0.35)",
+                    background: "rgba(0,255,255,0.1)",
+                    color: "#00ffff",
+                    textDecoration: "none",
+                    fontSize: 11,
+                    fontWeight: 700,
+                    letterSpacing: "0.08em",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  + Add Performer
+                </Link>
+              </div>
             )}
-            {profile.following.map((f) => (
+            {validFollowing.map((f) => (
               <div
                 key={f.targetId}
                 style={{

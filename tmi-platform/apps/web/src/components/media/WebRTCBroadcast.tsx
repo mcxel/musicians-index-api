@@ -10,6 +10,11 @@ export interface WebRTCBroadcastProps {
 
 type BroadcastState = 'idle' | 'live' | 'ending';
 
+type LiveSession = {
+  roomId: string;
+  viewerCount: number;
+};
+
 export default function WebRTCBroadcast({ performerId, accentColor = '#FF2DAA' }: WebRTCBroadcastProps) {
   const [stream,         setStream]         = useState<MediaStream | null>(null);
   const [broadcastState, setBroadcastState] = useState<BroadcastState>('idle');
@@ -43,25 +48,48 @@ export default function WebRTCBroadcast({ performerId, accentColor = '#FF2DAA' }
     setError(null);
     setBroadcastState('live');
 
-    // Start viewer count simulation
     setViewerCount(0);
-    viewerIntervalRef.current = setInterval(() => {
-      setViewerCount((prev) => prev + Math.floor(Math.random() * 3));
-    }, 4000);
+
+    const pollViewerCount = async (currentRoomId: string) => {
+      try {
+        const r = await fetch('/api/live/go', { cache: 'no-store', credentials: 'include' });
+        const d = await r.json() as { sessions?: LiveSession[] };
+        const mine = d.sessions?.find((s) => s.roomId === currentRoomId);
+        setViewerCount(mine?.viewerCount ?? 0);
+      } catch {
+        setViewerCount(0);
+      }
+    };
 
     try {
-      const res = await fetch('/api/live/start', {
+      const res = await fetch('/api/live/go', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ title: title.trim(), roomId, performerId: performerId ?? 'anon' }),
+        credentials: 'include',
+        body:    JSON.stringify({
+          title: title.trim(),
+          roomId,
+          displayName: performerId ?? 'Performer',
+          eventType: 'LIVE_GENERAL',
+          category: 'live',
+          privacy: 'PUBLIC',
+        }),
       });
-      const data = await res.json() as { ok: boolean; streamId?: string; rtmpKey?: string };
-      if (data.ok && data.streamId) {
-        setStreamId(data.streamId);
+      const data = await res.json() as { ok?: boolean; session?: { roomId?: string } };
+      if (res.ok && data.ok) {
+        const resolvedRoomId = data.session?.roomId ?? roomId;
+        setStreamId(resolvedRoomId);
+        void pollViewerCount(resolvedRoomId);
+        viewerIntervalRef.current = setInterval(() => {
+          void pollViewerCount(resolvedRoomId);
+        }, 8000);
+      } else {
+        throw new Error('Live registration failed');
       }
     } catch (err) {
-      console.error('[WebRTCBroadcast] /api/live/start error:', err);
-      // Non-fatal — keep broadcast "live" for UI purposes
+      console.error('[WebRTCBroadcast] /api/live/go error:', err);
+      setBroadcastState('idle');
+      setError('Could not register your stream. Please try again.');
     }
   }, [stream, title, roomId, performerId]);
 
@@ -79,16 +107,13 @@ export default function WebRTCBroadcast({ performerId, accentColor = '#FF2DAA' }
       viewerIntervalRef.current = null;
     }
 
-    if (streamId) {
-      try {
-        await fetch('/api/live/end', {
-          method:  'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify({ streamId }),
-        });
-      } catch (err) {
-        console.error('[WebRTCBroadcast] /api/live/end error:', err);
-      }
+    try {
+      await fetch('/api/live/go', {
+        method:  'DELETE',
+        credentials: 'include',
+      });
+    } catch (err) {
+      console.error('[WebRTCBroadcast] /api/live/go DELETE error:', err);
     }
 
     setBroadcastState('idle');
