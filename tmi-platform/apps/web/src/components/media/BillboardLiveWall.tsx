@@ -31,7 +31,7 @@ interface PerformerSlot {
   name: string;
   slug: string;
   rank?: number;
-  isLive: boolean;
+  isLive?: boolean;
   viewerCount: number;
   genre?: string;
   streamUrl?: string;
@@ -139,7 +139,11 @@ export default function BillboardLiveWall({
               name: p.name,
               slug: p.slug ?? p.id,
               rank: p.rank ?? (i + 1),
-              isLive: false,
+              // Deliberately omitted: these are real performers who may never have
+              // broadcast, not someone whose session just ended. MaskedVideoTile's
+              // isLive===false branch reads "Broadcast Ended / Return to Arena",
+              // which is dishonest framing for honest discovery filler (Rule 14/20).
+              // Leaving isLive undefined renders the neutral "Waiting for Feed" state.
               viewerCount: p.audienceCount ?? p.fanCount ?? 0,
               genre: p.category ?? p.genre ?? 'Live',
               avatarEmoji: p.avatarEmoji ?? '👤',

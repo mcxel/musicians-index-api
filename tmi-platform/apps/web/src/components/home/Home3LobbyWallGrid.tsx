@@ -205,7 +205,19 @@ export default function Home3LobbyWallGrid() {
           {feed.filter(f => f.isLive).length} Live
         </TmiBadgeLabel>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8 }}>
+      <div data-home3-lobby-wall style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8 }}>
+        <style>{`
+          @media (max-width: 767px) {
+            [data-home3-lobby-wall] {
+              grid-template-columns: 1fr !important;
+            }
+          }
+          @media (min-width: 768px) and (max-width: 1023px) {
+            [data-home3-lobby-wall] {
+              grid-template-columns: 1fr 1fr !important;
+            }
+          }
+        `}</style>
         {LOBBY_CONFIG.map((config) => (
           <LiveLobbyTile key={config.id} config={config} feed={feed} />
         ))}

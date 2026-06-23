@@ -110,7 +110,7 @@ export const MaskedVideoTile: React.FC<MaskedVideoTileProps> = ({
              <video src={activeStream} autoPlay muted playsInline className="w-full h-full object-cover" />
           </div>
         ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-b from-black/80 to-black/95">
+          <div className="w-full h-full flex flex-col items-center justify-center pb-12 bg-gradient-to-b from-black/80 to-black/95">
              {isLive === false ? (
                <>
                  <span className="text-3xl mb-2 opacity-50 grayscale">📺</span>
@@ -180,7 +180,7 @@ export const MaskedVideoTile: React.FC<MaskedVideoTileProps> = ({
               >
                 Msg
               </button>
-            }}
+            )}
           </div>
         )}
 

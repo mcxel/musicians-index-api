@@ -185,7 +185,19 @@ export default function Home3LiveWorldSurface() {
         <div style={{ fontSize: 9, letterSpacing: '0.35em', color: '#00FFFF', fontWeight: 800, marginBottom: 14 }}>
           LIVE WORLD ACTIVITY BELT
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.7fr 1fr', gap: 12 }}>
+        <div data-home3-activity-belt style={{ display: 'grid', gridTemplateColumns: '1fr 1.7fr 1fr', gap: 12 }}>
+          <style>{`
+            @media (max-width: 767px) {
+              [data-home3-activity-belt] {
+                grid-template-columns: 1fr !important;
+              }
+            }
+            @media (min-width: 768px) and (max-width: 1023px) {
+              [data-home3-activity-belt] {
+                grid-template-columns: 1fr 1fr !important;
+              }
+            }
+          `}</style>
           <div style={{ borderRadius: 12, border: '1px solid rgba(0,255,255,0.35)', background: 'linear-gradient(145deg, rgba(0,255,255,0.12), rgba(5,5,16,0.82))', padding: 12 }}>
             <div style={{ fontSize: 8, letterSpacing: '0.16em', color: '#00FFFF', fontWeight: 800, marginBottom: 8 }}>ACTIVE ROOMS</div>
             {roomStack.map((room) => (

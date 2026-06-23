@@ -372,7 +372,7 @@ export default function Home3GameShowAudienceWall() {
       </div>
 
       {/* Featured show (first) + grid */}
-      <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr", gap: 14, marginBottom: 14 }}>
+      <div data-home3-gameshows style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr", gap: 14, marginBottom: 14 }}>
         <style>{`
           @media (max-width: 767px) {
             [data-home3-gameshows] {
@@ -384,8 +384,13 @@ export default function Home3GameShowAudienceWall() {
               grid-template-columns: 1fr 1fr !important;
             }
           }
+          @media (max-width: 767px) {
+            [data-home3-gameshows-bottom] {
+              grid-template-columns: 1fr !important;
+            }
+          }
         `}</style>
-        <div data-home3-gameshows style={{ gridColumn: "1 / 2" }}>
+        <div style={{ gridColumn: "1 / 2" }}>
           <GameShowCard show={GAME_SHOWS[0]!} featured onJoin={handleJoin} />
         </div>
         <div style={{ display: "grid", gap: 14 }}>
@@ -399,7 +404,7 @@ export default function Home3GameShowAudienceWall() {
       </div>
 
       {/* 6th show — full width strip */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+      <div data-home3-gameshows-bottom style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
         <GameShowCard show={GAME_SHOWS[5]!} onJoin={handleJoin} />
         {/* "Be in the audience" CTA */}
         <Link href="/auth" style={{ textDecoration: "none" }}>
