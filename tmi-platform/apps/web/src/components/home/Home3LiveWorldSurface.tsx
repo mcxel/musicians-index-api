@@ -7,10 +7,10 @@ import { LobbyEntryFlow, type UniversalRoom } from '@/components/room/UniversalL
 import Home3MainPreviewLobby from './Home3MainPreviewLobby';
 import Home3LivewallGrid from './Home3LobbyWallGrid';
 import Home3LiveEvents from './Home3LiveEvents';
-import Home3JoinRail from './Home3JoinRail';
 import Home3OccupancyRail from './Home3OccupancyRail';
 import Home3EventCalendarStrip from './Home3EventCalendarStrip';
 import Home3HostRail from './Home3HostRail';
+import Home3RandomRoomAndDanceCTA from './Home3RandomRoomAndDanceCTA';
 import GlobalTopNavRail from './GlobalTopNavRail';
 import BreakingNewsTicker from './BreakingNewsTicker';
 import SponsorTickerRail from './SponsorTickerRail';
@@ -318,8 +318,8 @@ export default function Home3LiveWorldSurface() {
       {/* Premiere rail */}
       <Home3PremiereRail />
 
-      {/* Join rail */}
-      <Home3JoinRail />
+      {/* Join rail + World Dance Party CTA */}
+      <Home3RandomRoomAndDanceCTA />
 
       {/* Room occupancy rail */}
       <Home3OccupancyRail />
