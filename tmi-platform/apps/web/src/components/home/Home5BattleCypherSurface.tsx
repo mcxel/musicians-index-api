@@ -291,7 +291,19 @@ export default function Home5BattleCypherSurface() {
             SHARED ARENA ENGINE — ALL THREE USE THIS
           </span>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 8, textAlign: 'center', maxWidth: 900, margin: '0 auto' }}>
+        <div data-home5-arena-grid style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 8, textAlign: 'center', maxWidth: 900, margin: '0 auto' }}>
+          <style>{`
+            @media (max-width: 767px) {
+              [data-home5-arena-grid] {
+                grid-template-columns: repeat(2, 1fr) !important;
+              }
+            }
+            @media (max-width: 520px) {
+              [data-home5-arena-grid] {
+                grid-template-columns: 1fr !important;
+              }
+            }
+          `}</style>
           {[
             { icon: '🎭', label: 'AudienceScene', sub: 'Live crowd, reactions' },
             { icon: '🏟', label: 'Venue Skins', sub: 'Stadium, theater' },
@@ -423,7 +435,14 @@ export default function Home5BattleCypherSurface() {
             <span style={{ fontSize: 11, color: "#00FF88" }}>Gold+ direct challenge enabled</span>
           </div>
 
-          <div data-cbc-grid style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: 10 }}>
+          <div data-cbc-battle-grid style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: 10 }}>
+            <style>{`
+              @media (max-width: 767px) {
+                [data-cbc-battle-grid] [data-battle-console] {
+                  grid-column: auto !important;
+                }
+              }
+            `}</style>
             {/* Format Rotation */}
             <article style={{ border: "1px solid rgba(0,255,255,0.3)", borderRadius: 10, background: "rgba(5,5,16,0.68)", padding: 14, display: "grid", gap: 5 }}>
               <strong style={{ fontSize: 12, color: "#00FFFF" }}>Battle Formats</strong>
@@ -431,7 +450,7 @@ export default function Home5BattleCypherSurface() {
               <span style={{ fontSize: 11, opacity: 0.88 }}>solo · duo · group · band-vs-band</span>
             </article>
             {/* Action console */}
-            <article style={{ gridColumn: 'span 2', border: "1px solid rgba(0,255,136,0.3)", borderRadius: 10, background: "rgba(5,5,16,0.68)", padding: 14, display: "grid", gap: 8 }}>
+            <article data-battle-console style={{ gridColumn: 'span 2', border: "1px solid rgba(0,255,136,0.3)", borderRadius: 10, background: "rgba(5,5,16,0.68)", padding: 14, display: "grid", gap: 8 }}>
               <strong style={{ fontSize: 12, color: "#00FF88" }}>Launch a Battle</strong>
               <button onClick={() => launchChallenge("open")} disabled={challengeActionBusy}
                 style={{ border: "1px solid rgba(255,45,170,0.55)", borderRadius: 7, background: "rgba(255,45,170,0.2)", color: "#fff", padding: "8px 10px", fontSize: 11, cursor: "pointer", textAlign: "left" }}>
