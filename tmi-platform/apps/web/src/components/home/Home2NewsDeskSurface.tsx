@@ -4,6 +4,7 @@ import Home2PremieresRail from './Home2PremieresRail';
 import Home2MonetizationRail from './Home2MonetizationRail';
 import Home2DiscoveryRail from './Home2DiscoveryRail';
 import Home2MarketplaceRail from './Home2MarketplaceRail';
+import Home2NewsTickerRail from './Home2NewsTickerRail';
 import GlobalTopNavRail from './GlobalTopNavRail';
 import BreakingNewsTicker from './BreakingNewsTicker';
 import SponsorTickerRail from './SponsorTickerRail';
@@ -121,6 +122,8 @@ export default function Home2NewsDeskSurface() {
           ))}
         </div>
       </section>
+
+      <Home2NewsTickerRail accentColor="#FFD700" />
 
       {/* Editorial rail */}
       <div id="editorial">
