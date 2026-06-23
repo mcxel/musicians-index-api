@@ -30,7 +30,8 @@ function lobbyToRoom(lobby: LobbyItem): UniversalRoom {
 
 export default function Home2LiveLobbyStrip() {
   const { feed } = useLiveSync();
-  const liveLobbies = feed.filter((f) => f.isLive);
+  // Only show ACTIVE live sessions; filter out any ended broadcasts
+  const liveLobbies = feed.filter((f) => f.isLive === true);
   const [startIdx, setStartIdx] = useState(0);
   const [direction, setDirection] = useState(1);
   const [pending, setPending] = useState<UniversalRoom | null>(null);
@@ -74,16 +75,20 @@ export default function Home2LiveLobbyStrip() {
       </div>
 
       {/* Live windows grid */}
-      <div style={{
+      <div data-home2-live-grid style={{
         display: "grid",
         gridTemplateColumns: "repeat(4, 1fr)",
         gap: 10,
-        // Responsive: 2 cols on mobile
       }}>
         <style>{`
           @media (max-width: 767px) {
             [data-home2-live-grid] {
               grid-template-columns: repeat(2, 1fr) !important;
+            }
+          }
+          @media (max-width: 520px) {
+            [data-home2-live-grid] {
+              grid-template-columns: 1fr !important;
             }
           }
         `}</style>
@@ -96,7 +101,6 @@ export default function Home2LiveLobbyStrip() {
               animate={{ opacity: 1, scale: 1, x: 0 }}
               exit={{ opacity: 0, scale: 0.92, x: -direction * 20 }}
               transition={{ duration: 0.35, delay: i * 0.05, ease: "easeOut" }}
-              data-home2-live-grid
               style={{
                 borderRadius: 12,
                 overflow: "hidden",

@@ -136,18 +136,22 @@ export const MaskedVideoTile: React.FC<MaskedVideoTileProps> = ({
           </div>
         )}
 
-        {/* Actions Menu (Hovers in over the video) */}
+        {/* Actions Menu — Desktop hover OR Mobile inline footer */}
         {showActions && (
           <div
             style={{
               position: 'absolute',
               left: 0,
               right: 0,
-              bottom: '35%',
+              bottom: 0,
               zIndex: 50,
               display: 'flex',
+              flexDirection: supportsHover ? 'row' : 'column',
               justifyContent: 'center',
-              gap: 8,
+              flexWrap: 'wrap',
+              gap: 6,
+              padding: supportsHover ? '0' : '6px 6px',
+              backgroundColor: supportsHover ? 'transparent' : 'rgba(0,0,0,0.85)',
               opacity: actionsVisible ? 1 : 0,
               pointerEvents: actionsVisible ? 'auto' : 'none',
               transition: 'opacity 180ms ease',
@@ -156,7 +160,7 @@ export const MaskedVideoTile: React.FC<MaskedVideoTileProps> = ({
             {onJoin && (
               <button
                 onClick={onJoin}
-                style={{ background: '#00E5FF', color: '#050510', padding: '4px 8px', borderRadius: 6, fontSize: 10, fontWeight: 800, textTransform: 'uppercase', border: '1px solid rgba(0,229,255,0.65)', cursor: 'pointer' }}
+                style={{ background: '#00E5FF', color: '#050510', padding: supportsHover ? '4px 8px' : '6px 10px', borderRadius: 6, fontSize: supportsHover ? 10 : 9, fontWeight: 800, textTransform: 'uppercase', border: '1px solid rgba(0,229,255,0.65)', cursor: 'pointer', minWidth: supportsHover ? 'auto' : '50px', flex: supportsHover ? '0 1 auto' : '1 1 48%' }}
               >
                 Join
               </button>
@@ -164,7 +168,7 @@ export const MaskedVideoTile: React.FC<MaskedVideoTileProps> = ({
             {onTip && (
               <button
                 onClick={onTip}
-                style={{ background: '#FFB347', color: '#050510', padding: '4px 8px', borderRadius: 6, fontSize: 10, fontWeight: 800, textTransform: 'uppercase', border: '1px solid rgba(255,179,71,0.65)', cursor: 'pointer' }}
+                style={{ background: '#FFB347', color: '#050510', padding: supportsHover ? '4px 8px' : '6px 10px', borderRadius: 6, fontSize: supportsHover ? 10 : 9, fontWeight: 800, textTransform: 'uppercase', border: '1px solid rgba(255,179,71,0.65)', cursor: 'pointer', minWidth: supportsHover ? 'auto' : '50px', flex: supportsHover ? '0 1 auto' : '1 1 48%' }}
               >
                 Tip
               </button>
@@ -172,11 +176,11 @@ export const MaskedVideoTile: React.FC<MaskedVideoTileProps> = ({
             {onMessage && (
               <button
                 onClick={onMessage}
-                style={{ background: '#FF2DAA', color: '#fff', padding: '4px 8px', borderRadius: 6, fontSize: 10, fontWeight: 800, textTransform: 'uppercase', border: '1px solid rgba(255,45,170,0.65)', cursor: 'pointer' }}
+                style={{ background: '#FF2DAA', color: '#fff', padding: supportsHover ? '4px 8px' : '6px 10px', borderRadius: 6, fontSize: supportsHover ? 10 : 9, fontWeight: 800, textTransform: 'uppercase', border: '1px solid rgba(255,45,170,0.65)', cursor: 'pointer', minWidth: supportsHover ? 'auto' : '50px', flex: supportsHover ? '0 1 auto' : '1 1 48%' }}
               >
                 Msg
               </button>
-            )}
+            }}
           </div>
         )}
 
