@@ -3,8 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import MaskedVideoTile from "@/components/live/MaskedVideoTile";
-import HighFidelityAvatar from "@/components/avatar/HighFidelityAvatar";
+import { MaskedVideoTile } from "@/components/live/MaskedVideoTile";
 
 interface LiveEntry {
   userId: string;
@@ -164,8 +163,7 @@ export default function PerformerLobbyWall({ compact = false }: Props) {
                   viewerCount={p.viewers}
                   genre={p.genre}
                   accentColor={p.accentColor}
-                  avatarIcon={<HighFidelityAvatar imageUrl={p.avatarUrl} name={p.name} size={compact ? 58 : 72} tierColor={p.accentColor} />}
-                  role="performer"
+                  avatarUrl={p.avatarUrl}
                   size={compact ? 120 : 156}
                 />
               </div>

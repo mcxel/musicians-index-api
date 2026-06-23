@@ -7,160 +7,14 @@ import { prisma } from "@/lib/prisma";
 /**
  * GET /api/live
  * Returns the current live feed for the Billboard, homepage widgets,
- * and LiveStateRegistry sync. Stats are randomized slightly on each
- * request to simulate real-time activity fluctuation.
- *
- * In production: replace SEED_PERFORMERS with a database query, e.g.:
- *   SELECT * FROM performer_sessions WHERE is_live = true ORDER BY score DESC
+ * and LiveStateRegistry sync. Rule 20: real sessions or DB-recovery only —
+ * never falls back to fabricated performers or randomized viewer counts.
  */
 
 function rand(min: number, max: number) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-function maybeBoost(): number {
-  return Math.random() < 0.15 ? rand(20, 60) : 0;
-}
-
-/* ─── Seed performers (bot + real accounts for soft launch) ─────────────────
-   These populate the Billboard and homepage widgets on day 1.
-   Replace/extend from your database as real performers go live.
-   ─────────────────────────────────────────────────────────────────────────── */
-const SEED: Omit<LiveFeedItem, "viewers" | "tips" | "battleRank" | "activityLevel" | "boostWeight">[] = [
-  {
-    id:            "feed-001",
-    performerId:   "HYP-0001",
-    performerName: "Kreach",
-    performerTier: "diamond",
-    roomId:        "cypher-arena",
-    genre:         "cypher",
-    privacy:       "PUBLIC",
-    accentColor:   "#00FFFF",
-    isLive:        true,
-  },
-  {
-    id:            "feed-002",
-    performerId:   "HYP-0002",
-    performerName: "Drez Wavez",
-    performerTier: "gold",
-    roomId:        "monday-night-stage",
-    genre:         "battle",
-    privacy:       "PUBLIC",
-    accentColor:   "#FF2DAA",
-    isLive:        true,
-  },
-  {
-    id:            "feed-003",
-    performerId:   "HYP-0003",
-    performerName: "Solo Ace",
-    performerTier: "platinum",
-    roomId:        "monthly-idol",
-    genre:         "live",
-    privacy:       "PUBLIC",
-    accentColor:   "#FFD700",
-    isLive:        true,
-  },
-  {
-    id:            "feed-004",
-    performerId:   "HYP-0004",
-    performerName: "Nova Redd",
-    performerTier: "gold",
-    roomId:        "venue-room",
-    genre:         "concert",
-    privacy:       "PAID_ENTRY",
-    accentColor:   "#AA2DFF",
-    isLive:        true,
-    entryPriceUsd: 4.99,
-  },
-  {
-    id:            "feed-005",
-    performerId:   "HYP-0005",
-    performerName: "Mic Titan",
-    performerTier: "silver",
-    roomId:        "battle-pit-05",
-    genre:         "battle",
-    privacy:       "PUBLIC",
-    accentColor:   "#FF6B35",
-    isLive:        true,
-  },
-  {
-    id:            "feed-006",
-    performerId:   "HYP-0006",
-    performerName: "Zynth",
-    performerTier: "diamond",
-    roomId:        "diamond-surf-06",
-    genre:         "live",
-    privacy:       "DIAMOND_SURF",
-    accentColor:   "#38bdf8",
-    isLive:        true,
-  },
-  {
-    id:            "feed-007",
-    performerId:   "HYP-0007",
-    performerName: "Lyric Lens",
-    performerTier: "free",
-    roomId:        "open-cypher-07",
-    genre:         "cypher",
-    privacy:       "PUBLIC",
-    accentColor:   "#22c55e",
-    isLive:        true,
-  },
-  {
-    id:            "feed-008",
-    performerId:   "REG-0001",
-    performerName: "Blaze Trak",
-    performerTier: "gold",
-    roomId:        "challenge-ring-08",
-    genre:         "challenge",
-    privacy:       "PUBLIC",
-    accentColor:   "#f97316",
-    isLive:        true,
-  },
-  {
-    id:            "feed-009",
-    performerId:   "REG-0002",
-    performerName: "Phantom Beat",
-    performerTier: "platinum",
-    roomId:        "game-vault-09",
-    genre:         "game",
-    privacy:       "INVITE_ONLY",
-    accentColor:   "#818cf8",
-    isLive:        false,
-  },
-  {
-    id:            "feed-010",
-    performerId:   "REG-0003",
-    performerName: "Crown Chaser",
-    performerTier: "silver",
-    roomId:        "deal-or-feud",
-    genre:         "battle",
-    privacy:       "PUBLIC",
-    accentColor:   "#fb923c",
-    isLive:        false,
-  },
-  {
-    id:            "feed-011",
-    performerId:   "REG-0004",
-    performerName: "Bass Prophet",
-    performerTier: "free",
-    roomId:        "bass-room-11",
-    genre:         "live",
-    privacy:       "PUBLIC",
-    accentColor:   "#c084fc",
-    isLive:        true,
-  },
-  {
-    id:            "feed-012",
-    performerId:   "REG-0005",
-    performerName: "Verse Architect",
-    performerTier: "gold",
-    roomId:        "cypher-arena",
-    genre:         "cypher",
-    privacy:       "PUBLIC",
-    accentColor:   "#2dd4bf",
-    isLive:        true,
-  },
-];
 
 const LIVE_GENRE_CANONICAL: Record<string, LiveFeedItem["genre"]> = {
   cypher: "cypher", battle: "battle", live: "live", concert: "concert",
@@ -188,7 +42,7 @@ export async function GET() {
     privacy:       session.privacy,
     accentColor:   session.accentColor ?? REGISTRY_ACCENT[i % REGISTRY_ACCENT.length] ?? "#00FFFF",
     isLive:        true,
-    viewers:       Math.max(session.viewerCount, rand(4, 30)),
+    viewers:       session.viewerCount, // Rule 20: honest count, never a fabricated minimum floor
     tips:          session.tipTotal,
     battleRank:    i + 1,
     activityLevel: rand(60, 100),
@@ -233,29 +87,13 @@ export async function GET() {
         boostWeight:   20,
         boostExpiresAt: Date.now() + 300_000,
       }));
-    } catch { /* DB unavailable — fall through to seed */ }
+    } catch { /* DB unavailable — fall through to empty feed */ }
   }
 
-  // Combine: in-memory registry → DB recovery → seed fallback
-  const realFeed = registryFeed.length > 0 ? registryFeed : dbFeed;
-
-  // Filter seed: remove any seed whose performerId appears in real sessions (avoid dupes)
-  const realIds = new Set([...liveSessions.map((s) => s.userId), ...dbFeed.map((d) => d.performerId)]);
-  const seedFeed: LiveFeedItem[] = SEED
-    .filter((s) => !realIds.has(s.performerId))
-    .map((s) => ({
-      ...s,
-      viewers:       s.isLive ? rand(8, 420) : rand(0, 12),
-      tips:          s.isLive ? rand(0, 180) : 0,
-      battleRank:    rand(1, 50),
-      activityLevel: s.isLive ? rand(30, 100) : rand(0, 20),
-      boostWeight:   maybeBoost(),
-      boostExpiresAt: maybeBoost() > 0 ? Date.now() + rand(30_000, 180_000) : undefined,
-    }));
-
-  const feed = realFeed.length > 0
-    ? realFeed                    // real sessions (in-memory or DB recovery)
-    : seedFeed;                   // seed fallback only when platform is empty
+  // Combine: in-memory registry → DB recovery. Rule 20: never fall back to
+  // fabricated SEED performers with randomized viewer counts presented as
+  // live — an empty array is the honest result when nothing is really live.
+  const feed = registryFeed.length > 0 ? registryFeed : dbFeed;
 
   return NextResponse.json(feed, {
     headers: {

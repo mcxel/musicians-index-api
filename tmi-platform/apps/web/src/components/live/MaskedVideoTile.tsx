@@ -5,13 +5,29 @@ import { useEffect, useState } from 'react';
 
 export type TileShape = 'octagon' | 'hexagon' | 'pentagon' | 'circle' | 'diamond' | 'torn-edge' | 'glitch-rect';
 
+/**
+ * Explicit broadcast state — replaces the ambiguous isLive boolean.
+ * 'live'    → stream is active right now
+ * 'offline' → performer exists but is not live (show discovery card, never "Broadcast Ended")
+ * 'ended'   → had a live session that just ended (show "Broadcast Ended" briefly)
+ * 'waiting' → no stream yet (default when broadcastStatus is undefined)
+ *
+ * The legacy isLive prop is still accepted for backward compatibility:
+ *   isLive=true  → treated as 'live'
+ *   isLive=false → treated as 'offline' (NOT 'ended') to avoid false "Broadcast Ended"
+ *   isLive=undefined → treated as 'waiting'
+ */
+export type BroadcastTileStatus = 'live' | 'offline' | 'ended' | 'waiting';
+
 interface MaskedVideoTileProps {
   participantId?: string;
-  videoStreamUrl?: string; 
+  videoStreamUrl?: string;
   streamUrl?: string;
-  vibeState?: any; 
+  vibeState?: any;
   isAudioActive?: boolean;
   isLive?: boolean;
+  /** Preferred over isLive when provided. */
+  broadcastStatus?: BroadcastTileStatus;
   participantName?: string;
   performerName?: string;
   performerSlug?: string;
@@ -29,15 +45,17 @@ interface MaskedVideoTileProps {
   onMessage?: () => void;
 }
 
-export const MaskedVideoTile: React.FC<MaskedVideoTileProps> = ({ 
+export const MaskedVideoTile: React.FC<MaskedVideoTileProps> = ({
   participantId,
   videoStreamUrl,
   streamUrl,
   vibeState = {},
   isAudioActive,
   isLive,
+  broadcastStatus: broadcastStatusProp,
   participantName,
   performerName,
+  performerSlug,
   rank,
   viewerCount,
   genre,
@@ -51,6 +69,13 @@ export const MaskedVideoTile: React.FC<MaskedVideoTileProps> = ({
   onTip,
   onMessage
 }) => {
+  // Resolve explicit broadcastStatus first; fall back to legacy isLive boolean.
+  // isLive=false → 'offline' (discovery card), never 'ended' — that ambiguity
+  // was causing "Broadcast Ended" to appear on every offline performer tile.
+  const broadcastStatus: BroadcastTileStatus =
+    broadcastStatusProp ??
+    (isLive === true ? 'live' : isLive === false ? 'offline' : 'waiting');
+
   const [hovered, setHovered] = useState(false);
   const [avatarLoadFailed, setAvatarLoadFailed] = useState(false);
   // Touch devices simulate :hover on tap with no reliable mouseleave, which
@@ -105,34 +130,48 @@ export const MaskedVideoTile: React.FC<MaskedVideoTileProps> = ({
         <div className="absolute inset-0 z-30 pointer-events-none shadow-[inset_0_0_60px_rgba(0,0,0,0.9)]"></div>
 
         {/* Video / Fallback Content */}
-        {activeStream && isLive !== false ? (
+        {activeStream && broadcastStatus === 'live' ? (
           <div className="relative w-full h-full">
              <video src={activeStream} autoPlay muted playsInline className="w-full h-full object-cover" />
           </div>
+        ) : broadcastStatus === 'ended' ? (
+          <div className="w-full h-full flex flex-col items-center justify-center pb-12 bg-gradient-to-b from-black/80 to-black/95">
+            <span className="text-3xl mb-2 opacity-50 grayscale">📺</span>
+            <span className="font-bold tracking-widest text-[10px] uppercase text-gray-500 mb-4">Broadcast Ended</span>
+            <button onClick={() => window.location.href = '/arena'} className="bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded text-[9px] font-bold uppercase transition-colors border border-white/20">Return to Arena</button>
+          </div>
+        ) : broadcastStatus === 'offline' ? (
+          <div className="w-full h-full flex flex-col items-center justify-center pb-12 bg-gradient-to-b from-black/80 to-black/95">
+            {avatarUrl && !avatarLoadFailed ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={avatarUrl}
+                alt={displayName}
+                className="w-20 h-20 rounded-full object-cover mb-3 border-2 shadow-[0_0_20px_rgba(255,255,255,0.15)]"
+                style={{ borderColor: accentColor }}
+                onError={() => setAvatarLoadFailed(true)}
+              />
+            ) : (
+              avatarEmoji && <span className="text-5xl drop-shadow-[0_0_15px_rgba(255,255,255,0.4)] mb-2">{avatarEmoji}</span>
+            )}
+            <span className="font-bold tracking-widest text-[9px] uppercase mb-3" style={{ color: accentColor }}>{displayName}</span>
+            <a href={`/performers/${performerSlug || participantId || ''}`} className="text-[9px] font-bold uppercase tracking-widest px-3 py-1.5 rounded border transition-colors" style={{ color: accentColor, borderColor: accentColor + '55', background: accentColor + '11' }}>View Profile</a>
+          </div>
         ) : (
           <div className="w-full h-full flex flex-col items-center justify-center pb-12 bg-gradient-to-b from-black/80 to-black/95">
-             {isLive === false ? (
-               <>
-                 <span className="text-3xl mb-2 opacity-50 grayscale">📺</span>
-                 <span className="font-bold tracking-widest text-[10px] uppercase text-gray-500 mb-4">Broadcast Ended</span>
-                 <button onClick={() => window.location.href = '/arena'} className="bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded text-[9px] font-bold uppercase transition-colors border border-white/20">Return to Arena</button>
-               </>
-             ) : (
-               <>
-                 {avatarUrl && !avatarLoadFailed ? (
-                   <img
-                     src={avatarUrl}
-                     alt={displayName}
-                     className="w-20 h-20 rounded-full object-cover mb-3 border-2 animate-pulse shadow-[0_0_20px_rgba(255,255,255,0.2)]"
-                     style={{ borderColor: accentColor }}
-                     onError={() => setAvatarLoadFailed(true)}
-                   />
-                 ) : (
-                   avatarEmoji && <span className="text-5xl drop-shadow-[0_0_15px_rgba(255,255,255,0.4)] mb-2 animate-pulse">{avatarEmoji}</span>
-                 )}
-                 <span className="font-bold tracking-widest text-[9px] uppercase" style={{ color: accentColor }}>Waiting for Feed</span>
-               </>
-             )}
+            {avatarUrl && !avatarLoadFailed ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={avatarUrl}
+                alt={displayName}
+                className="w-20 h-20 rounded-full object-cover mb-3 border-2 animate-pulse shadow-[0_0_20px_rgba(255,255,255,0.2)]"
+                style={{ borderColor: accentColor }}
+                onError={() => setAvatarLoadFailed(true)}
+              />
+            ) : (
+              avatarEmoji && <span className="text-5xl drop-shadow-[0_0_15px_rgba(255,255,255,0.4)] mb-2 animate-pulse">{avatarEmoji}</span>
+            )}
+            <span className="font-bold tracking-widest text-[9px] uppercase" style={{ color: accentColor }}>Waiting for Feed</span>
           </div>
         )}
 

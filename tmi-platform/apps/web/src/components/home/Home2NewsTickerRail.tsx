@@ -1,10 +1,12 @@
 'use client';
 import { motion } from 'framer-motion';
+import { getRecentArticles, type MagazineArticle } from '@/lib/magazine/magazineIssueData';
 
 interface NewsItem {
   id: string;
   headline: string;
   timestamp?: string;
+  slug?: string;
 }
 
 interface Home2NewsTickerRailProps {
@@ -12,17 +14,91 @@ interface Home2NewsTickerRailProps {
   accentColor?: string;
 }
 
-const DEFAULT_NEWS_ITEMS: NewsItem[] = [
-  { id: '1', headline: 'New collaboration between Marcus Bells and SZA announced', timestamp: '2m ago' },
-  { id: '2', headline: 'Battle of the Bands semifinals heat up this Friday', timestamp: '45m ago' },
-  { id: '3', headline: 'Producer Showcase: Top 5 beats from this week', timestamp: '3h ago' },
-  { id: '4', headline: 'Monthly Idol auditions open for next season', timestamp: '6h ago' },
-];
+function convertArticleToNewsItem(article: MagazineArticle): NewsItem {
+  const publishDate = new Date(article.publishedAt);
+  const now = new Date();
+  const diffMs = now.getTime() - publishDate.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  let timestamp = '';
+  if (diffDays === 0) {
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    if (diffHours === 0) {
+      const diffMins = Math.floor(diffMs / (1000 * 60));
+      timestamp = `${diffMins}m ago`;
+    } else {
+      timestamp = `${diffHours}h ago`;
+    }
+  } else if (diffDays === 1) {
+    timestamp = '1d ago';
+  } else {
+    timestamp = `${diffDays}d ago`;
+  }
+
+  return {
+    id: article.slug,
+    headline: article.title,
+    timestamp,
+    slug: article.slug,
+  };
+}
+
+function getTickerItems(): NewsItem[] {
+  const recentArticles = getRecentArticles(4);
+  if (recentArticles.length === 0) {
+    return [];
+  }
+  return recentArticles.map(convertArticleToNewsItem);
+}
 
 export default function Home2NewsTickerRail({
-  items = DEFAULT_NEWS_ITEMS,
+  items,
   accentColor = '#FFD700',
 }: Home2NewsTickerRailProps) {
+  const tickerItems = items ?? getTickerItems();
+  const tickerItems = items ?? getTickerItems();
+
+  if (tickerItems.length === 0) {
+    return (
+      <section
+        style={{
+          maxWidth: 1100,
+          margin: '0 auto',
+          padding: '24px 24px 0',
+        }}
+      >
+        <div
+          style={{
+            background: `linear-gradient(135deg, ${accentColor}15, rgba(5,5,16,0.88))`,
+            border: `1px solid ${accentColor}35`,
+            borderRadius: 12,
+            overflow: 'hidden',
+            padding: '14px 16px',
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              marginBottom: 12,
+            }}
+          >
+            <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: '0.15em', color: accentColor, textTransform: 'uppercase' }}>
+              ⏱ LAST HOUR
+            </div>
+            <div style={{ fontSize: 7, fontWeight: 700, color: 'rgba(255,255,255,0.5)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+              News · Updates · Trends
+            </div>
+          </div>
+          <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>
+            No new stories in the last hour. Check back soon.
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section
       style={{
@@ -70,7 +146,7 @@ export default function Home2NewsTickerRail({
             initial={{ x: '100%' }}
             animate={{ x: '-100%' }}
             transition={{
-              duration: items.length * 4 + 8,
+              duration: tickerItems.length * 4 + 8,
               repeat: Infinity,
               ease: 'linear',
             }}
@@ -81,7 +157,7 @@ export default function Home2NewsTickerRail({
             }}
           >
             {/* Duplicate items for seamless loop */}
-            {[...items, ...items].map((item, idx) => (
+            {[...tickerItems, ...tickerItems].map((item, idx) => (
               <div
                 key={`${item.id}-${idx}`}
                 style={{

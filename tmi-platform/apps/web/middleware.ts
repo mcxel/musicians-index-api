@@ -109,8 +109,32 @@ function roleDashboardPath(role: string): string {
   }
 }
 
+// Internal design-reference paths that must never be publicly served.
+// These files live in public/ for historical/tooling reasons but contain
+// HTML prototypes, MD directives, and design-reference images — not runtime assets.
+const QUARANTINED_PUBLIC_PREFIXES = [
+  '/blueprints/',
+  '/assets/Tmi Homepage',
+  '/assets/_converted_webp/',
+  '/assets/game show and venue skins/',
+  '/assets/Host , Julius , and extra/',
+  '/assets/Venue Skins Plus Seating/',
+  '/assets/Profiles/',
+  '/assets/The Musician',
+];
+
+function isQuarantined(pathname: string): boolean {
+  return QUARANTINED_PUBLIC_PREFIXES.some((p) => pathname.startsWith(p));
+}
+
 export function middleware(req: NextRequest) {
   const { pathname, search } = req.nextUrl;
+
+  // Blueprint/design-reference quarantine — return 404 before any other check.
+  if (isQuarantined(pathname)) {
+    return new NextResponse(null, { status: 404 });
+  }
+
   const incomingRef = normalizeRef(req.nextUrl.searchParams.get('ref'));
   const incomingPlaylist = normalizeRef(req.nextUrl.searchParams.get('playlist'));
   const incomingCurator = normalizeRef(req.nextUrl.searchParams.get('curator'));
