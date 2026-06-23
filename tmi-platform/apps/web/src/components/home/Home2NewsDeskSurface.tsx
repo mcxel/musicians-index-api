@@ -11,12 +11,10 @@ import Home2SponsorArticleStrip from './Home2SponsorArticleStrip';
 import Home2ReadNextRail from './Home2ReadNextRail';
 import Home2TrendingIssueRail from './Home2TrendingIssueRail';
 import Home2NewsDensityRail from './Home2NewsDensityRail';
-import Home2LiveLobbyStrip from './Home2LiveLobbyStrip';
 import WorldTrendingBelt from './WorldTrendingBelt';
 import LiveMagazineVoiceTicker from './LiveMagazineVoiceTicker';
 import { enforceRouteOwnership } from '@/lib/routes/TmiVisualRouteMap';
 import { getVisualSlot } from '@/lib/visuals/TmiVisualSlotRegistry';
-import BillboardLiveWall from '@/components/media/BillboardLiveWall';
 import RoomContainer from '@/components/room/RoomContainer';
 import WidgetDrawer from '@/components/room/WidgetDrawer';
 import NeonWaveUnderlay from '@/components/atmosphere/NeonWaveUnderlay';
@@ -122,14 +120,6 @@ export default function Home2NewsDeskSurface() {
             </a>
           ))}
         </div>
-      </section>
-
-      {/* Live lobby windows — rotating live rooms above editorial */}
-      <Home2LiveLobbyStrip />
-
-      {/* ══ MAGAZINE LIVE WALL — registry-driven performer tiles ══ */}
-      <section style={{ maxWidth: 1100, margin: '0 auto', padding: '0 24px 28px' }}>
-        <BillboardLiveWall mode="magazine" maxTiles={9} title="LIVE NOW — MAGAZINE LOBBY" showActions />
       </section>
 
       {/* Editorial rail */}
