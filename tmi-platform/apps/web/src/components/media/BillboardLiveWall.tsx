@@ -17,7 +17,7 @@
  */
 
 import { useEffect, useState, useCallback } from 'react';
-import { MaskedVideoTile, type TileShape } from '@/components/live/MaskedVideoTile';
+import { MaskedVideoTile, type TileShape, type BroadcastTileStatus } from '@/components/live/MaskedVideoTile';
 import Link from 'next/link';
 import { LobbyEntryFlow, type UniversalRoom } from '@/components/room/UniversalLobbyEntry';
 import { PERFORMER_REGISTRY } from '@/lib/performers/PerformerRegistry';
@@ -31,6 +31,7 @@ interface PerformerSlot {
   name: string;
   slug: string;
   rank?: number;
+  broadcastStatus?: BroadcastTileStatus;
   isLive?: boolean;
   viewerCount: number;
   genre?: string;
@@ -120,6 +121,7 @@ export default function BillboardLiveWall({
         id: s.userId,
         name: s.displayName,
         slug: s.userId,
+        broadcastStatus: 'live' as const,
         isLive: true,
         viewerCount: s.viewerCount,
         genre: s.category,
@@ -139,11 +141,10 @@ export default function BillboardLiveWall({
               name: p.name,
               slug: p.slug ?? p.id,
               rank: p.rank ?? (i + 1),
-              // Deliberately omitted: these are real performers who may never have
-              // broadcast, not someone whose session just ended. MaskedVideoTile's
-              // isLive===false branch reads "Broadcast Ended / Return to Arena",
-              // which is dishonest framing for honest discovery filler (Rule 14/20).
-              // Leaving isLive undefined renders the neutral "Waiting for Feed" state.
+              broadcastStatus: 'offline' as const,
+              // No longer ambiguous: 'offline' means real performer, not someone
+              // whose session ended. MaskedVideoTile will show discovery card, not
+              // "Broadcast Ended" (Rule 14/20 compliance).
               viewerCount: p.audienceCount ?? p.fanCount ?? 0,
               genre: p.category ?? p.genre ?? 'Live',
               avatarEmoji: p.avatarEmoji ?? '👤',
@@ -337,6 +338,7 @@ export default function BillboardLiveWall({
                 performerName={p.name}
                 performerSlug={p.slug}
                 rank={p.rank}
+                broadcastStatus={p.broadcastStatus}
                 isLive={p.isLive}
                 viewerCount={p.viewerCount}
                 genre={p.genre}
