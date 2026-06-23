@@ -5,7 +5,8 @@ import EventReel from '@/components/events/EventReel';
 import DiscoveryRail from '@/components/discovery/DiscoveryRail';
 import { getAdSlotForZone } from '@/lib/commerce/SponsorRegistry';
 import { sortPerformersByFreshness } from '@/lib/content/ContentFreshness';
-import { PERFORMER_REGISTRY } from '@/lib/performers/PerformerRegistry';
+import { PERFORMER_REGISTRY, type PerformerIdentity } from '@/lib/performers/PerformerRegistry';
+import { getActiveSessions } from '@/lib/broadcast/GlobalLiveSessionRegistry';
 
 export const metadata: Metadata = {
   title: "Live World — Active Rooms, Events & Live Shows",
@@ -33,9 +34,20 @@ function buildSponsorEntry(zone: string) {
   return { id: zone, name: 'ADVERTISE ON TMI', tagline: 'Reach live audiences · from $25' };
 }
 
+function enrichPerformersWithRealLiveness(performers: PerformerIdentity[]): PerformerIdentity[] {
+  const liveSessions = getActiveSessions();
+  const liveUserIds = new Set(liveSessions.map(s => s.userId));
+  return performers.map(p => ({
+    ...p,
+    isLive: liveUserIds.has(p.id),
+  }));
+}
+
 export default function Home3Page() {
   // Rule 11: Content Freshness — live rooms first (LIVE > RECENT > POPULAR > ARCHIVE)
-  const liveFirstPerformers = sortPerformersByFreshness(PERFORMER_REGISTRY);
+  // A1: Merge real liveness from GlobalLiveSessionRegistry (not stale registry.isLive)
+  const enrichedPerformers = enrichPerformersWithRealLiveness(PERFORMER_REGISTRY);
+  const liveFirstPerformers = sortPerformersByFreshness(enrichedPerformers);
   const liveCount = liveFirstPerformers.filter(p => p.isLive).length;
 
   const sponsors = ['home-3-sp-0','home-3-sp-1','home-3-sp-2','home-3-sp-3',
