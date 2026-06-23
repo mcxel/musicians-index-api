@@ -56,7 +56,6 @@ export default function Home2NewsTickerRail({
   accentColor = '#FFD700',
 }: Home2NewsTickerRailProps) {
   const tickerItems = items ?? getTickerItems();
-  const tickerItems = items ?? getTickerItems();
 
   if (tickerItems.length === 0) {
     return (

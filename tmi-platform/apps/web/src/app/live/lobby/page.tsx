@@ -34,25 +34,35 @@ function sessionToRoom(session: LiveApiSession): UniversalRoom {
 // land here with ?room=<roomId> — this is the ONE place that decides what
 // happens next, so it has to actually look the room up and show the real
 // entry flow for it, not a generic "browse everything live" wall.
+// Also handles ?mode=random to pick a random live room.
 function RoomAwareLobby() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const requestedRoomId = searchParams?.get('room') ?? null;
+  const modeRandom = searchParams?.get('mode') === 'random';
 
   const [status, setStatus] = useState<'loading' | 'found' | 'not-found' | 'none'>(
-    requestedRoomId ? 'loading' : 'none',
+    requestedRoomId || modeRandom ? 'loading' : 'none',
   );
   const [room, setRoom] = useState<UniversalRoom | null>(null);
 
   useEffect(() => {
-    if (!requestedRoomId) { setStatus('none'); return; }
+    if (!requestedRoomId && !modeRandom) { setStatus('none'); return; }
     let cancelled = false;
     (async () => {
       try {
         const res = await fetch('/api/live/go', { cache: 'no-store' });
         const data = await res.json() as { sessions?: LiveApiSession[] };
-        const match = data.sessions?.find((s) => s.roomId === requestedRoomId);
         if (cancelled) return;
+
+        let match: LiveApiSession | undefined;
+        if (requestedRoomId) {
+          match = data.sessions?.find((s) => s.roomId === requestedRoomId);
+        } else if (modeRandom && data.sessions && data.sessions.length > 0) {
+          // Pick a random live room
+          match = data.sessions[Math.floor(Math.random() * data.sessions.length)];
+        }
+
         if (match) {
           setRoom(sessionToRoom(match));
           setStatus('found');
@@ -64,7 +74,7 @@ function RoomAwareLobby() {
       }
     })();
     return () => { cancelled = true; };
-  }, [requestedRoomId]);
+  }, [requestedRoomId, modeRandom]);
 
   if (status === 'loading') {
     return (
