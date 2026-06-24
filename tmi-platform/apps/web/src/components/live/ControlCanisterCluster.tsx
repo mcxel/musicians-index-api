@@ -18,6 +18,7 @@
 
 import { useState, useCallback } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
+import EventOwnerCanister from './EventOwnerCanister';
 
 export type CanisterType =
   | 'lighting'
@@ -27,7 +28,8 @@ export type CanisterType =
   | 'support'
   | 'stage'
   | 'director'
-  | 'sponsors';
+  | 'sponsors'
+  | 'event-owner';
 
 export type CanisterPosition = 'left' | 'right' | 'bottom' | 'floating';
 
@@ -42,7 +44,7 @@ export interface CanisterState {
 }
 
 interface Props {
-  eventId: string;
+  eventId?: string;
   eventMode: 'casual' | 'release-party' | 'concert' | 'battle' | 'cypher';
   availableCanisters: CanisterType[];
   onClose?: () => void;
@@ -52,14 +54,15 @@ interface Props {
 // ─── Canister registry ────────────────────────────────────────────────────────
 
 const CANISTER_INFO: Record<CanisterType, { label: string; icon: string; color: string }> = {
-  'lighting':  { label: 'Lighting',  icon: '💡', color: '#FFD700' },
-  'effects':   { label: 'Effects',   icon: '✨', color: '#FF2DAA' },
-  'banner':    { label: 'Banners',   icon: '📢', color: '#00E5FF' },
-  'camera':    { label: 'Camera',    icon: '📹', color: '#AA2DFF' },
-  'support':   { label: 'Support',   icon: '💰', color: '#00FF88' },
-  'stage':     { label: 'Stage',     icon: '🎪', color: '#FF6B35' },
-  'director':  { label: 'Director',  icon: '🎬', color: '#FFD700' },
-  'sponsors':  { label: 'Sponsors',  icon: '🤝', color: '#fff' },
+  'lighting':    { label: 'Lighting',  icon: '💡', color: '#FFD700' },
+  'effects':     { label: 'Effects',   icon: '✨', color: '#FF2DAA' },
+  'banner':      { label: 'Banners',   icon: '📢', color: '#00E5FF' },
+  'camera':      { label: 'Camera',    icon: '📹', color: '#AA2DFF' },
+  'support':     { label: 'Support',   icon: '💰', color: '#00FF88' },
+  'stage':       { label: 'Stage',     icon: '🎪', color: '#FF6B35' },
+  'director':    { label: 'Director',  icon: '🎬', color: '#FFD700' },
+  'sponsors':    { label: 'Sponsors',  icon: '🤝', color: '#fff' },
+  'event-owner': { label: 'Owner',     icon: '⚙️', color: '#AA2DFF' },
 };
 
 // ─── Individual canisters (placeholder — real content imported separately) ────
@@ -191,14 +194,15 @@ function DirectorCanister() {
 }
 
 const CANISTER_COMPONENTS: Record<CanisterType, React.ComponentType> = {
-  'lighting':  LightingCanister,
-  'effects':   EffectsCanister,
-  'banner':    BannerCanister,
-  'camera':    CameraCanister,
-  'support':   SupportCanister,
-  'stage':     DirectorCanister,
-  'director':  DirectorCanister,
-  'sponsors':  () => <div style={{ padding: 12 }}>Sponsor controls</div>,
+  'lighting':    LightingCanister,
+  'effects':     EffectsCanister,
+  'banner':      BannerCanister,
+  'camera':      CameraCanister,
+  'support':     SupportCanister,
+  'stage':       DirectorCanister,
+  'director':    DirectorCanister,
+  'sponsors':    () => <div style={{ padding: 12 }}>Sponsor controls</div>,
+  'event-owner': () => null,
 };
 
 // ─── Canister component ──────────────────────────────────────────────────────
@@ -209,12 +213,14 @@ function Canister({
   isMinimized,
   onToggle,
   onMinimize,
+  eventId,
 }: {
   type: CanisterType;
   isOpen: boolean;
   isMinimized: boolean;
   onToggle: () => void;
   onMinimize: () => void;
+  eventId?: string;
 }) {
   const info = CANISTER_INFO[type];
   const Component = CANISTER_COMPONENTS[type];
@@ -271,7 +277,11 @@ function Canister({
           exit={{ height: 0, opacity: 0 }}
           transition={{ duration: 0.2 }}
         >
-          <Component />
+          {type === 'event-owner' && eventId ? (
+            <EventOwnerCanister eventId={eventId} />
+          ) : (
+            <Component />
+          )}
         </motion.div>
       )}
     </motion.div>
@@ -355,6 +365,7 @@ export default function ControlCanisterCluster({
               isMinimized={c.isMinimized}
               onToggle={() => toggleCanister(c.id)}
               onMinimize={() => minimizeCanister(c.id)}
+              eventId={eventId}
             />
           ))}
       </AnimatePresence>
