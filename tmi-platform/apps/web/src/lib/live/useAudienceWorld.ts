@@ -34,6 +34,11 @@ import { botCrowdFillEngine } from './BotCrowdFillEngine';
 import { roomEnergyEngine, type RoomEnergyState } from './RoomEnergyEngine';
 import { HOST_IDENTITY_REGISTRY } from '@/lib/hosts/HostIdentityRegistry';
 import { setLightingPreset } from './StageDirectorEngine';
+import {
+  fromAudienceAvatar,
+  registerEntity,
+  type AvatarEntity,
+} from '@/lib/avatars/UnifiedAvatarRuntime';
 
 // ─── Energy → automatic lighting ─────────────────────────────────────────────
 
@@ -50,6 +55,8 @@ const ENERGY_LIGHTING: Record<string, string> = {
 export interface AudienceWorldState {
   seats: SeatPosition[];
   avatars: AudienceAvatar[];
+  /** Canonical unified entities — same data as avatars[], via UnifiedAvatarRuntime adapters */
+  entities: AvatarEntity[];
   energy: RoomEnergyState | null;
   /** 0–1 ratio, pass directly to AudienceScene as occupancyRatio */
   occupancyRatio: number;
@@ -73,6 +80,7 @@ export function useAudienceWorld(
 ): AudienceWorldState & AudienceWorldHandlers {
   const [seats, setSeats] = useState<SeatPosition[]>([]);
   const [avatars, setAvatars] = useState<AudienceAvatar[]>([]);
+  const [entities, setEntities] = useState<AvatarEntity[]>([]);
   const [energy, setEnergy] = useState<RoomEnergyState | null>(null);
 
   const snapshot = useCallback(() => {
@@ -83,6 +91,11 @@ export function useAudienceWorld(
     setSeats(s);
     setAvatars(a);
     setEnergy(e);
+
+    // Convert to canonical AvatarEntity and register in UnifiedAvatarRuntime
+    const unified = a.map(av => fromAudienceAvatar(av, roomId));
+    unified.forEach(entity => registerEntity(entity));
+    setEntities(unified);
 
     // Auto-wire energy level → StageDirectorEngine CSS lighting
     if (e) {
@@ -167,6 +180,7 @@ export function useAudienceWorld(
   return {
     seats,
     avatars,
+    entities,
     energy,
     occupancyRatio,
     hostSeats,
