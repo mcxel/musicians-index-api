@@ -7,45 +7,8 @@ export const metadata: Metadata = {
 };
 
 const ACTIVE_CYPHERS = [
-  {
-    id: "monday-open",
-    title: "Monday Night Cypher",
-    host: "DJ Marcus",
-    status: "live" as const,
-    participants: 14,
-    maxParticipants: 20,
-    round: 3,
-    roundTime: "1:42",
-    genre: "Hip-Hop / Freestyle",
-    href: "/cypher",
-    color: "#FF2DAA",
-  },
-  {
-    id: "trap-showcase",
-    title: "Trap Showcase Session",
-    host: "Wavetek",
-    status: "open" as const,
-    participants: 7,
-    maxParticipants: 12,
-    round: 1,
-    roundTime: "3:10",
-    genre: "Trap",
-    href: "/rooms/cypher",
-    color: "#AA2DFF",
-  },
-  {
-    id: "rnb-flow",
-    title: "R&B Flow Cypher",
-    host: "Zuri Bloom",
-    status: "open" as const,
-    participants: 5,
-    maxParticipants: 10,
-    round: 2,
-    roundTime: "2:55",
-    genre: "R&B / Soul",
-    href: "/rooms/cypher",
-    color: "#00FF88",
-  },
+  // Real cyphers come from /api/live/sessions filtered by type:"cypher" (Rule 20 — no fake data)
+  // Placeholder is intentionally empty pending API integration
 ];
 
 const SCHEDULED_CYPHERS = [
