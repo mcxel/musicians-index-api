@@ -14,6 +14,7 @@ import DiscoveryRail from '@/components/discovery/DiscoveryRail';
 import { ACTIVE_SPONSOR_ZONES } from '@/lib/commerce/SponsorRegistry';
 import { getActiveSessions, onSessionsChanged, type LiveSession } from '@/lib/broadcast/GlobalLiveSessionRegistry';
 import BillboardCrownSequence from '@/components/home/BillboardCrownSequence';
+import BillboardOpenBookSpread from '@/components/home/BillboardOpenBookSpread';
 
 // Sponsor rail uses only real paid sponsors from ACTIVE_SPONSOR_ZONES.
 // When no sponsors are purchased, SponsorRail returns null (no fake rows).
@@ -1140,6 +1141,9 @@ export default function Home12Page() {
           </div>
         </div>
       </div>
+
+      {/* ── OPEN BOOK SPREAD — genre pairs rotating every 8s, real registry data ── */}
+      <BillboardOpenBookSpread />
 
       {/* ── CROWN SEQUENCE — rise/settle/crown/exit for #1 per category ── */}
       <div style={{ position: 'relative', zIndex: 10, maxWidth: 1400, margin: '0 auto' }}>
