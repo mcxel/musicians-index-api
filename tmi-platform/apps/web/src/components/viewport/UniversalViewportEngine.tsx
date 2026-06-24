@@ -3,12 +3,14 @@
 import { useEffect, useState } from 'react';
 import MotionPosterPlayer from '@/components/media/MotionPosterPlayer';
 import AvatarLobbyCanvas from '@/components/lobbies/AvatarLobbyCanvas';
+import BattleSplitScreenPanel from '@/components/live/BattleSplitScreenPanel';
 
 export type ViewportMode =
   | 'EMPTY_VENUE'
   | 'LIVE_VENUE'
   | 'AVATAR_LOBBY'
   | 'PLAYLIST'
+  | 'TMI_TV'        // editorial / magazine TV broadcast
   | 'MAGAZINE_TV'
   | 'BATTLE_ARENA'
   | 'CYPHER'
@@ -37,6 +39,14 @@ interface UniversalViewportEngineProps {
   roomRuntimeState?: ViewportRoomRuntimeState;
   fanPlaylistTrackUrl?: string | null;
   onModeChange?: (mode: ViewportMode) => void;
+  battleSession?: {
+    performerA: { id: string; name: string; profileImageUrl: string; score?: number };
+    performerB: { id: string; name: string; profileImageUrl: string; score?: number };
+    host?: { id: string; name: string; profileImageUrl: string };
+    roundLabel?: string;
+    timerLabel?: string;
+    winnerId?: string;
+  };
 }
 
 function formatCountdown(seconds: number): string {
@@ -133,6 +143,7 @@ export default function UniversalViewportEngine({
   roomRuntimeState = 'IDLE',
   fanPlaylistTrackUrl,
   onModeChange,
+  battleSession,
 }: UniversalViewportEngineProps) {
   const [mode, setMode] = useState<ViewportMode>(defaultMode);
 
@@ -148,11 +159,27 @@ export default function UniversalViewportEngine({
 
   let body: React.ReactNode;
   switch (mode) {
-    case 'LIVE_VENUE':
     case 'BATTLE_ARENA':
+      body = battleSession ? (
+        <BattleSplitScreenPanel
+          performerA={battleSession.performerA}
+          performerB={battleSession.performerB}
+          host={battleSession.host}
+          eventType="battle"
+          roundLabel={battleSession.roundLabel}
+          timerLabel={battleSession.timerLabel}
+          showHost={!!battleSession.host}
+          winnerId={battleSession.winnerId}
+        />
+      ) : (
+        <EmptyVenueState accentColor={accentColor} />
+      );
+      break;
+    case 'LIVE_VENUE':
     case 'CYPHER':
     case 'GAME_SHOW':
     case 'MAGAZINE_TV':
+    case 'TMI_TV':
       body = currentSession ? (
         <MotionPosterPlayer
           isLive={isLive}
