@@ -11,6 +11,7 @@ import NeonWaveUnderlay from '@/components/atmosphere/NeonWaveUnderlay';
 import UnifiedAdSlot from '@/components/ads/UnifiedAdSlot';
 
 // ─── Sponsor sticker chaos — race car jacket layout ───────────────────────────
+// No paid sponsors yet — slots show TMI platform promos + honest "Advertise Here" CTAs (Rule 12 fallback chain)
 
 type StickerAd = {
   id: string;
@@ -30,33 +31,33 @@ type StickerAd = {
 };
 
 const STICKER_ADS: StickerAd[] = [
-  { id: "s1",  label: "BEATS BY RAD",      href: "/sponsors/advertise",           bg: "#FF2DAA", color: "#fff",    border: "#fff3",      size: 90,  x: 4,   y: 8,   rotate: -12, zIndex: 10, shape: "pill",    glow: "#FF2DAA" },
-  { id: "s2",  label: "TRAP NATION",       href: "/sponsors/advertise",           bg: "#050510", color: "#00FFFF", border: "#00FFFF",    size: 110, x: 14,  y: 18,  rotate: 7,   zIndex: 8,  shape: "rect",    glow: "#00FFFF" },
-  { id: "s3",  label: "CROWN AUDIO",       href: "/sponsors/advertise",           bg: "#FFD700", color: "#000",    border: "#000",       size: 80,  x: 28,  y: 5,   rotate: -5,  zIndex: 12, shape: "badge",   glow: "#FFD700", pulse: true },
-  { id: "s4",  label: "VERSE APPAREL",     href: "/sponsors/advertise",           bg: "#AA2DFF", color: "#fff",    border: "#fff2",      size: 105, x: 42,  y: 22,  rotate: 14,  zIndex: 7,  shape: "rect",    glow: "#AA2DFF" },
-  { id: "s5",  label: "808 STUDIO",        href: "/sponsors/advertise",           bg: "#FF6B35", color: "#fff",    border: "#fff3",      size: 95,  x: 58,  y: 10,  rotate: -18, zIndex: 11, shape: "pill",    glow: "#FF6B35" },
-  { id: "s6",  label: "NEON RECORDS",      href: "/sponsors/advertise",           bg: "#00FFFF", color: "#000",    border: "#000",       size: 88,  x: 72,  y: 3,   rotate: 9,   zIndex: 9,  shape: "badge",   glow: "#00FFFF", pulse: true },
-  { id: "s7",  label: "FLEX ENERGY",       href: "/sponsors/advertise",           bg: "#050510", color: "#FF2DAA", border: "#FF2DAA",    size: 120, x: 82,  y: 16,  rotate: -4,  zIndex: 6,  shape: "rect",    glow: "#FF2DAA" },
-  { id: "s8",  label: "LYRIC THREADS",     href: "/sponsors/advertise",           bg: "#FFD700", color: "#050510", border: "#050510",    size: 75,  x: 3,   y: 38,  rotate: 16,  zIndex: 8,  shape: "pill",    glow: "#FFD700" },
-  { id: "s9",  label: "RIPPLE SOUND",      href: "/sponsors/advertise",           bg: "#AA2DFF", color: "#fff",    border: "#fff2",      size: 100, x: 18,  y: 48,  rotate: -22, zIndex: 10, shape: "badge",   glow: "#AA2DFF", pulse: true },
-  { id: "s10", label: "GOLD CROWN VODKA",  href: "/sponsors/advertise",           bg: "#FFD700", color: "#000",    border: "#000",       size: 130, x: 35,  y: 42,  rotate: 6,   zIndex: 13, shape: "rect",    glow: "#FFD700", pulse: true },
-  { id: "s11", label: "STAGE LOUD",        href: "/sponsors/advertise",           bg: "#FF2DAA", color: "#fff",    border: "#fff3",      size: 85,  x: 54,  y: 55,  rotate: -10, zIndex: 7,  shape: "pill",    glow: "#FF2DAA" },
-  { id: "s12", label: "CYPHER FEST",       href: "/events/cypher-fest",           bg: "#00FFFF", color: "#000",    border: "#000",       size: 140, x: 68,  y: 44,  rotate: 11,  zIndex: 14, shape: "rect",    glow: "#00FFFF", pulse: true },
-  { id: "s13", label: "BASS REPUBLIC",     href: "/sponsors/advertise",           bg: "#050510", color: "#FFD700", border: "#FFD700",    size: 92,  x: 84,  y: 52,  rotate: -7,  zIndex: 9,  shape: "badge",   glow: "#FFD700" },
-  { id: "s14", label: "WAVE COLLECTIVE",   href: "/sponsors/advertise",           bg: "#FF6B35", color: "#fff",    border: "#fff3",      size: 78,  x: 7,   y: 65,  rotate: 19,  zIndex: 8,  shape: "pill",    glow: "#FF6B35" },
-  { id: "s15", label: "STREET BEAT WEAR",  href: "/sponsors/advertise",           bg: "#AA2DFF", color: "#fff",    border: "#fff2",      size: 115, x: 24,  y: 70,  rotate: -14, zIndex: 11, shape: "rect",    glow: "#AA2DFF", pulse: true },
-  { id: "s16", label: "TMI GOLD PASS",     href: "/subscribe",                    bg: "#FFD700", color: "#000",    border: "#000",       size: 155, x: 44,  y: 66,  rotate: 3,   zIndex: 15, shape: "badge",   glow: "#FFD700", pulse: true },
-  { id: "s17", label: "BATTLE SKINS",      href: "/sponsors/advertise",           bg: "#FF2DAA", color: "#fff",    border: "#fff3",      size: 88,  x: 64,  y: 72,  rotate: -20, zIndex: 8,  shape: "pill",    glow: "#FF2DAA" },
-  { id: "s18", label: "HYPNOTIC INK",      href: "/sponsors/advertise",           bg: "#050510", color: "#00FFFF", border: "#00FFFF",    size: 98,  x: 79,  y: 68,  rotate: 13,  zIndex: 10, shape: "rect",    glow: "#00FFFF" },
+  { id: "s1",  label: "YOUR AD HERE",       href: "/sponsors/advertise",           bg: "#FF2DAA", color: "#fff",    border: "#fff3",      size: 90,  x: 4,   y: 8,   rotate: -12, zIndex: 10, shape: "pill",    glow: "#FF2DAA" },
+  { id: "s2",  label: "GO LIVE ON TMI",     href: "/go-live",                      bg: "#050510", color: "#00FFFF", border: "#00FFFF",    size: 110, x: 14,  y: 18,  rotate: 7,   zIndex: 8,  shape: "rect",    glow: "#00FFFF" },
+  { id: "s3",  label: "SELL YOUR BEATS",    href: "/beats/sell",                   bg: "#FFD700", color: "#000",    border: "#000",       size: 80,  x: 28,  y: 5,   rotate: -5,  zIndex: 12, shape: "badge",   glow: "#FFD700", pulse: true },
+  { id: "s4",  label: "ADVERTISE HERE",     href: "/sponsors/advertise",           bg: "#AA2DFF", color: "#fff",    border: "#fff2",      size: 105, x: 42,  y: 22,  rotate: 14,  zIndex: 7,  shape: "rect",    glow: "#AA2DFF" },
+  { id: "s5",  label: "JOIN A BATTLE",      href: "/battles",                      bg: "#FF6B35", color: "#fff",    border: "#fff3",      size: 95,  x: 58,  y: 10,  rotate: -18, zIndex: 11, shape: "pill",    glow: "#FF6B35" },
+  { id: "s6",  label: "DIAMOND TIER",       href: "/pricing",                      bg: "#00FFFF", color: "#000",    border: "#000",       size: 88,  x: 72,  y: 3,   rotate: 9,   zIndex: 9,  shape: "badge",   glow: "#00FFFF", pulse: true },
+  { id: "s7",  label: "SPONSOR A SHOW",     href: "/sponsors/advertise",           bg: "#050510", color: "#FF2DAA", border: "#FF2DAA",    size: 120, x: 82,  y: 16,  rotate: -4,  zIndex: 6,  shape: "rect",    glow: "#FF2DAA" },
+  { id: "s8",  label: "YOUR BRAND HERE",    href: "/sponsors/advertise",           bg: "#FFD700", color: "#050510", border: "#050510",    size: 75,  x: 3,   y: 38,  rotate: 16,  zIndex: 8,  shape: "pill",    glow: "#FFD700" },
+  { id: "s9",  label: "WEEKLY CYPHER",      href: "/live/rooms/cypher-arena",      bg: "#AA2DFF", color: "#fff",    border: "#fff2",      size: 100, x: 18,  y: 48,  rotate: -22, zIndex: 10, shape: "badge",   glow: "#AA2DFF", pulse: true },
+  { id: "s10", label: "TMI MARKETPLACE",    href: "/marketplace",                  bg: "#FFD700", color: "#000",    border: "#000",       size: 130, x: 35,  y: 42,  rotate: 6,   zIndex: 13, shape: "rect",    glow: "#FFD700", pulse: true },
+  { id: "s11", label: "ADVERTISE HERE",     href: "/sponsors/advertise",           bg: "#FF2DAA", color: "#fff",    border: "#fff3",      size: 85,  x: 54,  y: 55,  rotate: -10, zIndex: 7,  shape: "pill",    glow: "#FF2DAA" },
+  { id: "s12", label: "WORLD CONCERT",      href: "/events/world-concert",         bg: "#00FFFF", color: "#000",    border: "#000",       size: 140, x: 68,  y: 44,  rotate: 11,  zIndex: 14, shape: "rect",    glow: "#00FFFF", pulse: true },
+  { id: "s13", label: "YOUR AD HERE",       href: "/sponsors/advertise",           bg: "#050510", color: "#FFD700", border: "#FFD700",    size: 92,  x: 84,  y: 52,  rotate: -7,  zIndex: 9,  shape: "badge",   glow: "#FFD700" },
+  { id: "s14", label: "SPONSOR A ROOM",     href: "/sponsors/advertise",           bg: "#FF6B35", color: "#fff",    border: "#fff3",      size: 78,  x: 7,   y: 65,  rotate: 19,  zIndex: 8,  shape: "pill",    glow: "#FF6B35" },
+  { id: "s15", label: "OPEN YOUR STORE",    href: "/beats/sell",                   bg: "#AA2DFF", color: "#fff",    border: "#fff2",      size: 115, x: 24,  y: 70,  rotate: -14, zIndex: 11, shape: "rect",    glow: "#AA2DFF", pulse: true },
+  { id: "s16", label: "TMI GOLD PASS",      href: "/pricing",                      bg: "#FFD700", color: "#000",    border: "#000",       size: 155, x: 44,  y: 66,  rotate: 3,   zIndex: 15, shape: "badge",   glow: "#FFD700", pulse: true },
+  { id: "s17", label: "ADVERTISE HERE",     href: "/sponsors/advertise",           bg: "#FF2DAA", color: "#fff",    border: "#fff3",      size: 88,  x: 64,  y: 72,  rotate: -20, zIndex: 8,  shape: "pill",    glow: "#FF2DAA" },
+  { id: "s18", label: "BRAND TAKEOVER",     href: "/advertiser/buy",               bg: "#050510", color: "#00FFFF", border: "#00FFFF",    size: 98,  x: 79,  y: 68,  rotate: 13,  zIndex: 10, shape: "rect",    glow: "#00FFFF" },
 ];
 
 // ─── Billboard hero ads ───────────────────────────────────────────────────────
 
 const BILLBOARD_ADS = [
   { id: "b1", headline: "CYPHER FEST 2026",     sub: "The Biggest Battle Event of the Year",  cta: "GET TICKETS",  ctaHref: "/events/cypher-fest",     accent: "#00FFFF", bg: "linear-gradient(135deg, #050510 0%, #0a0a2a 40%, #00161a 100%)", badge: "LIVE EVENT" },
-  { id: "b2", headline: "TMI GOLD PASS",         sub: "Unlimited Access to Every Show + Battles + Cyphers",  cta: "JOIN NOW — FREE",  ctaHref: "/auth",     accent: "#FFD700", bg: "linear-gradient(135deg, #0a0800 0%, #1a1200 40%, #050510 100%)", badge: "LIMITED TIME" },
+  { id: "b2", headline: "TMI GOLD PASS",         sub: "Unlimited Access to Every Show + Battles + Cyphers",  cta: "SEE PLANS",  ctaHref: "/pricing",     accent: "#FFD700", bg: "linear-gradient(135deg, #0a0800 0%, #1a1200 40%, #050510 100%)", badge: "MEMBERSHIP" },
   { id: "b3", headline: "MONDAY NIGHT STAGE",   sub: "Your Favorite Artists Live Every Monday",  cta: "SET REMINDER",  ctaHref: "/events/monday-night-stage",  accent: "#FF2DAA", bg: "linear-gradient(135deg, #120510 0%, #1a0515 40%, #050510 100%)", badge: "WEEKLY" },
-  { id: "b4", headline: "WORLD DANCE PARTY",    sub: "3,000+ Fans. 60+ Countries. One Stage.",  cta: "JOIN THE PARTY",  ctaHref: "/events/world-dance-party",  accent: "#AA2DFF", bg: "linear-gradient(135deg, #0a0515 0%, #12051a 40%, #050510 100%)", badge: "GLOBAL" },
+  { id: "b4", headline: "WORLD DANCE PARTY",    sub: "Artists. Fans. Every Country. One Stage.",  cta: "JOIN THE PARTY",  ctaHref: "/events/world-dance-party",  accent: "#AA2DFF", bg: "linear-gradient(135deg, #0a0515 0%, #12051a 40%, #050510 100%)", badge: "GLOBAL" },
 ];
 
 // ─── Venue / ticket sales — registry-driven ──────────────────────────────────
@@ -393,13 +394,13 @@ function VenueCard({ venue: v, delay }: { venue: typeof VENUES[0]; delay: number
 // ─── Animated inline ad strip ─────────────────────────────────────────────────
 
 const MARQUEE_ITEMS = [
-  "🎤 CYPHER FEST TICKETS ON SALE NOW",
-  "⭐ TMI GOLD PASS — FIRST MONTH FREE",
+  "🎤 CYPHER FEST — BUY TICKETS NOW",
+  "⭐ TMI GOLD PASS — SEE ALL PLANS",
   "🎶 MONDAY NIGHT STAGE — EVERY WEEK",
   "🏆 VOTE LIVE FOR YOUR FAVORITE ARTIST",
-  "💃 WORLD DANCE PARTY — JOIN 3,000+ FANS",
-  "🎯 DEALER FEUD 1000 FINALS — BUY TICKETS",
-  "🎵 ADVERTISE ON TMI — FROM $199/MO",
+  "💃 WORLD DANCE PARTY — JOIN NOW",
+  "🎯 DEAL OR FEUD 1000 — SEE SCHEDULE",
+  "🎵 ADVERTISE ON TMI — LEARN MORE",
 ];
 
 function MarqueeStrip() {
