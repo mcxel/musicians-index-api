@@ -602,6 +602,7 @@ export default function Home1CoverPage() {
   const [brokenOrbitImages, setBrokenOrbitImages] = useState<Record<string, boolean>>({});
   const [isMobileViewport, setIsMobileViewport] = useState(false);
   const [canSubmitPromoSlot, setCanSubmitPromoSlot] = useState(false);
+  const [radioData, setRadioData] = useState<{ pending: number; live: number }>({ pending: 0, live: 0 });
 
   useEffect(() => {
     const updateViewport = () => setIsMobileViewport(window.innerWidth < 768);
@@ -624,6 +625,20 @@ export default function Home1CoverPage() {
 
   useEffect(() => {
     setCanSubmitPromoSlot(hasRole('ADMIN', 'SPONSOR', 'ADVERTISER'));
+  }, []);
+
+  useEffect(() => {
+    fetch('/api/submissions/queue')
+      .then(r => r.ok ? r.json() : null)
+      .then((data: { pending?: number; queue?: { status: string }[] } | null) => {
+        if (data) {
+          const live = Array.isArray(data.queue)
+            ? data.queue.filter((q) => q.status === 'live' || q.status === 'approved').length
+            : 0;
+          setRadioData({ pending: data.pending ?? 0, live });
+        }
+      })
+      .catch(() => {});
   }, []);
 
   const [venues, setVenues] = useState<VenueBookingSlot[]>(() => getVenueBookingSlots(3));
@@ -912,6 +927,50 @@ export default function Home1CoverPage() {
           0%, 100% { transform: translateY(0px) scale(1); opacity: 0.45; }
           50%       { transform: translateY(-8px) scale(1.15); opacity: 0.75; }
         }
+        @keyframes h1WorldGlowA {
+          0%, 100% { transform: scale(1) translate(0px, 0px); opacity: 0.62; }
+          33%       { transform: scale(1.14) translate(22px, -14px); opacity: 0.78; }
+          66%       { transform: scale(0.9) translate(-16px, 22px); opacity: 0.5; }
+        }
+        @keyframes h1WorldGlowB {
+          0%, 100% { transform: translate(0px, 0px) scale(1); opacity: 0.52; }
+          50%       { transform: translate(28px, -18px) scale(1.12); opacity: 0.68; }
+        }
+        @keyframes h1WorldGlowC {
+          0%, 100% { transform: translate(0px, 0px) scale(1); opacity: 0.48; }
+          50%       { transform: translate(-22px, 14px) scale(1.09); opacity: 0.65; }
+        }
+        @keyframes h1BillboardFlicker {
+          0%, 100% { opacity: 1; }
+          12%  { opacity: 0.65; }
+          18%  { opacity: 0.95; }
+          47%  { opacity: 0.78; }
+          52%  { opacity: 1; }
+          78%  { opacity: 0.82; }
+        }
+        @keyframes h1LightSweep {
+          0%, 100% { opacity: 0.55; transform: skewX(-8deg) scaleY(1); }
+          50%       { opacity: 0.88; transform: skewX(-8deg) scaleY(1.18); }
+        }
+        @keyframes h1LightSweepR {
+          0%, 100% { opacity: 0.5; transform: skewX(8deg) scaleY(1); }
+          50%       { opacity: 0.82; transform: skewX(8deg) scaleY(1.14); }
+        }
+        @keyframes h1ParticleFloat {
+          0%, 100% { transform: translateY(0) scale(1); opacity: 0.45; }
+          50%       { transform: translateY(-14px) scale(1.35); opacity: 0.72; }
+        }
+        @keyframes h1RadioPulse {
+          0%, 100% { box-shadow: 0 0 10px rgba(0,229,255,0.4), 0 0 20px rgba(0,229,255,0.2); }
+          50%       { box-shadow: 0 0 18px rgba(0,229,255,0.7), 0 0 36px rgba(0,229,255,0.35); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          *[style*="h1WorldGlowA"], *[style*="h1WorldGlowB"], *[style*="h1WorldGlowC"],
+          *[style*="h1BillboardFlicker"], *[style*="h1LightSweep"], *[style*="h1LightSweepR"],
+          *[style*="h1ParticleFloat"], *[style*="h1RadioPulse"] {
+            animation: none !important;
+          }
+        }
       ` }} />
 
       {/* ── Background confetti triangles ── */}
@@ -1168,12 +1227,98 @@ export default function Home1CoverPage() {
              (2026-06-20): crown/orbit must sit 40-60px LOWER, not higher. ── */}
         <div style={{ position: 'relative', width: '100%', overflow: 'visible', marginTop: 62, paddingBottom: 4 }}>
 
+        {/* ── WORLD ENVIRONMENT LAYER — atmospheric depth, billboard walls, venue lighting ──
+             Restores the "living entertainment district" feel behind the orbital.
+             All elements are pointer-events:none and z-index:0 so the orbital stays primary. */}
+        <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0, overflow: 'hidden' }}>
+          {/* Atmospheric glow blobs — deep purple/cyan/fuchsia */}
+          <div style={{ position: 'absolute', width: '70%', height: '70%', top: '15%', left: '15%',
+            background: `radial-gradient(ellipse at center, ${accentColor}32 0%, transparent 62%)`,
+            animation: 'h1WorldGlowA 9s ease-in-out infinite', borderRadius: '50%' }} />
+          <div style={{ position: 'absolute', width: '50%', height: '55%', top: '20%', left: '-8%',
+            background: 'radial-gradient(ellipse at center, rgba(170,45,255,0.28) 0%, transparent 58%)',
+            animation: 'h1WorldGlowB 12s ease-in-out infinite' }} />
+          <div style={{ position: 'absolute', width: '50%', height: '55%', top: '12%', right: '-8%',
+            background: 'radial-gradient(ellipse at center, rgba(0,229,255,0.24) 0%, transparent 58%)',
+            animation: 'h1WorldGlowC 10s ease-in-out infinite' }} />
+          <div style={{ position: 'absolute', width: '35%', height: '40%', bottom: '5%', left: '32%',
+            background: 'radial-gradient(ellipse at center, rgba(255,215,0,0.18) 0%, transparent 60%)',
+            animation: 'h1WorldGlowB 14s ease-in-out infinite', animationDelay: '4s' }} />
+
+          {/* Billboard light columns — left side */}
+          <div style={{ position: 'absolute', left: '4%', top: '8%', width: 5, height: '72%',
+            background: 'linear-gradient(to bottom, rgba(255,45,170,0) 0%, rgba(255,45,170,0.55) 40%, rgba(255,45,170,0.55) 60%, rgba(255,45,170,0) 100%)',
+            animation: 'h1BillboardFlicker 3.7s ease-in-out infinite', borderRadius: 2 }} />
+          <div style={{ position: 'absolute', left: '9%', top: '5%', width: 3, height: '78%',
+            background: 'linear-gradient(to bottom, rgba(0,229,255,0) 0%, rgba(0,229,255,0.45) 35%, rgba(0,229,255,0.45) 65%, rgba(0,229,255,0) 100%)',
+            animation: 'h1BillboardFlicker 5.2s ease-in-out infinite', animationDelay: '1s', borderRadius: 2 }} />
+          <div style={{ position: 'absolute', left: '13%', top: '20%', width: 2, height: '55%',
+            background: 'linear-gradient(to bottom, rgba(255,215,0,0) 0%, rgba(255,215,0,0.38) 50%, rgba(255,215,0,0) 100%)',
+            animation: 'h1BillboardFlicker 7.1s ease-in-out infinite', animationDelay: '2.5s', borderRadius: 1 }} />
+          {/* Billboard light columns — right side */}
+          <div style={{ position: 'absolute', right: '4%', top: '8%', width: 5, height: '72%',
+            background: 'linear-gradient(to bottom, rgba(255,215,0,0) 0%, rgba(255,215,0,0.52) 40%, rgba(255,215,0,0.52) 60%, rgba(255,215,0,0) 100%)',
+            animation: 'h1BillboardFlicker 4.1s ease-in-out infinite', animationDelay: '0.6s', borderRadius: 2 }} />
+          <div style={{ position: 'absolute', right: '9%', top: '5%', width: 3, height: '78%',
+            background: 'linear-gradient(to bottom, rgba(170,45,255,0) 0%, rgba(170,45,255,0.45) 35%, rgba(170,45,255,0.45) 65%, rgba(170,45,255,0) 100%)',
+            animation: 'h1BillboardFlicker 6.3s ease-in-out infinite', animationDelay: '2s', borderRadius: 2 }} />
+          <div style={{ position: 'absolute', right: '13%', top: '20%', width: 2, height: '55%',
+            background: 'linear-gradient(to bottom, rgba(0,229,255,0) 0%, rgba(0,229,255,0.38) 50%, rgba(0,229,255,0) 100%)',
+            animation: 'h1BillboardFlicker 8.4s ease-in-out infinite', animationDelay: '3.2s', borderRadius: 1 }} />
+
+          {/* Horizontal neon scan lines — billboard frame edges */}
+          <div style={{ position: 'absolute', top: '12%', left: '3%', right: '3%', height: 1,
+            background: `linear-gradient(90deg, transparent 0%, ${accentColor}25 25%, ${accentColor}55 50%, ${accentColor}25 75%, transparent 100%)` }} />
+          <div style={{ position: 'absolute', top: '38%', left: '5%', right: '5%', height: 1,
+            background: 'linear-gradient(90deg, transparent 0%, rgba(170,45,255,0.22) 25%, rgba(170,45,255,0.42) 50%, rgba(170,45,255,0.22) 75%, transparent 100%)' }} />
+          <div style={{ position: 'absolute', bottom: '20%', left: '3%', right: '3%', height: 1,
+            background: 'linear-gradient(90deg, transparent 0%, rgba(255,45,170,0.28) 30%, rgba(255,45,170,0.48) 50%, rgba(255,45,170,0.28) 70%, transparent 100%)' }} />
+
+          {/* Venue light sweeps — cone beams from below */}
+          <div style={{ position: 'absolute', bottom: 0, left: '20%', width: '10%', height: '55%',
+            background: `linear-gradient(to top, ${accentColor}28, transparent)`,
+            transform: 'skewX(-12deg)', animation: 'h1LightSweep 7s ease-in-out infinite', transformOrigin: 'bottom center' }} />
+          <div style={{ position: 'absolute', bottom: 0, left: '38%', width: '8%', height: '50%',
+            background: 'linear-gradient(to top, rgba(255,215,0,0.22), transparent)',
+            animation: 'h1LightSweep 9s ease-in-out infinite', animationDelay: '2s', transformOrigin: 'bottom center' }} />
+          <div style={{ position: 'absolute', bottom: 0, right: '20%', width: '10%', height: '55%',
+            background: 'linear-gradient(to top, rgba(255,45,170,0.22), transparent)',
+            transform: 'skewX(12deg)', animation: 'h1LightSweepR 6s ease-in-out infinite', animationDelay: '1s', transformOrigin: 'bottom center' }} />
+          <div style={{ position: 'absolute', bottom: 0, right: '38%', width: '8%', height: '48%',
+            background: 'linear-gradient(to top, rgba(170,45,255,0.2), transparent)',
+            animation: 'h1LightSweepR 8s ease-in-out infinite', animationDelay: '3.5s', transformOrigin: 'bottom center' }} />
+
+          {/* Floating particles */}
+          {[...Array(14)].map((_, i) => (
+            <div key={`wp-${i}`} style={{
+              position: 'absolute',
+              width: 2 + (i % 3),
+              height: 2 + (i % 3),
+              borderRadius: '50%',
+              background: ([accentColor, '#FF2DAA', '#FFD700', '#AA2DFF', '#00E5FF'] as string[])[i % 5],
+              left: `${(i * 7 + 4) % 88}%`,
+              top: `${(i * 11 + 8) % 80}%`,
+              opacity: 0.5,
+              animation: `h1ParticleFloat ${3 + (i % 5)}s ease-in-out infinite`,
+              animationDelay: `${(i * 0.35).toFixed(1)}s`,
+            }} />
+          ))}
+
+          {/* Crowd silhouette at base */}
+          <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '16%',
+            background: 'linear-gradient(to top, rgba(5,5,16,0.72) 0%, transparent 100%)', pointerEvents: 'none' }} />
+          <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '10%',
+            background: 'rgba(5,5,16,0.5)',
+            clipPath: 'polygon(0 100%,4% 45%,7% 72%,11% 22%,15% 62%,19% 38%,23% 58%,28% 18%,32% 52%,37% 28%,42% 66%,46% 30%,51% 20%,55% 55%,60% 35%,64% 62%,68% 22%,72% 52%,76% 32%,80% 68%,84% 28%,88% 55%,93% 38%,97% 62%,100% 42%,100% 100%)',
+            pointerEvents: 'none' }} />
+        </div>
+
         {/* TABLOID MAGAZINE UNDERLAY — scrolls behind the orbital (blueprint spec).
              Build Director correction (2026-06-20): the orbit must be the visual
              focus, the underlay only supports it — reduced height (top/bottom
              insets instead of full inset:0) and opacity so it recedes. */}
         <div style={{ position: 'absolute', top: '18%', bottom: '18%', left: 0, right: 0, pointerEvents: 'none', zIndex: 0, overflow: 'hidden' }}>
-          <div style={{ display: 'flex', whiteSpace: 'nowrap', animation: `${underlayDir === 'left' ? 'h1TabloidScroll' : 'h1RailRight'} 18s linear infinite`, opacity: 0.22, height: '100%', alignItems: 'stretch' }}>
+          <div style={{ display: 'flex', whiteSpace: 'nowrap', animation: `${underlayDir === 'left' ? 'h1TabloidScroll' : 'h1RailRight'} 18s linear infinite`, opacity: 0.38, height: '100%', alignItems: 'stretch' }}>
             {/* Build Director correction (2026-06-20): these were legacy
               single-performer battle placeholders that do not belong on a
               public recruitment/discovery surface. Replaced with rotating
@@ -1517,6 +1662,60 @@ export default function Home1CoverPage() {
               />
             ))}
           </div>
+
+          {/* ── Stream & Win Radio — fixed card at 9 o'clock position in orbit ──
+               Stays upright (not in the spinning container). Links to real submission routes. */}
+          {(() => {
+            const radioState: 'accepting' | 'reviewing' | 'winners' =
+              radioData.live > 0 ? 'winners' :
+              radioData.pending > 0 ? 'reviewing' :
+              'accepting';
+            const radioRealHref =
+              radioState === 'winners' ? '/rankings' :
+              '/submit';
+            const radioLabel =
+              radioState === 'winners' ? 'WINNERS UP' :
+              radioState === 'reviewing' ? `REVIEWING ${radioData.pending}` :
+              'SUBMIT NOW';
+            const radioSub =
+              radioState === 'winners' ? 'View Results →' :
+              radioState === 'reviewing' ? 'Songs in queue' :
+              'Now accepting';
+            const radioColor = radioState === 'winners' ? '#FFD700' : radioState === 'reviewing' ? '#FF2DAA' : '#00E5FF';
+            const radioEmoji = radioState === 'winners' ? '🏆' : radioState === 'reviewing' ? '⏳' : '📻';
+            // Position at 9 o'clock (left side) of orbit ring
+            const leftPct = 50 - orbitRadius;
+            return (
+              <Link href={radioRealHref} style={{ textDecoration: 'none' }}>
+                <div style={{
+                  position: 'absolute',
+                  left: `${leftPct}%`,
+                  top: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  zIndex: 42,
+                  width: isMobileViewport ? 58 : 72,
+                  background: `linear-gradient(135deg, ${radioColor}18, rgba(5,5,16,0.96))`,
+                  border: `2px solid ${radioColor}66`,
+                  borderRadius: 8,
+                  padding: '8px 6px',
+                  textAlign: 'center',
+                  animation: 'h1RadioPulse 2.8s ease-in-out infinite',
+                  cursor: 'pointer',
+                }}>
+                  <div style={{ fontSize: isMobileViewport ? 16 : 20, lineHeight: 1, marginBottom: 3 }}>{radioEmoji}</div>
+                  <div style={{ fontSize: isMobileViewport ? 6 : 7, fontWeight: 900, color: radioColor, letterSpacing: '0.06em', fontFamily: "'Inter',sans-serif", lineHeight: 1.2 }}>
+                    STREAM & WIN
+                  </div>
+                  <div style={{ fontSize: isMobileViewport ? 6 : 7, fontWeight: 900, color: '#fff', fontFamily: "'Inter',sans-serif", marginTop: 2, letterSpacing: '0.04em' }}>
+                    {radioLabel}
+                  </div>
+                  <div style={{ fontSize: 6, color: 'rgba(255,255,255,0.5)', fontFamily: "'Inter',sans-serif", marginTop: 1 }}>
+                    {radioSub}
+                  </div>
+                </div>
+              </Link>
+            );
+          })()}
 
           {/* Sticker overlays */}
           <div
