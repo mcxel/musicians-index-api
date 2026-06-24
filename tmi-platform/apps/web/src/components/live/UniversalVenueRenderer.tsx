@@ -48,6 +48,7 @@ import StageCurtain from '@/components/live/StageCurtain';
 import AudienceScene, { type VenueIndex } from '@/components/live/AudienceScene';
 import { useAudienceWorld } from '@/lib/live/useAudienceWorld';
 import AvatarActionWheel from '@/components/avatars/AvatarActionWheel';
+import PropLoader from '@/components/avatars/PropLoader';
 import {
   startCountdown,
   openCurtain,
@@ -436,6 +437,9 @@ export default function UniversalVenueRenderer({ roomId, mode, venueIndex = 1, f
 
       {/* Avatar Action Wheel — fixed bottom-right, available to all room participants */}
       {joined && <AvatarActionWheel entityId={userId} roomId={roomId} />}
+
+      {/* Prop Loader — shows equipped prop above the ActionWheel; returns null if no certified prop */}
+      {joined && <PropLoader entityId={userId} audienceCount={snapshot?.present ?? 0} />}
 
       {mode === 'audience' && joined && captureEnabled && (
         <div style={{ marginBottom: 12, border: '1px solid rgba(0,255,136,0.3)', borderRadius: 10, overflow: 'hidden', background: 'rgba(0,255,136,0.04)' }}>
