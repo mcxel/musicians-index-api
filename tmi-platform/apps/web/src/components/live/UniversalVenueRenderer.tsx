@@ -49,6 +49,7 @@ import AudienceScene, { type VenueIndex } from '@/components/live/AudienceScene'
 import { useAudienceWorld } from '@/lib/live/useAudienceWorld';
 import AvatarActionWheel from '@/components/avatars/AvatarActionWheel';
 import PropLoader from '@/components/avatars/PropLoader';
+import MemoryCaptureButton from '@/components/memory/MemoryCaptureButton';
 import {
   startCountdown,
   openCurtain,
@@ -432,6 +433,18 @@ export default function UniversalVenueRenderer({ roomId, mode, venueIndex = 1, f
           {(['🔥', '❤️', '⚡', '👑', '🎤', '💜', '🎶'] as const).map((emoji) => (
             <button key={emoji} type="button" onClick={() => sendReaction(emoji)} style={{ width: 40, height: 40, borderRadius: 8, fontSize: 19, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', cursor: 'pointer' }}>{emoji}</button>
           ))}
+        </div>
+      )}
+
+      {/* 📸 Capture Moment — Memory Wall capture for all joined participants (BD Phase C Task 2) */}
+      {joined && (
+        <div style={{ position: 'fixed', bottom: 216, right: 16, zIndex: 998 }}>
+          <MemoryCaptureButton
+            userId={userId}
+            roomId={roomId}
+            roomLabel={`Live Room · ${roomId}`}
+            accentColor="#FF2DAA"
+          />
         </div>
       )}
 

@@ -23,17 +23,26 @@ import Link from 'next/link';
 import UniversalVenueRenderer from '@/components/live/UniversalVenueRenderer';
 import CanisterShell from '@/components/canisters/CanisterShell';
 import EventOwnerControls from '@/components/live/EventOwnerControls';
-import { AudiencePresenceProvider } from '@/components/live/AudiencePresenceProvider';
+import { AudiencePresenceProvider, useAudiencePresence } from '@/components/live/AudiencePresenceProvider';
 import StageBannerOverlay from '@/components/live/StageBannerOverlay';
 import AudienceReactionBar from '@/components/live/AudienceReactionBar';
 import EnergyMeterDisplay from '@/components/live/EnergyMeterDisplay';
 import FriendSeatFlow from '@/components/live/FriendSeatFlow';
+import AvatarActionWheel from '@/components/avatars/AvatarActionWheel';
 import {
   setLightingPreset as directorSetLighting,
   showBannerText as directorShowBanner,
   clearBannerText as directorClearBanner,
   STAGE_LIGHTING_PRESETS,
 } from '@/lib/live/StageDirectorEngine';
+
+// ─── Avatar Action Wheel wrapper (gets entityId from context) ──────────────────
+
+function AvatarActionWheelWrapper({ roomId }: { roomId: string }) {
+  const { entity } = useAudiencePresence();
+  if (!entity) return null;
+  return <AvatarActionWheel entityId={entity.userId} roomId={roomId} defaultOpen={false} />;
+}
 
 // ─── Mode types ───────────────────────────────────────────────────────────────
 
@@ -463,6 +472,9 @@ export default function GoLiveRuntime({
       }}>
         <AudienceReactionBar roomId={roomId} />
       </div>
+
+      {/* ─── Avatar Action Wheel — floating control panel (bottom-right) ─── */}
+      <AvatarActionWheelWrapper roomId={roomId} />
 
       {/* ── Canister Dock — ALWAYS visible at bottom ── */}
       <CanisterDock accentColor={accentColor} eventId={eventId} />
