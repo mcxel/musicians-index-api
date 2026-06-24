@@ -25,6 +25,7 @@ import {
   getOpenerLineAt,
   OPENER_DURATION_SECONDS,
 } from "@/lib/dj/WorldDancePartyOpener";
+import MemoryCaptureButton from "@/components/memory/MemoryCaptureButton";
 
 const DANCE_FLOOR_COLORS = [
   "#FF2DAA", "#00FFFF", "#AA2DFF", "#FFD700", "#FF9500", "#00FF88",
@@ -707,6 +708,10 @@ export default function WorldDancePartyPage() {
             </div>
           </div>
 
+        </div>
+        {/* Memory capture — fixed position overlay (Rule 2 / Task 2) */}
+        <div style={{ position: "fixed", bottom: 216, right: 16, zIndex: 998 }}>
+          <MemoryCaptureButton userId={FAN_ID} roomId={ROOM_ID} />
         </div>
         <FooterHUD />
         <LocalCameraFeed />

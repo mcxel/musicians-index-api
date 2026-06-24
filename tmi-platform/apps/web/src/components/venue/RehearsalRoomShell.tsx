@@ -44,11 +44,11 @@ function VideoShell({ state }: { state: "idle" | "loading" | "active" }) {
 // ─── Main ──────────────────────────────────────────────────────────────────────
 
 export default function RehearsalRoomShell() {
-  const { userId, displayName } = useTmiSession();
+  const { userId, userName } = useTmiSession();
   const [videoActive, setVideoActive] = useState(false);
 
   const id = userId ?? "guest";
-  const name = displayName ?? "Rehearsing";
+  const name = userName ?? "Rehearsing";
 
   return (
     <div style={{ display: "grid", gap: 16 }}>

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import MemoryCaptureButton from "@/components/memory/MemoryCaptureButton";
 
 type FanStatus = "idle" | "chatting" | "looking-for-group";
 
@@ -158,6 +159,11 @@ export default function FanLobbyWall({ compact = false }: Props) {
             </div>
           );
         })}
+      </div>
+
+      {/* Memory capture — fixed overlay for Avatar Lobby surface (Task 2) */}
+      <div style={{ position: "fixed", bottom: 216, right: 16, zIndex: 998 }}>
+        <MemoryCaptureButton userId="fan-lobby" roomId="fan-lobby-wall" />
       </div>
     </div>
   );

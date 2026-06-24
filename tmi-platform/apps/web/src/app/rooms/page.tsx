@@ -5,6 +5,7 @@ import PageShell from '@/components/layout/PageShell';
 import HUDFrame from '@/components/hud/HUDFrame';
 import FooterHUD from '@/components/hud/FooterHUD';
 import dynamic from 'next/dynamic';
+import MemoryCaptureButton from '@/components/memory/MemoryCaptureButton';
 
 const AvatarLobbyCanvas = dynamic(() => import('@/components/3d/AvatarLobbyCanvas'), { ssr: false });
 
@@ -98,6 +99,10 @@ export default function RoomsPage() {
           </div>
         </div>
       </HUDFrame>
+      {/* Memory capture for Avatar Lobby surface (Task 2) */}
+      <div style={{ position: "fixed", bottom: 216, right: 16, zIndex: 998 }}>
+        <MemoryCaptureButton userId="avatar-lobby" roomId="rooms-lobby" />
+      </div>
       <FooterHUD />
     </PageShell>
   );

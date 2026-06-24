@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import MemoryCaptureButton from "@/components/memory/MemoryCaptureButton";
 import BubbleQueueHUD from "@/components/admin/mc/BubbleQueueHUD";
 import LiveBubbleFeed from "@/components/live/LiveBubbleFeed";
 import LiveViewerHud from "@/components/live/LiveViewerHud";
@@ -184,6 +185,10 @@ export default function LobbyShell({ slug, performerSlug }: LobbyShellProps) {
         </aside>
       </div>
       <SeatProfileOverlay profile={openProfile} onClose={() => setOpenProfile(null)} />
+      {/* Memory capture — fixed position, available in all lobby surfaces (Task 2) */}
+      <div style={{ position: "fixed", bottom: 216, right: 16, zIndex: 998 }}>
+        <MemoryCaptureButton userId="lobby-user" roomId={slug} />
+      </div>
     </main>
   );
 }
