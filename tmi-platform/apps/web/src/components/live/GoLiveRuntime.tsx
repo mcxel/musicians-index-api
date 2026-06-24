@@ -23,6 +23,14 @@ import Link from 'next/link';
 import UniversalVenueRenderer from '@/components/live/UniversalVenueRenderer';
 import CanisterShell from '@/components/canisters/CanisterShell';
 import EventOwnerControls from '@/components/live/EventOwnerControls';
+import { AudiencePresenceProvider } from '@/components/live/AudiencePresenceProvider';
+import StageBannerOverlay from '@/components/live/StageBannerOverlay';
+import {
+  setLightingPreset as directorSetLighting,
+  showBannerText as directorShowBanner,
+  clearBannerText as directorClearBanner,
+  STAGE_LIGHTING_PRESETS,
+} from '@/lib/live/StageDirectorEngine';
 
 // ─── Mode types ───────────────────────────────────────────────────────────────
 
@@ -32,16 +40,18 @@ type ViewMode = 'FULL_VENUE' | 'DASHBOARD' | 'BACKSTAGE';
 
 function LightingContent({ accentColor }: { accentColor: string }) {
   const [active, setActive] = useState('purple-wash');
-  const PRESETS = [
-    { id: 'purple-wash',   label: 'Purple Wash',    color: '#AA2DFF' },
-    { id: 'blue-arena',    label: 'Blue Arena',     color: '#00E5FF' },
-    { id: 'concert-red',   label: 'Concert Red',    color: '#FF2020' },
-    { id: 'spotlight',     label: 'Spotlight',      color: '#FFD700' },
-    { id: 'audience-glow', label: 'Audience Glow',  color: '#FF2DAA' },
-    { id: 'strobe',        label: 'Strobe',         color: '#fff' },
-    { id: 'blackout',      label: 'Blackout',       color: '#111' },
-    { id: 'rainbow',       label: 'Rainbow Cycle',  color: '#FF6B35' },
-  ];
+
+  const handleSelect = (id: string) => {
+    setActive(id);
+    directorSetLighting(id); // wires to StageDirectorEngine CSS bridge
+  };
+
+  const PRESETS = Object.values(STAGE_LIGHTING_PRESETS).map(p => ({
+    id: p.id,
+    label: p.label,
+    color: p.primaryColor,
+  }));
+
   return (
     <div style={{ padding: 14 }}>
       <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.35)', letterSpacing: '.15em', marginBottom: 10 }}>LIGHTING PRESET</div>
@@ -49,7 +59,7 @@ function LightingContent({ accentColor }: { accentColor: string }) {
         {PRESETS.map(p => (
           <button
             key={p.id}
-            onClick={() => setActive(p.id)}
+            onClick={() => handleSelect(p.id)}
             style={{
               display: 'flex', alignItems: 'center', gap: 10,
               padding: '8px 12px',
@@ -66,7 +76,7 @@ function LightingContent({ accentColor }: { accentColor: string }) {
         ))}
       </div>
       <div style={{ marginTop: 12, fontSize: 8, color: 'rgba(255,255,255,0.3)', lineHeight: 1.5 }}>
-        Lighting changes apply to your venue in real time. Audience sees the effect immediately.
+        Lighting changes apply CSS variables to the venue in real time.
       </div>
     </div>
   );
@@ -121,24 +131,76 @@ function DirectorContent({ accentColor }: { accentColor: string }) {
 
 function BannerContent() {
   const [bannerText, setBannerText] = useState('');
+  const [bannerColor, setBannerColor] = useState('#00E5FF');
+  const [active, setActive] = useState(false);
+
+  const QUICK = [
+    { text: '💸 SEND A TIP', color: '#FF2DAA' },
+    { text: '🛍️ MERCH AVAILABLE NOW', color: '#00E5FF' },
+    { text: '⭐ JOIN MY FAN CLUB', color: '#FFD700' },
+    { text: '🔥 BATTLE ME', color: '#FF6B35' },
+    { text: '📀 NEW TRACK DROPPING', color: '#AA2DFF' },
+  ];
+
+  const fire = (text: string, color: string) => {
+    setBannerText(text);
+    setBannerColor(color);
+    setActive(true);
+    directorShowBanner(text, color);
+  };
+
+  const clear = () => {
+    setActive(false);
+    setBannerText('');
+    directorClearBanner();
+  };
+
   return (
     <div style={{ padding: 14 }}>
       <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.35)', letterSpacing: '.15em', marginBottom: 8 }}>BANNER TEXT</div>
       <input
         value={bannerText}
         onChange={e => setBannerText(e.target.value)}
-        placeholder="Your message to the audience…"
+        onKeyDown={e => { if (e.key === 'Enter' && bannerText.trim()) fire(bannerText, bannerColor); }}
+        placeholder="Type message + press Enter…"
         maxLength={80}
         style={{
           width: '100%', padding: '9px 12px', boxSizing: 'border-box',
           background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)',
-          borderRadius: 8, color: '#fff', fontSize: 12, outline: 'none', marginBottom: 10,
+          borderRadius: 8, color: '#fff', fontSize: 12, outline: 'none', marginBottom: 8,
         }}
       />
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-        {['💸 SEND A TIP', '🛍️ MERCH AVAILABLE NOW', '⭐ JOIN MY FAN CLUB', '🔥 BATTLE ME', '📀 NEW TRACK DROPPING'].map(t => (
-          <button key={t} onClick={() => setBannerText(t)} style={{ padding: '7px 10px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 6, color: 'rgba(255,255,255,0.55)', fontSize: 10, cursor: 'pointer', textAlign: 'left' }}>
-            {t}
+      <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
+        <button
+          onClick={() => bannerText.trim() && fire(bannerText, bannerColor)}
+          style={{ flex: 1, padding: '8px', background: '#00E5FF18', border: '1px solid #00E5FF44', borderRadius: 7, color: '#00E5FF', fontSize: 10, fontWeight: 900, cursor: 'pointer' }}
+        >
+          🔴 SHOW BANNER
+        </button>
+        {active && (
+          <button
+            onClick={clear}
+            style={{ padding: '8px 10px', background: 'rgba(255,32,32,0.12)', border: '1px solid rgba(255,32,32,0.3)', borderRadius: 7, color: '#FF4040', fontSize: 10, fontWeight: 900, cursor: 'pointer' }}
+          >
+            ✕ CLEAR
+          </button>
+        )}
+      </div>
+      <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.25)', marginBottom: 6, letterSpacing: '.1em' }}>QUICK BANNERS</div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+        {QUICK.map(q => (
+          <button
+            key={q.text}
+            onClick={() => fire(q.text, q.color)}
+            style={{
+              padding: '7px 10px',
+              background: active && bannerText === q.text ? `${q.color}16` : 'rgba(255,255,255,0.03)',
+              border: `1px solid ${active && bannerText === q.text ? q.color : 'rgba(255,255,255,0.08)'}`,
+              borderRadius: 6, color: active && bannerText === q.text ? q.color : 'rgba(255,255,255,0.5)',
+              fontSize: 10, cursor: 'pointer', textAlign: 'left',
+            }}
+          >
+            {q.text}
           </button>
         ))}
       </div>
@@ -188,8 +250,8 @@ function CanisterDock({ accentColor, eventId, onOwnerAction }: { accentColor: st
           icon={item.icon}
           label={item.label}
           accentColor={accentColor}
-          expandedWidth={300}
-          expandedHeight={380}
+          expandedWidth={320}
+          expandedHeight={320}
           disableFullscreen
         >
           {item.content}
@@ -292,6 +354,7 @@ export default function GoLiveRuntime({
   const isVenueShrunk = viewMode !== 'FULL_VENUE';
 
   return (
+    <AudiencePresenceProvider>
     <div style={{
       position: 'relative',
       width: '100%',
@@ -361,6 +424,8 @@ export default function GoLiveRuntime({
         overflow: 'hidden',
       }}>
         <UniversalVenueRenderer roomId={roomId} mode="performer" venueIndex={1} />
+        {/* Stage banner overlay — renders StageDirectorEngine announcements */}
+        <StageBannerOverlay />
       </div>
 
       {/* ── Dashboard overlay — slides over venue when active ── */}
@@ -377,5 +442,6 @@ export default function GoLiveRuntime({
         @keyframes grtBlink { 0%,100%{opacity:1} 50%{opacity:0} }
       `}</style>
     </div>
+    </AudiencePresenceProvider>
   );
 }

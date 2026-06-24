@@ -107,7 +107,7 @@ export default function CanisterShell({
   children,
   peekHeight = 80,
   expandedWidth = 360,
-  expandedHeight = 520,
+  expandedHeight = 360,
   onStateChange,
   disableFullscreen = false,
   disableDetach = false,

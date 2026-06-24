@@ -280,26 +280,29 @@ export default function BattleSplitScreenPanel({
   const [prevLayout, setPrevLayout] = useState<PanelLayout>(initialLayout);
   const [currentLayout, setCurrentLayout] = useState<PanelLayout>(initialLayout);
   const [winner, setWinner] = useState<WinnerState | null>(null);
+  const [autoRotating, setAutoRotating] = useState(true);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const meta = LABEL_MAP[eventType];
   const spec = getGridSpec(currentLayout);
 
-  // Auto-rotate layout every 90s
+  // Auto-rotate layout every 90s — off when paused by user or after winner
   useEffect(() => {
-    if (winner) return; // stop rotation after winner
+    if (winner || !autoRotating) {
+      if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+      return;
+    }
     timerRef.current = setInterval(() => {
       setLayoutIdx(prev => {
         const next = (prev + 1) % LAYOUT_SEQUENCE.length;
         const nextLayout = LAYOUT_SEQUENCE[next]!;
-        // Skip VS_MODE when no host (already no host column in that mode it's fine — keep it)
         setPrevLayout(currentLayout);
         setCurrentLayout(nextLayout);
         return next;
       });
     }, LAYOUT_DURATION_MS);
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [winner, currentLayout]);
+  }, [winner, autoRotating, currentLayout]);
 
   // Winner end effects
   useEffect(() => {
@@ -367,6 +370,24 @@ export default function BattleSplitScreenPanel({
           }}>
             ⏱ {timerLabel}
           </span>
+        )}
+        {/* Auto-rotate toggle */}
+        {!winner && (
+          <button
+            onClick={() => setAutoRotating(r => !r)}
+            title={autoRotating ? 'Pause auto layout rotation' : 'Resume auto layout rotation'}
+            style={{
+              fontSize: 8, fontWeight: 900, letterSpacing: '.08em',
+              padding: '3px 9px', borderRadius: 4, cursor: 'pointer',
+              border: `1px solid ${autoRotating ? '#00E5FF44' : 'rgba(255,255,255,0.18)'}`,
+              background: autoRotating ? 'rgba(0,229,255,0.1)' : 'rgba(255,255,255,0.06)',
+              color: autoRotating ? '#00E5FF' : 'rgba(255,255,255,0.4)',
+              transition: 'all 0.2s',
+              marginLeft: timerLabel ? 0 : 'auto',
+            }}
+          >
+            {autoRotating ? '⏸ AUTO' : '▶ AUTO'}
+          </button>
         )}
         {/* VS badge */}
         <span style={{
