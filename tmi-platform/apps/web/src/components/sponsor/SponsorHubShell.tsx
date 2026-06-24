@@ -9,6 +9,10 @@ import SponsorAnalyticsRail from "@/components/sponsor/SponsorAnalyticsRail";
 import SponsorContractsRail from "@/components/sponsor/SponsorContractsRail";
 import SponsorGiveawayRail from "@/components/sponsor/SponsorGiveawayRail";
 import TMIVideoMonitor from "@/components/hud/TMIVideoMonitor";
+import { MemoryWallCanister } from "@/components/canisters/MemoryWallCanister";
+import MessagingCanister from "@/components/canisters/MessagingCanister";
+import { StoreCanister } from "@/components/canisters/StoreCanister";
+import { LiveLobbyWallCanister } from "@/components/canisters/LiveLobbyWallCanister";
 
 const ACCENT = "#FFD700";
 const BG = "#050510";
@@ -118,6 +122,16 @@ export default function SponsorHubShell() {
               ))}
             </div>
           )}
+        </div>
+
+        {/* Canisters — Memory Wall, Messaging, Store, Live Lobby Wall (Rule 15) */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 16, marginBottom: 24 }}>
+          <MemoryWallCanister entityId="sponsor" entityType="sponsor" title="Sponsor Moments" accentColor="#FFD700" />
+          <MessagingCanister height={360} />
+          <StoreCanister entityId="sponsor" storeType="shared" accentColor="#FFD700" />
+        </div>
+        <div style={{ marginBottom: 20 }}>
+          <LiveLobbyWallCanister accentColor="#FFD700" />
         </div>
 
         {/* Rails */}

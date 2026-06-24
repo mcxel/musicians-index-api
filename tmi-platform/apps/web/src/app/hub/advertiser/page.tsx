@@ -9,6 +9,8 @@ import MediaMonitor from "@/components/video/MediaMonitor";
 import { PersonaSwitcher } from "@/components/hud/PersonaSwitcher";
 import Link from "next/link";
 import { useTmiSession } from "@/hooks/SessionContext";
+import { MemoryWallCanister } from "@/components/canisters/MemoryWallCanister";
+import MessagingCanister from "@/components/canisters/MessagingCanister";
 
 type HubMode = "ADVERTISER" | "SPONSOR";
 
@@ -178,6 +180,12 @@ export default function AdvertiserSponsorHub() {
               </div>
             </div>
           </aside>
+        </div>
+
+        {/* Canisters — Memory Wall + Messaging (Rule 15) */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+          <MemoryWallCanister entityId={userId ?? "advertiser"} entityType="sponsor" title="Campaign Moments" accentColor="#FF8C00" />
+          <MessagingCanister height={360} />
         </div>
 
         {/* BOTTOM ACTION BAR */}

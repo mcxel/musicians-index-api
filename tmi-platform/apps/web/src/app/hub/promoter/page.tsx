@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { PersonaSwitcher } from "@/components/hud/PersonaSwitcher";
+import { MemoryWallCanister } from "@/components/canisters/MemoryWallCanister";
+import MessagingCanister from "@/components/canisters/MessagingCanister";
 
 const ACCENT = "#00FF88";
 
@@ -354,6 +356,12 @@ export default function PromoterHubPage() {
             </div>
           </div>
 
+        </div>
+
+        {/* Canisters — Memory Wall + Messaging (Rule 15) */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 24 }}>
+          <MemoryWallCanister entityId="promoter" entityType="venue" title="Promoter Events" accentColor="#00FF88" />
+          <MessagingCanister height={360} />
         </div>
 
       </div>

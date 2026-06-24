@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { PersonaSwitcher } from "@/components/hud/PersonaSwitcher";
+import { MemoryWallCanister } from "@/components/canisters/MemoryWallCanister";
+import MessagingCanister from "@/components/canisters/MessagingCanister";
 
 const ACCENT = "#FF2DAA";
 
@@ -217,6 +219,12 @@ export default function WriterHubPage() {
             </div>
           </div>
 
+        </div>
+
+        {/* Canisters — Memory Wall + Messaging (Rule 15) */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 24 }}>
+          <MemoryWallCanister entityId="writer" entityType="fan" title="Writer Moments" accentColor="#FF2DAA" />
+          <MessagingCanister height={360} />
         </div>
 
       </div>

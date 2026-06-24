@@ -10,6 +10,9 @@ import { VenueSchedulePanel } from "@/components/venue/VenueSchedulePanel";
 import { VenueHistoryPanel } from "@/components/venue/VenueHistoryPanel";
 import { VenueRoomsPanel } from "@/components/venue/VenueRoomsPanel";
 import TMIVideoMonitor from "@/components/hud/TMIVideoMonitor";
+import { MemoryWallCanister } from "@/components/canisters/MemoryWallCanister";
+import MessagingCanister from "@/components/canisters/MessagingCanister";
+import { LiveLobbyWallCanister } from "@/components/canisters/LiveLobbyWallCanister";
 
 const ACCENT = "#22c55e";
 const BG = "#050510";
@@ -126,6 +129,15 @@ export default function VenueHubShell() {
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
           <VenueRoomsPanel venueId="main-venue" />
           <VenueHistoryPanel venueId="main-venue" />
+        </div>
+
+        {/* Canisters — Memory Wall, Messaging, Live Lobby Wall (Rule 15) */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
+          <MemoryWallCanister entityId="main-venue" entityType="venue" title="Venue Moments" accentColor="#22c55e" />
+          <MessagingCanister height={360} />
+        </div>
+        <div style={{ marginBottom: 20 }}>
+          <LiveLobbyWallCanister accentColor="#22c55e" />
         </div>
 
         {/* Full-width rails */}
