@@ -1,5 +1,9 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import AudienceScene from "@/components/live/AudienceScene";
+import { useAudienceWorld } from "@/lib/live/useAudienceWorld";
 
 interface Props { params: { id: string } }
 
@@ -19,6 +23,8 @@ export default function RankingProfilePage({ params }: Props) {
     isLive: false,
   };
 
+  const { entities } = useAudienceWorld(`ranking-${slug}`);
+
   return (
     <main style={{ minHeight: "100vh", background: "#050510", color: "#fff", fontFamily: "'Inter', sans-serif", paddingBottom: 80 }}>
       <nav style={{ position: "sticky", top: 0, background: "rgba(5,5,16,0.92)", borderBottom: "1px solid rgba(255,255,255,0.07)", padding: "11px 20px", display: "flex", gap: 14, alignItems: "center", backdropFilter: "blur(12px)", zIndex: 50 }}>
@@ -31,7 +37,7 @@ export default function RankingProfilePage({ params }: Props) {
       {/* Mini 3D arena preview */}
       <div style={{ height: 200, position: "relative", overflow: "hidden" }}>
         <div style={{ position: "absolute", inset: 0 }}>
-          <AudienceScene venue={1} watcherCount={18500} view="fan" accentColor={performer.color} bpm={130} screenLabel={performer.name} screenSubLabel={`RANK #${performer.rank}`} />
+          <AudienceScene entities={entities} venue={1} view="fan" accentColor={performer.color} bpm={130} screenLabel={performer.name} screenSubLabel={`RANK #${performer.rank}`} />
         </div>
         <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, transparent 40%, #050510 100%)" }} />
       </div>

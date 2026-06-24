@@ -95,8 +95,9 @@ export default function BillboardLiveWall({
 }: BillboardLiveWallProps) {
   const [performers, setPerformers] = useState<PerformerSlot[]>([]);
   const [loadedOnce, setLoadedOnce] = useState(false);
-  const [justJoinedIdx, setJustJoinedIdx] = useState<number | null>(null);
   const [activeFlowRoom, setActiveFlowRoom] = useState<UniversalRoom | null>(null);
+  // justJoinedIdx removed — was Math.random() fake activity indicator (Rule 20)
+  // justJoinedIdx removed — was Math.random() fake activity indicator (Rule 20)
 
   // Real liveness from GlobalLiveSessionRegistry (via /api/live/go) — live tiles first,
   // then PERFORMER_REGISTRY fills remaining slots as honestly-offline discovery tiles.
@@ -163,20 +164,14 @@ export default function BillboardLiveWall({
     return () => { cancelled = true; clearInterval(id); };
   }, [maxTiles, category]);
 
-  // "Just joined" flash every 9s
-  useEffect(() => {
-    const id = setInterval(() => {
-      setJustJoinedIdx(Math.floor(Math.random() * performers.length));
-      setTimeout(() => setJustJoinedIdx(null), 2800);
-    }, 9000 + Math.random() * 4000);
-    return () => clearInterval(id);
-  }, [performers.length]);
 
   const shapes = MODE_SHAPES[mode];
   const getShape = useCallback(
     (i: number): TileShape => forceShape ?? shapes[i % shapes.length]!,
     [forceShape, shapes],
   );
+
+  const hasLiveSessions = performers.some(p => p.isLive);
 
   // Tile sizes: first card is featured (larger), rest standard
   const getFeaturedSize = (i: number) => {
@@ -262,20 +257,22 @@ export default function BillboardLiveWall({
             >
               {title}
             </span>
-            <span
-              style={{
-                fontSize: 8,
-                fontWeight: 900,
-                color: '#FF2020',
-                background: 'rgba(255,32,32,0.12)',
-                border: '1px solid rgba(255,32,32,0.3)',
-                borderRadius: 4,
-                padding: '2px 8px',
-                letterSpacing: '0.1em',
-              }}
-            >
-              ● LIVE
-            </span>
+            {hasLiveSessions && (
+              <span
+                style={{
+                  fontSize: 8,
+                  fontWeight: 900,
+                  color: '#FF2020',
+                  background: 'rgba(255,32,32,0.12)',
+                  border: '1px solid rgba(255,32,32,0.3)',
+                  borderRadius: 4,
+                  padding: '2px 8px',
+                  letterSpacing: '0.1em',
+                }}
+              >
+                ● LIVE
+              </span>
+            )}
           </div>
           <Link
             href="/live/rooms"
@@ -303,34 +300,8 @@ export default function BillboardLiveWall({
       >
         {performers.map((p, i) => {
           const tileSize = getFeaturedSize(i);
-          const isFlashing = justJoinedIdx === i;
-
           return (
             <div key={p.id} style={{ position: 'relative' }}>
-              {/* "Just joined" flash badge */}
-              {isFlashing && (
-                <div
-                  style={{
-                    position: 'absolute',
-                    top: -18,
-                    left: '50%',
-                    transform: 'translateX(-50%)',
-                    background: '#00FF88',
-                    borderRadius: 6,
-                    padding: '2px 8px',
-                    fontSize: 8,
-                    fontWeight: 900,
-                    color: '#050510',
-                    letterSpacing: '0.1em',
-                    whiteSpace: 'nowrap',
-                    zIndex: 30,
-                    boxShadow: '0 0 10px #00FF88',
-                    animation: 'tmiJoinPop 0.3s cubic-bezier(0.7,0,0.3,1)',
-                  }}
-                >
-                  🎤 JUST JOINED
-                </div>
-              )}
 
               <MaskedVideoTile
                 shape={getShape(i)}

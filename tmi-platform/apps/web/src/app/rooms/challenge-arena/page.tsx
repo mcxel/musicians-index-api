@@ -17,6 +17,7 @@ import { useEvolutionToast } from "@/components/avatar/EvolutionToast";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import AudienceScene from "@/components/live/AudienceScene";
+import { useAudienceWorld } from "@/lib/live/useAudienceWorld";
 import UnifiedAdSlot from "@/components/ads/UnifiedAdSlot";
 import MediaUploadWidget from "@/components/media/MediaUploadWidget";
 
@@ -79,6 +80,7 @@ function ArtistCard({ artist, role, votes, onVote, hasVoted, accentColor }: { ar
 
 export default function ChallengeArenaPage() {
   const router = useRouter();
+  const { entities } = useAudienceWorld('challenge-arena');
   const [queue, setQueue] = useState<Challenger[]>(SEED_QUEUE.slice(1));
   const [holder, setHolder] = useState<Challenger>(SEED_QUEUE[0]!);
   const [challenger, setChallenger] = useState<Challenger>(SEED_QUEUE[1]!);
@@ -196,7 +198,7 @@ export default function ChallengeArenaPage() {
 
       {/* 3D Arena preview */}
       <div style={{ height: 220, position: "relative", overflow: "hidden" }}>
-        <AudienceScene venue={1} watcherCount={18500} view="fan" accentColor="#FFD700" bpm={130} screenLabel={`ROUND ${roundNum} · CHALLENGE ARENA`} screenSubLabel={`${holder.name} vs ${challenger.name}`} />
+        <AudienceScene entities={entities} venue={1} view="fan" accentColor="#FFD700" bpm={130} screenLabel={`ROUND ${roundNum} · CHALLENGE ARENA`} screenSubLabel={`${holder.name} vs ${challenger.name}`} />
         <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, transparent 30%, #050510 100%)" }} />
         <div style={{ position: "absolute", top: 14, left: "50%", transform: "translateX(-50%)", background: "rgba(0,0,0,0.8)", border: "1px solid rgba(255,215,0,0.4)", borderRadius: 8, padding: "6px 20px", backdropFilter: "blur(8px)", textAlign: "center" }}>
           <div style={{ fontSize: 8, color: "rgba(255,255,255,0.5)", letterSpacing: "0.15em" }}>ROUND ENDS IN</div>

@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import PageShell from "@/components/layout/PageShell";
 import AudienceScene from "@/components/live/AudienceScene";
+import { useAudienceWorld } from "@/lib/live/useAudienceWorld";
 import HUDFrame from "@/components/hud/HUDFrame";
 import FooterHUD from "@/components/hud/FooterHUD";
 import Link from "next/link";
@@ -38,6 +39,7 @@ const SET_LIST = [
 
 export default function WorldConcertPage() {
   const router = useRouter();
+  const { entities } = useAudienceWorld(ROOM_ID);
   const [encoreVotes, setEncoreVotes] = useState(0);
   const [tipped, setTipped] = useState(false);
   const [tipPicking, setTipPicking] = useState(false);
@@ -202,8 +204,8 @@ export default function WorldConcertPage() {
                 marginBottom: 20, position: "relative", overflow: "hidden",
               }}>
                 <AudienceScene
+                  entities={entities}
                   venue={1}
-                  watcherCount={18500}
                   view="fan"
                   accentColor="#FF2DAA"
                   bpm={120}
