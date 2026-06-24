@@ -20,6 +20,11 @@
  */
 
 import type { AvatarEmotion, AvatarGesture, AvatarState as RendererState } from '@/lib/avatars/AvatarRendererContract';
+import type { AvatarClass, AvatarSocketId } from '@/lib/avatars/AvatarSocketSystem';
+import type { ActiveProp } from '@/lib/avatars/AvatarPropManifest';
+
+export type { AvatarClass, AvatarSocketId };
+export type { ActiveProp };
 
 // ─── Core types ───────────────────────────────────────────────────────────────
 
@@ -29,19 +34,26 @@ export type AvatarTierLevel =
   | 'free' | 'pro' | 'ruby' | 'silver' | 'gold' | 'platinum' | 'diamond';
 
 export type AvatarAnimationState =
-  | 'idle' | 'sitting' | 'standing' | 'walking'
-  | 'dancing' | 'clapping' | 'waving' | 'cheering'
-  | 'reacting' | 'gesturing' | 'pointing' | 'laughing'
-  | 'celebrating' | 'entering' | 'exiting' | 'talking' | 'jumping' | 'hushing';
+  | 'idle' | 'sitting' | 'standing' | 'walking' | 'running'
+  | 'dancing' | 'clapping' | 'waving' | 'cheering' | 'jumping'
+  | 'reacting' | 'gesturing' | 'pointing' | 'laughing' | 'emoting'
+  | 'celebrating' | 'entering' | 'exiting' | 'talking' | 'hushing'
+  | 'interacting' | 'holding_lighter' | 'holding_candle' | 'holding_flashlight'
+  | 'holding_gun' | 'holding_glowstick';
 
 export type AvatarWorldPosition =
-  | 'seated'     // in an audience seat
-  | 'stage'      // performance stage
-  | 'lobby'      // lobby / waiting area
+  | 'seated'       // in an assigned audience seat
+  | 'stage'        // performance stage
+  | 'lobby'        // lobby / waiting area
   | 'backstage'
-  | 'dance-floor'  // World Dance Party mode
-  | 'vip-box'
-  | 'judge-panel';
+  | 'dance-floor'  // World Dance Party — free movement zone
+  | 'lounge'       // WDP lounge / social area
+  | 'bar-area'     // WDP bar area
+  | 'vip-pods'     // WDP VIP pods
+  | 'friend-circle'// WDP friend cluster
+  | 'dj-booth'     // DJ position
+  | 'vip-box'      // seated VIP section
+  | 'judge-panel'; // judge/panel position
 
 // ─── Appearance (from tmi_3d_character_system.html SKINS / BODY / ZONES) ─────
 
@@ -60,6 +72,9 @@ export const SKIN_HEX: Record<SkinTone, string> = {
   ebony:     '#3B1A00',
 };
 
+/** Visual fidelity style — same AvatarEntity, different renderer target */
+export type AvatarRendererStyle = 'bobblehead' | 'semi-realistic' | 'ultra-realistic';
+
 export interface AvatarAppearance {
   skinTone:     SkinTone;
   bodyBuild:    BodyBuild;
@@ -70,6 +85,8 @@ export interface AvatarAppearance {
   glowColor?:   string;
   portraitUrl?: string;
   sourceImageRef?: string;
+  /** Preferred rendering style — swapped via AvatarRendererRegistry, same entity data */
+  rendererStyle?: AvatarRendererStyle;
 }
 
 // ─── Move system (from MOVES in blueprint) ───────────────────────────────────
@@ -155,6 +172,12 @@ export interface AvatarEntity {
   worldZ?: number;
   facing?: number;
 
+  // Avatar class — determines socket bone map in AvatarSocketSystem
+  avatarClass: AvatarClass;
+
+  // Equipped props — array of active prop attachments
+  equippedProps: ActiveProp[];
+
   // Lifecycle
   joinedAt:     number;
   lastActiveAt: number;
@@ -172,6 +195,7 @@ export interface CanonicalCharacter {
   name:        string;
   role:        string;
   kind:        AvatarEntityKind;
+  avatarClass: AvatarClass;
   accentColor: string;
   emoji:       string;
   appearance:  AvatarAppearance;
@@ -184,6 +208,7 @@ export const CANONICAL_CHARACTERS: CanonicalCharacter[] = [
     name: 'Bebo',
     role: 'Platform Mascot · Bobblehead Bot',
     kind: 'mascot',
+    avatarClass: 'robot',
     accentColor: '#FF6B1A',
     emoji: '🤖',
     appearance: {
@@ -201,6 +226,7 @@ export const CANONICAL_CHARACTERS: CanonicalCharacter[] = [
     name: 'Julius',
     role: 'Hype Master · VIP Curator',
     kind: 'host',
+    avatarClass: 'biped', // meerkat character uses humanoid rig
     accentColor: '#FFD700',
     emoji: '🦦',
     appearance: {
@@ -218,6 +244,7 @@ export const CANONICAL_CHARACTERS: CanonicalCharacter[] = [
     name: 'Tiana (TG)',
     role: 'Monday Night Stage Host',
     kind: 'host',
+    avatarClass: 'biped',
     accentColor: '#9B59FF',
     emoji: '🎤',
     appearance: {
@@ -235,6 +262,7 @@ export const CANONICAL_CHARACTERS: CanonicalCharacter[] = [
     name: 'Record Ralph',
     role: 'DJ · Music Curator',
     kind: 'dj',
+    avatarClass: 'biped',
     accentColor: '#00D4FF',
     emoji: '🎧',
     appearance: {
@@ -268,11 +296,37 @@ export function registerEntity(entity: AvatarEntity): void {
 
 export function updateEntityState(
   id: string,
-  patch: Partial<Pick<AvatarEntity, 'animState' | 'emotion' | 'activeEmote' | 'currentLine' | 'worldPosition' | 'seatId'>>,
+  patch: Partial<Pick<AvatarEntity, 'animState' | 'emotion' | 'activeEmote' | 'currentLine' | 'worldPosition' | 'seatId' | 'equippedProps'>>,
 ): void {
   const entity = _registry.get(id);
   if (!entity) return;
   Object.assign(entity, patch, { lastActiveAt: Date.now() });
+  _emit();
+}
+
+export function equipProp(entityId: string, prop: ActiveProp): void {
+  const entity = _registry.get(entityId);
+  if (!entity) return;
+  // One prop per socket — remove any existing prop with same propId before equipping
+  entity.equippedProps = entity.equippedProps.filter(p => p.propId !== prop.propId);
+  entity.equippedProps.push(prop);
+  entity.lastActiveAt = Date.now();
+  _emit();
+}
+
+export function unequipProp(entityId: string, propId: string): void {
+  const entity = _registry.get(entityId);
+  if (!entity) return;
+  entity.equippedProps = entity.equippedProps.filter(p => p.propId !== propId);
+  entity.lastActiveAt = Date.now();
+  _emit();
+}
+
+export function clearAllProps(entityId: string): void {
+  const entity = _registry.get(entityId);
+  if (!entity) return;
+  entity.equippedProps = [];
+  entity.lastActiveAt = Date.now();
   _emit();
 }
 
@@ -391,6 +445,8 @@ export function fromAudienceAvatar(
     emotion:     'neutral',
     activeEmote: null,
     currentLine: null,
+    avatarClass: 'biped',
+    equippedProps: [],
     appearance: {
       skinTone:   'medium',
       bodyBuild:  'average',
@@ -437,6 +493,8 @@ export function fromAudienceMember(
     emotion:     'neutral',
     activeEmote: null,
     currentLine: null,
+    avatarClass: 'biped',
+    equippedProps: [],
     appearance: {
       skinTone:   'medium',
       bodyBuild:  'average',
@@ -476,6 +534,7 @@ export function fromHostEntity(
     idle: 'neutral', talking: 'neutral',
   };
   const canon = CANONICAL_CHARACTERS.find(c => c.id === host.identity.id);
+  const isRobot = host.identity.id === 'bebo';
   return {
     id:          `host-${host.identity.id}`,
     kind:        (canon?.kind ?? 'host') as AvatarEntityKind,
@@ -489,6 +548,8 @@ export function fromHostEntity(
     emotion:     emotionMap[host.state] ?? 'neutral',
     activeEmote: null,
     currentLine: host.currentLine,
+    avatarClass: isRobot ? 'robot' : 'biped',
+    equippedProps: [],
     appearance:  canon?.appearance ?? {
       skinTone:   'medium',
       bodyBuild:  'average',
@@ -532,6 +593,8 @@ export function createBotEntity(
     emotion:     'neutral',
     activeEmote: null,
     currentLine: null,
+    avatarClass: 'biped',
+    equippedProps: [],
     appearance: { skinTone: tone, bodyBuild: build, bodyHeight: height },
     joinedAt:     Date.now(),
     lastActiveAt: Date.now(),
