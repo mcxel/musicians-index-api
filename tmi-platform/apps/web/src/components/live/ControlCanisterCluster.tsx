@@ -19,6 +19,7 @@
 import { useState, useCallback } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import EventOwnerCanister from './EventOwnerCanister';
+import CurtainCanister from './CurtainCanister';
 
 export type CanisterType =
   | 'lighting'
@@ -29,7 +30,8 @@ export type CanisterType =
   | 'stage'
   | 'director'
   | 'sponsors'
-  | 'event-owner';
+  | 'event-owner'
+  | 'curtain';
 
 export type CanisterPosition = 'left' | 'right' | 'bottom' | 'floating';
 
@@ -63,6 +65,7 @@ const CANISTER_INFO: Record<CanisterType, { label: string; icon: string; color: 
   'director':    { label: 'Director',  icon: '🎬', color: '#FFD700' },
   'sponsors':    { label: 'Sponsors',  icon: '🤝', color: '#fff' },
   'event-owner': { label: 'Owner',     icon: '⚙️', color: '#AA2DFF' },
+  'curtain':     { label: 'Curtain',   icon: '🎭', color: '#FFD700' },
 };
 
 // ─── Individual canisters (placeholder — real content imported separately) ────
@@ -203,6 +206,7 @@ const CANISTER_COMPONENTS: Record<CanisterType, React.ComponentType> = {
   'director':    DirectorCanister,
   'sponsors':    () => <div style={{ padding: 12 }}>Sponsor controls</div>,
   'event-owner': () => null,
+  'curtain':     () => null,
 };
 
 // ─── Canister component ──────────────────────────────────────────────────────
@@ -279,6 +283,8 @@ function Canister({
         >
           {type === 'event-owner' && eventId ? (
             <EventOwnerCanister eventId={eventId} />
+          ) : type === 'curtain' ? (
+            <CurtainCanister />
           ) : (
             <Component />
           )}
