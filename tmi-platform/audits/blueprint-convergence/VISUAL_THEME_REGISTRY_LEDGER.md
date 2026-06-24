@@ -24,6 +24,13 @@
 |---|---|---|---|---|---|---|---|
 | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | PENDING_AUDIT | [TBD] | [TBD] |
 
+### HOME 1 — THEME VARIANTS
+
+| Theme Name | Source File | Visual Style | Default? | Status | Notes |
+|---|---|---|---|---|---|
+| home1_neon_minimal | FILE_09 | Minimal neon, 4 animated blobs, simple orbital | YES | APPROVED | Primary default, 0.55 opacity blobs |
+| home1_80s_magazine | FILE_10 | Per-letter title animation, tabbed panels, magazine header | NO | APPROVED | Optional alternative, higher visual detail |
+
 ### HOME 3 THEMES
 
 | Theme Name | Source File | Visual Layer | Default? | Seasonal? | Status | Dependencies | Notes |
@@ -88,8 +95,9 @@
 | File | System | Themes Found | Action |
 |---|---|---|---|
 | FILE_09 | Home 1 | neon_world, tabloid_underlay, orbital_electric | APPROVED — defaults locked |
-| FILE_10 | Avatar | bobblehead_realistic | APPROVED — runtime approved |
-| FILE_11-43 | [TBD] | [TBD] | PENDING_AUDIT |
+| FILE_10 | Home 1 (Alt) | home1_80s_magazine | APPROVED — optional theme |
+| FILE_13 | Arena | (none — mode-specific) | APPROVED — unified runtime spec |
+| FILE_15-43 | [TBD] | [TBD] | PENDING_AUDIT |
 
 ---
 
