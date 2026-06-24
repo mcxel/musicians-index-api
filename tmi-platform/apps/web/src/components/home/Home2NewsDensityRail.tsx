@@ -1,37 +1,33 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { MAGAZINE_ISSUE_1 } from '@/lib/magazine/magazineIssueData';
+
+// Real counts from canonical magazine data — no fake incrementing counters (Rule 20)
+const totalArticles = MAGAZINE_ISSUE_1.length;
+const interviewCount = MAGAZINE_ISSUE_1.filter((a) => a.category === 'interview').length;
+const reviewCount = MAGAZINE_ISSUE_1.filter((a) => a.category === 'review').length;
+const featureCount = MAGAZINE_ISSUE_1.filter((a) => a.category === 'feature').length;
 
 export default function Home2NewsDensityRail() {
-  const [tick, setTick] = useState(0);
-  useEffect(() => {
-    const id = window.setInterval(() => setTick((t) => t + 1), 2600);
-    return () => window.clearInterval(id);
-  }, []);
-
-  const reads = 18200 + ((tick * 231) % 4200);
-  const interviews = 9 + (tick % 6);
-  const premieres = 4 + (tick % 4);
-
   return (
     <section style={{ maxWidth: 1100, margin: '0 auto', padding: '8px 24px 10px' }}>
       <div style={{ border: '1px solid rgba(0,255,255,0.35)', borderRadius: 10, background: 'linear-gradient(165deg, rgba(8,16,36,0.94), rgba(5,5,16,0.96))', padding: '10px 12px', display: 'grid', gap: 8 }}>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
           <Pill text='ARTICLES LIVE' color='#00FFFF' />
-          <Pill text='INTERVIEWS' color='#FF2DAA' />
-          <Pill text='PREMIERES' color='#FFD700' />
+          {interviewCount > 0 && <Pill text='INTERVIEWS' color='#FF2DAA' />}
+          {reviewCount > 0 && <Pill text='REVIEWS' color='#FFD700' />}
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 8 }}>
-          <Stat label='Article Reads' value={reads.toLocaleString()} color='#00FFFF' />
-          <Stat label='Interviews' value={interviews.toString()} color='#FF2DAA' />
-          <Stat label='Premieres' value={premieres.toString()} color='#FFD700' />
-          <Stat label='Trend Delta' value={`+${8 + (tick % 5)}%`} color='#00FF88' />
+          <Stat label='Total Articles' value={totalArticles.toString()} color='#00FFFF' />
+          {interviewCount > 0 && <Stat label='Interviews' value={interviewCount.toString()} color='#FF2DAA' />}
+          {reviewCount > 0 && <Stat label='Reviews' value={reviewCount.toString()} color='#FFD700' />}
+          {featureCount > 0 && <Stat label='Features' value={featureCount.toString()} color='#00FF88' />}
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <Jump href='/articles/news' label='News Desk' color='#00FFFF' />
-          <Jump href='/articles' label='Interviews' color='#FF2DAA' />
-          <Jump href='/articles' label='Recaps' color='#FFD700' />
+          <Jump href='/articles?category=interview' label='Interviews' color='#FF2DAA' />
+          <Jump href='/magazine' label='All Issues' color='#FFD700' />
         </div>
       </div>
     </section>
