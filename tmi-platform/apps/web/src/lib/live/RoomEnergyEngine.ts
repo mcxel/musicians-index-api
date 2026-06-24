@@ -8,11 +8,16 @@
  *   - Stage lighting intensity (future)
  *   - Crowd reaction animation speed
  *   - Push notification trigger ("room is heating up!")
+ *
+ * Tier 1B integration: Auto-drives StageDirectorEngine lighting based on energy.
+ * Energy levels: 0-20 (Quiet) → 21-40 (Warm) → 41-60 (Active) → 61-80 (Electric) → 81-100 (Explosive)
  */
 
 import { lobbyBehaviorEngine } from '@/lib/learning/LobbyBehaviorEngine';
 import { rewardResponseEngine } from '@/lib/learning/RewardResponseEngine';
 import { applySafeLearningMutation } from '@/lib/learning/LearningSafetyEngine';
+import { subscribeToCrowdRoom, type CrowdSnapshot } from '@/lib/personality/CrowdReactionEngine';
+import { setLightingPreset, triggerEffect } from '@/lib/live/StageDirectorEngine';
 
 export interface RoomEnergyState {
   roomId: string;
@@ -47,8 +52,24 @@ function labelFor(score: number): EnergyLabel {
   return ENERGY_THRESHOLDS.find((t) => score >= t.min)?.label ?? "COLD";
 }
 
+function lightingPresetForEnergy(score: number): string {
+  if (score <= 20) return 'blackout';
+  if (score <= 40) return 'purple-wash';
+  if (score <= 60) return 'blue-arena';
+  if (score <= 80) return 'concert-red';
+  return 'rainbow';
+}
+
+function effectForEnergy(score: number): string | null {
+  if (score > 80) return 'laser';
+  if (score > 60) return 'strobe';
+  return null;
+}
+
 class RoomEnergyEngine {
   private states = new Map<string, RoomEnergyState>();
+  private crowdUnsubscribes = new Map<string, () => void>();
+  private lastLightingUpdate = new Map<string, number>();
 
   initRoom(roomId: string): RoomEnergyState {
     const state: RoomEnergyState = {
@@ -63,7 +84,41 @@ class RoomEnergyEngine {
       lastUpdated: Date.now(),
     };
     this.states.set(roomId, state);
+
+    // Subscribe to crowd energy and auto-drive lighting
+    const unsubscribe = subscribeToCrowdRoom(roomId, (crowd: CrowdSnapshot) => {
+      this.updateFromCrowd(roomId, crowd);
+    });
+    this.crowdUnsubscribes.set(roomId, unsubscribe);
+
     return state;
+  }
+
+  private updateFromCrowd(roomId: string, crowd: CrowdSnapshot): void {
+    const state = this.states.get(roomId);
+    if (!state) return;
+
+    const now = Date.now();
+    const lastUpdate = this.lastLightingUpdate.get(roomId) ?? 0;
+
+    // Only update lighting every 500ms to avoid thrashing
+    if (now - lastUpdate < 500) return;
+
+    const newPreset = lightingPresetForEnergy(crowd.energyScore);
+    const oldPreset = lightingPresetForEnergy(state.energyScore);
+
+    // Auto-drive lighting when energy changes
+    if (newPreset !== oldPreset) {
+      setLightingPreset(newPreset);
+      this.lastLightingUpdate.set(roomId, now);
+    }
+
+    // Trigger effect at energy thresholds
+    const newEffect = effectForEnergy(crowd.energyScore);
+    const oldEffect = effectForEnergy(state.energyScore);
+    if (newEffect && newEffect !== oldEffect) {
+      triggerEffect(newEffect as any);
+    }
   }
 
   private bump(roomId: string, delta: number): RoomEnergyState | null {
@@ -146,6 +201,15 @@ class RoomEnergyEngine {
       .sort((a, b) => b.energyScore - a.energyScore)
       .slice(0, n);
   }
+
+  destroyRoom(roomId: string): void {
+    const unsubscribe = this.crowdUnsubscribes.get(roomId);
+    if (unsubscribe) unsubscribe();
+    this.crowdUnsubscribes.delete(roomId);
+    this.states.delete(roomId);
+    this.lastLightingUpdate.delete(roomId);
+  }
 }
 
 export const roomEnergyEngine = new RoomEnergyEngine();
+

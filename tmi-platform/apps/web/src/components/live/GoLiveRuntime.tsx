@@ -25,6 +25,9 @@ import CanisterShell from '@/components/canisters/CanisterShell';
 import EventOwnerControls from '@/components/live/EventOwnerControls';
 import { AudiencePresenceProvider } from '@/components/live/AudiencePresenceProvider';
 import StageBannerOverlay from '@/components/live/StageBannerOverlay';
+import AudienceReactionBar from '@/components/live/AudienceReactionBar';
+import EnergyMeterDisplay from '@/components/live/EnergyMeterDisplay';
+import FriendSeatFlow from '@/components/live/FriendSeatFlow';
 import {
   setLightingPreset as directorSetLighting,
   showBannerText as directorShowBanner,
@@ -384,6 +387,11 @@ export default function GoLiveRuntime({
           Room {roomId}
         </span>
 
+        {/* ── Friend Seating UI ── */}
+        <div style={{ marginLeft: 8 }}>
+          <FriendSeatFlow roomId={roomId} accentColor={accentColor} />
+        </div>
+
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
           {viewMode === 'FULL_VENUE' ? (
             <button
@@ -426,6 +434,16 @@ export default function GoLiveRuntime({
         <UniversalVenueRenderer roomId={roomId} mode="performer" venueIndex={1} />
         {/* Stage banner overlay — renders StageDirectorEngine announcements */}
         <StageBannerOverlay />
+
+        {/* Energy Meter HUD — top-right corner */}
+        <div style={{
+          position: 'absolute',
+          top: 12, right: 12,
+          zIndex: 30,
+          maxWidth: 260,
+        }}>
+          <EnergyMeterDisplay roomId={roomId} compact={false} />
+        </div>
       </div>
 
       {/* ── Dashboard overlay — slides over venue when active ── */}
@@ -434,6 +452,17 @@ export default function GoLiveRuntime({
           <DashboardOverlay onReturn={enterVenue} accentColor={accentColor} />
         )}
       </AnimatePresence>
+
+      {/* ── Audience Reaction Bar — below venue, above control booth ── */}
+      <div style={{
+        padding: '8px 16px',
+        background: 'rgba(5,3,16,0.92)',
+        borderTop: `1px solid ${accentColor}22`,
+        borderBottom: `1px solid ${accentColor}22`,
+        zIndex: 50,
+      }}>
+        <AudienceReactionBar roomId={roomId} />
+      </div>
 
       {/* ── Canister Dock — ALWAYS visible at bottom ── */}
       <CanisterDock accentColor={accentColor} eventId={eventId} />
