@@ -30,7 +30,9 @@ export type AvatarEmote =
   | 'point'
   | 'heart'
   | 'rose'
-  | 'encore';
+  | 'encore'
+  | 'lighter'
+  | 'glowstick';
 
 // ─── Emote spec ───────────────────────────────────────────────────────────────
 
@@ -94,6 +96,18 @@ export const EMOTE_SPECS: Record<AvatarEmote, EmoteSpec> = {
     animState: 'cheering',
     defaultDurationMs: 5000, energyBoost: 8, xpAward: 15,
     soundKey: 'crowd_cheer_big',
+  },
+  lighter: {
+    emote: 'lighter', label: 'Lighter', emoji: '🔥',
+    animState: 'gesturing',
+    defaultDurationMs: 4000, energyBoost: 5, xpAward: 10,
+    soundKey: 'crowd_cheer_small',
+  },
+  glowstick: {
+    emote: 'glowstick', label: 'Glow Stick', emoji: '💡',
+    animState: 'dancing',
+    defaultDurationMs: 5000, energyBoost: 6, xpAward: 12,
+    soundKey: undefined,
   },
 };
 
