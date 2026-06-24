@@ -46,6 +46,8 @@ import SponsorBubbleOverlay, { type BubbleSponsor } from '@/components/sponsor/S
 import { useShowtimeReveal } from '@/lib/live/LiveryRevealController';
 import StageCurtain from '@/components/live/StageCurtain';
 import AudienceScene, { type VenueIndex } from '@/components/live/AudienceScene';
+import { useAudienceWorld } from '@/lib/live/useAudienceWorld';
+import AvatarActionWheel from '@/components/avatars/AvatarActionWheel';
 import {
   startCountdown,
   openCurtain,
@@ -155,6 +157,9 @@ export default function UniversalVenueRenderer({ roomId, mode, venueIndex = 1, f
   });
 
   useLiveSessionHeartbeat({ enabled: mode === 'performer', viewerCount: snapshot?.present ?? 0 });
+
+  // Phase C2: canonical entity world for AudienceScene entity-mode rendering
+  const { entities: audienceEntities } = useAudienceWorld(roomId);
   useEffect(() => subscribeStage((s) => setCurtainState(s.state)), []);
 
   useEffect(() => {
@@ -391,6 +396,7 @@ export default function UniversalVenueRenderer({ roomId, mode, venueIndex = 1, f
             view={mode === 'performer' ? 'performer' : 'fan'}
             venue={venueIndex}
             watcherCount={snapshot?.present}
+            entities={audienceEntities}
             occupancyRatio={snapshot ? Math.min(1, snapshot.present / Math.max(1, snapshot.capacity)) : 0.08}
             onReaction={sendReaction}
             hideControls
@@ -427,6 +433,9 @@ export default function UniversalVenueRenderer({ roomId, mode, venueIndex = 1, f
           ))}
         </div>
       )}
+
+      {/* Avatar Action Wheel — fixed bottom-right, available to all room participants */}
+      {joined && <AvatarActionWheel entityId={userId} roomId={roomId} />}
 
       {mode === 'audience' && joined && captureEnabled && (
         <div style={{ marginBottom: 12, border: '1px solid rgba(0,255,136,0.3)', borderRadius: 10, overflow: 'hidden', background: 'rgba(0,255,136,0.04)' }}>

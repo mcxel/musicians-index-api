@@ -1,13 +1,19 @@
 "use client";
 
 /**
- * TMI AudienceScene — canvas-based 3D audience renderer
+ * TMI AudienceScene — canvas-based audience renderer
  * Fan view: back-of-head rows looking at stage screen
  * Performer view: front-facing crowd looking up at you
  * Supports 5 venue types, BPM sync, phone glow, spotlight beams, crowd reactions.
+ *
+ * Phase C2 (2026-06-24): accepts entities: AvatarEntity[] so every seat is driven
+ * by a real canonical entity — skin tone from SKIN_HEX, emotion hints in face
+ * shape, stable per-entity seed (no per-frame Math.random color flicker).
+ * Backward-compatible: occupancyRatio fallback unchanged when entities is absent.
  */
 
 import { useEffect, useRef, useCallback } from "react";
+import { SKIN_HEX, type AvatarEntity } from "@/lib/avatars/UnifiedAvatarRuntime";
 
 // ── Venue definitions ─────────────────────────────────────────────────────────
 
@@ -24,7 +30,16 @@ export type VenueIndex = 0 | 1 | 2 | 3 | 4;
 const SKINS = ["#8B4513","#5C3317","#2F1B0E","#A0522D","#CD853F","#D2691E","#704214","#3D2008"];
 const HAIR  = ["#1a0a00","#3d2000","#000000","#2a1500","#0a0a0a","#4a2800"];
 
+// ── Stable integer hash from entity id — prevents per-frame color flicker ─────
+
+function hashId(id: string): number {
+  let h = 5381;
+  for (let i = 0; i < id.length; i++) h = ((h << 5) + h) ^ id.charCodeAt(i);
+  return Math.abs(h);
+}
+
 // ── Phone/lighter seed data — deterministic per seat ─────────────────────────
+
 function phoneGlowColor(idx: number): [number, number, number] {
   const palette: [number,number,number][] = [
     [0,255,255],[255,45,170],[170,45,255],[255,215,0],[0,255,136],[255,255,255],
@@ -37,11 +52,21 @@ function phoneGlowColor(idx: number): [number, number, number] {
 
 function lerp(a: number, b: number, t: number) { return a + (b - a) * t; }
 
+/**
+ * Draw a single audience head.
+ * emotion drives mouth shape in forward (performer-view) heads only:
+ *   'laugh' | 'celebrate' → wide open smile
+ *   'shock'               → round open mouth
+ *   'smirk'               → asymmetric one-sided curve
+ *   'disappointed'        → frown arc
+ *   anything else         → standard smile
+ */
 function drawHead(
   ctx: CanvasRenderingContext2D,
   x: number, y: number, sz: number,
   skin: string, hair: string, aph: number,
   forward: boolean, lit: number,
+  emotion?: string,
 ) {
   const L = lit;
   const ch = (hex: string, idx: number) =>
@@ -53,6 +78,7 @@ function drawHead(
   ctx.save();
 
   if (!forward) {
+    // Back-of-head (fan view looking at stage)
     ctx.strokeStyle = `rgba(${ch(skin,0)},${ch(skin,1)},${ch(skin,2)},.75)`;
     ctx.lineWidth = sz * 0.32;
     ctx.lineCap = "round";
@@ -70,6 +96,7 @@ function drawHead(
     ctx.fillStyle = hairRgb;
     ctx.beginPath(); ctx.ellipse(x, y, sz*.78, sz*.8, 0, 0, Math.PI*2); ctx.fill();
   } else {
+    // Front-facing (performer view looking at crowd)
     ctx.fillStyle = skinRgb;
     ctx.beginPath(); ctx.ellipse(x, y+sz*.5, sz*.56, sz*.65, 0, 0, Math.PI*2); ctx.fill();
     ctx.beginPath(); ctx.ellipse(x, y, sz*.66, sz*.72, 0, 0, Math.PI*2); ctx.fill();
@@ -78,11 +105,29 @@ function drawHead(
     ctx.fillStyle = skinRgb;
     ctx.beginPath(); ctx.ellipse(x-sz*.74, y+sz*.1, sz*.22, sz*.18, 0, 0, Math.PI*2); ctx.fill();
     ctx.beginPath(); ctx.ellipse(x+sz*.74, y+sz*.1, sz*.22, sz*.18, 0, 0, Math.PI*2); ctx.fill();
+    // Eyes
     ctx.fillStyle = `rgba(30,10,0,${0.8 * L})`;
     ctx.beginPath(); ctx.ellipse(x-sz*.22, y, sz*.12, sz*.16, 0, 0, Math.PI*2); ctx.fill();
     ctx.beginPath(); ctx.ellipse(x+sz*.22, y, sz*.12, sz*.16, 0, 0, Math.PI*2); ctx.fill();
+    // Mouth — shape driven by emotion
     ctx.strokeStyle = `rgba(50,18,0,${0.65*L})`; ctx.lineWidth=sz*.12; ctx.lineCap="round";
-    ctx.beginPath(); ctx.arc(x, y+sz*.22, sz*.22, 0, Math.PI); ctx.stroke();
+    if (emotion === 'laugh' || emotion === 'celebrate') {
+      // Wide open smile
+      ctx.beginPath(); ctx.arc(x, y+sz*.18, sz*.28, 0.1, Math.PI - 0.1); ctx.stroke();
+    } else if (emotion === 'shock') {
+      // Round open O
+      ctx.beginPath(); ctx.ellipse(x, y+sz*.24, sz*.10, sz*.14, 0, 0, Math.PI*2); ctx.stroke();
+    } else if (emotion === 'smirk') {
+      // Asymmetric one-sided curve
+      ctx.beginPath(); ctx.arc(x + sz*.05, y+sz*.22, sz*.18, 0.2, Math.PI - 0.4); ctx.stroke();
+    } else if (emotion === 'disappointed') {
+      // Frown
+      ctx.beginPath(); ctx.arc(x, y+sz*.30, sz*.22, Math.PI, 0); ctx.stroke();
+    } else {
+      // neutral / serious / default
+      ctx.beginPath(); ctx.arc(x, y+sz*.22, sz*.22, 0, Math.PI); ctx.stroke();
+    }
+    // Arms
     ctx.strokeStyle = `rgba(${ch(skin,0)*.8},${ch(skin,1)*.8},${ch(skin,2)*.8},.75)`;
     ctx.lineWidth=sz*.32; ctx.lineCap="round";
     ctx.beginPath(); ctx.moveTo(x-sz*.5,y+sz*.5); ctx.lineTo(x-sz*.6+Math.sin(aph)*sz*.9, y+sz*.4+Math.cos(aph)*sz*.6); ctx.stroke();
@@ -103,12 +148,11 @@ function drawBricks(ctx: CanvasRenderingContext2D, x: number, y: number, w: numb
   }
 }
 
-// Draw sweeping spotlight beam from top-center down
 function drawSpotBeam(
   ctx: CanvasRenderingContext2D,
   W: number, H: number,
-  bx: number,  // beam x center at top
-  angle: number, // sweep angle in radians
+  bx: number,
+  angle: number,
   r: number, g: number, b: number,
   alpha: number,
 ) {
@@ -134,7 +178,6 @@ function drawSpotBeam(
   ctx.restore();
 }
 
-// Draw phone glow above head position
 function drawPhoneGlow(
   ctx: CanvasRenderingContext2D,
   x: number, y: number,
@@ -149,7 +192,6 @@ function drawPhoneGlow(
   ctx.beginPath();
   ctx.roundRect(x - pw/2, y - ph - 2, pw, ph, 2);
   ctx.fill();
-  // Screen interior
   ctx.fillStyle = `rgba(${Math.min(r+60,255)},${Math.min(g+60,255)},${Math.min(b+60,255)},${alpha * 0.6})`;
   ctx.beginPath();
   ctx.roundRect(x - pw/2 + 1, y - ph - 1, pw - 2, ph - 2, 1);
@@ -157,7 +199,6 @@ function drawPhoneGlow(
   ctx.restore();
 }
 
-// Draw lighter/candle glow (warm orange flame above head)
 function drawLighterGlow(
   ctx: CanvasRenderingContext2D,
   x: number, y: number,
@@ -189,10 +230,19 @@ interface AudienceSceneProps {
   accentColor?: string;
   screenLabel?: string;
   screenSubLabel?: string;
-  /** 0.0–1.0 — fraction of seats occupied. Default 1.0 (full house).
-   *  Values below 1.0 show empty seat outlines for unoccupied positions.
-   *  Animate this from 0 → target over time for the stadium-fill effect. */
+  /**
+   * 0.0–1.0 fraction of seats occupied.
+   * Ignored when `entities` is provided (occupancy derived from entities.length).
+   * Kept for backward compatibility with callers not yet wired to useAudienceWorld.
+   */
   occupancyRatio?: number;
+  /**
+   * Phase C2: canonical room entities from useAudienceWorld({ entities }).
+   * When provided, each occupied seat reads real skin tone, emotion, and stable
+   * entity-id seed from the AvatarEntity — no per-frame random color flicker.
+   * occupancyRatio is derived automatically; no need to pass it separately.
+   */
+  entities?: AvatarEntity[];
 }
 
 interface SceneState {
@@ -201,7 +251,6 @@ interface SceneState {
   hype: boolean;
 }
 
-// Parse "#RRGGBB" → [r,g,b]
 function hexToRgb(hex: string): [number, number, number] {
   const h = hex.replace("#", "");
   return [
@@ -224,11 +273,17 @@ export default function AudienceScene({
   screenLabel,
   screenSubLabel,
   occupancyRatio = 1.0,
+  entities,
 }: AudienceSceneProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const timeRef   = useRef(0);
   const frameRef  = useRef<number | null>(null);
   const stateRef  = useRef<SceneState>({ wave: false, jump: false, hype: false });
+  // Refs so changes to entities/occupancyRatio don't restart the rAF loop
+  const entitiesRef    = useRef<AvatarEntity[] | undefined>(entities);
+  const occupancyRef   = useRef(occupancyRatio);
+  entitiesRef.current  = entities;
+  occupancyRef.current = occupancyRatio;
 
   const render = useCallback(() => {
     const canvas = canvasRef.current;
@@ -239,18 +294,23 @@ export default function AudienceScene({
     const v = VENUES[venue] ?? VENUES[0];
     const t = timeRef.current++;
     const s = stateRef.current;
-    // Total seats across all rows for occupancy calculation
-    const FAN_TOTAL_SEATS = 84;   // 7 rows × avg 12 seats
-    const PERF_TOTAL_SEATS = 114; // 8 rows × avg 14 seats
+
+    const FAN_TOTAL_SEATS  = 84;   // 7 rows × avg 12 seats
+    const PERF_TOTAL_SEATS = 114;  // 8 rows × avg 14 seats
     const totalSeats = view === "fan" ? FAN_TOTAL_SEATS : PERF_TOTAL_SEATS;
-    const occupiedUpTo = Math.floor(totalSeats * Math.max(0, Math.min(1, occupancyRatio)));
 
-    // BPM beat phase — 0→1 per beat
-    const beatDur = (60 / bpm) * 60; // frames per beat at ~60fps
-    const beatPhase = (t % beatDur) / beatDur; // 0..1
-    const beatPulse = Math.pow(Math.max(0, 1 - beatPhase * 2), 2); // sharp attack, decay
+    // Entity mode: real AvatarEntity data per seat
+    const liveEntities = entitiesRef.current;
+    const entityMode   = liveEntities !== undefined && liveEntities.length > 0;
+    const effectiveOccupancy = entityMode
+      ? Math.min(1, liveEntities.length / totalSeats)
+      : Math.max(0, Math.min(1, occupancyRef.current));
+    const occupiedUpTo = Math.floor(totalSeats * effectiveOccupancy);
 
-    // Accent color
+    const beatDur   = (60 / bpm) * 60;
+    const beatPhase = (t % beatDur) / beatDur;
+    const beatPulse = Math.pow(Math.max(0, 1 - beatPhase * 2), 2);
+
     const [aR, aG, aB] = accentColor ? hexToRgb(accentColor) : [v.accentR, v.accentG, v.accentB];
 
     ctx.clearRect(0, 0, W, H);
@@ -261,7 +321,6 @@ export default function AudienceScene({
       else { ctx.fillStyle = v.wallColor; ctx.fillRect(0, 0, W, H * 0.52); }
       ctx.fillStyle = v.floorColor; ctx.fillRect(0, H * 0.52, W, H * 0.48);
 
-      // ── Floor reflection gradient ──
       const fr = ctx.createLinearGradient(0, H * 0.52, 0, H);
       fr.addColorStop(0, `rgba(${aR},${aG},${aB},0.04)`);
       fr.addColorStop(1, "rgba(0,0,0,0)");
@@ -270,7 +329,6 @@ export default function AudienceScene({
       // ── Stage screen ──
       const scrX = 180, scrY = 30, scrW = 440, scrH = 210;
       ctx.fillStyle = "#120806"; ctx.fillRect(scrX-12, scrY-12, scrW+24, scrH+24);
-      // Screen frame
       ctx.strokeStyle = `rgba(${aR},${aG},${aB},0.5)`; ctx.lineWidth = 2;
       ctx.strokeRect(scrX-2, scrY-2, scrW+4, scrH+4);
 
@@ -282,14 +340,12 @@ export default function AudienceScene({
       ag.addColorStop(1, "rgba(0,0,0,0)");
       ctx.fillStyle = ag; ctx.fillRect(scrX, scrY, scrW, scrH);
 
-      // Scanlines
       ctx.strokeStyle = `rgba(255,255,255,${0.04 + Math.sin(t * 0.03) * 0.02})`;
       ctx.lineWidth = 1.5;
       for (let sl = 0; sl < scrH; sl += 6) {
         ctx.beginPath(); ctx.moveTo(scrX, scrY + sl); ctx.lineTo(scrX + scrW, scrY + sl); ctx.stroke();
       }
 
-      // Screen content
       const mainLabel = screenLabel ?? "● LIVE";
       const subLabel  = screenSubLabel ?? "TMI · THE MUSICIAN'S INDEX";
       ctx.font = "bold 22px 'Orbitron', monospace";
@@ -301,7 +357,6 @@ export default function AudienceScene({
       ctx.fillText(subLabel, scrX + scrW / 2, scrY + scrH - 16);
       ctx.textAlign = "left";
 
-      // Screen edge glow + BPM pulse
       ctx.save();
       ctx.shadowBlur = 18 + beatPulse * 22;
       ctx.shadowColor = `rgba(${aR},${aG},${aB},0.7)`;
@@ -310,13 +365,11 @@ export default function AudienceScene({
       ctx.strokeRect(scrX, scrY, scrW, scrH);
       ctx.restore();
 
-      // Wall glow below screen
       const wg = ctx.createRadialGradient(scrX+scrW/2, scrY+scrH, 0, scrX+scrW/2, scrY+scrH, scrW*.9);
       wg.addColorStop(0, `rgba(${aR},${aG},${aB},${(0.12 + beatPulse * 0.08) * ga})`);
       wg.addColorStop(1, "rgba(0,0,0,0)");
       ctx.fillStyle = wg; ctx.fillRect(0, scrY, W, scrH + 90);
 
-      // ── Sweep spotlights from top (3 beams) ──
       const beamColors: [number,number,number][] = [[aR,aG,aB],[255,255,255],[aR,aG,aB]];
       for (let b = 0; b < 3; b++) {
         const sweepAngle = Math.sin(t * 0.018 + b * 1.1) * 0.35;
@@ -324,7 +377,7 @@ export default function AudienceScene({
         drawSpotBeam(ctx, W, H, W * (0.25 + b * 0.25), sweepAngle, br, bg_, bb, 0.055 + beatPulse * 0.03);
       }
 
-      // ── Audience rows (back-of-head) ──
+      // ── Audience rows (back-of-head, fan looking at stage) ──
       const fanRows = [
         { y: 310, seats: 15, sw: 48, sz: 9.5,  lit: 0.15 },
         { y: 332, seats: 14, sw: 52, sz: 11,   lit: 0.22 },
@@ -334,21 +387,30 @@ export default function AudienceScene({
         { y: 418, seats: 10, sw: 74, sz: 17.5, lit: 0.72 },
         { y: 440, seats: 9,  sw: 80, sz: 18.5, lit: 0.85 },
       ];
-      let fanSeatIdx = 0;
+      let fanSeatIdx   = 0;
+      let entityFanIdx = 0; // separate counter for entity array (only increments on occupied)
       fanRows.forEach((row, ri) => {
         const sx = (W - row.seats * row.sw) / 2;
         for (let c = 0; c < row.seats; c++) {
-          const idx = ri * 20 + c;
+          const idx  = ri * 20 + c;
           const seed = idx * 137.5;
-          const px = sx + c * row.sw + row.sw / 2;
+          const px   = sx + c * row.sw + row.sw / 2;
           const wb = s.wave ? Math.sin(t * 0.04 + c * 0.6 + ri * 0.3) * 4.5 : 0;
           const jb = s.jump ? Math.abs(Math.sin(t * 0.08)) * -7 : 0;
           const beatBob = beatPulse * -2.5 * row.lit;
           const hy = row.y + wb + jb + beatBob;
 
           if (fanSeatIdx++ < occupiedUpTo) {
-            drawHead(ctx, px, hy, row.sz, SKINS[(idx*7+c*3) % SKINS.length]!, HAIR[(idx*5+ri*2) % HAIR.length]!, t*0.025+(c*0.4)+(ri*0.2), false, row.lit);
-            // Phone/lighter glow — 65% show phones, 12% show lighters
+            const entity  = entityMode ? liveEntities[entityFanIdx++] : undefined;
+            const skinHex = entity
+              ? (SKIN_HEX[entity.appearance.skinTone] ?? SKINS[(idx*7+c*3) % SKINS.length]!)
+              : SKINS[(idx*7+c*3) % SKINS.length]!;
+            const hairSeed = entity ? hashId(entity.id) : (idx*5+ri*2);
+            const hairHex  = HAIR[hairSeed % HAIR.length]!;
+            const emotion  = entity?.emotion;
+
+            drawHead(ctx, px, hy, row.sz, skinHex, hairHex, t*0.025+(c*0.4)+(ri*0.2), false, row.lit, emotion);
+
             const phoneRoll = (seed * 6271) % 100;
             if (phoneRoll < 65 && row.lit > 0.3) {
               const [pr,pg,pb] = phoneGlowColor(idx);
@@ -361,7 +423,6 @@ export default function AudienceScene({
               drawLighterGlow(ctx, swayX, hy - row.sz * 1.2, lighterAlpha, row.sz * 0.7, t, seed);
             }
           } else {
-            // Empty seat — subtle dark outline so stadium feels spacious, not broken
             ctx.save();
             ctx.globalAlpha = 0.18 * row.lit;
             ctx.strokeStyle = `rgba(${aR},${aG},${aB},0.4)`;
@@ -375,7 +436,6 @@ export default function AudienceScene({
         }
       });
 
-      // ── Ambient accent glow at bottom ──
       const bottomGlow = ctx.createLinearGradient(0, H * 0.75, 0, H);
       bottomGlow.addColorStop(0, "rgba(0,0,0,0)");
       bottomGlow.addColorStop(1, `rgba(${aR},${aG},${aB},${0.06 + beatPulse * 0.06})`);
@@ -391,20 +451,17 @@ export default function AudienceScene({
       if (v.wallTex) drawBricks(ctx, 0, 0, W, H * 0.42, v.wallColor);
       else { ctx.fillStyle = v.wallColor; ctx.fillRect(0, 0, W, H * 0.42); }
 
-      // Stage warm glow under performer
       const sg = ctx.createRadialGradient(W/2, H, 0, W/2, H, W * 0.65);
       sg.addColorStop(0, `rgba(255,100,0,${0.28 + beatPulse * 0.12})`);
       sg.addColorStop(0.5, "rgba(180,60,0,.1)");
       sg.addColorStop(1, "rgba(0,0,0,0)");
       ctx.fillStyle = sg; ctx.fillRect(0, H * 0.48, W, H * 0.52);
 
-      // Stage floor reflection
       const sfr = ctx.createLinearGradient(0, H * 0.88, 0, H);
       sfr.addColorStop(0, `rgba(${aR},${aG},${aB},${0.08 + beatPulse * 0.06})`);
       sfr.addColorStop(1, "rgba(0,0,0,0)");
       ctx.fillStyle = sfr; ctx.fillRect(0, H * 0.88, W, H * 0.12);
 
-      // ── Swept colored spotbeams (5 beams, performer view) ──
       const perfBeamCols: [number,number,number][] = [
         [aR,aG,aB],[255,255,255],[aR,aG,aB],[255,150,50],[aR,aG,aB],
       ];
@@ -415,13 +472,12 @@ export default function AudienceScene({
           0.07 + beatPulse * 0.05 + (b === 2 ? 0.03 : 0));
       }
 
-      // ── Center follow spotlight on performer position ──
       const followGrad = ctx.createRadialGradient(W/2, H*0.15, 0, W/2, H*0.15, W*0.22);
       followGrad.addColorStop(0, `rgba(255,220,180,${0.18 + beatPulse * 0.1})`);
       followGrad.addColorStop(1, "rgba(0,0,0,0)");
       ctx.fillStyle = followGrad; ctx.fillRect(0, 0, W, H * 0.5);
 
-      // ── Audience rows (front-facing) ──
+      // ── Audience rows (front-facing, front rows fill first) ──
       const perfRows = [
         { ri: 0, yB: H*0.40, seats: 20, sw: 36, sz: 8,    lit: 0.65 },
         { ri: 1, yB: H*0.46, seats: 18, sw: 40, sz: 9.5,  lit: 0.72 },
@@ -432,24 +488,32 @@ export default function AudienceScene({
         { ri: 6, yB: H*0.79, seats: 8,  sw: 70, sz: 17.5, lit: 0.97 },
         { ri: 7, yB: H*0.86, seats: 6,  sw: 80, sz: 19,   lit: 1    },
       ];
-      // Fill front rows first (closest to performer = highest energy = fills first)
-      const perfSeatIdx = PERF_TOTAL_SEATS - occupiedUpTo;
-      let perfGlobalIdx = 0;
+      const perfSeatStart = PERF_TOTAL_SEATS - occupiedUpTo;
+      let perfGlobalIdx   = 0;
+      let entityPerfIdx   = 0;
       perfRows.forEach(row => {
         const sx = (W - row.seats * row.sw) / 2;
         for (let c = 0; c < row.seats; c++) {
-          const idx = row.ri * 30 + c;
+          const idx  = row.ri * 30 + c;
           const seed = idx * 137.5;
-          const px = sx + c * row.sw + row.sw / 2;
+          const px   = sx + c * row.sw + row.sw / 2;
           const wb = s.wave ? Math.sin(t*0.04+c*0.5)*5.5 : 0;
           const jb = s.jump ? Math.abs(Math.sin(t*0.08+c*0.3))*-9 : 0;
           const hb = s.hype ? (Math.sin(t*0.06+c*0.4)*4.5+Math.sin(t*0.03+c*0.2)*3.5) : 0;
           const beatBob = beatPulse * -3 * row.lit;
           const hy = row.yB + wb + jb + hb + beatBob;
 
-          if (perfGlobalIdx++ >= perfSeatIdx) {
-            drawHead(ctx, px, hy, row.sz, SKINS[(idx*7+c*3)%SKINS.length]!, HAIR[(idx*5+row.ri*2)%HAIR.length]!, t*0.028+(c*0.35)+(row.ri*0.15), true, row.lit);
-            // Phone/lighter glow (performer sees crowd lit up)
+          if (perfGlobalIdx++ >= perfSeatStart) {
+            const entity  = entityMode ? liveEntities[entityPerfIdx++] : undefined;
+            const skinHex = entity
+              ? (SKIN_HEX[entity.appearance.skinTone] ?? SKINS[(idx*7+c*3)%SKINS.length]!)
+              : SKINS[(idx*7+c*3)%SKINS.length]!;
+            const hairSeed = entity ? hashId(entity.id) : (idx*5+row.ri*2);
+            const hairHex  = HAIR[hairSeed % HAIR.length]!;
+            const emotion  = entity?.emotion;
+
+            drawHead(ctx, px, hy, row.sz, skinHex, hairHex, t*0.028+(c*0.35)+(row.ri*0.15), true, row.lit, emotion);
+
             const phoneRoll = (seed * 6271) % 100;
             if (phoneRoll < 70) {
               const [pr,pg,pb] = phoneGlowColor(idx);
@@ -462,7 +526,6 @@ export default function AudienceScene({
               drawLighterGlow(ctx, swayX, hy - row.sz * 1.1, lighterAlpha * row.lit, row.sz * 0.8, t, seed);
             }
           } else {
-            // Empty seat outline
             ctx.save();
             ctx.globalAlpha = 0.15 * row.lit;
             ctx.strokeStyle = `rgba(${aR},${aG},${aB},0.35)`;
@@ -476,18 +539,15 @@ export default function AudienceScene({
         }
       });
 
-      // Crowd color wash (tint back rows with accent color)
       const crowdWash = ctx.createLinearGradient(0, H*0.38, 0, H*0.65);
       crowdWash.addColorStop(0, `rgba(${aR},${aG},${aB},${0.06 + beatPulse * 0.04})`);
       crowdWash.addColorStop(1, "rgba(0,0,0,0)");
       ctx.fillStyle = crowdWash; ctx.fillRect(0, H*0.38, W, H*0.27);
 
-      // Floor fade
       const tf = ctx.createLinearGradient(0, H*0.86, 0, H);
       tf.addColorStop(0, "rgba(0,0,0,0)"); tf.addColorStop(1, v.floorColor);
       ctx.fillStyle = tf; ctx.fillRect(0, H*0.86, W, H*0.14);
 
-      // Stage rim glow
       const rimGlow = ctx.createLinearGradient(0, H*0.91, 0, H*0.96);
       rimGlow.addColorStop(0, `rgba(${aR},${aG},${aB},${0.35 + beatPulse * 0.3})`);
       rimGlow.addColorStop(1, "rgba(0,0,0,0)");
@@ -501,7 +561,7 @@ export default function AudienceScene({
       ctx.fillText(`👁 ${watcherCount.toLocaleString()}`, 10, H - 10);
     }
 
-    // ── BPM beat flash at very top (subtle) ──
+    // ── BPM beat flash at very top ──
     if (beatPulse > 0.5) {
       const flashAlpha = (beatPulse - 0.5) * 0.14;
       const flashGrad = ctx.createLinearGradient(0, 0, 0, H * 0.12);
@@ -512,27 +572,27 @@ export default function AudienceScene({
     }
 
     frameRef.current = requestAnimationFrame(render);
-  }, [view, venue, watcherCount, bpm, accentColor, screenLabel, screenSubLabel, occupancyRatio]);
+  }, [view, venue, watcherCount, bpm, accentColor, screenLabel, screenSubLabel]);
 
   useEffect(() => {
     frameRef.current = requestAnimationFrame(render);
     return () => { if (frameRef.current) cancelAnimationFrame(frameRef.current); };
   }, [render]);
 
-  const triggerWave = () => { 
-    stateRef.current.wave = true; onReaction?.("🌊"); 
+  const triggerWave = () => {
+    stateRef.current.wave = true; onReaction?.("🌊");
     if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('tmi-xp-reward', { detail: { amount: 5, action: 'Crowd Wave' } }));
-    setTimeout(() => { stateRef.current.wave = false; }, 3200); 
+    setTimeout(() => { stateRef.current.wave = false; }, 3200);
   };
-  const triggerJump = () => { 
-    stateRef.current.jump = true; onReaction?.("⬆"); 
+  const triggerJump = () => {
+    stateRef.current.jump = true; onReaction?.("⬆");
     if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('tmi-xp-reward', { detail: { amount: 10, action: 'Crowd Jump' } }));
-    setTimeout(() => { stateRef.current.jump = false; }, 2400); 
+    setTimeout(() => { stateRef.current.jump = false; }, 2400);
   };
-  const triggerHype = () => { 
-    stateRef.current.hype = true; onReaction?.("🔥"); 
+  const triggerHype = () => {
+    stateRef.current.hype = true; onReaction?.("🔥");
     if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('tmi-xp-reward', { detail: { amount: 15, action: 'Crowd Hype' } }));
-    setTimeout(() => { stateRef.current.hype = false; }, 4000); 
+    setTimeout(() => { stateRef.current.hype = false; }, 4000);
   };
 
   return (
