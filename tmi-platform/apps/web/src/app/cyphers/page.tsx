@@ -6,7 +6,21 @@ export const metadata: Metadata = {
   description: "Join live cypher sessions on The Musician's Index. Open mic, freestyle battles, and rap sessions every night.",
 };
 
-const ACTIVE_CYPHERS = [
+interface ActiveCypher {
+  id: string;
+  href: string;
+  color: string;
+  status: 'live' | 'open' | 'upcoming';
+  genre: string;
+  title: string;
+  host: string;
+  round: number;
+  roundTime: string;
+  participants: number;
+  maxParticipants: number;
+}
+
+const ACTIVE_CYPHERS: ActiveCypher[] = [
   // Real cyphers come from /api/live/sessions filtered by type:"cypher" (Rule 20 — no fake data)
   // Placeholder is intentionally empty pending API integration
 ];

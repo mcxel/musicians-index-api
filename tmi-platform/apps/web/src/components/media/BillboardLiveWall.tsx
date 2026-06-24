@@ -96,8 +96,6 @@ export default function BillboardLiveWall({
   const [performers, setPerformers] = useState<PerformerSlot[]>([]);
   const [loadedOnce, setLoadedOnce] = useState(false);
   const [activeFlowRoom, setActiveFlowRoom] = useState<UniversalRoom | null>(null);
-  // justJoinedIdx removed — was Math.random() fake activity indicator (Rule 20)
-  // justJoinedIdx removed — was Math.random() fake activity indicator (Rule 20)
 
   // Real liveness from GlobalLiveSessionRegistry (via /api/live/go) — live tiles first,
   // then PERFORMER_REGISTRY fills remaining slots as honestly-offline discovery tiles.

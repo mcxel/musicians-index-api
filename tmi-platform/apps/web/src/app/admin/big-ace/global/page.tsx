@@ -27,10 +27,10 @@ export default function GlobalAdminPage() {
         {/* Key Metrics */}
         <section className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
           {[
-            { label: 'Countries', value: '14+', change: '+2 this month', color: 'cyan' },
-            { label: 'Artists', value: '2.5K', change: '+340 this month', color: 'fuchsia' },
-            { label: 'Live Now', value: '2,847', change: 'Peak hour activity', color: 'yellow' },
-            { label: 'Rooms', value: '1,200', change: '+89 this month', color: 'green' },
+            { label: 'Countries', value: 'Loading', change: 'Real-time', color: 'cyan' },
+            { label: 'Artists', value: 'Loading', change: 'Real-time', color: 'fuchsia' },
+            { label: 'Live Now', value: 'Loading', change: 'Real-time', color: 'yellow' },
+            { label: 'Rooms', value: 'Loading', change: 'Real-time', color: 'green' },
           ].map((metric) => (
             <div
               key={metric.label}
@@ -46,34 +46,9 @@ export default function GlobalAdminPage() {
         {/* Activity by Region */}
         <section className="mb-12">
           <h2 className="text-2xl font-bold text-cyan-300 mb-6">📊 Activity by Region</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {[
-              { region: 'Africa', countries: 4, rooms: 320, users: 8400 },
-              { region: 'Americas', countries: 3, rooms: 680, users: 18900 },
-              { region: 'Europe', countries: 3, rooms: 420, users: 12400 },
-              { region: 'Asia-Pacific', countries: 4, rooms: 280, users: 9200 },
-            ].map((region) => (
-              <div
-                key={region.region}
-                className="p-4 rounded-lg bg-gray-900/50 border border-gray-800"
-              >
-                <h3 className="font-bold text-lg mb-3">{region.region}</h3>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">Countries:</span>
-                    <span className="text-cyan-300 font-semibold">{region.countries}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">Rooms:</span>
-                    <span className="text-fuchsia-300 font-semibold">{region.rooms}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">Users:</span>
-                    <span className="text-yellow-300 font-semibold">{region.users.toLocaleString()}</span>
-                  </div>
-                </div>
-              </div>
-            ))}
+          <div style={{ padding: '40px 24px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, textAlign: 'center', color: 'rgba(255,255,255,0.4)', fontSize: 12 }}>
+            <div style={{ marginBottom: 8 }}>Real-time regional activity data will be populated from the API.</div>
+            <div style={{ fontSize: 11 }}>Global statistics are fetched from /api/admin/global in production.</div>
           </div>
         </section>
 
@@ -81,29 +56,14 @@ export default function GlobalAdminPage() {
         <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <h3 className="text-xl font-bold text-cyan-300 mb-4">🔥 Top Countries by Activity</h3>
-            <div className="space-y-2">
-              {['🇺🇸 United States', '🇳🇬 Nigeria', '🇬🇧 United Kingdom', '🇧🇷 Brazil', '🇰🇷 South Korea'].map((country, i) => (
-                <div key={country} className="p-3 rounded-lg bg-gray-800/50 flex justify-between items-center">
-                  <span>{country}</span>
-                  <span className="text-cyan-400 font-bold">#{i + 1}</span>
-                </div>
-              ))}
+            <div style={{ padding: '24px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 8, color: 'rgba(255,255,255,0.4)', fontSize: 11 }}>
+              Ranking data from real platform activity will appear here.
             </div>
           </div>
           <div>
             <h3 className="text-xl font-bold text-cyan-300 mb-4">📈 Trending Genres</h3>
-            <div className="space-y-2">
-              {['Hip-Hop', 'Afrobeats', 'K-Pop', 'Reggaeton', 'Electronic'].map((genre, i) => (
-                <div key={genre} className="p-3 rounded-lg bg-gray-800/50 flex justify-between items-center">
-                  <span>{genre}</span>
-                  <div className="w-24 h-2 bg-gray-700 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-gradient-to-r from-cyan-500 to-fuchsia-500"
-                      style={{ width: `${100 - i * 15}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
+            <div style={{ padding: '24px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 8, color: 'rgba(255,255,255,0.4)', fontSize: 11 }}>
+              Genre trends will be calculated from real XP data.
             </div>
           </div>
         </section>

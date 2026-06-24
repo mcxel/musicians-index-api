@@ -28,15 +28,16 @@ interface Props {
 }
 
 // ── Games seed — static until a GameRegistry exists ──────────────────────────
+// Viewer counts omitted — only real counts from GlobalLiveSessionRegistry are shown (Rule 20)
 const GAMES = [
-  { slug: 'weekly-cypher',   name: 'Weekly Cypher',      icon: '🎙️', href: '/live/rooms/cypher-arena',     desc: 'Freestyle battle — all genres',  viewers: 15200 },
-  { slug: 'monday-stage',    name: 'Monday Night Stage', icon: '🎭', href: '/games/monday-night',            desc: 'Live performance competition',    viewers: 8400  },
-  { slug: 'stream-win',      name: 'Stream & Win Radio', icon: '📻', href: '/live/lobby?filter=stream-win', desc: 'Listen, win real cash & XP',     viewers: 12000 },
-  { slug: 'battle-stage',    name: 'Battle Stage',       icon: '⚔️', href: '/live/rooms/battle-stage',      desc: 'Song-for-song battles',          viewers: 9800  },
-  { slug: 'comedy-night',    name: 'Comedy Night',       icon: '😂', href: '/games/comedy-night',           desc: 'Stand-up + audience voting',     viewers: 4200  },
-  { slug: 'deal-or-feud',   name: 'Deal or Feud 1000',  icon: '🎮', href: '/games/deal-or-feud',           desc: 'Game show — win platform cash',  viewers: 6100  },
-  { slug: 'monthly-idol',    name: 'Monthly Idol',       icon: '👑', href: '/games/monthly-idol',           desc: 'Season-long ranking competition', viewers: 21000 },
-  { slug: 'dance-battle',    name: 'Dance Battle Arena', icon: '🕺', href: '/live/rooms/dance-battle',      desc: 'Crew vs crew — live judging',    viewers: 3800  },
+  { slug: 'weekly-cypher',   name: 'Weekly Cypher',      icon: '🎙️', href: '/live/rooms/cypher-arena',     desc: 'Freestyle battle — all genres'  },
+  { slug: 'monday-stage',    name: 'Monday Night Stage', icon: '🎭', href: '/games/monday-night',            desc: 'Live performance competition'    },
+  { slug: 'stream-win',      name: 'Stream & Win Radio', icon: '📻', href: '/live/lobby?filter=stream-win', desc: 'Listen, win real cash & XP'     },
+  { slug: 'battle-stage',    name: 'Battle Stage',       icon: '⚔️', href: '/live/rooms/battle-stage',      desc: 'Song-for-song battles'          },
+  { slug: 'comedy-night',    name: 'Comedy Night',       icon: '😂', href: '/games/comedy-night',           desc: 'Stand-up + audience voting'     },
+  { slug: 'deal-or-feud',    name: 'Deal or Feud 1000',  icon: '🎮', href: '/games/deal-or-feud',           desc: 'Game show — win platform cash'  },
+  { slug: 'monthly-idol',    name: 'Monthly Idol',       icon: '👑', href: '/games/monthly-idol',           desc: 'Season-long ranking competition' },
+  { slug: 'dance-battle',    name: 'Dance Battle Arena', icon: '🕺', href: '/live/rooms/dance-battle',      desc: 'Crew vs crew — live judging'    },
 ];
 
 // ── Sponsor seed ─────────────────────────────────────────────────────────────
@@ -234,8 +235,7 @@ export default function DiscoveryRail({ type, tags = [], exclude, limit = 6, lab
               <div style={{ padding: '8px 10px 10px' }}>
                 <div style={{ fontSize: 11, fontWeight: 900, color: '#fff', marginBottom: 3 }}>{g.name}</div>
                 <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.4)', marginBottom: 5 }}>{g.desc}</div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ fontSize: 8, color: '#AA2DFF', fontWeight: 700 }}>{g.viewers.toLocaleString()} watching</div>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
                   <div style={{ fontSize: 8, fontWeight: 800, color: '#AA2DFF', letterSpacing: '0.06em' }}>JOIN →</div>
                 </div>
               </div>

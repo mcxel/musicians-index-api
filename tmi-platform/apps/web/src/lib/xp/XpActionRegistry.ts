@@ -58,7 +58,16 @@ export type XpActionKey =
   | 'book_performer'
   // ── Magazine / content creation ────────────────────────────────────────────
   | 'article_featured'
-  | 'article_gets_1000_reads';
+  | 'article_gets_1000_reads'
+  // ── Intermission engagement (Rule 7 + Rule 9) ──────────────────────────────
+  | 'intermission_trivia_answer'
+  | 'intermission_poll_vote'
+  | 'intermission_booth_visit'
+  | 'intermission_message_sent'
+  | 'intermission_reaction_sent'
+  | 'intermission_cosmetic_equipped'
+  | 'intermission_profile_viewed'
+  | 'intermission_watched_full';
 
 export interface XpAction {
   key: XpActionKey;
@@ -127,6 +136,16 @@ export const XP_ACTIONS: XpAction[] = [
   { key: 'vote_battle',          label: 'Vote in a battle',               xp: 15,   category: 'competitive', repeatable: true,  cooldownHours: 0.25 },
   { key: 'attend_live_room',     label: 'Attend a live room',             xp: 20,   category: 'consumption', repeatable: true,  cooldownHours: 1 },
   { key: 'book_performer',       label: 'Book a performer',               xp: 200,  category: 'financial',   repeatable: true,  cooldownHours: 0 },
+
+  // ── Intermission engagement (Rule 7: Persistent Events + Rule 9: Everything Earns XP) ───
+  { key: 'intermission_trivia_answer',     label: 'Answer intermission trivia',    xp: 3,    category: 'social',      repeatable: true,  cooldownHours: 0 },
+  { key: 'intermission_poll_vote',         label: 'Vote in intermission poll',     xp: 2,    category: 'social',      repeatable: true,  cooldownHours: 0 },
+  { key: 'intermission_booth_visit',       label: 'Visit sponsor booth',           xp: 3,    category: 'social',      repeatable: true,  cooldownHours: 0 },
+  { key: 'intermission_message_sent',      label: 'Message friend during break',   xp: 1,    category: 'social',      repeatable: true,  cooldownHours: 0 },
+  { key: 'intermission_reaction_sent',     label: 'Send reaction during break',    xp: 1,    category: 'social',      repeatable: true,  cooldownHours: 0 },
+  { key: 'intermission_cosmetic_equipped', label: 'Equip cosmetic during break',   xp: 2,    category: 'social',      repeatable: true,  cooldownHours: 0 },
+  { key: 'intermission_profile_viewed',    label: 'View profile during break',     xp: 1,    category: 'social',      repeatable: true,  cooldownHours: 0 },
+  { key: 'intermission_watched_full',      label: 'Watch full intermission',       xp: 5,    category: 'consumption', repeatable: true,  cooldownHours: 0 },
 ];
 
 // ── Lookup helpers ────────────────────────────────────────────────────────────
