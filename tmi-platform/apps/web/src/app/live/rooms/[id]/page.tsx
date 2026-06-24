@@ -34,6 +34,7 @@ import AvatarCreationCenter from "@/components/canisters/AvatarCreationCenter";
 import { AvatarWorkspaceCanister } from "@/components/canisters/AvatarWorkspaceCanister";
 import { InventoryCanister } from "@/components/canisters/InventoryCanister";
 import { PrivateLobbyCanister } from "@/components/canisters/PrivateLobbyCanister";
+import ControlCanisterCluster from "@/components/live/ControlCanisterCluster";
 
 // Referrers that grant direct room entry (passed via ?from= query param)
 const LOBBY_AUTHORIZED_ORIGINS = new Set([
@@ -202,6 +203,15 @@ export default async function LiveRoomPage({ params, searchParams }: LiveRoomPag
           userId={fanSlug ?? sessionId ?? performerSid ?? "fan-guest"}
           accentColor={performerSlug ? "#FF2DAA" : "#00FFFF"}
         />
+
+        {/* PreShowControlBooth — cluster of draggable control canisters for performer */}
+        {performerSlug && (
+          <ControlCanisterCluster
+            eventId={id}
+            eventMode="casual"
+            availableCanisters={['lighting', 'effects', 'banner', 'camera', 'support', 'stage', 'director', 'event-owner', 'curtain']}
+          />
+        )}
 
         <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
           <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
