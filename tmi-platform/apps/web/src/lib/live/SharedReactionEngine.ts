@@ -155,4 +155,17 @@ class SharedReactionEngine {
   }
 }
 
-export const sharedReactionEngine = new SharedReactionEngine();
+// Instantiate only on client-side to avoid SSR errors
+let _instance: SharedReactionEngine | undefined;
+const initInstance = (): SharedReactionEngine => {
+  if (!_instance && typeof window !== 'undefined') {
+    _instance = new SharedReactionEngine();
+  }
+  return _instance || new SharedReactionEngine();
+};
+export const sharedReactionEngine = new Proxy({} as SharedReactionEngine, {
+  get(_, prop: string | symbol) {
+    const instance = initInstance();
+    return (instance as unknown as Record<string | symbol, unknown>)[prop];
+  },
+});

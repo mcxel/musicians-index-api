@@ -9,36 +9,12 @@ import OmniPresenceEngine from "@/components/presence/OmniPresenceEngine";
 const ACCENT = "#22c55e";
 const BG = "#050510";
 
-const SEED_STATS = [
-  { label: "Rooms Active",  value: "3",     color: ACCENT,    icon: "🏟️" },
-  { label: "Tickets Sold",  value: "1,240", color: "#00FFFF", icon: "🎫" },
-  { label: "Avg Occupancy", value: "84%",   color: "#FFD700", icon: "📊" },
-  { label: "Revenue (MTD)", value: "$9,320",color: "#FF2DAA", icon: "💰" },
-  { label: "Events Booked", value: "7",     color: "#00FF88", icon: "📅" },
-  { label: "Fan Capacity",  value: "500",   color: "#AA2DFF", icon: "👥" },
-];
-
-const SEED_EVENTS = [
-  { id: "e1", title: "Monday Night Stage — Season Opener", date: "Jun 16 2026", status: "upcoming", color: "#22c55e",  tickets: 340 },
-  { id: "e2", title: "Battle Night IV",                    date: "Jun 22 2026", status: "upcoming", color: "#00FFFF",  tickets: 120 },
-  { id: "e3", title: "World Premiere — Nova Cipher Live",  date: "Jun 29 2026", status: "upcoming", color: "#AA2DFF",  tickets: 480 },
-];
-
-const SEED_ROOMS = [
-  { id: "r1", name: "Main Stage",       capacity: 200, live: true,  viewers: 147, color: "#22c55e" },
-  { id: "r2", name: "VIP Lounge",       capacity: 40,  live: true,  viewers: 28,  color: "#FFD700" },
-  { id: "r3", name: "Backstage Lobby",  capacity: 25,  live: false, viewers: 0,   color: "#AA2DFF" },
-];
-
-const SEED_ACTIVITY = [
-  { id: "a1", text: "Ticket batch #1240 printed for Battle Night IV",     time: "12m ago",  color: "#00FFFF" },
-  { id: "a2", text: "Room 'Main Stage' opened — 147 viewers online",      time: "1h ago",   color: "#22c55e" },
-  { id: "a3", text: "Sponsor slot filled by BeatGear Co. ($299)",         time: "3h ago",   color: "#FFD700" },
-  { id: "a4", text: "Seat map updated — VIP section expanded to 60 seats",time: "Yesterday",color: "#AA2DFF" },
-  { id: "a5", text: "Revenue payout of $4,200 processed",                 time: "Jun 10",   color: "#FF2DAA" },
-];
 
 interface MeUser { id: string; email: string; name?: string; role: string; }
+interface VenueStat { label: string; value: string; color: string; icon: string; }
+interface VenueEvent { id: string; title: string; date: string; status: string; color: string; tickets: number; }
+interface VenueRoom { id: string; name: string; capacity: number; live: boolean; viewers: number; color: string; }
+interface Activity { id: string; text: string; time: string; color: string; }
 
 export default function VenueProfilePage() {
   const router = useRouter();
@@ -47,16 +23,36 @@ export default function VenueProfilePage() {
   const [name, setName]           = useState("TMI Arena");
   const [bio, setBio]             = useState("Premier digital venue on The Musician's Index. Hosting battles, concerts, premieres, and live cyphers for artists at every level.");
   const [saveStatus, setSaveStatus] = useState("");
+  const [stats, setStats]         = useState<VenueStat[]>([]);
+  const [events, setEvents]       = useState<VenueEvent[]>([]);
+  const [rooms, setRooms]         = useState<VenueRoom[]>([]);
+  const [activity, setActivity]   = useState<Activity[]>([]);
+  const [loading, setLoading]     = useState(true);
 
   useEffect(() => {
-    fetch("/api/auth/session", { credentials: "include" })
-      .then(r => r.json())
-      .then((d: { authenticated?: boolean; user?: MeUser }) => {
-        if (!d.authenticated || !d.user) { router.replace("/auth"); return; }
-        setUser(d.user);
-        if (d.user.name) setName(d.user.name);
-      })
-      .catch(() => router.replace("/auth"));
+    const fetchData = async () => {
+      try {
+        const [sessionRes, profileRes] = await Promise.all([
+          fetch("/api/auth/session", { credentials: "include" }),
+          fetch("/api/venue/profile", { credentials: "include" })
+        ]);
+        const sessionData = await sessionRes.json();
+        if (!sessionData.authenticated || !sessionData.user) { router.replace("/auth"); return; }
+        setUser(sessionData.user);
+        if (sessionData.user.name) setName(sessionData.user.name);
+
+        const profileData = await profileRes.json();
+        setStats(profileData.stats || []);
+        setEvents(profileData.events || []);
+        setRooms(profileData.rooms || []);
+        setActivity(profileData.activity || []);
+      } catch (err) {
+        console.error("Failed to fetch venue data:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
   }, [router]);
 
   if (!user) return (
@@ -149,15 +145,24 @@ export default function VenueProfilePage() {
         )}
 
         {/* Stats grid */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12, marginBottom: 24 }}>
-          {SEED_STATS.map((s, i) => (
-            <div key={s.label} className="stat-card" style={{ padding: "18px 16px", background: `${s.color}08`, border: `1px solid ${s.color}20`, borderRadius: 14, textAlign: "center", animation: `fadeUp .4s ease ${i * 0.06}s both` }}>
-              <div style={{ fontSize: 20, marginBottom: 6 }}>{s.icon}</div>
-              <div style={{ fontSize: 24, fontWeight: 900, color: s.color, lineHeight: 1 }}>{s.value}</div>
-              <div style={{ fontSize: 9, fontWeight: 800, marginTop: 6, color: "rgba(255,255,255,0.5)", letterSpacing: "0.1em" }}>{s.label}</div>
-            </div>
-          ))}
-        </div>
+        {!loading && (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12, marginBottom: 24 }}>
+            {stats && stats.length > 0 ? stats.map((s, i) => (
+              <div key={s.label} className="stat-card" style={{ padding: "18px 16px", background: `${s.color}08`, border: `1px solid ${s.color}20`, borderRadius: 14, textAlign: "center", animation: `fadeUp .4s ease ${i * 0.06}s both` }}>
+                <div style={{ fontSize: 20, marginBottom: 6 }}>{s.icon}</div>
+                <div style={{ fontSize: 24, fontWeight: 900, color: s.color, lineHeight: 1 }}>{s.value}</div>
+                <div style={{ fontSize: 9, fontWeight: 800, marginTop: 6, color: "rgba(255,255,255,0.5)", letterSpacing: "0.1em" }}>{s.label}</div>
+              </div>
+            )) : (
+              <div style={{ gridColumn: "1 / -1", padding: "24px", textAlign: "center", color: "rgba(255,255,255,0.4)" }}>
+                No venue data available yet.
+              </div>
+            )}
+          </div>
+        )}
+        {loading && <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 12, marginBottom: 24, opacity: 0.5 }}>
+          {[...Array(6)].map((_, i) => <div key={i} style={{ padding: "18px", background: "rgba(255,255,255,0.02)", borderRadius: 14, height: 80 }} />)}
+        </div>}
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
           {/* Live Rooms */}
@@ -166,7 +171,7 @@ export default function VenueProfilePage() {
               <div style={{ fontSize: 9, letterSpacing: "0.2em", color: ACCENT, fontWeight: 800 }}>🔴 LIVE ROOMS</div>
               <Link href="/rooms" style={{ fontSize: 9, color: ACCENT, textDecoration: "none", fontWeight: 700 }}>MANAGE →</Link>
             </div>
-            {SEED_ROOMS.map(r => (
+            {rooms && rooms.length > 0 ? rooms.map(r => (
               <Link key={r.id} href={`/rooms/${r.id}`} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: "1px solid rgba(255,255,255,0.05)", textDecoration: "none" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   {r.live && <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#ef4444", display: "inline-block", animation: "pulse 2s infinite" }} />}
@@ -176,7 +181,9 @@ export default function VenueProfilePage() {
                   {r.live ? `${r.viewers} viewers` : "Offline"}
                 </span>
               </Link>
-            ))}
+            )) : (
+              <div style={{ padding: "12px", textAlign: "center", color: "rgba(255,255,255,0.3)", fontSize: 11 }}>No active rooms.</div>
+            )}
             <Link href="/rooms/create" style={{ display: "block", marginTop: 12, padding: "9px 14px", borderRadius: 8, background: `${ACCENT}10`, border: `1px solid ${ACCENT}25`, color: ACCENT, fontSize: 10, fontWeight: 800, textDecoration: "none", textAlign: "center" }}>+ OPEN NEW ROOM</Link>
           </div>
 
@@ -186,7 +193,7 @@ export default function VenueProfilePage() {
               <div style={{ fontSize: 9, letterSpacing: "0.2em", color: "#00FFFF", fontWeight: 800 }}>📅 UPCOMING EVENTS</div>
               <Link href="/ticketing" style={{ fontSize: 9, color: "#00FFFF", textDecoration: "none", fontWeight: 700 }}>ALL →</Link>
             </div>
-            {SEED_EVENTS.map(ev => (
+            {events && events.length > 0 ? events.map(ev => (
               <div key={ev.id} style={{ padding: "10px 0", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: "#fff", marginBottom: 3, lineHeight: 1.3 }}>{ev.title}</div>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -194,7 +201,9 @@ export default function VenueProfilePage() {
                   <span style={{ fontSize: 9, color: "rgba(255,255,255,0.35)" }}>{ev.tickets} tickets sold</span>
                 </div>
               </div>
-            ))}
+            )) : (
+              <div style={{ padding: "12px", textAlign: "center", color: "rgba(255,255,255,0.3)", fontSize: 11 }}>No upcoming events.</div>
+            )}
             <Link href="/ticketing/create" style={{ display: "block", marginTop: 12, padding: "9px 14px", borderRadius: 8, background: "rgba(0,255,255,0.08)", border: "1px solid rgba(0,255,255,0.2)", color: "#00FFFF", fontSize: 10, fontWeight: 800, textDecoration: "none", textAlign: "center" }}>+ CREATE EVENT</Link>
           </div>
         </div>
@@ -202,12 +211,14 @@ export default function VenueProfilePage() {
         {/* Activity feed */}
         <div style={{ padding: "20px", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 16, marginBottom: 20 }}>
           <div style={{ fontSize: 9, letterSpacing: "0.2em", color: "#FFD700", fontWeight: 800, marginBottom: 14 }}>⚡ RECENT ACTIVITY</div>
-          {SEED_ACTIVITY.map(a => (
+          {activity && activity.length > 0 ? activity.map(a => (
             <div key={a.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "9px 0", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
               <div style={{ fontSize: 11, color: "rgba(255,255,255,0.7)" }}>{a.text}</div>
               <div style={{ fontSize: 9, color: a.color, flexShrink: 0, marginLeft: 16 }}>{a.time}</div>
             </div>
-          ))}
+          )) : (
+            <div style={{ padding: "12px", textAlign: "center", color: "rgba(255,255,255,0.3)", fontSize: 11 }}>No recent activity.</div>
+          )}
         </div>
 
         {/* Quick nav */}

@@ -26,6 +26,7 @@
     "smoke:web": "node ./scripts/smoke-web.js",
     "smoke": "pnpm run smoke:api && pnpm run smoke:web",
     "snapshot:generate": "node ./scripts/generate-api-snapshots.js",
+    "rc1:revenue": "node -r ts-node/register scripts/rc1-revenue-certification.ts",
     "ci:verify": "pnpm -w lint && pnpm -w typecheck && pnpm -w build",
     "ci": "pnpm -w install --frozen-lockfile && pnpm run snapshot:verify && pnpm run db:validate && pnpm run db:migrate:status && pnpm run ci:verify && pnpm run smoke",
     "build:web": "node -e \"require('fs').rmSync('apps/web/.next',{recursive:true,force:true})\" && pnpm -C apps/web exec next build",

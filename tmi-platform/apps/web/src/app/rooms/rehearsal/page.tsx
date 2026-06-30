@@ -1,11 +1,12 @@
+"use client";
 import Link from "next/link";
-import UniversalVenueRenderer from "@/components/live/UniversalVenueRenderer";
+import dynamic from "next/dynamic";
 import RehearsalRoomShell from "@/components/venue/RehearsalRoomShell";
 
-export const metadata = {
-  title: "Rehearsal Room | TMI",
-  description: "Private rehearsal and practice space — playlist, video calls, collaboration, memories.",
-};
+const UniversalVenueRenderer = dynamic(
+  () => import("@/components/live/UniversalVenueRenderer"),
+  { ssr: false, loading: () => null }
+);
 
 export default function RehearsalPage() {
   return (

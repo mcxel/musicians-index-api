@@ -1,0 +1,10 @@
+export * from './WindowTypes';
+export { WindowManagerRuntime } from './WindowManagerRuntime';
+export { registerCanisterWindow, unregisterCanisterWindow, listRegisteredCanisterWindows } from './WindowRegistry';
+export { dockWindow, undockWindow } from './WindowDockManager';
+export { focusWindow, blurWindow, getActiveWindowId } from './WindowFocusManager';
+export { saveWindowLayoutSnapshot, restoreWindowLayoutSnapshot, restoreWindowDefaults } from './WindowLayoutManager';
+export { loadPersistedWindowLayout, savePersistedWindowLayout } from './WindowPersistence';
+export { getWindowAnimationPreset, WINDOW_SPRING } from './WindowAnimationManager';
+export { computeStageInsets } from './WindowViewportManager';
+export { useWindowRuntime } from './WindowRuntimeHook';

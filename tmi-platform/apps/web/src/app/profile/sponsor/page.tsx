@@ -14,23 +14,11 @@ export default function SponsorProfilePage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [sessionRes, campaignsRes] = await Promise.all([
-          fetch('/api/auth/session', { cache: 'no-store', credentials: 'include' }),
-          fetch('/api/sponsor/campaigns', { cache: 'no-store' })
-        ]);
-        const sessionData = await sessionRes.json();
-        const campaignsData = await campaignsRes.json();
-        setSession(sessionData);
-        setCampaigns(campaignsData.campaigns || []);
-      } catch (error) {
-        console.error("Failed to fetch sponsor data", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
+    // TODO: Replace with fetch from canonical /api/hq/sponsor endpoint
+    fetch('/api/auth/session', { cache: 'no-store', credentials: 'include' })
+      .then(r => r.json())
+      .then((d: Session) => { setSession(d); })
+      .finally(() => setLoading(false));
   }, []);
 
   if (loading) return <div style={{ background: C.bg, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.dim }}>Loading…</div>;
@@ -102,24 +90,33 @@ export default function SponsorProfilePage() {
                 </tr>
               </thead>
               <tbody>
-                {campaigns.map((campaign, index) => (
-                  <tr key={campaign.id} style={{ borderBottom: index < campaigns.length - 1 ? `1px solid ${C.border}` : 'none' }}>
-                    <td style={{ padding: '14px 16px', fontWeight: 700 }}>{campaign.name}</td>
-                    <td style={{ padding: '14px 16px' }}>
-                      <span style={{
-                        background: campaign.status === 'live' ? C.green + '22' : campaign.status === 'upcoming' ? C.gold + '22' : C.dim + '22',
-                        color: campaign.status === 'live' ? C.green : campaign.status === 'upcoming' ? C.gold : C.dim,
-                        padding: '4px 8px', borderRadius: 6, fontSize: 10, fontWeight: 700, textTransform: 'uppercase'
-                      }}>{campaign.status}</span>
-                    </td>
-                    <td style={{ padding: '14px 16px', textAlign: 'right', fontFamily: 'monospace' }}>{campaign.impressions.toLocaleString()}</td>
-                    <td style={{ padding: '14px 16px', textAlign: 'right', fontFamily: 'monospace' }}>{campaign.clicks.toLocaleString()}</td>
-                    <td style={{ padding: '14px 16px', textAlign: 'right', fontFamily: 'monospace' }}>${campaign.budget.toLocaleString()}</td>
-                    <td style={{ padding: '14px 16px', textAlign: 'right' }}>
-                      <Link href={`/campaigns/${campaign.id}/analytics`} style={{ color: C.accent, textDecoration: 'none', fontSize: 12, fontWeight: 600 }}>View</Link>
+                {campaigns.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} style={{ padding: '24px 16px', textAlign: 'center', color: C.dim, fontSize: 12 }}>
+                      No campaigns found.
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  campaigns.map((campaign, index) => (
+                    <tr key={campaign.id} style={{ borderBottom: index < campaigns.length - 1 ? `1px solid ${C.border}` : 'none' }}>
+                      <td style={{ padding: '14px 16px', fontWeight: 700 }}>{campaign.name}</td>
+                      <td style={{ padding: '14px 16px' }}>
+                        <span style={{
+                          background: campaign.status === 'live' ? C.green + '22' : campaign.status === 'upcoming' ? C.gold + '22' : C.dim + '22',
+                          color: campaign.status === 'live' ? C.green : campaign.status === 'upcoming' ? C.gold : C.dim,
+                          padding: '4px 8px', borderRadius: 6, fontSize: 10, fontWeight: 700, textTransform: 'uppercase'
+                        }}>{campaign.status}</span>
+                      </td>
+                      <td style={{ padding: '14px 16px', textAlign: 'right', fontFamily: 'monospace' }}>{campaign.impressions.toLocaleString()}</td>
+                      <td style={{ padding: '14px 16px', textAlign: 'right', fontFamily: 'monospace' }}>{campaign.clicks.toLocaleString()}</td>
+                      <td style={{ padding: '14px 16px', textAlign: 'right', fontFamily: 'monospace' }}>${campaign.budget.toLocaleString()}</td>
+                      <td style={{ padding: '14px 16px', textAlign: 'right' }}>
+                        <Link href={`/campaigns/${campaign.id}/analytics`} style={{ color: C.accent, textDecoration: 'none', fontSize: 12, fontWeight: 600 }}>View</Link>
+                      </td>
+                  </tr>
+                ))
+                )
+                }
               </tbody>
             </table>
           </div>

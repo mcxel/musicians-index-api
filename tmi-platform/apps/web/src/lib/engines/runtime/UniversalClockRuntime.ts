@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * UniversalClockRuntime
  * Server-authoritative shared clock with client drift compensation.
@@ -29,6 +31,7 @@ let state: ClockState = {
 };
 
 function computeOffset(s: ClockSample): number {
+  if (typeof performance === 'undefined') return 0; // SSR-safe fallback
   const rtt = s.clientRecvAt - s.clientSentAt;
   const serverNowAtMidpoint = s.serverTime + rtt / 2;
   const clientNowAtMidpoint = s.clientSentAt + rtt / 2;

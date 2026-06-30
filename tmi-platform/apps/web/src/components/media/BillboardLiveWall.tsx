@@ -21,6 +21,7 @@ import { MaskedVideoTile, type TileShape, type BroadcastTileStatus } from '@/com
 import Link from 'next/link';
 import { LobbyEntryFlow, type UniversalRoom } from '@/components/room/UniversalLobbyEntry';
 import { PERFORMER_REGISTRY } from '@/lib/performers/PerformerRegistry';
+import { useGlobalLiveSessions } from '@/hooks/useGlobalLiveSessions';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -52,16 +53,6 @@ interface BillboardLiveWallProps {
   className?: string;
   /** Filter to a single GlobalLiveSessionRegistry category (battle/cypher/concert/challenge/live/game/session) */
   category?: string;
-}
-
-interface LiveApiSession {
-  userId: string;
-  displayName: string;
-  category: string;
-  roomId: string;
-  viewerCount: number;
-  avatarUrl: string | null;
-  accentColor: string;
 }
 
 // ─── Shape rotation by mode ───────────────────────────────────────────────────
@@ -97,70 +88,48 @@ export default function BillboardLiveWall({
   const [loadedOnce, setLoadedOnce] = useState(false);
   const [activeFlowRoom, setActiveFlowRoom] = useState<UniversalRoom | null>(null);
 
-  // Real liveness from GlobalLiveSessionRegistry (via /api/live/go) — live tiles first,
-  // then PERFORMER_REGISTRY fills remaining slots as honestly-offline discovery tiles.
-  // Never fabricates "isLive" from array index — Rule 14.
+  // Real-time live sessions from GlobalLiveSessionRegistry — updates immediately when streams change
+  const liveSessions = useGlobalLiveSessions(category as any);
+
+  // Convert live sessions + offline performers to display tiles
   useEffect(() => {
-    let cancelled = false;
+    const liveTiles: PerformerSlot[] = liveSessions.map((s, i) => ({
+      id: s.userId,
+      name: s.displayName,
+      slug: s.userId,
+      broadcastStatus: 'live' as const,
+      isLive: true,
+      viewerCount: s.viewerCount,
+      genre: s.category,
+      avatarEmoji: '🎤',
+      avatarUrl: s.avatarUrl ?? undefined,
+      accentColor: s.accentColor || ACCENT_PALETTE[i % ACCENT_PALETTE.length],
+      sponsorCount: 0,
+    }));
 
-    const load = async () => {
-      let sessions: LiveApiSession[] = [];
-      try {
-        const res = await fetch('/api/live/go', { cache: 'no-store' });
-        const data = await res.json() as { sessions?: LiveApiSession[] };
-        sessions = data.sessions ?? [];
-      } catch {
-        sessions = [];
-      }
-      if (cancelled) return;
+    const liveIds = new Set(liveTiles.map((t) => t.id));
+    const offline: PerformerSlot[] = category
+      ? []
+      : (PERFORMER_REGISTRY as any[])
+          .filter((p) => !liveIds.has(p.id))
+          .map((p, i): PerformerSlot => ({
+            id: p.id,
+            name: p.name,
+            slug: p.slug ?? p.id,
+            rank: p.rank ?? (i + 1),
+            broadcastStatus: 'offline' as const,
+            viewerCount: p.audienceCount ?? p.fanCount ?? 0,
+            genre: p.category ?? p.genre ?? 'Live',
+            avatarEmoji: p.avatarEmoji ?? '👤',
+            avatarUrl: p.profileImageUrl ?? p.avatarUrl,
+            accentColor: ACCENT_PALETTE[i % ACCENT_PALETTE.length],
+            sponsorCount: 0,
+          }))
+          .sort((a, b) => (a.rank ?? 99) - (b.rank ?? 99));
 
-      const filtered = category ? sessions.filter((s) => s.category === category) : sessions;
-
-      const liveTiles: PerformerSlot[] = filtered.map((s, i) => ({
-        id: s.userId,
-        name: s.displayName,
-        slug: s.userId,
-        broadcastStatus: 'live' as const,
-        isLive: true,
-        viewerCount: s.viewerCount,
-        genre: s.category,
-        avatarEmoji: '🎤',
-        avatarUrl: s.avatarUrl ?? undefined,
-        accentColor: s.accentColor || ACCENT_PALETTE[i % ACCENT_PALETTE.length],
-        sponsorCount: 0,
-      }));
-
-      const liveIds = new Set(liveTiles.map((t) => t.id));
-      const offline: PerformerSlot[] = category
-        ? [] // category-filtered walls only show real sessions in that category
-        : (PERFORMER_REGISTRY as any[])
-            .filter((p) => !liveIds.has(p.id))
-            .map((p, i): PerformerSlot => ({
-              id: p.id,
-              name: p.name,
-              slug: p.slug ?? p.id,
-              rank: p.rank ?? (i + 1),
-              broadcastStatus: 'offline' as const,
-              // No longer ambiguous: 'offline' means real performer, not someone
-              // whose session ended. MaskedVideoTile will show discovery card, not
-              // "Broadcast Ended" (Rule 14/20 compliance).
-              viewerCount: p.audienceCount ?? p.fanCount ?? 0,
-              genre: p.category ?? p.genre ?? 'Live',
-              avatarEmoji: p.avatarEmoji ?? '👤',
-              avatarUrl: p.profileImageUrl ?? p.avatarUrl,
-              accentColor: ACCENT_PALETTE[i % ACCENT_PALETTE.length],
-              sponsorCount: 0,
-            }))
-            .sort((a, b) => (a.rank ?? 99) - (b.rank ?? 99));
-
-      setPerformers([...liveTiles, ...offline].slice(0, maxTiles));
-      setLoadedOnce(true);
-    };
-
-    void load();
-    const id = setInterval(() => void load(), 8000);
-    return () => { cancelled = true; clearInterval(id); };
-  }, [maxTiles, category]);
+    setPerformers([...liveTiles, ...offline].slice(0, maxTiles));
+    setLoadedOnce(true);
+  }, [liveSessions, maxTiles, category]);
 
 
   const shapes = MODE_SHAPES[mode];

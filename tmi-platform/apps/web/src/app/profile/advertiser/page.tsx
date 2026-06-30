@@ -6,24 +6,19 @@ import Link from 'next/link';
 const C = { bg: '#07071a', panel: 'rgba(12,20,50,.9)', border: '#1a1a3a', accent: '#00FFFF', fuchsia: '#FF2DAA', gold: '#FFD700', purple: '#AA2DFF', green: '#00FF88', text: '#fff', dim: '#666' };
 
 interface Session { authenticated: boolean; user: { id: string; email: string; displayName?: string } | null; role: string; tier: string; }
-interface AdPlacement { id: string; name: string; location: string; status: 'live' | 'paused' | 'ended' | 'pending'; impressions: number; clicks: number; ctr: number; }
+interface AdPlacement { id: string; name: string; location: string; status: 'live' | 'paused' | 'ended'; impressions: number; clicks: number; ctr: number; }
 
 export default function AdvertiserProfilePage() {
   const [session, setSession] = useState<Session | null>(null);
   const [placements, setPlacements] = useState<AdPlacement[]>([]);
   const [loading, setLoading] = useState(true);
-  const [placementsLoaded, setPlacementsLoaded] = useState(false);
 
   useEffect(() => {
+    // TODO: Replace with fetch from canonical /api/hq/advertiser endpoint
     fetch('/api/auth/session', { cache: 'no-store', credentials: 'include' })
       .then(r => r.json())
       .then((d: Session) => { setSession(d); setLoading(false); })
       .catch(() => setLoading(false));
-
-    fetch('/api/advertiser/placements', { cache: 'no-store', credentials: 'include' })
-      .then(r => r.json())
-      .then((d: { placements?: AdPlacement[] }) => { setPlacements(d.placements ?? []); setPlacementsLoaded(true); })
-      .catch(() => setPlacementsLoaded(true));
   }, []);
 
   if (loading) return <div style={{ background: C.bg, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.dim }}>Loading…</div>;
@@ -81,16 +76,12 @@ export default function AdvertiserProfilePage() {
 
         {/* Ad Placement Management Widget */}
         <div>
-          <div style={{ fontSize: 9, letterSpacing: '0.3em', color: C.dim, fontWeight: 700, marginBottom: 12 }}>AD PLACEMENTS</div>
-          {!placementsLoaded ? (
-            <div style={{ background: C.panel, border: `1px solid ${C.border}`, borderRadius: 12, padding: '40px 20px', textAlign: 'center', color: C.dim, fontSize: 12 }}>
-              Loading campaigns…
-            </div>
-          ) : placements.length === 0 ? (
+          <div style={{ fontSize: 9, letterSpacing: '0.3em', color: C.dim, fontWeight: 700, marginBottom: 12 }}>AD PLACEMENT MANAGEMENT</div>
+          {placements.length === 0 ? (
             <div style={{ background: C.panel, border: `1px solid ${C.border}`, borderRadius: 12, padding: '40px 20px', textAlign: 'center' }}>
-              <div style={{ fontSize: 13, color: C.dim, marginBottom: 14 }}>No campaigns created yet.</div>
+              <div style={{ fontSize: 13, color: C.dim, marginBottom: 14 }}>No ad placements found.</div>
               <Link href="/ads/create" style={{ background: C.green, color: '#000', border: 'none', borderRadius: 8, padding: '10px 22px', fontWeight: 700, fontSize: 13, textDecoration: 'none', display: 'inline-block' }}>
-                Create your first campaign
+                Create your first placement
               </Link>
             </div>
           ) : (
@@ -98,7 +89,7 @@ export default function AdvertiserProfilePage() {
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ borderBottom: `1px solid ${C.border}` }}>
-                    <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 11, color: C.dim, letterSpacing: 1 }}>PLACEMENT</th>
+                    <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 11, color: C.dim, letterSpacing: 1 }}>AD PLACEMENT</th>
                     <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 11, color: C.dim, letterSpacing: 1 }}>LOCATION</th>
                     <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 11, color: C.dim, letterSpacing: 1 }}>STATUS</th>
                     <th style={{ padding: '12px 16px', textAlign: 'right', fontSize: 11, color: C.dim, letterSpacing: 1 }}>IMPRESSIONS</th>

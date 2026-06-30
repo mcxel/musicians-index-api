@@ -572,21 +572,24 @@ export const MAGAZINE_ISSUE_1: MagazineArticle[] = [
     ],
   },
 ];
+function getMagazineIssue1(): MagazineArticle[] {
+  return MAGAZINE_ISSUE_1;
+}
 
 export function getArticleBySlug(slug: string): MagazineArticle | undefined {
-  return MAGAZINE_ISSUE_1.find(a => a.slug === slug);
+  return getMagazineIssue1().find(a => a.slug === slug);
 }
 
 export function getArticlesByCategory(category: MagazineArticle["category"]): MagazineArticle[] {
-  return MAGAZINE_ISSUE_1.filter(a => a.category === category);
+  return getMagazineIssue1().filter(a => a.category === category);
 }
 
 export function getFeaturedArticles(count = 3): MagazineArticle[] {
-  return MAGAZINE_ISSUE_1.filter(a => a.category === "feature").slice(0, count);
+  return getMagazineIssue1().filter(a => a.category === "feature").slice(0, count);
 }
 
 export function getRecentArticles(count = 4): MagazineArticle[] {
-  return [...MAGAZINE_ISSUE_1]
+  return [...getMagazineIssue1()]
     .sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime())
     .slice(0, count);
 }

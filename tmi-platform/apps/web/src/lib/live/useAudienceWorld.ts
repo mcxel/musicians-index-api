@@ -39,6 +39,15 @@ import {
   registerEntity,
   type AvatarEntity,
 } from '@/lib/avatars/UnifiedAvatarRuntime';
+import type {
+  AttentionVector,
+} from '@/lib/engines/runtime/CrowdAttentionEngine';
+
+// Type-only import to avoid SSR evaluation
+import type {
+  onAttentionUpdate as TOnAttentionUpdate,
+  getRoomAttentionVectors as TGetRoomAttentionVectors,
+} from '@/lib/engines/runtime/CrowdAttentionEngine';
 
 // ─── Energy → automatic lighting ─────────────────────────────────────────────
 
@@ -62,6 +71,8 @@ export interface AudienceWorldState {
   occupancyRatio: number;
   /** Host entities currently seated in the audience (not on stage) */
   hostSeats: AudienceAvatar[];
+  /** Real-time attention vectors for each avatar — drives head rotation in AudienceScene */
+  attentionVectors: AttentionVector[];
 }
 
 interface AudienceWorldHandlers {
@@ -77,11 +88,13 @@ export function useAudienceWorld(
   roomId: string,
   rows = 8,
   cols = 12,
+  performerId?: string,
 ): AudienceWorldState & AudienceWorldHandlers {
   const [seats, setSeats] = useState<SeatPosition[]>([]);
   const [avatars, setAvatars] = useState<AudienceAvatar[]>([]);
   const [entities, setEntities] = useState<AvatarEntity[]>([]);
   const [energy, setEnergy] = useState<RoomEnergyState | null>(null);
+  const [attentionVectors, setAttentionVectors] = useState<AttentionVector[]>([]);
 
   const snapshot = useCallback(() => {
     const s = audienceVisibilityEngine.getSeats(roomId);
@@ -97,12 +110,32 @@ export function useAudienceWorld(
     unified.forEach(entity => registerEntity(entity));
     setEntities(unified);
 
+    // Register avatarIds with RoomEnergyEngine for attention tracking
+    const avatarIds = a.map(av => av.userId);
+    roomEnergyEngine.setRoomAvatars(roomId, avatarIds);
+    if (performerId) {
+      roomEnergyEngine.setRoomPerformer(roomId, performerId);
+    }
+
+    // Feed attention vectors to AvatarAttentionRuntime for visual rendering
+    if (typeof window !== 'undefined') {
+      import('@/lib/engines/runtime/CrowdAttentionEngine').then(crowdEngine => {
+        const vectors = crowdEngine.getRoomAttentionVectors(avatarIds);
+        import('@/lib/engines/attention/AvatarAttentionRuntime').then(runtime => {
+          runtime.avatarAttentionRuntime.updateFromAttentionVectors(avatarIds, vectors);
+          setAttentionVectors(vectors);
+        });
+      });
+    } else {
+      setAttentionVectors([]);
+    }
+
     // Auto-wire energy level → StageDirectorEngine CSS lighting
     if (e) {
       const preset = ENERGY_LIGHTING[e.energyLabel];
       if (preset) setLightingPreset(preset);
     }
-  }, [roomId]);
+  }, [roomId, performerId]);
 
   useEffect(() => {
     // Initialize the seat grid and energy tracker
@@ -138,6 +171,22 @@ export function useAudienceWorld(
 
     snapshot();
 
+    // Subscribe to real-time attention updates (client-only, safe for SSR)
+    let unsubscribeAttention = () => {};
+    if (typeof window !== 'undefined') {
+      import('@/lib/engines/runtime/CrowdAttentionEngine').then(crowdEngine => {
+        const onAttention = crowdEngine.onAttentionUpdate;
+        unsubscribeAttention = onAttention((vectors) => {
+          // Feed attention updates to renderer runtime
+          const avatarIds = vectors.map(v => v.avatarId);
+          import('@/lib/engines/attention/AvatarAttentionRuntime').then(runtime => {
+            runtime.avatarAttentionRuntime.updateFromAttentionVectors(avatarIds, vectors);
+            setAttentionVectors(vectors);
+          });
+        });
+      });
+    }
+
     // Tick: natural energy decay + periodic snapshot refresh
     const tick = setInterval(() => {
       roomEnergyEngine.decay(roomId, 1);
@@ -146,6 +195,7 @@ export function useAudienceWorld(
 
     return () => {
       clearInterval(tick);
+      unsubscribeAttention();
       botCrowdFillEngine.stopActivity(roomId);
     };
   }, [roomId, rows, cols, snapshot]);
@@ -184,6 +234,7 @@ export function useAudienceWorld(
     energy,
     occupancyRatio,
     hostSeats,
+    attentionVectors,
     recordReaction,
     recordTip,
     recordVote,

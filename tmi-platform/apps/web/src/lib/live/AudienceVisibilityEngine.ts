@@ -193,4 +193,17 @@ class AudienceVisibilityEngine {
   }
 }
 
-export const audienceVisibilityEngine = new AudienceVisibilityEngine();
+// Instantiate only on client-side to avoid SSR errors
+let _instance: AudienceVisibilityEngine | undefined;
+const initInstance = (): AudienceVisibilityEngine => {
+  if (!_instance && typeof window !== 'undefined') {
+    _instance = new AudienceVisibilityEngine();
+  }
+  return _instance || new AudienceVisibilityEngine();
+};
+export const audienceVisibilityEngine = new Proxy({} as AudienceVisibilityEngine, {
+  get(_, prop: string | symbol) {
+    const instance = initInstance();
+    return (instance as unknown as Record<string | symbol, unknown>)[prop];
+  },
+});

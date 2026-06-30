@@ -34,6 +34,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { getGuestId } from '@/lib/identity/getGuestId';
 import { useStageWebRTC } from '@/hooks/useStageWebRTC';
 import { useLiveSessionHeartbeat } from '@/hooks/useLiveSessionHeartbeat';
@@ -48,8 +49,10 @@ import StageCurtain from '@/components/live/StageCurtain';
 import AudienceScene, { type VenueIndex } from '@/components/live/AudienceScene';
 import { useAudienceWorld } from '@/lib/live/useAudienceWorld';
 import AvatarActionWheel from '@/components/avatars/AvatarActionWheel';
-import PropLoader from '@/components/avatars/PropLoader';
 import MemoryCaptureButton from '@/components/memory/MemoryCaptureButton';
+import { AttentionDebugOverlay } from '@/components/live/AttentionDebugOverlay';
+
+const PropLoader = dynamic(() => import('@/components/avatars/PropLoader'), { ssr: false });
 import {
   startCountdown,
   openCurtain,
@@ -426,6 +429,14 @@ export default function UniversalVenueRenderer({ roomId, mode, venueIndex = 1, f
 
         {revealActive && <SponsorBubbleOverlay sponsors={SHOWTIME_SPONSORS} orbitRadius={120} />}
       </div>
+
+      {/* Debug Overlay — Engineering validation (G-1B.2 Checkpoint 1) */}
+      <AttentionDebugOverlay
+        roomId={roomId}
+        avatarIds={audienceEntities.map((e) => e.id)}
+        performerId={liveSession?.userId}
+        enabled={true}
+      />
 
       {/* Reaction bar — fan mode */}
       {mode === 'audience' && (

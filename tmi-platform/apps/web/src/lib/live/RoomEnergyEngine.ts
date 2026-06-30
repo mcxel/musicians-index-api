@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * RoomEnergyEngine
  * Tracks and broadcasts live room energy — combines occupancy,
@@ -18,6 +20,14 @@ import { rewardResponseEngine } from '@/lib/learning/RewardResponseEngine';
 import { applySafeLearningMutation } from '@/lib/learning/LearningSafetyEngine';
 import { subscribeToCrowdRoom, type CrowdSnapshot } from '@/lib/personality/CrowdReactionEngine';
 import { setLightingPreset, triggerEffect } from '@/lib/live/StageDirectorEngine';
+import {
+  triggerApplause,
+  focusRoomOnStage,
+  propagateAttentionContagion,
+  directAttention,
+  applyIdleDrift,
+  type AttentionTarget,
+} from '@/lib/engines/runtime/CrowdAttentionEngine';
 
 export interface RoomEnergyState {
   roomId: string;
@@ -70,6 +80,9 @@ class RoomEnergyEngine {
   private states = new Map<string, RoomEnergyState>();
   private crowdUnsubscribes = new Map<string, () => void>();
   private lastLightingUpdate = new Map<string, number>();
+  private roomAvatarIds = new Map<string, string[]>();
+  private roomPerformerId = new Map<string, string>();
+  private idleDriftTicks = new Map<string, NodeJS.Timeout>();
 
   initRoom(roomId: string): RoomEnergyState {
     const state: RoomEnergyState = {
@@ -157,6 +170,12 @@ class RoomEnergyEngine {
     const s = this.states.get(roomId);
     if (s) s.signalCounts.joins++;
     this.bump(roomId, 3);
+
+    // New avatar joins — focus room on stage to welcome them
+    const avatarIds = this.roomAvatarIds.get(roomId) ?? [];
+    if (avatarIds.length > 0) {
+      focusRoomOnStage(roomId, avatarIds, this.roomPerformerId.get(roomId), 0.6);
+    }
   }
 
   recordLeave(roomId: string): void {
@@ -167,24 +186,53 @@ class RoomEnergyEngine {
     const s = this.states.get(roomId);
     if (s) s.signalCounts.reactions++;
     this.bump(roomId, 1);
+
+    // Applause direction — audience reorients to stage
+    const avatarIds = this.roomAvatarIds.get(roomId) ?? [];
+    if (avatarIds.length > 0) {
+      triggerApplause(avatarIds, 0.7);
+    }
   }
 
   recordTip(roomId: string, amountUsd: number): void {
     const s = this.states.get(roomId);
     if (s) s.signalCounts.tips++;
     this.bump(roomId, Math.min(10, Math.ceil(amountUsd / 2)));
+
+    // Large tip → focus crowd on performer with intensity proportional to amount
+    const avatarIds = this.roomAvatarIds.get(roomId) ?? [];
+    const performerId = this.roomPerformerId.get(roomId);
+    if (avatarIds.length > 0 && performerId) {
+      const intensity = Math.min(1, 0.5 + (amountUsd / 100) * 0.5);
+      focusRoomOnStage(roomId, avatarIds, performerId, intensity);
+    }
   }
 
   recordVote(roomId: string): void {
     const s = this.states.get(roomId);
     if (s) s.signalCounts.votes++;
     this.bump(roomId, 2);
+
+    // Voting signal → propagate attention contagion (friends vote together)
+    const avatarIds = this.roomAvatarIds.get(roomId) ?? [];
+    if (avatarIds.length > 1) {
+      // Pick a random voter to start the cascade
+      const triggerId = avatarIds[Math.floor(Math.random() * avatarIds.length)]!;
+      const target: AttentionTarget = { kind: 'event', eventId: 'vote', position: { x: 0.5, y: 0.5 } };
+      propagateAttentionContagion(triggerId, target, 0.6, avatarIds);
+    }
   }
 
   recordGift(roomId: string): void {
     const s = this.states.get(roomId);
     if (s) s.signalCounts.gifts++;
     this.bump(roomId, 5);
+
+    // Gift/encore event → high-intensity stage focus (crowd goes wild)
+    const avatarIds = this.roomAvatarIds.get(roomId) ?? [];
+    if (avatarIds.length > 0) {
+      focusRoomOnStage(roomId, avatarIds, this.roomPerformerId.get(roomId), 0.95);
+    }
   }
 
   /** Natural decay — call on a tick (e.g. every 30s) */
@@ -202,14 +250,35 @@ class RoomEnergyEngine {
       .slice(0, n);
   }
 
+  setRoomAvatars(roomId: string, avatarIds: string[]): void {
+    this.roomAvatarIds.set(roomId, avatarIds);
+    // Periodic idle drift — look around when nothing is happening
+    const existingTick = this.idleDriftTicks.get(roomId);
+    if (existingTick) clearInterval(existingTick);
+    const tick = setInterval(() => {
+      const ids = this.roomAvatarIds.get(roomId);
+      if (ids) applyIdleDrift(ids, roomId);
+    }, 3_000);
+    this.idleDriftTicks.set(roomId, tick);
+  }
+
+  setRoomPerformer(roomId: string, performerId: string): void {
+    this.roomPerformerId.set(roomId, performerId);
+  }
+
   destroyRoom(roomId: string): void {
     const unsubscribe = this.crowdUnsubscribes.get(roomId);
     if (unsubscribe) unsubscribe();
     this.crowdUnsubscribes.delete(roomId);
+    const tick = this.idleDriftTicks.get(roomId);
+    if (tick) clearInterval(tick);
+    this.idleDriftTicks.delete(roomId);
     this.states.delete(roomId);
     this.lastLightingUpdate.delete(roomId);
+    this.roomAvatarIds.delete(roomId);
+    this.roomPerformerId.delete(roomId);
   }
 }
 
+// Canonical singleton export (no Proxy indirection)
 export const roomEnergyEngine = new RoomEnergyEngine();
-

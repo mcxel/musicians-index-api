@@ -8,35 +8,12 @@ import OmniPresenceEngine from "@/components/presence/OmniPresenceEngine";
 const ACCENT = "#FFD700";
 const BG = "#050510";
 
-const SEED_STATS = [
-  { label: "Active Campaigns", value: "4",      color: ACCENT,    icon: "🎯" },
-  { label: "Impressions",      value: "248K",   color: "#00FFFF", icon: "👁️" },
-  { label: "Artists Backed",   value: "12",     color: "#AA2DFF", icon: "🎤" },
-  { label: "Budget Deployed",  value: "$6,800", color: "#FF2DAA", icon: "💰" },
-  { label: "Avg Engagement",   value: "8.4%",   color: "#00FF88", icon: "📈" },
-  { label: "ROI",              value: "3.2×",   color: ACCENT,    icon: "🏆" },
-];
-
-const SEED_CAMPAIGNS = [
-  { id: "c1", name: "Season 2 Battle Sponsorship",  status: "live",  impressions: "84K",  budget: "$2,000", color: "#22c55e" },
-  { id: "c2", name: "Cypher Night Ad Package",       status: "live",  impressions: "52K",  budget: "$800",   color: "#22c55e" },
-  { id: "c3", name: "NFT Drop Promo",                status: "paused",impressions: "18K",  budget: "$500",   color: "#FFD700" },
-  { id: "c4", name: "World Concert Headline",        status: "draft", impressions: "—",    budget: "$3,500", color: "#AA2DFF" },
-];
-
-const SEED_ARTISTS = [
-  { slug: "nova-cipher",  name: "Nova Cipher",  genre: "Hip-Hop",  color: "#00FFFF" },
-  { slug: "wavetek",      name: "Wavetek",      genre: "EDM",       color: "#FF2DAA" },
-  { slug: "krypt",        name: "Krypt",        genre: "Trap",      color: "#AA2DFF" },
-  { slug: "bar-god",      name: "Bar God",      genre: "Rap",       color: "#FFD700" },
-];
-
-const SEED_GIVEAWAYS = [
-  { id: "g1", title: "Diamond Ticket Giveaway — Battle Night IV", entries: 412,  end: "Jun 22 2026", color: "#00FFFF" },
-  { id: "g2", title: "VIP Season Pass Bundle",                     entries: 1208, end: "Jun 30 2026", color: "#FF2DAA" },
-];
 
 interface MeUser { id: string; email: string; name?: string; role: string; tier?: string; }
+interface SponsorStat { label: string; value: string; color: string; icon: string; }
+interface Campaign { id: string; name: string; status: string; impressions: string; budget: string; color: string; }
+interface Giveaway { id: string; title: string; entries: number; end: string; color: string; }
+interface Artist { slug: string; name: string; genre: string; color: string; }
 
 export default function SponsorProfilePage() {
   const router = useRouter();
@@ -45,16 +22,36 @@ export default function SponsorProfilePage() {
   const [brandName, setBrandName]   = useState("BeatGear Co.");
   const [bio, setBio]               = useState("Premium music hardware & software brand. Backing the next generation of independent artists on TMI.");
   const [saveStatus, setSaveStatus] = useState("");
+  const [stats, setStats]           = useState<SponsorStat[]>([]);
+  const [campaigns, setCampaigns]   = useState<Campaign[]>([]);
+  const [giveaways, setGiveaways]   = useState<Giveaway[]>([]);
+  const [artists, setArtists]       = useState<Artist[]>([]);
+  const [loading, setLoading]       = useState(true);
 
   useEffect(() => {
-    fetch("/api/auth/session", { credentials: "include" })
-      .then(r => r.json())
-      .then((d: { authenticated?: boolean; user?: MeUser }) => {
-        if (!d.authenticated || !d.user) { router.replace("/auth"); return; }
-        setUser(d.user);
-        if (d.user.name) setBrandName(d.user.name);
-      })
-      .catch(() => router.replace("/auth"));
+    const fetchData = async () => {
+      try {
+        const [sessionRes, profileRes] = await Promise.all([
+          fetch("/api/auth/session", { credentials: "include" }),
+          fetch("/api/sponsor/profile", { credentials: "include" })
+        ]);
+        const sessionData = await sessionRes.json();
+        if (!sessionData.authenticated || !sessionData.user) { router.replace("/auth"); return; }
+        setUser(sessionData.user);
+        if (sessionData.user.name) setBrandName(sessionData.user.name);
+
+        const profileData = await profileRes.json();
+        setStats(profileData.stats || []);
+        setCampaigns(profileData.campaigns || []);
+        setGiveaways(profileData.giveaways || []);
+        setArtists(profileData.partners || []);
+      } catch (err) {
+        console.error("Failed to fetch sponsor data:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
   }, [router]);
 
   if (!user) return (
@@ -141,15 +138,24 @@ export default function SponsorProfilePage() {
         )}
 
         {/* Stats */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12, marginBottom: 24 }}>
-          {SEED_STATS.map((s, i) => (
-            <div key={s.label} style={{ padding: "18px 16px", background: `${s.color}08`, border: `1px solid ${s.color}20`, borderRadius: 14, textAlign: "center", animation: `fadeUp .4s ease ${i * 0.06}s both` }}>
-              <div style={{ fontSize: 20, marginBottom: 6 }}>{s.icon}</div>
-              <div style={{ fontSize: 24, fontWeight: 900, color: s.color, lineHeight: 1 }}>{s.value}</div>
-              <div style={{ fontSize: 9, fontWeight: 800, marginTop: 6, color: "rgba(255,255,255,0.5)", letterSpacing: "0.1em" }}>{s.label}</div>
-            </div>
-          ))}
-        </div>
+        {!loading && (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12, marginBottom: 24 }}>
+            {stats && stats.length > 0 ? stats.map((s, i) => (
+              <div key={s.label} style={{ padding: "18px 16px", background: `${s.color}08`, border: `1px solid ${s.color}20`, borderRadius: 14, textAlign: "center", animation: `fadeUp .4s ease ${i * 0.06}s both` }}>
+                <div style={{ fontSize: 20, marginBottom: 6 }}>{s.icon}</div>
+                <div style={{ fontSize: 24, fontWeight: 900, color: s.color, lineHeight: 1 }}>{s.value}</div>
+                <div style={{ fontSize: 9, fontWeight: 800, marginTop: 6, color: "rgba(255,255,255,0.5)", letterSpacing: "0.1em" }}>{s.label}</div>
+              </div>
+            )) : (
+              <div style={{ gridColumn: "1 / -1", padding: "24px", textAlign: "center", color: "rgba(255,255,255,0.4)" }}>
+                No campaign data available yet.
+              </div>
+            )}
+          </div>
+        )}
+        {loading && <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 12, marginBottom: 24, opacity: 0.5 }}>
+          {[...Array(6)].map((_, i) => <div key={i} style={{ padding: "18px", background: "rgba(255,255,255,0.02)", borderRadius: 14, height: 80 }} />)}
+        </div>}
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
           {/* Active Campaigns */}
@@ -158,7 +164,7 @@ export default function SponsorProfilePage() {
               <div style={{ fontSize: 9, letterSpacing: "0.2em", color: ACCENT, fontWeight: 800 }}>🎯 CAMPAIGNS</div>
               <Link href="/sponsor/campaigns" style={{ fontSize: 9, color: ACCENT, textDecoration: "none", fontWeight: 700 }}>ALL →</Link>
             </div>
-            {SEED_CAMPAIGNS.map(c => (
+            {campaigns && campaigns.length > 0 ? campaigns.map(c => (
               <Link key={c.id} href="/sponsor/campaigns" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "9px 0", borderBottom: "1px solid rgba(255,255,255,0.05)", textDecoration: "none" }}>
                 <div>
                   <div style={{ fontSize: 11, color: "#fff", fontWeight: 600, lineHeight: 1.3 }}>{c.name}</div>
@@ -166,23 +172,26 @@ export default function SponsorProfilePage() {
                 </div>
                 <span style={{ fontSize: 8, fontWeight: 900, color: statusColor(c.status), background: `${statusColor(c.status)}18`, border: `1px solid ${statusColor(c.status)}40`, borderRadius: 4, padding: "2px 7px", textTransform: "uppercase", flexShrink: 0, marginLeft: 12 }}>{c.status}</span>
               </Link>
-            ))}
+            )) : (
+              <div style={{ padding: "12px", textAlign: "center", color: "rgba(255,255,255,0.3)", fontSize: 11 }}>No campaigns yet.</div>
+            )}
             <Link href="/sponsor/campaigns/new" style={{ display: "block", marginTop: 12, padding: "9px 14px", borderRadius: 8, background: `${ACCENT}10`, border: `1px solid ${ACCENT}25`, color: ACCENT, fontSize: 10, fontWeight: 800, textDecoration: "none", textAlign: "center" }}>+ NEW CAMPAIGN</Link>
           </div>
 
-          {/* Sponsored Artists */}
+          {/* Backed Artists */}
           <div style={{ padding: "20px", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 16 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
               <div style={{ fontSize: 9, letterSpacing: "0.2em", color: "#AA2DFF", fontWeight: 800 }}>🎤 BACKED ARTISTS</div>
               <Link href="/artists" style={{ fontSize: 9, color: "#AA2DFF", textDecoration: "none", fontWeight: 700 }}>BROWSE →</Link>
             </div>
-            {SEED_ARTISTS.map(a => (
+            {artists && artists.length > 0 ? artists.map(a => (
               <Link key={a.slug} href={`/artists/${a.slug}`} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "9px 0", borderBottom: "1px solid rgba(255,255,255,0.05)", textDecoration: "none" }}>
                 <span style={{ fontSize: 11, color: "#fff", fontWeight: 600 }}>{a.name}</span>
                 <span style={{ fontSize: 9, color: a.color }}>{a.genre}</span>
               </Link>
-            ))}
-            <div style={{ marginTop: 12, padding: "9px 14px", borderRadius: 8, background: "rgba(170,45,255,0.08)", border: "1px solid rgba(170,45,255,0.25)", fontSize: 10, color: "rgba(255,255,255,0.4)", textAlign: "center" }}>+8 more artists backed</div>
+            )) : (
+              <div style={{ padding: "12px", textAlign: "center", color: "rgba(255,255,255,0.3)", fontSize: 11 }}>No backed artists yet.</div>
+            )}
           </div>
         </div>
 
@@ -193,7 +202,7 @@ export default function SponsorProfilePage() {
             <Link href="/giveaway" style={{ fontSize: 9, color: "#FF2DAA", textDecoration: "none", fontWeight: 700 }}>ALL →</Link>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            {SEED_GIVEAWAYS.map(g => (
+            {giveaways && giveaways.length > 0 ? giveaways.map(g => (
               <Link key={g.id} href="/giveaway" style={{ padding: "14px", background: `${g.color}08`, border: `1px solid ${g.color}20`, borderRadius: 12, textDecoration: "none" }}>
                 <div style={{ fontSize: 11, color: "#fff", fontWeight: 700, marginBottom: 6, lineHeight: 1.3 }}>{g.title}</div>
                 <div style={{ display: "flex", justifyContent: "space-between" }}>
@@ -201,7 +210,9 @@ export default function SponsorProfilePage() {
                   <span style={{ fontSize: 9, color: "rgba(255,255,255,0.35)" }}>Ends {g.end}</span>
                 </div>
               </Link>
-            ))}
+            )) : (
+              <div style={{ gridColumn: "1 / -1", padding: "12px", textAlign: "center", color: "rgba(255,255,255,0.3)", fontSize: 11 }}>No active giveaways.</div>
+            )}
           </div>
         </div>
 

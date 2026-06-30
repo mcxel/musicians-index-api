@@ -32,12 +32,12 @@ interface PerformerTile {
 }
 
 const SEED_PERFORMERS: PerformerTile[] = [
-  { id: "p1", name: "Astra Nova",   slug: "astra-nova", avatarUrl: "/tmi-curated/mag-22.jpg", iconId: "🎤", genre: "R&B",       category: "Singer",       lookingToCollab: true,  viewers: 847,  accentColor: "#FF2DAA", roomId: "room-astra-nova" },
-  { id: "p2", name: "Lagos Burst",  slug: "lagos-burst", avatarUrl: "/tmi-curated/mag-27.jpg", iconId: "🔥", genre: "Afrobeat",  category: "Performer",    lookingToCollab: false, viewers: 563,  accentColor: "#FF6B35", roomId: "room-lagos-burst" },
-  { id: "p3", name: "Prism Vex",    slug: "prism-vex", avatarUrl: "/tmi-curated/mag-31.jpg", iconId: "🎛️", genre: "EDM",       category: "DJ/Producer",  lookingToCollab: true,  viewers: 701,  accentColor: "#00FFFF", roomId: "room-prism-vex" },
-  { id: "p4", name: "Zion Freq",    slug: "zion-freq", avatarUrl: "/tmi-curated/mag-53.jpg", iconId: "👑", genre: "Gospel",    category: "Singer",       lookingToCollab: true,  viewers: 1204, accentColor: "#FFD700", roomId: "room-zion-freq" },
-  { id: "p5", name: "Flex King",    slug: "flex-king", avatarUrl: "/tmi-curated/mag-42.jpg", iconId: "💃", genre: "Dance",     category: "Dancer",       lookingToCollab: false, viewers: 389,  accentColor: "#AA2DFF", roomId: "room-flex-king" },
-  { id: "p6", name: "Nova Laugh",   slug: "nova-laugh", avatarUrl: "/tmi-curated/mag-58.jpg", iconId: "😂", genre: "Comedy",    category: "Comedian",     lookingToCollab: true,  viewers: 512,  accentColor: "#39FF14", roomId: "room-nova-laugh" },
+  { id: "p1", name: "Astra Nova",   slug: "astra-nova", avatarUrl: "/tmi-curated/mag-22.jpg", iconId: "🎤", genre: "R&B",       category: "Singer",       lookingToCollab: true,  viewers: 0,  accentColor: "#FF2DAA", roomId: "room-astra-nova" },
+  { id: "p2", name: "Lagos Burst",  slug: "lagos-burst", avatarUrl: "/tmi-curated/mag-27.jpg", iconId: "🔥", genre: "Afrobeat",  category: "Performer",    lookingToCollab: false, viewers: 0,  accentColor: "#FF6B35", roomId: "room-lagos-burst" },
+  { id: "p3", name: "Prism Vex",    slug: "prism-vex", avatarUrl: "/tmi-curated/mag-31.jpg", iconId: "🎛️", genre: "EDM",       category: "DJ/Producer",  lookingToCollab: true,  viewers: 0,  accentColor: "#00FFFF", roomId: "room-prism-vex" },
+  { id: "p4", name: "Zion Freq",    slug: "zion-freq", avatarUrl: "/tmi-curated/mag-53.jpg", iconId: "👑", genre: "Gospel",    category: "Singer",       lookingToCollab: true,  viewers: 0, accentColor: "#FFD700", roomId: "room-zion-freq" },
+  { id: "p5", name: "Flex King",    slug: "flex-king", avatarUrl: "/tmi-curated/mag-42.jpg", iconId: "💃", genre: "Dance",     category: "Dancer",       lookingToCollab: false, viewers: 0,  accentColor: "#AA2DFF", roomId: "room-flex-king" },
+  { id: "p6", name: "Nova Laugh",   slug: "nova-laugh", avatarUrl: "/tmi-curated/mag-58.jpg", iconId: "😂", genre: "Comedy",    category: "Comedian",     lookingToCollab: true,  viewers: 0,  accentColor: "#39FF14", roomId: "room-nova-laugh" },
 ];
 
 interface Props {
@@ -159,7 +159,7 @@ export default function PerformerLobbyWall({ compact = false }: Props) {
                   shape="octagon"
                   performerName={p.name}
                   performerSlug={p.slug}
-                  isLive
+                  isLive={false}
                   viewerCount={p.viewers}
                   genre={p.genre}
                   accentColor={p.accentColor}

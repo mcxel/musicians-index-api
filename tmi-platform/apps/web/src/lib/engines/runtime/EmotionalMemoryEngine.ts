@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * EmotionalMemoryEngine
  * Relationship persistence across sessions, rooms, and time.

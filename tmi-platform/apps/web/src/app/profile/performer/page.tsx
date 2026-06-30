@@ -21,6 +21,7 @@ export default function PerformerProfilePage() {
   const name = session?.user?.displayName ?? session?.user?.email?.split('@')[0] ?? 'Performer';
 
   const ACTIONS = [
+    { label: 'Music Studio', icon: '🎵', href: '/studio/music',      color: C.cyan    },
     { label: 'Control Room', icon: '🎙', href: '/hub/performer',     color: C.accent  },
     { label: 'Go Live',      icon: '📡', href: '/live/go-live',      color: '#FF4444' },
     { label: 'Studio',       icon: '🎤', href: '/performer/studio',  color: C.gold    },

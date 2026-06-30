@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * CrowdAttentionEngine
  * Shared gaze is what separates a crowd from a collection of individuals.

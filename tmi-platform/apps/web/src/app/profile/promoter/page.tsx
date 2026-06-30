@@ -14,22 +14,11 @@ export default function PromoterProfilePage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [sessionRes, eventsRes] = await Promise.all([
-          fetch('/api/auth/session', { cache: 'no-store', credentials: 'include' }),
-          fetch('/api/promoter/events', { cache: 'no-store' })
-        ]);
-        setSession(await sessionRes.json());
-        const eventsData = await eventsRes.json();
-        setEvents(eventsData.events || []);
-      } catch (error) {
-        console.error("Failed to fetch promoter data", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
+    // TODO: Replace with fetch from canonical /api/hq/promoter endpoint
+    fetch('/api/auth/session', { cache: 'no-store', credentials: 'include' })
+      .then(r => r.json())
+      .then((d: Session) => { setSession(d); })
+      .finally(() => setLoading(false));
   }, []);
 
   if (loading) return <div style={{ background: C.bg, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.dim }}>Loading…</div>;
@@ -101,24 +90,32 @@ export default function PromoterProfilePage() {
                 </tr>
               </thead>
               <tbody>
-                {events.map((event, index) => (
-                  <tr key={event.id} style={{ borderBottom: index < events.length - 1 ? `1px solid ${C.border}` : 'none' }}>
-                    <td style={{ padding: '14px 16px', fontWeight: 700 }}>{event.name}</td>
-                    <td style={{ padding: '14px 16px', color: C.dim }}>{event.artist}</td>
-                    <td style={{ padding: '14px 16px' }}>
-                      <span style={{
-                        background: event.status === 'live' ? C.green + '22' : event.status === 'upcoming' ? C.gold + '22' : C.dim + '22',
-                        color: event.status === 'live' ? C.green : event.status === 'upcoming' ? C.gold : C.dim,
-                        padding: '4px 8px', borderRadius: 6, fontSize: 10, fontWeight: 700, textTransform: 'uppercase'
-                      }}>{event.status}</span>
-                    </td>
-                    <td style={{ padding: '14px 16px', textAlign: 'right', fontFamily: 'monospace' }}>{event.ticketsSold.toLocaleString()}</td>
-                    <td style={{ padding: '14px 16px', textAlign: 'right', fontFamily: 'monospace', color: C.green }}>${event.revenue.toLocaleString()}</td>
-                    <td style={{ padding: '14px 16px', textAlign: 'right' }}>
-                      <Link href={`/events/${event.id}/manage`} style={{ color: C.accent, textDecoration: 'none', fontSize: 12, fontWeight: 600 }}>Manage</Link>
+                {events.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} style={{ padding: '24px 16px', textAlign: 'center', color: C.dim, fontSize: 12 }}>
+                      No events found.
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  events.map((event, index) => (
+                    <tr key={event.id} style={{ borderBottom: index < events.length - 1 ? `1px solid ${C.border}` : 'none' }}>
+                      <td style={{ padding: '14px 16px', fontWeight: 700 }}>{event.name}</td>
+                      <td style={{ padding: '14px 16px', color: C.dim }}>{event.artist}</td>
+                      <td style={{ padding: '14px 16px' }}>
+                        <span style={{
+                          background: event.status === 'live' ? C.green + '22' : event.status === 'upcoming' ? C.gold + '22' : C.dim + '22',
+                          color: event.status === 'live' ? C.green : event.status === 'upcoming' ? C.gold : C.dim,
+                          padding: '4px 8px', borderRadius: 6, fontSize: 10, fontWeight: 700, textTransform: 'uppercase'
+                        }}>{event.status}</span>
+                      </td>
+                      <td style={{ padding: '14px 16px', textAlign: 'right', fontFamily: 'monospace' }}>{event.ticketsSold.toLocaleString()}</td>
+                      <td style={{ padding: '14px 16px', textAlign: 'right', fontFamily: 'monospace', color: C.green }}>${event.revenue.toLocaleString()}</td>
+                      <td style={{ padding: '14px 16px', textAlign: 'right' }}>
+                        <Link href={`/events/${event.id}/manage`} style={{ color: C.accent, textDecoration: 'none', fontSize: 12, fontWeight: 600 }}>Manage</Link>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>

@@ -14,6 +14,7 @@
 
 import { useEffect, useRef, useCallback } from "react";
 import { SKIN_HEX, type AvatarEntity } from "@/lib/avatars/UnifiedAvatarRuntime";
+import { avatarAttentionRuntime } from "@/lib/engines/attention/AvatarAttentionRuntime";
 
 // ── Venue definitions ─────────────────────────────────────────────────────────
 
@@ -54,6 +55,7 @@ function lerp(a: number, b: number, t: number) { return a + (b - a) * t; }
 
 /**
  * Draw a single audience head.
+ * Attention-driven: headYaw and headPitch control head rotation
  * emotion drives mouth shape in forward (performer-view) heads only:
  *   'laugh' | 'celebrate' → wide open smile
  *   'shock'               → round open mouth
@@ -64,7 +66,7 @@ function lerp(a: number, b: number, t: number) { return a + (b - a) * t; }
 function drawHead(
   ctx: CanvasRenderingContext2D,
   x: number, y: number, sz: number,
-  skin: string, hair: string, aph: number,
+  skin: string, hair: string, headYaw: number, headPitch: number,
   forward: boolean, lit: number,
   emotion?: string,
 ) {
@@ -78,60 +80,106 @@ function drawHead(
   ctx.save();
 
   if (!forward) {
-    // Back-of-head (fan view looking at stage)
+    // Back-of-head (fan view looking at stage) — attention-driven rotation
     ctx.strokeStyle = `rgba(${ch(skin,0)},${ch(skin,1)},${ch(skin,2)},.75)`;
     ctx.lineWidth = sz * 0.32;
     ctx.lineCap = "round";
+
+    // Convert attention yaw/pitch to hair strand angles
+    const hairAngle1 = headYaw * 0.8;
+    const hairAngle2 = headYaw * 0.6 + headPitch * 0.3;
+
     if (Math.random() < 0.10) {
       ctx.beginPath();
       ctx.moveTo(x - sz * 0.3, y + sz * 0.6);
-      ctx.lineTo(x - sz * 0.3 + Math.sin(aph) * sz * 1.2, y - sz * 1.1);
+      ctx.lineTo(x - sz * 0.3 + Math.sin(hairAngle1) * sz * 1.2, y - sz * 1.1 + headPitch * sz * 0.5);
       ctx.stroke();
     } else {
-      ctx.beginPath(); ctx.moveTo(x-sz*.4,y+sz*.7); ctx.lineTo(x-sz*.4+Math.sin(aph)*sz*.6, y+sz+Math.cos(aph)*sz*.3); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(x+sz*.4,y+sz*.7); ctx.lineTo(x+sz*.4+Math.sin(aph+1)*sz*.5, y+sz+Math.cos(aph+1)*sz*.3); ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(x-sz*.4,y+sz*.7);
+      ctx.lineTo(x-sz*.4+Math.sin(hairAngle1)*sz*.6, y+sz+Math.cos(hairAngle1)*sz*.3);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(x+sz*.4,y+sz*.7);
+      ctx.lineTo(x+sz*.4+Math.sin(hairAngle2)*sz*.5, y+sz+Math.cos(hairAngle2)*sz*.3);
+      ctx.stroke();
     }
+
     ctx.fillStyle = skinRgb;
-    ctx.beginPath(); ctx.ellipse(x, y+sz*.8, sz*.72, sz*.9, 0, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(x + headYaw * sz * 0.3, y+sz*.8, sz*.72, sz*.9, 0, 0, Math.PI*2);
+    ctx.fill();
     ctx.fillStyle = hairRgb;
-    ctx.beginPath(); ctx.ellipse(x, y, sz*.78, sz*.8, 0, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(x + headYaw * sz * 0.3, y + headPitch * sz * 0.2, sz*.78, sz*.8, 0, 0, Math.PI*2);
+    ctx.fill();
   } else {
-    // Front-facing (performer view looking at crowd)
+    // Front-facing (performer view looking at crowd) — attention-driven face orientation
     ctx.fillStyle = skinRgb;
-    ctx.beginPath(); ctx.ellipse(x, y+sz*.5, sz*.56, sz*.65, 0, 0, Math.PI*2); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(x, y, sz*.66, sz*.72, 0, 0, Math.PI*2); ctx.fill();
+    const faceOffsetX = headYaw * sz * 0.15;  // slight x shift based on yaw
+    const faceOffsetY = headPitch * sz * 0.1;  // slight y shift based on pitch
+
+    ctx.beginPath();
+    ctx.ellipse(x + faceOffsetX, y+sz*.5 + faceOffsetY, sz*.56, sz*.65, 0, 0, Math.PI*2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(x + faceOffsetX, y + faceOffsetY, sz*.66, sz*.72, 0, 0, Math.PI*2);
+    ctx.fill();
     ctx.fillStyle = hairRgb;
-    ctx.beginPath(); ctx.arc(x, y - sz*.1, sz*.7, Math.PI, 0); ctx.fill();
+    ctx.beginPath();
+    ctx.arc(x + faceOffsetX, y - sz*.1 + faceOffsetY, sz*.7, Math.PI, 0);
+    ctx.fill();
     ctx.fillStyle = skinRgb;
-    ctx.beginPath(); ctx.ellipse(x-sz*.74, y+sz*.1, sz*.22, sz*.18, 0, 0, Math.PI*2); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(x+sz*.74, y+sz*.1, sz*.22, sz*.18, 0, 0, Math.PI*2); ctx.fill();
-    // Eyes
-    ctx.fillStyle = `rgba(30,10,0,${0.8 * L})`;
-    ctx.beginPath(); ctx.ellipse(x-sz*.22, y, sz*.12, sz*.16, 0, 0, Math.PI*2); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(x+sz*.22, y, sz*.12, sz*.16, 0, 0, Math.PI*2); ctx.fill();
+
+    // Eyes follow head yaw
+    const eyeOffsetX = headYaw * sz * 0.2;
+    ctx.beginPath();
+    ctx.ellipse(x-sz*.22 + eyeOffsetX, y + faceOffsetY, sz*.12, sz*.16, 0, 0, Math.PI*2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(x+sz*.22 + eyeOffsetX, y + faceOffsetY, sz*.12, sz*.16, 0, 0, Math.PI*2);
+    ctx.fill();
+
     // Mouth — shape driven by emotion
-    ctx.strokeStyle = `rgba(50,18,0,${0.65*L})`; ctx.lineWidth=sz*.12; ctx.lineCap="round";
+    ctx.strokeStyle = `rgba(50,18,0,${0.65*L})`;
+    ctx.lineWidth=sz*.12;
+    ctx.lineCap="round";
     if (emotion === 'laugh' || emotion === 'celebrate') {
-      // Wide open smile
-      ctx.beginPath(); ctx.arc(x, y+sz*.18, sz*.28, 0.1, Math.PI - 0.1); ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(x + faceOffsetX, y+sz*.18 + faceOffsetY, sz*.28, 0.1, Math.PI - 0.1);
+      ctx.stroke();
     } else if (emotion === 'shock') {
-      // Round open O
-      ctx.beginPath(); ctx.ellipse(x, y+sz*.24, sz*.10, sz*.14, 0, 0, Math.PI*2); ctx.stroke();
+      ctx.beginPath();
+      ctx.ellipse(x + faceOffsetX, y+sz*.24 + faceOffsetY, sz*.10, sz*.14, 0, 0, Math.PI*2);
+      ctx.stroke();
     } else if (emotion === 'smirk') {
-      // Asymmetric one-sided curve
-      ctx.beginPath(); ctx.arc(x + sz*.05, y+sz*.22, sz*.18, 0.2, Math.PI - 0.4); ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(x + sz*.05 + faceOffsetX, y+sz*.22 + faceOffsetY, sz*.18, 0.2, Math.PI - 0.4);
+      ctx.stroke();
     } else if (emotion === 'disappointed') {
-      // Frown
-      ctx.beginPath(); ctx.arc(x, y+sz*.30, sz*.22, Math.PI, 0); ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(x + faceOffsetX, y+sz*.30 + faceOffsetY, sz*.22, Math.PI, 0);
+      ctx.stroke();
     } else {
-      // neutral / serious / default
-      ctx.beginPath(); ctx.arc(x, y+sz*.22, sz*.22, 0, Math.PI); ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(x + faceOffsetX, y+sz*.22 + faceOffsetY, sz*.22, 0, Math.PI);
+      ctx.stroke();
     }
-    // Arms
+
+    // Arms — affected by head yaw
     ctx.strokeStyle = `rgba(${ch(skin,0)*.8},${ch(skin,1)*.8},${ch(skin,2)*.8},.75)`;
-    ctx.lineWidth=sz*.32; ctx.lineCap="round";
-    ctx.beginPath(); ctx.moveTo(x-sz*.5,y+sz*.5); ctx.lineTo(x-sz*.6+Math.sin(aph)*sz*.9, y+sz*.4+Math.cos(aph)*sz*.6); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(x+sz*.5,y+sz*.5); ctx.lineTo(x+sz*.6+Math.sin(aph+1.2)*sz*.8, y+sz*.4+Math.cos(aph+1.2)*sz*.5); ctx.stroke();
+    ctx.lineWidth=sz*.32;
+    ctx.lineCap="round";
+    const armAngle1 = headYaw * 0.6;
+    const armAngle2 = headYaw * 0.4 + 1.2;
+    ctx.beginPath();
+    ctx.moveTo(x-sz*.5,y+sz*.5);
+    ctx.lineTo(x-sz*.6+Math.sin(armAngle1)*sz*.9, y+sz*.4+Math.cos(armAngle1)*sz*.6);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x+sz*.5,y+sz*.5);
+    ctx.lineTo(x+sz*.6+Math.sin(armAngle2)*sz*.8, y+sz*.4+Math.cos(armAngle2)*sz*.5);
+    ctx.stroke();
   }
   ctx.restore();
 }
@@ -409,7 +457,14 @@ export default function AudienceScene({
             const hairHex  = HAIR[hairSeed % HAIR.length]!;
             const emotion  = entity?.emotion;
 
-            drawHead(ctx, px, hy, row.sz, skinHex, hairHex, t*0.025+(c*0.4)+(ri*0.2), false, row.lit, emotion);
+            // Get attention-driven head rotation from runtime
+            const attentionOutput = entity
+              ? avatarAttentionRuntime.getVisualOutput(entity.id)
+              : null;
+            const headYaw = attentionOutput?.headYaw ?? 0;
+            const headPitch = attentionOutput?.headPitch ?? 0;
+
+            drawHead(ctx, px, hy, row.sz, skinHex, hairHex, headYaw, headPitch, false, row.lit, emotion);
 
             const phoneRoll = (seed * 6271) % 100;
             if (phoneRoll < 65 && row.lit > 0.3) {
@@ -512,7 +567,14 @@ export default function AudienceScene({
             const hairHex  = HAIR[hairSeed % HAIR.length]!;
             const emotion  = entity?.emotion;
 
-            drawHead(ctx, px, hy, row.sz, skinHex, hairHex, t*0.028+(c*0.35)+(row.ri*0.15), true, row.lit, emotion);
+            // Get attention-driven head rotation from runtime
+            const attentionOutput = entity
+              ? avatarAttentionRuntime.getVisualOutput(entity.id)
+              : null;
+            const headYaw = attentionOutput?.headYaw ?? 0;
+            const headPitch = attentionOutput?.headPitch ?? 0;
+
+            drawHead(ctx, px, hy, row.sz, skinHex, hairHex, headYaw, headPitch, true, row.lit, emotion);
 
             const phoneRoll = (seed * 6271) % 100;
             if (phoneRoll < 70) {

@@ -1,8 +1,13 @@
 "use client";
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import UniversalVenueRenderer from "@/components/live/UniversalVenueRenderer";
+import dynamic from "next/dynamic";
 import type { VenueIndex } from "@/components/live/AudienceScene";
+
+const UniversalVenueRenderer = dynamic(
+  () => import("@/components/live/UniversalVenueRenderer"),
+  { ssr: false, loading: () => null }
+);
 
 type AudienceSnapshot = {
   venueSlug: string;

@@ -26,6 +26,8 @@ const AUTH_WHITELIST = [
   // to every webhook delivery before signature verification can even run.
   '/api/stripe/webhook',
   '/api/stripe/webhook-health',
+  // Debug endpoints (Level 1 automated verification)
+  '/api/debug',
 ];
 
 // These paths are always reachable regardless of platform visibility

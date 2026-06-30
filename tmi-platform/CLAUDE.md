@@ -92,6 +92,28 @@ This is the architecture. Do not redesign it.
 
 ---
 
+### Meta-Rule: Certification Requirement (Locked 2026-06-25)
+
+> **Every new system must be accompanied by an automated certification before it becomes part of the canonical runtime.**
+
+This governance principle applies to all rules below and all future systems:
+
+- Before merging a new runtime → must have a test suite
+- Before merging a new engine → must have passing Level 1 tests  
+- Before connecting to canonical systems → must pass Level 2 integration tests
+- Before declaring "done" → must pass Level 3 experience certification
+
+Three-level certification framework:
+1. **Level 1: Runtime Certification** (Automated, technical correctness)
+2. **Level 2: Integration Certification** (Automated, signal flow through canonical systems)
+3. **Level 3: Experience Certification** (Human judgment, subjective quality)
+
+See `CERTIFICATION_FRAMEWORK.md` for complete testing methodology.
+
+*Locked by Build Director, 2026-06-25.*
+
+---
+
 ### Tier Canon (FINAL — no exceptions)
 
 ```

@@ -142,4 +142,17 @@ class BotCrowdFillEngine {
   }
 }
 
-export const botCrowdFillEngine = new BotCrowdFillEngine();
+// Instantiate only on client-side to avoid SSR errors
+let _instance: BotCrowdFillEngine | undefined;
+const initInstance = (): BotCrowdFillEngine => {
+  if (!_instance && typeof window !== 'undefined') {
+    _instance = new BotCrowdFillEngine();
+  }
+  return _instance || new BotCrowdFillEngine();
+};
+export const botCrowdFillEngine = new Proxy({} as BotCrowdFillEngine, {
+  get(_, prop: string | symbol) {
+    const instance = initInstance();
+    return (instance as unknown as Record<string | symbol, unknown>)[prop];
+  },
+});

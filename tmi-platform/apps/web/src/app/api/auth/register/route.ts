@@ -115,7 +115,6 @@ export async function POST(req: NextRequest) {
         passwordHash: hashedPassword,
         displayName: displayName || email.split('@')[0],
         role: platformRoles[0].toUpperCase() as any,
-        activeRole: platformRoles[0].toUpperCase() as any,
         tier: resolvedTier
       }
     });

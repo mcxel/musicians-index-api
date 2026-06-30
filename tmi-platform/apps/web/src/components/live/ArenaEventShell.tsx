@@ -18,9 +18,18 @@
  *   monday-stage → Theater(0)— weekly flagship
  */
 
+import dynamic from "next/dynamic";
 import type { VenueIndex } from "@/components/live/AudienceScene";
-import UniversalVenueRenderer from "@/components/live/UniversalVenueRenderer";
-import AvatarVenueAnchor from "@/components/avatar/AvatarVenueAnchor";
+
+const UniversalVenueRenderer = dynamic(
+  () => import("@/components/live/UniversalVenueRenderer"),
+  { ssr: false }
+);
+
+const AvatarVenueAnchor = dynamic(
+  () => import("@/components/avatar/AvatarVenueAnchor"),
+  { ssr: false }
+);
 
 export type ArenaEventType =
   | "concert"

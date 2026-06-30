@@ -4,31 +4,7 @@ import React, { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import BillboardLiveWall from '@/components/media/BillboardLiveWall';
 import { LobbyEntryFlow, type UniversalRoom } from '@/components/room/UniversalLobbyEntry';
-
-interface LiveApiSession {
-  userId: string;
-  displayName: string;
-  roomId: string;
-  category: string;
-  viewerCount: number;
-  avatarUrl: string | null;
-  accentColor: string;
-}
-
-function sessionToRoom(session: LiveApiSession): UniversalRoom {
-  return {
-    id: session.roomId,
-    title: `${session.displayName} — Live`,
-    hostName: session.displayName,
-    genre: session.category,
-    viewers: session.viewerCount,
-    status: 'live',
-    access: 'free',
-    accentColor: session.accentColor || '#00FFFF',
-    roomRoute: `/live/rooms/${session.roomId}`,
-    venueIndex: 0,
-  };
-}
+import { useGlobalLiveSessions } from '@/hooks/useGlobalLiveSessions';
 
 // Fans deep-linking (or redirected by the room page's audience entry gate)
 // land here with ?room=<roomId> — this is the ONE place that decides what
@@ -46,35 +22,37 @@ function RoomAwareLobby() {
   );
   const [room, setRoom] = useState<UniversalRoom | null>(null);
 
+  // Real-time live sessions
+  const liveSessions = useGlobalLiveSessions();
+
   useEffect(() => {
     if (!requestedRoomId && !modeRandom) { setStatus('none'); return; }
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch('/api/live/go', { cache: 'no-store' });
-        const data = await res.json() as { sessions?: LiveApiSession[] };
-        if (cancelled) return;
 
-        let match: LiveApiSession | undefined;
-        if (requestedRoomId) {
-          match = data.sessions?.find((s) => s.roomId === requestedRoomId);
-        } else if (modeRandom && data.sessions && data.sessions.length > 0) {
-          // Pick a random live room
-          match = data.sessions[Math.floor(Math.random() * data.sessions.length)];
-        }
+    let match = null;
+    if (requestedRoomId) {
+      match = liveSessions.find((s) => s.roomId === requestedRoomId);
+    } else if (modeRandom && liveSessions.length > 0) {
+      match = liveSessions[Math.floor(Math.random() * liveSessions.length)];
+    }
 
-        if (match) {
-          setRoom(sessionToRoom(match));
-          setStatus('found');
-        } else {
-          setStatus('not-found');
-        }
-      } catch {
-        if (!cancelled) setStatus('not-found');
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [requestedRoomId, modeRandom]);
+    if (match) {
+      setRoom({
+        id: match.roomId,
+        title: match.title,
+        hostName: match.displayName,
+        genre: match.category,
+        viewers: match.viewerCount,
+        status: 'live',
+        access: 'free',
+        accentColor: match.accentColor || '#00FFFF',
+        roomRoute: `/live/rooms/${match.roomId}`,
+        venueIndex: 0,
+      });
+      setStatus('found');
+    } else if (requestedRoomId || modeRandom) {
+      setStatus('not-found');
+    }
+  }, [requestedRoomId, modeRandom, liveSessions]);
 
   if (status === 'loading') {
     return (
