@@ -7,6 +7,8 @@ interface GlobalMediaStore {
   isPlaying: boolean;
   progress: number;
   duration: number;
+  volume: number;
+  muted: boolean;
 
   // Actions
   loadQueue: (items: MediaItem[], startPlaying?: boolean) => void;
@@ -17,6 +19,8 @@ interface GlobalMediaStore {
   playPrev: () => void;
   seek: (time: number) => void;
   updateProgress: (progress: number) => void;
+  setVolume: (volume: number) => void;
+  toggleMute: () => void;
 }
 
 export const useGlobalMediaStore = create<GlobalMediaStore>((set, get) => ({
@@ -25,6 +29,8 @@ export const useGlobalMediaStore = create<GlobalMediaStore>((set, get) => ({
   isPlaying: false,
   progress: 0,
   duration: 0,
+  volume: 1,
+  muted: false,
 
   loadQueue: (items, startPlaying = true) => {
     set({ queue: items, currentItem: items[0] || null });
@@ -65,4 +71,10 @@ export const useGlobalMediaStore = create<GlobalMediaStore>((set, get) => ({
   },
 
   updateProgress: (progress) => set({ progress }),
+
+  setVolume: (volume) => {
+    set({ volume: Math.max(0, Math.min(1, volume)), muted: volume === 0 });
+  },
+
+  toggleMute: () => set((state) => ({ muted: !state.muted })),
 }));

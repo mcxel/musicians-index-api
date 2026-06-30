@@ -1,5 +1,6 @@
 "use client";
 
+import { shallow } from "zustand/shallow";
 import React, { useRef, useEffect } from "react";
 import { useGlobalMediaStore } from "@/stores/globalMediaStore";
 import { SeekBar } from "./media/SeekBar";
@@ -13,18 +14,22 @@ import { SeekBar } from "./media/SeekBar";
  * Renamed from NowPlayingBar. @see User request on 2026-06-26.
  */
 export function GlobalMediaController() {
-  const { currentItem, isPlaying, progress, duration, actions } = useGlobalMediaStore(
+  const { currentItem, isPlaying, progress, duration, volume, muted, actions } = useGlobalMediaStore(
     (state) => ({
       currentItem: state.currentItem,
       isPlaying: state.isPlaying,
       progress: state.progress,
       duration: state.duration,
+      volume: state.volume,
+      muted: state.muted,
       actions: {
         togglePlay: state.togglePlay,
         playNext: state.playNext,
         playPrev: state.playPrev,
         updateProgress: state.updateProgress,
         seek: state.seek,
+        setVolume: state.setVolume,
+        toggleMute: state.toggleMute,
       },
     }),
     shallow
@@ -42,7 +47,10 @@ export function GlobalMediaController() {
     } else {
       mediaEl.pause();
     }
-  }, [isPlaying, currentItem]);
+
+    mediaEl.volume = muted ? 0 : volume;
+
+  }, [isPlaying, currentItem, volume, muted]);
 
   useEffect(() => {
     const mediaEl = audioRef.current || videoRef.current;
@@ -151,7 +159,18 @@ export function GlobalMediaController() {
 
       {/* Volume & Other Controls (Placeholder) */}
       <div style={{ display: "flex", alignItems: "center", minWidth: "200px", justifyContent: "flex-end" }}>
-        <span style={{fontSize: '20px'}}>🔊</span>
+        <button onClick={actions.toggleMute} style={controlButtonStyle}>
+          {muted || volume === 0 ? '🔇' : '🔊'}
+        </button>
+        <input
+          type="range"
+          min="0"
+          max="1"
+          step="0.01"
+          value={muted ? 0 : volume}
+          onChange={(e) => actions.setVolume(parseFloat(e.target.value))}
+          style={{ width: '80px', cursor: 'pointer' }}
+        />
       </div>
     </div>
   );

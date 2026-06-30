@@ -48,8 +48,14 @@ class SubmissionQueueEngine {
   private userSubmissions = new Map<string, string[]>(); // userId → [submissionId, ...]
 
   /**
-   * Submit a song to the queue.
-   * User must have this song in their Personal Playlist.
+   * Submit a song to editorial/radio queue.
+   * CRITICAL: User can ONLY submit songs they created/own.
+   * Songs discovered from other performers CANNOT be submitted.
+   *
+   * This separation ensures:
+   * - Only original content goes to editorial review
+   * - No copyright violations (users can't submit others' songs)
+   * - Clear ownership in radio queue
    */
   submit(input: {
     userId: string;
@@ -57,7 +63,14 @@ class SubmissionQueueEngine {
     title: string;
     destinations: string[];
     metadata: SubmissionMetadata;
-  }): SubmissionQueueItem {
+    isOwnedByUser: boolean;  // Must be true
+  }): SubmissionQueueItem | { error: string } {
+    // CRITICAL: Only allow submitting own songs
+    if (!input.isOwnedByUser) {
+      return {
+        error: 'Cannot submit songs you did not create. Only your own songs can be submitted to Stream Radio and One Prayer Radio.',
+      };
+    }
     const submissionId = `sub-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
     const now = new Date().toISOString();
 
