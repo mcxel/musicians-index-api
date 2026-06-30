@@ -25,6 +25,7 @@ import TmiAudiencePerspectiveShell from "@/components/audience/TmiAudiencePerspe
 import SplitStreamMatrix from "@/components/media/SplitStreamMatrix";
 import PerformanceVotePanel from "@/components/arena/PerformanceVotePanel";
 import AudienceEntryBeacon from "@/components/live/AudienceEntryBeacon";
+import ArenaEventShell from "@/components/live/ArenaEventShell";
 // ── Rule 15 Canisters ──────────────────────────────────────────────────────────
 import { PlaylistCanister } from "@/components/canisters/PlaylistCanister";
 import { MemoryWallCanister } from "@/components/canisters/MemoryWallCanister";
@@ -150,38 +151,41 @@ export default async function LiveRoomPage({ params, searchParams }: LiveRoomPag
 
         {performerSlug && <LiveSessionHeartbeat enabled={true} intervalMs={15_000} stageState="live" roomId={id} />}
 
-        {/* Battle Mode (Phase 4 convergence, 2026-06-20) — the real
-            split-stream + vote-closure engines, inherited from the orphaned
-            /battles/live page, now render as a mode of this canonical room
-            instead of a separate page or a duplicate audience renderer. */}
-        {isBattleMode && opponentA && opponentB && (
-          <div style={{ marginTop: 16 }}>
-            <SplitStreamMatrix mode="SPLIT" isBattle battleOpponentLabel={opponentB} />
-            <div style={{ marginTop: 12 }}>
-              <PerformanceVotePanel
-                battleId={battleId!}
-                artistALabel={opponentA}
-                artistBLabel={opponentB}
-                accentA={battleAccentA}
-                autoOpenVoting
-              />
-            </div>
-          </div>
+        {/* Battle Mode (Phase 4 convergence, 2026-06-20) — unified via ArenaEventShell.
+            The ArenaEventShell wraps UniversalVenueRenderer with event-type-aware
+            venue mapping, consolidating all event types (battle, cypher, challenge,
+            concert, live-show, monday-stage) into one canonical runtime.
+        */}
+        {isBattleMode && opponentA && opponentB ? (
+          <ArenaEventShell
+            roomId={id}
+            eventType="battle"
+            mode={performerSlug ? "performer" : "audience"}
+            liveState="live"
+          />
+        ) : (
+          /* Universal Venue Renderer (Phase 3B convergence, 2026-06-20) —
+              fallback for non-battle events. fanIdOverride and TmiAudiencePerspectiveShell's
+              fanId below share the same resolution to prevent duplicate audience entries. */
+          <UniversalVenueRenderer
+            roomId={id}
+            mode={performerSlug ? "performer" : "audience"}
+            fanIdOverride={fanSlug ?? sessionId ?? undefined}
+          />
         )}
 
-        {/* Universal Venue Renderer (Phase 3B convergence, 2026-06-20) —
-            replaces the old ArenaImmersivePanel/VenueImmersiveRoom branch.
-            fanIdOverride and TmiAudiencePerspectiveShell's fanId below share
-            the same resolution (fanSlug/sessionId, or undefined so both
-            client components fall back to the identical getGuestId()) —
-            previously they used two different hardcoded guest literals,
-            producing two audience entries for one real visitor (found via
-            the Phase 3C browser certification, 2026-06-20). */}
-        <UniversalVenueRenderer
-          roomId={id}
-          mode={performerSlug ? "performer" : "audience"}
-          fanIdOverride={fanSlug ?? sessionId ?? undefined}
-        />
+        {/* Battle Vote Panel (rendered below venue when in battle mode) */}
+        {isBattleMode && opponentA && opponentB && (
+          <div style={{ marginTop: 12 }}>
+            <PerformanceVotePanel
+              battleId={battleId!}
+              artistALabel={opponentA}
+              artistBLabel={opponentB}
+              accentA={battleAccentA}
+              autoOpenVoting
+            />
+          </div>
+        )}
 
         {/* Real seat-bound audience view — assignSeatForFan()/joinAudienceSeat()
             engines already existed in lib/audience/ but were never wired into
