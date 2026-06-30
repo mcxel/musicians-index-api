@@ -1001,7 +1001,7 @@ export default function Home1CoverPage() {
       <div style={{ background: 'rgba(230,48,0,0.18)', borderBottom: '1px solid rgba(230,48,0,0.32)', padding: '3px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 8 }}>
         <div style={{ color: '#E63000', fontWeight: 700, letterSpacing: '0.12em', fontFamily: "'Inter',sans-serif" }}>✦ TMI BETA SEASON</div>
         <div style={{ color: 'rgba(255,255,255,0.45)', fontFamily: "'Inter',sans-serif" }}>Founding Beta Member · Purchases &amp; unlocks persist permanently</div>
-        <Link href="/about/beta" style={{ textDecoration: 'none', color: '#FFD700', fontWeight: 700, fontFamily: "'Inter',sans-serif" }}>DETAILS →</Link>
+        <Link href="/about" style={{ textDecoration: 'none', color: '#FFD700', fontWeight: 700, fontFamily: "'Inter',sans-serif" }}>DETAILS →</Link>
       </div>
 
       {/* ── Voting LIVE banner ── */}
@@ -2262,7 +2262,7 @@ export default function Home1CoverPage() {
           <Link href="/login" style={{ textDecoration: 'none' }}><div style={{ fontSize: 9, fontWeight: 700, color: '#00E5FF', letterSpacing: '0.1em', fontFamily: "'Inter',sans-serif" }}>SIGN IN</div></Link>
           <Link href="/signup" style={{ textDecoration: 'none' }}><div style={{ fontSize: 9, fontWeight: 800, color: '#FF2DAA', border: '1px solid rgba(255,45,170,0.4)', borderRadius: 4, padding: '3px 8px', letterSpacing: '0.08em', fontFamily: "'Inter',sans-serif" }}>+ SUBMIT</div></Link>
           <Link href="/about/guide" style={{ textDecoration: 'none' }}><div style={{ fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,0.55)', letterSpacing: '0.1em', fontFamily: "'Inter',sans-serif" }}>OPEN GUIDE</div></Link>
-          <Link href="/about/beta" style={{ textDecoration: 'none' }}><div style={{ fontSize: 9, fontWeight: 700, color: '#FFD700', letterSpacing: '0.1em', fontFamily: "'Inter',sans-serif" }}>BETA FEEDBACK</div></Link>
+          <Link href="/about" style={{ textDecoration: 'none' }}><div style={{ fontSize: 9, fontWeight: 700, color: '#FFD700', letterSpacing: '0.1em', fontFamily: "'Inter',sans-serif" }}>BETA FEEDBACK</div></Link>
         </div>
 
       </div>
