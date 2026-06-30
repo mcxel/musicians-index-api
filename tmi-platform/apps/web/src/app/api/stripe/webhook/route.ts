@@ -46,36 +46,13 @@ async function isEventProcessed(eventId: string): Promise<boolean> {
     return true;
   }
 
-  // Check database (durable record across restarts)
-  try {
-    const existing = await prisma.webhookEvent.findUnique({
-      where: { stripeEventId: eventId },
-    });
-    if (existing) {
-      processedEventIds.add(eventId);
-      console.log(`[Stripe Webhook] Event ${eventId} already processed (database)`);
-      return true;
-    }
-  } catch {
-    // Table doesn't exist yet — that's OK, proceed with processing
-    // TODO: Create webhookEvent table in schema
-  }
-
+  // TODO: Check database for durable record (requires webhookEvent table in schema)
   return false;
 }
 
 async function markEventProcessed(eventId: string): Promise<void> {
   processedEventIds.add(eventId);
-  try {
-    await prisma.webhookEvent.create({
-      data: {
-        stripeEventId: eventId,
-        processedAt: new Date(),
-      },
-    }).catch(() => {});
-  } catch {
-    // Table doesn't exist — that's OK, rely on cache
-  }
+  // TODO: Write to database (requires webhookEvent table in schema)
 }
 
 export async function POST(req: NextRequest) {

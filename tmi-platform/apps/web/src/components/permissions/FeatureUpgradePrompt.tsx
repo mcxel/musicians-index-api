@@ -26,7 +26,10 @@ export function FeatureGate({ feature, children, onAccess, fallback }: FeatureUp
   const permission = useTierPermission(feature);
 
   if (permission.hasAccess) {
-    return <>{onAccess?.(), children}</>;
+    if (onAccess) {
+      onAccess();
+    }
+    return <>{children}</>;
   }
 
   return fallback ? <>{fallback}</> : <UpgradePrompt upgrade={permission.upgradeMessage} />;
