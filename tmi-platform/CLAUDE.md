@@ -725,4 +725,51 @@ TMI Radio is the direct-to-listener alternative to traditional radio promotion: 
 
 **Dependency note**: this rule's monetization layer (boosts, commercial breaks, sponsor mentions inside radio rooms) is a specific application of Rule 12's `getAdSlotForZone()` fallback chain and Rule 24's Three-Lane Rewards Ecosystem — it does not introduce a competing ad/reward system, it extends the existing ones into the radio surface once built.
 
-*Established 2026-06-22 by Marcel Dickens.*
+#### Stream & Win Radio Protocol v1 (amendment, locked 2026-07-06)
+
+Locked by Marcel Dickens after live user feedback: artists submit songs and then hit a "what's next?" void. This amendment defines the full post-submission chain. **Scope honesty**: like the rest of Rule 25, this is documented direction — the rotation/room/notification systems named here are not built yet. The one near-term assembly task is the honest post-submission status copy (Phase 1 below), which requires no backend.
+
+**Song-driven, not playlist-driven.** The playlist is only the container; individual songs enter the rotation pool. Accepted sources: TMI uploads, TMI Media Locker playlists, and external links (Spotify, Apple Music, YouTube Music, SoundCloud) — any URL, subject to validation.
+
+**The Chain (every submission moves through visible states — no silence, no mystery):**
+
+```
+Submitted → Validated → Ready → Queued → Now Playing → Recently Played → Cooling Down → Eligible Again
+```
+
+1. **Phase 1 — Submit**: immediate UI feedback: "✅ Submission received. Your songs are being prepared for Stream & Win Radio rotation. You'll be notified when they go active." Until radio rooms exist, the honest interim copy is "Playlist will be available soon" — never a fake "you're live" state (Rule 20).
+2. **Phase 2 — Validation**: system verifies reachability, metadata, duplicates, ownership rules. Status shows 🟡 Preparing.
+3. **Phase 3 — Activation ("the Go signal")**: status 🟢 Ready. Notification cascade: in-app notification + dashboard badge + message-center message + optional email — "Your playlist is ready. Join any Stream & Win Radio room to begin earning Rotation Credits." The message is "you're eligible to participate," never "your song is playing."
+
+**Join ANY room — participation is community-wide.** Artists never hunt for "their" room; every Stream & Win room feeds one shared ecosystem. Room types: **Mixed Radio** (everything, like real radio), **Genre Radio** (optional stations), **Mood Radio** (Workout / Party / Chill / Night Drive / Sunday Morning / Independent Spotlight / New Releases).
+
+**Dynamic room start — never block participation on a threshold** (thresholds govern *spawning new rooms*, not whether artists may participate):
+- **1–4 submissions**: room still goes live; rotation fills with real content only — featured songs, trending songs, new releases, sponsored music, TMI editorial picks, community tracks already in public rotation (a Rule 12-style fallback chain for rotation content; never fake tracks or fake artists — this refines the earlier "launch empty" language: honest fill beats empty, fake fill stays forbidden).
+- **5–10 submissions**: full community session, majority of rotation from participants.
+- **~20–25 active artists**: auto-spawn an additional room/channel (Hip Hop Radio A → B → C) to keep wait times short.
+
+**The cardinal participation rule: artists are NEVER rewarded for listening to their own music.** Rotation Energy/Credits come only from community activity: listening to other artists, chatting, voting, discovering/following artists, sharing songs, inviting fans, joining discussions, staying active. Enforced by RadioIntegrityEngine (anti-cheat section above).
+
+**Rotation Energy** (replaces bare "boosts" as the placement signal): each song's next-rotation eligibility is decided by Rotation Energy (community activity) + Freshness (new releases get an initial lift) + Membership Capacity + Community Response (likes/saves/shares/completion). Energy buys *increased opportunity and smarter placement* — more rotation frequency, discovery priority, featured slots — never a guaranteed play count and never a purchased chart position (Rule 20 visual honesty; consistent with RadioBoostEngine above).
+
+**Membership = capacity + multiplier, never a substitute for participation** (canonical tiers only — FREE→PRO→RUBY→SILVER→GOLD→PLATINUM→DIAMOND, never "Bronze"):
+- **Active-song capacity**: FREE 1 → PRO 3 → RUBY 5 → SILVER 10 → GOLD 20 → PLATINUM 35 → DIAMOND 50+ songs active in rotation at once.
+- **Rotation Credit multiplier**: FREE 1× → PRO/RUBY 1.25–1.5× → SILVER 1.5× → GOLD 2× → PLATINUM 3× → DIAMOND 4×. Everyone grows through participation; members grow faster and can promote more of their catalog — paid tiers expand *what you can promote*, they never replace community engagement or buy judged outcomes (Rule 24 anti-pay-to-win).
+- **Featured Sessions (GOLD+)**: scheduled hosted broadcasts (Album Release Party, Listening Party, Producer Showcase, Label Showcase) — additive scheduled events, never replacements for public rooms.
+
+**Radio Control Center (artist dashboard widget)**: status light (🟡/🟢), current room, queue position ("18 songs ahead"), estimated play time, Rotation Credits, participation level, boost multiplier, [JOIN ROOM] / [NOW PLAYING] / [NEXT UP]. All numbers real or honestly empty (Rule 20 four-states).
+
+**"Now Playing / Up Next" monitor**: visible queue (Now Playing: Artist A → Up Next: Artist B → After That: **YOU**) plus real listener count — anticipation instead of wondering whether the system works. Surfaces platform-wide via the Opportunity Feed ("🎧 Hip Hop Radio has 84 listeners", "⭐ Your playlist is currently playing") — real data only, from the canonical live registry.
+
+**Fans earn too**: listener points for joining rooms, listening, liking, following, saving, sharing, merch/ticket purchases — the Listener Participation Meter above; XP/badges/cosmetics only, never cash (Rule 23). Circular economy: Listen → Earn Points → Spend in Store → Support Artist.
+
+**Session Launch Model (refinement, same day)** — how a submitted playlist actually goes live:
+
+- **Threshold gates *session launch*, never participation.** A new Stream & Win listening session opens once ~4–5 artists have joined for that session. Until then, submitted artists see an honest **waiting room** state — "🎧 Waiting Room: Artists Joined: 4 of 5 · Your playlist will activate when the session begins" — with real counts from a real session registry only (Rule 20 four-states; until that registry exists, generic honest copy — "launches once enough artists have joined" — never a fabricated count). Artists can always join *existing* live rooms meanwhile (the dynamic-room-start rules above are unchanged).
+- **Session-open notification cascade**: when the threshold is met and the session launches, every participating artist gets in-app notification + email + profile/dashboard badge — "Your Stream & Win session is live. Your playlist is now available."
+- **Playlist available three ways** once active: (1) **join the room** and stream it with everyone live, (2) **save it** to your own profile/Media Locker, (3) **stream it solo** from your profile anytime. Community streaming and solo streaming coexist — solo plays never earn Rotation Credits (cardinal rule above).
+- **Artist dashboard widget** (extends the Radio Control Center above): [▶ JOIN RADIO ROOM] / [🎧 OPEN PLAYLIST] / [➕ SAVE PLAYLIST] / [👥 INVITE FANS].
+- **"One more artist" opportunity ping**: at 4-of-5, the platform-wide Opportunity Feed may surface "🔥 1 more artist needed! Join Stream & Win Radio now to launch the next listening session and earn bonus Rotation Credits" — real waiting-room state only, never a manufactured scarcity prompt.
+- **Balanced rotation**: session rotation ordering must preserve newcomer exposure — newer/less-established artists still get real placement alongside high-Energy tracks (consistent with Rule 11 freshness and the anti-pay-to-win boundary).
+
+*Established 2026-06-22 by Marcel Dickens. Stream & Win Protocol v1 amendment added 2026-07-06; Session Launch Model refinement same day.*
