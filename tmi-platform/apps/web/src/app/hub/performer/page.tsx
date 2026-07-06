@@ -5,7 +5,6 @@ import { PersonaSwitcher } from "@/components/hud/PersonaSwitcher";
 import PerformerHubDashboard from "@/components/performer/PerformerHubDashboard";
 import Link from "next/link";
 import { HubBackNav } from "@/components/nav/HubBackNav";
-import RoomContainer from "@/components/room/RoomContainer";
 import ActionCanister from "@/components/room/ActionCanister";
 import WidgetDrawer from "@/components/room/WidgetDrawer";
 import NeonWaveUnderlay from "@/components/atmosphere/NeonWaveUnderlay";
@@ -19,8 +18,14 @@ import MemoryWall from "@/components/media/MemoryWall";
 import PlaylistArtifact from "@/components/artifacts/PlaylistArtifact";
 import HeadquartersCommunicationDock from "@/components/headquarters/HeadquartersCommunicationDock";
 import OpportunityDockPanel from "@/components/hubs/OpportunityDockPanel";
+import RadioJourneyCard from "@/components/radio/RadioJourneyCard";
 import { useTmiSession } from "@/hooks/SessionContext";
 import { getLatestEditorialArticles } from "@/lib/editorial/NewsArticleModel";
+import { OnboardingMissionDock } from "@/components/onboarding/OnboardingMissionCard";
+import { useOnboardingMissions } from "@/components/onboarding/useOnboardingMissions";
+import UniversalPlatformShell from "@/components/shell/UniversalPlatformShell";
+import MediaUploadWidget from "@/components/media/MediaUploadWidget";
+import { TrackUploader } from "@/lib/submissions/TrackUploader";
 
 const NAV_LINKS = [
   { href: "/hub/performer",     label: "Control Room" },
@@ -83,7 +88,20 @@ export default function PerformerHubPage() {
   const [threads, setThreads]   = useState<MessageThreadRow[] | null>(null);
   const [liveStatus, setLiveStatus] = useState<PerformerLiveStatus>({ isLive: false, audienceCount: 0, recentAudienceEntries: [], audienceCountries: [] });
   const { userId, userName } = useTmiSession();
+  const { missions: onboardingMissions, dismiss: dismissMission } = useOnboardingMissions();
   const magazineFeatures = getLatestEditorialArticles(3);
+  const [uploadNotice, setUploadNotice] = useState<string | null>(null);
+  const [userTier, setUserTier] = useState<string>("");
+  const [bannerDismissed, setBannerDismissed] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/auth/me", { credentials: "include" })
+      .then((r) => r.json())
+      .then((d: { authenticated?: boolean; user?: { tier?: string } }) => {
+        if (d.authenticated && d.user?.tier) setUserTier(d.user.tier.toUpperCase());
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     fetch("/api/booking/create")
@@ -137,10 +155,9 @@ export default function PerformerHubPage() {
     return () => { cancelled = true; clearInterval(id); };
   }, [userId]);
 
-  return (
-    <RoomContainer roomId="performer-hub" title="Performer Hub" accentColor="#AA2DFF" bpm={120}>
-      <div style={{ fontFamily: "'Inter', sans-serif", background: "#050510", minHeight: "100vh", position: "relative" }}>
-        <NeonWaveUnderlay colorA="#AA2DFF" colorB="#FF2DAA" colorC="#00FFFF" opacity={0.08} zIndex={0} />
+  const hubContent = (
+    <div style={{ fontFamily: "'Inter', sans-serif", background: "#050510", minHeight: "100vh", position: "relative" }}>
+      <NeonWaveUnderlay colorA="#AA2DFF" colorB="#FF2DAA" colorC="#00FFFF" opacity={0.08} zIndex={0} />
 
         {/* Nav bar */}
         <div style={{ position: "relative", zIndex: 2, background: "rgba(0,0,0,0.75)", borderBottom: "1px solid rgba(170,45,255,0.2)", padding: "10px 24px", display: "flex", alignItems: "center", gap: 16, overflowX: "auto", backdropFilter: "blur(12px)" }}>
@@ -158,6 +175,24 @@ export default function PerformerHubPage() {
           </div>
         </div>
 
+        {/* Upgrade flash banner — shown to FREE performers only */}
+        {userTier === "FREE" && !bannerDismissed && (
+          <div style={{ position: "relative", zIndex: 3, background: "linear-gradient(90deg, #AA2DFF, #FF2DAA)", padding: "12px 24px", display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+            <div style={{ flex: 1 }}>
+              <span style={{ fontSize: 13, fontWeight: 900, color: "#fff", letterSpacing: "0.04em" }}>
+                🚀 Go PRO for only $1.99/month
+              </span>
+              <span style={{ fontSize: 12, color: "rgba(255,255,255,0.85)", marginLeft: 12 }}>
+                Go Live · Get Booked · Earn Tips · Get Discovered
+              </span>
+            </div>
+            <Link href="/account/subscription" style={{ padding: "8px 22px", borderRadius: 8, background: "#fff", color: "#AA2DFF", fontSize: 12, fontWeight: 900, textDecoration: "none", letterSpacing: "0.06em", whiteSpace: "nowrap", boxShadow: "0 2px 12px rgba(0,0,0,0.25)", flexShrink: 0 }}>
+              UPGRADE NOW
+            </Link>
+            <button onClick={() => setBannerDismissed(true)} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.7)", fontSize: 18, cursor: "pointer", padding: "0 4px", flexShrink: 0 }} aria-label="Dismiss">×</button>
+          </div>
+        )}
+
         {/* Go Live action strip */}
         <div style={{ position: "relative", zIndex: 1, background: "linear-gradient(135deg, rgba(170,45,255,0.15), rgba(255,45,170,0.08))", borderBottom: "1px solid rgba(170,45,255,0.15)", padding: "14px 28px", display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
           <div>
@@ -174,6 +209,12 @@ export default function PerformerHubPage() {
             <Link href="/nft/mint" style={{ padding: "9px 18px", borderRadius: 9, background: "rgba(0,255,255,0.07)", border: "1px solid rgba(0,255,255,0.22)", color: "#00FFFF", fontSize: 11, fontWeight: 800, textDecoration: "none" }}>
               🎨 MINT NFT
             </Link>
+            <Link href="/messages" style={{ padding: "9px 18px", borderRadius: 9, background: "rgba(0,255,255,0.08)", border: "1px solid rgba(0,255,255,0.22)", color: "#00FFFF", fontSize: 11, fontWeight: 800, textDecoration: "none" }}>
+              💬 MESSAGES
+            </Link>
+            <Link href="/messages/new?subject=Join+my+next+live+show" style={{ padding: "9px 18px", borderRadius: 9, background: "rgba(255,215,0,0.1)", border: "1px solid rgba(255,215,0,0.3)", color: "#FFD700", fontSize: 11, fontWeight: 800, textDecoration: "none" }}>
+              👥 INVITE FANS
+            </Link>
           </div>
         </div>
 
@@ -185,12 +226,15 @@ export default function PerformerHubPage() {
             {/* Always-visible opportunity dock for battles/cyphers/challenges from live registry */}
             <OpportunityDockPanel performerId={userId} compact={false} />
 
+            {/* Stream & Win status card — renders only when a real radio submission exists */}
+            <RadioJourneyCard />
+
             {/* Primary controls stay visible on the main surface (not hidden in canisters). */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(6, minmax(120px, 1fr))", gap: 10 }}>
               {[
                 { href: "/performer/studio", label: "Camera", tone: "#00FFFF" },
                 { href: "/performer/studio", label: "Audio", tone: "#00E5FF" },
-                { href: "/performer/studio", label: "Upload", tone: "#AA2DFF" },
+                { href: "#upload-section", label: "Upload", tone: "#AA2DFF" },
                 { href: "/messages", label: "Messaging", tone: "#FF2DAA" },
                 { href: "/playlists", label: "Playlist", tone: "#FFD700" },
                 { href: "/performer/profile", label: "Memory", tone: "#FF6B35" },
@@ -215,6 +259,46 @@ export default function PerformerHubPage() {
                   {action.label}
                 </Link>
               ))}
+            </div>
+
+            {/* Upload Center — closes launch blocker: performers now have a visible upload entrypoint in HQ. */}
+            <div id="upload-section" style={{ background: "rgba(170,45,255,0.05)", border: "1px solid rgba(170,45,255,0.22)", borderRadius: 16, padding: 20 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, gap: 8, flexWrap: "wrap" }}>
+                <div style={{ fontSize: 9, letterSpacing: "0.2em", color: "#AA2DFF", fontWeight: 800 }}>⬆️ CREATOR UPLOAD CENTER</div>
+                <Link href="/submit" style={{ fontSize: 10, color: "#AA2DFF", textDecoration: "none", fontWeight: 700 }}>OPEN FULL SUBMIT HUB →</Link>
+              </div>
+
+              {uploadNotice && (
+                <div style={{ marginBottom: 12, fontSize: 11, color: "#00FF88", background: "rgba(0,255,136,0.08)", border: "1px solid rgba(0,255,136,0.24)", borderRadius: 8, padding: "8px 10px" }}>
+                  {uploadNotice}
+                </div>
+              )}
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+                <MediaUploadWidget
+                  mediaType="song"
+                  ownerId={userId}
+                  ownerName={userName || "Performer"}
+                  ownerRole="performer"
+                  accentColor="#AA2DFF"
+                  onSuccess={(result) => {
+                    if (result.ok) {
+                      setUploadNotice(`Uploaded "${result.title}" successfully. Asset ID: ${result.assetId}`);
+                    }
+                  }}
+                  onError={(err) => setUploadNotice(`Upload failed: ${err}`)}
+                />
+
+                <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,45,170,0.2)", borderRadius: 12, padding: 14 }}>
+                  <TrackUploader
+                    submissionType="track"
+                    submitterId={userId}
+                    onSubmissionSuccess={(submissionId) => {
+                      setUploadNotice(`Submission received — it's in review. ID: ${submissionId}`);
+                    }}
+                  />
+                </div>
+              </div>
             </div>
 
             {/* Live monitor + Backstage / Green Room */}
@@ -398,6 +482,18 @@ export default function PerformerHubPage() {
           accentColor="#AA2DFF"
         />
       </div>
-    </RoomContainer>
+  );
+
+  return (
+    <UniversalPlatformShell
+      roomId="performer-hub"
+      title="Performer Hub"
+      accentColor="#AA2DFF"
+      bpm={120}
+      centerStage={hubContent}
+      assistantLayer={
+        <OnboardingMissionDock missions={onboardingMissions} onDismiss={dismissMission} />
+      }
+    />
   );
 }

@@ -10,6 +10,7 @@ export default function StreamAndWinRadioPlayer() {
   // Engine #1 bridge: legacy-compatible / pending PlaylistEngine migration.
   const playlist = usePlaylistEngine();
   const [tracks, setTracks] = useState<Submission[]>([]);
+  const [loadState, setLoadState] = useState<'loading' | 'ready' | 'error'>('loading');
   const [currentIndex, setCurrentIndex] = useState(0);
 
   useEffect(() => {
@@ -28,8 +29,10 @@ export default function StreamAndWinRadioPlayer() {
           playlist.attachToRuntime({ roomId: 'stream-and-win-radio' });
           playlist.setVisibility('public');
         }
+        setLoadState('ready');
       } catch (err) {
         console.error('Failed to load radio queue', err);
+        setLoadState('error');
       }
     }
     fetchRadioQueue();
@@ -45,10 +48,14 @@ export default function StreamAndWinRadioPlayer() {
   };
 
   if (!currentTrack) {
+    const message =
+      loadState === 'loading' ? 'Tuning Frequencies...'
+      : loadState === 'error' ? 'Unable to load rotation. Refresh to retry.'
+      : 'No songs in rotation yet. Submit music to enter this station.';
     return (
       <div className="w-full bg-[#050510] border border-white/10 p-4 rounded-xl flex items-center justify-center gap-3">
-        <Radio className="text-white/30 animate-pulse" />
-        <span className="text-xs font-mono text-white/50 uppercase tracking-widest">Tuning Frequencies...</span>
+        <Radio className={loadState === 'loading' ? 'text-white/30 animate-pulse' : 'text-white/30'} />
+        <span className="text-xs font-mono text-white/50 uppercase tracking-widest">{message}</span>
       </div>
     );
   }

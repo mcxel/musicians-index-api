@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createSubmission, listSubmissions, SubmissionType } from '@/lib/submissions/SubmissionEngine';
+import { createSubmission, listSubmissions, getSubmission, SubmissionType } from '@/lib/submissions/SubmissionEngine';
 import { checkRateLimit } from '@/lib/security/TMISecurityEngine';
 import { emitAdminLiveEvent } from '@/lib/admin/AdminLiveEventEngine';
 
@@ -104,6 +104,15 @@ export async function GET(req: NextRequest) {
   }
 
   const { searchParams } = new URL(req.url);
+  const id = searchParams.get('id');
+  if (id) {
+    const submission = getSubmission(id);
+    if (!submission) {
+      return NextResponse.json({ error: 'not_found' }, { status: 404 });
+    }
+    return NextResponse.json({ submission });
+  }
+
   const publicFeed = searchParams.get('public') === '1';
   const submitterId = searchParams.get('submitterId') ?? '';
   const status = (searchParams.get('status') ?? undefined) as import('@/lib/submissions/SubmissionEngine').SubmissionStatus | undefined;

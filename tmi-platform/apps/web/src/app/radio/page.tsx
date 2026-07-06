@@ -1,273 +1,235 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
+import StreamAndWinRadioPlayer from '@/components/radio/StreamAndWinRadioPlayer';
+import { NotificationEngine } from '@/lib/notifications/NotificationEngine';
 
-interface Station {
-  id: string;
-  name: string;
-  genre: string;
-  host: string;
-  listeners: number;
-  emoji: string;
-  accent: string;
-  tagline: string;
-  xpPerMin: number;
+interface SessionState {
+  session: {
+    id: string;
+    status: 'waiting' | 'live' | 'ended';
+    artistsJoined: number;
+    launchThreshold: number;
+    participants: Array<{ submitterId: string; title: string }>;
+    createdAt: number;
+    launchedAt: number | null;
+  } | null;
+  joined: boolean;
 }
 
-const STATIONS: Station[] = [
-  { id: 'hip-hop-1',   name: 'Crown Radio',         genre: 'Hip-Hop',  host: 'Big Ace',       listeners: 1240, emoji: '🎤', accent: '#FFD700', tagline: 'The #1 battle hip-hop station',        xpPerMin: 5 },
-  { id: 'rnb-1',       name: 'Flame FM',            genre: 'R&B',      host: 'Lani Flame',    listeners: 892,  emoji: '🔥', accent: '#FF2DAA', tagline: 'Soul, heat, and high vibes',           xpPerMin: 4 },
-  { id: 'edm-1',       name: 'Blend Station',       genre: 'EDM',      host: 'DJ Blend',      listeners: 2140, emoji: '🎧', accent: '#00FFFF', tagline: 'Non-stop DJ sets from the arena',      xpPerMin: 6 },
-  { id: 'gospel-1',    name: 'Sacred Sound Radio',  genre: 'Gospel',   host: 'Blessed Voice', listeners: 430,  emoji: '🙏', accent: '#00FF88', tagline: 'Faith, rhythm, and community',         xpPerMin: 4 },
-  { id: 'jazz-1',      name: 'Midnight Orbit Radio',genre: 'Jazz',     host: 'Global Vibes',  listeners: 310,  emoji: '🎷', accent: '#AA2DFF', tagline: 'Smooth jazz from the digital lounge',  xpPerMin: 3 },
-  { id: 'rap-1',       name: 'Bars & Beats Radio',  genre: 'Rap',      host: 'Bobby Stanley', listeners: 760,  emoji: '🎙️', accent: '#39FF14', tagline: 'Bars that hit different',               xpPerMin: 5 },
-  { id: 'pop-1',       name: 'Pop Signal',          genre: 'Pop',      host: 'Poptronica',    listeners: 1820, emoji: '🎀', accent: '#FF6B35', tagline: 'The charts come alive here',           xpPerMin: 5 },
-  { id: 'cypher-live', name: 'Cypher Live Radio',   genre: 'All',      host: 'TMI Arena',     listeners: 3240, emoji: '⚡', accent: '#FF2DAA', tagline: 'Live cypher sessions 24/7',            xpPerMin: 8 },
-];
+interface QueueTrack {
+  id: string;
+  title: string;
+  genre: string;
+  submitterId: string;
+}
 
-const TRACK_QUEUE = [
-  { title: 'Crown Season',        artist: 'Big Ace',       dur: '3:24' },
-  { title: 'Neon Frequency',      artist: 'DJ Blend',      dur: '4:02' },
-  { title: 'Flame Protocol',      artist: 'Lani Flame',    dur: '3:47' },
-  { title: 'Street Doctrine',     artist: 'Bobby Stanley', dur: '3:31' },
-  { title: 'Pop Signal (Radio Edit)', artist: 'Poptronica',dur: '2:58' },
-];
+const ACCENT = '#00FFFF';
 
 export default function RadioPage() {
-  const [activeStation, setActiveStation] = useState<string>('edm-1');
-  const [playing, setPlaying] = useState(true);
-  const [volume, setVolume] = useState(80);
-  const [xpEarned, setXpEarned] = useState(0);
-  const [trackIdx, setTrackIdx] = useState(0);
-  const [progress, setProgress] = useState(0);
-  const [listeners, setListeners] = useState<Record<string, number>>({});
-  const tickRef = useRef<NodeJS.Timeout | null>(null);
+  const [session, setSession] = useState<SessionState | null>(null);
+  const [sessionError, setSessionError] = useState(false);
+  const [queue, setQueue] = useState<QueueTrack[] | null>(null);
+  const [queueError, setQueueError] = useState(false);
+  const prevStatusRef = useRef<string | null>(null);
 
-  const station = STATIONS.find(s => s.id === activeStation) ?? STATIONS[2]!;
-  const track = TRACK_QUEUE[trackIdx % TRACK_QUEUE.length]!;
+  const userId =
+    typeof window !== 'undefined'
+      ? sessionStorage.getItem('tmi_user_id') ?? ''
+      : '';
 
-  // XP drip while playing
+  const pollSession = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/radio/session?submitterId=${encodeURIComponent(userId)}`);
+      if (!res.ok) throw new Error('bad response');
+      const data = (await res.json()) as SessionState;
+      setSession(data);
+      setSessionError(false);
+      const status = data.session?.status ?? 'none';
+      if (prevStatusRef.current === 'waiting' && status === 'live' && data.joined) {
+        NotificationEngine.radioSessionLive('Your playlist');
+      }
+      prevStatusRef.current = status;
+    } catch {
+      setSessionError(true);
+    }
+  }, [userId]);
+
   useEffect(() => {
-    if (!playing) { if (tickRef.current) clearInterval(tickRef.current); return; }
-    tickRef.current = setInterval(() => {
-      setXpEarned(x => x + station.xpPerMin);
-      setProgress(p => {
-        if (p >= 100) { setTrackIdx(i => i + 1); return 0; }
-        return p + 1.4;
-      });
-    }, 1000);
-    return () => { if (tickRef.current) clearInterval(tickRef.current); };
-  }, [playing, station.xpPerMin]);
-
-  // Listener count drift
-  useEffect(() => {
-    const id = setInterval(() => {
-      setListeners(prev => {
-        const next = { ...prev };
-        STATIONS.forEach(s => {
-          const base = s.listeners;
-          next[s.id] = base + Math.floor(Math.sin(Date.now() / 3000 + base) * 20);
-        });
-        return next;
-      });
-    }, 2500);
+    pollSession();
+    const id = setInterval(pollSession, 10_000);
     return () => clearInterval(id);
+  }, [pollSession]);
+
+  useEffect(() => {
+    fetch('/api/submissions?type=track&status=live&public=1&limit=50')
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((data: { submissions?: QueueTrack[] }) => setQueue(data.submissions ?? []))
+      .catch(() => setQueueError(true));
   }, []);
+
+  const s = session?.session ?? null;
 
   return (
     <main style={{ minHeight: '100vh', background: '#050510', color: '#fff', fontFamily: "'Inter', sans-serif", paddingBottom: 120 }}>
 
       {/* Header */}
       <div style={{
-        background: `linear-gradient(135deg, ${station.accent}18, #0a0510)`,
-        borderBottom: `2px solid ${station.accent}44`,
+        background: `linear-gradient(135deg, ${ACCENT}18, #0a0510)`,
+        borderBottom: `2px solid ${ACCENT}44`,
         padding: '20px 24px',
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12,
-        transition: 'background 0.5s ease',
       }}>
-        <div>
-          <div style={{ fontSize: 9, fontWeight: 800, color: station.accent, letterSpacing: '0.25em', marginBottom: 4 }}>TMI STREAM & WIN RADIO</div>
-          <div style={{ fontSize: 'clamp(18px,3vw,26px)', fontWeight: 900, color: '#fff' }}>{station.name}</div>
-          <div style={{ fontSize: 10, color: 'rgba(255,255,255,.4)', marginTop: 2 }}>Hosted by {station.host} · {station.genre}</div>
+        <div style={{ fontSize: 9, fontWeight: 800, color: ACCENT, letterSpacing: '0.25em', marginBottom: 4 }}>TMI RADIO NETWORK</div>
+        <div style={{ fontFamily: '"Bebas Neue","Impact",sans-serif', fontSize: 'clamp(26px,5vw,42px)', letterSpacing: '0.03em', lineHeight: 1 }}>
+          STREAM &amp; WIN RADIO
         </div>
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: 22, fontWeight: 900, color: '#FFD700' }}>+{xpEarned}</div>
-            <div style={{ fontSize: 8, color: 'rgba(255,255,255,.35)', letterSpacing: '0.1em' }}>XP EARNED</div>
-          </div>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: 14, fontWeight: 900, color: '#00FF88' }}>{(listeners[activeStation] ?? station.listeners).toLocaleString()}</div>
-            <div style={{ fontSize: 8, color: 'rgba(255,255,255,.35)', letterSpacing: '0.1em' }}>LISTENING</div>
-          </div>
+        <div style={{ fontSize: 11, color: 'rgba(255,255,255,.45)', marginTop: 6, maxWidth: 560, lineHeight: 1.5 }}>
+          Real member-submitted music only. Listen, vote, chat, and share to earn Rotation Credits —
+          listening to your own music never counts.
         </div>
       </div>
 
-      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '24px 20px', display: 'grid', gridTemplateColumns: '280px 1fr', gap: 20 }}>
+      <div style={{ maxWidth: 760, margin: '0 auto', padding: '24px 20px', display: 'flex', flexDirection: 'column', gap: 18 }}>
 
-        {/* Station list */}
-        <div>
-          <div style={{ fontSize: 8, fontWeight: 800, color: 'rgba(255,255,255,.3)', letterSpacing: '0.2em', marginBottom: 12 }}>STATIONS</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {STATIONS.map(s => {
-              const active = s.id === activeStation;
-              return (
-                <button key={s.id} onClick={() => { setActiveStation(s.id); setProgress(0); setTrackIdx(0); }} style={{
-                  display: 'flex', alignItems: 'center', gap: 10,
-                  padding: '12px 14px',
-                  background: active ? `${s.accent}18` : 'rgba(255,255,255,0.02)',
-                  border: `1px solid ${active ? s.accent + '55' : 'rgba(255,255,255,0.06)'}`,
-                  borderRadius: 10, cursor: 'pointer', textAlign: 'left', color: '#fff', width: '100%',
-                  transition: 'all 0.18s ease',
-                }}>
-                  <div style={{ width: 36, height: 36, borderRadius: '50%', background: `${s.accent}22`, border: `1.5px solid ${s.accent}55`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>
-                    {s.emoji}
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 11, fontWeight: 800, color: active ? '#fff' : 'rgba(255,255,255,.7)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</div>
-                    <div style={{ fontSize: 8, color: active ? s.accent : 'rgba(255,255,255,.3)', marginTop: 1 }}>{s.genre} · +{s.xpPerMin} XP/min</div>
-                  </div>
-                  {active && (
-                    <div style={{ width: 7, height: 7, borderRadius: '50%', background: s.accent, flexShrink: 0 }} />
-                  )}
-                </button>
-              );
-            })}
+        {/* Session waiting room — real registry counts only */}
+        <div style={{ border: `1.5px solid ${ACCENT}33`, background: `${ACCENT}06`, borderRadius: 12, padding: '18px 20px' }}>
+          <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: '0.2em', color: ACCENT, textTransform: 'uppercase', marginBottom: 12 }}>
+            🎧 LISTENING SESSION
+          </div>
+
+          {sessionError && (
+            <div style={{ fontSize: 12, color: 'rgba(255,255,255,.5)' }}>
+              Unable to load session status. <button onClick={pollSession} style={{ background: 'none', border: 'none', color: ACCENT, cursor: 'pointer', fontSize: 12, textDecoration: 'underline', padding: 0 }}>Retry</button>
+            </div>
+          )}
+
+          {!sessionError && session === null && (
+            <div style={{ fontSize: 12, color: 'rgba(255,255,255,.5)' }}>Loading session status…</div>
+          )}
+
+          {!sessionError && session !== null && s === null && (
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 800, marginBottom: 6 }}>No session waiting yet</div>
+              <div style={{ fontSize: 11, color: 'rgba(255,255,255,.5)', lineHeight: 1.55 }}>
+                The next Stream &amp; Win session opens when artists submit and join.
+                Submit a track to start the next waiting room.
+              </div>
+            </div>
+          )}
+
+          {!sessionError && s !== null && s.status === 'waiting' && (
+            <div>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 10 }}>
+                <div style={{ fontFamily: '"Bebas Neue","Impact",sans-serif', fontSize: 34, color: '#FFD700', lineHeight: 1 }}>
+                  {s.artistsJoined} <span style={{ fontSize: 20, color: 'rgba(255,255,255,.4)' }}>of {s.launchThreshold}</span>
+                </div>
+                <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.12em', color: 'rgba(255,255,255,.5)', textTransform: 'uppercase' }}>
+                  Artists Joined
+                </div>
+              </div>
+              <div style={{ height: 6, background: 'rgba(255,255,255,.08)', borderRadius: 3, marginBottom: 12 }}>
+                <div style={{ height: '100%', width: `${Math.min(100, (s.artistsJoined / s.launchThreshold) * 100)}%`, background: '#FFD700', borderRadius: 3, transition: 'width 0.4s ease' }} />
+              </div>
+              <div style={{ fontSize: 11, color: 'rgba(255,255,255,.5)', lineHeight: 1.55 }}>
+                {session?.joined
+                  ? 'You\u2019re in the waiting room. The session launches the moment the room fills — you\u2019ll be notified.'
+                  : 'Submit a track to join this waiting room. The session launches when the room fills.'}
+              </div>
+              {s.participants.length > 0 && (
+                <div style={{ marginTop: 12, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {s.participants.map((p, i) => (
+                    <span key={i} style={{ fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,.6)', border: '1px solid rgba(255,255,255,.12)', borderRadius: 20, padding: '3px 10px' }}>
+                      🎵 {p.title}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {!sessionError && s !== null && s.status === 'live' && (
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#FF3355', display: 'inline-block' }} />
+                <span style={{ fontFamily: '"Bebas Neue","Impact",sans-serif', fontSize: 22, color: '#FF3355', letterSpacing: '0.05em' }}>SESSION LIVE</span>
+              </div>
+              <div style={{ fontSize: 11, color: 'rgba(255,255,255,.55)', lineHeight: 1.55 }}>
+                {s.artistsJoined} artist{s.artistsJoined === 1 ? '' : 's'} in this session.
+                {session?.joined ? ' Your playlist is available in rotation.' : ' Join by submitting a track — participation is always open.'}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Player — real live submissions only */}
+        <StreamAndWinRadioPlayer />
+
+        {/* Rotation queue — real or honestly empty */}
+        <div style={{ background: 'rgba(255,255,255,.02)', border: '1px solid rgba(255,255,255,.07)', borderRadius: 12, padding: '16px 18px' }}>
+          <div style={{ fontSize: 8, fontWeight: 800, color: 'rgba(255,255,255,.3)', letterSpacing: '0.2em', marginBottom: 12 }}>IN ROTATION</div>
+          {queueError && (
+            <div style={{ fontSize: 11, color: 'rgba(255,255,255,.5)' }}>Unable to load rotation. Refresh to retry.</div>
+          )}
+          {!queueError && queue === null && (
+            <div style={{ fontSize: 11, color: 'rgba(255,255,255,.5)' }}>Loading rotation…</div>
+          )}
+          {!queueError && queue !== null && queue.length === 0 && (
+            <div style={{ fontSize: 11, color: 'rgba(255,255,255,.5)', lineHeight: 1.6 }}>
+              Waiting for approved songs. Submit music to enter this station.
+            </div>
+          )}
+          {!queueError && queue !== null && queue.map((t, i) => (
+            <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,.05)' }}>
+              <span style={{ fontSize: 10, color: 'rgba(255,255,255,.3)', width: 16, textAlign: 'center' }}>{i + 1}</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.title}</div>
+                <div style={{ fontSize: 9, color: 'rgba(255,255,255,.4)' }}>{t.genre || 'General'}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* How Rotation Credits work */}
+        <div style={{ background: 'rgba(255,215,0,.04)', border: '1px solid rgba(255,215,0,.15)', borderRadius: 12, padding: '16px 18px' }}>
+          <div style={{ fontSize: 8, fontWeight: 800, color: '#FFD700', letterSpacing: '0.2em', marginBottom: 12 }}>🌟 HOW ROTATION CREDITS WORK</div>
+          <div style={{ display: 'grid', gap: 8 }}>
+            {[
+              'Listen to other artists\u2019 music in any radio room',
+              'Vote, chat, and react during sessions',
+              'Share songs and invite new artists',
+              'Listening to your own music never earns credits',
+            ].map((line, i) => (
+              <div key={i} style={{ display: 'flex', gap: 8, fontSize: 11, color: 'rgba(255,255,255,.6)', lineHeight: 1.5 }}>
+                <span style={{ color: '#FFD700' }}>{i === 3 ? '✕' : '✓'}</span>
+                <span>{line}</span>
+              </div>
+            ))}
           </div>
         </div>
 
-        {/* Player area */}
-        <div>
-          {/* Now playing */}
-          <div style={{
-            background: `linear-gradient(135deg, ${station.accent}12, rgba(10,6,20,.9))`,
-            border: `1px solid ${station.accent}33`,
-            borderRadius: 16, padding: 28, marginBottom: 16,
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginBottom: 20 }}>
-              <div style={{
-                width: 80, height: 80, borderRadius: 12,
-                background: `${station.accent}22`, border: `2px solid ${station.accent}55`,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 40,
-                animation: playing ? 'radioSpin 12s linear infinite' : 'none',
-              }}>
-                {station.emoji}
-              </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 8, fontWeight: 800, color: station.accent, letterSpacing: '0.2em', marginBottom: 4 }}>NOW PLAYING</div>
-                <div style={{ fontSize: 18, fontWeight: 900, color: '#fff', marginBottom: 2 }}>{track.title}</div>
-                <div style={{ fontSize: 12, color: 'rgba(255,255,255,.5)' }}>{track.artist}</div>
-              </div>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: station.accent, background: `${station.accent}18`, border: `1px solid ${station.accent}33`, borderRadius: 20, padding: '3px 10px', letterSpacing: '0.08em' }}>
-                  {station.genre.toUpperCase()}
-                </div>
-                <div style={{ fontSize: 9, color: 'rgba(255,255,255,.3)', marginTop: 6 }}>{station.tagline}</div>
-              </div>
-            </div>
+        {/* CTAs */}
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <Link href="/submit" style={{ flex: 1, minWidth: 200, textAlign: 'center', background: ACCENT, color: '#050510', padding: '15px 0', fontFamily: '"Bebas Neue","Impact",sans-serif', fontSize: 20, letterSpacing: '0.06em', textDecoration: 'none' }}>
+            🎤 SUBMIT YOUR MUSIC
+          </Link>
+          <Link href="/submit" style={{ flex: 1, minWidth: 200, textAlign: 'center', background: 'transparent', color: '#FF2DAA', border: '1.5px solid #FF2DAA66', padding: '15px 0', fontFamily: '"Bebas Neue","Impact",sans-serif', fontSize: 20, letterSpacing: '0.06em', textDecoration: 'none' }}>
+            📣 INVITE ANOTHER ARTIST
+          </Link>
+        </div>
 
-            <style>{`
-              @keyframes radioSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-            `}</style>
-
-            {/* Progress */}
-            <div style={{ marginBottom: 14 }}>
-              <div style={{ height: 4, background: 'rgba(255,255,255,.1)', borderRadius: 2, cursor: 'pointer', marginBottom: 4 }}>
-                <div style={{ height: '100%', width: `${progress}%`, background: station.accent, borderRadius: 2, transition: 'width 0.5s ease' }} />
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 8, color: 'rgba(255,255,255,.3)' }}>
-                <span>LIVE STREAM</span>
-                <span>+{station.xpPerMin} XP/MIN WHILE LISTENING</span>
-              </div>
-            </div>
-
-            {/* Controls */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-              <button onClick={() => setTrackIdx(i => Math.max(0, i - 1))} style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,.4)', fontSize: 18, cursor: 'pointer' }}>⏮</button>
-              <button onClick={() => setPlaying(p => !p)} style={{
-                width: 52, height: 52, borderRadius: '50%',
-                background: playing ? station.accent : 'rgba(255,255,255,.1)',
-                border: 'none', color: playing ? '#050510' : '#fff',
-                fontSize: 20, cursor: 'pointer', fontWeight: 900,
-                boxShadow: playing ? `0 0 24px ${station.accent}66` : 'none',
-                transition: 'all 0.2s ease',
-              }}>
-                {playing ? '⏸' : '▶'}
-              </button>
-              <button onClick={() => setTrackIdx(i => i + 1)} style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,.4)', fontSize: 18, cursor: 'pointer' }}>⏭</button>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 12, flex: 1 }}>
-                <span style={{ fontSize: 14 }}>🔊</span>
-                <input type="range" min="0" max="100" value={volume} onChange={e => setVolume(Number(e.target.value))} style={{ flex: 1, accentColor: station.accent }} />
-                <span style={{ fontSize: 10, color: 'rgba(255,255,255,.3)', width: 28 }}>{volume}%</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Track queue */}
-          <div style={{ background: 'rgba(255,255,255,.02)', border: '1px solid rgba(255,255,255,.07)', borderRadius: 12, padding: '16px 18px', marginBottom: 16 }}>
-            <div style={{ fontSize: 8, fontWeight: 800, color: 'rgba(255,255,255,.3)', letterSpacing: '0.2em', marginBottom: 12 }}>UP NEXT</div>
-            {TRACK_QUEUE.map((t, i) => (
-              <div key={i} style={{
-                display: 'flex', alignItems: 'center', gap: 10,
-                padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,.05)',
-                opacity: i < trackIdx % TRACK_QUEUE.length ? 0.35 : 1,
-              }}>
-                <span style={{ fontSize: 12, color: i === trackIdx % TRACK_QUEUE.length ? station.accent : 'rgba(255,255,255,.3)', width: 16, textAlign: 'center' }}>
-                  {i === trackIdx % TRACK_QUEUE.length ? '▶' : i + 1}
-                </span>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: '#fff' }}>{t.title}</div>
-                  <div style={{ fontSize: 9, color: 'rgba(255,255,255,.4)' }}>{t.artist}</div>
-                </div>
-                <span style={{ fontSize: 9, color: 'rgba(255,255,255,.3)' }}>{t.dur}</span>
-              </div>
-            ))}
-          </div>
-
-          {/* XP rewards */}
-          <div style={{ background: 'rgba(255,215,0,.04)', border: '1px solid rgba(255,215,0,.15)', borderRadius: 12, padding: '16px 18px' }}>
-            <div style={{ fontSize: 8, fontWeight: 800, color: '#FFD700', letterSpacing: '0.2em', marginBottom: 12 }}>🌟 STREAM & WIN REWARDS</div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(160px,1fr))', gap: 8 }}>
-              {[
-                { label: 'Watch 30 min',          xp: 150,  done: xpEarned >= 150 },
-                { label: 'Tip an Artist',         xp: 200,  done: false            },
-                { label: 'Vote in Battle',        xp: 100,  done: false            },
-                { label: 'Listen 1 Hour',         xp: 360,  done: xpEarned >= 360  },
-                { label: 'Subscribe to Fan Club', xp: 500,  done: false            },
-                { label: 'Attend Live Show',      xp: 350,  done: false            },
-              ].map(r => (
-                <div key={r.label} style={{
-                  padding: '10px 12px',
-                  background: r.done ? 'rgba(0,255,136,.08)' : 'rgba(255,215,0,.04)',
-                  border: `1px solid ${r.done ? 'rgba(0,255,136,.3)' : 'rgba(255,215,0,.15)'}`,
-                  borderRadius: 8, display: 'flex', alignItems: 'center', gap: 8,
-                }}>
-                  <span style={{ fontSize: 14 }}>{r.done ? '✅' : '⭕'}</span>
-                  <div>
-                    <div style={{ fontSize: 9, fontWeight: 700, color: r.done ? '#00FF88' : '#fff' }}>{r.label}</div>
-                    <div style={{ fontSize: 9, color: '#FFD700', fontWeight: 800 }}>+{r.xp} XP</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Nav links */}
-          <div style={{ display: 'flex', gap: 12, marginTop: 20, flexWrap: 'wrap' }}>
-            {[
-              { href: '/stream-win',  label: '🌟 Stream & Win', color: '#FF2DAA' },
-              { href: '/battles',     label: '⚔️ Battles',      color: '#FF2DAA' },
-              { href: '/cypher',      label: '🎤 Cypher',       color: '#00FFFF' },
-              { href: '/playlist',    label: '🎵 Playlists',    color: '#AA2DFF' },
-              { href: '/magazine',    label: '📰 Magazine',     color: '#FFD700' },
-            ].map(l => (
-              <Link key={l.href} href={l.href} style={{ fontSize: 9, fontWeight: 800, color: l.color, border: `1px solid ${l.color}44`, borderRadius: 6, padding: '5px 12px', textDecoration: 'none', letterSpacing: '0.08em' }}>
-                {l.label}
-              </Link>
-            ))}
-          </div>
+        {/* Nav links */}
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+          {[
+            { href: '/battles',  label: '⚔️ Battles',   color: '#FF2DAA' },
+            { href: '/cypher',   label: '🎤 Cypher',    color: '#00FFFF' },
+            { href: '/playlist', label: '🎵 Playlists', color: '#AA2DFF' },
+            { href: '/magazine', label: '📰 Magazine',  color: '#FFD700' },
+          ].map(l => (
+            <Link key={l.href} href={l.href} style={{ fontSize: 9, fontWeight: 800, color: l.color, border: `1px solid ${l.color}44`, borderRadius: 6, padding: '5px 12px', textDecoration: 'none', letterSpacing: '0.08em' }}>
+              {l.label}
+            </Link>
+          ))}
         </div>
       </div>
     </main>

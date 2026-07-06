@@ -22,7 +22,8 @@ export type NotificationType =
   | "nft_sale"
   | "beat_purchase"
   | "moderation"
-  | "bot_alert";
+  | "bot_alert"
+  | "radio";
 
 export type NotificationPriority = "low" | "medium" | "high" | "critical";
 
@@ -143,6 +144,16 @@ class NotificationEngineClass {
       emoji: "🎵", href: "/beats", priority: "high",
     });
   }
+  radioSessionLive(trackTitle: string) {
+    return this.push("radio", "Your Stream & Win session is live", `"${trackTitle}" is now available in the radio room.`, {
+      emoji: "📻", href: "/radio", priority: "high",
+    });
+  }
+  radioWaitingRoom(joined: number, threshold: number) {
+    return this.push("radio", "Waiting Room Update", `Artists joined: ${joined} of ${threshold}. Session launches when the room fills.`, {
+      emoji: "📻", href: "/radio", priority: "medium",
+    });
+  }
 
   private defaultEmoji(type: NotificationType): string {
     const map: Record<NotificationType, string> = {
@@ -152,6 +163,7 @@ class NotificationEngineClass {
       mention: "💬", ticket_confirmed: "🎟️", payout: "💵",
       subscription: "⭐", magazine_drop: "📰", nft_sale: "🖼️",
       beat_purchase: "🎵", moderation: "🛡️", bot_alert: "🤖",
+      radio: "📻",
     };
     return map[type] ?? "🔔";
   }
