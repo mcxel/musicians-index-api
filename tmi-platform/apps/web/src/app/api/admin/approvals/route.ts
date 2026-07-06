@@ -1,25 +1,67 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAdmin } from '@/app/api/admin/_utils/require-admin';
+import {
+  listSubmissions,
+  updateSubmissionStatus,
+  getSubmissionCount,
+  type SubmissionStatus,
+} from '@/lib/submissions/SubmissionEngine';
 
-type ApprovalStatus = 'pending' | 'review' | 'approved' | 'rejected';
-type Approval = { id: string; type: string; name: string; submitted: string; status: ApprovalStatus };
+// Admin submission approval queue — real SubmissionEngine data only (Rule 20).
+// Actions: approve (pending → approved), reject (→ rejected),
+// rotate (approved → live, i.e. enters radio rotation).
 
-const QUEUE: Approval[] = [
-  { id: "ap1", type: "Artist Registration", name: "FlowState.J", submitted: "May 18, 2026", status: "pending" },
-  { id: "ap2", type: "Sponsor Application", name: "NeonBrand LLC", submitted: "May 17, 2026", status: "pending" },
-  { id: "ap3", type: "Venue Onboard", name: "The Warehouse", submitted: "May 16, 2026", status: "review" },
-  { id: "ap4", type: "Beat Upload", name: "Yung Mako - Beat #14", submitted: "May 15, 2026", status: "approved" },
-];
+const ACTION_TO_STATUS: Record<string, SubmissionStatus> = {
+  approve: 'approved',
+  reject: 'rejected',
+  rotate: 'live',
+};
 
-export async function GET() {
-  return NextResponse.json(QUEUE);
+export async function GET(req: NextRequest) {
+  const denied = requireAdmin(req);
+  if (denied) return denied;
+
+  const submissions = listSubmissions({ limit: 50 });
+  const counts = getSubmissionCount();
+  const queue = submissions.map((s) => ({
+    id: s.id,
+    type: s.type,
+    name: s.title,
+    artist: s.submitterId,
+    genre: s.genre,
+    url: s.url,
+    submitted: new Date(s.createdAt).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    }),
+    status: s.status,
+  }));
+  return NextResponse.json({ ok: true, queue, counts });
 }
 
 export async function POST(req: NextRequest) {
-  const body = await req.json() as { id?: string; action?: string };
-  if (!body.id || !body.action) return NextResponse.json({ error: 'id and action required' }, { status: 400 });
-  const item = QUEUE.find(a => a.id === body.id);
-  if (!item) return NextResponse.json({ error: 'Not found' }, { status: 404 });
-  item.status = body.action === 'approve' ? 'approved' : 'rejected';
-  return NextResponse.json({ ok: true, item });
+  const denied = requireAdmin(req);
+  if (denied) return denied;
+
+  const body = (await req.json().catch(() => ({}))) as { id?: string; action?: string };
+  if (!body.id || !body.action) {
+    return NextResponse.json({ error: 'id and action required' }, { status: 400 });
+  }
+
+  const nextStatus = ACTION_TO_STATUS[body.action];
+  if (!nextStatus) {
+    return NextResponse.json({ error: 'invalid_action' }, { status: 400 });
+  }
+
+  const updated = updateSubmissionStatus(body.id, nextStatus);
+  if (!updated) {
+    return NextResponse.json({ error: 'not_found' }, { status: 404 });
+  }
+
+  return NextResponse.json({
+    ok: true,
+    item: { id: updated.id, status: updated.status },
+  });
 }
