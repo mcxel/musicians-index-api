@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 const FOOTER_LINKS = {
   Platform: [
@@ -20,6 +23,8 @@ const FOOTER_LINKS = {
   Legal: [
     { label: "Privacy Policy",     href: "/privacy" },
     { label: "Terms of Service",   href: "/terms" },
+    { label: "Cookie Policy",      href: "/cookie-policy" },
+    { label: "DMCA / Copyright",   href: "/dmca" },
     { label: "Creator Policy",     href: "/creator-policy" },
     { label: "Advertiser Policy",  href: "/advertiser-policy" },
     { label: "Refund Policy",      href: "/refund-policy" },
@@ -30,12 +35,17 @@ const FOOTER_LINKS = {
     { label: "Contact",       href: "/contact" },
     { label: "Advertising",   href: "/advertising" },
     { label: "Sponsors",      href: "/sponsors/advertise" },
-    { label: "Press",         href: "/contact" },
+    { label: "Report Abuse",  href: "/report-abuse" },
     { label: "Support",       href: "/support" },
   ],
 } as const;
 
 export default function PlatformFooter() {
+  const pathname = usePathname();
+  // WorkspaceShell preview routes own the entire viewport as a self-contained
+  // "broadcast OS" sandbox — the site's real footer chrome doesn't belong there.
+  if (pathname?.startsWith("/preview/")) return null;
+
   const year = new Date().getFullYear();
 
   return (
@@ -134,8 +144,9 @@ export default function PlatformFooter() {
           {[
             { label: "Privacy",  href: "/privacy" },
             { label: "Terms",    href: "/terms" },
+            { label: "Cookies",  href: "/cookie-policy" },
+            { label: "DMCA",     href: "/dmca" },
             { label: "Contact",  href: "/contact" },
-            { label: "Advertise", href: "/advertising" },
           ].map((l) => (
             <Link
               key={l.href}
