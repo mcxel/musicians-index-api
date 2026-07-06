@@ -9,6 +9,7 @@ import {
 } from '@/lib/broadcast/BroadcastQueueRegistry';
 import { BroadcastQueueWall } from '@/components/broadcast/BroadcastQueueWall';
 import { BroadcastOpportunityFeed } from '@/components/broadcast/BroadcastOpportunityFeed';
+import { WorkspaceTemplate } from '@/components/shell/WorkspaceTemplate';
 
 type LobbyWallWorkspaceProps = {
   role: WorkspaceRole;
@@ -58,17 +59,22 @@ export function LobbyWallWorkspace({ role }: LobbyWallWorkspaceProps) {
   const isSponsor = role === 'sponsor' || role === 'advertiser';
   const isVenue = role === 'venue' || role === 'promoter';
 
+  const liveCount = items.length;
+  const status = loading
+    ? { label: 'Loading', tone: 'neutral' as const }
+    : error
+      ? { label: 'Error', tone: 'warning' as const }
+      : liveCount > 0
+        ? { label: `${liveCount} live`, tone: 'live' as const }
+        : { label: 'No active rooms', tone: 'neutral' as const };
+
   return (
-    <div style={{ padding: 14, display: 'grid', gap: 12, minHeight: '100%', overflow: 'auto' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <div style={{ fontSize: 11, letterSpacing: '0.14em', color: 'rgba(205, 229, 255, 0.9)', fontWeight: 800 }}>
-            LIVE LOBBY WALL
-          </div>
-          <div style={{ fontSize: 12, color: 'rgba(240, 244, 255, 0.72)' }}>
-            {isPerformer ? 'Challenge board and fast entry for performer flow.' : 'Fast room-entry wall for fan flow.'}
-          </div>
-        </div>
+    <WorkspaceTemplate
+      icon="🧱"
+      title="Live Lobby Wall"
+      subtitle={isPerformer ? 'Challenge board and fast entry for performer flow.' : 'Fast room-entry wall for fan flow.'}
+      status={status}
+      toolbar={
         <button
           type="button"
           onClick={() => window.location.assign('/live/rooms')}
@@ -85,49 +91,36 @@ export function LobbyWallWorkspace({ role }: LobbyWallWorkspaceProps) {
         >
           Open Full Lobby
         </button>
-      </div>
-
-      <div
-        style={{
-          borderRadius: 12,
-          border: '1px solid rgba(255,255,255,0.14)',
-          background: 'rgba(6, 8, 26, 0.7)',
-          padding: 12,
-          display: 'grid',
-          gap: 10,
-        }}
-      >
-        <div style={{ fontSize: 12, color: 'rgba(230, 230, 255, 0.82)', fontWeight: 700 }}>Mini Preview</div>
-        {previewRoomId ? (
-          <div style={{ fontSize: 12, color: '#b5f7ff' }}>Preview target: {previewRoomId}</div>
-        ) : (
-          <div style={{ fontSize: 12, color: 'rgba(230, 230, 255, 0.66)' }}>
-            Hover a room tile to prime preview. If no feed is available, preview remains in empty-ready mode.
+      }
+      statusStrip={
+        previewRoomId
+          ? `Preview target: ${previewRoomId}`
+          : 'Hover a room tile to prime preview. If no feed is available, preview remains in empty-ready mode.'
+      }
+    >
+      <div style={{ flex: 1, minHeight: 0, overflow: 'auto', display: 'grid', gap: 12, alignContent: 'start' }}>
+        {loading ? (
+          <Panel title="Loading Live Surfaces">Loading lobby media surfaces…</Panel>
+        ) : error ? (
+          <Panel title="Live Data Error">{error}</Panel>
+        ) : items.length === 0 ? (
+          <div style={{ display: 'grid', gap: 10 }}>
+            <Panel title="No Active Rooms">
+              No active rooms right now. Open lobby to create or join the next live surface.
+            </Panel>
+            <BroadcastOpportunityFeed />
           </div>
+        ) : isPerformer ? (
+          <PerformerBoard byType={byType} onPreview={setPreviewRoomId} />
+        ) : isSponsor ? (
+          <SponsorBoard byType={byType} onPreview={setPreviewRoomId} />
+        ) : isVenue ? (
+          <VenueBoard byType={byType} onPreview={setPreviewRoomId} />
+        ) : (
+          <BroadcastQueueWall items={items} onPreview={setPreviewRoomId} />
         )}
       </div>
-
-      {loading ? (
-        <Panel title="Loading Live Surfaces">Loading lobby media surfaces…</Panel>
-      ) : error ? (
-        <Panel title="Live Data Error">{error}</Panel>
-      ) : items.length === 0 ? (
-        <div style={{ display: 'grid', gap: 10 }}>
-          <Panel title="No Active Rooms">
-            No active rooms right now. Open lobby to create or join the next live surface.
-          </Panel>
-          <BroadcastOpportunityFeed />
-        </div>
-      ) : isPerformer ? (
-        <PerformerBoard byType={byType} onPreview={setPreviewRoomId} />
-      ) : isSponsor ? (
-        <SponsorBoard byType={byType} onPreview={setPreviewRoomId} />
-      ) : isVenue ? (
-        <VenueBoard byType={byType} onPreview={setPreviewRoomId} />
-      ) : (
-        <BroadcastQueueWall items={items} onPreview={setPreviewRoomId} />
-      )}
-    </div>
+    </WorkspaceTemplate>
   );
 }
 

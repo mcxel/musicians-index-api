@@ -7,6 +7,7 @@ import { MemoryWallCanister } from "@/components/canisters/MemoryWallCanister";
 import { PlaylistCanister } from "@/components/canisters/PlaylistCanister";
 import { LobbyWallWorkspace } from "@/components/workspaces/LobbyWallWorkspace";
 import { NotesWorkspace } from "@/components/workspaces/NotesWorkspace";
+import { BusinessCanisterWorkspace } from "@/components/workspaces/BusinessCanisterWorkspace";
 import type { WorkspaceDefinition, WorkspaceId, WorkspaceRole } from "@/components/shell/workspaceTypes";
 
 const WORKSPACE_MODE_CONTRACT: WorkspaceDefinition["supportedModes"] = ["full-page", "drawer", "widget"];
@@ -138,6 +139,19 @@ const REGISTRY: WorkspaceDefinition[] = [
     requiresAuth: true,
     requiredRoles: ["fan", "performer", "artist", "producer", "sponsor", "advertiser", "venue", "promoter", "writer", "admin", "staff", "mc", "big-ace"],
     supportedModes: ["drawer"],
+    defaultDrawerMode: "half",
+    supportsFullscreen: true,
+    supportsMinimize: true,
+  },
+  {
+    id: "business",
+    label: "Business",
+    icon: "💼",
+    category: "commerce",
+    description: "Sponsors, advertising, bookings, partnerships, and promotions.",
+    requiresAuth: true,
+    requiredRoles: ["performer", "artist", "producer", "sponsor", "advertiser", "venue", "promoter", "admin", "staff", "mc", "big-ace"],
+    supportedModes: WORKSPACE_MODE_CONTRACT,
     defaultDrawerMode: "half",
     supportsFullscreen: true,
     supportsMinimize: true,
@@ -279,6 +293,8 @@ export function renderWorkspaceContent(id: WorkspaceId): ReactNode {
       return <LobbyWallWorkspace role="fan" />;
     case "notes":
       return <NotesWorkspace />;
+    case "business":
+      return <BusinessCanisterWorkspace role="performer" />;
     default:
       return ComingSoonWorkspace({ label: getWorkspaceDefinition(id).label });
   }
@@ -287,6 +303,9 @@ export function renderWorkspaceContent(id: WorkspaceId): ReactNode {
 export function renderWorkspaceContentForRole(id: WorkspaceId, role: WorkspaceRole): ReactNode {
   if (id === "lobby-wall") {
     return <LobbyWallWorkspace role={role} />;
+  }
+  if (id === "business") {
+    return <BusinessCanisterWorkspace role={role} />;
   }
   return renderWorkspaceContent(id);
 }

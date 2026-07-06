@@ -14,7 +14,8 @@ export type WorkspaceId =
   | "observatory"
   | "big-ace"
   | "mc"
-  | "notes";
+  | "notes"
+  | "business";
 
 export type DrawerMode = "collapsed" | "peek" | "half" | "fullscreen";
 
