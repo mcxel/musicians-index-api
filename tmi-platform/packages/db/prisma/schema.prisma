@@ -75,6 +75,9 @@ model User {
   lastSeenAt                     DateTime?
   tier                           String    @default("FREE")
   displayName                    String?   @map("display_name")
+  // QA Certification Fleet flag — true for all @themusiciansindex.test accounts.
+  // Must be excluded from discovery, rankings, leaderboards, search, and analytics.
+  isQA                           Boolean   @default(false) @map("is_qa")
   // Live broadcast state — DB-persisted so serverless cold starts don't drop performers
   isLive                         Boolean   @default(false) @map("is_live")
   liveRoomId                     String?   @map("live_room_id")
@@ -84,6 +87,7 @@ model User {
   userCreatedAt                  DateTime  @default(now()) @map("user_created_at")
   accounts                       Account[]
   sessions                       Session[]
+  notes                          Note[]
 
   // A user can be associated with an artist profile
   userProfile            UserProfile?
@@ -622,6 +626,41 @@ model CheckIn {
 
   checkedInByUserId String?
   note              String?
+}
+
+// ======================================================================
+// PERSONAL NOTES (NotesWorkspace backend — real per-user persistence)
+// ======================================================================
+
+model Note {
+  id        String   @id @default(cuid())
+  title     String   @default("Untitled")
+  content   String   @default("") @db.Text
+  ownerId   String
+  owner     User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([ownerId])
+}
+
+// ======================================================================
+// TICKET INVENTORY (atomic counter — replaces in-memory Maps in ticketEngine)
+// ======================================================================
+
+model EventInventory {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Composite key: "venueSlug::eventSlug::tier"
+  // Matches inventoryKeyFor() in ticketEngine.ts
+  key       String   @unique
+
+  capacity  Int
+  issued    Int      @default(0)
+
+  @@index([key])
 }
 
 // ======================================================================

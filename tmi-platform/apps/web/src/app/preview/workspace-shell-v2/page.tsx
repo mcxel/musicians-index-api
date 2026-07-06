@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { WorkspaceShell } from "@/components/shell/WorkspaceShell";
 import { useWorkspace } from "@/components/shell/WorkspaceProvider";
 import type { WorkspaceRole } from "@/components/shell/workspaceTypes";
-import { Monitor, type MonitorConfig } from "@/components/shell/VideoMonitorGrid";
+import { Monitor, type MonitorConfig, type MonitorFeed } from "@/components/shell/VideoMonitorGrid";
 import { BroadcastHeroStatusBar } from "@/components/broadcast/BroadcastHeroStatusBar";
 
 type RightRailTab = "chat" | "room" | "people";
@@ -365,6 +365,7 @@ function HeroStage() {
   const [pipEnabled, setPipEnabled] = useState(true);
   const [pipLarge, setPipLarge] = useState(false);
   const [pipPosition, setPipPosition] = useState({ x: 24, y: 112 });
+  const [pipFeed, setPipFeed] = useState<MonitorFeed>("self-camera");
   const [activeScreenShare, setActiveScreenShare] = useState<MediaStream | null>(null);
   const [draggingPip, setDraggingPip] = useState(false);
   const dragOffsetRef = useRef({ x: 0, y: 0 });
@@ -375,52 +376,52 @@ function HeroStage() {
       return next;
     });
 
+  // Contextual per-monitor source lists (Broadcast Foundation audit) — each
+  // monitor exposes only the sources relevant to its role, not one giant
+  // shared catalog. Program = on-air output. Community = audience/venue
+  // context. Utility (PIP) = compact personal feed.
   const heroMonitor = useMemo<MonitorConfig>(() => ({
     defaultFeed: "live-stream",
-    availableFeeds: [
-      "live-stream", "audience", "screen-share", "billboard", "playlist", "memory-wall",
-      "sponsor", "performance", "self-camera", "now-available", "empty",
-    ],
+    availableFeeds: ["live-stream", "battle-feed", "cypher-feed", "challenge-feed", "screen-share", "performance", "sponsor", "empty"],
     accentColor: "#00FFFF",
   }), []);
 
   const secondaryMonitor = useMemo<MonitorConfig>(() => ({
     defaultFeed: "audience",
-    availableFeeds: [
-      "audience", "self-camera", "playlist", "memory-wall", "sponsor",
-      "billboard", "performance", "now-available", "empty",
-    ],
+    availableFeeds: ["audience", "billboard", "memory-wall", "self-camera", "empty"],
     accentColor: "#FF2DAA",
   }), []);
 
   const pipMonitor = useMemo<MonitorConfig>(() => ({
-    defaultFeed: "audience",
-    availableFeeds: [
-      "audience",
-      "live-stream",
-      "playlist",
-      "memory-wall",
-      "billboard",
-      "performance",
-      "self-camera",
-      "empty",
-    ],
+    defaultFeed: pipFeed,
+    availableFeeds: ["audience", "self-camera", "playlist", "empty"],
     accentColor: "#00C8FF",
-  }), []);
+  }), [pipFeed]);
 
   const handleShareScreen = useCallback(async () => {
     if (!('getDisplayMedia' in navigator.mediaDevices)) {
       alert('Screen sharing is not supported by your browser.');
       return;
     }
+    // Automatically switch the PIP monitor to the screen-share feed
+    setPipFeed("screen-share");
     try {
       const stream = await (navigator.mediaDevices as any).getDisplayMedia({ video: true, audio: true });
       setActiveScreenShare(stream);
-      // This is a simplified approach. A more robust solution would use a context or event bus
-      // to command a specific monitor to switch to the 'screen-share' feed and use this stream.
-      alert("Screen share started! Switch a monitor's source to 'Screen Share' to see it.");
+
+      // Add a listener to revert the monitor when sharing stops
+      const videoTrack = stream.getVideoTracks()[0];
+      if (videoTrack) {
+        videoTrack.onended = () => {
+          setPipFeed("self-camera");
+          // Stop all tracks to free up resources, per directive
+          stream.getTracks().forEach((track: MediaStreamTrack) => track.stop());
+          setActiveScreenShare(null);
+        };
+      }
     } catch (err) {
       console.error("Screen share failed:", err);
+      setPipFeed("self-camera"); // Revert on error/cancellation
     }
   }, []);
 
@@ -575,7 +576,7 @@ function HeroStage() {
             </div>
           </div>
           <div style={{ position: "absolute", top: 24, left: 0, right: 0, bottom: 0 }}>
-            <Monitor config={pipMonitor} size="mini" />
+            <Monitor config={pipMonitor} size="mini" onFeedChange={setPipFeed} />
           </div>
         </div>
       )}
