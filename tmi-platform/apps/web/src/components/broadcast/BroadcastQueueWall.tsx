@@ -3,12 +3,16 @@
 import { useMemo } from 'react';
 import {
   type BroadcastQueueItem,
+  isOnAir,
   sortBroadcastQueue,
 } from '@/lib/broadcast/BroadcastQueueRegistry';
 import { BroadcastCell } from './BroadcastCell';
 
 // BroadcastQueueWall — the canonical broadcast mosaic grid.
 // Every queue surface inherits this layout; on-air cells always surface first.
+// Shape-shifting mosaic: on-air cells expand to 2×2 featured frames while
+// standby cells stay compact; dense auto-flow backfills so the wall has
+// no dead space at any width.
 export function BroadcastQueueWall({
   items,
   title,
@@ -33,13 +37,27 @@ export function BroadcastQueueWall({
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
+          gridAutoRows: 112,
+          gridAutoFlow: 'dense',
           gap: 3,
         }}
       >
-        {ordered.map((item) => (
-          <BroadcastCell key={item.id} item={item} {...(onPreview ? { onPreview } : {})} />
-        ))}
+        {ordered.map((item) => {
+          const featured = isOnAir(item.state) && ordered.length > 1;
+          return (
+            <div
+              key={item.id}
+              style={{
+                minHeight: 0,
+                minWidth: 0,
+                ...(featured ? { gridColumn: 'span 2', gridRow: 'span 2' } : {}),
+              }}
+            >
+              <BroadcastCell item={item} featured={featured} {...(onPreview ? { onPreview } : {})} />
+            </div>
+          );
+        })}
       </div>
     </div>
   );

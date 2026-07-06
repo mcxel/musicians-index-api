@@ -9,12 +9,15 @@ import {
 // BroadcastCell — one "window" in the broadcast mosaic wall.
 // Honest states only: on-air items (LIVE/BATTLE/CYPHER) pulse; WAITING/STARTING
 // render a dim standby glow. Never a dead black tile, never a fake feed.
+// Featured cells (on-air, 2×2 span in the mosaic) scale up typography.
 export function BroadcastCell({
   item,
   onPreview,
+  featured = false,
 }: {
   item: BroadcastQueueItem;
   onPreview?: (id: string) => void;
+  featured?: boolean;
 }) {
   const onAir = isOnAir(item.state);
   const accent = item.accent;
@@ -26,8 +29,9 @@ export function BroadcastCell({
       style={{
         textDecoration: 'none',
         position: 'relative',
-        aspectRatio: '1 / 1',
-        borderRadius: 4,
+        height: '100%',
+        minHeight: 0,
+        borderRadius: featured ? 6 : 4,
         border: `1.5px solid ${onAir ? accent : 'rgba(255,255,255,0.14)'}`,
         background: `radial-gradient(120% 120% at 15% 0%, ${accent}${onAir ? '30' : '14'}, rgba(6,8,20,0.96)), #08080f`,
         overflow: 'hidden',
@@ -70,7 +74,7 @@ export function BroadcastCell({
             animation: onAir ? 'tmiCellRecDot 1.2s infinite' : 'none',
           }}
         />
-        <span style={{ fontSize: 8, fontWeight: 900, letterSpacing: '0.08em', color: onAir ? '#ff9b9b' : 'rgba(255,255,255,0.55)' }}>
+        <span style={{ fontSize: featured ? 10 : 8, fontWeight: 900, letterSpacing: '0.08em', color: onAir ? '#ff9b9b' : 'rgba(255,255,255,0.55)' }}>
           {item.state}
         </span>
       </div>
@@ -84,7 +88,7 @@ export function BroadcastCell({
           background: 'rgba(0,0,0,0.55)',
           borderRadius: 4,
           padding: '2px 6px',
-          fontSize: 7,
+          fontSize: featured ? 9 : 7,
           fontWeight: 800,
           letterSpacing: '0.06em',
           color: `${accent}dd`,
@@ -102,13 +106,13 @@ export function BroadcastCell({
           right: 0,
           bottom: 0,
           background: 'linear-gradient(0deg, rgba(0,0,0,0.85), rgba(0,0,0,0))',
-          padding: '18px 7px 6px',
+          padding: featured ? '26px 10px 8px' : '18px 7px 6px',
         }}
       >
-        <div style={{ color: '#fff', fontWeight: 800, fontSize: 10, lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <div style={{ color: '#fff', fontWeight: 800, fontSize: featured ? 14 : 10, lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {item.title}
         </div>
-        <div style={{ fontSize: 8, color: 'rgba(235,235,255,0.6)', marginTop: 1 }}>
+        <div style={{ fontSize: featured ? 10 : 8, color: 'rgba(235,235,255,0.6)', marginTop: 1 }}>
           {item.genre || (onAir ? 'Live now' : 'Starting soon')}
         </div>
       </div>
