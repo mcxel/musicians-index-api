@@ -22,10 +22,7 @@ const P = {
   PERF_GOLD:     process.env.NEXT_PUBLIC_STRIPE_PRICE_PERFORMER_GOLD    ?? "price_1TcK1LEAwH1Fjtu9ZnOrTyZw",
   PERF_PLATINUM: process.env.NEXT_PUBLIC_STRIPE_PRICE_PERFORMER_PLATINUM ?? "price_1TcK2xEAwH1Fjtu9FLlIHItH",
   PERF_DIAMOND:  process.env.NEXT_PUBLIC_STRIPE_PRICE_PERFORMER_DIAMOND ?? "price_1TcK4MEAwH1Fjtu96b2TJlBe",
-  BAND_PRO:      process.env.NEXT_PUBLIC_STRIPE_PRICE_BAND_PRO          ?? "",
-  BAND_GOLD:     process.env.NEXT_PUBLIC_STRIPE_PRICE_BAND_GOLD         ?? "",
-  BAND_PLATINUM: process.env.NEXT_PUBLIC_STRIPE_PRICE_BAND_PLATINUM     ?? "",
-  BAND_DIAMOND:  process.env.NEXT_PUBLIC_STRIPE_PRICE_BAND_DIAMOND      ?? "",
+  PERF_BAND:     process.env.NEXT_PUBLIC_STRIPE_PRICE_PERFORMER_BAND    ?? "price_1TcK68EAwH1Fjtu9KGLcf8HE",
   // Sponsor/Advertiser
   SPONSOR_BASIC:    process.env.NEXT_PUBLIC_STRIPE_PRICE_SPONSOR_BASIC    ?? "price_1Tb148EAwH1Fjtu9KZFL3H3Y",
   SPONSOR_STANDARD: process.env.NEXT_PUBLIC_STRIPE_PRICE_SPONSOR_STANDARD ?? "price_1Tb147EAwH1Fjtu9yCbRfH3j",
@@ -67,16 +64,7 @@ const PLAN_GROUPS: PlanGroup[] = [
       { key: "PERF_GOLD",     name: "Gold Performer",     price: 9.99,  cents: 999,  color: "#FFD700", emoji: "🎵", priceId: P.PERF_GOLD,     features: ["Everything in Silver", "Mint NFTs", "Full revenue dashboard", "Gold profile spotlight"], cta: "GO GOLD", popular: true, badge: "MOST POPULAR" },
       { key: "PERF_PLATINUM", name: "Platinum Performer", price: 19.99, cents: 1999, color: "#00FFFF", emoji: "🏆", priceId: P.PERF_PLATINUM, features: ["Everything in Gold", "Platinum badge", "Priority matchmaking", "Advanced analytics"], cta: "GO PLATINUM" },
       { key: "PERF_DIAMOND",  name: "Diamond Performer",  price: 29.99, cents: 2999, color: "#AA2DFF", emoji: "👑", priceId: P.PERF_DIAMOND,  features: ["Everything in Platinum", "Diamond aura", "Crown ballot vote", "VIP Lounge + Backstage", "Featured on homepage"], cta: "GO DIAMOND" },
-    ],
-  },
-  {
-    group: "BAND PLANS",
-    color: "#FF9500",
-    plans: [
-      { key: "BAND_PRO",      name: "Band Pro",      price: 16.99, cents: 1699, color: "#FF9500", emoji: "🎸", priceId: P.BAND_PRO,      features: ["Band profile + group page", "Music uploads + event listings", "Booking inquiries + livestreams", "Messaging + playlist support", "Basic analytics"], cta: "START BAND PRO", badge: "BANDS" },
-      { key: "BAND_GOLD",     name: "Band Gold",     price: 20.00, cents: 2000, color: "#FFD700", emoji: "🥇", priceId: P.BAND_GOLD,     features: ["Everything in Band Pro", "Full Creative Studio", "Poster/flyer/magazine creators", "Retro Vision + keepsake studio", "Advanced analytics + discovery"], cta: "GO BAND GOLD", popular: true, badge: "CREATIVE SUITE" },
-      { key: "BAND_PLATINUM", name: "Band Platinum", price: 29.99, cents: 2999, color: "#E5E4E2", emoji: "🎖️", priceId: P.BAND_PLATINUM, features: ["Everything in Band Gold", "Premium templates", "Higher upload/storage limits", "Premium placement opportunities"], cta: "GO BAND PLATINUM" },
-      { key: "BAND_DIAMOND",  name: "Band Diamond",  price: 39.99, cents: 3999, color: "#00FF88", emoji: "💎", priceId: P.BAND_DIAMOND,  features: ["Everything in Band Platinum", "Highest discovery priority", "Diamond spotlight", "VIP support lane"], cta: "GO BAND DIAMOND" },
+      { key: "PERF_BAND",     name: "Band / Group / Choir", price: 24.99, cents: 2499, color: "#FF9500", emoji: "🎼", priceId: P.PERF_BAND, features: ["All members share one account", "Band/Group/Choir profile", "Up to team size", "Shared revenue dashboard", "Group badge on all content", "Book as a group"], cta: "JOIN AS A GROUP", badge: "BANDS & CHOIRS" },
     ],
   },
   {
@@ -180,10 +168,10 @@ export default function SubscribePage() {
       </nav>
 
       <div style={{ textAlign: "center", padding: "40px 20px 24px" }}>
-        <div style={{ fontSize: 9, letterSpacing: "0.3em", color: "#00FFFF", fontWeight: 900, marginBottom: 10 }}>THE MUSICIAN&apos;S INDEX</div>
+        <div style={{ fontSize: 9, letterSpacing: "0.3em", color: "#00FFFF", fontWeight: 900, marginBottom: 10 }}>THE MUSICIAN'S INDEX</div>
         <h1 style={{ margin: "0 0 8px", fontSize: "clamp(26px,5vw,48px)", fontWeight: 900, letterSpacing: "-0.02em" }}>Join the Platform</h1>
         <p style={{ margin: "0 auto 8px", fontSize: 13, color: "rgba(255,255,255,0.5)", maxWidth: 520 }}>
-          Pick your role. Every plan includes live room access, audience seating, and TMI&apos;s full entertainment network.
+          Pick your role. Every plan includes live room access, audience seating, and TMI's full entertainment network.
         </p>
         <div style={{ fontSize: 10, color: "rgba(255,255,255,0.3)" }}>Powered by Stripe · Cancel anytime · Real price IDs — no placeholders</div>
       </div>

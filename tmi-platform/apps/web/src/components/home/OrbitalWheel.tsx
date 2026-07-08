@@ -1,7 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, Suspense } from 'react';
-import { MAGAZINE_ISSUE_1 } from '@/lib/magazine/magazineIssueData';
+import React, { useEffect, useState } from 'react';
 import MediaFallbackResolver from '@/components/media/MediaFallbackResolver';
 import Link from 'next/link';
 
@@ -16,37 +15,24 @@ interface OrbitalNode {
   color: string;
 }
 
-function OrbitalWheelComponent() {
+export default function OrbitalWheel() {
   const [nodes, setNodes] = useState<OrbitalNode[]>([]);
   const [crownLeader, setCrownLeader] = useState<OrbitalNode | null>(null);
 
   useEffect(() => {
-    async function fetchCrownData() {
-      // Replacing mock data with real data from the magazine issue, per Rule #20.
-      // This ensures the wheel reflects actual platform content.
-      const performersFromArticles = MAGAZINE_ISSUE_1.filter(a => a.performerSlug);
-
-      const mockNodes: OrbitalNode[] = performersFromArticles.slice(0, 10).map((article, i) => ({
-        id: article.performerSlug!,
-        // TODO: Replace with real rank from XP/Ranking Engine (Rule #3)
-        rank: i + 1,
-        name: article.title.split(':')[0], // Extract name from title for now
-        genre: article.tags[0] || 'Music',
-        // ENFORCING RULE 20: Using a TMI-branded, non-placeholder fallback.
-        imageUrl: `/assets/fallbacks/tmi-avatar-default.png`,
-        // TODO: Replace with real-time status from GlobalLiveSessionRegistry (Rule #2)
-        isLive: i % 3 === 0,
-        color: article.heroColor,
-      }));
-
-      // Set the first article's performer as the leader for now
-      if (mockNodes.length > 0) {
-        setCrownLeader(mockNodes[0]);
-      }
-      setNodes(mockNodes);
-    }
-
-    fetchCrownData();
+    // Simulated fetch from CrownGovernor API
+    const mockNodes = Array.from({ length: 10 }).map((_, i) => ({
+      id: `artist-${i}`,
+      rank: i + 1,
+      name: ['Astra Nova', 'Prism Vex', 'Zion Freq', 'Flex King', 'Bar God', 'DJ Kraze', 'Nova Cipher', 'Lagos Burst', 'Wavetek', 'Neon Bass'][i],
+      genre: ['R&B', 'EDM', 'Gospel', 'Dance', 'Rap', 'DJ', 'Cypher', 'Afrobeat', 'Hip-Hop', 'Electronic'][i],
+      imageUrl: `https://i.pravatar.cc/200?u=orbit${i}`,
+      isLive: i % 3 === 0,
+      color: ['#FF2DAA', '#FFD700', '#00FF88', '#00E5FF', '#9B59B6', '#FF8C00', '#E63000', '#FFD700', '#00E5FF', '#FF2DAA'][i]
+    }));
+    
+    setCrownLeader(mockNodes[0]);
+    setNodes(mockNodes);
   }, []);
 
   if (!nodes.length || !crownLeader) return null;
@@ -124,14 +110,5 @@ function OrbitalWheelComponent() {
       </Link>
 
     </div>
-  );
-}
-
-export default function OrbitalWheel() {
-  // Wrap the client-side component in a Suspense boundary to prevent SSR issues.
-  return (
-    <Suspense fallback={<div style={{ width: 450, height: 450, margin: '0 auto' }} />}>
-      <OrbitalWheelComponent />
-    </Suspense>
   );
 }

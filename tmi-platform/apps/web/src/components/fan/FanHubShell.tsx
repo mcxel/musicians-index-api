@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import { ErrorBoundary } from "@/components/admin/ErrorBoundary";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getSmartRoom } from "@/lib/rooms/SmartRoomRouter";
@@ -136,14 +135,6 @@ export default function FanHubShell({
   tier,
   startingPoints,
 }: FanHubShellProps) {
-  if (!fanSlug) {
-    return (
-      <div style={{padding:24,background:'#050815',color:'#ffd',borderRadius:8}}>
-        <h3>Profile missing</h3>
-        <p>Fan profile not found. Create or open a fan profile to continue.</p>
-      </div>
-    );
-  }
   const router = useRouter();
   const [points, setPoints] = useState(startingPoints);
   const [firedId, setFiredId] = useState<string | null>(null);
@@ -212,7 +203,6 @@ export default function FanHubShell({
   };
 
   return (
-    <ErrorBoundary>
     <main style={{ minHeight: "100vh", background: C.bg, color: C.amber, fontFamily: "'Exo 2', sans-serif", overflowX: "hidden" }}>
       <style dangerouslySetInnerHTML={{ __html: css }} />
 
@@ -578,6 +568,5 @@ export default function FanHubShell({
         </div>
       </div>
     </main>
-    </ErrorBoundary>
   );
 }

@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
-import { AgentRegistry } from "@/stubs/bernout-agent-network";
+import { AgentRegistry } from "@bernout/agent-network";
 import { getStripeIncidentStatus, isStripePayoutQueuePaused } from "@/lib/stripe/stripe-incident-engine";
 import { getTaskQueue } from "@/lib/admin/MissionControlTaskStore";
 

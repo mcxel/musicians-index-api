@@ -3,7 +3,7 @@ import { joinAudience, leaveAudience } from "@/lib/live/audienceRuntimeEngine";
 import { recordMomentumSample, getCrowdMomentum } from "@/lib/live/crowdMomentumEngine";
 import { emitLobbyOccupancy, emitLobbyHeat, emitLobbyReactionBurst } from "@/lib/lobby/lobbyLiveBillboardFeed";
 import { defaultClock, type RoomClock } from "./RoomClock";
-import * as WorldRuntime from "@/lib/world/WorldRuntime";
+import { getCanonicalRoomSlug } from "@/lib/world/WorldRuntime";
 
 let _clock: RoomClock = defaultClock;
 export function setRoomClock(c: RoomClock): void { _clock = c; }
@@ -60,10 +60,6 @@ const HEAT_DELTA: Record<RoomHeatEventType, number> = {
 const registry = new Map<ChatRoomId, RoomPopulationState>();
 
 function getOrInit(rawRoomId: ChatRoomId): RoomPopulationState {
-  const getCanonicalRoomSlug =
-    typeof WorldRuntime.getCanonicalRoomSlug === "function"
-      ? WorldRuntime.getCanonicalRoomSlug
-      : (slug: string) => slug;
   const roomId = getCanonicalRoomSlug(rawRoomId) as ChatRoomId;
   if (!registry.has(roomId)) {
     const baseStats = BASELINE[roomId] || BASELINE["venue-room"];
@@ -221,10 +217,6 @@ export function removeSyntheticAudience(rawRoomId: ChatRoomId, count: number = 1
  * Useful for camera-reaction sync and observatory displays.
  */
 export function getRoomMomentum(rawRoomId: ChatRoomId) {
-  const getCanonicalRoomSlug =
-    typeof WorldRuntime.getCanonicalRoomSlug === "function"
-      ? WorldRuntime.getCanonicalRoomSlug
-      : (slug: string) => slug;
   const roomId = getCanonicalRoomSlug(rawRoomId) as ChatRoomId;
   return getCrowdMomentum(roomId);
 }

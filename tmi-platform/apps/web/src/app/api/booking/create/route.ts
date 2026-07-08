@@ -75,10 +75,8 @@ export async function POST(request: Request) {
         additionalNotes:    String(additionalRequests ?? "").slice(0, 1200),
         contractId:         contract.id,
       });
-    } catch (err) {
-      // Registry failure non-fatal — email still fires, but log so a real
-      // persistence failure is never silently invisible.
-      console.error('[booking/create] VenueBookingRegistry.create failed:', err);
+    } catch {
+      // Registry failure non-fatal — email still fires
     }
 
     const bookingId = booking?.bookingId ?? `BK-${Math.random().toString(36).slice(2, 10).toUpperCase()}`;

@@ -1,6 +1,5 @@
 import type { NewsArticle } from "@/lib/editorial/NewsArticleModel";
 import type { MagazineArticle } from "@/lib/magazine/MagazineArticleResolver";
-import type { ArticleBlock } from "@/lib/magazine/magazineIssueData";
 
 const categoryMap: Record<string, NewsArticle["category"]> = {
   artist: "artist",
@@ -39,10 +38,7 @@ export function magazineToEditorialArticle(article: MagazineArticle): NewsArticl
     title: article.title,
     headline: article.title,
     snippet: article.summary,
-    body: article.body
-      .split(/\n\n+/)
-      .filter(Boolean)
-      .map((text): ArticleBlock => ({ type: "paragraph", text })),
+    body: article.body.split(/\n\n+/).filter(Boolean),
     category,
     templateType: toTemplateType(category),
     publishedAt: article.publishedAt,

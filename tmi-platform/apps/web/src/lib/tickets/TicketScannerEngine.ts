@@ -29,7 +29,7 @@ export interface ScanInput {
   longitude?: number;
 }
 
-export async function scanTicket(input: ScanInput): Promise<ScanResult> {
+export function scanTicket(input: ScanInput): ScanResult {
   const now = new Date().toISOString();
 
   // 1 — Fraud + duplicate check
@@ -46,7 +46,7 @@ export async function scanTicket(input: ScanInput): Promise<ScanResult> {
   const isFraudFlagged = fraudCheck.verdict !== "clean";
 
   if (fraudCheck.verdict === "blocked") {
-    await appendScanLedger({
+    appendScanLedger({
       ticketId: input.ticketId, scannedAt: now,
       gate: input.gate, status: "denied", reason: "fraud_blocked",
     });
@@ -56,7 +56,7 @@ export async function scanTicket(input: ScanInput): Promise<ScanResult> {
   // 2 — NFT revoke check
   const nftCheck = verifyNFTTicket(input.ticketId);
   if (!nftCheck.valid && nftCheck.reason?.includes("revoked")) {
-    await appendScanLedger({
+    appendScanLedger({
       ticketId: input.ticketId, scannedAt: now,
       gate: input.gate, status: "denied", reason: "revoked",
     });
@@ -64,7 +64,7 @@ export async function scanTicket(input: ScanInput): Promise<ScanResult> {
   }
 
   // 3 — Standard validation (fraud guard + redeemed state)
-  const validation = await TicketValidationEngine(input.ticketId);
+  const validation = TicketValidationEngine(input.ticketId);
 
   if (!validation.valid) {
     const decision: ScanDecision =
@@ -72,7 +72,7 @@ export async function scanTicket(input: ScanInput): Promise<ScanResult> {
       validation.reason === "already_redeemed"  ? "already_redeemed" :
       "denied";
 
-    await appendScanLedger({
+    appendScanLedger({
       ticketId: input.ticketId, scannedAt: now,
       gate: input.gate, status: "denied", reason: validation.reason ?? "denied",
     });
@@ -80,10 +80,10 @@ export async function scanTicket(input: ScanInput): Promise<ScanResult> {
   }
 
   // 4 — Allow + mark redeemed
-  const ticket = await getTicketById(input.ticketId);
-  if (ticket) await saveTicket({ ...ticket, redeemed: true });
+  const ticket = getTicketById(input.ticketId);
+  if (ticket) saveTicket({ ...ticket, redeemed: true });
 
-  await appendScanLedger({
+  appendScanLedger({
     ticketId: input.ticketId, scannedAt: now,
     gate: input.gate, status: "allowed", reason: "ok",
   });
@@ -91,9 +91,9 @@ export async function scanTicket(input: ScanInput): Promise<ScanResult> {
 }
 
 // Backward-compatible wrapper (existing callsites)
-export async function TicketScannerEngine(input: { ticketId: string; gate: string }): Promise<{
+export function TicketScannerEngine(input: { ticketId: string; gate: string }): {
   ok: boolean; status: string; reason: string; scannedAt: string;
-}> {
-  const result = await scanTicket(input);
+} {
+  const result = scanTicket(input);
   return { ok: result.ok, status: result.decision, reason: result.reason, scannedAt: result.scannedAt };
 }

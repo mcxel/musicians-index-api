@@ -1,7 +1,6 @@
+export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-
-export const dynamic = "force-dynamic";
 
 async function checkDb(): Promise<{ ok: boolean; latencyMs: number; detail: string }> {
   const t = Date.now();

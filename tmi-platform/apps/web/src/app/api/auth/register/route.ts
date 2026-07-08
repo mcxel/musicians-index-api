@@ -290,7 +290,6 @@ export async function POST(req: NextRequest) {
     );
 
     response.cookies.set('tmi_session_id', sessionId, COOKIE_OPTS);
-    response.cookies.set('tmi_user_id', user.id, COOKIE_OPTS);
     response.cookies.set('tmi_session', sessionToken, COOKIE_OPTS);
     response.cookies.set('tmi_role', user.role, COOKIE_OPTS);
     response.cookies.set('tmi_roles', JSON.stringify(platformRoles), COOKIE_OPTS);  // All roles

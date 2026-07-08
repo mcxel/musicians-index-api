@@ -32,21 +32,6 @@ export const ACTIVE_SPONSOR_ZONES: Record<string, ActiveSponsorDisplay> = {
   // },
 };
 
-export function listActiveSponsorZones(): Record<string, ActiveSponsorDisplay> {
-  return { ...ACTIVE_SPONSOR_ZONES };
-}
-
-export function upsertActiveSponsorZone(zone: string, sponsor: ActiveSponsorDisplay): ActiveSponsorDisplay {
-  ACTIVE_SPONSOR_ZONES[zone] = sponsor;
-  return ACTIVE_SPONSOR_ZONES[zone];
-}
-
-export function removeActiveSponsorZone(zone: string): boolean {
-  if (!ACTIVE_SPONSOR_ZONES[zone]) return false;
-  delete ACTIVE_SPONSOR_ZONES[zone];
-  return true;
-}
-
 // Sync lookup — returns null when no active sponsor owns this zone.
 // Called by UnifiedAdSlot; when null the slot renders normal ad networks.
 export function getActiveSponsorForZone(zone: string): ActiveSponsorDisplay | null {

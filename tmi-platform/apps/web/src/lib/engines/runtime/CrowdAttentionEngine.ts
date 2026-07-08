@@ -15,17 +15,6 @@
 import { universalNow } from './UniversalClockRuntime';
 import { getTopBonds } from './EmotionalMemoryEngine';
 
-interface BondLike {
-  toUserId: string;
-  strength: number;
-}
-
-function isBondLike(value: unknown): value is BondLike {
-  if (!value || typeof value !== 'object') return false;
-  const candidate = value as { toUserId?: unknown; strength?: unknown };
-  return typeof candidate.toUserId === 'string' && typeof candidate.strength === 'number';
-}
-
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export type AttentionTarget =
@@ -203,7 +192,7 @@ export function focusRoomOnStage(
     alreadyScheduled.add(id);
 
     // Pull bonded neighbors into the same attention wave, slightly after
-    const bonds = getTopBonds(id, 3).filter(isBondLike);
+    const bonds = getTopBonds(id, 3);
     for (const bond of bonds) {
       const partnerId = bond.toUserId;
       if (alreadyScheduled.has(partnerId) || !avatarIds.includes(partnerId)) continue;
@@ -284,7 +273,7 @@ export function propagateAttentionContagion(
   intensity: number,
   roomAvatarIds: string[],
 ): void {
-  const bonds = getTopBonds(triggerAvatarId, 6).filter(isBondLike);
+  const bonds = getTopBonds(triggerAvatarId, 6);
   for (const bond of bonds) {
     const partnerId = bond.toUserId;
     if (!roomAvatarIds.includes(partnerId)) continue;

@@ -10,7 +10,7 @@ const QUICK_ACTIONS = [
   { label: 'Studio',       icon: '🎤', href: '/performer/studio',    color: C.fuchsia },
   { label: 'Beat Lab',     icon: '🎹', href: '/beats/upload',        color: C.accent  },
   { label: 'NFT Lab',      icon: '🖼',  href: '/nft/create',         color: C.cyan    },
-  { label: 'Media Player', icon: '📡', href: '/performer/studio',    color: '#FF4444' },
+  { label: 'Go Live',      icon: '📡', href: '/live/go-live',        color: '#FF4444' },
   { label: 'My Beats',     icon: '🎵', href: '/beats',               color: C.gold    },
   { label: 'Analytics',    icon: '📊', href: '/dashboard/artist',    color: C.green   },
   { label: 'Messages',     icon: '💬', href: '/messages',            color: C.cyan    },

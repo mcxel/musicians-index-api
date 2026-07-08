@@ -1,10 +1,10 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import type { AdminSectionId } from "@/lib/adminRouteMap";
-import Link from 'next/link';
-import AdminSecurityWall from '@/components/admin/AdminSecurityWall';
-import AdminLiveFeedExplorer from '@/components/admin/AdminLiveFeedExplorer';
+import Link from "next/link";
+import MultiRoomVideoMonitor from "@/components/media/MultiRoomVideoMonitor";
+import HomeFeedObserver from "@/components/admin/HomeFeedObserver";
+import StripeObservatoryCard from "@/components/admin/StripeObservatoryCard";
 import BetaLaunchScoreboard from "@/components/admin/BetaLaunchScoreboard";
 import OmniPresenceEngine from "@/components/admin/OmniPresenceEngine";
 
@@ -171,7 +171,6 @@ export default function ObservatoryPage() {
   const [totalUsers, setTotalUsers] = useState<number>(0);
   const [summary, setSummary] = useState<ObservatorySummary | null>(null);
   const [governorDecision, setGovernorDecision] = useState<RewardGovernorDecision | null>(null);
-  const [securitySelectedId, setSecuritySelectedId] = useState<AdminSectionId>("security");
 
   useEffect(() => {
     const id = setInterval(() => setTick(t => t + 1), 5000);
@@ -258,11 +257,11 @@ export default function ObservatoryPage() {
   const freeMembers = summary?.users.free ?? Math.max(0, totalAccounts - paidMembers);
   const liveRooms = summary?.rooms.active ?? liveSessions.length;
   const revenueToday = summary?.business.revenueToday ?? 0;
-  const revenueMonth = summary?.revenueHealth.revenueMonth ?? 0;
+  const revenueMonth = summary?.business.revenueMonth ?? 0;
   const ticketCount = summary?.commerce.tickets ?? 0;
   const sponsorCount = summary?.commerce.sponsors ?? 0;
   const trackedRooms = summary?.rooms.total ?? 0;
-  const occupancy = summary?.rooms.occupancy ?? '0%';
+  const occupancy = summary?.rooms.occupancy ?? 0;
   const tierRows = [
     {
       label: "PERFORMER",
@@ -289,7 +288,7 @@ export default function ObservatoryPage() {
             { label: "STREAMING",  value: streaming,                                   color: "#00C896" },
             { label: "LIVE SESSIONS", value: liveSessions.length,                     color: "#00FFFF" },
             { label: "ACTIVE ROOMS", value: liveRooms,                                  color: "#FF2DAA" },
-            { label: "TRACKED ROOMS", value: summary?.rooms.total ?? 0,                color: "#AA2DFF" },
+            { label: "TRACKED ROOMS", value: trackedRooms,                              color: "#AA2DFF" },
             { label: "ROOM OCCUPANCY", value: occupancy,                                color: "#FFD700" },
             { label: "CRITICAL", value: criticalStreams,                                 color: criticalStreams > 0 ? "#FF2DAA" : "#00C896" },
             { label: "REWARD PHASE", value: governorPhase.toUpperCase(),                 color: governorPhaseColor },
@@ -298,7 +297,7 @@ export default function ObservatoryPage() {
             { label: "REVENUE TODAY", value: `$${revenueToday.toFixed(2)}`,             color: "#FFD700" },
             { label: "REV THIS MONTH", value: `$${revenueMonth.toFixed(2)}`,           color: "#00FF88" },
             { label: "TICKETS", value: ticketCount,                                     color: "#FF9500" },
-            { label: "SPONSORS", value: summary?.commerce.sponsors ?? 0,                color: "#FF2DAA" },
+            { label: "SPONSORS", value: sponsorCount,                                   color: "#FF2DAA" },
             { label: "BOTS ACTIVE",value: MOCK_BOTS.length,                            color: "#00C8FF" },
             { label: "ROUTE WARNS",value: warnRoutes,                                  color: warnRoutes > 0 ? "#FFD700" : "#00C896" },
             { label: "TOP ARTIST", value: TOP10_MOCK[0]?.name ?? "—",                  color: "#FF2DAA" },
@@ -419,8 +418,17 @@ export default function ObservatoryPage() {
         {/* ── LIVE ── */}
         {tab === "live" && (
           <div>
-            <AdminLiveFeedExplorer />
-            <div style={{ marginTop: 24, background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: "12px 14px" }}>
+            <div style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.3em", color: "#00C896", marginBottom: 20 }}>
+              VIDEO COMMAND CENTER
+            </div>
+            <MultiRoomVideoMonitor
+              title="LIVE ROOMS — ALL FEEDS"
+              accentColor="#00C896"
+            />
+            <div style={{ marginTop: 32 }}>
+              <HomeFeedObserver title="HOMEPAGE FEED OBSERVER" />
+            </div>
+            <div style={{ marginTop: 20, background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: "12px 14px" }}>
               <div style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.2em", color: "#00FFFF", marginBottom: 10 }}>
                 GLOBAL LIVE SESSION HEALTH
               </div>
@@ -460,8 +468,8 @@ export default function ObservatoryPage() {
                 </div>
               )}
             </div>
-            <div style={{ marginTop: 24 }}>
-              <AdminSecurityWall selectedId={securitySelectedId} onSelect={setSecuritySelectedId} />
+            <div style={{ marginTop: 20 }}>
+              <StripeObservatoryCard />
             </div>
             <div style={{ marginTop: 24, display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(200px,1fr))", gap: 10 }}>
               {[

@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 
+const PAYPAL_HANDLE = process.env.NEXT_PUBLIC_PAYPAL_HANDLE ?? "berntmusic33";
+
 export type UserTier = "FREE" | "SILVER" | "GOLD" | "PLATINUM" | "DIAMOND";
 
 const TIER_DISCOUNTS: Record<UserTier, number> = {
@@ -56,12 +58,22 @@ export function TipButtons({ userTier = "FREE", userId, recipientId, disabled }:
     }
 
     const finalAmount = +(baseAmount * (1 - discount)).toFixed(2);
-    const amountCents = Math.round(finalAmount * 100);
 
-    window.dispatchEvent(new CustomEvent("tmi:tip", { detail: { amount: finalAmount, method: "stripe" } }));
+    fetch("/api/paypal/log", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        userId: userId ?? "anonymous",
+        amount: Math.round(finalAmount * 100),
+        recipientId,
+        type: "tip",
+      }),
+    }).catch(() => {});
+
+    window.dispatchEvent(new CustomEvent("tmi:tip", { detail: { amount: finalAmount, method: "paypal" } }));
 
     setSent(true);
-    window.location.href = `/api/stripe/checkout?priceId=price_tip_${amountCents}&amount=${amountCents}&productName=${encodeURIComponent("Tip")}&mode=payment`;
+    window.open(`https://www.paypal.com/paypalme/${PAYPAL_HANDLE}/${finalAmount}`, "_blank");
     setTimeout(() => setSent(false), 3000);
   }
 
@@ -107,7 +119,7 @@ export function TipButtons({ userTier = "FREE", userId, recipientId, disabled }:
 
       {sent && (
         <div style={{ marginTop: 10, color: "#00ff88", fontSize: 12, fontWeight: 700 }}>
-          🔥 TIP CHECKOUT STARTED — Redirecting to Stripe...
+          🔥 TIP SENT — PayPal opening...
         </div>
       )}
 

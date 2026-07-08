@@ -595,19 +595,7 @@ function DiscoveryAndCategoryRails({
   const sponsors = REAL_SPONSORS.slice(0, 4);
   const venues = topRegistry.filter((c) => /venue|arena|hall|club/i.test(c.category)).slice(0, 4);
   const diamonds = topRegistry.filter((c) => c.tier.toLowerCase() === 'diamond').slice(0, 4);
-  const liveCards = liveSessions.slice(0, 4).map((session) => {
-    const performer = getPerformerById(session.userId);
-    return {
-      id: session.userId,
-      name: performer?.name ?? session.displayName,
-      category: performer?.category ?? session.category,
-      profileHref: performer?.profileRoute ?? `/performers/${encodeURIComponent(session.userId)}`,
-      profileImageUrl: performer?.profileImageUrl || session.thumbnailUrl || '/images/tmi-placeholder.jpg',
-      introVideoUrl: performer?.introVideoUrl,
-      motionPosterUrl: performer?.motionPosterUrl,
-      isLive: true,
-    };
-  });
+  const liveCards = topRegistry.filter((c) => c.isLive).slice(0, 4);
   const trendingCards = topRegistry.slice(0, 4);
 
   // New performers: last 6 in registry (simplest proxy until real signup date sorting exists)
@@ -875,8 +863,6 @@ export default function Home12Page() {
   const latestNews = getLatestEditorialArticles(5);
   const tickerStr = latestNews.map((article) => `[${article.category.toUpperCase()}] ${article.headline}`).join('  ⚡  ');
 
-  const liveSessionByUserId = new Map(liveSessions.map((session) => [session.userId, session]));
-
   const topRegistry = getTopPerformers(100).map((performer, index): BillboardCard => ({
     id: performer.id,
     name: performer.name,
@@ -892,19 +878,14 @@ export default function Home12Page() {
     battlesWon: null,
     cyphersWon: null,
     achievements: performer.achievementIds?.length ?? null,
-    isLive: liveSessionByUserId.has(performer.id),
+    isLive: performer.isLive,
     tier: performer.tier,
     profileHref: `/performers/${encodeURIComponent(performer.slug)}`,
     introVideoUrl: performer.introVideoUrl,
     motionPosterUrl: performer.motionPosterUrl,
   }));
 
-  const trendingPerformers = items
-    .map((item) => ({
-      ...item,
-      isLive: liveSessionByUserId.has(item.id),
-    }))
-    .filter((item) => !currentCategory || item.category.toLowerCase().includes(currentCategory.toLowerCase()));
+  const trendingPerformers = items.filter((item) => !currentCategory || item.category.toLowerCase().includes(currentCategory.toLowerCase()));
 
   const genreBoards: BoardView[] = GENRE_FILTERS.map((label) => ({
     label,

@@ -66,22 +66,11 @@ export default function SeatingPage() {
     if (selectedSeats.length === 0 || checkingOut) return;
     setCheckingOut(true);
     try {
-      const tierOrder: SeatTier[] = ['vip', 'premium', 'standard'];
-      const primarySeat = selectedSeats
-        .slice()
-        .sort((a, b) => tierOrder.indexOf(a.tier) - tierOrder.indexOf(b.tier))[0];
-      const tier = (primarySeat?.tier ?? 'standard').toUpperCase();
-      const averageFaceValue = Math.max(1, Math.round(totalPrice / selectedSeats.length));
-
-      const res = await fetch('/api/tickets/purchase', {
+      const res = await fetch('/api/tickets/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          eventSlug: 'seating-event',
-          venueSlug: 'tmi-platform',
-          tier,
-          quantity: selectedSeats.length,
-          faceValue: averageFaceValue,
+          seats: selectedSeats.map(s => ({ id: s.id, tier: s.tier, price: s.price })),
         }),
       });
       const data = await res.json() as { url?: string; error?: string };

@@ -29,15 +29,15 @@ export const ADMIN_ROLES: TMIRole[]    = ["ADMIN", "STAFF"];
 
 /** Dashboard route for each role */
 export const ROLE_DASHBOARD: Record<TMIRoleLower, string> = {
-  fan:        "/hub/fan",
-  performer:  "/hub/performer",
-  artist:     "/hub/performer",
-  producer:   "/hub/producer",
-  sponsor:    "/hub/sponsor",
-  advertiser: "/hub/advertiser",
-  venue:      "/hub/venue",
-  promoter:   "/hub/fan",
-  writer:     "/hub/writer",
+  fan:        "/dashboard/fan",
+  performer:  "/dashboard/performer",
+  artist:     "/dashboard/artist",
+  producer:   "/dashboard/producer",
+  sponsor:    "/dashboard/sponsor",
+  advertiser: "/dashboard/advertiser",
+  venue:      "/dashboard/venue",
+  promoter:   "/dashboard/fan",
+  writer:     "/dashboard/writer",
   admin:      "/admin",
   staff:      "/admin",
 };

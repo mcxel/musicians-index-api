@@ -2,7 +2,6 @@
 
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback, ReactNode } from 'react'
 import { logger } from '@/lib/logger'
-import { useAudioConductor } from '@/lib/audio/AudioConductor'
 
 interface AudioTrack {
   id: string
@@ -47,8 +46,6 @@ interface AudioProviderProps {
 }
 
 export default function AudioProvider({ children }: AudioProviderProps) {
-  useAudioConductor()
-
   const [currentTrack, setCurrentTrack] = useState<AudioTrack | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)

@@ -44,8 +44,16 @@ export default function BillboardLobbyWallPage() {
   const [filter, setFilter] = useState<Filter>('ALL');
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
   const [justJoined, setJustJoined] = useState<number | null>(null);
-  const [viewerCounts] = useState<number[]>(() => ALL_ROOMS.map(() => 0));
+  const [viewerCounts, setViewerCounts] = useState<number[]>(() => ALL_ROOMS.map(r => r.viewers));
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Tick viewer counts every 3s
+  useEffect(() => {
+    const id = setInterval(() => {
+      setViewerCounts(prev => prev.map((v) => Math.max(5, v + Math.floor((Math.random() - 0.38) * 22))));
+    }, 3000);
+    return () => clearInterval(id);
+  }, []);
 
   // Flash "JUST JOINED" every 8s on a random slot
   useEffect(() => {

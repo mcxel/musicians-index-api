@@ -2,12 +2,10 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 
 const DISMISSED_KEY = 'tmi-beta-banner-dismissed';
 
 export default function BetaModeBanner() {
-  const pathname = usePathname();
   const [expanded, setExpanded] = useState(false);
   const [dismissed, setDismissed] = useState(true); // hidden until hydrated
   const bannerRef = useRef<HTMLDivElement>(null);
@@ -39,8 +37,6 @@ export default function BetaModeBanner() {
   }
 
   if (dismissed) return null;
-  // WorkspaceShell preview routes are a self-contained broadcast-OS sandbox.
-  if (pathname?.startsWith('/preview/')) return null;
 
   return (
     <div ref={bannerRef} style={{

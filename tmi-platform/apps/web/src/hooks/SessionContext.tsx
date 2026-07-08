@@ -21,8 +21,6 @@ export interface UserEconomy {
 interface SessionContextType {
   userId: string;
   userName: string;
-  userRole: string;
-  userTier: string;
   styleConfig: UserStyleConfig;
   economyState: UserEconomy;
   updateUserColors: (primary: string, secondary: string) => void;
@@ -42,16 +40,12 @@ type MeResponse = {
 
 const FALLBACK_USER_ID = "guest_user";
 const FALLBACK_USER_NAME = "Guest";
-const FALLBACK_USER_ROLE = "fan";
-const FALLBACK_USER_TIER = "FREE";
 
 export const SessionContext = createContext<SessionContextType | undefined>(undefined);
 
 export function TmiSessionProvider({ children }: { children: React.ReactNode }) {
   const [userId, setUserId] = useState(FALLBACK_USER_ID);
   const [userName, setUserName] = useState(FALLBACK_USER_NAME);
-  const [userRole, setUserRole] = useState(FALLBACK_USER_ROLE);
-  const [userTier, setUserTier] = useState(FALLBACK_USER_TIER);
 
   const [styleConfig, setStyleConfig] = useState<UserStyleConfig>({
     userId: FALLBACK_USER_ID,
@@ -86,13 +80,9 @@ export function TmiSessionProvider({ children }: { children: React.ReactNode }) 
 
         const nextUserId = data.user.id;
         const nextUserName = data.user.name?.trim() || FALLBACK_USER_NAME;
-        const nextUserRole = data.user.role?.trim() || FALLBACK_USER_ROLE;
-        const nextUserTier = data.user.tier?.trim() || FALLBACK_USER_TIER;
 
         setUserId(nextUserId);
         setUserName(nextUserName);
-        setUserRole(nextUserRole);
-        setUserTier(nextUserTier);
         setStyleConfig((prev) => ({ ...prev, userId: nextUserId }));
         setEconomyState((prev) => ({ ...prev, userId: nextUserId }));
       } catch {
@@ -118,8 +108,6 @@ export function TmiSessionProvider({ children }: { children: React.ReactNode }) 
     <SessionContext.Provider value={{
       userId,
       userName,
-      userRole,
-      userTier,
       styleConfig,
       economyState,
       updateUserColors,

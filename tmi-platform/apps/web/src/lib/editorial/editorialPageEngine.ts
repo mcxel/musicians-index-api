@@ -1,6 +1,5 @@
 // Editorial page engine — template resolution and body slicing authority.
 import type { ArticleTemplate, ArticleCategory } from "./NewsArticleModel";
-import type { ArticleBlock } from "@/lib/magazine/magazineIssueData";
 
 export function resolveTemplate(
   category: ArticleCategory,
@@ -29,15 +28,15 @@ export function getTemplateLabel(template: ArticleTemplate): string {
 }
 
 export function sliceBodyParagraphs(
-  body: ArticleBlock[],
+  body: string[],
   midPoint?: number
-): { above: ArticleBlock[]; below: ArticleBlock[] } {
+): { above: string[]; below: string[] } {
   const mid = midPoint ?? Math.ceil(body.length / 2);
   return { above: body.slice(0, mid), below: body.slice(mid) };
 }
 
-export function buildReadTime(body: ArticleBlock[]): string {
-  const words = body.map((block) => block.text ?? "").join(" ").split(/\s+/).filter(Boolean).length;
+export function buildReadTime(body: string[]): string {
+  const words = body.join(" ").split(/\s+/).length;
   const minutes = Math.max(1, Math.round(words / 200));
   return `${minutes} min read`;
 }

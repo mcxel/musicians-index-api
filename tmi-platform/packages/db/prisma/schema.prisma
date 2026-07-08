@@ -338,22 +338,17 @@ model Price {
 }
 
 model Subscription {
-  id                  String             @id @map("id") // Stripe Subscription ID
-  userId              String             @unique
-  user                User               @relation("UserSubscriptions", fields: [userId], references: [id])
-  status              SubscriptionStatus
-  metadata            Json?
-  priceId             String             @map("price_id")
-  price               Price              @relation("PriceSubscriptions", fields: [priceId], references: [id])
-  cancelAtPeriodEnd   Boolean            @map("cancel_at_period_end")
-  created             DateTime
-  currentPeriodStart  DateTime           @map("current_period_start")
-  currentPeriodEnd    DateTime           @map("current_period_end")
-  // Revenue Resilience: reconciliation health tracking. `id` is already the
-  // Stripe subscription ID and `status` already mirrors Stripe's status —
-  // do not add a redundant stripeStatus field (Rule 8).
-  paymentFailureCount Int                @default(0) @map("payment_failure_count")
-  lastPaymentAttempt  DateTime?          @map("last_payment_attempt")
+  id                 String             @id @map("id") // Stripe Subscription ID
+  userId             String             @unique
+  user               User               @relation("UserSubscriptions", fields: [userId], references: [id])
+  status             SubscriptionStatus
+  metadata           Json?
+  priceId            String             @map("price_id")
+  price              Price              @relation("PriceSubscriptions", fields: [priceId], references: [id])
+  cancelAtPeriodEnd  Boolean            @map("cancel_at_period_end")
+  created            DateTime
+  currentPeriodStart DateTime           @map("current_period_start")
+  currentPeriodEnd   DateTime           @map("current_period_end")
 }
 
 // ==============================================================================
@@ -634,30 +629,6 @@ model CheckIn {
 }
 
 // ======================================================================
-// SUBMISSIONS (Stream & Win Radio pipeline — replaces in-memory Map
-// in SubmissionEngine.ts so submit/approve/rotate survive server restarts)
-// ======================================================================
-
-model Submission {
-  id           String   @id @default(cuid())
-  submitterId  String
-  title        String
-  type         String   // SubmissionType: track|video|beat|cypher|battle|comedy|dance|show
-  status       String   @default("pending") // SubmissionStatus: pending|approved|rejected|live|expired
-  url          String
-  genre        String   @default("General")
-  description  String   @default("")
-  bpm          Int?
-  tags         String[] @default([])
-  shareUrl     String
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  @@index([submitterId])
-  @@index([status])
-}
-
-// ======================================================================
 // PERSONAL NOTES (NotesWorkspace backend — real per-user persistence)
 // ======================================================================
 
@@ -690,39 +661,6 @@ model EventInventory {
   issued    Int      @default(0)
 
   @@index([key])
-}
-
-// ======================================================================
-// VENUE TICKET RECORDS (replaces in-memory Map in ticketCore.ts so
-// venue-branded/printed/NFT tickets and their scan ledger survive
-// server restarts and work across multi-instance deployments)
-// ======================================================================
-
-model VenueTicketRecord {
-  id            String    @id
-  ownerId       String
-  orderId       String?
-  template      Json
-  branding      Json
-  barcode       Json
-  seat          Json
-  outputFormats String[]
-  redeemed      Boolean   @default(false)
-  mintedAt      DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-
-  @@index([ownerId])
-}
-
-model VenueTicketScan {
-  id        String   @id @default(cuid())
-  ticketId  String
-  scannedAt DateTime @default(now())
-  gate      String
-  status    String // "allowed" | "denied"
-  reason    String?
-
-  @@index([ticketId])
 }
 
 // ======================================================================

@@ -24,6 +24,7 @@
 
 import { memo, useEffect, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { LobbyEntryFlow, type UniversalRoom } from '@/components/room/UniversalLobbyEntry';
 import { getCrownHolder, getPerformerById, getPerformersByCategory, getFeaturedFreePerformers, getTopPerformers, PERFORMER_REGISTRY, type PerformerCategory, type PerformerIdentity } from '@/lib/performers/PerformerRegistry';
 import { getVenueBookingSlots, type VenueBookingSlot } from '@/lib/venues/VenueRegistry';
@@ -404,23 +405,23 @@ const OrbitCard = memo(function OrbitCard({
           )}
 
           {hasImage ? (
-            /* CSS background-image avoids GPU compositor failure inside 3D-transformed containers on iOS/Android */
-            <div
+            <Image
               data-testid="home1-orbit-image"
-              role="img"
-              aria-label={performer.name}
+              src={String(rawAvatar ?? '/images/tmi-placeholder.jpg')}
+              alt={performer.name}
+              unoptimized
+              width={Math.round(cardSize * 0.62)}
+              height={Math.round(cardSize * 0.72)}
+              onError={() => onImageError(performer.slug)}
               style={{
                 width: cardSize * 0.62,
                 height: cardSize * 0.72,
                 borderRadius: 6,
+                objectFit: 'cover',
                 marginBottom: 4,
                 border: `1px solid ${accentColor}55`,
                 zIndex: 1,
-                backgroundImage: `url(${String(rawAvatar ?? '/images/tmi-placeholder.jpg')})`,
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
-                backgroundRepeat: 'no-repeat',
-                backgroundColor: 'rgba(255,255,255,0.05)',
+                background: 'rgba(255,255,255,0.05)',
               }}
             />
           ) : (
@@ -686,68 +687,18 @@ export default function Home1CoverPage() {
     };
   }, []);
 
-  // Real liveness from GlobalLiveSessionRegistry.
-  // Two layers: same-process subscription (onSessionsChanged) for immediate
-  // optimistic updates when the current user goes live, plus a 10s API poll
-  // so sessions started by OTHER users on other devices/tabs always appear.
+  // Real liveness from GlobalLiveSessionRegistry — subscribe to changes rather than polling.
+  // Carry full session metadata (roomId, viewerCount, category, title) for future enhancements
+  // like "🔴 LIVE 42 viewers Battle Thunder Dome" orbit badges.
   const [livePerformers, setLivePerformers] = useState<LiveSession[]>([]);
-
   useEffect(() => {
+    // Get initial state
     setLivePerformers(getActiveSessions());
+    // Subscribe to live session changes
     const unsubscribe = onSessionsChanged((sessions) => {
       setLivePerformers(sessions);
     });
     return () => unsubscribe();
-  }, []);
-
-  useEffect(() => {
-    type ApiRoom = {
-      userId: string; displayName?: string; title?: string; category?: string;
-      roomId?: string; accentColor?: string; viewerCount?: number; thumbnailUrl?: string | null;
-    };
-    let cancelled = false;
-    const poll = async () => {
-      try {
-        const res = await fetch('/api/homepage/live?limit=20', { cache: 'no-store' });
-        if (!res.ok || cancelled) return;
-        const data = await res.json() as { rooms?: ApiRoom[] };
-        if (cancelled) return;
-        const rooms = data.rooms ?? [];
-        const now = Date.now();
-        setLivePerformers(rooms.map((r): LiveSession => ({
-          userId:               r.userId,
-          displayName:          r.displayName ?? r.userId,
-          avatarUrl:            null,
-          performerTier:        "free",
-          title:                r.title ?? `${r.displayName ?? r.userId} — Live`,
-          category:             (r.category as LiveSession["category"]) ?? "live",
-          roomId:               r.roomId ?? `room-${r.userId}`,
-          previewUrl:           null,
-          thumbnailUrl:         r.thumbnailUrl ?? null,
-          stageState:           "live",
-          streamHealth:         "unknown",
-          viewerCount:          r.viewerCount ?? 0,
-          tipTotal:             0,
-          privacy:              "PUBLIC",
-          entryPriceUsd:        null,
-          accentColor:          r.accentColor ?? "#00C8FF",
-          startedAt:            now,
-          lastPingAt:           now,
-          bitrateKbps:          0,
-          droppedFramesPct:     0,
-          rttMs:                0,
-          audioOk:              true,
-          audienceCountries:    [],
-          recentAudienceEntries:[],
-          lastAudienceEntryAt:  null,
-        })));
-      } catch {
-        // keep stale data on error
-      }
-    };
-    void poll();
-    const id = setInterval(() => void poll(), 10_000);
-    return () => { cancelled = true; clearInterval(id); };
   }, []);
 
   // Crown holder always comes from the PerformerRegistry — the real global #1 by XP.

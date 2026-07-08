@@ -188,9 +188,7 @@ export default async function ArticlePage({ params }: { params: { slug: string }
   const heroColor = editorial?.heroColor ?? local?.heroColor ?? '#1a0a2e';
   const accent = editorial?.accentColor ?? local?.heroColor ?? '#00FFFF';
   const tags = editorial?.tags ?? local?.tags ?? [];
-  const paragraphs: string[] = editorial?.body
-    ? editorial.body.map((block) => block.text).filter((text): text is string => Boolean(text))
-    : local?.body ?? [];
+  const paragraphs: string[] = editorial?.body ?? local?.body ?? [];
 
   // Remote-specific
   const remoteContent = remote ? normalizeJsonContent(remote.content) : null;

@@ -9,12 +9,6 @@ type LiveApiEntry = {
   genre: string;
   viewerCount: number;
   roomId?: string;
-  avatarUrl?: string;
-  isBot?: boolean;
-  isJoinable?: boolean;
-  status?: 'live' | 'starting';
-  competitiveLifecycleState?: 'preparing' | 'waiting_for_contender' | 'opponent_joined' | 'vs_animation' | 'countdown' | 'live' | 'winner_results' | 'replay' | 'archive' | null;
-  privacy?: 'PUBLIC' | 'PAID_ENTRY' | 'INVITE_ONLY';
 };
 
 function toRoom(entry: LiveApiEntry): LobbyRoom {
@@ -26,12 +20,7 @@ function toRoom(entry: LiveApiEntry): LobbyRoom {
     type: 'battle',
     href: `/live/rooms/${resolvedRoomId}`,
     viewerCount: entry.viewerCount,
-    status: entry.status === 'starting' ? 'starting' : 'live',
-    avatarUrl: entry.avatarUrl,
-    isBot: entry.isBot === true,
-    isJoinable: entry.isJoinable !== false,
-    visibility: entry.privacy === 'PUBLIC' ? 'public' : 'private',
-    competitiveLifecycleState: entry.competitiveLifecycleState ?? null,
+    status: 'live',
     genre: entry.genre,
   };
 }
@@ -41,27 +30,20 @@ export default function BattlesLobbyWallPage() {
 
   useEffect(() => {
     let cancelled = false;
-    let pollMs = 5000;
     const load = async () => {
       try {
-        const res = await fetch('/api/live/go?wall=battle&includeBots=1', { cache: 'no-store', credentials: 'include' });
-        const data = await res.json() as { live?: LiveApiEntry[]; config?: { rotationIntervalSeconds?: number } };
+        const res = await fetch('/api/live/go?wall=battle', { cache: 'no-store', credentials: 'include' });
+        const data = await res.json() as { live?: LiveApiEntry[] };
         if (!cancelled) setRooms((data.live ?? []).map(toRoom));
-        const seconds = data.config?.rotationIntervalSeconds;
-        if (typeof seconds === 'number' && Number.isFinite(seconds)) {
-          pollMs = Math.max(5000, Math.round(seconds * 1000));
-        }
       } catch {
         if (!cancelled) setRooms([]);
-      } finally {
-        if (!cancelled) {
-          setTimeout(load, pollMs);
-        }
       }
     };
     void load();
+    const id = setInterval(load, 5000);
     return () => {
       cancelled = true;
+      clearInterval(id);
     };
   }, []);
 

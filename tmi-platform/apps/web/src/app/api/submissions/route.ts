@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
     ? (type as SubmissionType)
     : 'track';
 
-  const result = await createSubmission({
+  const result = createSubmission({
     submitterId,
     title,
     type: safeType,
@@ -106,7 +106,7 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const id = searchParams.get('id');
   if (id) {
-    const submission = await getSubmission(id);
+    const submission = getSubmission(id);
     if (!submission) {
       return NextResponse.json({ error: 'not_found' }, { status: 404 });
     }
@@ -124,7 +124,7 @@ export async function GET(req: NextRequest) {
   }
 
   const submissions = publicFeed
-    ? await listSubmissions({ status, type, limit })
-    : await listSubmissions({ submitterId, status, type, limit });
+    ? listSubmissions({ status, type, limit })
+    : listSubmissions({ submitterId, status, type, limit });
   return NextResponse.json({ submissions });
 }

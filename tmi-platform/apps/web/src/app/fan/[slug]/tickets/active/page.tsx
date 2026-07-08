@@ -2,9 +2,9 @@ import Link from "next/link";
 import { getOwnedTickets } from "@/lib/tickets/ticketEngine";
 import TicketPrintEngine from "@/components/venues/TicketPrintEngine";
 
-export default async function FanActiveTicketsPage({ params }: { params: { slug: string } }) {
+export default function FanActiveTicketsPage({ params }: { params: { slug: string } }) {
   const { slug } = params;
-  const allTickets = await getOwnedTickets(slug);
+  const allTickets = getOwnedTickets(slug);
   const active = allTickets.filter((t) => !t.redeemed);
 
   return (

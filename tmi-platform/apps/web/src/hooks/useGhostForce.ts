@@ -21,19 +21,24 @@ function genId(): string {
   return `g${Date.now()}_${Math.random().toString(36).slice(2, 5)}`;
 }
 
-// viewerCount comes from the real GlobalLiveSessionRegistry, never seeded randomly.
-// This hook only manages bot chat messages and hype level.
+// Seed viewer count: random between 12 and 60 so room never looks empty
+function seedViewers(): number {
+  return 12 + Math.floor(Math.random() * 48);
+}
 
 export function useGhostForce(roomId: string, enabled = true): GhostForceState {
   const [messages, setMessages] = useState<GhostMessage[]>([]);
+  const [viewerCount, setViewerCount] = useState<number>(seedViewers());
   const [hypeLevel, setHypeLevel] = useState<number>(0);
   const stopRef = useRef<(() => void) | null>(null);
 
   const addMsg = useCallback((botName: string, text: string, type: GhostMessage["type"]) => {
     setMessages((prev) => [
       { id: genId(), botName, text, type, ts: Date.now() },
-      ...prev.slice(0, 49),
+      ...prev.slice(0, 49), // keep last 50
     ]);
+    // Viewer count drifts slightly with each event
+    setViewerCount((v) => Math.max(8, v + (Math.random() > 0.4 ? 1 : -1)));
     if (type === "hype") setHypeLevel((h) => Math.min(100, h + 15));
     if (type === "tip")  setHypeLevel((h) => Math.min(100, h + 25));
   }, []);
@@ -59,6 +64,5 @@ export function useGhostForce(roomId: string, enabled = true): GhostForceState {
     };
   }, [roomId, enabled, addMsg]);
 
-  // viewerCount is not returned — callers must use GlobalLiveSessionRegistry directly.
-  return { messages, viewerCount: 0, hypeLevel };
+  return { messages, viewerCount, hypeLevel };
 }

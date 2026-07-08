@@ -40,7 +40,7 @@ export default function ConductorDeck({ roomId = "stage", onSpotlightSnap, onEne
   const [isOpen, setIsOpen] = useState(false);
   const [telemetry, setTelemetry] = useState<CrowdTelemetry>({
     energyScore:  45,
-    viewerCount:  0,
+    viewerCount:  1240,
     reactionRate: 12,
     vibeState:    "WARMING",
   });
@@ -58,7 +58,7 @@ export default function ConductorDeck({ roomId = "stage", onSpotlightSnap, onEne
         const vrate  = Math.max(0, prev.reactionRate + (Math.random() - 0.5) * 4);
         return {
           energyScore:  score,
-          viewerCount:  prev.viewerCount,
+          viewerCount:  prev.viewerCount + Math.floor((Math.random() - 0.45) * 5),
           reactionRate: Math.round(vrate),
           vibeState:    vibeFromScore(score),
         };

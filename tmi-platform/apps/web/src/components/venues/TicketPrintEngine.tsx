@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { printTicket, verifyTicket } from "@/lib/tickets/ticketEngine";
 import type { TicketRecord } from "@/lib/tickets/ticketCore";
 
 type TicketPrintEngineProps = {
@@ -12,20 +13,16 @@ export default function TicketPrintEngine({ ticket, onPrinted }: TicketPrintEngi
   const [printed, setPrinted] = useState(false);
   const [verified, setVerified] = useState<{ valid: boolean; reason?: string } | null>(null);
 
-  async function handlePrint() {
-    try {
-      const res = await fetch(`/api/tickets/${encodeURIComponent(ticket.id)}/print`);
-      if (res.ok) {
-        setPrinted(true);
-        onPrinted?.();
-      }
-    } catch {
-      // Non-fatal — leave printed state unset so the button can be retried.
-    }
+  function handlePrint() {
+    printTicket(ticket.id);
+    setPrinted(true);
+    onPrinted?.();
   }
 
   function handleVerify() {
+    const result = verifyTicket(ticket.id);
     setVerified({ valid: !ticket.redeemed, reason: ticket.redeemed ? "already_redeemed" : undefined });
+    void result;
   }
 
   const tierColor: Record<string, string> = {

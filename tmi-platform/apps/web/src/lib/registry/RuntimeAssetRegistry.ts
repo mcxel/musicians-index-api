@@ -41,13 +41,6 @@ export interface RegistryStats {
 const MAX_REGISTRY = 10_000;
 
 const registry = new Map<string, RuntimeAsset>();
-
-/**
- * Loose asset cache for CompositorEngine — stores pre-registry metadata
- * that doesn't conform to the strict RuntimeAsset shape. Separate from
- * the canonical `registry` map so the typed registry stays clean.
- */
-export const loadedAssets = new Map<string, Record<string, unknown>>();
 type RegistryListener = (asset: RuntimeAsset) => void;
 const listeners = new Set<RegistryListener>();
 let registryVersion = 0;

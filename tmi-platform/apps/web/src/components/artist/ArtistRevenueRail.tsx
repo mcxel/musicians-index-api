@@ -77,33 +77,6 @@ export default function ArtistRevenueRail() {
       <div style={{ fontSize: 8, fontWeight: 800, letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(255,255,255,0.3)", marginBottom: 10 }}>
         RECENT PAYOUTS
       </div>
-      {/* Instant payout messaging — locked language 2026-06-30 */}
-      <div style={{
-        display: "flex", alignItems: "center", gap: 10,
-        padding: "10px 14px", borderRadius: 8, marginBottom: 12,
-        background: "rgba(0,255,136,0.06)",
-        border: "1px solid rgba(0,255,136,0.2)",
-      }}>
-        <span style={{ fontSize: 16 }}>⚡</span>
-        <div>
-          <div style={{ fontSize: 10, fontWeight: 800, color: "#00FF88", letterSpacing: "0.05em" }}>
-            Fast Payouts Available
-          </div>
-          <div style={{ fontSize: 9, color: "rgba(255,255,255,0.5)", marginTop: 2, lineHeight: 1.4 }}>
-            Complete payout account setup to enable fast transfers (where eligible). Tips, tickets, merch, bookings, and live earnings flow into your creator balance.
-          </div>
-        </div>
-        <button style={{
-          marginLeft: "auto", flexShrink: 0,
-          background: "rgba(0,255,136,0.12)", border: "1px solid rgba(0,255,136,0.3)",
-          color: "#00FF88", borderRadius: 6, padding: "4px 10px",
-          fontSize: 8, fontWeight: 900, cursor: "pointer", letterSpacing: "0.08em",
-          whiteSpace: "nowrap",
-        }}>
-          SET UP →
-        </button>
-      </div>
-
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
         {RECENT_PAYOUTS.map((payout, i) => (
           <motion.div

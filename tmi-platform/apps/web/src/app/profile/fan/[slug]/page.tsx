@@ -154,16 +154,6 @@ export default async function FanProfilePage({ params }: Props) {
               🎥 Video Chat
             </Link>
             <Link
-              href={`/fan/${params.slug}/studio`}
-              style={{
-                padding: "10px 22px", borderRadius: 24, fontSize: 12, fontWeight: 800,
-                background: "rgba(255,215,0,0.1)", border: "1px solid rgba(255,215,0,0.3)",
-                color: "#FFD700", textDecoration: "none", letterSpacing: "0.05em",
-              }}
-            >
-              ✨ Retro-Vision Studio
-            </Link>
-            <Link
               href="/rooms/world-dance-party"
               style={{
                 padding: "10px 22px", borderRadius: 24, fontSize: 12, fontWeight: 800,

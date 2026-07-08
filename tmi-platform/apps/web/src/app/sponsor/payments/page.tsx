@@ -8,7 +8,7 @@ const PACKAGES = [
     id: "RUBY",
     name: "RUBY Sponsor",
     price: "$99 / mo",
-    productKey: "SPONSOR_HOMEPAGE_BANNER",
+    priceId: "price_sponsor_RUBY",
     color: "#CD7F32",
     perks: ["Logo on 5 live rooms/mo", "1 sponsored contest", "Basic analytics"],
   },
@@ -16,7 +16,7 @@ const PACKAGES = [
     id: "silver",
     name: "Silver Sponsor",
     price: "$299 / mo",
-    productKey: "SPONSOR_CONTEST",
+    priceId: "price_sponsor_silver",
     color: "#C0C0C0",
     perks: ["Logo on 20 live rooms/mo", "3 sponsored contests", "Jumbotron placements", "Full analytics"],
     featured: true,
@@ -25,7 +25,7 @@ const PACKAGES = [
     id: "gold",
     name: "Gold Sponsor",
     price: "$599 / mo",
-    productKey: "SPONSOR_CHAMPIONSHIP",
+    priceId: "price_sponsor_gold",
     color: "#FFD700",
     perks: ["Unlimited room logo", "10 sponsored contests", "Homepage halo ad", "Priority billboard slots", "Dedicated account manager"],
   },
@@ -35,11 +35,27 @@ export default function SponsorPaymentsPage() {
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const handleCheckout = async (productKey: string, pkgId: string) => {
+  const handleCheckout = async (priceId: string, pkgId: string) => {
     setLoading(pkgId);
     setError(null);
     try {
-      window.location.href = `/api/stripe/checkout?product=${encodeURIComponent(productKey)}&mode=payment`;
+      const res = await fetch("/api/stripe/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          items: [{ priceId, quantity: 1 }],
+          successUrl: "/sponsor/payments?success=1",
+          cancelUrl: "/sponsor/payments?cancelled=1",
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json() as { error?: string };
+        setError(err.error ?? "Checkout failed. Please try again.");
+        return;
+      }
+      const data = await res.json() as { url?: string };
+      if (data.url) window.location.href = data.url;
     } catch {
       setError("Network error. Please try again.");
     } finally {
@@ -90,7 +106,7 @@ export default function SponsorPaymentsPage() {
               ))}
             </ul>
             <button
-              onClick={() => void handleCheckout(pkg.productKey, pkg.id)}
+              onClick={() => void handleCheckout(pkg.priceId, pkg.id)}
               disabled={loading !== null}
               style={{
                 width: "100%",

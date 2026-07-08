@@ -1,66 +1,55 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { getUserByEmail } from '@/lib/auth/UserStore';
+import { messageThreadEngine } from '@/lib/messaging';
 
-async function getUserId(req: NextRequest): Promise<string | null> {
-  const email = req.cookies.get('tmi_user_email')?.value;
-  if (email) {
-    const u = await prisma.user.findUnique({ where: { email }, select: { id: true, displayName: true } }).catch(() => null);
-    if (u?.id) return u.id;
-  }
-  return req.cookies.get('tmi_session_id')?.value ?? null;
+async function getUserFromRequest(req: NextRequest) {
+  const email = req.cookies.get('tmi_user_email')?.value ?? '';
+  if (!email) return null;
+  return getUserByEmail(email);
 }
 
 export async function GET(req: NextRequest) {
-  const userId = await getUserId(req);
-  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const user = await getUserFromRequest(req);
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const conversations = await prisma.conversation.findMany({
-    where: { participantIds: { has: userId }, isArchived: false },
-    include: {
-      messages: {
-        where: { isDeleted: false },
-        orderBy: { createdAt: 'desc' },
-        take: 1,
-      },
-    },
-    orderBy: { updatedAt: 'desc' },
-    take: 50,
-  });
-
-  const threads = conversations.map((c) => {
-    const last = c.messages[0] ?? null;
-    const unread = 0; // without full message list we skip unread count here
-    return {
-      threadId: c.id,
-      kind: c.kind,
-      participantIds: c.participantIds,
-      lastMessage: last
+  const threads = messageThreadEngine.getUserThreads(user.id);
+  return NextResponse.json({
+    threads: threads.map(t => ({
+      threadId: t.threadId,
+      kind: t.kind,
+      participants: t.participants.map(p => ({
+        userId: p.userId,
+        displayName: p.displayName,
+        avatarUrl: p.avatarUrl,
+        role: p.role,
+      })),
+      lastMessage: t.lastMessage
         ? {
-            messageId: last.id,
-            senderId: last.senderId,
-            senderName: last.senderName,
-            body: last.body,
-            type: last.messageType,
-            createdAt: last.createdAt.getTime(),
+            messageId: t.lastMessage.messageId,
+            senderId: t.lastMessage.senderId,
+            senderName: t.lastMessage.senderName,
+            body: t.lastMessage.body,
+            type: t.lastMessage.type,
+            createdAt: t.lastMessage.createdAt,
           }
         : null,
-      unreadCount: unread,
-      createdAt: c.createdAt.getTime(),
-      updatedAt: c.updatedAt.getTime(),
-    };
+      unreadCount: t.messages.filter(m => !m.readBy.has(user.id) && m.senderId !== user.id).length,
+      createdAt: t.createdAt,
+      updatedAt: t.updatedAt,
+    })),
+    unreadTotal: messageThreadEngine.getUnreadCount(user.id),
   });
-
-  return NextResponse.json({ threads, unreadTotal: 0 });
 }
 
 export async function POST(req: NextRequest) {
-  const userId = await getUserId(req);
-  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const user = await getUserFromRequest(req);
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const body = await req.json() as {
     recipientId: string;
-    recipientName?: string;
+    recipientName: string;
+    recipientRole?: string;
     body: string;
     kind?: string;
   };
@@ -69,49 +58,32 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'recipientId and body required' }, { status: 400 });
   }
 
-  const kind = body.kind ?? 'fan-fan';
-  const participants = [userId, body.recipientId].sort();
+  const myParticipant = {
+    userId: user.id,
+    displayName: user.displayName,
+    avatarUrl: '',
+    role: (user.role as 'fan' | 'artist' | 'sponsor' | 'admin') ?? 'fan',
+  };
+  const recipientParticipant = {
+    userId: body.recipientId,
+    displayName: body.recipientName,
+    avatarUrl: '',
+    role: (body.recipientRole as 'fan' | 'artist' | 'sponsor' | 'admin') ?? 'fan',
+  };
 
-  // Find or create 1:1 conversation
-  let conversation = await prisma.conversation.findFirst({
-    where: {
-      kind,
-      participantIds: { hasEvery: participants },
-    },
-  });
+  const kind = (body.kind as 'fan-fan' | 'fan-artist' | 'artist-artist' | 'sponsor-artist' | 'support') ?? 'fan-fan';
+  const thread = messageThreadEngine.getOrCreateThread(myParticipant, recipientParticipant, kind);
 
-  if (!conversation) {
-    conversation = await prisma.conversation.create({
-      data: {
-        kind,
-        participantIds: participants,
-      },
-    });
-  }
-
-  const userRecord = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { displayName: true },
-  }).catch(() => null);
-
-  const message = await prisma.message.create({
-    data: {
-      conversationId: conversation.id,
-      senderId: userId,
-      senderName: userRecord?.displayName ?? 'User',
-      body: body.body.trim(),
-      messageType: 'text',
-      readByIds: [userId],
-    },
-  });
-
-  await prisma.conversation.update({
-    where: { id: conversation.id },
-    data: { updatedAt: new Date() },
+  const message = messageThreadEngine.sendMessage({
+    threadId: thread.threadId,
+    senderId: user.id,
+    senderName: user.displayName,
+    body: body.body.trim(),
+    type: 'text',
   });
 
   return NextResponse.json({
-    threadId: conversation.id,
-    message: { messageId: message.id, body: message.body, createdAt: message.createdAt.getTime() },
+    threadId: thread.threadId,
+    message: message ? { messageId: message.messageId, body: message.body, createdAt: message.createdAt } : null,
   });
 }

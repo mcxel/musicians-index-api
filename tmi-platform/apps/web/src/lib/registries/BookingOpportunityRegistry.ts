@@ -10,21 +10,6 @@ import prisma from '@/lib/prisma';
 
 const FEED_TYPE = 'BOOKING_OPPORTUNITY';
 const FAR_FUTURE = new Date('2040-01-01T00:00:00Z');
-const SYSTEM_USER_EMAIL = 'platform@themusiciansindex.com';
-
-// FeedItem.userId is a required FK to a real User.id — see the same fix in
-// VenueBookingRegistry.ts for why the literal string 'system' cannot be used.
-let cachedSystemUserId: string | null | undefined;
-
-async function getSystemUserId(): Promise<string | null> {
-  if (cachedSystemUserId !== undefined) return cachedSystemUserId;
-  const systemUser = await prisma.user.findUnique({
-    where: { email: SYSTEM_USER_EMAIL },
-    select: { id: true },
-  });
-  cachedSystemUserId = systemUser?.id ?? null;
-  return cachedSystemUserId;
-}
 
 export type OpportunityStatus = 'open' | 'filled' | 'cancelled' | 'expired';
 
@@ -71,14 +56,9 @@ export const BookingOpportunityRegistry = {
       deadline:        params.deadline,
     };
 
-    const userId = params.userId ?? (await getSystemUserId());
-    if (!userId) {
-      throw new Error('BookingOpportunityRegistry.post: no system user configured for unattributed opportunities');
-    }
-
     await prisma.feedItem.create({
       data: {
-        userId,
+        userId:     params.userId ?? 'system',
         type:       FEED_TYPE,
         entityId:   params.venueSlug,
         entityType: 'venue',

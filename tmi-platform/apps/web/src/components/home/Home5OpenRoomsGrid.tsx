@@ -179,9 +179,7 @@ export default function Home5OpenRoomsGrid() {
     };
   });
 
-  // Rule 20: no fake room data. Show real published rooms only.
-  // If no rooms are live yet, the empty-state below guides users to create one.
-  const mergedRooms = publishedBattleRooms;
+  const mergedRooms = [...publishedBattleRooms, ...ROOMS];
 
   return (
     <section style={{ display: "grid", gap: 12 }}>
@@ -214,14 +212,6 @@ export default function Home5OpenRoomsGrid() {
       </div>
 
       {/* Room grid */}
-      {mergedRooms.length === 0 && (
-        <div style={{ padding: '28px 16px', textAlign: 'center', border: '1px dashed rgba(0,255,136,0.2)', borderRadius: 10, color: 'rgba(255,255,255,0.4)', fontSize: 12 }}>
-          <div style={{ fontSize: 24, marginBottom: 8 }}>🏟️</div>
-          <div style={{ fontWeight: 700, marginBottom: 4 }}>No open rooms right now</div>
-          <div style={{ marginBottom: 12 }}>Be the first to start a battle, cypher, or challenge.</div>
-          <Link href="/battles" style={{ color: '#00FF88', fontWeight: 700, textDecoration: 'none' }}>Start a Room →</Link>
-        </div>
-      )}
       <div
         style={{
           display: "grid",

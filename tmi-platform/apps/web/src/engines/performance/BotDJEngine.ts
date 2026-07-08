@@ -109,51 +109,6 @@ export function announceRoom(botId: string, slot: RotationSlot, seed = 0): DJAct
   return { type: "announce_room", text, botId };
 }
 
-// ── Live contender call (open-ended waiting-for-opponent sessions) ────────────
-// Unlike announceRoom (which assumes a fixed-slots, time-boxed rotation queue),
-// a live battle/cypher/challenge waiting for a contender has no slot count or
-// join-window timer — it stays open until someone joins. These templates never
-// claim a fabricated slot count or countdown.
-
-export type ContenderCallInput = {
-  label: string;
-  sessionType: "battle" | "cypher" | "challenge";
-  genre: string;
-};
-
-const CONTENDER_CALL_TEMPLATES: Record<DJStyle, string[]> = {
-  hype: [
-    "🎙️ {label} is LIVE right now — who's stepping up?",
-    "⚡ {genre} {sessionType} open on the wall. Get in there!",
-    "🔥 {label} needs a contender. First one in takes the spot.",
-  ],
-  smooth: [
-    "🎵 {label} is open. Come through whenever you're ready.",
-    "🌊 {genre} {sessionType} live now — join when it feels right.",
-    "✨ {label} is waiting. No rush, just come through.",
-  ],
-  announcer: [
-    "📢 {label} — LIVE. Contender slot open now.",
-    "🎤 {genre} {sessionType} in session. Awaiting challenger.",
-    "🏟️ {label} is on the wall right now. Step in.",
-  ],
-  drill: [
-    "💿 {label}. Live. Open slot. Pull up.",
-    "🎯 {genre} {sessionType} — real ones only.",
-    "🔊 {label} waiting. No filler.",
-  ],
-};
-
-export function announceContenderCall(botId: string, input: ContenderCallInput, seed = 0): DJAction {
-  const bot = getBotDJById(botId);
-  const text = fillTemplate(pickIndex(CONTENDER_CALL_TEMPLATES[bot.style], seed), {
-    genre: input.genre,
-    sessionType: input.sessionType,
-    label: input.label,
-  });
-  return { type: "announce_room", text, botId };
-}
-
 // ── Beat pick + lock ──────────────────────────────────────────────────────────
 
 const BEAT_PICK_LINES: Record<DJStyle, string[]> = {

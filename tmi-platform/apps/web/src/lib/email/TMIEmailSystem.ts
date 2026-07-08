@@ -491,21 +491,13 @@ const TEMPLATES: Record<string, (data: Record<string, unknown>, email: string) =
   }),
 
   subscription_cancel: (d, email) => ({
-    subject: "Subscription Cancellation Confirmation - The Musician's Index",
+    subject: "TMI Subscription Cancelled",
     html: baseHtml(`
-      ${labelChip("CANCELLATION CONFIRMED", "#FF9500")}
-      ${h1(`Dear ${d.userName ?? "Valued Member"},`)}
-      ${p(`Your subscription to <strong style="color:#fff;">${d.planName ?? "TMI"}</strong> has been successfully canceled.`)}
-      ${p(`You will continue to have full access to all <strong style="color:#fff;">${d.planName ?? "TMI"}</strong> features until your current billing cycle ends on <strong style="color:#00FFFF;">${d.accessUntil}</strong>. You will not be charged again after this date.`)}
-      ${statBlock([
-        ["Plan", String(d.planName ?? "TMI Membership")],
-        ["Effective End Date", String(d.accessUntil)],
-        ["Confirmation Reference", String(d.confirmationRef ?? "—")],
-      ], "#FF9500")}
-      ${p(`If you have any questions or would like to reactivate your plan in the future, you can manage your settings at the link below. If you feel this cancellation was made in error or if you have further questions, please contact our support team at <a href="mailto:${d.supportEmail ?? "support@themusiciansindex.com"}" style="color:#00FFFF;text-decoration:none;">${d.supportEmail ?? "support@themusiciansindex.com"}</a>.`)}
-      ${p("Thank you for being a part of the TMI community.")}
-      ${btn("Manage Account", `${BASE_URL}/settings/billing`, "#FF9500")}
-    `, email, "#FF9500"),
+      ${h1("Subscription Cancelled")}
+      ${p(`Your TMI subscription has been cancelled. You'll retain access until <strong style="color:#fff;">${d.accessUntil}</strong>.`)}
+      ${p("We're sorry to see you go. Come back anytime — your account stays active.")}
+      ${btn("Reactivate", `${BASE_URL}/settings/billing`)}
+    `, email),
   }),
 
   subscription_upgrade: (d, email) => ({

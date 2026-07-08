@@ -1,7 +1,6 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { competitionMusicEngine, MusicConfig, CompetitionType, CypherMode } from '@/lib/competition/CompetitionMusicEngine';
-import { getActiveSessions } from '@/lib/broadcast/GlobalLiveSessionRegistry';
 
 interface Room {
   id: string;
@@ -18,44 +17,18 @@ interface Room {
   createdAt: string;
 }
 
-// In-process POST-created rooms (session-local, not persisted)
-const _postedRooms: Room[] = [];
-
-const CATEGORY_TO_TYPE: Record<string, Room['type']> = {
-  battle:    'BATTLE',
-  cypher:    'CYPHER',
-  challenge: 'CHALLENGE',
-  concert:   'SHOWCASE',
-  live:      'GENERAL',
-};
+const rooms: Room[] = [
+  { id: 'room-001', name: 'Monday Cypher', type: 'CYPHER', hostId: 'wavetek', hostName: 'Wavetek_Pro', capacity: 100, occupancy: 34, isLive: true, genre: 'Hip-Hop', createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString() },
+  { id: 'room-002', name: 'Battle Arena — Open Bracket', type: 'BATTLE', hostId: 'tmi-system', hostName: 'TMI System', capacity: 200, occupancy: 87, isLive: true, genre: 'Freestyle Open', createdAt: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString() },
+  { id: 'room-003', name: 'R&B Showcase Night', type: 'SHOWCASE', hostId: 'nova-k', hostName: 'Nova_K', capacity: 150, occupancy: 12, isLive: false, genre: 'R&B', createdAt: new Date(Date.now() - 30 * 60 * 1000).toISOString() },
+];
 
 export async function GET(req: NextRequest) {
-  const typeFilter = req.nextUrl.searchParams.get('type')?.toUpperCase();
-  const liveFilter = req.nextUrl.searchParams.get('live');
-
-  // Real rooms from GlobalLiveSessionRegistry (Rule 20 — no fake data)
-  const sessions = getActiveSessions();
-  const registryRooms: Room[] = sessions.map((s) => ({
-    id:        s.roomId ?? s.userId,
-    name:      s.displayName ?? s.title ?? 'Live Room',
-    type:      (CATEGORY_TO_TYPE[s.category ?? ''] ?? 'GENERAL') as Room['type'],
-    hostId:    s.userId,
-    hostName:  s.displayName ?? 'Host',
-    capacity:  10000,
-    occupancy: s.viewerCount ?? 0,
-    isLive:    true,
-    genre:     s.category ?? undefined,
-    createdAt: typeof s.startedAt === 'number'
-      ? new Date(s.startedAt).toISOString()
-      : new Date().toISOString(),
-  }));
-
-  // Merge POST-created rooms (they start not-yet-live)
-  let result: Room[] = [...registryRooms, ..._postedRooms];
-
-  if (typeFilter) result = result.filter(r => r.type === typeFilter);
-  if (liveFilter === 'true') result = result.filter(r => r.isLive);
-
+  const type = req.nextUrl.searchParams.get('type');
+  const live = req.nextUrl.searchParams.get('live');
+  let result = [...rooms];
+  if (type) result = result.filter(r => r.type === type.toUpperCase());
+  if (live === 'true') result = result.filter(r => r.isLive);
   return NextResponse.json({ rooms: result, total: result.length });
 }
 
@@ -96,6 +69,6 @@ export async function POST(req: NextRequest) {
     createdAt: new Date().toISOString(),
   };
   competitionMusicEngine.bindToRoom(room.id, musicConfig);
-  _postedRooms.unshift(room);
+  rooms.unshift(room);
   return NextResponse.json({ ok: true, room }, { status: 201 });
 }

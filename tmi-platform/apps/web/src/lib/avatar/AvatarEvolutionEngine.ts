@@ -1,25 +1,3 @@
-// Re-export facade for components that expect these from AvatarEvolutionEngine.
-// New components use CharacterEvolutionEngine's numeric EvolutionTier (0-6).
-// TIER_XP_THRESHOLDS is re-exported as TIER_THRESHOLDS for component compatibility.
-export {
-  DANCE_MOVES,
-  TIER_COLORS,
-  TIER_NAMES,
-  TIER_UNLOCKS,
-  getOrCreateEvolution,
-  awardXP,
-} from './CharacterEvolutionEngine';
-
-export { TIER_XP_THRESHOLDS as TIER_THRESHOLDS } from './CharacterEvolutionEngine';
-
-export type {
-  CharacterEvolutionState,
-  DanceMove,
-  EvolutionTier,
-  TierUnlock,
-  XPEventType,
-} from './CharacterEvolutionEngine';
-
 /**
  * AvatarEvolutionEngine — XP progression for TMI users and hero characters
  *
@@ -232,12 +210,7 @@ export class AvatarEvolutionEngineClass {
   }
 }
 
-const _engine = AvatarEvolutionEngineClass.getInstance();
-
-// Augment with getCharacterEvolution alias expected by AvatarBuilder and newer components
-export const AvatarEvolutionEngine = Object.assign(_engine, {
-  getCharacterEvolution: (characterId: string) => _engine.getOrCreate(characterId),
-});
+export const AvatarEvolutionEngine = AvatarEvolutionEngineClass.getInstance();
 
 // ── Tier visual config (for UI badges, colors, etc.) ─────────────────────────
 export const TIER_CONFIG: Record<EvolutionTier, { color: string; bg: string; emoji: string; label: string }> = {

@@ -1,50 +1,40 @@
 // lib/stripe/products.ts — Canonical TMI product + price ID constants
-//
-// Fallback price IDs (the ?? values) are the LIVE Stripe test price objects
-// already created in the Stripe account. They match the IDs in tierMapping.ts
-// so the webhook can always map price → tier even without env vars set.
-//
-// IMPORTANT: The Stripe price objects were created at different amounts than
-// the target prices shown in the UI. When Marcel creates new price objects at
-// the correct target amounts, set the env vars in Vercel and the fallbacks
-// below become dead code.
-//
-// Canonical webhook: /api/stripe/webhook
-// Legacy alias (re-exports canonical): /api/webhooks/stripe — point Stripe
-// Dashboard ONLY at the canonical endpoint; remove the alias after verification.
+// To activate a subscription tier: create the product in Stripe Dashboard,
+// then set the corresponding STRIPE_PRICE_* env var in Vercel.
+// All subscription tiers fall back to inline price_data so checkout works immediately
+// even without real price IDs — no Stripe configuration required to start collecting.
 
 export const STRIPE_PRODUCTS = {
   // ── Fan subscriptions ─────────────────────────────────────────────────────
-  // price_1TcJ* IDs from the original Stripe test account (EAwH1Fjtu9 key)
   FAN_RUBY_MONTHLY: {
     productId: "prod_fan_ruby",
-    priceId:   process.env.NEXT_PUBLIC_STRIPE_PRICE_FAN_RUBY ?? "price_1TcJoOEAwH1Fjtu9IrhSwoyA",
+    priceId:   process.env.NEXT_PUBLIC_STRIPE_PRICE_FAN_RUBY ?? "price_fan_ruby",
     name:      "TMI Fan — Ruby",
-    price:     499,  // $4.99/mo target
+    price:     499,  // $4.99/mo
     interval:  "month" as const,
     features:  ["All live rooms","Chat + reactions","Tip performers","Monthly magazine","XP + achievements"],
   },
   FAN_SILVER_MONTHLY: {
     productId: "prod_fan_silver",
-    priceId:   process.env.NEXT_PUBLIC_STRIPE_PRICE_FAN_SILVER ?? "price_1TcJrTEAwH1Fjtu9wjhmnv5K",
+    priceId:   process.env.NEXT_PUBLIC_STRIPE_PRICE_FAN_SILVER ?? "price_fan_silver",
     name:      "TMI Fan — Silver",
-    price:     999,  // $9.99/mo target
+    price:     999,  // $9.99/mo
     interval:  "month" as const,
     features:  ["Everything in Ruby","Early access drops","Fan leaderboard placement","Silver avatar glow"],
   },
   FAN_GOLD_MONTHLY: {
     productId: "prod_fan_gold",
-    priceId:   process.env.NEXT_PUBLIC_STRIPE_PRICE_FAN_GOLD ?? "price_1TcJsDEAwH1Fjtu9zU7X7mml",
+    priceId:   process.env.NEXT_PUBLIC_STRIPE_PRICE_FAN_GOLD ?? "price_fan_gold",
     name:      "TMI Fan — Gold",
-    price:     1499, // $14.99/mo target
+    price:     1499, // $14.99/mo
     interval:  "month" as const,
     features:  ["Everything in Silver","Exclusive fan rooms","Gold avatar glow","Priority merch drops"],
   },
   FAN_PLATINUM_MONTHLY: {
     productId: "prod_fan_platinum",
-    priceId:   process.env.NEXT_PUBLIC_STRIPE_PRICE_FAN_PLATINUM ?? "price_1TcJvaEAwH1Fjtu9me4Aq2UU",
+    priceId:   process.env.NEXT_PUBLIC_STRIPE_PRICE_FAN_PLATINUM ?? "price_fan_platinum",
     name:      "TMI Fan — Platinum",
-    price:     2499, // $24.99/mo target
+    price:     2499, // $24.99/mo
     interval:  "month" as const,
     features:  ["Everything in Gold","Backstage passes","Direct artist DMs","Platinum badge"],
   },
@@ -52,13 +42,13 @@ export const STRIPE_PRODUCTS = {
     productId: "prod_fan_diamond",
     priceId:   process.env.NEXT_PUBLIC_STRIPE_PRICE_FAN_DIAMOND ?? "price_1TUWI4EL7B8tMf4NHs74ydgc",
     name:      "TMI Fan — Diamond",
-    price:     4999, // $49.99/mo target
+    price:     4999, // $49.99/mo
     interval:  "month" as const,
     features:  ["All Platinum perks","NFT access","VIP front-row seats","Diamond avatar glow","Season Zero recognition"],
   },
   FAN_FAMILY_MONTHLY: {
     productId: "prod_fan_family",
-    priceId:   process.env.NEXT_PUBLIC_STRIPE_PRICE_FAN_FAMILY ?? "price_1TcJxBEAwH1Fjtu9xjMfLhw4",
+    priceId:   process.env.NEXT_PUBLIC_STRIPE_PRICE_FAN_FAMILY ?? "price_fan_family",
     name:      "TMI Fan — Family",
     price:     2799, // $27.99/mo — up to 4 accounts
     interval:  "month" as const,
@@ -68,96 +58,64 @@ export const STRIPE_PRODUCTS = {
   // ── Performer subscriptions ───────────────────────────────────────────────
   PERFORMER_RUBY_MONTHLY: {
     productId: "prod_performer_ruby",
-    priceId:   process.env.NEXT_PUBLIC_STRIPE_PRICE_PERFORMER_RUBY ?? "price_1TcK0dEAwH1Fjtu9MXK323Q7",
+    priceId:   process.env.NEXT_PUBLIC_STRIPE_PRICE_PERFORMER_RUBY ?? "price_performer_ruby",
     name:      "TMI Performer — Ruby",
-    price:     299,  // $2.99/mo target
+    price:     299,  // $2.99/mo
     interval:  "month" as const,
     features:  ["Go live anytime","Beat marketplace access","Booking requests","Analytics dashboard"],
   },
   PERFORMER_SILVER_MONTHLY: {
     productId: "prod_performer_silver",
-    priceId:   process.env.NEXT_PUBLIC_STRIPE_PRICE_PERFORMER_SILVER ?? "price_1TcK1LEAwH1Fjtu9ZnOrTyZw",
+    priceId:   process.env.NEXT_PUBLIC_STRIPE_PRICE_PERFORMER_SILVER ?? "price_performer_silver",
     name:      "TMI Performer — Silver",
-    price:     499,  // $4.99/mo target
+    price:     499,  // $4.99/mo
     interval:  "month" as const,
     features:  ["Everything in Ruby","Fan club tools","Tipping enabled","Merch store access","Silver badge"],
   },
   PERFORMER_GOLD_MONTHLY: {
     productId: "prod_performer_gold",
-    priceId:   process.env.NEXT_PUBLIC_STRIPE_PRICE_PERFORMER_GOLD ?? "price_1TcK2xEAwH1Fjtu9FLlIHItH",
+    priceId:   process.env.NEXT_PUBLIC_STRIPE_PRICE_PERFORMER_GOLD ?? "price_performer_gold",
     name:      "TMI Performer — Gold",
-    price:     999,  // $9.99/mo target
+    price:     999,  // $9.99/mo
     interval:  "month" as const,
     features:  ["Everything in Silver","Priority placement","Billboard rotation","Gold performer badge"],
   },
   PERFORMER_PLATINUM_MONTHLY: {
     productId: "prod_performer_platinum",
-    priceId:   process.env.NEXT_PUBLIC_STRIPE_PRICE_PERFORMER_PLATINUM ?? "price_1TcK4MEAwH1Fjtu96b2TJlBe",
+    priceId:   process.env.NEXT_PUBLIC_STRIPE_PRICE_PERFORMER_PLATINUM ?? "price_performer_platinum",
     name:      "TMI Performer — Platinum",
-    price:     1999, // $19.99/mo target
+    price:     1999, // $19.99/mo
     interval:  "month" as const,
     features:  ["Everything in Gold","NFT minting rights","Unlimited uploads","Tour booking tools","Platinum badge"],
   },
   PERFORMER_DIAMOND_MONTHLY: {
     productId: "prod_performer_diamond",
-    priceId:   process.env.NEXT_PUBLIC_STRIPE_PRICE_PERFORMER_DIAMOND ?? "",
+    priceId:   process.env.NEXT_PUBLIC_STRIPE_PRICE_PERFORMER_DIAMOND ?? "price_performer_diamond",
     name:      "TMI Performer — Diamond",
-    price:     2999, // $29.99/mo target
+    price:     2999, // $29.99/mo
     interval:  "month" as const,
     features:  ["All Platinum perks","Priority booking","Full revenue split access","Diamond badge","NFT minting"],
   },
   PERFORMER_BAND_MONTHLY: {
     productId: "prod_performer_band",
-    priceId:   process.env.NEXT_PUBLIC_STRIPE_PRICE_PERFORMER_BAND ?? "price_1TcK68EAwH1Fjtu9KGLcf8HE",
+    priceId:   process.env.NEXT_PUBLIC_STRIPE_PRICE_PERFORMER_BAND ?? "price_performer_band",
     name:      "TMI Performer — Band/Group Diamond",
     price:     2499, // $24.99/mo — up to 5 members
     interval:  "month" as const,
     features:  ["Diamond Performer perks","Up to 5 linked members","Shared live room","Band profile page"],
   },
-  BAND_PRO_MONTHLY: {
-    productId: "prod_band_pro",
-    priceId:   process.env.NEXT_PUBLIC_STRIPE_PRICE_BAND_PRO ?? "",
-    name:      "TMI Band — Pro",
-    price:     1699, // $16.99/mo
-    interval:  "month" as const,
-    features:  ["Band profile","Music uploads","Event listings","Messaging","Basic analytics"],
-  },
-  BAND_GOLD_MONTHLY: {
-    productId: "prod_band_gold",
-    priceId:   process.env.NEXT_PUBLIC_STRIPE_PRICE_BAND_GOLD ?? "",
-    name:      "TMI Band — Gold",
-    price:     2000, // $20.00/mo
-    interval:  "month" as const,
-    features:  ["Everything in Pro","Full Creative Studio","AI graphics + poster tools","Advanced analytics"],
-  },
-  BAND_PLATINUM_MONTHLY: {
-    productId: "prod_band_platinum",
-    priceId:   process.env.NEXT_PUBLIC_STRIPE_PRICE_BAND_PLATINUM ?? "",
-    name:      "TMI Band — Platinum",
-    price:     2999, // $29.99/mo
-    interval:  "month" as const,
-    features:  ["Everything in Gold","Premium templates","Higher limits","Premium discovery"],
-  },
-  BAND_DIAMOND_MONTHLY: {
-    productId: "prod_band_diamond",
-    priceId:   process.env.NEXT_PUBLIC_STRIPE_PRICE_BAND_DIAMOND ?? "",
-    name:      "TMI Band — Diamond",
-    price:     3999, // $39.99/mo
-    interval:  "month" as const,
-    features:  ["Everything in Platinum","Top placement","Highest limits","VIP support"],
-  },
 
   // ── Support economy ───────────────────────────────────────────────────────
   SUPPORT_PERFORMER_MONTHLY: {
     productId: "prod_support_performer",
-    priceId:   process.env.NEXT_PUBLIC_STRIPE_PRICE_SUPPORT_BASIC ?? "",
+    priceId:   process.env.NEXT_PUBLIC_STRIPE_PRICE_SUPPORT_BASIC ?? "price_support_performer",
     name:      "Support This Performer",
     price:     299,  // $2.99/mo
     interval:  "month" as const,
   },
   SUPER_SUPPORTER_MONTHLY: {
     productId: "prod_super_supporter",
-    priceId:   process.env.NEXT_PUBLIC_STRIPE_PRICE_SUPPORT_SUPER ?? "",
+    priceId:   process.env.NEXT_PUBLIC_STRIPE_PRICE_SUPPORT_SUPER ?? "price_super_supporter",
     name:      "Super Supporter",
     price:     499,  // $4.99/mo
     interval:  "month" as const,
@@ -173,42 +131,42 @@ export const STRIPE_PRODUCTS = {
   // ── Sponsor placements ────────────────────────────────────────────────────
   SPONSOR_HOMEPAGE_BANNER: {
     productId: "prod_sponsor_banner",
-    priceId:   process.env.STRIPE_PRICE_SPONSOR_BANNER ?? "",
+    priceId:   process.env.STRIPE_PRICE_SPONSOR_BANNER ?? "price_sponsor_homepage_banner",
     name:      "Homepage Banner Sponsorship",
     price:     29900, // $299/mo
     interval:  "month" as const,
   },
   SPONSOR_ROOM_NAMING: {
     productId: "prod_sponsor_room",
-    priceId:   process.env.STRIPE_PRICE_SPONSOR_ROOM ?? "",
+    priceId:   process.env.STRIPE_PRICE_SPONSOR_ROOM ?? "price_sponsor_room_naming",
     name:      "Sponsored Room",
     price:     14900, // $149/mo
     interval:  "month" as const,
   },
   SPONSOR_CONTEST: {
     productId: "prod_sponsor_contest",
-    priceId:   process.env.STRIPE_PRICE_SPONSOR_CONTEST ?? "",
+    priceId:   process.env.STRIPE_PRICE_SPONSOR_CONTEST ?? "price_sponsor_contest",
     name:      "Contest Sponsorship",
     price:     49900, // $499 per contest
     interval:  "one_time" as const,
   },
   SPONSOR_ARTICLE_PLACEMENT: {
     productId: "prod_sponsor_article",
-    priceId:   process.env.STRIPE_PRICE_SPONSOR_ARTICLE ?? "",
+    priceId:   process.env.STRIPE_PRICE_SPONSOR_ARTICLE ?? "price_sponsor_article",
     name:      "Featured Article Placement",
     price:     9900, // $99
     interval:  "one_time" as const,
   },
   SPONSOR_BATTLE: {
     productId: "prod_sponsor_battle",
-    priceId:   process.env.STRIPE_PRICE_SPONSOR_BATTLE ?? "",
+    priceId:   process.env.STRIPE_PRICE_SPONSOR_BATTLE ?? "price_sponsor_battle",
     name:      "Battle Sponsorship",
     price:     14900, // $149 per battle
     interval:  "one_time" as const,
   },
   SPONSOR_CHAMPIONSHIP: {
     productId: "prod_sponsor_championship",
-    priceId:   process.env.STRIPE_PRICE_SPONSOR_CHAMPIONSHIP ?? "",
+    priceId:   process.env.STRIPE_PRICE_SPONSOR_CHAMPIONSHIP ?? "price_sponsor_championship",
     name:      "Championship Sponsorship",
     price:     99900, // $999 per championship
     interval:  "one_time" as const,
@@ -217,35 +175,35 @@ export const STRIPE_PRODUCTS = {
   // ── Advertiser ad slots ───────────────────────────────────────────────────
   AD_BILLBOARD_WEEKLY: {
     productId: "prod_ad_billboard",
-    priceId:   process.env.STRIPE_PRICE_AD_BILLBOARD ?? "",
+    priceId:   process.env.STRIPE_PRICE_AD_BILLBOARD ?? "price_ad_billboard_weekly",
     name:      "Billboard Ad Slot (1 week)",
     price:     14900, // $149/wk
     interval:  "week" as const,
   },
   AD_BANNER_MONTHLY: {
     productId: "prod_ad_banner",
-    priceId:   process.env.STRIPE_PRICE_AD_BANNER ?? "",
+    priceId:   process.env.STRIPE_PRICE_AD_BANNER ?? "price_ad_banner_monthly",
     name:      "Page Banner Ad (1 month)",
     price:     9900, // $99/mo
     interval:  "month" as const,
   },
   AD_TICKER_MONTHLY: {
     productId: "prod_ad_ticker",
-    priceId:   process.env.STRIPE_PRICE_AD_TICKER ?? "",
+    priceId:   process.env.STRIPE_PRICE_AD_TICKER ?? "price_ad_ticker_monthly",
     name:      "Homepage Ticker Ad (1 month)",
     price:     4900, // $49/mo
     interval:  "month" as const,
   },
   AD_VIDEO_WEEKLY: {
     productId: "prod_ad_video",
-    priceId:   process.env.STRIPE_PRICE_AD_VIDEO ?? "",
+    priceId:   process.env.STRIPE_PRICE_AD_VIDEO ?? "price_ad_video_weekly",
     name:      "Video Ad Slot (1 week)",
     price:     24900, // $249/wk
     interval:  "week" as const,
   },
   AD_MAGAZINE: {
     productId: "prod_ad_magazine",
-    priceId:   process.env.STRIPE_PRICE_AD_MAGAZINE ?? "",
+    priceId:   process.env.STRIPE_PRICE_AD_MAGAZINE ?? "price_ad_magazine",
     name:      "Magazine Ad Placement",
     price:     9900, // $99 per issue
     interval:  "one_time" as const,
@@ -254,7 +212,7 @@ export const STRIPE_PRODUCTS = {
   // ── Artist upgrades ───────────────────────────────────────────────────────
   ARTIST_SPOTLIGHT: {
     productId: "prod_artist_spotlight",
-    priceId:   process.env.STRIPE_PRICE_ARTIST_SPOTLIGHT ?? "",
+    priceId:   process.env.STRIPE_PRICE_ARTIST_SPOTLIGHT ?? "price_artist_spotlight",
     name:      "Homepage Artist Spotlight",
     price:     4900, // $49 per feature
     interval:  "one_time" as const,
@@ -277,7 +235,7 @@ export const STRIPE_PRODUCTS = {
   // ── Venue / booking ───────────────────────────────────────────────────────
   BOOKING_PLATFORM_FEE: {
     productId: "prod_booking_fee",
-    priceId:   process.env.STRIPE_PRICE_BOOKING_FEE ?? "",
+    priceId:   process.env.STRIPE_PRICE_BOOKING_FEE ?? "price_booking_fee",
     name:      "Booking Platform Fee",
     price:     999,  // $9.99 per booking
     interval:  "one_time" as const,
@@ -303,7 +261,7 @@ export const STRIPE_PRODUCTS = {
   },
   QUICK_VIDEO_CHAT: {
     productId: "prod_quick_video_chat",
-    priceId:   process.env.STRIPE_PRICE_VIDEO_CHAT ?? "",
+    priceId:   process.env.STRIPE_PRICE_VIDEO_CHAT ?? "price_quick_video_chat",
     name:      "Quick Video Chat (15 min)",
     price:     800,  // $8
     interval:  "one_time" as const,

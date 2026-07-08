@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { dispatchSoundEvent } from '@/lib/sound/AudioDirector';
 
 interface TMICurtainSystemProps {
   isOpen: boolean;
@@ -15,7 +14,6 @@ export default function TMICurtainSystem({ isOpen, venueTitle = 'TMI STAGE', onC
 
   useEffect(() => {
     if (isOpen) {
-      dispatchSoundEvent('tmi:venue_curtain_open');
       setAnimating(true);
       const t = setTimeout(() => {
         setAnimating(false);

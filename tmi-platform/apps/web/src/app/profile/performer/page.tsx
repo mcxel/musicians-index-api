@@ -23,7 +23,7 @@ export default function PerformerProfilePage() {
   const ACTIONS = [
     { label: 'Music Studio', icon: '🎵', href: '/studio/music',      color: C.cyan    },
     { label: 'Control Room', icon: '🎙', href: '/hub/performer',     color: C.accent  },
-    { label: 'Media Player', icon: '📡', href: '/performer/studio',  color: '#FF4444' },
+    { label: 'Go Live',      icon: '📡', href: '/live/go-live',      color: '#FF4444' },
     { label: 'Studio',       icon: '🎤', href: '/performer/studio',  color: C.gold    },
     { label: 'Cypher',       icon: '⚡', href: '/live/cypher',       color: C.cyan    },
     { label: 'Battle',       icon: '⚔️', href: '/live/battle',      color: C.accent  },

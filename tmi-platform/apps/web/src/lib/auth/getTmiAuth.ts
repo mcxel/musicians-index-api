@@ -21,15 +21,14 @@ export async function getTmiAuth(): Promise<TmiAuthSession | null> {
   const sessionId = cookieStore.get('tmi_session_id')?.value;
   const sessionToken = cookieStore.get('tmi_session')?.value;
   if (!sessionId || !sessionToken) return null;
-  const cookieUserId = cookieStore.get('tmi_user_id')?.value;
 
   const role = (cookieStore.get('tmi_role')?.value ?? 'USER').toUpperCase();
   const cookieTier = cookieStore.get('tmi_tier')?.value ?? 'FREE';
   const rawEmail = cookieStore.get('tmi_user_email')?.value ?? '';
   const tier = isFounderDiamondEmail(rawEmail) ? 'DIAMOND' : cookieTier;
 
-  let id = cookieUserId || sessionId;
-  if (rawEmail && !cookieUserId) {
+  let id = sessionId;
+  if (rawEmail) {
     try {
       const dbUser = await prisma.user.findUnique({ where: { email: rawEmail }, select: { id: true } });
       if (dbUser?.id) id = dbUser.id;

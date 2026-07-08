@@ -48,7 +48,6 @@ export function LiveLobbyWallCanister({
   const [rooms, setRooms] = useState<LiveRoomTile[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastFetched, setLastFetched] = useState<number | null>(null);
-  const [rotateOffset, setRotateOffset] = useState(0);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -66,7 +65,7 @@ export function LiveLobbyWallCanister({
         const filtered = genre
           ? raw.filter((r) => r.category === genre)
           : raw;
-        setRooms(filtered); // full list stored; render layer applies maxRooms limit + rotation
+        setRooms(filtered.slice(0, maxRooms));
         setLastFetched(Date.now());
       }
     } catch {
@@ -78,23 +77,10 @@ export function LiveLobbyWallCanister({
 
   useEffect(() => {
     void load();
-    const interval = setInterval(() => void load(), 10_000);
-    const onNewSession = () => void load();
-    window.addEventListener('tmi:golive', onNewSession);
-    window.addEventListener('tmi:endbroadcast', onNewSession);
-    return () => {
-      clearInterval(interval);
-      window.removeEventListener('tmi:golive', onNewSession);
-      window.removeEventListener('tmi:endbroadcast', onNewSession);
-    };
+    // Refresh every 30 seconds so the wall stays current
+    const interval = setInterval(() => void load(), 30_000);
+    return () => clearInterval(interval);
   }, [load]);
-
-  // Rotate displayed sessions every 13 seconds when there are more than maxRooms
-  useEffect(() => {
-    if (rooms.length <= maxRooms) return;
-    const t = setInterval(() => setRotateOffset((n) => n + 1), 13_000);
-    return () => clearInterval(t);
-  }, [rooms.length, maxRooms]);
 
   function fmtViewers(n: number): string {
     if (n >= 1000) return `${(n / 1000).toFixed(1)}k`;
@@ -172,10 +158,7 @@ export function LiveLobbyWallCanister({
           </div>
         ) : (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 10 }}>
-            {(rooms.length <= maxRooms
-              ? rooms
-              : [...rooms, ...rooms].slice(rotateOffset % rooms.length, (rotateOffset % rooms.length) + maxRooms)
-            ).map((room) => {
+            {rooms.map((room) => {
               const roomAccent = room.accentColor ?? accentColor;
               const emoji = CATEGORY_EMOJI[room.category] ?? "🎵";
               const entryRoute = `/live/rooms/${room.roomId}?from=live-lobby-wall`;

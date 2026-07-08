@@ -1,5 +1,6 @@
 import type { ChatRoomId } from '@/lib/chat/RoomChatEngine';
 import { getMomentumSnapshot } from '@/lib/live/crowdMomentumEngine';
+import { roomEnergyEngine } from '@/lib/live/RoomEnergyEngine';
 import { getLiveReactionSnapshot } from '@/lib/live/LiveReactionEngine';
 import { getLivePresenceSnapshot } from '@/lib/live/LivePresenceEngine';
 import { directCameraForEmotion } from '@/lib/live/CameraDirectorAI';
@@ -42,17 +43,6 @@ import {
 import { synchronizeHomePair } from '@/lib/runtime/governor/HomeSyncGovernor';
 
 const CONDUCTOR_OWNER_ID = 'RuntimeConductorEngine';
-
-function deriveServerSafeEnergyScore(params: {
-  momentumCurrent?: number;
-  presenceCount: number;
-  reactionSignalCount: number;
-}): number {
-  const momentumPart = Math.max(0, Math.min(100, params.momentumCurrent ?? 0));
-  const presencePart = Math.max(0, Math.min(100, params.presenceCount * 8));
-  const reactionPart = Math.max(0, Math.min(100, params.reactionSignalCount * 2));
-  return Math.round((momentumPart * 0.6) + (presencePart * 0.25) + (reactionPart * 0.15));
-}
 
 export interface RuntimeConductorSnapshot {
   roomId: ChatRoomId;
@@ -167,28 +157,22 @@ export function tickRuntimeConductor(roomId: ChatRoomId): RuntimeConductorSnapsh
   const momentum = getMomentumSnapshot(roomId);
   const presence = getLivePresenceSnapshot(roomId);
   const reactions = getLiveReactionSnapshot(roomId);
-
-  // Server-safe energy derivation. Do not call client-only RoomEnergyEngine from server runtime.
-  const roomEnergyScore = deriveServerSafeEnergyScore({
-    momentumCurrent: momentum.current,
-    presenceCount: presence.totalCount,
-    reactionSignalCount: reactions.totalSignals,
-  });
+  const energy = roomEnergyEngine.getState(roomId) ?? roomEnergyEngine.initRoom(roomId);
 
   const emotion = updateCrowdEmotionGraph({
     roomId,
     momentumCurrent: momentum.current,
-    roomEnergy: roomEnergyScore,
+    roomEnergy: energy.energyScore,
     reactionSnapshot: reactions,
   });
 
-  const performance = advancePerformanceState(roomId, emotion, roomEnergyScore);
-  const lighting = updateAdaptiveLighting(roomId, emotion, roomEnergyScore);
+  const performance = advancePerformanceState(roomId, emotion, energy.energyScore);
+  const lighting = updateAdaptiveLighting(roomId, emotion, energy.energyScore);
   const stageFx = updateDynamicStageFX({
     roomId,
     performanceState: performance.state,
     emotion,
-    roomEnergy: roomEnergyScore,
+    roomEnergy: energy.energyScore,
   });
 
   const performer = presence.activePerformers[0]?.userId;

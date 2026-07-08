@@ -43,12 +43,25 @@ export default function StageControlPage() {
     return () => clearInterval(timer);
   }, [status, startTs]);
 
+  // Viewer simulation
+  useEffect(() => {
+    if (status !== "LIVE") return;
+    const timer = setInterval(() => {
+      setViewers((prev) => {
+        const delta = Math.floor(Math.random() * 7) - 2;
+        const newCount = Math.max(1, prev.count + delta);
+        return { count: newCount, peak: Math.max(prev.peak, newCount) };
+      });
+    }, 4000);
+    return () => clearInterval(timer);
+  }, [status]);
+
   const startShow = useCallback(() => {
     setStatus("STARTING");
     setTimeout(() => {
       setStatus("LIVE");
       setMicHot(true);
-      setViewers({ count: 0, peak: 0 });
+      setViewers({ count: 14, peak: 14 });
       setStartTs(Date.now());
       setElapsedSec(0);
     }, 1500);

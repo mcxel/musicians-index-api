@@ -16,29 +16,9 @@ type HubMode = "ADVERTISER" | "SPONSOR";
 
 export default function AdvertiserSponsorHub() {
   const [mode, setMode] = useState<HubMode>("ADVERTISER");
-  const [budget, setBudget] = useState(5000);
-  const [bidRank, setBidRank] = useState(4);
-  const [campaignName, setCampaignName] = useState("Launch Campaign");
-  const [targetTags, setTargetTags] = useState<string[]>(["music-fans", "live-buyers"]);
   const { userId } = useTmiSession();
 
   const accentColor = mode === "ADVERTISER" ? "#FF8C00" : "#00FFFF";
-  const tagPool = ["music-fans", "live-buyers", "high-intent", "genre-followers", "mobile-first", "vip-members"];
-
-  function toggleTag(tag: string) {
-    setTargetTags((current) => current.includes(tag) ? current.filter((item) => item !== tag) : [...current, tag]);
-  }
-
-  function boostBudget() {
-    setBudget((current) => current + 500);
-    setBidRank((current) => Math.max(1, current - 1));
-  }
-
-  function duplicateCampaign() {
-    setCampaignName((current) => `${current} Copy`);
-    setBudget((current) => Math.round(current * 1.2));
-    setBidRank((current) => Math.min(10, current + 1));
-  }
 
   return (
     <RoomContainer roomId="hub-adv-sponsor" title="Command Center" accentColor={accentColor} bpm={95}>
@@ -88,65 +68,27 @@ export default function AdvertiserSponsorHub() {
             <h2 className="text-xs font-black text-white/40 tracking-[0.15em] border-b border-white/10 pb-2">CAMPAIGN CONTROL</h2>
 
             <div>
-              <div className="flex justify-between text-xs mb-2 gap-2">
-                <input
-                  value={campaignName}
-                  onChange={(event) => setCampaignName(event.target.value)}
-                  className="w-full bg-transparent border-b border-white/10 text-white font-bold outline-none"
-                />
-                <span style={{ color: accentColor }} className="font-bold text-white/30 whitespace-nowrap">${budget.toLocaleString()} budget</span>
+              <div className="flex justify-between text-xs mb-2">
+                <span className="font-bold text-white/50">No active campaign</span>
+                <span style={{ color: accentColor }} className="font-bold text-white/30">$0 spent</span>
               </div>
-              <div className="h-2 bg-white/10 rounded-full overflow-hidden mb-3">
+              <div className="h-2 bg-white/10 rounded-full overflow-hidden">
                 <motion.div
-                  initial={{ width: 0 }} animate={{ width: `${Math.min(100, Math.round((budget / 10000) * 100))}%` }}
+                  initial={{ width: 0 }} animate={{ width: "0%" }}
                   className="h-full rounded-full" style={{ background: accentColor }}
                 />
               </div>
-              <label className="block text-[9px] tracking-[0.2em] uppercase text-white/40 mb-2">Budget Slider</label>
-              <input
-                type="range"
-                min={500}
-                max={10000}
-                step={100}
-                value={budget}
-                onChange={(event) => setBudget(Number(event.target.value))}
-                className="w-full"
-              />
-              <div className="text-[10px] text-white/30 mt-2">Boost budget or duplicate the campaign to change bid pressure.</div>
+              <div className="text-[10px] text-white/30 mt-2">Launch a campaign to see budget progress here.</div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-white/5 border border-white/10 p-3 rounded-lg text-center">
-                <div className="text-2xl font-black text-white">{targetTags.length}</div>
+                <div className="text-2xl font-black text-white">0</div>
                 <div className="text-[9px] text-white/40 tracking-widest mt-1">ACTIVE SLOTS</div>
               </div>
               <div className="bg-white/5 border border-white/10 p-3 rounded-lg text-center">
-                <div className="text-2xl font-black text-white/40">{bidRank}</div>
-                <div className="text-[9px] text-white/40 tracking-widest mt-1">BID RANK</div>
-              </div>
-            </div>
-
-            <div>
-              <div className="text-[10px] font-black tracking-widest text-white/40 mb-2">TARGETING TAGS</div>
-              <div className="flex flex-wrap gap-2">
-                {tagPool.map((tag) => {
-                  const active = targetTags.includes(tag);
-                  return (
-                    <button
-                      key={tag}
-                      type="button"
-                      onClick={() => toggleTag(tag)}
-                      className="px-3 py-2 rounded-full text-[9px] font-bold tracking-widest border transition-colors"
-                      style={{
-                        background: active ? `${accentColor}22` : "rgba(255,255,255,0.03)",
-                        borderColor: active ? accentColor : "rgba(255,255,255,0.12)",
-                        color: active ? accentColor : "rgba(255,255,255,0.55)",
-                      }}
-                    >
-                      {tag}
-                    </button>
-                  );
-                })}
+                <div className="text-2xl font-black text-white/40">—</div>
+                <div className="text-[9px] text-white/40 tracking-widest mt-1">TARGET GENRE</div>
               </div>
             </div>
 
@@ -181,11 +123,6 @@ export default function AdvertiserSponsorHub() {
             >
               <MediaMonitor mode="standby" isActive={false} />
 
-              <div className="absolute top-4 left-4 max-w-[70%] bg-black/80 border border-white/10 p-3 rounded-lg backdrop-blur-md">
-                <div className="text-[10px] font-bold text-white/50 mb-1">{campaignName}</div>
-                <div className="text-[10px] text-white/30">Tags: {targetTags.join(", ") || "none"}</div>
-              </div>
-
               {/* Honest status overlay */}
               <div className="absolute bottom-4 left-4 right-4 flex justify-between items-end pointer-events-none">
                 <div className="bg-black/80 border border-white/10 p-3 rounded-lg backdrop-blur-md">
@@ -203,15 +140,15 @@ export default function AdvertiserSponsorHub() {
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <span className="text-xs text-white/60 uppercase tracking-wider">Conversion Rate</span>
-                <span className="text-lg font-black text-white/30">{Math.max(2.1, 10 - bidRank).toFixed(1)}%</span>
+                <span className="text-lg font-black text-white/30">—</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-xs text-white/60 uppercase tracking-wider">Total Clicks</span>
-                <span className="text-lg font-black text-white">{Math.round(budget / 8)}</span>
+                <span className="text-lg font-black text-white">0</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-xs text-white/60 uppercase tracking-wider">Watch Time</span>
-                <span className="text-lg font-black text-white/30">{Math.round(budget / 50)}m</span>
+                <span className="text-lg font-black text-white/30">—</span>
               </div>
               <div className="text-[10px] text-white/25 pt-2 border-t border-white/10">
                 Stats will appear once your first campaign is live.
@@ -220,19 +157,10 @@ export default function AdvertiserSponsorHub() {
 
             <div className="mt-4">
               <h3 className="text-[10px] font-black tracking-widest text-white/40 mb-3">TOP SPONSORED ARTISTS</h3>
-              <div className="text-[10px] text-white/30 text-center py-4">Bid rank {bidRank} with {targetTags.length} targeting tags</div>
+              <div className="text-[10px] text-white/30 text-center py-4">No sponsored artists yet — launch a campaign to begin</div>
               <Link href="/artists" className="block text-center text-[10px] font-bold no-underline mt-2" style={{ color: accentColor }}>
                 Browse Artists →
               </Link>
-            </div>
-
-            <div>
-              <h3 className="text-[10px] font-black tracking-widest text-white/40 mb-3">LIVE MARKETPLACE BIDDING</h3>
-              <div className="rounded-lg border border-white/10 bg-white/5 p-3 text-[10px] text-white/70 leading-6">
-                Current bid pressure: <span className="font-black text-white">{bidRank}</span><br />
-                Budget: <span className="font-black text-white">${budget.toLocaleString()}</span><br />
-                Tags: <span className="font-black text-white">{targetTags.slice(0, 3).join(", ") || "none"}</span>
-              </div>
             </div>
 
             <div>
@@ -250,15 +178,6 @@ export default function AdvertiserSponsorHub() {
                   </Link>
                 ))}
               </div>
-            </div>
-
-            <div className="mt-auto flex flex-col gap-2">
-              <button type="button" onClick={boostBudget} className="rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-[10px] font-black tracking-widest text-white transition-colors hover:bg-white/10">
-                BOOST CAMPAIGN
-              </button>
-              <button type="button" onClick={duplicateCampaign} className="rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-[10px] font-black tracking-widest text-white transition-colors hover:bg-white/10">
-                DUPLICATE CAMPAIGN
-              </button>
             </div>
           </aside>
         </div>

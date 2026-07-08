@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { scanTicket, verifyTicket, redeemTicket } from "@/lib/tickets/ticketEngine";
+import { evaluateFraudGuard } from "@/lib/tickets/ticketCore";
 
 type ScanResult = {
   ticketId: string;
@@ -24,35 +26,38 @@ export default function TicketScannerRail({
   const [results, setResults] = useState<ScanResult[]>([]);
   const [processing, setProcessing] = useState(false);
 
-  async function handleScan() {
+  function handleScan() {
     const ticketId = input.trim();
     if (!ticketId || processing) return;
 
     setProcessing(true);
 
     try {
-      const res = await fetch("/api/tickets/scan", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ticketId, gate }),
-      });
-      const data = await res.json().catch(() => ({}));
+      const validation = verifyTicket(ticketId);
+      const fraud = evaluateFraudGuard(ticketId);
+      const scan = scanTicket(ticketId, gate);
 
-      let status: "allowed" | "denied" | "flagged" = "denied";
-      let message = data.reason ?? "Ticket not found";
+      let status: "allowed" | "denied" | "flagged" = "allowed";
+      let message = "Entry granted";
 
-      if (res.ok && data.ok) {
-        status = "allowed";
-        message = "Entry granted";
-      } else if (data.decision === "fraud_blocked") {
-        status = "flagged";
-        message = "FRAUD ALERT — scan blocked";
-      } else if (data.isDuplicate) {
+      if (fraud.duplicateScan) {
         status = "flagged";
         message = "DUPLICATE SCAN — ticket already used";
-      } else if (data.decision === "already_redeemed") {
-        status = "denied";
-        message = "Ticket already redeemed";
+      } else if (fraud.status === "flagged") {
+        status = "flagged";
+        message = "FRAUD ALERT — checksum invalid";
+      }
+
+      void validation;
+      void scan;
+
+      try {
+        redeemTicket(ticketId);
+      } catch {
+        if (status === "allowed") {
+          status = "denied";
+          message = "Ticket already redeemed";
+        }
       }
 
       const result: ScanResult = {
@@ -68,7 +73,7 @@ export default function TicketScannerRail({
       const result: ScanResult = {
         ticketId,
         status: "denied",
-        message: "Scan request failed",
+        message: "Ticket not found",
         ts: new Date().toLocaleTimeString(),
       };
       setResults((prev) => [result, ...prev.slice(0, 19)]);

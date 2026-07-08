@@ -14,9 +14,11 @@ export function requireAdmin(request: NextRequest): NextResponse | null {
     cookieHeader.includes('tmi_role=ADMIN') ||
     parsedRole.toLowerCase() === 'admin';
 
+  console.log('[requireAdmin]', { isAdmin, cookieHeader, parsedRole });
+
   if (!isAdmin) {
     return NextResponse.json(
-      { error: 'Admin access required' },
+      { error: 'Admin access required', cookieHeader, parsedRole },
       { status: 403 },
     );
   }

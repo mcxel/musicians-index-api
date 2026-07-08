@@ -18,7 +18,7 @@ function RotatingLobbyTile({ tile }: { tile: LobbyTile }) {
 
   return (
     <Link
-      href={`/live/rooms/${tile.session.roomId}?autoSeat=1`}
+      href={`/rooms/${tile.session.roomId}?autoSeat=1`}
       style={{ textDecoration: 'none' }}
     >
       <div style={{
@@ -209,7 +209,7 @@ export default function Home3MainPreviewLobby({ title = 'MAIN PREVIEW LOBBY' }: 
               {featured.title}
             </div>
             <Link
-              href={`/live/rooms/${featured.roomId}?autoSeat=1`}
+              href={`/rooms/${featured.roomId}?autoSeat=1`}
               style={{
                 display: 'inline-block', padding: '8px 20px',
                 background: '#FF2DAA', color: '#000',

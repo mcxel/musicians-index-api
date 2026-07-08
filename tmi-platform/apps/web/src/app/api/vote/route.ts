@@ -62,6 +62,7 @@ export async function POST(req: NextRequest) {
   const total = prev + 1;
   voteTotals.set(safeId, total);
 
+  console.log(`[vote] performerId=${safeId} ip=${ip} total=${total}`);
 
   // TODO: persist to DB — e.g.
   // await prisma.vote.create({ data: { performerId: safeId, ip, votedAt: new Date() } });

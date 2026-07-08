@@ -2,7 +2,9 @@ import Link from "next/link";
 import { profileToArticleRoute } from "@/lib/editorial/editorialRoutingResolver";
 import TmiProfileLobby from "@/components/profile/TmiProfileLobby";
 import ArtistWorldShell from "@/components/artist/ArtistWorldShell";
+import GoLiveBanner from "@/components/profile/GoLiveBanner";
 import ProfilePlaylistSection from "@/components/profile/ProfilePlaylistSection";
+import PerformerVideoPanel from "@/components/media/PerformerVideoPanel";
 import PerformerSponsorShelf, {
   type PerformerSponsor,
 } from "@/components/performer/PerformerSponsorShelf";
@@ -91,7 +93,10 @@ export default function ArtistProfilePage({ params }: Props) {
         />
       }
     >
-      {/* Live status routes into venue runtime; launch control stays in media player */}
+      {/* Go Live banner — shows only to profile owner when not live */}
+      <GoLiveBanner profileSlug={params.slug} hasStreamed={artist.isLive} />
+
+      {/* Live badge */}
       {artist.isLive && (
         <div style={{
           display: "inline-flex", alignItems: "center", gap: 7,
@@ -102,39 +107,9 @@ export default function ArtistProfilePage({ params }: Props) {
           <span style={{ fontSize: 10, fontWeight: 800, color: FUCHSIA, letterSpacing: "0.14em", textTransform: "uppercase" }}>
             Live Now — {artist.liveVenueName ?? "On Stage"}
           </span>
-          <Link href="/live/stages" style={{ fontSize: 10, color: CYAN, fontWeight: 700, textDecoration: "none", marginLeft: 6 }}>Join Live →</Link>
+          <Link href="/live/stages" style={{ fontSize: 10, color: CYAN, fontWeight: 700, textDecoration: "none", marginLeft: 6 }}>Watch →</Link>
         </div>
       )}
-
-      <section
-        style={{
-          marginBottom: 14,
-          border: "1px solid rgba(0,255,255,0.24)",
-          borderRadius: 10,
-          padding: "10px 12px",
-          background: "rgba(3,15,24,0.55)",
-        }}
-      >
-        <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase", color: CYAN, marginBottom: 6 }}>
-          Venue Runtime Separation
-        </div>
-        <div style={{ fontSize: 11, color: "#cbd5e1", marginBottom: 8 }}>
-          Profile is identity and settings only. Live launch starts in the media player and opens the venue runtime as a separate system.
-        </div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <Link href="/performer/studio" style={{ fontSize: 10, color: CYAN, textDecoration: "none", border: "1px solid rgba(0,255,255,0.35)", borderRadius: 999, padding: "4px 10px" }}>
-            Open Media Player
-          </Link>
-          <Link href="/settings" style={{ fontSize: 10, color: GOLD, textDecoration: "none", border: "1px solid rgba(255,215,0,0.35)", borderRadius: 999, padding: "4px 10px" }}>
-            Venue Defaults
-          </Link>
-          {artist.isLive ? (
-            <Link href="/live/stages" style={{ fontSize: 10, color: FUCHSIA, textDecoration: "none", border: "1px solid rgba(255,45,170,0.35)", borderRadius: 999, padding: "4px 10px" }}>
-              Join Live Venue
-            </Link>
-          ) : null}
-        </div>
-      </section>
 
       {/* Genre chips */}
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
@@ -198,6 +173,16 @@ export default function ArtistProfilePage({ params }: Props) {
           🎵 Join Room
         </Link>
       </div>
+
+      {/* Video & Media panel — live stream + past performances */}
+      <PerformerVideoPanel
+        slug={params.slug}
+        displayName={artist.displayName}
+        isLive={artist.isLive}
+        liveRoomId={artist.isLive ? `artist-${params.slug}` : undefined}
+        accentColor={CYAN}
+        role="artist"
+      />
 
       {/* Playlist — owner can add/reorder tracks; visitors see read-only */}
       <ProfilePlaylistSection profileSlug={params.slug} />

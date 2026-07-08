@@ -66,8 +66,8 @@ const PLANS: Plan[] = [
     color: "#FFD700",
     icon: "🤝",
     features: ["Platform-wide banner", "Curated artist matching", "Pro Legacy Ledger card", "HolographicCard showcase", "Campaign analytics", "Dedicated account manager"],
-    stripePriceMonthly: process.env.NEXT_PUBLIC_STRIPE_PRICE_SPONSOR_FEATURED_MONTHLY ?? "",
-    stripePriceAnnual: process.env.NEXT_PUBLIC_STRIPE_PRICE_SPONSOR_FEATURED_ANNUAL ?? "",
+    stripePriceMonthly: "price_sponsor_featured_monthly",
+    stripePriceAnnual: "price_sponsor_featured_annual",
   },
   {
     id: "advertiser-pro",
@@ -78,8 +78,8 @@ const PLANS: Plan[] = [
     color: "#FFA500",
     icon: "📢",
     features: ["Mid-article ad placements", "Live overlay ads", "Campaign A/B testing", "Brand safety controls", "Audience targeting", "Full campaign analytics"],
-    stripePriceMonthly: process.env.NEXT_PUBLIC_STRIPE_PRICE_ADVERTISER_PRO_MONTHLY ?? "",
-    stripePriceAnnual: process.env.NEXT_PUBLIC_STRIPE_PRICE_ADVERTISER_PRO_ANNUAL ?? "",
+    stripePriceMonthly: "price_advertiser_pro_monthly",
+    stripePriceAnnual: "price_advertiser_pro_annual",
   },
   {
     id: "venue-pro",

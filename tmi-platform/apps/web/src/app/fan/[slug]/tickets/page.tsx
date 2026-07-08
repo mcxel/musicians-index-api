@@ -1,9 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
-import type { TicketRecord } from "@/lib/tickets/ticketCore";
+import {
+  getOwnedTickets,
+  transferTicket,
+  upgradeTicket,
+  redeemTicket,
+} from "@/lib/tickets/ticketEngine";
 import TicketPrintEngine from "@/components/venues/TicketPrintEngine";
+import type { TicketRecord } from "@/lib/tickets/ticketCore";
 
 const TABS = [
   { label: "All Tickets",  href: "" },
@@ -25,30 +31,17 @@ const TIER_COLOR: Record<string, string> = {
 
 export default function FanTicketWalletPage({ params }: { params: { slug: string } }) {
   const { slug } = params;
-  const [tickets, setTickets] = useState<TicketRecord[]>([]);
+  const [tickets, setTickets] = useState<TicketRecord[]>(() => getOwnedTickets(slug));
   const [selected, setSelected] = useState<TicketRecord | null>(null);
   const [transferTo, setTransferTo] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
 
-  function refresh() {
-    fetch(`/api/tickets/wallet?ownerId=${encodeURIComponent(slug)}`)
-      .then((res) => res.json())
-      .then((data) => setTickets(data.tickets ?? []))
-      .catch(() => setTickets([]));
-  }
+  function refresh() { setTickets(getOwnedTickets(slug)); }
 
-  useEffect(refresh, [slug]);
-
-  async function handleTransfer(ticketId: string) {
+  function handleTransfer(ticketId: string) {
     if (!transferTo.trim()) return;
     try {
-      const res = await fetch("/api/tickets/wallet/transfer", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ticketId, toUserId: transferTo.trim(), actorId: slug }),
-      });
-      const data = await res.json();
-      if (!res.ok || !data.ok) throw new Error(data.error ?? "transfer_failed");
+      transferTicket(ticketId, transferTo.trim());
       setMsg(`Transferred to ${transferTo}`);
       setTransferTo("");
       refresh();
@@ -57,15 +50,9 @@ export default function FanTicketWalletPage({ params }: { params: { slug: string
     }
   }
 
-  async function handleUpgrade(ticketId: string) {
+  function handleUpgrade(ticketId: string) {
     try {
-      const res = await fetch("/api/tickets/wallet/upgrade", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ticketId, newTier: "VIP" }),
-      });
-      const data = await res.json();
-      if (!res.ok || !data.ok) throw new Error(data.error ?? "upgrade_failed");
+      upgradeTicket(ticketId, "VIP");
       setMsg("Upgraded to VIP");
       refresh();
     } catch (e) {
@@ -73,15 +60,9 @@ export default function FanTicketWalletPage({ params }: { params: { slug: string
     }
   }
 
-  async function handleRedeem(ticketId: string) {
+  function handleRedeem(ticketId: string) {
     try {
-      const res = await fetch("/api/tickets/wallet/redeem", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ticketId }),
-      });
-      const data = await res.json();
-      if (!res.ok || !data.ok) throw new Error(data.error ?? "redeem_failed");
+      redeemTicket(ticketId);
       setMsg("Ticket redeemed");
       refresh();
     } catch (e) {

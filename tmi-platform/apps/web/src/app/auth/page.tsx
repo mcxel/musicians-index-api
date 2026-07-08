@@ -44,12 +44,6 @@ export default function AuthPage() {
     authenticated: false, csrfToken: null, user: null, role: null, expires: null,
   });
 
-  const nextPath = (() => {
-    const target = searchParams?.get("next") ?? "";
-    if (!target || !target.startsWith("/")) return "/onboarding";
-    return target;
-  })();
-
   const loadSession = async (): Promise<SessionPayload> => {
     const res = await fetch("/api/auth/session", { cache: "no-store", credentials: "include" });
     const data = await res.json();
@@ -114,7 +108,7 @@ export default function AuthPage() {
       });
 
       if (res.status === 201) {
-        window.location.replace(nextPath);
+        window.location.replace("/onboarding");
         return;
       } else if (res.status === 409) {
         setRegisterMsg("User already exists.");
@@ -151,7 +145,7 @@ export default function AuthPage() {
             window.dispatchEvent(new CustomEvent('tmi:streak', { detail: data.streak }));
           } catch { /* localStorage unavailable */ }
         }
-        window.location.replace(nextPath);
+        window.location.replace("/onboarding");
       } else if (res.status === 401) {
         setMessage("Incorrect email or password.");
       } else if (res.status === 403) {

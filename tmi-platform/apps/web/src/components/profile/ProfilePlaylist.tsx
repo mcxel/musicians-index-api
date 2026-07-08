@@ -2,7 +2,6 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react';
 import ViralShareButton from '@/components/share/ViralShareButton';
-import { useGlobalMediaStore } from '@/stores/globalMediaStore';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type MediaKind = 'song' | 'video' | 'live' | 'podcast';
@@ -207,21 +206,6 @@ export default function ProfilePlaylist({
   useEffect(() => {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(entries)); } catch { /* ignore */ }
   }, [entries, STORAGE_KEY]);
-
-  const { loadQueue } = useGlobalMediaStore();
-
-  function handlePlayAudio(entry: PlaylistEntry) {
-    setNowPlayingId(entry.id);
-    loadQueue([{
-      id: entry.id,
-      ownerId: writerId,
-      type: 'audio' as const,
-      sourceUrl: entry.url,
-      title: entry.title,
-      artist: entry.artist,
-      createdAt: entry.addedAt,
-    }]);
-  }
 
   const skin = SKINS.find(s => s.id === activeSkinId) ?? SKINS[0];
   const visible = (filter === 'all' ? entries : entries.filter(e => e.kind === filter)).slice(0, limit);
@@ -493,41 +477,23 @@ export default function ProfilePlaylist({
             )}
 
             {/* Play / visit */}
-            {native && isAudioFile(entry.url) ? (
-              <button
-                type="button"
-                onClick={() => handlePlayAudio(entry)}
-                style={{
-                  background: isNow ? skin.activeLine : pColor,
-                  color: '#050510', border: 'none',
-                  padding: '5px 10px', fontSize: 8, fontWeight: 900,
-                  letterSpacing: '0.1em', textTransform: 'uppercase',
-                  cursor: 'pointer', display: 'inline-block',
-                  boxShadow: isNow ? `0 0 14px ${skin.activeLine}66` : 'none',
-                  transition: 'box-shadow 0.2s',
-                }}
-              >
-                {isNow ? '▶ NOW' : '▶ PLAY'}
-              </button>
-            ) : (
-              <a
-                href={entry.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => setNowPlayingId(entry.id)}
-                style={{
-                  background: isNow ? skin.activeLine : pColor,
-                  color: '#050510', border: 'none',
-                  padding: '5px 10px', fontSize: 8, fontWeight: 900,
-                  letterSpacing: '0.1em', textTransform: 'uppercase',
-                  textDecoration: 'none', display: 'inline-block',
-                  boxShadow: isNow ? `0 0 14px ${skin.activeLine}66` : 'none',
-                  transition: 'box-shadow 0.2s',
-                }}
-              >
-                {isNow ? '▶ NOW' : '▶ PLAY'}
-              </a>
-            )}
+            <a
+              href={entry.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => setNowPlayingId(entry.id)}
+              style={{
+                background: isNow ? skin.activeLine : pColor,
+                color: '#050510', border: 'none',
+                padding: '5px 10px', fontSize: 8, fontWeight: 900,
+                letterSpacing: '0.1em', textTransform: 'uppercase',
+                textDecoration: 'none', display: 'inline-block',
+                boxShadow: isNow ? `0 0 14px ${skin.activeLine}66` : 'none',
+                transition: 'box-shadow 0.2s',
+              }}
+            >
+              {isNow ? '▶ NOW' : '▶ PLAY'}
+            </a>
 
             {/* Reorder arrows (editable) */}
             {editable && (
@@ -571,13 +537,11 @@ export default function ProfilePlaylist({
                   style={{ display: 'block', width: '100%', maxHeight: 300, background: '#000' }}
                 />
               ) : (
-                <div style={{
-                  padding: '10px 14px', fontSize: 10, color: skin.textMuted,
-                  display: 'flex', alignItems: 'center', gap: 8,
-                }}>
-                  <span style={{ color: skin.activeLine }}>▶</span>
-                  Playing in media player below
-                </div>
+                <audio
+                  controls
+                  src={entry.url}
+                  style={{ display: 'block', width: '100%', padding: '10px 12px', boxSizing: 'border-box' }}
+                />
               )
             ) : (
               <iframe

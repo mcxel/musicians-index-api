@@ -13,8 +13,7 @@ export type SoundCategory =
   | 'gameshow'
   | 'concert'
   | 'ui'
-  | 'venue'
-  | 'avatar';
+  | 'venue';
 
 export interface SoundManifestEntry {
   id: string;
@@ -88,22 +87,6 @@ export const SOUND_MANIFEST: SoundManifestEntry[] = [
   { id: 'venue_curtains',       file: '/sounds/venue/venue-curtains.mp3',       category: 'venue', trigger: 'curtain_open / curtain_close', volume: 0.6, loop: false },
   { id: 'venue_siren_warning',  file: '/sounds/venue/venue-siren-warning.mp3',  category: 'venue', trigger: 'room closing / capacity warning', volume: 0.5, loop: false },
   { id: 'venue_truck_signal',   file: '/sounds/venue/venue-truck-signal.mp3',   category: 'venue', trigger: 'backstage/loading transition', volume: 0.4, loop: false },
-
-  // ── Avatar ─────────────────────────────────────────────────────────────────
-  // Files under /sounds/avatar/ — fail gracefully if not yet present (Rule 14).
-  // Volume intentionally low: avatar sfx must never compete with performance audio.
-  { id: 'avatar_movement_sit',       file: '/sounds/avatar/avatar-sit.mp3',          category: 'avatar', trigger: 'avatar sits in seat',                   volume: 0.22, loop: false },
-  { id: 'avatar_movement_stand',     file: '/sounds/avatar/avatar-stand.mp3',        category: 'avatar', trigger: 'avatar stands up from seat',             volume: 0.22, loop: false },
-  { id: 'avatar_movement_walk',      file: '/sounds/avatar/avatar-walk.mp3',         category: 'avatar', trigger: 'avatar walking footstep',                volume: 0.18, loop: false },
-  { id: 'avatar_movement_run',       file: '/sounds/avatar/avatar-run.mp3',          category: 'avatar', trigger: 'avatar running (entering venue fast)',    volume: 0.20, loop: false },
-  { id: 'avatar_clothing_fabric',    file: '/sounds/avatar/clothing-fabric.mp3',     category: 'avatar', trigger: 'soft fabric movement (hoodie/t-shirt)',  volume: 0.15, loop: false },
-  { id: 'avatar_clothing_leather',   file: '/sounds/avatar/clothing-leather.mp3',    category: 'avatar', trigger: 'leather jacket creak/rustle',            volume: 0.18, loop: false },
-  { id: 'avatar_clothing_jewelry',   file: '/sounds/avatar/clothing-jewelry.mp3',    category: 'avatar', trigger: 'chain / bracelet clink',                 volume: 0.15, loop: false },
-  { id: 'avatar_emote_wave',         file: '/sounds/avatar/emote-wave.mp3',          category: 'avatar', trigger: 'wave emote gesture',                     volume: 0.20, loop: false },
-  { id: 'avatar_emote_dance',        file: '/sounds/avatar/emote-dance.mp3',         category: 'avatar', trigger: 'dance emote footstep/rhythm',            volume: 0.22, loop: false },
-  { id: 'avatar_gesture_point',      file: '/sounds/avatar/gesture-point.mp3',       category: 'avatar', trigger: 'pointing gesture',                       volume: 0.15, loop: false },
-  { id: 'avatar_ui_equip',           file: '/sounds/avatar/ui-equip.mp3',            category: 'avatar', trigger: 'equip clothing/prop in dressing room',   volume: 0.28, loop: false },
-  { id: 'avatar_ui_outfit_on',       file: '/sounds/avatar/ui-outfit-on.mp3',        category: 'avatar', trigger: 'full outfit applied in dressing room',   volume: 0.30, loop: false },
 ];
 
 export function getSoundById(id: string): SoundManifestEntry | undefined {

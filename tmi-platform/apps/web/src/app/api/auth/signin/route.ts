@@ -114,7 +114,6 @@ export async function POST(req: NextRequest) {
     response.cookies.delete('tmi_role');
     response.cookies.delete('tmi_tier');
     response.cookies.set('tmi_session_id', sessionId, COOKIE_OPTS);
-    response.cookies.set('tmi_user_id', resolvedUser.id, COOKIE_OPTS);
     response.cookies.set('tmi_session', sessionToken, COOKIE_OPTS);
     response.cookies.set('tmi_role', resolvedUser.role, COOKIE_OPTS);
     response.cookies.set('tmi_tier', resolvedUser.tier, COOKIE_OPTS);

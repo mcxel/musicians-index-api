@@ -11,16 +11,7 @@ import { getPresenceBreakdown, getPresenceCount } from '@/lib/rooms/RoomSessionB
 import prisma from '@/lib/prisma';
 import { getMediaObservabilitySummary } from '@/lib/media/media-observability-store';
 import { getRecentEvents, getSummary } from '@/lib/stripe/stripe-telemetry-store';
-import { getRecentStageEvents, getStageEventSummary } from '@/lib/live/stageTelemetryStore';
-import { getRuntimeRegistryHealthSnapshot, getRuntimeRegistrySummary, listSystemDependencyGraph } from '@/lib/runtime/RuntimeRegistry';
-import { getVenueRealitySummary } from '@/lib/venue/VenueRealityCertificationEngine';
-import { getRealityCertificationSummary } from '@/lib/reality/RealityCertificationEngine';
-import { getFeedRegistrySummary } from '@/lib/broadcast/FeedRegistry';
-import { getDirectorPlan } from '@/lib/broadcast/BroadcastDirectorEngine';
-import { listBroadcastPanelStates } from '@/lib/broadcast/PanelRegistry';
 import { MediaProcessingEngine } from '@/lib/media/MediaProcessingEngine';
-import { getExecutiveAgentRuntimeSnapshot } from '@/lib/ops/ExecutiveAgentRuntime';
-import { getUniversalAnalyticsSnapshot } from '@/lib/analytics/UniversalAnalyticsLayer';
 
 function getUserFromRequest(req: NextRequest) {
   const email = req.cookies.get('tmi_user_email')?.value ?? '';
@@ -47,7 +38,7 @@ export async function GET(req: NextRequest) {
 
   const liveSessions = getAllSessions();
   const liveRooms = new Set(liveSessions.map((session) => session.roomId)).size;
-  const ticketCount = (await listAllTickets()).length;
+  const ticketCount = listAllTickets().length;
   const sponsorCount = Object.keys(ACTIVE_SPONSOR_ZONES).length;
   const presence = getPresenceBreakdown();
   const users = getAllUsers(5000);
@@ -112,30 +103,6 @@ export async function GET(req: NextRequest) {
   const missingPreview = liveSessions.filter((s) => !s.previewUrl).length;
   const missingThumbnail = liveSessions.filter((s) => !s.thumbnailUrl).length;
   const missingStreams = liveSessions.filter((s) => !s.audioOk || s.bitrateKbps <= 0 || s.streamHealth === 'critical').length;
-  const stageEvents = getRecentStageEvents(20);
-  const stageSummary = getStageEventSummary();
-  const runtimeSummary = getRuntimeRegistrySummary();
-  const venueRealitySummary = getVenueRealitySummary();
-  const realitySummary = getRealityCertificationSummary();
-  const feedSummary = getFeedRegistrySummary();
-  const directorPlan = getDirectorPlan();
-  const panels = listBroadcastPanelStates();
-  const executiveRuntime = getExecutiveAgentRuntimeSnapshot();
-  const universalAnalytics = getUniversalAnalyticsSnapshot();
-
-  const runtimeHealth = getRuntimeRegistryHealthSnapshot({
-    dependencySignals: {
-      'stripe-webhook-ingest': stripeHealth === 'HEALTHY' ? 'healthy' : 'degraded',
-      'webrtc-session-layer': missingStreams > 0 ? 'warning' : 'healthy',
-      'audience-scene': stageSummary.activeRooms > 0 ? 'healthy' : 'warning',
-      'media-pipeline': (mediaSummary.failedTranscodes > 0 || mediaSummary.failedUploads > 0) ? 'warning' : 'healthy',
-      'observatory-summary-api': 'healthy',
-      'venue-renderer': venueRealitySummary.averageOverall >= 90 ? 'healthy' : 'warning',
-      'avatar-rig-registry': realitySummary.byModule.avatar.average >= 85 ? 'healthy' : 'warning',
-      'avatar-motion-engine': realitySummary.byModule.animation.average >= 85 ? 'healthy' : 'warning',
-      'avatar-wardrobe-engine': realitySummary.byModule.avatar.average >= 80 ? 'healthy' : 'warning',
-    },
-  });
 
   return NextResponse.json({
     summary: {
@@ -202,72 +169,6 @@ export async function GET(req: NextRequest) {
         activeGifts: observatorySnapshot.totalActiveGifts,
         totalConflicts: observatorySnapshot.totalRuntimeConflicts,
       },
-      stage: {
-        totalEvents: stageSummary.total,
-        activeRooms: stageSummary.activeRooms,
-        lastEventTs: stageSummary.lastEventTs,
-        latestEvent: stageEvents[0] ?? null,
-      },
-      runtimeRegistry: runtimeSummary,
-      runtimeHealth: {
-        updatedAtMs: runtimeHealth.updatedAtMs,
-        healthy: runtimeHealth.summary.healthy,
-        warning: runtimeHealth.summary.warning,
-        degraded: runtimeHealth.summary.degraded,
-        degradedEngines: runtimeHealth.degradedEngines,
-      },
-      systemDependencyGraph: {
-        edges: listSystemDependencyGraph().length,
-      },
-      feedRegistry: feedSummary,
-      panelRegistry: {
-        totalPanels: panels.length,
-        livePanels: panels.filter((panel) => panel.status === 'live').length,
-        queuedPanels: panels.filter((panel) => panel.status === 'queued').length,
-        idlePanels: panels.filter((panel) => panel.status === 'idle').length,
-        updatedAtMs: Date.now(),
-      },
-      broadcastDirector: {
-        mode: directorPlan.mode,
-        preset: directorPlan.preset,
-        timelineItems: directorPlan.timeline.length,
-        queuedItems: directorPlan.timeline.filter((item) => item.status === 'queued' || item.status === 'next').length,
-        updatedAtMs: directorPlan.updatedAtMs,
-      },
-      executiveAgents: {
-        bigAce: {
-          healthScore: executiveRuntime.agents.bigAce.healthScore,
-          confidenceScore: executiveRuntime.agents.bigAce.confidenceScore,
-          currentObjective: executiveRuntime.agents.bigAce.currentObjective,
-          currentTask: executiveRuntime.agents.bigAce.currentTask,
-          currentRecommendation: executiveRuntime.agents.bigAce.currentRecommendation,
-          activeAlerts: executiveRuntime.agents.bigAce.activeAlerts,
-          pendingApprovals: executiveRuntime.agents.bigAce.pendingApprovals,
-          recentActions: executiveRuntime.agents.bigAce.recentActions.slice(0, 3),
-        },
-        mc: {
-          healthScore: executiveRuntime.agents.mc.healthScore,
-          confidenceScore: executiveRuntime.agents.mc.confidenceScore,
-          currentObjective: executiveRuntime.agents.mc.currentObjective,
-          currentTask: executiveRuntime.agents.mc.currentTask,
-          currentRecommendation: executiveRuntime.agents.mc.currentRecommendation,
-          activeAlerts: executiveRuntime.agents.mc.activeAlerts,
-          pendingApprovals: executiveRuntime.agents.mc.pendingApprovals,
-          recentActions: executiveRuntime.agents.mc.recentActions.slice(0, 3),
-        },
-      },
-      universalAnalytics,
-      venueReality: venueRealitySummary,
-      realityCertification: {
-        updatedAtMs: realitySummary.updatedAtMs,
-        totalScorecards: realitySummary.totalScorecards,
-        overallAverage: realitySummary.overallAverage,
-        venueAverage: realitySummary.byModule.venue.average,
-        avatarAverage: realitySummary.byModule.avatar.average,
-        uiAverage: realitySummary.byModule.ui.average,
-        cameraAverage: realitySummary.byModule.camera.average,
-      },
-      lastUpdatedTs: Date.now(),
     },
   });
 }

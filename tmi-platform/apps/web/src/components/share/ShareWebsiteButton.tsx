@@ -1,20 +1,13 @@
 'use client';
 
 import {
-  buildDiscordCopyPrompt,
   buildEmailShare,
   buildFacebookShare,
   buildInstagramCopyPrompt,
-  buildInviteFriendsPrompt,
-  buildMessengerShare,
-  buildRedditShare,
   buildShareUrl,
-  buildSnapchatCopyPrompt,
   buildSmsShare,
-  buildThreadsShare,
   buildTikTokCopyPrompt,
   buildTwitterShare,
-  buildWhatsAppShare,
   type ShareTarget,
 } from '@/lib/share/ShareLinkEngine';
 import { useMemo, useState, type CSSProperties } from 'react';
@@ -68,21 +61,6 @@ export default function ShareWebsiteButton({
     } catch {
       // Ignore aborts.
     }
-  }
-
-  function openTopNetworks(): void {
-    const links = [
-      buildFacebookShare(target),
-      buildTwitterShare(target),
-      buildWhatsAppShare(target),
-      buildRedditShare(target),
-      buildThreadsShare(target),
-    ];
-    links.forEach((href, i) => {
-      window.setTimeout(() => {
-        window.open(href, '_blank', 'noopener,noreferrer');
-      }, i * 120);
-    });
   }
 
   const baseButtonStyle: CSSProperties = {
@@ -153,33 +131,6 @@ export default function ShareWebsiteButton({
             X / Twitter
           </a>
           <a
-            href={buildWhatsAppShare(target)}
-            target="_blank"
-            rel="noreferrer"
-            style={baseButtonStyle}
-          >
-            WhatsApp
-          </a>
-          <a
-            href={buildRedditShare(target)}
-            target="_blank"
-            rel="noreferrer"
-            style={baseButtonStyle}
-          >
-            Reddit
-          </a>
-          <a
-            href={buildThreadsShare(target)}
-            target="_blank"
-            rel="noreferrer"
-            style={baseButtonStyle}
-          >
-            Threads
-          </a>
-          <a href={buildMessengerShare(target)} style={baseButtonStyle}>
-            Messenger
-          </a>
-          <a
             href={`https://api.qrserver.com/v1/create-qr-code/?size=512x512&data=${encodeURIComponent(
               buildShareUrl(target)
             )}`}
@@ -218,54 +169,6 @@ export default function ShareWebsiteButton({
             style={baseButtonStyle}
           >
             TikTok Copy Prompt
-          </button>
-          <button
-            type="button"
-            onClick={async () => {
-              try {
-                await navigator.clipboard.writeText(buildDiscordCopyPrompt(target));
-                setCopied(true);
-                setTimeout(() => setCopied(false), 1600);
-              } catch {
-                setCopied(false);
-              }
-            }}
-            style={baseButtonStyle}
-          >
-            Discord Copy Prompt
-          </button>
-          <button
-            type="button"
-            onClick={async () => {
-              try {
-                await navigator.clipboard.writeText(buildSnapchatCopyPrompt(target));
-                setCopied(true);
-                setTimeout(() => setCopied(false), 1600);
-              } catch {
-                setCopied(false);
-              }
-            }}
-            style={baseButtonStyle}
-          >
-            Snapchat Copy Prompt
-          </button>
-          <button
-            type="button"
-            onClick={async () => {
-              try {
-                await navigator.clipboard.writeText(buildInviteFriendsPrompt(target));
-                setCopied(true);
-                setTimeout(() => setCopied(false), 1600);
-              } catch {
-                setCopied(false);
-              }
-            }}
-            style={baseButtonStyle}
-          >
-            Invite Friends
-          </button>
-          <button type="button" onClick={openTopNetworks} style={baseButtonStyle}>
-            Open Top Social Tabs
           </button>
           <button
             type="button"

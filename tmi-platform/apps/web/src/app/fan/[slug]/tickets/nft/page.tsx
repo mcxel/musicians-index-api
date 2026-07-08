@@ -1,8 +1,8 @@
 "use client";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import type { TicketRecord } from "@/lib/tickets/ticketCore";
+import { getOwnedTickets } from "@/lib/tickets/ticketEngine";
+import { useState } from "react";
 
 export default function FanNFTTicketsPage() {
   const params = useParams();
@@ -10,16 +10,8 @@ export default function FanNFTTicketsPage() {
   const rawSlug = params?.slug;
   const slug = typeof rawSlug === "string" ? rawSlug : Array.isArray(rawSlug) ? rawSlug[0] : "";
   const [msg, setMsg] = useState("");
-  const [allTickets, setAllTickets] = useState<TicketRecord[]>([]);
 
-  useEffect(() => {
-    if (!slug) return;
-    fetch(`/api/tickets/wallet?ownerId=${encodeURIComponent(slug)}`)
-      .then((res) => res.json())
-      .then((data) => setAllTickets(data.tickets ?? []))
-      .catch(() => setAllTickets([]));
-  }, [slug]);
-
+  const allTickets = getOwnedTickets(slug);
   const nftTickets = allTickets.filter((t) => t.outputFormats.includes("NFT"));
 
   function viewOnChain(ticketId: string) {

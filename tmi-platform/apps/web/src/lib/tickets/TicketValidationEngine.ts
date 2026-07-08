@@ -1,7 +1,7 @@
 import { evaluateFraudGuard, getTicketById } from "@/lib/tickets/ticketCore";
 
-export async function TicketValidationEngine(ticketId: string) {
-  const ticket = await getTicketById(ticketId);
+export function TicketValidationEngine(ticketId: string) {
+  const ticket = getTicketById(ticketId);
   if (!ticket) {
     return {
       valid: false,
@@ -10,7 +10,7 @@ export async function TicketValidationEngine(ticketId: string) {
     };
   }
 
-  const fraudGuard = await evaluateFraudGuard(ticketId);
+  const fraudGuard = evaluateFraudGuard(ticketId);
   if (fraudGuard.status === "flagged") {
     return {
       valid: false,

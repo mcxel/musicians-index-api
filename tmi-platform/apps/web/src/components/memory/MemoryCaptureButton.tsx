@@ -18,7 +18,6 @@
 
 import { useState, useCallback } from 'react';
 import type { CaptureType } from '@/lib/capture/CaptureEngine';
-import { dispatchSoundEvent } from '@/lib/sound/AudioDirector';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -82,7 +81,6 @@ export default function MemoryCaptureButton({
       const data: CaptureApiResponse = await res.json();
 
       if (data.success) {
-        dispatchSoundEvent('tmi:memory_captured');
         setXpEarned(data.xpEarned ?? 0);
         setState('saved');
         setTimeout(() => {

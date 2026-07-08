@@ -9,6 +9,7 @@ import {
   type ArtistRankEntry,
 } from "@/packages/magazine-engine/dataAdapters";
 import { EDITORIAL_ARTICLES } from "@/lib/editorial/NewsArticleModel";
+import { artistImages, imageAt } from "@/components/cards/content-image-bank";
 import { resolveArtistMedia } from "./ArtistMediaResolver";
 
 // ─── Genre → accent color fallback ───────────────────────────────────────────
@@ -101,20 +102,16 @@ function computeStateBadge(entry: ArtistRankEntry, sponsorPayload: string | null
   return null;
 }
 
-function buildPayload(entry: ArtistRankEntry): OrbitArtistPayload {
+function buildPayload(entry: ArtistRankEntry, imageIndex: number): OrbitArtistPayload {
   const artistId = toSlug(entry.name);
   const article  = EDITORIAL_ARTICLES.find(
     (a) => a.relatedArtistSlug === artistId && a.category === "artist",
   );
   const accentColor    = article?.accentColor ?? GENRE_ACCENT[entry.genre] ?? "#00FFFF";
-  // No article cover and no registered asset image now falls through to
-  // resolveArtistMedia's own branded fallback (/tmi-curated/host-main.png)
-  // instead of a generic stock-photo pool — real artists were repeatedly
-  // showing the same handful of Unsplash photos when neither existed.
   const media = resolveArtistMedia({
     artistId,
     artistName: entry.name,
-    heroImage: article?.heroImage,
+    heroImage: article?.heroImage ?? imageAt(artistImages, imageIndex),
   });
   const portrait       = media.posterFrameUrl;
   const articleSlug    = article?.slug        ?? `${artistId}-tmi-profile`;
@@ -150,10 +147,10 @@ export function getOrbitArtistPayloads(): OrbitArtistPayload[] {
   return getGlobalRanking()
     .filter((e) => e.rank > 1)
     .slice(0, 9)
-    .map((e) => buildPayload(e));
+    .map((e, i) => buildPayload(e, i + 1));
 }
 
 // Returns rank 1 — the crown center portrait and route.
 export function getCrownArtistPayload(): OrbitArtistPayload {
-  return buildPayload(getCrownLeader());
+  return buildPayload(getCrownLeader(), 0);
 }
