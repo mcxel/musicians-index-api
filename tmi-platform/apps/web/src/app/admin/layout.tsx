@@ -6,10 +6,13 @@ import Link from "next/link";
 import TMIVideoMonitor from "@/components/hud/TMIVideoMonitor";
 import { PersonaSwitcher } from "@/components/hud/PersonaSwitcher";
 
-// Roles that may access /admin/* — checked against live session before any child renders
-const ADMIN_ROLES = new Set(["admin", "superadmin", "owner", "ADMIN"]);
+// Roles that may access /admin/* — checked against live session before any child renders.
+// Matches the real Prisma Role enum (STAFF/ADMIN only — no OWNER/SUPERADMIN role exists).
+const ADMIN_ROLES = new Set(["ADMIN", "STAFF"]);
 
 type AuthStatus = "checking" | "authorized" | "denied";
+
+const ADMIN_SESSION_TIMEOUT_MS = 8000;
 
 type OperatorPolicy = {
   key: "marcel" | "big-ace" | "justin" | "jay" | "admin";
@@ -46,8 +49,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   useEffect(() => {
     let active = true;
+    const ctrl = new AbortController();
+    const timeoutId = setTimeout(() => ctrl.abort(), ADMIN_SESSION_TIMEOUT_MS);
 
-    fetch("/api/auth/session", { cache: "no-store", credentials: "include" })
+    fetch("/api/auth/session", { cache: "no-store", credentials: "include", signal: ctrl.signal })
       .then(r => r.json())
       .then((d: unknown) => {
         if (!active) return;
@@ -67,7 +72,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         if (active) setStatus("denied");
       });
 
-    return () => { active = false; };
+    return () => {
+      active = false;
+      clearTimeout(timeoutId);
+      ctrl.abort();
+    };
   }, []);
 
   useEffect(() => {
@@ -138,6 +147,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </Link>
           <Link href="/admin/runtime-check" style={{ padding: '6px 10px', borderRadius: 999, border: '1px solid rgba(0,255,136,0.55)', background: 'rgba(0,255,136,0.12)', color: '#00FF88', fontSize: 10, fontWeight: 900, letterSpacing: '0.1em', textDecoration: 'none' }}>
             ✅ Runtime Check
+          </Link>
+          <Link href="/admin/certification" style={{ padding: '6px 10px', borderRadius: 999, border: '1px solid rgba(255,215,0,0.35)', background: 'rgba(255,215,0,0.08)', color: '#FFD700', fontSize: 10, fontWeight: 900, letterSpacing: '0.1em', textDecoration: 'none' }}>
+            Certification
           </Link>
           <Link href="/admin/observatory" style={{ padding: '6px 10px', borderRadius: 999, border: '1px solid rgba(0,255,255,0.25)', background: 'rgba(0,255,255,0.06)', color: '#00FFFF', fontSize: 10, fontWeight: 900, letterSpacing: '0.1em', textDecoration: 'none' }}>
             Observatory

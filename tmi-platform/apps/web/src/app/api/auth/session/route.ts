@@ -4,6 +4,17 @@ import type { NextRequest } from 'next/server';
 import { isFounderDiamondEmail } from '@/lib/promos/FounderDiamondPassEngine';
 import prisma from '@/lib/prisma';
 
+const SESSION_DB_LOOKUP_TIMEOUT_MS = 1200;
+
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T | null> {
+  return Promise.race([
+    promise,
+    new Promise<null>((resolve) => {
+      setTimeout(() => resolve(null), timeoutMs);
+    }),
+  ]);
+}
+
 /**
  * P0 identity hardening:
  * - Never serialize internal/admin emails to non-admin clients
@@ -56,10 +67,13 @@ export async function GET(req: NextRequest) {
 
   if (rawEmail) {
     try {
-      const dbUser = await prisma.user.findUnique({
-        where: { email: rawEmail },
-        select: { id: true, isLive: true, liveRoomId: true, userProfile: { select: { avatarUrl: true } } },
-      });
+      const dbUser = await withTimeout(
+        prisma.user.findUnique({
+          where: { email: rawEmail },
+          select: { id: true, isLive: true, liveRoomId: true, userProfile: { select: { avatarUrl: true } } },
+        }),
+        SESSION_DB_LOOKUP_TIMEOUT_MS
+      );
       if (dbUser) {
         canonicalUserId = dbUser.id;
         isLive = dbUser.isLive;
