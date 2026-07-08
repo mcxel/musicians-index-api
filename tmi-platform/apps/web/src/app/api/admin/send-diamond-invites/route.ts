@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
   const sent    = results.filter(r => r.success).length;
   const failed  = results.filter(r => !r.success).length;
 
-  console.log(`[send-diamond-invites] Sent ${sent}/${DIAMOND_MEMBERS.length} Diamond invite emails`);
+  console.info(`[send-diamond-invites] Sent ${sent}/${DIAMOND_MEMBERS.length} Diamond invite emails`);
 
   return NextResponse.json({ ok: true, sent, failed, results }, { status: 200 });
 }

@@ -6,7 +6,6 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json() as { userId?: string };
 
-    console.log(`[Account Engine] Deactivating account ID: ${body.userId ?? 'unknown'}`);
 
     return NextResponse.json({ ok: true, message: 'Account successfully deactivated. All subscriptions halted.' });
   } catch (error) {

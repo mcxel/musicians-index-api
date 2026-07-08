@@ -348,7 +348,7 @@ export default function GoLivePage() {
             performerName={title}
             performerTier={performerTier}
             isLive
-            viewerCount={Math.min(liveSeconds, 99)}
+            viewerCount={0}
             onEndShow={() => {
               if (liveTimerRef.current) clearInterval(liveTimerRef.current);
               setStep("setup");

@@ -47,7 +47,7 @@ const _deniedSet: Set<string> = new Set(); // ticketId → denied at gate
 
 // ── Check pipeline ────────────────────────────────────────────────────────────
 
-export function checkEntry(input: GateCheckInput): GateCheckResult {
+export async function checkEntry(input: GateCheckInput): Promise<GateCheckResult> {
   const now = Date.now();
 
   const base: Omit<GateCheckResult, "decision" | "reason" | "denyReason"> = {
@@ -75,7 +75,7 @@ export function checkEntry(input: GateCheckInput): GateCheckResult {
   }
 
   // 2 — Standard ticket scan (fraud + validation + redemption)
-  const scan = scanTicket({
+  const scan = await scanTicket({
     ticketId: input.ticketId,
     gate: input.gate,
     deviceId: input.deviceId,

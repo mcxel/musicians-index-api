@@ -71,7 +71,7 @@ export default function ArenaRadar({ compact = false, accent = '#FF2DAA', maxIte
         ...a,
         countdown: Math.max(0, a.countdown - 1),
         status: a.countdown <= 1 && a.status === 'STARTING' ? 'LIVE' : a.status,
-        audience: a.audience + Math.floor((Math.random() - 0.3) * 8),
+        audience: a.audience,
       })));
     }, 1000);
     intervalRef.current = id;

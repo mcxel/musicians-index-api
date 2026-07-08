@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { proxyToApi } from "@/lib/apiProxy";
-import { liveRooms } from "@/lib/placeholders/liveRooms";
-import { getActiveSessions } from "@/lib/broadcast/GlobalLiveSessionRegistry";
+import { getActiveSessions, registerLiveSession } from "@/lib/broadcast/GlobalLiveSessionRegistry";
+import { prisma } from "@/lib/prisma";
 import { type NextRequest, NextResponse } from "next/server";
 
 // GlobalLiveSessionRegistry is the platform's single authoritative source for
@@ -13,7 +13,28 @@ export async function GET(req: NextRequest) {
   const parsedLimit = Number.parseInt(rawLimit, 10);
   const limit = Number.isNaN(parsedLimit) ? 4 : Math.max(1, Math.min(20, parsedLimit));
 
-  const registrySessions = getActiveSessions().slice(0, limit).map((s) => ({
+  // DB cold-start recovery: rebuild sessions from persisted DB fields if registry is empty
+  let activeSessions = getActiveSessions();
+  if (activeSessions.length === 0) {
+    const liveUsers = await prisma.user.findMany({
+      where: { isLive: true },
+      select: { id: true, displayName: true, liveRoomId: true, liveGenre: true },
+    }).catch(() => []);
+    for (const u of liveUsers) {
+      if (u.liveRoomId) {
+        registerLiveSession({
+          userId:      u.id,
+          displayName: u.displayName ?? u.id,
+          title:       `${u.displayName ?? u.id} — Live`,
+          category:    (u.liveGenre as import('@/lib/broadcast/GlobalLiveSessionRegistry').StreamCategory) ?? 'live',
+          roomId:      u.liveRoomId,
+        });
+      }
+    }
+    activeSessions = getActiveSessions();
+  }
+
+  const registrySessions = activeSessions.slice(0, limit).map((s) => ({
     userId:       s.userId,
     displayName:  s.displayName,
     title:        s.title,
@@ -48,13 +69,12 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  const fallbackRooms = liveRooms.slice(0, limit);
   return NextResponse.json({
     status: "ok",
-    source: "fallback",
+    source: "empty",
     timestamp: new Date().toISOString(),
-    rooms: fallbackRooms,
-    events: fallbackRooms,
+    rooms: [],
+    events: [],
     streams: [],
   });
 }

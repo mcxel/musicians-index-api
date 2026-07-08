@@ -97,6 +97,9 @@ export default function MCMichaelCharlieHubPage() {
           </p>
         </div>
         <div style={{ marginLeft: "auto", display: "flex", gap: 8, flexShrink: 0, flexWrap: "wrap" }}>
+          <Link href="/admin/mc-michael-charlie/operations-console" style={{ fontSize: 10, color: "#fde68a", textDecoration: "none", border: "1px solid rgba(251,191,36,0.35)", borderRadius: 6, padding: "5px 10px", letterSpacing: "0.06em" }}>
+            Operations Console →
+          </Link>
           <Link href="/admin/big-ace" style={{ fontSize: 10, color: "#c4b5fd", textDecoration: "none", border: "1px solid rgba(170,45,255,0.3)", borderRadius: 6, padding: "5px 10px", letterSpacing: "0.06em" }}>
             Report to Big Ace →
           </Link>

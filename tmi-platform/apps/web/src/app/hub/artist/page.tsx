@@ -19,6 +19,9 @@ export default function ArtistHubPage() {
   const [showState, setShowState] = useState<ArtistShowState>('closed');
   const [artistSlug, setArtistSlug] = useState('me');
   const [displayName, setDisplayName] = useState('');
+  const [userTier, setUserTier] = useState('');
+  const [userRole, setUserRole] = useState('ARTIST');
+  const [bannerDismissed, setBannerDismissed] = useState(false);
 
   useEffect(() => {
     fetch('/api/auth/session', { cache: 'no-store', credentials: 'include' })
@@ -28,6 +31,17 @@ export default function ArtistHubPage() {
           setArtistSlug(d.user.id ?? 'me');
           setDisplayName(d.user.name ?? d.user.email?.split('@')[0] ?? 'artist');
         }
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    fetch('/api/auth/me', { cache: 'no-store', credentials: 'include' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { authenticated?: boolean; user?: { tier?: string; role?: string } } | null) => {
+        if (!d?.authenticated || !d.user) return;
+        if (d.user.tier) setUserTier(d.user.tier.toUpperCase());
+        if (d.user.role) setUserRole(d.user.role.toUpperCase());
       })
       .catch(() => {});
   }, []);
@@ -64,6 +78,28 @@ export default function ArtistHubPage() {
         </div>
       </div>
 
+      {userTier === 'FREE' && !bannerDismissed && (
+        <div style={{ background: 'linear-gradient(90deg, #FF9500, #FFD700)', padding: '12px 24px', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          <div style={{ flex: 1 }}>
+            <span style={{ fontSize: 13, fontWeight: 900, color: '#050510', letterSpacing: '0.04em' }}>
+              {userRole === 'BAND' ? '🎸 Band Pro — $16.99/month' : '🚀 Go Pro — $1.99/month'}
+            </span>
+            <span style={{ fontSize: 12, color: 'rgba(5,5,16,0.82)', marginLeft: 12 }}>
+              {userRole === 'BAND'
+                ? 'Unlock group tools, creative suite access, and higher discovery reach.'
+                : 'Go live, get discovered, and convert fans into revenue now.'}
+            </span>
+          </div>
+          <Link href="/account/subscription" style={{ padding: '8px 20px', borderRadius: 8, background: '#050510', color: '#FFD700', fontSize: 12, fontWeight: 900, textDecoration: 'none', letterSpacing: '0.06em' }}>
+            UPGRADE NOW
+          </Link>
+          <Link href="/messages/new?subject=Join+me+on+TMI" style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid rgba(5,5,16,0.35)', color: '#050510', fontSize: 11, fontWeight: 800, textDecoration: 'none' }}>
+            INVITE FRIENDS
+          </Link>
+          <button onClick={() => setBannerDismissed(true)} style={{ background: 'none', border: 'none', color: 'rgba(5,5,16,0.7)', fontSize: 18, cursor: 'pointer', padding: 0 }} aria-label="Dismiss">×</button>
+        </div>
+      )}
+
       <div style={{ maxWidth: 1400, margin: '0 auto', padding: '32px 24px 64px' }}>
 
         {/* Header */}
@@ -73,6 +109,14 @@ export default function ArtistHubPage() {
           <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.45)', marginTop: 6 }}>
             Live show control · revenue · tips · setlist · backstage · pulse
           </p>
+          <div style={{ marginTop: 10, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <Link href="/messages" style={{ fontSize: 11, fontWeight: 800, color: '#00FFFF', textDecoration: 'none', border: '1px solid rgba(0,255,255,0.35)', borderRadius: 8, padding: '6px 10px', letterSpacing: '0.06em' }}>
+              OPEN MESSAGES
+            </Link>
+            <Link href="/messages/new?subject=Join+my+next+show" style={{ fontSize: 11, fontWeight: 800, color: '#FFD700', textDecoration: 'none', border: '1px solid rgba(255,215,0,0.35)', borderRadius: 8, padding: '6px 10px', letterSpacing: '0.06em' }}>
+              MESSAGE INVITE
+            </Link>
+          </div>
         </div>
 
         {/* Stats row */}
@@ -83,15 +127,9 @@ export default function ArtistHubPage() {
 
           {/* Left column */}
           <div>
-            {/* Live curtain control */}
-            <div style={{ marginBottom: 20 }}>
-              <SectionLabel>Live Show</SectionLabel>
-              <ArtistCurtainShell
-                showState={showState}
-                showTitle="Crown Night Vol.4"
-                onStateChange={advanceShow}
-              />
-            </div>
+            {/* Live Show — curtain moved to VideoMonitorGrid live-stream slot.
+                Only surfaces inside the video panel when performer is going live
+                or a show is active. Not shown as a static dashboard section. */}
 
             {/* Revenue rail */}
             <div style={{ marginBottom: 20 }}>

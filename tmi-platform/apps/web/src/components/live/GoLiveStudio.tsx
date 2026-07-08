@@ -13,9 +13,21 @@ import {
   subscribeStage,
   getStageSnapshot,
 } from '@/lib/live/StageLifecycleEngine';
+import StartLiveSessionModal from '@/components/live/StartLiveSessionModal';
+import { announceContenderCall, getBotDJForRotation, type ContenderCallInput } from '@/engines/performance/BotDJEngine';
+
+import {
+  startBroadcast,
+  endBroadcast,
+  subscribeBroadcastState,
+  updateViewerCount as runtimeUpdateViewerCount,
+  teardownBroadcastRuntime,
+  type BroadcastMode as BroadcastModeType,
+} from '@/lib/broadcast/BroadcastControlRuntime';
 
 type BroadcastState = 'preview' | 'syncing' | 'live' | 'ending';
 type EventMode = 'LIVE_GENERAL' | 'LIVE_BATTLE' | 'LIVE_CHALLENGE' | 'LIVE_CONCERT' | 'LIVE_CYPHER';
+type CompetitiveLifecycleState = 'preparing' | 'waiting_for_contender' | 'opponent_joined' | 'vs_animation' | 'countdown' | 'live' | 'winner_results' | 'replay' | 'archive';
 
 interface SessionUser {
   id?: string;
@@ -32,9 +44,10 @@ const GOLD = '#FFD700';
 
 export default function GoLiveStudio() {
   const router    = useRouter();
-  const videoRef  = useRef<HTMLVideoElement>(null);
-  const stageRef = useRef<HTMLVideoElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
+  const videoRef   = useRef<HTMLVideoElement>(null);
+  const stageRef   = useRef<HTMLVideoElement>(null);
+  const waitCamRef = useRef<HTMLVideoElement>(null);
+  const streamRef  = useRef<MediaStream | null>(null);
   const dailyCallRef = useRef<DailyCall | null>(null);
 
   const [broadcastState, setBroadcastState] = useState<BroadcastState>('preview');
@@ -51,14 +64,30 @@ export default function GoLiveStudio() {
   const [micOn,          setMicOn]          = useState(true);
   const [camOn,          setCamOn]          = useState(true);
   const [dailyRoomId,    setDailyRoomId]    = useState('');
+  const [competitiveLifecycleState, setCompetitiveLifecycleState] = useState<CompetitiveLifecycleState | null>(null);
+  const [botAnnouncement, setBotAnnouncement] = useState('');
   const [curtainState,     setCurtainState]     = useState(() => getStageSnapshot().state);
   const [isPublicSession,  setIsPublicSession]  = useState(true);
+  const [showPicker,       setShowPicker]       = useState(true);
 
   useEffect(() => subscribeStage((s) => setCurtainState(s.state)), []);
 
-  // Start camera + prefill session display name
+  // Prefill session display name immediately; start camera only after destination is chosen
   useEffect(() => {
     async function init() {
+      // Always load session so displayName is ready before the picker confirms
+      try {
+        const res = await fetch('/api/auth/session', { credentials: 'include', cache: 'no-store' });
+        const data = await res.json() as { user?: SessionUser };
+        if (data.user?.id) {
+          setUserId(data.user.id);
+          setSessionUser(data.user);
+          setDisplayName(data.user.name ?? data.user.email ?? data.user.id);
+        }
+      } catch { /* no-op */ }
+
+      if (showPicker) return; // camera waits until destination is chosen
+
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
@@ -73,16 +102,6 @@ export default function GoLiveStudio() {
             : 'Camera not available. Check your device settings or try a different browser.',
         );
       }
-
-      try {
-        const res = await fetch('/api/auth/session', { credentials: 'include', cache: 'no-store' });
-        const data = await res.json() as { user?: SessionUser };
-        if (data.user?.id) {
-          setUserId(data.user.id);
-          setSessionUser(data.user);
-          setDisplayName(data.user.name ?? data.user.email ?? data.user.id);
-        }
-      } catch { /* no-op */ }
     }
 
     init();
@@ -90,7 +109,7 @@ export default function GoLiveStudio() {
     return () => {
       streamRef.current?.getTracks().forEach(t => t.stop());
     };
-  }, []);
+  }, [showPicker]);
 
   useEffect(() => {
     if (!stageRef.current || !streamRef.current || broadcastState !== 'live') return;
@@ -98,14 +117,25 @@ export default function GoLiveStudio() {
     void stageRef.current.play();
   }, [broadcastState]);
 
-  // Live timer
+  // Wire waiting room camera mirror when in competitive live mode
   useEffect(() => {
-    if (broadcastState !== 'live') return;
-    const t = setInterval(() => setLiveSeconds(s => s + 1), 1000);
-    return () => clearInterval(t);
-  }, [broadcastState]);
+    if (!waitCamRef.current || !streamRef.current || broadcastState !== 'live') return;
+    waitCamRef.current.srcObject = streamRef.current;
+    void waitCamRef.current.play().catch(() => {});
+  }, [broadcastState, eventMode]);
 
-  // Poll viewer count when live
+  // Sync liveSeconds + viewerCount from BroadcastControlRuntime
+  useEffect(() => {
+    return subscribeBroadcastState((s) => {
+      setLiveSeconds(s.liveSeconds);
+      setViewerCount(s.viewerCount);
+    });
+  }, []);
+
+  // Cleanup runtime on unmount
+  useEffect(() => () => teardownBroadcastRuntime(), []);
+
+  // Poll viewer count when live; forward to runtime so subscribers stay in sync
   useEffect(() => {
     if (broadcastState !== 'live' || !userId) return;
     const poll = async () => {
@@ -113,13 +143,66 @@ export default function GoLiveStudio() {
         const res  = await fetch('/api/live/go');
         const data = await res.json() as { live: { userId: string; viewerCount: number }[] };
         const me   = data.live.find(u => u.userId === userId);
-        if (me) setViewerCount(me.viewerCount);
+        if (me) {
+          setViewerCount(me.viewerCount);
+          runtimeUpdateViewerCount(me.viewerCount);
+        }
       } catch { /* no-op */ }
     };
     poll();
     const t = setInterval(poll, 10_000);
     return () => clearInterval(t);
   }, [broadcastState, userId]);
+
+  // Derived early so the lifecycle useEffect dependency is declared before first use.
+  const isCompetitiveMode = eventMode === 'LIVE_BATTLE' || eventMode === 'LIVE_CYPHER' || eventMode === 'LIVE_CHALLENGE';
+
+  useEffect(() => {
+    if (broadcastState !== 'live' || !isCompetitiveMode || !dailyRoomId) {
+      return;
+    }
+
+    let cancelled = false;
+    const poll = async () => {
+      try {
+        const res = await fetch(`/api/live/competitive-session?roomId=${encodeURIComponent(dailyRoomId)}`, { cache: 'no-store' });
+        if (!res.ok) return;
+        const data = await res.json() as { session?: { state?: CompetitiveLifecycleState } };
+        if (!cancelled) {
+          setCompetitiveLifecycleState(data.session?.state ?? null);
+        }
+      } catch {
+        // Keep host panel resilient on transient API failures.
+      }
+    };
+
+    void poll();
+    const timer = setInterval(poll, 1500);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [broadcastState, isCompetitiveMode, dailyRoomId]);
+
+  // Bot DJ contender call — posts a real templated "come join" line to the
+  // waiting-for-contender panel below whenever a competitive session goes
+  // live. Uses real session data (genre, mode) only; no fabricated slot
+  // counts or join-window timers (this session type has neither).
+  useEffect(() => {
+    if (broadcastState !== 'live' || !isCompetitiveMode) {
+      setBotAnnouncement('');
+      return;
+    }
+    const sessionType = eventMode === 'LIVE_BATTLE' ? 'battle' : eventMode === 'LIVE_CYPHER' ? 'cypher' : 'challenge';
+    const input: ContenderCallInput = {
+      label: `${genre} ${sessionType.charAt(0).toUpperCase()}${sessionType.slice(1)}`,
+      sessionType,
+      genre,
+    };
+    const bot = getBotDJForRotation(Math.floor(Date.now() / 1000));
+    const action = announceContenderCall(bot.id, input, Math.floor(Date.now() / 5000));
+    setBotAnnouncement(action.text);
+  }, [broadcastState, isCompetitiveMode, eventMode, genre]);
 
   function toggleMic() {
     const track = streamRef.current?.getAudioTracks()[0];
@@ -138,6 +221,50 @@ export default function GoLiveStudio() {
     if (mode === 'LIVE_CYPHER') return 'cypher';
     return 'live';
   }
+
+  function wallRouteForMode(mode: EventMode): string {
+    if (mode === 'LIVE_BATTLE') return '/battles/lobby-wall';
+    if (mode === 'LIVE_CYPHER') return '/cypher/lobby-wall';
+    if (mode === 'LIVE_CHALLENGE') return '/challenges/lobby-wall';
+    return '/live/rooms';
+  }
+
+  function wallLabelForMode(mode: EventMode): string {
+    if (mode === 'LIVE_BATTLE') return 'BATTLE WALL';
+    if (mode === 'LIVE_CYPHER') return 'CYPHER WALL';
+    if (mode === 'LIVE_CHALLENGE') return 'CHALLENGE WALL';
+    return 'LOBBY WALL';
+  }
+
+  const competitiveStatusLabel =
+    competitiveLifecycleState === 'preparing' ? 'SETTING UP STAGE' :
+    competitiveLifecycleState === 'waiting_for_contender' || !competitiveLifecycleState ? 'WAITING FOR CONTENDER' :
+    competitiveLifecycleState === 'opponent_joined' ? 'OPPONENT JOINED' :
+    competitiveLifecycleState === 'vs_animation' ? 'VS TRANSITION' :
+    competitiveLifecycleState === 'countdown' ? 'COUNTDOWN' :
+    competitiveLifecycleState === 'live' ? 'BATTLE STARTING' :
+    competitiveLifecycleState === 'winner_results' ? 'RESULTS' :
+    competitiveLifecycleState === 'replay' ? 'REPLAY' :
+    'SESSION COMPLETE';
+
+  const competitiveDetailLabel =
+    competitiveLifecycleState === 'preparing'
+      ? 'Initializing split-screen and pre-show systems. Join is disabled until setup completes.'
+      : competitiveLifecycleState === 'waiting_for_contender' || !competitiveLifecycleState
+      ? `Your session is live on the ${wallLabelForMode(eventMode)}. Anyone can join and ${eventMode === 'LIVE_BATTLE' ? 'battle you' : eventMode === 'LIVE_CYPHER' ? 'join the cypher' : 'take the challenge'}.`
+      : competitiveLifecycleState === 'opponent_joined'
+      ? 'Contender locked. Routing to VS transition now.'
+      : competitiveLifecycleState === 'vs_animation'
+      ? 'Broadcast director is running the VS animation sequence.'
+      : competitiveLifecycleState === 'countdown'
+      ? 'Countdown is active. Match goes live automatically.'
+      : competitiveLifecycleState === 'live'
+      ? 'Match is live. Crowd, cameras, and scoring are synchronized.'
+      : competitiveLifecycleState === 'winner_results'
+      ? 'Winner detected. Results package is being prepared.'
+      : competitiveLifecycleState === 'replay'
+      ? 'Replay mode active. Archiving after final replay.'
+      : 'Session is archived.';
 
   async function handleGoLive() {
     if (!displayName.trim()) { setErrorMsg('Enter your display name.'); return; }
@@ -186,41 +313,25 @@ export default function GoLiveStudio() {
       console.warn('[GoLive] Daily.co unavailable — registry-only mode:', dailyErr);
     }
 
-    // ── Step 2: Register in GlobalLiveSessionRegistry ───────────────────────
+    // ── Step 2: Register via BroadcastControlRuntime ─────────────────────────
+    // Routes: POST /api/live/go + StageLifecycleEngine.startCountdown()
+    //         + RuntimeEventBus VENUE_OPEN + WORLD_SESSION_ADDED
     try {
-      const res = await fetch('/api/live/go', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          displayName: displayName.trim(),
-          genre,
-          eventType: eventMode,
-          category: modeToCategory(eventMode),
-          role: (sessionUser?.role ?? 'performer').toLowerCase(),
-          ...(resolvedRoomId ? { roomId: resolvedRoomId } : {}),
-        }),
-        credentials: 'include',
+      const { roomId: confirmedRoomId } = await startBroadcast({
+        userId,
+        displayName: displayName.trim(),
+        roomId: resolvedRoomId || `room-${Date.now()}`,
+        title: displayName.trim(),
+        mode: eventMode as BroadcastModeType,
+        genre,
+        isPublic: isPublicSession,
       });
-
-      if (!res.ok) {
-        const err = await res.json() as { error?: string };
-        setErrorMsg(
-          res.status === 401
-            ? 'You must be logged in to go live. Please sign in and try again.'
-            : (err.error ?? 'Failed to start broadcast.'),
-        );
-        // Clean up Daily call if registry failed
-        await dailyCallRef.current?.leave();
-        await dailyCallRef.current?.destroy();
-        dailyCallRef.current = null;
-        setDailyRoomId('');
-        setBroadcastState('preview');
-        return;
-      }
+      if (!resolvedRoomId) setDailyRoomId(confirmedRoomId);
 
       setBroadcastState('live');
       setLiveSeconds(0);
       localStorage.setItem('tmi_is_live', 'true');
+      // Keep window event for any legacy consumers not yet on RuntimeEventBus
       window.dispatchEvent(new CustomEvent('tmi:golive', {
         detail: {
           userId: userId || undefined,
@@ -228,15 +339,23 @@ export default function GoLiveStudio() {
           role: sessionUser?.role ?? 'performer',
           genre,
           eventType: eventMode,
-          roomId: resolvedRoomId || undefined,
+          roomId: confirmedRoomId,
         },
       }));
-    } catch {
-      setErrorMsg('Network error. Check your connection and try again.');
+    } catch (err) {
+      const code = err instanceof Error ? err.message : '';
+      setErrorMsg(
+        code === 'unauthorized' || code === 'not_authenticated'
+          ? 'You must be logged in to go live. Please sign in and try again.'
+          : code === 'capacity_limit_exceeded'
+          ? 'Platform is at capacity. Please try again in a few minutes.'
+          : 'Network error. Check your connection and try again.',
+      );
       await dailyCallRef.current?.leave();
       await dailyCallRef.current?.destroy();
       dailyCallRef.current = null;
       setDailyRoomId('');
+      setCompetitiveLifecycleState(null);
       setBroadcastState('preview');
     }
   }
@@ -257,8 +376,8 @@ export default function GoLiveStudio() {
     }
 
     try {
-      const res = await fetch('/api/live/go', { method: 'DELETE', credentials: 'include' });
-      if (!res.ok) throw new Error('end-failed');
+      // Routes: DELETE /api/live/go + closeCurtainAndEnd() + RuntimeEventBus VENUE_CLOSING
+      await endBroadcast(userId);
     } catch {
       setBroadcastState('live');
       setActionError('Could not end broadcast right now. Check your connection and try again.');
@@ -268,7 +387,9 @@ export default function GoLiveStudio() {
     setLiveSeconds(0);
     setViewerCount(0);
     setDailyRoomId('');
+    setCompetitiveLifecycleState(null);
     localStorage.removeItem('tmi_is_live');
+    // Keep window event for legacy consumers not yet on RuntimeEventBus
     window.dispatchEvent(new CustomEvent('tmi:endbroadcast', {
       detail: {
         userId: userId || undefined,
@@ -294,7 +415,20 @@ export default function GoLiveStudio() {
         @keyframes tmiLivePulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
         @keyframes tmiLiveBorder { 0%,100%{box-shadow:0 0 0 0 rgba(255,45,170,0.4)} 50%{box-shadow:0 0 0 8px rgba(255,45,170,0)} }
         @keyframes tmiSponsorGlow { 0%,100%{box-shadow:0 0 20px rgba(255,215,0,0.12)} 50%{box-shadow:0 0 36px rgba(255,215,0,0.28)} }
+        @keyframes tmiWaitPulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.45;transform:scale(0.92)} }
+        @keyframes tmiWaitDot { 0%,80%,100%{transform:scale(0.6);opacity:0.4} 40%{transform:scale(1);opacity:1} }
       `}</style>
+
+      {showPicker && (
+        <StartLiveSessionModal
+          onConfirm={(mode, pickedGenre) => {
+            setEventMode(mode);
+            setGenre(pickedGenre);
+            setShowPicker(false);
+          }}
+          onCancel={() => router.back()}
+        />
+      )}
 
       {/* ── Community Sponsor Mission ─────────────────────────────────────── */}
       <div style={{
@@ -473,21 +607,21 @@ export default function GoLiveStudio() {
         }}>
           <div>
             <div style={{ fontSize: 14, fontWeight: 900, color: FUCHSIA, marginBottom: 4 }}>
-              🔴 YOU ARE LIVE ON THE LOBBY WALL
+              🔴 YOU ARE LIVE · {wallLabelForMode(eventMode)}
             </div>
             <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', lineHeight: 1.5 }}>
               Fans can find you right now. Broadcasting as <strong style={{ color: '#fff' }}>{displayName}</strong> · {genre} · {eventMode.replace('LIVE_', '').replace('_', ' ')}
             </div>
           </div>
           <Link
-            href="/live/rooms"
+            href={wallRouteForMode(eventMode)}
             style={{
               padding: '8px 16px', borderRadius: 8, fontSize: 9, fontWeight: 900,
               background: 'rgba(255,45,170,0.15)', border: `1px solid rgba(255,45,170,0.4)`,
               color: FUCHSIA, textDecoration: 'none', letterSpacing: '0.1em', whiteSpace: 'nowrap',
             }}
           >
-            VIEW LOBBY WALL →
+            VIEW {wallLabelForMode(eventMode)} →
           </Link>
 
           {dailyRoomId && (
@@ -515,6 +649,181 @@ export default function GoLiveStudio() {
           >
             OPEN ARENA VIEW →
           </Link>
+        </div>
+      )}
+
+      {/* ── Battle / Cypher / Challenge waiting room split-screen ─────────── */}
+      {isLive && isCompetitiveMode && (
+        <div style={{
+          position: 'relative',
+          borderRadius: 14,
+          overflow: 'hidden',
+          border: '2px solid rgba(255,215,0,0.45)',
+          marginBottom: 20,
+          background: '#000',
+          aspectRatio: '16/9',
+        }}>
+          {/* Top bar */}
+          <div style={{
+            position: 'absolute', top: 0, left: 0, right: 0, zIndex: 20,
+            background: 'linear-gradient(180deg, rgba(0,0,0,0.85), transparent)',
+            padding: '10px 16px',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#FF4444', display: 'inline-block', animation: 'tmiLivePulse 1s ease-in-out infinite' }} />
+              <span style={{ fontSize: 9, fontWeight: 900, color: '#fff', letterSpacing: '0.15em' }}>
+                {eventMode === 'LIVE_BATTLE' ? 'BATTLE' : eventMode === 'LIVE_CYPHER' ? 'CYPHER' : 'CHALLENGE'} SESSION — LIVE ON {wallLabelForMode(eventMode)}
+              </span>
+            </div>
+            <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', fontWeight: 700 }}>{fmtDuration(liveSeconds)}</span>
+          </div>
+
+          {/* Left half: performer camera */}
+          <div style={{ position: 'absolute', left: 0, top: 0, width: 'calc(50% - 2px)', height: '100%', background: '#050510' }}>
+            <video
+              ref={waitCamRef}
+              autoPlay
+              muted
+              playsInline
+              style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)', display: 'block' }}
+            />
+            <div style={{
+              position: 'absolute', bottom: 12, left: 12,
+              background: 'rgba(0,0,0,0.75)', borderRadius: 6, padding: '4px 10px',
+            }}>
+              <div style={{ fontSize: 11, fontWeight: 900, color: '#fff' }}>{displayName}</div>
+              <div style={{ fontSize: 8, color: '#00FF88', fontWeight: 700, letterSpacing: '0.1em' }}>READY</div>
+            </div>
+          </div>
+
+          {/* VS separator */}
+          <div style={{
+            position: 'absolute', left: 'calc(50% - 2px)', top: 0, width: 4, height: '100%',
+            background: 'linear-gradient(180deg, transparent 0%, #FFD700 50%, transparent 100%)',
+            zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <div style={{
+              background: '#FFD700', color: '#050510',
+              fontSize: 8, fontWeight: 900, padding: '5px 3px',
+              borderRadius: 3, letterSpacing: '0.08em',
+              writingMode: 'vertical-rl', textOrientation: 'mixed',
+            }}>
+              VS
+            </div>
+          </div>
+
+          {/* Right half: lifecycle-aware contender slot */}
+          <div style={{
+            position: 'absolute', right: 0, top: 0,
+            width: 'calc(50% - 2px)', height: '100%',
+            background: competitiveLifecycleState === 'live'
+              ? 'rgba(0,255,136,0.06)'
+              : competitiveLifecycleState === 'vs_animation' || competitiveLifecycleState === 'countdown'
+              ? 'rgba(255,215,0,0.05)'
+              : 'rgba(5,5,16,0.97)',
+            display: 'flex', flexDirection: 'column',
+            alignItems: 'center', justifyContent: 'center', gap: 10,
+            transition: 'background 0.4s',
+          }}>
+            {/* VS ANIMATION state — large flash icon */}
+            {(competitiveLifecycleState === 'vs_animation' || competitiveLifecycleState === 'opponent_joined') && (
+              <>
+                <div style={{ fontSize: 44, animation: 'tmiWaitPulse 0.6s ease-in-out infinite' }}>⚡</div>
+                <div style={{ fontSize: 13, fontWeight: 900, color: '#FFD700', letterSpacing: '0.12em', textAlign: 'center' }}>
+                  OPPONENT LOCKED
+                </div>
+                <div style={{ fontSize: 9, color: 'rgba(255,215,0,0.6)', textAlign: 'center', padding: '0 12px' }}>
+                  VS animation playing — match starts automatically
+                </div>
+              </>
+            )}
+
+            {/* COUNTDOWN state — big countdown display */}
+            {competitiveLifecycleState === 'countdown' && (
+              <>
+                <div style={{
+                  fontSize: 56, fontWeight: 900, color: '#FFD700',
+                  animation: 'tmiWaitPulse 0.9s ease-in-out infinite',
+                  lineHeight: 1, textShadow: '0 0 30px rgba(255,215,0,0.6)',
+                }}>
+                  3
+                </div>
+                <div style={{ fontSize: 10, fontWeight: 900, color: '#fff', letterSpacing: '0.18em' }}>
+                  MATCH STARTS NOW
+                </div>
+              </>
+            )}
+
+            {/* LIVE state — opponent is live */}
+            {competitiveLifecycleState === 'live' && (
+              <>
+                <div style={{ fontSize: 28 }}>🔴</div>
+                <div style={{ fontSize: 11, fontWeight: 900, color: '#00FF88', letterSpacing: '0.1em' }}>
+                  OPPONENT IS LIVE
+                </div>
+                <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', textAlign: 'center', padding: '0 12px' }}>
+                  Match in progress. Check your broadcast tools below.
+                </div>
+              </>
+            )}
+
+            {/* WINNER / REPLAY / ARCHIVE */}
+            {(competitiveLifecycleState === 'winner_results' || competitiveLifecycleState === 'replay' || competitiveLifecycleState === 'archive') && (
+              <>
+                <div style={{ fontSize: 36 }}>🏆</div>
+                <div style={{ fontSize: 11, fontWeight: 900, color: '#FFD700', letterSpacing: '0.08em' }}>
+                  {competitiveStatusLabel}
+                </div>
+                <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.38)', textAlign: 'center', padding: '0 12px', lineHeight: 1.6 }}>
+                  {competitiveDetailLabel}
+                </div>
+              </>
+            )}
+
+            {/* WAITING state — default with dots */}
+            {(!competitiveLifecycleState || competitiveLifecycleState === 'waiting_for_contender' || competitiveLifecycleState === 'preparing') && (
+              <>
+                <div style={{ fontSize: 30, animation: 'tmiWaitPulse 2s ease-in-out infinite' }}>
+                  {eventMode === 'LIVE_BATTLE' ? '⚔️' : eventMode === 'LIVE_CYPHER' ? '🎤' : '🎯'}
+                </div>
+                <div style={{ fontSize: 10, fontWeight: 900, color: 'rgba(255,255,255,0.9)', textAlign: 'center', padding: '0 14px', letterSpacing: '0.06em' }}>
+                  {competitiveStatusLabel}
+                </div>
+                <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.38)', textAlign: 'center', padding: '0 10px', lineHeight: 1.6 }}>
+                  {competitiveDetailLabel}
+                </div>
+                <div style={{ display: 'flex', gap: 6, marginTop: 2 }}>
+                  {[0, 1, 2].map((i) => (
+                    <div key={i} style={{
+                      width: 7, height: 7, borderRadius: '50%', background: '#FFD700',
+                      animation: `tmiWaitDot 1.4s ease-in-out ${i * 0.2}s infinite`,
+                    }} />
+                  ))}
+                </div>
+                {botAnnouncement && (
+                  <div style={{
+                    marginTop: 8, maxWidth: 200, padding: '6px 12px',
+                    borderRadius: 20, background: 'rgba(0,0,0,0.55)',
+                    border: '1px solid rgba(255,215,0,0.3)',
+                    fontSize: 9, color: '#FFD700', textAlign: 'center', lineHeight: 1.5,
+                  }}>
+                    {botAnnouncement}
+                  </div>
+                )}
+                <Link
+                  href={wallRouteForMode(eventMode)}
+                  style={{
+                    marginTop: 6, fontSize: 8, fontWeight: 900,
+                    color: '#FFD700', border: '1px solid rgba(255,215,0,0.35)',
+                    borderRadius: 5, padding: '5px 11px', textDecoration: 'none', letterSpacing: '0.1em',
+                  }}
+                >
+                  VIEW {wallLabelForMode(eventMode)} →
+                </Link>
+              </>
+            )}
+          </div>
         </div>
       )}
 

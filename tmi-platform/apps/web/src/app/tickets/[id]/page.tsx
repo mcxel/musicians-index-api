@@ -92,16 +92,18 @@ export default function TicketDetailPage() {
     if (!selected || loading) return;
     setLoading(true);
     try {
-      const seats = Array.from({ length: qty }, (_, i) => ({
-        id: `${event.id}-${selected.tier}-${Date.now()}-${i}`,
-        tier: selected.tier.toLowerCase().replace(/\s+/g, "-"),
-        price: selected.price,
-      }));
-      const res = await fetch("/api/tickets/checkout", {
+      const eventSlug = event.name.toLowerCase().replace(/[^a-z0-9\s-]/g, "").trim().replace(/\s+/g, "-") || event.id;
+      const venueSlug = event.venue.toLowerCase().replace(/[^a-z0-9\s-]/g, "").trim().replace(/\s+/g, "-") || "tmi-platform";
+      const tier = selected.tier.toUpperCase().replace(/\s+/g, "_");
+      const res = await fetch("/api/tickets/purchase", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          seats,
+          eventSlug,
+          venueSlug,
+          tier,
+          quantity: qty,
+          faceValue: selected.price,
           successUrl: `${window.location.origin}/payment-success?type=ticket&session_id={CHECKOUT_SESSION_ID}`,
         }),
       });

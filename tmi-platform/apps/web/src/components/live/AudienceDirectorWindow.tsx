@@ -5,7 +5,7 @@ import {
   subscribeBroadcastDirector,
   type BroadcastShot,
   type RoomType,
-} from "@/lib/live/BroadcastDirectorEngine";
+} from "@/lib/live/AudienceDirectorCameraEngine";
 
 interface AudienceDirectorWindowProps {
   roomId: string;

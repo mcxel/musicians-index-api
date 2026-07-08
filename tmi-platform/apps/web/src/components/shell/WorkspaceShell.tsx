@@ -8,7 +8,7 @@ import { resolveWorkspaceAccess } from "@/components/shell/workspaceRegistry";
 import type { WorkspaceRole } from "@/components/shell/workspaceTypes";
 
 type SlotContent = ReactNode;
-type LeftRailState = { compact: boolean; pinned: boolean };
+type LeftRailState = { compact: boolean; pinned: boolean; hidden: boolean };
 type RightRailState = { mode: "compact" | "expanded" | "hidden" };
 
 interface WorkspaceShellProps {
@@ -32,22 +32,23 @@ export function WorkspaceShell({
   const availableWorkspaceIds = resolveWorkspaceAccess(workspaceRole, workspaceRole !== "guest");
   const [leftHover, setLeftHover] = useState(false);
   const [leftPinned, setLeftPinned] = useState(false);
+  const [leftHidden, setLeftHidden] = useState(false);
   const [rightHidden, setRightHidden] = useState(false);
   const [rightHover, setRightHover] = useState(false);
   const [rightPinned, setRightPinned] = useState(false);
 
-  const leftCompact = !(leftHover || leftPinned);
-  const leftWidthPx = leftCompact ? 70 : 240;
-
-  // Right rail mirrors the left rail's hover-to-expand behavior: compact by
+  // Left rail mirrors the right rail's three-state behavior: compact by
   // default, expands on hover or when pinned, fully hidden only when the
   // user explicitly collapses it via the Hide control.
+  const leftCompact = !(leftHover || leftPinned);
+  const leftWidthPx = leftHidden ? 24 : leftCompact ? 70 : 240;
+
   const rightCompact = !(rightHover || rightPinned);
   const rightMode: "compact" | "expanded" | "hidden" = rightHidden ? "hidden" : rightCompact ? "compact" : "expanded";
   const rightWidthPx = rightMode === "hidden" ? 24 : rightMode === "compact" ? 70 : 300;
 
   const leftLauncherNode = typeof leftLauncher === "function"
-    ? leftLauncher({ compact: leftCompact, pinned: leftPinned })
+    ? leftLauncher({ compact: leftCompact, pinned: leftPinned, hidden: leftHidden })
     : leftLauncher;
 
   const rightRailNode = typeof rightSocialRail === "function"
@@ -109,65 +110,108 @@ export function WorkspaceShell({
                 top: 0,
                 zIndex: 3,
                 display: "flex",
-                justifyContent: leftCompact ? "center" : "space-between",
+                justifyContent: leftHidden ? "center" : leftCompact ? "center" : "space-between",
                 alignItems: "center",
                 gap: 6,
-                padding: "8px 8px 6px",
-                borderBottom: "1px solid rgba(255,255,255,0.08)",
+                padding: leftHidden ? "10px 2px" : "8px 8px 6px",
+                borderBottom: leftHidden ? "none" : "1px solid rgba(255,255,255,0.08)",
                 background: "rgba(3, 4, 16, 0.88)",
                 backdropFilter: "blur(14px)",
               }}
             >
-              {!leftCompact && (
-                <div style={{ fontSize: 10, letterSpacing: "0.1em", color: "rgba(245,239,255,0.65)", fontWeight: 700 }}>
-                  LEFT RAIL
-                </div>
-              )}
-
-              <div style={{ display: "flex", gap: 6 }}>
+              {leftHidden ? (
                 <button
                   type="button"
-                  onClick={() => {
-                    setLeftPinned((current) => (leftCompact ? true : !current));
-                  }}
-                  title={leftCompact ? "Expand left rail" : leftPinned ? "Unpin left rail" : "Pin left rail"}
+                  onClick={() => setLeftHidden(false)}
+                  title="Show left rail"
                   style={{
-                    borderRadius: 8,
+                    width: "100%",
+                    borderRadius: 999,
                     border: "1px solid rgba(255,255,255,0.18)",
-                    background: leftPinned ? "rgba(0,255,255,0.16)" : "rgba(255,255,255,0.08)",
+                    background: "rgba(255,255,255,0.08)",
                     color: "#f4f1ff",
-                    fontSize: 10,
-                    fontWeight: 700,
-                    padding: leftCompact ? "4px 7px" : "4px 8px",
+                    fontSize: 11,
+                    fontWeight: 800,
+                    padding: "8px 0",
                     cursor: "pointer",
                   }}
                 >
-                  {leftCompact ? ">" : leftPinned ? "Unpin" : "Pin"}
+                  &gt;
                 </button>
+              ) : (
+                <>
+                  {!leftCompact && (
+                    <div style={{ fontSize: 10, letterSpacing: "0.1em", color: "rgba(245,239,255,0.65)", fontWeight: 700 }}>
+                      LEFT RAIL
+                    </div>
+                  )}
 
-                {!leftCompact && (
-                  <button
-                    type="button"
-                    onClick={() => setLeftPinned(false)}
-                    title="Compact left rail"
-                    style={{
-                      borderRadius: 8,
-                      border: "1px solid rgba(255,255,255,0.18)",
-                      background: "rgba(255,255,255,0.08)",
-                      color: "#f4f1ff",
-                      fontSize: 10,
-                      fontWeight: 700,
-                      padding: "4px 8px",
-                      cursor: "pointer",
-                    }}
-                  >
-                    Compact
-                  </button>
-                )}
-              </div>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLeftPinned((current) => (leftCompact ? true : !current));
+                      }}
+                      title={leftCompact ? "Expand left rail" : leftPinned ? "Unpin left rail" : "Pin left rail"}
+                      style={{
+                        borderRadius: 8,
+                        border: "1px solid rgba(255,255,255,0.18)",
+                        background: leftPinned ? "rgba(0,255,255,0.16)" : "rgba(255,255,255,0.08)",
+                        color: "#f4f1ff",
+                        fontSize: 10,
+                        fontWeight: 700,
+                        padding: leftCompact ? "4px 7px" : "4px 8px",
+                        cursor: "pointer",
+                      }}
+                    >
+                      {leftCompact ? ">" : leftPinned ? "Unpin" : "Pin"}
+                    </button>
+
+                    {!leftCompact && (
+                      <button
+                        type="button"
+                        onClick={() => setLeftPinned(false)}
+                        title="Compact left rail"
+                        style={{
+                          borderRadius: 8,
+                          border: "1px solid rgba(255,255,255,0.18)",
+                          background: "rgba(255,255,255,0.08)",
+                          color: "#f4f1ff",
+                          fontSize: 10,
+                          fontWeight: 700,
+                          padding: "4px 8px",
+                          cursor: "pointer",
+                        }}
+                      >
+                        Compact
+                      </button>
+                    )}
+
+                    {!leftCompact && (
+                      <button
+                        type="button"
+                        onClick={() => setLeftHidden(true)}
+                        title="Hide left rail"
+                        style={{
+                          borderRadius: 8,
+                          border: "1px solid rgba(255,255,255,0.18)",
+                          background: "rgba(255,255,255,0.08)",
+                          color: "#f4f1ff",
+                          fontSize: 10,
+                          fontWeight: 700,
+                          padding: "4px 8px",
+                          cursor: "pointer",
+                        }}
+                      >
+                        Hide
+                      </button>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
 
-            {leftLauncherNode ?? null}
+            {!leftHidden ? leftLauncherNode ?? null : null}
           </aside>
 
           <main style={{ position: "relative", minWidth: 0, overflow: "hidden" }}>

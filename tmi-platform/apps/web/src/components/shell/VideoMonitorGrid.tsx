@@ -130,7 +130,7 @@ export interface MonitorProps {
 }
 
 export function Monitor({ config, size, onFeedChange }: MonitorProps) {
-  const [feed, setFeed] = useState<MonitorFeed>(config.defaultFeed);
+  const feed = config.defaultFeed; // State is now managed by the parent
   const [isRecording, setIsRecording] = useState(false);
   const [streamActive, setStreamActive] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -164,8 +164,7 @@ export function Monitor({ config, size, onFeedChange }: MonitorProps) {
     e.stopPropagation();
     const idx = config.availableFeeds.indexOf(feed);
     const next = config.availableFeeds[(idx + 1) % config.availableFeeds.length];
-    setFeed(next);
-    onFeedChange?.(next);
+    onFeedChange?.(next); // Inform parent of the change
     playSound('ui_whoosh_bubbles');
     if (mediaStreamRef.current) {
       mediaStreamRef.current.getTracks().forEach(t => t.stop());
@@ -224,8 +223,7 @@ export function Monitor({ config, size, onFeedChange }: MonitorProps) {
   function onSourceSelect(nextRaw: string) {
     const normalized = FEED_LABEL_OVERRIDES[nextRaw as keyof typeof FEED_LABEL_OVERRIDES] ?? nextRaw;
     const next = normalized as MonitorFeed;
-    setFeed(next);
-    onFeedChange?.(next);
+    onFeedChange?.(next); // Inform parent of the change
     playSound('ui_whoosh_bubbles');
   }
 

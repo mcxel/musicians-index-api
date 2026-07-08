@@ -208,6 +208,10 @@ export function getActiveStepsForRole(role: UserRole): FirstRunStep[] {
   return ALL_STEPS.filter((s) => s.role === 'all' || s.role === role);
 }
 
+export function getStepById(stepId: string): FirstRunStep | undefined {
+  return ALL_STEPS.find((s) => s.id === stepId);
+}
+
 export function getPendingSteps(role: UserRole): FirstRunStep[] {
   const state = loadState();
   return getActiveStepsForRole(role).filter((s) => !state.completedSteps.includes(s.id));

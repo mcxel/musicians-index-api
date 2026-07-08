@@ -60,13 +60,6 @@ export async function POST(request: Request) {
       text: `Support ticket ${ticketId} received. We'll respond within ${responseTime}.`,
     }).catch(() => null);
 
-    // Internal log with full session context
-    console.log("[Support Ticket]", {
-      ticketId, category: cleanCategory, email: maskEmail(cleanEmail), urgency,
-      description: cleanDescription.slice(0, 200),
-      sessionContext,
-    });
-
     return NextResponse.json({
       success: true,
       ticketId,

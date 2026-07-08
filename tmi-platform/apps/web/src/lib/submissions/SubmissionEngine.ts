@@ -4,11 +4,16 @@
  * All track, video, beat, and cypher submissions flow through here.
  * On creation, a viral share link is automatically seeded in ShareTrackingEngine
  * and an XP event is awarded to the submitter.
+ *
+ * Backed by Prisma (Submission table) — submit/approve/rotate state survives
+ * server restarts and is consistent across instances. Previously an
+ * in-memory Map; that meant the Stream & Win queue reset on every deploy.
  */
 
+import { prisma } from '@/lib/prisma';
 import { awardXP } from '@/lib/profile/ProfileRewardsEngine';
 import { recordPlaylistShareEvent, buildPlaylistReferralUrl } from '@/lib/share/ShareTrackingEngine';
-import { emitAdminLiveEvent } from '@/lib/admin/AdminLiveEventEngine';
+import type { Submission as PrismaSubmission } from '@prisma/client';
 
 export type SubmissionType = 'track' | 'video' | 'beat' | 'cypher' | 'battle' | 'comedy' | 'dance' | 'show';
 export type SubmissionStatus = 'pending' | 'approved' | 'rejected' | 'live' | 'expired';
@@ -48,26 +53,46 @@ export interface SubmissionResult {
 }
 
 const PENDING_MAX_PER_USER = 5;
-const submissionStore = new Map<string, Submission>();
 const XP_ON_SUBMIT = 50;
 
-function genId(): string {
-  return `sub-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+function toSubmission(row: PrismaSubmission): Submission {
+  return {
+    id: row.id,
+    submitterId: row.submitterId,
+    title: row.title,
+    type: row.type as SubmissionType,
+    status: row.status as SubmissionStatus,
+    url: row.url,
+    genre: row.genre,
+    description: row.description,
+    bpm: row.bpm,
+    tags: row.tags,
+    shareUrl: row.shareUrl,
+    createdAt: row.createdAt.getTime(),
+    updatedAt: row.updatedAt.getTime(),
+  };
+}
+
+function stripControlChars(input: string): string {
+  let out = "";
+  for (const ch of input) {
+    const code = ch.codePointAt(0) ?? 0;
+    if (code >= 32 && code !== 127) out += ch;
+  }
+  return out;
 }
 
 function sanitize(input: string, max = 120): string {
-  return input.trim().replace(/[\u0000-\u001F\u007F]/g, '').slice(0, max);
+  return stripControlChars(input.trim()).slice(0, max);
 }
 
-function countPendingForUser(submitterId: string): number {
-  let count = 0;
-  for (const s of submissionStore.values()) {
-    if (s.submitterId === submitterId && (s.status === 'pending' || s.status === 'live')) count++;
-  }
-  return count;
+async function countPendingForUser(submitterId: string): Promise<number> {
+  return prisma.submission.count({
+    where: { submitterId, status: { in: ['pending', 'live'] } },
+  });
 }
 
-export function createSubmission(input: SubmissionInput): SubmissionResult {
+export async function createSubmission(input: SubmissionInput): Promise<SubmissionResult> {
   const submitterId = sanitize(input.submitterId, 64);
   const title = sanitize(input.title, 80);
   const url = input.url?.trim() ?? '';
@@ -76,45 +101,49 @@ export function createSubmission(input: SubmissionInput): SubmissionResult {
     return { ok: false, error: 'invalid_input' };
   }
 
-  if (countPendingForUser(submitterId) >= PENDING_MAX_PER_USER) {
+  if ((await countPendingForUser(submitterId)) >= PENDING_MAX_PER_USER) {
     return { ok: false, error: 'quota_exceeded' };
   }
 
-  const id = genId();
   const genre = sanitize(input.genre ?? 'General', 40);
   const description = sanitize(input.description ?? '', 400);
   const tags = (input.tags ?? []).map((t) => sanitize(t, 30)).filter(Boolean).slice(0, 10);
+  const bpm = input.bpm != null && Number.isFinite(input.bpm) ? Math.round(input.bpm) : null;
 
-  // Build share URL for this submission immediately
-  const shareUrl = buildPlaylistReferralUrl({
-    playlistId: id,
-    curatorId: submitterId,
-    playlistTitle: title,
-    path: `/submit/confirm?id=${encodeURIComponent(id)}`,
+  // Reserve the row first so we have a real id to build the share URL from.
+  const created = await prisma.submission.create({
+    data: {
+      submitterId,
+      title,
+      type: input.type,
+      status: 'pending',
+      url,
+      genre,
+      description,
+      bpm,
+      tags,
+      shareUrl: '',
+    },
   });
 
-  const submission: Submission = {
-    id,
-    submitterId,
-    title,
-    type: input.type,
-    status: 'pending',
-    url,
-    genre,
-    description,
-    bpm: input.bpm != null && Number.isFinite(input.bpm) ? Math.round(input.bpm) : null,
-    tags,
-    shareUrl,
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-  };
+  const shareUrl = buildPlaylistReferralUrl({
+    playlistId: created.id,
+    curatorId: submitterId,
+    playlistTitle: title,
+    path: `/submit/confirm?id=${encodeURIComponent(created.id)}`,
+  });
 
-  submissionStore.set(id, submission);
+  const final = await prisma.submission.update({
+    where: { id: created.id },
+    data: { shareUrl },
+  });
+
+  const submission = toSubmission(final);
 
   // Seed tracking immediately — first share event is the submission itself
   recordPlaylistShareEvent({
     event: 'share',
-    playlistId: id,
+    playlistId: submission.id,
     curatorId: submitterId,
     referrerId: submitterId,
     source: 'submission_create',
@@ -128,52 +157,41 @@ export function createSubmission(input: SubmissionInput): SubmissionResult {
   return { ok: true, submission, shareUrl };
 }
 
-export function getSubmission(id: string): Submission | null {
-  return submissionStore.get(id) ?? null;
+export async function getSubmission(id: string): Promise<Submission | null> {
+  const row = await prisma.submission.findUnique({ where: { id } });
+  return row ? toSubmission(row) : null;
 }
 
-export function updateSubmissionStatus(id: string, status: SubmissionStatus): Submission | null {
-  const s = submissionStore.get(id);
-  if (!s) return null;
-  const updated = { ...s, status, updatedAt: Date.now() };
-  submissionStore.set(id, updated);
-
-  if (status === 'approved' || status === 'live') {
-    emitAdminLiveEvent({
-      type: 'submission_approved',
-      message: `[${new Date().toLocaleTimeString()}] ✅ Submission ${status}: ${updated.title} (${updated.type})`,
-      meta: {
-        submissionId: updated.id,
-        submitterId: updated.submitterId,
-        submissionType: updated.type,
-        status: updated.status,
-      },
-    });
-  }
-
-  return updated;
+export async function updateSubmissionStatus(id: string, status: SubmissionStatus): Promise<Submission | null> {
+  const existing = await prisma.submission.findUnique({ where: { id } });
+  if (!existing) return null;
+  const updated = await prisma.submission.update({ where: { id }, data: { status } });
+  return toSubmission(updated);
 }
 
-export function listSubmissions(filter?: {
+export async function listSubmissions(filter?: {
   submitterId?: string;
   type?: SubmissionType;
   status?: SubmissionStatus;
   limit?: number;
-}): Submission[] {
-  let results = Array.from(submissionStore.values());
-  if (filter?.submitterId) results = results.filter((s) => s.submitterId === filter.submitterId);
-  if (filter?.type) results = results.filter((s) => s.type === filter.type);
-  if (filter?.status) results = results.filter((s) => s.status === filter.status);
-  results.sort((a, b) => b.createdAt - a.createdAt);
-  return filter?.limit ? results.slice(0, filter.limit) : results;
+}): Promise<Submission[]> {
+  const rows = await prisma.submission.findMany({
+    where: {
+      ...(filter?.submitterId ? { submitterId: filter.submitterId } : {}),
+      ...(filter?.type ? { type: filter.type } : {}),
+      ...(filter?.status ? { status: filter.status } : {}),
+    },
+    orderBy: { createdAt: 'desc' },
+    ...(filter?.limit ? { take: filter.limit } : {}),
+  });
+  return rows.map(toSubmission);
 }
 
-export function getSubmissionCount(): { total: number; pending: number; live: number } {
-  let pending = 0;
-  let live = 0;
-  for (const s of submissionStore.values()) {
-    if (s.status === 'pending') pending++;
-    if (s.status === 'live') live++;
-  }
-  return { total: submissionStore.size, pending, live };
+export async function getSubmissionCount(): Promise<{ total: number; pending: number; live: number }> {
+  const [total, pending, live] = await Promise.all([
+    prisma.submission.count(),
+    prisma.submission.count({ where: { status: 'pending' } }),
+    prisma.submission.count({ where: { status: 'live' } }),
+  ]);
+  return { total, pending, live };
 }

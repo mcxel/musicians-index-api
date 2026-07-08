@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import EditorialMagazineShell from "@/components/editorial/EditorialMagazineShell";
 import EditorialPageFrame from "@/components/editorial/EditorialPageFrame";
 import { getEditorialArticleBySlug } from "@/lib/editorial/NewsArticleModel";
+import ArticleAudioPlayer from "@/components/article/ArticleAudioPlayer";
 import { injectAds } from "@/lib/editorial/editorialAdInjector";
 
 export function generateMetadata({ params }: { params: { slug: string } }): Metadata {
@@ -57,6 +58,13 @@ export default function NewsArticlePage({ params }: Props) {
       backLabel="← News"
       category="news"
     >
+      <div style={{ padding: "12px 20px 0", display: "flex", alignItems: "center", gap: 8 }}>
+        <ArticleAudioPlayer
+          title={article.title}
+          text={[article.headline, ...article.body].join(" ")}
+          accentColor={accentColor}
+        />
+      </div>
       <EditorialPageFrame
         article={article}
         templateType={template}

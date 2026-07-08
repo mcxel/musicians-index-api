@@ -10,6 +10,23 @@ import prisma from '@/lib/prisma';
 
 const FEED_TYPE = 'VENUE_BOOKING';
 const FAR_FUTURE = new Date('2040-01-01T00:00:00Z');
+const SYSTEM_USER_EMAIL = 'platform@themusiciansindex.com';
+
+// FeedItem.userId is a required FK to a real User.id — the literal string
+// 'system' used to be passed directly here, which violated the FK constraint
+// and caused every unattributed booking write to silently fail (swallowed by
+// the caller's catch block). Resolve to the real platform admin account instead.
+let cachedSystemUserId: string | null | undefined;
+
+async function getSystemUserId(): Promise<string | null> {
+  if (cachedSystemUserId !== undefined) return cachedSystemUserId;
+  const systemUser = await prisma.user.findUnique({
+    where: { email: SYSTEM_USER_EMAIL },
+    select: { id: true },
+  });
+  cachedSystemUserId = systemUser?.id ?? null;
+  return cachedSystemUserId;
+}
 
 export type BookingStatus = 'pending' | 'confirmed' | 'cancelled' | 'completed';
 
@@ -54,9 +71,14 @@ export const VenueBookingRegistry = {
       submittedAt,
     };
 
+    const userId = params.userId ?? (await getSystemUserId());
+    if (!userId) {
+      throw new Error('VenueBookingRegistry.create: no system user configured for unattributed bookings');
+    }
+
     await prisma.feedItem.create({
       data: {
-        userId:     params.userId ?? 'system',
+        userId,
         type:       FEED_TYPE,
         entityId:   params.venueSlug,
         entityType: 'venue',

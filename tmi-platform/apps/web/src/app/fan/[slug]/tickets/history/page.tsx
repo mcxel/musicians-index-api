@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { listTicketHistory } from "@/lib/tickets/ticketEngine";
 
-export default function FanTicketHistoryPage({ params }: { params: { slug: string } }) {
+export default async function FanTicketHistoryPage({ params }: { params: { slug: string } }) {
   const { slug } = params;
-  const { tickets, scans } = listTicketHistory(slug);
+  const { tickets, scans } = await listTicketHistory(slug);
 
   return (
     <main style={{ minHeight: "100vh", background: "#03020b", color: "#e2e8f0", padding: "0 0 40px" }}>

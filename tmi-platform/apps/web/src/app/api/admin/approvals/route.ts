@@ -22,8 +22,8 @@ export async function GET(req: NextRequest) {
   const denied = requireAdmin(req);
   if (denied) return denied;
 
-  const submissions = listSubmissions({ limit: 50 });
-  const counts = getSubmissionCount();
+  const submissions = await listSubmissions({ limit: 50 });
+  const counts = await getSubmissionCount();
   const queue = submissions.map((s) => ({
     id: s.id,
     type: s.type,
@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'invalid_action' }, { status: 400 });
   }
 
-  const updated = updateSubmissionStatus(body.id, nextStatus);
+  const updated = await updateSubmissionStatus(body.id, nextStatus);
   if (!updated) {
     return NextResponse.json({ error: 'not_found' }, { status: 404 });
   }

@@ -66,8 +66,8 @@ export function validateAvatarOwnership(
 /**
  * Validate that the ticketId is owned by the userId and not redeemed.
  */
-export function validateTicketOwnership(userId: string, ticketId: string): boolean {
-  const tickets = listTicketsByOwner(userId);
+export async function validateTicketOwnership(userId: string, ticketId: string): Promise<boolean> {
+  const tickets = await listTicketsByOwner(userId);
   const ticket = tickets.find((t) => t.id === ticketId);
   if (!ticket) return false;
   if (ticket.redeemed) return false;
@@ -81,7 +81,7 @@ export function validateTicketOwnership(userId: string, ticketId: string): boole
  * are treated as passed (platform allows entry without scan for general seats).
  * ticketId is required for VIP/BACKSTAGE seats.
  */
-export function validateSeatClaim(
+export async function validateSeatClaim(
   userId: string,
   seatId: string,
   roomId: string,
@@ -92,7 +92,7 @@ export function validateSeatClaim(
     requireFaceScan?: boolean;
     requireTicket?: boolean;
   } = {},
-): IdentityGuardResult {
+): Promise<IdentityGuardResult> {
   const { faceScanId = null, avatarId = null, ticketId = null, requireFaceScan = false, requireTicket = false } = options;
 
   const seatKey = `${roomId}:${seatId}`;
@@ -129,7 +129,7 @@ export function validateSeatClaim(
 
   // Layer 3: Ticket
   const ticketPassed = ticketId
-    ? validateTicketOwnership(userId, ticketId)
+    ? await validateTicketOwnership(userId, ticketId)
     : !requireTicket;
   if (!ticketPassed) {
     return {

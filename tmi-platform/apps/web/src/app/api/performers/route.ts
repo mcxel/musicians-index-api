@@ -10,6 +10,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { PERFORMER_REGISTRY, type PerformerIdentity } from '@/lib/performers/PerformerRegistry';
+import { isQAAccount } from '@/lib/qa/QACertificationFleet';
 
 /**
  * Merge: For each performer in the registry, if they have a real avatar/profile in Prisma,
@@ -17,15 +18,18 @@ import { PERFORMER_REGISTRY, type PerformerIdentity } from '@/lib/performers/Per
  */
 async function mergeRegistryWithRealData(): Promise<PerformerIdentity[]> {
   // Fetch all user profiles with real avatar data
-  const profiles = await prisma.userProfile.findMany({
+  // TODO: after `prisma generate` for migration 20260705, add where: { user: { isQA: false } }
+  const allProfiles = await prisma.userProfile.findMany({
     select: {
       userId: true,
       avatarUrl: true,
       bannerUrl: true,
       displayName: true,
       bio: true,
+      user: { select: { email: true } },
     },
   });
+  const profiles = allProfiles.filter(p => !isQAAccount(p.user?.email ?? ''));
 
   const profilesByUserId = new Map(profiles.map(p => [p.userId, p]));
 

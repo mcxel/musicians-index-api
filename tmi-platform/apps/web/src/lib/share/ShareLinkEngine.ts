@@ -37,6 +37,29 @@ export function buildFacebookShare(target: ShareTarget): string {
   return `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`;
 }
 
+export function buildWhatsAppShare(target: ShareTarget): string {
+  const url = buildShareUrl(target);
+  const text = encodeURIComponent(`${target.text || target.title} ${url}`.trim());
+  return `https://wa.me/?text=${text}`;
+}
+
+export function buildRedditShare(target: ShareTarget): string {
+  const url = buildShareUrl(target);
+  const title = encodeURIComponent(target.title);
+  return `https://www.reddit.com/submit?url=${encodeURIComponent(url)}&title=${title}`;
+}
+
+export function buildThreadsShare(target: ShareTarget): string {
+  const url = buildShareUrl(target);
+  const text = encodeURIComponent(`${target.text || target.title} ${url}`.trim());
+  return `https://www.threads.net/intent/post?text=${text}`;
+}
+
+export function buildMessengerShare(target: ShareTarget): string {
+  const url = buildShareUrl(target);
+  return `fb-messenger://share?link=${encodeURIComponent(url)}`;
+}
+
 export function buildInstagramCopyPrompt(target: ShareTarget): string {
   const url = buildShareUrl(target);
   return `${target.text || target.title}\n${url}`;
@@ -45,4 +68,27 @@ export function buildInstagramCopyPrompt(target: ShareTarget): string {
 export function buildTikTokCopyPrompt(target: ShareTarget): string {
   const url = buildShareUrl(target);
   return `${target.text || target.title} 🎤 ${url}`;
+}
+
+export function buildDiscordCopyPrompt(target: ShareTarget): string {
+  const url = buildShareUrl(target);
+  return `${target.text || target.title}\n${url}\n\nJoin me on TMI.`;
+}
+
+export function buildSnapchatCopyPrompt(target: ShareTarget): string {
+  const url = buildShareUrl(target);
+  return `${target.text || target.title} 👻 ${url}`;
+}
+
+export function buildInviteFriendsPrompt(target: ShareTarget): string {
+  const url = buildShareUrl({
+    ...target,
+    context: {
+      ...(target.context ?? {}),
+      source: 'invite_friends',
+      medium: 'social',
+      campaign: 'growth_loop',
+    },
+  });
+  return `Join me on The Musician's Index. ${target.text || target.title}\n${url}`;
 }

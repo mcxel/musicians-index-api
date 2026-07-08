@@ -21,6 +21,7 @@ async function handleLogout(req: NextRequest, isGet: boolean) {
       : NextResponse.json({ ok: true, message: 'Logged out' }, { status: 200 });
 
     response.cookies.delete('tmi_session_id');
+    response.cookies.delete('tmi_user_id');
     response.cookies.delete('tmi_session');
     response.cookies.delete('tmi_role');
     response.cookies.delete('tmi_tier');

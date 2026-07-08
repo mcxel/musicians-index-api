@@ -11,9 +11,6 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   try {
     // TODO: Save to DB: await prisma.battleScorecard.create({ data: { battleId, judgeId, scores, notes } });
-    // For now, log and return success
-    console.log(`[JudgeScorecard] Battle: ${battleId}, Judge: ${judgeId}, Scores:`, scores);
-
     const totals: Record<string, number> = {};
     for (const [contestantId, criteriaScores] of Object.entries(scores)) {
       totals[contestantId] = Object.values(criteriaScores as Record<string, number>).reduce((a, b) => a + b, 0);

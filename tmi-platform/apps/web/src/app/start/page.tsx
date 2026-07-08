@@ -72,16 +72,16 @@ export default function StartPage() {
 
   const dashHref = (() => {
     const map: Record<string, string> = {
-      artist: "/dashboard/artist",
-      performer: "/dashboard/performer",
-      fan: "/dashboard/fan",
-      sponsor: "/dashboard/sponsor",
-      advertiser: "/dashboard/advertiser",
-      venue: "/dashboard/venue",
-      writer: "/dashboard/writer",
-      promoter: "/dashboard/fan",
+      artist: "/hub/performer",
+      performer: "/hub/performer",
+      fan: "/hub/fan",
+      sponsor: "/hub/sponsor",
+      advertiser: "/hub/advertiser",
+      venue: "/hub/venue",
+      writer: "/hub/writer",
+      promoter: "/hub/fan",
     };
-    return map[role] ?? "/dashboard";
+    return map[role] ?? "/hub/fan";
   })();
 
   return (

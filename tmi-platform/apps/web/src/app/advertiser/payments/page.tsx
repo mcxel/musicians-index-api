@@ -8,7 +8,7 @@ const PACKAGES = [
     id: "starter",
     name: "Starter Ad",
     price: "$49 / mo",
-    priceId: "price_ad_starter",
+    productKey: "AD_BANNER_MONTHLY",
     color: "#00FFFF",
     perks: ["500K impressions/mo", "Homepage tile placement", "Basic click tracking"],
   },
@@ -16,7 +16,7 @@ const PACKAGES = [
     id: "pro",
     name: "Pro Ad",
     price: "$149 / mo",
-    priceId: "price_ad_pro",
+    productKey: "AD_BILLBOARD_WEEKLY",
     color: "#FF2DAA",
     perks: ["2M impressions/mo", "Live room + magazine tiles", "Profile page halos", "Full analytics dashboard"],
     featured: true,
@@ -25,7 +25,7 @@ const PACKAGES = [
     id: "premium",
     name: "Premium Ad",
     price: "$399 / mo",
-    priceId: "price_ad_premium",
+    productKey: "AD_VIDEO_WEEKLY",
     color: "#FFD700",
     perks: ["Unlimited impressions", "Jumbotron placements", "Premiere sponsorship slots", "Priority placement bidding", "Dedicated rep"],
   },
@@ -35,27 +35,11 @@ export default function AdvertiserPaymentsPage() {
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const handleCheckout = async (priceId: string, pkgId: string) => {
+  const handleCheckout = async (productKey: string, pkgId: string) => {
     setLoading(pkgId);
     setError(null);
     try {
-      const res = await fetch("/api/stripe/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          items: [{ priceId, quantity: 1 }],
-          successUrl: "/advertiser/payments?success=1",
-          cancelUrl: "/advertiser/payments?cancelled=1",
-        }),
-      });
-      if (!res.ok) {
-        const err = await res.json() as { error?: string };
-        setError(err.error ?? "Checkout failed. Please try again.");
-        return;
-      }
-      const data = await res.json() as { url?: string };
-      if (data.url) window.location.href = data.url;
+      window.location.href = `/api/stripe/checkout?product=${encodeURIComponent(productKey)}&mode=payment`;
     } catch {
       setError("Network error. Please try again.");
     } finally {
@@ -106,7 +90,7 @@ export default function AdvertiserPaymentsPage() {
               ))}
             </ul>
             <button
-              onClick={() => void handleCheckout(pkg.priceId, pkg.id)}
+              onClick={() => void handleCheckout(pkg.productKey, pkg.id)}
               disabled={loading !== null}
               style={{
                 width: "100%",

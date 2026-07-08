@@ -10,6 +10,33 @@ import { checkRateLimit } from '@/lib/security/TMISecurityEngine';
 import { updateUserPassword } from '@/lib/auth/UserStore';
 import prisma from '@/lib/prisma';
 
+/** GET /api/auth/reset-password?token=X&email=Y
+ * Token pre-flight — validates without consuming, so the page knows
+ * whether to show the form or the "expired" state immediately.
+ */
+export async function GET(req: NextRequest) {
+  const { searchParams } = req.nextUrl;
+  const token = searchParams.get('token') ?? '';
+  const email = searchParams.get('email')?.trim().toLowerCase() ?? '';
+
+  if (!token || !email) {
+    return NextResponse.json({ valid: false, reason: 'missing_fields' });
+  }
+
+  try {
+    const check = await validatePasswordResetTokenFromDB({ email, token });
+    if (check.valid) return NextResponse.json({ valid: true });
+    const reason =
+      check.reason === 'expired' ? 'expired_token'
+      : check.reason === 'used'  ? 'used_token'
+      : 'invalid_token';
+    return NextResponse.json({ valid: false, reason });
+  } catch {
+    // If DB is unavailable, allow the form to render — POST will catch it
+    return NextResponse.json({ valid: true, warning: 'db_unavailable' });
+  }
+}
+
 export async function POST(req: NextRequest) {
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
   const rateLimit = checkRateLimit(`auth:reset-complete:${ip}`, 5, 60_000);

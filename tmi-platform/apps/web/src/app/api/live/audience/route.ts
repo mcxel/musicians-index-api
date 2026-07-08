@@ -19,6 +19,12 @@ import { emitAdminLiveEvent } from "@/lib/admin/AdminLiveEventEngine";
 import { participationEconomyEngine } from "@/lib/economy/ParticipationEconomyEngine";
 import { prisma } from "@/lib/prisma";
 import { getActiveSessions, updateViewerCount } from "@/lib/broadcast/GlobalLiveSessionRegistry";
+import {
+  getCompetitiveSession,
+  registerContenderJoin,
+  runAutoProgressionAfterContender,
+  handleCompetitiveParticipantLeave,
+} from "@/lib/live/CompetitiveSessionLifecycleEngine";
 import type { AudienceMember } from "@/lib/live/audienceRuntimeEngine";
 
 // Bridge: audienceRuntimeEngine tracks real per-venue occupancy (joins/leaves),
@@ -112,13 +118,35 @@ export async function POST(req: NextRequest) {
           }
         }
 
-        return NextResponse.json({ ...occupancy, assignedSeatId });
+        // Competitive lifecycle: if this venue has an active lifecycle session and
+        // the joining user is not the host, register them as the contender and
+        // auto-advance through opponent_joined → vs_animation → countdown → live.
+        const joiningUserId = authedUserId ?? member.userId;
+        const competitiveSession = getCompetitiveSession(venueSlug);
+        if (competitiveSession && joiningUserId && joiningUserId !== competitiveSession.hostUserId) {
+          const afterJoin = registerContenderJoin(venueSlug, joiningUserId);
+          if (afterJoin?.state === 'opponent_joined') {
+            runAutoProgressionAfterContender(venueSlug);
+          }
+        }
+
+        return NextResponse.json({
+          ...occupancy,
+          assignedSeatId,
+          competitiveLifecycleState: getCompetitiveSession(venueSlug)?.state ?? null,
+        });
       }
       case "leave": {
         if (!userId) return NextResponse.json({ error: "userId required" }, { status: 400 });
         const afterLeave = leaveAudience(venueSlug, userId);
         syncViewerCountToBroadcastRegistry(venueSlug, afterLeave.present);
-        return NextResponse.json(afterLeave);
+        // Competitive lifecycle: handle participant leave (host leave → archive; contender
+        // leave before live → back to waiting; contender leave during live → winner/archive).
+        handleCompetitiveParticipantLeave(venueSlug, userId);
+        return NextResponse.json({
+          ...afterLeave,
+          competitiveLifecycleState: getCompetitiveSession(venueSlug)?.state ?? null,
+        });
       }
       case "message":
         if (!userId || !text) return NextResponse.json({ error: "userId and text required" }, { status: 400 });

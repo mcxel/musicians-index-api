@@ -1,45 +1,79 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
+import { useRouter, useSearchParams } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
 
-const EVENTS = [
-  { id: "e1", name: "TMI Season Opener", venue: "Digital Main Stage", date: "Jun 7, 2026", time: "8:00 PM ET", tickets: [{ tier: "VIP", price: 150, available: 12 }, { tier: "Premium", price: 75, available: 48 }, { tier: "General", price: 35, available: 220 }], color: "#FFD700", icon: "👑", status: "ON SALE" },
-  { id: "e2", name: "Dirty Dozens — Episode 6", venue: "Battle Arena", date: "Jun 14, 2026", time: "9:00 PM ET", tickets: [{ tier: "VIP", price: 120, available: 8 }, { tier: "General", price: 25, available: 400 }], color: "#FF2DAA", icon: "⚔️", status: "ON SALE" },
-  { id: "e3", name: "Monday Night Cypher", venue: "Lounge Stage", date: "Jun 9, 2026", time: "10:00 PM ET", tickets: [{ tier: "General", price: 15, available: 180 }], color: "#00FFFF", icon: "🎙️", status: "ON SALE" },
-  { id: "e4", name: "TMI Producer Showcase", venue: "Beat Lab Hall", date: "Jun 21, 2026", time: "7:00 PM ET", tickets: [{ tier: "VIP", price: 200, available: 20 }, { tier: "Premium", price: 90, available: 60 }, { tier: "General", price: 40, available: 300 }], color: "#AA2DFF", icon: "🎹", status: "ON SALE" },
-  { id: "e5", name: "NFT Artist Drop Night", venue: "NFT Gallery", date: "Jun 28, 2026", time: "8:00 PM ET", tickets: [{ tier: "Collector VIP", price: 350, available: 5 }, { tier: "General", price: 50, available: 150 }], color: "#00FF88", icon: "◈", status: "SELLING FAST" },
-];
+// Rule 20: No fake events. Events are fetched from the DB — created by Venues/Promoters.
+// Rule 17: Ticket sales belong to Venues and Promoters only.
 
-type TicketTier = { tier: string; price: number; available: number };
+interface TicketTypeRow {
+  id: string;
+  name: string;
+  priceCents: number;
+  quantity: number;
+}
 
-function BuyModal({ event, onClose }: { event: typeof EVENTS[0]; onClose: () => void }) {
+interface EventRow {
+  id: string;
+  title: string;
+  description: string | null;
+  startsAt: string;
+  endsAt: string | null;
+  venueName: string | null;
+  venueCity: string | null;
+  venueState: string | null;
+  ticketTypes: TicketTypeRow[];
+}
+
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString("en-US", {
+    month: "short", day: "numeric", year: "numeric",
+    hour: "numeric", minute: "2-digit", timeZoneName: "short",
+  });
+}
+
+function BuyModal({ event, onClose }: { event: EventRow; onClose: () => void }) {
   const router = useRouter();
-  const [selected, setSelected] = useState<TicketTier | null>(null);
+  const [selected, setSelected] = useState<TicketTypeRow | null>(null);
   const [qty, setQty] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const total = selected ? selected.price * qty : 0;
+  const totalCents = selected ? selected.priceCents * qty : 0;
 
   async function handleCheckout() {
     if (!selected || loading) return;
     setLoading(true);
+    setError(null);
     try {
-      const seats = Array.from({ length: qty }, (_, i) => ({
-        id: `${event.id}-${selected.tier}-${i + 1}`,
-        tier: selected.tier.toLowerCase().replace(' ', '-'),
-        price: selected.price,
-      }));
-      const res = await fetch('/api/tickets/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ seats, successUrl: `${window.location.origin}/payment-success?type=ticket&session_id={CHECKOUT_SESSION_ID}` }),
+      const eventSlug = event.title.toLowerCase().replace(/[^a-z0-9\s-]/g, "").trim().replace(/\s+/g, "-") || event.id;
+      const venueSlug = (event.venueName ?? "tmi-platform").toLowerCase().replace(/[^a-z0-9\s-]/g, "").trim().replace(/\s+/g, "-") || "tmi-platform";
+      const tier = selected.name.toUpperCase().replace(/\s+/g, "_");
+      const res = await fetch("/api/tickets/purchase", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          eventSlug,
+          venueSlug,
+          tier,
+          quantity: qty,
+          faceValue: selected.priceCents / 100,
+          successUrl: `${window.location.origin}/tickets?status=success&event=${encodeURIComponent(event.title)}`,
+          cancelUrl: `${window.location.origin}/tickets?status=cancelled`,
+        }),
       });
-      const data = await res.json() as { url?: string };
-      if (data.url) router.push(data.url);
-      else setLoading(false);
+      const data = await res.json() as { url?: string; error?: string };
+      if (!res.ok) {
+        setError(data.error ?? "Unable to start checkout. Please try again.");
+        setLoading(false);
+        return;
+      }
+      if (data.url) { router.push(data.url); return; }
+      setError("Checkout URL was not returned. Please try again.");
+      setLoading(false);
     } catch {
+      setError("Network error while starting checkout. Please retry.");
       setLoading(false);
     }
   }
@@ -47,53 +81,71 @@ function BuyModal({ event, onClose }: { event: typeof EVENTS[0]; onClose: () => 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       onClick={onClose}
-      style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+      style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.88)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
       <motion.div initial={{ scale: 0.92, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
         onClick={(e) => e.stopPropagation()}
-        style={{ background: "#0a0a1a", border: `1px solid ${event.color}30`, borderRadius: 20, padding: "28px 24px", maxWidth: 420, width: "100%" }}>
-        <div style={{ fontSize: 9, color: event.color, fontWeight: 800, letterSpacing: "0.2em", marginBottom: 6 }}>SELECT TICKETS</div>
-        <div style={{ fontSize: 18, fontWeight: 900, marginBottom: 4 }}>{event.name}</div>
-        <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginBottom: 20 }}>{event.date} · {event.time} · {event.venue}</div>
-
+        style={{ background: "#0a0a1a", border: "1px solid rgba(0,255,255,0.2)", borderRadius: 20, padding: "28px 24px", maxWidth: 440, width: "100%" }}>
+        <div style={{ fontSize: 9, color: "#00FFFF", fontWeight: 800, letterSpacing: "0.2em", marginBottom: 6 }}>SELECT TICKETS</div>
+        <div style={{ fontSize: 18, fontWeight: 900, marginBottom: 4 }}>{event.title}</div>
+        <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginBottom: 4 }}>{formatDate(event.startsAt)}</div>
+        {(event.venueName || event.venueCity) && (
+          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginBottom: 20 }}>
+            {[event.venueName, event.venueCity, event.venueState].filter(Boolean).join(", ")}
+          </div>
+        )}
         <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 20 }}>
-          {event.tickets.map((t) => (
-            <button key={t.tier} onClick={() => setSelected(t)}
-              style={{ padding: "12px 16px", background: selected?.tier === t.tier ? `${event.color}18` : "rgba(255,255,255,0.03)", border: `1px solid ${selected?.tier === t.tier ? event.color + "60" : "rgba(255,255,255,0.08)"}`, borderRadius: 10, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", textAlign: "left" }}>
+          {event.ticketTypes.map((t) => (
+            <button key={t.id} onClick={() => { setSelected(t); setQty(1); }}
+              style={{ padding: "12px 16px", background: selected?.id === t.id ? "rgba(0,255,255,0.08)" : "rgba(255,255,255,0.03)", border: `1px solid ${selected?.id === t.id ? "rgba(0,255,255,0.4)" : "rgba(255,255,255,0.08)"}`, borderRadius: 10, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
-                <div style={{ fontSize: 13, fontWeight: 800, color: selected?.tier === t.tier ? event.color : "#fff" }}>{t.tier}</div>
-                <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", marginTop: 2 }}>{t.available} remaining</div>
+                <div style={{ fontSize: 13, fontWeight: 800, color: selected?.id === t.id ? "#00FFFF" : "#fff" }}>{t.name}</div>
+                <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", marginTop: 2 }}>{t.quantity} available</div>
               </div>
-              <div style={{ fontSize: 18, fontWeight: 900, color: event.color }}>${t.price}</div>
+              <div style={{ fontSize: 18, fontWeight: 900, color: "#00FFFF" }}>{t.priceCents === 0 ? "FREE" : `$${(t.priceCents / 100).toFixed(0)}`}</div>
             </button>
           ))}
         </div>
-
-        {selected && (
+        {selected && selected.priceCents > 0 && (
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
             <span style={{ fontSize: 12, color: "rgba(255,255,255,0.5)" }}>Qty:</span>
             <button onClick={() => setQty((q) => Math.max(1, q - 1))} style={{ width: 28, height: 28, borderRadius: 6, background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)", color: "#fff", fontWeight: 800, fontSize: 16, cursor: "pointer" }}>−</button>
             <span style={{ fontSize: 16, fontWeight: 900, minWidth: 20, textAlign: "center" }}>{qty}</span>
-            <button onClick={() => setQty((q) => Math.min(selected.available, q + 1))} style={{ width: 28, height: 28, borderRadius: 6, background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)", color: "#fff", fontWeight: 800, fontSize: 16, cursor: "pointer" }}>+</button>
-            <span style={{ fontSize: 14, fontWeight: 900, color: event.color, marginLeft: "auto" }}>${total.toFixed(0)} total</span>
+            <button onClick={() => setQty((q) => Math.min(selected.quantity, q + 1))} style={{ width: 28, height: 28, borderRadius: 6, background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)", color: "#fff", fontWeight: 800, fontSize: 16, cursor: "pointer" }}>+</button>
+            <span style={{ fontSize: 14, fontWeight: 900, color: "#00FFFF", marginLeft: "auto" }}>${(totalCents / 100).toFixed(2)} total</span>
           </div>
         )}
-
         <button onClick={handleCheckout} disabled={!selected || loading}
-          style={{ width: "100%", padding: "13px", background: !selected || loading ? "rgba(255,255,255,0.1)" : `linear-gradient(135deg,${event.color},${event.color}cc)`, color: !selected ? "rgba(255,255,255,0.3)" : "#050510", fontWeight: 800, fontSize: 13, borderRadius: 10, border: "none", cursor: !selected || loading ? "not-allowed" : "pointer", letterSpacing: "0.06em" }}>
-          {loading ? "Redirecting to Stripe..." : selected ? `Checkout — $${total.toFixed(0)} →` : "Select a ticket tier"}
+          style={{ width: "100%", padding: "13px", background: !selected || loading ? "rgba(255,255,255,0.1)" : "linear-gradient(135deg,#00FFFF,#00E5FF)", color: !selected ? "rgba(255,255,255,0.3)" : "#050510", fontWeight: 800, fontSize: 13, borderRadius: 10, border: "none", cursor: !selected || loading ? "not-allowed" : "pointer", letterSpacing: "0.06em" }}>
+          {loading ? "Redirecting to checkout…" : selected ? `Checkout → ${selected.priceCents === 0 ? "FREE" : `$${(totalCents / 100).toFixed(2)}`}` : "Select a ticket tier"}
         </button>
+        {error && (
+          <div style={{ marginTop: 10, fontSize: 11, color: "#FF6B6B", background: "rgba(255,107,107,0.08)", border: "1px solid rgba(255,107,107,0.24)", borderRadius: 8, padding: "8px 10px" }}>
+            {error}
+          </div>
+        )}
       </motion.div>
     </motion.div>
   );
 }
 
 export default function TicketsPage() {
-  const [openEvent, setOpenEvent] = useState<typeof EVENTS[0] | null>(null);
+  const [events, setEvents] = useState<EventRow[] | null>(null);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [openEvent, setOpenEvent] = useState<EventRow | null>(null);
+  const searchParams = useSearchParams();
+  const status = searchParams?.get("status") ?? null;
+
+  useEffect(() => {
+    fetch("/api/events/list")
+      .then((r) => r.json())
+      .then((d: { events?: EventRow[] }) => setEvents(d.events ?? []))
+      .catch(() => { setFetchError("Unable to load events. Please refresh."); setEvents([]); });
+  }, []);
 
   return (
     <main style={{ minHeight: "100vh", background: "#050510", color: "#fff", paddingBottom: 80, fontFamily: "'Inter',sans-serif" }}>
       <div style={{ borderBottom: "1px solid rgba(255,255,255,0.07)", padding: "18px 28px", display: "flex", gap: 12, alignItems: "center" }}>
-        <Link href="/dashboard/fan" style={{ fontSize: 11, color: "rgba(0,255,255,0.7)", textDecoration: "none" }}>← Dashboard</Link>
+        <Link href="/hub/fan" style={{ fontSize: 11, color: "rgba(0,255,255,0.7)", textDecoration: "none" }}>← Dashboard</Link>
         <span style={{ color: "rgba(255,255,255,0.15)" }}>·</span>
         <span style={{ fontSize: 11, color: "rgba(255,255,255,0.4)" }}>Event Tickets</span>
       </div>
@@ -103,45 +155,74 @@ export default function TicketsPage() {
           <div style={{ fontSize: 9, fontWeight: 800, color: "#00FFFF", letterSpacing: "0.3em", marginBottom: 8 }}>TICKETS</div>
           <h1 style={{ fontSize: "clamp(22px,4vw,34px)", fontWeight: 900, margin: 0 }}>Upcoming Events</h1>
           <p style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", marginTop: 6 }}>Buy tickets for live shows, battles, and special events.</p>
+          {status === "cancelled" && (
+            <div style={{ marginTop: 10, fontSize: 11, color: "#FFD700", background: "rgba(255,215,0,0.08)", border: "1px solid rgba(255,215,0,0.24)", borderRadius: 8, padding: "8px 10px", display: "inline-block" }}>
+              Checkout was cancelled. Your tickets were not purchased.
+            </div>
+          )}
+          {status === "success" && (
+            <div style={{ marginTop: 10, fontSize: 11, color: "#00FF88", background: "rgba(0,255,136,0.08)", border: "1px solid rgba(0,255,136,0.24)", borderRadius: 8, padding: "8px 10px", display: "inline-block" }}>
+              Purchase complete. Your tickets are ready in My Tickets.
+            </div>
+          )}
         </div>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          {EVENTS.map((event, i) => (
-            <motion.div key={event.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}
-              style={{ background: "rgba(255,255,255,0.02)", border: `1px solid ${event.color}15`, borderRadius: 16, padding: "22px 24px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 16 }}>
-              <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
-                <div style={{ fontSize: 36 }}>{event.icon}</div>
+        {events === null && !fetchError && (
+          <div style={{ textAlign: "center", padding: "60px 0", color: "rgba(255,255,255,0.35)", fontSize: 13 }}>Loading upcoming events…</div>
+        )}
+        {fetchError && (
+          <div style={{ padding: "20px 24px", background: "rgba(255,107,107,0.06)", border: "1px solid rgba(255,107,107,0.2)", borderRadius: 12, fontSize: 13, color: "rgba(255,107,107,0.8)" }}>{fetchError}</div>
+        )}
+        {events !== null && events.length === 0 && !fetchError && (
+          <div style={{ textAlign: "center", padding: "60px 0" }}>
+            <div style={{ fontSize: 36, marginBottom: 16 }}>🎟️</div>
+            <div style={{ fontSize: 16, fontWeight: 800, color: "rgba(255,255,255,0.6)", marginBottom: 8 }}>No upcoming events yet</div>
+            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.35)", maxWidth: 380, margin: "0 auto 24px" }}>Events are scheduled by venues and promoters. Check back soon or browse live rooms happening right now.</div>
+            <Link href="/live/lobby" style={{ padding: "12px 24px", background: "rgba(0,255,255,0.08)", border: "1px solid rgba(0,255,255,0.25)", borderRadius: 8, color: "#00FFFF", fontSize: 12, fontWeight: 800, textDecoration: "none", letterSpacing: "0.1em" }}>BROWSE LIVE ROOMS →</Link>
+          </div>
+        )}
+        {events !== null && events.length > 0 && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            {events.map((event, i) => (
+              <motion.div key={event.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
+                style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(0,255,255,0.12)", borderRadius: 16, padding: "22px 24px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 16 }}>
                 <div>
-                  <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 4 }}>
-                    <span style={{ fontSize: 15, fontWeight: 900 }}>{event.name}</span>
-                    <span style={{ fontSize: 8, fontWeight: 800, padding: "2px 7px", borderRadius: 4, background: `${event.color}18`, color: event.color, border: `1px solid ${event.color}40` }}>{event.status}</span>
-                  </div>
-                  <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)" }}>{event.date} · {event.time}</div>
-                  <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", marginTop: 2 }}>{event.venue}</div>
-                  <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
-                    {event.tickets.map((t) => (
-                      <span key={t.tier} style={{ fontSize: 9, padding: "2px 8px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 4, color: "rgba(255,255,255,0.5)", fontWeight: 700 }}>
-                        {t.tier} ${t.price}
-                      </span>
-                    ))}
-                  </div>
+                  <div style={{ fontSize: 15, fontWeight: 900, marginBottom: 4 }}>{event.title}</div>
+                  <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", marginBottom: 2 }}>{formatDate(event.startsAt)}</div>
+                  {(event.venueName || event.venueCity) && (
+                    <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", marginBottom: 8 }}>{[event.venueName, event.venueCity, event.venueState].filter(Boolean).join(", ")}</div>
+                  )}
+                  {event.ticketTypes.length > 0 && (
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                      {event.ticketTypes.map((t) => (
+                        <span key={t.id} style={{ fontSize: 9, padding: "2px 8px", background: "rgba(0,255,255,0.04)", border: "1px solid rgba(0,255,255,0.15)", borderRadius: 4, color: "rgba(0,255,255,0.7)", fontWeight: 700 }}>
+                          {t.name} {t.priceCents === 0 ? "FREE" : `$${(t.priceCents / 100).toFixed(0)}`}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              </div>
-              <button onClick={() => setOpenEvent(event)}
-                style={{ padding: "11px 22px", background: `linear-gradient(135deg,${event.color},${event.color}cc)`, color: "#050510", fontWeight: 800, fontSize: 11, borderRadius: 9, border: "none", cursor: "pointer", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>
-                BUY TICKETS →
-              </button>
-            </motion.div>
-          ))}
-        </div>
+                {event.ticketTypes.length > 0 ? (
+                  <button onClick={() => setOpenEvent(event)}
+                    style={{ padding: "11px 22px", background: "linear-gradient(135deg,#00FFFF,#00E5FF)", color: "#050510", fontWeight: 800, fontSize: 11, borderRadius: 9, border: "none", cursor: "pointer", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>
+                    BUY TICKETS →
+                  </button>
+                ) : (
+                  <span style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", fontStyle: "italic" }}>Tickets not available</span>
+                )}
+              </motion.div>
+            ))}
+          </div>
+        )}
 
         <div style={{ marginTop: 24, display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <Link href="/seating" style={{ padding: "10px 18px", border: "1px solid rgba(0,255,255,0.25)", borderRadius: 8, color: "#00FFFF", fontSize: 12, fontWeight: 700, textDecoration: "none", background: "rgba(0,255,255,0.06)" }}>Seat Selector</Link>
           <Link href="/tickets/history" style={{ padding: "10px 18px", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, color: "rgba(255,255,255,0.4)", fontSize: 12, fontWeight: 700, textDecoration: "none", background: "rgba(255,255,255,0.03)" }}>My Tickets</Link>
         </div>
       </div>
 
-      {openEvent && <BuyModal event={openEvent} onClose={() => setOpenEvent(null)} />}
+      <AnimatePresence>
+        {openEvent && <BuyModal event={openEvent} onClose={() => setOpenEvent(null)} />}
+      </AnimatePresence>
     </main>
   );
 }

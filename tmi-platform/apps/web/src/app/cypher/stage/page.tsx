@@ -42,7 +42,7 @@ export default function CypherStagePage() {
   const [viewMode,     setViewMode]     = useState<'performer' | 'fan'>('performer');
   const [chat,         setChat]         = useState<ChatLine[]>([]);
   const [chatInput,    setChatInput]    = useState('');
-  const [viewers,      setViewers]      = useState(342);
+  const [viewers] = useState(0);
   const [showJoin,     setShowJoin]     = useState(false);
   const chatId = useRef(0);
 
@@ -68,7 +68,6 @@ export default function CypherStagePage() {
         ...prev.slice(-40),
         { id: ++chatId.current, name: `Fan_${Math.floor(Math.random() * 999)}`, msg, color: bot.accent },
       ]);
-      setViewers((v) => v + Math.floor(Math.random() * 3) - 1);
     }, 2200);
     return () => clearInterval(t);
   }, []);

@@ -3,7 +3,11 @@ import { useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import TmiSeasonPassEngine from "@/components/pass/TmiSeasonPassEngine";
+import InstrumentProgression, { type SeasonInstrument } from "@/components/season-pass/InstrumentProgression";
+import SeasonPassProgress from "@/components/season-pass/SeasonPassProgress";
+import SeasonRewardList from "@/components/season-pass/SeasonRewardList";
 import { useGamificationEngine } from "@/hooks/useGamificationEngine";
+import { useState } from "react";
 
 const TIERS = [
   {
@@ -69,6 +73,7 @@ export default function SeasonPassPage() {
   const { totalXp, walletCredits, trackAction } = useGamificationEngine();
   const searchParams = useSearchParams();
   const notice = searchParams?.get('notice');
+  const [instrument, setInstrument] = useState<SeasonInstrument>("guitar");
 
   useEffect(() => { trackAction('LOGIN_DAILY'); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -87,6 +92,13 @@ export default function SeasonPassPage() {
     },
   };
   const activeNotice = notice ? NOTICES[notice] : null;
+  const seasonLevel = Math.min(15, Math.max(1, Math.floor(totalXp / 250) + 1));
+  const rewardItems = [
+    { title: "Level 1-3: Starter Lights", description: "Unlock glow borders, intro frames, and fan-tier cosmetics.", level: 3, accentColor: "#00FFFF" },
+    { title: "Level 4-7: Stage Boost", description: "Unlock priority room access, promo credits, and profile energy.", level: 7, accentColor: "#FF2DAA" },
+    { title: "Level 8-11: Headliner Pack", description: "Unlock campaign perks, deeper analytics, and premium placements.", level: 11, accentColor: "#FFD700" },
+    { title: "Level 12-15: Season Crown", description: "Unlock elite rewards, spotlight rails, and the top-tier season badge.", level: 15, accentColor: "#AA2DFF" },
+  ];
 
   return (
     <main style={{ minHeight: "100vh", background: "#050510", color: "#fff", paddingBottom: 80 }}>
@@ -137,8 +149,14 @@ export default function SeasonPassPage() {
         ))}
       </section>
 
-      <section style={{ maxWidth: 960, margin: "40px auto 0", padding: "0 24px" }}>
-        <div style={{ fontSize: 9, color: "#FFD700", letterSpacing: "0.3em", fontWeight: 800, marginBottom: 14 }}>🎸 SEASON 1 REWARDS</div>
+      <section style={{ maxWidth: 1100, margin: "40px auto 0", padding: "0 24px", display: "grid", gap: 18 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 16 }}>
+          <InstrumentProgression value={instrument} onChange={setInstrument} />
+          <SeasonPassProgress xp={totalXp} level={seasonLevel} maxLevel={15} />
+          <SeasonRewardList rewards={rewardItems} selectedInstrument={instrument} />
+        </div>
+
+        <div style={{ fontSize: 9, color: "#FFD700", letterSpacing: "0.3em", fontWeight: 800, marginBottom: 0 }}>🎸 SEASON 1 REWARDS</div>
         <TmiSeasonPassEngine userXpFan={totalXp} userXpArtist={Math.floor(totalXp * 0.6)} />
       </section>
 

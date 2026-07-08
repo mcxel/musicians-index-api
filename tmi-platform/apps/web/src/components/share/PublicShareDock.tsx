@@ -7,6 +7,10 @@ import ShareWebsiteButton from './ShareWebsiteButton';
 function isPublicShareSurface(pathname: string): boolean {
   return [
     '/home/',
+    '/hub/',
+    '/messages',
+    '/pricing',
+    '/subscribe',
     '/magazine',
     '/artists/',
     '/performers/',

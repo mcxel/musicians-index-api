@@ -113,11 +113,37 @@ let ticketCounter = 0;
 let receiptCounter = 0;
 let ledgerCounter = 0;
 
+const INVENTORY_AUTHORIZED_ROLES = new Set([
+  "VENUE",
+  "PROMOTER",
+  "ADMIN",
+  "SUPERADMIN",
+  "OWNER",
+]);
+
+function throwUniversalTicketingError(code: string): never {
+  const err = new Error(code);
+  (err as Error & { code: string }).code = code;
+  throw err;
+}
+
+function assertTicketInventoryAuthority(input: { actorRole?: string; isAuthenticated?: boolean }): void {
+  if (!input.isAuthenticated) {
+    throwUniversalTicketingError("authentication_required");
+  }
+  const role = (input.actorRole ?? "").trim().toUpperCase();
+  if (!INVENTORY_AUTHORIZED_ROLES.has(role)) {
+    throwUniversalTicketingError("forbidden_inventory_role");
+  }
+}
+
 function routeBase(eventId: string): string {
   return `/events/${eventId}`;
 }
 
 export function createUniversalEvent(input: {
+  actorRole: string;
+  isAuthenticated: boolean;
   ownerAccountType: TicketOwnerAccountType;
   ownerAccountId: string;
   category: string;
@@ -133,6 +159,8 @@ export function createUniversalEvent(input: {
   city: string;
   description?: string;
 }): UniversalEventRecord {
+  assertTicketInventoryAuthority(input);
+
   const resolved = resolveEventCategory(input.category);
   const event: UniversalEventRecord = {
     eventId: `universal-event-${++eventCounter}`,
@@ -158,6 +186,8 @@ export function createUniversalEvent(input: {
 }
 
 export function createUniversalEventWithNewVenue(input: {
+  actorRole: string;
+  isAuthenticated: boolean;
   ownerAccountType: TicketOwnerAccountType;
   ownerAccountId: string;
   category: string;
@@ -182,12 +212,16 @@ export function createUniversalEventWithNewVenue(input: {
     capacity?: number;
   };
 }): UniversalEventRecord {
+  assertTicketInventoryAuthority(input);
+
   const createdVenue = createEventVenueAccount({
     ...input.venue,
     isNewVenue: true,
   });
 
   return createUniversalEvent({
+    actorRole: input.actorRole,
+    isAuthenticated: input.isAuthenticated,
     ownerAccountType: input.ownerAccountType,
     ownerAccountId: input.ownerAccountId,
     category: input.category,
@@ -206,6 +240,8 @@ export function createUniversalEventWithNewVenue(input: {
 }
 
 export function createUniversalEventWithExistingVenue(input: {
+  actorRole: string;
+  isAuthenticated: boolean;
   ownerAccountType: TicketOwnerAccountType;
   ownerAccountId: string;
   category: string;
@@ -220,9 +256,13 @@ export function createUniversalEventWithExistingVenue(input: {
   promoterName?: string;
   performerNames?: string[];
 }): UniversalEventRecord {
+  assertTicketInventoryAuthority(input);
+
   const selectedVenue = selectExistingVenueForEvent(input.existingVenueId);
 
   return createUniversalEvent({
+    actorRole: input.actorRole,
+    isAuthenticated: input.isAuthenticated,
     ownerAccountType: input.ownerAccountType,
     ownerAccountId: input.ownerAccountId,
     category: input.category,
@@ -241,14 +281,24 @@ export function createUniversalEventWithExistingVenue(input: {
 }
 
 export function createUniversalTicketInventory(input: {
+  actorRole: string;
+  isAuthenticated: boolean;
   eventId: string;
   ticketType: "general" | "vip" | "ringside" | "premium" | "custom";
   priceCents: number;
   quantityAvailable: number;
   seatInfo?: UniversalSeatInfo;
 }): UniversalTicketInventory {
+  assertTicketInventoryAuthority(input);
+
   const event = events.find((item) => item.eventId === input.eventId);
   if (!event) throw new Error(`Event ${input.eventId} not found`);
+  if (!Number.isInteger(input.quantityAvailable) || input.quantityAvailable <= 0) {
+    throwUniversalTicketingError("invalid_quantity_available");
+  }
+  if (!Number.isInteger(input.priceCents) || input.priceCents <= 0) {
+    throwUniversalTicketingError("invalid_price_cents");
+  }
 
   const route = routeBase(input.eventId);
   const record: UniversalTicketInventory = {
@@ -275,9 +325,11 @@ export function purchaseUniversalTicket(input: {
   if (!ticket) throw new Error(`Ticket ${input.ticketId} not found`);
 
   const quantity = input.quantity ?? 1;
-  if (quantity <= 0) throw new Error("Quantity must be positive");
+  if (!Number.isInteger(quantity) || quantity <= 0) {
+    throwUniversalTicketingError("invalid_quantity");
+  }
   if (ticket.quantitySold + quantity > ticket.quantityAvailable) {
-    throw new Error("Not enough ticket inventory available");
+    throwUniversalTicketingError("sold_out");
   }
 
   ticket.quantitySold += quantity;
@@ -298,9 +350,11 @@ export function checkoutUniversalTicket(input: {
   if (!event) throw new Error(`Event ${ticket.eventId} not found`);
 
   const quantity = input.quantity ?? 1;
-  if (quantity <= 0) throw new Error("Quantity must be positive");
+  if (!Number.isInteger(quantity) || quantity <= 0) {
+    throwUniversalTicketingError("invalid_quantity");
+  }
   if (ticket.quantitySold + quantity > ticket.quantityAvailable) {
-    throw new Error("Not enough ticket inventory available");
+    throwUniversalTicketingError("sold_out");
   }
 
   const volume = input.ticketVolumeHint ?? ticket.quantityAvailable;

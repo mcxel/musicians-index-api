@@ -19,6 +19,8 @@ export async function GET(req: NextRequest) {
           { name:  { contains: q, mode: "insensitive" } },
           { email: { contains: q, mode: "insensitive" } },
         ],
+        // Exclude QA certification fleet accounts from all public search results
+        NOT: { email: { endsWith: "@themusiciansindex.test" } },
         ...(role ? { role: role as "FAN" | "ARTIST" | "PERFORMER" | "SPONSOR" | "ADVERTISER" | "VENUE" | "PROMOTER" | "ADMIN" } : {}),
       },
       take: limit,
@@ -27,17 +29,17 @@ export async function GET(req: NextRequest) {
         name:          true,
         email:         true,
         role:          true,
-        artistProfile: { select: { slug: true, genre: true } },
+        artistProfile: { select: { slug: true, genres: true } },
       },
-      orderBy: { createdAt: "desc" },
+      orderBy: { userCreatedAt: "desc" },
     });
 
     const formatted = users.map((u) => ({
       id:        u.id,
-      name:      u.name ?? u.email.split("@")[0],
+      name:      u.name ?? u.email?.split("@")[0] ?? `user-${u.id.slice(0, 8)}`,
       slug:      u.artistProfile?.slug ?? u.id,
       role:      u.role ?? "FAN",
-      genre:     u.artistProfile?.genre ?? undefined,
+      genre:     u.artistProfile?.genres?.[0] ?? undefined,
       isLive:    false,
       followers: 0,
     }));

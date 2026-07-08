@@ -12,8 +12,7 @@ import PerformerBattleRail from "@/components/performer/PerformerBattleRail";
 import PerformerBookingRail from "@/components/performer/PerformerBookingRail";
 import PerformerMediaRail from "@/components/performer/PerformerMediaRail";
 import PreviewWindow from "@/components/hubs/PreviewWindow";
-import PerformerVideoPanel from "@/components/media/PerformerVideoPanel";
-import GoLiveBanner from "@/components/profile/GoLiveBanner";
+import VideoMonitorGrid from "@/components/shell/VideoMonitorGrid";
 import PerformerSponsorShelf, {
   type PerformerSponsor,
 } from "@/components/performer/PerformerSponsorShelf";
@@ -242,7 +241,35 @@ export default function PerformerProfilePage({ params }: Props) {
               },
             }}
           />
-          <GoLiveBanner profileSlug={params.slug} hasStreamed={performer.isLive} />
+          <section
+            style={{
+              marginBottom: 12,
+              border: "1px solid rgba(0,255,255,0.24)",
+              borderRadius: 10,
+              padding: "10px 12px",
+              background: "rgba(3,15,24,0.55)",
+            }}
+          >
+            <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase", color: CYAN, marginBottom: 6 }}>
+              Venue Runtime Separation
+            </div>
+            <div style={{ fontSize: 11, color: "#cbd5e1", marginBottom: 8 }}>
+              Profile is identity and discovery. Performers launch live events from media player controls, and audience enters dedicated venue runtime.
+            </div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <Link href="/performer/studio" style={{ fontSize: 10, color: CYAN, textDecoration: "none", border: "1px solid rgba(0,255,255,0.35)", borderRadius: 999, padding: "4px 10px" }}>
+                Open Media Player
+              </Link>
+              <Link href="/settings" style={{ fontSize: 10, color: GOLD, textDecoration: "none", border: "1px solid rgba(255,204,21,0.35)", borderRadius: 999, padding: "4px 10px" }}>
+                Venue Defaults
+              </Link>
+              {performer.isLive ? (
+                <Link href="/live/stages" style={{ fontSize: 10, color: ACCENT, textDecoration: "none", border: `1px solid ${ACCENT}55`, borderRadius: 999, padding: "4px 10px" }}>
+                  Join Live Venue
+                </Link>
+              ) : null}
+            </div>
+          </section>
         </>}
       >
         {performer.isLive ? (
@@ -489,15 +516,40 @@ export default function PerformerProfilePage({ params }: Props) {
             </Link>
           ) : null}
         </div>
-        {/* Video & Media panel — live stream + past battle clips */}
-        <PerformerVideoPanel
-          slug={params.slug}
-          displayName={performer.displayName}
-          isLive={performer.isLive}
-          liveRoomId={performer.isLive ? `performer-${params.slug}` : undefined}
-          accentColor={ACCENT}
-          role="performer"
-        />
+        {/* ── 4-Monitor Command Deck (2 big + 2 mini) ── */}
+        <div style={{ marginBottom: 20 }}>
+          <VideoMonitorGrid
+            accentColor={ACCENT}
+            label={`${performer.displayName} — Command Deck`}
+            slot1={{
+              defaultFeed: performer.isLive ? 'live-stream' : 'audience',
+              availableFeeds: ['live-stream', 'audience', 'battle-feed', 'cypher-feed'],
+              accentColor: ACCENT,
+            }}
+            slot2={{
+              defaultFeed: 'billboard',
+              availableFeeds: ['billboard', 'audience', 'battle-feed', 'challenge-feed'],
+              accentColor: '#FF2DAA',
+              children: <LiveLobbyWallCanister accentColor={ACCENT} maxRooms={4} />,
+            }}
+            slot3={{
+              defaultFeed: 'self-camera',
+              availableFeeds: ['self-camera', 'empty'],
+              accentColor: '#AA2DFF',
+            }}
+            slot4={{
+              defaultFeed: 'memory-wall',
+              availableFeeds: ['memory-wall', 'sponsor', 'playlist'],
+              accentColor: '#FFD700',
+              children: <MemoryWall
+                accentColor={ACCENT}
+                title={`${performer.displayName} — Memories`}
+                entityId={params.slug}
+                entityType="performer"
+              />,
+            }}
+          />
+        </div>
 
         {/* Playlist — owner can add/reorder tracks; visitors see read-only */}
         <ProfilePlaylistSection profileSlug={params.slug} />

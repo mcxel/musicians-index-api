@@ -43,9 +43,12 @@ export default function FirstRunExperienceOverlay() {
   const [phase, setPhase] = useState<'role-select' | 'checklist'>('role-select');
 
   const isAuthPath = AUTH_PATHS.some(p => pathname === p || pathname?.startsWith(p + '/'));
+  // WorkspaceShell preview routes are a self-contained broadcast-OS sandbox —
+  // the site's real first-run onboarding modal doesn't belong there.
+  const isPreviewPath = pathname?.startsWith('/preview/') ?? false;
 
   useEffect(() => {
-    if (isAuthPath) return;
+    if (isAuthPath || isPreviewPath) return;
     setMounted(true);
     const state = getFirstRunState();
     if (state.dismissed) return;
@@ -57,7 +60,7 @@ export default function FirstRunExperienceOverlay() {
       setPhase('checklist');
     }
     setVisible(true);
-  }, [isAuthPath]);
+  }, [isAuthPath, isPreviewPath]);
 
   function handleRoleSelect(r: UserRole) {
     setFirstRunRole(r);
@@ -73,6 +76,18 @@ export default function FirstRunExperienceOverlay() {
     if (role) {
       setSteps(getPendingSteps(role));
     }
+    // Persist the XP for real (UserStats/ParticipationLedger) — previously
+    // this step only updated localStorage and the promised "+N XP" was
+    // never actually granted to the account.
+    fetch('/api/onboarding/complete-step', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ stepId }),
+    }).catch(() => {
+      // Non-fatal — the checklist UI still advances even if this fails;
+      // the step stays completed locally but the XP grant can be retried
+      // by whatever reconciliation job exists for missed awards.
+    });
   }
 
   function handleDismiss() {

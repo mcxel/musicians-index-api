@@ -28,6 +28,9 @@ import PlatformFooter from "@/components/layout/PlatformFooter";
 import DiscoverySidePanel from "@/components/discovery/DiscoverySidePanel";
 import { WatchSessionProvider } from "@/lib/presence/WatchSessionContext";
 import PersistentMiniPlayer from "@/components/presence/PersistentMiniPlayer";
+import { GlobalMediaController } from "@/components/GlobalMediaController";
+import AudioDirectorProvider from "@/components/audio/AudioDirectorProvider";
+import PublicShareDock from "@/components/share/PublicShareDock";
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -130,6 +133,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <head>
+        {/* PWA manifest — enables "Add to Home Screen" on iOS/Android */}
+        <link rel="manifest" href="/manifest.json" />
+        {/* Apple PWA meta tags — required for iOS "Add to Home Screen" full-screen mode */}
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="TMI" />
+        <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+        <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152.png" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-192.png" />
+        {/* Android Chrome theme */}
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="application-name" content="TMI" />
         {/* BidVertiser verification */}
         {/* Bidvertiser2104976 */}
         <Script
@@ -214,6 +229,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <MonitorRuntime />
               <DiscoverySidePanel />
               <PersistentMiniPlayer />
+              <GlobalMediaController />
+              <AudioDirectorProvider />
+              <PublicShareDock />
             </WatchSessionProvider>
             </HudRuntimeProvider>
             </MonitorRuntimeProvider>

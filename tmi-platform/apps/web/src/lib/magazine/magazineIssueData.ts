@@ -1,3 +1,7 @@
+// LEGACY: This file's content and types are being merged into the canonical
+// `lib/editorial/NewsArticleModel.ts`. This file should be removed once all
+// imports have been updated to point to the new canonical source.
+
 export interface ArticleBlock {
   type: "paragraph" | "heading" | "pullquote" | "image";
   text?: string;

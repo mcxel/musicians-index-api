@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import WorkspaceShell from "@/components/admin/WorkspaceShell";
+import ModuleContainer from "@/components/admin/ModuleContainer";
+import { ErrorBoundary } from "@/components/admin/ErrorBoundary";
 import Link from "next/link";
 import {
   initStageControl, switchCamera, setLightingScene, setVoiceFx,
@@ -75,7 +78,16 @@ function StatusDot({ ok }: { ok: boolean }) {
   );
 }
 
-export default function PerformerHubDashboard({ performerId, displayName }: PerformerHubDashboardProps) {
+function PerformerHubDashboardContent({ performerId, displayName }: PerformerHubDashboardProps) {
+  if (!performerId) {
+    return (
+      <div style={{padding:24,background:'#07071a',color:'#e2e8f0',borderRadius:8}}>
+        <h3>Performer missing</h3>
+        <p>No performer selected. Open a performer profile to continue.</p>
+      </div>
+    );
+  }
+
   const [stage, setStage] = useState<StageControlState | null>(null);
   const [readiness, setReadiness] = useState<ConcertReadinessState | null>(null);
   const [stream, setStream] = useState<StreamHealthState | null>(null);
@@ -146,13 +158,6 @@ export default function PerformerHubDashboard({ performerId, displayName }: Perf
     ingestSignal(ROOM_ID, "tip");
   }, []);
 
-  const card = (title: string, children: React.ReactNode) => (
-    <div style={{ background: "#0f0f1a", border: "1px solid #1e1e3a", borderRadius: 12, padding: "16px 20px" }}>
-      <div style={{ color: "#94a3b8", fontSize: 11, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", marginBottom: 12 }}>{title}</div>
-      {children}
-    </div>
-  );
-
   const pill = (label: string, active: boolean, onClick: () => void, activeColor = "#06b6d4") => (
     <button onClick={onClick} style={{
       padding: "4px 12px", borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: "pointer", border: "none",
@@ -188,8 +193,8 @@ export default function PerformerHubDashboard({ performerId, displayName }: Perf
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
 
         {/* Stage Readiness */}
-        {card("Stage Readiness", (
-          <div>
+        <ModuleContainer title="Stage Readiness">
+          <>
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
               <span style={{ fontSize: 28, fontWeight: 800, color: readiness?.overallReady ? "#22c55e" : "#f59e0b" }}>
                 {readiness?.readinessScore ?? 0}%
@@ -214,12 +219,12 @@ export default function PerformerHubDashboard({ performerId, displayName }: Perf
                 </div>
               ))}
             </div>
-          </div>
-        ))}
+          </>
+        </ModuleContainer>
 
         {/* Stream Health */}
-        {card("Stream Health", (
-          <div>
+        <ModuleContainer title="Stream Health">
+          <>
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12, alignItems: "center" }}>
               <span style={{ fontSize: 13, fontWeight: 700, color: qColor, textTransform: "uppercase" }}>{streamQ}</span>
               {stream?.alertActive && <span style={{ fontSize: 10, color: "#ef4444" }}>{stream.alertReason}</span>}
@@ -239,12 +244,12 @@ export default function PerformerHubDashboard({ performerId, displayName }: Perf
                 </div>
               ))}
             </div>
-          </div>
-        ))}
+          </>
+        </ModuleContainer>
 
         {/* Revenue Pulse */}
-        {card("Revenue Pulse", (
-          <div>
+        <ModuleContainer title="Revenue Pulse">
+          <>
             <div style={{ fontSize: 32, fontWeight: 800, color: "#a78bfa", marginBottom: 4 }}>
               ${ (sessionRevenueDisplay / 100).toFixed(2) }
             </div>
@@ -272,29 +277,29 @@ export default function PerformerHubDashboard({ performerId, displayName }: Perf
             <button onClick={handleSimulateTip} style={{ marginTop: 10, fontSize: 10, padding: "4px 10px", background: "#1e1e3a", border: "1px solid #334155", borderRadius: 4, color: "#94a3b8", cursor: "pointer" }}>
               Simulate Tip
             </button>
-          </div>
-        ))}
+          </>
+        </ModuleContainer>
 
         {/* Camera Control */}
-        {card("Camera Switching", (
-          <div>
+        <ModuleContainer title="Camera Switching">
+          <>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
               {CAMERAS.map(cam => pill(cam, stage?.activeCamera === cam, () => handleCameraSwitch(cam)))}
             </div>
-          </div>
-        ))}
+          </>
+        </ModuleContainer>
 
         {/* Lighting Control */}
-        {card("Stage Lighting", (
-          <div>
+        <ModuleContainer title="Stage Lighting">
+          <>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
               {LIGHTING.map(scene => pill(scene, stage?.lightingScene === scene, () => handleLighting(scene), "#f59e0b"))}
             </div>
-          </div>
-        ))}
+          </>
+        </ModuleContainer>
 
         {/* Mic + AI + Voice FX */}
-        {card("Audio + AI Controls", (
+        <ModuleContainer title="Audio + AI Controls">
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <div style={{ display: "flex", gap: 10 }}>
               <button onClick={handleMicToggle} style={{
@@ -317,11 +322,11 @@ export default function PerformerHubDashboard({ performerId, displayName }: Perf
               </div>
             </div>
           </div>
-        ))}
+        </ModuleContainer>
 
         {/* Performance Flow */}
-        {card("Performance Flow", (
-          <div>
+        <ModuleContainer title="Performance Flow">
+          <>
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
               <div>
                 <div style={{ fontSize: 18, fontWeight: 700, color: "#06b6d4" }}>{flow?.phase.replace(/_/g, " ").toUpperCase()}</div>
@@ -352,12 +357,12 @@ export default function PerformerHubDashboard({ performerId, displayName }: Perf
                 </button>
               ))}
             </div>
-          </div>
-        ))}
+          </>
+        </ModuleContainer>
 
         {/* Crowd Intensity */}
-        {card("Crowd Intensity", (
-          <div>
+        <ModuleContainer title="Crowd Intensity">
+          <>
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
               <span style={{ fontSize: 36, fontWeight: 800, color: crowd?.zone === "explosive" ? "#f59e0b" : crowd?.zone === "hot" ? "#ef4444" : crowd?.zone === "warm" ? "#06b6d4" : "#64748b" }}>
                 {crowd?.intensityScore ?? 0}
@@ -387,12 +392,12 @@ export default function PerformerHubDashboard({ performerId, displayName }: Perf
                 ))}
               </div>
             </div>
-          </div>
-        ))}
+          </>
+        </ModuleContainer>
 
         {/* Meet & Greet Timer */}
-        {card("Meet & Greet Timer", (
-          <div>
+        <ModuleContainer title="Meet & Greet Timer">
+          <>
             {stage?.meetGreetTimerMs !== null && stage?.meetGreetTimerMs !== undefined ? (
               <div style={{ textAlign: "center" }}>
                 <div style={{ fontSize: 48, fontWeight: 800, color: stage.meetGreetTimerMs < 60_000 ? "#ef4444" : "#a78bfa" }}>
@@ -416,12 +421,12 @@ export default function PerformerHubDashboard({ performerId, displayName }: Perf
                 </button>
               </div>
             )}
-          </div>
-        ))}
+          </>
+        </ModuleContainer>
 
         {/* Booking Requests */}
-        {card("Booking & Battle Invites", (
-          <div>
+        <ModuleContainer title="Booking & Battle Invites">
+          <>
             <div style={{ fontSize: 12, color: "#64748b", marginBottom: 10 }}>
               {bookings?.pendingCount ?? 0} pending · {bookings?.acceptedCount ?? 0} accepted
             </div>
@@ -445,8 +450,8 @@ export default function PerformerHubDashboard({ performerId, displayName }: Perf
                 <div style={{ textAlign: "center", color: "#475569", fontSize: 12, padding: 16 }}>No pending requests</div>
               )}
             </div>
-          </div>
-        ))}
+          </>
+        </ModuleContainer>
 
       </div>
 
@@ -474,5 +479,15 @@ export default function PerformerHubDashboard({ performerId, displayName }: Perf
       </div>
 
     </div>
+  );
+}
+
+export default function PerformerHubDashboard(props: PerformerHubDashboardProps) {
+  return (
+    <WorkspaceShell>
+      <ErrorBoundary>
+        <PerformerHubDashboardContent {...props} />
+      </ErrorBoundary>
+    </WorkspaceShell>
   );
 }

@@ -286,6 +286,7 @@ export function BottomWorkspaceDrawer() {
       <div
         style={{
           display: "flex",
+          flexWrap: "wrap",
           alignItems: "center",
           gap: 12,
           padding: "6px 12px",

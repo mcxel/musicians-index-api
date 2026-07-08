@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { WorkspaceShell } from "@/components/shell/WorkspaceShell";
 import { useWorkspace } from "@/components/shell/WorkspaceProvider";
 import type { WorkspaceRole } from "@/components/shell/workspaceTypes";
+import { useScreenShare } from "@/hooks/useScreenShare";
 import { Monitor, type MonitorConfig, type MonitorFeed } from "@/components/shell/VideoMonitorGrid";
 import { BroadcastHeroStatusBar } from "@/components/broadcast/BroadcastHeroStatusBar";
 
@@ -366,7 +367,6 @@ function HeroStage() {
   const [pipLarge, setPipLarge] = useState(false);
   const [pipPosition, setPipPosition] = useState({ x: 24, y: 112 });
   const [pipFeed, setPipFeed] = useState<MonitorFeed>("self-camera");
-  const [activeScreenShare, setActiveScreenShare] = useState<MediaStream | null>(null);
   const [draggingPip, setDraggingPip] = useState(false);
   const dragOffsetRef = useRef({ x: 0, y: 0 });
   const closePanel = (id: FloatingPanelId) =>
@@ -398,32 +398,14 @@ function HeroStage() {
     accentColor: "#00C8FF",
   }), [pipFeed]);
 
-  const handleShareScreen = useCallback(async () => {
-    if (!('getDisplayMedia' in navigator.mediaDevices)) {
-      alert('Screen sharing is not supported by your browser.');
-      return;
-    }
-    // Automatically switch the PIP monitor to the screen-share feed
-    setPipFeed("screen-share");
-    try {
-      const stream = await (navigator.mediaDevices as any).getDisplayMedia({ video: true, audio: true });
-      setActiveScreenShare(stream);
-
-      // Add a listener to revert the monitor when sharing stops
-      const videoTrack = stream.getVideoTracks()[0];
-      if (videoTrack) {
-        videoTrack.onended = () => {
-          setPipFeed("self-camera");
-          // Stop all tracks to free up resources, per directive
-          stream.getTracks().forEach((track: MediaStreamTrack) => track.stop());
-          setActiveScreenShare(null);
-        };
-      }
-    } catch (err) {
-      console.error("Screen share failed:", err);
-      setPipFeed("self-camera"); // Revert on error/cancellation
-    }
-  }, []);
+  const { isSharing, toggleScreenShare } = useScreenShare({
+    onStart: () => {
+      setPipFeed("screen-share");
+    },
+    onStop: () => {
+      setPipFeed("self-camera");
+    },
+  });
 
   useEffect(() => {
     if (!draggingPip) return;
@@ -644,26 +626,29 @@ function HeroStage() {
             padding: "8px 14px",
           }}
         > 
-          {["🎙 Mic On", "📹 Cam On", "🖥️ Share Screen", "✋ Raise Hand", "😀 Emotes"].map((action) => (
-            <button
-              key={action}
-              type="button"
-              style={{
-                borderRadius: 999,
-                border: "1px solid rgba(255,255,255,0.18)",
-                background: "rgba(255,255,255,0.06)",
-                color: "#f4f1ff",
-                padding: "7px 12px",
-                fontSize: 11,
-                fontWeight: 700,
-                cursor: "pointer",
-                whiteSpace: "nowrap",
-              }}
-              onClick={action === "🖥️ Share Screen" ? handleShareScreen : undefined}
-            >
-              {action}
-            </button>
-          ))}
+          {["🎙 Mic On", "📹 Cam On", "🖥️ Share Screen", "✋ Raise Hand", "😀 Emotes"].map((action) => {
+            const isSharingAction = action === "🖥️ Share Screen" && isSharing;
+            return (
+              <button
+                key={action}
+                type="button"
+                style={{
+                  borderRadius: 999,
+                  border: isSharingAction ? "1px solid rgba(0,255,136,0.7)" : "1px solid rgba(255,255,255,0.18)",
+                  background: isSharingAction ? "rgba(0,255,136,0.16)" : "rgba(255,255,255,0.06)",
+                  color: isSharingAction ? "#7dffb8" : "#f4f1ff",
+                  padding: "7px 12px",
+                  fontSize: 11,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  whiteSpace: "nowrap",
+                }}
+                onClick={action === "🖥️ Share Screen" ? toggleScreenShare : undefined}
+              >
+                {isSharingAction ? "🖥️ Sharing..." : action}
+              </button>
+            );
+          })}
           <button
             type="button"
             onClick={() => setPipEnabled((v) => !v)}

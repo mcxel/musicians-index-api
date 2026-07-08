@@ -7,6 +7,7 @@ import type { NewsArticle } from "@/lib/editorial/NewsArticleModel";
 import type { InjectedAds } from "@/lib/editorial/editorialAdInjector";
 import { sliceBodyParagraphs, buildReadTime } from "@/lib/editorial/editorialPageEngine";
 import type { ArticleTemplate } from "@/lib/editorial/NewsArticleModel";
+import type { ArticleBlock } from "@/lib/magazine/magazineIssueData";
 import HeadlineShimmer from "./HeadlineShimmer";
 import HeroColorBlock from "./HeroColorBlock";
 
@@ -250,24 +251,66 @@ function ArticleHero({
 
 // ─── BODY RENDERER ────────────────────────────────────────────────────────────
 
-function BodyBlock({ paragraphs, accentColor }: { paragraphs: string[]; accentColor: string }) {
+function BodyBlock({ paragraphs, accentColor }: { paragraphs: ArticleBlock[]; accentColor: string }) {
   return (
     <>
-      {paragraphs.map((p, i) => (
-        <p
-          key={i}
-          style={{
-            fontSize: 14,
-            lineHeight: 1.75,
-            color: i === 0 ? "rgba(255,255,255,0.82)" : "rgba(255,255,255,0.62)",
-            margin: "0 0 18px",
-            borderLeft: i === 0 ? `3px solid ${accentColor}50` : "none",
-            paddingLeft: i === 0 ? 14 : 0,
-          }}
-        >
-          {p}
-        </p>
-      ))}
+      {paragraphs.map((block, i) => {
+        if (block.type === "image" && block.url) {
+          return (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              key={i}
+              src={block.url}
+              alt=""
+              style={{ width: "100%", borderRadius: 10, margin: "0 0 18px", display: "block" }}
+            />
+          );
+        }
+        if (block.type === "pullquote") {
+          return (
+            <blockquote
+              key={i}
+              style={{
+                fontSize: 18,
+                fontWeight: 700,
+                lineHeight: 1.5,
+                color: accentColor,
+                margin: "10px 0 22px",
+                padding: "6px 0 6px 18px",
+                borderLeft: `3px solid ${accentColor}80`,
+                fontStyle: "italic",
+              }}
+            >
+              {block.text}
+            </blockquote>
+          );
+        }
+        if (block.type === "heading") {
+          return (
+            <h2
+              key={i}
+              style={{ fontSize: 20, fontWeight: 900, color: "#fff", margin: "22px 0 12px" }}
+            >
+              {block.text}
+            </h2>
+          );
+        }
+        return (
+          <p
+            key={i}
+            style={{
+              fontSize: 14,
+              lineHeight: 1.75,
+              color: i === 0 ? "rgba(255,255,255,0.82)" : "rgba(255,255,255,0.62)",
+              margin: "0 0 18px",
+              borderLeft: i === 0 ? `3px solid ${accentColor}50` : "none",
+              paddingLeft: i === 0 ? 14 : 0,
+            }}
+          >
+            {block.text}
+          </p>
+        );
+      })}
     </>
   );
 }
@@ -393,7 +436,7 @@ function TemplateD({ article, accentColor, ads }: TemplateProps) {
             <span style={{ fontSize: 10, fontWeight: 900, color: accentColor, minWidth: 20, flexShrink: 0 }}>
               {i + 1 < 10 ? `0${i + 1}` : i + 1}
             </span>
-            <p style={{ fontSize: 13, lineHeight: 1.65, color: "rgba(255,255,255,0.72)", margin: 0 }}>{para}</p>
+            <p style={{ fontSize: 13, lineHeight: 1.65, color: "rgba(255,255,255,0.72)", margin: 0 }}>{para.text}</p>
           </div>
         ))}
       </div>

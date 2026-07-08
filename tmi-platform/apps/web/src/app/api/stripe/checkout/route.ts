@@ -5,6 +5,7 @@ import { getRegion, getRegionalPriceId, SUBSCRIPTION_TIERS } from '@/lib/stripe/
 import { STRIPE_PRODUCTS } from '@/lib/stripe/products';
 import type { UserTier } from '@/lib/auth/UserStore';
 import { getPerformerBySlug } from '@/lib/performers/PerformerRegistry';
+import { getTmiAuth } from '@/lib/auth/getTmiAuth';
 
 // Lookup table: placeholder priceId → { price (cents), name, interval }
 const PRODUCT_BY_PRICE_ID: Record<string, { price: number; name: string; interval?: string }> =
@@ -19,6 +20,14 @@ const PLAN_TO_TIER: Record<string, UserTier> = {
 
 function isStripePaused(): boolean {
   return process.env.STRIPE_PAUSE_MODE === 'true';
+}
+
+function isRealPriceId(priceId: string): boolean {
+  return /^price_[A-Za-z0-9]{16,}$/.test(priceId);
+}
+
+function isProductionMode(): boolean {
+  return process.env.NODE_ENV === 'production';
 }
 // Reverse-map a Tier 1 pricing page priceId to a product key for regional resolution
 function resolveRegionalPriceId(requestedPriceId: string, req: NextRequest): string {
@@ -38,8 +47,20 @@ function resolveRegionalPriceId(requestedPriceId: string, req: NextRequest): str
 // Used by season pass and credits CTA links — creates a session and redirects
 export async function GET(req: NextRequest) {
   const { searchParams, origin } = req.nextUrl;
-  const priceId = searchParams.get('priceId');
-  const mode = (searchParams.get('mode') ?? 'subscription') as 'subscription' | 'payment';
+  const productKey = searchParams.get('product');
+  const requestedPriceId = searchParams.get('priceId');
+
+  const product = productKey
+    ? STRIPE_PRODUCTS[productKey as keyof typeof STRIPE_PRODUCTS]
+    : null;
+
+  const productInterval = product && 'interval' in product ? product.interval : undefined;
+
+  const priceId = requestedPriceId ?? product?.priceId ?? null;
+  const mode = (
+    searchParams.get('mode')
+    ?? (productInterval && productInterval !== 'one_time' ? 'subscription' : 'payment')
+  ) as 'subscription' | 'payment';
 
   if (!priceId) {
     return NextResponse.redirect(new URL('/season-pass', req.url));
@@ -64,8 +85,11 @@ export async function GET(req: NextRequest) {
 
   // For placeholders, build inline price_data from URL params
   const amountStr   = searchParams.get('amount');
-  const productName = searchParams.get('productName') ?? 'TMI Pass';
+  const productName = searchParams.get('productName') ?? product?.name ?? 'TMI Pass';
   const amount      = amountStr ? parseInt(amountStr, 10) : null;
+  const catalogProduct = PRODUCT_BY_PRICE_ID[resolvedPriceId] ?? product ?? null;
+  const canonicalAmount = typeof catalogProduct?.price === 'number' ? catalogProduct.price : null;
+  const effectiveAmount = canonicalAmount ?? amount;
 
   // Resolve which plan/tier this purchase maps to
   const planMatch = SUBSCRIPTION_TIERS.find(
@@ -87,18 +111,28 @@ export async function GET(req: NextRequest) {
   }
   const cancelUrl = battleId ? `${origin}/sponsor/battles?notice=checkout-cancelled` : `${origin}/season-pass`;
 
-  // Detect placeholder price IDs (e.g. price_fan_monthly vs real price_1TUWI4EL7B8tMf4N...)
-  const isRealPriceId = /^price_[A-Za-z0-9]{16,}$/.test(resolvedPriceId);
+  // Detect placeholder/unconfigured price IDs (e.g. price_fan_monthly vs real price_1TUWI4EL7B8tMf4N...)
+  const hasRealPriceId = isRealPriceId(resolvedPriceId);
+
+  // Phase II production guard: never allow placeholder IDs to reach Stripe.
+  if (isProductionMode() && !hasRealPriceId) {
+    console.error('[stripe/checkout:GET] blocked placeholder priceId in production', {
+      requestedPriceId: priceId,
+      resolvedPriceId,
+      productKey,
+    });
+    return NextResponse.redirect(new URL('/season-pass?notice=price-not-configured', req.url));
+  }
 
   let lineItem: object;
-  if (isRealPriceId) {
+  if (hasRealPriceId) {
     lineItem = { price: resolvedPriceId, quantity: 1 as const };
-  } else if (amount) {
+  } else if (effectiveAmount) {
     lineItem = {
       quantity: 1 as const,
       price_data: {
         currency: 'usd' as const,
-        unit_amount: amount,
+        unit_amount: effectiveAmount,
         ...(mode === 'subscription'
           ? { recurring: { interval: 'month' as const }, product_data: { name: productName } }
           : { product_data: { name: productName } }),
@@ -161,6 +195,11 @@ export async function POST(req: NextRequest) {
     }, { status: 503 });
   }
   try {
+    const auth = await getTmiAuth();
+    if (!auth) {
+      return NextResponse.json({ error: 'authentication_required' }, { status: 401 });
+    }
+
     const body = await req.json() as {
       product?: string;
       artistSlug?: string;
@@ -169,8 +208,11 @@ export async function POST(req: NextRequest) {
       items?: { priceId: string; quantity?: number }[];
       successUrl?: string;
       cancelUrl?: string;
+      mode?: 'subscription' | 'payment';
     };
     const { items, successUrl, cancelUrl } = body;
+    const checkoutMode: 'subscription' | 'payment' = body.mode ?? 'payment';
+    const postUserEmail = auth.user.email || (req.cookies.get('tmi_user_email')?.value ?? '');
 
     // TIP product — TipButton sends { product: "TIP", artistSlug, amount: cents, roomId? }
     if (body.product === "TIP" && body.artistSlug && body.amount) {
@@ -214,6 +256,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'items required' }, { status: 400 });
     }
 
+    if (items.some((i) => !i?.priceId || typeof i.priceId !== 'string')) {
+      return NextResponse.json({ error: 'priceId required for each item' }, { status: 400 });
+    }
+
     if (!successUrl || !cancelUrl) {
       return NextResponse.json({ error: 'successUrl and cancelUrl required' }, { status: 400 });
     }
@@ -252,13 +298,20 @@ export async function POST(req: NextRequest) {
     }
 
     // Direct Stripe SDK fallback
-    const isRealId = (id: string) => /^price_[A-Za-z0-9]{16,}$/.test(id);
+    const isRealId = (id: string) => isRealPriceId(id);
     type LineItem = { price: string; quantity: number } | {
       quantity: number;
       price_data: { currency: 'usd'; unit_amount: number; product_data: { name: string } };
     };
     const lineItems: LineItem[] = [];
+    const unresolvedSubscriptionPriceIds: string[] = [];
     for (const i of items) {
+      if (isProductionMode() && !isRealId(i.priceId)) {
+        return NextResponse.json({
+          error: `Checkout blocked: unresolved Stripe price ID (${i.priceId}). Configure live price IDs before production checkout.`,
+        }, { status: 400 });
+      }
+
       if (isRealId(i.priceId)) {
         lineItems.push({ price: i.priceId, quantity: i.quantity ?? 1 });
       } else {
@@ -268,10 +321,18 @@ export async function POST(req: NextRequest) {
             quantity: i.quantity ?? 1,
             price_data: { currency: 'usd', unit_amount: fallback.price, product_data: { name: fallback.name } },
           });
+        } else if (checkoutMode === 'subscription') {
+          unresolvedSubscriptionPriceIds.push(i.priceId);
         } else {
           console.warn('[stripe/checkout] Skipping unresolved priceId:', i.priceId);
         }
       }
+    }
+
+    if (checkoutMode === 'subscription' && unresolvedSubscriptionPriceIds.length > 0) {
+      return NextResponse.json({
+        error: `Subscription plan not configured in Stripe yet: ${unresolvedSubscriptionPriceIds.join(', ')}`,
+      }, { status: 400 });
     }
 
     if (lineItems.length === 0) {
@@ -279,17 +340,27 @@ export async function POST(req: NextRequest) {
     }
 
     const session = await stripe.checkout.sessions.create({
-      mode: 'payment',
+      mode: checkoutMode,
       payment_method_types: ['card'],
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       line_items: lineItems as any,
       success_url: successUrl,
       cancel_url: cancelUrl,
       allow_promotion_codes: true,
+      // Pass email so the webhook can always identify the user to grant the tier.
+      ...(postUserEmail ? { customer_email: postUserEmail } : {}),
+      metadata: {
+        ...(postUserEmail ? { userEmail: postUserEmail } : {}),
+      },
     });
 
     if (!session.url) throw new Error('No session URL from Stripe');
-    return NextResponse.json({ url: session.url });
+    return NextResponse.json({
+      url: session.url,
+      sessionUrl: session.url,
+      sessionId: session.id,
+      timestamp: new Date().toISOString(),
+    });
   } catch (err) {
     if (err instanceof Error && err.name === 'TimeoutError') {
       console.error('[stripe/checkout] Upstream timeout');

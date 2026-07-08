@@ -1,8 +1,18 @@
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyEmailToken } from '@/lib/auth/EmailVerificationEngine';
+import { verifyEmailToken, verifyEmailTokenFromDB } from '@/lib/auth/EmailVerificationEngine';
 import prisma from '@/lib/prisma';
+
+async function verifyWithFallback(email: string, token: string) {
+  const inMemory = verifyEmailToken(email, token);
+  if (inMemory.ok || inMemory.reason === 'expired' || inMemory.reason === 'used') {
+    return inMemory;
+  }
+
+  // Cross-instance/serverless fallback.
+  return verifyEmailTokenFromDB(email, token);
+}
 
 export async function POST(req: NextRequest) {
   let body: { token?: string; email?: string } = {};
@@ -13,7 +23,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, reason: 'missing' }, { status: 400 });
   }
 
-  const result = verifyEmailToken(email, token);
+  const result = await verifyWithFallback(email, token);
   if (!result.ok) {
     return NextResponse.json({ ok: false, reason: result.reason }, { status: 400 });
   }
@@ -37,7 +47,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(new URL('/auth/verify-email/invalid?reason=missing', req.url));
   }
 
-  const result = verifyEmailToken(email, token);
+  const result = await verifyWithFallback(email, token);
   if (!result.ok) {
     return NextResponse.redirect(new URL(`/auth/verify-email/invalid?reason=${result.reason}`, req.url));
   }

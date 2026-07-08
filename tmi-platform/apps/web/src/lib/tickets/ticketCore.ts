@@ -1,3 +1,6 @@
+import { prisma } from "@/lib/prisma";
+import type { VenueTicketRecord as PrismaVenueTicketRecord } from "@prisma/client";
+
 export type TicketTier =
   | "VIP"
   | "STANDARD"
@@ -63,6 +66,7 @@ export type TicketRoyaltySplit = {
 export type TicketRecord = {
   id: string;
   ownerId: string;
+  orderId?: string;
   template: TicketTemplate;
   branding: TicketBrandingLayer;
   barcode: TicketBarcodeLayer;
@@ -72,54 +76,96 @@ export type TicketRecord = {
   redeemed: boolean;
 };
 
-// In-memory store. Works for single-instance dev.
-// TODO-PROD: Replace with Prisma-backed store (see UserStore.ts pattern) when
-// DATABASE_URL is confirmed stable — map TicketRecord → Prisma Ticket model.
-const TICKET_TTL_MS = 24 * 60 * 60 * 1000; // 24-hour in-memory retention
-type StoredTicket = TicketRecord & { _evictAt: number };
-const ticketStore = new Map<string, StoredTicket>();
-const scanLedgerStore: TicketScanLedger[] = [];
+function toTicketRecord(row: PrismaVenueTicketRecord): TicketRecord {
+  return {
+    id: row.id,
+    ownerId: row.ownerId,
+    orderId: row.orderId ?? undefined,
+    template: row.template as unknown as TicketTemplate,
+    branding: row.branding as unknown as TicketBrandingLayer,
+    barcode: row.barcode as unknown as TicketBarcodeLayer,
+    seat: row.seat as unknown as TicketSeatBinding,
+    outputFormats: row.outputFormats as TicketRecord["outputFormats"],
+    mintedAt: row.mintedAt.toISOString(),
+    redeemed: row.redeemed,
+  };
+}
 
-function evictExpiredTickets(): void {
-  const now = Date.now();
-  for (const [id, t] of ticketStore.entries()) {
-    if (t._evictAt < now) ticketStore.delete(id);
+export async function listTicketsByOwner(ownerId: string): Promise<TicketRecord[]> {
+  const rows = await prisma.venueTicketRecord.findMany({ where: { ownerId }, orderBy: { mintedAt: "desc" } });
+  return rows.map(toTicketRecord);
+}
+
+export async function listAllTickets(): Promise<TicketRecord[]> {
+  const rows = await prisma.venueTicketRecord.findMany({ orderBy: { mintedAt: "desc" }, take: 1000 });
+  return rows.map(toTicketRecord);
+}
+
+export async function getTicketById(ticketId: string): Promise<TicketRecord | undefined> {
+  const row = await prisma.venueTicketRecord.findUnique({ where: { id: ticketId } });
+  return row ? toTicketRecord(row) : undefined;
+}
+
+export async function saveTicket(ticket: TicketRecord): Promise<TicketRecord> {
+  const data = {
+    ownerId: ticket.ownerId,
+    orderId: ticket.orderId ?? null,
+    template: ticket.template as object,
+    branding: ticket.branding as object,
+    barcode: ticket.barcode as object,
+    seat: ticket.seat as object,
+    outputFormats: ticket.outputFormats,
+    redeemed: ticket.redeemed,
+  };
+  const row = await prisma.venueTicketRecord.upsert({
+    where: { id: ticket.id },
+    update: data,
+    create: { id: ticket.id, ...data, mintedAt: new Date(ticket.mintedAt) },
+  });
+  return toTicketRecord(row);
+}
+
+export async function appendScanLedger(entry: TicketScanLedger): Promise<void> {
+  await prisma.venueTicketScan.create({
+    data: {
+      ticketId: entry.ticketId,
+      scannedAt: new Date(entry.scannedAt),
+      gate: entry.gate,
+      status: entry.status,
+      reason: entry.reason,
+    },
+  });
+}
+
+export async function listScanLedger(ownerId?: string): Promise<TicketScanLedger[]> {
+  if (!ownerId) {
+    const rows = await prisma.venueTicketScan.findMany({ orderBy: { scannedAt: "desc" }, take: 500 });
+    return rows.map((r) => ({
+      ticketId: r.ticketId,
+      scannedAt: r.scannedAt.toISOString(),
+      gate: r.gate,
+      status: r.status as "allowed" | "denied",
+      reason: r.reason ?? undefined,
+    }));
   }
+  const ownedTickets = await listTicketsByOwner(ownerId);
+  const ticketIds = ownedTickets.map((t) => t.id);
+  if (ticketIds.length === 0) return [];
+  const rows = await prisma.venueTicketScan.findMany({
+    where: { ticketId: { in: ticketIds } },
+    orderBy: { scannedAt: "desc" },
+  });
+  return rows.map((r) => ({
+    ticketId: r.ticketId,
+    scannedAt: r.scannedAt.toISOString(),
+    gate: r.gate,
+    status: r.status as "allowed" | "denied",
+    reason: r.reason ?? undefined,
+  }));
 }
 
-export function listTicketsByOwner(ownerId: string): TicketRecord[] {
-  evictExpiredTickets();
-  return Array.from(ticketStore.values()).filter((t) => t.ownerId === ownerId);
-}
-
-export function listAllTickets(): TicketRecord[] {
-  evictExpiredTickets();
-  return Array.from(ticketStore.values());
-}
-
-export function getTicketById(ticketId: string): TicketRecord | undefined {
-  evictExpiredTickets();
-  return ticketStore.get(ticketId);
-}
-
-export function saveTicket(ticket: TicketRecord): TicketRecord {
-  const stored: StoredTicket = { ...ticket, _evictAt: Date.now() + TICKET_TTL_MS };
-  ticketStore.set(ticket.id, stored);
-  return ticket;
-}
-
-export function appendScanLedger(entry: TicketScanLedger): void {
-  scanLedgerStore.unshift(entry);
-}
-
-export function listScanLedger(ownerId?: string): TicketScanLedger[] {
-  if (!ownerId) return [...scanLedgerStore];
-  const ticketIds = new Set(listTicketsByOwner(ownerId).map((ticket) => ticket.id));
-  return scanLedgerStore.filter((entry) => ticketIds.has(entry.ticketId));
-}
-
-export function evaluateFraudGuard(ticketId: string): TicketFraudGuard {
-  const scans = scanLedgerStore.filter((entry) => entry.ticketId === ticketId && entry.status === "allowed");
+export async function evaluateFraudGuard(ticketId: string): Promise<TicketFraudGuard> {
+  const scans = await prisma.venueTicketScan.findMany({ where: { ticketId, status: "allowed" } });
   const duplicateScan = scans.length > 1;
   return {
     ticketId,

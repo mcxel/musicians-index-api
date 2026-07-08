@@ -15,11 +15,16 @@ export function VenueTicketingButton({ skuId, tier, price, seatId }: VenueTicket
   const handleCheckout = async () => {
     try {
       setLoading(true);
-      const res = await fetch('/api/tickets/checkout', {
+      const res = await fetch('/api/tickets/purchase', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          seats: [{ id: seatId || skuId, tier, price: price / 100 }],
+          eventSlug: 'venue-event',
+          venueSlug: 'tmi-platform',
+          tier: tier.toUpperCase(),
+          quantity: 1,
+          faceValue: price / 100,
+          seatId: seatId || skuId,
         }),
       });
 

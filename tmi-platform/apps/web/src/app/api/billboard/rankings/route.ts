@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { isQAAccount } from '@/lib/qa/QACertificationFleet';
 
 type ColumnKey = 'best_song' | 'best_hooks' | 'best_horns' | 'best_battle' | 'fan_crown' | 'rising_performer';
 
@@ -39,10 +40,14 @@ export async function GET(req: NextRequest) {
 
     const winnerIds = winGroups.map(b => b.winnerId).filter(Boolean) as string[];
 
-    const artists = await prisma.artistProfile.findMany({
+    // Fetch artists + their email so we can exclude QA accounts by domain.
+    // TODO: after `prisma generate` for migration 20260705, replace email filter with
+    //   where: { ..., user: { isQA: false } }
+    const allArtists = await prisma.artistProfile.findMany({
       where: { userId: { in: winnerIds.slice(0, 50) } },
-      select: { userId: true, stageName: true, followers: true },
+      select: { userId: true, stageName: true, followers: true, user: { select: { email: true } } },
     });
+    const artists = allArtists.filter(a => !isQAAccount(a.user?.email ?? ''));
     const artistMap = new Map(artists.map(a => [a.userId, a]));
 
     // Build rows for artists who have wins and a profile
@@ -70,12 +75,14 @@ export async function GET(req: NextRequest) {
     // Pad with top-follower artists if the win leaderboard is thin
     if (rows.length < limit) {
       const existing = new Set(rows.map(r => r.id));
-      const pads = await prisma.artistProfile.findMany({
+      // TODO: after `prisma generate`, add: user: { isQA: false }
+      const allPads = await prisma.artistProfile.findMany({
         where:   { userId: { notIn: [...existing] } },
         orderBy: { followers: 'desc' },
-        take:    limit - rows.length,
-        select:  { userId: true, stageName: true, followers: true },
+        take:    (limit - rows.length) * 2,
+        select:  { userId: true, stageName: true, followers: true, user: { select: { email: true } } },
       });
+      const pads = allPads.filter(a => !isQAAccount(a.user?.email ?? '')).slice(0, limit - rows.length);
       for (const a of pads) {
         rows.push({
           id:      a.userId,

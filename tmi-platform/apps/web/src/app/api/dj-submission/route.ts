@@ -41,7 +41,7 @@ export async function POST(req: Request) {
   // For paid path: trust that caller confirmed payment (Stripe success_url redirect)
   // Webhook can mark status → "approved" once payment clears.
 
-  const result = createSubmission({
+  const result = await createSubmission({
     submitterId: performerId,
     title: `${title} — ${artist}`,
     type: "track",

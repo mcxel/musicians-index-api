@@ -95,6 +95,10 @@ export default function TMIGlobalNav() {
   const profileHref     = isAuthenticated ? `${profileBase}/${userId}` : '/auth/signin';
   const canGoLive       = isAuthenticated && LIVE_ROLES.has(role);
 
+  // WorkspaceShell preview routes are a self-contained broadcast-OS sandbox —
+  // they own the whole viewport, including bottom navigation.
+  if (pathname.startsWith('/preview/')) return null;
+
   return (
     <nav
       style={{

@@ -70,6 +70,9 @@ export default async function FanMemoryPage({ params }: Props) {
         <Link href={`/fan/${slug}`} style={{ fontSize: 9, color: '#00FFFF', textDecoration: 'none', fontWeight: 800, letterSpacing: '0.15em' }}>
           ← FAN PROFILE
         </Link>
+        <Link href={`/fan/${slug}/studio`} style={{ fontSize: 9, color: '#FFD700', textDecoration: 'none', fontWeight: 800, letterSpacing: '0.15em' }}>
+          RETRO-VISION STUDIO →
+        </Link>
 
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 16 }}>
           <h1 style={{ margin: 0, fontSize: 26, fontWeight: 900 }}>Memory Wall</h1>

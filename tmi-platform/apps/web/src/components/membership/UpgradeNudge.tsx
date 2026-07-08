@@ -57,6 +57,18 @@ const PERFORMER_TIER_CHECKOUT: Record<string, string> = {
   DIAMOND:  '/api/stripe/checkout?priceId=price_performer_diamond&mode=subscription&amount=2999&productName=TMI+Performer+Diamond',
 };
 
+const BAND_TIER_PRICES: Record<string, string> = {
+  RUBY: '$16.99/mo', SILVER: '$20.00/mo', GOLD: '$20.00/mo',
+  PLATINUM: '$29.99/mo', DIAMOND: '$39.99/mo',
+};
+const BAND_TIER_CHECKOUT: Record<string, string> = {
+  RUBY:     `/api/stripe/checkout?priceId=${process.env.NEXT_PUBLIC_STRIPE_PRICE_BAND_PRO ?? ''}&mode=subscription&amount=1699&productName=TMI+Band+Pro`,
+  SILVER:   `/api/stripe/checkout?priceId=${process.env.NEXT_PUBLIC_STRIPE_PRICE_BAND_GOLD ?? ''}&mode=subscription&amount=2000&productName=TMI+Band+Gold`,
+  GOLD:     `/api/stripe/checkout?priceId=${process.env.NEXT_PUBLIC_STRIPE_PRICE_BAND_GOLD ?? ''}&mode=subscription&amount=2000&productName=TMI+Band+Gold`,
+  PLATINUM: `/api/stripe/checkout?priceId=${process.env.NEXT_PUBLIC_STRIPE_PRICE_BAND_PLATINUM ?? ''}&mode=subscription&amount=2999&productName=TMI+Band+Platinum`,
+  DIAMOND:  `/api/stripe/checkout?priceId=${process.env.NEXT_PUBLIC_STRIPE_PRICE_BAND_DIAMOND ?? ''}&mode=subscription&amount=3999&productName=TMI+Band+Diamond`,
+};
+
 const TIER_PERKS: Record<string, string[]> = {
   RUBY:     ['All live rooms', 'Chat + reactions', 'Tip performers', 'XP + achievements'],
   SILVER:   ['Everything in Ruby', 'Early access drops', 'Leaderboard placement', 'Silver avatar glow'],
@@ -85,8 +97,16 @@ export default function UpgradeNudge({ currentTier, role, displayName }: Upgrade
 
   const nextTier = nextTiers[0];
   const skipTier = nextTiers[1];
-  const prices = role === 'PERFORMER' || role === 'BAND' ? PERFORMER_TIER_PRICES : FAN_TIER_PRICES;
-  const checkouts = role === 'PERFORMER' || role === 'BAND' ? PERFORMER_TIER_CHECKOUT : FAN_TIER_CHECKOUT;
+  const prices = role === 'BAND'
+    ? BAND_TIER_PRICES
+    : role === 'PERFORMER'
+      ? PERFORMER_TIER_PRICES
+      : FAN_TIER_PRICES;
+  const checkouts = role === 'BAND'
+    ? BAND_TIER_CHECKOUT
+    : role === 'PERFORMER'
+      ? PERFORMER_TIER_CHECKOUT
+      : FAN_TIER_CHECKOUT;
   const perks = role === 'PERFORMER' || role === 'BAND' ? PERFORMER_PERKS : TIER_PERKS;
 
   const currentColor = TIER_COLORS[currentTier];

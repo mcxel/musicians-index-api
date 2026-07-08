@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { createTicket } from "@/lib/tickets/ticketEngine";
 import { claimSeat } from "@/lib/venue/tmiVenueSeatEngine";
 import type { TicketTier } from "@/lib/tickets/ticketCore";
 
@@ -53,16 +52,23 @@ export default function SeatClaimRail({
       const newIssued: Record<string, string> = { ...issued };
       for (const seat of seats) {
         if (newIssued[seat.seatId]) continue;
-        const ticket = createTicket({
-          ownerId: userId,
-          venueSlug,
-          eventSlug,
-          tier: ZONE_TIER[seat.zone] ?? "STANDARD",
-          faceValue: seat.price,
+        const tier: TicketTier = ZONE_TIER[seat.zone] ?? "STANDARD";
+        const res = await fetch("/api/tickets/create", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ venueSlug, eventSlug, tier, faceValue: seat.price }),
         });
-        claimSeat(seat.seatId, userId, ticket.id);
-        newIssued[seat.seatId] = ticket.id;
-        onTicketIssued?.(ticket.id, seat.seatId);
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({})) as { error?: string };
+          throw new Error(data.error ?? "checkout_failed");
+        }
+        const data = await res.json() as { ticket?: { id: string } };
+        const ticketId = data.ticket?.id;
+        if (!ticketId) throw new Error("checkout_failed");
+        claimSeat(seat.seatId, userId, ticketId);
+        newIssued[seat.seatId] = ticketId;
+        onTicketIssued?.(ticketId, seat.seatId);
       }
       setIssued(newIssued);
     } catch (err) {

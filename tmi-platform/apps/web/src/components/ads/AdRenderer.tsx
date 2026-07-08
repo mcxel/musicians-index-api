@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import Link from 'next/link';
 import AdSenseUnit from '@/components/placement/AdSenseUnit';
+import { getAdSlotForZone } from '@/lib/commerce/SponsorRegistry';
 
 export interface AdRendererProps {
   zone: string;
@@ -25,56 +26,28 @@ function zoneFormat(zone: string): 'horizontal' | 'rectangle' | 'auto' {
 }
 
 export default function AdRenderer({ zone, tier = "free", className }: AdRendererProps) {
-  const [adState, setAdState] = useState<{ type: 'internal' | 'premium' | 'adsense' | 'cta', data?: any }>({ type: 'adsense' });
-
-  useEffect(() => {
-    // Platform Law: Diamond and Platinum users see no ads
-    if (tier === 'diamond' || tier === 'platinum') return;
-
-    // Ad Priority Stack: Internal -> Premium -> AdSense -> CTA
-    const fetchAd = async () => {
-      // Simulated AdManager priority check (Wire to actual DB in production)
-      const rand = Math.random();
-      if (rand > 0.75) {
-        setAdState({
-          type: 'internal',
-          data: { title: 'TMI VIP SEASON PASS', desc: 'Secure your backstage pass, remove ads, and dominate the ranks.', cta: 'UPGRADE NOW' }
-        });
-      } else if (rand > 0.45) {
-        setAdState({
-          type: 'premium',
-          data: { name: 'TMI Pro Audio', message: 'Upgrade your sound. 20% off for Gold members.', color: '#FFD700' }
-        });
-      } else {
-        setAdState({ type: 'adsense' });
-      }
-    };
-
-    fetchAd();
-    const interval = setInterval(fetchAd, 18000); // 18s rotation jitter
-    return () => clearInterval(interval);
-  }, [zone, tier]);
-
   if (tier === 'diamond' || tier === 'platinum') return null;
 
-  if (adState.type === 'internal') {
+  const adSlot = getAdSlotForZone(zone);
+
+  if (adSlot.type === 'paid' && adSlot.sponsor) {
     return (
-      <div className={className} style={{ width: '100%', height: zoneFormat(zone) === 'horizontal' ? 90 : 250, background: 'rgba(255,45,170,0.05)', border: '1px solid rgba(255,45,170,0.4)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', borderRadius: 8 }}>
-        <div style={{ fontSize: 9, fontWeight: 900, color: '#FF2DAA', letterSpacing: '0.15em', marginBottom: 6, textTransform: 'uppercase' }}>INTERNAL PROMO</div>
-        <h3 style={{ margin: '0 0 6px', fontSize: 18, color: '#fff', fontFamily: 'var(--font-orbitron, Impact)' }}>{adState.data.title}</h3>
-        <p style={{ margin: '0 0 10px', fontSize: 11, color: 'rgba(255,255,255,0.6)' }}>{adState.data.desc}</p>
-        <Link href="/season-pass" style={{ padding: '6px 16px', background: '#FF2DAA', color: '#fff', fontSize: 10, fontWeight: 900, borderRadius: 4, textDecoration: 'none', letterSpacing: '0.1em' }}>{adState.data.cta}</Link>
+      <div className={className} style={{ width: '100%', height: zoneFormat(zone) === 'horizontal' ? 90 : 250, background: `${adSlot.sponsor.accentColor}0A`, border: `1px solid ${adSlot.sponsor.accentColor}55`, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', borderRadius: 8, position: 'relative', overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', top: 6, left: 8, fontSize: 8, fontWeight: 900, letterSpacing: '0.15em', color: adSlot.sponsor.accentColor, textTransform: 'uppercase' }}>SPONSORED</div>
+        <h3 style={{ margin: '0 0 6px', fontSize: 20, color: '#fff', fontWeight: 900, fontFamily: 'var(--font-orbitron, Impact)' }}>{adSlot.sponsor.name}</h3>
+        <p style={{ margin: 0, fontSize: 11, color: 'rgba(255,255,255,0.7)', textAlign: 'center', maxWidth: '80%' }}>{adSlot.sponsor.tagline}</p>
+        <Link href={adSlot.sponsor.ctaHref} style={{ marginTop: 12, padding: '6px 16px', background: adSlot.sponsor.accentColor, color: '#050510', fontSize: 10, fontWeight: 900, textDecoration: 'none', borderRadius: 4, letterSpacing: '0.1em' }}>{adSlot.sponsor.ctaLabel}</Link>
       </div>
     );
   }
 
-  if (adState.type === 'premium') {
+  if (adSlot.type === 'platform' && adSlot.platformPromo) {
     return (
-      <div className={className} style={{ width: '100%', height: zoneFormat(zone) === 'horizontal' ? 90 : 250, background: `${adState.data.color}0A`, border: `1px solid ${adState.data.color}55`, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', borderRadius: 8, position: 'relative', overflow: 'hidden' }}>
-        <div style={{ position: 'absolute', top: 6, left: 8, fontSize: 8, fontWeight: 900, letterSpacing: '0.15em', color: adState.data.color, textTransform: 'uppercase' }}>SPONSORED</div>
-        <h3 style={{ margin: '0 0 6px', fontSize: 20, color: '#fff', fontWeight: 900, fontFamily: 'var(--font-orbitron, Impact)' }}>{adState.data.name}</h3>
-        <p style={{ margin: 0, fontSize: 11, color: 'rgba(255,255,255,0.7)', textAlign: 'center', maxWidth: '80%' }}>{adState.data.message}</p>
-        <Link href={`/sponsor/promo`} style={{ marginTop: 12, padding: '6px 16px', background: adState.data.color, color: '#050510', fontSize: 10, fontWeight: 900, textDecoration: 'none', borderRadius: 4, letterSpacing: '0.1em' }}>LEARN MORE</Link>
+      <div className={className} style={{ width: '100%', height: zoneFormat(zone) === 'horizontal' ? 90 : 250, background: `${adSlot.platformPromo.accentColor}0A`, border: `1px solid ${adSlot.platformPromo.accentColor}55`, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', borderRadius: 8, position: 'relative', overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', top: 6, left: 8, fontSize: 8, fontWeight: 900, letterSpacing: '0.15em', color: adSlot.platformPromo.accentColor, textTransform: 'uppercase' }}>PLATFORM PROMO</div>
+        <h3 style={{ margin: '0 0 6px', fontSize: 20, color: '#fff', fontWeight: 900, fontFamily: 'var(--font-orbitron, Impact)' }}>{adSlot.platformPromo.headline}</h3>
+        <p style={{ margin: 0, fontSize: 11, color: 'rgba(255,255,255,0.7)', textAlign: 'center', maxWidth: '80%' }}>{adSlot.platformPromo.body}</p>
+        <Link href={adSlot.platformPromo.ctaHref} style={{ marginTop: 12, padding: '6px 16px', background: adSlot.platformPromo.accentColor, color: '#050510', fontSize: 10, fontWeight: 900, textDecoration: 'none', borderRadius: 4, letterSpacing: '0.1em' }}>{adSlot.platformPromo.ctaLabel}</Link>
       </div>
     );
   }

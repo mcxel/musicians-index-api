@@ -5,23 +5,143 @@ import { getPerformerBySlug, PERFORMER_REGISTRY, getTierColor } from '@/lib/perf
 import { MAGAZINE_ISSUE_1 } from '@/lib/magazine/magazineIssueData';
 import { XP_TIER_THRESHOLDS, getNextTier, getXpToNextTier, getTierFromXp } from '@/lib/xp/XpActionRegistry';
 import { getAdSlotForZone } from '@/lib/commerce/SponsorRegistry';
+import { getLayoutConfig, buildImagePool, resolveGallerySlots } from '@/lib/magazine/MagazineLayoutEngine';
 import DiscoveryRail from '@/components/discovery/DiscoveryRail';
-import MotionPosterPlayer from '@/components/media/MotionPosterPlayer';
+import PerformerArticleShareBar from '@/components/share/PerformerArticleShareBar';
+import ArticleShareAttributionTracker from '@/components/tracking/ArticleShareAttributionTracker';
+import { buildArticleOGUrl } from '@/lib/share/ArticleShareTrackingEngine';
+import CinematicMotionReveal from '@/components/article/CinematicMotionReveal';
+import TieredArticleGallery from '@/components/article/TieredArticleGallery';
+import { resolveTheme } from '@/lib/theme/MagazineThemeEngine';
+import MagazineThemeProvider from '@/components/theme/MagazineThemeProvider';
+import HeartButton from '@/components/engagement/HeartButton';
+import FanJoinButton from '@/components/engagement/FanJoinButton';
+import ArticleAudioPlayer from '@/components/article/ArticleAudioPlayer';
 
 export async function generateStaticParams() {
   return PERFORMER_REGISTRY.map(p => ({ slug: p.slug }));
 }
 
+type ThemeKey = 'stage' | 'luxury' | 'street' | 'country' | 'rock' | 'orchestra' | 'comedy' | 'dance' | 'sports';
+
+type ThemeConfig = {
+  key: ThemeKey;
+  name: string;
+  gradient: string;
+  overlay: string;
+  accent: string;
+};
+
+const THEME_MAP: Record<ThemeKey, ThemeConfig> = {
+  stage: {
+    key: 'stage',
+    name: 'Stage',
+    gradient: 'radial-gradient(circle at 14% 18%, rgba(0,255,255,0.2) 0%, rgba(0,0,0,0) 45%), radial-gradient(circle at 86% 22%, rgba(255,45,170,0.2) 0%, rgba(0,0,0,0) 48%), linear-gradient(155deg, #04040b 0%, #0a0614 55%, #06070d 100%)',
+    overlay: 'linear-gradient(120deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01))',
+    accent: '#00FFFF',
+  },
+  luxury: {
+    key: 'luxury',
+    name: 'Luxury',
+    gradient: 'radial-gradient(circle at 18% 22%, rgba(255,215,0,0.2) 0%, rgba(0,0,0,0) 42%), radial-gradient(circle at 88% 76%, rgba(170,45,255,0.18) 0%, rgba(0,0,0,0) 48%), linear-gradient(155deg, #0b0603 0%, #141018 52%, #06070d 100%)',
+    overlay: 'linear-gradient(125deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02))',
+    accent: '#FFD700',
+  },
+  street: {
+    key: 'street',
+    name: 'Street',
+    gradient: 'radial-gradient(circle at 82% 16%, rgba(255,45,170,0.18) 0%, rgba(0,0,0,0) 44%), radial-gradient(circle at 16% 84%, rgba(0,255,255,0.18) 0%, rgba(0,0,0,0) 40%), linear-gradient(160deg, #09050a 0%, #141419 58%, #050510 100%)',
+    overlay: 'linear-gradient(130deg, rgba(255,255,255,0.02), rgba(0,0,0,0.18))',
+    accent: '#FF2DAA',
+  },
+  country: {
+    key: 'country',
+    name: 'Country',
+    gradient: 'radial-gradient(circle at 24% 20%, rgba(255,180,120,0.2) 0%, rgba(0,0,0,0) 45%), radial-gradient(circle at 76% 80%, rgba(255,215,0,0.14) 0%, rgba(0,0,0,0) 42%), linear-gradient(162deg, #1a1209 0%, #27190f 46%, #0d0a08 100%)',
+    overlay: 'linear-gradient(120deg, rgba(255,255,255,0.05), rgba(255,255,255,0.01))',
+    accent: '#FFD700',
+  },
+  rock: {
+    key: 'rock',
+    name: 'Rock',
+    gradient: 'radial-gradient(circle at 18% 14%, rgba(230,48,0,0.2) 0%, rgba(0,0,0,0) 42%), radial-gradient(circle at 86% 68%, rgba(255,45,170,0.16) 0%, rgba(0,0,0,0) 48%), linear-gradient(155deg, #090305 0%, #14080b 52%, #050510 100%)',
+    overlay: 'linear-gradient(126deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01))',
+    accent: '#E63000',
+  },
+  orchestra: {
+    key: 'orchestra',
+    name: 'Orchestra',
+    gradient: 'radial-gradient(circle at 20% 16%, rgba(255,215,0,0.17) 0%, rgba(0,0,0,0) 44%), radial-gradient(circle at 74% 84%, rgba(170,45,255,0.16) 0%, rgba(0,0,0,0) 46%), linear-gradient(160deg, #0c0711 0%, #160b1a 52%, #050510 100%)',
+    overlay: 'linear-gradient(130deg, rgba(255,255,255,0.05), rgba(255,255,255,0.015))',
+    accent: '#AA2DFF',
+  },
+  comedy: {
+    key: 'comedy',
+    name: 'Comedy',
+    gradient: 'radial-gradient(circle at 84% 20%, rgba(255,215,0,0.2) 0%, rgba(0,0,0,0) 40%), radial-gradient(circle at 16% 78%, rgba(255,45,170,0.16) 0%, rgba(0,0,0,0) 44%), linear-gradient(155deg, #09040d 0%, #13081a 56%, #050510 100%)',
+    overlay: 'linear-gradient(120deg, rgba(255,255,255,0.03), rgba(255,255,255,0.008))',
+    accent: '#FF2DAA',
+  },
+  dance: {
+    key: 'dance',
+    name: 'Dance',
+    gradient: 'radial-gradient(circle at 18% 24%, rgba(0,255,255,0.2) 0%, rgba(0,0,0,0) 42%), radial-gradient(circle at 82% 78%, rgba(170,45,255,0.2) 0%, rgba(0,0,0,0) 48%), linear-gradient(155deg, #040510 0%, #0a0f1c 54%, #050510 100%)',
+    overlay: 'linear-gradient(126deg, rgba(255,255,255,0.04), rgba(255,255,255,0.015))',
+    accent: '#00FFFF',
+  },
+  sports: {
+    key: 'sports',
+    name: 'Sports',
+    gradient: 'radial-gradient(circle at 24% 18%, rgba(0,229,255,0.2) 0%, rgba(0,0,0,0) 42%), radial-gradient(circle at 78% 76%, rgba(255,215,0,0.15) 0%, rgba(0,0,0,0) 46%), linear-gradient(156deg, #030916 0%, #081226 54%, #050510 100%)',
+    overlay: 'linear-gradient(128deg, rgba(255,255,255,0.05), rgba(255,255,255,0.012))',
+    accent: '#00E5FF',
+  },
+};
+
+function themeFromPerformer(category: string): ThemeConfig {
+  const c = category.toLowerCase();
+  if (c.includes('country') || c.includes('folk')) return THEME_MAP.country;
+  if (c.includes('rock') || c.includes('metal')) return THEME_MAP.rock;
+  if (c.includes('comedy')) return THEME_MAP.comedy;
+  if (c.includes('dance') || c.includes('dj') || c.includes('edm')) return THEME_MAP.dance;
+  if (c.includes('orchestra') || c.includes('classical') || c.includes('instrumental')) return THEME_MAP.orchestra;
+  if (c.includes('sports') || c.includes('arena')) return THEME_MAP.sports;
+  if (c.includes('gospel') || c.includes('soul')) return THEME_MAP.luxury;
+  if (c.includes('hip') || c.includes('rap') || c.includes('street')) return THEME_MAP.street;
+  return THEME_MAP.stage;
+}
+
 export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
   const p = getPerformerBySlug(params.slug);
   if (!p) return { title: 'Performer — TMI' };
+  const pageUrl = `https://themusiciansindex.com/articles/performer/${p.slug}`;
+  const headline = `${p.name} — ${p.category} feature`;
+  const ogImage = buildArticleOGUrl({
+    articleSlug: p.slug,
+    performerName: p.name,
+    headline,
+    mode: p.isLive ? 'live' : 'still',
+    isLive: p.isLive,
+    viewers: p.audienceCount,
+  });
   return {
     title: `${p.name} — ${p.category} · The Musician's Index`,
     description: `${p.name} is a ${p.tier} tier ${p.category} performer ranked #${p.rank} on TMI. ${p.fanCount.toLocaleString()} fans.`,
+    alternates: {
+      canonical: pageUrl,
+    },
     openGraph: {
-      title: `${p.name} | TMI`,
-      description: `${p.category} · Rank #${p.rank} · ${p.fanCount.toLocaleString()} fans`,
-      images: [{ url: p.profileImageUrl }],
+      type: 'article',
+      url: pageUrl,
+      title: `${p.name} | TMI Living Magazine`,
+      description: `${p.category} · Rank #${p.rank} · ${p.fanCount.toLocaleString()} fans${p.isLive ? ` · LIVE NOW (${p.audienceCount.toLocaleString()} watching)` : ''}`,
+      images: [{ url: ogImage, width: 1200, height: 630, alt: `${p.name} on TMI Magazine` }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: `${p.name} | TMI Living Magazine`,
+      description: `${p.category} · Rank #${p.rank}${p.isLive ? ' · LIVE NOW' : ' · Featured Story'}`,
+      images: [ogImage],
     },
   };
 }
@@ -31,6 +151,7 @@ export default function PerformerArticlePage({ params }: { params: { slug: strin
   if (!p) redirect('/performers');
 
   const ac = getTierColor(p.tier);
+  const theme = themeFromPerformer(p.category);
   const currentTier = getTierFromXp(p.xp);
   const nextTier    = getNextTier(currentTier);
   const xpFloor     = XP_TIER_THRESHOLDS[currentTier] ?? 0;
@@ -38,12 +159,33 @@ export default function PerformerArticlePage({ params }: { params: { slug: strin
   const xpProgress  = Math.min(100, Math.round(((p.xp - xpFloor) / Math.max(1, xpCeiling - xpFloor)) * 100));
   const xpToNext    = getXpToNextTier(p.xp);
 
+  // ── Magazine layout engine (Rule 8) ──────────────────────────────────────
+  const layout        = getLayoutConfig(p.tier);
+  const resolvedTheme = resolveTheme({ genre: p.category, performerTier: p.tier });
+  const heroImage   = p.coverImageUrl || p.profileImageUrl;
+  const heroVideo   = p.introVideoUrl || p.motionPosterUrl;
+  const imagePool   = buildImagePool(p);
+  const gallerySlots = resolveGallerySlots(heroImage, imagePool, layout.gallerySlots);
+
   const performerArticles = MAGAZINE_ISSUE_1.filter(a => a.performerSlug === p.slug);
   // Rule 12: No Empty Inventory — article mid-slot
   const articleAd = getAdSlotForZone(`performer-article-${p.slug}-mid`);
+  const sharePath = `/articles/performer/${p.slug}`;
 
   return (
-    <main style={{ minHeight: '100vh', background: 'linear-gradient(160deg, #0a0614 0%, #050310 100%)', color: '#fff', fontFamily: "'Inter', sans-serif" }}>
+    <main style={{ minHeight: '100vh', background: theme.gradient, color: '#fff', fontFamily: "'Inter', sans-serif", position: 'relative', overflow: 'hidden' }}>
+
+      <ArticleShareAttributionTracker articleSlug={p.slug} performerSlug={p.slug} />
+
+      {/* Cinematic theme layers */}
+      <div aria-hidden style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0 }}>
+        <div className="tmi-theme-overlay" style={{ position: 'absolute', inset: 0, background: theme.overlay, opacity: 0.8 }} />
+        <div className="tmi-theme-fog" style={{ position: 'absolute', inset: '-8%', background: 'radial-gradient(circle at 20% 20%, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0) 55%), radial-gradient(circle at 80% 80%, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0) 50%)', filter: 'blur(26px)' }} />
+        <div className="tmi-theme-particles" style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.2) 1px, transparent 1.2px)', backgroundSize: '26px 26px', opacity: 0.08 }} />
+        <div className="tmi-theme-lights" style={{ position: 'absolute', inset: '-10%', background: 'conic-gradient(from 0deg at 30% 20%, rgba(0,255,255,0.13), transparent 30%, rgba(255,45,170,0.12), transparent 65%, rgba(255,215,0,0.1), transparent)', filter: 'blur(20px)' }} />
+        <div className="tmi-theme-glass" style={{ position: 'absolute', inset: 0, background: 'linear-gradient(115deg, rgba(255,255,255,0.09) 0%, rgba(255,255,255,0.01) 35%, rgba(255,255,255,0.08) 100%)', mixBlendMode: 'screen', opacity: 0.16 }} />
+        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, rgba(5,5,16,0.35), rgba(5,5,16,0.88))' }} />
+      </div>
 
       {/* ── Sticky nav ── */}
       <nav style={{ position: 'sticky', top: 0, zIndex: 50, background: 'rgba(10,6,20,0.94)', backdropFilter: 'blur(14px)', borderBottom: `1px solid ${ac}22`, padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -53,51 +195,71 @@ export default function PerformerArticlePage({ params }: { params: { slug: strin
           <span style={{ fontSize: 8, fontWeight: 900, color: ac, background: `${ac}14`, border: `1px solid ${ac}33`, borderRadius: 12, padding: '3px 10px', letterSpacing: '0.08em' }}>
             {p.category.toUpperCase()}
           </span>
-          <span style={{ fontSize: 8, fontWeight: 900, color: '#FFD700', background: 'rgba(255,215,0,0.1)', border: '1px solid rgba(255,215,0,0.3)', borderRadius: 12, padding: '3px 10px' }}>
+          <span style={{ fontSize: 8, fontWeight: 900, color: layout.tierColor, background: `${layout.tierColor}14`, border: `1px solid ${layout.tierColor}44`, borderRadius: 12, padding: '3px 10px' }}>
             #{p.rank} {p.tier.toUpperCase()}
           </span>
         </div>
       </nav>
 
-      {/* ── Cover hero — Rule 2: LIVE VIDEO → MOTION POSTER → STATIC IMAGE ── */}
-      <div style={{ position: 'relative', height: 280, overflow: 'hidden' }}>
-        {/* MotionPosterPlayer fills the full hero area */}
-        <MotionPosterPlayer
-          isLive={p.isLive}
-          liveRoomRoute={p.liveRoomRoute}
-          introVideoUrl={p.introVideoUrl}
-          motionPosterUrl={p.motionPosterUrl}
-          staticImageUrl={p.coverImageUrl}
-          alt={p.name}
-          audienceCount={p.audienceCount}
-          showLiveOverlay={false}
-          style={{ position: 'absolute', inset: 0 }}
-          height="100%"
-          width="100%"
-        />
-        {/* Gradient scrim always on — article hero needs dark bottom for title readability */}
-        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, rgba(5,3,16,0.3) 0%, rgba(5,3,16,0.92) 100%)', pointerEvents: 'none', zIndex: 4 }} />
-        {p.isLive && (
-          <div style={{ position: 'absolute', top: 16, left: 16, zIndex: 5, background: '#E63000', borderRadius: 6, padding: '4px 12px', fontSize: 10, fontWeight: 900, color: '#fff', letterSpacing: '0.06em', display: 'flex', alignItems: 'center', gap: 6, boxShadow: '0 0 20px rgba(230,48,0,0.6)' }}>
-            <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#fff', animation: 'tmi-live-pulse 1.15s ease-in-out infinite' }} />
-            LIVE NOW · {p.audienceCount.toLocaleString()} WATCHING
-          </div>
-        )}
-        <div style={{ position: 'absolute', top: 16, right: 16, zIndex: 5, background: `${ac}22`, border: `1.5px solid ${ac}`, borderRadius: 6, padding: '4px 12px', fontSize: 9, fontWeight: 900, color: ac, letterSpacing: '0.08em' }}>
-          PRO ARTIST FEATURE
+      {/* ── Tiered Magazine Gallery — Rule 2: LIVE → MOTION → STATIC ── */}
+      <div style={{ padding: '12px 20px 0', position: 'relative', zIndex: 1 }}>
+
+        {/* Tier badge above the spread */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+          <span style={{
+            fontSize: 8, fontWeight: 900, letterSpacing: '0.14em',
+            color: layout.tierColor, background: `${layout.tierColor}14`,
+            border: `1px solid ${layout.tierColor}44`, borderRadius: 999,
+            padding: '3px 12px',
+          }}>
+            {layout.tierLabel}
+          </span>
+          {layout.hasMagazineBadge && (
+            <span style={{ fontSize: 8, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.08em' }}>
+              · TMI LIVING MAGAZINE
+            </span>
+          )}
         </div>
-        {/* Performer portrait overlaid on cover */}
-        <div style={{ position: 'absolute', bottom: -40, left: 20, zIndex: 10 }}>
+
+        <CinematicMotionReveal intensity={layout.motionIntensity} accentColor={ac}>
+          <TieredArticleGallery
+            pattern={layout.pattern}
+            heroImage={heroImage}
+            heroVideoUrl={heroVideo}
+            isLive={p.isLive}
+            liveRoomRoute={p.liveRoomRoute}
+            gallery={gallerySlots}
+            accentColor={ac}
+            performerName={p.name}
+            performerSlug={p.slug}
+            showUploadCta={layout.gallerySlots > 0}
+            videoPanelUrl={layout.hasVideoPanel ? (p.introVideoUrl ?? undefined) : undefined}
+            audienceCount={p.audienceCount}
+            tierLabel={layout.tierLabel}
+            tierColor={layout.tierColor}
+          />
+        </CinematicMotionReveal>
+
+        {/* Performer portrait — sits below the spread, not overlapping */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 14 }}>
           <img
             src={p.profileImageUrl}
             alt={p.name}
-            style={{ width: 90, height: 90, borderRadius: '50%', objectFit: 'cover', border: `3px solid ${ac}`, boxShadow: `0 0 28px ${ac}66, 0 4px 20px rgba(0,0,0,0.8)` }}
+            style={{ width: 72, height: 72, borderRadius: '50%', objectFit: 'cover', border: `2.5px solid ${ac}`, boxShadow: `0 0 22px ${ac}55, 0 4px 16px rgba(0,0,0,0.7)`, flexShrink: 0 }}
           />
+          <div>
+            <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.06em' }}>
+              {p.flag} {p.city} · {p.category}
+            </div>
+            <div style={{ fontSize: 9, color: layout.tierColor, fontWeight: 700, marginTop: 2, letterSpacing: '0.08em' }}>
+              #{p.rank} · {p.tier.toUpperCase()} TIER · {p.xp.toLocaleString()} XP
+            </div>
+          </div>
         </div>
       </div>
 
       {/* ── Identity strip ── */}
-      <div style={{ padding: '50px 20px 24px', borderBottom: `1px solid ${ac}18`, maxWidth: 900, margin: '0 auto' }}>
+      <div style={{ padding: '18px 20px 24px', borderBottom: `1px solid ${ac}18`, maxWidth: 900, margin: '0 auto', position: 'relative', zIndex: 1 }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
           <div>
             <h1 style={{ fontSize: 'clamp(26px, 5vw, 42px)', fontWeight: 900, margin: '0 0 4px', letterSpacing: '-0.01em', lineHeight: 1.05, background: `linear-gradient(135deg, #fff 40%, ${ac})`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
@@ -131,8 +293,71 @@ export default function PerformerArticlePage({ params }: { params: { slug: strin
             </div>
           ))}
         </div>
+
+        {/* Tier upgrade nudge — shown to performers below Diamond */}
+        {p.tier !== 'Diamond' && (
+          <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 8, fontWeight: 900, color: theme.accent, letterSpacing: '0.1em', border: `1px solid ${theme.accent}55`, borderRadius: 999, padding: '3px 10px', background: `${theme.accent}14` }}>
+              {layout.tierLabel}
+            </span>
+            <Link href="/account/subscription" style={{ fontSize: 8, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.08em', textDecoration: 'underline dotted' }}>
+              Upgrade for a bigger magazine spread →
+            </Link>
+          </div>
+        )}
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 14, flexWrap: 'wrap' }}>
+          <ArticleAudioPlayer
+            title={`${p.name} — ${p.category} feature on The Musician's Index`}
+            text={[
+              `${p.name} is a ${p.tier} tier ${p.category} performer based in ${p.city}.`,
+              `Currently ranked number ${p.rank} on The Musician's Index, with ${p.xp.toLocaleString()} XP and ${p.fanCount.toLocaleString()} fans.`,
+              ...(performerArticles[0]?.blocks?.map(b => b.text ?? '').filter(Boolean) ?? [
+                `${p.name} is an active artist in the ${p.category} scene, known for pushing boundaries and connecting deeply with their audience.`,
+              ]),
+              p.bio ?? '',
+            ].filter(Boolean).join(' ')}
+            accentColor={ac}
+          />
+          <HeartButton
+            contentId={`article-${p.slug}`}
+            contentType="article"
+            performerId={p.slug}
+            initialCount={0}
+            accentColor={ac}
+            size="sm"
+            source="article_page"
+          />
+          <HeartButton
+            contentId={`performer-${p.slug}`}
+            contentType="performer_profile"
+            performerId={p.slug}
+            initialCount={0}
+            accentColor="#FF2DAA"
+            size="sm"
+            source="article_page"
+          />
+          <FanJoinButton
+            performerId={p.slug}
+            performerName={p.name}
+            initialFanCount={p.fanCount}
+            accentColor="#00FF88"
+            size="sm"
+            showCount={false}
+            source="article_identity_strip"
+          />
+        </div>
+        <PerformerArticleShareBar
+          articleSlug={p.slug}
+          performerSlug={p.slug}
+          performerName={p.name}
+          headline={performerArticles[0]?.title ?? `${p.name} feature in TMI Magazine`}
+          sharePath={sharePath}
+          isLive={p.isLive}
+        />
       </div>
 
+      <MagazineThemeProvider theme={resolvedTheme} style={{ position: 'relative', zIndex: 1 }}>
       <div style={{ maxWidth: 900, margin: '0 auto', padding: '0 20px 100px' }}>
 
         {/* ── LIVE NOW panel ── */}
@@ -144,9 +369,21 @@ export default function PerformerArticlePage({ params }: { params: { slug: strin
                 <span style={{ fontSize: 11, fontWeight: 900, color: '#E63000', letterSpacing: '0.1em' }}>LIVE RIGHT NOW</span>
                 <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)' }}>· {p.timeLive} · {p.audienceCount.toLocaleString()} watching</span>
               </div>
-              <Link href={p.liveRoomRoute} style={{ padding: '6px 14px', background: '#E63000', borderRadius: 6, fontSize: 9, fontWeight: 900, color: '#fff', textDecoration: 'none', letterSpacing: '0.06em' }}>
-                JOIN →
-              </Link>
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                <HeartButton
+                  contentId={`live-${p.slug}`}
+                  contentType="live_performance"
+                  performerId={p.slug}
+                  initialCount={0}
+                  accentColor="#E63000"
+                  size="sm"
+                  showCount={false}
+                  source="article_live_panel"
+                />
+                <Link href={p.liveRoomRoute} style={{ padding: '6px 14px', background: '#E63000', borderRadius: 6, fontSize: 9, fontWeight: 900, color: '#fff', textDecoration: 'none', letterSpacing: '0.06em' }}>
+                  JOIN →
+                </Link>
+              </div>
             </div>
             <div style={{ padding: '16px', display: 'flex', gap: 12, alignItems: 'center' }}>
               <img src={p.profileImageUrl} alt={p.name} style={{ width: 60, height: 60, borderRadius: 8, objectFit: 'cover', border: '2px solid rgba(230,48,0,0.4)' }} />
@@ -272,20 +509,40 @@ export default function PerformerArticlePage({ params }: { params: { slug: strin
         <div style={{ marginTop: 24, background: 'rgba(255,255,255,0.02)', border: `1px solid ${ac}18`, borderRadius: 12, padding: '16px 20px' }}>
           <div style={{ fontSize: 9, fontWeight: 900, color: ac, letterSpacing: '0.2em', marginBottom: 12 }}>SUPPORT {p.name.toUpperCase()}</div>
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <FanJoinButton
+              performerId={p.slug}
+              performerName={p.name}
+              initialFanCount={p.fanCount}
+              accentColor="#00FF88"
+              size="md"
+              source="article_commerce_rail"
+            />
             <Link href={`/checkout?type=tip&artist=${p.slug}&amount=500&productName=${encodeURIComponent(`Tip for ${p.name}`)}`} style={{ padding: '9px 18px', background: ac, borderRadius: 8, fontSize: 10, fontWeight: 900, color: '#050310', textDecoration: 'none', letterSpacing: '0.06em', boxShadow: `0 0 16px ${ac}44` }}>
               💸 SEND TIP
+            </Link>
+            <Link href="/tickets" style={{ padding: '9px 18px', background: 'rgba(0,229,255,0.12)', border: '1.5px solid rgba(0,229,255,0.4)', borderRadius: 8, fontSize: 10, fontWeight: 900, color: '#00E5FF', textDecoration: 'none', letterSpacing: '0.06em' }}>
+              🎟 BUY TICKETS
             </Link>
             <Link href={`/fan-club/${p.slug}`} style={{ padding: '9px 18px', background: 'rgba(255,45,170,0.1)', border: '1.5px solid rgba(255,45,170,0.45)', borderRadius: 8, fontSize: 10, fontWeight: 900, color: '#FF2DAA', textDecoration: 'none', letterSpacing: '0.06em' }}>
               ⭐ JOIN FAN CLUB
             </Link>
-            <Link href={`/merch/${p.slug}`} style={{ padding: '9px 18px', background: 'rgba(255,215,0,0.08)', border: '1.5px solid rgba(255,215,0,0.3)', borderRadius: 8, fontSize: 10, fontWeight: 900, color: '#FFD700', textDecoration: 'none', letterSpacing: '0.06em' }}>
+            <Link href="/store/merch" style={{ padding: '9px 18px', background: 'rgba(255,215,0,0.08)', border: '1.5px solid rgba(255,215,0,0.3)', borderRadius: 8, fontSize: 10, fontWeight: 900, color: '#FFD700', textDecoration: 'none', letterSpacing: '0.06em' }}>
               🛍️ BUY MERCH
+            </Link>
+            <Link href={`/booking/artists/${p.slug}`} style={{ padding: '9px 18px', background: 'rgba(170,45,255,0.1)', border: '1.5px solid rgba(170,45,255,0.4)', borderRadius: 8, fontSize: 10, fontWeight: 900, color: '#AA2DFF', textDecoration: 'none', letterSpacing: '0.06em' }}>
+              📅 BOOK ARTIST
             </Link>
             <Link href={`/sponsors/advertise?target=${p.slug}`} style={{ padding: '9px 18px', background: 'transparent', border: `1.5px solid ${ac}44`, borderRadius: 8, fontSize: 10, fontWeight: 900, color: ac, textDecoration: 'none', letterSpacing: '0.06em' }}>
               🤝 SPONSOR
             </Link>
             <Link href={p.liveRoomRoute} style={{ padding: '9px 18px', background: p.isLive ? 'rgba(230,48,0,0.15)' : 'rgba(255,255,255,0.04)', border: `1.5px solid ${p.isLive ? 'rgba(230,48,0,0.6)' : 'rgba(255,255,255,0.15)'}`, borderRadius: 8, fontSize: 10, fontWeight: 900, color: p.isLive ? '#E63000' : 'rgba(255,255,255,0.5)', textDecoration: 'none', letterSpacing: '0.06em' }}>
               🎥 LIVE ROOM
+            </Link>
+            <Link href="/rankings" style={{ padding: '9px 18px', background: 'rgba(255,255,255,0.04)', border: '1.5px solid rgba(255,255,255,0.2)', borderRadius: 8, fontSize: 10, fontWeight: 900, color: 'rgba(255,255,255,0.85)', textDecoration: 'none', letterSpacing: '0.06em' }}>
+              🏆 RANKING
+            </Link>
+            <Link href={`/articles?category=${encodeURIComponent(p.category)}`} style={{ padding: '9px 18px', background: 'rgba(255,255,255,0.04)', border: '1.5px solid rgba(255,255,255,0.2)', borderRadius: 8, fontSize: 10, fontWeight: 900, color: 'rgba(255,255,255,0.85)', textDecoration: 'none', letterSpacing: '0.06em' }}>
+              📰 MORE ARTICLES
             </Link>
           </div>
         </div>
@@ -333,9 +590,25 @@ export default function PerformerArticlePage({ params }: { params: { slug: strin
           <Link href={`/articles?category=${encodeURIComponent(p.category)}`} style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', textDecoration: 'none', fontWeight: 700, letterSpacing: '0.06em' }}>MORE {p.category.toUpperCase()} →</Link>
         </div>
       </div>
+      </MagazineThemeProvider>
 
       <style>{`
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+        @keyframes tmi-fog-drift { 0% { transform: translateX(-2%) translateY(0%); } 50% { transform: translateX(2%) translateY(-1%); } 100% { transform: translateX(-2%) translateY(0%); } }
+        @keyframes tmi-particle-float { 0% { transform: translateY(0px); opacity: 0.08; } 50% { transform: translateY(-8px); opacity: 0.12; } 100% { transform: translateY(0px); opacity: 0.08; } }
+        @keyframes tmi-light-pan { 0% { transform: translateX(-4%) rotate(0deg); } 50% { transform: translateX(4%) rotate(5deg); } 100% { transform: translateX(-4%) rotate(0deg); } }
+        .tmi-theme-fog { animation: tmi-fog-drift 14s ease-in-out infinite; }
+        .tmi-theme-particles { animation: tmi-particle-float 9s ease-in-out infinite; }
+        .tmi-theme-lights { animation: tmi-light-pan 10s ease-in-out infinite; }
+        .tmi-theme-glass { animation: tmi-light-pan 18s ease-in-out infinite; }
+        @media (prefers-reduced-motion: reduce) {
+          .tmi-theme-fog,
+          .tmi-theme-particles,
+          .tmi-theme-lights,
+          .tmi-theme-glass {
+            animation: none !important;
+          }
+        }
       `}</style>
     </main>
   );

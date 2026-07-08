@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import type { TicketRecord } from "@/lib/tickets/ticketCore";
-import { printTicket, verifyTicket } from "@/lib/tickets/ticketEngine";
 
 type PrintMode = "digital" | "print";
 
@@ -59,9 +58,18 @@ export default function VenueTicketPrintShell({ ticket, branding, faceScanId, on
   const primary = branding?.primaryColor ?? tierStyle.border;
   const accent = branding?.accentColor ?? "#e2e8f0";
 
-  function handleVerify() {
-    const result = verifyTicket(ticket.id);
-    setVerified(!!(result as { valid?: boolean }).valid);
+  async function handleVerify() {
+    try {
+      const res = await fetch("/api/tickets/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ticketId: ticket.id }),
+      });
+      const data = await res.json().catch(() => ({}));
+      setVerified(res.ok && !!data.valid);
+    } catch {
+      setVerified(false);
+    }
   }
 
   async function handlePrint() {

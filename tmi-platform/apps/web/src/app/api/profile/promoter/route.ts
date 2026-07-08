@@ -14,10 +14,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: 'Stream title is required' }, { status: 400 });
   }
 
-  // P0: Canonical Live Session Chain - Step 1
-  // In a real implementation, this would call the GlobalLiveSessionRegistry
-  // to create a session, register it with the discovery engine, and return a real room ID.
-  console.log(`[API] User ${session.user.id} is starting a live session titled: "${title}"`);
-
+  // TODO: call GlobalLiveSessionRegistry to create session and return a real room ID
   return NextResponse.json({ ok: true, roomId: `live_${Date.now()}` });
 }

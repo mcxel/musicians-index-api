@@ -31,8 +31,6 @@ export async function POST(req: NextRequest) {
 
   activeSessions.delete(streamId);
 
-  console.log('[live/end] Stream ended:', { streamId, duration, peakViewers, endedAt: new Date(endedAt).toISOString() });
-
   // TODO: persist to DB — e.g.
   // await prisma.liveSession.update({
   //   where: { id: streamId },

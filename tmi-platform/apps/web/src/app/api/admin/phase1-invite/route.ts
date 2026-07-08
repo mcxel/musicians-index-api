@@ -99,7 +99,7 @@ export async function POST(req: NextRequest) {
   const sent   = results.filter((r) => r.success).length;
   const failed = results.filter((r) => !r.success).length;
 
-  console.log(`[phase1-invite] Batch dispatched — sent: ${sent}, failed: ${failed}`);
+  console.info(`[phase1-invite] Batch dispatched — sent: ${sent}, failed: ${failed}`);
 
   return NextResponse.json({
     dispatched: results.length,

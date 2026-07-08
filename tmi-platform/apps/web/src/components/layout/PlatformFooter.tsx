@@ -43,8 +43,11 @@ const FOOTER_LINKS = {
 export default function PlatformFooter() {
   const pathname = usePathname();
   // WorkspaceShell preview routes own the entire viewport as a self-contained
-  // "broadcast OS" sandbox — the site's real footer chrome doesn't belong there.
-  if (pathname?.startsWith("/preview/")) return null;
+  // "broadcast OS" sandbox — the site's real footer chrome doesn't belong there. This also applies
+  // to the admin BVOS routes.
+  if (pathname?.startsWith("/preview/") || pathname?.startsWith("/admin")) {
+    return null;
+  }
 
   const year = new Date().getFullYear();
 

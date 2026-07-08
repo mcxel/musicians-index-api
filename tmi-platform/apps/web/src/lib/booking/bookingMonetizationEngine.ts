@@ -9,16 +9,7 @@ export type BookingRequest = {
   status: "pending" | "accepted" | "rejected";
 };
 
-const bookingRequests: BookingRequest[] = [
-  {
-    id: "req-1001",
-    venueSlug: "test-venue",
-    artistSlug: "ray-journey",
-    offerAmount: 4500,
-    expectedRevenue: 16200,
-    status: "pending",
-  },
-];
+const bookingRequests: BookingRequest[] = [];
 
 export function listBookingRequests(): BookingRequest[] {
   return bookingRequests;

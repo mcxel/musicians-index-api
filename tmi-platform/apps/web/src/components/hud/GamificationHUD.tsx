@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import { useGamificationEngine } from '@/hooks/useGamificationEngine';
+import { playSound } from '@/lib/sound/playSound';
 
 interface Gain { xp: number; credits: number; id: number; tier: 'sm' | 'md' | 'rare' }
 interface LevelUpDetail { level: number; xp: number }
@@ -63,6 +64,9 @@ export default function GamificationHUD() {
       const holdMs = tier === 'rare' ? 4000 : tier === 'md' ? 2800 : 2000;
       setToasts(prev => [...prev, { xp: xpDiff, credits: crDiff, id, tier }]);
       setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), holdMs);
+      if (tier === 'rare') playSound('gameshow_achievement_bling');
+      else if (tier === 'md') playSound('ui_positive_bell');
+      else playSound('ui_copper_bell');
     }
     prevXp.current = totalXp;
     prevCredits.current = walletCredits;
@@ -73,6 +77,7 @@ export default function GamificationHUD() {
     function onLevelUp(e: Event) {
       const detail = (e as CustomEvent<LevelUpDetail>).detail;
       setLevelUp(detail);
+      playSound('gameshow_winner_alert');
       setTimeout(() => setLevelUp(null), 3200);
     }
     window.addEventListener('tmi:level-up', onLevelUp);

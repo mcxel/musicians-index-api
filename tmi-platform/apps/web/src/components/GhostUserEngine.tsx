@@ -35,14 +35,6 @@ const REACTIONS = ["🔥", "👏", "💎", "🎤", "🙌", "⚡"];
 const MAX_CHAT = 30;
 const MAX_REACTIONS = 12;
 
-// Base viewer count simulated from 12-80 based on time-of-day feel
-function baseViewers(): number {
-  const h = new Date().getHours();
-  if (h >= 20 && h <= 23) return 60 + Math.floor(Math.random() * 20);
-  if (h >= 17 && h <= 19) return 35 + Math.floor(Math.random() * 25);
-  if (h >= 10 && h <= 16) return 18 + Math.floor(Math.random() * 18);
-  return 10 + Math.floor(Math.random() * 10);
-}
 
 let _id = 0;
 function uid() { return ++_id; }
@@ -67,7 +59,7 @@ export function GhostUserEngine({
   const [chat, setChat] = useState<ChatLine[]>([]);
   const [reactions, setReactions] = useState<ReactionBurst[]>([]);
   const [ghosts, setGhosts] = useState<GhostUser[]>([]);
-  const [viewers, setViewers] = useState(baseViewers());
+  const [viewers, setViewers] = useState(0);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const stopRef = useRef<(() => void) | null>(null);
 
@@ -87,15 +79,6 @@ export function GhostUserEngine({
     setTimeout(() => {
       setReactions((prev) => prev.filter((r) => r.id !== burst.id));
     }, 2200);
-  }, []);
-
-  // Viewer drift — subtle ±1-3 every 8-15s
-  useEffect(() => {
-    const tick = () => {
-      setViewers((v) => Math.max(4, v + (Math.random() > 0.5 ? 1 : -1) * (1 + Math.floor(Math.random() * 3))));
-    };
-    const iv = setInterval(tick, 8000 + Math.random() * 7000);
-    return () => clearInterval(iv);
   }, []);
 
   // Random ambient reactions every 10-22s

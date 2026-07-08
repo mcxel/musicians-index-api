@@ -3,7 +3,13 @@
 // Returns Top 10 freestylers and battle winners for /home/1-2 right column.
 
 import { buildSpreadEntry, type SpreadRankEntry } from "@/engines/home/SpreadRankAuthorityEngine";
-import { artistImages, imageAt } from "@/components/cards/content-image-bank";
+
+// Branded fallback — same one ArtistMediaResolver falls through to. These
+// records have no real registry entry to resolve a real photo against (see
+// the fabricated-data note below), so the stock-photo pool this used to
+// pull from is replaced with the honest TMI-branded image, never a random
+// stock photo of an unrelated person.
+const BRANDED_FALLBACK_IMAGE = "/tmi-curated/host-main.png";
 
 export interface BattleRecord {
   id: string;
@@ -54,7 +60,7 @@ const BATTLE_WINNERS_POOL: BattleRecord[] = [
   { id: "bw10", name: "FirstRound.A",    wins:  5, losses: 11, crowdVotePct: 67, cipherScore: 2200, audienceVotes:  7900, battleStreak:  0, rank: 10, previousRank: 10 },
 ];
 
-function battleToEntry(record: BattleRecord, imgOffset: number): SpreadRankEntry {
+function battleToEntry(record: BattleRecord): SpreadRankEntry {
   return buildSpreadEntry(
     record.id,
     record.name,
@@ -62,16 +68,16 @@ function battleToEntry(record: BattleRecord, imgOffset: number): SpreadRankEntry
     record.previousRank,
     battlePrestigeScore(record),
     record.battleStreak,
-    imageAt(artistImages, (record.rank + imgOffset) % artistImages.length)
+    BRANDED_FALLBACK_IMAGE
   );
 }
 
 export function getTopFreestylers(): SpreadRankEntry[] {
-  return FREESTYLER_POOL.map((r) => battleToEntry(r, 1));
+  return FREESTYLER_POOL.map((r) => battleToEntry(r));
 }
 
 export function getBattleWinners(): SpreadRankEntry[] {
-  return BATTLE_WINNERS_POOL.map((r) => battleToEntry(r, 3));
+  return BATTLE_WINNERS_POOL.map((r) => battleToEntry(r));
 }
 
 export function getBattleEntryByLabel(label: string): SpreadRankEntry[] {

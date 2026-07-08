@@ -10,6 +10,11 @@ import {
 import { BattleActor, battleEligibilityEngine } from "@/lib/competition/BattleEligibilityEngine";
 import {
   BattleFormatType,
+  EventCollaborationMode,
+  EventEliminationStyle,
+  EventRoundConfig,
+  EventScoringModel,
+  EventTeamConfig,
   battleFormatRulesEngine,
 } from "@/lib/competition/BattleFormatRulesEngine";
 import {
@@ -36,6 +41,11 @@ export interface BattleChallengeRequest {
   challenger: BattleActor;
   target: BattleActor;
   format: BattleFormatType;
+  teamConfig: EventTeamConfig;
+  roundPlan: EventRoundConfig[];
+  scoringModels: EventScoringModel[];
+  eliminationStyles: EventEliminationStyle[];
+  collaborationMode: EventCollaborationMode;
   status: BattleChallengeStatus;
   createdAt: number;
   expiresAt: number;
@@ -58,9 +68,10 @@ export class BattleChallengeRequestEngine {
     directChallenge?: boolean;
   }): { ok: boolean; request?: BattleChallengeRequest; reason?: string } {
     const now = Date.now();
+    const rule = battleFormatRulesEngine.getRule(input.format);
     const teamSize = input.teamSize ?? 1;
 
-    if (!battleFormatRulesEngine.validateTeamSize(input.format, teamSize)) {
+    if (teamSize < rule.teamConfig.minMembers || teamSize > rule.teamConfig.maxMembers) {
       return { ok: false, reason: "team-size-invalid" };
     }
 
@@ -91,6 +102,11 @@ export class BattleChallengeRequestEngine {
       challenger: input.challenger,
       target: input.target,
       format: input.format,
+      teamConfig: rule.teamConfig,
+      roundPlan: rule.roundPlan,
+      scoringModels: rule.scoringModels,
+      eliminationStyles: rule.eliminationStyles,
+      collaborationMode: rule.collaborationMode,
       status: "pending-challenge",
       createdAt: now,
       expiresAt: now + UNIVERSAL_BATTLE_WINDOW_SECONDS * 1000,
@@ -115,7 +131,13 @@ export class BattleChallengeRequestEngine {
     const battleId = `battle-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
     const formatLabel = battleFormatRulesEngine.getRule(request.format).label;
 
-    const match = battleMatchLifecycleEngine.createMatch(battleId, request.format, formatLabel);
+    const match = battleMatchLifecycleEngine.createMatch(battleId, request.format, formatLabel, {
+      teamConfig: request.teamConfig,
+      roundPlan: request.roundPlan,
+      scoringModels: request.scoringModels,
+      eliminationStyles: request.eliminationStyles,
+      collaborationMode: request.collaborationMode,
+    });
     battleMatchLifecycleEngine.setStatus(battleId, "countdown");
     battleMatchLifecycleEngine.advanceStatus(battleId);
     battleMatchLifecycleEngine.advanceStatus(battleId);

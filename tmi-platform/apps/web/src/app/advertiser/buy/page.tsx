@@ -105,6 +105,15 @@ const PLACEMENTS: PlacementType[] = [
   },
 ];
 
+const PRODUCT_KEY_BY_PLACEMENT: Record<string, string> = {
+  "homepage-hero": "AD_BILLBOARD_WEEKLY",
+  "magazine-sidebar": "AD_MAGAZINE",
+  "live-overlay": "AD_VIDEO_WEEKLY",
+  "feed-sponsored": "AD_TICKER_MONTHLY",
+  "search-placement": "AD_BANNER_MONTHLY",
+  "emote-banner": "AD_BANNER_MONTHLY",
+};
+
 export default function AdvertiserBuyPage() {
   const [selected, setSelected] = useState<PlacementType | null>(null);
   const [budget, setBudget] = useState("500");
@@ -124,10 +133,8 @@ export default function AdvertiserBuyPage() {
     if (!selected) return;
     setSubmitting(true);
     const params = new URLSearchParams({
-      priceId: `price_ad_${selected.id.replace(/-/g, '_')}`,
+      product: PRODUCT_KEY_BY_PLACEMENT[selected.id] ?? 'AD_BANNER_MONTHLY',
       mode: 'payment',
-      amount: String(budgetNum * 100),
-      productName: selected.name,
     });
     window.location.href = `/api/stripe/checkout?${params.toString()}`;
   }
