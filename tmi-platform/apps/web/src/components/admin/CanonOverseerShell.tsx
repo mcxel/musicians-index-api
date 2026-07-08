@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 // Canon source: Adminisratation Hub.jpg — Big Ace Overseer Deck
 // 12-panel layout assembling all existing overseer sub-panels
 //
@@ -11,10 +13,12 @@
 //     Right  — SentinelWall · AccountLinker · RevenueAnalytics · MagazineAnalytics
 
 import OverseerDock            from "@/components/admin/overseer/OverseerDock";
+import Canister                from "@/components/admin/overseer/Canister";
 import ChainCommandPanel       from "@/components/admin/overseer/ChainCommandPanel";
 import FeedExplorer            from "@/components/admin/overseer/FeedExplorer";
 import SentinelWall            from "@/components/admin/overseer/SentinelWall";
 import AccountLinker           from "@/components/admin/overseer/AccountLinker";
+import MagazineAnalytics       from "@/components/admin/overseer/MagazineAnalytics";
 // RevenueAnalytics is LEGACY (hardcoded demo data, see file header) — the
 // real Stripe-backed replacement is AdminRevenuePanel. Wiring it in directly
 // so the Overseer Deck's revenue panel shows real telemetry, not fake numbers.
@@ -25,78 +29,39 @@ import LiveFeedRouter          from "@/components/admin/overseer/LiveFeedRouter"
 import BotSummonDeck           from "@/components/admin/BotSummonDeck";
 import BigAceFinancePanel      from "@/components/admin/BigAceFinancePanel";
 
-// ─── Panel wrapper ─────────────────────────────────────────────────────────────
-
-function OverseerPanel({
-  id,
-  label,
-  accent = "#00FFFF",
-  children,
-  style,
-}: {
-  id?: string;
-  label: string;
-  accent?: string;
-  children: React.ReactNode;
-  style?: React.CSSProperties;
-}) {
-  return (
-    <section
-      id={id}
-      data-overseer-panel={label}
-      style={{
-        position: "relative",
-        background: `linear-gradient(160deg, rgba(40,10,40,0.92) 0%, rgba(20,5,24,0.94) 55%, rgba(10,2,14,0.96) 100%)`,
-        border: `1px solid ${accent}55`,
-        borderRadius: 10,
-        boxShadow: `0 0 0 1px rgba(255,215,0,0.12), inset 0 1px 0 rgba(255,255,255,0.06), inset 0 0 22px rgba(0,0,0,0.55), 0 6px 18px rgba(0,0,0,0.5)`,
-        overflow: "hidden",
-        display: "flex",
-        flexDirection: "column",
-        ...style,
-      }}
-    >
-      {/* Gilded corner accents */}
-      <span style={{ position: "absolute", top: 3, left: 3, width: 10, height: 10, borderTop: "2px solid #FFD700", borderLeft: "2px solid #FFD700", opacity: 0.7, pointerEvents: "none" }} />
-      <span style={{ position: "absolute", top: 3, right: 3, width: 10, height: 10, borderTop: "2px solid #FFD700", borderRight: "2px solid #FFD700", opacity: 0.7, pointerEvents: "none" }} />
-      <span style={{ position: "absolute", bottom: 3, left: 3, width: 10, height: 10, borderBottom: "2px solid #FFD700", borderLeft: "2px solid #FFD700", opacity: 0.7, pointerEvents: "none" }} />
-      <span style={{ position: "absolute", bottom: 3, right: 3, width: 10, height: 10, borderBottom: "2px solid #FFD700", borderRight: "2px solid #FFD700", opacity: 0.7, pointerEvents: "none" }} />
-
-      {/* Panel label strip */}
-      <div
-        style={{
-          padding: "7px 14px",
-          borderBottom: `1px solid ${accent}45`,
-          background: `linear-gradient(to right, ${accent}22, rgba(255,215,0,0.06) 60%, transparent)`,
-          flexShrink: 0,
-          display: "flex",
-          alignItems: "center",
-          gap: 6,
-        }}
-      >
-        <span style={{ width: 5, height: 5, borderRadius: "50%", background: accent, boxShadow: `0 0 6px ${accent}` }} />
-        <span
-          style={{
-            fontSize: 8,
-            fontWeight: 900,
-            letterSpacing: "0.22em",
-            color: accent,
-            textTransform: "uppercase",
-            textShadow: `0 0 8px ${accent}66`,
-          }}
-        >
-          {label}
-        </span>
-      </div>
-      {/* Panel content */}
-      <div style={{ flex: 1, overflow: "hidden" }}>{children}</div>
-    </section>
-  );
-}
-
 // ─── Shell ─────────────────────────────────────────────────────────────────────
 
 export default function CanonOverseerShell() {
+  const [leftCollapsed, setLeftCollapsed] = useState(false);
+  const [rightCollapsed, setRightCollapsed] = useState(false);
+  const [bottomCollapsed, setBottomCollapsed] = useState(false);
+  const [fullscreenPanel, setFullscreenPanel] = useState<string | null>(null);
+
+  const leftWidth = leftCollapsed ? 74 : 286;
+  const rightWidth = rightCollapsed ? 74 : 306;
+  const bottomHeight = bottomCollapsed ? 44 : 230;
+
+  const toggleFullscreen = (panelId: string) => {
+    setFullscreenPanel((curr) => (curr === panelId ? null : panelId));
+  };
+
+  const shellGridTemplate = fullscreenPanel
+    ? "1fr"
+    : `${leftWidth}px minmax(0,1fr) ${rightWidth}px`;
+
+  const renderFullscreen = () => {
+    switch (fullscreenPanel) {
+      case "tv":
+        return <LiveFeedRouter />;
+      case "feed":
+        return <FeedExplorer />;
+      case "revenue":
+        return <AdminRevenuePanel selectedId="billing" onSelect={() => undefined} />;
+      default:
+        return null;
+    }
+  };
+
   return (
     <div
       data-canon-overseer-shell
@@ -114,134 +79,171 @@ export default function CanonOverseerShell() {
     >
       {/* ── Row 0: Overseer Dock (full width) ── */}
       <div data-row="dock">
-        <OverseerPanel label="OVERSEER DOCK" accent="#FFD700" style={{ borderRadius: 10 }}>
+        <Canister title="OVERSEER DOCK" accent="#FFD700" style={{ borderRadius: 10 }}>
           <OverseerDock />
-        </OverseerPanel>
+        </Canister>
       </div>
 
-      {/* ── Row 1: 3-column main grid ── */}
       <div
-        data-row="main"
         style={{
-          flex: 1,
-          display: "grid",
-          gridTemplateColumns: "280px 1fr 300px",
+          display: "flex",
+          alignItems: "center",
           gap: 8,
-          minHeight: 0,
+          flexWrap: "wrap",
+          padding: "0 4px",
         }}
       >
-        {/* ── LEFT COLUMN ── */}
-        <div
-          data-col="left"
-          style={{ display: "flex", flexDirection: "column", gap: 8 }}
+        <button
+          type="button"
+          onClick={() => setLeftCollapsed((v) => !v)}
+          style={{ borderRadius: 999, border: "1px solid rgba(255,215,0,0.35)", background: "rgba(255,215,0,0.1)", color: "#FFD700", fontSize: 9, fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", padding: "5px 10px", cursor: "pointer" }}
         >
-          {/* Panel 1: Chain Command */}
-          <OverseerPanel
-            id="chain-command"
-            label="CHAIN COMMAND"
-            accent="#AA2DFF"
-            style={{ flex: "0 0 auto" }}
-          >
-            <ChainCommandPanel />
-          </OverseerPanel>
+          {leftCollapsed ? "Expand Left" : "Collapse Left"}
+        </button>
+        <button
+          type="button"
+          onClick={() => setRightCollapsed((v) => !v)}
+          style={{ borderRadius: 999, border: "1px solid rgba(0,255,255,0.3)", background: "rgba(0,255,255,0.08)", color: "#00FFFF", fontSize: 9, fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", padding: "5px 10px", cursor: "pointer" }}
+        >
+          {rightCollapsed ? "Expand Right" : "Collapse Right"}
+        </button>
+        <button
+          type="button"
+          onClick={() => setBottomCollapsed((v) => !v)}
+          style={{ borderRadius: 999, border: "1px solid rgba(170,45,255,0.35)", background: "rgba(170,45,255,0.1)", color: "#AA2DFF", fontSize: 9, fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", padding: "5px 10px", cursor: "pointer" }}
+        >
+          {bottomCollapsed ? "Expand Bottom" : "Collapse Bottom"}
+        </button>
+      </div>
 
-          {/* Panel 2: Money & Billing */}
-          <OverseerPanel
-            label="MONEY & BILLING"
-            accent="#FFD700"
-            style={{ flex: "0 0 auto" }}
-          >
-            <BigAceFinancePanel />
-          </OverseerPanel>
+      <div
+        data-row="workspace"
+        style={{
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          gap: 8,
+          minHeight: 0,
+          transition: "all 280ms ease",
+        }}
+      >
+        <div
+          data-row="main"
+          style={{
+            flex: 1,
+            minHeight: 0,
+            display: "grid",
+            gridTemplateColumns: shellGridTemplate,
+            gap: 8,
+            transition: "all 280ms ease",
+          }}
+        >
+          {fullscreenPanel ? (
+            <Canister
+              title="FOCUS MODE"
+              accent="#00FFFF"
+              statusLabel="FOCUSED"
+              onToggleFullscreen={() => setFullscreenPanel(null)}
+              style={{ minHeight: 0 }}
+            >
+              {renderFullscreen()}
+            </Canister>
+          ) : (
+            <>
+              <div
+                data-col="left"
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 8,
+                  minHeight: 0,
+                  overflow: "hidden",
+                }}
+              >
+                <Canister id="chain-command" title="CHAIN COMMAND" accent="#AA2DFF" collapsed={leftCollapsed}>
+                  <ChainCommandPanel />
+                </Canister>
+                <Canister title="MONEY & BILLING" accent="#FFD700" collapsed={leftCollapsed}>
+                  <BigAceFinancePanel />
+                </Canister>
+                <Canister title="BOT ROSTER & SUMMON" accent="#FF2DAA" collapsed={leftCollapsed} style={{ flex: 1 }}>
+                  <BotSummonDeck />
+                </Canister>
+                <Canister title="UNIFIED INBOX" accent="#00FFFF" collapsed={leftCollapsed}>
+                  <UnifiedInbox />
+                </Canister>
+              </div>
 
-          {/* Panel 3: Bot Roster & Summon */}
-          <OverseerPanel
-            label="BOT ROSTER & SUMMON"
-            accent="#FF2DAA"
-            style={{ flex: "1 1 auto", minHeight: 0 }}
-          >
-            <BotSummonDeck />
-          </OverseerPanel>
+              <div data-col="center" style={{ display: "flex", flexDirection: "column", gap: 8, minHeight: 0 }}>
+                <Canister
+                  id="live-feed-router"
+                  title="TV SCREEN ROUTER · BOARDROOM LIVE"
+                  accent="#00FFFF"
+                  style={{ flex: "0 0 350px" }}
+                  onToggleFullscreen={() => toggleFullscreen("tv")}
+                >
+                  <LiveFeedRouter />
+                </Canister>
+                <Canister
+                  title="LIVE FEED EXPLORER"
+                  accent="#00FFFF"
+                  style={{ flex: 1 }}
+                  onToggleFullscreen={() => toggleFullscreen("feed")}
+                >
+                  <FeedExplorer />
+                </Canister>
+              </div>
 
-          {/* Panel 4: Unified Inbox */}
-          <OverseerPanel
-            label="UNIFIED INBOX"
-            accent="#00FFFF"
-            style={{ flex: "0 0 auto" }}
-          >
-            <UnifiedInbox />
-          </OverseerPanel>
+              <div
+                data-col="right"
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 8,
+                  minHeight: 0,
+                  overflow: "hidden",
+                }}
+              >
+                <Canister id="sentinel-wall" title="SECURITY SENTINEL WALL" accent="#FF4444" collapsed={rightCollapsed}>
+                  <SentinelWall />
+                </Canister>
+                <Canister title="ACCOUNT LINKER" accent="#AA2DFF" collapsed={rightCollapsed}>
+                  <AccountLinker />
+                </Canister>
+                <Canister title="STRIPE WEBHOOK INTEGRITY" accent="#00FFFF" collapsed={rightCollapsed} style={{ flex: 1 }}>
+                  <StripeObservatoryCard />
+                </Canister>
+              </div>
+            </>
+          )}
         </div>
 
-        {/* ── CENTER COLUMN ── */}
         <div
-          data-col="center"
-          style={{ display: "flex", flexDirection: "column", gap: 8 }}
+          data-row="bottom"
+          style={{
+            height: bottomHeight,
+            minHeight: bottomHeight,
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: 8,
+            transition: "all 280ms ease",
+          }}
         >
-          {/* Panel 5: TV Screen Router / Boardroom */}
-          <OverseerPanel
-            id="live-feed-router"
-            label="TV SCREEN ROUTER · BOARDROOM LIVE"
-            accent="#00FFFF"
-            style={{ flex: "0 0 340px" }}
-          >
-            <LiveFeedRouter />
-          </OverseerPanel>
-
-          {/* Panel 6: Live Feed Explorer */}
-          <OverseerPanel
-            label="LIVE FEED EXPLORER"
-            accent="#00FFFF"
-            style={{ flex: 1, minHeight: 0 }}
-          >
-            <FeedExplorer />
-          </OverseerPanel>
-        </div>
-
-        {/* ── RIGHT COLUMN ── */}
-        <div
-          data-col="right"
-          style={{ display: "flex", flexDirection: "column", gap: 8 }}
-        >
-          {/* Panel 7: Security Sentinel Wall */}
-          <OverseerPanel
-            id="sentinel-wall"
-            label="SECURITY SENTINEL WALL"
-            accent="#FF4444"
-            style={{ flex: "0 0 auto" }}
-          >
-            <SentinelWall />
-          </OverseerPanel>
-
-          {/* Panel 8: Account Linker */}
-          <OverseerPanel
-            label="ACCOUNT LINKER"
-            accent="#AA2DFF"
-            style={{ flex: "0 0 auto" }}
-          >
-            <AccountLinker />
-          </OverseerPanel>
-
-          {/* Panel 9: Artist Revenue & Buyouts */}
-          <OverseerPanel
-            label="ARTIST REVENUE & BUYOUTS"
+          <Canister
+            id="revenue-analytics"
+            title="ARTIST REVENUE & BUYOUTS"
             accent="#FFD700"
-            style={{ flex: "1 1 auto", minHeight: 0 }}
+            collapsed={bottomCollapsed}
+            onToggleFullscreen={() => toggleFullscreen("revenue")}
           >
             <AdminRevenuePanel
               selectedId="billing"
               onSelect={(id) => { window.location.href = id === "artist-analytics" ? "/admin/artist-analytics" : "/admin/revenue"; }}
             />
-          </OverseerPanel>
-
-          {/* Panel 10–12: Stripe Webhook Integrity */}
-          <OverseerPanel
-            label="STRIPE WEBHOOK INTEGRITY"
-            accent="#00FFFF"
-            style={{ flex: "1 1 auto", minHeight: 0 }}
-          >
-            <StripeObservatoryCard />
-          </OverseerPanel>
+          </Canister>
+          <Canister title="MAGAZINE & INDEX ANALYTICS" accent="#FF2DAA" collapsed={bottomCollapsed}>
+            <MagazineAnalytics />
+          </Canister>
         </div>
       </div>
     </div>
