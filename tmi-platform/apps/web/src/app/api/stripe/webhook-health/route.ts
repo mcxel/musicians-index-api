@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 import { getRecentEvents, getSummary } from '@/lib/stripe/stripe-telemetry-store';
 import { getStripeIncidentStatus } from '@/lib/stripe/stripe-incident-engine';
 
@@ -11,7 +12,17 @@ function stripeModeFromKey(key: string | undefined): 'test' | 'live' | 'not_conf
   return 'unknown';
 }
 
-export async function GET() {
+function isAdminOrStaff(role: string): boolean {
+  const v = role.toUpperCase();
+  return v === 'ADMIN' || v === 'STAFF';
+}
+
+export async function GET(req: NextRequest) {
+  const role = req.cookies.get('tmi_role')?.value ?? '';
+  if (!isAdminOrStaff(role)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
   const mode = stripeModeFromKey(process.env.STRIPE_SECRET_KEY);
   const webhookSecretConfigured = Boolean(process.env.STRIPE_WEBHOOK_SECRET);
 
@@ -83,7 +94,7 @@ export async function GET() {
     })),
     webhookUrlOptions: [
       '/api/stripe/webhook',
-      '/api/webhooks/stripe',
+      '/api/webhooks/stripe (deprecated alias)',
     ],
   });
 }
