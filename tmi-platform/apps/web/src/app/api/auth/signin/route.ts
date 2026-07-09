@@ -127,7 +127,8 @@ export async function POST(req: NextRequest) {
     response.cookies.set('phase11_session', sessionToken, COOKIE_OPTS);
 
     return response;
-  } catch {
+  } catch (err) {
+    console.error('[auth/signin] login handler crashed:', err);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

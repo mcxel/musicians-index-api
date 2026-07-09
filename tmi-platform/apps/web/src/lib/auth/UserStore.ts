@@ -184,6 +184,7 @@ const HARDCODED_PERFORMER = new Set([
   'suedejs2000@gmail.com',
   'terry@themusiciansindex.com',
   'jerome@themusiciansindex.com',
+  'wennidoodo@outlook.com',
 ]);
 
 export function resolveHardcodedTierRole(email: string): { tier: UserTier; role: UserRole } | null {
