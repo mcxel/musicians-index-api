@@ -47,11 +47,11 @@ export default function AccountLinker() {
   }
 
   return (
-    <section className="flex h-full flex-col rounded-xl border border-amber-400/30 bg-black/60 p-3">
-      <header className="mb-3 flex items-center justify-between gap-2">
+    <section style={{ height: "100%", display: "flex", flexDirection: "column", gap: 8 }}>
+      <header className="flex items-center justify-between gap-2">
         <div>
           <p className="text-[9px] font-black uppercase tracking-[0.18em] text-amber-400">Account Linker</p>
-          <p className="text-[11px] font-black uppercase text-white">Connected Services</p>
+          <p className="text-[10px] font-black uppercase text-white">Connected Services</p>
         </div>
         <div className="flex gap-1">
           <span className="rounded border border-green-400/40 bg-green-500/10 px-2 py-0.5 text-[9px] font-black uppercase text-green-300">
@@ -65,7 +65,19 @@ export default function AccountLinker() {
 
       <div className="flex-1 space-y-1.5 overflow-y-auto">
         {ACCOUNTS.map((account) => (
-          <div key={account.id} className="flex items-center gap-2 rounded-lg border border-white/10 bg-black/45 p-2">
+          <div
+            key={account.id}
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr auto auto",
+              alignItems: "center",
+              gap: 8,
+              borderRadius: 8,
+              border: "1px solid rgba(241,181,66,0.24)",
+              background: "linear-gradient(180deg, rgba(44,18,17,0.55), rgba(19,9,12,0.82))",
+              padding: "6px 8px",
+            }}
+          >
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5">
                 <span className={`text-[9px] font-black uppercase ${CAT_COLOR[account.category]}`}>{account.category}</span>
@@ -73,17 +85,15 @@ export default function AccountLinker() {
               </div>
               <p className="text-[8px] text-zinc-400">{account.detail}</p>
             </div>
-            <div className="flex shrink-0 items-center gap-1.5">
-              <span className={`rounded border px-1.5 py-0.5 text-[7px] font-black uppercase ${STATUS_STYLE[account.status]}`}>
-                {account.status}
-              </span>
-              <button
-                onClick={() => handleAction(account)}
-                className="rounded border border-amber-300/30 bg-amber-500/10 px-2 py-0.5 text-[8px] font-black uppercase text-amber-100 hover:bg-amber-500/25"
-              >
-                {account.actionLabel}
-              </button>
-            </div>
+            <span className={`rounded border px-1.5 py-0.5 text-[7px] font-black uppercase ${STATUS_STYLE[account.status]}`}>
+              {account.status}
+            </span>
+            <button
+              onClick={() => handleAction(account)}
+              className="rounded border border-amber-300/30 bg-amber-500/10 px-2 py-0.5 text-[8px] font-black uppercase text-amber-100 hover:bg-amber-500/25"
+            >
+              {account.actionLabel}
+            </button>
           </div>
         ))}
       </div>

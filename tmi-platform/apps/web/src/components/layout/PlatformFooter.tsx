@@ -45,6 +45,10 @@ export default function PlatformFooter() {
   // WorkspaceShell preview routes own the entire viewport as a self-contained
   // "broadcast OS" sandbox — the site's real footer chrome doesn't belong there.
   if (pathname?.startsWith("/preview/")) return null;
+  // Admin command deck owns its own viewport the same way — the public
+  // marketing footer (Platform/Join/Legal/Company links) was pushing the
+  // Overseer Dock hundreds of pixels down the page, forcing scroll past it.
+  if (pathname?.startsWith("/admin")) return null;
 
   const year = new Date().getFullYear();
 

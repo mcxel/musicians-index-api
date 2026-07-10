@@ -1,5 +1,5 @@
-export type DirectorMode = "world-release" | "versus-2026" | "guest-jam";
-export type CameraLayout = "full" | "pip" | "split" | "hidden";
+export type DirectorMode = "world-release" | "versus-2026" | "guest-jam" | "dj-residency" | "comedy-room" | "dance-battle" | "choir-ensemble" | "theater-play";
+export type CameraLayout = "full" | "pip" | "split" | "hidden" | "mosaic" | "scene-wide";
 
 export interface DirectorState {
   mode: DirectorMode;

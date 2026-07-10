@@ -1,8 +1,17 @@
 /**
  * FaceScanIdentityEngine
- * Upgrades avatars from flat DOM elements to fully 360-degree WebGL models.
- * Applies Physically Based Rendering (PBR), Subsurface Scattering for realistic skin,
- * and prepares the mesh for live facial motion capture mapping.
+ *
+ * NON-FUNCTIONAL STUB — DO NOT SHIP OR WIRE INTO ANY UI.
+ * Despite the PBR/subsurface-scattering field names and the "Ultra-Realistic PBR Mesh"
+ * log line below, this class performs no real rendering: no mesh is loaded, no WebGL/
+ * Three.js context is touched, applyEnvironmentLighting() is an empty stub with a
+ * "// In production: ..." comment describing work that isn't implemented. Real face-
+ * scan -> rigged-3D-avatar -> lip-sync is genuine multi-session, specialist engineering
+ * (see CLAUDE.md Rule 18, Asset Realization Directive) — not something to fake a stub
+ * version of (Rule 20). Track as a separate, dedicated future project.
+ *
+ * A second, unrelated stub class with the identical name FaceScanIdentityEngine also
+ * exists in apps/web/src/lib/avatar/AvatarSystemEngines.ts — same caveat applies there.
  */
 
 export type LODTier = 'near' | 'medium' | 'far' | 'ultra-far';

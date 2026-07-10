@@ -40,6 +40,9 @@ function createPrismaClient(): PrismaClient {
 export const prisma: PrismaClient =
   globalForPrisma.prisma ?? createPrismaClient();
 
+// Legacy compatibility alias used by app routes importing { db } from @tmi/db.
+export const db = prisma;
+
 if (process.env["NODE_ENV"] !== "production") {
   globalForPrisma.prisma = prisma;
 }
@@ -56,39 +59,7 @@ if (process.env["NODE_ENV"] !== "production") {
 export { Prisma } from "@prisma/client";
 
 // Re-export all generated model types for convenience.
-export type {
-  User,
-  ArtistProfile,
-  FanProfile,
-  Article,
-  Station,
-  Room,
-  Show,
-  Contest,
-  ContestEntry,
-  Sponsor,
-  SponsorCampaign,
-  Advertiser,
-  AdCampaign,
-  AdPlacement,
-  Clip,
-  Replay,
-  Notification,
-  Message,
-  Wallet,
-  Transaction,
-  Payout,
-  Tip,
-  Credit,
-  Achievement,
-  Badge,
-  LeaderboardEntry,
-  Tag,
-  Genre,
-  Report,
-  AuditLog,
-  FeatureFlag,
-} from "@prisma/client";
+export type { User } from "@prisma/client";
 
 // Default export for convenience (NestJS injection pattern).
 export default prisma;

@@ -279,7 +279,9 @@ export default function PerformerHubDashboard({ performerId, displayName }: Perf
         {card("Camera Switching", (
           <div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-              {CAMERAS.map(cam => pill(cam, stage?.activeCamera === cam, () => handleCameraSwitch(cam)))}
+              {CAMERAS.map(cam => (
+                <span key={`camera-${cam}`}>{pill(cam, stage?.activeCamera === cam, () => handleCameraSwitch(cam))}</span>
+              ))}
             </div>
           </div>
         ))}
@@ -288,7 +290,9 @@ export default function PerformerHubDashboard({ performerId, displayName }: Perf
         {card("Stage Lighting", (
           <div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-              {LIGHTING.map(scene => pill(scene, stage?.lightingScene === scene, () => handleLighting(scene), "#f59e0b"))}
+              {LIGHTING.map(scene => (
+                <span key={`light-${scene}`}>{pill(scene, stage?.lightingScene === scene, () => handleLighting(scene), "#f59e0b")}</span>
+              ))}
             </div>
           </div>
         ))}
@@ -313,7 +317,9 @@ export default function PerformerHubDashboard({ performerId, displayName }: Perf
             <div>
               <div style={{ fontSize: 11, color: "#64748b", marginBottom: 6 }}>Voice FX</div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                {VOICE_FX.map(fx => pill(fx, (stage?.voiceFxActive ?? "none") === fx, () => handleVoiceFx(fx), "#ec4899"))}
+                {VOICE_FX.map(fx => (
+                  <span key={`fx-${fx}`}>{pill(fx, (stage?.voiceFxActive ?? "none") === fx, () => handleVoiceFx(fx), "#ec4899")}</span>
+                ))}
               </div>
             </div>
           </div>

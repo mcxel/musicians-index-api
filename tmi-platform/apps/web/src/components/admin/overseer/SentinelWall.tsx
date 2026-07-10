@@ -1,92 +1,108 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { DeckButton, DeckChip } from "@/components/admin/overseer/AdminDesignSystem";
 
-type AlertSeverity = "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
+type Severity = "critical" | "high" | "medium" | "low";
 
-interface SentinelAlert {
+type Alert = {
   id: string;
-  type: "moderation" | "fraud" | "spam" | "exploit" | "breach";
-  severity: AlertSeverity;
-  message: string;
-  userId?: string;
-  ts: string;
+  severity: Severity;
+  title: string;
+  uid: string;
+  age: string;
   resolved: boolean;
-}
+};
 
-const SEED_ALERTS: SentinelAlert[] = [
-  { id: "a1", type: "fraud",      severity: "CRITICAL", message: "Multi-account ticket fraud detected",    userId: "u-4421", ts: "2m ago",  resolved: false },
-  { id: "a2", type: "breach",     severity: "HIGH",     message: "Unusual auth pattern — 14 rapid logins", userId: "u-7712", ts: "5m ago",  resolved: false },
-  { id: "a3", type: "exploit",    severity: "HIGH",     message: "Rate limit bypass attempt on /api/vote",              ts: "8m ago",  resolved: false },
-  { id: "a4", type: "spam",       severity: "MEDIUM",   message: "Bot-pattern chat flood in Cypher Room 3",userId: "u-0931", ts: "12m ago", resolved: false },
-  { id: "a5", type: "moderation", severity: "MEDIUM",   message: "Hate speech incident flagged — Room 12",  userId: "u-5508", ts: "18m ago", resolved: true  },
-  { id: "a6", type: "spam",       severity: "LOW",      message: "Duplicate tip submission blocked",        userId: "u-2247", ts: "31m ago", resolved: true  },
+const seed: Alert[] = [
+  { id: "a1", severity: "critical", title: "Multi-account ticket fraud", uid: "u-4421", age: "2m", resolved: false },
+  { id: "a2", severity: "high", title: "Auth breach pattern", uid: "u-7712", age: "5m", resolved: false },
+  { id: "a3", severity: "high", title: "API exploit attempt", uid: "u-8008", age: "8m", resolved: false },
+  { id: "a4", severity: "medium", title: "Bot-pattern chat flood", uid: "u-0931", age: "12m", resolved: false },
+  { id: "a5", severity: "low", title: "Duplicate tip blocked", uid: "u-2247", age: "31m", resolved: true },
 ];
 
-const SEVERITY_STYLE: Record<AlertSeverity, string> = {
-  CRITICAL: "border-red-500/70 bg-red-500/10 text-red-300",
-  HIGH:     "border-orange-500/60 bg-orange-500/10 text-orange-200",
-  MEDIUM:   "border-amber-400/50 bg-amber-500/10 text-amber-200",
-  LOW:      "border-zinc-500/40 bg-zinc-700/20 text-zinc-400",
+const palette: Record<Severity, { text: string; border: string; bg: string }> = {
+  critical: { text: "#fb7185", border: "rgba(251,113,133,0.55)", bg: "rgba(251,113,133,0.18)" },
+  high: { text: "#fb923c", border: "rgba(251,146,60,0.55)", bg: "rgba(251,146,60,0.16)" },
+  medium: { text: "#facc15", border: "rgba(250,204,21,0.55)", bg: "rgba(250,204,21,0.14)" },
+  low: { text: "#a1a1aa", border: "rgba(161,161,170,0.4)", bg: "rgba(161,161,170,0.12)" },
 };
 
 export default function SentinelWall() {
-  const [alerts, setAlerts] = useState(SEED_ALERTS);
-  const active = alerts.filter((a) => !a.resolved);
-  const resolved = alerts.filter((a) => a.resolved);
+  const [alerts, setAlerts] = useState<Alert[]>(seed);
+  const active = useMemo(() => alerts.filter((alert) => !alert.resolved), [alerts]);
 
   function resolve(id: string) {
-    setAlerts((prev) => prev.map((a) => a.id === id ? { ...a, resolved: true } : a));
+    setAlerts((curr) => curr.map((alert) => (alert.id === id ? { ...alert, resolved: true } : alert)));
   }
 
   return (
-    <section className="flex h-full flex-col rounded-xl border border-rose-400/30 bg-black/60 p-3">
-      <header className="mb-3 flex items-center justify-between gap-2">
-        <div>
-          <p className="text-[9px] font-black uppercase tracking-[0.18em] text-rose-400">Security Sentinel</p>
-          <p className="text-[11px] font-black uppercase text-white">Threat Wall</p>
-        </div>
-        <div className="flex gap-1.5">
-          <span className="rounded border border-red-500/50 bg-red-500/10 px-2 py-0.5 text-[9px] font-black uppercase text-red-300">
-            {active.length} ACTIVE
-          </span>
-          <span className="rounded border border-zinc-600/40 bg-zinc-800/30 px-2 py-0.5 text-[9px] font-black uppercase text-zinc-400">
-            {resolved.length} CLR
-          </span>
-        </div>
-      </header>
+    <section style={{ height: "100%", display: "flex", flexDirection: "column", gap: 8 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 6 }}>
+        <DeckChip label="Sentinels" value="100" />
+        <DeckChip label="Active Alerts" value={String(active.length)} />
+        <DeckChip label="Threat Level" value={active.length > 2 ? "Stable" : "Low"} />
+      </div>
 
-      {/* Active alerts */}
-      <div className="flex-1 space-y-1.5 overflow-y-auto">
-        {alerts.map((alert) => (
-          <div
-            key={alert.id}
-            className={`rounded-lg border p-2 ${alert.resolved ? "opacity-40" : ""} ${SEVERITY_STYLE[alert.severity]}`}
-          >
-            <div className="flex items-start justify-between gap-2">
-              <div className="flex-1">
-                <div className="mb-0.5 flex items-center gap-1.5">
-                  <span className="text-[8px] font-black uppercase">{alert.severity}</span>
-                  <span className="text-[8px] uppercase text-zinc-500">·</span>
-                  <span className="text-[8px] uppercase text-zinc-400">{alert.type}</span>
-                  <span className="ml-auto text-[8px] text-zinc-500">{alert.ts}</span>
+      <div style={{ display: "grid", gap: 6, overflowY: "auto", minHeight: 0 }}>
+        {alerts.map((alert) => {
+          const tone = palette[alert.severity];
+          return (
+            <article
+              key={alert.id}
+              style={{
+                borderRadius: 8,
+                border: `1px solid ${tone.border}`,
+                background: alert.resolved
+                  ? "linear-gradient(180deg, rgba(32,17,17,0.45), rgba(17,9,10,0.72))"
+                  : "linear-gradient(180deg, rgba(54,22,18,0.72), rgba(21,9,11,0.86))",
+                padding: "7px 8px",
+                opacity: alert.resolved ? 0.5 : 1,
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "start" }}>
+                <div>
+                  <div
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 6,
+                      borderRadius: 999,
+                      border: `1px solid ${tone.border}`,
+                      background: tone.bg,
+                      color: tone.text,
+                      fontSize: 8,
+                      fontWeight: 900,
+                      letterSpacing: "0.1em",
+                      textTransform: "uppercase",
+                      padding: "2px 6px",
+                    }}
+                  >
+                    {alert.severity}
+                  </div>
+                  <div style={{ color: "#ffe9bb", fontSize: 10, fontWeight: 800, marginTop: 6, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                    {alert.title}
+                  </div>
+                  <div style={{ color: "rgba(255,216,143,0.72)", fontSize: 8, marginTop: 3 }}>UID {alert.uid} · {alert.age} ago</div>
                 </div>
-                <p className="text-[10px] font-bold text-white">{alert.message}</p>
-                {alert.userId && (
-                  <p className="mt-0.5 text-[8px] text-zinc-400">UID: {alert.userId}</p>
+                {!alert.resolved ? (
+                  <DeckButton onClick={() => resolve(alert.id)}>Dismiss</DeckButton>
+                ) : (
+                  <span style={{ color: "rgba(255,225,163,0.62)", fontSize: 8, textTransform: "uppercase", fontWeight: 900 }}>
+                    Cleared
+                  </span>
                 )}
               </div>
-              {!alert.resolved && (
-                <button
-                  onClick={() => resolve(alert.id)}
-                  className="shrink-0 rounded border border-rose-400/40 px-1.5 py-0.5 text-[8px] font-black uppercase text-rose-200 hover:bg-rose-500/20"
-                >
-                  CLR
-                </button>
-              )}
-            </div>
-          </div>
-        ))}
+              {!alert.resolved ? (
+                <div style={{ display: "flex", gap: 6, marginTop: 7 }}>
+                  <DeckButton>Investigate</DeckButton>
+                  <DeckButton>Open Logs</DeckButton>
+                </div>
+              ) : null}
+            </article>
+          );
+        })}
       </div>
     </section>
   );

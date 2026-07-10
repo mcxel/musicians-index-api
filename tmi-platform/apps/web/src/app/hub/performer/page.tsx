@@ -35,7 +35,6 @@ import DesktopAtmosphereRails from '@/components/home/DesktopAtmosphereRails';
 const NAV_LINKS = [
   { href: "/hub/performer",     label: "Control Room" },
   { href: "/performer/studio",  label: "Studio"       },
-  { href: "/avatar",            label: "Avatar"       },
   { href: "/performer/profile", label: "Profile"      },
   { href: "/battles",           label: "Battles"      },
   { href: "/battles/new",       label: "Challenge"    },
@@ -335,7 +334,7 @@ export default function PerformerHubPage() {
                   <Link href="/performer/studio" style={{ textDecoration: "none", borderRadius: 9, padding: "10px 8px", textAlign: "center", background: "linear-gradient(135deg, #AA2DFF, #FF2DAA)", color: "#fff", fontSize: 10, fontWeight: 900, letterSpacing: "0.08em" }}>GO LIVE</Link>
                   <Link href="/messages" style={{ textDecoration: "none", borderRadius: 9, padding: "10px 8px", textAlign: "center", background: "rgba(0,255,255,0.1)", border: "1px solid rgba(0,255,255,0.28)", color: "#00FFFF", fontSize: 10, fontWeight: 800, letterSpacing: "0.08em" }}>MESSAGE</Link>
                   <Link href="/playlists" style={{ textDecoration: "none", borderRadius: 9, padding: "10px 8px", textAlign: "center", background: "rgba(255,215,0,0.1)", border: "1px solid rgba(255,215,0,0.28)", color: "#FFD700", fontSize: 10, fontWeight: 800, letterSpacing: "0.08em" }}>PLAYLIST</Link>
-                  <Link href="/avatar" style={{ textDecoration: "none", borderRadius: 9, padding: "10px 8px", textAlign: "center", background: "rgba(170,45,255,0.12)", border: "1px solid rgba(170,45,255,0.28)", color: "#AA2DFF", fontSize: 10, fontWeight: 800, letterSpacing: "0.08em" }}>AVATAR</Link>
+                  <Link href="#memory-wall" style={{ textDecoration: "none", borderRadius: 9, padding: "10px 8px", textAlign: "center", background: "rgba(170,45,255,0.12)", border: "1px solid rgba(170,45,255,0.28)", color: "#AA2DFF", fontSize: 10, fontWeight: 800, letterSpacing: "0.08em" }}>MEMORY</Link>
                 </div>
 
                 <div style={{ border: "1px solid rgba(255,215,0,0.18)", borderRadius: 12, padding: 10, background: "rgba(255,255,255,0.02)" }}>

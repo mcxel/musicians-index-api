@@ -1,120 +1,162 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { DeckButton, DeckChip } from "@/components/admin/overseer/AdminDesignSystem";
 
-type NodeRole = "bot" | "admin" | "worker" | "security" | "builder" | "reporter" | "venue";
-type NodeStatus = "ACTIVE" | "PAUSED" | "OFFLINE" | "STANDBY";
+type UnitState = "online" | "monitoring" | "repairing" | "idle";
 
-interface ChainNode {
+type Unit = {
   id: string;
   name: string;
-  role: NodeRole;
-  status: NodeStatus;
-  level: number;
-  taskCount: number;
-}
+  role: string;
+  state: UnitState;
+  tasks: number;
+  successRate: number;
+};
 
-const CHAIN_NODES: ChainNode[] = [
-  { id: "big-ace",    name: "Big Ace",     role: "admin",    status: "ACTIVE",  level: 1, taskCount: 18 },
-  { id: "marcel",     name: "Marcel",      role: "admin",    status: "ACTIVE",  level: 2, taskCount: 12 },
-  { id: "jay-paul",   name: "Jay Paul",    role: "builder",  status: "ACTIVE",  level: 2, taskCount: 9  },
-  { id: "micah",      name: "Micah",       role: "reporter", status: "STANDBY", level: 2, taskCount: 4  },
-  { id: "admin-chain",name: "Admin Chain", role: "admin",    status: "ACTIVE",  level: 3, taskCount: 7  },
-  { id: "sec-chain",  name: "Security",    role: "security", status: "ACTIVE",  level: 3, taskCount: 5  },
-  { id: "bld-chain",  name: "Builder",     role: "builder",  status: "ACTIVE",  level: 3, taskCount: 6  },
-  { id: "rep-chain",  name: "Reporter",    role: "reporter", status: "STANDBY", level: 3, taskCount: 2  },
-  { id: "venue-chain",name: "Venue Chain", role: "venue",    status: "ACTIVE",  level: 3, taskCount: 8  },
+const UNITS: Unit[] = [
+  { id: "bigace", name: "Big Ace Overseer", role: "Chief Runtime", state: "online", tasks: 21, successRate: 96 },
+  { id: "mcharlie", name: "Michael Charlie", role: "Operations", state: "repairing", tasks: 9, successRate: 91 },
+  { id: "security", name: "Security Division", role: "Sentinel", state: "monitoring", tasks: 14, successRate: 98 },
+  { id: "revenue", name: "Revenue Division", role: "Stripe / Billing", state: "monitoring", tasks: 8, successRate: 94 },
+  { id: "media", name: "Media Division", role: "Broadcast", state: "online", tasks: 12, successRate: 93 },
+  { id: "support", name: "Support Division", role: "Inbox", state: "idle", tasks: 3, successRate: 89 },
 ];
 
-const ROLE_COLOR: Record<NodeRole, string> = {
-  admin:    "border-amber-400/60 text-amber-200",
-  bot:      "border-cyan-400/60 text-cyan-200",
-  worker:   "border-zinc-400/50 text-zinc-300",
-  security: "border-rose-400/60 text-rose-200",
-  builder:  "border-violet-400/60 text-violet-200",
-  reporter: "border-green-400/60 text-green-200",
-  venue:    "border-fuchsia-400/60 text-fuchsia-200",
+const stateLabel: Record<UnitState, string> = {
+  online: "Online",
+  monitoring: "Monitoring",
+  repairing: "Repairing",
+  idle: "Idle",
 };
 
-const STATUS_DOT: Record<NodeStatus, string> = {
-  ACTIVE:  "bg-green-400",
-  PAUSED:  "bg-amber-400",
-  OFFLINE: "bg-red-500",
-  STANDBY: "bg-zinc-500",
+const stateColor: Record<UnitState, string> = {
+  online: "#00ff88",
+  monitoring: "#facc15",
+  repairing: "#fb7185",
+  idle: "#a1a1aa",
 };
-
-type NodeAction = "assign" | "promote" | "pause" | "reroute" | "summon";
-
-const ACTIONS: NodeAction[] = ["assign", "promote", "pause", "reroute", "summon"];
 
 export default function ChainCommandPanel() {
-  const [activeNode, setActiveNode] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string>(UNITS[0].id);
   const [log, setLog] = useState<string[]>([]);
 
-  function handleAction(nodeId: string, action: NodeAction) {
-    const node = CHAIN_NODES.find((n) => n.id === nodeId);
-    if (!node) return;
-    setLog((prev) => [`[${new Date().toLocaleTimeString()}] ${action.toUpperCase()} → ${node.name}`, ...prev.slice(0, 9)]);
+  const selected = useMemo(
+    () => UNITS.find((unit) => unit.id === selectedId) ?? UNITS[0],
+    [selectedId],
+  );
+
+  function command(action: string) {
+    setLog((prev) => [`${new Date().toLocaleTimeString()} · ${action} -> ${selected.name}`, ...prev.slice(0, 5)]);
   }
 
   return (
-    <section className="flex h-full flex-col rounded-xl border border-amber-400/30 bg-black/60 p-3">
-      <header className="mb-3 flex items-center justify-between gap-2">
-        <div>
-          <p className="text-[9px] font-black uppercase tracking-[0.18em] text-amber-400">Chain Command</p>
-          <p className="text-[11px] font-black uppercase text-white">Authority Rail</p>
-        </div>
-        <span className="rounded border border-amber-400/40 bg-amber-500/10 px-2 py-0.5 text-[9px] font-black uppercase text-amber-200">
-          {CHAIN_NODES.filter((n) => n.status === "ACTIVE").length} ACTIVE
-        </span>
-      </header>
-
-      {/* Node list */}
-      <div className="flex-1 space-y-1.5 overflow-y-auto">
-        {CHAIN_NODES.map((node) => (
-          <div
-            key={node.id}
-            className={`cursor-pointer rounded-lg border bg-black/45 p-2 transition hover:bg-black/60 ${activeNode === node.id ? "border-amber-300/60" : "border-white/10"}`}
-            style={{ paddingLeft: `${(node.level - 1) * 12 + 8}px` }}
-            onClick={() => setActiveNode(activeNode === node.id ? null : node.id)}
-          >
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <span className={`h-1.5 w-1.5 rounded-full ${STATUS_DOT[node.status]}`} />
-                <span className={`text-[10px] font-black uppercase ${ROLE_COLOR[node.role].split(" ")[1]}`}>{node.name}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-[9px] text-zinc-500">{node.taskCount}t</span>
-                <span className={`rounded border px-1.5 py-0.5 text-[8px] font-bold uppercase ${ROLE_COLOR[node.role]}`}>{node.role}</span>
-              </div>
-            </div>
-
-            {/* Action strip */}
-            {activeNode === node.id && (
-              <div className="mt-2 flex flex-wrap gap-1">
-                {ACTIONS.map((a) => (
-                  <button
-                    key={a}
-                    onClick={(e) => { e.stopPropagation(); handleAction(node.id, a); }}
-                    className="rounded border border-amber-300/30 bg-amber-500/10 px-2 py-0.5 text-[8px] font-black uppercase tracking-[0.1em] text-amber-100 hover:bg-amber-500/25 hover:border-amber-300/60"
+    <section style={{ height: "100%", display: "flex", flexDirection: "column", gap: 8 }}>
+      <div style={{ display: "grid", gap: 6 }}>
+        {UNITS.map((unit) => {
+          const active = selectedId === unit.id;
+          return (
+            <button
+              key={unit.id}
+              type="button"
+              onClick={() => setSelectedId(unit.id)}
+              style={{
+                width: "100%",
+                textAlign: "left",
+                borderRadius: 8,
+                border: active ? "1px solid rgba(255,212,120,0.75)" : "1px solid rgba(241,181,66,0.28)",
+                background: active
+                  ? "linear-gradient(180deg, rgba(131,57,31,0.56), rgba(46,18,19,0.85))"
+                  : "linear-gradient(180deg, rgba(74,31,25,0.42), rgba(28,12,14,0.8))",
+                padding: "7px 8px",
+                cursor: "pointer",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <div
+                    style={{
+                      width: 26,
+                      height: 26,
+                      borderRadius: "50%",
+                      border: "1px solid rgba(241,181,66,0.45)",
+                      background: "linear-gradient(180deg, rgba(241,181,66,0.35), rgba(71,31,25,0.72))",
+                      color: "#ffe3a3",
+                      fontSize: 10,
+                      fontWeight: 900,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
                   >
-                    {a}
-                  </button>
-                ))}
+                    {unit.name
+                      .split(" ")
+                      .map((word) => word[0])
+                      .join("")
+                      .slice(0, 2)}
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 10, fontWeight: 900, color: "#ffe9bb", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                      {unit.name}
+                    </div>
+                    <div style={{ fontSize: 8, color: "rgba(255,216,143,0.72)", textTransform: "uppercase", letterSpacing: "0.07em" }}>
+                      {unit.role}
+                    </div>
+                  </div>
+                </div>
+                <span
+                  style={{
+                    borderRadius: 999,
+                    border: `1px solid ${stateColor[unit.state]}66`,
+                    background: `${stateColor[unit.state]}22`,
+                    color: stateColor[unit.state],
+                    fontSize: 8,
+                    fontWeight: 900,
+                    letterSpacing: "0.08em",
+                    textTransform: "uppercase",
+                    padding: "2px 6px",
+                  }}
+                >
+                  {stateLabel[unit.state]}
+                </span>
               </div>
-            )}
-          </div>
-        ))}
+            </button>
+          );
+        })}
       </div>
 
-      {/* Action log */}
-      {log.length > 0 && (
-        <div className="mt-2 rounded border border-white/10 bg-black/40 p-2">
-          {log.slice(0, 4).map((entry, i) => (
-            <p key={i} className="text-[8px] text-zinc-400">{entry}</p>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 6 }}>
+        <DeckChip label="Tasks" value={String(selected.tasks)} />
+        <DeckChip label="Success" value={`${selected.successRate}%`} />
+        <DeckChip label="Queue" value={selected.state === "idle" ? "Idle" : "Active"} />
+      </div>
+
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+        <DeckButton onClick={() => command("Summon")}>Summon</DeckButton>
+        <DeckButton onClick={() => command("Inspect")}>Inspect</DeckButton>
+        <DeckButton onClick={() => command("Reroute")}>Reroute</DeckButton>
+        <DeckButton onClick={() => command("Escalate")} active={selected.state === "repairing"}>
+          Escalate
+        </DeckButton>
+      </div>
+
+      {log.length > 0 ? (
+        <div
+          style={{
+            marginTop: "auto",
+            borderRadius: 8,
+            border: "1px solid rgba(241,181,66,0.24)",
+            background: "rgba(20,9,12,0.66)",
+            padding: "7px 8px",
+          }}
+        >
+          {log.slice(0, 3).map((entry, index) => (
+            <div key={`${entry}-${index}`} style={{ fontSize: 8, color: "rgba(255,216,143,0.75)", lineHeight: 1.5 }}>
+              {entry}
+            </div>
           ))}
         </div>
-      )}
+      ) : null}
     </section>
   );
 }

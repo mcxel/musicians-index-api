@@ -7,6 +7,7 @@ export interface MotionPosterPlayerProps {
   isLive?: boolean;
   liveRoomRoute?: string;
   introVideoUrl?: string;
+  fallbackVideoUrl?: string;
   motionPosterUrl?: string;
   staticImageUrl: string;
   alt: string;
@@ -27,6 +28,7 @@ export default function MotionPosterPlayer({
   isLive = false,
   liveRoomRoute,
   introVideoUrl,
+  fallbackVideoUrl,
   motionPosterUrl,
   staticImageUrl,
   alt,
@@ -71,7 +73,8 @@ export default function MotionPosterPlayer({
   }, [replayOnHover, frozen]);
 
   // Constitutional chain: LIVE VIDEO → MOTION POSTER → STATIC IMAGE
-  const showVideo = !!introVideoUrl && !videoFailed;
+  const resolvedVideoUrl = introVideoUrl || fallbackVideoUrl;
+  const showVideo = !!resolvedVideoUrl && !videoFailed;
   const showMotionPoster = !showVideo && !!motionPosterUrl;
 
   const containerStyle: React.CSSProperties = {
@@ -101,7 +104,7 @@ export default function MotionPosterPlayer({
       {showVideo && (
         <video
           ref={videoRef}
-          src={introVideoUrl}
+          src={resolvedVideoUrl}
           autoPlay
           muted
           loop={loop}
@@ -130,7 +133,7 @@ export default function MotionPosterPlayer({
           ...mediaStyle,
           position: showVideo || showMotionPoster ? "absolute" : "relative",
           inset: 0,
-          opacity: (showVideo && videoReady) || showMotionPoster ? 0 : 1,
+          opacity: showVideo || showMotionPoster ? 0 : 1,
           zIndex: showVideo || showMotionPoster ? 0 : 1,
           transition: "opacity 0.28s ease",
         }}

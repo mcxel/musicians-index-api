@@ -126,18 +126,23 @@ const JSON_LD = {
   ],
 };
 
+const ENABLE_AD_NETWORK_SCRIPTS =
+  process.env.NODE_ENV === "production" || process.env.NEXT_PUBLIC_ENABLE_AD_NETWORK_SCRIPTS === "1";
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         {/* BidVertiser verification */}
         {/* Bidvertiser2104976 */}
-        <Script
-          id="google-adsense"
-          strategy="beforeInteractive"
-          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4088577529436039"
-          crossOrigin="anonymous"
-        />
+        {ENABLE_AD_NETWORK_SCRIPTS && (
+          <Script
+            id="google-adsense"
+            strategy="beforeInteractive"
+            src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4088577529436039"
+            crossOrigin="anonymous"
+          />
+        )}
         {/* Media.net — Yahoo/Bing contextual ads */}
         {process.env.NEXT_PUBLIC_MEDIANET_CID && (
           <Script
@@ -164,17 +169,21 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           />
         )}
         {/* Infolinks ad network global script */}
-        <Script id="infolinks-config" strategy="afterInteractive">
-          {`
-            var infolinks_pid = 3445854;
-            var infolinks_wsid = 0;
-          `}
-        </Script>
-        <Script
-          id="infolinks-main"
-          strategy="afterInteractive"
-          src="//resources.infolinks.com/js/infolinks_main.js"
-        />
+        {ENABLE_AD_NETWORK_SCRIPTS && (
+          <>
+            <Script id="infolinks-config" strategy="afterInteractive">
+              {`
+                var infolinks_pid = 3445854;
+                var infolinks_wsid = 0;
+              `}
+            </Script>
+            <Script
+              id="infolinks-main"
+              strategy="afterInteractive"
+              src="//resources.infolinks.com/js/infolinks_main.js"
+            />
+          </>
+        )}
       </head>
       <body className="tmi-obsidian-cinematic overflow-x-hidden">
         {/* BidVertiser site verification rendered as real HTML comment in page source */}

@@ -144,7 +144,6 @@ export default function WidgetDrawer() {
                 description="Open your current public-facing profile and identity surfaces."
                 links={[
                   { href: "/performer/profile", label: "Open Performer Profile" },
-                  { href: "/avatar", label: "Open Avatar" },
                 ]}
               />
             )}

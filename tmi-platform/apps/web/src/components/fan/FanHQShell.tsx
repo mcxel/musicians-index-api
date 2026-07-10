@@ -3,21 +3,19 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
 import { useGamificationEngine } from "@/hooks/useGamificationEngine";
 import { useTmiSession } from "@/hooks/SessionContext";
 import { useWatchSession } from "@/lib/presence/WatchSessionContext";
 import { getPerformerById } from "@/lib/performers/PerformerRegistry";
 import { listFollowingForUser } from "@/lib/social/FollowEngine";
-import type { Friend } from "@/components/social/FriendsList";
 import FanRewardsRail from "@/components/fan/FanRewardsRail";
 import FanSocialRail from "@/components/fan/FanSocialRail";
 import FanWalletRail from "@/components/fan/FanWalletRail";
 import AvatarMiniDisplay from "@/components/canisters/AvatarMiniDisplay";
 import MemoryWall from "@/components/media/MemoryWall";
+import MemoryWallPhotoStrip from "@/components/media/MemoryWallPhotoStrip";
 import FriendsList from "@/components/social/FriendsList";
 import { InventoryPanel } from "@/components/InventoryPanel";
-import CollapsibleCanister from "@/components/canisters/CollapsibleCanister";
 import PlaylistArtifact from "@/components/artifacts/PlaylistArtifact";
 import RecentlyVisitedRail from "@/components/presence/RecentlyVisitedRail";
 import MonitorSatelliteSystem from "@/components/canisters/MonitorSatelliteSystem";
@@ -25,6 +23,8 @@ import HeadquartersCommunicationDock from "@/components/headquarters/Headquarter
 import DiscoveryDockPanel from "@/components/hubs/DiscoveryDockPanel";
 import InboxPanel from "@/components/messaging/InboxPanel";
 import type { Friend as FriendType } from "@/components/social/FriendsList";
+import { BezelFrame } from '@/components/admin/overseer/AdminDesignSystem';
+import DesktopAtmosphereRails from '@/components/home/DesktopAtmosphereRails';
 
 interface FeaturedLive {
   name: string;
@@ -138,14 +138,9 @@ export default function FanHQShell({ fanId, fanDisplayName }: FanHQShellProps) {
   const liveFriends = followingFriends.filter((friend) => friend.isLive);
 
   return (
-    <div style={{ minHeight: "100vh", background: "#050510", color: "#e2e8f0", paddingBottom: 56 }}>
-      <style>{`
-        .fan-hq-bg { background: radial-gradient(circle at top, rgba(255,45,170,0.18), transparent 24%), radial-gradient(circle at 70% 0%, rgba(0,255,255,0.14), transparent 24%), linear-gradient(180deg, #050510 0%, #07071a 45%, #050510 100%); }
-        .glass { background: rgba(10, 10, 26, 0.72); backdrop-filter: blur(14px); border: 1px solid rgba(255,255,255,0.08); box-shadow: 0 0 28px rgba(0,0,0,0.3); }
-        .glass-neon { background: rgba(10, 10, 26, 0.84); backdrop-filter: blur(14px); border: 1px solid rgba(255,45,170,0.18); box-shadow: 0 0 24px rgba(255,45,170,0.12); }
-      `}</style>
-
-      <div className="fan-hq-bg" style={{ position: "sticky", top: 0, zIndex: 30, borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+    <div style={{ minHeight: "100vh", background: "radial-gradient(circle at top, rgba(255,45,170,0.18), transparent 24%), radial-gradient(circle at 70% 0%, rgba(0,255,255,0.14), transparent 24%), linear-gradient(180deg, #050510 0%, #07071a 45%, #050510 100%)", color: "#e2e8f0", paddingBottom: 56 }}>
+      <DesktopAtmosphereRails />
+      <div style={{ position: "sticky", top: 0, zIndex: 30, borderBottom: "1px solid rgba(255,255,255,0.08)", background: 'rgba(5,5,16,0.8)', backdropFilter: 'blur(12px)' }}>
         <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "10px 18px" }}>
           <div style={{ fontWeight: 900, fontSize: 13, color: "#FF2DAA", letterSpacing: "0.18em", textTransform: "uppercase" }}>TMI</div>
           <nav style={{ display: "flex", gap: 14, flexWrap: "wrap", fontSize: 11, fontWeight: 800, letterSpacing: "0.08em" }}>
@@ -169,11 +164,12 @@ export default function FanHQShell({ fanId, fanDisplayName }: FanHQShellProps) {
 
       <div style={{ padding: 16 }}>
         <div style={{ display: "grid", gridTemplateColumns: "220px minmax(0, 1fr) 330px", gap: 14, alignItems: "start" }}>
-          <aside className="glass-neon" style={{ borderRadius: 16, padding: 14, position: "sticky", top: 74, maxHeight: "calc(100vh - 90px)", overflow: "auto" }}>
+          <BezelFrame variant="fan" innerPadding={14} outerStyle={{ position: "sticky", top: 74, maxHeight: "calc(100vh - 90px)", overflow: "auto" }}>
             <div style={{ fontSize: 10, color: "#00FFFF", fontWeight: 900, letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 12 }}>Operations Rail</div>
             <div style={{ display: "grid", gap: 8 }}>
               {[
                 ["Live Rooms", "/live/lobby"],
+                ["Avatar", "/avatar"],
                 ["Lobby", "/live/lobby/fans"],
                 ["Messages", "/messages"],
                 ["Friends", "/friends"],
@@ -191,9 +187,33 @@ export default function FanHQShell({ fanId, fanDisplayName }: FanHQShellProps) {
               ))}
             </div>
             <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid rgba(255,255,255,0.08)" }}>
-              <AvatarMiniDisplay size={48} showLabel />
+              <AvatarMiniDisplay
+                size={48}
+                fallback={
+                  <Link
+                    href="/avatar/create"
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      gap: 4,
+                      textDecoration: "none",
+                      padding: "10px 8px",
+                      borderRadius: 10,
+                      border: "1px dashed rgba(170,45,255,0.4)",
+                      background: "rgba(170,45,255,0.06)",
+                    }}
+                  >
+                    <div style={{ fontSize: 20 }}>🧬</div>
+                    <div style={{ fontSize: 9, color: "#AA2DFF", fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", textAlign: "center" }}>
+                      Create Avatar
+                    </div>
+                  </Link>
+                }
+                showLabel
+              />
             </div>
-          </aside>
+          </BezelFrame>
 
           <section style={{ display: "grid", gap: 14 }}>
             <MonitorSatelliteSystem
@@ -211,30 +231,36 @@ export default function FanHQShell({ fanId, fanDisplayName }: FanHQShellProps) {
             />
 
             <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 14 }}>
-              <div className="glass" style={{ borderRadius: 16, padding: 14, minHeight: 260 }}>
+              <BezelFrame variant="fan" innerPadding={14} outerStyle={{ minHeight: 260 }}>
                 <div style={{ fontSize: 10, letterSpacing: "0.14em", fontWeight: 900, color: "#00FFFF", textTransform: "uppercase", marginBottom: 10 }}>My Stuff</div>
                 <InventoryPanel />
-              </div>
-              <div className="glass" style={{ borderRadius: 16, padding: 14, minHeight: 260 }}>
+              </BezelFrame>
+              <BezelFrame variant="fan" innerPadding={14} outerStyle={{ minHeight: 260 }}>
                 <div style={{ fontSize: 10, letterSpacing: "0.14em", fontWeight: 900, color: "#FFD700", textTransform: "uppercase", marginBottom: 10 }}>My Memories</div>
                 <MemoryWall accentColor="#FFD700" title="" entityId={fanId} entityType="fan" />
-              </div>
+              </BezelFrame>
             </div>
 
-            <div className="glass" style={{ borderRadius: 16, padding: 14 }}>
+            <BezelFrame variant="fan" innerPadding={14}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
                 <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: "0.14em", color: "#FF2DAA", textTransform: "uppercase" }}>Fan Discovery Dock</div>
                 <Link href="/live/lobby" style={{ color: "#00FFFF", textDecoration: "none", fontSize: 10, fontWeight: 800 }}>Open Lobby →</Link>
               </div>
               <DiscoveryDockPanel role="fan" compact={false} />
-            </div>
+            </BezelFrame>
 
-            <div className="glass" style={{ borderRadius: 16, padding: 14 }}>
+            <BezelFrame variant="fan" innerPadding={14}>
               <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: "0.14em", color: "#AA2DFF", textTransform: "uppercase", marginBottom: 10 }}>Playlist / Radio Room</div>
               <PlaylistArtifact artifactId={`${fanId}-playlist`} skin="submarine" title="Now Playing" />
-            </div>
+              <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+                <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.12em", color: "rgba(255,255,255,0.35)", textTransform: "uppercase", marginBottom: 6 }}>
+                  From My Memories
+                </div>
+                <MemoryWallPhotoStrip entityId={fanId} entityType="fan" accentColor="#AA2DFF" />
+              </div>
+            </BezelFrame>
 
-            <div className="glass" style={{ borderRadius: 16, padding: 14 }}>
+            <BezelFrame variant="fan" innerPadding={14}>
               <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: "0.14em", color: "#00FFFF", textTransform: "uppercase", marginBottom: 10 }}>Friends / Groups</div>
               <FriendsList
                 friends={followingFriends}
@@ -247,27 +273,27 @@ export default function FanHQShell({ fanId, fanDisplayName }: FanHQShellProps) {
                 addActionLabel="+ Add Performer"
                 addActionHref="/performers"
               />
-            </div>
+            </BezelFrame>
 
-            <div className="glass" style={{ borderRadius: 16, padding: 14 }}>
+            <BezelFrame variant="fan" innerPadding={14}>
               <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: "0.14em", color: "#FF2DAA", textTransform: "uppercase", marginBottom: 10 }}>Recent Captures</div>
               <RecentlyVisitedRail />
-            </div>
+            </BezelFrame>
 
-            <div className="glass" style={{ borderRadius: 16, padding: 14 }}>
+            <BezelFrame variant="fan" innerPadding={14}>
               <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: "0.14em", color: "#00FFFF", textTransform: "uppercase", marginBottom: 10 }}>Video Messages / Calls</div>
               <InboxPanel currentUser={{ userId: fanId, displayName: fanDisplayName, role: "fan", avatarUrl: "" }} />
-            </div>
+            </BezelFrame>
 
-            <div className="glass" style={{ borderRadius: 16, padding: 14 }}>
+            <BezelFrame variant="fan" innerPadding={14}>
               <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: "0.14em", color: "#FFD700", textTransform: "uppercase", marginBottom: 10 }}>Rewards / Store / Inventory</div>
               <FanRewardsRail badges={[]} rewards={[]} currentStreak={0} totalVotesCast={0} fanSlug={fanId} />
               <div style={{ marginTop: 12 }}>
                 <FanWalletRail tipBalance={walletCredits / 100} voteCredits={currentLevel.level * 3} transactions={[]} fanSlug={fanId} />
               </div>
-            </div>
+            </BezelFrame>
 
-            <div className="glass" style={{ borderRadius: 16, padding: 14 }}>
+            <BezelFrame variant="fan" innerPadding={14}>
               <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: "0.14em", color: "#AA2DFF", textTransform: "uppercase", marginBottom: 10 }}>Recommended Rooms</div>
               {liveFriends.length > 0 ? (
                 <div style={{ display: "grid", gap: 8 }}>
@@ -280,28 +306,28 @@ export default function FanHQShell({ fanId, fanDisplayName }: FanHQShellProps) {
               ) : (
                 <div style={{ fontSize: 11, color: "rgba(255,255,255,0.45)" }}>No live rooms right now.</div>
               )}
-            </div>
+            </BezelFrame>
           </section>
 
           <aside style={{ display: "grid", gap: 14, position: "sticky", top: 74 }}>
-            <div className="glass-neon" style={{ borderRadius: 16, padding: 14 }}>
+            <BezelFrame variant="fan" innerPadding={14}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
                 <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: "0.14em", color: "#FF2DAA", textTransform: "uppercase" }}>Chat / Room / People</div>
                 <Link href="/messages" style={{ fontSize: 10, color: "#00FFFF", fontWeight: 800, textDecoration: "none" }}>Open Messages</Link>
               </div>
               <FanSocialRail fanSlug={fanId} />
-            </div>
+            </BezelFrame>
 
-            <div className="glass" style={{ borderRadius: 16, padding: 14 }}>
+            <BezelFrame variant="fan" innerPadding={14}>
               <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: "0.14em", color: "#00FFFF", textTransform: "uppercase", marginBottom: 10 }}>Communication Dock</div>
               <HeadquartersCommunicationDock
                 currentUser={{ userId: fanId, displayName: fanDisplayName, role: "fan" }}
                 inviteCandidates={followingFriends.map((friend) => ({ userId: friend.id, displayName: friend.name }))}
                 accentColor="#FF2DAA"
               />
-            </div>
+            </BezelFrame>
 
-            <div className="glass" style={{ borderRadius: 16, padding: 14 }}>
+            <BezelFrame variant="fan" innerPadding={14}>
               <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: "0.14em", color: "#FFD700", textTransform: "uppercase", marginBottom: 10 }}>Now Playing</div>
               {nowPlaying ? (
                 <Link href={`/live/rooms/${nowPlaying.roomId}?from=lobby-wall`} style={{ color: "#fff", textDecoration: "none" }}>
@@ -311,9 +337,9 @@ export default function FanHQShell({ fanId, fanDisplayName }: FanHQShellProps) {
               ) : (
                 <div style={{ fontSize: 11, color: "rgba(255,255,255,0.45)" }}>No playlist tracks yet.</div>
               )}
-            </div>
+            </BezelFrame>
 
-            <div className="glass" style={{ borderRadius: 16, padding: 14 }}>
+            <BezelFrame variant="fan" innerPadding={14}>
               <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: "0.14em", color: "#AA2DFF", textTransform: "uppercase", marginBottom: 10 }}>Fan Mood</div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10 }}>
                 {[
@@ -328,7 +354,7 @@ export default function FanHQShell({ fanId, fanDisplayName }: FanHQShellProps) {
                   </div>
                 ))}
               </div>
-            </div>
+            </BezelFrame>
           </aside>
         </div>
       </div>

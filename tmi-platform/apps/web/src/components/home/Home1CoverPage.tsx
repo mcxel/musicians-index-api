@@ -25,6 +25,7 @@
 import { memo, useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import DesktopAtmosphereRails from '@/components/home/DesktopAtmosphereRails';
 import { LobbyEntryFlow, type UniversalRoom } from '@/components/room/UniversalLobbyEntry';
 import { getCrownHolder, getPerformerById, getPerformersByCategory, getFeaturedFreePerformers, getTopPerformers, PERFORMER_REGISTRY, type PerformerCategory, type PerformerIdentity } from '@/lib/performers/PerformerRegistry';
 import { getVenueBookingSlots, type VenueBookingSlot } from '@/lib/venues/VenueRegistry';
@@ -841,6 +842,7 @@ export default function Home1CoverPage() {
         position: 'relative',
       }}
     >
+      <DesktopAtmosphereRails />
       {/* dangerouslySetInnerHTML avoids React HTML-escaping the @import's quotes/
           ampersands into &#x27;/&amp; (which corrupts the font URL) — JSX text
           children of <style> get escaped same as any other text node. */}
@@ -906,6 +908,10 @@ export default function Home1CoverPage() {
           0% { transform: scale(0) rotate(-15deg); opacity: 0; }
           70% { transform: scale(1.1) rotate(3deg); opacity: 1; }
           100% { transform: scale(1) rotate(0deg); opacity: 1; }
+        }
+        @keyframes tmiAtmosphereKenBurns {
+          0% { transform: scale(1.06) translate3d(0, 0, 0); }
+          100% { transform: scale(1.14) translate3d(0, -1.5%, 0); }
         }
         @keyframes h1CardHover {
           0% { transform: scale(1); }

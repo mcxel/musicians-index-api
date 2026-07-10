@@ -1,3 +1,12 @@
+// NON-FUNCTIONAL STUBS — DO NOT SHIP OR WIRE INTO ANY UI.
+// Every method in this file logs a message or returns a hardcoded literal (e.g.
+// FaceScanIdentityEngine.processScan() always returns { meshMapped: true } without
+// scanning anything; BobbleheadAvatarBuilder.buildBaseAvatar() always returns
+// rigReady: true without building a rig). No real face processing, rigging, or
+// rendering happens anywhere here. Real avatar pipeline work is genuine multi-session,
+// specialist engineering (see CLAUDE.md Rule 18) — track as a separate future project,
+// not something to present as functional (Rule 20).
+
 export class AvatarOnboardingEngine {
   static initialize(userId: string) {
     console.log(`[AVATAR] Starting onboarding for ${userId}`);

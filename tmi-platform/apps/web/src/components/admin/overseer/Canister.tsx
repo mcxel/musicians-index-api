@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { BezelFrame } from "@/components/admin/overseer/AdminDesignSystem";
 
 type CanisterProps = {
   id?: string;
@@ -9,7 +10,10 @@ type CanisterProps = {
   statusLabel?: string;
   children: ReactNode;
   collapsed?: boolean;
+  floating?: boolean;
   onToggleCollapse?: () => void;
+  onToggleFloat?: () => void;
+  onCloseWindow?: () => void;
   onToggleFullscreen?: () => void;
   style?: React.CSSProperties;
 };
@@ -21,29 +25,50 @@ export default function Canister({
   statusLabel = "LIVE",
   children,
   collapsed = false,
+  floating = false,
   onToggleCollapse,
+  onToggleFloat,
+  onCloseWindow,
   onToggleFullscreen,
   style,
 }: CanisterProps) {
   return (
-    <section
-      id={id}
-      data-canister={title}
-      style={{
+    <BezelFrame
+      variant="ornate-gold"
+      outerStyle={{
         position: "relative",
-        background:
-          "linear-gradient(155deg, rgba(38,9,36,0.94) 0%, rgba(17,6,22,0.96) 52%, rgba(8,3,13,0.98) 100%)",
-        border: `1px solid ${accent}55`,
-        borderRadius: 10,
-        boxShadow:
-          "0 0 0 1px rgba(255,215,0,0.14), inset 0 1px 0 rgba(255,255,255,0.06), inset 0 0 24px rgba(0,0,0,0.6), 0 8px 20px rgba(0,0,0,0.48)",
-        overflow: "hidden",
-        display: "flex",
-        flexDirection: "column",
-        minHeight: 0,
+        zIndex: floating ? 1000 : 1,
+        boxShadow: floating
+          ? "0 20px 50px rgba(0,0,0,0.75), 0 0 0 1px rgba(255,215,0,0.25), inset 0 1px 0 rgba(255,255,255,0.08)"
+          : "0 0 0 1px rgba(255,215,0,0.28), inset 0 1px 0 rgba(255,255,255,0.05), inset 0 0 30px rgba(0,0,0,0.72), 0 10px 24px rgba(0,0,0,0.55)",
         ...style,
       }}
+      innerStyle={{
+        border: "1px solid rgba(184,134,11,0.56)",
+        background: "linear-gradient(180deg, rgba(13,10,10,0.96), rgba(8,7,8,0.98))",
+      }}
     >
+      <section
+        id={id}
+        data-canister={title}
+        style={{
+          overflow: "hidden",
+          display: "flex",
+          flexDirection: "column",
+          minHeight: 0,
+          height: "100%",
+        }}
+      >
+      <span
+        aria-hidden
+        style={{
+          position: "absolute",
+          inset: 1,
+          borderRadius: 10,
+          border: "1px solid rgba(255,215,0,0.08)",
+          pointerEvents: "none",
+        }}
+      />
       <span style={{ position: "absolute", top: 3, left: 3, width: 10, height: 10, borderTop: "2px solid #FFD700", borderLeft: "2px solid #FFD700", opacity: 0.7, pointerEvents: "none" }} />
       <span style={{ position: "absolute", top: 3, right: 3, width: 10, height: 10, borderTop: "2px solid #FFD700", borderRight: "2px solid #FFD700", opacity: 0.7, pointerEvents: "none" }} />
       <span style={{ position: "absolute", bottom: 3, left: 3, width: 10, height: 10, borderBottom: "2px solid #FFD700", borderLeft: "2px solid #FFD700", opacity: 0.7, pointerEvents: "none" }} />
@@ -51,9 +76,9 @@ export default function Canister({
 
       <div
         style={{
-          padding: "7px 10px",
-          borderBottom: `1px solid ${accent}45`,
-          background: `linear-gradient(to right, ${accent}20, rgba(255,215,0,0.08) 60%, transparent)`,
+          padding: "8px 10px",
+          borderBottom: "1px solid rgba(255,191,82,0.42)",
+          background: "linear-gradient(180deg, rgba(37,23,15,0.9), rgba(22,15,12,0.94))",
           flexShrink: 0,
           display: "flex",
           alignItems: "center",
@@ -65,12 +90,12 @@ export default function Canister({
           <span style={{ width: 5, height: 5, borderRadius: "50%", background: accent, boxShadow: `0 0 7px ${accent}` }} />
           <span
             style={{
-              fontSize: 8,
+              fontSize: 10,
               fontWeight: 900,
-              letterSpacing: "0.2em",
-              color: accent,
+              letterSpacing: "0.16em",
+              color: "#D6A54A",
               textTransform: "uppercase",
-              textShadow: `0 0 8px ${accent}66`,
+              textShadow: "0 0 10px rgba(214,165,74,0.45)",
               whiteSpace: "nowrap",
               overflow: "hidden",
               textOverflow: "ellipsis",
@@ -81,7 +106,7 @@ export default function Canister({
           <span
             style={{
               marginLeft: 6,
-              fontSize: 7,
+              fontSize: 8,
               fontWeight: 900,
               letterSpacing: "0.14em",
               color: "rgba(255,255,255,0.5)",
@@ -114,6 +139,48 @@ export default function Canister({
               {collapsed ? "+" : "-"}
             </button>
           )}
+          {onToggleFloat && (
+            <button
+              type="button"
+              onClick={onToggleFloat}
+              aria-label={floating ? "Dock window" : "Float window"}
+              title={floating ? "Dock window" : "Float window"}
+              style={{
+                border: "1px solid rgba(255,215,0,0.22)",
+                background: floating ? "rgba(0,255,255,0.14)" : "rgba(255,215,0,0.1)",
+                color: floating ? "#73FFFF" : "#FFD88F",
+                borderRadius: 6,
+                width: 18,
+                height: 18,
+                fontSize: 10,
+                lineHeight: "16px",
+                cursor: "pointer",
+              }}
+            >
+              ❐
+            </button>
+          )}
+          {onCloseWindow && (
+            <button
+              type="button"
+              onClick={onCloseWindow}
+              aria-label="Close window"
+              title="Close window"
+              style={{
+                border: "1px solid rgba(255,255,255,0.18)",
+                background: "rgba(255,68,68,0.12)",
+                color: "#FF8A8A",
+                borderRadius: 6,
+                width: 18,
+                height: 18,
+                fontSize: 10,
+                lineHeight: "16px",
+                cursor: "pointer",
+              }}
+            >
+              ×
+            </button>
+          )}
           {onToggleFullscreen && (
             <button
               type="button"
@@ -137,7 +204,21 @@ export default function Canister({
         </div>
       </div>
 
-      {!collapsed && <div style={{ flex: 1, minHeight: 0, overflow: "hidden" }}>{children}</div>}
-    </section>
+      {!collapsed && (
+        <div
+          style={{
+            flex: 1,
+            minHeight: 0,
+            overflow: "auto",
+            padding: 10,
+            background:
+              "linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.0) 18%, rgba(0,0,0,0.15) 100%)",
+          }}
+        >
+          {children}
+        </div>
+      )}
+      </section>
+    </BezelFrame>
   );
 }

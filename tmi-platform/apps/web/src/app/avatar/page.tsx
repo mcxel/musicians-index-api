@@ -8,13 +8,13 @@ import SectionTitle from '@/components/ui/SectionTitle';
 
 const AVATAR_MODULES = [
   { href: '/avatar/create', emoji: '🧬', label: 'CREATE', sub: 'Build your bobblehead', accent: '#FF2DAA' },
-  { href: '/avatar/editor', emoji: '✏️', label: 'EDITOR', sub: 'Customize appearance', accent: '#00FFFF' },
+  { href: '/avatar/scan', emoji: '📷', label: 'FACE SCAN', sub: 'Scan your face for a likeness', accent: '#00FFFF' },
+  { href: '/avatar/build', emoji: '🛠️', label: 'FORGE', sub: 'Build from scratch', accent: '#AA2DFF' },
+  { href: '/avatar/customize', emoji: '✏️', label: 'CUSTOMIZE', sub: 'Fine-tune your look', accent: '#00FFFF' },
   { href: '/avatar/inventory', emoji: '🎒', label: 'INVENTORY', sub: 'Your owned items', accent: '#AA2DFF' },
   { href: '/avatar/shop', emoji: '🛍️', label: 'SHOP', sub: 'Buy props & clothing', accent: '#FFD700' },
-  { href: '/avatar/emotes', emoji: '💃', label: 'EMOTES', sub: 'Dances & reactions', accent: '#FF2DAA' },
-  { href: '/avatar/props', emoji: '🎤', label: 'PROPS', sub: 'Mics, instruments & more', accent: '#00FFFF' },
-  { href: '/avatar/clothing', emoji: '👕', label: 'CLOTHING', sub: 'Fits, hats, shoes', accent: '#AA2DFF' },
-  { href: '/avatar/backgrounds', emoji: '🌆', label: 'BACKGROUNDS', sub: 'Stage scenes', accent: '#FFD700' },
+  { href: '/avatar/nft', emoji: '🖼️', label: 'NFT STORE', sub: 'Mint & collect', accent: '#FF2DAA' },
+  { href: '/avatar/showcase', emoji: '🌟', label: 'SHOWCASE', sub: 'Featured avatars', accent: '#FFD700' },
 ];
 
 export default function AvatarHubPage() {

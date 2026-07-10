@@ -35,6 +35,11 @@ const VISIBILITY_WHITELIST = [
   '/coming-soon',
   '/auth',
   '/api/auth',
+  // New-user signup must stay reachable even in private/coming-soon mode —
+  // locking out /signup while /auth (login) stays open would let existing
+  // users in but block every new registration, including invite-link joins.
+  '/signup',
+  '/join',
   '/health',
   '/support',
   '/api/admin',
@@ -65,7 +70,9 @@ function getUserRoles(req: NextRequest): string[] {
       const parsed = JSON.parse(rolesJson);
       return Array.isArray(parsed) ? parsed : [];
     }
-  } catch {}
+  } catch {
+    // Ignore malformed roles cookie and fall back to single-role cookie.
+  }
 
   // Fallback: single role cookie
   const singleRole = req.cookies.get('tmi_role')?.value;
@@ -109,6 +116,13 @@ function roleDashboardPath(role: string): string {
     default:
       return '/hub/fan';
   }
+}
+
+function resolvePrimaryPathForRoles(userRoles: string[]): string | null {
+  const precedence = ['ADMIN', 'STAFF', 'PERFORMER', 'ARTIST', 'FAN', 'SPONSOR', 'ADVERTISER', 'VENUE', 'WRITER', 'PROMOTER'];
+  const match = precedence.find((role) => hasAnyRole(userRoles, [role]));
+  if (match) return roleDashboardPath(match);
+  return null;
 }
 
 // Internal design-reference paths that must never be publicly served.
@@ -205,11 +219,13 @@ export function middleware(req: NextRequest) {
     '/dashboard/fan': '/hub/fan',
     '/dashboard/performer': '/hub/performer',
     '/dashboard/artist': '/hub/performer',
+    '/dashboard/producer': '/hub/producer',
     '/dashboard/sponsor': '/hub/sponsor',
     '/dashboard/advertiser': '/hub/advertiser',
     '/dashboard/venue': '/hub/venue',
     '/dashboard/writer': '/hub/writer',
     '/dashboard/promoter': '/hub/promoter',
+    '/dashboard': '/hub/fan',
     '/fan/theater': '/hub/fan',
     '/fan/dashboard': '/hub/fan',
   };
@@ -225,6 +241,18 @@ export function middleware(req: NextRequest) {
       const requestedRole = hubMatch[1]; // 'fan', 'performer', 'sponsor', etc.
       const userRoles = getUserRoles(req);
 
+      if (userRoles.length === 0) {
+        const signin = new URL('/auth', req.url);
+        signin.searchParams.set('next', pathname);
+        const res = NextResponse.redirect(signin, 307);
+        // Stale/partial auth cookie state can cause /hub/* -> /hub/fan loops.
+        // Clear session role cookies so the next request lands cleanly on auth.
+        res.cookies.delete('tmi_session');
+        res.cookies.delete('tmi_role');
+        res.cookies.delete('tmi_roles');
+        return res;
+      }
+
       // Map dashboard path to required roles
       const roleMap: Record<string, string[]> = {
         'fan': ['FAN'],
@@ -237,17 +265,17 @@ export function middleware(req: NextRequest) {
       };
 
       const allowedRoles = roleMap[requestedRole] || [];
-      const hasAccess = hasAnyRole(userRoles, allowedRoles);
+      // Admin/staff can preview any hub for oversight/QA without holding that
+      // role themselves — otherwise "Fan Page"/"Performer Page" from the
+      // Overseer Deck just bounces an admin straight back to /admin.
+      const hasAccess = hasAnyRole(userRoles, allowedRoles) || hasAnyRole(userRoles, ['ADMIN', 'STAFF']);
 
       if (!hasAccess) {
-        // Redirect to first available HQ path based on user's roles
-        let redirectPath = '/hub/fan'; // Default fallback
-        if (hasAnyRole(userRoles, ['PERFORMER', 'ARTIST'])) redirectPath = '/hub/performer';
-        else if (hasAnyRole(userRoles, ['SPONSOR'])) redirectPath = '/hub/sponsor';
-        else if (hasAnyRole(userRoles, ['ADVERTISER'])) redirectPath = '/hub/advertiser';
-        else if (hasAnyRole(userRoles, ['VENUE'])) redirectPath = '/hub/venue';
-        else if (hasAnyRole(userRoles, ['WRITER'])) redirectPath = '/hub/writer';
-        else if (hasAnyRole(userRoles, ['PROMOTER'])) redirectPath = '/hub/promoter';
+        const redirectPath = resolvePrimaryPathForRoles(userRoles) ?? '/auth';
+
+        if (redirectPath === pathname) {
+          return NextResponse.next();
+        }
 
         return NextResponse.redirect(new URL(redirectPath, req.url), 307);
       }
@@ -299,17 +327,21 @@ export function middleware(req: NextRequest) {
     if (sessionCookie) {
       const userRoles = getUserRoles(req);
 
-      // Determine redirect path based on available roles
-      let redirectPath = '/hub/fan'; // Default
-      if (hasAnyRole(userRoles, ['PERFORMER', 'ARTIST'])) redirectPath = '/hub/performer';
-      else if (hasAnyRole(userRoles, ['SPONSOR'])) redirectPath = '/hub/sponsor';
-      else if (hasAnyRole(userRoles, ['ADVERTISER'])) redirectPath = '/hub/advertiser';
-      else if (hasAnyRole(userRoles, ['VENUE'])) redirectPath = '/hub/venue';
-      else if (hasAnyRole(userRoles, ['WRITER'])) redirectPath = '/hub/writer';
-      else if (hasAnyRole(userRoles, ['PROMOTER'])) redirectPath = '/hub/promoter';
-      else if (hasAnyRole(userRoles, ['ADMIN', 'STAFF'])) redirectPath = '/admin';
+      const redirectPath = resolvePrimaryPathForRoles(userRoles);
+      if (!redirectPath) {
+        const res = NextResponse.next();
+        // If session exists but roles are missing, let auth render and force a
+        // clean login rather than bouncing between auth/protected routes.
+        res.cookies.delete('tmi_session');
+        res.cookies.delete('tmi_role');
+        res.cookies.delete('tmi_roles');
+        return res;
+      }
 
-      const target = nextParam || redirectPath;
+      const target = nextParam && !nextParam.startsWith('/auth') ? nextParam : redirectPath;
+      if (target === pathname) {
+        return NextResponse.next();
+      }
       return NextResponse.redirect(new URL(target, req.url), 307);
     }
   }

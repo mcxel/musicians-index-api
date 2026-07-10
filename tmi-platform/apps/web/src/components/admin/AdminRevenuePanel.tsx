@@ -1,17 +1,25 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { BarChart } from "@/components/analytics/TmiChartKit";
+import { MetricCard } from "./overseer/AdminDesignSystem";
 import type { AdminSectionId } from "@/lib/adminRouteMap";
 
 type AdminRevenuePanelProps = {
   selectedId: AdminSectionId;
   onSelect: (id: AdminSectionId) => void;
 };
-
 type RevenueApiResponse = {
-  mode: string;
-  totals: { today: string; month: string };
-  subscriptions: { active: number | string };
+  mode: "live" | "test" | "not_configured" | "error";
+  totals: {
+    today: string;
+    month: string;
+    todayCents: number;
+    monthCents: number;
+  };
+  subscriptions: {
+    active: number | string;
+  };
 };
 
 export default function AdminRevenuePanel({ selectedId, onSelect }: AdminRevenuePanelProps) {
@@ -40,6 +48,11 @@ export default function AdminRevenuePanel({ selectedId, onSelect }: AdminRevenue
   const today = loading ? "…" : (rev?.totals?.today ?? "$0");
   const month = loading ? "…" : (rev?.totals?.month ?? "$0");
   const subs  = loading ? "…" : String(rev?.subscriptions?.active ?? "0");
+  const chartBars = [today, month, subs, rev?.mode === "live" ? "100" : rev?.mode === "test" ? "72" : "24"].map((value, index) => ({
+    id: index,
+    label: index === 0 ? "Today" : index === 1 ? "Month" : index === 2 ? "Subs" : "Signal",
+    height: Math.max(24, Math.min(100, Number(String(value).replace(/[^0-9.]/g, "")) || 24)),
+  }));
   const modeLabel =
     rev?.mode === "live"            ? "● LIVE"
     : rev?.mode === "test"          ? "◎ TEST"
@@ -69,6 +82,19 @@ export default function AdminRevenuePanel({ selectedId, onSelect }: AdminRevenue
         <Metric label="This Month" value={month} />
         <Metric label="Active Subs" value={subs} />
         <Metric label="Stripe" value={rev?.mode === "live" ? "LIVE" : rev?.mode === "test" ? "TEST" : loading ? "…" : "—"} />
+      </div>
+
+      <div style={{ marginTop: 10, border: "1px solid rgba(251,191,36,0.22)", borderRadius: 10, background: "linear-gradient(180deg, rgba(255,255,255,0.05), rgba(0,0,0,0.16))", padding: "10px 10px 8px" }}>
+        <div style={{ display: "flex", alignItems: "end", justifyContent: "space-between", gap: 8, minHeight: 88 }}>
+          {chartBars.map((bar) => (
+            <div key={bar.id} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+              <div style={{ width: "100%", display: "flex", alignItems: "end", justifyContent: "center", minHeight: 70 }}>
+                <span style={{ width: 18, height: `${bar.height}%`, maxHeight: 70, borderRadius: 999, background: "linear-gradient(180deg, #FCD34D, #B45309)", boxShadow: "0 0 12px rgba(251,191,36,0.18)" }} />
+              </div>
+              <span style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(255,243,199,0.82)" }}>{bar.label}</span>
+            </div>
+          ))}
+        </div>
       </div>
 
       <div style={{ marginTop: 8, display: "flex", gap: 8 }}>

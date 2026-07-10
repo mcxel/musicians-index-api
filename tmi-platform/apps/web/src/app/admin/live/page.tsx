@@ -13,7 +13,7 @@ import {
   CURRENT_PHASE,
   PHASE_1_BOTS,
 } from "@/lib/bots/Phase1LaunchConfig";
-import { getFeedbackSummary } from "@/lib/feedback/FeedbackStore";
+import { getFeedbackSummary, getAutomatedPatchQueue } from "@/lib/feedback/FeedbackStore";
 
 export const metadata: Metadata = { title: "Phase 1 Live Monitor | TMI Admin" };
 
@@ -48,6 +48,11 @@ export default function AdminLivePage() {
   const polishCount = feedback.classTotals.polish;
   const queueDepth = feedback.automatedPatchQueueDepth;
   const topIssue = feedback.buckets[0];
+
+  // Real queued items that Beta Feedback auto-routed for action — previously
+  // tracked only as a depth count with no way to see or act on the actual
+  // reports (feedbackId/category/message/page never surfaced anywhere).
+  const patchQueue = getAutomatedPatchQueue();
 
   // Pull latest sentinel diagnostics
   const sentinelLog = getSentinelLog().slice(-5).reverse();
@@ -236,6 +241,41 @@ export default function AdminLivePage() {
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+        </div>
+
+        {/* ── AUTOMATED PATCH QUEUE — the actual routed items, not just the depth count ── */}
+        <div style={{ marginBottom: 36, border: "1px solid rgba(170,45,255,0.25)", background: "rgba(170,45,255,0.04)", padding: "20px 24px" }}>
+          <div style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.3em", color: "#AA2DFF", marginBottom: 14, textTransform: "uppercase" }}>
+            Automated Patch Queue — {patchQueue.length} Item{patchQueue.length === 1 ? "" : "s"}
+          </div>
+          {patchQueue.length === 0 ? (
+            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", padding: "8px 0" }}>
+              No high-severity or repeat-reported issues queued right now.
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {patchQueue.map((item) => (
+                <div key={item.feedbackId} style={{ display: "flex", gap: 12, alignItems: "flex-start", padding: "10px 14px", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(170,45,255,0.15)", borderRadius: 8, flexWrap: "wrap" }}>
+                  <span style={{
+                    fontSize: 8, fontWeight: 900, letterSpacing: "0.08em", textTransform: "uppercase",
+                    color: item.severity === "high" ? "#FF2DAA" : item.severity === "medium" ? "#FFD700" : "#00C896",
+                    border: `1px solid ${item.severity === "high" ? "#FF2DAA" : item.severity === "medium" ? "#FFD700" : "#00C896"}40`,
+                    borderRadius: 4, padding: "2px 7px", flexShrink: 0,
+                  }}>
+                    {item.severity}
+                  </span>
+                  <div style={{ flex: 1, minWidth: 200 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: "#fff" }}>{item.category.replace(/-/g, " ")}</div>
+                    {item.message && <div style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", marginTop: 2 }}>&ldquo;{item.message}&rdquo;</div>}
+                    {item.page && <div style={{ fontSize: 9, color: "rgba(255,255,255,0.3)", marginTop: 2, fontFamily: "monospace" }}>{item.page}</div>}
+                  </div>
+                  <span style={{ fontSize: 9, color: "rgba(255,255,255,0.3)", flexShrink: 0 }}>
+                    {new Date(item.timestamp).toLocaleString()}
+                  </span>
+                </div>
+              ))}
             </div>
           )}
         </div>

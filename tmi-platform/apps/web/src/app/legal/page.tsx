@@ -1,6 +1,7 @@
 import Link from 'next/link';
 
 const LEGAL_PAGES = [
+  { href: '/legal/disclaimer', label: 'Disclaimer', color: '#FFD700', desc: 'Age requirement and TMI\'s role as a promoter, not a music licensor.' },
   { href: '/legal/content-rights', label: 'Content Rights', color: '#00FFFF', desc: 'Ownership, licensing, and usage rights for uploaded content.' },
   { href: '/legal/contractor', label: 'Contractor Agreement', color: '#fcd34d', desc: 'Terms for contractors, producers, and independent artists.' },
   { href: '/legal/tax-policy', label: 'Tax Policy', color: '#86efac', desc: 'Revenue reporting, withholding, and tax obligations.' },

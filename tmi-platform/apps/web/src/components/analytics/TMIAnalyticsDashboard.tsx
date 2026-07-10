@@ -1,46 +1,32 @@
 "use client";
 
-/**
- * TMIAnalyticsDashboard.tsx
- * Unified analytics and stats dashboard for The Musician's Index.
- *
- * Drop at: apps/web/src/components/analytics/TMIAnalyticsDashboard.tsx
- *
- * Modes:
- *  "performer"  → artist's personal dashboard (their stats, revenue, fans)
- *  "admin"      → platform-wide metrics (all users, revenue, bot activity)
- *  "advertiser" → sponsor/ad campaign performance
- *
- * Metrics covered:
- *  - Live stream viewers (peak, average, drop-off)
- *  - Revenue (tips, beats, NFTs, tickets, subscriptions)
- *  - Battle win/loss record, XP earned per period
- *  - Fan growth over time
- *  - Magazine article reads + engagement
- *  - Beat store plays, previews, purchases
- *  - Bot fleet activity (admin only)
- *  - Room traffic and discovery funnel
- */
+import { useMemo, useState } from "react";
+import { BarChart, HBarChart, LineChart, PieChart } from "@/components/analytics/TmiChartKit";
 
-import { useState, useEffect, useRef } from "react";
-
-/* ─── Types ─────────────────────────────────────────────────────────────── */
 type DashboardMode = "performer" | "admin" | "advertiser";
 type TimePeriod = "today" | "7d" | "30d" | "season";
+type ChartMode = "comparison" | "growth" | "distribution" | "totals";
 
 export interface PerformerStats {
   userId: string;
   displayName: string;
   period: TimePeriod;
   revenue: {
-    tips: number; beats: number; nfts: number; tickets: number;
-    subscriptions: number; total: number;
+    tips: number;
+    beats: number;
+    nfts: number;
+    tickets: number;
+    subscriptions: number;
+    total: number;
   };
   battles: { won: number; lost: number; totalXP: number; avgCrowdVote: number };
   fans: { gained: number; total: number; returningPct: number };
   streams: {
-    sessions: number; totalMinutes: number; peakViewers: number;
-    avgDuration: number; topRoom: string;
+    sessions: number;
+    totalMinutes: number;
+    peakViewers: number;
+    avgDuration: number;
+    topRoom: string;
   };
   beats: { plays: number; purchases: number; topBeat: string };
   articles: { reads: number; topArticle: string };
@@ -55,195 +41,250 @@ export interface PlatformStats {
   discoveries: { billboardClicks: number; autoJoins: number; conversionPct: number };
 }
 
-/* ─── Stat card ───────────────────────────────────────────────────────────── */
-function StatCard({
-  label, value, sub, color = "#06b6d4", icon,
-}: { label: string; value: string; sub?: string; color?: string; icon?: string }) {
+type ModeMeta = {
+  id: ChartMode;
+  label: string;
+  why: string;
+  question: string;
+};
+
+const CHART_MODES: ModeMeta[] = [
+  {
+    id: "comparison",
+    label: "Compare",
+    why: "Bars are best for side-by-side comparison.",
+    question: "Which signal is strongest right now?",
+  },
+  {
+    id: "growth",
+    label: "Growth",
+    why: "Lines show direction and movement.",
+    question: "Are key signals moving up or down?",
+  },
+  {
+    id: "distribution",
+    label: "Split",
+    why: "Pie/Donut shows composition of totals.",
+    question: "Where is total value coming from?",
+  },
+  {
+    id: "totals",
+    label: "Totals",
+    why: "Metric cards are fastest for current state.",
+    question: "What are my current operating numbers?",
+  },
+];
+
+function MetricCard({
+  label,
+  value,
+  color,
+  sub,
+}: {
+  label: string;
+  value: string;
+  color: string;
+  sub?: string;
+}) {
   return (
     <div
-      className="rounded-xl p-4 space-y-1.5"
-      style={{ background: color + "10", border: `1px solid ${color}25` }}
+      style={{
+        background: `${color}12`,
+        border: `1px solid ${color}35`,
+        borderRadius: 10,
+        padding: "12px 14px",
+      }}
     >
-      <div className="flex items-center gap-1.5">
-        {icon && <span className="text-sm">{icon}</span>}
-        <p className="text-[8px] font-black uppercase tracking-widest text-white/40">{label}</p>
+      <div style={{ fontSize: 9, fontWeight: 800, color: "rgba(255,255,255,0.55)", letterSpacing: "0.16em", textTransform: "uppercase" }}>
+        {label}
       </div>
-      <p className="text-xl font-black" style={{ color }}>{value}</p>
-      {sub && <p className="text-[8px] text-white/30">{sub}</p>}
+      <div style={{ fontSize: 22, fontWeight: 900, color, marginTop: 4 }}>{value}</div>
+      {sub ? <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", marginTop: 4 }}>{sub}</div> : null}
     </div>
   );
 }
 
-/* ─── Mini sparkline (canvas) ─────────────────────────────────────────────── */
-function Sparkline({ data, color }: { data: number[]; color: string }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas || data.length < 2) return;
-    const ctx = canvas.getContext("2d")!;
-    const w = canvas.width;
-    const h = canvas.height;
-    const max = Math.max(...data, 1);
-    ctx.clearRect(0, 0, w, h);
-    ctx.beginPath();
-    data.forEach((v, i) => {
-      const x = (i / (data.length - 1)) * w;
-      const y = h - (v / max) * h;
-      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-    });
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 2;
-    ctx.stroke();
-    // Fill under line
-    ctx.lineTo(w, h); ctx.lineTo(0, h); ctx.closePath();
-    ctx.fillStyle = color + "20";
-    ctx.fill();
-  }, [data, color]);
-  return <canvas ref={canvasRef} width={120} height={32} className="w-full" />;
+function ModeSwitcher({ mode, setMode }: { mode: ChartMode; setMode: (mode: ChartMode) => void }) {
+  return (
+    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+      {CHART_MODES.map((entry) => (
+        <button
+          key={entry.id}
+          type="button"
+          onClick={() => setMode(entry.id)}
+          title={`${entry.why} ${entry.question}`}
+          style={{
+            padding: "6px 10px",
+            borderRadius: 8,
+            fontSize: 10,
+            fontWeight: 800,
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            border: `1px solid ${mode === entry.id ? "rgba(255,215,0,0.55)" : "rgba(255,255,255,0.12)"}`,
+            background: mode === entry.id ? "rgba(255,215,0,0.14)" : "rgba(255,255,255,0.04)",
+            color: mode === entry.id ? "#FFD700" : "rgba(255,255,255,0.6)",
+            cursor: "pointer",
+          }}
+        >
+          {entry.label}
+        </button>
+      ))}
+    </div>
+  );
 }
 
-/* ─── Revenue breakdown ───────────────────────────────────────────────────── */
-function RevenueBreakdown({ revenue }: { revenue: PerformerStats["revenue"] }) {
-  const items = [
-    { label: "Tips",          value: revenue.tips,          color: "#22c55e" },
-    { label: "Beats",         value: revenue.beats,         color: "#a855f7" },
-    { label: "NFTs",          value: revenue.nfts,          color: "#38bdf8" },
-    { label: "Tickets",       value: revenue.tickets,       color: "#f59e0b" },
-    { label: "Subscriptions", value: revenue.subscriptions, color: "#ec4899" },
-  ];
-  const total = revenue.total || 1;
+function ModePurpose({ mode }: { mode: ChartMode }) {
+  const selected = CHART_MODES.find((entry) => entry.id === mode)!;
+  return (
+    <div
+      style={{
+        border: "1px solid rgba(255,255,255,0.08)",
+        background: "rgba(255,255,255,0.03)",
+        borderRadius: 10,
+        padding: "10px 12px",
+      }}
+    >
+      <div style={{ fontSize: 9, fontWeight: 900, color: "#FFD700", letterSpacing: "0.16em", textTransform: "uppercase", marginBottom: 4 }}>
+        {selected.label} Mode
+      </div>
+      <div style={{ fontSize: 11, color: "rgba(255,255,255,0.62)", marginBottom: 2 }}>{selected.why}</div>
+      <div style={{ fontSize: 11, color: "rgba(255,255,255,0.8)", fontWeight: 700 }}>{selected.question}</div>
+    </div>
+  );
+}
+
+function PerformerAnalytics({ stats, mode }: { stats: PerformerStats; mode: ChartMode }) {
+  const revenueSplit = useMemo(
+    () => [
+      { label: "Tips", value: stats.revenue.tips, color: "#22c55e" },
+      { label: "Beats", value: stats.revenue.beats, color: "#a855f7" },
+      { label: "NFTs", value: stats.revenue.nfts, color: "#38bdf8" },
+      { label: "Tickets", value: stats.revenue.tickets, color: "#f59e0b" },
+      { label: "Subs", value: stats.revenue.subscriptions, color: "#ec4899" },
+    ],
+    [stats],
+  );
+
+  const growthSignals = useMemo(
+    () => [
+      { label: "Sessions", value: stats.streams.sessions, color: "#00FFFF" },
+      { label: "Peak View", value: stats.streams.peakViewers, color: "#AA2DFF" },
+      { label: "Fans", value: stats.fans.total, color: "#FF2DAA" },
+      { label: "XP", value: stats.battles.totalXP, color: "#FFD700" },
+    ],
+    [stats],
+  );
 
   return (
-    <div className="border border-white/10 rounded-xl p-4 space-y-3">
-      <p className="text-[9px] font-black text-white/40 uppercase tracking-widest">Revenue Breakdown</p>
-      <p className="text-2xl font-black text-white">${revenue.total.toFixed(2)}</p>
-      <div className="space-y-2">
-        {items.map((item) => (
-          <div key={item.label} className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: item.color }} />
-            <span className="text-[9px] text-white/50 w-24">{item.label}</span>
-            <div className="flex-1 h-1.5 rounded-full bg-white/5">
-              <div
-                className="h-full rounded-full transition-all duration-700"
-                style={{ width: `${(item.value / total) * 100}%`, background: item.color }}
-              />
-            </div>
-            <span className="text-[9px] font-black" style={{ color: item.color }}>
-              ${item.value.toFixed(0)}
-            </span>
-          </div>
-        ))}
+    <div style={{ display: "grid", gap: 12 }}>
+      {mode === "comparison" ? (
+        <div style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: 14, background: "rgba(255,255,255,0.02)" }}>
+          <BarChart data={revenueSplit} title="REVENUE SOURCES" accentColor="#FFD700" height={180} />
+        </div>
+      ) : null}
+
+      {mode === "growth" ? (
+        <div style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: 14, background: "rgba(255,255,255,0.02)" }}>
+          <LineChart data={growthSignals} title="CORE SIGNAL MOMENTUM" accentColor="#00FFFF" height={150} fill />
+        </div>
+      ) : null}
+
+      {mode === "distribution" ? (
+        <div style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: 14, background: "rgba(255,255,255,0.02)", display: "flex", justifyContent: "center" }}>
+          <PieChart data={revenueSplit} title="REVENUE DISTRIBUTION" size={190} donut />
+        </div>
+      ) : null}
+
+      {mode === "totals" ? (
+        <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))" }}>
+          <MetricCard label="Total Revenue" value={`$${stats.revenue.total.toFixed(2)}`} color="#22c55e" />
+          <MetricCard label="Battle Record" value={`${stats.battles.won}W-${stats.battles.lost}L`} color="#ef4444" sub={`${stats.battles.totalXP.toLocaleString()} XP`} />
+          <MetricCard label="Total Fans" value={stats.fans.total.toLocaleString()} color="#06b6d4" sub={`+${stats.fans.gained} period growth`} />
+          <MetricCard label="Streams" value={stats.streams.sessions.toLocaleString()} color="#a855f7" sub={`${stats.streams.totalMinutes.toLocaleString()} min total`} />
+          <MetricCard label="Avg Crowd Vote" value={`${stats.battles.avgCrowdVote}%`} color="#FFD700" />
+          <MetricCard label="Returning Fans" value={`${stats.fans.returningPct}%`} color="#00FFFF" />
+        </div>
+      ) : null}
+
+      <div style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: 14, background: "rgba(255,255,255,0.02)" }}>
+        <HBarChart
+          title="ENGAGEMENT MIX"
+          showPct
+          data={[
+            { label: "Beat Plays", value: Math.max(stats.beats.plays, 0), color: "#8b5cf6" },
+            { label: "Beat Purchases", value: Math.max(stats.beats.purchases, 0), color: "#22c55e" },
+            { label: "Article Reads", value: Math.max(stats.articles.reads, 0), color: "#ec4899" },
+          ]}
+        />
       </div>
     </div>
   );
 }
 
-/* ─── Performer analytics ─────────────────────────────────────────────────── */
-function PerformerAnalytics({ stats }: { stats: PerformerStats }) {
-  const fakeViewerData = [12,18,25,30,45,67,89,120,98,75,55,45,38,50];
-  const fakeFanData    = [100,105,108,115,120,118,125,130,138,142,145,152,158,162];
+function PlatformAnalytics({ stats, mode }: { stats: PlatformStats; mode: ChartMode }) {
+  const platformCompare = useMemo(
+    () => [
+      { label: "Users", value: stats.users.total, color: "#00FFFF" },
+      { label: "Active", value: stats.users.activeToday, color: "#22c55e" },
+      { label: "Rooms", value: stats.rooms.live, color: "#AA2DFF" },
+      { label: "Bot Tasks", value: stats.bots.tasksCompleted, color: "#FFD700" },
+    ],
+    [stats],
+  );
+
+  const platformGrowth = useMemo(
+    () => [
+      { label: "New Users", value: stats.users.newThisWeek, color: "#00FFFF" },
+      { label: "Sessions", value: stats.rooms.totalSessionsToday, color: "#FF2DAA" },
+      { label: "Auto Joins", value: stats.discoveries.autoJoins, color: "#22c55e" },
+      { label: "Clicks", value: stats.discoveries.billboardClicks, color: "#FFD700" },
+    ],
+    [stats],
+  );
+
+  const distribution = useMemo(
+    () => [
+      { label: "Net", value: Math.max(stats.revenue.netAfterFees, 0), color: "#22c55e" },
+      { label: "Pending", value: Math.max(stats.revenue.pendingPayouts, 0), color: "#f59e0b" },
+      { label: "Fees", value: Math.max(stats.revenue.gross - stats.revenue.netAfterFees, 0), color: "#ef4444" },
+    ],
+    [stats],
+  );
 
   return (
-    <div className="space-y-3">
-      {/* Primary stats */}
-      <div className="grid grid-cols-2 gap-2">
-        <StatCard label="Total Revenue" value={`$${stats.revenue.total.toFixed(2)}`} icon="💰" color="#22c55e" sub="This period" />
-        <StatCard label="Total Fans" value={stats.fans.total.toLocaleString()} icon="👥" color="#06b6d4" sub={`+${stats.fans.gained} this period`} />
-        <StatCard label="Battle Record" value={`${stats.battles.won}W-${stats.battles.lost}L`} icon="⚔️" color="#ef4444" sub={`${stats.battles.totalXP.toLocaleString()} XP earned`} />
-        <StatCard label="Peak Viewers" value={stats.streams.peakViewers.toLocaleString()} icon="📡" color="#a855f7" sub={`${stats.streams.sessions} sessions`} />
-      </div>
-
-      {/* Revenue breakdown */}
-      <RevenueBreakdown revenue={stats.revenue} />
-
-      {/* Viewer trend */}
-      <div className="border border-white/10 rounded-xl p-4 space-y-2">
-        <p className="text-[9px] font-black text-white/40 uppercase tracking-widest">Viewer Trend</p>
-        <Sparkline data={fakeViewerData} color="#a855f7" />
-        <div className="flex justify-between text-[7px] text-white/20">
-          <span>7 days ago</span><span>Today</span>
+    <div style={{ display: "grid", gap: 12 }}>
+      {mode === "comparison" ? (
+        <div style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: 14, background: "rgba(255,255,255,0.02)" }}>
+          <BarChart data={platformCompare} title="PLATFORM COMPARISON" accentColor="#00FFFF" height={180} />
         </div>
-      </div>
+      ) : null}
 
-      {/* Fan growth */}
-      <div className="border border-white/10 rounded-xl p-4 space-y-2">
-        <p className="text-[9px] font-black text-white/40 uppercase tracking-widest">Fan Growth</p>
-        <Sparkline data={fakeFanData} color="#06b6d4" />
-      </div>
+      {mode === "growth" ? (
+        <div style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: 14, background: "rgba(255,255,255,0.02)" }}>
+          <LineChart data={platformGrowth} title="OPERATIONS MOMENTUM" accentColor="#AA2DFF" height={150} fill />
+        </div>
+      ) : null}
 
-      {/* Stream details */}
-      <div className="border border-white/10 rounded-xl p-4 space-y-2">
-        <p className="text-[9px] font-black text-white/40 uppercase tracking-widest">Streams</p>
-        <div className="grid grid-cols-2 gap-2">
-          {[
-            { l: "Sessions",     v: stats.streams.sessions },
-            { l: "Total Min",    v: stats.streams.totalMinutes.toLocaleString() },
-            { l: "Avg Duration", v: `${stats.streams.avgDuration}m` },
-            { l: "Returning %",  v: `${stats.fans.returningPct}%` },
-          ].map((s) => (
-            <div key={s.l} className="bg-white/5 rounded-lg p-2.5 text-center">
-              <p className="text-sm font-black text-white">{s.v}</p>
-              <p className="text-[7px] text-white/30 uppercase">{s.l}</p>
-            </div>
-          ))}
+      {mode === "distribution" ? (
+        <div style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: 14, background: "rgba(255,255,255,0.02)", display: "flex", justifyContent: "center" }}>
+          <PieChart data={distribution} title="REVENUE DISTRIBUTION" size={190} donut />
         </div>
-      </div>
+      ) : null}
 
-      {/* Beat + article */}
-      <div className="grid grid-cols-2 gap-2">
-        <div className="border border-white/10 rounded-xl p-3 space-y-1">
-          <p className="text-[8px] text-white/30 uppercase">Beat Store</p>
-          <p className="text-lg font-black text-purple-400">{stats.beats.plays} plays</p>
-          <p className="text-[8px] text-white/40">{stats.beats.purchases} purchases</p>
-          <p className="text-[7px] text-white/20 truncate">Top: {stats.beats.topBeat}</p>
+      {mode === "totals" ? (
+        <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))" }}>
+          <MetricCard label="Total Users" value={stats.users.total.toLocaleString()} color="#06b6d4" />
+          <MetricCard label="Active Today" value={stats.users.activeToday.toLocaleString()} color="#22c55e" />
+          <MetricCard label="Gross Revenue" value={`$${stats.revenue.gross.toLocaleString()}`} color="#fbbf24" />
+          <MetricCard label="Net Revenue" value={`$${stats.revenue.netAfterFees.toLocaleString()}`} color="#22c55e" />
+          <MetricCard label="Pending Payouts" value={`$${stats.revenue.pendingPayouts.toLocaleString()}`} color="#f59e0b" />
+          <MetricCard label="Conversion" value={`${stats.discoveries.conversionPct}%`} color="#AA2DFF" />
         </div>
-        <div className="border border-white/10 rounded-xl p-3 space-y-1">
-          <p className="text-[8px] text-white/30 uppercase">Magazine</p>
-          <p className="text-lg font-black text-pink-400">{stats.articles.reads.toLocaleString()}</p>
-          <p className="text-[8px] text-white/40">article reads</p>
-          <p className="text-[7px] text-white/20 truncate">Top: {stats.articles.topArticle}</p>
-        </div>
-      </div>
+      ) : null}
     </div>
   );
 }
 
-/* ─── Platform analytics (admin only) ─────────────────────────────────────── */
-function PlatformAnalytics({ stats }: { stats: PlatformStats }) {
-  return (
-    <div className="space-y-3">
-      <div className="grid grid-cols-2 gap-2">
-        <StatCard label="Total Users"    value={stats.users.total.toLocaleString()}     icon="👤" color="#06b6d4" />
-        <StatCard label="Active Today"   value={stats.users.activeToday.toLocaleString()} icon="🔥" color="#22c55e" />
-        <StatCard label="Gross Revenue"  value={`$${stats.revenue.gross.toLocaleString()}`} icon="💵" color="#fbbf24" />
-        <StatCard label="Live Rooms"     value={stats.rooms.live.toString()}             icon="📡" color="#a855f7" />
-      </div>
-      <div className="border border-white/10 rounded-xl p-4">
-        <p className="text-[9px] font-black text-white/40 uppercase tracking-widest mb-3">Bot Fleet</p>
-        <div className="grid grid-cols-3 gap-2">
-          <div className="text-center"><p className="text-lg font-black text-green-400">{stats.bots.active}</p><p className="text-[7px] text-white/30 uppercase">Active</p></div>
-          <div className="text-center"><p className="text-lg font-black text-blue-400">{stats.bots.tasksCompleted.toLocaleString()}</p><p className="text-[7px] text-white/30 uppercase">Tasks Done</p></div>
-          <div className="text-center"><p className="text-lg font-black text-red-400">{stats.bots.errorsToday}</p><p className="text-[7px] text-white/30 uppercase">Errors</p></div>
-        </div>
-      </div>
-      <div className="border border-white/10 rounded-xl p-4">
-        <p className="text-[9px] font-black text-white/40 uppercase tracking-widest mb-3">Discovery Funnel</p>
-        <div className="grid grid-cols-3 gap-2">
-          <div className="text-center"><p className="text-lg font-black text-cyan-400">{stats.discoveries.billboardClicks.toLocaleString()}</p><p className="text-[7px] text-white/30 uppercase">Billboard Clicks</p></div>
-          <div className="text-center"><p className="text-lg font-black text-yellow-400">{stats.discoveries.autoJoins.toLocaleString()}</p><p className="text-[7px] text-white/30 uppercase">Auto Joins</p></div>
-          <div className="text-center"><p className="text-lg font-black text-green-400">{stats.discoveries.conversionPct}%</p><p className="text-[7px] text-white/30 uppercase">Conversion</p></div>
-        </div>
-      </div>
-      <div className="border border-amber-500/20 rounded-xl p-4 bg-amber-500/05">
-        <p className="text-[9px] font-black text-amber-400 uppercase tracking-widest mb-2">Pending Payouts (Big Ace Queue)</p>
-        <p className="text-2xl font-black text-white">${stats.revenue.pendingPayouts.toLocaleString()}</p>
-        <p className="text-[8px] text-amber-400/60 mt-1">Awaiting Big Ace approval · Platform Law #5</p>
-      </div>
-    </div>
-  );
-}
-
-/* ─── Main dashboard ──────────────────────────────────────────────────────── */
 export default function TMIAnalyticsDashboard({
   mode,
   performerStats,
@@ -254,38 +295,52 @@ export default function TMIAnalyticsDashboard({
   platformStats?: PlatformStats;
 }) {
   const [period, setPeriod] = useState<TimePeriod>("7d");
+  const [chartMode, setChartMode] = useState<ChartMode>("growth");
 
   const periods: { id: TimePeriod; label: string }[] = [
     { id: "today", label: "Today" },
-    { id: "7d",    label: "7 Days" },
-    { id: "30d",   label: "30 Days" },
-    { id: "season",label: "Season" },
+    { id: "7d", label: "7 Days" },
+    { id: "30d", label: "30 Days" },
+    { id: "season", label: "Season" },
   ];
 
   return (
     <div className="min-h-screen bg-[#05050c] text-white">
-      <div className="px-4 pt-5 pb-2 flex items-center justify-between">
+      <div className="px-4 pt-5 pb-2 flex items-center justify-between gap-3 flex-wrap">
         <div>
           <h1 className="text-sm font-black uppercase tracking-tight">Analytics</h1>
           <p className="text-[8px] text-white/30 uppercase tracking-widest mt-0.5">
             {mode === "performer" ? performerStats?.displayName : mode === "admin" ? "Platform Overview" : "Ad Campaign"}
           </p>
         </div>
+        <ModeSwitcher mode={chartMode} setMode={setChartMode} />
       </div>
 
-      {/* Period selector */}
-      <div className="flex gap-1.5 px-4 py-3">
-        {periods.map((p) => (
-          <button key={p.id} onClick={() => setPeriod(p.id)}
-            className={`text-[9px] font-black px-3 py-1.5 rounded-lg uppercase tracking-wider transition-all ${period === p.id ? "bg-white text-black" : "bg-white/5 text-white/50"}`}>
-            {p.label}
+      <div className="px-4 pb-3">
+        <ModePurpose mode={chartMode} />
+      </div>
+
+      <div className="flex gap-1.5 px-4 py-3 flex-wrap">
+        {periods.map((entry) => (
+          <button
+            key={entry.id}
+            type="button"
+            onClick={() => setPeriod(entry.id)}
+            className={`text-[9px] font-black px-3 py-1.5 rounded-lg uppercase tracking-wider transition-all ${period === entry.id ? "bg-white text-black" : "bg-white/5 text-white/50"}`}
+          >
+            {entry.label}
           </button>
         ))}
       </div>
 
       <div className="px-4 pb-8">
-        {mode === "performer" && performerStats && <PerformerAnalytics stats={performerStats} />}
-        {mode === "admin" && platformStats && <PlatformAnalytics stats={platformStats} />}
+        {mode === "performer" && performerStats ? <PerformerAnalytics stats={performerStats} mode={chartMode} /> : null}
+        {mode === "admin" && platformStats ? <PlatformAnalytics stats={platformStats} mode={chartMode} /> : null}
+        {mode === "advertiser" ? (
+          <div style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: 14, background: "rgba(255,255,255,0.02)", fontSize: 12, color: "rgba(255,255,255,0.6)" }}>
+            Advertiser mode is routed through role-specific analytics rails and can reuse this same chart-mode pattern when unified.
+          </div>
+        ) : null}
       </div>
     </div>
   );

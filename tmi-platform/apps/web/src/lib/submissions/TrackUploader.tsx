@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import type { SubmissionType } from "@/lib/submissions/SubmissionEngine";
 import { StudioGuide } from "./StudioGuide";
 
@@ -10,11 +10,31 @@ interface TrackUploaderProps {
   onSubmissionSuccess: (submissionId: string) => void;
 }
 
+const GUIDE_SEEN_KEY = "tmi_studio_guide_first_submission_seen";
+
 export function TrackUploader({ submissionType, submitterId, onSubmissionSuccess }: TrackUploaderProps) {
   const [title, setTitle] = useState("");
   const [url, setUrl] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [isGuideVisible, setGuideVisible] = useState(true);
+  // Defaults hidden to match SSR output; a real "has this user already been
+  // shown this" check only happens client-side after mount. Previously this
+  // was `useState(true)` with no persistence at all, so the guide reappeared
+  // on every single page load regardless of whether it had been dismissed
+  // or the user had already submitted — it never actually tracked "first."
+  const [isGuideVisible, setGuideVisible] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const alreadySeen = window.localStorage.getItem(GUIDE_SEEN_KEY);
+    if (!alreadySeen) setGuideVisible(true);
+  }, []);
+
+  const dismissGuide = () => {
+    setGuideVisible(false);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(GUIDE_SEEN_KEY, "1");
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,6 +63,7 @@ export function TrackUploader({ submissionType, submitterId, onSubmissionSuccess
         onSubmissionSuccess(result.submissionId);
         setTitle("");
         setUrl("");
+        dismissGuide();
       } else {
         setError(`Submission failed: ${result.error ?? "unknown error"}`);
       }
@@ -62,7 +83,7 @@ export function TrackUploader({ submissionType, submitterId, onSubmissionSuccess
       </form>
        <StudioGuide
         isVisible={isGuideVisible}
-        onClose={() => setGuideVisible(false)}
+        onClose={dismissGuide}
         title="Your First Submission"
         message="Welcome to the Studio! Upload your track URL here to get it into the Stream & Win Radio rotation. Every submission earns you XP."
       />

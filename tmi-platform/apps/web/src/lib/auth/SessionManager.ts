@@ -23,8 +23,12 @@ const SESSION_STORAGE = new Map<
 const REVOKED_TOKENS = new Set<string>();
 const REPLAY_ATTEMPTS = new Map<string, Array<{ timestamp: number; path: string; method: string }>>();
 
-const SESSION_TTL_MS = 12 * 60 * 60 * 1000; // 12 hours
-const INACTIVITY_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
+// Must match the 7-day cookie maxAge set at login (signin/register/google
+// callback routes) — this was previously 12h/30min, silently invalidating
+// subscription-status checks for anyone whose cookie was still valid,
+// forcing unnecessary re-logins well before the cookie itself expired.
+const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days — matches cookie maxAge
+const INACTIVITY_TIMEOUT_MS = 7 * 24 * 60 * 60 * 1000; // 7 days — no separate short-lived cutoff
 const REPLAY_WINDOW_MS = 5 * 1000; // 5 second window for replay detection
 const TOKEN_ROTATION_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
 

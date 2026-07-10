@@ -26,12 +26,13 @@ const nextConfig = {
       "@bernout/agent-network": path.join(__dirname, "src/stubs/bernout-agent-network.ts"),
     };
 
-    // Add watchOptions to ignore noisy system files on Windows during `next dev`
-    // This prevents "EINVAL" errors from files like pagefile.sys or System Volume Information.
-    if (!isServer) {
+    // Add watchOptions to ignore noisy system files on Windows during `next dev`.
+    // This prevents "EINVAL" errors from files like pagefile.sys or System Volume Information,
+    // which can cause the dev server to hang and Playwright tests to time out.
+    if (process.env.NODE_ENV === 'development') {
       config.watchOptions = {
         ...(config.watchOptions ?? {}),
-        ignored: "**/{DumpStack.log.tmp,System Volume Information,hiberfil.sys,pagefile.sys,swapfile.sys}",
+        ignored: ["**/.git/**", "**/node_modules/**", "**/.next/**", "**/System Volume Information/**", "**/$RECYCLE.BIN/**", "**/hiberfil.sys", "**/pagefile.sys", "**/swapfile.sys"],
       };
     }
 
@@ -40,7 +41,7 @@ const nextConfig = {
   reactStrictMode: false,
   eslint: { ignoreDuringBuilds: true },
   typescript: { ignoreBuildErrors: false },
-  staticPageGenerationTimeout: 300,
+  staticPageGenerationTimeout: 600,
   async headers() {
     const csp = [
       "default-src 'self'",
@@ -111,7 +112,6 @@ const nextConfig = {
       // ── Magazine ──────────────────────────────────────────────────────────
       { source: '/magazine/1', destination: '/magazine/issue/1', permanent: false },
       { source: '/magazine/auto', destination: '/magazine', permanent: false },
-      { source: '/magazine/article/:slug', destination: '/magazine/article/:slug', permanent: false },
 
       // ── Articles aliases ──────────────────────────────────────────────────
       { source: '/articles/artist/:slug', destination: '/artist-articles/:slug', permanent: false },

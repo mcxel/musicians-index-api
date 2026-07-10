@@ -1,4 +1,4 @@
-import CanonOverseerShell from "@/components/admin/CanonOverseerShell";
+import WorkspaceManager from "@/components/admin/overseer/workspace/WorkspaceManager";
 
 export const metadata = {
   title: "Overseer Deck | TMI Admin",
@@ -6,5 +6,5 @@ export const metadata = {
 };
 
 export default function OverseerDeckPage() {
-  return <CanonOverseerShell />;
+  return <WorkspaceManager />;
 }

@@ -1,8 +1,7 @@
 "use client";
 
-import { useState } from "react";
-
-// Canon source: Adminisratation Hub.jpg — Big Ace Overseer Deck
+import { useEffect, useMemo, useState } from "react";
+import type { ReactNode } from "react";
 // 12-panel layout assembling all existing overseer sub-panels
 //
 // LAYOUT (bottom → top of import precedence):
@@ -28,18 +27,133 @@ import UnifiedInbox            from "@/components/admin/overseer/UnifiedInbox";
 import LiveFeedRouter          from "@/components/admin/overseer/LiveFeedRouter";
 import BotSummonDeck           from "@/components/admin/BotSummonDeck";
 import BigAceFinancePanel      from "@/components/admin/BigAceFinancePanel";
+import MediaMatrixEngine       from "@/components/admin/overseer/workspace/widgets/MediaMatrixEngine";
+import HQDock from "@/components/admin/overseer/HQDock";
+import { resolveDockItems } from "@/components/admin/overseer/services/DockRegistry";
+import { useDrawerManager } from "@/components/admin/overseer/services/DrawerManager";
+
+export type ShellDockButton = {
+  label: string;
+  href: string;
+};
+
+export type ShellPanel = {
+  id?: string;
+  title: string;
+  accent?: string;
+  statusLabel?: string;
+  content: ReactNode;
+  fixedHeight?: number;
+  flex?: number;
+  fullscreenKey?: string;
+};
+
+export type ShellWorkspaceDefinition = {
+  title: string;
+  ribbon?: ReactNode;
+  leftRail: ShellPanel[];
+  center: ShellPanel[];
+  rightRail: ShellPanel[];
+  bottom: ShellPanel[];
+  dockButtons?: ShellDockButton[];
+};
+
+type CanonOverseerShellProps = {
+  workspace?: ShellWorkspaceDefinition;
+};
 
 // ─── Shell ─────────────────────────────────────────────────────────────────────
 
-export default function CanonOverseerShell() {
-  const [leftCollapsed, setLeftCollapsed] = useState(false);
-  const [rightCollapsed, setRightCollapsed] = useState(false);
-  const [bottomCollapsed, setBottomCollapsed] = useState(false);
+export default function CanonOverseerShell({ workspace }: CanonOverseerShellProps) {
   const [fullscreenPanel, setFullscreenPanel] = useState<string | null>(null);
+  const [clock, setClock] = useState<string>("");
+  const drawerManager = useDrawerManager();
 
-  const leftWidth = leftCollapsed ? 74 : 286;
-  const rightWidth = rightCollapsed ? 74 : 306;
-  const bottomHeight = bottomCollapsed ? 44 : 230;
+  useEffect(() => {
+    const updateClock = () =>
+      setClock(new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit", second: "2-digit" }));
+    updateClock();
+    const id = setInterval(updateClock, 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  const defaultWorkspace = useMemo<ShellWorkspaceDefinition>(
+    () => ({
+      title: "Marcel - Founder and CEO",
+      leftRail: [
+        { id: "chain-command", title: "CHAIN COMMAND", accent: "#AA2DFF", content: <ChainCommandPanel /> },
+        { title: "MONEY & BILLING", accent: "#FFD700", content: <BigAceFinancePanel /> },
+        { title: "BOT ROSTER & SUMMON", accent: "#FF2DAA", content: <BotSummonDeck />, flex: 1 },
+        { id: "unified-inbox", title: "UNIFIED INBOX", accent: "#00FFFF", content: <UnifiedInbox /> },
+      ],
+      center: [
+        {
+          id: "live-feed-router",
+          title: "TV SCREEN ROUTER · BOARDROOM LIVE",
+          accent: "#00FFFF",
+          content: <MediaMatrixEngine />,
+          fixedHeight: 340,
+          fullscreenKey: "tv",
+        },
+        {
+          title: "LIVE FEED EXPLORER",
+          accent: "#00FFFF",
+          content: <FeedExplorer />,
+          flex: 1,
+          fullscreenKey: "feed",
+        },
+      ],
+      rightRail: [
+        { id: "sentinel-wall", title: "SECURITY SENTINEL WALL", accent: "#FF4444", content: <SentinelWall /> },
+        { title: "ACCOUNT LINKER", accent: "#AA2DFF", content: <AccountLinker /> },
+        { title: "STRIPE WEBHOOK INTEGRITY", accent: "#00FFFF", content: <StripeObservatoryCard />, flex: 1 },
+      ],
+      bottom: [
+        {
+          id: "revenue-analytics",
+          title: "ARTIST REVENUE & BUYOUTS",
+          accent: "#FFD700",
+          content: (
+            <AdminRevenuePanel
+              selectedId="billing"
+              onSelect={(id) => {
+                window.location.href = id === "artist-analytics" ? "/admin/artist-analytics" : "/admin/revenue";
+              }}
+            />
+          ),
+          fullscreenKey: "revenue",
+        },
+        { title: "MAGAZINE & INDEX ANALYTICS", accent: "#FF2DAA", content: <MagazineAnalytics /> },
+      ],
+      dockButtons: [
+        { label: "Go Back", href: "/admin" },
+        { label: "Voice", href: "/admin/overseer#live-feed-router" },
+        { label: "Audio", href: "/admin/overseer#live-feed-router" },
+        { label: "Disclaimer", href: "/legal/disclaimer" },
+        { label: "Revenue", href: "/admin/revenue" },
+        { label: "Messages", href: "/admin/messages" },
+        { label: "Users", href: "/admin/users" },
+        { label: "Settings", href: "/admin/settings" },
+        { label: "Power", href: "/" },
+      ],
+    }),
+    [],
+  );
+
+  const activeWorkspace = workspace ?? defaultWorkspace;
+
+  const dockItems = useMemo(
+    () => resolveDockItems(activeWorkspace.dockButtons),
+    [activeWorkspace.dockButtons],
+  );
+
+  const leftCollapsed = drawerManager.isRailCollapsed("left");
+  const rightCollapsed = drawerManager.isRailCollapsed("right");
+  const bottomCollapsed = drawerManager.isRailCollapsed("bottom");
+
+  const leftWidth = leftCollapsed ? 74 : 302;
+  const rightWidth = rightCollapsed ? 74 : 302;
+  const bottomHeight = bottomCollapsed ? 44 : 290;
 
   const toggleFullscreen = (panelId: string) => {
     setFullscreenPanel((curr) => (curr === panelId ? null : panelId));
@@ -49,17 +163,81 @@ export default function CanonOverseerShell() {
     ? "1fr"
     : `${leftWidth}px minmax(0,1fr) ${rightWidth}px`;
 
+  const allPanels = useMemo(
+    () => [
+      ...activeWorkspace.leftRail,
+      ...activeWorkspace.center,
+      ...activeWorkspace.rightRail,
+      ...activeWorkspace.bottom,
+    ],
+    [activeWorkspace],
+  );
+
+  const fullscreenMatch = allPanels.find((panel) => panel.fullscreenKey === fullscreenPanel);
+
   const renderFullscreen = () => {
-    switch (fullscreenPanel) {
-      case "tv":
-        return <LiveFeedRouter />;
-      case "feed":
-        return <FeedExplorer />;
-      case "revenue":
-        return <AdminRevenuePanel selectedId="billing" onSelect={() => undefined} />;
-      default:
-        return null;
-    }
+    if (!fullscreenMatch) return null;
+    return fullscreenMatch.content;
+  };
+
+  const renderRail = (panels: ShellPanel[], rail: "left" | "center" | "right") => {
+    const isLeft = rail === "left";
+    const isRight = rail === "right";
+
+    return (
+      <div
+        data-col={rail}
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 8,
+          minHeight: 0,
+          overflowY: "auto",
+          paddingRight: 2,
+        }}
+      >
+        {panels.map((panel) => (
+          <Canister
+            key={panel.id ?? panel.title}
+            id={panel.id}
+            title={panel.title}
+            accent={panel.accent ?? "#00FFFF"}
+            statusLabel={panel.statusLabel}
+            collapsed={isLeft ? leftCollapsed : isRight ? rightCollapsed : false}
+            floating={panel.id ? drawerManager.getWindowState(panel.id)?.mode === "floating" : false}
+            onToggleFullscreen={panel.fullscreenKey ? () => toggleFullscreen(panel.fullscreenKey as string) : undefined}
+            onToggleFloat={panel.id ? () => drawerManager.toggleWindowFloat(panel.id as string) : undefined}
+            onCloseWindow={panel.id ? () => drawerManager.closeWindow(panel.id as string) : undefined}
+            style={{
+              ...(panel.fixedHeight ? { flex: `0 0 ${panel.fixedHeight}px` } : {}),
+              ...(panel.flex ? { flex: panel.flex } : {}),
+              ...(panel.id && drawerManager.getWindowState(panel.id)?.mode === "floating"
+                ? {
+                    position: "fixed",
+                    left: drawerManager.getWindowState(panel.id)?.x ?? 32,
+                    top: drawerManager.getWindowState(panel.id)?.y ?? 32,
+                    width: "min(720px, calc(100vw - 48px))",
+                    height: panel.fixedHeight ? panel.fixedHeight : 360,
+                    minWidth: 320,
+                    minHeight: 220,
+                    zIndex: 1000,
+                  }
+                : {}),
+            }}
+            onToggleCollapse={panel.id ? undefined : undefined}
+          >
+            <div
+              onPointerDown={panel.id && drawerManager.getWindowState(panel.id)?.mode === "floating" ? (event) => drawerManager.beginDrag(panel.id as string, event) : undefined}
+              onPointerMove={panel.id && drawerManager.getWindowState(panel.id)?.mode === "floating" ? drawerManager.moveDrag : undefined}
+              onPointerUp={panel.id && drawerManager.getWindowState(panel.id)?.mode === "floating" ? drawerManager.endDrag : undefined}
+              style={{ height: "100%" }}
+            >
+              {panel.content}
+            </div>
+          </Canister>
+        ))}
+      </div>
+    );
   };
 
   return (
@@ -67,63 +245,113 @@ export default function CanonOverseerShell() {
       data-canon-overseer-shell
       style={{
         minHeight: "100vh",
-        background: "radial-gradient(ellipse at top, #260a2e 0%, #150818 45%, #05020a 100%)",
-        border: "1px solid rgba(255,215,0,0.25)",
-        boxShadow: "inset 0 0 60px rgba(0,0,0,0.6), inset 0 0 0 1px rgba(255,215,0,0.06)",
+        height: "100vh",
+        background:
+          "radial-gradient(130% 90% at 50% -5%, rgba(92,26,74,0.45) 0%, rgba(28,10,32,0.85) 46%, rgba(7,3,12,1) 100%)",
+        border: "1px solid rgba(255,215,0,0.35)",
+        boxShadow:
+          "inset 0 0 90px rgba(0,0,0,0.78), inset 0 0 0 1px rgba(255,215,0,0.08), 0 16px 40px rgba(0,0,0,0.6)",
         display: "flex",
         flexDirection: "column",
         gap: 8,
         padding: 8,
         fontFamily: "inherit",
+        position: "relative",
+        overflow: "hidden",
       }}
     >
+      <div
+        aria-hidden
+        style={{
+          position: "absolute",
+          inset: 0,
+          pointerEvents: "none",
+          background:
+            "linear-gradient(transparent 96%, rgba(255,215,0,0.06) 96%), linear-gradient(90deg, transparent 96%, rgba(0,255,255,0.05) 96%)",
+          backgroundSize: "100% 24px, 24px 100%",
+          opacity: 0.25,
+        }}
+      />
+
+      <div
+        style={{
+          position: "relative",
+          zIndex: 1,
+          border: "1px solid rgba(255,215,0,0.35)",
+          borderRadius: 10,
+          background: "linear-gradient(180deg, rgba(43,18,24,0.92), rgba(14,8,14,0.92))",
+          padding: "8px 10px",
+          display: "grid",
+          gridTemplateColumns: "1fr auto auto auto",
+          gap: 8,
+          alignItems: "center",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+          <span style={{ color: "#FFD700", fontSize: 11, fontWeight: 900, letterSpacing: "0.16em", textTransform: "uppercase" }}>
+            Admin OS
+          </span>
+          <span style={{ color: "rgba(255,255,255,0.65)", fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+            {activeWorkspace.title}
+          </span>
+        </div>
+        <span style={{ borderRadius: 999, border: "1px solid rgba(0,255,136,0.45)", background: "rgba(0,255,136,0.11)", color: "#00FF88", fontSize: 9, fontWeight: 900, letterSpacing: "0.08em", textTransform: "uppercase", padding: "4px 8px" }}>
+          System PASS
+        </span>
+        <span style={{ borderRadius: 999, border: "1px solid rgba(255,215,0,0.4)", background: "rgba(255,215,0,0.12)", color: "#FFD88F", fontSize: 9, fontWeight: 900, letterSpacing: "0.08em", textTransform: "uppercase", padding: "4px 8px" }}>
+          Workspace Active
+        </span>
+        <span style={{ color: "rgba(255,255,255,0.8)", fontSize: 10, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase" }}>{clock}</span>
+      </div>
+
       {/* ── Row 0: Overseer Dock (full width) ── */}
-      <div data-row="dock">
+      <div data-row="dock" style={{ position: "relative", zIndex: 1 }}>
         <Canister title="OVERSEER DOCK" accent="#FFD700" style={{ borderRadius: 10 }}>
           <OverseerDock />
         </Canister>
       </div>
 
+      {activeWorkspace.ribbon ? (
+        <Canister title={activeWorkspace.title.toUpperCase()} accent="#FFD700" style={{ borderRadius: 10, position: "relative", zIndex: 1 }}>
+          {activeWorkspace.ribbon}
+        </Canister>
+      ) : null}
+
       <div
         style={{
+          position: "relative",
+          zIndex: 1,
           display: "flex",
           alignItems: "center",
           gap: 8,
           flexWrap: "wrap",
           padding: "0 4px",
+          justifyContent: "space-between",
         }}
       >
-        <button
-          type="button"
-          onClick={() => setLeftCollapsed((v) => !v)}
-          style={{ borderRadius: 999, border: "1px solid rgba(255,215,0,0.35)", background: "rgba(255,215,0,0.1)", color: "#FFD700", fontSize: 9, fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", padding: "5px 10px", cursor: "pointer" }}
-        >
-          {leftCollapsed ? "Expand Left" : "Collapse Left"}
+        <button type="button" onClick={() => drawerManager.toggleRail("left")} style={{ borderRadius: 999, border: "1px solid rgba(255,215,0,0.45)", background: "linear-gradient(180deg, rgba(255,215,0,0.16), rgba(255,215,0,0.07))", color: "#FFD700", fontSize: 9, fontWeight: 900, letterSpacing: "0.1em", textTransform: "uppercase", padding: "5px 11px", cursor: "pointer" }}>
+          {leftCollapsed ? "◀ Left" : "◁ Left"}
         </button>
-        <button
-          type="button"
-          onClick={() => setRightCollapsed((v) => !v)}
-          style={{ borderRadius: 999, border: "1px solid rgba(0,255,255,0.3)", background: "rgba(0,255,255,0.08)", color: "#00FFFF", fontSize: 9, fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", padding: "5px 10px", cursor: "pointer" }}
-        >
-          {rightCollapsed ? "Expand Right" : "Collapse Right"}
+        <button type="button" onClick={() => drawerManager.toggleRail("bottom")} style={{ borderRadius: 999, border: "1px solid rgba(170,45,255,0.45)", background: "linear-gradient(180deg, rgba(170,45,255,0.18), rgba(170,45,255,0.08))", color: "#D887FF", fontSize: 9, fontWeight: 900, letterSpacing: "0.1em", textTransform: "uppercase", padding: "5px 11px", cursor: "pointer" }}>
+          {bottomCollapsed ? "▲ Analytics" : "▼ Analytics"}
         </button>
-        <button
-          type="button"
-          onClick={() => setBottomCollapsed((v) => !v)}
-          style={{ borderRadius: 999, border: "1px solid rgba(170,45,255,0.35)", background: "rgba(170,45,255,0.1)", color: "#AA2DFF", fontSize: 9, fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", padding: "5px 10px", cursor: "pointer" }}
-        >
-          {bottomCollapsed ? "Expand Bottom" : "Collapse Bottom"}
+        <button type="button" onClick={() => drawerManager.toggleRail("right")} style={{ borderRadius: 999, border: "1px solid rgba(0,255,255,0.45)", background: "linear-gradient(180deg, rgba(0,255,255,0.16), rgba(0,255,255,0.07))", color: "#73FFFF", fontSize: 9, fontWeight: 900, letterSpacing: "0.1em", textTransform: "uppercase", padding: "5px 11px", cursor: "pointer" }}>
+          {rightCollapsed ? "Right ▶" : "Right ▷"}
         </button>
       </div>
 
       <div
         data-row="workspace"
         style={{
+          position: "relative",
+          zIndex: 1,
           flex: 1,
           display: "flex",
           flexDirection: "column",
           gap: 8,
           minHeight: 0,
+          minWidth: 0,
+          overflow: "hidden",
           transition: "all 280ms ease",
         }}
       >
@@ -135,6 +363,10 @@ export default function CanonOverseerShell() {
             display: "grid",
             gridTemplateColumns: shellGridTemplate,
             gap: 8,
+            border: "1px solid rgba(255,215,0,0.18)",
+            borderRadius: 10,
+            padding: 8,
+            background: "linear-gradient(180deg, rgba(255,215,0,0.04), rgba(255,255,255,0.02))",
             transition: "all 280ms ease",
           }}
         >
@@ -150,70 +382,9 @@ export default function CanonOverseerShell() {
             </Canister>
           ) : (
             <>
-              <div
-                data-col="left"
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 8,
-                  minHeight: 0,
-                  overflow: "hidden",
-                }}
-              >
-                <Canister id="chain-command" title="CHAIN COMMAND" accent="#AA2DFF" collapsed={leftCollapsed}>
-                  <ChainCommandPanel />
-                </Canister>
-                <Canister title="MONEY & BILLING" accent="#FFD700" collapsed={leftCollapsed}>
-                  <BigAceFinancePanel />
-                </Canister>
-                <Canister title="BOT ROSTER & SUMMON" accent="#FF2DAA" collapsed={leftCollapsed} style={{ flex: 1 }}>
-                  <BotSummonDeck />
-                </Canister>
-                <Canister title="UNIFIED INBOX" accent="#00FFFF" collapsed={leftCollapsed}>
-                  <UnifiedInbox />
-                </Canister>
-              </div>
-
-              <div data-col="center" style={{ display: "flex", flexDirection: "column", gap: 8, minHeight: 0 }}>
-                <Canister
-                  id="live-feed-router"
-                  title="TV SCREEN ROUTER · BOARDROOM LIVE"
-                  accent="#00FFFF"
-                  style={{ flex: "0 0 350px" }}
-                  onToggleFullscreen={() => toggleFullscreen("tv")}
-                >
-                  <LiveFeedRouter />
-                </Canister>
-                <Canister
-                  title="LIVE FEED EXPLORER"
-                  accent="#00FFFF"
-                  style={{ flex: 1 }}
-                  onToggleFullscreen={() => toggleFullscreen("feed")}
-                >
-                  <FeedExplorer />
-                </Canister>
-              </div>
-
-              <div
-                data-col="right"
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 8,
-                  minHeight: 0,
-                  overflow: "hidden",
-                }}
-              >
-                <Canister id="sentinel-wall" title="SECURITY SENTINEL WALL" accent="#FF4444" collapsed={rightCollapsed}>
-                  <SentinelWall />
-                </Canister>
-                <Canister title="ACCOUNT LINKER" accent="#AA2DFF" collapsed={rightCollapsed}>
-                  <AccountLinker />
-                </Canister>
-                <Canister title="STRIPE WEBHOOK INTEGRITY" accent="#00FFFF" collapsed={rightCollapsed} style={{ flex: 1 }}>
-                  <StripeObservatoryCard />
-                </Canister>
-              </div>
+              {renderRail(activeWorkspace.leftRail, "left")}
+              {renderRail(activeWorkspace.center, "center")}
+              {renderRail(activeWorkspace.rightRail, "right")}
             </>
           )}
         </div>
@@ -224,27 +395,89 @@ export default function CanonOverseerShell() {
             height: bottomHeight,
             minHeight: bottomHeight,
             display: "grid",
-            gridTemplateColumns: "1fr 1fr",
+            gridTemplateColumns: `repeat(${Math.max(1, activeWorkspace.bottom.length)}, minmax(0, 1fr))`,
             gap: 8,
+            border: "1px solid rgba(255,215,0,0.18)",
+            borderRadius: 10,
+            padding: 8,
+            background: "linear-gradient(180deg, rgba(255,45,170,0.03), rgba(255,215,0,0.03))",
             transition: "all 280ms ease",
           }}
         >
-          <Canister
-            id="revenue-analytics"
-            title="ARTIST REVENUE & BUYOUTS"
-            accent="#FFD700"
-            collapsed={bottomCollapsed}
-            onToggleFullscreen={() => toggleFullscreen("revenue")}
-          >
-            <AdminRevenuePanel
-              selectedId="billing"
-              onSelect={(id) => { window.location.href = id === "artist-analytics" ? "/admin/artist-analytics" : "/admin/revenue"; }}
-            />
-          </Canister>
-          <Canister title="MAGAZINE & INDEX ANALYTICS" accent="#FF2DAA" collapsed={bottomCollapsed}>
-            <MagazineAnalytics />
-          </Canister>
+          {activeWorkspace.bottom.map((panel) => (
+            <Canister
+              key={panel.id ?? panel.title}
+              id={panel.id}
+              title={panel.title}
+              accent={panel.accent ?? "#00FFFF"}
+              statusLabel={panel.statusLabel}
+              collapsed={bottomCollapsed}
+              floating={panel.id ? drawerManager.getWindowState(panel.id)?.mode === "floating" : false}
+              onToggleFullscreen={panel.fullscreenKey ? () => toggleFullscreen(panel.fullscreenKey as string) : undefined}
+              onToggleFloat={panel.id ? () => drawerManager.toggleWindowFloat(panel.id as string) : undefined}
+              onCloseWindow={panel.id ? () => drawerManager.closeWindow(panel.id as string) : undefined}
+              style={
+                panel.id && drawerManager.getWindowState(panel.id)?.mode === "floating"
+                  ? {
+                      position: "fixed",
+                      left: drawerManager.getWindowState(panel.id)?.x ?? 32,
+                      top: drawerManager.getWindowState(panel.id)?.y ?? 32,
+                      width: 560,
+                      height: panel.fixedHeight ? panel.fixedHeight : 320,
+                      minWidth: 320,
+                      minHeight: 220,
+                      zIndex: 1000,
+                    }
+                  : undefined
+              }
+            >
+              <div
+                onPointerDown={panel.id && drawerManager.getWindowState(panel.id)?.mode === "floating" ? (event) => drawerManager.beginDrag(panel.id as string, event) : undefined}
+                onPointerMove={panel.id && drawerManager.getWindowState(panel.id)?.mode === "floating" ? drawerManager.moveDrag : undefined}
+                onPointerUp={panel.id && drawerManager.getWindowState(panel.id)?.mode === "floating" ? drawerManager.endDrag : undefined}
+                style={{ height: "100%" }}
+              >
+                {panel.content}
+              </div>
+            </Canister>
+          ))}
         </div>
+
+        {Object.entries(drawerManager.rawState.windows)
+          .filter(([, state]) => state.mode === "closed")
+          .map(([id]) => {
+            const panel = allPanels.find((item) => item.id === id);
+            if (!panel) return null;
+            return (
+              <button
+                key={`restore-${id}`}
+                type="button"
+                onClick={() => drawerManager.restoreWindow(id)}
+                style={{
+                  position: "fixed",
+                  right: 16,
+                  bottom: 16 + Object.keys(drawerManager.rawState.windows).indexOf(id) * 42,
+                  zIndex: 1100,
+                  borderRadius: 999,
+                  border: "1px solid rgba(255,215,0,0.45)",
+                  background: "linear-gradient(180deg, rgba(255,215,0,0.16), rgba(255,215,0,0.06))",
+                  color: "#FFD88F",
+                  padding: "8px 12px",
+                  fontSize: 10,
+                  fontWeight: 900,
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase",
+                  cursor: "pointer",
+                }}
+              >
+                Restore {panel.title}
+              </button>
+            );
+          })}
+
+          <div data-row="dock-bottom">
+            <HQDock items={dockItems} />
+          </div>
       </div>
     </div>
   );

@@ -1,9 +1,9 @@
 "use client";
 
+import React, { useRef, useEffect, useCallback } from "react";
+import { useGlobalMediaStore } from "./apps/web/src/stores/globalMediaStore";
 import { shallow } from "zustand/shallow";
-import React, { useRef, useEffect } from "react";
-import { useGlobalMediaStore } from "@/stores/globalMediaStore";
-import { SeekBar } from "./media/SeekBar";
+import { SeekBar } from "./SeekBar";
 
 /**
  * A global component that shows and controls the currently playing media item.
@@ -14,7 +14,8 @@ import { SeekBar } from "./media/SeekBar";
  * Renamed from NowPlayingBar. @see User request on 2026-06-26.
  */
 export function GlobalMediaController() {
-  const { currentItem, isPlaying, progress, duration, volume, muted, actions } = useGlobalMediaStore(
+  const [isQueueVisible, setQueueVisible] = React.useState(false);
+  const state = useGlobalMediaStore(
     (state) => ({
       currentItem: state.currentItem,
       isPlaying: state.isPlaying,
@@ -22,6 +23,8 @@ export function GlobalMediaController() {
       duration: state.duration,
       volume: state.volume,
       muted: state.muted,
+      repeatMode: state.repeatMode,
+      isShuffling: state.isShuffling,
       actions: {
         togglePlay: state.togglePlay,
         playNext: state.playNext,
@@ -30,10 +33,14 @@ export function GlobalMediaController() {
         seek: state.seek,
         setVolume: state.setVolume,
         toggleMute: state.toggleMute,
+        setRepeatMode: state.setRepeatMode,
+        toggleShuffle: state.toggleShuffle,
       },
     }),
     shallow
   );
+
+  const { currentItem, isPlaying, progress, duration, volume, muted, repeatMode, isShuffling, actions } = state;
 
   const audioRef = useRef<HTMLAudioElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -50,7 +57,7 @@ export function GlobalMediaController() {
 
     mediaEl.volume = muted ? 0 : volume;
 
-  }, [isPlaying, currentItem, volume, muted]);
+  }, [isPlaying, currentItem, volume, muted, audioRef, videoRef]);
 
   useEffect(() => {
     const mediaEl = audioRef.current || videoRef.current;
@@ -65,6 +72,10 @@ export function GlobalMediaController() {
       actions.updateProgress(mediaEl.currentTime * 1000);
     }
   };
+
+  const handleMediaEnded = useCallback(() => {
+    actions.playNext();
+  }, [actions]);
 
   if (!currentItem) {
     return null;
@@ -90,6 +101,7 @@ export function GlobalMediaController() {
         zIndex: 1000,
         borderTop: "1px solid #333",
         fontFamily: "sans-serif",
+        transition: "transform 0.3s ease-in-out",
       }}
     >
       {/* Hidden Media Elements for Playback */}
@@ -98,7 +110,7 @@ export function GlobalMediaController() {
           ref={audioRef}
           src={currentItem.sourceUrl}
           onTimeUpdate={handleTimeUpdate}
-          onEnded={actions.playNext}
+          onEnded={handleMediaEnded}
         />
       )}
       {currentItem.type === "video" && (
@@ -106,7 +118,7 @@ export function GlobalMediaController() {
           ref={videoRef}
           src={currentItem.sourceUrl}
           onTimeUpdate={handleTimeUpdate}
-          onEnded={actions.playNext}
+          onEnded={handleMediaEnded}
           style={{ display: "none" }}
         />
       )}
@@ -142,11 +154,21 @@ export function GlobalMediaController() {
       >
         {/* Controls */}
         <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+          <button title="Shuffle" onClick={actions.toggleShuffle} style={{...controlButtonStyle, color: isShuffling ? '#00FFFF' : 'white'}}>
+            {"🔀"}
+          </button>
           <button title="Previous" onClick={actions.playPrev} style={controlButtonStyle}>{"⏮"}</button>
           <button title={isPlaying ? "Pause" : "Play"} onClick={actions.togglePlay} style={{...controlButtonStyle, width: '40px', height: '40px', fontSize: '24px', background: '#00FFFF', color: '#000'}}>
             {isPlaying ? "⏸" : "▶"}
           </button>
           <button title="Next" onClick={actions.playNext} style={controlButtonStyle}>{"⏭"}</button>
+          <button
+            title="Repeat"
+            onClick={() => actions.setRepeatMode(repeatMode === 'none' ? 'all' : repeatMode === 'all' ? 'one' : 'none')}
+            style={{...controlButtonStyle, color: repeatMode !== 'none' ? '#00FFFF' : 'white'}}
+          >
+            {repeatMode === 'one' ? '🔂' : '🔁'}
+          </button>
         </div>
 
         {/* Progress Bar */}
@@ -159,6 +181,9 @@ export function GlobalMediaController() {
 
       {/* Volume & Other Controls (Placeholder) */}
       <div style={{ display: "flex", alignItems: "center", minWidth: "200px", justifyContent: "flex-end" }}>
+        <button onClick={() => setQueueVisible(q => !q)} style={{...controlButtonStyle, color: isQueueVisible ? '#00FFFF' : 'white'}}>
+            {"☰"}
+        </button>
         <button onClick={actions.toggleMute} style={controlButtonStyle}>
           {muted || volume === 0 ? '🔇' : '🔊'}
         </button>
@@ -172,6 +197,7 @@ export function GlobalMediaController() {
           style={{ width: '80px', cursor: 'pointer' }}
         />
       </div>
+      {/* Queue panel — canonical at apps/web/src/components/media/MediaQueue.tsx */}
     </div>
   );
 }

@@ -30,6 +30,28 @@ export default function AdminError({ error, reset }: { error: Error & { digest?:
         {error.digest && (
           <div style={{ marginTop: 20, fontSize: 9, color: "rgba(255,255,255,0.15)", fontFamily: "monospace" }}>ref: {error.digest}</div>
         )}
+        {process.env.NODE_ENV !== "production" && (
+          <details style={{ marginTop: 14, textAlign: "left", fontSize: 11, color: "rgba(255,255,255,0.72)" }}>
+            <summary style={{ cursor: "pointer", color: "#8CF9FF" }}>debug details</summary>
+            <pre
+              style={{
+                marginTop: 8,
+                whiteSpace: "pre-wrap",
+                wordBreak: "break-word",
+                background: "rgba(0,0,0,0.32)",
+                border: "1px solid rgba(255,255,255,0.12)",
+                borderRadius: 8,
+                padding: 10,
+                fontSize: 10,
+                lineHeight: 1.5,
+              }}
+            >
+              {error.message}
+              {"\n\n"}
+              {error.stack}
+            </pre>
+          </details>
+        )}
       </div>
     </main>
   );

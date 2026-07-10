@@ -1,5 +1,5 @@
 {
-  "counter": 1,
+  "counter": 11,
   "events": [
     {
       "id": "1779937483275-1",
@@ -18,6 +18,126 @@
         "emailSent": true,
         "simulated": true,
         "source": "admin/manual-simulation"
+      }
+    },
+    {
+      "id": "1782850032066-2",
+      "kind": "webhook_verified",
+      "category": "success",
+      "ts": 1782850032066,
+      "meta": {
+        "amountCents": 500,
+        "revenueStream": "one_time",
+        "sessionId": "cs_test_b1ahasVGOk4cYBdaenxWRn6SbSI2SssccfQBjzcDsR7oSHbAd2FCg6T9mM",
+        "customerEmail": "p02browser@tmi.test"
+      }
+    },
+    {
+      "id": "1783298388499-3",
+      "kind": "webhook_verified",
+      "category": "success",
+      "ts": 1783298388499,
+      "meta": {
+        "amountCents": 500,
+        "revenueStream": "charges",
+        "sessionId": "cs_cert_1783298386481",
+        "customerEmail": ""
+      }
+    },
+    {
+      "id": "1783299175231-4",
+      "kind": "webhook_verified",
+      "category": "success",
+      "ts": 1783299175231,
+      "meta": {
+        "amountCents": 500,
+        "revenueStream": "charges",
+        "sessionId": "cs_cert_1783299174006",
+        "customerEmail": ""
+      }
+    },
+    {
+      "id": "1783299319605-5",
+      "kind": "webhook_verified",
+      "category": "success",
+      "ts": 1783299319605,
+      "meta": {
+        "amountCents": 500,
+        "revenueStream": "charges",
+        "sessionId": "cs_cert_1783299318679",
+        "customerEmail": ""
+      }
+    },
+    {
+      "id": "1783299363087-6",
+      "kind": "webhook_verified",
+      "category": "success",
+      "ts": 1783299363087,
+      "meta": {
+        "amountCents": 500,
+        "revenueStream": "charges",
+        "sessionId": "cs_cert_1783299361891",
+        "customerEmail": ""
+      }
+    },
+    {
+      "id": "1783299474477-7",
+      "kind": "webhook_verified",
+      "category": "success",
+      "ts": 1783299474477,
+      "meta": {
+        "amountCents": 500,
+        "revenueStream": "charges",
+        "sessionId": "cs_cert_1783299471782",
+        "customerEmail": ""
+      }
+    },
+    {
+      "id": "1783299769297-8",
+      "kind": "webhook_verified",
+      "category": "success",
+      "ts": 1783299769298,
+      "meta": {
+        "amountCents": 500,
+        "revenueStream": "charges",
+        "sessionId": "cs_cert_1783299767263",
+        "customerEmail": ""
+      }
+    },
+    {
+      "id": "1783299828128-9",
+      "kind": "webhook_verified",
+      "category": "success",
+      "ts": 1783299828128,
+      "meta": {
+        "amountCents": 500,
+        "revenueStream": "charges",
+        "sessionId": "cs_cert_1783299826515",
+        "customerEmail": ""
+      }
+    },
+    {
+      "id": "1783299870756-10",
+      "kind": "webhook_verified",
+      "category": "success",
+      "ts": 1783299870756,
+      "meta": {
+        "amountCents": 500,
+        "revenueStream": "charges",
+        "sessionId": "cs_cert_1783299868786",
+        "customerEmail": ""
+      }
+    },
+    {
+      "id": "1783300059952-11",
+      "kind": "webhook_verified",
+      "category": "success",
+      "ts": 1783300059952,
+      "meta": {
+        "amountCents": 500,
+        "revenueStream": "charges",
+        "sessionId": "cs_cert_1783300057791",
+        "customerEmail": ""
       }
     }
   ]

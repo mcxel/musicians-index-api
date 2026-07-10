@@ -53,10 +53,12 @@ export default function PremiumBeatSlider({
           step={10}
           value={value}
           onChange={handleScrub}
-          className={`w-full appearance-none bg-transparent cursor-pointer z-10 ${isHorizontal ? 'h-2' : 'w-2 h-48 [appearance:slider-vertical]'}`}
+          className={`w-full appearance-none bg-transparent cursor-pointer z-10 ${isHorizontal ? 'h-2' : 'w-2 h-48'}`}
           style={{
             background: isHorizontal ? `linear-gradient(90deg, #FF2DAA ${percentage}%, rgba(255,255,255,0.1) ${percentage}%)` : `linear-gradient(0deg, #FF2DAA ${percentage}%, rgba(255,255,255,0.1) ${percentage}%)`,
-            borderRadius: '99px'
+            borderRadius: '99px',
+            writingMode: isHorizontal ? undefined : 'vertical-lr',
+            direction: isHorizontal ? undefined : 'rtl',
           }}
         />
         {isHorizontal ? <ChevronRight size={16} className="absolute right-0 text-white/30" /> : <ChevronUp size={16} className="absolute top-0 text-white/30" />}
