@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { PersonaSwitcher } from "@/components/hud/PersonaSwitcher";
 import PerformerHubDashboard from "@/components/performer/PerformerHubDashboard";
 import Link from "next/link";
+import Image from "next/image";
 import { HubBackNav } from "@/components/nav/HubBackNav";
 import ActionCanister from "@/components/room/ActionCanister";
 import WidgetDrawer from "@/components/room/WidgetDrawer";
@@ -15,21 +16,26 @@ import MixtapeShareCard from "@/components/mixtape/MixtapeShareCard";
 import MonitorSatelliteSystem from "@/components/canisters/MonitorSatelliteSystem";
 import CollapsibleCanister from "@/components/canisters/CollapsibleCanister";
 import MemoryWall from "@/components/media/MemoryWall";
+import MemoryWallPhotoStrip from "@/components/media/MemoryWallPhotoStrip";
 import PlaylistArtifact from "@/components/artifacts/PlaylistArtifact";
 import HeadquartersCommunicationDock from "@/components/headquarters/HeadquartersCommunicationDock";
 import OpportunityDockPanel from "@/components/hubs/OpportunityDockPanel";
 import RadioJourneyCard from "@/components/radio/RadioJourneyCard";
 import { useTmiSession } from "@/hooks/SessionContext";
 import { getLatestEditorialArticles } from "@/lib/editorial/NewsArticleModel";
+import { getPerformerById } from "@/lib/performers/PerformerRegistry";
 import { OnboardingMissionDock } from "@/components/onboarding/OnboardingMissionCard";
 import { useOnboardingMissions } from "@/components/onboarding/useOnboardingMissions";
 import UniversalPlatformShell from "@/components/shell/UniversalPlatformShell";
 import MediaUploadWidget from "@/components/media/MediaUploadWidget";
 import { TrackUploader } from "@/lib/submissions/TrackUploader";
+import { BezelFrame } from '@/components/admin/overseer/AdminDesignSystem';
+import DesktopAtmosphereRails from '@/components/home/DesktopAtmosphereRails';
 
 const NAV_LINKS = [
   { href: "/hub/performer",     label: "Control Room" },
   { href: "/performer/studio",  label: "Studio"       },
+  { href: "/avatar",            label: "Avatar"       },
   { href: "/performer/profile", label: "Profile"      },
   { href: "/battles",           label: "Battles"      },
   { href: "/battles/new",       label: "Challenge"    },
@@ -40,13 +46,32 @@ const NAV_LINKS = [
   { href: "/settings",          label: "Settings"     },
 ];
 
-const PERFORMER_ACTIONS = [
-  { id: "live-rooms", icon: "🎭", label: "Go Live"  },
-  { id: "revenue",    icon: "💰", label: "Revenue"  },
-  { id: "rankings",   icon: "🏆", label: "Rankings" },
-  { id: "messages",   icon: "💬", label: "Messages" },
-  { id: "bookings",   icon: "📅", label: "Bookings" },
+const PERFORMER_LEFT_RAIL_ACTIONS = [
+  { id: "camera",        icon: "🎥", label: "Camera" },
+  { id: "audio",         icon: "🎚️", label: "Audio" },
+  { id: "playlist",      icon: "🎵", label: "Playlist" },
+  { id: "video-shuffle", icon: "🎬", label: "Shuffle" },
+  { id: "radio",         icon: "📻", label: "Radio" },
+  { id: "memory",        icon: "🖼️", label: "Memory" },
+  { id: "yopho",         icon: "✨", label: "Yopho" },
+  { id: "upload",        icon: "⬆️", label: "Upload" },
 ];
+
+const PERFORMER_RIGHT_RAIL_ACTIONS = [
+  { id: "sponsors", icon: "🤝", label: "Sponsors" },
+  { id: "bookings", icon: "📅", label: "Bookings" },
+  { id: "messages", icon: "💬", label: "Messages" },
+  { id: "analytics", icon: "📊", label: "Analytics" },
+  { id: "revenue", icon: "💰", label: "Revenue" },
+  { id: "merch", icon: "🛒", label: "Merch" },
+  { id: "share", icon: "📤", label: "Share" },
+  { id: "settings", icon: "⚙️", label: "Settings" },
+];
+
+const OBSERVATORY_ROSE_VIDEO_URL =
+  process.env.NEXT_PUBLIC_DEFAULT_MONITOR_VIDEO?.trim() ||
+  process.env.NEXT_PUBLIC_OBSERVATORY_ROSE_VIDEO_URL?.trim() ||
+  "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4";
 
 interface BookingRow {
   bookingId: string;
@@ -87,6 +112,7 @@ export default function PerformerHubPage() {
   const [bookings, setBookings] = useState<BookingRow[] | null>(null);
   const [threads, setThreads]   = useState<MessageThreadRow[] | null>(null);
   const [liveStatus, setLiveStatus] = useState<PerformerLiveStatus>({ isLive: false, audienceCount: 0, recentAudienceEntries: [], audienceCountries: [] });
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const { userId, userName } = useTmiSession();
   const { missions: onboardingMissions, dismiss: dismissMission } = useOnboardingMissions();
   const magazineFeatures = getLatestEditorialArticles(3);
@@ -95,12 +121,18 @@ export default function PerformerHubPage() {
   const [bannerDismissed, setBannerDismissed] = useState(false);
 
   useEffect(() => {
-    fetch("/api/auth/me", { credentials: "include" })
-      .then((r) => r.json())
-      .then((d: { authenticated?: boolean; user?: { tier?: string } }) => {
-        if (d.authenticated && d.user?.tier) setUserTier(d.user.tier.toUpperCase());
+    fetch("/api/auth/session", { credentials: "include", cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : { authenticated: false, user: null }))
+      .then((d: { authenticated?: boolean; user?: { tier?: string } | null }) => {
+        const authed = Boolean(d.authenticated);
+        setIsAuthenticated(authed);
+        if (authed && d.user?.tier) {
+          setUserTier(d.user.tier.toUpperCase());
+        }
       })
-      .catch(() => {});
+      .catch(() => {
+        setIsAuthenticated(false);
+      });
   }, []);
 
   useEffect(() => {
@@ -109,7 +141,12 @@ export default function PerformerHubPage() {
       .then((d: { requests?: BookingRow[] }) => setBookings(d.requests ?? []))
       .catch(() => setBookings([]));
 
-    fetch("/api/messages", { credentials: "include" })
+    if (!isAuthenticated) {
+      setThreads([]);
+      return;
+    }
+
+    fetch("/api/messages", { credentials: "include", cache: "no-store" })
       .then((r) => (r.ok ? r.json() : { threads: [] }))
       .then((d: { threads?: { threadId: string; participants: { displayName: string }[]; lastMessage: { body: string } | null }[] }) => {
         const rows = (d.threads ?? []).map((t) => ({
@@ -120,7 +157,7 @@ export default function PerformerHubPage() {
         setThreads(rows);
       })
       .catch(() => setThreads([]));
-  }, []);
+  }, [isAuthenticated]);
 
   // Real liveness — this monitor previously hardcoded isLive={false} always,
   // even while the performer was actually broadcasting. Same
@@ -155,8 +192,15 @@ export default function PerformerHubPage() {
     return () => { cancelled = true; clearInterval(id); };
   }, [userId]);
 
+  const performerIdentity = useMemo(() => {
+    if (!userId) return null;
+    return getPerformerById(userId);
+  }, [userId]);
+
   const hubContent = (
     <div style={{ fontFamily: "'Inter', sans-serif", background: "#050510", minHeight: "100vh", position: "relative" }}>
+      <DesktopAtmosphereRails />
+
       <NeonWaveUnderlay colorA="#AA2DFF" colorB="#FF2DAA" colorC="#00FFFF" opacity={0.08} zIndex={0} />
 
         {/* Nav bar */}
@@ -218,6 +262,97 @@ export default function PerformerHubPage() {
           </div>
         </div>
 
+        {/* Visual-first hero row: monitor first, details later. */}
+        <div style={{ position: "relative", zIndex: 1, maxWidth: 1300, margin: "18px auto 8px", padding: "0 24px" }}>
+          <BezelFrame variant="performer" innerPadding={18}>
+            <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 320px", gap: 18, alignItems: "start" }}>
+              <div>
+                <div style={{ fontSize: 9, letterSpacing: "0.2em", color: "#AA2DFF", fontWeight: 800, marginBottom: 10 }}>🎬 MAIN BROADCAST MONITOR</div>
+                <MonitorSatelliteSystem
+                  mainLabel={performerIdentity?.name ? `${performerIdentity.name} Stage` : "Performer Stage"}
+                  isLive={liveStatus.isLive}
+                  introVideoUrl={performerIdentity?.introVideoUrl}
+                  fallbackVideoUrl={OBSERVATORY_ROSE_VIDEO_URL}
+                  leftPipVideoUrl={OBSERVATORY_ROSE_VIDEO_URL}
+                  rightPipVideoUrl={OBSERVATORY_ROSE_VIDEO_URL}
+                  motionPosterUrl={performerIdentity?.motionPosterUrl}
+                  liveRoomRoute={performerIdentity?.liveRoomRoute}
+                  staticImageUrl="/images/tmi-placeholder.jpg"
+                  accentColor="#AA2DFF"
+                  adZone="hub-performer"
+                  showAudienceMonitor={liveStatus.isLive}
+                  audienceCount={liveStatus.audienceCount}
+                  audienceEntryEvents={liveStatus.recentAudienceEntries}
+                  audienceCountryDistribution={liveStatus.audienceCountries}
+                  showAudiencePulse
+                />
+              </div>
+
+              <div style={{ display: "grid", gap: 12 }}>
+                <div style={{ display: "grid", gap: 10, border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: 12, background: "rgba(255,255,255,0.03)" }}>
+                  <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                    <div
+                      style={{
+                        position: "relative",
+                        width: 72,
+                        height: 72,
+                        borderRadius: 14,
+                        overflow: "hidden",
+                        border: "1px solid rgba(170,45,255,0.32)",
+                        background: "linear-gradient(180deg, rgba(170,45,255,0.18), rgba(0,0,0,0.4))",
+                        flexShrink: 0,
+                      }}
+                    >
+                      {performerIdentity?.profileImageUrl ? (
+                        <Image
+                          src={performerIdentity.profileImageUrl}
+                          alt={performerIdentity.name}
+                          fill
+                          sizes="72px"
+                          style={{ objectFit: "cover" }}
+                        />
+                      ) : (
+                        <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#AA2DFF", fontSize: 22, fontWeight: 900 }}>
+                          {(userName || "P").slice(0, 1).toUpperCase()}
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: 9, letterSpacing: "0.16em", color: "#AA2DFF", fontWeight: 800, textTransform: "uppercase" }}>Performer Identity</div>
+                      <div style={{ marginTop: 4, fontSize: 18, fontWeight: 900, color: "#fff" }}>{performerIdentity?.name || userName || "Your Stage"}</div>
+                      <div style={{ marginTop: 4, fontSize: 11, color: "rgba(255,255,255,0.62)" }}>
+                        {performerIdentity ? `${performerIdentity.category} · ${performerIdentity.tier}` : "Profile sync pending"}
+                      </div>
+                      <div style={{ marginTop: 4, fontSize: 10, color: liveStatus.isLive ? "#00FFFF" : "rgba(255,255,255,0.55)", fontWeight: 800 }}>
+                        {liveStatus.isLive ? "LIVE NOW" : "STANDBY / OFFLINE"}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ fontSize: 9, letterSpacing: "0.2em", color: "#00E5FF", fontWeight: 800 }}>⚡ QUICK STAGE ACTIONS</div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                  <Link href="/performer/studio" style={{ textDecoration: "none", borderRadius: 9, padding: "10px 8px", textAlign: "center", background: "linear-gradient(135deg, #AA2DFF, #FF2DAA)", color: "#fff", fontSize: 10, fontWeight: 900, letterSpacing: "0.08em" }}>GO LIVE</Link>
+                  <Link href="/messages" style={{ textDecoration: "none", borderRadius: 9, padding: "10px 8px", textAlign: "center", background: "rgba(0,255,255,0.1)", border: "1px solid rgba(0,255,255,0.28)", color: "#00FFFF", fontSize: 10, fontWeight: 800, letterSpacing: "0.08em" }}>MESSAGE</Link>
+                  <Link href="/playlists" style={{ textDecoration: "none", borderRadius: 9, padding: "10px 8px", textAlign: "center", background: "rgba(255,215,0,0.1)", border: "1px solid rgba(255,215,0,0.28)", color: "#FFD700", fontSize: 10, fontWeight: 800, letterSpacing: "0.08em" }}>PLAYLIST</Link>
+                  <Link href="/avatar" style={{ textDecoration: "none", borderRadius: 9, padding: "10px 8px", textAlign: "center", background: "rgba(170,45,255,0.12)", border: "1px solid rgba(170,45,255,0.28)", color: "#AA2DFF", fontSize: 10, fontWeight: 800, letterSpacing: "0.08em" }}>AVATAR</Link>
+                </div>
+
+                <div style={{ border: "1px solid rgba(255,215,0,0.18)", borderRadius: 12, padding: 10, background: "rgba(255,255,255,0.02)" }}>
+                  <div style={{ fontSize: 9, letterSpacing: "0.16em", color: "#FFD700", fontWeight: 800, textTransform: "uppercase", marginBottom: 8 }}>🎵 Active Playlist</div>
+                  <PlaylistArtifact artifactId={`${userId}-playlist`} skin="submarine" title="Performer Playlist" />
+                </div>
+
+                <div style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: "10px 12px", background: "rgba(255,255,255,0.02)" }}>
+                  <div style={{ fontSize: 9, color: "rgba(255,255,255,0.5)", letterSpacing: "0.08em", textTransform: "uppercase" }}>Audience</div>
+                  <div style={{ marginTop: 4, fontSize: 20, fontWeight: 900, color: "#00FFFF" }}>{liveStatus.audienceCount.toLocaleString()}</div>
+                  <div style={{ fontSize: 10, color: "rgba(255,255,255,0.55)" }}>{liveStatus.isLive ? "Audience monitor active" : "Audience monitor activates when broadcast goes live"}</div>
+                </div>
+              </div>
+            </div>
+          </BezelFrame>
+        </div>
+
         <div style={{ position: "relative", zIndex: 1 }}>
           <PerformerHubDashboard performerId={userId} displayName={userName || "Your Profile"} />
 
@@ -229,40 +364,20 @@ export default function PerformerHubPage() {
             {/* Stream & Win status card — renders only when a real radio submission exists */}
             <RadioJourneyCard />
 
-            {/* Primary controls stay visible on the main surface (not hidden in canisters). */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(6, minmax(120px, 1fr))", gap: 10 }}>
-              {[
-                { href: "/performer/studio", label: "Camera", tone: "#00FFFF" },
-                { href: "/performer/studio", label: "Audio", tone: "#00E5FF" },
-                { href: "#upload-section", label: "Upload", tone: "#AA2DFF" },
-                { href: "/messages", label: "Messaging", tone: "#FF2DAA" },
-                { href: "/playlists", label: "Playlist", tone: "#FFD700" },
-                { href: "/performer/profile", label: "Memory", tone: "#FF6B35" },
-              ].map((action) => (
-                <Link
-                  key={action.label}
-                  href={action.href}
-                  style={{
-                    textDecoration: "none",
-                    border: `1px solid ${action.tone}55`,
-                    background: `${action.tone}12`,
-                    color: action.tone,
-                    borderRadius: 10,
-                    padding: "10px 12px",
-                    textAlign: "center",
-                    fontSize: 10,
-                    fontWeight: 800,
-                    letterSpacing: "0.08em",
-                    textTransform: "uppercase",
-                  }}
-                >
-                  {action.label}
-                </Link>
-              ))}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+              <div style={{ fontSize: 10, color: "rgba(255,255,255,0.55)", letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 800 }}>
+                Production tools moved into left and right rails beside the monitor.
+              </div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <Link href="/home/1" style={{ textDecoration: "none", borderRadius: 10, padding: "10px 12px", border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.04)", color: "#fff", fontSize: 10, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase" }}>Home</Link>
+                <Link href="/live/lobby" style={{ textDecoration: "none", borderRadius: 10, padding: "10px 12px", border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.04)", color: "#fff", fontSize: 10, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase" }}>Live</Link>
+                <Link href="/messages" style={{ textDecoration: "none", borderRadius: 10, padding: "10px 12px", border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.04)", color: "#fff", fontSize: 10, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase" }}>Messages</Link>
+                <Link href="/performer/profile" style={{ textDecoration: "none", borderRadius: 10, padding: "10px 12px", border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.04)", color: "#fff", fontSize: 10, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase" }}>Profile</Link>
+              </div>
             </div>
 
             {/* Upload Center — closes launch blocker: performers now have a visible upload entrypoint in HQ. */}
-            <div id="upload-section" style={{ background: "rgba(170,45,255,0.05)", border: "1px solid rgba(170,45,255,0.22)", borderRadius: 16, padding: 20 }}>
+            <BezelFrame variant="performer" innerPadding={20} outerStyle={{ marginTop: 16 }} id="upload-section">
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, gap: 8, flexWrap: "wrap" }}>
                 <div style={{ fontSize: 9, letterSpacing: "0.2em", color: "#AA2DFF", fontWeight: 800 }}>⬆️ CREATOR UPLOAD CENTER</div>
                 <Link href="/submit" style={{ fontSize: 10, color: "#AA2DFF", textDecoration: "none", fontWeight: 700 }}>OPEN FULL SUBMIT HUB →</Link>
@@ -299,12 +414,11 @@ export default function PerformerHubPage() {
                   />
                 </div>
               </div>
-            </div>
+            </BezelFrame>
 
             {/* Live monitor + Backstage / Green Room */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
-              {/* Live monitor */}
-              <div style={{ background: "rgba(170,45,255,0.06)", border: "1px solid rgba(170,45,255,0.2)", borderRadius: 16, padding: "20px" }}>
+              <BezelFrame variant="performer" innerPadding={20}>
                 <div style={{ fontSize: 9, letterSpacing: "0.2em", color: "#AA2DFF", fontWeight: 800, marginBottom: 12 }}>🎥 LIVE MONITOR</div>
                 <MonitorSatelliteSystem
                   mainLabel="Main Stage Camera"
@@ -323,10 +437,9 @@ export default function PerformerHubPage() {
                   <Link href="/performer/studio" style={{ flex: 2, padding: "10px", background: "linear-gradient(135deg, #AA2DFF, #FF2DAA)", color: "#fff", borderRadius: 8, fontWeight: 900, fontSize: 10, textDecoration: "none", textAlign: "center", letterSpacing: "0.1em" }}>🔴 GO LIVE TO ARENA</Link>
                   <Link href="/live/rooms" style={{ flex: 1, padding: "10px", background: "rgba(170,45,255,0.12)", border: "1px solid rgba(170,45,255,0.3)", color: "#AA2DFF", borderRadius: 8, fontWeight: 800, fontSize: 10, textDecoration: "none", textAlign: "center" }}>📡 ROOMS</Link>
                 </div>
-              </div>
+              </BezelFrame>
 
-              {/* Green Room / Backstage */}
-              <div style={{ background: "rgba(0,229,255,0.04)", border: "1px solid rgba(0,229,255,0.18)", borderRadius: 16, padding: "20px" }}>
+              <BezelFrame variant="performer" innerPadding={20}>
                 <div style={{ fontSize: 9, letterSpacing: "0.2em", color: "#00E5FF", fontWeight: 800, marginBottom: 12 }}>🎪 BACKSTAGE / GREEN ROOM</div>
                 <div style={{ display: "flex", flex: 1, flexDirection: "column", gap: 8 }}>
                   {[
@@ -347,13 +460,12 @@ export default function PerformerHubPage() {
                     <TipBar performerId={userId} performerName={userName || "Your Stage"} accentColor="#00E5FF" compact />
                   </div>
                 </div>
-              </div>
+              </BezelFrame>
             </div>
 
             {/* Booking Desk + Fan Messages */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
-              {/* Booking desk */}
-              <div style={{ background: "rgba(255,215,0,0.04)", border: "1px solid rgba(255,215,0,0.15)", borderRadius: 16, padding: "20px" }}>
+              <BezelFrame variant="performer" innerPadding={20}>
                 <div style={{ fontSize: 9, letterSpacing: "0.2em", color: "#FFD700", fontWeight: 800, marginBottom: 12 }}>📅 BOOKING DESK</div>
                 {bookings === null && (
                   <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", padding: "8px 0" }}>Loading…</div>
@@ -371,10 +483,9 @@ export default function PerformerHubPage() {
                   </div>
                 ))}
                 <Link href="/performer/dashboard" style={{ display: "block", marginTop: 10, fontSize: 10, color: "#FFD700", textDecoration: "none", fontWeight: 700 }}>View all bookings →</Link>
-              </div>
+              </BezelFrame>
 
-              {/* Fan messages */}
-              <div style={{ background: "rgba(255,45,170,0.04)", border: "1px solid rgba(255,45,170,0.15)", borderRadius: 16, padding: "20px" }}>
+              <BezelFrame variant="performer" innerPadding={20}>
                 <div style={{ fontSize: 9, letterSpacing: "0.2em", color: "#FF2DAA", fontWeight: 800, marginBottom: 12 }}>💬 FAN MESSAGES</div>
                 {threads === null && (
                   <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", padding: "8px 0" }}>Loading…</div>
@@ -392,23 +503,30 @@ export default function PerformerHubPage() {
                   </div>
                 ))}
                 <Link href="/messages" style={{ display: "block", marginTop: 10, fontSize: 10, color: "#FF2DAA", textDecoration: "none", fontWeight: 700 }}>View all messages →</Link>
-              </div>
+              </BezelFrame>
             </div>
 
             {/* Pop-out canisters — Playlist + Memory Wall (Constitution Rule 15) */}
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               <CollapsibleCanister icon="🎵" label="Playlist" accentColor="#FF2DAA" defaultOpen>
                 <PlaylistArtifact artifactId={`${userId}-playlist`} skin="submarine" title="Performer Playlist" />
+                <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+                  <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.12em", color: "rgba(255,255,255,0.35)", textTransform: "uppercase", marginBottom: 6 }}>
+                    From the Memory Wall
+                  </div>
+                  <MemoryWallPhotoStrip entityId={userId} entityType="performer" accentColor="#FF2DAA" />
+                </div>
               </CollapsibleCanister>
-              <CollapsibleCanister icon="🖼️" label="Memory Wall" accentColor="#FFD700" defaultOpen>
-                <MemoryWall accentColor="#FFD700" title="Memory Wall" entityId={userId} entityType="performer" />
-              </CollapsibleCanister>
+              <div id="memory-wall">
+                <CollapsibleCanister icon="🖼️" label="Memory Wall" accentColor="#FFD700" defaultOpen>
+                  <MemoryWall accentColor="#FFD700" title="Memory Wall" entityId={userId} entityType="performer" />
+                </CollapsibleCanister>
+              </div>
             </div>
 
             {/* Merch Wall + Sponsor Wall */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
-              {/* Merch wall */}
-              <div style={{ background: "rgba(0,255,136,0.04)", border: "1px solid rgba(0,255,136,0.15)", borderRadius: 16, padding: "20px" }}>
+              <BezelFrame variant="performer" innerPadding={20}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
                   <div style={{ fontSize: 9, letterSpacing: "0.2em", color: "#00FF88", fontWeight: 800 }}>🛒 MERCH WALL</div>
                   <Link href="/store" style={{ fontSize: 9, color: "#00FF88", textDecoration: "none", fontWeight: 700 }}>MANAGE →</Link>
@@ -421,32 +539,29 @@ export default function PerformerHubPage() {
                   No merch listed yet.
                 </div>
                 <Link href="/nft" style={{ display: "block", marginTop: 10, padding: "8px", background: "rgba(0,255,136,0.1)", border: "1px solid rgba(0,255,136,0.3)", color: "#00FF88", borderRadius: 8, fontSize: 9, fontWeight: 800, textDecoration: "none", textAlign: "center" }}>🎨 MINT NEW NFT</Link>
-              </div>
+              </BezelFrame>
 
-              {/* Sponsor wall */}
-              <div style={{ background: "rgba(170,45,255,0.04)", border: "1px solid rgba(170,45,255,0.15)", borderRadius: 16, padding: "20px" }}>
+              <BezelFrame variant="performer" innerPadding={20}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
                   <div style={{ fontSize: 9, letterSpacing: "0.2em", color: "#AA2DFF", fontWeight: 800 }}>🤝 SPONSOR WALL</div>
                   <Link href="/hub/sponsor" style={{ fontSize: 9, color: "#AA2DFF", textDecoration: "none", fontWeight: 700 }}>ADD SPONSOR →</Link>
                 </div>
                 <UnifiedAdSlot venue="dashboard" slotKey="dashboardSidebar" format="rectangle" accentColor="#AA2DFF" label="SPONSOR SLOT" style={{ minHeight: 140 }} />
-              </div>
+              </BezelFrame>
             </div>
 
             {/* Memory Wall + Magazine Features */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
-              {/* Memory wall */}
-              <div style={{ background: "rgba(255,107,53,0.04)", border: "1px solid rgba(255,107,53,0.15)", borderRadius: 16, padding: "20px" }}>
+              <BezelFrame variant="performer" innerPadding={20}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
                   <div style={{ fontSize: 9, letterSpacing: "0.2em", color: "#FF6B35", fontWeight: 800 }}>🎞️ MEMORY WALL</div>
                   <span style={{ fontSize: 8, color: "rgba(255,255,255,0.35)" }}>Videos · Photos · Audio</span>
                 </div>
                 <MemoryWall accentColor="#FF6B35" title="" entityId={userId} entityType="performer" />
                 <Link href="/fan/theater" style={{ display: "block", marginTop: 10, fontSize: 10, color: "#FF6B35", textDecoration: "none", fontWeight: 700 }}>View all memories →</Link>
-              </div>
+              </BezelFrame>
 
-              {/* Magazine features */}
-              <div style={{ background: "rgba(255,215,0,0.04)", border: "1px solid rgba(255,215,0,0.15)", borderRadius: 16, padding: "20px" }}>
+              <BezelFrame variant="performer" innerPadding={20}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
                   <div style={{ fontSize: 9, letterSpacing: "0.2em", color: "#FFD700", fontWeight: 800 }}>📰 MAGAZINE FEATURES</div>
                   <Link href="/magazine" style={{ fontSize: 9, color: "#FFD700", textDecoration: "none", fontWeight: 700 }}>READ ALL →</Link>
@@ -459,13 +574,32 @@ export default function PerformerHubPage() {
                     <div style={{ fontSize: 9, color: "#FFD700" }}>{a.category}</div>
                   </Link>
                 ))}
-              </div>
+              </BezelFrame>
             </div>
 
           </div>
         </div>
 
-        <ActionCanister actions={PERFORMER_ACTIONS} />
+        <ActionCanister
+          actions={PERFORMER_LEFT_RAIL_ACTIONS}
+          side="left"
+          initialCollapsed={false}
+          containerStyle={{
+            top: 250,
+            transform: 'none',
+            left: 'max(10px, calc((100vw - 1300px) / 2 - 82px))',
+          }}
+        />
+        <ActionCanister
+          actions={PERFORMER_RIGHT_RAIL_ACTIONS}
+          side="right"
+          initialCollapsed={false}
+          containerStyle={{
+            top: 250,
+            transform: 'none',
+            right: 'max(10px, calc((100vw - 1300px) / 2 - 82px))',
+          }}
+        />
         <WidgetDrawer />
 
         {/* Mixtape share — send beats/tracks as a package */}

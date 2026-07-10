@@ -13,7 +13,10 @@ interface MonitorSatelliteSystemProps {
   isLive?: boolean;
   liveRoomRoute?: string;
   introVideoUrl?: string;
+  fallbackVideoUrl?: string;
   motionPosterUrl?: string;
+  leftPipVideoUrl?: string;
+  rightPipVideoUrl?: string;
   staticImageUrl: string;
   audienceCount?: number;
   accentColor?: string;
@@ -52,6 +55,10 @@ interface AudienceCountrySlice {
 }
 
 const AUDIENCE_MILESTONES = [1, 5, 10, 25, 50, 100, 250, 500, 1000] as const;
+const DEFAULT_OBSERVATORY_VIDEO_URL =
+  process.env.NEXT_PUBLIC_DEFAULT_MONITOR_VIDEO?.trim() ||
+  process.env.NEXT_PUBLIC_OBSERVATORY_ROSE_VIDEO_URL?.trim() ||
+  "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4";
 
 function countryCodeToFlag(countryCode: string): string {
   const code = countryCode.trim().toUpperCase();
@@ -88,7 +95,10 @@ export default function MonitorSatelliteSystem({
   isLive = false,
   liveRoomRoute,
   introVideoUrl,
+  fallbackVideoUrl,
   motionPosterUrl,
+  leftPipVideoUrl,
+  rightPipVideoUrl,
   staticImageUrl,
   audienceCount,
   accentColor = "#00FFFF",
@@ -100,12 +110,19 @@ export default function MonitorSatelliteSystem({
   showAudiencePulse,
 }: MonitorSatelliteSystemProps) {
   const [mainMode, setMainMode] = useState<MainMode>("feed");
+  const [satelliteMode, setSatelliteMode] = useState<"single" | "split">("split");
+  const [showLeftAudioPanel, setShowLeftAudioPanel] = useState(true);
+  const [showRightCameraPanel, setShowRightCameraPanel] = useState(true);
+  const [isCameraExpanded, setIsCameraExpanded] = useState(false);
   // Rolled once per mount, not per render, so the ad doesn't flicker in/out
   // on unrelated state changes (mute toggle, capture state, etc.).
   const [showAdThisSession] = useState(() => shouldShowAd(viewerTier));
   const [muted, setMuted] = useState(false);
   const [micLive, setMicLive] = useState(false);
-  const [cameraOn, setCameraOn] = useState(true);
+  // Starts false — no hardware stream exists until the performer explicitly
+  // requests one (see requestCameraAccess). Previously defaulted to true,
+  // implying a live feed that was never actually requested.
+  const [cameraOn, setCameraOn] = useState(false);
   const [captureState, setCaptureState] = useState<"idle" | "ready" | "saving" | "saved" | "error">("idle");
   const [arrivalToasts, setArrivalToasts] = useState<AudienceEntryEvent[]>([]);
   const [milestoneToast, setMilestoneToast] = useState<{ milestone: number; audienceCount: number } | null>(null);
@@ -118,6 +135,50 @@ export default function MonitorSatelliteSystem({
   const seenArrivalIdsRef = useRef<Set<string>>(new Set());
 
   const shouldShowPulse = showAudiencePulse ?? showAudienceMonitor;
+  const mainMonitorHeight = satelliteMode === "single" ? 320 : 380;
+  const effectiveFallbackVideoUrl = fallbackVideoUrl || DEFAULT_OBSERVATORY_VIDEO_URL;
+  const effectiveLeftPipVideoUrl = leftPipVideoUrl || effectiveFallbackVideoUrl;
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const savedSatelliteMode = window.localStorage.getItem("tmi.monitor.satelliteMode");
+    const savedAudioPanel = window.localStorage.getItem("tmi.monitor.audioPanelVisible");
+    const savedCameraPanel = window.localStorage.getItem("tmi.monitor.cameraPanelVisible");
+    const savedCameraExpanded = window.localStorage.getItem("tmi.monitor.cameraPanelExpanded");
+
+    if (savedSatelliteMode === "single" || savedSatelliteMode === "split") {
+      setSatelliteMode(savedSatelliteMode);
+    }
+    if (savedAudioPanel === "true" || savedAudioPanel === "false") {
+      setShowLeftAudioPanel(savedAudioPanel === "true");
+    }
+    if (savedCameraPanel === "true" || savedCameraPanel === "false") {
+      setShowRightCameraPanel(savedCameraPanel === "true");
+    }
+    if (savedCameraExpanded === "true" || savedCameraExpanded === "false") {
+      setIsCameraExpanded(savedCameraExpanded === "true");
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem("tmi.monitor.satelliteMode", satelliteMode);
+  }, [satelliteMode]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem("tmi.monitor.audioPanelVisible", String(showLeftAudioPanel));
+  }, [showLeftAudioPanel]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem("tmi.monitor.cameraPanelVisible", String(showRightCameraPanel));
+  }, [showRightCameraPanel]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem("tmi.monitor.cameraPanelExpanded", String(isCameraExpanded));
+  }, [isCameraExpanded]);
 
   useEffect(() => {
     if (!shouldShowPulse) return;
@@ -191,21 +252,29 @@ export default function MonitorSatelliteSystem({
     return () => window.clearTimeout(id);
   }, [arrivalToasts]);
 
+  // Camera/mic hardware is never requested just because this component
+  // mounted — that previously fired getUserMedia on every page load
+  // regardless of user intent, leaving the OS camera indicator lit for as
+  // long as the performer stayed on the page. Access is now requested only
+  // when the performer explicitly opts in via requestCameraAccess().
   useEffect(() => {
-    let cancelled = false;
-    navigator.mediaDevices?.getUserMedia({ video: true, audio: true })
-      .then((stream) => {
-        if (cancelled) { stream.getTracks().forEach((t) => t.stop()); return; }
-        streamRef.current = stream;
-        if (videoRef.current) videoRef.current.srcObject = stream;
-        setCaptureState("ready");
-      })
-      .catch(() => setCaptureState("error"));
     return () => {
-      cancelled = true;
       streamRef.current?.getTracks().forEach((t) => t.stop());
     };
   }, []);
+
+  async function requestCameraAccess() {
+    setCaptureState("idle");
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      streamRef.current = stream;
+      if (videoRef.current) videoRef.current.srcObject = stream;
+      setCameraOn(true);
+      setCaptureState("ready");
+    } catch {
+      setCaptureState("error");
+    }
+  }
 
   function toggleMute() {
     const next = !muted;
@@ -220,9 +289,18 @@ export default function MonitorSatelliteSystem({
   }
 
   function toggleCamera() {
-    const next = !cameraOn;
-    setCameraOn(next);
-    streamRef.current?.getVideoTracks().forEach((t) => { t.enabled = next; });
+    if (cameraOn) {
+      // Actually stop and release the hardware — disabling the track alone
+      // (the previous behavior) kept the camera physically active and the
+      // OS indicator light lit even while showing "Camera Off" in the UI.
+      streamRef.current?.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+      if (videoRef.current) videoRef.current.srcObject = null;
+      setCameraOn(false);
+      setCaptureState("idle");
+    } else {
+      void requestCameraAccess();
+    }
   }
 
   function requestFullscreen() {
@@ -272,15 +350,16 @@ export default function MonitorSatelliteSystem({
             isLive={isLive}
             liveRoomRoute={liveRoomRoute}
             introVideoUrl={introVideoUrl}
+            fallbackVideoUrl={effectiveFallbackVideoUrl}
             motionPosterUrl={motionPosterUrl}
             staticImageUrl={staticImageUrl}
             alt={mainLabel}
             audienceCount={audienceCount}
             showLiveOverlay={!isLive}
-            height={460}
+            height={mainMonitorHeight}
           />
         ) : (
-          <div style={{ maxHeight: 460, overflowY: "auto", background: "#050510" }}>
+          <div style={{ maxHeight: mainMonitorHeight, overflowY: "auto", background: "#050510" }}>
             <BillboardLiveWall mode="home" maxTiles={6} title="BROWSE LIVE LOBBY WALLS" />
           </div>
         )}
@@ -358,38 +437,122 @@ export default function MonitorSatelliteSystem({
         📡 SATELLITES
         <span style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.1)" }} />
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 2 }}>
+        <button
+          onClick={() => setSatelliteMode("single")}
+          style={{
+            fontSize: 9,
+            fontWeight: 800,
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            padding: "5px 10px",
+            borderRadius: 6,
+            border: satelliteMode === "single" ? `1px solid ${accentColor}` : "1px solid rgba(255,255,255,0.2)",
+            background: satelliteMode === "single" ? `${accentColor}1f` : "transparent",
+            color: satelliteMode === "single" ? accentColor : "rgba(255,255,255,0.72)",
+            cursor: "pointer",
+          }}
+        >
+          Main Only
+        </button>
+        <button
+          onClick={() => setSatelliteMode("split")}
+          style={{
+            fontSize: 9,
+            fontWeight: 800,
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            padding: "5px 10px",
+            borderRadius: 6,
+            border: satelliteMode === "split" ? `1px solid ${accentColor}` : "1px solid rgba(255,255,255,0.2)",
+            background: satelliteMode === "split" ? `${accentColor}1f` : "transparent",
+            color: satelliteMode === "split" ? accentColor : "rgba(255,255,255,0.72)",
+            cursor: "pointer",
+          }}
+        >
+          Split View
+        </button>
+        {satelliteMode === "split" && !showLeftAudioPanel && (
+          <button
+            onClick={() => setShowLeftAudioPanel(true)}
+            style={{ fontSize: 9, fontWeight: 800, padding: "5px 10px", borderRadius: 6, border: "1px solid rgba(255,215,0,0.5)", background: "rgba(255,215,0,0.12)", color: "#FFD700", cursor: "pointer" }}
+          >
+            Reopen Audio Panel
+          </button>
+        )}
+        {satelliteMode === "split" && !showRightCameraPanel && (
+          <button
+            onClick={() => setShowRightCameraPanel(true)}
+            style={{ fontSize: 9, fontWeight: 800, padding: "5px 10px", borderRadius: 6, border: "1px solid rgba(170,45,255,0.5)", background: "rgba(170,45,255,0.12)", color: "#AA2DFF", cursor: "pointer" }}
+          >
+            Reopen Camera Panel
+          </button>
+        )}
+      </div>
+
+      {satelliteMode === "single" ? (
+        <div style={{ borderRadius: 10, border: "1px solid rgba(255,255,255,0.16)", background: "rgba(15,15,26,0.5)", padding: "12px 14px", color: "rgba(255,255,255,0.68)", fontSize: 11 }}>
+          Focus mode active. Satellite panels are hidden so the main monitor is cleaner.
+        </div>
+      ) : (
+      <div style={{ display: "grid", gridTemplateColumns: showLeftAudioPanel && showRightCameraPanel ? "1fr 1fr" : "1fr", gap: 10 }}>
         {/* Audio / mute panel — PIP Left */}
+        {showLeftAudioPanel && (
         <div style={{ background: "#0f0f1a", border: "1px solid rgba(255,215,0,0.3)", borderRadius: 10, padding: 12, display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
-          <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.1em", color: "#FFD700" }}>PIP LEFT · AUDIO MONITOR</div>
+          <div style={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.1em", color: "#FFD700" }}>PIP LEFT · AUDIO MONITOR</div>
+            <button onClick={() => setShowLeftAudioPanel(false)} style={{ fontSize: 11, lineHeight: 1, border: "1px solid rgba(255,68,68,0.4)", background: "rgba(255,68,68,0.12)", color: "#ff8a8a", borderRadius: 4, padding: "2px 6px", cursor: "pointer" }}>X</button>
+          </div>
+          <div style={{ width: "100%", aspectRatio: "16/9", background: "#000", borderRadius: 6, overflow: "hidden", border: "1px solid rgba(255,215,0,0.25)" }}>
+            <video
+              src={effectiveLeftPipVideoUrl}
+              autoPlay
+              muted={muted}
+              loop
+              controls
+              playsInline
+              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+            />
+          </div>
           <button
             onClick={toggleMute}
-            style={{ width: 42, height: 42, borderRadius: "50%", border: `2px solid ${muted ? "#E63000" : "#FFD700"}`, background: muted ? "rgba(230,48,0,0.15)" : "rgba(255,215,0,0.1)", color: muted ? "#E63000" : "#FFD700", fontSize: 16, cursor: "pointer" }}
-          >
-            {muted ? "🔇" : "🔊"}
-          </button>
-          <button
-            onClick={togglePushToTalk}
             style={{ fontSize: 9, fontWeight: 800, padding: "5px 10px", borderRadius: 6, border: `1px solid ${micLive ? "#E63000" : "rgba(255,255,255,0.2)"}`, background: micLive ? "rgba(230,48,0,0.2)" : "transparent", color: micLive ? "#E63000" : "rgba(255,255,255,0.6)", cursor: "pointer" }}
           >
-            {micLive ? "🎙️ LIVE — TALKING" : "🎙️ PUSH TO TALK"}
+            {muted ? "🔇 AUDIO MUTED" : "🔊 AUDIO LIVE"}
           </button>
         </div>
+        )}
 
         {/* PIP self-camera — PIP Right */}
-        <div style={{ background: "#0f0f1a", border: "1px solid rgba(83,74,183,0.4)", borderRadius: 10, padding: 12, display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
-          <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.1em", color: "#AA2DFF" }}>PIP RIGHT · YOUR CAMERA</div>
-          <div style={{ width: "100%", aspectRatio: "4/3", background: "#000", borderRadius: 6, overflow: "hidden", position: "relative" }}>
-            {captureState === "error" ? (
-              <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28 }}>
-                👤
-              </div>
-            ) : !cameraOn ? (
-              <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, background: "rgba(170,45,255,0.08)" }}>
-                👤
-              </div>
-            ) : (
+        {showRightCameraPanel && (
+        <div style={{ background: "#0f0f1a", border: "1px solid rgba(83,74,183,0.4)", borderRadius: 10, padding: 12, display: "flex", flexDirection: "column", alignItems: "center", gap: 8, gridColumn: isCameraExpanded && showLeftAudioPanel ? "1 / span 2" : "auto" }}>
+          <div style={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.1em", color: "#AA2DFF" }}>PIP RIGHT · YOUR CAMERA</div>
+            <div style={{ display: "flex", gap: 6 }}>
+              <button onClick={() => setShowRightCameraPanel(false)} style={{ fontSize: 10, lineHeight: 1, border: "1px solid rgba(255,255,255,0.28)", background: "rgba(255,255,255,0.08)", color: "#d9d9ff", borderRadius: 4, padding: "4px 8px", cursor: "pointer" }} title="Minimize camera panel">−</button>
+              <button onClick={() => setIsCameraExpanded((v) => !v)} style={{ fontSize: 10, lineHeight: 1, border: "1px solid rgba(255,255,255,0.28)", background: "rgba(255,255,255,0.08)", color: "#d9d9ff", borderRadius: 4, padding: "4px 8px", cursor: "pointer" }} title={isCameraExpanded ? "Dock camera panel" : "Expand camera panel"}>{isCameraExpanded ? "□" : "▢"}</button>
+              <button onClick={requestFullscreen} style={{ fontSize: 10, lineHeight: 1, border: "1px solid rgba(255,255,255,0.28)", background: "rgba(255,255,255,0.08)", color: "#d9d9ff", borderRadius: 4, padding: "4px 8px", cursor: "pointer" }} title="Fullscreen camera panel">⤢</button>
+              <button onClick={() => setShowRightCameraPanel(false)} style={{ fontSize: 10, lineHeight: 1, border: "1px solid rgba(255,68,68,0.4)", background: "rgba(255,68,68,0.12)", color: "#ff8a8a", borderRadius: 4, padding: "4px 8px", cursor: "pointer" }} title="Close camera panel">X</button>
+            </div>
+          </div>
+          <div style={{ width: "100%", aspectRatio: isCameraExpanded ? "21/9" : "16/9", background: "#000", borderRadius: 6, overflow: "hidden", position: "relative", border: "1px solid rgba(170,45,255,0.3)" }}>
+            {cameraOn ? (
+              // No `src` here — this element is driven exclusively by the real
+              // getUserMedia stream bound to videoRef.current.srcObject.
+              // Previously this also set src={fallback video}, which fights
+              // srcObject on the same element.
               <video ref={videoRef} autoPlay muted playsInline style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            ) : (
+              <button
+                onClick={() => void requestCameraAccess()}
+                style={{
+                  width: "100%", height: "100%", display: "grid", placeItems: "center", gap: 6,
+                  background: "transparent", border: "none", cursor: "pointer",
+                  color: "rgba(255,255,255,0.62)", fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase",
+                }}
+              >
+                <span>{captureState === "error" ? "Camera access denied" : "📷 Enable Camera"}</span>
+              </button>
             )}
             <canvas ref={canvasRef} style={{ display: "none" }} />
           </div>
@@ -411,7 +574,40 @@ export default function MonitorSatelliteSystem({
             {captureState === "saving" ? "Saving…" : captureState === "saved" ? "✓ Saved to Memory Wall" : "📸 Capture → Memory Wall"}
           </button>
         </div>
+        )}
+
+        {!showLeftAudioPanel && !showRightCameraPanel && (
+          <div style={{ borderRadius: 10, border: "1px solid rgba(255,255,255,0.16)", background: "rgba(15,15,26,0.5)", padding: "12px 14px", color: "rgba(255,255,255,0.68)", fontSize: 11 }}>
+            Both satellite panels are closed. Use the reopen buttons above to bring them back.
+          </div>
+        )}
+
+        {!showRightCameraPanel && (
+          <button
+            onClick={() => setShowRightCameraPanel(true)}
+            style={{
+              position: "fixed",
+              right: 16,
+              bottom: 92,
+              zIndex: 60,
+              borderRadius: 999,
+              border: "1px solid rgba(170,45,255,0.6)",
+              background: "rgba(170,45,255,0.16)",
+              color: "#e8d9ff",
+              fontSize: 10,
+              fontWeight: 800,
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              padding: "8px 12px",
+              cursor: "pointer",
+            }}
+            title="Restore camera panel"
+          >
+            📷 Camera
+          </button>
+        )}
       </div>
+      )}
     </div>
   );
 }

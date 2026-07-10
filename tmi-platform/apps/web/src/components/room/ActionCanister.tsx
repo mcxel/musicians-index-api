@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useDrawer } from "./DrawerContext";
 
 export interface CanisterAction {
@@ -9,9 +9,32 @@ export interface CanisterAction {
   icon: string;
 }
 
-export default function ActionCanister({ actions }: { actions: CanisterAction[] }) {
+export default function ActionCanister({
+  actions,
+  side = "left",
+  initialCollapsed = true,
+  containerStyle,
+}: {
+  actions: CanisterAction[];
+  side?: "left" | "right";
+  initialCollapsed?: boolean;
+  containerStyle?: React.CSSProperties;
+}) {
   const { activeDrawer, toggleDrawer } = useDrawer();
-  const [collapsed, setCollapsed] = useState(true);
+  const [collapsed, setCollapsed] = useState(initialCollapsed);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const saved = window.localStorage.getItem(`tmi.actionCanister.${side}.collapsed`);
+    if (saved === "true" || saved === "false") {
+      setCollapsed(saved === "true");
+    }
+  }, [side]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(`tmi.actionCanister.${side}.collapsed`, String(collapsed));
+  }, [collapsed, side]);
 
   return (
     <div style={{
@@ -20,9 +43,14 @@ export default function ActionCanister({ actions }: { actions: CanisterAction[] 
       border: '1px solid rgba(255,255,255,0.1)',
       borderRadius: 14, padding: 'clamp(4px, 1vw, 8px)', backdropFilter: 'blur(16px)',
       boxShadow: '0 10px 30px rgba(0,0,0,0.6)',
-      position: 'fixed', left: 'clamp(4px, 2vw, 16px)', top: '50%', transform: 'translateY(-50%)',
+      position: 'fixed',
+      left: side === 'left' ? 'clamp(4px, 2vw, 16px)' : undefined,
+      right: side === 'right' ? 'clamp(4px, 2vw, 16px)' : undefined,
+      top: '50%',
+      transform: 'translateY(-50%)',
       zIndex: 9999, /* Bumped z-index to ensure it never gets trapped under canvas layers */
       transition: 'all 0.2s ease',
+      ...containerStyle,
     }}>
       <button
         onClick={() => setCollapsed((c) => !c)}
@@ -42,7 +70,9 @@ export default function ActionCanister({ actions }: { actions: CanisterAction[] 
           marginBottom: collapsed ? 0 : 2,
         }}
       >
-        {collapsed ? '▶' : '◀'}
+        {side === 'left'
+          ? (collapsed ? '▶' : '◀')
+          : (collapsed ? '◀' : '▶')}
       </button>
 
       {!collapsed && actions.map(a => {
