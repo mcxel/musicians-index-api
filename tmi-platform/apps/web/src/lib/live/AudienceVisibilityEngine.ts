@@ -125,6 +125,8 @@ class AudienceVisibilityEngine {
   /**
    * Fill empty seats with bots until the room meets minimumFillRatio.
    * Call this whenever real audience drops below threshold.
+   * @deprecated Use BotCrowdFillEngine exclusively for occupancy seeding.
+   * This will be removed in the convergence phase. Kept for now to avoid breaking changes.
    */
   fillWithBots(roomId: string, minimumFillRatio = 0.4): number {
     const grid = this.grids.get(roomId);
@@ -138,7 +140,7 @@ class AudienceVisibilityEngine {
       beforeValue: minimumFillRatio,
       requestedValue: minimumFillRatio + ((lobbySignal?.retentionScore ?? 0) > 120 ? 0.1 : 0.02),
       minValue: 0.2,
-      maxValue: 0.95,
+      maxValue: 0.92, // Rule 15: Hard cap, never exceed 92% occupancy for bot fill
       confidence: lobbySignal ? 0.66 : 0.46,
       reason: 'crowd density adapts from lobby retention and engagement behavior',
     });
