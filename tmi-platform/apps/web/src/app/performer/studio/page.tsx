@@ -83,13 +83,6 @@ const SEED_BEATS: Beat[] = [
   { id: 5, title: "Dark Matter",      genre: "Drill",     bpm: 145, price: 99,  license: "Premium",   market: false },
 ];
 
-const LOBBY_FANS = [
-  { name: "JamesSky",  tier: "Gold",    emoji: "🥇" },
-  { name: "Lily88",    tier: "Silver",  emoji: "🥈" },
-  { name: "Alex94",    tier: "Diamond", emoji: "💎" },
-  { name: "NovaFan",   tier: "RUBY",  emoji: "🥉" },
-];
-
 const SET_LIST = [
   "Midnight Cipher", "Gold Rush", "Neon District", "Stellar Bounce", "Dark Matter",
 ];
@@ -391,22 +384,13 @@ function GreenRoomPanel({ onStartShow }: { onStartShow: () => void }) {
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-        {/* Fans waiting */}
+        {/* Fans waiting — no real pre-show presence system exists yet to
+            track who is actually waiting; showing an honest empty state
+            instead of a fabricated fixed list (Rule 20). */}
         <div>
           <div className="orbitron" style={{ fontSize: 9, color: C.muted, letterSpacing: "0.14em", marginBottom: 8 }}>FANS WAITING IN LOBBY</div>
-          {LOBBY_FANS.map(f => (
-            <div key={f.name} style={{
-              display: "flex", alignItems: "center", gap: 8, padding: "6px 8px",
-              borderRadius: 8, background: "rgba(0,229,255,0.05)", border: "1px solid rgba(0,229,255,0.1)",
-              marginBottom: 5,
-            }}>
-              <span style={{ fontSize: 14 }}>{f.emoji}</span>
-              <span className="exo2" style={{ fontSize: 11, color: C.white, flex: 1 }}>{f.name}</span>
-              <span className="orbitron" style={{ fontSize: 8, color: C.muted }}>{f.tier}</span>
-            </div>
-          ))}
-          <div className="exo2" style={{ fontSize: 10, color: C.muted, paddingLeft: 8, marginTop: 4 }}>
-            + 847 more waiting...
+          <div className="exo2" style={{ fontSize: 11, color: C.muted, padding: "8px 0" }}>
+            Fans will appear here once they join your Green Room.
           </div>
         </div>
 
