@@ -104,6 +104,14 @@ export interface PerformerIdentity {
    * After 2 months, admin opens the rotation window.
    */
   crownSince?: string; // ISO date string
+
+  /**
+   * Account owner (Phase A-2 authorization).
+   * Nullable: existing performers may not have claimed ownership yet.
+   * Missing ownership means: public Yopho allowed, management controls denied.
+   * Used by: /profile/performer/[slug] permission guard, API mutations.
+   */
+  ownerId?: string | null;
 }
 
 // ── Registry data ─────────────────────────────────────────────────────────────
