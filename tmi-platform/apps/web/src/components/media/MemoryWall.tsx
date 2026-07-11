@@ -403,6 +403,7 @@ const MOMENT_ICONS: Record<string, string> = {
 function MomentsSection({ accentColor, entityId, entityType }: { accentColor: string; entityId?: string; entityType?: string }) {
   const [memories, setMemories] = useState<MemoryItem[] | null>(null);
   const [loading, setLoading] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!entityId) { setMemories(null); return; }
@@ -415,6 +416,25 @@ function MomentsSection({ accentColor, entityId, entityType }: { accentColor: st
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [entityId, entityType]);
+
+  async function handleDelete(memoryId: string) {
+    setDeletingId(memoryId);
+    try {
+      const res = await fetch('/api/memory/wall', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ memoryId }),
+      });
+      if (res.ok) {
+        setMemories((prev) => (prev ?? []).filter((m) => m.memoryId !== memoryId));
+      }
+    } catch {
+      // Leave the item in place — user can retry
+    } finally {
+      setDeletingId(null);
+    }
+  }
 
   if (!entityId) {
     return (
@@ -443,10 +463,34 @@ function MomentsSection({ accentColor, entityId, entityType }: { accentColor: st
       {memories.map((m) => (
         <div
           key={m.memoryId}
-          style={{ padding: "10px", borderRadius: 8, background: "rgba(255,215,0,0.06)", border: "1px solid rgba(255,215,0,0.14)", fontSize: 10, fontWeight: 700, color: "#e2e8f0", display: "flex", alignItems: "center", gap: 6 }}
+          style={{ position: "relative", padding: "10px", borderRadius: 8, background: "rgba(255,215,0,0.06)", border: "1px solid rgba(255,215,0,0.14)", fontSize: 10, fontWeight: 700, color: "#e2e8f0", display: "flex", alignItems: "center", gap: 6 }}
         >
           <span>{MOMENT_ICONS[m.contentType] ?? "✨"}</span>
           <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.title}</span>
+          <button
+            onClick={() => void handleDelete(m.memoryId)}
+            disabled={deletingId === m.memoryId}
+            title="Remove from Memory Wall"
+            aria-label="Remove from Memory Wall"
+            style={{
+              flexShrink: 0,
+              background: "rgba(0,0,0,0.35)",
+              border: "none",
+              color: "rgba(255,255,255,0.55)",
+              borderRadius: "50%",
+              width: 18,
+              height: 18,
+              fontSize: 11,
+              lineHeight: 1,
+              cursor: deletingId === m.memoryId ? "default" : "pointer",
+              opacity: deletingId === m.memoryId ? 0.5 : 1,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            {deletingId === m.memoryId ? "…" : "×"}
+          </button>
         </div>
       ))}
     </div>

@@ -5,16 +5,25 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import HighFidelityAvatar from "@/components/avatar/HighFidelityAvatar";
 import ImageUploader from "@/components/media/ImageUploader";
+import { useTmiSession } from "@/hooks/SessionContext";
 
-type Section = "profile" | "notifications" | "privacy" | "password" | "linked" | "danger";
+type Section = "profile" | "appearance" | "notifications" | "privacy" | "password" | "linked" | "danger";
 
 const NAV_ITEMS: { id: Section; label: string; icon: string; color: string }[] = [
   { id: "profile",       label: "Profile",          icon: "🎤", color: "#00FFFF"  },
+  { id: "appearance",    label: "Appearance",       icon: "🎨", color: "#FF2DAA"  },
   { id: "notifications", label: "Notifications",    icon: "🔔", color: "#FFD700"  },
   { id: "privacy",       label: "Privacy",          icon: "🔒", color: "#AA2DFF"  },
   { id: "password",      label: "Password",         icon: "🛡️", color: "#00FF88"  },
   { id: "linked",        label: "Linked Accounts",  icon: "🔗", color: "#FF9500"  },
   { id: "danger",        label: "Danger Zone",      icon: "⚠️", color: "#FF2DAA"  },
+];
+
+const ACCENT_PRESETS: { label: string; primary: string; secondary: string }[] = [
+  { label: "Gold",   primary: "#FFD700", secondary: "#B8860B" },
+  { label: "Purple", primary: "#AA2DFF", secondary: "#4B0082" },
+  { label: "Cyan",   primary: "#00FFFF", secondary: "#0088AA" },
+  { label: "Red",    primary: "#FF2DAA", secondary: "#DC143C" },
 ];
 
 const SOCIAL_PLATFORMS = [
@@ -27,6 +36,7 @@ const SOCIAL_PLATFORMS = [
 
 export default function SettingsPage() {
   const router = useRouter();
+  const { styleConfig, updateUserColors } = useTmiSession();
   const [activeSection, setActiveSection] = useState<Section>("profile");
   const [saved, setSaved] = useState<Section | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -307,6 +317,46 @@ export default function SettingsPage() {
                 {saveError && <div style={{ color: "#ff8888", fontSize: 12, marginBottom: 12 }}>{saveError}</div>}
                 <SaveButton section="profile" />
               </form>
+            )}
+
+            {/* APPEARANCE */}
+            {activeSection === "appearance" && (
+              <div>
+                <div style={{ fontSize: 9, fontWeight: 800, color: "#FF2DAA", letterSpacing: "0.2em", marginBottom: 24 }}>APPEARANCE</div>
+                <label style={labelStyle}>ACCENT COLOR</label>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, marginTop: 8 }}>
+                  {ACCENT_PRESETS.map((preset) => {
+                    const active = styleConfig.primaryNeonColor === preset.primary;
+                    return (
+                      <button
+                        key={preset.label}
+                        type="button"
+                        onClick={() => updateUserColors(preset.primary, preset.secondary)}
+                        style={{
+                          display: "flex", flexDirection: "column", alignItems: "center", gap: 8,
+                          padding: "16px 8px",
+                          borderRadius: 10,
+                          border: active ? `1px solid ${preset.primary}` : "1px solid rgba(255,255,255,0.1)",
+                          background: active ? `${preset.primary}14` : "rgba(255,255,255,0.02)",
+                          cursor: "pointer",
+                        }}
+                      >
+                        <span style={{
+                          width: 28, height: 28, borderRadius: "50%",
+                          background: `linear-gradient(135deg, ${preset.primary}, ${preset.secondary})`,
+                          boxShadow: active ? `0 0 12px ${preset.primary}88` : "none",
+                        }} />
+                        <span style={{ fontSize: 10, fontWeight: 700, color: active ? preset.primary : "rgba(255,255,255,0.6)" }}>
+                          {preset.label}{active ? " ✓" : ""}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <div style={{ marginTop: 20, fontSize: 11, color: "rgba(255,255,255,0.35)" }}>
+                  Your accent color applies across profile glows, borders, and highlights platform-wide.
+                </div>
+              </div>
             )}
 
             {/* NOTIFICATIONS */}
