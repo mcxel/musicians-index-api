@@ -9,6 +9,7 @@ interface ProfileAvatarManagerProps {
   initialAvatarUrl?: string;
   userName: string;
   tierColor?: string;
+  isOwner?: boolean;
 }
 
 /**
@@ -16,11 +17,16 @@ interface ProfileAvatarManagerProps {
  * Creates the instant-feedback identity loop. Uploads photo, updates the 
  * High-Fidelity Avatar immediately, and broadcasts the change to the platform.
  */
-export default function ProfileAvatarManager({ 
-  initialAvatarUrl, 
-  userName, 
-  tierColor = '#00FFFF' 
+export default function ProfileAvatarManager({
+  initialAvatarUrl,
+  userName,
+  tierColor = '#00FFFF',
+  isOwner = false
 }: ProfileAvatarManagerProps) {
+  // Owner authorization guard (Rule 20: deny-by-default)
+  // Performers are themselves, not avatars. Avatar editor is owner-only.
+  if (!isOwner) return null;
+
   const [avatarUrl, setAvatarUrl] = useState<string | undefined>(initialAvatarUrl);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
