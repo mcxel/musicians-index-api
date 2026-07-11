@@ -83,6 +83,7 @@ export default function MediaMatrixEngine() {
   const [assignments, setAssignments] = useState<string[]>(DEFAULT_MATRIX_ASSIGNMENTS);
   const [liveCount, setLiveCount] = useState(0);
   const [livePreviewUrl, setLivePreviewUrl] = useState<string | null>(null);
+  const [panelOpen, setPanelOpen] = useState<"layout" | "sources" | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -188,220 +189,219 @@ export default function MediaMatrixEngine() {
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 8, height: "100%", minHeight: 0 }}>
-      <div style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr", gap: 8, alignItems: "start" }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-            {(["single", "dual", "triple", "quad", "pip"] as const).map((modeName) => {
-              const active = layout === modeName;
-              return (
-                <button
-                  key={modeName}
-                  type="button"
-                  onClick={() => setLayout(modeName)}
-                  style={{
-                    border: active ? "1px solid rgba(255,215,0,0.75)" : "1px solid rgba(255,255,255,0.18)",
-                    borderRadius: 999,
-                    background: active ? "rgba(255,215,0,0.2)" : "rgba(255,255,255,0.06)",
-                    color: active ? "#FFD700" : "rgba(255,255,255,0.78)",
-                    padding: "3px 8px",
-                    fontSize: 10,
-                    fontWeight: 800,
-                    letterSpacing: "0.08em",
-                    textTransform: "uppercase",
-                    cursor: "pointer",
-                  }}
-                >
-                  {LAYOUT_LABELS[modeName]}
-                </button>
-              );
-            })}
-            <button
-              type="button"
-              onClick={launchBoardroomMode}
-              style={{
-                border: mode === "boardroom" ? "1px solid rgba(0,255,255,0.8)" : "1px solid rgba(0,255,255,0.28)",
-                borderRadius: 999,
-                background: mode === "boardroom" ? "rgba(0,255,255,0.15)" : "rgba(0,255,255,0.06)",
-                color: mode === "boardroom" ? "#7CF7FF" : "rgba(255,255,255,0.8)",
-                padding: "3px 8px",
-                fontSize: 10,
-                fontWeight: 800,
-                letterSpacing: "0.08em",
-                textTransform: "uppercase",
-                cursor: "pointer",
-              }}
-            >
-              Boardroom Mode
-            </button>
-            <button
-              type="button"
-              onClick={restoreDefaults}
-              style={{
-                border: "1px solid rgba(255,255,255,0.18)",
-                borderRadius: 999,
-                background: "rgba(255,255,255,0.06)",
-                color: "rgba(255,255,255,0.8)",
-                padding: "3px 8px",
-                fontSize: 10,
-                fontWeight: 800,
-                letterSpacing: "0.08em",
-                textTransform: "uppercase",
-                cursor: "pointer",
-              }}
-            >
-              Restore Defaults
-            </button>
-          </div>
-          <div style={{ color: "rgba(0,255,255,0.85)", fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>
-            {mode === "boardroom" ? "Boardroom window set" : `${viewportCount} active viewports`} · assign source, swap slots, clear, or restore.
-          </div>
-        </div>
-
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 6 }}>
-          <button type="button" onClick={() => assignSourceToAll(selectedSourceId)} style={actionButtonStyle}>
-            Route to all viewports
-          </button>
-          <button type="button" onClick={() => setLayout("single")} style={actionButtonStyle}>
-            Focus main monitor
-          </button>
-          <button type="button" onClick={() => setLayout("quad")} style={actionButtonStyle}>
-            Restore quad wall
-          </button>
-          <button type="button" onClick={() => setSwapAnchor(null)} style={actionButtonStyle}>
-            Clear swap selection
-          </button>
-        </div>
+    <div style={{ display: "flex", gap: 8, height: "100%", minHeight: 0 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 6, flexShrink: 0 }}>
+        <LauncherButton icon="▤" label="Layout" active={panelOpen === "layout"} onClick={() => setPanelOpen((p) => (p === "layout" ? null : "layout"))} />
+        <LauncherButton icon="☰" label="Sources" active={panelOpen === "sources"} onClick={() => setPanelOpen((p) => (p === "sources" ? null : "sources"))} />
+        <LauncherButton icon="⛶" label="Board" active={mode === "boardroom"} onClick={launchBoardroomMode} />
+        <LauncherButton icon="↺" label="Reset" active={false} onClick={restoreDefaults} />
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1.1fr 1.3fr", gap: 8, minHeight: 0 }}>
-        <div
-          style={{
-            borderRadius: 10,
-            border: "1px solid rgba(255,215,0,0.25)",
-            background: "linear-gradient(180deg, rgba(15,8,24,0.94), rgba(8,4,13,0.98))",
-            padding: 10,
-            display: "flex",
-            flexDirection: "column",
-            gap: 8,
-            minHeight: 0,
-          }}
-        >
-          <div style={{ color: "#FFD700", fontSize: 10, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase" }}>
-            Source Registry
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 6, overflow: "auto", maxHeight: 240 }}>
-            {MEDIA_SOURCE_REGISTRY.map((source) => {
-              const active = selectedSourceId === source.id;
-              return (
-                <button
-                  key={source.id}
-                  type="button"
-                  onClick={() => setSelectedSourceId(source.id)}
-                  style={{
-                    width: "100%",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    gap: 8,
-                    borderRadius: 8,
-                    border: active ? `1px solid ${source.accent}` : "1px solid rgba(255,255,255,0.14)",
-                    background: active ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.03)",
-                    color: "rgba(255,255,255,0.92)",
-                    padding: "8px 10px",
-                    textAlign: "left",
-                    cursor: "pointer",
-                    overflow: "hidden",
-                  }}
-                >
-                    <span
-                      aria-hidden
-                      style={{
-                        width: 54,
-                        height: 42,
-                        borderRadius: 7,
-                        flexShrink: 0,
-                        border: `1px solid ${source.accent}44`,
-                        background: `linear-gradient(145deg, ${source.accent}33, rgba(8,4,13,0.92))`,
-                        boxShadow: `inset 0 0 24px ${source.accent}20`,
-                      }}
-                    />
-                  <span style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                    <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.05em", textTransform: "uppercase" }}>{source.label}</span>
-                    <span style={{ color: "rgba(255,255,255,0.56)", fontSize: 9, lineHeight: 1.35 }}>{source.detail}</span>
-                  </span>
-                  <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 3 }}>
-                    <span style={{ color: source.status === "LIVE" ? "#00FF88" : "#FFD700", fontSize: 9, fontWeight: 900, letterSpacing: "0.08em" }}>{source.status}</span>
-                    <span style={{ color: source.accent, fontSize: 9, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase" }}>{source.kind}</span>
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+      <div style={{ flex: 1, minWidth: 0, minHeight: 0, display: "flex", flexDirection: "column", gap: 6 }}>
+        <div style={{ flexShrink: 0, color: "rgba(0,255,255,0.85)", fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>
+          {mode === "boardroom" ? "Boardroom window set" : `${viewportCount} active viewports`}
         </div>
 
         <div
           style={{
-            borderRadius: 10,
-            border: "1px solid rgba(255,215,0,0.25)",
-            background: "linear-gradient(180deg, rgba(15,8,24,0.94), rgba(8,4,13,0.98))",
-            padding: 10,
-            minHeight: 0,
-          }}
-        >
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 8 }}>
-            <div style={{ color: "#FFD700", fontSize: 10, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase" }}>
-              Viewport Assignment
-            </div>
-            <div style={{ color: "rgba(255,255,255,0.6)", fontSize: 9, letterSpacing: "0.08em", textTransform: "uppercase" }}>
-              Click viewport, then assign or swap
-            </div>
-          </div>
-
-          <div style={{
             flex: 1,
-            minHeight: 210,
-            maxHeight: 360,
-            overflow: "auto",
+            minHeight: 0,
+            height: "100%",
             display: "grid",
             gridTemplate: getGridTemplate(layout),
             gap: 8,
-          }}>
-            {activeViewports.map((source, idx) => {
-              const isTripleLast = layout === "triple" && idx === 2;
-              const isAnchor = swapAnchor === idx;
+          }}
+        >
+          {activeViewports.map((source, idx) => {
+            const isTripleLast = layout === "triple" && idx === 2;
+            const isAnchor = swapAnchor === idx;
 
-              return (
-                <div
-                  key={`${source.id}-${idx}`}
-                  style={{
-                    ...cardStyle,
-                    ...(isTripleLast ? { gridColumn: "1 / span 2" } : {}),
-                    outline: isAnchor ? "2px solid rgba(0,255,255,0.6)" : "none",
-                    cursor: "pointer",
-                  }}
-                  onClick={() => {
-                    if (swapAnchor === null) {
-                      setSwapAnchor(idx);
-                      return;
-                    }
-                    swapViewports(swapAnchor, idx);
-                  }}
-                >
-                  <ViewportHeader source={source} index={idx + 1} slotLabel={SOURCE_SLOT_LABELS[idx] ?? `Slot ${idx + 1}`} />
-                  <ViewportBody source={source} liveCount={liveCount} livePreviewUrl={livePreviewUrl} />
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 6, padding: 8, borderTop: "1px solid rgba(255,215,0,0.15)" }}>
-                    <button type="button" onClick={(event) => { event.stopPropagation(); assignSelectedSource(idx); }} style={miniButtonStyle}>Attach</button>
-                    <button type="button" onClick={(event) => { event.stopPropagation(); clearViewport(idx); }} style={miniButtonStyle}>Clear</button>
-                    <button type="button" onClick={(event) => { event.stopPropagation(); setSwapAnchor(idx); }} style={miniButtonStyle}>{isAnchor ? "Selected" : "Swap"}</button>
-                  </div>
+            return (
+              <div
+                key={`${source.id}-${idx}`}
+                style={{
+                  ...cardStyle,
+                  ...(isTripleLast ? { gridColumn: "1 / span 2" } : {}),
+                  outline: isAnchor ? "2px solid rgba(0,255,255,0.6)" : "none",
+                  cursor: "pointer",
+                }}
+                onClick={() => {
+                  if (swapAnchor === null) {
+                    setSwapAnchor(idx);
+                    return;
+                  }
+                  swapViewports(swapAnchor, idx);
+                }}
+              >
+                <ViewportHeader source={source} index={idx + 1} slotLabel={SOURCE_SLOT_LABELS[idx] ?? `Slot ${idx + 1}`} />
+                <ViewportBody source={source} liveCount={liveCount} livePreviewUrl={livePreviewUrl} />
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 6, padding: 8, borderTop: "1px solid rgba(255,215,0,0.15)" }}>
+                  <button type="button" onClick={(event) => { event.stopPropagation(); assignSelectedSource(idx); }} style={miniButtonStyle}>Attach</button>
+                  <button type="button" onClick={(event) => { event.stopPropagation(); clearViewport(idx); }} style={miniButtonStyle}>Clear</button>
+                  <button type="button" onClick={(event) => { event.stopPropagation(); setSwapAnchor(idx); }} style={miniButtonStyle}>{isAnchor ? "Selected" : "Swap"}</button>
                 </div>
-              );
-            })}
-          </div>
+              </div>
+            );
+          })}
         </div>
       </div>
+
+      {panelOpen && (
+          <div
+            style={{
+              flexShrink: 0,
+              width: 260,
+              maxHeight: "100%",
+              overflow: "auto",
+              borderRadius: 10,
+              border: "1px solid rgba(255,215,0,0.45)",
+              background: "linear-gradient(180deg, rgba(15,8,24,0.98), rgba(8,4,13,0.99))",
+              boxShadow: "0 16px 40px rgba(0,0,0,0.65), inset 0 0 0 1px rgba(255,215,0,0.1)",
+              padding: 10,
+              display: "flex",
+              flexDirection: "column",
+              gap: 8,
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <span style={{ color: "#FFD700", fontSize: 10, fontWeight: 900, letterSpacing: "0.08em", textTransform: "uppercase" }}>
+                {panelOpen === "layout" ? "Layout & Actions" : "Source Registry"}
+              </span>
+              <button
+                type="button"
+                onClick={() => setPanelOpen(null)}
+                aria-label="Close panel"
+                style={{ border: "1px solid rgba(255,255,255,0.2)", background: "rgba(255,255,255,0.06)", color: "#fff", borderRadius: 6, width: 20, height: 20, fontSize: 11, lineHeight: "18px", cursor: "pointer" }}
+              >
+                ×
+              </button>
+            </div>
+
+            {panelOpen === "layout" && (
+              <>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  {(["single", "dual", "triple", "quad", "pip"] as const).map((modeName) => {
+                    const active = layout === modeName;
+                    return (
+                      <button
+                        key={modeName}
+                        type="button"
+                        onClick={() => setLayout(modeName)}
+                        style={{
+                          border: active ? "1px solid rgba(255,215,0,0.75)" : "1px solid rgba(255,255,255,0.18)",
+                          borderRadius: 999,
+                          background: active ? "rgba(255,215,0,0.2)" : "rgba(255,255,255,0.06)",
+                          color: active ? "#FFD700" : "rgba(255,255,255,0.78)",
+                          padding: "3px 8px",
+                          fontSize: 10,
+                          fontWeight: 800,
+                          letterSpacing: "0.08em",
+                          textTransform: "uppercase",
+                          cursor: "pointer",
+                        }}
+                      >
+                        {LAYOUT_LABELS[modeName]}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 6 }}>
+                  <button type="button" onClick={() => assignSourceToAll(selectedSourceId)} style={actionButtonStyle}>
+                    Route to all viewports
+                  </button>
+                  <button type="button" onClick={() => setLayout("single")} style={actionButtonStyle}>
+                    Focus main monitor
+                  </button>
+                  <button type="button" onClick={() => setLayout("quad")} style={actionButtonStyle}>
+                    Restore quad wall
+                  </button>
+                  <button type="button" onClick={() => setSwapAnchor(null)} style={actionButtonStyle}>
+                    Clear swap selection
+                  </button>
+                </div>
+              </>
+            )}
+
+            {panelOpen === "sources" && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 6, overflow: "auto" }}>
+                {MEDIA_SOURCE_REGISTRY.map((source) => {
+                  const active = selectedSourceId === source.id;
+                  return (
+                    <button
+                      key={source.id}
+                      type="button"
+                      onClick={() => setSelectedSourceId(source.id)}
+                      style={{
+                        width: "100%",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: 8,
+                        borderRadius: 8,
+                        border: active ? `1px solid ${source.accent}` : "1px solid rgba(255,255,255,0.14)",
+                        background: active ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.03)",
+                        color: "rgba(255,255,255,0.92)",
+                        padding: "8px 10px",
+                        textAlign: "left",
+                        cursor: "pointer",
+                        overflow: "hidden",
+                      }}
+                    >
+                      <span
+                        aria-hidden
+                        style={{
+                          width: 54,
+                          height: 42,
+                          borderRadius: 7,
+                          flexShrink: 0,
+                          border: `1px solid ${source.accent}44`,
+                          background: `linear-gradient(145deg, ${source.accent}33, rgba(8,4,13,0.92))`,
+                          boxShadow: `inset 0 0 24px ${source.accent}20`,
+                        }}
+                      />
+                      <span style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                        <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.05em", textTransform: "uppercase" }}>{source.label}</span>
+                        <span style={{ color: "rgba(255,255,255,0.56)", fontSize: 9, lineHeight: 1.35 }}>{source.detail}</span>
+                      </span>
+                      <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 3 }}>
+                        <span style={{ color: source.status === "LIVE" ? "#00FF88" : "#FFD700", fontSize: 9, fontWeight: 900, letterSpacing: "0.08em" }}>{source.status}</span>
+                        <span style={{ color: source.accent, fontSize: 9, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase" }}>{source.kind}</span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
     </div>
+  );
+}
+
+function LauncherButton({ icon, label, active, onClick }: { icon: string; label: string; active: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      title={label}
+      style={{
+        width: 30,
+        height: 30,
+        borderRadius: 8,
+        border: active ? "1px solid rgba(255,215,0,0.75)" : "1px solid rgba(255,255,255,0.18)",
+        background: active ? "rgba(255,215,0,0.2)" : "rgba(255,255,255,0.05)",
+        color: active ? "#FFD700" : "rgba(255,255,255,0.78)",
+        fontSize: 13,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        cursor: "pointer",
+        flexShrink: 0,
+      }}
+    >
+      {icon}
+    </button>
   );
 }
 

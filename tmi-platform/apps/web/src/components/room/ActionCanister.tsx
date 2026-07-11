@@ -36,6 +36,43 @@ export default function ActionCanister({
     window.localStorage.setItem(`tmi.actionCanister.${side}.collapsed`, String(collapsed));
   }, [collapsed, side]);
 
+  // Collapsed state renders only a slim, flush-to-edge tab — not the full
+  // padded/backdrop-blurred rail container — so there's nothing floating or
+  // obstructing the view when the rail isn't in use.
+  if (collapsed) {
+    return (
+      <button
+        onClick={() => setCollapsed(false)}
+        title="Open menu"
+        aria-label="Open menu"
+        style={{
+          position: 'fixed',
+          left: side === 'left' ? 0 : undefined,
+          right: side === 'right' ? 0 : undefined,
+          top: '50%',
+          transform: 'translateY(-50%)',
+          zIndex: 9999,
+          background: 'rgba(5, 8, 15, 0.45)',
+          border: 'none',
+          borderRadius: side === 'left' ? '0 8px 8px 0' : '8px 0 0 8px',
+          color: 'rgba(255,255,255,0.35)',
+          width: 14,
+          height: 48,
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: 10,
+          padding: 0,
+          transition: 'all 0.2s ease',
+          ...containerStyle,
+        }}
+      >
+        {side === 'left' ? '▶' : '◀'}
+      </button>
+    );
+  }
+
   return (
     <div style={{
       display: 'flex', flexDirection: 'column', gap: 6,
@@ -53,9 +90,9 @@ export default function ActionCanister({
       ...containerStyle,
     }}>
       <button
-        onClick={() => setCollapsed((c) => !c)}
-        title={collapsed ? "Expand menu" : "Collapse menu"}
-        aria-label={collapsed ? "Expand menu" : "Collapse menu"}
+        onClick={() => setCollapsed(true)}
+        title="Collapse menu"
+        aria-label="Collapse menu"
         style={{
           background: 'transparent',
           border: '1px solid rgba(255,255,255,0.15)',
@@ -67,15 +104,13 @@ export default function ActionCanister({
           alignItems: 'center',
           justifyContent: 'center',
           fontSize: 12,
-          marginBottom: collapsed ? 0 : 2,
+          marginBottom: 2,
         }}
       >
-        {side === 'left'
-          ? (collapsed ? '▶' : '◀')
-          : (collapsed ? '◀' : '▶')}
+        {side === 'left' ? '◀' : '▶'}
       </button>
 
-      {!collapsed && actions.map(a => {
+      {actions.map(a => {
         const isActive = activeDrawer === a.id;
         return (
           <button

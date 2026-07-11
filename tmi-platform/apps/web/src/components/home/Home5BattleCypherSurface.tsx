@@ -361,7 +361,7 @@ export default function Home5BattleCypherSurface() {
               }}
             >
               {w.label}
-              <span style={{ fontSize: 9, opacity: 0.65 }}>BRADY BUNCH →</span>
+              <span style={{ fontSize: 9, opacity: 0.65 }}>ENTER →</span>
             </Link>
           ))}
         </div>

@@ -333,7 +333,7 @@ export default function PerformerHubPage() {
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                   <Link href="/performer/studio" style={{ textDecoration: "none", borderRadius: 9, padding: "10px 8px", textAlign: "center", background: "linear-gradient(135deg, #AA2DFF, #FF2DAA)", color: "#fff", fontSize: 10, fontWeight: 900, letterSpacing: "0.08em" }}>GO LIVE</Link>
                   <Link href="/messages" style={{ textDecoration: "none", borderRadius: 9, padding: "10px 8px", textAlign: "center", background: "rgba(0,255,255,0.1)", border: "1px solid rgba(0,255,255,0.28)", color: "#00FFFF", fontSize: 10, fontWeight: 800, letterSpacing: "0.08em" }}>MESSAGE</Link>
-                  <Link href="/playlists" style={{ textDecoration: "none", borderRadius: 9, padding: "10px 8px", textAlign: "center", background: "rgba(255,215,0,0.1)", border: "1px solid rgba(255,215,0,0.28)", color: "#FFD700", fontSize: 10, fontWeight: 800, letterSpacing: "0.08em" }}>PLAYLIST</Link>
+                  <Link href="/playlist" style={{ textDecoration: "none", borderRadius: 9, padding: "10px 8px", textAlign: "center", background: "rgba(255,215,0,0.1)", border: "1px solid rgba(255,215,0,0.28)", color: "#FFD700", fontSize: 10, fontWeight: 800, letterSpacing: "0.08em" }}>PLAYLIST</Link>
                   <Link href="#memory-wall" style={{ textDecoration: "none", borderRadius: 9, padding: "10px 8px", textAlign: "center", background: "rgba(170,45,255,0.12)", border: "1px solid rgba(170,45,255,0.28)", color: "#AA2DFF", fontSize: 10, fontWeight: 800, letterSpacing: "0.08em" }}>MEMORY</Link>
                 </div>
 
@@ -464,8 +464,7 @@ export default function PerformerHubPage() {
 
             {/* Booking Desk + Fan Messages */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
-              <BezelFrame variant="performer" innerPadding={20}>
-                <div style={{ fontSize: 9, letterSpacing: "0.2em", color: "#FFD700", fontWeight: 800, marginBottom: 12 }}>📅 BOOKING DESK</div>
+              <CollapsibleCanister icon="📅" label="Booking Desk" summary={bookings ? `${bookings.length} requests` : undefined} accentColor="#FFD700">
                 {bookings === null && (
                   <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", padding: "8px 0" }}>Loading…</div>
                 )}
@@ -482,10 +481,9 @@ export default function PerformerHubPage() {
                   </div>
                 ))}
                 <Link href="/performer/dashboard" style={{ display: "block", marginTop: 10, fontSize: 10, color: "#FFD700", textDecoration: "none", fontWeight: 700 }}>View all bookings →</Link>
-              </BezelFrame>
+              </CollapsibleCanister>
 
-              <BezelFrame variant="performer" innerPadding={20}>
-                <div style={{ fontSize: 9, letterSpacing: "0.2em", color: "#FF2DAA", fontWeight: 800, marginBottom: 12 }}>💬 FAN MESSAGES</div>
+              <CollapsibleCanister icon="💬" label="Fan Messages" summary={threads ? `${threads.length} threads` : undefined} accentColor="#FF2DAA">
                 {threads === null && (
                   <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", padding: "8px 0" }}>Loading…</div>
                 )}
@@ -502,7 +500,7 @@ export default function PerformerHubPage() {
                   </div>
                 ))}
                 <Link href="/messages" style={{ display: "block", marginTop: 10, fontSize: 10, color: "#FF2DAA", textDecoration: "none", fontWeight: 700 }}>View all messages →</Link>
-              </BezelFrame>
+              </CollapsibleCanister>
             </div>
 
             {/* Pop-out canisters — Playlist + Memory Wall (Constitution Rule 15) */}
@@ -525,9 +523,8 @@ export default function PerformerHubPage() {
 
             {/* Merch Wall + Sponsor Wall */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
-              <BezelFrame variant="performer" innerPadding={20}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                  <div style={{ fontSize: 9, letterSpacing: "0.2em", color: "#00FF88", fontWeight: 800 }}>🛒 MERCH WALL</div>
+              <CollapsibleCanister icon="🛒" label="Merch Wall" accentColor="#00FF88">
+                <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
                   <Link href="/store" style={{ fontSize: 9, color: "#00FF88", textDecoration: "none", fontWeight: 700 }}>MANAGE →</Link>
                 </div>
                 {/* Previously 3 invented catalog items ("Crown Tee", "Beat
@@ -538,31 +535,25 @@ export default function PerformerHubPage() {
                   No merch listed yet.
                 </div>
                 <Link href="/nft" style={{ display: "block", marginTop: 10, padding: "8px", background: "rgba(0,255,136,0.1)", border: "1px solid rgba(0,255,136,0.3)", color: "#00FF88", borderRadius: 8, fontSize: 9, fontWeight: 800, textDecoration: "none", textAlign: "center" }}>🎨 MINT NEW NFT</Link>
-              </BezelFrame>
+              </CollapsibleCanister>
 
-              <BezelFrame variant="performer" innerPadding={20}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                  <div style={{ fontSize: 9, letterSpacing: "0.2em", color: "#AA2DFF", fontWeight: 800 }}>🤝 SPONSOR WALL</div>
+              <CollapsibleCanister icon="🤝" label="Sponsor Wall" accentColor="#AA2DFF">
+                <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
                   <Link href="/hub/sponsor" style={{ fontSize: 9, color: "#AA2DFF", textDecoration: "none", fontWeight: 700 }}>ADD SPONSOR →</Link>
                 </div>
                 <UnifiedAdSlot venue="dashboard" slotKey="dashboardSidebar" format="rectangle" accentColor="#AA2DFF" label="SPONSOR SLOT" style={{ minHeight: 140 }} />
-              </BezelFrame>
+              </CollapsibleCanister>
             </div>
 
             {/* Memory Wall + Magazine Features */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
-              <BezelFrame variant="performer" innerPadding={20}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                  <div style={{ fontSize: 9, letterSpacing: "0.2em", color: "#FF6B35", fontWeight: 800 }}>🎞️ MEMORY WALL</div>
-                  <span style={{ fontSize: 8, color: "rgba(255,255,255,0.35)" }}>Videos · Photos · Audio</span>
-                </div>
+              <CollapsibleCanister icon="🎞️" label="Memory Wall" summary="Videos · Photos · Audio" accentColor="#FF6B35">
                 <MemoryWall accentColor="#FF6B35" title="" entityId={userId} entityType="performer" />
                 <Link href="/fan/theater" style={{ display: "block", marginTop: 10, fontSize: 10, color: "#FF6B35", textDecoration: "none", fontWeight: 700 }}>View all memories →</Link>
-              </BezelFrame>
+              </CollapsibleCanister>
 
-              <BezelFrame variant="performer" innerPadding={20}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                  <div style={{ fontSize: 9, letterSpacing: "0.2em", color: "#FFD700", fontWeight: 800 }}>📰 MAGAZINE FEATURES</div>
+              <CollapsibleCanister icon="📰" label="Magazine Features" accentColor="#FFD700">
+                <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
                   <Link href="/magazine" style={{ fontSize: 9, color: "#FFD700", textDecoration: "none", fontWeight: 700 }}>READ ALL →</Link>
                 </div>
                 {magazineFeatures.length === 0 ? (
@@ -573,7 +564,7 @@ export default function PerformerHubPage() {
                     <div style={{ fontSize: 9, color: "#FFD700" }}>{a.category}</div>
                   </Link>
                 ))}
-              </BezelFrame>
+              </CollapsibleCanister>
             </div>
 
           </div>

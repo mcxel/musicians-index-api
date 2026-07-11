@@ -40,7 +40,7 @@ interface Props {
 }
 
 export default function AdSenseSlot({ slot, format = 'auto', style, label }: Props) {
-  const insRef = useRef<HTMLModElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const pushed = useRef(false);
 
   useEffect(() => {
@@ -60,14 +60,21 @@ export default function AdSenseSlot({ slot, format = 'auto', style, label }: Pro
           {label}
         </div>
       )}
-      <ins
-        ref={insRef}
-        className="adsbygoogle"
-        style={{ display: 'block' }}
-        data-ad-client={PUBLISHER_ID}
-        data-ad-slot={slot || undefined}
-        data-ad-format={format}
-        data-full-width-responsive="true"
+      {/*
+        Rendered via dangerouslySetInnerHTML rather than JSX so React treats this
+        subtree as opaque. adsbygoogle.push() makes Google's script inject an
+        iframe/wrapper inside the <ins> tag directly, outside React's virtual DOM.
+        If React manages the <ins> as a normal child, unmounting it on route
+        navigation diffs against a DOM structure it no longer recognizes and
+        throws "NotFoundError: removeChild/insertBefore ... not a child of this
+        node". Isolating it this way means React only ever manages this wrapper
+        div, never the AdSense-mutated internals.
+      */}
+      <div
+        ref={containerRef}
+        dangerouslySetInnerHTML={{
+          __html: `<ins class="adsbygoogle" style="display:block" data-ad-client="${PUBLISHER_ID}" data-ad-slot="${slot || ''}" data-ad-format="${format}" data-full-width-responsive="true"></ins>`,
+        }}
       />
     </div>
   );

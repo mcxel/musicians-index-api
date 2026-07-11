@@ -23,8 +23,12 @@ const FOOTER_LINKS = {
   Legal: [
     { label: "Privacy Policy",     href: "/privacy" },
     { label: "Terms of Service",   href: "/terms" },
-    { label: "Cookie Policy",      href: "/cookie-policy" },
-    { label: "DMCA / Copyright",   href: "/dmca" },
+    // Cookie Policy and DMCA/Copyright don't have dedicated pages yet — these
+    // are real legal documents that need counsel review (see Rule 19), not
+    // something to fabricate. Point at the real Legal Center index instead
+    // of a 404 until those pages exist.
+    { label: "Cookie Policy",      href: "/legal" },
+    { label: "DMCA / Copyright",   href: "/legal" },
     { label: "Creator Policy",     href: "/creator-policy" },
     { label: "Advertiser Policy",  href: "/advertiser-policy" },
     { label: "Refund Policy",      href: "/refund-policy" },
@@ -35,7 +39,9 @@ const FOOTER_LINKS = {
     { label: "Contact",       href: "/contact" },
     { label: "Advertising",   href: "/advertising" },
     { label: "Sponsors",      href: "/sponsors/advertise" },
-    { label: "Report Abuse",  href: "/report-abuse" },
+    // Report Abuse has no dedicated intake page yet — route to Support
+    // rather than a 404 until a real abuse-report flow exists.
+    { label: "Report Abuse",  href: "/support" },
     { label: "Support",       href: "/support" },
   ],
 } as const;
@@ -148,8 +154,8 @@ export default function PlatformFooter() {
           {[
             { label: "Privacy",  href: "/privacy" },
             { label: "Terms",    href: "/terms" },
-            { label: "Cookies",  href: "/cookie-policy" },
-            { label: "DMCA",     href: "/dmca" },
+            { label: "Cookies",  href: "/legal" },
+            { label: "DMCA",     href: "/legal" },
             { label: "Contact",  href: "/contact" },
           ].map((l) => (
             <Link

@@ -14,11 +14,14 @@ export default function ChallengePage() {
   return (
     <main style={{ minHeight: "100vh", background: "#050510", color: "#fff", fontFamily: "'Inter', sans-serif", paddingBottom: 80 }}>
       {/* Challenges are hosted in the Outdoor Arena (8,200 cap, festival stage) */}
-      <ArenaEventShell eventType="challenge" roomId="challenges-main" watcherCount={440} />
+      {/* watcherCount omitted — no real live viewer count for this async
+          submission board; showing a fabricated number would violate Rule 20. */}
+      <ArenaEventShell eventType="challenge" roomId="challenges-main" />
       <nav style={{ position: "sticky", top: 0, background: "rgba(5,5,16,0.92)", borderBottom: "1px solid rgba(255,255,255,0.07)", padding: "11px 20px", display: "flex", gap: 14, alignItems: "center", backdropFilter: "blur(12px)", zIndex: 50 }}>
         <Link href="/home/1" style={{ fontSize: 11, fontWeight: 900, color: "#FF2DAA", textDecoration: "none", letterSpacing: "0.14em" }}>TMI</Link>
         <span style={{ fontSize: 11, fontWeight: 700 }}>CHALLENGES</span>
-        <Link href="/battles" style={{ marginLeft: "auto", fontSize: 10, color: "#FF2DAA", textDecoration: "none", fontWeight: 700 }}>⚔️ BATTLES</Link>
+        <Link href="/challenge/stage" style={{ marginLeft: "auto", fontSize: 10, color: "#FFD700", textDecoration: "none", fontWeight: 900 }}>🔴 LIVE CHALLENGE STAGE</Link>
+        <Link href="/battles" style={{ fontSize: 10, color: "#FF2DAA", textDecoration: "none", fontWeight: 700 }}>⚔️ BATTLES</Link>
       </nav>
 
       <div style={{ maxWidth: 860, margin: "0 auto", padding: "28px 16px" }}>

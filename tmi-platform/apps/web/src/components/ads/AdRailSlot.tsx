@@ -33,6 +33,7 @@ function railFrameStyle(accent: string): CSSProperties {
 
 function AdSenseTile({ client, slot, format }: { client: string; slot: string; format: 'auto' | 'rectangle' | 'horizontal' }) {
   const initialized = useRef(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (initialized.current) return;
@@ -46,14 +47,16 @@ function AdSenseTile({ client, slot, format }: { client: string; slot: string; f
 
   const minHeight = format === 'horizontal' ? 90 : 250;
 
+  // Rendered via dangerouslySetInnerHTML, not JSX — see AdSenseSlot.tsx for why:
+  // adsbygoogle.push() mutates the <ins> internals outside React's virtual DOM,
+  // and letting React manage/unmount that <ins> directly causes a
+  // removeChild/insertBefore NotFoundError on route navigation.
   return (
-    <ins
-      className="adsbygoogle"
-      style={{ display: 'block', minHeight }}
-      data-ad-client={client}
-      data-ad-slot={slot}
-      data-ad-format={format === 'auto' ? 'auto' : undefined}
-      data-full-width-responsive="true"
+    <div
+      ref={containerRef}
+      dangerouslySetInnerHTML={{
+        __html: `<ins class="adsbygoogle" style="display:block;min-height:${minHeight}px" data-ad-client="${client}" data-ad-slot="${slot}"${format === 'auto' ? ' data-ad-format="auto"' : ''} data-full-width-responsive="true"></ins>`,
+      }}
     />
   );
 }

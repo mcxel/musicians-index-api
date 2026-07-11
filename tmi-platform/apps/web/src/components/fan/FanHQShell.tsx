@@ -25,6 +25,7 @@ import InboxPanel from "@/components/messaging/InboxPanel";
 import type { Friend as FriendType } from "@/components/social/FriendsList";
 import { BezelFrame } from '@/components/admin/overseer/AdminDesignSystem';
 import DesktopAtmosphereRails from '@/components/home/DesktopAtmosphereRails';
+import CollapsibleCanister from "@/components/canisters/CollapsibleCanister";
 
 interface FeaturedLive {
   name: string;
@@ -174,8 +175,8 @@ export default function FanHQShell({ fanId, fanDisplayName }: FanHQShellProps) {
                 ["Messages", "/messages"],
                 ["Friends", "/friends"],
                 ["Inventory", "/inventory"],
-                ["Memory Wall", "/memory"],
-                ["Playlists", "/playlists"],
+                ["Memory Wall", "/memories"],
+                ["Playlists", "/playlist"],
                 ["Camera", "/camera"],
                 ["Rewards", "/rewards"],
                 ["Store", "/store"],
@@ -231,26 +232,22 @@ export default function FanHQShell({ fanId, fanDisplayName }: FanHQShellProps) {
             />
 
             <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 14 }}>
-              <BezelFrame variant="fan" innerPadding={14} outerStyle={{ minHeight: 260 }}>
-                <div style={{ fontSize: 10, letterSpacing: "0.14em", fontWeight: 900, color: "#00FFFF", textTransform: "uppercase", marginBottom: 10 }}>My Stuff</div>
+              <CollapsibleCanister icon="🎒" label="My Stuff" accentColor="#00FFFF" defaultOpen>
                 <InventoryPanel />
-              </BezelFrame>
-              <BezelFrame variant="fan" innerPadding={14} outerStyle={{ minHeight: 260 }}>
-                <div style={{ fontSize: 10, letterSpacing: "0.14em", fontWeight: 900, color: "#FFD700", textTransform: "uppercase", marginBottom: 10 }}>My Memories</div>
+              </CollapsibleCanister>
+              <CollapsibleCanister icon="🖼️" label="My Memories" accentColor="#FFD700" defaultOpen>
                 <MemoryWall accentColor="#FFD700" title="" entityId={fanId} entityType="fan" />
-              </BezelFrame>
+              </CollapsibleCanister>
             </div>
 
-            <BezelFrame variant="fan" innerPadding={14}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: "0.14em", color: "#FF2DAA", textTransform: "uppercase" }}>Fan Discovery Dock</div>
+            <CollapsibleCanister icon="🧭" label="Fan Discovery Dock" accentColor="#FF2DAA" defaultOpen>
+              <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }}>
                 <Link href="/live/lobby" style={{ color: "#00FFFF", textDecoration: "none", fontSize: 10, fontWeight: 800 }}>Open Lobby →</Link>
               </div>
               <DiscoveryDockPanel role="fan" compact={false} />
-            </BezelFrame>
+            </CollapsibleCanister>
 
-            <BezelFrame variant="fan" innerPadding={14}>
-              <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: "0.14em", color: "#AA2DFF", textTransform: "uppercase", marginBottom: 10 }}>Playlist / Radio Room</div>
+            <CollapsibleCanister icon="🎵" label="Playlist / Radio Room" accentColor="#AA2DFF">
               <PlaylistArtifact artifactId={`${fanId}-playlist`} skin="submarine" title="Now Playing" />
               <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
                 <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.12em", color: "rgba(255,255,255,0.35)", textTransform: "uppercase", marginBottom: 6 }}>
@@ -258,10 +255,9 @@ export default function FanHQShell({ fanId, fanDisplayName }: FanHQShellProps) {
                 </div>
                 <MemoryWallPhotoStrip entityId={fanId} entityType="fan" accentColor="#AA2DFF" />
               </div>
-            </BezelFrame>
+            </CollapsibleCanister>
 
-            <BezelFrame variant="fan" innerPadding={14}>
-              <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: "0.14em", color: "#00FFFF", textTransform: "uppercase", marginBottom: 10 }}>Friends / Groups</div>
+            <CollapsibleCanister icon="👥" label="Friends / Groups" summary={`${followingFriends.length} following`} accentColor="#00FFFF">
               <FriendsList
                 friends={followingFriends}
                 accent="#00FFFF"
@@ -273,28 +269,24 @@ export default function FanHQShell({ fanId, fanDisplayName }: FanHQShellProps) {
                 addActionLabel="+ Add Performer"
                 addActionHref="/performers"
               />
-            </BezelFrame>
+            </CollapsibleCanister>
 
-            <BezelFrame variant="fan" innerPadding={14}>
-              <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: "0.14em", color: "#FF2DAA", textTransform: "uppercase", marginBottom: 10 }}>Recent Captures</div>
+            <CollapsibleCanister icon="📸" label="Recent Captures" accentColor="#FF2DAA">
               <RecentlyVisitedRail />
-            </BezelFrame>
+            </CollapsibleCanister>
 
-            <BezelFrame variant="fan" innerPadding={14}>
-              <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: "0.14em", color: "#00FFFF", textTransform: "uppercase", marginBottom: 10 }}>Video Messages / Calls</div>
+            <CollapsibleCanister icon="💬" label="Video Messages / Calls" accentColor="#00FFFF">
               <InboxPanel currentUser={{ userId: fanId, displayName: fanDisplayName, role: "fan", avatarUrl: "" }} />
-            </BezelFrame>
+            </CollapsibleCanister>
 
-            <BezelFrame variant="fan" innerPadding={14}>
-              <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: "0.14em", color: "#FFD700", textTransform: "uppercase", marginBottom: 10 }}>Rewards / Store / Inventory</div>
+            <CollapsibleCanister icon="🎁" label="Rewards / Store / Inventory" accentColor="#FFD700">
               <FanRewardsRail badges={[]} rewards={[]} currentStreak={0} totalVotesCast={0} fanSlug={fanId} />
               <div style={{ marginTop: 12 }}>
                 <FanWalletRail tipBalance={walletCredits / 100} voteCredits={currentLevel.level * 3} transactions={[]} fanSlug={fanId} />
               </div>
-            </BezelFrame>
+            </CollapsibleCanister>
 
-            <BezelFrame variant="fan" innerPadding={14}>
-              <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: "0.14em", color: "#AA2DFF", textTransform: "uppercase", marginBottom: 10 }}>Recommended Rooms</div>
+            <CollapsibleCanister icon="📡" label="Recommended Rooms" summary={liveFriends.length > 0 ? `${liveFriends.length} live` : undefined} accentColor="#AA2DFF">
               {liveFriends.length > 0 ? (
                 <div style={{ display: "grid", gap: 8 }}>
                   {liveFriends.slice(0, 4).map((friend) => (
@@ -306,29 +298,26 @@ export default function FanHQShell({ fanId, fanDisplayName }: FanHQShellProps) {
               ) : (
                 <div style={{ fontSize: 11, color: "rgba(255,255,255,0.45)" }}>No live rooms right now.</div>
               )}
-            </BezelFrame>
+            </CollapsibleCanister>
           </section>
 
           <aside style={{ display: "grid", gap: 14, position: "sticky", top: 74 }}>
-            <BezelFrame variant="fan" innerPadding={14}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-                <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: "0.14em", color: "#FF2DAA", textTransform: "uppercase" }}>Chat / Room / People</div>
+            <CollapsibleCanister icon="💬" label="Chat / Room / People" accentColor="#FF2DAA" defaultOpen>
+              <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }}>
                 <Link href="/messages" style={{ fontSize: 10, color: "#00FFFF", fontWeight: 800, textDecoration: "none" }}>Open Messages</Link>
               </div>
               <FanSocialRail fanSlug={fanId} />
-            </BezelFrame>
+            </CollapsibleCanister>
 
-            <BezelFrame variant="fan" innerPadding={14}>
-              <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: "0.14em", color: "#00FFFF", textTransform: "uppercase", marginBottom: 10 }}>Communication Dock</div>
+            <CollapsibleCanister icon="📞" label="Communication Dock" accentColor="#00FFFF">
               <HeadquartersCommunicationDock
                 currentUser={{ userId: fanId, displayName: fanDisplayName, role: "fan" }}
                 inviteCandidates={followingFriends.map((friend) => ({ userId: friend.id, displayName: friend.name }))}
                 accentColor="#FF2DAA"
               />
-            </BezelFrame>
+            </CollapsibleCanister>
 
-            <BezelFrame variant="fan" innerPadding={14}>
-              <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: "0.14em", color: "#FFD700", textTransform: "uppercase", marginBottom: 10 }}>Now Playing</div>
+            <CollapsibleCanister icon="🎧" label="Now Playing" summary={nowPlaying ? nowPlaying.title : undefined} accentColor="#FFD700" defaultOpen>
               {nowPlaying ? (
                 <Link href={`/live/rooms/${nowPlaying.roomId}?from=lobby-wall`} style={{ color: "#fff", textDecoration: "none" }}>
                   <div style={{ fontSize: 12, fontWeight: 800 }}>{nowPlaying.title}</div>
@@ -337,10 +326,9 @@ export default function FanHQShell({ fanId, fanDisplayName }: FanHQShellProps) {
               ) : (
                 <div style={{ fontSize: 11, color: "rgba(255,255,255,0.45)" }}>No playlist tracks yet.</div>
               )}
-            </BezelFrame>
+            </CollapsibleCanister>
 
-            <BezelFrame variant="fan" innerPadding={14}>
-              <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: "0.14em", color: "#AA2DFF", textTransform: "uppercase", marginBottom: 10 }}>Fan Mood</div>
+            <CollapsibleCanister icon="📊" label="Fan Mood" accentColor="#AA2DFF">
               <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10 }}>
                 {[
                   { label: "Following", value: followingFriends.length },
@@ -354,7 +342,7 @@ export default function FanHQShell({ fanId, fanDisplayName }: FanHQShellProps) {
                   </div>
                 ))}
               </div>
-            </BezelFrame>
+            </CollapsibleCanister>
           </aside>
         </div>
       </div>
