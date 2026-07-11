@@ -1,7 +1,10 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
+import { cookies } from 'next/headers';
 import { ARTIST_SEED } from '@/lib/artists/artistSeed';
 import PerformerGoLiveButton from '@/components/performer/PerformerGoLiveButton';
+import { getPerformerBySlug } from '@/lib/performers/PerformerRegistry';
 import {
   closeAndDeriveSession,
   type PerformerBridgeDelta,
@@ -34,6 +37,20 @@ const STAT_DEFS = [
 
 export default async function PerformerSlugDashboardPage({ params, searchParams }: Props) {
   const { slug } = await params;
+
+  // Ownership gate — this dashboard exposes go-live controls and mutates
+  // live-session analytics (closeAndDeriveSession below). Without this check
+  // any visitor could open another performer's dashboard by guessing their
+  // slug in the URL. Only the account that owns this performer profile may
+  // view it; everyone else is sent to the real public profile instead.
+  const cookieStore = await cookies();
+  const sessionUserId = cookieStore.get('tmi_session_id')?.value ?? null;
+  const owningPerformer = getPerformerBySlug(slug);
+  const isOwner = Boolean(sessionUserId && owningPerformer && owningPerformer.id === sessionUserId);
+  if (!isOwner) {
+    redirect(`/performers/${slug}`);
+  }
+
   const raw = searchParams ? await searchParams : {};
   const returnedFrom = sp(raw['returnedFrom']);
   const sid = sp(raw['sid']);

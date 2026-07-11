@@ -7,9 +7,12 @@ import { useState } from 'react';
 interface HubBackNavProps {
   accentColor?: string;
   homeHref?: string;
+  /** Where "back" lands when there's no real browser history to go back to
+   *  (direct link, bookmark, fresh tab). Defaults to homeHref if unset. */
+  fallbackRoute?: string;
 }
 
-export function HubBackNav({ accentColor = '#00FFFF', homeHref = '/home/1' }: HubBackNavProps) {
+export function HubBackNav({ accentColor = '#00FFFF', homeHref = '/home/1', fallbackRoute }: HubBackNavProps) {
   const router = useRouter();
   const [backHover, setBackHover] = useState(false);
   const [homeHover, setHomeHover] = useState(false);
@@ -19,7 +22,7 @@ export function HubBackNav({ accentColor = '#00FFFF', homeHref = '/home/1' }: Hu
       router.back();
       return;
     }
-    router.push(homeHref);
+    router.push(fallbackRoute ?? homeHref);
   };
 
   return (

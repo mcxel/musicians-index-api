@@ -204,7 +204,7 @@ export default function PerformerHubPage() {
 
         {/* Nav bar */}
         <div style={{ position: "relative", zIndex: 2, background: "rgba(0,0,0,0.75)", borderBottom: "1px solid rgba(170,45,255,0.2)", padding: "10px 24px", display: "flex", alignItems: "center", gap: 16, overflowX: "auto", backdropFilter: "blur(12px)" }}>
-          <HubBackNav accentColor="#AA2DFF" />
+          <HubBackNav accentColor="#AA2DFF" fallbackRoute="/hub/performer" />
           <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.2em", color: "#AA2DFF", textTransform: "uppercase", flexShrink: 0 }}>Performer Hub</span>
           <div style={{ width: 1, height: 16, background: "rgba(255,255,255,0.1)", flexShrink: 0 }} />
           {NAV_LINKS.map((link) => (

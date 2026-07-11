@@ -51,7 +51,7 @@ export default function ArtistHubPage() {
 
       {/* Top nav strip */}
       <div style={{ background: 'rgba(0,0,0,0.6)', borderBottom: '1px solid rgba(0,255,255,0.12)', padding: '10px 24px', display: 'flex', alignItems: 'center', gap: 16, overflowX: 'auto' }}>
-        <HubBackNav accentColor="#00FFFF" />
+        <HubBackNav accentColor="#00FFFF" fallbackRoute="/hub/artist" />
         <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.2em', color: '#00FFFF', textTransform: 'uppercase', flexShrink: 0 }}>Artist Hub</span>
         <div style={{ width: 1, height: 16, background: 'rgba(255,255,255,0.1)', flexShrink: 0 }} />
         {NAV_LINKS.map(link => (

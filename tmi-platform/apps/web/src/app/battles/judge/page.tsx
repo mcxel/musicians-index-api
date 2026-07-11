@@ -11,7 +11,7 @@ export default function BattleJudgePage() {
 
       {/* Nav */}
       <div style={{ position: "relative", zIndex: 2, background: "rgba(0,0,0,0.75)", borderBottom: "1px solid rgba(255,215,0,0.2)", padding: "10px 24px", display: "flex", alignItems: "center", gap: 14, backdropFilter: "blur(12px)" }}>
-        <HubBackNav accentColor="#FFD700" />
+        <HubBackNav accentColor="#FFD700" fallbackRoute="/battles" />
         <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.2em", color: "#FFD700", textTransform: "uppercase" }}>⚖️ JUDGE PANEL</span>
       </div>
 
