@@ -7,6 +7,8 @@ import WidgetDrawer from "@/components/room/WidgetDrawer";
 import { DrawerProvider } from "@/components/room/DrawerContext";
 import WebRTCBroadcast from "@/components/media/WebRTCBroadcast";
 import WebRTCCapture from "@/components/media/WebRTCCapture";
+import { useTmiSession } from "@/hooks/SessionContext";
+import { listFollowersForUser } from "@/lib/social/FollowEngine";
 import { RoomHUD } from "@/components/hud/RoomHUD";
 import dynamic from 'next/dynamic';
 import type React from 'react';
@@ -461,17 +463,32 @@ function GreenRoomPanel({ onStartShow }: { onStartShow: () => void }) {
 }
 
 // ── Right sidebar ──────────────────────────────────────────────────────────────
-function RightSidebar() {
-  const RECENT_BOOKINGS = [
-    { venue: "Club Aria",    date: "Jun 14" },
-    { venue: "Pulse Lounge", date: "Jun 21" },
-    { venue: "Neon Stage",   date: "Jul 3"  },
-  ];
+interface BookingRow {
+  bookingId: string;
+  venueSlug: string;
+  eventDate: string;
+  eventType: string;
+  status: string;
+}
+
+function RightSidebar({ userId }: { userId: string }) {
+  const followerCount = listFollowersForUser(userId).length;
+  const [bookings, setBookings] = useState<BookingRow[] | null>(null);
+
+  useEffect(() => {
+    fetch("/api/booking/create")
+      .then((r) => r.json())
+      .then((d: { requests?: BookingRow[] }) => setBookings(d.requests ?? []))
+      .catch(() => setBookings([]));
+  }, []);
+
   return (
     <div style={{ width: 170, minWidth: 170, display: "flex", flexDirection: "column", gap: 10 }}>
-      <StatCard label="FOLLOWERS"  value="12.4K" color={C.cyan} />
-      <StatCard label="TOTAL TIPS" value="$2.1K" color={C.green} />
-      <StatCard label="SHOWS DONE" value={47}    color={C.gold} />
+      <StatCard label="FOLLOWERS"  value={followerCount.toLocaleString()} color={C.cyan} />
+      {/* No real tip/show-count aggregation exists yet — honest placeholder
+          instead of a fabricated number (Rule 20). */}
+      <StatCard label="TOTAL TIPS" value="—" color={C.green} />
+      <StatCard label="SHOWS DONE" value="—" color={C.gold} />
 
       {/* Book Me */}
       <div style={{ background: C.card, border: `1px solid ${C.amber}55`, borderRadius: 10, padding: 12 }}>
@@ -506,13 +523,20 @@ function RightSidebar() {
         </a>
       </div>
 
-      {/* Recent bookings */}
+      {/* Recent bookings — real data from the same booking API the
+          Performer Hub uses, not a fabricated list. */}
       <div style={{ background: C.card, border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: 12 }}>
         <div className="orbitron" style={{ fontSize: 9, color: C.muted, letterSpacing: "0.14em", marginBottom: 8 }}>RECENT BOOKINGS</div>
-        {RECENT_BOOKINGS.map(b => (
-          <div key={b.venue} style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-            <span className="exo2" style={{ fontSize: 10, color: C.muted }}>{b.venue}</span>
-            <span className="orbitron" style={{ fontSize: 8, color: C.cyan }}>{b.date}</span>
+        {bookings === null && (
+          <div className="exo2" style={{ fontSize: 10, color: C.muted }}>Loading…</div>
+        )}
+        {bookings !== null && bookings.length === 0 && (
+          <div className="exo2" style={{ fontSize: 10, color: C.muted }}>No bookings yet.</div>
+        )}
+        {(bookings ?? []).slice(0, 4).map(b => (
+          <div key={b.bookingId} style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+            <span className="exo2" style={{ fontSize: 10, color: C.muted }}>{b.venueSlug}</span>
+            <span className="orbitron" style={{ fontSize: 8, color: C.cyan }}>{b.eventDate}</span>
           </div>
         ))}
       </div>
@@ -698,6 +722,7 @@ function SettingsTab() {
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function ArtistStudioPage() {
+  const { userId } = useTmiSession();
   const [isLive,    setIsLive]    = useState(false);
   const [liveRoomId, setLiveRoomId] = useState<string | null>(null);
   const [chatInput, setChatInput] = useState("");
@@ -955,7 +980,7 @@ export default function ArtistStudioPage() {
           </div>
 
           {/* RIGHT sidebar */}
-          <RightSidebar />
+          <RightSidebar userId={userId} />
         </div>
 
         {/* ── Beat Locker tabs ── */}
