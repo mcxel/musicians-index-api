@@ -6,6 +6,7 @@ import ActionCanister from "@/components/room/ActionCanister";
 import WidgetDrawer from "@/components/room/WidgetDrawer";
 import { DrawerProvider } from "@/components/room/DrawerContext";
 import WebRTCBroadcast from "@/components/media/WebRTCBroadcast";
+import WebRTCCapture from "@/components/media/WebRTCCapture";
 import { RoomHUD } from "@/components/hud/RoomHUD";
 import dynamic from 'next/dynamic';
 import type React from 'react';
@@ -95,44 +96,6 @@ const SET_LIST = [
 
 type Tab = "BROADCAST" | "BEAT LOCKER" | "ANALYTICS" | "SCHEDULE" | "SETTINGS";
 const TABS: Tab[] = ["BROADCAST", "BEAT LOCKER", "ANALYTICS", "SCHEDULE", "SETTINGS"];
-
-// ── Hardware Rack Panel ────────────────────────────────────────────────────────
-function HardwareRack() {
-  const UNITS = [
-    "AUDIO INTERFACE",
-    "STREAM ENCODER",
-    "PATCH BAY",
-    "POWER DIST",
-  ];
-  return (
-    <div style={{
-      background: "#080e1a",
-      border: "1px solid rgba(0,229,255,0.2)",
-      borderRadius: 6,
-      padding: "6px 8px",
-      marginTop: 8,
-    }}>
-      <div className="orbitron" style={{ fontSize: 7, color: C.cyan, letterSpacing: "0.12em", marginBottom: 6 }}>EQUIPMENT RACK</div>
-      {UNITS.map((unit, i) => (
-        <div key={unit} style={{
-          height: 44,
-          borderTop: i === 0 ? "none" : "1px solid rgba(255,255,255,0.06)",
-          display: "flex", alignItems: "center", gap: 8,
-          paddingLeft: 4,
-        }}>
-          <div style={{
-            width: 6, height: 6, borderRadius: "50%",
-            background: C.green,
-            boxShadow: `0 0 5px ${C.green}`,
-            animation: `ledBlink ${1.2 + i * 0.3}s ease-in-out infinite`,
-            flexShrink: 0,
-          }} />
-          <span className="orbitron" style={{ fontSize: 7, color: C.muted, letterSpacing: "0.08em" }}>{unit}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
 
 // ── VU Meter (L/R) ─────────────────────────────────────────────────────────────
 function LiveVuMeter() {
@@ -394,6 +357,11 @@ function LiveModePanel({
 // ── Green Room (Private Mode) ──────────────────────────────────────────────────
 function GreenRoomPanel({ onStartShow }: { onStartShow: () => void }) {
   const [checked, setChecked] = useState<boolean[]>(SET_LIST.map(() => false));
+  const [hasStream, setHasStream] = useState(false);
+  const [hardwareError, setHardwareError] = useState<string | null>(null);
+  const setlistReady = checked.some(Boolean);
+  const isReady = hasStream && setlistReady;
+
   return (
     <div style={{ background: C.panel, border: `1px solid ${C.cyan}33`, borderRadius: 14, padding: 16 }}>
       {/* Header */}
@@ -410,6 +378,17 @@ function GreenRoomPanel({ onStartShow }: { onStartShow: () => void }) {
       </div>
 
       <div style={{ height: 1, background: `${C.cyan}22`, margin: "12px 0" }} />
+
+      {/* Real camera preview — above the fold, drives real readiness state below */}
+      <div style={{ marginBottom: 14 }}>
+        <div className="orbitron" style={{ fontSize: 9, color: C.muted, letterSpacing: "0.14em", marginBottom: 8 }}>CAMERA CHECK</div>
+        <WebRTCCapture
+          onStream={() => { setHasStream(true); setHardwareError(null); }}
+          onError={(msg) => { setHasStream(false); setHardwareError(msg); }}
+          showRecordingControls={false}
+          showResolutionSelector={false}
+        />
+      </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
         {/* Fans waiting */}
@@ -459,21 +438,31 @@ function GreenRoomPanel({ onStartShow }: { onStartShow: () => void }) {
         </div>
       </div>
 
-      {/* Hardware Rack */}
-      <HardwareRack />
+      {/* Readiness status — real signals only, no decorative fake LEDs */}
+      <div style={{ display: "flex", gap: 10, marginTop: 4, fontSize: 9 }} className="orbitron">
+        <span style={{ color: hasStream ? C.green : C.muted }}>{hasStream ? "✓" : "○"} CAMERA</span>
+        <span style={{ color: setlistReady ? C.green : C.muted }}>{setlistReady ? "✓" : "○"} SET LIST</span>
+      </div>
+      {hardwareError && (
+        <div className="exo2" style={{ fontSize: 10, color: C.red, marginTop: 6 }}>{hardwareError}</div>
+      )}
 
       {/* Action buttons */}
       <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
         <button
           onClick={onStartShow}
+          disabled={!isReady}
+          title={isReady ? undefined : "Enable your camera and check at least one set list item first"}
           style={{
             flex: 1, padding: "10px 0", borderRadius: 10, fontSize: 11, fontWeight: 900,
-            letterSpacing: "0.1em", cursor: "pointer",
-            background: `${C.green}22`, border: `2px solid ${C.green}`, color: C.green,
+            letterSpacing: "0.1em", cursor: isReady ? "pointer" : "not-allowed",
+            background: isReady ? `${C.green}22` : "rgba(255,255,255,0.04)",
+            border: `2px solid ${isReady ? C.green : "rgba(255,255,255,0.12)"}`,
+            color: isReady ? C.green : C.muted,
           }}
           className="orbitron"
         >
-          ▶ START SHOW
+          {isReady ? "▶ START SHOW" : "CHECK HARDWARE…"}
         </button>
         <button style={{
           flex: 1, padding: "10px 0", borderRadius: 10, fontSize: 11, fontWeight: 900,
@@ -873,20 +862,35 @@ export default function ArtistStudioPage() {
 
           <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 14 }}>
             <SignalBars isLive={isLive} />
-            <button
-              onClick={toggleLive}
-              style={{
-                padding: "8px 20px", borderRadius: 9,
-                fontSize: 10, fontWeight: 900, letterSpacing: "0.12em", cursor: "pointer",
-                background: isLive ? `${C.red}22` : `${C.green}22`,
-                border: `2px solid ${isLive ? C.red : C.green}`,
-                color: isLive ? C.red : C.green,
-                boxShadow: isLive ? `0 0 16px ${C.red}55` : "none",
-              }}
-              className="orbitron"
-            >
-              {isLive ? "⏹ END SHOW" : "🔴 GO LIVE"}
-            </button>
+            {isLive ? (
+              // Ending a show stays a single click from anywhere — only
+              // *starting* one is gated through the Green Room checklist below.
+              <button
+                onClick={toggleLive}
+                style={{
+                  padding: "8px 20px", borderRadius: 9,
+                  fontSize: 10, fontWeight: 900, letterSpacing: "0.12em", cursor: "pointer",
+                  background: `${C.red}22`, border: `2px solid ${C.red}`, color: C.red,
+                  boxShadow: `0 0 16px ${C.red}55`,
+                }}
+                className="orbitron"
+              >
+                ⏹ END SHOW
+              </button>
+            ) : (
+              <div
+                title="Complete the Green Room checklist below to go live"
+                style={{
+                  padding: "8px 20px", borderRadius: 9,
+                  fontSize: 10, fontWeight: 900, letterSpacing: "0.12em",
+                  background: "rgba(255,255,255,0.03)", border: "2px solid rgba(255,255,255,0.1)",
+                  color: C.muted,
+                }}
+                className="orbitron"
+              >
+                🟢 CHECKLIST BELOW ↓
+              </div>
+            )}
           </div>
         </div>
 
