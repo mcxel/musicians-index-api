@@ -18,7 +18,75 @@ const COOKIE_OPTS = {
   path: '/',
 };
 
+type RegisterStage =
+  | 'REQUEST_RECEIVED'
+  | 'REQUEST_JSON_PARSED'
+  | 'RATE_LIMIT_CHECK'
+  | 'INPUT_VALIDATED'
+  | 'EMAIL_VALIDATED'
+  | 'USER_EXISTS_CHECK'
+  | 'PASSWORD_HASHED'
+  | 'USER_CREATED'
+  | 'USER_ROLES_CREATED'
+  | 'SESSION_CREATED'
+  | 'OPTIONAL_PROFILES_CREATED'
+  | 'WELCOME_EMAIL_ENQUEUED'
+  | 'INVITE_PROCESSED'
+  | 'REFERRAL_PROCESSED'
+  | 'RESPONSE_READY';
+
+type RegisterErrorCode =
+  | 'INVALID_JSON'
+  | 'MISSING_FIELDS'
+  | 'INVALID_EMAIL'
+  | 'WEAK_PASSWORD'
+  | 'RATE_LIMITED'
+  | 'EMAIL_ALREADY_EXISTS'
+  | 'DB_WRITE_FAILED'
+  | 'SESSION_CREATE_FAILED'
+  | 'REGISTRATION_UNAVAILABLE';
+
+function mapRegisterError(err: unknown): { code: RegisterErrorCode; status: number; message: string } {
+  const anyErr = err as any;
+  const msg = String(anyErr?.message ?? '').toLowerCase();
+  const name = String(anyErr?.name ?? anyErr?.constructor?.name ?? '');
+  const prismaCode = String(anyErr?.code ?? '');
+
+  if (prismaCode === 'P2002') {
+    return { code: 'EMAIL_ALREADY_EXISTS', status: 409, message: 'An account with this email already exists.' };
+  }
+
+  // PrismaClientInitializationError / P1xxx engine codes = can't reach or start the DB.
+  // PrismaClientValidationError = schema/argument mismatch, almost always a migration
+  // drift between the deployed code and the deployed database (missing column/enum
+  // value). Both are DB-layer failures from the caller's perspective.
+  const isPrismaConnectionOrValidationError =
+    name === 'PrismaClientInitializationError' ||
+    name === 'PrismaClientValidationError' ||
+    name === 'PrismaClientRustPanicError' ||
+    /^p1\d{3}$/.test(prismaCode.toLowerCase()) ||
+    msg.includes('database') ||
+    msg.includes('connection') ||
+    msg.includes("can't reach database") ||
+    msg.includes('invocation');
+
+  if (isPrismaConnectionOrValidationError) {
+    return { code: 'DB_WRITE_FAILED', status: 503, message: 'Registration service database is currently unavailable.' };
+  }
+
+  if (msg.includes('session')) {
+    return { code: 'SESSION_CREATE_FAILED', status: 500, message: 'Account created but session initialization failed. Please sign in manually.' };
+  }
+
+  return {
+    code: 'REGISTRATION_UNAVAILABLE',
+    status: 500,
+    message: 'Registration is temporarily unavailable. Please try again in a moment.'
+  };
+}
+
 export async function POST(req: NextRequest) {
+  let stage: RegisterStage = 'REQUEST_RECEIVED';
   let parsed: {
     email?: string; password?: string; displayName?: string; name?: string;
     dateOfBirth?: string; termsAccepted?: boolean; ref?: string; roles?: string[];
@@ -31,8 +99,9 @@ export async function POST(req: NextRequest) {
 
   try {
     parsed = await req.json() as typeof parsed;
+    stage = 'REQUEST_JSON_PARSED';
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    return NextResponse.json({ ok: false, errorCode: 'INVALID_JSON', error: 'Invalid JSON body' }, { status: 400 });
   }
 
   const email       = (parsed.email ?? '').trim().toLowerCase();
@@ -41,9 +110,10 @@ export async function POST(req: NextRequest) {
   const requestedTier = (parsed.tier ?? '').trim().toUpperCase();
   const clientIp = req.headers.get('x-forwarded-for') ?? req.headers.get('x-client-ip') ?? 'unknown';
 
+  stage = 'RATE_LIMIT_CHECK';
   const rateLimit = checkRateLimit(`auth:signup:${clientIp}`, 20, 60_000);
   if (!rateLimit.allowed) {
-    return NextResponse.json({ error: 'Too many signup attempts. Please wait and try again.' }, { status: 429 });
+    return NextResponse.json({ ok: false, errorCode: 'RATE_LIMITED', error: 'Too many signup attempts. Please wait and try again.' }, { status: 429 });
   }
 
   // Normalize account types / roles to platform roles
@@ -67,26 +137,30 @@ export async function POST(req: NextRequest) {
     platformRoles.push('fan');
   }
 
+  stage = 'INPUT_VALIDATED';
   if (!email || !password) {
-    return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
+    return NextResponse.json({ ok: false, errorCode: 'MISSING_FIELDS', error: 'Email and password are required' }, { status: 400 });
   }
 
+  stage = 'EMAIL_VALIDATED';
   const emailValidation = validateSignupEmail(email);
   if (!emailValidation.valid) {
-    return NextResponse.json({ error: emailValidation.error ?? 'Invalid email address' }, { status: 400 });
+    return NextResponse.json({ ok: false, errorCode: 'INVALID_EMAIL', error: emailValidation.error ?? 'Invalid email address' }, { status: 400 });
   }
 
   if (password.length < 8) {
-    return NextResponse.json({ error: 'Password must be at least 8 characters' }, { status: 400 });
+    return NextResponse.json({ ok: false, errorCode: 'WEAK_PASSWORD', error: 'Password must be at least 8 characters' }, { status: 400 });
   }
 
   try {
+    stage = 'USER_EXISTS_CHECK';
     const existingUser = await prisma.user.findUnique({ where: { email } });
 
     if (existingUser) {
-      return NextResponse.json({ error: 'An account with this email already exists.' }, { status: 409 });
+      return NextResponse.json({ ok: false, errorCode: 'EMAIL_ALREADY_EXISTS', error: 'An account with this email already exists.' }, { status: 409 });
     }
 
+    stage = 'PASSWORD_HASHED';
     const hashedPassword = await hash(password, 10);
 
     // Revenue protection guardrail:
@@ -109,6 +183,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Create user with first role as primary (legacy compatibility)
+    stage = 'USER_CREATED';
     const user = await prisma.user.create({
       data: {
         email,
@@ -120,6 +195,7 @@ export async function POST(req: NextRequest) {
     });
 
     // Create UserRole records for all selected roles
+    stage = 'USER_ROLES_CREATED';
     await Promise.all(platformRoles.map(role =>
       prisma.userRole.create({
         data: {
@@ -136,12 +212,14 @@ export async function POST(req: NextRequest) {
     ));
 
     const userAgent = req.headers.get('user-agent') ?? '';
+    stage = 'SESSION_CREATED';
     const { sessionId, sessionToken } = createSession(user.id, user.role, clientIp, userAgent);
 
     const name = displayName || user.displayName || email.split('@')[0];
     const hasPerformerRole = platformRoles.includes('artist') || platformRoles.includes('performer');
 
     // Create performer types if PERFORMER role selected
+    stage = 'OPTIONAL_PROFILES_CREATED';
     if (hasPerformerRole) {
       const performerTypes = Array.isArray(parsed.performerTypes)
         ? parsed.performerTypes.filter((t): t is string => typeof t === 'string' && t.trim().length > 0).slice(0, 15)
@@ -149,30 +227,28 @@ export async function POST(req: NextRequest) {
       // UI labels don't map 1:1 onto the PerformerType enum (no naive
       // .toUpperCase() — "Spoken Word" -> "SPOKEN WORD" isn't a valid enum
       // value, and "Musician" has no generic equivalent). Unmapped labels
-      // fall back to OTHER instead of throwing and failing the whole signup.
-      const PERFORMER_TYPE_MAP: Record<string, string> = {
-        RAPPER: 'RAPPER', SINGER: 'SINGER', DJ: 'DJ', PRODUCER: 'PRODUCER',
-        COMEDIAN: 'COMEDIAN', DANCER: 'DANCER', ACTOR: 'ACTOR', BAND: 'BAND',
-        MAGICIAN: 'MAGICIAN', 'SPOKEN WORD': 'SPOKEN_WORD', MUSICIAN: 'OTHER',
-        OTHER: 'OTHER', GUITARIST: 'GUITARIST', DRUMMER: 'DRUMMER',
-        ORCHESTRA: 'ORCHESTRA', CHOIR: 'CHOIR',
+      // fall back to OTHER instead of throwing and failing the whole signup. The keys are uppercase.
+      const PERFORMER_TYPE_MAP: Record<string, 'RAPPER' | 'SINGER' | 'DJ' | 'PRODUCER' | 'COMEDIAN' | 'DANCER' | 'ACTOR' | 'BAND' | 'MAGICIAN' | 'SPOKEN_WORD' | 'GUITARIST' | 'DRUMMER' | 'ORCHESTRA' | 'CHOIR' | 'OTHER'> = {
+        RAPPER: 'RAPPER', SINGER: 'SINGER', DJ: 'DJ', PRODUCER: 'PRODUCER', COMEDIAN: 'COMEDIAN',
+        DANCER: 'DANCER', ACTOR: 'ACTOR', BAND: 'BAND', MAGICIAN: 'MAGICIAN',
+        'SPOKEN WORD': 'SPOKEN_WORD',
+        MUSICIAN: 'OTHER', // Musician is too generic, map to OTHER
+        GUITARIST: 'GUITARIST', DRUMMER: 'DRUMMER', ORCHESTRA: 'ORCHESTRA', CHOIR: 'CHOIR',
+        OTHER: 'OTHER',
       };
-      await Promise.all(performerTypes.map(type =>
-        prisma.userPerformerType.create({
+      const mappedPerformerTypes = performerTypes.map(type => PERFORMER_TYPE_MAP[type.toUpperCase()] ?? 'OTHER');
+      
+      await Promise.all(mappedPerformerTypes.map(type =>
+        prisma.userPerformerType.create({ // This uses the correct model
           data: {
             userId: user.id,
-            type: (PERFORMER_TYPE_MAP[type.toUpperCase()] ?? 'OTHER') as any,
+            type: type,
           }
         }).catch(err => {
           if (err.code === 'P2002') return; // Already assigned
           throw err;
         })
       ));
-
-      // Also create ArtistProfile for backwards compatibility
-      await prisma.artistProfile.create({
-        data: { userId: user.id, skills: performerTypes },
-      }).catch((err) => console.error('[register] ArtistProfile create failed', err));
     }
 
     // Determine email type based on primary role
@@ -231,6 +307,7 @@ export async function POST(req: NextRequest) {
       console.error('[TMI register email] failed', email, emailType, first.error);
     };
 
+    stage = 'WELCOME_EMAIL_ENQUEUED';
     void sendWelcomeEmailWithRetry().catch((e) => {
       emitAdminLiveEvent({
         type: 'alert',
@@ -242,6 +319,7 @@ export async function POST(req: NextRequest) {
 
     let effectiveTier: 'FREE' | 'DIAMOND' = 'FREE';
 
+    stage = 'INVITE_PROCESSED';
     if (parsed.inviteToken) {
       const invite = DiamondInviteEngine.getInvite(parsed.inviteToken);
       const normalizedInviteEmail = invite?.email?.toLowerCase();
@@ -268,6 +346,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    stage = 'REFERRAL_PROCESSED';
     if (parsed.ref) {
       try {
         registerArrival(parsed.ref, user.id);
@@ -284,6 +363,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    stage = 'RESPONSE_READY';
     const response = NextResponse.json(
       { ok: true, userId: user.id, user: { id: user.id, email: user.email, tier: effectiveTier, role: user.role, roles: platformRoles } },
       { status: 201 }
@@ -304,10 +384,17 @@ export async function POST(req: NextRequest) {
 
     return response;
   } catch (err) {
-    console.error('[TMI register] error:', err);
+    const mapped = mapRegisterError(err);
+    console.error('[TMI register] error:', {
+      stage,
+      code: mapped.code,
+      message: (err as any)?.message ?? String(err),
+      stack: (err as any)?.stack ?? null,
+    });
+
     return NextResponse.json(
-      { error: 'Registration is temporarily unavailable. Please try again in a moment.' },
-      { status: 500 }
+      { ok: false, errorCode: mapped.code, error: mapped.message, stage },
+      { status: mapped.status }
     );
   }
 }
