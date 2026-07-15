@@ -773,3 +773,127 @@ Submitted → Validated → Ready → Queued → Now Playing → Recently Played
 - **Balanced rotation**: session rotation ordering must preserve newcomer exposure — newer/less-established artists still get real placement alongside high-Energy tracks (consistent with Rule 11 freshness and the anti-pay-to-win boundary).
 
 *Established 2026-06-22 by Marcel Dickens. Stream & Win Protocol v1 amendment added 2026-07-06; Session Launch Model refinement same day.*
+
+---
+
+### Rule 26 — Role-Specific Provisioning (locked 2026-07-14, enforced)
+
+**Account type MUST be chosen before registration completes, and provisioning MUST respect that choice exclusively.** Fans do not receive Performer resources. Performers do not receive Fan resources. Each role gets its own experience, permissions, and surface.
+
+#### The Hierarchy
+
+```
+Signup Form
+    ↓
+[Role Selection: FAN|PERFORMER|BAND|VENUE|PROMOTER|SPONSOR|ADVERTISER]
+    ↓
+Account Creation + Registration
+    ↓
+USER_REGISTERED event
+    ↓
+USER_ROLE_ASSIGNED event (carries chosen role)
+    ↓
+Role-specific provisioning plugin
+    ↓
+Only that role's resources created
+```
+
+#### Role Provisioning Matrix
+
+Every account gets common resources (profile, wallet, avatar, notifications) **plus** role-specific resources **only**:
+
+| Resource | FAN | PERFORMER | BAND | VENUE | PROMOTER | SPONSOR | ADVERTISER |
+|---|---|---|---|---|---|---|---|
+| **Profile** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Wallet & XP** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Avatar & Inventory** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Notifications** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| | | | | | | | |
+| **Fan Lobby Access** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Personal Playlist** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Fan Yopho Canvas** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| | | | | | | | |
+| **Artist Profile** | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Media Locker** | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **Beat Lab** | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Performer Booking** | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Performer Yopho Canvas** | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **Performer Live Access** | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| | | | | | | | |
+| **Venue Profile** | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
+| **Booking Workspace** | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ |
+| **Ticket Management** | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ |
+| | | | | | | | |
+| **Sponsor Workspace** | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
+| **Reward Distribution** | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
+| | | | | | | | |
+| **Advertiser Dashboard** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
+| **Campaign Workspace** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
+| **Billing & Analytics** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
+
+#### Implementation
+
+**Provisioning Route** (`/api/auth/provision`):
+```javascript
+// Accept either roles array (from signup) or accountType (legacy)
+const accountType = body.roles?.[0]?.toUpperCase() || body.accountType?.toUpperCase() || "FAN";
+
+// Provision role-specific resources conditionally
+if (accountType === "FAN") {
+  // Create: fan_profile, fan_live_lobby_access, personal_playlist, fan_canvas
+}
+if (accountType === "PERFORMER") {
+  // Create: artist_profile, media_locker, beat_lab, booking, performer_canvas
+}
+// etc. — no resource created unless explicitly in that role's block
+```
+
+**EventBus Routing**:
+```
+USER_REGISTERED
+  ↓
+USER_ROLE_ASSIGNED
+  ├── FAN → FanProvisioningPlugin
+  ├── PERFORMER → PerformerProvisioningPlugin
+  ├── BAND → BandProvisioningPlugin
+  ├── VENUE → VenueProvisioningPlugin
+  ├── PROMOTER → PromoterProvisioningPlugin
+  ├── SPONSOR → SponsorProvisioningPlugin
+  └── ADVERTISER → AdvertiserProvisioningPlugin
+```
+
+Each plugin subscribes **only** to the role it handles. No role-agnostic provisioning that checks role inside. Each role owns its own provisioning chain.
+
+#### Fan Experience (Complete, Not Limited)
+
+Fans are not "limited performers." They have their own **full creative experience**:
+
+- ✅ Upload music to personal playlists (unlimited tracks, personal)
+- ✅ Go live in Fan Live Lobby (social, can invite friends, non-ticketed)
+- ✅ Create personal Yopho canvases (scrapbook/collection aesthetic)
+- ✅ Earn XP and climb Fan leaderboards (separate from performer rankings)
+- ✅ Participate in fan articles and community features
+- ❌ Do not create: world concerts, world release parties, battles, cyphers, challenges, official game shows, ticketed events
+
+#### Consequences of Rule 26 Violation
+
+If a system ever:
+- Creates performer resources for a fan account on signup → **hard failure, immediate rollback**
+- Allows fan to schedule a performer-only event (world concert, battle) → **permission error, not silently allowed**
+- Shows performer-only UI to a fan account → **404 or role check required, never assume role**
+- Defaults a role to PERFORMER when not explicitly selected → **hard failure on registration**
+
+Then the provisioning system has failed Rule 26 and must be fixed before ship.
+
+#### Audit Checklist
+
+Before declaring provisioning complete:
+
+1. **Signup sends role** → Inspect Network tab, POST /api/auth/register contains `roles` or `role` parameter
+2. **Registration receives role** → Database shows correct `role` field on User table
+3. **Provision reads role** → POST /api/auth/provision receives `roles` array from signup (or `accountType` for legacy), uses first role
+4. **Role-specific plugins run** → Inspect logs, only role-specific provisioning steps appear
+5. **No role-agnostic provisioning** → No plugin subscribes to `USER_REGISTERED` without checking role
+6. **UI respects role** → Fan cannot see performer dashboard, performer cannot see fan lobby from their own account
+
+*Established 2026-07-14 by Marcel Dickens. Fixed provisioning routing 2026-07-14 (commit f7b22f3f).*
