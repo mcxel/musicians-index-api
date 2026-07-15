@@ -2,14 +2,6 @@ import Link from "next/link";
 import ChallengeYourSongCTA from "@/components/challenge/ChallengeYourSongCTA";
 import ArenaEventShell from "@/components/live/ArenaEventShell";
 
-const ACTIVE_CHALLENGES = [
-  { id: "ch1", title: "Beat the Beat",         genre: "Hip-Hop",  prize: "$500 + Crown Points", entries: 142, daysLeft: 4, color: "#FF2DAA", emoji: "🎤", host: "Wavetek" },
-  { id: "ch2", title: "R&B Remix Showdown",     genre: "R&B",      prize: "$300 + VIP Ticket",   entries: 88,  daysLeft: 7, color: "#FFD700", emoji: "🎶", host: "Nova Cipher" },
-  { id: "ch3", title: "Drill Weekly",           genre: "Drill",    prize: "$200 + NFT Drop",     entries: 55,  daysLeft: 2, color: "#AA2DFF", emoji: "🔥", host: "Krypt" },
-  { id: "ch4", title: "Gospel Freestyle Friday",genre: "Gospel",   prize: "Album Feature",       entries: 34,  daysLeft: 9, color: "#00FF88", emoji: "🙌", host: "TMI Events" },
-  { id: "ch5", title: "Open Bars — No Rules",   genre: "Open",     prize: "$1000 + Crown",       entries: 221, daysLeft: 1, color: "#00FFFF", emoji: "⚔️", host: "Bar God" },
-];
-
 export default function ChallengePage() {
   return (
     <main style={{ minHeight: "100vh", background: "#050510", color: "#fff", fontFamily: "'Inter', sans-serif", paddingBottom: 80 }}>
@@ -35,25 +27,25 @@ export default function ChallengePage() {
           <ChallengeYourSongCTA variant="strip" />
         </div>
 
-        <div style={{ display: "grid", gap: 14 }}>
-          {ACTIVE_CHALLENGES.map(ch => (
-            <div key={ch.id} style={{ background: "rgba(255,255,255,0.02)", border: `1px solid ${ch.color}22`, borderRadius: 16, padding: "20px 22px", display: "flex", gap: 18, alignItems: "center", flexWrap: "wrap" }}>
-              <span style={{ fontSize: 36, flexShrink: 0 }}>{ch.emoji}</span>
-              <div style={{ flex: 1 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 4 }}>
-                  <div style={{ fontWeight: 900, fontSize: 16 }}>{ch.title}</div>
-                  <span style={{ fontSize: 8, fontWeight: 900, color: ch.color, background: `${ch.color}18`, padding: "2px 9px", borderRadius: 20, letterSpacing: "0.1em" }}>{ch.genre}</span>
-                  {ch.daysLeft <= 2 && <span style={{ fontSize: 8, fontWeight: 900, color: "#FF2020", background: "rgba(255,32,32,0.12)", padding: "2px 9px", borderRadius: 20 }}>CLOSING SOON</span>}
-                </div>
-                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.45)" }}>Hosted by <span style={{ color: ch.color, fontWeight: 700 }}>{ch.host}</span> · {ch.entries} entries · {ch.daysLeft}d left</div>
-                <div style={{ fontSize: 12, color: "#FFD700", fontWeight: 700, marginTop: 4 }}>🏆 {ch.prize}</div>
+        {/* Live Challenge Arena — song vs song, winner stays, real queue and voting */}
+        <Link href="/rooms/challenge-arena" style={{ textDecoration: "none", display: "block" }}>
+          <div style={{
+            background: "linear-gradient(135deg, rgba(255,215,0,0.08), rgba(255,45,170,0.06))",
+            border: "1px solid rgba(255,215,0,0.3)", borderRadius: 16, padding: "24px 26px",
+            display: "flex", alignItems: "center", gap: 18, flexWrap: "wrap",
+          }}>
+            <span style={{ fontSize: 40, flexShrink: 0 }}>⚡</span>
+            <div style={{ flex: 1, minWidth: 220 }}>
+              <div style={{ fontWeight: 900, fontSize: 18, color: "#FFD700" }}>Enter the Challenge Arena</div>
+              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", marginTop: 4 }}>
+                Song vs song. Winner stays, crowd votes live, next challenger enters immediately.
               </div>
-              <Link href={`/challenge/${ch.id}`} style={{ padding: "11px 22px", background: `${ch.color}CC`, color: "#000", borderRadius: 10, fontWeight: 900, fontSize: 11, textDecoration: "none", letterSpacing: "0.08em", whiteSpace: "nowrap", flexShrink: 0 }}>
-                ENTER →
-              </Link>
             </div>
-          ))}
-        </div>
+            <span style={{ padding: "12px 26px", background: "#FFD700", color: "#000", borderRadius: 10, fontWeight: 900, fontSize: 12, letterSpacing: "0.08em", whiteSpace: "nowrap" }}>
+              JOIN THE ARENA →
+            </span>
+          </div>
+        </Link>
 
         <div style={{ marginTop: 32, textAlign: "center" }}>
           <Link href="/battles" style={{ fontSize: 12, color: "#FF2DAA", textDecoration: "none", fontWeight: 700 }}>⚔️ Head-to-Head Battles →</Link>

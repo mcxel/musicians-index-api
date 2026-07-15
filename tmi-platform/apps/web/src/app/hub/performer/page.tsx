@@ -24,6 +24,8 @@ import RadioJourneyCard from "@/components/radio/RadioJourneyCard";
 import { useTmiSession } from "@/hooks/SessionContext";
 import { getLatestEditorialArticles } from "@/lib/editorial/NewsArticleModel";
 import { getPerformerById } from "@/lib/performers/PerformerRegistry";
+import { getLevelForXP, getProgressToNextLevel } from "@/lib/xp/xpEngine";
+import { useDrawer } from "@/components/room/DrawerContext";
 import { OnboardingMissionDock } from "@/components/onboarding/OnboardingMissionCard";
 import { useOnboardingMissions } from "@/components/onboarding/useOnboardingMissions";
 import UniversalPlatformShell from "@/components/shell/UniversalPlatformShell";
@@ -45,16 +47,23 @@ const NAV_LINKS = [
   { href: "/settings",          label: "Settings"     },
 ];
 
-const PERFORMER_LEFT_RAIL_ACTIONS = [
-  { id: "camera",        icon: "🎥", label: "Camera" },
-  { id: "audio",         icon: "🎚️", label: "Audio" },
-  { id: "playlist",      icon: "🎵", label: "Playlist" },
-  { id: "video-shuffle", icon: "🎬", label: "Shuffle" },
-  { id: "radio",         icon: "📻", label: "Radio" },
-  { id: "memory",        icon: "🖼️", label: "Memory" },
-  { id: "yopho",         icon: "✨", label: "Yopho" },
-  { id: "upload",        icon: "⬆️", label: "Upload" },
-];
+// Persistent left sidebar — matches the reference blueprint's MAIN MENU list.
+// "drawer" items open a real WidgetDrawer panel (same panels the old floating
+// ActionCanister rail opened); "link" items route to a real page.
+const PERFORMER_MAIN_MENU = [
+  { kind: "drawer", id: "live-rooms", icon: "🎭", label: "Live Rooms" },
+  { kind: "link",   href: "/lobby",            icon: "🌐", label: "Lobby" },
+  { kind: "drawer", id: "messages",   icon: "💬", label: "Messages" },
+  { kind: "drawer", id: "friends",    icon: "👥", label: "Friends" },
+  { kind: "drawer", id: "inventory",  icon: "🎒", label: "Inventory" },
+  { kind: "drawer", id: "memory",     icon: "🧠", label: "Memory Wall" },
+  { kind: "drawer", id: "playlist",   icon: "🎵", label: "Playlists" },
+  { kind: "drawer", id: "yopho",      icon: "✨", label: "Yopho" },
+  { kind: "link",   href: "/performer/studio", icon: "📷", label: "Camera", sub: "Go Live" },
+  { kind: "link",   href: "/rewards",          icon: "⭐", label: "Rewards" },
+  { kind: "link",   href: "/store",            icon: "🛒", label: "Store" },
+  { kind: "drawer", id: "settings",   icon: "⚙️", label: "Settings" },
+] as const;
 
 const PERFORMER_RIGHT_RAIL_ACTIONS = [
   { id: "sponsors", icon: "🤝", label: "Sponsors" },
@@ -196,11 +205,107 @@ export default function PerformerHubPage() {
     return getPerformerById(userId);
   }, [userId]);
 
+  const { activeDrawer, toggleDrawer } = useDrawer();
+  const xpProgress = getProgressToNextLevel(performerIdentity?.xp ?? 0);
+  const performerLevel = getLevelForXP(performerIdentity?.xp ?? 0).level;
+
+  const SIDEBAR_WIDTH = 220;
+
   const hubContent = (
-    <div style={{ fontFamily: "'Inter', sans-serif", background: "#050510", minHeight: "100vh", position: "relative" }}>
+    <div style={{ fontFamily: "'Inter', sans-serif", background: "#050510", minHeight: "100vh", position: "relative", paddingLeft: SIDEBAR_WIDTH }}>
       <DesktopAtmosphereRails />
 
       <NeonWaveUnderlay colorA="#AA2DFF" colorB="#FF2DAA" colorC="#00FFFF" opacity={0.08} zIndex={0} />
+
+      {/* ══ PERSISTENT LEFT SIDEBAR — flush against the screen, matches reference blueprint ══ */}
+      <div style={{
+        position: "fixed", left: 0, top: 0, bottom: 0, width: SIDEBAR_WIDTH, zIndex: 40,
+        display: "flex", flexDirection: "column",
+        background: "rgba(5,5,16,0.92)", borderRight: "1px solid rgba(170,45,255,0.15)",
+        backdropFilter: "blur(16px)", overflowY: "auto",
+      }}>
+        <div style={{ padding: "16px 14px 6px", fontSize: 8, fontWeight: 900, letterSpacing: "0.22em", color: "rgba(255,255,255,0.3)" }}>
+          MAIN MENU
+        </div>
+        {PERFORMER_MAIN_MENU.map((item) => {
+          const isActive = item.kind === "drawer" && activeDrawer === item.id;
+          const inner = (
+            <>
+              <span style={{ fontSize: 15, flexShrink: 0, width: 20, textAlign: "center" }}>{item.icon}</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 11, fontWeight: isActive ? 800 : 600, color: isActive ? "#AA2DFF" : "rgba(255,255,255,0.82)" }}>
+                  {item.label}
+                </div>
+                {"sub" in item && item.sub && (
+                  <div style={{ fontSize: 9, color: "rgba(255,255,255,0.35)", marginTop: 1 }}>{item.sub}</div>
+                )}
+              </div>
+            </>
+          );
+          const rowStyle: React.CSSProperties = {
+            display: "flex", alignItems: "center", gap: 10,
+            padding: "9px 14px", cursor: "pointer", textDecoration: "none",
+            background: isActive ? "rgba(170,45,255,0.12)" : "transparent",
+            borderLeft: isActive ? "2px solid #AA2DFF" : "2px solid transparent",
+          };
+          return item.kind === "drawer" ? (
+            <button key={item.id} onClick={() => toggleDrawer(item.id)} style={{ ...rowStyle, border: "none", borderLeft: rowStyle.borderLeft, width: "100%", textAlign: "left", background: rowStyle.background }}>
+              {inner}
+            </button>
+          ) : (
+            <Link key={item.href} href={item.href} style={rowStyle}>
+              {inner}
+            </Link>
+          );
+        })}
+
+        <div style={{ flex: 1 }} />
+
+        {/* Real user card — Fans/Likes are real performerIdentity data; no fabricated Following/Rooms counts */}
+        <div style={{ padding: "10px 12px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+            <div style={{
+              width: 32, height: 32, borderRadius: "50%", flexShrink: 0, position: "relative", overflow: "hidden",
+              background: "linear-gradient(135deg, rgba(170,45,255,0.4), rgba(255,45,170,0.4))",
+              border: "1.5px solid #AA2DFF",
+              display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 900,
+            }}>
+              {performerIdentity?.profileImageUrl ? (
+                <Image src={performerIdentity.profileImageUrl} alt={performerIdentity.name} fill sizes="32px" style={{ objectFit: "cover" }} />
+              ) : (
+                (userName || "P").charAt(0).toUpperCase()
+              )}
+            </div>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#fff" }}>{performerIdentity?.name || userName || "Your Stage"}</div>
+              <div style={{ fontSize: 9, color: "#AA2DFF", fontWeight: 700, letterSpacing: "0.1em" }}>
+                {(performerIdentity?.tier || userTier || "FREE").toString().toUpperCase()} MEMBER
+              </div>
+            </div>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+            <span style={{ fontSize: 9, color: "rgba(255,255,255,0.4)" }}>LEVEL {performerLevel}</span>
+            <span style={{ fontSize: 9, color: "#AA2DFF" }}>
+              {xpProgress.current.toLocaleString()} / {(xpProgress.current + xpProgress.needed).toLocaleString()} XP
+            </span>
+          </div>
+          <div style={{ height: 3, background: "rgba(255,255,255,0.08)", borderRadius: 2 }}>
+            <div style={{ height: "100%", borderRadius: 2, background: "linear-gradient(90deg, #AA2DFF, #FF2DAA)", width: `${xpProgress.pct}%`, transition: "width 0.5s" }} />
+          </div>
+          {performerIdentity && (
+            <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6 }}>
+              <div style={{ textAlign: "center" }}>
+                <div style={{ fontSize: 11, fontWeight: 800 }}>{performerIdentity.fanCount.toLocaleString()}</div>
+                <div style={{ fontSize: 8, color: "rgba(255,255,255,0.35)" }}>Fans</div>
+              </div>
+              <div style={{ textAlign: "center" }}>
+                <div style={{ fontSize: 11, fontWeight: 800 }}>{performerIdentity.likes.toLocaleString()}</div>
+                <div style={{ fontSize: 8, color: "rgba(255,255,255,0.35)" }}>Likes</div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
 
         {/* Nav bar */}
         <div style={{ position: "relative", zIndex: 2, background: "rgba(0,0,0,0.75)", borderBottom: "1px solid rgba(170,45,255,0.2)", padding: "10px 24px", display: "flex", alignItems: "center", gap: 16, overflowX: "auto", backdropFilter: "blur(12px)" }}>
@@ -261,8 +366,10 @@ export default function PerformerHubPage() {
           </div>
         </div>
 
-        {/* Visual-first hero row: monitor first, details later. */}
-        <div style={{ position: "relative", zIndex: 1, maxWidth: 1300, margin: "18px auto 8px", padding: "0 24px" }}>
+        {/* Visual-first hero row: monitor first, details later — flush to the
+            viewport, not centered in a fixed-width column (previously
+            maxWidth: 1300 left large dead gutters on wide screens). */}
+        <div style={{ position: "relative", zIndex: 1, margin: "18px 0 8px", padding: "0 20px" }}>
           <BezelFrame variant="performer" innerPadding={18}>
             <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 320px", gap: 18, alignItems: "start" }}>
               <div>
@@ -570,16 +677,7 @@ export default function PerformerHubPage() {
           </div>
         </div>
 
-        <ActionCanister
-          actions={PERFORMER_LEFT_RAIL_ACTIONS}
-          side="left"
-          initialCollapsed={false}
-          containerStyle={{
-            top: 250,
-            transform: 'none',
-            left: 'max(10px, calc((100vw - 1300px) / 2 - 82px))',
-          }}
-        />
+        {/* Left action rail replaced by the persistent MAIN MENU sidebar above. */}
         <ActionCanister
           actions={PERFORMER_RIGHT_RAIL_ACTIONS}
           side="right"
@@ -587,7 +685,7 @@ export default function PerformerHubPage() {
           containerStyle={{
             top: 250,
             transform: 'none',
-            right: 'max(10px, calc((100vw - 1300px) / 2 - 82px))',
+            right: 0,
           }}
         />
         <WidgetDrawer />

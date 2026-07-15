@@ -6,6 +6,7 @@ import { useTmiSession } from "@/hooks/SessionContext";
 import { PERFORMER_REGISTRY } from "@/lib/performers/PerformerRegistry";
 import ProfileShell from "@/components/profile/ProfileShell";
 import { notFound } from "next/navigation";
+import { BookingCanister } from "@/components/canisters/BookingCanister";
 
 interface PublicYophoPageProps {
   params: Promise<{ slug: string }>;
@@ -87,6 +88,7 @@ export default function PublicYophoPage({ params }: PublicYophoPageProps) {
 }
 
 function PublicYophoContent({ performer }: { performer: any }) {
+  const [showBooking, setShowBooking] = useState(false);
   return (
     <div>
       {/* Hero Section */}
@@ -155,9 +157,15 @@ function PublicYophoContent({ performer }: { performer: any }) {
       >
         <ActionButton label="Follow" />
         <ActionButton label="Tip" />
-        <ActionButton label="Book" />
+        <ActionButton label="Book" onClick={() => setShowBooking((v) => !v)} />
         <ActionButton label="Sponsor" />
       </section>
+
+      {showBooking && (
+        <section style={{ marginBottom: "24px" }}>
+          <BookingCanister entityId={performer.slug} entityType="performer" accentColor="#FF2DAA" />
+        </section>
+      )}
 
       {/* Music / Catalog */}
       {performer.songs && performer.songs.length > 0 && (
@@ -230,16 +238,19 @@ function StatCard({ label, value }: { label: string; value: string }) {
   );
 }
 
-function ActionButton({ label }: { label: string }) {
+function ActionButton({ label, onClick }: { label: string; onClick?: () => void }) {
   return (
     <button
+      type="button"
+      onClick={onClick}
       style={{
         padding: "10px 16px",
         background: "rgba(255, 45, 170, 0.2)",
         border: "1px solid #FF2DAA",
         color: "#FF2DAA",
         borderRadius: "6px",
-        cursor: "pointer",
+        cursor: onClick ? "pointer" : "default",
+        opacity: onClick ? 1 : 0.5,
         fontWeight: "bold",
         fontSize: "12px",
         textTransform: "uppercase",

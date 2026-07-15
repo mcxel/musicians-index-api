@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { getLevelForXP } from "@/lib/xp/xpEngine";
+import { getTmiAuth } from "@/lib/auth/getTmiAuth";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Crown Rankings — The Musician's Index" };
@@ -86,7 +87,11 @@ function tierBadgeColor(tier: string): string {
 }
 
 export default async function RankingsPage() {
-  const performers = await getRankedPerformers(25);
+  const [performers, auth] = await Promise.all([
+    getRankedPerformers(25),
+    getTmiAuth(),
+  ]);
+  const isLoggedIn = auth !== null;
 
   return (
     <main style={{ minHeight: "100vh", background: "#050510", color: "#fff", fontFamily: "'Inter', sans-serif", paddingBottom: 80 }}>
@@ -153,11 +158,11 @@ export default async function RankingsPage() {
                   <div style={{ fontSize: 14, fontWeight: 800, color: "#FFD700", marginBottom: 8 }}>No rankings yet</div>
                   <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", lineHeight: 1.6 }}>
                     The leaderboard fills as performers earn XP through battles, streams, and live events.<br />
-                    Sign up and perform to claim your rank.
+                    {isLoggedIn ? "Perform live, battle, or stream to claim your rank." : "Sign up and perform to claim your rank."}
                   </div>
                   <div style={{ marginTop: 20 }}>
-                    <Link href="/signup" style={{ padding: "10px 24px", borderRadius: 8, background: "rgba(255,215,0,0.12)", border: "1px solid rgba(255,215,0,0.35)", color: "#FFD700", fontSize: 11, fontWeight: 800, textDecoration: "none", letterSpacing: "0.08em" }}>
-                      JOIN TMI →
+                    <Link href={isLoggedIn ? "/battles" : "/signup"} style={{ padding: "10px 24px", borderRadius: 8, background: "rgba(255,215,0,0.12)", border: "1px solid rgba(255,215,0,0.35)", color: "#FFD700", fontSize: 11, fontWeight: 800, textDecoration: "none", letterSpacing: "0.08em" }}>
+                      {isLoggedIn ? "ENTER A BATTLE →" : "JOIN TMI →"}
                     </Link>
                   </div>
                 </div>

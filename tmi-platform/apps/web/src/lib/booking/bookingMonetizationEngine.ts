@@ -1,37 +1,15 @@
 import { listVenueBookingMatches } from "@/lib/booking/tmiVenueBookingMatchEngine";
+import { bookingRepository } from "@/lib/booking/MemoryBookingRepository";
+import type { BookingRequest, CreateBookingRequestInput } from "@/lib/booking/BookingRepository";
 
-export type BookingRequest = {
-  id: string;
-  venueSlug: string;
-  artistSlug: string;
-  offerAmount: number;
-  expectedRevenue: number;
-  status: "pending" | "accepted" | "rejected";
-};
+export type { BookingRequest };
 
-const bookingRequests: BookingRequest[] = [
-  {
-    id: "req-1001",
-    venueSlug: "test-venue",
-    artistSlug: "ray-journey",
-    offerAmount: 4500,
-    expectedRevenue: 16200,
-    status: "pending",
-  },
-];
-
-export function listBookingRequests(): BookingRequest[] {
-  return bookingRequests;
+export async function listBookingRequests(): Promise<BookingRequest[]> {
+  return bookingRepository.list();
 }
 
-export function createBookingRequest(input: Omit<BookingRequest, "id" | "status">): BookingRequest {
-  const entry: BookingRequest = {
-    ...input,
-    id: `req-${Math.floor(Math.random() * 900000 + 100000)}`,
-    status: "pending",
-  };
-  bookingRequests.unshift(entry);
-  return entry;
+export async function createBookingRequest(input: CreateBookingRequestInput): Promise<BookingRequest> {
+  return bookingRepository.create(input);
 }
 
 export function computeProfitMargin(expectedRevenue: number, totalCost: number) {
@@ -45,8 +23,9 @@ export function computeProfitMargin(expectedRevenue: number, totalCost: number) 
   };
 }
 
-export function runMcMichaelCharlieProfitabilityAnalysis() {
+export async function runMcMichaelCharlieProfitabilityAnalysis() {
   const matches = listVenueBookingMatches();
+  const bookingRequests = await bookingRepository.list();
   const totalOffers = bookingRequests.reduce((sum, entry) => sum + entry.offerAmount, 0);
   const totalExpectedRevenue = bookingRequests.reduce((sum, entry) => sum + entry.expectedRevenue, 0);
   const totalCost = totalOffers + matches.length * 900;

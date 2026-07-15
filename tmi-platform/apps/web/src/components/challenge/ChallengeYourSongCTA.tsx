@@ -30,7 +30,7 @@ export default function ChallengeYourSongCTA({ variant = 'full' }: { variant?: V
 
   if (variant === 'strip') {
     return (
-      <Link href="/challenges/create" style={{ textDecoration: 'none', display: 'block' }}>
+      <Link href="/rooms/challenge-arena" style={{ textDecoration: 'none', display: 'block' }}>
         <div style={{
           background: 'linear-gradient(90deg, #FF2DAA 0%, #AA2DFF 50%, #FF2DAA 100%)',
           backgroundSize: '200% 100%',
@@ -56,7 +56,7 @@ export default function ChallengeYourSongCTA({ variant = 'full' }: { variant?: V
 
   if (variant === 'mini') {
     return (
-      <Link href="/challenges/create" style={{ textDecoration: 'none', display: 'block' }}>
+      <Link href="/rooms/challenge-arena" style={{ textDecoration: 'none', display: 'block' }}>
         <div style={{
           border: '2px solid #FF2DAA',
           background: 'linear-gradient(135deg, rgba(255,45,170,0.1), rgba(170,45,255,0.06))',
@@ -78,7 +78,7 @@ export default function ChallengeYourSongCTA({ variant = 'full' }: { variant?: V
 
   if (variant === 'orbit') {
     return (
-      <Link href="/challenges/create" style={{ textDecoration: 'none', display: 'block' }}>
+      <Link href="/rooms/challenge-arena" style={{ textDecoration: 'none', display: 'block' }}>
         <div style={{
           background: 'linear-gradient(135deg, #FF2DAA, #AA2DFF)',
           padding: '10px 20px',
@@ -122,7 +122,7 @@ export default function ChallengeYourSongCTA({ variant = 'full' }: { variant?: V
       <div style={{ position: 'absolute', left: '50%', top: '50%', width: '80%', height: '80%', transform: 'translate(-50%,-50%)', borderRadius: '50%', border: '2px solid rgba(255,45,170,0.35)', animation: 'tmiPulseRingA 2.4s ease-out infinite', pointerEvents: 'none' }} />
       <div style={{ position: 'absolute', left: '50%', top: '50%', width: '90%', height: '90%', transform: 'translate(-50%,-50%)', borderRadius: '50%', border: '2px solid rgba(170,45,255,0.2)', animation: 'tmiPulseRingB 2.4s ease-out infinite 0.8s', pointerEvents: 'none' }} />
 
-      <Link href="/challenges/create" style={{ textDecoration: 'none', display: 'inline-block' }}>
+      <Link href="/rooms/challenge-arena" style={{ textDecoration: 'none', display: 'inline-block' }}>
         <div style={{
           background: 'linear-gradient(135deg, #FF2DAA, #AA2DFF, #FF2DAA)',
           backgroundSize: '200% 100%',
@@ -164,7 +164,7 @@ export default function ChallengeYourSongCTA({ variant = 'full' }: { variant?: V
 
       <div style={{ marginTop: 10, display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
         {['SONG', 'VIDEO', 'LIVE', 'BEAT'].map(t => (
-          <Link key={t} href={`/challenges/create?type=${t.toLowerCase()}`} style={{ textDecoration: 'none' }}>
+          <Link key={t} href="/rooms/challenge-arena" style={{ textDecoration: 'none' }}>
             <div style={{ border: '1px solid rgba(255,45,170,0.4)', padding: '5px 14px', fontFamily: "'Inter',sans-serif", fontSize: 9, fontWeight: 900, letterSpacing: '0.14em', color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase', background: 'rgba(255,45,170,0.06)' }}>
               {t}
             </div>

@@ -83,7 +83,7 @@ export function BookingCanister({
         }),
       });
       if (res.ok) {
-        setMsg("Booking request sent!");
+        setMsg("Booking request sent — held for this session (durable storage in progress).");
         setNote("");
         void load();
       } else {
