@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
+import { LiveCameraPreview } from "@/components/media/LiveCameraPreview";
+import OverlayHost from "@/components/shell/OverlayHost";
 // 12-panel layout assembling all existing overseer sub-panels
 //
 // LAYOUT (bottom → top of import precedence):
@@ -67,6 +69,7 @@ type CanonOverseerShellProps = {
 export default function CanonOverseerShell({ workspace }: CanonOverseerShellProps) {
   const [fullscreenPanel, setFullscreenPanel] = useState<string | null>(null);
   const [clock, setClock] = useState<string>("");
+  const [cameraOverlayOpen, setCameraOverlayOpen] = useState(false);
   const drawerManager = useDrawerManager();
 
   useEffect(() => {
@@ -76,6 +79,17 @@ export default function CanonOverseerShell({ workspace }: CanonOverseerShellProp
     const id = setInterval(updateClock, 1000);
     return () => clearInterval(id);
   }, []);
+
+  useEffect(() => {
+    if (!cameraOverlayOpen) return;
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setCameraOverlayOpen(false);
+    };
+
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [cameraOverlayOpen]);
 
   const defaultWorkspace = useMemo<ShellWorkspaceDefinition>(
     () => ({
@@ -134,6 +148,7 @@ export default function CanonOverseerShell({ workspace }: CanonOverseerShellProp
         { label: "Messages", href: "/admin/messages" },
         { label: "Users", href: "/admin/users" },
         { label: "Settings", href: "/admin/settings" },
+        { label: "Camera", href: "#" }, // Placeholder for camera toggle
         { label: "Power", href: "/" },
       ],
     }),
@@ -151,9 +166,9 @@ export default function CanonOverseerShell({ workspace }: CanonOverseerShellProp
   const rightCollapsed = drawerManager.isRailCollapsed("right");
   const bottomCollapsed = drawerManager.isRailCollapsed("bottom");
 
-  const leftWidth = leftCollapsed ? 74 : 302;
-  const rightWidth = rightCollapsed ? 74 : 302;
-  const bottomHeight = bottomCollapsed ? 44 : 290;
+  const leftWidth = leftCollapsed ? 74 : 268;
+  const rightWidth = rightCollapsed ? 74 : 268;
+  const bottomHeight = bottomCollapsed ? 44 : 230;
 
   const toggleFullscreen = (panelId: string) => {
     setFullscreenPanel((curr) => (curr === panelId ? null : panelId));
@@ -180,6 +195,58 @@ export default function CanonOverseerShell({ workspace }: CanonOverseerShellProp
     return fullscreenMatch.content;
   };
 
+  const isFloatingPanel = (panel: ShellPanel) =>
+    Boolean(panel.id && drawerManager.getWindowState(panel.id)?.mode === "floating");
+
+  const floatingCanisterStyle = (panel: ShellPanel) => ({
+    position: "fixed" as const,
+    left: drawerManager.getWindowState(panel.id as string)?.x ?? 32,
+    top: drawerManager.getWindowState(panel.id as string)?.y ?? 32,
+    width: panel.id && activeWorkspace.bottom.some((b) => b.id === panel.id)
+      ? 560
+      : "min(720px, calc(100vw - 48px))",
+    height: panel.fixedHeight ? panel.fixedHeight : activeWorkspace.bottom.some((b) => b.id === panel.id) ? 320 : 360,
+    minWidth: 320,
+    minHeight: 220,
+    zIndex: 1,
+    pointerEvents: "auto" as const,
+  });
+
+  const renderPanelCanister = (
+    panel: ShellPanel,
+    collapsed: boolean,
+    floating: boolean,
+    canisterStyle?: React.CSSProperties,
+  ) => (
+    <Canister
+      key={panel.id ?? panel.title}
+      id={panel.id}
+      title={panel.title}
+      accent={panel.accent ?? "#00FFFF"}
+      statusLabel={panel.statusLabel}
+      collapsed={collapsed}
+      floating={floating}
+      onToggleFullscreen={panel.fullscreenKey ? () => toggleFullscreen(panel.fullscreenKey as string) : undefined}
+      onToggleFloat={panel.id ? () => drawerManager.toggleWindowFloat(panel.id as string) : undefined}
+      onCloseWindow={panel.id ? () => drawerManager.closeWindow(panel.id as string) : undefined}
+      style={{
+        ...(panel.fixedHeight ? { flex: `0 0 ${panel.fixedHeight}px` } : {}),
+        ...(panel.flex ? { flex: panel.flex } : {}),
+        ...(canisterStyle ?? {}),
+      }}
+      onToggleCollapse={panel.id ? undefined : undefined}
+    >
+      <div
+        onPointerDown={panel.id && floating ? (event) => drawerManager.beginDrag(panel.id as string, event) : undefined}
+        onPointerMove={panel.id && floating ? drawerManager.moveDrag : undefined}
+        onPointerUp={panel.id && floating ? drawerManager.endDrag : undefined}
+        style={{ height: "100%" }}
+      >
+        {panel.content}
+      </div>
+    </Canister>
+  );
+
   const renderRail = (panels: ShellPanel[], rail: "left" | "center" | "right") => {
     const isLeft = rail === "left";
     const isRight = rail === "right";
@@ -190,52 +257,15 @@ export default function CanonOverseerShell({ workspace }: CanonOverseerShellProp
         style={{
           display: "flex",
           flexDirection: "column",
-          gap: 8,
+          gap: 6,
           minHeight: 0,
           overflowY: "auto",
           paddingRight: 2,
         }}
       >
-        {panels.map((panel) => (
-          <Canister
-            key={panel.id ?? panel.title}
-            id={panel.id}
-            title={panel.title}
-            accent={panel.accent ?? "#00FFFF"}
-            statusLabel={panel.statusLabel}
-            collapsed={isLeft ? leftCollapsed : isRight ? rightCollapsed : false}
-            floating={panel.id ? drawerManager.getWindowState(panel.id)?.mode === "floating" : false}
-            onToggleFullscreen={panel.fullscreenKey ? () => toggleFullscreen(panel.fullscreenKey as string) : undefined}
-            onToggleFloat={panel.id ? () => drawerManager.toggleWindowFloat(panel.id as string) : undefined}
-            onCloseWindow={panel.id ? () => drawerManager.closeWindow(panel.id as string) : undefined}
-            style={{
-              ...(panel.fixedHeight ? { flex: `0 0 ${panel.fixedHeight}px` } : {}),
-              ...(panel.flex ? { flex: panel.flex } : {}),
-              ...(panel.id && drawerManager.getWindowState(panel.id)?.mode === "floating"
-                ? {
-                    position: "fixed",
-                    left: drawerManager.getWindowState(panel.id)?.x ?? 32,
-                    top: drawerManager.getWindowState(panel.id)?.y ?? 32,
-                    width: "min(720px, calc(100vw - 48px))",
-                    height: panel.fixedHeight ? panel.fixedHeight : 360,
-                    minWidth: 320,
-                    minHeight: 220,
-                    zIndex: 1000,
-                  }
-                : {}),
-            }}
-            onToggleCollapse={panel.id ? undefined : undefined}
-          >
-            <div
-              onPointerDown={panel.id && drawerManager.getWindowState(panel.id)?.mode === "floating" ? (event) => drawerManager.beginDrag(panel.id as string, event) : undefined}
-              onPointerMove={panel.id && drawerManager.getWindowState(panel.id)?.mode === "floating" ? drawerManager.moveDrag : undefined}
-              onPointerUp={panel.id && drawerManager.getWindowState(panel.id)?.mode === "floating" ? drawerManager.endDrag : undefined}
-              style={{ height: "100%" }}
-            >
-              {panel.content}
-            </div>
-          </Canister>
-        ))}
+        {panels
+          .filter((panel) => !isFloatingPanel(panel))
+          .map((panel) => renderPanelCanister(panel, isLeft ? leftCollapsed : isRight ? rightCollapsed : false, false))}
       </div>
     );
   };
@@ -253,8 +283,8 @@ export default function CanonOverseerShell({ workspace }: CanonOverseerShellProp
           "inset 0 0 90px rgba(0,0,0,0.78), inset 0 0 0 1px rgba(255,215,0,0.08), 0 16px 40px rgba(0,0,0,0.6)",
         display: "flex",
         flexDirection: "column",
-        gap: 8,
-        padding: 8,
+        gap: 5,
+        padding: 6,
         fontFamily: "inherit",
         position: "relative",
         overflow: "hidden",
@@ -323,20 +353,20 @@ export default function CanonOverseerShell({ workspace }: CanonOverseerShellProp
           zIndex: 1,
           display: "flex",
           alignItems: "center",
-          gap: 8,
+          gap: 5,
           flexWrap: "wrap",
-          padding: "0 4px",
-          justifyContent: "space-between",
+          padding: "0 2px",
+          justifyContent: "flex-end",
         }}
       >
-        <button type="button" onClick={() => drawerManager.toggleRail("left")} style={{ borderRadius: 999, border: "1px solid rgba(255,215,0,0.45)", background: "linear-gradient(180deg, rgba(255,215,0,0.16), rgba(255,215,0,0.07))", color: "#FFD700", fontSize: 9, fontWeight: 900, letterSpacing: "0.1em", textTransform: "uppercase", padding: "5px 11px", cursor: "pointer" }}>
-          {leftCollapsed ? "◀ Left" : "◁ Left"}
+        <button type="button" onClick={() => drawerManager.toggleRail("left")} style={{ borderRadius: 999, border: "1px solid rgba(255,215,0,0.35)", background: "rgba(255,215,0,0.06)", color: "rgba(255,215,0,0.75)", fontSize: 8, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", padding: "3px 8px", cursor: "pointer" }}>
+          {leftCollapsed ? "◀" : "◁"} Left
         </button>
-        <button type="button" onClick={() => drawerManager.toggleRail("bottom")} style={{ borderRadius: 999, border: "1px solid rgba(170,45,255,0.45)", background: "linear-gradient(180deg, rgba(170,45,255,0.18), rgba(170,45,255,0.08))", color: "#D887FF", fontSize: 9, fontWeight: 900, letterSpacing: "0.1em", textTransform: "uppercase", padding: "5px 11px", cursor: "pointer" }}>
-          {bottomCollapsed ? "▲ Analytics" : "▼ Analytics"}
+        <button type="button" onClick={() => drawerManager.toggleRail("bottom")} style={{ borderRadius: 999, border: "1px solid rgba(170,45,255,0.35)", background: "rgba(170,45,255,0.06)", color: "rgba(216,135,255,0.75)", fontSize: 8, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", padding: "3px 8px", cursor: "pointer" }}>
+          {bottomCollapsed ? "▲" : "▼"} Analytics
         </button>
-        <button type="button" onClick={() => drawerManager.toggleRail("right")} style={{ borderRadius: 999, border: "1px solid rgba(0,255,255,0.45)", background: "linear-gradient(180deg, rgba(0,255,255,0.16), rgba(0,255,255,0.07))", color: "#73FFFF", fontSize: 9, fontWeight: 900, letterSpacing: "0.1em", textTransform: "uppercase", padding: "5px 11px", cursor: "pointer" }}>
-          {rightCollapsed ? "Right ▶" : "Right ▷"}
+        <button type="button" onClick={() => drawerManager.toggleRail("right")} style={{ borderRadius: 999, border: "1px solid rgba(0,255,255,0.35)", background: "rgba(0,255,255,0.06)", color: "rgba(115,255,255,0.75)", fontSize: 8, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", padding: "3px 8px", cursor: "pointer" }}>
+          Right {rightCollapsed ? "▶" : "▷"}
         </button>
       </div>
 
@@ -348,7 +378,7 @@ export default function CanonOverseerShell({ workspace }: CanonOverseerShellProp
           flex: 1,
           display: "flex",
           flexDirection: "column",
-          gap: 8,
+          gap: 5,
           minHeight: 0,
           minWidth: 0,
           overflow: "hidden",
@@ -362,10 +392,10 @@ export default function CanonOverseerShell({ workspace }: CanonOverseerShellProp
             minHeight: 0,
             display: "grid",
             gridTemplateColumns: shellGridTemplate,
-            gap: 8,
+            gap: 6,
             border: "1px solid rgba(255,215,0,0.18)",
             borderRadius: 10,
-            padding: 8,
+            padding: 6,
             background: "linear-gradient(180deg, rgba(255,215,0,0.04), rgba(255,255,255,0.02))",
             transition: "all 280ms ease",
           }}
@@ -396,56 +426,39 @@ export default function CanonOverseerShell({ workspace }: CanonOverseerShellProp
             minHeight: bottomHeight,
             display: "grid",
             gridTemplateColumns: `repeat(${Math.max(1, activeWorkspace.bottom.length)}, minmax(0, 1fr))`,
-            gap: 8,
+            gap: 6,
             border: "1px solid rgba(255,215,0,0.18)",
             borderRadius: 10,
-            padding: 8,
+            padding: 6,
             background: "linear-gradient(180deg, rgba(255,45,170,0.03), rgba(255,215,0,0.03))",
             transition: "all 280ms ease",
           }}
         >
-          {activeWorkspace.bottom.map((panel) => (
-            <Canister
-              key={panel.id ?? panel.title}
-              id={panel.id}
-              title={panel.title}
-              accent={panel.accent ?? "#00FFFF"}
-              statusLabel={panel.statusLabel}
-              collapsed={bottomCollapsed}
-              floating={panel.id ? drawerManager.getWindowState(panel.id)?.mode === "floating" : false}
-              onToggleFullscreen={panel.fullscreenKey ? () => toggleFullscreen(panel.fullscreenKey as string) : undefined}
-              onToggleFloat={panel.id ? () => drawerManager.toggleWindowFloat(panel.id as string) : undefined}
-              onCloseWindow={panel.id ? () => drawerManager.closeWindow(panel.id as string) : undefined}
-              style={
-                panel.id && drawerManager.getWindowState(panel.id)?.mode === "floating"
-                  ? {
-                      position: "fixed",
-                      left: drawerManager.getWindowState(panel.id)?.x ?? 32,
-                      top: drawerManager.getWindowState(panel.id)?.y ?? 32,
-                      width: 560,
-                      height: panel.fixedHeight ? panel.fixedHeight : 320,
-                      minWidth: 320,
-                      minHeight: 220,
-                      zIndex: 1000,
-                    }
-                  : undefined
-              }
-            >
-              <div
-                onPointerDown={panel.id && drawerManager.getWindowState(panel.id)?.mode === "floating" ? (event) => drawerManager.beginDrag(panel.id as string, event) : undefined}
-                onPointerMove={panel.id && drawerManager.getWindowState(panel.id)?.mode === "floating" ? drawerManager.moveDrag : undefined}
-                onPointerUp={panel.id && drawerManager.getWindowState(panel.id)?.mode === "floating" ? drawerManager.endDrag : undefined}
-                style={{ height: "100%" }}
-              >
-                {panel.content}
-              </div>
-            </Canister>
-          ))}
+          {activeWorkspace.bottom
+            .filter((panel) => !isFloatingPanel(panel))
+            .map((panel) => renderPanelCanister(panel, bottomCollapsed, false))}
         </div>
 
-        {Object.entries(drawerManager.rawState.windows)
+        <div data-row="dock-bottom">
+          <HQDock items={dockItems} onCameraToggle={() => setCameraOverlayOpen((prev) => !prev)} cameraActive={cameraOverlayOpen} />
+        </div>
+      </div>
+
+      <OverlayHost zIndex={1000} pointerEvents="none">
+        {activeWorkspace.leftRail
+          .concat(activeWorkspace.center)
+          .concat(activeWorkspace.rightRail)
+          .concat(activeWorkspace.bottom ?? [])
+          .filter((panel) => isFloatingPanel(panel))
+          .map((panel) => (
+            <div key={`floating-${panel.id ?? panel.title}`} style={floatingCanisterStyle(panel)}>
+              {renderPanelCanister(panel, false, true)}
+            </div>
+          ))}
+
+        {Object.entries(drawerManager.rawState?.windows ?? {})
           .filter(([, state]) => state.mode === "closed")
-          .map(([id]) => {
+          .map(([id], index) => {
             const panel = allPanels.find((item) => item.id === id);
             if (!panel) return null;
             return (
@@ -456,8 +469,8 @@ export default function CanonOverseerShell({ workspace }: CanonOverseerShellProp
                 style={{
                   position: "fixed",
                   right: 16,
-                  bottom: 16 + Object.keys(drawerManager.rawState.windows).indexOf(id) * 42,
-                  zIndex: 1100,
+                  bottom: 16 + index * 42,
+                  zIndex: 1200,
                   borderRadius: 999,
                   border: "1px solid rgba(255,215,0,0.45)",
                   background: "linear-gradient(180deg, rgba(255,215,0,0.16), rgba(255,215,0,0.06))",
@@ -468,6 +481,7 @@ export default function CanonOverseerShell({ workspace }: CanonOverseerShellProp
                   letterSpacing: "0.08em",
                   textTransform: "uppercase",
                   cursor: "pointer",
+                  pointerEvents: "auto",
                 }}
               >
                 Restore {panel.title}
@@ -475,9 +489,57 @@ export default function CanonOverseerShell({ workspace }: CanonOverseerShellProp
             );
           })}
 
-          <div data-row="dock-bottom">
-            <HQDock items={dockItems} />
-          </div>
+        {/* Camera Overlay is now managed within the OverlayHost */}
+      </OverlayHost>
+
+      <div
+        id="tmi-flight-deck"
+        className="tmi-flight-deck"
+        aria-hidden="true"
+        style={{
+          position: "absolute",
+          inset: 0,
+          zIndex: 1000,
+          pointerEvents: "none",
+        }}
+      >
+        {/* The portal target for all floating elements */}
+        {cameraOverlayOpen && (
+            <div
+              style={{
+                position: "fixed",
+                inset: 0,
+                zIndex: 1300,
+                background: "rgba(1, 3, 8, 0.45)",
+                pointerEvents: "auto",
+              }}
+              onClick={() => setCameraOverlayOpen(false)}
+            >
+              <div
+                style={{
+                  position: "absolute",
+                  right: 8,
+                  bottom: 92,
+                  width: "min(420px, calc(100vw - 32px))",
+                  pointerEvents: "auto",
+                }}
+                onClick={(e) => e.stopPropagation()} // Prevent click from closing the overlay
+              >
+                <Canister
+                  id="observatory-camera-overlay"
+                  title="ADMIN CAMERA"
+                  accent="#00FFFF"
+                  statusLabel="ON DEMAND"
+                  style={{ minHeight: 250 }}
+                  onCloseWindow={() => setCameraOverlayOpen(false)}
+                >
+                  <div style={{ aspectRatio: "16 / 9", width: "100%", minHeight: 220 }}>
+                    <LiveCameraPreview />
+                  </div>
+                </Canister>
+              </div>
+            </div>
+        )}
       </div>
     </div>
   );

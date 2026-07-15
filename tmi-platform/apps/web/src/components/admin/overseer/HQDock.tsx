@@ -5,7 +5,15 @@ import Link from "next/link";
 import { BezelFrame } from "@/components/admin/overseer/AdminDesignSystem";
 import type { HQDockItem } from "@/components/admin/overseer/services/DockRegistry";
 
-export default function HQDock({ items }: { items: HQDockItem[] }) {
+export default function HQDock({
+  items,
+  onCameraToggle,
+  cameraActive,
+}: {
+  items: HQDockItem[];
+  onCameraToggle?: () => void;
+  cameraActive?: boolean;
+}) {
   const toneStyles: Record<NonNullable<HQDockItem["tone"]>, { border: string; bg: string; text: string }> = {
     gold: {
       border: "rgba(255,215,0,0.38)",
@@ -73,6 +81,34 @@ export default function HQDock({ items }: { items: HQDockItem[] }) {
             </Link>
           );
         })}
+        {onCameraToggle && (
+          <button
+            type="button"
+            onClick={onCameraToggle}
+            style={{
+              textDecoration: "none",
+              borderRadius: 10,
+              border: `1px solid ${cameraActive ? "rgba(0,255,136,0.5)" : "rgba(255,255,255,0.2)"}`,
+              background: cameraActive
+                ? "linear-gradient(180deg, rgba(0,80,45,0.85), rgba(0,36,20,0.92))"
+                : "linear-gradient(180deg, rgba(47,45,42,0.85), rgba(24,21,20,0.92))",
+              color: cameraActive ? "#8BFFC7" : "#E7E5E4",
+              fontSize: 11,
+              fontWeight: 900,
+              letterSpacing: "0.06em",
+              textTransform: "uppercase",
+              padding: "10px 8px",
+              textAlign: "center",
+              boxShadow: "inset 0 0 0 1px rgba(255,215,0,0.15), 0 3px 12px rgba(0,0,0,0.35)",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              cursor: "pointer",
+            }}
+          >
+            {cameraActive ? "📷 Camera On" : "📷 Camera"}
+          </button>
+        )}
       </div>
     </BezelFrame>
   );

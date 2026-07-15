@@ -38,8 +38,6 @@ interface MonitorSatelliteSystemProps {
   showAudiencePulse?: boolean;
 }
 
-type MainMode = "feed" | "lobbyWall";
-
 interface AudienceEntryEvent {
   id: string;
   at: number;
@@ -109,7 +107,6 @@ export default function MonitorSatelliteSystem({
   audienceCountryDistribution,
   showAudiencePulse,
 }: MonitorSatelliteSystemProps) {
-  const [mainMode, setMainMode] = useState<MainMode>("feed");
   const [satelliteMode, setSatelliteMode] = useState<"single" | "split">("split");
   const [showLeftAudioPanel, setShowLeftAudioPanel] = useState(true);
   const [showRightCameraPanel, setShowRightCameraPanel] = useState(true);
@@ -129,13 +126,14 @@ export default function MonitorSatelliteSystem({
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const monitorARef = useRef<HTMLDivElement>(null);
+  const monitorBRef = useRef<HTMLDivElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const lastAudienceCountRef = useRef(audienceCount ?? 0);
   const reachedMilestonesRef = useRef<Set<number>>(new Set());
   const seenArrivalIdsRef = useRef<Set<string>>(new Set());
 
   const shouldShowPulse = showAudiencePulse ?? showAudienceMonitor;
-  const mainMonitorHeight = satelliteMode === "single" ? 320 : 380;
   const effectiveFallbackVideoUrl = fallbackVideoUrl || DEFAULT_OBSERVATORY_VIDEO_URL;
   const effectiveLeftPipVideoUrl = leftPipVideoUrl || effectiveFallbackVideoUrl;
 
@@ -307,6 +305,10 @@ export default function MonitorSatelliteSystem({
     videoRef.current?.requestFullscreen?.().catch(() => {});
   }
 
+  function requestMonitorFullscreen(ref: { current: HTMLDivElement | null }) {
+    ref.current?.requestFullscreen?.().catch(() => {});
+  }
+
   async function captureSnapshot() {
     const video = videoRef.current;
     const canvas = canvasRef.current;
@@ -339,13 +341,28 @@ export default function MonitorSatelliteSystem({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      {/* Main monitor */}
+      {/* Main monitor deck — two independent 16:9 monitors, each with its own bezel + fullscreen */}
       <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: "0.18em", color: accentColor, display: "flex", alignItems: "center", gap: 8 }}>
-        🎬 MAIN MONITOR
+        🎬 MAIN MONITOR DECK
         <span style={{ flex: 1, height: 1, background: `${accentColor}33` }} />
       </div>
-      <div style={{ position: "relative", borderRadius: 12, overflow: "hidden", border: `2px solid ${accentColor}aa`, boxShadow: `0 0 32px ${accentColor}22`, minHeight: 460 }}>
-        {mainMode === "feed" ? (
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        {/* Monitor A — primary broadcast feed */}
+        <div
+          ref={monitorARef}
+          style={{
+            position: "relative",
+            aspectRatio: "16/9",
+            borderRadius: 14,
+            overflow: "hidden",
+            background: "#000",
+            /* Static bezel frame (Physical Frame layer only — no reactive/energy
+               logic wired in yet; pass a future `reactive` prop to animate this
+               once a real Energy Score engine exists). */
+            border: "3px solid #1c1c26",
+            boxShadow: `0 0 0 1px ${accentColor}55, 0 0 32px ${accentColor}22, inset 0 0 0 1px rgba(255,255,255,0.04)`,
+          }}
+        >
           <MotionPosterPlayer
             isLive={isLive}
             liveRoomRoute={liveRoomRoute}
@@ -356,24 +373,52 @@ export default function MonitorSatelliteSystem({
             alt={mainLabel}
             audienceCount={audienceCount}
             showLiveOverlay={!isLive}
-            height={mainMonitorHeight}
+            height="100%"
           />
-        ) : (
-          <div style={{ maxHeight: mainMonitorHeight, overflowY: "auto", background: "#050510" }}>
-            <BillboardLiveWall mode="home" maxTiles={6} title="BROWSE LIVE LOBBY WALLS" />
+          {!isLive && showAdThisSession && (
+            <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
+              <UnifiedAdSlot venue={adZone} slotKey="homepageBanner" format="horizontal" label="" style={{ position: "absolute", bottom: 8, left: 8, right: 8, minHeight: 0, pointerEvents: "auto" }} accentColor={accentColor} />
+            </div>
+          )}
+          <div style={{ position: "absolute", top: 8, left: 8, fontSize: 8, fontWeight: 900, letterSpacing: "0.12em", padding: "3px 8px", borderRadius: 5, background: "rgba(5,5,16,0.8)", border: `1px solid ${accentColor}55`, color: accentColor }}>
+            MONITOR A · BROADCAST
           </div>
-        )}
-        {!isLive && mainMode === "feed" && showAdThisSession && (
-          <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
-            <UnifiedAdSlot venue={adZone} slotKey="homepageBanner" format="horizontal" label="" style={{ position: "absolute", bottom: 8, left: 8, right: 8, minHeight: 0, pointerEvents: "auto" }} accentColor={accentColor} />
-          </div>
-        )}
-        <button
-          onClick={() => setMainMode((m) => (m === "feed" ? "lobbyWall" : "feed"))}
-          style={{ position: "absolute", top: 8, right: 8, fontSize: 9, fontWeight: 800, padding: "4px 10px", borderRadius: 6, background: "rgba(5,5,16,0.8)", border: `1px solid ${accentColor}66`, color: accentColor, cursor: "pointer" }}
+          <button
+            onClick={() => requestMonitorFullscreen(monitorARef)}
+            title="Fullscreen Monitor A"
+            style={{ position: "absolute", top: 8, right: 8, fontSize: 11, lineHeight: 1, padding: "5px 8px", borderRadius: 6, background: "rgba(5,5,16,0.8)", border: `1px solid ${accentColor}66`, color: accentColor, cursor: "pointer" }}
+          >
+            ⤢
+          </button>
+        </div>
+
+        {/* Monitor B — Live Lobby Wall / audience-facing browse view */}
+        <div
+          ref={monitorBRef}
+          style={{
+            position: "relative",
+            aspectRatio: "16/9",
+            borderRadius: 14,
+            overflow: "hidden",
+            background: "#050510",
+            border: "3px solid #1c1c26",
+            boxShadow: "0 0 0 1px rgba(170,45,255,0.4), 0 0 32px rgba(170,45,255,0.15), inset 0 0 0 1px rgba(255,255,255,0.04)",
+          }}
         >
-          {mainMode === "feed" ? "📡 BROWSE LOBBY WALLS" : "◀ BACK TO FEED"}
-        </button>
+          <div style={{ position: "absolute", inset: 0, overflowY: "auto" }}>
+            <BillboardLiveWall mode="home" maxTiles={6} title="LIVE LOBBY WALLS" />
+          </div>
+          <div style={{ position: "absolute", top: 8, left: 8, fontSize: 8, fontWeight: 900, letterSpacing: "0.12em", padding: "3px 8px", borderRadius: 5, background: "rgba(5,5,16,0.8)", border: "1px solid rgba(170,45,255,0.5)", color: "#AA2DFF" }}>
+            MONITOR B · LOBBY WALLS
+          </div>
+          <button
+            onClick={() => requestMonitorFullscreen(monitorBRef)}
+            title="Fullscreen Monitor B"
+            style={{ position: "absolute", top: 8, right: 8, fontSize: 11, lineHeight: 1, padding: "5px 8px", borderRadius: 6, background: "rgba(5,5,16,0.8)", border: "1px solid rgba(170,45,255,0.6)", color: "#AA2DFF", cursor: "pointer" }}
+          >
+            ⤢
+          </button>
+        </div>
       </div>
 
       {/* Audience Monitor — Audience Visibility Rule v4: visible the instant a performer/host goes live */}
