@@ -1,65 +1,70 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { DeckButton, DeckChip } from "@/components/admin/overseer/AdminDesignSystem";
+import { useEffect, useMemo, useState } from "react";
+import { DeckChip } from "@/components/admin/overseer/AdminDesignSystem";
+import type { ChainCommandOperator } from "@/app/api/admin/chain-command/route";
 
-type UnitState = "online" | "monitoring" | "repairing" | "idle";
+type LoadState = "loading" | "ready" | "error";
 
-type Unit = {
-  id: string;
-  name: string;
-  role: string;
-  state: UnitState;
-  tasks: number;
-  successRate: number;
+const presenceColor: Record<ChainCommandOperator["presence"], string> = {
+  ONLINE: "#00ff88",
+  RECENT: "#facc15",
+  OFFLINE: "#a1a1aa",
+  UNKNOWN: "#6b6b74",
 };
 
-const UNITS: Unit[] = [
-  { id: "bigace", name: "Big Ace Overseer", role: "Chief Runtime", state: "online", tasks: 21, successRate: 96 },
-  { id: "mcharlie", name: "Michael Charlie", role: "Operations", state: "repairing", tasks: 9, successRate: 91 },
-  { id: "security", name: "Security Division", role: "Sentinel", state: "monitoring", tasks: 14, successRate: 98 },
-  { id: "revenue", name: "Revenue Division", role: "Stripe / Billing", state: "monitoring", tasks: 8, successRate: 94 },
-  { id: "media", name: "Media Division", role: "Broadcast", state: "online", tasks: 12, successRate: 93 },
-  { id: "support", name: "Support Division", role: "Inbox", state: "idle", tasks: 3, successRate: 89 },
-];
-
-const stateLabel: Record<UnitState, string> = {
-  online: "Online",
-  monitoring: "Monitoring",
-  repairing: "Repairing",
-  idle: "Idle",
-};
-
-const stateColor: Record<UnitState, string> = {
-  online: "#00ff88",
-  monitoring: "#facc15",
-  repairing: "#fb7185",
-  idle: "#a1a1aa",
-};
+function initials(name: string): string {
+  return name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
+}
 
 export default function ChainCommandPanel() {
-  const [selectedId, setSelectedId] = useState<string>(UNITS[0].id);
-  const [log, setLog] = useState<string[]>([]);
+  const [operators, setOperators] = useState<ChainCommandOperator[]>([]);
+  const [presenceNote, setPresenceNote] = useState<string | null>(null);
+  const [state, setState] = useState<LoadState>("loading");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/admin/chain-command", { credentials: "include", cache: "no-store" })
+      .then((res) => {
+        if (!res.ok) throw new Error(String(res.status));
+        return res.json() as Promise<{ operators: ChainCommandOperator[]; presenceNote: string }>;
+      })
+      .then((data) => {
+        if (cancelled) return;
+        setOperators(data.operators ?? []);
+        setPresenceNote(data.presenceNote ?? null);
+        setState("ready");
+      })
+      .catch(() => { if (!cancelled) setState("error"); });
+    return () => { cancelled = true; };
+  }, []);
 
   const selected = useMemo(
-    () => UNITS.find((unit) => unit.id === selectedId) ?? UNITS[0],
-    [selectedId],
+    () => operators.find((op) => op.userId === selectedId) ?? operators[0] ?? null,
+    [operators, selectedId],
   );
-
-  function command(action: string) {
-    setLog((prev) => [`${new Date().toLocaleTimeString()} · ${action} -> ${selected.name}`, ...prev.slice(0, 5)]);
-  }
 
   return (
     <section style={{ height: "100%", display: "flex", flexDirection: "column", gap: 8 }}>
+      {state === "loading" && (
+        <p style={{ fontSize: 10, color: "rgba(255,216,143,0.6)" }}>Loading operators…</p>
+      )}
+      {state === "error" && (
+        <p style={{ fontSize: 10, color: "#fb7185" }}>Unable to load roster. Retry.</p>
+      )}
+      {state === "ready" && operators.length === 0 && (
+        <p style={{ fontSize: 10, color: "rgba(255,216,143,0.6)" }}>No ADMIN/STAFF accounts found.</p>
+      )}
+
       <div style={{ display: "grid", gap: 6 }}>
-        {UNITS.map((unit) => {
-          const active = selectedId === unit.id;
+        {operators.map((op) => {
+          const active = (selected?.userId ?? operators[0]?.userId) === op.userId;
           return (
             <button
-              key={unit.id}
+              key={op.userId}
               type="button"
-              onClick={() => setSelectedId(unit.id)}
+              onClick={() => setSelectedId(op.userId)}
               style={{
                 width: "100%",
                 textAlign: "left",
@@ -76,48 +81,34 @@ export default function ChainCommandPanel() {
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <div
                     style={{
-                      width: 26,
-                      height: 26,
-                      borderRadius: "50%",
+                      width: 26, height: 26, borderRadius: "50%",
                       border: "1px solid rgba(241,181,66,0.45)",
                       background: "linear-gradient(180deg, rgba(241,181,66,0.35), rgba(71,31,25,0.72))",
-                      color: "#ffe3a3",
-                      fontSize: 10,
-                      fontWeight: 900,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
+                      color: "#ffe3a3", fontSize: 10, fontWeight: 900,
+                      display: "flex", alignItems: "center", justifyContent: "center",
                     }}
                   >
-                    {unit.name
-                      .split(" ")
-                      .map((word) => word[0])
-                      .join("")
-                      .slice(0, 2)}
+                    {initials(op.displayName)}
                   </div>
                   <div>
                     <div style={{ fontSize: 10, fontWeight: 900, color: "#ffe9bb", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                      {unit.name}
+                      {op.displayName}
                     </div>
                     <div style={{ fontSize: 8, color: "rgba(255,216,143,0.72)", textTransform: "uppercase", letterSpacing: "0.07em" }}>
-                      {unit.role}
+                      {op.assignedRoles.join(" · ")}
                     </div>
                   </div>
                 </div>
                 <span
                   style={{
                     borderRadius: 999,
-                    border: `1px solid ${stateColor[unit.state]}66`,
-                    background: `${stateColor[unit.state]}22`,
-                    color: stateColor[unit.state],
-                    fontSize: 8,
-                    fontWeight: 900,
-                    letterSpacing: "0.08em",
-                    textTransform: "uppercase",
-                    padding: "2px 6px",
+                    border: `1px solid ${presenceColor[op.presence]}66`,
+                    background: `${presenceColor[op.presence]}22`,
+                    color: presenceColor[op.presence],
+                    fontSize: 8, fontWeight: 900, letterSpacing: "0.08em", textTransform: "uppercase", padding: "2px 6px",
                   }}
                 >
-                  {stateLabel[unit.state]}
+                  {op.presence}
                 </span>
               </div>
             </button>
@@ -125,38 +116,18 @@ export default function ChainCommandPanel() {
         })}
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 6 }}>
-        <DeckChip label="Tasks" value={String(selected.tasks)} />
-        <DeckChip label="Success" value={`${selected.successRate}%`} />
-        <DeckChip label="Queue" value={selected.state === "idle" ? "Idle" : "Active"} />
-      </div>
-
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-        <DeckButton onClick={() => command("Summon")}>Summon</DeckButton>
-        <DeckButton onClick={() => command("Inspect")}>Inspect</DeckButton>
-        <DeckButton onClick={() => command("Reroute")}>Reroute</DeckButton>
-        <DeckButton onClick={() => command("Escalate")} active={selected.state === "repairing"}>
-          Escalate
-        </DeckButton>
-      </div>
-
-      {log.length > 0 ? (
-        <div
-          style={{
-            marginTop: "auto",
-            borderRadius: 8,
-            border: "1px solid rgba(241,181,66,0.24)",
-            background: "rgba(20,9,12,0.66)",
-            padding: "7px 8px",
-          }}
-        >
-          {log.slice(0, 3).map((entry, index) => (
-            <div key={`${entry}-${index}`} style={{ fontSize: 8, color: "rgba(255,216,143,0.75)", lineHeight: 1.5 }}>
-              {entry}
-            </div>
-          ))}
+      {selected && (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 6 }}>
+          <DeckChip label="Active Role" value={selected.activeRole ?? "—"} />
+          <DeckChip label="Last Seen" value={selected.lastSeenAt ? new Date(selected.lastSeenAt).toLocaleString() : "Unknown"} />
         </div>
-      ) : null}
+      )}
+
+      {presenceNote && (
+        <p style={{ fontSize: 8, color: "rgba(255,216,143,0.45)", marginTop: "auto" }}>
+          ⚠ {presenceNote}
+        </p>
+      )}
     </section>
   );
 }
