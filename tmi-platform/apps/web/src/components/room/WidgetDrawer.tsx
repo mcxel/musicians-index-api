@@ -15,6 +15,8 @@ import NotificationsWidget from "@/components/widgets/NotificationsWidget";
 import ArtifactWall from "@/components/artifacts/ArtifactWall";
 import RankingsWidget from "@/components/widgets/RankingsWidget";
 import LiveRoomsWidget from "@/components/widgets/LiveRoomsWidget";
+import BillboardLiveWall from "@/components/media/BillboardLiveWall";
+import { getLatestEditorialArticles } from "@/lib/editorial/NewsArticleModel";
 import PlaylistArtifact from "@/components/artifacts/PlaylistArtifact";
 import MemoryWall from "@/components/media/MemoryWall";
 import MemoryWallPhotoStrip from "@/components/media/MemoryWallPhotoStrip";
@@ -46,6 +48,8 @@ const DRAWER_TITLES: Record<string, string> = {
   communication:  "📡 Communication",
   rankings:       "🏆 Crown Rankings",
   "live-rooms":   "🎭 Live Rooms",
+  lobby:          "🌐 Lobby Walls",
+  magazine:       "📰 Magazine Features",
 };
 
 const LEFT_DRAWERS = new Set(["camera", "audio", "playlist", "upload", "video-shuffle", "radio", "memory", "yopho"]);
@@ -192,6 +196,29 @@ export default function WidgetDrawer() {
             {activeDrawer === "sponsors"    && <SponsorsWidget />}
             {activeDrawer === "rankings"    && <RankingsWidget />}
             {activeDrawer === "live-rooms"  && <LiveRoomsWidget />}
+            {activeDrawer === "lobby" && (
+              <div style={{ maxHeight: "70vh", overflowY: "auto" }}>
+                <BillboardLiveWall mode="home" maxTiles={9} title="BROWSE LIVE LOBBY WALLS" />
+              </div>
+            )}
+            {activeDrawer === "magazine" && (() => {
+              const articles = getLatestEditorialArticles(6);
+              return (
+                <div>
+                  <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
+                    <Link href="/magazine" style={{ fontSize: 9, color: "#FFD700", textDecoration: "none", fontWeight: 700 }}>READ ALL →</Link>
+                  </div>
+                  {articles.length === 0 ? (
+                    <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", padding: "8px 0" }}>No articles published yet.</div>
+                  ) : articles.map((a) => (
+                    <Link key={a.slug} href={`/magazine/article/${a.slug}`} style={{ display: "block", padding: "8px 0", borderBottom: "1px solid rgba(255,255,255,0.05)", textDecoration: "none" }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: "#fff", marginBottom: 2, lineHeight: 1.3 }}>{a.headline}</div>
+                      <div style={{ fontSize: 9, color: "#FFD700" }}>{a.category}</div>
+                    </Link>
+                  ))}
+                </div>
+              );
+            })()}
             {activeDrawer === "merch" && (
               <PanelLinkStack
                 description="Use existing merch and NFT routes from the performer cockpit."

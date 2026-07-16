@@ -22,7 +22,6 @@ import HeadquartersCommunicationDock from "@/components/headquarters/Headquarter
 import OpportunityDockPanel from "@/components/hubs/OpportunityDockPanel";
 import RadioJourneyCard from "@/components/radio/RadioJourneyCard";
 import { useTmiSession } from "@/hooks/SessionContext";
-import { getLatestEditorialArticles } from "@/lib/editorial/NewsArticleModel";
 import { getPerformerById } from "@/lib/performers/PerformerRegistry";
 import { getLevelForXP, getProgressToNextLevel } from "@/lib/xp/xpEngine";
 import { useDrawer } from "@/components/room/DrawerContext";
@@ -53,15 +52,17 @@ const NAV_LINKS = [
 const PERFORMER_MAIN_MENU = [
   { kind: "link",   href: "/submit",             icon: "📤", label: "Submission", sub: "Stream & Win Radio" },
   { kind: "drawer", id: "live-rooms", icon: "🎭", label: "Live Rooms" },
-  { kind: "link",   href: "/lobby",            icon: "🌐", label: "Lobby" },
+  { kind: "drawer", id: "lobby",      icon: "🌐", label: "Lobby" },
   { kind: "drawer", id: "messages",   icon: "💬", label: "Messages" },
   { kind: "drawer", id: "friends",    icon: "👥", label: "Friends" },
   { kind: "drawer", id: "inventory",  icon: "🎒", label: "Inventory" },
   { kind: "drawer", id: "memory",     icon: "🧠", label: "Memory Wall" },
+  { kind: "drawer", id: "magazine",   icon: "📰", label: "Magazine" },
   { kind: "drawer", id: "playlist",   icon: "🎵", label: "Playlists" },
   { kind: "drawer", id: "radio",      icon: "📻", label: "Radio" },
   { kind: "drawer", id: "yopho",      icon: "✨", label: "Yopho" },
-  { kind: "link",   href: "/performer/studio", icon: "📷", label: "Camera", sub: "Go Live" },
+  // Camera/Go Live intentionally removed — the global bottom dock
+  // (TMIGlobalNav) already has a real "LIVE" quick action on every page.
   { kind: "link",   href: "/rewards",          icon: "⭐", label: "Rewards" },
   { kind: "link",   href: "/store",            icon: "🛒", label: "Store" },
   { kind: "drawer", id: "settings",   icon: "⚙️", label: "Settings" },
@@ -125,7 +126,6 @@ export default function PerformerHubPage() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const { userId, userName } = useTmiSession();
   const { missions: onboardingMissions, dismiss: dismissMission } = useOnboardingMissions();
-  const magazineFeatures = getLatestEditorialArticles(3);
   const [uploadNotice, setUploadNotice] = useState<string | null>(null);
   const [userTier, setUserTier] = useState<string>("");
   const [bannerDismissed, setBannerDismissed] = useState(false);
@@ -651,28 +651,6 @@ export default function PerformerHubPage() {
                   <Link href="/hub/sponsor" style={{ fontSize: 9, color: "#AA2DFF", textDecoration: "none", fontWeight: 700 }}>ADD SPONSOR →</Link>
                 </div>
                 <UnifiedAdSlot venue="dashboard" slotKey="dashboardSidebar" format="rectangle" accentColor="#AA2DFF" label="SPONSOR SLOT" style={{ minHeight: 140 }} />
-              </CollapsibleCanister>
-            </div>
-
-            {/* Memory Wall + Magazine Features */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
-              <CollapsibleCanister icon="🎞️" label="Memory Wall" summary="Videos · Photos · Audio" accentColor="#FF6B35">
-                <MemoryWall accentColor="#FF6B35" title="" entityId={userId} entityType="performer" />
-                <Link href="/fan/theater" style={{ display: "block", marginTop: 10, fontSize: 10, color: "#FF6B35", textDecoration: "none", fontWeight: 700 }}>View all memories →</Link>
-              </CollapsibleCanister>
-
-              <CollapsibleCanister icon="📰" label="Magazine Features" accentColor="#FFD700">
-                <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
-                  <Link href="/magazine" style={{ fontSize: 9, color: "#FFD700", textDecoration: "none", fontWeight: 700 }}>READ ALL →</Link>
-                </div>
-                {magazineFeatures.length === 0 ? (
-                  <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", padding: "8px 0" }}>No articles published yet.</div>
-                ) : magazineFeatures.map((a) => (
-                  <Link key={a.slug} href={`/magazine/article/${a.slug}`} style={{ display: "block", padding: "8px 0", borderBottom: "1px solid rgba(255,255,255,0.05)", textDecoration: "none" }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: "#fff", marginBottom: 2, lineHeight: 1.3 }}>{a.headline}</div>
-                    <div style={{ fontSize: 9, color: "#FFD700" }}>{a.category}</div>
-                  </Link>
-                ))}
               </CollapsibleCanister>
             </div>
 
