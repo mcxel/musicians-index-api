@@ -52,21 +52,26 @@ export default function WorkspaceManager() {
     const raw = WORKSPACE_CONFIGS[activeRole];
     const filtered = filterWorkspaceByPermissions(raw, activeRole);
 
+    // Compact single-line ribbon — the title already appears in the "Admin OS"
+    // status bar above the shell, so this only needs to add the subtitle and
+    // permission badges, not repeat the title at full size.
     const roleBadges = (
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
+      <div style={{ display: "flex", flexWrap: "nowrap", overflowX: "auto", gap: 5 }}>
         {listPermissions(activeRole).map((permission) => (
           <span
             key={permission}
             style={{
-              border: "1px solid rgba(0,255,255,0.35)",
+              border: "1px solid rgba(0,255,255,0.3)",
               borderRadius: 999,
-              padding: "3px 8px",
-              fontSize: 10,
+              padding: "2px 7px",
+              fontSize: 8,
               fontWeight: 700,
               color: "#8CF9FF",
               textTransform: "uppercase",
-              letterSpacing: "0.06em",
-              background: "rgba(0,255,255,0.08)",
+              letterSpacing: "0.05em",
+              background: "rgba(0,255,255,0.07)",
+              whiteSpace: "nowrap",
+              flexShrink: 0,
             }}
           >
             {permission}
@@ -78,9 +83,8 @@ export default function WorkspaceManager() {
     const shellWorkspace: ShellWorkspaceDefinition = {
       title: filtered.title,
       ribbon: (
-        <div style={{ padding: 10 }}>
-          <div style={{ color: "#FFD700", fontSize: 14, fontWeight: 900, letterSpacing: "0.08em", textTransform: "uppercase" }}>{filtered.title}</div>
-          <div style={{ color: "rgba(255,255,255,0.82)", fontSize: 12, marginTop: 4 }}>{filtered.subtitle}</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 10px", flexWrap: "wrap" }}>
+          <div style={{ color: "rgba(255,255,255,0.65)", fontSize: 10, whiteSpace: "nowrap" }}>{filtered.subtitle}</div>
           {roleBadges}
         </div>
       ),
@@ -99,8 +103,8 @@ export default function WorkspaceManager() {
       <div
         style={{
           display: "flex",
-          gap: 8,
-          padding: "10px 12px",
+          gap: 6,
+          padding: "6px 10px",
           borderBottom: "1px solid rgba(255,215,0,0.25)",
           background: "linear-gradient(180deg, rgba(22,12,18,0.96), rgba(10,6,12,0.96))",
           flexWrap: "wrap",

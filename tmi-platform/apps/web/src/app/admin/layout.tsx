@@ -138,7 +138,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <>
       <div style={{ position: 'sticky', top: 0, zIndex: 60, background: 'rgba(5,5,16,0.92)', borderBottom: '1px solid rgba(255,255,255,0.08)', backdropFilter: 'blur(12px)' }}>
-        <div style={{ maxWidth: 1440, margin: '0 auto', padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+        <div
+          style={{
+            maxWidth: 1440,
+            margin: '0 auto',
+            padding: '6px 12px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            flexWrap: 'nowrap',
+            overflowX: 'auto',
+            scrollbarWidth: 'thin',
+          }}
+        >
           <div style={{ fontSize: 8, fontWeight: 900, letterSpacing: '0.22em', color: '#00FFFF', textTransform: 'uppercase' }}>
             Admin Quick Switch
           </div>
