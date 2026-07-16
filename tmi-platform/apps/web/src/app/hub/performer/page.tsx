@@ -51,6 +51,7 @@ const NAV_LINKS = [
 // "drawer" items open a real WidgetDrawer panel (same panels the old floating
 // ActionCanister rail opened); "link" items route to a real page.
 const PERFORMER_MAIN_MENU = [
+  { kind: "link",   href: "/submit",             icon: "📤", label: "Submission", sub: "Stream & Win Radio" },
   { kind: "drawer", id: "live-rooms", icon: "🎭", label: "Live Rooms" },
   { kind: "link",   href: "/lobby",            icon: "🌐", label: "Lobby" },
   { kind: "drawer", id: "messages",   icon: "💬", label: "Messages" },
@@ -58,6 +59,7 @@ const PERFORMER_MAIN_MENU = [
   { kind: "drawer", id: "inventory",  icon: "🎒", label: "Inventory" },
   { kind: "drawer", id: "memory",     icon: "🧠", label: "Memory Wall" },
   { kind: "drawer", id: "playlist",   icon: "🎵", label: "Playlists" },
+  { kind: "drawer", id: "radio",      icon: "📻", label: "Radio" },
   { kind: "drawer", id: "yopho",      icon: "✨", label: "Yopho" },
   { kind: "link",   href: "/performer/studio", icon: "📷", label: "Camera", sub: "Go Live" },
   { kind: "link",   href: "/rewards",          icon: "⭐", label: "Rewards" },
