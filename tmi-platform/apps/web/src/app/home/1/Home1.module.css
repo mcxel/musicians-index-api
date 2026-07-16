@@ -26,9 +26,19 @@
   50% { opacity: 0; }
 }
 
+/* Calm rhythm: ~5s of rotation, then ~8s holding still, on a 13s loop —
+   was a continuous 45s spin ("Ferris wheel"), which read as constant motion
+   rather than a deliberate, readable orbital navigation control. */
 @keyframes orbit {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  0% { transform: rotate(0deg); }
+  38.46% { transform: rotate(360deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes counterOrbit {
+  0% { transform: translate(-50%, -50%) rotate(0deg); }
+  38.46% { transform: translate(-50%, -50%) rotate(-360deg); }
+  100% { transform: translate(-50%, -50%) rotate(-360deg); }
 }
 
 @keyframes headlineColors {

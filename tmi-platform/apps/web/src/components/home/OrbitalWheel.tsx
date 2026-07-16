@@ -53,20 +53,20 @@ export default function OrbitalWheel() {
       {/* SVG Rings */}
       <svg viewBox={`0 0 ${WHEEL_SIZE} ${WHEEL_SIZE}`} width={WHEEL_SIZE} height={WHEEL_SIZE} style={{ position: 'absolute', inset: 0, overflow: 'visible' }}>
         <circle cx={WHEEL_SIZE/2} cy={WHEEL_SIZE/2} r={RADIUS + 30} fill="none" stroke="rgba(255,215,0,0.05)" strokeWidth="1" />
-        <circle cx={WHEEL_SIZE/2} cy={WHEEL_SIZE/2} r={RADIUS - 5} fill="none" stroke="rgba(255,45,170,0.2)" strokeWidth="1.5" strokeDasharray="4 9" style={{ transformOrigin: 'center', animation: 'orbit 38s linear infinite' }}/>
-        <circle cx={WHEEL_SIZE/2} cy={WHEEL_SIZE/2} r={RADIUS - 65} fill="none" stroke="rgba(0,229,255,0.15)" strokeWidth="1" strokeDasharray="3 11" style={{ transformOrigin: 'center', animation: 'orbit 25s linear infinite reverse' }}/>
+        <circle cx={WHEEL_SIZE/2} cy={WHEEL_SIZE/2} r={RADIUS - 5} fill="none" stroke="rgba(255,45,170,0.2)" strokeWidth="1.5" strokeDasharray="4 9" style={{ transformOrigin: 'center', animation: 'orbit 13s linear infinite' }}/>
+        <circle cx={WHEEL_SIZE/2} cy={WHEEL_SIZE/2} r={RADIUS - 65} fill="none" stroke="rgba(0,229,255,0.15)" strokeWidth="1" strokeDasharray="3 11" style={{ transformOrigin: 'center', animation: 'orbit 13s linear infinite reverse' }}/>
         <circle cx={WHEEL_SIZE/2} cy={WHEEL_SIZE/2} r={CENTER_SIZE / 2 + 8} fill="none" stroke="rgba(255,215,0,0.3)" strokeWidth="1"/>
       </svg>
 
       {/* Artist Nodes */}
-      <div style={{ position: 'absolute', width: '100%', height: '100%', animation: 'orbit 45s linear infinite', transformOrigin: 'center' }}>
+      <div style={{ position: 'absolute', width: '100%', height: '100%', animation: 'orbit 13s linear infinite', transformOrigin: 'center' }}>
         {nodes.map((node, i) => {
           const angle = (i * (360 / nodes.length)) * (Math.PI / 180);
           const x = (WHEEL_SIZE / 2) + RADIUS * Math.cos(angle);
           const y = (WHEEL_SIZE / 2) + RADIUS * Math.sin(angle);
 
           return (
-            <div key={node.id} style={{ position: 'absolute', left: x, top: y, transform: 'translate(-50%, -50%)', transformOrigin: 'center', animation: 'counterOrbit 45s linear infinite' }}>
+            <div key={node.id} style={{ position: 'absolute', left: x, top: y, transform: 'translate(-50%, -50%)', transformOrigin: 'center', animation: 'counterOrbit 13s linear infinite' }}>
               <Link href={`/profile/artist/${node.id}`} style={{ textDecoration: 'none' }}>
                 <div style={{ background: 'rgba(5,8,21,0.95)', border: `2px solid ${node.color}`, borderRadius: 12, padding: '8px', display: 'flex', flexDirection: 'column', alignItems: 'center', boxShadow: `0 0 20px ${node.color}33`, width: 100, transition: 'all 0.2s ease-in-out' }}
                   onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.1)'; e.currentTarget.style.boxShadow = `0 0 30px ${node.color}77`; }}

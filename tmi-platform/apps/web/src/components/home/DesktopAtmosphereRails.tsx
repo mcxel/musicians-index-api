@@ -39,7 +39,7 @@ const STORY_SCENES: StoryScene[] = [
   },
 ];
 
-function useDesktopRailVisibility(minWidth = 1280) {
+function useDesktopRailVisibility(minWidth = 1900) {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -84,7 +84,12 @@ export default function DesktopAtmosphereRails() {
           width: '100%',
           height: '100%',
           display: 'grid',
-          gridTemplateColumns: 'minmax(0,1fr) minmax(0,980px) minmax(0,1fr)',
+          // Center zone must stay wider than any real page content that
+          // mounts this component (Fan Hub's 220px rail + fluid center +
+          // 330px chat rail alone can exceed 1500px) — otherwise this
+          // decorative overlay's zIndex:1 dark gradient bleeds over real
+          // content instead of staying confined to genuinely empty margin.
+          gridTemplateColumns: 'minmax(0,1fr) minmax(0,1600px) minmax(0,1fr)',
           gap: 0,
         }}
       >
