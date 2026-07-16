@@ -143,6 +143,10 @@ export default function BillboardCrownSequence() {
   const [idx, setIdx] = useState(0);
   const [phase, setPhase] = useState<AnimPhase>('rise');
   const [reduceMotion, setReduceMotion] = useState(false);
+  // Some seat avatarUrls (bot accounts) point at images that don't exist on
+  // disk — track which URLs 404 so we fall back to the emoji instead of
+  // rendering a broken image icon.
+  const [brokenImageUrls, setBrokenImageUrls] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (typeof window !== 'undefined' && window.matchMedia) {
@@ -258,9 +262,17 @@ export default function BillboardCrownSequence() {
                   transition: 'box-shadow 300ms, border-color 300ms',
                 }}
               >
-                {seat.avatarUrl ? (
+                {seat.avatarUrl && !brokenImageUrls.has(seat.avatarUrl) ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={seat.avatarUrl} alt={seat.displayName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <img
+                    src={seat.avatarUrl}
+                    alt={seat.displayName}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    onError={() => {
+                      const url = seat.avatarUrl!;
+                      setBrokenImageUrls((prev) => (prev.has(url) ? prev : new Set(prev).add(url)));
+                    }}
+                  />
                 ) : (
                   <span style={{ fontSize: 28 }}>{meta?.emoji ?? '🎵'}</span>
                 )}

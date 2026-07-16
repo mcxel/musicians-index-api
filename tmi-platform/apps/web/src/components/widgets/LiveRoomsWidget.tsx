@@ -3,12 +3,12 @@
 import Link from "next/link";
 
 const LIVE_ROOMS = [
-  { id: "monthly-idol",    title: "Monthly Idol",      genre: "All Genres", occupancy: 84, viewers: 1240, accent: "#FFD700", glyph: "🏟️",  href: "/live/rooms/monthly-idol"    },
-  { id: "cypher-arena",    title: "Cypher East",       genre: "Hip-Hop",    occupancy: 71, viewers:  842, accent: "#00FFFF", glyph: "🎤",  href: "/live/rooms/cypher-arena"    },
-  { id: "deal-or-feud",    title: "Deal or Feud",      genre: "Game Show",  occupancy: 67, viewers:  620, accent: "#FF2DAA", glyph: "🎰",  href: "/live/rooms/deal-or-feud"    },
-  { id: "venue-room",      title: "Producer Lab",      genre: "Beats",      occupancy: 58, viewers:  480, accent: "#AA2DFF", glyph: "🎛️",  href: "/live/rooms/venue-room"      },
-  { id: "world-concert",   title: "World Concert",     genre: "Live Music", occupancy: 92, viewers: 3400, accent: "#00FF88", glyph: "🎸",  href: "/rooms/world-concert"        },
-  { id: "monday-night",    title: "Monday Night Stage",genre: "Hip-Hop",    occupancy: 44, viewers:  310, accent: "#FF6B35", glyph: "🎙️",  href: "/shows/monday-night-stage"   },
+  { id: "monthly-idol",    title: "Monthly Idol",      genre: "All Genres", accent: "#FFD700", glyph: "🏟️",  href: "/live/rooms/monthly-idol"    },
+  { id: "cypher-arena",    title: "Cypher East",       genre: "Hip-Hop",    accent: "#00FFFF", glyph: "🎤",  href: "/live/rooms/cypher-arena"    },
+  { id: "deal-or-feud",    title: "Deal or Feud",      genre: "Game Show",  accent: "#FF2DAA", glyph: "🎰",  href: "/live/rooms/deal-or-feud"    },
+  { id: "venue-room",      title: "Producer Lab",      genre: "Beats",      accent: "#AA2DFF", glyph: "🎛️",  href: "/live/rooms/venue-room"      },
+  { id: "world-concert",   title: "World Concert",     genre: "Live Music", accent: "#00FF88", glyph: "🎸",  href: "/rooms/world-concert"        },
+  { id: "monday-night",    title: "Monday Night Stage",genre: "Hip-Hop",    accent: "#FF6B35", glyph: "🎙️",  href: "/shows/monday-night-stage"   },
 ];
 
 export default function LiveRoomsWidget() {
@@ -38,13 +38,10 @@ export default function LiveRoomsWidget() {
               <span style={{ fontSize: 20, flexShrink: 0 }}>{room.glyph}</span>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 12, fontWeight: 800, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{room.title}</div>
-                <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>{room.genre} · {room.viewers.toLocaleString()} watching</div>
+                <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>{room.genre} · Viewer data unavailable</div>
               </div>
               <div style={{ flexShrink: 0, textAlign: "right" }}>
-                <div style={{ fontSize: 11, fontWeight: 900, color: room.accent }}>{room.occupancy}%</div>
-                <div style={{ marginTop: 3, height: 3, width: 40, background: "rgba(255,255,255,0.1)", borderRadius: 2, overflow: "hidden" }}>
-                  <div style={{ height: "100%", width: `${room.occupancy}%`, background: room.accent, borderRadius: 2 }} />
-                </div>
+                <div style={{ fontSize: 9, fontWeight: 800, color: room.accent, letterSpacing: "0.06em", textTransform: "uppercase" }}>Room available</div>
               </div>
             </div>
           </Link>
