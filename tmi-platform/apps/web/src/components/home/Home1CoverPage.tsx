@@ -579,6 +579,63 @@ function PerformerMonitor({
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
+// Legible Times-Square-style typewriter ticker. Types a message in, holds it,
+// erases it, moves to the next — replaces the old CSS max-width "type" trick
+// (h1MagType) that only ever revealed the single word "MAGAZINE" and, at 11px
+// with heavy letter-spacing, read as a flat colored bar rather than text.
+function TypewriterTicker({ messages, color }: { messages: string[]; color: string }) {
+  const [msgIdx, setMsgIdx] = useState(0);
+  const [text, setText] = useState('');
+  const [phase, setPhase] = useState<'typing' | 'holding' | 'erasing'>('typing');
+
+  useEffect(() => {
+    if (messages.length === 0) return;
+    const full = messages[msgIdx % messages.length]!;
+
+    if (phase === 'typing') {
+      if (text.length < full.length) {
+        const id = window.setTimeout(() => setText(full.slice(0, text.length + 1)), 42);
+        return () => window.clearTimeout(id);
+      }
+      const id = window.setTimeout(() => setPhase('holding'), 1600);
+      return () => window.clearTimeout(id);
+    }
+
+    if (phase === 'holding') {
+      const id = window.setTimeout(() => setPhase('erasing'), 1800);
+      return () => window.clearTimeout(id);
+    }
+
+    // erasing
+    if (text.length > 0) {
+      const id = window.setTimeout(() => setText(full.slice(0, text.length - 1)), 22);
+      return () => window.clearTimeout(id);
+    }
+    const id = window.setTimeout(() => {
+      setMsgIdx((i) => (i + 1) % messages.length);
+      setPhase('typing');
+    }, 200);
+    return () => window.clearTimeout(id);
+  }, [text, phase, msgIdx, messages]);
+
+  return (
+    <span
+      style={{
+        fontSize: 12,
+        fontWeight: 900,
+        color,
+        letterSpacing: '0.08em',
+        fontFamily: "'Inter', sans-serif",
+        textTransform: 'uppercase',
+        whiteSpace: 'nowrap',
+      }}
+    >
+      {text}
+      <span style={{ opacity: 0.85, animation: 'h1CaretBlink 0.9s steps(1) infinite' }}>▌</span>
+    </span>
+  );
+}
+
 const HERO_PHRASES = [
   'CHOIRS • MARCHING BANDS • CREATORS WELCOME',
   "WHO'S HOT RIGHT NOW",
@@ -777,6 +834,15 @@ export default function Home1CoverPage() {
 
   const accentColor = genreConfig.color;
   const bgColor = genreConfig.bg;
+
+  // Real-data-only ticker messages (Rule 20) — genre/crown always real,
+  // radio line only appears when there's an actual live count to report.
+  const tickerMessages = [
+    `${genreConfig.emoji} ${genreKey.toUpperCase()} GENRE BATTLE LIVE`,
+    `👑 CROWN: ${crownData.name.toUpperCase()}`,
+    ...(radioData.live > 0 ? [`📻 ${radioData.live} LIVE ON RADIO NOW`] : []),
+    `THE MUSICIAN'S INDEX MAGAZINE`,
+  ];
   const topPerformers = getTopPerformers(20);
   const diamondMembers = PERFORMER_REGISTRY.filter((p) => p.tier === 'Diamond').sort((a, b) => b.xp - a.xp);
 
@@ -925,10 +991,9 @@ export default function Home1CoverPage() {
           from { transform: scaleX(0); }
           to   { transform: scaleX(1); }
         }
-        @keyframes h1MagType {
-          0%        { opacity: 0; max-width: 0; letter-spacing: 0.5em; }
-          5%, 75%   { opacity: 1; max-width: 300px; letter-spacing: 0.35em; }
-          90%, 100% { opacity: 0; max-width: 300px; letter-spacing: 0.35em; }
+        @keyframes h1CaretBlink {
+          0%, 49%   { opacity: 1; }
+          50%, 100% { opacity: 0; }
         }
         @keyframes h1TabloidScroll {
           from { transform: translateX(-50%); }
@@ -1126,32 +1191,17 @@ export default function Home1CoverPage() {
               </span>
             ))}
           </div>
-          {/* MAGAZINE typewriter — types in, holds, fades out, loops ~3s */}
+          {/* Rotating status ticker — real genre/crown/radio data, typed in Times-Square style */}
           <div
             style={{
               overflow: 'hidden',
-              height: 14,
+              height: 18,
               display: 'flex',
               justifyContent: 'center',
               marginBottom: 2,
             }}
           >
-            <span
-              style={{
-                fontSize: 11,
-                fontWeight: 900,
-                color: accentColor,
-                letterSpacing: '0.35em',
-                fontFamily: "'Inter', sans-serif",
-                textTransform: 'uppercase',
-                display: 'inline-block',
-                overflow: 'hidden',
-                animation: 'h1MagType 3.2s ease-in-out infinite',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              MAGAZINE
-            </span>
+            <TypewriterTicker messages={tickerMessages} color={accentColor} />
           </div>
           <div
             style={{

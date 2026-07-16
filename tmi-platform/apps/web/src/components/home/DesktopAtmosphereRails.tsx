@@ -1,43 +1,47 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 
-type StoryScene = {
-  id: string;
-  leftSrc: string;
-  rightSrc: string;
-  eyebrow: string;
-  title: string;
-  bullets: string[];
-};
+// Real TMI promotional banners (apps/web/public/banners) — Rule 12 tier 1
+// (official TMI promo). These are the two vertical "banner wells" flanking
+// the magazine hero on wide desktop viewports.
+const BANNER_FILES = [
+  'Banner1.png',
+  'Banner2.png',
+  'Banner 2.jpg',
+  'Banner 3.jpg',
+  'Banner 4.jpg',
+  'Banner 5.jpg',
+  'Banner 6.jpg',
+  'Banner Actors and Streamers.png',
+  'Banner Battle.png',
+  'Banner Battle of the bands.png',
+  'Banner Challenges.png',
+  'Banner Comedy.png',
+  'Banner Cyhpers.png',
+  'Banner Dance Off.png',
+  'Banner Fans.png',
+  'Banner Games.png',
+  'Banner Live Sessions.png',
+  'Banner Lobbies.png',
+  'Banner Lounges.png',
+  'Banner World Dance Party.png',
+  'Banner World Karaoke.png',
+  'Banner instrument players.png',
+].map((name) => `/banners/${encodeURIComponent(name)}`);
 
-const STORY_SCENES: StoryScene[] = [
-  {
-    id: 'broadcast-live',
-    leftSrc: '/tmi-source/Host , Julius , and extra/Tiana monday night stage host.jpg',
-    rightSrc: '/tmi-source/game show and venue skins/images (31).jpg',
-    eyebrow: 'Broadcast Live',
-    title: 'Host the moment. Film the stage.',
-    bullets: ['Go Live', 'Record performances', 'Build your audience'],
-  },
-  {
-    id: 'festival-energy',
-    leftSrc: '/tmi-source/game show and venue skins/images (24).jpg',
-    rightSrc: '/tmi-source/game show and venue skins/images (35).jpg',
-    eyebrow: 'Big Stage Energy',
-    title: 'From outdoor crowds to lit main stages.',
-    bullets: ['Bands welcome', 'Comedy nights', 'Dance showcases'],
-  },
-  {
-    id: 'feature-and-promote',
-    leftSrc: '/tmi-source/Host , Julius , and extra/Tiana monday night stage host.jpg',
-    rightSrc: '/tmi-source/game show and venue skins/images (24).jpg',
-    eyebrow: 'Get Featured',
-    title: 'Perform. Promote. Get seen here.',
-    bullets: ['Magazine moments', 'Event promotion', 'Live discovery'],
-  },
-];
+const HOLD_MS = 8000;
+const FADE_MS = 1100;
+
+function randomOtherIndex(current: number, length: number) {
+  if (length <= 1) return 0;
+  let next = current;
+  while (next === current) {
+    next = Math.floor(Math.random() * length);
+  }
+  return next;
+}
 
 function useDesktopRailVisibility(minWidth = 1900) {
   const [visible, setVisible] = useState(false);
@@ -52,21 +56,64 @@ function useDesktopRailVisibility(minWidth = 1900) {
   return visible;
 }
 
-export default function DesktopAtmosphereRails() {
-  const isDesktop = useDesktopRailVisibility();
-  const [sceneIndex, setSceneIndex] = useState(0);
+// Netflix-style crossfade: two stacked image slots, opposite opacities.
+// Advancing swaps the src of the currently-hidden (back) slot to a fresh
+// random banner, then flips which slot is "front" — both opacities
+// transition simultaneously, so the outgoing and incoming banners overlap
+// mid-fade instead of leaving a blank gap. No slide, fade only.
+function useCrossfadeBanner(startDelayMs: number) {
+  const [first] = useState(() => Math.floor(Math.random() * BANNER_FILES.length));
+  const [second] = useState(() => randomOtherIndex(first, BANNER_FILES.length));
+  const [slots, setSlots] = useState<[string, string]>(() => [BANNER_FILES[first]!, BANNER_FILES[second]!]);
+  const [frontSlot, setFrontSlot] = useState<0 | 1>(0);
+  const frontRef = useRef<0 | 1>(0);
+  const currentIndexRef = useRef(first);
 
   useEffect(() => {
-    if (!isDesktop) return;
-    const id = window.setInterval(() => {
-      setSceneIndex((current) => (current + 1) % STORY_SCENES.length);
-    }, 9000);
-    return () => window.clearInterval(id);
-  }, [isDesktop]);
+    let cancelled = false;
+    const timers: number[] = [];
+    const wait = (ms: number) =>
+      new Promise<void>((resolve) => {
+        timers.push(window.setTimeout(resolve, ms));
+      });
+
+    (async () => {
+      await wait(startDelayMs);
+      while (!cancelled) {
+        await wait(HOLD_MS);
+        if (cancelled) return;
+
+        const nextBannerIndex = randomOtherIndex(currentIndexRef.current, BANNER_FILES.length);
+        const backSlot: 0 | 1 = frontRef.current === 0 ? 1 : 0;
+        currentIndexRef.current = nextBannerIndex;
+        frontRef.current = backSlot;
+
+        setSlots((prev) => {
+          const updated: [string, string] = [prev[0], prev[1]];
+          updated[backSlot] = BANNER_FILES[nextBannerIndex]!;
+          return updated;
+        });
+        setFrontSlot(backSlot);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      timers.forEach((id) => window.clearTimeout(id));
+    };
+  }, [startDelayMs]);
+
+  return { slots, frontSlot };
+}
+
+export default function DesktopAtmosphereRails() {
+  const isDesktop = useDesktopRailVisibility();
+  // Staggered start delays so left/right bathe in and out independently
+  // rather than in lockstep.
+  const left = useCrossfadeBanner(0);
+  const right = useCrossfadeBanner(2600);
 
   if (!isDesktop) return null;
-
-  const scene = STORY_SCENES[sceneIndex]!;
 
   return (
     <div
@@ -93,162 +140,61 @@ export default function DesktopAtmosphereRails() {
           gap: 0,
         }}
       >
-        <AtmosphereRail
-          key={`left-${scene.id}`}
-          side="left"
-          imageSrc={scene.leftSrc}
-          eyebrow={scene.eyebrow}
-          title={scene.title}
-          bullets={scene.bullets}
-        />
+        <BannerWell side="left" slots={left.slots} frontSlot={left.frontSlot} />
         <div />
-        <AtmosphereRail
-          key={`right-${scene.id}`}
-          side="right"
-          imageSrc={scene.rightSrc}
-          eyebrow={scene.eyebrow}
-          title={scene.title}
-          bullets={scene.bullets}
-        />
+        <BannerWell side="right" slots={right.slots} frontSlot={right.frontSlot} />
       </div>
     </div>
   );
 }
 
-function AtmosphereRail({
+function BannerWell({
   side,
-  imageSrc,
-  eyebrow,
-  title,
-  bullets,
+  slots,
+  frontSlot,
 }: {
   side: 'left' | 'right';
-  imageSrc: string;
-  eyebrow: string;
-  title: string;
-  bullets: string[];
+  slots: [string, string];
+  frontSlot: 0 | 1;
 }) {
-  const gradient =
-    side === 'left'
-      ? 'linear-gradient(90deg, rgba(5,3,16,0.96) 0%, rgba(5,3,16,0.72) 44%, rgba(5,3,16,0.12) 100%)'
-      : 'linear-gradient(270deg, rgba(5,3,16,0.96) 0%, rgba(5,3,16,0.72) 44%, rgba(5,3,16,0.12) 100%)';
-
   return (
-    <div
-      style={{
-        position: 'relative',
-        minWidth: 0,
-        height: '100%',
-        overflow: 'hidden',
-      }}
-    >
+    <div style={{ position: 'relative', minWidth: 0, height: '100%' }}>
       <div
         style={{
           position: 'absolute',
-          inset: side === 'left' ? '0 0 0 0' : '0 0 0 0',
-          opacity: 0.62,
-          transform: 'scale(1.06)',
-          animation: 'tmiAtmosphereKenBurns 10s linear infinite alternate',
+          top: '50%',
+          [side === 'left' ? 'left' : 'right']: '6%',
+          transform: 'translateY(-50%)',
+          // Never larger than the frame it lives in — capped both by a
+          // percentage of the available column and an absolute ceiling —
+          // and always proportionally contained, never cropped/stretched.
+          width: 'min(230px, 82%)',
+          height: 'min(340px, 56vh)',
+          borderRadius: 14,
+          overflow: 'hidden',
+          background: 'rgba(8,6,20,0.55)',
+          border: side === 'left' ? '1px solid rgba(255,45,170,0.3)' : '1px solid rgba(255,215,0,0.3)',
+          boxShadow: side === 'left' ? '0 0 40px rgba(255,45,170,0.14)' : '0 0 40px rgba(255,215,0,0.14)',
         }}
       >
-        <Image
-          src={imageSrc}
-          alt=""
-          fill
-          sizes="20vw"
-          style={{ objectFit: 'cover', objectPosition: side === 'left' ? 'center left' : 'center right' }}
-          priority={false}
-        />
-      </div>
-
-      <div
-        style={{
-          position: 'absolute',
-          inset: 0,
-          background: gradient,
-        }}
-      />
-
-      <div
-        style={{
-          position: 'absolute',
-          inset: 0,
-          background: side === 'left'
-            ? 'linear-gradient(180deg, rgba(0,255,255,0.10), transparent 24%, transparent 76%, rgba(255,45,170,0.16))'
-            : 'linear-gradient(180deg, rgba(255,215,0,0.10), transparent 24%, transparent 76%, rgba(0,229,255,0.16))',
-          mixBlendMode: 'screen',
-        }}
-      />
-
-      <div
-        style={{
-          position: 'absolute',
-          bottom: 24,
-          [side === 'left' ? 'left' : 'right']: 18,
-          width: 'min(240px, 88%)',
-          border: side === 'left' ? '1px solid rgba(255,45,170,0.34)' : '1px solid rgba(255,215,0,0.34)',
-          background: 'rgba(8,6,20,0.7)',
-          boxShadow: '0 10px 30px rgba(0,0,0,0.34)',
-          backdropFilter: 'blur(8px)',
-          borderRadius: 10,
-          padding: '12px 14px',
-        }}
-      >
-        <div
-          style={{
-            color: side === 'left' ? '#FF2DAA' : '#FFD700',
-            fontSize: 10,
-            fontWeight: 900,
-            letterSpacing: '0.18em',
-            textTransform: 'uppercase',
-            marginBottom: 6,
-            fontFamily: "'Orbitron','Inter',sans-serif",
-          }}
-        >
-          {eyebrow}
-        </div>
-        <div
-          style={{
-            color: '#F8FAFF',
-            fontSize: 18,
-            lineHeight: 1.05,
-            fontWeight: 900,
-            textTransform: 'uppercase',
-            textWrap: 'balance',
-            fontFamily: "'Bebas Neue','Impact','Arial Black',sans-serif",
-            textShadow: '0 2px 18px rgba(0,0,0,0.48)',
-          }}
-        >
-          {title}
-        </div>
-        <div
-          style={{
-            marginTop: 8,
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: 6,
-          }}
-        >
-          {bullets.map((bullet) => (
-            <span
-              key={`${side}-${bullet}`}
-              style={{
-                borderRadius: 999,
-                border: '1px solid rgba(255,255,255,0.12)',
-                background: 'rgba(255,255,255,0.06)',
-                color: 'rgba(255,255,255,0.84)',
-                padding: '4px 8px',
-                fontSize: 9,
-                fontWeight: 800,
-                letterSpacing: '0.06em',
-                textTransform: 'uppercase',
-                fontFamily: "'Inter',sans-serif",
-              }}
-            >
-              {bullet}
-            </span>
-          ))}
-        </div>
+        {slots.map((src, i) => (
+          <Image
+            key={i}
+            src={src}
+            alt=""
+            fill
+            sizes="20vw"
+            style={{
+              objectFit: 'contain',
+              padding: 10,
+              position: 'absolute',
+              inset: 0,
+              opacity: frontSlot === i ? 1 : 0,
+              transition: `opacity ${FADE_MS}ms ease-in-out`,
+            }}
+            priority={false}
+          />
+        ))}
       </div>
     </div>
   );
