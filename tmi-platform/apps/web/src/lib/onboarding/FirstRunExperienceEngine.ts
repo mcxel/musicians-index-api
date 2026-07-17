@@ -220,3 +220,21 @@ export function isFirstRunComplete(role: UserRole): boolean {
 export function totalXPGranted(role: UserRole): number {
   return getActiveStepsForRole(role).reduce((sum, s) => sum + s.xpGrant, 0);
 }
+
+// Maps the real platform account role (from /api/auth/session, e.g. "FAN",
+// "PERFORMER") to this engine's first-run UserRole. Returns null when the
+// account role has no first-run equivalent (e.g. ADMIN, STAFF, WRITER,
+// PROMOTER, JUDGE, USER) — callers should fall back to manual role-select
+// in that case, never silently guess.
+export function mapPlatformRoleToFirstRunRole(platformRole: string): UserRole | null {
+  const normalized = platformRole.trim().toUpperCase();
+  switch (normalized) {
+    case 'FAN': return 'fan';
+    case 'ARTIST': return 'artist';
+    case 'PERFORMER': return 'performer';
+    case 'VENUE': return 'venue';
+    case 'SPONSOR': return 'sponsor';
+    case 'ADVERTISER': return 'advertiser';
+    default: return null;
+  }
+}

@@ -12,6 +12,7 @@ import {
   dismissFirstRun,
   setFirstRunRole,
   totalXPGranted,
+  mapPlatformRoleToFirstRunRole,
 } from '@/lib/onboarding/FirstRunExperienceEngine';
 
 const ROLE_OPTIONS: { role: UserRole; label: string; icon: string; desc: string }[] = [
@@ -47,16 +48,51 @@ export default function FirstRunExperienceOverlay() {
   useEffect(() => {
     if (isAuthPath) return;
     setMounted(true);
-    const state = getFirstRunState();
-    if (state.dismissed) return;
-    if (state.role) {
-      setRole(state.role);
-      const all = getActiveStepsForRole(state.role);
+    let cancelled = false;
+
+    function showChecklist(r: UserRole) {
+      const all = getActiveStepsForRole(r);
+      setRole(r);
       setTotalSteps(all.length);
-      setSteps(getPendingSteps(state.role));
+      setSteps(getPendingSteps(r));
       setPhase('checklist');
+      setVisible(true);
     }
-    setVisible(true);
+
+    async function init() {
+      const state = getFirstRunState();
+      if (state.dismissed) return;
+
+      // Already picked a role in this flow before — never ask again.
+      if (state.role) {
+        showChecklist(state.role);
+        return;
+      }
+
+      // No local answer yet. Check whether this is a signed-in account that
+      // already chose a role at signup — if so, use that instead of asking
+      // "what brings you here?" a second time. tmi_role is httpOnly, so this
+      // requires a server round-trip rather than reading document.cookie.
+      try {
+        const res = await fetch('/api/auth/session', { credentials: 'include' });
+        const data = await res.json().catch(() => null) as { authenticated?: boolean; user?: { role?: string } } | null;
+        const mapped = data?.authenticated && data.user?.role
+          ? mapPlatformRoleToFirstRunRole(data.user.role)
+          : null;
+        if (!cancelled && mapped) {
+          setFirstRunRole(mapped);
+          showChecklist(mapped);
+          return;
+        }
+      } catch {
+        // Session lookup failed — fall back to manual role-select below.
+      }
+
+      if (!cancelled) setVisible(true);
+    }
+
+    init();
+    return () => { cancelled = true; };
   }, [isAuthPath]);
 
   function handleRoleSelect(r: UserRole) {
@@ -222,6 +258,7 @@ export default function FirstRunExperienceOverlay() {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flexShrink: 0 }}>
                           <a
                             href={step.ctaHref}
+                            onClick={handleDismiss}
                             style={{ padding: '7px 14px', background: '#AA2DFF', color: '#fff', borderRadius: 6, fontWeight: 800, fontSize: 11, textDecoration: 'none', whiteSpace: 'nowrap', textAlign: 'center' }}
                           >
                             {step.ctaLabel}
