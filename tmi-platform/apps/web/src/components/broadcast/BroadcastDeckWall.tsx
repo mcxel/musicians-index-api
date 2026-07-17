@@ -235,17 +235,18 @@ export default function BroadcastDeckWall({
                     alignItems: "center",
                     flexShrink: 0,
                   }}
-                >
+                >                  
                   <MaskedVideoTile
                     shape="hexagon"
-                    performerName={feed.performerIds[0] ?? "Fighter 1"}
+                    performerName={pickRoomOwner(feed.id, 0)?.name ?? "Fighter 1"}
+                    avatarUrl={pickRoomOwner(feed.id, 0)?.profileImageUrl}
+                    performerSlug={pickRoomOwner(feed.id, 0)?.slug}
                     avatarEmoji="⚔️"
                     accentColor={feed.accentColor ?? accentColor}
                     size={150}
                     isLive={isLive}
                     viewerCount={Math.floor((feed.viewerCount ?? 0) / 2)}
                     genre={feed.genre}
-                    performerSlug={feed.performerIds[0]}
                   />
                   <div
                     style={{
