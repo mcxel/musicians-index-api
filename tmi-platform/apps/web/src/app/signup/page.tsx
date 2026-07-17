@@ -126,6 +126,24 @@ function SignupForm() {
       <motion.div initial={{ opacity: 0, y: -18 }} animate={{ opacity: 1, y: 0 }} style={{ marginBottom: 32, textAlign: "center" }}>
         <div style={{ fontSize: 9, letterSpacing: "0.35em", color: "#00FFFF", fontWeight: 800, marginBottom: 6 }}>THE MUSICIANS INDEX</div>
         <div style={{ fontSize: 26, fontWeight: 900, letterSpacing: 3, color: "#fff" }}>CREATE ACCOUNT</div>
+        <div
+          style={{
+            marginTop: 10,
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+            padding: "5px 14px",
+            background: "rgba(255,213,0,0.08)",
+            border: "1px solid rgba(255,213,0,0.4)",
+            borderRadius: 20,
+            fontSize: 11,
+            fontWeight: 700,
+            color: "#FFD700",
+            letterSpacing: "0.02em",
+          }}
+        >
+          🔞 You must be 16 years of age or older to create an account.
+        </div>
         {vipToken && (
           <div style={{ marginTop: 10, display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 14px", background: "rgba(255,213,0,0.08)", border: "1px solid rgba(255,213,0,0.35)", borderRadius: 20 }}>
             <span style={{ fontSize: 12 }}>💎</span>

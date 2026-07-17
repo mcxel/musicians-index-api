@@ -23,6 +23,7 @@
  */
 
 import { memo, useEffect, useState } from 'react';
+import HeroBannerWell from './HeroBannerWell';
 import Link from 'next/link';
 import Image from 'next/image';
 import DesktopAtmosphereRails from '@/components/home/DesktopAtmosphereRails';
@@ -838,7 +839,7 @@ export default function Home1CoverPage() {
   // Real-data-only ticker messages (Rule 20) — genre/crown always real,
   // radio line only appears when there's an actual live count to report.
   const tickerMessages = [
-    `${genreConfig.emoji} ${genreKey.toUpperCase()} GENRE BATTLE LIVE`,
+    `FEATURED: ${genreKey.toUpperCase()} BATTLES`,
     `👑 CROWN: ${crownData.name.toUpperCase()}`,
     ...(radioData.live > 0 ? [`📻 ${radioData.live} LIVE ON RADIO NOW`] : []),
     `THE MUSICIAN'S INDEX MAGAZINE`,
@@ -908,7 +909,10 @@ export default function Home1CoverPage() {
         position: 'relative',
       }}
     >
-      <DesktopAtmosphereRails />
+      <DesktopAtmosphereRails>
+        <HeroBannerWell />
+        <HeroBannerWell />
+      </DesktopAtmosphereRails>
       {/* dangerouslySetInnerHTML avoids React HTML-escaping the @import's quotes/
           ampersands into &#x27;/&amp; (which corrupts the font URL) — JSX text
           children of <style> get escaped same as any other text node. */}
@@ -917,8 +921,12 @@ export default function Home1CoverPage() {
 
         @keyframes h1Spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         @keyframes h1CounterSpin { from { transform: rotate(0deg); } to { transform: rotate(-360deg); } }
-        @keyframes h1OrbitRotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        @keyframes h1OrbitRotateReverse { from { transform: rotate(0deg); } to { transform: rotate(-360deg); } }
+        /* Spin-then-hold, not a continuous spin: ~5s rotation, ~8s hold, 13s
+           total. The dead OrbitalWheel.tsx component got this fix earlier
+           but was never actually mounted anywhere — this is the real live
+           orbit ring/cards used on Home 1, fixed for real this time. */
+        @keyframes h1OrbitCycle { 0% { transform: rotate(0deg); } 38% { transform: rotate(360deg); } 100% { transform: rotate(360deg); } }
+        @keyframes h1OrbitCycleReverse { 0% { transform: rotate(0deg); } 38% { transform: rotate(-360deg); } 100% { transform: rotate(-360deg); } }
         @keyframes h1CrownFloat {
           0%, 100% { transform: translateY(0px) scale(1); }
           50% { transform: translateY(-8px) scale(1.05); }
@@ -1566,7 +1574,7 @@ export default function Home1CoverPage() {
               borderRadius: '50%',
               border: `1px solid ${accentColor}0f`,
               boxShadow: `0 0 20px ${accentColor}0c`,
-              animation: 'h1OrbitRotate 10s linear infinite',
+              animation: 'h1OrbitCycle 13s ease-in-out infinite',
               willChange: 'transform',
               transform: 'translateZ(0)',
               zIndex: 12,
@@ -1578,7 +1586,7 @@ export default function Home1CoverPage() {
               inset: '19%',
               borderRadius: '50%',
               border: `1px dashed ${accentColor}0c`,
-              animation: 'h1OrbitRotateReverse 14s linear infinite',
+              animation: 'h1OrbitCycleReverse 13s ease-in-out infinite',
               willChange: 'transform',
               transform: 'translateZ(0)',
               zIndex: 13,
@@ -1689,7 +1697,7 @@ export default function Home1CoverPage() {
             style={{
               position: 'absolute',
               inset: 0,
-              animation: 'h1OrbitRotate 10s linear infinite',
+              animation: 'h1OrbitCycle 13s ease-in-out infinite',
               willChange: 'transform',
               transform: 'translateZ(0)',
               zIndex: 22,
