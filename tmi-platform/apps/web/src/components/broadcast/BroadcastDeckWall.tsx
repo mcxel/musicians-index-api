@@ -8,12 +8,45 @@ import { MaskedVideoTile, type BroadcastTileStatus } from "@/components/live/Mas
 import FanLobbyWall from "@/components/lobby/FanLobbyWall";
 import PerformerLobbyWall from "@/components/lobby/PerformerLobbyWall";
 import MixedLobbyWall from "@/components/lobby/MixedLobbyWall";
+import { PERFORMER_REGISTRY } from "@/lib/performers/PerformerRegistry";
 
 const LOBBY_WALL_KINDS = new Set<BroadcastFeedKind>([
   "fan-lobby-wall",
   "performer-lobby-wall",
   "mixed-lobby-wall",
 ]);
+
+// Real performer accounts (bot-driven, real photo, real room) used to fill
+// placeholder tile slots — never a generic emoji avatar. BroadcastRotationEngine
+// never actually populates feed.performerIds, so the split-screen "Fighter 1" /
+// "Fighter 2" battle tiles and the no-feed fallback grid were always 100%
+// placeholder; these now resolve to a real, distinct, deterministically-picked
+// room owner instead, so clicking through lands on a real profile/room.
+const BOT_ROOM_OWNERS = PERFORMER_REGISTRY.filter((p) => p.profileImageUrl.startsWith("/bot-images/"));
+
+function hashSeed(seed: string): number {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
+  return h;
+}
+
+/** Deterministic pick so the same tile always shows the same "room owner" across re-renders. */
+function pickRoomOwner(seed: string, offset = 0) {
+  if (BOT_ROOM_OWNERS.length === 0) return null;
+  return BOT_ROOM_OWNERS[(hashSeed(seed) + offset) % BOT_ROOM_OWNERS.length]!;
+}
+
+/** Pick `count` distinct room owners for a seed (used by the no-feed fallback grid). */
+function pickDistinctRoomOwners(seed: string, count: number) {
+  const picks: typeof BOT_ROOM_OWNERS = [];
+  let offset = 0;
+  while (picks.length < count && offset < BOT_ROOM_OWNERS.length) {
+    const candidate = pickRoomOwner(seed, offset);
+    if (candidate && !picks.some((p) => p.id === candidate.id)) picks.push(candidate);
+    offset++;
+  }
+  return picks;
+}
 
 interface BroadcastDeckWallProps {
   sequence: BroadcastFeedKind[];
@@ -169,17 +202,21 @@ export default function BroadcastDeckWall({
         }}
       >
         {feeds.length === 0 ? (
-          /* Fallback when no feeds of this kind */
-          Array.from({ length: 4 }).map((_, i) => (
-            <MaskedVideoTile
-              key={`fallback-${i}`}
-              shape="octagon"
-              performerName={currentLabel}
-              avatarEmoji="🎤"
-              accentColor={accentColor}
-              size={160}
-              isLive={false}
-            />
+          /* No feeds of this kind right now — fill with real room-owner accounts
+             (Rule 15 progressive fill) instead of a generic mic emoji. */
+          pickDistinctRoomOwners(currentKind, 4).map((owner) => (
+            <Link key={owner.id} href={owner.profileRoute} style={{ textDecoration: "none" }}>
+              <MaskedVideoTile
+                shape="octagon"
+                performerName={owner.name}
+                avatarUrl={owner.profileImageUrl}
+                performerSlug={owner.slug}
+                accentColor={accentColor}
+                size={160}
+                isLive={false}
+                genre={owner.category}
+              />
+            </Link>
           ))
         ) : (
           feeds.map((feed, i) => {

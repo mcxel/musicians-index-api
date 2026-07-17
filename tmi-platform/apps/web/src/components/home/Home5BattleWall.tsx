@@ -17,7 +17,7 @@ interface BattlePoster {
   genre: string;
   genreColor: string;
   format: string;
-  stageGlyph: string;
+  bannerImage: string;
   prize: number;
   route: string;
   tag?: string;
@@ -31,7 +31,7 @@ const POSTER_POOL: BattlePoster[] = [
     genre: "Hip Hop",
     genreColor: "#FF2DAA",
     format: "Solo 1v1",
-    stageGlyph: "🎤",
+    bannerImage: "/banners/Banner Battle.png",
     prize: 5000,
     route: "/battles/live",
     tag: "LIVE",
@@ -43,7 +43,7 @@ const POSTER_POOL: BattlePoster[] = [
     genre: "R&B",
     genreColor: "#AA2DFF",
     format: "Solo 1v1",
-    stageGlyph: "🎹",
+    bannerImage: "/banners/Banner Live Sessions.png",
     prize: 5000,
     route: "/battles/register",
     tag: "OPEN",
@@ -55,7 +55,7 @@ const POSTER_POOL: BattlePoster[] = [
     genre: "Afrobeat",
     genreColor: "#00FF88",
     format: "Open Circle",
-    stageGlyph: "🥁",
+    bannerImage: "/banners/Banner Cyhpers.png",
     prize: 3000,
     route: "/cypher/live",
     tag: "HOT",
@@ -67,7 +67,7 @@ const POSTER_POOL: BattlePoster[] = [
     genre: "EDM",
     genreColor: "#00FFFF",
     format: "Solo 1v1",
-    stageGlyph: "🎧",
+    bannerImage: "/banners/Banner World Dance Party.png",
     prize: 5000,
     route: "/battles/register",
   },
@@ -78,7 +78,7 @@ const POSTER_POOL: BattlePoster[] = [
     genre: "Country",
     genreColor: "#FF6B35",
     format: "Solo 1v1",
-    stageGlyph: "🎸",
+    bannerImage: "/banners/Banner instrument players.png",
     prize: 5000,
     route: "/battles/register",
   },
@@ -89,7 +89,7 @@ const POSTER_POOL: BattlePoster[] = [
     genre: "Rock",
     genreColor: "#FF6B35",
     format: "Band vs Band",
-    stageGlyph: "🎼",
+    bannerImage: "/banners/Banner Battle of the bands.png",
     prize: 10000,
     route: "/battles/register",
     tag: "FEATURED",
@@ -101,7 +101,7 @@ const POSTER_POOL: BattlePoster[] = [
     genre: "Pop",
     genreColor: "#FF2DAA",
     format: "Group 3v3",
-    stageGlyph: "🎛️",
+    bannerImage: "/banners/Banner Cyhpers.png",
     prize: 7000,
     route: "/cypher/register",
   },
@@ -112,7 +112,7 @@ const POSTER_POOL: BattlePoster[] = [
     genre: "Hip Hop",
     genreColor: "#FF2DAA",
     format: "Dirty Dozens",
-    stageGlyph: "🏆",
+    bannerImage: "/banners/Banner Challenges.png",
     prize: 8000,
     route: "/battles/register",
     tag: "NEW",
@@ -219,11 +219,13 @@ export default function Home5BattleWall() {
                 cursor: "pointer",
               }}
             >
-              {/* Poster image */}
+              {/* Poster image — real TMI banner art, not a single emoji glyph */}
               <div
                 style={{
                   height: 140,
-                  background: `radial-gradient(circle at 24% 24%, ${poster.genreColor}44 0%, transparent 52%), linear-gradient(to bottom, rgba(0,0,0,0.05), rgba(6,8,16,0.95))`,
+                  backgroundImage: `linear-gradient(to bottom, rgba(6,8,16,0.15), rgba(6,8,16,0.92)), url('${poster.bannerImage}')`,
+                  backgroundSize: "cover",
+                  backgroundPosition: "center",
                   position: "relative",
                   display: "flex",
                   flexDirection: "column",
@@ -260,17 +262,6 @@ export default function Home5BattleWall() {
                   }}
                 >
                   {poster.genre} · {poster.type}
-                </div>
-                <div
-                  style={{
-                    position: "absolute",
-                    right: 10,
-                    top: 10,
-                    fontSize: 24,
-                    filter: `drop-shadow(0 0 8px ${poster.genreColor})`,
-                  }}
-                >
-                  {poster.stageGlyph}
                 </div>
                 <div
                   style={{

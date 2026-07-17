@@ -610,7 +610,7 @@ export default function Home5BattleCypherSurface() {
       <div style={{ maxWidth: 1100, margin: "0 auto", padding: "0 24px" }}>
         <BattleBelt title="Battle Belt">
           <div style={{ display: "grid", gap: 10 }}>
-            <TripleImageCarousel images={["/tmi-curated/mag-74.jpg", "/tmi-curated/gameshow-35.jpg", "/tmi-curated/mag-82.jpg"]} borderColor="#ff6b35" />
+            <TripleImageCarousel images={["/banners/Banner Battle.png", "/banners/Banner Battle of the bands.png", "/banners/Banner Dance Off.png"]} borderColor="#ff6b35" />
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 8 }}>
               <Link href="/battles/weekly" style={{ textDecoration: "none", color: "#fff", borderRadius: 10, border: "1px solid #ff6b3566", background: "linear-gradient(180deg, #ff6b351f 0%, rgba(6,8,18,0.9) 100%)", padding: 10 }}>
                 <TmiCardTitle style={{ fontSize: 20 }}>Battle of the Week</TmiCardTitle>
@@ -631,7 +631,7 @@ export default function Home5BattleCypherSurface() {
         {/* ── Cypher Belt ── */}
         <LiveBelt title="Cypher Belt">
           <div style={{ display: "grid", gap: 10 }}>
-            <TripleImageCarousel images={["/tmi-curated/mag-66.jpg", "/tmi-curated/venue-22.jpg", "/tmi-curated/mag-58.jpg"]} borderColor="#aa2dff" />
+            <TripleImageCarousel images={["/banners/Banner Cyhpers.png", "/banners/Banner Live Sessions.png", "/banners/Banner Lounges.png"]} borderColor="#aa2dff" />
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 8 }}>
               <Link href="/cypher/weekly" style={{ textDecoration: "none", color: "#fff", borderRadius: 10, border: "1px solid #aa2dff66", background: "linear-gradient(180deg, #aa2dff1f 0%, rgba(6,8,18,0.9) 100%)", padding: 10 }}>
                 <TmiCardTitle style={{ fontSize: 20 }}>Cypher of the Week</TmiCardTitle>
