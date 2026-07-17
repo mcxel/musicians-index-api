@@ -115,8 +115,9 @@ export default function AccountPage() {
         ))}
       </section>
 
-      <section style={{ textAlign: "center", marginTop: 40 }}>
+      <section style={{ textAlign: "center", marginTop: 40, display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
         <Link href="/api/auth/logout" style={{ fontSize: 10, fontWeight: 700, color: "#FF5555", textDecoration: "none", border: "1px solid #FF555530", borderRadius: 6, padding: "9px 20px" }}>Sign Out</Link>
+        <Link href="/account/deactivate" style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.5)", textDecoration: "none", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 6, padding: "9px 20px" }}>Cancel Your Account</Link>
       </section>
     </main>
   );
