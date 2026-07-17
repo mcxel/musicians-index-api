@@ -23,7 +23,6 @@
  */
 
 import { memo, useEffect, useState } from 'react';
-import HeroBannerWell from './HeroBannerWell';
 import Link from 'next/link';
 import Image from 'next/image';
 import DesktopAtmosphereRails from '@/components/home/DesktopAtmosphereRails';
@@ -554,27 +553,41 @@ function PerformerMonitor({
   // nothing rather than crash on performers[idx] while it's still [].
   if (performers.length === 0) return null;
   const p = performers[idx % performers.length]!;
+  const rawAvatar = p.image ?? p.avatarImage;
+  const hasImage = Boolean(rawAvatar?.trim()) && (p.accountType === 'system-bot' || p.accountType === 'system-actor' || hasUploadedProfileImage(rawAvatar));
+  // Real routing: live performer -> their live room, otherwise their real
+  // profile. Same pattern OrbitCard already uses — this monitor tile is a
+  // preview of a real, findable account, not a decorative rotating label.
+  const profileHref = p.isLive && p.liveRoomRoute ? `${p.liveRoomRoute}?from=home-1` : p.profileRoute;
   return (
-    <div style={{ flex: 1, background: 'rgba(5,8,21,0.92)', border: `2px solid ${accentColor}44`, borderRadius: 8, overflow: 'hidden', position: 'relative', minHeight: 110 }}>
+    <Link href={profileHref} style={{ flex: 1, textDecoration: 'none' }}>
+    <div style={{ background: 'rgba(5,8,21,0.92)', border: `2px solid ${accentColor}44`, borderRadius: 8, overflow: 'hidden', position: 'relative', minHeight: 110, cursor: 'pointer' }}>
       {/* Scanline overlay */}
       <div style={{ position: 'absolute', inset: 0, background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.07) 2px, rgba(0,0,0,0.07) 4px)', pointerEvents: 'none', zIndex: 5 }} />
       {/* Channel header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '3px 8px', background: `${accentColor}18`, borderBottom: `1px solid ${accentColor}33` }}>
-        <span style={{ fontSize: 7, fontWeight: 900, color: accentColor, letterSpacing: '0.15em', fontFamily: "'Inter',sans-serif" }}>CH-{channelNum} LIVE</span>
-        <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#E63000', display: 'inline-block', boxShadow: '0 0 4px #E63000', animation: 'h1Pulse 1.5s infinite' }} />
+        <span style={{ fontSize: 7, fontWeight: 900, color: accentColor, letterSpacing: '0.15em', fontFamily: "'Inter',sans-serif" }}>CH-{channelNum} {p.isLive ? 'LIVE' : 'FEATURED'}</span>
+        <span style={{ width: 5, height: 5, borderRadius: '50%', background: p.isLive ? '#E63000' : `${accentColor}88`, display: 'inline-block', boxShadow: p.isLive ? '0 0 4px #E63000' : 'none', animation: p.isLive ? 'h1Pulse 1.5s infinite' : 'none' }} />
       </div>
       {/* Performer */}
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '8px 6px', gap: 3 }}>
-        <div style={{ fontSize: 28, lineHeight: 1 }}>{p.emoji}</div>
-        <div style={{ fontSize: 9, fontWeight: 900, color: '#fff', textAlign: 'center', fontFamily: "'Inter',sans-serif", lineHeight: 1.2 }}>{p.name}</div>
-        <div style={{ fontSize: 7, color: accentColor, background: `${accentColor}22`, borderRadius: 8, padding: '1px 5px', fontFamily: "'Inter',sans-serif" }}>{p.genre}</div>
-        <div style={{ fontSize: 7, color: 'rgba(255,255,255,0.35)', fontFamily: "'Inter',sans-serif" }}>#{p.rank} · {p.score.toLocaleString()} pts</div>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '8px 6px', gap: 4 }}>
+        <div style={{ width: 44, height: 44, borderRadius: '50%', overflow: 'hidden', border: `2px solid ${accentColor}88`, background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          {hasImage ? (
+            <Image src={rawAvatar!} alt={p.name} width={44} height={44} style={{ objectFit: 'cover', width: '100%', height: '100%' }} />
+          ) : (
+            <span style={{ fontSize: 22, lineHeight: 1 }}>{p.emoji}</span>
+          )}
+        </div>
+        <div style={{ fontSize: 9, fontWeight: 900, color: '#fff', textAlign: 'center', fontFamily: "'Inter',sans-serif", lineHeight: 1.2, maxWidth: '90%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</div>
+        <div style={{ fontSize: 7, color: accentColor, background: `${accentColor}22`, borderRadius: 8, padding: '1px 5px', fontFamily: "'Inter',sans-serif", whiteSpace: 'nowrap' }}>{p.genre}</div>
+        <div style={{ fontSize: 7, color: 'rgba(255,255,255,0.35)', fontFamily: "'Inter',sans-serif" }}>#{p.rank} · {p.score.toLocaleString()} XP</div>
       </div>
       {/* Timer progress bar */}
       <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 2, background: `${accentColor}18` }}>
         <div style={{ height: 2, background: accentColor, width: '100%', transformOrigin: 'left center', animation: `h1MonitorBar ${intervalMs / 1000}s linear infinite` }} />
       </div>
     </div>
+    </Link>
   );
 }
 
@@ -909,10 +922,7 @@ export default function Home1CoverPage() {
         position: 'relative',
       }}
     >
-      <DesktopAtmosphereRails>
-        <HeroBannerWell />
-        <HeroBannerWell />
-      </DesktopAtmosphereRails>
+      <DesktopAtmosphereRails />
       {/* dangerouslySetInnerHTML avoids React HTML-escaping the @import's quotes/
           ampersands into &#x27;/&amp; (which corrupts the font URL) — JSX text
           children of <style> get escaped same as any other text node. */}
@@ -1931,11 +1941,13 @@ export default function Home1CoverPage() {
           </div>
         </div>
 
-        {/* ── P6: Three independent video monitors (9500 / 13200 / 17000 ms, 2300ms stagger) ── */}
+        {/* ── P6: Three independent video monitors — 13s cadence (matches the
+             platform-wide broadcast rotation interval), staggered so all
+             three never change at the same moment ── */}
         <div style={{ width: '100%', maxWidth: 900, padding: '12px 10px 0', display: 'flex', gap: 10 }}>
-          <PerformerMonitor performers={performers} offsetIdx={0} intervalMs={9500}  accentColor={accentColor} delayMs={0}    channelNum={1} />
-          <PerformerMonitor performers={performers} offsetIdx={3} intervalMs={13200} accentColor={accentColor} delayMs={2300} channelNum={2} />
-          <PerformerMonitor performers={performers} offsetIdx={6} intervalMs={17000} accentColor={accentColor} delayMs={4600} channelNum={3} />
+          <PerformerMonitor performers={performers} offsetIdx={0} intervalMs={13000} accentColor={accentColor} delayMs={0}    channelNum={1} />
+          <PerformerMonitor performers={performers} offsetIdx={3} intervalMs={13000} accentColor={accentColor} delayMs={4300} channelNum={2} />
+          <PerformerMonitor performers={performers} offsetIdx={6} intervalMs={13000} accentColor={accentColor} delayMs={8600} channelNum={3} />
         </div>
 
         {/* ── Sponsor Ad Rail — Paid → Internal Promo → Advertise CTA ── */}
