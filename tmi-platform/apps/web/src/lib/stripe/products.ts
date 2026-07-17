@@ -103,8 +103,8 @@ export const STRIPE_PRODUCTS = {
   PERFORMER_BAND_MONTHLY: {
     productId: "prod_performer_band",
     priceId:   process.env.NEXT_PUBLIC_STRIPE_PRICE_PERFORMER_BAND ?? "price_1TcK68EAwH1Fjtu9KGLcf8HE",
-    name:      "TMI Performer — Band/Group Diamond",
-    price:     2499, // $24.99/mo displayed — MISMATCH, see note above (real price is $30.99)
+    name:      "TMI Performer — Band/Group Diamond", // Price corrected to match Stripe
+    price:     3099, // $30.99
     interval:  "month" as const,
     features:  ["Diamond Performer perks","Up to 5 linked members","Shared live room","Band profile page"],
   },
@@ -366,4 +366,3 @@ export function getProductAudit(): Array<{
       isReal: isRealPriceId(p.priceId),
     }));
 }
-
