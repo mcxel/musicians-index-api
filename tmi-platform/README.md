@@ -82,9 +82,36 @@ See `apps/api/README.md` for dev tickets helper server details.
 - Treat standalone/auth fallback behavior as valid default for current soft-launch mode.
 - Documented “vision” items are separated into `docs/VISION.md`.
 
+## Current launch priorities (stabilization mode)
+
+Priority order for this repo right now:
+
+1. **Revenue path integrity**
+   - Stripe checkout must complete end-to-end with real entitlement updates.
+   - Production webhook endpoint should use the canonical route:
+     - `/api/stripe/webhook` (fulfillment path)
+   - The deprecated alternate webhook path exists in code (`/api/webhooks/stripe`) and can create silent mismatch if configured in Stripe dashboard.
+
+2. **Environment truth / Stripe catalog alignment**
+   - `STRIPE_PRICE_*` / `NEXT_PUBLIC_STRIPE_PRICE_*` must map to real live Stripe prices.
+   - Price IDs used by checkout and tier mapping must stay synchronized, or paid users may not receive tier upgrades.
+
+3. **Pre-push safety**
+   - Keep commits scoped by workstream (admin data integrity vs layout vs booking/public fixes).
+   - Require local typecheck and local visual pass for `/admin/overseer` before push.
+
+4. **Mobile release reality**
+   - Current repo is primarily a Next.js web app.
+   - Existing `android/` and `ios/` folders reflect wrapper/scaffold work in progress, not a confirmed Flutter app pipeline.
+   - Do **not** run Flutter-only release commands unless a real `pubspec.yaml` mobile project is present.
+
+5. **Honesty guardrail**
+   - Video Shuffle is intentionally excluded for now (no real backed shuffle feed yet).
+   - Do not surface stubs as production-ready controls.
+
 ## Documentation map
 
-- `docs/ONBOARDING.md` — operator-first, current-flow usage/testing
+- `docs/ONBOARDING.md` — operator-first, current-flow usage/testing + known realities
 - `docs/VISION.md` — future-state blueprint and aspirational architecture
 - `README_DEPLOYMENT.md` — practical deploy/env/smoke checklist
 

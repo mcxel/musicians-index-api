@@ -117,6 +117,53 @@ Track these if still open in your branch/environment:
 
 ---
 
-## 8) Escalation rule
+## 8) Known realities (must-read before testing)
 
-If a blocker breaks core movement (auth, navigation, live entry), treat as launch-blocking and patch before broader rollout.
+1. **Video Shuffle**
+   - Intentionally excluded in current stabilization scope.
+   - Do not treat as a launch-ready feature until there is a real backed shuffle/discovery feed.
+
+2. **Stripe webhook routing**
+   - Canonical fulfillment route is `/api/stripe/webhook`.
+   - A deprecated alternate route (`/api/webhooks/stripe`) still exists in code; if production Stripe is pointed there, payments may appear successful in Stripe while platform fulfillment/tier updates fail.
+
+3. **Booking monetization status**
+   - Booking request flows may still be in staged/non-final monetization state depending on environment and branch.
+   - Validate booking payment behavior explicitly (do not assume booking creation equals successful charge capture).
+
+4. **Mobile app build reality**
+   - This repo is primarily a Next.js web app.
+   - `android/` and `ios/` folders reflect wrapper/scaffold progress, not guaranteed release-ready mobile projects by default.
+   - Do not assume Flutter pipeline unless a real `pubspec.yaml` mobile project exists and is verified.
+
+---
+
+## 9) Pre-push operator checklist (required)
+
+Before pushing any stabilization pass:
+
+1. **Type safety check**
+   ```bash
+   pnpm -C apps/web exec tsc --noEmit
+   ```
+
+2. **Local visual pass**
+   - Open `/admin/overseer` locally.
+   - Confirm center monitor is visible/usable and major controls are readable at standard zoom.
+   - Confirm no obvious layout reflow regressions when opening dock/panel/camera controls.
+
+3. **Commit scope sanity**
+   - Ensure commit only contains intended workstream files.
+   - Avoid mixed broad commits when possible (admin data integrity vs layout vs booking/public route fixes).
+
+4. **Route sanity**
+   - Re-check core routes (`/auth`, `/hub`, `/home/1`…`/home/5`) for dead ends.
+
+5. **Revenue-critical sanity**
+   - If payment-related files changed, verify canonical Stripe webhook route and environment variable assumptions before push.
+
+---
+
+## 10) Escalation rule
+
+If a blocker breaks core movement (auth, navigation, live entry) or revenue-critical flow (checkout/webhook/tier grant), treat as launch-blocking and patch before broader rollout.
