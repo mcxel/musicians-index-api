@@ -7,6 +7,19 @@ import TMILiveMediaWidget from "@/components/media/TMILiveMediaWidget";
 import { useLiveSync } from "@/lib/media/useLiveSync";
 import type { LiveFeedItem, LobbyGenre } from "@/components/billboard/TMIBillboardLiveWall";
 import { LobbyEntryFlow, type UniversalRoom } from "@/components/room/UniversalLobbyEntry";
+import { PERFORMER_REGISTRY } from "@/lib/performers/PerformerRegistry";
+
+// Real bot performer accounts — fill the gap when no live room matches this
+// lobby's genres, instead of showing "CONNECTING..." forever. Never labeled
+// LIVE (Rule 20) — just a real account's photo standing in for an open room.
+const LOBBY_FILLERS = PERFORMER_REGISTRY.filter((p) => p.profileImageUrl.startsWith("/bot-images/"));
+const FILLER_ROTATE_MS = 13000;
+
+function hashSeed(seed: string): number {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
+  return h;
+}
 
 const LOBBY_CONFIG = [
   {
@@ -54,12 +67,33 @@ function LiveLobbyTile({
 }) {
   const [activeIdx, setActiveIdx] = useState(0);
   const [pendingRoom, setPendingRoom] = useState<UniversalRoom | null>(null);
+  const [fillerTick, setFillerTick] = useState(0);
 
   // Rotate through matching rooms every ROTATE_INTERVAL_MS
   const matches = feed
     .filter((f) => f.isLive && config.genres.includes(f.genre))
     .sort((a, b) => (b.viewers * 2 + b.tips * 3) - (a.viewers * 2 + a.tips * 3))
     .slice(0, 6);
+
+  // Independent 13s filler rotation, staggered per-tile so lobbies don't all
+  // change in lockstep. Only runs while no real live room fills this slot.
+  useEffect(() => {
+    if (matches.length > 0) return;
+    let intervalId: number | undefined;
+    const startDelay = hashSeed(config.id) % 4000;
+    const startTimeout = window.setTimeout(() => {
+      setFillerTick((t) => t + 1);
+      intervalId = window.setInterval(() => setFillerTick((t) => t + 1), FILLER_ROTATE_MS);
+    }, startDelay);
+    return () => {
+      window.clearTimeout(startTimeout);
+      if (intervalId) window.clearInterval(intervalId);
+    };
+  }, [matches.length, config.id]);
+
+  const filler = LOBBY_FILLERS.length > 0
+    ? LOBBY_FILLERS[(hashSeed(config.id) + fillerTick) % LOBBY_FILLERS.length]!
+    : null;
 
   useEffect(() => {
     if (matches.length <= 1) return;
@@ -102,7 +136,7 @@ function LiveLobbyTile({
       }}
     >
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 6 }}>
-        <TmiBadgeLabel color={config.accent}>{active ? "Live" : "Loading"}</TmiBadgeLabel>
+        <TmiBadgeLabel color={config.accent}>{active ? "Live" : "Open"}</TmiBadgeLabel>
         {active && (
           <span style={{ fontFamily: "var(--font-tmi-orbitron), 'Orbitron', sans-serif", fontSize: 10, color: config.accent }}>
             {active.viewers.toLocaleString()} watching
@@ -127,6 +161,29 @@ function LiveLobbyTile({
             showOverlay={false}
             onEnterLobby={handleJoin}
           />
+        ) : filler ? (
+          // No live room here right now — show a real account's photo (never
+          // labeled LIVE) instead of a dead "CONNECTING..." spinner.
+          <div
+            onClick={handleJoin}
+            style={{
+              width: "100%", height: "100%", position: "relative", cursor: "pointer", overflow: "hidden",
+            }}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={filler.profileImageUrl}
+              alt={filler.name}
+              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+            />
+            <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.82), transparent 55%)" }} />
+            <div style={{ position: "absolute", bottom: 6, left: 8, right: 8 }}>
+              <div style={{ fontSize: 10, fontWeight: 900, color: "#fff" }}>{filler.name}</div>
+              <div style={{ fontSize: 8, color: config.accent, fontWeight: 800, letterSpacing: "0.08em" }}>
+                OPEN LOBBY · {filler.category.toUpperCase()}
+              </div>
+            </div>
+          </div>
         ) : (
           <div
             style={{
