@@ -111,7 +111,14 @@ export default function BillboardLiveWall({
     const offline: PerformerSlot[] = category
       ? []
       : (PERFORMER_REGISTRY as any[])
-          .filter((p) => !liveIds.has(p.id))
+          // Venues, sponsors, and events (arena-prime, vip-diamond,
+          // beats-tmx, monthly-idol...) live in the same registry array but
+          // aren't people — showing a venue photo or event still in a
+          // circular performer-portrait card reads as a wrong/stock image.
+          // Real profileRoute prefix is a more reliable signal than the
+          // category field here (some non-performer entries carry a
+          // performer-shaped category by mistake).
+          .filter((p) => !liveIds.has(p.id) && typeof p.profileRoute === 'string' && p.profileRoute.startsWith('/performers/'))
           .map((p, i): PerformerSlot => ({
             id: p.id,
             name: p.name,
