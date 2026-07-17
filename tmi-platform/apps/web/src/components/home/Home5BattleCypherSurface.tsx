@@ -38,6 +38,7 @@ import BillboardLiveWall from '@/components/media/BillboardLiveWall';
 import { getSessionsByCategory } from '@/lib/broadcast/GlobalLiveSessionRegistry'; // UNIFICATION
 import { getPerformerById, type PerformerIdentity, PERFORMER_REGISTRY } from '@/lib/performers/PerformerRegistry'; // UNIFICATION
 import RoomContainer from '@/components/room/RoomContainer';
+import DesktopAtmosphereRails from '@/components/home/DesktopAtmosphereRails';
 import WidgetDrawer from '@/components/room/WidgetDrawer';
 import NeonWaveUnderlay from '@/components/atmosphere/NeonWaveUnderlay';
 import UnifiedAdSlot from '@/components/ads/UnifiedAdSlot';
@@ -154,6 +155,7 @@ export default function Home5BattleCypherSurface() {
         position: "relative",
       }}
     >
+      <DesktopAtmosphereRails />
       <NeonWaveUnderlay colorA="#FF2DAA" colorB="#AA2DFF" colorC="#FFD700" opacity={0.12} zIndex={0} />
       <style>{`
         @media (max-width: 639px) {

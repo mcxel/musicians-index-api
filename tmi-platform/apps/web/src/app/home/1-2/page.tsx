@@ -15,6 +15,7 @@ import { ACTIVE_SPONSOR_ZONES } from '@/lib/commerce/SponsorRegistry';
 import { getActiveSessions, onSessionsChanged, type LiveSession } from '@/lib/broadcast/GlobalLiveSessionRegistry';
 import BillboardCrownSequence from '@/components/home/BillboardCrownSequence';
 import BillboardOpenBookSpread from '@/components/home/BillboardOpenBookSpread';
+import DesktopAtmosphereRails from '@/components/home/DesktopAtmosphereRails';
 
 // Sponsor rail uses only real paid sponsors from ACTIVE_SPONSOR_ZONES.
 // When no sponsors are purchased, SponsorRail returns null (no fake rows).
@@ -927,6 +928,7 @@ export default function Home12Page() {
 
   return (
     <main style={{ background: '#050510', minHeight: '100vh', color: '#fff', position: 'relative' }}>
+      <DesktopAtmosphereRails />
       <div style={{ position: 'relative', zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', borderBottom: '1px solid rgba(255,255,255,.07)', background: 'rgba(5,5,16,.9)', backdropFilter: 'blur(8px)' }}>
         <div style={{ fontFamily: 'var(--font-orbitron)', fontSize: 14, fontWeight: 900, color: theme.accent, transition: 'color 0.5s', textShadow: `0 0 12px ${theme.glow}` }}>
           TMI BILLBOARD WORLD

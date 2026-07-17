@@ -20,6 +20,7 @@ import RoomContainer from '@/components/room/RoomContainer';
 import WidgetDrawer from '@/components/room/WidgetDrawer';
 import NeonWaveUnderlay from '@/components/atmosphere/NeonWaveUnderlay';
 import UnifiedAdSlot from '@/components/ads/UnifiedAdSlot';
+import DesktopAtmosphereRails from '@/components/home/DesktopAtmosphereRails';
 import "@/styles/tmiTypography.css";
 
 export default function Home2NewsDeskSurface() {
@@ -29,6 +30,7 @@ export default function Home2NewsDeskSurface() {
   return (
     <RoomContainer roomId="home-2" title="News Desk" accentColor="#00FFFF" bpm={90}>
     <main style={{ minHeight: '100vh', background: 'radial-gradient(circle at 50% 0%, rgba(170,45,255,0.15), transparent 50%), #050510', color: '#fff', paddingBottom: 80, position: 'relative' }}>
+      <DesktopAtmosphereRails />
       <NeonWaveUnderlay colorA="#00FFFF" colorB="#AA2DFF" colorC="#FF2DAA" opacity={0.1} zIndex={0} />
       <style>{`
         @media (max-width: 639px) {

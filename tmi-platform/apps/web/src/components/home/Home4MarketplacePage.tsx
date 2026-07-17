@@ -9,6 +9,7 @@ import RoomContainer from '@/components/room/RoomContainer';
 import WidgetDrawer from '@/components/room/WidgetDrawer';
 import NeonWaveUnderlay from '@/components/atmosphere/NeonWaveUnderlay';
 import UnifiedAdSlot from '@/components/ads/UnifiedAdSlot';
+import DesktopAtmosphereRails from '@/components/home/DesktopAtmosphereRails';
 
 // ─── Sponsor sticker chaos — race car jacket layout ───────────────────────────
 // No paid sponsors yet — slots show TMI platform promos + honest "Advertise Here" CTAs (Rule 12 fallback chain)
@@ -443,6 +444,7 @@ export default function Home4AdMagazine() {
         position: "relative",
       }}
     >
+      <DesktopAtmosphereRails />
       <NeonWaveUnderlay colorA="#FFD700" colorB="#AA2DFF" colorC="#FF2DAA" opacity={0.1} zIndex={0} />
       {/* Background ambient glows */}
       <div style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0 }}>

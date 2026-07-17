@@ -30,6 +30,7 @@ import BroadcastDeckWall from '@/components/broadcast/BroadcastDeckWall';
 import { getLiveVenues } from '@/lib/venues/VenueRegistry';
 import { HOME3_DECK_SEQUENCE } from '@/lib/broadcast/BroadcastRotationEngine';
 import RoomContainer from '@/components/room/RoomContainer';
+import DesktopAtmosphereRails from '@/components/home/DesktopAtmosphereRails';
 import WidgetDrawer from '@/components/room/WidgetDrawer';
 import NeonWaveUnderlay from '@/components/atmosphere/NeonWaveUnderlay';
 import UnifiedAdSlot from '@/components/ads/UnifiedAdSlot';
@@ -126,6 +127,7 @@ export default function Home3LiveWorldSurface() {
   return (
     <RoomContainer roomId="home-3" title="Live World" accentColor="#00FF88" bpm={128}>
     <main style={{ minHeight: '100vh', background: 'radial-gradient(circle at 80% 20%, rgba(0,255,136,0.1), transparent 50%), #050510', color: '#fff', paddingBottom: 80, position: 'relative' }}>
+      <DesktopAtmosphereRails />
       {pending && <LobbyEntryFlow room={pending} onClose={() => setPending(null)} />}
       <NeonWaveUnderlay colorA="#00FF88" colorB="#00FFFF" colorC="#AA2DFF" opacity={0.1} zIndex={0} />
       <GlobalTopNavRail />
