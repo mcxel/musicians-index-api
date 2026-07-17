@@ -9,13 +9,16 @@ export default function BotProvider({ children }: { children: React.ReactNode })
     if (activated.current) return;
     activated.current = true;
 
-    // "lobby" is the first Phase 1 active room; "visitor" deduplicates the welcome message
+    // Diagnostic-only callbacks — this Phase 1 activator has no visible UI yet,
+    // so these were the only way to observe it, but logging unconditionally
+    // spammed the production console on every page load.
+    const isDev = process.env.NODE_ENV !== "production";
     const cleanup = activatePhase1Bots("lobby", "visitor", {
-      onWelcome: (text) => console.log("[bot welcome]", text),
-      onBotChat: (botName, text) => console.log("[bot]", botName, text),
-      onBotHype: (botName) => console.log("[bot hype]", botName),
-      onBotTip: (botName) => console.log("[bot tip]", botName),
-      onDiag: (msg) => console.log("[bot diag]", msg),
+      onWelcome: (text) => { if (isDev) console.log("[bot welcome]", text); },
+      onBotChat: (botName, text) => { if (isDev) console.log("[bot]", botName, text); },
+      onBotHype: (botName) => { if (isDev) console.log("[bot hype]", botName); },
+      onBotTip: (botName) => { if (isDev) console.log("[bot tip]", botName); },
+      onDiag: (msg) => { if (isDev) console.log("[bot diag]", msg); },
     });
 
     return () => cleanup();
