@@ -84,7 +84,7 @@ export const VenueRuntimeShell: React.FC<VenueRuntimeShellProps> = ({
               <StageModel />
               <Environment preset="night" />
               <ContactShadows position={[0, -1, 0]} opacity={0.5} scale={20} blur={2} far={4} />
-              <OrbitControls enableZoom={false} maxPolarAngle={Math.PI / 2 + 0.1} minPolarAngle={Math.PI / 3} />
+              <OrbitControls enableZoom={false} enableDamping={true} dampingFactor={0.05} maxPolarAngle={Math.PI / 2 + 0.1} minPolarAngle={Math.PI / 3} />
             </Suspense>
           </Canvas>
         )}

@@ -35,8 +35,39 @@ export async function POST(req: NextRequest) {
   if (email) {
     const lowerRole = normalizedRole.toLowerCase() as UserRole;
     updateUserRole(email, lowerRole);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    prisma.user.updateMany({ where: { email }, data: { role: normalizedRole as any } }).catch(() => {});
+    
+    // Asynchronously write to DB
+    (async () => {
+      try {
+        const u = await prisma.user.findUnique({ where: { email }, select: { id: true } });
+        if (u) {
+          await prisma.user.update({
+            where: { id: u.id },
+            data: {
+              role: normalizedRole as any,
+              onboardingState: 'INCOMPLETE',
+            }
+          });
+          const existingProfile = await prisma.userProfile.findUnique({
+            where: { userId: u.id },
+            select: { socialLinks: true },
+          });
+          const currentLinks = (existingProfile?.socialLinks as Record<string, any>) ?? {};
+          await prisma.userProfile.upsert({
+            where: { userId: u.id },
+            create: {
+              userId: u.id,
+              socialLinks: { ...currentLinks, onboarding_step: '2' },
+            },
+            update: {
+              socialLinks: { ...currentLinks, onboarding_step: '2' },
+            }
+          });
+        }
+      } catch (err) {
+        console.error('Failed to update user role/onboarding in DB:', err);
+      }
+    })();
   }
 
   const emitTelemetry = (source: string) => {
@@ -54,6 +85,8 @@ export async function POST(req: NextRequest) {
     const apiRes = await proxyToApi(req as unknown as Request, "/onboarding/role");
     if (apiRes.status < 300) {
       emitTelemetry("backend");
+      apiRes.headers.append('Set-Cookie', `tmi_role=${normalizedRole.toLowerCase()}; Path=/; SameSite=Lax; Max-Age=604800`);
+      apiRes.headers.append('Set-Cookie', `tmi_onboarding_state=incomplete; Path=/; SameSite=Lax; Max-Age=604800`);
       return apiRes;
     }
   } catch { /* fall through */ }
@@ -61,5 +94,6 @@ export async function POST(req: NextRequest) {
   emitTelemetry("local_fallback");
   const fallbackRes = NextResponse.json({ ok: true, role: normalizedRole, updatedAt: new Date().toISOString() });
   fallbackRes.cookies.set('tmi_role', normalizedRole.toLowerCase(), COOKIE_OPTS);
+  fallbackRes.cookies.set('tmi_onboarding_state', 'incomplete', COOKIE_OPTS);
   return fallbackRes;
 }

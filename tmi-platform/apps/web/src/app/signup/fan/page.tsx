@@ -19,6 +19,7 @@ export default function FanSignupPage() {
   const [error, setError] = useState("");
 
   async function handleSubmit() {
+    console.log("[TMI] handleSubmit entered. Fan Signup. Email:", email);
     setSubmitting(true);
     setError("");
     try {

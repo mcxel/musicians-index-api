@@ -1,0 +1,539 @@
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Exo+2:wght@300;400;600;700;800;900&family=Anton&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#06021a;--pink:#FF2DAA;--gold:#FFD700;--cyan:#00E5FF;--red:#E63000;
+  --green:#00FF7F;--purple:#7B00FF;--amber:#FF8C00;--mag-y:#FFD700;--mag-p:#FF1493;--mag-c:#00BFFF;
+}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+@keyframes orbit{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+@keyframes counterOrbit{from{transform:rotate(0deg)}to{transform:rotate(-360deg)}}
+@keyframes scrollLeft{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+@keyframes scrollRight{from{transform:translateX(-50%)}to{transform:translateX(0%)}}
+@keyframes typeColor{0%{color:#fff}25%{color:var(--gold)}50%{color:#00FF7F}75%{color:var(--red)}100%{color:#fff}}
+@keyframes centerGlow{0%,100%{box-shadow:0 0 20px rgba(0,229,255,.5),0 0 40px rgba(255,45,170,.3)}50%{box-shadow:0 0 40px rgba(0,229,255,.9),0 0 70px rgba(255,45,170,.5)}}
+@keyframes voteUp{0%,100%{color:var(--gold)}50%{color:#fff}}
+@keyframes panelIn{from{opacity:0;transform:translateX(-14px)}to{opacity:1;transform:translateX(0)}}
+@keyframes panelInR{from{opacity:0;transform:translateX(14px)}to{opacity:1;transform:translateX(0)}}
+@keyframes badgePulse{0%,100%{box-shadow:0 0 6px rgba(255,45,170,.4)}50%{box-shadow:0 0 16px rgba(255,45,170,.8)}}
+@keyframes colorBg{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+@keyframes floatStar{0%,100%{transform:translateY(0) rotate(0deg)}50%{transform:translateY(-8px) rotate(5deg)}}
+@keyframes tileFlip{0%{opacity:1;transform:rotateY(0deg)}40%{opacity:0;transform:rotateY(90deg)}60%{opacity:0;transform:rotateY(-90deg)}100%{opacity:1;transform:rotateY(0deg)}}
+.live-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:#FF2020;animation:blink 1s infinite;vertical-align:middle;margin-right:4px}
+.twl{animation:typeColor 4s ease-in-out infinite}
+.orbit-ring{animation:orbit 38s linear infinite;transform-origin:center}
+.node-ctr{animation:counterOrbit 38s linear infinite;transform-origin:center}
+.rail-l{animation:scrollLeft 22s linear infinite;display:flex;white-space:nowrap}
+.rail-r{animation:scrollRight 18s linear infinite;display:flex;white-space:nowrap}
+.btn{font-family:'Exo 2',sans-serif;font-weight:800;cursor:pointer;border-radius:5px;padding:6px 12px;border:none;transition:all .14s;text-transform:uppercase;font-size:10px;letter-spacing:.05em}
+.btn:hover{transform:scale(1.04);filter:brightness(1.2)}
+.tab-btn{font-family:'Exo 2',sans-serif;font-size:9px;font-weight:800;cursor:pointer;border-radius:4px;padding:3px 8px;border:none;text-transform:uppercase;letter-spacing:.06em;flex:1;transition:all .14s}
+.center-glow{animation:centerGlow 3s ease-in-out infinite}
+.video-tile{position:relative;border-radius:5px;overflow:hidden;cursor:pointer;background:#060f1e;border:1px solid rgba(255,255,255,.1)}
+.video-tile::before{content:'';position:absolute;top:-100%;left:0;right:0;height:2px;background:rgba(0,229,255,.3);animation:scanline 3s linear infinite;z-index:3}
+@keyframes scanline{0%{top:-5%}100%{top:105%}}
+.video-tile .live-badge{position:absolute;top:4px;left:4px;background:var(--red);color:#fff;font-size:6px;font-weight:900;padding:1px 5px;border-radius:3px;z-index:4;letter-spacing:.1em}
+.video-tile .v-name{position:absolute;bottom:3px;left:4px;color:#fff;font-size:7px;font-weight:700;z-index:4}
+.video-tile .v-count{position:absolute;top:4px;right:4px;background:rgba(0,0,0,.65);color:var(--cyan);font-size:6px;padding:1px 4px;border-radius:3px;z-index:4}
+.geo{position:absolute;pointer-events:none;opacity:.2}
+.mag-panel{display:inline-flex;flex-direction:column;width:210px;flex-shrink:0;border:3px solid #000;overflow:hidden;vertical-align:top}
+.typewriter-cursor{animation:blink .7s ease-in-out infinite;color:var(--gold)}
+.left-panel-body{animation:panelIn .3s ease-out}
+.right-panel-body{animation:panelInR .3s ease-out}
+.performer-img-circle{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0}
+</style>
+
+<div style="background:linear-gradient(135deg,#06021a 0%,#0a0528 40%,#08031e 100%);font-family:'Exo 2',sans-serif;color:#fff;overflow:hidden;position:relative">
+
+<!-- Background geometric accents (80s feel) -->
+<div class="geo" style="top:80px;right:60px;width:60px;height:60px;background:var(--gold);transform:rotate(45deg)"></div>
+<div class="geo" style="top:200px;left:20px;width:0;height:0;border-left:25px solid transparent;border-right:25px solid transparent;border-bottom:42px solid var(--pink)"></div>
+<div class="geo" style="bottom:200px;right:30px;width:0;height:0;border-left:18px solid transparent;border-right:18px solid transparent;border-bottom:30px solid var(--cyan)"></div>
+<div class="geo" style="top:500px;left:40px;width:40px;height:40px;background:var(--purple);border-radius:50%"></div>
+<div class="geo" style="bottom:350px;left:80px;width:0;height:0;border-left:15px solid transparent;border-right:15px solid transparent;border-bottom:26px solid var(--gold)"></div>
+<div class="geo" style="top:350px;right:100px;width:35px;height:35px;background:var(--pink);transform:rotate(20deg)"></div>
+
+<!-- BETA BAR -->
+<div style="background:rgba(230,48,0,.2);border-bottom:1px solid rgba(230,48,0,.35);padding:3px 12px;display:flex;justify-content:space-between;align-items:center;font-size:8px">
+  <div style="color:var(--red);font-weight:700;letter-spacing:.12em">✦ TMI BETA SEASON</div>
+  <div style="color:rgba(255,255,255,.5)">Founding Beta Member · Purchases &amp; unlocks persist permanently</div>
+  <div style="color:var(--gold);font-weight:700;cursor:pointer">DETAILS →</div>
+</div>
+
+<!-- NAV -->
+<div style="background:rgba(6,2,26,.97);border-bottom:1px solid rgba(255,215,0,.15);padding:5px 12px;display:flex;justify-content:space-between;align-items:center">
+  <div style="font-family:'Orbitron',sans-serif;font-size:15px;font-weight:900;color:var(--pink)">TMI</div>
+  <div style="display:flex;gap:3px">
+    <button class="btn" style="background:var(--pink);color:#fff;border-radius:12px;padding:3px 10px">1</button>
+    <button class="btn" style="background:rgba(255,255,255,.08);color:rgba(255,255,255,.5);border-radius:12px;padding:3px 9px">1-2</button>
+    <button class="btn" style="background:rgba(255,255,255,.08);color:rgba(255,255,255,.5);border-radius:12px;padding:3px 10px">2</button>
+    <button class="btn" style="background:rgba(255,255,255,.08);color:rgba(255,255,255,.5);border-radius:12px;padding:3px 10px">3</button>
+    <button class="btn" style="background:rgba(255,255,255,.08);color:rgba(255,255,255,.5);border-radius:12px;padding:3px 10px">4</button>
+    <button class="btn" style="background:rgba(255,255,255,.08);color:rgba(255,255,255,.5);border-radius:12px;padding:3px 10px">5</button>
+  </div>
+  <div style="display:flex;gap:5px">
+    <button class="btn" style="background:transparent;color:rgba(255,255,255,.7);border:1px solid rgba(255,255,255,.25)">Log In</button>
+    <button class="btn" style="background:var(--pink);color:#fff">Sign Up</button>
+  </div>
+</div>
+
+<!-- MOVING RAIL #1 (TOP) → LEFT DIRECTION -->
+<div style="background:rgba(0,0,0,.5);border-bottom:1px solid rgba(255,215,0,.2);overflow:hidden;height:22px;position:relative">
+  <div class="rail-l" style="gap:0" id="rail1">
+    <!-- Items generated by JS -->
+  </div>
+</div>
+
+<!-- MAGAZINE HEADER -->
+<div style="background:linear-gradient(180deg,rgba(255,45,170,.2) 0%,rgba(6,2,26,1) 100%);padding:14px 16px 8px;text-align:center;position:relative">
+  <!-- Decorative stars -->
+  <div style="position:absolute;top:10px;left:30px;font-size:16px;opacity:.3;animation:floatStar 3s ease-in-out infinite">⭐</div>
+  <div style="position:absolute;top:20px;right:40px;font-size:12px;opacity:.3;animation:floatStar 4s ease-in-out infinite .5s">✦</div>
+
+  <!-- Status badges -->
+  <div style="display:flex;justify-content:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+    <div style="display:inline-flex;align-items:center;background:rgba(255,45,170,.2);border:1px solid rgba(255,45,170,.6);border-radius:4px;padding:3px 10px;animation:badgePulse 2s ease-in-out infinite">
+      <span class="live-dot"></span><span style="font-size:9px;font-weight:800;letter-spacing:.1em;color:var(--pink)">VOTING LIVE</span>
+    </div>
+    <div id="votesBadge" style="background:rgba(255,215,0,.15);border:1px solid rgba(255,215,0,.5);border-radius:4px;padding:3px 12px;font-family:'Orbitron',sans-serif;font-size:10px;font-weight:700;color:var(--gold)">4,948 VOTES</div>
+    <div style="background:rgba(230,48,0,.2);border:1px solid rgba(230,48,0,.5);border-radius:4px;padding:3px 10px;font-size:9px;font-weight:800;letter-spacing:.1em;color:var(--red)">CROWN UPDATING</div>
+  </div>
+
+  <!-- MAIN TITLE - Per-letter color cycling -->
+  <div style="font-family:'Anton',sans-serif;font-size:46px;line-height:1;letter-spacing:.02em;margin-bottom:3px">
+    <span class="twl" style="animation-delay:0s">T</span><span class="twl" style="animation-delay:.07s">H</span><span class="twl" style="animation-delay:.14s">E</span>
+    <span style="color:rgba(255,255,255,.2)"> </span>
+    <span class="twl" style="animation-delay:.21s">M</span><span class="twl" style="animation-delay:.28s">U</span><span class="twl" style="animation-delay:.35s">S</span><span class="twl" style="animation-delay:.42s">I</span><span class="twl" style="animation-delay:.49s">C</span><span class="twl" style="animation-delay:.56s">I</span><span class="twl" style="animation-delay:.63s">A</span><span class="twl" style="animation-delay:.7s">N</span><span class="twl" style="animation-delay:.77s">'</span><span class="twl" style="animation-delay:.84s">S</span>
+    <span style="color:rgba(255,255,255,.2)"> </span>
+    <span class="twl" style="animation-delay:.91s">I</span><span class="twl" style="animation-delay:.98s">N</span><span class="twl" style="animation-delay:1.05s">D</span><span class="twl" style="animation-delay:1.12s">E</span><span class="twl" style="animation-delay:1.19s">X</span>
+  </div>
+  
+  <!-- MAGAZINE TYPEWRITER SUBTITLE -->
+  <div style="height:26px;display:flex;align-items:center;justify-content:center;margin-bottom:10px">
+    <span style="font-family:'Orbitron',sans-serif;font-size:18px;font-weight:900;letter-spacing:.3em;color:var(--gold)" id="magTypewriter"></span><span class="typewriter-cursor" style="font-family:'Orbitron',sans-serif;font-size:18px;color:var(--gold)">|</span>
+  </div>
+
+  <!-- Challenge banner -->
+  <div style="background:rgba(123,0,255,.2);border:1px solid rgba(123,0,255,.4);border-radius:6px;padding:7px 12px;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+    <button class="btn" style="background:rgba(255,255,255,.1);color:rgba(255,255,255,.5);padding:3px 8px;font-size:9px">◀</button>
+    <div style="text-align:center;flex:1">
+      <div style="font-size:11px;font-weight:800;color:#fff;letter-spacing:.08em">CHALLENGE YOUR SONG HERE</div>
+      <div style="font-size:8px;color:rgba(255,255,255,.4)">SONG FOR SONG · WORK FOR WORK</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px">
+      <span style="font-size:9px;font-weight:700;color:var(--cyan)">START NOW</span>
+      <button class="btn" style="background:rgba(255,255,255,.1);color:rgba(255,255,255,.5);padding:3px 8px;font-size:9px">▶</button>
+    </div>
+  </div>
+
+  <!-- Action buttons -->
+  <div style="display:flex;justify-content:center;gap:5px;margin-bottom:5px;flex-wrap:wrap">
+    <button class="btn" style="background:rgba(0,255,127,.15);color:#00FF7F;border:1px solid rgba(0,255,127,.4)">JOIN FREE</button>
+    <button class="btn" style="background:rgba(255,255,255,.07);color:rgba(255,255,255,.7);border:1px solid rgba(255,255,255,.2)">LOGIN</button>
+    <button class="btn" style="background:rgba(255,215,0,.15);color:var(--gold);border:1px solid rgba(255,215,0,.35)">CHALLENGE SONG</button>
+    <button class="btn" style="background:rgba(0,229,255,.12);color:var(--cyan);border:1px solid rgba(0,229,255,.3)">CYPHER ARENA</button>
+    <button class="btn" style="background:rgba(255,45,170,.12);color:var(--pink);border:1px solid rgba(255,45,170,.3)">MAGAZINE</button>
+    <button class="btn" style="background:rgba(155,89,182,.12);color:#9B59B6;border:1px solid rgba(155,89,182,.3)">SPONSOR</button>
+    <button class="btn" style="background:rgba(230,48,0,.12);color:var(--red);border:1px solid rgba(230,48,0,.3)">ADVERTISE</button>
+  </div>
+</div>
+
+<!-- ORBITAL + PANELS SECTION -->
+<div style="position:relative;overflow:hidden">
+
+  <!-- DIRECTION CONTROLS for tabloid underlay -->
+  <div style="position:absolute;top:6px;left:50%;transform:translateX(-50%);z-index:30;display:flex;gap:5px;align-items:center">
+    <button onclick="setUnderlayDir('left')" id="btnUL" class="btn" style="background:rgba(255,215,0,.8);color:#000;font-size:8px;padding:2px 8px">◀ TABLOID</button>
+    <button onclick="setUnderlayDir('right')" id="btnUR" class="btn" style="background:rgba(255,215,0,.15);color:var(--gold);border:1px solid rgba(255,215,0,.3);font-size:8px;padding:2px 8px">TABLOID ▶</button>
+  </div>
+
+  <!-- THE BIG TABLOID UNDERLAY (BEHIND orbital) - OPPOSITE DIRECTION = RIGHT -->
+  <div style="overflow:hidden;position:absolute;inset:0;z-index:0">
+    <div id="underlayTrack" style="display:flex;white-space:nowrap;animation:scrollRight 16s linear infinite;opacity:.9">
+      <!-- Tabloid panels generated by JS -->
+    </div>
+  </div>
+
+  <!-- Radial vignette overlay -->
+  <div style="position:absolute;inset:0;background:radial-gradient(ellipse 72% 88% at center,transparent 20%,rgba(6,2,26,.9) 100%);pointer-events:none;z-index:2"></div>
+  <div style="position:absolute;inset:0;background:linear-gradient(90deg,rgba(6,2,26,.9) 0%,transparent 18%,transparent 82%,rgba(6,2,26,.9) 100%);pointer-events:none;z-index:2"></div>
+
+  <!-- MAIN 3-RAIL LAYOUT -->
+  <div style="position:relative;z-index:10;display:flex;align-items:stretch;min-height:420px">
+
+    <!-- LEFT PANEL -->
+    <div style="display:flex;align-items:stretch;margin-right:6px;padding:10px 0 10px 8px">
+      <div id="leftPanel" style="width:152px;transition:all .35s ease;overflow:hidden">
+        <div class="left-panel-body" style="background:rgba(6,2,26,.95);border:1px solid rgba(255,45,170,.35);border-radius:8px 0 0 8px;height:100%;display:flex;flex-direction:column">
+          <div style="display:flex;gap:2px;padding:5px 5px 4px;border-bottom:1px solid rgba(255,255,255,.08)">
+            <button class="tab-btn" id="lt0" onclick="switchLTab(0)" style="background:rgba(255,45,170,.25);color:var(--pink)">PROMO</button>
+            <button class="tab-btn" id="lt1" onclick="switchLTab(1)" style="background:rgba(255,255,255,.06);color:rgba(255,255,255,.4)">VENUE</button>
+            <button class="tab-btn" id="lt2" onclick="switchLTab(2)" style="background:rgba(255,255,255,.06);color:rgba(255,255,255,.4)">ADS</button>
+          </div>
+          <div id="leftContent" style="flex:1;overflow:hidden;padding:6px 7px;font-size:9px"></div>
+        </div>
+      </div>
+      <div onclick="toggleLeft()" style="background:rgba(255,45,170,.2);border:1px solid rgba(255,45,170,.4);border-radius:0 5px 5px 0;width:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;writing-mode:vertical-lr;font-size:7px;font-weight:800;color:var(--pink);letter-spacing:.1em;user-select:none" id="leftTab">◂ PANEL</div>
+    </div>
+
+    <!-- ORBITAL CENTER -->
+    <div style="flex:1;position:relative;display:flex;align-items:center;justify-content:center;min-height:400px">
+      <!-- Weekly Crown Orbit label -->
+      <div style="position:absolute;top:4px;left:0;right:0;text-align:center;z-index:15">
+        <div style="font-family:'Orbitron',sans-serif;font-size:13px;font-weight:900;color:var(--gold);text-shadow:0 0 15px rgba(255,215,0,.6)">WEEKLY CROWN ORBIT</div>
+        <div style="font-size:7px;color:rgba(255,255,255,.3);letter-spacing:.15em">TOP RANKED · LIVE NOW · REAL TIME</div>
+      </div>
+
+      <!-- Orbital SVG rings -->
+      <div style="position:relative;width:340px;height:340px">
+        <svg viewBox="0 0 340 340" width="340" height="340" style="position:absolute;inset:0;overflow:visible">
+          <circle cx="170" cy="170" r="164" fill="none" stroke="rgba(255,215,0,.12)" stroke-width="1"/>
+          <circle cx="170" cy="170" r="142" fill="none" stroke="rgba(255,45,170,.15)" stroke-width=".7" stroke-dasharray="4 9"/>
+          <circle cx="170" cy="170" r="94" fill="none" stroke="rgba(0,229,255,.12)" stroke-width=".6" stroke-dasharray="3 11"/>
+          <circle cx="170" cy="170" r="60" fill="rgba(6,2,26,.97)" stroke="rgba(0,229,255,.6)" stroke-width="1.5"/>
+          <circle cx="170" cy="170" r="56" fill="none" stroke="rgba(255,215,0,.2)" stroke-width=".4"/>
+          <!-- Color glow behind orbital -->
+          <circle cx="170" cy="170" r="164" fill="none" stroke="rgba(255,215,0,.04)" stroke-width="30"/>
+        </svg>
+
+        <!-- Rotating performer nodes -->
+        <div class="orbit-ring" style="position:absolute;inset:0;transform-origin:170px 170px">
+          <div class="node-ctr" style="position:absolute;top:14px;left:134px;transform-origin:36px 156px"><div id="node0" style="background:rgba(255,45,170,.22);border:1.5px solid var(--pink);border-radius:6px;padding:4px 7px;text-align:center;min-width:72px"><div style="font-size:6px;color:var(--pink);font-weight:800">#1 <span class="live-dot" style="width:4px;height:4px"></span></div><div style="font-size:8px;font-weight:800">ASTRA NOVA</div><div style="font-size:6px;color:rgba(255,255,255,.4)">R&amp;B</div></div></div>
+          <div class="node-ctr" style="position:absolute;top:46px;right:24px;transform-origin:-92px 124px"><div style="background:rgba(255,215,0,.18);border:1.5px solid var(--gold);border-radius:6px;padding:4px 7px;text-align:center;min-width:72px"><div style="font-size:6px;color:var(--gold);font-weight:800">#2</div><div style="font-size:8px;font-weight:800">PRISM VEX</div><div style="font-size:6px;color:rgba(255,255,255,.4)">EDM</div></div></div>
+          <div class="node-ctr" style="position:absolute;top:122px;right:10px;transform-origin:-124px 48px"><div style="background:rgba(0,255,127,.12);border:1.5px solid #00FF7F;border-radius:6px;padding:4px 7px;text-align:center;min-width:72px"><div style="font-size:6px;color:#00FF7F;font-weight:800">#3</div><div style="font-size:8px;font-weight:800">ZION FREQ</div><div style="font-size:6px;color:rgba(255,255,255,.4)">Gospel</div></div></div>
+          <div class="node-ctr" style="position:absolute;bottom:62px;right:20px;transform-origin:-98px -128px"><div style="background:rgba(0,229,255,.12);border:1.5px solid var(--cyan);border-radius:6px;padding:4px 7px;text-align:center;min-width:72px"><div style="font-size:6px;color:var(--cyan);font-weight:800">#4</div><div style="font-size:8px;font-weight:800">FLEX KING</div><div style="font-size:6px;color:rgba(255,255,255,.4)">Dance</div></div></div>
+          <div class="node-ctr" style="position:absolute;bottom:16px;left:170px;transform-origin:-42px -156px"><div style="background:rgba(155,89,182,.18);border:1.5px solid #9B59B6;border-radius:6px;padding:4px 7px;text-align:center;min-width:72px"><div style="font-size:6px;color:#9B59B6;font-weight:800">#5</div><div style="font-size:8px;font-weight:800">SONG CHALL</div><div style="font-size:6px;color:rgba(255,255,255,.4)">Hip-Hop</div></div></div>
+          <div class="node-ctr" style="position:absolute;bottom:16px;left:130px;transform-origin:40px -156px"><div style="background:rgba(255,140,0,.14);border:1.5px solid var(--amber);border-radius:6px;padding:4px 7px;text-align:center;min-width:72px"><div style="font-size:6px;color:var(--amber);font-weight:800">#6</div><div style="font-size:8px;font-weight:800">MAIN LOBBY</div><div style="font-size:6px;color:rgba(255,255,255,.4)">Various</div></div></div>
+          <div class="node-ctr" style="position:absolute;bottom:62px;left:10px;transform-origin:112px -126px"><div style="background:rgba(230,48,0,.18);border:1.5px solid var(--red);border-radius:6px;padding:4px 7px;text-align:center;min-width:72px"><div style="font-size:6px;color:var(--red);font-weight:800">#7 <span class="live-dot" style="width:4px;height:4px"></span></div><div style="font-size:8px;font-weight:800">BATTLE FLR</div><div style="font-size:6px;color:var(--red)">LIVE</div></div></div>
+          <div class="node-ctr" style="position:absolute;top:122px;left:10px;transform-origin:126px 48px"><div style="background:rgba(255,215,0,.1);border:1.5px solid rgba(255,215,0,.4);border-radius:6px;padding:4px 7px;text-align:center;min-width:72px"><div style="font-size:6px;color:var(--gold);font-weight:800">#8</div><div style="font-size:8px;font-weight:800">LAGOS BURST</div><div style="font-size:6px;color:rgba(255,255,255,.4)">Afrobeat</div></div></div>
+          <div class="node-ctr" style="position:absolute;top:46px;left:24px;transform-origin:92px 124px"><div style="background:rgba(0,229,255,.1);border:1.5px solid rgba(0,229,255,.35);border-radius:6px;padding:4px 7px;text-align:center;min-width:72px"><div style="font-size:6px;color:var(--cyan);font-weight:800">#9</div><div style="font-size:8px;font-weight:800">NOVA LAUGH</div><div style="font-size:6px;color:rgba(255,255,255,.4)">Comedy</div></div></div>
+          <div class="node-ctr" style="position:absolute;top:14px;left:110px;transform-origin:60px 156px"><div style="background:rgba(255,45,170,.1);border:1.5px solid rgba(255,45,170,.3);border-radius:6px;padding:4px 7px;text-align:center;min-width:72px"><div style="font-size:6px;color:var(--pink);font-weight:800">#10</div><div style="font-size:8px;font-weight:800">DANCE CREW</div><div style="font-size:6px;color:rgba(255,255,255,.4)">Dance</div></div></div>
+        </div>
+
+        <!-- Center hub -->
+        <div class="center-glow" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:116px;height:116px;border-radius:50%;background:rgba(6,2,26,.98);border:2px solid rgba(0,229,255,.7);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;z-index:15">
+          <div style="font-size:7px;color:rgba(255,255,255,.3);letter-spacing:.15em">HOME 1/6</div>
+          <div style="font-family:'Orbitron',sans-serif;font-size:10px;font-weight:900;color:var(--pink);line-height:1.2;margin:2px 0">ASTRA<br>NOVA</div>
+          <div style="font-size:7px;color:rgba(255,255,255,.4)">R&amp;B · LIVE</div>
+          <span class="live-dot" style="margin-top:3px"></span>
+        </div>
+      </div>
+
+      <!-- BACK/NEXT arrows -->
+      <div style="position:absolute;left:0;bottom:8px"><button class="btn" style="background:rgba(0,0,0,.6);border:1px solid rgba(255,255,255,.2);color:#fff;padding:5px 10px;border-radius:16px">◀ BACK</button></div>
+      <div style="position:absolute;right:0;bottom:8px"><button class="btn" style="background:rgba(0,0,0,.6);border:1px solid rgba(255,255,255,.2);color:#fff;padding:5px 10px;border-radius:16px">NEXT ▶</button></div>
+    </div>
+
+    <!-- RIGHT PANEL -->
+    <div style="display:flex;align-items:stretch;margin-left:6px;padding:10px 8px 10px 0">
+      <div onclick="toggleRight()" style="background:rgba(255,215,0,.18);border:1px solid rgba(255,215,0,.4);border-radius:5px 0 0 5px;width:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;writing-mode:vertical-lr;font-size:7px;font-weight:800;color:var(--gold);letter-spacing:.1em;user-select:none;transform:rotate(180deg)" id="rightTab">◂ PANEL</div>
+      <div id="rightPanel" style="width:152px;transition:all .35s ease;overflow:hidden">
+        <div class="right-panel-body" style="background:rgba(6,2,26,.95);border:1px solid rgba(255,215,0,.35);border-radius:0 8px 8px 0;height:100%;display:flex;flex-direction:column">
+          <div style="display:flex;gap:2px;padding:5px 5px 4px;border-bottom:1px solid rgba(255,255,255,.08)">
+            <button class="tab-btn" id="rt0" onclick="switchRTab(0)" style="background:rgba(255,215,0,.25);color:var(--gold)">RANKS</button>
+            <button class="tab-btn" id="rt1" onclick="switchRTab(1)" style="background:rgba(255,255,255,.06);color:rgba(255,255,255,.4)">ADS</button>
+            <button class="tab-btn" id="rt2" onclick="switchRTab(2)" style="background:rgba(255,255,255,.06);color:rgba(255,255,255,.4)">PROMO</button>
+          </div>
+          <div id="rightContent" style="flex:1;overflow:hidden;padding:6px 7px;font-size:9px"></div>
+        </div>
+      </div>
+    </div>
+  </div><!-- end 3-rail -->
+
+</div><!-- end orbital section -->
+
+<!-- MOVING RAIL #2 (BELOW ORBITAL) ← RIGHT DIRECTION (OPPOSITE) - Old school news report -->
+<div style="background:linear-gradient(90deg,var(--pink),var(--purple),var(--cyan),var(--gold),var(--pink));background-size:400% 100%;animation:colorBg 8s ease infinite;overflow:hidden;height:24px;position:relative;border-top:1px solid rgba(255,255,255,.15);border-bottom:1px solid rgba(255,255,255,.15)">
+  <div style="position:absolute;inset:0;background:rgba(0,0,0,.6)"></div>
+  <div class="rail-r" style="gap:0;position:relative;z-index:2" id="rail2">
+    <!-- Generated by JS -->
+  </div>
+</div>
+
+<!-- VIDEO MONITORS (3 tiles with INDEPENDENT timers) + SPONSOR RAIL -->
+<div style="background:rgba(0,0,0,.4);padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.06)">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+    <div style="font-size:9px;font-weight:700;color:rgba(255,255,255,.4);letter-spacing:.1em">🎬 LIVE PREVIEW MONITORS — HOME 1</div>
+    <div style="font-size:8px;color:rgba(255,255,255,.3)">Each tile updates independently</div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px">
+    <div class="video-tile" id="vt0" style="aspect-ratio:16/9">
+      <div class="live-badge">LIVE</div><div class="v-count" id="vc0">1,284</div>
+      <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:32px;opacity:.6" id="ve0">🎤</div>
+      <div class="v-name" id="vn0">Wavetek</div>
+    </div>
+    <div class="video-tile" id="vt1" style="aspect-ratio:16/9">
+      <div class="live-badge">LIVE</div><div class="v-count" id="vc1">847</div>
+      <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:32px;opacity:.6" id="ve1">🎧</div>
+      <div class="v-name" id="vn1">DJ Kraze</div>
+    </div>
+    <div class="video-tile" id="vt2" style="aspect-ratio:16/9">
+      <div class="live-badge">LIVE</div><div class="v-count" id="vc2">2,140</div>
+      <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:32px;opacity:.6" id="ve2">💃</div>
+      <div class="v-name" id="vn2">Flex King</div>
+    </div>
+  </div>
+  <!-- Sponsor Ad Rail on Home 1 -->
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+    <div style="background:rgba(255,215,0,.06);border:1px solid rgba(255,215,0,.2);border-radius:5px;padding:6px 8px;display:flex;justify-content:space-between;align-items:center">
+      <span style="font-size:8px;color:rgba(255,255,255,.5)">🎵 Beats By TMX</span>
+      <button class="btn" style="background:rgba(255,215,0,.15);color:var(--gold);border:1px solid rgba(255,215,0,.25);font-size:7px;padding:2px 6px">VISIT</button>
+    </div>
+    <div style="background:rgba(0,229,255,.05);border:1px solid rgba(0,229,255,.2);border-radius:5px;padding:6px 8px;display:flex;justify-content:space-between;align-items:center">
+      <span style="font-size:8px;color:rgba(255,255,255,.5)">🎙 BerntoutStudio AI</span>
+      <button class="btn" style="background:rgba(0,229,255,.12);color:var(--cyan);border:1px solid rgba(0,229,255,.25);font-size:7px;padding:2px 6px">TRY</button>
+    </div>
+    <div style="background:rgba(255,45,170,.05);border:1px solid rgba(255,45,170,.25);border-radius:5px;padding:6px 8px;display:flex;justify-content:space-between;align-items:center">
+      <span style="font-size:8px;color:var(--pink)">📢 ADVERTISE FROM $25</span>
+      <button class="btn" style="background:var(--pink);color:#fff;font-size:7px;padding:2px 6px">→</button>
+    </div>
+  </div>
+</div>
+
+<!-- NEWS + INTERVIEWS BOTTOM -->
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:0;border-top:1px solid rgba(255,215,0,.15)">
+  <div style="background:rgba(6,2,26,.98);border-right:1px solid rgba(255,255,255,.07);padding:10px 12px">
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:7px">
+      <div style="font-family:'Orbitron',sans-serif;font-size:10px;font-weight:900;color:#fff">NEWS BELT</div>
+      <div style="background:rgba(255,45,170,.2);border:1px solid var(--pink);border-radius:3px;padding:1px 6px;font-size:8px;font-weight:700;color:var(--pink)">ROLLING</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:4px">
+      <div style="font-size:9px;color:rgba(255,255,255,.5);padding:3px 0;border-bottom:1px solid rgba(255,255,255,.05)">⚔️ Battle Night — Wavetek holds crown 3rd week</div>
+      <div style="font-size:9px;color:rgba(255,255,255,.5);padding:3px 0;border-bottom:1px solid rgba(255,255,255,.05)">🎤 Cypher Arena breaks attendance record</div>
+      <div style="font-size:9px;color:rgba(255,255,255,.5);padding:3px 0">🌍 Krypt drops album midnight tonight</div>
+    </div>
+  </div>
+  <div style="background:rgba(6,2,26,.98);padding:10px 12px">
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:7px">
+      <div style="font-family:'Orbitron',sans-serif;font-size:10px;font-weight:900;color:#fff">INTERVIEWS</div>
+      <div style="background:rgba(0,255,127,.15);border:1px solid rgba(0,255,127,.4);border-radius:3px;padding:1px 6px;font-size:8px;font-weight:700;color:#00FF7F">NEW</div>
+      <span class="live-dot" style="width:5px;height:5px"></span><span style="font-size:8px;color:var(--red)">LIVE</span>
+    </div>
+    <div style="font-size:11px;font-weight:800;color:var(--gold);margin-bottom:2px">Amirah Wells: Touring, Healing</div>
+    <div style="font-size:9px;color:rgba(255,255,255,.5);line-height:1.5">Exclusive sit-down about her journey from streets to stage. TMI's top R&amp;B artist.</div>
+  </div>
+</div>
+
+<!-- MAIN CTA BUTTONS -->
+<div style="background:rgba(6,2,26,.97);padding:10px 12px;border-top:1px solid rgba(255,255,255,.06)">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:5px">
+    <button class="btn" style="background:var(--purple);color:#fff;padding:9px;font-size:11px;border-radius:7px">JOIN TMI</button>
+    <button class="btn" style="background:var(--cyan);color:#000;padding:9px;font-size:11px;border-radius:7px">READ MAGAZINE</button>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:5px">
+    <button class="btn" style="background:var(--pink);color:#fff;padding:9px;font-size:11px;border-radius:7px">VOTE LIVE</button>
+    <button class="btn" style="background:var(--red);color:#fff;padding:9px;font-size:11px;border-radius:7px">JOIN BATTLE</button>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px">
+    <button class="btn" style="background:var(--gold);color:#000;padding:7px;border-radius:6px">SEE ROOMS</button>
+    <button class="btn" style="background:rgba(0,229,255,.12);color:var(--cyan);border:1px solid rgba(0,229,255,.3);padding:7px;border-radius:6px">CYPHER</button>
+    <button class="btn" style="background:rgba(155,89,182,.15);color:#9B59B6;border:1px solid rgba(155,89,182,.3);padding:7px;border-radius:6px">SPONSOR</button>
+  </div>
+  <!-- Live stats bar -->
+  <div style="display:flex;justify-content:space-around;margin-top:8px;padding:5px 10px;background:rgba(0,0,0,.35);border:1px solid rgba(255,215,0,.12);border-radius:6px">
+    <div style="text-align:center"><div style="font-family:'Orbitron',sans-serif;font-size:13px;color:var(--pink)">11</div><div style="font-size:7px;color:rgba(255,255,255,.3);letter-spacing:.08em">LIVE</div></div>
+    <div style="text-align:center"><div style="font-family:'Orbitron',sans-serif;font-size:13px;color:var(--gold)" id="sWatch">9,282</div><div style="font-size:7px;color:rgba(255,255,255,.3)">WATCHING</div></div>
+    <div style="text-align:center"><div style="font-family:'Orbitron',sans-serif;font-size:13px;color:var(--green)" id="sTips">$4.2K</div><div style="font-size:7px;color:rgba(255,255,255,.3)">TIPS</div></div>
+    <div style="text-align:center"><div style="font-family:'Orbitron',sans-serif;font-size:13px;color:var(--cyan)" id="sVotes">4,948</div><div style="font-size:7px;color:rgba(255,255,255,.3)">VOTES</div></div>
+  </div>
+</div>
+
+<!-- BOTTOM NAV -->
+<div style="background:rgba(6,2,26,.97);border-top:1px solid rgba(255,255,255,.07);padding:5px 10px;display:flex;justify-content:space-between;align-items:center">
+  <div style="display:flex;gap:4px">
+    <button class="btn" style="background:rgba(255,45,170,.18);color:var(--pink);border:1px solid rgba(255,45,170,.35)">SIGN IN</button>
+    <button class="btn" style="background:var(--gold);color:#000">+ SUBMIT</button>
+  </div>
+  <div style="font-size:8px;color:rgba(255,255,255,.3)"><span class="live-dot" style="width:4px;height:4px"></span>11 VENUES LIVE</div>
+  <div style="display:flex;gap:4px">
+    <button class="btn" style="background:rgba(255,255,255,.07);color:rgba(255,255,255,.5);border:1px solid rgba(255,255,255,.15)">OPEN GUIDE</button>
+    <button class="btn" style="background:rgba(230,48,0,.15);color:var(--red);border:1px solid rgba(230,48,0,.3)">BETA FEEDBACK</button>
+  </div>
+</div>
+
+</div><!-- end root -->
+
+<script>
+/* ── PANEL DATA ── */
+const PERFORMERS=['Astra Nova','Wavetek','Lagos Burst','DJ Kraze','Nova Cipher','Flex King','Bar God','Prism Vex','Zion Freq','NovaQueen'];
+const GENRES_P=['R&B','Hip-Hop','Afrobeat','DJ','Cypher','Dance','Battle','EDM','Gospel','R&B'];
+const FLAGS=['🇺🇸','🇯🇲','🇳🇬','🇬🇧','🇨🇦','🇧🇷','🇦🇺','🇫🇷'];
+const EMOJIS=['🎤','🎧','🎵','💃','🥁','🎹','🎸','🎺','🎻','🎙️','😂','🌟'];
+
+const LEFT_CONTENT = {
+  0:`<div style="color:var(--pink);font-weight:800;letter-spacing:.1em;font-size:8px;margin-bottom:6px">⭐ FREE PROMO SLOTS</div>
+     ${PERFORMERS.slice(0,3).map((n,i)=>`<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,45,170,.2);border-radius:5px;padding:5px;margin-bottom:4px">
+       <div style="display:flex;align-items:center;gap:5px;margin-bottom:3px">
+         <div class="performer-img-circle" style="background:rgba(255,45,170,.2);border:1px solid rgba(255,45,170,.4)">${EMOJIS[i]}</div>
+         <div style="flex:1"><div style="font-size:9px;font-weight:700">${n}</div><div style="font-size:7px;color:rgba(255,255,255,.35)">${GENRES_P[i]}</div></div>
+         <button class="btn" style="background:rgba(255,45,170,.2);color:var(--pink);border:1px solid rgba(255,45,170,.3);padding:1px 5px;font-size:6px">BOOST</button>
+       </div>
+       <div style="font-size:8px;color:var(--green)">▲ ${[2140,980,540][i].toLocaleString()} views</div>
+     </div>`).join('')}
+     <div style="background:rgba(255,215,0,.05);border:1px dashed rgba(255,215,0,.3);border-radius:5px;padding:6px;text-align:center;cursor:pointer">
+       <div style="font-size:11px;margin-bottom:1px">+</div><div style="font-size:8px;color:var(--gold);font-weight:700">Claim Free Slot</div>
+     </div>`,
+  1:`<div style="color:var(--amber);font-weight:800;font-size:8px;letter-spacing:.1em;margin-bottom:6px">🏟 VENUE BOOKING</div>
+     ${[['SAT','Main Arena'],['SUN','Theater'],['MON','Club Stage']].map(([d,v])=>`<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,140,0,.2);border-radius:5px;padding:5px;margin-bottom:4px;display:flex;justify-content:space-between;align-items:center">
+       <div><div style="font-size:8px;font-weight:700;color:var(--amber)">${d} · ${v}</div></div>
+       <button class="btn" style="background:rgba(0,255,127,.12);color:var(--green);border:1px solid rgba(0,255,127,.3);font-size:7px;padding:1px 5px">BOOK</button>
+     </div>`).join('')}
+     <button class="btn" style="width:100%;background:var(--amber);color:#000;margin-top:3px;padding:5px">Browse Dates</button>`,
+  2:`<div style="color:var(--cyan);font-weight:800;font-size:8px;letter-spacing:.1em;margin-bottom:6px">📢 AD SPACES</div>
+     ${[['Homepage Banner','$120/day','HOT'],['Arena Sidebar','$80/day','OPEN'],['Lobby Wall','$60/day','OPEN']].map(([n,p,s])=>`<div style="background:rgba(255,255,255,.04);border:1px solid rgba(0,229,255,.18);border-radius:5px;padding:5px;margin-bottom:4px;display:flex;justify-content:space-between;align-items:center">
+       <div><div style="font-size:8px;font-weight:700">${n}</div><div style="font-size:7px;color:var(--gold)">${p}</div></div>
+       <div style="font-size:7px;font-weight:800;color:${s==='HOT'?'var(--red)':'var(--green)'};background:${s==='HOT'?'rgba(230,48,0,.15)':'rgba(0,255,127,.1)'};border-radius:3px;padding:2px 5px">${s}</div>
+     </div>`).join('')}
+     <button class="btn" style="width:100%;background:var(--cyan);color:#000;margin-top:3px;padding:5px;font-size:8px">Buy Ad Slot</button>`
+};
+
+const RIGHT_CONTENT = {
+  0:`<div style="color:var(--gold);font-weight:800;font-size:8px;letter-spacing:.1em;margin-bottom:6px">👑 LIVE RANKINGS</div>
+     ${PERFORMERS.slice(0,8).map((n,i)=>`<div style="display:flex;align-items:center;gap:4px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.05)">
+       <div class="performer-img-circle" style="background:rgba(${i===0?'255,45,170':'255,215,0'},${i===0?'.18':'.12'});border:1px solid rgba(${i===0?'255,45,170':'255,215,0'},.3);font-size:9px">${EMOJIS[i]}</div>
+       <span style="color:${['var(--gold)','#C0C0C0','#CD7F32','rgba(255,255,255,.5)','rgba(255,255,255,.5)','rgba(255,255,255,.5)','rgba(255,255,255,.5)','rgba(255,255,255,.5)'][i]};font-weight:800;font-size:9px;min-width:14px">${i+1}</span>
+       <div style="flex:1;min-width:0"><div style="font-size:9px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${n}</div><div style="font-size:7px;color:rgba(255,255,255,.35)">${GENRES_P[i]}</div></div>
+       ${i<3?`<span class="live-dot" style="width:4px;height:4px"></span>`:''}
+     </div>`).join('')}
+     <button class="btn" style="width:100%;background:rgba(255,215,0,.12);color:var(--gold);border:1px solid rgba(255,215,0,.25);margin-top:5px;padding:4px;font-size:8px">Full Leaderboard →</button>`,
+  1:`<div style="color:var(--amber);font-weight:800;font-size:8px;letter-spacing:.1em;margin-bottom:6px">📺 ACTIVE ADS</div>
+     ${[['Beats By TMX','$86K','72%'],['BerntoutStudio AI','$38K','45%']].map(([n,s,p])=>`<div style="background:rgba(0,229,255,.06);border:1px solid rgba(0,229,255,.2);border-radius:5px;padding:6px;margin-bottom:5px">
+       <div style="font-size:9px;font-weight:700;color:var(--cyan);margin-bottom:2px">${n}</div>
+       <div style="height:4px;background:rgba(0,229,255,.15);border-radius:2px;overflow:hidden;margin:4px 0"><div style="height:4px;background:var(--cyan);width:${p}"></div></div>
+       <div style="font-size:7px;color:rgba(255,255,255,.3);">${p} · ${s} spent</div>
+     </div>`).join('')}
+     <button class="btn" style="width:100%;background:var(--amber);color:#000;padding:5px;font-size:8px">Advertise Here →</button>`,
+  2:`<div style="color:var(--pink);font-weight:800;font-size:8px;letter-spacing:.1em;margin-bottom:6px">📣 PROMOTERS</div>
+     ${[['Promo Jay','12 events','$2.4K'],['EventKing','8 events','$1.8K'],['NightOwl','6 events','$980']].map(([n,e,r])=>`<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,45,170,.18);border-radius:5px;padding:5px;margin-bottom:4px;display:flex;justify-content:space-between;align-items:center">
+       <div><div style="font-size:9px;font-weight:700">${n}</div><div style="font-size:7px;color:rgba(255,255,255,.35)">${e}</div></div>
+       <div style="font-size:8px;font-weight:700;color:var(--green)">${r}</div>
+     </div>`).join('')}
+     <button class="btn" style="width:100%;background:rgba(255,45,170,.18);color:var(--pink);border:1px solid rgba(255,45,170,.3);margin-top:3px;padding:5px;font-size:8px">Become Promoter →</button>`
+};
+
+let lTab=0, rTab=0, leftOpen=true, rightOpen=true;
+function switchLTab(i){lTab=i;renderLContent();[0,1,2].forEach(j=>{const b=document.getElementById('lt'+j);const cs=[['rgba(255,45,170,.25)','var(--pink)'],['rgba(255,140,0,.2)','var(--amber)'],['rgba(0,229,255,.15)','var(--cyan)']];b.style.background=j===i?cs[j][0]:'rgba(255,255,255,.06)';b.style.color=j===i?cs[j][1]:'rgba(255,255,255,.4)';})}
+function switchRTab(i){rTab=i;renderRContent();[0,1,2].forEach(j=>{const b=document.getElementById('rt'+j);const cs=[['rgba(255,215,0,.25)','var(--gold)'],['rgba(255,140,0,.2)','var(--amber)'],['rgba(255,45,170,.2)','var(--pink)']];b.style.background=j===i?cs[j][0]:'rgba(255,255,255,.06)';b.style.color=j===i?cs[j][1]:'rgba(255,255,255,.4)';})}
+function renderLContent(){document.getElementById('leftContent').innerHTML=LEFT_CONTENT[lTab];}
+function renderRContent(){document.getElementById('rightContent').innerHTML=RIGHT_CONTENT[rTab];}
+function toggleLeft(){leftOpen=!leftOpen;document.getElementById('leftPanel').style.width=leftOpen?'152px':'0px';document.getElementById('leftTab').textContent=leftOpen?'◂ PANEL':'▸ PANEL';}
+function toggleRight(){rightOpen=!rightOpen;document.getElementById('rightPanel').style.width=rightOpen?'152px':'0px';document.getElementById('rightTab').textContent=rightOpen?'◂ PANEL':'▸ PANEL';}
+
+/* ── UNDERLAY DIRECTION ── */
+function setUnderlayDir(dir){
+  const t=document.getElementById('underlayTrack');
+  t.style.animation=dir==='left'?'scrollLeft 16s linear infinite':'scrollRight 16s linear infinite';
+  document.getElementById('btnUL').style.background=dir==='left'?'rgba(255,215,0,.8)':'rgba(255,215,0,.15)';
+  document.getElementById('btnUL').style.color=dir==='left'?'#000':'var(--gold)';
+  document.getElementById('btnUR').style.background=dir==='right'?'rgba(255,215,0,.8)':'rgba(255,215,0,.15)';
+  document.getElementById('btnUR').style.color=dir==='right'?'#000':'var(--gold)';
+}
+
+/* ── TABLOID UNDERLAY PANELS ── */
+function buildUnderlayPanels(){
+  const panels=[
+    {bg:'#FFD700',hdr:'#FF1493',title:'WHO TOOK THE CROWN?',sub:'COVER PERFORMER',artist:'BIG ACE',tag:'HIP-HOP · 4,812 VOTES',cta:'CYPHER OPEN',c1:'#00BFFF'},
+    {bg:'#FF1493',hdr:'#000',title:'BATTLE NIGHT CHAMPION',sub:'REIGNING CHAMP',artist:'WAVETEK',tag:'47 WINS · HIP-HOP',cta:'⚔️ CHALLENGE 8PM',c1:'#FFD700'},
+    {bg:'#00BFFF',hdr:'#000',title:"WHO'S GOT THE BARS?",sub:'ON THE MIC NOW',artist:'NOVA CIPHER',tag:'CYPHER OPEN · 841 WATCHING',cta:'DROP IN ANYTIME',c1:'#FF1493'},
+    {bg:'#000',hdr:'#FFD700',title:'CHALLENGE THE CROWN',sub:'DEFENDING NOW',artist:'BEAT THE BEAT',tag:'WAVETEK · 841 VOTES',cta:'ARENA SEATS 18,500',c1:'#FF1493'},
+    {bg:'#9B59B6',hdr:'#FFD700',title:'DJ BATTLE NIGHT',sub:'CURRENT #1 DJ',artist:'DJ KRAZE',tag:'DJ · TURNTABLIST',cta:'JOIN BATTLE QUEUE',c1:'#00BFFF'},
+  ];
+  let html='';
+  for(let r=0;r<3;r++) panels.forEach(p=>{html+=`<div class="mag-panel" style="background:${p.bg};height:200px">
+    <div style="background:${p.hdr};padding:6px 8px"><div style="font-size:6px;font-weight:700;color:rgba(255,255,255,.6)">THE MUSICIAN'S INDEX · VOL.1 · $4.99</div></div>
+    <div style="padding:10px 8px;flex:1">
+      <div style="font-family:'Anton',sans-serif;font-size:22px;color:${p.hdr==='#000'?p.bg==='#FF1493'?'#FFD700':p.bg==='#000'?'#FFD700':'#000':'#000'};line-height:1;margin-bottom:5px">${p.title}</div>
+      <div style="background:${p.c1};padding:4px 6px;margin-bottom:3px"><div style="font-size:7px;font-weight:800;color:#000">${p.sub}</div><div style="font-family:'Anton',sans-serif;font-size:14px;color:#000">${p.artist}</div></div>
+      <div style="font-size:7px;color:rgba(0,0,0,.6)">${p.tag}</div>
+    </div>
+    <div style="background:#000;padding:4px 8px;font-size:7px;font-weight:700;color:${p.hdr==='#000'?p.c1:'#FFD700'}">${p.cta}</div>
+  </div>`});
+  document.getElementById('underlayTrack').innerHTML=html;
+}
+
+/* ── RAILS ── */
+const RAIL1_MSGS=['✦ ALL PERFORMERS WELCOME ✦','🎧 DJs WANTED — JOIN BATTLE NIGHT','😂 COMEDIANS WANTED — DIGITAL COMEDY NIGHT','💃 DANCERS WANTED — DANCE-OFF CHALLENGES','🎹 PRODUCERS WANTED — BEAT BATTLES LIVE','🏢 VENUES WANTED — BOOK TALENT DIRECT','📣 PROMOTERS WANTED — PROMOTE WORLDWIDE','💼 SPONSORS WANTED — ADVERTISE FROM $25','🎵 FREE GLOBAL PROMOTION — SIGN UP NOW','🏆 CLIMB THE GLOBAL RANKINGS TODAY','🎟 SELL TICKETS THROUGH TMI','💰 EARN TIPS LIVE — PERFORMERS & DJs','⚔️ JOIN BATTLE ARENA — COMPETE TONIGHT','🎤 CYPHER ARENA OPEN — DROP IN ANYTIME','🌍 GET DISCOVERED WORLDWIDE'];
+const RAIL2_MSGS=['★ BREAKING: CROWN CROWN CROWN — SEE WHO LEADS','▶ LATEST BATTLES TONIGHT — TUNE IN NOW','◆ MUSIC NEWS LIVE UPDATE — WAVETEK DEFENDS','● TMI MAGAZINE ISSUE 25 OUT NOW — READ IT','◉ BEAT MARKETPLACE OPEN — BUY/SELL BEATS','▷ WORLD PREMIERE DROPPING TONIGHT AT MIDNIGHT','◈ CYPHER CHAMPIONS — FINALS THIS SATURDAY','◆ SPONSOR SPOTLIGHT — BEATS BY TMX ON TMI','★ NEW ARTISTS JOINING — DISCOVERY CHARTS LIVE','▶ AUDITIONS OPEN — ALL GENRES ACCEPTED'];
+function buildRail(id,msgs,color){
+  const el=document.getElementById(id);
+  if(!el) return;
+  let html='';
+  for(let r=0;r<4;r++) msgs.forEach(m=>{html+=`<span style="font-size:9px;font-weight:700;color:${color};padding:0 20px;line-height:22px;white-space:nowrap">${m}</span>`});
+  el.innerHTML=html;
+}
+
+/* ── TYPEWRITER MAGAZINE ── */
+const MAG_TEXT='MAGAZINE';
+let twIdx=0, twPhase='typing';
+function typewriterTick(){
+  const el=document.getElementById('magTypewriter');
+  if(!el) return;
+  if(twPhase==='typing'){
+    el.textContent=MAG_TEXT.slice(0,twIdx);
+    twIdx++;
+    if(twIdx>MAG_TEXT.length){twPhase='holding';setTimeout(()=>{twPhase='erasing';typewriterTick();},1000);return;}
+    setTimeout(typewriterTick,110);
+  } else if(twPhase==='erasing'){
+    el.style.opacity='0';
+    setTimeout(()=>{el.style.opacity='1';el.textContent='';twIdx=0;twPhase='typing';setTimeout(typewriterTick,400);},500);
+  }
+}
+
+/* ── INDEPENDENT VIDEO TILES ── */
+const VT_DATA=[
+  {names:['Wavetek','Astra Nova','Lagos Burst','DJ Kraze'],emojis:['🎤','🎵','🎧','💃'],viewers:[1284,2140,847,3200]},
+  {names:['Nova Cipher','Bar God','Flex King','Prism Vex'],emojis:['🎹','🎸','🎻','🥁'],viewers:[920,1650,440,2800]},
+  {names:['Zion Freq','Beat Lab','Verse XL','Soul Shaker'],emojis:['🎺','🎙️','😂','🌟'],viewers:[710,1380,590,2200]},
+];
+const VT_INTERVALS=[9500,13200,17000]; // INDEPENDENT — not synchronized!
+let vtIdx=[0,1,2];
+function updateVideoTile(i){
+  vtIdx[i]=(vtIdx[i]+1)%VT_DATA[i].names.length;
+  const d=VT_DATA[i];
+  const n=vtIdx[i];
+  const el=document.getElementById('vt'+i);
+  if(el) el.style.animation='tileFlip .6s ease';
+  setTimeout(()=>{
+    const nn=document.getElementById('vn'+i);
+    const ne=document.getElementById('ve'+i);
+    const nc=document.getElementById('vc'+i);
+    if(nn) nn.textContent=d.names[n];
+    if(ne) ne.textContent=d.emojis[n];
+    if(nc) nc.textContent=(d.viewers[n]+Math.floor(Math.random()*200)-100).toLocaleString();
+    if(el) el.style.animation='';
+  },300);
+}
+
+/* ── LIVE STATS TICK ── */
+let votes=4948, watchers=9282, tips=4200;
+setInterval(()=>{
+  votes+=Math.floor(Math.random()*8)+2;
+  watchers=Math.max(8500,watchers+Math.floor((Math.random()-.35)*40));
+  tips+=Math.floor(Math.random()*18);
+  const vb=document.getElementById('votesBadge');
+  if(vb) vb.textContent=votes.toLocaleString()+' VOTES';
+  const sw=document.getElementById('sWatch');
+  if(sw) sw.textContent=watchers.toLocaleString();
+  const sv=document.getElementById('sVotes');
+  if(sv) sv.textContent=votes.toLocaleString();
+  const st=document.getElementById('sTips');
+  if(st) st.textContent='$'+(tips>=1000?(tips/1000).toFixed(1)+'K':tips);
+  // Also update video tile viewer counts
+  [0,1,2].forEach(i=>{const vc=document.getElementById('vc'+i);if(vc){const v=parseInt(vc.textContent.replace(',',''));vc.textContent=Math.max(10,v+Math.floor((Math.random()-.4)*80)).toLocaleString();}});
+},2800);
+
+/* ── INIT ── */
+buildUnderlayPanels();
+buildRail('rail1',RAIL1_MSGS,'var(--gold)');
+buildRail('rail2',RAIL2_MSGS,'var(--cyan)');
+renderLContent();
+renderRContent();
+setTimeout(typewriterTick, 500);
+// Set up INDEPENDENT video tile timers (staggered, not synchronized)
+VT_INTERVALS.forEach((interval,i)=>{
+  setTimeout(()=>{
+    setInterval(()=>updateVideoTile(i), interval);
+  }, i * 2300); // offset start times so they don't accidentally sync
+});
+</script>

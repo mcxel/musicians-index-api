@@ -40,59 +40,116 @@ export default function MagazineAnalytics() {
   const totalAdRev = STATS.reduce((acc, s) => acc + (s.adRevenue || 0), 0);
 
   return (
-    <section className="flex h-full flex-col rounded-xl border border-violet-400/30 bg-black/60 p-3">
-      <header className="mb-3 flex items-center justify-between gap-2">
-        <div>
-          <p className="text-[9px] font-black uppercase tracking-[0.18em] text-violet-400">Magazine Analytics</p>
-          <p className="text-[11px] font-black uppercase text-white">TMI Performance Intel</p>
+    <div style={{
+      display: "grid",
+      gridTemplateColumns: "1.2fr 1fr 1.2fr",
+      gap: 12,
+      fontFamily: "'Inter', sans-serif",
+      height: "100%",
+    }}>
+      {/* Column 1: Live Billboard Rankings */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        <div style={{ fontSize: 9, fontWeight: 900, color: "#ffe9bb", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+          Live Billboard Rankings
         </div>
-        <div className="text-right">
-          <p className="text-[8px] text-zinc-400">Total Views</p>
-          <p className="text-[13px] font-black text-violet-300">{(totalViews / 1000).toFixed(1)}k</p>
-        </div>
-      </header>
-
-      {/* Summary row */}
-      <div className="mb-3 flex gap-2">
-        <div className="flex-1 rounded border border-amber-400/30 bg-amber-500/10 p-2 text-center">
-          <p className="text-[8px] text-zinc-400">Ad Rev</p>
-          <p className="text-[12px] font-black text-amber-300">${totalAdRev.toLocaleString()}</p>
-        </div>
-        <div className="flex-1 rounded border border-cyan-400/30 bg-cyan-500/10 p-2 text-center">
-          <p className="text-[8px] text-zinc-400">Pieces</p>
-          <p className="text-[12px] font-black text-cyan-300">{STATS.length}</p>
-        </div>
-        <div className="flex-1 rounded border border-fuchsia-400/30 bg-fuchsia-500/10 p-2 text-center">
-          <p className="text-[8px] text-zinc-400">Avg Eng</p>
-          <p className="text-[12px] font-black text-fuchsia-300">{Math.round(STATS.reduce((a, s) => a + s.engagement, 0) / STATS.length)}%</p>
+        <input
+          type="text"
+          placeholder="Search Filter..."
+          style={{
+            background: "rgba(0,0,0,0.3)",
+            border: "1px solid rgba(255,215,0,0.2)",
+            borderRadius: 6,
+            padding: "4px 8px",
+            fontSize: 8,
+            color: "#fff",
+            outline: "none"
+          }}
+        />
+        <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 2 }}>
+          {[
+            { rank: 1, name: "Live Performance", views: "57M" },
+            { rank: 2, name: "Jay Paul Smith", views: "57M" },
+            { rank: 3, name: "Big Ace", views: "1.3B" },
+            { rank: 4, name: "SuperHarit41", views: "1.2K" },
+            { rank: 5, name: "Pundworthy", views: "3.3B" }
+          ].map((item) => (
+            <div key={item.rank} style={{ display: "flex", justifyContent: "space-between", fontSize: 8, color: "#fff" }}>
+              <span>{item.rank}. {item.name}</span>
+              <span style={{ color: "#FFD700", fontWeight: 700 }}>★ {item.views}</span>
+            </div>
+          ))}
         </div>
       </div>
 
-      {/* Content list */}
-      <div className="flex-1 space-y-2 overflow-y-auto">
-        {STATS.map((stat, idx) => {
-          const pct = Math.round((stat.views / maxViews) * 100);
-          return (
-            <div key={stat.id}>
-              <div className="mb-0.5 flex items-center justify-between gap-2">
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <span className="shrink-0 text-[8px] font-black text-zinc-500">{idx + 1}</span>
-                  <span className={`shrink-0 rounded border px-1 py-0.5 text-[7px] font-black uppercase ${CAT_STYLE[stat.category]}`}>{stat.category}</span>
-                  <span className="truncate text-[9px] font-bold text-white">{stat.title}</span>
-                </div>
-                <div className="flex shrink-0 items-center gap-1.5">
-                  <span className="text-[8px] text-zinc-400">{(stat.views / 1000).toFixed(1)}k</span>
-                  <span className="text-[9px] text-green-300">{stat.engagement}%</span>
-                  <span className={`text-[10px] font-black ${TREND_COLOR[stat.trend]}`}>{TREND_LABEL[stat.trend]}</span>
-                </div>
+      {/* Column 2: User Engagement Hotmap */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        <div style={{ fontSize: 9, fontWeight: 900, color: "#ffe9bb", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+          User Engagement Hotmap
+        </div>
+        {/* Heatmap Grid */}
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(8, 1fr)",
+          gap: 3,
+          background: "rgba(0,0,0,0.2)",
+          padding: 6,
+          borderRadius: 8,
+          border: "1px solid rgba(255,255,255,0.05)",
+          flex: 1,
+        }}>
+          {/* Renders 32 small color blocks representing heatmap */}
+          {[
+            1, 2, 5, 8, 9, 7, 3, 2,
+            0, 3, 7, 10, 9, 8, 4, 1,
+            2, 4, 8, 9, 7, 5, 2, 0,
+            1, 2, 4, 6, 5, 3, 1, 0
+          ].map((val, idx) => {
+            const opacity = val / 10;
+            const bg = val > 7 ? `rgba(255, 68, 170, ${opacity})` : `rgba(255, 138, 0, ${opacity})`;
+            return (
+              <div key={idx} style={{
+                aspectRatio: "1",
+                background: val === 0 ? "rgba(255,255,255,0.02)" : bg,
+                borderRadius: 2,
+                boxShadow: val > 8 ? "0 0 5px rgba(255, 68, 170, 0.4)" : "none"
+              }} />
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Column 3: Profile Deep Dive & Performance */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        {/* Profile deep dive */}
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <div style={{ width: 28, height: 28, borderRadius: "50%", border: "1.5px solid #FFD700", overflow: "hidden" }}>
+            <span style={{ fontSize: 10 }}>👤</span>
+          </div>
+          <div style={{ fontSize: 7, color: "rgba(255,255,255,0.6)" }}>
+            <div>Artist Profile Deep Dive</div>
+            <div style={{ fontWeight: 900, color: "#fff" }}>1.22K Followers • 1.9K Interact</div>
+          </div>
+        </div>
+
+        {/* Content Performance */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 3, marginTop: 2 }}>
+          <div style={{ fontSize: 8, color: "rgba(255,255,255,0.4)" }}>Magazine Content Performance</div>
+          {[
+            { label: "Interaction", value: "20K", pct: 75, color: "#FF2DAA" },
+            { label: "Loss", value: "51%", pct: 51, color: "#FF8A00" }
+          ].map((bar, idx) => (
+            <div key={idx}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 7, color: "#fff" }}>
+                <span>{bar.label}</span>
+                <span>{bar.value}</span>
               </div>
-              <div className="h-1 overflow-hidden rounded-full bg-white/8">
-                <div className="h-full rounded-full bg-violet-400/70" style={{ width: `${pct}%` }} />
+              <div style={{ height: 4, background: "rgba(255,255,255,0.1)", borderRadius: 2, overflow: "hidden", marginTop: 1 }}>
+                <div style={{ height: "100%", width: `${bar.pct}%`, background: bar.color }} />
               </div>
             </div>
-          );
-        })}
+          ))}
+        </div>
       </div>
-    </section>
+    </div>
   );
 }

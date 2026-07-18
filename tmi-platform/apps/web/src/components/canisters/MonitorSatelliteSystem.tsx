@@ -108,6 +108,7 @@ export default function MonitorSatelliteSystem({
   showAudiencePulse,
 }: MonitorSatelliteSystemProps) {
   const [satelliteMode, setSatelliteMode] = useState<"single" | "split">("split");
+  const [layoutMode, setLayoutMode] = useState<"MAIN_ONLY" | "SPLIT_VIEW">("SPLIT_VIEW");
   const [showLeftAudioPanel, setShowLeftAudioPanel] = useState(true);
   const [showRightCameraPanel, setShowRightCameraPanel] = useState(true);
   const [isCameraExpanded, setIsCameraExpanded] = useState(false);
@@ -140,12 +141,16 @@ export default function MonitorSatelliteSystem({
   useEffect(() => {
     if (typeof window === "undefined") return;
     const savedSatelliteMode = window.localStorage.getItem("tmi.monitor.satelliteMode");
+    const savedLayoutMode = window.localStorage.getItem("tmi.monitor.layoutMode");
     const savedAudioPanel = window.localStorage.getItem("tmi.monitor.audioPanelVisible");
     const savedCameraPanel = window.localStorage.getItem("tmi.monitor.cameraPanelVisible");
     const savedCameraExpanded = window.localStorage.getItem("tmi.monitor.cameraPanelExpanded");
 
     if (savedSatelliteMode === "single" || savedSatelliteMode === "split") {
       setSatelliteMode(savedSatelliteMode);
+    }
+    if (savedLayoutMode === "MAIN_ONLY" || savedLayoutMode === "SPLIT_VIEW") {
+      setLayoutMode(savedLayoutMode);
     }
     if (savedAudioPanel === "true" || savedAudioPanel === "false") {
       setShowLeftAudioPanel(savedAudioPanel === "true");
@@ -162,6 +167,11 @@ export default function MonitorSatelliteSystem({
     if (typeof window === "undefined") return;
     window.localStorage.setItem("tmi.monitor.satelliteMode", satelliteMode);
   }, [satelliteMode]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem("tmi.monitor.layoutMode", layoutMode);
+  }, [layoutMode]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -345,8 +355,46 @@ export default function MonitorSatelliteSystem({
       <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: "0.18em", color: accentColor, display: "flex", alignItems: "center", gap: 8 }}>
         🎬 MAIN MONITOR DECK
         <span style={{ flex: 1, height: 1, background: `${accentColor}33` }} />
+        <div style={{ display: "flex", gap: 6 }}>
+          <button
+            onClick={() => setLayoutMode("MAIN_ONLY")}
+            title="Show Main Monitor Only"
+            style={{
+              fontSize: 8,
+              lineHeight: 1,
+              border: `1px solid ${layoutMode === "MAIN_ONLY" ? accentColor : "rgba(255,255,255,0.2)"}`,
+              background: layoutMode === "MAIN_ONLY" ? `${accentColor}1f` : "rgba(255,255,255,0.05)",
+              color: layoutMode === "MAIN_ONLY" ? accentColor : "rgba(255,255,255,0.72)",
+              borderRadius: 4,
+              padding: "4px 8px",
+              cursor: "pointer",
+              fontWeight: 800,
+              letterSpacing: "0.05em",
+            }}
+          >
+            MAIN ONLY
+          </button>
+          <button
+            onClick={() => setLayoutMode("SPLIT_VIEW")}
+            title="Show Split View"
+            style={{
+              fontSize: 8,
+              lineHeight: 1,
+              border: `1px solid ${layoutMode === "SPLIT_VIEW" ? accentColor : "rgba(255,255,255,0.2)"}`,
+              background: layoutMode === "SPLIT_VIEW" ? `${accentColor}1f` : "rgba(255,255,255,0.05)",
+              color: layoutMode === "SPLIT_VIEW" ? accentColor : "rgba(255,255,255,0.72)",
+              borderRadius: 4,
+              padding: "4px 8px",
+              cursor: "pointer",
+              fontWeight: 800,
+              letterSpacing: "0.05em",
+            }}
+          >
+            SPLIT VIEW
+          </button>
+        </div>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+      <div style={{ display: "grid", gridTemplateColumns: layoutMode === "MAIN_ONLY" ? "1fr" : "1fr 1fr", gap: 12 }}>
         {/* Monitor A — primary broadcast feed */}
         <div
           ref={monitorARef}
@@ -393,32 +441,34 @@ export default function MonitorSatelliteSystem({
         </div>
 
         {/* Monitor B — Live Lobby Wall / audience-facing browse view */}
-        <div
-          ref={monitorBRef}
-          style={{
-            position: "relative",
-            aspectRatio: "16/9",
-            borderRadius: 14,
-            overflow: "hidden",
-            background: "#050510",
-            border: "3px solid #1c1c26",
-            boxShadow: "0 0 0 1px rgba(170,45,255,0.4), 0 0 32px rgba(170,45,255,0.15), inset 0 0 0 1px rgba(255,255,255,0.04)",
-          }}
-        >
-          <div style={{ position: "absolute", inset: 0, overflowY: "auto" }}>
-            <BillboardLiveWall mode="home" maxTiles={6} title="LIVE LOBBY WALLS" />
-          </div>
-          <div style={{ position: "absolute", top: 8, left: 8, fontSize: 8, fontWeight: 900, letterSpacing: "0.12em", padding: "3px 8px", borderRadius: 5, background: "rgba(5,5,16,0.8)", border: "1px solid rgba(170,45,255,0.5)", color: "#AA2DFF" }}>
-            MONITOR B · LOBBY WALLS
-          </div>
-          <button
-            onClick={() => requestMonitorFullscreen(monitorBRef)}
-            title="Fullscreen Monitor B"
-            style={{ position: "absolute", top: 8, right: 8, fontSize: 11, lineHeight: 1, padding: "5px 8px", borderRadius: 6, background: "rgba(5,5,16,0.8)", border: "1px solid rgba(170,45,255,0.6)", color: "#AA2DFF", cursor: "pointer" }}
+        {layoutMode === "SPLIT_VIEW" && (
+          <div
+            ref={monitorBRef}
+            style={{
+              position: "relative",
+              aspectRatio: "16/9",
+              borderRadius: 14,
+              overflow: "hidden",
+              background: "#050510",
+              border: "3px solid #1c1c26",
+              boxShadow: "0 0 0 1px rgba(170,45,255,0.4), 0 0 32px rgba(170,45,255,0.15), inset 0 0 0 1px rgba(255,255,255,0.04)",
+            }}
           >
-            ⤢
-          </button>
-        </div>
+            <div style={{ position: "absolute", inset: 0, overflowY: "auto" }}>
+              <BillboardLiveWall mode="home" maxTiles={6} title="LIVE LOBBY WALLS" />
+            </div>
+            <div style={{ position: "absolute", top: 8, left: 8, fontSize: 8, fontWeight: 900, letterSpacing: "0.12em", padding: "3px 8px", borderRadius: 5, background: "rgba(5,5,16,0.8)", border: "1px solid rgba(170,45,255,0.5)", color: "#AA2DFF" }}>
+              MONITOR B · LOBBY WALLS
+            </div>
+            <button
+              onClick={() => requestMonitorFullscreen(monitorBRef)}
+              title="Fullscreen Monitor B"
+              style={{ position: "absolute", top: 8, right: 8, fontSize: 11, lineHeight: 1, padding: "5px 8px", borderRadius: 6, background: "rgba(5,5,16,0.8)", border: "1px solid rgba(170,45,255,0.6)", color: "#AA2DFF", cursor: "pointer" }}
+            >
+              ⤢
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Audience Monitor — Audience Visibility Rule v4: visible the instant a performer/host goes live */}

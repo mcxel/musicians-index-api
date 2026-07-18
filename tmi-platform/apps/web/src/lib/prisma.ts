@@ -7,18 +7,57 @@ declare global {
   var prisma: PrismaClient | undefined;
 }
 
+// pg emits a recurring "SSL modes 'prefer'/'require'/'verify-ca' are treated
+// as aliases for 'verify-full'" deprecation warning on every connection when
+// DATABASE_URL's sslmode is one of those three. Rather than requiring the
+// secret env var itself to be hand-edited on the hosting provider, opt into
+// the compatibility flag pg's own warning recommends, in code, so it applies
+// no matter what sslmode the connection string already has.
+function withLibpqSslCompat(connectionString: string): string {
+  try {
+    const url = new URL(connectionString);
+    if (!url.searchParams.has('uselibpqcompat')) {
+      url.searchParams.set('uselibpqcompat', 'true');
+    }
+    return url.toString();
+  } catch {
+    // Malformed URL — let Pool surface the real connection error instead of
+    // masking it here.
+    return connectionString;
+  }
+}
+
 function createPrismaClient(): PrismaClient {
   if (!process.env.DATABASE_URL) {
-    return new PrismaClient({ log: ['error'] });
+    throw new Error(
+      'FATAL: DATABASE_URL is missing from the environment. ' +
+      "Check your hosting provider's Environment Variables (must be set for Production, not just Preview/Development)."
+    );
   }
-  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+  const pool = new Pool({ connectionString: withLibpqSslCompat(process.env.DATABASE_URL) });
   const adapter = new PrismaPg(pool);
   return new PrismaClient({ adapter, log: ['error'] });
 }
 
-export const prisma: PrismaClient =
-  globalThis.prisma ?? createPrismaClient();
+let cachedClient: PrismaClient | undefined;
 
-if (process.env.NODE_ENV !== 'production') globalThis.prisma = prisma;
+function getPrismaClient(): PrismaClient {
+  if (process.env.NODE_ENV !== 'production') {
+    // Survive HMR in dev by caching on globalThis instead of the module scope.
+    if (!globalThis.prisma) globalThis.prisma = createPrismaClient();
+    return globalThis.prisma;
+  }
+  if (!cachedClient) cachedClient = createPrismaClient();
+  return cachedClient;
+}
+
+// Lazy proxy: defers createPrismaClient() (and its DATABASE_URL check) until
+// the first actual property access, so importing this module during
+// `next build`'s page-data collection can never throw.
+export const prisma: PrismaClient = new Proxy({} as PrismaClient, {
+  get(_target, prop, receiver) {
+    return Reflect.get(getPrismaClient() as object, prop, receiver);
+  },
+});
 
 export default prisma;

@@ -1,5 +1,9 @@
 'use client';
 
+// LEGACY (2026-07-18): unreachable from any real navigation — only mounted
+// by HeadquartersV2Preview.tsx at /preview/performer-hq-v2, which has no
+// inbound links anywhere in the app. GoLiveStudio.tsx at /live/go is the
+// canonical Go Live entry point. Left in place, not deleted, per Rule 21.
 import React, { useState } from 'react';
 import { LiveCameraPreview } from '@/components/media/LiveCameraPreview';
 

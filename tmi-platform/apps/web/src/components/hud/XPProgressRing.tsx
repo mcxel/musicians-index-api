@@ -20,7 +20,7 @@ interface XPData {
   totalXp: number;
 }
 
-export default function XPProgressRing({ size = 36, userId = "current-user" }: { size?: number; userId?: string }) {
+export default function XPProgressRing({ size = 36, userId = "current-user", role }: { size?: number; userId?: string; role?: string }) {
   const [data, setData] = useState<XPData>({ tier: "Rookie", percent: 0, totalXp: 0 });
 
   useEffect(() => {
@@ -42,8 +42,12 @@ export default function XPProgressRing({ size = 36, userId = "current-user" }: {
   const circumference = 2 * Math.PI * r;
   const dash = (data.percent / 100) * circumference;
 
+  // Avatar & Inventory is Fan-only (CLAUDE.md Rule 26 Identity Policy,
+  // 2026-07-18) — non-Fan roles go to /rankings instead of /avatar-center.
+  const destination = role === "FAN" ? "/avatar-center" : "/rankings";
+
   return (
-    <Link href="/avatar-center" title={`${data.tier} · ${data.totalXp.toLocaleString()} XP`} style={{ textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", width: size, height: size, flexShrink: 0 }}>
+    <Link href={destination} title={`${data.tier} · ${data.totalXp.toLocaleString()} XP`} style={{ textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", width: size, height: size, flexShrink: 0 }}>
       {/* SVG ring */}
       <svg width={size} height={size} style={{ position: "absolute", inset: 0, transform: "rotate(-90deg)" }}>
         {/* Track */}

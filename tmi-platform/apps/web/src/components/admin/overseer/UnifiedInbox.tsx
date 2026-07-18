@@ -40,47 +40,67 @@ export default function UnifiedInbox() {
   const unread = threads.filter((t) => t.unreadCount > 0).length;
 
   return (
-    <section className="flex h-full flex-col rounded-xl border border-violet-400/30 bg-black/60 p-3">
-      <header className="mb-3 flex items-center justify-between gap-2">
-        <div>
-          <p className="text-[9px] font-black uppercase tracking-[0.18em] text-violet-400">Unified Inbox</p>
-          <p className="text-[11px] font-black uppercase text-white">Your Conversations</p>
-        </div>
-        {unread > 0 && (
-          <span className="rounded-full border border-rose-500/50 bg-rose-500/15 px-2 py-0.5 text-[9px] font-black text-rose-300">
-            {unread} NEW
-          </span>
-        )}
-      </header>
-
-      <div className="flex-1 space-y-1.5 overflow-y-auto">
-        {state === "loading" && (
-          <p className="p-2 text-[10px] text-zinc-500">Loading conversations…</p>
-        )}
-        {state === "error" && (
-          <p className="p-2 text-[10px] text-rose-400">Unable to load conversations. Retry.</p>
-        )}
-        {state === "ready" && threads.length === 0 && (
-          <p className="p-2 text-[10px] text-zinc-500">No conversations yet.</p>
-        )}
-        {state === "ready" && threads.map((t) => (
-          <div
-            key={t.conversationId}
-            className={`rounded-lg border-l-2 border border-white/10 bg-black/45 p-2 ${t.unreadCount > 0 ? "border-l-cyan-500 bg-zinc-900/60" : "border-l-zinc-600"}`}
-          >
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0 flex-1">
-                <div className="mb-0.5 flex items-center gap-1.5">
-                  <span className="truncate text-[9px] text-zinc-300">{t.latestSenderName}</span>
-                  <span className="ml-auto shrink-0 text-[8px] text-zinc-500">{formatAge(t.latestAt)}</span>
-                </div>
-                <p className="truncate text-[10px] font-bold leading-tight text-white">{t.latestMessage}</p>
-              </div>
-              {t.unreadCount > 0 && <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-cyan-400" />}
+    <div style={{ display: "flex", flexDirection: "column", gap: 8, fontFamily: "'Inter', sans-serif" }}>
+      {/* Messages List */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        {[
+          { label: "Finance Inbox", sub: "Coffer Reports", unread: 6 },
+          { label: "Finalised Inbox", sub: "Approved splits", unread: 0 },
+          { label: "Jay Paul Smith", sub: "27M streams", unread: 0 },
+          { label: "Micah", sub: "13.0M tracks", unread: 0 },
+          { label: "Big Ace", sub: "1.2M logs", unread: 0 }
+        ].map((item, idx) => (
+          <div key={idx} style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            padding: "5px 8px",
+            background: "rgba(255,255,255,0.02)",
+            border: "1px solid rgba(255,215,0,0.15)",
+            borderRadius: 8,
+          }}>
+            <div>
+              <div style={{ fontSize: 9, fontWeight: 900, color: "#ffe9bb", textTransform: "uppercase" }}>{item.label}</div>
+              <div style={{ fontSize: 7, color: "rgba(255,255,255,0.4)" }}>{item.sub}</div>
             </div>
+            {item.unread > 0 ? (
+              <span style={{ background: "#FF0088", color: "#fff", fontSize: 8, fontWeight: 900, padding: "1px 5px", borderRadius: 4 }}>{item.unread}</span>
+            ) : null}
           </div>
         ))}
       </div>
-    </section>
+
+      {/* Buttons */}
+      <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+        <button style={{
+          flex: 1,
+          padding: "6px 12px",
+          background: "linear-gradient(180deg, #4a1f19 0%, #20090f 100%)",
+          border: "1.5px solid #D4AF37",
+          borderRadius: 8,
+          color: "#ffe3a3",
+          fontWeight: 900,
+          fontSize: 9,
+          cursor: "pointer",
+          textTransform: "uppercase"
+        }}>
+          Summon
+        </button>
+        <button style={{
+          flex: 1,
+          padding: "6px 12px",
+          background: "linear-gradient(180deg, #4a1f19 0%, #20090f 100%)",
+          border: "1.5px solid #D4AF37",
+          borderRadius: 8,
+          color: "#ffe3a3",
+          fontWeight: 900,
+          fontSize: 9,
+          cursor: "pointer",
+          textTransform: "uppercase"
+        }}>
+          Invite
+        </button>
+      </div>
+    </div>
   );
 }

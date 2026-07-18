@@ -1,0 +1,352 @@
+
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #070714; color: #E8E8FF; font-family: system-ui, sans-serif; }
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-thumb { background: #FF6B1A44; border-radius: 4px; }
+@keyframes speakGlow { 0%,100% { box-shadow: 0 0 0 2px #00D4FF66; } 50% { box-shadow: 0 0 0 4px #00D4FF, 0 0 22px #00D4FF44; } }
+@keyframes pulseBorder { 0%,100% { box-shadow: 0 0 0 2px #FF6B1A44, 0 0 10px #FF6B1A22; } 50% { box-shadow: 0 0 0 3px #FF6B1A99, 0 0 24px #FF6B1A55; } }
+@keyframes goldPulse { 0%,100% { box-shadow: 0 0 0 2px #FFD700, 0 0 18px #FF6B1A44; } 50% { box-shadow: 0 0 0 5px #FFD700, 0 0 40px #FF6B1A99; } }
+@keyframes fadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+.speak-glow { animation: speakGlow 0.85s ease-in-out infinite; }
+.pulse-border { animation: pulseBorder 1.4s ease-in-out infinite; }
+.gold-pulse { animation: goldPulse 1s ease-in-out infinite; }
+.fade-in { animation: fadeIn 0.25s ease; }
+input[type=range] { -webkit-appearance:none; appearance:none; width:100%; height:4px; background:#1E1E45; border-radius:4px; outline:none; cursor:pointer; }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:16px; height:16px; border-radius:50%; background:#FF6B1A; cursor:pointer; }
+input[type=range]:disabled { opacity:0.45; cursor:not-allowed; }
+button { cursor:pointer; font-family:inherit; }
+</style>
+<div id="app"></div>
+<script>
+const C = {
+  bg:"#070714",card:"#0D0D24",panel:"#111130",
+  or:"#FF6B1A",cy:"#00D4FF",gd:"#FFD700",
+  pu:"#9B59FF",pk:"#FF69B4",gn:"#00FF88",
+  bd:"#1E1E45",tx:"#E8E8FF",mt:"#7878AA",rd:"#FF4444"
+};
+
+const st = {
+  tab:"overview", tileMode:"default", liveMode:"practice",
+  isLive:false, propTargets:{}, voiceVol:75, beatVol:65,
+  roomVol:50, perfVol:80, notifVol:40, openConv:0, openPhase:null
+};
+
+const TABS=[
+  {id:"overview",   label:"System Map",     icon:"🏛"},
+  {id:"messenger",  label:"Messenger",      icon:"💬"},
+  {id:"videotiles", label:"Video Tiles",    icon:"📹"},
+  {id:"audio",      label:"Audio Engine",   icon:"🎚"},
+  {id:"live",       label:"Live Routing",   icon:"🔴"},
+  {id:"directive",  label:"Build Directive",icon:"⚡"}
+];
+
+const CONVS=[
+  {name:"Julius",        role:"Friend",       icon:"🦦",unread:2, last:"Yo, you catch that set?"},
+  {name:"Wave Theory",   role:"Band",          icon:"🎸",unread:5, last:"Rehearsal at 9PM tonight"},
+  {name:"Cypher Crew",   role:"Group · 12",    icon:"🎤",unread:0, last:"Battle is set for Friday"},
+  {name:"Chario Ace",    role:"Performer",     icon:"⭐",unread:1, last:"Come thru to my lobby"},
+  {name:"Backstage VIP", role:"Backstage · 8", icon:"🔒",unread:3, last:"Sound check at 7"}
+];
+
+const MESSAGES=[
+  {type:"text",     from:"Julius",mine:false,time:"3:14 PM",text:"Yo, you see that new drop from TG? 🔥"},
+  {type:"text",     from:"me",   mine:true, time:"3:15 PM",text:"Yeah just heard it. She went crazy on that verse fr"},
+  {type:"beat",     from:"Julius",mine:false,time:"3:16 PM",title:"Midnight Thunder",bpm:"93 BPM",dur:"2:47"},
+  {type:"text",     from:"me",   mine:true, time:"3:18 PM",text:"That 808 at :38 is hard. Snare lil loud tho"},
+  {type:"playlist", from:"Julius",mine:false,time:"3:20 PM",title:"Late Night Sessions",tracks:14},
+  {type:"invite",   from:"Julius",mine:false,time:"3:22 PM",room:"Julius's Lobby"},
+  {type:"video",    from:"Julius",mine:false,time:"3:24 PM"}
+];
+
+const TILE_MODES=[
+  {id:"default",  label:"Default",    color:C.bd, desc:"Standard border, no effects"},
+  {id:"speaking", label:"Speaking",   color:C.cy, desc:"Cyan glow pulses with voice via WebAudio VAD"},
+  {id:"energy",   label:"Energy",     color:C.or, desc:"Orange rim light, beat-reactive during drops"},
+  {id:"perform",  label:"Performing", color:C.gd, desc:"Gold pulse + energy ring for live stage sets"},
+  {id:"stable",   label:"Stable",     color:C.pu, desc:"Tile locked in place — saved as user preference"},
+  {id:"cinematic",label:"Cinematic",  color:C.pk, desc:"Soft drift every 3–5 min, scene-aware movement"},
+  {id:"minimized",label:"Minimized",  color:C.gn, desc:"Avatar shown, video hidden with glowing call badge"}
+];
+
+const PROP_TARGETS=[
+  {id:"lobby",   label:"Lobby Wall",      icon:"🏟",color:C.cy},
+  {id:"home1",   label:"Home 1",           icon:"🏠",color:C.or},
+  {id:"home2",   label:"Home 1-2",         icon:"🏠",color:C.or},
+  {id:"magazine",label:"Magazine",         icon:"📰",color:C.pu},
+  {id:"profile", label:"Artist Profile",   icon:"👤",color:C.gd},
+  {id:"article", label:"Article Portal",   icon:"📄",color:C.pk},
+  {id:"venue",   label:"Venue Page",       icon:"🎪",color:C.gn},
+  {id:"admin",   label:"Admin Observatory",icon:"👁", color:C.rd}
+];
+
+const PHASES=[
+  {n:1, title:"Messenger Shell",            color:C.cy, items:["MessengerShell · ConversationStore · ConversationList","ChatThread · MessageComposer · GroupChatHeader","BandChatPanel · MediaMessageCard · PlaylistShareCard","BeatPreviewCard · LobbyInviteCard · CallControls","SafetyReportModal · MemoryMediaPicker"]},
+  {n:2, title:"Memory Wall Media Picker",   color:C.pu, items:["Pick approved MemoryWallArtifacts by mediaId or artifactId","Pending/blocked media cannot be shared publicly at any point","All new uploads routed through UploadSecurityEngine first","No file duplication — check mediaId before attach"]},
+  {n:3, title:"Video Chat Mood Tiles",      color:C.or, items:["Glass/CRT/neon frame per tile — never plain video","Speaking glow (cyan VAD pulse) · Energy pulse border · Beat-reactive rim light","Stable mode — clicks at current position, locks forever, saves as preference","Cinematic mode — soft movement every 3–5 min, never interrupts workflow","Draggable · Resizable · Pinnable · Dockable · Minimized avatar mode","Video-over-avatar — tile floats above avatar when in lobby","Lobby overlay mode — video and avatar coexist simultaneously"]},
+  {n:4, title:"Ambient Transition Scheduler",color:C.pk, items:["Fire one effect every 3–5 min (randomized, never back-to-back)","Effects: neon sweep, frame shimmer, stage light pass, energy ring, chat header glow","NEVER move stable or pinned tiles under any circumstance","NEVER interrupt typing, screen share, active audio, or call controls","Respect prefers-reduced-motion at all times","Auto-pause on low battery or low device performance"]},
+  {n:5, title:"Monitor Runtime",            color:C.pu, items:["FloatingMonitor · ScreenMonitor · VideoMonitor · PlaylistMonitor","BeatMonitor · ArticleMonitor · BrowserMonitor · StageMonitor","States: floating, docked, pinned, full-stage, mini, collapsed","Controls: move, resize, rotate, pin, dock, collapse, fullscreen, close","Screen share via getDisplayMedia — no full-screen takeover by default","Shared playhead + timestamp sync via WebRTC DataChannels","Everyone stays in chat/lobby — nothing closes, nothing interrupts"]},
+  {n:6, title:"Audio Intelligence",         color:C.gd, items:["Auto-duck beat/music by 6–10dB when mic input detected above threshold","Smooth fades only — zero popping, clicking, or sudden level cuts","Band rehearsal preset: clearer instrument handling with voices understandable","Mixer sliders: voice, beat/music, room audio, performer audio, notifications","Performer audio priority when session goes public live","Room audio stays separate from direct DM call voice channel"]},
+  {n:7, title:"Invite-to-Lobby Protocol",   color:C.or, items:["Invite to Lobby · Backstage · Cypher · Battle · World Dance Party","Invite to Venue Room · Rehearsal Room — all in every DM","Flow: DM → invite card sent → receiver accepts → shared room opens instantly","Both avatars spawn together in the same space — chat continues inside lobby","Video tiles appear above avatars if call was already active before spawn","PlayStation UX model: Invite to Lobby button in every thread, every group"]},
+  {n:8, title:"Safety Layer",               color:C.gn, items:["All shared media passes through UploadSecurityEngine — no exceptions","scanStatus · moderationStatus · file type validation · file size limits","Block user · Report message · Report media · Mute conversation · Leave group","Admin review queue · Invite abuse protection · Youth room restrictions","Rate limiting on all signaling, messaging, and call APIs","Never render unsafe or unmoderated media — blocked and quarantined"]},
+  {n:9, title:"Routes / API Audit",         color:C.mt, items:["/messages · /messages/[threadId] · /api/messages","/api/messages/conversations · /api/messages/conversations/[id]","/api/rtc/signal · /api/video/rooms · /api/video/rooms/[roomId]","/api/rooms/[id]/chat · /api/rooms/messaging · /api/playlists","/api/upload/media · /api/social/follow · /api/seats/reserve"]},
+  {n:10,title:"Instant Live Routing",       color:C.rd, items:["PerformerLiveControls · LiveModeToggle · StreamHealthBadge · PerformerControlPanel","Practice: private only, no public tiles, no propagation, invite-only testing","Public: GlobalLiveSessionRegistry → LiveSurfacePropagationEngine — fires all 8 targets","Fan join: auth → capacity check → ticket/sub check → seat assign → avatar spawn → WebRTC","Heartbeat ping every 5s · Cleanup governor on stop/crash · Archive on session end","No registry record = no public tile. Provisional Truth Policy enforced always"]}
+];
+
+function h(tag,props,...children){
+  const el=document.createElement(tag);
+  if(props) for(const [k,v] of Object.entries(props)){
+    if(k==="style"&&typeof v==="object") Object.assign(el.style,v);
+    else if(k.charAt(0)==="@") el.addEventListener(k.slice(1),v);
+    else if(k==="cls") el.className=v;
+    else el.setAttribute(k,v);
+  }
+  children.flat(99).forEach(c=>{
+    if(c==null||c===false||c===undefined)return;
+    el.appendChild(typeof c==="string"||typeof c==="number"?document.createTextNode(String(c)):c);
+  });
+  return el;
+}
+
+function pill(txt,col){return h("span",{style:{background:col,color:"#fff",borderRadius:20,fontSize:11,padding:"3px 10px",fontWeight:700,display:"inline-block",letterSpacing:0.5}},txt);}
+function sec(txt,col=C.or,mt=0){return h("div",{style:{fontSize:14,fontWeight:700,color:col,letterSpacing:1,textTransform:"uppercase",marginBottom:14,marginTop:mt}},txt);}
+function computeDucked(){if(st.voiceVol>70)return Math.max(20,st.beatVol-Math.round((st.voiceVol-70)*0.75));return st.beatVol;}
+
+function renderOverview(){
+  const wrap=h("div",{cls:"fade-in"},sec("TMI Omni-Presence Engine — System Architecture"));
+  const NS="http://www.w3.org/2000/svg";
+  const svg=document.createElementNS(NS,"svg");
+  svg.setAttribute("viewBox","0 0 680 440");svg.setAttribute("width","100%");
+  svg.style.cssText="display:block;background:#0D0D24;border-radius:12px;border:1px solid #1E1E45;margin-bottom:16px;";
+  function se(tag,attrs,...kids){const e=document.createElementNS(NS,tag);if(attrs)for(const[k,v]of Object.entries(attrs))e.setAttribute(k,v);kids.flat(9).forEach(k2=>e.appendChild(k2));return e;}
+  function st2(x,y,text,color,size=11,weight="600"){const t=se("text",{"x":x,"y":y,"text-anchor":"middle","fill":color,"font-size":size,"font-weight":weight,"font-family":"system-ui"});t.textContent=text;return t;}
+  const cx=340,cy=215;
+  svg.append(se("rect",{"x":cx-86,"y":cy-30,"width":172,"height":60,"rx":12,"fill":"#FF6B1A1A","stroke":"#FF6B1A","stroke-width":"1.5"}));
+  svg.append(st2(cx,cy-10,"TMI OMNI-PRESENCE",C.or,13,"800"));
+  svg.append(st2(cx,cy+8,"ENGINE",C.or,13,"800"));
+  svg.append(st2(cx,cy+26,"Messenger · Video · Monitor · Audio · Live",C.or+"77",8,"400"));
+  const ENGS=[
+    {label:"MessengerShell",       x:30, y:50, color:C.cy, sub:"ConvStore · Chat · Band"},
+    {label:"VideoTileMoodEngine",  x:270,y:20, color:C.or, sub:"SpeakGlow · Energy · Stable"},
+    {label:"MonitorRuntime",       x:520,y:50, color:C.pu, sub:"Screen · Beat · Playlist"},
+    {label:"AudioDuckingEngine",   x:530,y:300,color:C.gd, sub:"VoicePriority · AutoDuck"},
+    {label:"LiveRoutingEngine",    x:265,y:380,color:C.rd, sub:"Registry · Propagate · HB"},
+    {label:"SafetyEngine",         x:30, y:300,color:C.gn, sub:"UploadScan · Block · Rate"},
+    {label:"AmbientScheduler",     x:90, y:175,color:C.pk, sub:"3–5min · ReducedMotion"}
+  ];
+  ENGS.forEach(eng=>{
+    const ex=eng.x+65,ey=eng.y+20;
+    svg.append(se("line",{"x1":cx,"y1":cy,"x2":ex,"y2":ey,"stroke":eng.color+"44","stroke-width":"1","stroke-dasharray":"5,5"}));
+    svg.append(se("rect",{"x":eng.x,"y":eng.y,"width":130,"height":34,"rx":8,"fill":eng.color+"15","stroke":eng.color+"66","stroke-width":"1"}));
+    svg.append(st2(ex,eng.y+14,eng.label,eng.color,9.5,"700"));
+    svg.append(st2(ex,eng.y+45,eng.sub,eng.color+"88",7.5,"400"));
+  });
+  wrap.appendChild(svg);
+  const stats=h("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:10}});
+  [["10 Phases","Build Directive"],["16+ Components","UI System"],["9 Message Types","Messenger"],["5 Monitor Types","Monitor Runtime"],["3–5 min","Ambient Scheduler"],["5s Heartbeat","Live Sessions"]].forEach(([v,l])=>stats.appendChild(h("div",{style:{background:C.card,border:`1px solid ${C.bd}`,borderRadius:10,padding:"12px",textAlign:"center"}},h("div",{style:{fontSize:18,fontWeight:800,color:C.or}},v),h("div",{style:{fontSize:10,color:C.mt,marginTop:3}},l))));
+  wrap.appendChild(stats);
+  return wrap;
+}
+
+function renderMessenger(){
+  const shell=h("div",{cls:"fade-in",style:{display:"flex",background:C.card,border:`1px solid ${C.bd}`,borderRadius:12,overflow:"hidden",minHeight:490}});
+  const sidebar=h("div",{style:{width:186,borderRight:`1px solid ${C.bd}`,flexShrink:0,display:"flex",flexDirection:"column"}});
+  sidebar.appendChild(h("div",{style:{padding:"11px 13px",fontSize:13,fontWeight:700,color:C.cy,borderBottom:`1px solid ${C.bd}`,background:C.panel}},"💬 Messenger"));
+  CONVS.forEach((cv,i)=>{
+    sidebar.appendChild(h("div",{style:{padding:"9px 11px",cursor:"pointer",borderBottom:`1px solid ${C.bd}22`,background:i===st.openConv?C.panel:"transparent"},"@click":()=>{st.openConv=i;render();}},
+      h("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:2}},
+        h("div",{style:{display:"flex",alignItems:"center",gap:5}},h("span",{style:{fontSize:14}},cv.icon),h("div",{},h("div",{style:{fontSize:11,fontWeight:700,color:i===st.openConv?C.tx:C.mt}},cv.name),h("div",{style:{fontSize:9,color:C.mt}},cv.role))),
+        cv.unread?h("span",{style:{background:C.or,color:"#fff",borderRadius:20,fontSize:9,padding:"1px 5px",fontWeight:700}},cv.unread):null
+      ),
+      h("div",{style:{fontSize:9,color:C.mt,paddingLeft:20,overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis",maxWidth:140}},cv.last)
+    ));
+  });
+  shell.appendChild(sidebar);
+  const thread=h("div",{style:{flex:1,display:"flex",flexDirection:"column",minWidth:0}});
+  const cv=CONVS[st.openConv];
+  thread.appendChild(h("div",{style:{padding:"9px 14px",borderBottom:`1px solid ${C.bd}`,background:C.panel,display:"flex",alignItems:"center",gap:9}},
+    h("span",{style:{fontSize:18}},cv.icon),
+    h("div",{},h("div",{style:{fontSize:12,fontWeight:700,color:C.tx}},cv.name),h("div",{style:{fontSize:9,color:C.gn}},"● Online")),
+    h("div",{style:{marginLeft:"auto",display:"flex",gap:5}},
+      ...[["📞","Call"],["📹","Video"],["🎮","Lobby"]].map(([ic,lb])=>h("button",{style:{background:C.card,border:`1px solid ${C.bd}`,borderRadius:6,padding:"4px 8px",color:C.cy,fontSize:10}},ic+" "+lb))
+    )
+  ));
+  const msgs=h("div",{style:{flex:1,padding:"12px",display:"flex",flexDirection:"column",gap:9,overflowY:"auto"}});
+  MESSAGES.forEach(msg=>{
+    const row=h("div",{style:{display:"flex",justifyContent:msg.mine?"flex-end":"flex-start"}});
+    if(msg.type==="text") row.appendChild(h("div",{style:{background:msg.mine?C.or+"33":C.panel,border:`1px solid ${msg.mine?C.or+"66":C.bd}`,borderRadius:10,padding:"7px 11px",maxWidth:"62%"}},!msg.mine&&h("div",{style:{fontSize:9,color:C.mt,marginBottom:2}},msg.from),h("div",{style:{fontSize:12,color:C.tx,lineHeight:1.5}},msg.text),h("div",{style:{fontSize:9,color:C.mt,marginTop:2,textAlign:msg.mine?"right":"left"}},msg.time)));
+    if(msg.type==="beat") row.appendChild(h("div",{style:{background:C.panel,border:`1px solid ${C.gd}44`,borderRadius:10,padding:"11px",minWidth:200}},h("div",{style:{fontSize:9,color:C.mt,marginBottom:7}},msg.from+" · "+msg.time),h("div",{style:{display:"flex",alignItems:"center",gap:9,marginBottom:9}},h("div",{style:{width:36,height:36,borderRadius:7,background:C.gd+"22",border:`1px solid ${C.gd}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:17}},"🎵"),h("div",{},h("div",{style:{fontSize:12,fontWeight:700,color:C.gd}},msg.title),h("div",{style:{fontSize:10,color:C.mt}},msg.bpm+" · "+msg.dur))),h("div",{style:{display:"flex",gap:5}},...[["▶ Play",C.gd],["💾 Save",C.cy],["↗ Share",C.mt]].map(([lb,co])=>h("button",{style:{background:co+"22",border:`1px solid ${co}44`,borderRadius:5,padding:"3px 8px",color:co,fontSize:10,fontWeight:700}},lb)))));
+    if(msg.type==="playlist") row.appendChild(h("div",{style:{background:C.panel,border:`1px solid ${C.pu}44`,borderRadius:10,padding:"11px",minWidth:200}},h("div",{style:{fontSize:9,color:C.mt,marginBottom:7}},msg.from+" shared a playlist"),h("div",{style:{display:"flex",alignItems:"center",gap:9,marginBottom:9}},h("div",{style:{width:36,height:36,borderRadius:7,background:C.pu+"22",border:`1px solid ${C.pu}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:17}},"📋"),h("div",{},h("div",{style:{fontSize:12,fontWeight:700,color:C.pu}},msg.title),h("div",{style:{fontSize:10,color:C.mt}},msg.tracks+" tracks"))),h("div",{style:{display:"flex",gap:5}},h("button",{style:{background:C.pu+"22",border:`1px solid ${C.pu}44`,borderRadius:5,padding:"3px 8px",color:C.pu,fontSize:10,fontWeight:700}},"▶ Listen"),h("button",{style:{background:C.cy+"22",border:`1px solid ${C.cy}44`,borderRadius:5,padding:"3px 8px",color:C.cy,fontSize:10,fontWeight:700}},"💾 Save"))));
+    if(msg.type==="invite") row.appendChild(h("div",{style:{background:C.panel,border:`1px solid ${C.or}`,borderRadius:10,padding:"11px",minWidth:200}},h("div",{style:{fontSize:9,color:C.mt,marginBottom:7}},msg.from+" · "+msg.time),h("div",{style:{display:"flex",alignItems:"center",gap:9,marginBottom:9}},h("span",{style:{fontSize:20}},"🎮"),h("div",{},h("div",{style:{fontSize:12,fontWeight:700,color:C.or}},"Invite to Lobby"),h("div",{style:{fontSize:10,color:C.mt}},msg.room))),h("div",{style:{display:"flex",gap:5}},h("button",{style:{background:C.or,border:"none",borderRadius:7,padding:"6px 0",color:"#fff",fontSize:11,fontWeight:800,flex:1}},"✓ Join"),h("button",{style:{background:C.mt+"22",border:`1px solid ${C.bd}`,borderRadius:7,padding:"6px 11px",color:C.mt,fontSize:11}},"✕"))));
+    if(msg.type==="video") row.appendChild(h("div",{style:{background:C.panel,border:`1px solid ${C.cy}55`,borderRadius:10,padding:"11px",minWidth:185}},h("div",{style:{display:"flex",alignItems:"center",gap:9,marginBottom:9}},h("span",{style:{fontSize:20}},"📹"),h("div",{},h("div",{style:{fontSize:12,fontWeight:700,color:C.cy}},"Video Call"),h("div",{style:{fontSize:10,color:C.mt}},msg.from+" is calling..."))),h("div",{style:{display:"flex",gap:5}},h("button",{style:{background:"#00AA44",border:"none",borderRadius:7,padding:"6px 0",color:"#fff",fontSize:11,fontWeight:800,flex:1}},"📹 Answer"),h("button",{style:{background:C.rd,border:"none",borderRadius:7,padding:"6px 11px",color:"#fff",fontSize:11,fontWeight:700}},"✕"))));
+    msgs.appendChild(row);
+  });
+  thread.appendChild(msgs);
+  const comp=h("div",{style:{padding:"9px 11px",borderTop:`1px solid ${C.bd}`,display:"flex",gap:5,alignItems:"center",background:C.card,overflowX:"auto"}});
+  [["🎵","Beat"],["🎧","Mix"],["📷","Photo"],["🎮","Invite"],["📞","Call"],["📹","Video"]].forEach(([ic,lb])=>comp.appendChild(h("button",{style:{background:C.panel,border:`1px solid ${C.bd}`,borderRadius:5,padding:"4px 6px",color:C.mt,fontSize:9,display:"flex",flexDirection:"column",alignItems:"center",gap:1,flexShrink:0}},h("span",{},ic),h("span",{},lb))));
+  comp.appendChild(h("input",{type:"text",placeholder:"Message...",style:{flex:1,minWidth:70,background:C.panel,border:`1px solid ${C.bd}`,borderRadius:7,padding:"6px 9px",color:C.tx,fontSize:12,outline:"none"}}));
+  comp.appendChild(h("button",{style:{background:C.or,border:"none",borderRadius:7,padding:"6px 11px",color:"#fff",fontSize:12,fontWeight:700,flexShrink:0}},"Send"));
+  thread.appendChild(comp);
+  shell.appendChild(thread);
+  return shell;
+}
+
+function renderVideoTiles(){
+  const wrap=h("div",{cls:"fade-in"},sec("Video Tile Mood Engine — Interactive States"));
+  const modeRow=h("div",{style:{display:"flex",flexWrap:"wrap",gap:6,marginBottom:12}});
+  TILE_MODES.forEach(m=>modeRow.appendChild(h("button",{style:{background:st.tileMode===m.id?m.color+"33":C.card,border:`1px solid ${st.tileMode===m.id?m.color:C.bd}`,borderRadius:7,padding:"5px 11px",color:st.tileMode===m.id?m.color:C.mt,fontSize:11,fontWeight:700},"@click":()=>{st.tileMode=m.id;render();}},m.label)));
+  wrap.appendChild(modeRow);
+  const cur=TILE_MODES.find(m=>m.id===st.tileMode);
+  wrap.appendChild(h("div",{style:{background:cur.color+"18",border:`1px solid ${cur.color}44`,borderRadius:7,padding:"6px 11px",fontSize:11,color:cur.color,marginBottom:12}},cur.label+" — "+cur.desc));
+  const TILES=[
+    {name:"Tiana (TG)",role:"Performer", bg:"#C68642",icon:"🎤",active:true},
+    {name:"Julius",    role:"Hype Master",bg:"#8B7014",icon:"🦦",active:false},
+    {name:"Redbeard",  role:"Co-Host",   bg:"#E8A87C",icon:"🎙",active:true},
+    {name:"SByeeGil",  role:"Fan",        bg:"#4A2000",icon:"⭐",active:false}
+  ];
+  const grid=h("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(136px,1fr))",gap:11,marginBottom:14}});
+  TILES.forEach((t,i)=>{
+    let border=`2px solid ${C.bd}`;let cls="";
+    if(st.tileMode==="speaking"&&t.active){cls="speak-glow";border=`2px solid ${C.cy}`;}
+    else if(st.tileMode==="energy"&&t.active){cls="pulse-border";border=`2px solid ${C.or}`;}
+    else if(st.tileMode==="perform"&&i===0){cls="gold-pulse";border=`2px solid ${C.gd}`;}
+    else if(st.tileMode==="stable") border=`2px solid ${C.pu}66`;
+    else if(st.tileMode==="cinematic"&&t.active) border=`2px solid ${C.pk}66`;
+    const tile=h("div",{cls,style:{background:C.panel,borderRadius:9,overflow:"hidden",border,transition:"border 0.3s",opacity:st.tileMode==="minimized"?0.55:1}});
+    if(st.tileMode==="minimized"){
+      tile.appendChild(h("div",{style:{height:105,background:t.bg+"22",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:7}},h("div",{style:{width:50,height:50,borderRadius:"50%",background:t.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:21,position:"relative"}},t.icon,t.active&&h("div",{style:{position:"absolute",bottom:1,right:1,width:12,height:12,background:C.gn,borderRadius:"50%",border:`2px solid ${C.panel}`}})),h("div",{style:{fontSize:10,color:C.tx,fontWeight:700}},t.name)));
+    } else {
+      tile.appendChild(h("div",{style:{height:96,background:t.bg+"33",display:"flex",alignItems:"center",justifyContent:"center",fontSize:28}},t.icon));
+    }
+    tile.appendChild(h("div",{style:{padding:"5px 7px",background:C.card}},
+      h("div",{style:{fontSize:10,fontWeight:700,color:C.tx,marginBottom:1}},t.name),
+      h("div",{style:{fontSize:9,color:C.mt,marginBottom:3}},t.role),
+      h("div",{style:{display:"flex",gap:3,flexWrap:"wrap"}},
+        h("button",{style:{background:C.gn+"22",border:"none",borderRadius:3,padding:"2px 4px",color:C.gn,fontSize:9}},"🔊"),
+        h("button",{style:{background:C.cy+"22",border:"none",borderRadius:3,padding:"2px 4px",color:C.cy,fontSize:9}},"📹"),
+        st.tileMode==="stable"&&h("span",{style:{background:C.pu+"33",borderRadius:3,padding:"1px 4px",fontSize:8,color:C.pu,fontWeight:700}},"STABLE"),
+        st.tileMode==="perform"&&i===0&&h("span",{style:{background:C.gd+"33",borderRadius:3,padding:"1px 4px",fontSize:8,color:C.gd,fontWeight:700}},"LIVE"),
+        st.tileMode==="cinematic"&&t.active&&h("span",{style:{background:C.pk+"33",borderRadius:3,padding:"1px 4px",fontSize:8,color:C.pk,fontWeight:700}},"CINE"),
+        h("button",{style:{background:C.or+"22",border:"none",borderRadius:3,padding:"2px 4px",color:C.or,fontSize:8,marginLeft:"auto"}},"🎮 Invite")
+      )
+    ));
+    grid.appendChild(tile);
+  });
+  wrap.appendChild(grid);
+  const feats=h("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:7}});
+  [["Speaking Glow","Cyan pulse synced to voice via WebAudio VAD"],["Energy Pulse","Orange beat-reactive rim during live drops"],["Performance Mode","Gold pulse + energy ring for stage focus"],["Stable Lock","Click Stable → position frozen, saved forever"],["Cinematic Drift","Soft 3–5 min drift, never breaks workflow"],["Avatar Overlay","Video off → avatar shown + hologram badge"],["Video Over Avatar","Tile floats above avatar in lobby simultaneously"],["Lobby Invite Button","🎮 Invite in every tile → both users spawn together"]].forEach(([t2,d])=>feats.appendChild(h("div",{style:{background:C.card,border:`1px solid ${C.bd}`,borderRadius:7,padding:"7px 10px"}},h("div",{style:{fontSize:10,fontWeight:700,color:C.or,marginBottom:2}},t2),h("div",{style:{fontSize:10,color:C.mt,lineHeight:1.5}},d))));
+  wrap.appendChild(feats);
+  return wrap;
+}
+
+function renderAudio(){
+  const ducked=computeDucked();
+  const isDucking=st.voiceVol>70&&ducked<st.beatVol;
+  const wrap=h("div",{cls:"fade-in"},sec("Audio Ducking & Mixer Engine"));
+  if(isDucking) wrap.appendChild(h("div",{style:{background:C.gd+"22",border:`1px solid ${C.gd}55`,borderRadius:7,padding:"7px 11px",marginBottom:11,fontSize:11,color:C.gd}},"⚡ AUTO-DUCKING ACTIVE — Beat reduced to "+ducked+"% · Voice priority: "+st.voiceVol+"%"));
+  const mixer=h("div",{style:{background:C.card,border:`1px solid ${C.bd}`,borderRadius:11,padding:"16px 18px",marginBottom:12}});
+  mixer.appendChild(h("div",{style:{fontSize:11,fontWeight:700,color:C.cy,marginBottom:12}},"Audio Mixer"));
+  [{label:"Voice Volume",color:C.cy,val:st.voiceVol,key:"voiceVol"},{label:"Beat / Music",color:C.gd,val:ducked,key:"beatVol",ducked:isDucking},{label:"Room Audio",color:C.pu,val:st.roomVol,key:"roomVol"},{label:"Performer",color:C.or,val:st.perfVol,key:"perfVol"},{label:"Notifications",color:C.mt,val:st.notifVol,key:"notifVol"}].forEach(sl=>{
+    const row=h("div",{style:{marginBottom:14}});
+    row.appendChild(h("div",{style:{display:"flex",justifyContent:"space-between",marginBottom:4}},h("span",{style:{fontSize:11,color:sl.ducked?C.gd:C.tx,fontWeight:600}},sl.label+(sl.ducked?" ← DUCKED":"")),h("span",{style:{fontSize:11,color:sl.color,fontWeight:800}},sl.val+"%")));
+    const bg=h("div",{style:{height:4,background:C.bd,borderRadius:4,marginBottom:5,overflow:"hidden"}});
+    bg.appendChild(h("div",{style:{height:"100%",width:sl.val+"%",background:sl.ducked?C.gd+"77":sl.color,borderRadius:4,transition:"width 0.3s"}}));
+    row.appendChild(bg);
+    const inp=h("input",{type:"range",min:0,max:100,value:sl.val});
+    if(!sl.ducked) inp.addEventListener("input",e=>{st[sl.key]=+e.target.value;render();});
+    else inp.setAttribute("disabled","true");
+    row.appendChild(inp);
+    mixer.appendChild(row);
+  });
+  wrap.appendChild(mixer);
+  wrap.appendChild(sec("Mixing Presets",C.gd));
+  const presets=h("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:7}});
+  [{label:"Band Rehearsal",color:C.or,desc:"Instruments clearer, voices balanced, beat at 50%"},{label:"Performer Live",color:C.rd,desc:"Performer audio prioritized, room faded back"},{label:"Beat Review",color:C.gd,desc:"Beat at full, voices clear, no auto-ducking"},{label:"Silent Study",color:C.pu,desc:"Music at 20%, notifs off, voice only"}].forEach(p=>presets.appendChild(h("div",{style:{background:C.card,border:`1px solid ${p.color}33`,borderRadius:7,padding:"9px 11px"}},h("div",{style:{fontSize:11,fontWeight:700,color:p.color,marginBottom:2}},p.label),h("div",{style:{fontSize:10,color:C.mt}},p.desc))));
+  wrap.appendChild(presets);
+  return wrap;
+}
+
+function renderLive(){
+  const wrap=h("div",{cls:"fade-in"},sec("Instant Live Routing Engine"));
+  const panel=h("div",{style:{background:C.card,border:`1px solid ${C.bd}`,borderRadius:11,padding:"16px 18px",marginBottom:13}});
+  const toggle=h("div",{style:{display:"flex",gap:7,marginBottom:11}});
+  [["practice","🔒 PRACTICE",C.pu],["public","🌐 PUBLIC LIVE",C.rd]].forEach(([m,lb,col])=>toggle.appendChild(h("button",{style:{flex:1,padding:"8px",background:st.liveMode===m?col+"33":C.panel,border:`1px solid ${st.liveMode===m?col:C.bd}`,borderRadius:7,color:st.liveMode===m?col:C.mt,fontSize:11,fontWeight:800},"@click":()=>{st.liveMode=m;st.isLive=false;st.propTargets={};render();}},lb)));
+  panel.appendChild(toggle);
+  panel.appendChild(h("div",{style:{background:st.liveMode==="practice"?C.pu+"18":C.rd+"18",border:`1px solid ${st.liveMode==="practice"?C.pu:C.rd}44`,borderRadius:7,padding:"6px 10px",marginBottom:11,fontSize:11,color:st.liveMode==="practice"?C.pu:C.rd}},st.liveMode==="practice"?"Private session only. No public tiles. No propagation. Invite-only testing.":"Public: GlobalLiveSessionRegistry → LiveSurfacePropagationEngine → All 8 surfaces fire instantly."));
+  const goBtn=h("button",{style:{width:"100%",padding:"12px",background:st.isLive?C.rd+"33":C.rd,border:`1px solid ${C.rd}`,borderRadius:9,color:"#fff",fontSize:14,fontWeight:900,letterSpacing:2,transition:"all 0.3s"},"@click":()=>{
+    st.isLive=!st.isLive;st.propTargets={};
+    if(st.isLive&&st.liveMode==="public") PROP_TARGETS.forEach((t,i)=>setTimeout(()=>{st.propTargets[t.id]=true;render();},180+i*110));
+    render();
+  }},st.isLive?"⏹ STOP LIVE":"⏺ GO LIVE");
+  panel.appendChild(goBtn);
+  if(st.isLive) panel.appendChild(h("div",{style:{display:"flex",alignItems:"center",gap:7,marginTop:9,paddingTop:9,borderTop:`1px solid ${C.bd}`}},h("div",{style:{width:7,height:7,borderRadius:"50%",background:C.rd,boxShadow:`0 0 6px ${C.rd}`}}),h("span",{style:{fontSize:11,color:C.rd,fontWeight:700}},"LIVE · "+(st.liveMode==="practice"?"PRACTICE MODE":"BROADCASTING")),h("span",{style:{marginLeft:"auto",fontSize:10,color:C.mt}},"♡ 5s heartbeat")));
+  wrap.appendChild(panel);
+  if(st.liveMode==="public"){
+    wrap.appendChild(sec("Propagation Targets",C.rd));
+    const pg=h("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:7}});
+    PROP_TARGETS.forEach(t=>{
+      const act=!!st.propTargets[t.id];
+      pg.appendChild(h("div",{style:{background:act?t.color+"22":C.card,border:`1px solid ${act?t.color:C.bd}`,borderRadius:7,padding:"9px",textAlign:"center",transition:"all 0.4s",transform:act?"scale(1)":"scale(0.97)"}},h("div",{style:{fontSize:16,marginBottom:3}},t.icon),h("div",{style:{fontSize:10,fontWeight:700,color:act?t.color:C.mt}},t.label),h("div",{style:{fontSize:9,color:act?C.gn:C.mt,marginTop:2}},act?"✓ LIVE":"○ waiting")));
+    });
+    wrap.appendChild(pg);
+  }
+  const ls=sec("Session Lifecycle",C.gd,16);
+  wrap.appendChild(ls);
+  const lifecycle=h("div",{style:{display:"flex",background:C.card,border:`1px solid ${C.bd}`,borderRadius:9,overflow:"hidden",marginTop:10}});
+  [["⏺","Go Live"],["📋","Register"],["📡","Propagate"],["💓","Heartbeat"],["⏹","Stop"],["💾","Archive"]].forEach(([ico,lbl],i,arr)=>{
+    const act=st.isLive&&i<=3;
+    lifecycle.appendChild(h("div",{style:{flex:1,padding:"7px 3px",textAlign:"center",background:act?C.or+"22":"transparent",borderRight:i<arr.length-1?`1px solid ${C.bd}`:"none",transition:"background 0.3s"}},h("div",{style:{fontSize:13}},ico),h("div",{style:{fontSize:9,fontWeight:700,color:act?C.or:C.mt,marginTop:2}},lbl)));
+  });
+  wrap.appendChild(lifecycle);
+  return wrap;
+}
+
+function renderDirective(){
+  const wrap=h("div",{cls:"fade-in"},sec("TMI Build Directive — All 10 Phases"));
+  PHASES.forEach(ph=>{
+    const card=h("div",{style:{background:C.card,border:`1px solid ${st.openPhase===ph.n?ph.color:C.bd}`,borderRadius:9,marginBottom:7,overflow:"hidden",transition:"border 0.2s"}});
+    const header=h("div",{style:{display:"flex",alignItems:"center",gap:9,padding:"10px 13px",cursor:"pointer"},"@click":()=>{st.openPhase=st.openPhase===ph.n?null:ph.n;render();}},
+      h("div",{style:{width:24,height:24,borderRadius:5,background:ph.color+"22",border:`1px solid ${ph.color}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:900,color:ph.color,flexShrink:0}},ph.n),
+      h("div",{style:{fontSize:11,fontWeight:700,color:st.openPhase===ph.n?ph.color:C.tx,flex:1}},ph.title),
+      h("span",{style:{fontSize:11,color:C.mt}},st.openPhase===ph.n?"▲":"▼")
+    );
+    card.appendChild(header);
+    if(st.openPhase===ph.n){
+      const body=h("div",{style:{padding:"0 13px 11px"},cls:"fade-in"});
+      ph.items.forEach(item=>body.appendChild(h("div",{style:{display:"flex",gap:6,marginBottom:5}},h("span",{style:{color:ph.color,fontSize:9,marginTop:3,flexShrink:0}},"▸"),h("span",{style:{fontSize:11,color:C.mt,lineHeight:1.65}},item))));
+      card.appendChild(body);
+    }
+    wrap.appendChild(card);
+  });
+  wrap.appendChild(h("div",{style:{background:C.or+"18",border:`1px solid ${C.or}44`,borderRadius:9,padding:"13px 15px",marginTop:7}},
+    h("div",{style:{fontSize:11,fontWeight:700,color:C.or,marginBottom:7}},"CLI Verification — Mandatory on every build"),
+    h("div",{style:{fontFamily:"monospace",fontSize:11,color:C.gn,background:"#050510",borderRadius:5,padding:"9px 11px",marginBottom:7,lineHeight:1.9}},"pnpm -C apps/web typecheck",h("br",{}),"pnpm -C apps/web build"),
+    h("div",{style:{fontSize:10,color:C.mt,lineHeight:1.6}},"Execution mode: Code-first · CLI-verified · Visual certification deferred. Gate remains LOCKED for final UX certification until browser testing available. Effects every 3–5 min should feel like a living room breathing, not like pop-ups.")
+  ));
+  return wrap;
+}
+
+function render(){
+  const app=document.getElementById("app");
+  app.innerHTML="";
+  app.appendChild(h("div",{style:{background:C.card,borderBottom:`1px solid ${C.bd}`,padding:"14px 20px",display:"flex",alignItems:"center",gap:10}},
+    h("div",{},h("div",{style:{fontSize:18,fontWeight:900,color:C.or,letterSpacing:1.5}},"TMI OMNI-PRESENCE ENGINE"),h("div",{style:{fontSize:9,color:C.mt,marginTop:3,letterSpacing:0.5}},"MESSENGER · VIDEO TILES · MONITOR RUNTIME · AUDIO DUCKING · LIVE ROUTING · ALL 10 PHASES")),
+    h("div",{style:{marginLeft:"auto",display:"flex",gap:5}},pill("PHASES 1–10",C.cy),pill("BerntoutGlobal XXL",C.or))
+  ));
+  const tabBar=h("div",{style:{display:"flex",gap:3,padding:"9px 20px 0",borderBottom:`1px solid ${C.bd}`,background:C.card,overflowX:"auto"}});
+  TABS.forEach(t=>{
+    const act=st.tab===t.id;
+    tabBar.appendChild(h("button",{style:{padding:"7px 12px",fontSize:10,fontWeight:700,border:"none",borderRadius:"6px 6px 0 0",background:act?C.or:"transparent",color:act?"#fff":C.mt,borderBottom:act?`2px solid ${C.or}`:"2px solid transparent",whiteSpace:"nowrap",letterSpacing:0.4},"@click":()=>{st.tab=t.id;render();}},t.icon+" "+t.label));
+  });
+  app.appendChild(tabBar);
+  const body=h("div",{style:{padding:"16px 20px",minHeight:200}});
+  if(st.tab==="overview")   body.appendChild(renderOverview());
+  if(st.tab==="messenger")  body.appendChild(renderMessenger());
+  if(st.tab==="videotiles") body.appendChild(renderVideoTiles());
+  if(st.tab==="audio")      body.appendChild(renderAudio());
+  if(st.tab==="live")       body.appendChild(renderLive());
+  if(st.tab==="directive")  body.appendChild(renderDirective());
+  app.appendChild(body);
+}
+render();
+</script>

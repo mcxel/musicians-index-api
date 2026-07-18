@@ -329,13 +329,8 @@ export function middleware(req: NextRequest) {
 
       const redirectPath = resolvePrimaryPathForRoles(userRoles);
       if (!redirectPath) {
-        const res = NextResponse.next();
-        // If session exists but roles are missing, let auth render and force a
-        // clean login rather than bouncing between auth/protected routes.
-        res.cookies.delete('tmi_session');
-        res.cookies.delete('tmi_role');
-        res.cookies.delete('tmi_roles');
-        return res;
+        // Safe redirect to onboarding for active sessions with no roles yet
+        return NextResponse.redirect(new URL('/onboarding', req.url), 307);
       }
 
       const target = nextParam && !nextParam.startsWith('/auth') ? nextParam : redirectPath;
@@ -380,6 +375,16 @@ export function middleware(req: NextRequest) {
       const signin = new URL('/auth', req.url);
       signin.searchParams.set('next', pathname);
       return NextResponse.redirect(signin, 307);
+    }
+
+    // Onboarding Enforcer Gate
+    const onboardingStateCookie = req.cookies.get('tmi_onboarding_state')?.value ?? 'no_role_selected';
+    if (onboardingStateCookie !== 'complete' && !pathname.startsWith('/onboarding') && !pathname.startsWith('/api/')) {
+      if (userRoles.length === 0) {
+        return NextResponse.redirect(new URL('/onboarding', req.url), 307);
+      }
+      const targetStep = hasAnyRole(userRoles, ['ARTIST', 'PERFORMER']) ? '/onboarding/artist' : '/onboarding/fan';
+      return NextResponse.redirect(new URL(targetStep, req.url), 307);
     }
 
     if (isAdmin && !hasAnyRole(userRoles, ['ADMIN', 'STAFF'])) {

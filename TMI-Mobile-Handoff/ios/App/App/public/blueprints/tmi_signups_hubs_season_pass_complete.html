@@ -1,0 +1,649 @@
+
+<h2 class="sr-only">TMI sign-up pages, season pass, advertiser hub, and admin hub</h2>
+<style>
+.tabs{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:16px}
+.tab{padding:5px 10px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary);font-size:12px;cursor:pointer;background:var(--color-background-primary);color:var(--color-text-secondary)}
+.tab.on{background:var(--color-background-tertiary);color:var(--color-text-primary);font-weight:500;border-color:var(--color-border-primary)}
+.pg{display:none}.pg.on{display:block}
+.mq-form{border:2px dashed var(--color-border-warning);border-radius:var(--border-radius-lg);padding:20px;background:var(--color-background-secondary)}
+.tier-card{border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:10px 8px;text-align:center;cursor:pointer;background:var(--color-background-primary);transition:border-color .15s}
+.tier-card.sel{border:2px solid var(--color-border-warning);background:var(--color-background-warning)}
+.tier-card:hover{border-color:var(--color-border-secondary)}
+.feature-row{display:flex;align-items:center;gap:8px;padding:5px 0;font-size:13px;border-bottom:0.5px solid var(--color-border-tertiary)}
+.feature-row:last-child{border-bottom:none}
+.badge{font-size:11px;padding:2px 7px;border-radius:var(--border-radius-md);font-weight:500}
+.badge-bronze{background:var(--color-background-warning);color:var(--color-text-warning)}
+.badge-silver{background:var(--color-background-secondary);color:var(--color-text-secondary)}
+.badge-gold{background:var(--color-background-warning);color:var(--color-text-warning);border:0.5px solid var(--color-border-warning)}
+.badge-free{background:var(--color-background-secondary);color:var(--color-text-tertiary)}
+.badge-diamond{background:var(--color-background-info);color:var(--color-text-info)}
+.hubs-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.hub-panel{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:12px}
+.hub-panel h4{font-size:12px;font-weight:500;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:.05em;margin:0 0 8px}
+.stat-row{display:flex;justify-content:space-between;align-items:center;padding:3px 0;font-size:13px;border-bottom:0.5px solid var(--color-border-tertiary)}
+.stat-row:last-child{border-bottom:none}
+.live-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--color-danger-500,#E24B4A);margin-right:4px;vertical-align:middle}
+.fret-neck{width:60px;background:var(--color-background-tertiary);border:1.5px solid var(--color-border-secondary);border-radius:30px;position:relative;margin:0 auto;transition:background .3s}
+.fret-line{width:100%;height:1.5px;background:var(--color-border-secondary);margin:0}
+.level-dot{width:14px;height:14px;border-radius:50%;background:var(--color-background-primary);border:2px solid var(--color-border-secondary);position:absolute;left:50%;transform:translateX(-50%);cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center}
+.level-dot.reached{border-color:var(--color-border-warning);background:var(--color-background-warning)}
+.level-dot.current{border-color:var(--color-border-warning);background:var(--color-background-warning);box-shadow:0 0 0 4px var(--color-background-warning)}
+.progress-bar-v{position:absolute;left:50%;transform:translateX(-50%);width:6px;background:var(--color-background-warning);border-radius:3px;bottom:0;transition:height .8s ease-out}
+.reward-item{padding:5px 8px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-tertiary);background:var(--color-background-primary);font-size:12px;margin-bottom:4px;display:flex;align-items:center;gap:6px;opacity:.5;transition:opacity .3s,border-color .3s}
+.reward-item.reached{opacity:1;border-color:var(--color-border-warning)}
+.help-bot{position:fixed;bottom:16px;right:16px;background:var(--color-background-info);color:var(--color-text-info);border:0.5px solid var(--color-border-info);border-radius:var(--border-radius-lg);padding:8px 12px;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:6px}
+.action-btns{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.action-btns button{font-size:11px;padding:5px 10px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.grid5{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+</style>
+
+<div style="padding:8px 0">
+
+<div class="tabs">
+  <button class="tab on" onclick="sw('fan')"><i class="ti ti-users" aria-hidden="true"></i> Fan Sign Up</button>
+  <button class="tab" onclick="sw('artist')"><i class="ti ti-microphone" aria-hidden="true"></i> Artist Sign Up</button>
+  <button class="tab" onclick="sw('sponsor')"><i class="ti ti-building" aria-hidden="true"></i> Sponsor Sign Up</button>
+  <button class="tab" onclick="sw('adv')"><i class="ti ti-speakerphone" aria-hidden="true"></i> Advertiser Sign Up</button>
+  <button class="tab" onclick="sw('pass')"><i class="ti ti-trophy" aria-hidden="true"></i> Season Pass</button>
+  <button class="tab" onclick="sw('adhub')"><i class="ti ti-chart-bar" aria-hidden="true"></i> Advertiser Hub</button>
+  <button class="tab" onclick="sw('admin')"><i class="ti ti-shield" aria-hidden="true"></i> Admin Hub</button>
+</div>
+
+<!-- ═══ FAN SIGN UP ═══ -->
+<div id="pg-fan" class="pg on">
+  <div style="display:grid;grid-template-columns:1fr 1.4fr;gap:20px;align-items:start">
+    <div>
+      <p style="font-size:20px;font-weight:500;color:var(--color-text-warning,#BA7517);margin-bottom:8px">Join the crowd, experience the show!</p>
+      <div style="background:var(--color-background-warning);border-radius:var(--border-radius-lg);padding:14px;margin-bottom:12px">
+        <div style="font-size:13px;font-weight:500;margin-bottom:4px">#54 Billboard fans</div>
+        <div style="height:6px;background:var(--color-border-tertiary);border-radius:3px;margin-bottom:4px"><div style="height:6px;width:62%;background:var(--color-border-warning);border-radius:3px"></div></div>
+        <div style="font-size:12px;color:var(--color-text-secondary)">23,410 XP to next rank</div>
+      </div>
+      <div style="font-size:13px;font-weight:500;margin-bottom:8px">Quick pick avatar</div>
+      <div class="grid4" style="margin-bottom:12px">
+        <div class="tier-card sel" onclick="pickTier(this,'fan',0)"><i class="ti ti-user" style="font-size:20px" aria-hidden="true"></i><div style="font-size:10px;margin-top:3px" class="badge badge-free">FREE</div></div>
+        <div class="tier-card" onclick="pickTier(this,'fan',1)"><i class="ti ti-user-star" style="font-size:20px" aria-hidden="true"></i><div style="font-size:10px;margin-top:3px" class="badge badge-bronze">BRONZE</div></div>
+        <div class="tier-card" onclick="pickTier(this,'fan',2)"><i class="ti ti-crown" style="font-size:20px" aria-hidden="true"></i><div style="font-size:10px;margin-top:3px" class="badge badge-silver">SILVER</div></div>
+        <div class="tier-card" onclick="pickTier(this,'fan',3)"><i class="ti ti-crown" style="font-size:20px;color:var(--color-text-warning)" aria-hidden="true"></i><div style="font-size:10px;margin-top:3px" class="badge badge-gold">HOST</div></div>
+      </div>
+      <div style="font-size:13px;font-weight:500;margin-bottom:8px">Choose subscription</div>
+      <div class="grid5" id="fanTiers">
+        <div class="tier-card sel" onclick="setSubTier(this,'fan-sub',0)"><i class="ti ti-user" aria-hidden="true"></i><div class="badge badge-free" style="font-size:9px;margin-top:3px">FREE</div></div>
+        <div class="tier-card" onclick="setSubTier(this,'fan-sub',1)"><i class="ti ti-medal" aria-hidden="true" style="color:var(--color-text-warning)"></i><div class="badge badge-bronze" style="font-size:9px;margin-top:3px">BRONZE</div></div>
+        <div class="tier-card" onclick="setSubTier(this,'fan-sub',2)"><i class="ti ti-medal" aria-hidden="true" style="color:var(--color-text-secondary)"></i><div class="badge badge-silver" style="font-size:9px;margin-top:3px">SILVER</div></div>
+        <div class="tier-card" onclick="setSubTier(this,'fan-sub',3)"><i class="ti ti-crown" aria-hidden="true" style="color:var(--color-text-warning)"></i><div class="badge badge-gold" style="font-size:9px;margin-top:3px">GOLD</div></div>
+        <div class="tier-card" onclick="setSubTier(this,'fan-sub',4)"><i class="ti ti-diamond" aria-hidden="true" style="color:var(--color-text-info)"></i><div class="badge badge-diamond" style="font-size:9px;margin-top:3px">DIAMOND</div></div>
+      </div>
+    </div>
+    <div class="mq-form">
+      <p style="font-size:16px;font-weight:500;margin-bottom:4px">Fan sign up</p>
+      <p style="font-size:13px;color:var(--color-text-secondary);margin-bottom:14px">Create your account and earn exciting rewards!</p>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px">
+        <div style="position:relative"><i class="ti ti-user" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--color-text-secondary)" aria-hidden="true"></i><input type="text" placeholder="Username" style="padding-left:32px;width:100%"></div>
+        <div style="position:relative"><i class="ti ti-mail" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--color-text-secondary)" aria-hidden="true"></i><input type="email" placeholder="Email" style="padding-left:32px;width:100%"></div>
+        <div style="position:relative"><i class="ti ti-lock" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--color-text-secondary)" aria-hidden="true"></i><input type="password" placeholder="Password" style="padding-left:32px;width:100%"></div>
+        <div style="position:relative"><i class="ti ti-microphone" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--color-text-secondary)" aria-hidden="true"></i><select style="padding-left:32px;width:100%"><option>Artist name (optional)</option></select></div>
+        <div style="position:relative"><i class="ti ti-users" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--color-text-secondary)" aria-hidden="true"></i><select style="padding-left:32px;width:100%"><option>Role</option><option>Fan</option><option>Super Fan</option><option>Host Fan</option></select></div>
+      </div>
+      <div style="background:var(--color-background-tertiary);border-radius:var(--border-radius-md);padding:8px;margin-bottom:12px">
+        <div class="feature-row"><i class="ti ti-check" style="color:var(--color-text-success)" aria-hidden="true"></i> Earn tips &amp; points</div>
+        <div class="feature-row"><i class="ti ti-lock" style="color:var(--color-text-secondary)" aria-hidden="true"></i> Host mini cyphers</div>
+        <div class="feature-row"><i class="ti ti-lock" style="color:var(--color-text-secondary)" aria-hidden="true"></i> Start beat battles</div>
+      </div>
+      <button style="width:100%;padding:10px;font-weight:500;font-size:14px;background:var(--color-background-warning);color:var(--color-text-warning);border:1.5px solid var(--color-border-warning);border-radius:var(--border-radius-md)" onclick="sendPrompt('Build the Fan Sign Up page at /auth/signup?role=fan — fields: Username, Email, Password, Artist Name optional, Role dropdown. Subscription tier selector: FREE/BRONZE/SILVER/GOLD/DIAMOND with cartoon avatar cards. Quick Pick section. Feature list with lock icons for tier-gated features. JOIN THE CROWD CTA button. Billboard Fans rank display. After signup route to /dashboard/fan. Match the fan sign up reference image design.')">
+        <i class="ti ti-users" aria-hidden="true"></i> Join the crowd ↗
+      </button>
+      <p style="font-size:11px;color:var(--color-text-tertiary);text-align:center;margin-top:8px">After sign up → routed directly to your fan HUD</p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ ARTIST SIGN UP ═══ -->
+<div id="pg-artist" class="pg">
+  <div style="display:grid;grid-template-columns:1fr 1.4fr;gap:20px;align-items:start">
+    <div>
+      <p style="font-size:20px;font-weight:500;color:var(--color-text-warning,#BA7517);margin-bottom:12px">Enter the stage, experience the show!</p>
+      <div style="background:var(--color-background-warning);border-radius:var(--border-radius-lg);padding:14px;margin-bottom:12px">
+        <div style="font-size:13px;font-weight:500;margin-bottom:3px">Your performer profile</div>
+        <div style="font-size:12px;color:var(--color-text-secondary)">Go live, earn tips, climb the charts, battle for the crown</div>
+      </div>
+      <div style="font-size:13px;font-weight:500;margin-bottom:8px">Quick pick</div>
+      <div class="grid4" style="margin-bottom:12px">
+        <div class="tier-card sel"><i class="ti ti-user" style="font-size:20px" aria-hidden="true"></i><div style="font-size:10px;margin-top:3px" class="badge badge-free">FREE</div></div>
+        <div class="tier-card"><i class="ti ti-star" style="font-size:20px" aria-hidden="true"></i><div style="font-size:10px;margin-top:3px" class="badge badge-bronze">BRONZE</div></div>
+        <div class="tier-card"><i class="ti ti-crown" style="font-size:20px" aria-hidden="true"></i><div style="font-size:10px;margin-top:3px" class="badge badge-silver">SILVER</div></div>
+        <div class="tier-card"><i class="ti ti-headphones" style="font-size:20px;color:var(--color-text-warning)" aria-hidden="true"></i><div style="font-size:10px;margin-top:3px" class="badge badge-gold">HOST</div></div>
+      </div>
+      <div style="font-size:13px;font-weight:500;margin-bottom:8px">Choose subscription</div>
+      <div class="grid5">
+        <div class="tier-card sel"><i class="ti ti-user" aria-hidden="true"></i><div class="badge badge-free" style="font-size:9px;margin-top:3px">FREE</div></div>
+        <div class="tier-card"><i class="ti ti-medal" aria-hidden="true" style="color:var(--color-text-warning)"></i><div class="badge badge-bronze" style="font-size:9px;margin-top:3px">BRONZE</div></div>
+        <div class="tier-card"><i class="ti ti-medal" aria-hidden="true"></i><div class="badge badge-silver" style="font-size:9px;margin-top:3px">SILVER</div></div>
+        <div class="tier-card"><i class="ti ti-crown" aria-hidden="true" style="color:var(--color-text-warning)"></i><div class="badge badge-gold" style="font-size:9px;margin-top:3px">GOLD</div></div>
+        <div class="tier-card"><i class="ti ti-diamond" aria-hidden="true" style="color:var(--color-text-info)"></i><div class="badge badge-diamond" style="font-size:9px;margin-top:3px">DIAMOND</div></div>
+      </div>
+    </div>
+    <div class="mq-form">
+      <p style="font-size:16px;font-weight:500;margin-bottom:4px">Artist sign up</p>
+      <p style="font-size:13px;color:var(--color-text-secondary);margin-bottom:14px">Create your account and start streaming live!</p>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px">
+        <div style="position:relative"><i class="ti ti-user" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--color-text-secondary)" aria-hidden="true"></i><input type="text" placeholder="Username" style="padding-left:32px;width:100%"></div>
+        <div style="position:relative"><i class="ti ti-mail" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--color-text-secondary)" aria-hidden="true"></i><input type="email" placeholder="Email" style="padding-left:32px;width:100%"></div>
+        <div style="position:relative"><i class="ti ti-lock" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--color-text-secondary)" aria-hidden="true"></i><input type="password" placeholder="Password" style="padding-left:32px;width:100%"></div>
+        <div style="position:relative"><i class="ti ti-microphone" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--color-text-secondary)" aria-hidden="true"></i><input type="text" placeholder="Artist name (optional)" style="padding-left:32px;width:100%"></div>
+        <div style="position:relative"><i class="ti ti-music" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--color-text-secondary)" aria-hidden="true"></i><select style="padding-left:32px;width:100%"><option>Genre</option><option>Hip-Hop</option><option>R&amp;B</option><option>Electronic</option><option>Comedy</option><option>Dance</option><option>DJ</option><option>Afrobeat</option><option>Gospel</option></select></div>
+        <div style="position:relative"><i class="ti ti-users" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--color-text-secondary)" aria-hidden="true"></i><select style="padding-left:32px;width:100%"><option>Role</option><option>Performer</option><option>Artist</option><option>DJ</option><option>Comedian</option><option>Dancer</option><option>Poet / Spoken Word</option></select></div>
+      </div>
+      <div style="background:var(--color-background-tertiary);border-radius:var(--border-radius-md);padding:8px;margin-bottom:12px">
+        <div class="feature-row"><i class="ti ti-check" style="color:var(--color-text-success)" aria-hidden="true"></i> Earn tips &amp; points</div>
+        <div class="feature-row"><i class="ti ti-lock" style="color:var(--color-text-secondary)" aria-hidden="true"></i> Host mini cyphers</div>
+        <div class="feature-row"><i class="ti ti-lock" style="color:var(--color-text-secondary)" aria-hidden="true"></i> Start beat battles</div>
+      </div>
+      <button style="width:100%;padding:10px;font-weight:500;font-size:14px;background:var(--color-background-warning);color:var(--color-text-warning);border:1.5px solid var(--color-border-warning);border-radius:var(--border-radius-md)" onclick="sendPrompt('Build Artist Sign Up page at /auth/signup?role=artist — fields: Username, Email, Password, Artist Name, Genre dropdown (all 27 genres), Role dropdown. Subscription tier selector FREE through DIAMOND. Quick Pick avatars. Feature list. JOIN THE STAGE button. After signup route directly to /dashboard/performer. Match the artist sign up reference image with orange/gold marquee lights border on form.')">
+        <i class="ti ti-microphone" aria-hidden="true"></i> Join the stage ↗
+      </button>
+      <p style="font-size:11px;color:var(--color-text-tertiary);text-align:center;margin-top:8px">After sign up → routed directly to your performer HUD</p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SPONSOR SIGN UP ═══ -->
+<div id="pg-sponsor" class="pg">
+  <div style="display:grid;grid-template-columns:1fr 1.3fr;gap:20px;align-items:start">
+    <div>
+      <p style="font-size:20px;font-weight:500;color:var(--color-text-warning,#BA7517);margin-bottom:8px">Sponsor artists. Not just ads.</p>
+      <p style="font-size:13px;color:var(--color-text-secondary);margin-bottom:14px">Support real talent in your community. Artists promote your brand on stage, in streams, and across the platform.</p>
+      <div style="background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:14px;margin-bottom:12px">
+        <div style="font-size:13px;font-weight:500;margin-bottom:8px"><i class="ti ti-handshake" aria-hidden="true"></i> Sponsor artists directly</div>
+        <div style="font-size:12px;color:var(--color-text-secondary);margin-bottom:3px"><i class="ti ti-check" style="color:var(--color-text-success)" aria-hidden="true"></i> Choose artists to support</div>
+        <div style="font-size:12px;color:var(--color-text-secondary);margin-bottom:8px"><i class="ti ti-check" style="color:var(--color-text-success)" aria-hidden="true"></i> Fund their growth and exposure</div>
+        <div style="font-size:13px;font-weight:500;margin-bottom:8px"><i class="ti ti-eye" aria-hidden="true"></i> Artist profiles</div>
+        <div style="font-size:12px;color:var(--color-text-secondary);margin-bottom:2px"><i class="ti ti-check" style="color:var(--color-text-success)" aria-hidden="true"></i> Livestream overlays</div>
+        <div style="font-size:12px;color:var(--color-text-secondary);margin-bottom:2px"><i class="ti ti-check" style="color:var(--color-text-success)" aria-hidden="true"></i> Social shoutouts</div>
+        <div style="font-size:12px;color:var(--color-text-secondary)"><i class="ti ti-check" style="color:var(--color-text-success)" aria-hidden="true"></i> Community visibility</div>
+      </div>
+      <div style="background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:10px">
+        <div style="font-size:12px;font-weight:500;margin-bottom:4px"><i class="ti ti-world" aria-hidden="true"></i> Local + global reach</div>
+        <div style="font-size:11px;color:var(--color-text-secondary)"><i class="ti ti-check" style="color:var(--color-text-success)" aria-hidden="true"></i> Sponsor artists in your city, or sponsor globally.</div>
+      </div>
+    </div>
+    <div class="mq-form">
+      <p style="font-size:16px;font-weight:500;margin-bottom:4px">Sponsor sign up</p>
+      <p style="font-size:13px;color:var(--color-text-secondary);margin-bottom:14px">Sponsor artists directly and get promoted everywhere they go.</p>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px">
+        <div style="position:relative"><i class="ti ti-building" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--color-text-secondary)" aria-hidden="true"></i><input type="text" placeholder="Company name" style="padding-left:32px;width:100%"></div>
+        <div style="position:relative"><i class="ti ti-speakerphone" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--color-text-secondary)" aria-hidden="true"></i><input type="text" placeholder="Brand name (optional)" style="padding-left:32px;width:100%"></div>
+        <div style="position:relative"><i class="ti ti-mail" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--color-text-secondary)" aria-hidden="true"></i><input type="email" placeholder="Email" style="padding-left:32px;width:100%"></div>
+        <div style="position:relative"><i class="ti ti-lock" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--color-text-secondary)" aria-hidden="true"></i><input type="password" placeholder="Password" style="padding-left:32px;width:100%"></div>
+        <div style="position:relative"><i class="ti ti-briefcase" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--color-text-secondary)" aria-hidden="true"></i><select style="padding-left:32px;width:100%"><option>Industry</option><option>Music / Entertainment</option><option>Food &amp; Beverage</option><option>Fashion</option><option>Technology</option><option>Recording Studio</option><option>Local Business</option><option>Venue</option></select></div>
+      </div>
+      <div style="font-size:12px;font-weight:500;margin-bottom:8px">Sponsor tier</div>
+      <div class="grid4" style="margin-bottom:14px">
+        <div class="tier-card sel" onclick="setSponsorTier(this,0)"><i class="ti ti-briefcase" aria-hidden="true"></i><div class="badge badge-free" style="font-size:9px;margin-top:3px">LOCAL</div></div>
+        <div class="tier-card" onclick="setSponsorTier(this,1)"><i class="ti ti-briefcase" aria-hidden="true" style="color:var(--color-text-warning)"></i><div class="badge badge-bronze" style="font-size:9px;margin-top:3px">RISING</div></div>
+        <div class="tier-card" onclick="setSponsorTier(this,2)"><i class="ti ti-briefcase" aria-hidden="true" style="color:var(--color-text-warning)"></i><div class="badge badge-gold" style="font-size:9px;margin-top:3px">FEATURED</div></div>
+        <div class="tier-card" onclick="setSponsorTier(this,3)"><i class="ti ti-world" aria-hidden="true" style="color:var(--color-text-info)"></i><div class="badge badge-diamond" style="font-size:9px;margin-top:3px">GLOBAL</div></div>
+      </div>
+      <button style="width:100%;padding:10px;font-weight:500;font-size:14px;background:var(--color-background-warning);color:var(--color-text-warning);border:1.5px solid var(--color-border-warning);border-radius:var(--border-radius-md)" onclick="sendPrompt('Build Sponsor Sign Up page at /auth/signup?role=sponsor — fields: Company Name, Brand Name optional, Email, Password, Industry dropdown. Sponsor tier selector: LOCAL/RISING/FEATURED/GLOBAL (briefcase tier icons). START SPONSORING ARTISTS button. Benefits section: Sponsor Artists Directly, Artist Profiles (livestream overlays, social shoutouts, community visibility), Local plus Global Reach. After signup route to /dashboard/sponsor. Match sponsor sign up reference image with YOUR LOGO on stage visual and marquee lights form border.')">
+        <i class="ti ti-rocket" aria-hidden="true"></i> Start sponsoring artists ↗
+      </button>
+      <p style="font-size:11px;color:var(--color-text-tertiary);text-align:center;margin-top:8px">After sign up → routed directly to your sponsor HUD</p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ ADVERTISER SIGN UP ═══ -->
+<div id="pg-adv" class="pg">
+  <div style="display:grid;grid-template-columns:1fr 1.3fr;gap:20px;align-items:start">
+    <div>
+      <p style="font-size:20px;font-weight:500;color:var(--color-text-warning,#BA7517);margin-bottom:8px">Reach millions in real time.</p>
+      <p style="font-size:13px;color:var(--color-text-secondary);margin-bottom:14px">Target the right audience instantly. Track performance as it happens. Scale your campaigns globally.</p>
+      <div style="background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:14px;margin-bottom:12px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+          <div style="font-size:12px;color:var(--color-text-secondary)"><i class="ti ti-chart-line" style="color:var(--color-text-info)" aria-hidden="true"></i> Real-time analytics</div>
+          <div style="font-size:12px;color:var(--color-text-secondary)"><i class="ti ti-target" style="color:var(--color-text-info)" aria-hidden="true"></i> Audience targeting</div>
+          <div style="font-size:12px;color:var(--color-text-secondary)"><i class="ti ti-layout" style="color:var(--color-text-info)" aria-hidden="true"></i> Ad placement control</div>
+          <div style="font-size:12px;color:var(--color-text-secondary)"><i class="ti ti-coin" style="color:var(--color-text-info)" aria-hidden="true"></i> ROI tracking</div>
+          <div style="font-size:12px;color:var(--color-text-secondary)"><i class="ti ti-ab" style="color:var(--color-text-info)" aria-hidden="true"></i> A/B testing</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div style="background:var(--color-background-info);border-radius:var(--border-radius-md);padding:10px;text-align:center">
+          <div style="font-size:20px;font-weight:500;color:var(--color-text-info)">+127K</div>
+          <div style="font-size:11px;color:var(--color-text-info)">Views today</div>
+        </div>
+        <div style="background:var(--color-background-warning);border-radius:var(--border-radius-md);padding:10px;text-align:center">
+          <div style="font-size:20px;font-weight:500;color:var(--color-text-warning)">4.79M</div>
+          <div style="font-size:11px;color:var(--color-text-warning)">Total impressions</div>
+        </div>
+      </div>
+    </div>
+    <div class="mq-form">
+      <p style="font-size:16px;font-weight:500;margin-bottom:4px">Advertiser sign up</p>
+      <p style="font-size:13px;color:var(--color-text-secondary);margin-bottom:14px">Create your account and launch impact campaigns!</p>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px">
+        <div style="position:relative"><i class="ti ti-building" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--color-text-secondary)" aria-hidden="true"></i><input type="text" placeholder="Company name" style="padding-left:32px;width:100%"></div>
+        <div style="position:relative"><i class="ti ti-mail" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--color-text-secondary)" aria-hidden="true"></i><input type="email" placeholder="Email" style="padding-left:32px;width:100%"></div>
+        <div style="position:relative"><i class="ti ti-lock" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--color-text-secondary)" aria-hidden="true"></i><input type="password" placeholder="Password" style="padding-left:32px;width:100%"></div>
+      </div>
+      <div style="font-size:12px;font-weight:500;margin-bottom:8px">Campaign type</div>
+      <div class="grid4" style="margin-bottom:10px" id="campTypes">
+        <div class="tier-card sel" onclick="setCampType(this,0)"><i class="ti ti-player-play" aria-hidden="true"></i><div style="font-size:9px;color:var(--color-text-secondary);margin-top:3px">Video ads</div></div>
+        <div class="tier-card" onclick="setCampType(this,1)"><i class="ti ti-layout-dashboard" aria-hidden="true"></i><div style="font-size:9px;color:var(--color-text-secondary);margin-top:3px">Banner ads</div></div>
+        <div class="tier-card" onclick="setCampType(this,2)"><i class="ti ti-heart" aria-hidden="true"></i><div style="font-size:9px;color:var(--color-text-secondary);margin-top:3px">Sponsored reactions</div></div>
+        <div class="tier-card" onclick="setCampType(this,3)"><i class="ti ti-door-enter" aria-hidden="true"></i><div style="font-size:9px;color:var(--color-text-secondary);margin-top:3px">Sponsored rooms</div></div>
+      </div>
+      <div style="margin-bottom:8px">
+        <div style="font-size:12px;font-weight:500;margin-bottom:4px">Daily budget — <span id="budgetVal">$50</span></div>
+        <input type="range" min="10" max="500" value="50" step="10" style="width:100%" oninput="document.getElementById('budgetVal').textContent='$'+this.value">
+      </div>
+      <select style="width:100%;margin-bottom:8px"><option>Campaign duration</option><option>1 week</option><option>1 month</option><option>3 months</option><option>6 months</option><option>1 year</option></select>
+      <select style="width:100%;margin-bottom:14px"><option>Target audience (optional)</option><option>Hip-Hop fans 18–24</option><option>Live viewers</option><option>All genres</option><option>DJs + producers</option></select>
+      <button style="width:100%;padding:10px;font-weight:500;font-size:14px;background:var(--color-background-info);color:var(--color-text-info);border:1.5px solid var(--color-border-info);border-radius:var(--border-radius-md)" onclick="sendPrompt('Build Advertiser Sign Up page at /auth/signup?role=advertiser — fields: Company Name, Email, Password, Campaign Type selector (Video Ads, Banner Ads, Sponsored Reactions, Sponsored Rooms), Daily Budget slider, Campaign Duration dropdown, Target Audience dropdown. LAUNCH CAMPAIGN button. Benefits list: Real-Time Analytics, Audience Targeting, Ad Placement Control, ROI Tracking, A/B Testing. After signup route to /dashboard/advertiser. Match the Reach Millions in Real Time advertiser sign up reference image.')">
+        <i class="ti ti-rocket" aria-hidden="true"></i> Launch campaign ↗
+      </button>
+      <p style="font-size:11px;color:var(--color-text-tertiary);text-align:center;margin-top:8px">After sign up → routed directly to your advertiser HUD</p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SEASON PASS ═══ -->
+<div id="pg-pass" class="pg">
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;align-items:start">
+    <div>
+      <p style="font-size:16px;font-weight:500;margin-bottom:8px">Season pass — The Rise</p>
+      <div style="background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:12px;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+          <div style="width:44px;height:44px;border-radius:50%;background:var(--color-background-warning);display:flex;align-items:center;justify-content:center;font-weight:500;color:var(--color-text-warning);font-size:14px">RP</div>
+          <div><div style="font-weight:500;font-size:14px">ricardoparker</div><div style="font-size:11px;color:var(--color-text-secondary)">themusiciansindex.com/ricardoparker</div></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center">
+          <div><div style="font-size:16px;font-weight:500">120K</div><div style="font-size:10px;color:var(--color-text-secondary)">Followers</div></div>
+          <div><div style="font-size:16px;font-weight:500">945</div><div style="font-size:10px;color:var(--color-text-secondary)">Streams</div></div>
+          <div><div style="font-size:16px;font-weight:500">#3</div><div style="font-size:10px;color:var(--color-text-secondary)">Overall</div></div>
+        </div>
+      </div>
+      <div style="font-size:12px;font-weight:500;margin-bottom:6px">Select instrument</div>
+      <div style="display:flex;gap:5px;margin-bottom:12px">
+        <button onclick="setInstrument('guitar')" id="inst-guitar" class="tab on" style="flex:1;font-size:11px;padding:5px 4px"><i class="ti ti-guitar-pick" aria-hidden="true"></i> Guitar</button>
+        <button onclick="setInstrument('drums')" id="inst-drums" class="tab" style="flex:1;font-size:11px;padding:5px 4px"><i class="ti ti-circle" aria-hidden="true"></i> Drums</button>
+        <button onclick="setInstrument('sax')" id="inst-sax" class="tab" style="flex:1;font-size:11px;padding:5px 4px"><i class="ti ti-music" aria-hidden="true"></i> Sax</button>
+        <button onclick="setInstrument('piano')" id="inst-piano" class="tab" style="flex:1;font-size:11px;padding:5px 4px"><i class="ti ti-keyframes" aria-hidden="true"></i> Piano</button>
+      </div>
+      <div style="font-size:12px;font-weight:500;margin-bottom:4px">Progress — level <span id="curLevel">3</span>/15</div>
+      <div style="height:6px;background:var(--color-border-tertiary);border-radius:3px;margin-bottom:8px"><div id="passBar" style="height:6px;background:var(--color-border-warning);border-radius:3px;width:20%;transition:width .6s"></div></div>
+      <input type="range" min="1" max="15" value="3" style="width:100%;margin-bottom:8px" oninput="setLevel(parseInt(this.value))">
+      <button style="width:100%;padding:10px;font-weight:500;background:var(--color-background-warning);color:var(--color-text-warning);border:1.5px solid var(--color-border-warning);border-radius:var(--border-radius-md);margin-bottom:4px" onclick="sendPrompt('Build Season Pass page at /season-pass — animated instrument fretboard showing level progression 1-15. Support Guitar, Drums, Saxophone, and Piano instrument selector (changes the visual). Level markers with prize icons: L1 Avatar Item Sparkler, L3 New Song Unlocked, L5 Battle Ticket + Avatar Jester Hat, L7 100K Streams Badge, L10 Private Studio Pass, L12 Exclusive NFT Track, L15 Main Stage Access + Microphone unlock. Animated progress dot moves up the neck. Reached levels glow. BUY/UPGRADE SEASON PASS button. Match the season pass reference image design.')">
+        <i class="ti ti-crown" aria-hidden="true"></i> Buy / Upgrade season pass ↗
+      </button>
+      <button style="width:100%;padding:7px;font-size:12px;border-radius:var(--border-radius-md)">
+        <i class="ti ti-robot" aria-hidden="true"></i> Ask help bot
+      </button>
+    </div>
+    <!-- Instrument neck visual -->
+    <div style="display:flex;flex-direction:column;align-items:center">
+      <div style="font-size:12px;font-weight:500;color:var(--color-text-secondary);margin-bottom:8px;text-align:center" id="instLabel">Guitar fretboard</div>
+      <div id="neckWrap" style="position:relative;width:70px;height:460px">
+        <div id="neck" class="fret-neck" style="height:100%;position:absolute;inset:0"></div>
+        <div id="progFill" class="progress-bar-v" style="height:15%"></div>
+        <!-- Fret lines and dots rendered by JS -->
+        <div id="fretDots"></div>
+      </div>
+    </div>
+    <!-- Rewards list -->
+    <div>
+      <p style="font-size:14px;font-weight:500;margin-bottom:10px">Level rewards</p>
+      <div id="rewardsList"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ ADVERTISER HUB ═══ -->
+<div id="pg-adhub" class="pg">
+  <div style="display:grid;grid-template-columns:1.2fr 1fr;gap:14px">
+    <div>
+      <p style="font-size:16px;font-weight:500;margin-bottom:4px">Advertiser hub</p>
+      <p style="font-size:12px;color:var(--color-text-secondary);margin-bottom:12px">Unified ad &amp; sponsorship command center</p>
+      <!-- Campaign Control -->
+      <div class="hub-panel" style="margin-bottom:10px">
+        <h4>Campaign control</h4>
+        <div style="font-size:12px;color:var(--color-text-secondary);margin-bottom:4px">Campaign name</div>
+        <input type="text" value="Neon Pulse Launch" style="width:100%;margin-bottom:8px">
+        <div style="font-size:12px;color:var(--color-text-secondary);margin-bottom:4px">Budget — <span id="campBudget">$1,200</span></div>
+        <input type="range" min="100" max="5000" value="1200" step="50" style="width:100%;margin-bottom:8px" oninput="document.getElementById('campBudget').textContent='$'+parseInt(this.value).toLocaleString()">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div style="font-size:12px;color:var(--color-text-secondary)">Active slots</div>
+          <div style="display:flex;gap:4px">
+            <div style="width:16px;height:16px;border-radius:50%;background:var(--color-border-warning)"></div>
+            <div style="width:16px;height:16px;border-radius:50%;background:var(--color-border-warning)"></div>
+            <div style="width:16px;height:16px;border-radius:50%;background:var(--color-border-warning)"></div>
+            <div style="width:16px;height:16px;border-radius:50%;background:var(--color-border-tertiary)"></div>
+            <div style="width:16px;height:16px;border-radius:50%;background:var(--color-border-tertiary)"></div>
+          </div>
+          <div style="font-size:12px;color:var(--color-text-secondary)">3/5</div>
+        </div>
+        <div style="font-size:12px;font-weight:500;margin-bottom:6px">Targeting</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+          <div style="background:var(--color-background-warning);color:var(--color-text-warning);font-size:11px;padding:3px 8px;border-radius:var(--border-radius-md)">Genre: Hip-Hop</div>
+          <div style="background:var(--color-background-info);color:var(--color-text-info);font-size:11px;padding:3px 8px;border-radius:var(--border-radius-md)">Location: USA</div>
+          <div style="background:var(--color-background-secondary);color:var(--color-text-secondary);font-size:11px;padding:3px 8px;border-radius:var(--border-radius-md)">Electronic</div>
+          <div style="background:var(--color-background-secondary);color:var(--color-text-secondary);font-size:11px;padding:3px 8px;border-radius:var(--border-radius-md)">Global</div>
+        </div>
+        <div class="action-btns">
+          <button style="background:var(--color-background-danger);color:var(--color-text-danger);border:0.5px solid var(--color-border-danger);flex:1"><i class="ti ti-player-play" aria-hidden="true"></i> Run ad</button>
+          <button style="flex:1"><i class="ti ti-coin" aria-hidden="true"></i> Boost budget</button>
+          <button style="flex:1"><i class="ti ti-target" aria-hidden="true"></i> Target audience</button>
+        </div>
+      </div>
+      <!-- Action buttons row -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+        <button style="padding:8px;font-size:12px"><i class="ti ti-map-pin" aria-hidden="true"></i> Choose placement</button>
+        <button style="padding:8px;font-size:12px"><i class="ti ti-robot" aria-hidden="true"></i> Auto optimize</button>
+        <button style="padding:8px;font-size:12px"><i class="ti ti-chart-pie" aria-hidden="true"></i> Deep analytics</button>
+        <button style="padding:8px;font-size:12px"><i class="ti ti-copy" aria-hidden="true"></i> Duplicate campaign</button>
+      </div>
+    </div>
+    <div>
+      <!-- Top Sponsored Artists -->
+      <div class="hub-panel" style="margin-bottom:10px">
+        <h4>Top sponsored artists (ROI rank)</h4>
+        <div id="topArtists"></div>
+      </div>
+      <!-- Performance Billboard tiers -->
+      <div class="hub-panel" style="margin-bottom:10px">
+        <h4>Performance Billboard</h4>
+        <div class="grid3" style="gap:5px">
+          <div class="tier-card"><i class="ti ti-medal" aria-hidden="true" style="color:var(--color-text-warning)"></i><div class="badge badge-bronze" style="font-size:9px;margin-top:3px">BRONZE</div></div>
+          <div class="tier-card"><i class="ti ti-medal" aria-hidden="true" style="color:var(--color-text-warning)"></i><div class="badge badge-gold" style="font-size:9px;margin-top:3px">GOLD $350</div></div>
+          <div class="tier-card"><i class="ti ti-diamond" aria-hidden="true" style="color:var(--color-text-info)"></i><div class="badge badge-diamond" style="font-size:9px;margin-top:3px">DIAMOND $85+</div></div>
+        </div>
+      </div>
+      <!-- Live Marketplace -->
+      <div class="hub-panel" style="margin-bottom:10px">
+        <h4>Live marketplace — current bidding</h4>
+        <div id="liveMarket"></div>
+      </div>
+      <!-- Watch Ad -->
+      <div class="hub-panel" style="background:var(--color-background-warning)">
+        <h4 style="color:var(--color-text-warning)">Watch ad preview</h4>
+        <div style="aspect-ratio:16/9;background:var(--color-background-secondary);border-radius:var(--border-radius-md);display:flex;align-items:center;justify-content:center;margin-bottom:8px">
+          <i class="ti ti-player-play" style="font-size:32px;color:var(--color-text-secondary)" aria-hidden="true"></i>
+        </div>
+        <button style="width:100%;background:var(--color-background-danger);color:var(--color-text-danger);border:0.5px solid var(--color-border-danger);border-radius:var(--border-radius-md);padding:7px;font-size:12px">
+          <i class="ti ti-eye" aria-hidden="true"></i> Watch ad
+        </button>
+      </div>
+    </div>
+  </div>
+  <div style="text-align:center;margin-top:10px">
+    <button onclick="sendPrompt('Build Advertiser Hub dashboard at /dashboard/advertiser — Campaign Control section (campaign name input, budget slider, active slots 3/5 indicator, genre and location targeting tags, LAUNCH CAMPAIGN button, DUPLICATE CAMPAIGN button), Top Sponsored Artists ROI rank list, Live Marketplace with current bidding rates, Performance Billboard tier cards (Bronze/Gold $350/Diamond $85+/Artist), Ad Billboard rankings, social action buttons (TIP, Clap, Wave), RUN AD + BOOST BUDGET + TARGET AUDIENCE row, CHOOSE PLACEMENT + AUTO OPTIMIZE row, DEEP ANALYTICS button, WATCH AD section. Match the Advertiser Hub reference image.')">Build advertiser hub in repo ↗</button>
+  </div>
+</div>
+
+<!-- ═══ ADMIN HUB ═══ -->
+<div id="pg-admin" class="pg">
+  <div style="margin-bottom:8px;display:flex;justify-content:space-between;align-items:center">
+    <div><p style="font-size:15px;font-weight:500;margin-bottom:2px">BerntttGlobal — Overseer deck</p><p style="font-size:11px;color:var(--color-text-secondary)"><span class="live-dot"></span>LIVE · 21M users · DPE active · 11:45 AM EST</p></div>
+    <div style="display:flex;gap:5px;flex-wrap:wrap">
+      <button style="font-size:10px;padding:4px 8px;background:var(--color-background-danger);color:var(--color-text-danger);border:0.5px solid var(--color-border-danger)"><i class="ti ti-ban" aria-hidden="true"></i> Quick block</button>
+      <button style="font-size:10px;padding:4px 8px"><i class="ti ti-alert-triangle" aria-hidden="true"></i> Alerts <span style="background:var(--color-background-danger);color:var(--color-text-danger);border-radius:50%;padding:0 5px;font-size:9px">8</span></button>
+      <button style="font-size:10px;padding:4px 8px"><i class="ti ti-users-group" aria-hidden="true"></i> Summon Big Ace</button>
+      <button style="font-size:10px;padding:4px 8px;background:var(--color-background-warning);color:var(--color-text-warning);border:0.5px solid var(--color-border-warning)"><i class="ti ti-check" aria-hidden="true"></i> Approve queue</button>
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1.6fr 1fr;gap:8px;margin-bottom:8px">
+    <!-- Chain Command -->
+    <div class="hub-panel">
+      <h4>Chain command</h4>
+      <div style="display:flex;align-items:center;gap:6px;padding:5px;background:var(--color-background-secondary);border-radius:var(--border-radius-md);margin-bottom:4px"><div style="width:24px;height:24px;border-radius:50%;background:var(--color-background-warning);display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--color-text-warning)">BA</div><div style="font-size:11px">Big Ace — Overseer</div></div>
+      <div style="border-left:2px solid var(--color-border-tertiary);margin-left:11px;padding-left:10px">
+        <div style="font-size:11px;color:var(--color-text-secondary);margin:3px 0">Big Ace ↓</div>
+        <div style="font-size:11px;color:var(--color-text-secondary);margin:3px 0">Marcel (Founder)</div>
+      </div>
+      <div style="margin-top:8px;font-size:10px;color:var(--color-text-secondary)">Verifying supervisors: 10 · 8:55</div>
+      <div style="font-size:10px;color:var(--color-text-secondary)">Teams: 3 · $56K</div>
+      <div style="background:var(--color-background-success);border-radius:var(--border-radius-md);padding:5px;margin-top:5px;text-align:center">
+        <div style="font-size:14px;font-weight:500;color:var(--color-text-success)">54%</div>
+        <div style="font-size:9px;color:var(--color-text-success)">Chain health — GOOD</div>
+      </div>
+    </div>
+    <!-- TV Screen Router + Live Feed -->
+    <div>
+      <div class="hub-panel" style="margin-bottom:8px">
+        <h4>TV screen router — Boardroom live <span class="live-dot"></span></h4>
+        <div style="aspect-ratio:16/6;background:var(--color-background-tertiary);border-radius:var(--border-radius-md);display:flex;align-items:center;justify-content:center;margin-bottom:6px">
+          <i class="ti ti-device-desktop" style="font-size:28px;color:var(--color-text-tertiary)" aria-hidden="true"></i>
+        </div>
+        <div style="display:flex;gap:5px">
+          <button style="font-size:10px;padding:3px 7px;flex:1">TV Rcuue</button>
+          <button style="font-size:10px;padding:3px 7px;flex:1"><span class="live-dot"></span>Boardroom</button>
+          <button style="font-size:10px;padding:3px 7px;flex:1">Record notes</button>
+        </div>
+      </div>
+      <div class="hub-panel">
+        <h4>Live feed explorer</h4>
+        <div style="display:flex;gap:5px;margin-bottom:8px">
+          <input type="text" placeholder="Search artists or events..." style="flex:1;font-size:11px">
+          <button style="font-size:10px;padding:4px 8px"><i class="ti ti-search" aria-hidden="true"></i></button>
+        </div>
+        <div style="display:flex;gap:5px;margin-bottom:8px;flex-wrap:wrap">
+          <button style="font-size:10px;padding:3px 8px;background:var(--color-background-success);color:var(--color-text-success);border-radius:var(--border-radius-md)">Live now</button>
+          <button style="font-size:10px;padding:3px 8px">Genre: Hip-Hop</button>
+          <button style="font-size:10px;padding:3px 8px">Top trending</button>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px" id="liveFeed"></div>
+      </div>
+    </div>
+    <!-- Security Sentinel + Account Linker -->
+    <div>
+      <div class="hub-panel" style="margin-bottom:8px">
+        <h4>Security sentinel wall</h4>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+          <div style="font-size:18px;font-weight:500">100 <span style="font-size:11px;color:var(--color-text-secondary)">sentinels</span></div>
+          <span style="background:var(--color-background-success);color:var(--color-text-success);padding:2px 6px;border-radius:var(--border-radius-md);font-size:10px">LOW</span>
+        </div>
+        <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:3px">Threat level: STABLE</div>
+        <div class="stat-row"><span>Vulnerabilities fixed</span><span style="color:var(--color-text-success)">2</span></div>
+        <div class="stat-row"><span>Urgent</span><span style="color:var(--color-text-danger)">0</span></div>
+        <div class="stat-row"><span>Alerts</span><span>15</span></div>
+      </div>
+      <div class="hub-panel">
+        <h4>Account linker</h4>
+        <div id="acctLinker"></div>
+      </div>
+    </div>
+  </div>
+  <!-- Bottom row: Bot Roster + Inbox + Analytics -->
+  <div style="display:grid;grid-template-columns:1fr 1fr 1.5fr;gap:8px">
+    <div>
+      <div class="hub-panel" style="margin-bottom:8px">
+        <h4>Bot roster &amp; summon</h4>
+        <div id="botRoster"></div>
+      </div>
+      <div class="hub-panel">
+        <h4>Unified inbox <span style="background:var(--color-background-info);color:var(--color-text-info);border-radius:50%;padding:0 5px;font-size:10px">7</span></h4>
+        <div id="inboxList"></div>
+      </div>
+    </div>
+    <div class="hub-panel">
+      <h4>Artist analytics &amp; revenue</h4>
+      <div style="display:flex;gap:5px;margin-bottom:8px;flex-wrap:wrap">
+        <button style="font-size:9px;padding:2px 6px;background:var(--color-background-warning);color:var(--color-text-warning);border-radius:var(--border-radius-md)">Month</button>
+        <button style="font-size:9px;padding:2px 6px">Web</button>
+        <button style="font-size:9px;padding:2px 6px">Wave</button>
+        <button style="font-size:9px;padding:2px 6px">NFT</button>
+      </div>
+      <div style="height:90px;background:var(--color-background-tertiary);border-radius:var(--border-radius-md);display:flex;align-items:flex-end;gap:2px;padding:8px;margin-bottom:8px" id="revChart"></div>
+      <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:5px">Money &amp; billing</div>
+      <div id="moneyBilling"></div>
+    </div>
+    <div class="hub-panel">
+      <h4>Musician index &amp; magazine analytics</h4>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div>
+          <div style="font-size:11px;font-weight:500;margin-bottom:6px">Live billboard rankings</div>
+          <input type="text" placeholder="Search filter..." style="width:100%;margin-bottom:6px;font-size:11px">
+          <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:4px">Trending now</div>
+          <div id="bbRankings"></div>
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:500;margin-bottom:6px">Artist profile deep dive</div>
+          <div style="display:flex;gap:5px;margin-bottom:6px" id="profileAvatars"></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;text-align:center;margin-bottom:6px">
+            <div><div style="font-size:13px;font-weight:500">1.2K</div><div style="font-size:9px;color:var(--color-text-secondary)">Followers</div></div>
+            <div><div style="font-size:13px;font-weight:500">3.9K</div><div style="font-size:9px;color:var(--color-text-secondary)">Interact.</div></div>
+            <div><div style="font-size:13px;font-weight:500">370</div><div style="font-size:9px;color:var(--color-text-secondary)">Mirrors</div></div>
+          </div>
+          <div style="font-size:11px;font-weight:500;margin-bottom:5px">Magazine performance</div>
+          <div id="magPerf"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div style="text-align:center;margin-top:10px">
+    <button onclick="sendPrompt('Build Admin Overseer Hub at /admin — BerntttGlobal branding, LIVE indicator with user count and DPE status, timestamp. Quick action bar: QUICK BLOCK, TAX LOSE, ALERTS badge, CHAIN PULSE, Start Meeting, Summon Big Ace, Approve Queue. Chain Command panel with Big Ace hierarchy. TV Screen Router panel with boardroom feed. Security Sentinel Wall: 100 sentinels, threat level STABLE, vulnerabilities/urgent/alerts counts. Live Feed Explorer with search, genre filter, trending toggle, 4-tile video grid. Bot Roster and Summon panel. Unified Inbox (7 items). Money and Billing section. Artist Analytics and Revenue with chart and revenue trends. Musician Index and Magazine Analytics with billboard rankings and artist profile deep dive. Match the Administration Hub reference image.')">Build admin hub in repo ↗</button>
+  </div>
+</div>
+
+</div>
+
+<script>
+function sw(name){
+  document.querySelectorAll('.pg').forEach(p=>p.classList.remove('on'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
+  document.getElementById('pg-'+name).classList.add('on');
+  const tabs={'fan':0,'artist':1,'sponsor':2,'adv':3,'pass':4,'adhub':5,'admin':6};
+  document.querySelectorAll('.tab')[tabs[name]].classList.add('on');
+  if(name==='pass') initPass();
+  if(name==='admin') initAdmin();
+  if(name==='adhub') initAdHub();
+}
+function pickTier(el,group,idx){el.closest('.grid4').querySelectorAll('.tier-card').forEach(c=>c.classList.remove('sel'));el.classList.add('sel');}
+function setSubTier(el,group,idx){el.closest('.grid5').querySelectorAll('.tier-card').forEach(c=>c.classList.remove('sel'));el.classList.add('sel');}
+function setSponsorTier(el,idx){el.closest('.grid4').querySelectorAll('.tier-card').forEach(c=>c.classList.remove('sel'));el.classList.add('sel');}
+function setCampType(el,idx){el.closest('.grid4').querySelectorAll('.tier-card').forEach(c=>c.classList.remove('sel'));el.classList.add('sel');}
+
+const REWARDS=[
+  {lv:1,icon:'ti-sparkles',label:'Avatar item — sparkler',color:'var(--color-text-warning)'},
+  {lv:2,icon:'ti-heart',label:'Fan badge unlocked',color:'var(--color-text-danger)'},
+  {lv:3,icon:'ti-music',label:'New song unlocked',color:'var(--color-text-info)'},
+  {lv:4,icon:'ti-star',label:'Rising star badge',color:'var(--color-text-warning)'},
+  {lv:5,icon:'ti-ticket',label:'Battle ticket + Jester hat',color:'var(--color-text-success)'},
+  {lv:6,icon:'ti-trophy',label:'Top 10 achievement',color:'var(--color-text-warning)'},
+  {lv:7,icon:'ti-badge',label:'100K streams badge',color:'var(--color-text-info)'},
+  {lv:8,icon:'ti-coin',label:'Tip multiplier x1.5',color:'var(--color-text-warning)'},
+  {lv:9,icon:'ti-world',label:'Global chart entry',color:'var(--color-text-info)'},
+  {lv:10,icon:'ti-key',label:'Private studio pass',color:'var(--color-text-success)'},
+  {lv:11,icon:'ti-crown',label:'Crown contender status',color:'var(--color-text-warning)'},
+  {lv:12,icon:'ti-diamond',label:'Exclusive NFT track',color:'var(--color-text-info)'},
+  {lv:13,icon:'ti-user-star',label:'Artist verification badge',color:'var(--color-text-warning)'},
+  {lv:14,icon:'ti-rocket',label:'Promo rocket boost',color:'var(--color-text-danger)'},
+  {lv:15,icon:'ti-microphone',label:'Main stage access + mic unlock',color:'var(--color-text-warning)'},
+];
+const INSTRUMENTS={
+  guitar:{label:'Guitar fretboard',bg:'var(--color-background-tertiary)',lineCount:15},
+  drums:{label:'Drum pad progression',bg:'var(--color-background-secondary)',lineCount:8},
+  sax:{label:'Saxophone keys',bg:'var(--color-background-tertiary)',lineCount:12},
+  piano:{label:'Piano key ladder',bg:'var(--color-background-secondary)',lineCount:15},
+};
+let curInst='guitar', curLv=3;
+
+function setInstrument(inst){
+  curInst=inst;
+  document.querySelectorAll('[id^="inst-"]').forEach(b=>{b.classList.remove('on');});
+  document.getElementById('inst-'+inst).classList.add('on');
+  document.getElementById('instLabel').textContent=INSTRUMENTS[inst].label;
+  document.getElementById('neck').style.background=INSTRUMENTS[inst].bg;
+  renderFrets();
+}
+function setLevel(lv){
+  curLv=lv;
+  document.getElementById('curLevel').textContent=lv;
+  document.getElementById('passBar').style.width=Math.round(lv/15*100)+'%';
+  document.getElementById('progFill').style.height=Math.round(lv/15*85)+'%';
+  renderFrets();renderRewards();
+}
+function renderFrets(){
+  const el=document.getElementById('fretDots');
+  let h='';
+  const SPACING=460/16;
+  for(let i=1;i<=15;i++){
+    const top=460-(i*SPACING);
+    const reached=i<=curLv;
+    const isCur=i===curLv;
+    h+=`<div class="level-dot ${reached?'reached':''} ${isCur?'current':''}" style="top:${top}px" title="Level ${i}" onclick="setLevel(${i})"><span style="font-size:7px;color:var(--color-text-${reached?'warning':'tertiary'})">${i}</span></div>`;
+    if(i%3===0||i===5||i===7) h+=`<div style="position:absolute;width:100%;height:1.5px;background:var(--color-border-secondary);top:${top+7}px"></div>`;
+  }
+  el.innerHTML=h;
+}
+function renderRewards(){
+  const rl=document.getElementById('rewardsList');
+  rl.innerHTML=REWARDS.map(r=>`<div class="reward-item ${r.lv<=curLv?'reached':''}">
+    <i class="ti ${r.icon}" style="color:${r.lv<=curLv?r.color:'var(--color-text-tertiary)'};font-size:16px" aria-hidden="true"></i>
+    <div><div style="font-size:11px;font-weight:500">Level ${r.lv}</div><div style="font-size:11px;color:var(--color-text-secondary)">${r.label}</div></div>
+  </div>`).join('');
+}
+function initPass(){
+  renderFrets();renderRewards();
+  setInterval(()=>{
+    const d=document.getElementById('progFill');
+    if(d){d.style.height=Math.round(curLv/15*85)+'%';}
+  },100);
+}
+
+function initAdHub(){
+  const ta=document.getElementById('topArtists');
+  if(ta&&!ta.innerHTML){
+    ['Billboard','JamesSky','Lily88','Alex94','Andrepson'].forEach((n,i)=>{
+      ta.innerHTML+=`<div class="stat-row"><span style="font-size:11px"><i class="ti ti-circle-filled" style="color:var(--color-text-danger);font-size:8px" aria-hidden="true"></i> ${n}</span><span style="font-size:11px;color:var(--color-text-secondary)">ROI #${i+1}</span></div>`;
+    });
+    const lm=document.getElementById('liveMarket');
+    ['Homepage banner — $220/day','Lobby wall — $80/day','Pre-roll video — $150/day'].forEach(s=>{
+      lm.innerHTML+=`<div class="stat-row" style="font-size:11px"><span>${s.split('—')[0]}</span><span style="color:var(--color-text-warning)">${s.split('—')[1]}</span></div>`;
+    });
+  }
+}
+
+function initAdmin(){
+  const br=document.getElementById('botRoster');
+  if(br&&!br.innerHTML){
+    ['Big Ace AI','Brian','Nova','Finance bot'].forEach((b,i)=>{
+      br.innerHTML+=`<div class="stat-row" style="font-size:11px"><span><span class="live-dot" style="width:5px;height:5px"></span>${b}</span><button style="font-size:9px;padding:1px 6px">Summon</button></div>`;
+    });
+    const inbox=document.getElementById('inboxList');
+    [['Jay Paul Smith','$27M'],['Micah','$12M'],['Big Ace','$12M']].forEach(([n,v])=>{
+      inbox.innerHTML+=`<div class="stat-row" style="font-size:11px"><span>${n}</span><span style="color:var(--color-text-warning)">${v}</span></div>`;
+    });
+    const al=document.getElementById('acctLinker');
+    ['Google Ads','Meta Business Suite','Stripe','Pay Pal','SSR Hosting'].forEach(s=>{
+      al.innerHTML+=`<div class="stat-row" style="font-size:11px"><span>${s}</span><i class="ti ti-check" style="color:var(--color-text-success)" aria-hidden="true"></i></div>`;
+    });
+    const rc=document.getElementById('revChart');
+    [30,45,38,55,42,48,62,55,70,58,65,80].forEach(v=>{
+      rc.innerHTML+=`<div style="flex:1;background:var(--color-border-warning);border-radius:2px 2px 0 0;height:${v}%"></div>`;
+    });
+    const mb=document.getElementById('moneyBilling');
+    [['Ace','ACTIVE'],['Max','$1.8K'],['LilSis','$890']].forEach(([n,v])=>{
+      mb.innerHTML+=`<div class="stat-row" style="font-size:11px"><span>${n}</span><span style="color:var(--color-text-warning)">${v}</span></div>`;
+    });
+    const lf=document.getElementById('liveFeed');
+    ['Live Performance: Ace','Cypher Tournament','Transistor Hut Launch','Sponsor Segment'].forEach(item=>{
+      lf.innerHTML+=`<div style="background:var(--color-background-tertiary);border-radius:var(--border-radius-md);padding:6px;font-size:10px"><span class="live-dot"></span>${item}</div>`;
+    });
+    const bb=document.getElementById('bbRankings');
+    [['Live Performance','57M'],['Jay Paul Smith','57M'],['Big Ace','1.3B'],['Superfant41','1.2K']].forEach(([n,v],i)=>{
+      bb.innerHTML+=`<div class="stat-row" style="font-size:10px"><span>${i+1} ${n}</span><span>${v}</span></div>`;
+    });
+    const pa=document.getElementById('profileAvatars');
+    ['W','J','A'].forEach(l=>{
+      pa.innerHTML+=`<div style="width:28px;height:28px;border-radius:50%;background:var(--color-background-info);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;color:var(--color-text-info)">${l}</div>`;
+    });
+    const mp=document.getElementById('magPerf');
+    [['Interaction','20K'],['Lose','51K'],['70','15']].forEach(([l,v])=>{
+      mp.innerHTML+=`<div class="stat-row" style="font-size:10px"><span>${l}</span><span>${v}</span></div>`;
+    });
+  }
+}
+</script>

@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import RoleGate from "@/components/auth/RoleGate";
 
 export default function SettingsProfilePage() {
   const [form, setForm] = useState({
@@ -133,10 +134,13 @@ export default function SettingsProfilePage() {
               style={{ padding: "11px 28px", borderRadius: 8, background: saved ? "rgba(0,255,136,0.2)" : "#00FFFF", color: saved ? "#00FF88" : "#05060c", fontWeight: 800, fontSize: 13, cursor: saving ? "not-allowed" : "pointer", border: saved ? "1px solid rgba(0,255,136,0.4)" : "none", opacity: saving ? 0.7 : 1 }}>
               {saving ? "Saving…" : saved ? "✓ Saved" : "Save Profile"}
             </button>
-            <Link href="/avatar-builder"
-              style={{ padding: "11px 20px", borderRadius: 8, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.7)", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>
-              Edit Avatar
-            </Link>
+            {/* Avatar & Inventory is Fan-only (CLAUDE.md Rule 26 Identity Policy, 2026-07-18). */}
+            <RoleGate allow={["FAN"]}>
+              <Link href="/avatar-builder"
+                style={{ padding: "11px 20px", borderRadius: 8, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.7)", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>
+                Edit Avatar
+              </Link>
+            </RoleGate>
           </div>
         </form>
       </div>

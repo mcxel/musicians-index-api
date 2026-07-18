@@ -17,6 +17,8 @@ type ProfileBody = {
   skills?: string[];
   label?: string;
   favoriteGenres?: string[];
+  onboardingState?: 'NO_ROLE_SELECTED' | 'INCOMPLETE' | 'COMPLETE';
+  onboardingStep?: string;
 };
 
 const COOKIE_OPTS = {
@@ -52,6 +54,25 @@ export async function PUT(req: NextRequest) {
       });
     }
 
+    if (body.onboardingState) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { onboardingState: body.onboardingState as any },
+      });
+    }
+
+    // Merge existing social links to avoid wiping out metadata
+    const existingProfile = await prisma.userProfile.findUnique({
+      where: { userId: user.id },
+      select: { socialLinks: true },
+    });
+    const currentLinks = (existingProfile?.socialLinks as Record<string, any>) ?? {};
+    const updatedLinks = {
+      ...currentLinks,
+      ...(body.socialLinks ?? {}),
+      ...(body.onboardingStep !== undefined && { onboarding_step: body.onboardingStep }),
+    };
+
     // userProfile — avatar, bio, links
     await prisma.userProfile.upsert({
       where:  { userId: user.id },
@@ -63,7 +84,7 @@ export async function PUT(req: NextRequest) {
         location:    body.location,
         avatarUrl:   body.avatarUrl,
         bannerUrl:   body.bannerUrl,
-        socialLinks: body.socialLinks ?? undefined,
+        socialLinks: updatedLinks,
       },
       update: {
         ...(body.displayName !== undefined && { displayName: body.displayName }),
@@ -72,7 +93,7 @@ export async function PUT(req: NextRequest) {
         ...(body.location    !== undefined && { location:    body.location    }),
         ...(body.avatarUrl   !== undefined && { avatarUrl:   body.avatarUrl   }),
         ...(body.bannerUrl   !== undefined && { bannerUrl:   body.bannerUrl   }),
-        ...(body.socialLinks !== undefined && { socialLinks: body.socialLinks }),
+        socialLinks: updatedLinks,
       },
     });
 
@@ -114,6 +135,10 @@ export async function PUT(req: NextRequest) {
 
   if (body.displayName) {
     response.cookies.set('tmi_display_name', body.displayName, COOKIE_OPTS);
+  }
+
+  if (body.onboardingState) {
+    response.cookies.set('tmi_onboarding_state', body.onboardingState.toLowerCase(), COOKIE_OPTS);
   }
 
   return response;

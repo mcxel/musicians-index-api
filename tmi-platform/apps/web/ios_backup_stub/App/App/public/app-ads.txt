@@ -1,0 +1,11 @@
+# app-ads.txt — The Musician's Index
+#
+# This file authorizes ad networks to sell/serve ads on behalf of this
+# domain. Required for AdMob (mobile app ads) once the AdMob account is
+# created — AdMob is a SEPARATE product from AdSense (web display ads);
+# this line does not exist yet because no real AdMob Publisher ID has been
+# issued. Do not deploy a fabricated pub-ID (Rule 20) — replace the line
+# below with the real one from the AdMob console under
+# Apps > [App] > App settings > App ads.txt, then remove this comment block.
+#
+# google.com, pub-REPLACE_WITH_REAL_PUBLISHER_ID, DIRECT, f08c47fec0942fa0

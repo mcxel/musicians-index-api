@@ -1,0 +1,666 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#1a0a2e;color:#fff;font-family:Impact,'Arial Black',sans-serif}
+.tabs{display:flex;gap:4px;padding:8px 10px;background:#0a1628;flex-wrap:wrap;border-bottom:2px solid #FF6B00;position:sticky;top:0;z-index:100}
+.tab{padding:4px 10px;border-radius:4px;border:1px solid rgba(255,255,255,0.15);background:transparent;color:rgba(255,255,255,.5);font-size:8px;font-weight:900;cursor:pointer;font-family:Inter,sans-serif;letter-spacing:.08em;white-space:nowrap;transition:all .15s}
+.tab.on{background:#FF6B00;color:#fff;border-color:#FF6B00;box-shadow:0 0 10px #FF6B0066}
+.page{position:relative;min-height:600px;background:#1a0a2e;padding:14px;overflow:hidden}
+.tri{position:absolute;width:0;height:0;border-style:solid;pointer-events:none;opacity:.55}
+/* Neon text glow */
+.glow-or{text-shadow:0 0 10px #FF6B0099,0 0 20px #FF6B0055}
+.glow-gd{text-shadow:0 0 10px #FFD70099}
+.glow-cy{text-shadow:0 0 10px #00D4FF99}
+.glow-pk{text-shadow:0 0 10px #FF2DAA99}
+/* Geo blocks */
+.geo{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:10px 14px;position:relative;overflow:hidden}
+.geo-label{font-size:7px;font-weight:900;letter-spacing:.15em;font-family:Inter,sans-serif;opacity:.5;text-transform:uppercase;position:absolute;top:6px;left:10px}
+/* Video tile */
+.vtile{border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;flex-shrink:0;overflow:hidden}
+.vtile-avatar{border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.06)}
+/* Buttons */
+.btn{padding:6px 16px;border-radius:20px;font-size:9px;font-weight:900;font-family:Inter,sans-serif;letter-spacing:.08em;cursor:pointer;text-align:center;border:2px solid;display:inline-block}
+/* Split bar */
+.split-bar{height:2px;background:linear-gradient(90deg,#FF6B00,#FFD700,#00D4FF);margin:6px 0}
+.section-head{font-size:18px;font-weight:900;letter-spacing:.04em;font-family:Impact,sans-serif;margin-bottom:8px}
+.pill{padding:3px 10px;border-radius:12px;font-size:8px;font-weight:900;font-family:Inter,sans-serif;letter-spacing:.08em;display:inline-block}
+</style>
+
+<div style="background:#1a0a2e;min-height:100vh">
+<div class="tabs" id="tabs"></div>
+<div id="content"></div>
+</div>
+
+<script>
+const OR='#FF6B00',GD='#FFD700',CY='#00D4FF',PK='#FF2DAA',TL='#00A896';
+const PU='#6B2FB3',DT='#1A4A6A',NV='#0D1B2A',RD='#CC2200',MG='#8B1A8B';
+
+const SHP={
+  hex:'polygon(25% 0%,75% 0%,100% 50%,75% 100%,25% 100%,0% 50%)',
+  pent:'polygon(50% 0%,100% 38%,82% 100%,18% 100%,0% 38%)',
+  tagR:'polygon(15% 0%,100% 0%,100% 100%,15% 100%,0% 50%)',
+  tagL:'polygon(0% 0%,85% 0%,100% 50%,85% 100%,0% 100%)',
+  blob:'polygon(3% 0%,97% 2%,100% 97%,0% 100%)',
+  slash:'polygon(0% 0%,90% 0%,100% 100%,10% 100%)',
+  shield:'polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%)',
+  oct:'polygon(30% 0%,70% 0%,100% 30%,100% 70%,70% 100%,30% 100%,0% 70%,0% 30%)',
+  jagg:'polygon(0% 5%,93% 0%,100% 94%,7% 100%)',
+};
+
+function confetti(count=22){
+  const colors=[OR,GD,CY,PK,TL,'#FF8C00','#00FF88'];
+  let h='';
+  for(let i=0;i<count;i++){
+    const c=colors[i%colors.length];
+    const x=(i*13+7)%98,y=(i*17+11)%94;
+    const s=5+(i%4)*3,r=i*37;
+    h+=`<div style="position:absolute;left:${x}%;top:${y}%;width:${s}px;height:${s}px;background:${c};opacity:.5;clip-path:polygon(50% 0%,0% 100%,100% 100%);transform:rotate(${r}deg);pointer-events:none"></div>`;
+  }
+  return h;
+}
+
+function geo(bg,border,shape,w,h,label,inner='',extra=''){
+  return `<div style="background:${bg};border:2px solid ${border};clip-path:${SHP[shape]||'none'};width:${w};height:${h}px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:10px 14px;position:relative;overflow:hidden;box-sizing:border-box;${extra}">
+    <div style="font-size:7px;font-weight:900;color:${border};letter-spacing:.15em;font-family:Inter,sans-serif;opacity:.6;text-transform:uppercase;position:absolute;top:6px;left:10px">${label}</div>
+    ${inner}
+  </div>`;
+}
+
+function vtile(w,h,border=CY,live=false,label='',extra=''){
+  const liveBadge=live?`<div style="position:absolute;top:5px;left:5px;background:${RD};color:#fff;font-size:7px;font-weight:900;font-family:Inter,sans-serif;padding:2px 6px;border-radius:3px;letter-spacing:.1em">LIVE</div>`:'';
+  return `<div style="width:${w}px;height:${h}px;background:${DT};border:2px solid ${border};border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;flex-shrink:0;overflow:hidden;box-shadow:${live?'0 0 12px '+RD+'66':'none'};${extra}">
+    ${liveBadge}
+    <div style="width:${w*.45}px;height:${w*.45}px;border-radius:50%;background:rgba(255,255,255,.07);border:1.5px solid ${border}44;display:flex;align-items:center;justify-content:center;font-size:${w*.2}px">👤</div>
+    <div style="font-size:8px;color:rgba(255,255,255,.35);font-family:Inter,sans-serif;font-weight:700;letter-spacing:.05em;margin-top:4px">${label}</div>
+  </div>`;
+}
+
+function btn(label,bg,color='#fff',border=''){
+  return `<div style="background:${bg};color:${color};padding:6px 18px;border-radius:20px;font-size:9px;font-weight:900;font-family:Inter,sans-serif;letter-spacing:.08em;cursor:pointer;border:2px solid ${border||bg};display:inline-block;box-shadow:0 0 10px ${bg}66">${label}</div>`;
+}
+
+function pill(text,bg,color='#fff'){
+  return `<span style="background:${bg};color:${color};padding:3px 10px;border-radius:12px;font-size:8px;font-weight:900;font-family:Inter,sans-serif;letter-spacing:.08em">${text}</span>`;
+}
+
+function neonHead(text,color,size=22){
+  return `<div style="font-size:${size}px;font-weight:900;font-family:Impact,'Arial Black',sans-serif;color:${color};letter-spacing:.03em;text-shadow:0 0 14px ${color}88;line-height:1.05">${text}</div>`;
+}
+
+// ─── PAGE TEMPLATES ────────────────────────────────────────────────────────────
+
+const PAGES = {
+  // 1. ARTICLES PAGE
+  articles: () => `
+<div class="page" style="background:#2a0d50">
+  ${confetti(26)}
+  <div style="text-align:center;margin-bottom:12px">
+    ${neonHead('ARTICLES',OR,30)}
+    <div style="height:2px;background:linear-gradient(90deg,transparent,${OR},transparent);margin:4px 0"></div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;position:relative">
+    <div style="display:flex;flex-direction:column;gap:8px">
+      ${geo(PU,GD,'blob','100%',110,'NEWS ARTICLE','<div style="font-size:10px;font-weight:900;color:'+GD+';font-family:Inter,sans-serif;text-align:center;margin-top:14px">[ARTICLE HEADLINE]</div><div style="font-size:8px;color:rgba(255,255,255,.5);font-family:Inter,sans-serif;text-align:center;margin-top:4px">[preview text...]</div>')}
+      ${vtile(140,90,PK,false,'PERFORMER FEATURE')}
+      ${geo('#4A1070',TL,'jagg','100%',85,'ARTIST SPOTLIGHT','<div style="font-size:9px;font-weight:900;color:'+TL+';font-family:Inter,sans-serif;text-align:center;margin-top:14px">[ARTIST NAME]</div><div style="font-size:7px;color:rgba(255,255,255,.4);font-family:Inter,sans-serif;margin-top:2px;text-align:center">[Bio excerpt]</div>')}
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px;align-items:center">
+      <div style="background:${DT};border:2px solid ${CY};border-radius:6px;overflow:hidden;width:100%">
+        <div style="height:70px;background:rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;font-size:24px">📹</div>
+        <div style="padding:6px 10px">
+          <div style="font-size:10px;font-weight:900;color:#fff;font-family:Inter,sans-serif">[VIDEO ARTICLE TITLE]</div>
+          ${pill('MUSIC NEWS',CY,'#050310')}
+          <div style="margin-top:5px">${btn('Watch Article',OR)}</div>
+        </div>
+      </div>
+      ${geo(MG,PK,'hex','100%',90,'FEATURE STORY','<div style="font-size:10px;font-weight:900;color:'+PK+';font-family:Inter,sans-serif;text-align:center;margin-top:14px">[FEATURE HEADLINE]</div><div style="font-size:8px;color:rgba(255,255,255,.5);font-family:Inter,sans-serif;text-align:center;margin-top:3px">[Sub-headline...]</div>')}
+      ${geo('#0A2A40',GD,'blob','100%',80,'AD SLOT — FULL','<div style="font-size:14px;font-weight:900;color:'+GD+';font-family:Impact,sans-serif;text-align:center">[SPONSOR LOGO]</div>')}
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      ${geo('#2A0A50',OR,'pent','100%',95,'HEADLINE STORY','<div style="font-size:11px;font-weight:900;color:#fff;font-family:Inter,sans-serif;text-align:center;margin-top:14px;line-height:1.2">[MAIN HEADLINE — LARGE TEXT]</div>')}
+      <div style="background:#1A0A3A;border:2px solid ${PK};border-radius:8px;padding:8px 10px">
+        <div style="font-size:8px;font-weight:900;color:${PK};font-family:Inter,sans-serif;letter-spacing:.1em;margin-bottom:6px">FAN POLL</div>
+        <div style="font-size:9px;color:#fff;font-family:Inter,sans-serif;margin-bottom:6px">[POLL QUESTION]?</div>
+        <div style="font-size:8px;color:rgba(255,255,255,.5);font-family:Inter,sans-serif">Album A&nbsp;&nbsp;<span style="color:${GD}">42%</span></div>
+        <div style="font-size:8px;color:rgba(255,255,255,.5);font-family:Inter,sans-serif">Album B&nbsp;&nbsp;<span style="color:${GD}">36%</span></div>
+        <div style="font-size:8px;color:rgba(255,255,255,.5);font-family:Inter,sans-serif">Album C&nbsp;&nbsp;<span style="color:${GD}">22%</span></div>
+        <div style="margin-top:6px">${btn('Read Article',DT,CY,CY)}</div>
+      </div>
+      ${geo(DT,TL,'tagL','100%',75,'AD SEGMENT','<div style="font-size:11px;font-weight:900;color:#fff;font-family:Impact,sans-serif;text-align:center">[SPONSOR AD]</div>')}
+    </div>
+  </div>
+  <div style="background:${RD};border-radius:6px;padding:8px 14px;margin-top:10px;text-align:center">
+    <div style="font-size:10px;font-weight:900;font-family:Inter,sans-serif;letter-spacing:.15em">ADVERTISE WITH US &nbsp;·&nbsp; <span style="color:${GD}">SPONSOR SLOTS AVAILABLE</span></div>
+  </div>
+</div>`,
+
+  // 2. CYPHER ARENA / SONG CHALLENGE / BATTLE
+  cypher: () => `
+<div class="page" style="background:#0a0a2e">
+  ${confetti(20)}
+  <div style="text-align:center;margin-bottom:10px">
+    ${neonHead('CYPHER ARENA',CY,28)}
+    <div style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-top:6px">
+      ${pill('SONG vs SONG',OR,'#050310')}
+      ${pill('BATTLE',RD)}
+      ${pill('DIRTY DOZEN',PK)}
+      ${pill('DANCE-OFF',TL,'#050310')}
+      ${pill('JOKE-OFF',GD,'#050310')}
+      ${pill('CHALLENGE YOUR SONG',PU)}
+    </div>
+  </div>
+  <div style="background:${DT};border:2px solid ${CY};border-radius:10px;padding:8px;margin-bottom:10px">
+    <div style="font-size:8px;font-weight:900;color:${CY};font-family:Inter,sans-serif;letter-spacing:.2em;text-align:center;margin-bottom:6px">▶ CHALLENGE YOUR SONG HERE — SONG FOR SONG · WORK FOR WORK · VIDEO FOR VIDEO</div>
+    <div style="display:grid;grid-template-columns:1fr 40px 1fr;gap:6px;align-items:center">
+      <div style="background:#0a1628;border:2px solid ${PK};border-radius:8px;padding:8px;text-align:center">
+        ${vtile(80,80,PK,true,'ARTIST A')}
+        <div style="margin-top:6px">
+          <div style="font-size:9px;font-weight:900;color:${PK};font-family:Inter,sans-serif">[ARTIST NAME A]</div>
+          <div style="font-size:8px;color:rgba(255,255,255,.5);font-family:Inter,sans-serif">[Song/Video Title]</div>
+          <div style="font-size:14px;font-weight:900;color:${PK};font-family:Impact,sans-serif;margin-top:4px">76%</div>
+          <div style="height:4px;background:${PK};border-radius:2px;width:76%;margin:3px auto"></div>
+        </div>
+      </div>
+      <div style="text-align:center">
+        <div style="font-size:16px;font-weight:900;color:${GD};font-family:Impact,sans-serif;text-shadow:0 0 14px ${GD}">VS</div>
+        <div style="font-size:16px">🔥</div>
+        <div style="font-size:16px">👏</div>
+      </div>
+      <div style="background:#0a1628;border:2px solid ${GD};border-radius:8px;padding:8px;text-align:center">
+        ${vtile(80,80,GD,true,'ARTIST B')}
+        <div style="margin-top:6px">
+          <div style="font-size:9px;font-weight:900;color:${GD};font-family:Inter,sans-serif">[ARTIST NAME B]</div>
+          <div style="font-size:8px;color:rgba(255,255,255,.5);font-family:Inter,sans-serif">[Song/Video Title]</div>
+          <div style="font-size:14px;font-weight:900;color:${GD};font-family:Impact,sans-serif;margin-top:4px">24%</div>
+          <div style="height:4px;background:${GD};border-radius:2px;width:24%;margin:3px auto"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr;gap:6px">
+    <div style="display:flex;gap:6px;overflow-x:auto;padding:4px 0">
+      ${Array.from({length:6},(_,i)=>vtile(60,60,[CY,PK,TL,GD,OR,PU][i],false,'FAN '+(i+1))).join('')}
+    </div>
+    <div style="display:flex;gap:8px;justify-content:center;padding:4px 0">
+      ${btn('$ TIP',TL,'#050310')}
+      ${btn('▶ PLAY','rgba(255,255,255,.1)',CY,CY)}
+      ${btn('🔥 FIRE',OR)}
+      ${btn('♥ LOVE',PK)}
+      <div style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);border-radius:20px;padding:6px 12px;font-size:9px;color:rgba(255,255,255,.5);font-family:Inter,sans-serif;font-weight:700">127 watching</div>
+    </div>
+  </div>
+  <div style="background:#0a1628;border:2px solid ${PU};border-radius:8px;padding:8px;margin-top:8px">
+    <div style="font-size:8px;font-weight:900;color:${PU};font-family:Inter,sans-serif;letter-spacing:.15em;margin-bottom:4px">CHALLENGE TYPES → SELECT</div>
+    <div style="display:flex;gap:5px;flex-wrap:wrap">
+      ${['CYPHER','BATTLE','SONG CHALLENGE','DIRTY DOZEN','DANCE-OFF','JOKE-OFF','FREESTYLE','BEAT BATTLE','RAP BATTLE','SING-OFF','COMEDY SET','DANCE BATTLE'].map(t=>pill(t,'rgba(255,255,255,.08)',OR)).join('')}
+    </div>
+  </div>
+</div>`,
+
+  // 3. PROMOTIONAL HUB
+  promo: () => `
+<div class="page" style="background:#1a0a2e">
+  ${confetti(18)}
+  ${neonHead('PROMOTIONAL HUB',GD,26)}
+  <div style="height:2px;background:linear-gradient(90deg,${PK},${GD},${CY});margin:6px 0 12px"></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+    ${[
+      {border:OR,live:true,viewers:'213',reacts:'157',status:'Just vibing'},
+      {border:CY,live:true,viewers:'98',reacts:'243',status:'Watch Highlight'},
+      {border:PK,live:true,viewers:'145',reacts:'132',status:'pop · interactive'},
+      {border:GD,live:false,viewers:'0',reacts:'98',status:'Beats · creation'},
+    ].map(p=>`
+    <div style="background:#0D1B2A;border:2px solid ${p.border};border-radius:10px;overflow:hidden;box-shadow:0 0 14px ${p.border}44">
+      <div style="position:relative;height:100px;background:${DT};display:flex;align-items:center;justify-content:center">
+        <div style="position:absolute;top:6px;left:6px;background:${p.live?RD:'#333'};color:#fff;font-size:7px;font-weight:900;font-family:Inter,sans-serif;padding:2px 7px;border-radius:3px;letter-spacing:.1em">${p.live?'LIVE · '+p.viewers:'offline'}</div>
+        ${vtile(70,70,p.border,p.live,'PERFORMER')}
+      </div>
+      <div style="padding:8px 10px">
+        <div style="font-size:11px;font-weight:900;color:#fff;font-family:Inter,sans-serif">[PERFORMER NAME]</div>
+        <div style="font-size:9px;color:rgba(255,255,255,.5);font-family:Inter,sans-serif;margin-bottom:4px">[Session Description]</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <div style="font-size:8px;color:${OR};font-family:Inter,sans-serif;font-weight:700">${p.reacts} reacts 🔥</div>
+          <div style="font-size:8px;color:rgba(255,255,255,.4);font-family:Inter,sans-serif">${p.status}</div>
+        </div>
+        ${btn('Join Now',PK)}
+        <div style="display:flex;gap:6px;margin-top:5px">
+          ${btn('Watch Highlight','transparent',CY,CY)}
+          ${pill('🔥 Hype','transparent')}
+        </div>
+      </div>
+    </div>`).join('')}
+  </div>
+</div>`,
+
+  // 4. AUDIENCE ROOM / VIDEO GRID
+  audience: () => `
+<div class="page" style="background:#0a1628">
+  ${confetti(16)}
+  ${neonHead('AUDIENCE ROOM',PK,24)}
+  <div style="font-size:10px;color:rgba(255,255,255,.4);font-family:Inter,sans-serif;margin-bottom:8px">VIDEO GRID · Everyone watching LIVE</div>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px">
+    ${Array.from({length:12},(_,i)=>{
+      const live=i===0||i===6;
+      const queue=i===5;
+      const borders=[CY,PK,TL,GD,OR,PU,CY,PK,TL,GD,OR,PU][i];
+      return `<div style="position:relative">
+        ${vtile(70,75,borders,live,'FAN '+(i+1),'margin:0 auto')}
+        ${queue?'<div style="position:absolute;top:4px;left:50%;transform:translateX(-50%);background:'+DT+';border:1px solid '+CY+';color:'+CY+';font-size:7px;font-family:Inter,sans-serif;padding:1px 5px;border-radius:3px;white-space:nowrap">QUEUE</div>':''}
+      </div>`;
+    }).join('')}
+  </div>
+  <div style="background:#0D1B2A;border-radius:8px;padding:6px 10px;margin-bottom:6px;display:flex;gap:10px;align-items:center">
+    <div style="font-size:8px;color:rgba(255,255,255,.4);font-family:Inter,sans-serif;flex:1">[FAN_NAME]: [chat message here...]</div>
+    <div style="font-size:8px;color:rgba(255,255,255,.4);font-family:Inter,sans-serif">5s ago</div>
+  </div>
+  <div style="display:flex;gap:8px;justify-content:space-between;align-items:center;border-top:1px solid rgba(255,255,255,.08);padding-top:8px">
+    ${btn('◀ TIP',TL,'#050310')}
+    <div style="display:flex;gap:10px;font-size:18px">👍 ❤️ 🎵</div>
+    ${btn('▶',OR)}
+    <div style="display:flex;gap:6px">
+      <div style="width:28px;height:28px;border-radius:50%;border:1px solid ${CY};display:flex;align-items:center;justify-content:center;font-size:14px">🔍</div>
+      <div style="width:28px;height:28px;border-radius:50%;border:1px solid ${CY};display:flex;align-items:center;justify-content:center;font-size:14px">🔄</div>
+    </div>
+  </div>
+</div>`,
+
+  // 5. ROOMS DIRECTORY
+  rooms: () => `
+<div class="page" style="background:#1a0a2e">
+  ${confetti(20)}
+  ${neonHead('ROOMS DIRECTORY',OR,24)}
+  <div style="display:flex;gap:5px;flex-wrap:wrap;margin:8px 0">
+    ${['Genre','Mode','Venue','Hype','Starting Soon ▼'].map(f=>btn(f,'#0a1628',CY,CY)).join('')}
+  </div>
+  <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:10px">
+    ${btn('FEATURED TONIGHT','#FF6B0022',OR,OR)}
+    ${btn('RISING ROOMS','#00D4FF11',CY,CY)}
+    ${btn('YOUR FOLLOWED ARTISTS LIVE NOW','#FFD70011',GD,GD)}
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+    ${['Hip Hop','DJ / Dance','R&B','Beat Battle','Rap','Dance','DJ / Dance','Open Mic','Soul'].map((genre,i)=>{
+      const borders=[OR,CY,PK,GD,PU,TL,OR,CY,PK][i];
+      const pcts=[48,66,43,61,80,57,66,55,48][i];
+      const viewers=[982,1200,682,892,1900,758,1200,600,900][i];
+      return `<div style="background:#0D1B2A;border:2px solid ${borders};border-radius:8px;overflow:hidden;position:relative">
+        <div style="height:60px;background:${DT};display:flex;align-items:center;justify-content:center;position:relative">
+          ${i===1?'<div style="position:absolute;top:4px;right:4px;background:'+GD+';color:#050310;font-size:7px;font-weight:900;font-family:Inter,sans-serif;padding:2px 6px;border-radius:3px">VIP</div>':''}
+          <div style="width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.06);border:1.5px solid ${borders}44;display:flex;align-items:center;justify-content:center;font-size:20px">🎤</div>
+        </div>
+        <div style="padding:6px 8px">
+          <div style="font-size:10px;font-weight:900;color:${borders};font-family:Inter,sans-serif">${genre}</div>
+          <div style="font-size:8px;color:rgba(255,255,255,.4);font-family:Inter,sans-serif">${pcts}% · ${viewers.toLocaleString()} viewers</div>
+          <div style="display:flex;gap:4px;margin-top:5px">
+            ${btn('JOIN',OR)}
+            ${btn('PREVIEW','transparent',CY,CY)}
+          </div>
+        </div>
+      </div>`;
+    }).join('')}
+  </div>
+</div>`,
+
+  // 6. LIVE CIPHER ROOMS
+  cipherRooms: () => `
+<div class="page" style="background:#1a0a2e">
+  ${confetti(18)}
+  ${neonHead('LIVE CIPHER ROOMS',GD,24)}
+  <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
+    ${[
+      {name:'Hip-Hop A',bpm:112,border:OR,wait:null,stat:'JOIN'},
+      {name:'R&B B',bpm:null,border:CY,wait:'4 waiting',stat:'STAR'},
+      {name:'Rock C',bpm:null,border:PK,wait:'15 waiting',stat:'WATCH',time:'0:28'},
+      {name:'Hip-Hop D',bpm:145,border:GD,wait:null,stat:'JOIN'},
+      {name:'Hip-Hop B',bpm:null,border:PU,wait:'3 waiting',stat:'WATCH',time:'1:45'},
+      {name:'DJ Cipher',bpm:null,border:TL,viewers:'13 watching',stat:'JOIN'},
+    ].map(r=>`
+    <div style="background:#0D1B2A;border:2px solid ${r.border};border-radius:8px;padding:8px 10px;display:flex;gap:10px;align-items:center">
+      ${vtile(60,60,r.border,!r.wait,'ARTIST')}
+      <div style="flex:1">
+        <div style="font-size:11px;font-weight:900;color:#fff;font-family:Inter,sans-serif">${r.name}</div>
+        ${r.bpm?`<div style="display:flex;gap:4px;align-items:center;margin:3px 0"><div style="display:flex;gap:1px">${Array.from({length:8},()=>'<div style="width:3px;height:'+(5+Math.random()*12)+'px;background:'+r.border+';border-radius:2px"></div>').join('')}</div><div style="font-size:8px;color:'+r.border+';font-family:Inter,sans-serif;font-weight:700">${r.bpm} BPM</div></div>`:''}
+        ${r.time?`<div style="font-size:10px;color:${r.border};font-family:Inter,sans-serif;font-weight:700">${r.time}</div>`:''}
+        ${r.viewers?`<div style="font-size:8px;color:rgba(255,255,255,.4);font-family:Inter,sans-serif">${r.viewers}</div>`:''}
+        ${r.wait?`<div style="display:inline-block;background:${PK};color:#fff;font-size:8px;font-family:Inter,sans-serif;font-weight:700;padding:2px 8px;border-radius:10px">${r.wait}</div>`:''}
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px">
+        ${btn(r.stat,r.stat==='JOIN'?OR:DT,r.stat==='JOIN'?'#050310':CY)}
+        ${btn('WATCH','transparent',CY,CY)}
+      </div>
+    </div>`).join('')}
+  </div>
+</div>`,
+
+  // 7. GAME NIGHT
+  gameNight: () => `
+<div class="page" style="background:#0a0a1e">
+  ${confetti(22)}
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+    <div style="display:flex;gap:8px">
+      <div style="font-size:9px;font-weight:900;color:${PK};font-family:Inter,sans-serif;letter-spacing:.1em">MONDAY</div>
+      <div style="font-size:9px;color:rgba(255,255,255,.4);font-family:Inter,sans-serif">WED–SUN</div>
+    </div>
+    <div style="font-size:9px;color:${GD};font-family:Inter,sans-serif">🪙 350</div>
+  </div>
+  ${neonHead('GAME NIGHT',PK,32)}
+  <div style="font-size:10px;font-weight:900;color:${GD};font-family:Inter,sans-serif;letter-spacing:.15em;margin-bottom:10px">· FEEL THE GLOW ·</div>
+  <div style="display:grid;grid-template-columns:2fr 1fr;gap:8px;margin-bottom:10px">
+    <div style="background:#0D1B2A;border:3px solid ${GD};border-radius:8px;padding:8px;box-shadow:0 0 20px ${GD}44;position:relative">
+      <div style="position:absolute;top:8px;left:8px;font-size:8px;font-weight:900;color:${RD};font-family:Inter,sans-serif;letter-spacing:.1em">ON AIR</div>
+      <div style="display:flex;gap:8px;align-items:center;padding-top:16px">
+        ${vtile(70,70,GD,true,'HOST')}
+        <div style="flex:1">
+          <div style="font-size:18px;font-weight:900;color:${GD};font-family:Impact,sans-serif">03:21</div>
+          <div style="font-size:8px;color:rgba(255,255,255,.5);font-family:Inter,sans-serif">Win limited Neon Jacket</div>
+          <div style="font-size:16px;margin-top:4px">👑</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:5px;margin-top:8px">
+        ${btn('JOIN QUEUE',GD,'#050310')}
+        ${btn('PREVIEW','transparent',CY,CY)}
+        ${btn('PRACTICE','transparent',OR,OR)}
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">
+      ${Array.from({length:8},(_,i)=>`<div style="background:#0a1628;border:1px solid ${[OR,CY,PK,GD,PU,TL,OR,CY][i]}44;border-radius:4px;width:100%;aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:18px">👤</div>`).join('')}
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+    ${[
+      {name:'NAME THAT TUNE',live:true,players:350,color:OR},
+      {name:'DEAL OR NO DEAL',players:127,color:CY,tip:true},
+      {name:'1 vs 10,000',players:null,time:'9:00 PM',color:GD},
+      {name:'COVER ART ZOOM',players:221,color:PK},
+      {name:'LYRIC FILL',players:126,color:TL,note:"80'S HITS"},
+      {name:'DJ MIX-OFF',players:62,color:PU,sponsor:true},
+    ].map(g=>`<div style="background:#0D1B2A;border:2px solid ${g.color};border-radius:6px;padding:7px 8px">
+      <div style="font-size:9px;font-weight:900;color:${g.color};font-family:Inter,sans-serif;line-height:1.2">${g.name}${g.live?'&nbsp;'+pill('LIVE',RD,'#fff'):''}</div>
+      <div style="font-size:8px;color:rgba(255,255,255,.4);font-family:Inter,sans-serif;margin-top:3px">${g.players?g.players+' players':g.time||''}</div>
+      ${g.note?pill(g.note,'rgba(255,255,255,.08)',GD):''}
+      ${g.sponsor?btn('SPONSOR','transparent',GD,GD):''}
+    </div>`).join('')}
+  </div>
+  <div style="background:#0D1B2A;border:1px solid ${GD}44;border-radius:6px;padding:6px 10px;margin-top:8px">
+    <div style="font-size:8px;color:${GD};font-family:Inter,sans-serif;font-weight:700">SPONSOR MISSION</div>
+    <div style="font-size:8px;color:rgba(255,255,255,.5);font-family:Inter,sans-serif">Complete Mission · [Prize Pack] unlock</div>
+  </div>
+</div>`,
+
+  // 8. WATCH PARTY / VENUE PICKER
+  watchParty: () => `
+<div class="page" style="background:#0a0a2e">
+  ${confetti(18)}
+  ${neonHead('JOIN A WATCH PARTY',TL,22)}
+  <div style="font-size:10px;font-weight:900;color:${GD};font-family:Inter,sans-serif;letter-spacing:.1em;margin-bottom:10px">PICK YOUR VENUE · EARN REWARDS</div>
+  <div style="display:grid;grid-template-columns:100px 1fr 140px;gap:8px;align-items:start">
+    <div style="display:flex;flex-direction:column;gap:6px">
+      ${['Dive Bar','Club','Rooftop','Church'].map((v,i)=>`<div style="background:#0D1B2A;border:2px solid ${[OR,PK,CY,GD][i]};border-radius:8px;padding:8px;text-align:center;cursor:pointer">
+        <div style="font-size:24px">${['🍺','🎸','🌙','⛪'][i]}</div>
+        <div style="font-size:9px;font-weight:900;color:${[OR,PK,CY,GD][i]};font-family:Inter,sans-serif">${v}</div>
+      </div>`).join('')}
+    </div>
+    <div style="background:#0D1B2A;border:3px solid ${OR};border-radius:10px;padding:10px;text-align:center;box-shadow:0 0 20px ${OR}55">
+      <div style="font-size:11px;font-weight:900;color:${OR};font-family:Impact,sans-serif;letter-spacing:.05em;margin-bottom:8px">LIVE IN CONCERT</div>
+      ${vtile(100,100,OR,true,'PERFORMER','margin:0 auto 8px')}
+      <div style="font-size:10px;color:rgba(255,255,255,.5);font-family:Inter,sans-serif;margin-bottom:6px">👥 852</div>
+      ${btn('JOIN',OR,'#050310')}
+      <div style="display:flex;justify-content:center;margin-top:6px">
+        ${Array.from({length:5},()=>'<div style="width:8px;height:8px;border-radius:50%;background:'+OR+';margin:0 2px"></div>').join('')}
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <div style="background:#0D1B2A;border:2px solid ${CY};border-radius:8px;padding:8px">
+        <div style="font-size:8px;font-weight:900;color:${CY};font-family:Inter,sans-serif;margin-bottom:4px">HOST MIC</div>
+        <div style="font-size:10px;font-weight:900;color:#fff;font-family:Inter,sans-serif">[ROOM CODE]</div>
+      </div>
+      <div style="background:#0D1B2A;border:2px solid ${GD};border-radius:8px;padding:8px">
+        <div style="font-size:8px;font-weight:900;color:${GD};font-family:Inter,sans-serif;margin-bottom:4px">THEME SONG</div>
+        <div style="font-size:9px;color:#fff;font-family:Inter,sans-serif">[Song Name]</div>
+      </div>
+      <div style="background:#0D1B2A;border:2px solid ${PK};border-radius:8px;padding:8px">
+        ${btn('SKIP AD (credit)',PK)}
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">
+        <div style="background:#0D1B2A;border:1px solid ${CY}44;border-radius:6px;padding:8px;text-align:center;font-size:18px">🎵</div>
+        <div style="background:#0D1B2A;border:1px solid ${PK}44;border-radius:6px;padding:8px;text-align:center;font-size:18px">📞</div>
+      </div>
+    </div>
+  </div>
+  <div style="display:flex;gap:8px;margin-top:10px;overflow-x:auto;padding:4px 0">
+    ${Array.from({length:5},(_,i)=>vtile(55,55,[OR,PK,CY,GD,TL][i],false,'FAN '+(i+1))).join('')}
+  </div>
+</div>`,
+
+  // 9. WINNER'S HALL
+  winners: () => `
+<div class="page" style="background:#0a0a2e">
+  ${confetti(24)}
+  ${neonHead("THE WINNER'S HALL",OR,24)}
+  <div style="font-size:9px;font-weight:900;color:rgba(255,255,255,.5);font-family:Inter,sans-serif;letter-spacing:.15em;margin-bottom:8px">— PRESENTED BY THE MUSICIANS INDEX —</div>
+  <div style="background:#0D1B2A;border:3px solid ${GD};border-radius:8px;padding:6px 14px;text-align:center;margin-bottom:10px;box-shadow:0 0 20px ${GD}44">
+    <div style="font-size:10px;font-weight:900;color:${GD};font-family:Inter,sans-serif;letter-spacing:.1em">THIS WEEK'S CHAMPIONS · LIVE NOW!</div>
+    <div style="font-size:8px;color:rgba(255,255,255,.5);font-family:Inter,sans-serif;margin-top:3px">Top Artists · Top Fans · Top DJs · Top Crews · Sponsor MVPs</div>
+  </div>
+  <div style="display:grid;grid-template-columns:2fr 1fr;gap:10px">
+    <div style="text-align:center">
+      <div style="display:flex;gap:6px;justify-content:flex-start;margin-bottom:8px">
+        ${pill('100% ACCURACY','transparent',GD)}
+        ${pill('BEST STAGE PRESENCE','transparent',CY)}
+        ${pill('BEST DJ SET','transparent',PK)}
+      </div>
+      <div style="position:relative;display:inline-block">
+        ${vtile(100,100,GD,false,'#1 PERFORMER')}
+        <div style="font-size:28px;position:absolute;bottom:-8px;left:50%;transform:translateX(-50%)">🏆</div>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:6px">
+      ${[
+        {rank:1,crowns:4,change:'+4',color:OR},
+        {rank:2,crowns:7,change:'7 WEEKS',color:PK},
+        {rank:3,crowns:3,change:'+1',color:CY},
+        {rank:4,crowns:4,change:'+2',color:GD},
+      ].map(p=>`<div style="background:#0D1B2A;border:2px solid ${p.color};border-radius:6px;padding:6px 8px;display:flex;align-items:center;gap:6px">
+        ${vtile(34,34,p.color,false,'')}
+        <div style="flex:1">
+          <div style="font-size:8px;color:rgba(255,255,255,.4);font-family:Inter,sans-serif">[PERFORMER NAME]</div>
+          <div style="font-size:8px;color:${p.color};font-family:Inter,sans-serif;font-weight:700">👑 ${p.crowns}&nbsp;&nbsp;${pill(p.change,p.color,'#050310')}</div>
+        </div>
+        <div style="font-size:14px;font-weight:900;color:${p.color};font-family:Impact,sans-serif">${p.rank}</div>
+      </div>`).join('')}
+    </div>
+  </div>
+  <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">
+    ${btn('VIEW PERFORMANCE',DT,CY,CY)}
+    ${btn('HEAR HIGHLIGHT',DT,GD,GD)}
+    ${btn('SEND GIFT',OR)}
+    <div style="flex:1;background:#0D1B2A;border:2px solid ${CY};border-radius:20px;padding:6px 14px;font-size:9px;font-weight:900;color:${CY};font-family:Inter,sans-serif;text-align:center;cursor:pointer">SPONSOR NEXT WEEK'S SHOW</div>
+  </div>
+</div>`,
+
+  // 10. ARTIST BOOKING DASHBOARD
+  booking: () => `
+<div class="page" style="background:#0a1628">
+  ${confetti(16)}
+  ${neonHead('ARTIST BOOKING DASHBOARD',OR,22)}
+  <div style="font-size:8px;color:${CY};font-family:Inter,sans-serif;letter-spacing:.15em;margin-bottom:10px">FIND YOUR NEXT GIG · TRACK EARNINGS</div>
+  <div style="display:grid;grid-template-columns:1fr 1.5fr 1fr;gap:8px">
+    <div style="background:#0D1B2A;border:2px solid ${OR};border-radius:8px;padding:8px">
+      <div style="font-size:9px;font-weight:900;color:${OR};font-family:Inter,sans-serif;margin-bottom:6px;letter-spacing:.1em">AVAILABLE BOOKINGS</div>
+      ${['Club Groove','Riff Room','Soul Cabaret','Blast Beats'].map((v,i)=>`
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.06)">
+        <div style="font-size:9px;font-weight:900;color:#fff;font-family:Inter,sans-serif">${i+1}. ${v}</div>
+        <div style="font-size:9px;font-weight:900;color:${GD};font-family:Inter,sans-serif">$${[400,270,525,320][i]}</div>
+      </div>`).join('')}
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div style="background:#0D1B2A;border:2px solid ${CY};border-radius:8px;padding:8px;aspect-ratio:1.2;display:flex;align-items:center;justify-content:center;position:relative">
+        <div style="font-size:32px;opacity:.3">🗺️</div>
+        <div style="position:absolute;font-size:8px;font-weight:900;color:${CY};font-family:Inter,sans-serif;bottom:8px;text-align:center;width:100%">[CITY NAME]</div>
+      </div>
+      <div style="background:#0D1B2A;border:2px solid ${PK};border-radius:8px;padding:8px;aspect-ratio:1.4;display:flex;align-items:center;justify-content:center;position:relative">
+        <div style="font-size:32px;opacity:.3">🗺️</div>
+        <div style="position:absolute;font-size:8px;font-weight:900;color:${PK};font-family:Inter,sans-serif;bottom:8px;text-align:center;width:100%">[STATE/REGION]</div>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <div style="background:#0D1B2A;border:2px solid ${PK};border-radius:8px;padding:8px">
+        <div style="font-size:8px;color:rgba(255,255,255,.4);font-family:Inter,sans-serif">Would you like to perform @</div>
+        <div style="font-size:10px;font-weight:900;color:${PK};font-family:Inter,sans-serif">[VENUE NAME] on [DATE]?</div>
+        ${btn('ACCEPT',PK)}
+      </div>
+      <div style="background:#0D1B2A;border:2px solid ${GD};border-radius:8px;padding:8px">
+        <div style="font-size:8px;color:rgba(255,255,255,.4);font-family:Inter,sans-serif">LAST SHOW EARNED</div>
+        <div style="font-size:24px;font-weight:900;color:${GD};font-family:Impact,sans-serif;text-shadow:0 0 14px ${GD}88">$[XXX]</div>
+      </div>
+      <div style="background:#0D1B2A;border:2px solid ${CY};border-radius:8px;padding:8px">
+        <div style="font-size:8px;color:rgba(255,255,255,.4);font-family:Inter,sans-serif">NEXT SHOW PAYDAY</div>
+        <div style="font-size:18px;font-weight:900;color:${CY};font-family:Impact,sans-serif">⏱ $[XXX]</div>
+      </div>
+      ${btn('NEED A HOTEL?','transparent',TL,TL)}
+      ${btn('HAVE A RIDE?','transparent',OR,OR)}
+    </div>
+  </div>
+</div>`,
+
+  // 11. RANDOM EDITORIAL PAGES (lifestyle, world, tech, science, love, culture, winners, business)
+  editorial: () => `
+<div class="page" style="background:#1a0a2e">
+  ${confetti(24)}
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+    ${['MUSIC','WORLD','TECH','SCIENCE','LOVE','LIFESTYLE','BUSINESS','CULTURE','WINNERS','LIVE','CYPHER','EVENTS','SPONSORS','WRITERS'].map((ch,i)=>`
+    <div style="background:${['#FF6B0022','#00D4FF11','#6B2FB322','#00A89611','#FF2DAA11','#FFD70011','#FFD70022','#FF2DAA22','#FFD70044','#CC220022','#6B2FB322','#1A4A6A22','#FF6B0022','#00A89622'][i]};border:1px solid ${[OR,CY,PU,TL,PK,GD,GD,PK,GD,RD,PU,DT,OR,TL][i]};border-radius:4px;padding:3px 8px;font-size:8px;font-weight:900;color:${[OR,CY,PU,TL,PK,GD,GD,PK,GD,RD,PU,CY,OR,TL][i]};font-family:Inter,sans-serif;letter-spacing:.1em;cursor:pointer">${ch}</div>`).join('')}
+  </div>
+  <div style="text-align:center;margin-bottom:10px">
+    ${neonHead('[CHANNEL NAME] CHANNEL',GD,20)}
+    <div style="height:1px;background:${GD}44;margin:4px 0"></div>
+    <div style="font-size:9px;color:rgba(255,255,255,.35);font-family:Inter,sans-serif;letter-spacing:.1em">ISSUE [##] · WEEK [##] · [DATE RANGE]</div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;position:relative">
+    <div style="display:flex;flex-direction:column;gap:8px">
+      ${geo(PU,GD,'blob','100%',100,'LEAD ARTICLE','<div style="font-size:10px;font-weight:900;color:'+GD+';font-family:Inter,sans-serif;text-align:center;margin-top:14px;line-height:1.2">[MAIN ARTICLE HEADLINE]</div><div style="font-size:8px;color:rgba(255,255,255,.4);font-family:Inter,sans-serif;text-align:center;margin-top:4px">[excerpt text...]</div>')}
+      ${geo('#2A1060',PK,'pent','100%',80,'ARTIST FEATURE','<div style="font-size:9px;font-weight:900;color:'+PK+';font-family:Inter,sans-serif;text-align:center;margin-top:14px">[ARTIST NAME]</div><div style="font-size:7px;color:rgba(255,255,255,.4);font-family:Inter,sans-serif;text-align:center">[Category · Rising Talent]</div>')}
+      ${geo(DT,TL,'slash','100%',70,'SPONSOR AD','<div style="font-size:11px;font-weight:900;color:#fff;font-family:Impact,sans-serif;text-align:center">[ADVERTISER]</div><div style="font-size:7px;color:rgba(255,255,255,.4);font-family:Inter,sans-serif;text-align:center">[Ad Tagline]</div>')}
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px;align-items:center">
+      <div style="background:${DT};border:2px solid ${CY};border-radius:6px;width:100%;overflow:hidden">
+        <div style="height:80px;background:rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;font-size:28px">📰</div>
+        <div style="padding:8px">
+          ${pill('VIDEO ARTICLE',CY,'#050310')}
+          <div style="font-size:10px;font-weight:900;color:#fff;font-family:Inter,sans-serif;margin:4px 0">[VIDEO STORY TITLE]</div>
+          <div style="font-size:8px;color:rgba(255,255,255,.4);font-family:Inter,sans-serif">[writer · timestamp]</div>
+          ${btn('▶ Watch Article',OR)}
+        </div>
+      </div>
+      ${geo('#3A0A60',OR,'hex','100%',85,'NEWS ARTICLE','<div style="font-size:10px;font-weight:900;color:'+OR+';font-family:Inter,sans-serif;text-align:center;margin-top:14px;line-height:1.2">[INDUSTRY NEWS HEADLINE]</div><div style="font-size:8px;color:rgba(255,255,255,.4);font-family:Inter,sans-serif;text-align:center;margin-top:4px">[article excerpt...]</div>')}
+      ${geo('#1A0A3A',GD,'blob','100%',75,'SPONSOR FULL','<div style="font-size:12px;font-weight:900;color:'+GD+';font-family:Impact,sans-serif;text-align:center">[SPONSOR LOGO]</div><div style="font-size:7px;color:rgba(255,255,255,.5);font-family:Inter,sans-serif;text-align:center">[Sponsored Content]</div>')}
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      ${geo('#0A2A40',OR,'jagg','100%',90,'HEADLINE STORY','<div style="font-size:11px;font-weight:900;color:#fff;font-family:Inter,sans-serif;text-align:center;margin-top:14px;line-height:1.2">[BIG STORY HEADLINE]</div><div style="font-size:8px;color:rgba(255,255,255,.4);font-family:Inter,sans-serif;text-align:center;margin-top:4px">[writer byline]</div>')}
+      <div style="background:#1A0A3A;border:2px solid ${PK};border-radius:8px;padding:8px">
+        <div style="font-size:8px;font-weight:900;color:${PK};font-family:Inter,sans-serif;letter-spacing:.1em;margin-bottom:4px">FAN POLL</div>
+        <div style="font-size:9px;color:#fff;font-family:Inter,sans-serif;margin-bottom:6px">[POLL QUESTION HERE]?</div>
+        ${['Option A','Option B','Option C'].map((o,i)=>`<div style="display:flex;justify-content:space-between;align-items:center;margin:3px 0">
+          <div style="font-size:8px;color:rgba(255,255,255,.5);font-family:Inter,sans-serif">${o}</div>
+          <div style="font-size:8px;font-weight:700;color:${GD};font-family:Inter,sans-serif">${[42,36,22][i]}%</div>
+        </div><div style="height:3px;background:rgba(255,255,255,.08);border-radius:2px;margin-bottom:2px"><div style="height:100%;width:${[42,36,22][i]}%;background:${PK};border-radius:2px"></div></div>`).join('')}
+        <div style="margin-top:6px">${btn('Read Article',DT,CY,CY)}</div>
+      </div>
+      ${geo('#0A1A30',CY,'tagL','100%',65,'SPONSOR SEGMENT','<div style="font-size:11px;font-weight:900;color:'+CY+';font-family:Impact,sans-serif;text-align:center">[AD PLACEMENT]</div>')}
+    </div>
+  </div>
+  <div style="background:${RD};border-radius:6px;padding:7px 14px;margin-top:10px;display:flex;justify-content:space-between;align-items:center">
+    <div style="font-size:9px;font-weight:900;font-family:Inter,sans-serif;letter-spacing:.12em">ADVERTISE WITH US</div>
+    <div style="display:flex;gap:8px">
+      ${['SPONSOR SLOT','FULL PAGE','CAMPAIGN'].map(t=>pill(t,'rgba(255,255,255,.15)')).join('')}
+    </div>
+  </div>
+</div>`,
+
+  // 12. ADMIN COMMAND
+  admin: () => `
+<div class="page" style="background:#050A1A">
+  ${confetti(12)}
+  <div style="text-align:center;margin-bottom:10px">
+    <div style="font-size:9px;color:${OR};font-family:Inter,sans-serif;font-weight:700;letter-spacing:.2em">THE MUSICIAN'S INDEX</div>
+    ${neonHead('GLOBAL ADMIN COMMAND',OR,28)}
+  </div>
+  <div style="display:grid;grid-template-columns:2fr 1fr;gap:10px">
+    <div>
+      <div style="background:#0D1B2A;border:2px solid ${CY};border-radius:8px;padding:8px;margin-bottom:8px">
+        <div style="height:120px;background:#050A1A;border-radius:4px;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden">
+          <div style="font-size:48px;opacity:.15">🗺️</div>
+          <div style="position:absolute;font-size:9px;font-weight:900;color:${CY};font-family:Inter,sans-serif;bottom:4px;text-align:center;width:100%;letter-spacing:.1em">[MAP — BOT ACTIVITY NODES]</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+        <div style="background:#0D1B2A;border:2px solid ${OR};border-radius:8px;padding:10px;text-align:center">
+          <div style="font-size:9px;font-weight:900;color:${OR};font-family:Inter,sans-serif;letter-spacing:.1em;margin-bottom:4px">REVENUE</div>
+          <div style="font-size:18px;font-weight:900;color:${GD};font-family:Impact,sans-serif;text-shadow:0 0 12px ${GD}88">$$$$$</div>
+        </div>
+        <div style="background:#0D1B2A;border:2px solid ${CY};border-radius:8px;padding:10px;text-align:center">
+          <div style="font-size:9px;font-weight:900;color:${CY};font-family:Inter,sans-serif;margin-bottom:4px">TOTAL SHOWS</div>
+          <div style="font-size:24px;font-weight:900;color:#fff;font-family:Impact,sans-serif">564</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div style="background:#0D1B2A;border:2px solid ${GD};border-radius:6px;padding:6px;text-align:center">
+            <div style="font-size:8px;color:${GD};font-family:Inter,sans-serif">QUEUE</div>
+            <div style="font-size:18px;font-weight:900;color:#fff;font-family:Impact,sans-serif">23</div>
+          </div>
+          <div style="background:#0D1B2A;border:2px solid ${PK};border-radius:6px;padding:6px;text-align:center">
+            <div style="font-size:8px;color:${PK};font-family:Inter,sans-serif">ALERTS</div>
+            <div style="font-size:18px;font-weight:900;color:#fff;font-family:Impact,sans-serif">⚠️ 0</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <div style="background:#0D1B2A;border:2px solid ${OR};border-radius:8px;padding:8px">
+        <div style="font-size:9px;font-weight:900;color:${OR};font-family:Inter,sans-serif;margin-bottom:6px;letter-spacing:.1em">BOT ACTIVITY</div>
+        ${['MAP BOTS','BOOKING BOTS','GUARD BOTS'].map(b=>`<div style="display:flex;justify-content:space-between;font-size:8px;color:rgba(255,255,255,.5);font-family:Inter,sans-serif;margin:3px 0">${b}<span style="color:${OR}">ACTIVE</span></div>`).join('')}
+      </div>
+      <div style="background:#0D1B2A;border:2px solid ${TL};border-radius:8px;padding:8px;text-align:center">
+        <div style="font-size:9px;font-weight:900;color:${TL};font-family:Inter,sans-serif;margin-bottom:6px">HEAD BOT</div>
+        <div style="width:50px;height:50px;border-radius:50%;border:2px solid ${TL};margin:0 auto;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;color:${TL};font-family:Inter,sans-serif;box-shadow:0 0 14px ${TL}66">ONLINE</div>
+      </div>
+      <div style="background:#0D1B2A;border:2px solid ${RD};border-radius:8px;padding:8px;text-align:center">
+        <div style="font-size:9px;font-weight:900;color:${RD};font-family:Inter,sans-serif;margin-bottom:4px">MAP STATUS</div>
+        <div style="font-size:24px">⚠️</div>
+      </div>
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:10px">
+    ${btn('RUN DIAGNOSTICS',OR,'#050310')}
+    ${btn('EXECUTE PATCH',CY,'#050310')}
+    ${btn('OVERRIDE SYSTEM',RD)}
+  </div>
+  <div style="text-align:center;margin-top:8px;font-size:9px;color:rgba(255,255,255,.3);font-family:Inter,sans-serif;letter-spacing:.2em">BERNTOUTGLOBAL</div>
+</div>`,
+};
+
+const TABS = [
+  {id:'articles',label:'📰 ARTICLES'},
+  {id:'cypher',label:'⚔️ CYPHER / CHALLENGE'},
+  {id:'promo',label:'🔥 PROMO HUB'},
+  {id:'audience',label:'👥 AUDIENCE ROOM'},
+  {id:'rooms',label:'🚪 ROOMS DIR'},
+  {id:'cipherRooms',label:'🎵 CIPHER ROOMS'},
+  {id:'gameNight',label:'🎮 GAME NIGHT'},
+  {id:'watchParty',label:'🎭 WATCH PARTY'},
+  {id:'winners',label:'🏆 WINNER\'S HALL'},
+  {id:'booking',label:'📅 BOOKING'},
+  {id:'editorial',label:'📖 EDITORIAL'},
+  {id:'admin',label:'⚙️ ADMIN'},
+];
+
+let current = 'articles';
+
+function render(){
+  const tabBar = document.getElementById('tabs');
+  const content = document.getElementById('content');
+  tabBar.innerHTML = TABS.map(t=>`<div class="tab${t.id===current?' on':''}" onclick="switchTab('${t.id}')">${t.label}</div>`).join('');
+  content.innerHTML = PAGES[current]?PAGES[current]():'<div style="padding:20px;color:rgba(255,255,255,.4)">Template not found</div>';
+}
+
+window.switchTab = function(id){current=id;render();};
+render();
+</script>

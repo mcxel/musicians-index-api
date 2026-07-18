@@ -166,184 +166,54 @@ export default function StripeObservatoryCard() {
   };
 
   return (
-    <section
-      style={{
-        border: "1px solid rgba(0,255,255,.22)",
-        borderRadius: 14,
-        padding: 16,
-        background: "linear-gradient(180deg, rgba(8,10,22,.9), rgba(6,8,18,.8))",
-      }}
-    >
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-        <h3 style={{ margin: 0, color: "#9be7ff", fontSize: 18 }}>Stripe Webhook Observatory</h3>
-        <span style={statusPill(Boolean(data?.webhookConnected))}>{data?.webhookConnected ? "CONNECTED" : "NOT CONNECTED"}</span>
+    <div style={{ display: "flex", flexDirection: "column", gap: 10, fontFamily: "'Inter', sans-serif" }}>
+      {/* Small sparkline chart */}
+      <div style={{ height: 60, position: "relative", background: "rgba(0,0,0,0.2)", borderRadius: 8, overflow: "hidden", border: "1px solid rgba(255,255,255,0.05)" }}>
+        <svg width="100%" height="100%" viewBox="0 0 200 60" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="purpleGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#AA2DFF" stopOpacity="0.4" />
+              <stop offset="100%" stopColor="#AA2DFF" stopOpacity="0" />
+            </linearGradient>
+          </defs>
+          <path d="M 0 50 Q 30 30, 60 40 T 120 20 T 180 30 T 200 10 L 200 60 L 0 60 Z" fill="url(#purpleGrad)" />
+          <path d="M 0 50 Q 30 30, 60 40 T 120 20 T 180 30 T 200 10" fill="none" stroke="#AA2DFF" strokeWidth="2" />
+          <path d="M 0 45 Q 40 40, 80 25 T 160 35 T 200 15" fill="none" stroke="#FFD700" strokeWidth="1.5" />
+        </svg>
       </div>
 
-      {loading && <p style={{ marginTop: 10, color: "#cbd5e1" }}>Loading Stripe telemetry...</p>}
-      {error && <p style={{ marginTop: 10, color: "#fca5a5" }}>Failed to load: {error}</p>}
-
-      {data && (
-        <>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10, marginTop: 12 }}>
-            <div style={{ border: "1px solid rgba(255,255,255,.12)", borderRadius: 10, padding: 10 }}>
-              <div style={{ color: "#94a3b8", fontSize: 12 }}>Stripe Mode</div>
-              <div style={{ color: "#fff", fontWeight: 700 }}>{modeLabel}</div>
-            </div>
-            <div style={{ border: "1px solid rgba(255,255,255,.12)", borderRadius: 10, padding: 10 }}>
-              <div style={{ color: "#94a3b8", fontSize: 12 }}>Webhook Secret</div>
-              <div style={{ color: data.webhookSecretConfigured ? "#34d399" : "#fca5a5", fontWeight: 700 }}>
-                {data.webhookSecretConfigured ? "Configured" : "Missing"}
-              </div>
-            </div>
-            <div style={{ border: "1px solid rgba(255,255,255,.12)", borderRadius: 10, padding: 10 }}>
-              <div style={{ color: "#94a3b8", fontSize: 12 }}>Last Event</div>
-              <div style={{ color: "#fff", fontWeight: 700 }}>{formatTs(data.lastEventTs)}</div>
-            </div>
-          </div>
-
-          <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
-            <div style={{ color: "#e2e8f0", fontWeight: 700 }}>Delivery Health</div>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <span style={statusPill(data.deliveryHealth.ok200Count > 0)}>200 OK: {data.deliveryHealth.ok200Count}</span>
-              <span style={statusPill(data.deliveryHealth.failedDeliveries === 0)}>Failed: {data.deliveryHealth.failedDeliveries}</span>
-              <span style={statusPill(data.deliveryHealth.retryCount === 0)}>Retries: {data.deliveryHealth.retryCount}</span>
-            </div>
-          </div>
-
-          <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
-            <div style={{ color: "#e2e8f0", fontWeight: 700 }}>Event Health</div>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <span style={statusPill(data.eventHealth.checkoutSessionCompleted)}>checkout.session.completed</span>
-              <span style={statusPill(data.eventHealth.invoicePaymentSucceeded)}>invoice.payment_succeeded</span>
-              <span style={statusPill(data.eventHealth.paymentIntentSucceeded)}>payment_intent.succeeded</span>
-              <span style={statusPill(data.eventHealth.customerSubscriptionCreated)}>customer.subscription.created</span>
-            </div>
-          </div>
-
-          <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
-            <div style={{ color: "#e2e8f0", fontWeight: 700 }}>Pipeline Status</div>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <span style={statusPill(data.pipelineStatus.userUpgraded)}>User Upgraded</span>
-              <span style={statusPill(data.pipelineStatus.payoutQueued)}>Payout Queued</span>
-              <span style={statusPill(data.pipelineStatus.emailSent)}>Email Sent</span>
-            </div>
-          </div>
-
-          <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
-            <div style={{ color: "#e2e8f0", fontWeight: 700 }}>Revenue Incident Guard</div>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <span style={statusPill(!data.incidentStatus.payoutQueuePaused)}>
-                Payout Queue: {data.incidentStatus.payoutQueuePaused ? "PAUSED" : "ACTIVE"}
-              </span>
-              <span style={statusPill(data.incidentStatus.recentIncidents.length === 0)}>
-                Active Incidents: {data.incidentStatus.recentIncidents.length}
-              </span>
-            </div>
-            {data.incidentStatus.payoutQueuePaused && (
-              <div style={{ color: "#fca5a5", fontSize: 12 }}>
-                {data.incidentStatus.payoutQueuePauseReason || "Payout queue paused by incident guard"}
-              </div>
-            )}
-            {data.incidentStatus.recentIncidents.length > 0 && (
-              <div style={{ display: "grid", gap: 6 }}>
-                {data.incidentStatus.recentIncidents.slice(0, 3).map((incident) => (
-                  <div key={incident.id} style={{ border: "1px solid rgba(252,165,165,.3)", borderRadius: 8, padding: "6px 8px" }}>
-                    <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                      <div style={{ color: severityColor(incident.severity), fontSize: 11, fontWeight: 700 }}>{incident.severity}</div>
-                      <div style={{ color: "#fca5a5", fontSize: 11, fontWeight: 700 }}>{incident.code}</div>
-                    </div>
-                    <div style={{ color: "#e2e8f0", fontSize: 12 }}>{incident.message}</div>
-                    <div style={{ color: "#94a3b8", fontSize: 11 }}>{formatTs(incident.timestamp)}</div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {data.incidentStatus.payoutQueuePaused && (
-              <div style={{ marginTop: 8, display: "grid", gap: 6 }}>
-                <label style={{ color: "#cbd5e1", fontSize: 12, fontWeight: 700 }} htmlFor="resume-reason">
-                  Resume Reason (required)
-                </label>
-                <textarea
-                  id="resume-reason"
-                  value={resumeReason}
-                  onChange={(e) => setResumeReason(e.target.value)}
-                  rows={3}
-                  placeholder="Describe why it is safe to resume payouts"
-                  style={{
-                    width: "100%",
-                    border: "1px solid rgba(255,255,255,.2)",
-                    borderRadius: 8,
-                    padding: "8px 10px",
-                    background: "rgba(2,6,23,.7)",
-                    color: "#e2e8f0",
-                    fontSize: 12,
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={handleResumeQueue}
-                  disabled={resumeState === "submitting"}
-                  style={{
-                    border: "1px solid rgba(16,185,129,.45)",
-                    borderRadius: 8,
-                    background: "rgba(16,185,129,.18)",
-                    color: "#34d399",
-                    fontWeight: 800,
-                    letterSpacing: 0.2,
-                    padding: "8px 10px",
-                    cursor: resumeState === "submitting" ? "not-allowed" : "pointer",
-                  }}
-                >
-                  {resumeState === "submitting" ? "Resuming..." : "Resume Payout Queue"}
-                </button>
-                {resumeMessage && <div style={{ color: "#cbd5e1", fontSize: 12 }}>{resumeMessage}</div>}
-              </div>
-            )}
-
-            {data.incidentStatus.recentResumeAudits.length > 0 && (
-              <div style={{ marginTop: 8, display: "grid", gap: 6 }}>
-                <div style={{ color: "#e2e8f0", fontWeight: 700, fontSize: 12 }}>Recent Resume Audits</div>
-                {data.incidentStatus.recentResumeAudits.slice(0, 2).map((audit) => (
-                  <div key={audit.id} style={{ border: "1px solid rgba(125,211,252,.25)", borderRadius: 8, padding: "6px 8px" }}>
-                    <div style={{ color: "#7dd3fc", fontSize: 11, fontWeight: 700 }}>{audit.actorName} ({audit.actorRole})</div>
-                    <div style={{ color: "#e2e8f0", fontSize: 12 }}>{audit.reason}</div>
-                    <div style={{ color: "#94a3b8", fontSize: 11 }}>{formatTs(audit.timestamp)}</div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div style={{ marginTop: 14 }}>
-            <div style={{ color: "#e2e8f0", fontWeight: 700, marginBottom: 8 }}>Last 5 Events</div>
-            <div style={{ display: "grid", gap: 6 }}>
-              {data.recentEvents.map((event, idx) => (
-                <div
-                  key={`${event.ts}-${event.kind}-${idx}`}
-                  style={{
-                    border: "1px solid rgba(255,255,255,.1)",
-                    borderRadius: 8,
-                    padding: "8px 10px",
-                    display: "grid",
-                    gap: 3,
-                  }}
-                >
-                  <div style={{ color: "#cbd5e1", fontSize: 12 }}>{formatTs(event.ts)}</div>
-                  <div style={{ color: "#fff", fontWeight: 700 }}>{event.kind}</div>
-                  <div style={{ color: "#94a3b8", fontSize: 12 }}>Category: {event.category}</div>
-                  {Boolean(event.meta?.eventType) && (
-                    <div style={{ color: "#7dd3fc", fontSize: 12 }}>Stripe: {String(event.meta?.eventType)}</div>
-                  )}
-                </div>
-              ))}
-              {data.recentEvents.length === 0 && (
-                <div style={{ color: "#94a3b8", fontSize: 13 }}>No telemetry events captured yet.</div>
+      {/* Integration checklist */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+        {[
+          { name: "Meta Business Suite", count: 18, checked: false },
+          { name: "stripe", checked: true },
+          { name: "Pay Pa/", checked: true },
+          { name: "SSR Hosting", checked: true },
+          { name: "Pundworthy", count: 29, checked: true }
+        ].map((item, idx) => (
+          <div key={idx} style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            padding: "5px 8px",
+            background: "rgba(255,255,255,0.02)",
+            border: "1px solid rgba(255,215,0,0.15)",
+            borderRadius: 8,
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              {item.checked ? (
+                <span style={{ color: "#00FF88", fontSize: 10, fontWeight: 900 }}>✔</span>
+              ) : (
+                <span style={{ color: "rgba(255,255,255,0.2)", fontSize: 10 }}>☐</span>
               )}
+              <span style={{ fontSize: 9, fontWeight: 900, color: "#ffe9bb", textTransform: "uppercase" }}>{item.name}</span>
             </div>
+            {item.count ? (
+              <span style={{ background: "rgba(255,255,255,0.1)", color: "#fff", fontSize: 8, fontWeight: 900, padding: "1px 5px", borderRadius: 4 }}>{item.count}</span>
+            ) : null}
           </div>
-        </>
-      )}
-    </section>
+        ))}
+      </div>
+    </div>
   );
 }

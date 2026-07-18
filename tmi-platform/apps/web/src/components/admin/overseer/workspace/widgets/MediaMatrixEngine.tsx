@@ -518,7 +518,13 @@ function MonitorViewport({ source, label, meta, liveCount, livePreviewUrl }: { s
   return (
     <div style={{ minHeight: 118, borderRadius: 8, border: `1px solid ${source.accent}33`, overflow: "hidden", background: "#04060b", display: "flex", flexDirection: "column" }}>
       <div style={{ position: "relative", minHeight: 98 }}>
-        {showVideo ? (
+        {source.id === "boardroom" ? (
+          <img
+            src="/images/boardroom_live.png"
+            alt="Boardroom Live"
+            style={{ width: "100%", height: "100%", minHeight: 98, objectFit: "cover", transition: "opacity 380ms ease" }}
+          />
+        ) : showVideo ? (
           <video
             src={resolvedSrc}
             autoPlay

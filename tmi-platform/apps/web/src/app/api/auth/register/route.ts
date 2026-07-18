@@ -139,16 +139,19 @@ export async function POST(req: NextRequest) {
 
   stage = 'INPUT_VALIDATED';
   if (!email || !password) {
+    console.warn("[TMI register 400] MISSING_FIELDS. Email:", email, "HasPassword:", Boolean(password));
     return NextResponse.json({ ok: false, errorCode: 'MISSING_FIELDS', error: 'Email and password are required' }, { status: 400 });
   }
 
   stage = 'EMAIL_VALIDATED';
   const emailValidation = validateSignupEmail(email);
   if (!emailValidation.valid) {
+    console.warn("[TMI register 400] INVALID_EMAIL. Email:", email, "Error:", emailValidation.error);
     return NextResponse.json({ ok: false, errorCode: 'INVALID_EMAIL', error: emailValidation.error ?? 'Invalid email address' }, { status: 400 });
   }
 
   if (password.length < 8) {
+    console.warn("[TMI register 400] WEAK_PASSWORD. Email:", email, "PasswordLength:", password.length);
     return NextResponse.json({ ok: false, errorCode: 'WEAK_PASSWORD', error: 'Password must be at least 8 characters' }, { status: 400 });
   }
 

@@ -110,54 +110,30 @@ export default function BotSummonDeck() {
   const activeCount = bots.filter((b) => b.status === "ACTIVE").length;
 
   return (
-    <section className="flex h-full flex-col rounded-xl border border-fuchsia-400/30 bg-black/60 p-3">
-      <header className="mb-3 flex items-center justify-between gap-2">
-        <div>
-          <p className="text-[9px] font-black uppercase tracking-[0.18em] text-fuchsia-400">Bot Summon Deck</p>
-          <p className="text-[11px] font-black uppercase text-white">Unit Command Center</p>
-        </div>
-        <span className="rounded border border-green-400/50 bg-green-500/10 px-2 py-0.5 text-[9px] font-black uppercase text-green-300">
-          {activeCount}/{bots.length} ACTIVE
-        </span>
-      </header>
-
-      <div className="flex flex-col gap-2 overflow-y-auto">
-        {bots.map((bot) => (
-          <div key={bot.id} className={`rounded-lg border bg-black/50 p-2.5 ${bot.accentClass}`}>
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <div className="mb-0.5 flex items-center gap-1.5">
-                  <span className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${STATUS_DOT[bot.status]}`} />
-                  <p className="text-[10px] font-black uppercase text-white">{bot.name}</p>
-                  <span className={`rounded border px-1.5 py-0.5 text-[8px] font-black uppercase ${bot.badgeClass}`}>
-                    {STATUS_LABEL[bot.status]}
-                  </span>
-                </div>
-                <p className="mb-0.5 text-[9px] font-semibold uppercase tracking-[0.1em] text-zinc-400">{bot.role}</p>
-                <p className="text-[8px] text-zinc-500">{bot.description}</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => summon(bot.id)}
-                disabled={bot.status === "SUMMONING" || bot.status === "ACTIVE"}
-                className="flex-shrink-0 rounded border border-white/15 bg-white/5 px-2 py-1 text-[8px] font-black uppercase tracking-[0.12em] text-zinc-300 transition hover:border-white/30 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                {bot.status === "SUMMONING" ? "…" : bot.actionLabel}
-              </button>
-            </div>
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "4px 8px", fontFamily: "'Inter', sans-serif" }}>
+      {[
+        { name: "Ace", initial: "A" },
+        { name: "Micah", initial: "M" },
+        { name: "Ali", initial: "Al" },
+        { name: "Nova", initial: "N" }
+      ].map((bot) => (
+        <div key={bot.name} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+          <div style={{
+            width: 38,
+            height: 38,
+            borderRadius: "50%",
+            border: "2px solid #8A2BE2",
+            background: "linear-gradient(135deg, #8A2BE2, #DA70D6)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            boxShadow: "0 0 8px rgba(138,43,226,0.3)"
+          }}>
+            <span style={{ fontSize: 10, fontWeight: 900, color: "#fff" }}>{bot.initial}</span>
           </div>
-        ))}
-      </div>
-
-      {/* Command log */}
-      {log.length > 0 && (
-        <div className="mt-2 rounded border border-white/5 bg-black/40 px-2 py-1.5">
-          <p className="mb-1 text-[8px] font-black uppercase tracking-[0.14em] text-zinc-500">Command Log</p>
-          {log.map((entry, i) => (
-            <p key={i} className="text-[8px] text-zinc-500">{entry}</p>
-          ))}
+          <span style={{ fontSize: 8, fontWeight: 900, color: "#ffe9bb", textTransform: "uppercase" }}>{bot.name}</span>
         </div>
-      )}
-    </section>
+      ))}
+    </div>
   );
 }

@@ -350,7 +350,7 @@ export default function PerformerHubPage() {
             <div style={{ fontSize: 18, fontWeight: 900, marginTop: 3 }}>Your Stage <span style={{ color: "#FFD700", fontSize: 13 }}>· Performer Hub</span></div>
           </div>
           <div style={{ display: "flex", gap: 10, marginLeft: "auto", flexWrap: "wrap" }}>
-            <Link href="/performer/studio" style={{ padding: "9px 20px", borderRadius: 9, background: "linear-gradient(135deg, #AA2DFF, #FF2DAA)", color: "#fff", fontSize: 11, fontWeight: 900, textDecoration: "none", letterSpacing: "0.08em", boxShadow: "0 0 20px rgba(170,45,255,0.35)" }}>
+            <Link href="/live/go" style={{ padding: "9px 20px", borderRadius: 9, background: "linear-gradient(135deg, #AA2DFF, #FF2DAA)", color: "#fff", fontSize: 11, fontWeight: 900, textDecoration: "none", letterSpacing: "0.08em", boxShadow: "0 0 20px rgba(170,45,255,0.35)" }}>
               🔴 GO LIVE
             </Link>
             <Link href="/battles/new" style={{ padding: "9px 18px", borderRadius: 9, background: "rgba(255,215,0,0.1)", border: "1px solid rgba(255,215,0,0.3)", color: "#FFD700", fontSize: 11, fontWeight: 800, textDecoration: "none" }}>
@@ -374,8 +374,36 @@ export default function PerformerHubPage() {
         <div style={{ position: "relative", zIndex: 1, margin: "18px 0 8px", padding: "0 20px" }}>
           <BezelFrame variant="performer" innerPadding={18}>
             <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 320px", gap: 18, alignItems: "start" }}>
-              <div>
+              <div style={{ position: "relative" }}>
                 <div style={{ fontSize: 9, letterSpacing: "0.2em", color: "#AA2DFF", fontWeight: 800, marginBottom: 10 }}>🎬 MAIN BROADCAST MONITOR</div>
+                {!liveStatus.isLive && (
+                  <Link
+                    href="/live/go"
+                    style={{
+                      position: "absolute",
+                      top: 34,
+                      right: 10,
+                      zIndex: 40,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                      padding: "8px 16px",
+                      borderRadius: 999,
+                      background: "rgba(8,2,18,0.72)",
+                      backdropFilter: "blur(6px)",
+                      border: "1px solid rgba(230,48,0,0.55)",
+                      boxShadow: "0 0 18px rgba(230,48,0,0.4)",
+                      color: "#fff",
+                      fontSize: 11,
+                      fontWeight: 900,
+                      letterSpacing: "0.08em",
+                      textDecoration: "none",
+                    }}
+                  >
+                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#E63000", boxShadow: "0 0 10px #E63000, 0 0 4px #E63000" }} />
+                    GO LIVE
+                  </Link>
+                )}
                 <MonitorSatelliteSystem
                   mainLabel={performerIdentity?.name ? `${performerIdentity.name} Stage` : "Performer Stage"}
                   isLive={liveStatus.isLive}
@@ -440,7 +468,7 @@ export default function PerformerHubPage() {
 
                 <div style={{ fontSize: 9, letterSpacing: "0.2em", color: "#00E5FF", fontWeight: 800 }}>⚡ QUICK STAGE ACTIONS</div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                  <Link href="/performer/studio" style={{ textDecoration: "none", borderRadius: 9, padding: "10px 8px", textAlign: "center", background: "linear-gradient(135deg, #AA2DFF, #FF2DAA)", color: "#fff", fontSize: 10, fontWeight: 900, letterSpacing: "0.08em" }}>GO LIVE</Link>
+                  <Link href="/live/go" style={{ textDecoration: "none", borderRadius: 9, padding: "10px 8px", textAlign: "center", background: "linear-gradient(135deg, #AA2DFF, #FF2DAA)", color: "#fff", fontSize: 10, fontWeight: 900, letterSpacing: "0.08em" }}>GO LIVE</Link>
                   <Link href="/messages" style={{ textDecoration: "none", borderRadius: 9, padding: "10px 8px", textAlign: "center", background: "rgba(0,255,255,0.1)", border: "1px solid rgba(0,255,255,0.28)", color: "#00FFFF", fontSize: 10, fontWeight: 800, letterSpacing: "0.08em" }}>MESSAGE</Link>
                   <Link href="/playlist" style={{ textDecoration: "none", borderRadius: 9, padding: "10px 8px", textAlign: "center", background: "rgba(255,215,0,0.1)", border: "1px solid rgba(255,215,0,0.28)", color: "#FFD700", fontSize: 10, fontWeight: 800, letterSpacing: "0.08em" }}>PLAYLIST</Link>
                   <Link href="#memory-wall" style={{ textDecoration: "none", borderRadius: 9, padding: "10px 8px", textAlign: "center", background: "rgba(170,45,255,0.12)", border: "1px solid rgba(170,45,255,0.28)", color: "#AA2DFF", fontSize: 10, fontWeight: 800, letterSpacing: "0.08em" }}>MEMORY</Link>
@@ -542,7 +570,7 @@ export default function PerformerHubPage() {
                 />
 
                 <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
-                  <Link href="/performer/studio" style={{ flex: 2, padding: "10px", background: "linear-gradient(135deg, #AA2DFF, #FF2DAA)", color: "#fff", borderRadius: 8, fontWeight: 900, fontSize: 10, textDecoration: "none", textAlign: "center", letterSpacing: "0.1em" }}>🔴 GO LIVE TO ARENA</Link>
+                  <Link href="/live/go" style={{ flex: 2, padding: "10px", background: "linear-gradient(135deg, #AA2DFF, #FF2DAA)", color: "#fff", borderRadius: 8, fontWeight: 900, fontSize: 10, textDecoration: "none", textAlign: "center", letterSpacing: "0.1em" }}>🔴 GO LIVE TO ARENA</Link>
                   <Link href="/live/rooms" style={{ flex: 1, padding: "10px", background: "rgba(170,45,255,0.12)", border: "1px solid rgba(170,45,255,0.3)", color: "#AA2DFF", borderRadius: 8, fontWeight: 800, fontSize: 10, textDecoration: "none", textAlign: "center" }}>📡 ROOMS</Link>
                 </div>
               </BezelFrame>

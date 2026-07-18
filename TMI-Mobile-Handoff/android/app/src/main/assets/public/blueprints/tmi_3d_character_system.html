@@ -1,0 +1,446 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #070714; color: #E8E8FF; font-family: system-ui, sans-serif; }
+input[type=range] { width: 100%; accent-color: #FF6B1A; cursor: pointer; }
+button { cursor: pointer; font-family: inherit; }
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: #0D0D24; }
+::-webkit-scrollbar-thumb { background: #FF6B1A44; border-radius: 4px; }
+table { border-collapse: collapse; }
+.fade-in { animation: fadeIn 0.3s ease; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+.char-card:hover { border-color: var(--c) !important; }
+.move-pill:hover { opacity: 0.8; }
+</style>
+</head>
+<body>
+
+<div id="app"></div>
+
+<script>
+const CHARS = [
+  { id:"bebo", name:"Bebo", role:"Platform Mascot · Bobblehead Bot", tier:"Icon", tierN:6, color:"#FF6B1A", emoji:"🤖", desc:"The OG face of TMI. STAFF badge, gold chain, boombox head. Leads crowd energy in every venue.", tags:["Robot","Mascot","STAFF","Icon"], moves:["Boombox Bounce","Chain Swing","Power Fist","Crowd Control"], body:"Compact · Medium", skin:"Mechanical", type:"robot" },
+  { id:"julius", name:"Julius", role:"Hype Master · VIP Curator", tier:"Star", tierN:5, color:"#FFD700", emoji:"🦦", desc:"Slick meerkat with VIP tickets, mic, and magic hat. Runs giveaways, crowd games, and surprise drops.", tags:["Meerkat","Hype","VIP","Games"], moves:["Ticket Toss","Hat Trick","Mic Drop","Sneak Slide"], body:"Short · Slim", skin:"Fur Coat", type:"mascot" },
+  { id:"tiana", name:"Tiana (TG)", role:"Monday Night Stage Host", tier:"Star", tierN:5, color:"#9B59FF", emoji:"🎤", desc:"TG-branded host. Red & purple leather jackets, gold chains, ripped jeans. High-energy stage presence.", tags:["Host","Female","Hip-Hop","Monday Night"], moves:["Mic Wave","Stage Walk","Gold Toss","Point & Pop"], body:"Athletic · Tall", skin:"Deep Warm", type:"human" },
+  { id:"ralph", name:"Record Ralph", role:"DJ · Music Curator", tier:"Established", tierN:3, color:"#00D4FF", emoji:"🎧", desc:"Behind the decks. Record Ralph hoodie, vinyl in hand. Controls the sonic atmosphere across all rooms.", tags:["DJ","Music","Decks","Curator"], moves:["Deck Spin","Drop Head","Vinyl Wave","Bass Bounce"], body:"Average · Medium", skin:"All Tones", type:"human" },
+  { id:"duo", name:"Redbeard & Specs", role:"Co-Host Duo", tier:"Established", tierN:3, color:"#FF6B1A", emoji:"🎙️", desc:"The dynamic duo. Redbeard in navy suit + red tie. Specs in teal blazer + purple pants. Full hype.", tags:["Co-Host","Duo","Male","Stage"], moves:["Mic Share","Hype Lean","Side Step","Crowd Call"], body:"Varied · Medium-Tall", skin:"Light + Medium", type:"human" },
+  { id:"luxe", name:"Luxe Trio", role:"Premium Show Hosts", tier:"Star", tierN:4, color:"#FF69B4", emoji:"✨", desc:"Silver fox host + two glamour co-hosts. Purple blazer, gold sequins, red gown. Top-tier show energy.", tags:["Trio","Glamour","Mixed","Premium"], moves:["Glam Walk","Gold Toss","Mic Spin","Shimmy"], body:"Varied · All Heights", skin:"All Tones", type:"human" }
+];
+
+const TIERS = [
+  { tier:"Rookie", level:1, color:"#888888", xp:"0–999 XP", perks:["Basic move set","Default outfit","Standard emotes","Entry-level avatar"] },
+  { tier:"Rising", level:2, color:"#00D4FF", xp:"1K–4.9K XP", perks:["+10 dance moves","Accessory unlocks","Custom accent colors","Fan chat badge"] },
+  { tier:"Established", level:3, color:"#9B59FF", xp:"5K–19.9K XP", perks:["+25 moves","Stage lighting effects","Fan interactions","Voice line pack"] },
+  { tier:"Star", level:4, color:"#FF6B1A", xp:"20K–99K XP", perks:["Full move library","VIP zone access","Custom arena skin","Billboard slot"] },
+  { tier:"Legend", level:5, color:"#FFD700", xp:"100K–499K XP", perks:["AI choreography","Evolution skin unlock","World Dance Party host","Signature style"] },
+  { tier:"Icon", level:6, color:"#FF69B4", xp:"500K+ XP", perks:["Full AI self-evolution","TMI Hall of Fame","Clone split move","Infinite signature drops"] }
+];
+
+const BODY = [
+  { age:"Youth", range:"5–17", builds:["Slim","Average","Curvy"], heights:["Short","Medium"] },
+  { age:"Young Adult", range:"18–30", builds:["Slim","Athletic","Average","Curvy","Heavy"], heights:["Short","Medium","Tall"] },
+  { age:"Adult", range:"31–45", builds:["Slim","Athletic","Average","Curvy","Heavy"], heights:["Short","Medium","Tall"] },
+  { age:"Middle Age", range:"46–60", builds:["Slim","Average","Curvy","Heavy"], heights:["Short","Medium","Tall"] },
+  { age:"Senior", range:"61+", builds:["Slim","Average","Heavy"], heights:["Short","Medium"] }
+];
+
+const SKINS = [
+  {name:"Porcelain",c:"#FDE8D8"},{name:"Fair",c:"#F5CBA7"},{name:"Light",c:"#E8A87C"},
+  {name:"Medium",c:"#C68642"},{name:"Tan",c:"#A0522D"},{name:"Brown",c:"#7B3F00"},
+  {name:"Deep",c:"#4A2000"},{name:"Ebony",c:"#3B1A00"}
+];
+
+const ZONES = [
+  { zone:"HEAD", color:"#FF6B1A", items:["Hair — 60+ styles: locs, curls, afros, fades, braids, straight, wavy, bald","Hats, caps, helmets, crowns, beanies, turbans","Face scan slot — map any real face onto any body","Earrings, piercings, studs, hoops","Headphones, visors, VR rigs, sunshades"] },
+  { zone:"FACE", color:"#00D4FF", items:["8 skin tones — full spectrum from Porcelain to Ebony","Eye shape & color — 30+ combinations","Nose, lip, and jaw variation system","Beard, mustache, eyelashes, makeup overlays","Glasses, goggles, face paint, tattoos, freckles"] },
+  { zone:"NECK", color:"#FFD700", items:["Gold chains (thin, thick, Cuban link, rope)","TMI / TG / BerntoutGlobal pendant system","Staff, Host, VIP lanyards","Scarves, ties, bow ties, chokers","Neck tattoos and markings"] },
+  { zone:"TORSO", color:"#9B59FF", items:["Shirts, hoodies, blazers, bodysuits, crop tops, vests","Jackets — leather, sequin, denim, varsity","Logo system: TMI · TG · Record Ralph · BerntoutGlobal XXL","Physics-simulated cloth — reacts to every move","Armor, costume, and fantasy overlays for WDP"] },
+  { zone:"ARMS & HANDS", color:"#FF69B4", items:["Bracelets, bangles, watches, cuffs","Gloves, rings (individual finger control)","Tattoo sleeves — full-arm designs","Hand props: mic, vinyl record, VIP tickets, confetti cannon","Physics chain accessories on wrists"] },
+  { zone:"WAIST", color:"#00FF88", items:["Belts — gold buckle, chain, rope, studded","Waist chains and body jewelry","Skirt and kilt waistbands","Logo-engraved belt buckles (TG, TMI, Ralph)","Fanny packs and holsters for DJ / Host roles"] },
+  { zone:"LEGS", color:"#FF6B1A", items:["Jeans — ripped, slim, wide-leg, flared, high-waist","Shorts, leggings, skirts, suit pants, joggers","Stockings, tights, fishnets","Chain leg accessories and thigh cuffs","Cloth simulation — fabric moves with physics"] },
+  { zone:"FEET", color:"#00D4FF", items:["Sneakers, boots, heels, platforms, sandals, loafers","Gold-tip and LED light-up sole variants","Socks, anklets, foot tattoos","Air Max, Jordan, Timberland, Stiletto archetypes","Barefoot option with foot detail customization"] }
+];
+
+const MOVES = [
+  { cat:"Signature Grooves", color:"#FF6B1A", list:["Boombox Bounce","Gold Chain Swing","Neon Slide","Stage Stomp","Mic Twirl","Lean Back","Head Nod","Shoulder Pop"] },
+  { cat:"Crowd Interactions", color:"#00D4FF", list:["Crowd Call","Fan Throw","Mic Wave","Point & Pop","Hype Jump","Arms Wide","Crowd Surf","Encore Bow"] },
+  { cat:"Battle Moves", color:"#FFD700", list:["Power Drop","Spin Lock","Freeze Frame","Body Roll","Windmill","Footwork Blitz","Flare Combo","Shadow Mirror"] },
+  { cat:"World Dance Party", color:"#9B59FF", list:["Line Dance Sync","Group Pulse","Flash Mob Break","Arena Wave","Circle Cypher","Mass Freeze","Chain Reaction","Grand Finale"] },
+  { cat:"Evolution Unlocks", color:"#FF69B4", list:["AI Choreography","Mirror Echo","Clone Split","Signature Finale","Time Warp Loop","Light Trail Blaze","Crowd Morph","Icon Ascension"] }
+];
+
+const AI_RULES = [
+  ["Watch & Learn","Characters observe live performances and absorb new move patterns over time"],
+  ["Beat Detection","AI reads the live audio stream and triggers genre-specific dance styles automatically"],
+  ["Fan Interaction Memory","Characters remember their most-used emotes and personalize them for each fan"],
+  ["Style Drift","Each character gradually develops a unique signature look and movement signature"],
+  ["Cross-Character Learning","Bebo can teach Julius moves; Tiana can cross-train with Record Ralph"],
+  ["World Dance Party Sync","All characters in a room evolve together during massive live group events"],
+  ["Monthly Drops","New moves, outfits, and accessories unlock on a rolling release calendar"],
+  ["Emotion Engine","Characters react to crowd energy — low crowd = calm, packed house = full heat"]
+];
+
+let state = {
+  tab: "roster",
+  openChar: null,
+  ageIdx: 1,
+  buildIdx: 2,
+  heightIdx: 1,
+  skinIdx: 3,
+  rot: 0,
+  openZone: null
+};
+
+const AGES = ["Youth (5–17)","Young Adult (18–30)","Adult (31–45)","Middle Age (46–60)","Senior (61+)"];
+const BUILDS = ["Slim","Athletic","Average","Curvy","Heavy"];
+const HEIGHTS = ["Short","Medium","Tall"];
+const TABS = [
+  {id:"roster",label:"Character Roster",icon:"👾"},
+  {id:"build",label:"Build System",icon:"🔧"},
+  {id:"headtoe",label:"Head to Toe",icon:"🧍"},
+  {id:"moves",label:"Dance & Moves",icon:"💃"},
+  {id:"evolve",label:"Evolution",icon:"⚡"}
+];
+
+function el(tag, props={}, ...children) {
+  const e = document.createElement(tag);
+  Object.entries(props).forEach(([k,v]) => {
+    if (k === "style" && typeof v === "object") Object.assign(e.style, v);
+    else if (k.startsWith("on")) e.addEventListener(k.slice(2).toLowerCase(), v);
+    else if (k === "cls") e.className = v;
+    else e.setAttribute(k, v);
+  });
+  children.flat(9).forEach(c => c != null && e.append(typeof c === "string" ? document.createTextNode(c) : c));
+  return e;
+}
+
+function pill(txt, col) {
+  return el("span",{style:{background:col,color:"#fff",borderRadius:20,fontSize:11,padding:"3px 10px",fontWeight:700,display:"inline-block",letterSpacing:0.5}},txt);
+}
+function badge(txt, col) {
+  return el("span",{style:{display:"inline-block",background:col+"22",color:col,border:`1px solid ${col}44`,borderRadius:6,fontSize:11,padding:"2px 8px",marginRight:4,marginBottom:4,fontWeight:600}},txt);
+}
+function sTitle(txt, col="#FF6B1A") {
+  return el("div",{style:{fontSize:15,fontWeight:700,color:col,letterSpacing:1,textTransform:"uppercase",marginBottom:16}},txt);
+}
+function card(children, extra={}) {
+  return el("div",{style:{background:"#0D0D24",border:"1px solid #1E1E45",borderRadius:12,padding:"16px 20px",marginBottom:12,...extra}}, ...children);
+}
+function statRow(label, val) {
+  return el("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 0",borderBottom:"1px solid #1A1A3A"}},
+    el("span",{style:{fontSize:12,color:"#7878AA"}},label),
+    el("span",{style:{fontSize:13,color:"#E8E8FF",fontWeight:600}},val)
+  );
+}
+
+function renderRoster() {
+  const grid = el("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:16}});
+  CHARS.forEach(c => {
+    const isOpen = state.openChar === c.id;
+    const cardEl = el("div",{style:{background:"#0D0D24",border:`1px solid ${isOpen?c.color:"#1E1E45"}`,borderRadius:14,padding:"18px 20px",cursor:"pointer",transition:"border-color 0.2s"},
+      onclick:()=>{state.openChar=isOpen?null:c.id;render();}});
+    
+    const top = el("div",{style:{display:"flex",alignItems:"center",gap:12,marginBottom:10}},
+      el("div",{style:{width:48,height:48,borderRadius:10,background:c.color+"22",border:`1px solid ${c.color}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:24}},c.emoji),
+      el("div",{},
+        el("div",{style:{fontSize:17,fontWeight:700,color:c.color}},c.name),
+        el("div",{style:{fontSize:11,color:"#7878AA"}},c.role)
+      ),
+      el("div",{style:{marginLeft:"auto"}},pill(c.tier, c.color))
+    );
+    cardEl.append(top);
+    cardEl.append(el("p",{style:{fontSize:13,color:"#B0B0CC",marginBottom:10,lineHeight:1.6}},c.desc));
+    const tagWrap = el("div",{style:{marginBottom:8}});
+    c.tags.forEach(t => tagWrap.append(badge(t, c.color)));
+    cardEl.append(tagWrap);
+
+    if (isOpen) {
+      const detail = el("div",{style:{marginTop:12,borderTop:"1px solid #1E1E45",paddingTop:12},cls:"fade-in"});
+      detail.append(statRow("Body Type", c.body));
+      detail.append(statRow("Skin / Texture", c.skin));
+      detail.append(statRow("Evolution", `Level ${c.tierN} of 6 · ${c.tier}`));
+      
+      const mLabel = el("div",{style:{fontSize:12,color:"#7878AA",margin:"10px 0 6px"}}, "Signature Moves");
+      const mWrap = el("div");
+      c.moves.forEach(m => mWrap.append(el("span",{style:{background:"#1A1A40",color:c.color,borderRadius:20,fontSize:12,padding:"4px 12px",display:"inline-block",margin:"3px",fontWeight:500,border:`1px solid ${c.color}33`}},m)));
+      
+      const barWrap = el("div",{style:{marginTop:12}});
+      const barBg = el("div",{style:{height:6,background:"#1A1A3A",borderRadius:4,overflow:"hidden",marginTop:6}});
+      const barFill = el("div",{style:{height:"100%",width:`${(c.tierN/6)*100}%`,background:c.color,borderRadius:4}});
+      barBg.append(barFill);
+      barWrap.append(el("span",{style:{fontSize:12,color:"#7878AA"}},"Evolution Progress"), barBg);
+      
+      detail.append(mLabel, mWrap, barWrap);
+      cardEl.append(detail);
+    }
+    grid.append(cardEl);
+  });
+
+  const checks = el("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:10,marginTop:4}});
+  ["Face Scan Ready","360° Rigged Mesh","Full Skeletal Rig","Physics Hair & Cloth","Cloth Simulation","World Dance Party Export","AI Evolution Engine","Head-to-Toe Customization"].forEach(f => {
+    checks.append(el("div",{style:{display:"flex",alignItems:"center",gap:8,background:"#111130",borderRadius:8,padding:"10px 14px"}},
+      el("span",{style:{color:"#00D4FF",fontSize:14}}, "✓"),
+      el("span",{style:{fontSize:13,color:"#E8E8FF"}},f)
+    ));
+  });
+
+  return el("div",{cls:"fade-in"},
+    sTitle("Official Character Roster"),
+    grid,
+    card([sTitle("All Characters Are 360° · Face Scan · Dance Ready","#00D4FF"), checks], {marginTop:20,border:"1px solid #00D4FF44"})
+  );
+}
+
+function renderBuild() {
+  const left = el("div");
+  left.append(sTitle("Body Builder"));
+
+  function sliderBlock(label, min, max, val, labels, onChange) {
+    const wrap = el("div",{style:{marginBottom:20}});
+    const lbl = el("span",{style:{fontSize:12,color:"#7878AA",display:"block",marginBottom:4}},label);
+    const input = el("input",{type:"range",min,max,value:val,oninput:e=>onChange(+e.target.value)});
+    const ticks = el("div",{style:{display:"flex",justifyContent:"space-between",fontSize:10,color:"#7878AA",marginTop:2}});
+    labels.forEach(l => ticks.append(el("span",{},l)));
+    wrap.append(lbl,input,ticks);
+    return wrap;
+  }
+
+  const ageS = sliderBlock(`Age Group · ${AGES[state.ageIdx]}`, 0, 4, state.ageIdx, ["Youth","Young Adult","Adult","Middle","Senior"], v=>{state.ageIdx=v;render();});
+  const buildS = sliderBlock(`Body Build · ${BUILDS[state.buildIdx]}`, 0, 4, state.buildIdx, BUILDS, v=>{state.buildIdx=v;render();});
+  const heightS = sliderBlock(`Height · ${HEIGHTS[state.heightIdx]}`, 0, 2, state.heightIdx, ["Short","Medium","Tall"], v=>{state.heightIdx=v;render();});
+
+  left.append(ageS, buildS, heightS);
+
+  const skinLabel = el("span",{style:{fontSize:12,color:"#7878AA",display:"block",marginBottom:6}},"Skin Tone");
+  const skinDots = el("div",{style:{display:"flex",flexWrap:"wrap",gap:6}});
+  SKINS.forEach((sk,i) => {
+    const dot = el("div",{title:sk.name,style:{width:34,height:34,borderRadius:"50%",background:sk.c,border:state.skinIdx===i?"3px solid #FF6B1A":"2px solid #1E1E45",cursor:"pointer",transition:"border 0.2s"},onclick:()=>{state.skinIdx=i;render();}});
+    skinDots.append(dot);
+  });
+  const skinName = el("span",{style:{fontSize:11,color:"#7878AA",marginTop:4,display:"block"}},SKINS[state.skinIdx].name);
+  left.append(skinLabel, skinDots, skinName);
+
+  const sk = SKINS[state.skinIdx];
+  const bld = state.buildIdx;
+  const ht = state.heightIdx;
+  const headSz = bld > 3 ? 52 : bld < 1 ? 36 : 44;
+  const torsoW = bld === 0 ? 34 : bld === 4 ? 60 : bld === 1 ? 38 : bld === 3 ? 54 : 46;
+  const torsoH = ht === 2 ? 80 : ht === 0 ? 52 : 66;
+  const legH = ht === 2 ? 72 : ht === 0 ? 44 : 58;
+
+  const preview = el("div",{style:{background:"#0D0D24",border:"1px solid #1E1E45",borderRadius:14,padding:20,textAlign:"center",minHeight:340}});
+  preview.append(sTitle("Character Preview","#FF6B1A"));
+
+  const figure = el("div",{style:{width:140,height:260,margin:"0 auto 16px",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",position:"relative"}});
+  
+  const head = el("div",{style:{width:headSz,height:headSz,borderRadius:"50%",background:sk.c,border:`2px solid ${sk.c}66`,position:"relative",flexShrink:0}});
+  const badge360 = el("span",{style:{position:"absolute",top:-6,right:-12,background:"#FF6B1A",color:"#fff",borderRadius:6,fontSize:9,padding:"1px 5px",fontWeight:800}},"360°");
+  head.append(badge360);
+  
+  const torso = el("div",{style:{width:torsoW,height:torsoH,background:sk.c+"CC",borderRadius:6,margin:"4px 0",border:`1px solid ${sk.c}44`,flexShrink:0}});
+  
+  const legRow = el("div",{style:{display:"flex",gap:5}});
+  [0,1].forEach(() => legRow.append(el("div",{style:{width:16,height:legH,background:sk.c+"88",borderRadius:4}})));
+  
+  figure.append(head, torso, legRow);
+  preview.append(figure);
+  
+  preview.append(el("div",{style:{fontSize:13,fontWeight:600,color:"#E8E8FF"}},AGES[state.ageIdx]));
+  preview.append(el("div",{style:{fontSize:12,color:"#7878AA",marginTop:2}},`${BUILDS[state.buildIdx]} · ${HEIGHTS[state.heightIdx]} · ${sk.name}`));
+
+  const rotRow = el("div",{style:{display:"flex",gap:8,justifyContent:"center",marginTop:14,alignItems:"center"}});
+  const rotBtn = (txt, delta) => el("button",{style:{background:"#111130",border:"1px solid #1E1E45",borderRadius:8,padding:"8px 14px",color:"#00D4FF",fontSize:12,fontWeight:700},onclick:()=>{state.rot=(state.rot+delta+360)%360;render();}},txt);
+  const rotDisp = el("span",{style:{padding:"8px 14px",background:"#111130",borderRadius:8,fontSize:13,color:"#FF6B1A",fontWeight:800}},`${state.rot}°`);
+  rotRow.append(rotBtn("◀ Rotate", -45), rotDisp, rotBtn("Rotate ▶", 45));
+  preview.append(rotRow);
+
+  const faceScan = el("div",{style:{marginTop:10,background:"#111130",borderRadius:8,padding:"6px 12px",display:"inline-block"}});
+  faceScan.append(el("span",{style:{fontSize:12,color:"#00D4FF"}},"📷 Face Scan Ready"));
+  preview.append(faceScan);
+
+  const right = el("div",{},preview);
+
+  const matrix = el("table",{style:{width:"100%",fontSize:12}});
+  const thead = el("tr");
+  ["Age Group","Range","Available Builds","Heights","Combinations"].forEach((h,i) => {
+    thead.append(el("th",{style:{textAlign:i===4?"right":"left",padding:"8px 10px",color:"#FF6B1A",borderBottom:"1px solid #1E1E45"}},h));
+  });
+  matrix.append(el("thead",{},thead));
+  const tbody = el("tbody");
+  BODY.forEach((bt,i) => {
+    const tr = el("tr",{style:{background:i%2===0?"#0D0D24":"#111130"}});
+    const combos = bt.builds.length * bt.heights.length * 8;
+    [bt.age, bt.range, bt.builds.join(", "), bt.heights.join(", "), combos+""].forEach((val,j) => {
+      tr.append(el("td",{style:{padding:"8px 10px",color:["#E8E8FF","#7878AA","#00D4FF","#9B59FF","#FFD700"][j],fontWeight:j===0||j===4?600:400,textAlign:j===4?"right":"left"}},val));
+    });
+    tbody.append(tr);
+  });
+  matrix.append(tbody);
+
+  return el("div",{cls:"fade-in"},
+    el("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20}},left,right),
+    card([sTitle("Body Type Matrix — All Age Groups"), matrix], {marginTop:12})
+  );
+}
+
+function renderHeadToe() {
+  const grid = el("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(300px,1fr))",gap:12}});
+  ZONES.forEach(z => {
+    const isOpen = state.openZone === z.zone;
+    const zCard = el("div",{style:{background:"#0D0D24",border:"1px solid #1E1E45",borderRadius:10,padding:"12px 16px",marginBottom:0,borderLeft:`3px solid ${z.color}`,cursor:"pointer",transition:"all 0.2s"},
+      onclick:()=>{state.openZone=isOpen?null:z.zone;render();}});
+    const header = el("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between"}},
+      el("div",{style:{fontSize:14,fontWeight:700,color:z.color}},z.zone),
+      el("span",{style:{color:z.color,fontSize:12}},isOpen?"▲":"▼")
+    );
+    zCard.append(header);
+    if (isOpen) {
+      const items = el("div",{style:{marginTop:10},cls:"fade-in"});
+      z.items.forEach(item => {
+        items.append(el("div",{style:{display:"flex",alignItems:"flex-start",gap:6,marginBottom:5}},
+          el("span",{style:{color:z.color,fontSize:10,marginTop:3,flexShrink:0}},"▸"),
+          el("span",{style:{fontSize:13,color:"#B0B0CC",lineHeight:1.7}},item)
+        ));
+      });
+      zCard.append(items);
+    }
+    grid.append(zCard);
+  });
+
+  const specs = el("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:10,marginTop:4}});
+  [["Rig Format","Humanoid · Mixamo Compatible"],["Polygon Count","Low / Mid / High LOD"],["Texture Maps","Albedo + Normal + Emission"],["Animation Slots","200+ Clips"],["Physics Bones","Hair · Cloth · Chains"],["Blend Shapes","Facial Expressions"],["Export Format","FBX / GLB / USD"],["Engine Ready","Unity · Unreal · Three.js"]].forEach(([l,v]) => {
+    specs.append(el("div",{style:{background:"#111130",borderRadius:8,padding:"10px 14px"}},
+      el("div",{style:{fontSize:11,color:"#7878AA",marginBottom:3}},l),
+      el("div",{style:{fontSize:12,color:"#00D4FF",fontWeight:700}},v)
+    ));
+  });
+
+  return el("div",{cls:"fade-in"},
+    sTitle("Head-to-Toe Customization System"),
+    el("div",{style:{fontSize:12,color:"#7878AA",marginBottom:16}},"Click any zone to expand. Every zone fully customizable, physics-simulated, and 360° rigged."),
+    grid,
+    card([sTitle("World Dance Party · Export Specs","#00D4FF"),specs],{marginTop:20,border:"1px solid #00D4FF44"})
+  );
+}
+
+function renderMoves() {
+  const grid = el("div");
+  MOVES.forEach(cat => {
+    const catCard = el("div",{style:{background:"#111130",borderRadius:10,padding:"14px 18px",marginBottom:10}});
+    const catHeader = el("div",{style:{display:"flex",alignItems:"center",gap:10,marginBottom:10}},
+      el("div",{style:{fontSize:14,fontWeight:700,color:cat.color}},cat.cat)
+    );
+    if (cat.cat==="World Dance Party") catHeader.append(pill("WDP","#00D4FF"));
+    if (cat.cat==="Evolution Unlocks") catHeader.append(pill("LOCKED","#FFD700"));
+    catCard.append(catHeader);
+    const moveWrap = el("div");
+    cat.list.forEach(m => {
+      moveWrap.append(el("span",{style:{background:"#1A1A40",color:cat.color,borderRadius:20,fontSize:12,padding:"4px 12px",display:"inline-block",margin:"3px",fontWeight:500,border:`1px solid ${cat.color}33`}},m));
+    });
+    catCard.append(moveWrap);
+    grid.append(catCard);
+  });
+
+  const rulesCard = card([sTitle("Animation Behavior Rules","#FFD700")]);
+  [
+    ["Physics-driven","Hair, chains, cloth react to every move in real time — no static accessories"],
+    ["Idle animations","Characters breathe, blink, and sway even while standing still"],
+    ["Crowd sync","All avatars in World Dance Party can sync to the same live choreography beat"],
+    ["AI choreography","Legend+ characters generate new moves from the live music tempo and genre"],
+    ["Transition blending","Smooth blend: idle → dance → emote → battle → idle — zero snap cuts"],
+    ["360° during moves","All animations captured from every angle — no camera blind spots ever"]
+  ].forEach(([r,d]) => {
+    rulesCard.append(el("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 0",borderBottom:"1px solid #1A1A3A",gap:12}},
+      el("span",{style:{fontSize:13,color:"#FFD700",fontWeight:600,minWidth:180,flexShrink:0}},r),
+      el("span",{style:{fontSize:12,color:"#B0B0CC",textAlign:"right",flex:1}},d)
+    ));
+  });
+
+  return el("div",{cls:"fade-in"},sTitle("Dance & Movement System"),grid,rulesCard);
+}
+
+function renderEvolve() {
+  const tiersWrap = el("div");
+  TIERS.forEach((t,i) => {
+    const tc = el("div",{style:{background:"#0D0D24",border:`1px solid ${t.color}44`,borderRadius:12,padding:"14px 18px",marginBottom:10}});
+    const header = el("div",{style:{display:"flex",alignItems:"center",gap:12,marginBottom:10}},
+      el("div",{style:{width:38,height:38,borderRadius:8,background:t.color+"22",border:`1px solid ${t.color}66`,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:18,color:t.color}},t.level),
+      el("div",{},
+        el("div",{style:{fontSize:16,fontWeight:700,color:t.color}},t.tier),
+        el("div",{style:{fontSize:11,color:"#7878AA"}},t.xp)
+      ),
+      el("div",{style:{marginLeft:"auto",flex:1,maxWidth:200}},
+        el("div",{style:{height:6,background:"#1A1A3A",borderRadius:4,overflow:"hidden"}},
+          el("div",{style:{height:"100%",width:`${((i+1)/6)*100}%`,background:t.color,borderRadius:4}})
+        )
+      )
+    );
+    tc.append(header);
+    const perks = el("div",{style:{display:"flex",flexWrap:"wrap",gap:6}});
+    t.perks.forEach(p => perks.append(el("div",{style:{background:"#111130",border:`1px solid ${t.color}33`,borderRadius:6,padding:"4px 10px",fontSize:12,color:"#E8E8FF"}},
+      el("span",{style:{color:t.color,marginRight:4}},"✓"), p
+    )));
+    tc.append(perks);
+    tiersWrap.append(tc);
+  });
+
+  const aiCard = card([sTitle("AI Learning & Growth Engine","#9B59FF")]);
+  AI_RULES.forEach(([rule,desc]) => {
+    aiCard.append(el("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"flex-start",padding:"7px 0",borderBottom:"1px solid #1A1A3A",gap:12}},
+      el("span",{style:{fontSize:13,color:"#9B59FF",fontWeight:600,minWidth:200,flexShrink:0}},rule),
+      el("span",{style:{fontSize:12,color:"#B0B0CC",textAlign:"right",flex:1}},desc)
+    ));
+  });
+
+  const finale = el("div",{style:{background:"#0D0D24",border:"1px solid #FF6B1A44",borderRadius:12,padding:"20px 24px",marginTop:12,textAlign:"center"}});
+  finale.append(
+    el("div",{style:{fontSize:20,fontWeight:800,color:"#FF6B1A",marginBottom:8,letterSpacing:1}},"EVERY CHARACTER. EVERY COLOR. EVERY SIZE. EVERY AGE."),
+    el("div",{style:{fontSize:13,color:"#7878AA",maxWidth:520,margin:"0 auto",lineHeight:1.7}},"From youth to senior, slim to heavy, robot to meerkat to human — every TMI character is built in full 360° with a complete skeleton, physics rig, face scan slot, and AI evolution engine. Ready for the stage, the arena, and World Dance Party. They watch. They learn. They grow. They become icons.")
+  );
+
+  return el("div",{cls:"fade-in"},sTitle("Character Evolution System"),tiersWrap,aiCard,finale);
+}
+
+function render() {
+  const app = document.getElementById("app");
+  app.innerHTML = "";
+
+  const header = el("div",{style:{background:"#0D0D24",borderBottom:"1px solid #1E1E45",padding:"18px 24px",display:"flex",alignItems:"center",gap:16}},
+    el("div",{},
+      el("div",{style:{fontSize:24,fontWeight:800,color:"#FF6B1A",letterSpacing:2}},"TMI CHARACTER SYSTEM"),
+      el("div",{style:{fontSize:11,color:"#7878AA",marginTop:4,letterSpacing:1}},"THE MUSICIAN'S INDEX · 3D · 360° · HEAD TO TOE · WORLD DANCE PARTY READY · AI EVOLUTION")
+    ),
+    el("div",{style:{marginLeft:"auto",textAlign:"right"}},
+      pill("LIVE BUILD","#00D4FF"),
+      el("div",{style:{fontSize:10,color:"#7878AA",marginTop:4}},"BerntoutGlobal XXL")
+    )
+  );
+
+  const tabBar = el("div",{style:{display:"flex",gap:4,padding:"12px 24px 0",borderBottom:"1px solid #1E1E45",background:"#0D0D24",overflowX:"auto"}});
+  TABS.forEach(t => {
+    const active = state.tab === t.id;
+    const tb = el("button",{
+      style:{padding:"10px 16px",fontSize:12,fontWeight:600,border:"none",borderRadius:"8px 8px 0 0",background:active?"#FF6B1A":"transparent",color:active?"#fff":"#7878AA",borderBottom:active?"2px solid #FF6B1A":"2px solid transparent",whiteSpace:"nowrap",letterSpacing:0.5},
+      onclick:()=>{state.tab=t.id;render();}
+    }, t.icon+" "+t.label);
+    tabBar.append(tb);
+  });
+
+  const body = el("div",{style:{padding:"24px"}});
+  if (state.tab==="roster") body.append(renderRoster());
+  else if (state.tab==="build") body.append(renderBuild());
+  else if (state.tab==="headtoe") body.append(renderHeadToe());
+  else if (state.tab==="moves") body.append(renderMoves());
+  else if (state.tab==="evolve") body.append(renderEvolve());
+
+  app.append(header, tabBar, body);
+}
+
+render();
+</script>
+</body>
+</html>

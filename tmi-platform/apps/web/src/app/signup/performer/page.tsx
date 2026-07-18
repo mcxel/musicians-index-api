@@ -20,6 +20,7 @@ export default function PerformerSignupPage() {
   const [error, setError] = useState("");
 
   async function handleSubmit() {
+    console.log("[TMI] handleSubmit entered. Performer Signup. Email:", email);
     setSubmitting(true);
     setError("");
     try {

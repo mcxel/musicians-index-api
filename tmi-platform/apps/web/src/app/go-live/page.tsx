@@ -1,5 +1,10 @@
 "use client";
 
+// LEGACY (2026-07-18): GoLiveStudio.tsx at /live/go is now the canonical Go
+// Live entry point — the Performer Hub's "GO LIVE" actions route there.
+// This wizard is a real, working implementation, not removed, but new Go
+// Live work should land in GoLiveStudio.tsx per Rule 21 convergence
+// (inherit-best-of-breed, don't run two competing systems indefinitely).
 import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -127,9 +132,40 @@ export default function GoLivePage() {
         </Link>
 
         <h1 style={{ fontSize: 24, fontWeight: 900, marginTop: 20, marginBottom: 4 }}>Go Live</h1>
-        <p style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginBottom: 32 }}>
+        <p style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginBottom: 24 }}>
           Start a room, concert, battle, or session. Your audience is waiting.
         </p>
+
+        {/* Deprecation notice banner */}
+        <div style={{
+          background: "linear-gradient(135deg, rgba(255, 45, 170, 0.15) 0%, rgba(170, 45, 255, 0.1) 100%)",
+          border: "1px solid rgba(255, 45, 170, 0.4)",
+          borderRadius: 10,
+          padding: "16px 20px",
+          marginBottom: 32,
+          boxShadow: "0 0 15px rgba(255, 45, 170, 0.15)"
+        }}>
+          <div style={{ fontSize: 10, fontWeight: 900, color: "#FF2DAA", letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: 6 }}>
+            📢 RECOMMENDED UPDATE: ONE-CLICK BROADCAST STUDIO
+          </div>
+          <p style={{ fontSize: 11, color: "rgba(255,255,255,0.65)", lineHeight: 1.6, margin: "0 0 12px" }}>
+            The manual multi-step setup wizard is deprecated. You can now use the canonical One-Click Broadcast Studio, which automatically reads your profile defaults and goes live in a single click, providing live multistreaming control channels directly during your show.
+          </p>
+          <Link href="/live/go?auto=true" style={{
+            display: "inline-block",
+            padding: "8px 18px",
+            background: "linear-gradient(135deg, #FF2DAA, #AA2DFF)",
+            borderRadius: 6,
+            color: "#fff",
+            textDecoration: "none",
+            fontSize: 10,
+            fontWeight: 900,
+            letterSpacing: "0.06em",
+            boxShadow: "0 0 10px rgba(255, 45, 170, 0.4)"
+          }}>
+            🚀 START BROADCAST INSTANTLY
+          </Link>
+        </div>
 
         {/* Step indicator */}
         <div style={{ display: "flex", alignItems: "center", marginBottom: 40 }}>

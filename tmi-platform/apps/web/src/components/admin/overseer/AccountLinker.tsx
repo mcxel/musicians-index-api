@@ -47,64 +47,38 @@ export default function AccountLinker() {
   }
 
   return (
-    <section style={{ height: "100%", display: "flex", flexDirection: "column", gap: 8 }}>
-      <header className="flex items-center justify-between gap-2">
-        <div>
-          <p className="text-[9px] font-black uppercase tracking-[0.18em] text-amber-400">Account Linker</p>
-          <p className="text-[10px] font-black uppercase text-white">Connected Services</p>
-        </div>
-        <div className="flex gap-1">
-          <span className="rounded border border-green-400/40 bg-green-500/10 px-2 py-0.5 text-[9px] font-black uppercase text-green-300">
-            {ACCOUNTS.filter((a) => a.status === "CONNECTED").length} UP
-          </span>
-          <span className="rounded border border-red-500/40 bg-red-500/10 px-2 py-0.5 text-[9px] font-black uppercase text-red-300">
-            {ACCOUNTS.filter((a) => a.status !== "CONNECTED").length} DOWN
-          </span>
-        </div>
-      </header>
-
-      <div className="flex-1 space-y-1.5 overflow-y-auto">
-        {ACCOUNTS.map((account) => (
-          <div
-            key={account.id}
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr auto auto",
-              alignItems: "center",
-              gap: 8,
-              borderRadius: 8,
-              border: "1px solid rgba(241,181,66,0.24)",
-              background: "linear-gradient(180deg, rgba(44,18,17,0.55), rgba(19,9,12,0.82))",
-              padding: "6px 8px",
-            }}
-          >
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-1.5">
-                <span className={`text-[9px] font-black uppercase ${CAT_COLOR[account.category]}`}>{account.category}</span>
-                <span className="text-[10px] font-black text-white">{account.name}</span>
-              </div>
-              <p className="text-[8px] text-zinc-400">{account.detail}</p>
-            </div>
-            <span className={`rounded border px-1.5 py-0.5 text-[7px] font-black uppercase ${STATUS_STYLE[account.status]}`}>
-              {account.status}
-            </span>
-            <button
-              onClick={() => handleAction(account)}
-              className="rounded border border-amber-300/30 bg-amber-500/10 px-2 py-0.5 text-[8px] font-black uppercase text-amber-100 hover:bg-amber-500/25"
-            >
-              {account.actionLabel}
-            </button>
+    <div style={{ display: "flex", flexDirection: "column", gap: 6, fontFamily: "'Inter', sans-serif" }}>
+      {[
+        { name: "Google Ads", count: 8, checked: false },
+        { name: "Meta Business Suite", count: 18, checked: false },
+        { name: "stripe", checked: true },
+        { name: "Pay Pa/", checked: true },
+        { name: "Visionary Streams", checked: true },
+        { name: "S&R Hosting", checked: true },
+        { name: "Pundworthy", count: 29, checked: true }
+      ].map((item, idx) => (
+        <div key={idx} style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          padding: "5px 8px",
+          background: "rgba(255,255,255,0.02)",
+          border: "1px solid rgba(255,215,0,0.15)",
+          borderRadius: 8,
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            {item.checked ? (
+              <span style={{ color: "#00FF88", fontSize: 10, fontWeight: 900 }}>✔</span>
+            ) : (
+              <span style={{ color: "rgba(255,255,255,0.2)", fontSize: 10 }}>☐</span>
+            )}
+            <span style={{ fontSize: 9, fontWeight: 900, color: "#ffe9bb", textTransform: "uppercase" }}>{item.name}</span>
           </div>
-        ))}
-      </div>
-
-      {log.length > 0 && (
-        <div className="mt-2 rounded border border-white/10 bg-black/40 p-1.5">
-          {log.slice(0, 3).map((e, i) => (
-            <p key={i} className="text-[8px] text-zinc-500">{e}</p>
-          ))}
+          {item.count ? (
+            <span style={{ background: "rgba(255,255,255,0.1)", color: "#fff", fontSize: 8, fontWeight: 900, padding: "1px 5px", borderRadius: 4 }}>{item.count}</span>
+          ) : null}
         </div>
-      )}
-    </section>
+      ))}
+    </div>
   );
 }

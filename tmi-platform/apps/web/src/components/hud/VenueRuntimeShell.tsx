@@ -74,6 +74,8 @@ function Scene3D() {
       <OrbitControls
         enableZoom={false}
         enablePan={false}
+        enableDamping={true}
+        dampingFactor={0.05}
         maxPolarAngle={Math.PI / 2.1}
         minPolarAngle={Math.PI / 4}
         autoRotate

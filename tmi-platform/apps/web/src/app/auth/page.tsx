@@ -37,7 +37,6 @@ export default function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState<string>("");
-  const [registerMsg, setRegisterMsg] = useState<string>("");
   const [busy, setBusy] = useState(false);
   const [inviteCode, setInviteCode] = useState<string>("");
   const [session, setSession] = useState<SessionPayload>({
@@ -79,47 +78,6 @@ export default function AuthPage() {
     return () => { active = false; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const waitForAuthenticatedSession = async (): Promise<boolean> => {
-    await new Promise(r => setTimeout(r, 100)); // give browser time to commit Set-Cookie
-    for (let i = 0; i < 8; i++) {
-      const s = await loadSession();
-      if (s.authenticated) return true;
-      await new Promise(r => setTimeout(r, 200));
-    }
-    return false;
-  };
-
-  const register = async () => {
-    setBusy(true);
-    setRegisterMsg("");
-    setMessage("");
-    try {
-      const csrfRes = await loadSession();
-      const csrf = csrfRes.csrfToken;
-      const headers: Record<string, string> = { "Content-Type": "application/json" };
-      if (csrf) headers["X-CSRF-Token"] = csrf;
-
-      const res = await fetch("/api/auth/register", {
-        method: "POST",
-        headers,
-        body: JSON.stringify({ email: email.trim().toLowerCase(), password, termsAccepted: true }),
-        credentials: "include",
-      });
-
-      if (res.status === 201) {
-        window.location.replace("/onboarding");
-        return;
-      } else if (res.status === 409) {
-        setRegisterMsg("User already exists.");
-      } else {
-        const d = await res.json().catch(() => ({} as { error?: string }));
-        setRegisterMsg(d.error ?? `Registration failed (${res.status}).`);
-      }
-    } finally {
-      setBusy(false);
-    }
-  };
 
   const login = async () => {
     setBusy(true);
@@ -242,46 +200,25 @@ export default function AuthPage() {
               />
             </div>
 
-            {registerMsg && (
-              <div style={{ fontSize: 11, color: registerMsg.toLowerCase().includes("succeeded") || registerMsg.toLowerCase().includes("already exists") ? "#00FF88" : "#FF6B6B", padding: "8px 12px", background: "rgba(255,255,255,0.04)", borderRadius: 7 }}>
-                {registerMsg}
-              </div>
-            )}
-
             {message && (
               <div style={{ fontSize: 11, color: "#FF6B6B", padding: "8px 12px", background: "rgba(255,255,255,0.04)", borderRadius: 7 }}>
                 {message}
               </div>
             )}
 
-            <div style={{ display: "flex", gap: 8 }}>
-              <button
-                type="button"
-                onClick={() => void register()}
-                disabled={busy}
-                style={{
-                  flex: 1, padding: "13px", minHeight: "44px", fontSize: 11, fontWeight: 800, letterSpacing: "0.12em",
-                  background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.15)",
-                  color: "#fff", borderRadius: 8, cursor: busy ? "wait" : "pointer", opacity: busy ? 0.7 : 1,
-                }}
-              >
-                Register
-              </button>
-
-              <motion.button
-                whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.98 }}
-                type="submit"
-                disabled={busy}
-                style={{
-                  flex: 1, padding: "13px", minHeight: "44px", fontSize: 11, fontWeight: 800, letterSpacing: "0.15em",
-                  background: busy ? "rgba(0,255,255,0.15)" : "linear-gradient(135deg,#00FFFF,#00FFFF99)",
-                  color: "#050510", border: "none", borderRadius: 8, cursor: busy ? "wait" : "pointer",
-                  opacity: busy ? 0.7 : 1,
-                }}
-              >
-                {busy ? "..." : "Login"}
-              </motion.button>
-            </div>
+            <motion.button
+              whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.98 }}
+              type="submit"
+              disabled={busy}
+              style={{
+                width: "100%", padding: "13px", minHeight: "44px", fontSize: 11, fontWeight: 800, letterSpacing: "0.15em",
+                background: busy ? "rgba(0,255,255,0.15)" : "linear-gradient(135deg,#00FFFF,#00FFFF99)",
+                color: "#050510", border: "none", borderRadius: 8, cursor: busy ? "wait" : "pointer",
+                opacity: busy ? 0.7 : 1,
+              }}
+            >
+              {busy ? "..." : "Login"}
+            </motion.button>
 
             {/* Divider */}
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>

@@ -142,14 +142,25 @@ export default function LiveLobbyDrawer() {
             ))}
           </div>
 
-          {/* Scrollable roster — real accounts, click through to their real profile/room */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 8, overflowY: "auto", flex: 1, minHeight: 0, paddingRight: 2 }}>
+          {/* Style injection for smooth scale transitions on hover */}
+          <style dangerouslySetInnerHTML={{ __html: `
+            .tmi-lobby-card:hover .tmi-lobby-img {
+              transform: scale(1.08);
+              opacity: 0.9 !important;
+            }
+            .tmi-lobby-card:hover {
+              border-color: rgba(255, 255, 255, 0.45) !important;
+            }
+          `}} />
+
+          {/* Scrollable roster — grid of 9:16 vertical cards */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, overflowY: "auto", flex: 1, minHeight: 0, paddingRight: 2 }}>
             {tab === "fans" ? (
-              <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", textAlign: "center", padding: "20px 8px" }}>
+              <div style={{ gridColumn: "span 2", fontSize: 9, color: "rgba(255,255,255,0.4)", textAlign: "center", padding: "20px 8px" }}>
                 No fans in the lobby yet.
               </div>
             ) : tiles.length === 0 ? (
-              <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", textAlign: "center", padding: "20px 8px" }}>
+              <div style={{ gridColumn: "span 2", fontSize: 9, color: "rgba(255,255,255,0.4)", textAlign: "center", padding: "20px 8px" }}>
                 No accounts to show yet.
               </div>
             ) : (
@@ -157,30 +168,97 @@ export default function LiveLobbyDrawer() {
                 <Link
                   key={tile.id}
                   href={tile.href}
+                  className="tmi-lobby-card"
                   style={{
+                    position: "relative",
                     display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                    padding: "8px 8px",
+                    flexDirection: "column",
+                    justifyContent: "flex-end",
+                    aspectRatio: "9/16",
                     borderRadius: 8,
-                    border: `1px solid ${tile.color}22`,
-                    background: `${tile.color}06`,
+                    border: `1.5px solid ${tile.isLive ? "#E63000" : "rgba(255,255,255,0.12)"}`,
+                    boxShadow: tile.isLive ? "0 0 12px rgba(230,48,0,0.3)" : "none",
+                    overflow: "hidden",
                     textDecoration: "none",
-                    flexShrink: 0,
+                    background: "rgba(5,5,16,0.5)",
+                    cursor: "pointer",
+                    transition: "border-color 0.2s ease",
                   }}
                 >
-                  {/* Avatar — real photo */}
-                  <div style={{ width: 32, height: 32, borderRadius: "50%", overflow: "hidden", border: `1.5px solid ${tile.color}55`, flexShrink: 0, background: "rgba(255,255,255,0.05)" }}>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={tile.image} alt={tile.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                  </div>
+                  {/* Background media preview — image with cover fit */}
+                  <img
+                    src={tile.image}
+                    alt={tile.name}
+                    className="tmi-lobby-img"
+                    style={{
+                      position: "absolute",
+                      inset: 0,
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                      opacity: 0.72,
+                      transition: "transform 0.3s ease, opacity 0.3s ease",
+                    }}
+                  />
 
-                  {/* Info */}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 9, fontWeight: 800, color: "#fff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {/* Gradient shadow for text readability */}
+                  <div
+                    style={{
+                      position: "absolute",
+                      inset: 0,
+                      background: "linear-gradient(to top, rgba(3,1,10,0.92) 0%, rgba(3,1,10,0.35) 45%, transparent 100%)",
+                      pointerEvents: "none",
+                      zIndex: 1,
+                    }}
+                  />
+
+                  {/* Live badge overlay at top right */}
+                  {tile.isLive && (
+                    <div
+                      style={{
+                        position: "absolute",
+                        top: 6,
+                        right: 6,
+                        background: "#E63000",
+                        color: "#fff",
+                        fontSize: 6,
+                        fontWeight: 900,
+                        padding: "2px 4px",
+                        borderRadius: 3,
+                        letterSpacing: "0.08em",
+                        boxShadow: "0 0 6px #E63000",
+                        zIndex: 2,
+                      }}
+                    >
+                      LIVE
+                    </div>
+                  )}
+
+                  {/* Info overlaid at bottom */}
+                  <div style={{ position: "relative", zIndex: 2, padding: "8px 6px" }}>
+                    <div
+                      style={{
+                        fontSize: 8,
+                        fontWeight: 900,
+                        color: "#fff",
+                        textShadow: "0 1px 2px rgba(0,0,0,0.8)",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
                       {tile.name}
                     </div>
-                    <div style={{ fontSize: 7, color: tile.color, fontWeight: 700 }}>
+                    <div
+                      style={{
+                        fontSize: 6,
+                        color: tile.color,
+                        fontWeight: 800,
+                        marginTop: 1,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.05em",
+                      }}
+                    >
                       {tile.status}
                     </div>
                   </div>

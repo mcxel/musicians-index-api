@@ -60,52 +60,94 @@ export default function AdminRevenuePanel({ selectedId, onSelect }: AdminRevenue
     : loading ? "…" : "○";
 
   return (
-    <section
-      style={{
-        border: active ? "1px solid rgba(250,204,21,0.75)" : "1px solid rgba(250,204,21,0.4)",
-        borderRadius: 12,
-        background: "linear-gradient(180deg, rgba(69,39,5,0.75), rgba(21,14,7,0.92))",
-        padding: 10,
-      }}
-    >
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-        <h3 style={{ margin: 0, color: "#fde68a", fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase" }}>
-          Money &amp; Billing
-        </h3>
-        <span style={{ fontSize: 8, fontWeight: 900, color: rev?.mode === "live" ? "#00FF88" : rev?.mode === "test" ? "#FFD700" : "rgba(255,255,255,0.3)", letterSpacing: "0.08em" }}>
-          {modeLabel}
-        </span>
+    <div style={{ display: "flex", flexDirection: "column", gap: 10, fontFamily: "'Inter', sans-serif" }}>
+      {/* Tabs */}
+      <div style={{ display: "flex", gap: 6, borderBottom: "1px solid rgba(255,215,0,0.15)", paddingBottom: 6 }}>
+        {["Month", "Web", "Wave", "Citrine", "NFT"].map((tab, idx) => (
+          <button key={idx} style={{
+            background: idx === 0 ? "rgba(255,215,0,0.15)" : "transparent",
+            border: idx === 0 ? "1.5px solid #D4AF37" : "none",
+            borderRadius: 6,
+            color: idx === 0 ? "#FFD700" : "rgba(255,255,255,0.6)",
+            fontSize: 9,
+            fontWeight: 900,
+            textTransform: "uppercase",
+            padding: "3px 8px",
+            cursor: "pointer"
+          }}>
+            {tab}
+          </button>
+        ))}
       </div>
 
-      <div style={{ marginTop: 6, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-        <Metric label="Today" value={today} />
-        <Metric label="This Month" value={month} />
-        <Metric label="Active Subs" value={subs} />
-        <Metric label="Stripe" value={rev?.mode === "live" ? "LIVE" : rev?.mode === "test" ? "TEST" : loading ? "…" : "—"} />
-      </div>
+      {/* Billboard Chart Container */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+        <div style={{ fontSize: 9, fontWeight: 900, color: "#ffe9bb", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+          Artist Revenue Trends (Billboard #)
+        </div>
+        
+        {/* SVG Spline Graph */}
+        <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
+          {/* Y-axis Labels */}
+          <div style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", height: 110, fontSize: 7, color: "rgba(255,255,255,0.4)", textAlign: "right", minWidth: 28 }}>
+            <span>$70M</span>
+            <span>$60M</span>
+            <span>$50M</span>
+            <span>$40M</span>
+            <span>$30M</span>
+            <span>$20M</span>
+            <span>$10M</span>
+            <span>0</span>
+          </div>
 
-      <div style={{ marginTop: 10, border: "1px solid rgba(251,191,36,0.22)", borderRadius: 10, background: "linear-gradient(180deg, rgba(255,255,255,0.05), rgba(0,0,0,0.16))", padding: "10px 10px 8px" }}>
-        <div style={{ display: "flex", alignItems: "end", justifyContent: "space-between", gap: 8, minHeight: 88 }}>
-          {chartBars.map((bar) => (
-            <div key={bar.id} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
-              <div style={{ width: "100%", display: "flex", alignItems: "end", justifyContent: "center", minHeight: 70 }}>
-                <span style={{ width: 18, height: `${bar.height}%`, maxHeight: 70, borderRadius: 999, background: "linear-gradient(180deg, #FCD34D, #B45309)", boxShadow: "0 0 12px rgba(251,191,36,0.18)" }} />
-              </div>
-              <span style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(255,243,199,0.82)" }}>{bar.label}</span>
+          {/* Graph Grid */}
+          <div style={{ flex: 1, height: 110, position: "relative", background: "rgba(0,0,0,0.2)", borderRadius: 8, border: "1px solid rgba(255,255,255,0.05)" }}>
+            {/* Grid Lines */}
+            <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", justifyContent: "space-between", pointerEvents: "none" }}>
+              {[...Array(8)].map((_, i) => (
+                <div key={i} style={{ borderBottom: "1px solid rgba(255,255,255,0.03)", width: "100%", height: 0 }} />
+              ))}
             </div>
-          ))}
+            
+            {/* SVG Lines */}
+            <svg width="100%" height="100%" viewBox="0 0 300 110" preserveAspectRatio="none" style={{ position: "absolute", inset: 0 }}>
+              <defs>
+                <linearGradient id="purpleArea" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#AA2DFF" stopOpacity="0.4" />
+                  <stop offset="100%" stopColor="#AA2DFF" stopOpacity="0" />
+                </linearGradient>
+                <linearGradient id="goldArea" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#FFD700" stopOpacity="0.3" />
+                  <stop offset="100%" stopColor="#FFD700" stopOpacity="0" />
+                </linearGradient>
+              </defs>
+              {/* Gold Spline area & line */}
+              <path d="M 0 100 Q 30 80, 65 95 T 120 70 T 180 85 T 240 50 T 300 75 L 300 110 L 0 110 Z" fill="url(#goldArea)" />
+              <path d="M 0 100 Q 30 80, 65 95 T 120 70 T 180 85 T 240 50 T 300 75" fill="none" stroke="#FFD700" strokeWidth="2" />
+              
+              {/* Purple Spline area & line */}
+              <path d="M 0 90 Q 35 60, 70 85 T 140 45 T 210 65 T 280 20 T 300 35 L 300 110 L 0 110 Z" fill="url(#purpleArea)" />
+              <path d="M 0 90 Q 35 60, 70 85 T 140 45 T 210 65 T 280 20 T 300 35" fill="none" stroke="#AA2DFF" strokeWidth="2.5" />
+            </svg>
+          </div>
+        </div>
+
+        {/* X-axis Labels */}
+        <div style={{ display: "flex", justifyContent: "space-between", paddingLeft: 38, fontSize: 7, color: "rgba(255,255,255,0.4)", marginTop: 4 }}>
+          <span>0</span>
+          <span>10</span>
+          <span>20</span>
+          <span>30</span>
+          <span>40</span>
+          <span>50</span>
+          <span>60</span>
+          <span>70</span>
+          <span>80</span>
+          <span>90</span>
+          <span>100</span>
         </div>
       </div>
-
-      <div style={{ marginTop: 8, display: "flex", gap: 8 }}>
-        <button type="button" onClick={() => onSelect("billing")} data-clickable="true" data-section-id="billing" style={btnStyle}>
-          Open Billing
-        </button>
-        <button type="button" onClick={() => onSelect("artist-analytics")} data-clickable="true" data-section-id="artist-analytics" style={btnStyle}>
-          Artist Revenue
-        </button>
-      </div>
-    </section>
+    </div>
   );
 }
 

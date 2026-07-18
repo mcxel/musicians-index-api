@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import RoleGate from "@/components/auth/RoleGate";
 
 export const metadata: Metadata = {
   title: "My Account | TMI",
@@ -104,12 +105,20 @@ export default function AccountPage() {
               <div style={{ fontSize: 10, fontWeight: 800, color: s.color, letterSpacing: "0.08em" }}>{s.label.toUpperCase()}</div>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              {s.links.map(l => (
-                <Link key={l.label} href={l.href} style={{ textDecoration: "none", display: "flex", justifyContent: "space-between", alignItems: "center", padding: "9px 12px", background: "rgba(255,255,255,0.02)", borderRadius: 7 }}>
-                  <span style={{ fontSize: 10, color: "rgba(255,255,255,0.65)" }}>{l.label}</span>
-                  <span style={{ fontSize: 12, color: "rgba(255,255,255,0.2)" }}>→</span>
-                </Link>
-              ))}
+              {s.links.map(l => {
+                const link = (
+                  <Link href={l.href} style={{ textDecoration: "none", display: "flex", justifyContent: "space-between", alignItems: "center", padding: "9px 12px", background: "rgba(255,255,255,0.02)", borderRadius: 7 }}>
+                    <span style={{ fontSize: 10, color: "rgba(255,255,255,0.65)" }}>{l.label}</span>
+                    <span style={{ fontSize: 12, color: "rgba(255,255,255,0.2)" }}>→</span>
+                  </Link>
+                );
+                // Avatar & Inventory is Fan-only (CLAUDE.md Rule 26 Identity
+                // Policy, 2026-07-18).
+                if (l.href === "/avatar") {
+                  return <RoleGate key={l.label} allow={["FAN"]}>{link}</RoleGate>;
+                }
+                return <span key={l.label}>{link}</span>;
+              })}
             </div>
           </div>
         ))}

@@ -1,0 +1,6 @@
+{
+    "chat.byokUtilityModelDefault": "copilot",
+    "python.analysis.extraPaths": [
+        "c:\\Users\\Admin\\.vscode\\extensions\\ms-security.ms-sentinel-2.3.0\\python"
+    ]
+}

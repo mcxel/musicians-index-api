@@ -9,8 +9,6 @@ import OmniPresenceEngine from "@/components/presence/OmniPresenceEngine";
 import { LobbyEntryFlow, type UniversalRoom } from "@/components/room/UniversalLobbyEntry";
 import AvatarUploadPipeline from "@/components/profile/AvatarUploadPipeline";
 import MyContentManager from "@/components/profile/MyContentManager";
-import { AvatarWorkspaceCanister } from "@/components/canisters/AvatarWorkspaceCanister";
-import AvatarMiniDisplay from "@/components/canisters/AvatarMiniDisplay";
 
 const ACCENT = "#AA2DFF";
 const BG = "#050510";
@@ -155,7 +153,6 @@ export default function PerformerProfilePage() {
               accentColor={ACCENT}
               onUploadSuccess={(url) => setUser({ ...user, image: url })}
             />
-            <AvatarMiniDisplay size={44} showLabel />
           </div>
           <div style={{ flex: 1, minWidth: 200 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
@@ -306,11 +303,6 @@ export default function PerformerProfilePage() {
               {a.label}
             </Link>
           ))}
-        </div>
-
-        {/* Avatar Workspace — save bobblehead config, persists to DB */}
-        <div style={{ marginBottom: 20, marginTop: 20 }}>
-          <AvatarWorkspaceCanister accentColor={ACCENT} />
         </div>
 
         {/* My Content Manager — DB-backed CRUD for Songs, Videos, Playlists */}

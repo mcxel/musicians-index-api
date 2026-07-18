@@ -72,8 +72,28 @@ export default function OnboardingPage() {
     return () => { active = false; };
   }, [router]);
 
-  const selectRole = (roleId: string) => {
-    window.location.href = roleOnboardingRoute(roleId);
+  const selectRole = async (roleId: string) => {
+    setBusy(true);
+    setSelectedRole(roleId);
+    setError("");
+    try {
+      const res = await fetch("/api/onboarding/role", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ role: roleId.toUpperCase() }),
+      });
+      if (res.ok) {
+        window.location.href = roleOnboardingRoute(roleId);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        setError(`Failed to select role: ${err.error ?? 'Unknown error'}`);
+      }
+    } catch {
+      setError("Network error. Please try again.");
+    } finally {
+      setBusy(false);
+    }
   };
 
   if (loading) {

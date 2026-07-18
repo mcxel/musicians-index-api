@@ -1,0 +1,16 @@
+{
+	"appId": "com.themusiciansindex.app",
+	"appName": "The Musician's Index",
+	"webDir": "public",
+	"server": {
+		"url": "https://themusiciansindex.com",
+		"cleartext": false
+	},
+	"android": {
+		"allowMixedContent": false
+	},
+	"ios": {
+		"contentInset": "automatic"
+	},
+	"packageClassList": []
+}

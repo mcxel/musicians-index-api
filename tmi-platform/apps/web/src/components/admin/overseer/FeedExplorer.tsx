@@ -23,6 +23,40 @@ const toneOverlay: Record<Card["tone"], string> = {
   sponsor: "linear-gradient(180deg, rgba(232,121,249,0.12), rgba(0,0,0,0.72))",
 };
 
+const cardGraphics: Record<string, React.ReactNode> = {
+  "1": (
+    <svg width="100%" height="100%" viewBox="0 0 160 100" style={{ background: "#1a1a24" }}>
+      <circle cx="80" cy="40" r="20" fill="none" stroke="#FFD700" strokeWidth="1.5" strokeDasharray="3 3" />
+      <path d="M50 90 C 50 70, 110 70, 110 90" fill="none" stroke="#FFD700" strokeWidth="2" />
+      <line x1="80" y1="60" x2="80" y2="85" stroke="#00FFFF" strokeWidth="2" />
+      <circle cx="80" cy="58" r="4" fill="#00FFFF" />
+    </svg>
+  ),
+  "2": (
+    <svg width="100%" height="100%" viewBox="0 0 160 100" style={{ background: "#241812" }}>
+      <path d="M 10 90 L 30 70 L 50 85 L 70 65 L 90 80 L 110 60 L 130 75 L 150 50" fill="none" stroke="#FF5500" strokeWidth="2" />
+      <circle cx="150" cy="50" r="3" fill="#00FF88" />
+      <line x1="150" y1="50" x2="150" y2="90" stroke="#00FF88" strokeWidth="1" strokeDasharray="2 2" />
+    </svg>
+  ),
+  "3": (
+    <svg width="100%" height="100%" viewBox="0 0 160 100" style={{ background: "#121d24" }}>
+      <rect x="20" y="20" width="120" height="60" rx="6" fill="none" stroke="#00FFFF" strokeWidth="1.5" />
+      <line x1="40" y1="40" x2="120" y2="40" stroke="#00FFFF" strokeWidth="1" />
+      <line x1="40" y1="50" x2="100" y2="50" stroke="#00FFFF" strokeWidth="1" />
+      <line x1="40" y1="60" x2="80" y2="60" stroke="#00FFFF" strokeWidth="1" />
+    </svg>
+  ),
+  "4": (
+    <svg width="100%" height="100%" viewBox="0 0 160 100" style={{ background: "#1f1224" }}>
+      <circle cx="80" cy="50" r="30" fill="none" stroke="#DA70D6" strokeWidth="2" />
+      <circle cx="80" cy="50" r="20" fill="none" stroke="#8A2BE2" strokeWidth="1.5" />
+      <line x1="40" y1="50" x2="120" y2="50" stroke="#DA70D6" strokeWidth="1" />
+      <line x1="80" y1="10" x2="80" y2="90" stroke="#DA70D6" strokeWidth="1" />
+    </svg>
+  )
+};
+
 export default function FeedExplorer() {
   const [query, setQuery] = useState("");
   const [genre, setGenre] = useState("Hip-Hop");
@@ -94,7 +128,8 @@ export default function FeedExplorer() {
               flexDirection: "column",
             }}
           >
-            <div style={{ position: "relative", height: 108, background: "linear-gradient(135deg, rgba(110,120,140,0.25), rgba(28,30,39,0.7))" }}>
+            <div style={{ position: "relative", height: 108, overflow: "hidden" }}>
+              {cardGraphics[card.id]}
               <div style={{ position: "absolute", inset: 0, background: toneOverlay[card.tone] }} />
               <div style={{ position: "absolute", inset: 0, backgroundImage: "repeating-linear-gradient(0deg, rgba(255,255,255,0.03) 0px, rgba(255,255,255,0.03) 1px, transparent 1px, transparent 4px)", opacity: 0.3, pointerEvents: "none" }} />
               <div style={{ position: "absolute", left: 8, top: 8, borderRadius: 999, border: "1px solid rgba(255,216,143,0.45)", background: "rgba(0,0,0,0.55)", color: "#ffe9bb", padding: "2px 6px", fontSize: 8, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.08em" }}>

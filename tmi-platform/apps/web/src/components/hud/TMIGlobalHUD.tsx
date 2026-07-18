@@ -341,7 +341,7 @@ export function TMIGlobalHUD() {
         </div>
 
         {/* XP ring + Token balance */}
-        <XPProgressRing userId={user.id} size={32} />
+        <XPProgressRing userId={user.id} size={32} role={user.role} />
         <TokenBalance userId={user.id} compact accentColor="#FFD700" />
 
         {/* Notification bell */}

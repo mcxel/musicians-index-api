@@ -68,11 +68,24 @@ export default function NavigationRail() {
   const pathname = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  // Avatar & Inventory is Fan-only (CLAUDE.md Rule 26 Identity Policy,
+  // 2026-07-18) — AVATAR CENTER is filtered out of the rail below for any
+  // other role. null = not yet resolved, treated as "don't show yet".
+  const [role, setRole] = useState<string | null>(null);
 
   // All hooks must precede any early return (Rules of Hooks)
   useEffect(() => {
     setOpen(false);
   }, [pathname]);
+
+  useEffect(() => {
+    let active = true;
+    fetch('/api/auth/session', { cache: 'no-store', credentials: 'include' })
+      .then((r) => r.json())
+      .then((d: { role?: string | null }) => { if (active) setRole(d.role ?? null); })
+      .catch(() => { if (active) setRole(null); });
+    return () => { active = false; };
+  }, []);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
@@ -137,7 +150,9 @@ export default function NavigationRail() {
                       <div style={{ fontSize: 7, color: "rgba(255,255,255,0.2)", letterSpacing: "0.22em", fontWeight: 800, padding: "8px 16px 4px" }}>
                         {section.section}
                       </div>
-                      {section.items.map(item => {
+                      {section.items
+                        .filter(item => item.href !== '/avatar-center' || role === 'FAN')
+                        .map(item => {
                         const active = isActive(item.href);
                         return (
                           <button

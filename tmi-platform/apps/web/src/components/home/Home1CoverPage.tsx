@@ -26,6 +26,7 @@ import { memo, useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import DesktopAtmosphereRails from '@/components/home/DesktopAtmosphereRails';
+import RotatingHeroBanner, { HERO_BILLBOARD_SLIDES } from '@/components/home/RotatingHeroBanner';
 import { LobbyEntryFlow, type UniversalRoom } from '@/components/room/UniversalLobbyEntry';
 import { getCrownHolder, getPerformerById, getPerformersByCategory, getFeaturedFreePerformers, getTopPerformers, PERFORMER_REGISTRY, type PerformerCategory, type PerformerIdentity } from '@/lib/performers/PerformerRegistry';
 import { getVenueBookingSlots, type VenueBookingSlot } from '@/lib/venues/VenueRegistry';
@@ -300,6 +301,8 @@ interface OrbitCardProps {
   isBrokenImage: boolean;
   onImageError: (slug: string) => void;
   onOpenLive: (performer: Performer) => void;
+  onOpenEmptySlot: (performer: Performer) => void;
+  onOpenDetail: (performer: Performer) => void;
 }
 
 const OrbitCard = memo(function OrbitCard({
@@ -312,6 +315,8 @@ const OrbitCard = memo(function OrbitCard({
   isBrokenImage,
   onImageError,
   onOpenLive,
+  onOpenEmptySlot,
+  onOpenDetail,
 }: OrbitCardProps) {
   const pos = getOrbitPos(index, total, radius, 0);
   const cardSize = compactMode ? (index === 0 ? 52 : 44) : (index === 0 ? 62 : 52);
@@ -331,10 +336,16 @@ const OrbitCard = memo(function OrbitCard({
     <Link
       href={profileHref}
       style={{ textDecoration: 'none' }}
-      onClick={performer.isLive && performer.liveRoomRoute ? (e: React.MouseEvent) => {
+      onClick={(e: React.MouseEvent) => {
         e.preventDefault();
-        onOpenLive(performer);
-      } : undefined}
+        if (performer.isLive && performer.liveRoomRoute) {
+          onOpenLive(performer);
+        } else if (performer.accountType === 'empty-slot') {
+          onOpenEmptySlot(performer);
+        } else {
+          onOpenDetail(performer);
+        }
+      }}
     >
       <div
         data-testid="home1-orbit-card"
@@ -662,6 +673,11 @@ const HERO_PHRASES = [
   "THE MUSICIAN'S INDEX",
 ];
 
+// Split the real banner set into two independent rotations so the left and
+// right hero flanks don't show identical artwork at the same time.
+const HERO_FLANK_LEFT_SLIDES = HERO_BILLBOARD_SLIDES.filter((_, i) => i % 2 === 0);
+const HERO_FLANK_RIGHT_SLIDES = HERO_BILLBOARD_SLIDES.filter((_, i) => i % 2 === 1);
+
 export default function Home1CoverPage() {
   const [genreIdx, setGenreIdx] = useState(0);
   // Rule 20: voteCount must come from a real voting API, not a fake incrementing counter.
@@ -676,10 +692,39 @@ export default function Home1CoverPage() {
   const [rightOpen, setRightOpen] = useState(true);
   const [underlayDir, setUnderlayDir] = useState<'left' | 'right'>('right');
   const [pendingOrbit, setPendingOrbit] = useState<UniversalRoom | null>(null);
+  const [pendingEmptySlot, setPendingEmptySlot] = useState<Performer | null>(null);
+  const [selectedPerformer, setSelectedPerformer] = useState<Performer | null>(null);
   const [brokenOrbitImages, setBrokenOrbitImages] = useState<Record<string, boolean>>({});
   const [isMobileViewport, setIsMobileViewport] = useState(false);
   const [canSubmitPromoSlot, setCanSubmitPromoSlot] = useState(false);
   const [radioData, setRadioData] = useState<{ pending: number; live: number }>({ pending: 0, live: 0 });
+
+  // Orbit ring: static on load, then an occasional single spin as an accent —
+  // NOT a continuous loop. The old `h1OrbitCycle ... infinite` animation
+  // started spinning the instant the page mounted and repeated every 13s
+  // forever, so visitors could land mid-spin and it read as chaotic/broken
+  // rather than a deliberate effect. This drives the same rings/cards from a
+  // JS-controlled schedule instead: settle first, spin briefly, long pause,
+  // repeat.
+  const [orbitSpinning, setOrbitSpinning] = useState(false);
+  useEffect(() => {
+    const SPIN_MS = 5000;
+    const INITIAL_DELAY_MS = 4000;
+    const HOLD_MS = 30000;
+    let spinTimer: ReturnType<typeof setTimeout>;
+    let holdTimer: ReturnType<typeof setTimeout>;
+    const scheduleSpin = (delay: number) => {
+      holdTimer = setTimeout(() => {
+        setOrbitSpinning(true);
+        spinTimer = setTimeout(() => {
+          setOrbitSpinning(false);
+          scheduleSpin(HOLD_MS);
+        }, SPIN_MS);
+      }, delay);
+    };
+    scheduleSpin(INITIAL_DELAY_MS);
+    return () => { clearTimeout(spinTimer); clearTimeout(holdTimer); };
+  }, []);
 
   useEffect(() => {
     const updateViewport = () => setIsMobileViewport(window.innerWidth < 768);
@@ -912,6 +957,233 @@ export default function Home1CoverPage() {
   return (
     <>
     {pendingOrbit && <LobbyEntryFlow room={pendingOrbit} onClose={() => setPendingOrbit(null)} />}
+    {pendingEmptySlot && (
+      <div
+        role="dialog"
+        aria-modal="true"
+        onClick={() => setPendingEmptySlot(null)}
+        style={{ position: 'fixed', inset: 0, zIndex: 500, background: 'rgba(3,1,10,0.82)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+      >
+        <div
+          onClick={(e) => e.stopPropagation()}
+          style={{ width: '100%', maxWidth: 380, background: '#0a0614', border: '1px solid rgba(255,215,0,0.3)', borderRadius: 16, padding: '28px 24px', textAlign: 'center', boxShadow: '0 0 40px rgba(255,215,0,0.15)' }}
+        >
+          <div style={{ fontSize: 34, marginBottom: 10 }}>⭐</div>
+          <div style={{ fontSize: 15, fontWeight: 900, color: '#FFD700', letterSpacing: '0.05em', marginBottom: 8 }}>{pendingEmptySlot.name}</div>
+          <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', lineHeight: 1.6, marginBottom: 22 }}>
+            This spot on the Orbit is open. Sign up and qualify to claim this position — nobody holds it until then.
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <Link
+              href={pendingEmptySlot.profileRoute}
+              onClick={() => setPendingEmptySlot(null)}
+              style={{ display: 'block', padding: '12px', background: 'linear-gradient(135deg,#FFD700,#FF9500)', color: '#050510', fontWeight: 900, fontSize: 11, letterSpacing: '0.1em', borderRadius: 8, textDecoration: 'none' }}
+            >
+              SIGN UP TO CLAIM THIS SPOT →
+            </Link>
+            <button
+              onClick={() => setPendingEmptySlot(null)}
+              style={{ padding: '10px', background: 'transparent', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8, color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
+            >
+              Stay Here
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    {selectedPerformer && (
+      <div
+        role="dialog"
+        aria-modal="true"
+        onClick={() => setSelectedPerformer(null)}
+        style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 500,
+          background: 'rgba(3,1,10,0.85)',
+          backdropFilter: 'blur(6px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: 20
+        }}
+      >
+        <div
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            width: '100%',
+            maxWidth: 420,
+            background: '#0c081d',
+            border: `2px solid ${accentColor}`,
+            borderRadius: 16,
+            padding: '24px',
+            boxShadow: `0 0 50px ${accentColor}25`,
+            fontFamily: "'Inter', sans-serif",
+            color: '#fff'
+          }}
+        >
+          {/* Header */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: 12 }}>
+            <div>
+              <div style={{ fontSize: 9, letterSpacing: '0.15em', color: accentColor, fontWeight: 900, textTransform: 'uppercase' }}>
+                GLOBAL MEMBER ORBIT
+              </div>
+              <div style={{ fontSize: 18, fontWeight: 900, color: '#fff', marginTop: 4 }}>
+                {selectedPerformer.name}
+              </div>
+            </div>
+            <button
+              onClick={() => setSelectedPerformer(null)}
+              style={{
+                background: 'rgba(255,255,255,0.08)',
+                border: 'none',
+                color: '#fff',
+                width: 24,
+                height: 24,
+                borderRadius: '50%',
+                cursor: 'pointer',
+                fontSize: 12,
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              ✕
+            </button>
+          </div>
+
+          {/* Section 1: Where am I? */}
+          <div style={{ marginBottom: 22 }}>
+            <div style={{ fontSize: 8, letterSpacing: '0.15em', color: 'rgba(255,255,255,0.4)', fontWeight: 800, textTransform: 'uppercase', marginBottom: 8 }}>
+              1. POSITION INDEX
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: '12px 14px', textAlign: 'center' }}>
+                <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.4)', fontWeight: 700 }}>ORBIT RANK</div>
+                <div style={{ fontSize: 20, fontWeight: 900, color: '#FFD700', marginTop: 4 }}>#{selectedPerformer.rank}</div>
+              </div>
+              <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: '12px 14px', textAlign: 'center' }}>
+                <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.4)', fontWeight: 700 }}>TOTAL EXPERIENCE</div>
+                <div style={{ fontSize: 16, fontWeight: 900, color: '#00FF88', marginTop: 8 }}>{selectedPerformer.score.toLocaleString()} XP</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 2: How do I move up? */}
+          <div style={{ marginBottom: 22 }}>
+            <div style={{ fontSize: 8, letterSpacing: '0.15em', color: 'rgba(255,255,255,0.4)', fontWeight: 800, textTransform: 'uppercase', marginBottom: 8 }}>
+              2. PATH TO THE HOMEPAGE
+            </div>
+            <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 10, padding: '12px' }}>
+              <div style={{ fontSize: 9, color: '#fff', fontWeight: 700, marginBottom: 8, display: 'flex', justifyContent: 'space-between' }}>
+                <span>ONBOARDING CHECKS</span>
+                <span style={{ color: accentColor }}>72% COMPLETE</span>
+              </div>
+              <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 6, fontSize: 10, color: 'rgba(255,255,255,0.7)' }}>
+                <li style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ color: '#00FF88', fontWeight: 900 }}>✔</span> Complete Performer Profile
+                </li>
+                <li style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ color: '#00FF88', fontWeight: 900 }}>✔</span> Verify Billing Settings
+                </li>
+                <li style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ color: accentColor, fontWeight: 900 }}>□</span> Upload Profile Photo to claim spot visually
+                </li>
+                <li style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ color: accentColor, fontWeight: 900 }}>□</span> Publish First Live Stream or Song
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          {/* Section 3: Who's around me? */}
+          <div style={{ marginBottom: 22 }}>
+            <div style={{ fontSize: 8, letterSpacing: '0.15em', color: 'rgba(255,255,255,0.4)', fontWeight: 800, textTransform: 'uppercase', marginBottom: 8 }}>
+              3. NEIGHBORING RANKS
+            </div>
+            <div style={{ display: 'grid', gap: 6 }}>
+              {(() => {
+                const clickedIdx = performers.findIndex(p => p.slug === selectedPerformer.slug);
+                const startIndex = Math.max(0, clickedIdx - 1);
+                const endIndex = Math.min(performers.length, clickedIdx + 2);
+                const list = performers.slice(startIndex, endIndex);
+
+                return list.map((p) => {
+                  const isCurrent = p.slug === selectedPerformer.slug;
+                  return (
+                    <div
+                      key={p.slug}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '6px 12px',
+                        borderRadius: 6,
+                        background: isCurrent ? `${accentColor}18` : 'rgba(255,255,255,0.02)',
+                        border: `1px solid ${isCurrent ? accentColor : 'rgba(255,255,255,0.05)'}`
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 10, fontWeight: 900, color: isCurrent ? accentColor : 'rgba(255,255,255,0.4)' }}>
+                          #{p.rank}
+                        </span>
+                        <span style={{ fontSize: 11, fontWeight: isCurrent ? 800 : 500 }}>
+                          {p.name} {isCurrent && ' (YOU)'}
+                        </span>
+                      </div>
+                      <span style={{ fontSize: 8, color: 'rgba(255,255,255,0.4)' }}>
+                        {p.score.toLocaleString()} XP
+                      </span>
+                    </div>
+                  );
+                });
+              })()}
+            </div>
+          </div>
+
+          {/* CTA buttons */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            <Link
+              href={selectedPerformer.profileRoute}
+              onClick={() => setSelectedPerformer(null)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '10px',
+                background: 'transparent',
+                border: '1px solid rgba(255,255,255,0.15)',
+                borderRadius: 8,
+                color: '#fff',
+                fontSize: 10,
+                fontWeight: 700,
+                textDecoration: 'none',
+                textAlign: 'center'
+              }}
+            >
+              VIEW PROFILE PAGE
+            </Link>
+            <button
+              onClick={() => setSelectedPerformer(null)}
+              style={{
+                padding: '10px',
+                background: `linear-gradient(135deg, ${accentColor}, ${accentColor}AA)`,
+                border: 'none',
+                borderRadius: 8,
+                color: '#050510',
+                fontSize: 10,
+                fontWeight: 900,
+                cursor: 'pointer',
+                letterSpacing: '0.05em'
+              }}
+            >
+              CLOSE DETAILS
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
     <div
       style={{
         minHeight: '100vh',
@@ -929,14 +1201,39 @@ export default function Home1CoverPage() {
       <style dangerouslySetInnerHTML={{ __html: `
         @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;700;900&display=swap');
 
+        /* Hero billboard grid — desktop: banner | title | banner.
+           Tablet: title on top, both banners stacked below side by side.
+           Mobile: title on top, single rotating banner only (2nd flank hidden). */
+        .h1-hero-billboard-grid {
+          display: grid;
+          grid-template-columns: minmax(120px, 200px) minmax(0, 1fr) minmax(120px, 200px);
+          grid-template-areas: "left title right";
+          gap: 16px;
+          align-items: center;
+        }
+        .h1-hero-billboard-grid .h1-hero-title-col { grid-area: title; }
+        .h1-hero-billboard-grid .h1-hero-flank-left { grid-area: left; }
+        .h1-hero-billboard-grid .h1-hero-flank-right { grid-area: right; }
+        @media (max-width: 900px) {
+          .h1-hero-billboard-grid {
+            grid-template-columns: 1fr 1fr;
+            grid-template-areas: "title title" "left right";
+          }
+        }
+        @media (max-width: 560px) {
+          .h1-hero-billboard-grid {
+            grid-template-columns: 1fr;
+            grid-template-areas: "title" "left";
+          }
+          .h1-hero-billboard-grid .h1-hero-flank-right { display: none; }
+        }
+
+        /* Orbit ring spin — single 0→360 rotation, triggered by the
+           orbitSpinning state (JS-scheduled: settle, spin once, long pause,
+           repeat), not run as an infinite CSS loop. See the orbitSpinning
+           effect above for the schedule. */
         @keyframes h1Spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         @keyframes h1CounterSpin { from { transform: rotate(0deg); } to { transform: rotate(-360deg); } }
-        /* Spin-then-hold, not a continuous spin: ~5s rotation, ~8s hold, 13s
-           total. The dead OrbitalWheel.tsx component got this fix earlier
-           but was never actually mounted anywhere — this is the real live
-           orbit ring/cards used on Home 1, fixed for real this time. */
-        @keyframes h1OrbitCycle { 0% { transform: rotate(0deg); } 38% { transform: rotate(360deg); } 100% { transform: rotate(360deg); } }
-        @keyframes h1OrbitCycleReverse { 0% { transform: rotate(0deg); } 38% { transform: rotate(-360deg); } 100% { transform: rotate(-360deg); } }
         @keyframes h1CrownFloat {
           0%, 100% { transform: translateY(0px) scale(1); }
           50% { transform: translateY(-8px) scale(1.05); }
@@ -1142,7 +1439,7 @@ export default function Home1CoverPage() {
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          minHeight: '64vh',
+          minHeight: '40vh', // reduced from 64vh — was leaving a large dead gap before the orbital section
           position: 'relative',
           zIndex: 1,
         }}
@@ -1167,7 +1464,12 @@ export default function Home1CoverPage() {
         </div>
 
         {/* ── Masthead ── */}
-        <div style={{ textAlign: 'center', marginTop: 0, marginBottom: 8, zIndex: 10, position: 'relative', maxHeight: '150px' }}>
+        <div style={{ textAlign: 'center', marginTop: 0, marginBottom: 8, zIndex: 10, position: 'relative' }}>
+          <div className="h1-hero-billboard-grid">
+            <div className="h1-hero-flank-left" style={{ height: 170 }}>
+              <RotatingHeroBanner slides={HERO_FLANK_LEFT_SLIDES} side="left" priority />
+            </div>
+            <div className="h1-hero-title-col">
           {/* Floating star decorations */}
           <div style={{ position: 'absolute', top: 0, left: 0, right: 0, pointerEvents: 'none', zIndex: 0 }}>
             {[
@@ -1255,6 +1557,11 @@ export default function Home1CoverPage() {
             }}
           >
             {genreConfig.emoji} {genreKey.toUpperCase()} · WEEK {Math.ceil((Date.now() / (7 * 24 * 60 * 60 * 1000)) % 52) || 1}
+          </div>
+            </div>
+            <div className="h1-hero-flank-right" style={{ height: 170 }}>
+              <RotatingHeroBanner slides={HERO_FLANK_RIGHT_SLIDES} side="right" />
+            </div>
           </div>
 
           {/* ── Status badges row: VOTING LIVE | VOTES | CROWN UPDATING ── */}
@@ -1584,9 +1891,9 @@ export default function Home1CoverPage() {
               borderRadius: '50%',
               border: `1px solid ${accentColor}0f`,
               boxShadow: `0 0 20px ${accentColor}0c`,
-              animation: 'h1OrbitCycle 13s ease-in-out infinite',
+              animation: orbitSpinning ? 'h1Spin 5s ease-in-out 1' : 'none',
+              transform: orbitSpinning ? undefined : 'rotate(0deg) translateZ(0)',
               willChange: 'transform',
-              transform: 'translateZ(0)',
               zIndex: 12,
             }}
           />
@@ -1596,9 +1903,9 @@ export default function Home1CoverPage() {
               inset: '19%',
               borderRadius: '50%',
               border: `1px dashed ${accentColor}0c`,
-              animation: 'h1OrbitCycleReverse 13s ease-in-out infinite',
+              animation: orbitSpinning ? 'h1CounterSpin 5s ease-in-out 1' : 'none',
+              transform: orbitSpinning ? undefined : 'rotate(0deg) translateZ(0)',
               willChange: 'transform',
-              transform: 'translateZ(0)',
               zIndex: 13,
             }}
           />
@@ -1702,14 +2009,15 @@ export default function Home1CoverPage() {
             </div>
           </Link>
 
-          {/* Orbit cards — CSS-driven rotation for smoother mobile runtime */}
+          {/* Orbit cards — static on load, occasional accent spin (see
+              orbitSpinning state above), not a continuous loop */}
           <div
             style={{
               position: 'absolute',
               inset: 0,
-              animation: 'h1OrbitCycle 13s ease-in-out infinite',
+              animation: orbitSpinning ? 'h1Spin 5s ease-in-out 1' : 'none',
+              transform: orbitSpinning ? undefined : 'rotate(0deg) translateZ(0)',
               willChange: 'transform',
-              transform: 'translateZ(0)',
               zIndex: 22,
               pointerEvents: 'none',
             }}
@@ -1738,6 +2046,8 @@ export default function Home1CoverPage() {
                     shape: 'oct',
                   });
                 }}
+                onOpenEmptySlot={(p) => setPendingEmptySlot(p)}
+                onOpenDetail={(p) => setSelectedPerformer(p)}
               />
             ))}
           </div>

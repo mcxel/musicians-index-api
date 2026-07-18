@@ -34,6 +34,7 @@ import { StoreCanister } from "@/components/canisters/StoreCanister";
 import AvatarCreationCenter from "@/components/canisters/AvatarCreationCenter";
 import { AvatarWorkspaceCanister } from "@/components/canisters/AvatarWorkspaceCanister";
 import { InventoryCanister } from "@/components/canisters/InventoryCanister";
+import RoleGate from "@/components/auth/RoleGate";
 import { PrivateLobbyCanister } from "@/components/canisters/PrivateLobbyCanister";
 import ControlCanisterCluster from "@/components/live/ControlCanisterCluster";
 
@@ -267,12 +268,14 @@ export default async function LiveRoomPage({ params, searchParams }: LiveRoomPag
           {performerSlug && (
             <StoreCanister entityId={performerSlug} storeType="performer" accentColor="#FFD700" maxItems={4} />
           )}
-          {/* Avatar Creation Center */}
-          <AvatarCreationCenter accentColor="#AA2DFF" />
-          {/* Avatar Workspace */}
-          <AvatarWorkspaceCanister accentColor="#00FFFF" />
-          {/* Inventory */}
-          <InventoryCanister accentColor="#FF6B35" />
+          {/* Avatar Creation Center / Workspace / Inventory — Fan-only per the
+              Identity Policy (CLAUDE.md Rule 26, added 2026-07-18). Performers
+              are represented by real photo/video, not an owned avatar. */}
+          <RoleGate allow={['FAN']}>
+            <AvatarCreationCenter accentColor="#AA2DFF" />
+            <AvatarWorkspaceCanister accentColor="#00FFFF" />
+            <InventoryCanister accentColor="#FF6B35" />
+          </RoleGate>
           {/* Private Lobby */}
           {performerSlug && (
             <PrivateLobbyCanister entityId={performerSlug} accentColor="#AA2DFF" />

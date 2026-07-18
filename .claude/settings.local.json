@@ -390,7 +390,11 @@
       "Bash(Start-Sleep -Seconds 18)",
       "Bash(Invoke-WebRequest -Uri \"http://localhost:3099/cypher/stage\" -UseBasicParsing -TimeoutSec 15)",
       "Bash(Select-Object -ExpandProperty StatusCode)",
-      "PowerShell(Start-Sleep -Seconds 20; try { $r = Invoke-WebRequest -Uri \"http://localhost:3099/cypher/stage\" -UseBasicParsing -TimeoutSec 12; $r.StatusCode } catch { $_.Exception.Message })"
+      "PowerShell(Start-Sleep -Seconds 20; try { $r = Invoke-WebRequest -Uri \"http://localhost:3099/cypher/stage\" -UseBasicParsing -TimeoutSec 12; $r.StatusCode } catch { $_.Exception.Message })",
+      "Bash(pnpm --filter db exec prisma generate)",
+      "Bash(node -e \"console.log\\(require.resolve\\('sharp'\\)\\)\")",
+      "Bash(magick -version)",
+      "Bash(cwebp -version)"
     ],
     "additionalDirectories": [
       "c:\\Users\\Admin\\Documents\\BerntoutGlobal XXL\\tmi-platform\\apps\\web\\src\\app\\concerts\\[id]",

@@ -5,6 +5,7 @@ import { ImageSlotWrapper } from '@/components/visual-enforcement';
 import { type ReactNode } from "react";
 import Link from "next/link";
 import UniversalMediaPanel from "@/components/media/UniversalMediaPanel";
+import HighFidelityAvatar from "@/components/avatar/HighFidelityAvatar";
 
 export type ProfileRole =
   | "artist"
@@ -35,6 +36,8 @@ interface ProfileShellProps {
   isVerified?: boolean;
   rank?: number;
   articleRoute?: string;
+  avatarMode?: boolean;
+  isPlaying?: boolean;
 }
 
 export default function ProfileShell({
@@ -47,6 +50,8 @@ export default function ProfileShell({
   isVerified = false,
   rank,
   articleRoute,
+  avatarMode = false,
+  isPlaying = false,
 }: ProfileShellProps) {
   const cfg = ROLE_CONFIG[role];
 
@@ -114,29 +119,14 @@ export default function ProfileShell({
       >
         <div style={{ display: "flex", alignItems: "flex-start", gap: 20 }}>
           {/* Avatar */}
-          <div
-            style={{
-              width: 72,
-              height: 72,
-              borderRadius: "50%",
-              border: `2px solid ${cfg.accent}50`,
-              background: `${cfg.accent}14`,
-              overflow: "hidden",
-              flexShrink: 0,
-              boxShadow: `0 0 20px ${cfg.accent}18`,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: 28,
-            }}
-          >
-            {avatarUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <ImageSlotWrapper imageId="img-8ytxfx" roomId="runtime-surface" priority="normal" className="w-full h-full object-cover" altText="Content image" containerStyle={{ width: '100%', height: '100%' }} />
-            ) : (
-              cfg.icon
-            )}
-          </div>
+          <HighFidelityAvatar
+            enable3D={role === "fan" || avatarMode}
+            imageUrl={avatarUrl}
+            name={displayName}
+            size={72}
+            tierColor={cfg.accent}
+            isPlaying={isPlaying}
+          />
 
           {/* Name block */}
           <div style={{ flex: 1, minWidth: 0 }}>

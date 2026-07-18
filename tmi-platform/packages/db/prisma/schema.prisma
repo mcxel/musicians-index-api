@@ -22,6 +22,7 @@ enum Role {
   FAN        // Consumer: watches, votes, collects
   ARTIST     // Creator with public profile, beat lab, live access
   PERFORMER  // Live battle performer
+  BAND       // Multi-member performer group — Rule 26 provisioning matrix (Media Locker + Performer Live Access, shared with PERFORMER; no Fan/solo-Artist resources)
   SPONSOR    // Brand sponsorships and contest contributions
   ADVERTISER // Ad campaign buyer
   VENUE      // Event venue and booking host

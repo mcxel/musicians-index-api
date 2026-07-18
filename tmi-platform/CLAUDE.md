@@ -515,7 +515,7 @@ Master statement: *"TMI should feel like walking through a living 1980s entertai
 
 Per-surface targets: Home 1 = "1985 MTV + Vice City Boulevard + Magazine Cover." Home 2 = "Magazine Headquarters." Home 3 = "Broadcast Control Center." Home 4 = "Entertainment District." Home 5 = "Fight Night + Apollo Theater + Battle Arena." No flat grey panels (use glass/glow/neon-edge/broadcast frames), no empty space (every space carries motion/discovery/audience/media/live content — see Rule 14), no dead buttons.
 
-**Avatar standard:** Not anime, not cartoon, not Fortnite/Roblox/MetaHuman style. Target is **Ultra-Realistic Bobblehead** — real face proportions, recognizable likeness, slightly oversized head, expressive eyes, stylized realism, high-quality materials/hair/clothing. A face scan of a real person must produce a recognizable bobblehead of that person, never a generic numbered avatar. Pipeline: Phone Face Scan → Face Identity Engine → Bobblehead Avatar Builder → Wardrobe/Props/Emotes → Venue Seat Binding → Video Presence Overlay → Memory Wall/Profile Display. Every avatar — human, bot, audience, performer, fan — uses this same runtime; bots are never flat icons.
+**Avatar standard:** Not anime, not cartoon, not Fortnite/Roblox/MetaHuman style. Target is **Ultra-Realistic Bobblehead** — real face proportions, recognizable likeness, slightly oversized head, expressive eyes, stylized realism, high-quality materials/hair/clothing. A face scan of a real person must produce a recognizable bobblehead of that person, never a generic numbered avatar. Pipeline: Phone Face Scan → Face Identity Engine → Bobblehead Avatar Builder → Wardrobe/Props/Emotes → Venue Seat Binding → Video Presence Overlay → Memory Wall/Profile Display. Bots are never flat icons — every bot/audience avatar uses this same rendering runtime. **Ownership is Fan-only as of 2026-07-18 (see Rule 26's Identity Policy)**: Fans create/wear/customize a bobblehead of themselves; Performers and Bands do not own or customize one — they're represented by real photo/video/live camera instead. The rendering runtime itself is never removed from a performer's world: the audience filling a performer's live room is still rendered as fan bobbleheads, seated and reacting — a performer just never becomes one.
 
 **No Orphan Routes/Roles/Cards rule:** every account type (Fan, Performer, Sponsor, Advertiser, Promoter, Venue) must have its own real, wired destination set — not a shared generic dashboard. Every route, card, button, widget, canister, dashboard, and profile page must either (1) route to the correct role page, (2) be wired into the correct dashboard, (3) be converted into current design, or (4) be deleted. Nothing sits unused. Finish function first (real data, real wiring — Rules 8 and 14), then apply the visual layer last.
 
@@ -800,13 +800,13 @@ Only that role's resources created
 
 #### Role Provisioning Matrix
 
-Every account gets common resources (profile, wallet, avatar, notifications) **plus** role-specific resources **only**:
+Every account gets common resources (profile, wallet, notifications) **plus** role-specific resources **only**:
 
 | Resource | FAN | PERFORMER | BAND | VENUE | PROMOTER | SPONSOR | ADVERTISER |
 |---|---|---|---|---|---|---|---|
 | **Profile** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | **Wallet & XP** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Avatar & Inventory** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Avatar & Inventory** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | **Notifications** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | | | | | | | | |
 | **Fan Lobby Access** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
@@ -874,6 +874,15 @@ Fans are not "limited performers." They have their own **full creative experienc
 - ✅ Earn XP and climb Fan leaderboards (separate from performer rankings)
 - ✅ Participate in fan articles and community features
 - ❌ Do not create: world concerts, world release parties, battles, cyphers, challenges, official game shows, ticketed events
+
+#### Identity Policy — Avatar & Inventory is Fan-only (added 2026-07-18)
+
+**Real identity for Performers, virtual identity for Fans — not the same experience wearing two skins.**
+
+- **Performers (and Band)** are represented by their **real** identity: real profile photos, real cover/banner images, YoPho customization, music, videos, live camera, playlists, magazine articles, tour dates, merchandise, Memory Wall, broadcast tools. They must **never** see Avatar Studio, Avatar Inventory, avatar wardrobe/clothing, avatar emotes, avatar customization, avatar seating, Fan avatar lobbies, or an avatar profile card. If a performer ever sees avatar-ownership UI, that's a Rule 26 violation — gate it, don't leave it exposed.
+- **Fans** get the full Avatar World: create their bobblehead, wear clothing, buy accessories, unlock animations, sit in venues, walk lobbies, join VIP areas, dance, cheer, use emotes, collect inventory.
+- **The avatar rendering engine itself is never removed from a performer's live room.** When a performer goes live, the venue's audience is still rendered as fan avatars — seat-fill, audience reactions, the whole Rule 15/18 AudienceRuntime stays fully active. The performer doesn't own or customize an avatar; they direct an audience made of them. Performer-facing controls over that audience (spotlight, bring on stage, move to VIP, remove, highlight, trigger crowd animations/waves, launch polls, venue lighting) are **Audience Controls**, not avatar customization, and stay in scope for performers.
+- Enforcement mechanism: `apps/web/src/components/auth/RoleGate.tsx` — wrap any avatar-ownership/customization UI in `<RoleGate allow={['FAN']}>`. Checks the real Prisma `Role` enum value from `/api/auth/session`, not the legacy `lib/auth/roles.ts` `TMIRole` permission-matrix type (that type predates this policy, uses `"MEMBER"` instead of `"FAN"`, and has no `BAND`/`WRITER`/`PROMOTER`/`JUDGE` — known inconsistency, not yet reconciled, do not use it for role gates until it is).
 
 #### Consequences of Rule 26 Violation
 

@@ -64,13 +64,26 @@ export async function GET(req: NextRequest) {
   let isLive = false;
   let liveRoomId: string | null = null;
   let avatarUrl: string | null = null;
+  let dbOnboardingState = 'NO_ROLE_SELECTED';
+  let dbOnboardingStep = '2';
 
   if (rawEmail) {
     try {
       const dbUser = await withTimeout(
         prisma.user.findUnique({
           where: { email: rawEmail },
-          select: { id: true, isLive: true, liveRoomId: true, userProfile: { select: { avatarUrl: true } } },
+          select: {
+            id: true,
+            isLive: true,
+            liveRoomId: true,
+            onboardingState: true,
+            userProfile: {
+              select: {
+                avatarUrl: true,
+                socialLinks: true,
+              }
+            }
+          },
         }),
         SESSION_DB_LOOKUP_TIMEOUT_MS
       );
@@ -79,6 +92,9 @@ export async function GET(req: NextRequest) {
         isLive = dbUser.isLive;
         liveRoomId = dbUser.liveRoomId;
         avatarUrl = dbUser.userProfile?.avatarUrl ?? null;
+        dbOnboardingState = dbUser.onboardingState ?? 'NO_ROLE_SELECTED';
+        const links = (dbUser.userProfile?.socialLinks as Record<string, any>) ?? {};
+        dbOnboardingStep = links.onboarding_step ?? '2';
       }
     } catch {
       // Keep session fallback identity if DB is temporarily unavailable.
@@ -88,7 +104,7 @@ export async function GET(req: NextRequest) {
   const scopedEmail = redactEmailForRole(rawEmail, role);
   const displayName = scopedEmail ? scopedEmail.split('@')[0] : `user-${canonicalUserId.substring(0, 8)}`;
 
-  return NextResponse.json({
+  const response = NextResponse.json({
     authenticated: true,
     csrfToken,
     user: {
@@ -100,10 +116,22 @@ export async function GET(req: NextRequest) {
       isLive,
       liveRoomId,
       avatarUrl,
-      onboardingState: 'complete',
+      onboardingState: dbOnboardingState.toLowerCase(),
+      onboardingStep: dbOnboardingStep,
     },
     role,
     tier,
     expires: new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString(),
   });
+
+  const COOKIE_OPTS = {
+    httpOnly: false,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax' as const,
+    maxAge: 7 * 24 * 60 * 60,
+    path: '/',
+  };
+  response.cookies.set('tmi_onboarding_state', dbOnboardingState.toLowerCase(), COOKIE_OPTS);
+
+  return response;
 }

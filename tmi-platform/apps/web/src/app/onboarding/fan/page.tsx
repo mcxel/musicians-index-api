@@ -1,145 +1,579 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import OnboardingShell from "@/components/onboarding/OnboardingShell";
 
 export default function OnboardingFanPage() {
   const router = useRouter();
+  
+  // Step state: '2' (details), '3' (photo select/take), '4' (photo edit)
+  const [step, setStep] = useState<"2" | "3" | "4">("2");
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+
+  // Step 2 details
   const [displayName, setDisplayName] = useState("");
   const [favoriteGenres, setFavoriteGenres] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
+  const [bio, setBio] = useState("");
+  const [city, setCity] = useState("");
 
-  // Auth guard is handled by the form submission API — no redirect on mount
+  // Step 3 & 4 photo editing
+  const [imageSrc, setImageSrc] = useState<string | null>(null);
+  const [cameraActive, setCameraActive] = useState(false);
+  const [zoom, setZoom] = useState(1);
+  const [rotate, setRotate] = useState(0);
+  const [brightness, setBrightness] = useState(100);
 
-  const getCsrfToken = async (): Promise<string | null> => {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [stream, setStream] = useState<MediaStream | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    const fetchSession = async () => {
+      try {
+        const res = await fetch("/api/auth/session", { cache: "no-store", credentials: "include" });
+        if (!res.ok) { router.replace("/auth?next=/onboarding/fan"); return; }
+        const data = await res.json();
+        if (!data.authenticated) { router.replace("/auth?next=/onboarding/fan"); return; }
+        
+        if (active) {
+          const user = data.user || {};
+          // Restore fields
+          setDisplayName(user.name || "");
+          setBio(user.bio || "");
+          
+          // Map onboarding step from db if present
+          if (data.user?.onboardingStep && ["2", "3", "4"].includes(data.user.onboardingStep)) {
+            setStep(data.user.onboardingStep as "2" | "3" | "4");
+          }
+          setLoading(false);
+        }
+      } catch {
+        if (active) setLoading(false);
+      }
+    };
+    void fetchSession();
+    return () => { active = false; };
+  }, [router]);
+
+  // Continuous auto-saving on blur
+  const handleAutoSaveField = async (fieldName: string, value: any) => {
     try {
-      const res = await fetch("/api/auth/session", { cache: "no-store", credentials: "include" });
-      const data = (await res.json()) as { csrfToken?: string };
-      return data?.csrfToken ?? null;
-    } catch {
-      return null;
+      const payload: Record<string, any> = {};
+      if (fieldName === "displayName") payload.displayName = value;
+      if (fieldName === "bio") payload.bio = value;
+      if (fieldName === "favoriteGenres") {
+        payload.favoriteGenres = value.split(",").map((g: string) => g.trim()).filter(Boolean);
+      }
+      if (fieldName === "city") payload.location = value;
+
+      await fetch("/api/profile/update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(payload),
+      });
+    } catch (err) {
+      console.error("Auto-save failed:", err);
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleNextStep = async (nextStepVal: "3" | "4") => {
     setBusy(true);
-    setError("");
     try {
-      const csrf = await getCsrfToken();
-      const headers: Record<string, string> = { "Content-Type": "application/json" };
-      if (csrf) headers["X-CSRF-Token"] = csrf;
-
-      const res = await fetch("/api/onboarding/role", {
+      // Persist the current step to the database
+      await fetch("/api/profile/update", {
         method: "POST",
-        headers,
+        headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ role: "FAN" }),
+        body: JSON.stringify({ onboardingStep: nextStepVal }),
       });
-
-      if (res.ok) {
-        router.replace("/dashboard/fan");
-      } else {
-        const err = (await res.json().catch(() => ({}))) as { message?: string; error?: string };
-        setError(`Setup failed (${res.status})${err?.error ?? err?.message ? ": " + (err.error ?? err.message) : ""}`);
-      }
+      setStep(nextStepVal);
     } catch {
-      setError("Network error. Please try again.");
+      setMessage("Failed to advance step. Please try again.");
     } finally {
       setBusy(false);
     }
   };
 
+  // Camera stream controls
+  const startCamera = async () => {
+    try {
+      const mediaStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+      if (videoRef.current) {
+        videoRef.current.srcObject = mediaStream;
+      }
+      setStream(mediaStream);
+      setCameraActive(true);
+      setMessage("");
+    } catch (err) {
+      console.error("Camera access error:", err);
+      setMessage("Could not access camera. Please select 'Upload Photo' instead.");
+    }
+  };
+
+  const stopCamera = () => {
+    if (stream) {
+      stream.getTracks().forEach((track) => track.stop());
+      setStream(null);
+    }
+    setCameraActive(false);
+  };
+
+  const snapPhoto = () => {
+    if (videoRef.current && canvasRef.current) {
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      const ctx = canvas.getContext("2d");
+      if (ctx) {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        // Flip horizontally for mirror effect
+        ctx.translate(canvas.width, 0);
+        ctx.scale(-1, 1);
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        const dataUrl = canvas.toDataURL("image/jpeg");
+        setImageSrc(dataUrl);
+        stopCamera();
+        void handleNextStep("4");
+      }
+    }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (event.target?.result) {
+          setImageSrc(event.target.result as string);
+          void handleNextStep("4");
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSavePhotoAndFinish = async () => {
+    if (!imageSrc || !canvasRef.current) return;
+    setBusy(true);
+    setMessage("");
+
+    try {
+      const canvas = canvasRef.current;
+      const ctx = canvas.getContext("2d");
+      const img = new Image();
+      img.src = imageSrc;
+
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => {
+          if (!ctx) return reject();
+          // Force square output crop (400x400)
+          canvas.width = 400;
+          canvas.height = 400;
+          
+          ctx.clearRect(0, 0, 400, 400);
+          ctx.save();
+          
+          // Apply brightness adjustment filter
+          ctx.filter = `brightness(${brightness}%)`;
+          
+          // Move center of canvas to center of crop
+          ctx.translate(200, 200);
+          
+          // Apply rotation
+          ctx.rotate((rotate * Math.PI) / 180);
+          
+          // Apply zoom / scaling
+          ctx.scale(zoom, zoom);
+          
+          // Draw image centered
+          const minDim = Math.min(img.width, img.height);
+          ctx.drawImage(
+            img,
+            (img.width - minDim) / 2, (img.height - minDim) / 2, minDim, minDim, // crop source square
+            -200, -200, 400, 400 // draw destination square
+          );
+          
+          ctx.restore();
+          resolve();
+        };
+        img.onerror = reject;
+      });
+
+      // Get file blob from canvas
+      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.9));
+      if (!blob) throw new Error("Could not construct image blob");
+
+      // Upload to /api/upload
+      const formData = new FormData();
+      formData.append("file", blob, "avatar.jpg");
+      formData.append("context", "profile");
+
+      const uploadRes = await fetch("/api/upload", { method: "POST", body: formData });
+      if (!uploadRes.ok) throw new Error("Upload request failed");
+
+      const uploadData = await uploadRes.json();
+      if (!uploadData.success || !uploadData.url) throw new Error("Upload did not return success url");
+
+      // Commit finalized profile data and mark onboarding complete!
+      const profileUpdateRes = await fetch("/api/profile/update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          avatarUrl: uploadData.url,
+          onboardingState: "COMPLETE",
+          onboardingStep: "completed",
+        }),
+      });
+
+      if (profileUpdateRes.ok) {
+        router.replace("/dashboard/fan");
+      } else {
+        throw new Error("Failed to update final profile state");
+      }
+
+    } catch (err: any) {
+      console.error(err);
+      setMessage(err.message || "Failed to finalize profile photo. Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div style={{ minHeight: "100vh", background: "#050510", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <span style={{ color: "#FFD700", fontSize: 13, letterSpacing: 4, fontWeight: 700 }}>LOADING CROWD STAGE...</span>
+      </div>
+    );
+  }
+
+  // Styles
   const inputStyle: React.CSSProperties = {
     width: "100%",
-    padding: "10px 14px",
-    background: "rgba(255,255,255,0.05)",
-    border: "1px solid rgba(255,255,255,0.15)",
+    padding: "12px 16px",
+    background: "rgba(255,255,255,0.03)",
+    border: "1px solid rgba(255,215,0,0.15)",
     borderRadius: 8,
     color: "#fff",
-    fontSize: 15,
+    fontSize: 14,
     boxSizing: "border-box",
     outline: "none",
+    transition: "border-color 0.2s",
   };
 
   const labelStyle: React.CSSProperties = {
     display: "block",
-    fontSize: 13,
-    marginBottom: 6,
-    color: "rgba(255,255,255,0.7)",
-    fontWeight: 500,
+    fontSize: 10,
+    fontWeight: 950,
+    letterSpacing: "0.15em",
+    marginBottom: 8,
+    color: "#FFD700",
+    textTransform: "uppercase",
   };
 
-  return (
-    <main
-      style={{
-        minHeight: "100vh",
-        background: "#0a0a0f",
-        color: "#fff",
-        padding: "60px 20px",
-        fontFamily: "system-ui, -apple-system, sans-serif",
-      }}
-    >
-      <div style={{ maxWidth: 520, margin: "0 auto" }}>
-        <p style={{ fontSize: 12, letterSpacing: 2, color: "#ff6b35", textTransform: "uppercase", marginBottom: 8 }}>
-          The Musician&apos;s Index
-        </p>
-        <h1 style={{ fontSize: 30, fontWeight: 700, margin: "0 0 8px" }}>Fan Setup</h1>
-        <p style={{ color: "rgba(255,255,255,0.5)", marginBottom: 36, fontSize: 15 }}>
-          Tell us what you love so we can personalize your experience.
-        </p>
+  const buttonStyle: React.CSSProperties = {
+    padding: "14px 28px",
+    background: "linear-gradient(135deg, #FFD700, #FF9500)",
+    color: "#050510",
+    border: "none",
+    borderRadius: 8,
+    fontSize: 13,
+    fontWeight: 900,
+    letterSpacing: "0.08em",
+    textTransform: "uppercase",
+    cursor: busy ? "not-allowed" : "pointer",
+    opacity: busy ? 0.7 : 1,
+    boxShadow: "0 0 15px rgba(255,215,0,0.3)",
+  };
 
-        <form
-          onSubmit={(e) => void handleSubmit(e)}
-          style={{ display: "flex", flexDirection: "column", gap: 20 }}
-        >
+  // Form renders based on steps
+  let formContent: React.ReactNode = null;
+
+  if (step === "2") {
+    formContent = (
+      <>
+        <div>
+          <div style={{ fontSize: 9, letterSpacing: "0.25em", color: "#FFD700", fontWeight: 800, marginBottom: 4 }}>STEP 2 OF 4</div>
+          <h2 style={{ fontSize: 22, fontWeight: 900, margin: "0 0 6px" }}>Fan Profile Setup</h2>
+          <p style={{ fontSize: 12, color: "rgba(255,255,255,0.45)", margin: "0 0 24px" }}>
+            Tell us about yourself. Your details auto-save instantly.
+          </p>
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <div>
-            <label htmlFor="display-name" style={labelStyle}>Display name</label>
+            <label htmlFor="display-name" style={labelStyle}>Display Name</label>
             <input
               id="display-name"
               type="text"
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
-              placeholder="Your display name"
+              onBlur={() => void handleAutoSaveField("displayName", displayName)}
+              placeholder="e.g. MusicFanatic"
               style={inputStyle}
             />
           </div>
 
           <div>
-            <label style={labelStyle}>Favorite Genres (comma-separated)</label>
+            <label htmlFor="bio" style={labelStyle}>About Me</label>
+            <textarea
+              id="bio"
+              value={bio}
+              onChange={(e) => setBio(e.target.value)}
+              onBlur={() => void handleAutoSaveField("bio", bio)}
+              placeholder="Tell us about your favorite music, gigs, and artists..."
+              rows={3}
+              style={{ ...inputStyle, resize: "vertical", lineHeight: 1.5 }}
+            />
+          </div>
+
+          <div>
+            <label htmlFor="favorite-genres" style={labelStyle}>Favorite Genres (comma-separated)</label>
             <input
+              id="favorite-genres"
               type="text"
               value={favoriteGenres}
               onChange={(e) => setFavoriteGenres(e.target.value)}
-              placeholder="e.g. Hip-Hop, R&B, Jazz"
+              onBlur={() => void handleAutoSaveField("favoriteGenres", favoriteGenres)}
+              placeholder="e.g. Hip-Hop, Pop, Indie Rock"
               style={inputStyle}
             />
           </div>
 
-          <button
-            type="submit"
-            disabled={busy}
-            style={{
-              marginTop: 8,
-              padding: "13px 24px",
-              background: busy ? "rgba(255,107,53,0.35)" : "#ff6b35",
-              color: "#fff",
-              border: "none",
-              borderRadius: 8,
-              fontSize: 16,
-              fontWeight: 700,
-              cursor: busy ? "not-allowed" : "pointer",
-            }}
-          >
-            {busy ? "Setting up your profile…" : "Save and continue"}
-          </button>
-        </form>
+          <div>
+            <label htmlFor="city" style={labelStyle}>City / Location</label>
+            <input
+              id="city"
+              type="text"
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+              onBlur={() => void handleAutoSaveField("city", city)}
+              placeholder="e.g. Chicago, IL"
+              style={inputStyle}
+            />
+          </div>
+        </div>
 
-        {error ? (
-          <p style={{ marginTop: 20, color: "#fbbf24", fontSize: 14, lineHeight: 1.5 }}>{error}</p>
-        ) : null}
-      </div>
-    </main>
+        <div style={{ marginTop: 24, display: "flex", justifyContent: "flex-end" }}>
+          <button
+            type="button"
+            onClick={() => void handleNextStep("3")}
+            disabled={busy || !displayName}
+            style={buttonStyle}
+          >
+            Choose Profile Photo →
+          </button>
+        </div>
+      </>
+    );
+  } else if (step === "3") {
+    formContent = (
+      <>
+        <div>
+          <div style={{ fontSize: 9, letterSpacing: "0.25em", color: "#FFD700", fontWeight: 800, marginBottom: 4 }}>STEP 3 OF 4</div>
+          <h2 style={{ fontSize: 22, fontWeight: 900, margin: "0 0 6px" }}>Choose Profile Photo</h2>
+          <p style={{ fontSize: 12, color: "rgba(255,255,255,0.45)", margin: "0 0 24px" }}>
+            Snap a fresh picture using your camera or upload a file.
+          </p>
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 20, alignItems: "center" }}>
+          {cameraActive ? (
+            <div style={{ width: "100%", maxWidth: 360, display: "flex", flexDirection: "column", gap: 12, alignItems: "center" }}>
+              <div style={{ width: 280, height: 280, borderRadius: "50%", overflow: "hidden", border: "2px solid #FFD700", boxShadow: "0 0 30px rgba(255,215,0,0.4)", position: "relative" }}>
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  style={{ width: "100%", height: "100%", objectFit: "cover", transform: "scaleX(-1)" }}
+                />
+              </div>
+              <div style={{ display: "flex", gap: 10 }}>
+                <button
+                  type="button"
+                  onClick={snapPhoto}
+                  style={{ ...buttonStyle, background: "#FFD700" }}
+                >
+                  📸 SNAP PHOTO
+                </button>
+                <button
+                  type="button"
+                  onClick={stopCamera}
+                  style={{ ...buttonStyle, background: "rgba(255,255,255,0.1)", color: "#fff", boxShadow: "none" }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 14, width: "100%", maxWidth: 280 }}>
+              <button
+                type="button"
+                onClick={startCamera}
+                style={{ ...buttonStyle, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+              >
+                📷 TAKE PICTURE
+              </button>
+              
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                style={{ ...buttonStyle, background: "rgba(255,215,0,0.15)", border: "1px solid #FFD700", color: "#FFD700", boxShadow: "none", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+              >
+                🖼 UPLOAD PHOTO
+              </button>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileSelect}
+                accept="image/png, image/jpeg, image/webp"
+                style={{ display: "none" }}
+              />
+            </div>
+          )}
+
+          {message && (
+            <p style={{ fontSize: 13, color: "#fbbf24", textAlign: "center", marginTop: 10 }}>{message}</p>
+          )}
+        </div>
+
+        <div style={{ marginTop: 24, display: "flex", justifyContent: "flex-start" }}>
+          <button
+            type="button"
+            onClick={() => setStep("2")}
+            style={{ ...buttonStyle, background: "rgba(255,255,255,0.05)", color: "#fff", boxShadow: "none", border: "1px solid rgba(255,255,255,0.15)" }}
+          >
+            ← Back to Details
+          </button>
+        </div>
+      </>
+    );
+  } else if (step === "4") {
+    formContent = (
+      <>
+        <div>
+          <div style={{ fontSize: 9, letterSpacing: "0.25em", color: "#FFD700", fontWeight: 800, marginBottom: 4 }}>STEP 4 OF 4</div>
+          <h2 style={{ fontSize: 22, fontWeight: 900, margin: "0 0 6px" }}>Photo Editor</h2>
+          <p style={{ fontSize: 12, color: "rgba(255,255,255,0.45)", margin: "0 0 24px" }}>
+            Adjust your cropping size, rotation angle, and image brightness.
+          </p>
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 20, alignItems: "center" }}>
+          {/* Crop Container */}
+          <div style={{ width: 260, height: 260, borderRadius: "50%", overflow: "hidden", border: "2px solid #FFD700", position: "relative", background: "#050510", boxShadow: "0 0 30px rgba(255,215,0,0.3)" }}>
+            {imageSrc && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={imageSrc}
+                alt="Upload preview"
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                  transform: `scale(${zoom}) rotate(${rotate}deg)`,
+                  filter: `brightness(${brightness}%)`,
+                  transition: "transform 0.1s ease-out",
+                }}
+              />
+            )}
+          </div>
+
+          {/* Controls Sliders */}
+          <div style={{ width: "100%", maxWidth: 360, display: "flex", flexDirection: "column", gap: 14 }}>
+            <div>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, marginBottom: 4, fontWeight: 700, color: "rgba(255,255,255,0.6)" }}>
+                <span>ZOOM</span>
+                <span>{zoom.toFixed(1)}x</span>
+              </div>
+              <input
+                type="range"
+                min="1"
+                max="3"
+                step="0.1"
+                value={zoom}
+                onChange={(e) => setZoom(parseFloat(e.target.value))}
+                style={{ width: "100%", accentColor: "#FFD700" }}
+              />
+            </div>
+
+            <div>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, marginBottom: 4, fontWeight: 700, color: "rgba(255,255,255,0.6)" }}>
+                <span>ROTATE</span>
+                <span>{rotate}°</span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="360"
+                step="1"
+                value={rotate}
+                onChange={(e) => setRotate(parseInt(e.target.value))}
+                style={{ width: "100%", accentColor: "#FFD700" }}
+              />
+            </div>
+
+            <div>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, marginBottom: 4, fontWeight: 700, color: "rgba(255,255,255,0.6)" }}>
+                <span>BRIGHTNESS</span>
+                <span>{brightness}%</span>
+              </div>
+              <input
+                type="range"
+                min="50"
+                max="150"
+                step="1"
+                value={brightness}
+                onChange={(e) => setBrightness(parseInt(e.target.value))}
+                style={{ width: "100%", accentColor: "#FFD700" }}
+              />
+            </div>
+          </div>
+
+          {message && (
+            <p style={{ fontSize: 13, color: "#fbbf24", textAlign: "center" }}>{message}</p>
+          )}
+        </div>
+
+        <div style={{ marginTop: 24, display: "flex", justifyContent: "space-between" }}>
+          <button
+            type="button"
+            onClick={() => setStep("3")}
+            style={{ ...buttonStyle, background: "rgba(255,255,255,0.05)", color: "#fff", boxShadow: "none", border: "1px solid rgba(255,255,255,0.15)" }}
+          >
+            ← Back
+          </button>
+          
+          <button
+            type="button"
+            onClick={handleSavePhotoAndFinish}
+            disabled={busy}
+            style={buttonStyle}
+          >
+            {busy ? "FINALIZING..." : "Save & Complete!"}
+          </button>
+        </div>
+      </>
+    );
+  }
+
+  return (
+    <OnboardingShell
+      role="fan"
+      form={<div style={{ display: "flex", flexDirection: "column", gap: 20 }}>{formContent}</div>}
+    />
   );
+}
+
+// Hidden canvas helper for image cropping and rendering
+export function CropCanvasHelper() {
+  return <canvas style={{ display: "none" }} />;
 }

@@ -76,6 +76,7 @@ function SignupForm() {
   const sel = ACCOUNT_TYPES.find(t => t.type === primaryRole)!;
 
   async function handleSignup() {
+    console.log("[TMI] handleSignup entered. Main Signup. Email:", form.email, "role:", primaryRole);
     setError("");
     if (!form.name || !form.email || !form.password) { setError("All fields required."); return; }
     if (selectedRoles.length === 0) { setError("Please select at least one role."); return; }
@@ -325,7 +326,7 @@ function SignupForm() {
                 <div style={{ fontSize: 11, color: "rgba(255,255,255,0.55)", lineHeight: 1.5, marginBottom: 12 }}>
                   Your face spins on the <strong style={{ color: "#fff" }}>homepage orbit</strong> that every visitor sees. Add your photo now to claim your spot visually.
                 </div>
-                <Link href="/settings/avatar"
+                <Link href="/settings"
                   style={{ display: "inline-block", padding: "9px 20px", background: "#AA2DFF", color: "#fff", fontWeight: 900, fontSize: 10, letterSpacing: "0.1em", borderRadius: 8, textDecoration: "none" }}>
                   📷 UPLOAD PHOTO NOW →
                 </Link>

@@ -35,6 +35,11 @@ export default function WebRTCBroadcast({ performerId, accentColor = '#FF2DAA' }
     setError(msg);
   }, []);
 
+  // LEGACY (2026-07-18): GoLiveStudio.tsx at /live/go is now the canonical
+  // Go Live entry point. This component's goLive() independently hits the
+  // same /api/live/go API from inside /performer/studio's "BROADCAST" tab,
+  // un-synced with that page's own toggleLive(). Not touched further here —
+  // flagged so it isn't mistaken for the place to build new Go Live features.
   const goLive = useCallback(async () => {
     if (!stream) {
       setError('Start your camera first.');

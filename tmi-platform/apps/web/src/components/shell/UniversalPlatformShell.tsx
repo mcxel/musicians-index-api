@@ -32,6 +32,7 @@ import type { RoomType } from '@/components/room/RoomInfrastructureProvider';
 import { WindowManagerRuntime } from '@/lib/runtime/window/WindowManagerRuntime';
 import type { LayoutPreset } from '@/lib/runtime/window';
 import { useTheme, type ThemeTokens } from '@/lib/design/ThemeEngine';
+import LiveLobbyDrawer from '@/components/lobby/LiveLobbyDrawer';
 
 // ── Drawer collapse state ─────────────────────────────────────────────────────
 
@@ -275,6 +276,9 @@ export default function UniversalPlatformShell({
           </div>
         </div>
       )}
+
+      {/* ── GLOBAL LIVE LOBBY DRAWER ────────────────────────────────── */}
+      <LiveLobbyDrawer />
     </RoomContainer>
     </ShellContext.Provider>
   );

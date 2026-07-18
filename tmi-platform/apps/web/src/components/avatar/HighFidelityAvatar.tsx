@@ -2,6 +2,11 @@
 
 import React from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
+
+const AvatarViewer = dynamic(() => import('@/components/3d/AvatarLobbyCanvas').then((mod) => mod.AvatarViewer), {
+  ssr: false,
+});
 
 interface HighFidelityAvatarProps {
   imageUrl?: string;
@@ -9,6 +14,8 @@ interface HighFidelityAvatarProps {
   size?: number;
   tierColor?: string;
   showCreateCTA?: boolean;
+  enable3D?: boolean;
+  isPlaying?: boolean;
 }
 
 export default function HighFidelityAvatar({
@@ -17,7 +24,27 @@ export default function HighFidelityAvatar({
   size = 48,
   tierColor = '#00FFFF',
   showCreateCTA = false,
+  enable3D = false,
+  isPlaying = false,
 }: HighFidelityAvatarProps) {
+  if (enable3D) {
+    return (
+      <div
+        className="relative flex items-center justify-center rounded-full overflow-hidden bg-[#0a0a1a] border-2 shadow-lg"
+        style={{ width: size, height: size, borderColor: `${tierColor}80`, boxShadow: `0 0 15px ${tierColor}30` }}
+      >
+        <AvatarViewer
+          active={true}
+          color={tierColor}
+          visorColor={tierColor}
+          crown={tierColor === '#5CE1E6' || tierColor === '#FFD700'}
+          isPlaying={isPlaying}
+          size={size}
+        />
+      </div>
+    );
+  }
+
   if (imageUrl) {
     return (
       <div

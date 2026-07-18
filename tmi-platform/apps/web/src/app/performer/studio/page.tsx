@@ -751,6 +751,14 @@ export default function ArtistStudioPage() {
     return () => { cancelled = true; clearInterval(id); };
   }, [isLive, liveRoomId]);
 
+  // LEGACY (2026-07-18): GoLiveStudio.tsx at /live/go is now the canonical
+  // Go Live entry point — the Performer Hub's "GO LIVE" actions route there
+  // instead of here. This still works (real /api/live/go registration) and
+  // the rest of this page (Green Room, Sound Check) stays active; just don't
+  // build new Go Live features on this path. Also note: WebRTCBroadcast.tsx,
+  // rendered elsewhere on this same page's "BROADCAST" tab, has its own
+  // independent goLive() hitting the same API — the two have never been
+  // reconciled with each other, a pre-existing issue this comment doesn't fix.
   const toggleLive = async () => {
     if (!isLive) {
       const rid = `studio-${Date.now()}`;
