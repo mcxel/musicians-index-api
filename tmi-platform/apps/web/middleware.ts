@@ -2,6 +2,20 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 const ADMIN_PATHS = ['/admin', '/api/admin', '/contest/admin'];
+
+// Rule 26 — Identity Policy: Avatar ownership and cosmetic inventory are
+// Fan-only surfaces.  Performers are represented by real photos/video.
+// Admins/Staff may access for QA oversight.
+const FAN_ONLY_PATHS = [
+  '/avatar',
+  '/avatar-builder',
+  '/avatar-center',
+  '/inventory/cosmetics',
+  '/inventory/emotes',
+  '/inventory/nfts',
+  '/inventory/props',
+  '/settings/avatar',
+];
 const PROTECTED_PATHS = [
   '/hub',
   '/dashboard',
@@ -212,6 +226,28 @@ export function middleware(req: NextRequest) {
         return NextResponse.json({ error: 'Forbidden: admin role required' }, { status: 403 });
       }
       return NextResponse.redirect(new URL('/home/1', req.url), 307);
+    }
+  }
+
+  // Rule 26 — Fan-only path gating (avatar ownership, cosmetic inventory).
+  // Non-fans who navigate directly to these paths are redirected to their
+  // role hub.  Unauthenticated users are sent to sign-in.
+  const isFanOnlyPath = FAN_ONLY_PATHS.some(
+    (p) => pathname === p || pathname.startsWith(p + '/'),
+  );
+  if (isFanOnlyPath) {
+    const sessionCookie = req.cookies.get('tmi_session')?.value;
+    if (!sessionCookie) {
+      const signin = new URL('/auth', req.url);
+      signin.searchParams.set('next', pathname);
+      return NextResponse.redirect(signin, 307);
+    }
+    const userRoles = getUserRoles(req);
+    const isFan = hasAnyRole(userRoles, ['FAN']);
+    const isAdminOrStaff = hasAnyRole(userRoles, ['ADMIN', 'STAFF']);
+    if (!isFan && !isAdminOrStaff) {
+      const redirectPath = resolvePrimaryPathForRoles(userRoles) ?? '/hub/fan';
+      return NextResponse.redirect(new URL(redirectPath, req.url), 307);
     }
   }
 
