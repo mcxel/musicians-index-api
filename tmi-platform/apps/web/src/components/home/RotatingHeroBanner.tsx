@@ -136,18 +136,19 @@ export default function RotatingHeroBanner({
                 }}
               />
               {/*
-               * Layer 2 — sharp foreground using objectFit:contain.
-               * The full artwork is always visible at its correct aspect ratio.
-               * For portrait posters this fills the card; for landscape/thin
-               * images the blur layer behind fills the letterbox gaps.
+               * Layer 2 — sharp foreground using objectFit:cover.
+               * Fills the full container at every aspect ratio; the blurred
+               * layer behind adds atmospheric depth to any cropped edges.
+               * Using contain here left blank bars on the sides when the
+               * container is approximately square — cover eliminates that.
                */}
               <Image
                 src={slide.src}
                 alt={slide.label}
                 fill
-                sizes="(max-width: 900px) 100vw, 240px"
+                sizes="(max-width: 900px) 100vw, 320px"
                 priority={priority && i === 0}
-                style={{ objectFit: 'contain', objectPosition: 'center top' }}
+                style={{ objectFit: 'cover', objectPosition: 'center top' }}
               />
             </>
           )}

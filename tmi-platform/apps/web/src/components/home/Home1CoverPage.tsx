@@ -1221,16 +1221,20 @@ export default function Home1CoverPage() {
            Mobile: title on top, single rotating banner only (2nd flank hidden). */
         .h1-hero-billboard-grid {
           display: grid;
-          grid-template-columns: minmax(140px, 220px) minmax(0, 1fr) minmax(140px, 220px);
+          /* Wider flank tracks: min 200 px, max 320 px — enough for artwork
+             to read clearly without squeezing the title column */
+          grid-template-columns: minmax(200px, 320px) minmax(0, 1fr) minmax(200px, 320px);
           grid-template-areas: "left title right";
-          gap: 14px;
+          gap: 12px;
           /* stretch: flanks expand to match the title column height so
              there is no dead dark space above/below the banner artwork */
           align-items: stretch;
         }
         .h1-hero-billboard-grid .h1-hero-flank-left,
         .h1-hero-billboard-grid .h1-hero-flank-right {
-          min-height: 200px;
+          /* Keep a tall minimum so banners are always substantial even when
+             the title column content is short */
+          min-height: 300px;
         }
         .h1-hero-billboard-grid .h1-hero-title-col { grid-area: title; }
         .h1-hero-billboard-grid .h1-hero-flank-left { grid-area: left; }
