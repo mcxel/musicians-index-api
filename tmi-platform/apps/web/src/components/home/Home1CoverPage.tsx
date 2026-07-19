@@ -661,11 +661,11 @@ function TypewriterTicker({ messages, color }: { messages: string[]; color: stri
   return (
     <span
       style={{
-        fontSize: 12,
+        fontSize: 'clamp(13px, 1.6vw, 16px)',
         fontWeight: 900,
         color,
-        letterSpacing: '0.08em',
-        fontFamily: "'Inter', sans-serif",
+        letterSpacing: '0.1em',
+        fontFamily: "'Bebas Neue', 'Impact', 'Arial Black', sans-serif",
         textTransform: 'uppercase',
         whiteSpace: 'nowrap',
       }}
@@ -1508,7 +1508,10 @@ export default function Home1CoverPage() {
         </div>
 
         {/* ── Masthead ── */}
-        <div style={{ textAlign: 'center', marginTop: 0, marginBottom: 8, zIndex: 10, position: 'relative' }}>
+        {/* width:100% is required here: the parent flex column has
+            alignItems:center which shrinks children to content width.
+            Without it the grid is only as wide as the title text. */}
+        <div style={{ textAlign: 'center', marginTop: 0, marginBottom: 8, zIndex: 10, position: 'relative', width: '100%' }}>
           <div className="h1-hero-billboard-grid">
             <div className="h1-hero-flank-left">
               <RotatingHeroBanner slides={HERO_FLANK_LEFT_SLIDES} side="left" priority />
@@ -1555,14 +1558,21 @@ export default function Home1CoverPage() {
               </span>
             ))}
           </div>
-          {/* Rotating status ticker — real genre/crown/radio data, typed in Times-Square style */}
+          {/* Rotating status ticker — magazine-headline typewriter style.
+              Container is tall enough to read as text, not just a bar. */}
           <div
             style={{
               overflow: 'hidden',
-              height: 18,
+              height: 32,
               display: 'flex',
               justifyContent: 'center',
-              marginBottom: 2,
+              alignItems: 'center',
+              marginBottom: 6,
+              background: `${accentColor}14`,
+              borderLeft: `3px solid ${accentColor}`,
+              borderRight: `3px solid ${accentColor}`,
+              borderRadius: 3,
+              paddingInline: 12,
             }}
           >
             <TypewriterTicker messages={tickerMessages} color={accentColor} />
