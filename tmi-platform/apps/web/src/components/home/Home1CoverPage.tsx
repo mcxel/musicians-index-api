@@ -1224,7 +1224,13 @@ export default function Home1CoverPage() {
           grid-template-columns: minmax(140px, 220px) minmax(0, 1fr) minmax(140px, 220px);
           grid-template-areas: "left title right";
           gap: 14px;
-          align-items: center;
+          /* stretch: flanks expand to match the title column height so
+             there is no dead dark space above/below the banner artwork */
+          align-items: stretch;
+        }
+        .h1-hero-billboard-grid .h1-hero-flank-left,
+        .h1-hero-billboard-grid .h1-hero-flank-right {
+          min-height: 200px;
         }
         .h1-hero-billboard-grid .h1-hero-title-col { grid-area: title; }
         .h1-hero-billboard-grid .h1-hero-flank-left { grid-area: left; }
@@ -1501,7 +1507,7 @@ export default function Home1CoverPage() {
         {/* ── Masthead ── */}
         <div style={{ textAlign: 'center', marginTop: 0, marginBottom: 8, zIndex: 10, position: 'relative' }}>
           <div className="h1-hero-billboard-grid">
-            <div className="h1-hero-flank-left" style={{ height: 220 }}>
+            <div className="h1-hero-flank-left">
               <RotatingHeroBanner slides={HERO_FLANK_LEFT_SLIDES} side="left" priority />
             </div>
             <div className="h1-hero-title-col">
@@ -1594,7 +1600,7 @@ export default function Home1CoverPage() {
             {genreConfig.emoji} {genreKey.toUpperCase()} · WEEK {Math.ceil((Date.now() / (7 * 24 * 60 * 60 * 1000)) % 52) || 1}
           </div>
             </div>
-            <div className="h1-hero-flank-right" style={{ height: 220 }}>
+            <div className="h1-hero-flank-right">
               <RotatingHeroBanner slides={HERO_FLANK_RIGHT_SLIDES} side="right" />
             </div>
           </div>
@@ -1794,8 +1800,9 @@ export default function Home1CoverPage() {
           <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(90deg, rgba(6,2,26,0.7) 0%, transparent 24%, transparent 76%, rgba(6,2,26,0.7) 100%)', pointerEvents: 'none' }} />
         </div>
 
-        {/* ── Underlay direction toggle ── */}
-        <div style={{ position: 'absolute', top: 6, left: '50%', transform: 'translateX(-50%)', zIndex: 30, display: 'flex', gap: 4, alignItems: 'center' }}>
+        {/* ── Underlay direction toggle ── moved to bottom of orbital section
+             so it is never close to the masthead WHO'S HOT phrase above. ── */}
+        <div style={{ position: 'absolute', bottom: 8, left: '50%', transform: 'translateX(-50%)', zIndex: 30, display: 'flex', gap: 4, alignItems: 'center' }}>
           <button onClick={() => setUnderlayDir('left')} style={{ background: underlayDir === 'left' ? 'rgba(255,215,0,0.8)' : 'rgba(255,215,0,0.15)', color: underlayDir === 'left' ? '#000' : '#FFD700', border: '1px solid rgba(255,215,0,0.35)', borderRadius: 4, fontSize: 7, fontWeight: 800, padding: '2px 7px', cursor: 'pointer', letterSpacing: '0.06em', fontFamily: "'Inter',sans-serif" }}>◀ TABLOID</button>
           <button onClick={() => setUnderlayDir('right')} style={{ background: underlayDir === 'right' ? 'rgba(255,215,0,0.8)' : 'rgba(255,215,0,0.15)', color: underlayDir === 'right' ? '#000' : '#FFD700', border: '1px solid rgba(255,215,0,0.35)', borderRadius: 4, fontSize: 7, fontWeight: 800, padding: '2px 7px', cursor: 'pointer', letterSpacing: '0.06em', fontFamily: "'Inter',sans-serif" }}>TABLOID ▶</button>
         </div>
