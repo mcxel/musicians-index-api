@@ -42,92 +42,161 @@ export default function MagazineNavBar() {
       .catch(() => setSession({ authenticated: false }));
   }, []);
 
-  const isAuth   = session?.authenticated === true;
-  const role     = (session?.user?.role ?? 'default').toLowerCase();
-  const userId   = session?.user?.id ?? '';
-  const initial  = userId.charAt(0).toUpperCase() || '?';
+  const isAuth    = session?.authenticated === true;
+  const role      = (session?.user?.role ?? 'default').toLowerCase();
+  const userId    = session?.user?.id ?? '';
+  const initial   = userId.charAt(0).toUpperCase() || '?';
   const roleColor = ROLE_COLOR[role] ?? '#00FFFF';
-  const profileHref = isAuth ? `${ROLE_PROFILE[role] ?? '/profile'}/${userId}` : '/auth/signin';
+  const profileHref = isAuth ? `${ROLE_PROFILE[role] ?? '/profile'}/${userId}` : '/auth';
 
   return (
     <>
       <style>{`
-        @media (max-width: 600px) {
-          .tmi-nav-text-links { display: none !important; }
-          .tmi-nav-auth-signup { display: none !important; }
-          .tmi-nav-auth-login  { font-size: 11px !important; padding: 3px 8px !important; }
+        /*
+         * --tmi-nav-h is consumed by home/layout.tsx paddingTop.
+         * Mobile: row1 (44px) + row2 (36px) = 80px.
+         * Desktop (≥640px): single-row 48px — row2 is absolutely positioned
+         * centred inside row1 so the header stays 48px tall.
+         */
+        :root { --tmi-nav-h: 80px; }
+        @media (min-width: 640px) { :root { --tmi-nav-h: 48px; } }
+
+        .tmi-nav-root {
+          position: fixed;
+          top: var(--tmi-banner-h, 0px);
+          left: 0; right: 0;
+          z-index: 59;
+          background: linear-gradient(90deg,rgba(7,10,24,0.96) 0%,rgba(19,11,38,0.96) 50%,rgba(7,10,24,0.96) 100%);
+          border-bottom: 1px solid rgba(255,255,255,0.1);
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
         }
-        .tmi-nav-tabs {
+
+        /* ── Row 1: brand + auth (always visible, never overflow:hidden) ── */
+        .tmi-nav-row1 {
+          height: 44px;
           display: flex;
-          gap: 4px;
+          align-items: center;
+          justify-content: space-between;
+          padding: 0 14px;
+          position: relative;
+          z-index: 2;
+        }
+
+        /* ── Row 2: page-number pagination ── */
+        .tmi-nav-row2 {
+          height: 36px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 5px;
+          padding: 0 12px 0;
+          border-top: 1px solid rgba(255,255,255,0.07);
           overflow-x: auto;
           -webkit-overflow-scrolling: touch;
           scrollbar-width: none;
-          max-width: calc(100vw - 160px);
         }
-        .tmi-nav-tabs::-webkit-scrollbar { display: none; }
-      `}</style>
-      <header
-        aria-label="Global navigation"
-        style={{
-          position: "fixed",
-          top: 'var(--tmi-banner-h, 0px)',
-          left: 0,
-          right: 0,
-          zIndex: 59,
-          height: 48,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "0 12px",
-          background:
-            "linear-gradient(90deg, rgba(7,10,24,0.95) 0%, rgba(19,11,38,0.95) 50%, rgba(7,10,24,0.95) 100%)",
-          borderBottom: "1px solid rgba(255,255,255,0.1)",
-          backdropFilter: "blur(12px)",
-          WebkitBackdropFilter: "blur(12px)",
-          overflow: "hidden",
-        }}
-      >
-        <Link
-          href="/home/1"
-          style={{
-            color: "#00e5ff",
-            fontWeight: 900,
-            fontSize: 15,
-            letterSpacing: "0.12em",
-            textDecoration: "none",
-            textTransform: "uppercase",
-            flexShrink: 0,
-          }}
-        >
-          TMI
-        </Link>
+        .tmi-nav-row2::-webkit-scrollbar { display: none; }
 
-        <nav aria-label="Homepage tabs" className="tmi-nav-tabs">
+        /*
+         * ── Desktop ≥640px: collapse to single 48px row ──
+         * Row2 is absolutely centred over row1 so it doesn't add height.
+         */
+        @media (min-width: 640px) {
+          .tmi-nav-root  { height: 48px; overflow: visible; }
+          .tmi-nav-row1  { height: 48px; }
+          .tmi-nav-row2  {
+            position: absolute;
+            top: 0; left: 50%; transform: translateX(-50%);
+            height: 48px;
+            border: none;
+            background: transparent;
+            pointer-events: auto;
+            z-index: 1;
+          }
+        }
+
+        .tmi-nav-tab {
+          display: inline-flex; align-items: center; justify-content: center;
+          border-radius: 999px;
+          padding: 3px 11px;
+          text-decoration: none;
+          font-size: 12px; font-weight: 700;
+          flex-shrink: 0;
+          white-space: nowrap;
+          transition: background 150ms, color 150ms;
+        }
+        .tmi-nav-tab[data-active="true"] {
+          border: 1px solid rgba(0,229,255,0.55);
+          color: #00e5ff;
+          background: rgba(0,229,255,0.12);
+        }
+        .tmi-nav-tab[data-active="false"] {
+          border: 1px solid rgba(255,255,255,0.2);
+          color: #fff;
+          background: rgba(255,255,255,0.04);
+        }
+
+        .tmi-auth-btn {
+          display: inline-flex; align-items: center;
+          border-radius: 999px;
+          padding: 5px 13px;
+          text-decoration: none;
+          font-size: 12px; font-weight: 700;
+          white-space: nowrap;
+          flex-shrink: 0;
+        }
+        .tmi-auth-login  { border: 1px solid rgba(255,255,255,0.3); color: #fff; background: rgba(255,255,255,0.05); }
+        .tmi-auth-signup { border: 1px solid rgba(0,229,255,0.55); color: #00e5ff; background: rgba(0,229,255,0.08); }
+      `}</style>
+
+      <header className="tmi-nav-root" aria-label="Global navigation">
+
+        {/* ── Row 1: Logo ←→ Auth (NEVER hidden, NEVER overflow clipped) ── */}
+        <div className="tmi-nav-row1">
+          <Link
+            href="/home/1"
+            style={{ color: "#00e5ff", fontWeight: 900, fontSize: 15, letterSpacing: "0.12em", textDecoration: "none", textTransform: "uppercase", flexShrink: 0 }}
+          >
+            TMI
+          </Link>
+
+          {/* Auth zone — always visible, always right-aligned */}
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
+            {isAuth ? (
+              <Link
+                href={profileHref}
+                aria-label="My Account"
+                style={{
+                  width: 34, height: 34, borderRadius: "50%",
+                  display: "inline-flex", alignItems: "center", justifyContent: "center",
+                  border: `2px solid ${roleColor}`, background: `${roleColor}22`,
+                  color: roleColor, fontSize: 13, fontWeight: 900,
+                  textDecoration: "none", flexShrink: 0,
+                  boxShadow: `0 0 10px ${roleColor}44`,
+                }}
+              >
+                {initial}
+              </Link>
+            ) : (
+              <>
+                <Link href="/auth"   className="tmi-auth-btn tmi-auth-login">Log In</Link>
+                <Link href="/signup" className="tmi-auth-btn tmi-auth-signup">Sign Up</Link>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* ── Row 2: Page navigation (own row on mobile, centred overlay on desktop) ── */}
+        <nav className="tmi-nav-row2" aria-label="Homepage sections">
           {HOME_PAGE_TABS.map((tab) => {
             const active = pathname === tab.href;
             return (
               <Link
                 key={tab.href}
                 href={tab.href}
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  borderRadius: 999,
-                  border: active
-                    ? "1px solid rgba(0,229,255,0.55)"
-                    : "1px solid rgba(255,255,255,0.2)",
-                  padding: "4px 11px",
-                  color: active ? "#00e5ff" : "#fff",
-                  textDecoration: "none",
-                  fontSize: 12,
-                  fontWeight: 700,
-                  flexShrink: 0,
-                  background: active
-                    ? "rgba(0,229,255,0.12)"
-                    : "rgba(255,255,255,0.04)",
-                }}
+                className="tmi-nav-tab"
+                data-active={String(active)}
               >
                 {tab.label}
               </Link>
@@ -135,54 +204,6 @@ export default function MagazineNavBar() {
           })}
         </nav>
 
-        <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
-          {isAuth ? (
-            <Link
-              href={profileHref}
-              title="My Account"
-              style={{
-                width: 34, height: 34, borderRadius: "50%", display: "inline-flex",
-                alignItems: "center", justifyContent: "center", flexShrink: 0,
-                border: `2px solid ${roleColor}`,
-                background: `${roleColor}22`,
-                color: roleColor,
-                fontSize: 13, fontWeight: 900,
-                textDecoration: "none",
-                boxShadow: `0 0 10px ${roleColor}44`,
-              }}
-              aria-label="My Account"
-            >
-              {initial || "👤"}
-            </Link>
-          ) : (
-            <>
-              <Link
-                href="/auth"
-                className="tmi-nav-auth-login"
-                style={{
-                  display: "inline-flex", alignItems: "center", borderRadius: 999,
-                  border: "1px solid rgba(255,255,255,0.25)", padding: "4px 12px",
-                  color: "#fff", textDecoration: "none", fontSize: 12, fontWeight: 700,
-                  background: "rgba(255,255,255,0.04)",
-                }}
-              >
-                Log In
-              </Link>
-              <Link
-                href="/signup"
-                className="tmi-nav-auth-signup"
-                style={{
-                  display: "inline-flex", alignItems: "center", borderRadius: 999,
-                  border: "1px solid rgba(0,229,255,0.5)", padding: "4px 12px",
-                  color: "#00e5ff", textDecoration: "none", fontSize: 12, fontWeight: 700,
-                  background: "rgba(0,229,255,0.08)",
-                }}
-              >
-                Sign Up
-              </Link>
-            </>
-          )}
-        </div>
       </header>
     </>
   );

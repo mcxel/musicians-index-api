@@ -12,7 +12,7 @@ export default function HomeLayout({ children }: { children: React.ReactNode }) 
       <HomeAutoRotate />
       <MagazineNavBar />
 
-      <div style={{ paddingTop: 'calc(48px + var(--tmi-banner-h, 0px))', minHeight: "100vh", background: "#07060f", overflowX: "hidden", maxWidth: "100vw" }}>{children}</div>
+      <div style={{ paddingTop: 'calc(var(--tmi-nav-h, 80px) + var(--tmi-banner-h, 0px))', minHeight: "100vh", background: "#07060f", overflowX: "hidden", maxWidth: "100vw" }}>{children}</div>
     </PersistentShellProvider>
   );
 }
