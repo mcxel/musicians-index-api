@@ -46,13 +46,21 @@ async function isEventProcessed(eventId: string): Promise<boolean> {
     return true;
   }
 
-  // TODO: Check database for durable record (requires webhookEvent table in schema)
+  // Check database for durable record via Orders table
+  const existingOrder = await prisma.order.findFirst({
+    where: { providerPaymentId: eventId }
+  }).catch(() => null);
+
+  if (existingOrder) {
+    processedEventIds.add(eventId);
+    return true;
+  }
+
   return false;
 }
 
 async function markEventProcessed(eventId: string): Promise<void> {
   processedEventIds.add(eventId);
-  // TODO: Write to database (requires webhookEvent table in schema)
 }
 
 export async function POST(req: NextRequest) {

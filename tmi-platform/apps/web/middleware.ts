@@ -34,13 +34,20 @@ const AUTH_WHITELIST = [
   '/api/auth',
   '/health',
   '/support/account-recovery',
+  '/privacy',
+  '/terms',
+  '/guidelines',
+  '/community-guidelines',
+  '/about',
+  '/contact',
+  '/dmca',
+  '/cookie-policy',
+  '/refund-policy',
+  '/whats-new',
   // Stripe calls these directly — it authenticates via Stripe-Signature
   // header verification inside the route handler, never a session cookie.
-  // Blocking these with the generic /api/stripe session check returns 401
-  // to every webhook delivery before signature verification can even run.
   '/api/stripe/webhook',
   '/api/stripe/webhook-health',
-  // Debug endpoints (Level 1 automated verification)
   '/api/debug',
 ];
 
@@ -49,19 +56,25 @@ const VISIBILITY_WHITELIST = [
   '/coming-soon',
   '/auth',
   '/api/auth',
-  // New-user signup must stay reachable even in private/coming-soon mode —
-  // locking out /signup while /auth (login) stays open would let existing
-  // users in but block every new registration, including invite-link joins.
   '/signup',
   '/join',
   '/health',
   '/support',
+  '/privacy',
+  '/terms',
+  '/guidelines',
+  '/community-guidelines',
+  '/about',
+  '/contact',
+  '/dmca',
+  '/cookie-policy',
+  '/refund-policy',
+  '/whats-new',
   '/api/admin',
   '/admin',
   '/contest',
   '/_next',
   '/favicon.ico',
-  // Stripe must always be able to deliver webhooks, even in private/coming-soon mode
   '/api/stripe/webhook',
   '/api/stripe/webhook-health',
 ];
@@ -278,15 +291,10 @@ export function middleware(req: NextRequest) {
       const userRoles = getUserRoles(req);
 
       if (userRoles.length === 0) {
-        const signin = new URL('/auth', req.url);
-        signin.searchParams.set('next', pathname);
-        const res = NextResponse.redirect(signin, 307);
-        // Stale/partial auth cookie state can cause /hub/* -> /hub/fan loops.
-        // Clear session role cookies so the next request lands cleanly on auth.
-        res.cookies.delete('tmi_session');
-        res.cookies.delete('tmi_role');
-        res.cookies.delete('tmi_roles');
-        return res;
+        // Safe redirect to onboarding for active sessions with no role cookies set yet.
+        // DO NOT delete tmi_session here — clearing tmi_session while the user is
+        // completing onboarding forces an invalid logout and sends them back to sign-in.
+        return NextResponse.redirect(new URL('/onboarding', req.url), 307);
       }
 
       // Map dashboard path to required roles

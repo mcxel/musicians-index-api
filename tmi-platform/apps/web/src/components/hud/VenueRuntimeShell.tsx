@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * LEGACY_DEPRECATED (Rule 21): Superseded by the canonical 3D venue runtime
+ * in components/live/VenueRuntimeShell.tsx and UniversalVenueRenderer.
+ * Retained for backward compatibility with older HUD prototypes.
+ */
+
 import React, { useState, useRef, useEffect, Suspense } from 'react';
 import { motion } from 'framer-motion';
 import { Canvas } from '@react-three/fiber';

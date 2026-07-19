@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { HOME_ROUTE_CHAIN, getHomeRouteIndex } from "@/components/home/homeRouteChain";
-import { isNavigationLocked, lockNavigation } from "@/lib/navigationLock";
+import { isNavigationLocked, lockNavigation, unlockNavigation } from "@/lib/navigationLock";
 
 function isInteractiveTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
@@ -35,6 +35,9 @@ export default function HomeRouteChevronNav() {
 
   useEffect(() => {
     if (!isInHomeChain) return;
+
+    // Clear any stale navigation lock when the route settles on a new page.
+    unlockNavigation();
 
     let startX = 0;
     let startY = 0;

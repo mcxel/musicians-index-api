@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { HOME_ROUTE_CHAIN, getHomeRouteIndex } from "@/components/home/homeRouteChain";
-import { isNavigationLocked, lockNavigation } from "@/lib/navigationLock";
+import { isNavigationLocked, lockNavigation, unlockNavigation } from "@/lib/navigationLock";
 
 const ROTATE_INTERVAL_MS = 30_000;
 
@@ -22,6 +22,10 @@ export default function HomeAutoRotate() {
 
   useEffect(() => {
     if (!isInHomeChain) return;
+
+    // Clear any stale lock from the previous navigation so auto-rotate
+    // can continue normally from this page.
+    unlockNavigation();
 
     const id = window.setTimeout(() => {
       if (isNavigationLocked()) return;

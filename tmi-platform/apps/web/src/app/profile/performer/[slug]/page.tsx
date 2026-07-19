@@ -149,10 +149,21 @@ export default function PublicYophoPage({ params }: PublicYophoPageProps) {
   const [resolved, setResolved] = useState(false);
 
   useEffect(() => {
-    params.then((p) => {
+    // params is typed as Promise<{slug}> per Next.js 15's async-params contract,
+    // but has been observed arriving as an already-resolved plain object at
+    // runtime on some devices (crash: "t.then is not a function" in production).
+    // Handle both shapes defensively rather than assume the type is always honored.
+    const maybePromise = params as Promise<{ slug: string }> | { slug: string };
+    if (typeof (maybePromise as Promise<{ slug: string }>)?.then === 'function') {
+      (maybePromise as Promise<{ slug: string }>).then((p) => {
+        setSlug(p.slug);
+        setResolved(true);
+      });
+    } else {
+      const p = maybePromise as { slug: string };
       setSlug(p.slug);
       setResolved(true);
-    });
+    }
   }, [params]);
 
   const { userId } = useTmiSession();
@@ -440,18 +451,30 @@ function PublicYophoContent({ performer, isOwner }: { performer: any; isOwner: b
   };
 
   return (
-    <div
-      style={{
-        position: "relative",
-        background: themeConfig.customBgUrl ? `url(${themeConfig.customBgUrl}) center/cover no-repeat` : currentTheme.bgGradient,
-        border: currentTheme.border,
-        boxShadow: currentTheme.glow,
-        borderRadius: "20px",
-        padding: "32px",
-        overflow: "hidden",
-        transition: "all 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
-      }}
+    <ProfileShell
+      role="performer"
+      displayName={performer.name}
+      slug={performer.slug}
+      avatarUrl={performer.profileImageUrl}
+      rank={performer.rank}
+      tagline={performer.bio}
+      articleRoute={`/performers/${performer.slug}/article`}
+      avatarMode={themeConfig.avatarMode}
+      isPlaying={isPlaying}
     >
+      <div style={{ padding: "24px", maxWidth: "1200px", margin: "0 auto" }}>
+        <div
+          style={{
+            position: "relative",
+            background: themeConfig.customBgUrl ? `url(${themeConfig.customBgUrl}) center/cover no-repeat` : currentTheme.bgGradient,
+            border: currentTheme.border,
+            boxShadow: currentTheme.glow,
+            borderRadius: "20px",
+            padding: "32px",
+            overflow: "hidden",
+            transition: "all 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
+          }}
+        >
       {/* Visual Effect Layers */}
       {renderUnderlay()}
       {renderOverlayEffect()}
