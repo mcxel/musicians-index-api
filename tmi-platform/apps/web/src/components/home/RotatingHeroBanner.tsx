@@ -56,9 +56,6 @@ export default function RotatingHeroBanner({ slides, intervalMs = 9000, side, pr
 
   if (slides.length === 0) return null;
   const current = slides[index];
-  const fadeEdge = side === 'left'
-    ? 'linear-gradient(90deg, rgba(5,3,16,0) 0%, rgba(5,3,16,0.55) 68%, rgba(5,3,16,1) 100%)'
-    : 'linear-gradient(270deg, rgba(5,3,16,0) 0%, rgba(5,3,16,0.55) 68%, rgba(5,3,16,1) 100%)';
 
   return (
     <a
@@ -69,14 +66,19 @@ export default function RotatingHeroBanner({ slides, intervalMs = 9000, side, pr
         display: 'block',
         width: '100%',
         height: '100%',
-        minHeight: 160,
-        borderRadius: 16,
+        minHeight: 200,
+        borderRadius: 14,
         overflow: 'hidden',
-        border: '1px solid rgba(170,45,255,0.28)',
-        boxShadow: '0 0 26px rgba(170,45,255,0.18)',
+        /*
+         * Tight neon frame — hugs the artwork instead of floating around it.
+         * Box-shadow provides outer glow; border is the crisp inner line.
+         */
+        border: '2px solid rgba(170,45,255,0.55)',
+        boxShadow: '0 0 28px rgba(170,45,255,0.35), 0 0 8px rgba(170,45,255,0.25) inset',
         textDecoration: 'none',
       }}
     >
+      {/* Artwork — fills the FULL card (objectFit cover, no cropping gaps) */}
       {slides.map((slide, i) => (
         <div
           key={slide.src}
@@ -84,59 +86,67 @@ export default function RotatingHeroBanner({ slides, intervalMs = 9000, side, pr
             position: 'absolute',
             inset: 0,
             opacity: i === index ? 1 : 0,
-            transform: i === index ? 'scale(1.04)' : 'scale(1)',
-            transition: 'opacity 1.1s ease, transform 8.5s ease-out',
+            /*
+             * 85% → 100% scale Ken-Burns: artwork starts slightly zoomed
+             * and settles to fill, giving a cinematic entrance feel.
+             */
+            transform: i === index ? 'scale(1.00)' : 'scale(1.06)',
+            transition: 'opacity 1.0s ease, transform 9s ease-out',
             willChange: 'opacity, transform',
           }}
         >
-          {/* Only render the image tag for the active + immediate-next slide
-              so idle slides don't consume a network request before their turn. */}
           {(i === index || i === (index + 1) % slides.length) && (
             <Image
               src={slide.src}
               alt={slide.label}
               fill
-              sizes="(max-width: 900px) 100vw, 220px"
+              sizes="(max-width: 900px) 100vw, 240px"
               priority={priority && i === 0}
-              style={{ objectFit: 'cover' }}
+              style={{ objectFit: 'cover', objectPosition: 'center top' }}
             />
           )}
         </div>
       ))}
 
-      {/* Glass blur edge blending the artwork into the hero background */}
-      <div style={{ position: 'absolute', inset: 0, background: fadeEdge, pointerEvents: 'none' }} />
-
-      {/* Light sweep accent */}
+      {/*
+       * Bottom gradient band — artwork bleeds to the very edges;
+       * the label is integrated INTO the poster, not floating above it.
+       * No horizontal fade — the full width of the image stays visible.
+       */}
       <div
         style={{
           position: 'absolute',
-          inset: 0,
-          background: 'linear-gradient(115deg, transparent 40%, rgba(255,255,255,0.10) 50%, transparent 60%)',
+          bottom: 0, left: 0, right: 0,
+          background: 'linear-gradient(to top, rgba(4,2,14,0.92) 0%, rgba(4,2,14,0.58) 48%, transparent 100%)',
+          padding: '22px 10px 9px',
+          pointerEvents: 'none',
+        }}
+      >
+        <div
+          style={{
+            fontSize: 9,
+            fontWeight: 900,
+            letterSpacing: '0.12em',
+            color: '#FFD700',
+            textShadow: '0 1px 6px rgba(0,0,0,0.9)',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+          }}
+        >
+          {current.label.toUpperCase()}
+        </div>
+      </div>
+
+      {/* Thin top-edge neon shimmer — accent only, doesn't eat artwork */}
+      <div
+        style={{
+          position: 'absolute',
+          top: 0, left: 0, right: 0, height: 2,
+          background: 'linear-gradient(90deg, transparent, rgba(170,45,255,0.8), transparent)',
           pointerEvents: 'none',
         }}
       />
-
-      <div
-        style={{
-          position: 'absolute',
-          bottom: 10,
-          left: side === 'left' ? 12 : undefined,
-          right: side === 'right' ? 12 : undefined,
-          padding: '5px 12px',
-          borderRadius: 999,
-          background: 'rgba(5,3,16,0.72)',
-          backdropFilter: 'blur(4px)',
-          border: '1px solid rgba(255,215,0,0.35)',
-          fontSize: 9,
-          fontWeight: 900,
-          letterSpacing: '0.08em',
-          color: '#FFD700',
-          whiteSpace: 'nowrap',
-        }}
-      >
-        {current.label.toUpperCase()}
-      </div>
     </a>
   );
 }

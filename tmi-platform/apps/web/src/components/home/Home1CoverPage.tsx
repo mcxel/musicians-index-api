@@ -1221,9 +1221,9 @@ export default function Home1CoverPage() {
            Mobile: title on top, single rotating banner only (2nd flank hidden). */
         .h1-hero-billboard-grid {
           display: grid;
-          grid-template-columns: minmax(120px, 200px) minmax(0, 1fr) minmax(120px, 200px);
+          grid-template-columns: minmax(140px, 220px) minmax(0, 1fr) minmax(140px, 220px);
           grid-template-areas: "left title right";
-          gap: 16px;
+          gap: 14px;
           align-items: center;
         }
         .h1-hero-billboard-grid .h1-hero-title-col { grid-area: title; }
@@ -1501,7 +1501,7 @@ export default function Home1CoverPage() {
         {/* ── Masthead ── */}
         <div style={{ textAlign: 'center', marginTop: 0, marginBottom: 8, zIndex: 10, position: 'relative' }}>
           <div className="h1-hero-billboard-grid">
-            <div className="h1-hero-flank-left" style={{ height: 170 }}>
+            <div className="h1-hero-flank-left" style={{ height: 220 }}>
               <RotatingHeroBanner slides={HERO_FLANK_LEFT_SLIDES} side="left" priority />
             </div>
             <div className="h1-hero-title-col">
@@ -1594,7 +1594,7 @@ export default function Home1CoverPage() {
             {genreConfig.emoji} {genreKey.toUpperCase()} · WEEK {Math.ceil((Date.now() / (7 * 24 * 60 * 60 * 1000)) % 52) || 1}
           </div>
             </div>
-            <div className="h1-hero-flank-right" style={{ height: 170 }}>
+            <div className="h1-hero-flank-right" style={{ height: 220 }}>
               <RotatingHeroBanner slides={HERO_FLANK_RIGHT_SLIDES} side="right" />
             </div>
           </div>
