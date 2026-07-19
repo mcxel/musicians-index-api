@@ -112,35 +112,39 @@ export default function MagazineNavBar() {
             border: none;
             background: transparent;
             pointer-events: auto;
-            z-index: 1;
+            /* Must be above row1 (z-index:2) so dot clicks aren't intercepted */
+            z-index: 3;
           }
         }
 
         .tmi-nav-tab {
           display: inline-flex; align-items: center; justify-content: center;
-          border-radius: 999px;
-          padding: 0;
+          /* 20×20 px gives a comfortable click/tap target */
+          width: 20px; height: 20px;
           text-decoration: none;
           flex-shrink: 0;
-          transition: width 220ms ease, background 150ms ease, opacity 150ms ease,
-                      box-shadow 150ms ease;
+          border: none;
+          background: transparent;
+          padding: 0;
         }
-        .tmi-nav-tab[data-active="true"] {
+        /* Visual dot — child span, not the link itself */
+        .tmi-nav-dot {
+          display: block;
+          border-radius: 999px;
+          pointer-events: none;
+          transition: width 220ms ease, background 150ms ease, box-shadow 150ms ease;
+        }
+        .tmi-nav-tab[data-active="true"] .tmi-nav-dot {
           width: 20px; height: 6px;
           background: #00e5ff;
-          border: none;
           box-shadow: 0 0 8px rgba(0,229,255,0.7);
-          opacity: 1;
         }
-        .tmi-nav-tab[data-active="false"] {
+        .tmi-nav-tab[data-active="false"] .tmi-nav-dot {
           width: 6px; height: 6px;
           background: rgba(255,255,255,0.28);
-          border: none;
-          opacity: 0.7;
         }
-        .tmi-nav-tab[data-active="false"]:hover {
-          background: rgba(255,255,255,0.6);
-          opacity: 1;
+        .tmi-nav-tab[data-active="false"]:hover .tmi-nav-dot {
+          background: rgba(255,255,255,0.65);
         }
 
         .tmi-auth-btn {
@@ -205,7 +209,9 @@ export default function MagazineNavBar() {
                 data-active={String(active)}
                 aria-label={tab.label}
                 title={tab.label}
-              />
+              >
+                <span className="tmi-nav-dot" />
+              </Link>
             );
           })}
         </nav>

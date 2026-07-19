@@ -1,18 +1,45 @@
 'use client';
 
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+
+const HOME_TABS = [
+  { href: '/home/1',   label: 'Home 1'   },
+  { href: '/home/1-2', label: 'Home 1-2' },
+  { href: '/home/2',   label: 'Home 2'   },
+  { href: '/home/3',   label: 'Home 3'   },
+  { href: '/home/4',   label: 'Home 4'   },
+  { href: '/home/5',   label: 'Home 5'   },
+];
 
 export default function TmiHomebookJumpNav() {
-  const pages = ['1', '1-2', '2', '3', '4', '5'];
-  
+  const pathname = usePathname();
+
   return (
-    <nav className="flex items-center gap-2 border border-white/10 bg-black/60 px-4 py-2.5 rounded-2xl backdrop-blur-md shadow-[0_0_25px_rgba(0,0,0,0.8)] pointer-events-auto">
-      <span className="text-[9px] uppercase tracking-[0.2em] text-fuchsia-400 font-black mr-1 drop-shadow-[0_0_5px_rgba(217,70,239,0.5)]">Page</span>
-      {pages.map(p => (
-        <Link key={p} href={`/home/${p}`} className="h-6 w-6 flex items-center justify-center rounded-md border border-white/10 text-[10px] font-bold text-zinc-300 hover:bg-fuchsia-500/30 hover:border-fuchsia-400 hover:text-white transition-all duration-300">
-          {p}
-        </Link>
-      ))}
+    <nav className="flex items-center gap-1 border border-white/10 bg-black/60 px-3 py-2 rounded-2xl backdrop-blur-md shadow-[0_0_25px_rgba(0,0,0,0.8)] pointer-events-auto">
+      {HOME_TABS.map((tab) => {
+        const active = pathname === tab.href;
+        return (
+          <Link
+            key={tab.href}
+            href={tab.href}
+            aria-label={tab.label}
+            title={tab.label}
+            className="inline-flex items-center justify-center"
+            style={{ width: 20, height: 20, textDecoration: 'none' }}
+          >
+            <span style={{
+              display: 'block',
+              borderRadius: 999,
+              transition: 'all 220ms ease',
+              width: active ? 18 : 6,
+              height: 6,
+              background: active ? '#e879f9' : 'rgba(255,255,255,0.28)',
+              boxShadow: active ? '0 0 8px rgba(232,121,249,0.7)' : 'none',
+            }} />
+          </Link>
+        );
+      })}
     </nav>
   );
 }

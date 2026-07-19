@@ -933,12 +933,21 @@ export default function Home12Page() {
         <div style={{ fontFamily: 'var(--font-orbitron)', fontSize: 14, fontWeight: 900, color: theme.accent, transition: 'color 0.5s', textShadow: `0 0 12px ${theme.glow}` }}>
           TMI BILLBOARD WORLD
         </div>
-        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-          {['1', '1-2', '2', '3', '4', '5'].map((item) => (
-            <Link key={item} href={`/home/${item}`} style={{ padding: '5px 10px', borderRadius: 5, fontSize: 11, fontWeight: 700, textDecoration: 'none', letterSpacing: '.05em', background: item === '1-2' ? `${theme.accent}20` : 'transparent', color: item === '1-2' ? theme.accent : 'rgba(255,255,255,.45)', border: `1px solid ${item === '1-2' ? theme.accent : 'rgba(255,255,255,.1)'}` }}>
-              {item}
-            </Link>
-          ))}
+        <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+          {[['1','Home 1'],['1-2','Home 1-2'],['2','Home 2'],['3','Home 3'],['4','Home 4'],['5','Home 5']].map(([item, label]) => {
+            const isActive = item === '1-2';
+            return (
+              <Link
+                key={item}
+                href={`/home/${item}`}
+                aria-label={label}
+                title={label}
+                style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 20, height: 20, textDecoration: 'none' }}
+              >
+                <span style={{ display: 'block', borderRadius: 999, transition: 'all 0.2s', width: isActive ? 18 : 6, height: 6, background: isActive ? theme.accent : 'rgba(255,255,255,0.28)', boxShadow: isActive ? `0 0 6px ${theme.glow}` : 'none' }} />
+              </Link>
+            );
+          })}
         </div>
       </div>
 
