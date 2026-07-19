@@ -39,21 +39,34 @@ const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
  */
 const processedEventIds = new Set<string>();
 
-async function isEventProcessed(eventId: string): Promise<boolean> {
-  // Check in-memory cache first (fast path for rapid retries)
+/**
+ * eventId     = Stripe event ID (evt_xxx) — used for fast in-memory dedup
+ * paymentKey  = the actual payment identifier stored in Order.providerPaymentId
+ *               (e.g. payment_intent pi_xxx for checkout events, or subscription
+ *               id sub_xxx for invoice events).  Used for durable DB dedup across
+ *               server restarts. Pass undefined for idempotent-by-nature events
+ *               (subscription updates) that don't create an Order record.
+ */
+async function isEventProcessed(eventId: string, paymentKey?: string): Promise<boolean> {
+  // Check in-memory cache first (fast path for rapid retries within same instance)
   if (processedEventIds.has(eventId)) {
     console.log(`[Stripe Webhook] Event ${eventId} already processed (cache)`);
     return true;
   }
 
-  // Check database for durable record via Orders table
-  const existingOrder = await prisma.order.findFirst({
-    where: { providerPaymentId: eventId }
-  }).catch(() => null);
+  // Durable DB check: find an Order that was already written for this payment.
+  // The event.id (evt_xxx) is NOT stored in Orders; the payment_intent (pi_xxx)
+  // IS stored as providerPaymentId — use that key for the cross-restart check.
+  if (paymentKey) {
+    const existingOrder = await prisma.order.findFirst({
+      where: { providerPaymentId: paymentKey }
+    }).catch(() => null);
 
-  if (existingOrder) {
-    processedEventIds.add(eventId);
-    return true;
+    if (existingOrder) {
+      console.log(`[Stripe Webhook] Event ${eventId} already processed (db, key=${paymentKey})`);
+      processedEventIds.add(eventId);
+      return true;
+    }
   }
 
   return false;
@@ -78,7 +91,17 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Idempotency check ────────────────────────────────────────────────────────
-  if (await isEventProcessed(event.id)) {
+  // For checkout.session.completed: use payment_intent as the durable DB key
+  // since that is what is stored in Order.providerPaymentId.
+  // For all other events: subscription/invoice mutations are inherently
+  // idempotent (same UPDATE result), so in-memory dedup is sufficient.
+  let idempotencyKey: string | undefined;
+  if (event.type === 'checkout.session.completed') {
+    const cs = event.data.object as Stripe.Checkout.Session;
+    idempotencyKey = (cs.payment_intent as string | null) ?? cs.id;
+  }
+
+  if (await isEventProcessed(event.id, idempotencyKey)) {
     // Already processed — return success without re-processing
     return NextResponse.json({ received: true, cached: true });
   }

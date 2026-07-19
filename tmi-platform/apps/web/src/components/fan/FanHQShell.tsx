@@ -69,6 +69,17 @@ export default function FanHQShell({ fanId, fanDisplayName }: FanHQShellProps) {
   const [showInventoryPanel, setShowInventoryPanel] = useState(true);
   const [showMemoryWallPanel, setShowMemoryWallPanel] = useState(true);
 
+  // Mobile responsive state
+  const [isMobile, setIsMobile] = useState(false);
+  const [mobileTab, setMobileTab] = useState<"stage" | "chat" | "rooms" | "friends">("stage");
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+
   const followingFriends: FriendType[] = useMemo(() => {
     return listFollowingForUser(fanId)
       .map((id) => getPerformerById(id))
@@ -141,6 +152,279 @@ export default function FanHQShell({ fanId, fanDisplayName }: FanHQShellProps) {
 
   const liveFriends = followingFriends.filter((friend) => friend.isLive);
 
+  // ─── MOBILE LAYOUT ────────────────────────────────────────────────────────
+  if (isMobile) {
+    const MOBILE_TAB_HEIGHT = 56;
+    const MOBILE_HEADER_HEIGHT = 48;
+
+    const mobileTabItems: { id: typeof mobileTab; icon: string; label: string }[] = [
+      { id: "stage",   icon: "📺", label: "LIVE" },
+      { id: "chat",    icon: "💬", label: "CHAT" },
+      { id: "rooms",   icon: "🔊", label: "ROOMS" },
+      { id: "friends", icon: "👥", label: "FRIENDS" },
+    ];
+
+    return (
+      <div style={{
+        minHeight: "100dvh",
+        background: "linear-gradient(180deg, #050510 0%, #07071a 100%)",
+        color: "#e2e8f0",
+        display: "flex",
+        flexDirection: "column",
+        fontFamily: "'Inter', sans-serif",
+        overflow: "hidden",
+      }}>
+        {/* Mobile header */}
+        <div style={{
+          height: MOBILE_HEADER_HEIGHT,
+          flexShrink: 0,
+          background: "rgba(5,5,16,0.95)",
+          borderBottom: "1px solid rgba(255,255,255,0.08)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "0 14px",
+          zIndex: 60,
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ width: 22, height: 22, borderRadius: "50%", background: "linear-gradient(135deg,#FF2DAA,#AA2DFF)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 900, color: "#fff" }}>T</div>
+            <span style={{ fontSize: 11, fontWeight: 900, color: "#fff", letterSpacing: "0.06em" }}>TMI</span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <Link href="/notifications" style={{ position: "relative", fontSize: 16, textDecoration: "none" }}>
+              🔔
+              <span style={{ position: "absolute", top: -3, right: -5, background: "#FF4444", color: "#fff", fontSize: 7, fontWeight: 900, borderRadius: "50%", width: 11, height: 11, display: "flex", alignItems: "center", justifyContent: "center" }}>3</span>
+            </Link>
+            <Link href="/messages" style={{ position: "relative", fontSize: 16, textDecoration: "none" }}>
+              ✉
+              <span style={{ position: "absolute", top: -3, right: -5, background: "#FF4444", color: "#fff", fontSize: 7, fontWeight: 900, borderRadius: "50%", width: 11, height: 11, display: "flex", alignItems: "center", justifyContent: "center" }}>12</span>
+            </Link>
+            <Link href={`/profile/fan/${fanId}`} style={{ textDecoration: "none" }}>
+              <div style={{ width: 28, height: 28, borderRadius: "50%", background: "linear-gradient(135deg,#5b217a,#301042)", border: "1.5px solid #FF2DAA", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13 }}>👤</div>
+            </Link>
+          </div>
+        </div>
+
+        {/* Scrollable content area */}
+        <div style={{
+          flex: 1,
+          overflowY: "auto",
+          overflowX: "hidden",
+          paddingBottom: MOBILE_TAB_HEIGHT,
+          WebkitOverflowScrolling: "touch" as React.CSSProperties["WebkitOverflowScrolling"],
+        }}>
+          {/* ─── STAGE TAB ─── */}
+          {mobileTab === "stage" && (
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              {/* 16:9 video monitor */}
+              <div style={{ position: "relative", width: "100%", aspectRatio: "16/9", background: "#010308", overflow: "hidden" }}>
+                <div style={{ position: "absolute", inset: 0, backgroundImage: "url('/images/boardroom_live.png')", backgroundSize: "cover", backgroundPosition: "center" }} />
+                {isLive && (
+                  <span style={{ position: "absolute", top: 8, left: 8, background: "#FF2DAA", color: "#fff", fontSize: 8, fontWeight: 900, padding: "2px 7px", borderRadius: 4, letterSpacing: "0.06em" }}>● LIVE</span>
+                )}
+                {mainCount != null && (
+                  <span style={{ position: "absolute", top: 8, right: 8, background: "rgba(0,0,0,0.7)", color: "#fff", fontSize: 8, fontWeight: 900, padding: "2px 7px", borderRadius: 4 }}>👁 {mainCount.toLocaleString()}</span>
+                )}
+                <Link href={mainRoute} style={{
+                  position: "absolute", bottom: 8, left: 8, right: 8, background: "linear-gradient(135deg,#FF2DAA,#AA2DFF)",
+                  border: "none", borderRadius: 8, color: "#fff", fontSize: 11, fontWeight: 900, padding: "8px",
+                  textAlign: "center", textDecoration: "none", display: "block",
+                }}>
+                  JOIN LIVE ROOM
+                </Link>
+              </div>
+
+              {/* Now playing bar */}
+              <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", borderBottom: "1px solid rgba(255,255,255,0.06)", background: "rgba(0,0,0,0.3)" }}>
+                <span style={{ fontSize: 20 }}>🎵</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 11, fontWeight: 900, color: "#fff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>Hustle &amp; Flow</div>
+                  <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)" }}>MarcelD • 2:34 / 4:18</div>
+                </div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <Link href="/playlist" style={{ textDecoration: "none", fontSize: 16 }}>⏭</Link>
+                </div>
+              </div>
+
+              {/* XP / stats strip */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 1, borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+                {[
+                  { label: "XP", value: totalXp.toLocaleString(), color: "#AA2DFF" },
+                  { label: "LEVEL", value: String(currentLevel), color: "#FFD700" },
+                  { label: "COINS", value: walletCredits, color: "#00FFFF" },
+                ].map((stat) => (
+                  <div key={stat.label} style={{ padding: "10px 6px", background: "rgba(255,255,255,0.02)", textAlign: "center" }}>
+                    <div style={{ fontSize: 13, fontWeight: 900, color: stat.color }}>{stat.value}</div>
+                    <div style={{ fontSize: 8, color: "rgba(255,255,255,0.4)", letterSpacing: "0.06em" }}>{stat.label}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Quick links */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, padding: "12px 14px" }}>
+                {[
+                  { label: "LIVE LOBBY", icon: "🌐", href: "/live/lobby" },
+                  { label: "DISCOVER", icon: "🧭", href: "/live/lobby" },
+                  { label: "MEMORY WALL", icon: "📸", href: "/memories" },
+                  { label: "INVENTORY", icon: "🎒", href: "/inventory" },
+                  { label: "STORE", icon: "🛍", href: "/store" },
+                  { label: "REWARDS", icon: "🎁", href: "/rewards" },
+                ].map((item) => (
+                  <Link key={item.label} href={item.href} style={{
+                    display: "flex", alignItems: "center", gap: 8, padding: "10px 12px",
+                    background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)",
+                    borderRadius: 10, textDecoration: "none", color: "#fff",
+                  }}>
+                    <span style={{ fontSize: 16 }}>{item.icon}</span>
+                    <span style={{ fontSize: 10, fontWeight: 900, letterSpacing: "0.05em" }}>{item.label}</span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ─── CHAT TAB ─── */}
+          {mobileTab === "chat" && (
+            <div style={{ display: "flex", flexDirection: "column", height: `calc(100dvh - ${MOBILE_HEADER_HEIGHT + MOBILE_TAB_HEIGHT}px)` }}>
+              {/* Chat header */}
+              <div style={{ padding: "10px 14px", borderBottom: "1px solid rgba(255,255,255,0.06)", background: "rgba(0,0,0,0.3)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontSize: 11, fontWeight: 900, color: "#FF2DAA" }}>🔥 Thunder Dome</span>
+                <span style={{ fontSize: 9, color: "rgba(255,255,255,0.4)" }}>👁 12,847</span>
+              </div>
+              {/* Messages */}
+              <div style={{ flex: 1, overflowY: "auto", padding: "10px 14px", display: "flex", flexDirection: "column", gap: 10 }}>
+                {[
+                  { name: "QueenV", text: "THIS IS FIRE 🔥🔥🔥" },
+                  { name: "BeatKing", text: "MarcelD never misses! 💯" },
+                  { name: "LoyalFan23", text: "The energy is crazy!!! ⚡⚡" },
+                  { name: "DJStorm", text: "Dropping that new beat next!" },
+                  { name: "RealMC", text: "Who's in the lobby? 👀" },
+                  { name: "StarGirl", text: "I sent a gift! 💎🎁" },
+                ].map((msg, i) => (
+                  <div key={i} style={{ display: "flex", gap: 8 }}>
+                    <div style={{ width: 28, height: 28, borderRadius: "50%", background: "rgba(255,255,255,0.1)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, flexShrink: 0 }}>👤</div>
+                    <div>
+                      <span style={{ fontSize: 10, fontWeight: 900, color: "#FF8FBE" }}>{msg.name} </span>
+                      <span style={{ fontSize: 11, color: "#fff" }}>{msg.text}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {/* Chat input */}
+              <div style={{ padding: "8px 14px", borderTop: "1px solid rgba(255,255,255,0.08)", display: "flex", gap: 8, background: "rgba(5,5,16,0.9)" }}>
+                <input placeholder="Type a message..." style={{ flex: 1, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 20, color: "#fff", padding: "8px 14px", fontSize: 13, outline: "none" }} />
+                <button style={{ background: "linear-gradient(135deg,#FF2DAA,#AA2DFF)", border: "none", borderRadius: 20, color: "#fff", fontSize: 13, padding: "0 14px", cursor: "pointer" }}>↑</button>
+              </div>
+            </div>
+          )}
+
+          {/* ─── ROOMS TAB ─── */}
+          {mobileTab === "rooms" && (
+            <div style={{ padding: "12px 14px", display: "flex", flexDirection: "column", gap: 10 }}>
+              <div style={{ fontSize: 11, fontWeight: 900, color: "rgba(255,255,255,0.5)", letterSpacing: "0.1em", marginBottom: 4 }}>LIVE ROOMS</div>
+              {[
+                { name: "Cypher Circle", genre: "Hip-Hop", count: 4231, live: true },
+                { name: "Beat Battle Arena", genre: "Rap", count: 2156, live: true },
+                { name: "World Dance Party", genre: "EDM", count: 8742, live: true },
+                { name: "R&B Lounge", genre: "R&B", count: 1204, live: true },
+                { name: "Gospel Sunday", genre: "Gospel", count: 890, live: false },
+              ].map((room) => (
+                <Link key={room.name} href="/live/lobby" style={{
+                  display: "flex", alignItems: "center", justifyContent: "space-between",
+                  padding: "12px 14px", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)",
+                  borderRadius: 12, textDecoration: "none",
+                }}>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 900, color: "#fff" }}>{room.name}</div>
+                    <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>{room.genre}</div>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
+                    {room.live && <span style={{ background: "#FF2DAA", color: "#fff", fontSize: 8, fontWeight: 900, padding: "1px 6px", borderRadius: 4 }}>LIVE</span>}
+                    <span style={{ fontSize: 10, color: "#FF2DAA", fontWeight: 900 }}>👁 {room.count.toLocaleString()}</span>
+                  </div>
+                </Link>
+              ))}
+              <Link href="/live/lobby" style={{ textAlign: "center", padding: "12px", background: "rgba(0,255,255,0.05)", border: "1px solid rgba(0,255,255,0.15)", borderRadius: 12, textDecoration: "none", color: "#00FFFF", fontSize: 11, fontWeight: 900 }}>
+                VIEW ALL ROOMS
+              </Link>
+            </div>
+          )}
+
+          {/* ─── FRIENDS TAB ─── */}
+          {mobileTab === "friends" && (
+            <div style={{ padding: "12px 14px", display: "flex", flexDirection: "column", gap: 10 }}>
+              <div style={{ fontSize: 11, fontWeight: 900, color: "rgba(255,255,255,0.5)", letterSpacing: "0.1em", marginBottom: 4 }}>FRIENDS ONLINE</div>
+              {followingFriends.length > 0 ? followingFriends.map((fr) => (
+                <Link key={fr.id} href={`/profile/performer/${fr.slug}`} style={{
+                  display: "flex", alignItems: "center", gap: 12, padding: "12px 14px",
+                  background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)",
+                  borderRadius: 12, textDecoration: "none",
+                }}>
+                  <div style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(255,255,255,0.1)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>👤</div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 13, fontWeight: 900, color: "#fff" }}>{fr.name}</div>
+                    <div style={{ fontSize: 9, color: fr.isLive ? "#00FF88" : "rgba(255,255,255,0.4)", marginTop: 2 }}>{fr.isLive ? "● LIVE NOW" : "Online"}</div>
+                  </div>
+                  {fr.isLive && <span style={{ background: "#FF2DAA", color: "#fff", fontSize: 8, fontWeight: 900, padding: "2px 8px", borderRadius: 4 }}>LIVE</span>}
+                </Link>
+              )) : (
+                <div style={{ textAlign: "center", padding: 32, color: "rgba(255,255,255,0.3)", fontSize: 12 }}>
+                  <div style={{ fontSize: 28, marginBottom: 8 }}>👥</div>
+                  No friends online yet.<br />
+                  <Link href="/live/lobby" style={{ color: "#00FFFF", textDecoration: "none" }}>Discover performers to follow →</Link>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Mobile bottom tab bar */}
+        <div style={{
+          position: "fixed",
+          bottom: 0,
+          left: 0,
+          right: 0,
+          height: MOBILE_TAB_HEIGHT,
+          background: "rgba(5,5,16,0.97)",
+          borderTop: "1px solid rgba(255,255,255,0.1)",
+          display: "flex",
+          zIndex: 100,
+          // iOS safe area
+          paddingBottom: "env(safe-area-inset-bottom, 0px)",
+        }}>
+          {mobileTabItems.map((tab) => {
+            const active = mobileTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setMobileTab(tab.id)}
+                style={{
+                  flex: 1,
+                  background: "none",
+                  border: "none",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 3,
+                  cursor: "pointer",
+                  color: active ? "#FF2DAA" : "rgba(255,255,255,0.4)",
+                  borderTop: active ? "2px solid #FF2DAA" : "2px solid transparent",
+                  transition: "color 150ms",
+                }}
+              >
+                <span style={{ fontSize: 18 }}>{tab.icon}</span>
+                <span style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.05em" }}>{tab.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  // ─── DESKTOP LAYOUT (unchanged below) ────────────────────────────────────
   return (
     <div style={{
       minHeight: "100vh",
