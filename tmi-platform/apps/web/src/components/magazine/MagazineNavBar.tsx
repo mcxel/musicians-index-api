@@ -119,22 +119,28 @@ export default function MagazineNavBar() {
         .tmi-nav-tab {
           display: inline-flex; align-items: center; justify-content: center;
           border-radius: 999px;
-          padding: 3px 11px;
+          padding: 0;
           text-decoration: none;
-          font-size: 12px; font-weight: 700;
           flex-shrink: 0;
-          white-space: nowrap;
-          transition: background 150ms, color 150ms;
+          transition: width 220ms ease, background 150ms ease, opacity 150ms ease,
+                      box-shadow 150ms ease;
         }
         .tmi-nav-tab[data-active="true"] {
-          border: 1px solid rgba(0,229,255,0.55);
-          color: #00e5ff;
-          background: rgba(0,229,255,0.12);
+          width: 20px; height: 6px;
+          background: #00e5ff;
+          border: none;
+          box-shadow: 0 0 8px rgba(0,229,255,0.7);
+          opacity: 1;
         }
         .tmi-nav-tab[data-active="false"] {
-          border: 1px solid rgba(255,255,255,0.2);
-          color: #fff;
-          background: rgba(255,255,255,0.04);
+          width: 6px; height: 6px;
+          background: rgba(255,255,255,0.28);
+          border: none;
+          opacity: 0.7;
+        }
+        .tmi-nav-tab[data-active="false"]:hover {
+          background: rgba(255,255,255,0.6);
+          opacity: 1;
         }
 
         .tmi-auth-btn {
@@ -197,9 +203,9 @@ export default function MagazineNavBar() {
                 href={tab.href}
                 className="tmi-nav-tab"
                 data-active={String(active)}
-              >
-                {tab.label}
-              </Link>
+                aria-label={tab.label}
+                title={tab.label}
+              />
             );
           })}
         </nav>
