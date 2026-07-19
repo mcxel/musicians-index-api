@@ -139,6 +139,14 @@ export class DiamondInviteEngine {
       assignedRole: 'fan',
       status: 'active',
     }],
+
+    // Misty Tweedy — Lifetime diamond (owner-granted 2026-07-18)
+    ['VIP-MISTY-2026', {
+      token: 'VIP-MISTY-2026',
+      email: 'mistyltweedy@gmail.com',
+      assignedRole: 'fan',
+      status: 'active',
+    }],
   ]);
 
   static getInvite(token: string): InvitePayload | undefined {
