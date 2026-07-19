@@ -303,6 +303,7 @@ interface OrbitCardProps {
   onOpenLive: (performer: Performer) => void;
   onOpenEmptySlot: (performer: Performer) => void;
   onOpenDetail: (performer: Performer) => void;
+  isSpinning: boolean;
 }
 
 const OrbitCard = memo(function OrbitCard({
@@ -317,8 +318,10 @@ const OrbitCard = memo(function OrbitCard({
   onOpenLive,
   onOpenEmptySlot,
   onOpenDetail,
+  isSpinning,
 }: OrbitCardProps) {
   const pos = getOrbitPos(index, total, radius, 0);
+  const isLeader = performer.rank === 1;
   const cardSize = compactMode ? (index === 0 ? 52 : 44) : (index === 0 ? 62 : 52);
   const rawAvatar = performer.image ?? performer.avatarImage;
   const hasImage = Boolean(rawAvatar?.trim()) && !isBrokenImage && (performer.accountType === 'system-bot' || performer.accountType === 'system-actor' || hasUploadedProfileImage(rawAvatar));
@@ -388,7 +391,7 @@ const OrbitCard = memo(function OrbitCard({
             boxShadow: `0 0 8px ${performer.rank === 1 ? '#FFD700' : accentColor}66`,
           }}
         >
-          {performer.rank}
+          {performer.rank === 1 ? '\u{1F451}' : performer.rank}
         </div>
 
         <div
@@ -396,10 +399,22 @@ const OrbitCard = memo(function OrbitCard({
             width: cardSize,
             height: Math.round(cardSize * 1.28),
             borderRadius: 5,
-            background: `linear-gradient(160deg, ${accentColor}35, rgba(5,5,16,0.96))`,
-            border: `2px solid ${accentColor}55`,
-            boxShadow: `0 0 10px ${accentColor}33`,
+            background: isLeader
+              ? `linear-gradient(160deg, #FFD70045, rgba(5,5,16,0.96))`
+              : `linear-gradient(160deg, ${accentColor}35, rgba(5,5,16,0.96))`,
+            border: `2px solid ${isLeader ? '#FFD700' : accentColor}55`,
+            boxShadow: isLeader
+              ? `0 0 22px #FFD700, 0 0 44px rgba(255,215,0,0.38)`
+              : `0 0 10px ${accentColor}33`,
             transition: 'box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease',
+            // #1 card: always scaled up (scale 1.3) + continuous gold glow pulse.
+            // When the orbit spins, h1LeaderPulse is layered on top for the
+            // "blows up as it passes the front" dramatic effect.
+            animation: isLeader
+              ? (isSpinning
+                  ? 'h1LeaderPulse 5s ease-in-out 1, h1GoldGlow 2.8s ease-in-out infinite'
+                  : 'h1GoldGlow 2.8s ease-in-out infinite')
+              : undefined,
             overflow: 'hidden',
             display: 'flex',
             flexDirection: 'column',
@@ -407,7 +422,7 @@ const OrbitCard = memo(function OrbitCard({
             justifyContent: 'center',
             gap: 2,
             position: 'relative',
-            transform: 'translateZ(0)',
+            transform: isLeader ? 'translateZ(0) scale(1.3)' : 'translateZ(0)',
             willChange: 'transform',
             backfaceVisibility: 'hidden',
           }}
@@ -1234,6 +1249,26 @@ export default function Home1CoverPage() {
            effect above for the schedule. */
         @keyframes h1Spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         @keyframes h1CounterSpin { from { transform: rotate(0deg); } to { transform: rotate(-360deg); } }
+        /* #1 orbit card: enlarges + glows as it passes the front (start/end
+           of the ring's 5s spin), shrinks back at the midpoint (furthest
+           from front). Synced to the same 5s duration as h1Spin. */
+        @keyframes h1LeaderPulse {
+          0%   { transform: scale(1.4) translateZ(0); filter: drop-shadow(0 0 14px #FFD700); }
+          50%  { transform: scale(1) translateZ(0); filter: drop-shadow(0 0 0px transparent); }
+          100% { transform: scale(1.4) translateZ(0); filter: drop-shadow(0 0 14px #FFD700); }
+        }
+        /* Persistent always-on gold glow for the #1 orbit card — runs
+           independently of the spin cycle so the leader always stands out. */
+        @keyframes h1GoldGlow {
+          0%, 100% {
+            box-shadow: 0 0 22px #FFD700, 0 0 44px rgba(255,215,0,0.38);
+            filter: drop-shadow(0 0 6px #FFD700);
+          }
+          50% {
+            box-shadow: 0 0 36px #FFD700, 0 0 72px rgba(255,215,0,0.6), 0 0 100px rgba(255,215,0,0.18);
+            filter: drop-shadow(0 0 16px #FFD700);
+          }
+        }
         @keyframes h1CrownFloat {
           0%, 100% { transform: translateY(0px) scale(1); }
           50% { transform: translateY(-8px) scale(1.05); }
@@ -2048,6 +2083,7 @@ export default function Home1CoverPage() {
                 }}
                 onOpenEmptySlot={(p) => setPendingEmptySlot(p)}
                 onOpenDetail={(p) => setSelectedPerformer(p)}
+                isSpinning={orbitSpinning}
               />
             ))}
           </div>

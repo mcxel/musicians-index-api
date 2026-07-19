@@ -425,7 +425,7 @@ export default function PerformerHubPage() {
               </div>
 
               <div style={{ display: "grid", gap: 12 }}>
-                <div style={{ display: "grid", gap: 10, border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: 12, background: "rgba(255,255,255,0.03)" }}>
+                <div style={{ display: "grid", gap: 10, border: "1px solid rgba(170,45,255,0.22)", borderRadius: 12, padding: 12, background: "rgba(5,5,16,0.82)", backdropFilter: "blur(12px)", boxShadow: "0 8px 24px rgba(0,0,0,0.6), 0 0 14px rgba(170,45,255,0.14)" }}>
                   <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
                     <div
                       style={{

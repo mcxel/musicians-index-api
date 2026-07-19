@@ -45,6 +45,15 @@ const ROLE_MAP: Record<string, AccountType> = {
   promoter: "PROMOTER",
 };
 
+const ROLE_HUB_ROUTE: Record<AccountType, string> = {
+  FAN: "/hub/fan",
+  PERFORMER: "/hub/performer",
+  PROMOTER: "/hub/promoter",
+  ADVERTISER: "/hub/advertiser",
+  SPONSOR: "/hub/sponsor",
+  VENUE: "/hub/venue",
+};
+
 function SignupForm() {
   const searchParams = useSearchParams();
   const [vipToken, setVipToken] = useState(searchParams?.get("token") ?? "");
@@ -382,11 +391,13 @@ function SignupForm() {
 
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 <Link href={`/onboarding/${selectedRoles[0]?.toLowerCase()}`} style={{ padding: "13px 22px", fontSize: 11, fontWeight: 800, letterSpacing: "0.12em", background: `linear-gradient(135deg, ${sel.color}, ${sel.color}88)`, color: "#050510", textDecoration: "none", display: "block", textAlign: "center" }}>
-                  {sel.icon} SET UP YOUR {selectedRoles[0]?.toUpperCase()} PROFILE →
+                  {sel.icon} FINISH SETTING UP YOUR PROFILE →
                 </Link>
                 <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
-                  <Link href="/home/1" style={{ padding: "10px 18px", fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", background: "rgba(255,255,255,0.06)", color: "#fff", borderRadius: 6, textDecoration: "none", flex: 1, textAlign: "center" }}>SEE ORBIT POSITION</Link>
-                  <Link href="/hub/fan" style={{ padding: "10px 18px", fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.5)", borderRadius: 6, textDecoration: "none", flex: 1, textAlign: "center" }}>GO TO HUB</Link>
+                  {selectedRoles.includes("PERFORMER") && (
+                    <Link href="/performer/profile" style={{ padding: "10px 18px", fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", background: "rgba(255,255,255,0.06)", color: "#fff", borderRadius: 6, textDecoration: "none", flex: 1, textAlign: "center" }}>MY YOPHO PAGE</Link>
+                  )}
+                  <Link href={ROLE_HUB_ROUTE[selectedRoles[0]] ?? "/hub/fan"} style={{ padding: "10px 18px", fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.5)", borderRadius: 6, textDecoration: "none", flex: 1, textAlign: "center" }}>GO TO MY DASHBOARD</Link>
                 </div>
               </div>
             </motion.div>

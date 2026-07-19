@@ -15,6 +15,7 @@ import BotProvider from "@/components/providers/BotProvider";
 import ChevronNavigation from "@/components/navigation/ChevronNavigation";
 import TMIGlobalNav from "@/components/system/TMIGlobalNav";
 import { NavigationLock } from "@/components/navigation/NavigationLock";
+import NavigationRuntime from "@/components/navigation/NavigationRuntime";
 import NavigationRail from "@/components/nav/NavigationRail";
 import { PWAInstallPrompt } from "@/components/mobile/PWAInstallPrompt";
 import { PWARegistration } from "@/components/mobile/PWARegistration";
@@ -212,6 +213,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <NavigationRail />
               <TMIGlobalNav />
               <ChevronNavigation />
+              <NavigationRuntime />
               <NavigationLock />
               <GamificationHUD />
               <LiveSyncProvider />
