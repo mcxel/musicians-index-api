@@ -909,13 +909,10 @@ export default function Home1CoverPage() {
   const accentColor = genreConfig.color;
   const bgColor = genreConfig.bg;
 
-  // Real-data-only ticker messages (Rule 20) — genre/crown always real,
-  // radio line only appears when there's an actual live count to report.
+  // Magazine ticker cycles between Season 1 and Issue 1 with typewriter effect
   const tickerMessages = [
-    `FEATURED: ${genreKey.toUpperCase()} BATTLES`,
-    `👑 CROWN: ${crownData.name.toUpperCase()}`,
-    ...(radioData.live > 0 ? [`📻 ${radioData.live} LIVE ON RADIO NOW`] : []),
-    `THE MUSICIAN'S INDEX MAGAZINE`,
+    "MAGAZINE · SEASON 1",
+    "MAGAZINE · ISSUE 1",
   ];
   const topPerformers = getTopPerformers(20);
   const diamondMembers = PERFORMER_REGISTRY.filter((p) => p.tier === 'Diamond').sort((a, b) => b.xp - a.xp);
@@ -1508,10 +1505,11 @@ export default function Home1CoverPage() {
         </div>
 
         {/* ── Masthead ── */}
-        {/* width:100% is required here: the parent flex column has
-            alignItems:center which shrinks children to content width.
-            Without it the grid is only as wide as the title text. */}
-        <div style={{ textAlign: 'center', marginTop: 0, marginBottom: 8, zIndex: 10, position: 'relative', width: '100%' }}>
+        {/* width:100% fills the flex-column container (alignItems:center shrinks
+            children to content-width otherwise). paddingInline brings the grid
+            in a hair from both edges so banner borders aren't flush to the
+            viewport. maxWidth caps the hero at 1440px on ultra-wide screens. */}
+        <div style={{ textAlign: 'center', marginTop: 0, marginBottom: 8, zIndex: 10, position: 'relative', width: '100%', maxWidth: 1440, marginInline: 'auto', paddingInline: 10, boxSizing: 'border-box' }}>
           <div className="h1-hero-billboard-grid">
             <div className="h1-hero-flank-left">
               <RotatingHeroBanner slides={HERO_FLANK_LEFT_SLIDES} side="left" priority />
@@ -1558,21 +1556,15 @@ export default function Home1CoverPage() {
               </span>
             ))}
           </div>
-          {/* Rotating status ticker — magazine-headline typewriter style.
-              Container is tall enough to read as text, not just a bar. */}
+          {/* Magazine ticker — just clean animated text, no bar background */}
           <div
             style={{
               overflow: 'hidden',
-              height: 32,
+              height: 28,
               display: 'flex',
               justifyContent: 'center',
               alignItems: 'center',
-              marginBottom: 6,
-              background: `${accentColor}14`,
-              borderLeft: `3px solid ${accentColor}`,
-              borderRight: `3px solid ${accentColor}`,
-              borderRadius: 3,
-              paddingInline: 12,
+              marginBottom: 4,
             }}
           >
             <TypewriterTicker messages={tickerMessages} color={accentColor} />
