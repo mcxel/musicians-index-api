@@ -1221,9 +1221,9 @@ export default function Home1CoverPage() {
            Mobile: title on top, single rotating banner only (2nd flank hidden). */
         .h1-hero-billboard-grid {
           display: grid;
-          /* Wider flank tracks: min 200 px, max 320 px — enough for artwork
-             to read clearly without squeezing the title column */
-          grid-template-columns: minmax(200px, 320px) minmax(0, 1fr) minmax(200px, 320px);
+          /* Wider flank tracks: min 240 px, max 400 px — each banner card
+             should be as big as the Notepad reference (~400 × 360 px) */
+          grid-template-columns: minmax(240px, 400px) minmax(0, 1fr) minmax(240px, 400px);
           grid-template-areas: "left title right";
           gap: 12px;
           /* stretch: flanks expand to match the title column height so
@@ -1234,7 +1234,7 @@ export default function Home1CoverPage() {
         .h1-hero-billboard-grid .h1-hero-flank-right {
           /* Keep a tall minimum so banners are always substantial even when
              the title column content is short */
-          min-height: 300px;
+          min-height: 360px;
         }
         .h1-hero-billboard-grid .h1-hero-title-col { grid-area: title; }
         .h1-hero-billboard-grid .h1-hero-flank-left { grid-area: left; }
