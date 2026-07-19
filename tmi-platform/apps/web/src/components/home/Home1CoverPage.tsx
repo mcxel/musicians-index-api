@@ -1232,9 +1232,8 @@ export default function Home1CoverPage() {
         }
         .h1-hero-billboard-grid .h1-hero-flank-left,
         .h1-hero-billboard-grid .h1-hero-flank-right {
-          /* Keep a tall minimum so banners are always substantial even when
-             the title column content is short */
-          min-height: 360px;
+          /* Banner self-enforces aspect-ratio 3/4 — no min-height needed here.
+             align-items:stretch lets the title column fill the banner height. */
         }
         .h1-hero-billboard-grid .h1-hero-title-col { grid-area: title; }
         .h1-hero-billboard-grid .h1-hero-flank-left { grid-area: left; }

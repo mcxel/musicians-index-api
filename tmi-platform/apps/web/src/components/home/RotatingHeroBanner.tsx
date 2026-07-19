@@ -90,9 +90,14 @@ export default function RotatingHeroBanner({
     <div
       style={{
         position: 'relative',
+        /* aspect-ratio: 3/4 makes the banner a portrait poster card
+           regardless of the column width — width drives height.
+           At 400 px wide → 533 px tall; at 240 px → 320 px tall.
+           This is the "own widget" for portrait/skinny content:
+           the container is ALWAYS taller-than-wide so artwork fills
+           naturally at every breakpoint without blank bars or squashing. */
         width: '100%',
-        height: '100%',
-        minHeight: 200,
+        aspectRatio: '3 / 4',
         borderRadius: 14,
         overflow: 'hidden',
         border: '2px solid rgba(170,45,255,0.55)',
