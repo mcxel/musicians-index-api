@@ -129,6 +129,8 @@ export default function PerformerHubPage() {
   const [uploadNotice, setUploadNotice] = useState<string | null>(null);
   const [userTier, setUserTier] = useState<string>("");
   const [bannerDismissed, setBannerDismissed] = useState(false);
+  const [rightRailOpen, setRightRailOpen] = useState(true);
+  const [monitorMinimized, setMonitorMinimized] = useState(false);
 
   useEffect(() => {
     fetch("/api/auth/session", { credentials: "include", cache: "no-store" })
@@ -373,57 +375,99 @@ export default function PerformerHubPage() {
             maxWidth: 1300 left large dead gutters on wide screens). */}
         <div style={{ position: "relative", zIndex: 1, margin: "18px 0 8px", padding: "0 20px" }}>
           <BezelFrame variant="performer" innerPadding={18}>
-            <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 320px", gap: 18, alignItems: "start" }}>
+            <div style={{ display: "grid", gridTemplateColumns: `minmax(0, 1fr)${rightRailOpen ? " 320px" : ""}`, gap: 18, alignItems: "start", transition: "grid-template-columns 0.28s ease" }}>
               <div style={{ position: "relative" }}>
-                <div style={{ fontSize: 9, letterSpacing: "0.2em", color: "#AA2DFF", fontWeight: 800, marginBottom: 10 }}>🎬 MAIN BROADCAST MONITOR</div>
-                {!liveStatus.isLive && (
-                  <Link
-                    href="/live/go"
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                  <div style={{ fontSize: 9, letterSpacing: "0.2em", color: "#AA2DFF", fontWeight: 800 }}>🎬 MAIN BROADCAST MONITOR</div>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <button
+                      onClick={() => setMonitorMinimized((v) => !v)}
+                      style={{ background: "none", border: "1px solid rgba(170,45,255,0.28)", borderRadius: 6, color: "rgba(170,45,255,0.7)", fontSize: 10, fontWeight: 800, padding: "3px 8px", cursor: "pointer", letterSpacing: "0.08em" }}
+                      title={monitorMinimized ? "Restore monitor" : "Minimize monitor"}
+                    >
+                      {monitorMinimized ? "▲ RESTORE" : "▼ MIN"}
+                    </button>
+                    <button
+                      onClick={() => setRightRailOpen((v) => !v)}
+                      style={{ background: "none", border: "1px solid rgba(0,255,255,0.2)", borderRadius: 6, color: "rgba(0,255,255,0.6)", fontSize: 10, fontWeight: 800, padding: "3px 8px", cursor: "pointer", letterSpacing: "0.08em" }}
+                      title={rightRailOpen ? "Collapse right panel" : "Expand right panel"}
+                    >
+                      {rightRailOpen ? "⟩⟩" : "⟨⟨"}
+                    </button>
+                  </div>
+                </div>
+                {!monitorMinimized ? (
+                  <>
+                    {!liveStatus.isLive && (
+                      <Link
+                        href="/live/go"
+                        style={{
+                          position: "absolute",
+                          top: 34,
+                          right: 10,
+                          zIndex: 40,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 6,
+                          padding: "8px 16px",
+                          borderRadius: 999,
+                          background: "rgba(8,2,18,0.72)",
+                          backdropFilter: "blur(6px)",
+                          border: "1px solid rgba(230,48,0,0.55)",
+                          boxShadow: "0 0 18px rgba(230,48,0,0.4)",
+                          color: "#fff",
+                          fontSize: 11,
+                          fontWeight: 900,
+                          letterSpacing: "0.08em",
+                          textDecoration: "none",
+                        }}
+                      >
+                        <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#E63000", boxShadow: "0 0 10px #E63000, 0 0 4px #E63000" }} />
+                        GO LIVE
+                      </Link>
+                    )}
+                    <MonitorSatelliteSystem
+                      mainLabel={performerIdentity?.name ? `${performerIdentity.name} Stage` : "Performer Stage"}
+                      isLive={liveStatus.isLive}
+                      introVideoUrl={performerIdentity?.introVideoUrl}
+                      fallbackVideoUrl={OBSERVATORY_ROSE_VIDEO_URL}
+                      leftPipVideoUrl={OBSERVATORY_ROSE_VIDEO_URL}
+                      rightPipVideoUrl={OBSERVATORY_ROSE_VIDEO_URL}
+                      motionPosterUrl={performerIdentity?.motionPosterUrl}
+                      liveRoomRoute={performerIdentity?.liveRoomRoute}
+                      staticImageUrl="/images/tmi-placeholder.jpg"
+                      accentColor="#AA2DFF"
+                      adZone="hub-performer"
+                      showAudienceMonitor={liveStatus.isLive}
+                      audienceCount={liveStatus.audienceCount}
+                      audienceEntryEvents={liveStatus.recentAudienceEntries}
+                      audienceCountryDistribution={liveStatus.audienceCountries}
+                      showAudiencePulse
+                    />
+                  </>
+                ) : (
+                  <button
+                    onClick={() => setMonitorMinimized(false)}
                     style={{
-                      position: "absolute",
-                      top: 34,
-                      right: 10,
-                      zIndex: 40,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 6,
-                      padding: "8px 16px",
-                      borderRadius: 999,
-                      background: "rgba(8,2,18,0.72)",
-                      backdropFilter: "blur(6px)",
-                      border: "1px solid rgba(230,48,0,0.55)",
-                      boxShadow: "0 0 18px rgba(230,48,0,0.4)",
-                      color: "#fff",
+                      width: "100%",
+                      padding: "22px 0",
+                      background: "rgba(170,45,255,0.06)",
+                      border: "1px dashed rgba(170,45,255,0.28)",
+                      borderRadius: 10,
+                      color: "rgba(170,45,255,0.6)",
                       fontSize: 11,
-                      fontWeight: 900,
-                      letterSpacing: "0.08em",
-                      textDecoration: "none",
+                      fontWeight: 800,
+                      letterSpacing: "0.12em",
+                      cursor: "pointer",
+                      textTransform: "uppercase",
                     }}
                   >
-                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#E63000", boxShadow: "0 0 10px #E63000, 0 0 4px #E63000" }} />
-                    GO LIVE
-                  </Link>
+                    ▲ BROADCAST MONITOR — CLICK TO RESTORE
+                  </button>
                 )}
-                <MonitorSatelliteSystem
-                  mainLabel={performerIdentity?.name ? `${performerIdentity.name} Stage` : "Performer Stage"}
-                  isLive={liveStatus.isLive}
-                  introVideoUrl={performerIdentity?.introVideoUrl}
-                  fallbackVideoUrl={OBSERVATORY_ROSE_VIDEO_URL}
-                  leftPipVideoUrl={OBSERVATORY_ROSE_VIDEO_URL}
-                  rightPipVideoUrl={OBSERVATORY_ROSE_VIDEO_URL}
-                  motionPosterUrl={performerIdentity?.motionPosterUrl}
-                  liveRoomRoute={performerIdentity?.liveRoomRoute}
-                  staticImageUrl="/images/tmi-placeholder.jpg"
-                  accentColor="#AA2DFF"
-                  adZone="hub-performer"
-                  showAudienceMonitor={liveStatus.isLive}
-                  audienceCount={liveStatus.audienceCount}
-                  audienceEntryEvents={liveStatus.recentAudienceEntries}
-                  audienceCountryDistribution={liveStatus.audienceCountries}
-                  showAudiencePulse
-                />
               </div>
 
+              {rightRailOpen && (
               <div style={{ display: "grid", gap: 12 }}>
                 <div style={{ display: "grid", gap: 10, border: "1px solid rgba(170,45,255,0.22)", borderRadius: 12, padding: 12, background: "rgba(5,5,16,0.82)", backdropFilter: "blur(12px)", boxShadow: "0 8px 24px rgba(0,0,0,0.6), 0 0 14px rgba(170,45,255,0.14)" }}>
                   <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
@@ -485,6 +529,7 @@ export default function PerformerHubPage() {
                   <div style={{ fontSize: 10, color: "rgba(255,255,255,0.55)" }}>{liveStatus.isLive ? "Audience monitor active" : "Audience monitor activates when broadcast goes live"}</div>
                 </div>
               </div>
+              )}
             </div>
           </BezelFrame>
         </div>
