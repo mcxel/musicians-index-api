@@ -8,24 +8,8 @@ import { useTmiSession } from "@/hooks/SessionContext";
 import { useWatchSession } from "@/lib/presence/WatchSessionContext";
 import { getPerformerById } from "@/lib/performers/PerformerRegistry";
 import { listFollowingForUser } from "@/lib/social/FollowEngine";
-import FanRewardsRail from "@/components/fan/FanRewardsRail";
-import FanSocialRail from "@/components/fan/FanSocialRail";
-import FanWalletRail from "@/components/fan/FanWalletRail";
-import AvatarMiniDisplay from "@/components/canisters/AvatarMiniDisplay";
-import MemoryWall from "@/components/media/MemoryWall";
-import MemoryWallPhotoStrip from "@/components/media/MemoryWallPhotoStrip";
-import FriendsList from "@/components/social/FriendsList";
-import { InventoryPanel } from "@/components/InventoryPanel";
-import PlaylistArtifact from "@/components/artifacts/PlaylistArtifact";
-import RecentlyVisitedRail from "@/components/presence/RecentlyVisitedRail";
-import MonitorSatelliteSystem from "@/components/canisters/MonitorSatelliteSystem";
-import HeadquartersCommunicationDock from "@/components/headquarters/HeadquartersCommunicationDock";
-import DiscoveryDockPanel from "@/components/hubs/DiscoveryDockPanel";
-import InboxPanel from "@/components/messaging/InboxPanel";
 import type { Friend as FriendType } from "@/components/social/FriendsList";
-import { BezelFrame } from '@/components/admin/overseer/AdminDesignSystem';
 import DesktopAtmosphereRails from '@/components/home/DesktopAtmosphereRails';
-import CollapsibleCanister from "@/components/canisters/CollapsibleCanister";
 import AudienceScene from "@/components/live/AudienceScene";
 import MasterControlDock from "@/components/shell/MasterControlDock";
 
@@ -54,11 +38,11 @@ interface FanHQShellProps {
   fanDisplayName: string;
 }
 
-export default function FanHQShell({ fanId, fanDisplayName }: FanHQShellProps) {
+export default function FanHQShell({ fanId, fanDisplayName: _fanDisplayName }: Readonly<FanHQShellProps>) {
   const router = useRouter();
   const { totalXp, walletCredits, currentLevel } = useGamificationEngine();
-  const { economyState } = useTmiSession();
-  const { current: nowPlaying, stopWatching } = useWatchSession();
+  const { stopWatching } = useWatchSession();
+  const { economyState: _economyState } = useTmiSession();
   const [featuredLive, setFeaturedLive] = useState<FeaturedLive | null>(null);
   const [previewItem, setPreviewItem] = useState<{
     title: string;
@@ -143,15 +127,9 @@ export default function FanHQShell({ fanId, fanDisplayName }: FanHQShellProps) {
     };
   }, []);
 
-  const mainLabel = previewItem?.title ?? featuredLive?.name ?? "Live Room Preview";
   const mainRoute = previewItem?.route ?? featuredLive?.liveRoomRoute ?? "/live/lobby";
-  const mainImage = previewItem?.avatar ?? featuredLive?.profileImageUrl ?? "/images/tmi-placeholder.jpg";
   const mainCount = previewItem?.viewerCount ?? featuredLive?.audienceCount;
   const isLive = previewItem?.isLive ?? Boolean(featuredLive);
-
-  const tier = ["free", "pro-RUBY", "gold-platinum", "diamond"][Math.min(economyState.tierLevel, 3)] as "free" | "pro-RUBY" | "gold-platinum" | "diamond";
-
-  const liveFriends = followingFriends.filter((friend) => friend.isLive);
 
   // ─── MOBILE LAYOUT ────────────────────────────────────────────────────────
   if (isMobile) {
@@ -193,11 +171,11 @@ export default function FanHQShell({ fanId, fanDisplayName }: FanHQShellProps) {
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <Link href="/notifications" style={{ position: "relative", fontSize: 16, textDecoration: "none" }}>
-              🔔
+              <span>🔔</span>
               <span style={{ position: "absolute", top: -3, right: -5, background: "#FF4444", color: "#fff", fontSize: 7, fontWeight: 900, borderRadius: "50%", width: 11, height: 11, display: "flex", alignItems: "center", justifyContent: "center" }}>3</span>
             </Link>
             <Link href="/messages" style={{ position: "relative", fontSize: 16, textDecoration: "none" }}>
-              ✉
+              <span>✉</span>
               <span style={{ position: "absolute", top: -3, right: -5, background: "#FF4444", color: "#fff", fontSize: 7, fontWeight: 900, borderRadius: "50%", width: 11, height: 11, display: "flex", alignItems: "center", justifyContent: "center" }}>12</span>
             </Link>
             <Link href={`/profile/fan/${fanId}`} style={{ textDecoration: "none" }}>
@@ -251,7 +229,7 @@ export default function FanHQShell({ fanId, fanDisplayName }: FanHQShellProps) {
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 1, borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
                 {[
                   { label: "XP", value: totalXp.toLocaleString(), color: "#AA2DFF" },
-                  { label: "LEVEL", value: String(currentLevel), color: "#FFD700" },
+                  { label: "LEVEL", value: currentLevel.level.toString(), color: "#FFD700" },
                   { label: "COINS", value: walletCredits, color: "#00FFFF" },
                 ].map((stat) => (
                   <div key={stat.label} style={{ padding: "10px 6px", background: "rgba(255,255,255,0.02)", textAlign: "center" }}>
@@ -301,8 +279,8 @@ export default function FanHQShell({ fanId, fanDisplayName }: FanHQShellProps) {
                   { name: "DJStorm", text: "Dropping that new beat next!" },
                   { name: "RealMC", text: "Who's in the lobby? 👀" },
                   { name: "StarGirl", text: "I sent a gift! 💎🎁" },
-                ].map((msg, i) => (
-                  <div key={i} style={{ display: "flex", gap: 8 }}>
+                ].map((msg) => (
+                  <div key={msg.name} style={{ display: "flex", gap: 8 }}>
                     <div style={{ width: 28, height: 28, borderRadius: "50%", background: "rgba(255,255,255,0.1)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, flexShrink: 0 }}>👤</div>
                     <div>
                       <span style={{ fontSize: 10, fontWeight: 900, color: "#FF8FBE" }}>{msg.name} </span>
@@ -475,7 +453,8 @@ export default function FanHQShell({ fanId, fanDisplayName }: FanHQShellProps) {
           <nav style={{ display: "flex", gap: 18, fontSize: 10, fontWeight: 900, letterSpacing: "0.08em" }}>
             {["HOME", "DISCOVER", "LIVE NOW", "MAGAZINE", "MARKETPLACE", "ARENA"].map((tab) => {
               const active = tab === "LIVE NOW";
-              const href = tab === "HOME" ? "/home/1" : tab === "DISCOVER" ? "/live/lobby" : tab === "LIVE NOW" ? "/live" : `/${tab.toLowerCase()}`;
+              const TAB_HREFS: Record<string, string> = { HOME: "/home/1", DISCOVER: "/live/lobby", "LIVE NOW": "/live" };
+              const href = TAB_HREFS[tab] ?? `/${tab.toLowerCase()}`;
               return (
                 <Link key={tab} href={href} style={{
                   color: active ? "#FF2DAA" : "#fff",
@@ -521,7 +500,7 @@ export default function FanHQShell({ fanId, fanDisplayName }: FanHQShellProps) {
 
             {/* Bell notification */}
             <div style={{ position: "relative", cursor: "pointer", fontSize: 12 }}>
-              🔔
+              <span>🔔</span>
               <span style={{
                 position: "absolute",
                 top: -4,
@@ -543,7 +522,7 @@ export default function FanHQShell({ fanId, fanDisplayName }: FanHQShellProps) {
 
             {/* Envelope Message */}
             <div style={{ position: "relative", cursor: "pointer", fontSize: 12 }}>
-              ✉
+              <span>✉</span>
               <span style={{
                 position: "absolute",
                 top: -4,
@@ -863,8 +842,8 @@ export default function FanHQShell({ fanId, fanDisplayName }: FanHQShellProps) {
                     <span style={{ fontSize: 50 }}>👤</span>
                     {/* Equipped items */}
                     <div style={{ position: "absolute", bottom: 6, left: 6, right: 6, display: "flex", justifyContent: "center", gap: 4 }}>
-                      {["🧢", "🕶", "🧥", "👟"].map((eq, i) => (
-                        <span key={i} style={{ width: 18, height: 18, background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10 }}>{eq}</span>
+                      {["🧢", "🕶", "🧥", "👟"].map((eq) => (
+                        <span key={eq} style={{ width: 18, height: 18, background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10 }}>{eq}</span>
                       ))}
                     </div>
                   </div>
@@ -933,8 +912,8 @@ export default function FanHQShell({ fanId, fanDisplayName }: FanHQShellProps) {
                       { title: "MarcelD Live", icon: "🎥" },
                       { title: "VIP Ticket", icon: "🎫" },
                       { title: "Stage Sweep", icon: "📸" }
-                    ].map((item, i) => (
-                      <div key={i} style={{ height: 60, background: "rgba(0,0,0,0.3)", border: "1px solid rgba(255,255,255,0.05)", borderRadius: 6, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3, padding: 4 }}>
+                    ].map((item) => (
+                      <div key={item.title} style={{ height: 60, background: "rgba(0,0,0,0.3)", border: "1px solid rgba(255,255,255,0.05)", borderRadius: 6, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3, padding: 4 }}>
                         <span style={{ fontSize: 16 }}>{item.icon}</span>
                         <span style={{ fontSize: 7, color: "rgba(255,255,255,0.6)", textAlign: "center" }}>{item.title}</span>
                       </div>
@@ -1018,8 +997,8 @@ export default function FanHQShell({ fanId, fanDisplayName }: FanHQShellProps) {
                 { name: "RealMC", text: "Who's in the lobby? 👀", time: "just now" },
                 { name: "StarGirl", text: "I sent a gift! 💎🎁", time: "just now" },
                 { name: "HipHopHead", text: "4K quality is insane!!! 📺", time: "just now" }
-              ].map((msg, i) => (
-                <div key={i} style={{ display: "flex", gap: 6, alignItems: "start", fontSize: 9 }}>
+              ].map((msg) => (
+                <div key={msg.name} style={{ display: "flex", gap: 6, alignItems: "start", fontSize: 9 }}>
                   <div style={{
                     width: 16,
                     height: 16,
@@ -1114,7 +1093,7 @@ export default function FanHQShell({ fanId, fanDisplayName }: FanHQShellProps) {
           this is now the only bottom dock, wired to real state below. */}
       <MasterControlDock
         role="fan"
-        onLeaveRoom={() => { stopWatching(); setPreviewItem(null); }}
+        onLeaveRoom={() => router.push(mainRoute)}
         onEnterStage={() => router.push(mainRoute)}
       />
     </div>
