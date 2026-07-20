@@ -198,9 +198,6 @@ export default function GlobalTmiHeader({ user }: GlobalTmiHeaderProps) {
           overflowX: "auto",
         }}
       >
-        <span style={{ fontSize: 9, fontWeight: 900, color: "rgba(255,255,255,0.35)", letterSpacing: "0.1em", marginRight: 4 }}>
-          PAGES:
-        </span>
         {navLinks.map((link) => {
           const isActive = pathname === link.href;
           return (
@@ -209,20 +206,16 @@ export default function GlobalTmiHeader({ user }: GlobalTmiHeaderProps) {
               href={link.href}
               title={link.title}
               style={{
-                fontSize: 10,
-                fontWeight: 900,
-                letterSpacing: "0.05em",
-                color: isActive ? "#FFD700" : "rgba(255,255,255,0.7)",
-                textDecoration: "none",
-                padding: "3px 9px",
-                borderRadius: 5,
-                background: isActive ? "rgba(255,215,0,0.15)" : "rgba(255,255,255,0.04)",
-                border: isActive ? "1px solid rgba(255,215,0,0.4)" : "1px solid rgba(255,255,255,0.08)",
-                transition: "all 0.15s ease",
+                display: "block",
+                width: isActive ? 24 : 6,
+                height: 6,
+                borderRadius: 3,
+                background: isActive ? "#FFD700" : "rgba(255,255,255,0.25)",
+                boxShadow: isActive ? "0 0 8px rgba(255,215,0,0.7)" : "none",
+                transition: "all 0.25s ease",
+                flexShrink: 0,
               }}
-            >
-              {link.label}
-            </Link>
+            />
           );
         })}
       </div>

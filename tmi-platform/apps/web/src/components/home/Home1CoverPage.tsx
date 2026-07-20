@@ -322,7 +322,7 @@ const OrbitCard = memo(function OrbitCard({
 }: OrbitCardProps) {
   const pos = getOrbitPos(index, total, radius, 0);
   const isLeader = performer.rank === 1;
-  const cardSize = compactMode ? (index === 0 ? 52 : 44) : (index === 0 ? 105 : 105);
+  const cardSize = compactMode ? (index === 0 ? 52 : 44) : (index === 0 ? 200 : 200);
   const rawAvatar = performer.image ?? performer.avatarImage;
   const hasImage = Boolean(rawAvatar?.trim()) && !isBrokenImage && (performer.accountType === 'system-bot' || performer.accountType === 'system-actor' || hasUploadedProfileImage(rawAvatar));
   const initials = performer.name
@@ -878,7 +878,7 @@ export default function Home1CoverPage() {
     .sort((a, b) => (b.isLive ? 1 : 0) - (a.isLive ? 1 : 0));
 
   const visibleOrbitCards = performersWithRealLiveness.slice(0, isMobileViewport ? 6 : 10);
-  const orbitRadius = isMobileViewport ? 34 : 33;
+  const orbitRadius = isMobileViewport ? 36 : 44;
 
   // Genre cycle every 6s with starburst flash
   useEffect(() => {
@@ -1906,8 +1906,8 @@ export default function Home1CoverPage() {
             style={{
               position: 'relative',
               width: 'min(100%, 95vw)',
-              minWidth: isMobileViewport ? 320 : 'min(380px, 68vw)',
-              maxWidth: isMobileViewport ? 580 : 'min(880px, 75vw)',
+              minWidth: isMobileViewport ? 320 : 'min(480px, 70vw)',
+              maxWidth: isMobileViewport ? 580 : 'min(1200px, 90vw)',
               aspectRatio: '1 / 1',
               margin: '0 auto',
               flexShrink: 0,
@@ -1989,8 +1989,8 @@ export default function Home1CoverPage() {
           >
             <div
               style={{
-                width: 'min(170px, 28vw)',
-                height: 'min(170px, 28vw)',
+                width: 'min(240px, 38vw)',
+                height: 'min(240px, 38vw)',
                 borderRadius: '50%',
                 background: `radial-gradient(circle at 40% 35%, ${accentColor}55, ${bgColor})`,
                 border: `3px solid ${accentColor}`,

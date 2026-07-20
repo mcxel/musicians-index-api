@@ -78,9 +78,6 @@ export default function HomeNavigator() {
           onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(255,255,255,0.5)")}
         >
           <span style={{ fontSize: 14 }}>◀</span>
-          <span style={{ maxWidth: 90, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {prev.short}
-          </span>
         </button>
       </div>
 
@@ -187,9 +184,6 @@ export default function HomeNavigator() {
           onMouseEnter={(e) => (e.currentTarget.style.color = next.accent)}
           onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(255,255,255,0.5)")}
         >
-          <span style={{ maxWidth: 76, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {next.short}
-          </span>
           <span style={{ fontSize: 14 }}>▶</span>
         </button>
       </div>
