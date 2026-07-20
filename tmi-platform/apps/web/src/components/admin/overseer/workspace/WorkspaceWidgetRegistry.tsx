@@ -13,6 +13,7 @@ import BigAceFinancePanel from "@/components/admin/BigAceFinancePanel";
 import AdminRevenuePanel from "@/components/admin/AdminRevenuePanel";
 import StripeObservatoryCard from "@/components/admin/StripeObservatoryCard";
 import ObservatoryDeck from "@/components/admin/overseer/ObservatoryDeck";
+import RouteButtonAuditPanel from "@/components/admin/overseer/RouteButtonAuditPanel";
 import MediaMatrixEngine from "./widgets/MediaMatrixEngine";
 import {
   ComplianceOverviewPanel,
@@ -128,10 +129,10 @@ export const WORKSPACE_WIDGET_REGISTRY: Record<WorkspaceWidgetKey, WorkspaceWidg
   },
   "observer-reports": {
     id: "observer-reports",
-    title: "Observer Reports",
+    title: "Route & Button Audit",
     defaultZone: "left",
     permissions: ["read.only"],
-    component: () => <PlaceholderWidget title="Observer Reports" detail="Read-only insight stream with recommendation and certification context." />,
+    component: RouteButtonAuditPanel,
   },
   "legal-overview": { id: "legal-overview", title: "Legal Overview", defaultZone: "center", component: ComplianceOverviewPanel },
   "legal-doc-disclaimer": { id: "legal-doc-disclaimer", title: "Disclaimer", defaultZone: "left", component: () => <LegalDocPanel id="disclaimer" /> },

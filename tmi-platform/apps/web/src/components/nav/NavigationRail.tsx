@@ -17,6 +17,21 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 
+// ── Dashboard destination per role — "MY HUB" must never hardcode a single
+// role's hub for every signed-in user. Keys match the real Prisma Role enum.
+const ROLE_HUB: Record<string, string> = {
+  FAN: "/hub/fan",
+  PERFORMER: "/hub/performer",
+  ARTIST: "/hub/artist",
+  BAND: "/hub/performer",
+  PROMOTER: "/hub/promoter",
+  ADVERTISER: "/hub/advertiser",
+  SPONSOR: "/hub/sponsor",
+  VENUE: "/hub/venue",
+  WRITER: "/hub/writer",
+  ADMIN: "/admin/overview",
+};
+
 // ── Route exclusions — rail hidden on these paths ──────────────────────────
 const EXCLUDED_PREFIXES = [
   "/auth/",
@@ -186,7 +201,7 @@ export default function NavigationRail() {
                   </button>
                   <div style={{ marginTop: 8, display: "flex", gap: 6 }}>
                     <button onClick={() => handleLink("/subscribe")} style={{ flex: 1, padding: "7px", borderRadius: 6, background: "rgba(0,255,136,0.1)", border: "1px solid rgba(0,255,136,0.25)", color: "#00FF88", fontSize: 9, fontWeight: 800, cursor: "pointer" }}>SUBSCRIBE</button>
-                    <button onClick={() => handleLink("/hub/performer")} style={{ flex: 1, padding: "7px", borderRadius: 6, background: "rgba(255,215,0,0.1)", border: "1px solid rgba(255,215,0,0.25)", color: "#FFD700", fontSize: 9, fontWeight: 800, cursor: "pointer" }}>MY HUB</button>
+                    <button onClick={() => handleLink(ROLE_HUB[role ?? ""] ?? "/hub/fan")} style={{ flex: 1, padding: "7px", borderRadius: 6, background: "rgba(255,215,0,0.1)", border: "1px solid rgba(255,215,0,0.25)", color: "#FFD700", fontSize: 9, fontWeight: 800, cursor: "pointer" }}>MY HUB</button>
                   </div>
                 </div>
               </div>

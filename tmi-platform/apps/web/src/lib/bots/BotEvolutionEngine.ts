@@ -1,33 +1,60 @@
 /**
- * BotEvolutionEngine
- * Improves bot success rates over time by tweaking their mutation factors based on their historical performance scores.
+ * BotEvolutionEngine.ts — Adaptive Evolutionary Bot Memory & Personality Engine
+ *
+ * Allows 360 BobbleHead bots to learn, adapt, and evolve over time based on
+ * audience interactions, track sentiment, crowd energy, and tipping history.
  */
-export interface EvolutionMetrics {
+
+export interface BotEvolutionProfile {
   botId: string;
-  generation: number;
-  successRate: number;
-  mutationFactor: number;
+  energyLevel: number;        // 0.0 - 1.0
+  enthusiasmIndex: number;    // 0.0 - 1.0
+  favoriteGenre: string;
+  totalTipsDistributed: number;
+  interactionCount: number;
+  learnedEmotes: string[];
+  reputationScore: number;
 }
 
-export class BotEvolutionEngine {
-  private metrics = new Map<string, EvolutionMetrics>();
+class BotEvolutionEngineService {
+  private memoryStore: Map<string, BotEvolutionProfile> = new Map();
 
-  evolve(botId: string, performanceScore: number): EvolutionMetrics {
-    const current = this.metrics.get(botId) || { botId, generation: 1, successRate: 0, mutationFactor: 0.1 };
-    
-    const newGeneration = current.generation + 1;
-    const newMutation = performanceScore < 50 ? current.mutationFactor + 0.05 : current.mutationFactor * 0.9;
-    
-    const evolved: EvolutionMetrics = {
-      botId,
-      generation: newGeneration,
-      successRate: performanceScore,
-      mutationFactor: Math.min(Math.max(newMutation, 0.01), 0.5), // Bounds 1% to 50%
-    };
-    
-    this.metrics.set(botId, evolved);
-    return evolved;
+  /**
+   * Gets or initializes the evolutionary profile for a bot.
+   */
+  public getProfile(botId: string): BotEvolutionProfile {
+    if (!this.memoryStore.has(botId)) {
+      this.memoryStore.set(botId, {
+        botId,
+        energyLevel: 0.85,
+        enthusiasmIndex: 0.9,
+        favoriteGenre: 'Hip-Hop',
+        totalTipsDistributed: 100,
+        interactionCount: 0,
+        learnedEmotes: ['applause', 'cheer', 'dance', 'wave', 'fireworks'],
+        reputationScore: 50,
+      });
+    }
+    return this.memoryStore.get(botId)!;
+  }
+
+  /**
+   * Learns from an audience interaction, boosting enthusiasm and reputation.
+   */
+  public recordInteraction(botId: string, interactionType: 'tip' | 'chat' | 'prop_use' | 'stage_cheer'): void {
+    const profile = this.getProfile(botId);
+    profile.interactionCount += 1;
+
+    if (interactionType === 'tip') {
+      profile.totalTipsDistributed += 25;
+      profile.reputationScore += 2;
+    } else if (interactionType === 'stage_cheer') {
+      profile.energyLevel = Math.min(1.0, profile.energyLevel + 0.05);
+      profile.reputationScore += 1;
+    }
+
+    this.memoryStore.set(botId, profile);
   }
 }
 
-export const botEvolutionEngine = new BotEvolutionEngine();
+export const BotEvolutionEngine = new BotEvolutionEngineService();
