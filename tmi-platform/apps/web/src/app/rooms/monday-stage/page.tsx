@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -8,6 +8,9 @@ import HUDFrame from '@/components/hud/HUDFrame';
 import FooterHUD from '@/components/hud/FooterHUD';
 import StageCurtain, { type StageState } from '@/components/stage/StageCurtain';
 import ArenaEventShell from "@/components/live/ArenaEventShell";
+import { MondayNightStageEngine } from '@/lib/shows/MondayNightStageEngine';
+import type { MondayNightStageState } from '@/lib/shows/MondayNightStageEngine';
+import { MondayNightStagePanel } from '@/components/shows/MondayNightStagePanel';
 
 const SHOW_TITLE  = "MARCEL'S MONDAY NIGHT STAGE";
 const ROOM_ID     = 'monday-stage';
@@ -46,6 +49,33 @@ export default function MondayStagePage() {
   const [tipping, setTipping]         = useState(false);
   const currentArtist = LINEUP.find((l) => l.status === 'LIVE');
 
+  // Bebo hook/cane game-show layer — real crowd boo/yay mechanic, ported in
+  // from the /shows/monday-night-stage prototype (now a redirect to here).
+  const stageEngine = useMemo(() => {
+    const e = new MondayNightStageEngine();
+    LINEUP.forEach((act, i) => e.show.addContestant(`mns-${i}`, act.artist));
+    return e;
+  }, []);
+  const [gameState, setGameState] = useState<MondayNightStageState>(() => stageEngine.getFullState());
+  const [gameStarted, setGameStarted] = useState(false);
+  const refreshGame = useCallback(() => setGameState(stageEngine.getFullState()), [stageEngine]);
+  const handlePresentContestant = useCallback((id: string) => { stageEngine.presentContestant(id); refreshGame(); }, [stageEngine, refreshGame]);
+  const handleProcessVote = useCallback(() => { stageEngine.processCrowdVote(); refreshGame(); }, [stageEngine, refreshGame]);
+  const handleCrowdVote = useCallback((type: 'yay' | 'boo') => { stageEngine.show.recordCrowdVote(type); refreshGame(); }, [stageEngine, refreshGame]);
+  const handleHook = useCallback((id: string) => {
+    const s = stageEngine.show.getState();
+    const total = s.crowdYayCount + s.crowdBooCount;
+    stageEngine.bebo.hookPerformer(id, total > 0 ? s.crowdBooCount / total : 0.9);
+    stageEngine.show.eliminateContestant(id);
+    refreshGame();
+  }, [stageEngine, refreshGame]);
+  const handleReturn = useCallback((id: string) => {
+    const s = stageEngine.show.getState();
+    const total = s.crowdYayCount + s.crowdBooCount;
+    stageEngine.bebo.returnPerformer(id, total > 0 ? s.crowdYayCount / total : 0.8);
+    refreshGame();
+  }, [stageEngine, refreshGame]);
+
   // Poll stage status
   useEffect(() => {
     const poll = async () => {
@@ -70,8 +100,11 @@ export default function MondayStagePage() {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ roomId: ROOM_ID, showTitle: SHOW_TITLE, artistName: currentArtist?.artist }),
     });
+    stageEngine.startShow();
+    setGameStarted(true);
+    refreshGame();
     setTimeout(() => setStageState('LIVE'), 2000);
-  }, [currentArtist]);
+  }, [currentArtist, stageEngine, refreshGame]);
 
   const closeCurtain = useCallback(async () => {
     setStageState('CURTAIN_CLOSING');
@@ -192,6 +225,24 @@ export default function MondayStagePage() {
                   </motion.div>
                 )}
               </AnimatePresence>
+
+              {/* Bebo hook/cane game panel — crowd boos hook a performer off,
+                  crowd yays bring them back. Live once the curtain opens. */}
+              {gameStarted && (
+                <div style={{ marginTop: 24 }}>
+                  <div style={{ fontSize: 9, letterSpacing: 4, color: '#FFD700', fontWeight: 800, marginBottom: 16 }}>
+                    CROWD CONTROL — BOO = HOOK, YAY = RECOVER
+                  </div>
+                  <MondayNightStagePanel
+                    stageState={gameState}
+                    onPresentContestant={handlePresentContestant}
+                    onProcessVote={handleProcessVote}
+                    onCrowdVote={handleCrowdVote}
+                    onHook={handleHook}
+                    onReturn={handleReturn}
+                  />
+                </div>
+              )}
 
               {/* Tonight's Lineup */}
               <div style={{ marginTop: 32 }}>
