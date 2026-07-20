@@ -70,8 +70,11 @@ export default function YoPhoStudioDrawer({
     setStatusMessage("Saving to YoPho Studio...");
 
     try {
+      // /api/profile/update only exports a PUT handler — POST silently 405'd
+      // here, matching the same bug already fixed in both onboarding flows
+      // this session (2026-07-19/20).
       const res = await fetch("/api/profile/update", {
-        method: "POST",
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
