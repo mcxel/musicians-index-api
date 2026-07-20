@@ -448,14 +448,17 @@ export function middleware(req: NextRequest) {
       return NextResponse.redirect(signin, 307);
     }
 
-    // Onboarding Enforcer Gate
-    const onboardingStateCookie = req.cookies.get('tmi_onboarding_state')?.value ?? 'no_role_selected';
-    if (onboardingStateCookie !== 'complete' && !pathname.startsWith('/onboarding') && !pathname.startsWith('/api/')) {
-      if (userRoles.length === 0) {
-        return NextResponse.redirect(new URL('/onboarding', req.url), 307);
-      }
-      const targetStep = hasAnyRole(userRoles, ['ARTIST', 'PERFORMER']) ? '/onboarding/artist' : '/onboarding/fan';
-      return NextResponse.redirect(new URL(targetStep, req.url), 307);
+    // Onboarding Enforcer Gate — cookie-healing first, hard redirect second.
+    // When the cookie is missing or stale (e.g. after cache clear, cross-device
+    // login, or invite-link registration) we route through the heal endpoint so
+    // it can check the DB and set the correct cookie before redirecting the user
+    // to the right place.  This prevents the infinite /onboarding bounce loop.
+    const onboardingStateCookie = req.cookies.get('tmi_onboarding_state')?.value;
+    const onboardingComplete = onboardingStateCookie === 'complete';
+    if (!onboardingComplete && !pathname.startsWith('/onboarding') && !pathname.startsWith('/api/')) {
+      const healUrl = new URL('/api/auth/onboarding-heal', req.url);
+      healUrl.searchParams.set('next', pathname);
+      return NextResponse.redirect(healUrl, 307);
     }
 
     if (isAdmin && !hasAnyRole(userRoles, ['ADMIN', 'STAFF'])) {

@@ -283,33 +283,44 @@ export default function OnboardingFanPage() {
       const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.9));
       if (!blob) throw new Error("Could not construct image blob");
 
-      // Upload to /api/upload
+      // Upload to /api/upload — graceful fallback: if upload fails we still
+      // mark onboarding complete so the user isn't permanently blocked.
       const formData = new FormData();
       formData.append("file", blob, "avatar.jpg");
       formData.append("context", "profile");
 
-      const uploadRes = await fetch("/api/upload", { method: "POST", body: formData });
-      if (!uploadRes.ok) throw new Error("Upload request failed");
+      let avatarUrl = "";
+      try {
+        const uploadRes = await fetch("/api/upload", { method: "POST", body: formData });
+        if (uploadRes.ok) {
+          const uploadData = await uploadRes.json();
+          if (uploadData.success && uploadData.url) {
+            avatarUrl = uploadData.url as string;
+          }
+        }
+      } catch {
+        // Upload failed — continuing onboarding without avatar; user can update later
+        setMessage("Photo couldn't be saved — you can update it from your profile later.");
+      }
 
-      const uploadData = await uploadRes.json();
-      if (!uploadData.success || !uploadData.url) throw new Error("Upload did not return success url");
-
-      // Commit finalized profile data and mark onboarding complete!
+      // Commit finalized profile data and mark onboarding complete.
       const profileUpdateRes = await fetch("/api/profile/update", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
-          avatarUrl: uploadData.url,
+          ...(avatarUrl ? { avatarUrl } : {}),
           onboardingState: "COMPLETE",
           onboardingStep: "completed",
         }),
       });
 
       if (profileUpdateRes.ok) {
-        router.replace("/dashboard/fan");
+        // Hard redirect to canonical hub — forces browser to re-read the
+        // tmi_onboarding_state=complete cookie set by the profile update.
+        window.location.href = "/hub/fan";
       } else {
-        throw new Error("Failed to update final profile state");
+        throw new Error("Failed to save profile. Please try again.");
       }
 
     } catch (err: any) {

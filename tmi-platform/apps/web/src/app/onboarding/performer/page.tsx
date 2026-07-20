@@ -48,15 +48,20 @@ export default function OnboardingPerformerPage() {
       <button
         onClick={async () => {
           try {
-            await fetch('/api/onboarding/role', {
-              method: 'POST',
+            // Mark onboarding complete in DB + set tmi_onboarding_state cookie.
+            // /api/onboarding/role sets 'incomplete'; /api/profile/update sets
+            // 'complete' — only the latter lets the middleware gate pass.
+            await fetch('/api/profile/update', {
+              method: 'PUT',
               headers: { 'Content-Type': 'application/json' },
               credentials: 'include',
-              body: JSON.stringify({ role: 'PERFORMER' }),
+              body: JSON.stringify({ onboardingState: 'COMPLETE', onboardingStep: 'completed' }),
             });
           } catch { /* non-fatal */ }
           setDone(true);
-          setTimeout(() => router.replace('/dashboard/performer'), 2200);
+          // Hard redirect: forces browser to re-read the newly-set
+          // tmi_onboarding_state=complete cookie before the middleware runs.
+          setTimeout(() => { window.location.href = '/hub/performer'; }, 1800);
         }}
         style={{ marginTop: 28, padding: '13px 28px', background: '#FF2DAA', color: '#fff', border: 'none', borderRadius: 8, fontSize: 15, fontWeight: 900, cursor: 'pointer', letterSpacing: '0.06em' }}
       >
