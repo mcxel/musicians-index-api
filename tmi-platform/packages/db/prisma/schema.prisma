@@ -79,6 +79,14 @@ model User {
   // QA Certification Fleet flag — true for all @themusiciansindex.test accounts.
   // Must be excluded from discovery, rankings, leaderboards, search, and analytics.
   isQA                           Boolean   @default(false) @map("is_qa")
+  // Trust & safety enforcement state — added 2026-07-19 alongside real wiring
+  // of the pre-existing (previously unused) Report/ModerationAction models.
+  // "active" | "suspended" (temporary — includes auto-enforcement pending
+  // human review) | "banned" (permanent, human-confirmed only — the system
+  // never sets this value itself).
+  accountStatus                  String    @default("active") @map("account_status")
+  accountStatusReason            String?   @map("account_status_reason")
+  accountStatusExpiresAt         DateTime? @map("account_status_expires_at")
   // Live broadcast state — DB-persisted so serverless cold starts don't drop performers
   isLive                         Boolean   @default(false) @map("is_live")
   liveRoomId                     String?   @map("live_room_id")
@@ -206,6 +214,9 @@ model User {
 
   // Season passes
   seasonPassOwnerships   SeasonPassOwnership[]
+
+  // Venue skins
+  venueSkinOwnerships    VenueSkinOwnership[]
 }
 
 model Account {
@@ -3082,6 +3093,28 @@ model SeasonPassOwnership {
   @@unique([userId, seasonPassId])
   @@index([userId])
   @@map("season_pass_ownerships")
+}
+
+// A purchased (or season-pass-unlocked) venue skin, with the owner's saved
+// color customization. `skinId` matches a key in VENUE_SKINS
+// (apps/web/src/lib/venue/venueSkinEngine.ts) — the visual/config layer
+// that already existed; this table is the missing commerce + persistence
+// layer (added 2026-07-19). `customColors` is null until the owner
+// overrides the skin's default palette and saves — never required.
+model VenueSkinOwnership {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  skinId          String
+  customColors    Json?
+  unlockedVia     String   @default("purchase") // "purchase" | "season_pass"
+  stripePaymentId String?
+  purchasedAt     DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([userId, skinId])
+  @@index([userId])
+  @@map("venue_skin_ownerships")
 }
 
 // ── Content Lifecycle — Phase C: Avatar ──────────────────────────────────────

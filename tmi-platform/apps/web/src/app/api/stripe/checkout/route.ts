@@ -5,6 +5,9 @@ import { getRegion, getRegionalPriceId, SUBSCRIPTION_TIERS } from '@/lib/stripe/
 import { STRIPE_PRODUCTS } from '@/lib/stripe/products';
 import type { UserTier } from '@/lib/auth/UserStore';
 import { getPerformerBySlug } from '@/lib/performers/PerformerRegistry';
+import { VENUE_SKINS } from '@/lib/venue/venueSkinEngine';
+import { getSkinPriceCents } from '@/lib/venue/VenueSkinCommerce';
+import prisma from '@/lib/prisma';
 
 // Lookup table: placeholder priceId → { price (cents), name, interval }
 const PRODUCT_BY_PRICE_ID: Record<string, { price: number; name: string; interval?: string }> =
@@ -169,8 +172,54 @@ export async function POST(req: NextRequest) {
       items?: { priceId: string; quantity?: number }[];
       successUrl?: string;
       cancelUrl?: string;
+      skinId?: string;
+      customColors?: Record<string, string>;
     };
     const { items, successUrl, cancelUrl } = body;
+
+    // VENUE_SKIN product — venue skin store sends { product: "VENUE_SKIN", skinId, customColors? }
+    if (body.product === 'VENUE_SKIN' && body.skinId) {
+      const skin = VENUE_SKINS[body.skinId];
+      if (!skin) return NextResponse.json({ error: 'Unknown skin' }, { status: 400 });
+
+      const buyerEmail = req.cookies.get('tmi_user_email')?.value ?? '';
+      if (!buyerEmail) return NextResponse.json({ error: 'Sign in required' }, { status: 401 });
+      const buyer = await prisma.user.findUnique({ where: { email: buyerEmail }, select: { id: true } });
+      if (!buyer) return NextResponse.json({ error: 'Account not found' }, { status: 404 });
+
+      const alreadyOwned = await prisma.venueSkinOwnership.findUnique({
+        where: { userId_skinId: { userId: buyer.id, skinId: body.skinId } },
+      });
+      if (alreadyOwned) return NextResponse.json({ error: 'Already owned' }, { status: 409 });
+
+      const stripe = getStripe();
+      if (!stripe) return NextResponse.json({ error: 'Stripe not configured' }, { status: 503 });
+
+      const { origin } = req.nextUrl;
+      const skinSession = await stripe.checkout.sessions.create({
+        mode: 'payment',
+        payment_method_types: ['card'],
+        line_items: [{
+          quantity: 1,
+          price_data: {
+            currency: 'usd',
+            unit_amount: getSkinPriceCents(body.skinId),
+            product_data: { name: `Venue Skin — ${skin.name}` },
+          },
+        }],
+        success_url: `${origin}/store/venue-skins?purchased=${encodeURIComponent(body.skinId)}`,
+        cancel_url: `${origin}/store/venue-skins`,
+        customer_email: buyerEmail,
+        metadata: {
+          type: 'venue_skin',
+          skinId: body.skinId,
+          buyerId: buyer.id,
+          customColors: body.customColors ? JSON.stringify(body.customColors) : '',
+        },
+      });
+      if (!skinSession.url) throw new Error('No session URL from Stripe');
+      return NextResponse.json({ url: skinSession.url });
+    }
 
     // TIP product — TipButton sends { product: "TIP", artistSlug, amount: cents, roomId? }
     if (body.product === "TIP" && body.artistSlug && body.amount) {

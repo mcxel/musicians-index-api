@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { isFounderDiamondEmail } from '@/lib/promos/FounderDiamondPassEngine';
+import { getAccountStatus } from '@/lib/moderation/ModerationEngine';
 import prisma from '@/lib/prisma';
 
 const SESSION_DB_LOOKUP_TIMEOUT_MS = 1200;
@@ -98,6 +99,25 @@ export async function GET(req: NextRequest) {
       }
     } catch {
       // Keep session fallback identity if DB is temporarily unavailable.
+    }
+  }
+
+  // Trust & safety gate — a user suspended/banned mid-session (existing
+  // cookie, up to 7 days old) must not keep working just because their
+  // cookie hasn't expired yet. Checked on every session poll, not only at
+  // login. Kept inside the existing "always 200" contract for this route —
+  // authenticated:false plus accountStatus tells the frontend why.
+  if (canonicalUserId !== sessionId) {
+    const status = await getAccountStatus(canonicalUserId).catch(() => null);
+    if (status && status.accountStatus !== 'active') {
+      return NextResponse.json({
+        authenticated: false,
+        csrfToken,
+        user: null,
+        expires: null,
+        accountStatus: status.accountStatus,
+        accountStatusReason: status.accountStatusReason ?? undefined,
+      });
     }
   }
 

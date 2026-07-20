@@ -121,7 +121,7 @@ export const PERFORMER_REGISTRY: PerformerIdentity[] = [
     id: 'wavetek',
     slug: 'wavetek',
     name: 'Wavetek',
-    profileImageUrl: '/artists/artist-01.png',
+    profileImageUrl: '/bot-images/Bot image 1.png',
     coverImageUrl: '/tmi-curated/mag-20.jpg',
     city: 'Atlanta, GA', countryName: 'United States', flag: '🇺🇸',
     category: 'Hip-Hop', tier: 'Diamond', rank: 1, xp: 98400, lineupType: 'solo',
@@ -137,7 +137,7 @@ export const PERFORMER_REGISTRY: PerformerIdentity[] = [
     id: 'astra-nova',
     slug: 'astra-nova',
     name: 'Astra Nova',
-    profileImageUrl: '/artists/artist-02.png',
+    profileImageUrl: '/bot-images/Bot image 2.png',
     coverImageUrl: '/tmi-curated/mag-28.jpg',
     city: 'London, UK', countryName: 'United Kingdom', flag: '🇬🇧',
     category: 'R&B', tier: 'Platinum', rank: 2, xp: 74200, lineupType: 'solo',
@@ -153,7 +153,7 @@ export const PERFORMER_REGISTRY: PerformerIdentity[] = [
     id: 'dj-kraze',
     slug: 'dj-kraze',
     name: 'DJ Kraze',
-    profileImageUrl: '/artists/artist-03.png',
+    profileImageUrl: '/bot-images/Bot image 3.png',
     coverImageUrl: '/tmi-curated/mag-35.jpg',
     city: 'Los Angeles', countryName: 'United States', flag: '🇺🇸',
     category: 'EDM', tier: 'Diamond', rank: 1, xp: 102000, lineupType: 'solo',
@@ -169,7 +169,7 @@ export const PERFORMER_REGISTRY: PerformerIdentity[] = [
     id: 'bar-god',
     slug: 'bar-god',
     name: 'Bar God vs Nova',
-    profileImageUrl: '/artists/artist-04.png',
+    profileImageUrl: '/bot-images/Bot image 4.png',
     coverImageUrl: '/tmi-curated/mag-42.jpg',
     city: 'Chicago, IL', countryName: 'United States', flag: '🇺🇸',
     category: 'Rap', tier: 'Gold', rank: 3, xp: 51800, lineupType: 'duo',
@@ -185,7 +185,7 @@ export const PERFORMER_REGISTRY: PerformerIdentity[] = [
     id: 'lagos-burst',
     slug: 'lagos-burst',
     name: 'Lagos Burst vs Verse',
-    profileImageUrl: '/artists/artist-05.jpg',
+    profileImageUrl: '/bot-images/Bot image 5.png',
     coverImageUrl: '/tmi-curated/mag-50.jpg',
     city: 'Lagos, NG', countryName: 'Nigeria', flag: '🇳🇬',
     category: 'Afrobeats', tier: 'Silver', rank: 1, xp: 28400, lineupType: 'duo',
@@ -201,7 +201,7 @@ export const PERFORMER_REGISTRY: PerformerIdentity[] = [
     id: 'nova-cipher',
     slug: 'nova-cipher',
     name: 'Nova Cipher',
-    profileImageUrl: '/artists/artist-06.jpg',
+    profileImageUrl: '/bot-images/Bot image 6.png',
     coverImageUrl: '/tmi-curated/mag-58.jpg',
     city: 'Atlanta, GA', countryName: 'United States', flag: '🇺🇸',
     category: 'Hip-Hop', tier: 'Gold', rank: 2, xp: 44600, lineupType: 'solo',
@@ -217,7 +217,7 @@ export const PERFORMER_REGISTRY: PerformerIdentity[] = [
     id: 'avatar-heavy',
     slug: 'avatar-heavy',
     name: 'Avatar Heavy',
-    profileImageUrl: '/artists/artist-07.jpg',
+    profileImageUrl: '/bot-images/Bot image 7.png',
     coverImageUrl: '/tmi-curated/mag-66.jpg',
     city: 'Tokyo, JP', countryName: 'Japan', flag: '🇯🇵',
     category: 'Dance Crews', tier: 'RUBY', rank: 5, xp: 8400, lineupType: 'group',
@@ -1080,6 +1080,24 @@ export const PERFORMER_REGISTRY: PerformerIdentity[] = [
 const _byId = new Map(PERFORMER_REGISTRY.map((p) => [p.id, p]));
 const _bySlug = new Map(PERFORMER_REGISTRY.map((p) => [p.slug, p]));
 
+// `/bot-images/*` entries are anonymous atmosphere fillers (see LOBBY_FILLERS
+// in Home3LobbyWallGrid.tsx) — real, but not a real connected account or an
+// Official TMI Bot host (Rule 21). They must never appear in ranked/competing
+// surfaces (Home 1 orbital wheel, crown, top performers, genre leaderboards)
+// presented as "Verified Performer" — that's Rule 20 fake-status, confirmed
+// 2026-07-19 (Barbara Steele / Dmitri Kovalenko etc. showing ranked XP/tier
+// while backed by an anonymous bot image). Direct-lookup functions
+// (getPerformerById/getPerformerBySlug) are untouched — a bot-filler tile
+// still needs to resolve when clicked from a legitimate filler context.
+export function isRankedEligible(p: PerformerIdentity): boolean {
+  return (
+    p.category !== 'Venues' &&
+    p.category !== 'Sponsors' &&
+    p.lineupType !== undefined
+  );
+}
+const RANKED_PERFORMER_REGISTRY = PERFORMER_REGISTRY.filter(isRankedEligible);
+
 export function getPerformerById(id: string): PerformerIdentity | null {
   return _byId.get(id) ?? null;
 }
@@ -1089,19 +1107,19 @@ export function getPerformerBySlug(slug: string): PerformerIdentity | null {
 }
 
 export function getTopPerformers(n = 12): PerformerIdentity[] {
-  return [...PERFORMER_REGISTRY].sort((a, b) => b.xp - a.xp).slice(0, n);
+  return [...RANKED_PERFORMER_REGISTRY].sort((a, b) => b.xp - a.xp).slice(0, n);
 }
 
 export function getLivePerformers(): PerformerIdentity[] {
-  return PERFORMER_REGISTRY.filter((p) => p.isLive).sort((a, b) => b.audienceCount - a.audienceCount);
+  return RANKED_PERFORMER_REGISTRY.filter((p) => p.isLive).sort((a, b) => b.audienceCount - a.audienceCount);
 }
 
 export function getPerformersByCategory(category: PerformerCategory): PerformerIdentity[] {
-  return PERFORMER_REGISTRY.filter((p) => p.category === category);
+  return RANKED_PERFORMER_REGISTRY.filter((p) => p.category === category);
 }
 
 export function getCrownHolder(): PerformerIdentity {
-  return PERFORMER_REGISTRY.reduce((best, p) => (p.xp > best.xp ? p : best), PERFORMER_REGISTRY[0]!);
+  return RANKED_PERFORMER_REGISTRY.reduce((best, p) => (p.xp > best.xp ? p : best), RANKED_PERFORMER_REGISTRY[0]!);
 }
 
 // ── Genre adapter (for Home 1 orbital + rankings) ─────────────────────────────
@@ -1140,7 +1158,7 @@ const GENRE_TO_CATEGORIES: Record<string, PerformerCategory[]> = {
 export function getGenrePerformers(genre: string, n = 10): GenrePerformer[] {
   const cats = GENRE_TO_CATEGORIES[genre] ?? [];
   if (cats.length === 0) return [];
-  return PERFORMER_REGISTRY
+  return RANKED_PERFORMER_REGISTRY
     .filter((p) => (cats as PerformerCategory[]).includes(p.category))
     .sort((a, b) => b.xp - a.xp)
     .slice(0, n)
@@ -1158,7 +1176,7 @@ export function getGenrePerformers(genre: string, n = 10): GenrePerformer[] {
 
 // Returns lower-tier performers for the Free Promotion panel on Home 1.
 export function getFeaturedFreePerformers(n = 2): GenrePerformer[] {
-  return PERFORMER_REGISTRY
+  return RANKED_PERFORMER_REGISTRY
     .filter((p) => ['FREE', 'PRO', 'Silver', 'RUBY'].includes(p.tier))
     .sort((a, b) => b.fanCount - a.fanCount)
     .slice(0, n)
@@ -1180,7 +1198,7 @@ export function getFeaturedFreePerformers(n = 2): GenrePerformer[] {
  * Call this instead of reading .rank directly when you need accurate live ranking.
  */
 export function computeRanks(): PerformerIdentity[] {
-  return [...PERFORMER_REGISTRY]
+  return [...RANKED_PERFORMER_REGISTRY]
     .sort((a, b) => b.xp - a.xp)
     .map((p, i) => ({ ...p, rank: i + 1 }));
 }

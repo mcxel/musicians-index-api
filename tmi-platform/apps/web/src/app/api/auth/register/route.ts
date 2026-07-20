@@ -9,6 +9,7 @@ import { sendEmail } from '@/lib/email/TMIEmailSystem';
 import { DiamondInviteEngine } from '@/lib/auth/DiamondInviteEngine';
 import { checkRateLimit, validateSignupEmail } from '@/lib/security/TMISecurityEngine';
 import { emitAdminLiveEvent } from '@/lib/admin/AdminLiveEventEngine';
+import { waitUntil } from '@vercel/functions';
 
 const COOKIE_OPTS = {
   httpOnly: true,
@@ -311,14 +312,23 @@ export async function POST(req: NextRequest) {
     };
 
     stage = 'WELCOME_EMAIL_ENQUEUED';
-    void sendWelcomeEmailWithRetry().catch((e) => {
-      emitAdminLiveEvent({
-        type: 'alert',
-        message: `[${new Date().toLocaleTimeString()}] ⚠️ Welcome email exception: ${email} (${emailType})`,
-        meta: { userId: user.id, email, emailType, error: String(e) },
-      });
-      console.error('[TMI register email] exception', e);
-    });
+    // waitUntil (not bare `void`) — Vercel can freeze/terminate this function
+    // the instant the HTTP response is sent, which can kill an in-flight
+    // un-awaited Resend call before it completes. This was a real,
+    // undiagnosed cause of intermittent missing welcome emails (confirmed
+    // 2026-07-19): the send *was* being triggered, just not guaranteed to
+    // finish. waitUntil keeps the function alive until the promise settles,
+    // without blocking the response the user is waiting on.
+    waitUntil(
+      sendWelcomeEmailWithRetry().catch((e) => {
+        emitAdminLiveEvent({
+          type: 'alert',
+          message: `[${new Date().toLocaleTimeString()}] ⚠️ Welcome email exception: ${email} (${emailType})`,
+          meta: { userId: user.id, email, emailType, error: String(e) },
+        });
+        console.error('[TMI register email] exception', e);
+      })
+    );
 
     let effectiveTier: 'FREE' | 'DIAMOND' = 'FREE';
 

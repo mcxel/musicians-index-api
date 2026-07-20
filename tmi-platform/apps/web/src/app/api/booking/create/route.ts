@@ -4,6 +4,7 @@ import EmailProviderEngine from "@/lib/email/EmailProviderEngine";
 import { VenueBookingRegistry } from "@/lib/registries/VenueBookingRegistry";
 import { canonicalEcosystemEngine } from "@/lib/playlists/CanonicalEcosystemEngine";
 import { sendEmail } from "@/lib/email/TMIEmailSystem";
+import { waitUntil } from "@vercel/functions";
 
 function titleCase(slug: string): string {
   return slug.split("-").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
@@ -91,20 +92,21 @@ export async function POST(request: Request) {
       eventDate:   String(eventDate),
     });
 
+    // waitUntil, not bare `void` — see register/route.ts for why (2026-07-19).
     const alertEmail = process.env.BOOKING_ALERT_EMAIL?.trim();
     if (alertEmail) {
-      void EmailProviderEngine.sendAsync({
+      waitUntil(EmailProviderEngine.sendAsync({
         to:      alertEmail,
         subject: `New booking request ${bookingId} (${venueSlug})`,
         html:    `<h2>New booking request</h2><p><b>Booking:</b> ${bookingId}</p><p><b>Venue:</b> ${venueSlug}</p><p><b>Artist:</b> ${artistName}</p><p><b>Email:</b> ${contactEmail}</p><p><b>Date:</b> ${eventDate}</p><p><b>Type:</b> ${eventType ?? "concert"}</p><p><b>Attendance:</b> ${attendance}</p><p><b>Total:</b> $${totalUsd.toLocaleString()}</p>`,
         text:    `Booking ${bookingId}\nVenue: ${venueSlug}\nArtist: ${artistName}\nDate: ${eventDate}`,
         tags:    ["booking-request"],
         replyTo: String(contactEmail),
-      });
+      }));
     }
 
     // Send booking_request confirmation email to the artist/contact
-    void sendEmail({
+    waitUntil(sendEmail({
       to: String(contactEmail),
       type: "booking_request",
       data: {
@@ -115,7 +117,7 @@ export async function POST(request: Request) {
         estimatedTotal: totalUsd,
         contractId: contract.id,
       },
-    }).catch(() => {});
+    }).catch(() => {}));
 
     return NextResponse.json({
       success:        true,

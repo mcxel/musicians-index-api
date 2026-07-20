@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sendEmail } from "@/lib/email/TMIEmailSystem";
+import { waitUntil } from "@vercel/functions";
 
 // ── In-memory rate limiter (per userId) ───────────────────────────────────────
 const lastSendMap = new Map<string, number>();
@@ -48,7 +49,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   lastSendMap.set(userId, now);
 
   if (email) {
-    void sendEmail({ to: email, type: "verify_email", data: { token: sessionToken } });
+    // waitUntil, not bare `void` — see register/route.ts for why (2026-07-19).
+    waitUntil(sendEmail({ to: email, type: "verify_email", data: { token: sessionToken } }));
   }
 
   return NextResponse.json({ ok: true, message: "Verification email sent." });

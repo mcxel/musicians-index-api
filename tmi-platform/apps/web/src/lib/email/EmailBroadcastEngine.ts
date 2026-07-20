@@ -9,10 +9,13 @@
  *   "DIAMOND" — users with tier diamond, platinum, or gold
  *   "ALL"     — every confirmed, non-unsubscribed user
  *
- * NOTE: User store is in-memory for now (seed data).
- *       Replace fetchTargetUsers() with real DB query when Prisma is wired.
+ * Was backed by a 2-entry SEED_USERS array — a real "ALL" broadcast would
+ * have only ever reached those 2 hardcoded addresses, never real users.
+ * Rewired to a real Prisma query (2026-07-19), excluding isQA test accounts
+ * and suspended/banned accounts (see ModerationEngine).
  */
 
+import prisma from "@/lib/prisma";
 import { sendEmail, type EmailType } from "@/lib/email/TMIEmailSystem";
 import { isUnsubscribed } from "@/lib/email/unsubscribeStore";
 
@@ -31,26 +34,48 @@ export interface BroadcastResult {
   skipped: number;
   failed: number;
   errors: string[];
+  recipientCount: number;
 }
 
-// Seed users — replace with DB query
-const SEED_USERS: BroadcastUser[] = [
-  { id: "admin-1",  email: process.env.ADMIN_EMAIL ?? "admin@themusiciansindex.com",  name: "Marcel Dickens",  role: "ADMIN",      tier: "diamond" },
-  { id: "team-1",   email: process.env.TEAM_EMAIL  ?? "team@themusiciansindex.com",   name: "TMI Team",        role: "STAFF",       tier: "diamond" },
-];
+const TARGET_ROLES: Record<Exclude<BroadcastTarget, "ALL" | "DIAMOND">, string[]> = {
+  ADMIN: ["ADMIN", "STAFF"],
+  TEAM: ["STAFF", "WRITER"],
+  PROMOTER: ["PROMOTER"],
+  SPONSOR: ["SPONSOR"],
+  ADVERTISER: ["ADVERTISER"],
+};
 
-function fetchTargetUsers(targets: BroadcastTarget[]): BroadcastUser[] {
+async function fetchTargetUsers(targets: BroadcastTarget[]): Promise<BroadcastUser[]> {
+  const roleSet = new Set<string>();
+  let includeDiamond = false;
+  for (const t of targets) {
+    if (t === "ALL") { roleSet.clear(); includeDiamond = false; break; }
+    if (t === "DIAMOND") { includeDiamond = true; continue; }
+    TARGET_ROLES[t]?.forEach((r) => roleSet.add(r));
+  }
   const all = targets.includes("ALL");
-  return SEED_USERS.filter((u) => {
-    if (all) return true;
-    if (targets.includes("ADMIN") && (u.role === "ADMIN" || u.role === "STAFF")) return true;
-    if (targets.includes("TEAM") && (u.role === "STAFF" || u.role === "WRITER")) return true;
-    if (targets.includes("DIAMOND") && ["diamond", "platinum", "gold"].includes(u.tier ?? "")) return true;
-    if (targets.includes("PROMOTER") && u.role === "PROMOTER") return true;
-    if (targets.includes("SPONSOR") && u.role === "SPONSOR") return true;
-    if (targets.includes("ADVERTISER") && u.role === "ADVERTISER") return true;
-    return false;
+
+  const users = await prisma.user.findMany({
+    where: {
+      isQA: false,
+      accountStatus: "active",
+      email: { not: null },
+      ...(all
+        ? {}
+        : {
+            OR: [
+              ...(roleSet.size > 0 ? [{ role: { in: [...roleSet] as any } }] : []),
+              ...(includeDiamond ? [{ tier: { in: ["DIAMOND", "PLATINUM", "GOLD"] } }] : []),
+            ],
+          }),
+    },
+    select: { id: true, email: true, displayName: true, name: true, role: true, tier: true },
+    take: 50_000, // Resend Pro plan ceiling — see /admin/integrations for real limits
   });
+
+  return users
+    .filter((u): u is typeof u & { email: string } => !!u.email)
+    .map((u) => ({ id: u.id, email: u.email, name: u.displayName ?? u.name ?? "there", role: u.role, tier: u.tier?.toLowerCase() }));
 }
 
 export async function sendBroadcast(
@@ -58,8 +83,8 @@ export async function sendBroadcast(
   targets: BroadcastTarget[],
   data: Record<string, unknown> = {},
 ): Promise<BroadcastResult> {
-  const users = fetchTargetUsers(targets);
-  const result: BroadcastResult = { sent: 0, skipped: 0, failed: 0, errors: [] };
+  const users = await fetchTargetUsers(targets);
+  const result: BroadcastResult = { sent: 0, skipped: 0, failed: 0, errors: [], recipientCount: users.length };
 
   for (const user of users) {
     if (isUnsubscribed(user.email)) {

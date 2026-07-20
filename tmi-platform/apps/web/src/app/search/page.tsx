@@ -1,162 +1,160 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
+import FollowButton from "@/components/social/FollowButton";
 
-const TRENDING_SEARCHES = ["wavetek", "afrobeats", "monday cypher", "beat battle", "neon vibe", "trap beats", "cypher", "zuri bloom"];
+/**
+ * Real search — was a client-side filter over 6 hardcoded fake artists/
+ * rooms/beats/articles. Now queries /api/search, which hits the real User/
+ * ArtistProfile/UserProfile tables. Role rule: fans can search fans or
+ * performers; performers (and everyone else) can search performers only —
+ * matches the platform's Booking Department policy (no direct
+ * performer→fan discovery) and the fact that fan search requires a signed-
+ * in fan session (checked server-side too, this is not just a UI gate).
+ */
 
-const ALL_ROOMS = [
-  { name: "Monday Cypher",   viewers: "4.2K", tag: "LIVE",  href: "/rooms/monday-cypher?autoSeat=1",  color: "#FF2DAA" },
-  { name: "The Neon Church", viewers: "2.8K", tag: "LIVE",  href: "/rooms/neon-church?autoSeat=1",    color: "#00FFFF" },
-  { name: "R&B Showcase",   viewers: "1.1K", tag: "LIVE",  href: "/live/zuri",               color: "#00FF88" },
-  { name: "Battle Arena",   viewers: "890",  tag: "LIVE",  href: "/live/battles",             color: "#FFD700" },
-];
-
-const ALL_ARTISTS = [
-  { name: "Wavetek",    genre: "Trap",       icon: "🎤", href: "/artists/wavetek",     color: "#FF2DAA" },
-  { name: "Zuri Bloom", genre: "Afrobeats",  icon: "🌍", href: "/artists/zuri-bloom",  color: "#00FF88" },
-  { name: "Neon Vibe",  genre: "House",      icon: "🎧", href: "/artists/neon-vibe",   color: "#00FFFF" },
-  { name: "Krypt",      genre: "Boom Bap",   icon: "🔒", href: "/artists/krypt",       color: "#AA2DFF" },
-  { name: "DJ Marcus",  genre: "Hip-Hop Mix",icon: "🎛️", href: "/artists/dj-marcus",   color: "#FFD700" },
-  { name: "Ray Journey",genre: "Neo-Soul",   icon: "🎤", href: "/artists/ray-journey", color: "#00FF88" },
-];
-
-const ALL_BEATS = [
-  { title: "Electric Sky",  producer: "Ray Journey", bpm: 140, price: "$29.99", href: "/beats/electric-sky",  color: "#FFD700" },
-  { title: "Lagos Night",   producer: "Zuri Bloom",  bpm: 102, price: "$24.99", href: "/beats/lagos-night",   color: "#00FF88" },
-  { title: "Cipher Code",   producer: "Krypt",       bpm: 88,  price: "$19.99", href: "/beats/cipher-code",   color: "#AA2DFF" },
-  { title: "Frequency Drop",producer: "Wavetek",     bpm: 144, price: "$34.99", href: "/beats/frequency-drop",color: "#FF2DAA" },
-  { title: "Neon Pulse",    producer: "Neon Vibe",   bpm: 128, price: "$22.99", href: "/beats/neon-pulse",    color: "#00FFFF" },
-];
-
-const ALL_ARTICLES = [
-  { title: "TMI Platform Launch — Season 1 Begins", slug: "tmi-platform-launch", category: "NEWS" },
-  { title: "How Wavetek Built His Empire on TMI", slug: "wavetek-tmi-story", category: "ARTIST" },
-  { title: "The Beat Marketplace Is Now Live", slug: "beat-marketplace-launch", category: "NEWS" },
-];
-
-function matches(q: string, ...strs: string[]) {
-  const lq = q.toLowerCase();
-  return strs.some(s => s.toLowerCase().includes(lq));
+interface SearchResult {
+  id: string;
+  name: string;
+  role: string;
+  tier: string;
+  isLive: boolean;
+  avatarUrl: string | null;
+  location: string | null;
+  genre: string | null;
+  verified: boolean;
+  followers: number;
+  profileRoute: string;
 }
+
+type SearchTab = "performers" | "fans";
 
 export default function SearchPage() {
   const [query, setQuery] = useState("");
+  const [tab, setTab] = useState<SearchTab>("performers");
+  const [results, setResults] = useState<SearchResult[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [sessionRole, setSessionRole] = useState<string | null>(null);
+  const [sessionUserId, setSessionUserId] = useState<string | null>(null);
 
-  const q = query.trim();
+  useEffect(() => {
+    fetch("/api/auth/session", { credentials: "include", cache: "no-store" })
+      .then((r) => r.json())
+      .then((d: { authenticated: boolean; user?: { id?: string; role?: string } }) => {
+        if (d.authenticated) {
+          setSessionRole((d.user?.role ?? "").toUpperCase());
+          setSessionUserId(d.user?.id ?? null);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
-  const rooms   = q ? ALL_ROOMS.filter(r   => matches(q, r.name))                          : ALL_ROOMS.slice(0, 2);
-  const artists = q ? ALL_ARTISTS.filter(a => matches(q, a.name, a.genre))                  : ALL_ARTISTS.slice(0, 3);
-  const beats   = q ? ALL_BEATS.filter(b   => matches(q, b.title, b.producer))              : ALL_BEATS.slice(0, 3);
-  const articles= q ? ALL_ARTICLES.filter(a=> matches(q, a.title, a.category))              : ALL_ARTICLES;
+  const canSearchFans = sessionRole === "FAN";
 
-  const totalResults = rooms.length + artists.length + beats.length + articles.length;
+  const runSearch = useCallback((q: string, t: SearchTab) => {
+    setLoading(true);
+    setError(null);
+    fetch(`/api/search?q=${encodeURIComponent(q)}&type=${t}`, { credentials: "include", cache: "no-store" })
+      .then((r) => r.json())
+      .then((d: { results?: SearchResult[]; error?: string }) => {
+        if (d.error) setError(d.error);
+        setResults(d.results ?? []);
+      })
+      .catch(() => setError("Search failed. Try again."))
+      .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    const t = setTimeout(() => runSearch(query, tab), 250);
+    return () => clearTimeout(t);
+  }, [query, tab, runSearch]);
 
   return (
     <main style={{ minHeight: "100vh", background: "#050510", color: "#fff", paddingBottom: 80 }}>
-      <section style={{ padding: "40px 24px 28px", maxWidth: 720, margin: "0 auto" }}>
+      <section style={{ padding: "40px 24px 20px", maxWidth: 720, margin: "0 auto" }}>
         <div style={{ fontSize: 9, letterSpacing: "0.4em", color: "#00FFFF", fontWeight: 800, marginBottom: 16 }}>SEARCH TMI</div>
+
         <div style={{ position: "relative" }}>
           <input
             type="text"
             value={query}
-            onChange={e => setQuery(e.target.value)}
-            placeholder="Search artists, beats, rooms, articles..."
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={tab === "performers" ? "Search performers…" : "Search fans…"}
             autoFocus
             style={{ width: "100%", padding: "14px 20px", paddingLeft: 48, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, color: "#fff", fontSize: 14, outline: "none", boxSizing: "border-box" }}
           />
           <span style={{ position: "absolute", left: 16, top: "50%", transform: "translateY(-50%)", fontSize: 16, color: "rgba(255,255,255,0.3)" }}>🔍</span>
-          {q && <span onClick={() => setQuery("")} style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)", fontSize: 14, color: "rgba(255,255,255,0.4)", cursor: "pointer" }}>✕</span>}
+          {query && <span onClick={() => setQuery("")} style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)", fontSize: 14, color: "rgba(255,255,255,0.4)", cursor: "pointer" }}>✕</span>}
         </div>
-        {q && <div style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", marginTop: 8 }}>{totalResults} result{totalResults !== 1 ? "s" : ""} for &ldquo;{q}&rdquo;</div>}
-        {!q && (
-          <div style={{ display: "flex", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
-            {TRENDING_SEARCHES.map(s => (
-              <button key={s} onClick={() => setQuery(s)} style={{ fontSize: 8, fontWeight: 700, color: "rgba(255,255,255,0.5)", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 20, padding: "5px 12px", cursor: "pointer" }}>
-                {s}
-              </button>
-            ))}
+
+        {/* Tabs — Fans tab only shown to signed-in fans, matching server-side rule */}
+        <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+          <button
+            onClick={() => setTab("performers")}
+            style={{ fontSize: 10, fontWeight: 800, padding: "6px 16px", borderRadius: 20, cursor: "pointer", background: tab === "performers" ? "#00FFFF22" : "rgba(255,255,255,0.05)", border: `1px solid ${tab === "performers" ? "#00FFFF55" : "rgba(255,255,255,0.1)"}`, color: tab === "performers" ? "#00FFFF" : "rgba(255,255,255,0.5)" }}
+          >
+            PERFORMERS
+          </button>
+          {canSearchFans && (
+            <button
+              onClick={() => setTab("fans")}
+              style={{ fontSize: 10, fontWeight: 800, padding: "6px 16px", borderRadius: 20, cursor: "pointer", background: tab === "fans" ? "#AA2DFF22" : "rgba(255,255,255,0.05)", border: `1px solid ${tab === "fans" ? "#AA2DFF55" : "rgba(255,255,255,0.1)"}`, color: tab === "fans" ? "#AA2DFF" : "rgba(255,255,255,0.5)" }}
+            >
+              FANS
+            </button>
+          )}
+        </div>
+        {!canSearchFans && sessionRole && sessionRole !== "FAN" && (
+          <div style={{ fontSize: 9, color: "rgba(255,255,255,0.3)", marginTop: 8 }}>
+            Signed in as {sessionRole.toLowerCase()} — fan search is fan-to-fan only.
           </div>
         )}
       </section>
 
-      {rooms.length > 0 && (
-        <section style={{ maxWidth: 720, margin: "0 auto", padding: "0 24px 20px" }}>
-          <div style={{ fontSize: 9, letterSpacing: "0.3em", color: "#FF2DAA", fontWeight: 800, marginBottom: 14 }}>LIVE ROOMS</div>
-          {rooms.map(r => (
-            <Link key={r.name} href={r.href} style={{ textDecoration: "none", color: "inherit" }}>
-              <div style={{ display: "flex", gap: 12, alignItems: "center", background: "rgba(255,255,255,0.02)", border: `1px solid ${r.color}18`, borderRadius: 10, padding: "12px 16px", marginBottom: 8 }}>
-                <span style={{ fontSize: 7, fontWeight: 800, color: "#FF5555", background: "#FF555515", borderRadius: 3, padding: "2px 6px", flexShrink: 0 }}>{r.tag}</span>
-                <span style={{ flex: 1, fontSize: 12, fontWeight: 700, color: "#fff" }}>{r.name}</span>
-                <span style={{ fontSize: 9, color: r.color }}>🔴 {r.viewers} watching</span>
-              </div>
-            </Link>
-          ))}
-        </section>
-      )}
+      <section style={{ maxWidth: 720, margin: "0 auto", padding: "0 24px" }}>
+        {loading && <div style={{ color: "rgba(255,255,255,0.35)", fontSize: 12, padding: "16px 0" }}>Searching…</div>}
 
-      {artists.length > 0 && (
-        <section style={{ maxWidth: 720, margin: "0 auto", padding: "0 24px 20px" }}>
-          <div style={{ fontSize: 9, letterSpacing: "0.3em", color: "#00FFFF", fontWeight: 800, marginBottom: 14 }}>ARTISTS</div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(200px,1fr))", gap: 10 }}>
-            {artists.map(a => (
-              <Link key={a.name} href={a.href} style={{ textDecoration: "none", color: "inherit" }}>
-                <div style={{ background: "rgba(255,255,255,0.02)", border: `1px solid ${a.color}18`, borderRadius: 10, padding: "14px", display: "flex", gap: 10, alignItems: "center" }}>
-                  <span style={{ fontSize: 22 }}>{a.icon}</span>
-                  <div>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: "#fff" }}>{a.name}</div>
-                    <div style={{ fontSize: 8, color: a.color, marginTop: 2 }}>{a.genre}</div>
+        {!loading && error && (
+          <div style={{ color: "#FF8FBE", fontSize: 12, padding: "16px 0" }}>{error}</div>
+        )}
+
+        {!loading && !error && results.length === 0 && (
+          <div style={{ color: "rgba(255,255,255,0.3)", fontSize: 13, textAlign: "center", padding: "32px 0" }}>
+            {query ? `No ${tab} found for "${query}".` : `No ${tab} to show yet.`}
+          </div>
+        )}
+
+        {!loading && results.length > 0 && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {results.map((r) => (
+              <div key={r.id} style={{ display: "flex", gap: 12, alignItems: "center", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: "12px 14px" }}>
+                <Link href={r.profileRoute} style={{ display: "flex", gap: 12, alignItems: "center", flex: 1, textDecoration: "none", color: "inherit", minWidth: 0 }}>
+                  <div style={{ width: 40, height: 40, borderRadius: "50%", background: "rgba(255,255,255,0.08)", flexShrink: 0, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>
+                    {r.avatarUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={r.avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    ) : "👤"}
                   </div>
-                </div>
-              </Link>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: "#fff", display: "flex", alignItems: "center", gap: 6 }}>
+                      {r.name}
+                      {r.verified && <span style={{ fontSize: 9, color: "#00FFFF" }}>✓</span>}
+                      {r.isLive && <span style={{ fontSize: 7, fontWeight: 900, color: "#FF2DAA", background: "#FF2DAA15", border: "1px solid #FF2DAA30", borderRadius: 3, padding: "1px 5px" }}>LIVE</span>}
+                    </div>
+                    <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>
+                      {[r.genre, r.location].filter(Boolean).join(" · ") || r.tier}
+                    </div>
+                  </div>
+                </Link>
+                {tab === "performers" && sessionUserId && sessionUserId !== r.id && (
+                  <FollowButton targetUserId={r.id} targetName={r.name} variant="icon" accent="#FF2DAA" />
+                )}
+              </div>
             ))}
           </div>
-        </section>
-      )}
-
-      {beats.length > 0 && (
-        <section style={{ maxWidth: 720, margin: "0 auto", padding: "0 24px 20px" }}>
-          <div style={{ fontSize: 9, letterSpacing: "0.3em", color: "#FFD700", fontWeight: 800, marginBottom: 14 }}>BEATS</div>
-          {beats.map(b => (
-            <Link key={b.title} href={b.href} style={{ textDecoration: "none", color: "inherit" }}>
-              <div style={{ display: "flex", gap: 12, alignItems: "center", background: "rgba(255,255,255,0.02)", border: `1px solid ${b.color}15`, borderRadius: 10, padding: "12px 16px", marginBottom: 7 }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: "#fff" }}>{b.title}</div>
-                  <div style={{ fontSize: 8, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>{b.producer} · {b.bpm} BPM</div>
-                </div>
-                <span style={{ fontSize: 11, fontWeight: 800, color: b.color }}>{b.price}</span>
-              </div>
-            </Link>
-          ))}
-        </section>
-      )}
-
-      {articles.length > 0 && (
-        <section style={{ maxWidth: 720, margin: "0 auto", padding: "0 24px 20px" }}>
-          <div style={{ fontSize: 9, letterSpacing: "0.3em", color: "#AA2DFF", fontWeight: 800, marginBottom: 14 }}>ARTICLES</div>
-          {articles.map(a => (
-            <Link key={a.slug} href={`/articles/${a.slug}`} style={{ textDecoration: "none", color: "inherit" }}>
-              <div style={{ display: "flex", gap: 12, alignItems: "center", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(170,45,255,0.15)", borderRadius: 10, padding: "12px 16px", marginBottom: 7 }}>
-                <span style={{ fontSize: 9, padding: "2px 7px", background: "rgba(170,45,255,0.12)", borderRadius: 4, color: "#AA2DFF", fontWeight: 800 }}>{a.category}</span>
-                <span style={{ fontSize: 12, fontWeight: 700, color: "#fff" }}>{a.title}</span>
-              </div>
-            </Link>
-          ))}
-        </section>
-      )}
-
-      {q && totalResults === 0 && (
-        <div style={{ maxWidth: 720, margin: "0 auto", padding: "24px", textAlign: "center", color: "rgba(255,255,255,0.3)", fontSize: 13 }}>
-          No results found for &ldquo;{q}&rdquo;. Try a different search.
-        </div>
-      )}
-
-      {!q && (
-        <section style={{ textAlign: "center", marginTop: 8, display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap", padding: "0 24px" }}>
-          <Link href="/browse" style={{ fontSize: 9, fontWeight: 700, color: "#00FFFF", textDecoration: "none", border: "1px solid #00FFFF30", borderRadius: 6, padding: "8px 16px" }}>Browse All →</Link>
-          <Link href="/beat-marketplace" style={{ fontSize: 9, fontWeight: 700, color: "#FFD700", textDecoration: "none", border: "1px solid #FFD70030", borderRadius: 6, padding: "8px 16px" }}>Beat Marketplace →</Link>
-          <Link href="/live/rooms" style={{ fontSize: 9, fontWeight: 700, color: "#FF2DAA", textDecoration: "none", border: "1px solid #FF2DAA30", borderRadius: 6, padding: "8px 16px" }}>Live Rooms →</Link>
-        </section>
-      )}
+        )}
+      </section>
     </main>
   );
 }

@@ -6,6 +6,7 @@ import { updateUserTier } from '@/lib/auth/UserStore';
 import { tierForPriceId } from '@/lib/stripe/tierMapping';
 import { syncInventory } from '@/lib/commerce/commerceEngine';
 import { sendEmail } from '@/lib/email/TMIEmailSystem';
+import { waitUntil } from '@vercel/functions';
 import { createTicket } from '@/lib/tickets/ticketEngine';
 import type { TicketTier } from '@/lib/tickets/ticketCore';
 
@@ -171,7 +172,7 @@ export async function POST(req: NextRequest) {
         if (fanEmail) {
           const item = session.line_items?.data[0];
           const eventName = metadata.eventName ?? item?.description ?? 'TMI Event';
-          void sendEmail({
+          waitUntil(sendEmail({
             to: fanEmail,
             type: 'ticket_confirmation',
             data: {
@@ -182,7 +183,7 @@ export async function POST(req: NextRequest) {
               confirmationCode: session.id.slice(-8).toUpperCase(),
               ticketId: session.id,
             },
-          }).catch(() => {});
+          }).catch(() => {}));
         }
       }
 
@@ -210,7 +211,7 @@ export async function POST(req: NextRequest) {
         if (metadata.artistId) {
           const artist = await prisma.user.findUnique({ where: { id: metadata.artistId }, select: { email: true, displayName: true } }).catch(() => null);
           if (artist?.email) {
-            void sendEmail({
+            waitUntil(sendEmail({
               to: artist.email,
               type: 'tip_received',
               data: {
@@ -219,9 +220,28 @@ export async function POST(req: NextRequest) {
                 roomName: metadata.roomName ?? 'your live room',
                 message: metadata.message ?? '',
               },
-            }).catch(() => {});
+            }).catch(() => {}));
           }
         }
+      }
+
+      // ─── 3B. VENUE SKIN FULFILLMENT ────────────────────────────────────
+      if (metadata.type === 'venue_skin' && metadata.skinId && metadata.buyerId) {
+        let customColors: object | undefined;
+        if (metadata.customColors) {
+          try { customColors = JSON.parse(metadata.customColors); } catch { customColors = undefined; }
+        }
+        await prisma.venueSkinOwnership.upsert({
+          where: { userId_skinId: { userId: metadata.buyerId, skinId: metadata.skinId } },
+          create: {
+            userId: metadata.buyerId,
+            skinId: metadata.skinId,
+            customColors,
+            unlockedVia: 'purchase',
+            stripePaymentId: session.id,
+          },
+          update: { stripePaymentId: session.id },
+        });
       }
 
       // ─── 4. NFT FULFILLMENT ────────────────────────────────────────────
@@ -335,11 +355,11 @@ export async function POST(req: NextRequest) {
           const accessUntil = periodEndTs
             ? new Date(periodEndTs * 1000).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
             : 'the end of your current billing period';
-          void sendEmail({
+          waitUntil(sendEmail({
             to: email,
             type: 'subscription_cancel',
             data: { accessUntil },
-          }).catch(() => {});
+          }).catch(() => {}));
         }
       } else {
         await prisma.performerSponsorship.updateMany({
@@ -370,7 +390,7 @@ export async function POST(req: NextRequest) {
       if (email) {
         updateUserTier(email, 'FREE');
         await prisma.user.updateMany({ where: { email }, data: { tier: 'FREE' } }).catch(() => {});
-        void sendEmail({
+        waitUntil(sendEmail({
           to: email,
           type: 'payment_failed',
           data: {
@@ -378,7 +398,7 @@ export async function POST(req: NextRequest) {
             updateUrl: `${process.env.NEXTAUTH_URL ?? 'https://themusiciansindex.com'}/settings/billing`,
             failureReason: invoice.last_finalization_error?.message ?? '',
           },
-        }).catch(() => {});
+        }).catch(() => {}));
       }
     }
 

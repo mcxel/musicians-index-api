@@ -4,7 +4,7 @@ import React, { memo, useEffect, useState } from 'react';
 import MediaFallbackResolver from '@/components/media/MediaFallbackResolver';
 import MotionPhotoPreview from '@/components/media/MotionPhotoPreview';
 import Link from 'next/link';
-import { PERFORMER_REGISTRY } from '@/lib/performers/PerformerRegistry';
+import { PERFORMER_REGISTRY, isRankedEligible } from '@/lib/performers/PerformerRegistry';
 
 interface OrbitalNode {
   id: string;
@@ -87,8 +87,12 @@ export default memo(function OrbitalWheel() {
   const [crownLeader, setCrownLeader] = useState<OrbitalNode | null>(null);
 
   useEffect(() => {
-    // Bind real performers from canonical PERFORMER_REGISTRY
-    const activePerformers = PERFORMER_REGISTRY.slice(0, 10);
+    // Bind real performers from canonical PERFORMER_REGISTRY — bot-image
+    // filler entries (/bot-images/*) are atmosphere-only and must never
+    // appear as a ranked/competing performer (Rule 20, confirmed 2026-07-19).
+    const activePerformers = PERFORMER_REGISTRY
+      .filter((p) => isRankedEligible(p))
+      .slice(0, 10);
     const mappedNodes: OrbitalNode[] = activePerformers.map((p, i) => ({
       id: p.id,
       slug: p.slug,

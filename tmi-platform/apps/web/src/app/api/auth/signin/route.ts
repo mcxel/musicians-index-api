@@ -9,6 +9,7 @@ import { grantXP } from '@/lib/xp/xpEngine';
 import { compare } from 'bcryptjs';
 import prisma from '@/lib/prisma';
 import { isFounderDiamondEmail } from '@/lib/promos/FounderDiamondPassEngine';
+import { getAccountStatus } from '@/lib/moderation/ModerationEngine';
 
 const COOKIE_OPTS = {
   httpOnly: true,
@@ -84,6 +85,21 @@ export async function POST(req: NextRequest) {
           return { ...user, tier: 'DIAMOND' as import('@/lib/auth/UserStore').UserTier };
         })()
       : user;
+
+    // Trust & safety gate — blocks sign-in for suspended/banned accounts.
+    // A temporary auto-suspend self-clears here once its hold window
+    // passes without a human escalating it (see ModerationEngine).
+    const status = await getAccountStatus(resolvedUser.id);
+    if (status && status.accountStatus !== 'active') {
+      return NextResponse.json(
+        {
+          error: status.accountStatus === 'banned' ? 'This account has been banned.' : 'This account is temporarily suspended.',
+          accountStatus: status.accountStatus,
+          reason: status.accountStatusReason ?? undefined,
+        },
+        { status: 403 }
+      );
+    }
 
     const userAgent = req.headers.get('user-agent') ?? '';
     const { sessionId, sessionToken } = createSession(resolvedUser.id, resolvedUser.role, clientIp, userAgent);

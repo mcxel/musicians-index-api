@@ -94,12 +94,15 @@ const LINEUP_ICON: Record<'solo' | 'duo' | 'band' | 'group', string> = {
 
 function hasUploadedProfileImage(url?: string): boolean {
   if (!url) return false;
-  return !DEFAULT_PROFILE_PLACEHOLDERS.has(url.trim());
+  const trimmed = url.trim();
+  if (trimmed.startsWith('/bot-images/')) return false;
+  if (trimmed.includes('venue-') || trimmed.includes('gameshow-')) return false;
+  return !DEFAULT_PROFILE_PLACEHOLDERS.has(trimmed);
 }
 
 function buildDiamondOrbitMembers(): Performer[] {
   return PERFORMER_REGISTRY
-    .filter((p) => p.tier === 'Diamond')
+    .filter((p) => p.tier === 'Diamond' && hasUploadedProfileImage(p.profileImageUrl))
     .sort((a, b) => b.xp - a.xp)
     .map((p) => ({
       slug: p.slug,
@@ -811,8 +814,8 @@ export default function Home1CoverPage() {
   }, [performers.length, genreKey]);
 
   useEffect(() => {
-    const leftId = setInterval(() => setLeftRailIndex((v) => v + 1), 4800);
-    const rightId = setInterval(() => setRightRailIndex((v) => v + 1), 5200);
+    const leftId = setInterval(() => setLeftRailIndex((v) => v + 1), 13000);
+    const rightId = setInterval(() => setRightRailIndex((v) => v + 1), 13000);
     return () => {
       clearInterval(leftId);
       clearInterval(rightId);
@@ -915,7 +918,7 @@ export default function Home1CoverPage() {
     "MAGAZINE · ISSUE 1",
   ];
   const topPerformers = getTopPerformers(20);
-  const diamondMembers = PERFORMER_REGISTRY.filter((p) => p.tier === 'Diamond').sort((a, b) => b.xp - a.xp);
+  const diamondMembers = PERFORMER_REGISTRY.filter((p) => p.tier === 'Diamond' && hasUploadedProfileImage(p.profileImageUrl)).sort((a, b) => b.xp - a.xp);
 
   const genreDiscoveryRails = [
     { label: 'Top Bands', categoryHint: 'Rock', route: '/rankings?category=bands', filter: (p: Performer) => /band|group|ensemble|orchestra/i.test(`${p.name} ${p.genre}`) },
