@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getLocalArticleBySlug, getLocalArticlesByCategory } from "@/lib/editorial/localArticleCatalog";
+import MotionPhotoPreview from "@/components/media/MotionPhotoPreview";
+import { PERFORMER_REGISTRY } from "@/lib/performers/PerformerRegistry";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -23,6 +25,8 @@ export default async function PerformerArticlePage({ params }: Props) {
   const article = getLocalArticleBySlug(slug);
   if (!article || article.category !== "performer") return notFound();
 
+  const matchedPerformer = PERFORMER_REGISTRY.find(p => p.slug === slug || p.name.toLowerCase().includes(article.author.toLowerCase())) || PERFORMER_REGISTRY[0];
+
   return (
     <main style={{ minHeight: "100vh", background: "#050510", color: "#fff", paddingBottom: 80 }}>
       <div style={{ maxWidth: 760, margin: "0 auto", padding: "24px 24px 0" }}>
@@ -32,15 +36,28 @@ export default async function PerformerArticlePage({ params }: Props) {
       </div>
 
       <header style={{ maxWidth: 760, margin: "0 auto", padding: "32px 24px 40px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
-          <span style={{ fontSize: 40 }}>{article.icon}</span>
-          <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: "0.25em", color: article.heroColor, background: `${article.heroColor}18`, border: `1px solid ${article.heroColor}30`, borderRadius: 4, padding: "3px 8px" }}>
-            PERFORMER ARTICLE
-          </span>
+        <div style={{ display: "flex", gap: 24, alignItems: "center", marginBottom: 24, flexWrap: "wrap" }}>
+          <div style={{ width: 140, height: 140, borderRadius: 16, overflow: "hidden", flexShrink: 0 }}>
+            <MotionPhotoPreview
+              imageSrc={matchedPerformer?.profileImageUrl || `https://i.pravatar.cc/300?u=${slug}`}
+              motionSrc={matchedPerformer?.motionPosterUrl || matchedPerformer?.introVideoUrl}
+              altText={article.title}
+              borderColor={article.heroColor}
+              badgeLabel="LIVE MOTION ARTICLE"
+            />
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
+              <span style={{ fontSize: 28 }}>{article.icon}</span>
+              <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: "0.25em", color: article.heroColor, background: `${article.heroColor}18`, border: `1px solid ${article.heroColor}30`, borderRadius: 4, padding: "3px 8px" }}>
+                PERFORMER ARTICLE
+              </span>
+            </div>
+            <h1 style={{ fontSize: "clamp(1.4rem,4vw,2.2rem)", fontWeight: 900, lineHeight: 1.2, margin: 0 }}>
+              {article.title}
+            </h1>
+          </div>
         </div>
-        <h1 style={{ fontSize: "clamp(1.4rem,4vw,2.2rem)", fontWeight: 900, lineHeight: 1.2, marginBottom: 12 }}>
-          {article.title}
-        </h1>
         <p style={{ fontSize: 14, color: "rgba(255,255,255,0.5)", lineHeight: 1.5, marginBottom: 20 }}>
           {article.subtitle}
         </p>

@@ -20,10 +20,10 @@ export async function POST(req: NextRequest) {
   const configKey   = process.env.QUEUE_FLUSH_KEY?.trim() ?? '';
 
   if (!configKey && !process.env.CRON_SECRET?.trim()) {
-    return NextResponse.json({ ok: false, error: 'Queue flush keys are not configured' }, { status: 500 });
+    return NextResponse.json({ ok: true, skipped: true, message: 'Queue flush keys are not configured' }, { status: 200 });
   }
 
-  const isVercelCron = cronHeader === 'Bearer ' + (process.env.CRON_SECRET ?? '');
+  const isVercelCron = (process.env.CRON_SECRET?.trim() && cronHeader === 'Bearer ' + process.env.CRON_SECRET.trim());
   const isManual     = !!configKey && flushKey === configKey;
 
   if (!isVercelCron && !isManual) {

@@ -1,6 +1,7 @@
 // lib/diamond/DiamondDistributionService.ts — Assign Diamond tier and deliver notifications
 
 import { trigger } from "@/lib/mail/MailTriggerEngine";
+import prisma from "@/lib/prisma";
 
 export type DiamondTargetEntry = {
   userId: string;
@@ -20,14 +21,14 @@ export type DiamondAssignmentRecord = {
   error?: string;
 };
 
-// In-memory ledger — replace with DB write in production
+// Assignment history ledger — in-memory only, resets per serverless
+// invocation. This is a request-scoped audit trail for the response payload,
+// not the source of truth (that's User.tier in the DB, written below).
 const diamondLedger: DiamondAssignmentRecord[] = [];
 
-// In-memory tier store — in production this writes to User.tier in DB
-const diamondUsers = new Set<string>();
-
-export function isDiamond(userId: string): boolean {
-  return diamondUsers.has(userId);
+export async function isDiamond(userId: string): Promise<boolean> {
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { tier: true } });
+  return user?.tier === 'DIAMOND';
 }
 
 export function getDiamondLedger(): DiamondAssignmentRecord[] {
@@ -47,8 +48,20 @@ export async function assignDiamond(
     inAppSent: false,
   };
 
-  // 1. Grant tier
-  diamondUsers.add(target.userId);
+  // 1. Grant tier — real DB write, matched on id OR email (mirrors the
+  // userRef fallback pattern used in /api/live/go) so a caller supplying
+  // only one of the two still succeeds. Never claim success without a
+  // matched row — the previous in-memory version always "succeeded" and
+  // sent a real "You're Diamond!" email even for a nonexistent user.
+  const updated = await prisma.user.updateMany({
+    where: { OR: [{ id: target.userId }, { email: target.email }] },
+    data: { tier: 'DIAMOND' },
+  });
+  if (updated.count === 0) {
+    record.error = 'user_not_found';
+    diamondLedger.push(record);
+    return record;
+  }
 
   // 2. Send email
   try {

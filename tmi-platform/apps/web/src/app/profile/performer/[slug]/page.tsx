@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { useTmiSession } from "@/hooks/SessionContext";
-import { PERFORMER_REGISTRY } from "@/lib/performers/PerformerRegistry";
+import { PERFORMER_REGISTRY, type PerformerIdentity } from "@/lib/performers/PerformerRegistry";
 import ProfileShell from "@/components/profile/ProfileShell";
 import { notFound } from "next/navigation";
 import { BookingCanister } from "@/components/canisters/BookingCanister";
@@ -167,11 +167,38 @@ export default function PublicYophoPage({ params }: PublicYophoPageProps) {
   }, [params]);
 
   const { userId } = useTmiSession();
-  const performer = slug
+  const registryPerformer = slug
     ? PERFORMER_REGISTRY.find((p) => p.slug === slug)
     : undefined;
 
+  // Fall back to a real DB lookup when the static seed registry doesn't have
+  // this performer. PERFORMER_REGISTRY is a hardcoded demo list (Wavetek, DJ
+  // Kraze, etc.) that's never populated from real signups — without this,
+  // every genuine new performer 404s the moment they view their own profile.
+  const [dbPerformer, setDbPerformer] = useState<PerformerIdentity | null>(null);
+  const [dbLookupDone, setDbLookupDone] = useState(false);
+
+  useEffect(() => {
+    if (!resolved || !slug || registryPerformer) return;
+    let active = true;
+    fetch(`/api/performers/by-slug?slug=${encodeURIComponent(slug)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { performer?: PerformerIdentity } | null) => {
+        if (active && d?.performer) setDbPerformer(d.performer);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (active) setDbLookupDone(true);
+      });
+    return () => {
+      active = false;
+    };
+  }, [resolved, slug, registryPerformer]);
+
+  const performer = registryPerformer ?? dbPerformer ?? undefined;
+
   if (!resolved || !slug) return null;
+  if (!performer && !registryPerformer && !dbLookupDone) return null; // DB fallback still checking
   if (!performer) return notFound();
 
   const isOwner =

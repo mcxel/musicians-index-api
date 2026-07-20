@@ -19,8 +19,12 @@ export default function OnboardingArtistPage() {
   const [genres, setGenres] = useState("");
   const [city, setCity] = useState("");
 
-  // Step 3 & 4 photo editing
+  // Step 3 & 4 photo & live motion photo editing
   const [imageSrc, setImageSrc] = useState<string | null>(null);
+  const [motionSrc, setMotionSrc] = useState<string | null>(null);
+  const [motionDuration, setMotionDuration] = useState<2 | 4 | 6>(6); // Default 6s (Diamond NFL Draft style)
+  const [isRecordingMotion, setIsRecordingMotion] = useState(false);
+  const [recordingProgress, setRecordingProgress] = useState(0);
   const [cameraActive, setCameraActive] = useState(false);
   const [zoom, setZoom] = useState(1);
   const [rotate, setRotate] = useState(0);
@@ -72,7 +76,7 @@ export default function OnboardingArtistPage() {
       if (fieldName === "city") payload.location = value;
 
       await fetch("/api/profile/update", {
-        method: "POST",
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify(payload),
@@ -87,7 +91,7 @@ export default function OnboardingArtistPage() {
     try {
       // Persist the current step to the database
       await fetch("/api/profile/update", {
-        method: "POST",
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({ onboardingStep: nextStepVal }),
@@ -104,9 +108,11 @@ export default function OnboardingArtistPage() {
   const startCamera = async () => {
     try {
       const mediaStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
-      if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream;
-      }
+      // Don't assign srcObject here — the <video> element is only mounted
+      // once cameraActive becomes true (it's inside a cameraActive ? <video>
+      // : ... conditional), so videoRef.current is still null at this point
+      // on first activation. The attach effect below runs after that render
+      // instead, once the element actually exists.
       setStream(mediaStream);
       setCameraActive(true);
       setMessage("");
@@ -115,6 +121,14 @@ export default function OnboardingArtistPage() {
       setMessage("Could not access camera. Please select 'Upload Photo' instead.");
     }
   };
+
+  // Attach the stream once the <video> element actually exists in the DOM
+  // (i.e. after cameraActive flips to true and React has re-rendered).
+  useEffect(() => {
+    if (cameraActive && stream && videoRef.current) {
+      videoRef.current.srcObject = stream;
+    }
+  }, [cameraActive, stream]);
 
   const stopCamera = () => {
     if (stream) {
@@ -125,23 +139,85 @@ export default function OnboardingArtistPage() {
   };
 
   const snapPhoto = () => {
-    if (videoRef.current && canvasRef.current) {
+    if (videoRef.current) {
       const video = videoRef.current;
-      const canvas = canvasRef.current;
+      const canvas = canvasRef.current || document.createElement("canvas");
       const ctx = canvas.getContext("2d");
       if (ctx) {
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
+        const w = video.videoWidth || 640;
+        const h = video.videoHeight || 480;
+        canvas.width = w;
+        canvas.height = h;
         // Flip horizontally for mirror effect
         ctx.translate(canvas.width, 0);
         ctx.scale(-1, 1);
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
         
-        const dataUrl = canvas.toDataURL("image/jpeg");
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
         setImageSrc(dataUrl);
         stopCamera();
         void handleNextStep("4");
       }
+    }
+  };
+
+  const snapMotionPhoto = () => {
+    if (!stream) return;
+    setIsRecordingMotion(true);
+    setRecordingProgress(0);
+
+    // Also snap a still photo immediately as fallback
+    if (videoRef.current) {
+      const video = videoRef.current;
+      const canvas = canvasRef.current || document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      if (ctx) {
+        const w = video.videoWidth || 640;
+        const h = video.videoHeight || 480;
+        canvas.width = w;
+        canvas.height = h;
+        ctx.translate(canvas.width, 0);
+        ctx.scale(-1, 1);
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        setImageSrc(canvas.toDataURL("image/jpeg", 0.85));
+      }
+    }
+
+    try {
+      const mediaRecorder = new MediaRecorder(stream);
+      const chunks: Blob[] = [];
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunks.push(e.data);
+      };
+
+      mediaRecorder.onstop = () => {
+        const motionBlob = new Blob(chunks, { type: "video/webm" });
+        const motionUrl = URL.createObjectURL(motionBlob);
+        setMotionSrc(motionUrl);
+        setIsRecordingMotion(false);
+        stopCamera();
+        void handleNextStep("4");
+      };
+
+      mediaRecorder.start(100);
+
+      const durationMs = motionDuration * 1000;
+      const startTime = Date.now();
+      const interval = setInterval(() => {
+        const elapsed = Date.now() - startTime;
+        const progress = Math.min(100, (elapsed / durationMs) * 100);
+        setRecordingProgress(progress);
+        if (elapsed >= durationMs) {
+          clearInterval(interval);
+          if (mediaRecorder.state !== "inactive") {
+            mediaRecorder.stop();
+          }
+        }
+      }, 100);
+    } catch (err) {
+      console.error("Motion photo recording failed:", err);
+      setIsRecordingMotion(false);
     }
   };
 
@@ -160,12 +236,12 @@ export default function OnboardingArtistPage() {
   };
 
   const handleSavePhotoAndFinish = async () => {
-    if (!imageSrc || !canvasRef.current) return;
+    if (!imageSrc) return;
     setBusy(true);
     setMessage("");
 
     try {
-      const canvas = canvasRef.current;
+      const canvas = canvasRef.current || document.createElement("canvas");
       const ctx = canvas.getContext("2d");
       const img = new Image();
       img.src = imageSrc;
@@ -222,8 +298,10 @@ export default function OnboardingArtistPage() {
       if (!uploadData.success || !uploadData.url) throw new Error("Upload did not return success url");
 
       // Commit finalized profile data and mark onboarding complete!
+      // /api/profile/update only exports a PUT handler — POST returns 405
+      // with no route match, which was silently failing this exact step.
       const profileUpdateRes = await fetch("/api/profile/update", {
-        method: "POST",
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
@@ -396,18 +474,56 @@ export default function OnboardingArtistPage() {
                   style={{ width: "100%", height: "100%", objectFit: "cover", transform: "scaleX(-1)" }}
                 />
               </div>
-              <div style={{ display: "flex", gap: 10 }}>
+              {/* Duration selector */}
+              <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+                {([2, 4, 6] as const).map((dur) => (
+                  <button
+                    key={dur}
+                    type="button"
+                    onClick={() => setMotionDuration(dur)}
+                    style={{
+                      padding: "4px 8px",
+                      borderRadius: 6,
+                      fontSize: 10,
+                      fontWeight: 800,
+                      border: motionDuration === dur ? "1px solid #FF2DAA" : "1px solid rgba(255,255,255,0.2)",
+                      background: motionDuration === dur ? "rgba(255,45,170,0.2)" : "rgba(0,0,0,0.4)",
+                      color: motionDuration === dur ? "#FF2DAA" : "#fff",
+                      cursor: "pointer",
+                    }}
+                  >
+                    {dur === 6 ? "💎 6s DRAFT" : dur === 4 ? "⭐ 4s CALL-OFF" : "⚡ 2s SNAP"}
+                  </button>
+                ))}
+              </div>
+
+              {isRecordingMotion && (
+                <div style={{ width: "100%", height: 6, borderRadius: 3, background: "rgba(255,255,255,0.1)", overflow: "hidden", marginBottom: 8 }}>
+                  <div style={{ height: "100%", width: `${recordingProgress}%`, background: "linear-gradient(90deg,#FF2DAA,#00FFFF)", transition: "width 0.1s linear" }} />
+                </div>
+              )}
+
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center" }}>
+                <button
+                  type="button"
+                  onClick={snapMotionPhoto}
+                  disabled={isRecordingMotion}
+                  style={{ ...buttonStyle, background: "linear-gradient(135deg,#FF2DAA,#AA2DFF)", fontSize: 11 }}
+                >
+                  {isRecordingMotion ? `🔴 RECORDING ${motionDuration}s...` : `🎥 LIVE MOTION (${motionDuration}s)`}
+                </button>
                 <button
                   type="button"
                   onClick={snapPhoto}
-                  style={{ ...buttonStyle, background: "#FF2DAA" }}
+                  disabled={isRecordingMotion}
+                  style={{ ...buttonStyle, background: "rgba(255,255,255,0.1)", boxShadow: "none", fontSize: 11 }}
                 >
-                  📸 SNAP PHOTO
+                  📸 SNAP STILL
                 </button>
                 <button
                   type="button"
                   onClick={stopCamera}
-                  style={{ ...buttonStyle, background: "rgba(255,255,255,0.1)", boxShadow: "none" }}
+                  style={{ ...buttonStyle, background: "rgba(255,255,255,0.05)", boxShadow: "none", fontSize: 11 }}
                 >
                   Cancel
                 </button>
@@ -566,10 +682,13 @@ export default function OnboardingArtistPage() {
   }
 
   return (
-    <OnboardingShell
-      role="artist"
-      form={<div style={{ display: "flex", flexDirection: "column", gap: 20 }}>{formContent}</div>}
-    />
+    <>
+      <canvas ref={canvasRef} style={{ display: "none" }} />
+      <OnboardingShell
+        role="artist"
+        form={<div style={{ display: "flex", flexDirection: "column", gap: 20 }}>{formContent}</div>}
+      />
+    </>
   );
 }
 

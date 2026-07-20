@@ -17,14 +17,14 @@ const ROLES = [
 function roleToDestination(role: string): string {
   if (role === "admin") return "/admin";
   const map: Record<string, string> = {
-    artist:     "/dashboard/artist",
-    performer:  "/dashboard/performer",
-    fan:        "/dashboard/fan",
-    sponsor:    "/dashboard/sponsor",
-    advertiser: "/dashboard/advertiser",
-    venue:      "/dashboard/venue",
-    writer:     "/dashboard/writer",
-    promoter:   "/dashboard/promoter",
+    artist:     "/hub/performer",
+    performer:  "/hub/performer",
+    fan:        "/hub/fan",
+    sponsor:    "/hub/sponsor",
+    advertiser: "/hub/advertiser",
+    venue:      "/hub/venue",
+    writer:     "/hub/writer",
+    promoter:   "/hub/promoter",
   };
   return map[role] ?? "/hub/fan";
 }

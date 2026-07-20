@@ -174,20 +174,40 @@ export default function MagazineNavBar() {
           {/* Auth zone — always visible, always right-aligned */}
           <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
             {isAuth ? (
-              <Link
-                href={profileHref}
-                aria-label="My Account"
-                style={{
-                  width: 34, height: 34, borderRadius: "50%",
-                  display: "inline-flex", alignItems: "center", justifyContent: "center",
-                  border: `2px solid ${roleColor}`, background: `${roleColor}22`,
-                  color: roleColor, fontSize: 13, fontWeight: 900,
-                  textDecoration: "none", flexShrink: 0,
-                  boxShadow: `0 0 10px ${roleColor}44`,
-                }}
-              >
-                {initial}
-              </Link>
+              <>
+                <Link
+                  href={profileHref}
+                  aria-label="My Profile"
+                  title="My Profile"
+                  style={{
+                    width: 34, height: 34, borderRadius: "50%",
+                    display: "inline-flex", alignItems: "center", justifyContent: "center",
+                    border: `2px solid ${roleColor}`, background: `${roleColor}22`,
+                    color: roleColor, fontSize: 13, fontWeight: 900,
+                    textDecoration: "none", flexShrink: 0,
+                    boxShadow: `0 0 10px ${roleColor}44`,
+                  }}
+                >
+                  {initial}
+                </Link>
+                {/* Separate from the profile avatar — this is the actual
+                    discoverable path to Account Settings / Sign Out, which
+                    previously had no entry point in this bar at all. */}
+                <Link
+                  href="/account"
+                  aria-label="Account Settings & Sign Out"
+                  title="Account Settings & Sign Out"
+                  style={{
+                    width: 28, height: 28, borderRadius: "50%",
+                    display: "inline-flex", alignItems: "center", justifyContent: "center",
+                    border: "1px solid rgba(255,255,255,0.25)", background: "rgba(255,255,255,0.06)",
+                    color: "rgba(255,255,255,0.7)", fontSize: 13,
+                    textDecoration: "none", flexShrink: 0,
+                  }}
+                >
+                  ⚙
+                </Link>
+              </>
             ) : (
               <>
                 <Link href="/auth"   className="tmi-auth-btn tmi-auth-login">Log In</Link>

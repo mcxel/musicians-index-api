@@ -2,6 +2,7 @@
 
 import React, { memo, useEffect, useState } from 'react';
 import MediaFallbackResolver from '@/components/media/MediaFallbackResolver';
+import MotionPhotoPreview from '@/components/media/MotionPhotoPreview';
 import Link from 'next/link';
 import { PERFORMER_REGISTRY } from '@/lib/performers/PerformerRegistry';
 
@@ -12,6 +13,7 @@ interface OrbitalNode {
   name: string;
   genre: string;
   imageUrl: string;
+  motionUrl?: string;
   isLive: boolean;
   color: string;
 }
@@ -19,10 +21,6 @@ interface OrbitalNode {
 const ACCENT_COLORS = ['#FF2DAA', '#FFD700', '#00FF88', '#00E5FF', '#9B59B6', '#FF8C00', '#E63000', '#FFD700', '#00E5FF', '#FF2DAA'];
 
 // ─── GPU layer constants ────────────────────────────────────────────────────
-// Applied to every animated element. Promotes each to its own compositing
-// layer so the CSS `orbit`/`counterOrbit` animations run entirely on the GPU.
-// Without this the browser repaints the wheel on every Home1CoverPage
-// re-render (genre switch fires every 6 s), causing the mobile flicker.
 const GPU_LAYER: React.CSSProperties = {
   willChange: 'transform',
   transform: 'translateZ(0)',
@@ -30,7 +28,6 @@ const GPU_LAYER: React.CSSProperties = {
 };
 
 // ─── OrbitalNodeCard ─────────────────────────────────────────────────────────
-// Memoized so the card subtree never re-renders unless the node data changes.
 const OrbitalNodeCard = memo(function OrbitalNodeCard({ node }: { node: OrbitalNode }) {
   return (
     <Link href={`/profile/performer/${node.slug}`} style={{ textDecoration: 'none' }}>
@@ -58,8 +55,15 @@ const OrbitalNodeCard = memo(function OrbitalNodeCard({ node }: { node: OrbitalN
         }}
       >
         <div style={{ position: 'relative', width: 64, height: 64, borderRadius: '50%', overflow: 'hidden', border: `2px solid ${node.color}`, marginBottom: 6 }}>
-          <MediaFallbackResolver profileFallbackUrl={node.imageUrl} altText={node.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-          <div style={{ position: 'absolute', top: 0, left: 0, background: 'rgba(0,0,0,0.8)', color: '#FFD700', fontSize: 9, fontWeight: 900, padding: '2px 6px', borderBottomRightRadius: 8, borderTopLeftRadius: 8 }}>#{node.rank}</div>
+          <MotionPhotoPreview
+            imageSrc={node.imageUrl}
+            motionSrc={node.motionUrl}
+            altText={node.name}
+            showBadge={false}
+            autoPlay={true}
+            style={{ width: '100%', height: '100%' }}
+          />
+          <div style={{ position: 'absolute', top: 0, left: 0, background: 'rgba(0,0,0,0.8)', color: '#FFD700', fontSize: 9, fontWeight: 900, padding: '2px 6px', borderBottomRightRadius: 8, borderTopLeftRadius: 8, zIndex: 12 }}>#{node.rank}</div>
         </div>
         <div style={{ fontSize: 10, fontWeight: 900, color: '#fff', textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%' }}>{node.name}</div>
         <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.5)', marginTop: 2 }}>{node.genre}</div>
@@ -204,7 +208,14 @@ export default memo(function OrbitalWheel() {
         onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.12)'; e.currentTarget.style.boxShadow = '0 0 60px #FFD700'; }}
         onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = '0 0 40px rgba(255,215,0,0.8)'; }}
         >
-          <MediaFallbackResolver profileFallbackUrl={crownLeader.imageUrl} altText={crownLeader.name} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0.4 }} />
+          <MotionPhotoPreview
+            imageSrc={crownLeader.imageUrl}
+            motionSrc={crownLeader.motionUrl}
+            altText={crownLeader.name}
+            showBadge={false}
+            autoPlay={true}
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0.55 }}
+          />
           <div style={{ position: 'relative', zIndex: 2, textAlign: 'center', padding: '4px' }}>
             <div style={{ fontSize: 10, color: '#FFD700', letterSpacing: '0.15em', fontWeight: 900, textShadow: '0 0 8px #FFD700' }}>👑 #1 LEADER</div>
             <div style={{ fontFamily: 'var(--font-orbitron, Impact)', fontSize: 12, fontWeight: 900, color: '#fff', textShadow: '0 0 10px #000', lineHeight: 1.1, marginTop: 2 }}>

@@ -43,7 +43,7 @@ function randomOtherIndex(current: number, length: number) {
   return next;
 }
 
-function useDesktopRailVisibility(minWidth = 1900) {
+function useDesktopRailVisibility(minWidth = 2100) {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {

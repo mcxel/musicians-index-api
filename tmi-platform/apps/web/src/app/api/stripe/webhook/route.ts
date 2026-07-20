@@ -382,6 +382,16 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // ─── CHARGE REFUND EVENTS ────────────────────────────────────────────────
+    if (event.type === 'charge.refunded') {
+      const charge = event.data.object as Stripe.Charge;
+      const customerEmail = charge.billing_details?.email || charge.receipt_email;
+      if (customerEmail && charge.refunded) {
+        console.log(`[Stripe Webhook] Charge refunded for ${customerEmail}. Revoking tier.`);
+        await revokeSubscriptionTier(customerEmail);
+      }
+    }
+
     // ── Mark event as processed (idempotency) ────────────────────────────────────
     await markEventProcessed(event.id);
 

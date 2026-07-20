@@ -1,56 +1,82 @@
-import Link from "next/link";
+"use client";
+
+import React, { useState } from "react";
+import GlobalTmiHeader from "@/components/shell/GlobalTmiHeader";
 
 export default function ContactPage() {
+  const [submitted, setSubmitted] = useState(false);
+
   return (
-    <main style={{ minHeight: "100vh", background: "#060410", color: "#fff", fontFamily: "'Inter', sans-serif", paddingBottom: 80 }}>
-
-      <div style={{ padding: "32px 24px 0" }}>
-        <Link href="/home/1" style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.14em", color: "rgba(255,255,255,0.3)", textDecoration: "none" }}>← HOME</Link>
-      </div>
-
-      <div style={{ maxWidth: 640, margin: "40px auto", padding: "0 24px" }}>
-        <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.2em", color: "#00FFFF", textTransform: "uppercase", marginBottom: 8 }}>CONTACT</div>
-        <h1 style={{ fontSize: "clamp(24px,5vw,40px)", fontWeight: 900, margin: "0 0 12px", letterSpacing: "-0.5px" }}>
-          Get in Touch with TMI
+    <div style={{ background: "#050510", color: "#fff", minHeight: "100vh", fontFamily: "'Inter', sans-serif" }}>
+      <GlobalTmiHeader />
+      <main style={{ maxWidth: 640, margin: "0 auto", padding: "40px 20px 80px" }}>
+        <h1 style={{ fontSize: 28, fontWeight: 900, color: "#00FFFF", marginBottom: 16 }}>
+          Contact TMI Support & Business
         </h1>
-        <p style={{ fontSize: 14, color: "rgba(255,255,255,0.5)", margin: "0 0 32px", lineHeight: 1.6 }}>
-          For partnerships, support, or general inquiries — we respond within 24 hours.
+        <p style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", lineHeight: 1.6, marginBottom: 24 }}>
+          Have a question about venue booking, performer registration, Diamond memberships, or technical support? Send us a message below.
         </p>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 40 }}>
-          {[
-            { label: "General Support",       desc: "Account issues, billing, platform questions", href: "/support",         color: "#00FFFF", icon: "🎧" },
-            { label: "Artist Partnerships",   desc: "Performance opportunities, collaboration, features", href: "/hub/artist",  color: "#FF2DAA", icon: "🎤" },
-            { label: "Sponsor & Advertiser",  desc: "Brand deals, ad placements, sponsorship packages",  href: "/hub/sponsor", color: "#FFD700", icon: "🤝" },
-            { label: "Venue Partnerships",    desc: "Host TMI events, list your venue, booking inquiries", href: "/hub/venue",  color: "#22c55e", icon: "🏟️" },
-            { label: "Press & Media",         desc: "Press kits, media requests, interviews",              href: "/support",    color: "#AA2DFF", icon: "📰" },
-          ].map((item) => (
-            <Link key={item.href} href={item.href} style={{ textDecoration: "none" }}>
-              <div style={{
-                background: "rgba(255,255,255,0.03)", border: `1px solid ${item.color}28`,
-                borderRadius: 12, padding: "18px 20px",
-                display: "flex", alignItems: "flex-start", gap: 14,
-              }}>
-                <span style={{ fontSize: 22, flexShrink: 0 }}>{item.icon}</span>
-                <div>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: item.color, marginBottom: 4 }}>{item.label}</div>
-                  <div style={{ fontSize: 12, color: "rgba(255,255,255,0.45)" }}>{item.desc}</div>
-                </div>
-                <span style={{ marginLeft: "auto", fontSize: 12, color: item.color, flexShrink: 0 }}>→</span>
-              </div>
-            </Link>
-          ))}
-        </div>
+        {submitted ? (
+          <div style={{ padding: 20, borderRadius: 12, background: "rgba(0,255,255,0.1)", border: "1px solid #00FFFF", color: "#fff", textAlign: "center" }}>
+            <h3 style={{ fontSize: 18, color: "#00FFFF", margin: 0 }}>Thank You!</h3>
+            <p style={{ fontSize: 12, color: "rgba(255,255,255,0.7)", marginTop: 6 }}>
+              Your inquiry has been received. Our team will get back to you within 24 hours.
+            </p>
+          </div>
+        ) : (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              setSubmitted(true);
+            }}
+            style={{ display: "flex", flexDirection: "column", gap: 14 }}
+          >
+            <div>
+              <label style={{ fontSize: 11, fontWeight: 800, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 4 }}>
+                YOUR NAME
+              </label>
+              <input
+                required
+                type="text"
+                placeholder="Enter your name"
+                style={{ width: "100%", padding: 12, borderRadius: 8, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.15)", color: "#fff", fontSize: 13, boxSizing: "border-box" }}
+              />
+            </div>
 
-        <div style={{
-          background: "rgba(0,255,255,0.05)", border: "1px solid rgba(0,255,255,0.15)",
-          borderRadius: 14, padding: "24px 20px", textAlign: "center",
-        }}>
-          <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", marginBottom: 8 }}>Direct contact</div>
-          <div style={{ fontSize: 14, fontWeight: 700, color: "#00FFFF" }}>berntmusic33@gmail.com</div>
-          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", marginTop: 6 }}>BernoutGlobal LLC · The Musician&apos;s Index</div>
-        </div>
-      </div>
-    </main>
+            <div>
+              <label style={{ fontSize: 11, fontWeight: 800, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 4 }}>
+                EMAIL ADDRESS
+              </label>
+              <input
+                required
+                type="email"
+                placeholder="you@example.com"
+                style={{ width: "100%", padding: 12, borderRadius: 8, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.15)", color: "#fff", fontSize: 13, boxSizing: "border-box" }}
+              />
+            </div>
+
+            <div>
+              <label style={{ fontSize: 11, fontWeight: 800, color: "rgba(255,255,255,0.6)", display: "block", marginBottom: 4 }}>
+                MESSAGE / INQUIRY
+              </label>
+              <textarea
+                required
+                rows={5}
+                placeholder="How can we help you?"
+                style={{ width: "100%", padding: 12, borderRadius: 8, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.15)", color: "#fff", fontSize: 13, boxSizing: "border-box" }}
+              />
+            </div>
+
+            <button
+              type="submit"
+              style={{ padding: "12px 20px", borderRadius: 8, background: "linear-gradient(135deg,#FF2DAA,#AA2DFF)", border: "none", color: "#fff", fontWeight: 900, fontSize: 13, cursor: "pointer", marginTop: 8 }}
+            >
+              SEND MESSAGE
+            </button>
+          </form>
+        )}
+      </main>
+    </div>
   );
 }

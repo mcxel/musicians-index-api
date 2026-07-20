@@ -37,6 +37,26 @@ export class DiamondInviteEngine {
       status: 'active',
     }],
 
+    // Jerome — QA & Platform Tester (lifetime diamond)
+    ['VIP-JEROME-2026', {
+      token: 'VIP-JEROME-2026',
+      email: 'jerome@themusiciansindex.com',
+      emailAliases: ['jerome@example.com'],
+      assignedRole: 'performer',
+      isFounder: true,
+      status: 'active',
+    }],
+
+    // Terry — QA & Platform Tester (lifetime diamond)
+    ['VIP-TERRY-2026', {
+      token: 'VIP-TERRY-2026',
+      email: 'terry@themusiciansindex.com',
+      emailAliases: ['terry@example.com'],
+      assignedRole: 'fan',
+      isFounder: true,
+      status: 'active',
+    }],
+
     // KG — Platform beat producer (lifetime diamond producer)
     ['VIP-KG-2026', {
       token: 'VIP-KG-2026',

@@ -82,11 +82,12 @@ export async function validateSessionToken(
     return { valid: false, reason: 'inactivity-timeout', replayDetected: false };
   }
 
-  // Check IP consistency (optional: allow up to 2 different IPs in 5min window to handle proxies)
+  // Check IP consistency (allow proxy/cellular network shifts without revoking 7-day sessions)
   const ipMismatch = session.lastIp !== clientIp;
-  if (ipMismatch && session.lastActivity > now - 5 * 60 * 1000) {
-    // IP change within 5 minutes - potential hijack
-    return { valid: false, reason: 'ip-mismatch', replayDetected: true };
+  if (ipMismatch) {
+    // Log IP transition for security audit without prematurely invalidating mobile sessions
+    console.log(`[SessionManager] Mobile/Proxy IP shift detected for session ${sessionId}: ${session.lastIp} -> ${clientIp}`);
+    session.lastIp = clientIp; // Update to new active IP
   }
 
   // Detect replay attacks: same request repeated in short time window

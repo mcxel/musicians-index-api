@@ -37,7 +37,7 @@ export default function PersistentMiniPlayer() {
     <div
       style={{
         position: 'fixed',
-        bottom: 16,
+        bottom: 64, // clears the full-width TMIGlobalNav dock now docked at bottom:0
         right: 16,
         zIndex: 9980,
         width: 220,

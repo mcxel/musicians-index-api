@@ -50,6 +50,8 @@ function enrichPerformersWithRealLiveness(performers: PerformerIdentity[]): Perf
   }));
 }
 
+import GlobalTmiHeader from '@/components/shell/GlobalTmiHeader';
+
 export default async function Home1Route() {
   // P0 Avatar Certification: Fetch performers with real avatar data from Prisma
   const performers = await fetchPerformersWithRealAvatars();
@@ -64,6 +66,7 @@ export default async function Home1Route() {
 
   return (
     <>
+      <GlobalTmiHeader />
       <SponsorRail sponsors={sponsors} zone="home-1-top" />
       <Home1CoverPage />
       <EventReel zone="home-1" />

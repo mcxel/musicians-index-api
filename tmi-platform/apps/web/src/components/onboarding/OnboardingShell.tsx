@@ -77,21 +77,24 @@ function DefaultHero({ role }: { role: OnboardingRole }) {
         alignItems: "center",
         justifyContent: "center",
         gap: 16,
-        padding: 32,
+        padding: "16px 32px",
       }}
     >
-      {/* Placeholder illustration frame */}
+      {/* Placeholder illustration frame — clamp() so it shrinks naturally
+          inside the compact mobile hero panel (max-height: 140px) instead
+          of a fixed 160px that would overflow it. */}
       <div
         style={{
-          width: 160,
-          height: 160,
+          width: "clamp(56px, 15vh, 160px)",
+          height: "clamp(56px, 15vh, 160px)",
           borderRadius: "50%",
           border: `2px solid ${cfg.marqueColor}30`,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          fontSize: 64,
+          fontSize: "clamp(24px, 6vh, 64px)",
           background: `radial-gradient(circle, ${cfg.marqueColor}10 0%, transparent 70%)`,
+          flexShrink: 0,
         }}
       >
         {role === "fan" ? "🎵" : role === "artist" ? "🎤" : role === "sponsor" ? "🏢" : role === "advertiser" ? "📊" : "🎙"}
@@ -154,6 +157,17 @@ export default function OnboardingShell({
         padding: "24px 16px",
       }}
     >
+      {/* Below 700px: stack vertically instead of a fixed 40/60 side-by-side
+          split — on a phone that split squeezes the actual form (name/bio
+          fields, camera circle) into ~60% of an already-narrow screen while
+          a purely decorative hero panel eats the rest. */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        @media (max-width: 700px) {
+          [data-onboarding-shell] > div { flex-direction: column !important; }
+          [data-onboarding-shell] [data-slot="hero"] { flex: 0 0 auto !important; min-height: 0 !important; max-height: 140px !important; }
+          [data-onboarding-shell] [data-slot="form"] { flex: 1 1 auto !important; }
+        }
+      `}} />
       <div
         style={{
           width: "100%",

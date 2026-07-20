@@ -27,6 +27,7 @@ import { BezelFrame } from '@/components/admin/overseer/AdminDesignSystem';
 import DesktopAtmosphereRails from '@/components/home/DesktopAtmosphereRails';
 import CollapsibleCanister from "@/components/canisters/CollapsibleCanister";
 import AudienceScene from "@/components/live/AudienceScene";
+import MasterControlDock from "@/components/shell/MasterControlDock";
 
 interface FeaturedLive {
   name: string;
@@ -57,7 +58,7 @@ export default function FanHQShell({ fanId, fanDisplayName }: FanHQShellProps) {
   const router = useRouter();
   const { totalXp, walletCredits, currentLevel } = useGamificationEngine();
   const { economyState } = useTmiSession();
-  const { current: nowPlaying } = useWatchSession();
+  const { current: nowPlaying, stopWatching } = useWatchSession();
   const [featuredLive, setFeaturedLive] = useState<FeaturedLive | null>(null);
   const [previewItem, setPreviewItem] = useState<{
     title: string;
@@ -474,7 +475,7 @@ export default function FanHQShell({ fanId, fanDisplayName }: FanHQShellProps) {
           <nav style={{ display: "flex", gap: 18, fontSize: 10, fontWeight: 900, letterSpacing: "0.08em" }}>
             {["HOME", "DISCOVER", "LIVE NOW", "MAGAZINE", "MARKETPLACE", "ARENA"].map((tab) => {
               const active = tab === "LIVE NOW";
-              const href = tab === "HOME" ? "/home/1" : tab === "DISCOVER" ? "/live/lobby" : tab === "LIVE NOW" ? "/hub/fan" : `/${tab.toLowerCase()}`;
+              const href = tab === "HOME" ? "/home/1" : tab === "DISCOVER" ? "/live/lobby" : tab === "LIVE NOW" ? "/live" : `/${tab.toLowerCase()}`;
               return (
                 <Link key={tab} href={href} style={{
                   color: active ? "#FF2DAA" : "#fff",
@@ -868,17 +869,19 @@ export default function FanHQShell({ fanId, fanDisplayName }: FanHQShellProps) {
                     </div>
                   </div>
 
-                  <button style={{
-                    background: "linear-gradient(135deg, #FF2DAA, #AA2DFF)",
-                    border: "none",
-                    borderRadius: 8,
-                    color: "#fff",
-                    fontSize: 9,
-                    fontWeight: 900,
-                    padding: "6px 12px",
-                    cursor: "pointer",
-                    boxShadow: "0 0 10px rgba(255, 45, 170, 0.4)"
-                  }}>
+                  <button
+                    onClick={() => router.push("/avatar-center")}
+                    style={{
+                      background: "linear-gradient(135deg, #FF2DAA, #AA2DFF)",
+                      border: "none",
+                      borderRadius: 8,
+                      color: "#fff",
+                      fontSize: 9,
+                      fontWeight: 900,
+                      padding: "6px 12px",
+                      cursor: "pointer",
+                      boxShadow: "0 0 10px rgba(255, 45, 170, 0.4)"
+                    }}>
                     CUSTOMIZE AVATAR
                   </button>
                 </div>
@@ -938,16 +941,18 @@ export default function FanHQShell({ fanId, fanDisplayName }: FanHQShellProps) {
                     ))}
                   </div>
 
-                  <button style={{
-                    background: "rgba(170, 45, 255, 0.15)",
-                    border: "1.5px solid #AA2DFF",
-                    borderRadius: 8,
-                    color: "#ffe3a3",
-                    fontSize: 9,
-                    fontWeight: 900,
-                    padding: "6px 12px",
-                    cursor: "pointer"
-                  }}>
+                  <button
+                    onClick={() => router.push("/memories")}
+                    style={{
+                      background: "rgba(170, 45, 255, 0.15)",
+                      border: "1.5px solid #AA2DFF",
+                      borderRadius: 8,
+                      color: "#ffe3a3",
+                      fontSize: 9,
+                      fontWeight: 900,
+                      padding: "6px 12px",
+                      cursor: "pointer"
+                    }}>
                     VIEW ALL MEMORIES
                   </button>
                 </div>
@@ -1100,143 +1105,18 @@ export default function FanHQShell({ fanId, fanDisplayName }: FanHQShellProps) {
         </div>
       </div>
 
-      {/* Bottom unified controller dock */}
-      <div style={{
-        background: "linear-gradient(180deg, #150910 0%, #050510 100%)",
-        borderTop: "3px solid #b8860b",
-        padding: "10px 24px",
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-        flexShrink: 0,
-        boxShadow: "0 -4px 15px rgba(0,0,0,0.8), inset 0 0 10px rgba(255,215,0,0.1)",
-        zIndex: 50
-      }}>
-        {/* Left: Now Playing */}
-        <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 220 }}>
-          <div style={{ width: 32, height: 32, background: "rgba(255,255,255,0.06)", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>
-            🎵
-          </div>
-          <div>
-            <div style={{ fontSize: 9, fontWeight: 900, color: "#fff" }}>Hustle &amp; Flow</div>
-            <div style={{ fontSize: 7, color: "rgba(255,255,255,0.4)" }}>MarcelD • 2:34 / 4:18</div>
-          </div>
-          {/* Waveform indicator */}
-          <div style={{ display: "flex", gap: 2, alignItems: "end", height: 12, marginLeft: 8 }}>
-            {[6, 12, 8, 14, 5, 10, 4].map((h, i) => (
-              <span key={i} style={{
-                width: 2,
-                height: h,
-                background: "#FF2DAA",
-                animation: "pulse 1s infinite alternate"
-              }} />
-            ))}
-          </div>
-        </div>
-
-        {/* Center Navigation Icons */}
-        <div style={{ display: "flex", gap: 16 }}>
-          {[
-            { label: "Home", icon: "🏠", href: "/home/1" },
-            { label: "Discover", icon: "🧭", href: "/live/lobby" },
-            { label: "Live Now", icon: "📹", active: true, href: "/hub/fan" },
-            { label: "Lobby", icon: "👥", href: "/live/lobby/fans" },
-            { label: "Messages", icon: "✉", count: 12, href: "/messages" },
-            { label: "Notifications", icon: "🔔", count: 3, href: "/notifications" }
-          ].map((item) => (
-            <Link key={item.label} href={item.href} style={{
-              position: "relative",
-              textDecoration: "none",
-              color: item.active ? "#FF2DAA" : "rgba(255,255,255,0.6)",
-              fontSize: 14,
-              cursor: "pointer"
-            }} title={item.label}>
-              {item.icon}
-              {item.count && (
-                <span style={{
-                  position: "absolute",
-                  top: -4,
-                  right: -6,
-                  background: "#FF4444",
-                  color: "#fff",
-                  fontSize: 6,
-                  fontWeight: 900,
-                  borderRadius: "50%",
-                  width: 9,
-                  height: 9,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center"
-                }}>
-                  {item.count}
-                </span>
-              )}
-            </Link>
-          ))}
-        </div>
-
-        {/* Right bounds Action Buttons */}
-        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-          <button style={{
-            background: "rgba(255,68,68,0.1)",
-            border: "1.5px solid #FF4444",
-            borderRadius: 8,
-            color: "#FF8A8A",
-            fontSize: 9,
-            fontWeight: 900,
-            padding: "5px 12px",
-            cursor: "pointer"
-          }}>
-            LEAVE ROOM
-          </button>
-          
-          <button style={{
-            background: "rgba(0,255,136,0.1)",
-            border: "1.5px solid #00FF88",
-            borderRadius: 8,
-            color: "#00FF88",
-            fontSize: 9,
-            fontWeight: 900,
-            padding: "5px 10px",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            gap: 4
-          }}>
-            🎤 MIC ON
-          </button>
-
-          <button style={{
-            background: "rgba(0,255,136,0.1)",
-            border: "1.5px solid #00FF88",
-            borderRadius: 8,
-            color: "#00FF88",
-            fontSize: 9,
-            fontWeight: 900,
-            padding: "5px 10px",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            gap: 4
-          }}>
-            📹 CAM ON
-          </button>
-
-          <button style={{
-            background: "linear-gradient(135deg, #AA2DFF, #FF2DAA)",
-            border: "none",
-            borderRadius: 8,
-            color: "#fff",
-            fontSize: 9,
-            fontWeight: 900,
-            padding: "6px 14px",
-            cursor: "pointer",
-            boxShadow: "0 0 10px rgba(170, 45, 255, 0.4)"
-          }}>
-            ENTER STAGE
-          </button>
-        </div>
-      </div>
+      {/* Bottom unified controller dock — MasterControlDock is the single
+          canonical bottom bar (Now Playing + nav row + Leave Room/Mic/Cam/
+          Raise Hand/Emotes/Enter Stage). Previously this shell also rendered
+          its own separate, less-complete copy of the same bar in-flow above
+          this mount point — a real stacked-duplicate bug — with dead
+          (handler-less) Leave Room/Mic/Cam/Enter Stage buttons. Removed;
+          this is now the only bottom dock, wired to real state below. */}
+      <MasterControlDock
+        role="fan"
+        onLeaveRoom={() => { stopWatching(); setPreviewItem(null); }}
+        onEnterStage={() => router.push(mainRoute)}
+      />
     </div>
   );
 }
