@@ -88,6 +88,27 @@ export default function MCMichaelCharlieHubPage() {
       hubSubtitle="CEO · TMI Platform · 24/7 Autonomous"
       backHref="/admin"
     >
+      {/* Sub-nav for MC sections */}
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14 }}>
+        {[
+          { href: "/admin/mc-michael-charlie",              label: "Home",       active: true  },
+          { href: "/admin/mc-michael-charlie/overview",     label: "Overview",   active: false },
+          { href: "/admin/mc-michael-charlie/operations",   label: "Operations", active: false },
+          { href: "/admin/mc-michael-charlie/bots",         label: "Bots",       active: false },
+          { href: "/admin/mc-michael-charlie/tasks",        label: "Tasks",      active: false },
+          { href: "/admin/mc-michael-charlie/corrections",  label: "Corrections",active: false },
+          { href: "/admin/mc-michael-charlie/communications",label: "Comms",     active: false },
+        ].map(l => (
+          <Link key={l.href} href={l.href} style={{
+            fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase",
+            padding: "5px 12px", borderRadius: 6, textDecoration: "none",
+            border: l.active ? "1px solid rgba(251,191,36,0.7)" : "1px solid rgba(251,191,36,0.25)",
+            background: l.active ? "rgba(120,53,15,0.45)" : "rgba(0,0,0,0.3)",
+            color: l.active ? "#fde68a" : "#94a3b8",
+          }}>{l.label}</Link>
+        ))}
+      </div>
+
       {/* 24/7 CEO identity strip */}
       <div style={{ border: "1px solid rgba(251,191,36,0.35)", borderRadius: 12, background: "linear-gradient(135deg, rgba(40,20,5,0.8), rgba(10,6,2,0.95))", padding: "12px 16px", marginBottom: 14, display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap" }}>
         <div>

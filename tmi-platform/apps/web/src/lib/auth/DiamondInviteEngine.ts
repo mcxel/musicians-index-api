@@ -26,7 +26,9 @@ export class DiamondInviteEngine {
   // Soft-launch founder registry — lifetime diamond accounts
   private static activeInvites = new Map<string, InvitePayload>([
     ['VIP-JPS-2026', { token: 'VIP-JPS-2026', email: 'jaypaul@example.com', assignedRole: 'performer', status: 'active' }],
-    ['VIP-ACE-2026', { token: 'VIP-ACE-2026', email: 'bigace@example.com', assignedRole: 'performer', status: 'active' }],
+    // Big Ace is a system AI agent — no VIP signup invite needed. Entry revoked.
+    // System email: bigace@berntoutglobal.com (env var, not an invite path)
+    ['VIP-ACE-2026', { token: 'VIP-ACE-2026', email: 'bigace@berntoutglobal.com', assignedRole: 'performer', status: 'revoked' }],
 
     // Kreach — Platform beat producer (lifetime diamond producer)
     ['VIP-KREACH-2026', {
