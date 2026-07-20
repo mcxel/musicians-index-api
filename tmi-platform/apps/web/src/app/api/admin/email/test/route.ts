@@ -91,6 +91,7 @@ function demoDataFor(type: EmailType, to: string): Record<string, unknown> {
       fee: '1,500',
       ticketUrl: 'https://themusiciansindex.com/bookings',
     },
+    diamond_invite_pending: { name, token: 'VIP-DEMO-2026' },
   };
 
   return MAP[type] ?? { name };
@@ -108,6 +109,7 @@ const VALID_TYPES = new Set<string>([
   'sponsor_confirmation', 'weekly_digest', 'magazine_drop',
   'payout_queued', 'payout_approved', 'streak_warning',
   'payment_failed', 'booking_request', 'booking_confirmed',
+  'diamond_invite_pending',
 ]);
 
 export async function POST(req: NextRequest) {

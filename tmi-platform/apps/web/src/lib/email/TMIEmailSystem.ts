@@ -24,7 +24,8 @@ export type EmailType =
   | "weekly_digest" | "magazine_drop"
   | "payout_queued" | "payout_approved"
   | "streak_warning"
-  | "payment_failed" | "booking_request" | "booking_confirmed";
+  | "payment_failed" | "booking_request" | "booking_confirmed"
+  | "diamond_invite_pending";
 
 interface EmailPayload {
   to: string;
@@ -666,6 +667,23 @@ const TEMPLATES: Record<string, (data: Record<string, unknown>, email: string) =
       ${p('<span style="font-size:10px;color:rgba(255,255,255,0.25);">Soundcheck details and rider confirmation will follow from the venue directly.</span>')}
     `, email, "#22c55e"),
   }),
+
+  // For a granted invite that hasn't been redeemed into an account yet —
+  // distinct from welcome_diamond, which assumes the recipient can already
+  // log in. Added 2026-07-20: welcome_diamond was the only Diamond-related
+  // template and its "Enter Your Diamond Hub" link goes nowhere useful for
+  // someone who hasn't signed up yet.
+  diamond_invite_pending: (d, email) => ({
+    subject: "💎 You've Been Granted Lifetime Diamond on The Musician's Index",
+    html: baseHtml(`
+      ${labelChip("DIAMOND INVITE", "#38bdf8")}
+      ${h1(`${d.name ?? "You"}, you've been granted lifetime Diamond. 💎`)}
+      ${p("The Musician's Index founder has personally granted you a free, lifetime Diamond membership — TMI's top tier, no payment required, ever.")}
+      ${p("Create your account with the link below and your Diamond status will be active immediately.")}
+      ${btn("Claim Your Diamond Account", `${BASE_URL}/signup?token=${encodeURIComponent(String(d.token ?? ""))}`, "#38bdf8")}
+      ${p('<span style="font-size:10px;color:rgba(255,255,255,0.35);">If the button doesn\'t work, go to themusiciansindex.com/signup and enter this code: ' + String(d.token ?? "") + '</span>')}
+    `, email, "#38bdf8"),
+  }),
 };
 
 /* ─── Email category classification ─────────────────────────────────────── */
@@ -677,6 +695,7 @@ const TRANSACTIONAL_TYPES = new Set<EmailType>([
   "battle_invite", "welcome_diamond", "welcome_admin", "sponsor_confirmation",
   "welcome_artist", "welcome_fan", "welcome_venue", "welcome_advertiser", "welcome_promoter",
   "streak_warning", "invite", "payment_failed", "booking_request", "booking_confirmed",
+  "diamond_invite_pending",
 ]);
 
 function emailCategoryFor(type: EmailType): "transactional" | "marketing" | "newsletter" {

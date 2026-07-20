@@ -10,6 +10,7 @@
  */
 
 import { createHash, randomUUID } from 'node:crypto';
+import { waitUntil } from '@vercel/functions';
 
 export type UserTier = 'FREE' | 'PRO' | 'RUBY' | 'SILVER' | 'GOLD' | 'PLATINUM' | 'DIAMOND' | 'ADMIN';
 export type UserRole = 'user' | 'admin' | 'staff' | 'fan' | 'artist' | 'performer' | 'sponsor' | 'advertiser' | 'venue' | 'writer' | 'promoter';
@@ -234,7 +235,8 @@ export function registerUser(params: {
   };
 
   STORE.set(email, user);
-  void persistUser(user); // async fire-and-forget
+  // waitUntil, not bare `void` — see register/route.ts for why (2026-07-19/20).
+  waitUntil(persistUser(user));
   return { ok: true, user };
 }
 
@@ -250,7 +252,7 @@ export function loginUser(email: string, password: string): StoredUser | null {
         existing.tier = hardcoded.tier;
         existing.role = hardcoded.role;
         STORE.set(e, existing);
-        void persistUser(existing);
+        waitUntil(persistUser(existing));
       }
       return existing;
     }
@@ -265,7 +267,7 @@ export function loginUser(email: string, password: string): StoredUser | null {
       createdAt: Date.now(),
     };
     STORE.set(e, user);
-    void persistUser(user);
+    waitUntil(persistUser(user));
     return user;
   }
 
@@ -313,7 +315,7 @@ export function updateUserRole(email: string, role: UserRole): boolean {
   if (!user) return false;
   user.role = role;
   STORE.set(e, user);
-  void persistUser(user);
+  waitUntil(persistUser(user));
   return true;
 }
 
@@ -325,7 +327,7 @@ export function updateUserTier(email: string, tier: UserTier): boolean {
   if (user.tier === 'ADMIN') return false;
   user.tier = tier;
   STORE.set(e, user);
-  void persistUser(user);
+  waitUntil(persistUser(user));
   return true;
 }
 
@@ -335,6 +337,6 @@ export function updateUserPassword(email: string, newPassword: string): boolean 
   if (!user) return false;
   user.passwordHash = hashPassword(newPassword);
   STORE.set(e, user);
-  void persistUser(user);
+  waitUntil(persistUser(user));
   return true;
 }
