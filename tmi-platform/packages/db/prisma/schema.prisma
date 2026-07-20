@@ -3134,3 +3134,81 @@ model AvatarConfig {
 
   @@map("avatar_configs")
 }
+
+// ── AI Agent Registry ────────────────────────────────────────────────────────
+// Real, persisted identity/directive/objective/achievement/checkpoint records
+// for every named AI agent and bot in the platform (Big Ace, Michael Charlie,
+// department leads, individual bots) — added 2026-07-20. This is the shared
+// system multiple in-memory registries already assumed existed
+// (BotDepartmentEngine's command chain, MCAuthorityEngine's decision log) but
+// never actually had a persisted backing store. Scope is honest: identity,
+// directives, objectives, achievements, checkpoints. No 3D rendering, no
+// autonomous pricing/financial authority, no self-modifying deployment
+// pipeline — those remain explicitly out of scope until designed separately.
+model Agent {
+  id          String   @id
+  name        String
+  role        String   // "big-ace" | "mc" | "department-lead" | "supervisor" | "bot"
+  department  String?  // matches BotDepartment in lib/bots/BotDepartmentEngine.ts
+  reportsToId String?  // command-chain parent Agent.id
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  directives   AgentDirective[]
+  objectives   AgentObjective[]
+  achievements AgentAchievement[]
+  checkpoints  AgentCheckpoint[]
+
+  @@map("agents")
+}
+
+model AgentDirective {
+  id        String   @id @default(cuid())
+  agentId   String
+  agent     Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  kind      String   // "core" (immutable — never deleted, enforced at API layer) | "operational" (editable)
+  text      String
+  createdAt DateTime @default(now())
+
+  @@index([agentId])
+  @@map("agent_directives")
+}
+
+model AgentObjective {
+  id          String    @id @default(cuid())
+  agentId     String
+  agent       Agent     @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  status      String    @default("active") // active | completed | archived
+  createdAt   DateTime  @default(now())
+  completedAt DateTime?
+
+  @@index([agentId, status])
+  @@map("agent_objectives")
+}
+
+model AgentAchievement {
+  id          String   @id @default(cuid())
+  agentId     String
+  agent       Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  earnedAt    DateTime @default(now())
+
+  @@index([agentId])
+  @@map("agent_achievements")
+}
+
+model AgentCheckpoint {
+  id        String   @id @default(cuid())
+  agentId   String
+  agent     Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  note      String
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@index([agentId])
+  @@map("agent_checkpoints")
+}
