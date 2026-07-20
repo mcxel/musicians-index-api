@@ -322,7 +322,7 @@ const OrbitCard = memo(function OrbitCard({
 }: OrbitCardProps) {
   const pos = getOrbitPos(index, total, radius, 0);
   const isLeader = performer.rank === 1;
-  const cardSize = compactMode ? (index === 0 ? 52 : 44) : (index === 0 ? 62 : 52);
+  const cardSize = compactMode ? (index === 0 ? 52 : 44) : (index === 0 ? 105 : 105);
   const rawAvatar = performer.image ?? performer.avatarImage;
   const hasImage = Boolean(rawAvatar?.trim()) && !isBrokenImage && (performer.accountType === 'system-bot' || performer.accountType === 'system-actor' || hasUploadedProfileImage(rawAvatar));
   const initials = performer.name
@@ -437,12 +437,12 @@ const OrbitCard = memo(function OrbitCard({
               src={String(rawAvatar ?? '/images/tmi-placeholder.jpg')}
               alt={performer.name}
               unoptimized
-              width={Math.round(cardSize * 0.62)}
-              height={Math.round(cardSize * 0.72)}
+              width={Math.round(cardSize * 0.75)}
+              height={Math.round(cardSize * 0.82)}
               onError={() => onImageError(performer.slug)}
               style={{
-                width: cardSize * 0.62,
-                height: cardSize * 0.72,
+                width: cardSize * 0.75,
+                height: cardSize * 0.82,
                 borderRadius: 6,
                 objectFit: 'cover',
                 marginBottom: 4,
@@ -454,8 +454,8 @@ const OrbitCard = memo(function OrbitCard({
           ) : (
             <div
               style={{
-                width: cardSize * 0.62,
-                height: cardSize * 0.72,
+                width: cardSize * 0.75,
+                height: cardSize * 0.82,
                 borderRadius: 6,
                 marginBottom: 4,
                 border: `1px dashed ${accentColor}66`,
@@ -1232,7 +1232,15 @@ export default function Home1CoverPage() {
           /* Banner self-enforces aspect-ratio 3/4 — no min-height needed here.
              align-items:stretch lets the title column fill the banner height. */
         }
-        .h1-hero-billboard-grid .h1-hero-title-col { grid-area: title; }
+        .h1-hero-billboard-grid .h1-hero-title-col {
+          grid-area: title;
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+          align-items: center;
+          height: 100%;
+          padding-block: 4px;
+        }
         .h1-hero-billboard-grid .h1-hero-flank-left { grid-area: left; }
         .h1-hero-billboard-grid .h1-hero-flank-right { grid-area: right; }
         @media (max-width: 900px) {
@@ -1604,60 +1612,56 @@ export default function Home1CoverPage() {
           >
             {genreConfig.emoji} {genreKey.toUpperCase()} · WEEK {Math.ceil((Date.now() / (7 * 24 * 60 * 60 * 1000)) % 52) || 1}
           </div>
+            {/* ── Status badges row: VOTING LIVE | VOTES | CROWN UPDATING ── */}
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'rgba(255,45,170,0.18)', border: '1px solid rgba(255,45,170,0.6)', borderRadius: 4, padding: '3px 10px', animation: 'h1BadgePulse 2s ease-in-out infinite' }}>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#FF2DAA', display: 'inline-block', animation: 'h1Pulse 1s infinite' }} />
+                <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.1em', color: '#FF2DAA', fontFamily: "'Inter',sans-serif" }}>VOTING LIVE</span>
+              </div>
+              <div style={{ background: 'rgba(255,215,0,0.14)', border: '1px solid rgba(255,215,0,0.5)', borderRadius: 4, padding: '3px 12px', fontFamily: "'Inter',sans-serif", fontSize: 10, fontWeight: 700, color: '#FFD700' }}>
+                {voteCount > 0 ? `${voteCount.toLocaleString()} VOTES` : 'VOTING OPENS SOON'}
+              </div>
+              <div style={{ background: 'rgba(230,48,0,0.18)', border: '1px solid rgba(230,48,0,0.5)', borderRadius: 4, padding: '3px 10px', fontSize: 9, fontWeight: 800, letterSpacing: '0.1em', color: '#E63000', fontFamily: "'Inter',sans-serif" }}>CROWN UPDATING</div>
             </div>
-            <div className="h1-hero-flank-right">
-              <RotatingHeroBanner slides={HERO_FLANK_RIGHT_SLIDES} side="right" />
+
+            {/* ── Challenge banner slider ── */}
+            <div style={{ background: 'rgba(123,0,255,0.16)', border: '1px solid rgba(123,0,255,0.34)', borderRadius: 6, padding: '3px 8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 6, maxWidth: 440, width: '100%', marginInline: 'auto' }}>
+              <button style={{ background: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 4, padding: '2px 6px', fontSize: 8, cursor: 'pointer' }}>◀</button>
+              <div style={{ textAlign: 'center', flex: 1 }}>
+                <div style={{ fontSize: 10, fontWeight: 800, color: '#fff', letterSpacing: '0.07em', fontFamily: "'Inter',sans-serif" }}>CHALLENGE YOUR SONG HERE</div>
+                <div style={{ fontSize: 7, color: 'rgba(255,255,255,0.4)', fontFamily: "'Inter',sans-serif" }}>SONG FOR SONG · WORK FOR WORK</div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Link href="/battles/challenge" style={{ fontSize: 8, fontWeight: 700, color: '#00E5FF', textDecoration: 'none', fontFamily: "'Inter',sans-serif" }}>START NOW</Link>
+                <button style={{ background: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 4, padding: '2px 6px', fontSize: 8, cursor: 'pointer' }}>▶</button>
+              </div>
+            </div>
+
+            {/* ── Action buttons: 7 clickable buttons ── */}
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 5, marginTop: 4, flexWrap: 'wrap' }}>
+              {[
+                { label: 'JOIN FREE',       href: '/signup',             bg: 'rgba(0,255,127,0.14)', color: '#00FF7F', border: 'rgba(0,255,127,0.4)' },
+                { label: 'LOGIN',           href: '/login',              bg: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.7)', border: 'rgba(255,255,255,0.2)' },
+                { label: 'CHALLENGE SONG',  href: '/battles/challenge',  bg: 'rgba(255,215,0,0.14)', color: '#FFD700', border: 'rgba(255,215,0,0.35)' },
+                { label: 'CYPHER ARENA',    href: '/live/rooms/cypher-arena', bg: 'rgba(0,229,255,0.12)', color: '#00E5FF', border: 'rgba(0,229,255,0.3)' },
+                { label: 'MAGAZINE',        href: '/magazine',           bg: 'rgba(255,45,170,0.12)', color: '#FF2DAA', border: 'rgba(255,45,170,0.3)' },
+                { label: 'SPONSOR',         href: '/sponsors/apply',     bg: 'rgba(155,89,182,0.12)', color: '#9B59B6', border: 'rgba(155,89,182,0.3)' },
+                { label: 'ADVERTISE',       href: '/sponsors/advertise', bg: 'rgba(230,48,0,0.12)',  color: '#E63000', border: 'rgba(230,48,0,0.3)' },
+              ].map((btn) => (
+                <Link key={btn.label} href={btn.href} style={{ textDecoration: 'none' }}>
+                  <button style={{ background: btn.bg, color: btn.color, border: `1px solid ${btn.border}`, borderRadius: 5, padding: '5px 11px', fontSize: 9, fontWeight: 800, cursor: 'pointer', fontFamily: "'Inter',sans-serif", letterSpacing: '0.05em' }}>{btn.label}</button>
+                </Link>
+              ))}
             </div>
           </div>
-
-          {/* ── Status badges row: VOTING LIVE | VOTES | CROWN UPDATING ── */}
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'rgba(255,45,170,0.18)', border: '1px solid rgba(255,45,170,0.6)', borderRadius: 4, padding: '3px 10px', animation: 'h1BadgePulse 2s ease-in-out infinite' }}>
-              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#FF2DAA', display: 'inline-block', animation: 'h1Pulse 1s infinite' }} />
-              <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.1em', color: '#FF2DAA', fontFamily: "'Inter',sans-serif" }}>VOTING LIVE</span>
-            </div>
-            <div style={{ background: 'rgba(255,215,0,0.14)', border: '1px solid rgba(255,215,0,0.5)', borderRadius: 4, padding: '3px 12px', fontFamily: "'Inter',sans-serif", fontSize: 10, fontWeight: 700, color: '#FFD700' }}>
-              {voteCount > 0 ? `${voteCount.toLocaleString()} VOTES` : 'VOTING OPENS SOON'}
-            </div>
-            <div style={{ background: 'rgba(230,48,0,0.18)', border: '1px solid rgba(230,48,0,0.5)', borderRadius: 4, padding: '3px 10px', fontSize: 9, fontWeight: 800, letterSpacing: '0.1em', color: '#E63000', fontFamily: "'Inter',sans-serif" }}>CROWN UPDATING</div>
-          </div>
-
-          {/* ── Challenge banner slider ── */}
-          <div style={{ background: 'rgba(123,0,255,0.16)', border: '1px solid rgba(123,0,255,0.34)', borderRadius: 6, padding: '3px 8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, maxWidth: 440, width: '100%', marginInline: 'auto' }}>
-            <button style={{ background: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 4, padding: '2px 6px', fontSize: 8, cursor: 'pointer' }}>◀</button>
-            <div style={{ textAlign: 'center', flex: 1 }}>
-              <div style={{ fontSize: 10, fontWeight: 800, color: '#fff', letterSpacing: '0.07em', fontFamily: "'Inter',sans-serif" }}>CHALLENGE YOUR SONG HERE</div>
-              <div style={{ fontSize: 7, color: 'rgba(255,255,255,0.4)', fontFamily: "'Inter',sans-serif" }}>SONG FOR SONG · WORK FOR WORK</div>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Link href="/battles/challenge" style={{ fontSize: 8, fontWeight: 700, color: '#00E5FF', textDecoration: 'none', fontFamily: "'Inter',sans-serif" }}>START NOW</Link>
-              <button style={{ background: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 4, padding: '2px 6px', fontSize: 8, cursor: 'pointer' }}>▶</button>
-            </div>
-          </div>
-
-          {/* ── Action buttons: 7 clickable buttons ── */}
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 5, marginTop: 4, flexWrap: 'wrap' }}>
-            {[
-              { label: 'JOIN FREE',       href: '/signup',             bg: 'rgba(0,255,127,0.14)', color: '#00FF7F', border: 'rgba(0,255,127,0.4)' },
-              { label: 'LOGIN',           href: '/login',              bg: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.7)', border: 'rgba(255,255,255,0.2)' },
-              { label: 'CHALLENGE SONG',  href: '/battles/challenge',  bg: 'rgba(255,215,0,0.14)', color: '#FFD700', border: 'rgba(255,215,0,0.35)' },
-              { label: 'CYPHER ARENA',    href: '/live/rooms/cypher-arena', bg: 'rgba(0,229,255,0.12)', color: '#00E5FF', border: 'rgba(0,229,255,0.3)' },
-              { label: 'MAGAZINE',        href: '/magazine',           bg: 'rgba(255,45,170,0.12)', color: '#FF2DAA', border: 'rgba(255,45,170,0.3)' },
-              { label: 'SPONSOR',         href: '/sponsors/apply',     bg: 'rgba(155,89,182,0.12)', color: '#9B59B6', border: 'rgba(155,89,182,0.3)' },
-              { label: 'ADVERTISE',       href: '/sponsors/advertise', bg: 'rgba(230,48,0,0.12)',  color: '#E63000', border: 'rgba(230,48,0,0.3)' },
-            ].map((btn) => (
-              <Link key={btn.label} href={btn.href} style={{ textDecoration: 'none' }}>
-                <button style={{ background: btn.bg, color: btn.color, border: `1px solid ${btn.border}`, borderRadius: 5, padding: '5px 11px', fontSize: 9, fontWeight: 800, cursor: 'pointer', fontFamily: "'Inter',sans-serif", letterSpacing: '0.05em' }}>{btn.label}</button>
-              </Link>
-            ))}
+          <div className="h1-hero-flank-right">
+            <RotatingHeroBanner slides={HERO_FLANK_RIGHT_SLIDES} side="right" />
           </div>
         </div>
+      </div>
 
-        {/* ── Orbital section wrapper — tabloid underlay lives here (position:absolute) ──
-             marginTop is a POSITIVE 48px here, not negative — a prior pass had this at
-             -46 (pulling the section UP into the masthead). Build Director correction
-             (2026-06-20): crown/orbit must sit 40-60px LOWER, not higher. ── */}
-        <div style={{ position: 'relative', width: '100%', overflow: 'visible', marginTop: 62, paddingBottom: 4 }}>
+        {/* ── Orbital section wrapper — tabloid underlay lives here (position:absolute) ── */}
+        <div style={{ position: 'relative', width: '100%', overflow: 'visible', marginTop: -15, paddingBottom: 4 }}>
 
         {/* ── WORLD ENVIRONMENT LAYER — atmospheric depth, billboard walls, venue lighting ──
              Restores the "living entertainment district" feel behind the orbital.
@@ -1901,9 +1905,9 @@ export default function Home1CoverPage() {
           <div
             style={{
               position: 'relative',
-              width: 'min(100%, 92vw)',
-              minWidth: isMobileViewport ? 260 : 'min(280px, 58vw)',
-              maxWidth: isMobileViewport ? 520 : 'min(740px, 60vw)',
+              width: 'min(100%, 95vw)',
+              minWidth: isMobileViewport ? 320 : 'min(380px, 68vw)',
+              maxWidth: isMobileViewport ? 580 : 'min(880px, 75vw)',
               aspectRatio: '1 / 1',
               margin: '0 auto',
               flexShrink: 0,
@@ -1985,12 +1989,12 @@ export default function Home1CoverPage() {
           >
             <div
               style={{
-                width: 'min(108px, 18vw)',
-                height: 'min(108px, 18vw)',
+                width: 'min(170px, 28vw)',
+                height: 'min(170px, 28vw)',
                 borderRadius: '50%',
                 background: `radial-gradient(circle at 40% 35%, ${accentColor}55, ${bgColor})`,
                 border: `3px solid ${accentColor}`,
-                boxShadow: `0 0 40px ${accentColor}66, inset 0 0 20px ${accentColor}22`,
+                boxShadow: `0 0 50px ${accentColor}88, inset 0 0 25px ${accentColor}33`,
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
@@ -2002,10 +2006,10 @@ export default function Home1CoverPage() {
               {/* Crown above */}
               <div
                 style={{
-                  fontSize: 'min(28px, 5vw)',
+                  fontSize: 'min(36px, 6vw)',
                   animation: 'h1CrownFloat 3s ease-in-out infinite',
                   marginBottom: 2,
-                  filter: `drop-shadow(0 0 8px #FFD700)`,
+                  filter: `drop-shadow(0 0 12px #FFD700)`,
                 }}
               >
                 👑
@@ -2022,8 +2026,8 @@ export default function Home1CoverPage() {
                 showLiveOverlay={false}
                 replayOnHover
                 style={{
-                  width: 'min(50px, 9vw)',
-                  height: 'min(50px, 9vw)',
+                  width: 'min(90px, 15vw)',
+                  height: 'min(90px, 15vw)',
                   borderRadius: '50%',
                   border: `2px solid ${accentColor}`,
                   marginBottom: 4,
