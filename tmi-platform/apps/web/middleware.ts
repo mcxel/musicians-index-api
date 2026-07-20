@@ -178,6 +178,33 @@ export function middleware(req: NextRequest) {
     return new NextResponse(null, { status: 404 });
   }
 
+  // ── Logged-in landing redirect ──────────────────────────────────────────────
+  // When an authenticated user visits `/`, `/home/1`, or the bare `/home`
+  // path (which is the public sign-up marketing page), send them straight to
+  // their role hub — just like Facebook / YouTube / Instagram do.
+  // Unauthenticated users still land on the marketing page as before.
+  const isMarketingRoot =
+    pathname === '/' ||
+    pathname === '/home' ||
+    pathname === '/home/1' ||
+    pathname === '/home/1-2' ||
+    pathname === '/home/2' ||
+    pathname === '/home/3' ||
+    pathname === '/home/4' ||
+    pathname === '/home/5';
+
+  if (isMarketingRoot) {
+    const sessionCookie = req.cookies.get('tmi_session')?.value;
+    if (sessionCookie) {
+      const userRoles = getUserRoles(req);
+      const hubPath = resolvePrimaryPathForRoles(userRoles);
+      if (hubPath) {
+        return NextResponse.redirect(new URL(hubPath, req.url), 307);
+      }
+    }
+  }
+  // ────────────────────────────────────────────────────────────────────────────
+
   const incomingRef = normalizeRef(req.nextUrl.searchParams.get('ref'));
   const incomingPlaylist = normalizeRef(req.nextUrl.searchParams.get('playlist'));
   const incomingCurator = normalizeRef(req.nextUrl.searchParams.get('curator'));

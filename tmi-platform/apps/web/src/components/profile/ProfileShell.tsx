@@ -6,6 +6,7 @@ import { type ReactNode } from "react";
 import Link from "next/link";
 import UniversalMediaPanel from "@/components/media/UniversalMediaPanel";
 import HighFidelityAvatar from "@/components/avatar/HighFidelityAvatar";
+import ProfileBackButton from "@/components/profile/ProfileBackButton";
 
 export type ProfileRole =
   | "artist"
@@ -78,19 +79,11 @@ export default function ProfileShell({
           backdropFilter: "blur(12px)",
         }}
       >
-        <Link
-          href={cfg.backRoute}
-          style={{
-            fontSize: 8,
-            fontWeight: 800,
-            letterSpacing: "0.18em",
-            color: "rgba(255,255,255,0.3)",
-            textTransform: "uppercase",
-            textDecoration: "none",
-          }}
-        >
-          ← {cfg.label}s
-        </Link>
+        <ProfileBackButton
+          fallbackHref={cfg.backRoute}
+          label={`${cfg.label}s`}
+          accentColor={cfg.accent}
+        />
         <span
           style={{
             fontSize: 7,

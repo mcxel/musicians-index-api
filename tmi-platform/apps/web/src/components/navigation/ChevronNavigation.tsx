@@ -13,9 +13,6 @@ export default function ChevronNavigation() {
 
   // Minimum swipe distance (in px)
   const minSwipeDistance = 50;
-  const fallbackRoute = "/home/1";
-
-  const canGoBack = typeof window !== "undefined" ? window.history.length > 2 : false;
 
   const isInteractiveTarget = (target: EventTarget | null) => {
     if (!(target instanceof HTMLElement)) return false;
@@ -23,13 +20,10 @@ export default function ChevronNavigation() {
   };
 
   const goBackSafe = () => {
-    if (canGoBack) {
+    if (typeof window !== "undefined" && window.history.length > 1) {
       router.back();
-      return;
     }
-    if (pathname !== fallbackRoute) {
-      router.push(fallbackRoute);
-    }
+    // No fallback push — middleware handles authenticated landing
   };
 
   const goForwardSafe = () => {
@@ -38,7 +32,7 @@ export default function ChevronNavigation() {
 
   const onTouchStart = (e: TouchEvent) => {
     if (isInteractiveTarget(e.target)) return;
-    setTouchEnd(null); // Reset touch end
+    setTouchEnd(null);
     setTouchStart(e.targetTouches[0].clientX);
   };
 
@@ -52,18 +46,11 @@ export default function ChevronNavigation() {
     const isLeftSwipe = distance > minSwipeDistance;
     const isRightSwipe = distance < -minSwipeDistance;
 
-    if (isLeftSwipe) {
-      // Swiped left -> Go forward
-      goForwardSafe();
-    }
-    if (isRightSwipe) {
-      // Swiped right -> Go back
-      goBackSafe();
-    }
-  }, [touchStart, touchEnd, router, canGoBack, pathname]);
+    if (isLeftSwipe) goForwardSafe();
+    if (isRightSwipe) goBackSafe();
+  }, [touchStart, touchEnd, router, pathname]);
 
   useEffect(() => {
-    // Attach event listeners to the window for global swipe detection
     window.addEventListener("touchstart", onTouchStart);
     window.addEventListener("touchmove", onTouchMove);
     window.addEventListener("touchend", onTouchEnd);
@@ -78,43 +65,8 @@ export default function ChevronNavigation() {
   const shouldHide = HIDDEN_PATH_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
   if (shouldHide) return null;
 
-  return (
-    <>
-      {/* Back Chevron */}
-      <button
-        onClick={goBackSafe}
-        className="chevron-nav-btn fixed top-1/2 left-2 z-[2147483647] p-2 md:p-3 bg-black/55 text-white rounded-full hover:bg-black/80 transition-colors transform -translate-y-1/2 flex items-center justify-center group focus:outline-none focus:ring-2 focus:ring-white/50"
-        style={{ opacity: 1, visibility: "visible", pointerEvents: "auto", display: "flex" }}
-        aria-label="Go Back"
-        title="Go Back"
-      >
-        <svg
-          className="w-6 h-6 md:w-8 md:h-8 group-hover:-translate-x-1 transition-transform"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-        </svg>
-      </button>
-
-      {/* Forward Chevron */}
-      <button
-        onClick={goForwardSafe}
-        className="chevron-nav-btn fixed top-1/2 right-2 z-[2147483647] p-2 md:p-3 bg-black/55 text-white rounded-full hover:bg-black/80 transition-colors transform -translate-y-1/2 flex items-center justify-center group focus:outline-none focus:ring-2 focus:ring-white/50"
-        style={{ opacity: 1, visibility: "visible", pointerEvents: "auto", display: "flex" }}
-        aria-label="Go Forward"
-        title="Go Forward"
-      >
-        <svg
-          className="w-6 h-6 md:w-8 md:h-8 group-hover:translate-x-1 transition-transform"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-        </svg>
-      </button>
-    </>
-  );
+  // Visual buttons removed — swipe gestures above handle navigation.
+  // Logged-in users navigate via their role hub; no global chevron arrows needed.
+  return null;
 }
+
