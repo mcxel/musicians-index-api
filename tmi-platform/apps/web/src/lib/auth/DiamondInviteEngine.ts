@@ -192,6 +192,29 @@ export class DiamondInviteEngine {
     });
   }
 
+  /** Returns all invites as an array — used by the admin resend tool. */
+  static getAllInvites(): InvitePayload[] {
+    return Array.from(this.activeInvites.values());
+  }
+
+  /**
+   * Adds a real email address as an accepted alias for a token whose original
+   * email was a placeholder (@example.com) or internal address that bounced.
+   * The alias is stored in-memory for this server instance; update the source
+   * Map entry once the correct address is confirmed.
+   */
+  static addEmailAlias(token: string, email: string): void {
+    const invite = this.activeInvites.get(token);
+    if (!invite) return;
+    const aliases = invite.emailAliases ?? [];
+    const normalized = email.trim().toLowerCase();
+    if (!aliases.includes(normalized)) {
+      invite.emailAliases = [...aliases, normalized];
+      this.activeInvites.set(token, invite);
+      console.log(`[DIAMOND_INVITE] Added alias ${normalized} for token ${token}`);
+    }
+  }
+
   static async validateAndRedeem(token: string, masterAccountId: string): Promise<boolean> {
     console.log(`[DIAMOND_INVITE] Validating secure token: ${token}`);
 
