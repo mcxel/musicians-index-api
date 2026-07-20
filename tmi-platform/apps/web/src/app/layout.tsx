@@ -18,6 +18,7 @@ import { NavigationLock } from "@/components/navigation/NavigationLock";
 import NavigationRuntime from "@/components/navigation/NavigationRuntime";
 import NavigationRail from "@/components/nav/NavigationRail";
 import { PWAInstallPrompt } from "@/components/mobile/PWAInstallPrompt";
+import LiveMarqueeTicker from "@/components/live/LiveMarqueeTicker";
 import { PWARegistration } from "@/components/mobile/PWARegistration";
 import VoiceDirector from "@/components/hud/VoiceDirector";
 import BetaModeBanner from "@/components/launch/BetaModeBanner";
@@ -136,14 +137,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         {/* BidVertiser verification */}
         {/* Bidvertiser2104976 */}
-        {ENABLE_AD_NETWORK_SCRIPTS && (
-          <Script
-            id="google-adsense"
-            strategy="beforeInteractive"
-            src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4088577529436039"
-            crossOrigin="anonymous"
-          />
-        )}
+        <Script
+          id="google-adsense"
+          strategy="afterInteractive"
+          src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID || "ca-pub-4088577529436039"}`}
+          crossOrigin="anonymous"
+        />
         {/* Media.net — Yahoo/Bing contextual ads */}
         {process.env.NEXT_PUBLIC_MEDIANET_CID && (
           <Script
@@ -220,6 +219,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <FirstRunExperienceOverlay />
               <TMIGlobalHUD />
               <BotRuntimeProvider />
+              <LiveMarqueeTicker />
               <VoiceDirector />
               <LiveFeedbackPanel />
               <MonitorRuntime />
