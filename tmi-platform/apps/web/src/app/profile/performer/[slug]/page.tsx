@@ -11,6 +11,7 @@ import dynamic from "next/dynamic";
 
 const VenuePreviewCanvas = dynamic(() => import("@/components/3d/VenuePreviewCanvas"), { ssr: false });
 const AvatarLobbyCanvas = dynamic(() => import("@/components/3d/AvatarLobbyCanvas"), { ssr: false });
+const YoPhoLivingCanvasOS = dynamic(() => import("@/components/yopho/YoPhoLivingCanvasOS"), { ssr: false });
 
 interface PublicYophoPageProps {
   params: Promise<{ slug: string }>;
@@ -213,6 +214,7 @@ export default function PublicYophoPage({ params }: PublicYophoPageProps) {
 
 function PublicYophoContent({ performer, isOwner }: { performer: any; isOwner: boolean }) {
   const [showBooking, setShowBooking] = useState(false);
+  const [viewMode, setViewMode] = useState<"stage" | "card">("stage");
   const [themeConfig, setThemeConfig] = useState<YoPhoThemeConfig>(DEFAULT_THEME_CONFIG);
   const [performerTier, setPerformerTier] = useState<string>("FREE");
   const [studioOpen, setStudioOpen] = useState(false);
@@ -489,7 +491,58 @@ function PublicYophoContent({ performer, isOwner }: { performer: any; isOwner: b
       avatarMode={themeConfig.avatarMode}
       isPlaying={isPlaying}
     >
-      <div style={{ padding: "24px", maxWidth: "1200px", margin: "0 auto" }}>
+      <div style={{ padding: "24px", maxWidth: "1200px", margin: "0 auto", display: "flex", flexDirection: "column", gap: 20 }}>
+        
+        {/* Mode Switcher Rail: Stage World vs Classic Card */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(5,5,18,0.7)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, padding: "8px 16px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ fontSize: 18 }}>🪐</span>
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 900, color: "#fff", letterSpacing: "0.05em" }}>
+                YOPHO LIVING CANVAS OS STAGE
+              </div>
+              <div style={{ fontSize: 9, color: "rgba(255,255,255,0.5)" }}>
+                Interactive Digital Room · Sound & Audio Reactive · $0.99 Skin Store
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <button
+              onClick={() => setViewMode(viewMode === "stage" ? "card" : "stage")}
+              style={{
+                background: viewMode === "stage" ? "linear-gradient(135deg, #00E5FF, #FF2DAA)" : "rgba(255,255,255,0.1)",
+                border: "none",
+                borderRadius: 8,
+                padding: "6px 14px",
+                fontSize: 10,
+                fontWeight: 900,
+                color: viewMode === "stage" ? "#000" : "#fff",
+                cursor: "pointer",
+                boxShadow: viewMode === "stage" ? "0 0 12px rgba(0,229,255,0.6)" : "none",
+              }}
+            >
+              {viewMode === "stage" ? "🎭 VIEWING YOPHO STAGE" : "📋 SWITCH TO STAGE WORLD"}
+            </button>
+          </div>
+        </div>
+
+        {/* YoPho Living Canvas Stage OS */}
+        {viewMode === "stage" && (
+          <YoPhoLivingCanvasOS
+            performerName={performer.name}
+            performerSlug={performer.slug}
+            performerCategory={performer.category || "Hip-Hop"}
+            performerImageUrl={performer.profileImageUrl || "/bot-images/Bot image 1.png"}
+            performerBio={performer.bio || "Create, perform, headline. Welcome to my living stage."}
+            isLive={Boolean(performer.isLive)}
+            activeTracks={playlist.map((song: any) => ({
+              title: song.title || "TMI Session Track",
+              durationSec: song.durationSec || 180,
+            }))}
+          />
+        )}
+
         <div
           style={{
             position: "relative",
@@ -514,7 +567,7 @@ function PublicYophoContent({ performer, isOwner }: { performer: any; isOwner: b
             <span style={{ fontSize: 24 }}>{themeConfig.emote}</span>
             <div>
               <span style={{ fontSize: 9, fontWeight: 950, letterSpacing: "0.2em", color: currentTheme.accent, textTransform: "uppercase" }}>
-                YoPho Digital Card
+                YOphO Digital Card
               </span>
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                 <h2 style={{ fontSize: 20, fontWeight: 900, margin: 0, color: "#fff" }}>{performer.name}</h2>
@@ -1152,7 +1205,7 @@ function PublicYophoContent({ performer, isOwner }: { performer: any; isOwner: b
           }}
         >
           <p style={{ margin: "0 0 12px 0", fontSize: 13, color: "rgba(255,255,255,0.7)" }}>
-            You are viewing your public YoPho Identity page. Toggle the Theme Studio to customize it.
+            You are viewing your public YOphO Identity page. Toggle the Theme Studio to customize it.
           </p>
           <Link
             href="/hub/performer"

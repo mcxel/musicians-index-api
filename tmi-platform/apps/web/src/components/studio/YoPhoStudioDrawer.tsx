@@ -67,7 +67,7 @@ export default function YoPhoStudioDrawer({
   const handleSave = async () => {
     if (!imageSrc) return;
     setIsUploading(true);
-    setStatusMessage("Saving to YoPho Studio...");
+    setStatusMessage("Saving to YOphO Studio...");
 
     try {
       // /api/profile/update only exports a PUT handler — POST silently 405'd
@@ -107,57 +107,77 @@ export default function YoPhoStudioDrawer({
 
   return (
     <AnimatePresence>
-      <div style={{ position: "fixed", inset: 0, zIndex: 9999, display: "flex", justifyContent: "flex-end" }}>
-        {/* Backdrop */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          onClick={onClose}
-          style={{ position: "absolute", inset: 0, background: "rgba(5,5,16,0.75)", backdropFilter: "blur(8px)" }}
-        />
+      {/* Full viewport studio takeover — replaces the previous 480px side
+          drawer. Nothing behind it stays visible or interactive while open. */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 9999,
+          background: "#050510",
+          color: "#fff",
+          fontFamily: "'Inter', sans-serif",
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
+        <style>{`
+          @media (max-width: 860px) {
+            [data-yopho-studio-body] { grid-template-columns: 1fr !important; }
+          }
+        `}</style>
 
-        {/* Drawer container */}
-        <motion.aside
-          initial={{ x: "100%" }}
-          animate={{ x: 0 }}
-          exit={{ x: "100%" }}
-          transition={{ type: "spring", damping: 25, stiffness: 250 }}
-          style={{
-            position: "relative",
-            width: "100%",
-            maxWidth: 480,
-            height: "100%",
-            background: "#080816",
-            borderLeft: "1px solid rgba(255,45,170,0.3)",
-            boxShadow: "-10px 0 30px rgba(0,0,0,0.8)",
-            display: "flex",
-            flexDirection: "column",
-            zIndex: 10000,
-            color: "#fff",
-            fontFamily: "'Inter', sans-serif",
-          }}
-        >
-          {/* Header */}
-          <div style={{ padding: "20px 24px", borderBottom: "1px solid rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <div>
-              <span style={{ fontSize: 9, letterSpacing: "0.25em", color: "#FF2DAA", fontWeight: 800, textTransform: "uppercase" }}>
-                YOPHO CANVAS STUDIO
-              </span>
-              <h2 style={{ fontSize: 20, fontWeight: 900, margin: "2px 0 0", color: "#fff" }}>
-                {role === "performer" || role === "artist" ? "Performer Identity Studio" : "Fan YoPho Studio"}
-              </h2>
-            </div>
+        {/* Top bar */}
+        <div style={{ padding: "16px 24px", borderBottom: "1px solid rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexShrink: 0 }}>
+          <div>
+            <span style={{ fontSize: 9, letterSpacing: "0.25em", color: "#FF2DAA", fontWeight: 800, textTransform: "uppercase" }}>
+              YOphO CANVAS STUDIO
+            </span>
+            <h2 style={{ fontSize: 20, fontWeight: 900, margin: "2px 0 0", color: "#fff" }}>
+              {role === "performer" || role === "artist" ? "Performer Identity Studio" : "Fan YOphO Studio"}
+            </h2>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            {statusMessage && (
+              <div style={{ fontSize: 12, color: statusMessage.includes("success") ? "#00FF88" : "#FFD700", fontWeight: 700 }}>
+                {statusMessage}
+              </div>
+            )}
             <button
               onClick={onClose}
-              style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "#fff", borderRadius: 8, padding: "8px 12px", cursor: "pointer", fontSize: 14 }}
+              style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "#fff", borderRadius: 8, padding: "10px 14px", cursor: "pointer", fontSize: 12, fontWeight: 800 }}
             >
-              ✕
+              Cancel
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={!imageSrc || isUploading}
+              style={{
+                padding: "10px 20px",
+                background: !imageSrc || isUploading ? "rgba(255,45,170,0.3)" : "linear-gradient(135deg, #FF2DAA, #AA2DFF)",
+                border: "none",
+                color: "#fff",
+                borderRadius: 8,
+                fontSize: 12,
+                fontWeight: 900,
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+                cursor: !imageSrc || isUploading ? "not-allowed" : "pointer",
+                boxShadow: "0 0 15px rgba(255,45,170,0.3)",
+              }}
+            >
+              {isUploading ? "Saving..." : "Save & Return →"}
             </button>
           </div>
+        </div>
 
-          {/* Body content */}
-          <div style={{ flex: 1, overflowY: "auto", padding: 24, display: "flex", flexDirection: "column", gap: 20 }}>
+        {/* Studio body: controls column + center stage preview */}
+        <div data-yopho-studio-body style={{ flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: "360px 1fr", overflow: "hidden" }}>
+          {/* Controls column */}
+          <div style={{ overflowY: "auto", padding: 24, display: "flex", flexDirection: "column", gap: 20, borderRight: "1px solid rgba(255,255,255,0.08)" }}>
             {/* Drag & Drop Upload Zone */}
             <div
               onDrop={handleDrop}
@@ -192,9 +212,9 @@ export default function YoPhoStudioDrawer({
               </div>
             </div>
 
-            {/* Live Aspect Ratio Preview Tabs */}
             {imageSrc && (
               <>
+                {/* Aspect Ratio Tabs */}
                 <div style={{ display: "flex", gap: 8, background: "rgba(255,255,255,0.04)", borderRadius: 10, padding: 4 }}>
                   {(["1:1", "16:9", "4:3"] as const).map((tab) => (
                     <button
@@ -215,35 +235,6 @@ export default function YoPhoStudioDrawer({
                       {tab} {tab === "1:1" ? "Lobby Tile" : tab === "16:9" ? "Broadcast Banner" : "Bio Card"}
                     </button>
                   ))}
-                </div>
-
-                {/* Aspect Ratio Preview Container */}
-                <div style={{ background: "#000", borderRadius: 12, overflow: "hidden", border: "1px solid rgba(255,255,255,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <div
-                    style={{
-                      width: "100%",
-                      aspectRatio: activeTab === "1:1" ? "1 / 1" : activeTab === "16:9" ? "16 / 9" : "4 / 3",
-                      maxHeight: 280,
-                      position: "relative",
-                      overflow: "hidden",
-                    }}
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={imageSrc}
-                      alt="YoPho Preview"
-                      style={{
-                        width: "100%",
-                        height: "100%",
-                        objectFit: "cover",
-                        objectPosition: `${focusX}% ${focusY}%`,
-                        transition: "object-position 0.1s ease",
-                      }}
-                    />
-                    <div style={{ position: "absolute", bottom: 8, right: 8, background: "rgba(0,0,0,0.75)", padding: "4px 8px", borderRadius: 6, fontSize: 9, color: "#00FFFF", fontWeight: 800 }}>
-                      LIVE PREVIEW ({activeTab})
-                    </div>
-                  </div>
                 </div>
 
                 {/* Focus Position Sliders */}
@@ -282,45 +273,45 @@ export default function YoPhoStudioDrawer({
                 </div>
               </>
             )}
+          </div>
 
-            {statusMessage && (
-              <div style={{ fontSize: 12, color: statusMessage.includes("success") ? "#00FF88" : "#FFD700", textAlign: "center", fontWeight: 700 }}>
-                {statusMessage}
+          {/* Center stage preview */}
+          <div style={{ overflowY: "auto", padding: 32, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            {imageSrc ? (
+              <div style={{ width: "100%", maxWidth: 720, background: "#000", borderRadius: 16, overflow: "hidden", border: "1px solid rgba(255,255,255,0.12)", boxShadow: "0 20px 60px rgba(0,0,0,0.6)" }}>
+                <div
+                  style={{
+                    width: "100%",
+                    aspectRatio: activeTab === "1:1" ? "1 / 1" : activeTab === "16:9" ? "16 / 9" : "4 / 3",
+                    position: "relative",
+                    overflow: "hidden",
+                  }}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={imageSrc}
+                    alt="YOphO Preview"
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                      objectPosition: `${focusX}% ${focusY}%`,
+                      transition: "object-position 0.1s ease",
+                    }}
+                  />
+                  <div style={{ position: "absolute", bottom: 12, right: 12, background: "rgba(0,0,0,0.75)", padding: "4px 10px", borderRadius: 6, fontSize: 10, color: "#00FFFF", fontWeight: 800 }}>
+                    LIVE PREVIEW ({activeTab})
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div style={{ textAlign: "center", color: "rgba(255,255,255,0.35)", fontSize: 13, fontWeight: 700 }}>
+                Upload a photo to see the live YOphO preview
               </div>
             )}
           </div>
-
-          {/* Footer action */}
-          <div style={{ padding: 20, borderTop: "1px solid rgba(255,255,255,0.08)", display: "flex", gap: 12 }}>
-            <button
-              onClick={onClose}
-              style={{ flex: 1, padding: "12px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "#fff", borderRadius: 8, fontSize: 12, fontWeight: 800, cursor: "pointer" }}
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleSave}
-              disabled={!imageSrc || isUploading}
-              style={{
-                flex: 2,
-                padding: "12px",
-                background: !imageSrc || isUploading ? "rgba(255,45,170,0.3)" : "linear-gradient(135deg, #FF2DAA, #AA2DFF)",
-                border: "none",
-                color: "#fff",
-                borderRadius: 8,
-                fontSize: 12,
-                fontWeight: 900,
-                letterSpacing: "0.08em",
-                textTransform: "uppercase",
-                cursor: !imageSrc || isUploading ? "not-allowed" : "pointer",
-                boxShadow: "0 0 15px rgba(255,45,170,0.3)",
-              }}
-            >
-              {isUploading ? "Saving..." : "Save to YoPho Studio →"}
-            </button>
-          </div>
-        </motion.aside>
-      </div>
+        </div>
+      </motion.div>
     </AnimatePresence>
   );
 }
