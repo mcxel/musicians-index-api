@@ -116,7 +116,7 @@ export default function Home2NewsDeskSurface() {
             { href: '/sponsors', title: 'Sponsor Spotlight', img: '/tmi-curated/mag-50.jpg', color: '#00FF88' },
           ].map((card, index) => (
             <a key={card.href} href={card.href} style={{ textDecoration: 'none', color: '#fff' }}>
-              <div style={{ minHeight: 104, position: 'relative', borderRadius: 12, overflow: 'hidden', border: `1px solid ${card.color}55`, background: `linear-gradient(145deg, ${card.color}30, rgba(5,5,16,0.78)), url('${card.img}') center/cover`, display: 'flex', alignItems: 'flex-end', padding: 12 }}>
+              <div style={{ minHeight: 104, position: 'relative', borderRadius: 12, overflow: 'hidden', border: `1px solid ${card.color}55`, background: `linear-gradient(to bottom, ${card.color}10 0%, rgba(5,5,16,0.05) 45%, rgba(5,5,16,0.88) 100%), url('${card.img}') center/cover`, display: 'flex', alignItems: 'flex-end', padding: 12 }}>
                 {index === 0 && <div style={{ position: 'absolute', top: 8, right: 8, background: card.color, color: '#000', fontSize: 9, padding: '2px 6px', borderRadius: 4, fontWeight: 800 }}>HOT</div>}
                 <div style={{ fontSize: 12, letterSpacing: '0.08em', fontWeight: 800 }}>{card.title}</div>
               </div>
