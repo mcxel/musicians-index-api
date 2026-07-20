@@ -4,8 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import OnboardingShell from "@/components/onboarding/OnboardingShell";
-import AvatarQuickPick, { type AvatarTier } from "@/components/onboarding/AvatarQuickPick";
-import SubscriptionTierRow, { type SubscriptionTier } from "@/components/onboarding/SubscriptionTierRow";
+
 
 export default function AdvertiserSignupPage() {
   const router = useRouter();
@@ -14,8 +13,7 @@ export default function AdvertiserSignupPage() {
   const [primaryGoal, setPrimaryGoal] = useState("");
   const [password, setPassword] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState("");
-  const [avatarTier, setAvatarTier] = useState<AvatarTier>("SILVER");
-  const [subscriptionTier, setSubscriptionTier] = useState<SubscriptionTier>("GOLD");
+
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
@@ -112,14 +110,7 @@ export default function AdvertiserSignupPage() {
     </>
   );
 
-  const extras = (
-    <>
-      <AvatarQuickPick value={avatarTier} onChange={setAvatarTier} />
-      <SubscriptionTierRow value={subscriptionTier} onChange={setSubscriptionTier} />
-    </>
-  );
-
-  return <OnboardingShell role="advertiser" form={form} extras={extras} />;
+  return <OnboardingShell role="advertiser" form={form} />;
 }
 
 const labelStyle: React.CSSProperties = {

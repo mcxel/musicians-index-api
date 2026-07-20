@@ -1,16 +1,17 @@
 "use client";
 
-// Canon source: Fan Sign up.png — 5-card horizontal tier row
-// Tiers: FREE → RUBY → SILVER → GOLD → PLATINUM (displays as DIAMOND at top)
-// Selected card gets color border + glow; highlight badge on recommended
+// Canonical tier order: FREE → PRO → RUBY → SILVER → GOLD → PLATINUM → DIAMOND
+// This component is only rendered when a user explicitly asks to upgrade —
+// never shown during initial signup (Rule 26 / "don't scare free users off").
+// PRO is the entry-level paid option: low price, easy yes.
 
 import React, { useState } from "react";
 
-export type SubscriptionTier = "FREE" | "RUBY" | "SILVER" | "GOLD" | "PLATINUM";
+export type SubscriptionTier = "FREE" | "PRO" | "RUBY" | "SILVER" | "GOLD" | "PLATINUM";
 
 interface TierOption {
   tier: SubscriptionTier;
-  displayLabel: string;    // "PLATINUM" shows as "DIAMOND" per canon
+  displayLabel: string;
   color: string;
   bg: string;
   price: string;
@@ -28,37 +29,45 @@ const TIER_OPTIONS: TierOption[] = [
     perks: ["Watch Rooms", "Vote", "Basic Chat"],
   },
   {
+    tier: "PRO",
+    displayLabel: "PRO",
+    color: "#00FFFF",
+    bg: "rgba(0,255,255,0.09)",
+    price: "$4.99/mo",
+    perks: ["+ Tips & Reactions", "Pro Badge", "Priority Chat"],
+    recommended: true,
+  },
+  {
     tier: "RUBY",
     displayLabel: "RUBY",
-    color: "#CD7F32",
-    bg: "rgba(205,127,50,0.08)",
-    price: "$4.99",
-    perks: ["+ Tips", "Avatar Badge", "Cypher Entry"],
+    color: "#FF4444",
+    bg: "rgba(255,68,68,0.08)",
+    price: "$9.99/mo",
+    perks: ["+ Cypher Entry", "Avatar Badge", "Merch Drops"],
   },
   {
     tier: "SILVER",
     displayLabel: "SILVER",
     color: "#C0C0C0",
     bg: "rgba(192,192,192,0.08)",
-    price: "$9.99",
-    perks: ["+ Beat Battles", "VIP Rooms", "Merch Drops"],
-    recommended: true,
+    price: "$14.99/mo",
+    perks: ["+ Beat Battles", "VIP Rooms", "Crown Voting"],
   },
   {
     tier: "GOLD",
     displayLabel: "GOLD",
     color: "#FFD700",
     bg: "rgba(255,215,0,0.08)",
-    price: "$19.99",
-    perks: ["+ Booking", "Season Pass", "Crown Voting"],
+    price: "$24.99/mo",
+    perks: ["+ Booking", "Season Pass", "Stage Slot"],
   },
   {
     tier: "PLATINUM",
     displayLabel: "DIAMOND",
     color: "#AA2DFF",
     bg: "rgba(170,45,255,0.10)",
-    price: "$49.99",
-    perks: ["All Access", "NFT Drops", "Stage Slot"],
+    price: "$49.99/mo",
+    perks: ["All Access", "NFT Drops", "Diamond Badge"],
   },
 ];
 

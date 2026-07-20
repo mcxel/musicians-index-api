@@ -4,8 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import OnboardingShell from "@/components/onboarding/OnboardingShell";
-import AvatarQuickPick, { type AvatarTier } from "@/components/onboarding/AvatarQuickPick";
-import SubscriptionTierRow, { type SubscriptionTier } from "@/components/onboarding/SubscriptionTierRow";
+
 
 export default function FanSignupPage() {
   const router = useRouter();
@@ -13,8 +12,7 @@ export default function FanSignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState("");
-  const [avatarTier, setAvatarTier] = useState<AvatarTier>("FREE");
-  const [subscriptionTier, setSubscriptionTier] = useState<SubscriptionTier>("FREE");
+
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
@@ -110,14 +108,7 @@ export default function FanSignupPage() {
     </>
   );
 
-  const extras = (
-    <>
-      <AvatarQuickPick value={avatarTier} onChange={setAvatarTier} />
-      <SubscriptionTierRow value={subscriptionTier} onChange={setSubscriptionTier} />
-    </>
-  );
-
-  return <OnboardingShell role="fan" form={form} extras={extras} />;
+  return <OnboardingShell role="fan" form={form} />;
 }
 
 const labelStyle: React.CSSProperties = {
