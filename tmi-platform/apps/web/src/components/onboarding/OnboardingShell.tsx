@@ -172,10 +172,20 @@ export default function OnboardingShell({
         style={{
           width: "100%",
           maxWidth: 960,
+          maxHeight: "calc(100vh - 48px)",
           display: "flex",
           gap: 0,
           borderRadius: 16,
-          overflow: "hidden",
+          // Was `overflow: hidden` with no scroll fallback anywhere inside —
+          // on steps with taller content (Step 4's photo editor: crop
+          // preview + 3 sliders + Back/Save buttons), the bottom of the
+          // card — including the only way to proceed — got clipped and
+          // unreachable on shorter viewports. Real users got stuck with
+          // no visible next step (confirmed 2026-07-20). The rounded-corner
+          // clip now lives on the two inner panels instead, and the outer
+          // card scrolls as a whole when content is taller than the
+          // viewport, so nothing can ever be clipped out of reach again.
+          overflowY: "auto",
           boxShadow: `0 0 80px ${cfg.marqueColor}18`,
         }}
       >
