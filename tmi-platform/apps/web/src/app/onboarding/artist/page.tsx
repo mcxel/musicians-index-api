@@ -586,9 +586,9 @@ export default function OnboardingArtistPage() {
       <>
         <div>
           <div style={{ fontSize: 9, letterSpacing: "0.25em", color: "#FF2DAA", fontWeight: 800, marginBottom: 4 }}>STEP 4 OF 4</div>
-          <h2 style={{ fontSize: 22, fontWeight: 900, margin: "0 0 6px" }}>Photo Editor</h2>
+          <h2 style={{ fontSize: 22, fontWeight: 900, margin: "0 0 6px" }}>Your Performer Profile Photo</h2>
           <p style={{ fontSize: 12, color: "rgba(255,255,255,0.45)", margin: "0 0 24px" }}>
-            Adjust your cropping size, rotation angle, and image brightness.
+            This is the photo fans see on your performer profile, in search, and on the rankings. Adjust cropping, rotation, and brightness.
           </p>
         </div>
 

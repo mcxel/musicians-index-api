@@ -1,7 +1,6 @@
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { dbReady, getUserByEmail } from '@/lib/auth/UserStore';
 import prisma from '@/lib/prisma';
 
 type ProfileBody = {
@@ -40,8 +39,13 @@ export async function PUT(req: NextRequest) {
   let body: ProfileBody = {};
   try { body = await req.json(); } catch { return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }); }
 
-  await dbReady;
-  const user = getUserByEmail(email);
+  // Look up directly against Prisma, not UserStore's getUserByEmail() — that
+  // reads an in-memory cache that's loaded once per serverless instance and
+  // never refreshed. A user who registers on one instance and saves their
+  // profile on another (very common on Vercel) is invisible to the second
+  // instance's cache, causing a false "User not found" here. Found 2026-07-20
+  // via a real onboarding "Failed to save profile" report.
+  const user = await prisma.user.findUnique({ where: { email }, select: { id: true, role: true, displayName: true } });
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
   let saved = false;
