@@ -11,6 +11,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { checkRateLimit } from '@/lib/security/TMISecurityEngine';
+import { getSubmissionWindow } from '@/lib/shows/MondayShowtime';
 
 const VALID_CATEGORIES = new Set([
   'PRODUCER_BEAT_BATTLE',
@@ -41,7 +42,15 @@ export async function GET(req: NextRequest) {
     },
   });
 
-  return NextResponse.json({ ok: true, submissions });
+  const window = category === 'MONDAY_NIGHT_STAGE' ? getSubmissionWindow() : null;
+
+  return NextResponse.json({
+    ok: true,
+    submissions,
+    ...(window && {
+      submissionWindow: { showtime: window.showtime.toISOString(), opensAt: window.opensAt.toISOString(), isOpen: window.isOpen },
+    }),
+  });
 }
 
 export async function POST(req: NextRequest) {
@@ -78,6 +87,19 @@ export async function POST(req: NextRequest) {
   const rightsAttested = Boolean(body.rightsAttested);
   if (!rightsAttested) {
     return NextResponse.json({ error: 'Rights attestation is required to submit an entry' }, { status: 400 });
+  }
+
+  // Monday Night Stage submissions only open a 2-hour window before showtime
+  // — the show is weekly, not always-on, so entries can't queue up any time.
+  if (category === 'MONDAY_NIGHT_STAGE') {
+    const window = getSubmissionWindow();
+    if (!window.isOpen) {
+      return NextResponse.json({
+        error: `Submissions for Monday Night Stage open 2 hours before showtime. Next window opens ${window.opensAt.toISOString()}.`,
+        opensAt: window.opensAt.toISOString(),
+        showtime: window.showtime.toISOString(),
+      }, { status: 403 });
+    }
   }
 
   const submission = await prisma.eventSubmission.create({

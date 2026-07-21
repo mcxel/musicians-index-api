@@ -14,6 +14,12 @@ import { MondayNightStagePanel } from '@/components/shows/MondayNightStagePanel'
 
 const SHOW_TITLE  = "MARCEL'S MONDAY NIGHT STAGE";
 const ROOM_ID     = 'monday-stage';
+// If a called performer doesn't confirm they're here within this window,
+// auto-skip to the next person in queue so the show never stalls on a
+// no-show. Marcel's original ask was "a couple seconds" - 20s is the floor
+// for a real person to notice a stage call and click a button; tune down
+// if that's still too generous once this is tested live.
+const JOIN_TIMEOUT_SEC = 20;
 
 interface StageSubmission {
   id: string;
@@ -52,6 +58,7 @@ export default function MondayStagePage() {
   // Empty is a real, honest state (Rule 20): a Monday with no submissions
   // yet just says so, it doesn't fake a lineup.
   const [submissions, setSubmissions] = useState<StageSubmission[] | null>(null);
+  const [submissionWindow, setSubmissionWindow] = useState<{ showtime: string; opensAt: string; isOpen: boolean } | null>(null);
   const [subTitle, setSubTitle] = useState('');
   const [subGenre, setSubGenre] = useState('');
   const [subRights, setSubRights] = useState(false);
@@ -64,6 +71,7 @@ export default function MondayStagePage() {
       if (r.ok) {
         const data = await r.json();
         setSubmissions(data.submissions as StageSubmission[]);
+        if (data.submissionWindow) setSubmissionWindow(data.submissionWindow);
       } else {
         setSubmissions([]);
       }
@@ -100,16 +108,59 @@ export default function MondayStagePage() {
     }
   }, [subTitle, subGenre, subRights, loadSubmissions]);
 
+  // Queue-call state machine: host calls the next submitted performer, they
+  // have JOIN_TIMEOUT_SEC to confirm they're here, or the show auto-advances
+  // to the next person so it never stalls waiting on one no-show.
+  const [queueIndex, setQueueIndex] = useState(0);
+  const [callState, setCallState] = useState<'idle' | 'calling' | 'confirmed'>('idle');
+  const [callDeadline, setCallDeadline] = useState<number | null>(null);
+  const [nowTick, setNowTick] = useState(() => Date.now());
+
+  const rawLineup = submissions ?? [];
   const lineup = useMemo(
-    () => (submissions ?? []).map((s, i) => ({
+    () => rawLineup.map((s, i) => ({
       id: s.id,
       artist: s.user.displayName || s.user.name || 'Performer',
       genre: s.genre || 'Unspecified',
-      status: i === 0 ? 'LIVE' : i === 1 ? 'NEXT' : 'UPCOMING',
+      status:
+        i < queueIndex ? 'DONE' :
+        i === queueIndex && callState === 'confirmed' ? 'LIVE' :
+        i === queueIndex ? 'NEXT' :
+        'UPCOMING',
     })),
-    [submissions],
+    [rawLineup, queueIndex, callState],
   );
   const currentArtist = lineup.find((l) => l.status === 'LIVE');
+  const calledArtist = callState === 'calling' ? lineup[queueIndex] : undefined;
+  const secondsLeft = callDeadline ? Math.max(0, Math.ceil((callDeadline - nowTick) / 1000)) : 0;
+
+  const callNext = useCallback(() => {
+    if (queueIndex >= rawLineup.length) return; // queue exhausted - honest, not faked
+    setCallState('calling');
+    setCallDeadline(Date.now() + JOIN_TIMEOUT_SEC * 1000);
+  }, [queueIndex, rawLineup.length]);
+
+  const confirmJoin = useCallback(() => {
+    setCallState('confirmed');
+    setCallDeadline(null);
+  }, []);
+
+  // Countdown tick + auto-advance on no-show
+  useEffect(() => {
+    if (callState !== 'calling' || !callDeadline) return;
+    const id = setInterval(() => {
+      const now = Date.now();
+      setNowTick(now);
+      if (now >= callDeadline) {
+        // No-show: skip this slot and immediately call the next one so the
+        // show keeps moving without waiting for the host to click again.
+        setQueueIndex((q) => q + 1);
+        setCallState('idle');
+        setCallDeadline(null);
+      }
+    }, 250);
+    return () => clearInterval(id);
+  }, [callState, callDeadline]);
 
   // Bebo hook/cane game-show layer — real crowd boo/yay mechanic, ported in
   // from the /shows/monday-night-stage prototype (now a redirect to here).
@@ -124,6 +175,30 @@ export default function MondayStagePage() {
   // Re-sync when real submissions load and rebuild the engine's contestant list.
   useEffect(() => { setGameState(stageEngine.getFullState()); }, [stageEngine]);
   const handlePresentContestant = useCallback((id: string) => { stageEngine.presentContestant(id); refreshGame(); }, [stageEngine, refreshGame]);
+
+  // Auto-chain: once a no-show skip resets the call state to idle mid-show,
+  // immediately call whoever's next so the show never sits waiting.
+  useEffect(() => {
+    if (gameStarted && callState === 'idle' && queueIndex > 0 && queueIndex < rawLineup.length) {
+      callNext();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [queueIndex, gameStarted]);
+
+  // A confirmed join hands the performer to the existing Bebo/crowd-vote engine.
+  useEffect(() => {
+    if (callState !== 'confirmed') return;
+    const confirmedArtist = lineup[queueIndex];
+    if (confirmedArtist) handlePresentContestant(confirmedArtist.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [callState]);
+
+  // After a performance concludes (Bebo hooks them off, or the host wraps
+  // them up), advance the queue and call the next performer.
+  const advanceQueueAfterPerformance = useCallback(() => {
+    setQueueIndex((q) => q + 1);
+    setCallState('idle');
+  }, []);
   const handleProcessVote = useCallback(() => { stageEngine.processCrowdVote(); refreshGame(); }, [stageEngine, refreshGame]);
   const handleCrowdVote = useCallback((type: 'yay' | 'boo') => { stageEngine.show.recordCrowdVote(type); refreshGame(); }, [stageEngine, refreshGame]);
   const handleHook = useCallback((id: string) => {
@@ -167,8 +242,8 @@ export default function MondayStagePage() {
     stageEngine.startShow();
     setGameStarted(true);
     refreshGame();
-    setTimeout(() => setStageState('LIVE'), 2000);
-  }, [currentArtist, stageEngine, refreshGame]);
+    setTimeout(() => { setStageState('LIVE'); callNext(); }, 2000);
+  }, [currentArtist, stageEngine, refreshGame, callNext]);
 
   const closeCurtain = useCallback(async () => {
     setStageState('CURTAIN_CLOSING');
@@ -290,9 +365,31 @@ export default function MondayStagePage() {
                 )}
               </AnimatePresence>
 
+              {/* Queue call — performer has JOIN_TIMEOUT_SEC to confirm
+                  they're here or the show auto-advances to the next entry. */}
+              {gameStarted && callState === 'calling' && calledArtist && (
+                <div style={{ marginTop: 24, padding: '16px 18px', borderRadius: 10, background: '#FFD70010', border: '1px solid #FFD70044', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                  <div>
+                    <div style={{ fontSize: 9, letterSpacing: 2, color: '#FFD700', fontWeight: 800, marginBottom: 4 }}>YOU'RE UP — CONFIRM YOU'RE HERE</div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: '#fff' }}>{calledArtist.artist}</div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{ fontSize: 20, fontWeight: 900, color: secondsLeft <= 5 ? '#FF4444' : '#FFD700' }}>{secondsLeft}s</div>
+                    <button onClick={confirmJoin} style={{ padding: '10px 22px', borderRadius: 20, border: '1px solid #00FF88', background: '#00FF8822', color: '#00FF88', fontSize: 11, fontWeight: 900, letterSpacing: 2, cursor: 'pointer' }}>
+                      JOIN NOW
+                    </button>
+                  </div>
+                </div>
+              )}
+              {gameStarted && callState === 'idle' && queueIndex >= rawLineup.length && rawLineup.length > 0 && (
+                <div style={{ marginTop: 24, padding: '16px 18px', borderRadius: 10, background: '#0a0a14', border: '1px solid #1a1a2e', fontSize: 12, color: '#888' }}>
+                  Everyone in tonight's queue has performed. Waiting for more submissions.
+                </div>
+              )}
+
               {/* Bebo hook/cane game panel — crowd boos hook a performer off,
                   crowd yays bring them back. Live once the curtain opens. */}
-              {gameStarted && (
+              {gameStarted && callState === 'confirmed' && (
                 <div style={{ marginTop: 24 }}>
                   <div style={{ fontSize: 9, letterSpacing: 4, color: '#FFD700', fontWeight: 800, marginBottom: 16 }}>
                     CROWD CONTROL — BOO = HOOK, YAY = RECOVER
@@ -305,6 +402,10 @@ export default function MondayStagePage() {
                     onHook={handleHook}
                     onReturn={handleReturn}
                   />
+                  <button onClick={advanceQueueAfterPerformance}
+                    style={{ marginTop: 10, padding: '8px 20px', borderRadius: 20, border: '1px solid #AA2DFF44', background: '#AA2DFF18', color: '#AA2DFF', fontSize: 10, fontWeight: 800, letterSpacing: 2, cursor: 'pointer' }}>
+                    NEXT PERFORMER →
+                  </button>
                 </div>
               )}
 
@@ -340,6 +441,11 @@ export default function MondayStagePage() {
                 {/* Submit an entry */}
                 <div style={{ marginTop: 16, padding: '16px 18px', borderRadius: 10, background: '#0a0a14', border: '1px solid #1a1a2e' }}>
                   <div style={{ fontSize: 9, letterSpacing: 2, color: '#00FFFF', fontWeight: 800, marginBottom: 10 }}>SUBMIT YOUR ENTRY</div>
+                  {submissionWindow && !submissionWindow.isOpen && (
+                    <div style={{ fontSize: 11, color: '#FFD700', marginBottom: 10 }}>
+                      Submissions open 2 hours before showtime — next window opens {new Date(submissionWindow.opensAt).toLocaleString('en-US', { weekday: 'short', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })}.
+                    </div>
+                  )}
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
                     <input value={subTitle} onChange={(e) => setSubTitle(e.target.value)} placeholder="Set / performance title" style={{ flex: '1 1 200px', padding: '8px 12px', background: '#111', border: '1px solid #222', borderRadius: 8, color: '#fff', fontSize: 12, outline: 'none' }} />
                     <input value={subGenre} onChange={(e) => setSubGenre(e.target.value)} placeholder="Genre (optional)" style={{ flex: '1 1 140px', padding: '8px 12px', background: '#111', border: '1px solid #222', borderRadius: 8, color: '#fff', fontSize: 12, outline: 'none' }} />
@@ -349,8 +455,8 @@ export default function MondayStagePage() {
                     I attest I have the rights to perform this content.
                   </label>
                   {subError && <div style={{ fontSize: 11, color: '#FF4444', marginBottom: 8 }}>{subError}</div>}
-                  <button onClick={submitEntry} disabled={subSubmitting}
-                    style={{ padding: '8px 20px', borderRadius: 20, border: '1px solid #00FFFF44', background: '#00FFFF18', color: '#00FFFF', fontSize: 10, fontWeight: 700, letterSpacing: 2, cursor: subSubmitting ? 'not-allowed' : 'pointer', opacity: subSubmitting ? 0.5 : 1 }}>
+                  <button onClick={submitEntry} disabled={subSubmitting || (submissionWindow ? !submissionWindow.isOpen : false)}
+                    style={{ padding: '8px 20px', borderRadius: 20, border: '1px solid #00FFFF44', background: '#00FFFF18', color: '#00FFFF', fontSize: 10, fontWeight: 700, letterSpacing: 2, cursor: subSubmitting ? 'not-allowed' : 'pointer', opacity: subSubmitting || (submissionWindow && !submissionWindow.isOpen) ? 0.4 : 1 }}>
                     {subSubmitting ? 'SUBMITTING…' : 'SUBMIT'}
                   </button>
                 </div>
