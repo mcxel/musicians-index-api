@@ -217,6 +217,9 @@ model User {
 
   // Venue skins
   venueSkinOwnerships    VenueSkinOwnership[]
+
+  // Competition/show submissions (Monday Night Stage, Beat Battle, etc.)
+  eventSubmissions       EventSubmission[]
 }
 
 model Account {
@@ -3115,6 +3118,36 @@ model VenueSkinOwnership {
   @@unique([userId, skinId])
   @@index([userId])
   @@map("venue_skin_ownerships")
+}
+
+// A real, server-side, cross-user submission record for competition/show
+// lineups (Monday Night Stage, Producer Beat Battle, World Dance Party,
+// Cypher Rotation). Replaces `lib/events/EventSubmissionEngine.ts`'s
+// localStorage-only ledger (added 2026-07-20) — localStorage is per-browser,
+// so it could never actually produce a lineup other users or devices could
+// see; a real lineup needs a real shared store. Category/status naming
+// mirrors that file's types so the client lib can be pointed at this table
+// instead of localStorage without a data-model rename.
+model EventSubmission {
+  id                       String   @id @default(cuid())
+  userId                   String
+  user                     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category                 String   // "PRODUCER_BEAT_BATTLE" | "WORLD_DANCE_PARTY" | "MONDAY_NIGHT_STAGE" | "CYPHER_ROTATION"
+  title                    String
+  bpm                      Int?
+  genre                    String?
+  audioUrl                 String?
+  videoUrl                 String?
+  rightsAttested           Boolean  @default(false)
+  sampleClearanceDeclared  Boolean  @default(false)
+  status                   String   @default("SUBMITTED") // "SUBMITTED" | "RIGHTS_ATTESTED" | "SAFETY_REVIEWED" | "APPROVED_IN_ROTATION" | "REJECTED"
+  queuedForDate            DateTime?
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+
+  @@index([category, status])
+  @@index([userId])
+  @@map("event_submissions")
 }
 
 // ── Content Lifecycle — Phase C: Avatar ──────────────────────────────────────

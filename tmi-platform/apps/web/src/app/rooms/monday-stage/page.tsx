@@ -15,13 +15,13 @@ import { MondayNightStagePanel } from '@/components/shows/MondayNightStagePanel'
 const SHOW_TITLE  = "MARCEL'S MONDAY NIGHT STAGE";
 const ROOM_ID     = 'monday-stage';
 
-const LINEUP = [
-  { time: '8:00 PM',  artist: 'DJ Cyphers',    genre: 'Hip-Hop / Mix',  status: 'DONE'    },
-  { time: '8:45 PM',  artist: 'Amirah Wells',   genre: 'R&B / Soul',     status: 'DONE'    },
-  { time: '9:30 PM',  artist: 'Jaylen Cross',   genre: 'Hip-Hop',        status: 'LIVE'    },
-  { time: '10:15 PM', artist: 'Nova Reign',      genre: 'Neo-Soul',       status: 'NEXT'    },
-  { time: '11:00 PM', artist: 'Traxx Monroe',    genre: 'Trap',           status: 'UPCOMING'},
-];
+interface StageSubmission {
+  id: string;
+  title: string;
+  genre: string | null;
+  createdAt: string;
+  user: { name: string | null; displayName: string | null };
+}
 
 const STATUS_STYLES: Record<string, { color: string; label: string }> = {
   DONE:     { color: '#444',   label: 'DONE'    },
@@ -47,18 +47,82 @@ export default function MondayStagePage() {
   const [chatInput, setChatInput]     = useState('');
   const [viewers, setViewers]         = useState(0);
   const [tipping, setTipping]         = useState(false);
-  const currentArtist = LINEUP.find((l) => l.status === 'LIVE');
+
+  // Real, cross-user submissions — replaces the old hardcoded lineup.
+  // Empty is a real, honest state (Rule 20): a Monday with no submissions
+  // yet just says so, it doesn't fake a lineup.
+  const [submissions, setSubmissions] = useState<StageSubmission[] | null>(null);
+  const [subTitle, setSubTitle] = useState('');
+  const [subGenre, setSubGenre] = useState('');
+  const [subRights, setSubRights] = useState(false);
+  const [subSubmitting, setSubSubmitting] = useState(false);
+  const [subError, setSubError] = useState<string | null>(null);
+
+  const loadSubmissions = useCallback(async () => {
+    try {
+      const r = await fetch('/api/events/submissions?category=MONDAY_NIGHT_STAGE');
+      if (r.ok) {
+        const data = await r.json();
+        setSubmissions(data.submissions as StageSubmission[]);
+      } else {
+        setSubmissions([]);
+      }
+    } catch {
+      setSubmissions([]);
+    }
+  }, []);
+
+  useEffect(() => { loadSubmissions(); }, [loadSubmissions]);
+
+  const submitEntry = useCallback(async () => {
+    setSubError(null);
+    if (!subTitle.trim()) { setSubError('Enter a title for your set.'); return; }
+    if (!subRights) { setSubError('You must attest you have rights to perform this.'); return; }
+    setSubSubmitting(true);
+    try {
+      const r = await fetch('/api/events/submissions', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ category: 'MONDAY_NIGHT_STAGE', title: subTitle.trim(), genre: subGenre.trim() || undefined, rightsAttested: true }),
+      });
+      if (r.ok) {
+        setSubTitle(''); setSubGenre('');
+        await loadSubmissions();
+      } else {
+        const data = await r.json().catch(() => ({}));
+        setSubError(data.error ?? 'Failed to submit entry.');
+      }
+    } catch {
+      setSubError('Network error while submitting.');
+    } finally {
+      setSubSubmitting(false);
+    }
+  }, [subTitle, subGenre, subRights, loadSubmissions]);
+
+  const lineup = useMemo(
+    () => (submissions ?? []).map((s, i) => ({
+      id: s.id,
+      artist: s.user.displayName || s.user.name || 'Performer',
+      genre: s.genre || 'Unspecified',
+      status: i === 0 ? 'LIVE' : i === 1 ? 'NEXT' : 'UPCOMING',
+    })),
+    [submissions],
+  );
+  const currentArtist = lineup.find((l) => l.status === 'LIVE');
 
   // Bebo hook/cane game-show layer — real crowd boo/yay mechanic, ported in
   // from the /shows/monday-night-stage prototype (now a redirect to here).
   const stageEngine = useMemo(() => {
     const e = new MondayNightStageEngine();
-    LINEUP.forEach((act, i) => e.show.addContestant(`mns-${i}`, act.artist));
+    lineup.forEach((act) => e.show.addContestant(act.id, act.artist));
     return e;
-  }, []);
+  }, [lineup]);
   const [gameState, setGameState] = useState<MondayNightStageState>(() => stageEngine.getFullState());
   const [gameStarted, setGameStarted] = useState(false);
   const refreshGame = useCallback(() => setGameState(stageEngine.getFullState()), [stageEngine]);
+  // Re-sync when real submissions load and rebuild the engine's contestant list.
+  useEffect(() => { setGameState(stageEngine.getFullState()); }, [stageEngine]);
   const handlePresentContestant = useCallback((id: string) => { stageEngine.presentContestant(id); refreshGame(); }, [stageEngine, refreshGame]);
   const handleProcessVote = useCallback(() => { stageEngine.processCrowdVote(); refreshGame(); }, [stageEngine, refreshGame]);
   const handleCrowdVote = useCallback((type: 'yay' | 'boo') => { stageEngine.show.recordCrowdVote(type); refreshGame(); }, [stageEngine, refreshGame]);
@@ -244,25 +308,51 @@ export default function MondayStagePage() {
                 </div>
               )}
 
-              {/* Tonight's Lineup */}
+              {/* Tonight's Lineup — real submissions only, honest empty state */}
               <div style={{ marginTop: 32 }}>
                 <div style={{ fontSize: 9, letterSpacing: 4, color: '#AA2DFF', fontWeight: 800, marginBottom: 16 }}>TONIGHT'S LINEUP</div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {LINEUP.map((act, i) => {
-                    const s = STATUS_STYLES[act.status];
-                    return (
-                      <motion.div key={i}
-                        initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.06 }}
-                        style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '12px 16px', borderRadius: 10, background: act.status === 'LIVE' ? '#FF2DAA0A' : '#0a0a14', border: `1px solid ${act.status === 'LIVE' ? '#FF2DAA33' : '#1a1a2e'}` }}>
-                        <div style={{ fontSize: 11, color: '#555', minWidth: 60 }}>{act.time}</div>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: 13, fontWeight: 700, color: act.status === 'LIVE' ? '#fff' : '#888' }}>{act.artist}</div>
-                          <div style={{ fontSize: 10, color: '#444' }}>{act.genre}</div>
-                        </div>
-                        <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: 2, color: s.color }}>{s.label}</div>
-                      </motion.div>
-                    );
-                  })}
+
+                {submissions === null ? (
+                  <div style={{ fontSize: 12, color: '#555' }}>Loading lineup…</div>
+                ) : lineup.length === 0 ? (
+                  <div style={{ padding: '16px 18px', borderRadius: 10, background: '#0a0a14', border: '1px solid #1a1a2e', fontSize: 12, color: '#888' }}>
+                    No performers have submitted for this Monday yet. Be the first — submit your entry below.
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {lineup.map((act) => {
+                      const s = STATUS_STYLES[act.status];
+                      return (
+                        <motion.div key={act.id}
+                          initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
+                          style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '12px 16px', borderRadius: 10, background: act.status === 'LIVE' ? '#FF2DAA0A' : '#0a0a14', border: `1px solid ${act.status === 'LIVE' ? '#FF2DAA33' : '#1a1a2e'}` }}>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: 13, fontWeight: 700, color: act.status === 'LIVE' ? '#fff' : '#888' }}>{act.artist}</div>
+                            <div style={{ fontSize: 10, color: '#444' }}>{act.genre}</div>
+                          </div>
+                          <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: 2, color: s.color }}>{s.label}</div>
+                        </motion.div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Submit an entry */}
+                <div style={{ marginTop: 16, padding: '16px 18px', borderRadius: 10, background: '#0a0a14', border: '1px solid #1a1a2e' }}>
+                  <div style={{ fontSize: 9, letterSpacing: 2, color: '#00FFFF', fontWeight: 800, marginBottom: 10 }}>SUBMIT YOUR ENTRY</div>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
+                    <input value={subTitle} onChange={(e) => setSubTitle(e.target.value)} placeholder="Set / performance title" style={{ flex: '1 1 200px', padding: '8px 12px', background: '#111', border: '1px solid #222', borderRadius: 8, color: '#fff', fontSize: 12, outline: 'none' }} />
+                    <input value={subGenre} onChange={(e) => setSubGenre(e.target.value)} placeholder="Genre (optional)" style={{ flex: '1 1 140px', padding: '8px 12px', background: '#111', border: '1px solid #222', borderRadius: 8, color: '#fff', fontSize: 12, outline: 'none' }} />
+                  </div>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, color: '#888', marginBottom: 10 }}>
+                    <input type="checkbox" checked={subRights} onChange={(e) => setSubRights(e.target.checked)} />
+                    I attest I have the rights to perform this content.
+                  </label>
+                  {subError && <div style={{ fontSize: 11, color: '#FF4444', marginBottom: 8 }}>{subError}</div>}
+                  <button onClick={submitEntry} disabled={subSubmitting}
+                    style={{ padding: '8px 20px', borderRadius: 20, border: '1px solid #00FFFF44', background: '#00FFFF18', color: '#00FFFF', fontSize: 10, fontWeight: 700, letterSpacing: 2, cursor: subSubmitting ? 'not-allowed' : 'pointer', opacity: subSubmitting ? 0.5 : 1 }}>
+                    {subSubmitting ? 'SUBMITTING…' : 'SUBMIT'}
+                  </button>
                 </div>
               </div>
             </div>
