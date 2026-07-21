@@ -13,6 +13,31 @@ export interface YoPhoStudioDrawerProps {
   onSaveSuccess?: (data: { profileImageUrl: string; motionUrl?: string; bannerUrl?: string }) => void;
 }
 
+interface StudioSection {
+  field: "avatarUrl" | "articleHeroImageUrl" | "bannerUrl";
+  label: string;
+  description: string;
+  aspect: "1:1" | "16:9" | "4:3";
+}
+
+// Ordered so the most important image (what fans see everywhere) comes
+// first — later sections are real but optional, always skippable.
+const PERFORMER_SECTIONS: StudioSection[] = [
+  { field: "avatarUrl", label: "Profile Photo", description: "Shown on your profile, in search, and on the rankings.", aspect: "1:1" },
+  { field: "articleHeroImageUrl", label: "Article Hero Image", description: "Used in magazine articles, interviews, and press features — can be a different shot than your profile photo.", aspect: "16:9" },
+  { field: "bannerUrl", label: "Promo Banner", description: "Shown on your profile header and event/tour pages.", aspect: "16:9" },
+];
+const FAN_SECTIONS: StudioSection[] = [
+  { field: "avatarUrl", label: "Profile Photo", description: "Shown on your profile and in the fan lobby.", aspect: "1:1" },
+];
+
+interface SectionState {
+  imageSrc: string | null;
+  focusX: number;
+  focusY: number;
+}
+const EMPTY_SECTION_STATE: SectionState = { imageSrc: null, focusX: 50, focusY: 50 };
+
 export default function YoPhoStudioDrawer({
   isOpen,
   onClose,
@@ -21,12 +46,22 @@ export default function YoPhoStudioDrawer({
   initialMotionUrl,
   onSaveSuccess,
 }: YoPhoStudioDrawerProps) {
-  const [imageSrc, setImageSrc] = useState<string | null>(initialImageUrl ?? null);
+  const sections = role === "performer" || role === "artist" ? PERFORMER_SECTIONS : FAN_SECTIONS;
+  const [sectionIndex, setSectionIndex] = useState(0);
+  const currentSection = sections[sectionIndex]!;
+  const [sectionData, setSectionData] = useState<Record<string, SectionState>>(() => ({
+    avatarUrl: { ...EMPTY_SECTION_STATE, imageSrc: initialImageUrl ?? null },
+  }));
+  const current = sectionData[currentSection.field] ?? EMPTY_SECTION_STATE;
+  const imageSrc = current.imageSrc;
+  const focusX = current.focusX;
+  const focusY = current.focusY;
+  const setImageSrc = (src: string | null) => setSectionData((d) => ({ ...d, [currentSection.field]: { ...(d[currentSection.field] ?? EMPTY_SECTION_STATE), imageSrc: src } }));
+  const setFocusX = (v: number) => setSectionData((d) => ({ ...d, [currentSection.field]: { ...(d[currentSection.field] ?? EMPTY_SECTION_STATE), focusX: v } }));
+  const setFocusY = (v: number) => setSectionData((d) => ({ ...d, [currentSection.field]: { ...(d[currentSection.field] ?? EMPTY_SECTION_STATE), focusY: v } }));
+
   const [motionSrc, setMotionSrc] = useState<string | null>(initialMotionUrl ?? null);
   const [dragActive, setDragActive] = useState(false);
-  const [focusX, setFocusX] = useState(50); // percentage 0..100
-  const [focusY, setFocusY] = useState(50); // percentage 0..100
-  const [activeTab, setActiveTab] = useState<"1:1" | "16:9" | "4:3">("1:1");
   const [isUploading, setIsUploading] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -64,35 +99,44 @@ export default function YoPhoStudioDrawer({
     setDragActive(false);
   };
 
+  const isLastSection = sectionIndex === sections.length - 1;
+
+  const advance = () => {
+    if (isLastSection) {
+      onClose();
+    } else {
+      setSectionIndex((i) => i + 1);
+      setStatusMessage("");
+    }
+  };
+
+  // Every section is independently skippable — a performer might only ever
+  // set a profile photo and never touch Article Hero / Promo Banner, and
+  // that's a fully valid, non-blocking choice.
+  const handleSkipSection = () => advance();
+
   const handleSave = async () => {
-    if (!imageSrc) return;
+    if (!imageSrc) { advance(); return; }
     setIsUploading(true);
-    setStatusMessage("Saving to YOphO Studio...");
+    setStatusMessage(`Saving ${currentSection.label}...`);
 
     try {
-      // /api/profile/update only exports a PUT handler — POST silently 405'd
-      // here, matching the same bug already fixed in both onboarding flows
-      // this session (2026-07-19/20).
       const res = await fetch("/api/profile/update", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
-          avatarUrl: imageSrc,
-          profileImageUrl: imageSrc,
-          focusX,
-          focusY,
+          [currentSection.field]: imageSrc,
+          ...(currentSection.field === "avatarUrl" ? { profileImageUrl: imageSrc } : {}),
         }),
       });
 
       if (res.ok) {
-        setStatusMessage("Profile updated successfully!");
-        if (onSaveSuccess) {
+        setStatusMessage(`${currentSection.label} saved!`);
+        if (currentSection.field === "avatarUrl" && onSaveSuccess) {
           onSaveSuccess({ profileImageUrl: imageSrc });
         }
-        setTimeout(() => {
-          onClose();
-        }, 1200);
+        setTimeout(advance, 700);
       } else {
         setStatusMessage("Failed to save image. Please try again.");
       }
@@ -130,34 +174,72 @@ export default function YoPhoStudioDrawer({
           }
         `}</style>
 
-        {/* Top bar */}
+        {/* Top bar — always has a close button so this can be dismissed at
+            any point, no matter which section is active. */}
         <div style={{ padding: "16px 24px", borderBottom: "1px solid rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexShrink: 0 }}>
           <div>
             <span style={{ fontSize: 9, letterSpacing: "0.25em", color: "#FF2DAA", fontWeight: 800, textTransform: "uppercase" }}>
               YOphO CANVAS STUDIO
             </span>
             <h2 style={{ fontSize: 20, fontWeight: 900, margin: "2px 0 0", color: "#fff" }}>
-              {role === "performer" || role === "artist" ? "Performer Identity Studio" : "Fan YOphO Studio"}
+              {currentSection.label}
             </h2>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            {statusMessage && (
-              <div style={{ fontSize: 12, color: statusMessage.includes("success") ? "#00FF88" : "#FFD700", fontWeight: 700 }}>
-                {statusMessage}
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            style={{ width: 34, height: 34, borderRadius: "50%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "#fff", cursor: "pointer", fontSize: 16, lineHeight: 1, flexShrink: 0 }}
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Section stepper — shows every section in order, current one
+            highlighted. Sections are always skippable (below), never a
+            forced gate. */}
+        <div style={{ padding: "10px 24px", display: "flex", alignItems: "center", gap: 8, flexShrink: 0, borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+          {sections.map((s, i) => (
+            <div key={s.field} style={{ display: "flex", alignItems: "center", gap: 8, flex: i === sectionIndex ? "0 0 auto" : "0 0 auto" }}>
+              <div style={{
+                fontSize: 10, fontWeight: 800, padding: "4px 10px", borderRadius: 20,
+                background: i === sectionIndex ? "linear-gradient(135deg,#FF2DAA,#AA2DFF)" : i < sectionIndex ? "rgba(0,255,136,0.12)" : "rgba(255,255,255,0.05)",
+                color: i === sectionIndex ? "#fff" : i < sectionIndex ? "#00FF88" : "rgba(255,255,255,0.4)",
+                border: i === sectionIndex ? "none" : "1px solid rgba(255,255,255,0.1)",
+              }}>
+                {i < sectionIndex ? "✓ " : `${i + 1}. `}{s.label}
               </div>
-            )}
+              {i < sections.length - 1 && <div style={{ width: 14, height: 1, background: "rgba(255,255,255,0.15)" }} />}
+            </div>
+          ))}
+          <div style={{ marginLeft: "auto", fontSize: 10, color: "rgba(255,255,255,0.35)" }}>
+            {sectionIndex + 1} of {sections.length} — every step is optional
+          </div>
+        </div>
+
+        <p style={{ padding: "12px 24px 0", margin: 0, fontSize: 12, color: "rgba(255,255,255,0.5)", flexShrink: 0 }}>
+          {currentSection.description}
+        </p>
+
+        {/* Action row */}
+        <div style={{ padding: "12px 24px 0", display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
+          {statusMessage && (
+            <div style={{ fontSize: 12, color: statusMessage.includes("saved") || statusMessage.includes("success") ? "#00FF88" : "#FFD700", fontWeight: 700 }}>
+              {statusMessage}
+            </div>
+          )}
+          <div style={{ marginLeft: "auto", display: "flex", gap: 10 }}>
             <button
-              onClick={onClose}
-              style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "#fff", borderRadius: 8, padding: "10px 14px", cursor: "pointer", fontSize: 12, fontWeight: 800 }}
+              onClick={handleSkipSection}
+              style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.15)", color: "rgba(255,255,255,0.6)", borderRadius: 8, padding: "10px 16px", cursor: "pointer", fontSize: 12, fontWeight: 700 }}
             >
-              Cancel
+              Skip for now
             </button>
             <button
               onClick={handleSave}
-              disabled={!imageSrc || isUploading}
+              disabled={isUploading}
               style={{
                 padding: "10px 20px",
-                background: !imageSrc || isUploading ? "rgba(255,45,170,0.3)" : "linear-gradient(135deg, #FF2DAA, #AA2DFF)",
+                background: isUploading ? "rgba(255,45,170,0.3)" : "linear-gradient(135deg, #FF2DAA, #AA2DFF)",
                 border: "none",
                 color: "#fff",
                 borderRadius: 8,
@@ -165,11 +247,11 @@ export default function YoPhoStudioDrawer({
                 fontWeight: 900,
                 letterSpacing: "0.08em",
                 textTransform: "uppercase",
-                cursor: !imageSrc || isUploading ? "not-allowed" : "pointer",
+                cursor: isUploading ? "not-allowed" : "pointer",
                 boxShadow: "0 0 15px rgba(255,45,170,0.3)",
               }}
             >
-              {isUploading ? "Saving..." : "Save & Return →"}
+              {isUploading ? "Saving..." : !imageSrc ? "Next →" : isLastSection ? "Save & Finish" : "Save & Next →"}
             </button>
           </div>
         </div>
@@ -208,35 +290,12 @@ export default function YoPhoStudioDrawer({
                 Drag & Drop Profile Photo or Click to Upload
               </div>
               <div style={{ fontSize: 10, color: "rgba(255,255,255,0.45)" }}>
-                Supports PNG, JPG, WebP. Auto-converts for 1:1, 16:9, and 4:3 surfaces.
+                Supports PNG, JPG, WebP. This step uses a {currentSection.aspect} crop.
               </div>
             </div>
 
             {imageSrc && (
               <>
-                {/* Aspect Ratio Tabs */}
-                <div style={{ display: "flex", gap: 8, background: "rgba(255,255,255,0.04)", borderRadius: 10, padding: 4 }}>
-                  {(["1:1", "16:9", "4:3"] as const).map((tab) => (
-                    <button
-                      key={tab}
-                      onClick={() => setActiveTab(tab)}
-                      style={{
-                        flex: 1,
-                        padding: "8px 0",
-                        fontSize: 11,
-                        fontWeight: 800,
-                        borderRadius: 8,
-                        border: "none",
-                        cursor: "pointer",
-                        background: activeTab === tab ? "linear-gradient(135deg,#FF2DAA,#AA2DFF)" : "transparent",
-                        color: activeTab === tab ? "#fff" : "rgba(255,255,255,0.5)",
-                      }}
-                    >
-                      {tab} {tab === "1:1" ? "Lobby Tile" : tab === "16:9" ? "Broadcast Banner" : "Bio Card"}
-                    </button>
-                  ))}
-                </div>
-
                 {/* Focus Position Sliders */}
                 <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: 12, padding: 16, border: "1px solid rgba(255,255,255,0.06)", display: "flex", flexDirection: "column", gap: 12 }}>
                   <div style={{ fontSize: 10, letterSpacing: "0.15em", color: "#FFD700", fontWeight: 900, textTransform: "uppercase" }}>
@@ -282,7 +341,7 @@ export default function YoPhoStudioDrawer({
                 <div
                   style={{
                     width: "100%",
-                    aspectRatio: activeTab === "1:1" ? "1 / 1" : activeTab === "16:9" ? "16 / 9" : "4 / 3",
+                    aspectRatio: currentSection.aspect === "1:1" ? "1 / 1" : currentSection.aspect === "16:9" ? "16 / 9" : "4 / 3",
                     position: "relative",
                     overflow: "hidden",
                   }}
@@ -300,7 +359,7 @@ export default function YoPhoStudioDrawer({
                     }}
                   />
                   <div style={{ position: "absolute", bottom: 12, right: 12, background: "rgba(0,0,0,0.75)", padding: "4px 10px", borderRadius: 6, fontSize: 10, color: "#00FFFF", fontWeight: 800 }}>
-                    LIVE PREVIEW ({activeTab})
+                    LIVE PREVIEW ({currentSection.aspect})
                   </div>
                 </div>
               </div>

@@ -1602,6 +1602,11 @@ model ArtistProfile {
   verified  Boolean  @default(false)
   followers Int      @default(0)
   views     Int      @default(0)
+  // Distinct from UserProfile.avatarUrl (profile photo) and .bannerUrl (stage
+  // banner) — this is specifically the image used on magazine/article
+  // layouts (Rule 13's article hub), which often needs different composition
+  // than a profile photo. Added 2026-07-20.
+  articleHeroImageUrl String?
 
   user User @relation(fields: [userId], references: [id])
 }

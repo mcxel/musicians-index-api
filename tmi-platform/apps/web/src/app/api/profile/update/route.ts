@@ -10,6 +10,7 @@ type ProfileBody = {
   location?: string;
   avatarUrl?: string;
   bannerUrl?: string;
+  articleHeroImageUrl?: string;
   socialLinks?: Record<string, string>;
   stageName?: string;
   genres?: string[];
@@ -102,7 +103,7 @@ export async function PUT(req: NextRequest) {
     });
 
     // artistProfile — genres saved for ALL roles so orbit shows real genre tags
-    if (body.genres !== undefined || body.stageName !== undefined || body.skills !== undefined || body.label !== undefined) {
+    if (body.genres !== undefined || body.stageName !== undefined || body.skills !== undefined || body.label !== undefined || body.articleHeroImageUrl !== undefined) {
       await prisma.artistProfile.upsert({
         where:  { userId: user.id },
         create: {
@@ -111,12 +112,14 @@ export async function PUT(req: NextRequest) {
           genres:    body.genres    ?? [],
           skills:    body.skills    ?? [],
           label:     body.label,
+          articleHeroImageUrl: body.articleHeroImageUrl,
         },
         update: {
           ...(body.stageName !== undefined && { stageName: body.stageName }),
           ...(body.genres    !== undefined && { genres:    body.genres    }),
           ...(body.skills    !== undefined && { skills:    body.skills    }),
           ...(body.label     !== undefined && { label:     body.label     }),
+          ...(body.articleHeroImageUrl !== undefined && { articleHeroImageUrl: body.articleHeroImageUrl }),
         },
       });
     }
