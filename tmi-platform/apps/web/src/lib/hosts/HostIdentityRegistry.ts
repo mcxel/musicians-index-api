@@ -122,14 +122,17 @@ export const HOST_IDENTITY_REGISTRY: HostIdentity[] = [
     id: 'julius',
     name: 'Julius',
     shortName: 'Julius',
-    role: 'CO_HOST',
+    // 2026-07-21 (User clarification): Julius is NOT a stage host. He is TMI's 360-degree
+    // interactive AR Meerkat / Amiibo companion (inspired by Astro Bot & PlayStation Playroom).
+    // He lives in streams/UI spaces, reacts to chat commands, does tricks, and celebrates milestones.
+    role: 'AR_COMPANION',
     colorHex: '#AA2DFF',
     accentColorHex: '#00FFFF',
-    description: 'Wild-card co-host with roast-ready instincts, battle-ref energy, and an unpredictable crowd troll streak.',
-    showAssignments: ['cypher-arena', 'monday-night-stage'],
-    voiceTag: 'cheeky-magician-v1',
-    motionTag: 'pop-lock-chaos',
-    eraStyle: '90s-neon — loud prints, magician aesthetic, always in motion',
+    description: 'The signature 360° Meerkat AR Bot & Amiibo Companion — performs tricks, reacts to chat (!julius dance, !julius magic), and adds playful energy across streams & UI.',
+    showAssignments: [],
+    voiceTag: 'playful-meerkat-v1',
+    motionTag: 'meerkat-360-ar-spin',
+    eraStyle: 'playful AR companion — 360-degree interactive meerkat with neon accessories',
   },
   {
     id: 'gregory-marcel',

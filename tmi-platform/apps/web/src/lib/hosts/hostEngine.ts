@@ -14,7 +14,9 @@ export type HostRole =
   | 'SPONSOR_READ'
   | 'DIRTY_DOZENS_JUDGE'
   /** Platform authority figure (e.g. Big Ace) — never appears as an in-show host/performer character. */
-  | 'PLATFORM_AUTHORITY';
+  | 'PLATFORM_AUTHORITY'
+  /** Interactive AR Amiibo companion (e.g. Julius) — lives in streams/UI, does tricks & AR animations, never hosts stage shows. */
+  | 'AR_COMPANION';
 
 export interface HostDefinition {
   id: string;

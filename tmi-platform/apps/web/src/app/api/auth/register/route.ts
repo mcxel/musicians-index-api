@@ -156,9 +156,39 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, errorCode: 'WEAK_PASSWORD', error: 'Password must be at least 8 characters' }, { status: 400 });
   }
 
+async function ensureUserDatabaseSchema() {
+  try {
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "is_qa" BOOLEAN NOT NULL DEFAULT false;
+      ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "account_status" TEXT NOT NULL DEFAULT 'active';
+      ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "account_status_reason" TEXT;
+      ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "account_status_expires_at" TIMESTAMP(3);
+      ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "is_live" BOOLEAN NOT NULL DEFAULT false;
+      ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "live_room_id" TEXT;
+      ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "live_genre" TEXT;
+      ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "live_started_at" TIMESTAMP(3);
+    `);
+    console.info('[TMI register] Database schema self-healing completed successfully.');
+  } catch (err) {
+    console.error('[TMI register DB self-heal error]', err);
+  }
+}
+
   try {
     stage = 'USER_EXISTS_CHECK';
-    const existingUser = await prisma.user.findUnique({ where: { email } });
+    let existingUser = null;
+    try {
+      existingUser = await prisma.user.findUnique({ where: { email } });
+    } catch (dbErr: any) {
+      const msg = String(dbErr?.message ?? '').toLowerCase();
+      if (msg.includes('is_qa') || msg.includes('column') || msg.includes('does not exist')) {
+        console.warn('[TMI register] Database column missing detected. Executing auto-healing schema DDL...');
+        await ensureUserDatabaseSchema();
+        existingUser = await prisma.user.findUnique({ where: { email } });
+      } else {
+        throw dbErr;
+      }
+    }
 
     if (existingUser) {
       return NextResponse.json({ ok: false, errorCode: 'EMAIL_ALREADY_EXISTS', error: 'An account with this email already exists.' }, { status: 409 });

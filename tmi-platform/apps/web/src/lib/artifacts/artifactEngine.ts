@@ -8,16 +8,16 @@
 
 export type ArtifactSkin =
   | "submarine" | "ufo" | "rocket" | "tree"
-  | "house"     | "car" | "train";
+  | "house"     | "car" | "train"  | "baby";
 
-export type TrackSource = "spotify" | "youtube" | "soundcloud" | "tmi" | "apple" | "link";
+export type TrackSource = "spotify" | "youtube" | "soundcloud" | "tmi" | "apple" | "pandora" | "tiktok" | "link";
 
 export interface ArtifactTrack {
   id: string;
   title: string;
   artist: string;
   duration: string;   // "3:28"
-  sourceUrl: string;  // Spotify/YouTube/SoundCloud/TMI URL — not a file
+  sourceUrl: string;  // Spotify/YouTube/SoundCloud/Pandora/Apple/TMI URL
   source: TrackSource;
   liked?: boolean;
 }
@@ -50,13 +50,14 @@ export const SKIN_META: Record<ArtifactSkin, {
   primary: string; accent: string; bg: string;
   unlockPoints: number; description: string;
 }> = {
-  submarine: { name: "Submarine",  icon: "🚢", primary: "#FFD700", accent: "#FF8C00", bg: "#003366", unlockPoints: 0,    description: "Classic deep-sea artifact. Starter skin." },
-  ufo:       { name: "UFO",        icon: "🛸", primary: "#00FFFF", accent: "#AA2DFF", bg: "#010118", unlockPoints: 500,  description: "Space-age neon saucer. 500 points to unlock." },
-  rocket:    { name: "Rocket",     icon: "🚀", primary: "#FF6B35", accent: "#FFD700", bg: "#010115", unlockPoints: 750,  description: "Deep space rocket. 750 points to unlock." },
-  tree:      { name: "Tree",       icon: "🌳", primary: "#FFD700", accent: "#FF8C00", bg: "#0a0a20", unlockPoints: 250,  description: "Living light tree. 250 points to unlock." },
-  house:     { name: "House",      icon: "🏠", primary: "#FFD700", accent: "#CC6600", bg: "#0a0815", unlockPoints: 300,  description: "Warm broadcast house. 300 points to unlock." },
-  car:       { name: "Car",        icon: "🚗", primary: "#FFD700", accent: "#FFD700", bg: "#000000", unlockPoints: 600,  description: "Neon outline cruiser. 600 points to unlock." },
-  train:     { name: "Train",      icon: "🚂", primary: "#FF6B35", accent: "#FFD700", bg: "#010115", unlockPoints: 400,  description: "Steam locomotive. 400 points to unlock." },
+  submarine: { name: "Aquarium Fish", icon: "🐠", primary: "#FFD700", accent: "#00E5FF", bg: "#003366", unlockPoints: 0,    description: "Deep sea animated fish with blinking eye & floating bubbles." },
+  ufo:       { name: "UFO Saucer",    icon: "🛸", primary: "#00FFFF", accent: "#AA2DFF", bg: "#010118", unlockPoints: 500,  description: "Space-age neon saucer with anti-gravity tractor beam." },
+  rocket:    { name: "Rocket Ship",   icon: "🚀", primary: "#FF6B35", accent: "#FFD700", bg: "#010115", unlockPoints: 750,  description: "Deep space rocket with thruster flame & particle liftoff." },
+  tree:      { name: "Living Tree",   icon: "🌳", primary: "#00FF88", accent: "#FFD700", bg: "#0a0a20", unlockPoints: 250,  description: "Living light tree with falling leaves on track change." },
+  house:     { name: "Venue House",   icon: "🏠", primary: "#FFD700", accent: "#FF6B35", bg: "#0a0815", unlockPoints: 300,  description: "Warm venue house with flickering lights & chimney smoke." },
+  car:       { name: "Neon Cruiser",  icon: "🏎️", primary: "#FF2DAA", accent: "#FFD700", bg: "#000000", unlockPoints: 600,  description: "Neon outline cruiser with rolling wheels & headlights." },
+  train:     { name: "Locomotive",   icon: "🚂", primary: "#FF6B35", accent: "#FFD700", bg: "#010115", unlockPoints: 400,  description: "Steam locomotive with puffing smoke & track motion." },
+  baby:      { name: "Crawling Baby", icon: "👶", primary: "#FF69B4", accent: "#FFD700", bg: "#1a0826", unlockPoints: 350,  description: "Animated crawling baby with interactive rattle & movement." },
 };
 
 // TMI seed tracks — distributed naturally, never back-to-back
@@ -86,10 +87,13 @@ export function interleaveTMI(tracks: ArtifactTrack[]): ArtifactTrack[] {
 }
 
 export function parseSourceLabel(url: string): TrackSource {
-  if (url.includes("spotify.com"))   return "spotify";
-  if (url.includes("youtube.com") || url.includes("youtu.be")) return "youtube";
-  if (url.includes("soundcloud.com")) return "soundcloud";
-  if (url.includes("music.apple.com")) return "apple";
+  const lower = url.toLowerCase();
+  if (lower.includes("spotify.com")) return "spotify";
+  if (lower.includes("youtube.com") || lower.includes("youtu.be")) return "youtube";
+  if (lower.includes("soundcloud.com")) return "soundcloud";
+  if (lower.includes("music.apple.com") || lower.includes("apple.com")) return "apple";
+  if (lower.includes("pandora.com")) return "pandora";
+  if (lower.includes("tiktok.com")) return "tiktok";
   if (url === "#" || url === "") return "tmi";
   return "link";
 }
@@ -99,6 +103,8 @@ export const SOURCE_COLORS: Record<TrackSource, string> = {
   youtube:    "#FF0000",
   soundcloud: "#FF5500",
   apple:      "#FC3C44",
+  pandora:    "#3668FF",
+  tiktok:     "#00F2FE",
   tmi:        "#AA2DFF",
   link:       "#00FFFF",
 };

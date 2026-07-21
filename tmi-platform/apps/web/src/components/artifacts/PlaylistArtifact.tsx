@@ -232,7 +232,7 @@ function AddTrackForm({ primary, onAdd, onClose }: { primary: string; onAdd: (t:
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Song title" style={inp} />
           <input value={artist} onChange={(e) => setArtist(e.target.value)} placeholder="Artist name" style={inp} />
-          <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="Spotify / YouTube / SoundCloud / TMI URL" style={inp} />
+          <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="Spotify / Pandora / YouTube / SoundCloud / Apple / MP3 / MP4 URL" style={inp} />
           <input value={dur} onChange={(e) => setDur(e.target.value)} placeholder="Duration (e.g. 3:28)" style={inp} />
         </div>
         {err && <div style={{ fontSize: 10, color: "#fca5a5", marginTop: 8 }}>{err}</div>}
@@ -247,34 +247,44 @@ function AddTrackForm({ primary, onAdd, onClose }: { primary: string; onAdd: (t:
 
 // ── SKINS ─────────────────────────────────────────────────────────────────────
 
-// Submarine Skin
+// Submarine / FishAquarium Skin (Blinking Eye + Swimming Fins + Floating Bubbles)
 function SubmarineSkin({ isPlaying, primary, accent, isOpen, onClick, children }: SkinProps) {
   return (
     <div style={{ position: "relative", width: 280, margin: "0 auto" }}>
-      {/* Bubbles */}
+      {/* Floating rising bubbles */}
       {[20, 60, 110, 150, 200, 240].map((x, i) => (
         <motion.div key={i}
-          animate={isPlaying ? { y: [0, -60, -120], opacity: [0.7, 0.5, 0] } : { opacity: 0 }}
-          transition={{ duration: 2 + i * 0.4, repeat: Infinity, delay: i * 0.5, ease: "easeOut" }}
-          style={{ position: "absolute", bottom: 60, left: x, width: 6 + (i % 3) * 4, height: 6 + (i % 3) * 4, borderRadius: "50%", border: "1.5px solid rgba(173,216,230,0.6)", background: "rgba(173,216,230,0.1)" }}
+          animate={{ y: [0, -80, -140], opacity: [0, 0.8, 0], scale: [0.8, 1.3, 1] }}
+          transition={{ duration: 2.2 + i * 0.4, repeat: Infinity, delay: i * 0.4, ease: "easeOut" }}
+          style={{ position: "absolute", bottom: 40, left: x, width: 8 + (i % 3) * 4, height: 8 + (i % 3) * 4, borderRadius: "50%", border: `1.5px solid ${accent}`, background: `${accent}22` }}
         />
       ))}
 
-      {/* Main body */}
-      <motion.div animate={{ y: isPlaying ? [0, -3, 0] : 0 }} transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
-        onClick={onClick} style={{ cursor: "pointer", position: "relative" }}>
+      {/* Main Fish Body */}
+      <motion.div
+        animate={{ y: isPlaying ? [0, -6, 0] : [0, -2, 0], rotate: isPlaying ? [-2, 2, -2] : 0 }}
+        transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
+        onClick={onClick} style={{ cursor: "pointer", position: "relative" }}
+      >
+        {/* Fish dorsal fin (top) */}
+        <motion.div
+          animate={isPlaying ? { rotate: [-5, 5, -5] } : {}}
+          transition={{ duration: 1.2, repeat: Infinity }}
+          style={{ margin: "0 auto", width: 50, height: 26, background: `linear-gradient(180deg, ${accent}, ${primary})`, borderRadius: "40px 40px 0 0", marginBottom: -4, boxShadow: `0 0 10px ${accent}66` }}
+        />
 
-        {/* Periscope */}
-        <div style={{ margin: "0 auto", width: 14, height: 36, background: primary, borderRadius: "4px 4px 0 0", marginBottom: -2, boxShadow: `0 0 8px ${primary}88` }}>
-          <div style={{ width: 28, height: 10, background: primary, borderRadius: 4, marginTop: 6, marginLeft: -7, boxShadow: `0 0 6px ${primary}66` }} />
-        </div>
+        {/* Fish body hull */}
+        <div style={{ width: 280, height: 140, borderRadius: "50%", background: `linear-gradient(135deg, ${primary} 0%, ${accent} 100%)`, position: "relative", boxShadow: `0 4px 20px ${primary}44, 0 0 40px ${accent}33`, display: "flex", alignItems: "center", justifyContent: "center" }}>
 
-        {/* Sub hull */}
-        <div style={{ width: 280, height: 140, borderRadius: "50%", background: `linear-gradient(135deg, ${primary} 0%, ${accent} 100%)`, position: "relative", boxShadow: `0 4px 20px ${primary}44, 0 0 40px ${primary}22`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-
-          {/* Porthole (left) */}
-          <div style={{ position: "absolute", left: 24, width: 30, height: 30, borderRadius: "50%", background: "#003366", border: `3px solid ${accent}`, boxShadow: `inset 0 0 8px rgba(0,100,200,0.6)` }}>
-            <div style={{ position: "absolute", top: 5, left: 5, width: 8, height: 5, borderRadius: "50%", background: "rgba(255,255,255,0.3)", transform: "rotate(-30deg)" }} />
+          {/* Fish Eye (blinking & moving) */}
+          <div style={{ position: "absolute", left: 20, width: 34, height: 34, borderRadius: "50%", background: "#fff", border: `3px solid ${accent}`, boxShadow: `inset 0 0 8px rgba(0,0,0,0.4)` }}>
+            <motion.div
+              animate={{ scaleY: [1, 1, 0.15, 1], x: [-2, 2, -2] }}
+              transition={{ duration: 3.2, repeat: Infinity }}
+              style={{ width: 16, height: 16, borderRadius: "50%", background: "#000", margin: "6px auto", position: "relative" }}
+            >
+              <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#fff", margin: "2px 0 0 2px" }} />
+            </motion.div>
           </div>
 
           {/* Monitor window */}
@@ -282,18 +292,20 @@ function SubmarineSkin({ isPlaying, primary, accent, isOpen, onClick, children }
             {children}
           </div>
 
-          {/* Propeller (right) */}
-          <div style={{ position: "absolute", right: -14, display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
-            {[0, 1, 2].map((b) => (
-              <motion.div key={b}
-                animate={isPlaying ? { rotate: [0, 360] } : { rotate: 0 }}
-                transition={{ duration: 0.6, repeat: Infinity, ease: "linear" }}
-                style={{ width: 16, height: 28, borderRadius: 8, background: accent, transform: `rotate(${b * 60}deg)`, transformOrigin: "50% 100%", boxShadow: `0 0 4px ${accent}88` }}
-              />
-            ))}
-          </div>
+          {/* Swimming Tail Fin (right) */}
+          <motion.div
+            animate={isPlaying ? { rotate: [-18, 18, -18] } : { rotate: [-5, 5, -5] }}
+            transition={{ duration: 0.5, repeat: Infinity, ease: "easeInOut" }}
+            style={{ position: "absolute", right: -24, width: 0, height: 0, borderTop: "32px solid transparent", borderBottom: "32px solid transparent", borderRight: `44px solid ${accent}`, filter: `drop-shadow(0 0 8px ${accent})` }}
+          />
 
-          {/* Chevron toggle */}
+          {/* Pectoral Fin (bottom) */}
+          <motion.div
+            animate={isPlaying ? { rotate: [-20, 20, -20] } : {}}
+            transition={{ duration: 0.8, repeat: Infinity }}
+            style={{ position: "absolute", bottom: -10, left: 70, width: 36, height: 20, borderRadius: "0 0 20px 20px", background: primary, boxShadow: `0 0 6px ${primary}` }}
+          />
+
           <div style={{ position: "absolute", bottom: 8, right: 52, fontSize: 12, color: accent, fontWeight: 900, opacity: 0.7 }}>
             {isOpen ? "▲" : "▼"}
           </div>
@@ -431,22 +443,60 @@ function RocketSkin({ isPlaying, primary, accent, isOpen, onClick, children }: S
   );
 }
 
-// Tree Skin
-function TreeSkin({ isPlaying, primary, accent, isOpen, onClick, children }: SkinProps) {
+// Tree Skin with Falling Leaves on Track Switch
+function TreeSkin({ isPlaying, primary, accent, isOpen, onClick, currentIdx, children }: SkinProps & { currentIdx?: number }) {
   const glowDots = [
     [60, 20], [100, 10], [140, 16], [80, 40], [120, 35], [155, 48],
     [50, 55], [110, 60], [145, 30], [75, 70], [130, 65], [90, 80],
   ];
+
+  // Trigger falling leaves on track switch
+  const [fallingKey, setFallingKey] = useState(0);
+  useEffect(() => {
+    if (currentIdx !== undefined) {
+      setFallingKey((k) => k + 1);
+    }
+  }, [currentIdx]);
+
   return (
-    <div style={{ width: 220, margin: "0 auto", cursor: "pointer" }} onClick={onClick}>
+    <div style={{ width: 220, margin: "0 auto", cursor: "pointer", position: "relative" }} onClick={onClick}>
+      {/* Falling Leaves Animation on Song Change */}
+      <AnimatePresence key={fallingKey}>
+        {Array.from({ length: 12 }).map((_, i) => {
+          const startX = 30 + (i * 14) % 160;
+          return (
+            <motion.div
+              key={`${fallingKey}-${i}`}
+              initial={{ y: 20, x: startX, opacity: 0.95, rotate: 0 }}
+              animate={{
+                y: [20, 110, 200],
+                x: [startX, startX + (i % 2 === 0 ? 30 : -30), startX + (i % 2 === 0 ? -15 : 15)],
+                rotate: [0, 45, 135, 240],
+                opacity: [0.95, 0.85, 0],
+              }}
+              transition={{ duration: 2.4 + i * 0.15, ease: "easeOut" }}
+              style={{
+                position: "absolute",
+                top: 0,
+                zIndex: 25,
+                pointerEvents: "none",
+                fontSize: 14,
+              }}
+            >
+              🍃
+            </motion.div>
+          );
+        })}
+      </AnimatePresence>
+
       {/* Stars */}
       {[10, 180, 200, 5, 215].map((x, i) => (
         <motion.div key={i} animate={{ opacity: [0.2, 1, 0.2] }} transition={{ duration: 1.5 + i * 0.3, repeat: Infinity, delay: i * 0.4 }}
           style={{ position: "absolute", top: 6 + i * 14, left: x, width: 3, height: 3, borderRadius: "50%", background: "#FFD700" }} />
       ))}
 
-      {/* Canopy */}
-      <motion.div animate={{ scale: isPlaying ? [1, 1.01, 1] : 1 }} transition={{ duration: 2, repeat: Infinity }}>
+      {/* Canopy with Wind Swaying Physics */}
+      <motion.div animate={{ scale: isPlaying ? [1, 1.02, 1] : 1, rotate: isPlaying ? [-1.5, 1.5, -1.5] : 0 }} transition={{ duration: 2.5, repeat: Infinity }}>
         <div style={{ width: 200, height: 160, borderRadius: "50% 50% 40% 40%", background: "linear-gradient(135deg, #2d6a2d 0%, #1a4a1a 100%)", margin: "0 auto", position: "relative", boxShadow: "0 4px 20px rgba(0,100,0,0.4)" }}>
           {/* Glow dots (fireflies) */}
           {glowDots.map(([x, y], i) => (
@@ -474,7 +524,7 @@ function TreeSkin({ isPlaying, primary, accent, isOpen, onClick, children }: Ski
   );
 }
 
-// House Skin
+// House Skin (Flickering Window Lights & Chimney Smoke)
 function HouseSkin({ isPlaying, primary, accent, isOpen, onClick, children }: SkinProps) {
   return (
     <div style={{ width: 200, margin: "0 auto", cursor: "pointer" }} onClick={onClick}>
@@ -483,21 +533,21 @@ function HouseSkin({ isPlaying, primary, accent, isOpen, onClick, children }: Sk
       {/* Chimney */}
       <div style={{ width: 20, height: 24, background: "#8B2500", marginLeft: 148, marginTop: -56, position: "relative" }}>
         {isPlaying && (
-          <motion.div animate={{ opacity: [0, 0.6, 0], y: [-4, -14] }} transition={{ duration: 2, repeat: Infinity }}
-            style={{ position: "absolute", top: -10, left: 4, width: 12, height: 12, borderRadius: "50%", background: "rgba(200,200,200,0.4)" }} />
+          <motion.div animate={{ opacity: [0, 0.7, 0], y: [-4, -18] }} transition={{ duration: 1.8, repeat: Infinity }}
+            style={{ position: "absolute", top: -10, left: 4, width: 14, height: 14, borderRadius: "50%", background: "rgba(220,220,220,0.5)" }} />
         )}
       </div>
 
       {/* Body */}
       <div style={{ width: 200, background: "linear-gradient(180deg, #5a2a10 0%, #3d1a08 100%)", borderRadius: "0 0 8px 8px", position: "relative", marginTop: -24, paddingBottom: 10, boxShadow: "0 8px 24px rgba(0,0,0,0.5)" }}>
-        {/* Windows */}
+        {/* Windows with Flickering Lights */}
         <div style={{ display: "flex", justifyContent: "space-around", padding: "14px 18px 6px" }}>
           {[0, 1].map((i) => (
             <motion.div key={i}
-              animate={{ opacity: isPlaying ? [0.6, 1, 0.6] : 0.7 }}
-              transition={{ duration: 2 + i, repeat: Infinity }}
-              style={{ width: 36, height: 28, background: "rgba(255,200,80,0.25)", border: `1.5px solid rgba(255,215,0,0.5)`, borderRadius: 4, boxShadow: "0 0 10px rgba(255,200,80,0.3), inset 0 0 6px rgba(255,215,0,0.1)" }}>
-              <div style={{ width: "100%", height: "50%", borderBottom: "1px solid rgba(255,215,0,0.3)" }} />
+              animate={{ opacity: isPlaying ? [0.3, 1, 0.4, 0.95] : 0.7 }}
+              transition={{ duration: 1.8 + i * 0.4, repeat: Infinity }}
+              style={{ width: 36, height: 28, background: "rgba(255,200,80,0.3)", border: `1.5px solid rgba(255,215,0,0.6)`, borderRadius: 4, boxShadow: "0 0 12px rgba(255,200,80,0.5), inset 0 0 6px rgba(255,215,0,0.2)" }}>
+              <div style={{ width: "100%", height: "50%", borderBottom: "1px solid rgba(255,215,0,0.4)" }} />
             </motion.div>
           ))}
         </div>
@@ -582,21 +632,37 @@ function CarSkin({ isPlaying, primary, accent, isOpen, onClick, children }: Skin
   );
 }
 
-// Train Skin
+// Train Skin (Steam Locomotive with Puffing Smoke & Choo-Choo Steam Blasts)
 function TrainSkin({ isPlaying, primary, accent, isOpen, onClick, children }: SkinProps) {
   return (
     <div style={{ position: "relative", width: 220, margin: "0 auto", cursor: "pointer" }} onClick={onClick}>
       <motion.div
-        animate={{ x: isPlaying ? [0, 2, -2, 0] : 0 }}
-        transition={{ duration: 0.3, repeat: Infinity }}>
+        animate={{ x: isPlaying ? [0, 3, -3, 0] : 0, y: isPlaying ? [0, -2, 0] : 0 }}
+        transition={{ duration: 0.35, repeat: Infinity }}>
 
-        {/* Smokestack */}
+        {/* Smokestack with Puffing Smoke Rings & Steam Blasts */}
         <div style={{ width: 22, height: 32, background: "#8B2500", borderRadius: "4px 4px 0 0", margin: "0 0 0 40px", position: "relative" }}>
           <div style={{ position: "absolute", top: -6, left: -4, width: 30, height: 8, background: "#6b1a00", borderRadius: 4 }} />
-          {isPlaying && (
-            <motion.div animate={{ y: [-8, -24], opacity: [0.6, 0] }} transition={{ duration: 1.2, repeat: Infinity }}
-              style={{ position: "absolute", top: -20, left: 3, width: 16, height: 16, borderRadius: "50%", background: "rgba(180,180,180,0.4)" }} />
-          )}
+          {isPlaying && [0, 1, 2].map((i) => (
+            <motion.div
+              key={i}
+              animate={{ y: [-10, -36], scale: [0.6, 1.8], opacity: [0.8, 0] }}
+              transition={{ duration: 1.4 + i * 0.2, repeat: Infinity, delay: i * 0.45 }}
+              style={{ position: "absolute", top: -20, left: 2, width: 18, height: 18, borderRadius: "50%", background: "rgba(220,220,220,0.6)", boxShadow: "0 0 10px rgba(255,255,255,0.4)" }}
+            />
+          ))}
+          {/* Steam Choo-Choo Whistle */}
+          <div style={{ position: "absolute", top: 4, right: -12, width: 8, height: 16, background: primary, borderRadius: 3, boxShadow: `0 0 6px ${primary}` }}>
+            {isPlaying && (
+              <motion.div
+                animate={{ opacity: [0, 1, 0], scale: [0.5, 1.2] }}
+                transition={{ duration: 0.6, repeat: Infinity }}
+                style={{ position: "absolute", top: -10, left: -2, fontSize: 10 }}
+              >
+                💨
+              </motion.div>
+            )}
+          </div>
         </div>
 
         {/* Engine cabin */}
@@ -616,12 +682,12 @@ function TrainSkin({ isPlaying, primary, accent, isOpen, onClick, children }: Sk
           <div style={{ position: "absolute", bottom: 10, right: 8, fontSize: 10, color: primary, fontWeight: 900 }}>{isOpen ? "▲" : "▼"}</div>
         </div>
 
-        {/* Wheels */}
-        <div style={{ background: "#661100", padding: "4px 8px 0", display: "flex", alignItems: "center", gap: 8 }}>
+        {/* Wheels with Pistons */}
+        <div style={{ background: "#661100", padding: "4px 8px 0", display: "flex", alignItems: "center", gap: 8, position: "relative" }}>
           {[0, 1, 2, 3].map((i) => (
             <motion.div key={i}
               animate={isPlaying ? { rotate: [0, 360] } : { rotate: 0 }}
-              transition={{ duration: 0.8, repeat: Infinity, ease: "linear", delay: i * 0.1 }}
+              transition={{ duration: 0.7, repeat: Infinity, ease: "linear", delay: i * 0.08 }}
               style={{ width: i === 1 || i === 2 ? 36 : 26, height: i === 1 || i === 2 ? 36 : 26, borderRadius: "50%", border: `3px solid ${primary}`, boxShadow: `0 0 8px ${primary}44` }}>
               <div style={{ width: 8, height: 8, borderRadius: "50%", border: `2px solid ${primary}66`, margin: i === 1 || i === 2 ? "11px auto" : "7px auto" }} />
             </motion.div>
@@ -635,10 +701,86 @@ function TrainSkin({ isPlaying, primary, accent, isOpen, onClick, children }: Sk
   );
 }
 
+// Crawling Baby Skin (Interactive Crawling Character)
+function BabySkin({ isPlaying, primary, accent, isOpen, onClick, children }: SkinProps) {
+  return (
+    <div style={{ position: "relative", width: 240, margin: "0 auto", cursor: "pointer" }} onClick={onClick}>
+      {/* Sparkles / Rattle stars */}
+      {isPlaying && [20, 80, 160, 200].map((x, i) => (
+        <motion.div key={i}
+          animate={{ y: [0, -20, 0], opacity: [0.4, 1, 0.4] }}
+          transition={{ duration: 1.8 + i * 0.3, repeat: Infinity, delay: i * 0.2 }}
+          style={{ position: "absolute", top: -10 + i * 4, left: x, fontSize: 12, color: primary }}
+        >
+          ✨
+        </motion.div>
+      ))}
+
+      <motion.div
+        animate={{ y: isPlaying ? [0, -4, 0] : 0, rotate: isPlaying ? [-1, 1, -1] : 0 }}
+        transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
+      >
+        {/* Baby Head */}
+        <div style={{ margin: "0 auto", width: 110, height: 90, borderRadius: "50% 50% 45% 45%", background: "linear-gradient(135deg, #ffe0bd 0%, #ffd1a4 100%)", border: `3px solid ${primary}`, position: "relative", boxShadow: `0 0 16px ${primary}44` }}>
+          {/* Hair tuft */}
+          <div style={{ position: "absolute", top: -10, left: 48, width: 14, height: 16, borderRadius: "50% 50% 0 0", background: primary, transform: "rotate(15deg)" }} />
+
+          {/* Eyes (blinking & moving) */}
+          {[22, 64].map((x, i) => (
+            <div key={i} style={{ position: "absolute", top: 28, left: x, width: 22, height: 22, borderRadius: "50%", background: "#fff", border: "2px solid #333", overflow: "hidden" }}>
+              <motion.div
+                animate={isPlaying ? { scaleY: [1, 1, 0.15, 1], x: [-1, 1, -1] } : { scaleY: [1, 1, 0.15, 1] }}
+                transition={{ duration: 2.8, repeat: Infinity, delay: i * 0.1 }}
+                style={{ width: 12, height: 12, borderRadius: "50%", background: "#2563eb", margin: "4px auto", position: "relative" }}
+              >
+                <div style={{ width: 4, height: 4, borderRadius: "50%", background: "#fff", margin: "2px 0 0 2px" }} />
+              </motion.div>
+            </div>
+          ))}
+
+          {/* Pacifier / Smile */}
+          <div style={{ position: "absolute", bottom: 12, left: 38, width: 34, height: 20, borderRadius: 10, background: accent, border: `2px solid ${primary}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div style={{ width: 10, height: 10, borderRadius: "50%", border: "2px solid #fff" }} />
+          </div>
+        </div>
+
+        {/* Baby Body / Crawling Suit */}
+        <div style={{ width: 220, background: `linear-gradient(135deg, ${primary} 0%, ${accent} 100%)`, borderRadius: 20, padding: 10, margin: "-12px auto 0", position: "relative", boxShadow: `0 8px 24px ${primary}33` }}>
+          {/* Crawling Arms */}
+          <motion.div
+            animate={isPlaying ? { rotate: [-15, 15, -15] } : {}}
+            transition={{ duration: 0.8, repeat: Infinity }}
+            style={{ position: "absolute", left: -14, top: 20, width: 26, height: 44, borderRadius: 12, background: "#ffe0bd", border: `2px solid ${primary}` }}
+          />
+          <motion.div
+            animate={isPlaying ? { rotate: [15, -15, 15] } : {}}
+            transition={{ duration: 0.8, repeat: Infinity }}
+            style={{ position: "absolute", right: -14, top: 20, width: 26, height: 44, borderRadius: 12, background: "#ffe0bd", border: `2px solid ${primary}` }}
+          />
+
+          {/* Monitor Screen */}
+          <div style={{ width: 170, margin: "0 auto", borderRadius: 8, overflow: "hidden", background: "#020212", border: `2px solid ${primary}88`, height: 88 }}>
+            {children}
+          </div>
+
+          <div style={{ position: "absolute", bottom: 8, right: 14, fontSize: 10, color: "#fff", fontWeight: 900 }}>{isOpen ? "▲" : "▼"}</div>
+        </div>
+
+        {/* Crawling Legs */}
+        <div style={{ display: "flex", justifyContent: "space-between", padding: "0 36px", marginTop: -6 }}>
+          <motion.div animate={isPlaying ? { y: [0, -6, 0] } : {}} transition={{ duration: 0.6, repeat: Infinity }} style={{ width: 34, height: 20, borderRadius: "0 0 12px 12px", background: "#ffe0bd", border: `2px solid ${primary}` }} />
+          <motion.div animate={isPlaying ? { y: [-6, 0, -6] } : {}} transition={{ duration: 0.6, repeat: Infinity }} style={{ width: 34, height: 20, borderRadius: "0 0 12px 12px", background: "#ffe0bd", border: `2px solid ${primary}` }} />
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
 interface SkinProps {
   isPlaying: boolean; primary: string; accent: string;
   isOpen: boolean; onClick: () => void;
   children: React.ReactNode;
+  currentIdx?: number;
 }
 
 const SKIN_COMPONENTS: Record<ArtifactSkin, React.FC<SkinProps>> = {
@@ -649,6 +791,7 @@ const SKIN_COMPONENTS: Record<ArtifactSkin, React.FC<SkinProps>> = {
   house:     HouseSkin,
   car:       CarSkin,
   train:     TrainSkin,
+  baby:      BabySkin,
 };
 
 // ── PlaylistArtifact (main export) ────────────────────────────────────────────
@@ -678,8 +821,9 @@ export default function PlaylistArtifact({
   rank,
   onAddToLibrary,
 }: PlaylistArtifactProps) {
-  const meta = SKIN_META[skin];
-  const SkinComponent = SKIN_COMPONENTS[skin];
+  const [activeSkin, setActiveSkin] = useState<ArtifactSkin>(skin);
+  const meta = SKIN_META[activeSkin];
+  const SkinComponent = SKIN_COMPONENTS[activeSkin];
 
   const [isOpen,        setIsOpen]        = useState(false);
   const [isPlaying,     setIsPlaying]     = useState(false);
@@ -753,7 +897,7 @@ export default function PlaylistArtifact({
       {/* Character skin with monitor */}
       <SkinComponent
         isPlaying={isPlaying} primary={meta.primary} accent={meta.accent}
-        isOpen={isOpen} onClick={() => setIsOpen(!isOpen)}
+        isOpen={isOpen} onClick={() => setIsOpen(!isOpen)} currentIdx={currentIdx}
       >
         <MonitorDisplay
           tracks={tracks} currentIdx={currentIdx} isPlaying={isPlaying}
@@ -776,7 +920,7 @@ export default function PlaylistArtifact({
         />
       </SkinComponent>
 
-      {/* Expanded drawer — tracklist + EQ + controls */}
+      {/* Expanded drawer — tracklist + EQ + skin selector + controls */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -791,6 +935,38 @@ export default function PlaylistArtifact({
               <div style={{ padding: "8px 12px", borderBottom: `1px solid ${meta.primary}22`, display: "flex", alignItems: "center", gap: 8 }}>
                 <span style={{ fontSize: 10, fontWeight: 900, color: meta.primary, letterSpacing: "0.1em", flex: 1 }}>{title.toUpperCase()}</span>
                 <span style={{ fontSize: 9, color: "rgba(255,255,255,0.35)" }}>{tracks.length} tracks · {fmtPoints(points)} pts</span>
+              </div>
+
+              {/* Interactive Skin Selector Rail */}
+              <div style={{ padding: "6px 10px", background: "rgba(0,0,0,0.4)", borderBottom: `1px solid ${meta.primary}18`, display: "flex", gap: 4, overflowX: "auto" }}>
+                {(Object.keys(SKIN_META) as ArtifactSkin[]).map((skinKey) => {
+                  const item = SKIN_META[skinKey];
+                  const active = skinKey === activeSkin;
+                  return (
+                    <button
+                      key={skinKey}
+                      onClick={() => setActiveSkin(skinKey)}
+                      title={item.name}
+                      style={{
+                        background: active ? `${item.primary}33` : "rgba(255,255,255,0.04)",
+                        border: `1px solid ${active ? item.primary : "rgba(255,255,255,0.1)"}`,
+                        borderRadius: 6,
+                        padding: "3px 7px",
+                        fontSize: 11,
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 3,
+                        color: active ? item.primary : "rgba(255,255,255,0.5)",
+                        fontWeight: active ? 800 : 500,
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      <span>{item.icon}</span>
+                      <span style={{ fontSize: 8 }}>{item.name.split(" ")[0]}</span>
+                    </button>
+                  );
+                })}
               </div>
 
               {/* Track list */}

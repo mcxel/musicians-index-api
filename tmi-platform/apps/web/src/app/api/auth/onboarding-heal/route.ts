@@ -44,11 +44,18 @@ export async function GET(req: NextRequest) {
   const email     = req.cookies.get('tmi_user_email')?.value;
   const sessionId = req.cookies.get('tmi_session_id')?.value;
 
-  // Not authenticated at all — send to sign-in
+  // Not authenticated at all (or missing identity cookies) — clear any
+  // stale session cookies before sending to sign-in.  Without clearing,
+  // the /auth surface still sees tmi_session and immediately bounces the
+  // user back to their hub, which hits this endpoint again → infinite loop.
   if (!email || !sessionId) {
     const signinUrl = new URL('/auth', req.url);
-    signinUrl.searchParams.set('next', next);
-    return NextResponse.redirect(signinUrl, 307);
+    const res = NextResponse.redirect(signinUrl, 307);
+    // Clear cookies that cause the bounce loop
+    for (const name of ['tmi_session', 'tmi_session_id', 'tmi_role', 'tmi_roles', 'tmi_onboarding_state']) {
+      res.cookies.set(name, '', { maxAge: 0, path: '/' });
+    }
+    return res;
   }
 
   try {
@@ -91,8 +98,11 @@ export async function GET(req: NextRequest) {
 
   } catch (err) {
     console.error('[onboarding-heal] DB error:', err);
-    // DB unreachable — fall back to onboarding rather than crashing
-    const fallback = NextResponse.redirect(new URL('/onboarding', req.url), 307);
+    // DB unreachable — set the cookie as complete and send to `next` so the
+    // user isn't trapped in a heal→/onboarding→hub→heal redirect loop while
+    // the database is recovering.  The next successful heal will correct it.
+    const fallback = NextResponse.redirect(new URL(next, req.url), 307);
+    fallback.cookies.set('tmi_onboarding_state', 'complete', COOKIE_OPTS);
     return fallback;
   }
 }

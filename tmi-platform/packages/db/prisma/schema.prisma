@@ -97,6 +97,8 @@ model User {
   accounts                       Account[]
   sessions                       Session[]
   notes                          Note[]
+  trophies                       Trophy[]
+  showSubmissions                ShowSubmission[]
 
   // A user can be associated with an artist profile
   userProfile            UserProfile?
@@ -3249,4 +3251,50 @@ model AgentCheckpoint {
 
   @@index([agentId])
   @@map("agent_checkpoints")
+}
+
+model Trophy {
+  id           String   @id @default(cuid())
+  type         String   // battle-win, monday-stage-trophy, season-champion, etc.
+  rarity       String   // RUBY, silver, gold, platinum, crown
+  title        String
+  description  String
+  userId       String
+  awardedBy    String   @default("system")
+  seasonId     String?
+  battleId     String?
+  eventId      String?
+  earnedAt     DateTime @default(now())
+  transferable Boolean  @default(false)
+  mintedAsNFT  Boolean  @default(false)
+  nftTokenId   String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("trophies")
+}
+
+model ShowSubmission {
+  id                      String    @id @default(cuid())
+  userId                  String
+  userName                String
+  showType                String    @default("monday-stage") // monday-stage, beat-battle, dance-party, etc.
+  actTitle                String
+  talentCategory          String    @default("SINGING_MUSIC")
+  bpm                     Int?      @default(95)
+  genre                   String?   @default("Hip-Hop / R&B")
+  audioUrl                String?
+  videoUrl                String?
+  rightsAttested          Boolean   @default(true)
+  sampleClearanceDeclared Boolean   @default(true)
+  status                  String    @default("APPROVED_IN_ROTATION") // SUBMITTED, APPROVED_IN_ROTATION, QUEUED, COMPLETED, REJECTED
+  queuedForDate           DateTime?
+  createdAt               DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([showType, status])
+  @@map("show_submissions")
 }

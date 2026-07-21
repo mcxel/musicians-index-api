@@ -82,8 +82,9 @@ class UnifiedEmailAutomationEngineService {
     this.queue.push(job);
     EmailQueueEngine.enqueue({
       to: job.recipientEmail,
-      channel: 'promos',
+      channel: 'account',
       templateKey: job.emailType,
+      required: true,
       variables: {
         recipientName: job.recipientName,
       },

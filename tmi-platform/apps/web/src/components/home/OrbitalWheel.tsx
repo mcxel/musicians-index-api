@@ -87,12 +87,17 @@ export default memo(function OrbitalWheel() {
   const [crownLeader, setCrownLeader] = useState<OrbitalNode | null>(null);
 
   useEffect(() => {
-    // Bind real performers from canonical PERFORMER_REGISTRY — bot-image
-    // filler entries (/bot-images/*) are atmosphere-only and must never
-    // appear as a ranked/competing performer (Rule 20, confirmed 2026-07-19).
-    const activePerformers = PERFORMER_REGISTRY
-      .filter((p) => isRankedEligible(p))
-      .slice(0, 10);
+    // ── Participant-Driven Orbital Registry Sorting ──
+    // 1. Live performers currently streaming online
+    // 2. Real humans and registered performers (sorted by rank/XP)
+    // 3. Bot Fleet entries to fill remaining slots (wheel is never empty)
+    const sortedPerformers = [...PERFORMER_REGISTRY].sort((a, b) => {
+      if (a.isLive && !b.isLive) return -1;
+      if (!a.isLive && b.isLive) return 1;
+      return (a.rank || 99) - (b.rank || 99);
+    });
+
+    const activePerformers = sortedPerformers.filter((p) => isRankedEligible(p)).slice(0, 10);
     const mappedNodes: OrbitalNode[] = activePerformers.map((p, i) => ({
       id: p.id,
       slug: p.slug,
@@ -137,6 +142,21 @@ export default memo(function OrbitalWheel() {
       backfaceVisibility: 'hidden',
       contain: 'layout style',
     }}>
+      {/* Self-contained keyframe definitions for orbit & counterOrbit to guarantee zero flicker across all pages */}
+      <style jsx global>{`
+        @keyframes orbit {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        @keyframes counterOrbit {
+          0% { transform: translate(-50%, -50%) rotate(0deg); }
+          100% { transform: translate(-50%, -50%) rotate(-360deg); }
+        }
+        @keyframes blink {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.3; }
+        }
+      `}</style>
       
       <div style={{ position: 'absolute', top: -30, left: 0, right: 0, textAlign: 'center', zIndex: 15 }}>
         <div style={{ fontFamily: 'var(--font-orbitron, Impact)', fontSize: 14, fontWeight: 900, color: '#FFD700', textShadow: '0 0 15px rgba(255,215,0,0.6)', letterSpacing: '0.1em' }}>

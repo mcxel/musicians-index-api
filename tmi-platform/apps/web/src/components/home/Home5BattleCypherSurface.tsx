@@ -42,6 +42,7 @@ import DesktopAtmosphereRails from '@/components/home/DesktopAtmosphereRails';
 import WidgetDrawer from '@/components/room/WidgetDrawer';
 import NeonWaveUnderlay from '@/components/atmosphere/NeonWaveUnderlay';
 import UnifiedAdSlot from '@/components/ads/UnifiedAdSlot';
+import TMIAdSenseUnit from '@/components/ads/TMIAdSenseUnit';
 
 // ─── Championship categories displayed on Home 5 ─────────────────────────────
 
@@ -167,6 +168,11 @@ export default function Home5BattleCypherSurface() {
       <BreakingNewsTicker />
       <SponsorTickerRail />
       <LiveMagazineVoiceTicker pageId="home-5" accent="#FF2DAA" />
+
+      {/* ══ MONETIZATION AD UNIT ══ */}
+      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '10px 24px 0' }}>
+        <TMIAdSenseUnit slotId="home-5-hero-adsense" format="horizontal" />
+      </div>
 
       {/* ══ BLUEPRINT TRIANGLE HEADER — tmi_arena_triangle_battles_cyphers_challenges ══ */}
       <div style={{

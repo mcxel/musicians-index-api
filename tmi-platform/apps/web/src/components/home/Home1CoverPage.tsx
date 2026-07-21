@@ -27,6 +27,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import DesktopAtmosphereRails from '@/components/home/DesktopAtmosphereRails';
 import RotatingHeroBanner, { HERO_BILLBOARD_SLIDES } from '@/components/home/RotatingHeroBanner';
+import HeroLightningAtmosphere from '@/components/home/HeroLightningAtmosphere';
 import { LobbyEntryFlow, type UniversalRoom } from '@/components/room/UniversalLobbyEntry';
 import { getCrownHolder, getPerformerById, getPerformersByCategory, getFeaturedFreePerformers, getTopPerformers, PERFORMER_REGISTRY, type PerformerCategory, type PerformerIdentity } from '@/lib/performers/PerformerRegistry';
 import { getVenueBookingSlots, type VenueBookingSlot } from '@/lib/venues/VenueRegistry';
@@ -1516,151 +1517,149 @@ export default function Home1CoverPage() {
         </div>
 
         {/* ── Masthead ── */}
-        {/* width:100% fills the flex-column container (alignItems:center shrinks
-            children to content-width otherwise). paddingInline brings the grid
-            in a hair from both edges so banner borders aren't flush to the
-            viewport. maxWidth caps the hero at 1440px on ultra-wide screens. */}
         <div style={{ textAlign: 'center', marginTop: 0, marginBottom: 8, zIndex: 10, position: 'relative', width: '100%', maxWidth: 1440, marginInline: 'auto', paddingInline: 10, boxSizing: 'border-box' }}>
-          <div className="h1-hero-billboard-grid">
-            <div className="h1-hero-flank-left">
-              <RotatingHeroBanner slides={HERO_FLANK_LEFT_SLIDES} side="left" priority />
-            </div>
-            <div className="h1-hero-title-col">
-          {/* Floating star decorations */}
-          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, pointerEvents: 'none', zIndex: 0 }}>
-            {[
-              { top: 10, left: '8%',  size: 12, delay: '0s',    char: '⭐' },
-              { top: 22, left: '15%', size: 9,  delay: '0.6s',  char: '✦' },
-              { top: 6,  left: '85%', size: 11, delay: '1.1s',  char: '⭐' },
-              { top: 18, left: '78%', size: 8,  delay: '0.3s',  char: '✦' },
-              { top: 38, left: '5%',  size: 8,  delay: '1.8s',  char: '✦' },
-              { top: 34, left: '91%', size: 9,  delay: '0.9s',  char: '✦' },
-            ].map((s, i) => (
-              <span key={i} style={{ position: 'absolute', top: s.top, left: s.left, fontSize: s.size, opacity: 0.45, animation: `h1FloatStar 3s ease-in-out infinite`, animationDelay: s.delay, display: 'inline-block' }}>{s.char}</span>
-            ))}
-          </div>
-
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'center',
-              whiteSpace: 'nowrap',
-              overflow: 'visible',
-              fontSize: 'clamp(12px, 2.8vw, 19px)',
-              fontWeight: 900,
-              letterSpacing: '0.3em',
-              fontFamily: "'Inter', sans-serif",
-              marginBottom: 4,
-            }}
-          >
-            {"THE MUSICIAN'S INDEX".split('').map((char, index) => (
-              <span
-                key={index}
-                style={{
-                  display: 'inline-block',
-                  minWidth: char === ' ' ? '0.5em' : 'auto',
-                  animation: 'h1TypeColor 4s ease-in-out infinite',
-                  animationDelay: `${index * 0.07}s`,
-                }}
-              >
-                {char}
-              </span>
-            ))}
-          </div>
-          {/* Magazine ticker — just clean animated text, no bar background */}
-          <div
-            style={{
-              overflow: 'hidden',
-              height: 28,
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center',
-              marginBottom: 4,
-            }}
-          >
-            <TypewriterTicker messages={tickerMessages} color={accentColor} />
-          </div>
-          <div
-            style={{
-              fontSize: 'clamp(18px, 3.5vw, 26px)',
-              fontFamily: "'Bebas Neue', 'Impact', sans-serif",
-              background: `linear-gradient(135deg, #fff 0%, ${accentColor} 100%)`,
-              backgroundClip: 'text',
-              WebkitBackgroundClip: 'text',
-              color: 'transparent',
-              WebkitTextFillColor: 'transparent',
-              letterSpacing: '0.04em',
-              lineHeight: 1,
-              opacity: heroVisible ? 1 : 0,
-              transition: 'opacity 0.38s ease',
-              minHeight: '1.1em',
-            }}
-          >
-            {HERO_PHRASES[heroIdx]}
-          </div>
-          <div
-            style={{
-              display: 'inline-block',
-              marginTop: 3,
-              padding: '3px 16px',
-              background: `${accentColor}22`,
-              border: `1px solid ${accentColor}55`,
-              borderRadius: 20,
-              fontSize: 10,
-              fontWeight: 900,
-              color: accentColor,
-              letterSpacing: '0.18em',
-              fontFamily: "'Inter', sans-serif",
-            }}
-          >
-            {genreConfig.emoji} {genreKey.toUpperCase()} · WEEK {Math.ceil((Date.now() / (7 * 24 * 60 * 60 * 1000)) % 52) || 1}
-          </div>
-            {/* ── Status badges row: VOTING LIVE | VOTES | CROWN UPDATING ── */}
-            <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'rgba(255,45,170,0.18)', border: '1px solid rgba(255,45,170,0.6)', borderRadius: 4, padding: '3px 10px', animation: 'h1BadgePulse 2s ease-in-out infinite' }}>
-                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#FF2DAA', display: 'inline-block', animation: 'h1Pulse 1s infinite' }} />
-                <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.1em', color: '#FF2DAA', fontFamily: "'Inter',sans-serif" }}>VOTING LIVE</span>
+          <HeroLightningAtmosphere>
+            <div className="h1-hero-billboard-grid">
+              <div className="h1-hero-flank-left">
+                <RotatingHeroBanner slides={HERO_FLANK_LEFT_SLIDES} side="left" priority />
               </div>
-              <div style={{ background: 'rgba(255,215,0,0.14)', border: '1px solid rgba(255,215,0,0.5)', borderRadius: 4, padding: '3px 12px', fontFamily: "'Inter',sans-serif", fontSize: 10, fontWeight: 700, color: '#FFD700' }}>
-                {voteCount > 0 ? `${voteCount.toLocaleString()} VOTES` : 'VOTING OPENS SOON'}
-              </div>
-              <div style={{ background: 'rgba(230,48,0,0.18)', border: '1px solid rgba(230,48,0,0.5)', borderRadius: 4, padding: '3px 10px', fontSize: 9, fontWeight: 800, letterSpacing: '0.1em', color: '#E63000', fontFamily: "'Inter',sans-serif" }}>CROWN UPDATING</div>
-            </div>
-
-            {/* ── Challenge banner slider ── */}
-            <div style={{ background: 'rgba(123,0,255,0.16)', border: '1px solid rgba(123,0,255,0.34)', borderRadius: 6, padding: '3px 8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 6, maxWidth: 440, width: '100%', marginInline: 'auto' }}>
-              <button style={{ background: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 4, padding: '2px 6px', fontSize: 8, cursor: 'pointer' }}>◀</button>
-              <div style={{ textAlign: 'center', flex: 1 }}>
-                <div style={{ fontSize: 10, fontWeight: 800, color: '#fff', letterSpacing: '0.07em', fontFamily: "'Inter',sans-serif" }}>CHALLENGE YOUR SONG HERE</div>
-                <div style={{ fontSize: 7, color: 'rgba(255,255,255,0.4)', fontFamily: "'Inter',sans-serif" }}>SONG FOR SONG · WORK FOR WORK</div>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Link href="/battles/challenge" style={{ fontSize: 8, fontWeight: 700, color: '#00E5FF', textDecoration: 'none', fontFamily: "'Inter',sans-serif" }}>START NOW</Link>
-                <button style={{ background: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 4, padding: '2px 6px', fontSize: 8, cursor: 'pointer' }}>▶</button>
-              </div>
-            </div>
-
-            {/* ── Action buttons: 7 clickable buttons ── */}
-            <div style={{ display: 'flex', justifyContent: 'center', gap: 5, marginTop: 4, flexWrap: 'wrap' }}>
+              <div className="h1-hero-title-col">
+            {/* Floating star decorations */}
+            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, pointerEvents: 'none', zIndex: 0 }}>
               {[
-                { label: 'JOIN FREE',       href: '/signup',             bg: 'rgba(0,255,127,0.14)', color: '#00FF7F', border: 'rgba(0,255,127,0.4)' },
-                { label: 'LOGIN',           href: '/login',              bg: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.7)', border: 'rgba(255,255,255,0.2)' },
-                { label: 'CHALLENGE SONG',  href: '/battles/challenge',  bg: 'rgba(255,215,0,0.14)', color: '#FFD700', border: 'rgba(255,215,0,0.35)' },
-                { label: 'CYPHER ARENA',    href: '/live/rooms/cypher-arena', bg: 'rgba(0,229,255,0.12)', color: '#00E5FF', border: 'rgba(0,229,255,0.3)' },
-                { label: 'MAGAZINE',        href: '/magazine',           bg: 'rgba(255,45,170,0.12)', color: '#FF2DAA', border: 'rgba(255,45,170,0.3)' },
-                { label: 'SPONSOR',         href: '/sponsors/apply',     bg: 'rgba(155,89,182,0.12)', color: '#9B59B6', border: 'rgba(155,89,182,0.3)' },
-                { label: 'ADVERTISE',       href: '/sponsors/advertise', bg: 'rgba(230,48,0,0.12)',  color: '#E63000', border: 'rgba(230,48,0,0.3)' },
-              ].map((btn) => (
-                <Link key={btn.label} href={btn.href} style={{ textDecoration: 'none' }}>
-                  <button style={{ background: btn.bg, color: btn.color, border: `1px solid ${btn.border}`, borderRadius: 5, padding: '5px 11px', fontSize: 9, fontWeight: 800, cursor: 'pointer', fontFamily: "'Inter',sans-serif", letterSpacing: '0.05em' }}>{btn.label}</button>
-                </Link>
+                { top: 10, left: '8%',  size: 12, delay: '0s',    char: '⭐' },
+                { top: 22, left: '15%', size: 9,  delay: '0.6s',  char: '✦' },
+                { top: 6,  left: '85%', size: 11, delay: '1.1s',  char: '⭐' },
+                { top: 18, left: '78%', size: 8,  delay: '0.3s',  char: '✦' },
+                { top: 38, left: '5%',  size: 8,  delay: '1.8s',  char: '✦' },
+                { top: 34, left: '91%', size: 9,  delay: '0.9s',  char: '✦' },
+              ].map((s, i) => (
+                <span key={i} style={{ position: 'absolute', top: s.top, left: s.left, fontSize: s.size, opacity: 0.45, animation: `h1FloatStar 3s ease-in-out infinite`, animationDelay: s.delay, display: 'inline-block' }}>{s.char}</span>
               ))}
             </div>
+
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'center',
+                whiteSpace: 'nowrap',
+                overflow: 'visible',
+                fontSize: 'clamp(12px, 2.8vw, 19px)',
+                fontWeight: 900,
+                letterSpacing: '0.3em',
+                fontFamily: "'Inter', sans-serif",
+                marginBottom: 4,
+              }}
+            >
+              {"THE MUSICIAN'S INDEX".split('').map((char, index) => (
+                <span
+                  key={index}
+                  style={{
+                    display: 'inline-block',
+                    minWidth: char === ' ' ? '0.5em' : 'auto',
+                    animation: 'h1TypeColor 4s ease-in-out infinite',
+                    animationDelay: `${index * 0.07}s`,
+                  }}
+                >
+                  {char}
+                </span>
+              ))}
+            </div>
+            {/* Magazine ticker — just clean animated text, no bar background */}
+            <div
+              style={{
+                overflow: 'hidden',
+                height: 28,
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                marginBottom: 4,
+              }}
+            >
+              <TypewriterTicker messages={tickerMessages} color={accentColor} />
+            </div>
+            <div
+              style={{
+                fontSize: 'clamp(18px, 3.5vw, 26px)',
+                fontFamily: "'Bebas Neue', 'Impact', sans-serif",
+                background: `linear-gradient(135deg, #fff 0%, ${accentColor} 100%)`,
+                backgroundClip: 'text',
+                WebkitBackgroundClip: 'text',
+                color: 'transparent',
+                WebkitTextFillColor: 'transparent',
+                letterSpacing: '0.04em',
+                lineHeight: 1,
+                opacity: heroVisible ? 1 : 0,
+                transition: 'opacity 0.38s ease',
+                minHeight: '1.1em',
+              }}
+            >
+              {HERO_PHRASES[heroIdx]}
+            </div>
+            <div
+              style={{
+                display: 'inline-block',
+                marginTop: 3,
+                padding: '3px 16px',
+                background: `${accentColor}22`,
+                border: `1px solid ${accentColor}55`,
+                borderRadius: 20,
+                fontSize: 10,
+                fontWeight: 900,
+                color: accentColor,
+                letterSpacing: '0.18em',
+                fontFamily: "'Inter', sans-serif",
+              }}
+            >
+              {genreConfig.emoji} {genreKey.toUpperCase()} · WEEK {Math.ceil((Date.now() / (7 * 24 * 60 * 60 * 1000)) % 52) || 1}
+            </div>
+              {/* ── Status badges row: VOTING LIVE | VOTES | CROWN UPDATING ── */}
+              <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'rgba(255,45,170,0.18)', border: '1px solid rgba(255,45,170,0.6)', borderRadius: 4, padding: '3px 10px', animation: 'h1BadgePulse 2s ease-in-out infinite' }}>
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#FF2DAA', display: 'inline-block', animation: 'h1Pulse 1s infinite' }} />
+                  <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.1em', color: '#FF2DAA', fontFamily: "'Inter',sans-serif" }}>VOTING LIVE</span>
+                </div>
+                <div style={{ background: 'rgba(255,215,0,0.14)', border: '1px solid rgba(255,215,0,0.5)', borderRadius: 4, padding: '3px 12px', fontFamily: "'Inter',sans-serif", fontSize: 10, fontWeight: 700, color: '#FFD700' }}>
+                  {voteCount > 0 ? `${voteCount.toLocaleString()} VOTES` : 'VOTING OPENS SOON'}
+                </div>
+                <div style={{ background: 'rgba(230,48,0,0.18)', border: '1px solid rgba(230,48,0,0.5)', borderRadius: 4, padding: '3px 10px', fontSize: 9, fontWeight: 800, letterSpacing: '0.1em', color: '#E63000', fontFamily: "'Inter',sans-serif" }}>CROWN UPDATING</div>
+              </div>
+
+              {/* ── Challenge banner slider ── */}
+              <div style={{ background: 'rgba(123,0,255,0.16)', border: '1px solid rgba(123,0,255,0.34)', borderRadius: 6, padding: '3px 8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 6, maxWidth: 440, width: '100%', marginInline: 'auto' }}>
+                <button style={{ background: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 4, padding: '2px 6px', fontSize: 8, cursor: 'pointer' }}>◀</button>
+                <div style={{ textAlign: 'center', flex: 1 }}>
+                  <div style={{ fontSize: 10, fontWeight: 800, color: '#fff', letterSpacing: '0.07em', fontFamily: "'Inter',sans-serif" }}>CHALLENGE YOUR SONG HERE</div>
+                  <div style={{ fontSize: 7, color: 'rgba(255,255,255,0.4)', fontFamily: "'Inter',sans-serif" }}>SONG FOR SONG · WORK FOR WORK</div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Link href="/battles/challenge" style={{ fontSize: 8, fontWeight: 700, color: '#00E5FF', textDecoration: 'none', fontFamily: "'Inter',sans-serif" }}>START NOW</Link>
+                  <button style={{ background: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 4, padding: '2px 6px', fontSize: 8, cursor: 'pointer' }}>▶</button>
+                </div>
+              </div>
+
+              {/* ── Action buttons: 7 clickable buttons ── */}
+              <div style={{ display: 'flex', justifyContent: 'center', gap: 5, marginTop: 4, flexWrap: 'wrap' }}>
+                {[
+                  { label: 'JOIN FREE',       href: '/signup',             bg: 'rgba(0,255,127,0.14)', color: '#00FF7F', border: 'rgba(0,255,127,0.4)' },
+                  { label: 'LOGIN',           href: '/login',              bg: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.7)', border: 'rgba(255,255,255,0.2)' },
+                  { label: 'CHALLENGE SONG',  href: '/battles/challenge',  bg: 'rgba(255,215,0,0.14)', color: '#FFD700', border: 'rgba(255,215,0,0.35)' },
+                  { label: 'CYPHER ARENA',    href: '/live/rooms/cypher-arena', bg: 'rgba(0,229,255,0.12)', color: '#00E5FF', border: 'rgba(0,229,255,0.3)' },
+                  { label: 'MAGAZINE',        href: '/magazine',           bg: 'rgba(255,45,170,0.12)', color: '#FF2DAA', border: 'rgba(255,45,170,0.3)' },
+                  { label: 'SPONSOR',         href: '/sponsors/apply',     bg: 'rgba(155,89,182,0.12)', color: '#9B59B6', border: 'rgba(155,89,182,0.3)' },
+                  { label: 'ADVERTISE',       href: '/sponsors/advertise', bg: 'rgba(230,48,0,0.12)',  color: '#E63000', border: 'rgba(230,48,0,0.3)' },
+                ].map((btn) => (
+                  <Link key={btn.label} href={btn.href} style={{ textDecoration: 'none' }}>
+                    <button style={{ background: btn.bg, color: btn.color, border: `1px solid ${btn.border}`, borderRadius: 5, padding: '5px 11px', fontSize: 9, fontWeight: 800, cursor: 'pointer', fontFamily: "'Inter',sans-serif", letterSpacing: '0.05em' }}>{btn.label}</button>
+                  </Link>
+                ))}
+              </div>
+            </div>
+            <div className="h1-hero-flank-right">
+              <RotatingHeroBanner slides={HERO_FLANK_RIGHT_SLIDES} side="right" />
+            </div>
           </div>
-          <div className="h1-hero-flank-right">
-            <RotatingHeroBanner slides={HERO_FLANK_RIGHT_SLIDES} side="right" />
-          </div>
-        </div>
+        </HeroLightningAtmosphere>
       </div>
 
         {/* ── Orbital section wrapper — tabloid underlay lives here (position:absolute) ── */}

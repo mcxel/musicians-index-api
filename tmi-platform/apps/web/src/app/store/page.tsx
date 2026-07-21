@@ -31,6 +31,9 @@ export default function StorePage() {
             Beats, boosts, venues, skins, tickets, tips, fan clubs. Everything to grow, perform, and earn.
           </p>
           <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
+            <Link href="/store/flex" style={{ padding: '12px 24px', background: 'linear-gradient(135deg, #00E5FF, #FF2DAA)', borderRadius: 10, color: '#000', fontWeight: 900, fontSize: 13, textDecoration: 'none', letterSpacing: '0.06em', boxShadow: '0 0 20px rgba(0,229,255,0.6)' }}>
+              🏛️ ENTER 3D FLEX STORE SHOWROOM
+            </Link>
             {[
               { label: '🎤 Creator Store', href: '/store/creator', accent: '#FF2DAA' },
               { label: '🎧 Fan Store', href: '/store/fan', accent: '#00FFFF' },
