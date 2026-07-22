@@ -57,6 +57,9 @@ export default function FanHQShell({ fanId, fanDisplayName: _fanDisplayName }: R
   // Mobile responsive state
   const [isMobile, setIsMobile] = useState(false);
   const [mobileTab, setMobileTab] = useState<"stage" | "chat" | "rooms" | "friends">("stage");
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isBookingOpen, setIsBookingOpen] = useState(false);
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768);
@@ -136,11 +139,23 @@ export default function FanHQShell({ fanId, fanDisplayName: _fanDisplayName }: R
     const MOBILE_TAB_HEIGHT = 56;
     const MOBILE_HEADER_HEIGHT = 48;
 
-    const mobileTabItems: { id: typeof mobileTab; icon: string; label: string }[] = [
-      { id: "stage",   icon: "📺", label: "LIVE" },
-      { id: "chat",    icon: "💬", label: "CHAT" },
-      { id: "rooms",   icon: "🔊", label: "ROOMS" },
-      { id: "friends", icon: "👥", label: "FRIENDS" },
+    type ScrollNavItem =
+      | { kind: "tab"; id: typeof mobileTab; icon: string; label: string; accent?: string; badge?: number }
+      | { kind: "link"; href: string; icon: string; label: string; accent?: string; badge?: number }
+      | { kind: "action"; action: () => void; icon: string; label: string; accent?: string; badge?: number };
+
+    const allNavItems: ScrollNavItem[] = [
+      { kind: "tab",    id: "stage",   icon: "🏠", label: "HOME" },
+      { kind: "tab",    id: "stage",   icon: "📺", label: "STAGE" },
+      { kind: "tab",    id: "rooms",   icon: "🧭", label: "EXPLORE" },
+      { kind: "link",   href: "/live/go",   icon: "🔴", label: "GO LIVE", accent: "#FF2DAA" },
+      { kind: "link",   href: "/magazine",  icon: "📰", label: "MAGAZINE" },
+      { kind: "action", action: () => setIsSearchOpen(true), icon: "🔍", label: "SEARCH" },
+      { kind: "action", action: () => setIsBookingOpen(true), icon: "📅", label: "BOOKING", badge: 2, accent: "#FFD700" },
+      { kind: "tab",    id: "chat",    icon: "💬", label: "CHAT" },
+      { kind: "tab",    id: "friends", icon: "👥", label: "FRIENDS" },
+      { kind: "link",   href: "/hub/fan/avatar", icon: "👤", label: "AVATAR" },
+      { kind: "link",   href: "/yopho",          icon: "🎨", label: "YOPHO" },
     ];
 
     return (
@@ -357,7 +372,175 @@ export default function FanHQShell({ fanId, fanDisplayName: _fanDisplayName }: R
           )}
         </div>
 
-        {/* Mobile bottom tab bar */}
+        {/* ─── Booking quick-jump panel ─────────────────────────── */}
+        {isBookingOpen && (
+          <div
+            onClick={() => setIsBookingOpen(false)}
+            style={{ position: "fixed", inset: 0, zIndex: 190, background: "rgba(0,0,0,0.6)" }}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                position: "absolute",
+                bottom: MOBILE_TAB_HEIGHT,
+                left: 0,
+                right: 0,
+                background: "rgba(5,5,20,0.98)",
+                backdropFilter: "blur(24px)",
+                borderTop: "1px solid rgba(255,215,0,0.25)",
+                borderRadius: "20px 20px 0 0",
+                padding: "0 0 env(safe-area-inset-bottom, 8px)",
+                maxHeight: "70dvh",
+                overflowY: "auto",
+              }}
+            >
+              {/* Handle bar */}
+              <div style={{ display: "flex", justifyContent: "center", padding: "10px 0 0" }}>
+                <div style={{ width: 36, height: 4, borderRadius: 2, background: "rgba(255,255,255,0.15)" }} />
+              </div>
+
+              {/* Header */}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 16px 8px" }}>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 900, color: "#FFD700", display: "flex", alignItems: "center", gap: 6 }}>
+                    📅 BOOKING REQUESTS
+                    <span style={{ background: "#FF2DAA", color: "#fff", fontSize: 9, fontWeight: 900, borderRadius: 10, padding: "1px 6px" }}>2 NEW</span>
+                  </div>
+                  <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", marginTop: 2 }}>Tap to accept or decline</div>
+                </div>
+                <button onClick={() => setIsBookingOpen(false)} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.4)", fontSize: 18, cursor: "pointer" }}>✕</button>
+              </div>
+
+              {/* Quick stats row */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 1, borderTop: "1px solid rgba(255,255,255,0.06)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+                {[
+                  { label: "PENDING", value: "2", color: "#FF2DAA" },
+                  { label: "CONFIRMED", value: "5", color: "#00FF88" },
+                  { label: "TODAY", value: "1", color: "#FFD700" },
+                ].map((s) => (
+                  <div key={s.label} style={{ padding: "10px 8px", textAlign: "center", background: "rgba(255,255,255,0.02)" }}>
+                    <div style={{ fontSize: 16, fontWeight: 900, color: s.color }}>{s.value}</div>
+                    <div style={{ fontSize: 8, color: "rgba(255,255,255,0.35)", letterSpacing: "0.08em" }}>{s.label}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Pending requests */}
+              <div style={{ padding: "10px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
+                {[
+                  { from: "VenueX", event: "Live Concert Set", date: "Jul 25 • 8PM", fee: "$500", avatar: "🏙️" },
+                  { from: "PromoterYZ", event: "Radio Showcase", date: "Aug 2 • 7PM", fee: "$350", avatar: "👨‍🎤" },
+                ].map((req) => (
+                  <div key={req.from} style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,215,0,0.12)", borderRadius: 12, padding: "12px 14px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+                      <div style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(255,215,0,0.1)", border: "1px solid rgba(255,215,0,0.2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>{req.avatar}</div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 12, fontWeight: 900, color: "#fff" }}>{req.event}</div>
+                        <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>from {req.from}</div>
+                      </div>
+                      <div style={{ textAlign: "right" }}>
+                        <div style={{ fontSize: 13, fontWeight: 900, color: "#00FF88" }}>{req.fee}</div>
+                        <div style={{ fontSize: 9, color: "rgba(255,255,255,0.35)" }}>{req.date}</div>
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button
+                        onClick={() => router.push("/bookings")}
+                        style={{ flex: 1, padding: "8px", background: "rgba(0,255,136,0.12)", border: "1px solid #00FF88", borderRadius: 8, color: "#00FF88", fontSize: 11, fontWeight: 900, cursor: "pointer" }}
+                      >
+                        ✓ ACCEPT
+                      </button>
+                      <button
+                        onClick={() => router.push("/bookings")}
+                        style={{ flex: 1, padding: "8px", background: "rgba(255,48,0,0.08)", border: "1px solid rgba(255,77,77,0.4)", borderRadius: 8, color: "#FF4D4D", fontSize: 11, fontWeight: 900, cursor: "pointer" }}
+                      >
+                        ✕ DECLINE
+                      </button>
+                      <button
+                        onClick={() => router.push("/bookings")}
+                        style={{ padding: "8px 12px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 8, color: "rgba(255,255,255,0.6)", fontSize: 11, fontWeight: 900, cursor: "pointer" }}
+                      >
+                        ℹ️
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Quick-jump buttons */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, padding: "0 16px 16px" }}>
+                <button
+                  onClick={() => { setIsBookingOpen(false); router.push("/bookings"); }}
+                  style={{ padding: "12px", background: "rgba(255,215,0,0.08)", border: "1px solid rgba(255,215,0,0.25)", borderRadius: 12, color: "#FFD700", fontSize: 11, fontWeight: 900, cursor: "pointer", letterSpacing: "0.04em" }}
+                >
+                  📅 ALL BOOKINGS
+                </button>
+                <button
+                  onClick={() => { setIsBookingOpen(false); router.push("/bookings/availability"); }}
+                  style={{ padding: "12px", background: "rgba(0,255,255,0.06)", border: "1px solid rgba(0,255,255,0.2)", borderRadius: 12, color: "#00FFFF", fontSize: 11, fontWeight: 900, cursor: "pointer", letterSpacing: "0.04em" }}
+                >
+                  🗓 AVAILABILITY
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ─── Search overlay ────────────────────────────────────────── */}
+        {isSearchOpen && (
+          <div style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 200,
+            background: "rgba(5,5,16,0.97)",
+            backdropFilter: "blur(20px)",
+            display: "flex",
+            flexDirection: "column",
+            padding: "0 0 env(safe-area-inset-bottom, 0px)",
+          }}>
+            {/* Header */}
+            <div style={{ padding: "12px 14px", display: "flex", alignItems: "center", gap: 10, borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+              <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 10, background: "rgba(255,255,255,0.07)", border: "1px solid rgba(0,255,255,0.2)", borderRadius: 12, padding: "8px 14px" }}>
+                <span style={{ fontSize: 14 }}>🔍</span>
+                <input
+                  autoFocus
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search performers, rooms, songs…"
+                  style={{ flex: 1, background: "none", border: "none", outline: "none", color: "#fff", fontSize: 14, fontFamily: "inherit" }}
+                />
+                {searchQuery && (
+                  <button onClick={() => setSearchQuery("")} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.4)", fontSize: 16, cursor: "pointer", padding: 0, lineHeight: 1 }}>✕</button>
+                )}
+              </div>
+              <button onClick={() => { setIsSearchOpen(false); setSearchQuery(""); }} style={{ background: "none", border: "none", color: "#00FFFF", fontSize: 12, fontWeight: 900, cursor: "pointer", letterSpacing: "0.05em" }}>CANCEL</button>
+            </div>
+
+            {/* Quick category pills */}
+            <div style={{ display: "flex", gap: 8, padding: "10px 14px", overflowX: "auto", scrollbarWidth: "none" }}>
+              {["ALL", "LIVE NOW", "PERFORMERS", "BATTLES", "MAGAZINE", "SONGS"].map((cat) => (
+                <button key={cat} style={{ flexShrink: 0, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 20, color: "rgba(255,255,255,0.7)", fontSize: 10, fontWeight: 900, padding: "5px 12px", cursor: "pointer", letterSpacing: "0.05em" }}>{cat}</button>
+              ))}
+            </div>
+
+            {/* Results area */}
+            <div style={{ flex: 1, overflowY: "auto", padding: "8px 14px", display: "flex", flexDirection: "column", gap: 8 }}>
+              {searchQuery.length === 0 ? (
+                <div style={{ textAlign: "center", padding: "40px 20px", color: "rgba(255,255,255,0.25)" }}>
+                  <div style={{ fontSize: 36, marginBottom: 12 }}>🔍</div>
+                  <div style={{ fontSize: 13, fontWeight: 700 }}>Search performers, live rooms, songs &amp; more</div>
+                </div>
+              ) : (
+                <div style={{ textAlign: "center", padding: "40px 20px", color: "rgba(255,255,255,0.3)" }}>
+                  <div style={{ fontSize: 24, marginBottom: 8 }}>⏳</div>
+                  <div style={{ fontSize: 12 }}>Searching for &quot;{searchQuery}&quot;…</div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ─── Mobile bottom scrollable nav ─────────────────────────── */}
         <div style={{
           position: "fixed",
           bottom: 0,
@@ -367,34 +550,80 @@ export default function FanHQShell({ fanId, fanDisplayName: _fanDisplayName }: R
           background: "rgba(5,5,16,0.97)",
           borderTop: "1px solid rgba(255,255,255,0.1)",
           display: "flex",
+          overflowX: "auto",
+          overflowY: "hidden",
+          scrollbarWidth: "none" as React.CSSProperties["scrollbarWidth"],
           zIndex: 100,
-          // iOS safe area
           paddingBottom: "env(safe-area-inset-bottom, 0px)",
+          WebkitOverflowScrolling: "touch" as React.CSSProperties["WebkitOverflowScrolling"],
         }}>
-          {mobileTabItems.map((tab) => {
-            const active = mobileTab === tab.id;
+          {/* hide webkit scrollbar */}
+          <style>{`.tmi-nav-scroll::-webkit-scrollbar{display:none}`}</style>
+          {allNavItems.map((item, idx) => {
+            const isActive =
+              (item.kind === "tab" && mobileTab === item.id) ||
+              (item.kind === "action" && item.label === "SEARCH" && isSearchOpen) ||
+              (item.kind === "action" && item.label === "BOOKING" && isBookingOpen);
+            const accent = item.accent ?? (isActive ? "#FF2DAA" : undefined);
+            const color = isActive ? (accent ?? "#FF2DAA") : "rgba(255,255,255,0.45)";
+
+            const handleClick = () => {
+              if (item.kind === "tab") {
+                setMobileTab(item.id);
+                // HOME tab scrolls to top
+                if (item.label === "HOME") window.scrollTo({ top: 0, behavior: "smooth" });
+              } else if (item.kind === "action") {
+                item.action();
+              } else {
+                router.push(item.href);
+              }
+            };
+
             return (
               <button
-                key={tab.id}
+                key={idx}
                 type="button"
-                onClick={() => setMobileTab(tab.id)}
+                onClick={handleClick}
                 style={{
-                  flex: 1,
+                  flexShrink: 0,
+                  width: 68,
                   background: "none",
                   border: "none",
+                  borderTop: isActive ? `2px solid ${accent ?? "#FF2DAA"}` : "2px solid transparent",
                   display: "flex",
                   flexDirection: "column",
                   alignItems: "center",
                   justifyContent: "center",
                   gap: 3,
                   cursor: "pointer",
-                  color: active ? "#FF2DAA" : "rgba(255,255,255,0.4)",
-                  borderTop: active ? "2px solid #FF2DAA" : "2px solid transparent",
+                  color,
                   transition: "color 150ms",
+                  padding: "0 4px",
+                  position: "relative",
                 }}
               >
-                <span style={{ fontSize: 18 }}>{tab.icon}</span>
-                <span style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.05em" }}>{tab.label}</span>
+                <span style={{ position: "relative", display: "inline-block" }}>
+                  <span style={{ fontSize: 18 }}>{item.icon}</span>
+                  {item.badge != null && item.badge > 0 && (
+                    <span style={{
+                      position: "absolute",
+                      top: -4,
+                      right: -6,
+                      background: accent ?? "#FF2DAA",
+                      color: "#fff",
+                      fontSize: 7,
+                      fontWeight: 900,
+                      borderRadius: "50%",
+                      minWidth: 13,
+                      height: 13,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      padding: "0 2px",
+                    }}>{item.badge}</span>
+                  )}
+                </span>
+                <span style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.05em", whiteSpace: "nowrap" }}>{item.label}</span>
               </button>
             );
           })}

@@ -85,13 +85,24 @@ async function loadFromDb(): Promise<void> {
   const client = getDb();
   if (!client || dbLoaded) return;
   try {
-    const rows = await client.user.findMany();
+    const rows = await client.user.findMany({
+      select: {
+        id: true,
+        email: true,
+        passwordHash: true,
+        displayName: true,
+        tier: true,
+        role: true,
+        userRef: true,
+        userCreatedAt: true,
+      },
+    });
     rows.forEach((row) => {
-      if (row.email) STORE.set(row.email.toLowerCase(), mapDbRow(row));
+      if (row.email) STORE.set(row.email.toLowerCase(), mapDbRow(row as any));
     });
     dbLoaded = true;
-  } catch {
-    // DB not reachable — stay in Map-only mode
+  } catch (err) {
+    console.warn('[UserStore] DB load warning (staying in Map mode):', err);
   }
 }
 

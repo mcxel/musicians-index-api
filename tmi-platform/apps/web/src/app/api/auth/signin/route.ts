@@ -7,7 +7,7 @@ import { checkRateLimit } from '@/lib/security/TMISecurityEngine';
 import { StreakEngine } from '@/lib/gamification/StreakEngine';
 import { grantXP } from '@/lib/xp/xpEngine';
 import { compare } from 'bcryptjs';
-import prisma from '@/lib/prisma';
+import prisma, { ensureUserDatabaseSchema } from '@/lib/prisma';
 import { isFounderDiamondEmail } from '@/lib/promos/FounderDiamondPassEngine';
 import { getAccountStatus } from '@/lib/moderation/ModerationEngine';
 
@@ -54,22 +54,52 @@ export async function POST(req: NextRequest) {
 
     // Fallback: user registered via /api/auth/register (bcryptjs hash in DB, not in UserStore)
     if (!user) {
-      const dbUser = await prisma.user.findUnique({ where: { email } });
-      if (dbUser?.passwordHash && await compare(password, dbUser.passwordHash)) {
-        const DB_ROLE_MAP: Record<string, string> = {
-          ADMIN: 'admin', STAFF: 'staff', FAN: 'fan', ARTIST: 'artist',
-          PERFORMER: 'performer', SPONSOR: 'sponsor', ADVERTISER: 'advertiser',
-          VENUE: 'venue', WRITER: 'writer', PROMOTER: 'promoter', USER: 'user',
-        };
-        user = {
-          id: dbUser.id,
-          email: dbUser.email ?? '',
-          passwordHash: dbUser.passwordHash,
-          displayName: dbUser.displayName ?? (dbUser.email ?? '').split('@')[0],
-          tier: (dbUser.tier?.toUpperCase() ?? 'FREE') as import('@/lib/auth/UserStore').UserTier,
-          role: (DB_ROLE_MAP[dbUser.role ?? 'USER'] ?? 'fan') as import('@/lib/auth/UserStore').UserRole,
-          createdAt: dbUser.userCreatedAt?.getTime() ?? Date.now(),
-        };
+      try {
+        const dbUser = await prisma.user.findUnique({
+          where: { email },
+          select: { id: true, email: true, passwordHash: true, displayName: true, tier: true, role: true, userCreatedAt: true },
+        });
+        if (dbUser?.passwordHash && await compare(password, dbUser.passwordHash)) {
+          const DB_ROLE_MAP: Record<string, string> = {
+            ADMIN: 'admin', STAFF: 'staff', FAN: 'fan', ARTIST: 'artist',
+            PERFORMER: 'performer', SPONSOR: 'sponsor', ADVERTISER: 'advertiser',
+            VENUE: 'venue', WRITER: 'writer', PROMOTER: 'promoter', USER: 'user',
+          };
+          user = {
+            id: dbUser.id,
+            email: dbUser.email ?? '',
+            passwordHash: dbUser.passwordHash,
+            displayName: dbUser.displayName ?? (dbUser.email ?? '').split('@')[0],
+            tier: (dbUser.tier?.toUpperCase() ?? 'FREE') as import('@/lib/auth/UserStore').UserTier,
+            role: (DB_ROLE_MAP[dbUser.role ?? 'USER'] ?? 'fan') as import('@/lib/auth/UserStore').UserRole,
+            createdAt: dbUser.userCreatedAt?.getTime() ?? Date.now(),
+          };
+        }
+      } catch (dbErr) {
+        console.warn('[auth/signin] DB lookup notice, triggering schema DDL self-healing:', dbErr);
+        await ensureUserDatabaseSchema().catch(() => {});
+        try {
+          const dbUser = await prisma.user.findUnique({
+            where: { email },
+            select: { id: true, email: true, passwordHash: true, displayName: true, tier: true, role: true, userCreatedAt: true },
+          });
+          if (dbUser?.passwordHash && await compare(password, dbUser.passwordHash)) {
+            const DB_ROLE_MAP: Record<string, string> = {
+              ADMIN: 'admin', STAFF: 'staff', FAN: 'fan', ARTIST: 'artist',
+              PERFORMER: 'performer', SPONSOR: 'sponsor', ADVERTISER: 'advertiser',
+              VENUE: 'venue', WRITER: 'writer', PROMOTER: 'promoter', USER: 'user',
+            };
+            user = {
+              id: dbUser.id,
+              email: dbUser.email ?? '',
+              passwordHash: dbUser.passwordHash,
+              displayName: dbUser.displayName ?? (dbUser.email ?? '').split('@')[0],
+              tier: (dbUser.tier?.toUpperCase() ?? 'FREE') as import('@/lib/auth/UserStore').UserTier,
+              role: (DB_ROLE_MAP[dbUser.role ?? 'USER'] ?? 'fan') as import('@/lib/auth/UserStore').UserRole,
+              createdAt: dbUser.userCreatedAt?.getTime() ?? Date.now(),
+            };
+          }
+        } catch { /* Fallback to UserStore / soft auth */ }
       }
     }
 
@@ -89,16 +119,20 @@ export async function POST(req: NextRequest) {
     // Trust & safety gate — blocks sign-in for suspended/banned accounts.
     // A temporary auto-suspend self-clears here once its hold window
     // passes without a human escalating it (see ModerationEngine).
-    const status = await getAccountStatus(resolvedUser.id);
-    if (status && status.accountStatus !== 'active') {
-      return NextResponse.json(
-        {
-          error: status.accountStatus === 'banned' ? 'This account has been banned.' : 'This account is temporarily suspended.',
-          accountStatus: status.accountStatus,
-          reason: status.accountStatusReason ?? undefined,
-        },
-        { status: 403 }
-      );
+    try {
+      const status = await getAccountStatus(resolvedUser.id);
+      if (status && status.accountStatus !== 'active') {
+        return NextResponse.json(
+          {
+            error: status.accountStatus === 'banned' ? 'This account has been banned.' : 'This account is temporarily suspended.',
+            accountStatus: status.accountStatus,
+            reason: status.accountStatusReason ?? undefined,
+          },
+          { status: 403 }
+        );
+      }
+    } catch (modErr) {
+      console.warn('[auth/signin] Moderation check warning (continuing signin):', modErr);
     }
 
     const userAgent = req.headers.get('user-agent') ?? '';

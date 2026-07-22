@@ -19,6 +19,10 @@ function withLibpqSslCompat(connectionString: string): string {
     if (!url.searchParams.has('uselibpqcompat')) {
       url.searchParams.set('uselibpqcompat', 'true');
     }
+    const sslMode = url.searchParams.get('sslmode');
+    if (sslMode === 'require' || sslMode === 'prefer' || sslMode === 'verify-ca') {
+      url.searchParams.set('sslmode', 'verify-full');
+    }
     return url.toString();
   } catch {
     // Malformed URL — let Pool surface the real connection error instead of
@@ -49,6 +53,28 @@ function getPrismaClient(): PrismaClient {
   }
   if (!cachedClient) cachedClient = createPrismaClient();
   return cachedClient;
+}
+
+let schemaHealed = false;
+
+export async function ensureUserDatabaseSchema(): Promise<void> {
+  if (schemaHealed) return;
+  try {
+    const client = getPrismaClient();
+    await client.$executeRawUnsafe(`
+      ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "is_qa" BOOLEAN NOT NULL DEFAULT false;
+      ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "account_status" TEXT NOT NULL DEFAULT 'active';
+      ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "account_status_reason" TEXT;
+      ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "account_status_expires_at" TIMESTAMP(3);
+      ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "is_live" BOOLEAN NOT NULL DEFAULT false;
+      ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "live_room_id" TEXT;
+      ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "live_genre" TEXT;
+      ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "live_started_at" TIMESTAMP(3);
+    `);
+    schemaHealed = true;
+  } catch (err) {
+    console.warn('[prisma] Schema self-healing notice (non-fatal):', err);
+  }
 }
 
 // Lazy proxy: defers createPrismaClient() (and its DATABASE_URL check) until

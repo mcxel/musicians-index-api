@@ -8,6 +8,7 @@ import { TmiMagazineAudioEngine } from "@/lib/magazine/tmiMagazineAudioEngine";
 import GlitchOverlay from "@/components/motion/GlitchOverlay";
 import { useGamificationEngine } from "@/hooks/useGamificationEngine";
 import AdSenseSlot, { AD_SLOTS } from "@/components/ads/AdSenseSlot";
+import { ARCHETYPES, type MagazineArchetype, type ArchetypeConfig } from "@/lib/magazine/MagazineDesignEngine";
 
 // Auto-advance interval in ms (10 seconds per spread)
 const AUTO_ADVANCE_MS = 10_000;
@@ -38,9 +39,6 @@ interface MagazineShellProps {
 }
 
 type FlipDirection = "forward" | "backward" | null;
-// "out"  → active page curls to 90° (edge-on), fades to zero
-// "snap" → content changes instantly at edge-on, no CSS transition
-// "in"   → new page uncurls from 90° back to 0°, fades in
 type FlipPhase = "out" | "snap" | "in" | null;
 
 const TYPE_COLOR: Record<MagazinePage["type"], string> = {
@@ -53,10 +51,10 @@ const TYPE_COLOR: Record<MagazinePage["type"], string> = {
   interview: "#00FFFF",
 };
 
-function TypeBadge({ type }: { type: MagazinePage["type"] }) {
-  const color = TYPE_COLOR[type];
+function TypeBadge({ type, colorOverride }: { type: MagazinePage["type"]; colorOverride?: string }) {
+  const color = colorOverride || TYPE_COLOR[type];
   return (
-    <div style={{ marginBottom: 10 }}>
+    <div style={{ marginBottom: 12 }}>
       <span style={{
         fontSize: 8, letterSpacing: "0.18em", textTransform: "uppercase",
         color, border: `1px solid ${color}40`, borderRadius: 4, padding: "2px 7px", fontWeight: 800,
@@ -67,34 +65,50 @@ function TypeBadge({ type }: { type: MagazinePage["type"] }) {
   );
 }
 
-function PagePane({ page, side }: { page: MagazinePage; side?: "left" | "right" | "solo" }) {
+function PagePane({ page, side, archetype }: { page: MagazinePage; side?: "left" | "right" | "solo"; archetype: ArchetypeConfig }) {
   const isLeft  = side === "left";
   const isRight = side === "right";
+
+  const background = isLeft
+    ? archetype.leftPageBg
+    : isRight
+      ? archetype.rightPageBg
+      : archetype.leftPageBg;
 
   return (
     <div
       style={{
         flex: 1,
-        minHeight: 520,
-        padding: "20px 22px",
+        minHeight: 540,
+        padding: "26px 28px",
         position: "relative",
-        background: side === "solo" ? "rgba(255,255,255,0.02)" : undefined,
-        borderRight: isLeft  ? "1px solid rgba(0,0,0,0.6)" : undefined,
-        borderLeft:  isRight ? "1px solid rgba(255,255,255,0.04)" : undefined,
+        background,
+        borderRight: isLeft  ? "1px solid rgba(0,0,0,0.65)" : undefined,
+        borderLeft:  isRight ? "1px solid rgba(255,255,255,0.06)" : undefined,
         overflow: "hidden",
+        fontFamily: archetype.fontFamily,
+        transition: "background 0.3s ease, border-color 0.3s ease",
       }}
     >
-      {/* Spine shadows */}
+      {/* Spine shadows for realistic depth fold */}
       {isLeft && (
-        <div aria-hidden="true" style={{ position: "absolute", right: 0, top: 0, width: 32, height: "100%", background: "linear-gradient(to right, transparent, rgba(0,0,0,0.35))", pointerEvents: "none" }} />
+        <div aria-hidden="true" style={{ position: "absolute", right: 0, top: 0, width: 40, height: "100%", background: "linear-gradient(to right, transparent, rgba(0,0,0,0.45))", pointerEvents: "none", zIndex: 5 }} />
       )}
       {isRight && (
-        <div aria-hidden="true" style={{ position: "absolute", left: 0, top: 0, width: 32, height: "100%", background: "linear-gradient(to left, transparent, rgba(0,0,0,0.35))", pointerEvents: "none" }} />
+        <div aria-hidden="true" style={{ position: "absolute", left: 0, top: 0, width: 40, height: "100%", background: "linear-gradient(to left, transparent, rgba(0,0,0,0.45))", pointerEvents: "none", zIndex: 5 }} />
       )}
-      <TypeBadge type={page.type} />
-      {page.content}
+
+      {/* Tactile Page Sheen/Glow */}
+      <div aria-hidden="true" style={{ position: "absolute", inset: 0, background: "linear-gradient(135deg, rgba(255,255,255,0.03) 0%, transparent 50%, rgba(0,0,0,0.05) 100%)", pointerEvents: "none", zIndex: 4 }} />
+
+      <TypeBadge type={page.type} colorOverride={archetype.accentColor} />
+
+      <div style={{ position: "relative", zIndex: 6, height: "100%" }}>
+        {page.content}
+      </div>
+
       {page.type === "sponsor" && (
-        <div aria-hidden="true" style={{ position: "absolute", top: 0, right: 0, width: 4, height: "100%", background: "linear-gradient(to bottom, #FFD700, #FFD70000)", pointerEvents: "none" }} />
+        <div aria-hidden="true" style={{ position: "absolute", top: 0, right: 0, width: 4, height: "100%", background: `linear-gradient(to bottom, ${archetype.accentColor}, transparent)`, pointerEvents: "none" }} />
       )}
       {page.type === "cover" && (
         <GlitchOverlay active intensity="subtle" showScanlines />
@@ -112,7 +126,7 @@ function LockedSpreadModal({ onBack }: { onBack: () => void }) {
       style={{
         position: "absolute", inset: 0, zIndex: 20,
         display: "flex", alignItems: "center", justifyContent: "center",
-        background: "rgba(5,5,16,0.88)",
+        background: "rgba(5,5,16,0.92)",
         backdropFilter: "blur(12px)",
         borderRadius: 10,
       }}
@@ -170,10 +184,15 @@ export default function MagazineShell({
   const [flipPhase, setFlipPhase] = useState<FlipPhase>(null);
   const [isWide, setIsWide] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
-  const [autoPlay, setAutoPlay] = useState(true);
+  const [isDiamond, setIsDiamond] = useState(false);
+  const [autoPlay, setAutoPlay] = useState(false);
   const [hovering, setHovering] = useState(false);
   const [xpToast, setXpToast] = useState<{ amount: number } | null>(null);
   const [audioPlaying, setAudioPlaying] = useState(false);
+  const [activeArchetype, setActiveArchetype] = useState<MagazineArchetype>("vibe");
+  const [showResumeModal, setShowResumeModal] = useState<number | null>(null);
+
+  const archetype = ARCHETYPES[activeArchetype];
   const reduced = prefersReducedMotion();
   const { trackAction } = useGamificationEngine();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -190,27 +209,51 @@ export default function MagazineShell({
     setCurrentLeft(normalizeStartIndex(initialLeftIndex));
   }, [initialLeftIndex, normalizeStartIndex]);
 
-  // Boot audio engine once
+  // Read bookmark on mount
   useEffect(() => {
-    audioRef.current = new TmiMagazineAudioEngine();
+    if (typeof window !== "undefined") {
+      const bookmark = window.localStorage.getItem(`tmi_magazine_bookmark_${issue}`);
+      if (bookmark) {
+        const val = parseInt(bookmark, 10);
+        if (val > 0 && val < pages.length) {
+          setShowResumeModal(val);
+        }
+      }
+    }
+  }, [pages.length, issue]);
+
+  // Write bookmark on change
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(`tmi_magazine_bookmark_${issue}`, currentLeft.toString());
+    }
+  }, [currentLeft, issue]);
+
+  // Boot audio engine with crisp page turn sounds
+  useEffect(() => {
+    audioRef.current = new TmiMagazineAudioEngine({
+      pageTurn: "/sounds/ui/ui-whoosh-bubbles.mp3",
+      pageOpen: "/sounds/ui/ui-menu-pack.mp3",
+      pageClose: "/sounds/ui/ui-menu-pack.mp3",
+      softSwipe: "/sounds/ui/ui-whoosh-bubbles.mp3",
+    });
   }, []);
 
   // Resolve subscription entitlement from session
-  // Unlocked roles: admin, artist, sponsor (platform partners + staff)
-  // Fan tier: free preview only — Copilot: replace role check with subscriptionTier field
-  //   when API returns it (pro | RUBY | gold | platinum | diamond | season-pass)
   useEffect(() => {
     let active = true;
     fetch("/api/auth/session", { cache: "no-store", credentials: "include" })
       .then(r => r.json())
       .then((d: unknown) => {
         if (!active) return;
-        const data = d as { authenticated?: boolean; user?: { role?: string } | null };
+        const data = d as { authenticated?: boolean; user?: { role?: string; tier?: string } | null };
         const authed = Boolean(data?.authenticated);
         const role   = data?.user?.role ?? "";
+        const tier   = data?.user?.tier ?? "";
         const paid   = role === "admin" || role === "artist" || role === "sponsor" ||
                        role === "superadmin" || role === "owner";
         setIsSubscribed(authed && paid);
+        setIsDiamond(tier.toLowerCase() === "diamond");
       })
       .catch(() => { /* stays false — free user path */ });
     return () => { active = false; };
@@ -262,7 +305,7 @@ export default function MagazineShell({
     setAudioPlaying(false);
   }, []);
 
-  // Grant XP only on manual turns AND only if user spent ≥5s on the spread (anti-farm)
+  // Grant XP only on manual turns AND only if user spent >=5s on the spread (anti-farm)
   const grantReadXP = useCallback(() => {
     const elapsed = Date.now() - pageEntryTimeRef.current;
     if (elapsed < MIN_READ_MS) return;
@@ -286,14 +329,11 @@ export default function MagazineShell({
     if (turnSource === "manual") grantReadXP();
     pageEntryTimeRef.current = Date.now();
 
-    // Out-phase complete: swap content and snap to the other side (no transition)
     window.setTimeout(() => {
       setCurrentLeft(leftIdx);
       setFlipPhase("snap");
       onPageChange?.(pages[leftIdx], leftIdx);
 
-      // One rAF pair ensures the browser paints the snapped (edge-on) state
-      // before we start the in-phase transition, avoiding a flash
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
           setFlipPhase("in");
@@ -329,7 +369,6 @@ export default function MagazineShell({
     if (prev !== undefined) goToSpread(prev, "backward", "manual");
   }, [spreadStarts, goToSpread]);
 
-  // Keyboard handler
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === "ArrowRight") goNext();
@@ -339,7 +378,6 @@ export default function MagazineShell({
     return () => window.removeEventListener("keydown", onKey);
   }, [goNext, goPrev]);
 
-  // Audio: read current spread aloud via Web Speech API
   const toggleAudio = useCallback(() => {
     if (typeof window === "undefined" || !window.speechSynthesis) return;
     if (audioPlaying) {
@@ -361,7 +399,6 @@ export default function MagazineShell({
     window.speechSynthesis.speak(utterance);
   }, [audioPlaying, pages, currentLeft]);
 
-  // Auto-advance timer — pauses when user hovers, touches, or reaches the last spread
   useEffect(() => {
     if (autoTimerRef.current) clearInterval(autoTimerRef.current);
     if (!autoPlay || hovering || isLast || !!flipping) return;
@@ -371,7 +408,6 @@ export default function MagazineShell({
     return () => { if (autoTimerRef.current) clearInterval(autoTimerRef.current); };
   }, [autoPlay, hovering, isLast, flipping, goNext]);
 
-  // Swipe handlers
   function onTouchStart(e: React.TouchEvent) {
     touchStartX.current = e.touches[0].clientX;
   }
@@ -384,10 +420,6 @@ export default function MagazineShell({
     else goPrev();
   }
 
-  // --- Physics: transform -------------------------------------------------------
-  // "out"  phase: current page curls to the edge (±90°), ease-in (accelerates into fold)
-  // "snap" phase: no transform transition — content snaps to the far-edge position
-  // "in"   phase: new page uncurls from ±90° back to 0°, ease-out (decelerates to rest)
   let flipTransform = "perspective(1400px) rotateY(0deg) scale(1)";
   let flipTransition: string | undefined =
     `transform ${TIMING.pageFlip}ms cubic-bezier(0.4,0,0.2,1), opacity ${TIMING.pageFlip * 0.55}ms ease`;
@@ -395,34 +427,26 @@ export default function MagazineShell({
 
   if (!reduced && flipping) {
     if (flipPhase === "out") {
-      // Page curls away: forward → rotates left (negative Y), backward → rotates right
       flipTransform = flipping === "forward"
         ? "perspective(1400px) rotateY(-90deg) scale(0.93)"
         : "perspective(1400px) rotateY(90deg) scale(0.93)";
-      // Accelerate into the fold
       flipTransition = `transform ${HALF_FLIP}ms cubic-bezier(0.55,0,1,1), opacity ${HALF_FLIP}ms ease-in`;
-      flipOpacity = 0.04; // near-invisible at edge-on
-
+      flipOpacity = 0.04;
     } else if (flipPhase === "snap") {
-      // Edge-on position on the far side — no transition, instant paint
       flipTransform = flipping === "forward"
         ? "perspective(1400px) rotateY(90deg) scale(0.93)"
         : "perspective(1400px) rotateY(-90deg) scale(0.93)";
       flipTransition = "none";
       flipOpacity = 0;
-
     } else if (flipPhase === "in") {
-      // New page uncurls back to flat — decelerate to rest with spring-like ease
       flipTransform = "perspective(1400px) rotateY(0deg) scale(1)";
       flipTransition = `transform ${HALF_FLIP}ms cubic-bezier(0,0,0.3,1), opacity ${HALF_FLIP}ms ease-out`;
       flipOpacity = 1;
     }
   }
 
-  // --- Physics: edge glow & page-stack depth via box-shadow ---------------------
-  const edgeColor = leftPage ? TYPE_COLOR[leftPage.type] : "#00FFFF";
+  const edgeColor = archetype.accentColor;
 
-  // Three faint layers offset behind the spread simulate stacked page thickness
   const pageStack = !reduced
     ? `3px 5px 0 1px rgba(10,10,22,0.85), 6px 9px 0 2px rgba(10,10,22,0.68), 9px 13px 0 3px rgba(10,10,22,0.5)`
     : "";
@@ -432,8 +456,6 @@ export default function MagazineShell({
   const baseShad = "0 8px 48px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.05)";
   const spreadBoxShadow = [baseShad, pageStack, edgeGlow].filter(Boolean).join(", ");
 
-  // --- Physics: fold shadow that darkens the leading edge during the curl -------
-  // For a forward flip the fold sweeps from right-to-left; backward left-to-right.
   const foldShadowVisible = !reduced && !!flipping && flipPhase !== null;
   const foldShadowOpacity = flipPhase === "out" ? 1 : flipPhase === "in" ? 0.2 : 0;
   const foldShadowBg = flipping === "forward"
@@ -449,14 +471,93 @@ export default function MagazineShell({
       aria-label="TMI Magazine"
       style={{
         minHeight: "100vh",
-        paddingTop: 56, // offset fixed global nav
+        paddingTop: 56,
         background: "linear-gradient(160deg, #0a0014 0%, #020617 60%, #0a0a0f 100%)",
         color: "#e2e8f0",
         display: "grid",
         gridTemplateRows: "auto 1fr auto",
+        position: "relative",
       }}
     >
-      {/* XP toast */}
+      <style>{`
+        .tmi-mag-title {
+          font-family: ${archetype.headerFont} !important;
+          color: ${archetype.titleStyle.color} !important;
+          text-shadow: ${archetype.titleStyle.textShadow ?? "none"} !important;
+          letter-spacing: ${archetype.titleStyle.letterSpacing ?? "normal"} !important;
+          text-transform: ${archetype.titleStyle.textTransform ?? "none"} !important;
+          margin-top: 4px !important;
+        }
+        .tmi-mag-paragraph {
+          font-family: ${archetype.fontFamily} !important;
+          color: ${archetype.paragraphStyle.color} !important;
+          line-height: ${archetype.paragraphStyle.lineHeight} !important;
+          font-size: ${archetype.paragraphStyle.fontSize}px !important;
+        }
+        .tmi-mag-pullquote {
+          font-family: ${archetype.pullQuoteStyle.fontFamily ?? "inherit"} !important;
+          font-size: ${archetype.pullQuoteStyle.fontSize}px !important;
+          color: ${archetype.pullQuoteStyle.color} !important;
+          font-style: ${archetype.pullQuoteStyle.fontStyle ?? "italic"} !important;
+          border-left: ${archetype.pullQuoteStyle.borderLeft ?? "none"} !important;
+          border-top: ${archetype.pullQuoteStyle.borderTop ?? "none"} !important;
+          border-bottom: ${archetype.pullQuoteStyle.borderBottom ?? "none"} !important;
+          padding: ${archetype.pullQuoteStyle.padding ?? "0 0 0 8px"} !important;
+          text-transform: ${archetype.pullQuoteStyle.textTransform ?? "none"} !important;
+        }
+        .tmi-mag-cols {
+          column-count: ${archetype.columnCount} !important;
+          column-gap: 20px !important;
+        }
+        .tmi-mag-dropcap::first-letter {
+          font-family: ${archetype.headerFont} !important;
+          font-size: 3.2em !important;
+          float: left !important;
+          line-height: 0.82 !important;
+          margin-right: 6px !important;
+          color: ${archetype.dropCapColor} !important;
+          font-weight: 900 !important;
+          text-shadow: 1px 1px 0px rgba(0,0,0,0.5) !important;
+        }
+      `}</style>
+
+      {/* Resume from where you left off glassmorphic modal overlay */}
+      {showResumeModal !== null && (
+        <div style={{
+          position: "absolute", inset: 0, zIndex: 100,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          background: "rgba(5,5,16,0.94)", backdropFilter: "blur(16px)",
+        }}>
+          <div style={{ textAlign: "center", maxWidth: 360, padding: 24, border: `1.5px solid ${archetype.borderColor}`, borderRadius: 12, background: "rgba(10,10,24,0.8)", boxShadow: "0 10px 30px rgba(0,0,0,0.8)" }}>
+            <div style={{ fontSize: 32, marginBottom: 12 }}>📖</div>
+            <div style={{ fontSize: 9, letterSpacing: "0.2em", color: archetype.accentColor, fontWeight: 900, marginBottom: 8 }}>WELCOME BACK</div>
+            <h3 style={{ fontSize: 16, fontWeight: 900, color: "#fff", margin: "0 0 10px" }}>Resume Reading?</h3>
+            <p style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", lineHeight: 1.5, marginBottom: 20 }}>
+              You left off on spread page {showResumeModal + 1} during your last session.
+            </p>
+            <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
+              <button
+                onClick={() => {
+                  setCurrentLeft(showResumeModal);
+                  setShowResumeModal(null);
+                }}
+                style={{ padding: "8px 18px", fontSize: 10, fontWeight: 800, color: "#050510", background: archetype.accentColor, border: "none", borderRadius: 6, cursor: "pointer" }}
+              >
+                RESUME PAGE {showResumeModal + 1}
+              </button>
+              <button
+                onClick={() => {
+                  setShowResumeModal(null);
+                }}
+                style={{ padding: "8px 18px", fontSize: 10, fontWeight: 800, color: "rgba(255,255,255,0.5)", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 6, cursor: "pointer" }}
+              >
+                START OVER
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {xpToast && (
         <div
           aria-live="polite"
@@ -491,14 +592,41 @@ export default function MagazineShell({
         background: "rgba(5,5,16,0.8)",
         backdropFilter: "blur(8px)",
         flexWrap: "wrap",
+        zIndex: 50,
       }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          <span style={{ fontSize: 8, letterSpacing: "0.4em", color: "#FF2DAA", fontWeight: 800, textTransform: "uppercase" }}>
+          <span style={{ fontSize: 8, letterSpacing: "0.4em", color: archetype.accentColor, fontWeight: 800, textTransform: "uppercase" }}>
             {issueTitle}
           </span>
           <span style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", letterSpacing: "0.15em" }}>
             Issue #{issue} — April 2026
           </span>
+        </div>
+
+        {/* Dynamic Theme Picker */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", fontWeight: 800 }}>THEME STYLE:</span>
+          <select
+            value={activeArchetype}
+            onChange={(e) => setActiveArchetype(e.target.value as MagazineArchetype)}
+            style={{
+              background: "rgba(5,5,16,0.6)",
+              border: `1px solid ${archetype.borderColor}`,
+              borderRadius: 6,
+              color: "#fff",
+              fontSize: 9,
+              fontWeight: 800,
+              padding: "4px 10px",
+              cursor: "pointer",
+              outline: "none",
+            }}
+          >
+            {Object.values(ARCHETYPES).map((arch) => (
+              <option key={arch.id} value={arch.id} style={{ background: "#050510", color: "#fff" }}>
+                {arch.name}
+              </option>
+            ))}
+          </select>
         </div>
 
         {/* XP earn notice */}
@@ -514,16 +642,15 @@ export default function MagazineShell({
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          {/* Auto-play toggle */}
           <button
             type="button"
             onClick={() => setAutoPlay(p => !p)}
             title={autoPlay ? "Pause auto-advance" : "Resume auto-advance"}
             style={{
               background: "transparent",
-              border: `1px solid ${autoPlay ? "#00FFFF" : "rgba(255,255,255,0.15)"}`,
+              border: `1px solid ${autoPlay ? archetype.accentColor : "rgba(255,255,255,0.15)"}`,
               borderRadius: 6,
-              color: autoPlay ? "#00FFFF" : "rgba(255,255,255,0.3)",
+              color: autoPlay ? archetype.accentColor : "rgba(255,255,255,0.3)",
               fontSize: 14,
               lineHeight: 1,
               padding: "4px 8px",
@@ -542,7 +669,7 @@ export default function MagazineShell({
         </div>
       </header>
 
-      {/* Page canvas — hover pauses auto-timer */}
+      {/* Page canvas */}
       <div
         ref={containerRef}
         style={{ position: "relative", overflow: "hidden", padding: "24px" }}
@@ -551,7 +678,6 @@ export default function MagazineShell({
         onMouseEnter={() => setHovering(true)}
         onMouseLeave={() => setHovering(false)}
       >
-        {/* Edge lighting pulse on the container when spread is idle */}
         {!reduced && !flipping && (
           <div
             aria-hidden="true"
@@ -570,7 +696,7 @@ export default function MagazineShell({
           data-testid={`magazine-page-${leftPage?.id}`}
           style={{
             width: "100%",
-            minHeight: 520,
+            minHeight: 540,
             maxWidth: showSpread ? 1100 : 680,
             margin: "0 auto",
             position: "relative",
@@ -579,7 +705,7 @@ export default function MagazineShell({
             opacity: flipOpacity,
             willChange: "transform, opacity",
             borderRadius: 10,
-            border: `1px solid rgba(255,255,255,0.06)`,
+            border: `1.5px solid ${archetype.borderColor}`,
             background: "rgba(5,5,16,0.7)",
             display: showSpread ? "flex" : "block",
             overflow: "hidden",
@@ -588,16 +714,16 @@ export default function MagazineShell({
         >
           {showSpread ? (
             <>
-              <PagePane page={leftPage}  side="left"  />
-              <PagePane page={rightPage!} side="right" />
+              <PagePane page={leftPage}  side="left"  archetype={archetype} />
+              <PagePane page={rightPage!} side="right" archetype={archetype} />
             </>
           ) : (
-            <PagePane page={leftPage} side="solo" />
+            <PagePane page={leftPage} side="solo" archetype={archetype} />
           )}
 
           {isLocked && <LockedSpreadModal onBack={goBackToFree} />}
 
-          {/* Fold shadow — sweeps across the leading edge as the page curls */}
+          {/* Fold shadow */}
           {foldShadowVisible && (
             <div
               aria-hidden="true"
@@ -637,11 +763,16 @@ export default function MagazineShell({
           disabled={isFirst || !!flipping}
           onClick={goPrev}
           style={{
-            border: "1px solid rgba(0,255,255,0.2)", borderRadius: 8,
-            background: "transparent", color: isFirst ? "#1e293b" : "#00FFFF",
-            padding: "8px 20px", fontSize: 11, fontWeight: 800, letterSpacing: "0.12em",
+            border: `1px solid ${isFirst ? "rgba(255,255,255,0.1)" : archetype.borderColor}`,
+            borderRadius: 8,
+            background: "transparent",
+            color: isFirst ? "#1e293b" : archetype.accentColor,
+            padding: "8px 20px",
+            fontSize: 11,
+            fontWeight: 800,
+            letterSpacing: "0.12em",
             cursor: isFirst ? "not-allowed" : "pointer",
-            transition: `background ${TIMING.fast}ms ease`,
+            transition: `all ${TIMING.fast}ms ease`,
           }}
         >
           ← PREV
@@ -661,7 +792,7 @@ export default function MagazineShell({
                   width: active ? 20 : 7,
                   height: 7,
                   borderRadius: 4,
-                  background: active ? "#FF2DAA" : "rgba(255,255,255,0.2)",
+                  background: active ? archetype.accentColor : "rgba(255,255,255,0.2)",
                   border: "none",
                   cursor: "pointer",
                   padding: 0,
@@ -673,30 +804,34 @@ export default function MagazineShell({
           })}
         </div>
 
-        {/* Audio listen button */}
+        {/* Glowing Voice Assistant Reader (🎙️ Read Aloud) */}
         {leftPage?.audioText && (
           <button
             type="button"
             onClick={toggleAudio}
             aria-label={audioPlaying ? "Stop listening" : "Listen to this spread"}
-            title={audioPlaying ? "Stop audio" : "Listen"}
+            title={audioPlaying ? "Stop audio" : "🎙️ Read Aloud"}
             style={{
-              border: `1px solid ${audioPlaying ? "#FF2DAA" : "rgba(255,215,0,0.35)"}`,
+              border: `1px solid ${audioPlaying ? "#FF2DAA" : archetype.borderColor}`,
               borderRadius: 8,
-              background: audioPlaying ? "rgba(255,45,170,0.12)" : "transparent",
-              color: audioPlaying ? "#FF2DAA" : "#FFD700",
-              padding: "8px 16px",
+              background: audioPlaying
+                ? "rgba(255,45,170,0.12)"
+                : "rgba(5,5,16,0.6)",
+              color: audioPlaying ? "#FF2DAA" : archetype.accentColor,
+              padding: "8px 18px",
               fontSize: 11,
-              fontWeight: 800,
+              fontWeight: 900,
               letterSpacing: "0.1em",
               cursor: "pointer",
               display: "flex",
               alignItems: "center",
-              gap: 5,
+              gap: 6,
+              boxShadow: audioPlaying ? `0 0 14px ${archetype.accentColor}44` : "none",
               transition: `all ${TIMING.fast}ms ease`,
             }}
           >
-            {audioPlaying ? "⏹ STOP" : "🔊 LISTEN"}
+            <span style={{ fontSize: 13, animation: audioPlaying ? "tmiPulse 1.2s infinite" : "none" }}>🎙️</span>
+            <span>{audioPlaying ? "STOP READING" : "READ ALOUD"}</span>
           </button>
         )}
 
@@ -707,33 +842,40 @@ export default function MagazineShell({
           disabled={isLast || !!flipping}
           onClick={() => goNext("manual")}
           style={{
-            border: "1px solid rgba(0,255,255,0.2)", borderRadius: 8,
-            background: "transparent", color: isLast ? "#1e293b" : "#00FFFF",
-            padding: "8px 20px", fontSize: 11, fontWeight: 800, letterSpacing: "0.12em",
+            border: `1px solid ${isLast ? "rgba(255,255,255,0.1)" : archetype.borderColor}`,
+            borderRadius: 8,
+            background: "transparent",
+            color: isLast ? "#1e293b" : archetype.accentColor,
+            padding: "8px 20px",
+            fontSize: 11,
+            fontWeight: 800,
+            letterSpacing: "0.12em",
             cursor: isLast ? "not-allowed" : "pointer",
-            transition: `background ${TIMING.fast}ms ease`,
+            transition: `all ${TIMING.fast}ms ease`,
           }}
         >
           NEXT →
         </button>
       </nav>
 
-      {/* Bottom ad leaderboard — displayed after each spread, ready for AdSense/agency fill */}
-      <div style={{
-        padding: "6px 24px 12px",
-        background: "rgba(5,5,16,0.95)",
-        borderTop: "1px solid rgba(255,255,255,0.04)",
-      }}>
-        <AdSenseSlot
-          slot={AD_SLOTS.magazineLeaderboard}
-          format="horizontal"
-          label="ADVERTISEMENT"
-          style={{ minHeight: 60, maxWidth: 900, margin: "0 auto" }}
-        />
-      </div>
+      {/* Bottom ad leaderboard styled to match the page theme */}
+      {!isDiamond && (
+        <div style={{
+          padding: "6px 24px 12px",
+          background: "rgba(5,5,16,0.95)",
+          borderTop: `1px solid ${archetype.borderColor}40`,
+          boxShadow: `0 -4px 16px rgba(0,0,0,0.2)`,
+        }}>
+          <AdSenseSlot
+            slot={AD_SLOTS.magazineLeaderboard}
+            format="horizontal"
+            label="SPONSOR COMMERCIAL AD"
+            style={{ minHeight: 60, maxWidth: 900, margin: "0 auto", border: `1px dashed ${archetype.borderColor}55`, padding: 8, borderRadius: 6 }}
+          />
+        </div>
+      )}
 
-      {/* Fixed right rail — only on very wide screens (1400px+) */}
-      {isWide && (
+      {isWide && !isDiamond && (
         <div
           aria-label="Advertisement"
           style={{
@@ -749,7 +891,7 @@ export default function MagazineShell({
           <AdSenseSlot
             slot={AD_SLOTS.magazineInline}
             format="vertical"
-            label="AD"
+            label="ADVERTISEMENT"
             style={{ minHeight: 280 }}
           />
         </div>

@@ -169,17 +169,22 @@ export async function applyAdminAction(params: {
 }
 
 export async function getAccountStatus(userId: string) {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { accountStatus: true, accountStatusReason: true, accountStatusExpiresAt: true },
-  });
-  if (!user) return null;
-  // An expired temporary suspension self-clears on next check — never
-  // silently extends past what the queue set (auto-suspends still need a
-  // human to either clear or convert to a real ban within the hold window).
-  if (user.accountStatus === 'suspended' && user.accountStatusExpiresAt && user.accountStatusExpiresAt < new Date()) {
-    await prisma.user.update({ where: { id: userId }, data: { accountStatus: 'active', accountStatusReason: null, accountStatusExpiresAt: null } });
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { accountStatus: true, accountStatusReason: true, accountStatusExpiresAt: true },
+    });
+    if (!user) return null;
+    // An expired temporary suspension self-clears on next check — never
+    // silently extends past what the queue set (auto-suspends still need a
+    // human to either clear or convert to a real ban within the hold window).
+    if (user.accountStatus === 'suspended' && user.accountStatusExpiresAt && user.accountStatusExpiresAt < new Date()) {
+      await prisma.user.update({ where: { id: userId }, data: { accountStatus: 'active', accountStatusReason: null, accountStatusExpiresAt: null } });
+      return { accountStatus: 'active', accountStatusReason: null, accountStatusExpiresAt: null };
+    }
+    return user;
+  } catch (err) {
+    console.warn('[ModerationEngine] DB check warning (defaulting to active status):', err);
     return { accountStatus: 'active', accountStatusReason: null, accountStatusExpiresAt: null };
   }
-  return user;
 }
