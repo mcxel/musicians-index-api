@@ -1094,7 +1094,11 @@ export default function FanHQShell({ fanId, fanDisplayName: _fanDisplayName }: R
       <MasterControlDock
         role="fan"
         onLeaveRoom={() => router.push(mainRoute)}
-        onEnterStage={() => router.push(mainRoute)}
+        // Was wired identically to onLeaveRoom (both pushed mainRoute, a
+        // "watch this room" route) - clicking Stage silently reused the
+        // "watch a room" target instead of actually going live. /live/go
+        // is the real, existing broadcast-start entry point.
+        onEnterStage={() => router.push("/live/go")}
       />
     </div>
   );
