@@ -446,7 +446,29 @@ export default function OnboardingFanPage() {
           </div>
         </div>
 
-        <div style={{ marginTop: 24, display: "flex", justifyContent: "flex-end" }}>
+        <div style={{ marginTop: 24, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+          <button
+            type="button"
+            onClick={() => {
+              router.push("/hub/fan");
+            }}
+            style={{
+              padding: "14px 28px",
+              background: "rgba(255,255,255,0.05)",
+              color: "rgba(255,255,255,0.8)",
+              border: "1px solid rgba(255,255,255,0.15)",
+              borderRadius: 8,
+              fontSize: 13,
+              fontWeight: 900,
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              cursor: "pointer",
+              boxShadow: "none",
+            }}
+          >
+            Skip to Dashboard
+          </button>
+
           <button
             type="button"
             onClick={() => void handleNextStep("3")}
