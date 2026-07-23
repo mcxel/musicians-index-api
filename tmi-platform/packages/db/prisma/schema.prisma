@@ -3416,3 +3416,26 @@ model ExperienceJournal {
   @@unique([avatarId, milestoneKey])
   @@map("experience_journals")
 }
+
+// Durable backing store for /api/rooms/lobby-sync (Fan Lobby position/prop
+// broadcast). Replaces an in-memory Map that didn't survive Vercel's
+// multi-instance serverless model - added 2026-07-23. userId is a
+// client-supplied session id (guest lobby sessions are unauthenticated),
+// intentionally not a User foreign key.
+model LobbyPresence {
+  id          String   @id @default(cuid())
+  roomId      String   @map("room_id")
+  userId      String   @map("user_id")
+  userName    String   @map("user_name")
+  emoji       String
+  x           Float
+  y           Float
+  propTrigger String   @default("none") @map("prop_trigger")
+  activeTheme String   @default("MEDIA_LOUNGE") @map("active_theme")
+  lastSeenAt  DateTime @default(now()) @map("last_seen_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@unique([roomId, userId])
+  @@index([roomId, lastSeenAt])
+  @@map("lobby_presences")
+}
