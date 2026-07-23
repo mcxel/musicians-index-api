@@ -20,6 +20,7 @@
 
 import dynamic from "next/dynamic";
 import type { VenueIndex } from "@/components/live/AudienceScene";
+import { useActiveCompetitionTheme, type CompetitionFormat } from "@/lib/competition/ThemeRegistry";
 
 const UniversalVenueRenderer = dynamic(
   () => import("@/components/live/UniversalVenueRenderer"),
@@ -30,6 +31,16 @@ const AvatarVenueAnchor = dynamic(
   () => import("@/components/avatar/AvatarVenueAnchor"),
   { ssr: false }
 );
+
+// NOTE (2026-07-23): components/competition/CompetitionAudienceViewport is
+// NOT wired in here. It's a real, polished shell but every performer/chat/
+// viewer-count value inside it is still hardcoded mock data (no props flow
+// from real WebRTC participants, no live chat backend) - mounting it here
+// would replace the real Daily.co video + real audience for every battle/
+// cypher/challenge room with a fake-data screen. Do not re-wire it as a
+// default render path until it consumes real production data; see Phase 3
+// of the Competition Runtime plan for the harvest-presentation-pieces
+// approach instead of a wholesale swap.
 
 export type ArenaEventType =
   | "concert"
@@ -69,6 +80,14 @@ const VENUE_SLUG_MAP: Record<ArenaEventType, string> = {
   "monday-stage": "monday-stage",
 };
 
+// Only battle/cypher/challenge are competition formats with a themeable
+// identity (Rule 21: same one Venue Runtime, theming is presentation-only).
+const COMPETITION_FORMAT_MAP: Partial<Record<ArenaEventType, CompetitionFormat>> = {
+  battle: "BATTLE",
+  cypher: "CYPHER",
+  challenge: "CHALLENGE",
+};
+
 interface ArenaEventShellProps {
   roomId: string;
   eventType?: ArenaEventType;
@@ -89,6 +108,15 @@ export default function ArenaEventShell({
   const venueSlug = VENUE_SLUG_MAP[eventType];
   const showHeroes = liveState === "live";
 
+  // Hooks must run unconditionally - default to BATTLE's theme set when this
+  // isn't a competition format, but its colors only get used below when
+  // competitionFormat is non-null (concert/live-show/monday-stage keep the
+  // original red/cyan styling untouched).
+  const competitionFormat = COMPETITION_FORMAT_MAP[eventType] ?? null;
+  const theme = useActiveCompetitionTheme(competitionFormat ?? "BATTLE");
+  const liveColor = competitionFormat ? theme.colors.alert : "#FF2020";
+  const watchingColor = competitionFormat ? theme.colors.leftFrame : "#00FFFF";
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
       {/* ── Arena header badge ── */}
@@ -97,13 +125,13 @@ export default function ArenaEventShell({
         background: "rgba(5,5,16,0.9)", borderBottom: "1px solid rgba(255,255,255,0.07)",
       }}>
         <span style={{
-          width: 7, height: 7, borderRadius: "50%", background: "#FF2020", flexShrink: 0,
+          width: 7, height: 7, borderRadius: "50%", background: liveColor, flexShrink: 0,
           animation: "tmiArenaBlink 1s step-end infinite",
-          boxShadow: "0 0 6px #FF2020",
+          boxShadow: `0 0 6px ${liveColor}`,
         }} />
         <style>{`@keyframes tmiArenaBlink{0%,100%{opacity:1}50%{opacity:0}}`}</style>
         <span style={{
-          fontSize: 9, fontWeight: 900, letterSpacing: "0.28em", color: "#FF2020",
+          fontSize: 9, fontWeight: 900, letterSpacing: "0.28em", color: liveColor,
         }}>
           {liveState === "soon" ? "SOON" : liveState === "ended" ? "ENDED" : "LIVE"}
         </span>
@@ -114,7 +142,7 @@ export default function ArenaEventShell({
           {label}
         </span>
         {watcherCount !== undefined && (
-          <span style={{ marginLeft: "auto", fontSize: 9, color: "#00FFFF", fontWeight: 700 }}>
+          <span style={{ marginLeft: "auto", fontSize: 9, color: watchingColor, fontWeight: 700 }}>
             {watcherCount.toLocaleString()} watching
           </span>
         )}
