@@ -222,6 +222,9 @@ model User {
 
   // Competition/show submissions (Monday Night Stage, Beat Battle, etc.)
   eventSubmissions       EventSubmission[]
+
+  // Avatar Long-Term Memory & Evolution relation
+  avatarIdentity         AvatarIdentity?
 }
 
 model Account {
@@ -3297,4 +3300,119 @@ model ShowSubmission {
   @@index([userId])
   @@index([showType, status])
   @@map("show_submissions")
+}
+
+// ==============================================================================
+// AVATAR INTELLIGENCE & EVOLUTION SYSTEM (LAYER 4)
+// ==============================================================================
+
+model AvatarIdentity {
+  id               String          @id @default(cuid())
+  userId           String          @unique @map("user_id")
+  user             User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dna              AvatarDNA?
+  progress         AvatarProgress?
+  preferences      AvatarPreferences?
+  unlocks          AvatarUnlocks[]
+  memory           AvatarMemory?
+  behaviorWeights  AvatarBehaviorWeights?
+  experienceJournal ExperienceJournal[]
+  createdAt        DateTime        @default(now()) @map("created_at")
+  updatedAt        DateTime        @updatedAt @map("updated_at")
+
+  @@map("avatar_identities")
+}
+
+model AvatarDNA {
+  id                 String         @id @default(cuid())
+  avatarId           String         @unique @map("avatar_id")
+  avatar             AvatarIdentity @relation(fields: [avatarId], references: [id], onDelete: Cascade)
+  danceStyle         String         @default("pop_shaker") @map("dance_style")
+  reactionSpeed      Float          @default(0.8) @map("reaction_speed")
+  confidence         Float          @default(0.7)
+  introvertExtrovert Float          @default(0.5) @map("introvert_extrovert")
+  idleStyle          String         @default("idle_breath") @map("idle_style")
+  favoriteGenres     String[]       @map("favorite_genres")
+  movementIntensity  Float          @default(1.0) @map("movement_intensity")
+  eyeContactTendency Float          @default(0.75) @map("eye_contact_tendency")
+
+  @@map("avatar_dnas")
+}
+
+model AvatarProgress {
+  id                  String         @id @default(cuid())
+  avatarId            String         @unique @map("avatar_id")
+  avatar              AvatarIdentity @relation(fields: [avatarId], references: [id], onDelete: Cascade)
+  concertsAttended    Int            @default(0) @map("concerts_attended")
+  battlesWatched      Int            @default(0) @map("battles_watched")
+  battlesEntered      Int            @default(0) @map("battles_entered")
+  cyphersJoined       Int            @default(0) @map("cyphers_joined")
+  challengesCompleted Int            @default(0) @map("challenges_completed")
+  performancesGiven   Int            @default(0) @map("performances_given")
+  hoursInVenue        Float          @default(0.0) @map("hours_in_venue")
+  streakDays          Int            @default(0) @map("streak_days")
+  supporterLevel      Int            @default(1) @map("supporter_level")
+  xp                  Int            @default(0)
+
+  @@map("avatar_progresses")
+}
+
+model AvatarPreferences {
+  id               String         @id @default(cuid())
+  avatarId         String         @unique @map("avatar_id")
+  avatar           AvatarIdentity @relation(fields: [avatarId], references: [id], onDelete: Cascade)
+  preferredSeatRow Int?           @map("preferred_seat_row")
+  preferredSeatCol Int?           @map("preferred_seat_col")
+  primaryColor     String         @default("#FF2DAA") @map("primary_color")
+  glowEnabled      Boolean        @default(true) @map("glow_enabled")
+
+  @@map("avatar_preferences")
+}
+
+model AvatarUnlocks {
+  id         String         @id @default(cuid())
+  avatarId   String         @map("avatar_id")
+  avatar     AvatarIdentity @relation(fields: [avatarId], references: [id], onDelete: Cascade)
+  unlockKey  String         @map("unlock_key")
+  unlockedAt DateTime       @default(now()) @map("unlocked_at")
+
+  @@unique([avatarId, unlockKey])
+  @@map("avatar_unlocks")
+}
+
+model AvatarMemory {
+  id                String         @id @default(cuid())
+  avatarId          String         @unique @map("avatar_id")
+  avatar            AvatarIdentity @relation(fields: [avatarId], references: [id], onDelete: Cascade)
+  topPerformers     String[]       @map("top_performers")
+  topVenues         String[]       @map("top_venues")
+  frequentReactions String[]       @map("frequent_reactions")
+
+  @@map("avatar_memories")
+}
+
+model AvatarBehaviorWeights {
+  id                   String         @id @default(cuid())
+  avatarId             String         @unique @map("avatar_id")
+  avatar               AvatarIdentity @relation(fields: [avatarId], references: [id], onDelete: Cascade)
+  comedyAffinity       Float          @default(0.5) @map("comedy_affinity")
+  danceAffinity        Float          @default(0.5) @map("dance_affinity")
+  competitionIntensity Float          @default(0.5) @map("competition_intensity")
+  socialParticipation  Float          @default(0.5) @map("social_participation")
+  musicResponsiveness  Float          @default(0.5) @map("music_responsiveness")
+  calmness             Float          @default(0.5)
+
+  @@map("avatar_behavior_weights")
+}
+
+model ExperienceJournal {
+  id           String         @id @default(cuid())
+  avatarId     String         @map("avatar_id")
+  avatar       AvatarIdentity @relation(fields: [avatarId], references: [id], onDelete: Cascade)
+  milestoneKey String         @map("milestone_key")
+  description  String
+  achievedAt   DateTime       @default(now()) @map("achieved_at")
+
+  @@unique([avatarId, milestoneKey])
+  @@map("experience_journals")
 }

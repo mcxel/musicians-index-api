@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { proxyToApi } from "@/lib/apiProxy";
 import { DiamondInviteEngine } from "@/lib/auth/DiamondInviteEngine";
+import { seedAvatarIdentity } from "@/lib/avatars/seedAvatarIdentity";
 
 /**
  * POST /api/auth/provision
@@ -49,6 +50,19 @@ export async function POST(req: NextRequest) {
 
   const now = new Date().toISOString();
 
+  // Real avatar identity seed — Rule 26 Identity Policy: Avatar & Inventory
+  // is Fan-only, so this only ever runs (and only ever reports as created)
+  // for FAN accounts. Everything else in this chain below is still a stub.
+  let avatarStep: { step: string; status: string; avatarIdentityId?: string; error?: string } | null = null;
+  if (accountType === "FAN") {
+    try {
+      const identity = await seedAvatarIdentity(userId);
+      avatarStep = { step: "avatar_identity_seeded", status: "OK", avatarIdentityId: identity.id };
+    } catch (e: any) {
+      avatarStep = { step: "avatar_identity_seeded", status: "ERROR", error: e.message || "seed_failed" };
+    }
+  }
+
   // Stub provision chain result — role-specific provisioning
   const provisionChain = {
     userId,
@@ -59,7 +73,6 @@ export async function POST(req: NextRequest) {
       { step: "profile_created",           status: "OK" },
       { step: "wallet_created",            status: "OK", walletId: `wallet_${userId}` },
       { step: "points_ledger_created",     status: "OK", starterPoints: accountType === "PERFORMER" ? 250 : 100 },
-      { step: "avatar_inventory_created",  status: "OK", starterItems: ["avatar-default-frame", "avatar-starter-badge"] },
       { step: "notification_settings",     status: "OK" },
       { step: "dashboard_created",         status: "OK" },
       { step: "onboarding_bots_assigned",  status: "OK", botCount: 3 },
@@ -70,6 +83,7 @@ export async function POST(req: NextRequest) {
         { step: "fan_live_lobby_access",   status: "OK" },
         { step: "personal_playlist_created", status: "OK", playlistName: "My Playlist" },
         { step: "yopho_fan_canvas_created", status: "OK", canvasType: "personal_scrapbook" },
+        ...(avatarStep ? [avatarStep] : []),
       ] : []),
 
       // PERFORMER-specific provisioning
