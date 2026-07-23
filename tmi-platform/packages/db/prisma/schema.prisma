@@ -3439,3 +3439,27 @@ model LobbyPresence {
   @@index([roomId, lastSeenAt])
   @@map("lobby_presences")
 }
+
+model LobbyEvent {
+  id                String   @id @default(cuid())
+  roomId            String   @unique @map("room_id")
+  showId            String   @map("show_id")
+  title             String
+  status            String   @default("queued")
+  format            String   @default("solo-1v1")
+  genreId           String   @default("hip-hop") @map("genre_id")
+  genreName         String   @default("Hip Hop") @map("genre_name")
+  mainHostId        String?  @map("main_host_id")
+  mainHostName      String?  @map("main_host_name")
+  coHostIds         String?  @map("co_host_ids")
+  judgeIds          String?  @map("judge_ids")
+  paAnnouncerId     String?  @map("pa_announcer_id")
+  prizeHostId       String?  @map("prize_host_id")
+  countdownSeconds  Int      @default(0) @map("countdown_seconds")
+  absoluteStartTime DateTime @map("absolute_start_time")
+  viewerCount       Int      @default(0) @map("viewer_count")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  @@map("lobby_events")
+}
+

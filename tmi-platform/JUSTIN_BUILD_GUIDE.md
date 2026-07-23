@@ -28,6 +28,32 @@ This guide provides complete instructions for Justin to compile, sign, and submi
 
 ## 3. Google Play Store & Android TV Build Instructions
 
+### Resolving Version Code Conflict (versionCode 9)
+Every new App Bundle (`.aab`) submitted to the Play Console must have an incremented `versionCode`.
+- **Target Version Code**: `9` (updated in `android/app/build/gradle` to avoid "Version code 8 has already been used" error).
+- **Target Version Name**: `"1.0.9"` (corresponds to our latest release build).
+
+### Clean AAB Compilation & Build
+Pristine build scripts are provided inside the `android/` project folder to automate compiling and packaging a release-signed bundle:
+- **Bash Shell (macOS/Linux/Git Bash)**:
+  ```bash
+  cd android
+  chmod +x build-aab.sh
+  ./build-aab.sh
+  ```
+- **PowerShell (Windows)**:
+  ```powershell
+  cd android
+  .\build-aab.ps1
+  ```
+- **Manual Command Line**:
+  ```bash
+  cd android
+  ./gradlew clean
+  ./gradlew bundleRelease
+  ```
+*Output Artifact*: `android/app/build/outputs/bundle/release/app-release.aab`
+
 ### Android TV Manifest & Remote Control Support
 - **Touchscreen Not Required**: `<uses-feature android:name="android.hardware.touchscreen" android:required="false" />`
 - **Leanback Launcher**: Enables TMI app icon on Android TV home screen grids (`android.intent.category.LEANBACK_LAUNCHER`).
@@ -70,3 +96,4 @@ This guide provides complete instructions for Justin to compile, sign, and submi
    - Select the uploaded build.
    - Complete the [APPLE_APP_STORE_CHECKLIST.md](file:///c:/Users/Admin/Documents/BerntoutGlobal%20XXL/tmi-platform/APPLE_APP_STORE_CHECKLIST.md).
    - Enter demo review credentials (`terry@themusiciansindex.com` / `jerome@themusiciansindex.com`).
+
