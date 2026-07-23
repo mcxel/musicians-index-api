@@ -12,6 +12,11 @@ type MotionPortraitEngineProps = {
   mode?: "cutout" | "circle";
   gesture?: GestureState;
   loopPreset?: "standard" | "champion";
+  imageSrc?: string;
+  // The blink%/gesture readout below the portrait is a debug label - keep it
+  // for existing callers by default, but let production placements (e.g. a
+  // real DJ booth) turn it off.
+  showStatusLabel?: boolean;
 };
 
 export default function MotionPortraitEngine({
@@ -20,6 +25,8 @@ export default function MotionPortraitEngine({
   mode = "cutout",
   gesture = "idle",
   loopPreset = "standard",
+  imageSrc,
+  showStatusLabel = true,
 }: MotionPortraitEngineProps) {
   // Stable per-avatar offset (derived from `name`) so multiple avatars on
   // screen at once don't all compute the same blink phase from the shared
@@ -59,10 +66,12 @@ export default function MotionPortraitEngine({
         transition: "transform 120ms linear",
       }}
     >
-      <CutoutPortraitRenderer name={name} accent={accent} mode={mode} />
-      <div style={{ color: accent, fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase" }}>
-        blink {Math.round(blink.openness * 100)}% | {gesture}
-      </div>
+      <CutoutPortraitRenderer name={name} accent={accent} mode={mode} imageSrc={imageSrc} />
+      {showStatusLabel && (
+        <div style={{ color: accent, fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase" }}>
+          blink {Math.round(blink.openness * 100)}% | {gesture}
+        </div>
+      )}
     </div>
   );
 }
