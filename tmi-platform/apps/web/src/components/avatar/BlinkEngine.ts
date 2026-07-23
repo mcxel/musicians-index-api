@@ -14,10 +14,21 @@ const DEFAULT_CONFIG: Required<BlinkConfig> = {
   closeMs: 140,
 };
 
-export function nextBlinkAt(nowMs: number, config: BlinkConfig = {}): number {
+// Deterministic per-instance offset so every avatar rendered at the same
+// wall-clock moment doesn't compute the same blink phase (was previously
+// keyed only on nowMs % 997, syncing every on-screen avatar's blink).
+export function seedFromId(id: string): number {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) {
+    hash = (hash * 31 + id.charCodeAt(i)) | 0;
+  }
+  return Math.abs(hash);
+}
+
+export function nextBlinkAt(nowMs: number, config: BlinkConfig = {}, seed = 0): number {
   const merged = { ...DEFAULT_CONFIG, ...config };
   const span = merged.maxIntervalMs - merged.minIntervalMs;
-  const phase = (nowMs % 997) / 997;
+  const phase = ((nowMs + seed) % 997) / 997;
   return nowMs + merged.minIntervalMs + Math.floor(span * phase);
 }
 

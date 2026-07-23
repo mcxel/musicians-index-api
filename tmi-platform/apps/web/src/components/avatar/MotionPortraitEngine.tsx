@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import CutoutPortraitRenderer from "./CutoutPortraitRenderer";
-import { getBlinkFrame, nextBlinkAt } from "./BlinkEngine";
+import { getBlinkFrame, nextBlinkAt, seedFromId } from "./BlinkEngine";
 import { getGestureFrame, type GestureState } from "./GestureEngine";
 import { getIdleLoopFrame } from "./IdleLoopEngine";
 
@@ -21,9 +21,14 @@ export default function MotionPortraitEngine({
   gesture = "idle",
   loopPreset = "standard",
 }: MotionPortraitEngineProps) {
+  // Stable per-avatar offset (derived from `name`) so multiple avatars on
+  // screen at once don't all compute the same blink phase from the shared
+  // wall clock and blink in unison.
+  const blinkSeed = useMemo(() => seedFromId(name), [name]);
+
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [blinkStartedAtMs, setBlinkStartedAtMs] = useState(() => Date.now() - 5000);
-  const [nextBlinkMs, setNextBlinkMs] = useState(() => nextBlinkAt(Date.now()));
+  const [nextBlinkMs, setNextBlinkMs] = useState(() => nextBlinkAt(Date.now(), {}, blinkSeed));
 
   useEffect(() => {
     const speed = loopPreset === "champion" ? 50 : 80;
@@ -32,11 +37,11 @@ export default function MotionPortraitEngine({
       setNowMs(now);
       if (now >= nextBlinkMs) {
         setBlinkStartedAtMs(now);
-        setNextBlinkMs(nextBlinkAt(now));
+        setNextBlinkMs(nextBlinkAt(now, {}, blinkSeed));
       }
     }, speed);
     return () => window.clearInterval(timer);
-  }, [loopPreset, nextBlinkMs]);
+  }, [loopPreset, nextBlinkMs, blinkSeed]);
 
   const idle = useMemo(() => getIdleLoopFrame(nowMs), [nowMs]);
   const blink = useMemo(() => getBlinkFrame(nowMs, blinkStartedAtMs), [nowMs, blinkStartedAtMs]);
