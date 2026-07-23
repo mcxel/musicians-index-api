@@ -5,6 +5,7 @@ import YoPhoStudioDrawer from '../studio/YoPhoStudioDrawer';
 import InventoryPanelOverlay from '../panels/InventoryPanelOverlay';
 import MemoryWallPanelOverlay from '../panels/MemoryWallPanelOverlay';
 import PlaylistPanelOverlay from '../panels/PlaylistPanelOverlay';
+import CameraCaptureOverlay from '../panels/CameraCaptureOverlay';
 
 export interface MasterControlDockProps {
   role?: 'fan' | 'performer' | 'artist' | 'admin';
@@ -32,6 +33,9 @@ export default function MasterControlDock({
   const [isMemoryWallOpen, setIsMemoryWallOpen] = useState(false);
   const [isPlaylistOpen, setIsPlaylistOpen] = useState(false);
   const [isStudioOpen, setIsStudioOpen] = useState(false);
+  // Separate from Go Live on purpose (direction locked 2026-07-22): Go Live
+  // means "broadcast now," Camera means "capture a memory."
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
 
   const handleMicClick = () => {
     setIsMicActive(!isMicActive);
@@ -66,6 +70,10 @@ export default function MasterControlDock({
         isOpen={isStudioOpen}
         onClose={() => setIsStudioOpen(false)}
         role={role === 'admin' ? 'performer' : role}
+      />
+      <CameraCaptureOverlay
+        isOpen={isCameraOpen}
+        onClose={() => setIsCameraOpen(false)}
       />
 
       {/* ─── FLIGHT DECK OS SPLIT BOTTOM BROADCAST CONTROL BAR ───────────────────── */}
@@ -264,6 +272,27 @@ export default function MasterControlDock({
               }}
             >
               😃 EMOTES
+            </button>
+
+            {/* CAMERA — deliberately separate from Stage/Go Live. Go Live
+                means "broadcast now," Camera means "capture a memory." */}
+            <button
+              onClick={() => setIsCameraOpen(true)}
+              style={{
+                padding: '6px 12px',
+                borderRadius: 12,
+                background: 'rgba(255,255,255,0.05)',
+                border: '1px solid rgba(255,255,255,0.18)',
+                color: '#fff',
+                fontSize: 9,
+                fontWeight: 900,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 5,
+              }}
+            >
+              📷 CAMERA
             </button>
 
             {/* ENTER STAGE */}
