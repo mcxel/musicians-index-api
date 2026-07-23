@@ -21,6 +21,11 @@
 import dynamic from "next/dynamic";
 import type { VenueIndex } from "@/components/live/AudienceScene";
 import { useActiveCompetitionTheme, type CompetitionFormat } from "@/lib/competition/ThemeRegistry";
+import CompetitionPresentationLayer from "@/components/competition/presentation/CompetitionPresentationLayer";
+import type {
+  CompetitionParticipantView,
+  CompetitionPhase,
+} from "@/components/competition/presentation/competitionPresentation.types";
 
 const UniversalVenueRenderer = dynamic(
   () => import("@/components/live/UniversalVenueRenderer"),
@@ -33,14 +38,16 @@ const AvatarVenueAnchor = dynamic(
 );
 
 // NOTE (2026-07-23): components/competition/CompetitionAudienceViewport is
-// NOT wired in here. It's a real, polished shell but every performer/chat/
-// viewer-count value inside it is still hardcoded mock data (no props flow
-// from real WebRTC participants, no live chat backend) - mounting it here
-// would replace the real Daily.co video + real audience for every battle/
-// cypher/challenge room with a fake-data screen. Do not re-wire it as a
-// default render path until it consumes real production data; see Phase 3
-// of the Competition Runtime plan for the harvest-presentation-pieces
-// approach instead of a wholesale swap.
+// NOT wired in here and never should be as a default render path - every
+// performer/chat/viewer-count value inside it is still hardcoded mock data
+// (no props flow from real WebRTC participants, no live chat backend), so
+// mounting it directly would replace the real Daily.co video + real
+// audience for every battle/cypher/challenge room with a fake-data screen.
+// Phase 3 of the Competition Runtime plan harvested its genuinely reusable
+// presentation pieces (VS overlay, scoreboard, timer, etc.) into
+// components/competition/presentation/ instead - CompetitionPresentationLayer
+// below is that harvest, mounted as a props-driven overlay on top of the
+// real renderer rather than a replacement for it.
 
 export type ArenaEventType =
   | "concert"
@@ -94,7 +101,23 @@ interface ArenaEventShellProps {
   mode?: "audience" | "performer";
   watcherCount?: number;
   liveState?: ArenaLiveState;
+  // Competition presentation data - optional and honestly empty by default.
+  // No caller currently threads real participant/score/timer state through
+  // to this component, so these render pending/empty states (Rule 20) until
+  // a real data source is wired up, rather than being fabricated here.
+  roundLabel?: string | null;
+  remainingSeconds?: number | null;
+  leftParticipant?: CompetitionParticipantView | null;
+  rightParticipant?: CompetitionParticipantView | null;
+  crowdEnergy?: number | null;
+  winnerParticipantId?: string | null;
 }
+
+const LIVE_STATE_TO_PHASE: Record<ArenaLiveState, CompetitionPhase> = {
+  soon: "WAITING",
+  live: "LIVE",
+  ended: "RESULTS",
+};
 
 export default function ArenaEventShell({
   roomId,
@@ -102,6 +125,12 @@ export default function ArenaEventShell({
   mode = "audience",
   watcherCount,
   liveState = "live",
+  roundLabel = null,
+  remainingSeconds = null,
+  leftParticipant = null,
+  rightParticipant = null,
+  crowdEnergy = null,
+  winnerParticipantId = null,
 }: ArenaEventShellProps) {
   const venueIndex = VENUE_MAP[eventType] ?? 0;
   const label = EVENT_LABELS[eventType] ?? "TMI ARENA";
@@ -156,8 +185,26 @@ export default function ArenaEventShell({
       )}
 
       {/* ── Universal Venue Renderer: AudienceScene + seats + chat + moderation +
-           performer controls, all in one (Phase 3B convergence, 2026-06-20) ── */}
-      <UniversalVenueRenderer roomId={roomId} mode={mode} venueIndex={venueIndex} />
+           performer controls, all in one (Phase 3B convergence, 2026-06-20).
+           CompetitionPresentationLayer sits on top as a pointer-events-none
+           overlay for battle/cypher/challenge - it never owns Daily.co,
+           participant lifecycle, or venue routing, all of which stay here. ── */}
+      <div style={{ position: "relative" }}>
+        <UniversalVenueRenderer roomId={roomId} mode={mode} venueIndex={venueIndex} />
+        {competitionFormat && (
+          <CompetitionPresentationLayer
+            format={competitionFormat}
+            phase={LIVE_STATE_TO_PHASE[liveState]}
+            roomId={roomId}
+            roundLabel={roundLabel}
+            remainingSeconds={remainingSeconds}
+            leftParticipant={leftParticipant}
+            rightParticipant={rightParticipant}
+            crowdEnergy={crowdEnergy}
+            winnerParticipantId={winnerParticipantId}
+          />
+        )}
+      </div>
     </div>
   );
 }
