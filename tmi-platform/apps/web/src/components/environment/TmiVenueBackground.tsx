@@ -2,8 +2,8 @@
 
 import { type ReactNode } from "react";
 import { ImageSlotWrapper } from "@/components/visual-enforcement";
-
-export type VenueMode = "arena" | "battle" | "cypher" | "lobby" | "stage" | "gameshow" | "backstage" | "producer";
+import { VENUE_ASSET_REGISTRY, type VenueMode } from "@/lib/rooms/VenueAssetRegistry";
+import RoomBackground from "./RoomBackground";
 
 const MODE_PALETTE: Record<VenueMode, { ray1: string; ray2: string; ray3: string; floor: string; grid: string }> = {
   arena:     { ray1: "#FF2DAA", ray2: "#00FFFF", ray3: "#FFD700", floor: "#1a0030",  grid: "#FF2DAA33" },
@@ -24,6 +24,7 @@ interface TmiVenueBackgroundProps {
   showGrid?: boolean;
   backgroundImage?: string;
   className?: string;
+  style?: React.CSSProperties;
 }
 
 export default function TmiVenueBackground({
@@ -34,8 +35,10 @@ export default function TmiVenueBackground({
   showGrid = true,
   backgroundImage,
   className,
+  style,
 }: TmiVenueBackgroundProps) {
   const p = MODE_PALETTE[mode];
+  const asset = VENUE_ASSET_REGISTRY[mode];
 
   return (
     <div
@@ -46,8 +49,11 @@ export default function TmiVenueBackground({
         background: `radial-gradient(ellipse at 50% 85%, ${p.floor} 0%, #03020b 60%, #020009 100%)`,
         overflow: "hidden",
         fontFamily: "'Inter', system-ui, sans-serif",
+        ...style,
       }}
     >
+      <RoomBackground videoUrl={asset?.backgroundLoop} opacity={backgroundImage ? 0.35 : 0.55} />
+
       {backgroundImage && (
         <ImageSlotWrapper
           imageId={`venue-bg-${mode}`}
@@ -61,7 +67,7 @@ export default function TmiVenueBackground({
             inset: 0,
             zIndex: 0,
             pointerEvents: "none",
-            opacity: 0.55,
+            opacity: 0.35,
           }}
         />
       )}

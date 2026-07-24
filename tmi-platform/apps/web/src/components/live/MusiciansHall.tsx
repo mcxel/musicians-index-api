@@ -4,6 +4,11 @@ import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { playSound } from "@/lib/sound/playSound";
 import Link from "next/link";
+import TmiVenueBackground from "@/components/environment/TmiVenueBackground";
+import VenueLighting from "@/components/environment/VenueLighting";
+import AudienceSeating from "@/components/environment/AudienceSeating";
+import HostPresenter from "@/components/environment/HostPresenter";
+import SponsorBannerRail from "@/components/environment/SponsorBannerRail";
 
 interface FloatingEmote {
   id: string;
@@ -98,7 +103,7 @@ export default function MusiciansHall() {
   };
 
   return (
-    <div className="min-h-screen bg-[#05050f] text-white font-sans flex flex-col justify-between overflow-x-hidden select-none">
+    <TmiVenueBackground mode="arena" showAudience={false} showGrid={false} className="min-h-screen text-white font-sans flex flex-col justify-between overflow-x-hidden select-none">
       
       {/* 1. Live Navigation & Header System */}
       <header className="bg-black/90 border-b border-cyan-500/20 backdrop-blur-md px-6 py-3 flex justify-between items-center z-40 sticky top-0">
@@ -233,35 +238,24 @@ export default function MusiciansHall() {
           
           {/* 3D Stage Visualizer View */}
           <div 
-            className={`relative h-[320px] bg-gradient-to-b from-purple-950/20 via-black/95 to-[#070716] border border-cyan-500/30 rounded-2xl overflow-hidden shadow-2xl flex flex-col justify-between p-4 transition-all duration-500 ${
-              scene?.lightingConfig?.strobe ? "animate-[pulse_0.4s_infinite]" : ""
-            }`}
+            className="relative h-[320px] bg-black/85 border border-cyan-500/30 rounded-2xl overflow-hidden shadow-2xl flex flex-col justify-between p-4"
           >
             {/* Camera angle indicator */}
             <div className="absolute top-2 left-2 text-[7px] font-black bg-cyan-500/20 text-cyan-300 px-2 py-0.5 rounded border border-cyan-400/20 uppercase font-mono tracking-wider z-20">
               🎥 {scene?.cameraPreset || "STAGE-WIDE"}
             </div>
 
-            {/* Spotlights and glow layers driven by SceneRuntime config */}
-            <div 
-              className="absolute top-0 left-1/4 w-[1px] h-[300px] rotate-[25deg] blur-[3px] pointer-events-none transition-all duration-1000"
-              style={{
-                background: `linear-gradient(to bottom, ${scene?.lightingConfig?.primaryColorHex || "#00FFFF"}dd, transparent)`,
-                opacity: scene?.lightingConfig?.intensity ?? 0.8
-              }}
+            <VenueLighting
+              primaryColor={scene?.lightingConfig?.primaryColorHex}
+              secondaryColor={scene?.lightingConfig?.secondaryColorHex}
+              intensity={scene?.lightingConfig?.intensity}
+              strobe={scene?.lightingConfig?.strobe}
             />
-            <div 
-              className="absolute top-0 right-1/4 w-[1px] h-[300px] rotate-[-25deg] blur-[3px] pointer-events-none transition-all duration-1000"
-              style={{
-                background: `linear-gradient(to bottom, ${scene?.lightingConfig?.secondaryColorHex || "#AA2DFF"}dd, transparent)`,
-                opacity: scene?.lightingConfig?.intensity ?? 0.8
-              }}
-            />
-            <div 
-              className="absolute inset-0 pointer-events-none transition-all duration-1000" 
-              style={{
-                background: `radial-gradient(circle at center, ${scene?.lightingConfig?.primaryColorHex || "#00ffff"}0a 0%, transparent 70%)`
-              }}
+
+            <AudienceSeating
+              layout="rows"
+              color={scene?.lightingConfig?.primaryColorHex}
+              reaction={scene?.audienceReactionMode === "DANCING" ? "DANCING" : scene?.audienceReactionMode === "CHEERING" ? "CHEERING" : "CLAPPING"}
             />
 
             <div className="text-center z-10">
@@ -527,6 +521,6 @@ export default function MusiciansHall() {
         </div>
       </footer>
 
-    </div>
+    </TmiVenueBackground>
   );
 }

@@ -6,12 +6,10 @@ import { playSound } from "@/lib/sound/playSound";
 import { getAvatarProceduralDNA, type SwaggerProfile } from "@/lib/avatars/ProceduralStyleMatrix";
 import { computeLiveAvatarState, type BehaviorWeights } from "@/lib/avatars/BehaviorConsumer";
 import { computeVisualBlendState, type IntentType } from "@/lib/avatars/AnimationDirector";
-import MotionPortraitEngine from "@/components/avatar/MotionPortraitEngine";
-
-// Real reference portrait from the canonical Host asset folder (matches
-// HostIdentityRegistry's "record-ralph" entry). Space-before-comma folder
-// name is real on disk - encodeURI handles the spaces for the <img> src.
-const RECORD_RALPH_PORTRAIT = encodeURI("/assets/Host , Julius , and extra/Record Ralph.webp");
+import { avatarBehavioralDirector } from "@/lib/avatars/AvatarBehavioralDirector";
+import { perceptionPipeline } from "@/lib/avatars/PerceptionPipeline";
+import HostPresenter from "@/components/environment/HostPresenter";
+import TmiVenueBackground from "@/components/environment/TmiVenueBackground";
 
 interface Dancer {
   id: string;
@@ -65,6 +63,22 @@ export default function WorldDanceParty({
   const [sprayActive, setSprayActive] = useState(false);
 
   const floorRef = useRef<HTMLDivElement>(null);
+  // Ref holds the latest behavioral snapshot so the dancer update interval
+  // can read it without needing it in the dependency array.
+  const behavioralRef = useRef(avatarBehavioralDirector.getSnapshot());
+
+  // Subscribe to behavioral director (sentiment / beat events from PerceptionPipeline)
+  useEffect(() => {
+    return avatarBehavioralDirector.registerListener((update) => {
+      behavioralRef.current = update;
+    });
+  }, []);
+
+  // Start perception pipeline for beat simulation (no live stream on dance floor)
+  useEffect(() => {
+    perceptionPipeline.startAudioAnalysis();
+    return () => perceptionPipeline.stopAudioAnalysis();
+  }, []);
 
   // Helper to generate deterministic behavior weights for dancers
   const makeWeights = (seed: string): BehaviorWeights => {
@@ -132,21 +146,31 @@ export default function WorldDanceParty({
             localInfluence = true;
           }
 
-          const roll = Math.random();
-          let nextIntent: IntentType = d.activeIntent;
+          // Drive intent from behavioral layer (perception pipeline → sentiment → emotion)
+          const dna = getAvatarProceduralDNA(d.id);
+          // Map BPM to crowd energy (0–100): 80 BPM → 0, 160 BPM → 96
+          const crowdEnergy = Math.min(100, Math.max(0, (bpm - 80) * 1.2));
+          const liveEmotion = computeLiveAvatarState(dna, d.weights, behavioralRef.current, crowdEnergy);
 
-          if (roll < 0.2 || localInfluence) {
-            // High energy audio or local influence triggers active dance intents
-            const excitedState = roll < (localInfluence ? 0.8 : 0.45);
-            nextIntent = excitedState ? "STAND_AND_DANCE" : "CLAP";
-          } else if (roll < 0.35) {
-            nextIntent = "LOOK_AT_STAGE";
-          } else if (roll < 0.45) {
-            nextIntent = "IDLE";
+          let nextIntent: IntentType = d.activeIntent;
+          // Proximity social influence overrides behavioral output for immersive cascade
+          if (localInfluence) {
+            nextIntent = "STAND_AND_DANCE";
+          } else {
+            switch (liveEmotion.animationState) {
+              case "dancing":   nextIntent = "STAND_AND_DANCE"; break;
+              case "clapping":  nextIntent = "CLAP";            break;
+              case "shocked":   nextIntent = "SHOCK";           break;
+              case "afraid":    nextIntent = "FLINCH";          break;
+              case "listening": nextIntent = "LOOK_AT_STAGE";   break;
+              default:          nextIntent = "IDLE";            break;
+            }
           }
 
-          // Trigger speech bubble
-          const bubble = roll < 0.08 ? BOT_PHRASES[Math.floor(Math.random() * BOT_PHRASES.length)] : d.activeBubble;
+          // Speech bubble chance driven by behavioral layer's socialParticipation weight
+          const bubble = Math.random() < liveEmotion.bubbleChance
+            ? BOT_PHRASES[Math.floor(Math.random() * BOT_PHRASES.length)]
+            : d.activeBubble;
 
           return {
             ...d,
@@ -240,6 +264,12 @@ export default function WorldDanceParty({
       onClick={handleFloorClick}
       className="relative w-full aspect-[16/9] min-h-[460px] bg-[#050510] rounded-3xl border border-white/10 overflow-hidden flex flex-col justify-between"
     >
+      <TmiVenueBackground
+        mode="arena"
+        showAudience={false}
+        showGrid={false}
+        style={{ position: "absolute", inset: 0, minHeight: "100%", width: "100%", zIndex: 0, pointerEvents: "none" }}
+      />
       {/* 3D stage and back wall styling */}
       <div className="absolute top-0 inset-x-0 h-[38%] bg-gradient-to-b from-[#0a0a20] to-[#080818] border-b border-white/10 flex justify-center items-end pb-4 z-10 pointer-events-none">
         
@@ -260,13 +290,11 @@ export default function WorldDanceParty({
 
           {/* DJ Record Ralph — real reference portrait, idle blink/sway motion,
               anchored above this booth specifically */}
-          <div className="absolute -top-[84px] left-1/2 -translate-x-1/2 z-20 pointer-events-none">
-            <MotionPortraitEngine
-              name="Record Ralph"
-              accent={ralphAnimColor}
-              mode="circle"
-              imageSrc={RECORD_RALPH_PORTRAIT}
-              showStatusLabel={false}
+          <div className="absolute -top-[128px] left-1/2 -translate-x-1/2 z-20 pointer-events-none scale-75 transform-gpu origin-bottom">
+            <HostPresenter
+              hostSlug="record-ralph"
+              accentColor={ralphAnimColor}
+              mode="booth"
             />
           </div>
 
