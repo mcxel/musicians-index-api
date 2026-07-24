@@ -8,14 +8,6 @@ import OmniPresenceEngine from "@/components/presence/OmniPresenceEngine";
 const ACCENT = "#FF2DAA";
 const BG = "#050510";
 
-const STATS = [
-  { label: "Monthly Listeners", value: "0",  color: ACCENT    },
-  { label: "Rank",              value: "—",  color: "#FFD700" },
-  { label: "Battle Record",     value: "0–0",color: "#00FFFF" },
-  { label: "Streams",           value: "0",  color: "#AA2DFF" },
-  { label: "Magazine Features", value: "0",  color: "#00FF88" },
-  { label: "Fan Following",     value: "0",  color: ACCENT    },
-];
 
 interface MeUser { id: string; email: string; name?: string; role: string; tier?: string; }
 
@@ -27,18 +19,68 @@ export default function ArtistProfilePage() {
   const [bio, setBio] = useState("");
   const [saveStatus, setSaveStatus] = useState("");
 
+  const [ratings, setRatings] = useState<any>(null);
+  const [matchRecord, setMatchRecord] = useState<any>(null);
+
   useEffect(() => {
     fetch("/api/auth/session", { credentials: "include" })
       .then(r => r.json())
-      .then((d: { authenticated?: boolean; user?: MeUser }) => {
+      .then(async (d: { authenticated?: boolean; user?: MeUser }) => {
         if (!d.authenticated || !d.user) { router.replace("/auth"); return; }
         setUser(d.user);
         setDisplayName(d.user.name ?? d.user.email.split("@")[0] ?? "");
+
+        try {
+          const profileRes = await fetch("/api/profile/self", { credentials: "include", cache: "no-store" });
+          if (profileRes.ok) {
+            const profileData = await profileRes.json() as {
+              profile?: { bio?: string | null };
+            };
+            if (profileData.profile?.bio) {
+              setBio(profileData.profile.bio);
+            }
+          }
+        } catch {}
       })
       .catch(() => router.replace("/auth"));
   }, [router]);
 
+  useEffect(() => {
+    if (!user?.id) return;
+    fetch(`/api/competition/integrity?userId=${encodeURIComponent(user.id)}&history=true`)
+      .then(r => r.json())
+      .then(d => {
+        if (d.success) {
+          if (d.ratings) setRatings(d.ratings);
+          if (d.record) setMatchRecord(d.record);
+        }
+      })
+      .catch(() => {});
+  }, [user?.id]);
+
   if (!user) return null;
+
+  const stats = [
+    { label: "Monthly Listeners", value: "0",  color: ACCENT    },
+    { 
+      label: "Rank",              
+      value: ratings ? `${ratings.skillRating} SR` : "—",  
+      color: "#FFD700" 
+    },
+    { 
+      label: "Battle Record",     
+      value: matchRecord ? `${matchRecord.wins}–${matchRecord.losses}` : "0–0",
+      color: "#00FFFF" 
+    },
+    { label: "Streams",           value: "0",  color: "#AA2DFF" },
+    { label: "Magazine Features", value: "0",  color: "#00FF88" },
+    { 
+      label: "Fan Following",     
+      value: ratings ? `${ratings.reputationRating} Fans` : "0",  
+      color: ACCENT    
+    },
+  ];
+
 
   return (
     <main style={{ minHeight: "100vh", background: BG, color: "#fff", fontFamily: "'Inter', sans-serif", paddingBottom: 80 }}>
@@ -89,7 +131,7 @@ export default function ArtistProfilePage() {
           </div>
         )}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 10, marginBottom: 24 }}>
-          {STATS.map((s) => (<div key={s.label} style={{ padding: "16px", background: `${s.color}08`, border: `1px solid ${s.color}20`, borderRadius: 12, textAlign: "center" }}><div style={{ fontSize: 22, fontWeight: 900, color: s.color }}>{s.value}</div><div style={{ fontSize: 9, fontWeight: 800, marginTop: 5 }}>{s.label}</div></div>))}
+          {stats.map((s) => (<div key={s.label} style={{ padding: "16px", background: `${s.color}08`, border: `1px solid ${s.color}20`, borderRadius: 12, textAlign: "center" }}><div style={{ fontSize: 22, fontWeight: 900, color: s.color }}>{s.value}</div><div style={{ fontSize: 9, fontWeight: 800, marginTop: 5 }}>{s.label}</div></div>))}
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 20 }}>
           <div style={{ padding: "18px 20px", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14 }}>

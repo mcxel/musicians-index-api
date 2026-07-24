@@ -34,6 +34,26 @@ interface CompetitorRatings {
   cooldownUntil: string | null;
 }
 
+// Real win/loss/draw record derived from the MatchHistory table
+// (CompetitionIntegrityEngine.getMatchRecord) - replaces the previous
+// hardcoded "Battle Record: 0-0" placeholder.
+interface MatchRecord {
+  wins: number;
+  losses: number;
+  draws: number;
+  winRate: number;
+  currentStreak: number;
+  streakType: "win" | "loss" | null;
+  recentMatches: Array<{
+    matchId: string;
+    opponentId: string;
+    result: "win" | "loss" | "draw";
+    venueType: string;
+    competitionType: string;
+    completedAt: string;
+  }>;
+}
+
 export default function PerformerProfilePage() {
   const router = useRouter();
   const [user, setUser] = useState<MeUser | null>(null);
@@ -46,6 +66,7 @@ export default function PerformerProfilePage() {
   const [activeFlowRoom, setActiveFlowRoom] = useState<UniversalRoom | null>(null);
   const [ratings, setRatings] = useState<CompetitorRatings | null>(null);
   const [ratingsState, setRatingsState] = useState<"loading" | "ready" | "error">("loading");
+  const [matchRecord, setMatchRecord] = useState<MatchRecord | null>(null);
 
   useEffect(() => {
     fetch("/api/auth/session", { credentials: "include" })
@@ -85,13 +106,14 @@ export default function PerformerProfilePage() {
   useEffect(() => {
     if (!user?.id) return;
     let cancelled = false;
-    fetch(`/api/competition/integrity?userId=${encodeURIComponent(user.id)}`)
+    fetch(`/api/competition/integrity?userId=${encodeURIComponent(user.id)}&history=true`)
       .then((r) => r.json())
-      .then((d: { success?: boolean; ratings?: CompetitorRatings }) => {
+      .then((d: { success?: boolean; ratings?: CompetitorRatings; record?: MatchRecord }) => {
         if (cancelled) return;
         if (d.success && d.ratings) {
           setRatings(d.ratings);
           setRatingsState("ready");
+          if (d.record) setMatchRecord(d.record);
         } else {
           setRatingsState("error");
         }
@@ -148,13 +170,30 @@ export default function PerformerProfilePage() {
   }
 
   const stats = [
-    { label: "Rank",          value: "—",  color: "#FFD700" },
-    { label: "XP",            value: "0",  color: ACCENT    },
-    { label: "Battle Record", value: "0–0",color: "#00FFFF" },
-    { label: "Monthly Fans",  value: "0",  color: "#FF2DAA" },
+    { 
+      label: "Rank",          
+      value: ratings ? `${ratings.skillRating} SR` : "—",  
+      color: "#FFD700" 
+    },
+    { 
+      label: "XP",            
+      value: ratings ? `${ratings.activityRating} XP` : "0",  
+      color: ACCENT    
+    },
+    { 
+      label: "Battle Record", 
+      value: matchRecord ? `${matchRecord.wins}–${matchRecord.losses}` : "0–0",
+      color: "#00FFFF" 
+    },
+    { 
+      label: "Monthly Fans",  
+      value: ratings ? `${ratings.reputationRating} Fans` : "0",  
+      color: "#FF2DAA" 
+    },
     { label: "Earnings",      value: "$0", color: "#00FF88" },
     { label: "Streams",       value: "0",  color: "#FFD700" },
   ];
+
 
   return (
     <main style={{ minHeight: "100vh", background: BG, color: "#fff", fontFamily: "'Inter', sans-serif", paddingBottom: 80 }}>
