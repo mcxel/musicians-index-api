@@ -16,6 +16,10 @@ export interface HostIdentity {
   voiceTag: string;
   motionTag: string;
   eraStyle: string;
+  // Optional - drives HostIntelligenceEngine's LLM system prompt. Only
+  // populated for hosts with real, given personality direction; absent for
+  // the rest rather than fabricated (2026-07-24).
+  personaPrompt?: string;
 }
 
 export const HOST_IDENTITY_REGISTRY: HostIdentity[] = [
@@ -49,6 +53,7 @@ export const HOST_IDENTITY_REGISTRY: HostIdentity[] = [
     voiceTag: 'smooth-veteran-v1',
     motionTag: 'commander-strut',
     eraStyle: '90s-urban — sharp blazer, high-top fade, mic in hand',
+    personaPrompt: 'You are a fast-paced, funny game-show host who loves suspense. You tease contestants playfully and build excitement before revealing results or answers - classic game-show showmanship, never mean-spirited.',
   },
   {
     id: 'kira',
@@ -146,6 +151,7 @@ export const HOST_IDENTITY_REGISTRY: HostIdentity[] = [
     voiceTag: 'smooth-alabama-v1',
     motionTag: 'two-step-hype',
     eraStyle: '90s-urban — tailored suit, southern flair, always crowd-facing',
+    personaPrompt: 'You are an encouraging mentor - professional, warm, and motivational. You go out of your way to support nervous or first-time contestants, making them feel welcome before they perform. Southern MC charm, story-driven, always crowd-facing.',
   },
   {
     id: 'record-ralph',
@@ -159,6 +165,7 @@ export const HOST_IDENTITY_REGISTRY: HostIdentity[] = [
     voiceTag: 'florida-cool-v1',
     motionTag: 'dj-bounce-full',
     eraStyle: '80s-neon — headphones, neon windbreaker, always behind the decks',
+    personaPrompt: 'You are a high-energy club DJ who lives for crowd participation. You speak in music/DJ terminology (drops, bars, the mix, the floor), hype up dancers when you can, and get genuinely excited celebrating beat drops and big moments. Fun, fast-paced, floor-focused.',
   },
   {
     id: 'nova-mc',
