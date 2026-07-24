@@ -38,6 +38,18 @@ export interface OrchestratedEvent {
   viewerCount: number;
   sponsorName?: string;
   sponsorCta?: string;
+  creatorUserId?: string | null;
+  isMini: boolean;
+}
+
+// World vs Mini ownership (Rule 21 amendment, 2026-07-24): World events are
+// platform/bot-created (no creatorUserId, isMini false). Mini events are
+// created by a qualified user, are never bot-hosted (showId won't resolve
+// via HostShowAssignmentEngine, so resolveHostsForShow() correctly returns
+// no hosts), and must carry a real creatorUserId.
+export interface EventOwnership {
+  creatorUserId?: string;
+  isMini?: boolean;
 }
 
 // Helpers to match emojis based on host id
@@ -101,7 +113,8 @@ export class EventOrchestrator {
     showId: string,
     format: BattleFormatType,
     countdownSeconds: number,
-    overrides?: { genreId?: string; genreName?: string; title?: string }
+    overrides?: { genreId?: string; genreName?: string; title?: string },
+    ownership?: EventOwnership
   ): Promise<OrchestratedEvent | null> {
     // 1. Validate rules via BattleFormatRulesEngine
     const rule = battleFormatRulesEngine.getRule(format);
@@ -130,6 +143,9 @@ export class EventOrchestrator {
     const judgeIdsStr = hosts?.judges.map((h) => h.id).join(",") || "";
     const paAnnouncerId = hosts?.paAnnouncer?.id || null;
     const prizeHostId = hosts?.prizeHost?.id || null;
+
+    const isMini = ownership?.isMini ?? false;
+    const creatorUserId = ownership?.creatorUserId ?? null;
 
     // 4. Save/Upsert into durable database store (Prisma LobbyEvent model)
     const dbEvent = await prisma.lobbyEvent.upsert({
@@ -166,6 +182,8 @@ export class EventOrchestrator {
         prizeHostId,
         countdownSeconds,
         absoluteStartTime,
+        creatorUserId,
+        isMini,
       },
     });
 
@@ -187,6 +205,8 @@ export class EventOrchestrator {
       viewerCount: dbEvent.viewerCount,
       sponsorName,
       sponsorCta,
+      creatorUserId: dbEvent.creatorUserId,
+      isMini: dbEvent.isMini,
     };
   }
 
@@ -277,6 +297,8 @@ export class EventOrchestrator {
       viewerCount: event.viewerCount,
       sponsorName,
       sponsorCta,
+      creatorUserId: event.creatorUserId,
+      isMini: event.isMini,
     };
   }
 

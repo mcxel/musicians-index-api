@@ -597,8 +597,8 @@ A page or system is launch-certified only when every button, monitor, video pane
 |---|---|---|
 | Anyone (any tier) | — | Cyphers, Battles, Challenges, Dance Parties, Concerts, Releases |
 | Gold Performer | Mini Concerts, Mini Releases, Mini Cyphers, Mini Battles, Dirty Dozens, Dance-Offs, Comedy Rooms, Talent Showcases | any existing event instead |
-| Gold DJ | World/Mini Dance Parties, Dance Halls, Genre Rooms, Listening/Release Parties | — |
-| Gold Dancer | Dance-Offs, World/Mini Dance Parties | — |
+| Gold DJ | Mini Dance Parties, Dance Halls, Genre Rooms, Listening/Release Parties | World Dance Party instead |
+| Gold Dancer | Dance-Offs, Mini Dance Parties | World Dance Party instead |
 | Gold Comedian | Comedy Rooms, Comedy Battles, Comedy Challenges, Talent Showcases | — |
 | Official TMI Bots only | Monday Night Stage, Monthly Idol, Battle of the Bands, World Championships, Seasonal/Annual Events, Official Game Shows | n/a — these are bot-created by design |
 
@@ -608,7 +608,29 @@ Official Game Shows (Deal or Feud, Name That Tune, Circle and Squares, Champions
 
 **No Empty Platform rule (extends Rule 14, never weakens it)**: if participation is low, the platform's job is to generate more real opportunities — rotate genres/regions/challenge types, open the next scheduled matchup, surface a fresh bot-hosted event — never to fabricate users, viewers, or applause. A room that fails to fill in its time window rotates to the next opportunity rather than sitting empty or faking a crowd. This is the same rule as Rules 14/20, applied to event *supply* rather than just surface *content*.
 
-*Established 2026-06-20 by Marcel Dickens.*
+#### World vs Mini Naming Convention (amendment, locked 2026-07-24)
+
+Every event type on the platform follows the same two-tier naming split, making the Official-vs-user-created distinction (established above) legible from the UI itself, not just enforced server-side:
+
+| Official (World) | User-Created (Mini) | Creator |
+|---|---|---|
+| World Dance Party | Mini Dance Party | World: DJ Record Ralph (bot) only, on platform schedule. Mini: any qualified Gold DJ, instantly. |
+| World Concert | Mini Concert | World: platform-scheduled. Mini: qualified Gold Performer, instant ("releasing right now"). |
+| World Release Party | Mini Release Party | World: platform-scheduled. Mini: qualified Gold Performer, instant. |
+| Monday Night Stage / Battle of the Bands | Mini Battle | World: bot-only flagship. Mini: any qualified user, instant. |
+| Cypher Championship (flagship) | Mini Cypher | same split |
+| Challenge Arena (flagship) | Mini Challenge | same split |
+| Open Mic Showcase (flagship) | Mini Showcase | same split |
+
+**Correction to the Event Creation Matrix above**: the former "Gold DJ/Gold Dancer → World/Mini Dance Parties" rows were wrong and are superseded (fixed 2026-07-24) — a Gold DJ or Gold Dancer can only ever create the Mini version. World Dance Party is created exclusively by the DJ Record Ralph bot on the platform schedule, the same as Monday Night Stage/Monthly Idol/Battle of the Bands are exclusively bot-created. No human-controlled account, regardless of tier, ever creates a "World" event — that authority belongs to Official Automated Events only (above).
+
+**Visual badge convention**: 🌍 WORLD prefixes every official/flagship event card, tile, and live-wall entry; ⭐ MINI prefixes every user-created instant event. This is a Rule 20 visual-honesty requirement, not decoration — a user must always be able to tell which kind of event they're looking at without opening it.
+
+**No separate publish step**: the moment a qualified user creates a Mini event, the Event Runtime (per "Event Runtime is the sole authority" above) must register it with the correct live discovery surface immediately — Mini Battle → Battle Live Wall, Mini Cypher → Cypher Live Wall, Mini Challenge → Challenge Wall, Mini Dance Party → Dance Party Wall, Mini Concert → Concert Wall, Mini Release Party → Release Wall, Go Live → General Live Feed. There is no separate "publish" action a creator has to take beyond the creation click itself.
+
+**Scope honesty (2026-07-24 audit)**: World Dance Party is real and live (DJ Record Ralph hosts it). The underlying Battle/Cypher/Challenge competition engines are real (`EventOrchestrator`, `BattleFormatRulesEngine`, `CompetitionIntegrityEngine`), but there is no one-click "create a Mini Battle/Cypher/Challenge" UI yet, no 🌍/⭐ badges anywhere on the platform, and no auto-publish-to-live-wall wiring. Mini Concert, Mini Release Party, and Mini Showcase have no real creation flow at all yet. The cinematic join sequence discussed alongside this convention (venue visible immediately → seat reserved → arrival animation → ring-priority progressive asset loading → sit → ready) is not built anywhere — `LobbyEntryFlow` (Rule 15) already enforces the seat-assignment routing requirement that sequence would sit on top of, but no arrival-animation or progressive-loading layer exists yet. This is documented direction, not a claim that badges, one-click Mini creation, or the arrival animation exist in code — do not build a stub version of any piece of it (a badge with no real World/Mini distinction behind it, an animation that plays before a real seat is assigned, etc. would itself violate Rule 20).
+
+*Established 2026-06-20 by Marcel Dickens. World vs Mini Naming Convention amendment added 2026-07-24.*
 
 ---
 
@@ -663,7 +685,7 @@ TMI rewards everyone who contributes to the ecosystem, not creators/competitors 
 | 18 | Visual Identity Formula (40% Magazine/30% Vice City/20% Broadcast/10% Spatial) + Ultra-Realistic Bobblehead avatars + No Orphan Routes/Roles | All surfaces, avatar pipeline |
 | 19 | Beat System Separation (Submission Vault/Marketplace/Competition Vault never merged) + Store Role Split (Fan/Performer/Shared) + Playlist Skin Economy (free/points/premium/tier) | BeatInventoryEngine.ts, CompetitionMusicEngine.ts, PlaylistArtifactEngine.ts |
 | 20 | Launch Certification Standard — no fake data/dead buttons/fake live/fake monitors; every profile functional; route ledger; one engine per system; visual honesty | All surfaces, final launch gate |
-| 21 | Venue Runtime Convergence — one runtime, many modes; one audience/seat/presence system (4 found, 2 converged); inherit-best-of-breed on duplicate routes, mark LEGACY don't delete; Official Automated Events run by bots on real outcomes; No Empty Platform = rotate opportunities, never fake crowds | audienceRuntimeEngine.ts, ArenaEventShell.tsx |
+| 21 | Venue Runtime Convergence — one runtime, many modes; one audience/seat/presence system (4 found, 2 converged); inherit-best-of-breed on duplicate routes, mark LEGACY don't delete; Official Automated Events run by bots on real outcomes; No Empty Platform = rotate opportunities, never fake crowds; World vs Mini naming convention (🌍/⭐ badges, World=bot-only, Mini=qualified-user-instant) for every event type | audienceRuntimeEngine.ts, ArenaEventShell.tsx |
 | 22 | Adaptive Platform Rule — every major runtime may Observe/Measure/Recommend, never silently rewrite; major behavioral changes require Build Director approval; canonical registries stay source of truth while runtimes learn | All runtimes, future analytics layer |
 | 23 | Revenue-First Rewards Governor — 3 reward phases (Launch=XP/cosmetics, Growth=platform credits, Cash=real money) gated by real financial health checks; no payout system may ever place the platform in a loss position; auto scale-down, not human-approved | Future RewardsEngine, PrizeBudgetEngine |
 | 24 | Three-Lane Rewards Ecosystem — Competitive/Engagement/Community lanes reward performers AND fans/listeners/readers/voters/sponsors/venues; sponsor prize pools auto-distribute across activity types; Discovery Missions quest layer; anti-pay-to-win; XP/Coin/Cash separation (Cash still Rule-23-gated). Post soft-launch, certification-impact none | Future SponsorPrizeDistributionEngine, DiscoveryMissionsEngine |

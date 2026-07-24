@@ -3458,8 +3458,11 @@ model LobbyEvent {
   countdownSeconds  Int      @default(0) @map("countdown_seconds")
   absoluteStartTime DateTime @map("absolute_start_time")
   viewerCount       Int      @default(0) @map("viewer_count")
+  creatorUserId     String?  @map("creator_user_id")
+  isMini            Boolean  @default(false) @map("is_mini")
   updatedAt         DateTime @updatedAt @map("updated_at")
 
+  @@index([isMini, status])
   @@map("lobby_events")
 }
 

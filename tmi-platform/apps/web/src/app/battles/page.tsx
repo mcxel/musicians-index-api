@@ -4,6 +4,41 @@ import JuliusHudDock from "@/components/julius/JuliusHudDock";
 import MonetizationRail from "@/components/monetization/MonetizationRail";
 import ArenaEventShell from "@/components/live/ArenaEventShell";
 import { battleBillboardLobbyWallEngine } from "@/lib/competition/BattleBillboardLobbyWallEngine";
+import prisma from "@/lib/prisma";
+
+// Reads live Prisma data (Mini Battles) on every request - must never be
+// statically cached, or newly created Mini Battles won't appear.
+export const dynamic = "force-dynamic";
+
+// Rule 21 amendment (2026-07-24): World vs Mini. World cards come from the
+// existing battleBillboardLobbyWallEngine (bot/challenge-flow published).
+// Mini cards are real, Prisma-backed LobbyEvent rows created by qualified
+// users via POST /api/battles/mini - queried directly here (not through the
+// in-memory engine, which is not durable across serverless invocations).
+interface UnifiedBattleCard {
+  key: string;
+  badge: "🌍 WORLD" | "⭐ MINI";
+  headline: string;
+  formatLabel: string;
+  route: string;
+  status: "live" | "accepted" | "completed";
+}
+
+async function getMiniBattleCards(): Promise<UnifiedBattleCard[]> {
+  const rows = await prisma.lobbyEvent.findMany({
+    where: { isMini: true, status: { not: "completed" } },
+    orderBy: { updatedAt: "desc" },
+    take: 30,
+  });
+  return rows.map((r) => ({
+    key: r.roomId,
+    badge: "⭐ MINI" as const,
+    headline: r.title,
+    formatLabel: r.format,
+    route: `/live/lobby?room=${encodeURIComponent(r.roomId)}`,
+    status: r.status === "queued" || r.status === "countdown" ? "accepted" : "live",
+  }));
+}
 
 export const metadata: Metadata = {
   title: "Battles | TMI",
@@ -21,11 +56,22 @@ const BATTLE_FORMATS = [
   { type: "MINI-BATTLE", description: "Quick-fire 60-second rounds.", color: "#00FFFF" },
 ];
 
-export default function BattlesPage() {
+export default async function BattlesPage() {
   const cards = battleBillboardLobbyWallEngine.getCards();
-  const live = cards.filter(c => c.status === "live");
-  const upcoming = cards.filter(c => c.status === "accepted");
-  const ended = cards.filter(c => c.status === "completed");
+  const worldCards: UnifiedBattleCard[] = cards.map((c) => ({
+    key: c.battleId,
+    badge: "🌍 WORLD" as const,
+    headline: `${c.challengerName} vs ${c.targetName}`,
+    formatLabel: c.formatLabel,
+    route: c.route,
+    status: c.status,
+  }));
+  const miniCards = await getMiniBattleCards();
+  const allCards = [...worldCards, ...miniCards];
+
+  const live = allCards.filter(c => c.status === "live");
+  const upcoming = allCards.filter(c => c.status === "accepted");
+  const ended = allCards.filter(c => c.status === "completed");
 
   return (
     <main style={{ minHeight: "100vh", background: "#050510", color: "#fff", paddingBottom: 80 }}>
@@ -50,7 +96,7 @@ export default function BattlesPage() {
         />
         <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap", marginTop: 16 }}>
           <Link href="/battles/create" style={{ padding: "9px 22px", fontSize: 9, fontWeight: 800, letterSpacing: "0.15em", color: "#050510", background: "#FF2DAA", borderRadius: 8, textDecoration: "none" }}>
-            ⚔️ CREATE BATTLE
+            ⭐ CREATE MINI BATTLE
           </Link>
           <Link href="/battles/categories" style={{ padding: "9px 22px", fontSize: 9, fontWeight: 800, letterSpacing: "0.15em", color: "#FF2DAA", border: "1px solid rgba(255,45,170,0.35)", borderRadius: 8, textDecoration: "none" }}>
             ALL CATEGORIES
@@ -77,16 +123,19 @@ export default function BattlesPage() {
             <p style={{ fontSize: 12, color: "rgba(255,255,255,0.35)" }}>No live battles right now.</p>
           )}
           {live.map(card => (
-            <Link key={card.battleId} href={card.route} style={{ textDecoration: "none", color: "inherit" }}>
+            <Link key={card.key} href={card.route} style={{ textDecoration: "none", color: "inherit" }}>
               <div style={{ background: "rgba(0,255,136,0.05)", border: "1px solid rgba(0,255,136,0.25)", borderRadius: 16, padding: "24px 28px", display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap", marginBottom: 12 }}>
                 <span style={{ fontSize: 32 }}>⚔️</span>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 9, fontWeight: 800, color: "#00FF88", letterSpacing: "0.15em", marginBottom: 4 }}>🔴 LIVE</div>
-                  <h2 style={{ fontSize: 18, fontWeight: 900, marginBottom: 4 }}>{card.challengerName} vs {card.targetName}</h2>
+                  <div style={{ fontSize: 9, fontWeight: 800, color: "#00FF88", letterSpacing: "0.15em", marginBottom: 4, display: "flex", gap: 8, alignItems: "center" }}>
+                    <span>🔴 LIVE</span>
+                    <span style={{ color: "rgba(255,255,255,0.4)" }}>{card.badge}</span>
+                  </div>
+                  <h2 style={{ fontSize: 18, fontWeight: 900, marginBottom: 4 }}>{card.headline}</h2>
                   <p style={{ fontSize: 11, color: "rgba(255,255,255,0.45)" }}>{card.formatLabel}</p>
                 </div>
                 <div style={{ padding: "9px 20px", fontSize: 9, fontWeight: 800, letterSpacing: "0.12em", color: "#050510", background: "#00FF88", borderRadius: 8 }}>
-                  WATCH &amp; VOTE
+                  {card.badge === "🌍 WORLD" ? "WATCH & VOTE" : "JOIN LIVE"}
                 </div>
               </div>
             </Link>
@@ -100,13 +149,13 @@ export default function BattlesPage() {
           )}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(280px,1fr))", gap: 14 }}>
             {upcoming.map(card => (
-              <Link key={card.battleId} href={card.route} style={{ textDecoration: "none", color: "inherit" }}>
+              <Link key={card.key} href={card.route} style={{ textDecoration: "none", color: "inherit" }}>
                 <article style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(0,255,255,0.18)", borderRadius: 12, padding: 20 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 14 }}>
                     <span style={{ fontSize: 24 }}>⚔️</span>
-                    <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: "0.12em", color: "#00FFFF", border: "1px solid rgba(0,255,255,0.3)", borderRadius: 4, padding: "3px 8px" }}>UPCOMING</span>
+                    <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: "0.12em", color: "#00FFFF", border: "1px solid rgba(0,255,255,0.3)", borderRadius: 4, padding: "3px 8px" }}>{card.badge}</span>
                   </div>
-                  <h3 style={{ fontSize: 14, fontWeight: 800, marginBottom: 6 }}>{card.challengerName} vs {card.targetName}</h3>
+                  <h3 style={{ fontSize: 14, fontWeight: 800, marginBottom: 6 }}>{card.headline}</h3>
                   <p style={{ fontSize: 10, color: "rgba(255,255,255,0.4)" }}>{card.formatLabel}</p>
                 </article>
               </Link>
@@ -120,11 +169,11 @@ export default function BattlesPage() {
             <p style={{ fontSize: 12, color: "rgba(255,255,255,0.35)" }}>No completed battles yet.</p>
           )}
           {ended.map(card => (
-            <Link key={card.battleId} href={card.route} style={{ textDecoration: "none", color: "inherit" }}>
+            <Link key={card.key} href={card.route} style={{ textDecoration: "none", color: "inherit" }}>
               <div style={{ display: "flex", gap: 14, alignItems: "center", padding: "12px 0", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
                 <span style={{ fontSize: 18 }}>⚔️</span>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 12, fontWeight: 700 }}>{card.challengerName} vs {card.targetName}</div>
+                  <div style={{ fontSize: 12, fontWeight: 700 }}>{card.headline} <span style={{ color: "rgba(255,255,255,0.3)", fontWeight: 400 }}>{card.badge}</span></div>
                   <div style={{ fontSize: 9, color: "rgba(255,255,255,0.3)" }}>{card.formatLabel}</div>
                 </div>
               </div>
