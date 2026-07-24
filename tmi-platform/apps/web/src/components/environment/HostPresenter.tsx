@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { HOST_REGISTRY } from "@/lib/rooms/VenueAssetRegistry";
+import { getHostById } from "@/lib/hosts/HostIdentityRegistry";
 import MotionPortraitEngine from "@/components/avatar/MotionPortraitEngine";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -18,12 +18,12 @@ export default function HostPresenter({
   announcement,
   mode = "booth",
 }: HostPresenterProps) {
-  const host = HOST_REGISTRY[hostSlug];
+  const host = getHostById(hostSlug);
   const [speechText, setSpeechText] = useState("");
 
   useEffect(() => {
     if (!host) return;
-    setSpeechText(announcement || host.introScript);
+    setSpeechText(announcement || host.description);
   }, [hostSlug, announcement, host]);
 
   if (!host) {
@@ -34,7 +34,7 @@ export default function HostPresenter({
     );
   }
 
-  const encodedPortraitUrl = encodeURI(host.portraitUrl);
+  const encodedPortraitUrl = host.portraitUrl ? encodeURI(host.portraitUrl) : "/assets/hosts/bebo.webp";
 
   if (mode === "bubble-only") {
     return (
@@ -118,7 +118,7 @@ export default function HostPresenter({
           </p>
 
           <span style={{ fontSize: 6.5, color: "rgba(255,255,255,0.25)", display: "block", marginTop: 6, textTransform: "uppercase", letterSpacing: "0.1em" }}>
-            AI PERSONA: {host.aiPersona}
+            ROLE: {host.role}
           </span>
         </motion.div>
       )}

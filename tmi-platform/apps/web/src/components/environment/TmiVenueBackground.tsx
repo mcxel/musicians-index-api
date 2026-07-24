@@ -2,22 +2,20 @@
 
 import { type ReactNode } from "react";
 import { ImageSlotWrapper } from "@/components/visual-enforcement";
-import { VENUE_ASSET_REGISTRY, type VenueMode } from "@/lib/rooms/VenueAssetRegistry";
+import { getVenueAsset, type VenueType } from "@/lib/venues/VenueAssetRegistry";
 import RoomBackground from "./RoomBackground";
 
-const MODE_PALETTE: Record<VenueMode, { ray1: string; ray2: string; ray3: string; floor: string; grid: string }> = {
-  arena:     { ray1: "#FF2DAA", ray2: "#00FFFF", ray3: "#FFD700", floor: "#1a0030",  grid: "#FF2DAA33" },
-  battle:    { ray1: "#FF4400", ray2: "#FF2DAA", ray3: "#FFD700", floor: "#1a0808",  grid: "#FF440033" },
-  cypher:    { ray1: "#00FFFF", ray2: "#AA2DFF", ray3: "#FF2DAA", floor: "#000d1a",  grid: "#00FFFF33" },
-  lobby:     { ray1: "#FFD700", ray2: "#FF2DAA", ray3: "#00FFFF", floor: "#0d0a00",  grid: "#FFD70033" },
-  stage:     { ray1: "#FF2DAA", ray2: "#FFD700", ray3: "#AA2DFF", floor: "#0f0018",  grid: "#AA2DFF33" },
-  gameshow:  { ray1: "#FFD700", ray2: "#00FFFF", ray3: "#FF2DAA", floor: "#050014",  grid: "#FFD70044" },
-  backstage: { ray1: "#4ade80", ray2: "#00FFFF", ray3: "#FFD700", floor: "#001408",  grid: "#4ade8033" },
-  producer:  { ray1: "#AA2DFF", ray2: "#00FFFF", ray3: "#FF2DAA", floor: "#08001a",  grid: "#AA2DFF33" },
-};
+function mapModeToVenueType(mode: string): VenueType {
+  const m = mode.toLowerCase();
+  if (m === "arena") return "world-dance-party";
+  if (m === "stage") return "monday-night-stage";
+  if (m === "gameshow") return "deal-or-feud";
+  if (m === "lobby") return "fan-lobby";
+  return m as VenueType;
+}
 
 interface TmiVenueBackgroundProps {
-  mode?: VenueMode;
+  mode?: string;
   children?: ReactNode;
   showAudience?: boolean;
   showConfetti?: boolean;
@@ -28,7 +26,7 @@ interface TmiVenueBackgroundProps {
 }
 
 export default function TmiVenueBackground({
-  mode = "arena",
+  mode = "world-dance-party",
   children,
   showAudience = true,
   showConfetti = false,
@@ -37,8 +35,16 @@ export default function TmiVenueBackground({
   className,
   style,
 }: TmiVenueBackgroundProps) {
-  const p = MODE_PALETTE[mode];
-  const asset = VENUE_ASSET_REGISTRY[mode];
+  const venueType = mapModeToVenueType(mode);
+  const asset = getVenueAsset(venueType);
+
+  const p = {
+    ray1: asset?.accentColor || "#FF2DAA",
+    ray2: asset?.secondaryColor || "#00FFFF",
+    ray3: "#FFD700",
+    floor: asset?.accentColor ? `${asset.accentColor}11` : "#1a0030",
+    grid: asset?.accentColor ? `${asset.accentColor}33` : "#FF2DAA33",
+  };
 
   return (
     <div
@@ -52,7 +58,7 @@ export default function TmiVenueBackground({
         ...style,
       }}
     >
-      <RoomBackground videoUrl={asset?.backgroundLoop} opacity={backgroundImage ? 0.35 : 0.55} />
+      <RoomBackground videoUrl={asset?.ambientVideoUrl} opacity={backgroundImage ? 0.35 : 0.55} />
 
       {backgroundImage && (
         <ImageSlotWrapper

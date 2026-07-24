@@ -111,7 +111,7 @@ const VENUE_REGISTRY: Record<VenueType, VenueAsset> = {
     tagline: "Two take the stage. One leaves crowned.",
     accentColor: "#FF2DAA",
     secondaryColor: "#FFD700",
-    ambientVideoUrl: "/assets/videos/rooms/battle.mp4",
+    ambientVideoUrl: "/assets/environments/battle/background.mp4",
     audienceViewVideoUrl: "/assets/videos/seating/fans-view.mp4",
     performerViewVideoUrl: "/assets/videos/seating/performer-view-1.mp4",
     bannerUrl: "/assets/banners/banner-battle.png",
@@ -140,7 +140,7 @@ const VENUE_REGISTRY: Record<VenueType, VenueAsset> = {
     tagline: "Accept the challenge. Prove it live.",
     accentColor: "#00FFFF",
     secondaryColor: "#AA2DFF",
-    ambientVideoUrl: "/assets/videos/rooms/challenge.mp4",
+    ambientVideoUrl: "/assets/environments/battle/background.mp4",
     audienceViewVideoUrl: "/assets/videos/seating/fans-view.mp4",
     performerViewVideoUrl: "/assets/videos/seating/performer-view-2.mp4",
     bannerUrl: "/assets/banners/banner-challenges.png",
@@ -169,7 +169,7 @@ const VENUE_REGISTRY: Record<VenueType, VenueAsset> = {
     tagline: "Step in. Every bar counts.",
     accentColor: "#AA2DFF",
     secondaryColor: "#00FFFF",
-    ambientVideoUrl: "/assets/videos/rooms/cypher.mp4",
+    ambientVideoUrl: "/assets/environments/cypher/background.mp4",
     audienceViewVideoUrl: "/assets/videos/seating/fans-view.mp4",
     performerViewVideoUrl: "/assets/videos/seating/performer-view-3.mp4",
     bannerUrl: "/assets/banners/banner-cyhpers.png",
@@ -199,7 +199,7 @@ const VENUE_REGISTRY: Record<VenueType, VenueAsset> = {
     tagline: "Risk it all. One deal changes everything.",
     accentColor: "#FFD700",
     secondaryColor: "#FF2DAA",
-    ambientVideoUrl: "/assets/videos/rooms/deal-or-feud.mp4",
+    ambientVideoUrl: "/assets/environments/gameshow/background.mp4",
     bannerUrl: "/assets/banners/banner-games.png",
     geometry: {
       hasElevatedStage: true,
@@ -226,7 +226,7 @@ const VENUE_REGISTRY: Record<VenueType, VenueAsset> = {
     tagline: "Your space before the show. Make friends. Stay ready.",
     accentColor: "#00FFFF",
     secondaryColor: "#AA2DFF",
-    ambientVideoUrl: "/assets/videos/rooms/fan-lobby.mp4",
+    ambientVideoUrl: "/assets/environments/dance/background.mp4",
     bannerUrl: "/assets/banners/banner-lobbies.png",
     geometry: {
       hasElevatedStage: false,
@@ -253,7 +253,7 @@ const VENUE_REGISTRY: Record<VenueType, VenueAsset> = {
     tagline: "Low lights. Real conversations. No cameras required.",
     accentColor: "#AA2DFF",
     secondaryColor: "#FFD700",
-    ambientVideoUrl: "/assets/videos/rooms/lounge.mp4",
+    ambientVideoUrl: "/assets/environments/stage/background.mp4",
     bannerUrl: "/assets/banners/banner-lounges.png",
     geometry: {
       hasElevatedStage: false,
@@ -279,7 +279,7 @@ const VENUE_REGISTRY: Record<VenueType, VenueAsset> = {
     tagline: "Every Monday. Every crown on the line.",
     accentColor: "#FFD700",
     secondaryColor: "#FF2DAA",
-    ambientVideoUrl: "/assets/videos/rooms/monday-night-stage.mp4",
+    ambientVideoUrl: "/assets/environments/stage/background.mp4",
     audienceViewVideoUrl: "/assets/videos/seating/fans-view.mp4",
     performerViewVideoUrl: "/assets/videos/seating/performer-view-4.mp4",
     geometry: {
@@ -307,7 +307,7 @@ const VENUE_REGISTRY: Record<VenueType, VenueAsset> = {
     tagline: "BPM in sync. The whole world on the floor.",
     accentColor: "#FF2DAA",
     secondaryColor: "#00FFFF",
-    ambientVideoUrl: "/assets/videos/rooms/world-dance-party.mp4",
+    ambientVideoUrl: "/assets/environments/dance/background.mp4",
     audienceViewVideoUrl: "/assets/videos/seating/fans-view.mp4",
     bannerUrl: "/assets/banners/banner-world_dance_party.png",
     geometry: {
@@ -335,7 +335,7 @@ const VENUE_REGISTRY: Record<VenueType, VenueAsset> = {
     tagline: "Lights up. Stage hot. It's your time.",
     accentColor: "#FFD700",
     secondaryColor: "#AA2DFF",
-    ambientVideoUrl: "/assets/videos/rooms/monday-night-stage.mp4",
+    ambientVideoUrl: "/assets/environments/stage/background.mp4",
     audienceViewVideoUrl: "/assets/videos/seating/fans-view.mp4",
     performerViewVideoUrl: "/assets/videos/seating/performer-view-1.mp4",
     geometry: {
@@ -363,7 +363,7 @@ const VENUE_REGISTRY: Record<VenueType, VenueAsset> = {
     tagline: "The global stage. One night. Unlimited seats.",
     accentColor: "#00FFFF",
     secondaryColor: "#FFD700",
-    ambientVideoUrl: "/assets/videos/rooms/monday-night-stage.mp4",
+    ambientVideoUrl: "/assets/environments/stage/background.mp4",
     audienceViewVideoUrl: "/assets/videos/seating/fans-view.mp4",
     performerViewVideoUrl: "/assets/videos/seating/performer-view-2.mp4",
     geometry: {
@@ -391,7 +391,7 @@ const VENUE_REGISTRY: Record<VenueType, VenueAsset> = {
     tagline: "Intimate. Live. Just you and the room.",
     accentColor: "#FFD700",
     secondaryColor: "#FF2DAA",
-    ambientVideoUrl: "/assets/videos/rooms/monday-night-stage.mp4",
+    ambientVideoUrl: "/assets/environments/stage/background.mp4",
     audienceViewVideoUrl: "/assets/videos/seating/fans-view.mp4",
     performerViewVideoUrl: "/assets/videos/seating/performer-view-3.mp4",
     geometry: {
@@ -419,7 +419,7 @@ const VENUE_REGISTRY: Record<VenueType, VenueAsset> = {
     tagline: "The drop is live. Be here when it happens.",
     accentColor: "#FF2DAA",
     secondaryColor: "#AA2DFF",
-    ambientVideoUrl: "/assets/videos/rooms/monday-night-stage.mp4",
+    ambientVideoUrl: "/assets/environments/dance/background.mp4",
     audienceViewVideoUrl: "/assets/videos/seating/fans-view.mp4",
     bannerUrl: "/assets/banners/banner-live_sessions.png",
     geometry: {
@@ -447,7 +447,7 @@ const VENUE_REGISTRY: Record<VenueType, VenueAsset> = {
     tagline: "Worldwide drop. Every timezone. One moment.",
     accentColor: "#AA2DFF",
     secondaryColor: "#FFD700",
-    ambientVideoUrl: "/assets/videos/rooms/monday-night-stage.mp4",
+    ambientVideoUrl: "/assets/environments/dance/background.mp4",
     audienceViewVideoUrl: "/assets/videos/seating/fans-view.mp4",
     bannerUrl: "/assets/banners/banner-live_sessions.png",
     geometry: {
@@ -475,7 +475,7 @@ const VENUE_REGISTRY: Record<VenueType, VenueAsset> = {
     tagline: "Your circle. Your drop. Real crowd energy.",
     accentColor: "#00FFFF",
     secondaryColor: "#FF2DAA",
-    ambientVideoUrl: "/assets/videos/rooms/monday-night-stage.mp4",
+    ambientVideoUrl: "/assets/environments/dance/background.mp4",
     performerViewVideoUrl: "/assets/videos/seating/performer-view-4.mp4",
     geometry: {
       hasElevatedStage: false,
@@ -501,7 +501,7 @@ const VENUE_REGISTRY: Record<VenueType, VenueAsset> = {
     tagline: "Everyone hears it together. First listen. All reactions live.",
     accentColor: "#FFD700",
     secondaryColor: "#AA2DFF",
-    ambientVideoUrl: "/assets/videos/rooms/lounge.mp4",
+    ambientVideoUrl: "/assets/environments/dance/background.mp4",
     geometry: {
       hasElevatedStage: false,
       seatTiers: 1,
