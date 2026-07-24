@@ -42,6 +42,8 @@ import LobbyBillboardSurface from "@/components/lobbies/LobbyBillboardSurface";
 import LobbyMainBillboard from "@/components/lobbies/LobbyMainBillboard";
 import SeatUpgradeWidget from "@/components/venue/SeatUpgradeWidget";
 import { emitLobbyFeedState, type LobbyBillboardStatus } from "@/lib/lobby/LobbyFeedBus";
+import RoomEnvironmentLayer from "@/components/live/RoomEnvironmentLayer";
+import { slugToVenueType, getVenueAsset } from "@/lib/venues/VenueAssetRegistry";
 
 /** Map a room slug to one of the 5 AudienceScene venue types */
 function slugToVenue(slug: string): VenueIndex {
@@ -367,11 +369,20 @@ export default function LobbyTheaterShell({ slug: rawSlug, mode = "room", autoSe
   const selectedSeatInteraction = selectedSeat ? getLobbyIdleInteraction(selectedSeat, idleBeat) : null;
   const idleSummary = useMemo(() => summarizeLobbyIdleInteractions(seats, idleBeat), [idleBeat, seats]);
 
+  const venueType = slugToVenueType(slug);
+  const venueAsset = getVenueAsset(venueType);
+
   return (
-    <main style={{ minHeight: "100vh", background: "linear-gradient(160deg, #080410, #201237 50%, #090512)", padding: 20 }}>
+    <RoomEnvironmentLayer
+      venueType={venueType}
+      mode="audience"
+      energyLevel={lobbyStatus === 'LIVE' ? 0.8 : 0.35}
+      style={{ minHeight: '100vh' }}
+    >
+    <main style={{ minHeight: "100vh", padding: 20 }}>
       <header style={{ maxWidth: 1360, margin: "0 auto 14px", color: "#f1e8ff" }}>
-        <div style={{ fontSize: 11, color: "#9f7dd6", letterSpacing: 2, textTransform: "uppercase" }}>V2 Lobby Theater Canon</div>
-        <h1 style={{ margin: "6px 0 8px", fontSize: 31 }}>Lobby Theater Shell</h1>
+        <div style={{ fontSize: 11, color: venueAsset.accentColor, letterSpacing: 2, textTransform: "uppercase" }}>{venueAsset.tagline}</div>
+        <h1 style={{ margin: "6px 0 8px", fontSize: 31, color: venueAsset.accentColor }}>{venueAsset.label}</h1>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
           <Link href="/lobbies" style={{ color: "#b8e9ff", textDecoration: "underline", fontSize: 12 }}>Lobby Directory</Link>
           {mode === "room" ? <span style={{ color: "#dbcdf2", fontSize: 12 }}>Room: {roomName}</span> : null}
@@ -546,5 +557,6 @@ export default function LobbyTheaterShell({ slug: rawSlug, mode = "room", autoSe
         </div>
       </div>
     </main>
+    </RoomEnvironmentLayer>
   );
 }

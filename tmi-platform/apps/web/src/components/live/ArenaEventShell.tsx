@@ -26,6 +26,8 @@ import type {
   CompetitionParticipantView,
   CompetitionPhase,
 } from "@/components/competition/presentation/competitionPresentation.types";
+import RoomEnvironmentLayer from "@/components/live/RoomEnvironmentLayer";
+import { arenaEventTypeToVenueType } from "@/lib/venues/VenueAssetRegistry";
 
 const UniversalVenueRenderer = dynamic(
   () => import("@/components/live/UniversalVenueRenderer"),
@@ -146,12 +148,21 @@ export default function ArenaEventShell({
   const liveColor = competitionFormat ? theme.colors.alert : "#FF2020";
   const watchingColor = competitionFormat ? theme.colors.leftFrame : "#00FFFF";
 
+  const venueType = arenaEventTypeToVenueType(eventType);
+  const isLive = liveState === "live";
+
   return (
+    <RoomEnvironmentLayer
+      venueType={venueType}
+      mode={mode}
+      energyLevel={isLive ? 0.75 : 0.3}
+      showSponsorZones={false}
+    >
     <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
       {/* ── Arena header badge ── */}
       <div style={{
         display: "flex", alignItems: "center", gap: 10, padding: "8px 14px",
-        background: "rgba(5,5,16,0.9)", borderBottom: "1px solid rgba(255,255,255,0.07)",
+        background: "rgba(5,5,16,0.88)", borderBottom: "1px solid rgba(255,255,255,0.07)",
       }}>
         <span style={{
           width: 7, height: 7, borderRadius: "50%", background: liveColor, flexShrink: 0,
@@ -206,5 +217,6 @@ export default function ArenaEventShell({
         )}
       </div>
     </div>
+    </RoomEnvironmentLayer>
   );
 }

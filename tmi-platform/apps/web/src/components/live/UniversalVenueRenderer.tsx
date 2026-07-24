@@ -64,6 +64,44 @@ import {
 
 type RendererMode = 'audience' | 'performer';
 
+// ─── Progressive stadium fill (Rule 15 / CLAUDE.md) ─────────────────────────
+// When a performer goes live the venue starts empty and fills to 92% max:
+//   0% → 12% instantly, then +6% every 250ms until 92%.
+// Real fan joins take precedence — the ratio never drops BELOW the real count.
+// Bots visually occupy the remaining gap between real fans and the animated target.
+function useProgressiveStadiumFill(isLive: boolean, realPresent: number, capacity: number) {
+  const [animatedFill, setAnimatedFill] = useState(0);
+  const firstLiveRef = useRef(false);
+
+  useEffect(() => {
+    if (!isLive) {
+      // Reset when show ends so next go-live starts fresh
+      setAnimatedFill(0);
+      firstLiveRef.current = false;
+      return;
+    }
+
+    if (!firstLiveRef.current) {
+      firstLiveRef.current = true;
+      setAnimatedFill(0.12); // instant 12% on first live detection
+    }
+
+    let current = firstLiveRef.current ? 0.12 : 0;
+    const interval = setInterval(() => {
+      current = Math.min(0.92, current + 0.06);
+      setAnimatedFill(current);
+      if (current >= 0.92) clearInterval(interval);
+    }, 250);
+
+    return () => clearInterval(interval);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLive]);
+
+  const realRatio = realPresent / Math.max(1, capacity);
+  // Final ratio: bot-fill target OR real audience, whichever is higher — capped at 92%
+  return Math.min(0.92, Math.max(realRatio, animatedFill));
+}
+
 type AudienceMember = {
   userId: string;
   displayName: string;
@@ -118,6 +156,13 @@ interface Props {
    * producing two audience entries for one real visitor.
    */
   fanIdOverride?: string;
+  /**
+   * When true, activates the progressive stadium-fill animation immediately
+   * regardless of whether a live session is detected in the registry.
+   * Use in GoLiveStudio performer view where the room ID may differ from
+   * the Daily.co room ID assigned at broadcast start.
+   */
+  forceStadiumFill?: boolean;
 }
 
 function publicName(name: string): string {
@@ -137,7 +182,7 @@ const SHOWTIME_SPONSORS: BubbleSponsor[] = [
   { id: 'sp-5', name: 'Walmart', logoUrl: '', type: 'local', tierColor: '#00FF88' },
 ];
 
-export default function UniversalVenueRenderer({ roomId, mode, venueIndex = 1, fanIdOverride }: Props) {
+export default function UniversalVenueRenderer({ roomId, mode, venueIndex = 1, fanIdOverride, forceStadiumFill = false }: Props) {
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [liveSession, setLiveSession] = useState<LiveSession | null>(null);
   const [userId, setUserId] = useState(() => fanIdOverride ?? getGuestId());
@@ -165,6 +210,16 @@ export default function UniversalVenueRenderer({ roomId, mode, venueIndex = 1, f
 
   // Phase C2: canonical entity world for AudienceScene entity-mode rendering
   const { entities: audienceEntities } = useAudienceWorld(roomId);
+
+  // Progressive stadium fill — used in performer view so the room never looks
+  // empty right after going live (Rule 15, CLAUDE.md).
+  // forceStadiumFill lets callers (e.g. GoLiveStudio) trigger the fill without
+  // relying on liveSession, since the Daily.co room ID differs from roomId.
+  const stadiumFillRatio = useProgressiveStadiumFill(
+    forceStadiumFill || liveSession !== null,
+    snapshot?.present ?? 0,
+    snapshot?.capacity ?? 100,
+  );
   useEffect(() => subscribeStage((s) => setCurtainState(s.state)), []);
 
   useEffect(() => {
@@ -395,14 +450,22 @@ export default function UniversalVenueRenderer({ roomId, mode, venueIndex = 1, f
         {/* AudienceScene — canonical ambient crowd visual, plus real named-seat overlay */}
         <div style={{ position: 'relative', marginTop: 4 }}>
           <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', letterSpacing: '0.14em', margin: '8px 0 6px', fontWeight: 800, textAlign: 'center' }}>
-            {mode === 'audience' && mySeatId ? `YOUR SEAT: ${mySeatId.toUpperCase()} · ${audience.filter((m) => m.seatId).length} seated` : `LIVE VENUE · ${snapshot?.present ?? 0} in seats`}
+            {mode === 'audience' && mySeatId
+              ? `YOUR SEAT: ${mySeatId.toUpperCase()} · ${audience.filter((m) => m.seatId).length} seated`
+              : mode === 'performer'
+                ? `LIVE VENUE · ${snapshot?.present ?? 0} fans · ${Math.round(stadiumFillRatio * 100)}% full`
+                : `LIVE VENUE · ${snapshot?.present ?? 0} in seats`}
           </div>
           <AudienceScene
             view={mode === 'performer' ? 'performer' : 'fan'}
             venue={venueIndex}
             watcherCount={snapshot?.present}
             entities={audienceEntities}
-            occupancyRatio={snapshot ? Math.min(1, snapshot.present / Math.max(1, snapshot.capacity)) : 0.08}
+            occupancyRatio={
+              mode === 'performer'
+                ? stadiumFillRatio                                                       // progressive 0→12→92% fill in performer view
+                : snapshot ? Math.min(1, snapshot.present / Math.max(1, snapshot.capacity)) : 0.08  // real count for fan view
+            }
             onReaction={sendReaction}
             hideControls
             accentColor={mode === 'performer' ? '#FFD700' : '#00FFFF'}

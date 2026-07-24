@@ -35,6 +35,8 @@ import {
   clearBannerText as directorClearBanner,
   STAGE_LIGHTING_PRESETS,
 } from '@/lib/live/StageDirectorEngine';
+import RoomEnvironmentLayer from '@/components/live/RoomEnvironmentLayer';
+import { slugToVenueType, getVenueAsset, type VenueType } from '@/lib/venues/VenueAssetRegistry';
 
 // ─── Avatar Action Wheel wrapper (gets entityId from context) ──────────────────
 
@@ -347,7 +349,10 @@ function DashboardOverlay({ onReturn, accentColor }: { onReturn: () => void; acc
 interface GoLiveRuntimeProps {
   roomId: string;
   eventId?: string;
-  eventType?: 'concert' | 'battle' | 'cypher' | 'challenge' | 'live-show' | 'dance-party';
+  /** Venue type — drives environment layer, colors, and seating geometry */
+  venueType?: VenueType;
+  /** Legacy: eventType maps to venueType if venueType is not provided */
+  eventType?: 'concert' | 'battle' | 'cypher' | 'challenge' | 'live-show' | 'dance-party' | 'world-concert' | 'mini-concert' | 'release-party' | 'world-release' | 'mini-release';
   accentColor?: string;
   initialMode?: ViewMode;
 }
@@ -355,9 +360,15 @@ interface GoLiveRuntimeProps {
 export default function GoLiveRuntime({
   roomId,
   eventId = roomId,
-  accentColor = '#00E5FF',
+  venueType: venueTypeProp,
+  eventType,
+  accentColor: accentColorProp,
   initialMode = 'FULL_VENUE',
 }: GoLiveRuntimeProps) {
+  // Derive venueType from props — venueTypeProp wins, then slug-mapped eventType, then roomId slug
+  const venueType: VenueType = venueTypeProp ?? (eventType ? slugToVenueType(eventType) : slugToVenueType(roomId));
+  const venueAsset = getVenueAsset(venueType);
+  const accentColor = accentColorProp ?? venueAsset.accentColor;
   const [viewMode, setViewMode] = useState<ViewMode>(initialMode);
 
   const enterVenue   = useCallback(() => setViewMode('FULL_VENUE'), []);
@@ -367,11 +378,16 @@ export default function GoLiveRuntime({
 
   return (
     <AudiencePresenceProvider>
+    <RoomEnvironmentLayer
+      venueType={venueType}
+      mode="performer"
+      energyLevel={0.8}
+      style={{ height: '100vh' }}
+    >
     <div style={{
       position: 'relative',
       width: '100%',
-      height: '100vh',
-      background: '#050310',
+      height: '100%',
       display: 'flex',
       flexDirection: 'column',
       overflow: 'hidden',
@@ -483,6 +499,7 @@ export default function GoLiveRuntime({
         @keyframes grtBlink { 0%,100%{opacity:1} 50%{opacity:0} }
       `}</style>
     </div>
+    </RoomEnvironmentLayer>
     </AudiencePresenceProvider>
   );
 }

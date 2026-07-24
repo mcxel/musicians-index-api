@@ -9,7 +9,7 @@ import FooterHUD from "@/components/hud/FooterHUD";
 import Link from "next/link";
 import ShareButton from "@/components/rooms/ShareButton";
 import LocalCameraFeed from "@/components/live/LocalCameraFeed";
-import DanceArena3D from "@/components/live/DanceArena3D";
+import WorldDanceParty from "@/components/live/WorldDanceParty";
 import { RecordRalphEngine, type RalphAnimState } from "@/lib/dj/RecordRalphEngine";
 import { activatePhase1Bots } from "@/lib/bots/Phase1BotActivator";
 import {
@@ -26,6 +26,7 @@ import {
   OPENER_DURATION_SECONDS,
 } from "@/lib/dj/WorldDancePartyOpener";
 import MemoryCaptureButton from "@/components/memory/MemoryCaptureButton";
+import RoomEnvironmentLayer from "@/components/live/RoomEnvironmentLayer";
 
 const DANCE_FLOOR_COLORS = [
   "#FF2DAA", "#00FFFF", "#AA2DFF", "#FFD700", "#FF9500", "#00FF88",
@@ -282,7 +283,8 @@ export default function WorldDancePartyPage() {
   return (
     <PageShell>
       <HUDFrame>
-        <div style={{ minHeight: "100vh", background: "#050510", color: "#fff", paddingBottom: 80, overflow: "hidden" }}>
+        <RoomEnvironmentLayer venueType="world-dance-party" mode="ambient" energyLevel={bpm > 0 ? 0.9 : 0.4} style={{ minHeight: "100vh" }}>
+        <div style={{ minHeight: "100vh", color: "#fff", paddingBottom: 80, overflow: "hidden" }}>
 
           {/* BPM-reactive header glow */}
           <motion.div
@@ -343,12 +345,9 @@ export default function WorldDancePartyPage() {
             <div>
               {/* 3D Arena */}
               <div style={{ marginBottom: 20 }}>
-                <DanceArena3D
-                  mesh={mesh}
-                  fanSeat={fanSeat}
-                  activeColor={DANCE_FLOOR_COLORS[activeColor]!}
+                <WorldDanceParty
                   bpm={bpm}
-                  ralphAnim={ralphAnim}
+                  activeColor={DANCE_FLOOR_COLORS[activeColor]!}
                   ralphAnimColor={RALPH_ANIM_COLOR[ralphAnim]}
                   ralphAnimLabel={RALPH_ANIM_LABEL[ralphAnim]}
                   currentTrackTitle={DJ_TRACKS[currentTrack]?.title ?? ""}
@@ -709,6 +708,7 @@ export default function WorldDancePartyPage() {
           </div>
 
         </div>
+        </RoomEnvironmentLayer>
         {/* Memory capture — fixed position overlay (Rule 2 / Task 2) */}
         <div style={{ position: "fixed", bottom: 216, right: 16, zIndex: 998 }}>
           <MemoryCaptureButton userId={FAN_ID} roomId={ROOM_ID} />

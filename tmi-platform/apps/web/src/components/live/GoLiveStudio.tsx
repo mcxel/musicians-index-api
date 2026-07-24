@@ -630,7 +630,12 @@ export default function GoLiveStudio() {
                   · {viewerCount} watching
                 </div>
               </div>
-              <UniversalVenueRenderer roomId="main-stage" mode="performer" venueIndex={0} />
+              <UniversalVenueRenderer
+                roomId={dailyRoomId || 'main-stage'}
+                mode="performer"
+                venueIndex={0}
+                forceStadiumFill={isLive}
+              />
             </section>
           </>
         )}
