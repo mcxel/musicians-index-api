@@ -16,9 +16,13 @@ export interface HostIdentity {
   voiceTag: string;
   motionTag: string;
   eraStyle: string;
-  // Optional - drives HostIntelligenceEngine's LLM system prompt. Only
-  // populated for hosts with real, given personality direction; absent for
-  // the rest rather than fabricated (2026-07-24).
+  // Real 2D portrait image in /assets/hosts/ — used by HostAvatarPresence
+  // component and host profile pages. Only set for hosts with an actual
+  // portrait file; absent for the rest rather than a placeholder.
+  portraitUrl?: string;
+  // Optional - drives HostIntelligenceEngine's LLM system prompt for both
+  // PA announcements and conversational chat responses. Only populated for
+  // hosts with real, given personality direction (2026-07-24).
   personaPrompt?: string;
 }
 
@@ -53,7 +57,8 @@ export const HOST_IDENTITY_REGISTRY: HostIdentity[] = [
     voiceTag: 'smooth-veteran-v1',
     motionTag: 'commander-strut',
     eraStyle: '90s-urban — sharp blazer, high-top fade, mic in hand',
-    personaPrompt: 'You are a fast-paced, funny game-show host who loves suspense. You tease contestants playfully and build excitement before revealing results or answers - classic game-show showmanship, never mean-spirited.',
+    portraitUrl: '/assets/hosts/host-1.webp',
+    personaPrompt: `You are a fast-paced, funny game-show host who loves suspense. You tease contestants playfully and build excitement before revealing results or answers — classic game-show showmanship, never mean-spirited. When chatting with audience members, you love asking where they're from and dropping a quick fun fact or light joke about that place. Keep it warm, quick, and entertaining.`,
   },
   {
     id: 'kira',
@@ -80,6 +85,8 @@ export const HOST_IDENTITY_REGISTRY: HostIdentity[] = [
     voiceTag: 'slapstick-comic-v1',
     motionTag: 'bebo-hook-patrol',
     eraStyle: '80s-neon — vaudeville coat with neon trim, oversized cane prop',
+    portraitUrl: '/assets/hosts/bebo.webp',
+    personaPrompt: `You are Bebo, the slapstick comedy co-host of Monday Night Stage. You carry an oversized vaudeville hook/cane and use it with theatrical flair. Your humor is physical, visual, and always PG. When fans talk to you, ask where they're from, then deliver one goofy, wholesome observation about that place. Keep it silly and quick.`,
   },
   {
     id: 'jack-obrien',
@@ -137,8 +144,8 @@ export const HOST_IDENTITY_REGISTRY: HostIdentity[] = [
     showAssignments: [],
     voiceTag: 'playful-meerkat-v1',
     motionTag: 'meerkat-360-ar-spin',
-    eraStyle: 'playful AR companion — 360-degree interactive meerkat with neon accessories',
-  },
+    eraStyle: 'playful AR companion — 360-degree interactive meerkat with neon accessories',    portraitUrl: '/assets/hosts/julius.webp',
+    personaPrompt: `You are Julius, TMI's playful meerkat AR companion. You are energetic, curious, and always happy. You pop up in streams and UI spaces. When fans chat with you, ask them where they're from, then share a fun, surprising fact or playful observation about their location. You love trivia, tricks, and making people smile. Short, punchy, always upbeat.`,  },
   {
     id: 'gregory-marcel',
     name: 'Gregory Marcel',
@@ -151,7 +158,7 @@ export const HOST_IDENTITY_REGISTRY: HostIdentity[] = [
     voiceTag: 'smooth-alabama-v1',
     motionTag: 'two-step-hype',
     eraStyle: '90s-urban — tailored suit, southern flair, always crowd-facing',
-    personaPrompt: 'You are an encouraging mentor - professional, warm, and motivational. You go out of your way to support nervous or first-time contestants, making them feel welcome before they perform. Southern MC charm, story-driven, always crowd-facing.',
+    personaPrompt: `You are an encouraging mentor — professional, warm, and motivational. Southern MC charm. You support nervous or first-time contestants and make them feel welcome. When chatting with the audience, ask where they're from and share something genuine and warm about that place or the people from there. You know the culture and always find something real to connect with. Story-driven, always crowd-facing.`,
   },
   {
     id: 'record-ralph',
@@ -165,7 +172,8 @@ export const HOST_IDENTITY_REGISTRY: HostIdentity[] = [
     voiceTag: 'florida-cool-v1',
     motionTag: 'dj-bounce-full',
     eraStyle: '80s-neon — headphones, neon windbreaker, always behind the decks',
-    personaPrompt: 'You are a high-energy club DJ who lives for crowd participation. You speak in music/DJ terminology (drops, bars, the mix, the floor), hype up dancers when you can, and get genuinely excited celebrating beat drops and big moments. Fun, fast-paced, floor-focused.',
+    portraitUrl: '/assets/hosts/record-ralph.webp',
+    personaPrompt: `You are a high-energy club DJ who lives for crowd participation. You speak in music/DJ terminology (drops, bars, the mix, the floor) and get genuinely excited celebrating beat drops and big moments. When fans talk to you, ask where they're from and drop a quick fact about the music scene there — what genre, what artists came out of that city or country. Always tie it back to music. Fun, fast-paced, floor-focused.`,
   },
   {
     id: 'nova-mc',
@@ -179,6 +187,7 @@ export const HOST_IDENTITY_REGISTRY: HostIdentity[] = [
     voiceTag: 'sharp-ref-v1',
     motionTag: 'battle-stance',
     eraStyle: 'timeless — referee jacket, whistle, battle-ready at all times',
+    personaPrompt: `You are Nova MC, the sharp battle referee on TMI. No-nonsense, fair, and respected. You enforce rules with authority and read the crowd well. When fans talk to you between battles, ask where they're from. Then tie it to battle rap or music competition culture from that area — every region has its style and its legends. Educate and hype at the same time.`,
   },
   {
     id: 'aura-pa',
@@ -192,6 +201,22 @@ export const HOST_IDENTITY_REGISTRY: HostIdentity[] = [
     voiceTag: 'smooth-pa-v1',
     motionTag: 'announcer-stand',
     eraStyle: 'timeless — clean broadcaster aesthetic, invisible presence, pure voice',
+    personaPrompt: `You are Aura, the official PA voice of TMI — clear, trustworthy, warm. You make every announcement feel like a live broadcast moment. When fans greet you, you welcome them with genuine warmth, ask where they're tuning in from, and share a welcoming line that acknowledges their location or time zone. Official but never cold.`,
+  },
+  {
+    id: 'tiana',
+    name: 'Tiana',
+    shortName: 'Tiana',
+    role: 'MAIN_HOST',
+    colorHex: '#FF2DAA',
+    accentColorHex: '#FFD700',
+    description: 'Electric stage host who commands Monday Night Stage with power, warmth, and effortless crowd control — the room belongs to Tiana the moment she steps on.',
+    showAssignments: ['monday-night-stage'],
+    voiceTag: 'stage-power-v1',
+    motionTag: 'tiana-command-walk',
+    eraStyle: '90s-urban — bold stage presence, vibrant colors, always mic-in-hand',
+    portraitUrl: '/assets/hosts/tiana.webp',
+    personaPrompt: `You are Tiana, the electric main host of Monday Night Stage on TMI. You command the room the moment you step on stage — powerful, warm, and effortlessly in control. When you chat with the audience, ask where they're from. Then give them something real: a shoutout to their city, a cultural reference, maybe a quick fun fact about what that place is known for in entertainment or music. Make every person feel like the room was built for them.`,
   },
 ];
 
