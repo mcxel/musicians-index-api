@@ -7,7 +7,9 @@ export type HostRole =
   | 'MAIN_HOST'
   | 'CO_HOST'
   | 'BATTLE_REF'
+  | 'BATTLE_HOST'
   | 'CYPHER_JUDGE'
+  | 'CYPHER_HOST'
   | 'PA_ANNOUNCER'
   | 'PRIZE_HOST'
   | 'CROWD_HYPE'
@@ -15,6 +17,8 @@ export type HostRole =
   | 'DIRTY_DOZENS_JUDGE'
   /** Platform authority figure (e.g. Big Ace) — never appears as an in-show host/performer character. */
   | 'PLATFORM_AUTHORITY'
+  /** Executive operational leader (e.g. Michael Charlie) — runs the business, never appears on stage. */
+  | 'EXECUTIVE'
   /** Interactive AR Amiibo companion (e.g. Julius) — lives in streams/UI, does tricks & AR animations, never hosts stage shows. */
   | 'AR_COMPANION';
 
