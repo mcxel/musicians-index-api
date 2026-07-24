@@ -26,6 +26,26 @@ export default function MusiciansHall() {
   // Stage light / camera portal mode
   const [activePortal, setActivePortal] = useState<string>("WINNER'S HALL");
 
+  // Dynamic Scene Runtime State
+  const [scene, setScene] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchScene = () => {
+      fetch("/api/competition/scene?roomId=world-dance-party")
+        .then((r) => r.json())
+        .then((d) => {
+          if (d.success && d.scene) {
+            setScene(d.scene);
+          }
+        })
+        .catch(() => {});
+    };
+
+    fetchScene();
+    const interval = setInterval(fetchScene, 3000);
+    return () => clearInterval(interval);
+  }, []);
+
   // Chat stream states
   const [chatInput, setChatInput] = useState("");
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
@@ -212,16 +232,45 @@ export default function MusiciansHall() {
         <div className="col-span-12 lg:col-span-6 flex flex-col gap-5">
           
           {/* 3D Stage Visualizer View */}
-          <div className="relative h-[320px] bg-gradient-to-b from-purple-950/20 via-black/90 to-[#070716] border border-cyan-500/30 rounded-2xl overflow-hidden shadow-2xl flex flex-col justify-between p-4">
-            
-            {/* Spotlights and glow layers */}
-            <div className="absolute top-0 left-1/4 w-[1px] h-[300px] bg-gradient-to-b from-cyan-400/20 via-cyan-400/5 to-transparent rotate-[25deg] blur-[2px] pointer-events-none" />
-            <div className="absolute top-0 right-1/4 w-[1px] h-[300px] bg-gradient-to-b from-fuchsia-400/20 via-fuchsia-400/5 to-transparent rotate-[-25deg] blur-[2px] pointer-events-none" />
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(0,255,255,0.04)_0%,transparent_70%)] pointer-events-none" />
+          <div 
+            className={`relative h-[320px] bg-gradient-to-b from-purple-950/20 via-black/95 to-[#070716] border border-cyan-500/30 rounded-2xl overflow-hidden shadow-2xl flex flex-col justify-between p-4 transition-all duration-500 ${
+              scene?.lightingConfig?.strobe ? "animate-[pulse_0.4s_infinite]" : ""
+            }`}
+          >
+            {/* Camera angle indicator */}
+            <div className="absolute top-2 left-2 text-[7px] font-black bg-cyan-500/20 text-cyan-300 px-2 py-0.5 rounded border border-cyan-400/20 uppercase font-mono tracking-wider z-20">
+              🎥 {scene?.cameraPreset || "STAGE-WIDE"}
+            </div>
+
+            {/* Spotlights and glow layers driven by SceneRuntime config */}
+            <div 
+              className="absolute top-0 left-1/4 w-[1px] h-[300px] rotate-[25deg] blur-[3px] pointer-events-none transition-all duration-1000"
+              style={{
+                background: `linear-gradient(to bottom, ${scene?.lightingConfig?.primaryColorHex || "#00FFFF"}dd, transparent)`,
+                opacity: scene?.lightingConfig?.intensity ?? 0.8
+              }}
+            />
+            <div 
+              className="absolute top-0 right-1/4 w-[1px] h-[300px] rotate-[-25deg] blur-[3px] pointer-events-none transition-all duration-1000"
+              style={{
+                background: `linear-gradient(to bottom, ${scene?.lightingConfig?.secondaryColorHex || "#AA2DFF"}dd, transparent)`,
+                opacity: scene?.lightingConfig?.intensity ?? 0.8
+              }}
+            />
+            <div 
+              className="absolute inset-0 pointer-events-none transition-all duration-1000" 
+              style={{
+                background: `radial-gradient(circle at center, ${scene?.lightingConfig?.primaryColorHex || "#00ffff"}0a 0%, transparent 70%)`
+              }}
+            />
 
             <div className="text-center z-10">
-              <h1 className="text-xs font-black text-white tracking-widest uppercase font-mono">MUSICIANS HALL</h1>
-              <span className="text-[7.5px] font-bold text-cyan-300 tracking-wider block uppercase font-mono">WHERE LEGENDS PERFORM & CHAMPIONS RISE</span>
+              <h1 className="text-xs font-black text-white tracking-widest uppercase font-mono">
+                {scene?.onscreenText?.title || "MUSICIANS HALL"}
+              </h1>
+              <span className="text-[7.5px] font-bold text-cyan-300 tracking-wider block uppercase font-mono mt-0.5">
+                {scene?.onscreenText?.subtitle || "WHERE LEGENDS PERFORM & CHAMPIONS RISE"}
+              </span>
             </div>
 
             {/* Central Champion Trophy Showcase */}
@@ -373,7 +422,9 @@ export default function MusiciansHall() {
           <div className="bg-black/80 border border-white/10 p-4 rounded-2xl flex flex-col justify-between h-[210px] shadow-2xl">
             <div className="flex justify-between items-center border-b border-white/5 pb-2">
               <span className="text-[8px] font-black text-cyan-400 tracking-widest block uppercase font-mono">AUDIENCE ROOM</span>
-              <span className="text-[8px] text-white/40 font-mono">● 852 ONLINE</span>
+              <span className="text-[8.5px] font-bold text-cyan-400 font-mono tracking-wider uppercase">
+                ● 852 ONLINE ({scene?.audienceReactionMode || "DANCING"})
+              </span>
             </div>
             <div className="flex-1 overflow-y-auto py-2 space-y-2">
               {chatMessages.map((msg) => (
