@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import PageShell from "@/components/layout/PageShell";
 import HUDFrame from "@/components/hud/HUDFrame";
@@ -18,9 +18,68 @@ const SPONSOR_GIFTS = [
   { sponsor: "Power Boost Energy", prize: "$500 + Year Supply", icon: "⚡" },
 ];
 
+interface OrchestratedHostInfo {
+  name: string;
+  emoji: string;
+}
+
 export default function MonthlyIdolPage() {
   const [phase, setPhase] = useState<Phase>("ROUND 1");
   const [watching, setWatching] = useState(0);
+
+  // Real host/announcer state from EventOrchestrator (lib/competition/
+  // EventOrchestrator.ts, /api/rooms/orchestrated) instead of the
+  // hardcoded "Gregory Marcel" + fixed quote that used to be here.
+  const [host, setHost] = useState<OrchestratedHostInfo | null>(null);
+  const [paLine, setPaLine] = useState<string | null>(null);
+  const [hostLoadState, setHostLoadState] = useState<"loading" | "ready" | "error">("loading");
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadOrchestratedEvent() {
+      try {
+        let res = await fetch("/api/rooms/orchestrated?roomId=monthly-idol");
+        if (res.status === 404) {
+          // No LobbyEvent exists yet for this room - compile one via the
+          // real orchestrator (validates format, resolves hosts/sponsor).
+          await fetch("/api/rooms/orchestrated", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              roomId: "monthly-idol",
+              showId: "monthly-idol",
+              format: "open-performer-challenge",
+              countdownSeconds: 0,
+              title: "Monthly Idol",
+            }),
+          });
+          res = await fetch("/api/rooms/orchestrated?roomId=monthly-idol");
+        }
+
+        const data = await res.json();
+        if (cancelled) return;
+
+        if (data.success && data.event) {
+          setHost(
+            data.event.mainHost
+              ? { name: data.event.mainHost.name, emoji: data.event.mainHost.emoji || "🎩" }
+              : null
+          );
+          setPaLine(data.paLine ?? null);
+          setWatching(data.event.viewerCount ?? 0);
+          setHostLoadState("ready");
+        } else {
+          setHostLoadState("error");
+        }
+      } catch {
+        if (!cancelled) setHostLoadState("error");
+      }
+    }
+
+    loadOrchestratedEvent();
+    return () => { cancelled = true; };
+  }, []);
 
   return (
     <PageShell>
@@ -32,7 +91,9 @@ export default function MonthlyIdolPage() {
             <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 20 }}>
               <Link href="/rooms" style={{ color: "#FFD700", fontSize: 11, fontWeight: 700, textDecoration: "none" }}>← ROOMS</Link>
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 9, letterSpacing: 5, color: "#FFD700", fontWeight: 800 }}>HOSTED BY GREGORY MARCEL</div>
+                <div style={{ fontSize: 9, letterSpacing: 5, color: "#FFD700", fontWeight: 800 }}>
+                  {host ? `HOSTED BY ${host.name.toUpperCase()}` : hostLoadState === "loading" ? "LOADING HOST…" : "HOST UNAVAILABLE"}
+                </div>
                 <h1 style={{ fontSize: "clamp(22px,4vw,40px)", fontWeight: 900, letterSpacing: 3, margin: "2px 0 0" }}>
                   MONTHLY IDOL
                 </h1>
@@ -115,15 +176,19 @@ export default function MonthlyIdolPage() {
                 background: "rgba(255,215,0,0.06)", border: "1px solid rgba(255,215,0,0.2)",
                 borderRadius: 12, padding: 20, textAlign: "center",
               }}>
-                <div style={{ fontSize: 42, marginBottom: 8 }}>🎩</div>
-                <div style={{ fontSize: 13, fontWeight: 800, color: "#FFD700", marginBottom: 3 }}>Gregory Marcel</div>
-                <div style={{ fontSize: 9, letterSpacing: 3, color: "#888", marginBottom: 12 }}>MAIN HOST</div>
-                <div style={{
-                  padding: "8px 12px", borderRadius: 8,
-                  background: "rgba(0,0,0,0.3)", fontSize: 11, color: "#ccc", lineHeight: 1.5, textAlign: "left",
-                }}>
-                  "Welcome to Monthly Idol — where legends are made and the world is watching. Give it everything."
+                <div style={{ fontSize: 42, marginBottom: 8 }}>{host?.emoji ?? "🎩"}</div>
+                <div style={{ fontSize: 13, fontWeight: 800, color: "#FFD700", marginBottom: 3 }}>
+                  {host ? host.name : hostLoadState === "loading" ? "Loading…" : "Host unavailable"}
                 </div>
+                <div style={{ fontSize: 9, letterSpacing: 3, color: "#888", marginBottom: 12 }}>MAIN HOST</div>
+                {paLine && (
+                  <div style={{
+                    padding: "8px 12px", borderRadius: 8,
+                    background: "rgba(0,0,0,0.3)", fontSize: 11, color: "#ccc", lineHeight: 1.5, textAlign: "left",
+                  }}>
+                    "{paLine.replace(/^\[[^\]]+\]\s*/, "")}"
+                  </div>
+                )}
               </div>
 
               {/* Sponsor gifts */}

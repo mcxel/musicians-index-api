@@ -24,7 +24,13 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Room event not found" }, { status: 404 });
     }
 
-    return NextResponse.json({ success: true, event: state, ticks });
+    // Real PA announcer line (hostEngine's getPA(), not fabricated copy) -
+    // only when a paAnnouncer is actually assigned to this show.
+    const paLine = state.paAnnouncer
+      ? eventOrchestrator.dispatchPAAnnouncement(state.showId, "room-open")
+      : null;
+
+    return NextResponse.json({ success: true, event: state, ticks, paLine });
   } catch (error) {
     console.error("Failed to query orchestrated room state:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

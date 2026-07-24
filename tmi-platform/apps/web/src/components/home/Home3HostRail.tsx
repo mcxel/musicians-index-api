@@ -1,12 +1,16 @@
 "use client";
 
 import Link from "next/link";
+import { HOST_IDENTITY_REGISTRY } from "@/lib/hosts/HostIdentityRegistry";
 
-const HOSTS = [
-  { id: "aria-vox", name: "Aria Vox", state: "Featured" },
-  { id: "milo-crown", name: "Milo Crown", state: "Current" },
-  { id: "rune-pulse", name: "Rune Pulse", state: "Hosts" },
-];
+// Real hosts with an actual in-show role (Big Ace's PLATFORM_AUTHORITY role
+// is explicitly "not an in-show host" per HostIdentityRegistry's own
+// comment) and at least one real show assignment - was previously 3
+// hardcoded fake names matching no real registry entry.
+const HOSTS = HOST_IDENTITY_REGISTRY
+  .filter((h) => h.role !== "PLATFORM_AUTHORITY" && h.showAssignments.length > 0)
+  .slice(0, 3)
+  .map((h) => ({ id: h.id, name: h.name, state: h.role.replace(/_/g, " ") }));
 
 export default function Home3HostRail() {
   return (
@@ -18,7 +22,7 @@ export default function Home3HostRail() {
         {HOSTS.map((host) => (
           <Link
             key={host.id}
-            href={`/hosts/hosts/${host.id}`}
+            href={`/hosts/${host.id}`}
             style={{
               textDecoration: "none",
               color: "white",
