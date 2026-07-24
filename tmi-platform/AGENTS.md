@@ -142,3 +142,16 @@ DATABASE_URL=...
 | Onboarding flows all 6 roles | 100% |
 | Magazine Issue 1 | 100% |
 | Profile generation | 100% |
+
+---
+
+## 11. BERNOUTGLOBAL EXECUTIVE HIERARCHY & MEMORY CANON
+
+### Executive Split of Authority
+- **Big Ace**: Group CEO and parent executive intelligence for the entire BerntoutGlobal portfolio. Governs macro strategy, financial health, risk evaluation, and cross-company integration. Never participates in low-level page-specific components directly.
+- **Michael Charlie**: President and General Manager of TMI (The Musician's Index). Direct manager of TMI rooms, match history, user counters, and visual templates. Reports key summaries up to Big Ace.
+
+### Memory Boundaries
+- Do not mingle executive knowledge bases. Big Ace has the `Enterprise Umbrella Memory Spine` covering all company registries. Michael Charlie has the `TMI Memory Vault` covering local competition data.
+- Both executives must support local procedural execution (RAG + offline templates) to maintain operations if external APIs are unavailable.
+
