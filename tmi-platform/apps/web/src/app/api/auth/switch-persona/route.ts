@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic';
 import { type NextRequest, NextResponse } from 'next/server';
-import { getToken } from 'next-auth/jwt';
+import { getTmiAuth } from '@/lib/auth/getTmiAuth';
 import {
   TMI_GOVERNANCE_CLUSTER,
   getMemberByEmail,
@@ -18,15 +18,20 @@ import {
 /**
  * POST /api/auth/switch-persona
  *
- * Platform-wide persona switch — works for every authenticated user.
+ * Admin-only dashboard switching (Marcel Dickens, 2026-07-24: "fans and
+ * performers cannot switch to each other's accounts. Only administrators
+ * can do this."). Regular Fan/Performer/etc. accounts never get a persona
+ * switcher, no matter how many real roles they hold.
  *
- * Governance members: body = { memberId, personaType } (GovernancePersonaType)
- * All other users:    body = { personaType }           (full PersonaType from MultiPersonaEngine)
+ * Governance members (Marcel/Justin/Jay Paul): body = { memberId, personaType }
+ * Other ADMIN/STAFF accounts (oversight/QA preview, same bypass middleware.ts
+ * already grants admins for /hub/*): body = { personaType }
+ * Everyone else: 403.
  *
  * No logout — updates persona + role cookies server-side.
  *
  * GET /api/auth/switch-persona
- * Returns the cluster manifest (governance) or available personas (general user).
+ * Returns the cluster manifest (governance) or 403 for non-admin callers.
  */
 
 const PERSONA_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
@@ -37,17 +42,18 @@ function setCookieHeader(name: string, value: string): string {
 
 // ── GET — session manifest ────────────────────────────────────────────────────
 
-export async function GET(req: NextRequest) {
-  const token = await getToken({ req });
+const ADMIN_ROLES = new Set(['ADMIN', 'STAFF']);
 
-  if (!token?.email) {
+export async function GET(req: NextRequest) {
+  const auth = await getTmiAuth();
+  if (!auth) {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
   }
 
   const currentPersona = req.cookies.get('tmi_persona')?.value ?? 'fan';
 
   // Governance members get the full cluster manifest
-  const member = getMemberByEmail(token.email as string);
+  const member = getMemberByEmail(auth.user.email);
   if (member) {
     return NextResponse.json({
       isGovernanceMember: true,
@@ -70,11 +76,17 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  // General users get their available personas + capabilities
+  // Admin-only dashboard switching (Rule: fans/performers cannot switch to
+  // each other's accounts, only administrators can). Regular users get 403,
+  // not a persona list — this is deliberately not self-service.
+  if (!ADMIN_ROLES.has(auth.user.role.toUpperCase())) {
+    return NextResponse.json({ error: 'Forbidden: dashboard switching is admin-only' }, { status: 403 });
+  }
+
   const availablePersonas = Object.keys(PERSONA_META) as PersonaType[];
   return NextResponse.json({
     isGovernanceMember: false,
-    email:              token.email,
+    email:              auth.user.email,
     currentPersona:     isPersonaType(currentPersona) ? currentPersona : 'fan',
     availablePersonas,
     capabilities:       CAPABILITY_MATRIX[isPersonaType(currentPersona) ? currentPersona as PersonaType : 'fan'],
@@ -84,9 +96,9 @@ export async function GET(req: NextRequest) {
 // ── POST — switch persona ─────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
-  const token = await getToken({ req });
+  const auth = await getTmiAuth();
 
-  if (!token?.email) {
+  if (!auth) {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
   }
 
@@ -99,9 +111,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'personaType required' }, { status: 400 });
   }
 
-  // ── Branch A: Governance cluster switch ───────────────────────────────────
+  // ── Branch A: Governance cluster switch (Marcel/Justin/Jay Paul) ──────────
 
-  if (memberId && isGovernanceMember(token.email as string)) {
+  if (memberId && isGovernanceMember(auth.user.email)) {
     const governanceTypes: GovernancePersonaType[] = ['admin', 'artist', 'fan'];
     if (!governanceTypes.includes(personaType as GovernancePersonaType)) {
       return NextResponse.json({ error: `Governance personaType must be one of: ${governanceTypes.join(', ')}` }, { status: 400 });
@@ -132,7 +144,16 @@ export async function POST(req: NextRequest) {
     return res;
   }
 
-  // ── Branch B: Platform-wide persona switch (any user) ─────────────────────
+  // ── Branch B: Admin/Staff oversight preview (never regular users) ─────────
+  // Same bypass middleware.ts already grants admins for /hub/* ("Admin/staff
+  // can preview any hub for oversight/QA without holding that role
+  // themselves") - never available to Fan/Performer/etc. accounts, no matter
+  // how many real roles they hold. Fans and performers cannot switch to each
+  // other's accounts; only administrators can (Marcel Dickens, 2026-07-24).
+
+  if (!ADMIN_ROLES.has(auth.user.role.toUpperCase())) {
+    return NextResponse.json({ error: 'Forbidden: dashboard switching is admin-only' }, { status: 403 });
+  }
 
   if (!isPersonaType(personaType)) {
     const validTypes = Object.keys(PERSONA_META).join(', ');
@@ -149,7 +170,7 @@ export async function POST(req: NextRequest) {
   const res = NextResponse.json({
     ok:             true,
     mode:           'platform',
-    userId:         userId ?? token.sub ?? null,
+    userId:         userId ?? auth.user.id ?? null,
     personaType:    typedPersona,
     label:          meta.label,
     dashboardRoute: meta.dashboardRoute,

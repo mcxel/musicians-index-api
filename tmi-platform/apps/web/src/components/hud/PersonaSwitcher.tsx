@@ -35,7 +35,16 @@ interface PersonaSwitcherProps {
   showAdd?:    boolean;
 }
 
-// Which personas users can add themselves (others require admin grant)
+// Dashboard switching is admin-only (Marcel Dickens, 2026-07-24: "fans and
+// performers cannot switch to each other's accounts. Only administrators
+// can do this."). Regular accounts never see this control, no matter how
+// many real roles they hold - see also /api/auth/switch-persona, which
+// enforces the same rule server-side.
+const ADMIN_ROLES = new Set(['ADMIN', 'STAFF']);
+
+// Only ADMIN can self-add every persona for oversight/QA preview; everyone
+// who reaches this component is already admin-gated (see isAdmin check
+// below), so this list only matters for what an admin can preview into.
 const SELF_ADDABLE: PersonaType[] = ['fan', 'artist', 'producer', 'performer', 'dj', 'host', 'sponsor', 'advertiser', 'venue'];
 
 export function PersonaSwitcher({ userId, currentRole, compact = false, showAdd = true }: PersonaSwitcherProps) {
@@ -101,9 +110,15 @@ export function PersonaSwitcher({ userId, currentRole, compact = false, showAdd 
     handleSwitch(personaType);
   }, [handleSwitch]);
 
+  // Admin-only gate — placed after all hooks (Rules of Hooks), before render.
+  // A Fan/Performer/etc. account must never see this control, regardless of
+  // how many real roles it holds.
+  if (!ADMIN_ROLES.has((currentRole ?? '').toUpperCase())) {
+    return null;
+  }
+
   const activeMeta = PERSONA_META[activePersona];
-  const canSelfAddAdmin = (currentRole ?? '').toLowerCase() === 'admin' || (currentRole ?? '').toLowerCase() === 'superadmin';
-  const addablePool: PersonaType[] = canSelfAddAdmin ? [...SELF_ADDABLE, 'admin'] : SELF_ADDABLE;
+  const addablePool: PersonaType[] = [...SELF_ADDABLE, 'admin'];
   const addable: PersonaType[] = addablePool.filter((p) => !userPersonas.includes(p));
   const quickSwitchCandidates: PersonaType[] = ['admin', 'performer', 'fan'];
   const quickSwitchTargets: PersonaType[] = quickSwitchCandidates.filter(

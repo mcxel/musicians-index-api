@@ -138,6 +138,23 @@ export async function POST(req: NextRequest) {
     const userAgent = req.headers.get('user-agent') ?? '';
     const { sessionId, sessionToken } = createSession(resolvedUser.id, resolvedUser.role, clientIp, userAgent);
 
+    // tmi_roles (plural) is what middleware's hub-access gate actually reads
+    // for multi-role accounts. Registration sets it from the real UserRole
+    // rows, but until now login never refreshed it - so it went stale after
+    // the cookie's 7-day maxAge and multi-role hub access silently broke.
+    let userRoles: string[] = [resolvedUser.role.toUpperCase()];
+    try {
+      const roleRows = await prisma.userRole.findMany({
+        where: { userId: resolvedUser.id },
+        select: { role: true },
+      });
+      if (roleRows.length > 0) {
+        userRoles = roleRows.map((r) => r.role);
+      }
+    } catch (roleErr) {
+      console.warn('[auth/signin] UserRole lookup warning (falling back to single role):', roleErr);
+    }
+
     const streakResult = StreakEngine.recordDailyVisit(resolvedUser.id);
     if (streakResult.isNewDay && streakResult.xpGranted > 0) {
       grantXP({ userId: resolvedUser.id, source: 'login_daily', amount: streakResult.xpGranted });
@@ -163,9 +180,11 @@ export async function POST(req: NextRequest) {
 
     response.cookies.delete('tmi_role');
     response.cookies.delete('tmi_tier');
+    response.cookies.delete('tmi_roles');
     response.cookies.set('tmi_session_id', sessionId, COOKIE_OPTS);
     response.cookies.set('tmi_session', sessionToken, COOKIE_OPTS);
     response.cookies.set('tmi_role', resolvedUser.role, COOKIE_OPTS);
+    response.cookies.set('tmi_roles', JSON.stringify(userRoles), COOKIE_OPTS);
     response.cookies.set('tmi_tier', resolvedUser.tier, COOKIE_OPTS);
     response.cookies.set('tmi_user_email', email, {
       httpOnly: false,
