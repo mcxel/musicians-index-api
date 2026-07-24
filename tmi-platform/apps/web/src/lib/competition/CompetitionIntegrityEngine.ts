@@ -153,15 +153,79 @@ export class CompetitionIntegrityEngine {
   ): Promise<RecordedMatch> {
     const matchId = context.matchId;
 
-    return prisma.$transaction(async (tx) => {
-      // 1. If matchId is supplied, check for duplicate-write protection
-      if (matchId) {
-        const existing = await tx.matchHistory.findUnique({
+    try {
+      return await prisma.$transaction(async (tx) => {
+        // 1. If matchId is supplied, check for duplicate-write protection
+        if (matchId) {
+          const existing = await tx.matchHistory.findUnique({
+            where: { matchId },
+          });
+          if (existing) {
+            const challenger = await this.fetchRatings(challengerId, tx);
+            const opponent = await this.fetchRatings(opponentId, tx);
+            return {
+              matchId: existing.matchId,
+              challenger,
+              opponent,
+              historyRecord: existing,
+            };
+          }
+        }
+
+        const challengerBefore = await this.fetchRatings(challengerId, tx);
+        const opponentBefore = await this.fetchRatings(opponentId, tx);
+
+        const challenger = { ...challengerBefore };
+        const opponent = { ...opponentBefore };
+
+        challenger.skillRating = this.calculateSkillUpdate(challengerBefore.skillRating, opponentBefore.skillRating, challengerScore);
+        opponent.skillRating = this.calculateSkillUpdate(opponentBefore.skillRating, challengerBefore.skillRating, 1 - challengerScore);
+
+        const updatedChallenger = await this.saveRatings(challenger, tx);
+        const updatedOpponent = await this.saveRatings(opponent, tx);
+
+        const winnerId = challengerScore > 0.5 ? challengerId : challengerScore < 0.5 ? opponentId : null;
+        const resultType = challengerScore === 0.5 ? "draw" : "decisive";
+
+        const match = await tx.matchHistory.create({
+          data: {
+            matchId: matchId, // Bind client-provided unique idempotency key if present
+            venueType: context.venueType ?? "unspecified",
+            venueId: context.venueId ?? "unspecified",
+            competitionType: context.competitionType ?? "unspecified",
+            challengerId,
+            opponentId,
+            challengerScore,
+            opponentScore: 1 - challengerScore,
+            winnerId,
+            resultType,
+            ratingBeforeChallenger: challengerBefore.skillRating,
+            ratingAfterChallenger: updatedChallenger.skillRating,
+            ratingBeforeOpponent: opponentBefore.skillRating,
+            ratingAfterOpponent: updatedOpponent.skillRating,
+            integrityBeforeChallenger: challengerBefore.integrityRating,
+            integrityAfterChallenger: updatedChallenger.integrityRating,
+            integrityBeforeOpponent: opponentBefore.integrityRating,
+            integrityAfterOpponent: updatedOpponent.integrityRating,
+          },
+        });
+
+        return {
+          matchId: match.matchId,
+          challenger: updatedChallenger,
+          opponent: updatedOpponent,
+          historyRecord: match,
+        };
+      });
+    } catch (error: any) {
+      if (error?.code === "P2002" && matchId) {
+        console.warn(`[CONCURRENCY WARN] Duplicate write conflict caught for matchId: ${matchId}. Resolving to existing record.`);
+        const existing = await prisma.matchHistory.findUnique({
           where: { matchId },
         });
         if (existing) {
-          const challenger = await this.fetchRatings(challengerId, tx);
-          const opponent = await this.fetchRatings(opponentId, tx);
+          const challenger = await this.fetchRatings(challengerId);
+          const opponent = await this.fetchRatings(opponentId);
           return {
             matchId: existing.matchId,
             challenger,
@@ -170,52 +234,8 @@ export class CompetitionIntegrityEngine {
           };
         }
       }
-
-      const challengerBefore = await this.fetchRatings(challengerId, tx);
-      const opponentBefore = await this.fetchRatings(opponentId, tx);
-
-      const challenger = { ...challengerBefore };
-      const opponent = { ...opponentBefore };
-
-      challenger.skillRating = this.calculateSkillUpdate(challengerBefore.skillRating, opponentBefore.skillRating, challengerScore);
-      opponent.skillRating = this.calculateSkillUpdate(opponentBefore.skillRating, challengerBefore.skillRating, 1 - challengerScore);
-
-      const updatedChallenger = await this.saveRatings(challenger, tx);
-      const updatedOpponent = await this.saveRatings(opponent, tx);
-
-      const winnerId = challengerScore > 0.5 ? challengerId : challengerScore < 0.5 ? opponentId : null;
-      const resultType = challengerScore === 0.5 ? "draw" : "decisive";
-
-      const match = await tx.matchHistory.create({
-        data: {
-          matchId: matchId, // Bind client-provided unique idempotency key if present
-          venueType: context.venueType ?? "unspecified",
-          venueId: context.venueId ?? "unspecified",
-          competitionType: context.competitionType ?? "unspecified",
-          challengerId,
-          opponentId,
-          challengerScore,
-          opponentScore: 1 - challengerScore,
-          winnerId,
-          resultType,
-          ratingBeforeChallenger: challengerBefore.skillRating,
-          ratingAfterChallenger: updatedChallenger.skillRating,
-          ratingBeforeOpponent: opponentBefore.skillRating,
-          ratingAfterOpponent: updatedOpponent.skillRating,
-          integrityBeforeChallenger: challengerBefore.integrityRating,
-          integrityAfterChallenger: updatedChallenger.integrityRating,
-          integrityBeforeOpponent: opponentBefore.integrityRating,
-          integrityAfterOpponent: updatedOpponent.integrityRating,
-        },
-      });
-
-      return {
-        matchId: match.matchId,
-        challenger: updatedChallenger,
-        opponent: updatedOpponent,
-        historyRecord: match,
-      };
-    });
+      throw error;
+    }
   }
 
   /**
