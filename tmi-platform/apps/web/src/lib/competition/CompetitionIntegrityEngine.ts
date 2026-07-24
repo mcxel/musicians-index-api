@@ -1,11 +1,4 @@
-/**
- * CompetitionIntegrityEngine.ts
- *
- * Implements the TMI Competition Integrity System (CIS).
- * Tracks 4 core rating vectors (Skill, Integrity, Reputation, Activity),
- * processes timeout escalations with fair technical protection, and calculates
- * weighted matchmaking compatibility distances.
- */
+import { prisma } from "@/lib/prisma";
 
 export interface CompetitorRatings {
   userId: string;
@@ -27,6 +20,93 @@ export interface TimeoutPenaltyResult {
 
 export class CompetitionIntegrityEngine {
   /**
+   * Fetches ratings for a competitor from PostgreSQL, falling back to defaults if not present.
+   */
+  async fetchRatings(userId: string): Promise<CompetitorRatings> {
+    try {
+      const record = await prisma.competitorRating.findUnique({
+        where: { userId },
+      });
+
+      if (!record) {
+        return {
+          userId,
+          skillRating: 1200,
+          integrityRating: 100,
+          reputationRating: 90,
+          activityRating: 50,
+          weeklyMatchesPlayed: 0,
+          consecutiveShowsCompleted: 0,
+          cooldownUntil: null,
+        };
+      }
+
+      return {
+        userId: record.userId,
+        skillRating: record.skillRating,
+        integrityRating: record.integrityRating,
+        reputationRating: record.reputationRating,
+        activityRating: record.activityRating,
+        weeklyMatchesPlayed: record.weeklyMatchesPlayed,
+        consecutiveShowsCompleted: record.consecutiveShowsCompleted,
+        cooldownUntil: record.cooldownUntil,
+      };
+    } catch (error) {
+      console.error(`Failed to fetch competitor ratings for ${userId}:`, error);
+      // Fail-safe default
+      return {
+        userId,
+        skillRating: 1200,
+        integrityRating: 100,
+        reputationRating: 90,
+        activityRating: 50,
+        weeklyMatchesPlayed: 0,
+        consecutiveShowsCompleted: 0,
+        cooldownUntil: null,
+      };
+    }
+  }
+
+  /**
+   * Persists ratings changes to PostgreSQL.
+   */
+  async saveRatings(ratings: CompetitorRatings): Promise<CompetitorRatings> {
+    const record = await prisma.competitorRating.upsert({
+      where: { userId: ratings.userId },
+      update: {
+        skillRating: ratings.skillRating,
+        integrityRating: ratings.integrityRating,
+        reputationRating: ratings.reputationRating,
+        activityRating: ratings.activityRating,
+        weeklyMatchesPlayed: ratings.weeklyMatchesPlayed,
+        consecutiveShowsCompleted: ratings.consecutiveShowsCompleted,
+        cooldownUntil: ratings.cooldownUntil,
+      },
+      create: {
+        userId: ratings.userId,
+        skillRating: ratings.skillRating,
+        integrityRating: ratings.integrityRating,
+        reputationRating: ratings.reputationRating,
+        activityRating: ratings.activityRating,
+        weeklyMatchesPlayed: ratings.weeklyMatchesPlayed,
+        consecutiveShowsCompleted: ratings.consecutiveShowsCompleted,
+        cooldownUntil: ratings.cooldownUntil,
+      },
+    });
+
+    return {
+      userId: record.userId,
+      skillRating: record.skillRating,
+      integrityRating: record.integrityRating,
+      reputationRating: record.reputationRating,
+      activityRating: record.activityRating,
+      weeklyMatchesPlayed: record.weeklyMatchesPlayed,
+      consecutiveShowsCompleted: record.consecutiveShowsCompleted,
+      cooldownUntil: record.cooldownUntil,
+    };
+  }
+
+  /**
    * Helper: Calculates updated Skill Rating (Elo) after a matchup
    * score: 1 = win, 0.5 = draw, 0 = loss
    */
@@ -42,13 +122,40 @@ export class CompetitionIntegrityEngine {
   }
 
   /**
+   * Resolves Elo skill updates for a match between two users, and saves them.
+   */
+  async recordMatchOutcome(
+    challengerId: string,
+    opponentId: string,
+    challengerScore: number
+  ): Promise<{ challenger: CompetitorRatings; opponent: CompetitorRatings }> {
+    const challenger = await this.fetchRatings(challengerId);
+    const opponent = await this.fetchRatings(opponentId);
+
+    const oldChallengerSR = challenger.skillRating;
+    const oldOpponentSR = opponent.skillRating;
+
+    challenger.skillRating = this.calculateSkillUpdate(oldChallengerSR, oldOpponentSR, challengerScore);
+    opponent.skillRating = this.calculateSkillUpdate(oldOpponentSR, oldChallengerSR, 1 - challengerScore);
+
+    const updatedChallenger = await this.saveRatings(challenger);
+    const updatedOpponent = await this.saveRatings(opponent);
+
+    return {
+      challenger: updatedChallenger,
+      opponent: updatedOpponent,
+    };
+  }
+
+  /**
    * Evaluates disconnects/timeouts and calculates escalating penalties
    */
-  processTimeout(
-    currentRatings: CompetitorRatings,
+  async recordTimeout(
+    userId: string,
     timeoutStreak: number,
     isPlatformIssue: boolean
-  ): TimeoutPenaltyResult {
+  ): Promise<TimeoutPenaltyResult> {
+    const currentRatings = await this.fetchRatings(userId);
     const updated = { ...currentRatings };
 
     // 1. Fair Technical Protection: No penalties for verified platform/server glitches
@@ -109,8 +216,10 @@ export class CompetitionIntegrityEngine {
     // Decay reputation slightly for disconnecting on peers
     updated.reputationRating = Math.max(0, updated.reputationRating - 3);
 
+    const saved = await this.saveRatings(updated);
+
     return {
-      updatedRatings: updated,
+      updatedRatings: saved,
       escalationTier,
       penaltyMessage,
       autoLoss,
@@ -120,7 +229,8 @@ export class CompetitionIntegrityEngine {
   /**
    * Recovers rating parameters on clean match completions
    */
-  processSuccessfulCompletion(currentRatings: CompetitorRatings): CompetitorRatings {
+  async recordSuccessfulCompletion(userId: string): Promise<CompetitorRatings> {
+    const currentRatings = await this.fetchRatings(userId);
     const updated = { ...currentRatings };
 
     updated.consecutiveShowsCompleted += 1;
@@ -137,7 +247,7 @@ export class CompetitionIntegrityEngine {
       updated.reputationRating = Math.min(100, updated.reputationRating + 2);
     }
 
-    return updated;
+    return await this.saveRatings(updated);
   }
 
   /**

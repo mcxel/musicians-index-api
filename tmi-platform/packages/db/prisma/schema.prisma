@@ -3463,3 +3463,18 @@ model LobbyEvent {
   @@map("lobby_events")
 }
 
+model CompetitorRating {
+  userId                    String    @id @map("user_id")
+  skillRating               Int       @default(1200) @map("skill_rating")
+  integrityRating           Int       @default(100) @map("integrity_rating")
+  reputationRating          Int       @default(90) @map("reputation_rating")
+  activityRating            Int       @default(50) @map("activity_rating")
+  weeklyMatchesPlayed       Int       @default(0) @map("weekly_matches_played")
+  consecutiveShowsCompleted Int       @default(0) @map("consecutive_shows_completed")
+  cooldownUntil             DateTime? @map("cooldown_until")
+  updatedAt                 DateTime  @updatedAt @map("updated_at")
+
+  @@map("competitor_ratings")
+}
+
+
