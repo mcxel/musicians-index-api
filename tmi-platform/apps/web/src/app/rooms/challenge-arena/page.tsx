@@ -97,6 +97,35 @@ export default function ChallengeArenaPage() {
   const [entryInput, setEntryInput] = useState("");
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // Real signed-in user (not the "current-user" placeholder used elsewhere
+  // on this page for XP awards) - used only to check real competition
+  // eligibility, since this page's queue/voting is otherwise all mock data.
+  const [realUserId, setRealUserId] = useState<string | null>(null);
+  const [eligibility, setEligibility] = useState<{ eligible: boolean; message: string } | null>(null);
+
+  useEffect(() => {
+    fetch("/api/auth/session", { credentials: "include" })
+      .then((r) => r.json())
+      .then((d: { authenticated?: boolean; user?: { id: string } }) => {
+        if (d.authenticated && d.user?.id) setRealUserId(d.user.id);
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!realUserId) { setEligibility(null); return; }
+    fetch("/api/rooms/orchestrated", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "validate", userId: realUserId }),
+    })
+      .then((r) => r.json())
+      .then((d: { success?: boolean; eligible?: boolean; message?: string }) => {
+        if (d.success) setEligibility({ eligible: !!d.eligible, message: d.message ?? "" });
+      })
+      .catch(() => {});
+  }, [realUserId]);
+
   // Round countdown
   useEffect(() => {
     timerRef.current = setInterval(() => {
@@ -173,6 +202,7 @@ export default function ChallengeArenaPage() {
 
   function submitChallenge() {
     if (!entryInput.trim()) return;
+    if (eligibility && !eligibility.eligible) return;
     setQueue(q => [...q, { id: `user-${Date.now()}`, name: entryInput.trim(), genre: "Various", song: "My Song", color: "#FF6B35", emoji: "🎵", wins: 0, platform: "Upload" }]);
     setEntryInput("");
   }
@@ -290,6 +320,18 @@ export default function ChallengeArenaPage() {
             <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", lineHeight: 1.6, marginBottom: 14 }}>
               Submit your song. When your turn comes, both songs play live and the crowd votes. Winner stays.
             </div>
+            {/* Real competition eligibility check (CompetitionIntegrityEngine),
+                not fake queue data - only applies to the real signed-in user */}
+            {eligibility && !eligibility.eligible && (
+              <div style={{ padding: "10px 12px", borderRadius: 8, background: "rgba(255,68,68,0.08)", border: "1px solid rgba(255,68,68,0.25)", fontSize: 10, color: "#FF6666", marginBottom: 12 }}>
+                {eligibility.message}
+              </div>
+            )}
+            {eligibility && eligibility.eligible && eligibility.message.startsWith("Warning") && (
+              <div style={{ padding: "10px 12px", borderRadius: 8, background: "rgba(255,215,0,0.08)", border: "1px solid rgba(255,215,0,0.25)", fontSize: 10, color: "#FFD700", marginBottom: 12 }}>
+                {eligibility.message}
+              </div>
+            )}
             {/* Upload your track directly */}
             <MediaUploadWidget
               mediaType="challenge_entry"
@@ -314,8 +356,12 @@ export default function ChallengeArenaPage() {
               onKeyDown={e => e.key === "Enter" && submitChallenge()}
               style={{ width: "100%", padding: "10px 12px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,215,0,0.2)", borderRadius: 8, color: "#fff", fontSize: 12, outline: "none", marginTop: 8, marginBottom: 8, boxSizing: "border-box" }}
             />
-            <button onClick={submitChallenge} disabled={!entryInput.trim()} style={{ width: "100%", padding: "10px 0", borderRadius: 10, border: "none", background: entryInput.trim() ? "rgba(255,215,0,0.2)" : "rgba(255,255,255,0.04)", color: entryInput.trim() ? "#FFD700" : "rgba(255,255,255,0.2)", fontWeight: 800, fontSize: 10, cursor: entryInput.trim() ? "pointer" : "not-allowed", letterSpacing: "0.08em", outline: "1px solid rgba(255,215,0,0.2)" }}>
-              JOIN BY NAME →
+            <button
+              onClick={submitChallenge}
+              disabled={!entryInput.trim() || (eligibility ? !eligibility.eligible : false)}
+              style={{ width: "100%", padding: "10px 0", borderRadius: 10, border: "none", background: entryInput.trim() ? "rgba(255,215,0,0.2)" : "rgba(255,255,255,0.04)", color: entryInput.trim() ? "#FFD700" : "rgba(255,255,255,0.2)", fontWeight: 800, fontSize: 10, cursor: (entryInput.trim() && (!eligibility || eligibility.eligible)) ? "pointer" : "not-allowed", letterSpacing: "0.08em", outline: "1px solid rgba(255,215,0,0.2)" }}
+            >
+              {eligibility && !eligibility.eligible ? "ON COOLDOWN" : "JOIN BY NAME →"}
             </button>
 
             {/* Stats */}
