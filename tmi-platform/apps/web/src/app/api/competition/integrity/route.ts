@@ -21,7 +21,12 @@ export async function GET(req: NextRequest) {
     }
 
     if (userId) {
+      const includeHistory = req.nextUrl.searchParams.get("history") === "true";
       const ratings = await competitionIntegrityEngine.fetchRatings(userId);
+      if (includeHistory) {
+        const record = await competitionIntegrityEngine.getMatchRecord(userId);
+        return NextResponse.json({ success: true, ratings, record });
+      }
       return NextResponse.json({ success: true, ratings });
     }
 
@@ -42,11 +47,15 @@ export async function POST(req: NextRequest) {
     const { type } = body;
 
     if (type === "outcome") {
-      const { challengerId, opponentId, challengerScore } = body;
+      const { challengerId, opponentId, challengerScore, venueType, venueId, competitionType } = body;
       if (!challengerId || !opponentId || typeof challengerScore !== "number") {
         return NextResponse.json({ error: "challengerId, opponentId, and challengerScore required" }, { status: 400 });
       }
-      const result = await competitionIntegrityEngine.recordMatchOutcome(challengerId, opponentId, challengerScore);
+      const result = await competitionIntegrityEngine.recordMatchOutcome(challengerId, opponentId, challengerScore, {
+        venueType,
+        venueId,
+        competitionType,
+      });
       return NextResponse.json({ success: true, result });
     }
 

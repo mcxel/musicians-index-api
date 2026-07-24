@@ -3477,4 +3477,36 @@ model CompetitorRating {
   @@map("competitor_ratings")
 }
 
+// Immutable audit trail written by CompetitionIntegrityEngine.recordMatchOutcome()
+// in the same transaction as the rating updates that produced it. Powers real
+// Battle Record / win-loss / streak / rating-progression displays instead of
+// hardcoded placeholder values (added 2026-07-24).
+model MatchHistory {
+  id                        String    @id @default(cuid())
+  matchId                   String    @unique @default(uuid()) @map("match_id")
+  venueType                 String    @map("venue_type")
+  venueId                   String    @map("venue_id")
+  competitionType           String    @map("competition_type")
+  challengerId              String    @map("challenger_id")
+  opponentId                String    @map("opponent_id")
+  challengerScore           Float     @map("challenger_score")
+  opponentScore             Float     @map("opponent_score")
+  winnerId                  String?   @map("winner_id")
+  resultType                String    @default("decisive") @map("result_type")
+  ratingBeforeChallenger     Int      @map("rating_before_challenger")
+  ratingAfterChallenger      Int      @map("rating_after_challenger")
+  ratingBeforeOpponent       Int      @map("rating_before_opponent")
+  ratingAfterOpponent        Int      @map("rating_after_opponent")
+  integrityBeforeChallenger  Int      @map("integrity_before_challenger")
+  integrityAfterChallenger   Int      @map("integrity_after_challenger")
+  integrityBeforeOpponent    Int      @map("integrity_before_opponent")
+  integrityAfterOpponent     Int      @map("integrity_after_opponent")
+  completedAt                DateTime @default(now()) @map("completed_at")
+  createdAt                  DateTime @default(now()) @map("created_at")
+
+  @@index([challengerId])
+  @@index([opponentId])
+  @@index([venueId])
+  @@map("match_histories")
+}
 

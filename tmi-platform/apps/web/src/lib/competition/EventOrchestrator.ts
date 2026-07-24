@@ -5,6 +5,10 @@ import { battleFormatRulesEngine, type BattleFormatType, type BattleTier } from 
 import { getAdSlotForZone } from "@/lib/commerce/SponsorRegistry";
 import { getPA, type PAScriptKey } from "@/lib/hosts/hostEngine";
 import { competitionIntegrityEngine } from "@/lib/competition/CompetitionIntegrityEngine";
+// MatchHistoryEngine (getHeadToHead, getPlayerStats) stays available as a
+// real, separate service for other callers - just not invoked here, since
+// competitionIntegrityEngine.recordMatchOutcome already writes the
+// MatchHistory row atomically with the rating update.
 
 export interface OrchestratedHost {
   id: string;
@@ -321,15 +325,21 @@ export class EventOrchestrator {
   ): Promise<{ announcement: string; challengerRatings: any; opponentRatings: any }> {
     const event = await prisma.lobbyEvent.findUnique({ where: { roomId } });
     const showId = event?.showId || "monthly-idol";
+    const competitionType = event?.format || showId;
 
-    // 1. Process Postgres rating updates
+    // Process persistent Elo + CIR/RR/AR updates AND write the immutable
+    // MatchHistory row atomically (competitionIntegrityEngine.recordMatchOutcome
+    // does both inside one transaction - do not also call
+    // matchHistoryEngine.recordMatchResult here, that would write a second,
+    // duplicate history row for the same real match).
     const { challenger, opponent } = await competitionIntegrityEngine.recordMatchOutcome(
       challengerId,
       opponentId,
-      challengerScore
+      challengerScore,
+      { venueType: "room", venueId: roomId, competitionType }
     );
 
-    // 2. Generate dynamic PA call-out using host identity
+    // Generate dynamic PA call-out using host identity
     const winnerName = challengerScore > 0.5 ? `Challenger (${challengerId})` : `Opponent (${opponentId})`;
     const announcement = this.dispatchPAAnnouncement(showId, "winner-announce", {
       winner: winnerName,
