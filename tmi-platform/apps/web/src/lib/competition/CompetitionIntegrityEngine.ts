@@ -1,4 +1,22 @@
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@prisma/client";
+
+type DbClient = typeof prisma | Prisma.TransactionClient;
+
+export interface MatchOutcomeContext {
+  venueType?: string;
+  venueId?: string;
+  competitionType?: string;
+  matchId?: string;
+}
+
+export interface RecordedMatch {
+  matchId: string;
+  challenger: CompetitorRatings;
+  opponent: CompetitorRatings;
+  historyRecord?: any;
+}
+
 
 export interface CompetitorRatings {
   userId: string;
@@ -22,9 +40,9 @@ export class CompetitionIntegrityEngine {
   /**
    * Fetches ratings for a competitor from PostgreSQL, falling back to defaults if not present.
    */
-  async fetchRatings(userId: string): Promise<CompetitorRatings> {
+  async fetchRatings(userId: string, db: DbClient = prisma): Promise<CompetitorRatings> {
     try {
-      const record = await prisma.competitorRating.findUnique({
+      const record = await db.competitorRating.findUnique({
         where: { userId },
       });
 
@@ -70,8 +88,8 @@ export class CompetitionIntegrityEngine {
   /**
    * Persists ratings changes to PostgreSQL.
    */
-  async saveRatings(ratings: CompetitorRatings): Promise<CompetitorRatings> {
-    const record = await prisma.competitorRating.upsert({
+  async saveRatings(ratings: CompetitorRatings, db: DbClient = prisma): Promise<CompetitorRatings> {
+    const record = await db.competitorRating.upsert({
       where: { userId: ratings.userId },
       update: {
         skillRating: ratings.skillRating,
@@ -122,28 +140,135 @@ export class CompetitionIntegrityEngine {
   }
 
   /**
-   * Resolves Elo skill updates for a match between two users, and saves them.
+   * Resolves Elo skill updates for a match between two users, saves them,
+   * and writes an immutable MatchHistory record - all in one transaction,
+   * so a match record can never exist without its rating update actually
+   * having applied (or vice versa).
    */
   async recordMatchOutcome(
     challengerId: string,
     opponentId: string,
-    challengerScore: number
-  ): Promise<{ challenger: CompetitorRatings; opponent: CompetitorRatings }> {
-    const challenger = await this.fetchRatings(challengerId);
-    const opponent = await this.fetchRatings(opponentId);
+    challengerScore: number,
+    context: MatchOutcomeContext = {}
+  ): Promise<RecordedMatch> {
+    const matchId = context.matchId;
 
-    const oldChallengerSR = challenger.skillRating;
-    const oldOpponentSR = opponent.skillRating;
+    return prisma.$transaction(async (tx) => {
+      // 1. If matchId is supplied, check for duplicate-write protection
+      if (matchId) {
+        const existing = await tx.matchHistory.findUnique({
+          where: { matchId },
+        });
+        if (existing) {
+          const challenger = await this.fetchRatings(challengerId, tx);
+          const opponent = await this.fetchRatings(opponentId, tx);
+          return {
+            matchId: existing.matchId,
+            challenger,
+            opponent,
+            historyRecord: existing,
+          };
+        }
+      }
 
-    challenger.skillRating = this.calculateSkillUpdate(oldChallengerSR, oldOpponentSR, challengerScore);
-    opponent.skillRating = this.calculateSkillUpdate(oldOpponentSR, oldChallengerSR, 1 - challengerScore);
+      const challengerBefore = await this.fetchRatings(challengerId, tx);
+      const opponentBefore = await this.fetchRatings(opponentId, tx);
 
-    const updatedChallenger = await this.saveRatings(challenger);
-    const updatedOpponent = await this.saveRatings(opponent);
+      const challenger = { ...challengerBefore };
+      const opponent = { ...opponentBefore };
+
+      challenger.skillRating = this.calculateSkillUpdate(challengerBefore.skillRating, opponentBefore.skillRating, challengerScore);
+      opponent.skillRating = this.calculateSkillUpdate(opponentBefore.skillRating, challengerBefore.skillRating, 1 - challengerScore);
+
+      const updatedChallenger = await this.saveRatings(challenger, tx);
+      const updatedOpponent = await this.saveRatings(opponent, tx);
+
+      const winnerId = challengerScore > 0.5 ? challengerId : challengerScore < 0.5 ? opponentId : null;
+      const resultType = challengerScore === 0.5 ? "draw" : "decisive";
+
+      const match = await tx.matchHistory.create({
+        data: {
+          matchId: matchId, // Bind client-provided unique idempotency key if present
+          venueType: context.venueType ?? "unspecified",
+          venueId: context.venueId ?? "unspecified",
+          competitionType: context.competitionType ?? "unspecified",
+          challengerId,
+          opponentId,
+          challengerScore,
+          opponentScore: 1 - challengerScore,
+          winnerId,
+          resultType,
+          ratingBeforeChallenger: challengerBefore.skillRating,
+          ratingAfterChallenger: updatedChallenger.skillRating,
+          ratingBeforeOpponent: opponentBefore.skillRating,
+          ratingAfterOpponent: updatedOpponent.skillRating,
+          integrityBeforeChallenger: challengerBefore.integrityRating,
+          integrityAfterChallenger: updatedChallenger.integrityRating,
+          integrityBeforeOpponent: opponentBefore.integrityRating,
+          integrityAfterOpponent: updatedOpponent.integrityRating,
+        },
+      });
+
+      return {
+        matchId: match.matchId,
+        challenger: updatedChallenger,
+        opponent: updatedOpponent,
+        historyRecord: match,
+      };
+    });
+  }
+
+  /**
+   * Real win/loss/draw record + recent match log for a user, derived from
+   * MatchHistory - what the performer profile's "Battle Record" now reads
+   * from instead of a hardcoded placeholder.
+   */
+  async getMatchRecord(userId: string, recentLimit = 10) {
+    const matches = await prisma.matchHistory.findMany({
+      where: { OR: [{ challengerId: userId }, { opponentId: userId }] },
+      orderBy: { completedAt: "desc" },
+    });
+
+    let wins = 0;
+    let losses = 0;
+    let draws = 0;
+    let currentStreak = 0;
+    let streakType: "win" | "loss" | null = null;
+
+    matches.forEach((m, i) => {
+      const isChallenger = m.challengerId === userId;
+      const won = m.winnerId === userId;
+      const lost = m.winnerId !== null && m.winnerId !== userId;
+      const drew = m.winnerId === null;
+
+      if (won) wins++;
+      else if (lost) losses++;
+      else if (drew) draws++;
+
+      if (i === 0) {
+        streakType = won ? "win" : lost ? "loss" : null;
+        if (streakType) currentStreak = 1;
+      } else if (streakType && ((streakType === "win" && won) || (streakType === "loss" && lost))) {
+        currentStreak++;
+      }
+      void isChallenger;
+    });
 
     return {
-      challenger: updatedChallenger,
-      opponent: updatedOpponent,
+      wins,
+      losses,
+      draws,
+      winRate: wins + losses + draws > 0 ? wins / (wins + losses + draws) : 0,
+      currentStreak,
+      streakType,
+      recentMatches: matches.slice(0, recentLimit).map((m) => ({
+        matchId: m.matchId,
+        opponentId: m.challengerId === userId ? m.opponentId : m.challengerId,
+        result: m.winnerId === userId ? "win" : m.winnerId === null ? "draw" : "loss",
+        venueType: m.venueType,
+        competitionType: m.competitionType,
+        completedAt: m.completedAt,
+      })),
     };
   }
 
