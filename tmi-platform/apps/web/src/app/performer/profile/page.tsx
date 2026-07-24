@@ -13,15 +13,25 @@ import MyContentManager from "@/components/profile/MyContentManager";
 const ACCENT = "#AA2DFF";
 const BG = "#050510";
 
-interface MeUser { 
-  id: string; 
-  email: string; 
-  name?: string; 
-  role: string; 
-  tier?: string; 
-  isLive?: boolean; 
-  liveRoomId?: string; 
+interface MeUser {
+  id: string;
+  email: string;
+  name?: string;
+  role: string;
+  tier?: string;
+  isLive?: boolean;
+  liveRoomId?: string;
   image?: string | null;
+}
+
+// Real fields from CompetitionIntegrityEngine (lib/competition/
+// CompetitionIntegrityEngine.ts) via GET /api/competition/integrity.
+interface CompetitorRatings {
+  skillRating: number;
+  integrityRating: number;
+  reputationRating: number;
+  activityRating: number;
+  cooldownUntil: string | null;
 }
 
 export default function PerformerProfilePage() {
@@ -34,6 +44,8 @@ export default function PerformerProfilePage() {
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState("");
   const [activeFlowRoom, setActiveFlowRoom] = useState<UniversalRoom | null>(null);
+  const [ratings, setRatings] = useState<CompetitorRatings | null>(null);
+  const [ratingsState, setRatingsState] = useState<"loading" | "ready" | "error">("loading");
 
   useEffect(() => {
     fetch("/api/auth/session", { credentials: "include" })
@@ -69,6 +81,24 @@ export default function PerformerProfilePage() {
       })
       .catch(() => router.replace("/auth"));
   }, [router]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    let cancelled = false;
+    fetch(`/api/competition/integrity?userId=${encodeURIComponent(user.id)}`)
+      .then((r) => r.json())
+      .then((d: { success?: boolean; ratings?: CompetitorRatings }) => {
+        if (cancelled) return;
+        if (d.success && d.ratings) {
+          setRatings(d.ratings);
+          setRatingsState("ready");
+        } else {
+          setRatingsState("error");
+        }
+      })
+      .catch(() => { if (!cancelled) setRatingsState("error"); });
+    return () => { cancelled = true; };
+  }, [user?.id]);
 
   async function handleSave(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -232,6 +262,39 @@ export default function PerformerProfilePage() {
               <div style={{ fontSize: 9, fontWeight: 800, marginTop: 5, letterSpacing: "0.06em" }}>{s.label}</div>
             </div>
           ))}
+        </div>
+
+        {/* Competitive Standing — real data from CompetitionIntegrityEngine */}
+        <div style={{ padding: "20px 24px", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14, marginBottom: 20 }}>
+          <div style={{ fontSize: 9, letterSpacing: "0.22em", color: ACCENT, fontWeight: 800, marginBottom: 14 }}>COMPETITIVE STANDING</div>
+          {ratingsState === "loading" && (
+            <p style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", textAlign: "center", padding: "8px 0" }}>Loading ratings…</p>
+          )}
+          {ratingsState === "error" && (
+            <p style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", textAlign: "center", padding: "8px 0" }}>Unable to load ratings. Retry later.</p>
+          )}
+          {ratingsState === "ready" && ratings && (
+            <>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))", gap: 10 }}>
+                {[
+                  { label: "Skill Rating", value: ratings.skillRating, color: "#FFD700" },
+                  { label: "Integrity", value: ratings.integrityRating, color: "#00FF88" },
+                  { label: "Reputation", value: ratings.reputationRating, color: "#00FFFF" },
+                  { label: "Activity", value: ratings.activityRating, color: "#FF2DAA" },
+                ].map((r) => (
+                  <div key={r.label} style={{ textAlign: "center" }}>
+                    <div style={{ fontSize: 20, fontWeight: 900, color: r.color }}>{r.value}</div>
+                    <div style={{ fontSize: 8, color: "rgba(255,255,255,0.4)", letterSpacing: "0.08em", marginTop: 3 }}>{r.label.toUpperCase()}</div>
+                  </div>
+                ))}
+              </div>
+              {ratings.cooldownUntil && new Date(ratings.cooldownUntil) > new Date() && (
+                <div style={{ marginTop: 12, padding: "8px 12px", borderRadius: 8, background: "rgba(255,68,68,0.08)", border: "1px solid rgba(255,68,68,0.25)", fontSize: 10, color: "#FF6666", textAlign: "center" }}>
+                  On competition cooldown until {new Date(ratings.cooldownUntil).toLocaleString()}
+                </div>
+              )}
+            </>
+          )}
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
