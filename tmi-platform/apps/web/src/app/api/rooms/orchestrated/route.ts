@@ -46,8 +46,31 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { roomId, showId, format, countdownSeconds, genreId, genreName, title } = body;
 
+    if (body.type === "validate") {
+      const { userId } = body;
+      if (!userId) {
+        return NextResponse.json({ error: "userId required for validation" }, { status: 400 });
+      }
+      const check = await eventOrchestrator.validateCompetitor(userId);
+      return NextResponse.json({ success: true, ...check });
+    }
+
+    if (body.type === "outcome") {
+      const { roomId, challengerId, opponentId, challengerScore } = body;
+      if (!roomId || !challengerId || !opponentId || typeof challengerScore !== "number") {
+        return NextResponse.json({ error: "roomId, challengerId, opponentId, and challengerScore required for outcome" }, { status: 400 });
+      }
+      const outcome = await eventOrchestrator.recordOutcomeAndAnnounce(
+        roomId,
+        challengerId,
+        opponentId,
+        challengerScore
+      );
+      return NextResponse.json({ success: true, ...outcome });
+    }
+
     if (!roomId || !showId || !format) {
-      return NextResponse.json({ error: "roomId, showId, and format are required" }, { status: 400 });
+      return NextResponse.json({ error: "roomId, showId, and format are required to compile event" }, { status: 400 });
     }
 
     const compiled = await eventOrchestrator.compileEvent(
@@ -64,7 +87,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true, event: compiled });
   } catch (error) {
-    console.error("Failed to compile orchestrated room event:", error);
+    console.error("Failed to compile or process orchestrated room event:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+

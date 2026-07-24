@@ -4,6 +4,7 @@ import { getHostById, type HostIdentity } from "@/lib/hosts/HostIdentityRegistry
 import { battleFormatRulesEngine, type BattleFormatType, type BattleTier } from "@/lib/competition/BattleFormatRulesEngine";
 import { getAdSlotForZone } from "@/lib/commerce/SponsorRegistry";
 import { getPA, type PAScriptKey } from "@/lib/hosts/hostEngine";
+import { competitionIntegrityEngine } from "@/lib/competition/CompetitionIntegrityEngine";
 
 export interface OrchestratedHost {
   id: string;
@@ -272,6 +273,72 @@ export class EventOrchestrator {
       viewerCount: event.viewerCount,
       sponsorName,
       sponsorCta,
+    };
+  }
+
+  /**
+   * Checks if competitor is eligible, specifically verifying they aren't on disconnect cooldown
+   */
+  async validateCompetitor(
+    userId: string
+  ): Promise<{ eligible: boolean; message: string; ratings: any }> {
+    const ratings = await competitionIntegrityEngine.fetchRatings(userId);
+
+    if (ratings.cooldownUntil && new Date(ratings.cooldownUntil) > new Date()) {
+      const remainMins = Math.ceil(
+        (new Date(ratings.cooldownUntil).getTime() - Date.now()) / 60000
+      );
+      return {
+        eligible: false,
+        message: `Competitor is currently on timeout cooldown. Re-entry allowed in ${remainMins} minutes.`,
+        ratings,
+      };
+    }
+
+    if (ratings.integrityRating < 30) {
+      return {
+        eligible: true,
+        message: "Warning: low integrity rating. Matches will prioritize high-attendance peers.",
+        ratings,
+      };
+    }
+
+    return {
+      eligible: true,
+      message: "Competitor is fully eligible.",
+      ratings,
+    };
+  }
+
+  /**
+   * Updates scores and dispatches PA Winner Announcements driven by the resolved host definitions
+   */
+  async recordOutcomeAndAnnounce(
+    roomId: string,
+    challengerId: string,
+    opponentId: string,
+    challengerScore: number
+  ): Promise<{ announcement: string; challengerRatings: any; opponentRatings: any }> {
+    const event = await prisma.lobbyEvent.findUnique({ where: { roomId } });
+    const showId = event?.showId || "monthly-idol";
+
+    // 1. Process Postgres rating updates
+    const { challenger, opponent } = await competitionIntegrityEngine.recordMatchOutcome(
+      challengerId,
+      opponentId,
+      challengerScore
+    );
+
+    // 2. Generate dynamic PA call-out using host identity
+    const winnerName = challengerScore > 0.5 ? `Challenger (${challengerId})` : `Opponent (${opponentId})`;
+    const announcement = this.dispatchPAAnnouncement(showId, "winner-announce", {
+      winner: winnerName,
+    });
+
+    return {
+      announcement,
+      challengerRatings: challenger,
+      opponentRatings: opponent,
     };
   }
 }
