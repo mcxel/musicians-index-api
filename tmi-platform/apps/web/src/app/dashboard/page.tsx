@@ -2,8 +2,8 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 
 const ROLE_DASHBOARD: Record<string, string> = {
-  admin:      '/admin',
-  staff:      '/admin',
+  admin:      '/hub/fan',
+  staff:      '/hub/fan',
   performer:  '/hub/performer',
   artist:     '/hub/performer',
   fan:        '/hub/fan',

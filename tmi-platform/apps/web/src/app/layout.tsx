@@ -14,6 +14,7 @@ import BotRuntimeProvider from "@/components/providers/BotRuntimeProvider";
 import BotProvider from "@/components/providers/BotProvider";
 import ChevronNavigation from "@/components/navigation/ChevronNavigation";
 import TMIGlobalNav from "@/components/system/TMIGlobalNav";
+import TMIWorkspaceSwitcher from "@/components/system/TMIWorkspaceSwitcher";
 import { NavigationLock } from "@/components/navigation/NavigationLock";
 import NavigationRuntime from "@/components/navigation/NavigationRuntime";
 import NavigationRail from "@/components/nav/NavigationRail";
@@ -201,6 +202,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <MonitorRuntimeProvider>
             <HudRuntimeProvider>
             <WatchSessionProvider>
+              <TMIWorkspaceSwitcher />
               <PWARegistration />
               <BetaModeBanner />
               <BetaStatusChip />
