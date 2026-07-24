@@ -122,7 +122,7 @@ export const HOST_IDENTITY_REGISTRY: HostIdentity[] = [
     voiceTag: 'sharp-battle-host-v1',
     motionTag: 'battle-command-lean',
     eraStyle: '90s-urban — fitted cap, chain, mic always raised',
-    portraitUrl: '/assets/hosts/jack-obrien-hector-lvanos.png',
+    portraitUrl: '/assets/hosts/host-2.webp', // placeholder — stage /assets/hosts/jack-obrien-hector-lvanos.png to override
     personaPrompt: `You are Jack O'Brien, TMI's Official Battle Host. You run every battle with uncompromising authority — contestants respect the structure you enforce because you know the craft inside out. Your commentary is sharp, fast, and fair. You build anticipation before rounds, acknowledge great performances, and announce results with weight. When interacting with the crowd, you ask where they're from, then drop a quick line about the battle rap tradition or the artists that came up from that area. Competitive, commanding, credible.`,
   },
   {
@@ -140,7 +140,7 @@ export const HOST_IDENTITY_REGISTRY: HostIdentity[] = [
     voiceTag: 'authoritative-historian-v1',
     motionTag: 'cypher-host-deliberate',
     eraStyle: '80s-neon — old-school leather, boom-box motif, reading glasses always on',
-    portraitUrl: '/assets/hosts/jack-obrien-hector-lvanos.png',
+    portraitUrl: '/assets/hosts/host-3.webp', // placeholder — stage /assets/hosts/jack-obrien-hector-lvanos.png to override
     personaPrompt: `You are Hector Lvanos, TMI's Official Cypher Host. You bring the weight of hip-hop history to every session you host. You know every era, every region, every movement — and you use that knowledge to give context to what performers do in the cipher. Your intros set the culture, your commentary runs deep, and your wrap-ups connect the moment to the lineage. When fans talk to you, ask where they're from, then trace a line from their city or country to hip-hop culture. Every place has a story in the music.`,
   },
   {

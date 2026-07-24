@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import QuickLiveButton from "@/components/live/QuickLiveButton";
+import { MiniEventCreator } from "@/components/live/MiniEventCreator";
 
 const C = {
   bg: "#050815", panel: "rgba(8,14,38,.95)", card: "rgba(12,20,50,.9)",
@@ -112,9 +114,7 @@ export default function ArtistDashboardPage() {
           <Link href="/artist/upload" style={{ ...btn(), textDecoration: "none" }}>⬆ UPLOAD</Link>
           <Link href="/artist/shows/new" style={{ ...btn(), textDecoration: "none" }}>📅 SET UP SHOW</Link>
           <Link href="/hub/sponsor" style={{ ...btn(), textDecoration: "none" }}>💼 SPONSOR</Link>
-          <button onClick={() => setIsLive(l => !l)} style={{ ...btn(isLive ? C.red : C.green, isLive ? C.red : C.green), fontWeight: 900 }}>
-            {isLive ? "🔴 ON AIR — CLICK TO END" : "🔴 GO LIVE"}
-          </button>
+          <QuickLiveButton displayName={userName} size="sm" label="🔴 GO LIVE" />
         </div>
       </div>
 
@@ -261,7 +261,7 @@ export default function ArtistDashboardPage() {
                 {[["🎚", "SOUND CHECK"], ["📋", "EDIT SET LIST"], ["🎁", "PLAN GIVEAWAY"]].map(([em, label]) => (
                   <button key={label} style={{ ...btn(C.cyan, C.cyan), flex: 1, padding: 8, fontSize: 9 }}>{em} {label}</button>
                 ))}
-                <button onClick={() => setIsLive(true)} style={{ ...btn(C.red, C.red), flex: 1, padding: 8, fontSize: 9, fontWeight: 900 }}>🔴 GO LIVE NOW</button>
+                <QuickLiveButton displayName={userName} size="sm" label="🔴 GO LIVE NOW" accentColor={C.red} />
               </div>
             </div>
           )}
@@ -294,6 +294,16 @@ export default function ArtistDashboardPage() {
             <div style={{ display: "flex", justifyContent: "space-between", marginTop: 2 }}>
               {DAYS.map(d => <span key={d} style={{ fontSize: 6, color: C.dim }}>{d}</span>)}
             </div>
+          </div>
+
+          {/* Mini Event Creator — one-click instant events */}
+          <div style={{ ...panel }}>
+            <MiniEventCreator
+              displayName={userName}
+              layout="compact"
+              show={["battle", "cypher", "challenge", "concert", "release-party"]}
+              style={{ gap: 6 }}
+            />
           </div>
         </div>
 
