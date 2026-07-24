@@ -48,18 +48,43 @@ export default function CrownRankingsPage() {
   const [tab, setTab] = useState<"global" | "genre" | "rising">("global");
   const [tick, setTick] = useState(0);
 
-  // Seed contenders from data adapters
+  // Seed contenders from live database API
   useEffect(() => {
-    const top = getTop10();
-    const angles = buildOrbitPositions(top.length);
-    const seeded = top.map((e, i) =>
-      makeContender(e.name, e.name, e.score, "", angles[i])
-    );
-    const withHolder = seeded.map((c) => ({
-      ...c,
-      isCurrentCrown: resolveCrownHolder(seeded)?.performerId === c.performerId,
-    }));
-    setContenders(withHolder);
+    fetch("/api/competition/leaderboard?type=elo&limit=10")
+      .then((res) => res.json())
+      .then((resData) => {
+        const top = resData.success && resData.leaderboard?.length > 0
+          ? resData.leaderboard
+          : getTop10().map((e) => ({
+              userId: e.name.toLowerCase(),
+              name: e.name,
+              skillRating: e.score,
+              genre: e.genre,
+              tier: e.badge,
+            }));
+
+        const angles = buildOrbitPositions(top.length);
+        const seeded = top.map((e: any, i: number) =>
+          makeContender(e.userId, e.name, e.skillRating ?? e.score, e.genre ?? "", angles[i])
+        );
+        const withHolder = seeded.map((c: any) => ({
+          ...c,
+          isCurrentCrown: resolveCrownHolder(seeded)?.performerId === c.performerId,
+        }));
+        setContenders(withHolder);
+      })
+      .catch(() => {
+        const top = getTop10();
+        const angles = buildOrbitPositions(top.length);
+        const seeded = top.map((e: any, i: number) =>
+          makeContender(e.name, e.name, e.score, "", angles[i])
+        );
+        const withHolder = seeded.map((c: any) => ({
+          ...c,
+          isCurrentCrown: resolveCrownHolder(seeded)?.performerId === c.performerId,
+        }));
+        setContenders(withHolder);
+      });
   }, []);
 
   // Live vote simulation every 4s

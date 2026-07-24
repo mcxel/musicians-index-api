@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { prisma } from "@/lib/prisma";
 import { getLevelForXP } from "@/lib/xp/xpEngine";
 import { getTmiAuth } from "@/lib/auth/getTmiAuth";
+
+import { LeaderboardService } from "@/lib/competition/LeaderboardService";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Crown Rankings — The Musician's Index" };
@@ -14,58 +15,6 @@ const HOW_XP_WORKS = [
   { action: "Stream a Track",   xp: "+15 XP",      desc: "Per stream listen" },
   { action: "Cypher Drop",      xp: "+100–500 XP", desc: "Scored by judges" },
 ];
-
-type RankedRow = {
-  rank: number;
-  userId: string;
-  name: string;
-  slug: string | null;
-  xp: number;
-  level: number;
-  levelTitle: string;
-  tier: string;
-  avatarUrl: string | null;
-};
-
-async function getRankedPerformers(limit = 25): Promise<RankedRow[]> {
-  try {
-    const rows = await prisma.userStats.findMany({
-      where: { xp: { gt: 0 } },
-      orderBy: { xp: "desc" },
-      take: limit,
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            displayName: true,
-            image: true,
-            tier: true,
-            artistProfile: { select: { stageName: true, slug: true } },
-          },
-        },
-      },
-    });
-
-    return rows.map((r, i) => {
-      const ap = r.user.artistProfile;
-      const lvl = getLevelForXP(r.xp);
-      return {
-        rank:       i + 1,
-        userId:     r.userId,
-        name:       ap?.stageName ?? r.user.displayName ?? r.user.name ?? "Anonymous",
-        slug:       ap?.slug ?? null,
-        xp:         r.xp,
-        level:      lvl.level,
-        levelTitle: lvl.title,
-        tier:       r.user.tier ?? "FREE",
-        avatarUrl:  r.user.image ?? null,
-      };
-    });
-  } catch {
-    return [];
-  }
-}
 
 function rankColor(rank: number): string {
   if (rank === 1) return "#FFD700";
@@ -88,7 +37,7 @@ function tierBadgeColor(tier: string): string {
 
 export default async function RankingsPage() {
   const [performers, auth] = await Promise.all([
-    getRankedPerformers(25),
+    LeaderboardService.getXPLeaderboard(25),
     getTmiAuth(),
   ]);
   const isLoggedIn = auth !== null;

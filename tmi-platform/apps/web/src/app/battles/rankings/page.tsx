@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { CATEGORY_LABELS, CATEGORY_ICONS, type CompetitionCategory, championshipYearlyEngine } from '@/lib/competition/ChampionshipYearlyEngine';
 
 const FIGHT_CARD = [
@@ -33,8 +33,40 @@ const TIER_COLORS: Record<string, string> = {
 type Tab = 'fighters' | 'championships' | 'history';
 
 export default function BattlesRankingsPage() {
+  const [fightCard, setFightCard] = useState(FIGHT_CARD);
   const [tab, setTab] = useState<Tab>('fighters');
   const [hoveredId, setHoveredId] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/competition/leaderboard?type=wins&limit=10")
+      .then((res) => res.json())
+      .then((resData) => {
+        if (resData.success && resData.leaderboard?.length > 0) {
+          const mapped = resData.leaderboard.map((w: any, idx: number) => ({
+            id: w.slug ?? w.userId,
+            name: w.name,
+            wins: w.wins,
+            losses: w.losses,
+            streak: w.streak,
+            xp: w.xp,
+            prize: `$${(w.wins * 150).toLocaleString()}`,
+            genre: w.genre,
+            rank: idx + 1,
+            tier: w.tier.toUpperCase(),
+            color: w.tier.toUpperCase() === "DIAMOND" ? "#00FFFF" : w.tier.toUpperCase() === "GOLD" ? "#FFD700" : w.tier.toUpperCase() === "SILVER" ? "#00FF88" : "#FF2DAA"
+          }));
+          
+          // Pad with fallback fighters to ensure we always have at least 3 for the podium
+          if (mapped.length < 3) {
+            const extra = FIGHT_CARD.slice(mapped.length);
+            setFightCard([...mapped, ...extra.map((e, idx) => ({ ...e, rank: mapped.length + idx + 1 }))]);
+          } else {
+            setFightCard(mapped);
+          }
+        }
+      })
+      .catch((err) => console.error("Failed to fetch live battles rankings:", err));
+  }, []);
 
   return (
     <main style={{ minHeight: '100vh', background: '#050510', color: '#fff', paddingBottom: 80 }}>
@@ -58,26 +90,26 @@ export default function BattlesRankingsPage() {
           <div style={{ background: 'linear-gradient(180deg, rgba(255,215,0,0.08), rgba(5,5,16,0.9))', border: '1px solid rgba(255,215,0,0.25)', borderRadius: 14, padding: '20px 16px', textAlign: 'center' }}>
             <div style={{ fontSize: 9, letterSpacing: '0.2em', color: '#FFD700', fontWeight: 800, marginBottom: 8 }}>2ND</div>
             <div style={{ fontSize: 28, marginBottom: 8 }}>🥈</div>
-            <div style={{ fontSize: 14, fontWeight: 900 }}>{FIGHT_CARD[1]!.name}</div>
-            <div style={{ fontSize: 10, color: '#FFD700', marginTop: 4, fontWeight: 700 }}>{FIGHT_CARD[1]!.wins}W · {FIGHT_CARD[1]!.losses}L</div>
-            <div style={{ fontSize: 11, color: '#FFD700', marginTop: 6, fontWeight: 800 }}>{FIGHT_CARD[1]!.prize}</div>
+            <div style={{ fontSize: 14, fontWeight: 900 }}>{fightCard[1]?.name || 'Challenger'}</div>
+            <div style={{ fontSize: 10, color: '#FFD700', marginTop: 4, fontWeight: 700 }}>{fightCard[1]?.wins ?? 0}W · {fightCard[1]?.losses ?? 0}L</div>
+            <div style={{ fontSize: 11, color: '#FFD700', marginTop: 6, fontWeight: 800 }}>{fightCard[1]?.prize ?? '$0'}</div>
           </div>
           {/* 1st */}
           <div style={{ background: 'linear-gradient(180deg, rgba(0,255,255,0.12), rgba(5,5,16,0.9))', border: '2px solid rgba(0,255,255,0.5)', borderRadius: 16, padding: '28px 20px', textAlign: 'center', position: 'relative' }}>
             <div style={{ position: 'absolute', top: -10, left: '50%', transform: 'translateX(-50%)', background: '#00FFFF', color: '#000', fontSize: 9, fontWeight: 900, padding: '3px 12px', borderRadius: 20, letterSpacing: '0.12em' }}>CHAMPION</div>
             <div style={{ fontSize: 9, letterSpacing: '0.2em', color: '#00FFFF', fontWeight: 800, marginBottom: 8, marginTop: 4 }}>1ST PLACE</div>
             <div style={{ fontSize: 40, marginBottom: 8 }}>👑</div>
-            <div style={{ fontSize: 18, fontWeight: 900 }}>{FIGHT_CARD[0]!.name}</div>
-            <div style={{ fontSize: 11, color: '#00FFFF', marginTop: 4, fontWeight: 700 }}>{FIGHT_CARD[0]!.wins}W · {FIGHT_CARD[0]!.losses}L · {FIGHT_CARD[0]!.streak} streak</div>
-            <div style={{ fontSize: 13, color: '#00FFFF', marginTop: 6, fontWeight: 900 }}>{FIGHT_CARD[0]!.prize}</div>
+            <div style={{ fontSize: 18, fontWeight: 900 }}>{fightCard[0]?.name || 'Leader'}</div>
+            <div style={{ fontSize: 11, color: '#00FFFF', marginTop: 4, fontWeight: 700 }}>{fightCard[0]?.wins ?? 0}W · {fightCard[0]?.losses ?? 0}L · {fightCard[0]?.streak ?? 0} streak</div>
+            <div style={{ fontSize: 13, color: '#00FFFF', marginTop: 6, fontWeight: 900 }}>{fightCard[0]?.prize ?? '$0'}</div>
           </div>
           {/* 3rd */}
           <div style={{ background: 'linear-gradient(180deg, rgba(255,45,170,0.08), rgba(5,5,16,0.9))', border: '1px solid rgba(255,45,170,0.25)', borderRadius: 14, padding: '20px 16px', textAlign: 'center' }}>
             <div style={{ fontSize: 9, letterSpacing: '0.2em', color: '#FF2DAA', fontWeight: 800, marginBottom: 8 }}>3RD</div>
             <div style={{ fontSize: 28, marginBottom: 8 }}>🥉</div>
-            <div style={{ fontSize: 14, fontWeight: 900 }}>{FIGHT_CARD[2]!.name}</div>
-            <div style={{ fontSize: 10, color: '#FF2DAA', marginTop: 4, fontWeight: 700 }}>{FIGHT_CARD[2]!.wins}W · {FIGHT_CARD[2]!.losses}L</div>
-            <div style={{ fontSize: 11, color: '#FF2DAA', marginTop: 6, fontWeight: 800 }}>{FIGHT_CARD[2]!.prize}</div>
+            <div style={{ fontSize: 14, fontWeight: 900 }}>{fightCard[2]?.name || 'Challenger'}</div>
+            <div style={{ fontSize: 10, color: '#FF2DAA', marginTop: 4, fontWeight: 700 }}>{fightCard[2]?.wins ?? 0}W · {fightCard[2]?.losses ?? 0}L</div>
+            <div style={{ fontSize: 11, color: '#FF2DAA', marginTop: 6, fontWeight: 800 }}>{fightCard[2]?.prize ?? '$0'}</div>
           </div>
         </div>
 
@@ -94,7 +126,7 @@ export default function BattlesRankingsPage() {
         {/* FIGHTERS tab */}
         {tab === 'fighters' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {FIGHT_CARD.map((fighter) => (
+            {fightCard.map((fighter) => (
               <Link key={fighter.id} href={`/artists/${fighter.id}`} style={{ textDecoration: 'none', color: '#fff' }}
                 onMouseEnter={() => setHoveredId(fighter.id)} onMouseLeave={() => setHoveredId(null)}>
                 <div style={{ display: 'grid', gridTemplateColumns: '40px 1fr auto', gap: 16, alignItems: 'center', padding: '14px 20px', background: hoveredId === fighter.id ? `${fighter.color}0a` : 'rgba(255,255,255,0.02)', border: `1px solid ${hoveredId === fighter.id ? fighter.color + '35' : 'rgba(255,255,255,0.06)'}`, borderRadius: 10, transition: 'all 0.15s' }}>

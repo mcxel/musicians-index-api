@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { getCrownRankRuntime } from "@/lib/home/CrownRankRuntime";
 import { createLeague, getActiveLeague, getLeaderboard } from "@/lib/trophy/QuarterlyLeagueEngine";
 import { getCrownHistory } from "@/lib/trophy/AnnualCrownEngine";
-import prisma from "@/lib/prisma";
+import { prisma } from "@/lib/prisma";
+import { LeaderboardService } from "@/lib/competition/LeaderboardService";
 
 export const dynamic = "force-dynamic";
 
@@ -27,11 +27,13 @@ const GENRE_POOL = [
 async function getLiveMembers() {
   try {
     const users = await prisma.user.findMany({
+      where: { isQA: false },
       take: 20,
       orderBy: { userCreatedAt: "desc" },
       include: {
         userProfile:   { select: { avatarUrl: true } },
         artistProfile: { select: { genres: true } },
+        userStats:     { select: { xp: true } },
       },
     });
     return users.map((u, i) => ({
@@ -40,7 +42,7 @@ async function getLiveMembers() {
       avatarUrl: u.userProfile?.avatarUrl ?? null,
       genre: u.artistProfile?.genres?.[0] ?? GENRE_POOL[i % GENRE_POOL.length] ?? "Hip-Hop",
       tier: u.tier ?? "free",
-      score: 1000 + (20 - i) * 37,
+      score: u.userStats?.xp ?? 0,
       route: `/profile/${u.id}`,
       joinedAt: u.userCreatedAt ?? new Date(),
     }));
@@ -50,10 +52,22 @@ async function getLiveMembers() {
 }
 
 export default async function LeaderboardPage() {
-  const [entries, liveMembers] = await Promise.all([
-    Promise.resolve(getCrownRankRuntime(10)),
+  const [rawEntries, liveMembers] = await Promise.all([
+    LeaderboardService.getEloLeaderboard(10),
     getLiveMembers(),
   ]);
+
+  const entries = rawEntries.map(e => ({
+    rank: e.rank,
+    name: e.name,
+    score: e.skillRating,
+    badge: e.tier.toUpperCase() === "DIAMOND" ? "Crown" : e.tier.toUpperCase() === "GOLD" ? "Gold" : e.tier.toUpperCase() === "SILVER" ? "Silver" : "RUBY",
+    delta: 0,
+    movement: "holding" as "rising" | "falling" | "holding",
+    route: `/artists/${e.slug ?? e.userId}`,
+    voteRoute: `/vote/${e.userId}`,
+    genre: e.genre,
+  }));
 
   let activeLeague = getActiveLeague();
   if (!activeLeague) {
