@@ -1,26 +1,40 @@
-# BerntoutGlobal AI Operating System
+# BerntoutGlobal AI Operating System (BGAI-OS)
 
-## 1. Executive Hierarchy
+**Architecture Specification & Governance Framework**
+
+**Document ID:** `BG-ARCH-2026-OS1`
+
+**Path:** `docs/architecture/BerntoutGlobal_AI_Operating_System.md`
+
+**Status:** APPROVED & LOCKED
+
+---
+
+## 1. Executive Hierarchy & Organizational Structure
+
+The BerntoutGlobal AI Operating System implements a multi-agent corporate governance model. Intelligence and authority are decentralized across a strict chain of command, preventing monolithic context bloat and ensuring robust operational oversight.
 
 ```
-BerntoutGlobal LLC (Parent Portfolio)
+BerntoutGlobal Enterprise
 │
-├── Big Ace (Group CEO & Enterprise Intelligence)
+├── Big Ace (Group CEO / Enterprise Intelligence)
 │
-├── The Musician’s Index (TMI Subsidiary)
+├── The Musician’s Index (TMI)
 │   └── Michael Charlie (President & General Manager)
 │
-├── Future Subsidiary A
+├── Future Company A (e.g., Trading Card Division)
 │   └── Company Executive
 │
-└── Future Subsidiary B
+└── Future Company B (e.g., Media Division)
     └── Company Executive
 ```
 
-Within the scope of **The Musician's Index (TMI)**:
+### Departmental Structure Within TMI
+
+Under Michael Charlie, operations are partitioned into functional directorates:
 
 ```
-Michael Charlie (President & General Manager)
+Michael Charlie (TMI GM)
 │
 ├── Finance Director
 ├── Marketing Director
@@ -34,101 +48,215 @@ Michael Charlie (President & General Manager)
 └── Customer Success Director
 ```
 
-> [!NOTE]
-> Entertainment performers, stage hosts, and live announcers (such as Gregory Marcel, Jack O’Brien, Hector Lvanos, DJ Record Ralph, Bebo, Aura, and Tiana) operate strictly within the **Show and Venue Performance Hierarchy**, separate from the corporate executive command lines.
+> **Note on Stage & Entertainment Roles:** Gregory Marcel (Main Stage Host), Jack O’Brien & Hector Lvanos (Battle/Cypher Judges), DJ Record Ralph, and platform hosts operate strictly within the **Show & Venue Runtime Hierarchy**, not the corporate executive hierarchy. They consume platform infrastructure and host scripts but do not exercise corporate governance or financial authority.
 
 ---
 
-## 2. Memory Boundaries & Access
+## 2. Partitioned Memory Architecture
 
-To prevent context bloat, token exhaustion, and reasoning cross-contamination, memory is structured in isolated boundaries:
+To optimize context windows, reduce latency, and enforce data security, agents operate within strict memory boundaries. Information is isolated by scope.
 
-* **Enterprise Memory (Big Ace)**: Holds high-level strategy, company registries, parent policy, and weekly executive summaries submitted by GMs. Closed to low-level TMI chat records or event streams.
-* **Company Memory (Michael Charlie)**: Deep TMI-specific operational data, including platform features, match counts, ticket logs, and release history.
-* **Department Memory**: Domain-specific scopes (e.g., `Finance` holds transaction lists; `Moderation` indexes flags; `Customer Success` tracks support tickets).
-* **Specialist Task Memory**: Ephemeral data scopes allocated to single-run worker processes.
-* **Shared Enterprise Knowledge**: Read-only company wiki containing brand guidelines, security policies, API endpoints, and standard templates.
-* **Decision Ledger**: Immutable database record log of settled strategies and actions.
-* **Learning and Playbook Library**: SOPs compiled from measured successes.
-* **Audit History**: Persistent action trail for administrative validation.
+* **Enterprise Memory (Big Ace):** Global strategy, multi-company financials, enterprise risk assessments, cross-company asset allocation, and executive summaries.
+* **Company Memory (Michael Charlie & Company Executives):** TMI operational health, platform metrics, revenue models, release milestones, and department performance logs.
+* **Department Memory (Directors):** Domain-specific state logs (e.g., Finance ledger metrics, Engineering deployment states, Moderation logs).
+* **Specialist Task Memory:** Ephemeral context required for immediate task execution by worker agents.
+* **Shared Enterprise Knowledge (Enterprise Wiki):** Read-only global reference layer containing brand guidelines, security policies, API specifications, and standard operating procedures (SOPs).
+* **Decision Ledger:** Immutable log of all major executive decisions, approvals, and rejections.
+* **Learning & Playbook Library:** Version-controlled operational procedures derived from verified outcomes.
+* **Audit History:** Comprehensive system trace logs required for compliance and security reviews.
 
 ---
 
 ## 3. The Enterprise Constitution
 
-All AI agents deployed under the BerntoutGlobal LLC portfolio must strictly conform to these ten mandatory laws:
+Every AI agent across the BerntoutGlobal ecosystem, regardless of rank, is strictly bound by the following immutable operational laws:
 
-1. **Assigned Authority**: Operate only within your explicit domain scope and role parameters.
-2. **Specialist Delegation**: Delegate actions to the most qualified lower-tier agent rather than bloating parent reasoning loops.
-3. **Audit Records**: Log every meaningful administrative decision and database action with timestamps.
-4. **Knowledge Promotion**: Persist learned insights with metadata (source, confidence, scope, date) before storage.
-5. **Strict Escalation**: Financial transfers, legal executions, security override requests, moderation policy changes, and production server deployments must escalate to human administrators for approval.
-6. **No Self-Modification**: Agents are strictly forbidden from modifying or rewriting their own governing constitution rules.
-7. **Fact Separation**: Clearly separate observed facts, user input logs, and assumptions from execution recommendations.
-8. **Procedure Priority**: Prefer version-controlled skills and Standard Operating Procedures (SOPs) over raw improvisation.
-9. **Outcome Measurement**: Measure task outcomes and retain only evidence-supported improvements in memory.
-10. **Rollback Safety**: Maintain active rollback and recovery paths for all automated actions.
+1. **Authority Bounds:** Operate strictly within assigned corporate and departmental permissions. Never exceed authorization thresholds.
+2. **Delegation Protocol:** Always route complex or out-of-domain tasks to the most qualified specialist agent or director rather than attempting unassisted execution.
+3. **Audit Trail Mandate:** Record all meaningful actions, decisions, and system modifications to the immutable audit log.
+4. **Provenance & Confidence Tracking:** Preserve source references, confidence scores, scope tags, and creation dates for all learned information.
+5. **Mandatory Escalation:** Instantly pause and escalate financial, legal, security, moderation-policy, privilege-elevation, and production-deployment decisions to human oversight or Big Ace.
+6. **Immutable Core Rules:** Never modify, bypass, or silently rewrite governing instructions or constitutional parameters.
+7. **Fact/Assumption Separation:** Explicitly distinguish observed database facts from speculative assumptions and AI-generated recommendations.
+8. **Procedure Adherence:** Prioritize approved version-controlled playbooks and deterministic rules over improvisational code or prompt generation.
+9. **Empirical Learning:** Retain only evidence-supported optimizations in the playbook library; discard unverified heuristics.
+10. **Resilience & Recovery:** Maintain explicit rollback and failure recovery paths for all automated operational changes.
 
 ---
 
 ## 4. Memory Promotion Pipeline
 
-To prevent hallucinated logs or invalid procedures from corrupting the persistent executive knowledge base, memory promotion follows a strict staging pipeline:
+To prevent hallucinated insights or unvetted data from becoming permanent system truth, raw observations must pass through a strict lifecycle pipeline before promotion.
 
-```text
-Observation ──► Candidate Memory ──► Source/Confidence Check ──► Scope/Policy Review ──► Trial Run ──► Measured Outcome ──► Promote/Reject
+```
+Observation
+    ↓
+Candidate Memory
+    ↓
+Source and Confidence Check
+    ↓
+Scope Classification
+    ↓
+Policy Review
+    ↓
+Limited Trial
+    ↓
+Measured Outcome
+    ↓
+Approve, Revise, Reject, or Expire
 ```
 
-Every promoted memory record must contain:
-- `ownerAgentId`: ID of the creating agent.
-- `scope`: Company and department target.
-- `source`: Triggering event or input transcript.
-- `confidence`: Mathematical threshold (0.0 to 1.0).
-- `evidence`: Outcome logs supporting the change.
-- `creationDate`: Unix timestamp.
-- `reviewDate`: Staged expiration or verification date.
-- `approvalState`: Draft, Trial, Promoted, Expired.
-- `supersededVersion`: Link to previous SOP state if applicable.
+### Promotion Metadata Requirements
+
+Every promoted memory entity must contain:
+- **Owner Agent:** ID of the generating agent.
+- **Scope:** Enterprise, Company, or Department level classification.
+- **Source:** Origin file, API, or interaction log.
+- **Confidence Score:** Numerical rating ($0.0 \text{ to } 1.0$).
+- **Evidence:** Empirical logs proving validity.
+- **Timestamps:** Creation date and scheduled review date.
+- **Approval State:** `Draft`, `Under Review`, `Approved`, `Superceded`, or `Rejected`.
+- **Access Classification:** Public, Internal, Restricted, or Confidential.
 
 ---
 
-## 5. Skill & Playbook System
+## 5. Skill and Playbook System
 
-Operational procedures are stored as versioned, deterministic execution blueprints to prevent self-modifying runtime bugs:
+Operational procedures are codified as version-controlled, reusable executable schemas rather than ad-hoc prompts:
 
-```text
-Skill
-├── Purpose (Action description)
-├── Owning Agent Role
-├── Required Permissions (IAM roles)
-├── Inputs (Parameters and types)
-├── Preconditions (System state gates)
-├── Steps (Deterministic execution sequence)
-├── Validation (Post-run checks)
-├── Failure Recovery (Rollback scripts)
-├── Audit Events (Security log hooks)
-└── Version History
+```typescript
+interface OperationalSkill {
+  id: string;
+  purpose: string;
+  owningAgent: string;
+  requiredPermissions: string[];
+  inputs: Record<string, string>;
+  preconditions: string[];
+  steps: ExecutionStep[];
+  validationCriteria: string[];
+  failureRecovery: RecoveryProcedure;
+  auditEvents: string[];
+  versionHistory: VersionRecord[];
+}
 ```
 
 ---
 
 ## 6. Intelligence-Provider Independence
 
-To ensure business continuity, the cognitive architecture relies on hierarchical execution:
+The system architecture decouples core identity, memory, and logic from any single external model provider (such as OpenAI). Intelligence routing follows a resilient fallback ladder:
 
-```text
-Deterministic Rules ──► Memory Retrieval ──► Versioned Skills ──► Local Open-Weight Model ──► Frontier API (e.g. OpenAI) ──► Safe Fallback
+```
+Deterministic Rules
+        ↓
+Memory Retrieval (Vector / RAG)
+        ↓
+Approved Playbook Skills
+        ↓
+Local Open-Weight Model (Primary Compute)
+        ↓
+External Model Provider (Cloud Frontier API - e.g., OpenAI / Claude)
+        ↓
+Safe Deterministic Fallback
 ```
 
-If external networks or API endpoints fail, agents retrieve cached vector memories, run procedural skills, execute local weight queries (e.g., Llama 3 / Mistral), and fall back to safe templates.
+OpenAI and other frontier models serve as powerful reasoning consultants, but they do not house system identity, proprietary memories, corporate policies, or operational procedures.
 
 ---
 
-## 7. Executive Reporting
+## 7. Executive Reporting & Telemetry
 
-At the end of each operational cycle, the TMI President (Michael Charlie) compiles and submits a structured executive summary to the Group CEO (Big Ace) containing:
-- **Financial Status**: Revenue trends, transaction volumes, subscription counts.
-- **Growth Metrics**: Active users, retention rates, creator engagement.
-- **Operational Health**: Room count, system uptime, match queue efficiency.
-- **Incident Logs**: Unresolved errors, security flags, payment failures.
-- **Strategic Requests**: Decisions requiring Group CEO review or parent capital allocation.
+Michael Charlie maintains alignment with Group CEO Big Ace through structured periodic telemetry reporting covering:
+- Revenue and cost trends
+- User growth, retention, and churn metrics
+- Platform stability, uptime, and latency benchmarks
+- Live-event performance and audience concurrency
+- Sponsor and advertiser health metrics
+- Critical incidents and security alerts
+- Unresolved operational risks and pending experiments
+- Material decisions requiring enterprise review
+
+---
+
+## 8. Enterprise Identity System
+
+Every AI agent maintains a permanent, unique corporate identity registration that persists independently of underlying infrastructure, LLM endpoints, or server host targets:
+
+```yaml
+AgentIdentity:
+  id: "BG-CEO-0001"
+  name: "Big Ace"
+  role: "Group CEO / Enterprise Executive"
+  department: "Corporate Operations"
+  reportsTo: "Human Ownership Deck"
+  authorityLevel: "L1 - Enterprise Governance"
+  memoryVaultRef: "enterprise_memory_vault"
+  skillRegistryRef: "enterprise_skills_registry"
+  auditStreamRef: "enterprise_audit_stream"
+  status: "Active"
+```
+
+---
+
+## 9. Enterprise Knowledge Graph
+
+Decentralized departmental data is mapped dynamically to a unified enterprise knowledge graph, allowing corporate executives to trace cross-company logic paths:
+
+```text
+Big Ace (CEO) ──[knows]──► Michael Charlie (GM) ──[manages]──► TMI
+                                                               │
+                                                       ┌───────┴───────┐
+                                                       ▼               ▼
+                                                   Finance         Engineering
+                                                       │               │
+                                                       ▼               ▼
+                                                   Subscribers     Repo Status
+```
+
+---
+
+## 10. Executive Decision Engine
+
+Executive agents do not formulate arbitrary logic gates. They process business situations through a repeatable, explainable operational path:
+
+```text
+Problem/Event ──► Evidence Gathering ──► Alternatives Analysis ──► Risk Evaluation ──► projected Outcome ──► Approved Decision ──► Execution ──► Measurement ──► Playbook Update
+```
+
+---
+
+## 11. Continuous Improvement Loop
+
+Completed processes compile post-mortem reviews to continually optimize standard operating procedures (SOPs) without altering core models:
+
+```text
+Task Finalization ──► Telemetry Recording ──► Performance Audit ──► Lessons Logged ──► SOP Playbook Update ──► Executive Review ──► Wiki Promotion
+```
+
+---
+
+## 12. Enterprise Operating Cycle & AI Runtime Stack
+
+```text
+Layer 7: Human Ownership Deck
+   │
+   ▼
+Layer 6: Enterprise Executive (Big Ace)
+   │
+   ▼
+Layer 5: Company Executives (Michael Charlie)
+   │
+   ▼
+Layer 4: Department Directors (Finance, Engineering, etc.)
+   │
+   ▼
+Layer 3: Specialist Workers (Ad Agent, Frontend Agent)
+   │
+   ▼
+Layer 2: Reusable Skills, SOP Playbooks & Tools
+   │
+   ▼
+Layer 1: Infrastructure (PostgreSQL, APIs, local LLMs, queues)
+```
+
+Each tier enforces isolation, communicating exclusively with adjacent layers. This prevents reasoning pollution and creates a pristine auditing path for compliance.
