@@ -16,12 +16,15 @@
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import type React from "react";
 import { playSound } from "@/lib/sound/playSound";
 import { useWatchSession } from "@/lib/presence/WatchSessionContext";
 import { useSeatSession } from "@/lib/seats/useSeatSession";
 import { getGuestId } from "@/lib/identity/getGuestId";
+import RoomEnvironmentLayer from "@/components/live/RoomEnvironmentLayer";
+import { slugToVenueType } from "@/lib/venues/VenueAssetRegistry";
 
 // ── AudienceScene (loaded only at step 4) ────────────────────────────────────
 type AudienceSceneProps = { view?: string; venue?: number; onReaction?: () => void; occupancyRatio?: number };
@@ -117,21 +120,33 @@ function formatSeatLabel(seatId: string): string {
 interface LobbyEntryFlowProps {
   room: UniversalRoom;
   onClose: () => void;
+  /**
+   * When true, skip preview + access steps and jump directly to seat
+   * assignment. Venue backdrop is shown immediately.
+   * Used by Join buttons that should feel instantaneous (Rule 21).
+   */
+  instant?: boolean;
 }
 
-export function LobbyEntryFlow({ room, onClose }: LobbyEntryFlowProps) {
-  const [step, setStep] = useState<Step>("preview");
+export function LobbyEntryFlow({ room, onClose, instant = false }: LobbyEntryFlowProps) {
+  // instant=true → skip preview/access and jump straight to seat assignment
+  const [step, setStep] = useState<Step>(instant ? "seat" : "preview");
   const [seatRow, setSeatRow] = useState<string | null>(null);
   const [seatId, setSeatId] = useState<string | null>(null);
-  const [occupancyRatio, setOccupancyRatio] = useState(0.08);
+  const [occupancyRatio, setOccupancyRatio] = useState(0);
+  const [showStarBurst, setShowStarBurst] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fillTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const { startWatching } = useWatchSession();
+  const router = useRouter();
   // Phase 3A — Seat Persistence Convergence (2026-06-20): inherited from
   // SeatingMeshEngine's reclaim-on-return capability. Real seat-claim memory
   // across visits, not a new seat system — the canonical /api/live/audience
   // engine already reuses a given seatId, it just was never given one before.
   const seatSession = useSeatSession(room.id, getGuestId());
+
+  // Derive venue type for RoomEnvironmentLayer backdrop
+  const venueType = slugToVenueType(room.id);
 
   // Register the Universal Presence System's watch session the moment the
   // fan commits to entering — this is what lets the mini player bring them
@@ -144,7 +159,11 @@ export function LobbyEntryFlow({ room, onClose }: LobbyEntryFlowProps) {
   // Progressive stadium-fill animation when audience step is active
   useEffect(() => {
     if (step !== "audience") return;
-    setOccupancyRatio(0.08);
+    // Trigger star burst arrival effect
+    setShowStarBurst(true);
+    const burst = setTimeout(() => setShowStarBurst(false), 1200);
+    // Fill 0 → 12% instantly, then +6% every 250ms to 92%
+    setOccupancyRatio(0.12);
     fillTimerRef.current = setInterval(() => {
       setOccupancyRatio(prev => {
         const next = prev + 0.06;
@@ -155,8 +174,19 @@ export function LobbyEntryFlow({ room, onClose }: LobbyEntryFlowProps) {
         return next;
       });
     }, 250);
-    return () => { if (fillTimerRef.current) clearInterval(fillTimerRef.current); };
+    return () => {
+      clearTimeout(burst);
+      if (fillTimerRef.current) clearInterval(fillTimerRef.current);
+    };
   }, [step]);
+
+  // Auto-navigate when "enter" step is reached — no extra click required
+  useEffect(() => {
+    if (step !== "enter") return;
+    const dest = `${room.roomRoute}${room.roomRoute.includes("?") ? "&" : "?"}from=lobby-wall`;
+    const t = setTimeout(() => router.push(dest), 400);
+    return () => clearTimeout(t);
+  }, [step, room.roomRoute, router]);
 
   // Crowd-reaction sound on entering the audience step for concert-type rooms —
   // the anticipation moment right before a performer comes on.
@@ -216,18 +246,32 @@ export function LobbyEntryFlow({ room, onClose }: LobbyEntryFlowProps) {
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
   }, []);
 
+  // When step >= "seat" the entire overlay becomes the venue shell (no black screen)
+  const isVenueMode = step === "seat" || step === "audience" || step === "enter";
+
   const overlay = s({
     position: "fixed", inset: 0, zIndex: 9000,
-    background: "rgba(5,5,16,0.88)",
+    background: isVenueMode ? "transparent" : "rgba(5,5,16,0.88)",
     display: "flex", alignItems: "center", justifyContent: "center",
-    padding: 20,
+    padding: isVenueMode ? 0 : 20,
   });
 
   const panel = s({
     width: "100%", maxWidth: 680,
-    background: "#08091a",
+    ...(isVenueMode ? {
+      position: "absolute" as const,
+      bottom: 0,
+      left: "50%",
+      transform: "translateX(-50%)",
+      borderRadius: "16px 16px 0 0",
+      backdropFilter: "blur(16px)",
+      WebkitBackdropFilter: "blur(16px)",
+      background: "rgba(8,9,26,0.82)",
+    } : {
+      background: "#08091a",
+      borderRadius: 16,
+    }),
     border: `1px solid ${ac}44`,
-    borderRadius: 16,
     overflow: "hidden",
     boxShadow: `0 0 40px ${ac}22`,
   });
@@ -237,8 +281,94 @@ export function LobbyEntryFlow({ room, onClose }: LobbyEntryFlowProps) {
   const stepIdx = STEPS.indexOf(step);
 
   return (
-    <div style={overlay} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div style={panel}>
+    <div style={overlay} onClick={e => { if (!isVenueMode && e.target === e.currentTarget) onClose(); }}>
+
+      {/* ── Venue backdrop (no black screen in venue mode) ── */}
+      {isVenueMode && (
+        <div style={s({ position: "absolute", inset: 0, zIndex: 0 })}>
+          <RoomEnvironmentLayer
+            venueType={venueType}
+            mode="audience"
+            energyLevel={step === "audience" ? 0.8 : 0.45}
+            style={{ width: "100%", height: "100%" }}
+          />
+        </div>
+      )}
+
+      {/* ── Star arrival burst animation ── */}
+      {showStarBurst && (
+        <div style={s({ position: "absolute", inset: 0, zIndex: 5, pointerEvents: "none", overflow: "hidden" })}>
+          <style>{`
+            @keyframes starBurst {
+              0%   { transform: scale(0) rotate(0deg);   opacity: 1; }
+              60%  { transform: scale(1.6) rotate(120deg); opacity: 0.8; }
+              100% { transform: scale(2.8) rotate(240deg); opacity: 0; }
+            }
+            @keyframes starParticle {
+              0%   { transform: translate(0,0) scale(1);   opacity: 1; }
+              100% { transform: translate(var(--dx), var(--dy)) scale(0); opacity: 0; }
+            }
+          `}</style>
+          {/* Central ring */}
+          <div style={s({
+            position: "absolute",
+            top: "50%", left: "50%",
+            width: 120, height: 120,
+            marginLeft: -60, marginTop: -60,
+            borderRadius: "50%",
+            border: `3px solid ${ac}`,
+            boxShadow: `0 0 40px ${ac}, inset 0 0 40px ${ac}44`,
+            animation: "starBurst 1.1s ease-out forwards",
+          })} />
+          {/* Particle rays */}
+          {Array.from({ length: 12 }, (_, i) => {
+            const angle = (i / 12) * 360;
+            const dist = 140 + Math.random() * 60;
+            const dx = Math.round(Math.cos((angle * Math.PI) / 180) * dist);
+            const dy = Math.round(Math.sin((angle * Math.PI) / 180) * dist);
+            return (
+              <div
+                key={i}
+                style={s({
+                  position: "absolute",
+                  top: "50%", left: "50%",
+                  width: 6, height: 6,
+                  marginLeft: -3, marginTop: -3,
+                  borderRadius: "50%",
+                  background: i % 3 === 0 ? ac : i % 3 === 1 ? "#00FFFF" : "#FFD700",
+                  boxShadow: `0 0 8px ${ac}`,
+                  // CSS custom properties for animation direction
+                  ...({ "--dx": `${dx}px`, "--dy": `${dy}px` } as React.CSSProperties),
+                  animation: `starParticle 1s ${i * 0.04}s ease-out forwards`,
+                })}
+              />
+            );
+          })}
+          {/* Avatar arrival glow */}
+          <div style={s({
+            position: "absolute",
+            top: "50%", left: "50%",
+            transform: "translate(-50%, -50%)",
+            fontSize: 48,
+            animation: "starBurst 1.1s ease-out forwards",
+          })}>🎭</div>
+        </div>
+      )}
+
+      {/* ── Card panel (dim in venue mode so venue shows through) ── */}
+      <div style={{
+        ...panel,
+        ...(isVenueMode ? {
+          position: "absolute",
+          bottom: 20,
+          left: "50%",
+          transform: "translateX(-50%)",
+          maxWidth: 480,
+          background: "rgba(5,5,16,0.82)",
+          backdropFilter: "blur(16px)",
+          zIndex: 10,
+        } : {}),
+      }}>
 
         {/* Header */}
         <div style={s({ padding: "14px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid rgba(255,255,255,0.06)" })}>
@@ -361,16 +491,11 @@ export function LobbyEntryFlow({ room, onClose }: LobbyEntryFlowProps) {
 
           {/* ── STEP: ENTERING ── */}
           {step === "enter" && (
-            <Link
-              href={`${room.roomRoute}${room.roomRoute.includes("?") ? "&" : "?"}from=lobby-wall`}
-              style={{ textDecoration: "none" }}
-            >
-              <div style={s({ display: "flex", flexDirection: "column", alignItems: "center", gap: 14, padding: "24px 0", cursor: "pointer" })}>
-                <div style={s({ fontSize: 32 })}>🚪</div>
-                <div style={s({ fontSize: 14, fontWeight: 900, color: "#fff" })}>Entering Room…</div>
-                <div style={s({ fontSize: 11, color: "rgba(255,255,255,0.4)" })}>You will be redirected automatically</div>
-              </div>
-            </Link>
+            <div style={s({ display: "flex", flexDirection: "column", alignItems: "center", gap: 14, padding: "24px 0", cursor: "pointer" })}>
+              <div style={s({ fontSize: 32 })}>🚪</div>
+              <div style={s({ fontSize: 14, fontWeight: 900, color: "#fff" })}>Entering Room…</div>
+              <div style={s({ fontSize: 11, color: "rgba(255,255,255,0.4)" })}>Navigating automatically…</div>
+            </div>
           )}
         </div>
       </div>
@@ -423,7 +548,7 @@ export function UniversalLobbyCard({
 
   return (
     <>
-      {flowOpen && <LobbyEntryFlow room={room} onClose={() => setFlowOpen(false)} />}
+      {flowOpen && <LobbyEntryFlow room={room} onClose={() => setFlowOpen(false)} instant />}
 
       <div style={{ ...cardStyle, ...ribbonStyle }} onClick={() => setFlowOpen(true)}>
         {/* Scan-line overlay for live rooms */}
