@@ -1,6 +1,7 @@
 import { getOpenAIClient } from "@/lib/agents/openaiClient";
 import { getHostById } from "@/lib/hosts/HostIdentityRegistry";
 import type { PAScriptKey } from "@/lib/hosts/hostEngine";
+import { ProviderFallbackRouter } from "@/lib/agents/ProviderFallbackRouter";
 
 // Real event context only - every field here maps to something
 // EventOrchestrator/OrchestratedEvent actually produces today. No invented
@@ -27,13 +28,9 @@ function buildUserPrompt(context: HostLineContext): string {
 
 /**
  * Generates one contextual, in-character line for a host via a real LLM
- * call. Returns null (never a fabricated fallback line) when the host has
+ * call. Returns a fallback line when the host has
  * no personaPrompt, the OpenAI client isn't configured, or the call fails -
- * callers should fall back to hostEngine's static PA_SCRIPTS in that case.
- *
- * Deliberately NOT wired into the polled GET /api/rooms/orchestrated path -
- * that would mean a paid LLM call on every poll. This is an on-demand
- * function for real, deliberate trigger points.
+ * utilizing the robust ProviderFallbackRouter.
  */
 export async function generateHostLine(
   hostId: string,
@@ -42,28 +39,26 @@ export async function generateHostLine(
   const host = getHostById(hostId);
   if (!host?.personaPrompt) return null;
 
-  const client = getOpenAIClient();
-  if (!client) return null;
-
   const systemPrompt = `You are ${host.name}, a host on TMI (The Musician's Index), a live music competition/entertainment platform.
 
 ${host.personaPrompt}
 
 Stay fully in character. Keep the response to one sentence, spoken live to a real audience. Never break character or mention that you are an AI.`;
 
+  const query = buildUserPrompt(context);
+  const fallbackText = `Yo, this is ${host.name} on the mic, ready for the next round!`;
+
   try {
-    const response = await client.chat.completions.create({
-      model: "gpt-4o-mini",
-      max_tokens: 60,
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: buildUserPrompt(context) },
-      ],
-    });
-    return response.choices[0]?.message?.content?.trim() ?? null;
+    const result = await ProviderFallbackRouter.executeQuery(
+      hostId,
+      query,
+      systemPrompt,
+      fallbackText
+    );
+    return result.content;
   } catch (error) {
     console.error(`[HostIntelligenceEngine] generateHostLine failed for ${hostId}:`, error);
-    return null;
+    return fallbackText;
   }
 }
 
@@ -89,9 +84,6 @@ export async function generateHostChatResponse(
   const host = getHostById(hostId);
   if (!host?.personaPrompt) return null;
 
-  const client = getOpenAIClient();
-  if (!client) return null;
-
   const systemPrompt = `You are ${host.name}, a live host on TMI (The Musician's Index) — a live music competition and entertainment platform. You are having a real-time conversation with an audience member.
 
 ${host.personaPrompt}
@@ -104,25 +96,23 @@ Rules for this chat:
 - Never be rude, dismissive, or inappropriate.
 - Keep energy consistent with your character style (see above).`;
 
-  try {
-    const messages: { role: "system" | "user" | "assistant"; content: string }[] = [
-      { role: "system", content: systemPrompt },
-      // Include recent conversation history (last 6 turns max to limit tokens)
-      ...conversationHistory.slice(-6).map((m) => ({
-        role: m.role as "user" | "assistant",
-        content: m.content,
-      })),
-      { role: "user", content: userMessage },
-    ];
+  const contextHistory = conversationHistory
+    .slice(-4)
+    .map((m) => `${m.role === "user" ? "User" : "Host"}: ${m.content}`)
+    .join("\n");
+  const query = contextHistory ? `${contextHistory}\nUser: ${userMessage}` : userMessage;
+  const fallbackText = `Hey there! Great to connect with you. Hope you are enjoying the show!`;
 
-    const response = await client.chat.completions.create({
-      model: "gpt-4o-mini",
-      max_tokens: 120,
-      messages,
-    });
-    return response.choices[0]?.message?.content?.trim() ?? null;
+  try {
+    const result = await ProviderFallbackRouter.executeQuery(
+      hostId,
+      query,
+      systemPrompt,
+      fallbackText
+    );
+    return result.content;
   } catch (error) {
     console.error(`[HostIntelligenceEngine] generateHostChatResponse failed for ${hostId}:`, error);
-    return null;
+    return fallbackText;
   }
 }
