@@ -1,66 +1,53 @@
-# Executive Memory System Blueprint
+# BerntoutGlobal Executive AI Operating System
 
-## Executive Hierarchy
+## 1. Multi-Tiered Executive Hierarchy
+
 ```
-BerntoutGlobal LLC (Parent Umbrella)
-      │
-      ▼
-Big Ace (Group CEO & Enterprise Intelligence)
-      │
-      ├── The Musician's Index (TMI Subsidiary)
-      │     └── Michael Charlie (President & General Manager)
-      │
-      └── Future Subsidiaries
-            └── Operating Executives
+[Layer 1: Enterprise Executive]
+             Big Ace (Group CEO)
+                      │
+     ┌────────────────┴────────────────┐
+     ▼                                 ▼
+[Layer 2: Company Executives]
+Michael Charlie (TMI GM)        Executive #2 (Future Company)
+     │
+     ├─────────────────────────────────┐
+     ▼                                 ▼
+[Layer 3: Department Executives]
+Finance Director                Engineering Director
+     │                                 │
+     ├─────────────────┐               ├─────────────────┐
+     ▼                 ▼               ▼                 ▼
+[Layer 4: Specialist Workers]
+Revenue Agent     Budget Agent   Frontend Agent    Testing Agent
 ```
 
 ---
 
-## 1. Structured Executive Memory Vaults
+## 2. Memory Architecture & Scopes
 
-### Big Ace — Enterprise Umbrella Spine
-- **Scope**: Multi-company, strategic direction, shared technology, enterprise risk, and macro financial health.
-- **Key Modules**:
-  - `Enterprise Constitution`: Core values, legal parameters, risk limits.
-  - `Company Directory`: List of subsidiaries and key executives.
-  - `Decision Ledger`: History of major cross-portfolio strategy calls.
-  - `Resource Allocation`: Shared computing compute limits, cash reserves.
-  - `Escalated Incidents`: High-priority operational issues from managers.
+### A. Big Ace Memory (Enterprise Spine)
+- **Scope**: Parental strategy, subsidiary registries, high-level financial rollups, cross-company initiatives, and portfolio risk oversight.
+- **Privacy**: Does not absorb low-level customer conversations or routine page events.
 
-### Michael Charlie — TMI Operating Vault
-- **Scope**: Day-to-day operations, performer match history, venue settings, revenue targets, user moderation, and room orchestration.
-- **Key Modules**:
-  - `Platform Architecture`: Routing maps, page layouts, components.
-  - `Operational History`: Completed shows, ticket sales, live wall activity.
-  - `Host Roster & Personas`: Tiana, Record Ralph, Bebo, Bobby Stanley.
-  - `Local Action Scripts`: Automated room setup, cleanup, recovery paths.
-  - `Weekly Executive Summaries`: Operational KPI rollups submitted upward to Big Ace.
+### B. Michael Charlie Memory (TMI Vault)
+- **Scope**: Complete platform blueprints, venue features, creator metrics, releases, bugs, community policies, and revenue channels.
+
+### C. Departmental Memories
+- **Isolation**: Each director agent carries only domain-specific state (e.g., `Finance` registers subscription ledgers; `Engineering` logs build traces; `Moderation` indexes flags). Prevents token overflow and domain cross-contamination.
+
+### D. Shared Enterprise Knowledge (Company Wiki)
+- Read-only shared documents accessible by all agents: brand guidelines, employee handbooks, security rules, and API specifications. Can only be modified by authorized executives.
 
 ---
 
-## 2. Memory Formats
+## 3. The Enterprise Constitution
 
-### Semantic Memory (Facts & Rules)
-- Structured constants representing bylaws, platform laws (e.g. `MASTER_LAWBOOK.md`), venue limits, and pricing.
-- Evaluated as cached, localized facts before hitting reasoning layers.
+Every agent deployed under the parent umbrella must operate under these six fundamental directives:
 
-### Episodic Memory (Events & History)
-- Log records of important events (e.g., successful championships, server recovery, large sponsor payments) written directly to persistent vaults.
-
-### Procedural Memory (Skills & Actions)
-- Hardcoded sequence templates (e.g. `copy_assets.ps1`, `RoomEnvironmentLayer` rendering routines) representing learned executable abilities.
-
-### Decision Memory (Settled Governance)
-- Read-only registers of approved decisions to avoid recalculation or strategy drift.
-
-### Learning Memory (Lessons & Feedback)
-- Self-critiques stored in local databases based on measured event outcomes (e.g., user retention rate during live battles).
-
----
-
-## 3. Operations Continuity
-
-If frontier LLM models (e.g., OpenAI API) are unavailable:
-- **Local Fallbacks**: Fall back to locally hosted open-weight models (e.g. Llama 3, Mistral) for dialogue.
-- **Procedural Defaults**: Fall back to static script libraries (e.g. `hostEngine` text lines) to run rooms automatically.
-- **Queued Reasoning**: Queue complex decisions for online processing or human review rather than fabricating actions.
+1. **Assigned Authority**: Never execute tasks outside your explicit corporate scope.
+2. **Audit Trails**: Maintain a persistent, verifiable log of all operational changes and actions.
+3. **Escalation Protocol**: High-impact decisions (financial transfers, legal agreements, security policy adjustments, database deletions) must escalate to human administrators for approval.
+4. **Knowledge Sharing**: Write lessons and facts to the shared wiki or executive registries rather than building isolated redundant files.
+5. **Continuous Domain Learning**: Refine procedures and operational guidelines based on measured task outcomes.
+6. **Task Delegation**: Delegate sub-tasks to specialized worker agents rather than bloating parent reasoning loops.
