@@ -12,6 +12,7 @@ import type { Friend as FriendType } from "@/components/social/FriendsList";
 import DesktopAtmosphereRails from '@/components/home/DesktopAtmosphereRails';
 import AudienceScene from "@/components/live/AudienceScene";
 import MasterControlDock from "@/components/shell/MasterControlDock";
+import ProfileQuickPanel from "@/components/profile/ProfileQuickPanel";
 
 interface FeaturedLive {
   name: string;
@@ -53,6 +54,7 @@ export default function FanHQShell({ fanId, fanDisplayName: _fanDisplayName }: R
   } | null>(null);
   const [showInventoryPanel, setShowInventoryPanel] = useState(true);
   const [showMemoryWallPanel, setShowMemoryWallPanel] = useState(true);
+  const [showProfilePanel, setShowProfilePanel] = useState(false);
 
   // Mobile responsive state
   const [isMobile, setIsMobile] = useState(false);
@@ -193,9 +195,13 @@ export default function FanHQShell({ fanId, fanDisplayName: _fanDisplayName }: R
               <span>✉</span>
               <span style={{ position: "absolute", top: -3, right: -5, background: "#FF4444", color: "#fff", fontSize: 7, fontWeight: 900, borderRadius: "50%", width: 11, height: 11, display: "flex", alignItems: "center", justifyContent: "center" }}>12</span>
             </Link>
-            <Link href={`/profile/fan/${fanId}`} style={{ textDecoration: "none" }}>
+            <button
+              onClick={() => setShowProfilePanel(true)}
+              aria-label="Open profile menu"
+              style={{ background: "none", border: "none", padding: 0, cursor: "pointer" }}
+            >
               <div style={{ width: 28, height: 28, borderRadius: "50%", background: "linear-gradient(135deg,#5b217a,#301042)", border: "1.5px solid #FF2DAA", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13 }}>👤</div>
-            </Link>
+            </button>
           </div>
         </div>
 
@@ -1328,6 +1334,17 @@ export default function FanHQShell({ fanId, fanDisplayName: _fanDisplayName }: R
         // "watch a room" target instead of actually going live. /live/go
         // is the real, existing broadcast-start entry point.
         onEnterStage={() => router.push("/live/go")}
+      />
+
+      {/* ── Profile Quick Panel ─────────────────────────────────────────────
+          Slide-up modal triggered by profile icon tap. Replaces full-page
+          navigation to /profile/fan/[id] (Rule 14: real destination per tap). */}
+      <ProfileQuickPanel
+        fanId={fanId}
+        open={showProfilePanel}
+        onClose={() => setShowProfilePanel(false)}
+        onOpenInventory={() => setShowInventoryPanel(true)}
+        onOpenMemoryWall={() => setShowMemoryWallPanel(true)}
       />
     </div>
   );
