@@ -40,6 +40,7 @@ export default function GoLiveStudio() {
 
   const [broadcastState, setBroadcastState] = useState<BroadcastState>('preview');
   const [cameraError,    setCameraError]    = useState('');
+  const [cameraReady,    setCameraReady]    = useState(false);
   const [displayName,    setDisplayName]    = useState('');
   const [genre,          setGenre]          = useState('Hip-Hop');
   const [eventMode,      setEventMode]      = useState<EventMode>('LIVE_GENERAL');
@@ -68,6 +69,7 @@ export default function GoLiveStudio() {
         });
         streamRef.current = stream;
         if (videoRef.current) videoRef.current.srcObject = stream;
+        setCameraReady(true);
       } catch (err) {
         setCameraError(
           err instanceof Error && err.name === 'NotAllowedError'
@@ -189,20 +191,29 @@ export default function GoLiveStudio() {
         credentials: 'include',
       });
       if (roomRes.ok) {
-        const roomData = await roomRes.json() as { roomId: string; roomUrl: string; token: string };
-        resolvedRoomId = roomData.roomId;
-        setDailyRoomId(roomData.roomId);
+        const roomData = await roomRes.json() as { roomId?: string; roomUrl?: string; token?: string };
 
-        // Join as host — headless call object (no embedded iframe)
-        const { default: DailyIframe } = await import('@daily-co/daily-js');
-        const call = DailyIframe.createCallObject({ videoSource: true, audioSource: true });
-        dailyCallRef.current = call;
+        // `roomRes.ok` only proves the HTTP call succeeded, not that the
+        // body actually has a usable room - a 200 with a malformed/empty
+        // body would otherwise pass roomData.token/roomUrl as undefined
+        // straight into the Daily.co SDK's call.join().
+        if (roomData.roomId && roomData.roomUrl && roomData.token) {
+          resolvedRoomId = roomData.roomId;
+          setDailyRoomId(roomData.roomId);
 
-        call.on('error', (e) => console.error('[Daily] call error', e));
-        call.on('left-meeting', () => { dailyCallRef.current = null; });
+          // Join as host — headless call object (no embedded iframe)
+          const { default: DailyIframe } = await import('@daily-co/daily-js');
+          const call = DailyIframe.createCallObject({ videoSource: true, audioSource: true });
+          dailyCallRef.current = call;
 
-        await call.join({ url: roomData.roomUrl, token: roomData.token });
-        console.log('[GoLive] Daily.co room joined as host:', roomData.roomId);
+          call.on('error', (e) => console.error('[Daily] call error', e));
+          call.on('left-meeting', () => { dailyCallRef.current = null; });
+
+          await call.join({ url: roomData.roomUrl, token: roomData.token });
+          console.log('[GoLive] Daily.co room joined as host:', roomData.roomId);
+        } else {
+          console.warn('[GoLive] Daily.co room response missing roomId/roomUrl/token — broadcasting registry-only', roomData);
+        }
       } else {
         console.warn('[GoLive] Daily.co room creation failed — broadcasting registry-only');
       }
@@ -309,8 +320,13 @@ export default function GoLiveStudio() {
   const isLive     = broadcastState === 'live';
   const isStarting = broadcastState === 'syncing';
   const isEnding   = broadcastState === 'ending';
-  // Audience / lobby view is visible from camera-on, not just when fully live
-  const showAudience = (camOn || isLive) && broadcastState !== 'ending';
+  // Audience / lobby view is visible from camera-on, not just when fully live -
+  // but only once the camera has actually initialized (cameraReady), not just
+  // because `camOn` (a toggle, defaults true) hasn't been switched off yet.
+  // Mounting the full audience/WebRTC/3D subsystem before any real camera
+  // access happened was the previous bug: every page load mounted it
+  // immediately, regardless of whether the user had done anything yet.
+  const showAudience = ((camOn && cameraReady) || isLive) && broadcastState !== 'ending';
 
   return (
     <div style={{
