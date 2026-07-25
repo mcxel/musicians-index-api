@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 /**
  * DashboardWorkspaceContainer
@@ -118,6 +118,7 @@ export default function DashboardWorkspaceContainer() {
       .catch(() => {});
   }, []);
 
+  const showFan      = ["FAN", "ADMIN", "SUPERADMIN"].includes(sessionRole);
   const showPerformer = ["PERFORMER", "ARTIST", "BAND", "ADMIN", "SUPERADMIN"].includes(
     sessionRole
   );
@@ -132,11 +133,17 @@ export default function DashboardWorkspaceContainer() {
     if (!sessionRole || restored) return;
     setRestored(true);
     const saved = localStorage.getItem(LS_KEY);
-    if (!isValidWorkspace(saved)) return;
-    if (saved === "performer" && !showPerformer) return;
-    if (saved === "admin" && !showAdmin) return;
-    setActive(saved);
-  }, [sessionRole, restored, showPerformer, showAdmin]);
+    if (isValidWorkspace(saved)) {
+      if (saved === "fan"       && !showFan)      { /* fall through to role default */ }
+      else if (saved === "performer" && !showPerformer) { /* fall through */ }
+      else if (saved === "admin"    && !showAdmin)    { /* fall through */ }
+      else { setActive(saved); return; }
+    }
+    // No valid saved value — default to role-appropriate landing
+    if (!showFan && showPerformer) setActive("performer");
+    else if (!showFan && !showPerformer && showAdmin) setActive("admin");
+    // else stay on "fan"
+  }, [sessionRole, restored, showFan, showPerformer, showAdmin]);
 
   // Persist active workspace whenever it changes
   useEffect(() => {
@@ -145,11 +152,12 @@ export default function DashboardWorkspaceContainer() {
 
   const switchWorkspace = useCallback(
     (ws: DashboardWorkspace) => {
+      if (ws === "fan"       && !showFan)      return;
       if (ws === "performer" && !showPerformer) return;
-      if (ws === "admin" && !showAdmin) return;
+      if (ws === "admin"    && !showAdmin)    return;
       setActive(ws);
     },
-    [showPerformer, showAdmin]
+    [showFan, showPerformer, showAdmin]
   );
 
   // Listen for external switch events from TMIWorkspaceSwitcher
@@ -166,7 +174,7 @@ export default function DashboardWorkspaceContainer() {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (!(e.metaKey || e.ctrlKey)) return;
-      if (e.key === "1") {
+      if (e.key === "1" && showFan) {
         e.preventDefault();
         switchWorkspace("fan");
       } else if (e.key === "2" && showPerformer) {
@@ -179,7 +187,7 @@ export default function DashboardWorkspaceContainer() {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [switchWorkspace, showPerformer, showAdmin]);
+  }, [switchWorkspace, showFan, showPerformer, showAdmin]);
 
   // Mobile swipe (left = next workspace, right = previous)
   const touchStartX = useRef<number | null>(null);

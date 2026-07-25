@@ -80,7 +80,7 @@ function AuthForm() {
     let active = true;
     void loadSession().then((s) => {
       if (active && s.authenticated) {
-        router.replace("/onboarding");
+        router.replace("/dashboard");
       }
     });
     return () => { active = false; };
@@ -111,7 +111,7 @@ function AuthForm() {
             window.dispatchEvent(new CustomEvent('tmi:streak', { detail: data.streak }));
           } catch { /* localStorage unavailable */ }
         }
-        window.location.replace("/onboarding");
+        window.location.replace("/dashboard");
       } else if (res.status === 401) {
         setMessage("Incorrect email or password.");
       } else if (res.status === 403) {

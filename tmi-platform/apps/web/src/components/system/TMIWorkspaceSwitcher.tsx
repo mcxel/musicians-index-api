@@ -60,13 +60,14 @@ export default function TMIWorkspaceSwitcher() {
   // Real session role only. Display name is a self-chosen, user-editable
   // signup field - matching on it (e.g. name.includes("marcel")) would let
   // anyone see the Admin tab just by picking that name. Fans/performers
-  // cannot switch to each other's accounts, only administrators can
+  // Role separation: Fan sees only Fan, Performer sees only Performer, Admin sees all.
   // (Marcel Dickens, 2026-07-24).
+  const showFan      = ["FAN", "ADMIN", "SUPERADMIN"].includes(role);
   const showPerformer = ["PERFORMER", "ARTIST", "BAND", "ADMIN", "SUPERADMIN"].includes(role);
   const showAdmin = ["ADMIN", "SUPERADMIN"].includes(role);
 
   const workspaces: WorkspaceEntry[] = [
-    { label: "Fan",      icon: "🎵", path: "/dashboard", wsId: "fan" },
+    ...(showFan       ? [{ label: "Fan",       icon: "🎵", path: "/dashboard", wsId: "fan" as const }] : []),
     ...(showPerformer ? [{ label: "Performer", icon: "🎤", path: "/dashboard", wsId: "performer" as const }] : []),
     ...(showAdmin     ? [{ label: "Admin",     icon: "🛡", path: "/admin/overseer", wsId: "admin" as const }] : []),
   ];

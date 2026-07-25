@@ -397,7 +397,7 @@ function SignupForm() {
                   {selectedRoles.includes("PERFORMER") && (
                     <Link href="/performer/profile" style={{ padding: "10px 18px", fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", background: "rgba(255,255,255,0.06)", color: "#fff", borderRadius: 6, textDecoration: "none", flex: 1, textAlign: "center" }}>MY YOPHO PAGE</Link>
                   )}
-                  <Link href={ROLE_HUB_ROUTE[selectedRoles[0]] ?? "/hub/fan"} style={{ padding: "10px 18px", fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.5)", borderRadius: 6, textDecoration: "none", flex: 1, textAlign: "center" }}>GO TO MY DASHBOARD</Link>
+                  <Link href="/dashboard" style={{ padding: "10px 18px", fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.5)", borderRadius: 6, textDecoration: "none", flex: 1, textAlign: "center" }}>GO TO MY DASHBOARD</Link>
                 </div>
               </div>
             </motion.div>

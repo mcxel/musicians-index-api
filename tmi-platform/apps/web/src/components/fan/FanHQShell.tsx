@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -43,7 +43,7 @@ export default function FanHQShell({ fanId, fanDisplayName: _fanDisplayName }: R
   const router = useRouter();
   const { totalXp, walletCredits, currentLevel } = useGamificationEngine();
   const { stopWatching } = useWatchSession();
-  const { economyState: _economyState } = useTmiSession();
+  const { economyState: _economyState, userName } = useTmiSession();
   const [featuredLive, setFeaturedLive] = useState<FeaturedLive | null>(null);
   const [previewItem, setPreviewItem] = useState<{
     title: string;
@@ -156,7 +156,7 @@ export default function FanHQShell({ fanId, fanDisplayName: _fanDisplayName }: R
       { kind: "action", action: () => setIsBookingOpen(true), icon: "📅", label: "BOOKING", badge: 2, accent: "#FFD700" },
       { kind: "tab",    id: "chat",    icon: "💬", label: "CHAT" },
       { kind: "tab",    id: "friends", icon: "👥", label: "FRIENDS" },
-      { kind: "link",   href: "/hub/fan/avatar", icon: "👤", label: "AVATAR" },
+      { kind: "link",   href: "/avatar",          icon: "👤", label: "AVATAR" },
       { kind: "link",   href: "/yopho",          icon: "🎨", label: "YOPHO" },
     ];
 
@@ -200,7 +200,7 @@ export default function FanHQShell({ fanId, fanDisplayName: _fanDisplayName }: R
               aria-label="Open profile menu"
               style={{ background: "none", border: "none", padding: 0, cursor: "pointer" }}
             >
-              <div style={{ width: 28, height: 28, borderRadius: "50%", background: "linear-gradient(135deg,#5b217a,#301042)", border: "1.5px solid #FF2DAA", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13 }}>👤</div>
+              <div style={{ width: 28, height: 28, borderRadius: "50%", background: "linear-gradient(135deg,#5b217a,#301042)", border: "1.5px solid #FF2DAA", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13 }}>{userName ? userName.charAt(0).toUpperCase() : "👤"}</div>
             </button>
           </div>
         </div>
@@ -302,7 +302,7 @@ export default function FanHQShell({ fanId, fanDisplayName: _fanDisplayName }: R
                   { name: "StarGirl", text: "I sent a gift! 💎🎁" },
                 ].map((msg) => (
                   <div key={msg.name} style={{ display: "flex", gap: 8 }}>
-                    <div style={{ width: 28, height: 28, borderRadius: "50%", background: "rgba(255,255,255,0.1)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, flexShrink: 0 }}>👤</div>
+                    <div style={{ width: 28, height: 28, borderRadius: "50%", background: "rgba(255,255,255,0.1)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, flexShrink: 0 }}>{userName ? userName.charAt(0).toUpperCase() : "👤"}</div>
                     <div>
                       <span style={{ fontSize: 10, fontWeight: 900, color: "#FF8FBE" }}>{msg.name} </span>
                       <span style={{ fontSize: 11, color: "#fff" }}>{msg.text}</span>
@@ -360,7 +360,7 @@ export default function FanHQShell({ fanId, fanDisplayName: _fanDisplayName }: R
                   background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)",
                   borderRadius: 12, textDecoration: "none",
                 }}>
-                  <div style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(255,255,255,0.1)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>👤</div>
+                  <div style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(255,255,255,0.1)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>{userName ? userName.charAt(0).toUpperCase() : "👤"}</div>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: 13, fontWeight: 900, color: "#fff" }}>{fr.name}</div>
                     <div style={{ fontSize: 9, color: fr.isLive ? "#00FF88" : "rgba(255,255,255,0.4)", marginTop: 2 }}>{fr.isLive ? "● LIVE NOW" : "Online"}</div>

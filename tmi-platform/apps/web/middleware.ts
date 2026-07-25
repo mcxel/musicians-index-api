@@ -121,28 +121,7 @@ function isPlaylistSurface(pathname: string): boolean {
 }
 
 function roleDashboardPath(role: string): string {
-  switch (role.toUpperCase()) {
-    case 'ADMIN':
-    case 'STAFF':
-      return '/admin';
-    case 'PERFORMER':
-    case 'ARTIST':
-      return '/hub/performer';
-    case 'FAN':
-      return '/hub/fan';
-    case 'SPONSOR':
-      return '/hub/sponsor';
-    case 'PROMOTER':
-      return '/hub/promoter';
-    case 'ADVERTISER':
-      return '/hub/advertiser';
-    case 'VENUE':
-      return '/hub/venue';
-    case 'WRITER':
-      return '/hub/writer';
-    default:
-      return '/hub/fan';
-  }
+  return '/dashboard';
 }
 
 function resolvePrimaryPathForRoles(userRoles: string[]): string | null {
@@ -179,12 +158,12 @@ export function middleware(req: NextRequest) {
   }
 
   // ── Logged-in landing redirect ──────────────────────────────────────────────
-  // When an authenticated user visits `/`, `/home/1`, or the bare `/home`
-  // path (which is the public sign-up marketing page), send them straight to
-  // their role hub — just like Facebook / YouTube / Instagram do.
+  // When an authenticated user visits `/`, `/lobby`, `/home/1`, or the bare `/home`
+  // path, send them straight to `/dashboard` — just like Facebook / YouTube do.
   // Unauthenticated users still land on the marketing page as before.
-  const isMarketingRoot =
+  const isMarketingOrLobby =
     pathname === '/' ||
+    pathname === '/lobby' ||
     pathname === '/home' ||
     pathname === '/home/1' ||
     pathname === '/home/1-2' ||
@@ -193,14 +172,10 @@ export function middleware(req: NextRequest) {
     pathname === '/home/4' ||
     pathname === '/home/5';
 
-  if (isMarketingRoot) {
+  if (isMarketingOrLobby) {
     const sessionCookie = req.cookies.get('tmi_session')?.value;
     if (sessionCookie) {
-      const userRoles = getUserRoles(req);
-      const hubPath = resolvePrimaryPathForRoles(userRoles);
-      if (hubPath) {
-        return NextResponse.redirect(new URL(hubPath, req.url), 307);
-      }
+      return NextResponse.redirect(new URL('/dashboard', req.url), 307);
     }
   }
   // ────────────────────────────────────────────────────────────────────────────
@@ -292,16 +267,15 @@ export function middleware(req: NextRequest) {
   }
 
   const LEGACY_REDIRECTS: Record<string, string> = {
-    '/dashboard/fan': '/hub/fan',
-    '/dashboard/performer': '/hub/performer',
-    '/dashboard/artist': '/hub/performer',
-    '/dashboard/producer': '/hub/producer',
-    '/dashboard/sponsor': '/hub/sponsor',
-    '/dashboard/advertiser': '/hub/advertiser',
-    '/dashboard/venue': '/hub/venue',
-    '/dashboard/writer': '/hub/writer',
-    '/dashboard/promoter': '/hub/promoter',
-    '/dashboard': '/hub/fan',
+    '/dashboard/fan': '/dashboard',
+    '/dashboard/performer': '/dashboard',
+    '/dashboard/artist': '/dashboard',
+    '/dashboard/producer': '/dashboard',
+    '/dashboard/sponsor': '/dashboard',
+    '/dashboard/advertiser': '/dashboard',
+    '/dashboard/venue': '/dashboard',
+    '/dashboard/writer': '/dashboard',
+    '/dashboard/promoter': '/dashboard',
     '/fan/theater': '/hub/fan',
     '/fan/dashboard': '/hub/fan',
   };
