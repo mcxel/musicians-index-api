@@ -154,19 +154,19 @@ export const WIDGET_REGISTRY: Record<string, WidgetDefinition> = {
     id: "broadcast_controls",
     displayName: "Broadcast Controls",
     layer: "panel",
-    requiredForCategories: ["LIVE_SHOWCASE"],
+    requiredForCategories: ["LIVE_SHOWCASE", "STAGE_SHOW"],
   },
   stream_status: {
     id: "stream_status",
     displayName: "Stream Status HUD",
     layer: "hud",
-    requiredForCategories: ["LIVE_SHOWCASE"],
+    requiredForCategories: ["LIVE_SHOWCASE", "STAGE_SHOW"],
   },
   show_timer: {
     id: "show_timer",
     displayName: "Show Timer",
     layer: "hud",
-    requiredForCategories: ["LIVE_SHOWCASE"],
+    requiredForCategories: ["LIVE_SHOWCASE", "STAGE_SHOW"],
   },
 
   // Audience group

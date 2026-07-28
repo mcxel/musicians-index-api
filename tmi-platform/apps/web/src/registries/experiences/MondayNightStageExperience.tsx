@@ -3,7 +3,8 @@
 /**
  * MondayNightStageExperience — Broadcast Showcase Profile (Phase 4 Pass 4.5).
  *
- * Classification: LIVE_SHOWCASE (not a Competition Profile).
+ * Classification: Broadcast Showcase / STAGE_SHOW (ExperienceRegistry).
+ * LIVE_SHOWCASE remains an allowed RoleRegistry category alias.
  * This is the EOS module for Monday Night Stage — a weekly flagship live
  * showcase where performers entertain a live audience, receive real-time
  * reactions, and get discovered by fans, promoters, and industry professionals.
