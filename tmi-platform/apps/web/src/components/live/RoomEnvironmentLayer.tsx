@@ -62,7 +62,7 @@ export default function RoomEnvironmentLayer({
   className = "",
   style,
 }: RoomEnvironmentLayerProps) {
-  const asset = getVenueAsset(venueType);
+  const asset = getVenueAsset(venueType) ?? getVenueAsset("concert");
   
   if (!asset) {
     return (
@@ -72,7 +72,7 @@ export default function RoomEnvironmentLayer({
     );
   }
 
-  // Select correct video based on mode
+  // Select correct video based on mode (optional fields — never crash on missing views)
   const videoUrl =
     mode === "audience" && asset.audienceViewVideoUrl
       ? asset.audienceViewVideoUrl

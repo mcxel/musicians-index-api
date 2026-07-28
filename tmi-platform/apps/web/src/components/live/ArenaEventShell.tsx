@@ -203,8 +203,10 @@ export default function ArenaEventShell({
         )}
       </div>
 
-      {/* ── Hero overlay sits above the renderer's own AudienceScene ── */}
-      {showHeroes && (
+      {/* ── Hero overlay sits above the renderer's own AudienceScene ──
+           Skip when EOS suppressPresentation — ExperienceWidgetLayer owns HUD,
+           and R3F PropLoader can hard-crash the page in constrained clients. */}
+      {showHeroes && !suppressPresentation && (
         <div style={{ position: "relative" }}>
           <AvatarVenueAnchor venueSlug={venueSlug} venueIndex={venueIndex} />
         </div>

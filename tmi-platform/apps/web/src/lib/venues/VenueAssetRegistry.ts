@@ -544,7 +544,7 @@ export function arenaEventTypeToVenueType(
     challenge:           "challenge",
     "live-show":         "concert",
     "monday-stage":      "monday-night-stage",
-    "deal-or-feud":      "game-show",
+    "deal-or-feud":      "deal-or-feud",
     "lounge":            "lounge",
     "world-dance-party": "world-dance-party",
   };
