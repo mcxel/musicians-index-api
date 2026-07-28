@@ -535,15 +535,18 @@ export function getAllVenueTypes(): VenueType[] {
 
 /** Maps ArenaEventShell event types to VenueType */
 export function arenaEventTypeToVenueType(
-  eventType: "concert" | "battle" | "cypher" | "challenge" | "live-show" | "monday-stage"
+  eventType: "concert" | "battle" | "cypher" | "challenge" | "live-show" | "monday-stage" | "deal-or-feud" | "lounge" | "world-dance-party"
 ): VenueType {
   const map: Record<string, VenueType> = {
-    concert:       "concert",
-    battle:        "battle",
-    cypher:        "cypher",
-    challenge:     "challenge",
-    "live-show":   "concert",
-    "monday-stage": "monday-night-stage",
+    concert:             "concert",
+    battle:              "battle",
+    cypher:              "cypher",
+    challenge:           "challenge",
+    "live-show":         "concert",
+    "monday-stage":      "monday-night-stage",
+    "deal-or-feud":      "game-show",
+    "lounge":            "lounge",
+    "world-dance-party": "world-dance-party",
   };
   return map[eventType] ?? "concert";
 }
