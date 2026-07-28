@@ -9,5 +9,6 @@ export * from "./ThemeRegistry";
 export * from "./DockRegistry";
 export * from "./ExploreExperienceMap";
 export * from "./MembershipRegistry";
+export * from "./AvatarRegistry";
 export * from "./resolveRuntimeManifest";
 export { EXPERIENCE_COMPONENT_REGISTRY, getExperienceComponent } from "../experiences/ExperienceComponentRegistry";

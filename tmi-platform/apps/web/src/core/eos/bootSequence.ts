@@ -5,6 +5,7 @@
 import type { EosLifecycleState, EosValidationResult, RuntimeManifest } from "./types";
 import { validateAllExperiences } from "./RuntimeValidator";
 import { resolveRuntimeManifest } from "@/registries/eos/resolveRuntimeManifest";
+import { assertAvatarRegistryIntegrity } from "@/registries/eos/AvatarRegistry";
 
 export interface BootSequenceResult {
   finalState: EosLifecycleState;
@@ -19,6 +20,16 @@ export function runEosBootSequence(testExperienceId = "test"): BootSequenceResul
 
   try {
     state = "LOAD_REGISTRIES";
+    // Phase 5A: register AvatarRegistry contracts in boot (catalogs + Rule 26 only — no mesh runtime).
+    const avatarIntegrity = assertAvatarRegistryIntegrity();
+    if (!avatarIntegrity.ok) {
+      return {
+        finalState: "CRITICAL_FAILURE",
+        validation: { valid: false, errors: avatarIntegrity.errors, warnings: [] },
+        error: avatarIntegrity.errors.join("; "),
+      };
+    }
+
     state = "VALIDATE";
     const validation = validateAllExperiences();
     if (!validation.valid) {

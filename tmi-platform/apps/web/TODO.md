@@ -74,10 +74,38 @@ Outstanding monorepo `tsc` failures - track separately from EOS milestones:
 - `apps/web/src/app/api/mission-control/route.ts` - missing `@bernout/agent-network`
 - `apps/web/src/app/api/users/search/route.ts` - Prisma field mismatches
 
-### Phase 5 - AvatarRegistry (NEXT — not started)
-**Ready on user signal only.** Do not begin AvatarRegistry / Phase 5 code until explicitly requested.
-- [ ] AvatarRegistry scaffold + wiring (NOT STARTED)
-- [ ] Phase 5 certification (blocked until work begins)
+### Phase 5 - AvatarRegistry
+**Status:** Phase 5A COMPLETE (contracts + boot integrity). Phase 5B mesh runtime IDLE. No mesh/GLB runtime, face-scan pipeline, or Branch A/B shells.
+
+#### Phase 5A — Avatar Identity / AvatarRegistry contracts (COMPLETE)
+- [x] Audit existing avatar registries/types/engines (no new parallel identity systems)
+- [x] EOS `avatarContracts.ts` — EosAvatarIdentity/Profile, Skeleton, AttachmentPoints, AnimationProfile, ClothingCompatibility, PhysicsProfile, FaceScanProfile (schema), VoiceProfile (schema), InventoryLinks, Permissions
+- [x] `registries/eos/AvatarRegistry.ts` — role permissions (Rule 26 FAN-only ownership), skeleton/attachment/animation/physics catalogs, quick_change vs studio_required clothing rules, identity draft factories
+- [x] Barrel exports — `core/eos/index.ts` + `registries/eos/index.ts`
+- [x] Boot glue — `assertAvatarRegistryIntegrity()` called from `bootSequence` LOAD_REGISTRIES (no mesh / no experience behavior change)
+- [x] TypeScript check on touched files (`pnpm exec tsc --noEmit` in apps/web — Phase 5A files clean; pre-existing unrelated monorepo errors remain)
+- [x] Phase 5A certification (contract imports resolve; AvatarRegistry in EOSKernel boot; no runtime avatar engine claimed)
+
+#### Phase 5B — Mesh / AvatarEngine runtime (IDLE — do not start)
+Gate: 5A complete · 5B idle
+
+**Already existed (bridged, not duplicated):**
+- `lib/avatars/UnifiedAvatarRuntime.ts` — AvatarEntity / appearance / kinds
+- `lib/avatars/AvatarSocketSystem.ts` — socket IDs + RIG_SOCKET_MAP
+- `lib/avatar/HeadAttachmentProfile.ts` — neck/scalp/hat collision constants
+- `lib/avatar/avatarInventoryEngine.ts` + `avatarPersistence.ts` — inventory/loadout
+- `systems/avatar/*` — evolution poses/costumes/expressions
+- Prisma `AvatarIdentity` + `AvatarConfig` — persisted fan DNA / bobblehead JSON
+- `lib/hosts/npcAvatarRegistry.ts` — system NPC entities
+- `lib/assets/avatarRegistry.ts` — asset reconstruction map (different purpose)
+- `lib/avatars/AvatarRendererRegistry.ts` — 2D renderer switch (not 3D)
+
+**Deferred to Phase 5B+ (do not start in 5A):**
+- AvatarEngine mesh loader / GLB runtime
+- Face scan / ML / rigging / lip sync (schema exists; pipeline does not)
+- Wiring FaceScanIdentityEngine stubs into production UI (forbidden — Rule 20)
+- Branch A VideoLoungeShell / Branch B WorldDanceShell
+- Full Phase 5 certification of live avatar rendering
 
 ### Phase 6-8 - YoPho, Runtime, Certification (PENDING)
 
