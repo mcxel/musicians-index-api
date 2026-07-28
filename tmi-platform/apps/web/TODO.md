@@ -37,40 +37,49 @@
 - [x] Pass 3.5 — Framer-motion cinema transition + rail collapse
 - [ ] Phase 3 certification — browser verify monitors, cinema toggle, rails, no flicker
 
-### Phase 4 — Experience Engine (IN PROGRESS)
-- [x] Pass 4.1 — EosArenaEventShell layered orchestrator + ExperienceWidgetLayer
-- [x] Pass 4.2 — BattleExperience + ExperienceComponentRegistry + StageLoader mount
-- [x] /battles/live invokes StageLoader → BattleExperience (thunder-dome)
-- [x] Pass 4.3 — CypherExperience + CypherRuntimeProvider + layer-group widgets + /cypher/stage StageLoader mount
-- [x] Pass 4.3 browser certification — `/cypher/stage` PASS (Queue / Mic / Beat / Reactions / Bezel / Venue)
-- [x] Boot unblock — `preloadAssetBundle` + StageLoader LOAD_ASSETS hard timeout (was hanging on missing/slow media)
-- [x] Pass 4.4 — ChallengeExperience + `/challenge/stage` StageLoader mount + browser smoke PASS
-- [x] Pass 4.5 — Monday Night Stage EOS mount + browser cert PASS (`/shows/monday-night-stage`)
-- [x] Pass 4.6 — Deal or Feud EOS mount + browser cert PASS (`/shows/deal-or-feud`)
+### Phase 4 - Experience Engine (LOCKED / ARCHIVED — competition branch Gate 1)
+**Status:** Competition/broadcast runtime certified locally and published on `eos/phase-4-experiences` (skips bloated `89e52633`). Do not reopen Pass 4.1–4.6 for new feature work.
 
-#### Phase 4.3–4.6 Certification Ledger
+- [x] Pass 4.1 - EosArenaEventShell layered orchestrator + ExperienceWidgetLayer
+- [x] Pass 4.2 - BattleExperience + ExperienceComponentRegistry + StageLoader mount
+- [x] /battles/live invokes StageLoader → BattleExperience (thunder-dome)
+- [x] Pass 4.3 - CypherExperience + CypherRuntimeProvider + layer-group widgets + /cypher/stage StageLoader mount
+- [x] Pass 4.3 browser certification - `/cypher/stage` PASS (Queue / Mic / Beat / Reactions / Bezel / Venue)
+- [x] Boot unblock - `preloadAssetBundle` + StageLoader LOAD_ASSETS hard timeout (was hanging on missing/slow media)
+- [x] Pass 4.4 - ChallengeExperience + `/challenge/stage` StageLoader mount + browser smoke PASS
+- [x] Pass 4.5 - Monday Night Stage EOS mount + browser cert PASS (`/shows/monday-night-stage`)
+- [x] Pass 4.6 - Deal or Feud EOS mount + browser cert PASS (`/shows/deal-or-feud`)
+- [x] Gate 1 remote publish - branch `eos/phase-4-experiences` (cherry-picks of 4fe38bbc + 8ec2f725; never 89e52633)
+
+#### Phase 4.3-4.6 Certification Ledger
 | Certification | Status |
 |---|---|
-| EOS (apps/web) TypeScript | ✅ PASS (touched EOS files clean; monorepo hold remains) |
-| Browser Runtime `/cypher/stage` | ✅ PASS — RUNNING + Queue/Mic/Beat/Reactions |
-| Browser Runtime `/challenge/stage` | ✅ PASS — RUNNING + Bezel + Venue + Discovery |
-| Browser Runtime `/shows/monday-night-stage` | ✅ PASS — boot→RUNNING, FlightDeckBezel, BROADCAST CONTROLS, STREAM LIVE, no CRITICAL_FAILURE |
-| Browser Runtime `/shows/deal-or-feud` | ✅ PASS — boot→RUNNING, FlightDeckBezel, PRIZE PANEL, DEAL DOORS, no CRITICAL_FAILURE |
-| Root cause of Cypher stall | ✅ Fixed — LOAD_ASSETS hung on video preload with no timeout |
-| Root cause of Monday role block | ✅ Fixed — RoleRegistry allows LIVE_SHOWCASE + soft-allow via experience.permissions; monday-night-stage category STAGE_SHOW |
-| Root cause of DealOrFeud crash | ✅ Fixed — `arenaEventTypeToVenueType("deal-or-feud")` mapped to nonexistent `"game-show"`; now `"deal-or-feud"`. EOS `suppressPresentation` also skips AvatarVenueAnchor (R3F PropLoader hard-crash). |
-| Monorepo TypeScript | ⚠️ Existing unrelated failures (Repository Certification Hold) |
-| Production Certification | ⏳ Not yet complete |
+| EOS (apps/web) TypeScript | PASS (touched EOS files clean; monorepo hold remains) |
+| Browser Runtime `/cypher/stage` | PASS - RUNNING + Queue/Mic/Beat/Reactions |
+| Browser Runtime `/challenge/stage` | PASS - RUNNING + Bezel + Venue + Discovery |
+| Browser Runtime `/shows/monday-night-stage` | PASS - boot→RUNNING, FlightDeckBezel, BROADCAST CONTROLS, STREAM LIVE, no CRITICAL_FAILURE |
+| Browser Runtime `/shows/deal-or-feud` | PASS - boot→RUNNING, FlightDeckBezel, PRIZE PANEL, DEAL DOORS, no CRITICAL_FAILURE |
+| Root cause of Cypher stall | Fixed - LOAD_ASSETS hung on video preload with no timeout |
+| Root cause of Monday role block | Fixed - RoleRegistry allows LIVE_SHOWCASE + soft-allow via experience.permissions; monday-night-stage category STAGE_SHOW |
+| Root cause of DealOrFeud crash | Fixed - `arenaEventTypeToVenueType("deal-or-feud")` mapped to nonexistent `"game-show"`; now `"deal-or-feud"`. EOS `suppressPresentation` also skips AvatarVenueAnchor (R3F PropLoader hard-crash). |
+| Monorepo TypeScript | Existing unrelated failures (Repository Certification Hold) |
+| Production Certification | Not yet complete (tracked outside Gate 1) |
+
+#### Queued after competition branch (not started)
+- [ ] Branch A - VideoLoungeShell (presence frames) — **QUEUED** (after Phase 4 competition LOCKED)
+- [ ] Branch B - WorldDanceShell (full-body avatars) — **QUEUED** (after Phase 4 competition LOCKED)
 
 #### Repository Certification Hold (does not block EOS)
-Outstanding monorepo `tsc` failures — track separately from EOS milestones:
-- `apps/web/src/app/api/mission-control/route.ts` — missing `@bernout/agent-network`
-- `apps/web/src/app/api/users/search/route.ts` — Prisma field mismatches
-- [ ] Branch A — VideoLoungeShell (presence frames) — **only after competition branch complete**
-- [ ] Branch B — WorldDanceShell (full-body avatars) — **only after competition branch complete**
-- [ ] Phase 4 certification — browser verify on /battles/live
+Outstanding monorepo `tsc` failures - track separately from EOS milestones:
+- `apps/web/src/app/api/mission-control/route.ts` - missing `@bernout/agent-network`
+- `apps/web/src/app/api/users/search/route.ts` - Prisma field mismatches
 
-### Phase 5–8 — Avatar, YoPho, Runtime, Certification (PENDING)
+### Phase 5 - AvatarRegistry (NEXT — not started)
+**Ready on user signal only.** Do not begin AvatarRegistry / Phase 5 code until explicitly requested.
+- [ ] AvatarRegistry scaffold + wiring (NOT STARTED)
+- [ ] Phase 5 certification (blocked until work begins)
+
+### Phase 6-8 - YoPho, Runtime, Certification (PENDING)
 
 ---
 
