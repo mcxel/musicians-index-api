@@ -57,36 +57,48 @@ export type ArenaEventType =
   | "cypher"
   | "challenge"
   | "live-show"
-  | "monday-stage";
+  | "monday-stage"
+  | "deal-or-feud"
+  | "lounge"
+  | "world-dance-party";
 
 export type ArenaLiveState = "soon" | "live" | "ended";
 
 const VENUE_MAP: Record<ArenaEventType, VenueIndex> = {
-  "concert":      1,
-  "battle":       1,
-  "cypher":       0,
-  "challenge":    3,
-  "live-show":    0,
-  "monday-stage": 0,
+  "concert":           1,
+  "battle":            1,
+  "cypher":            0,
+  "challenge":         3,
+  "live-show":         0,
+  "monday-stage":      0,
+  "deal-or-feud":      3,
+  "lounge":            0,
+  "world-dance-party": 1,
 };
 
 const EVENT_LABELS: Record<ArenaEventType, string> = {
-  "concert":      "CONCERT ARENA",
-  "battle":       "BATTLE ARENA",
-  "cypher":       "CYPHER CIRCLE",
-  "challenge":    "CHALLENGE STAGE",
-  "live-show":    "LIVE STAGE",
-  "monday-stage": "MONDAY NIGHT STAGE",
+  "concert":           "CONCERT ARENA",
+  "battle":            "BATTLE ARENA",
+  "cypher":            "CYPHER CIRCLE",
+  "challenge":         "CHALLENGE STAGE",
+  "live-show":         "LIVE STAGE",
+  "monday-stage":      "MONDAY NIGHT STAGE",
+  "deal-or-feud":      "DEAL OR FEUD",
+  "lounge":            "VIP LOUNGE",
+  "world-dance-party": "WORLD DANCE PARTY",
 };
 
 // Maps ArenaEventType → venueSlug used by HeroPresenceRegistry
 const VENUE_SLUG_MAP: Record<ArenaEventType, string> = {
-  "concert":      "world-concert",
-  "battle":       "battle-arena",
-  "cypher":       "cypher",
-  "challenge":    "challenge-arena",
-  "live-show":    "world-concert",
-  "monday-stage": "monday-stage",
+  "concert":           "world-concert",
+  "battle":            "battle-arena",
+  "cypher":            "cypher",
+  "challenge":         "challenge-arena",
+  "live-show":         "world-concert",
+  "monday-stage":      "monday-stage",
+  "deal-or-feud":      "deal-or-feud",
+  "lounge":            "vip-lounge",
+  "world-dance-party": "world-dance-party",
 };
 
 // Only battle/cypher/challenge are competition formats with a themeable
@@ -113,6 +125,8 @@ interface ArenaEventShellProps {
   rightParticipant?: CompetitionParticipantView | null;
   crowdEnergy?: number | null;
   winnerParticipantId?: string | null;
+  /** When true, EOS ExperienceWidgetLayer owns presentation — skip duplicate overlay */
+  suppressPresentation?: boolean;
 }
 
 const LIVE_STATE_TO_PHASE: Record<ArenaLiveState, CompetitionPhase> = {
@@ -133,6 +147,7 @@ export default function ArenaEventShell({
   rightParticipant = null,
   crowdEnergy = null,
   winnerParticipantId = null,
+  suppressPresentation = false,
 }: ArenaEventShellProps) {
   const venueIndex = VENUE_MAP[eventType] ?? 0;
   const label = EVENT_LABELS[eventType] ?? "TMI ARENA";
@@ -202,7 +217,7 @@ export default function ArenaEventShell({
            participant lifecycle, or venue routing, all of which stay here. ── */}
       <div style={{ position: "relative" }}>
         <UniversalVenueRenderer roomId={roomId} mode={mode} venueIndex={venueIndex} />
-        {competitionFormat && (
+        {competitionFormat && !suppressPresentation && (
           <CompetitionPresentationLayer
             format={competitionFormat}
             phase={LIVE_STATE_TO_PHASE[liveState]}
