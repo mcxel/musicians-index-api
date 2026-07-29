@@ -36,6 +36,8 @@
 ## PASS 3 — Wire Missing Routes/Buttons/Media/Revenue Paths
 - [ ] Resolve remaining P0/P1 chain wiring gaps from matrix
 - [ ] Eliminate dead-click and bypass paths on critical discovery surfaces
+- [x] Live Lobby Walls (`GlobalLiveDiscoveryOverlay`) — contract + bus + overlay + LOBBY wire (2026-07-29)
+  - [ ] Browser certify empty/join/TV Mode; Private/Invited invite source still FUTURE
 
 ## PASS 4 — Audits
 - [ ] Typecheck/build/runtime audit passes

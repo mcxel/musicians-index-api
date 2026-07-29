@@ -377,6 +377,29 @@ Experience targets still deferred:
 - [ ] Trust & Safety Runtime expansions — **separate track** (do not edit while concurrent)
 - [ ] Photoreal / skeletal avatars — **not claimed**; Ambient LED/stage lights only
 
+### Live Lobby Walls / GlobalLiveDiscoveryOverlay (2026-07-29) — Phase 1 COMPLETE
+**Human name:** Live Lobby Walls · **Code:** `GlobalLiveDiscoveryOverlay`
+
+- [x] `lib/discovery/LiveDiscoveryRecord.ts` — schema + categories + ISO flag helper
+- [x] `lib/discovery/DiscoveryBus.ts` — in-memory bus (no fake rooms)
+- [x] `lib/discovery/DiscoveryPublisher.ts` — publish/sync + poll GET `/api/live/go`
+- [x] `lib/discovery/discoveryVisibility.ts` — public unless authorized friends/invite
+- [x] `lib/discovery/InstantJoinRuntime.ts` — wraps LobbyEntryFlow instant join + gates
+- [x] `components/discovery/LobbyDiscoveryCard.tsx` — neon rim, LIVE, flag, humanViewerCount
+- [x] `components/discovery/GlobalLiveDiscoveryOverlay.tsx` — portal floating panel, rails, TV Mode
+- [x] Wire LOBBY from `MasterControlDock` + `TMIGlobalNav` → open overlay (not full-page landing)
+- [x] Mount overlay in root `layout.tsx`; publish hook from `executeInstantGoLive` when public
+- [ ] Browser certify: Lobby opens overlay; empty honest; tap → InstantJoin; TV Mode optional
+- [ ] Private/Invited rail — auth invite list source (empty honest until invites exist)
+- [ ] SSE/WebSocket discovery channel — **FUTURE** (poll is interim)
+
+**Certification checklist (Rule 20):**
+- [ ] Empty state shows “No live rooms right now” / “No live events in your filters” — never mock Thunder Dome tiles
+- [ ] humanViewerCount never includes support bots / BotCrowdFill
+- [ ] Off-screen cards = poster only; focused may use low-res preview URL; no multi-WebRTC preview
+- [ ] Panel does not auto-move; TV Mode only shuffles highlight when user enables it
+- [ ] Overseer dual monitors not resized; FlightDeckShell not rebuilt
+
 ### Venue Support Presence + Atlas (2026-07-29) — Phase 1 COMPLETE
 **Hard rule:** support bots NEVER count as `humanViewers` / votes / rankings / trending / payouts / ticket attendance / fan achievements.
 

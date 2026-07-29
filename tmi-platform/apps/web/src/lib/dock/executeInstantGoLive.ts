@@ -12,6 +12,7 @@ import {
   type LivePrivacy,
 } from "@/lib/live/LiveDestinationRouter";
 import { launchDockStore } from "@/lib/dock/launchDockStore";
+import { publishLiveRoom } from "@/lib/discovery/DiscoveryPublisher";
 
 export interface InstantGoLiveResult {
   ok: boolean;
@@ -136,6 +137,19 @@ export async function executeInstantGoLive(opts?: {
         launchDockStore.setPhase("error", msg);
         return { ok: false, error: msg };
       }
+      // Client discovery bus — Live Lobby Walls (poll also syncs from GET /api/live/go)
+      publishLiveRoom({
+        roomId: resolvedRoomId,
+        title: `${identity.name} — Live`,
+        hostName: identity.name,
+        hostUserId: identity.userId ?? identity.name,
+        category: destination.category,
+        visibility: "public",
+        humanViewerCount: 0,
+        accentColor: opts?.accentColor ?? "#FF2DAA",
+        joinRoute: `/live/rooms/${encodeURIComponent(resolvedRoomId)}?from=live-lobby-wall`,
+        listed: true,
+      });
     } catch {
       stream?.getTracks().forEach((t) => t.stop());
       launchDockStore.setPhase("error", "Network error. Check your connection.");

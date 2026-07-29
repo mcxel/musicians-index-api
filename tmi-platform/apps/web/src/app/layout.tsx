@@ -32,6 +32,7 @@ import DiscoverySidePanel from "@/components/discovery/DiscoverySidePanel";
 import { WatchSessionProvider } from "@/lib/presence/WatchSessionContext";
 import PersistentMiniPlayer from "@/components/presence/PersistentMiniPlayer";
 import LaunchDock from "@/components/dock/LaunchDock";
+import GlobalLiveDiscoveryOverlay from "@/components/discovery/GlobalLiveDiscoveryOverlay";
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -229,6 +230,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <DiscoverySidePanel />
               <PersistentMiniPlayer />
               <LaunchDock />
+              <GlobalLiveDiscoveryOverlay />
             </WatchSessionProvider>
             </HudRuntimeProvider>
             </MonitorRuntimeProvider>

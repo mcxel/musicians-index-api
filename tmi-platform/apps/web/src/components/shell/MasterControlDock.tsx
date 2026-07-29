@@ -16,6 +16,7 @@ import CameraCaptureOverlay from '../panels/CameraCaptureOverlay';
 import FloatingWorkspacePanel from '@/components/workspace/FloatingWorkspacePanel';
 import RoleGate from '@/components/auth/RoleGate';
 import { useFloatingWorkspace } from '@/lib/workspace/floatingWorkspaceStore';
+import { useLiveDiscoveryOverlay } from '@/lib/discovery/liveDiscoveryOverlayStore';
 import { launchDockStore } from '@/lib/dock/launchDockStore';
 import { executeInstantGoLive } from '@/lib/dock/executeInstantGoLive';
 import { useRouter } from 'next/navigation';
@@ -49,6 +50,7 @@ export default function MasterControlDock({
 
   const { isOpen: workspaceOpen, toggle: toggleWorkspace, open: openWorkspace, setRole } =
     useFloatingWorkspace();
+  const { open: openLiveLobbyWalls } = useLiveDiscoveryOverlay();
 
   const isPerformer = role === 'performer' || role === 'artist';
 
@@ -421,33 +423,60 @@ export default function MasterControlDock({
             </div>
 
             {[
-              { label: 'EXPLORE', icon: '🧭', path: '/explore' },
+              { label: 'EXPLORE', icon: '🧭', path: '/explore' as string | null },
               { label: 'SEARCH', icon: '🔍', path: '/search' },
               { label: 'LIVE NOW', icon: '📹', path: '/live' },
-              { label: 'LOBBY', icon: '👥', path: '/lobby' },
+              { label: 'LOBBY', icon: '👥', path: null },
               { label: 'MESSAGES', icon: '💬', path: '/messages' },
               { label: 'NOTIFICATIONS', icon: '🔔', path: '/notifications' },
-            ].map((nav) => (
-              <a
-                key={nav.label}
-                href={nav.path}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 4,
-                  fontSize: 9,
-                  fontWeight: 800,
-                  letterSpacing: '0.05em',
-                  color: 'rgba(255,255,255,0.8)',
-                  textDecoration: 'none',
-                  position: 'relative',
-                  padding: '2px 4px',
-                }}
-              >
-                <span>{nav.icon}</span>
-                <span>{nav.label}</span>
-              </a>
-            ))}
+            ].map((nav) =>
+              nav.path === null ? (
+                <button
+                  key={nav.label}
+                  type="button"
+                  onClick={() => openLiveLobbyWalls()}
+                  aria-label="Open Live Lobby Walls"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    fontSize: 9,
+                    fontWeight: 800,
+                    letterSpacing: '0.05em',
+                    color: 'rgba(255,255,255,0.8)',
+                    background: 'transparent',
+                    border: 'none',
+                    cursor: 'pointer',
+                    position: 'relative',
+                    padding: '2px 4px',
+                    fontFamily: 'inherit',
+                  }}
+                >
+                  <span>{nav.icon}</span>
+                  <span>{nav.label}</span>
+                </button>
+              ) : (
+                <a
+                  key={nav.label}
+                  href={nav.path}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    fontSize: 9,
+                    fontWeight: 800,
+                    letterSpacing: '0.05em',
+                    color: 'rgba(255,255,255,0.8)',
+                    textDecoration: 'none',
+                    position: 'relative',
+                    padding: '2px 4px',
+                  }}
+                >
+                  <span>{nav.icon}</span>
+                  <span>{nav.label}</span>
+                </a>
+              ),
+            )}
           </div>
         </div>
 

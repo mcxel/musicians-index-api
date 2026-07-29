@@ -5,6 +5,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { NotificationEngine } from '@/lib/notifications/NotificationEngine';
 import { launchDockStore } from '@/lib/dock/launchDockStore';
 import { executeInstantGoLive } from '@/lib/dock/executeInstantGoLive';
+import { liveDiscoveryOverlayStore } from '@/lib/discovery/liveDiscoveryOverlayStore';
 
 interface SessionState {
   authenticated: boolean;
@@ -200,8 +201,14 @@ export default function TMIGlobalNav() {
           return (
             <button
               key={label}
-              title={label}
-              onClick={() => router.push(targetHref)}
+              title={label === 'Lobby' ? 'Live Lobby Walls' : label}
+              onClick={() => {
+                if (label === 'Lobby') {
+                  liveDiscoveryOverlayStore.open();
+                  return;
+                }
+                router.push(targetHref);
+              }}
               className="tmi-dock-item"
               data-active={String(active)}
             >
