@@ -4,3 +4,7 @@ export * from "./monitorAssignment";
 export * from "./programBoard";
 export * from "./RuntimeValidator";
 export * from "./bootSequence";
+export * from "./memoryRegistry";
+export * from "./memoryLedger";
+export * from "./highlightEngine";
+export * from "./memoryBridge";

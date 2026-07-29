@@ -184,7 +184,34 @@ Gate: 5A complete · 5B idle
 - Branch A VideoLoungeShell / Branch B WorldDanceShell
 - Full Phase 5 certification of live avatar rendering
 
-### Phase 6-8 - YoPho, Runtime, Certification (PENDING)
+### Phase 6 - YoPho (PENDING)
+
+### Phase 7 — Memory Engine
+**Status:** Pass 7.1–7.2 scaffold COMPLETE (in-memory). 7.3 Prisma persistence NOT done. 7.4 MemoryWall UI bind NOT fully done (bridge adapter exists; canister still uses media/MemoryWall).
+
+#### Pass 7.1 — Ledger + Registry (DONE)
+- [x] `core/eos/memoryRegistry.ts` — MemoryEventKind, LedgerEntry, MemoryHighlight, importance kind sets, labels/icons
+- [x] `core/eos/memoryLedger.ts` — append-only singleton (`record` / `subscribe` / `getByActor|Room|Experience`)
+- [x] `core/eos/highlightEngine.ts` — promote + subscribeHighlights + FEATURED/LEGENDARY suggestion helpers
+- [x] `core/eos/memoryBridge.ts` — Rule 8 adapter: `getHighlightsForActor` → existing `types/memory.ts` MemoryItem (honest `[]` when empty)
+- [x] Barrel exports via `core/eos/index.ts`
+- [x] Does **not** replace `types/memory.ts`, `components/memory/MemoryWall.tsx`, or `MemoryWallCanister`
+
+#### Pass 7.2 — ArenaEventShell hooks (DONE)
+- [x] `components/live/ArenaEventShell.tsx` emits `WINNER_DECLARED` when `winnerParticipantId` is real
+- [x] Emits `MATCH_COMPLETED` / `CONCERT_COMPLETED` when `liveState === "ended"` (no fake wins)
+- [x] Auto-Director optional: `highlightsToAutoDirectorPreviews()` — FEATURED/LEGENDARY → LIVE_PREVIEW cards with honest copy + real `/live/rooms/{roomId}` only; empty when ledger empty
+
+#### Pass 7.3 — Prisma persistence (NOT DONE)
+- [ ] Persist LedgerEntry to DB; restore on boot
+- [ ] Dedup keys across remounts / multi-tab
+
+#### Pass 7.4 — MemoryWall UI bind (NOT FULLY DONE)
+- [x] Thin bridge `getHighlightsForActor` available for callers
+- [ ] MemoryWall / MemoryWallCanister still load from existing media/API paths — do not break them
+- [ ] Optional empty-safe merge of ledger highlights into wall props (deferred)
+
+### Phase 8 - Runtime Certification (PENDING)
 
 ---
 

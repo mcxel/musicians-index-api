@@ -19,6 +19,7 @@
  */
 
 import dynamic from "next/dynamic";
+import { useEffect } from "react";
 import type { VenueIndex } from "@/components/live/AudienceScene";
 import { useActiveCompetitionTheme, type CompetitionFormat } from "@/lib/competition/ThemeRegistry";
 import CompetitionPresentationLayer from "@/components/competition/presentation/CompetitionPresentationLayer";
@@ -28,6 +29,7 @@ import type {
 } from "@/components/competition/presentation/competitionPresentation.types";
 import RoomEnvironmentLayer from "@/components/live/RoomEnvironmentLayer";
 import { arenaEventTypeToVenueType } from "@/lib/venues/VenueAssetRegistry";
+import { MemoryLedger } from "@/core/eos/memoryLedger";
 
 const UniversalVenueRenderer = dynamic(
   () => import("@/components/live/UniversalVenueRenderer"),
@@ -110,29 +112,35 @@ const COMPETITION_FORMAT_MAP: Partial<Record<ArenaEventType, CompetitionFormat>>
 };
 
 interface ArenaEventShellProps {
-  roomId: string;
-  eventType?: ArenaEventType;
-  mode?: "audience" | "performer";
-  watcherCount?: number;
-  liveState?: ArenaLiveState;
+  readonly roomId: string;
+  readonly eventType?: ArenaEventType;
+  readonly mode?: "audience" | "performer";
+  readonly watcherCount?: number;
+  readonly liveState?: ArenaLiveState;
   // Competition presentation data - optional and honestly empty by default.
   // No caller currently threads real participant/score/timer state through
   // to this component, so these render pending/empty states (Rule 20) until
   // a real data source is wired up, rather than being fabricated here.
-  roundLabel?: string | null;
-  remainingSeconds?: number | null;
-  leftParticipant?: CompetitionParticipantView | null;
-  rightParticipant?: CompetitionParticipantView | null;
-  crowdEnergy?: number | null;
-  winnerParticipantId?: string | null;
+  readonly roundLabel?: string | null;
+  readonly remainingSeconds?: number | null;
+  readonly leftParticipant?: CompetitionParticipantView | null;
+  readonly rightParticipant?: CompetitionParticipantView | null;
+  readonly crowdEnergy?: number | null;
+  readonly winnerParticipantId?: string | null;
   /** When true, EOS ExperienceWidgetLayer owns presentation — skip duplicate overlay */
-  suppressPresentation?: boolean;
+  readonly suppressPresentation?: boolean;
 }
 
 const LIVE_STATE_TO_PHASE: Record<ArenaLiveState, CompetitionPhase> = {
   soon: "WAITING",
   live: "LIVE",
   ended: "RESULTS",
+};
+
+const LIVE_STATE_LABEL: Record<ArenaLiveState, string> = {
+  soon: "SOON",
+  live: "LIVE",
+  ended: "ENDED",
 };
 
 export default function ArenaEventShell({
@@ -166,6 +174,33 @@ export default function ArenaEventShell({
   const venueType = arenaEventTypeToVenueType(eventType);
   const isLive = liveState === "live";
 
+  // ── Phase 7: Memory Ledger hooks ─────────────────────────────────────────
+  // Emit WINNER_DECLARED when a winner surfaces. actorId is the winning
+  // participant id — only fires when a real id arrives (Rule 20).
+  useEffect(() => {
+    if (!winnerParticipantId) return;
+    MemoryLedger.record("WINNER_DECLARED", winnerParticipantId, {
+      roomId,
+      payload: { eventType, liveState },
+    });
+  }, [winnerParticipantId, roomId, eventType, liveState]);
+
+  // Emit CONCERT_COMPLETED / MATCH_COMPLETED when event transitions to ended.
+  useEffect(() => {
+    if (liveState !== "ended") return;
+    const isConcertFormat = eventType === "concert" || eventType === "monday-stage";
+    const kind = isConcertFormat ? "CONCERT_COMPLETED" : "MATCH_COMPLETED";
+    // Prefer real winner as actor; roomId is a stable proxy only when none (Rule 20).
+    const actorId = winnerParticipantId?.trim() || roomId;
+    MemoryLedger.record(kind, actorId, {
+      roomId,
+      payload: { eventType, winnerParticipantId: winnerParticipantId ?? undefined },
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [liveState]);   // intentionally omit eventType/roomId — fires once on end
+
+  const liveStateLabel = LIVE_STATE_LABEL[liveState];
+
   return (
     <RoomEnvironmentLayer
       venueType={venueType}
@@ -188,7 +223,7 @@ export default function ArenaEventShell({
         <span style={{
           fontSize: 9, fontWeight: 900, letterSpacing: "0.28em", color: liveColor,
         }}>
-          {liveState === "soon" ? "SOON" : liveState === "ended" ? "ENDED" : "LIVE"}
+          {liveStateLabel}
         </span>
         <span style={{
           fontSize: 9, fontWeight: 800, letterSpacing: "0.18em",
