@@ -30,7 +30,7 @@ export const OVERSEER_BLUEPRINT_SLOTS: OverseerBlueprintSlot[] = [
     zone: "top",
     codeTarget: "components/admin/CanonOverseerShell.tsx",
     status: "ALIGN",
-    note: "Shell exists; certify gold-filigree header vs blueprint. Never hardcode LIVE viewer vanity.",
+    note: "Shell: scrollable flight deck; dual stacked 16:9 define height. Never hardcode LIVE viewer vanity.",
   },
   {
     id: "top-quick-dock",
@@ -78,7 +78,7 @@ export const OVERSEER_BLUEPRINT_SLOTS: OverseerBlueprintSlot[] = [
     zone: "center",
     codeTarget: "components/admin/overseer/LiveFeedRouter.tsx",
     status: "ALIGN",
-    note: "Router exists; boardroom feed must be real stream or honest empty — no fake 21.1M.",
+    note: "Shell locks dual stacked 16:9 monitors (scrollable page). Feed must be real stream or honest empty — no fake viewer counts.",
   },
   {
     id: "center-live-feed-explorer",
@@ -86,7 +86,7 @@ export const OVERSEER_BLUEPRINT_SLOTS: OverseerBlueprintSlot[] = [
     zone: "center",
     codeTarget: "components/admin/overseer/FeedExplorer.tsx",
     status: "ALIGN",
-    note: "Prefer GlobalLiveSessionRegistry; drop ROOM_SEED vanity in ObservatoryDeck.tsx.",
+    note: "Equal 16:9 stack with TV router. Prefer GlobalLiveSessionRegistry; drop ROOM_SEED vanity.",
   },
   {
     id: "right-sentinel-wall",

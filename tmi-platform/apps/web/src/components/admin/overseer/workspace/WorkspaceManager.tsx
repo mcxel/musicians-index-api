@@ -99,7 +99,7 @@ export default function WorkspaceManager() {
   }, [activeRole]);
 
   return (
-    <div style={{ minHeight: "100vh", background: "#05020a" }}>
+    <div style={{ minHeight: "100vh", height: "auto", background: "#05020a" }}>
       <div
         style={{
           display: "flex",

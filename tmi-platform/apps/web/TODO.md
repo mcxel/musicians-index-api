@@ -321,7 +321,7 @@ Experience targets still deferred:
 
 #### Dual equal monitors (hard UI law)
 - Live HUD: `MonitorSatelliteSystem` defaults to `SPLIT_VIEW` with `gridTemplateColumns: 1fr 1fr` + matching `aspectRatio: 16/9` on MONITOR A + B (`data-equal-dual-monitors`).
-- Overseer: `CanonOverseerShell` center rail uses `gridTemplateRows: 1fr 1fr` when ≥2 center panels; WorkspaceConfigs removed `fixedHeight` skew on dual center panes.
+- Overseer: `CanonOverseerShell` is a **scrollable flight deck** (no `100vh` / `overflow: hidden` squash). Center column = two stacked true `aspect-ratio: 16/9` monitors (width-driven). Side rails stretch to the combined monitor stack and scroll independently. Analytics sits in its own full-width section below with taller min-height / padding.
 
 #### Pass 8 delivered
 - [x] `FloatingWorkspacePanel` + `floatingWorkspaceStore` + module registry (Fan vs Performer Rule 26)
@@ -331,6 +331,7 @@ Experience targets still deferred:
 - [x] Chevron next to HOME in `MasterControlDock`; BottomWorkspaceDrawer chevron opens floating panel (bar stays 70px)
 - [x] Memory / Inventory quick overlays — View All → floating full module
 - [x] Blueprint assets copied under `public/assets/blueprints/`
+- [x] Overseer layout: remove vh lock; dual stacked 16:9 monitors define page height; analytics below fold
 - [ ] Browser certify floating open/close + no monitor reflow
 - [ ] UnifiedInbox UI: replace hardcoded demo rows with `/api/admin/inbox` threads (ALIGN — Rule 20)
 - [ ] Overseer visual certify gold-filigree vs blueprint (ALIGN — later)

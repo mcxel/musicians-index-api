@@ -107,7 +107,7 @@ export default function CanonOverseerShell({ workspace }: CanonOverseerShellProp
           title: "TV SCREEN ROUTER · BOARDROOM LIVE",
           accent: "#00FFFF",
           content: <MediaMatrixEngine />,
-          fixedHeight: 340,
+          flex: 1,
           fullscreenKey: "tv",
         },
         {
@@ -169,7 +169,10 @@ export default function CanonOverseerShell({ workspace }: CanonOverseerShellProp
 
   const leftWidth = leftCollapsed ? 74 : 268;
   const rightWidth = rightCollapsed ? 74 : 268;
-  const bottomHeight = bottomCollapsed ? 44 : 230;
+  // Analytics sits below the monitor stack (own section) — never competes for monitor vh.
+  const bottomMinHeight = bottomCollapsed ? 44 : 320;
+  const MONITOR_GAP = 12;
+  const ANALYTICS_GAP = 14;
 
   const toggleFullscreen = (panelId: string) => {
     setFullscreenPanel((curr) => (curr === panelId ? null : panelId));
@@ -252,43 +255,50 @@ export default function CanonOverseerShell({ workspace }: CanonOverseerShellProp
     const isLeft = rail === "left";
     const isRight = rail === "right";
     const visible = panels.filter((panel) => !isFloatingPanel(panel));
-    // Pass 8 — Observation Deck dual equal monitors: center TV router + feed
-    // explorer share 50/50 height (never a tiny secondary strip).
+    // Pass 8 / layout law — dual equal 16:9 monitors define center height
+    // (width-driven). Never squash into a shared viewport fr row.
     const equalDualCenter = rail === "center" && visible.length >= 2;
+    const isSideRail = rail === "left" || rail === "right";
 
     return (
       <div
         data-col={rail}
         data-equal-dual-monitors={equalDualCenter ? "true" : undefined}
         style={{
-          display: equalDualCenter ? "grid" : "flex",
-          flexDirection: equalDualCenter ? undefined : "column",
-          gridTemplateRows: equalDualCenter ? "1fr 1fr" : undefined,
-          gap: 6,
+          display: "flex",
+          flexDirection: "column",
+          gap: equalDualCenter ? MONITOR_GAP : 6,
+          minWidth: 0,
+          // Side rails stretch to the combined monitor stack height; overflow scrolls inside.
+          alignSelf: "stretch",
+          height: isSideRail ? "100%" : "auto",
           minHeight: 0,
-          height: equalDualCenter ? "100%" : undefined,
-          overflowY: equalDualCenter ? "hidden" : "auto",
+          overflowY: isSideRail ? "auto" : "visible",
+          overflowX: "hidden",
           paddingRight: 2,
         }}
       >
-        {visible.map((panel, index) => {
-          // Only the first two center panes are locked equal; extras stack below.
-          if (equalDualCenter && index > 1) return null;
-          const equalPanel: ShellPanel = equalDualCenter
-            ? { ...panel, fixedHeight: undefined, flex: 1 }
-            : panel;
+        {visible.map((panel) => {
+          if (equalDualCenter) {
+            // All center panes lock to true 16:9 (width-driven). First two are the
+            // Observation Deck dual stack; extras (if any) stack below at same ratio.
+            return renderPanelCanister(
+              { ...panel, fixedHeight: undefined, flex: undefined },
+              false,
+              false,
+              {
+                width: "100%",
+                aspectRatio: "16 / 9",
+                height: "auto",
+                flex: "0 0 auto",
+                minHeight: 0,
+              },
+            );
+          }
           return renderPanelCanister(
-            equalPanel,
+            panel,
             isLeft ? leftCollapsed : isRight ? rightCollapsed : false,
             false,
-            equalDualCenter
-              ? {
-                  flex: "1 1 0",
-                  minHeight: 0,
-                  height: "100%",
-                  aspectRatio: undefined,
-                }
-              : undefined,
           );
         })}
       </div>
@@ -300,7 +310,7 @@ export default function CanonOverseerShell({ workspace }: CanonOverseerShellProp
       data-canon-overseer-shell
       style={{
         minHeight: "100vh",
-        height: "100vh",
+        height: "auto",
         background:
           "radial-gradient(130% 90% at 50% -5%, rgba(92,26,74,0.45) 0%, rgba(28,10,32,0.85) 46%, rgba(7,3,12,1) 100%)",
         border: "14px solid transparent",
@@ -309,11 +319,12 @@ export default function CanonOverseerShell({ workspace }: CanonOverseerShellProp
           "inset 0 0 90px rgba(0,0,0,0.85), inset 0 0 0 1px rgba(255,215,0,0.15), 0 16px 40px rgba(0,0,0,0.8)",
         display: "flex",
         flexDirection: "column",
-        gap: 5,
+        gap: 8,
         padding: 10,
+        paddingBottom: 16,
         fontFamily: "inherit",
         position: "relative",
-        overflow: "hidden",
+        overflow: "visible",
       }}
     >
       {/* Corner Fuchsia Gems */}
@@ -380,7 +391,7 @@ export default function CanonOverseerShell({ workspace }: CanonOverseerShellProp
           
           <div style={{ display: "flex", alignItems: "center", gap: 6, border: "1px solid rgba(255,0,136,0.4)", background: "rgba(255,0,136,0.1)", borderRadius: 6, padding: "2px 8px" }}>
             <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#FF0088", boxShadow: "0 0 6px #FF0088" }} />
-            <span style={{ color: "#FF8FBE", fontSize: 8, fontWeight: 900 }}>LIVE 2.1M</span>
+            <span style={{ color: "#FF8FBE", fontSize: 8, fontWeight: 900 }}>LIVE</span>
           </div>
 
           <span style={{ color: "#FFD700", fontSize: 9, fontWeight: 900, border: "1.5px solid #D4AF37", borderRadius: 4, padding: "1px 6px" }}>
@@ -401,7 +412,7 @@ export default function CanonOverseerShell({ workspace }: CanonOverseerShellProp
         {/* Right: Time & Icons */}
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <span style={{ color: "#fff", fontSize: 11, fontWeight: 900, letterSpacing: "0.05em" }}>
-            11.45 AM EST
+            {clock || "—"}
           </span>
           <div style={{ display: "flex", gap: 6, color: "rgba(255,255,255,0.6)", fontSize: 12 }}>
             <span style={{ cursor: "pointer" }}>🔔</span>
@@ -483,27 +494,30 @@ export default function CanonOverseerShell({ workspace }: CanonOverseerShellProp
         style={{
           position: "relative",
           zIndex: 1,
-          flex: 1,
           display: "flex",
           flexDirection: "column",
-          gap: 5,
-          minHeight: 0,
+          gap: ANALYTICS_GAP,
           minWidth: 0,
-          overflow: "hidden",
+          // Page scrolls — monitors are not compressed into remaining viewport.
+          flex: "0 0 auto",
+          height: "auto",
+          overflow: "visible",
           transition: "all 280ms ease",
         }}
       >
         <div
           data-row="main"
           style={{
-            flex: 1,
-            minHeight: 0,
+            flex: "0 0 auto",
+            height: "auto",
             display: "grid",
             gridTemplateColumns: shellGridTemplate,
-            gap: 6,
+            gridTemplateRows: "auto",
+            alignItems: "stretch",
+            gap: 8,
             border: "1px solid rgba(255,215,0,0.18)",
             borderRadius: 10,
-            padding: 6,
+            padding: 8,
             background: "linear-gradient(180deg, rgba(255,215,0,0.04), rgba(255,255,255,0.02))",
             transition: "all 280ms ease",
           }}
@@ -514,7 +528,7 @@ export default function CanonOverseerShell({ workspace }: CanonOverseerShellProp
               accent="#00FFFF"
               statusLabel="FOCUSED"
               onToggleFullscreen={() => setFullscreenPanel(null)}
-              style={{ minHeight: 0 }}
+              style={{ minHeight: "min(70vh, 720px)", aspectRatio: "16 / 9", width: "100%" }}
             >
               {renderFullscreen()}
             </Canister>
@@ -530,21 +544,26 @@ export default function CanonOverseerShell({ workspace }: CanonOverseerShellProp
         <div
           data-row="bottom"
           style={{
-            height: bottomHeight,
-            minHeight: bottomHeight,
+            flex: "0 0 auto",
+            minHeight: bottomMinHeight,
+            height: bottomCollapsed ? bottomMinHeight : "auto",
             display: "grid",
             gridTemplateColumns: `repeat(${Math.max(1, activeWorkspace.bottom.length)}, minmax(0, 1fr))`,
-            gap: 6,
+            gap: ANALYTICS_GAP,
             border: "1px solid rgba(255,215,0,0.18)",
             borderRadius: 10,
-            padding: 6,
+            padding: bottomCollapsed ? 6 : 16,
             background: "linear-gradient(180deg, rgba(255,45,170,0.03), rgba(255,215,0,0.03))",
             transition: "all 280ms ease",
           }}
         >
           {activeWorkspace.bottom
             .filter((panel) => !isFloatingPanel(panel))
-            .map((panel) => renderPanelCanister(panel, bottomCollapsed, false))}
+            .map((panel) =>
+              renderPanelCanister(panel, bottomCollapsed, false, {
+                minHeight: bottomCollapsed ? undefined : 280,
+              }),
+            )}
         </div>
 
         <div

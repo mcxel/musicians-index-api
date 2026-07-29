@@ -12,7 +12,8 @@ export const WORKSPACE_CONFIGS: Record<WorkspaceDefinition["key"], WorkspaceDefi
       { id: "bot-roster", title: "BOT ROSTER & SUMMON", widget: "bot-roster", accent: "#FF2DAA", flex: 1, requiredPermission: "automation.manage" },
       { id: "unified-inbox", title: "UNIFIED INBOX", widget: "unified-inbox", accent: "#00FFFF" },
     ],
-    // Pass 8: dual equal center monitors (TV router + Live Feed Explorer) — no fixedHeight skew.
+    // Pass 8: dual equal center monitors — true 16:9 stacked (shell locks aspect-ratio;
+    // never fixedHeight / vh-squashed 1fr rows).
     center: [
       {
         id: "live-feed-router",
