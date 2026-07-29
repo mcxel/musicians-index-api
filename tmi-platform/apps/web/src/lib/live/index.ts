@@ -45,6 +45,21 @@ export type {
 export { botCrowdFillEngine } from "./BotCrowdFillEngine";
 export type { BotCrowdConfig } from "./BotCrowdFillEngine";
 
+export {
+  resolveLiveDestination,
+  materializeLiveRoute,
+  loadPersistedLivePrivacy,
+  persistLivePrivacy,
+  loadPersistedPreferredExperience,
+  persistPreferredExperience,
+} from "./LiveDestinationRouter";
+export type {
+  LivePrivacy,
+  LiveDestination,
+  LiveDestinationInput,
+  LiveDestinationFlags,
+} from "./LiveDestinationRouter";
+
 export { billboardPortalEngine } from "./BillboardPortalEngine";
 export type { BillboardPortal } from "./BillboardPortalEngine";
 

@@ -16,6 +16,9 @@ import CameraCaptureOverlay from '../panels/CameraCaptureOverlay';
 import FloatingWorkspacePanel from '@/components/workspace/FloatingWorkspacePanel';
 import RoleGate from '@/components/auth/RoleGate';
 import { useFloatingWorkspace } from '@/lib/workspace/floatingWorkspaceStore';
+import { launchDockStore } from '@/lib/dock/launchDockStore';
+import { executeInstantGoLive } from '@/lib/dock/executeInstantGoLive';
+import { useRouter } from 'next/navigation';
 
 export interface MasterControlDockProps {
   role?: 'fan' | 'performer' | 'artist' | 'admin';
@@ -32,6 +35,7 @@ export default function MasterControlDock({
   onLeaveRoom,
   onEnterStage,
 }: MasterControlDockProps) {
+  const router = useRouter();
   const [isMicActive, setIsMicActive] = useState(true);
   const [isCamActive, setIsCamActive] = useState(true);
   const [isHandRaised, setIsHandRaised] = useState(false);
@@ -317,6 +321,38 @@ export default function MasterControlDock({
               }}
             >
               📷 CAMERA
+            </button>
+
+            <button
+              onClick={() => {
+                const dockRole = isPerformer ? 'PERFORMER' : 'FAN';
+                launchDockStore.setRole(dockRole);
+                if (launchDockStore.isReady()) {
+                  void executeInstantGoLive({ role: dockRole }).then((r) => {
+                    if (r.ok && r.href) router.push(r.href);
+                    else launchDockStore.open();
+                  });
+                  return;
+                }
+                launchDockStore.open();
+              }}
+              style={{
+                padding: '6px 16px',
+                borderRadius: 12,
+                background: 'linear-gradient(135deg,#AA2DFF,#FF2DAA)',
+                border: '1px solid #FF2DAA',
+                color: '#fff',
+                fontSize: 9,
+                fontWeight: 900,
+                letterSpacing: '0.08em',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 5,
+                boxShadow: '0 0 15px rgba(170,45,255,0.5)',
+              }}
+            >
+              🔴 GO LIVE
             </button>
 
             <button

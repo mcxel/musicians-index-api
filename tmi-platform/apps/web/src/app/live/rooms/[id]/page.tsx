@@ -37,6 +37,7 @@ import { InventoryCanister } from "@/components/canisters/InventoryCanister";
 import RoleGate from "@/components/auth/RoleGate";
 import { PrivateLobbyCanister } from "@/components/canisters/PrivateLobbyCanister";
 import ControlCanisterCluster from "@/components/live/ControlCanisterCluster";
+import InstantGoLiveStage from "@/components/live/InstantGoLiveStage";
 
 // Referrers that grant direct room entry (passed via ?from= query param)
 const LOBBY_AUTHORIZED_ORIGINS = new Set([
@@ -49,6 +50,7 @@ const LOBBY_AUTHORIZED_ORIGINS = new Set([
   "billboard",
   "billboard-wall",
   "home-3",
+  "launch-dock",
 ]);
 
 interface LiveRoomPageProps {
@@ -78,6 +80,12 @@ export default async function LiveRoomPage({ params, searchParams }: LiveRoomPag
   const opponentB = typeof sp['opponentB'] === 'string' ? sp['opponentB'] : Array.isArray(sp['opponentB']) ? sp['opponentB'][0] : null;
   const battleAccentA = typeof sp['accentA'] === 'string' ? sp['accentA'] : Array.isArray(sp['accentA']) ? sp['accentA'][0] : undefined;
   const isBattleMode = Boolean(battleId && opponentA && opponentB);
+  const modeParam = typeof sp['mode'] === 'string' ? sp['mode'] : Array.isArray(sp['mode']) ? sp['mode'][0] : '';
+  const autoParam = typeof sp['auto'] === 'string' ? sp['auto'] : Array.isArray(sp['auto']) ? sp['auto'][0] : '';
+  const categoryParam = typeof sp['category'] === 'string' ? sp['category'] : Array.isArray(sp['category']) ? sp['category'][0] : 'live';
+  const privacyParam = typeof sp['privacy'] === 'string' ? sp['privacy'] : Array.isArray(sp['privacy']) ? sp['privacy'][0] : 'public';
+  const isInstantPerformer =
+    modeParam === 'performer' && (autoParam === 'true' || autoParam === '1' || fromValue === 'launch-dock');
   const returnHref = performerSlug && performerSid
     ? `/performers/${encodeURIComponent(performerSlug)}/dashboard?returnedFrom=${encodeURIComponent(id)}&sid=${encodeURIComponent(performerSid)}`
     : fanSlug
@@ -91,13 +99,23 @@ export default async function LiveRoomPage({ params, searchParams }: LiveRoomPag
 
   // ── Audience Entry Gate ────────────────────────────────────────────────────
   // Fans must arrive via the Live Lobby or a Billboard Lobby Wall.
-  // Performers arriving with ?performer= bypass the gate (they're going live).
-  // Direct URLs (bookmarks, social shares, etc.) redirect through the lobby
-  // so the fan is properly seated and registered before entering the room.
-  const isPerformerEntry = Boolean(performerSlug && performerSid);
+  // Performers arriving with ?performer= OR Instant Go Live (?mode=performer&auto=true)
+  // bypass the gate — venue must paint empty immediately (never wait on audience).
+  const isPerformerEntry = Boolean(performerSlug && performerSid) || isInstantPerformer;
   const hasLobbyAuthorization = LOBBY_AUTHORIZED_ORIGINS.has(fromValue) || fromValue.includes('lobby');
   if (!isPerformerEntry && !hasLobbyAuthorization) {
     redirect(`/live/lobby?room=${encodeURIComponent(id)}&seat=1`);
+  }
+
+  // Instant Go Live — full-bleed empty stage + command panel (no marketing chrome)
+  if (isInstantPerformer) {
+    return (
+      <InstantGoLiveStage
+        roomId={id}
+        category={categoryParam || 'live'}
+        privacy={privacyParam || 'public'}
+      />
+    );
   }
   // ──────────────────────────────────────────────────────────────────────────
 

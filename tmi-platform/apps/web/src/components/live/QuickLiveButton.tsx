@@ -4,24 +4,15 @@
  * QuickLiveButton
  *
  * One click. Immediately live. No setup screens.
- *
- * Pipeline (all in background):
- *   1. Request camera + mic (if not already granted)
- *   2. Resolve performer identity from session
- *   3. Create Daily.co room via /api/video/rooms
- *   4. Register in GlobalLiveSessionRegistry via /api/live/go
- *   5. Navigate directly to the live room as performer
- *
- * Context-aware: automatically determines event category from the current
- * page URL, or accepts an explicit eventCategory prop.
- *
- * Rule 21: Quick Live uses the same GoLiveRuntime venue shell as the studio
- * workflow — it just skips the setup wizard entirely.
+ * Uses LiveDestinationRouter + executeInstantGoLive (Launch Dock shared path).
  */
 
 import { useCallback, useState } from "react";
+import type { CSSProperties } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
+import { executeInstantGoLive } from "@/lib/dock/executeInstantGoLive";
+import { loadPersistedLivePrivacy } from "@/lib/live/LiveDestinationRouter";
 
 export type QuickLiveCategory =
   | "live"
@@ -51,23 +42,23 @@ function pathToCategory(pathname: string): QuickLiveCategory {
 }
 
 const CATEGORY_LABELS: Record<QuickLiveCategory, string> = {
-  "live":         "Live Session",
-  "battle":       "Battle",
-  "challenge":    "Challenge",
-  "cypher":       "Cypher",
-  "concert":      "Concert",
-  "dance-party":  "Dance Party",
-  "release-party":"Release Party",
-  "lounge":       "Lounge",
-  "fan-lobby":    "Fan Lobby",
+  live: "Live Session",
+  battle: "Battle",
+  challenge: "Challenge",
+  cypher: "Cypher",
+  concert: "Concert",
+  "dance-party": "Dance Party",
+  "release-party": "Release Party",
+  lounge: "Lounge",
+  "fan-lobby": "Fan Lobby",
 };
 
 const PHASE_LABELS: Record<Phase, string> = {
-  idle:     "⚡ QUICK LIVE",
-  camera:   "📷 OPENING CAMERA…",
+  idle: "⚡ QUICK LIVE",
+  camera: "📷 OPENING CAMERA…",
   creating: "🔴 STARTING BROADCAST…",
-  live:     "✅ GOING LIVE…",
-  error:    "⚠ TRY AGAIN",
+  live: "✅ GOING LIVE…",
+  error: "⚠ TRY AGAIN",
 };
 
 interface QuickLiveButtonProps {
@@ -85,7 +76,6 @@ interface QuickLiveButtonProps {
 export default function QuickLiveButton({
   eventCategory,
   displayName: displayNameProp,
-  genre,
   accentColor = "#FF2DAA",
   size = "md",
   label,
@@ -102,105 +92,27 @@ export default function QuickLiveButton({
     setPhase("camera");
     setErrorMsg("");
 
-    // ── Step 1: Camera + mic ────────────────────────────────────────────────
-    // Non-blocking: if denied, broadcast continues in no-camera mode.
-    let stream: MediaStream | null = null;
-    try {
-      stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-    } catch {
-      // Permission denied or no device — continue without camera
-    }
-
     setPhase("creating");
+    const result = await executeInstantGoLive({
+      role: "PERFORMER",
+      privacy: loadPersistedLivePrivacy(),
+      preferredExperience: category,
+      displayName: displayNameProp,
+      accentColor,
+    });
 
-    // ── Step 2: Resolve performer identity ──────────────────────────────────
-    let resolvedName = displayNameProp ?? "Performer";
-    try {
-      const sess = await fetch("/api/auth/session", {
-        credentials: "include",
-        cache: "no-store",
-      });
-      if (sess.ok) {
-        const data = await sess.json() as {
-          authenticated?: boolean;
-          user?: { name?: string; email?: string; id?: string };
-        };
-        if (data.user?.name) resolvedName = data.user.name;
-        else if (data.user?.email) resolvedName = data.user.email.split("@")[0] ?? resolvedName;
-      }
-    } catch { /* use default */ }
-
-    // ── Step 3: Create Daily.co room ────────────────────────────────────────
-    let resolvedRoomId = `room-${resolvedName.toLowerCase().replace(/\s+/g, "-")}-${Date.now()}`;
-    let dailyRoomUrl: string | null = null;
-    let dailyToken: string | null = null;
-    try {
-      const roomRes = await fetch("/api/video/rooms", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userName: resolvedName }),
-        credentials: "include",
-      });
-      if (roomRes.ok) {
-        const rd = await roomRes.json() as { roomId: string; roomUrl: string; token: string };
-        resolvedRoomId = rd.roomId;
-        dailyRoomUrl = rd.roomUrl;
-        dailyToken = rd.token;
-      }
-    } catch { /* Daily.co unavailable — registry-only mode */ }
-
-    // ── Step 4: Register live session ───────────────────────────────────────
-    try {
-      const res = await fetch("/api/live/go", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          displayName: resolvedName,
-          genre: genre ?? CATEGORY_LABELS[category],
-          category,
-          eventType: `LIVE_${category.toUpperCase().replace(/-/g, "_")}`,
-          roomId: resolvedRoomId,
-          accentColor,
-          ...(dailyRoomUrl ? { roomUrl: dailyRoomUrl } : {}),
-        }),
-        credentials: "include",
-      });
-
-      if (!res.ok) {
-        const err = await res.json() as { error?: string };
-        setPhase("error");
-        setErrorMsg(
-          res.status === 401
-            ? "Sign in to go live."
-            : (err.error ?? "Failed to start broadcast."),
-        );
-        stream?.getTracks().forEach((t) => t.stop());
-        return;
-      }
-    } catch {
+    if (!result.ok || !result.href) {
       setPhase("error");
-      setErrorMsg("Network error. Check your connection.");
-      stream?.getTracks().forEach((t) => t.stop());
+      setErrorMsg(result.error ?? "Failed to start broadcast.");
       return;
     }
 
     setPhase("live");
+    router.push(result.href);
+  }, [phase, category, displayNameProp, accentColor, router]);
 
-    // ── Step 5: Navigate directly to the live room as performer ────────────
-    // Passes all context so GoLiveRuntime can initialize without setup wizard.
-    const params = new URLSearchParams({
-      mode: "performer",
-      category,
-      auto: "true",
-      ...(dailyRoomUrl ? { roomUrl: dailyRoomUrl } : {}),
-      ...(dailyToken ? { token: dailyToken } : {}),
-    });
-    router.push(`/live/rooms/${resolvedRoomId}?${params.toString()}`);
-  }, [phase, category, displayNameProp, genre, accentColor, router]);
-
-  // ── Size presets ────────────────────────────────────────────────────────────
-  const sizeStyle: React.CSSProperties = {
-    sm: { padding: "8px 16px",  fontSize: 9,  borderRadius: 7 },
+  const sizeStyle: CSSProperties = {
+    sm: { padding: "8px 16px", fontSize: 9, borderRadius: 7 },
     md: { padding: "12px 22px", fontSize: 10, borderRadius: 8 },
     lg: { padding: "16px 32px", fontSize: 12, borderRadius: 9 },
   }[size];
@@ -234,7 +146,6 @@ export default function QuickLiveButton({
           overflow: "hidden",
         }}
       >
-        {/* Pulse ring when active */}
         <AnimatePresence>
           {isActive && (
             <motion.span
@@ -253,7 +164,6 @@ export default function QuickLiveButton({
           )}
         </AnimatePresence>
 
-        {/* Shimmer sweep when idle */}
         {phase === "idle" && (
           <motion.span
             initial={{ x: "-100%" }}
@@ -273,7 +183,6 @@ export default function QuickLiveButton({
         </span>
       </motion.button>
 
-      {/* Category badge */}
       {phase === "idle" && (
         <div style={{
           fontSize: 8,
@@ -285,7 +194,6 @@ export default function QuickLiveButton({
         </div>
       )}
 
-      {/* Error message */}
       <AnimatePresence>
         {phase === "error" && errorMsg && (
           <motion.div
@@ -298,10 +206,6 @@ export default function QuickLiveButton({
           </motion.div>
         )}
       </AnimatePresence>
-
-      <style>{`
-        @keyframes qlBlink { 0%,100%{opacity:1} 50%{opacity:0.3} }
-      `}</style>
     </div>
   );
 }

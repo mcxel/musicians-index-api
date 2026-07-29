@@ -1,0 +1,182 @@
+/**
+ * executeInstantGoLive — shared launch path for Launch Dock + QuickLiveButton.
+ * Cam/mic first (non-blocking if denied), then registry, then navigate.
+ * Never waits on audience data before routing to empty stage.
+ */
+
+"use client";
+
+import {
+  materializeLiveRoute,
+  resolveLiveDestination,
+  type LivePrivacy,
+} from "@/lib/live/LiveDestinationRouter";
+import { launchDockStore } from "@/lib/dock/launchDockStore";
+
+export interface InstantGoLiveResult {
+  ok: boolean;
+  href?: string;
+  roomId?: string;
+  error?: string;
+}
+
+async function resolveDisplayName(fallback: string): Promise<{ name: string; role: string; userId?: string }> {
+  try {
+    const sess = await fetch("/api/auth/session", {
+      credentials: "include",
+      cache: "no-store",
+    });
+    if (!sess.ok) return { name: fallback, role: "FAN" };
+    const data = (await sess.json()) as {
+      authenticated?: boolean;
+      user?: { id?: string; name?: string; email?: string; role?: string };
+    };
+    const name =
+      data.user?.name ??
+      (data.user?.email ? data.user.email.split("@")[0] : undefined) ??
+      fallback;
+    const role = (data.user?.role ?? "FAN").toUpperCase();
+    return { name, role, userId: data.user?.id };
+  } catch {
+    return { name: fallback, role: "FAN" };
+  }
+}
+
+export async function executeInstantGoLive(opts?: {
+  role?: string;
+  privacy?: LivePrivacy;
+  preferredExperience?: string;
+  displayName?: string;
+  accentColor?: string;
+}): Promise<InstantGoLiveResult> {
+  launchDockStore.setPhase("launching");
+
+  const dock = launchDockStore.getState();
+  const privacy = opts?.privacy ?? dock.privacy;
+  const preferredExperience = opts?.preferredExperience ?? dock.preferredExperience;
+
+  // Cam/mic — non-blocking; denial continues in no-camera mode
+  let stream: MediaStream | null = null;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    launchDockStore.setCamReady(true);
+    launchDockStore.setMicReady(true);
+  } catch {
+    // Continue without devices
+  }
+
+  const identity = await resolveDisplayName(opts?.displayName ?? "Performer");
+  const role = (opts?.role ?? dock.role ?? identity.role).toUpperCase();
+  launchDockStore.setRole(role);
+
+  const destination = resolveLiveDestination({
+    role,
+    privacy,
+    preferredExperience,
+  });
+
+  // Fan / private rehearsal — navigate immediately, no stage room mint required
+  if (!destination.route.includes("{roomId}")) {
+    if (stream) {
+      // Keep tracks alive briefly for destination pages that re-request; stop to avoid leak
+      stream.getTracks().forEach((t) => t.stop());
+    }
+    launchDockStore.setPhase("idle");
+    launchDockStore.close();
+    return { ok: true, href: destination.route };
+  }
+
+  // Performer stage — mint Daily room when available, register, navigate to empty stage
+  let resolvedRoomId = `room-${identity.name.toLowerCase().replace(/\s+/g, "-")}-${Date.now()}`;
+  let dailyRoomUrl: string | null = null;
+  let dailyToken: string | null = null;
+
+  try {
+    const roomRes = await fetch("/api/video/rooms", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userName: identity.name }),
+      credentials: "include",
+    });
+    if (roomRes.ok) {
+      const rd = (await roomRes.json()) as { roomId: string; roomUrl: string; token: string };
+      resolvedRoomId = rd.roomId;
+      dailyRoomUrl = rd.roomUrl;
+      dailyToken = rd.token;
+    }
+  } catch {
+    /* registry-only */
+  }
+
+  // Publish to lobby wall when public (honest listing hook)
+  if (!destination.flags.restrictedAudience) {
+    try {
+      const res = await fetch("/api/live/go", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          displayName: identity.name,
+          genre: destination.label,
+          category: destination.category,
+          eventType: `LIVE_${destination.category.toUpperCase().replace(/-/g, "_")}`,
+          roomId: resolvedRoomId,
+          accentColor: opts?.accentColor ?? "#FF2DAA",
+          privacy,
+          ...(dailyRoomUrl ? { roomUrl: dailyRoomUrl } : {}),
+        }),
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const err = (await res.json().catch(() => ({}))) as { error?: string };
+        stream?.getTracks().forEach((t) => t.stop());
+        const msg =
+          res.status === 401
+            ? "Sign in to go live."
+            : (err.error ?? "Failed to start broadcast.");
+        launchDockStore.setPhase("error", msg);
+        return { ok: false, error: msg };
+      }
+    } catch {
+      stream?.getTracks().forEach((t) => t.stop());
+      launchDockStore.setPhase("error", "Network error. Check your connection.");
+      return { ok: false, error: "Network error. Check your connection." };
+    }
+  } else {
+    // Restricted — still register when API accepts privacy, else navigate honestly without wall
+    try {
+      await fetch("/api/live/go", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          displayName: identity.name,
+          genre: destination.label,
+          category: destination.category,
+          eventType: `LIVE_${destination.category.toUpperCase().replace(/-/g, "_")}`,
+          roomId: resolvedRoomId,
+          accentColor: opts?.accentColor ?? "#AA2DFF",
+          privacy,
+          listed: false,
+          ...(dailyRoomUrl ? { roomUrl: dailyRoomUrl } : {}),
+        }),
+        credentials: "include",
+      });
+    } catch {
+      /* navigate anyway — private stage still opens */
+    }
+  }
+
+  stream?.getTracks().forEach((t) => t.stop());
+
+  const params = new URLSearchParams();
+  if (dailyRoomUrl) params.set("roomUrl", dailyRoomUrl);
+  if (dailyToken) params.set("token", dailyToken);
+
+  let href = materializeLiveRoute(destination, resolvedRoomId);
+  if ([...params.keys()].length > 0) {
+    href += (href.includes("?") ? "&" : "?") + params.toString();
+  }
+
+  launchDockStore.setPhase("idle");
+  launchDockStore.close();
+  return { ok: true, href, roomId: resolvedRoomId };
+}

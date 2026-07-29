@@ -355,6 +355,8 @@ interface GoLiveRuntimeProps {
   eventType?: 'concert' | 'battle' | 'cypher' | 'challenge' | 'live-show' | 'dance-party' | 'world-concert' | 'mini-concert' | 'release-party' | 'world-release' | 'mini-release';
   accentColor?: string;
   initialMode?: ViewMode;
+  /** Instant Go Live — empty seats first paint, real presence only */
+  instantEmptyStage?: boolean;
 }
 
 export default function GoLiveRuntime({
@@ -364,6 +366,7 @@ export default function GoLiveRuntime({
   eventType,
   accentColor: accentColorProp,
   initialMode = 'FULL_VENUE',
+  instantEmptyStage = false,
 }: GoLiveRuntimeProps) {
   // Derive venueType from props — venueTypeProp wins, then slug-mapped eventType, then roomId slug
   const venueType: VenueType = venueTypeProp ?? (eventType ? slugToVenueType(eventType) : slugToVenueType(roomId));
@@ -456,14 +459,19 @@ export default function GoLiveRuntime({
         position: 'relative',
         overflow: 'hidden',
       }}>
-        <UniversalVenueRenderer roomId={roomId} mode="performer" venueIndex={1} />
+        <UniversalVenueRenderer
+          roomId={roomId}
+          mode="performer"
+          venueIndex={1}
+          instantEmptyStage={instantEmptyStage}
+        />
         {/* Stage banner overlay — renders StageDirectorEngine announcements */}
         <StageBannerOverlay />
 
-        {/* Energy Meter HUD — top-right corner */}
+        {/* Energy Meter HUD — top-right; Instant Go Live shifts left of Command Panel */}
         <div style={{
           position: 'absolute',
-          top: 12, right: 12,
+          top: 12, right: instantEmptyStage ? 300 : 12,
           zIndex: 30,
           maxWidth: 260,
         }}>

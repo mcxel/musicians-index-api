@@ -129,6 +129,11 @@ interface ArenaEventShellProps {
   readonly winnerParticipantId?: string | null;
   /** When true, EOS ExperienceWidgetLayer owns presentation — skip duplicate overlay */
   readonly suppressPresentation?: boolean;
+  /**
+   * Instant Go Live: empty seats first paint; occupancy from real presence only.
+   * No progressive bot stadium fill; watching count stays honest (Rule 20).
+   */
+  readonly instantEmptyStage?: boolean;
 }
 
 const LIVE_STATE_TO_PHASE: Record<ArenaLiveState, CompetitionPhase> = {
@@ -156,6 +161,7 @@ export default function ArenaEventShell({
   crowdEnergy = null,
   winnerParticipantId = null,
   suppressPresentation = false,
+  instantEmptyStage = false,
 }: ArenaEventShellProps) {
   const venueIndex = VENUE_MAP[eventType] ?? 0;
   const label = EVENT_LABELS[eventType] ?? "TMI ARENA";
@@ -253,7 +259,12 @@ export default function ArenaEventShell({
            overlay for battle/cypher/challenge - it never owns Daily.co,
            participant lifecycle, or venue routing, all of which stay here. ── */}
       <div style={{ position: "relative" }}>
-        <UniversalVenueRenderer roomId={roomId} mode={mode} venueIndex={venueIndex} />
+        <UniversalVenueRenderer
+          roomId={roomId}
+          mode={mode}
+          venueIndex={venueIndex}
+          instantEmptyStage={instantEmptyStage}
+        />
         {competitionFormat && !suppressPresentation && (
           <CompetitionPresentationLayer
             format={competitionFormat}

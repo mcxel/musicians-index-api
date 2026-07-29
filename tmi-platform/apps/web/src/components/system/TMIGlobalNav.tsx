@@ -3,6 +3,8 @@
 import { useRouter, usePathname } from 'next/navigation';
 import { useEffect, useState, useCallback } from 'react';
 import { NotificationEngine } from '@/lib/notifications/NotificationEngine';
+import { launchDockStore } from '@/lib/dock/launchDockStore';
+import { executeInstantGoLive } from '@/lib/dock/executeInstantGoLive';
 
 interface SessionState {
   authenticated: boolean;
@@ -236,11 +238,21 @@ export default function TMIGlobalNav() {
 
         <div style={{ flex: 1, minWidth: 8 }} />
 
-        {/* ── Go Live (performers / artists only) ───────────────────────── */}
+        {/* ── Go Live — Launch Dock (or instant execute if already Ready) ── */}
         {canGoLive && (
           <button
             title="Go Live"
-            onClick={() => router.push('/live/go')}
+            onClick={() => {
+              if (launchDockStore.isReady()) {
+                void executeInstantGoLive({ role: (role || 'performer').toUpperCase() }).then((r) => {
+                  if (r.ok && r.href) router.push(r.href);
+                  else launchDockStore.open();
+                });
+                return;
+              }
+              launchDockStore.setRole((role || 'performer').toUpperCase());
+              launchDockStore.open();
+            }}
             style={{
               padding: '0 12px', height: 34, borderRadius: 20, flexShrink: 0,
               border:     pathname.startsWith('/live/go')
@@ -256,8 +268,7 @@ export default function TMIGlobalNav() {
               transition: 'all 0.2s',
             }}
           >
-            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#FF2DAA', display: 'inline-block' }} />
-            LIVE
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#FF2DAA', display: 'inline-block' }} /><span>LIVE</span>
           </button>
         )}
 

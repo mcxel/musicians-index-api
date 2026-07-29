@@ -31,6 +31,7 @@ import PlatformFooter from "@/components/layout/PlatformFooter";
 import DiscoverySidePanel from "@/components/discovery/DiscoverySidePanel";
 import { WatchSessionProvider } from "@/lib/presence/WatchSessionContext";
 import PersistentMiniPlayer from "@/components/presence/PersistentMiniPlayer";
+import LaunchDock from "@/components/dock/LaunchDock";
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -227,6 +228,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <MonitorRuntime />
               <DiscoverySidePanel />
               <PersistentMiniPlayer />
+              <LaunchDock />
             </WatchSessionProvider>
             </HudRuntimeProvider>
             </MonitorRuntimeProvider>

@@ -163,6 +163,11 @@ interface Props {
    * the Daily.co room ID assigned at broadcast start.
    */
   forceStadiumFill?: boolean;
+  /**
+   * Instant Go Live: show empty seating on first paint. Occupancy follows
+   * real presence only — no bot stadium fill, no inflated watching count.
+   */
+  instantEmptyStage?: boolean;
 }
 
 function publicName(name: string): string {
@@ -182,7 +187,7 @@ const SHOWTIME_SPONSORS: BubbleSponsor[] = [
   { id: 'sp-5', name: 'Walmart', logoUrl: '', type: 'local', tierColor: '#00FF88' },
 ];
 
-export default function UniversalVenueRenderer({ roomId, mode, venueIndex = 1, fanIdOverride, forceStadiumFill = false }: Props) {
+export default function UniversalVenueRenderer({ roomId, mode, venueIndex = 1, fanIdOverride, forceStadiumFill = false, instantEmptyStage = false }: Props) {
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [liveSession, setLiveSession] = useState<LiveSession | null>(null);
   const [userId, setUserId] = useState(() => fanIdOverride ?? getGuestId());
@@ -215,11 +220,24 @@ export default function UniversalVenueRenderer({ roomId, mode, venueIndex = 1, f
   // empty right after going live (Rule 15, CLAUDE.md).
   // forceStadiumFill lets callers (e.g. GoLiveStudio) trigger the fill without
   // relying on liveSession, since the Daily.co room ID differs from roomId.
+  // Instant Go Live overrides: empty seats until real fans (Rule 20 — no fake watching).
   const stadiumFillRatio = useProgressiveStadiumFill(
-    forceStadiumFill || liveSession !== null,
+    !instantEmptyStage && (forceStadiumFill || liveSession !== null),
     snapshot?.present ?? 0,
     snapshot?.capacity ?? 100,
   );
+  const realOccupancyRatio = Math.min(
+    1,
+    (snapshot?.present ?? 0) / Math.max(1, snapshot?.capacity ?? 100),
+  );
+  const occupancyForScene = instantEmptyStage
+    ? realOccupancyRatio
+    : mode === "performer"
+      ? stadiumFillRatio
+      : snapshot
+        ? realOccupancyRatio
+        : 0.08;
+  const watchingCount = snapshot?.present ?? 0;
   useEffect(() => subscribeStage((s) => setCurtainState(s.state)), []);
 
   useEffect(() => {
@@ -431,10 +449,17 @@ export default function UniversalVenueRenderer({ roomId, mode, venueIndex = 1, f
       <div style={{ position: 'relative', borderRadius: 12, border: '1px solid rgba(255,255,255,0.12)', overflow: 'hidden', marginBottom: 12 }}>
         <div style={{ position: 'relative', borderRadius: 10, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.15)', background: '#000' }}>
           <LiveRecoveryOverlay status={recoveryStatus} />
-          {liveSession && (
-            <div style={{ position: 'absolute', top: 10, left: 10, zIndex: 5, display: 'flex', gap: 8, alignItems: 'center' }}>
+          {(liveSession || instantEmptyStage) && (
+            <div style={{ position: 'absolute', top: 10, left: 10, zIndex: 5, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
               <span style={{ background: '#FF0000', color: '#fff', borderRadius: 4, padding: '2px 8px', fontSize: 9, fontWeight: 900, letterSpacing: '0.12em' }}>● LIVE</span>
-              <span style={{ fontSize: 11, color: '#00FFFF', fontWeight: 800 }}>{liveSession.viewerCount} watching</span>
+              <span style={{ fontSize: 11, color: '#00FFFF', fontWeight: 800 }}>
+                {instantEmptyStage ? watchingCount : (liveSession?.viewerCount ?? watchingCount)} watching
+              </span>
+              {instantEmptyStage && (
+                <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.55)', fontWeight: 700 }}>
+                  Venue Open{watchingCount === 0 ? ' · Waiting for audience…' : ''}
+                </span>
+              )}
             </div>
           )}
           {mode === 'performer' ? (
@@ -452,20 +477,18 @@ export default function UniversalVenueRenderer({ roomId, mode, venueIndex = 1, f
           <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', letterSpacing: '0.14em', margin: '8px 0 6px', fontWeight: 800, textAlign: 'center' }}>
             {mode === 'audience' && mySeatId
               ? `YOUR SEAT: ${mySeatId.toUpperCase()} · ${audience.filter((m) => m.seatId).length} seated`
-              : mode === 'performer'
-                ? `LIVE VENUE · ${snapshot?.present ?? 0} fans · ${Math.round(stadiumFillRatio * 100)}% full`
-                : `LIVE VENUE · ${snapshot?.present ?? 0} in seats`}
+              : mode === 'performer' && instantEmptyStage
+                ? `LIVE VENUE · ${watchingCount} watching · empty seats until real fans arrive`
+                : mode === 'performer'
+                  ? `LIVE VENUE · ${snapshot?.present ?? 0} fans · ${Math.round(stadiumFillRatio * 100)}% full`
+                  : `LIVE VENUE · ${snapshot?.present ?? 0} in seats`}
           </div>
           <AudienceScene
             view={mode === 'performer' ? 'performer' : 'fan'}
             venue={venueIndex}
-            watcherCount={snapshot?.present}
+            watcherCount={watchingCount}
             entities={audienceEntities}
-            occupancyRatio={
-              mode === 'performer'
-                ? stadiumFillRatio                                                       // progressive 0→12→92% fill in performer view
-                : snapshot ? Math.min(1, snapshot.present / Math.max(1, snapshot.capacity)) : 0.08  // real count for fan view
-            }
+            occupancyRatio={occupancyForScene}
             onReaction={sendReaction}
             hideControls
             accentColor={mode === 'performer' ? '#FFD700' : '#00FFFF'}
