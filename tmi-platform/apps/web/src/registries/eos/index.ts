@@ -13,5 +13,6 @@ export * from "./AvatarRegistry";
 export * from "./VocalImprovScoringRegistry";
 export * from "./AutoDirectorRegistry";
 export * from "./ProgramQueueRegistry";
+export * from "./RelationshipRegistry";
 export * from "./resolveRuntimeManifest";
 export { EXPERIENCE_COMPONENT_REGISTRY, getExperienceComponent } from "../experiences/ExperienceComponentRegistry";

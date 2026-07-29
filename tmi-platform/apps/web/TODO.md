@@ -125,6 +125,10 @@ Target architecture (when real engines exist — wire, don’t duplicate):
 | Universal Playlist (embed/link only) | FUTURE APPROVED — no OAuth/rip |
 | Matchmaking / Audience Merge | FUTURE (do not stub) |
 | Phase 5B mesh / AvatarEngine | IDLE |
+| Layer 6 Relationship Graph | COMPLETE (scaffold) |
+| Global Performance / Instrument Registry | FUTURE APPROVED (post soft-launch) |
+| Recommendation Engine | FUTURE |
+| Phase 7.3 / 7.4 Memory | DEFERRED |
 
 Phase 4.7 Vocal Improv experiences remain standalone StageLoader mounts; Layer 5 only sequences their ExperienceRegistry ids into rotation suggestions.
 
@@ -186,8 +190,39 @@ Gate: 5A complete · 5B idle
 
 ### Phase 6 - YoPho (PENDING)
 
+### Layer 6 — Relationship Graph (scaffold COMPLETE)
+**Status:** Contracts + RelationshipRegistry + pure RelationshipGraphEngine + PresenceCatalog + optional memorySocialBridge COMPLETE. No social UI. No fake online friend lists. Prisma Follow/Friendship/FanClub remain product sources (not duplicated). Graph starts empty.
+
+- [x] Audit existing — `/api/social/follow` (Prisma Follow), FanClub models/routes, Friendship model, `lib/social/*` (FollowEngine, FanFollowGraphEngine, PresenceEngine, FriendRequestEngine, DM/messaging), `AudiencePresenceProvider` / `AudiencePresenceEngine`, `RoomSessionBridge`, PerformerRegistry genres (unchanged — no duplicate)
+- [x] `core/eos/relationshipContracts.ts` — RelationshipKind, RelationshipEdge, EosPresenceState, RelationshipEntityRef
+- [x] `registries/eos/RelationshipRegistry.ts` — kind defs + from→to role matrix (Rule 26 aware) + `assertRelationshipRegistryIntegrity`
+- [x] `lib/eos/RelationshipGraphEngine.ts` — pure in-memory: addEdge, removeEdge, getFollowers, getFollowing, getBandMembers, isBlocked, getFriends (empty by default)
+- [x] `lib/eos/PresenceCatalog.ts` — reads `PresenceEngine` / audience entity / RoomSessionBridge; else OFFLINE; `listOnlineFriends` always `[]` until real feed
+- [x] `lib/eos/memorySocialBridge.ts` — WINNER_DECLARED → FRIEND_ACTIVITY suggestions only when viewer has real FRIEND edges; else `[]`
+- [x] Barrel exports — `core/eos`, `registries/eos`, `lib/eos`
+- [ ] Bridge Prisma Follow/Friendship into RelationshipGraphEngine (future — not this scaffold)
+- [ ] Social UI / friends online wall (future — Rule 20 honest empty until real)
+
+#### Global Performance Registry / Instrument Registry — FUTURE APPROVED FEATURE
+**Status:** Post soft-launch / catalog expansion. Documented direction only. **Do NOT** dump 100 instruments as fake runtime inventory (Rule 20). Wire a real catalog when product needs it — not part of Layer 6 scaffold.
+
+#### Recommendation Engine — FUTURE
+**Status:** Not started. Do not stub fake recommendations or fabricated “people you may know.”
+
+| Piece | Status |
+|---|---|
+| Layer 6 Relationship Graph scaffold | COMPLETE |
+| Prisma social → graph bridge | FUTURE |
+| Social network UI | FUTURE (out of scope) |
+| Global Performance / Instrument Registry | FUTURE APPROVED (post soft-launch) |
+| Recommendation Engine | FUTURE |
+| Phase 5B mesh / AvatarEngine | IDLE |
+| Phase 7.3 Prisma Memory persistence | DEFERRED |
+| Phase 7.4 MemoryWall UI bind | DEFERRED |
+| Universal Playlist OAuth | FUTURE APPROVED — no OAuth/rip |
+
 ### Phase 7 — Memory Engine
-**Status:** Pass 7.1–7.2 scaffold COMPLETE (in-memory). 7.3 Prisma persistence NOT done. 7.4 MemoryWall UI bind NOT fully done (bridge adapter exists; canister still uses media/MemoryWall).
+**Status:** Pass 7.1–7.2 scaffold COMPLETE (in-memory). 7.3 Prisma persistence NOT done (still deferred). 7.4 MemoryWall UI bind NOT fully done (bridge adapter exists; canister still uses media/MemoryWall — still deferred).
 
 #### Pass 7.1 — Ledger + Registry (DONE)
 - [x] `core/eos/memoryRegistry.ts` — MemoryEventKind, LedgerEntry, MemoryHighlight, importance kind sets, labels/icons
