@@ -19,6 +19,11 @@
  *
  * Ops height = MonitorStack content only. Never shrink monitors for analytics.
  * Admin Cam: never permanent DOM — mount on Camera button / center gem only.
+ *
+ * FREEZE (2026-07-29): No further Flight Deck / CanonOverseerShell / LayoutRuntime
+ * / IntelligenceSection / Two-Deck Overseer shell refactors without an architectural
+ * defect. Slot new Intelligence widgets (e.g. ScamDefenseCenter) via WorkspaceConfigs
+ * bottom panels only — do not redesign monitor/ticker chrome.
  * ═══════════════════════════════════════════════════════════════════════════
  *
  * Flight Deck / Overseer contributors (durable credit — no fake UI portraits):
@@ -176,6 +181,14 @@ export const OVERSEER_BLUEPRINT_SLOTS: OverseerBlueprintSlot[] = [
     codeTarget: "components/admin/overseer/MagazineAnalytics.tsx",
     status: "ALIGN",
     note: "BELOW ticker only. Magazine engine exists; certify no vanity billboard $ figures.",
+  },
+  {
+    id: "intel-scam-defense-center",
+    blueprintLabel: "Scam Defense Center",
+    zone: "intelligence",
+    codeTarget: "components/admin/overseer/ScamDefenseCenter.tsx → TrustSafetyRuntime",
+    status: "KEEP",
+    note: "Intelligence Deck CLIENT of TrustSafetyRuntime. Real case counts from /api/trust-safety/cases. Investigation = portal overlay — never squeeze Ops 16:9 monitors. Detection does NOT live here.",
   },
   {
     id: "intel-engagement-heatmap",

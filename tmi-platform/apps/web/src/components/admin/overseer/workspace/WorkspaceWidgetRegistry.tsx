@@ -20,6 +20,7 @@ import {
   ContactSupportPanel,
   LegalDocPanel,
 } from "./widgets/LegalCenterWidgets";
+import ScamDefenseCenter from "@/components/admin/overseer/ScamDefenseCenter";
 
 import type { WorkspaceWidgetKey } from "./WorkspaceSchema";
 
@@ -143,6 +144,13 @@ export const WORKSPACE_WIDGET_REGISTRY: Record<WorkspaceWidgetKey, WorkspaceWidg
   "legal-doc-dmca": { id: "legal-doc-dmca", title: "DMCA", defaultZone: "right", component: () => <LegalDocPanel id="dmca" /> },
   "legal-doc-community": { id: "legal-doc-community", title: "Community", defaultZone: "center", component: () => <LegalDocPanel id="community" /> },
   "legal-contact": { id: "legal-contact", title: "Legal Contact", defaultZone: "right", component: ContactSupportPanel },
+  "scam-defense-center": {
+    id: "scam-defense-center",
+    title: "Scam Defense Center",
+    defaultZone: "bottom",
+    permissions: ["security.manage"],
+    component: ScamDefenseCenter,
+  },
 };
 
 export function getWorkspaceWidgetComponent(widget: WorkspaceWidgetKey): ComponentType {

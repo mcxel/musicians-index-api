@@ -47,6 +47,13 @@ export const WORKSPACE_CONFIGS: Record<WorkspaceDefinition["key"], WorkspaceDefi
         requiredPermission: "revenue.manage",
       },
       { id: "magazine-analytics", title: "MAGAZINE & INDEX ANALYTICS", widget: "magazine-analytics", accent: "#FF2DAA" },
+      {
+        id: "scam-defense-center",
+        title: "SCAM DEFENSE CENTER",
+        widget: "scam-defense-center",
+        accent: "#FF4444",
+        requiredPermission: "security.manage",
+      },
     ],
     dockButtons: [
       { label: "Go Back", href: "/admin" },
@@ -81,6 +88,13 @@ export const WORKSPACE_CONFIGS: Record<WorkspaceDefinition["key"], WorkspaceDefi
       { id: "bigace-revenue", title: "PAYOUT AUTHORITY", widget: "revenue-panel", accent: "#FFD700", requiredPermission: "revenue.manage" },
       { id: "bigace-runtime", title: "AI MANDATE BOARD", widget: "runtime-health", accent: "#AA2DFF" },
       { id: "bigace-stripe", title: "STRIPE OBSERVATORY", widget: "stripe-observatory", accent: "#00FFFF" },
+      {
+        id: "bigace-scam-defense",
+        title: "SCAM DEFENSE CENTER",
+        widget: "scam-defense-center",
+        accent: "#FF4444",
+        requiredPermission: "security.manage",
+      },
     ],
   },
   jaypaul: {
@@ -125,6 +139,7 @@ export const WORKSPACE_CONFIGS: Record<WorkspaceDefinition["key"], WorkspaceDefi
       { id: "justin-revenue", title: "REVENUE SNAPSHOT", widget: "stripe-observatory", accent: "#FFD700" },
       { id: "justin-runtime", title: "HEALTH MATRIX", widget: "runtime-health", accent: "#AA2DFF" },
       { id: "justin-magazine", title: "PUBLIC SIGNAL ANALYTICS", widget: "magazine-analytics", accent: "#FF2DAA" },
+      { id: "justin-scam-defense", title: "SCAM DEFENSE CENTER", widget: "scam-defense-center", accent: "#FF4444" },
     ],
   },
   michaelcharlie: {

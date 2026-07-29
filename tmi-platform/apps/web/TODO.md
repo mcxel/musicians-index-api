@@ -333,12 +333,60 @@ Experience targets still deferred:
 - [x] Blueprint assets copied under `public/assets/blueprints/`
 - [x] Overseer layout: remove vh lock; dual stacked 16:9 monitors define page height; analytics below fold
 - [x] Two-Deck Architecture: Live Channel Ticker divider; Intelligence Deck below fold; Admin Cam on-demand only
+- [x] Trust & Safety Runtime (`lib/trustSafety/`) + ScamDefenseCenter Intelligence client + Fan Lobby Quick Report loop (2026-07-29)
+- [x] **FREEZE:** no further Flight Deck / CanonOverseerShell shell refactors without architectural defect — slot Intelligence widgets only
 - [ ] Browser certify floating open/close + no monitor reflow
 - [ ] UnifiedInbox UI: replace hardcoded demo rows with `/api/admin/inbox` threads (ALIGN — Rule 20)
 - [ ] Overseer visual certify gold-filigree vs blueprint (ALIGN — later)
 - [ ] Engagement heatmap engine (DEFER — never fake density)
+- [ ] Deferred Trust & Safety engines: ScamSignal / ImpersonationDetection / PaymentRisk ML / LinkSafety / ContentClaim / AccountRelationshipGraph / Appeals (scaffolds only)
 
 ### Phase 8 - Runtime Certification (PENDING) — after Pass 8 browser certify
+
+---
+
+## Instant Go Live + Launch Dock (2026-07-29)
+
+**Status:** Phase 1 COMPLETE (assembly). Trust Safety remains a separate track — do not conflate.
+
+### Instant Go Live — COMPLETE (Phase 1)
+- [x] `lib/live/LiveDestinationRouter.ts` — role × privacy → route/experience (`resolveLiveDestination`)
+- [x] Performer Public → empty stage (`/live/rooms/{id}?mode=performer&auto=true`) first paint; `LIVE · 0 watching · Venue Open · Waiting for audience…`
+- [x] Performer Private/Invite → `/rooms/rehearsal` (studio fallback exists)
+- [x] Fan Public → `/rooms/fan-lobby` (Rule 26); Fan Friends/Private → `/rooms/vip-lounge`
+- [x] Privacy preference persisted (`localStorage` via router helpers)
+- [x] `InstantGoLiveStage` + room-page gate bypass for `mode=performer&auto=true`
+- [x] `UniversalVenueRenderer` / `ArenaEventShell` / `GoLiveRuntime` `instantEmptyStage` — real occupancy only (no bot watching inflate)
+- [x] Lobby wall publish via existing `/api/live/go` when public; restricted privacy sets `listed: false` / still opens room honestly
+- [x] Arrival corner toasts (real fans only) + Host Mode toggle on Command Panel
+
+### Launch Dock — Phase 1 COMPLETE
+- [x] `components/dock/LaunchDock.tsx` + `lib/dock/launchDockStore.ts` + `executeInstantGoLive.ts`
+- [x] Non-modal floating side panel; collapsible pill; Ready pulse; GO LIVE instant
+- [x] Mounted in root layout; wired from `TMIGlobalNav` LIVE + `MasterControlDock` GO LIVE + `QuickLiveButton`
+- [ ] Browser certify dock open while watching another surface (no Overseer rail magnetize)
+- [ ] Full Launch Dock entitlement filter for every Gold feature — **FUTURE** (not this pass)
+
+### Performer Command Panel — FREE basics COMPLETE
+- [x] `PerformerCommandPanel.tsx` UR floating — Audience | Host | Stage | Camera | Chat | Events
+- [x] FREE: welcome, wave, real audience count, camera angle stubs → `BroadcastDirectorEngine`
+- [ ] Gold/Diamond AI director / auto-cam packs — **FUTURE** (registry metadata only on LiveDestinationRouter.entitlements)
+
+### Deferred / IDLE
+- [ ] Full walk-path 3D enter/walk/sit — **Phase 5B IDLE** (honest CSS arrival toasts for now)
+- [ ] Trust & Safety Runtime expansions — **separate track** (do not edit while concurrent)
+- [ ] Photoreal / skeletal avatars — **not claimed**; Ambient LED/stage lights only
+
+### Venue Support Presence + Atlas (2026-07-29) — Phase 1 COMPLETE
+**Hard rule:** support bots NEVER count as `humanViewers` / votes / rankings / trending / payouts / ticket attendance / fan achievements.
+
+- [x] `lib/venues/venuePresenceMetrics.ts` — `{ humanViewers, humanParticipants, supportAgents, moderators, occupiedPositions }`
+- [x] `lib/venues/VenueSupportPresenceEngine.ts` — labeled spawn (`[BOT] TMI Support Crew` | AI Venue Technician | Performance Assistant | Environment Inspector); unpredictable entry; cues attributed to assistants; `botTransparencyPolicy` enforced
+- [x] `lib/venues/AtlasVenueCommand.ts` — thin mission contract + OBSERVE→…→CONTINUE scaffold; hierarchy doc (Marcel → Big Ace → Michael Charlie → Atlas → helpers). Big Ace is NOT a venue visit scheduler.
+- [x] Performer Command Panel Audience tab — honest **VENUE READY** breakdown
+- [x] Instant Go Live strip — `watching` = humanViewers only; support shown separately as support crew
+- [ ] Atlas continuous loop deepen (full assign/verify/certify automation) — **FUTURE**
+- [ ] Support bots never affect rankings — enforced in metrics contract; ranking engines must consume `humanViewers` only when wired
 
 ---
 

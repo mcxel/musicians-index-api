@@ -33,6 +33,14 @@ Always prioritize money paths over perfection.
 - Stripe: client.ts, webhook proxy, checkout route
 - API routes: auth (login, logout, register, session, provision), stripe (checkout, customer, products, webhook)
 
+## TRUST & SAFETY RUNTIME (LOCKED — 2026-07-29)
+
+- **TrustSafetyRuntime** (`apps/web/src/lib/trustSafety/`) is the platform-wide engine (always on): EvidenceVault, EnforcementEngine Level 0–4, TrustScore (internal only), plus scaffold detection engines.
+- **ScamDefenseCenter** is an Observatory Intelligence Deck *client* of that runtime — not where detection lives. Mount BELOW the Live Channel Ticker only.
+- FTC impersonation / scam threat context informs report-reason taxonomy; this is product safety framing, **not legal advice**.
+- Complements (does not replace) `ModerationEngine` + Report/ModerationAction for account strikes/bans.
+- **FREEZE:** no further Flight Deck shell refactors (CanonOverseerShell / LayoutRuntime / Two-Deck) without an architectural defect — slot Intelligence widgets only.
+
 ## YOUR PRIORITY ORDER
 
 1. **Revenue paths** — auth → stripe → subscriptions/tips/sponsor/advertiser payments

@@ -3615,6 +3615,8 @@ model LobbyPresence {
   y           Float
   propTrigger String   @default("none") @map("prop_trigger")
   activeTheme String   @default("MEDIA_LOUNGE") @map("active_theme")
+  isSpeaking  Boolean  @default(false) @map("is_speaking")
+  hasCameraOn Boolean  @default(false) @map("has_camera_on")
   lastSeenAt  DateTime @default(now()) @map("last_seen_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
@@ -3694,5 +3696,75 @@ model MatchHistory {
   @@index([opponentId])
   @@index([venueId])
   @@map("match_histories")
+}
+
+// -- TRUST & SAFETY RUNTIME (platform-wide — ScamDefenseCenter is a client) ----
+// Added 2026-07-29. Complements Report/ModerationAction (account-strike path)
+// with case packages, evidence vault, and reporter-side Level-1 protections.
+
+model TrustSafetyCase {
+  id               String                 @id @default(cuid())
+  caseId           String                 @unique @map("case_id")
+  reporterId       String                 @map("reporter_id")
+  accusedId        String?                @map("accused_id")
+  reasonsJson      String                 @map("reasons_json")
+  surface          String
+  roomId           String?                @map("room_id")
+  status           String                 @default("open")
+  enforcementLevel Int                    @default(1) @map("enforcement_level")
+  outcome          String?
+  detail           String?
+  blockImmediate   Boolean                @default(false) @map("block_immediate")
+  includeMessages  Boolean                @default(false) @map("include_messages")
+  screenshotUrl    String?                @map("screenshot_url")
+  contentSnapshot  String?                @map("content_snapshot")
+  contentHash      String?                @map("content_hash")
+  reviewedBy       String?                @map("reviewed_by")
+  reviewedAt       DateTime?              @map("reviewed_at")
+  createdAt        DateTime               @default(now()) @map("created_at")
+  updatedAt        DateTime               @updatedAt @map("updated_at")
+  evidence         TrustSafetyEvidence[]
+  protections      TrustSafetyProtection[]
+
+  @@index([status, createdAt])
+  @@index([reporterId])
+  @@index([accusedId])
+  @@map("trust_safety_cases")
+}
+
+model TrustSafetyEvidence {
+  id          String          @id @default(cuid())
+  caseDbId    String          @map("case_db_id")
+  case        TrustSafetyCase @relation(fields: [caseDbId], references: [id], onDelete: Cascade)
+  kind        String
+  contentHash String?         @map("content_hash")
+  payloadJson String          @map("payload_json")
+  preservedAt DateTime        @default(now()) @map("preserved_at")
+
+  @@index([caseDbId])
+  @@map("trust_safety_evidence")
+}
+
+/// Level-1 reporter protections + room rejoin friction (not a public trust score).
+model TrustSafetyProtection {
+  id              String          @id @default(cuid())
+  caseDbId        String          @map("case_db_id")
+  case            TrustSafetyCase @relation(fields: [caseDbId], references: [id], onDelete: Cascade)
+  caseId          String          @map("case_id")
+  reporterId      String          @map("reporter_id")
+  accusedId       String          @map("accused_id")
+  hideContent     Boolean         @default(true) @map("hide_content")
+  blockDms        Boolean         @default(false) @map("block_dms")
+  freezePayments  Boolean         @default(false) @map("freeze_payments")
+  roomRejoinBlock Boolean         @default(false) @map("room_rejoin_block")
+  /// Empty string = platform-wide (Postgres unique treats NULLs as distinct).
+  roomId          String          @default("") @map("room_id")
+  expiresAt       DateTime?       @map("expires_at")
+  createdAt       DateTime        @default(now()) @map("created_at")
+
+  @@unique([reporterId, accusedId, roomId])
+  @@index([reporterId])
+  @@index([accusedId, roomId])
+  @@map("trust_safety_protections")
 }
 

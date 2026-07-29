@@ -462,3 +462,38 @@ Timeline: Day 1 (L1+L2), Day 2 (L3)
 ```
 
 Once all three pass, the system is **certified for soft launch**.
+
+---
+
+## §11 Trust & Safety Certification Checklist
+
+Platform runtime: `apps/web/src/lib/trustSafety/` (TrustSafetyRuntime).  
+Ops console client: ScamDefenseCenter on Overseer Intelligence Deck (below ticker only).
+
+### Minimum complete loop (must work)
+
+| Step | Check |
+|------|--------|
+| Report | Quick Report Panel submits → `POST /api/trust-safety/report` (auth) |
+| Protect reporter | Level-1 friction: hide content for reporter, optional DM block / payment-freeze flag |
+| Preserve evidence | EvidenceVault rows on `TrustSafetyEvidence` (hash + payload) — no fake success without persistence |
+| Create case | Case ID `TMI-YYYY-######` on `TrustSafetyCase` |
+| Review queue | `GET /api/trust-safety/cases` (ADMIN/STAFF) → ScamDefenseCenter real counts or honest empty |
+| Restrict / remove | Case actions hide/block/restrict_rejoin/remove_from_room stubs that write protections |
+| Prevent re-entry | `GET /api/trust-safety/rejoin-check` blocks restricted users in Fan Lobby |
+| Record outcome | Case `outcome` / status updated on action |
+
+### Surface wiring
+
+- [ ] Fan Lobby: avatar → Report / Block / Mute; Host Safety remove + rejoin restrict (staff)
+- [ ] ScamDefenseCenter: Intelligence Deck only; investigation panel = portal (does not squeeze 16:9 monitors)
+- [ ] Verification badges: contract types only — never fake-grant
+- [ ] Internal TrustScore: never public on profiles; no random scores
+
+### Deferred (explicit non-goals this pass)
+
+- Full AI deepfake / payment-risk ML
+- Flight Deck shell redesign
+- Giant rewrite of profile/magazine/marketplace (shared QuickReportPanel ready for later)
+
+*Added 2026-07-29 — Build Director Trust & Safety runtime pass.*

@@ -656,7 +656,7 @@ export default function CanonOverseerShell({ workspace }: CanonOverseerShellProp
                 textTransform: "uppercase",
               }}
             >
-              Artist Revenue · Magazine Analytics · Scroll past ticker
+              Artist Revenue · Magazine Analytics · Scam Defense · Scroll past ticker
             </span>
           </div>
         ) : null}
