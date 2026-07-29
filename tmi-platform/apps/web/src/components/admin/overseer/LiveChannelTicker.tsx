@@ -94,18 +94,47 @@ export default function LiveChannelTicker() {
       aria-label="Live channel ticker — scroll past for intelligence deck"
       style={{
         flex: "0 0 auto",
-        border: "2px solid rgba(212,175,55,0.65)",
-        borderRadius: 10,
-        background: "linear-gradient(180deg, #1a0c14 0%, #0a0508 100%)",
-        boxShadow: "0 4px 18px rgba(0,0,0,0.55), inset 0 0 12px rgba(255,215,0,0.08)",
-        padding: "8px 12px",
+        flexShrink: 0,
+        width: "100%",
+        minHeight: 64,
+        borderTop: "3px solid #FFD700",
+        borderBottom: "3px solid #FFD700",
+        borderLeft: "2px solid rgba(212,175,55,0.85)",
+        borderRight: "2px solid rgba(212,175,55,0.85)",
+        borderRadius: 12,
+        background:
+          "linear-gradient(180deg, #2a1020 0%, #14080e 40%, #0a0508 100%)",
+        boxShadow:
+          "0 0 0 1px rgba(255,45,170,0.25), 0 8px 28px rgba(0,0,0,0.65), inset 0 0 18px rgba(255,215,0,0.12)",
+        padding: "10px 14px",
         display: "grid",
         gridTemplateColumns: "auto 1fr auto",
-        gap: 12,
+        gridTemplateRows: "auto auto",
+        gap: "6px 14px",
         alignItems: "center",
         overflow: "hidden",
       }}
     >
+      <div
+        style={{
+          gridColumn: "1 / -1",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 10,
+          paddingBottom: 4,
+          borderBottom: "1px solid rgba(255,215,0,0.28)",
+        }}
+      >
+        <span style={{ color: "#FFD700", fontSize: 11, fontWeight: 900, letterSpacing: "0.22em" }}>
+          ▲ OPERATIONS DECK
+        </span>
+        <span style={{ color: "rgba(255,255,255,0.35)", fontSize: 10, fontWeight: 800 }}>│</span>
+        <span style={{ color: "#FF2DAA", fontSize: 11, fontWeight: 900, letterSpacing: "0.22em" }}>
+          ▼ SCROLL FOR INTELLIGENCE DECK
+        </span>
+      </div>
+
       <div
         style={{
           display: "flex",
@@ -116,17 +145,17 @@ export default function LiveChannelTicker() {
       >
         <span
           style={{
-            width: 8,
-            height: 8,
+            width: 10,
+            height: 10,
             borderRadius: "50%",
             background: status === "live" ? "#00FF88" : "#FFD700",
-            boxShadow: status === "live" ? "0 0 8px #00FF88" : "0 0 6px #FFD700",
+            boxShadow: status === "live" ? "0 0 10px #00FF88" : "0 0 8px #FFD700",
           }}
         />
         <span
           style={{
             color: "#FFD700",
-            fontSize: 10,
+            fontSize: 11,
             fontWeight: 900,
             letterSpacing: "0.16em",
             textTransform: "uppercase",
@@ -156,7 +185,7 @@ export default function LiveChannelTicker() {
               key={`${item.id}-${index}`}
               style={{
                 color: item.tone,
-                fontSize: 11,
+                fontSize: 12,
                 fontWeight: 800,
                 letterSpacing: "0.06em",
                 textTransform: "uppercase",
@@ -170,8 +199,8 @@ export default function LiveChannelTicker() {
 
       <div
         style={{
-          color: "rgba(255,255,255,0.45)",
-          fontSize: 9,
+          color: "rgba(255,255,255,0.5)",
+          fontSize: 10,
           fontWeight: 800,
           letterSpacing: "0.1em",
           textTransform: "uppercase",

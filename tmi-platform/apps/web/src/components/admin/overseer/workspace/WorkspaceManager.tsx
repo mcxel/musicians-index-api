@@ -99,7 +99,16 @@ export default function WorkspaceManager() {
   }, [activeRole]);
 
   return (
-    <div style={{ minHeight: "100vh", height: "auto", background: "#05020a" }}>
+    <div
+      data-overseer-workspace-root
+      style={{
+        minHeight: "100vh",
+        height: "auto",
+        maxHeight: "none",
+        overflow: "visible",
+        background: "#05020a",
+      }}
+    >
       <div
         style={{
           display: "flex",

@@ -32,6 +32,8 @@ export default function Canister({
   onToggleFullscreen,
   style,
 }: CanisterProps) {
+  const fillsParent = style?.height === "100%" || style?.aspectRatio != null;
+
   return (
     <BezelFrame
       variant="ornate-gold"
@@ -41,22 +43,39 @@ export default function Canister({
         boxShadow: floating
           ? "0 20px 50px rgba(0,0,0,0.75), 0 0 0 1px rgba(255,215,0,0.25), inset 0 1px 0 rgba(255,255,255,0.08)"
           : "0 0 0 1px rgba(255,215,0,0.28), inset 0 1px 0 rgba(255,255,255,0.05), inset 0 0 30px rgba(0,0,0,0.72), 0 10px 24px rgba(0,0,0,0.55)",
+        ...(fillsParent
+          ? {
+              flexDirection: "column" as const,
+              overflow: "hidden",
+              boxSizing: "border-box" as const,
+            }
+          : {}),
         ...style,
       }}
       innerStyle={{
         border: "1px solid rgba(184,134,11,0.56)",
         background: "linear-gradient(180deg, rgba(13,10,10,0.96), rgba(8,7,8,0.98))",
+        ...(fillsParent
+          ? {
+              flex: 1,
+              height: "100%",
+              minHeight: 0,
+              alignSelf: "stretch",
+              width: "100%",
+            }
+          : {}),
       }}
     >
       <section
         id={id}
         data-canister={title}
         style={{
-          overflow: "hidden",
+          overflow: fillsParent ? "hidden" : "hidden",
           display: "flex",
           flexDirection: "column",
-          minHeight: 0,
-          height: "100%",
+          minHeight: fillsParent ? 0 : undefined,
+          height: fillsParent ? "100%" : "100%",
+          flex: fillsParent ? 1 : undefined,
         }}
       >
       <span

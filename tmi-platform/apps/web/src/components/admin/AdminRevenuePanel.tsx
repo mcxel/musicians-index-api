@@ -89,7 +89,7 @@ export default function AdminRevenuePanel({ selectedId, onSelect }: AdminRevenue
         {/* SVG Spline Graph */}
         <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
           {/* Y-axis Labels */}
-          <div style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", height: 110, fontSize: 7, color: "rgba(255,255,255,0.4)", textAlign: "right", minWidth: 28 }}>
+          <div style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", height: 380, fontSize: 7, color: "rgba(255,255,255,0.4)", textAlign: "right", minWidth: 28 }}>
             <span>$70M</span>
             <span>$60M</span>
             <span>$50M</span>
@@ -101,7 +101,7 @@ export default function AdminRevenuePanel({ selectedId, onSelect }: AdminRevenue
           </div>
 
           {/* Graph Grid */}
-          <div style={{ flex: 1, height: 110, position: "relative", background: "rgba(0,0,0,0.2)", borderRadius: 8, border: "1px solid rgba(255,255,255,0.05)" }}>
+          <div style={{ flex: 1, height: 380, minHeight: 380, position: "relative", background: "rgba(0,0,0,0.2)", borderRadius: 8, border: "1px solid rgba(255,255,255,0.05)" }}>
             {/* Grid Lines */}
             <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", justifyContent: "space-between", pointerEvents: "none" }}>
               {[...Array(8)].map((_, i) => (

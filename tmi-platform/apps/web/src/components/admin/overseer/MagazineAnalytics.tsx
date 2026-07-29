@@ -46,6 +46,7 @@ export default function MagazineAnalytics() {
       gap: 12,
       fontFamily: "'Inter', sans-serif",
       height: "100%",
+      minHeight: 420,
     }}>
       {/* Column 1: Live Billboard Rankings */}
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>

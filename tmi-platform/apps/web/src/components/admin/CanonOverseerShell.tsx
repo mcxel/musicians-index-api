@@ -168,10 +168,13 @@ export default function CanonOverseerShell({ workspace }: CanonOverseerShellProp
 
   const leftWidth = leftCollapsed ? 74 : 268;
   const rightWidth = rightCollapsed ? 74 : 268;
-  // Intelligence deck: natural height below ticker — never flex-shrink into ops.
-  const intelligenceMinHeight = bottomCollapsed ? 44 : 320;
-  const MONITOR_GAP = 12;
-  const DECK_GAP = 14;
+  // Intelligence deck must be tall enough that "below the fold" is obvious.
+  // Prior Two-Deck commit kept ~280–320px — charts stayed in first viewport
+  // when monitors collapsed, so the page still looked like the old squash layout.
+  const intelligenceMinHeight = bottomCollapsed ? 48 : 560;
+  const MONITOR_GAP = 14;
+  const DECK_GAP = 16;
+  const MONITOR_MIN_PX = 360;
 
   const closeAdminCam = () => setCameraOverlayOpen(false);
   const toggleAdminCam = () => setCameraOverlayOpen((prev) => !prev);
@@ -274,7 +277,7 @@ export default function CanonOverseerShell({ workspace }: CanonOverseerShellProp
           // Side rails stretch to the combined monitor stack height; overflow scrolls inside.
           alignSelf: "stretch",
           height: isSideRail ? "100%" : "auto",
-          minHeight: 0,
+          minHeight: isSideRail ? 0 : undefined,
           overflowY: isSideRail ? "auto" : "visible",
           overflowX: "hidden",
           paddingRight: 2,
@@ -282,19 +285,45 @@ export default function CanonOverseerShell({ workspace }: CanonOverseerShellProp
       >
         {visible.map((panel) => {
           if (equalDualCenter) {
-            // All center panes lock to true 16:9 (width-driven). First two are the
-            // Observation Deck dual stack; extras (if any) stack below at same ratio.
-            return renderPanelCanister(
-              { ...panel, fixedHeight: undefined, flex: undefined },
-              false,
-              false,
-              {
-                width: "100%",
-                aspectRatio: "16 / 9",
-                height: "auto",
-                flex: "0 0 auto",
-                minHeight: 0,
-              },
+            // Padding-bottom 16:9 lock — cannot collapse under flex/minHeight:0
+            // the way CSS aspect-ratio did in BezelFrame (root cause of "looks the same").
+            return (
+              <div
+                key={panel.id ?? panel.title}
+                data-monitor-frame="16x9"
+                style={{
+                  position: "relative",
+                  width: "100%",
+                  paddingBottom: "56.25%",
+                  flex: "0 0 auto",
+                  flexShrink: 0,
+                  minHeight: MONITOR_MIN_PX,
+                  alignSelf: "stretch",
+                }}
+              >
+                <div
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    display: "flex",
+                    flexDirection: "column",
+                  }}
+                >
+                  {renderPanelCanister(
+                    { ...panel, fixedHeight: undefined, flex: undefined },
+                    false,
+                    false,
+                    {
+                      width: "100%",
+                      height: "100%",
+                      flex: "1 1 auto",
+                      minHeight: 0,
+                      overflow: "hidden",
+                      flexDirection: "column",
+                    },
+                  )}
+                </div>
+              </div>
             );
           }
           return renderPanelCanister(
@@ -310,9 +339,11 @@ export default function CanonOverseerShell({ workspace }: CanonOverseerShellProp
   return (
     <div
       data-canon-overseer-shell
+      data-two-deck="ops-ticker-intelligence"
       style={{
         minHeight: "100vh",
         height: "auto",
+        maxHeight: "none",
         background:
           "radial-gradient(130% 90% at 50% -5%, rgba(92,26,74,0.45) 0%, rgba(28,10,32,0.85) 46%, rgba(7,3,12,1) 100%)",
         border: "14px solid transparent",
@@ -321,12 +352,13 @@ export default function CanonOverseerShell({ workspace }: CanonOverseerShellProp
           "inset 0 0 90px rgba(0,0,0,0.85), inset 0 0 0 1px rgba(255,215,0,0.15), 0 16px 40px rgba(0,0,0,0.8)",
         display: "flex",
         flexDirection: "column",
-        gap: 8,
+        gap: 10,
         padding: 10,
-        paddingBottom: 16,
+        paddingBottom: 24,
         fontFamily: "inherit",
         position: "relative",
         overflow: "visible",
+        overflowY: "visible",
       }}
     >
       {/* Corner Fuchsia Gems */}
@@ -498,7 +530,9 @@ export default function CanonOverseerShell({ workspace }: CanonOverseerShellProp
           position: "relative",
           zIndex: 1,
           flex: "0 0 auto",
+          flexShrink: 0,
           height: "auto",
+          maxHeight: "none",
           display: "grid",
           gridTemplateColumns: shellGridTemplate,
           gridTemplateRows: "auto",
@@ -511,13 +545,48 @@ export default function CanonOverseerShell({ workspace }: CanonOverseerShellProp
           transition: "all 280ms ease",
         }}
       >
+        <div
+          style={{
+            gridColumn: "1 / -1",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 8,
+            padding: "2px 4px 6px",
+            borderBottom: "1px solid rgba(255,215,0,0.18)",
+            marginBottom: 2,
+          }}
+        >
+          <span
+            style={{
+              color: "#FFD700",
+              fontSize: 10,
+              fontWeight: 900,
+              letterSpacing: "0.18em",
+              textTransform: "uppercase",
+            }}
+          >
+            Operations Deck · Dual 16:9 Monitors
+          </span>
+          <span
+            style={{
+              color: "rgba(255,255,255,0.4)",
+              fontSize: 9,
+              fontWeight: 800,
+              letterSpacing: "0.1em",
+              textTransform: "uppercase",
+            }}
+          >
+            Height = monitor stack only
+          </span>
+        </div>
         {fullscreenPanel ? (
           <Canister
             title="FOCUS MODE"
             accent="#00FFFF"
             statusLabel="FOCUSED"
             onToggleFullscreen={() => setFullscreenPanel(null)}
-            style={{ minHeight: "min(70vh, 720px)", aspectRatio: "16 / 9", width: "100%" }}
+            style={{ minHeight: "min(70vh, 720px)", aspectRatio: "16 / 9", width: "100%", gridColumn: "1 / -1" }}
           >
             {renderFullscreen()}
           </Canister>
@@ -541,25 +610,64 @@ export default function CanonOverseerShell({ workspace }: CanonOverseerShellProp
           position: "relative",
           zIndex: 1,
           flex: "0 0 auto",
+          flexShrink: 0,
           minHeight: intelligenceMinHeight,
           height: bottomCollapsed ? intelligenceMinHeight : "auto",
+          maxHeight: "none",
           display: "grid",
           gridTemplateColumns: `repeat(${Math.max(1, activeWorkspace.bottom.length)}, minmax(0, 1fr))`,
           gap: DECK_GAP,
-          border: "1px solid rgba(255,215,0,0.22)",
-          borderRadius: 10,
-          padding: bottomCollapsed ? 6 : 16,
-          background: "linear-gradient(180deg, rgba(255,45,170,0.04), rgba(255,215,0,0.04))",
+          border: "2px solid rgba(255,45,170,0.35)",
+          borderRadius: 12,
+          padding: bottomCollapsed ? 6 : 18,
+          background: "linear-gradient(180deg, rgba(255,45,170,0.08), rgba(255,215,0,0.05))",
+          boxShadow: "inset 0 0 24px rgba(255,45,170,0.06), 0 8px 28px rgba(0,0,0,0.45)",
           transition: "all 280ms ease",
         }}
       >
+        {!bottomCollapsed ? (
+          <div
+            style={{
+              gridColumn: "1 / -1",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 8,
+              marginBottom: 4,
+            }}
+          >
+            <span
+              style={{
+                color: "#FF2DAA",
+                fontSize: 11,
+                fontWeight: 900,
+                letterSpacing: "0.2em",
+                textTransform: "uppercase",
+              }}
+            >
+              Intelligence Deck · Below Fold
+            </span>
+            <span
+              style={{
+                color: "rgba(255,255,255,0.45)",
+                fontSize: 9,
+                fontWeight: 800,
+                letterSpacing: "0.12em",
+                textTransform: "uppercase",
+              }}
+            >
+              Artist Revenue · Magazine Analytics · Scroll past ticker
+            </span>
+          </div>
+        ) : null}
         {activeWorkspace.bottom
           .filter((panel) => !isFloatingPanel(panel))
           .map((panel) =>
             renderPanelCanister(panel, bottomCollapsed, false, {
-              minHeight: bottomCollapsed ? undefined : 280,
+              minHeight: bottomCollapsed ? undefined : 480,
               flex: "0 0 auto",
               height: "auto",
+              overflow: "visible",
             }),
           )}
       </div>
