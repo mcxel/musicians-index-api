@@ -50,8 +50,24 @@
 - [ ] Browser certify dashboard monitor matrix Auto-Director fills
 - [ ] Optional: feed real `GlobalLiveSessionRegistry` starting-soon tiles into pool (still no fake occupancy)
 
-#### Matchmaking / Room-Merge — LOCKED FUTURE (do not implement stubs)
-**Status:** Documented architecture only. **Rule 20 / Rule 21 (No Empty Platform):** never fake opponents, fake audiences, or “AI practice opponent presented as human.”
+#### Layer 5 — ProgramBoard + RotationScheduler (contracts scaffold)
+**Status:** COMPLETE (contracts + pure engines + light Auto-Director wire). Phase 5B mesh remains IDLE.
+
+- [x] `core/eos/programBoard.ts` — ProgramSlot, NowPlaying, StartingSoon, ProgramQueueItem, sources EXPERIENCE|LIVE_PREVIEW|SPONSOR|NEWS|FRIEND_ACTIVITY (honest empty allowed)
+- [x] `registries/eos/ProgramQueueRegistry.ts` — default sequences/weights from ExperienceRegistry ids (battle, cypher, challenge, monday-night-stage, deal-or-feud, jazz-scat-battle, gibberish-battle, …) — no OverseerDeck hardcode
+- [x] `lib/eos/RotationSchedulerEngine.ts` — pure `nextItem` / `advanceOnIdle` / `onExperienceFinished`; 15-min block config; no fabricated live rooms/viewers (Rule 20)
+- [x] `lib/eos/ProgramBoardEngine.ts` — pure `buildBoard` + `programBoardToSuggestions` via ExperienceRegistry.entryRoute
+- [x] `hooks/useProgramBoard.ts` — thin client snapshot → Auto-Director suggestions
+- [x] Auto-Director prefers ProgramBoard now-playing / starting-soon when available; else discovery pool
+- [x] Barrel exports — `core/eos` + `registries/eos`
+- [ ] Browser certify idle monitors prefer board suggestions with real entryRoutes
+- [ ] Wire real `GlobalLiveSessionRegistry` LIVE_PREVIEW / NEWS / SPONSOR / FRIEND_ACTIVITY feeds (still honest-empty until real)
+
+#### Universal Playlist System — FUTURE APPROVED (document only)
+**Status:** Approved direction — **do not implement** Spotify/BandLab/SoundCloud OAuth, download, or rip pipelines. Embed/link-only when eventually wired. Not part of Layer 5 scaffold.
+
+#### Matchmaking / Audience Merge — LOCKED FUTURE (do not implement stubs)
+**Status:** Documented architecture only. **Rule 20 / Rule 21 (No Empty Platform):** never fake opponents, fake audiences, or “AI practice opponent presented as human.” Generic EOS orchestration (not battle-only): Waiting Experience A/B → Matchmaking → Live Experience Instance → Merge audiences → Recycle empty staging rooms. Same flow for battles, cyphers, Dirty Dozens, joke-offs, dance-offs, vocal improv, future types.
 
 Target architecture (when real engines exist — wire, don’t duplicate):
 
@@ -59,11 +75,14 @@ Target architecture (when real engines exist — wire, don’t duplicate):
 |---|---|
 | Staging pool | Waiting-room participants queue by experience type (battle/cypher/challenge/…) |
 | Matchmaking | Pair / bracket from real pool (existing `BattleMatchmakingEngine` / CIS distance — extend, don’t fork) |
-| Room merge | Merge undersized waiting rooms into one live room so audiences aren’t stranded (Rule 21 No Empty Platform) |
+| Audience merge | Merge undersized waiting rooms into one live room so audiences aren’t stranded (Rule 21 No Empty Platform) |
 | Recycle waiting rooms | Empty or expired waiting rooms recycle into the next opportunity — never fabricate fill |
 | AudienceRuntime | Seats/presence stay on canonical `audienceRuntimeEngine` — merge moves real seat claims, never invents viewers |
 
 **Do not build** fake “opponent found,” fabricated crowd meters, or stub merge runtimes until EventOrchestrator + audience seat systems are the wiring target. Auto-Director only surfaces **discovery preview cards** with real `entryRoute`s until then.
+
+#### Visual Spec Archive — concept MP4s (outside git)
+**Status:** Design references only — not runtime. Keep ZIP/concept videos (`Battles video base`, `Monday_Night`, `Deal_vs_Feud`, `world ance party`, lounges, etc.) in cloud/LFS outside the repo (concept PDFs archived outside repo). Ambient wired to `public/assets/videos/rooms/` via `VenueAssetRegistry` (concerts/releases fall back to stage/lounge/dance loops). Phase 5B mesh + true walkable VenueRuntime still IDLE (Rule 18 Asset Realization Directive).
 
 ### Phase 4 - Experience Engine (LOCKED / ARCHIVED — competition branch Gate 1)
 **Status:** Competition/broadcast runtime certified locally and published on `eos/phase-4-experiences` (skips bloated `89e52633`). Do not reopen Pass 4.1–4.6 for new feature work.
@@ -93,20 +112,21 @@ Target architecture (when real engines exist — wire, don’t duplicate):
 - [ ] Browser certify /battles/jazz-scat + /battles/gibberish boot->RUNNING
 - [ ] Pitch/rhythm detection engine (NOT started - future)
 
-#### EOS Rotation Network - LOCKED ARCHITECTURE / FUTURE (do not implement fake schedulers)
-**Status:** Documented direction only. **Rule 20:** no fabricated schedules, no fake room occupancy, no stub RotationScheduler that invents a program board.
+#### EOS Rotation Network — Layer 5 scaffold COMPLETE / runtime FUTURE
+**Status:** ProgramBoard + RotationScheduler **contracts + pure engines COMPLETE** (see Layer 5 above). Public UI board, PersistentArenaRoom hosting, live occupancy feeds, and Universal Playlist remain FUTURE. **Rule 20:** board "now playing" = current 15-min registry destination block — never fabricated viewers/rooms.
 
-Target architecture (when real runtime exists):
-
-| Piece | Role |
+| Piece | Status |
 |---|---|
-| RotationScheduler | Owns 15-minute program blocks; never invents occupancy |
-| PublicProgramBoard | Surfaces the real schedule to fans (empty/honest until scheduled) |
-| PersistentArenaRoom | Long-lived arena room that hosts successive blocks |
-| 15-min blocks | Fixed rotation windows (Jazz Scat -> Gibberish -> Battle -> ...) |
-| Movie-theater rooms | Shared timeline rooms (listen/watch together) - distinct from competition stages |
+| RotationSchedulerEngine | COMPLETE (pure; 15-min config) |
+| ProgramQueueRegistry + ProgramBoardEngine | COMPLETE (ExperienceRegistry entryRoutes) |
+| Auto-Director light wire | COMPLETE (prefers board suggestions when idle) |
+| PublicProgramBoard UI | FUTURE |
+| PersistentArenaRoom | FUTURE |
+| Universal Playlist (embed/link only) | FUTURE APPROVED — no OAuth/rip |
+| Matchmaking / Audience Merge | FUTURE (do not stub) |
+| Phase 5B mesh / AvatarEngine | IDLE |
 
-**Do not build** fake schedulers, mock program boards, or fabricated "now playing" rooms until a real schedule source exists. Phase 4.7 Vocal Improv experiences are standalone StageLoader mounts; they are **not** wired into a Rotation Network runtime.
+Phase 4.7 Vocal Improv experiences remain standalone StageLoader mounts; Layer 5 only sequences their ExperienceRegistry ids into rotation suggestions.
 
 #### Phase 4.3-4.6 Certification Ledger
 | Certification | Status |

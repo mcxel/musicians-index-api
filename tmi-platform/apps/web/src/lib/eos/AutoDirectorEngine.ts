@@ -4,6 +4,9 @@
  * findIdleSlots / pickNextContent / assignSlots — no side effects, no fabricated
  * viewer counts or opponents (Rule 20). Matchmaking / room-merge is LOCKED FUTURE
  * (see TODO.md); do not invent staging pools here.
+ *
+ * Layer 5: optional `programSuggestions` (ProgramBoard now-playing / starting-soon)
+ * are preferred over the discovery pool when filling idle slots.
  */
 
 import type {
@@ -23,6 +26,11 @@ export interface AssignSlotsOptions {
   current: MonitorAssignment[];
   /** Optional override catalog; defaults to resolveAutoDirectorPreviews() */
   pool?: ResolvedAutoDirectorPreview[];
+  /**
+   * Layer 5 ProgramBoard suggestions (now playing / starting soon).
+   * Preferred for idle fills before falling back to discovery pool.
+   */
+  programSuggestions?: ResolvedAutoDirectorPreview[];
   /** Pseudo-random seed for deterministic tests; defaults to Date.now() */
   seed?: number;
   /** Max distinct AUTO_DIRECTOR content ids across idle slots */
@@ -185,11 +193,12 @@ function previewToAssignment(
 }
 
 /**
- * Fill idle slots with Auto-Director discovery previews.
+ * Fill idle slots with ProgramBoard suggestions first, then discovery pool.
  * Preserves all locked / USER non-empty assignments.
  */
 export function assignSlots(options: AssignSlotsOptions): MonitorAssignment[] {
   const pool = options.pool ?? resolveAutoDirectorPreviews();
+  const programSuggestions = options.programSuggestions ?? [];
   const seed = options.seed ?? Date.now();
   const maxDistinct = options.maxDistinct ?? FLIGHT_DECK_SLOT_IDS.length;
 
@@ -214,9 +223,22 @@ export function assignSlots(options: AssignSlotsOptions): MonitorAssignment[] {
   }
 
   let picks = 0;
+  let programCursor = 0;
   idle.forEach((slotId, index) => {
     if (picks >= maxDistinct) return;
-    const preview = pickNextContent(pool, used, seed + index * 97);
+
+    // Prefer ProgramBoard now-playing / starting-soon when available
+    let preview: ResolvedAutoDirectorPreview | null = null;
+    while (programCursor < programSuggestions.length && !preview) {
+      const candidate = programSuggestions[programCursor];
+      programCursor += 1;
+      if (!candidate) break;
+      if (used.has(candidate.id) || used.has(candidate.contentId)) continue;
+      preview = candidate;
+    }
+    if (!preview) {
+      preview = pickNextContent(pool, used, seed + index * 97);
+    }
     if (!preview) return;
     used.add(preview.id);
     used.add(preview.contentId);
@@ -238,6 +260,7 @@ export function getRotationCadenceMs(): number {
 export function rotateIdleAssignments(
   current: MonitorAssignment[],
   seed: number = Date.now(),
+  programSuggestions?: ResolvedAutoDirectorPreview[],
 ): MonitorAssignment[] {
   // Clear prior AUTO_DIRECTOR fills so pickNextContent can rotate
   const cleared = current.map((a) => {
@@ -258,5 +281,5 @@ export function rotateIdleAssignments(
     }
     return a;
   });
-  return assignSlots({ current: cleared, seed });
+  return assignSlots({ current: cleared, seed, programSuggestions });
 }
