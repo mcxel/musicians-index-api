@@ -79,6 +79,21 @@ function renderWidget(
     case "crowd_meter":
     case "boo_meter":
       return <CompetitionCrowdMeter format={format} crowdEnergy={null} />;
+    case "vocal_meter":
+      // Pitch/rhythm engine not wired — Rule 20 honest pending (no fabricated pitch %).
+      // Reuses CrowdMeter shell when a real signal exists; until then, pending HUD only.
+      return (
+        <div className="flex flex-col gap-1 w-44">
+          <span className="text-[8px] font-bold text-white/40 tracking-widest uppercase">
+            Vocal Meter
+          </span>
+          <div className="w-full h-1.5 bg-black/40 rounded-full overflow-hidden border border-white/5" />
+          <span className="text-[8px] text-white/35 tracking-wide">
+            Pending — pitch engine not connected
+          </span>
+          <CompetitionCrowdMeter format={format} crowdEnergy={null} />
+        </div>
+      );
     case "round_timer":
       return format === "CYPHER" ? (
         <CypherRoundTimer />

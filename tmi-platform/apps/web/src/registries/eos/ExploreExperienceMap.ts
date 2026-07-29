@@ -29,6 +29,8 @@ export const EXPLORE_SECTIONS: Array<{ label: string; items: ExploreCardDefiniti
     items: [
       { name: "Battles", desc: "Head-to-head — crowd votes the winner", icon: "⚔️", color: "#FF2DAA", href: "/battles/live", experienceId: "battle" },
       { name: "Battles Lobby Wall", desc: "Every battle happening now", icon: "🧱", color: "#FF2DAA", href: "/battles/lobby-wall" },
+      { name: "Jazz Scat Battle", desc: "Vocal improv — scat vs scat", icon: "🎷", color: "#FFD700", href: "/battles/jazz-scat", experienceId: "jazz-scat-battle" },
+      { name: "Gibberish Battle", desc: "Vocal improv — nonsense energy duel", icon: "🗣️", color: "#00FFFF", href: "/battles/gibberish", experienceId: "gibberish-battle" },
       { name: "Cypher", desc: "Open circle — every bar counts", icon: "🔄", color: "#00FFFF", href: "/cypher/stage", experienceId: "cypher" },
       { name: "Cypher Lobby Wall", desc: "Every cypher happening now", icon: "🧱", color: "#00FFFF", href: "/cypher/lobby-wall" },
       { name: "Challenges", desc: "Producer & artist challenge rooms", icon: "🏆", color: "#FFD700", href: "/challenge/stage", experienceId: "challenge" },

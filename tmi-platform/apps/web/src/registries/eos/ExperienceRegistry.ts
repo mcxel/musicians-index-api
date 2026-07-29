@@ -74,6 +74,91 @@ export const EXPERIENCE_REGISTRY: Record<string, ExperienceDefinition> = {
     entryRoute: "/cypher/stage",
   },
 
+  //
+  // VOCAL IMPROV (Phase 4.7) — category BATTLE; mode via featureFlags only
+  // (ExperienceDefinition has no subCategory field — do not break RuntimeValidator).
+  // venueId reuses battle (VenueAssetRegistry) — no invented jazz_club ID.
+  // Camera/animation packs reuse battle_standard / battle_transitions.
+  // Scoring profile ids: scoring:jazz_scat_v1 | scoring:gibberish_v1
+  //
+  "jazz-scat-battle": {
+    id: "jazz-scat-battle",
+    title: "Jazz Scat Battle",
+    category: "BATTLE",
+    venueId: "battle",
+    environmentId: "battle_arena_v1",
+    lightingId: "gold_spotlight",
+    cameraPackId: "battle_standard",
+    audienceId: "arena_mesh",
+    avatarMode: "interactive",
+    widgetIds: [
+      "voting_panel",
+      "leaderboard",
+      "vocal_meter",
+      "crowd_meter",
+      "round_timer",
+      "vs_overlay",
+      "round_banner",
+      "results_overlay",
+      "audience_reaction_bar",
+      "sponsor_rail",
+      "discovery_rail",
+    ],
+    overlayIds: ["battle_status", "vs_overlay", "round_banner", "results_overlay"],
+    animationPackId: "battle_transitions",
+    themeId: "cyber-neon",
+    networkMode: "WebRTC",
+    permissions: DEFAULT_PERMS,
+    featureFlags: [
+      "competition_presentation",
+      "cis_integrity",
+      "vocal_improv",
+      "jazz_scat",
+      "scoring:jazz_scat_v1",
+    ],
+    version: "1.0.0",
+    entryRoute: "/battles/jazz-scat",
+  },
+
+  "gibberish-battle": {
+    id: "gibberish-battle",
+    title: "Gibberish Battle",
+    category: "BATTLE",
+    venueId: "battle",
+    environmentId: "battle_arena_v1",
+    lightingId: "gold_spotlight",
+    cameraPackId: "battle_standard",
+    audienceId: "arena_mesh",
+    avatarMode: "interactive",
+    widgetIds: [
+      "voting_panel",
+      "leaderboard",
+      "vocal_meter",
+      "crowd_meter",
+      "round_timer",
+      "vs_overlay",
+      "round_banner",
+      "results_overlay",
+      "audience_reaction_bar",
+      "sponsor_rail",
+      "discovery_rail",
+    ],
+    overlayIds: ["battle_status", "vs_overlay", "round_banner", "results_overlay"],
+    animationPackId: "battle_transitions",
+    themeId: "cyber-neon",
+    networkMode: "WebRTC",
+    permissions: DEFAULT_PERMS,
+    featureFlags: [
+      "competition_presentation",
+      "cis_integrity",
+      "vocal_improv",
+      "gibberish",
+      "scoring:gibberish_v1",
+    ],
+    version: "1.0.0",
+    entryRoute: "/battles/gibberish",
+  },
+
   challenge: {
     id: "challenge",
     title: "Challenge Arena",

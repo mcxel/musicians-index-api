@@ -51,6 +51,35 @@
 - [x] Pass 4.6 - Deal or Feud EOS mount + browser cert PASS (`/shows/deal-or-feud`)
 - [x] Gate 1 remote publish - branch `eos/phase-4-experiences` (cherry-picks of 4fe38bbc + 8ec2f725; never 89e52633)
 
+#### Phase 4.7 - Vocal Improv scaffold (CONFIG ONLY)
+**Status:** Scaffold complete. No pitch/rhythm ML. No fake occupancy.
+
+- [x] ocal_meter widget in WidgetRegistry (hud) + ExperienceWidgetLayer honest pending case
+- [x] Experience defs jazz-scat-battle + gibberish-battle (category BATTLE, venueId attle, packs attle_standard / attle_transitions)
+- [x] featureFlags: ocal_improv, jazz_scat | gibberish, scoring:jazz_scat_v1 | scoring:gibberish_v1 (no subCategory on ExperienceDefinition)
+- [x] VocalImprovScoringRegistry.ts - Jazz Scat vs Gibberish criteria (data only)
+- [x] VocalImprovExperiences.tsx -> EosArenaEventShell (@/components/eos/ArenaEventShell) via useExperienceRuntime
+- [x] ExperienceComponentRegistry entries (no parallel VocalImprovComponentRegistry)
+- [x] Routes /battles/jazz-scat + /battles/gibberish StageLoader mounts
+- [x] ExploreExperienceMap cards
+- [ ] Browser certify /battles/jazz-scat + /battles/gibberish boot->RUNNING
+- [ ] Pitch/rhythm detection engine (NOT started - future)
+
+#### EOS Rotation Network - LOCKED ARCHITECTURE / FUTURE (do not implement fake schedulers)
+**Status:** Documented direction only. **Rule 20:** no fabricated schedules, no fake room occupancy, no stub RotationScheduler that invents a program board.
+
+Target architecture (when real runtime exists):
+
+| Piece | Role |
+|---|---|
+| RotationScheduler | Owns 15-minute program blocks; never invents occupancy |
+| PublicProgramBoard | Surfaces the real schedule to fans (empty/honest until scheduled) |
+| PersistentArenaRoom | Long-lived arena room that hosts successive blocks |
+| 15-min blocks | Fixed rotation windows (Jazz Scat -> Gibberish -> Battle -> ...) |
+| Movie-theater rooms | Shared timeline rooms (listen/watch together) - distinct from competition stages |
+
+**Do not build** fake schedulers, mock program boards, or fabricated "now playing" rooms until a real schedule source exists. Phase 4.7 Vocal Improv experiences are standalone StageLoader mounts; they are **not** wired into a Rotation Network runtime.
+
 #### Phase 4.3-4.6 Certification Ledger
 | Certification | Status |
 |---|---|

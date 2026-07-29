@@ -33,6 +33,13 @@ export const WIDGET_REGISTRY: Record<string, WidgetDefinition> = {
     componentPath: "@/components/competition/presentation/CompetitionCrowdMeter",
     requiredForCategories: ["BATTLE", "STAGE_SHOW"],
   },
+  /** Vocal Improv pitch/energy HUD — pitch engine not wired yet (Rule 20 honest pending). */
+  vocal_meter: {
+    id: "vocal_meter",
+    displayName: "Vocal Meter",
+    layer: "hud",
+    componentPath: "@/components/competition/presentation/CompetitionCrowdMeter",
+  },
   round_timer: {
     id: "round_timer",
     displayName: "Round Timer",

@@ -11,6 +11,9 @@ import MondayNightStageExperience from "./MondayNightStageExperience";
 import DealOrFeudExperience from "./DealOrFeudExperience";
 import LoungeExperience from "./LoungeExperience";
 import WorldDancePartyExperience from "./WorldDancePartyExperience";
+import JazzScatBattleExperience, {
+  GibberishBattleExperience,
+} from "./VocalImprovExperiences";
 
 export interface ExperienceModuleProps {
   roomId?: string;
@@ -28,6 +31,8 @@ export const EXPERIENCE_COMPONENT_REGISTRY: Record<
   "deal-or-feud": DealOrFeudExperience,
   lounge: LoungeExperience,
   "world-dance-party": WorldDancePartyExperience,
+  "jazz-scat-battle": JazzScatBattleExperience,
+  "gibberish-battle": GibberishBattleExperience,
 };
 
 export function getExperienceComponent(
