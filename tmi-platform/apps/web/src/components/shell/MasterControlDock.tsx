@@ -1,11 +1,21 @@
 'use client';
 
-import React, { useState } from 'react';
+/**
+ * MasterControlDock — bottom Flight Deck control bar (Live HUD base #1).
+ * Pass 8: chevron next to HOME opens FloatingWorkspacePanel (no layout reflow).
+ * FAN quick Inventory overlay; PERFORMER opens Venue Concierge in floating slot.
+ * Fake badge counts removed (Rule 20).
+ */
+
+import React, { useEffect, useState } from 'react';
 import YoPhoStudioDrawer from '../studio/YoPhoStudioDrawer';
 import InventoryPanelOverlay from '../panels/InventoryPanelOverlay';
 import MemoryWallPanelOverlay from '../panels/MemoryWallPanelOverlay';
 import PlaylistPanelOverlay from '../panels/PlaylistPanelOverlay';
 import CameraCaptureOverlay from '../panels/CameraCaptureOverlay';
+import FloatingWorkspacePanel from '@/components/workspace/FloatingWorkspacePanel';
+import RoleGate from '@/components/auth/RoleGate';
+import { useFloatingWorkspace } from '@/lib/workspace/floatingWorkspaceStore';
 
 export interface MasterControlDockProps {
   role?: 'fan' | 'performer' | 'artist' | 'admin';
@@ -22,20 +32,27 @@ export default function MasterControlDock({
   onLeaveRoom,
   onEnterStage,
 }: MasterControlDockProps) {
-  // Toggle states for controls & overlay panels
   const [isMicActive, setIsMicActive] = useState(true);
   const [isCamActive, setIsCamActive] = useState(true);
   const [isHandRaised, setIsHandRaised] = useState(false);
   const [isPlayingAudio, setIsPlayingAudio] = useState(true);
 
-  // Overlay panels
   const [isInventoryOpen, setIsInventoryOpen] = useState(false);
   const [isMemoryWallOpen, setIsMemoryWallOpen] = useState(false);
   const [isPlaylistOpen, setIsPlaylistOpen] = useState(false);
   const [isStudioOpen, setIsStudioOpen] = useState(false);
-  // Separate from Go Live on purpose (direction locked 2026-07-22): Go Live
-  // means "broadcast now," Camera means "capture a memory."
   const [isCameraOpen, setIsCameraOpen] = useState(false);
+
+  const { isOpen: workspaceOpen, toggle: toggleWorkspace, open: openWorkspace, setRole } =
+    useFloatingWorkspace();
+
+  const isPerformer = role === 'performer' || role === 'artist';
+
+  useEffect(() => {
+    if (role === 'admin') setRole('ADMIN');
+    else if (isPerformer) setRole('PERFORMER');
+    else setRole('FAN');
+  }, [role, isPerformer, setRole]);
 
   const handleMicClick = () => {
     setIsMicActive(!isMicActive);
@@ -47,20 +64,40 @@ export default function MasterControlDock({
     if (onCamToggle) onCamToggle();
   };
 
+  const openPrimaryQuickPanel = () => {
+    if (isPerformer) {
+      openWorkspace('venue_concierge');
+      return;
+    }
+    setIsInventoryOpen(true);
+  };
+
   return (
     <>
-      {/* Overlays */}
-      <InventoryPanelOverlay
-        isOpen={isInventoryOpen}
-        onClose={() => setIsInventoryOpen(false)}
-        onOpenAvatarStudio={() => {
-          setIsInventoryOpen(false);
-          setIsStudioOpen(true);
-        }}
-      />
+      <FloatingWorkspacePanel />
+
+      <RoleGate allow={['FAN', 'ADMIN', 'STAFF']}>
+        <InventoryPanelOverlay
+          isOpen={isInventoryOpen}
+          onClose={() => setIsInventoryOpen(false)}
+          onOpenAvatarStudio={() => {
+            setIsInventoryOpen(false);
+            setIsStudioOpen(true);
+          }}
+          onViewAll={() => {
+            setIsInventoryOpen(false);
+            openWorkspace('avatar_inventory');
+          }}
+        />
+      </RoleGate>
+
       <MemoryWallPanelOverlay
         isOpen={isMemoryWallOpen}
         onClose={() => setIsMemoryWallOpen(false)}
+        onViewAll={() => {
+          setIsMemoryWallOpen(false);
+          openWorkspace('memory_wall');
+        }}
       />
       <PlaylistPanelOverlay
         isOpen={isPlaylistOpen}
@@ -111,7 +148,6 @@ export default function MasterControlDock({
             cursor: 'pointer',
           }}
         >
-          {/* Album Cover Thumbnail */}
           <div
             style={{
               width: 36,
@@ -127,18 +163,14 @@ export default function MasterControlDock({
           >
             🎵
           </div>
-
-          {/* Song Meta */}
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.45)', letterSpacing: '0.12em', fontWeight: 800 }}>
               NOW PLAYING
             </div>
             <div style={{ fontSize: 11, fontWeight: 900, color: '#fff', whiteSpace: 'nowrap' }}>
-              Hustle & Flow <span style={{ color: 'rgba(255,255,255,0.45)', fontWeight: 400 }}>· MarcelD</span>
+              Open playlists <span style={{ color: 'rgba(255,255,255,0.45)', fontWeight: 400 }}>· Music module</span>
             </div>
           </div>
-
-          {/* Audio Waveform Spectrum Equalizer */}
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 2, height: 16, marginLeft: 'auto' }}>
             {[12, 18, 8, 16, 20, 10].map((h, i) => (
               <span
@@ -171,9 +203,7 @@ export default function MasterControlDock({
             gap: 8,
           }}
         >
-          {/* Action Row */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            {/* LEAVE ROOM */}
             <button
               onClick={onLeaveRoom}
               style={{
@@ -194,7 +224,6 @@ export default function MasterControlDock({
               🚪 LEAVE
             </button>
 
-            {/* MIC TOGGLE */}
             <button
               onClick={handleMicClick}
               style={{
@@ -214,7 +243,6 @@ export default function MasterControlDock({
               🎙️ {isMicActive ? 'MIC ON' : 'MIC OFF'}
             </button>
 
-            {/* CAM TOGGLE */}
             <button
               onClick={handleCamClick}
               style={{
@@ -234,7 +262,6 @@ export default function MasterControlDock({
               📹 {isCamActive ? 'CAM ON' : 'CAM OFF'}
             </button>
 
-            {/* RAISE HAND */}
             <button
               onClick={() => setIsHandRaised(!isHandRaised)}
               style={{
@@ -254,9 +281,8 @@ export default function MasterControlDock({
               ✋ HAND
             </button>
 
-            {/* EMOTES */}
             <button
-              onClick={() => setIsInventoryOpen(true)}
+              onClick={openPrimaryQuickPanel}
               style={{
                 padding: '6px 12px',
                 borderRadius: 12,
@@ -271,11 +297,9 @@ export default function MasterControlDock({
                 gap: 5,
               }}
             >
-              😃 EMOTES
+              {isPerformer ? '🗺️ CONCIERGE' : '😃 EMOTES'}
             </button>
 
-            {/* CAMERA — deliberately separate from Stage/Go Live. Go Live
-                means "broadcast now," Camera means "capture a memory." */}
             <button
               onClick={() => setIsCameraOpen(true)}
               style={{
@@ -295,7 +319,6 @@ export default function MasterControlDock({
               📷 CAMERA
             </button>
 
-            {/* ENTER STAGE */}
             <button
               onClick={onEnterStage}
               style={{
@@ -318,22 +341,59 @@ export default function MasterControlDock({
             </button>
           </div>
 
-          {/* Navigation Link Row (Includes Search and Explore icons relocated) */}
-          <div style={{ display: 'flex', gap: 14, borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: 6, width: '100%', justifyContent: 'center' }}>
+          <div style={{ display: 'flex', gap: 14, borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: 6, width: '100%', justifyContent: 'center', alignItems: 'center' }}>
+            {/* HOME + chevron — opens floating workspace (no reflow) */}
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+              <a
+                href="/"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  fontSize: 9,
+                  fontWeight: 800,
+                  letterSpacing: '0.05em',
+                  color: 'rgba(255,255,255,0.8)',
+                  textDecoration: 'none',
+                  padding: '2px 4px',
+                }}
+              >
+                <span>🏠</span>
+                <span>HOME</span>
+              </a>
+              <button
+                type="button"
+                aria-label={workspaceOpen ? 'Close floating workspace' : 'Open floating workspace'}
+                aria-expanded={workspaceOpen}
+                onClick={() => toggleWorkspace()}
+                style={{
+                  border: workspaceOpen ? '1px solid rgba(170,45,255,0.65)' : '1px solid rgba(255,255,255,0.18)',
+                  background: workspaceOpen
+                    ? 'linear-gradient(135deg, rgba(255,45,170,0.35), rgba(170,45,255,0.3))'
+                    : 'rgba(255,255,255,0.05)',
+                  color: '#d6b5ff',
+                  borderRadius: 8,
+                  fontSize: 11,
+                  fontWeight: 900,
+                  cursor: 'pointer',
+                  padding: '2px 7px',
+                  lineHeight: 1,
+                }}
+              >
+                {workspaceOpen ? '▼' : '▲'}
+              </button>
+            </div>
+
             {[
-              // '/' (not a hardcoded hub) so middleware's real per-role
-              // redirect (isMarketingRoot -> resolvePrimaryPathForRoles)
-              // sends every role to their own dashboard, not always /hub/fan.
-              { label: 'HOME', icon: '🏠', path: '/' },
               { label: 'EXPLORE', icon: '🧭', path: '/explore' },
               { label: 'SEARCH', icon: '🔍', path: '/search' },
               { label: 'LIVE NOW', icon: '📹', path: '/live' },
               { label: 'LOBBY', icon: '👥', path: '/lobby' },
-              { label: 'MESSAGES', icon: '💬', badge: 12, path: '/messages' },
-              { label: 'NOTIFICATIONS', icon: '🔔', badge: 3, path: '/notifications' },
-            ].map((nav, idx) => (
+              { label: 'MESSAGES', icon: '💬', path: '/messages' },
+              { label: 'NOTIFICATIONS', icon: '🔔', path: '/notifications' },
+            ].map((nav) => (
               <a
-                key={idx}
+                key={nav.label}
                 href={nav.path}
                 style={{
                   display: 'flex',
@@ -350,21 +410,6 @@ export default function MasterControlDock({
               >
                 <span>{nav.icon}</span>
                 <span>{nav.label}</span>
-                {nav.badge && (
-                  <span
-                    style={{
-                      background: '#FF2DAA',
-                      color: '#fff',
-                      fontSize: 8,
-                      fontWeight: 900,
-                      borderRadius: 10,
-                      padding: '1px 4px',
-                      marginLeft: 2,
-                    }}
-                  >
-                    {nav.badge}
-                  </span>
-                )}
               </a>
             ))}
           </div>
@@ -387,17 +432,25 @@ export default function MasterControlDock({
         >
           <div style={{ fontSize: 9, fontWeight: 900, color: '#00FF88', display: 'flex', alignItems: 'center', gap: 5 }}>
             <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#00FF88', boxShadow: '0 0 8px #00FF88' }} />
-            48ms
+            LINK
           </div>
           <span style={{ fontSize: 9, fontWeight: 900, color: '#FFD700', border: '1px solid #FFD700', borderRadius: 4, padding: '1px 4px', letterSpacing: '0.05em' }}>
-            4K HD
+            HD
           </span>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <button onClick={() => setIsMemoryWallOpen(true)} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', fontSize: 9, fontWeight: 800, cursor: 'pointer' }}>
-              📷 SCREEN
+            <button
+              type="button"
+              onClick={() => setIsMemoryWallOpen(true)}
+              style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', fontSize: 9, fontWeight: 800, cursor: 'pointer' }}
+            >
+              📷 MEMORIES
             </button>
-            <button onClick={() => setIsMemoryWallOpen(true)} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', fontSize: 9, fontWeight: 800, cursor: 'pointer' }}>
-              ⏺ REC
+            <button
+              type="button"
+              onClick={() => openWorkspace('quick_memories')}
+              style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', fontSize: 9, fontWeight: 800, cursor: 'pointer' }}
+            >
+              ▲ WORKSPACE
             </button>
           </div>
         </div>

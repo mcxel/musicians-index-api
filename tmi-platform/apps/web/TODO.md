@@ -305,7 +305,38 @@ Experience targets still deferred:
 ### Phase 5B — mesh / AvatarEngine
 **Status:** IDLE
 
-### Phase 8 - Runtime Certification (PENDING)
+### Phase 8 — Floating Workspace + Dual Bases (IN PROGRESS / scaffold COMPLETE)
+**Status:** Pass 8.x scaffold COMPLETE on `eos/vocal-improv-clean`. Phase 5B remains IDLE. Does not conflict with Memory Engine 7.4 or Auto-Director.
+
+#### Two locked North Star blueprints (do not confuse)
+1. **Live HUD / Fan+Performer** — Thunder Dome floating panels over fixed monitors  
+   Asset: `public/assets/blueprints/tmi_fan_performer_hud_north_star.png`  
+   Fixed: top nav, left rail, center dual equal monitors, right rail, mid interaction bar, bottom control bar.  
+   Floating glass neon panels (Inventory FAN-only / Venue Concierge PERFORMER / Memory Wall) — **no layout reflow**.
+2. **Observation / Overseer Deck** — ornate gold-filigree OVERSEER DECK / BerntttGlobal  
+   Asset: `public/assets/blueprints/tmi_overseer_deck_north_star.png`  
+   Route: `/admin/overseer` (`WorkspaceManager` → `CanonOverseerShell`)  
+   Slot ledger: `lib/admin/OverseerDeckBlueprintMap.ts` (KEEP / ALIGN / DEFER)  
+   **Do not rebuild Overseer chrome in Pass 8** — align dual equal center monitors + document gaps.
+
+#### Dual equal monitors (hard UI law)
+- Live HUD: `MonitorSatelliteSystem` defaults to `SPLIT_VIEW` with `gridTemplateColumns: 1fr 1fr` + matching `aspectRatio: 16/9` on MONITOR A + B (`data-equal-dual-monitors`).
+- Overseer: `CanonOverseerShell` center rail uses `gridTemplateRows: 1fr 1fr` when ≥2 center panels; WorkspaceConfigs removed `fixedHeight` skew on dual center panes.
+
+#### Pass 8 delivered
+- [x] `FloatingWorkspacePanel` + `floatingWorkspaceStore` + module registry (Fan vs Performer Rule 26)
+- [x] `VenueGeoRegistry` + `VenueConcierge` (CSS heatmap — no Leaflet/Mapbox; honest NO_DATA heat)
+- [x] `POST /api/venues/booking-request` → `VenueBookingRegistry` + optional `BOOKING_ALERT_EMAIL` (Overseer queue path)
+- [x] `useMemoryLibrary` + `MediaCard` alias → MotionMediaCard (7.4 SoT)
+- [x] Chevron next to HOME in `MasterControlDock`; BottomWorkspaceDrawer chevron opens floating panel (bar stays 70px)
+- [x] Memory / Inventory quick overlays — View All → floating full module
+- [x] Blueprint assets copied under `public/assets/blueprints/`
+- [ ] Browser certify floating open/close + no monitor reflow
+- [ ] UnifiedInbox UI: replace hardcoded demo rows with `/api/admin/inbox` threads (ALIGN — Rule 20)
+- [ ] Overseer visual certify gold-filigree vs blueprint (ALIGN — later)
+- [ ] Engagement heatmap engine (DEFER — never fake density)
+
+### Phase 8 - Runtime Certification (PENDING) — after Pass 8 browser certify
 
 ---
 

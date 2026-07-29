@@ -251,22 +251,46 @@ export default function CanonOverseerShell({ workspace }: CanonOverseerShellProp
   const renderRail = (panels: ShellPanel[], rail: "left" | "center" | "right") => {
     const isLeft = rail === "left";
     const isRight = rail === "right";
+    const visible = panels.filter((panel) => !isFloatingPanel(panel));
+    // Pass 8 — Observation Deck dual equal monitors: center TV router + feed
+    // explorer share 50/50 height (never a tiny secondary strip).
+    const equalDualCenter = rail === "center" && visible.length >= 2;
 
     return (
       <div
         data-col={rail}
+        data-equal-dual-monitors={equalDualCenter ? "true" : undefined}
         style={{
-          display: "flex",
-          flexDirection: "column",
+          display: equalDualCenter ? "grid" : "flex",
+          flexDirection: equalDualCenter ? undefined : "column",
+          gridTemplateRows: equalDualCenter ? "1fr 1fr" : undefined,
           gap: 6,
           minHeight: 0,
-          overflowY: "auto",
+          height: equalDualCenter ? "100%" : undefined,
+          overflowY: equalDualCenter ? "hidden" : "auto",
           paddingRight: 2,
         }}
       >
-        {panels
-          .filter((panel) => !isFloatingPanel(panel))
-          .map((panel) => renderPanelCanister(panel, isLeft ? leftCollapsed : isRight ? rightCollapsed : false, false))}
+        {visible.map((panel, index) => {
+          // Only the first two center panes are locked equal; extras stack below.
+          if (equalDualCenter && index > 1) return null;
+          const equalPanel: ShellPanel = equalDualCenter
+            ? { ...panel, fixedHeight: undefined, flex: 1 }
+            : panel;
+          return renderPanelCanister(
+            equalPanel,
+            isLeft ? leftCollapsed : isRight ? rightCollapsed : false,
+            false,
+            equalDualCenter
+              ? {
+                  flex: "1 1 0",
+                  minHeight: 0,
+                  height: "100%",
+                  aspectRatio: undefined,
+                }
+              : undefined,
+          );
+        })}
       </div>
     );
   };

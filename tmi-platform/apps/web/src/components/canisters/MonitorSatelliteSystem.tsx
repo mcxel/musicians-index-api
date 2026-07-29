@@ -111,6 +111,7 @@ export default function MonitorSatelliteSystem({
 }: MonitorSatelliteSystemProps) {
   const [satelliteMode, setSatelliteMode] = useState<"single" | "split">("split");
   const [layoutMode, setLayoutMode] = useState<"MAIN_ONLY" | "SPLIT_VIEW">("SPLIT_VIEW");
+  // Pass 8 hard UI law: dual equal 16:9 monitors (A+B) by default — SPLIT_VIEW 1fr 1fr.
   const [showLeftAudioPanel, setShowLeftAudioPanel] = useState(true);
   const [showRightCameraPanel, setShowRightCameraPanel] = useState(true);
   const [isCameraExpanded, setIsCameraExpanded] = useState(false);
@@ -430,7 +431,10 @@ export default function MonitorSatelliteSystem({
           </button>
         </div>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: layoutMode === "MAIN_ONLY" ? "1fr" : "1fr 1fr", gap: 12 }}>
+      <div
+        data-equal-dual-monitors="true"
+        style={{ display: "grid", gridTemplateColumns: layoutMode === "MAIN_ONLY" ? "1fr" : "1fr 1fr", gap: 12, alignItems: "stretch" }}
+      >
         {/* Monitor A — primary broadcast feed */}
         <div
           ref={monitorARef}

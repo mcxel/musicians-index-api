@@ -20,7 +20,8 @@ const REGISTRY: WorkspaceDefinition[] = [
     category: "personal",
     description: "Avatar loadout, wearables, and props.",
     requiresAuth: true,
-    requiredRoles: ["fan", "performer", "artist", "producer", "sponsor", "advertiser", "venue", "promoter", "writer", "admin", "staff", "mc", "big-ace"],
+    // Rule 26 — avatar inventory is Fan-only (admin/staff for support).
+    requiredRoles: ["fan", "admin", "staff", "mc", "big-ace"],
     supportedModes: WORKSPACE_MODE_CONTRACT,
     defaultDrawerMode: "half",
     supportsFullscreen: true,

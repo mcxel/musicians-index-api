@@ -1,9 +1,8 @@
 "use client";
 
 /**
- * Memory Wall drawer — Phase 7.4
- * Binds to MemoryWallMotionGrid / collectibles API (real media or honest empty).
- * Removes fake gradient placeholder cards (Rule 20).
+ * Memory Wall quick preview — Phase 7.4 + Pass 8.
+ * View All opens full Memory Wall module in FloatingWorkspacePanel (no reflow).
  */
 
 import MemoryWallMotionGrid from "@/components/memory/MemoryWallMotionGrid";
@@ -12,12 +11,15 @@ export interface MemoryWallPanelOverlayProps {
   isOpen: boolean;
   onClose: () => void;
   ownerId?: string;
+  /** Opens full memory module in floating workspace */
+  onViewAll?: () => void;
 }
 
 export default function MemoryWallPanelOverlay({
   isOpen,
   onClose,
   ownerId,
+  onViewAll,
 }: MemoryWallPanelOverlayProps) {
   if (!isOpen) return null;
 
@@ -81,12 +83,15 @@ export default function MemoryWallPanelOverlay({
         accentColor="#00E5FF"
         title="YOUR MEMORIES"
         compact
-        take={40}
+        take={8}
       />
 
       <button
         type="button"
-        onClick={onClose}
+        onClick={() => {
+          if (onViewAll) onViewAll();
+          else onClose();
+        }}
         style={{
           width: "100%",
           marginTop: 14,
@@ -102,7 +107,7 @@ export default function MemoryWallPanelOverlay({
           boxShadow: "0 0 20px rgba(0,229,255,0.4)",
         }}
       >
-        CLOSE
+        VIEW ALL MEMORIES
       </button>
     </div>
   );

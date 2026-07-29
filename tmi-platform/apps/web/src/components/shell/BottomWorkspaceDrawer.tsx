@@ -5,6 +5,8 @@ import { useWorkspace } from "@/components/shell/WorkspaceProvider";
 import { getWorkspaceRegistry, renderWorkspaceContentForRole } from "@/components/shell/workspaceRegistry";
 import type { DrawerMode, WorkspaceId } from "@/components/shell/workspaceTypes";
 import { TmiMotionPanel, type TmiMotionPanelType } from "@/components/motion/TmiMotionPanel";
+import FloatingWorkspacePanel from "@/components/workspace/FloatingWorkspacePanel";
+import { useFloatingWorkspace } from "@/lib/workspace/floatingWorkspaceStore";
 
 const HEADER_HEIGHT = 72;
 
@@ -156,6 +158,43 @@ export function BottomWorkspaceDrawer() {
     toggleFavorite,
     openCommandPalette,
   } = useWorkspace();
+  const {
+    isOpen: floatingOpen,
+    toggle: toggleFloating,
+    open: openFloating,
+    setRole: setFloatingRole,
+  } = useFloatingWorkspace();
+
+  useEffect(() => {
+    const map: Record<string, string> = {
+      fan: "FAN",
+      performer: "PERFORMER",
+      artist: "PERFORMER",
+      admin: "ADMIN",
+      staff: "STAFF",
+    };
+    setFloatingRole(map[workspaceRole] ?? "FAN");
+  }, [workspaceRole, setFloatingRole]);
+
+  // Pass 8: keep control bar fixed-height; chevron opens FloatingWorkspacePanel instead of stretching drawer.
+  useEffect(() => {
+    if (drawerMode !== "collapsed") setDrawerMode("collapsed");
+  }, [drawerMode, setDrawerMode]);
+
+  const openModuleForWorkspace = (id: WorkspaceId) => {
+    const map: Partial<Record<WorkspaceId, Parameters<typeof openFloating>[0]>> = {
+      inventory: "avatar_inventory",
+      "memory-wall": "memory_wall",
+      messages: "messages",
+      playlists: "music",
+      camera: "camera",
+      notes: "schedule",
+      business: "booking",
+    };
+    const moduleId = map[id];
+    if (moduleId) openFloating(moduleId);
+    else openFloating();
+  };
 
   const rootRef = useRef<HTMLDivElement | null>(null);
   const registry = useMemo(() => {
@@ -256,7 +295,9 @@ export function BottomWorkspaceDrawer() {
   };
 
   return (
-    <div ref={rootRef} style={drawerStyle} aria-label="Workspace drawer" role="region">
+    <>
+    <FloatingWorkspacePanel />
+    <div ref={rootRef} style={{ ...drawerStyle, height: "70px" }} aria-label="Workspace drawer" role="region">
       <div
         style={{
           height: 28,
@@ -268,18 +309,21 @@ export function BottomWorkspaceDrawer() {
       >
         <button
           type="button"
-          onClick={() => setDrawerMode(nextExpandMode(drawerMode))}
-          aria-label="Expand or collapse drawer"
+          onClick={() => toggleFloating()}
+          aria-label={floatingOpen ? "Close floating workspace" : "Open floating workspace"}
+          aria-expanded={floatingOpen}
           style={{
-            border: "none",
-            background: "transparent",
+            border: floatingOpen ? "1px solid rgba(170,45,255,0.55)" : "none",
+            background: floatingOpen ? "rgba(170,45,255,0.2)" : "transparent",
+            borderRadius: 8,
             color: "#d6b5ff",
             fontSize: 16,
             cursor: "pointer",
             lineHeight: 1,
+            padding: "2px 10px",
           }}
         >
-          {drawerMode === "collapsed" ? "▲" : drawerMode === "fullscreen" ? "▼" : "▲"}
+          {floatingOpen ? "▼" : "▲"}
         </button>
       </div>
 
@@ -301,7 +345,7 @@ export function BottomWorkspaceDrawer() {
               <button
                 key={workspace.id}
                 type="button"
-                onClick={() => openWorkspace(workspace.id, "half")}
+                onClick={() => openModuleForWorkspace(workspace.id)}
                 aria-label={`Open ${workspace.label}`}
                 title={workspace.label}
                 style={{
@@ -362,6 +406,7 @@ export function BottomWorkspaceDrawer() {
         </div>
       )}
     </div>
+    </>
   );
 }
 

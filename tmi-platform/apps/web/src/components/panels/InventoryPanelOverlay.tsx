@@ -6,12 +6,15 @@ export interface InventoryPanelOverlayProps {
   isOpen: boolean;
   onClose: () => void;
   onOpenAvatarStudio?: () => void;
+  /** Opens full Avatar Inventory in floating workspace */
+  onViewAll?: () => void;
 }
 
 export default function InventoryPanelOverlay({
   isOpen,
   onClose,
   onOpenAvatarStudio,
+  onViewAll,
 }: InventoryPanelOverlayProps) {
   const [activeTab, setActiveTab] = useState<'avatar' | 'wearables' | 'items' | 'emotes'>('avatar');
 
@@ -181,6 +184,27 @@ export default function InventoryPanelOverlay({
       >
         CUSTOMIZE AVATAR
       </button>
+      {onViewAll ? (
+        <button
+          type="button"
+          onClick={onViewAll}
+          style={{
+            width: '100%',
+            marginTop: 8,
+            padding: '10px 0',
+            borderRadius: 10,
+            background: 'rgba(255,255,255,0.06)',
+            border: '1px solid rgba(170,45,255,0.4)',
+            color: '#fff',
+            fontSize: 10,
+            fontWeight: 800,
+            letterSpacing: '0.08em',
+            cursor: 'pointer',
+          }}
+        >
+          VIEW ALL INVENTORY
+        </button>
+      ) : null}
     </div>
   );
 }
