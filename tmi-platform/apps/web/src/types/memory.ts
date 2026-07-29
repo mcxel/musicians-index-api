@@ -3,9 +3,15 @@
 // PRODUCT LOCK (Marcel): Memory Wall = personal photo/media library + collectibles
 // (interactive scrapbook). NOT a social feed, stats board, playlist, tip ledger,
 // or achievement timeline. Competition history → Achievement Engine (see
-// core/eos/achievementBridge.ts). Playlists → Playlist Engine.
+// core/eos/achievementBridge.ts + achievementCollectibleContracts.ts). Playlists → Playlist Engine.
+//
+// LOCKED three-area model:
+//   1. Collections (MEDIA) — collectiblesContracts + collectionsContracts
+//   2. Achievements (PROGRESSION) — belts/trophies — NOT this photo wall
+//   3. Analytics (STATS) — roleAnalyticsContracts
 //
 // Collectible contracts live in lib/memory/collectiblesContracts.ts (Phase 7.3+7.4).
+// Collections Engine terminology: lib/memory/collectionsContracts.ts
 // Phase 7.4 Motion Wall reads MemoryCollectible via /api/memory/collectibles —
 // never MemoryLedger competition events as the gallery feed.
 
@@ -62,6 +68,26 @@ export {
   resolveCollectibleStillUrl,
   resolveCollectibleMotionUrl,
 } from "@/lib/memory/collectiblesContracts";
+
+// Collections Engine (media) — Collection / MediaAsset terminology
+export type {
+  Collection,
+  MediaAsset,
+  CollectionItem,
+  FrameSkin,
+  MediaEditInstruction,
+  CollectionUnlockAccess,
+  CollectionPresetKey,
+} from "@/lib/memory/collectionsContracts";
+
+export {
+  DEFAULT_COLLECTION_TITLE,
+  DEFAULT_COLLECTION_PRESET,
+  albumToCollection,
+  collectibleToMediaAsset,
+  resolveMediaAssetStillUrl,
+  resolveMediaAssetMotionUrl,
+} from "@/lib/memory/collectionsContracts";
 
 // ─── Pro Legacy Ledger — business side only ───────────────────────────────────
 // Items are ONLY created by system events (Stripe, ticketing, analytics).

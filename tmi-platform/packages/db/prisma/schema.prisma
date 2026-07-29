@@ -153,10 +153,12 @@ model User {
   lobby                 Lobby?
   ownedMemories         FanMemory[]
   sentShoutouts         FanMemory[]            @relation("artistMemories")
-  // EOS Phase 7.3 — Memory & Collectibles Engine (personal media library)
-  memoryCollectibles    MemoryCollectible[]
-  memoryAlbums          MemoryAlbum[]
-  juliusUnlocks         JuliusUserUnlock[]
+  // EOS Phase 7.3+ — Collections Engine (personal media library)
+  // Photo Collections ≠ Achievement Collectibles (belts/trophies) — parallel systems.
+  memoryCollectibles           MemoryCollectible[]
+  memoryAlbums                 MemoryAlbum[]
+  achievementCollectibles      UserAchievementCollectible[]
+  juliusUnlocks                JuliusUserUnlock[]
   controlMappingProfile ControlMappingProfile?
   partyMemberships      PartyMember[]
   ledParties            Party[]
@@ -2105,34 +2107,56 @@ model FanMemory {
 }
 
 // ======================================================================
-// MEMORY & COLLECTIBLES ENGINE (EOS Phase 7.3)
-// Personal media library + keepsakes (Photos-app / scrapbook).
+// COLLECTIONS ENGINE (media library) — evolved from Memory & Collectibles 7.3/7.4
+// Product terminology (LOCKED three-area model):
+//   1. Memory Wall / Collections (MEDIA) — this section
+//   2. Achievements / Showcase Collectibles (PROGRESSION) — UserAchievementCollectible
+//   3. Analytics (STATS) — contracts only; not this table
+// Photo Collections ≠ Achievement Collectibles — never put belts/wins in the photo grid.
+//
+// Prisma physical names keep MemoryAlbum / MemoryCollectible (@@map unchanged) for compat.
+// Contracts expose Collection / MediaAsset / CollectionItem / FrameSkin / MediaEdit.
 // INCLUDES: PHOTO | VIDEO | YOPHO | TICKET | POSTER | KEEPSAKE
 // EXCLUDES: playlists/music, tips, competition wins/rankings, relationship edges.
 // Competition runtime history stays in EOS MemoryLedger → Achievement path.
 // Memory Wall UI (Phase 7.4) renders FROM this table — never from MATCH_COMPLETED.
+//
+// Entitlement: UnlockMethod model does NOT exist yet. Optional unlockAccess string
+// (FREE | MEMBERSHIP | SPONSOR_GIFT) is soft FUTURE — no hard UnlockMethod coupling.
+// EOS AssetRegistry = venue materials only — does NOT own user photos.
 // ======================================================================
 
-/// Album containers (Family, Concerts, VIP, custom…). Covers/borders schema-ready; polish in 7.4.
+/// Collection containers (user-facing "Collection"). Default = "All Memories".
+/// Presets: FAMILY | STUDIO | CONCERTS | MONTHLY_IDOL | WDP | BATTLES | VIP | ROAD_TRIPS | CUSTOM
 model MemoryAlbum {
   id              String   @id @default(cuid())
   ownerId         String
   owner           User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   title           String
-  /// Optional preset key: FAMILY | STUDIO | CONCERTS | MONTHLY_IDOL | WDP | BATTLES | VIP | ROAD_TRIPS | CUSTOM
+  /// Optional preset key: FAMILY | STUDIO | CONCERTS | MONTHLY_IDOL | WDP | BATTLES | VIP | ROAD_TRIPS | ALL_MEMORIES | CUSTOM
   presetKey       String?
   coverUrl        String?
   /// Animated border style key for 7.4 motion gallery — stored only, no fake UI
   animatedBorder  String?
+  /// True for the owner’s default “All Memories” collection (collection-first save target)
+  isDefault       Boolean  @default(false)
+  /// FUTURE soft entitlement: FREE | MEMBERSHIP | SPONSOR_GIFT — UnlockMethod deferred
+  unlockAccess    String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
+  /// Primary membership (7.4 compat — albumId on MemoryCollectible)
   items           MemoryCollectible[]
+  /// Multi-collection join rows (scaffold; dual-write with albumId OK)
+  collectionItems CollectionItem[]
 
   @@index([ownerId])
+  @@index([ownerId, isDefault])
   @@map("memory_albums")
 }
 
+/// MediaAsset SoT row (user-facing). Masters stay in mediaUrl / mediaVariants.MASTER.
+/// FrameSkin + MediaEdit are presentation/instruction JSON — never baked into master pixels.
 model MemoryCollectible {
   id           String    @id @default(cuid())
   ownerId      String
@@ -2146,7 +2170,7 @@ model MemoryCollectible {
   thumbnailUrl String?
   artworkUrl   String?
 
-  /// Album grouping (schema ready; gallery UI in 7.4)
+  /// Primary Collection membership (MemoryAlbum id) — collection-first save fills default
   albumId      String?
   album        MemoryAlbum? @relation(fields: [albumId], references: [id], onDelete: SetNull)
   isFavorite   Boolean   @default(false)
@@ -2176,8 +2200,8 @@ model MemoryCollectible {
   /// MEMORY_WALL | ALBUM | YOPHO | SHARE_FRIENDS | SNIP | PROFILE | PRIVATE
   captureDestination   String?
 
-  /// JSON MediaVariantMap — ORIGINAL_MASTER | VIEWING | PREVIEW | THUMBNAIL URLs
-  /// Masters stay untouched; PREVIEW/THUMBNAIL are derived viewing variants only.
+  /// JSON MediaVariantMap — MASTER | MOTION_PREVIEW | THUMBNAIL | EDITED_VERSION
+  /// (+ legacy ORIGINAL_MASTER | VIEWING | PREVIEW aliases). Masters untouched.
   mediaVariants        Json?
   /// JSON MotionPair — stillUrl + motionUrl + durationMs + hasAudio + posterFrameMs + sourceFormat
   /// One combined motion memory (Live Photo / Motion Photo / TMI 6s|7s / short clip).
@@ -2186,12 +2210,20 @@ model MemoryCollectible {
   rimStyleId           String?
   /// FLOAT | GLOW | SCALE_ON_HOVER — presentation animation; honor prefers-reduced-motion
   animationPreset      String?
+  /// JSON FrameSkin — rims/bezels/glow presentation overlay (never baked into master)
+  frameSkin            Json?
+  /// JSON MediaEdit — non-destructive instruction set pointing at master / editOriginalMediaId
+  mediaEdit            Json?
+  /// FUTURE soft entitlement: FREE | MEMBERSHIP | SPONSOR_GIFT — UnlockMethod deferred
+  unlockAccess         String?
   /// Optional burst group id (lite schema; UI groups sibling frames)
   burstGroupId         String?
 
   capturedAt   DateTime  @default(now())
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
+
+  collectionItems CollectionItem[]
 
   @@index([ownerId, trashedAt, createdAt])
   @@index([ownerId, kind])
@@ -2201,6 +2233,54 @@ model MemoryCollectible {
   @@index([editOriginalMediaId])
   @@index([burstGroupId])
   @@map("memory_collectibles")
+}
+
+/// Join MediaAsset ↔ Collection (multi-collection membership scaffold).
+/// Primary 7.4 path still uses MemoryCollectible.albumId; dual-write OK briefly.
+model CollectionItem {
+  id           String   @id @default(cuid())
+  collectionId String
+  mediaAssetId String
+  addedAt      DateTime @default(now())
+
+  collection MemoryAlbum       @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  mediaAsset MemoryCollectible @relation(fields: [mediaAssetId], references: [id], onDelete: Cascade)
+
+  @@unique([collectionId, mediaAssetId])
+  @@index([collectionId])
+  @@index([mediaAssetId])
+  @@map("collection_items")
+}
+
+/// Achievement Collectibles (PROGRESSION) — Fan + Performer parallel showcase.
+/// Belts / badges / trophies / participation tickets — NOT photo-wall media.
+/// Grants only from real Achievement path (WINNER_DECLARED → achievementBridge).
+/// Never invent earnedAt / fake Golden Ticket rows (Rule 20).
+model UserAchievementCollectible {
+  id                  String    @id @default(cuid())
+  userId              String
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Registry definition id (e.g. fan.attendance.golden_ticket)
+  definitionId        String
+  /// belt | trophy | badge | GOLDEN_TICKET | PLATINUM_TICKET | DIAMOND_TICKET | seasonal
+  kind                String
+  /// FAN | PERFORMER — parallel earn paths (Rule 26)
+  rolePath            String
+  title               String
+  /// Null = definition known but not earned yet; never fabricate a grant timestamp
+  earnedAt            DateTime?
+  /// Pin-to-profile / featured showcase (contract featuredCollectibleIds)
+  featured            Boolean   @default(false)
+  seasonKey           String?
+  sourceLedgerEntryId String?
+  metadata            Json?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  @@unique([userId, definitionId])
+  @@index([userId, rolePath])
+  @@index([userId, featured])
+  @@map("user_achievement_collectibles")
 }
 
 // -- Julius System: The Interactive Mascot ------------------------------------

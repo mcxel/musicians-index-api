@@ -1,7 +1,16 @@
 /**
  * Memory & Collectibles Engine — contracts (EOS Phase 7.3 + 7.4 motion surface)
  *
- * Memory Wall = personal photo/media library + collectibles (scrapbook / Photos-app).
+ * Evolved product name: Collections Engine (media library).
+ * See lib/memory/collectionsContracts.ts for Collection / MediaAsset terminology.
+ *
+ * LOCKED three-area model — do not collapse:
+ *   1. Memory Wall / Collections (MEDIA) — this + collectionsContracts
+ *   2. Achievements (PROGRESSION) — achievementCollectibleContracts (belts/trophies)
+ *   3. Analytics (STATS) — roleAnalyticsContracts
+ * Photo Collections ≠ Achievement Collectibles — never put wins into MotionGrid.
+ *
+ * Memory Wall = personal photo/media library + keepsakes (scrapbook / Photos-app).
  * Gallery UI (Phase 7.4) reads FROM MemoryCollectible — never from MemoryLedger.
  *
  * MemoryLedger may optionally emit MEDIA_CAPTURED / MEDIA_SAVED / TICKET_COLLECTED
@@ -53,21 +62,29 @@ export const MEMORY_VIEW_MODES: readonly MemoryViewMode[] = [
 ] as const;
 
 // ─── Media variants (non-destructive; masters untouched) ─────────────────────
+// Collection Engine canonical: MASTER | MOTION_PREVIEW | THUMBNAIL | EDITED_VERSION
+// Legacy 7.4 aliases kept for Motion Wall compat.
 
 export type MediaVariantRole =
+  | "MASTER"
+  | "MOTION_PREVIEW"
+  | "THUMBNAIL"
+  | "EDITED_VERSION"
   | "ORIGINAL_MASTER"
   | "VIEWING"
-  | "PREVIEW"
-  | "THUMBNAIL";
+  | "PREVIEW";
 
 export const MEDIA_VARIANT_ROLES: readonly MediaVariantRole[] = [
+  "MASTER",
+  "MOTION_PREVIEW",
+  "THUMBNAIL",
+  "EDITED_VERSION",
   "ORIGINAL_MASTER",
   "VIEWING",
   "PREVIEW",
-  "THUMBNAIL",
 ] as const;
 
-/** URL map by role — prefer VIEWING/PREVIEW for gallery; keep ORIGINAL_MASTER. */
+/** URL map by role — prefer VIEWING/PREVIEW/MOTION_PREVIEW for gallery; keep MASTER. */
 export type MediaVariantMap = Partial<Record<MediaVariantRole, string>>;
 
 // ─── Motion memory (first-class combined item) ────────────────────────────────
@@ -132,8 +149,9 @@ export type MemoryCaptureDestination =
 
 export type MemoryVisibility = "public" | "friends" | "private";
 
-/** Album preset keys — schema/cover polish in 7.4; do not invent fake album rows. */
+/** Album/Collection preset keys — do not invent fake album rows. */
 export type MemoryAlbumPresetKey =
+  | "ALL_MEMORIES"
   | "FAMILY"
   | "STUDIO"
   | "CONCERTS"
@@ -264,13 +282,15 @@ export function resolveCollectibleStillUrl(
 ): string | undefined {
   return (
     item.motionPair?.stillUrl ||
+    item.mediaVariants?.MASTER ||
+    item.mediaVariants?.ORIGINAL_MASTER ||
     item.mediaVariants?.VIEWING ||
+    item.mediaVariants?.MOTION_PREVIEW ||
     item.mediaVariants?.PREVIEW ||
     item.mediaVariants?.THUMBNAIL ||
     item.thumbnailUrl ||
     item.mediaUrl ||
-    item.artworkUrl ||
-    item.mediaVariants?.ORIGINAL_MASTER
+    item.artworkUrl
   );
 }
 

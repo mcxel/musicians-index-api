@@ -92,7 +92,15 @@ function parseMediaVariants(raw: unknown): MediaVariantMap | undefined {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
   const obj = raw as Record<string, unknown>;
   const out: MediaVariantMap = {};
-  for (const key of ["ORIGINAL_MASTER", "VIEWING", "PREVIEW", "THUMBNAIL"] as const) {
+  for (const key of [
+    "MASTER",
+    "MOTION_PREVIEW",
+    "THUMBNAIL",
+    "EDITED_VERSION",
+    "ORIGINAL_MASTER",
+    "VIEWING",
+    "PREVIEW",
+  ] as const) {
     const v = obj[key];
     if (typeof v === "string" && v.trim()) out[key] = v.trim();
   }

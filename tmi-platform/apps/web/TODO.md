@@ -220,17 +220,25 @@ Gate: 5A complete · 5B idle
 | Phase 5B mesh / AvatarEngine | IDLE |
 | Phase 7.3 Prisma Collectibles persistence | COMPLETE |
 | Phase 7.4 Memory Wall Surface (motion gallery) | COMPLETE — media DB SoT; ledger = event log only; spatial/AI/full editor deferred |
+| Collections Engine (media library) | SCAFFOLD COMPLETE — Collection/MediaAsset contracts + Prisma evolve + `/api/memory/collections`; 7.4 still SoT via collectibles |
+| Achievement Collectibles Fan/Performer parallel | SCAFFOLD / FUTURE — contracts + Prisma `UserAchievementCollectible`; no fake grants |
+| Analytics Fan/Performer parallel | SCAFFOLD / FUTURE — contracts + honest reader; no full dashboard UI |
+| Seasonal collectibles | FUTURE |
 | Layer 6 Prisma social → graph bridge | DEFERRED / FUTURE |
 | Universal Playlist OAuth | FUTURE APPROVED — no OAuth/rip |
 
 ### Phase 7 — Memory & Collectibles Engine
 **Status:** Pass 7.1–7.2 scaffold COMPLETE (in-memory competition ledger). **7.3 Prisma Collectibles COMPLETE.** **7.4 Memory Wall Surface COMPLETE** (motion-native gallery). Deferred: spatial 3D room, AI search, full non-destructive editor UI.
 
-**Hard separation (Marcel product lock):**
-- **Memory Wall / Collectibles** = personal photos, videos, motion pairs, YoPho, collectible tickets, posters, keepsakes, albums/favorites/trash — Prisma `MemoryCollectible` / `MemoryAlbum` (**gallery feed SoT**)
+**Hard separation (Marcel product lock — three-area model):**
+- **1. Memory Wall / Collections (MEDIA)** = personal photos, videos, motion pairs, YoPho, collectible tickets, posters, keepsakes, albums/Collections — Prisma `MemoryCollectible` / `MemoryAlbum` (**gallery feed SoT**). Collection terminology via `collectionsContracts` / `CollectionRegistry` / `/api/memory/collections`
+- **2. Achievements / Showcase Collectibles (PROGRESSION)** = belts, badges, trophies, Golden/Platinum/Diamond participation tickets, seasonal — `achievementCollectibleContracts` + `UserAchievementCollectible`. Profile Collections hub may **tab/link** here — never stuff wins into photo MotionGrid
+- **3. Analytics (STATS)** = Fan vs Performer metrics — `roleAnalyticsContracts` + honest reader (zeros/empty, no Math.random)
 - **EOS MemoryLedger** = competition/runtime history (WINNER_DECLARED, MATCH_COMPLETED, etc.) → **Achievement path** (`achievementBridge`) — stays in-memory; never dumps into photo wall
 - **Ledger media side-effects only:** after a real collectible save, may emit `MEDIA_CAPTURED` / `MEDIA_SAVED` / `TICKET_COLLECTED` as event log — wall must NEVER subscribe to competition kinds for cards
 - **Out of scope for Memory Wall:** playlists/music, tips, rankings/achievements, relationship graph
+- **UnlockMethod:** no Prisma model — soft `unlockAccess` FUTURE only (FREE | MEMBERSHIP | SPONSOR_GIFT)
+- **EOS AssetRegistry:** venue materials only — does NOT own user photos
 
 #### Pass 7.1 — Ledger + Registry (DONE)
 - [x] `core/eos/memoryRegistry.ts` — MemoryEventKind, LedgerEntry, MemoryHighlight, importance kind sets, labels/icons
@@ -268,6 +276,19 @@ Gate: 5A complete · 5B idle
 - [ ] Full AI object search / highlight reels — **deferred**
 - [ ] Full non-destructive editor UI (crop/filters/stickers) — **deferred** (pointer field exists)
 
+#### Collections Engine + parallel Achievements / Analytics (SCAFFOLD)
+- [x] Evolve Prisma: `isDefault` / `unlockAccess` on albums; `frameSkin` / `mediaEdit` / `unlockAccess` on collectibles; `CollectionItem` join; `UserAchievementCollectible` — migration `20260729020000_collections_engine_and_achievements`
+- [x] Contracts: `collectionsContracts.ts`, `CollectionRegistry.ts` — MediaAsset / Collection / CollectionItem / FrameSkin / MediaEdit / variant roles MASTER|MOTION_PREVIEW|THUMBNAIL|EDITED_VERSION
+- [x] Persistence: collection-first save → default “All Memories”; dual-write albumId + CollectionItem; `/api/memory/collections` adapter (7.4 `/api/memory/collectibles` still works)
+- [x] Achievement Collectibles Fan/Performer parallel definitions + thin persistence (no fake grants); wire comment on `achievementBridge` → Achievement path only
+- [x] Analytics Fan/Performer contracts + honest reader (`roleAnalyticsContracts` / `roleAnalyticsReader`)
+- [ ] Profile Collections hub tabs (Media | Achievements | Analytics) — **follow-on UI**
+- [ ] Full FrameEditor UI — **deferred**
+- [ ] Full analytics dashboard UI — **deferred**
+- [ ] Seasonal collectibles grant engine — **FUTURE**
+- [ ] UnlockMethod hard coupling — **FUTURE** (soft `unlockAccess` only)
+- [ ] Achievement grant engine (persist on real WINNER_DECLARED) — **FUTURE**
+
 #### Memory Wall Interactive Gallery extras (post-7.4) — DEFERRED
 **Status:** Core motion surface shipped. Remaining experience targets stay FUTURE until real media volume justifies them.
 **Do NOT** fake Ken Burns, fake parallax density, or fake AI object search.
@@ -278,8 +299,11 @@ Experience targets still deferred:
 - **Interactive memorabilia graph:** deep tap → event/venue/ticket/YoPho graph polish
 - **Albums polish:** custom covers + animated borders UI
 - **Org:** drag-drop between albums
-- **Non-destructive editor UI:** crop/rotate/filters/frames — originals retained (`editOriginalMediaId`)
+- **Non-destructive editor UI:** crop/rotate/filters/frames — originals retained (`editOriginalMediaId` / `mediaEdit`)
 - **Optional AI (user-controlled):** object search, tagged-friend find, highlight reels
+
+### Phase 5B — mesh / AvatarEngine
+**Status:** IDLE
 
 ### Phase 8 - Runtime Certification (PENDING)
 

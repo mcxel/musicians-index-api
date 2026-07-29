@@ -3,10 +3,17 @@
  *
  * Competition / runtime history from MemoryLedger (WINNER_DECLARED, MATCH_COMPLETED,
  * FIRST_PLACE, etc.) belongs on the Achievement / Profile path — NOT the Memory Wall
- * scrapbook (Memory & Collectibles Engine).
+ * scrapbook (Memory & Collectibles / Collections Engine media).
  *
- * This stub types the future handoff. No fake UI, no fabricated trophies (Rule 20).
- * Full Achievement Engine is out of scope for Phase 7.3.
+ * WIRE (locked):
+ *   MemoryLedger WINNER_DECLARED
+ *     → winnerDeclaredToAchievementDraft() (this file)
+ *     → Achievement Collectibles path (achievementCollectibleContracts / UserAchievementCollectible)
+ *   NEVER → Memory Wall photo grid / MotionGrid / Collection media saves
+ *
+ * This stub types the handoff. No fake UI, no fabricated trophies (Rule 20).
+ * Fan + Performer parallel definitions live in achievementCollectibleContracts.ts.
+ * Full grant engine (persist UserAchievementCollectible on real outcomes) is FUTURE.
  */
 
 import type { LedgerEntry, MemoryEventKind } from "./memoryRegistry";
@@ -46,7 +53,8 @@ export interface AchievementDraft {
 /**
  * Map a WINNER_DECLARED (or other competition) ledger entry → AchievementDraft.
  * Returns null when entry is missing / not achievement-scoped.
- * Does not persist — Achievement Engine owns storage later.
+ * Does not persist — Achievement Engine owns storage later
+ * (UserAchievementCollectible + achievementCollectibleContracts registry).
  */
 export function winnerDeclaredToAchievementDraft(
   entry: LedgerEntry,

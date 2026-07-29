@@ -9,4 +9,5 @@ export * from "./memoryLedger";
 export * from "./highlightEngine";
 export * from "./memoryBridge";
 export * from "./achievementBridge";
+export * from "./achievementCollectibleContracts";
 export * from "./relationshipContracts";
