@@ -35,7 +35,35 @@
 - [x] Pass 3.3 — WorkspaceLayout shell (header / left / center / right / dock)
 - [x] Pass 3.4 — Side rail framework (DashboardRailFramework — slots only, not full feature drawers)
 - [x] Pass 3.5 — Framer-motion cinema transition + rail collapse
+- [x] Pass 3.6 — Auto-Director idle-monitor assignment (registry + engine + MonitorSatelliteSystem wire)
 - [ ] Phase 3 certification — browser verify monitors, cinema toggle, rails, no flicker
+- [ ] Phase 3.6 browser certify — idle slots show Auto-Director cards; locked camera/live untouched; click → real entryRoute
+
+#### Phase 3.6 / 4.8 — Auto-Director (Flight Deck idle monitors)
+**Status:** Scaffold complete. Preview cards only — no StageLoader inside tiny monitors.
+
+- [x] `MonitorAssignment` contract (`core/eos/monitorAssignment.ts`) — source USER|AUTO_DIRECTOR, contentType, contentId, priority, locked
+- [x] `registries/eos/AutoDirectorRegistry.ts` — lane weights, ExperienceRegistry entryRoutes, cadence hints
+- [x] `lib/eos/AutoDirectorEngine.ts` — `findIdleSlots` / `pickNextContent` / `assignSlots` (no fabricated viewer counts — Rule 20)
+- [x] `hooks/useAutoDirector.ts` + `components/eos/AutoDirectorPreviewCard.tsx`
+- [x] Wired into `MonitorSatelliteSystem` — idle MONITOR_A + PIP_LEFT/RIGHT; MONITOR_B stays Live Lobby Wall (locked system discovery); never steals live broadcast, user media, or camera-on
+- [ ] Browser certify dashboard monitor matrix Auto-Director fills
+- [ ] Optional: feed real `GlobalLiveSessionRegistry` starting-soon tiles into pool (still no fake occupancy)
+
+#### Matchmaking / Room-Merge — LOCKED FUTURE (do not implement stubs)
+**Status:** Documented architecture only. **Rule 20 / Rule 21 (No Empty Platform):** never fake opponents, fake audiences, or “AI practice opponent presented as human.”
+
+Target architecture (when real engines exist — wire, don’t duplicate):
+
+| Piece | Role |
+|---|---|
+| Staging pool | Waiting-room participants queue by experience type (battle/cypher/challenge/…) |
+| Matchmaking | Pair / bracket from real pool (existing `BattleMatchmakingEngine` / CIS distance — extend, don’t fork) |
+| Room merge | Merge undersized waiting rooms into one live room so audiences aren’t stranded (Rule 21 No Empty Platform) |
+| Recycle waiting rooms | Empty or expired waiting rooms recycle into the next opportunity — never fabricate fill |
+| AudienceRuntime | Seats/presence stay on canonical `audienceRuntimeEngine` — merge moves real seat claims, never invents viewers |
+
+**Do not build** fake “opponent found,” fabricated crowd meters, or stub merge runtimes until EventOrchestrator + audience seat systems are the wiring target. Auto-Director only surfaces **discovery preview cards** with real `entryRoute`s until then.
 
 ### Phase 4 - Experience Engine (LOCKED / ARCHIVED — competition branch Gate 1)
 **Status:** Competition/broadcast runtime certified locally and published on `eos/phase-4-experiences` (skips bloated `89e52633`). Do not reopen Pass 4.1–4.6 for new feature work.

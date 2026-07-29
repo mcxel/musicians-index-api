@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import MotionPosterPlayer from "@/components/media/MotionPosterPlayer";
 import BillboardLiveWall from "@/components/media/BillboardLiveWall";
 import UnifiedAdSlot from "@/components/ads/UnifiedAdSlot";
 import ActionRail from "@/components/canisters/ActionRail";
 import AudienceScene from "@/components/live/AudienceScene";
+import AutoDirectorPreviewCard from "@/components/eos/AutoDirectorPreviewCard";
+import { useAutoDirector } from "@/hooks/useAutoDirector";
 import { shouldShowAd, type MembershipTier } from "@/lib/commerce/AdFrequencyEngine";
 
 interface MonitorSatelliteSystemProps {
@@ -137,6 +139,40 @@ export default function MonitorSatelliteSystem({
   const shouldShowPulse = showAudiencePulse ?? showAudienceMonitor;
   const effectiveFallbackVideoUrl = fallbackVideoUrl || DEFAULT_OBSERVATORY_VIDEO_URL;
   const effectiveLeftPipVideoUrl = leftPipVideoUrl || effectiveFallbackVideoUrl;
+  /** User-owned media on Monitor A (not platform fallback alone). */
+  const monitorAUserMedia = Boolean(introVideoUrl || motionPosterUrl);
+  /** Custom left PIP URL counts as user media; default fallback is idle. */
+  const pipLeftUserMedia = Boolean(leftPipVideoUrl) || micLive;
+
+  const autoDirectorLocks = useMemo(
+    () => ({
+      monitorALive: isLive,
+      monitorAUserMedia,
+      // Monitor B stays the Live Lobby Wall (system discovery) — not an idle empty slot
+      monitorBLocked: true,
+      pipLeftUserMedia,
+      cameraOn,
+    }),
+    [isLive, monitorAUserMedia, pipLeftUserMedia, cameraOn],
+  );
+
+  const { bySlot } = useAutoDirector({ locks: autoDirectorLocks, enabled: true });
+  const slotA = bySlot.MONITOR_A;
+  const slotPipLeft = bySlot.PIP_LEFT;
+  const slotPipRight = bySlot.PIP_RIGHT;
+  const showAutoA =
+    !isLive &&
+    !monitorAUserMedia &&
+    slotA?.source === "AUTO_DIRECTOR" &&
+    Boolean(slotA.entryRoute);
+  const showAutoPipLeft =
+    !pipLeftUserMedia &&
+    slotPipLeft?.source === "AUTO_DIRECTOR" &&
+    Boolean(slotPipLeft.entryRoute);
+  const showAutoPipRight =
+    !cameraOn &&
+    slotPipRight?.source === "AUTO_DIRECTOR" &&
+    Boolean(slotPipRight.entryRoute);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -411,25 +447,29 @@ export default function MonitorSatelliteSystem({
             boxShadow: `0 0 0 1px ${accentColor}55, 0 0 32px ${accentColor}22, inset 0 0 0 1px rgba(255,255,255,0.04)`,
           }}
         >
-          <MotionPosterPlayer
-            isLive={isLive}
-            liveRoomRoute={liveRoomRoute}
-            introVideoUrl={introVideoUrl}
-            fallbackVideoUrl={effectiveFallbackVideoUrl}
-            motionPosterUrl={motionPosterUrl}
-            staticImageUrl={staticImageUrl}
-            alt={mainLabel}
-            audienceCount={audienceCount}
-            showLiveOverlay={!isLive}
-            height="100%"
-          />
-          {!isLive && showAdThisSession && (
+          {showAutoA && slotA ? (
+            <AutoDirectorPreviewCard assignment={slotA} />
+          ) : (
+            <MotionPosterPlayer
+              isLive={isLive}
+              liveRoomRoute={liveRoomRoute}
+              introVideoUrl={introVideoUrl}
+              fallbackVideoUrl={effectiveFallbackVideoUrl}
+              motionPosterUrl={motionPosterUrl}
+              staticImageUrl={staticImageUrl}
+              alt={mainLabel}
+              audienceCount={audienceCount}
+              showLiveOverlay={!isLive}
+              height="100%"
+            />
+          )}
+          {!isLive && !showAutoA && showAdThisSession && (
             <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
               <UnifiedAdSlot venue={adZone} slotKey="homepageBanner" format="horizontal" label="" style={{ position: "absolute", bottom: 8, left: 8, right: 8, minHeight: 0, pointerEvents: "auto" }} accentColor={accentColor} />
             </div>
           )}
           <div style={{ position: "absolute", top: 8, left: 8, fontSize: 8, fontWeight: 900, letterSpacing: "0.12em", padding: "3px 8px", borderRadius: 5, background: "rgba(5,5,16,0.8)", border: `1px solid ${accentColor}55`, color: accentColor }}>
-            MONITOR A · BROADCAST
+            {showAutoA ? "MONITOR A · AUTO-DIRECTOR" : "MONITOR A · BROADCAST"}
           </div>
           <button
             onClick={() => requestMonitorFullscreen(monitorARef)}
@@ -599,15 +639,19 @@ export default function MonitorSatelliteSystem({
             <button onClick={() => setShowLeftAudioPanel(false)} style={{ fontSize: 11, lineHeight: 1, border: "1px solid rgba(255,68,68,0.4)", background: "rgba(255,68,68,0.12)", color: "#ff8a8a", borderRadius: 4, padding: "2px 6px", cursor: "pointer" }}>X</button>
           </div>
           <div style={{ width: "100%", aspectRatio: "16/9", background: "#000", borderRadius: 6, overflow: "hidden", border: "1px solid rgba(255,215,0,0.25)" }}>
-            <video
-              src={effectiveLeftPipVideoUrl}
-              autoPlay
-              muted={muted}
-              loop
-              controls
-              playsInline
-              style={{ width: "100%", height: "100%", objectFit: "cover" }}
-            />
+            {showAutoPipLeft && slotPipLeft ? (
+              <AutoDirectorPreviewCard assignment={slotPipLeft} compact />
+            ) : (
+              <video
+                src={effectiveLeftPipVideoUrl}
+                autoPlay
+                muted={muted}
+                loop
+                controls
+                playsInline
+                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+              />
+            )}
           </div>
           <button
             onClick={toggleMute}
@@ -637,6 +681,32 @@ export default function MonitorSatelliteSystem({
               // Previously this also set src={fallback video}, which fights
               // srcObject on the same element.
               <video ref={videoRef} autoPlay muted playsInline style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            ) : showAutoPipRight && slotPipRight ? (
+              <div style={{ width: "100%", height: "100%", position: "relative" }}>
+                <AutoDirectorPreviewCard assignment={slotPipRight} compact />
+                <button
+                  onClick={() => void requestCameraAccess()}
+                  style={{
+                    position: "absolute",
+                    bottom: 8,
+                    left: "50%",
+                    transform: "translateX(-50%)",
+                    zIndex: 2,
+                    fontSize: 9,
+                    fontWeight: 800,
+                    letterSpacing: "0.08em",
+                    textTransform: "uppercase",
+                    padding: "5px 10px",
+                    borderRadius: 6,
+                    border: "1px solid rgba(170,45,255,0.55)",
+                    background: "rgba(5,5,16,0.88)",
+                    color: "#AA2DFF",
+                    cursor: "pointer",
+                  }}
+                >
+                  {captureState === "error" ? "Camera denied" : "📷 Enable Camera"}
+                </button>
+              </div>
             ) : (
               <button
                 onClick={() => void requestCameraAccess()}
