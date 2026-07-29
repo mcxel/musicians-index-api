@@ -321,7 +321,7 @@ Experience targets still deferred:
 
 #### Dual equal monitors (hard UI law)
 - Live HUD: `MonitorSatelliteSystem` defaults to `SPLIT_VIEW` with `gridTemplateColumns: 1fr 1fr` + matching `aspectRatio: 16/9` on MONITOR A + B (`data-equal-dual-monitors`).
-- Overseer: `CanonOverseerShell` is a **scrollable flight deck** (no `100vh` / `overflow: hidden` squash). Center column = two stacked true `aspect-ratio: 16/9` monitors (width-driven). Side rails stretch to the combined monitor stack and scroll independently. Analytics sits in its own full-width section below with taller min-height / padding.
+- Overseer: **Two-Deck Architecture** — Operations Deck (rails + dual stacked 16:9) → Live Channel Ticker (fold breakpoint, not sticky) → Intelligence Deck (Artist Revenue / Magazine Analytics / … at natural height). Rails do not stretch through intelligence. Admin Cam is OverlayHost-only (📷 bottom nav + center gem); removed permanent `TMIVideoMonitor` from `admin/layout.tsx`.
 
 #### Pass 8 delivered
 - [x] `FloatingWorkspacePanel` + `floatingWorkspaceStore` + module registry (Fan vs Performer Rule 26)
@@ -332,6 +332,7 @@ Experience targets still deferred:
 - [x] Memory / Inventory quick overlays — View All → floating full module
 - [x] Blueprint assets copied under `public/assets/blueprints/`
 - [x] Overseer layout: remove vh lock; dual stacked 16:9 monitors define page height; analytics below fold
+- [x] Two-Deck Architecture: Live Channel Ticker divider; Intelligence Deck below fold; Admin Cam on-demand only
 - [ ] Browser certify floating open/close + no monitor reflow
 - [ ] UnifiedInbox UI: replace hardcoded demo rows with `/api/admin/inbox` threads (ALIGN — Rule 20)
 - [ ] Overseer visual certify gold-filigree vs blueprint (ALIGN — later)
@@ -343,11 +344,13 @@ Experience targets still deferred:
 
 ## Legacy Flight Deck (Admin Observatory)
 - [x] Pass 1: Build Flight Deck directly in OverseerClientPage.tsx (3-column, natural scroll, dual 16:9 stacked monitors)
+- [x] Two-Deck migration on `/admin/overseer` (`CanonOverseerShell` + `LiveChannelTicker`) — `/admin/observatory` redirects here
 - [ ] Pass 1: Add symmetric rail presets (22/56/22, 18/64/18, 12/76/12, 0/100/0)
 - [ ] Pass 1: Place Live Feed Explorer below monitor stack
-- [ ] Pass 1: Add full-width lower analytics section below fold
+- [x] Pass 1: Add full-width lower analytics section below fold (Intelligence Deck)
 - [ ] Pass 2: Validate no smushing / no viewport clipping / monitors preserve 16:9
 - [ ] Pass 3: Extract proven reusable parts into FlightDeckShell/AdminDesignSystem/MediaMatrixEngine
 - [ ] Pass 4: Implement monitor modes (single/stacked/quad/cinema) with reversible animation
 - [ ] Pass 5: Static checks (tsc, build, git diff --check, git status --short)
 - [ ] Pass 6: Runtime checks on /admin/observatory (scrolling, rails, cinema, role/routing safety)
+- [ ] Migrate sibling observatory hubs still outside CanonOverseerShell: `/admin/observatory/developer-hq`, `/admin/observatory/runtime`, `/admin/observatory/chat` (not Two-Deck yet)

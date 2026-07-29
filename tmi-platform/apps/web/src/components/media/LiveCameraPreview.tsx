@@ -26,6 +26,13 @@ export function LiveCameraPreview() {
     }
   }, [stream]);
 
+  // Destroy tracks when portal unmounts (Admin Cam close must leave nothing live).
+  useEffect(() => {
+    return () => {
+      stopStream();
+    };
+  }, [stopStream]);
+
   const renderContent = () => {
     if (status === 'error') {
       return <div style={{ color: C.error }}>Error: {error?.message || 'Could not access camera.'}</div>;

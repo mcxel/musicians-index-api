@@ -74,10 +74,11 @@ export const WORKSPACE_CONFIGS: Record<WorkspaceDefinition["key"], WorkspaceDefi
       { id: "bigace-feed", title: "AI EVENT TIMELINE", widget: "feed-explorer", accent: "#00FFFF", flex: 1, fullscreenKey: "feed" },
     ],
     rightRail: [
-      { id: "bigace-revenue", title: "PAYOUT AUTHORITY", widget: "revenue-panel", accent: "#FFD700", requiredPermission: "revenue.manage" },
       { id: "bigace-security", title: "SECURITY SENTINEL", widget: "security-wall", accent: "#FF4444", requiredPermission: "security.manage" },
     ],
+    // Intelligence Deck (below Live Channel Ticker) — revenue never in ops rails
     bottom: [
+      { id: "bigace-revenue", title: "PAYOUT AUTHORITY", widget: "revenue-panel", accent: "#FFD700", requiredPermission: "revenue.manage" },
       { id: "bigace-runtime", title: "AI MANDATE BOARD", widget: "runtime-health", accent: "#AA2DFF" },
       { id: "bigace-stripe", title: "STRIPE OBSERVATORY", widget: "stripe-observatory", accent: "#00FFFF" },
     ],
@@ -118,9 +119,10 @@ export const WORKSPACE_CONFIGS: Record<WorkspaceDefinition["key"], WorkspaceDefi
     ],
     rightRail: [
       { id: "justin-security", title: "SECURITY READOUT", widget: "security-wall", accent: "#FF4444" },
-      { id: "justin-revenue", title: "REVENUE SNAPSHOT", widget: "stripe-observatory", accent: "#FFD700" },
     ],
+    // Intelligence Deck below ticker — analytics never in ops rails
     bottom: [
+      { id: "justin-revenue", title: "REVENUE SNAPSHOT", widget: "stripe-observatory", accent: "#FFD700" },
       { id: "justin-runtime", title: "HEALTH MATRIX", widget: "runtime-health", accent: "#AA2DFF" },
       { id: "justin-magazine", title: "PUBLIC SIGNAL ANALYTICS", widget: "magazine-analytics", accent: "#FF2DAA" },
     ],

@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import TMIVideoMonitor from "@/components/hud/TMIVideoMonitor";
 import { PersonaSwitcher } from "@/components/hud/PersonaSwitcher";
 
 // Roles that may access /admin/* — checked against live session before any child renders.
@@ -230,7 +229,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
       </div>
       {children}
-      <TMIVideoMonitor label="ADMIN CAM" position="bottom-right" />
+      {/* Admin Cam is on-demand only — mounted by CanonOverseerShell OverlayHost when Camera is pressed. Never permanent in admin layout. */}
     </>
   );
 }

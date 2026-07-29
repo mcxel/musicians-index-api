@@ -1,8 +1,28 @@
 /**
- * OverseerDeckBlueprintMap — Pass 8.x Observation Deck slot ledger (data only).
+ * OverseerDeckBlueprintMap — Observation Deck slot ledger (data only).
  *
  * Locked base #2: ornate gold-filigree OVERSEER DECK / BerntttGlobal administration hub.
  * Blueprint asset: /assets/blueprints/tmi_overseer_deck_north_star.png
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * TWO-DECK ARCHITECTURE (LOCKED — Marcel mandate)
+ *
+ *   HEADER / COMMAND RIBBON
+ *   OPERATIONS DECK  → Left rail | Monitor #1 (16:9) | Right rail
+ *                    →           | Monitor #2 (16:9) |
+ *   LIVE CHANNEL TICKER  ← architectural divider (NOT sticky)
+ *   ════════════════════
+ *   INTELLIGENCE DECK (below the fold — scroll past ticker)
+ *     Artist Revenue & Buyouts · Magazine & Index Analytics · …
+ *   ════════════════════
+ *   Bottom nav (sticky OK) · Floating Workspace (Pass 8) · Overlay Portal (Admin Cam on demand)
+ *
+ * Ops height = MonitorStack content only. Never shrink monitors for analytics.
+ * Admin Cam: never permanent DOM — mount on Camera button / center gem only.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * Flight Deck / Overseer contributors (durable credit — no fake UI portraits):
+ *   Big Ace · Michael Charlie · J Paul Sanchez · Justin King · Marcel Dickens
  *
  * Do NOT rebuild chrome here. KEEP = mounts real component; ALIGN = exists but
  * diverges from blueprint / Rule 20; DEFER = blueprint target not yet wired.
@@ -10,10 +30,23 @@
 
 export type OverseerSlotStatus = "KEEP" | "ALIGN" | "DEFER";
 
+export type OverseerDeckZone =
+  | "top"
+  | "operations"
+  | "ticker"
+  | "intelligence"
+  | "footer"
+  | "overlay"
+  /** @deprecated use operations | intelligence */
+  | "left"
+  | "center"
+  | "right"
+  | "bottom";
+
 export interface OverseerBlueprintSlot {
   id: string;
   blueprintLabel: string;
-  zone: "top" | "left" | "center" | "right" | "bottom" | "footer";
+  zone: OverseerDeckZone;
   /** Canonical route or component path in repo */
   codeTarget: string;
   status: OverseerSlotStatus;
@@ -23,6 +56,14 @@ export interface OverseerBlueprintSlot {
 export const OVERSEER_DECK_ROUTE = "/admin/overseer";
 export const OBSERVATORY_ROUTE = "/admin/observatory";
 
+export const OVERSEER_FLIGHT_DECK_CREDITS = [
+  "Big Ace",
+  "Michael Charlie",
+  "J Paul Sanchez",
+  "Justin King",
+  "Marcel Dickens",
+] as const;
+
 export const OVERSEER_BLUEPRINT_SLOTS: OverseerBlueprintSlot[] = [
   {
     id: "top-brand",
@@ -30,7 +71,7 @@ export const OVERSEER_BLUEPRINT_SLOTS: OverseerBlueprintSlot[] = [
     zone: "top",
     codeTarget: "components/admin/CanonOverseerShell.tsx",
     status: "ALIGN",
-    note: "Shell: scrollable flight deck; dual stacked 16:9 define height. Never hardcode LIVE viewer vanity.",
+    note: "Two-Deck shell: ops = dual stacked 16:9; intelligence below Live Channel Ticker. Never hardcode LIVE viewer vanity.",
   },
   {
     id: "top-quick-dock",
@@ -41,108 +82,132 @@ export const OVERSEER_BLUEPRINT_SLOTS: OverseerBlueprintSlot[] = [
     note: "Dock pieces exist; wire real alert/queue counts or honest empty.",
   },
   {
-    id: "left-chain-command",
+    id: "ops-left-chain-command",
     blueprintLabel: "Chain Command",
-    zone: "left",
+    zone: "operations",
     codeTarget: "components/admin/overseer/ChainCommandPanel.tsx",
     status: "KEEP",
-    note: "Component present; metrics must stay real/empty.",
+    note: "Ops left rail — metrics must stay real/empty.",
   },
   {
-    id: "left-money-billing",
+    id: "ops-left-money-billing",
     blueprintLabel: "Money & Billing",
-    zone: "left",
-    codeTarget: "WorkspaceConfigs + stripe-observatory widget",
+    zone: "operations",
+    codeTarget: "WorkspaceConfigs + BigAceFinancePanel",
     status: "ALIGN",
-    note: "Stripe observatory widget exists; billing avatars must not fake balances.",
+    note: "Ops rail OK for billing controls; Artist Revenue analytics belong in Intelligence Deck.",
   },
   {
-    id: "left-bot-roster",
+    id: "ops-left-bot-roster",
     blueprintLabel: "Bot Roster & Summon",
-    zone: "left",
+    zone: "operations",
     codeTarget: "lib/bots/* + overseer workspace widgets",
     status: "ALIGN",
     note: "Bot systems exist elsewhere; Overseer roster UI needs real botDutyRegistry bind.",
   },
   {
-    id: "left-unified-inbox",
+    id: "ops-left-unified-inbox",
     blueprintLabel: "Unified Inbox",
-    zone: "left",
+    zone: "operations",
     codeTarget: "components/admin/overseer/UnifiedInbox.tsx → GET /api/admin/inbox",
     status: "ALIGN",
     note: "API is real Conversation-backed; UI still renders hardcoded demo rows — replace with API threads (Rule 20).",
   },
   {
-    id: "center-tv-router",
+    id: "ops-center-tv-router",
     blueprintLabel: "TV Screen Router (Boardroom Live)",
-    zone: "center",
-    codeTarget: "components/admin/overseer/LiveFeedRouter.tsx",
+    zone: "operations",
+    codeTarget: "components/admin/overseer/workspace/widgets/MediaMatrixEngine.tsx",
     status: "ALIGN",
-    note: "Shell locks dual stacked 16:9 monitors (scrollable page). Feed must be real stream or honest empty — no fake viewer counts.",
+    note: "Monitor #1 — true aspect-ratio 16/9 width-driven. Feed must be real stream or honest empty.",
   },
   {
-    id: "center-live-feed-explorer",
+    id: "ops-center-live-feed-explorer",
     blueprintLabel: "Live Feed Explorer",
-    zone: "center",
+    zone: "operations",
     codeTarget: "components/admin/overseer/FeedExplorer.tsx",
     status: "ALIGN",
-    note: "Equal 16:9 stack with TV router. Prefer GlobalLiveSessionRegistry; drop ROOM_SEED vanity.",
+    note: "Monitor #2 — equal 16:9 stack with Media Matrix. Prefer GlobalLiveSessionRegistry.",
   },
   {
-    id: "right-sentinel-wall",
+    id: "ops-right-sentinel-wall",
     blueprintLabel: "Security Sentinel Wall",
-    zone: "right",
+    zone: "operations",
     codeTarget: "components/admin/overseer/SentinelWall.tsx",
     status: "ALIGN",
-    note: "No fake threat theater; real moderation signals or honest empty.",
+    note: "Ops right rail only — never stretch through Intelligence Deck.",
   },
   {
-    id: "right-account-linker",
+    id: "ops-right-account-linker",
     blueprintLabel: "Account Linker (Stripe/PayPal/…)",
-    zone: "right",
+    zone: "operations",
     codeTarget: "components/admin/overseer/AccountLinker.tsx",
     status: "KEEP",
     note: "Linker UI present; connection state must reflect real integration status.",
   },
   {
-    id: "bottom-artist-revenue",
-    blueprintLabel: "Artist Analytics & Revenue",
-    zone: "bottom",
-    codeTarget: "components/admin/overseer/RevenueAnalytics.tsx",
-    status: "ALIGN",
-    note: "Never hardcode $70M graphs; Stripe/real ledger or honest empty.",
+    id: "ops-right-stripe-integrity",
+    blueprintLabel: "Stripe Webhook Integrity",
+    zone: "operations",
+    codeTarget: "components/admin/StripeObservatoryCard.tsx",
+    status: "KEEP",
+    note: "Ops telemetry card — distinct from Artist Revenue intelligence panels.",
   },
   {
-    id: "bottom-magazine-analytics",
+    id: "live-channel-ticker",
+    blueprintLabel: "Live Channel Ticker (fold breakpoint)",
+    zone: "ticker",
+    codeTarget: "components/admin/overseer/LiveChannelTicker.tsx",
+    status: "KEEP",
+    note: "Architectural divider — NOT sticky. User must scroll past to reach Intelligence Deck.",
+  },
+  {
+    id: "intel-artist-revenue",
+    blueprintLabel: "Artist Analytics & Revenue",
+    zone: "intelligence",
+    codeTarget: "components/admin/AdminRevenuePanel.tsx",
+    status: "ALIGN",
+    note: "BELOW ticker only. Never hardcode $70M graphs; Stripe/real ledger or honest empty.",
+  },
+  {
+    id: "intel-magazine-analytics",
     blueprintLabel: "Musician Index / Magazine Analytics",
-    zone: "bottom",
+    zone: "intelligence",
     codeTarget: "components/admin/overseer/MagazineAnalytics.tsx",
     status: "ALIGN",
-    note: "Magazine engine exists; certify no vanity billboard $ figures.",
+    note: "BELOW ticker only. Magazine engine exists; certify no vanity billboard $ figures.",
   },
   {
-    id: "bottom-engagement-heatmap",
+    id: "intel-engagement-heatmap",
     blueprintLabel: "User Engagement Heatmap",
-    zone: "bottom",
+    zone: "intelligence",
     codeTarget: "(missing dedicated component)",
     status: "DEFER",
     note: "No real engagement heatmap engine yet — do not fake purple→orange density grid.",
   },
   {
-    id: "bottom-artist-deep-dive",
+    id: "intel-artist-deep-dive",
     blueprintLabel: "Artist Profile Deep Dive",
-    zone: "bottom",
+    zone: "intelligence",
     codeTarget: "AnalyticsDeckPanel.tsx / PerformerRegistry consumers",
     status: "DEFER",
     note: "Deep-dive cards need real performer stats from registries/APIs.",
   },
   {
     id: "footer-gold-nav",
-    blueprintLabel: "Ornate gold footer nav (gem center)",
+    blueprintLabel: "Ornate gold footer nav (gem center = Admin Cam toggle)",
     zone: "footer",
-    codeTarget: "CanonOverseerShell / OverseerDock",
+    codeTarget: "CanonOverseerShell bottom dock + 📷 Camera button",
     status: "ALIGN",
-    note: "Footer chrome exists in shell/dock; visual certify vs gold-filigree blueprint later.",
+    note: "Sticky bottom nav OK. Center gem + Camera button toggle Admin Cam overlay.",
+  },
+  {
+    id: "overlay-admin-cam",
+    blueprintLabel: "Admin Cam (on-demand portal)",
+    zone: "overlay",
+    codeTarget: "CanonOverseerShell OverlayHost + LiveCameraPreview",
+    status: "KEEP",
+    note: "Never permanent in admin/layout. Mount on toggle; close destroys. Removed TMIVideoMonitor from layout.",
   },
   {
     id: "booking-queue",
@@ -157,4 +222,8 @@ export const OVERSEER_BLUEPRINT_SLOTS: OverseerBlueprintSlot[] = [
 
 export function listOverseerSlotsByStatus(status: OverseerSlotStatus): OverseerBlueprintSlot[] {
   return OVERSEER_BLUEPRINT_SLOTS.filter((s) => s.status === status);
+}
+
+export function listOverseerSlotsByZone(zone: OverseerDeckZone): OverseerBlueprintSlot[] {
+  return OVERSEER_BLUEPRINT_SLOTS.filter((s) => s.zone === zone);
 }

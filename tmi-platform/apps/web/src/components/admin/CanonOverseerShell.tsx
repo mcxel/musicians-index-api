@@ -1,38 +1,43 @@
 "use client";
 
+/**
+ * CanonOverseerShell — Two-Deck Architecture (LOCKED)
+ *
+ * HEADER / COMMAND RIBBON
+ * OPERATIONS DECK  → Left rail | Monitor #1 (16:9) | Right rail
+ *                  →           | Monitor #2 (16:9) |
+ * LIVE CHANNEL TICKER  ← architectural divider (NOT sticky)
+ * ════════════════════
+ * INTELLIGENCE DECK (below the fold — scroll past ticker)
+ *   Artist Revenue & Buyouts · Magazine & Index Analytics · …
+ * ════════════════════
+ * Bottom nav (sticky) · Floating Workspace (Pass 8) · Overlay Portal (Admin Cam on demand)
+ *
+ * Flight Deck / Overseer contributors: Big Ace, Michael Charlie, J Paul Sanchez,
+ * Justin King, and Marcel Dickens — see OverseerDeckBlueprintMap credits.
+ *
+ * Never shrink monitors to fit analytics. Ops height = MonitorStack content only.
+ */
+
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { LiveCameraPreview } from "@/components/media/LiveCameraPreview";
 import OverlayHost from "@/components/shell/OverlayHost";
-// 12-panel layout assembling all existing overseer sub-panels
-//
-// LAYOUT (bottom → top of import precedence):
-//   Row 0 (full-width): OverseerDock — Quick Dock / Chain Pulse / Alerts / Actions
-//   Row 1 (3-col grid):
-//     Left  — ChainCommandPanel · BigAceFinancePanel · BotSummonDeck · UnifiedInbox
-//     Center — LiveFeedRouter (TV Screen Router / Boardroom) · FeedExplorer (Live Feed Explorer)
-//     Right  — SentinelWall · AccountLinker · RevenueAnalytics · MagazineAnalytics
-
-import OverseerDock            from "@/components/admin/overseer/OverseerDock";
 import Canister                from "@/components/admin/overseer/Canister";
 import ChainCommandPanel       from "@/components/admin/overseer/ChainCommandPanel";
 import FeedExplorer            from "@/components/admin/overseer/FeedExplorer";
 import SentinelWall            from "@/components/admin/overseer/SentinelWall";
 import AccountLinker           from "@/components/admin/overseer/AccountLinker";
 import MagazineAnalytics       from "@/components/admin/overseer/MagazineAnalytics";
-// RevenueAnalytics is LEGACY (hardcoded demo data, see file header) — the
-// real Stripe-backed replacement is AdminRevenuePanel. Wiring it in directly
-// so the Overseer Deck's revenue panel shows real telemetry, not fake numbers.
+// RevenueAnalytics is LEGACY (hardcoded demo data) — AdminRevenuePanel is Stripe-backed.
 import AdminRevenuePanel        from "@/components/admin/AdminRevenuePanel";
 import StripeObservatoryCard    from "@/components/admin/StripeObservatoryCard";
 import UnifiedInbox            from "@/components/admin/overseer/UnifiedInbox";
-import LiveFeedRouter          from "@/components/admin/overseer/LiveFeedRouter";
 import BotSummonDeck           from "@/components/admin/BotSummonDeck";
 import BigAceFinancePanel      from "@/components/admin/BigAceFinancePanel";
 import MediaMatrixEngine       from "@/components/admin/overseer/workspace/widgets/MediaMatrixEngine";
-import HQDock from "@/components/admin/overseer/HQDock";
-import { resolveDockItems } from "@/components/admin/overseer/services/DockRegistry";
+import LiveChannelTicker       from "@/components/admin/overseer/LiveChannelTicker";
 import { useDrawerManager } from "@/components/admin/overseer/services/DrawerManager";
 
 export type ShellDockButton = {
@@ -149,7 +154,6 @@ export default function CanonOverseerShell({ workspace }: CanonOverseerShellProp
         { label: "Messages", href: "/admin/messages" },
         { label: "Users", href: "/admin/users" },
         { label: "Settings", href: "/admin/settings" },
-        { label: "Camera", href: "#" }, // Placeholder for camera toggle
         { label: "Power", href: "/" },
       ],
     }),
@@ -158,21 +162,19 @@ export default function CanonOverseerShell({ workspace }: CanonOverseerShellProp
 
   const activeWorkspace = workspace ?? defaultWorkspace;
 
-  const dockItems = useMemo(
-    () => resolveDockItems(activeWorkspace.dockButtons),
-    [activeWorkspace.dockButtons],
-  );
-
   const leftCollapsed = drawerManager.isRailCollapsed("left");
   const rightCollapsed = drawerManager.isRailCollapsed("right");
   const bottomCollapsed = drawerManager.isRailCollapsed("bottom");
 
   const leftWidth = leftCollapsed ? 74 : 268;
   const rightWidth = rightCollapsed ? 74 : 268;
-  // Analytics sits below the monitor stack (own section) — never competes for monitor vh.
-  const bottomMinHeight = bottomCollapsed ? 44 : 320;
+  // Intelligence deck: natural height below ticker — never flex-shrink into ops.
+  const intelligenceMinHeight = bottomCollapsed ? 44 : 320;
   const MONITOR_GAP = 12;
-  const ANALYTICS_GAP = 14;
+  const DECK_GAP = 14;
+
+  const closeAdminCam = () => setCameraOverlayOpen(false);
+  const toggleAdminCam = () => setCameraOverlayOpen((prev) => !prev);
 
   const toggleFullscreen = (panelId: string) => {
     setFullscreenPanel((curr) => (curr === panelId ? null : panelId));
@@ -482,257 +484,281 @@ export default function CanonOverseerShell({ workspace }: CanonOverseerShellProp
           {leftCollapsed ? "◀" : "◁"} Left
         </button>
         <button type="button" onClick={() => drawerManager.toggleRail("bottom")} style={{ borderRadius: 999, border: "1px solid rgba(170,45,255,0.35)", background: "rgba(170,45,255,0.06)", color: "rgba(216,135,255,0.75)", fontSize: 8, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", padding: "3px 8px", cursor: "pointer" }}>
-          {bottomCollapsed ? "▲" : "▼"} Analytics
+          {bottomCollapsed ? "▲" : "▼"} Intelligence
         </button>
         <button type="button" onClick={() => drawerManager.toggleRail("right")} style={{ borderRadius: 999, border: "1px solid rgba(0,255,255,0.35)", background: "rgba(0,255,255,0.06)", color: "rgba(115,255,255,0.75)", fontSize: 8, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", padding: "3px 8px", cursor: "pointer" }}>
           Right {rightCollapsed ? "▶" : "▷"}
         </button>
       </div>
 
+      {/* ── OPERATIONS DECK ── rails align to MonitorStack only; height = two 16:9 monitors */}
       <div
-        data-row="workspace"
+        data-deck="operations"
         style={{
           position: "relative",
           zIndex: 1,
-          display: "flex",
-          flexDirection: "column",
-          gap: ANALYTICS_GAP,
-          minWidth: 0,
-          // Page scrolls — monitors are not compressed into remaining viewport.
           flex: "0 0 auto",
           height: "auto",
-          overflow: "visible",
+          display: "grid",
+          gridTemplateColumns: shellGridTemplate,
+          gridTemplateRows: "auto",
+          alignItems: "stretch",
+          gap: 8,
+          border: "1px solid rgba(255,215,0,0.18)",
+          borderRadius: 10,
+          padding: 8,
+          background: "linear-gradient(180deg, rgba(255,215,0,0.04), rgba(255,255,255,0.02))",
           transition: "all 280ms ease",
         }}
       >
-        <div
-          data-row="main"
-          style={{
-            flex: "0 0 auto",
-            height: "auto",
-            display: "grid",
-            gridTemplateColumns: shellGridTemplate,
-            gridTemplateRows: "auto",
-            alignItems: "stretch",
-            gap: 8,
-            border: "1px solid rgba(255,215,0,0.18)",
-            borderRadius: 10,
-            padding: 8,
-            background: "linear-gradient(180deg, rgba(255,215,0,0.04), rgba(255,255,255,0.02))",
-            transition: "all 280ms ease",
-          }}
-        >
-          {fullscreenPanel ? (
-            <Canister
-              title="FOCUS MODE"
-              accent="#00FFFF"
-              statusLabel="FOCUSED"
-              onToggleFullscreen={() => setFullscreenPanel(null)}
-              style={{ minHeight: "min(70vh, 720px)", aspectRatio: "16 / 9", width: "100%" }}
-            >
-              {renderFullscreen()}
-            </Canister>
-          ) : (
-            <>
-              {renderRail(activeWorkspace.leftRail, "left")}
-              {renderRail(activeWorkspace.center, "center")}
-              {renderRail(activeWorkspace.rightRail, "right")}
-            </>
+        {fullscreenPanel ? (
+          <Canister
+            title="FOCUS MODE"
+            accent="#00FFFF"
+            statusLabel="FOCUSED"
+            onToggleFullscreen={() => setFullscreenPanel(null)}
+            style={{ minHeight: "min(70vh, 720px)", aspectRatio: "16 / 9", width: "100%" }}
+          >
+            {renderFullscreen()}
+          </Canister>
+        ) : (
+          <>
+            {renderRail(activeWorkspace.leftRail, "left")}
+            {renderRail(activeWorkspace.center, "center")}
+            {renderRail(activeWorkspace.rightRail, "right")}
+          </>
+        )}
+      </div>
+
+      {/* ── LIVE CHANNEL TICKER — fold breakpoint (NOT sticky) ── */}
+      <LiveChannelTicker />
+
+      {/* ── INTELLIGENCE DECK — below the fold; natural height, no squash ── */}
+      <div
+        data-deck="intelligence"
+        id="intelligence-deck"
+        style={{
+          position: "relative",
+          zIndex: 1,
+          flex: "0 0 auto",
+          minHeight: intelligenceMinHeight,
+          height: bottomCollapsed ? intelligenceMinHeight : "auto",
+          display: "grid",
+          gridTemplateColumns: `repeat(${Math.max(1, activeWorkspace.bottom.length)}, minmax(0, 1fr))`,
+          gap: DECK_GAP,
+          border: "1px solid rgba(255,215,0,0.22)",
+          borderRadius: 10,
+          padding: bottomCollapsed ? 6 : 16,
+          background: "linear-gradient(180deg, rgba(255,45,170,0.04), rgba(255,215,0,0.04))",
+          transition: "all 280ms ease",
+        }}
+      >
+        {activeWorkspace.bottom
+          .filter((panel) => !isFloatingPanel(panel))
+          .map((panel) =>
+            renderPanelCanister(panel, bottomCollapsed, false, {
+              minHeight: bottomCollapsed ? undefined : 280,
+              flex: "0 0 auto",
+              height: "auto",
+            }),
           )}
-        </div>
+      </div>
 
-        <div
-          data-row="bottom"
-          style={{
-            flex: "0 0 auto",
-            minHeight: bottomMinHeight,
-            height: bottomCollapsed ? bottomMinHeight : "auto",
-            display: "grid",
-            gridTemplateColumns: `repeat(${Math.max(1, activeWorkspace.bottom.length)}, minmax(0, 1fr))`,
-            gap: ANALYTICS_GAP,
-            border: "1px solid rgba(255,215,0,0.18)",
-            borderRadius: 10,
-            padding: bottomCollapsed ? 6 : 16,
-            background: "linear-gradient(180deg, rgba(255,45,170,0.03), rgba(255,215,0,0.03))",
-            transition: "all 280ms ease",
-          }}
-        >
-          {activeWorkspace.bottom
-            .filter((panel) => !isFloatingPanel(panel))
-            .map((panel) =>
-              renderPanelCanister(panel, bottomCollapsed, false, {
-                minHeight: bottomCollapsed ? undefined : 280,
-              }),
-            )}
-        </div>
-
-        <div
-          data-row="dock-bottom"
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            padding: "8px 24px",
-            background: "linear-gradient(180deg, #2b1822 0%, #150910 100%)",
-            border: "3px solid #b8860b",
-            borderRadius: 14,
-            boxShadow: "0 0 20px rgba(0,0,0,0.8), inset 0 0 10px rgba(255,215,0,0.15)",
-            position: "relative",
-            marginTop: 10,
-          }}
-        >
-          {/* Left Buttons */}
-          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-            <Link
-              href="/admin"
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-                padding: "8px 18px",
-                background: "linear-gradient(180deg, #4a1f19 0%, #20090f 100%)",
-                border: "2px solid #D4AF37",
-                borderRadius: 10,
-                color: "#ffe3a3",
-                fontWeight: 900,
-                fontSize: 12,
-                letterSpacing: "0.06em",
-                textTransform: "uppercase",
-                textDecoration: "none",
-                boxShadow: "0 3px 8px rgba(0,0,0,0.5)",
-              }}
-            >
-              ◀ Go Back
-            </Link>
-            <button
-              type="button"
-              style={{
-                width: 34,
-                height: 34,
-                borderRadius: "50%",
-                background: "linear-gradient(180deg, #4a1f19 0%, #20090f 100%)",
-                border: "2px solid #D4AF37",
-                color: "#ffe3a3",
-                fontSize: 14,
-                cursor: "pointer",
-                boxShadow: "0 3px 8px rgba(0,0,0,0.5)",
-              }}
-              title="Toggle Microphone"
-            >
-              🎤
-            </button>
-            <button
-              type="button"
-              style={{
-                width: 34,
-                height: 34,
-                borderRadius: "50%",
-                background: "linear-gradient(180deg, #4a1f19 0%, #20090f 100%)",
-                border: "2px solid #D4AF37",
-                color: "#ffe3a3",
-                fontSize: 14,
-                cursor: "pointer",
-                boxShadow: "0 3px 8px rgba(0,0,0,0.5)",
-              }}
-              title="Toggle Volume"
-            >
-              🔊
-            </button>
-          </div>
-
-          {/* Center Diamond Gem */}
-          <div
+      {/* ── Bottom command nav (sticky OK) ── */}
+      <div
+        data-row="dock-bottom"
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          padding: "8px 24px",
+          background: "linear-gradient(180deg, #2b1822 0%, #150910 100%)",
+          border: "3px solid #b8860b",
+          borderRadius: 14,
+          boxShadow: "0 0 20px rgba(0,0,0,0.8), inset 0 0 10px rgba(255,215,0,0.15)",
+          position: "sticky",
+          bottom: 8,
+          zIndex: 40,
+          marginTop: 4,
+        }}
+      >
+        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          <Link
+            href="/admin"
             style={{
-              position: "absolute",
-              left: "50%",
-              top: "50%",
-              transform: "translate(-50%, -50%) rotate(45deg)",
-              width: 30,
-              height: 30,
-              background: "radial-gradient(circle, #e066ff, #8b008b)",
-              border: "3px solid #D4AF37",
-              boxShadow: "0 0 15px #e066ff, inset 0 0 5px rgba(255,255,255,0.8)",
-              cursor: "pointer",
-              zIndex: 10,
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "8px 18px",
+              background: "linear-gradient(180deg, #4a1f19 0%, #20090f 100%)",
+              border: "2px solid #D4AF37",
+              borderRadius: 10,
+              color: "#ffe3a3",
+              fontWeight: 900,
+              fontSize: 12,
+              letterSpacing: "0.06em",
+              textTransform: "uppercase",
+              textDecoration: "none",
+              boxShadow: "0 3px 8px rgba(0,0,0,0.5)",
             }}
-            onClick={() => setCameraOverlayOpen((prev) => !prev)}
-            title="Consensus / Camera Toggle"
-          />
+          >
+            ◀ Go Back
+          </Link>
+          <button
+            type="button"
+            style={{
+              width: 34,
+              height: 34,
+              borderRadius: "50%",
+              background: "linear-gradient(180deg, #4a1f19 0%, #20090f 100%)",
+              border: "2px solid #D4AF37",
+              color: "#ffe3a3",
+              fontSize: 14,
+              cursor: "pointer",
+              boxShadow: "0 3px 8px rgba(0,0,0,0.5)",
+            }}
+            title="Toggle Microphone"
+          >
+            🎤
+          </button>
+          <button
+            type="button"
+            style={{
+              width: 34,
+              height: 34,
+              borderRadius: "50%",
+              background: "linear-gradient(180deg, #4a1f19 0%, #20090f 100%)",
+              border: "2px solid #D4AF37",
+              color: "#ffe3a3",
+              fontSize: 14,
+              cursor: "pointer",
+              boxShadow: "0 3px 8px rgba(0,0,0,0.5)",
+            }}
+            title="Toggle Volume"
+          >
+            🔊
+          </button>
+          <button
+            type="button"
+            onClick={toggleAdminCam}
+            aria-pressed={cameraOverlayOpen}
+            style={{
+              width: 34,
+              height: 34,
+              borderRadius: "50%",
+              background: cameraOverlayOpen
+                ? "linear-gradient(180deg, #0a4a2a 0%, #063018 100%)"
+                : "linear-gradient(180deg, #4a1f19 0%, #20090f 100%)",
+              border: cameraOverlayOpen ? "2px solid #00FF88" : "2px solid #D4AF37",
+              color: cameraOverlayOpen ? "#00FF88" : "#ffe3a3",
+              fontSize: 14,
+              cursor: "pointer",
+              boxShadow: cameraOverlayOpen
+                ? "0 0 12px rgba(0,255,136,0.45)"
+                : "0 3px 8px rgba(0,0,0,0.5)",
+            }}
+            title="Admin Camera (on demand)"
+          >
+            📷
+          </button>
+        </div>
 
-          {/* Right Buttons */}
-          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-            <button
-              type="button"
-              style={{
-                width: 34,
-                height: 34,
-                borderRadius: "50%",
-                background: "linear-gradient(180deg, #4a1f19 0%, #20090f 100%)",
-                border: "2px solid #D4AF37",
-                color: "#ffe3a3",
-                fontSize: 14,
-                cursor: "pointer",
-                boxShadow: "0 3px 8px rgba(0,0,0,0.5)",
-              }}
-              title="Database"
-            >
-              📂
-            </button>
-            <button
-              type="button"
-              style={{
-                width: 34,
-                height: 34,
-                borderRadius: "50%",
-                background: "linear-gradient(180deg, #4a1f19 0%, #20090f 100%)",
-                border: "2px solid #D4AF37",
-                color: "#ffe3a3",
-                fontSize: 14,
-                cursor: "pointer",
-                boxShadow: "0 3px 8px rgba(0,0,0,0.5)",
-              }}
-              title="Profile"
-            >
-              👤
-            </button>
-            <button
-              type="button"
-              style={{
-                width: 34,
-                height: 34,
-                borderRadius: "50%",
-                background: "linear-gradient(180deg, #4a1f19 0%, #20090f 100%)",
-                border: "2px solid #D4AF37",
-                color: "#ffe3a3",
-                fontSize: 14,
-                cursor: "pointer",
-                boxShadow: "0 3px 8px rgba(0,0,0,0.5)",
-              }}
-              title="Settings"
-            >
-              ⚙
-            </button>
-            <Link
-              href="/"
-              style={{
-                width: 34,
-                height: 34,
-                borderRadius: "50%",
-                background: "linear-gradient(180deg, #c0392b 0%, #7f0c0d 100%)",
-                border: "2px solid #D4AF37",
-                color: "#fff",
-                fontSize: 14,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                textDecoration: "none",
-                boxShadow: "0 3px 8px rgba(0,0,0,0.5)",
-              }}
-              title="Exit"
-            >
-              ⏻
-            </Link>
-          </div>
+        <div
+          style={{
+            position: "absolute",
+            left: "50%",
+            top: "50%",
+            transform: "translate(-50%, -50%) rotate(45deg)",
+            width: 30,
+            height: 30,
+            background: cameraOverlayOpen
+              ? "radial-gradient(circle, #66ffaa, #008844)"
+              : "radial-gradient(circle, #e066ff, #8b008b)",
+            border: "3px solid #D4AF37",
+            boxShadow: cameraOverlayOpen
+              ? "0 0 15px #00FF88, inset 0 0 5px rgba(255,255,255,0.8)"
+              : "0 0 15px #e066ff, inset 0 0 5px rgba(255,255,255,0.8)",
+            cursor: "pointer",
+            zIndex: 10,
+          }}
+          onClick={toggleAdminCam}
+          title="Admin Camera Toggle"
+          role="button"
+          aria-label="Toggle Admin Camera"
+        />
+
+        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          <button
+            type="button"
+            style={{
+              width: 34,
+              height: 34,
+              borderRadius: "50%",
+              background: "linear-gradient(180deg, #4a1f19 0%, #20090f 100%)",
+              border: "2px solid #D4AF37",
+              color: "#ffe3a3",
+              fontSize: 14,
+              cursor: "pointer",
+              boxShadow: "0 3px 8px rgba(0,0,0,0.5)",
+            }}
+            title="Database"
+          >
+            📂
+          </button>
+          <button
+            type="button"
+            style={{
+              width: 34,
+              height: 34,
+              borderRadius: "50%",
+              background: "linear-gradient(180deg, #4a1f19 0%, #20090f 100%)",
+              border: "2px solid #D4AF37",
+              color: "#ffe3a3",
+              fontSize: 14,
+              cursor: "pointer",
+              boxShadow: "0 3px 8px rgba(0,0,0,0.5)",
+            }}
+            title="Profile"
+          >
+            👤
+          </button>
+          <button
+            type="button"
+            style={{
+              width: 34,
+              height: 34,
+              borderRadius: "50%",
+              background: "linear-gradient(180deg, #4a1f19 0%, #20090f 100%)",
+              border: "2px solid #D4AF37",
+              color: "#ffe3a3",
+              fontSize: 14,
+              cursor: "pointer",
+              boxShadow: "0 3px 8px rgba(0,0,0,0.5)",
+            }}
+            title="Settings"
+          >
+            ⚙
+          </button>
+          <Link
+            href="/"
+            style={{
+              width: 34,
+              height: 34,
+              borderRadius: "50%",
+              background: "linear-gradient(180deg, #c0392b 0%, #7f0c0d 100%)",
+              border: "2px solid #D4AF37",
+              color: "#fff",
+              fontSize: 14,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              textDecoration: "none",
+              boxShadow: "0 3px 8px rgba(0,0,0,0.5)",
+            }}
+            title="Exit"
+          >
+            ⏻
+          </Link>
         </div>
       </div>
 
@@ -781,58 +807,54 @@ export default function CanonOverseerShell({ workspace }: CanonOverseerShellProp
             );
           })}
 
-        {/* Camera Overlay is now managed within the OverlayHost */}
-      </OverlayHost>
-
-      <div
-        id="tmi-flight-deck"
-        className="tmi-flight-deck"
-        aria-hidden="true"
-        style={{
-          position: "absolute",
-          inset: 0,
-          zIndex: 1000,
-          pointerEvents: "none",
-        }}
-      >
-        {/* The portal target for all floating elements */}
-        {cameraOverlayOpen && (
+        {/* Admin Cam — mount ONLY when toggled; close destroys (nothing permanent in DOM) */}
+        {cameraOverlayOpen ? (
+          <div
+            data-overlay="admin-cam"
+            style={{
+              position: "fixed",
+              inset: 0,
+              zIndex: 1300,
+              background: "rgba(1, 3, 8, 0.45)",
+              pointerEvents: "auto",
+              display: "flex",
+              alignItems: "flex-end",
+              justifyContent: "flex-end",
+              padding: "0 12px 96px",
+            }}
+            onClick={closeAdminCam}
+          >
             <div
               style={{
-                position: "fixed",
-                inset: 0,
-                zIndex: 1300,
-                background: "rgba(1, 3, 8, 0.45)",
+                width: "min(420px, calc(100vw - 32px))",
+                transform: "translateY(0)",
+                animation: "tmi-admin-cam-slide 220ms ease-out",
                 pointerEvents: "auto",
               }}
-              onClick={() => setCameraOverlayOpen(false)}
+              onClick={(e) => e.stopPropagation()}
             >
-              <div
-                style={{
-                  position: "absolute",
-                  right: 8,
-                  bottom: 92,
-                  width: "min(420px, calc(100vw - 32px))",
-                  pointerEvents: "auto",
-                }}
-                onClick={(e) => e.stopPropagation()} // Prevent click from closing the overlay
+              <Canister
+                id="observatory-camera-overlay"
+                title="ADMIN CAMERA"
+                accent="#00FF88"
+                statusLabel="ON DEMAND"
+                style={{ minHeight: 250 }}
+                onCloseWindow={closeAdminCam}
               >
-                <Canister
-                  id="observatory-camera-overlay"
-                  title="ADMIN CAMERA"
-                  accent="#00FFFF"
-                  statusLabel="ON DEMAND"
-                  style={{ minHeight: 250 }}
-                  onCloseWindow={() => setCameraOverlayOpen(false)}
-                >
-                  <div style={{ aspectRatio: "16 / 9", width: "100%", minHeight: 220 }}>
-                    <LiveCameraPreview />
-                  </div>
-                </Canister>
-              </div>
+                <div style={{ aspectRatio: "16 / 9", width: "100%", minHeight: 220 }}>
+                  <LiveCameraPreview />
+                </div>
+              </Canister>
             </div>
-        )}
-      </div>
+            <style>{`
+              @keyframes tmi-admin-cam-slide {
+                from { transform: translateY(24px); opacity: 0; }
+                to { transform: translateY(0); opacity: 1; }
+              }
+            `}</style>
+          </div>
+        ) : null}
+      </OverlayHost>
     </div>
   );
 }
