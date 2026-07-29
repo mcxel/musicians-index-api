@@ -29,6 +29,8 @@ export async function POST(req: NextRequest) {
       performerIds: body.performerIds,
       venueId: body.venueId,
       timestamp: new Date().toISOString(),
+      // Phase 7.3 — thin bridge: save to Memory & Collectibles (scrapbook), not achievements
+      saveDestination: 'MEMORY_WALL',
     };
 
     const result = await MemoryCaptureEngine.saveCapture({

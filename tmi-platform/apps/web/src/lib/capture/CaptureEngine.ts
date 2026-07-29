@@ -5,6 +5,20 @@ export type CaptureType =
   | 'trophy_shot'
   | 'event_poster';
 
+/**
+ * Post-capture filing destination (Phase 7.3 contracts).
+ * Thin bridge today: MEMORY_WALL via saveCaptureToMemoryWall / capture API.
+ * Full camera suite + multi-destination UI = FUTURE 7.4+.
+ */
+export type CaptureSaveDestination =
+  | 'MEMORY_WALL'
+  | 'ALBUM'
+  | 'YOPHO'
+  | 'SHARE_FRIENDS'
+  | 'SNIP'
+  | 'PROFILE'
+  | 'PRIVATE';
+
 export interface MemoryContext {
   roomId?: string;
   eventId?: string;
@@ -13,6 +27,8 @@ export interface MemoryContext {
   venueId?: string;
   captureType: CaptureType;
   timestamp: string;
+  /** Default MEMORY_WALL — scrapbook collectibles table, not competition ledger. */
+  saveDestination?: CaptureSaveDestination;
 }
 
 export interface SnapResult {

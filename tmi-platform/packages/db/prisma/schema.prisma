@@ -153,6 +153,9 @@ model User {
   lobby                 Lobby?
   ownedMemories         FanMemory[]
   sentShoutouts         FanMemory[]            @relation("artistMemories")
+  // EOS Phase 7.3 — Memory & Collectibles Engine (personal media library)
+  memoryCollectibles    MemoryCollectible[]
+  memoryAlbums          MemoryAlbum[]
   juliusUnlocks         JuliusUserUnlock[]
   controlMappingProfile ControlMappingProfile?
   partyMemberships      PartyMember[]
@@ -2083,6 +2086,7 @@ model LobbyDisplayItem {
 }
 
 // -- Social Showcase: Shoutouts & Memories ------------------------------------
+// FanMemory = artist→fan shoutouts / birthday wishes — NOT the Memory Wall scrapbook.
 
 model FanMemory {
   id           String   @id @default(cuid())
@@ -2098,6 +2102,91 @@ model FanMemory {
   fromArtist User @relation("artistMemories", fields: [fromArtistId], references: [id])
 
   @@map("fan_memories")
+}
+
+// ======================================================================
+// MEMORY & COLLECTIBLES ENGINE (EOS Phase 7.3)
+// Personal media library + keepsakes (Photos-app / scrapbook).
+// INCLUDES: PHOTO | VIDEO | YOPHO | TICKET | POSTER | KEEPSAKE
+// EXCLUDES: playlists/music, tips, competition wins/rankings, relationship edges.
+// Competition runtime history stays in EOS MemoryLedger → Achievement path.
+// Memory Wall UI (Phase 7.4) renders FROM this table — never from MATCH_COMPLETED.
+// ======================================================================
+
+/// Album containers (Family, Concerts, VIP, custom…). Covers/borders schema-ready; polish in 7.4.
+model MemoryAlbum {
+  id              String   @id @default(cuid())
+  ownerId         String
+  owner           User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  title           String
+  /// Optional preset key: FAMILY | STUDIO | CONCERTS | MONTHLY_IDOL | WDP | BATTLES | VIP | ROAD_TRIPS | CUSTOM
+  presetKey       String?
+  coverUrl        String?
+  /// Animated border style key for 7.4 motion gallery — stored only, no fake UI
+  animatedBorder  String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  items           MemoryCollectible[]
+
+  @@index([ownerId])
+  @@map("memory_albums")
+}
+
+model MemoryCollectible {
+  id           String    @id @default(cuid())
+  ownerId      String
+  owner        User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  /// PHOTO | VIDEO | YOPHO | TICKET | POSTER | KEEPSAKE
+  kind         String
+  title        String
+  subtitle     String?
+  mediaUrl     String?
+  thumbnailUrl String?
+  artworkUrl   String?
+
+  /// Album grouping (schema ready; gallery UI in 7.4)
+  albumId      String?
+  album        MemoryAlbum? @relation(fields: [albumId], references: [id], onDelete: SetNull)
+  isFavorite   Boolean   @default(false)
+  /// Soft-delete / Trash — null = active
+  trashedAt    DateTime?
+
+  /// public | friends | private
+  visibility   String    @default("private")
+
+  // Memorabilia graph links (interactive detail in 7.4)
+  eventId              String?
+  venueId              String?
+  ticketId             String?
+  /// FK-style id of a linked TICKET collectible row (not competition ledger)
+  ticketCollectibleId  String?
+  rarity               String?
+  attendedAt           DateTime?
+  locationLabel        String?
+  /// JSON string[] of tagged user ids — real ids only, never fabricated
+  taggedUserIds        Json?
+  yophoPageId          String?
+
+  /// Non-destructive edits: pointer to original media row; edits keep originals
+  editOriginalMediaId  String?
+  /// DEVICE_MAX | HIGH | STANDARD | DATA_SAVER — capture quality preference used
+  captureQuality       String?
+  /// MEMORY_WALL | ALBUM | YOPHO | SHARE_FRIENDS | SNIP | PROFILE | PRIVATE
+  captureDestination   String?
+
+  capturedAt   DateTime  @default(now())
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([ownerId, trashedAt, createdAt])
+  @@index([ownerId, kind])
+  @@index([ownerId, isFavorite])
+  @@index([ticketId])
+  @@index([albumId])
+  @@index([editOriginalMediaId])
+  @@map("memory_collectibles")
 }
 
 // -- Julius System: The Interactive Mascot ------------------------------------

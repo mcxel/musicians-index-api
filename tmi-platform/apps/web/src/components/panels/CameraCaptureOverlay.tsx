@@ -120,6 +120,8 @@ export default function CameraCaptureOverlay({ isOpen, onClose }: CameraCaptureO
           imageData: imageSrc,
           captureType: 'group_photo',
           roomLabel: caption || undefined,
+          // Phase 7.3 — Memory Wall scrapbook destination (not playlist/tips/achievements)
+          saveDestination: 'MEMORY_WALL',
         }),
       });
       const data = await res.json();

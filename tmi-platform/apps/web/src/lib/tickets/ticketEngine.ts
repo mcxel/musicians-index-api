@@ -135,5 +135,17 @@ export function redeemTicket(ticketId: string): TicketRecord {
   if (!ticket) throw new Error("ticket_not_found");
   if (ticket.redeemed) throw new Error("ticket_already_redeemed");
   const redeemed: TicketRecord = { ...ticket, redeemed: true };
-  return saveTicket(redeemed);
+  const saved = saveTicket(redeemed);
+
+  // Phase 7.3 — optional Memory Wall collectible keepsake (real ticket only).
+  // Dynamic import keeps ticketEngine free of Prisma at module load.
+  void import("@/lib/memory/collectiblesTicketMint")
+    .then(({ mintCollectibleTicketIfPossible }) =>
+      mintCollectibleTicketIfPossible(saved),
+    )
+    .catch((err) => {
+      console.error("[ticketEngine.redeemTicket collectible mint]", err);
+    });
+
+  return saved;
 }

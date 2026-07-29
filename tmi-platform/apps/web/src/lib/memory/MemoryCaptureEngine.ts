@@ -2,6 +2,12 @@ import { MemoryWallEngine, type MemoryArtifact } from './MemoryWallEngine';
 import { ActivityTimelineEngine } from '@/lib/timeline/ActivityTimelineEngine';
 import type { CaptureType, MemoryContext } from '@/lib/capture/CaptureEngine';
 
+/**
+ * Capture → Memory Wall scrapbook (Phase 7.3).
+ * Persistence goes through MemoryWallEngine.captureLiveMoment → MemoryCollectible
+ * (+ legacy FeedItem until 7.4). Destination default MEMORY_WALL — not competition ledger.
+ */
+
 export interface CapturePayload {
   userId: string;
   imageData: string;

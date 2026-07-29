@@ -8,4 +8,5 @@ export * from "./memoryRegistry";
 export * from "./memoryLedger";
 export * from "./highlightEngine";
 export * from "./memoryBridge";
+export * from "./achievementBridge";
 export * from "./relationshipContracts";

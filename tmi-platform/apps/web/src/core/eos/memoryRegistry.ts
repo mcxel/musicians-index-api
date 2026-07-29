@@ -1,8 +1,13 @@
 /**
- * EOS Phase 7 — Memory Registry
+ * EOS Phase 7 — Memory Registry (competition / runtime event taxonomy)
  *
- * Canonical schema for all memory events captured platform-wide.
+ * Canonical schema for platform events recorded in the Memory Ledger.
  * The MemoryLedger records facts; the HighlightEngine assigns importance.
+ *
+ * NOT the Memory Wall scrapbook. Photo/ticket/YoPho collectibles use
+ * `MemoryCollectibleKind` in lib/memory/collectiblesContracts.ts.
+ * Playlist / tip / follower kinds here feed Achievement/history — never
+ * auto-insert into MemoryCollectible rows.
  *
  * Builds on top of types/memory.ts (MemoryItem, MemoryItemKind) — does NOT
  * replace those UI types. This layer adds EOS-specific event contracts.
@@ -70,7 +75,8 @@ export interface LedgerEntry {
 
 /**
  * A promoted LedgerEntry after HighlightEngine scoring.
- * Feeds Memory Wall, Auto-Director idle cards, and Discovery surfaces.
+ * Feeds Achievement/history adapters, Auto-Director idle cards, and Discovery.
+ * Does NOT write into Memory & Collectibles (photo wall) tables.
  */
 export interface MemoryHighlight {
   readonly entry: LedgerEntry;
