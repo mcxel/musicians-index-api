@@ -129,7 +129,7 @@ Target architecture (when real engines exist — wire, don’t duplicate):
 | Global Performance / Instrument Registry | FUTURE APPROVED (post soft-launch) |
 | Recommendation Engine | FUTURE |
 | Phase 7.3 Prisma Collectibles | COMPLETE |
-| Phase 7.4 Interactive Gallery | FUTURE APPROVED |
+| Phase 7.4 Memory Wall Surface | COMPLETE (motion gallery; spatial/AI/editor deferred) |
 
 Phase 4.7 Vocal Improv experiences remain standalone StageLoader mounts; Layer 5 only sequences their ExperienceRegistry ids into rotation suggestions.
 
@@ -219,16 +219,17 @@ Gate: 5A complete · 5B idle
 | Recommendation Engine | FUTURE |
 | Phase 5B mesh / AvatarEngine | IDLE |
 | Phase 7.3 Prisma Collectibles persistence | COMPLETE |
-| Phase 7.4 Memory Wall Interactive Gallery | FUTURE APPROVED — Certification Impact: NONE until 7.3 data path is real |
+| Phase 7.4 Memory Wall Surface (motion gallery) | COMPLETE — media DB SoT; ledger = event log only; spatial/AI/full editor deferred |
 | Layer 6 Prisma social → graph bridge | DEFERRED / FUTURE |
 | Universal Playlist OAuth | FUTURE APPROVED — no OAuth/rip |
 
 ### Phase 7 — Memory & Collectibles Engine
-**Status:** Pass 7.1–7.2 scaffold COMPLETE (in-memory competition ledger). **7.3 Prisma Collectibles COMPLETE.** 7.4 Interactive Gallery FUTURE APPROVED (do not stub Ken Burns / fake AI).
+**Status:** Pass 7.1–7.2 scaffold COMPLETE (in-memory competition ledger). **7.3 Prisma Collectibles COMPLETE.** **7.4 Memory Wall Surface COMPLETE** (motion-native gallery). Deferred: spatial 3D room, AI search, full non-destructive editor UI.
 
 **Hard separation (Marcel product lock):**
-- **Memory Wall / Collectibles** = personal photos, videos, YoPho, collectible tickets, posters, keepsakes, albums/favorites/trash — Prisma `MemoryCollectible` / `MemoryAlbum`
+- **Memory Wall / Collectibles** = personal photos, videos, motion pairs, YoPho, collectible tickets, posters, keepsakes, albums/favorites/trash — Prisma `MemoryCollectible` / `MemoryAlbum` (**gallery feed SoT**)
 - **EOS MemoryLedger** = competition/runtime history (WINNER_DECLARED, MATCH_COMPLETED, etc.) → **Achievement path** (`achievementBridge`) — stays in-memory; never dumps into photo wall
+- **Ledger media side-effects only:** after a real collectible save, may emit `MEDIA_CAPTURED` / `MEDIA_SAVED` / `TICKET_COLLECTED` as event log — wall must NEVER subscribe to competition kinds for cards
 - **Out of scope for Memory Wall:** playlists/music, tips, rankings/achievements, relationship graph
 
 #### Pass 7.1 — Ledger + Registry (DONE)
@@ -254,25 +255,31 @@ Gate: 5A complete · 5B idle
 - [x] `achievementBridge` stub — WINNER_DECLARED → AchievementDraft (no fake UI); ledger stays off photo wall
 - [ ] Persist competition LedgerEntry to DB — **not** 7.3 scope (Achievement Engine later); leave in-memory
 
-#### Pass 7.4 — MemoryWall UI bind / Interactive Gallery (DEFERRED — FUTURE APPROVED)
-- [x] Thin achievement bridge `getHighlightsForActor` / `getAchievementHistoryForActor` available
-- [ ] MemoryWall / MemoryWallCanister bind to `/api/memory/collectibles` (keep legacy FeedItem until switched)
-- [ ] Do **not** merge competition ledger highlights into photo wall props
+#### Pass 7.4 — Memory Wall Surface / Motion Gallery (DONE)
+- [x] Schema deepen: `mediaVariants`, `motionPair`, `rimStyleId`, `animationPreset`, `burstGroupId` + migration `20260729010000_memory_collectible_motion_fields`
+- [x] Contracts: `MotionPair`, `MediaVariantMap`, presentation presets, resolve helpers (`collectiblesContracts.ts`)
+- [x] Persistence + API accept motion/presentation fields; optional ledger side-effect on save (event log only)
+- [x] `MotionMediaCard` — still default; hover/press/visible plays motion; CSS rims; `prefers-reduced-motion`
+- [x] `MemoryWallMotionGrid` — staggered grid from `GET /api/memory/collectibles`; honest empty
+- [x] `MemoryCinematicViewer` — layoutId expand, swipe next/prev, CSS zoom, mute, hold-to-play
+- [x] `MemoryWallCanister` + `MemoryWallPanelOverlay` bind to collectibles (no fake cards; no ledger feed)
+- [x] Do **not** merge competition ledger highlights into photo wall props
+- [ ] Spatial 3D gallery room — **deferred**
+- [ ] Full AI object search / highlight reels — **deferred**
+- [ ] Full non-destructive editor UI (crop/filters/stickers) — **deferred** (pointer field exists)
 
-#### Memory Wall Interactive Gallery (7.4+) — FUTURE APPROVED FEATURE
-**Status:** Documented direction only. **Certification Impact: NONE** until 7.3 data path is real (now complete) and gallery ships with real media.
-**Do NOT** build fake Ken Burns stubs, fake parallax, or fake AI object search.
+#### Memory Wall Interactive Gallery extras (post-7.4) — DEFERRED
+**Status:** Core motion surface shipped. Remaining experience targets stay FUTURE until real media volume justifies them.
+**Do NOT** fake Ken Burns, fake parallax density, or fake AI object search.
 
-Experience targets (premium fun UX after real media exists — TMI neon/Vice City magazine energy; do not redesign canon in 7.3):
-- **Cinematic navigation:** float-in placement, album expand with smooth 3D motion, pinch zoom, double-tap fullscreen, swipe with subtle physics, optional parallax on tilt
-- **HD camera capture:** highest device-supported quality subject to storage + user quality settings; optional creative tools where device supports; post-capture destinations: Memory Wall, album, YoPho, share friends, Snip, profile, private
-- **Interactive memory detail:** tap → event, venue, date, tagged people, linked collectible ticket, poster, related videos/YoPho (memorabilia graph)
-- **Motion gallery:** silent video autoplay when visible, Ken Burns on stills, album open/close, soft frame glow, subtle favorite pulse
-- **Albums:** Family, Studio, Concerts, Monthly Idol, WDP, Battles, VIP, Road Trips — custom covers + animated borders (schema now via `MemoryAlbum`)
-- **Org:** date, event, location, person, album, favorites, media type; drag-drop between albums
-- **Non-destructive edits:** crop/rotate/straighten/brightness/contrast/saturation/blur/red-eye/text/stickers/TMI frames/collages — originals retained (`editOriginalMediaId`)
-- **View modes:** Grid | Timeline | Gallery | Slideshow | Collections (`MemoryViewMode` locked in contracts)
-- **Optional AI (user-controlled):** object search, find tagged friends, event grouping, album suggestions, highlight reels — FUTURE, never fake
+Experience targets still deferred:
+- **Cinematic extras:** album expand 3D, optional device-tilt parallax
+- **HD camera suite:** creative device tools beyond current capture bridge
+- **Interactive memorabilia graph:** deep tap → event/venue/ticket/YoPho graph polish
+- **Albums polish:** custom covers + animated borders UI
+- **Org:** drag-drop between albums
+- **Non-destructive editor UI:** crop/rotate/filters/frames — originals retained (`editOriginalMediaId`)
+- **Optional AI (user-controlled):** object search, tagged-friend find, highlight reels
 
 ### Phase 8 - Runtime Certification (PENDING)
 

@@ -4,13 +4,13 @@
  * Records competition / runtime platform events as immutable facts.
  * Consumers subscribe via `MemoryLedger.subscribe()`.
  *
- * SEPARATION (Phase 7.3 product lock):
+ * SEPARATION (Phase 7.3–7.4 product lock):
  * - This ledger = runtime/competition history → Achievement path
  *   (`achievementBridge`, HighlightEngine). Stays in-memory for now.
- * - Memory Wall scrapbook (photos/videos/YoPho/tickets/posters) =
- *   Memory & Collectibles Engine → Prisma `MemoryCollectible`
- *   (`lib/memory/collectiblesPersistence`). Do NOT persist MATCH_COMPLETED
- *   into the photo wall.
+ * - Optional side-effect kinds MEDIA_CAPTURED / MEDIA_SAVED / TICKET_COLLECTED
+ *   may be appended AFTER a real MemoryCollectible save — event log only.
+ * - Memory Wall gallery feed = Prisma `MemoryCollectible` ONLY.
+ *   Never subscribe the wall to WINNER_DECLARED / MATCH_COMPLETED for cards.
  *
  * Rule 20: never inject fake entries. caller must supply a real actorId
  * from an authenticated session — no fabricated userId / viewer counts.

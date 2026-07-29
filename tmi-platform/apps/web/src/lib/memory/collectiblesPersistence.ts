@@ -1,25 +1,35 @@
 /**
- * Memory & Collectibles Engine — Prisma persistence (EOS Phase 7.3)
+ * Memory & Collectibles Engine — Prisma persistence (EOS Phase 7.3 + 7.4)
  *
  * Server-side create / list / soft-delete (trash) / favorite / album helpers.
  * Honest empty arrays when the owner has no media (Rule 20).
  * Never writes competition ledger events (MATCH_COMPLETED etc.) into this table.
+ *
+ * Optional side-effect: after a real save, may append MEDIA_CAPTURED / MEDIA_SAVED /
+ * TICKET_COLLECTED to MemoryLedger (event log only — wall never reads ledger as feed).
  */
 
 import prisma from "@/lib/prisma";
+import { MemoryLedger } from "@/core/eos/memoryLedger";
 import type {
   CollectibleMemoryRecord,
   CreateAlbumInput,
   CreateCollectibleInput,
   ListCollectiblesQuery,
+  MediaVariantMap,
   MemoryAlbumRecord,
+  MemoryAnimationPreset,
   MemoryCaptureDestination,
   MemoryCaptureQuality,
   MemoryCollectibleKind,
   MemoryVisibility,
+  MotionPair,
+  MotionSourceFormat,
 } from "./collectiblesContracts";
 import {
+  MEMORY_ANIMATION_PRESETS,
   MEMORY_COLLECTIBLE_KINDS,
+  MOTION_SOURCE_FORMATS,
 } from "./collectiblesContracts";
 
 type PrismaCollectibleRow = {
@@ -47,6 +57,11 @@ type PrismaCollectibleRow = {
   editOriginalMediaId: string | null;
   captureQuality: string | null;
   captureDestination: string | null;
+  mediaVariants: unknown;
+  motionPair: unknown;
+  rimStyleId: string | null;
+  animationPreset: string | null;
+  burstGroupId: string | null;
   capturedAt: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -56,13 +71,77 @@ function isCollectibleKind(value: string): value is MemoryCollectibleKind {
   return (MEMORY_COLLECTIBLE_KINDS as readonly string[]).includes(value);
 }
 
+function isAnimationPreset(value: string): value is MemoryAnimationPreset {
+  return (MEMORY_ANIMATION_PRESETS as readonly string[]).includes(value);
+}
+
+function isMotionSourceFormat(value: unknown): value is MotionSourceFormat {
+  return (
+    typeof value === "string" &&
+    (MOTION_SOURCE_FORMATS as readonly string[]).includes(value)
+  );
+}
+
 function parseTaggedUserIds(raw: unknown): string[] | undefined {
   if (!Array.isArray(raw)) return undefined;
   const ids = raw.filter((x): x is string => typeof x === "string" && x.trim().length > 0);
   return ids.length > 0 ? ids : undefined;
 }
 
+function parseMediaVariants(raw: unknown): MediaVariantMap | undefined {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+  const obj = raw as Record<string, unknown>;
+  const out: MediaVariantMap = {};
+  for (const key of ["ORIGINAL_MASTER", "VIEWING", "PREVIEW", "THUMBNAIL"] as const) {
+    const v = obj[key];
+    if (typeof v === "string" && v.trim()) out[key] = v.trim();
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
+function parseMotionPair(raw: unknown): MotionPair | undefined {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+  const obj = raw as Record<string, unknown>;
+  const stillUrl = typeof obj.stillUrl === "string" ? obj.stillUrl.trim() : "";
+  const motionUrl = typeof obj.motionUrl === "string" ? obj.motionUrl.trim() : "";
+  const durationMs =
+    typeof obj.durationMs === "number" && Number.isFinite(obj.durationMs)
+      ? obj.durationMs
+      : NaN;
+  if (!stillUrl || !motionUrl || !Number.isFinite(durationMs) || durationMs <= 0) {
+    return undefined;
+  }
+  if (!isMotionSourceFormat(obj.sourceFormat)) return undefined;
+  return {
+    stillUrl,
+    motionUrl,
+    durationMs,
+    hasAudio: typeof obj.hasAudio === "boolean" ? obj.hasAudio : undefined,
+    posterFrameMs:
+      typeof obj.posterFrameMs === "number" && Number.isFinite(obj.posterFrameMs)
+        ? obj.posterFrameMs
+        : undefined,
+    sourceFormat: obj.sourceFormat,
+  };
+}
+
+function sanitizeMotionPair(input?: MotionPair): MotionPair | undefined {
+  if (!input) return undefined;
+  return parseMotionPair(input);
+}
+
+function sanitizeMediaVariants(input?: MediaVariantMap): MediaVariantMap | undefined {
+  if (!input) return undefined;
+  return parseMediaVariants(input);
+}
+
 function toRecord(row: PrismaCollectibleRow): CollectibleMemoryRecord {
+  const animationPreset = row.animationPreset
+    ? isAnimationPreset(row.animationPreset)
+      ? row.animationPreset
+      : undefined
+    : undefined;
+
   return {
     id: row.id,
     ownerId: row.ownerId,
@@ -88,6 +167,11 @@ function toRecord(row: PrismaCollectibleRow): CollectibleMemoryRecord {
     editOriginalMediaId: row.editOriginalMediaId ?? undefined,
     captureQuality: (row.captureQuality as MemoryCaptureQuality | null) ?? undefined,
     captureDestination: (row.captureDestination as MemoryCaptureDestination | null) ?? undefined,
+    mediaVariants: parseMediaVariants(row.mediaVariants),
+    motionPair: parseMotionPair(row.motionPair),
+    rimStyleId: row.rimStyleId ?? undefined,
+    animationPreset,
+    burstGroupId: row.burstGroupId ?? undefined,
     capturedAt: row.capturedAt.toISOString(),
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
@@ -116,6 +200,28 @@ function toAlbumRecord(row: {
   };
 }
 
+/** Best-effort ledger side-effect after a real collectible save (never feeds the wall). */
+function emitLedgerSideEffect(record: CollectibleMemoryRecord): void {
+  try {
+    const kind =
+      record.kind === "TICKET"
+        ? "TICKET_COLLECTED"
+        : record.captureDestination === "MEMORY_WALL"
+          ? "MEDIA_SAVED"
+          : "MEDIA_CAPTURED";
+    MemoryLedger.record(kind, record.ownerId, {
+      roomId: record.eventId,
+      payload: {
+        collectibleId: record.id,
+        kind: record.kind,
+        hasMotion: Boolean(record.motionPair?.motionUrl),
+      },
+    });
+  } catch {
+    // Side-effect only — never fail the save.
+  }
+}
+
 /** Create a collectible only when real owner + kind + title exist — no fabricated rows. */
 export async function createCollectible(
   input: CreateCollectibleInput,
@@ -126,6 +232,13 @@ export async function createCollectible(
 
   // Tickets require a real ticketId — never mint a keepsake without one.
   if (input.kind === "TICKET" && !input.ticketId?.trim()) return null;
+
+  const mediaVariants = sanitizeMediaVariants(input.mediaVariants);
+  const motionPair = sanitizeMotionPair(input.motionPair);
+  const animationPreset =
+    input.animationPreset && isAnimationPreset(input.animationPreset)
+      ? input.animationPreset
+      : undefined;
 
   try {
     const row = await prisma.memoryCollectible.create({
@@ -152,10 +265,17 @@ export async function createCollectible(
         editOriginalMediaId: input.editOriginalMediaId?.trim() || null,
         captureQuality: input.captureQuality ?? null,
         captureDestination: input.captureDestination ?? "MEMORY_WALL",
+        mediaVariants: mediaVariants ?? undefined,
+        motionPair: motionPair ?? undefined,
+        rimStyleId: input.rimStyleId?.trim() || null,
+        animationPreset: animationPreset ?? null,
+        burstGroupId: input.burstGroupId?.trim() || null,
         capturedAt: input.capturedAt ? new Date(input.capturedAt) : new Date(),
       },
     });
-    return toRecord(row as PrismaCollectibleRow);
+    const record = toRecord(row as PrismaCollectibleRow);
+    emitLedgerSideEffect(record);
+    return record;
   } catch (err) {
     console.error("[collectiblesPersistence.createCollectible]", err);
     return null;

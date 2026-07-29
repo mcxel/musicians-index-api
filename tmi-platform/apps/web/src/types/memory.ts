@@ -5,8 +5,9 @@
 // or achievement timeline. Competition history → Achievement Engine (see
 // core/eos/achievementBridge.ts). Playlists → Playlist Engine.
 //
-// Collectible contracts live in lib/memory/collectiblesContracts.ts (Phase 7.3).
-// Cinematic Interactive Gallery UX = FUTURE APPROVED Phase 7.4+ — do not stub.
+// Collectible contracts live in lib/memory/collectiblesContracts.ts (Phase 7.3+7.4).
+// Phase 7.4 Motion Wall reads MemoryCollectible via /api/memory/collectibles —
+// never MemoryLedger competition events as the gallery feed.
 
 export type MemoryItemKind =
   | "polaroid"
@@ -32,7 +33,7 @@ export interface MemoryItem {
   capturedAt: string;
 }
 
-// Re-export Phase 7.3 collectibles contracts for callers that import from types/memory
+// Re-export Phase 7.3/7.4 collectibles contracts for callers that import from types/memory
 export type {
   MemoryCollectibleKind,
   MemoryViewMode,
@@ -45,11 +46,21 @@ export type {
   ListCollectiblesQuery,
   MemoryAlbumRecord,
   CreateAlbumInput,
+  MediaVariantRole,
+  MediaVariantMap,
+  MotionSourceFormat,
+  MotionPair,
+  MemoryAnimationPreset,
 } from "@/lib/memory/collectiblesContracts";
 
 export {
   MEMORY_COLLECTIBLE_KINDS,
   MEMORY_VIEW_MODES,
+  MEDIA_VARIANT_ROLES,
+  MOTION_SOURCE_FORMATS,
+  MEMORY_ANIMATION_PRESETS,
+  resolveCollectibleStillUrl,
+  resolveCollectibleMotionUrl,
 } from "@/lib/memory/collectiblesContracts";
 
 // ─── Pro Legacy Ledger — business side only ───────────────────────────────────

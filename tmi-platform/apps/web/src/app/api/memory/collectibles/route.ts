@@ -22,6 +22,9 @@ import type {
   MemoryCaptureDestination,
   MemoryCaptureQuality,
   MemoryVisibility,
+  MediaVariantMap,
+  MotionPair,
+  MemoryAnimationPreset,
 } from "@/lib/memory/collectiblesContracts";
 import { MEMORY_COLLECTIBLE_KINDS } from "@/lib/memory/collectiblesContracts";
 
@@ -106,6 +109,11 @@ export async function POST(req: NextRequest) {
       editOriginalMediaId?: string;
       captureQuality?: MemoryCaptureQuality;
       captureDestination?: MemoryCaptureDestination;
+      mediaVariants?: MediaVariantMap;
+      motionPair?: MotionPair;
+      rimStyleId?: string;
+      animationPreset?: MemoryAnimationPreset;
+      burstGroupId?: string;
       // album create
       albumTitle?: string;
       presetKey?: string;
@@ -156,6 +164,11 @@ export async function POST(req: NextRequest) {
       editOriginalMediaId: body.editOriginalMediaId,
       captureQuality: body.captureQuality,
       captureDestination: body.captureDestination ?? "MEMORY_WALL",
+      mediaVariants: body.mediaVariants,
+      motionPair: body.motionPair,
+      rimStyleId: body.rimStyleId,
+      animationPreset: body.animationPreset,
+      burstGroupId: body.burstGroupId,
     });
 
     if (!collectible) {

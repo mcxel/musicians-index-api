@@ -46,7 +46,11 @@ export type MemoryEventKind =
   | "TOP_100_REACHED"
   | "MONTHLY_IDOL_CHAMPION"
   | "SOLD_OUT_CONCERT"
-  | "VIRAL_PLAYLIST";
+  | "VIRAL_PLAYLIST"
+  // Media save side-effects (event log only — NEVER gallery feed source)
+  | "MEDIA_CAPTURED"
+  | "MEDIA_SAVED"
+  | "TICKET_COLLECTED";
 
 // ─── Importance tiers ─────────────────────────────────────────────────────────
 
@@ -150,6 +154,9 @@ export const MEMORY_LABELS: Readonly<Record<MemoryEventKind, string>> = {
   MONTHLY_IDOL_CHAMPION:  "Monthly Idol champion",
   SOLD_OUT_CONCERT:       "Sold-out concert",
   VIRAL_PLAYLIST:         "Viral playlist",
+  MEDIA_CAPTURED:         "Media captured",
+  MEDIA_SAVED:            "Media saved to Memory Wall",
+  TICKET_COLLECTED:       "Collectible ticket saved",
 };
 
 export const MEMORY_ICONS: Readonly<Record<MemoryEventKind, string>> = {
@@ -178,4 +185,7 @@ export const MEMORY_ICONS: Readonly<Record<MemoryEventKind, string>> = {
   MONTHLY_IDOL_CHAMPION:  "👑",
   SOLD_OUT_CONCERT:       "🔥",
   VIRAL_PLAYLIST:         "🌊",
+  MEDIA_CAPTURED:         "📸",
+  MEDIA_SAVED:            "💾",
+  TICKET_COLLECTED:       "🎫",
 };

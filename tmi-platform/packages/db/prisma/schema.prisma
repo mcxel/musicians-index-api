@@ -2176,6 +2176,19 @@ model MemoryCollectible {
   /// MEMORY_WALL | ALBUM | YOPHO | SHARE_FRIENDS | SNIP | PROFILE | PRIVATE
   captureDestination   String?
 
+  /// JSON MediaVariantMap — ORIGINAL_MASTER | VIEWING | PREVIEW | THUMBNAIL URLs
+  /// Masters stay untouched; PREVIEW/THUMBNAIL are derived viewing variants only.
+  mediaVariants        Json?
+  /// JSON MotionPair — stillUrl + motionUrl + durationMs + hasAudio + posterFrameMs + sourceFormat
+  /// One combined motion memory (Live Photo / Motion Photo / TMI 6s|7s / short clip).
+  motionPair           Json?
+  /// Presentation-only rim/frame CSS key — never burned into master media pixels
+  rimStyleId           String?
+  /// FLOAT | GLOW | SCALE_ON_HOVER — presentation animation; honor prefers-reduced-motion
+  animationPreset      String?
+  /// Optional burst group id (lite schema; UI groups sibling frames)
+  burstGroupId         String?
+
   capturedAt   DateTime  @default(now())
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
@@ -2186,6 +2199,7 @@ model MemoryCollectible {
   @@index([ticketId])
   @@index([albumId])
   @@index([editOriginalMediaId])
+  @@index([burstGroupId])
   @@map("memory_collectibles")
 }
 
