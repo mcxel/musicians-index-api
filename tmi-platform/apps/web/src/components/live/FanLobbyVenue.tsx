@@ -8,7 +8,13 @@ import { useLocalMicLevel } from "@/lib/lobby/useLocalMicLevel";
 import { LobbyFreeRoamAvatars } from "@/components/lobbies/LobbyFreeRoamAvatars";
 import { LobbyEnvironmentToys } from "@/components/lobbies/LobbyEnvironmentToys";
 import { LobbyInventoryTray } from "@/components/lobbies/LobbyInventoryTray";
-import { LOBBY_THEMES, getLobbyTheme } from "@/lib/lobby/LobbyThemeRegistry";
+import {
+  DEFAULT_FAN_LOBBY_SKIN_ID,
+  getFanLobbySkinCanon,
+  getFanLobbySkinDressing,
+  listStoreReadyFanLobbySkins,
+  type FanLobbySkinId,
+} from "@/lib/lobby/FanLobbySkinRegistry";
 import { getPresenceFrameById } from "@/registries/presence/PresenceFrameRegistry";
 import MemoryCaptureButton from "@/components/memory/MemoryCaptureButton";
 import QuickReportPanel, { type QuickReportTarget } from "@/components/trustSafety/QuickReportPanel";
@@ -35,20 +41,34 @@ function getOrCreateLocalId(roomId: string) {
 interface FanLobbyVenueProps {
   roomId?: string;
   userName?: string;
+  /** Store-ready skin id from FanLobbySkinRegistry (default: cinema) */
+  initialSkinId?: string;
+  /** @deprecated Prefer initialSkinId — legacy LobbyThemeRegistry ids ignored */
   initialTheme?: string;
+  /** Dashboard drawer / embed: fill parent, no full-page chrome */
+  embedded?: boolean;
 }
 
 /**
- * Fan Lobby — minimum complete Trust & Safety loop wired:
- * avatar select → Report / Block / Mute; host remove + rejoin restrict when staff;
- * presence roomId reused for EvidenceVault + rejoin-check.
+ * Fan Lobby — free-roam 2D social floor (not a 3D bobblehead engine).
+ * Trust & Safety: Report / Block / Mute; host remove when staff.
+ * Skins = CSS + concept still dressing (Rule 18). No fan-facing seat grid.
  */
-export default function FanLobbyVenue({ roomId = "fan-lobby", userName = "Fan" }: FanLobbyVenueProps) {
+export default function FanLobbyVenue({
+  roomId = "fan-lobby",
+  userName = "Fan",
+  initialSkinId = DEFAULT_FAN_LOBBY_SKIN_ID,
+  embedded = false,
+}: FanLobbyVenueProps) {
   const userId = useMemo(() => getOrCreateLocalId(roomId), [roomId]);
   const emoji = useMemo(() => AVATAR_EMOJIS[Math.floor(Math.random() * AVATAR_EMOJIS.length)], []);
   const selfFrame = getPresenceFrameById("frame-obsidian-free");
+  const storeSkins = useMemo(() => listStoreReadyFanLobbySkins(), []);
 
-  const [themeId, setThemeId] = useState("MEDIA_LOUNGE");
+  const [skinId, setSkinId] = useState<FanLobbySkinId>(() => {
+    const canon = getFanLobbySkinCanon(initialSkinId);
+    return (canon?.id ?? DEFAULT_FAN_LOBBY_SKIN_ID) as FanLobbySkinId;
+  });
   const [micEnabled, setMicEnabled] = useState(false);
   const [cameraEnabled, setCameraEnabled] = useState(false);
   const [themePanelOpen, setThemePanelOpen] = useState(false);
@@ -61,9 +81,10 @@ export default function FanLobbyVenue({ roomId = "fan-lobby", userName = "Fan" }
   const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set());
   const [toast, setToast] = useState<string | null>(null);
 
-  const theme = getLobbyTheme(themeId);
+  const dressing = getFanLobbySkinDressing(skinId);
+  const skinLabel = getFanLobbySkinCanon(skinId)?.label ?? "Fan Lobby";
   const { isSpeaking } = useLocalMicLevel(micEnabled);
-  const sync = useLobbyPresenceSync({ roomId, userId, userName, emoji, theme: themeId });
+  const sync = useLobbyPresenceSync({ roomId, userId, userName, emoji, theme: skinId });
 
   useEffect(() => {
     sync.setIsSpeaking(isSpeaking);
@@ -218,11 +239,53 @@ export default function FanLobbyVenue({ roomId = "fan-lobby", userName = "Fan" }
   }
 
   return (
-    <div style={{ position: "relative", minHeight: "100vh", overflow: "hidden", background: theme.background, transition: "background 0.6s ease" }}>
-      <header style={{ position: "relative", zIndex: 40, display: "flex", alignItems: "center", gap: 12, padding: "12px 20px", background: "rgba(0,0,0,0.55)", borderBottom: `1px solid ${theme.accent}33`, backdropFilter: "blur(6px)" }}>
-        <Link href="/live/lobby/fans" style={{ fontSize: 9, color: "rgba(255,255,255,0.5)", textDecoration: "none", letterSpacing: "0.1em" }}>← BACK</Link>
-        <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.2em", color: theme.accent }}>
-          {theme.label.toUpperCase()} · {totalOnline} HERE
+    <div
+      style={{
+        position: "relative",
+        minHeight: embedded ? "100%" : "100vh",
+        height: embedded ? "100%" : undefined,
+        overflow: "hidden",
+        background: dressing.background,
+        transition: "background 0.6s ease",
+      }}
+    >
+      {dressing.backdropImageUrl ? (
+        <div
+          aria-hidden
+          style={{
+            position: "absolute",
+            inset: 0,
+            zIndex: 0,
+            backgroundImage: `url(${dressing.backdropImageUrl})`,
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+            opacity: 0.28,
+            pointerEvents: "none",
+            filter: "saturate(0.85) contrast(1.05)",
+          }}
+        />
+      ) : null}
+
+      <header
+        style={{
+          position: "relative",
+          zIndex: 40,
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          padding: embedded ? "8px 14px" : "12px 20px",
+          background: "rgba(0,0,0,0.55)",
+          borderBottom: `1px solid ${dressing.accent}33`,
+          backdropFilter: "blur(6px)",
+        }}
+      >
+        {!embedded ? (
+          <Link href="/live/lobby/fans" style={{ fontSize: 9, color: "rgba(255,255,255,0.5)", textDecoration: "none", letterSpacing: "0.1em" }}>
+            ← BACK
+          </Link>
+        ) : null}
+        <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.2em", color: dressing.accent }}>
+          {skinLabel.toUpperCase()} · {totalOnline} HERE
         </div>
         <div style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "center" }}>
           {isStaffHost ? (
@@ -232,22 +295,35 @@ export default function FanLobbyVenue({ roomId = "fan-lobby", userName = "Fan" }
           ) : null}
           <PillToggle active={micEnabled} label={micEnabled ? "🎙️ Mic On" : "🎙️ Mic Off"} accent="#00FF88" onClick={() => setMicEnabled((v) => !v)} />
           <PillToggle active={cameraEnabled} label={cameraEnabled ? "📹 Cam On" : "📹 Cam Off"} accent="#00FFFF" onClick={() => setCameraEnabled((v) => !v)} />
-          <PillToggle active={themePanelOpen} label="🎨 Theme" accent={theme.accent} onClick={() => setThemePanelOpen((v) => !v)} />
+          <PillToggle active={themePanelOpen} label="🎨 Skin" accent={dressing.accent} onClick={() => setThemePanelOpen((v) => !v)} />
         </div>
       </header>
 
-      <div style={{ position: "absolute", top: 60, left: 0, right: 0, display: "flex", justifyContent: "center", gap: 24, opacity: 0.25, fontSize: 26, zIndex: 1, pointerEvents: "none" }}>
-        {theme.ambientIcons.map((icon, i) => <span key={i}>{icon}</span>)}
+      <div style={{ position: "absolute", top: embedded ? 48 : 60, left: 0, right: 0, display: "flex", justifyContent: "center", gap: 24, opacity: 0.25, fontSize: 26, zIndex: 1, pointerEvents: "none" }}>
+        {dressing.ambientIcons.map((icon, i) => (
+          <span key={i}>{icon}</span>
+        ))}
       </div>
 
-      <div style={{ position: "relative", height: "calc(100vh - 52px)", zIndex: 10, background: theme.floorTint }}>
+      <div
+        style={{
+          position: "relative",
+          height: embedded ? "calc(100% - 44px)" : "calc(100vh - 52px)",
+          zIndex: 10,
+          background: dressing.floorTint,
+        }}
+      >
         <LobbyEnvironmentToys state={"FREE_ROAM" as never} onUseToy={(toyId) => sync.triggerProp(toyMapsToProp(toyId))} />
         <LobbyFreeRoamAvatars
           self={{
-            userId, userName, emoji,
-            x: sync.position.x, y: sync.position.y,
+            userId,
+            userName,
+            emoji,
+            x: sync.position.x,
+            y: sync.position.y,
             propTrigger: sync.propTrigger,
-            isSpeaking, hasCameraOn: cameraEnabled,
+            isSpeaking,
+            hasCameraOn: cameraEnabled,
             localStream,
             frameGlowColor: selfFrame.glowColor,
           }}
@@ -270,21 +346,51 @@ export default function FanLobbyVenue({ roomId = "fan-lobby", userName = "Fan" }
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 40, opacity: 0 }}
             transition={{ type: "spring", stiffness: 220, damping: 26 }}
-            style={{ position: "absolute", bottom: 76, left: "50%", transform: "translateX(-50%)", zIndex: 50, display: "flex", gap: 8, background: "rgba(0,0,0,0.75)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 14, padding: 10, backdropFilter: "blur(8px)" }}
+            style={{
+              position: "absolute",
+              bottom: 76,
+              left: "50%",
+              transform: "translateX(-50%)",
+              zIndex: 50,
+              display: "flex",
+              gap: 8,
+              flexWrap: "wrap",
+              maxWidth: "92%",
+              justifyContent: "center",
+              background: "rgba(0,0,0,0.75)",
+              border: "1px solid rgba(255,255,255,0.12)",
+              borderRadius: 14,
+              padding: 10,
+              backdropFilter: "blur(8px)",
+            }}
           >
-            {LOBBY_THEMES.map((t) => (
-              <button
-                key={t.id}
-                onClick={() => { setThemeId(t.id); setThemePanelOpen(false); }}
-                style={{
-                  borderRadius: 10, border: `1.5px solid ${t.id === themeId ? t.accent : "rgba(255,255,255,0.15)"}`,
-                  background: t.id === themeId ? `${t.accent}22` : "rgba(255,255,255,0.04)",
-                  color: t.accent, padding: "8px 12px", fontSize: 10, fontWeight: 800, cursor: "pointer", letterSpacing: "0.04em",
-                }}
-              >
-                {t.label}
-              </button>
-            ))}
+            {storeSkins.map((s) => {
+              const d = getFanLobbySkinDressing(s.id);
+              const active = s.id === skinId;
+              return (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => {
+                    setSkinId(s.id);
+                    setThemePanelOpen(false);
+                  }}
+                  style={{
+                    borderRadius: 10,
+                    border: `1.5px solid ${active ? d.accent : "rgba(255,255,255,0.15)"}`,
+                    background: active ? `${d.accent}22` : "rgba(255,255,255,0.04)",
+                    color: d.accent,
+                    padding: "8px 12px",
+                    fontSize: 10,
+                    fontWeight: 800,
+                    cursor: "pointer",
+                    letterSpacing: "0.04em",
+                  }}
+                >
+                  {s.label}
+                </button>
+              );
+            })}
           </motion.div>
         )}
       </AnimatePresence>

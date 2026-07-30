@@ -49,6 +49,7 @@ const DRAWER_TITLES: Record<string, string> = {
   rankings:       "🏆 Crown Rankings",
   "live-rooms":   "🎭 Live Rooms",
   lobby:          "🌐 Lobby Walls",
+  "avatar-lobby": "🧍 Avatar Lobby",
   magazine:       "📰 Magazine Features",
 };
 
@@ -69,7 +70,7 @@ export default function WidgetDrawer() {
 
   return (
     <AnimatePresence>
-      {activeDrawer && (
+      {activeDrawer && activeDrawer !== "avatar-lobby" && (
         <motion.div
           initial={{ x: openFromLeft ? "-100%" : "100%", opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}

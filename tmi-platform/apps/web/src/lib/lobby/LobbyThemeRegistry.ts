@@ -1,8 +1,9 @@
 /**
- * Fan Lobby visual themes — stylized backdrop treatments (gradient, accent,
- * ambient icons), not 3D environment models. No rigged/modeled barbershop or
- * bank interior exists in this codebase (see Rule 18) - these are honest 2D
- * dressing on the same free-roam floor, matched to `LobbyPresence.activeTheme`.
+ * Fan Lobby visual themes — LEGACY interim labels.
+ *
+ * Canonical purchasable skins + 2D dressing: `FanLobbySkinRegistry.ts`
+ * (FanLobbyVenue mounts those). Keep this file only for older callers;
+ * do not add new theme IDs here.
  */
 
 export interface LobbyThemeDef {

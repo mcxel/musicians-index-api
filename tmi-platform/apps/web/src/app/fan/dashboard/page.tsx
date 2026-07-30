@@ -12,6 +12,8 @@ import UnifiedAdSlot from "@/components/ads/UnifiedAdSlot";
 import NeonWaveUnderlay from "@/components/atmosphere/NeonWaveUnderlay";
 import BillboardLiveWall from "@/components/media/BillboardLiveWall";
 import PlaylistArtifact from "@/components/artifacts/PlaylistArtifact";
+import FanAvatarLobbyDrawer from "@/components/fan/FanAvatarLobbyDrawer";
+import { useDrawer } from "@/components/room/DrawerContext";
 
 interface MeUser {
   id: string;
@@ -24,6 +26,7 @@ interface MeUser {
 }
 
 const FAN_ACTIONS = [
+  { id: "avatar-lobby", icon: "🧍", label: "Lobby" },
   { id: "live-rooms", icon: "🎭", label: "Live" },
   { id: "inventory", icon: "🎒", label: "Vault" },
   { id: "friends", icon: "👥", label: "Friends" },
@@ -41,6 +44,32 @@ function toFanTier(raw?: string): FanSubscriptionTier {
   if (raw === "gold-platinum") return "gold-platinum";
   if (raw === "pro-RUBY")    return "pro-RUBY";
   return "free";
+}
+
+/** Opens Avatar Lobby bottom drawer under the hub UI (Phase 1). */
+function OpenAvatarLobbyButton() {
+  const { setActiveDrawer } = useDrawer();
+  return (
+    <button
+      type="button"
+      onClick={() => setActiveDrawer("avatar-lobby")}
+      style={{
+        background: "rgba(255,215,0,0.12)",
+        border: "1px solid rgba(255,215,0,0.45)",
+        borderRadius: 10,
+        padding: "10px 16px",
+        color: "#FFD700",
+        fontWeight: 900,
+        fontSize: 11,
+        cursor: "pointer",
+        letterSpacing: "0.1em",
+        textTransform: "uppercase",
+        boxShadow: "0 0 18px rgba(255,215,0,0.12)",
+      }}
+    >
+      🧍 Open Avatar Lobby
+    </button>
+  );
 }
 
 export default function FanDashboardPage() {
@@ -89,11 +118,14 @@ export default function FanDashboardPage() {
         <NeonWaveUnderlay colorA="#00FF88" colorB="#00FFFF" colorC="#AA2DFF" opacity={0.1} zIndex={0} />
 
         <div style={{ maxWidth: 1100, margin: "0 auto", position: "relative", zIndex: 2 }}>
-          <header style={{ marginBottom: 32 }}>
-            <div style={{ fontSize: 10, letterSpacing: "0.2em", color: "#00FF88", fontWeight: 800 }}>DASHBOARD</div>
-            <h1 style={{ fontSize: "clamp(32px, 5vw, 48px)", fontWeight: 900, margin: "8px 0 0", fontFamily: "var(--font-tmi-bebas, Impact, sans-serif)", letterSpacing: "0.05em" }}>
-              FAN COMMAND CENTER
-            </h1>
+          <header style={{ marginBottom: 32, display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 16, flexWrap: "wrap" }}>
+            <div>
+              <div style={{ fontSize: 10, letterSpacing: "0.2em", color: "#00FF88", fontWeight: 800 }}>DASHBOARD</div>
+              <h1 style={{ fontSize: "clamp(32px, 5vw, 48px)", fontWeight: 900, margin: "8px 0 0", fontFamily: "var(--font-tmi-bebas, Impact, sans-serif)", letterSpacing: "0.05em" }}>
+                FAN COMMAND CENTER
+              </h1>
+            </div>
+            <OpenAvatarLobbyButton />
           </header>
 
           <style>{`
@@ -272,13 +304,16 @@ export default function FanDashboardPage() {
             startingPoints={startingPoints}
           />
 
-          {/* Now Playing — Playlist Artifact */}
+          {/* Now Playing — Playlist Artifact + Avatar Lobby entry */}
           <div style={{ marginTop: 32, display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
-            <div style={{ alignSelf: "flex-start" }}>
-              <div style={{ fontSize: 10, letterSpacing: "0.2em", color: "#AA2DFF", fontWeight: 800 }}>NOW PLAYING</div>
-              <h2 style={{ fontSize: 22, fontWeight: 900, margin: "4px 0 0", fontFamily: "var(--font-tmi-bebas, Impact, sans-serif)", letterSpacing: "0.05em" }}>
-                YOUR PLAYLIST
-              </h2>
+            <div style={{ alignSelf: "stretch", display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 12, flexWrap: "wrap" }}>
+              <div>
+                <div style={{ fontSize: 10, letterSpacing: "0.2em", color: "#AA2DFF", fontWeight: 800 }}>NOW PLAYING</div>
+                <h2 style={{ fontSize: 22, fontWeight: 900, margin: "4px 0 0", fontFamily: "var(--font-tmi-bebas, Impact, sans-serif)", letterSpacing: "0.05em" }}>
+                  YOUR PLAYLIST
+                </h2>
+              </div>
+              <OpenAvatarLobbyButton />
             </div>
             <PlaylistArtifact
               skin="submarine"
@@ -286,6 +321,9 @@ export default function FanDashboardPage() {
               listeners={0}
               initialPoints={0}
             />
+            <p style={{ margin: 0, fontSize: 11, color: "rgba(255,255,255,0.35)", textAlign: "center", maxWidth: 420 }}>
+              Avatar Lobby opens under this hub — free-roam hangout with cinema skin. Not a 3D game engine.
+            </p>
           </div>
 
           {/* Fan Lobby Wall — live rooms */}
@@ -304,6 +342,7 @@ export default function FanDashboardPage() {
 
         <ActionCanister actions={FAN_ACTIONS} />
         <WidgetDrawer />
+        <FanAvatarLobbyDrawer userName={displayName} roomId={`fan-lobby-dash-${fanSlug}`} />
       </div>
     </RoomContainer>
   );
