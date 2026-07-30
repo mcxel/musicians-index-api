@@ -36,6 +36,7 @@ const YoPhoPortraitStageCanvas = dynamic(
 export type FanHQSlotPanel = "lobby" | "yopho" | "playlist" | "memory" | "inventory";
 
 /** Primary left-rail controls Marcel called out — keep labels exact. */
+/** Prefer CommandCenterShell / FAN_COMMAND_PANELS — kept for leftover imports. */
 export const FAN_HQ_PRIMARY_SLOT_PANELS: Array<{
   id: FanHQSlotPanel;
   label: string;
@@ -44,6 +45,8 @@ export const FAN_HQ_PRIMARY_SLOT_PANELS: Array<{
 }> = [
   { id: "lobby", label: "AVATAR FAN LOBBY", info: "Cinema hangout", accent: "#FFD700" },
   { id: "yopho", label: "YOPHO", info: "Page editor", accent: "#FF2DAA" },
+  { id: "playlist", label: "PLAYLISTS", info: "Your tracks", accent: "#AA2DFF" },
+  { id: "memory", label: "MEMORY WALL", info: "Your moments", accent: "#AA2DFF" },
 ];
 
 export const FAN_HQ_SECONDARY_SLOT_PANELS: Array<{
@@ -51,8 +54,6 @@ export const FAN_HQ_SECONDARY_SLOT_PANELS: Array<{
   label: string;
   info: string;
 }> = [
-  { id: "playlist", label: "PLAYLISTS", info: "Your tracks" },
-  { id: "memory", label: "MEMORY WALL", info: "Your moments" },
   { id: "inventory", label: "INVENTORY", info: "Wearables" },
 ];
 

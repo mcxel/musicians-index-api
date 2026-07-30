@@ -22,6 +22,8 @@ import { executeInstantGoLive } from '@/lib/dock/executeInstantGoLive';
 import { useRouter } from 'next/navigation';
 import { useTheme } from '@/lib/design/ThemeEngine';
 
+export type DockModuleId = 'lobby' | 'yopho' | 'playlist' | 'memory';
+
 export interface MasterControlDockProps {
   role?: 'fan' | 'performer' | 'artist' | 'admin';
   onMicToggle?: () => void;
@@ -30,6 +32,11 @@ export interface MasterControlDockProps {
   onEnterStage?: () => void;
   /** Fan: open Avatar Lobby drawer. Performer: open Media Locker (not Fan Lobby). */
   onLobbyNav?: () => void;
+  /**
+   * When set (Command Center shell), playlist / memory / lobby open the
+   * under-monitor drawer instead of floating overlays (Marcel P0 UX).
+   */
+  onOpenModule?: (module: DockModuleId) => void;
 }
 
 export default function MasterControlDock({
@@ -39,6 +46,7 @@ export default function MasterControlDock({
   onLeaveRoom,
   onEnterStage,
   onLobbyNav,
+  onOpenModule,
 }: MasterControlDockProps) {
   const router = useRouter();
   const theme = useTheme();
@@ -180,7 +188,10 @@ export default function MasterControlDock({
         >
           <button
             type="button"
-            onClick={() => setIsPlaylistOpen(true)}
+            onClick={() => {
+              if (onOpenModule) onOpenModule('playlist');
+              else setIsPlaylistOpen(true);
+            }}
             style={{
               width: 36,
               height: 36,
@@ -194,6 +205,7 @@ export default function MasterControlDock({
               cursor: 'pointer',
               boxShadow: `0 0 12px ${theme.primary}66`,
             }}
+            aria-label="Open playlists"
           >
             🎵
           </button>
@@ -209,7 +221,8 @@ export default function MasterControlDock({
               <button
                 type="button"
                 onClick={() => {
-                  setIsPlaylistOpen(true);
+                  if (onOpenModule) onOpenModule('playlist');
+                  else setIsPlaylistOpen(true);
                   setIsPlayingAudio((p) => !p);
                 }}
                 style={{ ...transportBtn, color: theme.primary }}
@@ -217,7 +230,17 @@ export default function MasterControlDock({
               >
                 {isPlayingAudio ? '⏸' : '▶'}
               </button>
-              <button type="button" onClick={() => setIsPlaylistOpen(true)} style={transportBtn} aria-label="Next">⏭</button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (onOpenModule) onOpenModule('playlist');
+                  else setIsPlaylistOpen(true);
+                }}
+                style={transportBtn}
+                aria-label="Next"
+              >
+                ⏭
+              </button>
               <span style={{ fontSize: 8, color: 'rgba(255,255,255,0.35)', fontWeight: 700 }}>
                 {isPlayingAudio ? 'Live EQ' : '—:— / —:—'}
               </span>
@@ -486,8 +509,15 @@ export default function MasterControlDock({
                   key={nav.label}
                   type="button"
                   onClick={() => {
-                    if ('lobby' in nav && nav.lobby && onLobbyNav) onLobbyNav();
-                    else openLiveLobbyWalls();
+                    if ('lobby' in nav && nav.lobby) {
+                      // Fan → Avatar Lobby drawer; Performer → Media Locker via onLobbyNav
+                      if (!isPerformer && onOpenModule) onOpenModule('lobby');
+                      else if (onLobbyNav) onLobbyNav();
+                      else if (onOpenModule) onOpenModule('lobby');
+                      else openLiveLobbyWalls();
+                      return;
+                    }
+                    openLiveLobbyWalls();
                   }}
                   aria-label={nav.label === 'LOBBY' ? (isPerformer ? 'Open Media Locker drawer' : 'Open Avatar Fan Lobby') : 'Open Live Lobby Walls'}
                   style={{
@@ -587,8 +617,12 @@ export default function MasterControlDock({
           </div>
           <button
             type="button"
-            onClick={() => setIsMemoryWallOpen(true)}
+            onClick={() => {
+              if (onOpenModule) onOpenModule('memory');
+              else setIsMemoryWallOpen(true);
+            }}
             style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', fontSize: 9, fontWeight: 800, cursor: 'pointer' }}
+            aria-label="Open Memory Wall"
           >
             🧠
           </button>

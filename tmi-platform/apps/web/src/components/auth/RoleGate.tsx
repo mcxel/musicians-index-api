@@ -38,8 +38,11 @@ export default function RoleGate({ allow, children, fallback = null }: RoleGateP
     let active = true;
     fetch('/api/auth/session', { cache: 'no-store', credentials: 'include' })
       .then((r) => r.json())
-      .then((d: { role?: string | null }) => {
-        if (active) setRole((d.role as PlatformRole | undefined) ?? null);
+      .then((d: { role?: string | null; user?: { role?: string | null } | null }) => {
+        if (active) {
+          const resolved = (d.user?.role ?? d.role ?? null) as PlatformRole | null;
+          setRole(resolved);
+        }
       })
       .catch(() => {
         if (active) setRole(null);

@@ -28,13 +28,17 @@ export interface CommandCenterPanelDef {
   primary?: boolean;
 }
 
+/** Marcel P0: Lobby / YoPho / Memory / Playlist all open the same under-monitor drawer. */
 export const FAN_COMMAND_PANELS: CommandCenterPanelDef[] = [
   { id: "lobby", label: "AVATAR FAN LOBBY", info: "Cinema hangout", accent: "#FFD700", primary: true },
   { id: "yopho", label: "YOPHO", info: "Fan canvas", accent: "#FF2DAA", primary: true },
-  { id: "playlist", label: "PLAYLISTS", info: "Your tracks", accent: "#AA2DFF" },
-  { id: "memory", label: "MEMORY WALL", info: "Your moments", accent: "#AA2DFF" },
+  { id: "playlist", label: "PLAYLISTS", info: "Your tracks", accent: "#AA2DFF", primary: true },
+  { id: "memory", label: "MEMORY WALL", info: "Your moments", accent: "#AA2DFF", primary: true },
   { id: "inventory", label: "INVENTORY", info: "Wearables", accent: "#FF6B35" },
 ];
+
+/** Quick-swap chips inside the open drawer (Fan Command Center). */
+export const FAN_DRAWER_SWAP_PANELS: CommandCenterPanelId[] = ["lobby", "yopho", "playlist", "memory"];
 
 /** Performer drawers — NO avatar lobby ownership / Avatar Studio (Rule 26). */
 export const PERFORMER_COMMAND_PANELS: CommandCenterPanelDef[] = [

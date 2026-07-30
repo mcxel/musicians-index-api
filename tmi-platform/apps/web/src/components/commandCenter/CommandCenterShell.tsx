@@ -61,6 +61,12 @@ export default function CommandCenterShell({ role, userId, displayName }: Comman
     setActivePanel((prev) => (prev === id ? null : id));
   };
 
+  /** Always open/swap into drawer (never toggle-close) — used by dock + drawer chips. */
+  const openPanel = (id: CommandCenterPanelId) => {
+    setAppearanceOpen(false);
+    setActivePanel(id);
+  };
+
   const openAppearance = () => {
     setActivePanel(null);
     setAppearanceOpen((v) => !v);
@@ -398,6 +404,7 @@ export default function CommandCenterShell({ role, userId, displayName }: Comman
           userId={userId}
           displayName={displayName}
           onClose={closeDrawer}
+          onSelectPanel={role === "fan" ? openPanel : undefined}
         />
       </div>
 
@@ -407,8 +414,18 @@ export default function CommandCenterShell({ role, userId, displayName }: Comman
         onEnterStage={() => router.push(role === "performer" ? "/live/go" : "/live/go")}
         onLobbyNav={
           role === "fan"
-            ? () => togglePanel("lobby")
-            : () => togglePanel("media_locker")
+            ? () => openPanel("lobby")
+            : () => openPanel("media_locker")
+        }
+        onOpenModule={
+          role === "fan"
+            ? (mod) => openPanel(mod)
+            : (mod) => {
+                if (mod === "playlist") openPanel("playlist");
+                else if (mod === "memory") openPanel("memory");
+                else if (mod === "yopho") openPanel("yopho");
+                else openPanel("media_locker");
+              }
         }
       />
     </div>

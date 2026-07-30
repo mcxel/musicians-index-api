@@ -12,9 +12,18 @@ import {
   DEFAULT_FAN_LOBBY_SKIN_ID,
   getFanLobbySkinCanon,
   getFanLobbySkinDressing,
-  listStoreReadyFanLobbySkins,
+  getPersistedFanLobbySkinId,
+  listSwitchableFanLobbySkins,
+  persistFanLobbySkinId,
   type FanLobbySkinId,
+  type SeatAnchor,
 } from "@/lib/lobby/FanLobbySkinRegistry";
+import {
+  assignOpenSeat,
+  nearestOpenSeat,
+  occupiedSeatIds,
+  seatAtPoint,
+} from "@/lib/lobby/FanLobbySeatAssigner";
 import { getPresenceFrameById } from "@/registries/presence/PresenceFrameRegistry";
 import MemoryCaptureButton from "@/components/memory/MemoryCaptureButton";
 import QuickReportPanel, { type QuickReportTarget } from "@/components/trustSafety/QuickReportPanel";
@@ -50,9 +59,10 @@ interface FanLobbyVenueProps {
 }
 
 /**
- * Fan Lobby — free-roam 2D social floor (not a 3D bobblehead engine).
- * Trust & Safety: Report / Block / Mute; host remove when staff.
- * Skins = CSS + concept still dressing (Rule 18). No fan-facing seat grid.
+ * Fan Lobby — free-roam 2D social floor + conversation chair anchors.
+ * Not a 3D bobblehead engine / AvatarSeatUI grid (Rule 18/20).
+ * Sit snaps to SeatAnchor; Stand frees seat; floor-tap walks (mix seated + roam).
+ * Local cam bubble real; peer WebRTC Phase B.
  */
 export default function FanLobbyVenue({
   roomId = "fan-lobby",
@@ -63,10 +73,11 @@ export default function FanLobbyVenue({
   const userId = useMemo(() => getOrCreateLocalId(roomId), [roomId]);
   const emoji = useMemo(() => AVATAR_EMOJIS[Math.floor(Math.random() * AVATAR_EMOJIS.length)], []);
   const selfFrame = getPresenceFrameById("frame-obsidian-free");
-  const storeSkins = useMemo(() => listStoreReadyFanLobbySkins(), []);
+  const switchableSkins = useMemo(() => listSwitchableFanLobbySkins(), []);
 
   const [skinId, setSkinId] = useState<FanLobbySkinId>(() => {
-    const canon = getFanLobbySkinCanon(initialSkinId);
+    const persisted = typeof window !== "undefined" ? getPersistedFanLobbySkinId() : null;
+    const canon = getFanLobbySkinCanon(persisted ?? initialSkinId);
     return (canon?.id ?? DEFAULT_FAN_LOBBY_SKIN_ID) as FanLobbySkinId;
   });
   const [micEnabled, setMicEnabled] = useState(false);
@@ -80,11 +91,17 @@ export default function FanLobbyVenue({
   const [reportOpen, setReportOpen] = useState(false);
   const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set());
   const [toast, setToast] = useState<string | null>(null);
+  const joinedRef = useRef(false);
 
   const dressing = getFanLobbySkinDressing(skinId);
   const skinLabel = getFanLobbySkinCanon(skinId)?.label ?? "Fan Lobby";
   const { isSpeaking } = useLocalMicLevel(micEnabled);
   const sync = useLobbyPresenceSync({ roomId, userId, userName, emoji, theme: skinId });
+
+  const occupied = useMemo(
+    () => occupiedSeatIds(sync.participants),
+    [sync.participants],
+  );
 
   useEffect(() => {
     sync.setIsSpeaking(isSpeaking);
@@ -93,6 +110,69 @@ export default function FanLobbyVenue({
   useEffect(() => {
     setHiddenIds(new Set([...getBlockedUserIds(), ...getMutedUserIds()]));
   }, []);
+
+  // On join: spawn at entrance, then auto-claim first open chair (conversation hangout).
+  // Stand frees the seat so others can roam/sit mix. Not a spreadsheet seat picker.
+  useEffect(() => {
+    if (joinedRef.current) return;
+    joinedRef.current = true;
+    sync.stand(dressing.entrance);
+    const t = window.setTimeout(() => {
+      const open = assignOpenSeat(dressing.seats, occupiedSeatIds(sync.participants));
+      if (open) {
+        sync.sit(open);
+        setToast(`Seated · ${open.id} — Stand to walk & use props`);
+      } else {
+        setToast("Lobby full of seated fans — roam free or wait for a chair");
+      }
+    }, 400);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleSitNearest = useCallback(() => {
+    const open =
+      nearestOpenSeat(dressing.seats, occupied, sync.position.x, sync.position.y) ??
+      assignOpenSeat(dressing.seats, occupied);
+    if (!open) {
+      setToast("No open chairs right now");
+      return;
+    }
+    sync.sit(open);
+    setToast(`Seated · ${open.id}`);
+  }, [dressing.seats, occupied, sync]);
+
+  const handleStand = useCallback(() => {
+    sync.stand();
+    setToast("Standing — tap floor to walk, tap a chair to sit");
+  }, [sync]);
+
+  const handleFloorTap = useCallback(
+    (x: number, y: number) => {
+      const hit = seatAtPoint(dressing.seats, x, y, 7);
+      if (hit && !occupied.has(hit.id)) {
+        sync.sit(hit);
+        setToast(`Seated · ${hit.id}`);
+        return;
+      }
+      // Floor walk — auto-stand if seated so roam + seated mix works
+      if (sync.isSeated) sync.stand();
+      sync.move(x, y);
+    },
+    [dressing.seats, occupied, sync],
+  );
+
+  const handleSeatTap = useCallback(
+    (anchor: SeatAnchor) => {
+      if (occupied.has(anchor.id) && sync.seatId !== anchor.id) {
+        setToast("That chair is taken");
+        return;
+      }
+      sync.sit(anchor);
+      setToast(`Seated · ${anchor.id}`);
+    },
+    [occupied, sync],
+  );
 
   // Rejoin restriction check (Postgres-backed protections).
   useEffect(() => {
@@ -293,6 +373,12 @@ export default function FanLobbyVenue({
               HOST SAFETY
             </span>
           ) : null}
+          <PillToggle
+            active={sync.isSeated}
+            label={sync.isSeated ? "🚶 Stand" : "🪑 Sit"}
+            accent={dressing.accent}
+            onClick={() => (sync.isSeated ? handleStand() : handleSitNearest())}
+          />
           <PillToggle active={micEnabled} label={micEnabled ? "🎙️ Mic On" : "🎙️ Mic Off"} accent="#00FF88" onClick={() => setMicEnabled((v) => !v)} />
           <PillToggle active={cameraEnabled} label={cameraEnabled ? "📹 Cam On" : "📹 Cam Off"} accent="#00FFFF" onClick={() => setCameraEnabled((v) => !v)} />
           <PillToggle active={themePanelOpen} label="🎨 Skin" accent={dressing.accent} onClick={() => setThemePanelOpen((v) => !v)} />
@@ -326,9 +412,16 @@ export default function FanLobbyVenue({
             hasCameraOn: cameraEnabled,
             localStream,
             frameGlowColor: selfFrame.glowColor,
+            isSeated: sync.isSeated,
+            seatId: sync.seatId,
+            locomotion: sync.locomotion,
           }}
           participants={sync.participants}
-          onFloorTap={(x, y) => sync.move(x, y)}
+          seats={dressing.seats}
+          occupiedSeatIds={occupied}
+          accentColor={dressing.accent}
+          onFloorTap={handleFloorTap}
+          onSeatTap={handleSeatTap}
           onAvatarSelect={(p) => setSafetyTarget(p)}
           hiddenUserIds={hiddenIds}
         />
@@ -364,7 +457,7 @@ export default function FanLobbyVenue({
               backdropFilter: "blur(8px)",
             }}
           >
-            {storeSkins.map((s) => {
+            {switchableSkins.map((s) => {
               const d = getFanLobbySkinDressing(s.id);
               const active = s.id === skinId;
               return (
@@ -373,7 +466,11 @@ export default function FanLobbyVenue({
                   type="button"
                   onClick={() => {
                     setSkinId(s.id);
+                    persistFanLobbySkinId(s.id);
                     setThemePanelOpen(false);
+                    // New skin = new chair layout; stand at that skin's entrance
+                    const next = getFanLobbySkinDressing(s.id);
+                    sync.stand(next.entrance);
                   }}
                   style={{
                     borderRadius: 10,
@@ -386,6 +483,7 @@ export default function FanLobbyVenue({
                     cursor: "pointer",
                     letterSpacing: "0.04em",
                   }}
+                  title={s.tagline}
                 >
                   {s.label}
                 </button>

@@ -4,6 +4,8 @@ import React, { useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { LobbyPropEffectLayer } from "./LobbyPropEffectLayer";
 import type { LobbyParticipant } from "@/lib/lobby/useLobbyPresenceSync";
+import type { SeatAnchor } from "@/lib/lobby/FanLobbySkinRegistry";
+import type { LobbyAvatarLocomotion } from "@/lib/lobby/FanLobbySeatAssigner";
 
 interface SelfAvatar {
   userId: string;
@@ -15,32 +17,38 @@ interface SelfAvatar {
   isSpeaking: boolean;
   hasCameraOn: boolean;
   localStream: MediaStream | null;
-  /** Presence Frame accent (PresenceFrameRegistry) - only synced for self today; remote frame choice isn't broadcast yet. */
   frameGlowColor?: string;
+  isSeated?: boolean;
+  seatId?: string | null;
+  locomotion?: LobbyAvatarLocomotion;
 }
 
 interface LobbyFreeRoamAvatarsProps {
   self: SelfAvatar;
   participants: LobbyParticipant[];
+  seats?: SeatAnchor[];
+  occupiedSeatIds?: Set<string>;
+  accentColor?: string;
   onFloorTap: (xPercent: number, yPercent: number) => void;
-  /** Trust & Safety — open report/block menu for a remote avatar */
+  /** Tap empty chair marker → sit */
+  onSeatTap?: (anchor: SeatAnchor) => void;
   onAvatarSelect?: (participant: LobbyParticipant) => void;
-  /** Locally blocked ids — hidden for reporter (Level-1 friction) */
   hiddenUserIds?: Set<string>;
 }
 
 /**
- * Free-roam floor: self and every synced participant rendered at their
- * live x/y%. Speaking glow is driven by each person's own real mic reading
- * (broadcast via lobby-sync) - never inferred locally about someone else.
- * Only the local user gets an actual camera preview; remote participants'
- * camera state shows as a badge, not a fabricated video feed, since there's
- * no shared WebRTC video transport in this room (honest limitation, not faked).
+ * Free-roam floor + 2D chair anchors (conversation hangout).
+ * Local cam bubble is real; remote camera = badge only (Phase B peer WebRTC).
+ * No AvatarSeatUI spreadsheet grid.
  */
 export function LobbyFreeRoamAvatars({
   self,
   participants,
+  seats = [],
+  occupiedSeatIds,
+  accentColor = "#FFD700",
   onFloorTap,
+  onSeatTap,
   onAvatarSelect,
   hiddenUserIds,
 }: LobbyFreeRoamAvatarsProps) {
@@ -55,14 +63,64 @@ export function LobbyFreeRoamAvatars({
   }
 
   const visible = participants.filter((p) => !hiddenUserIds?.has(p.userId));
+  const occupied = occupiedSeatIds ?? new Set(
+    visible.filter((p) => p.isSeated && p.seatId).map((p) => p.seatId!),
+  );
+  if (self.isSeated && self.seatId) occupied.add(self.seatId);
 
   return (
     <div
       ref={floorRef}
       onClick={handleFloorClick}
       style={{ position: "absolute", inset: 0, cursor: "crosshair" }}
-      title="Tap the floor to walk there"
+      title="Tap floor to walk · tap a chair to sit"
     >
+      {seats.map((seat) => {
+        const taken = occupied.has(seat.id);
+        const mine = self.seatId === seat.id && self.isSeated;
+        return (
+          <button
+            key={seat.id}
+            type="button"
+            aria-label={taken ? `Seat ${seat.id} occupied` : `Sit at ${seat.id}`}
+            disabled={taken && !mine}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (!taken && onSeatTap) onSeatTap(seat);
+            }}
+            style={{
+              position: "absolute",
+              left: `${seat.xPct}%`,
+              top: `${seat.yPct}%`,
+              transform: "translate(-50%, -50%)",
+              zIndex: 8,
+              width: 36,
+              height: 28,
+              borderRadius: 8,
+              border: mine
+                ? `2px solid ${accentColor}`
+                : taken
+                  ? "1px solid rgba(255,255,255,0.12)"
+                  : `1.5px dashed ${accentColor}88`,
+              background: mine
+                ? `${accentColor}33`
+                : taken
+                  ? "rgba(0,0,0,0.35)"
+                  : `${accentColor}14`,
+              color: taken && !mine ? "rgba(255,255,255,0.25)" : accentColor,
+              fontSize: 14,
+              cursor: taken && !mine ? "default" : "pointer",
+              opacity: taken && !mine ? 0.45 : 0.9,
+              padding: 0,
+              lineHeight: 1,
+            }}
+            title={mine ? "Your chair" : taken ? "Occupied" : "Sit here"}
+          >
+            🪑
+          </button>
+        );
+      })}
+
       {visible.map((p) => (
         <AvatarBubble
           key={p.userId}
@@ -72,6 +130,8 @@ export function LobbyFreeRoamAvatars({
           name={p.userName}
           isSpeaking={p.isSpeaking}
           hasCameraOn={p.hasCameraOn}
+          isSeated={p.isSeated}
+          locomotion={p.locomotion}
           onSelect={onAvatarSelect ? () => onAvatarSelect(p) : undefined}
         />
       ))}
@@ -85,6 +145,8 @@ export function LobbyFreeRoamAvatars({
         hasCameraOn={self.hasCameraOn}
         localStream={self.localStream}
         frameGlowColor={self.frameGlowColor}
+        isSeated={self.isSeated}
+        locomotion={self.locomotion}
         isSelf
       />
 
@@ -97,11 +159,30 @@ export function LobbyFreeRoamAvatars({
 }
 
 function AvatarBubble({
-  x, y, emoji, name, isSpeaking, hasCameraOn, localStream, frameGlowColor, isSelf, onSelect,
+  x,
+  y,
+  emoji,
+  name,
+  isSpeaking,
+  hasCameraOn,
+  localStream,
+  frameGlowColor,
+  isSelf,
+  isSeated,
+  locomotion,
+  onSelect,
 }: {
-  x: number; y: number; emoji: string; name: string;
-  isSpeaking: boolean; hasCameraOn: boolean;
-  localStream?: MediaStream | null; frameGlowColor?: string; isSelf?: boolean;
+  x: number;
+  y: number;
+  emoji: string;
+  name: string;
+  isSpeaking: boolean;
+  hasCameraOn: boolean;
+  localStream?: MediaStream | null;
+  frameGlowColor?: string;
+  isSelf?: boolean;
+  isSeated?: boolean;
+  locomotion?: LobbyAvatarLocomotion;
   onSelect?: () => void;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -112,12 +193,17 @@ function AvatarBubble({
     }
   }, [localStream]);
 
-  const ringColor = isSpeaking ? "#00FF88" : isSelf ? (frameGlowColor ?? "#00FFFF66") : "rgba(255,255,255,0.25)";
+  const ringColor = isSpeaking
+    ? "#00FF88"
+    : isSelf
+      ? (frameGlowColor ?? "#00FFFF66")
+      : "rgba(255,255,255,0.25)";
+  const size = isSeated ? 48 : 56;
 
   return (
     <motion.div
       animate={{ left: `${x}%`, top: `${y}%` }}
-      transition={{ type: "spring", stiffness: 120, damping: 18 }}
+      transition={{ type: "spring", stiffness: locomotion === "WALKING" ? 90 : 140, damping: 18 }}
       style={{
         position: "absolute",
         transform: "translate(-50%, -50%)",
@@ -125,7 +211,7 @@ function AvatarBubble({
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        gap: 4,
+        gap: 3,
         pointerEvents: onSelect ? "auto" : "none",
         cursor: onSelect ? "pointer" : undefined,
       }}
@@ -143,12 +229,18 @@ function AvatarBubble({
         animate={isSpeaking ? { scale: [1, 1.08, 1] } : { scale: 1 }}
         transition={{ repeat: isSpeaking ? Infinity : 0, duration: 0.8 }}
         style={{
-          width: 56, height: 56, borderRadius: "50%",
+          width: size,
+          height: size,
+          borderRadius: "50%",
           border: `2.5px solid ${ringColor}`,
-          boxShadow: isSpeaking ? `0 0 16px ${ringColor}` : "none",
+          boxShadow: isSpeaking ? `0 0 16px ${ringColor}` : isSeated ? "0 8px 0 rgba(0,0,0,0.35)" : "none",
           background: "rgba(5,5,16,0.9)",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: 26, overflow: "hidden", position: "relative",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: isSeated ? 22 : 26,
+          overflow: "hidden",
+          position: "relative",
         }}
       >
         {isSelf && localStream ? (
@@ -160,8 +252,18 @@ function AvatarBubble({
           <div style={{ position: "absolute", bottom: -2, right: -2, fontSize: 11, background: "#050510", borderRadius: "50%", padding: 2 }}>📹</div>
         )}
       </motion.div>
-      <div style={{ fontSize: 9, fontWeight: 800, color: "#fff", background: "rgba(0,0,0,0.55)", padding: "2px 6px", borderRadius: 6, whiteSpace: "nowrap" }}>
-        {name}
+      <div
+        style={{
+          fontSize: 8,
+          fontWeight: 800,
+          color: "#fff",
+          background: "rgba(0,0,0,0.55)",
+          padding: "2px 6px",
+          borderRadius: 6,
+          whiteSpace: "nowrap",
+        }}
+      >
+        {isSeated ? `🪑 ${name}` : name}
       </div>
     </motion.div>
   );

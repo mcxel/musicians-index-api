@@ -28,7 +28,11 @@ import {
   type YoPhoPortraitBlueprint,
 } from "@/lib/yopho/YoPhoPortraitEngine";
 import type { CommandCenterPanelId, CommandCenterRole } from "./commandCenterRegistry";
-import { isFanOnlyPanel } from "./commandCenterRegistry";
+import {
+  FAN_COMMAND_PANELS,
+  FAN_DRAWER_SWAP_PANELS,
+  isFanOnlyPanel,
+} from "./commandCenterRegistry";
 import { useTheme } from "@/lib/design/ThemeEngine";
 
 const FanLobbyVenue = dynamic(() => import("@/components/live/FanLobbyVenue"), {
@@ -105,6 +109,8 @@ interface CommandCenterDrawerProps {
   userId: string;
   displayName: string;
   onClose: () => void;
+  /** Swap module inside the open drawer without navigating away */
+  onSelectPanel?: (id: CommandCenterPanelId) => void;
 }
 
 export default function CommandCenterDrawer({
@@ -114,6 +120,7 @@ export default function CommandCenterDrawer({
   userId,
   displayName,
   onClose,
+  onSelectPanel,
 }: CommandCenterDrawerProps) {
   const theme = useTheme();
   const roomId = useMemo(() => `${role}-lobby-cc-${userId}`, [role, userId]);
@@ -177,6 +184,36 @@ export default function CommandCenterDrawer({
             <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.14em", color: theme.tertiary }}>{title}</div>
             {appearanceOpen ? (
               <span style={{ fontSize: 9, color: "rgba(255,255,255,0.4)" }}>Saved on this device (ThemeEngine)</span>
+            ) : null}
+            {role === "fan" && !appearanceOpen && onSelectPanel ? (
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginLeft: 8 }}>
+                {FAN_DRAWER_SWAP_PANELS.map((id) => {
+                  const def = FAN_COMMAND_PANELS.find((p) => p.id === id);
+                  if (!def) return null;
+                  const active = activePanel === id;
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => onSelectPanel(id)}
+                      style={{
+                        fontSize: 8,
+                        fontWeight: 900,
+                        letterSpacing: "0.06em",
+                        padding: "4px 8px",
+                        borderRadius: 6,
+                        cursor: "pointer",
+                        fontFamily: "inherit",
+                        border: active ? `1px solid ${def.accent}` : "1px solid rgba(255,255,255,0.12)",
+                        background: active ? `${def.accent}22` : "transparent",
+                        color: active ? def.accent : "rgba(255,255,255,0.45)",
+                      }}
+                    >
+                      {def.label}
+                    </button>
+                  );
+                })}
+              </div>
             ) : null}
             <div style={{ flex: 1 }} />
             <button
