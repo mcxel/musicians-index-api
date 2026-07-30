@@ -18,10 +18,8 @@ import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { LobbyEntryFlow } from "@/components/room/UniversalLobbyEntry";
 import LobbyDiscoveryCard from "@/components/discovery/LobbyDiscoveryCard";
-import { DiscoveryBus } from "@/lib/discovery/DiscoveryBus";
-import { startDiscoveryPoll } from "@/lib/discovery/DiscoveryPublisher";
-import { filterDiscoverableRecords } from "@/lib/discovery/discoveryVisibility";
 import { resolveInstantJoin } from "@/lib/discovery/InstantJoinRuntime";
+import { useDiscoveryBus } from "@/lib/discovery/useDiscoveryBus";
 import {
   LIVE_DISCOVERY_CATEGORY_LABELS,
   LIVE_DISCOVERY_RAIL_ORDER,
@@ -36,28 +34,6 @@ const RIM_KEYFRAMES = `
   to { transform: rotate(360deg); }
 }
 `;
-
-function useDiscoveryRecords(viewerUserId?: string | null) {
-  const [raw, setRaw] = useState<LiveDiscoveryRecord[]>(() => DiscoveryBus.getAll());
-
-  useEffect(() => {
-    const unsub = DiscoveryBus.subscribe(setRaw);
-    const stopPoll = startDiscoveryPoll({ intervalMs: 4000 });
-    return () => {
-      unsub();
-      stopPoll();
-    };
-  }, []);
-
-  return useMemo(
-    () =>
-      filterDiscoverableRecords(raw, {
-        userId: viewerUserId,
-        isStaff: false,
-      }),
-    [raw, viewerUserId],
-  );
-}
 
 function DiscoveryRail({
   category,
@@ -162,7 +138,7 @@ export default function GlobalLiveDiscoveryOverlay({
   const viewerUserId = viewerUserIdProp ?? sessionUserId;
   const viewerRole = viewerRoleProp ?? sessionRole;
 
-  const records = useDiscoveryRecords(viewerUserId);
+  const records = useDiscoveryBus(viewerUserId);
   const [mounted, setMounted] = useState(false);
   const [focusedId, setFocusedId] = useState<string | null>(null);
   const [joinRoom, setJoinRoom] = useState<ReturnType<typeof resolveInstantJoin> | null>(null);

@@ -22,7 +22,7 @@ import SubmissionPulseRail from "@/components/home/SubmissionPulseRail";
 import Home5BattleOfWeekRail from "@/components/home/Home5BattleOfWeekRail";
 import Home5CypherOfWeekRail from "@/components/home/Home5CypherOfWeekRail";
 import Home5XPLadderRail from "@/components/home/Home5XPLadderRail";
-import Home5OpenRoomsGrid from "@/components/home/Home5OpenRoomsGrid";
+import HomeLiveLobbyWall from "@/components/discovery/HomeLiveLobbyWall";
 import { enforceRouteOwnership } from '@/lib/routes/TmiVisualRouteMap';
 import { getVisualSlot } from '@/lib/visuals/TmiVisualSlotRegistry';
 import "@/styles/tmiTypography.css";
@@ -688,7 +688,8 @@ export default function Home5BattleCypherSurface() {
         <BillboardLiveWall mode="battle" maxTiles={8} title="BATTLE ARENA · LIVE NOW" showActions />
       </section>
 
-      <Home5OpenRoomsGrid />
+      {/* Arena Live Lobby Wall — DiscoveryBus battles/cyphers/challenges only */}
+      <HomeLiveLobbyWall surface="home5_arena" maxTiles={12} />
 
       {/* ── AD BREAK 2 — mid-page rectangle before live belt ── */}
       <UnifiedAdSlot venue="home-5" slotKey="homepageMid" format="rectangle" label="ADVERTISEMENT" style={{ margin: '0 24px 8px', minHeight: 250 }} accentColor="#FF2DAA" />

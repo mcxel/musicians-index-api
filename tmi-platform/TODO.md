@@ -36,7 +36,10 @@
 ## PASS 3 — Wire Missing Routes/Buttons/Media/Revenue Paths
 - [ ] Resolve remaining P0/P1 chain wiring gaps from matrix
 - [ ] Eliminate dead-click and bypass paths on critical discovery surfaces
-- [x] Live Lobby Walls (`GlobalLiveDiscoveryOverlay`) — contract + bus + overlay + LOBBY wire (2026-07-29)
+  - [x] Live Lobby Walls (`GlobalLiveDiscoveryOverlay`) — contract + bus + overlay + LOBBY wire (2026-07-29)
+  - [x] Homepage DiscoveryBus surfaces — Home 1 CH Featured, Home 3 mosaic, Home 5 arena (2026-07-29)
+    - Shared: `useDiscoveryBus`, `homepageDiscoveryFilters`, `HomeLiveLobbyWall`, `HomeFeaturedChannelPanels`
+    - Killed fake Lobby A/B/C + emoji face grids + Home5 seed ROOMS
   - [ ] Browser certify empty/join/TV Mode; Private/Invited invite source still FUTURE
 
 ## PASS 4 — Audits

@@ -5,7 +5,7 @@ import MotionPosterPlayer from '@/components/media/MotionPosterPlayer';
 import { getPerformerById } from '@/lib/performers/PerformerRegistry';
 import { LobbyEntryFlow, type UniversalRoom } from '@/components/room/UniversalLobbyEntry';
 import Home3MainPreviewLobby from './Home3MainPreviewLobby';
-import Home3LivewallGrid from './Home3LobbyWallGrid';
+import HomeLiveLobbyWall from '@/components/discovery/HomeLiveLobbyWall';
 import Home3LiveEvents from './Home3LiveEvents';
 import Home3OccupancyRail from './Home3OccupancyRail';
 import Home3EventCalendarStrip from './Home3EventCalendarStrip';
@@ -309,7 +309,8 @@ export default function Home3LiveWorldSurface() {
         <BillboardLiveWall mode="home" maxTiles={9} title="LIVE WORLD FEED — ALL ROOMS" showActions />
       </section>
 
-      <Home3LivewallGrid />
+      {/* Live Lobby Walls — DiscoveryBus mosaic (social / lounges / fan lives) */}
+      <HomeLiveLobbyWall surface="home3_mosaic" maxTiles={12} />
 
       {/* Live events */}
       <Home3LiveEvents />

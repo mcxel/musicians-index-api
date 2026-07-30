@@ -34,9 +34,14 @@ import { getVenueBookingSlots, type VenueBookingSlot } from '@/lib/venues/VenueR
 import { fetchUpcomingEvents } from '@/lib/api/homepage';
 import { getActiveSponsorForZone } from '@/lib/commerce/SponsorRegistry';
 import MotionPosterPlayer from '@/components/media/MotionPosterPlayer';
+import HomeFeaturedChannelPanels from '@/components/discovery/HomeFeaturedChannelPanels';
 import { hasRole } from '@/lib/auth/session';
 import { OFFICIAL_HOME_ORBIT_BOT_ACCOUNTS } from '@/lib/bots/homeOrbitBotAccounts';
 import { onSessionsChanged, getActiveSessions, type LiveSession } from '@/lib/broadcast/GlobalLiveSessionRegistry';
+import {
+  getOrbitalTopSlots,
+  publishUniversalRankingSnapshot,
+} from '@/lib/rankings/UniversalRankingSnapshot';
 
 // ─── Genre + performer data (10 per genre) ────────────────────────────────────
 
@@ -264,20 +269,48 @@ function buildHonestEmptySlots(count: number): Performer[] {
   });
 }
 
+function slotKindToAccountType(kind: 'human' | 'bot' | 'placeholder'): Performer['accountType'] {
+  if (kind === 'bot') return 'system-bot';
+  if (kind === 'placeholder') return 'empty-slot';
+  return 'verified-performer';
+}
+
+function buildOrbitPerformersFromSnapshot(): Performer[] {
+  publishUniversalRankingSnapshot(undefined, 10);
+  return getOrbitalTopSlots(10).map((slot) => ({
+    slug: slot.slug,
+    name: slot.displayName,
+    emoji: slot.kind === 'bot' ? '🤖' : '🎤',
+    rank: slot.rank,
+    score: slot.points,
+    genre: slot.genre ?? (slot.kind === 'bot' ? 'Bot Seat' : 'All Genres'),
+    image: slot.avatarUrl,
+    avatarImage: slot.avatarUrl,
+    profileRoute: slot.profileRoute,
+    accountType: slotKindToAccountType(slot.kind),
+    voteCount: null,
+    audienceCount: 0,
+    isLive: Boolean(slot.isLive),
+  }));
+}
+
 function buildOrbitPerformers(genreKey: string): Performer[] {
-  // Orbit priority:
-  // 1) Real Diamond Member
-  // 2) Real Verified Performer
-  // 3) Real Member with profile image
-  // 4) Official TMI System Actor
-  // 5) Official TMI Bot Account
-  // 6) Honest Empty Slot
+  // MJ Rule snapshot first — humans with points > 0, then bot fill.
+  // No static System Actor cards when real ranked profiles exist.
+  const fromSnapshot = buildOrbitPerformersFromSnapshot();
+  const hasRealHuman = fromSnapshot.some((p) => p.accountType !== 'system-bot' && p.accountType !== 'system-actor' && p.accountType !== 'empty-slot');
+  if (hasRealHuman && fromSnapshot.length >= 10) return fromSnapshot.slice(0, 10);
+  if (hasRealHuman && fromSnapshot.length > 0) {
+    const need = 10 - fromSnapshot.length;
+    return [...fromSnapshot, ...buildHonestEmptySlots(need)];
+  }
+
+  // Fallback when snapshot has no active humans yet
   const ring1 = buildDiamondOrbitMembers();
   const ring2 = buildVerifiedPerformerRing(genreKey);
   const ring3 = buildRealMemberProfileRing(genreKey);
-  const ring4 = buildSystemActorRing();
   const ring5 = buildSystemBotRing();
-  const merged = [...ring1, ...ring2, ...ring3, ...ring4, ...ring5];
+  const merged = [...ring1, ...ring2, ...ring3, ...ring5];
   const unique = merged.filter((p, idx, arr) => arr.findIndex((x) => x.slug === p.slug) === idx);
   if (unique.length >= 10) return unique.slice(0, 10);
   return [...unique, ...buildHonestEmptySlots(10 - unique.length)];
@@ -556,70 +589,6 @@ const TICKER_MSGS = [
   '🗳️ VOTING LIVE — CROWN SHIFTING',
   '🔊 STREAM & WIN RADIO IS LIVE',
 ];
-
-// ─── P6: Independent performer monitor tiles ──────────────────────────────────
-
-function PerformerMonitor({
-  performers, offsetIdx, intervalMs, accentColor, delayMs, channelNum,
-}: {
-  performers: Performer[];
-  offsetIdx: number;
-  intervalMs: number;
-  accentColor: string;
-  delayMs: number;
-  channelNum: number;
-}) {
-  const [idx, setIdx] = useState(performers.length > 0 ? offsetIdx % performers.length : 0);
-  useEffect(() => {
-    if (performers.length === 0) return;
-    let iid: ReturnType<typeof setInterval>;
-    const tid = setTimeout(() => {
-      iid = setInterval(() => setIdx((x) => (x + 1) % performers.length), intervalMs);
-    }, delayMs);
-    return () => { clearTimeout(tid); clearInterval(iid); };
-  }, [performers.length, intervalMs, delayMs]);
-
-  // performers starts empty until the parent's data effect runs — render
-  // nothing rather than crash on performers[idx] while it's still [].
-  if (performers.length === 0) return null;
-  const p = performers[idx % performers.length]!;
-  const rawAvatar = p.image ?? p.avatarImage;
-  const hasImage = Boolean(rawAvatar?.trim()) && (p.accountType === 'system-bot' || p.accountType === 'system-actor' || hasUploadedProfileImage(rawAvatar));
-  // Real routing: live performer -> their live room, otherwise their real
-  // profile. Same pattern OrbitCard already uses — this monitor tile is a
-  // preview of a real, findable account, not a decorative rotating label.
-  const profileHref = p.isLive && p.liveRoomRoute ? `${p.liveRoomRoute}?from=home-1` : p.profileRoute;
-  return (
-    <Link href={profileHref} style={{ flex: 1, textDecoration: 'none' }}>
-    <div style={{ background: 'rgba(5,8,21,0.92)', border: `2px solid ${accentColor}44`, borderRadius: 8, overflow: 'hidden', position: 'relative', minHeight: 110, cursor: 'pointer' }}>
-      {/* Scanline overlay */}
-      <div style={{ position: 'absolute', inset: 0, background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.07) 2px, rgba(0,0,0,0.07) 4px)', pointerEvents: 'none', zIndex: 5 }} />
-      {/* Channel header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '3px 8px', background: `${accentColor}18`, borderBottom: `1px solid ${accentColor}33` }}>
-        <span style={{ fontSize: 7, fontWeight: 900, color: accentColor, letterSpacing: '0.15em', fontFamily: "'Inter',sans-serif" }}>CH-{channelNum} {p.isLive ? 'LIVE' : 'FEATURED'}</span>
-        <span style={{ width: 5, height: 5, borderRadius: '50%', background: p.isLive ? '#E63000' : `${accentColor}88`, display: 'inline-block', boxShadow: p.isLive ? '0 0 4px #E63000' : 'none', animation: p.isLive ? 'h1Pulse 1.5s infinite' : 'none' }} />
-      </div>
-      {/* Performer */}
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '8px 6px', gap: 4 }}>
-        <div style={{ width: 44, height: 44, borderRadius: '50%', overflow: 'hidden', border: `2px solid ${accentColor}88`, background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-          {hasImage ? (
-            <Image src={rawAvatar!} alt={p.name} width={44} height={44} style={{ objectFit: 'cover', width: '100%', height: '100%' }} />
-          ) : (
-            <span style={{ fontSize: 22, lineHeight: 1 }}>{p.emoji}</span>
-          )}
-        </div>
-        <div style={{ fontSize: 9, fontWeight: 900, color: '#fff', textAlign: 'center', fontFamily: "'Inter',sans-serif", lineHeight: 1.2, maxWidth: '90%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</div>
-        <div style={{ fontSize: 7, color: accentColor, background: `${accentColor}22`, borderRadius: 8, padding: '1px 5px', fontFamily: "'Inter',sans-serif", whiteSpace: 'nowrap' }}>{p.genre}</div>
-        <div style={{ fontSize: 7, color: 'rgba(255,255,255,0.35)', fontFamily: "'Inter',sans-serif" }}>#{p.rank} · {p.score.toLocaleString()} XP</div>
-      </div>
-      {/* Timer progress bar */}
-      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 2, background: `${accentColor}18` }}>
-        <div style={{ height: 2, background: accentColor, width: '100%', transformOrigin: 'left center', animation: `h1MonitorBar ${intervalMs / 1000}s linear infinite` }} />
-      </div>
-    </div>
-    </Link>
-  );
-}
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -1230,6 +1199,9 @@ export default function Home1CoverPage() {
           /* stretch: flanks expand to match the title column height so
              there is no dead dark space above/below the banner artwork */
           align-items: stretch;
+          /* Feather hard black edges — soft glass vignette on hero container */
+          -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 10%, #000 90%, transparent 100%);
+          mask-image: linear-gradient(180deg, transparent 0%, #000 10%, #000 90%, transparent 100%);
         }
         .h1-hero-billboard-grid .h1-hero-flank-left,
         .h1-hero-billboard-grid .h1-hero-flank-right {
@@ -2305,14 +2277,8 @@ export default function Home1CoverPage() {
           </div>
         </div>
 
-        {/* ── P6: Three independent video monitors — 13s cadence (matches the
-             platform-wide broadcast rotation interval), staggered so all
-             three never change at the same moment ── */}
-        <div style={{ width: '100%', maxWidth: 900, padding: '12px 10px 0', display: 'flex', gap: 10 }}>
-          <PerformerMonitor performers={performers} offsetIdx={0} intervalMs={13000} accentColor={accentColor} delayMs={0}    channelNum={1} />
-          <PerformerMonitor performers={performers} offsetIdx={3} intervalMs={13000} accentColor={accentColor} delayMs={4300} channelNum={2} />
-          <PerformerMonitor performers={performers} offsetIdx={6} intervalMs={13000} accentColor={accentColor} delayMs={8600} channelNum={3} />
-        </div>
+        {/* ── CH Featured — DiscoveryBus live channels (Rule 20: no fake faces) ── */}
+        <HomeFeaturedChannelPanels slotCount={3} />
 
         {/* ── Sponsor Ad Rail — Paid → Internal Promo → Advertise CTA ── */}
         {(() => {
