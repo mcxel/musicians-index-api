@@ -1,5 +1,7 @@
-import ArenaEventShell from "@/components/live/ArenaEventShell";
+"use client";
+
 import Link from "next/link";
+import StageLoader from "@/components/eos/StageLoader";
 
 export default function VIPLoungePage() {
   return (
@@ -15,7 +17,9 @@ export default function VIPLoungePage() {
         <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.28em", color: "#FFD700" }}>👑 VIP LOUNGE</div>
         <span style={{ marginLeft: "auto", fontSize: 9, color: "#FFD700", fontWeight: 700 }}>EXCLUSIVE ACCESS</span>
       </div>
-      <ArenaEventShell roomId="vip-lounge" eventType="live-show" mode="audience" />
+      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "16px 16px 0" }}>
+        <StageLoader experienceId="lounge" roomId="vip-lounge" venueId="lounge" role="fan" />
+      </div>
       <div style={{ maxWidth: 860, margin: "28px auto 0", padding: "0 20px" }}>
         <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.24em", color: "rgba(255,215,0,0.5)", marginBottom: 14 }}>
           VIP PERKS ACTIVE
