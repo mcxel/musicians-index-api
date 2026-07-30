@@ -69,8 +69,8 @@ export default function WorldDanceParty({
 
   // Subscribe to behavioral director (sentiment / beat events from PerceptionPipeline)
   useEffect(() => {
-    return avatarBehavioralDirector.registerListener((update) => {
-      behavioralRef.current = update;
+    return avatarBehavioralDirector.registerListener((update: Record<string, unknown>) => {
+      behavioralRef.current = update as any;
     });
   }, []);
 
@@ -168,7 +168,7 @@ export default function WorldDanceParty({
           }
 
           // Speech bubble chance driven by behavioral layer's socialParticipation weight
-          const bubble = Math.random() < liveEmotion.bubbleChance
+          const bubble = Math.random() < (liveEmotion.bubbleChance ?? 0.2)
             ? BOT_PHRASES[Math.floor(Math.random() * BOT_PHRASES.length)]
             : d.activeBubble;
 

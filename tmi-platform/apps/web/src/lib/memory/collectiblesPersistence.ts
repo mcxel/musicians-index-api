@@ -274,7 +274,7 @@ export async function createCollectible(
         captureQuality: input.captureQuality ?? null,
         captureDestination: input.captureDestination ?? "MEMORY_WALL",
         mediaVariants: mediaVariants ?? undefined,
-        motionPair: motionPair ?? undefined,
+        motionPair: (motionPair as any) ?? undefined,
         rimStyleId: input.rimStyleId?.trim() || null,
         animationPreset: animationPreset ?? null,
         burstGroupId: input.burstGroupId?.trim() || null,

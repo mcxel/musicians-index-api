@@ -18,6 +18,7 @@ export type { MembershipTier };
 
 export const MEMBERSHIP_TIER_ORDER: MembershipTier[] = [
   "FREE",
+  "VIP",
   "PRO",
   "RUBY",
   "SILVER",
@@ -28,12 +29,13 @@ export const MEMBERSHIP_TIER_ORDER: MembershipTier[] = [
 
 const TIER_RANK: Record<MembershipTier, number> = {
   FREE: 0,
-  PRO: 1,
-  RUBY: 2,
-  SILVER: 3,
-  GOLD: 4,
-  PLATINUM: 5,
-  DIAMOND: 6,
+  VIP: 1,
+  PRO: 2,
+  RUBY: 3,
+  SILVER: 4,
+  GOLD: 5,
+  PLATINUM: 6,
+  DIAMOND: 7,
 };
 
 /** Normalize session/API tier strings to canonical MembershipTier. */
@@ -56,7 +58,7 @@ export function getUnlockedPlaylistSkins(
   ownedSkinIds: ArtifactSkinId[] = []
 ): ArtifactSkinId[] {
   return (Object.keys(SKIN_REGISTRY) as ArtifactSkinId[]).filter((skinId) =>
-    canEquipSkin(skinId, tier, ownedSkinIds)
+    canEquipSkin(skinId, tier as any, ownedSkinIds)
   );
 }
 

@@ -243,8 +243,8 @@ export async function saveMediaAssetToCollection(
       await prisma.memoryCollectible.update({
         where: { id: created.id },
         data: {
-          frameSkin: frameSkin ?? undefined,
-          mediaEdit: mediaEdit ?? undefined,
+          frameSkin: (frameSkin as any) ?? undefined,
+          mediaEdit: (mediaEdit as any) ?? undefined,
           unlockAccess: isUnlockAccess(input.unlockAccess) ? input.unlockAccess : undefined,
         },
       });

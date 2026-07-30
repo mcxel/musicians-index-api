@@ -3,7 +3,7 @@
  */
 
 import type { ExperienceDefinition, EosValidationResult, RuntimeManifest } from "./types";
-import { getExperienceById } from "@/registries/eos/ExperienceRegistry";
+import { getExperienceById, EXPERIENCE_REGISTRY } from "@/registries/eos/ExperienceRegistry";
 import { getVenueById } from "@/registries/eos/VenueRegistry";
 import { getWidgetById } from "@/registries/eos/WidgetRegistry";
 import { getCameraPackById } from "@/registries/eos/CameraRegistry";
@@ -25,53 +25,59 @@ export function validateExperienceDefinition(def: ExperienceDefinition): EosVali
   const errors: string[] = [];
   const warnings: string[] = [];
 
+  validateRequiredFields(def, errors);
+  validateRegistryRefs(def, errors);
+  validateWidgets(def, errors, warnings);
+  validateAvatarMode(def, errors, warnings);
+
+  return { valid: errors.length === 0, errors, warnings };
+}
+
+function validateRequiredFields(def: ExperienceDefinition, errors: string[]): void {
   if (!def.id?.trim()) errors.push("Experience id is required");
   if (!def.title?.trim()) errors.push("Experience title is required");
   if (!def.venueId) errors.push("venueId is required");
   if (!def.version?.trim()) errors.push("version is required");
   if (!def.entryRoute?.startsWith("/")) errors.push("entryRoute must be an absolute path");
+}
 
-  const venue = getVenueById(def.venueId);
-  if (!venue) errors.push(`Unknown venueId: ${def.venueId}`);
+function validateRegistryRefs(def: ExperienceDefinition, errors: string[]): void {
+  if (!getVenueById(def.venueId)) errors.push(`Unknown venueId: ${def.venueId}`);
+  if (!getCameraPackById(def.cameraPackId)) errors.push(`Unknown cameraPackId: ${def.cameraPackId}`);
+  if (!getAnimationPackById(def.animationPackId)) errors.push(`Unknown animationPackId: ${def.animationPackId}`);
+}
 
-  if (!getCameraPackById(def.cameraPackId)) {
-    errors.push(`Unknown cameraPackId: ${def.cameraPackId}`);
-  }
-  if (!getAnimationPackById(def.animationPackId)) {
-    errors.push(`Unknown animationPackId: ${def.animationPackId}`);
-  }
-
+function validateWidgets(
+  def: ExperienceDefinition,
+  errors: string[],
+  warnings: string[],
+): void {
   for (const widgetId of def.widgetIds) {
-    if (!getWidgetById(widgetId)) {
-      errors.push(`Unknown widgetId: ${widgetId}`);
-    }
+    if (!getWidgetById(widgetId)) errors.push(`Unknown widgetId: ${widgetId}`);
   }
-
   for (const overlayId of def.overlayIds) {
     if (!getWidgetById(overlayId)) {
       warnings.push(`Overlay id not in WidgetRegistry (may be overlay-only): ${overlayId}`);
     }
   }
-
   const required = REQUIRED_WIDGETS_BY_CATEGORY[def.category] ?? [];
   for (const req of required) {
-    if (!def.widgetIds.includes(req)) {
-      errors.push(`Category ${def.category} requires widget: ${req}`);
-    }
+    if (!def.widgetIds.includes(req)) errors.push(`Category ${def.category} requires widget: ${req}`);
   }
+}
 
+function validateAvatarMode(
+  def: ExperienceDefinition,
+  errors: string[],
+  warnings: string[],
+): void {
   if (def.avatarMode === "presence_frame" && def.category !== "LOUNGE" && def.category !== "FAN_LOBBY") {
     warnings.push("presence_frame avatarMode is typically used for LOUNGE / FAN_LOBBY only");
   }
-
   if (def.avatarMode === "interactive" && def.category === "LOUNGE") {
     errors.push("LOUNGE experiences must use presence_frame avatarMode (no walking feet)");
   }
-
-  return { valid: errors.length === 0, errors, warnings };
 }
-
-import { EXPERIENCE_REGISTRY } from "@/registries/eos/ExperienceRegistry";
 
 export function validateAllExperiences(): EosValidationResult {
   const errors: string[] = [];

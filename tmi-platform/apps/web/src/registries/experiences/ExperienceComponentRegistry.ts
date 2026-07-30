@@ -14,6 +14,8 @@ import WorldDancePartyExperience from "./WorldDancePartyExperience";
 import JazzScatBattleExperience, {
   GibberishBattleExperience,
 } from "./VocalImprovExperiences";
+import FanLobbyVenue from "@/components/live/FanLobbyVenue";
+import PerformerExperienceRuntime from "@/components/performer/PerformerExperienceRuntime";
 
 export interface ExperienceModuleProps {
   roomId?: string;
@@ -24,6 +26,8 @@ export const EXPERIENCE_COMPONENT_REGISTRY: Record<
   string,
   ComponentType<ExperienceModuleProps>
 > = {
+  "fan-lobby": FanLobbyVenue,
+  "performer-lobby": PerformerExperienceRuntime,
   battle: BattleExperience,
   cypher: CypherExperience,
   challenge: ChallengeExperience,

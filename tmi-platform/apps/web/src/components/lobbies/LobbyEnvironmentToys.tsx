@@ -1,24 +1,45 @@
 import React from 'react';
+import { motion } from 'framer-motion';
 import { LobbyState } from '@/lib/lobby/LobbyStateEngine';
 import { LobbyEnvironmentInteractionEngine } from '@/lib/lobby/LobbyEnvironmentInteractionEngine';
+import { LOBBY_ENV_TOYS } from '@/lib/lobby/LobbyPropRegistry';
 
-export const LobbyEnvironmentToys = ({ state }: { state: LobbyState }) => {
+export const LobbyEnvironmentToys = ({
+  state,
+  onUseToy,
+}: {
+  state: LobbyState;
+  /** Fired with the toy id when touched - caller decides what visibly happens (e.g. trigger a prop burst). */
+  onUseToy?: (toyId: string) => void;
+}) => {
   if (!LobbyEnvironmentInteractionEngine.canInteract(state)) return null;
 
   return (
     <div className="absolute inset-0 pointer-events-none z-30">
-       {/* Disco Ball Anchor */}
-       <button 
-         className="pointer-events-auto absolute top-8 left-1/2 -translate-x-1/2 text-4xl hover:scale-110 transition-transform drop-shadow-[0_0_20px_rgba(255,255,255,0.8)] animate-[pulse_4s_ease-in-out_infinite]"
-         onClick={() => LobbyEnvironmentInteractionEngine.interactWith('disco_ball', state)}
-         title="Change Light Pattern"
-       >🪩</button>
-       {/* Jukebox / Beat Pad Anchor */}
-       <button 
-         className="pointer-events-auto absolute bottom-36 left-12 text-4xl hover:scale-110 transition-transform drop-shadow-[0_0_20px_rgba(0,255,255,0.6)]"
-         onClick={() => LobbyEnvironmentInteractionEngine.interactWith('jukebox', state)}
-         title="Preview Beat"
-       >📻</button>
+      {LOBBY_ENV_TOYS.map((toy) => (
+        <motion.button
+          key={toy.id}
+          whileHover={{ scale: 1.15 }}
+          whileTap={{ scale: 0.9 }}
+          className="pointer-events-auto absolute text-4xl transition-transform"
+          style={{
+            top: toy.anchor.top,
+            left: toy.anchor.left,
+            transform: "translate(-50%, -50%)",
+            filter: `drop-shadow(0 0 14px ${toy.accent}99)`,
+          }}
+          onClick={() => {
+            LobbyEnvironmentInteractionEngine.interactWith(
+              toy.id as Parameters<typeof LobbyEnvironmentInteractionEngine.interactWith>[0],
+              state,
+            );
+            onUseToy?.(toy.id);
+          }}
+          title={toy.label}
+        >
+          {toy.icon}
+        </motion.button>
+      ))}
     </div>
   );
 };

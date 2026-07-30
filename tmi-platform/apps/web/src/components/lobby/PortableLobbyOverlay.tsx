@@ -2,25 +2,41 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import Link from "next/link";
 import { BotLobbyScheduler, AutomatedBotRoom } from "@/lib/bots/BotLobbyScheduler";
 
 export interface PortableLobbyOverlayProps {
   isOpen: boolean;
   onClose: () => void;
+  userRole?: "FAN" | "PERFORMER" | "ADMIN";
+  onInstantJoin?: (roomId: string, role: "FAN" | "PERFORMER") => void;
 }
 
 const CATEGORIES = ["ALL", "Hip-Hop", "Rap", "R&B", "EDM", "Gospel", "Comedy", "Rock"];
 
-export default function PortableLobbyOverlay({ isOpen, onClose }: PortableLobbyOverlayProps) {
+export default function PortableLobbyOverlay({
+  isOpen,
+  onClose,
+  userRole = "FAN",
+  onInstantJoin,
+}: PortableLobbyOverlayProps) {
   const [selectedCategory, setSelectedCategory] = useState("ALL");
+  const [activeBattleRoomId, setActiveBattleRoomId] = useState<string | null>(null);
+
   const rooms: AutomatedBotRoom[] = BotLobbyScheduler.getRooms();
 
-  const filteredRooms = selectedCategory === "ALL"
-    ? rooms
-    : rooms.filter((r) => r.category.toLowerCase() === selectedCategory.toLowerCase());
+  const filteredRooms =
+    selectedCategory === "ALL"
+      ? rooms
+      : rooms.filter((r) => r.category.toLowerCase() === selectedCategory.toLowerCase());
 
   if (!isOpen) return null;
+
+  const handleRoomClick = (roomId: string) => {
+    if (onInstantJoin) {
+      onInstantJoin(roomId, userRole === "PERFORMER" ? "PERFORMER" : "FAN");
+    }
+    onClose();
+  };
 
   return (
     <AnimatePresence>
@@ -43,7 +59,7 @@ export default function PortableLobbyOverlay({ isOpen, onClose }: PortableLobbyO
           style={{
             position: "relative",
             width: "100%",
-            maxWidth: 440,
+            maxWidth: 480,
             maxHeight: "85vh",
             background: "#080816",
             border: "1.5px solid rgba(0,255,255,0.4)",
@@ -61,7 +77,9 @@ export default function PortableLobbyOverlay({ isOpen, onClose }: PortableLobbyO
           <div style={{ padding: "16px 20px", borderBottom: "1px solid rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <div>
               <div style={{ fontSize: 9, letterSpacing: "0.25em", color: "#00FFFF", fontWeight: 900 }}>PORTABLE LOBBY DIRECTORY</div>
-              <div style={{ fontSize: 16, fontWeight: 900, color: "#fff", margin: "2px 0 0" }}>Select Live Room</div>
+              <div style={{ fontSize: 16, fontWeight: 900, color: "#fff", margin: "2px 0 0" }}>
+                Instant Room Join · {userRole} MODE
+              </div>
             </div>
             <button
               onClick={onClose}
@@ -108,13 +126,12 @@ export default function PortableLobbyOverlay({ isOpen, onClose }: PortableLobbyO
             })}
           </div>
 
-          {/* Vertical Room List */}
+          {/* Vertical Live WebRTC Room List */}
           <div style={{ flex: 1, overflowY: "auto", padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
             {filteredRooms.map((room) => (
-              <Link
+              <div
                 key={room.roomId}
-                href={`/live/rooms/${room.roomId}`}
-                onClick={onClose}
+                onClick={() => handleRoomClick(room.roomId)}
                 style={{
                   display: "flex",
                   alignItems: "center",
@@ -123,18 +140,18 @@ export default function PortableLobbyOverlay({ isOpen, onClose }: PortableLobbyO
                   background: "rgba(255,255,255,0.03)",
                   border: "1px solid rgba(255,255,255,0.08)",
                   borderRadius: 12,
-                  textDecoration: "none",
+                  cursor: "pointer",
                   transition: "all 0.15s ease",
                 }}
               >
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                   <div
                     style={{
-                      width: 40,
-                      height: 40,
+                      width: 44,
+                      height: 44,
                       borderRadius: 10,
                       overflow: "hidden",
-                      border: "1px solid rgba(255,215,0,0.4)",
+                      border: "1.5px solid rgba(0,255,255,0.5)",
                       position: "relative",
                       background: "#000",
                     }}
@@ -154,15 +171,30 @@ export default function PortableLobbyOverlay({ isOpen, onClose }: PortableLobbyO
                   </div>
                 </div>
 
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
                   <span style={{ background: "#FF2DAA", color: "#fff", fontSize: 7, fontWeight: 900, padding: "2px 6px", borderRadius: 4 }}>
-                    ● LIVE
+                    ● WEBRTC LIVE
                   </span>
-                  <span style={{ fontSize: 9, color: "#FFD700", fontWeight: 800 }}>
-                    👁 {room.viewerCount.toLocaleString()}
-                  </span>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRoomClick(room.roomId);
+                    }}
+                    style={{
+                      padding: "4px 10px",
+                      borderRadius: 6,
+                      border: userRole === "PERFORMER" ? "1px solid #FFD700" : "1px solid #00FFFF",
+                      background: userRole === "PERFORMER" ? "rgba(255,215,0,0.2)" : "rgba(0,255,255,0.2)",
+                      color: userRole === "PERFORMER" ? "#FFD700" : "#00FFFF",
+                      fontSize: 8,
+                      fontWeight: 900,
+                      cursor: "pointer",
+                    }}
+                  >
+                    {userRole === "PERFORMER" ? "START BATTLE" : "TAKE SEAT"}
+                  </button>
                 </div>
-              </Link>
+              </div>
             ))}
           </div>
 
@@ -182,7 +214,7 @@ export default function PortableLobbyOverlay({ isOpen, onClose }: PortableLobbyO
                 cursor: "pointer",
               }}
             >
-              ← Return to Dashboard
+              ✕ Close Directory
             </button>
           </div>
         </motion.div>

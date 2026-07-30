@@ -7,7 +7,7 @@ const STALE_CLEANUP_MS = 5 * 60_000;
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { roomId, userId, userName, emoji, x, y, propTrigger, theme } = body;
+    const { roomId, userId, userName, emoji, x, y, propTrigger, theme, isSpeaking, hasCameraOn } = body;
 
     if (!roomId || !userId) {
       return NextResponse.json({ error: "Missing roomId or userId" }, { status: 400 });
@@ -27,6 +27,8 @@ export async function POST(req: Request) {
         y: typeof y === "number" ? y : 70,
         propTrigger: propTrigger ?? "none",
         activeTheme: theme ?? "MEDIA_LOUNGE",
+        isSpeaking: Boolean(isSpeaking),
+        hasCameraOn: Boolean(hasCameraOn),
       },
       update: {
         userName: userName ?? "Anonymous Fan",
@@ -35,6 +37,8 @@ export async function POST(req: Request) {
         y: typeof y === "number" ? y : 70,
         propTrigger: propTrigger ?? "none",
         activeTheme: theme ?? "MEDIA_LOUNGE",
+        isSpeaking: Boolean(isSpeaking),
+        hasCameraOn: Boolean(hasCameraOn),
         lastSeenAt: new Date(),
       },
     });
@@ -62,6 +66,8 @@ export async function POST(req: Request) {
       y: row.y,
       propTrigger: row.propTrigger,
       activeTheme: row.activeTheme,
+      isSpeaking: row.isSpeaking,
+      hasCameraOn: row.hasCameraOn,
     }));
 
     return NextResponse.json({

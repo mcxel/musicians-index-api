@@ -6,7 +6,7 @@ export class LobbyEnvironmentInteractionEngine {
     return state === 'FREE_ROAM' || state === 'PRE_SHOW' || state === 'POST_SHOW';
   }
 
-  static interactWith(toy: 'disco_ball' | 'dance_floor' | 'jukebox' | 'confetti' | 'camera', state: LobbyState): boolean {
+  static interactWith(toy: 'disco_ball' | 'dance_floor' | 'jukebox' | 'confetti' | 'camera' | 'popcorn_machine' | 'arcade_cabinet' | 'mic_stand', state: LobbyState): boolean {
     if (!this.canInteract(state)) return false;
     emitSystemEvent({ type: 'lobby.env.interaction', actor: 'user', message: `Lobby env interaction: ${toy} (${state})` });
     return true;

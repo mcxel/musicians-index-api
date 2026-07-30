@@ -1,7 +1,7 @@
 /**
  * Universal Ranking (MJ Rule) — public surface for Orbital Wheel + Home 1/1-2.
  */
-export { compareRank, sortByRank, isHumanActive, buildRankingSlots } from './compareRank';
+export { compareRank, sortByRank, isHumanActive } from './compareRank';
 export type { RankComparable, RankKind } from './compareRank';
 
 export { rankingEvents } from './RankingEvents';

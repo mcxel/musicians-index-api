@@ -214,11 +214,11 @@ export default function CompetitionAudienceViewport({
                     leftPerformer={leftPerf}
                     rightPerformer={rightPerf}
                     round="Round 2 of 3"
-                    onVote={(pid) => {
+                    onVote={(pid: string) => {
                       if (pid === leftPerf.id) {
-                        setLeftPerf((p) => ({ ...p, score: p.score + 50 }));
+                        setLeftPerf((p: Performer) => ({ ...p, score: p.score + 50 }));
                       } else {
-                        setRightPerf((p) => ({ ...p, score: p.score + 50 }));
+                        setRightPerf((p: Performer) => ({ ...p, score: p.score + 50 }));
                       }
                       handleReaction("🔥");
                     }}

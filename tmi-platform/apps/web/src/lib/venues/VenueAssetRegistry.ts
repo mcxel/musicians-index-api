@@ -1,24 +1,21 @@
-/**
- * VenueAssetRegistry
- *
- * Single source of truth for every TMI room's canonical visual assets and
- * environment configuration. These are NOT decoration — they are the
- * art-direction blueprints that drove the reference videos in
- * public/assets/videos/rooms/.
- *
- * Ambient loops: every ambientVideoUrl points at an existing file under
- * /assets/videos/rooms/*.mp4 (NOT missing /assets/environments/*/background.mp4).
- * Fallbacks when no dedicated loop exists:
- *   concert / world-concert / mini-concert → monday-night-stage.mp4 (stage)
- *   release-party / world-release → world-dance-party.mp4 (party floor)
- *   mini-release / listening-party → lounge.mp4 (intimate room)
- * Phase 5B mesh / walkable VenueRuntime stays IDLE.
- *
- * Rule 8 (Registry First): pages and components read FROM here.
- * Rule 14 (No Empty Surface): every field has a fallback.
- * Rule 20 (Reality Rule): no fabricated asset paths — only real files.
- * Rule 21 (Venue Runtime Convergence): one runtime, venue type = mode.
- */
+// VenueAssetRegistry
+// Single source of truth for every TMI room's canonical visual assets and
+// environment configuration. These are NOT decoration — they are the
+// art-direction blueprints that drove the reference videos in
+// public/assets/videos/rooms/.
+//
+// Ambient loops: every ambientVideoUrl points at an existing file under
+// /assets/videos/rooms/ (NOT missing /assets/environments/ background files).
+// Fallbacks when no dedicated loop exists:
+//   concert / world-concert / mini-concert -> monday-night-stage.mp4 (stage)
+//   release-party / world-release -> world-dance-party.mp4 (party floor)
+//   mini-release / listening-party -> lounge.mp4 (intimate room)
+// Phase 5B mesh / walkable VenueRuntime stays IDLE.
+//
+// Rule 8 (Registry First): pages and components read FROM here.
+// Rule 14 (No Empty Surface): every field has a fallback.
+// Rule 20 (Reality Rule): no fabricated asset paths — only real files.
+// Rule 21 (Venue Runtime Convergence): one runtime, venue type = mode.
 
 export type VenueType =
   | "battle"

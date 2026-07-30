@@ -3,7 +3,7 @@
  * and Flight Deck bezel design tokens (Phase 3).
  */
 
-import { getVenueSkinById, getDefaultVenueSkin } from "@/registries/venues/VenueSkinRegistry";
+import { getVenueSkinById, getDefaultVenueSkin } from "../venues/VenueSkinRegistry";
 import { THEMES as COMPETITION_THEMES } from "@/lib/competition/ThemeRegistry";
 
 export interface EosThemeRef {

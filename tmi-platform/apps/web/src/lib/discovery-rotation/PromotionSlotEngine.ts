@@ -27,7 +27,7 @@ export interface PromoSlotResult {
 }
 
 // Paid boosts can only occupy sponsored-boost slots, not editorial/discovery
-const PROMO_ELIGIBLE_SLOTS: SlotType[] = ["sponsored-boost", "venue-promo"];
+export const PROMO_ELIGIBLE_SLOTS: SlotType[] = ["sponsored-boost", "venue-promo"];
 
 // Zone bias for paid boosts (slightly earlier for value)
 function resolveZone(
