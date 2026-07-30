@@ -335,6 +335,20 @@ Experience targets still deferred:
 - [x] Two-Deck Architecture: Live Channel Ticker divider; Intelligence Deck below fold; Admin Cam on-demand only
 - [x] Trust & Safety Runtime (`lib/trustSafety/`) + ScamDefenseCenter Intelligence client + Fan Lobby Quick Report loop (2026-07-29)
 - [x] **FREEZE:** no further Flight Deck / CanonOverseerShell shell refactors without architectural defect — slot Intelligence widgets only
+- [x] Ghost overlay cleanup (2026-07-29): `TMIVideoMonitor` + `VoiceDirector` root `return null` (no permanent float); nav `+ SUBMIT` removed; GO LIVE stays Launch Dock; Admin Cam stays Overseer 📷/gem → OverlayHost only — **do not restore floaters**
+
+### Marcel — switch to TMI-OS branch + hard refresh
+Git root is parent `BerntoutGlobal XXL` (not a nested `tmi-platform` repo). Package manager is **pnpm**.
+```bash
+cd "C:\Users\Admin\Documents\BerntoutGlobal XXL"
+git fetch origin
+git checkout eos/vocal-improv-clean
+git pull origin eos/vocal-improv-clean
+cd tmi-platform
+pnpm install
+pnpm --filter web dev
+```
+Then hard refresh the browser (Ctrl+Shift+R). Do **not** use bloated `main` for TMI-OS work.
 - [ ] Browser certify floating open/close + no monitor reflow
 - [ ] UnifiedInbox UI: replace hardcoded demo rows with `/api/admin/inbox` threads (ALIGN — Rule 20)
 - [ ] Overseer visual certify gold-filigree vs blueprint (ALIGN — later)

@@ -279,24 +279,7 @@ export default function TMIGlobalNav() {
           </button>
         )}
 
-        {/* ── Submit CTA ─────────────────────────────────────────────────── */}
-        <button
-          title="Submit Your Work"
-          onClick={() => router.push('/submit')}
-          style={{
-            padding:    '0 12px', height: 34, borderRadius: 20, flexShrink: 0,
-            border:     '1.5px solid #FF2DAA',
-            background: pathname.startsWith('/submit')
-              ? 'rgba(255,45,170,0.22)' : 'rgba(255,45,170,0.1)',
-            cursor:     'pointer', fontSize: 10, fontWeight: 900, color: '#FF2DAA',
-            letterSpacing: '0.06em', textTransform: 'uppercase',
-            display:    'flex', alignItems: 'center', gap: 3, whiteSpace: 'nowrap',
-            transition: 'all 0.2s',
-            marginLeft: 6,
-          }}
-        >
-          + SUBMIT
-        </button>
+
 
         {/* ── Logout (only when logged in) ───────────────────────────────── */}
         {isAuthenticated && (
