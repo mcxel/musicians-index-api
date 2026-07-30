@@ -1,9 +1,10 @@
 /**
  * RankingOccupancyEngine — manages ranking seat occupancy (bot vs human).
  *
- * A RankingSeat describes who holds a given rank position in a category.
- * When isProvisional=true, a bot holds the seat and can be displaced by
- * any real user whose XP exceeds the bot's humanTakeoverThreshold (Rule 3).
+ * MJ Rule (Human-over-Bot): humans with points > 0 ALWAYS rank above bots,
+ * then points desc, then earliest scoreReachedAt — see compareRank.ts.
+ * Legacy resolveSeat still supports per-seat bot placeholders; prefer
+ * resolveTopSeatsMj / UniversalRankingSnapshot for Orbital + Home sync.
  *
  * This is a read/compute layer. The canonical data lives in:
  *   - BotAccountRegistry  (bot accounts)
@@ -13,10 +14,11 @@
 
 import {
   getBotForSeat,
+  getActiveBots,
   displaceBotFromSeat,
   type BotAccount,
-  type BotTier,
 } from './BotAccountRegistry';
+import { sortByRank, type RankKind } from '@/lib/rankings/compareRank';
 
 export type TierName = 'FREE' | 'PRO' | 'RUBY' | 'SILVER' | 'GOLD' | 'PLATINUM' | 'DIAMOND';
 
@@ -125,6 +127,7 @@ export function resolveSeat(
 /**
  * Resolves the top-N seats for a category.
  * Pass the full ranked performer list (highest XP first).
+ * @deprecated Prefer resolveTopSeatsMj (Human-over-Bot / MJ Rule).
  */
 export function resolveTopSeats(
   category: string,
@@ -134,6 +137,62 @@ export function resolveTopSeats(
   return Array.from({ length: count }, (_, i) =>
     resolveSeat(category, i + 1, humanPerformers)
   );
+}
+
+/**
+ * MJ Rule Top-N: active humans (points > 0) fill first, then bots fill remaining.
+ * Any human with 1 point outranks every bot regardless of provisionalScore.
+ */
+export function resolveTopSeatsMj(
+  category: string,
+  count: number,
+  humanPerformers: Parameters<typeof resolveSeat>[2],
+): RankingSeat[] {
+  type SeatCandidate = {
+    profileId: string;
+    kind: RankKind;
+    points: number;
+    scoreReachedAt: number;
+    entity: RankedEntity;
+  };
+
+  const humans: SeatCandidate[] = humanPerformers
+    .filter((h) => h.xp > 0)
+    .map((h, index) => ({
+      profileId: h.id,
+      kind: 'human' as RankKind,
+      points: h.xp,
+      scoreReachedAt: index,
+      entity: {
+        type: 'HUMAN' as const,
+        id: h.id,
+        displayName: h.displayName,
+        score: h.xp,
+        tier: h.tier,
+        profileRoute: h.profileRoute ?? `/performers/${h.id}`,
+        avatarUrl: h.avatarUrl,
+        genres: h.genres ?? [],
+      },
+    }));
+
+  const bots: SeatCandidate[] = getActiveBots()
+    .filter((b) => category === 'overall' || b.assignments.some((a) => a.category === category))
+    .map((b) => ({
+      profileId: b.id,
+      kind: 'bot' as RankKind,
+      points: b.provisionalScore,
+      scoreReachedAt: Date.parse(b.createdAt) || Number.MAX_SAFE_INTEGER,
+      entity: botToEntity(b),
+    }));
+
+  return sortByRank([...humans, ...bots])
+    .slice(0, count)
+    .map((entry, i) => ({
+      category,
+      position: i + 1,
+      occupant: entry.entity,
+      isProvisional: entry.kind === 'bot',
+    }));
 }
 
 /** All ranking categories the engine recognises */

@@ -1,10 +1,14 @@
 'use client';
-import { useMemo } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import TmiBadgeOverlay from '@/components/overlays/TmiBadgeOverlay';
 import { getCrownRankRuntime, type CrownRankRuntimeEntry } from '@/lib/home/CrownRankRuntime';
 import { ImageSlotWrapper } from '@/components/visual-enforcement';
+import {
+  publishUniversalRankingSnapshot,
+  subscribeUniversalRanking,
+} from '@/lib/rankings/UniversalRankingSnapshot';
 
 function AvatarCard({ image, color }: { image: string; color: string }) {
   return (
@@ -97,7 +101,15 @@ function SpreadColumn({ title, icon, accentColor, items, chartRoute }: { title: 
 }
 
 export default function Home1Top10DoubleSpreaded() {
-  const ranks = useMemo(() => getCrownRankRuntime(10), []);
+  const [ranks, setRanks] = useState<CrownRankRuntimeEntry[]>(() => getCrownRankRuntime(10));
+
+  useEffect(() => {
+    publishUniversalRankingSnapshot(undefined, 12);
+    return subscribeUniversalRanking(() => {
+      setRanks(getCrownRankRuntime(10));
+    });
+  }, []);
+
   const frontHalf = ranks.slice(0, 5);
   const backHalf = ranks.slice(5, 10);
 

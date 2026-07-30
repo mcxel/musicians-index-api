@@ -1,10 +1,14 @@
 'use client';
 
 import React, { memo, useEffect, useState } from 'react';
-import MediaFallbackResolver from '@/components/media/MediaFallbackResolver';
 import MotionPhotoPreview from '@/components/media/MotionPhotoPreview';
 import Link from 'next/link';
-import { PERFORMER_REGISTRY, isRankedEligible } from '@/lib/performers/PerformerRegistry';
+import {
+  ORBITAL_TOP_N,
+  publishUniversalRankingSnapshot,
+  subscribeUniversalRanking,
+  type RankSlot,
+} from '@/lib/rankings/UniversalRankingSnapshot';
 
 interface OrbitalNode {
   id: string;
@@ -16,6 +20,7 @@ interface OrbitalNode {
   motionUrl?: string;
   isLive: boolean;
   color: string;
+  profileRoute: string;
 }
 
 const ACCENT_COLORS = ['#FF2DAA', '#FFD700', '#00FF88', '#00E5FF', '#9B59B6', '#FF8C00', '#E63000', '#FFD700', '#00E5FF', '#FF2DAA'];
@@ -28,9 +33,24 @@ const GPU_LAYER: React.CSSProperties = {
 };
 
 // ─── OrbitalNodeCard ─────────────────────────────────────────────────────────
+function slotToNode(slot: RankSlot, index: number): OrbitalNode {
+  return {
+    id: slot.profileId,
+    slug: slot.slug,
+    rank: slot.rank,
+    name: slot.displayName,
+    genre: slot.genre ?? (slot.kind === 'bot' ? 'Bot Seat' : 'All Genres'),
+    imageUrl: slot.avatarUrl || `https://i.pravatar.cc/200?u=${slot.slug}`,
+    motionUrl: slot.motionUrl,
+    isLive: Boolean(slot.isLive),
+    color: ACCENT_COLORS[index % ACCENT_COLORS.length]!,
+    profileRoute: slot.profileRoute,
+  };
+}
+
 const OrbitalNodeCard = memo(function OrbitalNodeCard({ node }: { node: OrbitalNode }) {
   return (
-    <Link href={`/profile/performer/${node.slug}`} style={{ textDecoration: 'none' }}>
+    <Link href={node.profileRoute} style={{ textDecoration: 'none' }}>
       <div
         style={{
           background: 'rgba(5,8,21,0.95)',
@@ -87,34 +107,18 @@ export default memo(function OrbitalWheel() {
   const [crownLeader, setCrownLeader] = useState<OrbitalNode | null>(null);
 
   useEffect(() => {
-    // ── Participant-Driven Orbital Registry Sorting ──
-    // 1. Live performers currently streaming online
-    // 2. Real humans and registered performers (sorted by rank/XP)
-    // 3. Bot Fleet entries to fill remaining slots (wheel is never empty)
-    const sortedPerformers = [...PERFORMER_REGISTRY].sort((a, b) => {
-      if (a.isLive && !b.isLive) return -1;
-      if (!a.isLive && b.isLive) return 1;
-      return (a.rank || 99) - (b.rank || 99);
+    // Universal Ranking snapshot — MJ Rule human-over-bot, Top 12
+    publishUniversalRankingSnapshot(undefined, ORBITAL_TOP_N);
+    return subscribeUniversalRanking((snap) => {
+      const mapped = snap.slots.slice(0, ORBITAL_TOP_N).map(slotToNode);
+      if (mapped.length === 0) {
+        setNodes([]);
+        setCrownLeader(null);
+        return;
+      }
+      setNodes(mapped);
+      setCrownLeader(mapped[0] ?? null);
     });
-
-    const activePerformers = sortedPerformers.filter((p) => isRankedEligible(p)).slice(0, 10);
-    const mappedNodes: OrbitalNode[] = activePerformers.map((p, i) => ({
-      id: p.id,
-      slug: p.slug,
-      rank: p.rank || i + 1,
-      name: p.name,
-      genre: p.category || 'Hip-Hop',
-      imageUrl: p.profileImageUrl || `https://i.pravatar.cc/200?u=${p.slug}`,
-      isLive: Boolean(p.isLive),
-      color: ACCENT_COLORS[i % ACCENT_COLORS.length]!,
-    }));
-
-    if (mappedNodes.length > 0) {
-      // Top rank gets crown leader status
-      const leader = mappedNodes.reduce((prev, curr) => (curr.rank < prev.rank ? curr : prev), mappedNodes[0]!);
-      setCrownLeader(leader);
-      setNodes(mappedNodes);
-    }
   }, []);
 
   if (!nodes.length || !crownLeader) return null;
@@ -163,7 +167,7 @@ export default memo(function OrbitalWheel() {
           👑 WEEKLY CROWN ORBIT
         </div>
         <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.15em', marginTop: 4 }}>
-          TOP RANKED · CANONICAL REGISTRY · REAL TIME
+          TOP {ORBITAL_TOP_N} · HUMAN-OVER-BOT · LIVE SNAPSHOT
         </div>
       </div>
 
@@ -214,7 +218,7 @@ export default memo(function OrbitalWheel() {
       </div>
 
       {/* #1 Crown Leader Center Hub — Grow & Glow Effect */}
-      <Link href={`/profile/performer/${crownLeader.slug}`} style={{ textDecoration: 'none', position: 'relative', zIndex: 15 }}>
+      <Link href={crownLeader.profileRoute} style={{ textDecoration: 'none', position: 'relative', zIndex: 15 }}>
         <div style={{
           width: CENTER_SIZE,
           height: CENTER_SIZE,

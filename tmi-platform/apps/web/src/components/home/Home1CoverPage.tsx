@@ -41,6 +41,7 @@ import { onSessionsChanged, getActiveSessions, type LiveSession } from '@/lib/br
 import {
   getOrbitalTopSlots,
   publishUniversalRankingSnapshot,
+  subscribeUniversalRanking,
 } from '@/lib/rankings/UniversalRankingSnapshot';
 
 // ─── Genre + performer data (10 per genre) ────────────────────────────────────
@@ -773,7 +774,11 @@ export default function Home1CoverPage() {
   // UNIFICATION: Replace static GENRE_DATA with live data from PerformerRegistry
   const [performers, setPerformers] = useState<Performer[]>(() => buildOrbitPerformers(GENRE_KEYS[0]!));
   useEffect(() => {
+    publishUniversalRankingSnapshot(undefined, 12);
     setPerformers(buildOrbitPerformers(genreKey));
+    return subscribeUniversalRanking(() => {
+      setPerformers(buildOrbitPerformers(genreKey));
+    }, { emitCurrent: false });
   }, [genreKey]);
 
   useEffect(() => {
