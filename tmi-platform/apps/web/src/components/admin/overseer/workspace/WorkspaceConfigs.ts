@@ -17,7 +17,7 @@ export const WORKSPACE_CONFIGS: Record<WorkspaceDefinition["key"], WorkspaceDefi
     center: [
       {
         id: "live-feed-router",
-        title: "MEDIA MATRIX ENGINE · CENTER STAGE",
+        title: "TV SCREEN ROUTER · BOARDROOM LIVE",
         widget: "media-matrix",
         accent: "#00FFFF",
         flex: 1,

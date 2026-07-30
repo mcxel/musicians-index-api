@@ -3,13 +3,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
-import CanonOverseerShell, { type ShellPanel, type ShellWorkspaceDefinition } from "@/components/admin/CanonOverseerShell";
+import OverseerFlightDeck, {
+  type ShellPanel,
+  type ShellWorkspaceDefinition,
+} from "@/components/admin/OverseerFlightDeck";
 import { WORKSPACE_CONFIGS } from "./WorkspaceConfigs";
 import { filterWorkspaceByPermissions, listPermissions } from "./WorkspacePermissions";
 import type { WorkspacePanelConfig, WorkspaceRole } from "./WorkspaceSchema";
 import { getWorkspaceWidgetComponent } from "./WorkspaceWidgetRegistry";
-
-const ROLE_ORDER: WorkspaceRole[] = ["marcel", "bigace", "jaypaul", "justin", "michaelcharlie", "legal"];
 
 const toShellPanels = (panels: WorkspacePanelConfig[]): ShellPanel[] =>
   panels.map((panel) => {
@@ -41,22 +42,23 @@ export default function WorkspaceManager() {
     }
   }, [workspaceParam, activeRole]);
 
-  const setRoleAndPersist = (role: WorkspaceRole) => {
-    setActiveRole(role);
-    const next = new URLSearchParams(searchParams?.toString() ?? "");
-    next.set("workspace", role);
-    router.replace(`${pathname}?${next.toString()}`, { scroll: false });
-  };
+  // Keep URL in sync when landing without ?workspace=
+  useEffect(() => {
+    if (!workspaceParam) {
+      const next = new URLSearchParams(searchParams?.toString() ?? "");
+      next.set("workspace", activeRole);
+      router.replace(`${pathname}?${next.toString()}`, { scroll: false });
+    }
+    // intentionally only when workspaceParam missing on mount/change
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workspaceParam]);
 
   const activeWorkspace = useMemo(() => {
     const raw = WORKSPACE_CONFIGS[activeRole];
     const filtered = filterWorkspaceByPermissions(raw, activeRole);
 
-    // Compact single-line ribbon — the title already appears in the "Admin OS"
-    // status bar above the shell, so this only needs to add the subtitle and
-    // permission badges, not repeat the title at full size.
     const roleBadges = (
-      <div style={{ display: "flex", flexWrap: "nowrap", overflowX: "auto", gap: 5 }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
         {listPermissions(activeRole).map((permission) => (
           <span
             key={permission}
@@ -71,7 +73,6 @@ export default function WorkspaceManager() {
               letterSpacing: "0.05em",
               background: "rgba(0,255,255,0.07)",
               whiteSpace: "nowrap",
-              flexShrink: 0,
             }}
           >
             {permission}
@@ -83,9 +84,32 @@ export default function WorkspaceManager() {
     const shellWorkspace: ShellWorkspaceDefinition = {
       title: filtered.title,
       ribbon: (
-        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 10px", flexWrap: "wrap" }}>
-          <div style={{ color: "rgba(255,255,255,0.65)", fontSize: 10, whiteSpace: "nowrap" }}>{filtered.subtitle}</div>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            padding: "6px 10px",
+            flexWrap: "wrap",
+          }}
+        >
+          <div style={{ color: "rgba(255,255,255,0.65)", fontSize: 10 }}>{filtered.subtitle}</div>
           {roleBadges}
+          <span
+            style={{
+              marginLeft: "auto",
+              fontSize: 9,
+              fontWeight: 800,
+              letterSpacing: "0.1em",
+              textTransform: "uppercase",
+              color: "#FFD700",
+              border: "1px solid rgba(255,215,0,0.35)",
+              borderRadius: 999,
+              padding: "3px 10px",
+            }}
+          >
+            Workspace: {filtered.label} · switch via Admin Concierge
+          </span>
         </div>
       ),
       leftRail: toShellPanels(filtered.leftRail),
@@ -109,49 +133,8 @@ export default function WorkspaceManager() {
         background: "#05020a",
       }}
     >
-      <div
-        style={{
-          display: "flex",
-          gap: 6,
-          padding: "6px 10px",
-          borderBottom: "1px solid rgba(255,215,0,0.25)",
-          background: "linear-gradient(180deg, rgba(22,12,18,0.96), rgba(10,6,12,0.96))",
-          flexWrap: "wrap",
-          position: "sticky",
-          top: 0,
-          zIndex: 30,
-        }}
-      >
-        {ROLE_ORDER.map((role) => {
-          const isActive = role === activeRole;
-          const label = WORKSPACE_CONFIGS[role].label;
-          return (
-            <button
-              key={role}
-              type="button"
-              onClick={() => setRoleAndPersist(role)}
-              style={{
-                borderRadius: 999,
-                border: isActive ? "1px solid rgba(255,215,0,0.85)" : "1px solid rgba(255,255,255,0.16)",
-                background: isActive
-                  ? "linear-gradient(180deg, rgba(255,215,0,0.86), rgba(201,129,20,0.9))"
-                  : "linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.03))",
-                color: isActive ? "#170b04" : "rgba(255,255,255,0.82)",
-                fontSize: 11,
-                fontWeight: 900,
-                textTransform: "uppercase",
-                letterSpacing: "0.1em",
-                padding: "6px 12px",
-                cursor: "pointer",
-              }}
-            >
-              {label}
-            </button>
-          );
-        })}
-      </div>
-
-      <CanonOverseerShell workspace={activeWorkspace} />
+      {/* Role pills removed from top — use Admin Concierge → Workspaces */}
+      <OverseerFlightDeck workspace={activeWorkspace} />
     </div>
   );
 }

@@ -20,10 +20,9 @@
  * Ops height = MonitorStack content only. Never shrink monitors for analytics.
  * Admin Cam: never permanent DOM — mount on Camera button / center gem only.
  *
- * FREEZE (2026-07-29): No further Flight Deck / CanonOverseerShell / LayoutRuntime
- * / IntelligenceSection / Two-Deck Overseer shell refactors without an architectural
- * defect. Slot new Intelligence widgets (e.g. ScamDefenseCenter) via WorkspaceConfigs
- * bottom panels only — do not redesign monitor/ticker chrome.
+ * SUPERSEDED FREEZE (2026-07-29 evening): Marcel mandated ground-up rebuild —
+ * OverseerFlightDeck owns layout; congested top Admin Quick Switch → AdminConciergePanel.
+ * Prior CanonOverseerShell patch attempts superseded. Do not restore the oval top bar.
  * ═══════════════════════════════════════════════════════════════════════════
  *
  * Flight Deck / Overseer contributors (durable credit — no fake UI portraits):
@@ -74,17 +73,25 @@ export const OVERSEER_BLUEPRINT_SLOTS: OverseerBlueprintSlot[] = [
     id: "top-brand",
     blueprintLabel: "BerntttGlobal + OVERSEER DECK + LIVE",
     zone: "top",
-    codeTarget: "components/admin/CanonOverseerShell.tsx",
-    status: "ALIGN",
-    note: "Two-Deck shell: ops = dual stacked 16:9; intelligence below Live Channel Ticker. Never hardcode LIVE viewer vanity.",
+    codeTarget: "components/admin/OverseerFlightDeck.tsx (CanonOverseerShell re-exports)",
+    status: "KEEP",
+    note: "Two-Deck shell: ops = dual stacked 16:9; intelligence below Live Channel Ticker. Minimal header brand+LIVE only. Never hardcode LIVE viewer vanity.",
+  },
+  {
+    id: "admin-concierge",
+    blueprintLabel: "Admin Concierge (searchable destinations — replaces top oval switcher)",
+    zone: "footer",
+    codeTarget: "components/admin/AdminConciergePanel.tsx + AdminConciergeDestinations.ts",
+    status: "KEEP",
+    note: "Opened from ADMIN dock / header button. Former Admin Quick Switch hrefs live here.",
   },
   {
     id: "top-quick-dock",
     blueprintLabel: "Alerts / Chain Pulse / Start Meeting / Summon / Approve Queue",
     zone: "top",
     codeTarget: "components/admin/overseer/HQDock.tsx + LaunchControlPanel.tsx",
-    status: "ALIGN",
-    note: "Dock pieces exist; wire real alert/queue counts or honest empty.",
+    status: "DEFER",
+    note: "Removed from Flight Deck header congestion. Wire real alert/queue counts into Concierge or HQDock later — never fake badges.",
   },
   {
     id: "ops-left-chain-command",

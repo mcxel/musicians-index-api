@@ -315,9 +315,9 @@ Experience targets still deferred:
    Floating glass neon panels (Inventory FAN-only / Venue Concierge PERFORMER / Memory Wall) — **no layout reflow**.
 2. **Observation / Overseer Deck** — ornate gold-filigree OVERSEER DECK / BerntttGlobal  
    Asset: `public/assets/blueprints/tmi_overseer_deck_north_star.png`  
-   Route: `/admin/overseer` (`WorkspaceManager` → `CanonOverseerShell`)  
+   Route: `/admin/overseer` (`WorkspaceManager` → `OverseerFlightDeck`; `CanonOverseerShell` re-exports)  
    Slot ledger: `lib/admin/OverseerDeckBlueprintMap.ts` (KEEP / ALIGN / DEFER)  
-   **Do not rebuild Overseer chrome in Pass 8** — align dual equal center monitors + document gaps.
+   **Ground-up rebuild (2026-07-29):** dual stacked 16:9 monitors first; top Admin Quick Switch oval bar killed → `AdminConciergePanel`. Old CanonOverseerShell patch attempts superseded.
 
 #### Dual equal monitors (hard UI law)
 - Live HUD: `MonitorSatelliteSystem` defaults to `SPLIT_VIEW` with `gridTemplateColumns: 1fr 1fr` + matching `aspectRatio: 16/9` on MONITOR A + B (`data-equal-dual-monitors`).
@@ -334,8 +334,9 @@ Experience targets still deferred:
 - [x] Overseer layout: remove vh lock; dual stacked 16:9 monitors define page height; analytics below fold
 - [x] Two-Deck Architecture: Live Channel Ticker divider; Intelligence Deck below fold; Admin Cam on-demand only
 - [x] Trust & Safety Runtime (`lib/trustSafety/`) + ScamDefenseCenter Intelligence client + Fan Lobby Quick Report loop (2026-07-29)
-- [x] **FREEZE:** no further Flight Deck / CanonOverseerShell shell refactors without architectural defect — slot Intelligence widgets only
+- [x] **SUPERSEDED FREEZE → ground-up OverseerFlightDeck** (2026-07-29 Marcel): dual 16:9 foundation; kill top oval Admin Quick Switch; Admin Concierge searchable grid; page scrolls; Intelligence below ticker. Do not restore the 18-oval top bar.
 - [x] Ghost overlay cleanup (2026-07-29): `TMIVideoMonitor` + `VoiceDirector` root `return null` (no permanent float); nav `+ SUBMIT` removed; GO LIVE stays Launch Dock; Admin Cam stays Overseer 📷/gem → OverlayHost only — **do not restore floaters**
+- [ ] Browser certify `/admin/overseer` hard refresh: dual 16:9 bezels dominate; no top oval bar; Concierge opens from ADMIN; analytics below ticker
 
 ### Marcel — switch to TMI-OS branch + hard refresh
 Git root is parent `BerntoutGlobal XXL` (not a nested `tmi-platform` repo). Package manager is **pnpm**.
