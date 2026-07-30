@@ -3,7 +3,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { useLobbyPresenceSync, type LobbyParticipant } from "@/lib/lobby/useLobbyPresenceSync";
+import {
+  getFanLobbyPresence,
+  useLobbyPresenceSync,
+  type LobbyParticipant,
+} from "@/lib/lobby/useLobbyPresenceSync";
 import { useLocalMicLevel } from "@/lib/lobby/useLocalMicLevel";
 import { LobbyFreeRoamAvatars } from "@/components/lobbies/LobbyFreeRoamAvatars";
 import { LobbyEnvironmentToys } from "@/components/lobbies/LobbyEnvironmentToys";
@@ -63,6 +67,11 @@ interface FanLobbyVenueProps {
  * Not a 3D bobblehead engine / AvatarSeatUI grid (Rule 18/20).
  * Sit snaps to SeatAnchor; Stand frees seat; floor-tap walks (mix seated + roam).
  * Local cam bubble real; peer WebRTC Phase B.
+ *
+ * Phase A.5 Presence Certification: authoritative participant shape is
+ * FanLobbyPresence (via useLobbyPresenceSync + getFanLobbyPresence).
+ * Phase B binds media (head panels / SFU tracks) TO this presence — never
+ * the reverse (do not invent presence from WebRTC).
  */
 export default function FanLobbyVenue({
   roomId = "fan-lobby",
@@ -96,7 +105,14 @@ export default function FanLobbyVenue({
   const dressing = getFanLobbySkinDressing(skinId);
   const skinLabel = getFanLobbySkinCanon(skinId)?.label ?? "Fan Lobby";
   const { isSpeaking } = useLocalMicLevel(micEnabled);
-  const sync = useLobbyPresenceSync({ roomId, userId, userName, emoji, theme: skinId });
+  const sync = useLobbyPresenceSync({
+    roomId,
+    venueId: roomId,
+    userId,
+    userName,
+    emoji,
+    theme: skinId,
+  });
 
   const occupied = useMemo(
     () => occupiedSeatIds(sync.participants),
@@ -106,6 +122,10 @@ export default function FanLobbyVenue({
   useEffect(() => {
     sync.setIsSpeaking(isSpeaking);
   }, [isSpeaking, sync]);
+
+  useEffect(() => {
+    sync.setMicEnabled(micEnabled);
+  }, [micEnabled, sync]);
 
   useEffect(() => {
     setHiddenIds(new Set([...getBlockedUserIds(), ...getMutedUserIds()]));
@@ -234,20 +254,35 @@ export default function FanLobbyVenue({
 
   const openReport = useCallback(
     (p: LobbyParticipant) => {
+      // Thin accessor — same certified snapshot sync publishes (no parallel machine).
+      const certified = getFanLobbyPresence(p.userId) ?? p;
       setReportTarget({
-        accusedId: p.userId,
-        accusedLabel: p.userName,
+        accusedId: certified.userId,
+        accusedLabel: certified.userName,
         surface: "fan_lobby",
         roomId,
         contentSnapshot: JSON.stringify({
-          presence: { userId: p.userId, userName: p.userName, emoji: p.emoji, x: p.x, y: p.y },
-          roomId,
+          presence: {
+            venueId: certified.venueId,
+            roomId: certified.roomId,
+            userId: certified.userId,
+            avatarId: certified.avatarId,
+            seatAnchorId: certified.seatAnchorId,
+            navigationState: certified.navigationState,
+            conversationGroupId: certified.conversationGroupId,
+            micEnabled: certified.micEnabled,
+            cameraEnabled: certified.cameraEnabled,
+            isSpeaking: certified.isSpeaking,
+            activeSpeaker: certified.activeSpeaker,
+            x: certified.x,
+            y: certified.y,
+          },
           at: new Date().toISOString(),
         }),
         presenceSnapshot: {
           roomId,
           reporterLocalId: userId,
-          accused: p,
+          accused: certified,
           peers: sync.participants.map((x) => ({ userId: x.userId, userName: x.userName })),
         },
         // Fan Lobby has no chat transport yet — honest empty; checkbox still offered.
@@ -414,7 +449,9 @@ export default function FanLobbyVenue({
             frameGlowColor: selfFrame.glowColor,
             isSeated: sync.isSeated,
             seatId: sync.seatId,
+            seatAnchorId: sync.seatAnchorId,
             locomotion: sync.locomotion,
+            navigationState: sync.navigationState,
           }}
           participants={sync.participants}
           seats={dressing.seats}

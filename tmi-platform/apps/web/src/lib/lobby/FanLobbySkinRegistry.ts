@@ -235,6 +235,13 @@ export interface SeatAnchor {
   facing: SeatAnchorFacing;
   /** open = claimable; reserved = decor-only (not assignable) */
   state: "open" | "reserved";
+  /**
+   * Skin-layout conversation cluster id (Phase A.5).
+   * When seated, presence.conversationGroupId inherits this; standing → null.
+   */
+  conversationGroupId?: string;
+  /** Floor hit-test radius in % of venue width/height (data only until consumers use it). */
+  interactionRadius?: number;
 }
 
 /** Default cineplex conversation circle — 8 chairs around center. */
@@ -249,7 +256,13 @@ export function conversationCircleSeats(prefix = "chair"): SeatAnchor[] {
     { id: `${prefix}-7`, xPct: 32, yPct: 56, facing: "E" },
     { id: `${prefix}-8`, xPct: 38, yPct: 46, facing: "SE" },
   ];
-  return ring.map((s) => ({ ...s, state: "open" as const }));
+  const conversationGroupId = `${prefix}-circle`;
+  return ring.map((s) => ({
+    ...s,
+    state: "open" as const,
+    conversationGroupId,
+    interactionRadius: 7,
+  }));
 }
 
 /**

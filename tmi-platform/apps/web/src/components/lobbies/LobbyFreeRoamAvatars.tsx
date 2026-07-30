@@ -3,9 +3,9 @@
 import React, { useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { LobbyPropEffectLayer } from "./LobbyPropEffectLayer";
-import type { LobbyParticipant } from "@/lib/lobby/useLobbyPresenceSync";
+import type { LobbyParticipant } from "@/lib/lobby/FanLobbyPresence";
 import type { SeatAnchor } from "@/lib/lobby/FanLobbySkinRegistry";
-import type { LobbyAvatarLocomotion } from "@/lib/lobby/FanLobbySeatAssigner";
+import type { FanLobbyNavigationState } from "@/lib/lobby/FanLobbyPresence";
 
 interface SelfAvatar {
   userId: string;
@@ -20,7 +20,9 @@ interface SelfAvatar {
   frameGlowColor?: string;
   isSeated?: boolean;
   seatId?: string | null;
-  locomotion?: LobbyAvatarLocomotion;
+  seatAnchorId?: string | null;
+  locomotion?: FanLobbyNavigationState;
+  navigationState?: FanLobbyNavigationState;
 }
 
 interface LobbyFreeRoamAvatarsProps {
@@ -64,9 +66,12 @@ export function LobbyFreeRoamAvatars({
 
   const visible = participants.filter((p) => !hiddenUserIds?.has(p.userId));
   const occupied = occupiedSeatIds ?? new Set(
-    visible.filter((p) => p.isSeated && p.seatId).map((p) => p.seatId!),
+    visible
+      .filter((p) => p.isSeated && (p.seatAnchorId ?? p.seatId))
+      .map((p) => (p.seatAnchorId ?? p.seatId)!),
   );
-  if (self.isSeated && self.seatId) occupied.add(self.seatId);
+  const selfSeat = self.seatAnchorId ?? self.seatId;
+  if (self.isSeated && selfSeat) occupied.add(selfSeat);
 
   return (
     <div
@@ -77,7 +82,7 @@ export function LobbyFreeRoamAvatars({
     >
       {seats.map((seat) => {
         const taken = occupied.has(seat.id);
-        const mine = self.seatId === seat.id && self.isSeated;
+        const mine = selfSeat === seat.id && self.isSeated;
         return (
           <button
             key={seat.id}
@@ -129,9 +134,9 @@ export function LobbyFreeRoamAvatars({
           emoji={p.emoji}
           name={p.userName}
           isSpeaking={p.isSpeaking}
-          hasCameraOn={p.hasCameraOn}
+          hasCameraOn={p.cameraEnabled ?? p.hasCameraOn}
           isSeated={p.isSeated}
-          locomotion={p.locomotion}
+          locomotion={p.navigationState ?? p.locomotion}
           onSelect={onAvatarSelect ? () => onAvatarSelect(p) : undefined}
         />
       ))}
@@ -146,7 +151,7 @@ export function LobbyFreeRoamAvatars({
         localStream={self.localStream}
         frameGlowColor={self.frameGlowColor}
         isSeated={self.isSeated}
-        locomotion={self.locomotion}
+        locomotion={self.navigationState ?? self.locomotion}
         isSelf
       />
 
@@ -182,7 +187,7 @@ function AvatarBubble({
   frameGlowColor?: string;
   isSelf?: boolean;
   isSeated?: boolean;
-  locomotion?: LobbyAvatarLocomotion;
+  locomotion?: FanLobbyNavigationState;
   onSelect?: () => void;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
