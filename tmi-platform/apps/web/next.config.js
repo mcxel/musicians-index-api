@@ -36,6 +36,12 @@ const nextConfig = {
         tls: false,
         child_process: false,
         crypto: false,
+        "util/types": false,
+        util: false,
+        stream: false,
+        buffer: false,
+        events: false,
+        string_decoder: false,
       };
     }
 
