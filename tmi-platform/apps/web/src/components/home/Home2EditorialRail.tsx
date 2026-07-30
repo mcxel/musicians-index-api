@@ -3,42 +3,38 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import TripleImageCarousel from '@/lib/media/TripleImageCarousel';
 import { MAGAZINE_ISSUE_1 } from '@/lib/magazine/magazineIssueData';
+import { resolveCategoryBoardImages } from '@/lib/magazine/resolveArticleEditorialImage';
 
 interface Home2EditorialRailProps {
   title?: string;
   accentColor?: string;
 }
 
-const CATEGORY_META: Record<string, { icon: string; href: string; color: string }> = {
-  feature:   { icon: '📰', href: '/articles?category=feature',   color: '#00FFFF' },
-  interview: { icon: '🎤', href: '/articles?category=interview', color: '#FF2DAA' },
-  editorial: { icon: '✍️', href: '/articles?category=editorial', color: '#FFD700' },
-  review:    { icon: '⭐', href: '/articles?category=review',    color: '#AA2DFF' },
-  news:      { icon: '📡', href: '/articles?category=news',      color: '#00FF88' },
+const CATEGORY_META: Record<string, { icon: string; href: string; color: string; label: string }> = {
+  feature:   { icon: '📰', href: '/articles?category=feature',   color: '#00FFFF', label: 'Features' },
+  interview: { icon: '🎤', href: '/articles?category=interview', color: '#FF2DAA', label: 'Interviews' },
+  editorial: { icon: '✍️', href: '/articles?category=editorial', color: '#FFD700', label: 'Editorial' },
+  review:    { icon: '⭐', href: '/articles?category=review',    color: '#AA2DFF', label: 'Reviews' },
+  news:      { icon: '📡', href: '/articles?category=news',      color: '#00FF88', label: 'News' },
 };
 
-// Build real editorial boards from magazine data — one card per category that has articles
+// Real editorial boards — distinct images per category (no shared blueprint carousel)
 const REAL_BOARDS = Object.entries(CATEGORY_META)
   .map(([cat, meta]) => {
     const articles = MAGAZINE_ISSUE_1.filter((a) => a.category === cat);
     const latest = articles[0];
     return {
       slug: cat,
-      title: cat.charAt(0).toUpperCase() + cat.slice(1) + (cat === 'editorial' ? '' : cat === 'news' ? '' : 's'),
+      title: meta.label,
       subtitle: latest ? latest.title : null,
       icon: meta.icon,
       href: latest ? `/magazine/article/${latest.slug}` : meta.href,
       color: meta.color,
       count: articles.length,
+      images: resolveCategoryBoardImages(articles),
     };
   })
   .filter((b) => b.count > 0);
-
-const CAROUSEL_IMAGES = [
-  '/tmi-curated/mag-35.jpg',
-  '/tmi-curated/mag-42.jpg',
-  '/tmi-curated/mag-50.jpg',
-];
 
 export default function Home2EditorialRail({
   title = 'EDITORIAL BOARDS',
@@ -72,7 +68,13 @@ export default function Home2EditorialRail({
               style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: 16, textDecoration: 'none', color: 'inherit' }}
             >
               <div style={{ borderRadius: 10, overflow: 'hidden', border: `1px solid ${board.color}25` }}>
-                <TripleImageCarousel images={CAROUSEL_IMAGES} intervalMs={4000} borderColor={board.color} />
+                {board.images.length > 0 ? (
+                  <TripleImageCarousel images={board.images} intervalMs={4000} borderColor={board.color} />
+                ) : (
+                  <div style={{ height: 124, display: 'grid', placeItems: 'center', color: 'rgba(255,255,255,0.4)', fontSize: 11 }}>
+                    No media available
+                  </div>
+                )}
               </div>
 
               <div

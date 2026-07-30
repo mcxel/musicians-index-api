@@ -4,5 +4,6 @@ export * from "./DiscoveryPublisher";
 export * from "./discoveryVisibility";
 export * from "./InstantJoinRuntime";
 export * from "./liveDiscoveryOverlayStore";
+export * from "./MagazineDiscoveryBus";
 export * from "./useDiscoveryBus";
 export * from "./homepageDiscoveryFilters";

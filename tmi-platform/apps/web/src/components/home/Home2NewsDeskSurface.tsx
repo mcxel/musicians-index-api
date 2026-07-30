@@ -5,6 +5,7 @@ import Home2MonetizationRail from './Home2MonetizationRail';
 import Home2DiscoveryRail from './Home2DiscoveryRail';
 import Home2MarketplaceRail from './Home2MarketplaceRail';
 import Home2NewsTickerRail from './Home2NewsTickerRail';
+import Home2MagazineNetworkTV from './Home2MagazineNetworkTV';
 import GlobalTopNavRail from './GlobalTopNavRail';
 import BreakingNewsTicker from './BreakingNewsTicker';
 import SponsorTickerRail from './SponsorTickerRail';
@@ -21,7 +22,23 @@ import WidgetDrawer from '@/components/room/WidgetDrawer';
 import NeonWaveUnderlay from '@/components/atmosphere/NeonWaveUnderlay';
 import UnifiedAdSlot from '@/components/ads/UnifiedAdSlot';
 import DesktopAtmosphereRails from '@/components/home/DesktopAtmosphereRails';
+import {
+  getFeaturedArticles,
+  getArticlesByCategory,
+  MAGAZINE_ISSUE_1,
+  type MagazineArticle,
+} from '@/lib/magazine/magazineIssueData';
+import { resolveArticleEditorialImage } from '@/lib/magazine/resolveArticleEditorialImage';
 import "@/styles/tmiTypography.css";
+
+const FEATURE_HERO: MagazineArticle | null =
+  getFeaturedArticles(1)[0] ?? MAGAZINE_ISSUE_1[0] ?? null;
+const FEATURE_SIDE_CARDS: MagazineArticle[] = [
+  getArticlesByCategory('interview')[0],
+  getArticlesByCategory('review')[0],
+  getArticlesByCategory('news')[0],
+  getArticlesByCategory('editorial')[0],
+].filter((a): a is MagazineArticle => Boolean(a));
 
 export default function Home2NewsDeskSurface() {
   enforceRouteOwnership('/home/2');
@@ -87,6 +104,9 @@ export default function Home2NewsDeskSurface() {
       <UnifiedAdSlot venue="home-2" slotKey="homepageBanner" format="horizontal" label="ADVERTISEMENT" style={{ margin: '0 24px 8px', minHeight: 90 }} accentColor="#00FFFF" />
       <Home2NewsDensityRail />
 
+      {/* Living magazine television — DiscoveryBus + MagazineRotationScheduler */}
+      <Home2MagazineNetworkTV />
+
       <section style={{ maxWidth: 1100, margin: '0 auto', padding: '34px 24px 24px' }}>
         <div style={{ fontSize: 9, letterSpacing: '0.35em', color: '#00FFFF', fontWeight: 800, marginBottom: 14 }}>
           ARTICLES · DISCOVERY · MARKETPLACE
@@ -99,29 +119,36 @@ export default function Home2NewsDeskSurface() {
             gap: 12,
           }}
         >
-          <a href="/articles/news" style={{ textDecoration: 'none', color: '#fff' }}>
-            <div style={{ minHeight: 220, position: 'relative', borderRadius: 12, overflow: 'hidden', border: '1px solid rgba(0,255,255,0.35)', background: "linear-gradient(145deg, rgba(0,255,255,0.22), rgba(5,5,16,0.72)), url('/tmi-curated/mag-74.jpg') center/cover" }}>
-              <div style={{ position: 'absolute', top: 12, right: 12, background: '#00FFFF', color: '#000', fontSize: 10, padding: '4px 10px', borderRadius: 4, fontWeight: 800 }}>NEW ISSUE</div>
-              <div style={{ padding: 16 }}>
-                <div style={{ fontSize: 9, letterSpacing: '0.2em', color: '#00FFFF', fontWeight: 800, marginBottom: 8 }}>FEATURE STORY</div>
-                <h1 style={{ margin: 0, fontSize: 'clamp(1.2rem,2.8vw,2.1rem)', lineHeight: 1.05 }}>Music News, Interviews, and Studio Recaps</h1>
-              </div>
-            </div>
-          </a>
-
-          {[
-            { href: '/articles/interview/weekly-feature', title: 'Interviews', img: '/tmi-curated/mag-58.jpg', color: '#FF2DAA' },
-            { href: '/articles/recap/studio-week', title: 'Studio Recaps', img: '/tmi-curated/mag-66.jpg', color: '#FFD700' },
-            { href: '/genres/hip-hop', title: 'Genre Cluster', img: '/tmi-curated/mag-42.jpg', color: '#AA2DFF' },
-            { href: '/sponsors', title: 'Sponsor Spotlight', img: '/tmi-curated/mag-50.jpg', color: '#00FF88' },
-          ].map((card, index) => (
-            <a key={card.href} href={card.href} style={{ textDecoration: 'none', color: '#fff' }}>
-              <div style={{ minHeight: 104, position: 'relative', borderRadius: 12, overflow: 'hidden', border: `1px solid ${card.color}55`, background: `linear-gradient(to bottom, ${card.color}10 0%, rgba(5,5,16,0.05) 45%, rgba(5,5,16,0.88) 100%), url('${card.img}') center/cover`, display: 'flex', alignItems: 'flex-end', padding: 12 }}>
-                {index === 0 && <div style={{ position: 'absolute', top: 8, right: 8, background: card.color, color: '#000', fontSize: 9, padding: '2px 6px', borderRadius: 4, fontWeight: 800 }}>HOT</div>}
-                <div style={{ fontSize: 12, letterSpacing: '0.08em', fontWeight: 800 }}>{card.title}</div>
+          {FEATURE_HERO ? (
+            <a href={`/magazine/article/${FEATURE_HERO.slug}`} style={{ textDecoration: 'none', color: '#fff' }}>
+              <div style={{ minHeight: 220, position: 'relative', borderRadius: 12, overflow: 'hidden', border: `1px solid ${FEATURE_HERO.heroColor}55`, background: `linear-gradient(145deg, ${FEATURE_HERO.heroColor}33, rgba(5,5,16,0.72)), url('${resolveArticleEditorialImage(FEATURE_HERO)}') center/cover` }}>
+                <div style={{ position: 'absolute', top: 12, right: 12, background: FEATURE_HERO.heroColor, color: '#000', fontSize: 10, padding: '4px 10px', borderRadius: 4, fontWeight: 800 }}>{FEATURE_HERO.category.toUpperCase()}</div>
+                <div style={{ padding: 16 }}>
+                  <div style={{ fontSize: 9, letterSpacing: '0.2em', color: FEATURE_HERO.heroColor, fontWeight: 800, marginBottom: 8 }}>FEATURE STORY</div>
+                  <h1 style={{ margin: 0, fontSize: 'clamp(1.2rem,2.8vw,2.1rem)', lineHeight: 1.05 }}>{FEATURE_HERO.title}</h1>
+                </div>
               </div>
             </a>
-          ))}
+          ) : (
+            <div style={{ minHeight: 220, borderRadius: 12, border: '1px solid rgba(0,255,255,0.25)', display: 'grid', placeItems: 'center', color: 'rgba(255,255,255,0.45)', fontSize: 13 }}>
+              No feature stories published yet.
+            </div>
+          )}
+
+          {FEATURE_SIDE_CARDS.map((article, index) => {
+            const img = resolveArticleEditorialImage(article);
+            const color = article.heroColor || '#00FFFF';
+            return (
+              <a key={article.slug} href={`/magazine/article/${article.slug}`} style={{ textDecoration: 'none', color: '#fff' }}>
+                <div style={{ minHeight: 104, position: 'relative', borderRadius: 12, overflow: 'hidden', border: `1px solid ${color}55`, background: `linear-gradient(to bottom, ${color}10 0%, rgba(5,5,16,0.05) 45%, rgba(5,5,16,0.88) 100%), url('${img}') center/cover`, display: 'flex', alignItems: 'flex-end', padding: 12 }}>
+                  {index === 0 && <div style={{ position: 'absolute', top: 8, right: 8, background: color, color: '#000', fontSize: 9, padding: '2px 6px', borderRadius: 4, fontWeight: 800 }}>{article.category.toUpperCase()}</div>}
+                  <div style={{ fontSize: 12, letterSpacing: '0.08em', fontWeight: 800 }}>
+                    {article.title.length > 42 ? `${article.title.slice(0, 42)}…` : article.title}
+                  </div>
+                </div>
+              </a>
+            );
+          })}
         </div>
       </section>
 

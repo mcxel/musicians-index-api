@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { MAGAZINE_ISSUE_1 } from '@/lib/magazine/magazineIssueData';
+import { resolveArticleEditorialImage } from '@/lib/magazine/resolveArticleEditorialImage';
 
 interface Home2PremieresRailProps {
   title?: string;
@@ -37,6 +38,7 @@ const REAL_PREMIERES = MAGAZINE_ISSUE_1
     href: `/magazine/article/${article.slug}`,
     color: CATEGORY_COLOR[article.category] ?? '#00FFFF',
     icon: CATEGORY_ICON[article.category] ?? '📰',
+    image: resolveArticleEditorialImage(article),
   }));
 
 export default function Home2PremieresRail({ title = 'PREMIERES' }: Home2PremieresRailProps) {
@@ -81,7 +83,21 @@ export default function Home2PremieresRail({ title = 'PREMIERES' }: Home2Premier
                   el.style.borderColor = premiere.color + '20';
                 }}
               >
-                <span style={{ fontSize: 22 }}>{premiere.icon}</span>
+                <div
+                  style={{
+                    width: 56,
+                    height: 56,
+                    borderRadius: 8,
+                    flexShrink: 0,
+                    background: `linear-gradient(145deg, ${premiere.color}33, rgba(5,5,16,0.4)), url('${premiere.image}') center/cover`,
+                    border: `1px solid ${premiere.color}40`,
+                    display: 'grid',
+                    placeItems: 'center',
+                    fontSize: 18,
+                  }}
+                >
+                  {premiere.icon}
+                </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 12, fontWeight: 700, color: '#fff', marginBottom: 3, lineHeight: 1.3 }}>
                     {premiere.title}
