@@ -258,7 +258,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         onSuggestFix={submitFixIntake}
         submittingFix={submittingFix}
       />
-      {/* Admin Cam is on-demand only — mounted by OverseerFlightDeck OverlayHost when Camera is pressed. Never permanent in admin layout. */}
+      {/* Admin Cam: ONLY via OverseerFlightDeck OverlayHost (center gem / 📷). Never mount TMIVideoMonitor or VoiceDirector here. */}
     </>
   );
 }

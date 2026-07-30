@@ -899,7 +899,7 @@ export default function OverseerFlightDeck({
             <div
               style={{
                 width: "min(420px, calc(100vw - 32px))",
-                animation: "tmi-admin-cam-slide 220ms ease-out",
+                animation: "tmi-admin-cam-slide 120ms ease-out",
                 pointerEvents: "auto",
               }}
               onClick={(e) => e.stopPropagation()}

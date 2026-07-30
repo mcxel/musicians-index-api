@@ -9,7 +9,6 @@ import { VenueHeroPanel } from "@/components/venue/VenueHeroPanel";
 import { VenueSchedulePanel } from "@/components/venue/VenueSchedulePanel";
 import { VenueHistoryPanel } from "@/components/venue/VenueHistoryPanel";
 import { VenueRoomsPanel } from "@/components/venue/VenueRoomsPanel";
-import TMIVideoMonitor from "@/components/hud/TMIVideoMonitor";
 import { MemoryWallCanister } from "@/components/canisters/MemoryWallCanister";
 import MessagingCanister from "@/components/canisters/MessagingCanister";
 import { LiveLobbyWallCanister } from "@/components/canisters/LiveLobbyWallCanister";
@@ -148,8 +147,6 @@ export default function VenueHubShell() {
           <VenueAnalyticsRail />
         </div>
       </div>
-
-      <TMIVideoMonitor label="VENUE CAM" position="bottom-right" />
     </div>
   );
 }

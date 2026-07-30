@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { PersonaSwitcher } from '@/components/hud/PersonaSwitcher';
 import { HubBackNav } from '@/components/nav/HubBackNav';
-import TMIVideoMonitor from '@/components/hud/TMIVideoMonitor';
 import ArtistStats from '@/components/artist/ArtistStats';
 import ArtistCurtainShell, { type ArtistShowState, nextShowState } from '@/components/artist/ArtistCurtainShell';
 import ArtistCommandRail from '@/components/artist/ArtistCommandRail';
@@ -182,7 +181,6 @@ export default function ArtistHubPage() {
           compact={false}
         />
       </div>
-      <TMIVideoMonitor label="ARTIST CAM" position="bottom-right" />
     </div>
   );
 }

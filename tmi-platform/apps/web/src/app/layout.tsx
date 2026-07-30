@@ -21,7 +21,6 @@ import NavigationRail from "@/components/nav/NavigationRail";
 import { PWAInstallPrompt } from "@/components/mobile/PWAInstallPrompt";
 import LiveMarqueeTicker from "@/components/live/LiveMarqueeTicker";
 import { PWARegistration } from "@/components/mobile/PWARegistration";
-import VoiceDirector from "@/components/hud/VoiceDirector";
 import BetaModeBanner from "@/components/launch/BetaModeBanner";
 import BetaStatusChip from "@/components/launch/BetaStatusChip";
 import LiveFeedbackPanel from "@/components/feedback/LiveFeedbackPanel";
@@ -224,7 +223,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <TMIGlobalHUD />
               <BotRuntimeProvider />
               <LiveMarqueeTicker />
-              <VoiceDirector />
+              {/* VoiceDirector / TMIVideoMonitor floaters permanently unmounted — Admin Cam = Overseer gem OverlayHost only */}
               <LiveFeedbackPanel />
               <MonitorRuntime />
               <DiscoverySidePanel />

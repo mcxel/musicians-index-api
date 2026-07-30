@@ -1,12 +1,11 @@
 "use client";
 
 /**
- * Legacy floating ADMIN CAM / GO LIVE box — intentionally inert.
+ * LEGACY DEAD — permanent green ADMIN CAM / GO LIVE floater.
  *
- * Pass 8 / Two-Deck: never permanently occupy layout. Admin Cam opens on-demand
- * via CanonOverseerShell OverlayHost (camera / center gem) -> LiveCameraPreview.
- * Performer GO LIVE uses Launch Dock / executeInstantGoLive (nav + MasterControlDock).
- * Call sites may still import this component; they must get no floating UI.
+ * Do not mount. Admin Cam = OverseerFlightDeck OverlayHost only (center gem / 📷).
+ * Performer GO LIVE = Launch Dock / nav — never this component.
+ * Kept as a null stub so any leftover import cannot resurrect the floater.
  */
 export interface TMIVideoMonitorProps {
   label?: string;

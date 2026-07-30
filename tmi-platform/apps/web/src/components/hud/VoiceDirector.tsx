@@ -1,8 +1,8 @@
 "use client";
 
 /**
- * Legacy pink floating mic — intentionally inert.
- * Root layout still mounts <VoiceDirector />; do not reintroduce a permanent floater.
+ * LEGACY DEAD — permanent pink mic floater.
+ * Unmounted from root layout. Do not re-mount in any layout/provider.
  * Voice controls belong in dock / command panel if needed later.
  */
 export default function VoiceDirector() {

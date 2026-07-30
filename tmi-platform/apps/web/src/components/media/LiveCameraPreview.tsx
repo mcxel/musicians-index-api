@@ -1,70 +1,98 @@
 'use client';
 
-import React, { useRef, useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useMediaStream } from '@/hooks/useMediaStream';
 
 const C = {
   bg: 'rgba(10, 10, 25, 0.8)',
-  border: '1px solid rgba(170, 45, 255, 0.2)',
+  border: '1px solid rgba(0, 255, 136, 0.35)',
   text: '#fff',
   dim: '#999',
   error: '#FF4444',
-  button: 'rgba(170, 45, 255, 0.3)',
-  buttonHover: 'rgba(170, 45, 255, 0.5)',
+  accent: '#00FF88',
 };
 
-export function LiveCameraPreview() {
-  const { stream, status, error, startStream, stopStream } = useMediaStream({
-    video: { width: 1280, height: 720 },
-    audio: true,
-  });
+/** Light constraints = faster getUserMedia for gem → Admin Cam. */
+const FAST_PREVIEW_CONSTRAINTS: MediaStreamConstraints = {
+  video: {
+    facingMode: 'user',
+    width: { ideal: 640 },
+    height: { ideal: 360 },
+  },
+  audio: false,
+};
+
+type LiveCameraPreviewProps = {
+  /** When true (default), open the stream as soon as the overlay mounts — no Start click. */
+  autoStart?: boolean;
+};
+
+export function LiveCameraPreview({ autoStart = true }: LiveCameraPreviewProps) {
+  const { stream, status, error, startStream, stopStream } = useMediaStream(FAST_PREVIEW_CONSTRAINTS);
   const videoRef = useRef<HTMLVideoElement>(null);
+
+  // Snappy gem path: request camera immediately on mount; tear down on unmount.
+  useEffect(() => {
+    if (!autoStart) return;
+    void startStream();
+    return () => {
+      stopStream();
+    };
+  }, [autoStart, startStream, stopStream]);
 
   useEffect(() => {
     if (stream && videoRef.current) {
       videoRef.current.srcObject = stream;
+      void videoRef.current.play().catch(() => {});
     }
   }, [stream]);
 
-  // Destroy tracks when portal unmounts (Admin Cam close must leave nothing live).
-  useEffect(() => {
-    return () => {
-      stopStream();
-    };
-  }, [stopStream]);
-
-  const renderContent = () => {
-    if (status === 'error') {
-      return <div style={{ color: C.error }}>Error: {error?.message || 'Could not access camera.'}</div>;
-    }
-    if (status === 'active' && stream) {
-      return <video ref={videoRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }} />;
-    }
-    return <div style={{ color: C.dim }}>Camera is off</div>;
-  };
-
   return (
-    <div className="flex flex-col gap-4 p-4 rounded-lg" style={{ background: C.bg, border: C.border }}>
-      <div className="aspect-video w-full flex items-center justify-center rounded" style={{ background: '#000', overflow: 'hidden' }}>
-        {renderContent()}
-      </div>
-      <div className="flex justify-center gap-4">
-        <button
-          onClick={startStream}
-          disabled={status === 'active' || status === 'requesting'}
-          className="px-4 py-2 rounded-lg text-sm font-bold disabled:opacity-50"
-          style={{ background: C.button, color: C.text, transition: 'background 0.2s' }}
-        >
-          {status === 'requesting' ? 'Starting...' : 'Start Camera'}
-        </button>
-        <button
-          onClick={stopStream}
-          disabled={status !== 'active'}
-          className="px-4 py-2 rounded-lg text-sm font-bold disabled:opacity-50"
-          style={{ background: C.button, color: C.text, transition: 'background 0.2s' }}
-        >
-          Stop Camera
-        </button>
+    <div
+      className="flex flex-col gap-2 p-2 rounded-lg"
+      style={{ background: C.bg, border: C.border, height: '100%' }}
+    >
+      <div
+        className="aspect-video w-full flex items-center justify-center rounded"
+        style={{ background: '#000', overflow: 'hidden', minHeight: 200, flex: 1 }}
+      >
+        {status === 'error' ? (
+          <div style={{ color: C.error, padding: 12, textAlign: 'center', fontSize: 12 }}>
+            {error?.message || 'Could not access camera.'}
+            <div style={{ marginTop: 8 }}>
+              <button
+                type="button"
+                onClick={() => {
+                  void startStream();
+                }}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: 8,
+                  border: `1px solid ${C.accent}`,
+                  background: 'rgba(0,255,136,0.12)',
+                  color: C.accent,
+                  fontSize: 11,
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                }}
+              >
+                Retry Camera
+              </button>
+            </div>
+          </div>
+        ) : status === 'active' && stream ? (
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted
+            style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }}
+          />
+        ) : (
+          <div style={{ color: C.dim, fontSize: 11, fontWeight: 700, letterSpacing: '0.12em' }}>
+            {status === 'requesting' ? 'OPENING CAMERA…' : 'CAMERA READY'}
+          </div>
+        )}
       </div>
     </div>
   );

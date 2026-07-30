@@ -6,7 +6,6 @@ import AdvertiserCampaignRail from "@/components/advertiser/AdvertiserCampaignRa
 import AdvertiserPlacementRail from "@/components/advertiser/AdvertiserPlacementRail";
 import AdvertiserAnalyticsRail from "@/components/advertiser/AdvertiserAnalyticsRail";
 import AdvertiserInventoryRail from "@/components/advertiser/AdvertiserInventoryRail";
-import TMIVideoMonitor from "@/components/hud/TMIVideoMonitor";
 
 const ACCENT = "#FF2DAA";
 const BG = "#050510";
@@ -151,8 +150,6 @@ export default function AdvertiserHubShell() {
           <Suspense fallback={<RailSkeleton />}><AdvertiserAnalyticsRail /></Suspense>
         </div>
       </div>
-
-      <TMIVideoMonitor label="AD CAM" position="bottom-right" />
     </div>
   );
 }

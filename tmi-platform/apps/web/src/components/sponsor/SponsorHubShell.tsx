@@ -8,7 +8,6 @@ import SponsorPrizeRail from "@/components/sponsor/SponsorPrizeRail";
 import SponsorAnalyticsRail from "@/components/sponsor/SponsorAnalyticsRail";
 import SponsorContractsRail from "@/components/sponsor/SponsorContractsRail";
 import SponsorGiveawayRail from "@/components/sponsor/SponsorGiveawayRail";
-import TMIVideoMonitor from "@/components/hud/TMIVideoMonitor";
 import { MemoryWallCanister } from "@/components/canisters/MemoryWallCanister";
 import MessagingCanister from "@/components/canisters/MessagingCanister";
 import { StoreCanister } from "@/components/canisters/StoreCanister";
@@ -144,8 +143,6 @@ export default function SponsorHubShell() {
           <Suspense fallback={<RailSkeleton />}><SponsorContractsRail /></Suspense>
         </div>
       </div>
-
-      <TMIVideoMonitor label="SPONSOR CAM" position="bottom-right" />
     </div>
   );
 }
