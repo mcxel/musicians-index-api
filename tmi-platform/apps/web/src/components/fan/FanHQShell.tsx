@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -967,13 +967,20 @@ export default function FanHQShell({ fanId, fanDisplayName: _fanDisplayName }: R
             flexDirection: "column"
           }}>
             {/* Performer Stage Video */}
-            <div style={{
-              position: "absolute",
-              inset: 0,
-              backgroundImage: "url('/images/boardroom_live.png')",
-              backgroundSize: "cover",
-              backgroundPosition: "center"
-            }} />
+            <video
+              autoPlay
+              loop
+              muted
+              playsInline
+              src="/assets/videos/rooms/monday-night-stage.mp4"
+              style={{
+                position: "absolute",
+                inset: 0,
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+              }}
+            />
             
             {/* Video Overlays */}
             <div style={{
