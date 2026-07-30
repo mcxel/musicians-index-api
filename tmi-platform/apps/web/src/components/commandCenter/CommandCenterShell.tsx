@@ -10,6 +10,9 @@ import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import MasterControlDock from "@/components/shell/MasterControlDock";
+import UnifiedAdSlot from "@/components/ads/UnifiedAdSlot";
+import SponsorRail from "@/components/sponsors/SponsorRail";
+import { getRailSponsors } from "@/lib/commerce/SponsorRegistry";
 import CommandCenterMediaStack, { type CommandCenterMediaSlot } from "./CommandCenterMediaStack";
 import CommandCenterDrawer from "./CommandCenterDrawer";
 import {
@@ -17,6 +20,8 @@ import {
   type CommandCenterPanelId,
   type CommandCenterRole,
 } from "./commandCenterRegistry";
+import { FAN_AD_ZONE } from "./FanCommandDrawerRegistry";
+import { PERFORMER_SPONSOR_ZONE } from "./PerformerCommandDrawerRegistry";
 import { useTheme } from "@/lib/design/ThemeEngine";
 import { getPerformerById } from "@/lib/performers/PerformerRegistry";
 
@@ -360,6 +365,29 @@ export default function CommandCenterShell({ role, userId, displayName }: Comman
                 Open Live Lobby Wall →
               </Link>
             </div>
+
+            {/* Rule 12: Fan ads vs Performer sponsors — never empty */}
+            {role === "fan" ? (
+              <div>
+                <div style={{ fontSize: 9, fontWeight: 900, color: "rgba(255,255,255,0.4)", marginBottom: 6 }}>
+                  AD SLOT · {FAN_AD_ZONE}
+                </div>
+                <UnifiedAdSlot venue="dashboard" slotKey="dashboardSidebar" format="rectangle" label="ADVERTISEMENT" accentColor={theme.primary} />
+              </div>
+            ) : (
+              <div>
+                <div style={{ fontSize: 9, fontWeight: 900, color: "rgba(255,255,255,0.4)", marginBottom: 6 }}>
+                  SPONSORS · {PERFORMER_SPONSOR_ZONE}
+                </div>
+                <SponsorRail sponsors={getRailSponsors("dashboard-performer")} zone={PERFORMER_SPONSOR_ZONE} />
+                <Link
+                  href="/sponsors/advertise"
+                  style={{ display: "block", marginTop: 8, fontSize: 9, color: theme.tertiary, textDecoration: "none", fontWeight: 800 }}
+                >
+                  Sell a placement →
+                </Link>
+              </div>
+            )}
           </div>
         </div>
 

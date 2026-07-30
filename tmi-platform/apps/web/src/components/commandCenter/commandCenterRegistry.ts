@@ -16,7 +16,8 @@ export type CommandCenterPanelId =
   | "beat_lab"
   | "booking"
   | "stage_tools"
-  | "store";
+  | "store"
+  | "sponsors";
 
 export interface CommandCenterPanelDef {
   id: CommandCenterPanelId;
@@ -42,6 +43,7 @@ export const PERFORMER_COMMAND_PANELS: CommandCenterPanelDef[] = [
   { id: "beat_lab", label: "BEAT LAB", info: "Vault & beats", accent: "#FFD700" },
   { id: "booking", label: "BOOKINGS", info: "Requests", accent: "#00FF88" },
   { id: "stage_tools", label: "STAGE TOOLS", info: "Go Live / stage", accent: "#AA2DFF" },
+  { id: "sponsors", label: "SPONSORS", info: "Placements", accent: "#FFD700" },
   { id: "playlist", label: "PLAYLISTS", info: "Setlist", accent: "#AA2DFF" },
   { id: "memory", label: "MEMORY WALL", info: "Moments", accent: "#AA2DFF" },
   { id: "store", label: "STORE", info: "Merch / skins", accent: "#FF6B35" },

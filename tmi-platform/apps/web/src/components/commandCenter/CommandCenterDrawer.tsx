@@ -19,7 +19,10 @@ import MediaLockerCanister from "@/components/canisters/MediaLockerCanister";
 import { BookingCanister } from "@/components/canisters/BookingCanister";
 import { StoreCanister } from "@/components/canisters/StoreCanister";
 import ThemeEditorPanel from "@/components/shell/ThemeEditorPanel";
+import SponsorRail from "@/components/sponsors/SponsorRail";
+import { getRailSponsors } from "@/lib/commerce/SponsorRegistry";
 import { DEFAULT_FAN_LOBBY_SKIN_ID } from "@/lib/lobby/FanLobbySkinRegistry";
+import { PERFORMER_SPONSOR_ZONE } from "./PerformerCommandDrawerRegistry";
 import {
   createDefaultYoPhoBlueprint,
   type YoPhoPortraitBlueprint,
@@ -116,29 +119,22 @@ export default function CommandCenterDrawer({
   const roomId = useMemo(() => `${role}-lobby-cc-${userId}`, [role, userId]);
   const open = appearanceOpen || activePanel != null;
 
+  const TITLE_MAP: Partial<Record<NonNullable<typeof activePanel>, string>> = {
+    lobby: "AVATAR FAN LOBBY · CINEMA",
+    yopho: "YOPHO",
+    media_locker: "MEDIA LOCKER",
+    beat_lab: "BEAT LAB",
+    booking: "BOOKINGS",
+    stage_tools: "STAGE TOOLS",
+    store: "STORE",
+    sponsors: "SPONSORS",
+    playlist: "PLAYLISTS",
+    memory: "MEMORY WALL",
+    inventory: "INVENTORY",
+  };
   const title = appearanceOpen
     ? "SHELL COLORS · THIS DEVICE"
-    : activePanel === "lobby"
-      ? "AVATAR FAN LOBBY · CINEMA"
-      : activePanel === "yopho"
-        ? "YOPHO"
-        : activePanel === "media_locker"
-          ? "MEDIA LOCKER"
-          : activePanel === "beat_lab"
-            ? "BEAT LAB"
-            : activePanel === "booking"
-              ? "BOOKINGS"
-              : activePanel === "stage_tools"
-                ? "STAGE TOOLS"
-                : activePanel === "store"
-                  ? "STORE"
-                  : activePanel === "playlist"
-                    ? "PLAYLISTS"
-                    : activePanel === "memory"
-                      ? "MEMORY WALL"
-                      : activePanel === "inventory"
-                        ? "INVENTORY"
-                        : "DRAWER";
+    : (activePanel ? TITLE_MAP[activePanel] : undefined) ?? "DRAWER";
 
   // Block fan-only panels for performer role (defense in depth)
   if (activePanel && isFanOnlyPanel(activePanel) && role === "performer") {
@@ -334,6 +330,31 @@ export default function CommandCenterDrawer({
                     </Link>
                     <Link href="/performer/studio" style={toolLink(theme.tertiary)}>
                       Studio →
+                    </Link>
+                  </div>
+                ) : null}
+
+                {activePanel === "sponsors" && role === "performer" ? (
+                  <div style={{ padding: 12, display: "flex", flexDirection: "column", gap: 12 }}>
+                    <div style={{ fontSize: 11, color: "rgba(255,255,255,0.45)" }}>
+                      Sponsor placements for your surfaces (Rule 12 — never empty).
+                    </div>
+                    <SponsorRail sponsors={getRailSponsors("dashboard-performer")} zone={PERFORMER_SPONSOR_ZONE} />
+                    <Link
+                      href="/sponsors/advertise"
+                      style={{
+                        display: "inline-block",
+                        padding: "10px 14px",
+                        borderRadius: 10,
+                        border: `1px solid ${theme.tertiary}66`,
+                        color: theme.tertiary,
+                        fontWeight: 800,
+                        fontSize: 12,
+                        textDecoration: "none",
+                        width: "fit-content",
+                      }}
+                    >
+                      Advertise / sell a placement →
                     </Link>
                   </div>
                 ) : null}
