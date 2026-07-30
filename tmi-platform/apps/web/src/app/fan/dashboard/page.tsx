@@ -67,7 +67,7 @@ function OpenAvatarLobbyButton() {
         boxShadow: "0 0 18px rgba(255,215,0,0.12)",
       }}
     >
-      🧍 Open Avatar Lobby
+      🧍 Avatar Fan Lobby
     </button>
   );
 }

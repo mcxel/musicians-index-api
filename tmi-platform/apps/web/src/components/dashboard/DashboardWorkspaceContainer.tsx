@@ -72,8 +72,8 @@ function WorkspaceLoader({ label }: { label: string }) {
 }
 
 const performerLoader = () =>
-  import("@/components/performer/PerformerHubDashboard") as Promise<{
-    default: React.ComponentType;
+  import("@/components/performer/PerformerCommandCenter") as Promise<{
+    default: React.ComponentType<{ performerId: string; displayName: string }>;
   }>;
 
 const adminLoader = () =>
@@ -83,10 +83,18 @@ const adminLoader = () =>
 
 // ─── Workspace panels ────────────────────────────────────────────────────────
 
-function PerformerWorkspacePanel({ shouldLoad }: { shouldLoad: boolean }) {
+function PerformerWorkspacePanel({
+  shouldLoad,
+  performerId,
+  displayName,
+}: {
+  shouldLoad: boolean;
+  performerId: string;
+  displayName: string;
+}) {
   const PerformerHub = useLazyComponent(performerLoader, shouldLoad);
   if (!PerformerHub) return <WorkspaceLoader label="Performer" />;
-  return <PerformerHub />;
+  return <PerformerHub performerId={performerId} displayName={displayName} />;
 }
 
 function AdminWorkspacePanel({ shouldLoad }: { shouldLoad: boolean }) {
@@ -247,7 +255,11 @@ export default function DashboardWorkspaceContainer() {
           style={{ display: active === "performer" ? "block" : "none" }}
           aria-hidden={active !== "performer"}
         >
-          <PerformerWorkspacePanel shouldLoad={active === "performer" || performerLoaded} />
+          <PerformerWorkspacePanel
+            shouldLoad={active === "performer" || performerLoaded}
+            performerId={userId}
+            displayName={userName}
+          />
         </div>
       )}
 

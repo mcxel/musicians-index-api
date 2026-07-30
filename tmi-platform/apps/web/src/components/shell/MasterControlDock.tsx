@@ -20,6 +20,7 @@ import { useLiveDiscoveryOverlay } from '@/lib/discovery/liveDiscoveryOverlaySto
 import { launchDockStore } from '@/lib/dock/launchDockStore';
 import { executeInstantGoLive } from '@/lib/dock/executeInstantGoLive';
 import { useRouter } from 'next/navigation';
+import { useTheme } from '@/lib/design/ThemeEngine';
 
 export interface MasterControlDockProps {
   role?: 'fan' | 'performer' | 'artist' | 'admin';
@@ -27,6 +28,8 @@ export interface MasterControlDockProps {
   onCamToggle?: () => void;
   onLeaveRoom?: () => void;
   onEnterStage?: () => void;
+  /** Fan: open Avatar Lobby drawer. Performer: open Media Locker (not Fan Lobby). */
+  onLobbyNav?: () => void;
 }
 
 export default function MasterControlDock({
@@ -35,12 +38,35 @@ export default function MasterControlDock({
   onCamToggle,
   onLeaveRoom,
   onEnterStage,
+  onLobbyNav,
 }: MasterControlDockProps) {
   const router = useRouter();
+  const theme = useTheme();
   const [isMicActive, setIsMicActive] = useState(true);
   const [isCamActive, setIsCamActive] = useState(true);
   const [isHandRaised, setIsHandRaised] = useState(false);
-  const [isPlayingAudio, setIsPlayingAudio] = useState(true);
+  // Starts false - no real track is playing until the Playlist panel actually starts one (Rule 20).
+  const [isPlayingAudio, setIsPlayingAudio] = useState(false);
+  const [waveTick, setWaveTick] = useState(0);
+  const [online, setOnline] = useState(true);
+
+  useEffect(() => {
+    const on = () => setOnline(true);
+    const off = () => setOnline(false);
+    setOnline(typeof navigator !== 'undefined' ? navigator.onLine : true);
+    window.addEventListener('online', on);
+    window.addEventListener('offline', off);
+    return () => {
+      window.removeEventListener('online', on);
+      window.removeEventListener('offline', off);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isPlayingAudio) return;
+    const id = window.setInterval(() => setWaveTick((t) => t + 1), 120);
+    return () => window.clearInterval(id);
+  }, [isPlayingAudio]);
 
   const [isInventoryOpen, setIsInventoryOpen] = useState(false);
   const [isMemoryWallOpen, setIsMemoryWallOpen] = useState(false);
@@ -136,60 +162,86 @@ export default function MasterControlDock({
           color: '#fff',
         }}
       >
-        {/* 1. LEFT CARD: Audio Player Equalizer */}
+        {/* 1. LEFT CARD: Now Playing + purple neon waves */}
         <div
-          onClick={() => setIsPlaylistOpen(true)}
           style={{
             pointerEvents: 'auto',
-            background: 'rgba(5, 5, 20, 0.9)',
+            background: theme.bgGlass,
             backdropFilter: 'blur(20px)',
-            border: '1px solid rgba(255, 45, 170, 0.25)',
-            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.8), 0 0 15px rgba(255, 45, 170, 0.1)',
+            border: `1px solid ${theme.primary}44`,
+            boxShadow: `0 8px 32px rgba(0, 0, 0, 0.8), 0 0 15px ${theme.drawerGlow}22`,
             borderRadius: '16px',
             padding: '10px 16px',
             display: 'flex',
             alignItems: 'center',
             gap: 12,
-            minWidth: 260,
-            cursor: 'pointer',
+            minWidth: 280,
           }}
         >
-          <div
+          <button
+            type="button"
+            onClick={() => setIsPlaylistOpen(true)}
             style={{
               width: 36,
               height: 36,
               borderRadius: 8,
-              background: 'linear-gradient(135deg,#FF2DAA,#AA2DFF)',
+              background: `linear-gradient(135deg,${theme.primary},${theme.secondary})`,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               fontSize: 16,
-              boxShadow: '0 0 12px rgba(255,45,170,0.4)',
+              border: 'none',
+              cursor: 'pointer',
+              boxShadow: `0 0 12px ${theme.primary}66`,
             }}
           >
             🎵
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
+          </button>
+          <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
             <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.45)', letterSpacing: '0.12em', fontWeight: 800 }}>
               NOW PLAYING
             </div>
-            <div style={{ fontSize: 11, fontWeight: 900, color: '#fff', whiteSpace: 'nowrap' }}>
-              Open playlists <span style={{ color: 'rgba(255,255,255,0.45)', fontWeight: 400 }}>· Music module</span>
+            <div style={{ fontSize: 11, fontWeight: 900, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {isPlayingAudio ? 'Playing from playlist' : 'No track — open playlist'}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+              <button type="button" onClick={() => setIsPlayingAudio(false)} style={transportBtn} aria-label="Previous">⏮</button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsPlaylistOpen(true);
+                  setIsPlayingAudio((p) => !p);
+                }}
+                style={{ ...transportBtn, color: theme.primary }}
+                aria-label={isPlayingAudio ? 'Pause' : 'Play'}
+              >
+                {isPlayingAudio ? '⏸' : '▶'}
+              </button>
+              <button type="button" onClick={() => setIsPlaylistOpen(true)} style={transportBtn} aria-label="Next">⏭</button>
+              <span style={{ fontSize: 8, color: 'rgba(255,255,255,0.35)', fontWeight: 700 }}>
+                {isPlayingAudio ? 'Live EQ' : '—:— / —:—'}
+              </span>
             </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 2, height: 16, marginLeft: 'auto' }}>
-            {[12, 18, 8, 16, 20, 10].map((h, i) => (
-              <span
-                key={i}
-                style={{
-                  width: 2,
-                  height: isPlayingAudio ? `${h}px` : '4px',
-                  background: '#00FF88',
-                  borderRadius: 1,
-                  transition: 'height 0.2s ease',
-                }}
-              />
-            ))}
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 2, height: 22 }} aria-hidden>
+            {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => {
+              const h = isPlayingAudio
+                ? 4 + ((Math.sin(waveTick * 0.7 + i * 0.9) + 1) * 0.5) * 16
+                : 3;
+              return (
+                <span
+                  key={i}
+                  style={{
+                    width: 3,
+                    height: h,
+                    background: `linear-gradient(180deg, ${theme.primary}, #AA2DFF)`,
+                    borderRadius: 1,
+                    boxShadow: isPlayingAudio ? `0 0 6px ${theme.primary}` : 'none',
+                    transition: 'height 0.1s ease',
+                  }}
+                />
+              );
+            })}
           </div>
         </div>
 
@@ -423,10 +475,9 @@ export default function MasterControlDock({
             </div>
 
             {[
-              { label: 'EXPLORE', icon: '🧭', path: '/explore' as string | null },
-              { label: 'SEARCH', icon: '🔍', path: '/search' },
+              { label: 'DISCOVER', icon: '🧭', path: '/explore' as string | null },
               { label: 'LIVE NOW', icon: '📹', path: '/live' },
-              { label: 'LOBBY', icon: '👥', path: null },
+              { label: 'LOBBY', icon: '👥', path: null as string | null, lobby: true },
               { label: 'MESSAGES', icon: '💬', path: '/messages' },
               { label: 'NOTIFICATIONS', icon: '🔔', path: '/notifications' },
             ].map((nav) =>
@@ -434,8 +485,11 @@ export default function MasterControlDock({
                 <button
                   key={nav.label}
                   type="button"
-                  onClick={() => openLiveLobbyWalls()}
-                  aria-label="Open Live Lobby Walls"
+                  onClick={() => {
+                    if ('lobby' in nav && nav.lobby && onLobbyNav) onLobbyNav();
+                    else openLiveLobbyWalls();
+                  }}
+                  aria-label={nav.label === 'LOBBY' ? (isPerformer ? 'Open Media Locker drawer' : 'Open Avatar Fan Lobby') : 'Open Live Lobby Walls'}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -480,46 +534,76 @@ export default function MasterControlDock({
           </div>
         </div>
 
-        {/* 3. RIGHT CARD: System Connection & Quality */}
+        {/* 3. RIGHT CARD: Tools + honest connection (Rule 20 — no fake ms/ping) */}
         <div
           style={{
             pointerEvents: 'auto',
-            background: 'rgba(5, 5, 20, 0.9)',
+            background: theme.bgGlass,
             backdropFilter: 'blur(20px)',
-            border: '1px solid rgba(255, 45, 170, 0.25)',
-            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.8), 0 0 15px rgba(255, 45, 170, 0.1)',
+            border: `1px solid ${theme.primary}44`,
+            boxShadow: `0 8px 32px rgba(0, 0, 0, 0.8), 0 0 15px ${theme.drawerGlow}22`,
             borderRadius: '16px',
             padding: '10px 16px',
             display: 'flex',
             alignItems: 'center',
-            gap: 12,
+            gap: 10,
           }}
         >
-          <div style={{ fontSize: 9, fontWeight: 900, color: '#00FF88', display: 'flex', alignItems: 'center', gap: 5 }}>
-            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#00FF88', boxShadow: '0 0 8px #00FF88' }} />
-            LINK
-          </div>
-          <span style={{ fontSize: 9, fontWeight: 900, color: '#FFD700', border: '1px solid #FFD700', borderRadius: 4, padding: '1px 4px', letterSpacing: '0.05em' }}>
-            HD
+          <button
+            type="button"
+            disabled
+            title="Screenshot — not wired yet"
+            style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.28)', fontSize: 9, fontWeight: 800, cursor: 'not-allowed' }}
+          >
+            📷 Shot
+          </button>
+          <button
+            type="button"
+            disabled
+            title="Record — not wired yet"
+            style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.28)', fontSize: 9, fontWeight: 800, cursor: 'not-allowed' }}
+          >
+            ⏺ Rec
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              if (typeof navigator !== 'undefined' && navigator.share) {
+                void navigator.share({ title: 'TMI', url: window.location.href }).catch(() => undefined);
+              } else if (typeof navigator !== 'undefined' && navigator.clipboard) {
+                void navigator.clipboard.writeText(window.location.href);
+              }
+            }}
+            style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.55)', fontSize: 9, fontWeight: 800, cursor: 'pointer' }}
+          >
+            ↗ Share
+          </button>
+          <span style={{ fontSize: 8, fontWeight: 900, color: 'rgba(255,255,255,0.35)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 4, padding: '2px 6px' }}>
+            AUTO
           </span>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <button
-              type="button"
-              onClick={() => setIsMemoryWallOpen(true)}
-              style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', fontSize: 9, fontWeight: 800, cursor: 'pointer' }}
-            >
-              📷 MEMORIES
-            </button>
-            <button
-              type="button"
-              onClick={() => openWorkspace('quick_memories')}
-              style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', fontSize: 9, fontWeight: 800, cursor: 'pointer' }}
-            >
-              ▲ WORKSPACE
-            </button>
+          <div style={{ fontSize: 9, fontWeight: 900, color: online ? '#00FF88' : '#FF6666', display: 'flex', alignItems: 'center', gap: 5 }}>
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: online ? '#00FF88' : '#FF6666', boxShadow: online ? '0 0 8px #00FF88' : 'none' }} />
+            {online ? 'ONLINE' : 'OFFLINE'}
           </div>
+          <button
+            type="button"
+            onClick={() => setIsMemoryWallOpen(true)}
+            style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', fontSize: 9, fontWeight: 800, cursor: 'pointer' }}
+          >
+            🧠
+          </button>
         </div>
       </div>
     </>
   );
 }
+
+const transportBtn: React.CSSProperties = {
+  background: 'transparent',
+  border: 'none',
+  color: 'rgba(255,255,255,0.7)',
+  fontSize: 11,
+  cursor: 'pointer',
+  padding: 0,
+  lineHeight: 1,
+};

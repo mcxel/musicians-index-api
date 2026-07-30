@@ -1,10 +1,10 @@
 "use client";
 
 /**
- * Phase 1 — Fan Dashboard Avatar Lobby drawer.
- * Mounts the real free-roam FanLobbyVenue under the hub UI (bottom sheet).
- * No fake 3D bobblehead engine. No fan-facing seat grid.
- * Rule 26: Fan-only surface (caller should gate; RoleGate wraps content).
+ * Fan Dashboard Avatar Lobby drawer (dde74945).
+ * Prefer FanHQShell left-rail → FanHQContentSlot for Command Center UX.
+ * This fixed bottom sheet remains for /fan/dashboard RoomContainer path.
+ * No fake 3D. No seat grid. Rule 26 via RoleGate.
  */
 
 import { AnimatePresence, motion } from "framer-motion";
@@ -36,24 +36,34 @@ const FanLobbyVenue = dynamic(() => import("@/components/live/FanLobbyVenue"), {
 interface FanAvatarLobbyDrawerProps {
   userName?: string;
   roomId?: string;
+  /** Controlled open — when set, bypasses DrawerContext */
+  open?: boolean;
+  onClose?: () => void;
 }
 
 export default function FanAvatarLobbyDrawer({
   userName = "Fan",
   roomId = "fan-lobby-dash",
+  open: openProp,
+  onClose,
 }: FanAvatarLobbyDrawerProps) {
   const { activeDrawer, setActiveDrawer } = useDrawer();
-  const open = activeDrawer === "avatar-lobby";
+  const open = openProp ?? activeDrawer === "avatar-lobby";
+
+  const close = () => {
+    if (onClose) onClose();
+    else setActiveDrawer(null);
+  };
 
   return (
     <AnimatePresence>
       {open ? (
         <motion.div
           key="fan-avatar-lobby-drawer"
-          initial={{ y: "100%", opacity: 0.6 }}
+          initial={{ y: "40%", opacity: 0.85 }}
           animate={{ y: 0, opacity: 1 }}
-          exit={{ y: "100%", opacity: 0 }}
-          transition={{ type: "spring", stiffness: 280, damping: 32 }}
+          exit={{ y: "35%", opacity: 0 }}
+          transition={{ type: "spring", stiffness: 520, damping: 34, mass: 0.7 }}
           style={{
             position: "fixed",
             left: 0,
@@ -69,7 +79,7 @@ export default function FanAvatarLobbyDrawer({
             overflow: "hidden",
           }}
           role="dialog"
-          aria-label="Avatar Lobby"
+          aria-label="Avatar Fan Lobby"
         >
           <div
             style={{
@@ -83,14 +93,14 @@ export default function FanAvatarLobbyDrawer({
             }}
           >
             <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.18em", color: "#FFD700" }}>
-              AVATAR LOBBY · CINEMA SKIN
+              AVATAR FAN LOBBY · CINEMA SKIN
             </div>
             <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", flex: 1 }}>
               Free-roam hangout · tap floor to walk · local cam when enabled
             </div>
             <button
               type="button"
-              onClick={() => setActiveDrawer(null)}
+              onClick={close}
               style={{
                 background: "transparent",
                 border: "1px solid rgba(255,68,68,0.45)",
@@ -123,7 +133,7 @@ export default function FanAvatarLobbyDrawer({
                     textAlign: "center",
                   }}
                 >
-                  Avatar Lobby is Fan-only (Rule 26). Sign in as a Fan to enter.
+                  Avatar Fan Lobby is Fan-only (Rule 26). Sign in as a Fan to enter.
                 </div>
               }
             >

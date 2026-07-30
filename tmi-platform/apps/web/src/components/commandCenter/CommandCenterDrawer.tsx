@@ -1,0 +1,368 @@
+"use client";
+
+/**
+ * Command Center bottom drawer — role-gated payloads (Rule 26).
+ * Fan: Avatar Lobby, YoPho fan, playlists, memory, inventory.
+ * Performer: Media Locker, Beat Lab, Performer YoPho, booking, stage, store.
+ * Never mounts Fan Lobby ownership / Avatar Studio for performers.
+ */
+
+import { AnimatePresence, motion } from "framer-motion";
+import dynamic from "next/dynamic";
+import Link from "next/link";
+import { useMemo, useState, type CSSProperties } from "react";
+import RoleGate from "@/components/auth/RoleGate";
+import { PlaylistCanister } from "@/components/canisters/PlaylistCanister";
+import { MemoryWallCanister } from "@/components/canisters/MemoryWallCanister";
+import { InventoryCanister } from "@/components/canisters/InventoryCanister";
+import MediaLockerCanister from "@/components/canisters/MediaLockerCanister";
+import { BookingCanister } from "@/components/canisters/BookingCanister";
+import { StoreCanister } from "@/components/canisters/StoreCanister";
+import ThemeEditorPanel from "@/components/shell/ThemeEditorPanel";
+import { DEFAULT_FAN_LOBBY_SKIN_ID } from "@/lib/lobby/FanLobbySkinRegistry";
+import {
+  createDefaultYoPhoBlueprint,
+  type YoPhoPortraitBlueprint,
+} from "@/lib/yopho/YoPhoPortraitEngine";
+import type { CommandCenterPanelId, CommandCenterRole } from "./commandCenterRegistry";
+import { isFanOnlyPanel } from "./commandCenterRegistry";
+import { useTheme } from "@/lib/design/ThemeEngine";
+
+const FanLobbyVenue = dynamic(() => import("@/components/live/FanLobbyVenue"), {
+  ssr: false,
+  loading: () => <SlotLoading label="Loading Avatar Lobby…" />,
+});
+
+const YoPhoPortraitStageCanvas = dynamic(
+  () => import("@/components/yopho/YoPhoPortraitStageCanvas"),
+  { ssr: false, loading: () => <SlotLoading label="Loading YoPho…" /> },
+);
+
+const snapIn = { type: "spring" as const, stiffness: 520, damping: 34, mass: 0.7 };
+
+function SlotLoading({ label }: { label: string }) {
+  return (
+    <div
+      style={{
+        minHeight: 220,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        color: "rgba(255,255,255,0.35)",
+        fontSize: 11,
+        letterSpacing: "0.12em",
+        textTransform: "uppercase",
+      }}
+    >
+      {label}
+    </div>
+  );
+}
+
+function YoPhoSlot({ role, displayName }: { role: CommandCenterRole; displayName: string }) {
+  const [blueprint] = useState<YoPhoPortraitBlueprint>(() =>
+    createDefaultYoPhoBlueprint(role === "performer" ? "performer" : "fan", displayName),
+  );
+  const fullHref = role === "performer" ? "/performer/canvas" : "/fan/canvas";
+
+  return (
+    <div style={{ padding: "12px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+        <div>
+          <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.16em", color: "#FF2DAA" }}>
+            YOPHO {role === "performer" ? "PERFORMER" : "FAN"} CANVAS
+          </div>
+          <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>Stage preview in drawer</div>
+        </div>
+        <Link
+          href={fullHref}
+          style={{
+            fontSize: 10,
+            fontWeight: 800,
+            color: "#00FFFF",
+            textDecoration: "none",
+            border: "1px solid rgba(0,255,255,0.35)",
+            borderRadius: 8,
+            padding: "6px 12px",
+          }}
+        >
+          FULL EDITOR →
+        </Link>
+      </div>
+      <YoPhoPortraitStageCanvas blueprint={blueprint} height={320} interactive />
+    </div>
+  );
+}
+
+interface CommandCenterDrawerProps {
+  role: CommandCenterRole;
+  activePanel: CommandCenterPanelId | null;
+  /** Special panel: shell appearance (ThemeEngine) */
+  appearanceOpen?: boolean;
+  userId: string;
+  displayName: string;
+  onClose: () => void;
+}
+
+export default function CommandCenterDrawer({
+  role,
+  activePanel,
+  appearanceOpen = false,
+  userId,
+  displayName,
+  onClose,
+}: CommandCenterDrawerProps) {
+  const theme = useTheme();
+  const roomId = useMemo(() => `${role}-lobby-cc-${userId}`, [role, userId]);
+  const open = appearanceOpen || activePanel != null;
+
+  const title = appearanceOpen
+    ? "SHELL COLORS · THIS DEVICE"
+    : activePanel === "lobby"
+      ? "AVATAR FAN LOBBY · CINEMA"
+      : activePanel === "yopho"
+        ? "YOPHO"
+        : activePanel === "media_locker"
+          ? "MEDIA LOCKER"
+          : activePanel === "beat_lab"
+            ? "BEAT LAB"
+            : activePanel === "booking"
+              ? "BOOKINGS"
+              : activePanel === "stage_tools"
+                ? "STAGE TOOLS"
+                : activePanel === "store"
+                  ? "STORE"
+                  : activePanel === "playlist"
+                    ? "PLAYLISTS"
+                    : activePanel === "memory"
+                      ? "MEMORY WALL"
+                      : activePanel === "inventory"
+                        ? "INVENTORY"
+                        : "DRAWER";
+
+  // Block fan-only panels for performer role (defense in depth)
+  if (activePanel && isFanOnlyPanel(activePanel) && role === "performer") {
+    return null;
+  }
+
+  return (
+    <AnimatePresence initial={false}>
+      {open ? (
+        <motion.div
+          key="cc-drawer"
+          initial={{ height: 0, opacity: 0.85 }}
+          animate={{ height: "min(48vh, 520px)", opacity: 1 }}
+          exit={{ height: 0, opacity: 0 }}
+          transition={snapIn}
+          style={{
+            flexShrink: 0,
+            width: "100%",
+            overflow: "hidden",
+            background: theme.bgSurface,
+            borderTop: `1px solid ${theme.tertiary}55`,
+            boxShadow: `0 -16px 40px rgba(0,0,0,0.55), 0 0 24px ${theme.drawerGlow}22`,
+            display: "flex",
+            flexDirection: "column",
+          }}
+          role="region"
+          aria-label={title}
+        >
+          <div
+            style={{
+              flexShrink: 0,
+              display: "flex",
+              alignItems: "center",
+              gap: 12,
+              padding: "8px 14px",
+              background: "rgba(0,0,0,0.72)",
+              borderBottom: `1px solid ${theme.primary}33`,
+            }}
+          >
+            <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.14em", color: theme.tertiary }}>{title}</div>
+            {appearanceOpen ? (
+              <span style={{ fontSize: 9, color: "rgba(255,255,255,0.4)" }}>Saved on this device (ThemeEngine)</span>
+            ) : null}
+            <div style={{ flex: 1 }} />
+            <button
+              type="button"
+              onClick={onClose}
+              style={{
+                background: "transparent",
+                border: "1px solid rgba(255,68,68,0.45)",
+                color: "#FF6666",
+                borderRadius: 8,
+                padding: "5px 10px",
+                fontSize: 10,
+                fontWeight: 800,
+                cursor: "pointer",
+              }}
+            >
+              CLOSE
+            </button>
+          </div>
+
+          <div style={{ flex: 1, minHeight: 0, overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.div
+                key={appearanceOpen ? "appearance" : activePanel ?? "x"}
+                initial={{ y: 24, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: -16, opacity: 0 }}
+                transition={snapIn}
+                style={{ minHeight: 260, padding: appearanceOpen ? 12 : 0 }}
+              >
+                {appearanceOpen ? (
+                  <div>
+                    <p style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", margin: "0 0 12px", padding: "0 4px" }}>
+                      Pick a shell palette for your Command Center. Changes apply instantly and persist on this device —
+                      not cloud-synced yet.
+                    </p>
+                    <ThemeEditorPanel accentColor={theme.primary} />
+                  </div>
+                ) : null}
+
+                {activePanel === "lobby" && role === "fan" ? (
+                  <RoleGate
+                    allow={["FAN", "ADMIN", "STAFF"]}
+                    fallback={
+                      <div style={{ padding: 24, textAlign: "center", color: "rgba(255,255,255,0.45)", fontSize: 12 }}>
+                        Avatar Fan Lobby is Fan-only (Rule 26).
+                      </div>
+                    }
+                  >
+                    <div style={{ height: "min(42vh, 460px)", minHeight: 300 }}>
+                      <FanLobbyVenue
+                        roomId={roomId}
+                        userName={displayName}
+                        initialSkinId={DEFAULT_FAN_LOBBY_SKIN_ID}
+                        embedded
+                      />
+                    </div>
+                  </RoleGate>
+                ) : null}
+
+                {activePanel === "yopho" ? <YoPhoSlot role={role} displayName={displayName} /> : null}
+
+                {activePanel === "playlist" ? (
+                  <div style={{ padding: 12 }}>
+                    <PlaylistCanister entityId={userId} entityName={displayName} isOwner accentColor={theme.primary} />
+                  </div>
+                ) : null}
+
+                {activePanel === "memory" ? (
+                  <div style={{ padding: 12 }}>
+                    <MemoryWallCanister
+                      entityId={userId}
+                      entityType={role === "performer" ? "performer" : "fan"}
+                      accentColor={theme.secondary}
+                    />
+                  </div>
+                ) : null}
+
+                {activePanel === "inventory" && role === "fan" ? (
+                  <RoleGate allow={["FAN", "ADMIN", "STAFF"]} fallback={null}>
+                    <div style={{ padding: 12 }}>
+                      <InventoryCanister accentColor={theme.tertiary} />
+                    </div>
+                  </RoleGate>
+                ) : null}
+
+                {activePanel === "media_locker" && role === "performer" ? (
+                  <div style={{ padding: 12 }}>
+                    <MediaLockerCanister userId={userId} role="performer" accentColor={theme.secondary} />
+                  </div>
+                ) : null}
+
+                {activePanel === "beat_lab" && role === "performer" ? (
+                  <div style={{ padding: 20, display: "flex", flexDirection: "column", gap: 12 }}>
+                    <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)" }}>
+                      Beat Lab & Competition Vault — open the real vault surfaces.
+                    </div>
+                    <Link
+                      href="/beat-vault"
+                      style={{
+                        display: "inline-block",
+                        padding: "10px 16px",
+                        borderRadius: 10,
+                        background: `${theme.tertiary}22`,
+                        border: `1px solid ${theme.tertiary}66`,
+                        color: theme.tertiary,
+                        fontWeight: 800,
+                        fontSize: 12,
+                        textDecoration: "none",
+                        width: "fit-content",
+                      }}
+                    >
+                      Open Beat Vault →
+                    </Link>
+                    <Link
+                      href="/performer/studio"
+                      style={{
+                        display: "inline-block",
+                        padding: "10px 16px",
+                        borderRadius: 10,
+                        background: `${theme.primary}22`,
+                        border: `1px solid ${theme.primary}66`,
+                        color: theme.primary,
+                        fontWeight: 800,
+                        fontSize: 12,
+                        textDecoration: "none",
+                        width: "fit-content",
+                      }}
+                    >
+                      Performer Studio →
+                    </Link>
+                  </div>
+                ) : null}
+
+                {activePanel === "booking" && role === "performer" ? (
+                  <div style={{ padding: 12 }}>
+                    <BookingCanister entityId={userId} entityType="performer" showRequestForm={false} accentColor="#00FF88" />
+                  </div>
+                ) : null}
+
+                {activePanel === "stage_tools" && role === "performer" ? (
+                  <div style={{ padding: 20, display: "flex", flexDirection: "column", gap: 10 }}>
+                    <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)" }}>
+                      Stage & broadcast tools — real destinations only.
+                    </div>
+                    <Link href="/live/go" style={toolLink(theme.primary)}>
+                      🔴 Go Live →
+                    </Link>
+                    <Link href="/performer/studio" style={toolLink(theme.secondary)}>
+                      Studio & stage engines →
+                    </Link>
+                    <Link href="/performer/studio" style={toolLink(theme.tertiary)}>
+                      Studio →
+                    </Link>
+                  </div>
+                ) : null}
+
+                {activePanel === "store" && role === "performer" ? (
+                  <div style={{ padding: 12 }}>
+                    <StoreCanister entityId={userId} entityName={displayName} storeType="performer" accentColor={theme.tertiary} />
+                  </div>
+                ) : null}
+              </motion.div>
+            </AnimatePresence>
+          </div>
+        </motion.div>
+      ) : null}
+    </AnimatePresence>
+  );
+}
+
+function toolLink(color: string): CSSProperties {
+  return {
+    display: "inline-block",
+    padding: "10px 16px",
+    borderRadius: 10,
+    background: `${color}22`,
+    border: `1px solid ${color}66`,
+    color,
+    fontWeight: 800,
+    fontSize: 12,
+    textDecoration: "none",
+    width: "fit-content",
+  };
+}

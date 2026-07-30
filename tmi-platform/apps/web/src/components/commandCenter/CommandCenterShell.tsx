@@ -1,0 +1,388 @@
+"use client";
+
+/**
+ * Shared Fan + Performer Command Center shell (blueprint chrome).
+ * Same layout: L rail | dual→quad→octo media | R rail | bottom drawer | dock.
+ * Role-gated drawer payloads (Rule 26). Shell colors via ThemeEngine (device persist).
+ */
+
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import MasterControlDock from "@/components/shell/MasterControlDock";
+import CommandCenterMediaStack, { type CommandCenterMediaSlot } from "./CommandCenterMediaStack";
+import CommandCenterDrawer from "./CommandCenterDrawer";
+import {
+  panelsForRole,
+  type CommandCenterPanelId,
+  type CommandCenterRole,
+} from "./commandCenterRegistry";
+import { useTheme } from "@/lib/design/ThemeEngine";
+import { getPerformerById } from "@/lib/performers/PerformerRegistry";
+
+interface LiveApiSession {
+  userId: string;
+  displayName: string;
+  roomId: string;
+  viewerCount: number;
+  avatarUrl: string | null;
+}
+
+interface CommandCenterShellProps {
+  role: CommandCenterRole;
+  userId: string;
+  displayName: string;
+}
+
+export default function CommandCenterShell({ role, userId, displayName }: CommandCenterShellProps) {
+  const router = useRouter();
+  const theme = useTheme();
+  const panels = panelsForRole(role);
+  const primary = panels.filter((p) => p.primary);
+  const secondary = panels.filter((p) => !p.primary);
+
+  const [activePanel, setActivePanel] = useState<CommandCenterPanelId | null>(null);
+  const [appearanceOpen, setAppearanceOpen] = useState(false);
+  const [featured, setFeatured] = useState<{
+    name: string;
+    route: string;
+    videoUrl?: string;
+    imageUrl?: string;
+    viewers?: number;
+  } | null>(null);
+
+  const togglePanel = (id: CommandCenterPanelId) => {
+    setAppearanceOpen(false);
+    setActivePanel((prev) => (prev === id ? null : id));
+  };
+
+  const openAppearance = () => {
+    setActivePanel(null);
+    setAppearanceOpen((v) => !v);
+  };
+
+  const closeDrawer = () => {
+    setActivePanel(null);
+    setAppearanceOpen(false);
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const res = await fetch("/api/live/go", { cache: "no-store" });
+        const data = (await res.json()) as { sessions?: LiveApiSession[] };
+        const top = data.sessions?.[0];
+        if (cancelled) return;
+        if (!top) {
+          setFeatured(null);
+          return;
+        }
+        const profile = getPerformerById(top.userId);
+        setFeatured({
+          name: profile?.name ?? top.displayName,
+          route: profile?.liveRoomRoute ?? `/live/rooms/${top.roomId}`,
+          videoUrl: profile?.introVideoUrl ?? profile?.motionPosterUrl,
+          imageUrl: profile?.profileImageUrl ?? top.avatarUrl ?? undefined,
+          viewers: top.viewerCount,
+        });
+      } catch {
+        if (!cancelled) setFeatured(null);
+      }
+    };
+    void load();
+    const id = setInterval(() => void load(), 10000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, []);
+
+  const mediaSlots: CommandCenterMediaSlot[] = useMemo(() => {
+    const stageVideo =
+      featured?.videoUrl ||
+      process.env.NEXT_PUBLIC_DEFAULT_MONITOR_VIDEO?.trim() ||
+      "/assets/videos/rooms/monday-night-stage.mp4";
+    return [
+      {
+        id: "mon-a",
+        label: "MONITOR A · STAGE",
+        videoUrl: featured?.videoUrl ?? stageVideo,
+        imageUrl: featured?.imageUrl,
+        kind: "video",
+      },
+      {
+        id: "mon-b",
+        label: "MONITOR B · AUDIENCE",
+        kind: "audience",
+      },
+    ];
+  }, [featured]);
+
+  const railBtn = (opts: {
+    key: string;
+    label: string;
+    info?: string;
+    active?: boolean;
+    accent?: string;
+    onClick?: () => void;
+    href?: string;
+  }) => {
+    const active = Boolean(opts.active);
+    const accent = opts.accent ?? theme.primary;
+    const style: CSSProperties = {
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      padding: "9px 10px",
+      borderRadius: 8,
+      cursor: "pointer",
+      width: "100%",
+      textAlign: "left",
+      fontFamily: "inherit",
+      textDecoration: "none",
+      background: active ? `${accent}22` : "transparent",
+      border: active ? `1px solid ${accent}88` : "1px solid transparent",
+      color: active ? accent : "#fff",
+      boxShadow: active ? `0 0 12px ${accent}33` : "none",
+      transition: "all 120ms ease",
+    };
+    const inner = (
+      <>
+        <span style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.05em" }}>{opts.label}</span>
+        {opts.info ? (
+          <span
+            style={{
+              fontSize: 7,
+              fontWeight: 900,
+              color: active ? "#050510" : "rgba(255,255,255,0.4)",
+              background: active ? accent : "rgba(255,255,255,0.06)",
+              padding: "1px 5px",
+              borderRadius: 4,
+            }}
+          >
+            {active ? "OPEN" : opts.info}
+          </span>
+        ) : null}
+      </>
+    );
+    if (opts.href) {
+      return (
+        <Link key={opts.key} href={opts.href} style={style}>
+          {inner}
+        </Link>
+      );
+    }
+    return (
+      <button key={opts.key} type="button" onClick={opts.onClick} style={style}>
+        {inner}
+      </button>
+    );
+  };
+
+  return (
+    <div
+      style={{
+        minHeight: "100vh",
+        background: theme.bgBase,
+        color: "#e2e8f0",
+        display: "flex",
+        flexDirection: "column",
+        fontFamily: "'Inter', sans-serif",
+      }}
+    >
+      {/* Top bar */}
+      <div
+        style={{
+          height: 44,
+          flexShrink: 0,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "0 16px",
+          borderBottom: `1px solid ${theme.primary}22`,
+          background: theme.bgGlass,
+          backdropFilter: "blur(12px)",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ fontSize: 11, fontWeight: 900, letterSpacing: "0.16em", color: theme.primary }}>
+            TMI · {role === "performer" ? "PERFORMER" : "FAN"} COMMAND CENTER
+          </span>
+          {featured ? (
+            <span style={{ fontSize: 10, color: "rgba(255,255,255,0.45)" }}>
+              Live: {featured.name}
+              {featured.viewers != null ? ` · ${featured.viewers.toLocaleString()} watching` : ""}
+            </span>
+          ) : (
+            <span style={{ fontSize: 10, color: "rgba(255,255,255,0.35)" }}>No one live right now</span>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={openAppearance}
+          style={{
+            fontSize: 9,
+            fontWeight: 900,
+            letterSpacing: "0.1em",
+            padding: "6px 12px",
+            borderRadius: 8,
+            cursor: "pointer",
+            border: `1px solid ${theme.secondary}66`,
+            background: appearanceOpen ? `${theme.secondary}22` : "rgba(255,255,255,0.04)",
+            color: theme.secondary,
+            fontFamily: "inherit",
+          }}
+        >
+          🎨 SHELL COLORS
+        </button>
+      </div>
+
+      {/* Media + rails + drawer */}
+      <div
+        style={{
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          minHeight: 0,
+          height: "calc(100vh - 44px)",
+          maxHeight: "calc(100vh - 44px)",
+          overflow: "hidden",
+          paddingBottom: 100,
+        }}
+      >
+        <div
+          style={{
+            flex: 1,
+            minHeight: 0,
+            display: "grid",
+            gridTemplateColumns: "230px minmax(0, 1fr) 300px",
+            overflow: "hidden",
+          }}
+        >
+          {/* Left rail */}
+          <div
+            style={{
+              background: `${theme.bgSurface}cc`,
+              borderRight: `1px solid ${theme.primary}18`,
+              padding: "12px 12px",
+              display: "flex",
+              flexDirection: "column",
+              gap: 5,
+              overflowY: "auto",
+            }}
+          >
+            <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", fontWeight: 900, letterSpacing: "0.14em", marginBottom: 4 }}>
+              MAIN MENU
+            </div>
+            <div style={{ fontSize: 8, color: `${theme.tertiary}99`, fontWeight: 800, letterSpacing: "0.12em" }}>
+              OPEN DRAWER
+            </div>
+            {primary.map((p) =>
+              railBtn({
+                key: p.id,
+                label: p.label,
+                info: p.info,
+                accent: p.accent,
+                active: activePanel === p.id,
+                onClick: () => togglePanel(p.id),
+              }),
+            )}
+            <div style={{ fontSize: 8, color: "rgba(255,255,255,0.28)", fontWeight: 800, letterSpacing: "0.12em", marginTop: 8 }}>
+              MORE IN DRAWER
+            </div>
+            {secondary.map((p) =>
+              railBtn({
+                key: p.id,
+                label: p.label,
+                info: p.info,
+                accent: p.accent,
+                active: activePanel === p.id,
+                onClick: () => togglePanel(p.id),
+              }),
+            )}
+            {railBtn({
+              key: "appearance",
+              label: "SHELL COLORS",
+              info: "This device",
+              accent: theme.secondary,
+              active: appearanceOpen,
+              onClick: openAppearance,
+            })}
+            <div style={{ height: 8 }} />
+            {railBtn({ key: "live", label: "LIVE ROOMS", info: "Discover", href: "/live/lobby" })}
+            {railBtn({ key: "msg", label: "MESSAGES", href: "/messages" })}
+            {railBtn({ key: "friends", label: "FRIENDS", href: "/friends" })}
+            {role === "performer"
+              ? railBtn({ key: "golive", label: "GO LIVE", info: "Broadcast", href: "/live/go" })
+              : railBtn({ key: "camera", label: "CAMERA", info: "Go Live", href: "/live/go" })}
+            {railBtn({ key: "store", label: "STORE", href: "/store" })}
+            {railBtn({ key: "settings", label: "SETTINGS", href: "/settings" })}
+
+            <div style={{ marginTop: "auto", paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+              <div style={{ fontSize: 10, fontWeight: 900, color: "#fff" }}>{displayName}</div>
+              <div style={{ fontSize: 8, fontWeight: 800, color: theme.primary, letterSpacing: "0.08em", marginTop: 2 }}>
+                {role === "performer" ? "PERFORMER" : "FAN"} · THEME {theme.name.toUpperCase()}
+              </div>
+            </div>
+          </div>
+
+          {/* Center media */}
+          <CommandCenterMediaStack slots={mediaSlots} />
+
+          {/* Right rail */}
+          <div
+            style={{
+              background: `${theme.bgSurface}cc`,
+              borderLeft: `1px solid ${theme.primary}18`,
+              padding: 12,
+              display: "flex",
+              flexDirection: "column",
+              gap: 10,
+              overflowY: "auto",
+            }}
+          >
+            <div style={{ flex: 1, minHeight: 160, background: "rgba(0,0,0,0.25)", borderRadius: 10, border: "1px solid rgba(255,255,255,0.06)", padding: 10, display: "flex", flexDirection: "column" }}>
+              <div style={{ display: "flex", gap: 12, borderBottom: "1px solid rgba(255,255,255,0.08)", paddingBottom: 6, marginBottom: 8 }}>
+                {["CHAT", "ROOM", "PEOPLE"].map((t, i) => (
+                  <span key={t} style={{ fontSize: 10, fontWeight: 900, color: i === 0 ? theme.primary : "rgba(255,255,255,0.35)" }}>
+                    {t}
+                  </span>
+                ))}
+              </div>
+              <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: "rgba(255,255,255,0.3)", textAlign: "center", padding: 12 }}>
+                {featured ? "No messages yet — say something!" : "Join a live room to chat"}
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: 9, fontWeight: 900, color: "rgba(255,255,255,0.4)", marginBottom: 6 }}>ROOMS NEARBY</div>
+              <Link href="/live/lobby" style={{ display: "block", fontSize: 10, color: theme.secondary, textDecoration: "none", padding: "8px 10px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.02)" }}>
+                Open Live Lobby Wall →
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        <CommandCenterDrawer
+          role={role}
+          activePanel={activePanel}
+          appearanceOpen={appearanceOpen}
+          userId={userId}
+          displayName={displayName}
+          onClose={closeDrawer}
+        />
+      </div>
+
+      <MasterControlDock
+        role={role === "performer" ? "performer" : "fan"}
+        onLeaveRoom={() => router.push(featured?.route ?? "/live/lobby")}
+        onEnterStage={() => router.push(role === "performer" ? "/live/go" : "/live/go")}
+        onLobbyNav={
+          role === "fan"
+            ? () => togglePanel("lobby")
+            : () => togglePanel("media_locker")
+        }
+      />
+    </div>
+  );
+}

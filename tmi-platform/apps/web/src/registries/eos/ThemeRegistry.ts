@@ -1,6 +1,9 @@
 /**
  * EOS Theme Registry — bridges VenueSkinRegistry + competition ThemeRegistry
  * and Flight Deck bezel design tokens (Phase 3).
+ *
+ * Command Center shell personalization uses ThemeEngine (`lib/design/ThemeEngine.ts`)
+ * — do not invent a parallel user theme store. Flight deck bezels stay here.
  */
 
 import { getVenueSkinById, getDefaultVenueSkin } from "../venues/VenueSkinRegistry";
