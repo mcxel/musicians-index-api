@@ -26,6 +26,19 @@ const nextConfig = {
       "@bernout/agent-network": path.join(__dirname, "src/stubs/bernout-agent-network.ts"),
     };
 
+    // Fallback Node native modules for client-side Webpack bundling
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...(config.resolve.fallback || {}),
+        fs: false,
+        dns: false,
+        net: false,
+        tls: false,
+        child_process: false,
+        crypto: false,
+      };
+    }
+
     // Add watchOptions to ignore noisy system files on Windows during `next dev`.
     // This prevents "EINVAL" errors from files like pagefile.sys or System Volume Information,
     // which can cause the dev server to hang and Playwright tests to time out.
