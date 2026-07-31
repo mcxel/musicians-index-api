@@ -1,9 +1,10 @@
 /**
- * Presentation Framework — television / production layer (certifiable foundation).
+ * Presentation Framework — television / production layer.
  *
- * Reuses spatial PresentationDirector + BroadcastDirectorEngine for camera profiles.
- * New this pass: MonitorAnchorZones, ScreenSurfaceRegistry, LayerStack,
+ * Foundation (CERTIFIED): MonitorAnchorZones, ScreenSurfaceRegistry, LayerStack,
  * semantic events, ShowPackageDirector, Battle Presentation Pack v1.
+ * Phase 5.1 (TESTING): director scaffolds, Cypher/Challenge packs, overlay library,
+ * runtime compatibility matrix.
  */
 
 export * from "./MonitorAnchorZones";
@@ -11,7 +12,14 @@ export * from "./LayerStack";
 export * from "./ScreenSurfaceRegistry";
 export * from "./PresentationEvents";
 export * from "./ShowPackageDirector";
+export * from "./ShowPackTypes";
+export * from "./ShowPackCatalog";
+export * from "./OverlayLibrary";
+export * from "./RuntimeCompatibilityMatrix";
 export * from "./packs/BattlePresentationPackV1";
+export * from "./packs/CypherPresentationPackV1";
+export * from "./packs/ChallengePresentationPackV1";
+export * from "./directors";
 
 export { default as PresentationDirector } from "./PresentationDirector";
 export type {

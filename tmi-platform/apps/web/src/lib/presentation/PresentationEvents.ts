@@ -14,7 +14,9 @@ export type PresentationSemanticEvent =
   | "WINNER_DECLARED"
   | "ROUND_COMPLETE"
   | "SHOW_IDLE"
-  | "CRITICAL_ALERT";
+  | "CRITICAL_ALERT"
+  | "CYPHER_START"
+  | "CHALLENGE_START";
 
 export interface PresentationEventPayload {
   roomId?: string;

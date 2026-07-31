@@ -1,20 +1,23 @@
 /**
- * ShowPackageDirector — semantic event → Show Package / Battle Pack resolver.
+ * ShowPackageDirector — semantic event → Show Package resolver.
  *
  * Complements the existing spatial PresentationDirector (anchors/overlays/camera)
  * and BroadcastDirectorEngine (shot probability profiles). This layer owns
  * television grammar packages, not camera math or 3D sockets.
+ *
+ * Multi-pack: Battle (default), Cypher Pack v1, Challenge Pack v1 via ShowPackCatalog.
+ * Phase 5.1 directors subscribe to this director — do not duplicate it.
  */
 
 import PresentationDirector from "./PresentationDirector";
 import PresentationStateMachine, { type PresentationState } from "./PresentationStateMachine";
 import PresentationTimelineEngine from "./PresentationTimelineEngine";
 import {
-  BATTLE_PRESENTATION_PACK_V1,
-  resolveBattlePhaseFromEvent,
-  type BattlePackPhase,
-  type BattlePackPhaseId,
-} from "./packs/BattlePresentationPackV1";
+  DEFAULT_SHOW_PACK_ID,
+  getShowPack,
+  resolvePhaseFromPack,
+} from "./ShowPackCatalog";
+import type { ShowPackPhase } from "./ShowPackTypes";
 import type {
   PresentationEventPayload,
   PresentationSemanticEvent,
@@ -24,7 +27,7 @@ import { createPresentationEvent } from "./PresentationEvents";
 export type ActiveShowPackageSnapshot = {
   packId: string;
   packName: string;
-  phaseId: BattlePackPhaseId | null;
+  phaseId: string | null;
   phaseLabel: string | null;
   triggerEvent: PresentationSemanticEvent | null;
   cameraCaption: string | null;
@@ -40,6 +43,8 @@ type Listener = (snapshot: ActiveShowPackageSnapshot) => void;
 const EVENT_TO_STATE: Partial<Record<PresentationSemanticEvent, PresentationState>> = {
   BATTLE_START: "OPENING",
   BATTLE_INTRO: "OPENING",
+  CYPHER_START: "OPENING",
+  CHALLENGE_START: "OPENING",
   VS_REVEAL: "LIVE",
   PERFORMER_TURN: "LIVE",
   PERFORMANCE_START: "LIVE",
@@ -51,17 +56,51 @@ const EVENT_TO_STATE: Partial<Record<PresentationSemanticEvent, PresentationStat
   CRITICAL_ALERT: "LIVE",
 };
 
+function packIdForEvent(
+  event: PresentationSemanticEvent,
+  payloadPackageId?: string,
+  currentPackId?: string
+): string {
+  if (payloadPackageId && getShowPack(payloadPackageId)) return payloadPackageId;
+  if (event === "CYPHER_START") return "cypher-presentation-v1";
+  if (event === "CHALLENGE_START") return "challenge-presentation-v1";
+  if (
+    event === "BATTLE_START" ||
+    event === "BATTLE_INTRO" ||
+    event === "VS_REVEAL"
+  ) {
+    return "battle-presentation-v1";
+  }
+  return currentPackId && getShowPack(currentPackId)
+    ? currentPackId
+    : DEFAULT_SHOW_PACK_ID;
+}
+
 class ShowPackageDirectorEngine {
-  private phase: BattlePackPhase | null = null;
+  private activePackId = DEFAULT_SHOW_PACK_ID;
+  private phase: ShowPackPhase | null = null;
   private lastEvent: PresentationSemanticEvent | null = null;
   private lastEventAt: number | null = null;
   private mode: ActiveShowPackageSnapshot["mode"] = "IDLE";
   private listeners = new Set<Listener>();
 
+  public getActivePackId(): string {
+    return this.activePackId;
+  }
+
+  public setActivePack(packId: string): boolean {
+    const pack = getShowPack(packId);
+    if (!pack) return false;
+    this.activePackId = packId;
+    this.emit();
+    return true;
+  }
+
   public getSnapshot(): ActiveShowPackageSnapshot {
+    const pack = getShowPack(this.activePackId);
     return {
-      packId: BATTLE_PRESENTATION_PACK_V1.packId,
-      packName: BATTLE_PRESENTATION_PACK_V1.name,
+      packId: pack?.packId ?? this.activePackId,
+      packName: pack?.name ?? this.activePackId,
       phaseId: this.phase?.phaseId ?? null,
       phaseLabel: this.phase?.label ?? null,
       triggerEvent: this.lastEvent,
@@ -93,7 +132,7 @@ class ShowPackageDirectorEngine {
   }
 
   /**
-   * Resolve a semantic event into the active Battle Pack phase and sync
+   * Resolve a semantic event into the active pack phase and sync
    * spatial PresentationDirector + optional legacy timeline package.
    */
   public handleEvent(
@@ -104,6 +143,11 @@ class ShowPackageDirectorEngine {
     this.mode = opts?.mode ?? "LIVE";
     this.lastEvent = event;
     this.lastEventAt = Date.now();
+    this.activePackId = packIdForEvent(
+      event,
+      payload?.packageId,
+      this.activePackId
+    );
 
     if (event === "CRITICAL_ALERT") {
       PresentationDirector.mountOverlay({
@@ -122,7 +166,7 @@ class ShowPackageDirectorEngine {
       return this.getSnapshot();
     }
 
-    const phase = resolveBattlePhaseFromEvent(event);
+    const phase = resolvePhaseFromPack(this.activePackId, event);
     if (phase) {
       this.phase = phase;
       this.applyPhase(phase, payload, opts?.playLegacyTimeline === true);
@@ -132,7 +176,6 @@ class ShowPackageDirectorEngine {
     if (targetState && PresentationStateMachine.canTransitionTo(targetState)) {
       PresentationStateMachine.transitionTo(targetState);
     } else if (targetState === "IDLE") {
-      // FORCE idle reset path through cooldown when needed
       if (PresentationStateMachine.getState() !== "IDLE") {
         if (PresentationStateMachine.canTransitionTo("COOLDOWN")) {
           PresentationStateMachine.transitionTo("COOLDOWN");
@@ -148,11 +191,10 @@ class ShowPackageDirectorEngine {
   }
 
   private applyPhase(
-    phase: BattlePackPhase,
+    phase: ShowPackPhase,
     payload?: PresentationEventPayload,
     playLegacyTimeline = false
   ) {
-    // Clear prior pack overlays that we mounted with pack- prefix
     for (const overlay of PresentationDirector.getActiveOverlays()) {
       if (overlay.id.startsWith("pack-")) {
         PresentationDirector.unmountOverlay(overlay.id);
@@ -168,10 +210,12 @@ class ShowPackageDirectorEngine {
             ? "CINEMATIC_FLY_IN"
             : "FIXED";
 
+    const winnerFocus =
+      phase.phaseId === "WINNER" || phase.phaseId === "RESULT";
+
     PresentationDirector.setCameraTarget({
       mode: cameraMode,
-      targetAnchorId:
-        phase.phaseId === "WINNER" ? "winner-focus-center" : "performer-primary",
+      targetAnchorId: winnerFocus ? "winner-focus-center" : "performer-primary",
       transitionDurationMs: 1200,
     });
 
@@ -188,8 +232,7 @@ class ShowPackageDirectorEngine {
                 : surface.type === "SPONSOR_PANEL" || surface.type === "LOWER_THIRD"
                   ? "SPONSOR_LOWER_THIRD"
                   : "NEON_PERFORMER_FRAME",
-        targetAnchorId:
-          phase.phaseId === "WINNER" ? "winner-focus-center" : "battle-score-top",
+        targetAnchorId: winnerFocus ? "winner-focus-center" : "battle-score-top",
         visible: true,
         opacity: 1,
         scale: 1,
@@ -204,7 +247,6 @@ class ShowPackageDirectorEngine {
           winnerLabel: payload?.winnerLabel,
           roundLabel: payload?.roundLabel,
           cameraCaption: phase.cameraCue.caption,
-          // Explicit: no score fabrication
           scores: null,
         },
       });
@@ -217,7 +259,7 @@ class ShowPackageDirectorEngine {
       });
     }
 
-    if (phase.phaseId === "WINNER" && payload?.winnerLabel) {
+    if (winnerFocus && payload?.winnerLabel) {
       PresentationDirector.triggerCelebration(payload.winnerLabel);
     }
   }
@@ -225,14 +267,22 @@ class ShowPackageDirectorEngine {
   /** Preview-only: walk grammar phases with package data (no fake scores). */
   public async playPreviewTimeline(
     onTick?: (snapshot: ActiveShowPackageSnapshot) => void,
-    labels?: Pick<PresentationEventPayload, "leftLabel" | "rightLabel" | "winnerLabel">
+    labels?: Pick<
+      PresentationEventPayload,
+      "leftLabel" | "rightLabel" | "winnerLabel"
+    >,
+    packId?: string
   ): Promise<void> {
-    const timeline = BATTLE_PRESENTATION_PACK_V1.grammar;
-    for (const phaseId of timeline) {
-      const phase = BATTLE_PRESENTATION_PACK_V1.phases[phaseId];
+    if (packId) this.setActivePack(packId);
+    const pack = getShowPack(this.activePackId);
+    if (!pack) return;
+    for (const phaseId of pack.grammar) {
+      const phase = pack.phases[phaseId];
+      if (!phase) continue;
       const snap = this.handleEvent(
         phase.triggerEvent,
         {
+          packageId: this.activePackId,
           leftLabel: labels?.leftLabel ?? "Performer A",
           rightLabel: labels?.rightLabel ?? "Performer B",
           winnerLabel: labels?.winnerLabel ?? "Winner (preview label)",
@@ -259,6 +309,7 @@ class ShowPackageDirectorEngine {
     this.lastEvent = "SHOW_IDLE";
     this.lastEventAt = Date.now();
     this.mode = "IDLE";
+    this.activePackId = DEFAULT_SHOW_PACK_ID;
     if (PresentationStateMachine.canTransitionTo("COOLDOWN")) {
       PresentationStateMachine.transitionTo("COOLDOWN");
     }

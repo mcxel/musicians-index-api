@@ -7,13 +7,11 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
-import {
-  BATTLE_PRESENTATION_PACK_V1,
-  getBattlePackPreviewTimeline,
-} from "@/lib/presentation/packs/BattlePresentationPackV1";
 import ShowPackageDirector, {
   type ActiveShowPackageSnapshot,
 } from "@/lib/presentation/ShowPackageDirector";
+import { getShowPack, listShowPacks } from "@/lib/presentation/ShowPackCatalog";
+import { ensurePresentationDirectorsStarted } from "@/lib/presentation/directors";
 import {
   MONITOR_ANCHOR_ZONES,
   monitorAnchorZoneToCss,
@@ -28,6 +26,15 @@ const PHASE_COLORS: Record<string, string> = {
   PERFORMANCE: "#AA2DFF",
   VOTING: "#FFD700",
   WINNER: "#00FF88",
+  CIRCLE: "#00FFFF",
+  HANDOFF: "#AA2DFF",
+  VERSE: "#FF2DAA",
+  PASS: "#FFD700",
+  CLOSE: "#00FF88",
+  BRIEF: "#FFD700",
+  ATTEMPT: "#FF2DAA",
+  JUDGE: "#AA2DFF",
+  RESULT: "#00FF88",
 };
 
 export default function BattlePresentationPreview() {
@@ -35,10 +42,13 @@ export default function BattlePresentationPreview() {
     ShowPackageDirector.getSnapshot()
   );
   const [playing, setPlaying] = useState(false);
+  const [packId, setPackId] = useState("battle-presentation-v1");
   const [log, setLog] = useState<string[]>([]);
+  const packs = listShowPacks();
 
   useEffect(() => {
     PresentationEventBridge.initialize();
+    ensurePresentationDirectorsStarted();
     return ShowPackageDirector.subscribe(setSnap);
   }, []);
 
@@ -49,21 +59,26 @@ export default function BattlePresentationPreview() {
   const playPreview = useCallback(async () => {
     if (playing) return;
     setPlaying(true);
-    pushLog("Preview package start — Battle Presentation Pack v1");
+    const pack = getShowPack(packId);
+    pushLog(`Preview package start — ${pack?.name ?? packId}`);
     try {
-      await ShowPackageDirector.playPreviewTimeline((s) => {
-        setSnap(s);
-        pushLog(`Phase ${s.phaseId ?? "—"} · ${s.cameraCaption ?? "no camera cue"}`);
-      });
+      await ShowPackageDirector.playPreviewTimeline(
+        (s) => {
+          setSnap(s);
+          pushLog(`Phase ${s.phaseId ?? "—"} · ${s.cameraCaption ?? "no camera cue"}`);
+        },
+        undefined,
+        packId
+      );
       pushLog("Preview complete (no scores fabricated)");
     } finally {
       setPlaying(false);
     }
-  }, [playing, pushLog]);
+  }, [playing, pushLog, packId]);
 
-  const activePhase = snap.phaseId
-    ? BATTLE_PRESENTATION_PACK_V1.phases[snap.phaseId]
-    : null;
+  const activePack = getShowPack(snap.packId) ?? getShowPack(packId);
+  const activePhase =
+    snap.phaseId && activePack ? activePack.phases[snap.phaseId] ?? null : null;
   const accent = snap.phaseId ? PHASE_COLORS[snap.phaseId] ?? "#00FFFF" : "#00FFFF";
 
   return (
@@ -82,16 +97,39 @@ export default function BattlePresentationPreview() {
         fontFamily: "monospace",
       }}
     >
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
         <div>
           <div style={{ fontSize: 10, letterSpacing: "0.2em", color: accent, fontWeight: 900 }}>
             PRESENTATION FRAMEWORK · PREVIEW PACKAGE
           </div>
           <div style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", marginTop: 2 }}>
-            {BATTLE_PRESENTATION_PACK_V1.name} — grammar only, no fake scores
+            {activePack?.name ?? packId} — grammar only, no fake scores
           </div>
         </div>
-        <div style={{ display: "flex", gap: 6 }}>
+        <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+          <select
+            value={packId}
+            disabled={playing}
+            onChange={(e) => {
+              setPackId(e.target.value);
+              ShowPackageDirector.setActivePack(e.target.value);
+            }}
+            style={{
+              borderRadius: 6,
+              border: "1px solid rgba(255,255,255,0.25)",
+              background: "#0a0614",
+              color: "#fff",
+              fontSize: 10,
+              fontWeight: 700,
+              padding: "6px 8px",
+            }}
+          >
+            {packs.map((p) => (
+              <option key={p.packId} value={p.packId}>
+                {p.name}
+              </option>
+            ))}
+          </select>
           <button
             type="button"
             disabled={playing}
@@ -261,23 +299,29 @@ export default function BattlePresentationPreview() {
             GRAMMAR / ANCHORS
           </div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 6 }}>
-            {getBattlePackPreviewTimeline().map((p) => (
-              <span
-                key={p.phaseId}
-                style={{
-                  fontSize: 8,
-                  fontWeight: 800,
-                  padding: "2px 6px",
-                  borderRadius: 3,
-                  border: `1px solid ${PHASE_COLORS[p.phaseId]}66`,
-                  color: PHASE_COLORS[p.phaseId],
-                  background:
-                    snap.phaseId === p.phaseId ? `${PHASE_COLORS[p.phaseId]}22` : "transparent",
-                }}
-              >
-                {p.phaseId}
-              </span>
-            ))}
+            {(activePack?.grammar ?? []).map((phaseId) => {
+              const p = activePack?.phases[phaseId];
+              if (!p) return null;
+              return (
+                <span
+                  key={p.phaseId}
+                  style={{
+                    fontSize: 8,
+                    fontWeight: 800,
+                    padding: "2px 6px",
+                    borderRadius: 3,
+                    border: `1px solid ${PHASE_COLORS[p.phaseId] ?? "#00FFFF"}66`,
+                    color: PHASE_COLORS[p.phaseId] ?? "#00FFFF",
+                    background:
+                      snap.phaseId === p.phaseId
+                        ? `${PHASE_COLORS[p.phaseId] ?? "#00FFFF"}22`
+                        : "transparent",
+                  }}
+                >
+                  {p.phaseId}
+                </span>
+              );
+            })}
           </div>
           <div style={{ color: "rgba(255,255,255,0.45)", fontSize: 8 }}>
             Zones: {Object.keys(MONITOR_ANCHOR_ZONES).length} · LayerStack 6 bands

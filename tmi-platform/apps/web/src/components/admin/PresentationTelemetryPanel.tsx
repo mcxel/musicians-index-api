@@ -11,6 +11,11 @@ import PresentationTimelineEngine, {
 import ShowPackageDirector, {
   type ActiveShowPackageSnapshot,
 } from "@/lib/presentation/ShowPackageDirector";
+import {
+  ensurePresentationDirectorsStarted,
+  PresentationTelemetryDirector,
+  type PresentationDirectorTelemetry,
+} from "@/lib/presentation/directors";
 
 interface PresentationTelemetryPanelProps {
   accentColor?: string;
@@ -26,10 +31,13 @@ export function PresentationTelemetryPanel({
   const [showPack, setShowPack] = useState<ActiveShowPackageSnapshot>(
     ShowPackageDirector.getSnapshot()
   );
+  const [directorTel, setDirectorTel] = useState<PresentationDirectorTelemetry | null>(null);
 
   useEffect(() => {
+    ensurePresentationDirectorsStarted();
     const unsubState = PresentationStateMachine.subscribe((s) => setState(s));
     const unsubPack = ShowPackageDirector.subscribe(setShowPack);
+    const unsubTel = PresentationTelemetryDirector.subscribe(setDirectorTel);
     const interval = window.setInterval(() => {
       setPlayback(PresentationTimelineEngine.getPlaybackState());
     }, 200);
@@ -37,6 +45,7 @@ export function PresentationTelemetryPanel({
     return () => {
       unsubState();
       unsubPack();
+      unsubTel();
       window.clearInterval(interval);
     };
   }, []);
@@ -116,6 +125,53 @@ export function PresentationTelemetryPanel({
             Camera cue: <strong style={{ color: "#00FF88" }}>{showPack.cameraCaption ?? "—"}</strong>
           </div>
         </div>
+
+        {directorTel && (
+          <div
+            style={{
+              gridColumn: "1 / -1",
+              background: "rgba(255,255,255,0.03)",
+              padding: 10,
+              borderRadius: 8,
+              border: "1px solid rgba(255,255,255,0.06)",
+            }}
+          >
+            <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", marginBottom: 4, fontWeight: 800 }}>
+              PHASE 5.1 DIRECTORS
+            </div>
+            <div>
+              Broadcast profile hint:{" "}
+              <strong style={{ color: accentColor }}>
+                {directorTel.suggestedBroadcastRoomType}
+              </strong>{" "}
+              · Monitor allocations: <strong>{directorTel.monitorAllocations}</strong>
+            </div>
+            <div style={{ marginTop: 6, display: "flex", flexWrap: "wrap", gap: 6 }}>
+              {directorTel.directors
+                .filter((d) => d.directorId !== "telemetry")
+                .map((d) => (
+                  <span
+                    key={d.directorId}
+                    style={{
+                      fontSize: 9,
+                      fontWeight: 800,
+                      padding: "2px 6px",
+                      borderRadius: 4,
+                      border: "1px solid rgba(255,255,255,0.12)",
+                      color:
+                        d.status === "ACTIVE"
+                          ? "#00FF88"
+                          : d.status === "STUB"
+                            ? "#FFD700"
+                            : "rgba(255,255,255,0.45)",
+                    }}
+                  >
+                    {d.directorId}:{d.status}
+                  </span>
+                ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -33,12 +33,15 @@ export default function PresentationPreviewPage() {
           Presentation Framework
         </div>
         <h1 style={{ margin: "6px 0 4px", fontSize: 22, fontWeight: 800 }}>
-          Battle Pack v1 Preview
+          Presentation Pack Preview
         </h1>
         <p style={{ margin: 0, color: "rgba(255,255,255,0.65)", fontSize: 13, maxWidth: 640 }}>
-          Plays the certified show-package grammar (intro → vs → performance → voting → winner).
-          No fabricated scores or audience counts. Overseer Intelligence Deck mounts the same
-          widget.
+          Battle / Cypher / Challenge show-package grammars + Phase 5.1 director scaffolds.
+          No fabricated scores or audience counts. Platform Core registries:{" "}
+          <a href="/admin/platform-core" style={{ color: "#FFD700" }}>
+            /admin/platform-core
+          </a>
+          .
         </p>
       </header>
 
