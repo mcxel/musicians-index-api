@@ -4,13 +4,15 @@
  * Fan Dashboard Avatar Lobby drawer (dde74945).
  * Prefer FanHQShell left-rail → FanHQContentSlot for Command Center UX.
  * This fixed bottom sheet remains for /fan/dashboard RoomContainer path.
- * No fake 3D. No seat grid. Rule 26 via RoleGate.
+ * Uses UniversalDrawerBase + orbit animation (lobby personality).
+ * No fake 3D. No seat grid. Rule 26 via RoleGate. Peer Daily WebRTC deferred.
  */
 
-import { AnimatePresence, motion } from "framer-motion";
 import dynamic from "next/dynamic";
 import { useDrawer } from "@/components/room/DrawerContext";
 import RoleGate from "@/components/auth/RoleGate";
+import UniversalDrawerBase from "@/components/drawers/UniversalDrawerBase";
+import { animationForDrawerModule } from "@/lib/drawers/UniversalDrawerRegistry";
 import { DEFAULT_FAN_LOBBY_SKIN_ID } from "@/lib/lobby/FanLobbySkinRegistry";
 
 const FanLobbyVenue = dynamic(() => import("@/components/live/FanLobbyVenue"), {
@@ -56,97 +58,46 @@ export default function FanAvatarLobbyDrawer({
   };
 
   return (
-    <AnimatePresence>
-      {open ? (
-        <motion.div
-          key="fan-avatar-lobby-drawer"
-          initial={{ y: "40%", opacity: 0.85 }}
-          animate={{ y: 0, opacity: 1 }}
-          exit={{ y: "35%", opacity: 0 }}
-          transition={{ type: "spring", stiffness: 520, damping: 34, mass: 0.7 }}
-          style={{
-            position: "fixed",
-            left: 0,
-            right: 0,
-            bottom: 0,
-            zIndex: 120,
-            height: "min(78vh, 720px)",
-            background: "#050510",
-            borderTop: "1px solid rgba(255,215,0,0.35)",
-            boxShadow: "0 -24px 60px rgba(0,0,0,0.75)",
-            display: "flex",
-            flexDirection: "column",
-            overflow: "hidden",
-          }}
-          role="dialog"
-          aria-label="Avatar Fan Lobby"
-        >
-          <div
-            style={{
-              flexShrink: 0,
-              display: "flex",
-              alignItems: "center",
-              gap: 12,
-              padding: "10px 16px",
-              background: "rgba(0,0,0,0.72)",
-              borderBottom: "1px solid rgba(255,215,0,0.2)",
-            }}
-          >
-            <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.18em", color: "#FFD700" }}>
-              AVATAR FAN LOBBY · CINEMA SKIN
-            </div>
-            <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", flex: 1 }}>
-              Free-roam hangout · tap floor to walk · local cam when enabled
-            </div>
-            <button
-              type="button"
-              onClick={close}
+    <UniversalDrawerBase
+      open={open}
+      animationId={animationForDrawerModule("lobby")}
+      title="AVATAR FAN LOBBY · CINEMA SKIN"
+      subtitle="Free-roam hangout · tap floor to walk · local cam when enabled"
+      onClose={close}
+      mode="overlay"
+      accentColor="#FFD700"
+      ariaLabel="Avatar Fan Lobby"
+      contentKey="fan-avatar-lobby"
+    >
+      <div style={{ height: "100%", minHeight: 320, position: "relative" }}>
+        <RoleGate
+          allow={["FAN", "ADMIN", "STAFF"]}
+          fallback={
+            <div
               style={{
-                background: "transparent",
-                border: "1px solid rgba(255,68,68,0.45)",
-                color: "#FF6666",
-                borderRadius: 8,
-                padding: "6px 12px",
-                fontSize: 11,
-                fontWeight: 800,
-                cursor: "pointer",
-                letterSpacing: "0.08em",
+                height: "100%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "rgba(255,255,255,0.45)",
+                fontSize: 12,
+                padding: 24,
+                textAlign: "center",
               }}
             >
-              CLOSE
-            </button>
-          </div>
-
-          <div style={{ flex: 1, minHeight: 0, position: "relative" }}>
-            <RoleGate
-              allow={["FAN", "ADMIN", "STAFF"]}
-              fallback={
-                <div
-                  style={{
-                    height: "100%",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    color: "rgba(255,255,255,0.45)",
-                    fontSize: 12,
-                    padding: 24,
-                    textAlign: "center",
-                  }}
-                >
-                  Avatar Fan Lobby is Fan-only (Rule 26). Sign in as a Fan to enter.
-                </div>
-              }
-            >
-              <FanLobbyVenue
-                roomId={roomId}
-                userName={userName}
-                initialSkinId={DEFAULT_FAN_LOBBY_SKIN_ID}
-                embedded
-              />
-            </RoleGate>
-          </div>
-        </motion.div>
-      ) : null}
-    </AnimatePresence>
+              Avatar Fan Lobby is Fan-only (Rule 26). Sign in as a Fan to enter.
+            </div>
+          }
+        >
+          <FanLobbyVenue
+            roomId={roomId}
+            userName={userName}
+            initialSkinId={DEFAULT_FAN_LOBBY_SKIN_ID}
+            roomType="FAN_LOBBY"
+            embedded
+          />
+        </RoleGate>
+      </div>
+    </UniversalDrawerBase>
   );
 }

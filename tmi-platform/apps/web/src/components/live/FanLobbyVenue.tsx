@@ -8,6 +8,12 @@ import {
   useLobbyPresenceSync,
   type LobbyParticipant,
 } from "@/lib/lobby/useLobbyPresenceSync";
+import {
+  canControlRoom,
+  defaultRoomAuthority,
+  type RoomAuthority,
+  type SocialRoomType,
+} from "@/lib/lobby/FanLobbyPresence";
 import { useLocalMicLevel } from "@/lib/lobby/useLocalMicLevel";
 import { LobbyFreeRoamAvatars } from "@/components/lobbies/LobbyFreeRoamAvatars";
 import { LobbyEnvironmentToys } from "@/components/lobbies/LobbyEnvironmentToys";
@@ -60,6 +66,10 @@ interface FanLobbyVenueProps {
   initialTheme?: string;
   /** Dashboard drawer / embed: fill parent, no full-page chrome */
   embedded?: boolean;
+  /** Social room mode — Playlist Lounge / Rehearsal reuse same seating engine. */
+  roomType?: SocialRoomType;
+  /** BOT_AUTOMATED (locked skins) vs HUMAN_HOSTED (hostUserId controls). */
+  authority?: RoomAuthority;
 }
 
 /**
@@ -69,22 +79,35 @@ interface FanLobbyVenueProps {
  * Local cam bubble real; peer WebRTC Phase B.
  *
  * Phase A.5 Presence Certification: authoritative participant shape is
- * FanLobbyPresence (via useLobbyPresenceSync + getFanLobbyPresence).
+ * FanLobbyPresence / SocialRoomPresence (via useLobbyPresenceSync + getFanLobbyPresence).
  * Phase B binds media (head panels / SFU tracks) TO this presence — never
- * the reverse (do not invent presence from WebRTC).
+ * the reverse (do not invent presence from WebRTC). Daily not wired in this pass.
  */
 export default function FanLobbyVenue({
   roomId = "fan-lobby",
   userName = "Fan",
   initialSkinId = DEFAULT_FAN_LOBBY_SKIN_ID,
   embedded = false,
+  roomType = "FAN_LOBBY",
+  authority: authorityProp,
 }: FanLobbyVenueProps) {
   const userId = useMemo(() => getOrCreateLocalId(roomId), [roomId]);
+  const authority = useMemo(
+    () => authorityProp ?? defaultRoomAuthority(roomType),
+    [authorityProp, roomType],
+  );
   const emoji = useMemo(() => AVATAR_EMOJIS[Math.floor(Math.random() * AVATAR_EMOJIS.length)], []);
   const selfFrame = getPresenceFrameById("frame-obsidian-free");
   const switchableSkins = useMemo(() => listSwitchableFanLobbySkins(), []);
 
   const [skinId, setSkinId] = useState<FanLobbySkinId>(() => {
+    const locked = authorityProp?.lockedSkinId ?? (authorityProp?.mode === "BOT_AUTOMATED" ? authorityProp.lockedSkinId : null);
+    if (locked && getFanLobbySkinCanon(locked)) return locked as FanLobbySkinId;
+    // Personal Fan Lobby may persist skin; hosted/bot rooms prefer initial/locked.
+    if (roomType !== "FAN_LOBBY") {
+      const canon = getFanLobbySkinCanon(initialSkinId);
+      return (canon?.id ?? DEFAULT_FAN_LOBBY_SKIN_ID) as FanLobbySkinId;
+    }
     const persisted = typeof window !== "undefined" ? getPersistedFanLobbySkinId() : null;
     const canon = getFanLobbySkinCanon(persisted ?? initialSkinId);
     return (canon?.id ?? DEFAULT_FAN_LOBBY_SKIN_ID) as FanLobbySkinId;
@@ -95,6 +118,7 @@ export default function FanLobbyVenue({
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [rejoinBlocked, setRejoinBlocked] = useState(false);
   const [isStaffHost, setIsStaffHost] = useState(false);
+  const canSwitchSkin = canControlRoom(authority, userId, { isStaff: isStaffHost }) || roomType === "FAN_LOBBY";
   const [safetyTarget, setSafetyTarget] = useState<LobbyParticipant | null>(null);
   const [reportTarget, setReportTarget] = useState<QuickReportTarget | null>(null);
   const [reportOpen, setReportOpen] = useState(false);
@@ -400,12 +424,22 @@ export default function FanLobbyVenue({
           </Link>
         ) : null}
         <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.2em", color: dressing.accent }}>
-          {skinLabel.toUpperCase()} · {totalOnline} HERE
+          {roomType === "PLAYLIST_LOUNGE"
+            ? "PLAYLIST LOUNGE"
+            : roomType === "REHEARSAL_ROOM"
+              ? "REHEARSAL ROOM"
+              : skinLabel.toUpperCase()}{" "}
+          · {totalOnline} HERE
         </div>
         <div style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "center" }}>
           {isStaffHost ? (
             <span style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.1em", color: "#FFD700", border: "1px solid rgba(255,215,0,0.35)", borderRadius: 999, padding: "4px 8px" }}>
               HOST SAFETY
+            </span>
+          ) : null}
+          {authority.mode === "HUMAN_HOSTED" && canControlRoom(authority, userId, { isStaff: isStaffHost }) ? (
+            <span style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.1em", color: "#00FF88", border: "1px solid rgba(0,255,136,0.35)", borderRadius: 999, padding: "4px 8px" }}>
+              HOST
             </span>
           ) : null}
           <PillToggle
@@ -416,7 +450,22 @@ export default function FanLobbyVenue({
           />
           <PillToggle active={micEnabled} label={micEnabled ? "🎙️ Mic On" : "🎙️ Mic Off"} accent="#00FF88" onClick={() => setMicEnabled((v) => !v)} />
           <PillToggle active={cameraEnabled} label={cameraEnabled ? "📹 Cam On" : "📹 Cam Off"} accent="#00FFFF" onClick={() => setCameraEnabled((v) => !v)} />
-          <PillToggle active={themePanelOpen} label="🎨 Skin" accent={dressing.accent} onClick={() => setThemePanelOpen((v) => !v)} />
+          <PillToggle
+            active={themePanelOpen}
+            label={canSwitchSkin ? "🎨 Skin" : "🎨 Locked"}
+            accent={dressing.accent}
+            onClick={() => {
+              if (!canSwitchSkin) {
+                setToast(
+                  authority.mode === "BOT_AUTOMATED"
+                    ? "Bot-automated room — skin locked"
+                    : "Only the room host can change the shared skin",
+                );
+                return;
+              }
+              setThemePanelOpen((v) => !v);
+            }}
+          />
         </div>
       </header>
 
@@ -470,7 +519,7 @@ export default function FanLobbyVenue({
       </div>
 
       <AnimatePresence>
-        {themePanelOpen && (
+        {themePanelOpen && canSwitchSkin && (
           <motion.div
             initial={{ y: 40, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
@@ -503,7 +552,7 @@ export default function FanLobbyVenue({
                   type="button"
                   onClick={() => {
                     setSkinId(s.id);
-                    persistFanLobbySkinId(s.id);
+                    if (roomType === "FAN_LOBBY") persistFanLobbySkinId(s.id);
                     setThemePanelOpen(false);
                     // New skin = new chair layout; stand at that skin's entrance
                     const next = getFanLobbySkinDressing(s.id);
