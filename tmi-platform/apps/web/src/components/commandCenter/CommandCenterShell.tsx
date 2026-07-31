@@ -322,7 +322,14 @@ export default function CommandCenterShell({ role, userId, displayName }: Comman
             })}
             <div style={{ height: 8 }} />
             {railBtn({ key: "live", label: "LIVE ROOMS", info: "Discover", href: "/live/lobby" })}
-            {railBtn({ key: "msg", label: "MESSAGES", href: "/messages" })}
+            {railBtn({
+              key: "msg",
+              label: "MESSAGES",
+              info: "Invite · join",
+              accent: "#00FFFF",
+              active: activePanel === "messaging",
+              onClick: () => togglePanel("messaging"),
+            })}
             {railBtn({ key: "friends", label: "FRIENDS", href: "/friends" })}
             {role === "performer"
               ? railBtn({ key: "golive", label: "GO LIVE", info: "Broadcast", href: "/live/go" })
@@ -338,8 +345,16 @@ export default function CommandCenterShell({ role, userId, displayName }: Comman
             </div>
           </div>
 
-          {/* Center media */}
-          <CommandCenterMediaStack slots={mediaSlots} />
+          {/* Center media — prototype dual stacked 16:9 chrome bezel */}
+          <CommandCenterMediaStack
+            slots={mediaSlots}
+            bezelVariant="chrome"
+            seriesLabel={
+              role === "performer"
+                ? "PERFORMER HUB · CHROME SERIES · DUAL 16:9 MONITORS"
+                : "FAN HUB · CHROME SERIES · DUAL 16:9 MONITORS"
+            }
+          />
 
           {/* Right rail */}
           <div

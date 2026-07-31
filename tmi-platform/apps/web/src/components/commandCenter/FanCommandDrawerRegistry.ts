@@ -33,6 +33,7 @@ export const FAN_DRAWER_LAUNCHERS = [
   "room_controls",
   "inventory",
   "analytics",
+  "messaging",
 ] as const;
 
 export const FAN_AD_ZONE = "dashboard-fan-sidebar";

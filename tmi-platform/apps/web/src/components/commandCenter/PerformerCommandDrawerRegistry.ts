@@ -30,6 +30,7 @@ export const PERFORMER_DRAWER_LAUNCHERS = [
   "memory",
   "store",
   "sponsors",
+  "messaging",
 ] as const;
 
 export const PERFORMER_SPONSOR_ZONE = "dashboard-performer-sponsors";

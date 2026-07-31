@@ -20,6 +20,7 @@ import { BookingCanister } from "@/components/canisters/BookingCanister";
 import { StoreCanister } from "@/components/canisters/StoreCanister";
 import NotificationCanister from "@/components/canisters/NotificationCanister";
 import QueueCanister from "@/components/canisters/QueueCanister";
+import MessagingCanister from "@/components/canisters/MessagingCanister";
 import ThemeEditorPanel from "@/components/shell/ThemeEditorPanel";
 import SponsorRail from "@/components/sponsors/SponsorRail";
 import { getRailSponsors } from "@/lib/commerce/SponsorRegistry";
@@ -207,6 +208,9 @@ export default function CommandCenterDrawer({
     room_controls: "ROOM CONTROLS",
     analytics: "ANALYTICS",
     appearance: "SHELL COLORS",
+    messaging: "MESSAGES · COORDINATE → JOIN",
+    notifications: "NOTIFICATIONS",
+    queue: "QUEUE",
   };
   const title = appearanceOpen
     ? "SHELL COLORS · THIS DEVICE"
@@ -420,6 +424,27 @@ export default function CommandCenterDrawer({
       {activePanel === "queue" ? (
         <div style={{ padding: 12 }}>
           <QueueCanister accentColor={theme.primary} />
+        </div>
+      ) : null}
+
+      {activePanel === "messaging" ? (
+        <div style={{ padding: 12, display: "flex", flexDirection: "column", gap: 10 }}>
+          <p style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", margin: 0, lineHeight: 1.45 }}>
+            Coordinate with friends, send invites, then join a live venue together. Threads load from your real inbox —
+            empty until someone messages you.
+          </p>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            <Link href="/live/lobby" style={toolLink("#00FFFF")}>
+              Open Live Lobby →
+            </Link>
+            <Link href="/friends" style={toolLink(theme.secondary)}>
+              Friends →
+            </Link>
+            <Link href="/messages" style={toolLink("#FFD700")}>
+              Full messages page →
+            </Link>
+          </div>
+          <MessagingCanister height={360} />
         </div>
       ) : null}
     </UniversalDrawerBase>
