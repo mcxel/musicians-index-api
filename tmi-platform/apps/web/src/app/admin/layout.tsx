@@ -60,14 +60,33 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [conciergeOpen, setConciergeOpen] = useState(false);
 
   useEffect(() => {
-    let active = true;
+    let cancelled = false;
     const ctrl = new AbortController();
-    const timeoutId = setTimeout(() => ctrl.abort(), ADMIN_SESSION_TIMEOUT_MS);
+    const isDev = process.env.NODE_ENV === "development";
+
+    // Dev: mount Flight Deck immediately. Session fetch only enriches identity.
+    // Avoids infinite "Verifying access…" when Strict Mode aborts the first fetch
+    // or when /api/auth/session hangs (HSTS/SSL/chunk mismatch).
+    if (isDev) {
+      setSessionRole("ADMIN");
+      setStatus("authorized");
+    }
+
+    // Hard deadline — never leave production stuck on "checking".
+    const hardDeadline = setTimeout(() => {
+      if (cancelled) return;
+      setStatus((prev) => {
+        if (prev !== "checking") return prev;
+        return isDev ? "authorized" : "denied";
+      });
+      if (isDev) setSessionRole((r) => r ?? "ADMIN");
+      ctrl.abort();
+    }, ADMIN_SESSION_TIMEOUT_MS);
 
     fetch("/api/auth/session", { cache: "no-store", credentials: "include", signal: ctrl.signal })
       .then((r) => r.json())
       .then((d: unknown) => {
-        if (!active) return;
+        if (cancelled) return;
         const data = d as {
           authenticated?: boolean;
           role?: string;
@@ -78,19 +97,36 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         const userId = data?.user?.id;
         const name = data?.user?.name ?? undefined;
         const email = data?.user?.email ?? undefined;
-        setSessionRole(role || undefined);
-        setSessionUserId(userId);
-        setSessionName(name);
-        setSessionEmail(email);
-        setStatus(authed && ADMIN_ROLES.has(role) ? "authorized" : "denied");
+        if (userId) setSessionUserId(userId);
+        if (name) setSessionName(name);
+        if (email) setSessionEmail(email);
+        if (authed && ADMIN_ROLES.has(role)) {
+          setSessionRole(role);
+          setStatus("authorized");
+        } else if (isDev) {
+          setSessionRole((r) => r ?? "ADMIN");
+          setStatus("authorized");
+        } else {
+          setStatus("denied");
+        }
       })
       .catch(() => {
-        if (active) setStatus("denied");
+        // Abort/network: keep whatever status we already set (dev already authorized).
+        if (cancelled) return;
+        if (isDev) {
+          setSessionRole((r) => r ?? "ADMIN");
+          setStatus("authorized");
+        } else {
+          setStatus((prev) => (prev === "checking" ? "denied" : prev));
+        }
+      })
+      .finally(() => {
+        clearTimeout(hardDeadline);
       });
 
     return () => {
-      active = false;
-      clearTimeout(timeoutId);
+      cancelled = true;
+      clearTimeout(hardDeadline);
       ctrl.abort();
     };
   }, []);
