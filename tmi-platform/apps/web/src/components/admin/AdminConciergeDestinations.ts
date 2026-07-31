@@ -67,6 +67,22 @@ export const ADMIN_CONCIERGE_DESTINATIONS: ConciergeDestination[] = [
     keywords: ["beat", "locker", "submit", "bjm", "submissions", "upload"],
   },
   {
+    id: "platform-core",
+    label: "Platform Core",
+    href: "/admin/platform-core",
+    group: "Ops Intelligence",
+    accent: "#FFD700",
+    keywords: ["framework", "registry", "capability", "matrix", "algorithm", "mainframe"],
+  },
+  {
+    id: "presentation-preview",
+    label: "Presentation Preview",
+    href: "/admin/presentation-preview",
+    group: "Ops Intelligence",
+    accent: "#00FFFF",
+    keywords: ["presentation", "battle pack", "show package", "directors"],
+  },
+  {
     id: "executive-ops",
     label: "Ask Big Ace / MC",
     href: "/admin/beat-locker#executive-operators",
