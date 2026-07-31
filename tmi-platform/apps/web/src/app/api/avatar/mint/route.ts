@@ -15,15 +15,15 @@ export async function POST(req: NextRequest) {
   const userId = body.userId ?? "demo-user";
   const displayName = body.displayName ?? "MC Charlie";
 
-  if (!validateNFTMintEligibility(userId)) {
+  if (!(await validateNFTMintEligibility(userId))) {
     return NextResponse.json({ ok: false, error: "nft_eligibility_failed" }, { status: 422 });
   }
 
-  const record = mintAvatarForUser(userId, displayName);
+  const record = await mintAvatarForUser(userId, displayName);
   return NextResponse.json({
     ok: true,
     userId,
     record,
-    ...getAvatarPersistenceSnapshot(userId),
+    ...(await getAvatarPersistenceSnapshot(userId)),
   });
 }

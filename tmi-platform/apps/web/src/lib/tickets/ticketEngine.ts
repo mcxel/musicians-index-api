@@ -137,15 +137,13 @@ export function redeemTicket(ticketId: string): TicketRecord {
   const redeemed: TicketRecord = { ...ticket, redeemed: true };
   const saved = saveTicket(redeemed);
 
-  // Phase 7.3 — optional Memory Wall collectible keepsake (real ticket only).
-  // Dynamic import keeps ticketEngine free of Prisma at module load.
-  void import("@/lib/memory/collectiblesTicketMint")
-    .then(({ mintCollectibleTicketIfPossible }) =>
-      mintCollectibleTicketIfPossible(saved),
-    )
-    .catch((err) => {
-      console.error("[ticketEngine.redeemTicket collectible mint]", err);
-    });
+  // Phase 7.3 collectible-keepsake mint removed from here 2026-07-29: this
+  // function is called from client components (TicketPrintEngine,
+  // TicketScannerRail, fan/[slug]/tickets), so any import chain reaching
+  // Prisma - even a dynamic one - gets statically analyzed into the client
+  // webpack build, which has no polyfills for Node's fs/net/tls/dns and
+  // fails to compile. The mint needs to run server-side (e.g. inside
+  // whichever API route persists the redemption), not inside this function.
 
   return saved;
 }

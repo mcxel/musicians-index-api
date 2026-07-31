@@ -1,5 +1,7 @@
 import { getStarterInventory, type AvatarInventoryItem } from "@/lib/avatar/avatarInventoryEngine";
 import { buildAvatarNFTDraft, mintAvatarNFT } from "@/lib/avatar/avatarNFTEngine";
+import { prisma } from "@/lib/prisma";
+import type { AvatarInventoryItemRecord } from "@prisma/client";
 
 export type AvatarSlot =
   | "skin"
@@ -53,7 +55,6 @@ export type AvatarInventory = {
 };
 
 const profileStore = new Map<string, AvatarProfile>();
-const inventoryStore = new Map<string, AvatarInventory>();
 const loadoutStore = new Map<string, AvatarLoadout>();
 const nftRegistryStore = new Map<string, AvatarNFTRegistry>();
 const unlockLedgerStore = new Map<string, AvatarUnlockLedger>();
@@ -101,14 +102,6 @@ function defaultLoadout(userId: string): AvatarLoadout {
   };
 }
 
-function defaultInventory(userId: string): AvatarInventory {
-  return {
-    userId,
-    items: getStarterInventory(),
-    updatedAt: nowIso(),
-  };
-}
-
 function defaultUnlockLedger(userId: string): AvatarUnlockLedger {
   return {
     userId,
@@ -133,12 +126,59 @@ export function getAvatarProfile(userId: string): AvatarProfile {
   return created;
 }
 
-export function getAvatarInventory(userId: string): AvatarInventory {
-  const existing = inventoryStore.get(userId);
-  if (existing) return existing;
-  const created = defaultInventory(userId);
-  inventoryStore.set(userId, created);
-  return created;
+function toInventoryItem(row: AvatarInventoryItemRecord): AvatarInventoryItem {
+  return {
+    itemId: row.itemId,
+    id: row.itemId,
+    avatarId: row.userId,
+    type: (row.type ?? undefined) as AvatarInventoryItem["type"],
+    category: (row.category ?? undefined) as AvatarInventoryItem["category"],
+    name: row.name,
+    rarity: row.rarity as AvatarInventoryItem["rarity"],
+    owned: row.owned,
+    equipped: row.equipped,
+    mintable: row.mintable,
+    tradeable: row.tradeable,
+    sponsorLocked: row.sponsorLocked,
+    tierLocked: row.tierLocked,
+    unlockRequirement: row.unlockRequirement ?? undefined,
+    xpRequired: row.xpRequired ?? undefined,
+    metadata: (row.metadata as Record<string, unknown> | null) ?? undefined,
+    createdAt: row.createdAt.getTime(),
+    updatedAt: row.updatedAt.getTime(),
+  };
+}
+
+/** Real DB-backed inventory (Rule 20 — was a serverless-unsafe in-memory Map). Seeds starter items on first access. */
+export async function getAvatarInventory(userId: string): Promise<AvatarInventory> {
+  const rows = await prisma.avatarInventoryItemRecord.findMany({ where: { userId } });
+  if (rows.length > 0) {
+    return { userId, items: rows.map(toInventoryItem), updatedAt: nowIso() };
+  }
+
+  const starters = getStarterInventory();
+  await prisma.avatarInventoryItemRecord.createMany({
+    data: starters.map((item) => ({
+      userId,
+      itemId: item.itemId,
+      type: item.type ?? null,
+      category: item.category ?? null,
+      name: item.name,
+      rarity: item.rarity ?? "free",
+      owned: item.owned ?? false,
+      equipped: item.equipped,
+      mintable: item.mintable ?? false,
+      tradeable: item.tradeable ?? false,
+      sponsorLocked: item.sponsorLocked ?? false,
+      tierLocked: item.tierLocked ?? false,
+      unlockRequirement: item.unlockRequirement ?? null,
+      xpRequired: item.xpRequired ?? null,
+      metadata: (item.metadata as object | undefined) ?? undefined,
+    })),
+    skipDuplicates: true,
+  });
+  const seeded = await prisma.avatarInventoryItemRecord.findMany({ where: { userId } });
+  return { userId, items: seeded.map(toInventoryItem), updatedAt: nowIso() };
 }
 
 export function getAvatarLoadout(userId: string): AvatarLoadout {
@@ -169,20 +209,21 @@ function resolveItemId(item: AvatarInventoryItem): string {
   return item.id ?? item.itemId ?? "";
 }
 
-export function validateOwnership(userId: string, itemId: string): boolean {
-  return getAvatarInventory(userId).items.some((item) => resolveItemId(item) === itemId && item.owned !== false);
+export async function validateOwnership(userId: string, itemId: string): Promise<boolean> {
+  const inventory = await getAvatarInventory(userId);
+  return inventory.items.some((item) => resolveItemId(item) === itemId && item.owned !== false);
 }
 
-export function validateEquipSlot(userId: string, slot: AvatarSlot, itemId: string): boolean {
-  const inventory = getAvatarInventory(userId).items;
+export async function validateEquipSlot(userId: string, slot: AvatarSlot, itemId: string): Promise<boolean> {
+  const inventory = (await getAvatarInventory(userId)).items;
   const item = inventory.find((entry) => resolveItemId(entry) === itemId);
   if (!item) return false;
   const allowedCategories = SLOT_CATEGORY_ALLOWLIST[slot];
   return item.category ? allowedCategories.includes(item.category) : false;
 }
 
-export function validateUnlockConditions(userId: string, itemId: string): boolean {
-  const inventory = getAvatarInventory(userId).items;
+export async function validateUnlockConditions(userId: string, itemId: string): Promise<boolean> {
+  const inventory = (await getAvatarInventory(userId)).items;
   const item = inventory.find((entry) => resolveItemId(entry) === itemId);
   if (!item) return false;
   const ledger = getAvatarUnlockLedger(userId);
@@ -191,8 +232,8 @@ export function validateUnlockConditions(userId: string, itemId: string): boolea
   return ledger.milestones.includes(item.unlockRequirement);
 }
 
-export function validateNFTMintEligibility(userId: string): boolean {
-  const inventory = getAvatarInventory(userId).items;
+export async function validateNFTMintEligibility(userId: string): Promise<boolean> {
+  const inventory = (await getAvatarInventory(userId)).items;
   const equippedMintable = inventory.filter((item) => item.equipped && item.mintable);
   return equippedMintable.length > 0;
 }
@@ -211,28 +252,46 @@ export function saveAvatarProfile(
   return next;
 }
 
-export function saveAvatarInventory(userId: string, items: AvatarInventoryItem[]): AvatarInventory {
-  const next: AvatarInventory = {
-    userId,
-    items,
-    updatedAt: nowIso(),
-  };
-  inventoryStore.set(userId, next);
-  return next;
+/** Replaces the user's full item set (matches prior Map.set replace-all semantics). */
+export async function saveAvatarInventory(userId: string, items: AvatarInventoryItem[]): Promise<AvatarInventory> {
+  await prisma.$transaction([
+    prisma.avatarInventoryItemRecord.deleteMany({ where: { userId } }),
+    prisma.avatarInventoryItemRecord.createMany({
+      data: items.map((item) => ({
+        userId,
+        itemId: resolveItemId(item) || item.itemId,
+        type: item.type ?? null,
+        category: item.category ?? null,
+        name: item.name,
+        rarity: item.rarity ?? "free",
+        owned: item.owned ?? false,
+        equipped: item.equipped,
+        mintable: item.mintable ?? false,
+        tradeable: item.tradeable ?? false,
+        sponsorLocked: item.sponsorLocked ?? false,
+        tierLocked: item.tierLocked ?? false,
+        unlockRequirement: item.unlockRequirement ?? null,
+        xpRequired: item.xpRequired ?? null,
+        metadata: (item.metadata as object | undefined) ?? undefined,
+      })),
+      skipDuplicates: true,
+    }),
+  ]);
+  return { userId, items, updatedAt: nowIso() };
 }
 
-export function equipAvatarItem(userId: string, itemId: string, slot: AvatarSlot): AvatarLoadout {
-  if (!validateOwnership(userId, itemId)) {
+export async function equipAvatarItem(userId: string, itemId: string, slot: AvatarSlot): Promise<AvatarLoadout> {
+  if (!(await validateOwnership(userId, itemId))) {
     throw new Error("ownership_validation_failed");
   }
-  if (!validateUnlockConditions(userId, itemId)) {
+  if (!(await validateUnlockConditions(userId, itemId))) {
     throw new Error("unlock_validation_failed");
   }
-  if (!validateEquipSlot(userId, slot, itemId)) {
+  if (!(await validateEquipSlot(userId, slot, itemId))) {
     throw new Error("slot_validation_failed");
   }
 
-  const inventory = getAvatarInventory(userId);
+  const inventory = await getAvatarInventory(userId);
   const nextItems = inventory.items.map((item) => {
     const isCandidate = resolveItemId(item) === itemId;
     const isSameSlotCategory = item.category ? SLOT_CATEGORY_ALLOWLIST[slot].includes(item.category) : false;
@@ -240,7 +299,7 @@ export function equipAvatarItem(userId: string, itemId: string, slot: AvatarSlot
     if (isSameSlotCategory) return { ...item, equipped: false };
     return item;
   });
-  saveAvatarInventory(userId, nextItems);
+  await saveAvatarInventory(userId, nextItems);
 
   const currentLoadout = getAvatarLoadout(userId);
   const nextLoadout: AvatarLoadout = {
@@ -269,12 +328,12 @@ export function saveAvatarLoadout(userId: string, slotsPatch: Partial<Record<Ava
   return next;
 }
 
-export function mintAvatarForUser(userId: string, displayName: string): AvatarNFTRecord {
-  if (!validateNFTMintEligibility(userId)) {
+export async function mintAvatarForUser(userId: string, displayName: string): Promise<AvatarNFTRecord> {
+  if (!(await validateNFTMintEligibility(userId))) {
     throw new Error("nft_eligibility_failed");
   }
 
-  const equippedItems = getAvatarInventory(userId).items.filter((item) => item.equipped);
+  const equippedItems = (await getAvatarInventory(userId)).items.filter((item) => item.equipped);
   const draft = buildAvatarNFTDraft(displayName, equippedItems);
   const mintResult = mintAvatarNFT(draft);
   const record: AvatarNFTRecord = {
@@ -293,10 +352,10 @@ export function mintAvatarForUser(userId: string, displayName: string): AvatarNF
   return record;
 }
 
-export function getAvatarPersistenceSnapshot(userId: string) {
+export async function getAvatarPersistenceSnapshot(userId: string) {
   return {
     AvatarProfile: getAvatarProfile(userId),
-    AvatarInventory: getAvatarInventory(userId),
+    AvatarInventory: await getAvatarInventory(userId),
     AvatarLoadout: getAvatarLoadout(userId),
     AvatarNFTRegistry: getAvatarNFTRegistry(userId),
     AvatarUnlockLedger: getAvatarUnlockLedger(userId),

@@ -24,21 +24,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "itemId_and_slot_required" }, { status: 400 });
   }
 
-  if (!validateOwnership(userId, itemId)) {
+  if (!(await validateOwnership(userId, itemId))) {
     return NextResponse.json({ ok: false, error: "ownership_validation_failed" }, { status: 403 });
   }
-  if (!validateUnlockConditions(userId, itemId)) {
+  if (!(await validateUnlockConditions(userId, itemId))) {
     return NextResponse.json({ ok: false, error: "unlock_validation_failed" }, { status: 403 });
   }
-  if (!validateEquipSlot(userId, slot, itemId)) {
+  if (!(await validateEquipSlot(userId, slot, itemId))) {
     return NextResponse.json({ ok: false, error: "slot_validation_failed" }, { status: 422 });
   }
 
-  const AvatarLoadout = equipAvatarItem(userId, itemId, slot);
+  const AvatarLoadout = await equipAvatarItem(userId, itemId, slot);
   return NextResponse.json({
     ok: true,
     userId,
     equippedLoadout: AvatarLoadout,
-    ...getAvatarPersistenceSnapshot(userId),
+    ...(await getAvatarPersistenceSnapshot(userId)),
   });
 }

@@ -15,7 +15,8 @@ export type FloatingWorkspaceModuleId =
   | "booking"
   | "music"
   | "avatar_inventory"
-  | "quick_memories";
+  | "quick_memories"
+  | "fan_lobby";
 
 export type FloatingWorkspaceRole = "FAN" | "PERFORMER" | "ADMIN" | "STAFF";
 
@@ -103,10 +104,17 @@ export const FLOATING_WORKSPACE_MODULE_CATALOG: Record<
     icon: "✨",
     description: "Recent media shelf",
   },
+  fan_lobby: {
+    id: "fan_lobby",
+    label: "Fan Lobby",
+    icon: "🎉",
+    description: "Free-roam hangout with friends",
+  },
 };
 
 /** FAN drawer modules (Rule 26 — avatar ownership allowed). */
 export const FAN_FLOATING_MODULES: FloatingWorkspaceModuleId[] = [
+  "fan_lobby",
   "quick_memories",
   "avatar_inventory",
   "memory_wall",

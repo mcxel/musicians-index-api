@@ -18,6 +18,8 @@ import { InventoryCanister } from "@/components/canisters/InventoryCanister";
 import MediaLockerCanister from "@/components/canisters/MediaLockerCanister";
 import { BookingCanister } from "@/components/canisters/BookingCanister";
 import { StoreCanister } from "@/components/canisters/StoreCanister";
+import NotificationCanister from "@/components/canisters/NotificationCanister";
+import QueueCanister from "@/components/canisters/QueueCanister";
 import ThemeEditorPanel from "@/components/shell/ThemeEditorPanel";
 import SponsorRail from "@/components/sponsors/SponsorRail";
 import { getRailSponsors } from "@/lib/commerce/SponsorRegistry";
@@ -406,6 +408,18 @@ export default function CommandCenterDrawer({
       {activePanel === "store" && role === "performer" ? (
         <div style={{ padding: 12 }}>
           <StoreCanister entityId={userId} entityName={displayName} storeType="performer" accentColor={theme.tertiary} />
+        </div>
+      ) : null}
+
+      {activePanel === "notifications" ? (
+        <div style={{ padding: 12 }}>
+          <NotificationCanister accentColor={theme.secondary} onClose={onClose} />
+        </div>
+      ) : null}
+
+      {activePanel === "queue" ? (
+        <div style={{ padding: 12 }}>
+          <QueueCanister accentColor={theme.primary} />
         </div>
       ) : null}
     </UniversalDrawerBase>

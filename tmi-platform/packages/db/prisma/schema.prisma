@@ -3563,6 +3563,37 @@ model AvatarUnlocks {
   @@map("avatar_unlocks")
 }
 
+// Real persistence for lib/avatar/avatarPersistence.ts (previously an
+// in-memory Map - lost/diverged across serverless instances, same bug
+// class as the LobbyPresence fix). Keyed by userId (not avatarId) to match
+// that module's existing key throughout - no FK relation forced onto
+// AvatarIdentity since profile/loadout/nft in that same module aren't
+// relations either.
+model AvatarInventoryItemRecord {
+  id                String   @id @default(cuid())
+  userId            String   @map("user_id")
+  itemId            String   @map("item_id")
+  type              String?
+  category          String?
+  name              String
+  rarity            String   @default("free")
+  owned             Boolean  @default(true)
+  equipped          Boolean  @default(false)
+  mintable          Boolean  @default(false)
+  tradeable         Boolean  @default(false)
+  sponsorLocked     Boolean  @default(false) @map("sponsor_locked")
+  tierLocked        Boolean  @default(false) @map("tier_locked")
+  unlockRequirement String?  @map("unlock_requirement")
+  xpRequired        Int?     @map("xp_required")
+  metadata          Json?
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  @@unique([userId, itemId])
+  @@index([userId])
+  @@map("avatar_inventory_items")
+}
+
 model AvatarMemory {
   id                String         @id @default(cuid())
   avatarId          String         @unique @map("avatar_id")

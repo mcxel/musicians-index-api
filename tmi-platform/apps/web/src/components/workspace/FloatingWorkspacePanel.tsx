@@ -19,6 +19,7 @@ import MessagesWidget from "@/components/widgets/MessagesWidget";
 import MemoryWallMotionGrid from "@/components/memory/MemoryWallMotionGrid";
 import MediaCard from "@/components/memory/MediaCard";
 import VenueConcierge from "@/components/workspace/VenueConcierge";
+import FanLobbyVenue from "@/components/live/FanLobbyVenue";
 import { useMemoryLibrary } from "@/hooks/useMemoryLibrary";
 import {
   FLOATING_WORKSPACE_MODULE_CATALOG,
@@ -223,6 +224,21 @@ function ModuleBody({
   onOpenMemoryWall: () => void;
 }): ReactNode {
   switch (moduleId) {
+    case "fan_lobby":
+      return (
+        <RoleGate
+          allow={["FAN", "ADMIN", "STAFF"]}
+          fallback={
+            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.65)" }}>
+              Fan Lobby is Fan-only (Rule 26).
+            </div>
+          }
+        >
+          <div style={{ height: "min(58vh, 520px)", borderRadius: 12, overflow: "hidden" }}>
+            <FanLobbyVenue roomId="fan-lobby" embedded />
+          </div>
+        </RoleGate>
+      );
     case "venue_concierge":
       return <VenueConcierge />;
     case "avatar_inventory":

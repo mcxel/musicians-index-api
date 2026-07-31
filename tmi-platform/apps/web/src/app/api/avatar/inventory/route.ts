@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     ok: true,
     userId,
-    AvatarInventory: getAvatarInventory(userId),
+    AvatarInventory: await getAvatarInventory(userId),
   });
 }
 
@@ -27,6 +27,6 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({
     ok: true,
     userId,
-    AvatarInventory: saveAvatarInventory(userId, body.items),
+    AvatarInventory: await saveAvatarInventory(userId, body.items),
   });
 }

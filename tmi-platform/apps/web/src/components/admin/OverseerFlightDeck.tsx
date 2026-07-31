@@ -35,6 +35,7 @@ import MediaMatrixEngine from "@/components/admin/overseer/workspace/widgets/Med
 import LiveChannelTicker from "@/components/admin/overseer/LiveChannelTicker";
 import { useDrawerManager } from "@/components/admin/overseer/services/DrawerManager";
 import AdminConciergePanel from "@/components/admin/AdminConciergePanel";
+import CanonicalDualMonitorStack from "@/components/monitors/CanonicalDualMonitorStack";
 
 export type ShellDockButton = {
   label: string;
@@ -71,9 +72,7 @@ type OverseerFlightDeckProps = {
   submittingFix?: boolean;
 };
 
-const MONITOR_GAP = 14;
 const DECK_GAP = 16;
-const MONITOR_MIN_PX = 360;
 const RAIL_EXPANDED = 268;
 const RAIL_COLLAPSED = 74;
 
@@ -327,14 +326,98 @@ export default function OverseerFlightDeck({
     const equalDualCenter = rail === "center" && visible.length >= 2;
     const isSideRail = rail === "left" || rail === "right";
 
+    if (equalDualCenter) {
+      const dual = visible.slice(0, 2);
+      return (
+        <div
+          data-col={rail}
+          data-equal-dual-monitors="true"
+          style={{
+            minWidth: 0,
+            alignSelf: "stretch",
+            height: "auto",
+            overflowX: "hidden",
+            paddingRight: 2,
+          }}
+        >
+          <CanonicalDualMonitorStack
+            variant="gold"
+            seriesLabel="BERNTOUTGLOBAL OVERSEER DECK · GOLD SERIES · DUAL HD MONITORS"
+            monitors={dual.map((panel, index) => ({
+              id: panel.id ?? `center-${index}`,
+              label: `MONITOR ${index + 1} — ${panel.title}`,
+              children: (
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    height: "100%",
+                    minHeight: 0,
+                    background: "#020210",
+                  }}
+                >
+                  <div
+                    style={{
+                      flexShrink: 0,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: 8,
+                      padding: "4px 8px",
+                      borderBottom: "1px solid rgba(255,215,0,0.2)",
+                      background: "rgba(0,0,0,0.55)",
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontSize: 8,
+                        fontWeight: 900,
+                        letterSpacing: "0.12em",
+                        color: panel.accent ?? "#FFD700",
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      {panel.title}
+                    </span>
+                    {panel.fullscreenKey || panel.id ? (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          toggleFullscreen(panel.fullscreenKey ?? panel.id ?? panel.title)
+                        }
+                        style={{
+                          fontSize: 8,
+                          fontWeight: 800,
+                          letterSpacing: "0.08em",
+                          padding: "2px 6px",
+                          borderRadius: 4,
+                          cursor: "pointer",
+                          border: "1px solid rgba(255,215,0,0.4)",
+                          background: "rgba(255,215,0,0.12)",
+                          color: "#FFD700",
+                          fontFamily: "inherit",
+                        }}
+                      >
+                        FOCUS
+                      </button>
+                    ) : null}
+                  </div>
+                  <div style={{ flex: 1, minHeight: 0, overflow: "hidden" }}>{panel.content}</div>
+                </div>
+              ),
+            }))}
+          />
+        </div>
+      );
+    }
+
     return (
       <div
         data-col={rail}
-        data-equal-dual-monitors={equalDualCenter ? "true" : undefined}
         style={{
           display: "flex",
           flexDirection: "column",
-          gap: equalDualCenter ? MONITOR_GAP : 6,
+          gap: 6,
           minWidth: 0,
           alignSelf: "stretch",
           height: isSideRail ? "100%" : "auto",
@@ -344,53 +427,13 @@ export default function OverseerFlightDeck({
           paddingRight: 2,
         }}
       >
-        {visible.map((panel) => {
-          if (equalDualCenter) {
-            return (
-              <div
-                key={panel.id ?? panel.title}
-                data-monitor-frame="16x9"
-                style={{
-                  position: "relative",
-                  width: "100%",
-                  paddingBottom: "56.25%",
-                  flex: "0 0 auto",
-                  flexShrink: 0,
-                  minHeight: MONITOR_MIN_PX,
-                  alignSelf: "stretch",
-                }}
-              >
-                <div
-                  style={{
-                    position: "absolute",
-                    inset: 0,
-                    display: "flex",
-                    flexDirection: "column",
-                  }}
-                >
-                  {renderPanelCanister(
-                    { ...panel, fixedHeight: undefined, flex: undefined },
-                    false,
-                    false,
-                    {
-                      width: "100%",
-                      height: "100%",
-                      flex: "1 1 auto",
-                      minHeight: 0,
-                      overflow: "hidden",
-                      flexDirection: "column",
-                    },
-                  )}
-                </div>
-              </div>
-            );
-          }
-          return renderPanelCanister(
+        {visible.map((panel) =>
+          renderPanelCanister(
             panel,
             isLeft ? leftCollapsed : isRight ? rightCollapsed : false,
             false,
-          );
-        })}
+          ),
+        )}
       </div>
     );
   };

@@ -11,6 +11,6 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     ok: true,
     userId,
-    ...getAvatarPersistenceSnapshot(userId),
+    ...(await getAvatarPersistenceSnapshot(userId)),
   });
 }
