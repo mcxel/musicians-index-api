@@ -136,7 +136,7 @@ export default function RotatingHeroBanner({
         borderRadius: 14,
         overflow: 'hidden',
         border: '2px solid rgba(0,229,255,0.6)',
-        boxShadow: '0 0 28px rgba(0,229,255,0.35), 0 0 12px rgba(170,45,255,0.25) inset',
+        boxShadow: '0 0 28px rgba(0,229,255,0.35), 0 0 60px rgba(0,229,255,0.12), 0 0 12px rgba(170,45,255,0.25) inset',
         background: '#03030c',
       }}
       onMouseEnter={() => setIsPaused(true)}
@@ -246,8 +246,20 @@ export default function RotatingHeroBanner({
       {/* ── Responsive Triptych Layout: full-width center on mobile ── */}
       <div className="h1-banner-triptych" style={{ display: 'flex', width: '100%', height: '100%' }}>
 
-        {/* Left flank (25% on desktop, hidden on mobile) */}
-        <div className="h1-banner-flank-left" style={{ flex: '0 0 25%', position: 'relative', overflow: 'hidden' }}>
+        {/* Left flank (25% on desktop, hidden on mobile) — masked so the outer
+            edge softly fades instead of ending in a hard rectangular cutoff. */}
+        <div
+          className="h1-banner-flank-left"
+          style={{
+            flex: '0 0 25%',
+            position: 'relative',
+            overflow: 'hidden',
+            WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 70%), linear-gradient(to bottom, transparent 0%, black 12%, black 88%, transparent 100%)',
+            WebkitMaskComposite: 'source-in',
+            maskImage: 'linear-gradient(to right, transparent 0%, black 70%), linear-gradient(to bottom, transparent 0%, black 12%, black 88%, transparent 100%)',
+            maskComposite: 'intersect',
+          }}
+        >
           <Image
             src={safeLeftSlide.src}
             alt={safeLeftSlide.label}
@@ -346,8 +358,20 @@ export default function RotatingHeroBanner({
         {/* Electric divider line */}
         <div className="h1-banner-divider" style={{ width: 1, flexShrink: 0, background: 'linear-gradient(180deg, #FFD700, #AA2DFF, #00FFFF)', zIndex: 2 }} />
 
-        {/* Right flank (25% on desktop, hidden on mobile) */}
-        <div className="h1-banner-flank-right" style={{ flex: '0 0 25%', position: 'relative', overflow: 'hidden' }}>
+        {/* Right flank (25% on desktop, hidden on mobile) — mirrors the left
+            flank's edge feathering, fading toward the outer (right) edge. */}
+        <div
+          className="h1-banner-flank-right"
+          style={{
+            flex: '0 0 25%',
+            position: 'relative',
+            overflow: 'hidden',
+            WebkitMaskImage: 'linear-gradient(to left, transparent 0%, black 70%), linear-gradient(to bottom, transparent 0%, black 12%, black 88%, transparent 100%)',
+            WebkitMaskComposite: 'source-in',
+            maskImage: 'linear-gradient(to left, transparent 0%, black 70%), linear-gradient(to bottom, transparent 0%, black 12%, black 88%, transparent 100%)',
+            maskComposite: 'intersect',
+          }}
+        >
           <Image
             src={safeRightSlide.src}
             alt={safeRightSlide.label}

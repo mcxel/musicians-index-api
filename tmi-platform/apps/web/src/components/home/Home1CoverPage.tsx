@@ -1615,20 +1615,35 @@ export default function Home1CoverPage() {
                 </div>
               </div>
 
-              {/* ── Action buttons: 7 clickable buttons ── */}
-              <div style={{ display: 'flex', justifyContent: 'center', gap: 5, marginTop: 4, flexWrap: 'wrap' }}>
+              {/* ── Action buttons: 7 clickable buttons, grouped with wider gaps
+                   between groups than within a group so the row reads as
+                   Account | Compete | Content instead of one cramped strip. ── */}
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 14, marginTop: 8, flexWrap: 'wrap', rowGap: 8 }}>
                 {[
-                  { label: 'JOIN FREE',       href: '/signup',             bg: 'rgba(0,255,127,0.14)', color: '#00FF7F', border: 'rgba(0,255,127,0.4)' },
-                  { label: 'LOGIN',           href: '/login',              bg: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.7)', border: 'rgba(255,255,255,0.2)' },
-                  { label: 'CHALLENGE SONG',  href: '/battles/challenge',  bg: 'rgba(255,215,0,0.14)', color: '#FFD700', border: 'rgba(255,215,0,0.35)' },
-                  { label: 'CYPHER ARENA',    href: '/live/rooms/cypher-arena', bg: 'rgba(0,229,255,0.12)', color: '#00E5FF', border: 'rgba(0,229,255,0.3)' },
-                  { label: 'MAGAZINE',        href: '/magazine',           bg: 'rgba(255,45,170,0.12)', color: '#FF2DAA', border: 'rgba(255,45,170,0.3)' },
-                  { label: 'SPONSOR',         href: '/sponsors/apply',     bg: 'rgba(155,89,182,0.12)', color: '#9B59B6', border: 'rgba(155,89,182,0.3)' },
-                  { label: 'ADVERTISE',       href: '/sponsors/advertise', bg: 'rgba(230,48,0,0.12)',  color: '#E63000', border: 'rgba(230,48,0,0.3)' },
-                ].map((btn) => (
-                  <Link key={btn.label} href={btn.href} style={{ textDecoration: 'none' }}>
-                    <button style={{ background: btn.bg, color: btn.color, border: `1px solid ${btn.border}`, borderRadius: 5, padding: '5px 11px', fontSize: 9, fontWeight: 800, cursor: 'pointer', fontFamily: "'Inter',sans-serif", letterSpacing: '0.05em' }}>{btn.label}</button>
-                  </Link>
+                  [
+                    { label: 'JOIN FREE', href: '/signup', bg: 'rgba(0,255,127,0.14)', color: '#00FF7F', border: 'rgba(0,255,127,0.4)' },
+                    { label: 'LOGIN',     href: '/login',  bg: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.7)', border: 'rgba(255,255,255,0.2)' },
+                  ],
+                  [
+                    { label: 'CHALLENGE SONG', href: '/battles/challenge',       bg: 'rgba(255,215,0,0.14)', color: '#FFD700', border: 'rgba(255,215,0,0.35)' },
+                    { label: 'CYPHER ARENA',   href: '/live/rooms/cypher-arena', bg: 'rgba(0,229,255,0.12)', color: '#00E5FF', border: 'rgba(0,229,255,0.3)' },
+                  ],
+                  [
+                    { label: 'MAGAZINE',  href: '/magazine',           bg: 'rgba(255,45,170,0.12)', color: '#FF2DAA', border: 'rgba(255,45,170,0.3)' },
+                    { label: 'SPONSOR',   href: '/sponsors/apply',     bg: 'rgba(155,89,182,0.12)', color: '#9B59B6', border: 'rgba(155,89,182,0.3)' },
+                    { label: 'ADVERTISE', href: '/sponsors/advertise', bg: 'rgba(230,48,0,0.12)',  color: '#E63000', border: 'rgba(230,48,0,0.3)' },
+                  ],
+                ].map((group, gi) => (
+                  <div key={gi} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                    {gi > 0 && (
+                      <span style={{ width: 1, height: 16, background: 'rgba(255,255,255,0.12)', marginRight: 8 }} aria-hidden="true" />
+                    )}
+                    {group.map((btn) => (
+                      <Link key={btn.label} href={btn.href} style={{ textDecoration: 'none' }}>
+                        <button style={{ background: btn.bg, color: btn.color, border: `1px solid ${btn.border}`, borderRadius: 5, padding: '6px 13px', fontSize: 9, fontWeight: 800, cursor: 'pointer', fontFamily: "'Inter',sans-serif", letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>{btn.label}</button>
+                      </Link>
+                    ))}
+                  </div>
                 ))}
               </div>
             </div>

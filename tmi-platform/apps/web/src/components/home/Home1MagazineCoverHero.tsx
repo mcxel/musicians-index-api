@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useEffect, useRef } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import TmiBadgeOverlay from '@/components/overlays/TmiBadgeOverlay';
@@ -9,6 +9,7 @@ import OrbitBattleAnimationLayer from '@/components/home/OrbitBattleAnimationLay
 import GovernedOrbitFace from '@/components/home/GovernedOrbitFace';
 import { composeLiveMagazineCover } from '@/lib/home/LiveMagazineCoverComposer';
 import { getCrownArtistPayload, getOrbitArtistPayloads } from '@/lib/home/OrbitArtistPayloadEngine';
+import { ensurePresentationDirectorsStarted, MotionDirector } from '@/lib/presentation/directors';
 import type { MusicGenre } from '@/engines/home/CoverGenreRotationAuthority';
 import type { PublicPerformer } from '@/app/api/public/performers/route';
 
@@ -60,6 +61,7 @@ function CrownWinnerCard({
         overflow: 'hidden',
         background: 'rgba(20,14,4,0.85)',
         zIndex: 5,
+        backdropFilter: 'blur(12px)',
       }}
       data-governed-slot="crown-center"
       data-image-id={`crown_${poster.split('/').pop() ?? 'fallback'}`}
@@ -165,6 +167,10 @@ export default function Home1MagazineCoverHero({ heroImageRef }: Home1MagazineCo
   const fallbackWinner = useMemo(() => getCrownArtistPayload(), []);
   const fallbackOrbit = useMemo(() => getOrbitArtistPayloads(), []);
 
+  useEffect(() => {
+    ensurePresentationDirectorsStarted();
+  }, []);
+
   const winner = cover.winner ?? {
     artistId: fallbackWinner.artistId,
     name: fallbackWinner.name,
@@ -185,7 +191,6 @@ export default function Home1MagazineCoverHero({ heroImageRef }: Home1MagazineCo
     },
   };
 
-  // Merge live registered users (prepend) with seeded fallback (pad to 9)
   const baseOrbitArtists = cover.orbitArtists.length
     ? cover.orbitArtists
     : fallbackOrbit.map((entry, index) => ({
@@ -223,7 +228,6 @@ export default function Home1MagazineCoverHero({ heroImageRef }: Home1MagazineCo
     media: { posterFrameUrl: u.avatarUrl, status: 'LIVE' as const },
   }));
 
-  // Live users first, then seeded — dedup by artistId
   const seen = new Set<string>();
   const orbitArtists = [...liveOrbitAddons, ...baseOrbitArtists].filter((a) => {
     if (seen.has(a.artistId)) return false;
@@ -250,13 +254,10 @@ export default function Home1MagazineCoverHero({ heroImageRef }: Home1MagazineCo
   }, [orbitArtists, orbitRadius, maxOrbitCount]);
 
   useEffect(() => {
-    // Keep the orbit visibly alive; 300ms is plenty for the GovernedOrbitFace rail.
-    // OrbitBattleAnimationLayer is memo'd + CSS-driven, so this doesn't affect it.
     const t = setInterval(() => setFrame((p) => p + 1), 300);
     return () => clearInterval(t);
   }, []);
 
-  // Fetch real registered users for the orbit — auto-refreshes every 60s
   useEffect(() => {
     const load = () => {
       fetch('/api/public/performers?limit=20', { cache: 'no-store' })
@@ -282,7 +283,6 @@ export default function Home1MagazineCoverHero({ heroImageRef }: Home1MagazineCo
     return () => window.removeEventListener('resize', update);
   }, []);
 
-  // Collect unique genres from the orbit ring for rotation display
   const orbitGenres = useMemo(() => {
     const raw = orbitArtists.map((a) => (a as { genre?: string }).genre).filter(Boolean) as string[];
     return [...new Set(raw)];
@@ -293,8 +293,6 @@ export default function Home1MagazineCoverHero({ heroImageRef }: Home1MagazineCo
     const t = setInterval(() => setActiveGenreIdx((p) => (p + 1) % orbitGenres.length), 3200);
     return () => clearInterval(t);
   }, [orbitGenres.length]);
-
-  const displayGenre = orbitGenres[activeGenreIdx] ?? winner.genre ?? 'Hip-Hop';
 
   const heroPoster = heroImageRef ?? winner.media.posterFrameUrl ?? '/artists/artist-01.png';
 
@@ -326,6 +324,8 @@ export default function Home1MagazineCoverHero({ heroImageRef }: Home1MagazineCo
               backgroundSize: 'cover',
               backgroundPosition: 'center',
               opacity: 0.12,
+              WebkitMaskImage: 'radial-gradient(circle at 50% 50%, black 60%, transparent 100%)',
+              maskImage: 'radial-gradient(circle at 50% 50%, black 60%, transparent 100%)',
             }}
           />
 
@@ -339,7 +339,6 @@ export default function Home1MagazineCoverHero({ heroImageRef }: Home1MagazineCo
               <h2 className="tmi-masthead" style={{ fontSize: 'clamp(1.8rem,5vw,3.4rem)', margin: '0 0 10px' }}>
                 {cover.headlines[0] ?? 'CROWN UPDATE IN PROGRESS'}
               </h2>
-              {/* Rotating genre display */}
               <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
                 {orbitGenres.slice(0, 6).map((g, i) => (
                   <span
