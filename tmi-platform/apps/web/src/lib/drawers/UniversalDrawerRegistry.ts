@@ -28,6 +28,8 @@ export type UniversalDrawerModuleId =
   | "appearance"
   | "notifications"
   | "queue"
+  | "submissions"
+  | "scores"
   /** Coordinate → invite → join venues (MessagingCanister). */
   | "messaging";
 
@@ -202,6 +204,27 @@ export const UNIVERSAL_DRAWER_MODULES: UniversalDrawerModuleDef[] = [
     primary: true,
     mediaBindPoint: "none",
   },
+  {
+    id: "submissions",
+    label: "SUBMISSIONS",
+    /** Fan lane = contests/spotlight; Performer drawer mounts BeatLocker (Rule 26). */
+    info: "Entries & vault",
+    accent: "#FFD700",
+    animation: "mechanical",
+    roles: ["fan", "performer"],
+    primary: true,
+    mediaBindPoint: "none",
+  },
+  {
+    id: "scores",
+    label: "SCORES & RANKS",
+    info: "Leaderboards",
+    accent: "#00D4FF",
+    animation: "command_lift",
+    roles: ["fan", "performer"],
+    primary: true,
+    mediaBindPoint: "none",
+  },
 ];
 
 const BY_ID = new Map(UNIVERSAL_DRAWER_MODULES.map((m) => [m.id, m]));
@@ -229,4 +252,19 @@ export const FAN_UNIVERSAL_SWAP_MODULES: UniversalDrawerModuleId[] = [
   "live_destinations",
   "room_controls",
   "messaging",
+  "submissions",
+  "scores",
+];
+
+/** Performer under-drawer quick-swap chips — includes BeatLocker submissions. */
+export const PERFORMER_UNIVERSAL_SWAP_MODULES: UniversalDrawerModuleId[] = [
+  "media_locker",
+  "yopho",
+  "playlist",
+  "memory",
+  "live_destinations",
+  "messaging",
+  "submissions",
+  "scores",
+  "beat_lab",
 ];

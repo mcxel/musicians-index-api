@@ -1,17 +1,76 @@
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
-import { NextResponse } from 'next/server';
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { prisma } from "@/lib/prisma";
 
-// Seed catalog — replaced by DB query in production
-const SEED_BEATS = [
-  { id: 'beat-001', title: 'Late Night Frequencies', producer: 'DJ Blend', genre: 'Trap',     bpm: 140, price: 29.99, tags: ['dark', 'melodic'],   previewUrl: '/audio/beats/late-night.mp3',   available: true },
-  { id: 'beat-002', title: 'Golden Hour Bounce',     producer: 'Ray Journey', genre: 'R&B',  bpm: 78,  price: 19.99, tags: ['smooth', 'chill'],    previewUrl: '/audio/beats/golden-hour.mp3',   available: true },
-  { id: 'beat-003', title: 'Concrete Jungle',        producer: 'Nova Cipher', genre: 'Hip-Hop', bpm: 92, price: 24.99, tags: ['gritty', 'hard'],   previewUrl: '/audio/beats/concrete.mp3',      available: true },
-  { id: 'beat-004', title: 'Digital Soul',           producer: 'DJ Blend', genre: 'EDM',     bpm: 128, price: 34.99, tags: ['electronic', 'hype'], previewUrl: '/audio/beats/digital-soul.mp3',  available: true },
-  { id: 'beat-005', title: 'Afro Rain',              producer: 'Ray Journey', genre: 'Afrobeats', bpm: 97, price: 22.99, tags: ['afro', 'groove'], previewUrl: '/audio/beats/afro-rain.mp3',     available: true },
-  { id: 'beat-006', title: 'Church Steps',           producer: 'Nova Cipher', genre: 'Gospel', bpm: 80, price: 19.99, tags: ['uplifting', 'choir'], previewUrl: '/audio/beats/church-steps.mp3', available: false },
-];
+/**
+ * GET /api/beats/list
+ * Real Prisma Beat rows only — Rule 20: no seed catalog as live inventory.
+ * ?mine=1 → producerId = session user
+ * ?status=draft|published|…
+ */
+export async function GET(req: NextRequest) {
+  const mine = req.nextUrl.searchParams.get("mine") === "1";
+  const status = req.nextUrl.searchParams.get("status")?.trim() || undefined;
+  const sessionId = req.cookies.get("tmi_session_id")?.value;
 
-export async function GET() {
-  return NextResponse.json({ ok: true, beats: SEED_BEATS, total: SEED_BEATS.length });
+  try {
+    const where: {
+      producerId?: string;
+      status?: string;
+    } = {};
+
+    if (mine) {
+      if (!sessionId) {
+        return NextResponse.json(
+          { ok: false, error: "Unauthorized. Log in to view your Beat Locker.", beats: [], total: 0 },
+          { status: 401 },
+        );
+      }
+      where.producerId = sessionId;
+    }
+    if (status) where.status = status;
+
+    const rows = await prisma.beat.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      take: 100,
+    });
+
+    const beats = rows.map((b) => ({
+      id: b.id,
+      title: b.title,
+      producer: b.producerName ?? b.producerId,
+      producerId: b.producerId,
+      producerName: b.producerName,
+      genre: b.genre,
+      bpm: b.bpm,
+      key: b.key,
+      tags: b.tags,
+      previewUrl: b.previewUrl,
+      price: b.basicPrice / 100,
+      basicPrice: b.basicPrice,
+      premiumPrice: b.premiumPrice,
+      exclusivePrice: b.exclusivePrice,
+      available: b.status === "published" && b.moderationStatus === "APPROVED",
+      status: b.status,
+      moderationStatus: b.moderationStatus,
+      adminSubmitted: b.adminSubmitted,
+      createdAt: b.createdAt.toISOString(),
+    }));
+
+    return NextResponse.json({ ok: true, beats, total: beats.length });
+  } catch (error) {
+    console.error("[beats/list] GET failed:", error);
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "Unable to load Beat Locker from database",
+        beats: [],
+        total: 0,
+      },
+      { status: 500 },
+    );
+  }
 }

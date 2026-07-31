@@ -21,6 +21,8 @@ import { StoreCanister } from "@/components/canisters/StoreCanister";
 import NotificationCanister from "@/components/canisters/NotificationCanister";
 import QueueCanister from "@/components/canisters/QueueCanister";
 import MessagingCanister from "@/components/canisters/MessagingCanister";
+import SubmissionsCanister from "@/components/canisters/SubmissionsCanister";
+import ScoresCanister from "@/components/canisters/ScoresCanister";
 import ThemeEditorPanel from "@/components/shell/ThemeEditorPanel";
 import SponsorRail from "@/components/sponsors/SponsorRail";
 import { getRailSponsors } from "@/lib/commerce/SponsorRegistry";
@@ -38,6 +40,8 @@ import type { CommandCenterPanelId, CommandCenterRole } from "./commandCenterReg
 import {
   FAN_COMMAND_PANELS,
   FAN_DRAWER_SWAP_PANELS,
+  PERFORMER_COMMAND_PANELS,
+  PERFORMER_DRAWER_SWAP_PANELS,
   isFanOnlyPanel,
 } from "./commandCenterRegistry";
 import { useTheme } from "@/lib/design/ThemeEngine";
@@ -214,6 +218,8 @@ export default function CommandCenterDrawer({
     messaging: "MESSAGES · COORDINATE → JOIN",
     notifications: "NOTIFICATIONS",
     queue: "QUEUE",
+    submissions: role === "fan" ? "FAN SUBMISSIONS" : "SUBMISSIONS & BEAT LOCKER",
+    scores: "UNIVERSAL LEADERBOARDS & SCORES",
   };
   const title = appearanceOpen
     ? "SHELL COLORS · THIS DEVICE"
@@ -228,11 +234,13 @@ export default function CommandCenterDrawer({
     return null;
   }
 
+  const swapPanelIds = role === "performer" ? PERFORMER_DRAWER_SWAP_PANELS : FAN_DRAWER_SWAP_PANELS;
+  const swapPanelDefs = role === "performer" ? PERFORMER_COMMAND_PANELS : FAN_COMMAND_PANELS;
   const swapChips =
-    role === "fan" && !appearanceOpen && onSelectPanel ? (
+    !appearanceOpen && onSelectPanel ? (
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginLeft: 8 }}>
-        {FAN_DRAWER_SWAP_PANELS.map((id) => {
-          const def = FAN_COMMAND_PANELS.find((p) => p.id === id);
+        {swapPanelIds.map((id) => {
+          const def = swapPanelDefs.find((p) => p.id === id);
           if (!def) return null;
           const active = activePanel === id;
           return (
@@ -455,6 +463,23 @@ export default function CommandCenterDrawer({
             </Link>
           </div>
           <MessagingCanister height={360} />
+        </div>
+      ) : null}
+
+      {activePanel === "submissions" ? (
+        <div style={{ padding: 12 }}>
+          <SubmissionsCanister
+            role={role}
+            userId={userId}
+            displayName={displayName}
+            accentColor={role === "fan" ? "#FF2DAA" : "#FFD700"}
+          />
+        </div>
+      ) : null}
+
+      {activePanel === "scores" ? (
+        <div style={{ padding: 12 }}>
+          <ScoresCanister role={role} accentColor="#00D4FF" />
         </div>
       ) : null}
     </UniversalDrawerBase>

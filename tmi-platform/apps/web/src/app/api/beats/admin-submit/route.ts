@@ -28,8 +28,14 @@ export async function POST(req: NextRequest) {
   const exclusivePrice = body.exclusivePrice != null ? Math.floor(Number(body.exclusivePrice)) : null;
   const producerName   = typeof body.producerName === "string" ? body.producerName : "J. Paul Sanchez";
   // Auto-tags: mark admin submission and producer attribution
-  const baseTags       = Array.isArray(body.tags) ? (body.tags as string[]) : [];
-  const tags           = [...new Set([...baseTags, "admin-submitted", `producer:${producerName}`])];
+  const baseTags = Array.isArray(body.tags)
+    ? (body.tags as string[])
+    : typeof body.tags === "string"
+      ? body.tags.split(",").map((t) => t.trim()).filter(Boolean)
+      : [];
+  const stashScope =
+    body.stashScope === "personal" ? "personal-stash" : "platform-catalog";
+  const tags = [...new Set([...baseTags, "admin-submitted", stashScope, `producer:${producerName}`])];
   const slug           = `beat-admin-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
   if (!title) {

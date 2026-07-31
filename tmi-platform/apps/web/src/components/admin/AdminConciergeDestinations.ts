@@ -59,6 +59,22 @@ export const ADMIN_CONCIERGE_DESTINATIONS: ConciergeDestination[] = [
     keywords: ["observe", "deck"],
   },
   {
+    id: "beat-locker",
+    label: "Beat Locker",
+    href: "/admin/beat-locker",
+    group: "Command Deck",
+    accent: "#FFD700",
+    keywords: ["beat", "locker", "submit", "bjm", "submissions", "upload"],
+  },
+  {
+    id: "executive-ops",
+    label: "Ask Big Ace / MC",
+    href: "/admin/beat-locker#executive-operators",
+    group: "Ops Intelligence",
+    accent: "#00FFFF",
+    keywords: ["big ace", "michael charlie", "executive", "message", "ask"],
+  },
+  {
     id: "fan-page",
     label: "Fan Page",
     href: "/dashboard/fan",

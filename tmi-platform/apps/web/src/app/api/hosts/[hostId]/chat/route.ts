@@ -34,6 +34,11 @@ const STATIC_GREETINGS: Record<string, string> = {
   "aura-pa":       "Welcome to TMI! Enjoy the show. We're glad you're here.",
   "kira":          "Hey there! Love having you with us tonight. What brings you in?",
   "mindy-jean-long": "Oh my gosh, hi! You are going to LOVE tonight. Stick around!",
+  // Executive operators (admin Concierge) — honest static fallback, not live video
+  "big-ace":
+    "Big Ace here. Keep capital allocation tight, protect revenue integrity, and escalate only what needs enterprise authority. Report facts — not theater.",
+  "michael-charlie":
+    "Michael Charlie — ops. Give me the blocker, the owner, and the next shippable step. We keep TMI running; Big Ace gets only the decisions that need him.",
 };
 
 export async function POST(

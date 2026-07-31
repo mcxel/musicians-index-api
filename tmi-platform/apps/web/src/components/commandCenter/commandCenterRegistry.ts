@@ -8,6 +8,7 @@
 
 import {
   FAN_UNIVERSAL_SWAP_MODULES,
+  PERFORMER_UNIVERSAL_SWAP_MODULES,
   getUniversalDrawerModule,
   modulesForRole,
   type UniversalDrawerModuleId,
@@ -45,6 +46,11 @@ export const FAN_COMMAND_PANELS: CommandCenterPanelDef[] = modulesForRole("fan")
 
 /** Quick-swap chips inside the open drawer (Fan Command Center). */
 export const FAN_DRAWER_SWAP_PANELS: CommandCenterPanelId[] = [...FAN_UNIVERSAL_SWAP_MODULES];
+
+/** Quick-swap chips inside the open drawer (Performer Command Center). */
+export const PERFORMER_DRAWER_SWAP_PANELS: CommandCenterPanelId[] = [
+  ...PERFORMER_UNIVERSAL_SWAP_MODULES,
+];
 
 /** Performer drawers — NO avatar lobby ownership / Avatar Studio (Rule 26). */
 export const PERFORMER_COMMAND_PANELS: CommandCenterPanelDef[] = modulesForRole("performer")

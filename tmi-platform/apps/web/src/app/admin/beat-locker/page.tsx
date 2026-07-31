@@ -2,6 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { motion } from "framer-motion";
+import AdminSubmissionPanel from "@/components/admin/AdminSubmissionPanel";
+import ExecutiveOperatorDock from "@/components/admin/ExecutiveOperatorDock";
+import ScoresCanister from "@/components/canisters/ScoresCanister";
 
 type Beat = {
   id: string;
@@ -133,6 +136,15 @@ export default function BeatLockerAdminPage() {
           <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
             <a href="/admin/mission-control" style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", textDecoration: "none" }}>← Mission Control</a>
           </div>
+        </div>
+
+        {/* BJM Step 4 — upload + executive operators (real engines / honest empty) */}
+        <div style={{ display: "grid", gap: 16, marginBottom: 24 }}>
+          <AdminSubmissionPanel actorName="BJM" />
+          <div id="executive-operators">
+            <ExecutiveOperatorDock />
+          </div>
+          <ScoresCanister role="admin" accentColor="#00D4FF" />
         </div>
 
         {/* Stat pills */}
