@@ -40,6 +40,8 @@ export async function GET(req: NextRequest, { params }: { params: { threadId: st
         type: m.type,
         valueUsdCents: m.valueUsdCents,
         mediaUrl: m.mediaUrl,
+        playlistId: m.playlistId,
+        trackId: m.trackId,
         createdAt: m.createdAt,
         editedAt: m.editedAt,
         isOwn: m.senderId === user.id,
@@ -57,15 +59,29 @@ export async function POST(req: NextRequest, { params }: { params: { threadId: s
   const isParticipant = thread.participants.some(p => p.userId === user.id);
   if (!isParticipant) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
-  const body = await req.json() as { body: string; type?: string };
+  const body = await req.json() as {
+    body: string;
+    type?: string;
+    playlistId?: string;
+    trackId?: string;
+  };
   if (!body.body?.trim()) return NextResponse.json({ error: 'Message body required' }, { status: 400 });
+
+  const allowedTypes = new Set(['text', 'image', 'audio', 'tip', 'gift', 'system', 'playlist']);
+  const msgType = body.type && allowedTypes.has(body.type) ? body.type : 'text';
+
+  if (msgType === 'playlist' && !body.playlistId?.trim()) {
+    return NextResponse.json({ error: 'playlistId required for playlist shares' }, { status: 400 });
+  }
 
   const message = messageThreadEngine.sendMessage({
     threadId: params.threadId,
     senderId: user.id,
     senderName: user.displayName,
     body: body.body.trim(),
-    type: (body.type as 'text' | 'image' | 'audio' | 'tip' | 'gift' | 'system') ?? 'text',
+    type: msgType as 'text' | 'image' | 'audio' | 'tip' | 'gift' | 'system' | 'playlist',
+    playlistId: body.playlistId?.trim(),
+    trackId: body.trackId?.trim(),
   });
 
   if (!message) return NextResponse.json({ error: 'Could not send message' }, { status: 500 });
@@ -74,6 +90,8 @@ export async function POST(req: NextRequest, { params }: { params: { threadId: s
     messageId: message.messageId,
     body: message.body,
     type: message.type,
+    playlistId: message.playlistId,
+    trackId: message.trackId,
     createdAt: message.createdAt,
   });
 }

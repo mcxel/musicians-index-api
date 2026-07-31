@@ -14,12 +14,25 @@ import CanonicalDualMonitorStack, {
 
 export type MediaGridMode = 2 | 4 | 8;
 
+export interface CommandCenterPlaylistCast {
+  playlistId: string;
+  trackId?: string;
+  title: string;
+  artist?: string;
+  coverUrl?: string | null;
+  audioUrl?: string | null;
+  isPlaying?: boolean;
+  progress?: number;
+}
+
 export interface CommandCenterMediaSlot {
   id: string;
   label: string;
   videoUrl?: string | null;
   imageUrl?: string | null;
-  kind?: "video" | "audience" | "empty";
+  kind?: "video" | "audience" | "empty" | "playlist";
+  /** Cast-to-monitor payload when kind === "playlist" */
+  playlistCast?: CommandCenterPlaylistCast | null;
 }
 
 interface CommandCenterMediaStackProps {
@@ -32,10 +45,100 @@ interface CommandCenterMediaStackProps {
   seriesLabel?: string;
 }
 
+function PlaylistCastBody({ cast }: { cast: CommandCenterPlaylistCast }) {
+  const progress = typeof cast.progress === "number" ? Math.min(1, Math.max(0, cast.progress)) : undefined;
+  return (
+    <div
+      style={{
+        position: "absolute",
+        inset: 0,
+        display: "flex",
+        flexDirection: "column",
+        background: "radial-gradient(circle at 40% 20%, rgba(170,45,255,0.18), #010308 65%)",
+        padding: 12,
+        gap: 8,
+      }}
+    >
+      <div style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.16em", color: "#AA2DFF" }}>
+        CAST · PLAYLIST
+      </div>
+      <div style={{ display: "flex", gap: 10, alignItems: "center", flex: 1, minHeight: 0 }}>
+        <div
+          style={{
+            width: 72,
+            height: 72,
+            borderRadius: 8,
+            flexShrink: 0,
+            overflow: "hidden",
+            border: "1px solid rgba(255,255,255,0.12)",
+            background: "rgba(0,0,0,0.45)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          {cast.coverUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={cast.coverUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          ) : (
+            <span style={{ fontSize: 28, opacity: 0.5 }}>🎵</span>
+          )}
+        </div>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div
+            style={{
+              fontSize: 14,
+              fontWeight: 900,
+              color: "#fff",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {cast.title}
+          </div>
+          {cast.artist ? (
+            <div style={{ fontSize: 11, color: "#00FFFF", fontWeight: 700, marginTop: 2 }}>{cast.artist}</div>
+          ) : null}
+          <div style={{ fontSize: 9, color: "rgba(255,255,255,0.35)", marginTop: 6, letterSpacing: "0.06em" }}>
+            {cast.isPlaying ? "▶ PLAYING ON WORKSPACE MONITOR" : "📺 CAST TO WORKSPACE MONITOR"}
+          </div>
+          {cast.audioUrl ? (
+            <audio
+              key={cast.audioUrl}
+              src={cast.audioUrl}
+              controls
+              autoPlay={Boolean(cast.isPlaying)}
+              style={{ width: "100%", marginTop: 8, height: 28 }}
+            />
+          ) : (
+            <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", marginTop: 8 }}>
+              No playable audio URL on this track — title projected only.
+            </div>
+          )}
+        </div>
+      </div>
+      {progress !== undefined ? (
+        <div style={{ height: 3, borderRadius: 2, background: "rgba(255,255,255,0.1)", overflow: "hidden" }}>
+          <div
+            style={{
+              height: "100%",
+              width: `${progress * 100}%`,
+              background: "linear-gradient(90deg,#AA2DFF,#00FFFF)",
+            }}
+          />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function MonitorMediaBody({ slot }: { slot: CommandCenterMediaSlot }) {
   return (
     <div style={{ position: "relative", flex: 1, width: "100%", minHeight: 0, overflow: "hidden" }}>
-      {slot.kind === "audience" ? (
+      {slot.kind === "playlist" && slot.playlistCast ? (
+        <PlaylistCastBody cast={slot.playlistCast} />
+      ) : slot.kind === "audience" ? (
         <div style={{ position: "absolute", inset: 0 }}>
           <AudienceScene view="fan" />
         </div>

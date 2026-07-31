@@ -15,7 +15,15 @@ export interface ThreadParticipant {
   role: ParticipantRole;
 }
 
-export type MessageType = "text" | "image" | "audio" | "tip" | "gift" | "system";
+export type MessageType =
+  | "text"
+  | "image"
+  | "audio"
+  | "tip"
+  | "gift"
+  | "system"
+  /** Individual playlist/track share — payload uses playlistId (+ optional trackId). */
+  | "playlist";
 
 export interface ThreadMessage {
   messageId: string;
@@ -28,6 +36,9 @@ export interface ThreadMessage {
   valueUsdCents?: number;
   /** For image/audio attachments */
   mediaUrl?: string;
+  /** When type === "playlist" — share by id, not a UI shell export */
+  playlistId?: string;
+  trackId?: string;
   readBy: Set<string>;
   createdAt: number;
   editedAt?: number;
@@ -135,6 +146,8 @@ class MessageThreadEngine {
     type?: MessageType;
     valueUsdCents?: number;
     mediaUrl?: string;
+    playlistId?: string;
+    trackId?: string;
   }): ThreadMessage | null {
     const thread = this.threads.get(params.threadId);
     if (!thread || thread.isBlocked) return null;
@@ -148,6 +161,8 @@ class MessageThreadEngine {
       type: params.type ?? "text",
       valueUsdCents: params.valueUsdCents,
       mediaUrl: params.mediaUrl,
+      playlistId: params.playlistId,
+      trackId: params.trackId,
       readBy: new Set([params.senderId]),
       createdAt: Date.now(),
     };

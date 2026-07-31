@@ -21,6 +21,8 @@ interface ThreadMessage {
   senderName: string;
   body: string;
   type: string;
+  playlistId?: string;
+  trackId?: string;
   createdAt: number;
   isOwn?: boolean;
 }
@@ -79,9 +81,11 @@ async function fetchMessages(threadId: string): Promise<ThreadMessage[]> {
     senderId: m.senderId as string,
     senderName: m.senderName as string,
     body: m.body as string,
-    type: m.type as string ?? "text",
+    type: (m.type as string) ?? "text",
+    playlistId: typeof m.playlistId === "string" ? m.playlistId : undefined,
+    trackId: typeof m.trackId === "string" ? m.trackId : undefined,
     createdAt: m.createdAt as number,
-    isOwn: m.isOwn as boolean ?? false,
+    isOwn: (m.isOwn as boolean) ?? false,
   }));
 }
 
@@ -175,7 +179,47 @@ function ConversationRow({
   );
 }
 
+function PlaylistShareBubble({ msg }: { msg: ThreadMessage }) {
+  const playlistId = msg.playlistId;
+  // Hub deep-link opens Playlist drawer; fan hub is the shared consumer path.
+  const href = playlistId
+    ? `/hub/fan?drawer=playlist&playlistId=${encodeURIComponent(playlistId)}`
+    : "/hub/fan?drawer=playlist";
+  return (
+    <div>
+      <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.12em", color: "#AA2DFF", marginBottom: 4 }}>
+        PLAYLIST SHARE
+      </div>
+      <div style={{ fontSize: 13, lineHeight: 1.45, color: "#fff", wordBreak: "break-word", marginBottom: 6 }}>
+        {msg.body}
+      </div>
+      {playlistId ? (
+        <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", marginBottom: 8, fontFamily: "monospace" }}>
+          playlistId: {playlistId}
+          {msg.trackId ? ` · trackId: ${msg.trackId}` : ""}
+        </div>
+      ) : null}
+      <a
+        href={href}
+        style={{
+          display: "inline-block",
+          fontSize: 10,
+          fontWeight: 800,
+          color: "#050510",
+          background: "linear-gradient(135deg,#00FFFF,#AA2DFF)",
+          borderRadius: 6,
+          padding: "6px 10px",
+          textDecoration: "none",
+        }}
+      >
+        Open Playlist →
+      </a>
+    </div>
+  );
+}
+
 function MessageBubble({ msg }: { msg: ThreadMessage }) {
+  const isPlaylist = msg.type === "playlist" || Boolean(msg.playlistId);
   return (
     <div style={{ display: "flex", justifyContent: msg.isOwn ? "flex-end" : "flex-start", marginBottom: 6 }}>
       <div
@@ -190,7 +234,11 @@ function MessageBubble({ msg }: { msg: ThreadMessage }) {
         {!msg.isOwn && (
           <div style={{ fontSize: 9, fontWeight: 700, color: "#AA2DFF", marginBottom: 3 }}>{msg.senderName}</div>
         )}
-        <div style={{ fontSize: 13, lineHeight: 1.45, color: "#fff", wordBreak: "break-word" }}>{msg.body}</div>
+        {isPlaylist ? (
+          <PlaylistShareBubble msg={msg} />
+        ) : (
+          <div style={{ fontSize: 13, lineHeight: 1.45, color: "#fff", wordBreak: "break-word" }}>{msg.body}</div>
+        )}
         <div style={{ fontSize: 8, color: "rgba(255,255,255,0.25)", marginTop: 4, textAlign: msg.isOwn ? "right" : "left" }}>
           {fmt(msg.createdAt)}
         </div>

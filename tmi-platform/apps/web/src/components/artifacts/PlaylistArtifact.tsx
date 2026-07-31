@@ -42,9 +42,12 @@ function MonitorDisplay({
   const track = tracks[currentIdx];
   const total = tracks.length;
   const nextTrack = tracks[(currentIdx + 1) % total];
+  // Rule 20: never invent listener counts — only show when a real count is provided (>0).
+  const listenerSegment =
+    listeners > 0 ? `   ·   ${listeners} LISTENERS` : "";
   const tickerText = track
-    ? `NOW PLAYING: ${track.artist.toUpperCase()} — ${track.title.toUpperCase()}   ·   UP NEXT: ${nextTrack?.artist} — ${nextTrack?.title}   ·   ${listeners} LISTENERS   ·   +10 XP AVAILABLE   ·   `
-    : "ADD TRACKS TO GET STARTED  ·  ";
+    ? `NOW PLAYING: ${track.artist.toUpperCase()} — ${track.title.toUpperCase()}   ·   UP NEXT: ${nextTrack?.artist} — ${nextTrack?.title}${listenerSegment}   ·   `
+    : "NO TRACKS YET  ·  ADD A TRACK TO START  ·  ";
 
   return (
     <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", background: "#050510", borderRadius: 8, overflow: "hidden" }}>
@@ -62,16 +65,17 @@ function MonitorDisplay({
         )}
       </div>
 
-      {/* Visualizer bars — animate when playing */}
+      {/* Playback presence bars — tied to real isPlaying only; not FFT/spectrum analysis */}
       <div style={{ flex: 1, display: "flex", alignItems: "flex-end", justifyContent: "center", gap: 2, padding: "4px 6px" }}>
         {Array.from({ length: 14 }).map((_, i) => (
           <motion.div
             key={i}
             animate={isPlaying ? {
-              height: [`${8 + Math.sin(i * 0.8) * 14}px`, `${18 + Math.sin(i * 1.2) * 14}px`, `${8 + Math.sin(i * 0.8) * 14}px`],
+              height: [`${8 + (i % 3) * 4}px`, `${14 + (i % 4) * 3}px`, `${8 + (i % 3) * 4}px`],
             } : { height: "4px" }}
-            transition={{ duration: 0.5 + i * 0.07, repeat: Infinity, ease: "easeInOut" }}
-            style={{ width: 4, background: `linear-gradient(180deg, ${primary}, ${accent})`, borderRadius: 2, minHeight: 4 }}
+            transition={{ duration: 0.55 + (i % 5) * 0.05, repeat: Infinity, ease: "easeInOut" }}
+            style={{ width: 4, background: `linear-gradient(180deg, ${primary}, ${accent})`, borderRadius: 2, minHeight: 4, opacity: isPlaying ? 1 : 0.35 }}
+            title={isPlaying ? "Playing" : "Idle"}
           />
         ))}
       </div>
@@ -153,16 +157,28 @@ function EQSlider({ label, value, onChange, color }: { label: string; value: num
 // ── Share modal ────────────────────────────────────────────────────────────────
 
 function ShareModal({ artifactId, title, primary, onClose }: { artifactId: string; title: string; primary: string; onClose: () => void }) {
-  const url = `https://tmi.live/artifact/${artifactId}`;
+  // Share by playlistId deep-link into Command Center — not a fake external artifact host.
+  const url =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/hub/fan?drawer=playlist&playlistId=${encodeURIComponent(artifactId)}`
+      : `/hub/fan?drawer=playlist&playlistId=${encodeURIComponent(artifactId)}`;
   const [copied, setCopied] = useState(false);
   const copy = () => { navigator.clipboard.writeText(url).catch(() => {}); setCopied(true); setTimeout(() => setCopied(false), 2000); };
 
   const options = [
-    { label: "📋 Copy Link",       action: copy },
-    { label: "👤 Share to Friend", action: () => window.open(`/messages/new?msg=${encodeURIComponent(url)}`) },
-    { label: "🏠 Share to Lobby",  action: () => window.open(`/rooms/world-dance-party?share=${artifactId}`) },
-    { label: "🎭 Share to Room",   action: () => window.open(`/rooms?share=${artifactId}`) },
-    { label: "⭐ Share to Profile",action: () => window.open(`/profile?artifact=${artifactId}`) },
+    { label: "📋 Copy Link", action: copy },
+    {
+      label: "💬 Share in Messages",
+      action: () => {
+        window.location.href = `/hub/fan?drawer=messaging`;
+      },
+    },
+    {
+      label: "🎵 Open in Playlist Drawer",
+      action: () => {
+        window.location.href = url;
+      },
+    },
   ];
 
   return (
@@ -172,9 +188,9 @@ function ShareModal({ artifactId, title, primary, onClose }: { artifactId: strin
       <motion.div initial={{ scale: 0.85, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.85, y: 20 }}
         onClick={(e) => e.stopPropagation()}
         style={{ background: "#080818", border: `1px solid ${primary}44`, borderRadius: 14, padding: 20, width: 300 }}>
-        <div style={{ fontSize: 12, fontWeight: 900, color: primary, letterSpacing: "0.1em", marginBottom: 4 }}>SHARE ARTIFACT</div>
+        <div style={{ fontSize: 12, fontWeight: 900, color: primary, letterSpacing: "0.1em", marginBottom: 4 }}>SHARE PLAYLIST</div>
         <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", marginBottom: 12 }}>{title}</div>
-        <div style={{ fontSize: 9, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 6, padding: "6px 10px", marginBottom: 12, color: "rgba(255,255,255,0.5)", fontFamily: "monospace" }}>
+        <div style={{ fontSize: 9, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 6, padding: "6px 10px", marginBottom: 12, color: "rgba(255,255,255,0.5)", fontFamily: "monospace", wordBreak: "break-all" }}>
           {url}
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 12 }}>
@@ -828,8 +844,9 @@ export default function PlaylistArtifact({
   const [isOpen,        setIsOpen]        = useState(false);
   const [isPlaying,     setIsPlaying]     = useState(false);
   const [currentIdx,    setCurrentIdx]    = useState(0);
+  // Rule 20: empty playlist stays empty — do not seed fake TMI tracks.
   const [tracks,        setTracks]        = useState<ArtifactTrack[]>(
-    initialTracks.length > 0 ? interleaveTMI(initialTracks) : interleaveTMI([])
+    initialTracks.length > 0 ? interleaveTMI(initialTracks) : []
   );
   const [eq,            setEQ]            = useState<EQState>(DEFAULT_EQ);
   const [points,        setPoints]        = useState(initialPoints);

@@ -174,6 +174,8 @@ interface CommandCenterDrawerProps {
   onClose: () => void;
   /** Swap module inside the open drawer without navigating away */
   onSelectPanel?: (id: CommandCenterPanelId) => void;
+  /** Deep-link playlist selection for Playlist drawer */
+  initialPlaylistId?: string | null;
 }
 
 export default function CommandCenterDrawer({
@@ -184,6 +186,7 @@ export default function CommandCenterDrawer({
   displayName,
   onClose,
   onSelectPanel,
+  initialPlaylistId = null,
 }: CommandCenterDrawerProps) {
   const theme = useTheme();
   const roomId = useMemo(() => `${role}-lobby-cc-${userId}`, [role, userId]);
@@ -304,7 +307,14 @@ export default function CommandCenterDrawer({
 
       {activePanel === "playlist" ? (
         <div style={{ padding: 12 }}>
-          <PlaylistCanister entityId={userId} entityName={displayName} isOwner accentColor={theme.primary} />
+          <PlaylistCanister
+            entityId={userId}
+            entityName={displayName}
+            isOwner
+            role={role === "performer" ? "performer" : "fan"}
+            accentColor={theme.primary}
+            initialPlaylistId={initialPlaylistId}
+          />
         </div>
       ) : null}
 

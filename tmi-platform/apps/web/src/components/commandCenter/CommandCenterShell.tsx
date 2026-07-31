@@ -13,7 +13,10 @@ import MasterControlDock from "@/components/shell/MasterControlDock";
 import UnifiedAdSlot from "@/components/ads/UnifiedAdSlot";
 import SponsorRail from "@/components/sponsors/SponsorRail";
 import { getRailSponsors } from "@/lib/commerce/SponsorRegistry";
-import CommandCenterMediaStack, { type CommandCenterMediaSlot } from "./CommandCenterMediaStack";
+import CommandCenterMediaStack, {
+  type CommandCenterMediaSlot,
+  type CommandCenterPlaylistCast,
+} from "./CommandCenterMediaStack";
 import CommandCenterDrawer from "./CommandCenterDrawer";
 import {
   panelsForRole,
@@ -24,6 +27,11 @@ import { FAN_AD_ZONE } from "./FanCommandDrawerRegistry";
 import { PERFORMER_SPONSOR_ZONE } from "./PerformerCommandDrawerRegistry";
 import { useTheme } from "@/lib/design/ThemeEngine";
 import { getPerformerById } from "@/lib/performers/PerformerRegistry";
+import {
+  subscribePlaylistCast,
+  subscribePlaylistNowPlaying,
+  type PlaylistCastPayload,
+} from "@/lib/playlists/PlaylistMonitorCast";
 
 interface LiveApiSession {
   userId: string;
@@ -48,6 +56,8 @@ export default function CommandCenterShell({ role, userId, displayName }: Comman
 
   const [activePanel, setActivePanel] = useState<CommandCenterPanelId | null>(null);
   const [appearanceOpen, setAppearanceOpen] = useState(false);
+  const [playlistCast, setPlaylistCast] = useState<CommandCenterPlaylistCast | null>(null);
+  const [deepLinkPlaylistId, setDeepLinkPlaylistId] = useState<string | null>(null);
   const [featured, setFeatured] = useState<{
     name: string;
     route: string;
@@ -55,6 +65,67 @@ export default function CommandCenterShell({ role, userId, displayName }: Comman
     imageUrl?: string;
     viewers?: number;
   } | null>(null);
+
+  // Deep-link: /hub/fan?drawer=playlist&playlistId=…
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const drawer = params.get("drawer");
+    const playlistId = params.get("playlistId");
+    if (drawer === "playlist") {
+      setAppearanceOpen(false);
+      setActivePanel("playlist");
+      if (playlistId) setDeepLinkPlaylistId(playlistId);
+    } else if (drawer === "messaging") {
+      setAppearanceOpen(false);
+      setActivePanel("messaging");
+    }
+  }, []);
+
+  useEffect(() => {
+    const unsubCast = subscribePlaylistCast((payload: PlaylistCastPayload) => {
+      const cast: CommandCenterPlaylistCast = {
+        playlistId: payload.playlistId,
+        trackId: payload.trackId,
+        title: payload.title,
+        artist: payload.artist,
+        coverUrl: payload.coverUrl,
+        audioUrl: payload.audioUrl,
+        isPlaying: Boolean(payload.audioUrl),
+      };
+      setPlaylistCast(cast);
+    });
+    const unsubNow = subscribePlaylistNowPlaying((payload) => {
+      setPlaylistCast((prev) => {
+        if (!prev || prev.playlistId !== payload.playlistId) {
+          return {
+            playlistId: payload.playlistId,
+            trackId: payload.trackId,
+            title: payload.title,
+            artist: payload.artist,
+            coverUrl: payload.coverUrl,
+            audioUrl: payload.audioUrl,
+            isPlaying: payload.isPlaying,
+            progress: payload.progress,
+          };
+        }
+        return {
+          ...prev,
+          trackId: payload.trackId ?? prev.trackId,
+          title: payload.title || prev.title,
+          artist: payload.artist ?? prev.artist,
+          coverUrl: payload.coverUrl ?? prev.coverUrl,
+          audioUrl: payload.audioUrl ?? prev.audioUrl,
+          isPlaying: payload.isPlaying,
+          progress: payload.progress,
+        };
+      });
+    });
+    return () => {
+      unsubCast();
+      unsubNow();
+    };
+  }, []);
 
   const togglePanel = (id: CommandCenterPanelId) => {
     setAppearanceOpen(false);
@@ -114,21 +185,30 @@ export default function CommandCenterShell({ role, userId, displayName }: Comman
       featured?.videoUrl ||
       process.env.NEXT_PUBLIC_DEFAULT_MONITOR_VIDEO?.trim() ||
       "/assets/videos/rooms/monday-night-stage.mp4";
+    const monitorA: CommandCenterMediaSlot = playlistCast
+      ? {
+          id: "mon-a",
+          label: "MONITOR A · PLAYLIST CAST",
+          kind: "playlist",
+          playlistCast,
+          imageUrl: playlistCast.coverUrl,
+        }
+      : {
+          id: "mon-a",
+          label: "MONITOR A · STAGE",
+          videoUrl: featured?.videoUrl ?? stageVideo,
+          imageUrl: featured?.imageUrl,
+          kind: "video",
+        };
     return [
-      {
-        id: "mon-a",
-        label: "MONITOR A · STAGE",
-        videoUrl: featured?.videoUrl ?? stageVideo,
-        imageUrl: featured?.imageUrl,
-        kind: "video",
-      },
+      monitorA,
       {
         id: "mon-b",
         label: "MONITOR B · AUDIENCE",
         kind: "audience",
       },
     ];
-  }, [featured]);
+  }, [featured, playlistCast]);
 
   const railBtn = (opts: {
     key: string;
@@ -420,6 +500,7 @@ export default function CommandCenterShell({ role, userId, displayName }: Comman
           displayName={displayName}
           onClose={closeDrawer}
           onSelectPanel={role === "fan" ? openPanel : undefined}
+          initialPlaylistId={deepLinkPlaylistId}
         />
       </div>
 
