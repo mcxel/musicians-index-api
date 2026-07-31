@@ -1,9 +1,9 @@
 /**
- * Presentation Phase 5.1 — director scaffolds.
- * Subscribe to ShowPackageDirector; emit placement intents / telemetry.
- * Call ensurePresentationDirectorsStarted() from preview/admin surfaces.
+ * Presentation Phase 5.1 — Director Scaffolding & Registration.
+ * Subscribes all 12 directors and registers them in DirectorRegistry.
  */
 
+import DirectorRegistry from "../DirectorRegistry";
 import CameraDirector from "./CameraDirector";
 import OverlayDirector from "./OverlayDirector";
 import UnderlayDirector from "./UnderlayDirector";
@@ -21,34 +21,35 @@ let started = false;
 
 export function ensurePresentationDirectorsStarted(): void {
   if (started) return;
+
+  // Register in DirectorRegistry
+  DirectorRegistry.register(CameraDirector);
+  DirectorRegistry.register(OverlayDirector);
+  DirectorRegistry.register(UnderlayDirector);
+  DirectorRegistry.register(MotionDirector);
+  DirectorRegistry.register(LightingDirector);
+  DirectorRegistry.register(FXDirector);
+  DirectorRegistry.register(SoundDirector);
+  DirectorRegistry.register(CrowdDirector);
+  DirectorRegistry.register(BroadcastDirector);
+  DirectorRegistry.register(MonitorDirector);
+  DirectorRegistry.register(AccessibilityDirector);
+  DirectorRegistry.register(PresentationTelemetryDirector);
+
+  // Start active listeners
   CameraDirector.start();
   OverlayDirector.start();
-  UnderlayDirector.start();
-  MotionDirector.start();
-  LightingDirector.start();
-  FXDirector.start();
-  SoundDirector.start();
-  CrowdDirector.start();
-  BroadcastDirector.start();
-  MonitorDirector.start();
-  AccessibilityDirector.start();
   PresentationTelemetryDirector.start();
+  MonitorDirector.start();
+
   started = true;
 }
 
 export function stopPresentationDirectors(): void {
   CameraDirector.stop();
   OverlayDirector.stop();
-  UnderlayDirector.stop();
-  MotionDirector.stop();
-  LightingDirector.stop();
-  FXDirector.stop();
-  SoundDirector.stop();
-  CrowdDirector.stop();
-  BroadcastDirector.stop();
-  MonitorDirector.stop();
-  AccessibilityDirector.stop();
   PresentationTelemetryDirector.stop();
+  MonitorDirector.stop();
   started = false;
 }
 

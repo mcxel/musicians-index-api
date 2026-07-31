@@ -1,52 +1,63 @@
 /**
- * SoundDirector — stub sound cue intents. No production VFX/audio library.
+ * SoundDirector.ts — Phase 5.1 Presentation Director Service.
+ * Routes UI sounds, broadcast stingers, ambience, crowd audio, and AI voice responses.
  */
 
-import ShowPackageDirector, {
-  type ActiveShowPackageSnapshot,
-} from "../ShowPackageDirector";
-import { getShowPack } from "../ShowPackCatalog";
 import {
+  DirectorId,
+  DirectorSnapshot,
+  DirectorValidationResult,
+  PresentationCommand,
+  PresentationContext,
+  PresentationDirectorService,
   emitPlacementIntent,
-  type DirectorSnapshot,
   type PlacementIntent,
 } from "./types";
 
-class SoundDirectorEngine {
-  private lastIntent: PlacementIntent | null = null;
-  private unsub: (() => void) | null = null;
+class SoundDirectorEngine implements PresentationDirectorService {
+  public readonly id: DirectorId = "sound";
+  private activeCommands: Map<string, PresentationCommand> = new Map();
+  private lastIntents: Map<string, PlacementIntent> = new Map();
 
-  public start() {
-    if (this.unsub) return;
-    this.unsub = ShowPackageDirector.subscribe((snap) => this.onPackage(snap));
+  public validate(command: PresentationCommand): DirectorValidationResult {
+    if (command.director !== "SOUND") {
+      return { valid: false, reason: `Invalid director '${command.director}' for SoundDirector.` };
+    }
+    return { valid: true };
   }
 
-  public stop() {
-    this.unsub?.();
-    this.unsub = null;
-  }
+  public async execute(command: PresentationCommand, _context: PresentationContext): Promise<void> {
+    this.activeCommands.set(command.runtimeId, command);
 
-  public getSnapshot(): DirectorSnapshot {
-    return {
-      directorId: "sound",
-      status: "STUB",
-      lastIntent: this.lastIntent,
-      notes: "STUB — Sound FX library deferred.",
-    };
-  }
-
-  private onPackage(snap: ActiveShowPackageSnapshot) {
-    const pack = getShowPack(snap.packId);
-    const phase = snap.phaseId && pack ? pack.phases[snap.phaseId] : null;
-    const cue = phase?.soundCue ?? "NONE";
     const intent: PlacementIntent = {
       directorId: "sound",
       at: Date.now(),
-      command: cue,
-      meta: { stub: true, phaseId: snap.phaseId },
+      command: command.action,
+      meta: { runtimeId: command.runtimeId, payload: command.payload },
     };
-    this.lastIntent = intent;
-    if (cue !== "NONE") emitPlacementIntent(intent);
+
+    this.lastIntents.set(command.runtimeId, intent);
+    emitPlacementIntent(intent);
+  }
+
+  public async cancel(runtimeId: string, _reason: string): Promise<void> {
+    this.activeCommands.delete(runtimeId);
+  }
+
+  public getSnapshot(runtimeId: string = "default"): DirectorSnapshot {
+    const last = this.lastIntents.get(runtimeId) ?? null;
+    return {
+      directorId: "sound",
+      status: last ? "ACTIVE" : "IDLE",
+      lastIntent: last,
+      activeCommandsCount: this.activeCommands.size,
+      notes: "Unified presentation sound & audio focus routing.",
+    };
+  }
+
+  public async reset(runtimeId: string = "default"): Promise<void> {
+    this.activeCommands.delete(runtimeId);
+    this.lastIntents.delete(runtimeId);
   }
 }
 

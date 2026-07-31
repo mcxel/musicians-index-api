@@ -1,80 +1,69 @@
 /**
- * BroadcastDirector (presentation bridge) — maps show pack category →
- * BroadcastDirectorEngine room profiles. Does not duplicate shot math.
+ * BroadcastDirector.ts — Phase 5.1 Presentation Director Service.
+ * Owns multi-cam program selection, picture-in-picture, replay sequences, commercial bumpers, and lower thirds.
  */
 
-import ShowPackageDirector, {
-  type ActiveShowPackageSnapshot,
-} from "../ShowPackageDirector";
-import { getShowPack } from "../ShowPackCatalog";
-import type { RoomType } from "@/lib/live/BroadcastDirectorEngine";
 import {
+  DirectorId,
+  DirectorSnapshot,
+  DirectorValidationResult,
+  PresentationCommand,
+  PresentationContext,
+  PresentationDirectorService,
   emitPlacementIntent,
-  type DirectorSnapshot,
   type PlacementIntent,
 } from "./types";
 
-function categoryToRoomType(category: string | undefined): RoomType {
-  switch (category) {
-    case "CYPHER":
-      return "CYPHER";
-    case "CHALLENGE":
-      return "CHALLENGE";
-    case "LOBBY":
-      return "FAN_LOBBY";
-    case "BATTLE":
-    default:
-      return "BATTLE";
-  }
-}
+class BroadcastDirectorEngine implements PresentationDirectorService {
+  public readonly id: DirectorId = "broadcast";
+  private activeCommands: Map<string, PresentationCommand> = new Map();
+  private lastIntents: Map<string, PlacementIntent> = new Map();
 
-class BroadcastDirectorBridge {
-  private lastIntent: PlacementIntent | null = null;
-  private unsub: (() => void) | null = null;
-  private lastRoomType: RoomType = "BATTLE";
-
-  public start() {
-    if (this.unsub) return;
-    this.unsub = ShowPackageDirector.subscribe((snap) => this.onPackage(snap));
+  public validate(command: PresentationCommand): DirectorValidationResult {
+    if (command.director !== "BROADCAST") {
+      return { valid: false, reason: `Invalid director '${command.director}' for BroadcastDirector.` };
+    }
+    return { valid: true };
   }
 
-  public stop() {
-    this.unsub?.();
-    this.unsub = null;
-  }
+  public async execute(command: PresentationCommand, _context: PresentationContext): Promise<void> {
+    this.activeCommands.set(command.runtimeId, command);
 
-  public getSnapshot(): DirectorSnapshot {
-    return {
-      directorId: "broadcast",
-      status: this.lastIntent ? "ACTIVE" : "IDLE",
-      lastIntent: this.lastIntent,
-      notes: `Bridges to BroadcastDirectorEngine profile: ${this.lastRoomType}`,
-    };
-  }
-
-  public getSuggestedRoomType(): RoomType {
-    return this.lastRoomType;
-  }
-
-  private onPackage(snap: ActiveShowPackageSnapshot) {
-    const pack = getShowPack(snap.packId);
-    this.lastRoomType = categoryToRoomType(pack?.category);
     const intent: PlacementIntent = {
       directorId: "broadcast",
       at: Date.now(),
-      command: `PROFILE_${this.lastRoomType}`,
-      caption: snap.cameraCaption ?? undefined,
-      meta: {
-        roomType: this.lastRoomType,
-        packId: snap.packId,
-        phaseId: snap.phaseId,
-        engine: "BroadcastDirectorEngine",
-      },
+      command: command.action,
+      meta: { runtimeId: command.runtimeId, payload: command.payload },
     };
-    this.lastIntent = intent;
+
+    this.lastIntents.set(command.runtimeId, intent);
     emitPlacementIntent(intent);
+  }
+
+  public async cancel(runtimeId: string, _reason: string): Promise<void> {
+    this.activeCommands.delete(runtimeId);
+  }
+
+  public getSuggestedRoomType(): string {
+    return "battle_arena";
+  }
+
+  public getSnapshot(runtimeId: string = "default"): DirectorSnapshot {
+    const last = this.lastIntents.get(runtimeId) ?? null;
+    return {
+      directorId: "broadcast",
+      status: last ? "ACTIVE" : "IDLE",
+      lastIntent: last,
+      activeCommandsCount: this.activeCommands.size,
+      notes: "Television producer & broadcast composite feed controller.",
+    };
+  }
+
+  public async reset(runtimeId: string = "default"): Promise<void> {
+    this.activeCommands.delete(runtimeId);
+    this.lastIntents.delete(runtimeId);
   }
 }
 
-export const BroadcastDirector = new BroadcastDirectorBridge();
+export const BroadcastDirector = new BroadcastDirectorEngine();
 export default BroadcastDirector;

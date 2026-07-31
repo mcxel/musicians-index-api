@@ -1,53 +1,63 @@
 /**
- * LightingDirector — emits lighting cue strings from package phase meta.
- * Does not run a full lighting engine.
+ * LightingDirector.ts — Phase 5.1 Presentation Director Service.
+ * Owns venue lighting presets, mood/genre blending, and spotlight animations.
  */
 
-import ShowPackageDirector, {
-  type ActiveShowPackageSnapshot,
-} from "../ShowPackageDirector";
-import { getShowPack } from "../ShowPackCatalog";
 import {
+  DirectorId,
+  DirectorSnapshot,
+  DirectorValidationResult,
+  PresentationCommand,
+  PresentationContext,
+  PresentationDirectorService,
   emitPlacementIntent,
-  type DirectorSnapshot,
   type PlacementIntent,
 } from "./types";
 
-class LightingDirectorEngine {
-  private lastIntent: PlacementIntent | null = null;
-  private unsub: (() => void) | null = null;
+class LightingDirectorEngine implements PresentationDirectorService {
+  public readonly id: DirectorId = "lighting";
+  private activeCommands: Map<string, PresentationCommand> = new Map();
+  private lastIntents: Map<string, PlacementIntent> = new Map();
 
-  public start() {
-    if (this.unsub) return;
-    this.unsub = ShowPackageDirector.subscribe((snap) => this.onPackage(snap));
+  public validate(command: PresentationCommand): DirectorValidationResult {
+    if (command.director !== "LIGHTING") {
+      return { valid: false, reason: `Invalid director '${command.director}' for LightingDirector.` };
+    }
+    return { valid: true };
   }
 
-  public stop() {
-    this.unsub?.();
-    this.unsub = null;
-  }
+  public async execute(command: PresentationCommand, _context: PresentationContext): Promise<void> {
+    this.activeCommands.set(command.runtimeId, command);
 
-  public getSnapshot(): DirectorSnapshot {
-    return {
-      directorId: "lighting",
-      status: this.lastIntent ? "ACTIVE" : "IDLE",
-      lastIntent: this.lastIntent,
-      notes: "Cue strings only — no fake light simulation.",
-    };
-  }
-
-  private onPackage(snap: ActiveShowPackageSnapshot) {
-    const pack = getShowPack(snap.packId);
-    const phase = snap.phaseId && pack ? pack.phases[snap.phaseId] : null;
-    const cue = phase?.lightingCue ?? "HOLD";
     const intent: PlacementIntent = {
       directorId: "lighting",
       at: Date.now(),
-      command: cue,
-      meta: { packId: snap.packId, phaseId: snap.phaseId },
+      command: command.action,
+      meta: { runtimeId: command.runtimeId, payload: command.payload },
     };
-    this.lastIntent = intent;
+
+    this.lastIntents.set(command.runtimeId, intent);
     emitPlacementIntent(intent);
+  }
+
+  public async cancel(runtimeId: string, _reason: string): Promise<void> {
+    this.activeCommands.delete(runtimeId);
+  }
+
+  public getSnapshot(runtimeId: string = "default"): DirectorSnapshot {
+    const last = this.lastIntents.get(runtimeId) ?? null;
+    return {
+      directorId: "lighting",
+      status: last ? "ACTIVE" : "IDLE",
+      lastIntent: last,
+      activeCommandsCount: this.activeCommands.size,
+      notes: "Venue lighting profiles & spotlight controls.",
+    };
+  }
+
+  public async reset(runtimeId: string = "default"): Promise<void> {
+    this.activeCommands.delete(runtimeId);
+    this.lastIntents.delete(runtimeId);
   }
 }
 

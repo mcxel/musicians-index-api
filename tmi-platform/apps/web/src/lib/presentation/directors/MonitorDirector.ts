@@ -1,28 +1,46 @@
 /**
- * MonitorDirector — allocates surfaces to MonitorAnchorZones / dual-monitor stack.
- * Never uses hardcoded pixels — zone tokens only.
+ * MonitorDirector.ts — Phase 5.1 Presentation Director Service.
+ * Allocates surfaces across the canonical dual-monitor stack by surface intent
+ * (PROGRAM, PREVIEW, ANALYTICS, SCORES, CHAT, JUDGES, SPONSOR, TELEMETRY, QUEUE).
  */
 
-import ShowPackageDirector, {
-  type ActiveShowPackageSnapshot,
-} from "../ShowPackageDirector";
+import ShowPackageDirector, { type ActiveShowPackageSnapshot } from "../ShowPackageDirector";
 import { getShowPack } from "../ShowPackCatalog";
 import { getMonitorAnchorZone, type MonitorAnchorZoneId } from "../MonitorAnchorZones";
 import {
+  DirectorId,
+  DirectorSnapshot,
+  DirectorValidationResult,
+  PresentationCommand,
+  PresentationContext,
+  PresentationDirectorService,
   emitPlacementIntent,
-  type DirectorSnapshot,
   type PlacementIntent,
 } from "./types";
+
+export type SurfaceIntent =
+  | "PROGRAM"
+  | "PREVIEW"
+  | "ANALYTICS"
+  | "SCORES"
+  | "CHAT"
+  | "JUDGES"
+  | "SPONSOR"
+  | "TELEMETRY"
+  | "QUEUE";
 
 export interface MonitorAllocation {
   surfaceId: string;
   anchorId: MonitorAnchorZoneId;
+  intent: SurfaceIntent;
   stackHint: "PRIMARY" | "SECONDARY" | "EITHER";
 }
 
-class MonitorDirectorEngine {
-  private lastIntent: PlacementIntent | null = null;
-  private allocations: MonitorAllocation[] = [];
+class MonitorDirectorEngine implements PresentationDirectorService {
+  public readonly id: DirectorId = "monitor";
+  private activeCommands: Map<string, PresentationCommand> = new Map();
+  private lastIntents: Map<string, PlacementIntent> = new Map();
+  private allocationsByRuntime: Map<string, MonitorAllocation[]> = new Map();
   private unsub: (() => void) | null = null;
 
   public start() {
@@ -35,17 +53,60 @@ class MonitorDirectorEngine {
     this.unsub = null;
   }
 
-  public getAllocations(): readonly MonitorAllocation[] {
-    return this.allocations;
+  public validate(command: PresentationCommand): DirectorValidationResult {
+    if (command.director !== "MONITOR") {
+      return { valid: false, reason: `Invalid director '${command.director}' for MonitorDirector.` };
+    }
+    return { valid: true };
   }
 
-  public getSnapshot(): DirectorSnapshot {
+  public async execute(command: PresentationCommand, _context: PresentationContext): Promise<void> {
+    this.activeCommands.set(command.runtimeId, command);
+
+    const payload = (command.payload ?? {}) as { allocations?: MonitorAllocation[] };
+    const allocs = payload.allocations ?? [];
+    this.allocationsByRuntime.set(command.runtimeId, allocs);
+
+    const intent: PlacementIntent = {
+      directorId: "monitor",
+      at: Date.now(),
+      command: command.action,
+      meta: {
+        runtimeId: command.runtimeId,
+        correlationId: command.correlationId,
+        allocations: allocs,
+      },
+    };
+
+    this.lastIntents.set(command.runtimeId, intent);
+    emitPlacementIntent(intent);
+  }
+
+  public async cancel(runtimeId: string, _reason: string): Promise<void> {
+    this.activeCommands.delete(runtimeId);
+    this.allocationsByRuntime.delete(runtimeId);
+  }
+
+  public getAllocations(runtimeId: string = "default"): readonly MonitorAllocation[] {
+    return this.allocationsByRuntime.get(runtimeId) ?? [];
+  }
+
+  public getSnapshot(runtimeId: string = "default"): DirectorSnapshot {
+    const last = this.lastIntents.get(runtimeId) ?? null;
+    const allocs = this.allocationsByRuntime.get(runtimeId) ?? [];
     return {
       directorId: "monitor",
-      status: this.allocations.length ? "ACTIVE" : "IDLE",
-      lastIntent: this.lastIntent,
-      notes: "CanonicalDualMonitorStack + MonitorAnchorZones — relative layout tokens only.",
+      status: allocs.length ? "ACTIVE" : "IDLE",
+      lastIntent: last,
+      activeCommandsCount: this.activeCommands.size,
+      notes: "Intent-driven dual-monitor surface allocation.",
     };
+  }
+
+  public async reset(runtimeId: string = "default"): Promise<void> {
+    this.activeCommands.delete(runtimeId);
+    this.lastIntents.delete(runtimeId);
+    this.allocationsByRuntime.delete(runtimeId);
   }
 
   private onPackage(snap: ActiveShowPackageSnapshot) {
@@ -59,23 +120,19 @@ class MonitorDirectorEngine {
         next.push({
           surfaceId: surface.surfaceId,
           anchorId: surface.anchorId,
+          intent: surface.anchorId === "LEFT_PANEL" ? "SCORES" : "PROGRAM",
           stackHint: surface.anchorId === "LEFT_PANEL" ? "SECONDARY" : "PRIMARY",
         });
       }
     }
-    this.allocations = next;
+    this.allocationsByRuntime.set("default", next);
     const intent: PlacementIntent = {
       directorId: "monitor",
       at: Date.now(),
       command: "ALLOCATE_SURFACES",
-      meta: {
-        allocations: next,
-        packId: snap.packId,
-        phaseId: snap.phaseId,
-        pixelHardcoding: false,
-      },
+      meta: { allocations: next, packId: snap.packId, phaseId: snap.phaseId },
     };
-    this.lastIntent = intent;
+    this.lastIntents.set("default", intent);
     emitPlacementIntent(intent);
   }
 }
