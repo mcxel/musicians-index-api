@@ -170,7 +170,7 @@ export interface FanLobbyPresence {
 export interface SocialRoomPresence extends FanLobbyPresence {
   roomType: SocialRoomType;
   authority: RoomAuthority;
-  /** Phase B: optional Daily/SFU participant id once wired — scaffold only. */
+  /** Phase B: Daily session_id when bound via useLobbyPeerMediaSession (not a second presence store). */
   mediaParticipantId?: string | null;
 }
 

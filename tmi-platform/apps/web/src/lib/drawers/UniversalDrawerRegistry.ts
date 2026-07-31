@@ -25,7 +25,9 @@ export type UniversalDrawerModuleId =
   | "booking"
   | "stage_tools"
   | "store"
-  | "appearance";
+  | "appearance"
+  /** Next queue — coordinate in drawer → enter venues (stub key only; no UI yet). */
+  | "messaging";
 
 export type UniversalDrawerRole = "fan" | "performer" | "shared";
 
@@ -188,6 +190,7 @@ export const UNIVERSAL_DRAWER_MODULES: UniversalDrawerModuleDef[] = [
     roles: ["shared"],
     mediaBindPoint: "none",
   },
+  // "messaging" — next queue (coordinate → enter venues). Type key reserved; no module row yet (no dead panel).
 ];
 
 const BY_ID = new Map(UNIVERSAL_DRAWER_MODULES.map((m) => [m.id, m]));

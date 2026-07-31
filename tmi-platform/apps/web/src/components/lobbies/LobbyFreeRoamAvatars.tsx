@@ -3,9 +3,15 @@
 import React, { useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { LobbyPropEffectLayer } from "./LobbyPropEffectLayer";
+import { AvatarHeadMediaSurface } from "./AvatarHeadMediaSurface";
 import type { LobbyParticipant } from "@/lib/lobby/FanLobbyPresence";
 import type { SeatAnchor } from "@/lib/lobby/FanLobbySkinRegistry";
 import type { FanLobbyNavigationState } from "@/lib/lobby/FanLobbyPresence";
+import {
+  lobbyFloorDistancePct,
+  resolveAvatarHeadMediaMode,
+  type LobbyPeerMediaSnapshot,
+} from "@/lib/lobby/lobbyPeerMediaBinding";
 
 interface SelfAvatar {
   userId: string;
@@ -16,6 +22,7 @@ interface SelfAvatar {
   propTrigger: string;
   isSpeaking: boolean;
   hasCameraOn: boolean;
+  micEnabled?: boolean;
   localStream: MediaStream | null;
   frameGlowColor?: string;
   isSeated?: boolean;
@@ -36,11 +43,18 @@ interface LobbyFreeRoamAvatarsProps {
   onSeatTap?: (anchor: SeatAnchor) => void;
   onAvatarSelect?: (participant: LobbyParticipant) => void;
   hiddenUserIds?: Set<string>;
+  /**
+   * Phase B peer media — tracks keyed by FanLobbyPresence.userId.
+   * Shared by Fan Lobby + Playlist Lounge via FanLobbyVenue.
+   */
+  peerMedia?: LobbyPeerMediaSnapshot | null;
+  /** Local-only: hide own head panel without mutating presence. */
+  localHideHeadPanel?: boolean;
 }
 
 /**
  * Free-roam floor + 2D chair anchors (conversation hangout).
- * Local cam bubble is real; remote camera = badge only (Phase B peer WebRTC).
+ * Head video via shared AvatarHeadMediaSurface (presence → media bind → head socket).
  * No AvatarSeatUI spreadsheet grid.
  */
 export function LobbyFreeRoamAvatars({
@@ -53,6 +67,8 @@ export function LobbyFreeRoamAvatars({
   onSeatTap,
   onAvatarSelect,
   hiddenUserIds,
+  peerMedia = null,
+  localHideHeadPanel = false,
 }: LobbyFreeRoamAvatarsProps) {
   const floorRef = useRef<HTMLDivElement>(null);
 
@@ -72,6 +88,8 @@ export function LobbyFreeRoamAvatars({
   );
   const selfSeat = self.seatAnchorId ?? self.seatId;
   if (self.isSeated && selfSeat) occupied.add(selfSeat);
+
+  const peerUnavailable = Boolean(peerMedia && !peerMedia.sessionReady);
 
   return (
     <div
@@ -126,20 +144,32 @@ export function LobbyFreeRoamAvatars({
         );
       })}
 
-      {visible.map((p) => (
-        <AvatarBubble
-          key={p.userId}
-          x={p.x}
-          y={p.y}
-          emoji={p.emoji}
-          name={p.userName}
-          isSpeaking={p.isSpeaking}
-          hasCameraOn={p.cameraEnabled ?? p.hasCameraOn}
-          isSeated={p.isSeated}
-          locomotion={p.navigationState ?? p.locomotion}
-          onSelect={onAvatarSelect ? () => onAvatarSelect(p) : undefined}
-        />
-      ))}
+      {visible.map((p) => {
+        const media = peerMedia?.byUserId.get(p.userId);
+        const dist = lobbyFloorDistancePct(self.x, self.y, p.x, p.y);
+        const mode = resolveAvatarHeadMediaMode({
+          isSelf: false,
+          distancePct: dist,
+        });
+        return (
+          <AvatarBubble
+            key={p.userId}
+            x={p.x}
+            y={p.y}
+            emoji={p.emoji}
+            name={p.userName}
+            isSpeaking={p.isSpeaking}
+            hasCameraOn={p.cameraEnabled ?? p.hasCameraOn}
+            micEnabled={p.micEnabled}
+            isSeated={p.isSeated}
+            locomotion={p.navigationState ?? p.locomotion}
+            onSelect={onAvatarSelect ? () => onAvatarSelect(p) : undefined}
+            headMode={mode}
+            videoTrack={media?.videoTrack ?? null}
+            peerMediaUnavailable={peerUnavailable || (Boolean(p.cameraEnabled) && !media?.hasVideoTrack)}
+          />
+        );
+      })}
 
       <AvatarBubble
         x={self.x}
@@ -148,11 +178,23 @@ export function LobbyFreeRoamAvatars({
         name={`${self.userName} (you)`}
         isSpeaking={self.isSpeaking}
         hasCameraOn={self.hasCameraOn}
+        micEnabled={self.micEnabled ?? true}
         localStream={self.localStream}
         frameGlowColor={self.frameGlowColor}
         isSeated={self.isSeated}
         locomotion={self.navigationState ?? self.locomotion}
         isSelf
+        headMode={resolveAvatarHeadMediaMode({
+          isSelf: true,
+          distancePct: 0,
+          localHidePanel: localHideHeadPanel,
+        })}
+        videoTrack={
+          peerMedia?.byUserId.get(self.userId)?.videoTrack ??
+          self.localStream?.getVideoTracks()[0] ??
+          null
+        }
+        peerMediaUnavailable={false}
       />
 
       {visible.map((p) => (
@@ -170,12 +212,16 @@ function AvatarBubble({
   name,
   isSpeaking,
   hasCameraOn,
+  micEnabled = true,
   localStream,
   frameGlowColor,
   isSelf,
   isSeated,
   locomotion,
   onSelect,
+  headMode,
+  videoTrack,
+  peerMediaUnavailable,
 }: {
   x: number;
   y: number;
@@ -183,20 +229,25 @@ function AvatarBubble({
   name: string;
   isSpeaking: boolean;
   hasCameraOn: boolean;
+  micEnabled?: boolean;
   localStream?: MediaStream | null;
   frameGlowColor?: string;
   isSelf?: boolean;
   isSeated?: boolean;
   locomotion?: FanLobbyNavigationState;
   onSelect?: () => void;
+  headMode: ReturnType<typeof resolveAvatarHeadMediaMode>;
+  videoTrack: MediaStreamTrack | null;
+  peerMediaUnavailable?: boolean;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
 
+  // Bubble face: emoji for peers; self may still show cam in bubble if head panel hidden.
   useEffect(() => {
-    if (videoRef.current && localStream) {
+    if (videoRef.current && localStream && isSelf && headMode === "HIDDEN") {
       videoRef.current.srcObject = localStream;
     }
-  }, [localStream]);
+  }, [localStream, isSelf, headMode]);
 
   const ringColor = isSpeaking
     ? "#00FF88"
@@ -230,6 +281,20 @@ function AvatarBubble({
       }
       title={onSelect ? `Safety options for ${name}` : undefined}
     >
+      {/* Avatar-head-top socket (2D) */}
+      <div style={{ marginBottom: 2, pointerEvents: "none" }}>
+        <AvatarHeadMediaSurface
+          mode={headMode}
+          videoTrack={videoTrack}
+          cameraEnabled={hasCameraOn}
+          micEnabled={micEnabled}
+          isSpeaking={isSpeaking}
+          isSelf={isSelf}
+          peerMediaUnavailable={peerMediaUnavailable}
+          label={name}
+        />
+      </div>
+
       <motion.div
         animate={isSpeaking ? { scale: [1, 1.08, 1] } : { scale: 1 }}
         transition={{ repeat: isSpeaking ? Infinity : 0, duration: 0.8 }}
@@ -248,13 +313,10 @@ function AvatarBubble({
           position: "relative",
         }}
       >
-        {isSelf && localStream ? (
+        {isSelf && localStream && headMode === "HIDDEN" ? (
           <video ref={videoRef} autoPlay muted playsInline style={{ width: "100%", height: "100%", objectFit: "cover" }} />
         ) : (
           emoji
-        )}
-        {!isSelf && hasCameraOn && (
-          <div style={{ position: "absolute", bottom: -2, right: -2, fontSize: 11, background: "#050510", borderRadius: "50%", padding: 2 }}>📹</div>
         )}
       </motion.div>
       <div

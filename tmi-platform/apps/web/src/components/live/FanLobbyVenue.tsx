@@ -15,6 +15,11 @@ import {
   type SocialRoomType,
 } from "@/lib/lobby/FanLobbyPresence";
 import { useLocalMicLevel } from "@/lib/lobby/useLocalMicLevel";
+import { useLobbyPeerMediaSession } from "@/lib/lobby/useLobbyPeerMediaSession";
+import {
+  getLocalHideHeadPanel,
+  setLocalHideHeadPanel,
+} from "@/lib/lobby/lobbyPeerMediaBinding";
 import { LobbyFreeRoamAvatars } from "@/components/lobbies/LobbyFreeRoamAvatars";
 import { LobbyEnvironmentToys } from "@/components/lobbies/LobbyEnvironmentToys";
 import { LobbyInventoryTray } from "@/components/lobbies/LobbyInventoryTray";
@@ -76,12 +81,12 @@ interface FanLobbyVenueProps {
  * Fan Lobby — free-roam 2D social floor + conversation chair anchors.
  * Not a 3D bobblehead engine / AvatarSeatUI grid (Rule 18/20).
  * Sit snaps to SeatAnchor; Stand frees seat; floor-tap walks (mix seated + roam).
- * Local cam bubble real; peer WebRTC Phase B.
+ * Phase B: shared AvatarHeadMediaSurface above free-roam heads (local + Daily peers).
  *
  * Phase A.5 Presence Certification: authoritative participant shape is
  * FanLobbyPresence / SocialRoomPresence (via useLobbyPresenceSync + getFanLobbyPresence).
- * Phase B binds media (head panels / SFU tracks) TO this presence — never
- * the reverse (do not invent presence from WebRTC). Daily not wired in this pass.
+ * Phase B binds media (head panels / Daily tracks) TO this presence — never
+ * the reverse (do not invent presence from WebRTC).
  */
 export default function FanLobbyVenue({
   roomId = "fan-lobby",
@@ -115,7 +120,7 @@ export default function FanLobbyVenue({
   const [micEnabled, setMicEnabled] = useState(false);
   const [cameraEnabled, setCameraEnabled] = useState(false);
   const [themePanelOpen, setThemePanelOpen] = useState(false);
-  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+  const [localHideHeadPanel, setLocalHideHeadPanelState] = useState(false);
   const [rejoinBlocked, setRejoinBlocked] = useState(false);
   const [isStaffHost, setIsStaffHost] = useState(false);
   const canSwitchSkin = canControlRoom(authority, userId, { isStaff: isStaffHost }) || roomType === "FAN_LOBBY";
@@ -138,6 +143,15 @@ export default function FanLobbyVenue({
     theme: skinId,
   });
 
+  const peerMedia = useLobbyPeerMediaSession({
+    roomId,
+    userId,
+    userName,
+    cameraEnabled,
+    micEnabled,
+    enabled: !rejoinBlocked,
+  });
+
   const occupied = useMemo(
     () => occupiedSeatIds(sync.participants),
     [sync.participants],
@@ -152,7 +166,12 @@ export default function FanLobbyVenue({
   }, [micEnabled, sync]);
 
   useEffect(() => {
+    sync.setHasCameraOn(cameraEnabled);
+  }, [cameraEnabled, sync]);
+
+  useEffect(() => {
     setHiddenIds(new Set([...getBlockedUserIds(), ...getMutedUserIds()]));
+    setLocalHideHeadPanelState(getLocalHideHeadPanel());
   }, []);
 
   // On join: spawn at entrance, then auto-claim first open chair (conversation hangout).
@@ -247,30 +266,7 @@ export default function FanLobbyVenue({
       .catch(() => setIsStaffHost(false));
   }, []);
 
-  const streamRef = useRef<MediaStream | null>(null);
-  useEffect(() => {
-    if (!cameraEnabled) {
-      streamRef.current?.getTracks().forEach((t) => t.stop());
-      streamRef.current = null;
-      setLocalStream(null);
-      sync.setHasCameraOn(false);
-      return;
-    }
-    let cancelled = false;
-    navigator.mediaDevices?.getUserMedia({ video: true }).then((stream) => {
-      if (cancelled) {
-        stream.getTracks().forEach((t) => t.stop());
-        return;
-      }
-      streamRef.current = stream;
-      setLocalStream(stream);
-      sync.setHasCameraOn(true);
-    }).catch(() => setCameraEnabled(false));
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cameraEnabled]);
+  // Local/Daily camera owned by useLobbyPeerMediaSession — leave cleans up on unmount.
 
   const refreshHidden = useCallback(() => {
     setHiddenIds(new Set([...getBlockedUserIds(), ...getMutedUserIds()]));
@@ -451,6 +447,17 @@ export default function FanLobbyVenue({
           <PillToggle active={micEnabled} label={micEnabled ? "🎙️ Mic On" : "🎙️ Mic Off"} accent="#00FF88" onClick={() => setMicEnabled((v) => !v)} />
           <PillToggle active={cameraEnabled} label={cameraEnabled ? "📹 Cam On" : "📹 Cam Off"} accent="#00FFFF" onClick={() => setCameraEnabled((v) => !v)} />
           <PillToggle
+            active={!localHideHeadPanel}
+            label={localHideHeadPanel ? "👁️ Show panel" : "👁️ Hide panel"}
+            accent="#AA2DFF"
+            onClick={() => {
+              const next = !localHideHeadPanel;
+              setLocalHideHeadPanel(next);
+              setLocalHideHeadPanelState(next);
+              setToast(next ? "Head panel hidden (local only)" : "Head panel visible");
+            }}
+          />
+          <PillToggle
             active={themePanelOpen}
             label={canSwitchSkin ? "🎨 Skin" : "🎨 Locked"}
             accent={dressing.accent}
@@ -468,6 +475,40 @@ export default function FanLobbyVenue({
           />
         </div>
       </header>
+
+      {!peerMedia.dailyJoined && peerMedia.snapshot.unavailableReason ? (
+        <div
+          style={{
+            position: "relative",
+            zIndex: 41,
+            padding: "4px 16px",
+            fontSize: 9,
+            fontWeight: 700,
+            letterSpacing: "0.06em",
+            color: "rgba(255,255,255,0.4)",
+            background: "rgba(0,0,0,0.35)",
+            borderBottom: "1px solid rgba(255,255,255,0.06)",
+          }}
+        >
+          PEER VIDEO · {peerMedia.snapshot.unavailableReason}
+        </div>
+      ) : peerMedia.dailyJoined ? (
+        <div
+          style={{
+            position: "relative",
+            zIndex: 41,
+            padding: "4px 16px",
+            fontSize: 9,
+            fontWeight: 700,
+            letterSpacing: "0.06em",
+            color: "#00FF88",
+            background: "rgba(0,0,0,0.35)",
+            borderBottom: "1px solid rgba(0,255,136,0.15)",
+          }}
+        >
+          PEER VIDEO · Daily session live
+        </div>
+      ) : null}
 
       <div style={{ position: "absolute", top: embedded ? 48 : 60, left: 0, right: 0, display: "flex", justifyContent: "center", gap: 24, opacity: 0.25, fontSize: 26, zIndex: 1, pointerEvents: "none" }}>
         {dressing.ambientIcons.map((icon, i) => (
@@ -494,7 +535,8 @@ export default function FanLobbyVenue({
             propTrigger: sync.propTrigger,
             isSpeaking,
             hasCameraOn: cameraEnabled,
-            localStream,
+            micEnabled,
+            localStream: peerMedia.localPreviewStream,
             frameGlowColor: selfFrame.glowColor,
             isSeated: sync.isSeated,
             seatId: sync.seatId,
@@ -510,6 +552,8 @@ export default function FanLobbyVenue({
           onSeatTap={handleSeatTap}
           onAvatarSelect={(p) => setSafetyTarget(p)}
           hiddenUserIds={hiddenIds}
+          peerMedia={peerMedia.snapshot}
+          localHideHeadPanel={localHideHeadPanel}
         />
         <LobbyInventoryTray state={"FREE_ROAM" as never} onUseProp={(propId) => sync.triggerProp(propId)} />
 

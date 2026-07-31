@@ -70,7 +70,7 @@ export default function PlaylistLoungePage() {
           PLAYLIST LOUNGE
         </div>
         <span style={{ fontSize: 9, color: "rgba(255,255,255,0.35)" }}>
-          SocialRoomPresence · same seats as Fan Lobby · Phase B media not wired
+          SocialRoomPresence · same seats as Fan Lobby · AvatarHeadMediaSurface
         </span>
       </div>
 

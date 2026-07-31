@@ -66,8 +66,12 @@ export async function createDailyRoom(options?: {
 
 export async function createMeetingToken(roomName: string, options?: {
   userName?: string;
+  /** Canonical TMI userId — appears on DailyParticipant.user_id for presence↔media bind. */
+  userId?: string;
   isOwner?: boolean;
   expiresInMinutes?: number;
+  startVideoOff?: boolean;
+  startAudioOff?: boolean;
 }): Promise<DailyMeetingToken> {
   const apiKey = getApiKey();
   const expiry = options?.expiresInMinutes ?? 120;
@@ -82,7 +86,10 @@ export async function createMeetingToken(roomName: string, options?: {
       properties: {
         room_name: roomName,
         user_name: options?.userName,
+        user_id: options?.userId,
         is_owner: options?.isOwner ?? false,
+        start_video_off: options?.startVideoOff ?? false,
+        start_audio_off: options?.startAudioOff ?? false,
         exp: Math.floor(Date.now() / 1000) + expiry * 60,
       },
     }),
