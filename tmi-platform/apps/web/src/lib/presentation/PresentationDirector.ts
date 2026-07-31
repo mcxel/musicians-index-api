@@ -7,6 +7,10 @@
  *  - CameraDirector (Follow, Orbit, Focus, Cinematic Fly-in)
  *  - AnimationTimeline (Phase sequencing for Battles, Ciphers, Lounges)
  *  - CelebrationDirector (Winner reveal, confetti, sparks, gold lighting)
+ *
+ * Television Show Packages (Battle Pack v1 grammar, MonitorAnchorZones,
+ * LayerStack, semantic events) resolve through ShowPackageDirector — this
+ * class remains the spatial overlay/camera authority those packages drive.
  */
 
 export type SpatialAnchorId =

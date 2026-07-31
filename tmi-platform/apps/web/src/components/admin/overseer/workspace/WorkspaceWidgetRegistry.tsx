@@ -21,6 +21,7 @@ import {
   LegalDocPanel,
 } from "./widgets/LegalCenterWidgets";
 import ScamDefenseCenter from "@/components/admin/overseer/ScamDefenseCenter";
+import BattlePresentationPreview from "@/components/presentation/BattlePresentationPreview";
 
 import type { WorkspaceWidgetKey } from "./WorkspaceSchema";
 
@@ -150,6 +151,12 @@ export const WORKSPACE_WIDGET_REGISTRY: Record<WorkspaceWidgetKey, WorkspaceWidg
     defaultZone: "bottom",
     permissions: ["security.manage"],
     component: ScamDefenseCenter,
+  },
+  "presentation-preview": {
+    id: "presentation-preview",
+    title: "Presentation Preview",
+    defaultZone: "bottom",
+    component: BattlePresentationPreview,
   },
 };
 

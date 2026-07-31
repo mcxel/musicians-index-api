@@ -48,6 +48,12 @@ export const WORKSPACE_CONFIGS: Record<WorkspaceDefinition["key"], WorkspaceDefi
       },
       { id: "magazine-analytics", title: "MAGAZINE & INDEX ANALYTICS", widget: "magazine-analytics", accent: "#FF2DAA" },
       {
+        id: "presentation-preview",
+        title: "PRESENTATION PACK PREVIEW",
+        widget: "presentation-preview",
+        accent: "#00FFFF",
+      },
+      {
         id: "scam-defense-center",
         title: "SCAM DEFENSE CENTER",
         widget: "scam-defense-center",

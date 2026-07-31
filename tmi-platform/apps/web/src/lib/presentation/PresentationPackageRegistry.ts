@@ -10,6 +10,7 @@
  */
 
 import type { SpatialAnchorId, OverlayType } from "./PresentationDirector";
+import { BATTLE_PRESENTATION_PACK_V1 } from "./packs/BattlePresentationPackV1";
 
 export interface TimelineAction {
   offsetMs: number;
@@ -27,9 +28,59 @@ export interface PresentationPackage {
   category: "BATTLE" | "CYPHER" | "CONCERT" | "LOUNGE" | "AWARD" | "MAGAZINE";
   totalDurationMs: number;
   timeline: TimelineAction[];
+  /** Optional link to structured Show Package (Battle Pack v1 grammar) */
+  showPackId?: string;
+}
+
+/** Flatten Battle Pack v1 grammar into a previewable timeline package (structure only). */
+function buildBattlePackV1TimelinePackage(): PresentationPackage {
+  let offset = 0;
+  const timeline: TimelineAction[] = [];
+  for (const phaseId of BATTLE_PRESENTATION_PACK_V1.grammar) {
+    const phase = BATTLE_PRESENTATION_PACK_V1.phases[phaseId];
+    timeline.push({
+      offsetMs: offset,
+      type: "OVERLAY",
+      overlayType:
+        phase.phaseId === "WINNER"
+          ? "WINNER_CROWN_BANNER"
+          : phase.phaseId === "VS"
+            ? "BATTLE_VERSUS_BADGE"
+            : phase.phaseId === "VOTING"
+              ? "SCOREBOARD_HUD"
+              : "NEON_PERFORMER_FRAME",
+      anchorId: phase.phaseId === "WINNER" ? "winner-focus-center" : "battle-score-top",
+      command: phase.triggerEvent,
+      data: {
+        phaseId: phase.phaseId,
+        label: phase.label,
+        surfaces: phase.surfaces.map((s) => s.surfaceId),
+        cameraCaption: phase.cameraCue.caption,
+        scores: null,
+      },
+    });
+    timeline.push({
+      offsetMs: offset + 100,
+      type: "CAMERA",
+      command: phase.cameraCue.mode,
+      anchorId: phase.phaseId === "WINNER" ? "winner-focus-center" : "performer-primary",
+    });
+    offset += phase.previewHoldMs;
+  }
+  return {
+    packageId: "battle-presentation-v1",
+    name: BATTLE_PRESENTATION_PACK_V1.name,
+    description: BATTLE_PRESENTATION_PACK_V1.description,
+    category: "BATTLE",
+    totalDurationMs: offset,
+    showPackId: BATTLE_PRESENTATION_PACK_V1.packId,
+    timeline,
+  };
 }
 
 export const PRESENTATION_PACKAGE_REGISTRY: Record<string, PresentationPackage> = {
+  "battle-presentation-v1": buildBattlePackV1TimelinePackage(),
+
   "battle-winner-gold": {
     packageId: "battle-winner-gold",
     name: "Battle Champion Gold Victory",

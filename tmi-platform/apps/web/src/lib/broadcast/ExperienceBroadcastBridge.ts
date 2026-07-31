@@ -2,6 +2,7 @@ import { ExperienceOrchestrator } from '@/lib/experience/ExperienceOrchestrator'
 import { requestDirectorMode } from '@/lib/broadcast/BroadcastDirectorEngine';
 import { getFeed, upsertFeed, type BroadcastFeedId } from '@/lib/broadcast/FeedRegistry';
 import { focusScene, getScene, setSceneOccupants } from '@/lib/broadcast/SceneRegistry';
+import ShowPackageDirector from '@/lib/presentation/ShowPackageDirector';
 
 let initialized = false;
 
@@ -38,6 +39,20 @@ export function initializeExperienceBroadcastBridge(): void {
     markFeedStatus('BRACKET_MAIN', 'live', { roomId: payload.roomId });
     focusScene('MAIN_STAGE');
     setSceneOccupants('MAIN_STAGE', Math.max(2, payload.competitors.length));
+    // Presentation Framework — resolve Battle Pack v1 intro (labels only, no scores)
+    ShowPackageDirector.handleEvent('BATTLE_START', {
+      roomId: payload.roomId,
+      leftLabel: payload.competitors[0],
+      rightLabel: payload.competitors[1],
+    });
+  });
+
+  ExperienceOrchestrator.on('BATTLE_START', (payload) => {
+    ShowPackageDirector.handleEvent('BATTLE_START', {
+      roomId: payload.roomId,
+      leftLabel: payload.competitors[0],
+      rightLabel: payload.competitors[1],
+    });
   });
 
   ExperienceOrchestrator.on('SHOW_IMMINENT', (payload) => {
