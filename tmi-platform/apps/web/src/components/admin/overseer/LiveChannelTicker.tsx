@@ -214,12 +214,16 @@ export default function LiveChannelTicker() {
             : "No live rooms — matrix sources"}
       </div>
 
-      <style>{`
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
         @keyframes tmi-live-channel-ticker {
           from { transform: translateX(0); }
           to { transform: translateX(-50%); }
         }
-      `}</style>
+      `,
+        }}
+      />
     </div>
   );
 }

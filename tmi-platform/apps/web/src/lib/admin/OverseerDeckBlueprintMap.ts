@@ -113,9 +113,9 @@ export const OVERSEER_BLUEPRINT_SLOTS: OverseerBlueprintSlot[] = [
     id: "ops-left-bot-roster",
     blueprintLabel: "Bot Roster & Summon",
     zone: "operations",
-    codeTarget: "lib/bots/* + overseer workspace widgets",
-    status: "ALIGN",
-    note: "Bot systems exist elsewhere; Overseer roster UI needs real botDutyRegistry bind.",
+    codeTarget: "components/admin/BotSummonDeck.tsx → BOT_ACCOUNT_REGISTRY",
+    status: "KEEP",
+    note: "Ops left rail — real BOT_ACCOUNT_REGISTRY rows, each labeled [BOT]. Do not duplicate into Intelligence Deck.",
   },
   {
     id: "ops-left-unified-inbox",
@@ -196,6 +196,23 @@ export const OVERSEER_BLUEPRINT_SLOTS: OverseerBlueprintSlot[] = [
     codeTarget: "components/admin/overseer/ScamDefenseCenter.tsx → TrustSafetyRuntime",
     status: "KEEP",
     note: "Intelligence Deck CLIENT of TrustSafetyRuntime. Real case counts from /api/trust-safety/cases. Investigation = portal overlay — never squeeze Ops 16:9 monitors. Detection does NOT live here.",
+  },
+  {
+    id: "intel-observatory-convergence",
+    blueprintLabel: "Observatory · Presentation · Platform Core · Rooms",
+    zone: "intelligence",
+    codeTarget:
+      "components/admin/overseer/ObservatoryIntelligencePanel.tsx → PresentationTelemetryDirector + PlatformCapabilityMatrix + /api/live/go",
+    status: "KEEP",
+    note: "BELOW ticker only. Active pack state from ShowPackageDirector; framework/capability health from lib/platform; rooms from GlobalLiveSessionRegistry. Links to /admin/presentation-preview + /admin/platform-core. No fake counts.",
+  },
+  {
+    id: "intel-runtime-health",
+    blueprintLabel: "Live Room Runtime (ObservatoryDeck)",
+    zone: "intelligence",
+    codeTarget: "components/admin/overseer/ObservatoryDeck.tsx → GlobalLiveSessionRegistry",
+    status: "KEEP",
+    note: "Honest empty when no sessions. Seeded ROOM_SEED / vanity fallback counts removed (Slice B).",
   },
   {
     id: "intel-engagement-heatmap",

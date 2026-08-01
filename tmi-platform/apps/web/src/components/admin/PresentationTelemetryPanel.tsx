@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import PresentationStateMachine, {
   type PresentationState,
 } from "@/lib/presentation/PresentationStateMachine";
@@ -64,23 +65,42 @@ export function PresentationTelemetryPanel({
         fontFamily: "monospace",
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 12 }}>
         <div style={{ fontSize: 10, letterSpacing: "0.25em", color: accentColor, fontWeight: 900 }}>
           LIVE PRESENTATION TELEMETRY
         </div>
-        <span
-          style={{
-            fontSize: 9,
-            fontWeight: 800,
-            color: state === "LIVE" ? "#00FF88" : state === "WINNER_REVEAL" ? "#FFD700" : accentColor,
-            background: "rgba(255,255,255,0.05)",
-            padding: "2px 8px",
-            borderRadius: 4,
-            border: "1px solid rgba(255,255,255,0.1)",
-          }}
-        >
-          STATE: {state}
-        </span>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <Link
+            href="/admin/presentation-preview"
+            style={{
+              fontSize: 9,
+              fontWeight: 800,
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              color: accentColor,
+              textDecoration: "none",
+              border: `1px solid ${accentColor}55`,
+              borderRadius: 999,
+              padding: "2px 8px",
+              background: `${accentColor}14`,
+            }}
+          >
+            Preview →
+          </Link>
+          <span
+            style={{
+              fontSize: 9,
+              fontWeight: 800,
+              color: state === "LIVE" ? "#00FF88" : state === "WINNER_REVEAL" ? "#FFD700" : accentColor,
+              background: "rgba(255,255,255,0.05)",
+              padding: "2px 8px",
+              borderRadius: 4,
+              border: "1px solid rgba(255,255,255,0.1)",
+            }}
+          >
+            STATE: {state}
+          </span>
+        </div>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, fontSize: 11 }}>

@@ -46,7 +46,9 @@ export type WorkspaceWidgetKey =
   | "legal-doc-community"
   | "legal-contact"
   | "scam-defense-center"
-  | "presentation-preview";
+  | "presentation-preview"
+  | "observatory-intelligence"
+  | "platform-core-health";
 
 export type WorkspacePanelConfig = {
   id: string;

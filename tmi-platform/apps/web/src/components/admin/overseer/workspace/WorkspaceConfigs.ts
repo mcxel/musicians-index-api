@@ -48,9 +48,9 @@ export const WORKSPACE_CONFIGS: Record<WorkspaceDefinition["key"], WorkspaceDefi
       },
       { id: "magazine-analytics", title: "MAGAZINE & INDEX ANALYTICS", widget: "magazine-analytics", accent: "#FF2DAA" },
       {
-        id: "presentation-preview",
-        title: "PRESENTATION PACK PREVIEW",
-        widget: "presentation-preview",
+        id: "observatory-intelligence",
+        title: "OBSERVATORY · PRESENTATION · CORE · ROOMS",
+        widget: "observatory-intelligence",
         accent: "#00FFFF",
       },
       {
@@ -64,6 +64,8 @@ export const WORKSPACE_CONFIGS: Record<WorkspaceDefinition["key"], WorkspaceDefi
     dockButtons: [
       { label: "Go Back", href: "/admin" },
       { label: "Legal Center", href: "/admin/overseer?workspace=legal" },
+      { label: "Presentation", href: "/admin/presentation-preview" },
+      { label: "Platform Core", href: "/admin/platform-core" },
       { label: "Tax / Billing", href: "/admin/revenue" },
       { label: "Messages", href: "/admin/messages" },
       { label: "Users", href: "/admin/users" },
@@ -92,7 +94,13 @@ export const WORKSPACE_CONFIGS: Record<WorkspaceDefinition["key"], WorkspaceDefi
     // Intelligence Deck (below Live Channel Ticker) — revenue never in ops rails
     bottom: [
       { id: "bigace-revenue", title: "PAYOUT AUTHORITY", widget: "revenue-panel", accent: "#FFD700", requiredPermission: "revenue.manage" },
-      { id: "bigace-runtime", title: "AI MANDATE BOARD", widget: "runtime-health", accent: "#AA2DFF" },
+      { id: "bigace-runtime", title: "LIVE ROOM RUNTIME", widget: "runtime-health", accent: "#AA2DFF" },
+      {
+        id: "bigace-observatory",
+        title: "OBSERVATORY · PRESENTATION · CORE",
+        widget: "observatory-intelligence",
+        accent: "#00FFFF",
+      },
       { id: "bigace-stripe", title: "STRIPE OBSERVATORY", widget: "stripe-observatory", accent: "#00FFFF" },
       {
         id: "bigace-scam-defense",
@@ -143,7 +151,13 @@ export const WORKSPACE_CONFIGS: Record<WorkspaceDefinition["key"], WorkspaceDefi
     // Intelligence Deck below ticker — analytics never in ops rails
     bottom: [
       { id: "justin-revenue", title: "REVENUE SNAPSHOT", widget: "stripe-observatory", accent: "#FFD700" },
-      { id: "justin-runtime", title: "HEALTH MATRIX", widget: "runtime-health", accent: "#AA2DFF" },
+      { id: "justin-runtime", title: "LIVE ROOM RUNTIME", widget: "runtime-health", accent: "#AA2DFF" },
+      {
+        id: "justin-observatory",
+        title: "OBSERVATORY · PRESENTATION · CORE",
+        widget: "observatory-intelligence",
+        accent: "#00FFFF",
+      },
       { id: "justin-magazine", title: "PUBLIC SIGNAL ANALYTICS", widget: "magazine-analytics", accent: "#FF2DAA" },
       { id: "justin-scam-defense", title: "SCAM DEFENSE CENTER", widget: "scam-defense-center", accent: "#FF4444" },
     ],
@@ -168,6 +182,12 @@ export const WORKSPACE_CONFIGS: Record<WorkspaceDefinition["key"], WorkspaceDefi
     ],
     bottom: [
       { id: "mc-revenue", title: "INFRA COST & REVENUE", widget: "revenue-panel", accent: "#FFD700", requiredPermission: "revenue.manage" },
+      {
+        id: "mc-observatory",
+        title: "OBSERVATORY · PRESENTATION · CORE",
+        widget: "observatory-intelligence",
+        accent: "#00FFFF",
+      },
       { id: "mc-stripe", title: "WEBHOOK INTEGRITY", widget: "stripe-observatory", accent: "#00FFFF" },
     ],
   },

@@ -21,7 +21,9 @@ import {
   LegalDocPanel,
 } from "./widgets/LegalCenterWidgets";
 import ScamDefenseCenter from "@/components/admin/overseer/ScamDefenseCenter";
-import BattlePresentationPreview from "@/components/presentation/BattlePresentationPreview";
+import ObservatoryIntelligencePanel from "@/components/admin/overseer/ObservatoryIntelligencePanel";
+import PresentationTelemetryPanel from "@/components/admin/PresentationTelemetryPanel";
+import PlatformCorePanel from "@/components/admin/PlatformCorePanel";
 
 import type { WorkspaceWidgetKey } from "./WorkspaceSchema";
 
@@ -154,9 +156,21 @@ export const WORKSPACE_WIDGET_REGISTRY: Record<WorkspaceWidgetKey, WorkspaceWidg
   },
   "presentation-preview": {
     id: "presentation-preview",
-    title: "Presentation Preview",
+    title: "Presentation Telemetry",
     defaultZone: "bottom",
-    component: BattlePresentationPreview,
+    component: PresentationTelemetryPanel,
+  },
+  "observatory-intelligence": {
+    id: "observatory-intelligence",
+    title: "Observatory Intelligence",
+    defaultZone: "bottom",
+    component: ObservatoryIntelligencePanel,
+  },
+  "platform-core-health": {
+    id: "platform-core-health",
+    title: "Platform Core Health",
+    defaultZone: "bottom",
+    component: PlatformCorePanel,
   },
 };
 
