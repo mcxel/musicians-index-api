@@ -8,6 +8,8 @@ export type MessageType =
   | 'audio'
   | 'beat-preview'
   | 'playlist-share'
+  | 'yopho-share'
+  | 'profile-share'
   | 'memory-artifact'
   | 'room-invite'
   | 'lobby-invite'
@@ -41,6 +43,8 @@ export interface Message {
   mediaMimeType?: string;
   artifactId?: string;
   playlistId?: string;
+  shareSlug?: string;
+  shareId?: string;
   inviteId?: string;
   status: MessageStatus;
   moderationStatus?: ModerationStatus;

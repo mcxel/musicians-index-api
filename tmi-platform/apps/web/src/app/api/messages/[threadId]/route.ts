@@ -42,6 +42,9 @@ export async function GET(req: NextRequest, { params }: { params: { threadId: st
         mediaUrl: m.mediaUrl,
         playlistId: m.playlistId,
         trackId: m.trackId,
+        shareSlug: m.shareSlug,
+        shareId: m.shareId,
+        cardId: m.cardId,
         createdAt: m.createdAt,
         editedAt: m.editedAt,
         isOwn: m.senderId === user.id,
@@ -64,14 +67,23 @@ export async function POST(req: NextRequest, { params }: { params: { threadId: s
     type?: string;
     playlistId?: string;
     trackId?: string;
+    shareSlug?: string;
+    shareId?: string;
+    cardId?: string;
   };
   if (!body.body?.trim()) return NextResponse.json({ error: 'Message body required' }, { status: 400 });
 
-  const allowedTypes = new Set(['text', 'image', 'audio', 'tip', 'gift', 'system', 'playlist']);
+  const allowedTypes = new Set(['text', 'image', 'audio', 'tip', 'gift', 'system', 'playlist', 'yopho', 'profile', 'yopho_card']);
   const msgType = body.type && allowedTypes.has(body.type) ? body.type : 'text';
 
   if (msgType === 'playlist' && !body.playlistId?.trim()) {
     return NextResponse.json({ error: 'playlistId required for playlist shares' }, { status: 400 });
+  }
+  if ((msgType === 'yopho' || msgType === 'profile') && !body.shareSlug?.trim()) {
+    return NextResponse.json({ error: 'shareSlug required for yopho/profile shares' }, { status: 400 });
+  }
+  if (msgType === 'yopho_card' && !body.cardId?.trim() && !body.shareId?.trim()) {
+    return NextResponse.json({ error: 'cardId required for interactive YoPho card shares' }, { status: 400 });
   }
 
   const message = messageThreadEngine.sendMessage({
@@ -79,9 +91,12 @@ export async function POST(req: NextRequest, { params }: { params: { threadId: s
     senderId: user.id,
     senderName: user.displayName,
     body: body.body.trim(),
-    type: msgType as 'text' | 'image' | 'audio' | 'tip' | 'gift' | 'system' | 'playlist',
+    type: msgType as 'text' | 'image' | 'audio' | 'tip' | 'gift' | 'system' | 'playlist' | 'yopho' | 'profile' | 'yopho_card',
     playlistId: body.playlistId?.trim(),
     trackId: body.trackId?.trim(),
+    shareSlug: body.shareSlug?.trim(),
+    shareId: body.shareId?.trim(),
+    cardId: body.cardId?.trim() || body.shareId?.trim(),
   });
 
   if (!message) return NextResponse.json({ error: 'Could not send message' }, { status: 500 });
@@ -92,6 +107,9 @@ export async function POST(req: NextRequest, { params }: { params: { threadId: s
     type: message.type,
     playlistId: message.playlistId,
     trackId: message.trackId,
+    shareSlug: message.shareSlug,
+    shareId: message.shareId,
+    cardId: message.cardId,
     createdAt: message.createdAt,
   });
 }

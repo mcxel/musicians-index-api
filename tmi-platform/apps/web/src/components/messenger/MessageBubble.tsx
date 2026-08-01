@@ -5,6 +5,7 @@ import type { Message } from './types';
 import { useConversationStore } from './ConversationStore';
 import { MediaMessageCard } from './MediaMessageCard';
 import { PlaylistShareCard } from './PlaylistShareCard';
+import { YoPhoShareCard } from './YoPhoShareCard';
 import { LobbyInviteCard } from './LobbyInviteCard';
 
 function SafePlaceholder({ label }: { label: string }) {
@@ -59,6 +60,21 @@ export function MessageBubble({ message }: { message: Message }) {
         <SafePlaceholder label="Playlist share pending approval" />
       ) : (
         <SafePlaceholder label="Playlist unavailable" />
+      );
+      break;
+    case 'yopho-share':
+    case 'profile-share':
+      content = (
+        <YoPhoShareCard
+          message={{
+            text: message.text,
+            shareSlug: message.shareSlug,
+            shareId: message.shareId,
+            cardId: message.shareId,
+            type: message.messageType === 'profile-share' ? 'profile' : 'yopho_card',
+            messageType: message.messageType === 'profile-share' ? 'profile' : 'yopho',
+          }}
+        />
       );
       break;
     case 'lobby-invite':

@@ -12,26 +12,21 @@
 import { AnimatePresence, motion } from "framer-motion";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import RoleGate from "@/components/auth/RoleGate";
 import { PlaylistCanister } from "@/components/canisters/PlaylistCanister";
 import { MemoryWallCanister } from "@/components/canisters/MemoryWallCanister";
 import { InventoryCanister } from "@/components/canisters/InventoryCanister";
 import { DEFAULT_FAN_LOBBY_SKIN_ID } from "@/lib/lobby/FanLobbySkinRegistry";
-import {
-  createDefaultYoPhoBlueprint,
-  type YoPhoPortraitBlueprint,
-} from "@/lib/yopho/YoPhoPortraitEngine";
-
 const FanLobbyVenue = dynamic(() => import("@/components/live/FanLobbyVenue"), {
   ssr: false,
   loading: () => <SlotLoading label="Loading Avatar Lobby…" />,
 });
 
-const YoPhoPortraitStageCanvas = dynamic(
-  () => import("@/components/yopho/YoPhoPortraitStageCanvas"),
-  { ssr: false, loading: () => <SlotLoading label="Loading YoPho…" /> },
-);
+const YoPhoTradingCard = dynamic(() => import("@/components/yopho/YoPhoTradingCard"), {
+  ssr: false,
+  loading: () => <SlotLoading label="Loading YoPho Card…" />,
+});
 
 export type FanHQSlotPanel = "lobby" | "yopho" | "playlist" | "memory" | "inventory";
 
@@ -93,20 +88,22 @@ function SlotLoading({ label }: { label: string }) {
   );
 }
 
-function FanYoPhoSlotEditor({ fanDisplayName }: { fanDisplayName: string }) {
-  const [blueprint] = useState<YoPhoPortraitBlueprint>(() =>
-    createDefaultYoPhoBlueprint("fan", fanDisplayName),
-  );
-
+function FanYoPhoSlotEditor({
+  fanDisplayName,
+  fanId,
+}: {
+  fanDisplayName: string;
+  fanId: string;
+}) {
   return (
     <div style={{ padding: "12px 16px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
         <div>
           <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.18em", color: "#FF2DAA" }}>
-            YOPHO PAGE EDITOR
+            YOPHO CARD · WHO I AM RIGHT NOW
           </div>
           <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>
-            Fan canvas · stage preview in drawer
+            Interactive motor card · song · share URL
           </div>
         </div>
         <Link
@@ -122,10 +119,18 @@ function FanYoPhoSlotEditor({ fanDisplayName }: { fanDisplayName: string }) {
             letterSpacing: "0.06em",
           }}
         >
-          FULL EDITOR →
+          FULL CANVAS →
         </Link>
       </div>
-      <YoPhoPortraitStageCanvas blueprint={blueprint} height={340} interactive />
+      <YoPhoTradingCard
+        role="fan"
+        displayName={fanDisplayName}
+        userKey={fanId}
+        compact
+        showEditor
+        showShare
+        showMoneyCtas
+      />
     </div>
   );
 }
@@ -250,7 +255,9 @@ export default function FanHQContentSlot({
                   </RoleGate>
                 ) : null}
 
-                {activePanel === "yopho" ? <FanYoPhoSlotEditor fanDisplayName={fanDisplayName} /> : null}
+                {activePanel === "yopho" ? (
+                  <FanYoPhoSlotEditor fanDisplayName={fanDisplayName} fanId={fanId} />
+                ) : null}
 
                 {activePanel === "playlist" ? (
                   <div style={{ padding: 12 }}>

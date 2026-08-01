@@ -9,7 +9,7 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useMemo, useState, type CSSProperties } from "react";
+import { useMemo, type CSSProperties } from "react";
 import RoleGate from "@/components/auth/RoleGate";
 import UniversalDrawerBase from "@/components/drawers/UniversalDrawerBase";
 import { PlaylistCanister } from "@/components/canisters/PlaylistCanister";
@@ -33,10 +33,6 @@ import { PERFORMER_SPONSOR_ZONE } from "./PerformerCommandDrawerRegistry";
 import LiveDestinationsDrawerPanel from "./LiveDestinationsDrawerPanel";
 import RoomControlsDrawerPanel from "./RoomControlsDrawerPanel";
 import PerformerCurtainControlPanel from "@/components/performer/PerformerCurtainControlPanel";
-import {
-  createDefaultYoPhoBlueprint,
-  type YoPhoPortraitBlueprint,
-} from "@/lib/yopho/YoPhoPortraitEngine";
 import type { CommandCenterPanelId, CommandCenterRole } from "./commandCenterRegistry";
 import {
   FAN_COMMAND_PANELS,
@@ -52,10 +48,10 @@ const FanLobbyVenue = dynamic(() => import("@/components/live/FanLobbyVenue"), {
   loading: () => <SlotLoading label="Loading Avatar Lobby…" />,
 });
 
-const YoPhoPortraitStageCanvas = dynamic(
-  () => import("@/components/yopho/YoPhoPortraitStageCanvas"),
-  { ssr: false, loading: () => <SlotLoading label="Loading YoPho…" /> },
-);
+const YoPhoTradingCard = dynamic(() => import("@/components/yopho/YoPhoTradingCard"), {
+  ssr: false,
+  loading: () => <SlotLoading label="Loading YoPho Card…" />,
+});
 
 function SlotLoading({ label }: { label: string }) {
   return (
@@ -76,20 +72,28 @@ function SlotLoading({ label }: { label: string }) {
   );
 }
 
-function YoPhoSlot({ role, displayName }: { role: CommandCenterRole; displayName: string }) {
-  const [blueprint] = useState<YoPhoPortraitBlueprint>(() =>
-    createDefaultYoPhoBlueprint(role === "performer" ? "performer" : "fan", displayName),
-  );
+function YoPhoSlot({
+  role,
+  displayName,
+  userId,
+}: {
+  role: CommandCenterRole;
+  displayName: string;
+  userId: string;
+}) {
   const fullHref = role === "performer" ? "/performer/canvas" : "/fan/canvas";
+  const cardRole = role === "performer" ? "performer" : "fan";
 
   return (
     <div style={{ padding: "12px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
         <div>
           <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.16em", color: "#FF2DAA" }}>
-            YOPHO {role === "performer" ? "PERFORMER" : "FAN"} CANVAS
+            YOPHO CARD · WHO I AM RIGHT NOW
           </div>
-          <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>Stage preview in drawer</div>
+          <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>
+            Interactive motor card · song · share URL
+          </div>
         </div>
         <Link
           href={fullHref}
@@ -103,10 +107,18 @@ function YoPhoSlot({ role, displayName }: { role: CommandCenterRole; displayName
             padding: "6px 12px",
           }}
         >
-          FULL EDITOR →
+          FULL CANVAS →
         </Link>
       </div>
-      <YoPhoPortraitStageCanvas blueprint={blueprint} height={320} interactive />
+      <YoPhoTradingCard
+        role={cardRole}
+        displayName={displayName}
+        userKey={userId}
+        compact
+        showEditor
+        showShare
+        showMoneyCtas
+      />
     </div>
   );
 }
@@ -312,7 +324,9 @@ export default function CommandCenterDrawer({
         </RoleGate>
       ) : null}
 
-      {activePanel === "yopho" ? <YoPhoSlot role={role} displayName={displayName} /> : null}
+      {activePanel === "yopho" ? (
+        <YoPhoSlot role={role} displayName={displayName} userId={userId} />
+      ) : null}
 
       {activePanel === "playlist" ? (
         <div style={{ padding: 12 }}>

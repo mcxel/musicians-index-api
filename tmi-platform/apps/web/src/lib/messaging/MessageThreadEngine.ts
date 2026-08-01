@@ -23,7 +23,13 @@ export type MessageType =
   | "gift"
   | "system"
   /** Individual playlist/track share — payload uses playlistId (+ optional trackId). */
-  | "playlist";
+  | "playlist"
+  /** YoPho trading card share — payload uses shareSlug (+ optional shareId). */
+  | "yopho"
+  /** Public profile card share — payload uses shareSlug. */
+  | "profile"
+  /** Interactive YoPho card — payload uses cardId */
+  | "yopho_card";
 
 export interface ThreadMessage {
   messageId: string;
@@ -39,6 +45,11 @@ export interface ThreadMessage {
   /** When type === "playlist" — share by id, not a UI shell export */
   playlistId?: string;
   trackId?: string;
+  /** When type === "yopho" | "profile" — slug / id artifact */
+  shareSlug?: string;
+  shareId?: string;
+  /** When type === "yopho_card" */
+  cardId?: string;
   readBy: Set<string>;
   createdAt: number;
   editedAt?: number;
@@ -148,6 +159,9 @@ class MessageThreadEngine {
     mediaUrl?: string;
     playlistId?: string;
     trackId?: string;
+    shareSlug?: string;
+    shareId?: string;
+    cardId?: string;
   }): ThreadMessage | null {
     const thread = this.threads.get(params.threadId);
     if (!thread || thread.isBlocked) return null;
@@ -163,6 +177,9 @@ class MessageThreadEngine {
       mediaUrl: params.mediaUrl,
       playlistId: params.playlistId,
       trackId: params.trackId,
+      shareSlug: params.shareSlug,
+      shareId: params.shareId,
+      cardId: params.cardId,
       readBy: new Set([params.senderId]),
       createdAt: Date.now(),
     };
