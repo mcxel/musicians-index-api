@@ -7,6 +7,7 @@ import { XP_TIER_THRESHOLDS, getNextTier, getXpToNextTier, getTierFromXp } from 
 import { getAdSlotForZone } from '@/lib/commerce/SponsorRegistry';
 import DiscoveryRail from '@/components/discovery/DiscoveryRail';
 import MotionPosterPlayer from '@/components/media/MotionPosterPlayer';
+import PerformerBioMagazineLauncher from '@/components/drawers/PerformerBioMagazineLauncher';
 
 export async function generateStaticParams() {
   return PERFORMER_REGISTRY.map(p => ({ slug: p.slug }));
@@ -107,13 +108,14 @@ export default function PerformerArticlePage({ params }: { params: { slug: strin
               {p.flag} {p.city} · {p.category}
             </div>
           </div>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
             <Link href={p.liveRoomRoute} style={{ padding: '9px 18px', background: p.isLive ? '#E63000' : `${ac}18`, border: `1.5px solid ${p.isLive ? '#E63000' : ac}`, borderRadius: 8, fontSize: 10, fontWeight: 900, color: p.isLive ? '#fff' : ac, textDecoration: 'none', letterSpacing: '0.06em', boxShadow: p.isLive ? '0 0 20px rgba(230,48,0,0.5)' : 'none' }}>
               {p.isLive ? '🔴 JOIN LIVE' : '🎥 WATCH ROOM'}
             </Link>
             <Link href={p.profileRoute} style={{ padding: '9px 18px', background: 'rgba(255,255,255,0.05)', border: '1.5px solid rgba(255,255,255,0.2)', borderRadius: 8, fontSize: 10, fontWeight: 900, color: '#fff', textDecoration: 'none', letterSpacing: '0.06em' }}>
               VIEW FULL PROFILE →
             </Link>
+            <PerformerBioMagazineLauncher performerSlug={p.slug} />
           </div>
         </div>
 

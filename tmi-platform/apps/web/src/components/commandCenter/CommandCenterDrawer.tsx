@@ -2,14 +2,15 @@
 
 /**
  * Command Center bottom drawer — Universal Drawer Base + per-module animation.
- * Fan: Avatar Lobby, YoPho, playlists, memory, inventory, live destinations, room controls.
+ * Fan: Avatar Lobby, YoPho, playlists, memory, inventory, live destinations, room controls,
+ *      prize_vault, tickets, favorites.
  * Performer: Media Locker, Beat Lab, Performer YoPho, booking, stage, store.
  * Never mounts Fan Lobby ownership / Avatar Studio for performers.
  */
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useMemo, type CSSProperties } from "react";
+import { useMemo, useEffect, useRef, type CSSProperties } from "react";
 import RoleGate from "@/components/auth/RoleGate";
 import UniversalDrawerBase from "@/components/drawers/UniversalDrawerBase";
 import { PlaylistCanister } from "@/components/canisters/PlaylistCanister";
@@ -29,10 +30,13 @@ import { getRailSponsors } from "@/lib/commerce/SponsorRegistry";
 import { DEFAULT_FAN_LOBBY_SKIN_ID } from "@/lib/lobby/FanLobbySkinRegistry";
 import { defaultRoomAuthority } from "@/lib/lobby/FanLobbyPresence";
 import { animationForDrawerModule } from "@/lib/drawers/UniversalDrawerRegistry";
+import { drawerStateStore, useDrawerState, type AnalyticsPeriod, ANALYTICS_PERIOD_LABELS } from "@/lib/drawers/drawerStateStore";
+import { livingOsCommandBus } from "@/lib/os/livingOsCommandBus";
 import { PERFORMER_SPONSOR_ZONE } from "./PerformerCommandDrawerRegistry";
 import LiveDestinationsDrawerPanel from "./LiveDestinationsDrawerPanel";
 import RoomControlsDrawerPanel from "./RoomControlsDrawerPanel";
 import PerformerCurtainControlPanel from "@/components/performer/PerformerCurtainControlPanel";
+import PerformerBioMagazineDrawer from "@/components/drawers/PerformerBioMagazineDrawer";
 import type { CommandCenterPanelId, CommandCenterRole } from "./commandCenterRegistry";
 import {
   FAN_COMMAND_PANELS,
@@ -92,7 +96,7 @@ function YoPhoSlot({
             YOPHO CARD · WHO I AM RIGHT NOW
           </div>
           <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>
-            Interactive motor card · song · share URL
+            Living layered card · effects · song · share URL
           </div>
         </div>
         <Link
@@ -123,7 +127,34 @@ function YoPhoSlot({
   );
 }
 
+// ─── Analytics Drawer (multi-period, honest-empty until backend is wired) ─────
+
+
+const REVENUE_SOURCES_PERFORMER = [
+  "Bookings", "Tickets", "Tips", "Merchandise", "Sponsorships",
+  "Advertising", "Media Sales", "Beat Licensing", "Memberships", "Prizes",
+];
+
+const ENGAGEMENT_SOURCES_FAN = [
+  "Tickets Purchased", "Merchandise", "Tips Sent", "Avatar Items",
+  "YoPho Items", "Memberships", "Donations", "Prizes Claimed",
+];
+
+function AnalyticsEmptyPeriod({ label }: { label: string }) {
+  return (
+    <div style={{ padding: "6px 0", textAlign: "center", color: "rgba(255,255,255,0.28)", fontSize: 11, lineHeight: 1.5 }}>
+      No {label.toLowerCase()} records yet.
+    </div>
+  );
+}
+
 function AnalyticsStub({ role }: { role: CommandCenterRole }) {
+  const drawerState = useDrawerState();
+  const period = role === "performer" ? drawerState.analyticsPeriodPerformer : drawerState.analyticsPeriodFan;
+  const sources = role === "performer" ? REVENUE_SOURCES_PERFORMER : ENGAGEMENT_SOURCES_FAN;
+  const color = role === "performer" ? "#FFD700" : "#9B59FF";
+  const heading = role === "performer" ? "ANALYTICS & REVENUE" : "STATS & ACTIVITY";
+
   return (
     <RoleGate
       allow={role === "performer" ? ["PERFORMER", "ARTIST", "ADMIN", "STAFF"] : ["FAN", "ADMIN", "STAFF"]}
@@ -133,14 +164,74 @@ function AnalyticsStub({ role }: { role: CommandCenterRole }) {
         </div>
       }
     >
-      <div style={{ padding: 24, textAlign: "center" }}>
-        <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.16em", color: "#FFD700", marginBottom: 8 }}>
-          ANALYTICS
+      <div style={{ padding: "12px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
+        {/* Header */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.16em", color }}>{heading}</div>
+          <Link href={role === "performer" ? "/performer/analytics" : "/fan/stats"}
+            style={{ fontSize: 9, fontWeight: 800, color: "rgba(255,255,255,0.4)", textDecoration: "none" }}>
+            Full Report →
+          </Link>
         </div>
-        <p style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", margin: 0, lineHeight: 1.5 }}>
-          No analytics data connected yet. Mission-control redesign is deferred — this slot stays honest-empty
-          until a real metrics source is wired.
-        </p>
+
+        {/* Period selector */}
+        <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+          {(Object.keys(ANALYTICS_PERIOD_LABELS) as AnalyticsPeriod[]).map((p) => (
+            <button
+              key={p}
+              type="button"
+              onClick={() => drawerStateStore.setAnalyticsPeriod(role, p)}
+              style={{
+                padding: "3px 8px",
+                background: period === p ? color : "#0A0A1A",
+                border: `1px solid ${period === p ? color : "#1E1E45"}`,
+                borderRadius: 4,
+                color: period === p ? (role === "performer" ? "#000" : "#fff") : "rgba(255,255,255,0.4)",
+                fontSize: 8,
+                fontWeight: 800,
+                cursor: "pointer",
+                fontFamily: "inherit",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {ANALYTICS_PERIOD_LABELS[p]}
+            </button>
+          ))}
+        </div>
+
+        {/* Summary row — honest empty until real data is wired */}
+        <div style={{
+          background: "#0A0A1A",
+          border: `1px solid ${color}33`,
+          borderRadius: 8,
+          padding: 12,
+          textAlign: "center",
+        }}>
+          <div style={{ fontSize: 9, color: "rgba(255,255,255,0.35)", marginBottom: 6 }}>
+            {ANALYTICS_PERIOD_LABELS[period]} · {role === "performer" ? "Total Revenue" : "Total Activity"}
+          </div>
+          <div style={{ fontSize: 22, fontWeight: 900, color: "rgba(255,255,255,0.2)" }}>—</div>
+          <div style={{ fontSize: 9, color: "rgba(255,255,255,0.28)", marginTop: 4 }}>
+            No records yet. Data will appear once your first {role === "performer" ? "sale" : "activity"} is recorded.
+          </div>
+        </div>
+
+        {/* Revenue sources breakdown — structure visible, values honest-empty */}
+        <div style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.12em", color: "rgba(255,255,255,0.4)" }}>
+          {role === "performer" ? "REVENUE BY SOURCE" : "ACTIVITY BY TYPE"}
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+          {sources.map((src) => (
+            <div key={src} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={{ fontSize: 8, color: "rgba(255,255,255,0.5)", flex: 1 }}>{src}</div>
+              <div style={{ height: 4, width: 80, background: "#1A1A40", borderRadius: 4, overflow: "hidden" }}>
+                <div style={{ height: "100%", width: "0%", background: color, borderRadius: 4 }} />
+              </div>
+              <div style={{ fontSize: 8, color: "rgba(255,255,255,0.25)", fontVariantNumeric: "tabular-nums", minWidth: 28, textAlign: "right" }}>—</div>
+            </div>
+          ))}
+        </div>
+        <AnalyticsEmptyPeriod label={ANALYTICS_PERIOD_LABELS[period]} />
       </div>
     </RoleGate>
   );
@@ -209,6 +300,38 @@ export default function CommandCenterDrawer({
   const roomId = useMemo(() => `${role}-lobby-cc-${userId}`, [role, userId]);
   const open = appearanceOpen || activePanel != null;
 
+  // ── Observatory: drawer lifecycle telemetry (Living OS Command Bus) ────────
+  const openedAtRef = useRef<number | null>(null);
+  const prevPanelRef = useRef<typeof activePanel>(null);
+
+  useEffect(() => {
+    if (open && activePanel && prevPanelRef.current !== activePanel) {
+      const isSwitch = prevPanelRef.current !== null;
+      const commandType = isSwitch ? "DRAWER_SWITCHED" : "DRAWER_OPENED";
+      openedAtRef.current = Date.now();
+      livingOsCommandBus.dispatch({
+        type: commandType,
+        category: "navigation",
+        userId,
+        role,
+        payload: { panelId: activePanel, fromPanel: prevPanelRef.current ?? undefined },
+        idempotencyKey: `${commandType}-${activePanel}-${userId}`,
+      });
+    } else if (!open && openedAtRef.current !== null) {
+      const openDurationMs = Date.now() - openedAtRef.current;
+      livingOsCommandBus.dispatch({
+        type: "DRAWER_CLOSED",
+        category: "navigation",
+        userId,
+        role,
+        payload: { panelId: prevPanelRef.current ?? undefined, openDurationMs },
+      });
+      openedAtRef.current = null;
+    }
+    prevPanelRef.current = activePanel;
+  }, [open, activePanel, role, userId]);
+  // ────────────────────────────────────────────────────────────────────────────
+
   const moduleId = appearanceOpen ? "appearance" : activePanel ?? "lobby";
   const animationId = animationForDrawerModule(moduleId);
 
@@ -233,6 +356,10 @@ export default function CommandCenterDrawer({
     queue: "QUEUE",
     submissions: role === "fan" ? "FAN SUBMISSIONS" : "SUBMISSIONS & BEAT LOCKER",
     scores: "UNIVERSAL LEADERBOARDS & SCORES",
+    prize_vault: "PRIZE VAULT",
+    tickets: "TICKETS & ORDERS",
+    favorites: "FAVORITES",
+    bio_magazine: "PERFORMER BIO & MAGAZINE",
   };
   const title = appearanceOpen
     ? "SHELL COLORS · THIS DEVICE"
@@ -375,6 +502,24 @@ export default function CommandCenterDrawer({
         </RoleGate>
       ) : null}
 
+      {activePanel === "bio_magazine" && role === "performer" ? (
+        <RoleGate
+          allow={["PERFORMER", "ARTIST", "ADMIN", "STAFF"]}
+          fallback={
+            <div style={{ padding: 24, textAlign: "center", color: "rgba(255,255,255,0.45)", fontSize: 12 }}>
+              Bio & Magazine requires a Performer session.
+            </div>
+          }
+        >
+          <PerformerBioMagazineDrawer
+            userId={userId}
+            displayName={displayName}
+            accentColor="#00FFFF"
+            showRequestInterview={false}
+          />
+        </RoleGate>
+      ) : null}
+
       {activePanel === "media_locker" && role === "performer" ? (
         <div style={{ padding: 12 }}>
           <MediaLockerCanister userId={userId} role="performer" accentColor={theme.secondary} />
@@ -502,6 +647,69 @@ export default function CommandCenterDrawer({
         <div style={{ padding: 12 }}>
           <ScoresCanister role={role} accentColor="#00D4FF" />
         </div>
+      ) : null}
+
+      {/* ── Fan-only: Prize Vault ─────────────────────────────────────────── */}
+      {activePanel === "prize_vault" && role === "fan" ? (
+        <RoleGate allow={["FAN", "ADMIN", "STAFF"]} fallback={null}>
+          <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
+            <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.16em", color: "#FF6B35" }}>
+              PRIZE VAULT · CLAIMS & AWARDS
+            </div>
+            <p style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", margin: 0, lineHeight: 1.5 }}>
+              Your prize claims, shipping status, and award history will appear here once the Prize Distribution
+              Engine is wired. (Rule 24 — post soft-launch feature.)
+            </p>
+            <Link href="/fan/prizes" style={toolLink("#FF6B35")}>
+              View Prize Center →
+            </Link>
+            <Link href="/competitions" style={toolLink("rgba(255,107,53,0.6)")}>
+              Enter a competition →
+            </Link>
+          </div>
+        </RoleGate>
+      ) : null}
+
+      {/* ── Fan-only: Tickets & Orders ────────────────────────────────────── */}
+      {activePanel === "tickets" && role === "fan" ? (
+        <RoleGate allow={["FAN", "ADMIN", "STAFF"]} fallback={null}>
+          <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
+            <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.16em", color: "#00D4FF" }}>
+              TICKETS & ORDERS
+            </div>
+            <p style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", margin: 0, lineHeight: 1.5 }}>
+              No tickets or orders yet. Tickets purchased from venues and promoters will appear here.
+              Ticket inventory is managed by Venues and Promoters only (Rule 17).
+            </p>
+            <Link href="/fan/tickets" style={toolLink("#00D4FF")}>
+              My Tickets →
+            </Link>
+            <Link href="/events" style={toolLink("rgba(0,212,255,0.6)")}>
+              Browse Events →
+            </Link>
+          </div>
+        </RoleGate>
+      ) : null}
+
+      {/* ── Fan-only: Favorites ───────────────────────────────────────────── */}
+      {activePanel === "favorites" && role === "fan" ? (
+        <RoleGate allow={["FAN", "ADMIN", "STAFF"]} fallback={null}>
+          <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
+            <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.16em", color: "#FF2DAA" }}>
+              FAVORITES
+            </div>
+            <p style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", margin: 0, lineHeight: 1.5 }}>
+              No favorites saved yet. Tap the heart or bookmark icon on any artist, song, battle, or concert to
+              save it here.
+            </p>
+            <Link href="/fan/favorites" style={toolLink("#FF2DAA")}>
+              View All Favorites →
+            </Link>
+            <Link href="/performers" style={toolLink("rgba(255,45,170,0.6)")}>
+              Discover Artists →
+            </Link>
+          </div>
+        </RoleGate>
       ) : null}
     </UniversalDrawerBase>
   );

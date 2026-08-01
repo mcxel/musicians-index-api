@@ -31,7 +31,19 @@ export type UniversalDrawerModuleId =
   | "submissions"
   | "scores"
   /** Coordinate → invite → join venues (MessagingCanister). */
-  | "messaging";
+  | "messaging"
+  /** Fan: digital + physical prizes, claims, shipping tracking. */
+  | "prize_vault"
+  /** Fan: event tickets and purchase order history. */
+  | "tickets"
+  /** Fan: saved artists, songs, battles, concerts, YoPho cards. */
+  | "favorites"
+  /** Performer: bio, magazine article, gallery slots, music links, interviews. */
+  | "bio_magazine"
+  /** Beat Creator: multi-step submission form for the Beat Locker pipeline. */
+  | "submission_center"
+  /** Beat Creator / Fan: browse, preview, and purchase licensed beats. */
+  | "beat_marketplace";
 
 export type UniversalDrawerRole = "fan" | "performer" | "shared";
 
@@ -225,6 +237,66 @@ export const UNIVERSAL_DRAWER_MODULES: UniversalDrawerModuleDef[] = [
     primary: true,
     mediaBindPoint: "none",
   },
+  {
+    id: "prize_vault",
+    label: "PRIZE VAULT",
+    info: "Awards & claims",
+    accent: "#FF6B35",
+    animation: "memory_scatter",
+    roles: ["fan"],
+    primary: false,
+    mediaBindPoint: "none",
+  },
+  {
+    id: "tickets",
+    label: "TICKETS & ORDERS",
+    info: "Events · Purchases",
+    accent: "#00D4FF",
+    animation: "mechanical",
+    roles: ["fan"],
+    primary: false,
+    mediaBindPoint: "none",
+  },
+  {
+    id: "favorites",
+    label: "FAVORITES",
+    info: "Artists · Songs · Battles",
+    accent: "#FF2DAA",
+    animation: "orbit",
+    roles: ["fan"],
+    primary: false,
+    mediaBindPoint: "none",
+  },
+  {
+    id: "bio_magazine",
+    label: "BIO & MAGAZINE",
+    info: "Article · Gallery · Interviews",
+    accent: "#00FFFF",
+    animation: "hologram",
+    roles: ["performer"],
+    primary: true,
+    mediaBindPoint: "none",
+  },
+  {
+    id: "submission_center",
+    label: "SUBMISSION CENTER",
+    info: "Upload Beat · Track Status",
+    accent: "#FF6B1A",
+    animation: "mechanical",
+    roles: ["performer"],   // beat_creator role is a performer-tier contributor
+    primary: false,
+    mediaBindPoint: "none",
+  },
+  {
+    id: "beat_marketplace",
+    label: "BEAT MARKETPLACE",
+    info: "Browse · License · Purchase",
+    accent: "#FFD700",
+    animation: "vinyl_flip",
+    roles: ["fan", "performer"],
+    primary: false,
+    mediaBindPoint: "none",
+  },
 ];
 
 const BY_ID = new Map(UNIVERSAL_DRAWER_MODULES.map((m) => [m.id, m]));
@@ -249,16 +321,21 @@ export const FAN_UNIVERSAL_SWAP_MODULES: UniversalDrawerModuleId[] = [
   "yopho",
   "playlist",
   "memory",
-  "live_destinations",
-  "room_controls",
   "messaging",
   "submissions",
   "scores",
+  "inventory",
+  "prize_vault",
+  "tickets",
+  "favorites",
+  "live_destinations",
+  "room_controls",
 ];
 
 /** Performer under-drawer quick-swap chips — includes BeatLocker submissions. */
 export const PERFORMER_UNIVERSAL_SWAP_MODULES: UniversalDrawerModuleId[] = [
   "media_locker",
+  "bio_magazine",
   "yopho",
   "playlist",
   "memory",

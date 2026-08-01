@@ -4,7 +4,7 @@
  * SHARED SHELL with Fan (CommandCenterShell) — matching blueprint chrome.
  *
  * PERFORMER drawer payloads (Rule 26 — NO avatar ownership / Fan Lobby / Avatar Studio):
- *   - Media Locker, Beat Lab, Performer YoPho, Bookings, Stage Tools
+ *   - Media Locker, Bio & Magazine, Beat Lab, Performer YoPho, Bookings, Stage Tools
  *   - Playlists, Memory Wall, Store
  *   - Sponsors via zone `dashboard-performer-sponsors` (Rule 12)
  *
@@ -22,6 +22,7 @@ export {
 
 export const PERFORMER_DRAWER_LAUNCHERS = [
   "media_locker",
+  "bio_magazine",
   "yopho",
   "beat_lab",
   "booking",
