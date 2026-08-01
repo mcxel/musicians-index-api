@@ -62,5 +62,6 @@ export function panelsForRole(role: CommandCenterRole): CommandCenterPanelDef[] 
 }
 
 export function isFanOnlyPanel(id: CommandCenterPanelId): boolean {
-  return id === "lobby" || id === "inventory" || id === "room_controls";
+  return id === "lobby" || id === "inventory" || id === "room_controls"
+    || id === "prize_vault" || id === "tickets" || id === "favorites";
 }

@@ -24,6 +24,7 @@ export {
   isFanOnlyPanel,
 } from "./commandCenterRegistry";
 
+/** Direct left-rail OPEN DRAWER buttons (modules not already an OC primary). */
 export const FAN_DRAWER_LAUNCHERS = [
   "lobby",
   "yopho",
@@ -34,6 +35,9 @@ export const FAN_DRAWER_LAUNCHERS = [
   "inventory",
   "analytics",
   "messaging",
+  "submissions",
+  "notifications",
+  "scores",
 ] as const;
 
 export const FAN_AD_ZONE = "dashboard-fan-sidebar";

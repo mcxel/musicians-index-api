@@ -44,6 +44,7 @@ import {
   PERFORMER_COMMAND_PANELS,
   PERFORMER_DRAWER_SWAP_PANELS,
   isFanOnlyPanel,
+  panelsForRole,
 } from "./commandCenterRegistry";
 import { useTheme } from "@/lib/design/ThemeEngine";
 
@@ -359,14 +360,16 @@ export default function CommandCenterDrawer({
     prize_vault: "PRIZE VAULT",
     tickets: "TICKETS & ORDERS",
     favorites: "FAVORITES",
-    bio_magazine: "PERFORMER BIO & MAGAZINE",
+    bio_magazine: "BIO & MAGAZINE",
+    submission_center: "SUBMISSION CENTER",
+    beat_marketplace: "BEAT MARKETPLACE",
   };
   const title = appearanceOpen
     ? "SHELL COLORS · THIS DEVICE"
     : (activePanel ? TITLE_MAP[activePanel] : undefined) ?? "DRAWER";
 
   const accent =
-    (activePanel && FAN_COMMAND_PANELS.find((p) => p.id === activePanel)?.accent) ||
+    (activePanel && panelsForRole(role).find((p) => p.id === activePanel)?.accent) ||
     theme.tertiary;
 
   // Block fan-only panels for performer role (defense in depth)

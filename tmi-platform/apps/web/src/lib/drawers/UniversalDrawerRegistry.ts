@@ -207,6 +207,24 @@ export const UNIVERSAL_DRAWER_MODULES: UniversalDrawerModuleDef[] = [
     mediaBindPoint: "none",
   },
   {
+    id: "notifications",
+    label: "NOTIFICATIONS",
+    info: "Alerts · inbox",
+    accent: "#FF2DAA",
+    animation: "fold",
+    roles: ["fan", "performer"],
+    mediaBindPoint: "none",
+  },
+  {
+    id: "queue",
+    label: "QUEUE",
+    info: "Up next",
+    accent: "#00D4FF",
+    animation: "mechanical",
+    roles: ["fan", "performer"],
+    mediaBindPoint: "none",
+  },
+  {
     id: "messaging",
     label: "MESSAGES",
     info: "Invite · join",
@@ -330,6 +348,8 @@ export const FAN_UNIVERSAL_SWAP_MODULES: UniversalDrawerModuleId[] = [
   "favorites",
   "live_destinations",
   "room_controls",
+  "notifications",
+  "analytics",
 ];
 
 /** Performer under-drawer quick-swap chips — includes BeatLocker submissions. */
@@ -344,4 +364,10 @@ export const PERFORMER_UNIVERSAL_SWAP_MODULES: UniversalDrawerModuleId[] = [
   "submissions",
   "scores",
   "beat_lab",
+  "booking",
+  "stage_tools",
+  "store",
+  "sponsors",
+  "analytics",
+  "notifications",
 ];

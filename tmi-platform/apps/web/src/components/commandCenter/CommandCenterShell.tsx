@@ -12,6 +12,7 @@ import { useRouter } from "next/navigation";
 import MasterControlDock from "@/components/shell/MasterControlDock";
 import UnifiedAdSlot from "@/components/ads/UnifiedAdSlot";
 import SponsorRail from "@/components/sponsors/SponsorRail";
+import QuickPanelDock from "@/components/drawers/QuickPanelDock";
 import { getRailSponsors } from "@/lib/commerce/SponsorRegistry";
 import CommandCenterMediaStack, {
   type CommandCenterMediaSlot,
@@ -19,12 +20,18 @@ import CommandCenterMediaStack, {
 } from "./CommandCenterMediaStack";
 import CommandCenterDrawer from "./CommandCenterDrawer";
 import {
-  panelsForRole,
+  getUniversalDrawerModule,
+  type UniversalDrawerModuleId,
+} from "@/lib/drawers/UniversalDrawerRegistry";
+import {
   type CommandCenterPanelId,
   type CommandCenterRole,
 } from "./commandCenterRegistry";
-import { FAN_AD_ZONE } from "./FanCommandDrawerRegistry";
-import { PERFORMER_SPONSOR_ZONE } from "./PerformerCommandDrawerRegistry";
+import { FAN_AD_ZONE, FAN_DRAWER_LAUNCHERS } from "./FanCommandDrawerRegistry";
+import {
+  PERFORMER_DRAWER_LAUNCHERS,
+  PERFORMER_SPONSOR_ZONE,
+} from "./PerformerCommandDrawerRegistry";
 import { useTheme } from "@/lib/design/ThemeEngine";
 import { getPerformerById } from "@/lib/performers/PerformerRegistry";
 import {
@@ -32,6 +39,9 @@ import {
   subscribePlaylistNowPlaying,
   type PlaylistCastPayload,
 } from "@/lib/playlists/PlaylistMonitorCast";
+import { centersForRole } from "@/lib/drawers/operatingCenterRegistry";
+import { drawerStateStore } from "@/lib/drawers/drawerStateStore";
+import { livingOsCommandBus } from "@/lib/os/livingOsCommandBus";
 
 interface LiveApiSession {
   userId: string;
@@ -50,11 +60,21 @@ interface CommandCenterShellProps {
 export default function CommandCenterShell({ role, userId, displayName }: CommandCenterShellProps) {
   const router = useRouter();
   const theme = useTheme();
-  const panels = panelsForRole(role);
-  const primary = panels.filter((p) => p.primary);
-  const secondary = panels.filter((p) => !p.primary);
+  const centers = centersForRole(role);
+  const ocPrimaryIds = useMemo(
+    () => new Set(centers.map((c) => c.primaryModule)),
+    [centers],
+  );
+  const drawerLaunchers = useMemo(() => {
+    const list =
+      role === "performer" ? PERFORMER_DRAWER_LAUNCHERS : FAN_DRAWER_LAUNCHERS;
+    // Skip modules already opened by an Operating Center primary button (no duplicates).
+    return list.filter((id) => !ocPrimaryIds.has(id));
+  }, [role, ocPrimaryIds]);
 
-  const [activePanel, setActivePanel] = useState<CommandCenterPanelId | null>(null);
+  const [activePanel, setActivePanel] = useState<CommandCenterPanelId | null>(
+    () => drawerStateStore.getLastPanel(role)
+  );
   const [appearanceOpen, setAppearanceOpen] = useState(false);
   const [playlistCast, setPlaylistCast] = useState<CommandCenterPlaylistCast | null>(null);
   const [deepLinkPlaylistId, setDeepLinkPlaylistId] = useState<string | null>(null);
@@ -66,21 +86,18 @@ export default function CommandCenterShell({ role, userId, displayName }: Comman
     viewers?: number;
   } | null>(null);
 
-  // Deep-link: /hub/fan?drawer=playlist&playlistId=…
+  // Deep-link: /hub/fan?drawer=playlist&playlistId=… or /hub/performer?drawer=bio_magazine
   useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
-    const drawer = params.get("drawer");
+    const drawer = params.get("drawer") as UniversalDrawerModuleId | null;
     const playlistId = params.get("playlistId");
-    if (drawer === "playlist") {
-      setAppearanceOpen(false);
-      setActivePanel("playlist");
-      if (playlistId) setDeepLinkPlaylistId(playlistId);
-    } else if (drawer === "messaging") {
-      setAppearanceOpen(false);
-      setActivePanel("messaging");
-    }
-  }, []);
+    if (!drawer || !getUniversalDrawerModule(drawer)) return;
+    setAppearanceOpen(false);
+    setActivePanel(drawer);
+    drawerStateStore.setLastPanel(role, drawer);
+    if (drawer === "playlist" && playlistId) setDeepLinkPlaylistId(playlistId);
+  }, [role]);
 
   useEffect(() => {
     const unsubCast = subscribePlaylistCast((payload: PlaylistCastPayload) => {
@@ -129,23 +146,30 @@ export default function CommandCenterShell({ role, userId, displayName }: Comman
 
   const togglePanel = (id: CommandCenterPanelId) => {
     setAppearanceOpen(false);
-    setActivePanel((prev) => (prev === id ? null : id));
+    setActivePanel((prev) => {
+      const next = prev === id ? null : id;
+      drawerStateStore.setLastPanel(role, next);
+      return next;
+    });
   };
 
   /** Always open/swap into drawer (never toggle-close) — used by dock + drawer chips. */
   const openPanel = (id: CommandCenterPanelId) => {
     setAppearanceOpen(false);
     setActivePanel(id);
+    drawerStateStore.setLastPanel(role, id);
   };
 
   const openAppearance = () => {
     setActivePanel(null);
     setAppearanceOpen((v) => !v);
+    drawerStateStore.setLastPanel(role, null);
   };
 
   const closeDrawer = () => {
     setActivePanel(null);
     setAppearanceOpen(false);
+    drawerStateStore.setLastPanel(role, null);
   };
 
   useEffect(() => {
@@ -364,34 +388,51 @@ export default function CommandCenterShell({ role, userId, displayName }: Comman
             }}
           >
             <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", fontWeight: 900, letterSpacing: "0.14em", marginBottom: 4 }}>
-              MAIN MENU
+              OPERATING CENTERS
             </div>
-            <div style={{ fontSize: 8, color: `${theme.tertiary}99`, fontWeight: 800, letterSpacing: "0.12em" }}>
-              OPEN DRAWER
-            </div>
-            {primary.map((p) =>
-              railBtn({
-                key: p.id,
-                label: p.label,
-                info: p.info,
-                accent: p.accent,
-                active: activePanel === p.id,
-                onClick: () => togglePanel(p.id),
-              }),
-            )}
-            <div style={{ fontSize: 8, color: "rgba(255,255,255,0.28)", fontWeight: 800, letterSpacing: "0.12em", marginTop: 8 }}>
-              MORE IN DRAWER
-            </div>
-            {secondary.map((p) =>
-              railBtn({
-                key: p.id,
-                label: p.label,
-                info: p.info,
-                accent: p.accent,
-                active: activePanel === p.id,
-                onClick: () => togglePanel(p.id),
-              }),
-            )}
+            {centers.map((center) => {
+              const isActive = center.modules.some((m) => m === activePanel);
+              return railBtn({
+                key: center.id,
+                label: `${center.icon} ${center.label}`,
+                info: center.info,
+                accent: center.accent,
+                active: isActive,
+                onClick: () => {
+                  livingOsCommandBus.executeAction(center.actionId, { role });
+                  togglePanel(center.primaryModule as CommandCenterPanelId);
+                },
+              });
+            })}
+
+            {drawerLaunchers.length > 0 ? (
+              <>
+                <div
+                  style={{
+                    fontSize: 9,
+                    color: "rgba(255,255,255,0.4)",
+                    fontWeight: 900,
+                    letterSpacing: "0.14em",
+                    margin: "10px 0 4px",
+                  }}
+                >
+                  OPEN DRAWERS
+                </div>
+                {drawerLaunchers.map((id) => {
+                  const mod = getUniversalDrawerModule(id);
+                  if (!mod) return null;
+                  return railBtn({
+                    key: `drawer-${id}`,
+                    label: mod.label,
+                    info: mod.info,
+                    accent: mod.accent,
+                    active: activePanel === id,
+                    onClick: () => togglePanel(id),
+                  });
+                })}
+              </>
+            ) : null}
+
             {railBtn({
               key: "appearance",
               label: "SHELL COLORS",
@@ -401,20 +442,13 @@ export default function CommandCenterShell({ role, userId, displayName }: Comman
               onClick: openAppearance,
             })}
             <div style={{ height: 8 }} />
-            {railBtn({ key: "live", label: "LIVE ROOMS", info: "Discover", href: "/live/lobby" })}
-            {railBtn({
-              key: "msg",
-              label: "MESSAGES",
-              info: "Invite · join",
-              accent: "#00FFFF",
-              active: activePanel === "messaging",
-              onClick: () => togglePanel("messaging"),
-            })}
             {railBtn({ key: "friends", label: "FRIENDS", href: "/friends" })}
             {role === "performer"
               ? railBtn({ key: "golive", label: "GO LIVE", info: "Broadcast", href: "/live/go" })
               : railBtn({ key: "camera", label: "CAMERA", info: "Go Live", href: "/live/go" })}
-            {railBtn({ key: "store", label: "STORE", href: "/store" })}
+            {role === "performer"
+              ? null
+              : railBtn({ key: "store", label: "STORE", href: "/store" })}
             {railBtn({ key: "settings", label: "SETTINGS", href: "/settings" })}
 
             <div style={{ marginTop: "auto", paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.08)" }}>
@@ -499,7 +533,7 @@ export default function CommandCenterShell({ role, userId, displayName }: Comman
           userId={userId}
           displayName={displayName}
           onClose={closeDrawer}
-          onSelectPanel={role === "fan" ? openPanel : undefined}
+          onSelectPanel={openPanel}
           initialPlaylistId={deepLinkPlaylistId}
         />
       </div>
@@ -513,17 +547,10 @@ export default function CommandCenterShell({ role, userId, displayName }: Comman
             ? () => openPanel("lobby")
             : () => openPanel("media_locker")
         }
-        onOpenModule={
-          role === "fan"
-            ? (mod) => openPanel(mod)
-            : (mod) => {
-                if (mod === "playlist") openPanel("playlist");
-                else if (mod === "memory") openPanel("memory");
-                else if (mod === "yopho") openPanel("yopho");
-                else openPanel("media_locker");
-              }
-        }
+        onOpenModule={(mod) => openPanel(mod)}
       />
+      {/* Layer 1 — Quick Panels (Living OS): instant overlays, never block live media */}
+      <QuickPanelDock role={role} />
     </div>
   );
 }

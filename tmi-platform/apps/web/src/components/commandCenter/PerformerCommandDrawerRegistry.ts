@@ -20,6 +20,7 @@ export {
   type CommandCenterPanelDef as PerformerDrawerSlotDef,
 } from "./commandCenterRegistry";
 
+/** Direct left-rail OPEN DRAWER buttons (modules not already an OC primary). */
 export const PERFORMER_DRAWER_LAUNCHERS = [
   "media_locker",
   "bio_magazine",
@@ -32,6 +33,10 @@ export const PERFORMER_DRAWER_LAUNCHERS = [
   "store",
   "sponsors",
   "messaging",
+  "live_destinations",
+  "submissions",
+  "scores",
+  "notifications",
 ] as const;
 
 export const PERFORMER_SPONSOR_ZONE = "dashboard-performer-sponsors";
