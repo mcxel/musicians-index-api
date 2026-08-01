@@ -1,6 +1,10 @@
 /**
  * DiscoveryPublisher — maps real live sessions → LiveDiscoveryRecord and
  * publishes onto DiscoveryBus. No fake rooms. humanViewerCount = humans only.
+ *
+ * LiveSurfaceCard is the normalized projection DTO for Lobby Wall / Live Discovery UI.
+ * This publisher remains the bus feed; surfaces project via projectDiscoveryRecordToSurfaceCard
+ * or projectLiveSessionToSurfaceCard (lib/discovery/LiveSurfaceCard.ts).
  */
 
 import type { LiveSession } from "@/lib/broadcast/GlobalLiveSessionRegistry";
@@ -12,6 +16,11 @@ import {
   type LiveDiscoveryRecord,
   type LiveDiscoveryVisibility,
 } from "./LiveDiscoveryRecord";
+import {
+  projectDiscoveryRecordsToSurfaceCards,
+  projectSessionsToSurfaceCards,
+  type LiveSurfaceCard,
+} from "./LiveSurfaceCard";
 
 export interface PublishLiveRoomInput {
   roomId: string;
@@ -169,6 +178,18 @@ export function syncDiscoveryFromSessions(sessions: readonly LiveSession[]): voi
     if (rec) records.push(rec);
   }
   DiscoveryBus.replaceAll(records);
+}
+
+/** Project sessions → LiveSurfaceCard[] without touching the bus (read-side only). */
+export function projectLiveSurfaceFromSessions(
+  sessions: readonly LiveSession[],
+): LiveSurfaceCard[] {
+  return projectSessionsToSurfaceCards(sessions);
+}
+
+/** Project current DiscoveryBus snapshot → LiveSurfaceCard[]. */
+export function projectLiveSurfaceFromDiscoveryBus(): LiveSurfaceCard[] {
+  return projectDiscoveryRecordsToSurfaceCards(DiscoveryBus.getAll());
 }
 
 let pollTimer: ReturnType<typeof setInterval> | null = null;

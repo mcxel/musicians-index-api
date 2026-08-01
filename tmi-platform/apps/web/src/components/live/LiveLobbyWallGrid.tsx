@@ -179,7 +179,11 @@ export default function LiveLobbyWallGrid({ rooms, title, accentColor = '#00FFFF
       sessionStorage.setItem('tmi_handoff_started_at', String(Date.now()));
       sessionStorage.setItem('tmi_handoff_room_id', room.id);
     }
-    const roomSlug = room.href.split('/').filter(Boolean).pop() ?? room.id;
+    // Prefer real room id over parsing href (href may include ?from= query)
+    const roomRoute =
+      room.href.startsWith('/live/rooms/')
+        ? room.href
+        : `/live/rooms/${encodeURIComponent(room.id)}?from=live-lobby-wall`;
     setActiveFlowRoom({
       id:          room.id,
       title:       room.name,
@@ -190,8 +194,9 @@ export default function LiveLobbyWallGrid({ rooms, title, accentColor = '#00FFFF
       status:      room.status === 'live' ? 'live' : room.status === 'starting' ? 'starting-soon' : 'upcoming',
       access:      'free',
       accentColor: roomColor(0),
+      // prizeLabel only when a real prizePool string is supplied — never invent one
       prizeLabel:  room.prizePool,
-      roomRoute:   `/live/rooms/${roomSlug}`,
+      roomRoute,
       venueIndex:  0,
     });
   }, []);
@@ -199,8 +204,7 @@ export default function LiveLobbyWallGrid({ rooms, title, accentColor = '#00FFFF
   const prewarmRoom = useCallback((room: LobbyRoom) => {
     router.prefetch(room.href);
     // Warm audience session path so seat assignment and presence cache are primed.
-    const roomSlug = room.href.split('/').filter(Boolean).pop() ?? room.id;
-    void fetch(`/api/live/audience?venue=${encodeURIComponent(roomSlug)}`, { cache: 'no-store' }).catch(() => {});
+    void fetch(`/api/live/audience?venue=${encodeURIComponent(room.id)}`, { cache: 'no-store' }).catch(() => {});
   }, [router]);
 
   const joinRandom = useCallback(() => {
@@ -261,8 +265,8 @@ export default function LiveLobbyWallGrid({ rooms, title, accentColor = '#00FFFF
         {liveRooms.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '80px 0', color: 'rgba(255,255,255,0.35)' }}>
             <div style={{ fontSize: 40, marginBottom: 12 }}>📡</div>
-            <div style={{ fontWeight: 800, fontSize: 16 }}>No live rooms right now</div>
-            <div style={{ fontSize: 13, marginTop: 6 }}>Check back soon — sessions launch all day</div>
+            <div style={{ fontWeight: 800, fontSize: 16 }}>No active rooms</div>
+            <div style={{ fontSize: 13, marginTop: 6 }}>Go live or check back when creators are broadcasting</div>
           </div>
         ) : (
           <div style={{

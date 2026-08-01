@@ -6,6 +6,8 @@
 
 import type { UniversalRoom } from "@/components/room/UniversalLobbyEntry";
 import type { LiveDiscoveryRecord } from "./LiveDiscoveryRecord";
+import type { LiveSurfaceCard } from "./LiveSurfaceCard";
+import { projectDiscoveryRecordToSurfaceCard } from "./LiveSurfaceCard";
 
 export type InstantJoinRole =
   | "FAN"
@@ -116,4 +118,71 @@ export function resolveInstantJoin(
 /** True when the overlay should open LobbyEntryFlow instead of a landing page. */
 export function shouldUseLobbyEntryFlow(_record: LiveDiscoveryRecord): boolean {
   return true;
+}
+
+/**
+ * Map LiveSurfaceCard → UniversalRoom for LobbyEntryFlow.
+ * audienceCount is honest humans only when projected from DiscoveryPublisher.
+ */
+export function liveSurfaceCardToUniversalRoom(card: LiveSurfaceCard): UniversalRoom {
+  const status: UniversalRoom["status"] =
+    card.joinAction.kind === "gated"
+      ? "vip"
+      : card.state === "live" || card.state === "intermission"
+        ? "live"
+        : card.state === "starting" || card.state === "pre_show"
+          ? "starting-soon"
+          : "upcoming";
+
+  const access: UniversalRoom["access"] =
+    card.joinAction.kind === "gated" ? "paid" : "free";
+
+  return {
+    id: card.roomId,
+    title: card.title,
+    subtitle: card.subtitle,
+    hostName: card.subtitle,
+    genre: card.runtimeType,
+    viewers: card.audienceCount,
+    status,
+    access,
+    accentColor: card.accentColor ?? "#00FFFF",
+    thumbnailUrl: card.previewMediaUrl ?? undefined,
+    roomRoute: card.joinAction.href,
+    shape: "cinema",
+  };
+}
+
+/** Resolve InstantJoin from a LiveSurfaceCard (projection-layer path). */
+export function resolveInstantJoinFromSurface(
+  card: LiveSurfaceCard,
+  opts?: { role?: string | null },
+): InstantJoinDecision {
+  // Reuse discovery join semantics via a minimal record bridge when possible
+  const room = liveSurfaceCardToUniversalRoom(card);
+  const role = normalizeRole(opts?.role);
+
+  let href = card.joinAction.href;
+  if (card.runtimeType === "fan_lobby" && !isPerformerLike(role)) {
+    href = href.includes("fan-lobby")
+      ? href
+      : `/rooms/fan-lobby?from=live-lobby-wall&roomId=${encodeURIComponent(card.roomId)}`;
+    room.roomRoute = href;
+  }
+
+  if (card.joinAction.kind === "gated") {
+    return { instant: false, gateReason: "paid", room, href };
+  }
+
+  return { instant: true, gateReason: "none", room, href };
+}
+
+/** Bridge: discovery record → surface → instant join (same LobbyEntryFlow path). */
+export function resolveInstantJoinViaSurface(
+  record: LiveDiscoveryRecord,
+  opts?: { role?: string | null },
+): InstantJoinDecision {
+  const card = projectDiscoveryRecordToSurfaceCard(record);
+  if (!card) return resolveInstantJoin(record, opts);
+  return resolveInstantJoinFromSurface(card, opts);
 }

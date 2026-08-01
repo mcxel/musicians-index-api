@@ -249,6 +249,34 @@ export const PLATFORM_CAPABILITY_MATRIX: PlatformCapabilityRow[] = [
     certified: "✅",
     notes: "CanonicalDualMonitorStack + MonitorAnchorZones.",
   },
+  {
+    id: "lobby-wall",
+    capability: "Lobby Wall / Live Stations",
+    framework: "✅",
+    runtime: "✅",
+    ui: "✅",
+    api: "✅",
+    registry: "✅",
+    telemetry: "⚠️",
+    certified: "⚠️",
+    frameworkId: "broadcast",
+    notes:
+      "Phase 5.3A: LiveSurfaceCard projects GlobalLiveSessionRegistry via GET /api/live/go → /live/lobby-wall + LiveLobbyWallGrid (LobbyEntryFlow). Honest empty when no sessions. Heat/prize/sponsor tile signals deferred.",
+  },
+  {
+    id: "live-discovery",
+    capability: "Live Discovery Overlay / Home Lobby Walls",
+    framework: "✅",
+    runtime: "✅",
+    ui: "✅",
+    api: "✅",
+    registry: "✅",
+    telemetry: "⚠️",
+    certified: "⚠️",
+    frameworkId: "broadcast",
+    notes:
+      "DiscoveryBus + DiscoveryPublisher sync from /api/live/go; LobbyDiscoveryCard → LiveSurfaceCardView; HomeLiveLobbyWall + GlobalLiveDiscoveryOverlay join via LobbyEntryFlow. Light discoveryScore from isLive/audience/freshness only — no fake momentum.",
+  },
 ];
 
 export function listCapabilityMatrix(): PlatformCapabilityRow[] {

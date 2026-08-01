@@ -1,4 +1,5 @@
 export * from "./LiveDiscoveryRecord";
+export * from "./LiveSurfaceCard";
 export * from "./DiscoveryBus";
 export * from "./DiscoveryPublisher";
 export * from "./discoveryVisibility";

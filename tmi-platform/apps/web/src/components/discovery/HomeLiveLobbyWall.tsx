@@ -18,6 +18,10 @@ import {
 } from "@/lib/discovery/homepageDiscoveryFilters";
 import { resolveInstantJoin } from "@/lib/discovery/InstantJoinRuntime";
 import type { LiveDiscoveryRecord } from "@/lib/discovery/LiveDiscoveryRecord";
+import {
+  computeLiveSurfaceDiscoveryScore,
+  projectDiscoveryRecordToSurfaceCard,
+} from "@/lib/discovery/LiveSurfaceCard";
 import { useLiveDiscoveryOverlay } from "@/lib/discovery/liveDiscoveryOverlayStore";
 
 const RIM_KEYFRAMES = `
@@ -57,7 +61,16 @@ export default function HomeLiveLobbyWall({
   showOpenOverlay = true,
 }: HomeLiveLobbyWallProps) {
   const records = useDiscoveryBus(viewerUserId);
-  const filtered = filterForHomepageSurface(records, surface).slice(0, maxTiles);
+  const filtered = filterForHomepageSurface(records, surface)
+    .slice()
+    .sort((a, b) => {
+      const ca = projectDiscoveryRecordToSurfaceCard(a);
+      const cb = projectDiscoveryRecordToSurfaceCard(b);
+      const sa = ca ? (ca.discoveryScore ?? computeLiveSurfaceDiscoveryScore(ca)) : 0;
+      const sb = cb ? (cb.discoveryScore ?? computeLiveSurfaceDiscoveryScore(cb)) : 0;
+      return sb - sa;
+    })
+    .slice(0, maxTiles);
   const copy = HOMEPAGE_SURFACE_COPY[surface];
   const label = title ?? copy.title;
   const { open: openOverlay } = useLiveDiscoveryOverlay();
