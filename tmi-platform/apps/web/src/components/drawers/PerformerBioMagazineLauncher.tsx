@@ -44,7 +44,7 @@ export default function PerformerBioMagazineLauncher({
             fontFamily: "inherit",
           }}
         >
-          Performer Bio & Magazine
+          Bio & Magazine
         </button>
       </RoleGate>
 
@@ -73,7 +73,7 @@ export default function PerformerBioMagazineLauncher({
         open={openManage}
         animationId={animationForDrawerModule("bio_magazine")}
         title="PERFORMER BIO & MAGAZINE"
-        subtitle="Profile · Bio · Article · Gallery · Music · Interviews"
+        subtitle="Profile · Bio · Article · Gallery · Music · Interviews · Store & Commerce"
         onClose={() => setOpenManage(false)}
         mode="overlay"
         accentColor={accent}

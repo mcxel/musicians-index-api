@@ -8,6 +8,8 @@ import { getAdSlotForZone } from '@/lib/commerce/SponsorRegistry';
 import DiscoveryRail from '@/components/discovery/DiscoveryRail';
 import MotionPosterPlayer from '@/components/media/MotionPosterPlayer';
 import PerformerBioMagazineLauncher from '@/components/drawers/PerformerBioMagazineLauncher';
+import ArtistDirectCommerceCta from '@/components/commerce/ArtistDirectCommerceCta';
+import { StoreCanister } from '@/components/canisters/StoreCanister';
 
 export async function generateStaticParams() {
   return PERFORMER_REGISTRY.map(p => ({ slug: p.slug }));
@@ -270,7 +272,7 @@ export default function PerformerArticlePage({ params }: { params: { slug: strin
           </div>
         </div>
 
-        {/* ── Commerce rail ── */}
+        {/* ── Commerce rail — tips + fan club + artist storefront (Creator Economy) ── */}
         <div style={{ marginTop: 24, background: 'rgba(255,255,255,0.02)', border: `1px solid ${ac}18`, borderRadius: 12, padding: '16px 20px' }}>
           <div style={{ fontSize: 9, fontWeight: 900, color: ac, letterSpacing: '0.2em', marginBottom: 12 }}>SUPPORT {p.name.toUpperCase()}</div>
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
@@ -280,9 +282,7 @@ export default function PerformerArticlePage({ params }: { params: { slug: strin
             <Link href={`/fan-club/${p.slug}`} style={{ padding: '9px 18px', background: 'rgba(255,45,170,0.1)', border: '1.5px solid rgba(255,45,170,0.45)', borderRadius: 8, fontSize: 10, fontWeight: 900, color: '#FF2DAA', textDecoration: 'none', letterSpacing: '0.06em' }}>
               ⭐ JOIN FAN CLUB
             </Link>
-            <Link href={`/merch/${p.slug}`} style={{ padding: '9px 18px', background: 'rgba(255,215,0,0.08)', border: '1.5px solid rgba(255,215,0,0.3)', borderRadius: 8, fontSize: 10, fontWeight: 900, color: '#FFD700', textDecoration: 'none', letterSpacing: '0.06em' }}>
-              🛍️ BUY MERCH
-            </Link>
+            <ArtistDirectCommerceCta performerSlug={p.slug} performerName={p.name} accentColor={ac} variant="rail" />
             <Link href={`/sponsors/advertise?target=${p.slug}`} style={{ padding: '9px 18px', background: 'transparent', border: `1.5px solid ${ac}44`, borderRadius: 8, fontSize: 10, fontWeight: 900, color: ac, textDecoration: 'none', letterSpacing: '0.06em' }}>
               🤝 SPONSOR
             </Link>
@@ -290,6 +290,12 @@ export default function PerformerArticlePage({ params }: { params: { slug: strin
               🎥 LIVE ROOM
             </Link>
           </div>
+          <ArtistDirectCommerceCta performerSlug={p.slug} performerName={p.name} accentColor={ac} variant="panel" />
+        </div>
+
+        {/* ── Store canister — platform items + linked artist products ── */}
+        <div style={{ marginTop: 24 }}>
+          <StoreCanister entityId={p.slug} entityName={p.name} storeType="performer" accentColor={ac} maxItems={4} />
         </div>
 
         {/* ── Performer upload + profile hub section ── */}

@@ -2,10 +2,11 @@
 
 /**
  * PerformerBioMagazineDrawer — Phase 1 foundation.
- * Tabs: Profile · Biography · Magazine Article · Gallery · Music · Interviews
+ * Tabs: Profile · Biography · Magazine Article · Gallery · Music · Interviews · Store & Commerce
  * Footer: Save · Preview Article
- * Data: PerformerRegistry + /api/profile/update + interview-requests stub.
+ * Data: PerformerRegistry + /api/profile/update + interview-requests stub + CommerceConnectorRegistry.
  * No Zoom studio / AI rewrite / press kit (deferred).
+ * Commerce is performer-only (Rule 26); no ticket inventory creation (Rule 17).
  */
 
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
@@ -23,8 +24,16 @@ import {
   getPerformerGallerySlotCount,
 } from "@/lib/performers/performerGallerySlots";
 import { MAGAZINE_ISSUE_1 } from "@/lib/magazine/magazineIssueData";
+import CommerceConnectorPanel from "@/components/commerce/CommerceConnectorPanel";
 
-type TabId = "profile" | "biography" | "magazine" | "gallery" | "music" | "interviews";
+type TabId =
+  | "profile"
+  | "biography"
+  | "magazine"
+  | "gallery"
+  | "music"
+  | "interviews"
+  | "commerce";
 
 const TABS: { id: TabId; label: string }[] = [
   { id: "profile", label: "Profile" },
@@ -33,6 +42,7 @@ const TABS: { id: TabId; label: string }[] = [
   { id: "gallery", label: "Gallery" },
   { id: "music", label: "Music" },
   { id: "interviews", label: "Interviews" },
+  { id: "commerce", label: "Store & Commerce" },
 ];
 
 interface InterviewRow {
@@ -544,6 +554,14 @@ export default function PerformerBioMagazineDrawer({
               OPEN PERFORMER COMMAND CENTER →
             </Link>
           </div>
+        )}
+
+        {tab === "commerce" && (
+          <CommerceConnectorPanel
+            performerId={effectiveSlug}
+            accentColor={ac}
+            articleHref={articleHref}
+          />
         )}
 
         {tab === "interviews" && (

@@ -2,18 +2,28 @@
 
 /**
  * StoreCanister — Rule 15 canonical canister.
- * Shows performer or platform store items with Stripe checkout links.
- * Category can be "creator", "fan", or "shared".
+ * Shows performer or platform store items with Stripe checkout links,
+ * plus Creator Economy linked products / artist storefront CTA when present.
  * Empty state: "No items in store yet."
  */
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   CREATOR_ITEMS,
   FAN_ITEMS,
   type StoreItem,
 } from "@/lib/store/StoreItemEngine";
-
+import {
+  getPerformerStorefrontLink,
+  resolveArtistBuyUrl,
+} from "@/lib/commerce/CommerceConnectorRegistry";
+import {
+  CREATOR_PRODUCT_TYPE_LABELS,
+  formatCreatorProductPrice,
+  listCreatorProducts,
+  type CreatorProduct,
+} from "@/lib/commerce/CreatorProductRegistry";
 interface StoreCanisterProps {
   entityId: string;
   entityName?: string;
@@ -47,6 +57,18 @@ export function StoreCanister({
       ? FAN_ITEMS.slice(0, maxItems)
       : [...CREATOR_ITEMS, ...FAN_ITEMS].slice(0, maxItems);
 
+  const [linkedProducts, setLinkedProducts] = useState<CreatorProduct[]>([]);
+  const [artistBuyUrl, setArtistBuyUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (storeType !== "performer" && storeType !== "shared") return;
+    setLinkedProducts(listCreatorProducts(entityId).slice(0, maxItems));
+    setArtistBuyUrl(resolveArtistBuyUrl(getPerformerStorefrontLink(entityId)));
+  }, [entityId, storeType, maxItems]);
+
+  const viewAllHref =
+    storeType === "fan" ? "/store/fan" : storeType === "shared" ? "/store" : "/store/creator";
+
   return (
     <div style={{
       background: "rgba(255,255,255,0.015)",
@@ -66,7 +88,7 @@ export function StoreCanister({
           🛒 STORE {entityName ? `— ${entityName.toUpperCase()}` : ""}
         </div>
         <Link
-          href={`/store/${entityId}`}
+          href={viewAllHref}
           style={{
             fontSize: 9, color: accentColor, fontWeight: 700,
             textDecoration: "none", letterSpacing: "0.08em",
@@ -77,11 +99,66 @@ export function StoreCanister({
       </div>
 
       <div style={{ padding: "14px 18px" }}>
-        {items.length === 0 ? (
+        {(storeType === "performer" || storeType === "shared") && (linkedProducts.length > 0 || artistBuyUrl) && (
+          <div style={{ marginBottom: 14 }}>
+            {linkedProducts.length > 0 ? (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 10, marginBottom: 10 }}>
+                {linkedProducts.map((p) => (
+                  <a
+                    key={p.id}
+                    href={p.buyUrl || artistBuyUrl || "/store/creator"}
+                    target={p.buyUrl || artistBuyUrl ? "_blank" : undefined}
+                    rel={p.buyUrl || artistBuyUrl ? "noreferrer" : undefined}
+                    style={{ textDecoration: "none" }}
+                  >
+                    <div style={{
+                      padding: "12px 14px",
+                      borderRadius: 10,
+                      background: "rgba(255,215,0,0.06)",
+                      border: "1px solid rgba(255,215,0,0.22)",
+                    }}>
+                      <div style={{ fontSize: 8, fontWeight: 900, color: "#FFD700", letterSpacing: "0.1em", marginBottom: 4 }}>
+                        ARTIST STORE
+                      </div>
+                      <div style={{ fontSize: 11, fontWeight: 800, color: "#fff", marginBottom: 3 }}>
+                        {p.title}
+                      </div>
+                      <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", marginBottom: 8 }}>
+                        {CREATOR_PRODUCT_TYPE_LABELS[p.type]}
+                      </div>
+                      <div style={{ fontSize: 13, fontWeight: 900, color: accentColor }}>
+                        {formatCreatorProductPrice(p) ?? "Price on artist store"}
+                      </div>
+                    </div>
+                  </a>
+                ))}
+              </div>
+            ) : null}
+            {artistBuyUrl ? (
+              <a
+                href={artistBuyUrl}
+                target="_blank"
+                rel="noreferrer"
+                style={{
+                  display: "inline-block",
+                  fontSize: 10,
+                  fontWeight: 900,
+                  color: accentColor,
+                  textDecoration: "none",
+                  letterSpacing: "0.08em",
+                }}
+              >
+                {entityName ? `BUY ON ${entityName.toUpperCase()} STORE →` : "BUY ON ARTIST STORE →"}
+              </a>
+            ) : null}
+          </div>
+        )}
+
+        {items.length === 0 && linkedProducts.length === 0 && !artistBuyUrl ? (
           <div style={{ textAlign: "center", color: "rgba(255,255,255,0.3)", fontSize: 12, padding: "16px 0" }}>
             No items in store yet.
           </div>
-        ) : (
+        ) : items.length === 0 ? null : (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 10 }}>
             {items.map((item) => (
               <Link
