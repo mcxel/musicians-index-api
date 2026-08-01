@@ -109,8 +109,8 @@ export default function YoPhoInteractiveCardPage() {
                 lineHeight: 1.5,
               }}
             >
-              This is an <strong style={{ color: "#00E5FF" }}>interactive</strong> YoPho motor card — not a flat video.
-              Motion loops 2–7s · pause reacts · song loops with who they are right now.
+              This is an <strong style={{ color: "#00E5FF" }}>interactive</strong> YoPho living card — not a flat video.
+              Scene document + motion loop · pause reacts · song · protected TMI × YoPho footer.
             </p>
           </>
         ) : null}

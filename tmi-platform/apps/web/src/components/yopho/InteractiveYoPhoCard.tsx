@@ -9,10 +9,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import YoPhoStudioStyleOverlay from "@/components/yopho/YoPhoStudioStyleOverlay";
+import YoPhoMagicEffectOverlay from "@/components/yopho/YoPhoMagicEffectOverlay";
+import YoPhoBrandingFooter from "@/components/yopho/YoPhoBrandingFooter";
 import { getScenePack } from "@/lib/yopho/YoPhoScenePack";
 import { getStudioStylePreset } from "@/lib/yopho/YoPhoStudioStylePresets";
 import type { PublishedYoPhoCard } from "@/lib/yopho/YoPhoCardRegistry";
 import { defaultMotionClip } from "@/lib/yopho/YoPhoCardComposition";
+import { DEFAULT_BRANDING_FOOTER, getActiveMagicEffects } from "@/lib/yopho/YoPhoCardDocument";
 import { getPlaylist, getTrack } from "@/lib/playlists/PlaylistEngine";
 import {
   castPlaylistToMonitor,
@@ -71,6 +74,28 @@ export default function InteractiveYoPhoCard({ card }: Props) {
   const stylePreset = getStudioStylePreset(card.styleId);
   const motion = card.motion ?? defaultMotionClip();
   const hasMotion = Boolean(motion.sourceUrl);
+  const magicEffects = useMemo(() => {
+    if (card.documentJson) return getActiveMagicEffects(card.documentJson);
+    return card.magicEffects ?? [];
+  }, [card.documentJson, card.magicEffects]);
+  const branding = useMemo(
+    () =>
+      card.documentJson?.brandingFooter ?? {
+        ...DEFAULT_BRANDING_FOOTER,
+        rarity: card.rarity ?? "STANDARD",
+        editionBadge: card.isCanonical
+          ? "CANONICAL"
+          : card.editionTitle ?? card.momentTag ?? null,
+      },
+    [card.documentJson, card.rarity, card.isCanonical, card.editionTitle, card.momentTag],
+  );
+  const footerPct = Math.min(0.12, Math.max(0.08, branding.heightPct ?? 0.1));
+  const profilePathForQr =
+    card.role === "performer" && card.slug
+      ? `/performers/${card.slug}`
+      : card.role === "fan"
+        ? "/hub/fan"
+        : "/performers";
 
   const [enlarged, setEnlarged] = useState(false);
   const [phase, setPhase] = useState<MotorPhase>("playing");
@@ -238,7 +263,7 @@ export default function InteractiveYoPhoCard({ card }: Props) {
       ? { top: 16 }
       : card.textOverlay.position === "center"
         ? { top: "44%" }
-        : { bottom: 72 };
+        : { bottom: `${Math.round(footerPct * 100) + 8}%` };
 
   const paused = phase === "paused_react";
   const isAbductedScene = card.sceneId === "abducted_by_ufo";
@@ -259,7 +284,7 @@ export default function InteractiveYoPhoCard({ card }: Props) {
         position: "relative",
         width: "100%",
         maxWidth: enlarged ? "min(92vw, 520px)" : 380,
-        aspectRatio: "3 / 4",
+        aspectRatio: "9 / 16",
         margin: "0 auto",
         borderRadius: 16,
         overflow: "hidden",
@@ -271,10 +296,12 @@ export default function InteractiveYoPhoCard({ card }: Props) {
         transition: "transform 0.35s ease, border-color 0.35s ease",
       }}
     >
+      {/* ENVIRONMENT / BACKGROUND layers (z 0–3) */}
       <div
         style={{
           position: "absolute",
           inset: 0,
+          zIndex: 0,
           background: card.customBgUrl
             ? undefined
             : scene.backdropCss === "transparent"
@@ -310,7 +337,7 @@ export default function InteractiveYoPhoCard({ card }: Props) {
         ) : null}
       </div>
 
-      {/* Novelty saucer silhouette for Abducted by a UFO scene */}
+      {/* ENVIRONMENT novelty — Abducted by a UFO scene pack */}
       {isAbductedScene ? (
         <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: 1, pointerEvents: "none" }}>
           <div
@@ -344,7 +371,7 @@ export default function InteractiveYoPhoCard({ card }: Props) {
         </div>
       ) : null}
 
-      {/* Motor subject: motion video hook OR still + ken burns */}
+      {/* PERSON_CUTOUT — motion hook OR still + ken burns */}
       {hasMotion && motion.sourceUrl ? (
         <video
           ref={videoRef}
@@ -357,7 +384,7 @@ export default function InteractiveYoPhoCard({ card }: Props) {
             width: "100%",
             height: "100%",
             objectFit: "cover",
-            zIndex: 2,
+            zIndex: 20,
             filter: paused ? "saturate(1.15) contrast(1.08)" : undefined,
           }}
         />
@@ -372,7 +399,7 @@ export default function InteractiveYoPhoCard({ card }: Props) {
             width: "100%",
             height: "100%",
             objectFit: "cover",
-            zIndex: 2,
+            zIndex: 20,
             animation: paused ? undefined : "yopho-kenburns 7s ease-in-out infinite",
             filter: paused ? "saturate(1.1)" : undefined,
           }}
@@ -384,7 +411,7 @@ export default function InteractiveYoPhoCard({ card }: Props) {
         style={{
           position: "absolute",
           inset: 0,
-          zIndex: 3,
+          zIndex: 25,
           background:
             "linear-gradient(120deg, transparent 25%, rgba(0,229,255,0.2) 45%, rgba(255,45,170,0.22) 60%, transparent 80%)",
           backgroundSize: "220% 220%",
@@ -394,20 +421,22 @@ export default function InteractiveYoPhoCard({ card }: Props) {
         }}
       />
 
+      <YoPhoMagicEffectOverlay effects={magicEffects} paused={paused} style={{ zIndex: 40 }} />
+
       {paused ? (
         <div
           aria-hidden
           style={{
             position: "absolute",
             inset: 0,
-            zIndex: 4,
+            zIndex: 45,
             background: "radial-gradient(ellipse at center, transparent 40%, rgba(5,5,16,0.72) 100%)",
             pointerEvents: "none",
           }}
         />
       ) : null}
 
-      <div style={{ position: "absolute", inset: 0, zIndex: 5, pointerEvents: "none" }}>
+      <div style={{ position: "absolute", inset: 0, zIndex: 48, pointerEvents: "none" }}>
         <YoPhoStudioStyleOverlay kind={stylePreset.overlay} displayName={card.displayName} />
       </div>
 
@@ -525,9 +554,9 @@ export default function InteractiveYoPhoCard({ card }: Props) {
           position: "absolute",
           left: 0,
           right: 0,
-          bottom: 0,
+          bottom: `${Math.round(footerPct * 100)}%`,
           zIndex: 12,
-          padding: "16px 14px 14px",
+          padding: "16px 14px 10px",
           background: "linear-gradient(transparent, rgba(5,5,16,0.92))",
         }}
       >
@@ -550,6 +579,13 @@ export default function InteractiveYoPhoCard({ card }: Props) {
           <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", marginTop: 6 }}>No song attached</div>
         )}
       </div>
+
+      <YoPhoBrandingFooter
+        cardId={card.cardId}
+        profilePath={profilePathForQr}
+        config={branding}
+        heightPct={footerPct}
+      />
     </div>
   );
 
@@ -627,7 +663,7 @@ export default function InteractiveYoPhoCard({ card }: Props) {
         ) : null}
         {!hasMotion ? (
           <div style={{ textAlign: "center", fontSize: 10, color: "rgba(255,255,255,0.35)" }}>
-            No motion clip — still + ken-burns. Upload a 2–7s hook in the editor.
+            No motion clip — still + ken-burns. Upload a motion hook in the editor.
           </div>
         ) : null}
 

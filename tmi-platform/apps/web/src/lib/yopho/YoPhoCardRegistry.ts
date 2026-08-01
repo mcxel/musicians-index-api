@@ -12,6 +12,14 @@ import {
 } from "./YoPhoCardComposition";
 import type { YoPhoStudioStyleId } from "./YoPhoStudioStylePresets";
 import type { YoPhoSceneId } from "./YoPhoScenePack";
+import type { YoPhoMagicEffectId } from "./YoPhoMagicEffects";
+import {
+  compositionToDocument,
+  markDocumentCanonical,
+  type YoPhoCardDocument,
+  type YoPhoCardKind,
+  type YoPhoRarityLabel,
+} from "./YoPhoCardDocument";
 
 export type YoPhoCardRole = "fan" | "performer";
 
@@ -43,8 +51,17 @@ export interface PublishedYoPhoCard {
   /** Display-only tag e.g. "This month" / "Today" */
   momentTag?: string | null;
   nowPlaying?: YoPhoNowPlaying | null;
-  /** Motor-card motion hook (2–7s loop from optional ≤60s source) */
+  /** Motor-card motion hook (loop from optional ≤60s source) */
   motion?: YoPhoMotionClip | null;
+  /** Magic effect presets active on this card */
+  magicEffects?: YoPhoMagicEffectId[];
+  /** Canonical scene document — source of truth (PNG/WebM are non-interactive teasers) */
+  documentJson?: YoPhoCardDocument | null;
+  kind?: YoPhoCardKind;
+  isCanonical?: boolean;
+  editionTitle?: string | null;
+  /** Display-only — STANDARD | RARE. No ownership ledger. */
+  rarity?: YoPhoRarityLabel;
   ownerKey: string;
   createdAt: string;
   updatedAt: string;
@@ -79,11 +96,47 @@ export function compositionToDraft(
     momentTag?: string | null;
     nowPlaying?: YoPhoNowPlaying | null;
     motion?: YoPhoMotionClip | null;
+    isCanonical?: boolean;
+    editionTitle?: string | null;
+    kind?: YoPhoCardKind;
+    rarity?: YoPhoRarityLabel;
+    quote?: string | null;
   },
 ): PublishedYoPhoCard {
   const now = new Date().toISOString();
+  const cardId = meta.cardId ?? genCardId();
+  const isCanonical = meta.isCanonical ?? Boolean(comp.isCanonical);
+  const rarity = meta.rarity ?? comp.rarity ?? "STANDARD";
+  let documentJson = compositionToDocument(
+    {
+      ...comp,
+      motion: meta.motion ?? comp.motion,
+      playlistId: meta.playlistId ?? comp.playlistId,
+      rarity,
+    },
+    {
+      id: cardId,
+      ownerKey: meta.ownerKey,
+      role: meta.role,
+      displayName: meta.displayName,
+      slug: meta.slug,
+      subjectUrl: meta.subjectUrl,
+      title: meta.editionTitle ?? comp.editionTitle ?? undefined,
+      kind: meta.kind ?? comp.kind,
+      isCanonical,
+      rarity,
+      moodTitle: meta.moodTitle,
+      momentTag: meta.momentTag,
+      quote: meta.quote,
+      audio: meta.nowPlaying ?? null,
+      createdAt: now,
+    },
+  );
+  if (isCanonical) {
+    documentJson = markDocumentCanonical(documentJson, meta.ownerKey);
+  }
   return {
-    cardId: meta.cardId ?? genCardId(),
+    cardId,
     role: meta.role,
     displayName: meta.displayName,
     slug: meta.slug,
@@ -98,6 +151,12 @@ export function compositionToDraft(
     momentTag: meta.momentTag ?? null,
     nowPlaying: meta.nowPlaying ?? null,
     motion: meta.motion ?? comp.motion ?? defaultMotionClip(),
+    magicEffects: comp.magicEffects ?? [],
+    documentJson,
+    kind: documentJson.kind,
+    isCanonical: documentJson.isCanonical,
+    editionTitle: documentJson.title,
+    rarity: documentJson.rarity,
     ownerKey: meta.ownerKey,
     createdAt: now,
     updatedAt: now,
@@ -191,6 +250,16 @@ export function draftCompositionFromPublished(card: PublishedYoPhoCard): YoPhoCa
     customBgUrl: card.customBgUrl,
     textOverlay: card.textOverlay,
     collageUrls: card.collageUrls,
+    cardId: card.cardId,
+    playlistId: card.playlistId ?? null,
+    motion: card.motion ?? defaultMotionClip(),
+    magicEffects: card.magicEffects ?? [],
+    isCanonical: card.isCanonical ?? false,
+    editionTitle: card.editionTitle ?? null,
+    kind: card.kind ?? base.kind,
+    rarity: card.rarity ?? card.documentJson?.rarity ?? "STANDARD",
+    brandingFooter: card.documentJson?.brandingFooter ?? base.brandingFooter,
+    documentJson: card.documentJson ?? null,
     updatedAt: card.updatedAt,
   };
 }

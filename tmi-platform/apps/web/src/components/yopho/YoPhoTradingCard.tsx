@@ -47,6 +47,17 @@ import {
   publishYoPhoCard,
   type YoPhoNowPlaying,
 } from "@/lib/yopho/YoPhoCardRegistry";
+import { YOPHO_MAGIC_EFFECTS } from "@/lib/yopho/YoPhoMagicEffects";
+import {
+  duplicateAsEdition,
+  roleModuleHints,
+  toggleMagicEffect,
+  type YoPhoRarityLabel,
+} from "@/lib/yopho/YoPhoCardDocument";
+import YoPhoMagicEffectOverlay from "@/components/yopho/YoPhoMagicEffectOverlay";
+import YoPhoBrandingFooter from "@/components/yopho/YoPhoBrandingFooter";
+
+type EditorTab = "identity" | "scene" | "effects" | "music" | "motion" | "share";
 
 export type YoPhoCardRole = "fan" | "performer";
 
@@ -147,7 +158,7 @@ export default function YoPhoTradingCard({
   const [comp, setComp] = useState<YoPhoCardComposition>(() =>
     loadCardComposition(role, userKey),
   );
-  const [editorTab, setEditorTab] = useState<"style" | "scene" | "custom" | "export">("style");
+  const [editorTab, setEditorTab] = useState<EditorTab>("identity");
   const [bgStatus, setBgStatus] = useState<string | null>(null);
   const [exportStatus, setExportStatus] = useState<string | null>(null);
   const [exportBusy, setExportBusy] = useState(false);
@@ -163,10 +174,15 @@ export default function YoPhoTradingCard({
   const [songArtist, setSongArtist] = useState("");
   const [songAudioUrl, setSongAudioUrl] = useState("");
   const [playlistIdInput, setPlaylistIdInput] = useState(comp.playlistId ?? "");
+  const [editionTitleInput, setEditionTitleInput] = useState(comp.editionTitle ?? "");
+  const [fanQuote, setFanQuote] = useState("");
+  const [fanFavorite, setFanFavorite] = useState("");
   const [publishStatus, setPublishStatus] = useState<string | null>(null);
   const [publishedPath, setPublishedPath] = useState<string | null>(
     comp.cardId ? interactiveCardPath(comp.cardId) : null,
   );
+  const magicEffects = comp.magicEffects ?? [];
+  const footerPct = comp.brandingFooter?.heightPct ?? 0.1;
 
   const cardRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -321,7 +337,7 @@ export default function YoPhoTradingCard({
     setExportStatus("Recording motion…");
     const res = await exportYoPhoMotion(cardRef.current, {
       displayName: resolvedName,
-      durationMs: 4200,
+      durationMs: Math.min(20_000, Math.max(2000, motion.durationSec * 1000)),
     });
     if (res.ok) {
       setExportStatus(
@@ -384,30 +400,89 @@ export default function YoPhoTradingCard({
     setTimeout(() => setMotionStatus(null), 3500);
   }
 
-  async function publishInteractiveCard(): Promise<string | null> {
+  async function publishInteractiveCard(opts?: {
+    asEdition?: boolean;
+    forceCanonical?: boolean;
+  }): Promise<string | null> {
     setPublishStatus("Publishing interactive YoPho card…");
-    const draft = compositionToDraft(
-      { ...comp, playlistId: playlistIdInput.trim() || null, motion },
-      {
-        role,
-        displayName: resolvedName,
-        slug: resolvedSlug,
-        subjectUrl,
-        ownerKey: userKey,
-        playlistId: playlistIdInput.trim() || null,
-        cardId: comp.cardId ?? undefined,
-        moodTitle: moodTitle.trim() || null,
-        momentTag: momentTag.trim() || null,
-        nowPlaying,
-        motion,
-      },
-    );
+    const asEdition = Boolean(opts?.asEdition);
+    const forceCanonical = Boolean(opts?.forceCanonical) || (!asEdition && Boolean(comp.isCanonical));
+    let working = {
+      ...comp,
+      playlistId: playlistIdInput.trim() || null,
+      motion,
+      editionTitle: editionTitleInput.trim() || comp.editionTitle || null,
+      magicEffects,
+    };
+    let cardId = asEdition ? undefined : (comp.cardId ?? undefined);
+
+    const draft = compositionToDraft(working, {
+      role,
+      displayName: resolvedName,
+      slug: resolvedSlug,
+      subjectUrl,
+      ownerKey: userKey,
+      playlistId: playlistIdInput.trim() || null,
+      cardId,
+      moodTitle: moodTitle.trim() || (role === "fan" ? fanQuote.trim() : "") || null,
+      momentTag:
+        momentTag.trim() ||
+        (role === "fan" && fanFavorite.trim() ? fanFavorite.trim() : "") ||
+        null,
+      nowPlaying,
+      motion,
+      isCanonical: forceCanonical && !asEdition,
+      rarity: working.rarity ?? "STANDARD",
+      quote: role === "fan" ? fanQuote.trim() || null : null,
+      editionTitle:
+        editionTitleInput.trim() ||
+        (asEdition ? `${resolvedName} · Edition` : working.editionTitle) ||
+        null,
+      kind: asEdition
+        ? "PROMOTIONAL_EDITION"
+        : forceCanonical
+          ? "CANONICAL_IDENTITY"
+          : working.kind ?? "MEMORY_EDITION",
+    });
+
+    if (asEdition && draft.documentJson) {
+      const edition = duplicateAsEdition(
+        draft.documentJson,
+        editionTitleInput.trim() || `${resolvedName} · Edition`,
+      );
+      draft.cardId = edition.id;
+      draft.documentJson = edition;
+      draft.isCanonical = false;
+      draft.kind = "PROMOTIONAL_EDITION";
+      draft.editionTitle = edition.title;
+    }
+
     const res = await publishYoPhoCard(draft);
     if (!res.ok) {
       setPublishStatus(res.error ?? "Publish failed");
       return null;
     }
-    patch({ cardId: res.cardId, playlistId: playlistIdInput.trim() || null });
+    patch({
+      cardId: res.cardId,
+      playlistId: playlistIdInput.trim() || null,
+      documentJson: draft.documentJson ?? null,
+      isCanonical: Boolean(draft.isCanonical),
+      kind: draft.kind,
+      editionTitle: draft.editionTitle ?? null,
+      rarity: draft.rarity ?? comp.rarity ?? "STANDARD",
+      magicEffects,
+      brandingFooter: {
+        ...(comp.brandingFooter ?? {}),
+        enabled: true,
+        heightPct: footerPct,
+        showQr: true,
+        qrTarget: "card",
+        label: "TMI × YoPho",
+        rarity: draft.rarity ?? "STANDARD",
+        showEditionBadge: true,
+        editionBadge: draft.isCanonical ? "CANONICAL" : draft.editionTitle ?? null,
+      },
+    });
     const path = interactiveCardPath(res.cardId);
     setPublishedPath(path);
     setPublishStatus(
@@ -519,7 +594,14 @@ export default function YoPhoTradingCard({
       ? { top: 14, left: 12, right: 12 }
       : comp.textOverlay.position === "center"
         ? { top: "42%", left: 12, right: 12 }
-        : { bottom: 14, left: 12, right: 12 };
+        : { bottom: `${footerPct * 100 + 4}%`, left: 12, right: 12 };
+
+  const profilePathForQr =
+    role === "performer" && resolvedSlug
+      ? `/performers/${resolvedSlug}`
+      : role === "fan"
+        ? "/hub/fan"
+        : "/performers";
 
   const collageSlots =
     scene.collageLayout === "none"
@@ -596,6 +678,7 @@ export default function YoPhoTradingCard({
                 pointerEvents: "none",
               }}
             />
+            <YoPhoMagicEffectOverlay effects={magicEffects} />
             <div
               aria-hidden
               style={{
@@ -859,6 +942,28 @@ export default function YoPhoTradingCard({
                 <CtaChip href="/subscribe" color="#FFD700" label="💎 UPGRADE" />
               </div>
             ) : null}
+
+            {/* Clearance so name/CTAs sit above protected branding band */}
+            <div style={{ minHeight: 44 }} aria-hidden />
+
+            <YoPhoBrandingFooter
+              cardId={comp.cardId}
+              profilePath={profilePathForQr}
+              config={{
+                ...comp.brandingFooter,
+                rarity: comp.rarity ?? comp.brandingFooter?.rarity ?? "STANDARD",
+                editionBadge: comp.isCanonical
+                  ? "CANONICAL"
+                  : editionTitleInput.trim() ||
+                    comp.editionTitle ||
+                    momentTag ||
+                    comp.brandingFooter?.editionBadge ||
+                    null,
+                showEditionBadge: true,
+              }}
+              showSafeGuide={showEditor}
+              heightPct={footerPct}
+            />
           </div>
         </DrawerBezelChrome>
       </div>
@@ -876,14 +981,33 @@ export default function YoPhoTradingCard({
         >
           <div style={{ marginBottom: 10 }}>
             <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: "0.16em", color: "#00E5FF" }}>
-              YOPHO CARD · WHO I AM RIGHT NOW
+              YOPHO · LIVING CARD EDITOR
             </div>
             <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>
-              Snapshot of this moment — not a permanent profile photo
+              Layered collectible · who I am right now — not Photoshop
+            </div>
+            <div
+              style={{
+                fontSize: 10,
+                color: role === "performer" ? "#FFD700" : "#00E5FF",
+                marginTop: 6,
+                lineHeight: 1.45,
+              }}
+            >
+              {roleModuleHints(role)}
             </div>
           </div>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
-            {(["style", "scene", "custom", "export"] as const).map((tab) => (
+            {(
+              [
+                ["identity", "IDENTITY"],
+                ["scene", "SCENE"],
+                ["effects", "EFFECTS"],
+                ["music", "MUSIC"],
+                ["motion", "MOTION"],
+                ["share", "SHARE"],
+              ] as const
+            ).map(([tab, label]) => (
               <button
                 key={tab}
                 type="button"
@@ -893,141 +1017,13 @@ export default function YoPhoTradingCard({
                   background: editorTab === tab ? `${accent}22` : "transparent",
                 }}
               >
-                {tab === "style"
-                  ? "STYLES"
-                  : tab === "scene"
-                    ? "SCENES"
-                    : tab === "custom"
-                      ? "MOMENT · SONG · MOTION"
-                      : "SHARE / EXPORT"}
+                {label}
               </button>
             ))}
           </div>
 
-          {editorTab === "style" ? (
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, maxHeight: 160, overflowY: "auto" }}>
-              {YOPHO_STUDIO_STYLE_PRESETS.map((p) => (
-                <button
-                  key={p.id}
-                  type="button"
-                  title={p.tagline}
-                  onClick={() => patch({ styleId: p.id as YoPhoStudioStyleId })}
-                  style={{
-                    ...chipStyle(comp.styleId === p.id ? "#FF2DAA" : "rgba(255,255,255,0.45)"),
-                    background: comp.styleId === p.id ? "rgba(255,45,170,0.18)" : "transparent",
-                  }}
-                >
-                  {p.label}
-                </button>
-              ))}
-            </div>
-          ) : null}
-
-          {editorTab === "scene" ? (
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, maxHeight: 160, overflowY: "auto" }}>
-              {YOPHO_SCENE_PACKS.map((s) => (
-                <button
-                  key={s.id}
-                  type="button"
-                  title={s.tagline}
-                  onClick={() => {
-                    const next: Partial<YoPhoCardComposition> = { sceneId: s.id as YoPhoSceneId };
-                    if (s.defaultSignText && !comp.textOverlay.text) {
-                      next.textOverlay = { ...comp.textOverlay, text: s.defaultSignText };
-                    }
-                    // Selecting a scene clears custom BG override intent? Keep custom if set — user clears manually
-                    patch(next);
-                  }}
-                  style={{
-                    ...chipStyle(comp.sceneId === s.id ? "#00E5FF" : "rgba(255,255,255,0.45)"),
-                    background: comp.sceneId === s.id ? "rgba(0,229,255,0.15)" : "transparent",
-                  }}
-                >
-                  {s.label}
-                </button>
-              ))}
-              {comp.customBgUrl ? (
-                <div style={{ width: "100%", fontSize: 10, color: "#FFD700", marginTop: 4 }}>
-                  Custom background is active — scene kit sits behind / cleared via CUSTOM tab
-                </div>
-              ) : null}
-            </div>
-          ) : null}
-
-          {editorTab === "custom" ? (
+          {editorTab === "identity" ? (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              <div>
-                <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.14em", color: "#00FF88", marginBottom: 6 }}>
-                  MOTOR CLIP · LOOP DURATION
-                </div>
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
-                  {YOPHO_MOTION_DURATIONS.map((sec) => (
-                    <button
-                      key={sec}
-                      type="button"
-                      onClick={() =>
-                        patch({
-                          motion: { ...motion, durationSec: sec as YoPhoMotionDurationSec },
-                        })
-                      }
-                      style={chipStyle(
-                        motion.durationSec === sec ? "#00FF88" : "rgba(255,255,255,0.4)",
-                      )}
-                    >
-                      {sec}s
-                    </button>
-                  ))}
-                </div>
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
-                  <button type="button" onClick={() => motionFileRef.current?.click()} style={chipStyle("#00E5FF")}>
-                    UPLOAD MOTION
-                  </button>
-                  <input
-                    ref={motionFileRef}
-                    type="file"
-                    accept="video/mp4,video/webm,video/*"
-                    hidden
-                    onChange={onMotionFile}
-                  />
-                  {motion.sourceUrl ? (
-                    <button
-                      type="button"
-                      onClick={() => patch({ motion: defaultMotionClip() })}
-                      style={chipStyle("#FF2DAA")}
-                    >
-                      CLEAR MOTION
-                    </button>
-                  ) : null}
-                  <label style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", display: "flex", gap: 4, alignItems: "center" }}>
-                    Hook start (s)
-                    <input
-                      type="number"
-                      min={0}
-                      max={YOPHO_MOTION_SOURCE_MAX_SEC}
-                      step={0.1}
-                      value={motion.hookStartSec}
-                      onChange={(e) =>
-                        patch({
-                          motion: {
-                            ...motion,
-                            hookStartSec: Math.max(0, Number(e.target.value) || 0),
-                          },
-                        })
-                      }
-                      style={{ width: 64, ...inputStyle, padding: "4px 6px" }}
-                    />
-                  </label>
-                </div>
-                <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", marginTop: 6, lineHeight: 1.4 }}>
-                  Upload MP4/WebM (source up to ~{YOPHO_MOTION_SOURCE_MAX_SEC}s). Card loops the selected{" "}
-                  {motion.durationSec}s hook Shorts-style. In-browser camera record not wired yet — upload only.
-                  {motion.sourceUrl ? " · Clip attached." : ""}
-                </div>
-                {motionStatus ? (
-                  <div style={{ fontSize: 10, color: "#00FF88", marginTop: 4, fontWeight: 700 }}>{motionStatus}</div>
-                ) : null}
-              </div>
-
               <div>
                 <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.14em", color: "#FFD700", marginBottom: 6 }}>
                   MOOD / MOMENT
@@ -1053,37 +1049,132 @@ export default function YoPhoTradingCard({
               </div>
 
               <div>
-                <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.14em", color: "#FF2DAA", marginBottom: 6 }}>
-                  NOW PLAYING · MY SONG RIGHT NOW
+                <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.14em", color: "#00E5FF", marginBottom: 6 }}>
+                  CARD TITLE · CANONICAL / EDITION
                 </div>
                 <input
-                  value={songTitle}
-                  onChange={(e) => setSongTitle(e.target.value.slice(0, 80))}
-                  placeholder="Song title"
-                  style={{ ...inputStyle, marginBottom: 6 }}
+                  value={editionTitleInput}
+                  onChange={(e) => setEditionTitleInput(e.target.value.slice(0, 72))}
+                  placeholder="Edition title (optional)"
+                  style={{ ...inputStyle, marginBottom: 8 }}
                 />
-                <input
-                  value={songArtist}
-                  onChange={(e) => setSongArtist(e.target.value.slice(0, 80))}
-                  placeholder="Artist (optional)"
-                  style={{ ...inputStyle, marginBottom: 6 }}
-                />
-                <input
-                  value={songAudioUrl}
-                  onChange={(e) => setSongAudioUrl(e.target.value.trim())}
-                  placeholder="Audio URL (https://… mp3/stream) — required to hear on card"
-                  style={{ ...inputStyle, marginBottom: 6 }}
-                />
-                <input
-                  value={playlistIdInput}
-                  onChange={(e) => setPlaylistIdInput(e.target.value.trim())}
-                  placeholder="Optional playlistId for Next Track"
-                  style={inputStyle}
-                />
-                <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", marginTop: 6, lineHeight: 1.4 }}>
-                  Primary fantasy: the song the world hears with who you are today. Loops on the interactive card.
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      patch({
+                        isCanonical: true,
+                        kind: "CANONICAL_IDENTITY",
+                        editionTitle: editionTitleInput.trim() || `${resolvedName} · Identity`,
+                      })
+                    }
+                    style={chipStyle(comp.isCanonical ? "#FFD700" : "rgba(255,255,255,0.4)")}
+                  >
+                    {comp.isCanonical ? "★ CANONICAL" : "SET CANONICAL"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      patch({
+                        isCanonical: false,
+                        kind: "MEMORY_EDITION",
+                        editionTitle: editionTitleInput.trim() || `${resolvedName} · Memory`,
+                      })
+                    }
+                    style={chipStyle(
+                      !comp.isCanonical && comp.kind === "MEMORY_EDITION"
+                        ? "#00E5FF"
+                        : "rgba(255,255,255,0.4)",
+                    )}
+                  >
+                    MEMORY EDITION
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      patch({
+                        isCanonical: false,
+                        kind: "PROMOTIONAL_EDITION",
+                        editionTitle: editionTitleInput.trim() || `${resolvedName} · Edition`,
+                      })
+                    }
+                    style={chipStyle(
+                      !comp.isCanonical && comp.kind === "PROMOTIONAL_EDITION"
+                        ? "#FF2DAA"
+                        : "rgba(255,255,255,0.4)",
+                    )}
+                  >
+                    PROMO EDITION
+                  </button>
                 </div>
               </div>
+
+              <div>
+                <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.14em", color: "#FF2DAA", marginBottom: 6 }}>
+                  RARITY LABEL · DISPLAY ONLY
+                </div>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  {(["STANDARD", "RARE"] as YoPhoRarityLabel[]).map((r) => (
+                    <button
+                      key={r}
+                      type="button"
+                      onClick={() =>
+                        patch({
+                          rarity: r,
+                          brandingFooter: {
+                            enabled: true,
+                            heightPct: footerPct,
+                            showQr: true,
+                            qrTarget: "card",
+                            label: "TMI × YoPho",
+                            ...(comp.brandingFooter ?? {}),
+                            rarity: r,
+                            showEditionBadge: true,
+                          },
+                        })
+                      }
+                      style={chipStyle(
+                        (comp.rarity ?? "STANDARD") === r ? "#FF2DAA" : "rgba(255,255,255,0.4)",
+                      )}
+                    >
+                      {r}
+                    </button>
+                  ))}
+                </div>
+                <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", marginTop: 6 }}>
+                  Footer badge only — no ownership ledger, trading, or price claims.
+                </div>
+              </div>
+
+              {role === "fan" ? (
+                <div>
+                  <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.14em", color: "#AA2DFF", marginBottom: 6 }}>
+                    FAN MODULES · QUOTE · FAVORITES
+                  </div>
+                  <input
+                    value={fanQuote}
+                    onChange={(e) => setFanQuote(e.target.value.slice(0, 120))}
+                    placeholder="Quote / caption (fan identity)"
+                    style={{ ...inputStyle, marginBottom: 6 }}
+                  />
+                  <input
+                    value={fanFavorite}
+                    onChange={(e) => setFanFavorite(e.target.value.slice(0, 80))}
+                    placeholder="Favorite artist or vibe right now"
+                    style={inputStyle}
+                  />
+                </div>
+              ) : (
+                <div>
+                  <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.14em", color: "#FFD700", marginBottom: 6 }}>
+                    PERFORMER · REAL IDENTITY
+                  </div>
+                  <div style={{ fontSize: 10, color: "rgba(255,255,255,0.45)", lineHeight: 1.45 }}>
+                    Use your real photo/video. Tip, follow, fan club, booking, and live join appear on the card
+                    when live — no avatar ownership controls (Rule 26).
+                  </div>
+                </div>
+              )}
 
               <div>
                 <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.14em", color: "#00E5FF", marginBottom: 6 }}>
@@ -1105,15 +1196,7 @@ export default function YoPhoTradingCard({
                     value={bgUrlInput}
                     onChange={(e) => setBgUrlInput(e.target.value)}
                     placeholder="https://… image URL"
-                    style={{
-                      flex: 1,
-                      background: "#0a0a18",
-                      border: "1px solid rgba(255,255,255,0.15)",
-                      borderRadius: 8,
-                      color: "#fff",
-                      fontSize: 11,
-                      padding: "8px 10px",
-                    }}
+                    style={{ flex: 1, ...inputStyle }}
                   />
                   <button type="button" onClick={applyBgUrl} style={chipStyle("#00E5FF")}>
                     APPLY URL
@@ -1131,17 +1214,8 @@ export default function YoPhoTradingCard({
                 <input
                   value={comp.textOverlay.text}
                   onChange={(e) => patchText({ text: e.target.value.slice(0, 48) })}
-                  placeholder='e.g. 2026 · Tour name · slogan'
-                  style={{
-                    width: "100%",
-                    background: "#0a0a18",
-                    border: "1px solid rgba(255,255,255,0.15)",
-                    borderRadius: 8,
-                    color: "#fff",
-                    fontSize: 12,
-                    padding: "8px 10px",
-                    marginBottom: 8,
-                  }}
+                  placeholder="e.g. 2026 · Tour name · slogan"
+                  style={{ ...inputStyle, marginBottom: 8 }}
                 />
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
                   {(["top", "center", "bottom"] as TextOverlayPosition[]).map((pos) => (
@@ -1149,12 +1223,22 @@ export default function YoPhoTradingCard({
                       key={pos}
                       type="button"
                       onClick={() => patchText({ position: pos })}
-                      style={chipStyle(comp.textOverlay.position === pos ? "#FFD700" : "rgba(255,255,255,0.4)")}
+                      style={chipStyle(
+                        comp.textOverlay.position === pos ? "#FFD700" : "rgba(255,255,255,0.4)",
+                      )}
                     >
                       {pos.toUpperCase()}
                     </button>
                   ))}
-                  <label style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", display: "flex", alignItems: "center", gap: 4 }}>
+                  <label
+                    style={{
+                      fontSize: 10,
+                      color: "rgba(255,255,255,0.5)",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 4,
+                    }}
+                  >
                     Size
                     <input
                       type="range"
@@ -1197,11 +1281,257 @@ export default function YoPhoTradingCard({
             </div>
           ) : null}
 
-          {editorTab === "export" ? (
+          {editorTab === "scene" ? (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, maxHeight: 180, overflowY: "auto" }}>
+              {YOPHO_SCENE_PACKS.map((s) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  title={s.tagline}
+                  onClick={() => {
+                    const next: Partial<YoPhoCardComposition> = { sceneId: s.id as YoPhoSceneId };
+                    if (s.defaultSignText && !comp.textOverlay.text) {
+                      next.textOverlay = { ...comp.textOverlay, text: s.defaultSignText };
+                    }
+                    patch(next);
+                  }}
+                  style={{
+                    ...chipStyle(comp.sceneId === s.id ? "#00E5FF" : "rgba(255,255,255,0.45)"),
+                    background: comp.sceneId === s.id ? "rgba(0,229,255,0.15)" : "transparent",
+                  }}
+                >
+                  {s.label}
+                </button>
+              ))}
+              {comp.customBgUrl ? (
+                <div style={{ width: "100%", fontSize: 10, color: "#FFD700", marginTop: 4 }}>
+                  Custom background is active — clear it under Identity to show scene kit fully
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
+          {editorTab === "effects" ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.14em", color: "#FF2DAA" }}>
+                STUDIO STYLES
+              </div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, maxHeight: 120, overflowY: "auto" }}>
+                {YOPHO_STUDIO_STYLE_PRESETS.map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    title={p.tagline}
+                    onClick={() => patch({ styleId: p.id as YoPhoStudioStyleId })}
+                    style={{
+                      ...chipStyle(comp.styleId === p.id ? "#FF2DAA" : "rgba(255,255,255,0.45)"),
+                      background: comp.styleId === p.id ? "rgba(255,45,170,0.18)" : "transparent",
+                    }}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+              <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.14em", color: "#00E5FF" }}>
+                UNDERLAY / FOREGROUND · INSTANT PREVIEW
+              </div>
+              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", lineHeight: 1.4 }}>
+                Rain, fog, neon, smoke — CSS overlays. No AI wait.
+              </div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                {YOPHO_MAGIC_EFFECTS.map((fx) => {
+                  const on = magicEffects.includes(fx.id);
+                  return (
+                    <button
+                      key={fx.id}
+                      type="button"
+                      title={`${fx.slot} · ${fx.tagline}`}
+                      onClick={() =>
+                        patch({ magicEffects: toggleMagicEffect(magicEffects, fx.id) })
+                      }
+                      style={{
+                        ...chipStyle(on ? fx.accent : "rgba(255,255,255,0.4)"),
+                        background: on ? `${fx.accent}22` : "transparent",
+                      }}
+                    >
+                      {on ? "✓ " : ""}
+                      {fx.label}
+                      <span style={{ opacity: 0.55, marginLeft: 4 }}>
+                        {fx.slot === "underlay" ? "↓" : "↑"}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", lineHeight: 1.4 }}>
+                Protected footer (TMI × YoPho + QR) — dashed safe guide on preview. Not deletable.
+              </div>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+                <span style={{ fontSize: 9, fontWeight: 900, color: "#FFD700", letterSpacing: "0.12em" }}>
+                  FOOTER HEIGHT
+                </span>
+                {[0.08, 0.1, 0.12].map((pct) => (
+                  <button
+                    key={pct}
+                    type="button"
+                    onClick={() =>
+                      patch({
+                        brandingFooter: {
+                          enabled: true,
+                          showQr: true,
+                          qrTarget: "card" as const,
+                          label: "TMI × YoPho",
+                          ...(comp.brandingFooter ?? {}),
+                          heightPct: pct,
+                        },
+                        canvas: {
+                          aspectRatio: "9:16" as const,
+                          width: 360,
+                          height: 640,
+                          ...(comp.canvas ?? {}),
+                          safeAreaBottomPct: pct,
+                        },
+                      })
+                    }
+                    style={chipStyle(
+                      Math.abs((comp.brandingFooter?.heightPct ?? 0.1) - pct) < 0.001
+                        ? "#FFD700"
+                        : "rgba(255,255,255,0.4)",
+                    )}
+                  >
+                    {Math.round(pct * 100)}%
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          {editorTab === "music" ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.14em", color: "#FF2DAA" }}>
+                {role === "performer" ? "FEATURED SONG · RIGHT NOW" : "NOW PLAYING · MY SONG RIGHT NOW"}
+              </div>
+              <input
+                value={songTitle}
+                onChange={(e) => setSongTitle(e.target.value.slice(0, 80))}
+                placeholder={role === "performer" ? "Featured song title" : "Song title"}
+                style={{ ...inputStyle, marginBottom: 0 }}
+              />
+              <input
+                value={songArtist}
+                onChange={(e) => setSongArtist(e.target.value.slice(0, 80))}
+                placeholder="Artist (optional)"
+                style={inputStyle}
+              />
+              <input
+                value={songAudioUrl}
+                onChange={(e) => setSongAudioUrl(e.target.value.trim())}
+                placeholder="Audio URL (https://… mp3/stream) — required to hear on card"
+                style={inputStyle}
+              />
+              <input
+                value={playlistIdInput}
+                onChange={(e) => setPlaylistIdInput(e.target.value.trim())}
+                placeholder={
+                  role === "fan"
+                    ? "Optional playlistId (fan playlist module)"
+                    : "Optional playlistId for Next Track"
+                }
+                style={inputStyle}
+              />
+              <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", lineHeight: 1.4 }}>
+                Song loops with the interactive card. Light pulse only — no FFT particle farm this pass.
+              </div>
+            </div>
+          ) : null}
+
+          {editorTab === "motion" ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.14em", color: "#00FF88" }}>
+                MOTOR CLIP · LOOP DURATION
+              </div>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                {YOPHO_MOTION_DURATIONS.map((sec) => (
+                  <button
+                    key={sec}
+                    type="button"
+                    onClick={() =>
+                      patch({
+                        motion: { ...motion, durationSec: sec as YoPhoMotionDurationSec },
+                      })
+                    }
+                    style={chipStyle(
+                      motion.durationSec === sec ? "#00FF88" : "rgba(255,255,255,0.4)",
+                    )}
+                  >
+                    {sec}s
+                  </button>
+                ))}
+              </div>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+                <button type="button" onClick={() => motionFileRef.current?.click()} style={chipStyle("#00E5FF")}>
+                  UPLOAD MOTION
+                </button>
+                <input
+                  ref={motionFileRef}
+                  type="file"
+                  accept="video/mp4,video/webm,video/*"
+                  hidden
+                  onChange={onMotionFile}
+                />
+                {motion.sourceUrl ? (
+                  <button
+                    type="button"
+                    onClick={() => patch({ motion: defaultMotionClip() })}
+                    style={chipStyle("#FF2DAA")}
+                  >
+                    CLEAR MOTION
+                  </button>
+                ) : null}
+                <label
+                  style={{
+                    fontSize: 10,
+                    color: "rgba(255,255,255,0.5)",
+                    display: "flex",
+                    gap: 4,
+                    alignItems: "center",
+                  }}
+                >
+                  Hook start (s)
+                  <input
+                    type="number"
+                    min={0}
+                    max={YOPHO_MOTION_SOURCE_MAX_SEC}
+                    step={0.1}
+                    value={motion.hookStartSec}
+                    onChange={(e) =>
+                      patch({
+                        motion: {
+                          ...motion,
+                          hookStartSec: Math.max(0, Number(e.target.value) || 0),
+                        },
+                      })
+                    }
+                    style={{ width: 64, ...inputStyle, padding: "4px 6px" }}
+                  />
+                </label>
+              </div>
+              <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", lineHeight: 1.4 }}>
+                Upload MP4/WebM (source up to ~{YOPHO_MOTION_SOURCE_MAX_SEC}s). Card loops the selected{" "}
+                {motion.durationSec}s hook. Still + ken-burns if no clip.
+                {motion.sourceUrl ? " · Clip attached." : ""}
+              </div>
+              {motionStatus ? (
+                <div style={{ fontSize: 10, color: "#00FF88", fontWeight: 700 }}>{motionStatus}</div>
+              ) : null}
+            </div>
+          ) : null}
+
+          {editorTab === "share" ? (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               <div style={{ fontSize: 11, color: "rgba(255,255,255,0.55)", lineHeight: 1.45 }}>
                 <strong style={{ color: "#00E5FF" }}>Interactive YoPho card URL</strong> is the real share —
-                tap enlarge, {motion.durationSec}s motor loop, pause reaction, song. Flat video cannot do that in iMessage/IG.
+                layered scene, {motion.durationSec}s motor loop, pause reaction, song. PNG/WebM are teasers only.
               </div>
               <button
                 type="button"
@@ -1213,18 +1543,30 @@ export default function YoPhoTradingCard({
               <button type="button" onClick={() => void publishInteractiveCard()} style={chipStyle("#FFD700")}>
                 PUBLISH / REFRESH CARD URL
               </button>
-              {publishedPath ? (
-                <a
-                  href={publishedPath}
-                  style={{ fontSize: 11, color: "#00FF88", fontWeight: 700 }}
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                <button
+                  type="button"
+                  onClick={() => void publishInteractiveCard({ forceCanonical: true })}
+                  style={chipStyle("#FFD700")}
                 >
+                  PUBLISH AS CANONICAL
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void publishInteractiveCard({ asEdition: true })}
+                  style={chipStyle("#00E5FF")}
+                >
+                  DUPLICATE AS EDITION
+                </button>
+              </div>
+              {publishedPath ? (
+                <a href={publishedPath} style={{ fontSize: 11, color: "#00FF88", fontWeight: 700 }}>
                   Open {publishedPath} →
                 </a>
               ) : null}
               {publishStatus ? (
                 <div style={{ fontSize: 10, color: accent, fontWeight: 700 }}>{publishStatus}</div>
               ) : null}
-
               <div
                 style={{
                   borderTop: "1px solid rgba(255,255,255,0.08)",
@@ -1234,7 +1576,7 @@ export default function YoPhoTradingCard({
                   lineHeight: 1.45,
                 }}
               >
-                Optional teasers (not interactive) — for platforms that only accept video/image:
+                Optional teasers (not interactive) — for platforms that only accept image/video:
               </div>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                 <button
@@ -1259,6 +1601,7 @@ export default function YoPhoTradingCard({
               ) : null}
             </div>
           ) : null}
+
         </div>
       ) : null}
 
