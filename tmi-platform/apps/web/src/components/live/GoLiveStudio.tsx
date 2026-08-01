@@ -14,6 +14,7 @@ import {
   subscribeStage,
   getStageSnapshot,
 } from '@/lib/live/StageLifecycleEngine';
+import PerformerCurtainControlPanel from '@/components/performer/PerformerCurtainControlPanel';
 
 type BroadcastState = 'preview' | 'syncing' | 'live' | 'ending';
 type EventMode = 'LIVE_GENERAL' | 'LIVE_BATTLE' | 'LIVE_CHALLENGE' | 'LIVE_CONCERT' | 'LIVE_CYPHER';
@@ -569,28 +570,34 @@ export default function GoLiveStudio() {
           </div>
         )}
 
-        {/* ── MRT panel-focus arena ─────────────────────────────────────────── */}
+        {/* ── Curtain control (presentation directors + StageLifecycle sync) ─ */}
         {isLive && (
-          <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap', padding: '10px 14px', borderRadius: 10, border: '1px solid rgba(255,215,0,0.2)', background: 'rgba(255,215,0,0.04)' }}>
-            <div style={{ width: '100%', fontSize: 8, color: 'rgba(255,215,0,0.6)', fontWeight: 800, letterSpacing: '0.14em', marginBottom: 4 }}>STAGE CURTAIN</div>
-            <button
-              type="button"
-              onClick={() => startCountdown()}
-              style={{ padding: '7px 14px', borderRadius: 8, fontSize: 11, fontWeight: 900, background: 'rgba(255,215,0,0.12)', border: '1px solid rgba(255,215,0,0.4)', color: GOLD, cursor: 'pointer', letterSpacing: '0.07em' }}
-            >
-              ▶ PREPARE STAGE
-            </button>
-            <button
-              type="button"
-              onClick={() => openCurtain()}
-              disabled={curtainState !== 'COUNTDOWN'}
-              style={{ padding: '7px 14px', borderRadius: 8, fontSize: 11, fontWeight: 900, background: curtainState === 'COUNTDOWN' ? 'rgba(0,255,136,0.14)' : 'rgba(255,255,255,0.04)', border: `1px solid ${curtainState === 'COUNTDOWN' ? 'rgba(0,255,136,0.5)' : 'rgba(255,255,255,0.1)'}`, color: curtainState === 'COUNTDOWN' ? '#00FF88' : 'rgba(255,255,255,0.25)', cursor: curtainState === 'COUNTDOWN' ? 'pointer' : 'not-allowed', letterSpacing: '0.07em' }}
-            >
-              🎭 OPEN CURTAIN
-            </button>
-            <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', display: 'flex', alignItems: 'center' }}>
-              State: <span style={{ color: CYAN, fontWeight: 700, marginLeft: 4 }}>{curtainState}</span>
-            </span>
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 8, flexWrap: 'wrap', padding: '8px 12px', borderRadius: 10, border: '1px solid rgba(255,215,0,0.2)', background: 'rgba(255,215,0,0.04)' }}>
+              <button
+                type="button"
+                onClick={() => startCountdown()}
+                style={{ padding: '7px 14px', borderRadius: 8, fontSize: 11, fontWeight: 900, background: 'rgba(255,215,0,0.12)', border: '1px solid rgba(255,215,0,0.4)', color: GOLD, cursor: 'pointer', letterSpacing: '0.07em' }}
+              >
+                ▶ PREPARE STAGE
+              </button>
+              <button
+                type="button"
+                onClick={() => openCurtain()}
+                disabled={curtainState !== 'COUNTDOWN'}
+                style={{ padding: '7px 14px', borderRadius: 8, fontSize: 11, fontWeight: 900, background: curtainState === 'COUNTDOWN' ? 'rgba(0,255,136,0.14)' : 'rgba(255,255,255,0.04)', border: `1px solid ${curtainState === 'COUNTDOWN' ? 'rgba(0,255,136,0.5)' : 'rgba(255,255,255,0.1)'}`, color: curtainState === 'COUNTDOWN' ? '#00FF88' : 'rgba(255,255,255,0.25)', cursor: curtainState === 'COUNTDOWN' ? 'pointer' : 'not-allowed', letterSpacing: '0.07em' }}
+              >
+                🎭 OPEN CURTAIN
+              </button>
+              <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', display: 'flex', alignItems: 'center' }}>
+                StageLifecycle: <span style={{ color: CYAN, fontWeight: 700, marginLeft: 4 }}>{curtainState}</span>
+              </span>
+            </div>
+            <PerformerCurtainControlPanel
+              performerId={userId || sessionUser?.id || 'performer'}
+              sessionId={dailyRoomId ? `live-curtain-${dailyRoomId}` : `live-curtain-${userId || 'preview'}`}
+              accentColor={FUCHSIA}
+            />
           </div>
         )}
 

@@ -41,3 +41,16 @@ export {
 export { default as PresentationTimelineEngine } from "./PresentationTimelineEngine";
 export { default as PresentationEventBridge } from "./PresentationEventBridge";
 export { default as PresentationScheduler } from "./PresentationScheduler";
+
+export {
+  executeCurtainTransition,
+  resolveCurtainAdCampaign,
+  getCanonicalTimerSnapshot,
+  addIntermissionTime,
+  performPreflightResumeCheck,
+  type CurtainState,
+  type IntermissionType,
+  type CurtainControlRequest,
+  type CurtainRuntimeContext,
+  type CurtainTransitionResult,
+} from "./CurtainRuntimeManager";

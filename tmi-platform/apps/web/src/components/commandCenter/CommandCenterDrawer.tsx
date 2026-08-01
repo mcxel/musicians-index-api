@@ -32,6 +32,7 @@ import { animationForDrawerModule } from "@/lib/drawers/UniversalDrawerRegistry"
 import { PERFORMER_SPONSOR_ZONE } from "./PerformerCommandDrawerRegistry";
 import LiveDestinationsDrawerPanel from "./LiveDestinationsDrawerPanel";
 import RoomControlsDrawerPanel from "./RoomControlsDrawerPanel";
+import PerformerCurtainControlPanel from "@/components/performer/PerformerCurtainControlPanel";
 import {
   createDefaultYoPhoBlueprint,
   type YoPhoPortraitBlueprint,
@@ -387,10 +388,16 @@ export default function CommandCenterDrawer({
       ) : null}
 
       {activePanel === "stage_tools" && role === "performer" ? (
-        <div style={{ padding: 20, display: "flex", flexDirection: "column", gap: 10 }}>
+        <div style={{ padding: 20, display: "flex", flexDirection: "column", gap: 12 }}>
           <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)" }}>
-            Stage & broadcast tools — real destinations only.
+            Stage & broadcast tools — curtain control + real destinations.
           </div>
+          <PerformerCurtainControlPanel
+            performerId={userId}
+            sessionId={`hub-curtain-${userId}`}
+            accentColor={theme.primary}
+            compact
+          />
           <Link href="/live/go" style={toolLink(theme.primary)}>
             🔴 Go Live →
           </Link>
