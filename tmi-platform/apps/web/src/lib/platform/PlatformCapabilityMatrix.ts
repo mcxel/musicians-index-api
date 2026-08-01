@@ -235,7 +235,7 @@ export const PLATFORM_CAPABILITY_MATRIX: PlatformCapabilityRow[] = [
     telemetry: "✅",
     certified: "⚠️",
     frameworkId: "platform-core",
-    notes: "Intelligence Deck below Live Channel Ticker: ObservatoryIntelligencePanel (presentation pack + platform-core health + GlobalLiveSessionRegistry rooms) + ScamDefenseCenter + honest ObservatoryDeck. BotSummonDeck stays ops rail (BOT_ACCOUNT_REGISTRY [BOT]). No Flight Deck shell refactor. Fake ROOM_SEED removed.",
+    notes: "Phase 1 Living OS Control Desk mounts below Live Channel Ticker (rail + period filter + primary workspace swap). Overview/Presentation/Rooms/System Health reuse ObservatoryIntelligencePanel + PresentationTelemetry + ObservatoryDeck + PlatformCorePanel. BotSummonDeck stays ops rail and Bots panel (BOT_ACCOUNT_REGISTRY). ScamDefenseCenter stays Intelligence Deck. Health lights gray when no telemetry. No Flight Deck shell refactor / no parallel Observatory.",
   },
   {
     id: "dual-monitor",

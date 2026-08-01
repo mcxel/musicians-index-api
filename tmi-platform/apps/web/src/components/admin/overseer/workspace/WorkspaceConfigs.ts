@@ -37,6 +37,8 @@ export const WORKSPACE_CONFIGS: Record<WorkspaceDefinition["key"], WorkspaceDefi
       { id: "account-linker", title: "ACCOUNT LINKER", widget: "account-linker", accent: "#AA2DFF" },
       { id: "stripe-observatory", title: "STRIPE WEBHOOK INTEGRITY", widget: "stripe-observatory", accent: "#00FFFF", flex: 1, requiredPermission: "revenue.manage" },
     ],
+    // Control Desk mounts below ticker in OverseerFlightDeck (Phase 1).
+    // Intelligence Deck keeps certified ScamDefense + revenue/magazine canisters.
     bottom: [
       {
         id: "revenue-analytics",
@@ -47,12 +49,6 @@ export const WORKSPACE_CONFIGS: Record<WorkspaceDefinition["key"], WorkspaceDefi
         requiredPermission: "revenue.manage",
       },
       { id: "magazine-analytics", title: "MAGAZINE & INDEX ANALYTICS", widget: "magazine-analytics", accent: "#FF2DAA" },
-      {
-        id: "observatory-intelligence",
-        title: "OBSERVATORY · PRESENTATION · CORE · ROOMS",
-        widget: "observatory-intelligence",
-        accent: "#00FFFF",
-      },
       {
         id: "scam-defense-center",
         title: "SCAM DEFENSE CENTER",
@@ -91,16 +87,10 @@ export const WORKSPACE_CONFIGS: Record<WorkspaceDefinition["key"], WorkspaceDefi
     rightRail: [
       { id: "bigace-security", title: "SECURITY SENTINEL", widget: "security-wall", accent: "#FF4444", requiredPermission: "security.manage" },
     ],
-    // Intelligence Deck (below Live Channel Ticker) — revenue never in ops rails
+    // Living OS Control Desk is below ticker (Flight Deck). Intelligence = certified mounts.
     bottom: [
       { id: "bigace-revenue", title: "PAYOUT AUTHORITY", widget: "revenue-panel", accent: "#FFD700", requiredPermission: "revenue.manage" },
       { id: "bigace-runtime", title: "LIVE ROOM RUNTIME", widget: "runtime-health", accent: "#AA2DFF" },
-      {
-        id: "bigace-observatory",
-        title: "OBSERVATORY · PRESENTATION · CORE",
-        widget: "observatory-intelligence",
-        accent: "#00FFFF",
-      },
       { id: "bigace-stripe", title: "STRIPE OBSERVATORY", widget: "stripe-observatory", accent: "#00FFFF" },
       {
         id: "bigace-scam-defense",
@@ -148,16 +138,9 @@ export const WORKSPACE_CONFIGS: Record<WorkspaceDefinition["key"], WorkspaceDefi
     rightRail: [
       { id: "justin-security", title: "SECURITY READOUT", widget: "security-wall", accent: "#FF4444" },
     ],
-    // Intelligence Deck below ticker — analytics never in ops rails
     bottom: [
       { id: "justin-revenue", title: "REVENUE SNAPSHOT", widget: "stripe-observatory", accent: "#FFD700" },
       { id: "justin-runtime", title: "LIVE ROOM RUNTIME", widget: "runtime-health", accent: "#AA2DFF" },
-      {
-        id: "justin-observatory",
-        title: "OBSERVATORY · PRESENTATION · CORE",
-        widget: "observatory-intelligence",
-        accent: "#00FFFF",
-      },
       { id: "justin-magazine", title: "PUBLIC SIGNAL ANALYTICS", widget: "magazine-analytics", accent: "#FF2DAA" },
       { id: "justin-scam-defense", title: "SCAM DEFENSE CENTER", widget: "scam-defense-center", accent: "#FF4444" },
     ],
@@ -182,12 +165,6 @@ export const WORKSPACE_CONFIGS: Record<WorkspaceDefinition["key"], WorkspaceDefi
     ],
     bottom: [
       { id: "mc-revenue", title: "INFRA COST & REVENUE", widget: "revenue-panel", accent: "#FFD700", requiredPermission: "revenue.manage" },
-      {
-        id: "mc-observatory",
-        title: "OBSERVATORY · PRESENTATION · CORE",
-        widget: "observatory-intelligence",
-        accent: "#00FFFF",
-      },
       { id: "mc-stripe", title: "WEBHOOK INTEGRITY", widget: "stripe-observatory", accent: "#00FFFF" },
     ],
   },

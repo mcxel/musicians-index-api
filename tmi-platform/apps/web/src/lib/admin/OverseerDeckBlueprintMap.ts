@@ -115,7 +115,7 @@ export const OVERSEER_BLUEPRINT_SLOTS: OverseerBlueprintSlot[] = [
     zone: "operations",
     codeTarget: "components/admin/BotSummonDeck.tsx → BOT_ACCOUNT_REGISTRY",
     status: "KEEP",
-    note: "Ops left rail — real BOT_ACCOUNT_REGISTRY rows, each labeled [BOT]. Do not duplicate into Intelligence Deck.",
+    note: "Ops left rail — real BOT_ACCOUNT_REGISTRY rows, each labeled [BOT]. Control Desk Bots panel may remount the same deck for switcher UX; not a second registry.",
   },
   {
     id: "ops-left-unified-inbox",

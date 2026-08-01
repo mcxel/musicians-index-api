@@ -9,6 +9,7 @@
  * HEADER (minimal brand + LIVE) →
  * OPERATIONS (LeftRail | MonitorStack×2 | RightRail) →
  * LIVE CHANNEL TICKER →
+ * LIVING OS CONTROL DESK (Phase 1 rail + primary workspace) →
  * INTELLIGENCE DECK →
  * sticky bottom gem dock (Admin Concierge + Admin Cam on demand)
  *
@@ -33,6 +34,7 @@ import BotSummonDeck from "@/components/admin/BotSummonDeck";
 import BigAceFinancePanel from "@/components/admin/BigAceFinancePanel";
 import MediaMatrixEngine from "@/components/admin/overseer/workspace/widgets/MediaMatrixEngine";
 import LiveChannelTicker from "@/components/admin/overseer/LiveChannelTicker";
+import ObservatoryControlDesk from "@/components/admin/overseer/ObservatoryControlDesk";
 import { useDrawerManager } from "@/components/admin/overseer/services/DrawerManager";
 import AdminConciergePanel from "@/components/admin/AdminConciergePanel";
 import CanonicalDualMonitorStack from "@/components/monitors/CanonicalDualMonitorStack";
@@ -639,7 +641,21 @@ export default function OverseerFlightDeck({
 
       <LiveChannelTicker />
 
-      {/* INTELLIGENCE DECK — below ticker / fold */}
+      {/* LIVING OS CONTROL DESK — below ticker; does not alter dual 16:9 ops */}
+      <div
+        data-deck="control-desk"
+        id="living-os-control-desk"
+        style={{
+          position: "relative",
+          zIndex: 1,
+          flex: "0 0 auto",
+          flexShrink: 0,
+        }}
+      >
+        <ObservatoryControlDesk />
+      </div>
+
+      {/* INTELLIGENCE DECK — below control desk / fold */}
       <div
         data-deck="intelligence"
         id="intelligence-deck"
@@ -960,12 +976,17 @@ export default function OverseerFlightDeck({
                 </div>
               </Canister>
             </div>
-            <style>{`
+            <style
+              // Same raw-text <style> hydration hazard as TMIGlobalNav/GamificationHUD.
+              dangerouslySetInnerHTML={{
+                __html: `
               @keyframes tmi-admin-cam-slide {
                 from { transform: translateY(24px); opacity: 0; }
                 to { transform: translateY(0); opacity: 1; }
               }
-            `}</style>
+            `,
+              }}
+            />
           </div>
         ) : null}
       </OverlayHost>

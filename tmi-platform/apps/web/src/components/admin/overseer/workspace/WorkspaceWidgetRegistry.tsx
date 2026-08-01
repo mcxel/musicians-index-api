@@ -22,6 +22,7 @@ import {
 } from "./widgets/LegalCenterWidgets";
 import ScamDefenseCenter from "@/components/admin/overseer/ScamDefenseCenter";
 import ObservatoryIntelligencePanel from "@/components/admin/overseer/ObservatoryIntelligencePanel";
+import ObservatoryControlDesk from "@/components/admin/overseer/ObservatoryControlDesk";
 import PresentationTelemetryPanel from "@/components/admin/PresentationTelemetryPanel";
 import PlatformCorePanel from "@/components/admin/PlatformCorePanel";
 
@@ -165,6 +166,12 @@ export const WORKSPACE_WIDGET_REGISTRY: Record<WorkspaceWidgetKey, WorkspaceWidg
     title: "Observatory Intelligence",
     defaultZone: "bottom",
     component: ObservatoryIntelligencePanel,
+  },
+  "observatory-control-desk": {
+    id: "observatory-control-desk",
+    title: "Living OS Control Desk",
+    defaultZone: "bottom",
+    component: ObservatoryControlDesk,
   },
   "platform-core-health": {
     id: "platform-core-health",

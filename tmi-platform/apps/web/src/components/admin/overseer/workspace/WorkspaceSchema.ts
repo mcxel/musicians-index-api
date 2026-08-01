@@ -48,6 +48,7 @@ export type WorkspaceWidgetKey =
   | "scam-defense-center"
   | "presentation-preview"
   | "observatory-intelligence"
+  | "observatory-control-desk"
   | "platform-core-health";
 
 export type WorkspacePanelConfig = {
