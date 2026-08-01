@@ -432,6 +432,32 @@ const OrbitCard = memo(function OrbitCard({
           {performer.rank === 1 ? '\u{1F451}' : performer.rank}
         </div>
 
+        {performer.isLive && (
+          <div
+            style={{
+              position: 'absolute',
+              top: -10,
+              right: -4,
+              zIndex: 5,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 3,
+              padding: '2px 6px',
+              borderRadius: 8,
+              background: '#E63000',
+              boxShadow: '0 0 8px rgba(230,48,0,0.7)',
+              fontSize: 7,
+              fontWeight: 900,
+              color: '#fff',
+              letterSpacing: '0.06em',
+              fontFamily: "'Inter', sans-serif",
+            }}
+          >
+            <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#fff', animation: 'h1Pulse 1.5s infinite' }} />
+            LIVE
+          </div>
+        )}
+
         <div
           style={{
             width: cardSize,
@@ -1193,7 +1219,9 @@ export default function Home1CoverPage() {
 
         /* Hero billboard grid — desktop: banner | title | banner.
            Tablet: title on top, both banners stacked below side by side.
-           Mobile: title on top, single rotating banner only (2nd flank hidden). */
+           Mobile: title on top, single rotating banner only (2nd flank hidden).
+           Each flank self-sizes to its banner (start) — never stretch into a
+           shared black bounding box taller than the artwork. */
         .h1-hero-billboard-grid {
           display: grid;
           /* Wider flank tracks: min 240 px, max 400 px — each banner card
@@ -1201,25 +1229,24 @@ export default function Home1CoverPage() {
           grid-template-columns: minmax(240px, 400px) minmax(0, 1fr) minmax(240px, 400px);
           grid-template-areas: "left title right";
           gap: 12px;
-          /* stretch: flanks expand to match the title column height so
-             there is no dead dark space above/below the banner artwork */
-          align-items: stretch;
-          /* Feather hard black edges — soft glass vignette on hero container */
-          -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 10%, #000 90%, transparent 100%);
-          mask-image: linear-gradient(180deg, transparent 0%, #000 10%, #000 90%, transparent 100%);
+          align-items: start;
+          background: transparent;
         }
         .h1-hero-billboard-grid .h1-hero-flank-left,
         .h1-hero-billboard-grid .h1-hero-flank-right {
-          /* Banner self-enforces aspect-ratio 3/4 — no min-height needed here.
-             align-items:stretch lets the title column fill the banner height. */
+          min-width: 0;
+          width: 100%;
+          align-self: start;
         }
         .h1-hero-billboard-grid .h1-hero-title-col {
           grid-area: title;
           display: flex;
           flex-direction: column;
-          justify-content: space-between;
+          justify-content: flex-start;
           align-items: center;
-          height: 100%;
+          gap: 4px;
+          height: auto;
+          min-height: 0;
           padding-block: 4px;
         }
         .h1-hero-billboard-grid .h1-hero-flank-left { grid-area: left; }
@@ -1228,14 +1255,19 @@ export default function Home1CoverPage() {
           .h1-hero-billboard-grid {
             grid-template-columns: 1fr 1fr;
             grid-template-areas: "title title" "left right";
+            gap: 10px;
           }
         }
         @media (max-width: 560px) {
           .h1-hero-billboard-grid {
             grid-template-columns: 1fr;
             grid-template-areas: "title" "left";
+            gap: 8px;
           }
           .h1-hero-billboard-grid .h1-hero-flank-right { display: none; }
+          .h1-hero-billboard-grid .h1-hero-flank-left {
+            max-width: 100%;
+          }
         }
 
         /* Orbit ring spin — single 0→360 rotation, triggered by the
@@ -1469,7 +1501,8 @@ export default function Home1CoverPage() {
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          minHeight: '40vh', // reduced from 64vh — was leaving a large dead gap before the orbital section
+          /* Content-sized — fixed vh min-heights left a black dead zone under mobile banners */
+          minHeight: 0,
           position: 'relative',
           zIndex: 1,
         }}
@@ -1602,17 +1635,13 @@ export default function Home1CoverPage() {
                 <div style={{ background: 'rgba(230,48,0,0.18)', border: '1px solid rgba(230,48,0,0.5)', borderRadius: 4, padding: '3px 10px', fontSize: 9, fontWeight: 800, letterSpacing: '0.1em', color: '#E63000', fontFamily: "'Inter',sans-serif" }}>CROWN UPDATING</div>
               </div>
 
-              {/* ── Challenge banner slider ── */}
-              <div style={{ background: 'rgba(123,0,255,0.16)', border: '1px solid rgba(123,0,255,0.34)', borderRadius: 6, padding: '3px 8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 6, maxWidth: 440, width: '100%', marginInline: 'auto' }}>
-                <button style={{ background: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 4, padding: '2px 6px', fontSize: 8, cursor: 'pointer' }}>◀</button>
+              {/* ── Challenge banner ── */}
+              <div style={{ background: 'rgba(123,0,255,0.16)', border: '1px solid rgba(123,0,255,0.34)', borderRadius: 6, padding: '6px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 6, maxWidth: 440, width: '100%', marginInline: 'auto', gap: 8 }}>
                 <div style={{ textAlign: 'center', flex: 1 }}>
                   <div style={{ fontSize: 10, fontWeight: 800, color: '#fff', letterSpacing: '0.07em', fontFamily: "'Inter',sans-serif" }}>CHALLENGE YOUR SONG HERE</div>
                   <div style={{ fontSize: 7, color: 'rgba(255,255,255,0.4)', fontFamily: "'Inter',sans-serif" }}>SONG FOR SONG · WORK FOR WORK</div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <Link href="/battles/challenge" style={{ fontSize: 8, fontWeight: 700, color: '#00E5FF', textDecoration: 'none', fontFamily: "'Inter',sans-serif" }}>START NOW</Link>
-                  <button style={{ background: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 4, padding: '2px 6px', fontSize: 8, cursor: 'pointer' }}>▶</button>
-                </div>
+                <Link href="/battles/challenge" style={{ fontSize: 8, fontWeight: 700, color: '#050510', textDecoration: 'none', fontFamily: "'Inter',sans-serif", background: '#00E5FF', borderRadius: 4, padding: '5px 10px', whiteSpace: 'nowrap' }}>START NOW</Link>
               </div>
 
               {/* ── Action buttons: 7 clickable buttons, grouped with wider gaps
@@ -2082,7 +2111,7 @@ export default function Home1CoverPage() {
                   setPendingOrbit({
                     id: p.slug,
                     title: `${p.name} LIVE`,
-                    viewers: 0,
+                    viewers: p.viewerCount ?? p.audienceCount ?? 0,
                     status: 'live',
                     access: 'free',
                     accentColor: accentColor,

@@ -49,7 +49,8 @@ export default function HeroLightningAtmosphere({ children }: HeroLightningAtmos
         position: 'relative',
         width: '100%',
         margin: '0 auto',
-        overflow: 'hidden',
+        overflow: 'visible',
+        background: 'transparent',
       }}
     >
       {/* ── Reduced Motion and Keyframe Animations ── */}

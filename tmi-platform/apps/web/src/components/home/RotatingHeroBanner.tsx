@@ -129,15 +129,21 @@ export default function RotatingHeroBanner({
 
   return (
     <div
+      className="h1-rotating-hero-banner"
       style={{
         position: 'relative',
         width: '100%',
-        aspectRatio: '3 / 4',
+        /* Desktop flank default matches Notepad ~400×360 (10/9). Mobile
+           overrides to a shorter landscape frame so full-width phone layouts
+           don't invent a tall black portrait void around landscape art. */
+        aspectRatio: '10 / 9',
+        maxHeight: 'min(420px, 58vh)',
         borderRadius: 14,
         overflow: 'hidden',
         border: '2px solid rgba(0,229,255,0.6)',
         boxShadow: '0 0 28px rgba(0,229,255,0.35), 0 0 60px rgba(0,229,255,0.12), 0 0 12px rgba(170,45,255,0.25) inset',
-        background: '#03030c',
+        background: 'linear-gradient(180deg, #070714 0%, #050510 55%, #070714 100%)',
+        alignSelf: 'start',
       }}
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
@@ -166,7 +172,18 @@ export default function RotatingHeroBanner({
           0% { transform: translateY(-20px); opacity: 1; }
           100% { transform: translateY(320px); opacity: 0; }
         }
-        @media (max-width: 640px) {
+        @media (max-width: 900px) {
+          .h1-rotating-hero-banner {
+            aspect-ratio: 16 / 10 !important;
+            max-height: min(340px, 46vh) !important;
+          }
+        }
+        @media (max-width: 560px) {
+          .h1-rotating-hero-banner {
+            aspect-ratio: 16 / 9 !important;
+            max-height: min(220px, 38vh) !important;
+            border-radius: 12px !important;
+          }
           .h1-banner-flank-left, .h1-banner-flank-right, .h1-banner-divider {
             display: none !important;
           }
@@ -278,33 +295,52 @@ export default function RotatingHeroBanner({
         <div className="h1-banner-divider" style={{ width: 1, flexShrink: 0, background: 'linear-gradient(180deg, #00FFFF, #AA2DFF, #FFD700)', zIndex: 2 }} />
 
         {/* Center (100% on mobile, 50% on desktop) — Dual-buffered zero-gap image stack */}
-        <div className="h1-banner-center" style={{ flex: '1', position: 'relative', overflow: 'hidden', background: '#050512' }}>
-          
+        <div
+          className="h1-banner-center"
+          style={{
+            flex: '1',
+            position: 'relative',
+            overflow: 'hidden',
+            background: 'linear-gradient(180deg, #070714 0%, #050510 100%)',
+          }}
+        >
+          {/* Theme fade underlay — never a stark empty black box if art doesn't fill */}
+          <div
+            aria-hidden="true"
+            style={{
+              position: 'absolute',
+              inset: 0,
+              zIndex: 0,
+              background:
+                'radial-gradient(ellipse 80% 70% at 50% 35%, rgba(0,229,255,0.08) 0%, transparent 55%), linear-gradient(180deg, #070714 0%, #050510 100%)',
+            }}
+          />
+
           {/* Previous slide — kept underneath during transition so zero blank gap ever occurs */}
-          <div style={{ position: 'absolute', inset: 0, opacity: isTransitioning ? 0.7 : 0, transition: 'opacity 0.9s ease' }}>
+          <div style={{ position: 'absolute', inset: 0, opacity: isTransitioning ? 0.7 : 0, transition: 'opacity 0.9s ease', zIndex: 1 }}>
             <Image
               src={prevCenter.src}
               alt=""
               fill
-              sizes="(max-width: 640px) 100vw, 300px"
+              sizes="(max-width: 560px) 100vw, (max-width: 900px) 50vw, 300px"
               style={{ objectFit: 'cover', filter: 'blur(16px) brightness(0.4)', transform: 'scale(1.1)' }}
             />
             <Image
               src={prevCenter.src}
               alt={prevCenter.label}
               fill
-              sizes="(max-width: 640px) 100vw, 300px"
-              style={{ objectFit: 'cover', objectPosition: 'center top' }}
+              sizes="(max-width: 560px) 100vw, (max-width: 900px) 50vw, 300px"
+              style={{ objectFit: 'cover', objectPosition: 'center 28%' }}
             />
           </div>
 
           {/* Current active slide — smooth cross-fade over previous slide */}
-          <div style={{ position: 'absolute', inset: 0, opacity: 1, transition: 'all 0.8s cubic-bezier(0.16, 1, 0.3, 1)' }}>
+          <div style={{ position: 'absolute', inset: 0, opacity: 1, transition: 'all 0.8s cubic-bezier(0.16, 1, 0.3, 1)', zIndex: 2 }}>
             <Image
               src={center.src}
               alt=""
               fill
-              sizes="(max-width: 640px) 100vw, 300px"
+              sizes="(max-width: 560px) 100vw, (max-width: 900px) 50vw, 300px"
               priority={priority}
               style={{
                 objectFit: 'cover',
@@ -316,16 +352,29 @@ export default function RotatingHeroBanner({
               src={center.src}
               alt={center.label}
               fill
-              sizes="(max-width: 640px) 100vw, 300px"
+              sizes="(max-width: 560px) 100vw, (max-width: 900px) 50vw, 300px"
               priority={priority}
               style={{
                 objectFit: 'cover',
-                objectPosition: 'center top',
+                objectPosition: 'center 28%',
                 transition: 'transform 0.8s cubic-bezier(0.16, 1, 0.3, 1)',
-                transform: isPaused ? 'scale(1.05)' : 'scale(1)',
+                transform: isPaused ? 'scale(1.04)' : 'scale(1)',
               }}
             />
           </div>
+
+          {/* Soft edge vignette into theme — no hard black letterbox */}
+          <div
+            aria-hidden="true"
+            style={{
+              position: 'absolute',
+              inset: 0,
+              zIndex: 3,
+              pointerEvents: 'none',
+              background:
+                'linear-gradient(180deg, rgba(5,5,16,0.35) 0%, transparent 18%, transparent 72%, rgba(5,5,16,0.75) 100%), linear-gradient(90deg, rgba(5,5,16,0.45) 0%, transparent 12%, transparent 88%, rgba(5,5,16,0.45) 100%)',
+            }}
+          />
 
           {/* Click-through link */}
           <a
@@ -340,7 +389,7 @@ export default function RotatingHeroBanner({
               position: 'absolute',
               bottom: slides.length > 1 ? 18 : 0,
               left: 0, right: 0, zIndex: 6,
-              background: 'linear-gradient(to top, rgba(3,3,12,0.95) 0%, rgba(3,3,12,0.6) 50%, transparent 100%)',
+              background: 'linear-gradient(to top, rgba(5,5,16,0.95) 0%, rgba(7,7,20,0.55) 55%, transparent 100%)',
               padding: '22px 8px 8px',
               pointerEvents: 'none',
             }}
