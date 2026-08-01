@@ -337,6 +337,15 @@ export default function InteractiveYoPhoCard({ card }: Props) {
         ) : null}
       </div>
 
+      {/* UNDERLAY_EFFECT — below person cutout */}
+      <YoPhoMagicEffectOverlay
+        effects={magicEffects.filter((e) =>
+          ["fog", "smoke", "neon_glow", "light_leak"].includes(e),
+        )}
+        paused={paused}
+        style={{ zIndex: 10 }}
+      />
+
       {/* ENVIRONMENT novelty — Abducted by a UFO scene pack */}
       {isAbductedScene ? (
         <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: 1, pointerEvents: "none" }}>
@@ -421,7 +430,12 @@ export default function InteractiveYoPhoCard({ card }: Props) {
         }}
       />
 
-      <YoPhoMagicEffectOverlay effects={magicEffects} paused={paused} style={{ zIndex: 40 }} />
+      {/* FOREGROUND_EFFECT — above person cutout */}
+      <YoPhoMagicEffectOverlay
+        effects={magicEffects.filter((e) => ["rain", "snow", "confetti"].includes(e))}
+        paused={paused}
+        style={{ zIndex: 40 }}
+      />
 
       {paused ? (
         <div
