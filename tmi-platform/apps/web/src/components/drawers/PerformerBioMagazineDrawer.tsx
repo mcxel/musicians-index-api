@@ -25,6 +25,11 @@ import {
 } from "@/lib/performers/performerGallerySlots";
 import { MAGAZINE_ISSUE_1 } from "@/lib/magazine/magazineIssueData";
 import CommerceConnectorPanel from "@/components/commerce/CommerceConnectorPanel";
+import ListenOwnTrackCard from "@/components/commerce/ListenOwnTrackCard";
+import {
+  getLivingCatalogForPerformer,
+  HYBRID_ECONOMICS_COPY,
+} from "@/lib/commerce/LivingCatalog";
 
 type TabId =
   | "profile"
@@ -520,23 +525,20 @@ export default function PerformerBioMagazineDrawer({
 
         {tab === "music" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <p style={{ margin: 0, fontSize: 10, color: "rgba(255,255,255,0.4)", lineHeight: 1.45 }}>
+              Listen uses distributor / streaming links. Own / Support uses your TMI-linked storefront.{" "}
+              {HYBRID_ECONOMICS_COPY}
+            </p>
             {songs.length === 0 ? (
               <div style={{ fontSize: 12, color: "rgba(255,255,255,0.35)", padding: "12px 0" }}>
                 No featured tracks in PerformerRegistry yet. Add song links below or manage Media Locker.
               </div>
             ) : (
-              <ul style={{ margin: 0, padding: "0 0 0 16px", display: "flex", flexDirection: "column", gap: 6 }}>
-                {songs.map((s, i) => (
-                  <li key={`${s.title}-${i}`} style={{ fontSize: 12, color: "rgba(255,255,255,0.75)" }}>
-                    {s.title}
-                    {s.audioUrl ? (
-                      <a href={s.audioUrl} style={{ marginLeft: 8, color: ac, fontSize: 10 }} target="_blank" rel="noreferrer">
-                        link
-                      </a>
-                    ) : null}
-                  </li>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {getLivingCatalogForPerformer(effectiveSlug).map((t) => (
+                  <ListenOwnTrackCard key={t.id} track={t} accentColor={ac} compact />
                 ))}
-              </ul>
+              </div>
             )}
             <div>
               <label style={labelStyle}>SONG LINKS / FEATURED TRACKS (one per line)</label>

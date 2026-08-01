@@ -18,6 +18,14 @@ import {
   type CreatorProduct,
 } from "@/lib/commerce/CreatorProductRegistry";
 import { formatCommerceServiceFeeLabel } from "@/lib/commerce/commerceFees";
+import ListenVsOwnActions from "@/components/commerce/ListenVsOwnActions";
+import ListenOwnTrackCard from "@/components/commerce/ListenOwnTrackCard";
+import {
+  getLivingCatalogForPerformer,
+  HYBRID_ECONOMICS_COPY,
+  type LivingCatalogTrack,
+} from "@/lib/commerce/LivingCatalog";
+import { resolvePrimaryListenProfileUrl } from "@/lib/commerce/DistributorConnectorRegistry";
 
 export interface ArtistDirectCommerceCtaProps {
   performerSlug: string;
@@ -36,11 +44,15 @@ export default function ArtistDirectCommerceCta({
   const ac = accentColor;
   const [buyUrl, setBuyUrl] = useState<string | null>(null);
   const [products, setProducts] = useState<CreatorProduct[]>([]);
+  const [listenUrl, setListenUrl] = useState<string | null>(null);
+  const [catalogPreview, setCatalogPreview] = useState<LivingCatalogTrack[]>([]);
 
   useEffect(() => {
     const link = getPerformerStorefrontLink(performerSlug);
     setBuyUrl(resolveArtistBuyUrl(link));
     setProducts(listCreatorProducts(performerSlug));
+    setListenUrl(resolvePrimaryListenProfileUrl(performerSlug));
+    setCatalogPreview(getLivingCatalogForPerformer(performerSlug).slice(0, 3));
   }, [performerSlug]);
 
   const label = performerName ? `Buy on ${performerName}'s store` : "Buy on artist store";
@@ -102,6 +114,25 @@ export default function ArtistDirectCommerceCta({
       <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.14em", color: ac, marginBottom: 8 }}>
         ARTIST DIRECT COMMERCE
       </div>
+      <p style={{ margin: "0 0 10px", fontSize: 10, color: "rgba(255,255,255,0.4)", lineHeight: 1.4 }}>
+        Keep distributors for DSPs · Own on TMI. {HYBRID_ECONOMICS_COPY}
+      </p>
+      <div style={{ marginBottom: 12 }}>
+        <ListenVsOwnActions
+          listenUrl={listenUrl}
+          ownUrl={buyUrl}
+          accentColor={ac}
+          listenLabel="LISTEN"
+          ownLabel="OWN / SUPPORT"
+        />
+      </div>
+      {catalogPreview.length > 0 ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12 }}>
+          {catalogPreview.map((t) => (
+            <ListenOwnTrackCard key={t.id} track={t} accentColor={ac} compact />
+          ))}
+        </div>
+      ) : null}
       {products.length > 0 ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 10 }}>
           {products.slice(0, 4).map((p) => (

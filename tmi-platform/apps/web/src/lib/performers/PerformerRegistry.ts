@@ -6,6 +6,8 @@
  * should read from this file. One performer = one identity everywhere.
  */
 
+import type { DistributorConnectorId } from "@/lib/commerce/DistributorConnectorRegistry";
+
 // ── Identity shape ────────────────────────────────────────────────────────────
 
 export type PerformerTier = 'FREE' | 'PRO' | 'RUBY' | 'Silver' | 'Gold' | 'Platinum' | 'Diamond';
@@ -15,12 +17,36 @@ export type PerformerCategory =
   | 'Dancehall' | 'Country' | 'Indie' | 'Electronic' | 'Dance Crews'
   | 'Comedy' | 'Venues' | 'Sponsors' | 'Hip Hop Dance';
 
+/**
+ * Catalog song — thin Living Catalog fields (ISRC, distributor, streaming links,
+ * commerceEnabled) are optional Phase-1 hybrid bridges. Upload pipeline remains
+ * Dashboard → PerformerRegistry; no duplicate media system.
+ */
 export interface PerformerSong {
   title: string;
   durationSec: number;
   audioUrl?: string;
   coverUrl?: string;
   streams?: number;
+  /** International Standard Recording Code */
+  isrc?: string;
+  /** Distributor connector id (distrokid, tunecore, …) when known */
+  distributorId?: DistributorConnectorId;
+  /** Free-text distributor label fallback */
+  distributor?: string;
+  streamingLinks?: Partial<{
+    spotify: string;
+    appleMusic: string;
+    youtube: string;
+    soundcloud: string;
+    audiomack: string;
+    bandcamp: string;
+  }>;
+  /** When true (default if Own URL exists), surface Own/Support on song cards */
+  commerceEnabled?: boolean;
+  battleEligible?: boolean;
+  /** Optional deep-link Own URL for this track on artist store */
+  ownBuyUrl?: string;
 }
 
 export interface PerformerMerchItem {

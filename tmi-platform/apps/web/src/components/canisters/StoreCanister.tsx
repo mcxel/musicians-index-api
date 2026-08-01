@@ -24,6 +24,9 @@ import {
   listCreatorProducts,
   type CreatorProduct,
 } from "@/lib/commerce/CreatorProductRegistry";
+import ListenVsOwnActions from "@/components/commerce/ListenVsOwnActions";
+import { resolvePrimaryListenProfileUrl } from "@/lib/commerce/DistributorConnectorRegistry";
+import { resolveListenUrl, resolveOwnUrl } from "@/lib/commerce/LivingCatalog";
 interface StoreCanisterProps {
   entityId: string;
   entityName?: string;
@@ -59,11 +62,13 @@ export function StoreCanister({
 
   const [linkedProducts, setLinkedProducts] = useState<CreatorProduct[]>([]);
   const [artistBuyUrl, setArtistBuyUrl] = useState<string | null>(null);
+  const [listenUrl, setListenUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (storeType !== "performer" && storeType !== "shared") return;
     setLinkedProducts(listCreatorProducts(entityId).slice(0, maxItems));
     setArtistBuyUrl(resolveArtistBuyUrl(getPerformerStorefrontLink(entityId)));
+    setListenUrl(resolvePrimaryListenProfileUrl(entityId));
   }, [entityId, storeType, maxItems]);
 
   const viewAllHref =
@@ -99,24 +104,40 @@ export function StoreCanister({
       </div>
 
       <div style={{ padding: "14px 18px" }}>
-        {(storeType === "performer" || storeType === "shared") && (linkedProducts.length > 0 || artistBuyUrl) && (
+        {(storeType === "performer" || storeType === "shared") && (
           <div style={{ marginBottom: 14 }}>
+            <div style={{ fontSize: 8, fontWeight: 900, color: "rgba(255,255,255,0.35)", letterSpacing: "0.12em", marginBottom: 8 }}>
+              LISTEN (DSP) · OWN / SUPPORT (TMI)
+            </div>
+            <div style={{ marginBottom: linkedProducts.length > 0 || artistBuyUrl ? 10 : 0 }}>
+              <ListenVsOwnActions
+                compact
+                listenUrl={listenUrl}
+                ownUrl={artistBuyUrl}
+                accentColor={accentColor}
+              />
+            </div>
             {linkedProducts.length > 0 ? (
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 10, marginBottom: 10 }}>
-                {linkedProducts.map((p) => (
-                  <a
-                    key={p.id}
-                    href={p.buyUrl || artistBuyUrl || "/store/creator"}
-                    target={p.buyUrl || artistBuyUrl ? "_blank" : undefined}
-                    rel={p.buyUrl || artistBuyUrl ? "noreferrer" : undefined}
-                    style={{ textDecoration: "none" }}
-                  >
-                    <div style={{
-                      padding: "12px 14px",
-                      borderRadius: 10,
-                      background: "rgba(255,215,0,0.06)",
-                      border: "1px solid rgba(255,215,0,0.22)",
-                    }}>
+                {linkedProducts.map((p) => {
+                  const isMusic =
+                    p.type === "SINGLE" || p.type === "ALBUM" || p.type === "VINYL" || p.type === "BUNDLE";
+                  const songLike = {
+                    title: p.title,
+                    durationSec: 0,
+                    ownBuyUrl: p.buyUrl,
+                    commerceEnabled: true,
+                  };
+                  return (
+                    <div
+                      key={p.id}
+                      style={{
+                        padding: "12px 14px",
+                        borderRadius: 10,
+                        background: "rgba(255,215,0,0.06)",
+                        border: "1px solid rgba(255,215,0,0.22)",
+                      }}
+                    >
                       <div style={{ fontSize: 8, fontWeight: 900, color: "#FFD700", letterSpacing: "0.1em", marginBottom: 4 }}>
                         ARTIST STORE
                       </div>
@@ -126,12 +147,37 @@ export function StoreCanister({
                       <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", marginBottom: 8 }}>
                         {CREATOR_PRODUCT_TYPE_LABELS[p.type]}
                       </div>
-                      <div style={{ fontSize: 13, fontWeight: 900, color: accentColor }}>
+                      <div style={{ fontSize: 13, fontWeight: 900, color: accentColor, marginBottom: isMusic ? 8 : 0 }}>
                         {formatCreatorProductPrice(p) ?? "Price on artist store"}
                       </div>
+                      {isMusic ? (
+                        <ListenVsOwnActions
+                          compact
+                          listenUrl={resolveListenUrl(songLike, entityId) || listenUrl}
+                          ownUrl={resolveOwnUrl(songLike, entityId) || p.buyUrl || artistBuyUrl}
+                          accentColor={accentColor}
+                        />
+                      ) : p.buyUrl || artistBuyUrl ? (
+                        <a
+                          href={p.buyUrl || artistBuyUrl || "/store/creator"}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={{
+                            fontSize: 9,
+                            fontWeight: 900,
+                            color: accentColor,
+                            textDecoration: "none",
+                            letterSpacing: "0.06em",
+                          }}
+                        >
+                          BUY →
+                        </a>
+                      ) : (
+                        <span style={{ fontSize: 9, color: "rgba(255,255,255,0.3)" }}>No buy link yet</span>
+                      )}
                     </div>
-                  </a>
-                ))}
+                  );
+                })}
               </div>
             ) : null}
             {artistBuyUrl ? (

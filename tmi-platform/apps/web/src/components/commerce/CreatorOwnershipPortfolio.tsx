@@ -11,6 +11,7 @@ import { MAGAZINE_ISSUE_1 } from "@/lib/magazine/magazineIssueData";
 import { listBeatCatalog } from "@/lib/beats/BeatStoreEngine";
 import { listCreatorProducts } from "@/lib/commerce/CreatorProductRegistry";
 import { getPerformerStorefrontLink } from "@/lib/commerce/CommerceConnectorRegistry";
+import { listPerformerDistributorLinks } from "@/lib/commerce/DistributorConnectorRegistry";
 
 export interface CreatorOwnershipPortfolioProps {
   performerSlug: string;
@@ -32,7 +33,8 @@ export default function CreatorOwnershipPortfolio({
     const beats = listBeatCatalog({ producerSlug: performerSlug }).length;
     const linkedProducts = listCreatorProducts(performerSlug).length;
     const storefrontLinked = Boolean(getPerformerStorefrontLink(performerSlug));
-    return { songs, articles, beats, linkedProducts, storefrontLinked };
+    const distributorLinks = listPerformerDistributorLinks(performerSlug).length;
+    return { songs, articles, beats, linkedProducts, storefrontLinked, distributorLinks };
   }, [performerSlug]);
 
   const rows: { label: string; value: number | string }[] = [
@@ -41,6 +43,7 @@ export default function CreatorOwnershipPortfolio({
     { label: "Magazine articles", value: stats.articles },
     { label: "Linked products", value: stats.linkedProducts },
     { label: "Storefront", value: stats.storefrontLinked ? "Linked" : "Not linked" },
+    { label: "Distributor links", value: stats.distributorLinks },
   ];
 
   return (

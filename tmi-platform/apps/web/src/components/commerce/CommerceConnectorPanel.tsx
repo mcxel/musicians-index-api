@@ -34,6 +34,7 @@ import {
   TMI_COMMERCE_SERVICE_FEE_BPS,
 } from "@/lib/commerce/commerceFees";
 import CreatorOwnershipPortfolio from "@/components/commerce/CreatorOwnershipPortfolio";
+import DistributorConnectorPanel from "@/components/commerce/DistributorConnectorPanel";
 
 const fieldStyle: CSSProperties = {
   width: "100%",
@@ -185,9 +186,9 @@ export default function CommerceConnectorPanel({
           CREATOR ECONOMY · DIRECT COMMERCE
         </div>
         <p style={{ margin: 0, fontSize: 11, color: "rgba(255,255,255,0.55)", lineHeight: 1.45 }}>
-          TMI does not replace streaming. You stay merchant of record, set your own price on your
-          store, and fans move Discovery → Engagement → Commerce (TMI) → Fulfillment (your store).
-          Tickets are not created here (Venue/Promoter only).
+          TMI does not replace streaming or DistroKid. Keep DistroKid for global DSPs; sell Own on
+          TMI. You stay merchant of record — Discovery → Engagement → Commerce (TMI) → Fulfillment
+          (your store). Tickets are not created here (Venue/Promoter only).
         </p>
         <div style={{ marginTop: 8, fontSize: 10, color: "#00FF88", fontWeight: 700 }}>
           Fee transparency: {formatCommerceServiceFeeLabel()} ({TMI_COMMERCE_SERVICE_FEE_BPS} bps) on
@@ -491,6 +492,8 @@ export default function CommerceConnectorPanel({
           PUBLIC STOREFRONT ON ARTICLE →
         </Link>
       ) : null}
+
+      <DistributorConnectorPanel performerId={performerId} accentColor="#00FFFF" />
 
       <CreatorOwnershipPortfolio performerSlug={performerId} accentColor={ac} />
 
