@@ -30,6 +30,8 @@ export const FAN_DRAWER_LAUNCHERS = [
   "yopho",
   "playlist",
   "memory",
+  "marketplace",
+  "store",
   "live_destinations",
   "room_controls",
   "inventory",

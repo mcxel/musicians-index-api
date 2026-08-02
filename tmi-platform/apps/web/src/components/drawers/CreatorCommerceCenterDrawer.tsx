@@ -75,6 +75,8 @@ export interface CreatorCommerceCenterDrawerProps {
   onOpenYoPho?: () => void;
   /** Swap to Beat Marketplace drawer when available. */
   onOpenBeatMarketplace?: () => void;
+  /** Swap to Shop drawer (Personal Store · TMI Store). */
+  onOpenShop?: () => void;
 }
 
 function emptyBlock(title: string, body: string, accent: string) {
@@ -101,6 +103,7 @@ export default function CreatorCommerceCenterDrawer({
   accentColor = "#FFD700",
   onOpenYoPho,
   onOpenBeatMarketplace,
+  onOpenShop,
 }: CreatorCommerceCenterDrawerProps) {
   const ac = accentColor;
   const [section, setSection] = useState<CommerceSectionId>("overview");
@@ -171,6 +174,11 @@ export default function CreatorCommerceCenterDrawer({
           <button type="button" onClick={() => setSection("releases")} style={ctaBtn(ac)}>
             Open Release Manager →
           </button>
+          {onOpenShop ? (
+            <button type="button" onClick={onOpenShop} style={ctaBtn("#FF6B35")}>
+              Open Shop drawer →
+            </button>
+          ) : null}
           {emptyBlock(
             "COMMERCE AI",
             "No Commerce AI recommendations yet. This surface stays empty until a real engine is wired.",

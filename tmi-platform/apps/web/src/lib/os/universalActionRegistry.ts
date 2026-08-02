@@ -46,6 +46,9 @@ export type ActionId =
   | "ACTION_OPEN_MEDIA_LOCKER"
   | "ACTION_OPEN_BEAT_LAB"
   | "ACTION_CLOSE_DRAWER"
+  | "ACTION_SET_ACTIVE_PERFORMER"
+  | "ACTION_OPEN_MARKETPLACE"
+  | "ACTION_OPEN_SHOP"
   // ── Beat Creator (Beat Locker contributor role) ───────────────────────────
   | "ACTION_UPLOAD_BEAT"
   | "ACTION_EDIT_BEAT"
@@ -644,6 +647,34 @@ export const ACTION_REGISTRY: Record<ActionId, ActionDef> = {
     category: "automation",
     commandType: "WORKFLOW_STARTED",
     defaultAllowedRoles: ["performer", "admin"],
+    status: "active",
+  },
+  ACTION_SET_ACTIVE_PERFORMER: {
+    id: "ACTION_SET_ACTIVE_PERFORMER",
+    label: "Set Active Performer",
+    description:
+      "Sets Living OS ACTIVE_PERFORMER (id/slug) so Marketplace / Shop / context panels rebind without unmounting drawers",
+    category: "navigation",
+    commandType: "ACTIVE_PERFORMER_SET",
+    defaultAllowedRoles: ["fan", "performer", "admin"],
+    status: "active",
+  },
+  ACTION_OPEN_MARKETPLACE: {
+    id: "ACTION_OPEN_MARKETPLACE",
+    label: "Open Marketplace",
+    description: "Opens the fan Marketplace drawer for ACTIVE_PERFORMER products",
+    category: "navigation",
+    commandType: "DRAWER_OPENED",
+    defaultAllowedRoles: ["fan", "admin"],
+    status: "active",
+  },
+  ACTION_OPEN_SHOP: {
+    id: "ACTION_OPEN_SHOP",
+    label: "Open Shop",
+    description: "Opens the Shop drawer (Personal Store + TMI Store split)",
+    category: "navigation",
+    commandType: "DRAWER_OPENED",
+    defaultAllowedRoles: ["fan", "performer", "admin"],
     status: "active",
   },
 };

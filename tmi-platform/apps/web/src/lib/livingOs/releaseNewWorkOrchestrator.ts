@@ -18,6 +18,7 @@ import { listPerformerDistributorLinks } from "@/lib/commerce/DistributorConnect
 import {
   appendAssetEdge,
   emptyAssetGraph,
+  enrichReleaseCrossLinks,
   type AssetRelationshipGraph,
 } from "@/lib/livingOs/AssetRelationshipGraph";
 import {
@@ -44,6 +45,8 @@ export interface RunReleaseNewWorkInput {
   userId?: string;
   /** Force re-run even if status is Live. */
   force?: boolean;
+  /** Live progress callback — fires after each step persist (no fake delays). */
+  onProgress?: (run: WorkflowRunRecord) => void;
 }
 
 const STEP_LABELS: Record<ReleaseNewWorkStepId, string> = {
@@ -437,6 +440,11 @@ export async function runReleaseNewWork(
     status: "PENDING" as const,
   }));
 
+  const notify = (next: WorkflowRunRecord) => {
+    saveWorkflowRun(next);
+    input.onProgress?.(next);
+  };
+
   let run: WorkflowRunRecord = {
     runId,
     workflowId: "RELEASE_NEW_WORK",
@@ -447,7 +455,7 @@ export async function runReleaseNewWork(
     graph,
     startedAt,
   };
-  saveWorkflowRun(run);
+  notify(run);
 
   livingOsCommandBus.executeAction("ACTION_RUN_RELEASE_NEW_WORK", {
     userId: input.userId,
@@ -470,7 +478,7 @@ export async function runReleaseNewWork(
     const now = new Date().toISOString();
     steps = markStep(steps, stepId, { status: "RUNNING", startedAt: now });
     run = { ...run, steps, status: anyRetrying ? "Retrying" : "Running", graph };
-    saveWorkflowRun(run);
+    notify(run);
 
     // If validate failed hard, skip mutating steps but still record analytics
     if (hardFailValidate && stepId !== "analytics_init") {
@@ -479,6 +487,8 @@ export async function runReleaseNewWork(
         message: "Skipped — asset validation failed.",
         finishedAt: new Date().toISOString(),
       });
+      run = { ...run, steps, graph };
+      notify(run);
       continue;
     }
 
@@ -532,11 +542,12 @@ export async function runReleaseNewWork(
       graph,
       status: anyFailed && anyRetrying ? "Retrying" : "Running",
     };
-    saveWorkflowRun(run);
+    notify(run);
   }
 
   const finishedAt = new Date().toISOString();
   const finalStatus = anyFailed ? "Failed" : "Completed";
+  graph = enrichReleaseCrossLinks(graph);
   run = {
     ...run,
     steps,
@@ -550,7 +561,7 @@ export async function runReleaseNewWork(
           .join("; ")
       : undefined,
   };
-  saveWorkflowRun(run);
+  notify(run);
 
   const latest = getReleaseDraft(input.performerId, input.releaseId) ?? draft;
   upsertReleaseDraft({

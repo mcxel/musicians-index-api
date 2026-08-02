@@ -58,6 +58,8 @@ export type LivingOsCommandType =
   | "OPERATING_CENTER_SWITCHED"
   | "QUICK_PANEL_OPENED"
   | "QUICK_PANEL_CLOSED"
+  /** Living OS ACTIVE_PERFORMER context changed (shell/drawers stay mounted). */
+  | "ACTIVE_PERFORMER_SET"
   // Live Media
   | "ROOM_JOINED"
   | "ROOM_LEFT"

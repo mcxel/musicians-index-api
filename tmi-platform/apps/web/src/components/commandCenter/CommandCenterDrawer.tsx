@@ -18,7 +18,6 @@ import { MemoryWallCanister } from "@/components/canisters/MemoryWallCanister";
 import { InventoryCanister } from "@/components/canisters/InventoryCanister";
 import MediaLockerCanister from "@/components/canisters/MediaLockerCanister";
 import { BookingCanister } from "@/components/canisters/BookingCanister";
-import { StoreCanister } from "@/components/canisters/StoreCanister";
 import NotificationCanister from "@/components/canisters/NotificationCanister";
 import QueueCanister from "@/components/canisters/QueueCanister";
 import MessagingCanister from "@/components/canisters/MessagingCanister";
@@ -38,6 +37,9 @@ import RoomControlsDrawerPanel from "./RoomControlsDrawerPanel";
 import PerformerCurtainControlPanel from "@/components/performer/PerformerCurtainControlPanel";
 import PerformerBioMagazineDrawer from "@/components/drawers/PerformerBioMagazineDrawer";
 import CreatorCommerceCenterDrawer from "@/components/drawers/CreatorCommerceCenterDrawer";
+import MarketplaceDrawerPanel from "@/components/drawers/MarketplaceDrawerPanel";
+import ShopDrawerPanel from "@/components/drawers/ShopDrawerPanel";
+import { useActivePerformer } from "@/lib/context/ActivePerformerContext";
 import type { CommandCenterPanelId, CommandCenterRole } from "./commandCenterRegistry";
 import {
   FAN_COMMAND_PANELS,
@@ -299,6 +301,9 @@ export default function CommandCenterDrawer({
   initialPlaylistId = null,
 }: CommandCenterDrawerProps) {
   const theme = useTheme();
+  const { resolvePerformerId, activePerformerId } = useActivePerformer();
+  /** Context-bound performer for Marketplace / Shop / booking surfaces. */
+  const contextPerformerId = resolvePerformerId(role === "performer" ? userId : null);
   const roomId = useMemo(() => `${role}-lobby-cc-${userId}`, [role, userId]);
   const open = appearanceOpen || activePanel != null;
 
@@ -344,7 +349,8 @@ export default function CommandCenterDrawer({
     beat_lab: "BEAT LAB",
     booking: "BOOKINGS",
     stage_tools: "STAGE TOOLS",
-    store: "STORE",
+    store: "SHOP · PERSONAL · TMI",
+    marketplace: "MARKETPLACE · ACTIVE PERFORMER",
     sponsors: "SPONSORS",
     playlist: "PLAYLISTS",
     memory: "MEMORY WALL",
@@ -423,7 +429,11 @@ export default function CommandCenterDrawer({
       mode="under_dashboard"
       headerExtra={swapChips}
       accentColor={accent}
-      contentKey={appearanceOpen ? "appearance" : activePanel ?? "x"}
+      contentKey={
+        appearanceOpen
+          ? "appearance"
+          : `${activePanel ?? "x"}:${activePerformerId ?? contextPerformerId ?? "none"}`
+      }
     >
       {appearanceOpen ? (
         <div style={{ padding: 12 }}>
@@ -545,6 +555,7 @@ export default function CommandCenterDrawer({
             onOpenBeatMarketplace={
               onSelectPanel ? () => onSelectPanel("beat_marketplace") : undefined
             }
+            onOpenShop={onSelectPanel ? () => onSelectPanel("store") : undefined}
           />
         </RoleGate>
       ) : null}
@@ -584,8 +595,13 @@ export default function CommandCenterDrawer({
       ) : null}
 
       {activePanel === "booking" && role === "performer" ? (
-        <div style={{ padding: 12 }}>
-          <BookingCanister entityId={userId} entityType="performer" showRequestForm={false} accentColor="#00FF88" />
+        <div style={{ padding: 12 }} key={`booking-${contextPerformerId ?? userId}`}>
+          <BookingCanister
+            entityId={contextPerformerId ?? userId}
+            entityType="performer"
+            showRequestForm={false}
+            accentColor="#00FF88"
+          />
         </div>
       ) : null}
 
@@ -636,10 +652,18 @@ export default function CommandCenterDrawer({
 
       {activePanel === "sponsors" && role === "fan" ? <SponsorsStubFan /> : null}
 
-      {activePanel === "store" && role === "performer" ? (
-        <div style={{ padding: 12 }}>
-          <StoreCanister entityId={userId} entityName={displayName} storeType="performer" accentColor={theme.tertiary} />
-        </div>
+      {activePanel === "marketplace" && role === "fan" ? (
+        <RoleGate allow={["FAN", "ADMIN", "STAFF"]} fallback={null}>
+          <MarketplaceDrawerPanel accentColor="#FF6B35" />
+        </RoleGate>
+      ) : null}
+
+      {activePanel === "store" ? (
+        <ShopDrawerPanel
+          role={role}
+          fallbackPerformerId={role === "performer" ? userId : undefined}
+          accentColor={theme.tertiary}
+        />
       ) : null}
 
       {activePanel === "notifications" ? (

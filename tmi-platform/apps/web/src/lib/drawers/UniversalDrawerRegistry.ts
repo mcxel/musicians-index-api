@@ -45,7 +45,15 @@ export type UniversalDrawerModuleId =
   /** Beat Creator: multi-step submission form for the Beat Locker pipeline. */
   | "submission_center"
   /** Beat Creator / Fan: browse, preview, and purchase licensed beats. */
-  | "beat_marketplace";
+  | "beat_marketplace"
+  /** Fan: ACTIVE_PERFORMER marketplace (albums/merch/beats/YoPho) — context-aware. */
+  | "marketplace"
+  /** Performer: private commerce management HQ — connections, products, orders, payouts. */
+  | "shop_center"
+  /** Shared: TMI Platform Store — avatar items, coins, venue skins, seasonal drops. */
+  | "tmi_store"
+  /** Performer: Creator Asset Vault — master media library (albums, art, press kits). */
+  | "asset_vault";
 
 export type UniversalDrawerRole = "fan" | "performer" | "shared";
 
@@ -192,11 +200,22 @@ export const UNIVERSAL_DRAWER_MODULES: UniversalDrawerModuleDef[] = [
   },
   {
     id: "store",
-    label: "STORE",
-    info: "Merch / skins",
+    label: "SHOP",
+    info: "Personal · TMI Store",
     accent: "#FF6B35",
     animation: "vinyl_flip",
-    roles: ["performer"],
+    roles: ["fan", "performer"],
+    primary: true,
+    mediaBindPoint: "none",
+  },
+  {
+    id: "marketplace",
+    label: "MARKETPLACE",
+    info: "Active artist products",
+    accent: "#FF6B35",
+    animation: "vinyl_flip",
+    roles: ["fan"],
+    primary: true,
     mediaBindPoint: "none",
   },
   {
@@ -327,6 +346,46 @@ export const UNIVERSAL_DRAWER_MODULES: UniversalDrawerModuleDef[] = [
     primary: false,
     mediaBindPoint: "none",
   },
+  {
+    id: "marketplace",
+    label: "MARKETPLACE",
+    info: "Albums · Merch · Beats · VIP",
+    accent: "#00FFFF",
+    animation: "hologram",
+    roles: ["fan", "performer"],
+    primary: true,
+    mediaBindPoint: "none",
+  },
+  {
+    id: "shop_center",
+    label: "SHOP CENTER",
+    info: "Connections · Orders · Payouts",
+    accent: "#FFD700",
+    animation: "mechanical",
+    roles: ["performer"],
+    primary: true,
+    mediaBindPoint: "none",
+  },
+  {
+    id: "tmi_store",
+    label: "TMI STORE",
+    info: "Avatar · Coins · Venue Skins",
+    accent: "#AA2DFF",
+    animation: "orbit",
+    roles: ["fan", "performer"],
+    primary: false,
+    mediaBindPoint: "none",
+  },
+  {
+    id: "asset_vault",
+    label: "ASSET VAULT",
+    info: "Albums · Art · Press Kits",
+    accent: "#FF2DAA",
+    animation: "memory_scatter",
+    roles: ["performer"],
+    primary: false,
+    mediaBindPoint: "none",
+  },
 ];
 
 const BY_ID = new Map(UNIVERSAL_DRAWER_MODULES.map((m) => [m.id, m]));
@@ -351,6 +410,8 @@ export const FAN_UNIVERSAL_SWAP_MODULES: UniversalDrawerModuleId[] = [
   "yopho",
   "playlist",
   "memory",
+  "marketplace",
+  "store",
   "messaging",
   "submissions",
   "scores",

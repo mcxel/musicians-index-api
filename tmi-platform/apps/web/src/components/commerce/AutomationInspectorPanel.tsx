@@ -12,6 +12,10 @@ import {
   type WorkflowRunRecord,
   type WorkflowRunStatus,
 } from "@/lib/livingOs/workflowRunStore";
+import {
+  listRelatedForAsset,
+  listRelatedReleaseAssets,
+} from "@/lib/livingOs/AssetRelationshipGraph";
 
 export interface AutomationInspectorPanelProps {
   performerId: string;
@@ -40,6 +44,14 @@ export default function AutomationInspectorPanel({
   useEffect(() => {
     refresh();
   }, [refresh]);
+
+  // Poll while a run is in-flight so Inspector shows live step progress
+  useEffect(() => {
+    const running = runs.some((r) => r.status === "Running" || r.status === "Retrying");
+    if (!running) return;
+    const id = window.setInterval(() => refresh(), 400);
+    return () => window.clearInterval(id);
+  }, [runs, refresh]);
 
   const catalog = listAutomationWorkflows();
 
@@ -158,11 +170,18 @@ export default function AutomationInspectorPanel({
                           gridTemplateColumns: "18px 1fr auto",
                           gap: 6,
                           alignItems: "start",
+                          background: s.status === "RUNNING" ? "rgba(0,255,255,0.08)" : "transparent",
+                          borderRadius: 4,
+                          padding: "2px 4px",
                         }}
                       >
                         <span>{stepGlyph(s.status)}</span>
                         <span>
                           <strong style={{ color: "rgba(255,255,255,0.8)" }}>{s.label}</strong>
+                          <span style={{ display: "block", color: "rgba(255,255,255,0.28)", marginTop: 1, fontSize: 8 }}>
+                            {s.startedAt ? new Date(s.startedAt).toLocaleTimeString() : "—"}
+                            {s.finishedAt ? ` → ${new Date(s.finishedAt).toLocaleTimeString()}` : ""}
+                          </span>
                           {s.message ? (
                             <span style={{ display: "block", color: "rgba(255,255,255,0.35)", marginTop: 2 }}>
                               {s.message}
@@ -170,13 +189,46 @@ export default function AutomationInspectorPanel({
                           ) : null}
                         </span>
                         <span style={{ fontSize: 8, fontWeight: 800, color: "rgba(255,255,255,0.4)" }}>
-                          {s.status}
+                          {s.status === "COMPLETED"
+                            ? "Done"
+                            : s.status === "PENDING"
+                              ? "Pending"
+                              : s.status === "RUNNING"
+                                ? "Running"
+                                : s.status === "FAILED"
+                                  ? "Failed"
+                                  : s.status === "SKIPPED"
+                                    ? "Skipped"
+                                    : s.status}
                         </span>
                       </div>
                     ))}
                     {run.graph.edges.length > 0 ? (
-                      <div style={{ marginTop: 6, fontSize: 9, color: "rgba(255,255,255,0.35)" }}>
+                      <div style={{ marginTop: 6, fontSize: 9, color: "rgba(255,255,255,0.35)", lineHeight: 1.45 }}>
                         Assets: {run.graph.edges.map((e) => `${e.kind}:${e.assetId}`).join(" · ")}
+                        {(() => {
+                          const rel = listRelatedReleaseAssets(run.graph);
+                          const yopho = rel.yophoEditionIds[0];
+                          if (!yopho) return null;
+                          const links = listRelatedForAsset(run.graph, yopho);
+                          if (
+                            links.albumIds.length === 0 &&
+                            links.magazineIds.length === 0 &&
+                            links.beatIds.length === 0
+                          ) {
+                            return null;
+                          }
+                          return (
+                            <span style={{ display: "block", marginTop: 4 }}>
+                              YoPho {yopho} related
+                              {links.albumIds.length ? ` · album: ${links.albumIds.join(", ")}` : ""}
+                              {links.magazineIds.length
+                                ? ` · magazine: ${links.magazineIds.join(", ")}`
+                                : ""}
+                              {links.beatIds.length ? ` · beat: ${links.beatIds.join(", ")}` : ""}
+                            </span>
+                          );
+                        })()}
                       </div>
                     ) : null}
                   </div>

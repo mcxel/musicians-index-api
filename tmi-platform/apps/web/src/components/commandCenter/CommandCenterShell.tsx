@@ -42,6 +42,10 @@ import {
 import { centersForRole } from "@/lib/drawers/operatingCenterRegistry";
 import { drawerStateStore } from "@/lib/drawers/drawerStateStore";
 import { livingOsCommandBus } from "@/lib/os/livingOsCommandBus";
+import {
+  ActivePerformerProvider,
+  useActivePerformer,
+} from "@/lib/context/ActivePerformerContext";
 
 interface LiveApiSession {
   userId: string;
@@ -58,8 +62,29 @@ interface CommandCenterShellProps {
 }
 
 export default function CommandCenterShell({ role, userId, displayName }: CommandCenterShellProps) {
+  const defaultPerformer = useMemo(() => {
+    if (role !== "performer") return null;
+    const p = getPerformerById(userId);
+    return p
+      ? { id: p.id, slug: p.slug, name: p.name }
+      : { id: userId, slug: userId, name: displayName };
+  }, [role, userId, displayName]);
+
+  return (
+    <ActivePerformerProvider
+      defaultPerformer={defaultPerformer}
+      role={role}
+      userId={userId}
+    >
+      <CommandCenterShellInner role={role} userId={userId} displayName={displayName} />
+    </ActivePerformerProvider>
+  );
+}
+
+function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShellProps) {
   const router = useRouter();
   const theme = useTheme();
+  const { activePerformer, setActivePerformer } = useActivePerformer();
   const centers = centersForRole(role);
   const ocPrimaryIds = useMemo(
     () => new Set(centers.map((c) => c.primaryModule)),
@@ -84,6 +109,8 @@ export default function CommandCenterShell({ role, userId, displayName }: Comman
     videoUrl?: string;
     imageUrl?: string;
     viewers?: number;
+    performerId?: string;
+    performerSlug?: string;
   } | null>(null);
 
   // Deep-link: /hub/fan?drawer=playlist&playlistId=… or /hub/performer?drawer=bio_magazine
@@ -191,6 +218,8 @@ export default function CommandCenterShell({ role, userId, displayName }: Comman
           videoUrl: profile?.introVideoUrl ?? profile?.motionPosterUrl,
           imageUrl: profile?.profileImageUrl ?? top.avatarUrl ?? undefined,
           viewers: top.viewerCount,
+          performerId: top.userId,
+          performerSlug: profile?.slug,
         });
       } catch {
         if (!cancelled) setFeatured(null);
@@ -325,13 +354,50 @@ export default function CommandCenterShell({ role, userId, displayName }: Comman
             TMI · {role === "performer" ? "PERFORMER" : "FAN"} COMMAND CENTER
           </span>
           {featured ? (
-            <span style={{ fontSize: 10, color: "rgba(255,255,255,0.45)" }}>
+            <button
+              type="button"
+              onClick={() => {
+                if (featured.performerId) {
+                  setActivePerformer({
+                    id: featured.performerId,
+                    slug: featured.performerSlug ?? featured.performerId,
+                    name: featured.name,
+                  });
+                }
+              }}
+              style={{
+                fontSize: 10,
+                color: "rgba(255,255,255,0.45)",
+                background: "transparent",
+                border: "none",
+                cursor: featured.performerId ? "pointer" : "default",
+                fontFamily: "inherit",
+                padding: 0,
+              }}
+              title={featured.performerId ? "Set as ACTIVE_PERFORMER" : undefined}
+            >
               Live: {featured.name}
               {featured.viewers != null ? ` · ${featured.viewers.toLocaleString()} watching` : ""}
-            </span>
+            </button>
           ) : (
             <span style={{ fontSize: 10, color: "rgba(255,255,255,0.35)" }}>No one live right now</span>
           )}
+          {activePerformer ? (
+            <span
+              style={{
+                fontSize: 9,
+                fontWeight: 800,
+                letterSpacing: "0.06em",
+                color: "#FFD700",
+                border: "1px solid rgba(255,215,0,0.35)",
+                borderRadius: 6,
+                padding: "3px 8px",
+              }}
+              title="Living OS ACTIVE_PERFORMER"
+            >
+              ACTIVE · {(activePerformer.name ?? activePerformer.slug).toUpperCase()}
+            </span>
+          ) : null}
         </div>
         <button
           type="button"
@@ -446,9 +512,6 @@ export default function CommandCenterShell({ role, userId, displayName }: Comman
             {role === "performer"
               ? railBtn({ key: "golive", label: "GO LIVE", info: "Broadcast", href: "/live/go" })
               : railBtn({ key: "camera", label: "CAMERA", info: "Go Live", href: "/live/go" })}
-            {role === "performer"
-              ? null
-              : railBtn({ key: "store", label: "STORE", href: "/store" })}
             {railBtn({ key: "settings", label: "SETTINGS", href: "/settings" })}
 
             <div style={{ marginTop: "auto", paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.08)" }}>

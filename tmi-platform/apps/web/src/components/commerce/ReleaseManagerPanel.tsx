@@ -22,7 +22,12 @@ import {
   getWorkflowRun,
   type WorkflowRunRecord,
   type WorkflowStepResult,
+  type WorkflowStepStatus,
 } from "@/lib/livingOs/workflowRunStore";
+import {
+  listRelatedReleaseAssets,
+  type RelatedReleaseAssetIds,
+} from "@/lib/livingOs/AssetRelationshipGraph";
 
 export interface ReleaseManagerPanelProps {
   performerId: string;
@@ -116,6 +121,10 @@ export default function ReleaseManagerPanel({
       const run = await runReleaseNewWork({
         performerId,
         releaseId: selected.releaseId,
+        onProgress: (partial) => {
+          // Live timeline — real step statuses as orchestrator persists them
+          setLastRun({ ...partial, steps: [...partial.steps] });
+        },
       });
       setLastRun(run);
       setDrafts(listReleaseDrafts(performerId));
@@ -128,6 +137,10 @@ export default function ReleaseManagerPanel({
       setBusy(false);
     }
   };
+
+  const relatedAssets: RelatedReleaseAssetIds | null = lastRun
+    ? listRelatedReleaseAssets(lastRun.graph)
+    : null;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -324,18 +337,66 @@ export default function ReleaseManagerPanel({
                   style={{
                     padding: 10,
                     borderRadius: 8,
-                    border: "1px solid rgba(0,255,255,0.25)",
-                    background: "rgba(0,255,255,0.06)",
+                    border: busy
+                      ? "1px solid rgba(255,215,0,0.45)"
+                      : "1px solid rgba(0,255,255,0.25)",
+                    background: busy ? "rgba(255,215,0,0.08)" : "rgba(0,255,255,0.06)",
                   }}
                 >
-                  <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.1em", color: "#00FFFF" }}>
-                    LAST RUN · {lastRun.status.toUpperCase()}
+                  <div
+                    style={{
+                      fontSize: 9,
+                      fontWeight: 900,
+                      letterSpacing: "0.1em",
+                      color: busy ? "#FFD700" : "#00FFFF",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      gap: 8,
+                    }}
+                  >
+                    <span>
+                      {busy ? "LIVE TIMELINE" : "RELEASE TIMELINE"} · {lastRun.status.toUpperCase()}
+                    </span>
+                    <span style={{ fontWeight: 700, color: "rgba(255,255,255,0.4)" }}>
+                      {fmtTs(lastRun.startedAt)}
+                      {lastRun.finishedAt ? ` → ${fmtTs(lastRun.finishedAt)}` : busy ? " → …" : ""}
+                    </span>
                   </div>
-                  <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 3 }}>
+                  <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 4 }}>
                     {lastRun.steps.map((s) => (
-                      <StepRow key={s.stepId} step={s} />
+                      <StepRow key={s.stepId} step={s} live={busy} />
                     ))}
                   </div>
+                  {relatedAssets &&
+                  (relatedAssets.albumIds.length > 0 ||
+                    relatedAssets.yophoEditionIds.length > 0 ||
+                    relatedAssets.magazineIds.length > 0 ||
+                    relatedAssets.beatIds.length > 0) ? (
+                    <div
+                      style={{
+                        marginTop: 8,
+                        paddingTop: 8,
+                        borderTop: "1px solid rgba(255,255,255,0.08)",
+                        fontSize: 9,
+                        color: "rgba(255,255,255,0.4)",
+                        lineHeight: 1.45,
+                      }}
+                    >
+                      Related (this run)
+                      {relatedAssets.albumIds.length > 0
+                        ? ` · album/product: ${relatedAssets.albumIds.join(", ")}`
+                        : ""}
+                      {relatedAssets.yophoEditionIds.length > 0
+                        ? ` · yopho: ${relatedAssets.yophoEditionIds.join(", ")}`
+                        : ""}
+                      {relatedAssets.magazineIds.length > 0
+                        ? ` · magazine: ${relatedAssets.magazineIds.join(", ")}`
+                        : ""}
+                      {relatedAssets.beatIds.length > 0
+                        ? ` · beat: ${relatedAssets.beatIds.join(", ")}`
+                        : ""}
+                    </div>
+                  ) : null}
                 </div>
               ) : null}
 
@@ -395,7 +456,8 @@ export default function ReleaseManagerPanel({
   );
 }
 
-function StepRow({ step }: { step: WorkflowStepResult }) {
+function StepRow({ step, live }: { step: WorkflowStepResult; live?: boolean }) {
+  const ui = timelineLabel(step.status);
   return (
     <div
       style={{
@@ -404,20 +466,56 @@ function StepRow({ step }: { step: WorkflowStepResult }) {
         gap: 6,
         fontSize: 10,
         color: "rgba(255,255,255,0.55)",
+        padding: "4px 6px",
+        borderRadius: 6,
+        background:
+          step.status === "RUNNING"
+            ? "rgba(0,255,255,0.08)"
+            : live && step.status === "PENDING"
+              ? "rgba(255,255,255,0.02)"
+              : "transparent",
       }}
     >
       <span>{glyph(step.status)}</span>
       <span>
         {step.label}
+        <span style={{ display: "block", color: "rgba(255,255,255,0.28)", marginTop: 1, fontSize: 8 }}>
+          {step.startedAt ? `start ${fmtTs(step.startedAt)}` : "—"}
+          {step.finishedAt ? ` · end ${fmtTs(step.finishedAt)}` : ""}
+        </span>
         {step.message ? (
           <span style={{ display: "block", color: "rgba(255,255,255,0.32)", marginTop: 1 }}>
             {step.message}
           </span>
         ) : null}
       </span>
-      <span style={{ fontWeight: 800, color: statusColor(step.status) }}>{step.status}</span>
+      <span style={{ fontWeight: 800, color: statusColor(step.status) }}>{ui}</span>
     </div>
   );
+}
+
+/** UI labels: Pending / Running / Done / Failed / Skipped (+ Queued / Retrying). */
+function timelineLabel(status: WorkflowStepStatus | string): string {
+  if (status === "PENDING") return "Pending";
+  if (status === "RUNNING") return "Running";
+  if (status === "COMPLETED") return "Done";
+  if (status === "FAILED") return "Failed";
+  if (status === "SKIPPED") return "Skipped";
+  if (status === "QUEUED") return "Queued";
+  if (status === "RETRYING") return "Retrying";
+  return status;
+}
+
+function fmtTs(iso: string): string {
+  try {
+    return new Date(iso).toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
+  } catch {
+    return iso;
+  }
 }
 
 function wizardStepStatus(id: LaunchWizardItemId, run: WorkflowRunRecord | null): string {
