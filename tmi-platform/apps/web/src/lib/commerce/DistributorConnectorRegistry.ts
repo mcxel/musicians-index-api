@@ -17,6 +17,11 @@ export type DistributorProviderId =
   | "tunecore"
   | "cdbaby"
   | "unitedmasters"
+  | "landr"
+  | "symphonic"
+  | "believe"
+  | "routenote"
+  | "too_lost"
   | "soundcloud"
   | "audiomack"
   | "bandcamp"
@@ -79,6 +84,51 @@ export const DISTRIBUTOR_PROVIDERS: DistributorProvider[] = [
     purpose: "DSP distribution via UnitedMasters.",
     capabilityNote: "Link your UnitedMasters artist URL. No API sync in Phase 1.",
     urlPlaceholder: "https://unitedmasters.com/…",
+  },
+  {
+    id: "landr",
+    label: "LANDR",
+    status: "COMING_SOON",
+    category: "distributor",
+    purpose: "DSP distribution via LANDR.",
+    capabilityNote: "Coming soon — no honest LANDR link flow in Phase 1.",
+    urlPlaceholder: "https://www.landr.com/…",
+  },
+  {
+    id: "symphonic",
+    label: "Symphonic",
+    status: "COMING_SOON",
+    category: "distributor",
+    purpose: "DSP distribution via Symphonic Distribution.",
+    capabilityNote: "Coming soon — no honest Symphonic link flow in Phase 1.",
+    urlPlaceholder: "https://symphonicdistribution.com/…",
+  },
+  {
+    id: "believe",
+    label: "Believe",
+    status: "COMING_SOON",
+    category: "distributor",
+    purpose: "DSP distribution via Believe.",
+    capabilityNote: "Coming soon — no honest Believe link flow in Phase 1.",
+    urlPlaceholder: "https://believe.com/…",
+  },
+  {
+    id: "routenote",
+    label: "RouteNote",
+    status: "COMING_SOON",
+    category: "distributor",
+    purpose: "DSP distribution via RouteNote.",
+    capabilityNote: "Coming soon — no honest RouteNote link flow in Phase 1.",
+    urlPlaceholder: "https://routenote.com/…",
+  },
+  {
+    id: "too_lost",
+    label: "Too Lost",
+    status: "COMING_SOON",
+    category: "distributor",
+    purpose: "DSP distribution via Too Lost.",
+    capabilityNote: "Coming soon — no honest Too Lost link flow in Phase 1.",
+    urlPlaceholder: "https://toolost.com/…",
   },
   {
     id: "soundcloud",

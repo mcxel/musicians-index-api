@@ -24,6 +24,7 @@ export {
 export const PERFORMER_DRAWER_LAUNCHERS = [
   "media_locker",
   "bio_magazine",
+  "commerce_center",
   "yopho",
   "beat_lab",
   "booking",

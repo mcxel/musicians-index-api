@@ -75,6 +75,10 @@ export type LivingOsCommandType =
   // Identity
   | "AVATAR_SAVED"
   | "YOPHO_UPDATED"
+  | "YOPHO_DRAFT_CREATED"
+  | "YOPHO_PUBLISHED"
+  | "YOPHO_ARCHIVED"
+  | "YOPHO_COLLECTED"
   | "MEDIA_UPLOADED"
   | "PROFILE_UPDATED"
   // Analytics

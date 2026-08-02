@@ -71,6 +71,8 @@ export interface PerformerBioMagazineDrawerProps {
   /** When false, hide writer "Request Interview" (owner/admin management view). */
   showRequestInterview?: boolean;
   onPreview?: () => void;
+  /** Open first-class Creator Commerce Center drawer (Living OS). */
+  onOpenCommerceCenter?: () => void;
 }
 
 function resolveRegistryPerformer(
@@ -152,6 +154,7 @@ export default function PerformerBioMagazineDrawer({
   accentColor = "#00FFFF",
   showRequestInterview = false,
   onPreview,
+  onOpenCommerceCenter,
 }: PerformerBioMagazineDrawerProps) {
   const registryPerformer = useMemo(
     () => resolveRegistryPerformer(performerSlug, userId, displayName),
@@ -559,11 +562,52 @@ export default function PerformerBioMagazineDrawer({
         )}
 
         {tab === "commerce" && (
-          <CommerceConnectorPanel
-            performerId={effectiveSlug}
-            accentColor={ac}
-            articleHref={articleHref}
-          />
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {onOpenCommerceCenter ? (
+              <button
+                type="button"
+                onClick={onOpenCommerceCenter}
+                style={{
+                  display: "inline-block",
+                  padding: "10px 14px",
+                  borderRadius: 10,
+                  border: "1px solid rgba(255,215,0,0.55)",
+                  background: "rgba(255,215,0,0.12)",
+                  color: "#FFD700",
+                  fontWeight: 800,
+                  fontSize: 12,
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                  width: "fit-content",
+                }}
+              >
+                Open Commerce Center →
+              </button>
+            ) : (
+              <Link
+                href="/hub/performer?drawer=commerce_center"
+                style={{
+                  display: "inline-block",
+                  padding: "10px 14px",
+                  borderRadius: 10,
+                  border: "1px solid rgba(255,215,0,0.55)",
+                  background: "rgba(255,215,0,0.12)",
+                  color: "#FFD700",
+                  fontWeight: 800,
+                  fontSize: 12,
+                  textDecoration: "none",
+                  width: "fit-content",
+                }}
+              >
+                Open Commerce Center →
+              </Link>
+            )}
+            <CommerceConnectorPanel
+              performerId={effectiveSlug}
+              accentColor={ac}
+              articleHref={articleHref}
+            />
+          </div>
         )}
 
         {tab === "interviews" && (

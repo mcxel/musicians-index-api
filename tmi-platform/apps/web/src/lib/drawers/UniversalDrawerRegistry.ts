@@ -40,6 +40,8 @@ export type UniversalDrawerModuleId =
   | "favorites"
   /** Performer: bio, magazine article, gallery slots, music links, interviews. */
   | "bio_magazine"
+  /** Performer: Creator Commerce Center — products, store, distributors, YoPho collectibles. */
+  | "commerce_center"
   /** Beat Creator: multi-step submission form for the Beat Locker pipeline. */
   | "submission_center"
   /** Beat Creator / Fan: browse, preview, and purchase licensed beats. */
@@ -296,6 +298,16 @@ export const UNIVERSAL_DRAWER_MODULES: UniversalDrawerModuleDef[] = [
     mediaBindPoint: "none",
   },
   {
+    id: "commerce_center",
+    label: "COMMERCE CENTER",
+    info: "Store · Products · Own",
+    accent: "#FFD700",
+    animation: "vinyl_flip",
+    roles: ["performer"],
+    primary: true,
+    mediaBindPoint: "none",
+  },
+  {
     id: "submission_center",
     label: "SUBMISSION CENTER",
     info: "Upload Beat · Track Status",
@@ -356,6 +368,7 @@ export const FAN_UNIVERSAL_SWAP_MODULES: UniversalDrawerModuleId[] = [
 export const PERFORMER_UNIVERSAL_SWAP_MODULES: UniversalDrawerModuleId[] = [
   "media_locker",
   "bio_magazine",
+  "commerce_center",
   "yopho",
   "playlist",
   "memory",

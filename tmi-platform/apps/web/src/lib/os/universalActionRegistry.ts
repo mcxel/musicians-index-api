@@ -26,9 +26,14 @@ export type ActionId =
   | "ACTION_OPEN_BOOKING_CENTER"
   | "ACTION_OPEN_MEDIA_CENTER"
   | "ACTION_OPEN_BIO_MAGAZINE_CENTER"
+  | "ACTION_OPEN_COMMERCE_CENTER"
   | "ACTION_OPEN_COMMERCIAL_CENTER"
   | "ACTION_OPEN_ANALYTICS_CENTER"
   | "ACTION_OPEN_YOPHO_STUDIO"
+  | "ACTION_CREATE_YOPHO_DRAFT"
+  | "ACTION_PUBLISH_YOPHO"
+  | "ACTION_ARCHIVE_YOPHO"
+  | "ACTION_COLLECT_YOPHO"
   | "ACTION_OPEN_AVATAR_CENTER"
   | "ACTION_OPEN_MEMORY_CENTER"
   | "ACTION_OPEN_REWARDS_CENTER"
@@ -138,6 +143,15 @@ export const ACTION_REGISTRY: Record<ActionId, ActionDef> = {
     defaultAllowedRoles: ["performer", "admin"],
     status: "active",
   },
+  ACTION_OPEN_COMMERCE_CENTER: {
+    id: "ACTION_OPEN_COMMERCE_CENTER",
+    label: "Open Commerce Center",
+    description: "Opens the Creator Commerce Center Operating Center drawer",
+    category: "navigation",
+    commandType: "OPERATING_CENTER_SWITCHED",
+    defaultAllowedRoles: ["performer", "admin"],
+    status: "active",
+  },
   ACTION_OPEN_COMMERCIAL_CENTER: {
     id: "ACTION_OPEN_COMMERCIAL_CENTER",
     label: "Open Commercial Center",
@@ -145,6 +159,42 @@ export const ACTION_REGISTRY: Record<ActionId, ActionDef> = {
     category: "navigation",
     commandType: "OPERATING_CENTER_SWITCHED",
     defaultAllowedRoles: ["performer", "admin"],
+    status: "active",
+  },
+  ACTION_CREATE_YOPHO_DRAFT: {
+    id: "ACTION_CREATE_YOPHO_DRAFT",
+    label: "Create YoPho Draft",
+    description: "Creates a draft YoPho collectible edition (not yet published)",
+    category: "identity",
+    commandType: "YOPHO_DRAFT_CREATED",
+    defaultAllowedRoles: ["fan", "performer", "admin"],
+    status: "active",
+  },
+  ACTION_PUBLISH_YOPHO: {
+    id: "ACTION_PUBLISH_YOPHO",
+    label: "Publish YoPho Edition",
+    description: "Publishes a YoPho edition as Current and archives the prior Current",
+    category: "identity",
+    commandType: "YOPHO_PUBLISHED",
+    defaultAllowedRoles: ["fan", "performer", "admin"],
+    status: "active",
+  },
+  ACTION_ARCHIVE_YOPHO: {
+    id: "ACTION_ARCHIVE_YOPHO",
+    label: "Archive YoPho Edition",
+    description: "Archives a YoPho edition; collectors keep prior ownership",
+    category: "identity",
+    commandType: "YOPHO_ARCHIVED",
+    defaultAllowedRoles: ["fan", "performer", "admin"],
+    status: "active",
+  },
+  ACTION_COLLECT_YOPHO: {
+    id: "ACTION_COLLECT_YOPHO",
+    label: "Collect YoPho Edition",
+    description: "Fan collects a published YoPho edition by editionId",
+    category: "identity",
+    commandType: "YOPHO_COLLECTED",
+    defaultAllowedRoles: ["fan", "admin"],
     status: "active",
   },
   ACTION_OPEN_ANALYTICS_CENTER: {

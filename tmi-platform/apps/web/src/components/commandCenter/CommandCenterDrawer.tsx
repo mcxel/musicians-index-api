@@ -37,6 +37,7 @@ import LiveDestinationsDrawerPanel from "./LiveDestinationsDrawerPanel";
 import RoomControlsDrawerPanel from "./RoomControlsDrawerPanel";
 import PerformerCurtainControlPanel from "@/components/performer/PerformerCurtainControlPanel";
 import PerformerBioMagazineDrawer from "@/components/drawers/PerformerBioMagazineDrawer";
+import CreatorCommerceCenterDrawer from "@/components/drawers/CreatorCommerceCenterDrawer";
 import type { CommandCenterPanelId, CommandCenterRole } from "./commandCenterRegistry";
 import {
   FAN_COMMAND_PANELS,
@@ -361,6 +362,7 @@ export default function CommandCenterDrawer({
     tickets: "TICKETS & ORDERS",
     favorites: "FAVORITES",
     bio_magazine: "BIO & MAGAZINE",
+    commerce_center: "COMMERCE CENTER",
     submission_center: "SUBMISSION CENTER",
     beat_marketplace: "BEAT MARKETPLACE",
   };
@@ -519,8 +521,46 @@ export default function CommandCenterDrawer({
             displayName={displayName}
             accentColor="#00FFFF"
             showRequestInterview={false}
+            onOpenCommerceCenter={
+              onSelectPanel ? () => onSelectPanel("commerce_center") : undefined
+            }
           />
         </RoleGate>
+      ) : null}
+
+      {activePanel === "commerce_center" && role === "performer" ? (
+        <RoleGate
+          allow={["PERFORMER", "ARTIST", "ADMIN", "STAFF"]}
+          fallback={
+            <div style={{ padding: 24, textAlign: "center", color: "rgba(255,255,255,0.45)", fontSize: 12 }}>
+              Commerce Center requires a Performer session.
+            </div>
+          }
+        >
+          <CreatorCommerceCenterDrawer
+            performerId={userId}
+            displayName={displayName}
+            accentColor="#FFD700"
+            onOpenYoPho={onSelectPanel ? () => onSelectPanel("yopho") : undefined}
+            onOpenBeatMarketplace={
+              onSelectPanel ? () => onSelectPanel("beat_marketplace") : undefined
+            }
+          />
+        </RoleGate>
+      ) : null}
+
+      {activePanel === "beat_marketplace" ? (
+        <div style={{ padding: 20, display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)" }}>
+            Beat Marketplace — browse, preview, and license beats. No fake inventory counts.
+          </div>
+          <Link href="/beat-marketplace" style={toolLink("#FFD700")}>
+            Open Beat Marketplace →
+          </Link>
+          <Link href="/beat-vault" style={toolLink("rgba(255,215,0,0.7)")}>
+            Open Beat Vault →
+          </Link>
+        </div>
       ) : null}
 
       {activePanel === "media_locker" && role === "performer" ? (

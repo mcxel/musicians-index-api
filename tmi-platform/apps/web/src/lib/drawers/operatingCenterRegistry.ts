@@ -79,6 +79,17 @@ export const PERFORMER_OPERATING_CENTERS: OperatingCenter[] = [
     actionId: "ACTION_OPEN_BIO_MAGAZINE_CENTER",
   },
   {
+    id: "commerce_center",
+    label: "COMMERCE CENTER",
+    info: "Products · Store · Own · Payouts",
+    icon: "🛒",
+    accent: "#FFD700",
+    primaryModule: "commerce_center",
+    modules: ["commerce_center", "store", "beat_marketplace"],
+    roles: ["performer"],
+    actionId: "ACTION_OPEN_COMMERCE_CENTER",
+  },
+  {
     id: "commercial",
     label: "COMMERCIAL CENTER",
     info: "Sponsors · Ads · Store",
