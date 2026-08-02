@@ -12,10 +12,12 @@
 
 import { useMemo, useState, type CSSProperties } from "react";
 import Link from "next/link";
+import AutomationInspectorPanel from "@/components/commerce/AutomationInspectorPanel";
 import CommerceConnectorPanel from "@/components/commerce/CommerceConnectorPanel";
 import DistributorConnectorPanel from "@/components/commerce/DistributorConnectorPanel";
 import CreatorOwnershipPortfolio from "@/components/commerce/CreatorOwnershipPortfolio";
 import ListenOwnTrackCard from "@/components/commerce/ListenOwnTrackCard";
+import ReleaseManagerPanel from "@/components/commerce/ReleaseManagerPanel";
 import { StoreCanister } from "@/components/canisters/StoreCanister";
 import {
   CREATOR_PRODUCT_TYPE_LABELS,
@@ -34,6 +36,7 @@ import { interactiveCardPath } from "@/lib/yopho/YoPhoCardRegistry";
 
 type CommerceSectionId =
   | "overview"
+  | "releases"
   | "products"
   | "music"
   | "beats"
@@ -49,6 +52,7 @@ type CommerceSectionId =
 
 const SECTIONS: { id: CommerceSectionId; label: string }[] = [
   { id: "overview", label: "Overview" },
+  { id: "releases", label: "Release Manager" },
   { id: "products", label: "Products" },
   { id: "music", label: "Music" },
   { id: "beats", label: "Beats" },
@@ -164,6 +168,9 @@ export default function CreatorCommerceCenterDrawer({
             <StatChip label="Beats listed" value={beats.length} accent={ac} />
             <StatChip label="YoPho editions" value={yophoAll.length} accent={ac} />
           </div>
+          <button type="button" onClick={() => setSection("releases")} style={ctaBtn(ac)}>
+            Open Release Manager →
+          </button>
           {emptyBlock(
             "COMMERCE AI",
             "No Commerce AI recommendations yet. This surface stays empty until a real engine is wired.",
@@ -175,6 +182,10 @@ export default function CreatorCommerceCenterDrawer({
             ac,
           )}
         </div>
+      ) : null}
+
+      {section === "releases" ? (
+        <ReleaseManagerPanel performerId={performerId} accentColor={ac} />
       ) : null}
 
       {section === "products" ? (
@@ -386,6 +397,7 @@ export default function CreatorCommerceCenterDrawer({
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <CommerceConnectorPanel performerId={performerId} accentColor={ac} />
           <DistributorConnectorPanel performerId={performerId} accentColor="#00FFFF" />
+          <AutomationInspectorPanel performerId={performerId} accentColor="#AA2DFF" />
           <p style={{ margin: 0, fontSize: 10, color: "rgba(255,255,255,0.32)", lineHeight: 1.4 }}>
             Ticket inventory creation is never available in this center (Rule 17 — Venue/Promoter only).
           </p>

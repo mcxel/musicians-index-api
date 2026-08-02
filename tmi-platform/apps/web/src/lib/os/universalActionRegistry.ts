@@ -78,6 +78,7 @@ export type ActionId =
   | "ACTION_DROP_PRIZE"
   | "ACTION_REDEEM_REWARD"
   | "ACTION_SELL_TICKET"
+  | "ACTION_RUN_RELEASE_NEW_WORK"
   // ── Identity ─────────────────────────────────────────────────────────────
   | "ACTION_SAVE_AVATAR"
   | "ACTION_UPDATE_PROFILE"
@@ -634,6 +635,16 @@ export const ACTION_REGISTRY: Record<ActionId, ActionDef> = {
     commandType: "ANALYTICS_REPORT_EXPORTED",
     defaultAllowedRoles: ["admin"],
     status: "planned",
+  },
+  ACTION_RUN_RELEASE_NEW_WORK: {
+    id: "ACTION_RUN_RELEASE_NEW_WORK",
+    label: "Release New Work",
+    description:
+      "Runs the RELEASE_NEW_WORK Living OS automation (commerce, distributor queue, YoPho opt-in, notify, analytics)",
+    category: "automation",
+    commandType: "WORKFLOW_STARTED",
+    defaultAllowedRoles: ["performer", "admin"],
+    status: "active",
   },
 };
 

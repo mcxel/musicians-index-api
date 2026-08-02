@@ -42,7 +42,8 @@ export type LivingOsCommandCategory =
   | "commerce"      // Purchase, book, campaign, prize delivery
   | "identity"      // Avatar, YoPho, profile, media upload
   | "analytics"     // Period change, report refresh, export
-  | "beat_ecosystem"; // Beat Locker pipeline — submission through live commerce
+  | "beat_ecosystem" // Beat Locker pipeline — submission through live commerce
+  | "automation";   // Living OS Automation Layer — multi-step workflows via Command Bus
 
 // ─── Command Type Registry ────────────────────────────────────────────────────
 
@@ -103,7 +104,12 @@ export type LivingOsCommandType =
   | "BEAT_AUCTION_CLOSED"      // Auction settled; winner determined
   | "BEAT_ROYALTY_PAID"        // Royalty distribution executed to creator(s)
   | "BEAT_DOWNLOAD_GRANTED"    // Buyer received download access
-  | "BEAT_RETIRED";            // Beat permanently withdrawn from all pools
+  | "BEAT_RETIRED"             // Beat permanently withdrawn from all pools
+  // Automation Layer — multi-step workflows (reuse this bus; no second bus)
+  | "WORKFLOW_STARTED"
+  | "WORKFLOW_STEP_UPDATED"
+  | "WORKFLOW_COMPLETED"
+  | "WORKFLOW_FAILED";
 
 // ─── Command Schema ───────────────────────────────────────────────────────────
 

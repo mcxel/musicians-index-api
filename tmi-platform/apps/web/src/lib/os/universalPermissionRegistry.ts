@@ -62,6 +62,7 @@ const PERMISSION_OVERRIDES: Partial<Record<ActionId, PlatformRole[]>> = {
   ACTION_OPEN_COMMERCE_CENTER:   ["performer", "admin"],
   ACTION_OPEN_COMMERCIAL_CENTER: ["performer", "admin"],
   ACTION_OPEN_ANALYTICS_CENTER:  ["performer", "admin"],
+  ACTION_RUN_RELEASE_NEW_WORK:   ["performer", "admin"],
   ACTION_CREATE_YOPHO_DRAFT:     ["fan", "performer", "admin"],
   ACTION_PUBLISH_YOPHO:          ["fan", "performer", "admin"],
   ACTION_ARCHIVE_YOPHO:          ["fan", "performer", "admin"],
