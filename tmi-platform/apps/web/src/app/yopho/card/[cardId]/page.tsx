@@ -3,6 +3,8 @@
 /**
  * Public Interactive YoPho Card — canonical share URL.
  * /yopho/card/[cardId]
+ *
+ * Collectible editions: fans collect by editionId; later publishes do not remove prior collections.
  */
 
 import { useEffect, useState } from "react";
@@ -13,6 +15,12 @@ import {
   fetchPublishedCard,
   type PublishedYoPhoCard,
 } from "@/lib/yopho/YoPhoCardRegistry";
+import {
+  collectYoPhoEdition,
+  fanOwnsEdition,
+  getEditionById,
+} from "@/lib/yopho/YoPhoEditionEngine";
+import { livingOsCommandBus } from "@/lib/os/livingOsCommandBus";
 
 export default function YoPhoInteractiveCardPage() {
   const params = useParams();
@@ -20,6 +28,26 @@ export default function YoPhoInteractiveCardPage() {
   const [card, setCard] = useState<PublishedYoPhoCard | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [fanUserId, setFanUserId] = useState<string | null>(null);
+  const [collectMsg, setCollectMsg] = useState<string | null>(null);
+  const [owned, setOwned] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/auth/session", { credentials: "include", cache: "no-store" });
+        if (!res.ok) return;
+        const data = (await res.json()) as { user?: { id?: string } };
+        if (!cancelled && data.user?.id) setFanUserId(data.user.id);
+      } catch {
+        /* anonymous viewer */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (!cardId) {
@@ -47,6 +75,38 @@ export default function YoPhoInteractiveCardPage() {
       cancelled = true;
     };
   }, [cardId]);
+
+  useEffect(() => {
+    if (fanUserId && cardId) {
+      setOwned(fanOwnsEdition(fanUserId, cardId));
+    }
+  }, [fanUserId, cardId, collectMsg]);
+
+  function handleCollect() {
+    if (!fanUserId) {
+      setCollectMsg("Sign in as a Fan to collect this edition.");
+      return;
+    }
+    const edition = getEditionById(cardId);
+    const res = collectYoPhoEdition(fanUserId, cardId, {
+      creatorOwnerKey: card?.ownerKey,
+    });
+    if (res.ok) {
+      livingOsCommandBus.executeAction("ACTION_COLLECT_YOPHO", {
+        role: "fan",
+        userId: fanUserId,
+        payload: { editionId: cardId },
+      });
+      setOwned(true);
+      setCollectMsg(
+        edition
+          ? `Collected edition #${edition.editionNumber} — yours forever.`
+          : "Collected — yours forever. Later publishes won’t remove this.",
+      );
+    } else {
+      setCollectMsg(res.error ?? "Could not collect");
+    }
+  }
 
   return (
     <main
@@ -100,6 +160,42 @@ export default function YoPhoInteractiveCardPage() {
         {card ? (
           <>
             <InteractiveYoPhoCard card={card} />
+            <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 8, alignItems: "center" }}>
+              {owned ? (
+                <div style={{ fontSize: 12, fontWeight: 800, color: "#00FF88" }}>
+                  In your collection · later publishes won’t remove this
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleCollect}
+                  style={{
+                    padding: "10px 16px",
+                    borderRadius: 10,
+                    border: "1px solid rgba(255,45,170,0.55)",
+                    background: "rgba(255,45,170,0.14)",
+                    color: "#FF2DAA",
+                    fontWeight: 900,
+                    fontSize: 12,
+                    letterSpacing: "0.06em",
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                  }}
+                >
+                  COLLECT THIS EDITION
+                </button>
+              )}
+              {collectMsg ? (
+                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.55)", textAlign: "center" }}>
+                  {collectMsg}
+                </div>
+              ) : null}
+              {!fanUserId ? (
+                <Link href="/login" style={{ fontSize: 11, color: "#FFD700", fontWeight: 700 }}>
+                  Sign in to collect →
+                </Link>
+              ) : null}
+            </div>
             <p
               style={{
                 marginTop: 20,

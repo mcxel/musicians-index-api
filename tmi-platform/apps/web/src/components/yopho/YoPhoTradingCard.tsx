@@ -54,10 +54,22 @@ import {
   toggleMagicEffect,
   type YoPhoRarityLabel,
 } from "@/lib/yopho/YoPhoCardDocument";
+import {
+  createYoPhoDraft,
+  getCurrentEdition,
+  listArchivedEditions,
+  listDraftAndPreviewEditions,
+  previewYoPhoEdition,
+  publishYoPhoEdition,
+  YOPHO_AVAILABILITY_LABELS,
+  type YoPhoEditionAvailability,
+  type YoPhoEditionRecord,
+} from "@/lib/yopho/YoPhoEditionEngine";
+import { livingOsCommandBus } from "@/lib/os/livingOsCommandBus";
 import YoPhoMagicEffectOverlay from "@/components/yopho/YoPhoMagicEffectOverlay";
 import YoPhoBrandingFooter from "@/components/yopho/YoPhoBrandingFooter";
 
-type EditorTab = "identity" | "scene" | "effects" | "music" | "motion" | "share";
+type EditorTab = "identity" | "scene" | "effects" | "music" | "motion" | "share" | "editions";
 
 export type YoPhoCardRole = "fan" | "performer";
 
@@ -181,8 +193,24 @@ export default function YoPhoTradingCard({
   const [publishedPath, setPublishedPath] = useState<string | null>(
     comp.cardId ? interactiveCardPath(comp.cardId) : null,
   );
+  const [availability, setAvailability] = useState<YoPhoEditionAvailability>("Unlimited");
+  const [maxSupplyInput, setMaxSupplyInput] = useState("");
+  const [editionTick, setEditionTick] = useState(0);
   const magicEffects = comp.magicEffects ?? [];
   const footerPct = comp.brandingFooter?.heightPct ?? 0.1;
+
+  const currentEdition = useMemo(
+    () => getCurrentEdition(userKey),
+    [userKey, editionTick, publishStatus],
+  );
+  const archivedEditions = useMemo(
+    () => listArchivedEditions(userKey),
+    [userKey, editionTick, publishStatus],
+  );
+  const draftEditions = useMemo(
+    () => listDraftAndPreviewEditions(userKey),
+    [userKey, editionTick, publishStatus],
+  );
 
   const cardRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -462,6 +490,70 @@ export default function YoPhoTradingCard({
       setPublishStatus(res.error ?? "Publish failed");
       return null;
     }
+
+    // Edition lifecycle: Draft → Publish as Current; prior Current → Archived
+    let editionRec: YoPhoEditionRecord | null = null;
+    try {
+      if (asEdition || !forceCanonical) {
+        editionRec = publishYoPhoEdition({
+          ownerKey: userKey,
+          editionId: res.cardId,
+          title:
+            editionTitleInput.trim() ||
+            draft.editionTitle ||
+            `${resolvedName} · Edition`,
+          kind: draft.kind ?? "PROMOTIONAL_EDITION",
+          theme: momentTag.trim() || null,
+          availability,
+          maxSupply:
+            availability === "LimitedEdition" && maxSupplyInput.trim()
+              ? Math.max(1, Number(maxSupplyInput) || 1)
+              : null,
+          createIfMissing: true,
+        });
+        livingOsCommandBus.executeAction("ACTION_PUBLISH_YOPHO", {
+          role: role === "performer" ? "performer" : "fan",
+          userId: userKey,
+          payload: {
+            editionId: editionRec.id,
+            editionNumber: editionRec.editionNumber,
+          },
+        });
+      } else {
+        // Canonical publish still gets an edition pointer so collectors can attach
+        editionRec = publishYoPhoEdition({
+          ownerKey: userKey,
+          editionId: res.cardId,
+          title: draft.editionTitle || `${resolvedName} · Identity`,
+          kind: "CANONICAL_IDENTITY",
+          theme: momentTag.trim() || null,
+          availability,
+          maxSupply:
+            availability === "LimitedEdition" && maxSupplyInput.trim()
+              ? Math.max(1, Number(maxSupplyInput) || 1)
+              : null,
+          createIfMissing: true,
+        });
+        livingOsCommandBus.executeAction("ACTION_PUBLISH_YOPHO", {
+          role: role === "performer" ? "performer" : "fan",
+          userId: userKey,
+          payload: {
+            editionId: editionRec.id,
+            editionNumber: editionRec.editionNumber,
+          },
+        });
+      }
+    } catch {
+      /* local edition ledger optional if storage blocked */
+    }
+    setEditionTick((n) => n + 1);
+
+    const editionBadge = editionRec
+      ? `ED #${editionRec.editionNumber}`
+      : draft.isCanonical
+        ? "CANONICAL"
+        : draft.editionTitle ?? null;
+
     patch({
       cardId: res.cardId,
       playlistId: playlistIdInput.trim() || null,
@@ -480,7 +572,7 @@ export default function YoPhoTradingCard({
         label: "TMI × YoPho",
         rarity: draft.rarity ?? "STANDARD",
         showEditionBadge: true,
-        editionBadge: draft.isCanonical ? "CANONICAL" : draft.editionTitle ?? null,
+        editionBadge,
       },
     });
     const path = interactiveCardPath(res.cardId);
@@ -488,9 +580,45 @@ export default function YoPhoTradingCard({
     setPublishStatus(
       res.error
         ? `Live at ${path} (${res.error})`
-        : `Interactive YoPho card live · ${path}`,
+        : editionRec
+          ? `Edition #${editionRec.editionNumber} published · ${path}`
+          : `Interactive YoPho card live · ${path}`,
     );
     return res.cardId;
+  }
+
+  function handleCreateDraft() {
+    const draft = createYoPhoDraft({
+      creatorOwnerKey: userKey,
+      title: editionTitleInput.trim() || `${resolvedName} · Draft`,
+      kind: comp.kind ?? "PROMOTIONAL_EDITION",
+      theme: momentTag.trim() || null,
+      availability,
+      maxSupply:
+        availability === "LimitedEdition" && maxSupplyInput.trim()
+          ? Math.max(1, Number(maxSupplyInput) || 1)
+          : null,
+      id: comp.cardId ?? undefined,
+    });
+    livingOsCommandBus.executeAction("ACTION_CREATE_YOPHO_DRAFT", {
+      role: role === "performer" ? "performer" : "fan",
+      userId: userKey,
+      payload: { editionId: draft.id },
+    });
+    patch({ cardId: draft.id, editionTitle: draft.title });
+    setEditionTick((n) => n + 1);
+    setPublishStatus(`Draft saved · ${draft.id}`);
+  }
+
+  function handlePreviewDraft(editionId: string) {
+    previewYoPhoEdition(userKey, editionId);
+    livingOsCommandBus.executeAction("ACTION_CREATE_YOPHO_DRAFT", {
+      role: role === "performer" ? "performer" : "fan",
+      userId: userKey,
+      payload: { editionId, status: "PREVIEW" },
+    });
+    setEditionTick((n) => n + 1);
+    setPublishStatus(`Preview ready · ${editionId}`);
   }
 
   async function handleShareInteractive() {
@@ -1005,6 +1133,7 @@ export default function YoPhoTradingCard({
                 ["effects", "EFFECTS"],
                 ["music", "MUSIC"],
                 ["motion", "MOTION"],
+                ["editions", "EDITIONS"],
                 ["share", "SHARE"],
               ] as const
             ).map(([tab, label]) => (
@@ -1527,6 +1656,147 @@ export default function YoPhoTradingCard({
             </div>
           ) : null}
 
+          {editorTab === "editions" ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.55)", lineHeight: 1.45 }}>
+                Publish locks immutable metadata (id, creator, edition #, publishedAt, type/theme). Prior{" "}
+                <strong style={{ color: "#FFD700" }}>Current</strong> becomes Archived. Fans keep collected
+                editions after you publish again.
+              </div>
+
+              {currentEdition ? (
+                <div
+                  style={{
+                    padding: 10,
+                    borderRadius: 8,
+                    border: "1px solid rgba(255,215,0,0.4)",
+                    background: "rgba(255,215,0,0.08)",
+                  }}
+                >
+                  <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.12em", color: "#FFD700" }}>
+                    CURRENT POINTER · EDITION #{currentEdition.editionNumber}
+                  </div>
+                  <div style={{ fontSize: 12, fontWeight: 800, color: "#fff", marginTop: 4 }}>
+                    {currentEdition.title}
+                  </div>
+                  <div style={{ fontSize: 10, color: "rgba(255,255,255,0.45)", marginTop: 2 }}>
+                    {YOPHO_AVAILABILITY_LABELS[currentEdition.availability]}
+                    {currentEdition.collectedCount > 0
+                      ? ` · ${currentEdition.collectedCount} collected`
+                      : ""}
+                  </div>
+                </div>
+              ) : (
+                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)" }}>
+                  No Current edition yet — publish a new edition below.
+                </div>
+              )}
+
+              <div>
+                <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.12em", color: "#00E5FF", marginBottom: 6 }}>
+                  AVAILABILITY · STORE INTENT
+                </div>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  {(Object.keys(YOPHO_AVAILABILITY_LABELS) as YoPhoEditionAvailability[]).map((a) => (
+                    <button
+                      key={a}
+                      type="button"
+                      onClick={() => setAvailability(a)}
+                      style={chipStyle(availability === a ? "#00E5FF" : "rgba(255,255,255,0.4)")}
+                    >
+                      {YOPHO_AVAILABILITY_LABELS[a].toUpperCase()}
+                    </button>
+                  ))}
+                </div>
+                {availability === "LimitedEdition" ? (
+                  <input
+                    value={maxSupplyInput}
+                    onChange={(e) => setMaxSupplyInput(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                    placeholder="Max supply (soft enforce)"
+                    style={{ ...inputStyle, marginTop: 8 }}
+                  />
+                ) : null}
+              </div>
+
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                <button type="button" onClick={handleCreateDraft} style={chipStyle("#AA2DFF")}>
+                  SAVE DRAFT
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void publishInteractiveCard({ asEdition: true })}
+                  style={chipStyle("#FF2DAA")}
+                >
+                  PUBLISH NEW EDITION
+                </button>
+              </div>
+
+              {draftEditions.length > 0 ? (
+                <div>
+                  <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.12em", color: "rgba(255,255,255,0.4)", marginBottom: 6 }}>
+                    DRAFTS / PREVIEW
+                  </div>
+                  {draftEditions.map((ed) => (
+                    <div
+                      key={ed.id}
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        gap: 8,
+                        alignItems: "center",
+                        padding: "6px 8px",
+                        marginBottom: 4,
+                        borderRadius: 6,
+                        border: "1px solid rgba(255,255,255,0.1)",
+                        fontSize: 11,
+                        color: "rgba(255,255,255,0.65)",
+                      }}
+                    >
+                      <span>
+                        {ed.status} · {ed.title}
+                      </span>
+                      {ed.status === "DRAFT" ? (
+                        <button
+                          type="button"
+                          onClick={() => handlePreviewDraft(ed.id)}
+                          style={chipStyle("#00E5FF")}
+                        >
+                          PREVIEW
+                        </button>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+
+              {archivedEditions.length > 0 ? (
+                <div>
+                  <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.12em", color: "rgba(255,255,255,0.4)", marginBottom: 6 }}>
+                    ARCHIVED EDITIONS · {archivedEditions.length}
+                  </div>
+                  {archivedEditions.map((ed) => (
+                    <div
+                      key={ed.id}
+                      style={{
+                        padding: "6px 8px",
+                        marginBottom: 4,
+                        borderRadius: 6,
+                        border: "1px solid rgba(255,255,255,0.08)",
+                        fontSize: 11,
+                        color: "rgba(255,255,255,0.5)",
+                      }}
+                    >
+                      #{ed.editionNumber} · {ed.title}
+                      <span style={{ marginLeft: 8, color: "rgba(255,255,255,0.3)" }}>
+                        collectors keep copies
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
           {editorTab === "share" ? (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               <div style={{ fontSize: 11, color: "rgba(255,255,255,0.55)", lineHeight: 1.45 }}>
@@ -1556,7 +1826,7 @@ export default function YoPhoTradingCard({
                   onClick={() => void publishInteractiveCard({ asEdition: true })}
                   style={chipStyle("#00E5FF")}
                 >
-                  DUPLICATE AS EDITION
+                  PUBLISH NEW EDITION
                 </button>
               </div>
               {publishedPath ? (
