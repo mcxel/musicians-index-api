@@ -1,3 +1,5 @@
+import { processCompetitiveWin } from "@/lib/progression/ProgressionEngine";
+
 export type WinMethod = "vote" | "forfeit" | "no-show" | "judges" | "technical";
 
 export interface BattleResult {
@@ -38,6 +40,10 @@ export function settleWinner(
   method: WinMethod,
   opts: { voteMargin?: number; seasonId?: string; leagueId?: string } = {},
 ): BattleResult {
+  // Same battleId settles once — prevents double XP/points if settleWinner is re-called.
+  const existing = results.get(battleId);
+  if (existing) return existing;
+
   const xpAwarded = XP_FOR_METHOD(method);
   const pointsAwarded = Math.round(xpAwarded * 1.5);
   const revenueTriggered = method === "vote" ? 0.5 : 0.25;
@@ -65,6 +71,11 @@ export function settleWinner(
   const lList = artistHistory.get(loserId) ?? [];
   lList.unshift(battleId);
   artistHistory.set(loserId, lList.slice(0, 200));
+
+  // Living OS WIN_BATTLE chain via ProgressionEngine (XP + points + ranking + championship check).
+  // Bus listeners skip when viaProgressionEngine=true; settleWinner early-return above is the
+  // durable idempotency gate (bus only dedupes idempotencyKey within ~2s).
+  processCompetitiveWin({ userId: winnerId, kind: "battle", eventId: battleId });
 
   return result;
 }

@@ -1,139 +1,80 @@
 "use client";
 
-import { useState } from "react";
+import Link from "next/link";
+import { BOT_ACCOUNT_REGISTRY, type BotAccount, type BotAccountStatus } from "@/lib/bots/BotAccountRegistry";
 
-type BotStatus = "ACTIVE" | "STANDBY" | "SUMMONING" | "OFFLINE";
+const STATUS_DOT: Record<BotAccountStatus, string> = {
+  ACTIVE: "#00FF88",
+  DISPLACED: "#AA2DFF",
+  RETIRED: "rgba(255,255,255,0.3)",
+};
 
-interface BotUnit {
-  id: string;
-  name: string;
-  role: string;
-  description: string;
-  status: BotStatus;
-  accentClass: string;
-  badgeClass: string;
-  actionLabel: string;
+const STATUS_LABEL: Record<BotAccountStatus, string> = {
+  ACTIVE: "ACTIVE",
+  DISPLACED: "DISPLACED BY HUMAN",
+  RETIRED: "RETIRED",
+};
+
+function seatSafetyLabel(bot: BotAccount): string {
+  if (bot.status !== "ACTIVE") return "—";
+  const gap = bot.humanTakeoverThreshold - bot.provisionalScore;
+  if (gap <= 0) return "Overtakeable now";
+  return `${gap.toLocaleString()} XP to overtake`;
 }
 
-const BOTS: BotUnit[] = [
-  {
-    id: "big-ace",
-    name: "Big Ace",
-    role: "Platform Director Bot",
-    description: "Hosts rooms, manages crown flow, directs fan energy.",
-    status: "ACTIVE",
-    accentClass: "border-amber-400/50",
-    badgeClass: "border-amber-400/60 text-amber-200 bg-amber-500/10",
-    actionLabel: "Command",
-  },
-  {
-    id: "sentinel",
-    name: "Sentinel Squad",
-    role: "Moderation Bots",
-    description: "Auto-bans, content flags, spam guard, rate-limit enforcement.",
-    status: "ACTIVE",
-    accentClass: "border-rose-400/50",
-    badgeClass: "border-rose-400/60 text-rose-200 bg-rose-500/10",
-    actionLabel: "Dispatch",
-  },
-  {
-    id: "booking",
-    name: "Booking Bots",
-    role: "Event Booking Automation",
-    description: "Slot holds, confirmation flows, venue coordination triggers.",
-    status: "STANDBY",
-    accentClass: "border-cyan-400/50",
-    badgeClass: "border-cyan-400/60 text-cyan-200 bg-cyan-500/10",
-    actionLabel: "Summon",
-  },
-  {
-    id: "revenue",
-    name: "Revenue Bots",
-    role: "Commerce Automation",
-    description: "Tip collection, sponsor billing cycles, NFT mint triggers.",
-    status: "ACTIVE",
-    accentClass: "border-green-400/50",
-    badgeClass: "border-green-400/60 text-green-200 bg-green-500/10",
-    actionLabel: "Command",
-  },
-  {
-    id: "moderation",
-    name: "Moderation Bots",
-    role: "Live Safety Layer",
-    description: "Chat review, age-gate enforcement, violation escalation.",
-    status: "ACTIVE",
-    accentClass: "border-violet-400/50",
-    badgeClass: "border-violet-400/60 text-violet-200 bg-violet-500/10",
-    actionLabel: "Override",
-  },
-];
-
-const STATUS_DOT: Record<BotStatus, string> = {
-  ACTIVE:    "bg-green-400",
-  STANDBY:   "bg-amber-400",
-  SUMMONING: "bg-cyan-400 animate-pulse",
-  OFFLINE:   "bg-zinc-600",
-};
-
-const STATUS_LABEL: Record<BotStatus, string> = {
-  ACTIVE:    "ACTIVE",
-  STANDBY:   "STANDBY",
-  SUMMONING: "SUMMONING",
-  OFFLINE:   "OFFLINE",
-};
-
 export default function BotSummonDeck() {
-  const [bots, setBots] = useState(BOTS);
-  const [log, setLog] = useState<string[]>([]);
-
-  function summon(id: string) {
-    setBots((prev) =>
-      prev.map((b) => {
-        if (b.id !== id) return b;
-        if (b.status === "OFFLINE" || b.status === "STANDBY") {
-          setTimeout(() => {
-            setBots((curr) =>
-              curr.map((x) => x.id === id ? { ...x, status: "ACTIVE" } : x)
-            );
-          }, 2000);
-          return { ...b, status: "SUMMONING" };
-        }
-        return b;
-      })
-    );
-    const bot = bots.find((b) => b.id === id);
-    if (bot) {
-      setLog((prev) => [`[${new Date().toLocaleTimeString()}] ${bot.name} — ${bot.actionLabel} issued`, ...prev.slice(0, 7)]);
-    }
-  }
-
-  const activeCount = bots.filter((b) => b.status === "ACTIVE").length;
+  const activeCount = BOT_ACCOUNT_REGISTRY.filter((b) => b.status === "ACTIVE").length;
+  const displacedCount = BOT_ACCOUNT_REGISTRY.filter((b) => b.status === "DISPLACED").length;
+  const retiredCount = BOT_ACCOUNT_REGISTRY.filter((b) => b.status === "RETIRED").length;
 
   return (
-    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "4px 8px", fontFamily: "'Inter', sans-serif" }}>
-      {[
-        { name: "Ace", initial: "A" },
-        { name: "Micah", initial: "M" },
-        { name: "Ali", initial: "Al" },
-        { name: "Nova", initial: "N" }
-      ].map((bot) => (
-        <div key={bot.name} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-          <div style={{
-            width: 38,
-            height: 38,
-            borderRadius: "50%",
-            border: "2px solid #8A2BE2",
-            background: "linear-gradient(135deg, #8A2BE2, #DA70D6)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            boxShadow: "0 0 8px rgba(138,43,226,0.3)"
-          }}>
-            <span style={{ fontSize: 10, fontWeight: 900, color: "#fff" }}>{bot.initial}</span>
-          </div>
-          <span style={{ fontSize: 8, fontWeight: 900, color: "#ffe9bb", textTransform: "uppercase" }}>{bot.name}</span>
-        </div>
-      ))}
+    <div style={{ display: "flex", flexDirection: "column", gap: 8, fontFamily: "'Inter', sans-serif", height: "100%" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", padding: "0 2px", fontSize: 8, fontWeight: 800, letterSpacing: "0.08em" }}>
+        <span style={{ color: "#00FF88" }}>{activeCount} ACTIVE</span>
+        <span style={{ color: "#AA2DFF" }}>{displacedCount} DISPLACED</span>
+        <span style={{ color: "rgba(255,255,255,0.4)" }}>{retiredCount} RETIRED</span>
+      </div>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 4, overflowY: "auto", flex: 1, minHeight: 0 }}>
+        {BOT_ACCOUNT_REGISTRY.map((bot) => (
+          <Link
+            key={bot.id}
+            href={bot.profileRoute}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              padding: "5px 8px",
+              borderRadius: 6,
+              border: "1px solid rgba(255,255,255,0.08)",
+              background: "rgba(255,255,255,0.02)",
+              textDecoration: "none",
+              opacity: bot.status === "RETIRED" ? 0.5 : 1,
+            }}
+          >
+            <span style={{ width: 6, height: 6, borderRadius: "50%", background: STATUS_DOT[bot.status], flexShrink: 0 }} />
+            <img
+              src={bot.avatarUrl}
+              alt=""
+              width={20}
+              height={20}
+              onError={(e) => { (e.currentTarget as HTMLImageElement).src = "/images/tmi-placeholder.jpg"; }}
+              style={{ borderRadius: "50%", objectFit: "cover", flexShrink: 0 }}
+            />
+            <div style={{ display: "flex", flexDirection: "column", minWidth: 0, flex: 1 }}>
+              <span style={{ fontSize: 9, fontWeight: 900, color: "#fff", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                [BOT] {bot.displayName}
+              </span>
+              <span style={{ fontSize: 7, color: "rgba(255,255,255,0.4)" }}>
+                {bot.assignments[0] ? `${bot.assignments[0].category} #${bot.assignments[0].rankPosition}` : "unassigned"} · {STATUS_LABEL[bot.status]}
+              </span>
+            </div>
+            <span style={{ fontSize: 7, color: "rgba(255,255,255,0.35)", whiteSpace: "nowrap", flexShrink: 0 }}>
+              {seatSafetyLabel(bot)}
+            </span>
+          </Link>
+        ))}
+      </div>
     </div>
   );
 }
