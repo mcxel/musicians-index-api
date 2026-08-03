@@ -63,6 +63,20 @@ export async function POST(req: NextRequest) {
     // Feed recording is non-critical
   }
 
+  try {
+    const { recordRelationshipEvent } = await import(
+      "@/lib/commerce/CreatorRelationshipEngine"
+    );
+    recordRelationshipEvent({
+      type: "Followed",
+      fanId: followerId,
+      creatorId: targetId,
+      source: "/api/social/follow",
+    });
+  } catch {
+    // Relationship ledger is non-critical
+  }
+
   const followerCount = await prisma.follow.count({ where: { followingId: targetId } });
   return NextResponse.json({ following: true, followerCount });
 }

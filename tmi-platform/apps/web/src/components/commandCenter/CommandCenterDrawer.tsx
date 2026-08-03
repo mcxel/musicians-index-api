@@ -39,7 +39,13 @@ import PerformerBioMagazineDrawer from "@/components/drawers/PerformerBioMagazin
 import CreatorCommerceCenterDrawer from "@/components/drawers/CreatorCommerceCenterDrawer";
 import MarketplaceDrawerPanel from "@/components/drawers/MarketplaceDrawerPanel";
 import ShopDrawerPanel from "@/components/drawers/ShopDrawerPanel";
+import AchievementCenterDrawer from "@/components/drawers/AchievementCenterDrawer";
+import CreatorAssetVaultPanel from "@/components/drawers/CreatorAssetVaultPanel";
 import { useActivePerformer } from "@/lib/context/ActivePerformerContext";
+import { getPerformerById } from "@/lib/performers/PerformerRegistry";
+import { wireProgressionCommandBus } from "@/lib/progression/ProgressionEngine";
+import { wireCeremonyDirector } from "@/lib/ceremony/CeremonyDirector";
+import { recordRelationshipEvent } from "@/lib/commerce/CreatorRelationshipEngine";
 import type { CommandCenterPanelId, CommandCenterRole } from "./commandCenterRegistry";
 import {
   FAN_COMMAND_PANELS,
@@ -84,16 +90,24 @@ function YoPhoSlot({
   role,
   displayName,
   userId,
+  bindKey,
+  slug,
 }: {
   role: CommandCenterRole;
   displayName: string;
   userId: string;
+  /** ACTIVE_PERFORMER bind — remounts card without full page reload. */
+  bindKey?: string;
+  slug?: string;
 }) {
   const fullHref = role === "performer" ? "/performer/canvas" : "/fan/canvas";
   const cardRole = role === "performer" ? "performer" : "fan";
 
   return (
-    <div style={{ padding: "12px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
+    <div
+      key={bindKey ?? userId}
+      style={{ padding: "12px 16px", display: "flex", flexDirection: "column", gap: 10 }}
+    >
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
         <div>
           <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.16em", color: "#FF2DAA" }}>
@@ -101,6 +115,7 @@ function YoPhoSlot({
           </div>
           <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>
             Living layered card · effects · song · share URL
+            {bindKey ? ` · ${displayName}` : ""}
           </div>
         </div>
         <Link
@@ -122,6 +137,7 @@ function YoPhoSlot({
         role={cardRole}
         displayName={displayName}
         userKey={userId}
+        slug={slug}
         compact
         showEditor
         showShare
@@ -152,7 +168,16 @@ function AnalyticsEmptyPeriod({ label }: { label: string }) {
   );
 }
 
-function AnalyticsStub({ role }: { role: CommandCenterRole }) {
+function AnalyticsStub({
+  role,
+  bindKey,
+  subjectLabel,
+}: {
+  role: CommandCenterRole;
+  /** ACTIVE_PERFORMER bind key — remounts without page reload. */
+  bindKey?: string;
+  subjectLabel?: string;
+}) {
   const drawerState = useDrawerState();
   const period = role === "performer" ? drawerState.analyticsPeriodPerformer : drawerState.analyticsPeriodFan;
   const sources = role === "performer" ? REVENUE_SOURCES_PERFORMER : ENGAGEMENT_SOURCES_FAN;
@@ -168,10 +193,16 @@ function AnalyticsStub({ role }: { role: CommandCenterRole }) {
         </div>
       }
     >
-      <div style={{ padding: "12px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
+      <div
+        key={bindKey ?? role}
+        style={{ padding: "12px 16px", display: "flex", flexDirection: "column", gap: 10 }}
+      >
         {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.16em", color }}>{heading}</div>
+          <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.16em", color }}>
+            {heading}
+            {subjectLabel ? ` · ${subjectLabel}` : ""}
+          </div>
           <Link href={role === "performer" ? "/performer/analytics" : "/fan/stats"}
             style={{ fontSize: 9, fontWeight: 800, color: "rgba(255,255,255,0.4)", textDecoration: "none" }}>
             Full Report →
@@ -301,11 +332,54 @@ export default function CommandCenterDrawer({
   initialPlaylistId = null,
 }: CommandCenterDrawerProps) {
   const theme = useTheme();
-  const { resolvePerformerId, activePerformerId } = useActivePerformer();
-  /** Context-bound performer for Marketplace / Shop / booking surfaces. */
+  const { resolvePerformerId, activePerformerId, activePerformer } = useActivePerformer();
+  /** Context-bound performer for Marketplace / Shop / booking / bio / analytics. */
   const contextPerformerId = resolvePerformerId(role === "performer" ? userId : null);
+  const contextPerformer =
+    (contextPerformerId ? getPerformerById(contextPerformerId) : null) ?? null;
+  const contextDisplayName =
+    activePerformer?.name ?? contextPerformer?.name ?? displayName;
+  const contextSlug = activePerformer?.slug ?? contextPerformer?.slug ?? contextPerformerId ?? undefined;
   const roomId = useMemo(() => `${role}-lobby-cc-${userId}`, [role, userId]);
   const open = appearanceOpen || activePanel != null;
+
+  // ── Phase 2B: progression + ceremony + relationship hooks ─────────────────
+  useEffect(() => {
+    wireProgressionCommandBus();
+    wireCeremonyDirector();
+    const unsubYoPho = livingOsCommandBus.on("YOPHO_COLLECTED", (cmd) => {
+      const fanId = cmd.userId;
+      const creatorId =
+        (cmd.payload?.creatorId as string | undefined) ??
+        (cmd.payload?.performerId as string | undefined);
+      if (!fanId || !creatorId) return;
+      recordRelationshipEvent({
+        type: "CollectedYoPho",
+        fanId,
+        creatorId,
+        source: "YOPHO_COLLECTED",
+      });
+    });
+    // Tip commerce — only when real purchase command carries tip semantics
+    const unsubTip = livingOsCommandBus.on("ITEM_PURCHASED", (cmd) => {
+      if (cmd.payload?.kind !== "tip") return;
+      const fanId = cmd.userId;
+      const creatorId = cmd.payload?.performerId as string | undefined;
+      const amountCents = Number(cmd.payload?.amountCents ?? 0);
+      if (!fanId || !creatorId || !Number.isFinite(amountCents)) return;
+      recordRelationshipEvent({
+        type: "Tip",
+        fanId,
+        creatorId,
+        amountCents,
+        source: "ITEM_PURCHASED",
+      });
+    });
+    return () => {
+      unsubYoPho();
+      unsubTip();
+    };
+  }, []);
 
   // ── Observatory: drawer lifecycle telemetry (Living OS Command Bus) ────────
   const openedAtRef = useRef<number | null>(null);
@@ -371,6 +445,10 @@ export default function CommandCenterDrawer({
     commerce_center: "COMMERCE CENTER",
     submission_center: "SUBMISSION CENTER",
     beat_marketplace: "BEAT MARKETPLACE",
+    achievement_center: "ACHIEVEMENT CENTER",
+    asset_vault: "CREATOR ASSET VAULT",
+    shop_center: "SHOP CENTER",
+    tmi_store: "TMI STORE",
   };
   const title = appearanceOpen
     ? "SHELL COLORS · THIS DEVICE"
@@ -467,7 +545,17 @@ export default function CommandCenterDrawer({
       ) : null}
 
       {activePanel === "yopho" ? (
-        <YoPhoSlot role={role} displayName={displayName} userId={userId} />
+        <YoPhoSlot
+          role={role}
+          displayName={role === "performer" ? contextDisplayName : displayName}
+          userId={role === "performer" ? contextPerformerId ?? userId : userId}
+          slug={role === "performer" ? contextSlug : undefined}
+          bindKey={
+            role === "performer"
+              ? `yopho-${contextPerformerId ?? userId}`
+              : `yopho-${userId}`
+          }
+        />
       ) : null}
 
       {activePanel === "playlist" ? (
@@ -507,7 +595,17 @@ export default function CommandCenterDrawer({
         />
       ) : null}
 
-      {activePanel === "analytics" ? <AnalyticsStub role={role} /> : null}
+      {activePanel === "analytics" ? (
+        <AnalyticsStub
+          role={role}
+          bindKey={
+            role === "performer"
+              ? `analytics-${contextPerformerId ?? userId}`
+              : `analytics-${userId}`
+          }
+          subjectLabel={role === "performer" ? contextDisplayName : undefined}
+        />
+      ) : null}
 
       {activePanel === "inventory" && role === "fan" ? (
         <RoleGate allow={["FAN", "ADMIN", "STAFF"]} fallback={null}>
@@ -527,8 +625,10 @@ export default function CommandCenterDrawer({
           }
         >
           <PerformerBioMagazineDrawer
-            userId={userId}
-            displayName={displayName}
+            key={`bio-${contextPerformerId ?? userId}`}
+            userId={contextPerformerId ?? userId}
+            performerSlug={contextSlug}
+            displayName={contextDisplayName}
             accentColor="#00FFFF"
             showRequestInterview={false}
             onOpenCommerceCenter={
@@ -548,8 +648,9 @@ export default function CommandCenterDrawer({
           }
         >
           <CreatorCommerceCenterDrawer
-            performerId={userId}
-            displayName={displayName}
+            key={`commerce-${contextPerformerId ?? userId}`}
+            performerId={contextPerformerId ?? userId}
+            displayName={contextDisplayName}
             accentColor="#FFD700"
             onOpenYoPho={onSelectPanel ? () => onSelectPanel("yopho") : undefined}
             onOpenBeatMarketplace={
@@ -561,9 +662,13 @@ export default function CommandCenterDrawer({
       ) : null}
 
       {activePanel === "beat_marketplace" ? (
-        <div style={{ padding: 20, display: "flex", flexDirection: "column", gap: 12 }}>
+        <div
+          key={`beat-mkt-${contextPerformerId ?? userId}`}
+          style={{ padding: 20, display: "flex", flexDirection: "column", gap: 12 }}
+        >
           <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)" }}>
             Beat Marketplace — browse, preview, and license beats. No fake inventory counts.
+            {role === "performer" ? ` · Context: ${contextDisplayName}` : ""}
           </div>
           <Link href="/beat-marketplace" style={toolLink("#FFD700")}>
             Open Beat Marketplace →
@@ -575,15 +680,23 @@ export default function CommandCenterDrawer({
       ) : null}
 
       {activePanel === "media_locker" && role === "performer" ? (
-        <div style={{ padding: 12 }}>
-          <MediaLockerCanister userId={userId} role="performer" accentColor={theme.secondary} />
+        <div style={{ padding: 12 }} key={`locker-${contextPerformerId ?? userId}`}>
+          <MediaLockerCanister
+            userId={contextPerformerId ?? userId}
+            role="performer"
+            accentColor={theme.secondary}
+          />
         </div>
       ) : null}
 
       {activePanel === "beat_lab" && role === "performer" ? (
-        <div style={{ padding: 20, display: "flex", flexDirection: "column", gap: 12 }}>
+        <div
+          key={`beat-lab-${contextPerformerId ?? userId}`}
+          style={{ padding: 20, display: "flex", flexDirection: "column", gap: 12 }}
+        >
           <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)" }}>
             Beat Lab & Competition Vault — open the real vault surfaces.
+            {` · Context: ${contextDisplayName}`}
           </div>
           <Link href="/beat-vault" style={toolLink(theme.tertiary)}>
             Open Beat Vault →
@@ -777,6 +890,45 @@ export default function CommandCenterDrawer({
             </Link>
           </div>
         </RoleGate>
+      ) : null}
+
+      {/* ── Achievement Center (Fan + Performer) ──────────────────────────── */}
+      {activePanel === "achievement_center" ? (
+        <AchievementCenterDrawer
+          userId={userId}
+          role={role}
+          displayName={role === "performer" ? contextDisplayName : displayName}
+          accentColor="#FFD700"
+        />
+      ) : null}
+
+      {/* ── Creator Asset Vault (Performer) ───────────────────────────────── */}
+      {activePanel === "asset_vault" && role === "performer" ? (
+        <CreatorAssetVaultPanel
+          fallbackPerformerId={contextPerformerId ?? userId}
+          accentColor="#FF2DAA"
+        />
+      ) : null}
+
+      {/* ── Shop Center alias → Shop drawer (Personal + TMI) ─────────────── */}
+      {activePanel === "shop_center" && role === "performer" ? (
+        <ShopDrawerPanel
+          role={role}
+          fallbackPerformerId={userId}
+          accentColor={theme.tertiary}
+        />
+      ) : null}
+
+      {activePanel === "marketplace" && role === "performer" ? (
+        <MarketplaceDrawerPanel accentColor="#00FFFF" />
+      ) : null}
+
+      {activePanel === "tmi_store" ? (
+        <ShopDrawerPanel
+          role={role}
+          fallbackPerformerId={role === "performer" ? userId : undefined}
+          accentColor="#AA2DFF"
+        />
       ) : null}
     </UniversalDrawerBase>
   );
