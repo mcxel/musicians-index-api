@@ -65,10 +65,18 @@ export type LivingOsCommandType =
   | "ROOM_LEFT"
   | "BROADCAST_STARTED"
   | "BROADCAST_ENDED"
-  // Competitions
+  // Competitions + Progression (Phase 2B)
   | "BATTLE_CREATED"
   | "BATTLE_JOINED"
   | "SCORE_SUBMITTED"
+  | "WIN_BATTLE"
+  | "WIN_CROWN"
+  | "WIN_BELT"
+  | "WIN_TROPHY"
+  | "LEVEL_UP"
+  | "UNLOCK_ACHIEVEMENT"
+  | "REQUEST_CROWN_CHALLENGE"
+  | "REQUEST_BELT_CHALLENGE"
   // Commerce
   | "ITEM_PURCHASED"
   | "PERFORMER_BOOKED"

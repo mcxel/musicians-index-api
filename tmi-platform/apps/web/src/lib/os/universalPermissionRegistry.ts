@@ -79,6 +79,9 @@ const PERMISSION_OVERRIDES: Partial<Record<ActionId, PlatformRole[]>> = {
   ACTION_GO_LIVE:               ["performer", "admin"],
   ACTION_START_BATTLE:          ["performer", "admin"],
   ACTION_START_CYPHER:          ["performer", "admin"],
+  ACTION_REQUEST_CROWN_CHALLENGE: ["performer", "admin"],
+  ACTION_REQUEST_BELT_CHALLENGE:  ["performer", "admin"],
+  ACTION_OPEN_ACHIEVEMENT_CENTER: ["fan", "performer", "admin"],
 
   // Beat Creator role — exclusive to accounts with the beat_creator contributor role
   // (does not require admin; Beat Creators are NOT admins unless separately assigned)

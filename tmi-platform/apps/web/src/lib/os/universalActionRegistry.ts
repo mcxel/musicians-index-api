@@ -74,6 +74,9 @@ export type ActionId =
   | "ACTION_START_CYPHER"
   | "ACTION_JOIN_CYPHER"
   | "ACTION_SUBMIT_SCORE"
+  | "ACTION_REQUEST_CROWN_CHALLENGE"
+  | "ACTION_REQUEST_BELT_CHALLENGE"
+  | "ACTION_OPEN_ACHIEVEMENT_CENTER"
   // ── Commerce ─────────────────────────────────────────────────────────────
   | "ACTION_PURCHASE_ITEM"
   | "ACTION_BOOK_ARTIST"
@@ -418,6 +421,36 @@ export const ACTION_REGISTRY: Record<ActionId, ActionDef> = {
     commandType: "SCORE_SUBMITTED",
     defaultAllowedRoles: ["performer", "admin"],
     status: "planned",
+  },
+  ACTION_REQUEST_CROWN_CHALLENGE: {
+    id: "ACTION_REQUEST_CROWN_CHALLENGE",
+    label: "Request Crown Challenge",
+    description:
+      "Queues a crown challenge when eligibility passes (verified wins required — Rule 20)",
+    category: "competitions",
+    commandType: "REQUEST_CROWN_CHALLENGE",
+    defaultAllowedRoles: ["performer", "admin"],
+    status: "active",
+  },
+  ACTION_REQUEST_BELT_CHALLENGE: {
+    id: "ACTION_REQUEST_BELT_CHALLENGE",
+    label: "Request Belt Challenge",
+    description:
+      "Queues a belt challenge when eligibility passes (verified wins required — Rule 20)",
+    category: "competitions",
+    commandType: "REQUEST_BELT_CHALLENGE",
+    defaultAllowedRoles: ["performer", "admin"],
+    status: "active",
+  },
+  ACTION_OPEN_ACHIEVEMENT_CENTER: {
+    id: "ACTION_OPEN_ACHIEVEMENT_CENTER",
+    label: "Open Achievement Center",
+    description:
+      "Opens Achievement Center drawer (trophies, crowns, belts, XP, points, career timeline)",
+    category: "navigation",
+    commandType: "DRAWER_OPENED",
+    defaultAllowedRoles: ["fan", "performer", "admin"],
+    status: "active",
   },
   // Commerce
   ACTION_PURCHASE_ITEM: {
