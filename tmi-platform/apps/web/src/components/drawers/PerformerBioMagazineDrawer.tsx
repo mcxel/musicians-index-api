@@ -30,6 +30,9 @@ import {
   getLivingCatalogForPerformer,
   HYBRID_ECONOMICS_COPY,
 } from "@/lib/commerce/LivingCatalog";
+import { listTitlesForHolder, listChampionshipTitles } from "@/lib/championship";
+import ChampionshipChallengeCard from "@/components/championship/ChampionshipChallengeCard";
+import { getChampionVisualIdentity, championCardStyle } from "@/lib/championship/championVisualIdentity";
 
 type TabId =
   | "profile"
@@ -386,26 +389,58 @@ export default function PerformerBioMagazineDrawer({
       <div style={{ flex: 1, overflow: "auto", padding: "14px 16px 8px" }}>
         {tab === "profile" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <div>
-              <label style={labelStyle}>STAGE NAME</label>
-              <input style={fieldStyle} value={stageName} onChange={(e) => setStageName(e.target.value)} />
+            <div
+              className={
+                registryPerformer
+                  ? getChampionVisualIdentity(registryPerformer.id).className || undefined
+                  : undefined
+              }
+              style={{
+                padding: 10,
+                borderRadius: 10,
+                ...(registryPerformer ? championCardStyle(registryPerformer.id) : {}),
+              }}
+            >
+              <div>
+                <label style={labelStyle}>STAGE NAME</label>
+                <input style={fieldStyle} value={stageName} onChange={(e) => setStageName(e.target.value)} />
+              </div>
+              <div style={{ marginTop: 12 }}>
+                <label style={labelStyle}>LOCATION</label>
+                <input style={fieldStyle} value={location} onChange={(e) => setLocation(e.target.value)} />
+              </div>
+              <div style={{ marginTop: 12 }}>
+                <label style={labelStyle}>GENRES</label>
+                <input
+                  style={fieldStyle}
+                  value={genres}
+                  onChange={(e) => setGenres(e.target.value)}
+                  placeholder="Hip-Hop, R&B"
+                />
+              </div>
+              <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", marginTop: 10 }}>
+                Tier {String(tier).toUpperCase()} · Rank {rankLabel} · from {sourceLabel}
+              </div>
             </div>
-            <div>
-              <label style={labelStyle}>LOCATION</label>
-              <input style={fieldStyle} value={location} onChange={(e) => setLocation(e.target.value)} />
-            </div>
-            <div>
-              <label style={labelStyle}>GENRES</label>
-              <input
-                style={fieldStyle}
-                value={genres}
-                onChange={(e) => setGenres(e.target.value)}
-                placeholder="Hip-Hop, R&B"
-              />
-            </div>
-            <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)" }}>
-              Tier {String(tier).toUpperCase()} · Rank {rankLabel} · from {sourceLabel}
-            </div>
+            {registryPerformer ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.12em", color: ac }}>
+                  CHAMPIONSHIP CHALLENGE
+                </div>
+                {(listTitlesForHolder(registryPerformer.id).length > 0
+                  ? listTitlesForHolder(registryPerformer.id)
+                  : listChampionshipTitles().filter((t) => t.assetType === "CROWN").slice(0, 2)
+                ).map((title) => (
+                  <ChampionshipChallengeCard
+                    key={title.id}
+                    title={title}
+                    challengerId={userId}
+                    role="performer"
+                    showLineage
+                  />
+                ))}
+              </div>
+            ) : null}
           </div>
         )}
 

@@ -23,6 +23,10 @@ import {
 import { resolvePrimaryListenProfileUrl } from "@/lib/commerce/DistributorConnectorRegistry";
 import { useActivePerformer } from "@/lib/context/ActivePerformerContext";
 import { getPerformerById } from "@/lib/performers/PerformerRegistry";
+import {
+  championCardStyle,
+  getChampionVisualIdentity,
+} from "@/lib/championship/championVisualIdentity";
 
 export interface MarketplaceDrawerPanelProps {
   accentColor?: string;
@@ -71,19 +75,24 @@ export default function MarketplaceDrawerPanel({
     );
   }
 
+  const champ = getChampionVisualIdentity(performerId);
+  const bannerAccent = champ.bannerAccent ?? accentColor;
+
   return (
     <div
       key={performerId}
+      className={champ.className || undefined}
       style={{
         padding: 12,
         display: "flex",
         flexDirection: "column",
         gap: 12,
         animation: "tmiMarketplaceFade 0.28s ease",
+        ...championCardStyle(performerId),
       }}
     >
       <style>{`@keyframes tmiMarketplaceFade{from{opacity:0.35}to{opacity:1}}`}</style>
-      <Header accent={accentColor} subtitle={name} />
+      <Header accent={bannerAccent} subtitle={name} />
 
       {(listenUrl || buyUrl) && (
         <div

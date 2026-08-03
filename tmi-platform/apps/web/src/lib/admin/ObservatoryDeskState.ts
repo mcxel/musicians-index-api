@@ -41,7 +41,8 @@ export type DeskPanelId =
   | "engagement"
   | "growth"
   | "sponsors"
-  | "prizes";
+  | "prizes"
+  | "championships";
 
 /** Health light — never synthetic green-for-existence. Gray = no telemetry. */
 export type DeskHealth = "green" | "yellow" | "red" | "gray" | "purple";
@@ -137,6 +138,7 @@ export const DESK_RAIL_ITEMS: {
   { id: "growth", label: "Growth", accent: "#8CF9FF" },
   { id: "sponsors", label: "Sponsors", accent: "#FFD700" },
   { id: "prizes", label: "Prizes", accent: "#FFD700" },
+  { id: "championships", label: "Championships", accent: "#FFD700" },
 ];
 
 function tile(

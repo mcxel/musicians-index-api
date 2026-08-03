@@ -40,6 +40,7 @@ import CreatorCommerceCenterDrawer from "@/components/drawers/CreatorCommerceCen
 import MarketplaceDrawerPanel from "@/components/drawers/MarketplaceDrawerPanel";
 import ShopDrawerPanel from "@/components/drawers/ShopDrawerPanel";
 import AchievementCenterDrawer from "@/components/drawers/AchievementCenterDrawer";
+import ChampionshipCenterDrawer from "@/components/championship/ChampionshipCenterDrawer";
 import CreatorAssetVaultPanel from "@/components/drawers/CreatorAssetVaultPanel";
 import { useActivePerformer } from "@/lib/context/ActivePerformerContext";
 import { getPerformerById } from "@/lib/performers/PerformerRegistry";
@@ -446,6 +447,7 @@ export default function CommandCenterDrawer({
     submission_center: "SUBMISSION CENTER",
     beat_marketplace: "BEAT MARKETPLACE",
     achievement_center: "ACHIEVEMENT CENTER",
+    championship_center: "CHAMPIONSHIP CENTER",
     asset_vault: "CREATOR ASSET VAULT",
     shop_center: "SHOP CENTER",
     tmi_store: "TMI STORE",
@@ -895,6 +897,16 @@ export default function CommandCenterDrawer({
       {/* ── Achievement Center (Fan + Performer) ──────────────────────────── */}
       {activePanel === "achievement_center" ? (
         <AchievementCenterDrawer
+          userId={userId}
+          role={role}
+          displayName={role === "performer" ? contextDisplayName : displayName}
+          accentColor="#FFD700"
+        />
+      ) : null}
+
+      {/* ── Championship Center (Fan + Performer) ─────────────────────────── */}
+      {activePanel === "championship_center" ? (
+        <ChampionshipCenterDrawer
           userId={userId}
           role={role}
           displayName={role === "performer" ? contextDisplayName : displayName}

@@ -77,6 +77,7 @@ export type ActionId =
   | "ACTION_REQUEST_CROWN_CHALLENGE"
   | "ACTION_REQUEST_BELT_CHALLENGE"
   | "ACTION_OPEN_ACHIEVEMENT_CENTER"
+  | "ACTION_OPEN_CHAMPIONSHIP_CENTER"
   // ── Commerce ─────────────────────────────────────────────────────────────
   | "ACTION_PURCHASE_ITEM"
   | "ACTION_BOOK_ARTIST"
@@ -447,6 +448,16 @@ export const ACTION_REGISTRY: Record<ActionId, ActionDef> = {
     label: "Open Achievement Center",
     description:
       "Opens Achievement Center drawer (trophies, crowns, belts, XP, points, career timeline)",
+    category: "navigation",
+    commandType: "DRAWER_OPENED",
+    defaultAllowedRoles: ["fan", "performer", "admin"],
+    status: "active",
+  },
+  ACTION_OPEN_CHAMPIONSHIP_CENTER: {
+    id: "ACTION_OPEN_CHAMPIONSHIP_CENTER",
+    label: "Open Championship Center",
+    description:
+      "Opens Championship Center drawer (crowns, belts, defenses, challenges, Hall of Fame, living rankings)",
     category: "navigation",
     commandType: "DRAWER_OPENED",
     defaultAllowedRoles: ["fan", "performer", "admin"],

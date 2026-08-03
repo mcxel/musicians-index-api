@@ -55,7 +55,9 @@ export type UniversalDrawerModuleId =
   /** Performer: Creator Asset Vault — master media library (albums, art, press kits). */
   | "asset_vault"
   /** Fan + Performer: trophies, crowns, belts, achievements, streaks, XP, points, timeline. */
-  | "achievement_center";
+  | "achievement_center"
+  /** Fan + Performer: ESPN-style Championship Center hub (Phase 2C). */
+  | "championship_center";
 
 export type UniversalDrawerRole = "fan" | "performer" | "shared";
 
@@ -398,6 +400,16 @@ export const UNIVERSAL_DRAWER_MODULES: UniversalDrawerModuleDef[] = [
     primary: true,
     mediaBindPoint: "none",
   },
+  {
+    id: "championship_center",
+    label: "CHAMPIONSHIP CENTER",
+    info: "Crowns · Belts · Defenses · HoF",
+    accent: "#FFD700",
+    animation: "command_lift",
+    roles: ["fan", "performer"],
+    primary: true,
+    mediaBindPoint: "none",
+  },
 ];
 
 const BY_ID = new Map(UNIVERSAL_DRAWER_MODULES.map((m) => [m.id, m]));
@@ -430,6 +442,7 @@ export const FAN_UNIVERSAL_SWAP_MODULES: UniversalDrawerModuleId[] = [
   "inventory",
   "prize_vault",
   "achievement_center",
+  "championship_center",
   "tickets",
   "favorites",
   "live_destinations",
@@ -451,6 +464,7 @@ export const PERFORMER_UNIVERSAL_SWAP_MODULES: UniversalDrawerModuleId[] = [
   "submissions",
   "scores",
   "achievement_center",
+  "championship_center",
   "beat_lab",
   "booking",
   "stage_tools",

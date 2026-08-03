@@ -6,6 +6,10 @@
 
 :root {
   --font-tmi-editorial: 'Playfair Display', 'Georgia', 'Times New Roman', serif;
+  --tmi-champion-crown: #ffd700;
+  --tmi-champion-belt: #ff6b35;
+  --tmi-champion-trophy: #00ffff;
+  --tmi-champion-glow: rgba(255, 215, 0, 0.35);
 }
 
 body {
@@ -563,5 +567,45 @@ body.tmi-obsidian-cinematic::after {
   :where(button, [role="button"], a[href], input[type="button"], input[type="submit"], summary):active {
     transform: none;
     filter: none;
+  }
+}
+
+/* Phase 2C — Champion Visual Identity (lightweight, no CineCall stack) */
+.tmi-champion-accent {
+  position: relative;
+}
+
+.tmi-champion-crown {
+  box-shadow: 0 0 14px var(--tmi-champion-glow);
+}
+
+.tmi-champion-belt {
+  box-shadow: 0 0 14px rgba(255, 107, 53, 0.35);
+}
+
+.tmi-champion-trophy {
+  box-shadow: 0 0 14px rgba(0, 255, 255, 0.3);
+}
+
+.tmi-champion-multi {
+  box-shadow: 0 0 16px var(--tmi-champion-glow), 0 0 8px rgba(255, 107, 53, 0.25);
+}
+
+.tmi-ceremony-crown,
+.tmi-ceremony-belt,
+.tmi-ceremony-trophy,
+.tmi-ceremony-levelup,
+.tmi-ceremony-achievement {
+  animation: tmi-ceremony-pulse 0.9s ease-out;
+}
+
+@keyframes tmi-ceremony-pulse {
+  0% {
+    transform: scale(0.96);
+    filter: brightness(1.2);
+  }
+  100% {
+    transform: scale(1);
+    filter: brightness(1);
   }
 }

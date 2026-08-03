@@ -17,6 +17,8 @@ import ObservatoryIntelligencePanel from "@/components/admin/overseer/Observator
 import ScamDefenseCenter from "@/components/admin/overseer/ScamDefenseCenter";
 import MagazineAnalytics from "@/components/admin/overseer/MagazineAnalytics";
 import HomeLiveLobbyWall from "@/components/discovery/HomeLiveLobbyWall";
+import ObservatoryChampionshipWidget from "@/components/championship/ObservatoryChampionshipWidget";
+import LivingRankingsPanel from "@/components/championship/LivingRankingsPanel";
 import type { DeskPanelId, DeskPeriod } from "@/lib/admin/ObservatoryDeskState";
 
 export function HonestEmpty({
@@ -204,12 +206,28 @@ export function DeskPanelContent({
       );
     case "rankings":
       return (
-        <HonestEmpty
-          title="Rankings"
-          detail="XP-driven ranks live in PerformerRegistry (computeRanks). No Observatory rankings tile engine is wired here yet."
-          href="/home/1-2"
-          hrefLabel="Open Billboard / Rankings →"
-        />
+        <div style={{ height: "100%", overflow: "auto", padding: 8 }}>
+          <LivingRankingsPanel accentColor="#FFD700" maxRows={12} />
+        </div>
+      );
+    case "championships":
+      return (
+        <div
+          style={{
+            height: "100%",
+            overflow: "auto",
+            padding: 8,
+            display: "flex",
+            flexDirection: "column",
+            gap: 10,
+          }}
+        >
+          <ObservatoryChampionshipWidget />
+          <HonestEmpty
+            title="Championship Center"
+            detail="Full ESPN hub lives in Fan/Performer Command Center drawer championship_center. Counts above are registry-backed only."
+          />
+        </div>
       );
     case "presentation":
       return (

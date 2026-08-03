@@ -6,11 +6,13 @@
  */
 
 import Link from "next/link";
-import type { CSSProperties } from "react";
+import { useState, type CSSProperties } from "react";
 import { useDiscoveryBus } from "@/lib/discovery/useDiscoveryBus";
 import { LIVE_DISCOVERY_CATEGORY_LABELS } from "@/lib/discovery/LiveDiscoveryRecord";
 import { useActivePerformer } from "@/lib/context/ActivePerformerContext";
 import { getPerformerById } from "@/lib/performers/PerformerRegistry";
+import ChampionshipBroadcastOverlay from "@/components/championship/ChampionshipBroadcastOverlay";
+import { championCardStyle, getChampionVisualIdentity } from "@/lib/championship/championVisualIdentity";
 
 interface LiveDestinationsDrawerPanelProps {
   viewerUserId?: string;
@@ -23,7 +25,8 @@ export default function LiveDestinationsDrawerPanel({
 }: LiveDestinationsDrawerPanelProps) {
   const records = useDiscoveryBus(viewerUserId);
   const live = records.filter((r) => r.isLive).slice(0, 12);
-  const { setActivePerformer } = useActivePerformer();
+  const { setActivePerformer, activePerformerId } = useActivePerformer();
+  const [overlayKey, setOverlayKey] = useState(0);
 
   const bindHost = (hostUserId: string, hostName: string) => {
     const profile = getPerformerById(hostUserId);
@@ -32,6 +35,7 @@ export default function LiveDestinationsDrawerPanel({
       slug: profile?.slug ?? hostUserId,
       name: profile?.name ?? hostName,
     });
+    setOverlayKey((n) => n + 1);
   };
 
   return (
@@ -44,6 +48,13 @@ export default function LiveDestinationsDrawerPanel({
           From DiscoveryBus · human viewers only · no fabricated rooms
         </div>
       </div>
+
+      {/* Championship Broadcast Overlay mount — host card / ACTIVE_PERFORMER bind */}
+      <ChampionshipBroadcastOverlay
+        performerId={activePerformerId}
+        triggerKey={overlayKey}
+        durationMs={4000}
+      />
 
       {live.length === 0 ? (
         <div
@@ -78,9 +89,12 @@ export default function LiveDestinationsDrawerPanel({
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {live.map((r) => (
+          {live.map((r) => {
+            const champ = getChampionVisualIdentity(r.hostUserId);
+            return (
             <div
               key={r.id}
+              className={champ.className || undefined}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -90,6 +104,7 @@ export default function LiveDestinationsDrawerPanel({
                 border: `1px solid ${r.accentColor || accentColor}33`,
                 background: "rgba(255,255,255,0.03)",
                 color: "#fff",
+                ...championCardStyle(r.hostUserId),
               }}
             >
               <button
@@ -145,7 +160,8 @@ export default function LiveDestinationsDrawerPanel({
                 JOIN →
               </Link>
             </div>
-          ))}
+            );
+          })}
           <Link
             href="/live/lobby"
             style={{ fontSize: 11, color: accentColor, fontWeight: 800, textDecoration: "none", padding: "4px 2px" }}
