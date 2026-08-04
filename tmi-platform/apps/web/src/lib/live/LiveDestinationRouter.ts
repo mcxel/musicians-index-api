@@ -122,8 +122,9 @@ function isPerformerLike(role: LiveDestinationRole): boolean {
 function experienceCategory(preferred?: string): string {
   const p = (preferred ?? "live").toLowerCase();
   if (p === "battle" || p === "cypher" || p === "challenge" || p === "concert") return p;
+  if (p === "world-concert") return "concert";
   if (p === "dance-party" || p === "world-dance-party") return "dance-party";
-  if (p === "release-party" || p === "mini-concert") return p;
+  if (p === "release-party" || p === "mini-concert" || p === "world-premiere") return "release-party";
   if (p === "fan-lobby") return "fan-lobby";
   if (p === "lounge" || p === "vip-lounge") return "lounge";
   return "live";

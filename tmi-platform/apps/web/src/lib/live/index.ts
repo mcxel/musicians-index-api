@@ -60,6 +60,16 @@ export type {
   LiveDestinationFlags,
 } from "./LiveDestinationRouter";
 
+export {
+  loadPersistedLiveDevices,
+  persistLiveDevices,
+  clearPersistedLiveDevices,
+  buildLiveMediaConstraints,
+  persistDevicesFromStream,
+  hasPriorLiveDevices,
+} from "./liveDevicePersistence";
+export type { PersistedLiveDevices } from "./liveDevicePersistence";
+
 export { billboardPortalEngine } from "./BillboardPortalEngine";
 export type { BillboardPortal } from "./BillboardPortalEngine";
 

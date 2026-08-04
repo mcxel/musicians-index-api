@@ -4,6 +4,7 @@
  * InstantGoLiveStage — performer lands on empty venue immediately.
  * Ambient life + Venue Support Presence (labeled bots) without fake viewers.
  * humanViewers only for watching / arrival toasts (Rule 20).
+ * Parallel camera/mic/broadcast init via compact status pill (never full setup page).
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -11,6 +12,8 @@ import dynamic from "next/dynamic";
 import { AnimatePresence, motion } from "framer-motion";
 import GoLiveRuntime from "@/components/live/GoLiveRuntime";
 import PerformerCommandPanel from "@/components/live/PerformerCommandPanel";
+import GoLiveStatusPill, { type GoLiveInitPhase } from "@/components/live/GoLiveStatusPill";
+import GoLiveDeviceDrawer from "@/components/live/GoLiveDeviceDrawer";
 import { showBannerText, clearBannerText } from "@/lib/live/StageDirectorEngine";
 import {
   startVenueSupportPresence,
@@ -24,6 +27,13 @@ import {
   EMPTY_VENUE_PRESENCE_METRICS,
   type VenuePresenceMetrics,
 } from "@/lib/venues/venuePresenceMetrics";
+import {
+  buildLiveMediaConstraints,
+  hasPriorLiveDevices,
+  loadPersistedLiveDevices,
+  persistDevicesFromStream,
+} from "@/lib/live/liveDevicePersistence";
+import { launchDockStore } from "@/lib/dock/launchDockStore";
 
 const ArenaEventShell = dynamic(() => import("@/components/live/ArenaEventShell"), {
   ssr: false,
@@ -65,9 +75,117 @@ export default function InstantGoLiveStage({
   const [hostMode, setHostMode] = useState(true);
   const [toast, setToast] = useState<string | null>(null);
   const [supportCue, setSupportCue] = useState<SupportCue | null>(null);
+  const [initPhase, setInitPhase] = useState<GoLiveInitPhase>("preparing_venue");
+  const [initError, setInitError] = useState("");
+  const [deviceDrawerOpen, setDeviceDrawerOpen] = useState(false);
+  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const seenIds = useRef<Set<string>>(new Set());
   const firstPoll = useRef(true);
   const humanRef = useRef(0);
+  const mediaStarted = useRef(false);
+  const previewVideoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+
+  const attachPreview = useCallback((stream: MediaStream | null) => {
+    if (streamRef.current && streamRef.current !== stream) {
+      streamRef.current.getTracks().forEach((t) => t.stop());
+    }
+    streamRef.current = stream;
+    setLocalStream(stream);
+    if (previewVideoRef.current) {
+      previewVideoRef.current.srcObject = stream;
+      if (stream) void previewVideoRef.current.play().catch(() => {});
+    }
+  }, []);
+
+  const finishBroadcastInit = useCallback(() => {
+    setInitPhase("initializing_broadcast");
+    // Registry already published via executeInstantGoLive — mark LIVE after brief settle
+    window.setTimeout(() => {
+      setInitPhase("live");
+      launchDockStore.setCamReady(true);
+      launchDockStore.setMicReady(true);
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem("tmi_is_live", "true");
+        window.dispatchEvent(
+          new CustomEvent("tmi:golive", {
+            detail: { roomId, category, privacy, instant: true },
+          }),
+        );
+      }
+    }, 350);
+  }, [roomId, category, privacy]);
+
+  const runMediaInit = useCallback(async () => {
+    setInitPhase("preparing_venue");
+    setInitError("");
+
+    // Brief venue paint beat before camera — stage already visible
+    await new Promise((r) => window.setTimeout(r, 120));
+    setInitPhase("connecting_camera");
+
+    const persisted = loadPersistedLiveDevices();
+    const prior = hasPriorLiveDevices();
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia(
+        buildLiveMediaConstraints(persisted),
+      );
+      persistDevicesFromStream(stream);
+      attachPreview(stream);
+      launchDockStore.setCamReady(Boolean(stream.getVideoTracks()[0]));
+      setInitPhase("connecting_mic");
+      launchDockStore.setMicReady(Boolean(stream.getAudioTracks()[0]));
+      finishBroadcastInit();
+    } catch (err) {
+      const denied =
+        err instanceof Error &&
+        (err.name === "NotAllowedError" || err.name === "PermissionDeniedError");
+      setInitPhase("error");
+      setInitError(
+        denied
+          ? "Camera/mic permission denied. Open Devices to retry, or continue without camera."
+          : "Could not connect camera/mic. Open Devices to pick another input.",
+      );
+      // Only auto-open drawer when no prior approved devices (repeat launch stays clean)
+      if (!prior) setDeviceDrawerOpen(true);
+    }
+  }, [attachPreview, finishBroadcastInit]);
+
+  // Parallel media init — venue already painted
+  useEffect(() => {
+    if (mediaStarted.current) return;
+    mediaStarted.current = true;
+    void runMediaInit();
+    return () => {
+      streamRef.current?.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+    };
+  }, [runMediaInit]);
+
+  useEffect(() => {
+    if (!previewVideoRef.current || !localStream) return;
+    previewVideoRef.current.srcObject = localStream;
+    void previewVideoRef.current.play().catch(() => {});
+  }, [localStream]);
+
+  const onDeviceStreamReady = useCallback(
+    (stream: MediaStream) => {
+      attachPreview(stream);
+      launchDockStore.setCamReady(Boolean(stream.getVideoTracks()[0]));
+      launchDockStore.setMicReady(Boolean(stream.getAudioTracks()[0]));
+      setInitError("");
+      finishBroadcastInit();
+    },
+    [attachPreview, finishBroadcastInit],
+  );
+
+  const onSkipDevices = useCallback(() => {
+    setDeviceDrawerOpen(false);
+    setInitError("");
+    // Honest no-cam mode — venue stays open, broadcast listed without local preview
+    finishBroadcastInit();
+  }, [finishBroadcastInit]);
 
   const refreshPresence = useCallback(async () => {
     try {
@@ -201,6 +319,43 @@ export default function InstantGoLiveStage({
       data-instant-go-live="true"
       data-privacy={privacy}
     >
+      <GoLiveStatusPill
+        phase={initPhase}
+        errorMsg={initError}
+        onOpenDevices={() => setDeviceDrawerOpen(true)}
+      />
+
+      <GoLiveDeviceDrawer
+        open={deviceDrawerOpen}
+        onClose={() => setDeviceDrawerOpen(false)}
+        onStreamReady={onDeviceStreamReady}
+        onSkip={onSkipDevices}
+      />
+
+      {/* Compact local preview — not a setup page */}
+      {localStream && (
+        <video
+          ref={previewVideoRef}
+          muted
+          playsInline
+          autoPlay
+          style={{
+            position: "absolute",
+            bottom: 24,
+            left: 16,
+            zIndex: 55,
+            width: 140,
+            height: 90,
+            objectFit: "cover",
+            borderRadius: 10,
+            border: "1px solid rgba(0,255,255,0.45)",
+            boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
+            background: "#000",
+            pointerEvents: "none",
+          }}
+        />
+      )}
+
       {/* Honest live strip — humanViewers only */}
       <div
         style={{
@@ -223,7 +378,9 @@ export default function InstantGoLiveStage({
           maxWidth: "55%",
         }}
       >
-        <span style={{ color: "#FF2020" }}>● LIVE</span>
+        <span style={{ color: initPhase === "live" ? "#FF2020" : "#00FFFF" }}>
+          {initPhase === "live" ? "● LIVE" : "○ OPENING"}
+        </span>
         <span style={{ color: "#00FFFF" }}>{watching} watching</span>
         <span style={{ color: "rgba(255,255,255,0.45)" }}>Venue Open</span>
         {watching === 0 && (

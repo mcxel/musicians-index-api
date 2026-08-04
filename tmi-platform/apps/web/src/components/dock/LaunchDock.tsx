@@ -26,6 +26,8 @@ const PRIVACY_OPTIONS: { id: LivePrivacy; label: string; hint: string }[] = [
 const EXPERIENCE_OPTIONS = [
   { id: "live", label: "Live Stage" },
   { id: "concert", label: "Concert" },
+  { id: "world-concert", label: "World Concert" },
+  { id: "world-premiere", label: "World Premiere" },
   { id: "lounge", label: "Lounge" },
   { id: "dance-party", label: "Dance Party" },
 ];

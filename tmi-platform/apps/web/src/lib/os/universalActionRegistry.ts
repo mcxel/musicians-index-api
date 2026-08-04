@@ -401,7 +401,7 @@ export const ACTION_REGISTRY: Record<ActionId, ActionDef> = {
   ACTION_GO_LIVE: {
     id: "ACTION_GO_LIVE",
     label: "Go Live",
-    description: "Navigates to the Go Live setup page",
+    description: "Instant Go Live — opens venue immediately, media init in parallel",
     category: "live_media",
     commandType: "BROADCAST_STARTED",
     defaultAllowedRoles: ["performer", "admin"],

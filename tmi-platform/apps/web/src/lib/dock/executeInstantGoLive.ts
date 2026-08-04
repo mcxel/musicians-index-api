@@ -1,6 +1,6 @@
 /**
- * executeInstantGoLive — shared launch path for Launch Dock + QuickLiveButton.
- * Cam/mic first (non-blocking if denied), then registry, then navigate.
+ * executeInstantGoLive — shared launch path for Launch Dock + QuickLiveButton + /live/go.
+ * Venue/registry first when deferMedia; cam/mic runs on InstantGoLiveStage.
  * Never waits on audience data before routing to empty stage.
  */
 
@@ -49,21 +49,31 @@ export async function executeInstantGoLive(opts?: {
   preferredExperience?: string;
   displayName?: string;
   accentColor?: string;
+  /**
+   * When true (default for /live/go), skip getUserMedia here so the venue
+   * route paints immediately. Media init runs on InstantGoLiveStage.
+   * Dock/QuickLive may pass false to pre-warm devices before navigate.
+   */
+  deferMedia?: boolean;
 }): Promise<InstantGoLiveResult> {
   launchDockStore.setPhase("launching");
 
   const dock = launchDockStore.getState();
   const privacy = opts?.privacy ?? dock.privacy;
   const preferredExperience = opts?.preferredExperience ?? dock.preferredExperience;
+  const deferMedia = opts?.deferMedia !== false;
 
-  // Cam/mic — non-blocking; denial continues in no-camera mode
-  let stream: MediaStream | null = null;
-  try {
-    stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-    launchDockStore.setCamReady(true);
-    launchDockStore.setMicReady(true);
-  } catch {
-    // Continue without devices
+  // Optional pre-warm only — never block venue open on permission dialog
+  if (!deferMedia) {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      launchDockStore.setCamReady(true);
+      launchDockStore.setMicReady(true);
+      stream.getTracks().forEach((t) => t.stop());
+    } catch {
+      launchDockStore.setCamReady(false);
+      launchDockStore.setMicReady(false);
+    }
   }
 
   const identity = await resolveDisplayName(opts?.displayName ?? "Performer");
@@ -78,10 +88,6 @@ export async function executeInstantGoLive(opts?: {
 
   // Fan / private rehearsal — navigate immediately, no stage room mint required
   if (!destination.route.includes("{roomId}")) {
-    if (stream) {
-      // Keep tracks alive briefly for destination pages that re-request; stop to avoid leak
-      stream.getTracks().forEach((t) => t.stop());
-    }
     launchDockStore.setPhase("idle");
     launchDockStore.close();
     return { ok: true, href: destination.route };
@@ -129,7 +135,6 @@ export async function executeInstantGoLive(opts?: {
       });
       if (!res.ok) {
         const err = (await res.json().catch(() => ({}))) as { error?: string };
-        stream?.getTracks().forEach((t) => t.stop());
         const msg =
           res.status === 401
             ? "Sign in to go live."
@@ -151,7 +156,6 @@ export async function executeInstantGoLive(opts?: {
         listed: true,
       });
     } catch {
-      stream?.getTracks().forEach((t) => t.stop());
       launchDockStore.setPhase("error", "Network error. Check your connection.");
       return { ok: false, error: "Network error. Check your connection." };
     }
@@ -179,11 +183,11 @@ export async function executeInstantGoLive(opts?: {
     }
   }
 
-  stream?.getTracks().forEach((t) => t.stop());
-
   const params = new URLSearchParams();
   if (dailyRoomUrl) params.set("roomUrl", dailyRoomUrl);
   if (dailyToken) params.set("token", dailyToken);
+  // Signal stage to run parallel media init
+  params.set("media", "init");
 
   let href = materializeLiveRoute(destination, resolvedRoomId);
   if ([...params.keys()].length > 0) {
