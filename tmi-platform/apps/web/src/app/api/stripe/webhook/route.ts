@@ -244,6 +244,37 @@ export async function POST(req: NextRequest) {
         });
       }
 
+      // ─── 3C. MEDIA PLAYER CHASSIS FULFILLMENT ──────────────────────────
+      if (
+        (metadata.type === 'media_player_chassis' || metadata.productType === 'MEDIA_PLAYER_CHASSIS') &&
+        metadata.chassisId &&
+        metadata.buyerId
+      ) {
+        await prisma.mediaPlayerChassisOwnership.upsert({
+          where: {
+            userId_chassisId: {
+              userId: metadata.buyerId,
+              chassisId: metadata.chassisId,
+            },
+          },
+          create: {
+            userId: metadata.buyerId,
+            chassisId: metadata.chassisId,
+            unlockedVia: 'purchase',
+            stripePaymentId: session.id,
+          },
+          update: { stripePaymentId: session.id, unlockedVia: 'purchase' },
+        });
+        await prisma.mediaPlayerPreference.upsert({
+          where: { userId: metadata.buyerId },
+          create: {
+            userId: metadata.buyerId,
+            equippedChassisId: 'standard',
+          },
+          update: {},
+        });
+      }
+
       // ─── 4. NFT FULFILLMENT ────────────────────────────────────────────
       // No NFT ownership/minting model exists yet (Prisma has no Nft table) —
       // record a real, persistent Order so the paid transaction isn't lost,

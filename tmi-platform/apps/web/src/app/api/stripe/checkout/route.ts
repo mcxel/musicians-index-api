@@ -2,11 +2,16 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getStripe } from '@/lib/stripe/client';
 import { getRegion, getRegionalPriceId, SUBSCRIPTION_TIERS } from '@/lib/stripe/regionalPricing';
-import { STRIPE_PRODUCTS } from '@/lib/stripe/products';
+import { MEDIA_PLAYER_CHASSIS_PRODUCT_KEYS, STRIPE_PRODUCTS } from '@/lib/stripe/products';
 import type { UserTier } from '@/lib/auth/UserStore';
 import { getPerformerBySlug } from '@/lib/performers/PerformerRegistry';
 import { VENUE_SKINS } from '@/lib/venue/venueSkinEngine';
 import { getSkinPriceCents } from '@/lib/venue/VenueSkinCommerce';
+import { MEDIA_PLAYER_CHASSIS_REGISTRY } from '@/lib/artifacts/PlaylistArtifactEngine';
+import {
+  getChassisPriceUsdCents,
+  isStoreListedChassis,
+} from '@/lib/artifacts/MediaPlayerOwnershipService';
 import prisma from '@/lib/prisma';
 
 // Lookup table: placeholder priceId → { price (cents), name, interval }
@@ -174,8 +179,66 @@ export async function POST(req: NextRequest) {
       cancelUrl?: string;
       skinId?: string;
       customColors?: Record<string, string>;
+      chassisId?: string;
     };
     const { items, successUrl, cancelUrl } = body;
+
+    // MEDIA_PLAYER_CHASSIS — Shop / Studio dual-purchase Stripe path
+    if (body.product === 'MEDIA_PLAYER_CHASSIS' && body.chassisId) {
+      const chassisId = body.chassisId;
+      const chassis = MEDIA_PLAYER_CHASSIS_REGISTRY[chassisId as keyof typeof MEDIA_PLAYER_CHASSIS_REGISTRY];
+      if (!chassis || !isStoreListedChassis(chassisId)) {
+        return NextResponse.json({ error: 'Unknown or unlistable chassis' }, { status: 400 });
+      }
+
+      const buyerEmail = req.cookies.get('tmi_user_email')?.value ?? '';
+      if (!buyerEmail) return NextResponse.json({ error: 'Sign in required' }, { status: 401 });
+      const buyer = await prisma.user.findUnique({ where: { email: buyerEmail }, select: { id: true } });
+      if (!buyer) return NextResponse.json({ error: 'Account not found' }, { status: 404 });
+
+      const alreadyOwned = await prisma.mediaPlayerChassisOwnership.findUnique({
+        where: { userId_chassisId: { userId: buyer.id, chassisId } },
+      });
+      if (alreadyOwned) return NextResponse.json({ error: 'Already owned' }, { status: 409 });
+
+      const stripe = getStripe();
+      if (!stripe) return NextResponse.json({ error: 'Stripe not configured' }, { status: 503 });
+
+      const productKey = MEDIA_PLAYER_CHASSIS_PRODUCT_KEYS[chassisId];
+      const catalog = productKey ? STRIPE_PRODUCTS[productKey] : null;
+      const unitAmount = catalog?.price ?? getChassisPriceUsdCents(chassisId as keyof typeof MEDIA_PLAYER_CHASSIS_REGISTRY);
+      const priceId = catalog?.priceId;
+      const isRealPriceId = typeof priceId === 'string' && /^price_[A-Za-z0-9]{16,}$/.test(priceId);
+
+      const { origin } = req.nextUrl;
+      const mpSession = await stripe.checkout.sessions.create({
+        mode: 'payment',
+        payment_method_types: ['card'],
+        line_items: [
+          isRealPriceId && priceId
+            ? { price: priceId, quantity: 1 }
+            : {
+                quantity: 1,
+                price_data: {
+                  currency: 'usd',
+                  unit_amount: unitAmount,
+                  product_data: { name: `Media Player — ${chassis.label}` },
+                },
+              },
+        ],
+        success_url: `${origin}/payment-success?type=media_player_chassis&chassisId=${encodeURIComponent(chassisId)}&session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${origin}/home/1?notice=media-player-checkout-cancelled`,
+        customer_email: buyerEmail,
+        metadata: {
+          type: 'media_player_chassis',
+          productType: 'MEDIA_PLAYER_CHASSIS',
+          chassisId,
+          buyerId: buyer.id,
+        },
+      });
+      if (!mpSession.url) throw new Error('No session URL from Stripe');
+      return NextResponse.json({ url: mpSession.url });
+    }
 
     // VENUE_SKIN product — venue skin store sends { product: "VENUE_SKIN", skinId, customColors? }
     if (body.product === 'VENUE_SKIN' && body.skinId) {

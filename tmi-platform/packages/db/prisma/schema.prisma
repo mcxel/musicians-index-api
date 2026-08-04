@@ -225,6 +225,10 @@ model User {
   // Venue skins
   venueSkinOwnerships    VenueSkinOwnership[]
 
+  // Media Player chassis ownership + equipped preference (Stage 2)
+  mediaPlayerChassisOwnerships MediaPlayerChassisOwnership[]
+  mediaPlayerPreference        MediaPlayerPreference?
+
   // Competition/show submissions (Monday Night Stage, Beat Battle, etc.)
   eventSubmissions       EventSubmission[]
 
@@ -3311,6 +3315,34 @@ model VenueSkinOwnership {
   @@unique([userId, skinId])
   @@index([userId])
   @@map("venue_skin_ownerships")
+}
+
+/// Durable Media Player chassis ownership (separate from Playlist Artifact ownership).
+/// unlockedVia: "purchase" | "points" | "free" | "tier"
+model MediaPlayerChassisOwnership {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chassisId       String
+  unlockedVia     String   @default("purchase")
+  stripePaymentId String?
+  purchasedAt     DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([userId, chassisId])
+  @@index([userId])
+  @@map("media_player_chassis_ownerships")
+}
+
+/// Equipped Media Player chassis preference per user (runtime reads this only).
+model MediaPlayerPreference {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  equippedChassisId String   @default("standard")
+  updatedAt         DateTime @updatedAt
+
+  @@map("media_player_preferences")
 }
 
 // A real, server-side, cross-user submission record for competition/show

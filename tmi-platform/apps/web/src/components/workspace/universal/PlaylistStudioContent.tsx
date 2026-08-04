@@ -1,7 +1,7 @@
 /**
- * Media Player Studio Phase 1 — mounts MediaPlayerChassis + PlaylistArtifact.
- * Visualizer | Library | Queue+EQ with Artwork | Video | Visualizer mode toggle.
- * DualLayerCrossfade on artwork; TrackFlipTransition on now-playing / queue switch.
+ * Media Player Studio — mounts MediaPlayerChassis + PlaylistArtifact.
+ * Stage 2: durable ownership, equip/unequip, preview unowned + purchase CTA.
+ * Runtime renders equipped chassis only (preview selection is non-persistent).
  */
 
 "use client";
@@ -13,13 +13,23 @@ import type { WorkspaceContext } from "@/lib/workspace/universal/types";
 import {
   FREE_DEFAULT_CHASSIS_ID,
   MEDIA_PLAYER_CHASSIS_REGISTRY,
+  MEDIA_PLAYER_STORE_SKUS,
+  type MediaPlayerChassisId,
 } from "@/lib/artifacts/PlaylistArtifactEngine";
 import {
+  equipChassisApi,
   ensureDefaultMediaPlayer,
   getEquippedChassisId,
+  hydrateMediaPlayerOwnership,
+  ownsChassis,
+  purchaseChassisWithPointsApi,
+  purchaseChassisWithStripe,
+  unequipChassisApi,
 } from "@/lib/artifacts/MediaPlayerInventory";
+import { spendTmiPoints } from "@/lib/progression/ProgressionEngine";
 import DualLayerCrossfade from "@/components/media/DualLayerCrossfade";
 import TrackFlipTransition from "@/components/media/TrackFlipTransition";
+import MediaPlayerChassisPreview from "@/components/media/MediaPlayerChassisPreview";
 
 export interface PlaylistStudioContentProps {
   context: WorkspaceContext;
@@ -37,13 +47,18 @@ function formatDuration(sec: number): string {
 
 export default function PlaylistStudioContent({
   context,
-  userId = "local-user",
+  userId: userIdProp = "local-user",
 }: PlaylistStudioContentProps) {
   const [tick, setTick] = useState(0);
   const [eq, setEq] = useState({ low: 50, mid: 50, high: 50 });
   const [selectedId, setSelectedId] = useState<string | null>(context.trackId ?? null);
   const [screenMode, setScreenMode] = useState<PlayerScreenMode>("artwork");
-  const [chassisId, setChassisId] = useState(FREE_DEFAULT_CHASSIS_ID);
+  const [userId, setUserId] = useState(userIdProp);
+  const [equippedId, setEquippedId] = useState(FREE_DEFAULT_CHASSIS_ID);
+  /** Preview selection for unowned chassis — does not change runtime equip. */
+  const [previewId, setPreviewId] = useState<MediaPlayerChassisId | null>(null);
+  const [studioMsg, setStudioMsg] = useState<string | null>(null);
+  const [ownedTick, setOwnedTick] = useState(0);
 
   useEffect(() => {
     const id = window.setInterval(() => setTick((t) => t + 1), 140);
@@ -51,11 +66,52 @@ export default function PlaylistStudioContent({
   }, []);
 
   useEffect(() => {
-    ensureDefaultMediaPlayer(userId);
-    setChassisId(getEquippedChassisId(userId));
-  }, [userId]);
+    let active = true;
+    fetch("/api/auth/session", { credentials: "include", cache: "no-store" })
+      .then((r) => r.json())
+      .then((d: { user?: { id?: string } | null }) => {
+        if (!active) return;
+        if (d.user?.id) setUserId(d.user.id);
+        else setUserId(userIdProp);
+      })
+      .catch(() => {
+        if (active) setUserId(userIdProp);
+      });
+    return () => {
+      active = false;
+    };
+  }, [userIdProp]);
 
-  const chassis = MEDIA_PLAYER_CHASSIS_REGISTRY[chassisId] ?? MEDIA_PLAYER_CHASSIS_REGISTRY.standard;
+  useEffect(() => {
+    let active = true;
+    ensureDefaultMediaPlayer(userId);
+    hydrateMediaPlayerOwnership(userId).then((state) => {
+      if (!active) return;
+      setEquippedId(state.equippedChassisId);
+      setPreviewId(null);
+    });
+    return () => {
+      active = false;
+    };
+  }, [userId, ownedTick]);
+
+  const runtimeChassisId = equippedId;
+  const displayChassisId = previewId ?? runtimeChassisId;
+  const chassis =
+    MEDIA_PLAYER_CHASSIS_REGISTRY[displayChassisId] ?? MEDIA_PLAYER_CHASSIS_REGISTRY.standard;
+  const isPreviewingUnowned =
+    !!previewId && !ownsChassis(userId, previewId);
+
+  const chassisChoices = useMemo(() => {
+    const freeIds: MediaPlayerChassisId[] = [
+      FREE_DEFAULT_CHASSIS_ID,
+      "tmi_classic",
+      "tmi_dark",
+      "tmi_neon",
+    ];
+    const ids = Array.from(new Set([...freeIds, ...MEDIA_PLAYER_STORE_SKUS]));
+    return ids.map((id) => MEDIA_PLAYER_CHASSIS_REGISTRY[id]).filter(Boolean);
+  }, []);
 
   const personal = useMemo(() => {
     void context.playlistId;
@@ -162,9 +218,16 @@ export default function PlaylistStudioContent({
             MEDIA PLAYER STUDIO
           </div>
           <div style={{ fontSize: 10, color: "rgba(255,255,255,0.45)", marginTop: 2 }}>
-            Chassis: {chassis.icon} {chassis.label}
+            Runtime: {MEDIA_PLAYER_CHASSIS_REGISTRY[runtimeChassisId]?.icon}{" "}
+            {MEDIA_PLAYER_CHASSIS_REGISTRY[runtimeChassisId]?.label ?? "Standard"}
+            {isPreviewingUnowned ? (
+              <>
+                <span style={{ margin: "0 6px", opacity: 0.35 }}>·</span>
+                <span style={{ color: "#FFD700" }}>Previewing {chassis.label}</span>
+              </>
+            ) : null}
             <span style={{ margin: "0 6px", opacity: 0.35 }}>·</span>
-            Playlist Artifact package (separate from YoPho / album cover)
+            Playlist Artifact package (separate from chassis ownership)
           </div>
         </div>
         <div style={{ display: "flex", gap: 4 }}>
@@ -196,6 +259,137 @@ export default function PlaylistStudioContent({
               >
                 {m.label}
               </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div
+        style={{
+          padding: "8px 10px",
+          borderBottom: "1px solid rgba(255,255,255,0.08)",
+          display: "flex",
+          flexDirection: "column",
+          gap: 8,
+        }}
+      >
+        <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.12em", color: "#FF2DAA" }}>
+          CHASSIS · EQUIP / PREVIEW / PURCHASE
+        </div>
+        {studioMsg ? (
+          <div style={{ fontSize: 11, color: studioMsg.includes("Not enough") || studioMsg.includes("Cannot") ? "#ffb0b0" : "#9dffc8" }}>
+            {studioMsg}
+          </div>
+        ) : null}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fill, minmax(132px, 1fr))",
+            gap: 8,
+            maxHeight: 168,
+            overflowY: "auto",
+          }}
+        >
+          {chassisChoices.map((c) => {
+            const owned = ownsChassis(userId, c.id);
+            const equipped = equippedId === c.id;
+            const previewing = previewId === c.id;
+            return (
+              <MediaPlayerChassisPreview
+                key={c.id}
+                chassis={c}
+                owned={owned}
+                equipped={equipped}
+                previewOnly={!owned}
+                onClick={() => {
+                  if (owned) {
+                    setPreviewId(null);
+                    void (async () => {
+                      if (equipped) {
+                        await unequipChassisApi(userId);
+                        setStudioMsg(`Unequipped ${c.label} · Standard active.`);
+                      } else {
+                        const r = await equipChassisApi(userId, c.id);
+                        setStudioMsg(r.ok ? `Equipped ${c.label}.` : r.message ?? "Cannot equip");
+                      }
+                      setOwnedTick((n) => n + 1);
+                      setEquippedId(getEquippedChassisId(userId));
+                    })();
+                  } else {
+                    setPreviewId(previewing ? null : c.id);
+                    setStudioMsg(
+                      previewing
+                        ? null
+                        : `Previewing ${c.label}. Purchase to own — runtime stays on equipped chassis.`,
+                    );
+                  }
+                }}
+                footer={
+                  !owned ? (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 4 }}>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void (async () => {
+                            const cost = c.pricePoints ?? 299;
+                            const r = await purchaseChassisWithPointsApi(userId, c.id, () =>
+                              spendTmiPoints(userId, cost, `media_player_${c.id}`),
+                            );
+                            setStudioMsg(r.message);
+                            if (r.ok) {
+                              setPreviewId(null);
+                              setOwnedTick((n) => n + 1);
+                            }
+                          })();
+                        }}
+                        style={{
+                          fontSize: 8,
+                          fontWeight: 900,
+                          padding: "5px 6px",
+                          borderRadius: 5,
+                          border: `1px solid ${c.accent}88`,
+                          background: `${c.accent}22`,
+                          color: c.accent,
+                          cursor: "pointer",
+                          fontFamily: "inherit",
+                        }}
+                      >
+                        BUY {c.pricePoints ?? 299} PTS
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void (async () => {
+                            const r = await purchaseChassisWithStripe(c.id);
+                            if (r.ok && r.url) window.location.href = r.url;
+                            else setStudioMsg(r.message ?? "Stripe unavailable");
+                          })();
+                        }}
+                        style={{
+                          fontSize: 8,
+                          fontWeight: 900,
+                          padding: "5px 6px",
+                          borderRadius: 5,
+                          border: "1px solid #FFD70088",
+                          background: "#FFD70022",
+                          color: "#FFD700",
+                          cursor: "pointer",
+                          fontFamily: "inherit",
+                        }}
+                      >
+                        BUY $
+                        {((c.priceUsdCents ?? 299) / 100).toFixed(2)}
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: 8, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>
+                      Tap to {equipped ? "unequip" : "equip"}
+                    </div>
+                  )
+                }
+              />
             );
           })}
         </div>

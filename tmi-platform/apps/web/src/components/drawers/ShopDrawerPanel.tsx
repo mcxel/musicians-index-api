@@ -9,12 +9,14 @@
  * Reuses StoreCanister, FAN_ITEMS / LOBBY_ITEMS, MEDIA_PLAYER_CHASSIS_REGISTRY
  * (SKIN_REGISTRY alias — Rule 19, no second store).
  * Rule 26: TMI Store cosmetics primarily Fan; no performer ticket invent (Rule 17).
+ * Stage 2: durable ownership + Stripe OR points + equip.
  */
 
 import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import Link from "next/link";
 import RoleGate from "@/components/auth/RoleGate";
 import { StoreCanister } from "@/components/canisters/StoreCanister";
+import MediaPlayerChassisPreview from "@/components/media/MediaPlayerChassisPreview";
 import { useActivePerformer } from "@/lib/context/ActivePerformerContext";
 import {
   listCreatorProducts,
@@ -34,12 +36,18 @@ import {
 } from "@/lib/store/StoreItemEngine";
 import {
   BOT_CHASSIS_GENERATION_PIPELINE,
+  FREE_DEFAULT_CHASSIS_ID,
   listStoreMediaPlayers,
   type MediaPlayerChassis,
 } from "@/lib/artifacts/PlaylistArtifactEngine";
 import {
-  grantChassisOwnership,
+  equipChassisApi,
+  hydrateMediaPlayerOwnership,
   ownsChassis,
+  purchaseChassisWithPointsApi,
+  purchaseChassisWithStripe,
+  unequipChassisApi,
+  getEquippedChassisId,
 } from "@/lib/artifacts/MediaPlayerInventory";
 import { getTmiPoints, spendTmiPoints } from "@/lib/progression/ProgressionEngine";
 
@@ -69,10 +77,12 @@ export default function ShopDrawerPanel({
   const [section, setSection] = useState<ShopSection>("personal");
   const [products, setProducts] = useState<CreatorProduct[]>([]);
   const [storeUrl, setStoreUrl] = useState<string | null>(null);
-  const shopUserId = performerId ?? "local-user";
+  const [shopUserId, setShopUserId] = useState("local-user");
   const [pointsBalance, setPointsBalance] = useState(0);
   const [buyMsg, setBuyMsg] = useState<string | null>(null);
   const [ownedTick, setOwnedTick] = useState(0);
+  const [equippedId, setEquippedId] = useState(FREE_DEFAULT_CHASSIS_ID);
+  const [busyId, setBusyId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!performerId) {
@@ -85,34 +95,108 @@ export default function ShopDrawerPanel({
   }, [performerId]);
 
   useEffect(() => {
-    setPointsBalance(getTmiPoints(shopUserId));
+    let active = true;
+    fetch("/api/auth/session", { credentials: "include", cache: "no-store" })
+      .then((r) => r.json())
+      .then((d: { user?: { id?: string } | null; authenticated?: boolean }) => {
+        if (!active) return;
+        const id = d.user?.id ?? "local-user";
+        setShopUserId(id);
+      })
+      .catch(() => {
+        if (active) setShopUserId("local-user");
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    hydrateMediaPlayerOwnership(shopUserId).then((state) => {
+      if (!active) return;
+      setPointsBalance(
+        state.authenticated ? state.pointsBalance : getTmiPoints(shopUserId),
+      );
+      setEquippedId(state.equippedChassisId);
+    });
+    return () => {
+      active = false;
+    };
   }, [shopUserId, ownedTick]);
 
   const tmiItems = useMemo(() => {
-    // Platform-global: tips/memberships for fans + lobby skins. Exclude tickets (Rule 17 surface).
     const base = [...FAN_ITEMS, ...LOBBY_ITEMS].filter((i) => i.category !== "tickets");
     return base;
   }, []);
 
   const mediaPlayers = useMemo(() => listStoreMediaPlayers(), []);
 
-  function buyChassisWithPoints(chassis: MediaPlayerChassis) {
+  async function buyChassisWithPoints(chassis: MediaPlayerChassis) {
     setBuyMsg(null);
+    setBusyId(chassis.id);
     if (ownsChassis(shopUserId, chassis.id)) {
       setBuyMsg(`Already owned: ${chassis.label}`);
+      setBusyId(null);
       return;
     }
     const cost = chassis.pricePoints ?? 299;
-    const result = spendTmiPoints(shopUserId, cost, `media_player_${chassis.id}`);
-    if (!result.ok) {
-      setBuyMsg(
-        `Not enough points for ${chassis.label}. Need ${cost} pts · balance ${result.balance}.`,
+    const result = await purchaseChassisWithPointsApi(shopUserId, chassis.id, () =>
+      spendTmiPoints(shopUserId, cost, `media_player_${chassis.id}`),
+    );
+    setBuyMsg(
+      result.ok
+        ? `${result.message} Equip below or in Media Player Studio.`
+        : result.message,
+    );
+    if (result.state) {
+      setPointsBalance(
+        result.state.authenticated
+          ? result.state.pointsBalance
+          : getTmiPoints(shopUserId),
       );
+      setEquippedId(result.state.equippedChassisId);
+    }
+    setOwnedTick((n) => n + 1);
+    setBusyId(null);
+  }
+
+  async function buyChassisWithStripe(chassis: MediaPlayerChassis) {
+    setBuyMsg(null);
+    setBusyId(chassis.id);
+    if (ownsChassis(shopUserId, chassis.id)) {
+      setBuyMsg(`Already owned: ${chassis.label}`);
+      setBusyId(null);
       return;
     }
-    grantChassisOwnership(shopUserId, chassis.id);
+    const result = await purchaseChassisWithStripe(chassis.id);
+    if (!result.ok || !result.url) {
+      setBuyMsg(result.message ?? "Stripe checkout unavailable");
+      setBusyId(null);
+      return;
+    }
+    window.location.href = result.url;
+  }
+
+  async function toggleEquip(chassis: MediaPlayerChassis) {
+    setBuyMsg(null);
+    setBusyId(chassis.id);
+    const currently = getEquippedChassisId(shopUserId);
+    if (currently === chassis.id) {
+      await unequipChassisApi(shopUserId);
+      setEquippedId(FREE_DEFAULT_CHASSIS_ID);
+      setBuyMsg(`Unequipped ${chassis.label} · Standard Player active.`);
+    } else {
+      const result = await equipChassisApi(shopUserId, chassis.id);
+      if (!result.ok) {
+        setBuyMsg(result.message ?? "Cannot equip");
+      } else {
+        setEquippedId(chassis.id);
+        setBuyMsg(`Equipped ${chassis.label}.`);
+      }
+    }
     setOwnedTick((n) => n + 1);
-    setBuyMsg(`Unlocked ${chassis.label} (−${cost} pts). Equip in Media Player Studio.`);
+    setBusyId(null);
   }
 
   return (
@@ -220,7 +304,8 @@ export default function ShopDrawerPanel({
 
               <SectionTitle color="#FF2DAA">MEDIA PLAYERS · RARE (~299 PTS / $2.99)</SectionTitle>
               <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)" }}>
-                Balance: {pointsBalance} pts · Free default: Standard TMI Player (not listed)
+                Balance: {pointsBalance} pts · Free default: Standard TMI Player · Equipped:{" "}
+                {equippedId}
               </div>
               {buyMsg ? (
                 <div
@@ -228,10 +313,13 @@ export default function ShopDrawerPanel({
                     fontSize: 11,
                     padding: "8px 10px",
                     borderRadius: 8,
-                    border: buyMsg.startsWith("Not enough")
+                    border: buyMsg.startsWith("Not enough") || buyMsg.includes("unavailable") || buyMsg.includes("Cannot")
                       ? "1px solid rgba(255,80,80,0.4)"
                       : "1px solid rgba(0,255,136,0.35)",
-                    color: buyMsg.startsWith("Not enough") ? "#ffb0b0" : "#9dffc8",
+                    color:
+                      buyMsg.startsWith("Not enough") || buyMsg.includes("unavailable") || buyMsg.includes("Cannot")
+                        ? "#ffb0b0"
+                        : "#9dffc8",
                     background: "rgba(0,0,0,0.25)",
                   }}
                 >
@@ -244,58 +332,63 @@ export default function ShopDrawerPanel({
                   padding: 0,
                   listStyle: "none",
                   display: "grid",
-                  gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))",
+                  gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))",
                   gap: 8,
                 }}
               >
                 {mediaPlayers.map((s) => {
                   const owned = ownsChassis(shopUserId, s.id);
+                  const equipped = equippedId === s.id;
                   const pts = s.pricePoints ?? 299;
                   const usd =
                     s.priceUsdCents != null
                       ? `$${(s.priceUsdCents / 100).toFixed(2)}`
                       : "$2.99";
+                  const busy = busyId === s.id;
                   return (
-                    <li
-                      key={s.id}
-                      style={{
-                        padding: "8px 10px",
-                        borderRadius: 8,
-                        border: `1px solid ${s.accent}44`,
-                        background: `${s.theme}cc`,
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: 6,
-                      }}
-                    >
-                      <div style={{ fontSize: 14 }}>{s.icon}</div>
-                      <div style={{ fontSize: 11, fontWeight: 800, color: "#fff" }}>{s.label}</div>
-                      <div style={{ fontSize: 9, color: "rgba(255,255,255,0.45)" }}>
-                        Rare · {pts} pts · {usd}
-                        {s.storeSku ? ` · ${s.storeSku}` : ""}
-                      </div>
-                      {owned ? (
-                        <div style={{ fontSize: 9, fontWeight: 800, color: "#9dffc8" }}>OWNED</div>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => buyChassisWithPoints(s)}
-                          style={{
-                            fontSize: 9,
-                            fontWeight: 900,
-                            letterSpacing: "0.04em",
-                            padding: "6px 8px",
-                            borderRadius: 6,
-                            border: `1px solid ${s.accent}88`,
-                            background: `${s.accent}22`,
-                            color: s.accent,
-                            cursor: "pointer",
-                            fontFamily: "inherit",
-                          }}
-                        >
-                          BUY WITH POINTS
-                        </button>
-                      )}
+                    <li key={s.id}>
+                      <MediaPlayerChassisPreview
+                        chassis={s}
+                        owned={owned}
+                        equipped={equipped}
+                        previewOnly={!owned}
+                        footer={
+                          <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 4 }}>
+                            <div style={{ fontSize: 9, color: "rgba(255,255,255,0.45)" }}>
+                              Rare · {pts} pts · {usd}
+                            </div>
+                            {owned ? (
+                              <button
+                                type="button"
+                                disabled={busy}
+                                onClick={() => toggleEquip(s)}
+                                style={btnStyle(s.accent)}
+                              >
+                                {equipped ? "UNEQUIP" : "EQUIP"}
+                              </button>
+                            ) : (
+                              <>
+                                <button
+                                  type="button"
+                                  disabled={busy}
+                                  onClick={() => buyChassisWithPoints(s)}
+                                  style={btnStyle(s.accent)}
+                                >
+                                  BUY {pts} PTS
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={busy}
+                                  onClick={() => buyChassisWithStripe(s)}
+                                  style={btnStyle("#FFD700")}
+                                >
+                                  BUY {usd}
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        }
+                      />
                     </li>
                   );
                 })}
@@ -328,6 +421,22 @@ export default function ShopDrawerPanel({
       )}
     </div>
   );
+}
+
+function btnStyle(color: string): CSSProperties {
+  return {
+    fontSize: 9,
+    fontWeight: 900,
+    letterSpacing: "0.04em",
+    padding: "6px 8px",
+    borderRadius: 6,
+    border: `1px solid ${color}88`,
+    background: `${color}22`,
+    color,
+    cursor: "pointer",
+    fontFamily: "inherit",
+    width: "100%",
+  };
 }
 
 function SectionTitle({ children, color }: { children: ReactNode; color: string }) {

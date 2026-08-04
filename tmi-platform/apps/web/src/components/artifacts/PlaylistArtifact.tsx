@@ -7,6 +7,40 @@ import {
   SKIN_META, DEFAULT_EQ, interleaveTMI, parseSourceLabel, SOURCE_COLORS, fmtPoints,
 } from "@/lib/artifacts/artifactEngine";
 import { ActivityTimelineEngine } from "@/lib/timeline/ActivityTimelineEngine";
+import {
+  equipChassisApi,
+  hydrateMediaPlayerOwnership,
+  ownsChassis,
+  purchaseChassisWithPointsApi,
+  purchaseChassisWithStripe,
+  type MediaPlayerClientState,
+} from "@/lib/artifacts/MediaPlayerInventory";
+import type { MediaPlayerChassisId } from "@/lib/artifacts/PlaylistArtifactEngine";
+import { spendTmiPoints } from "@/lib/progression/ProgressionEngine";
+
+type ActiveSkin = ArtifactSkin | "standard";
+
+/** Map equipped chassis registry id → PlaylistArtifact visual skin key. */
+function mapChassisToArtifactSkin(chassisId: string): ActiveSkin {
+  if (
+    chassisId === "standard" ||
+    chassisId === "tmi_classic" ||
+    chassisId === "tmi_dark" ||
+    chassisId === "tmi_neon"
+  ) {
+    return "standard";
+  }
+  // Stage-1 Aquarium Fish chassis uses submarine visual shell in this component.
+  if (chassisId === "fish") return "submarine";
+  if (chassisId in SKIN_META) return chassisId as ArtifactSkin;
+  return "standard";
+}
+
+function mapArtifactSkinToChassis(skin: ActiveSkin): MediaPlayerChassisId {
+  if (skin === "standard") return "standard";
+  if (skin === "submarine") return "fish";
+  return skin as MediaPlayerChassisId;
+}
 
 // ── Scrolling ticker ──────────────────────────────────────────────────────────
 
@@ -893,10 +927,15 @@ export default function PlaylistArtifact({
   rank,
   onAddToLibrary,
 }: PlaylistArtifactProps) {
-  const [activeSkin, setActiveSkin] = useState<ArtifactSkin | "standard">(skin ?? "standard");
-  const meta = activeSkin === "standard" ? STANDARD_META : SKIN_META[activeSkin];
+  const [userId, setUserId] = useState("local-user");
+  const [ownership, setOwnership] = useState<MediaPlayerClientState | null>(null);
+  const [activeSkin, setActiveSkin] = useState<ActiveSkin>(skin ?? "standard");
+  const [previewSkin, setPreviewSkin] = useState<ActiveSkin | null>(null);
+  const [chassisMsg, setChassisMsg] = useState<string | null>(null);
+  const displaySkin = previewSkin ?? activeSkin;
+  const meta = displaySkin === "standard" ? STANDARD_META : SKIN_META[displaySkin];
   const SkinComponent =
-    activeSkin === "standard" ? StandardPlayerChassis : SKIN_COMPONENTS[activeSkin];
+    displaySkin === "standard" ? StandardPlayerChassis : SKIN_COMPONENTS[displaySkin];
 
   const [isOpen,        setIsOpen]        = useState(false);
   const [isPlaying,     setIsPlaying]     = useState(false);
@@ -922,6 +961,28 @@ export default function PlaylistArtifact({
   const currentTrack = tracks[currentIdx];
   const isNativelyPlayable = currentTrack && (currentTrack.source === "tmi" || currentTrack.source === "link") && currentTrack.sourceUrl !== "#";
   const [playProgress, setPlayProgress] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+    fetch("/api/auth/session", { credentials: "include", cache: "no-store" })
+      .then((r) => r.json())
+      .then((d: { user?: { id?: string } | null }) => {
+        if (!active) return;
+        const id = d.user?.id ?? "local-user";
+        setUserId(id);
+        return hydrateMediaPlayerOwnership(id).then((state) => {
+          if (!active) return;
+          setOwnership(state);
+          if (!skin) {
+            setActiveSkin(mapChassisToArtifactSkin(state.equippedChassisId));
+          }
+        });
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [skin]);
 
   useEffect(() => {
     if (isPlaying) {
@@ -1011,41 +1072,132 @@ export default function PlaylistArtifact({
                 <span style={{ fontSize: 9, color: "rgba(255,255,255,0.35)" }}>{tracks.length} tracks · {fmtPoints(points)} pts</span>
               </div>
 
-              {/* Interactive Media Player chassis rail */}
-              <div style={{ padding: "6px 10px", background: "rgba(0,0,0,0.4)", borderBottom: `1px solid ${meta.primary}18`, display: "flex", gap: 4, overflowX: "auto" }}>
-                {([
-                  { key: "standard" as const, item: STANDARD_META },
-                  ...(Object.keys(SKIN_META) as ArtifactSkin[]).map((skinKey) => ({
-                    key: skinKey as ArtifactSkin | "standard",
-                    item: SKIN_META[skinKey],
-                  })),
-                ]).map(({ key, item }) => {
-                  const active = key === activeSkin;
-                  return (
+              {/* Interactive Media Player chassis rail — equipped/owned only; else preview + purchase */}
+              <div style={{ padding: "6px 10px", background: "rgba(0,0,0,0.4)", borderBottom: `1px solid ${meta.primary}18`, display: "flex", flexDirection: "column", gap: 6 }}>
+                <div style={{ display: "flex", gap: 4, overflowX: "auto" }}>
+                  {([
+                    { key: "standard" as const, item: STANDARD_META },
+                    ...(Object.keys(SKIN_META) as ArtifactSkin[]).map((skinKey) => ({
+                      key: skinKey as ActiveSkin,
+                      item: SKIN_META[skinKey],
+                    })),
+                  ]).map(({ key, item }) => {
+                    const chassisId = mapArtifactSkinToChassis(key);
+                    const owned =
+                      key === "standard" ||
+                      ownsChassis(userId, chassisId) ||
+                      (ownership?.ownedChassisIds.includes(chassisId) ?? false);
+                    const equipped = key === activeSkin && !previewSkin;
+                    const previewing = key === previewSkin;
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => {
+                          if (owned) {
+                            setPreviewSkin(null);
+                            void equipChassisApi(userId, chassisId).then((r) => {
+                              if (r.ok) {
+                                setActiveSkin(key);
+                                setChassisMsg(`Equipped ${item.name}`);
+                              } else {
+                                setChassisMsg(r.message ?? "Cannot equip");
+                              }
+                            });
+                          } else {
+                            setPreviewSkin(previewing ? null : key);
+                            setChassisMsg(
+                              previewing
+                                ? null
+                                : `Preview: ${item.name}. Purchase to own — runtime stays on equipped chassis.`,
+                            );
+                          }
+                        }}
+                        title={owned ? item.name : `${item.name} (preview)`}
+                        style={{
+                          background: equipped || previewing ? `${item.primary}33` : "rgba(255,255,255,0.04)",
+                          border: `1px solid ${equipped || previewing ? item.primary : "rgba(255,255,255,0.1)"}`,
+                          borderRadius: 6,
+                          padding: "3px 7px",
+                          fontSize: 11,
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 3,
+                          color: equipped || previewing ? item.primary : "rgba(255,255,255,0.5)",
+                          fontWeight: equipped || previewing ? 800 : 500,
+                          whiteSpace: "nowrap",
+                          opacity: owned ? 1 : 0.85,
+                        }}
+                      >
+                        <span>{item.icon}</span>
+                        <span style={{ fontSize: 8 }}>
+                          {item.name.split(" ")[0]}
+                          {!owned ? " · PREVIEW" : equipped ? " · ON" : ""}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+                {previewSkin && previewSkin !== "standard" ? (
+                  <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
                     <button
-                      key={key}
-                      onClick={() => setActiveSkin(key)}
-                      title={item.name}
+                      type="button"
+                      onClick={() => {
+                        const chassisId = mapArtifactSkinToChassis(previewSkin);
+                        const cost = SKIN_META[previewSkin as ArtifactSkin]?.unlockPoints ?? 299;
+                        void purchaseChassisWithPointsApi(userId, chassisId, () =>
+                          spendTmiPoints(userId, cost, `media_player_${chassisId}`),
+                        ).then((r) => {
+                          setChassisMsg(r.message);
+                          if (r.ok) {
+                            setPreviewSkin(null);
+                            setActiveSkin(previewSkin);
+                            void equipChassisApi(userId, chassisId);
+                            void hydrateMediaPlayerOwnership(userId).then(setOwnership);
+                          }
+                        });
+                      }}
                       style={{
-                        background: active ? `${item.primary}33` : "rgba(255,255,255,0.04)",
-                        border: `1px solid ${active ? item.primary : "rgba(255,255,255,0.1)"}`,
-                        borderRadius: 6,
-                        padding: "3px 7px",
-                        fontSize: 11,
+                        fontSize: 8,
+                        fontWeight: 900,
+                        padding: "4px 8px",
+                        borderRadius: 5,
+                        border: `1px solid ${meta.primary}88`,
+                        background: `${meta.primary}22`,
+                        color: meta.primary,
                         cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 3,
-                        color: active ? item.primary : "rgba(255,255,255,0.5)",
-                        fontWeight: active ? 800 : 500,
-                        whiteSpace: "nowrap",
                       }}
                     >
-                      <span>{item.icon}</span>
-                      <span style={{ fontSize: 8 }}>{item.name.split(" ")[0]}</span>
+                      BUY {(SKIN_META[previewSkin as ArtifactSkin]?.unlockPoints ?? 299)} PTS
                     </button>
-                  );
-                })}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const chassisId = mapArtifactSkinToChassis(previewSkin);
+                        void purchaseChassisWithStripe(chassisId).then((r) => {
+                          if (r.ok && r.url) window.location.href = r.url;
+                          else setChassisMsg(r.message ?? "Stripe unavailable");
+                        });
+                      }}
+                      style={{
+                        fontSize: 8,
+                        fontWeight: 900,
+                        padding: "4px 8px",
+                        borderRadius: 5,
+                        border: "1px solid #FFD70088",
+                        background: "#FFD70022",
+                        color: "#FFD700",
+                        cursor: "pointer",
+                      }}
+                    >
+                      BUY $2.99
+                    </button>
+                  </div>
+                ) : null}
+                {chassisMsg ? (
+                  <div style={{ fontSize: 9, color: "rgba(255,255,255,0.55)" }}>{chassisMsg}</div>
+                ) : null}
               </div>
 
               {/* Track list */}

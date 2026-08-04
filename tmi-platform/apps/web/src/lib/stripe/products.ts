@@ -300,6 +300,52 @@ export const STRIPE_PRODUCTS = {
 
   // ── DJ / event submissions ────────────────────────────────────────────────
   DJ_SUBMISSION:       { productId:"prod_dj_sub",   priceId: process.env.STRIPE_PRICE_DJ_SUBMISSION ?? "price_dj_submission",       name:"DJ Track Submission",     price:499,  interval:"one_time" as const },
+
+  // ── Media Player chassis (Stage 2 store Rare SKUs ~$2.99) ─────────────────
+  // Checkout uses product type MEDIA_PLAYER_CHASSIS + price_data fallback when
+  // placeholder price IDs are not yet live in Stripe Dashboard.
+  MEDIA_PLAYER_CHASSIS_TREE: {
+    productId: "prod_media_player_chassis",
+    priceId: process.env.STRIPE_PRICE_MP_CHASSIS_TREE ?? "price_mp_chassis_tree",
+    name: "Media Player — Tree",
+    price: 299,
+    interval: "one_time" as const,
+  },
+  MEDIA_PLAYER_CHASSIS_FISH: {
+    productId: "prod_media_player_chassis",
+    priceId: process.env.STRIPE_PRICE_MP_CHASSIS_FISH ?? "price_mp_chassis_fish",
+    name: "Media Player — Aquarium Fish",
+    price: 299,
+    interval: "one_time" as const,
+  },
+  MEDIA_PLAYER_CHASSIS_STEAMPUNK: {
+    productId: "prod_media_player_chassis",
+    priceId: process.env.STRIPE_PRICE_MP_CHASSIS_STEAMPUNK ?? "price_mp_chassis_steampunk",
+    name: "Media Player — Steampunk",
+    price: 299,
+    interval: "one_time" as const,
+  },
+  MEDIA_PLAYER_CHASSIS_FACE_AI: {
+    productId: "prod_media_player_chassis",
+    priceId: process.env.STRIPE_PRICE_MP_CHASSIS_FACE_AI ?? "price_mp_chassis_face_ai",
+    name: "Media Player — Neon Face",
+    price: 299,
+    interval: "one_time" as const,
+  },
+  MEDIA_PLAYER_CHASSIS_SUBMARINE: {
+    productId: "prod_media_player_chassis",
+    priceId: process.env.STRIPE_PRICE_MP_CHASSIS_SUBMARINE ?? "price_mp_chassis_submarine",
+    name: "Media Player — Submarine",
+    price: 299,
+    interval: "one_time" as const,
+  },
+  MEDIA_PLAYER_CHASSIS_ROCKET: {
+    productId: "prod_media_player_chassis",
+    priceId: process.env.STRIPE_PRICE_MP_CHASSIS_ROCKET ?? "price_mp_chassis_rocket",
+    name: "Media Player — Rocket",
+    price: 299,
+    interval: "one_time" as const,
+  },
 } as const;
 
 // Platform revenue split percentages
@@ -321,6 +367,16 @@ export const REVENUE_SPLITS = {
 } as const;
 
 export type StripeProductKey = keyof typeof STRIPE_PRODUCTS;
+
+/** Map chassis registry id → STRIPE_PRODUCTS key for MEDIA_PLAYER_CHASSIS. */
+export const MEDIA_PLAYER_CHASSIS_PRODUCT_KEYS: Record<string, StripeProductKey> = {
+  tree: "MEDIA_PLAYER_CHASSIS_TREE",
+  fish: "MEDIA_PLAYER_CHASSIS_FISH",
+  steampunk: "MEDIA_PLAYER_CHASSIS_STEAMPUNK",
+  face_ai: "MEDIA_PLAYER_CHASSIS_FACE_AI",
+  submarine: "MEDIA_PLAYER_CHASSIS_SUBMARINE",
+  rocket: "MEDIA_PLAYER_CHASSIS_ROCKET",
+};
 
 // ── Price ID helpers ──────────────────────────────────────────────────────────
 // Real Stripe price IDs match the format price_1<alphanum>
