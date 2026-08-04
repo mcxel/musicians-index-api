@@ -15,7 +15,8 @@ const DEFAULT_FLOAT: UniversalWorkspaceDef["defaultGeometry"] = {
 export const UNIVERSAL_WORKSPACE_DEFS: Record<UniversalWorkspaceId, UniversalWorkspaceDef> = {
   "playlist-studio": {
     id: "playlist-studio",
-    label: "Playlist Studio",
+    // Dual label: Media Player Studio (canonical) · Playlist Studio (legacy id)
+    label: "Media Player Studio",
     accent: "#AA2DFF",
     defaultGeometry: { ...DEFAULT_FLOAT, width: 980, height: 580 },
     minWidth: 640,

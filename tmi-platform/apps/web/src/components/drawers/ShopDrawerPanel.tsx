@@ -3,10 +3,11 @@
 /**
  * Shop drawer — split UI:
  *   Personal Store = ACTIVE_PERFORMER connected commerce
- *   TMI Store      = platform-global cosmetics / boosters / skins / coins
+ *   TMI Store      = platform-global cosmetics / boosters / Media Players / coins
  *                   (same inventory regardless of active performer)
  *
- * Reuses StoreCanister, FAN_ITEMS / LOBBY_ITEMS, PlaylistArtifactEngine SKIN_REGISTRY.
+ * Reuses StoreCanister, FAN_ITEMS / LOBBY_ITEMS, MEDIA_PLAYER_CHASSIS_REGISTRY
+ * (SKIN_REGISTRY alias — Rule 19, no second store).
  * Rule 26: TMI Store cosmetics primarily Fan; no performer ticket invent (Rule 17).
  */
 
@@ -32,9 +33,15 @@ import {
   type StoreItem,
 } from "@/lib/store/StoreItemEngine";
 import {
-  SKIN_REGISTRY,
-  type ArtifactSkinId,
+  BOT_CHASSIS_GENERATION_PIPELINE,
+  listStoreMediaPlayers,
+  type MediaPlayerChassis,
 } from "@/lib/artifacts/PlaylistArtifactEngine";
+import {
+  grantChassisOwnership,
+  ownsChassis,
+} from "@/lib/artifacts/MediaPlayerInventory";
+import { getTmiPoints, spendTmiPoints } from "@/lib/progression/ProgressionEngine";
 
 type ShopSection = "personal" | "tmi";
 
@@ -62,6 +69,10 @@ export default function ShopDrawerPanel({
   const [section, setSection] = useState<ShopSection>("personal");
   const [products, setProducts] = useState<CreatorProduct[]>([]);
   const [storeUrl, setStoreUrl] = useState<string | null>(null);
+  const shopUserId = performerId ?? "local-user";
+  const [pointsBalance, setPointsBalance] = useState(0);
+  const [buyMsg, setBuyMsg] = useState<string | null>(null);
+  const [ownedTick, setOwnedTick] = useState(0);
 
   useEffect(() => {
     if (!performerId) {
@@ -73,20 +84,36 @@ export default function ShopDrawerPanel({
     setStoreUrl(resolveArtistBuyUrl(getPerformerStorefrontLink(performerId)));
   }, [performerId]);
 
+  useEffect(() => {
+    setPointsBalance(getTmiPoints(shopUserId));
+  }, [shopUserId, ownedTick]);
+
   const tmiItems = useMemo(() => {
     // Platform-global: tips/memberships for fans + lobby skins. Exclude tickets (Rule 17 surface).
     const base = [...FAN_ITEMS, ...LOBBY_ITEMS].filter((i) => i.category !== "tickets");
     return base;
   }, []);
 
-  const skins = useMemo(
-    () =>
-      (Object.keys(SKIN_REGISTRY) as ArtifactSkinId[]).map((id) => ({
-        id,
-        ...SKIN_REGISTRY[id],
-      })),
-    [],
-  );
+  const mediaPlayers = useMemo(() => listStoreMediaPlayers(), []);
+
+  function buyChassisWithPoints(chassis: MediaPlayerChassis) {
+    setBuyMsg(null);
+    if (ownsChassis(shopUserId, chassis.id)) {
+      setBuyMsg(`Already owned: ${chassis.label}`);
+      return;
+    }
+    const cost = chassis.pricePoints ?? 299;
+    const result = spendTmiPoints(shopUserId, cost, `media_player_${chassis.id}`);
+    if (!result.ok) {
+      setBuyMsg(
+        `Not enough points for ${chassis.label}. Need ${cost} pts · balance ${result.balance}.`,
+      );
+      return;
+    }
+    grantChassisOwnership(shopUserId, chassis.id);
+    setOwnedTick((n) => n + 1);
+    setBuyMsg(`Unlocked ${chassis.label} (−${cost} pts). Equip in Media Player Studio.`);
+  }
 
   return (
     <div style={{ padding: 12, display: "flex", flexDirection: "column", gap: 12 }}>
@@ -95,7 +122,7 @@ export default function ShopDrawerPanel({
           SHOP
         </div>
         <p style={{ margin: "4px 0 0", fontSize: 11, color: "rgba(255,255,255,0.4)", lineHeight: 1.4 }}>
-          Personal Store follows ACTIVE_PERFORMER. TMI Store is platform-global (cosmetics, boosters, skins).
+          Personal Store follows ACTIVE_PERFORMER. TMI Store is platform-global (cosmetics, boosters, Media Players).
         </p>
       </div>
 
@@ -191,7 +218,26 @@ export default function ShopDrawerPanel({
               <SectionTitle color="#00FFFF">MEMBERSHIPS · TIPS · LOBBY SKINS</SectionTitle>
               <ItemGrid items={tmiItems} />
 
-              <SectionTitle color="#FF2DAA">PLAYLIST SKINS (REGISTRY)</SectionTitle>
+              <SectionTitle color="#FF2DAA">MEDIA PLAYERS · RARE (~299 PTS / $2.99)</SectionTitle>
+              <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)" }}>
+                Balance: {pointsBalance} pts · Free default: Standard TMI Player (not listed)
+              </div>
+              {buyMsg ? (
+                <div
+                  style={{
+                    fontSize: 11,
+                    padding: "8px 10px",
+                    borderRadius: 8,
+                    border: buyMsg.startsWith("Not enough")
+                      ? "1px solid rgba(255,80,80,0.4)"
+                      : "1px solid rgba(0,255,136,0.35)",
+                    color: buyMsg.startsWith("Not enough") ? "#ffb0b0" : "#9dffc8",
+                    background: "rgba(0,0,0,0.25)",
+                  }}
+                >
+                  {buyMsg}
+                </div>
+              ) : null}
               <ul
                 style={{
                   margin: 0,
@@ -202,30 +248,70 @@ export default function ShopDrawerPanel({
                   gap: 8,
                 }}
               >
-                {skins.map((s) => (
-                  <li
-                    key={s.id}
-                    style={{
-                      padding: "8px 10px",
-                      borderRadius: 8,
-                      border: `1px solid ${s.accent}44`,
-                      background: `${s.theme}cc`,
-                    }}
-                  >
-                    <div style={{ fontSize: 14 }}>{s.icon}</div>
-                    <div style={{ fontSize: 11, fontWeight: 800, color: "#fff", marginTop: 4 }}>
-                      {s.label}
-                    </div>
-                    <div style={{ fontSize: 9, color: "rgba(255,255,255,0.45)", marginTop: 2 }}>
-                      {s.unlockMethod === "free" && "Free"}
-                      {s.unlockMethod === "points" && `${s.pointsCost ?? "—"} pts`}
-                      {s.unlockMethod === "premium" &&
-                        (s.priceUsd != null ? `$${s.priceUsd.toFixed(2)}` : "Premium")}
-                      {s.unlockMethod === "tier" && `Tier · ${s.tierRequired ?? ""}`}
-                    </div>
-                  </li>
-                ))}
+                {mediaPlayers.map((s) => {
+                  const owned = ownsChassis(shopUserId, s.id);
+                  const pts = s.pricePoints ?? 299;
+                  const usd =
+                    s.priceUsdCents != null
+                      ? `$${(s.priceUsdCents / 100).toFixed(2)}`
+                      : "$2.99";
+                  return (
+                    <li
+                      key={s.id}
+                      style={{
+                        padding: "8px 10px",
+                        borderRadius: 8,
+                        border: `1px solid ${s.accent}44`,
+                        background: `${s.theme}cc`,
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 6,
+                      }}
+                    >
+                      <div style={{ fontSize: 14 }}>{s.icon}</div>
+                      <div style={{ fontSize: 11, fontWeight: 800, color: "#fff" }}>{s.label}</div>
+                      <div style={{ fontSize: 9, color: "rgba(255,255,255,0.45)" }}>
+                        Rare · {pts} pts · {usd}
+                        {s.storeSku ? ` · ${s.storeSku}` : ""}
+                      </div>
+                      {owned ? (
+                        <div style={{ fontSize: 9, fontWeight: 800, color: "#9dffc8" }}>OWNED</div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => buyChassisWithPoints(s)}
+                          style={{
+                            fontSize: 9,
+                            fontWeight: 900,
+                            letterSpacing: "0.04em",
+                            padding: "6px 8px",
+                            borderRadius: 6,
+                            border: `1px solid ${s.accent}88`,
+                            background: `${s.accent}22`,
+                            color: s.accent,
+                            cursor: "pointer",
+                            fontFamily: "inherit",
+                          }}
+                        >
+                          BUY WITH POINTS
+                        </button>
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
+              <div
+                style={{
+                  fontSize: 9,
+                  color: "rgba(255,255,255,0.35)",
+                  padding: "8px 10px",
+                  borderRadius: 8,
+                  border: "1px dashed rgba(255,255,255,0.12)",
+                }}
+              >
+                {BOT_CHASSIS_GENERATION_PIPELINE.label}: {BOT_CHASSIS_GENERATION_PIPELINE.status} —{" "}
+                {BOT_CHASSIS_GENERATION_PIPELINE.note}
+              </div>
 
               {role === "fan" ? (
                 <Link href="/store/fan" style={linkStyle("#FF2DAA")}>

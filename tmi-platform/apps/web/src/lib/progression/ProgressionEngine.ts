@@ -124,6 +124,28 @@ export function grantTmiPoints(userId: string, amount: number, reason?: string):
   return map[userId]!;
 }
 
+/**
+ * Spend TMI Points. Returns ok=false with honest balance when insufficient (Rule 20).
+ */
+export function spendTmiPoints(
+  userId: string,
+  amount: number,
+  reason?: string,
+): { ok: boolean; balance: number; spent: number } {
+  const balance = getTmiPoints(userId);
+  if (amount <= 0) return { ok: true, balance, spent: 0 };
+  if (balance < amount) return { ok: false, balance, spent: 0 };
+  const map = mapGet(POINTS_KEY);
+  map[userId] = balance - amount;
+  mapSet(POINTS_KEY, map);
+  appendTimeline(userId, {
+    kind: "POINTS_SPEND",
+    label: `−${amount} TMI Points${reason ? ` · ${reason}` : ""}`,
+    meta: { amount, reason: reason ?? "" },
+  });
+  return { ok: true, balance: map[userId]!, spent: amount };
+}
+
 export function getXpTotal(userId: string): number {
   return mapGet(XP_KEY)[userId] ?? 0;
 }

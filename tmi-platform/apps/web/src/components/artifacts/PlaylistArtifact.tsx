@@ -799,6 +799,61 @@ interface SkinProps {
   currentIdx?: number;
 }
 
+/** Free default Standard TMI Player chassis shell (not fish/organic). */
+function StandardPlayerChassis({ isPlaying, primary, accent, isOpen, onClick, children }: SkinProps) {
+  return (
+    <div style={{ position: "relative", width: 280, margin: "0 auto", cursor: "pointer" }} onClick={onClick}>
+      <div
+        style={{
+          borderRadius: 14,
+          border: `1.5px solid ${primary}88`,
+          background: "linear-gradient(165deg, #12122a 0%, #0a0614 55%, #050510 100%)",
+          boxShadow: isPlaying
+            ? `0 0 28px ${primary}55, inset 0 0 24px ${accent}22`
+            : `0 8px 24px rgba(0,0,0,0.55), inset 0 0 16px ${primary}18`,
+          padding: 12,
+        }}
+      >
+        <div
+          style={{
+            fontSize: 9,
+            fontWeight: 900,
+            letterSpacing: "0.14em",
+            color: primary,
+            marginBottom: 8,
+            display: "flex",
+            justifyContent: "space-between",
+          }}
+        >
+          <span>▶ STANDARD TMI PLAYER</span>
+          <span style={{ color: "rgba(255,255,255,0.35)" }}>{isOpen ? "▲" : "▼"}</span>
+        </div>
+        <div
+          style={{
+            borderRadius: 8,
+            border: `1px solid ${accent}44`,
+            overflow: "hidden",
+            background: "#050510",
+            minHeight: 120,
+          }}
+        >
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const STANDARD_META = {
+  name: "Standard TMI Player",
+  icon: "▶",
+  primary: "#00FFFF",
+  accent: "#AA2DFF",
+  bg: "#0a0614",
+  unlockPoints: 0,
+  description: "Free default Media Player chassis for every account.",
+};
+
 const SKIN_COMPONENTS: Record<ArtifactSkin, React.FC<SkinProps>> = {
   submarine: SubmarineSkin,
   ufo:       UFOSkin,
@@ -814,6 +869,7 @@ const SKIN_COMPONENTS: Record<ArtifactSkin, React.FC<SkinProps>> = {
 
 interface PlaylistArtifactProps {
   artifactId?: string;
+  /** Omit for free Standard TMI Player. Fish/submarine is purchaseable Rare only. */
   skin?: ArtifactSkin;
   title?: string;
   initialTracks?: ArtifactTrack[];
@@ -827,7 +883,7 @@ interface PlaylistArtifactProps {
 
 export default function PlaylistArtifact({
   artifactId = `artifact-${Date.now()}`,
-  skin = "submarine",
+  skin,
   title = "My Playlist",
   initialTracks = [],
   initialPoints = 0,
@@ -837,9 +893,10 @@ export default function PlaylistArtifact({
   rank,
   onAddToLibrary,
 }: PlaylistArtifactProps) {
-  const [activeSkin, setActiveSkin] = useState<ArtifactSkin>(skin);
-  const meta = SKIN_META[activeSkin];
-  const SkinComponent = SKIN_COMPONENTS[activeSkin];
+  const [activeSkin, setActiveSkin] = useState<ArtifactSkin | "standard">(skin ?? "standard");
+  const meta = activeSkin === "standard" ? STANDARD_META : SKIN_META[activeSkin];
+  const SkinComponent =
+    activeSkin === "standard" ? StandardPlayerChassis : SKIN_COMPONENTS[activeSkin];
 
   const [isOpen,        setIsOpen]        = useState(false);
   const [isPlaying,     setIsPlaying]     = useState(false);
@@ -954,15 +1011,20 @@ export default function PlaylistArtifact({
                 <span style={{ fontSize: 9, color: "rgba(255,255,255,0.35)" }}>{tracks.length} tracks · {fmtPoints(points)} pts</span>
               </div>
 
-              {/* Interactive Skin Selector Rail */}
+              {/* Interactive Media Player chassis rail */}
               <div style={{ padding: "6px 10px", background: "rgba(0,0,0,0.4)", borderBottom: `1px solid ${meta.primary}18`, display: "flex", gap: 4, overflowX: "auto" }}>
-                {(Object.keys(SKIN_META) as ArtifactSkin[]).map((skinKey) => {
-                  const item = SKIN_META[skinKey];
-                  const active = skinKey === activeSkin;
+                {([
+                  { key: "standard" as const, item: STANDARD_META },
+                  ...(Object.keys(SKIN_META) as ArtifactSkin[]).map((skinKey) => ({
+                    key: skinKey as ArtifactSkin | "standard",
+                    item: SKIN_META[skinKey],
+                  })),
+                ]).map(({ key, item }) => {
+                  const active = key === activeSkin;
                   return (
                     <button
-                      key={skinKey}
-                      onClick={() => setActiveSkin(skinKey)}
+                      key={key}
+                      onClick={() => setActiveSkin(key)}
                       title={item.name}
                       style={{
                         background: active ? `${item.primary}33` : "rgba(255,255,255,0.04)",

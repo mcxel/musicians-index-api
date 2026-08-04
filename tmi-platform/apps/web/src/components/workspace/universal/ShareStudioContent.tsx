@@ -1,5 +1,6 @@
 /**
- * Share Studio Phase 1 — targets list + share current track/playlist/link.
+ * Share Studio Phase 1 — share Playlist Artifact (music package), not the chassis.
+ * Recipient plays the artifact in their own equipped Media Player.
  * Uses ShareLinkEngine; no fake social post success (Rule 20).
  */
 
@@ -16,6 +17,7 @@ import {
   buildInstagramCopyPrompt,
   type ShareTarget,
 } from "@/lib/share/ShareLinkEngine";
+import { makePlaylistArtifactShareUrl } from "@/lib/artifacts/PlaylistArtifactEngine";
 import type { WorkspaceContext } from "@/lib/workspace/universal/types";
 
 export interface ShareStudioContentProps {
@@ -28,30 +30,33 @@ export default function ShareStudioContent({ context }: ShareStudioContentProps)
   const [feedback, setFeedback] = useState<ShareFeedback>(null);
   const [busy, setBusy] = useState(false);
 
+  const artifactId = context.artifactId || context.playlistId;
+
   const target: ShareTarget = useMemo(() => {
     const title =
-      context.trackTitle ||
       context.playlistTitle ||
-      "Share from The Musician's Index";
+      context.trackTitle ||
+      "Playlist Artifact — The Musician's Index";
     const text = context.artistName
-      ? `${context.trackTitle ?? context.playlistTitle ?? "Listen"} — ${context.artistName}`
-      : context.trackTitle || context.playlistTitle || title;
+      ? `Playlist Artifact: ${context.playlistTitle ?? context.trackTitle ?? "Listen"} — ${context.artistName}. Plays in your Media Player.`
+      : `Playlist Artifact: ${context.playlistTitle || context.trackTitle || title}. Recipient plays in their equipped Media Player.`;
     const path =
       context.sharePath ||
-      (context.playlistId
-        ? `/share/${context.playlistId}`
+      (artifactId
+        ? `/artifact/${artifactId}`
         : context.trackId
           ? `/share/${context.trackId}`
           : typeof window !== "undefined"
             ? window.location.pathname
             : "/");
     return { title, text, path };
-  }, [context]);
+  }, [context, artifactId]);
 
   const shareUrl = useMemo(() => {
     if (context.linkUrl) return context.linkUrl;
+    if (artifactId) return makePlaylistArtifactShareUrl(artifactId);
     return buildShareUrl(target);
-  }, [context.linkUrl, target]);
+  }, [context.linkUrl, artifactId, target]);
 
   async function copyLink() {
     setBusy(true);
@@ -118,11 +123,13 @@ export default function ShareStudioContent({ context }: ShareStudioContentProps)
     }
   }
 
-  const subjectLabel = context.trackTitle
-    ? `Track: ${context.trackTitle}`
+  const subjectLabel = artifactId
+    ? `Playlist Artifact: ${context.playlistTitle ?? artifactId}`
     : context.playlistTitle
-      ? `Playlist: ${context.playlistTitle}`
-      : "Current page link";
+      ? `Playlist Artifact: ${context.playlistTitle}`
+      : context.trackTitle
+        ? `Track: ${context.trackTitle}`
+        : "Current page link";
 
   const targets: Array<{
     id: string;
@@ -208,9 +215,12 @@ export default function ShareStudioContent({ context }: ShareStudioContentProps)
         }}
       >
         <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.12em", color: "rgba(255,255,255,0.45)" }}>
-          SHARING
+          SHARING PLAYLIST ARTIFACT
         </div>
         <div style={{ fontSize: 14, fontWeight: 800, marginTop: 4 }}>{subjectLabel}</div>
+        <div style={{ fontSize: 11, color: "rgba(0,255,255,0.7)", marginTop: 4 }}>
+          Chassis stays with you — recipient plays this package in their equipped Media Player.
+        </div>
         {context.artistName ? (
           <div style={{ fontSize: 12, color: "rgba(255,255,255,0.55)", marginTop: 2 }}>
             {context.artistName}

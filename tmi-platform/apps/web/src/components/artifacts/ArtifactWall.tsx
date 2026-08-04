@@ -8,12 +8,13 @@ import { SKIN_META, type ArtifactSkin, type ArtifactTrack } from "@/lib/artifact
 // ── Default artifact collection per role ──────────────────────────────────────
 
 const DEFAULT_FAN_ARTIFACTS: { skin: ArtifactSkin; title: string; tracks: ArtifactTrack[] }[] = [
-  { skin: "submarine", title: "Top Charts – Pop",   tracks: [
+  // Fish/submarine is purchaseable Rare — not the free default lead slot.
+  { skin: "tree",      title: "Top Charts – Pop",   tracks: [
     { id: "f1", title: "Good Days",      artist: "SZA",           duration: "4:39", sourceUrl: "#", source: "link" },
     { id: "f2", title: "Golden Hour",    artist: "JVKE",          duration: "3:29", sourceUrl: "#", source: "link" },
     { id: "f3", title: "Heat Waves",     artist: "Glass Animals", duration: "3:59", sourceUrl: "#", source: "link" },
   ]},
-  { skin: "tree",      title: "Top Charts – Indie", tracks: [
+  { skin: "house",     title: "Top Charts – Indie", tracks: [
     { id: "f4", title: "As It Was",      artist: "Harry Styles",  duration: "2:37", sourceUrl: "#", source: "link" },
     { id: "f5", title: "Daylight",       artist: "David Kushner", duration: "3:28", sourceUrl: "#", source: "link" },
   ]},
@@ -21,17 +22,19 @@ const DEFAULT_FAN_ARTIFACTS: { skin: ArtifactSkin; title: string; tracks: Artifa
     { id: "f6", title: "Neon Lights",    artist: "Marshmello",    duration: "3:41", sourceUrl: "#", source: "link" },
     { id: "f7", title: "Blinding Lights",artist: "The Weeknd",    duration: "3:20", sourceUrl: "#", source: "link" },
   ]},
-  { skin: "house",     title: "Top Charts – R&B",   tracks: [
+  { skin: "baby",      title: "Top Charts – R&B",   tracks: [
     { id: "f8", title: "Creepin'",       artist: "Metro Boomin",  duration: "3:32", sourceUrl: "#", source: "link" },
     { id: "f9", title: "Rich Flex",      artist: "Drake",         duration: "3:25", sourceUrl: "#", source: "link" },
   ]},
+  // Fish visual retained as purchaseable Rare demo (not free lead).
+  { skin: "submarine", title: "Deep Cuts – Rare Fish", tracks: [] },
 ];
 
 const DEFAULT_PERFORMER_ARTIFACTS: { skin: ArtifactSkin; title: string; tracks: ArtifactTrack[] }[] = [
   { skin: "rocket",    title: "My Album",          tracks: [] },
   { skin: "car",       title: "Tour Playlist",     tracks: [] },
   { skin: "train",     title: "Battle Pack",        tracks: [] },
-  { skin: "submarine", title: "Producer Picks",    tracks: [] },
+  { skin: "ufo",       title: "Producer Picks",    tracks: [] },
 ];
 
 // ── Skin shop / unlock ────────────────────────────────────────────────────────

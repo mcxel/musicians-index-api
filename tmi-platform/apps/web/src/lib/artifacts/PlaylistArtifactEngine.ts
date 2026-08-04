@@ -1,11 +1,18 @@
 /**
  * PlaylistArtifactEngine — Core types, state machine, and logic
- * for TMI Playlist Artifacts (collectible animated playlist objects).
+ * for TMI Playlist Artifacts + Media Player chassis.
  *
- * Architecture: RoomContainer → MediaMonitor → PlaylistArtifact → Skin
+ * Terminology (Marcel 2026-08-03):
+ *   Media Player  = collectible playback chassis (evolved from "playlist skins")
+ *   Playlist Artifact = signed music package (tracks + owner + permissions)
+ *   YoPho Card / Album Cover = separate identity layers — do NOT merge
+ *
+ * Architecture: RoomContainer → MediaMonitor → MediaPlayerChassis + PlaylistArtifact
  *
  * Songs are NEVER stored here — they are URL pointers to external sources.
  * The engine manages playback state, points, presence, and sharing.
+ *
+ * Rule 19: SKIN_REGISTRY evolves/aliases toward Media Player chassis — no second store.
  */
 
 // ─── Track Source ─────────────────────────────────────────────────────────────
@@ -36,26 +43,32 @@ export interface ArtifactTrack {
   tmiArtistKey?: "berntout" | "bjm" | "big_kazhdog";
 }
 
-// ─── Skins ────────────────────────────────────────────────────────────────────
+// ─── Media Player Chassis (evolved from Playlist Skins — Rule 19) ─────────────
 
-export type ArtifactSkinId =
-  // Free starters
-  | "tmi_classic"
+export type MediaPlayerRarity = "free" | "common" | "rare" | "tier" | "legendary";
+
+export type MediaPlayerChassisId =
+  // Free default + free starters
+  | "standard"       // Standard TMI Player — free default for every user
+  | "tmi_classic"    // alias path → maps to standard visually
   | "tmi_dark"
   | "tmi_neon"
-  // Tier-reward prestige skins
+  // Tier-reward prestige
   | "chrome"
   | "vice_neon"
   | "broadcast"
   | "signature"
-  // Points tier (common)
+  // Store / points (common + rare chassis)
   | "tree"
   | "baby"
   | "house"
   | "hand"
   | "train"
   | "car"
-  // Premium tier (real money)
+  | "fish"           // Aquarium Fish — purchaseable Rare (NOT free default)
+  | "steampunk"
+  | "face_ai"        // Original TMI face/AI-inspired chassis — not copyrighted Sonique IP
+  // Premium / rare chassis (also listable for points)
   | "submarine"
   | "rocket"
   | "shark"
@@ -64,100 +77,582 @@ export type ArtifactSkinId =
   | "ufo"
   | "robot";
 
+/** @deprecated Use MediaPlayerChassisId — kept for legacy import sites. */
+export type ArtifactSkinId = MediaPlayerChassisId;
+
 export type PlaylistSkinTier = "SILVER" | "GOLD" | "PLATINUM" | "DIAMOND";
 
 /**
- * Skin Economy — locked 2026-06-19 by Marcel Dickens: every cosmetic must be
- * obtainable through at least one of four paths. "free" and "tier" are
- * obtained without spending anything (signup default / membership reward —
- * tier ones can ALSO be bot-gifted or awarded as tournament prizes, which is
- * a fulfillment path handled by whatever engine grants the skin, not a
- * registry field). "points" and "premium" are the two purchasable tiers —
- * premium is real money via Stripe, points is platform activity currency.
+ * Unlock paths (Rule 19 Skin Economy → Media Player Economy):
+ * free | points | premium (Stripe) | tier. Bot auto-design = COMING_SOON stub only.
  */
 export type SkinUnlockMethod = "free" | "points" | "premium" | "tier";
+export type ChassisUnlockMethod = SkinUnlockMethod;
 
-export const SKIN_REGISTRY: Record<ArtifactSkinId, {
-  label:       string;
-  icon:        string;
-  theme:       string;    // Background color for the card
-  accent:      string;    // Neon accent
-  visualizerStyle: "sonar" | "bars" | "stars" | "leaves" | "fire" | "circuit" | "bubbles" | "radar" | "broadcast" | "chrome" | "signature";
-  unlockMethod: SkinUnlockMethod;
-  pointsCost?: number;     // set when unlockMethod === "points"
-  priceUsd?:   number;     // set when unlockMethod === "premium"
-  tierRequired?: PlaylistSkinTier; // set when unlockMethod === "tier"
-  animated?:   boolean;
-}> = {
-  // ── Free starters — every account gets these on signup, no unlock needed ──
-  tmi_classic: { label: "TMI Classic", icon: "🎵", theme: "#0a0614", accent: "#00FFFF", visualizerStyle: "bars",   unlockMethod: "free" },
-  tmi_dark:    { label: "TMI Dark",    icon: "🌑", theme: "#050505", accent: "#888888", visualizerStyle: "bars",   unlockMethod: "free" },
-  tmi_neon:    { label: "TMI Neon",    icon: "✨", theme: "#0a0614", accent: "#FF2DAA", visualizerStyle: "stars",  unlockMethod: "free" },
+export type ChassisAnimationPack =
+  | "none"
+  | "bars"
+  | "stars"
+  | "leaves"
+  | "sonar"
+  | "bubbles"
+  | "radar"
+  | "circuit"
+  | "chrome"
+  | "broadcast"
+  | "signature"
+  | "fire"
+  | "gears"
+  | "face_pulse";
 
-  // ── Tier-reward prestige skins — Silver→Chrome, Gold→Vice Neon, ───────────
-  // Platinum→Broadcast, Diamond→Signature. Also obtainable via bot gifts /
-  // tournament prizes per the Skin Economy rule above.
-  chrome:      { label: "Chrome",      icon: "⚙️", theme: "#1a1a1f", accent: "#C0C0C0", visualizerStyle: "chrome",    unlockMethod: "tier", tierRequired: "SILVER" },
-  vice_neon:   { label: "Vice Neon",   icon: "🌴", theme: "#1a0a2e", accent: "#FF2DAA", visualizerStyle: "bars",      unlockMethod: "tier", tierRequired: "GOLD" },
-  broadcast:   { label: "Broadcast",   icon: "📡", theme: "#0a1424", accent: "#00E5FF", visualizerStyle: "broadcast", unlockMethod: "tier", tierRequired: "PLATINUM" },
-  signature:   { label: "Signature",   icon: "👑", theme: "#14060a", accent: "#FFD700", visualizerStyle: "signature", unlockMethod: "tier", tierRequired: "DIAMOND", animated: true },
+/** Canonical Media Player chassis record. */
+export interface MediaPlayerChassis {
+  id: MediaPlayerChassisId;
+  label: string;
+  icon: string;
+  theme: string;
+  accent: string;
+  rarity: MediaPlayerRarity;
+  /** Spendable TMI Points price (store). */
+  pricePoints?: number;
+  /** Optional Stripe stub price in cents. */
+  priceUsdCents?: number;
+  animationPack: ChassisAnimationPack;
+  /** True when every new account receives this chassis. */
+  freeDefault: boolean;
+  unlockMethod: ChassisUnlockMethod;
+  tierRequired?: PlaylistSkinTier;
+  animated?: boolean;
+  /** Legacy visualizer key (SKIN_REGISTRY compat). */
+  visualizerStyle: ChassisAnimationPack;
+  /** @deprecated alias — use pricePoints */
+  pointsCost?: number;
+  /** @deprecated alias — use priceUsdCents / 100 */
+  priceUsd?: number;
+  storeSku?: string;
+  storeListed?: boolean;
+}
 
-  // ── Points tier (common — 250-500 points via platform activity) ──────────
-  tree:        { label: "Tree",        icon: "🌳", theme: "#0a1a08", accent: "#FFD700", visualizerStyle: "leaves",  unlockMethod: "points", pointsCost: 250 },
-  baby:        { label: "Baby",        icon: "👶", theme: "#0a0a14", accent: "#FF88AA", visualizerStyle: "bubbles", unlockMethod: "points", pointsCost: 250 },
-  house:       { label: "House",       icon: "🏠", theme: "#0c0a06", accent: "#FFB84A", visualizerStyle: "bars",    unlockMethod: "points", pointsCost: 350 },
-  hand:        { label: "Hand",        icon: "✋", theme: "#100810", accent: "#FF9500", visualizerStyle: "bars",    unlockMethod: "points", pointsCost: 350 },
-  train:       { label: "Train",       icon: "🚂", theme: "#100808", accent: "#FF4422", visualizerStyle: "bars",    unlockMethod: "points", pointsCost: 500 },
-  car:         { label: "Car",         icon: "🚗", theme: "#0a0810", accent: "#FF2DAA", visualizerStyle: "bars",    unlockMethod: "points", pointsCost: 500 },
+/** Thin optional listener theme (colors / EQ tint) — not a chassis. */
+export interface ListenerTheme {
+  id: string;
+  label: string;
+  primary: string;
+  secondary: string;
+  eqTint?: string;
+}
 
-  // ── Premium tier (real money — $0.99 to $3.99 by rarity) ──────────────────
-  submarine:   { label: "Submarine",   icon: "🚢", theme: "#0a1a0a", accent: "#FFD700", visualizerStyle: "sonar",   unlockMethod: "premium", priceUsd: 0.99 },
-  rocket:      { label: "Rocket",      icon: "🚀", theme: "#050818", accent: "#FF9500", visualizerStyle: "stars",   unlockMethod: "premium", priceUsd: 0.99 },
-  shark:       { label: "Shark",       icon: "🦈", theme: "#040c18", accent: "#00FFFF", visualizerStyle: "bubbles", unlockMethod: "premium", priceUsd: 1.99 },
-  dj_face:     { label: "DJ",          icon: "🎧", theme: "#080510", accent: "#FF2DAA", visualizerStyle: "bars",    unlockMethod: "premium", priceUsd: 1.99 },
-  helicopter:  { label: "Helicopter",  icon: "🚁", theme: "#080810", accent: "#00FF88", visualizerStyle: "radar",   unlockMethod: "premium", priceUsd: 2.99 },
-  ufo:         { label: "UFO",         icon: "🛸", theme: "#05050e", accent: "#AA2DFF", visualizerStyle: "radar",   unlockMethod: "premium", priceUsd: 2.99 },
-  robot:       { label: "Robot",       icon: "🤖", theme: "#050a10", accent: "#00FFFF", visualizerStyle: "circuit", unlockMethod: "premium", priceUsd: 3.99 },
+/** Free default chassis id — Standard TMI Player. */
+export const FREE_DEFAULT_CHASSIS_ID: MediaPlayerChassisId = "standard";
+
+/**
+ * Bot chassis generation pipeline — registry stub only (Phase 1).
+ * Do not claim live auto-design; Rule 20 honest empty / coming soon.
+ */
+export const BOT_CHASSIS_GENERATION_PIPELINE = {
+  status: "COMING_SOON" as const,
+  label: "Bot Media Player Design Pipeline",
+  note: "Automated chassis generation is not live. Manual registry SKUs only.",
 };
+
+type ChassisRegistryEntry = Omit<MediaPlayerChassis, "id">;
+
+function chassis(
+  partial: ChassisRegistryEntry & { visualizerStyle: ChassisAnimationPack },
+): ChassisRegistryEntry {
+  return {
+    ...partial,
+    animationPack: partial.animationPack ?? partial.visualizerStyle,
+    pointsCost: partial.pricePoints ?? partial.pointsCost,
+    priceUsd:
+      partial.priceUsd ??
+      (partial.priceUsdCents != null ? partial.priceUsdCents / 100 : undefined),
+  };
+}
+
+/**
+ * Canonical chassis registry (also exported as SKIN_REGISTRY for Rule 19 compat).
+ * Store Rare SKUs (~299 pts / $2.99): submarine, rocket, tree, fish, steampunk, face_ai.
+ */
+export const MEDIA_PLAYER_CHASSIS_REGISTRY: Record<MediaPlayerChassisId, MediaPlayerChassis> = {
+  // ── Free — Standard TMI Player is the only freeDefault ───────────────────
+  standard: {
+    id: "standard",
+    ...chassis({
+      label: "Standard TMI Player",
+      icon: "▶",
+      theme: "#0a0614",
+      accent: "#00FFFF",
+      visualizerStyle: "bars",
+      animationPack: "bars",
+      unlockMethod: "free",
+      rarity: "free",
+      freeDefault: true,
+    }),
+  },
+  tmi_classic: {
+    id: "tmi_classic",
+    ...chassis({
+      label: "TMI Classic",
+      icon: "🎵",
+      theme: "#0a0614",
+      accent: "#00FFFF",
+      visualizerStyle: "bars",
+      animationPack: "bars",
+      unlockMethod: "free",
+      rarity: "free",
+      freeDefault: false,
+    }),
+  },
+  tmi_dark: {
+    id: "tmi_dark",
+    ...chassis({
+      label: "TMI Dark",
+      icon: "🌑",
+      theme: "#050505",
+      accent: "#888888",
+      visualizerStyle: "bars",
+      animationPack: "bars",
+      unlockMethod: "free",
+      rarity: "free",
+      freeDefault: false,
+    }),
+  },
+  tmi_neon: {
+    id: "tmi_neon",
+    ...chassis({
+      label: "TMI Neon",
+      icon: "✨",
+      theme: "#0a0614",
+      accent: "#FF2DAA",
+      visualizerStyle: "stars",
+      animationPack: "stars",
+      unlockMethod: "free",
+      rarity: "free",
+      freeDefault: false,
+    }),
+  },
+
+  chrome: {
+    id: "chrome",
+    ...chassis({
+      label: "Chrome",
+      icon: "⚙️",
+      theme: "#1a1a1f",
+      accent: "#C0C0C0",
+      visualizerStyle: "chrome",
+      animationPack: "chrome",
+      unlockMethod: "tier",
+      tierRequired: "SILVER",
+      rarity: "tier",
+      freeDefault: false,
+    }),
+  },
+  vice_neon: {
+    id: "vice_neon",
+    ...chassis({
+      label: "Vice Neon",
+      icon: "🌴",
+      theme: "#1a0a2e",
+      accent: "#FF2DAA",
+      visualizerStyle: "bars",
+      animationPack: "bars",
+      unlockMethod: "tier",
+      tierRequired: "GOLD",
+      rarity: "tier",
+      freeDefault: false,
+    }),
+  },
+  broadcast: {
+    id: "broadcast",
+    ...chassis({
+      label: "Broadcast",
+      icon: "📡",
+      theme: "#0a1424",
+      accent: "#00E5FF",
+      visualizerStyle: "broadcast",
+      animationPack: "broadcast",
+      unlockMethod: "tier",
+      tierRequired: "PLATINUM",
+      rarity: "tier",
+      freeDefault: false,
+    }),
+  },
+  signature: {
+    id: "signature",
+    ...chassis({
+      label: "Signature",
+      icon: "👑",
+      theme: "#14060a",
+      accent: "#FFD700",
+      visualizerStyle: "signature",
+      animationPack: "signature",
+      unlockMethod: "tier",
+      tierRequired: "DIAMOND",
+      rarity: "tier",
+      freeDefault: false,
+      animated: true,
+    }),
+  },
+
+  // ── Store Rare chassis (~299 pts / $2.99) ─────────────────────────────────
+  tree: {
+    id: "tree",
+    ...chassis({
+      label: "Tree",
+      icon: "🌳",
+      theme: "#0a1a08",
+      accent: "#FFD700",
+      visualizerStyle: "leaves",
+      animationPack: "leaves",
+      unlockMethod: "points",
+      rarity: "rare",
+      freeDefault: false,
+      pricePoints: 299,
+      priceUsdCents: 299,
+      storeSku: "mp-chassis-tree",
+      storeListed: true,
+      animated: true,
+    }),
+  },
+  fish: {
+    id: "fish",
+    ...chassis({
+      label: "Aquarium Fish",
+      icon: "🐠",
+      theme: "#003366",
+      accent: "#FFD700",
+      visualizerStyle: "bubbles",
+      animationPack: "bubbles",
+      unlockMethod: "points",
+      rarity: "rare",
+      freeDefault: false,
+      pricePoints: 299,
+      priceUsdCents: 299,
+      storeSku: "mp-chassis-fish",
+      storeListed: true,
+      animated: true,
+    }),
+  },
+  steampunk: {
+    id: "steampunk",
+    ...chassis({
+      label: "Steampunk",
+      icon: "🕰️",
+      theme: "#1a1008",
+      accent: "#D4A017",
+      visualizerStyle: "gears",
+      animationPack: "gears",
+      unlockMethod: "points",
+      rarity: "rare",
+      freeDefault: false,
+      pricePoints: 299,
+      priceUsdCents: 299,
+      storeSku: "mp-chassis-steampunk",
+      storeListed: true,
+      animated: true,
+    }),
+  },
+  face_ai: {
+    id: "face_ai",
+    ...chassis({
+      label: "Neon Face",
+      icon: "◈",
+      theme: "#0a0618",
+      accent: "#FF2DAA",
+      visualizerStyle: "face_pulse",
+      animationPack: "face_pulse",
+      unlockMethod: "points",
+      rarity: "rare",
+      freeDefault: false,
+      pricePoints: 299,
+      priceUsdCents: 299,
+      storeSku: "mp-chassis-face-ai",
+      storeListed: true,
+      animated: true,
+    }),
+  },
+  submarine: {
+    id: "submarine",
+    ...chassis({
+      label: "Submarine",
+      icon: "🚢",
+      theme: "#0a1a0a",
+      accent: "#FFD700",
+      visualizerStyle: "sonar",
+      animationPack: "sonar",
+      unlockMethod: "points",
+      rarity: "rare",
+      freeDefault: false,
+      pricePoints: 299,
+      priceUsdCents: 299,
+      storeSku: "mp-chassis-submarine",
+      storeListed: true,
+      animated: true,
+    }),
+  },
+  rocket: {
+    id: "rocket",
+    ...chassis({
+      label: "Rocket",
+      icon: "🚀",
+      theme: "#050818",
+      accent: "#FF9500",
+      visualizerStyle: "stars",
+      animationPack: "stars",
+      unlockMethod: "points",
+      rarity: "rare",
+      freeDefault: false,
+      pricePoints: 299,
+      priceUsdCents: 299,
+      storeSku: "mp-chassis-rocket",
+      storeListed: true,
+      animated: true,
+    }),
+  },
+
+  // ── Other points / premium (not Stage-1 store Rare set) ───────────────────
+  baby: {
+    id: "baby",
+    ...chassis({
+      label: "Baby",
+      icon: "👶",
+      theme: "#0a0a14",
+      accent: "#FF88AA",
+      visualizerStyle: "bubbles",
+      animationPack: "bubbles",
+      unlockMethod: "points",
+      rarity: "common",
+      freeDefault: false,
+      pricePoints: 250,
+    }),
+  },
+  house: {
+    id: "house",
+    ...chassis({
+      label: "House",
+      icon: "🏠",
+      theme: "#0c0a06",
+      accent: "#FFB84A",
+      visualizerStyle: "bars",
+      animationPack: "bars",
+      unlockMethod: "points",
+      rarity: "common",
+      freeDefault: false,
+      pricePoints: 350,
+    }),
+  },
+  hand: {
+    id: "hand",
+    ...chassis({
+      label: "Hand",
+      icon: "✋",
+      theme: "#100810",
+      accent: "#FF9500",
+      visualizerStyle: "bars",
+      animationPack: "bars",
+      unlockMethod: "points",
+      rarity: "common",
+      freeDefault: false,
+      pricePoints: 350,
+    }),
+  },
+  train: {
+    id: "train",
+    ...chassis({
+      label: "Train",
+      icon: "🚂",
+      theme: "#100808",
+      accent: "#FF4422",
+      visualizerStyle: "bars",
+      animationPack: "bars",
+      unlockMethod: "points",
+      rarity: "common",
+      freeDefault: false,
+      pricePoints: 500,
+    }),
+  },
+  car: {
+    id: "car",
+    ...chassis({
+      label: "Car",
+      icon: "🚗",
+      theme: "#0a0810",
+      accent: "#FF2DAA",
+      visualizerStyle: "bars",
+      animationPack: "bars",
+      unlockMethod: "points",
+      rarity: "common",
+      freeDefault: false,
+      pricePoints: 500,
+    }),
+  },
+  shark: {
+    id: "shark",
+    ...chassis({
+      label: "Shark",
+      icon: "🦈",
+      theme: "#040c18",
+      accent: "#00FFFF",
+      visualizerStyle: "bubbles",
+      animationPack: "bubbles",
+      unlockMethod: "premium",
+      rarity: "rare",
+      freeDefault: false,
+      priceUsdCents: 199,
+      pricePoints: 199,
+    }),
+  },
+  dj_face: {
+    id: "dj_face",
+    ...chassis({
+      label: "DJ",
+      icon: "🎧",
+      theme: "#080510",
+      accent: "#FF2DAA",
+      visualizerStyle: "bars",
+      animationPack: "bars",
+      unlockMethod: "premium",
+      rarity: "rare",
+      freeDefault: false,
+      priceUsdCents: 199,
+      pricePoints: 199,
+    }),
+  },
+  helicopter: {
+    id: "helicopter",
+    ...chassis({
+      label: "Helicopter",
+      icon: "🚁",
+      theme: "#080810",
+      accent: "#00FF88",
+      visualizerStyle: "radar",
+      animationPack: "radar",
+      unlockMethod: "premium",
+      rarity: "rare",
+      freeDefault: false,
+      priceUsdCents: 299,
+      pricePoints: 299,
+    }),
+  },
+  ufo: {
+    id: "ufo",
+    ...chassis({
+      label: "UFO",
+      icon: "🛸",
+      theme: "#05050e",
+      accent: "#AA2DFF",
+      visualizerStyle: "radar",
+      animationPack: "radar",
+      unlockMethod: "premium",
+      rarity: "rare",
+      freeDefault: false,
+      priceUsdCents: 299,
+      pricePoints: 299,
+    }),
+  },
+  robot: {
+    id: "robot",
+    ...chassis({
+      label: "Robot",
+      icon: "🤖",
+      theme: "#050a10",
+      accent: "#00FFFF",
+      visualizerStyle: "circuit",
+      animationPack: "circuit",
+      unlockMethod: "premium",
+      rarity: "legendary",
+      freeDefault: false,
+      priceUsdCents: 399,
+      pricePoints: 399,
+    }),
+  },
+};
+
+/**
+ * Legacy alias — same object as MEDIA_PLAYER_CHASSIS_REGISTRY (Rule 19: no duplicate store).
+ * Shape includes pointsCost / priceUsd for existing ShopDrawerPanel / MembershipRegistry readers.
+ */
+export const SKIN_REGISTRY = MEDIA_PLAYER_CHASSIS_REGISTRY as Record<
+  ArtifactSkinId,
+  MediaPlayerChassis & {
+    pointsCost?: number;
+    priceUsd?: number;
+  }
+>;
+
+/** Stage-1 store-listed Rare Media Player SKUs. */
+export const MEDIA_PLAYER_STORE_SKUS: MediaPlayerChassisId[] = [
+  "submarine",
+  "rocket",
+  "tree",
+  "fish",
+  "steampunk",
+  "face_ai",
+];
+
+export function listStoreMediaPlayers(): MediaPlayerChassis[] {
+  return MEDIA_PLAYER_STORE_SKUS.map((id) => MEDIA_PLAYER_CHASSIS_REGISTRY[id]);
+}
 
 const TIER_RANK: Record<PlaylistSkinTier | "FREE" | "PRO" | "RUBY", number> = {
   FREE: 0, PRO: 1, RUBY: 2, SILVER: 3, GOLD: 4, PLATINUM: 5, DIAMOND: 6,
 };
 
 /**
- * Can this account equip the given skin? "free" skins always pass. "tier"
- * skins need the account's membership tier to be at or above tierRequired
- * (or the skin to already be in ownedSkinIds, e.g. from a bot gift /
- * tournament prize). "points"/"premium" skins need prior purchase, tracked
- * the same way regardless of which currency paid for them.
+ * Can this account equip the given chassis? "free" always pass. "tier"
+ * needs membership tier (or ownership from gift/prize). points/premium need ownership.
  */
+export function canEquipChassis(
+  chassisId: MediaPlayerChassisId,
+  accountTier: keyof typeof TIER_RANK,
+  ownedChassisIds: MediaPlayerChassisId[],
+): boolean {
+  const entry = MEDIA_PLAYER_CHASSIS_REGISTRY[chassisId];
+  if (!entry) return false;
+  if (entry.unlockMethod === "free") return true;
+  if (ownedChassisIds.includes(chassisId)) return true;
+  if (entry.unlockMethod === "tier" && entry.tierRequired) {
+    return TIER_RANK[accountTier] >= TIER_RANK[entry.tierRequired];
+  }
+  return false;
+}
+
+/** @deprecated Use canEquipChassis */
 export function canEquipSkin(
   skinId: ArtifactSkinId,
   accountTier: keyof typeof TIER_RANK,
   ownedSkinIds: ArtifactSkinId[],
 ): boolean {
-  const skin = SKIN_REGISTRY[skinId];
-  if (skin.unlockMethod === "free") return true;
-  if (ownedSkinIds.includes(skinId)) return true;
-  if (skin.unlockMethod === "tier" && skin.tierRequired) {
-    return TIER_RANK[accountTier] >= TIER_RANK[skin.tierRequired];
-  }
-  return false;
+  return canEquipChassis(skinId, accountTier, ownedSkinIds);
 }
 
-// ─── Artifact ─────────────────────────────────────────────────────────────────
+// ─── Artifact (music package — NOT the chassis) ───────────────────────────────
+
+export interface PlaylistArtifactPermissions {
+  canPlay: boolean;
+  canEdit: boolean;
+  canShare: boolean;
+}
 
 export interface PlaylistArtifact {
   id:          string;
   ownerId:     string;
   ownerName:   string;
+  /** Equipped Media Player chassis id (playback chassis, not package identity). */
+  chassisId:   MediaPlayerChassisId;
+  /** @deprecated alias of chassisId — kept for legacy readers */
   skinId:      ArtifactSkinId;
   title:       string;
   category:    string;    // "Top Charts - Pop", "My Mixtape", etc.
   tracks:      ArtifactTrack[];
+  owner:       { id: string; name: string };
+  permissions: PlaylistArtifactPermissions;
   createdAt:   string;    // ISO
   updatedAt:   string;
   isPublic:    boolean;
+  /** Optional thin listener theme — separate from chassis / YoPho / album cover. */
+  listenerTheme?: ListenerTheme;
   stats: {
     listeners:   number;
     xpAvailable: number;
@@ -310,18 +805,21 @@ export function resolveTrackUrl(track: ArtifactTrack): string | null {
 // ─── Mock factory ─────────────────────────────────────────────────────────────
 
 export function makeMockArtifact(
-  skinId: ArtifactSkinId = "tmi_classic",
+  chassisId: MediaPlayerChassisId = FREE_DEFAULT_CHASSIS_ID,
   category  = "Top Charts — Pop",
 ): PlaylistArtifact {
-  const id = `artifact_${skinId}_${Date.now()}`;
+  const id = `artifact_${chassisId}_${Date.now()}`;
   return {
     id,
     ownerId:   "user_local",
     ownerName: "You",
-    skinId,
-    title:     `${SKIN_REGISTRY[skinId].label} Playlist`,
+    owner:     { id: "user_local", name: "You" },
+    chassisId,
+    skinId:    chassisId,
+    title:     "My Playlist Artifact",
     category,
     isPublic:  true,
+    permissions: { canPlay: true, canEdit: true, canShare: true },
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     tracks: interleaveCoreTracks([
@@ -333,7 +831,14 @@ export function makeMockArtifact(
       { id: "t6", title: "Level Up",          artist: "ProducerX",            duration: 220, source: "youtube", uri: "" },
       { id: "t7", title: "Midnight Session",  artist: "Soulwave",             duration: 258, source: "spotify", uri: "" },
     ]),
-    stats:    { listeners: 128, xpAvailable: 10, likes: 1241, rating: 4.9, plays: 3850 },
-    presence: { artistId: "kazhdog_01", isOnline: true, isLive: false },
+    // Rule 20: mock factory for local wiring only — stats start at zero, not fabricated engagement.
+    stats:    { listeners: 0, xpAvailable: 0, likes: 0, rating: 0, plays: 0 },
+    presence: { artistId: "kazhdog_01", isOnline: false, isLive: false },
+    listenerTheme: undefined,
   };
+}
+
+/** Share URL for a Playlist Artifact (not the chassis). Recipient plays in their equipped Media Player. */
+export function makePlaylistArtifactShareUrl(artifactId: string): string {
+  return makeArtifactShareUrl(artifactId);
 }

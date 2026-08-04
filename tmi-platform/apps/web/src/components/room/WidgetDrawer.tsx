@@ -117,7 +117,7 @@ export default function WidgetDrawer() {
                 ]}
               />
             )}
-            {activeDrawer === "playlist" && userId && <PlaylistArtifact artifactId={`${userId}-playlist`} skin="submarine" title="Performer Playlist" />}
+            {activeDrawer === "playlist" && userId && <PlaylistArtifact artifactId={`${userId}-playlist`} title="Performer Playlist" />}
             {activeDrawer === "upload" && (
               <PanelLinkStack
                 description="Use the existing submission and upload flows without leaving the performance cockpit."

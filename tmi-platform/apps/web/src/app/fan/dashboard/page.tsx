@@ -316,7 +316,6 @@ export default function FanDashboardPage() {
               <OpenAvatarLobbyButton />
             </div>
             <PlaylistArtifact
-              skin="submarine"
               title={`${displayName}'s Playlist`}
               listeners={0}
               initialPoints={0}

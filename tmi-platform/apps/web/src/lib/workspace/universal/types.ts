@@ -41,6 +41,10 @@ export interface WorkspaceContext {
   artistName?: string;
   playlistId?: string;
   playlistTitle?: string;
+  /** Playlist Artifact id — Share Studio shares the package, not the chassis. */
+  artifactId?: string;
+  artworkUrl?: string;
+  videoUrl?: string;
   sharePath?: string;
   linkUrl?: string;
 }

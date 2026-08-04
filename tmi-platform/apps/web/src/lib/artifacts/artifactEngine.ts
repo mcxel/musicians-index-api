@@ -50,7 +50,8 @@ export const SKIN_META: Record<ArtifactSkin, {
   primary: string; accent: string; bg: string;
   unlockPoints: number; description: string;
 }> = {
-  submarine: { name: "Aquarium Fish", icon: "🐠", primary: "#FFD700", accent: "#00E5FF", bg: "#003366", unlockPoints: 0,    description: "Deep sea animated fish with blinking eye & floating bubbles." },
+  // Fish/submarine visual asset retained — purchaseable Rare (299 pts), never free default.
+  submarine: { name: "Aquarium Fish", icon: "🐠", primary: "#FFD700", accent: "#00E5FF", bg: "#003366", unlockPoints: 299,  description: "Deep sea animated fish with blinking eye & floating bubbles." },
   ufo:       { name: "UFO Saucer",    icon: "🛸", primary: "#00FFFF", accent: "#AA2DFF", bg: "#010118", unlockPoints: 500,  description: "Space-age neon saucer with anti-gravity tractor beam." },
   rocket:    { name: "Rocket Ship",   icon: "🚀", primary: "#FF6B35", accent: "#FFD700", bg: "#010115", unlockPoints: 750,  description: "Deep space rocket with thruster flame & particle liftoff." },
   tree:      { name: "Living Tree",   icon: "🌳", primary: "#00FF88", accent: "#FFD700", bg: "#0a0a20", unlockPoints: 250,  description: "Living light tree with falling leaves on track change." },
