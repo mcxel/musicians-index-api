@@ -1,6 +1,9 @@
 import { redirect } from "next/navigation";
 
-// Cypher Arena → open mic rotation room (Theater, 2,730 cap)
+/**
+ * Alias → canonical CipherArenaShell mount at /rooms/cypher.
+ * LEGACY path name retained for discovery links; do not reintroduce a second shell.
+ */
 export default function CypherArenaPage() {
   redirect("/rooms/cypher");
 }

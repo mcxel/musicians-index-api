@@ -1,7 +1,11 @@
 import Link from "next/link";
 import JuliusHudDock from "@/components/julius/JuliusHudDock";
 import XPTrigger from "@/components/common/XPTrigger";
+// LEGACY: ArenaEventShell superseded on the live cypher path by CipherArenaShell
+// mounted at /rooms/cypher. Kept here for the Monday Cypher hub editorial shell
+// until that hub is re-verified against CipherArenaShell. Do not delete yet.
 import ArenaEventShell from "@/components/live/ArenaEventShell";
+import BattleOverlaySystem from "@/components/broadcast/BattleOverlaySystem";
 
 export const metadata = { title: "Monday Cypher | TMI", description: "The most competitive freestyle session in music. 90-second bars. Real-time judging. Live every Monday 8PM." };
 
@@ -32,8 +36,8 @@ const PAST_WINNERS = [
 export default function CypherPage() {
   return (
     <main style={{ minHeight: "100vh", background: "#050510", color: "#fff", paddingBottom: 80 }}>
-      {/* Arena system header — Cypher Arena (venueIndex 0, Theater 2,730 cap) */}
-      <ArenaEventShell eventType="cypher" roomId="cypher-hub" watcherCount={841} />
+      {/* LEGACY ArenaEventShell — no fabricated watcherCount (Rule 20). Live arena: /rooms/cypher */}
+      <ArenaEventShell eventType="cypher" roomId="cypher-hub" />
       <XPTrigger action="VOTE_BATTLE" delayMs={5000} />
       <section style={{ textAlign: "center", padding: "72px 24px 56px", borderBottom: "1px solid rgba(255,255,255,0.06)", background: "radial-gradient(ellipse at top, rgba(255,45,170,0.07) 0%, transparent 70%)" }}>
         <div style={{ fontSize: 9, letterSpacing: "0.4em", color: "#FF2DAA", fontWeight: 800, marginBottom: 12 }}>EVERY MONDAY — 8PM</div>
@@ -42,7 +46,7 @@ export default function CypherPage() {
           90 seconds. No hooks. No repeats. Just bars. The most competitive freestyle session in music — live every Monday night.
         </p>
         <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
-          <Link href="/live/rooms/monday-cypher?from=lobby-wall" aria-label="Enter Monday Cypher room"
+          <Link href="/rooms/cypher" aria-label="Enter Cypher Arena"
             style={{ padding: "12px 30px", fontSize: 10, fontWeight: 800, letterSpacing: "0.15em", color: "#050510", background: "linear-gradient(135deg,#FF2DAA,#AA2DFF)", borderRadius: 8, textDecoration: "none" }}>
             ENTER THE CYPHER →
           </Link>
@@ -81,6 +85,15 @@ export default function CypherPage() {
           </div>
         </section>
       </div>
+
+      {/* ── CIPHER BROADCAST OVERLAY SYSTEM ── */}
+      <section style={{ maxWidth: 860, margin: "0 auto", padding: "40px 24px 0" }}>
+        <div style={{ fontSize: 9, letterSpacing: "0.3em", color: "#FF2DAA", fontWeight: 800, marginBottom: 6 }}>CYPHER BROADCAST STAGE</div>
+        <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginBottom: 16 }}>
+          Live cipher presentation system — performer queue, phase overlays, broadcast graphics.
+        </div>
+        <BattleOverlaySystem mode="cypher" showPhaseControls showOverlayLibrary />
+      </section>
 
       <section style={{ maxWidth: 860, margin: "0 auto", padding: "40px 24px 0" }}>
         <div style={{ fontSize: 9, letterSpacing: "0.3em", color: "rgba(255,255,255,0.4)", fontWeight: 800, marginBottom: 20 }}>RECENT WINNERS</div>
