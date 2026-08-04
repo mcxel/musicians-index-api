@@ -1,0 +1,173 @@
+/**
+ * UniversalWorkspaceRegistry — workspace module catalog (Phase 1).
+ * Pages/runtimes open by id; content components register via Host.
+ */
+
+import type { UniversalWorkspaceDef, UniversalWorkspaceId } from "./types";
+
+const DEFAULT_FLOAT: UniversalWorkspaceDef["defaultGeometry"] = {
+  x: 72,
+  y: 96,
+  width: 920,
+  height: 560,
+};
+
+export const UNIVERSAL_WORKSPACE_DEFS: Record<UniversalWorkspaceId, UniversalWorkspaceDef> = {
+  "playlist-studio": {
+    id: "playlist-studio",
+    label: "Playlist Studio",
+    accent: "#AA2DFF",
+    defaultGeometry: { ...DEFAULT_FLOAT, width: 980, height: 580 },
+    minWidth: 640,
+    minHeight: 400,
+    phase1Content: true,
+    legacyDrawerId: "playlist",
+  },
+  "share-studio": {
+    id: "share-studio",
+    label: "Share Studio",
+    accent: "#00FFFF",
+    defaultGeometry: { ...DEFAULT_FLOAT, width: 480, height: 520, x: 120, y: 120 },
+    minWidth: 360,
+    minHeight: 360,
+    phase1Content: true,
+  },
+  "memory-wall": {
+    id: "memory-wall",
+    label: "Memory Wall",
+    accent: "#AA2DFF",
+    defaultGeometry: { ...DEFAULT_FLOAT },
+    minWidth: 400,
+    minHeight: 320,
+    phase1Content: false,
+    legacyDrawerId: "memory",
+  },
+  inventory: {
+    id: "inventory",
+    label: "Inventory",
+    accent: "#FFD700",
+    defaultGeometry: { ...DEFAULT_FLOAT },
+    minWidth: 400,
+    minHeight: 320,
+    phase1Content: false,
+    legacyDrawerId: "inventory",
+  },
+  messaging: {
+    id: "messaging",
+    label: "Messaging",
+    accent: "#00FFFF",
+    defaultGeometry: { ...DEFAULT_FLOAT },
+    minWidth: 400,
+    minHeight: 320,
+    phase1Content: false,
+    legacyDrawerId: "messaging",
+  },
+  yopho: {
+    id: "yopho",
+    label: "YoPho",
+    accent: "#FF2DAA",
+    defaultGeometry: { ...DEFAULT_FLOAT },
+    minWidth: 400,
+    minHeight: 320,
+    phase1Content: false,
+    legacyDrawerId: "yopho",
+  },
+  lobby: {
+    id: "lobby",
+    label: "Lobby",
+    accent: "#FFD700",
+    defaultGeometry: { ...DEFAULT_FLOAT },
+    minWidth: 400,
+    minHeight: 320,
+    phase1Content: false,
+    legacyDrawerId: "lobby",
+  },
+  analytics: {
+    id: "analytics",
+    label: "Analytics",
+    accent: "#00FF88",
+    defaultGeometry: { ...DEFAULT_FLOAT },
+    minWidth: 400,
+    minHeight: 320,
+    phase1Content: false,
+    legacyDrawerId: "analytics",
+  },
+  booking: {
+    id: "booking",
+    label: "Booking",
+    accent: "#FFD700",
+    defaultGeometry: { ...DEFAULT_FLOAT },
+    minWidth: 400,
+    minHeight: 320,
+    phase1Content: false,
+    legacyDrawerId: "booking",
+  },
+  store: {
+    id: "store",
+    label: "Store",
+    accent: "#FF2DAA",
+    defaultGeometry: { ...DEFAULT_FLOAT },
+    minWidth: 400,
+    minHeight: 320,
+    phase1Content: false,
+    legacyDrawerId: "store",
+  },
+  "beat-lab": {
+    id: "beat-lab",
+    label: "Beat Lab",
+    accent: "#AA2DFF",
+    defaultGeometry: { ...DEFAULT_FLOAT },
+    minWidth: 400,
+    minHeight: 320,
+    phase1Content: false,
+    legacyDrawerId: "beat_lab",
+  },
+  "media-locker": {
+    id: "media-locker",
+    label: "Media Locker",
+    accent: "#00FFFF",
+    defaultGeometry: { ...DEFAULT_FLOAT },
+    minWidth: 400,
+    minHeight: 320,
+    phase1Content: false,
+    legacyDrawerId: "media_locker",
+  },
+  sponsors: {
+    id: "sponsors",
+    label: "Sponsors",
+    accent: "#FFD700",
+    defaultGeometry: { ...DEFAULT_FLOAT },
+    minWidth: 400,
+    minHeight: 320,
+    phase1Content: false,
+    legacyDrawerId: "sponsors",
+  },
+  notifications: {
+    id: "notifications",
+    label: "Notifications",
+    accent: "#00FF88",
+    defaultGeometry: { ...DEFAULT_FLOAT },
+    minWidth: 400,
+    minHeight: 320,
+    phase1Content: false,
+    legacyDrawerId: "notifications",
+  },
+  "achievement-center": {
+    id: "achievement-center",
+    label: "Achievement Center",
+    accent: "#FFD700",
+    defaultGeometry: { ...DEFAULT_FLOAT },
+    minWidth: 400,
+    minHeight: 320,
+    phase1Content: false,
+    legacyDrawerId: "achievement_center",
+  },
+};
+
+export function getWorkspaceDef(id: UniversalWorkspaceId): UniversalWorkspaceDef {
+  return UNIVERSAL_WORKSPACE_DEFS[id];
+}
+
+export function listPhase1Workspaces(): UniversalWorkspaceDef[] {
+  return Object.values(UNIVERSAL_WORKSPACE_DEFS).filter((d) => d.phase1Content);
+}

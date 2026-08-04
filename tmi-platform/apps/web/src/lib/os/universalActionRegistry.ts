@@ -46,6 +46,9 @@ export type ActionId =
   | "ACTION_OPEN_MEDIA_LOCKER"
   | "ACTION_OPEN_BEAT_LAB"
   | "ACTION_CLOSE_DRAWER"
+  | "ACTION_OPEN_PLAYLIST_STUDIO"
+  | "ACTION_OPEN_SHARE_STUDIO"
+  | "ACTION_CLOSE_WORKSPACE"
   | "ACTION_SET_ACTIVE_PERFORMER"
   | "ACTION_OPEN_MARKETPLACE"
   | "ACTION_OPEN_SHOP"
@@ -328,6 +331,33 @@ export const ACTION_REGISTRY: Record<ActionId, ActionDef> = {
     description: "Closes the currently open Operating Center drawer",
     category: "navigation",
     commandType: "DRAWER_CLOSED",
+    defaultAllowedRoles: ["fan", "performer", "admin"],
+    status: "active",
+  },
+  ACTION_OPEN_PLAYLIST_STUDIO: {
+    id: "ACTION_OPEN_PLAYLIST_STUDIO",
+    label: "Open Playlist Studio",
+    description: "Opens Universal Workspace Window — Playlist Studio (dock/float/PiP)",
+    category: "navigation",
+    commandType: "WORKSPACE_OPENED",
+    defaultAllowedRoles: ["fan", "performer", "admin"],
+    status: "active",
+  },
+  ACTION_OPEN_SHARE_STUDIO: {
+    id: "ACTION_OPEN_SHARE_STUDIO",
+    label: "Open Share Studio",
+    description: "Opens Universal Workspace Window — Share Studio with track/playlist context",
+    category: "navigation",
+    commandType: "WORKSPACE_OPENED",
+    defaultAllowedRoles: ["fan", "performer", "admin"],
+    status: "active",
+  },
+  ACTION_CLOSE_WORKSPACE: {
+    id: "ACTION_CLOSE_WORKSPACE",
+    label: "Close Workspace",
+    description: "Closes a Universal Workspace Window by workspaceId",
+    category: "navigation",
+    commandType: "WORKSPACE_CLOSED",
     defaultAllowedRoles: ["fan", "performer", "admin"],
     status: "active",
   },

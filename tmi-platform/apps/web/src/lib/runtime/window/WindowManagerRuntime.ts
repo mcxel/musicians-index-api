@@ -1,3 +1,11 @@
+/**
+ * WindowManagerRuntime — general panel layout helper.
+ *
+ * ADAPTER (Phase 1): Universal Workspace Window geometry/state is owned by
+ * `lib/workspace/universal/UniversalWorkspaceRuntime`. Do not open
+ * playlist-studio / share-studio through this manager.
+ */
+
 import {
   DockSide,
   LayoutPreset,

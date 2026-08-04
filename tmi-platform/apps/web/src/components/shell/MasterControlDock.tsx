@@ -3,6 +3,8 @@
 /**
  * MasterControlDock — bottom Flight Deck control bar (Live HUD base #1).
  * Pass 8: chevron next to HOME opens FloatingWorkspacePanel (no layout reflow).
+ * Phase 1 Universal Workspace: audio chevron → playlist-studio; Share → share-studio
+ * via Living OS Command Bus (not PlaylistPanelOverlay / one-off drawers).
  * FAN quick Inventory overlay; PERFORMER opens Venue Concierge in floating slot.
  * Fake badge counts removed (Rule 20).
  */
@@ -11,14 +13,16 @@ import React, { useEffect, useState } from 'react';
 import YoPhoStudioDrawer from '../studio/YoPhoStudioDrawer';
 import InventoryPanelOverlay from '../panels/InventoryPanelOverlay';
 import MemoryWallPanelOverlay from '../panels/MemoryWallPanelOverlay';
-import PlaylistPanelOverlay from '../panels/PlaylistPanelOverlay';
 import CameraCaptureOverlay from '../panels/CameraCaptureOverlay';
 import FloatingWorkspacePanel from '@/components/workspace/FloatingWorkspacePanel';
+import UniversalWorkspaceHost from '@/components/workspace/universal/UniversalWorkspaceHost';
 import RoleGate from '@/components/auth/RoleGate';
 import { useFloatingWorkspace } from '@/lib/workspace/floatingWorkspaceStore';
 import { useLiveDiscoveryOverlay } from '@/lib/discovery/liveDiscoveryOverlayStore';
 import { launchDockStore } from '@/lib/dock/launchDockStore';
 import { executeInstantGoLive } from '@/lib/dock/executeInstantGoLive';
+import { livingOsCommandBus } from '@/lib/os/livingOsCommandBus';
+import type { PlatformRole } from '@/lib/os/universalPermissionRegistry';
 import { useRouter } from 'next/navigation';
 import { useTheme } from '@/lib/design/ThemeEngine';
 
@@ -78,7 +82,6 @@ export default function MasterControlDock({
 
   const [isInventoryOpen, setIsInventoryOpen] = useState(false);
   const [isMemoryWallOpen, setIsMemoryWallOpen] = useState(false);
-  const [isPlaylistOpen, setIsPlaylistOpen] = useState(false);
   const [isStudioOpen, setIsStudioOpen] = useState(false);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
 
@@ -93,6 +96,38 @@ export default function MasterControlDock({
     else if (isPerformer) setRole('PERFORMER');
     else setRole('FAN');
   }, [role, isPerformer, setRole]);
+
+  const commandRole = (): PlatformRole => {
+    if (role === 'admin') return 'admin';
+    if (isPerformer) return 'performer';
+    return 'fan';
+  };
+
+  /** Flight Deck → Universal Workspace playlist-studio (Command Bus). */
+  const openPlaylistStudio = () => {
+    livingOsCommandBus.executeAction('ACTION_OPEN_PLAYLIST_STUDIO', {
+      role: commandRole(),
+      payload: {
+        workspaceId: 'playlist-studio',
+        trackTitle: isPlayingAudio ? 'Playing from playlist' : undefined,
+      },
+    });
+  };
+
+  /** Flight Deck Share → Universal Workspace share-studio with active context. */
+  const openShareStudio = () => {
+    const href = typeof window !== 'undefined' ? window.location.href : undefined;
+    const path = typeof window !== 'undefined' ? window.location.pathname : '/';
+    livingOsCommandBus.executeAction('ACTION_OPEN_SHARE_STUDIO', {
+      role: commandRole(),
+      payload: {
+        workspaceId: 'share-studio',
+        trackTitle: isPlayingAudio ? 'Playing from playlist' : undefined,
+        linkUrl: href,
+        sharePath: path,
+      },
+    });
+  };
 
   const handleMicClick = () => {
     setIsMicActive(!isMicActive);
@@ -115,6 +150,8 @@ export default function MasterControlDock({
   return (
     <>
       <FloatingWorkspacePanel />
+      {/* Canonical Universal Workspace Window host (playlist-studio / share-studio). */}
+      <UniversalWorkspaceHost />
 
       <RoleGate allow={['FAN', 'ADMIN', 'STAFF']}>
         <InventoryPanelOverlay
@@ -139,10 +176,6 @@ export default function MasterControlDock({
           openWorkspace('memory_wall');
         }}
       />
-      <PlaylistPanelOverlay
-        isOpen={isPlaylistOpen}
-        onClose={() => setIsPlaylistOpen(false)}
-      />
       <YoPhoStudioDrawer
         isOpen={isStudioOpen}
         onClose={() => setIsStudioOpen(false)}
@@ -157,7 +190,7 @@ export default function MasterControlDock({
       <div
         style={{
           position: 'fixed',
-          bottom: '16px',
+          bottom: '56px',
           left: '16px',
           right: '16px',
           zIndex: 9000,
@@ -188,10 +221,7 @@ export default function MasterControlDock({
         >
           <button
             type="button"
-            onClick={() => {
-              if (onOpenModule) onOpenModule('playlist');
-              else setIsPlaylistOpen(true);
-            }}
+            onClick={openPlaylistStudio}
             style={{
               width: 36,
               height: 36,
@@ -205,7 +235,7 @@ export default function MasterControlDock({
               cursor: 'pointer',
               boxShadow: `0 0 12px ${theme.primary}66`,
             }}
-            aria-label="Open playlists"
+            aria-label="Open Playlist Studio"
           >
             🎵
           </button>
@@ -221,8 +251,7 @@ export default function MasterControlDock({
               <button
                 type="button"
                 onClick={() => {
-                  if (onOpenModule) onOpenModule('playlist');
-                  else setIsPlaylistOpen(true);
+                  openPlaylistStudio();
                   setIsPlayingAudio((p) => !p);
                 }}
                 style={{ ...transportBtn, color: theme.primary }}
@@ -232,10 +261,7 @@ export default function MasterControlDock({
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  if (onOpenModule) onOpenModule('playlist');
-                  else setIsPlaylistOpen(true);
-                }}
+                onClick={openPlaylistStudio}
                 style={transportBtn}
                 aria-label="Next"
               >
@@ -266,6 +292,27 @@ export default function MasterControlDock({
               );
             })}
           </div>
+          {/* Audio chevron → Universal Workspace playlist-studio */}
+          <button
+            type="button"
+            aria-label="Open Playlist Studio"
+            title="Playlist Studio"
+            onClick={openPlaylistStudio}
+            style={{
+              border: '1px solid rgba(170,45,255,0.55)',
+              background: 'linear-gradient(135deg, rgba(255,45,170,0.25), rgba(170,45,255,0.28))',
+              color: '#e6cfff',
+              borderRadius: 8,
+              fontSize: 12,
+              fontWeight: 900,
+              cursor: 'pointer',
+              padding: '4px 8px',
+              lineHeight: 1,
+              flexShrink: 0,
+            }}
+          >
+            ▲
+          </button>
         </div>
 
         {/* 2. CENTER CARD: Unified Command Controls & Navigation */}
@@ -597,14 +644,9 @@ export default function MasterControlDock({
           </button>
           <button
             type="button"
-            onClick={() => {
-              if (typeof navigator !== 'undefined' && navigator.share) {
-                void navigator.share({ title: 'TMI', url: window.location.href }).catch(() => undefined);
-              } else if (typeof navigator !== 'undefined' && navigator.clipboard) {
-                void navigator.clipboard.writeText(window.location.href);
-              }
-            }}
+            onClick={openShareStudio}
             style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.55)', fontSize: 9, fontWeight: 800, cursor: 'pointer' }}
+            aria-label="Open Share Studio"
           >
             ↗ Share
           </button>

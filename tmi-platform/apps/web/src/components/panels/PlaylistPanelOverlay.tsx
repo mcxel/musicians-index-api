@@ -1,5 +1,11 @@
 'use client';
 
+/**
+ * LEGACY adapter — one-off playlist overlay.
+ * Flight Deck Share / audio chevron open Universal Workspace `playlist-studio`
+ * via Command Bus (`lib/workspace/universal`). Do not wire new surfaces here.
+ */
+
 import React, { useState } from 'react';
 
 export interface PlaylistPanelOverlayProps {

@@ -1,6 +1,10 @@
 /**
  * floatingWorkspaceStore — open/close + active module for Pass 8.x floating panel.
  * Overlay only — never reflows fixed stage / monitors / bottom control bar.
+ *
+ * ADAPTER (Phase 1): Playlist Studio / Share Studio are owned by
+ * `lib/workspace/universal` (Universal Workspace Window). This store remains
+ * for Pass 8 quick modules (memories, inventory, venue concierge, etc.).
  */
 
 "use client";

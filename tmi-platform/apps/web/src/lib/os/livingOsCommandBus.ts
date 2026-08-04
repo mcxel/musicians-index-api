@@ -58,6 +58,10 @@ export type LivingOsCommandType =
   | "OPERATING_CENTER_SWITCHED"
   | "QUICK_PANEL_OPENED"
   | "QUICK_PANEL_CLOSED"
+  /** Universal Workspace Window (playlist-studio / share-studio / …). */
+  | "WORKSPACE_OPENED"
+  | "WORKSPACE_CLOSED"
+  | "WORKSPACE_MODE_CHANGED"
   /** Living OS ACTIVE_PERFORMER context changed (shell/drawers stay mounted). */
   | "ACTIVE_PERFORMER_SET"
   // Live Media

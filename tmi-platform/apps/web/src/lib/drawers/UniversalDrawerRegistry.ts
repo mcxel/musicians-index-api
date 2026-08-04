@@ -6,6 +6,11 @@
  * Playlist / Live Destinations / Analytics / Room Controls / Sponsor).
  *
  * Animation id is per drawer type — never a single shared slide for all.
+ *
+ * ADAPTER (Phase 1): Flight Deck Share + audio playlist open
+ * `lib/workspace/universal` workspaces (share-studio / playlist-studio),
+ * not these under-monitor drawers. Drawer `playlist` remains for Command
+ * Center rail until migrated into Universal Workspace Window.
  */
 
 import type { DrawerAnimationId } from "./DrawerAnimationProfile";
