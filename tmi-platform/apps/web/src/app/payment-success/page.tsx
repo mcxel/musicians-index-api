@@ -14,13 +14,23 @@ const CREDIT_AMOUNTS: Record<string, number> = {
   price_vip_monthly: 10000,
 };
 
-type State = 'loading' | 'granted' | 'tip' | 'duplicate' | 'pass' | 'sponsor' | 'unknown';
+type State =
+  | 'loading'
+  | 'granted'
+  | 'tip'
+  | 'duplicate'
+  | 'pass'
+  | 'sponsor'
+  | 'media_player'
+  | 'unknown';
 
 export default function PaymentSuccessPage() {
   const params = useSearchParams();
   const sessionId = params?.get('session_id') ?? '';
   const priceId = params?.get('priceId') ?? '';
   const mode = params?.get('mode') ?? 'payment';
+  const paymentType = params?.get('type') ?? '';
+  const chassisId = params?.get('chassisId') ?? '';
 
   const { walletCredits, spendCredits: _s, trackAction, ...engine } = useGamificationEngine();
   // spendCredits not used here — we're adding credits
@@ -31,12 +41,25 @@ export default function PaymentSuccessPage() {
 
   useEffect(() => {
     // Tip payments land without a session_id — show success directly
-    if (!sessionId && params?.get('type') === 'tip') { setStatus('tip'); return; }
+    if (!sessionId && paymentType === 'tip') { setStatus('tip'); return; }
     if (!sessionId) { setStatus('unknown'); return; }
 
     // Idempotency: only grant once per session ID
     const grantKey = `tmi_paid_${sessionId}`;
     if (localStorage.getItem(grantKey)) { setStatus('duplicate'); return; }
+
+    // Media Player chassis — ownership granted by Stripe webhook; confirm + hydrate inventory
+    if (paymentType === 'media_player_chassis') {
+      fetch('/api/media-players', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'provision' }),
+      }).catch(() => undefined);
+      localStorage.setItem(grantKey, '1');
+      setStatus('media_player');
+      return;
+    }
 
     // Battle sponsor path — auto-attach via API, no credit grant
     const battleId    = params?.get('battleId');
@@ -92,10 +115,10 @@ export default function PaymentSuccessPage() {
     } else {
       setStatus('unknown');
     }
-  }, [sessionId, priceId, mode]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [sessionId, priceId, mode, paymentType]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const colors: Record<State, string> = {
-    loading: '#888', granted: '#00FF88', tip: '#FF2DAA', duplicate: '#FFD700', pass: '#AA2DFF', sponsor: '#FFD700', unknown: '#FF4444',
+    loading: '#888', granted: '#00FF88', tip: '#FF2DAA', duplicate: '#FFD700', pass: '#AA2DFF', sponsor: '#FFD700', media_player: '#00FFFF', unknown: '#FF4444',
   };
   const accent = colors[status] ?? '#888';
 
@@ -103,7 +126,7 @@ export default function PaymentSuccessPage() {
     <main style={{ minHeight: '100vh', background: '#050510', color: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 24px' }}>
       <div style={{ maxWidth: 480, width: '100%', textAlign: 'center' }}>
         <div style={{ fontSize: 56, marginBottom: 16 }}>
-          {status === 'loading' ? '⏳' : status === 'tip' ? '💸' : status === 'granted' ? '🎉' : status === 'pass' ? '🎸' : status === 'sponsor' ? '🤝' : status === 'duplicate' ? '✅' : '❓'}
+          {status === 'loading' ? '⏳' : status === 'tip' ? '💸' : status === 'granted' ? '🎉' : status === 'pass' ? '🎸' : status === 'sponsor' ? '🤝' : status === 'media_player' ? '🎛️' : status === 'duplicate' ? '✅' : '❓'}
         </div>
 
         {status === 'tip' && (
@@ -155,6 +178,26 @@ export default function PaymentSuccessPage() {
             <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 28 }}>
               <a href="/sponsor/battles" style={{ padding: '10px 22px', fontSize: 9, fontWeight: 900, letterSpacing: '0.12em', color: '#050510', background: '#FFD700', borderRadius: 8, textDecoration: 'none' }}>SPONSOR ANOTHER</a>
               <a href="/hub/sponsor" style={{ padding: '10px 22px', fontSize: 9, fontWeight: 900, letterSpacing: '0.12em', color: '#FFD700', border: '1px solid rgba(255,215,0,0.4)', borderRadius: 8, textDecoration: 'none' }}>SPONSOR HUB</a>
+            </div>
+          </>
+        )}
+
+        {status === 'media_player' && (
+          <>
+            <div style={{ fontSize: 9, letterSpacing: '0.4em', color: '#00FFFF', fontWeight: 800, marginBottom: 10 }}>MEDIA PLAYER UNLOCKED</div>
+            <h1 style={{ fontSize: 22, fontWeight: 900, marginBottom: 8 }}>Chassis added to your inventory</h1>
+            <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', marginBottom: 24 }}>
+              {chassisId
+                ? `Ownership of “${chassisId}” is saved to your account. Equip it in the Media Player store or Playlist Studio.`
+                : 'Your Media Player chassis is saved to your account. Equip it anytime from the store or studio.'}
+            </p>
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 28 }}>
+              <Link href="/store/media-players" style={{ padding: '10px 22px', fontSize: 9, fontWeight: 900, letterSpacing: '0.12em', color: '#050510', background: '#00FFFF', borderRadius: 8, textDecoration: 'none' }}>
+                EQUIP NOW
+              </Link>
+              <Link href="/playlist" style={{ padding: '10px 22px', fontSize: 9, fontWeight: 900, letterSpacing: '0.12em', color: '#00FFFF', border: '1px solid rgba(0,255,255,0.4)', borderRadius: 8, textDecoration: 'none' }}>
+                PLAYLIST STUDIO
+              </Link>
             </div>
           </>
         )}

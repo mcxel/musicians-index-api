@@ -3,8 +3,9 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import {
-  listStoreMediaPlayers,
+  FREE_DEFAULT_CHASSIS_ID,
   MEDIA_PLAYER_CHASSIS_REGISTRY,
+  MEDIA_PLAYER_STORE_SKUS,
   type MediaPlayerChassisId,
 } from "@/lib/artifacts/PlaylistArtifactEngine";
 import {
@@ -26,19 +27,45 @@ async function resolveUserId(req: NextRequest): Promise<string | null> {
   return user?.id ?? null;
 }
 
+/** Free starters + tier rewards + store SKUs — store UI groups by unlockMethod. */
 function catalogPayload() {
-  return listStoreMediaPlayers().map((c) => ({
-    id: c.id,
-    label: c.label,
-    icon: c.icon,
-    theme: c.theme,
-    accent: c.accent,
-    rarity: c.rarity,
-    pricePoints: getChassisPricePoints(c.id),
-    priceUsdCents: getChassisPriceUsdCents(c.id),
-    storeSku: c.storeSku ?? null,
-    animationPack: c.animationPack,
-  }));
+  const freeIds: MediaPlayerChassisId[] = [
+    FREE_DEFAULT_CHASSIS_ID,
+    "tmi_classic",
+    "tmi_dark",
+    "tmi_neon",
+  ];
+  const tierIds = (
+    Object.values(MEDIA_PLAYER_CHASSIS_REGISTRY) as Array<
+      (typeof MEDIA_PLAYER_CHASSIS_REGISTRY)[MediaPlayerChassisId]
+    >
+  )
+    .filter((c) => c.unlockMethod === "tier")
+    .map((c) => c.id);
+  const ids = Array.from(
+    new Set<MediaPlayerChassisId>([...freeIds, ...tierIds, ...MEDIA_PLAYER_STORE_SKUS]),
+  );
+
+  return ids.map((id) => {
+    const c = MEDIA_PLAYER_CHASSIS_REGISTRY[id];
+    return {
+      id: c.id,
+      label: c.label,
+      icon: c.icon,
+      theme: c.theme,
+      accent: c.accent,
+      rarity: c.rarity,
+      unlockMethod: c.unlockMethod,
+      freeDefault: c.freeDefault,
+      tierRequired: c.tierRequired ?? null,
+      pricePoints: c.pricePoints ?? getChassisPricePoints(c.id),
+      priceUsdCents: c.priceUsdCents ?? getChassisPriceUsdCents(c.id),
+      storeSku: c.storeSku ?? null,
+      storeListed: c.storeListed ?? MEDIA_PLAYER_STORE_SKUS.includes(c.id),
+      animationPack: c.animationPack,
+      visualizerStyle: c.visualizerStyle,
+    };
+  });
 }
 
 /** GET — ownership + equipped + store catalog. Provisions free Standard on first access. */

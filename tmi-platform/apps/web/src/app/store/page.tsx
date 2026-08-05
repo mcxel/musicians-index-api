@@ -39,6 +39,7 @@ export default function StorePage() {
               { label: '🎧 Fan Store', href: '/store/fan', accent: '#00FFFF' },
               { label: '🏟️ Venues', href: '/store/venues', accent: '#AA2DFF' },
               { label: '🌆 Lobby Skins', href: '/store/lobbies', accent: '#FFD700' },
+              { label: '🎛️ Media Players', href: '/store/media-players', accent: '#00FFFF' },
             ].map((s) => (
               <Link key={s.href} href={s.href} style={{ padding: '10px 20px', background: `${s.accent}18`, border: `1px solid ${s.accent}50`, borderRadius: 8, color: s.accent, fontWeight: 900, fontSize: 12, textDecoration: 'none', letterSpacing: '0.06em' }}>
                 {s.label}

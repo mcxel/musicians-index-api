@@ -245,6 +245,7 @@ export async function POST(req: NextRequest) {
       }
 
       // ─── 3C. MEDIA PLAYER CHASSIS FULFILLMENT ──────────────────────────
+      // Grants durable ownership only — does not auto-equip (user equips in store/studio).
       if (
         (metadata.type === 'media_player_chassis' || metadata.productType === 'MEDIA_PLAYER_CHASSIS') &&
         metadata.chassisId &&
@@ -265,6 +266,7 @@ export async function POST(req: NextRequest) {
           },
           update: { stripePaymentId: session.id, unlockedVia: 'purchase' },
         });
+        // Ensure preference row exists so GET /api/media-players can equip later.
         await prisma.mediaPlayerPreference.upsert({
           where: { userId: metadata.buyerId },
           create: {
