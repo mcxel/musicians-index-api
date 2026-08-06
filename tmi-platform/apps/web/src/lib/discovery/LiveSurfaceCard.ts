@@ -166,6 +166,8 @@ export function mapCategoryToRuntimeType(
     return c === "session" ? "session" : "game";
   }
   if (c === "fan-lobby" || c === "fan-lobbies" || c === "fan_lobbies") return "fan_lobby";
+  if (c === "lounge" || c === "lounges" || c === "conversation") return "session";
+  if (c === "listening" || c === "playlist" || c === "radio") return "session";
   if (c === "dance" || c === "dance-party" || c === "world-dance-party") return "dance";
   if (c === "comedy") return "comedy";
   if (c === "dj" || c === "djs") return "dj";
@@ -311,7 +313,7 @@ export function projectDiscoveryRecordToSurfaceCard(
     runtimeType: mapCategoryToRuntimeType(record.category),
     roomId,
     title: (record.title || "Live").trim(),
-    subtitle: (record.hostName || "Host").trim(),
+    subtitle: (record.statusLine || record.hostName || "Host").trim(),
     hostAccountId,
     performerIds: hostAccountId ? [hostAccountId] : [],
     state,

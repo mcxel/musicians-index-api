@@ -24,9 +24,11 @@ export const VENUES = [
   { name: "Club",      wallColor: "#0a0018", floorColor: "#060010", ceilColor: "#04000e", wallTex: false, crowd: 420,   accentR: 170, accentG: 45,  accentB: 255 },
   { name: "Outdoor",   wallColor: "#050c18", floorColor: "#030a10", ceilColor: "#000608", wallTex: false, crowd: 8200,  accentR: 0,   accentG: 255, accentB: 136 },
   { name: "Boardroom", wallColor: "#080814", floorColor: "#050510", ceilColor: "#030308", wallTex: true,  crowd: 120,   accentR: 255, accentG: 215, accentB: 0   },
+  // Contest Stage — Song Challenge work-vs-work (amber + electric teal; not battle cyan or cypher purple)
+  { name: "Contest",   wallColor: "#120a02", floorColor: "#0a0804", ceilColor: "#060402", wallTex: false, crowd: 150,   accentR: 255, accentG: 176, accentB: 0   },
 ] as const;
 
-export type VenueIndex = 0 | 1 | 2 | 3 | 4;
+export type VenueIndex = 0 | 1 | 2 | 3 | 4 | 5;
 
 const SKINS = ["#8B4513","#5C3317","#2F1B0E","#A0522D","#CD853F","#D2691E","#704214","#3D2008"];
 const HAIR  = ["#1a0a00","#3d2000","#000000","#2a1500","#0a0a0a","#4a2800"];
@@ -683,3 +685,4 @@ export default function AudienceScene({
     </div>
   );
 }
+

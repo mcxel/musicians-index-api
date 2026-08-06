@@ -102,6 +102,23 @@ export const THEMES: Record<string, ExperienceTheme> = {
     },
   },
 
+
+  // Song Challenge — amber/gold + electric teal (distinct from battle cyan/fuchsia and cypher purple)
+  "song-challenge-work-vs-work": {
+    id: "song-challenge-work-vs-work",
+    name: "Work vs Work",
+    formats: ["CHALLENGE"],
+    colors: {
+      background: "radial-gradient(ellipse at center, rgba(35, 22, 5, 0.88) 0%, rgba(5, 5, 16, 1) 100%)",
+      leftFrame: "#FFB000",
+      rightFrame: "#00E5C8",
+      glowLeft: "rgba(255, 176, 0, 0.5)",
+      glowRight: "rgba(0, 229, 200, 0.5)",
+      text: "#ffffff",
+      alert: "#FFD700",
+    },
+    typography: { heading: '"Bebas Neue", Impact, sans-serif', body: "'Inter', sans-serif" },
+  },
   // ── Challenge — mission/progression identity, never reuses Battle's
   // hard VS-split framing language ──────────────────────────────────────
   "challenge-mission-grid": {

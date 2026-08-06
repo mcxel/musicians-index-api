@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { NextResponse } from "next/server";
 import type { LiveFeedItem } from "@/components/billboard/TMIBillboardLiveWall";
-import { getActiveSessions } from "@/lib/broadcast/GlobalLiveSessionRegistry";
+import { getActiveSessionsDurable } from "@/lib/broadcast/GlobalLiveSessionRegistry";
 import { prisma } from "@/lib/prisma";
 
 /**
@@ -10,11 +10,6 @@ import { prisma } from "@/lib/prisma";
  * and LiveStateRegistry sync. Rule 20: real sessions or DB-recovery only —
  * never falls back to fabricated performers or randomized viewer counts.
  */
-
-function rand(min: number, max: number) {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
-}
-
 
 const LIVE_GENRE_CANONICAL: Record<string, LiveFeedItem["genre"]> = {
   cypher: "cypher", battle: "battle", live: "live", concert: "concert",
@@ -30,7 +25,7 @@ const REGISTRY_ACCENT = ["#00FFFF", "#FF2DAA", "#FFD700", "#AA2DFF", "#00FF88", 
 
 export async function GET() {
   // Real live sessions — in-memory registry (warm lambda path)
-  const liveSessions = getActiveSessions();
+  const liveSessions = await getActiveSessionsDurable();
 
   const registryFeed: LiveFeedItem[] = liveSessions.map((session, i) => ({
     id:            `live-reg-${session.userId}`,
@@ -45,7 +40,7 @@ export async function GET() {
     viewers:       session.viewerCount, // Rule 20: honest count, never a fabricated minimum floor
     tips:          session.tipTotal,
     battleRank:    i + 1,
-    activityLevel: rand(60, 100),
+    activityLevel: 0,
     boostWeight:   30,
     entryPriceUsd: session.entryPriceUsd ?? undefined,
     boostExpiresAt: Date.now() + 300_000,
@@ -80,10 +75,10 @@ export async function GET() {
         privacy:       "PUBLIC" as const,
         accentColor:   REGISTRY_ACCENT[i % REGISTRY_ACCENT.length] ?? "#00FFFF",
         isLive:        true,
-        viewers:       rand(10, 80),
-        tips:          rand(0, 50),
+        viewers:       0,
+        tips:          0,
         battleRank:    i + 1,
-        activityLevel: rand(50, 95),
+        activityLevel: 0,
         boostWeight:   20,
         boostExpiresAt: Date.now() + 300_000,
       }));

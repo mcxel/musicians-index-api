@@ -14,6 +14,7 @@
  *   battle     → Arena  (1)  — ring-side + stadium
  *   cypher     → Theater(0)  — 2,730 cap, intimate circle
  *   challenge  → Outdoor(3)  — 8,200 cap, festival stage
+ *   song-challenge → Contest Stage(5) — work-vs-work dual song focus
  *   live-show  → Theater(0)  — general go-live performance
  *   monday-stage → Theater(0)— weekly flagship
  */
@@ -58,6 +59,7 @@ export type ArenaEventType =
   | "battle"
   | "cypher"
   | "challenge"
+  | "song-challenge"
   | "live-show"
   | "monday-stage"
   | "deal-or-feud"
@@ -71,6 +73,7 @@ const VENUE_MAP: Record<ArenaEventType, VenueIndex> = {
   "battle":            1,
   "cypher":            0,
   "challenge":         3,
+  "song-challenge":    5,
   "live-show":         0,
   "monday-stage":      0,
   "deal-or-feud":      3,
@@ -83,6 +86,7 @@ const EVENT_LABELS: Record<ArenaEventType, string> = {
   "battle":            "BATTLE ARENA",
   "cypher":            "CYPHER CIRCLE",
   "challenge":         "CHALLENGE STAGE",
+  "song-challenge":    "SONG CHALLENGE STAGE",
   "live-show":         "LIVE STAGE",
   "monday-stage":      "MONDAY NIGHT STAGE",
   "deal-or-feud":      "DEAL OR FEUD",
@@ -96,6 +100,7 @@ const VENUE_SLUG_MAP: Record<ArenaEventType, string> = {
   "battle":            "battle-arena",
   "cypher":            "cypher",
   "challenge":         "challenge-arena",
+  "song-challenge":    "challenge-arena",
   "live-show":         "world-concert",
   "monday-stage":      "monday-stage",
   "deal-or-feud":      "deal-or-feud",
@@ -109,6 +114,7 @@ const COMPETITION_FORMAT_MAP: Partial<Record<ArenaEventType, CompetitionFormat>>
   battle: "BATTLE",
   cypher: "CYPHER",
   challenge: "CHALLENGE",
+  "song-challenge": "CHALLENGE",
 };
 
 interface ArenaEventShellProps {
@@ -283,3 +289,4 @@ export default function ArenaEventShell({
     </RoomEnvironmentLayer>
   );
 }
+

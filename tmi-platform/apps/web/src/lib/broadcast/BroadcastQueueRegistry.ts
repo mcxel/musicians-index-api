@@ -21,6 +21,18 @@ export interface LiveRoomRecord {
   title: string;
   status: LiveRoomStatus;
   genre?: string;
+  /** Anchor family when this record is a permanent 24/7 room */
+  anchorFamily?: string;
+  isAnchor?: boolean;
+  /** Honest human-world caps (Rule 20 — never include support/bots) */
+  humanParticipantsMax?: number;
+  humanViewersMax?: number;
+  humanQueueMax?: number;
+  /** Platform support / coordinator cap — SEPARATE from human viewers */
+  supportAgentsMax?: number;
+  /** VR/glasses visible seat footprint */
+  vrVisibleSeats?: number;
+  vrMetaphor?: string;
 }
 
 export interface BroadcastQueueItem {

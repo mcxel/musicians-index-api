@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 /**
- * POST /api/beats/[canonicalId]/review
+ * POST /api/beats/canonical/[canonicalId]/review
  *
  * Submit a reviewer decision for a beat.
  *
@@ -20,6 +20,10 @@ export const dynamic = "force-dynamic";
  *   NEEDS_REVISION              → NEEDS_REVISION (beat returned to creator)
  *   HOLD                        → IN_REVIEW   (keep in queue, flag for discussion)
  *   REJECT                      → ARCHIVED   (permanently removed from active rotation)
+ *
+ * Moved 2026-08-05 from /api/beats/[canonicalId]/review — see route.ts
+ * in the parent folder for why (Next.js dynamic-segment name collision
+ * with /api/beats/[id] was failing the production build).
  */
 
 import { NextResponse } from "next/server";

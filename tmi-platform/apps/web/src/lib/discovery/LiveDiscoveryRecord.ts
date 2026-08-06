@@ -68,6 +68,15 @@ export interface LiveDiscoveryRecord {
   /** Optional experience type for InstantJoin role routing */
   experienceId?: string;
   entryPriceUsd?: number | null;
+  /** Family-distinct status line for Lobby Wall cards (anchors / open calls). */
+  statusLine?: string;
+  /** Permanent 24/7 Anchor Room Network tile — always listed even at 0 humans. */
+  isAnchor?: boolean;
+  /** Anchor family for distinct card copy (battle / cypher / lounge / …). */
+  anchorFamily?: string;
+  /** Idle-rotating featured category (locked when queue forms). */
+  featuredCategory?: string;
+  categoryLocked?: boolean;
 }
 
 export const LIVE_DISCOVERY_CATEGORY_LABELS: Record<LiveDiscoveryCategory, string> = {

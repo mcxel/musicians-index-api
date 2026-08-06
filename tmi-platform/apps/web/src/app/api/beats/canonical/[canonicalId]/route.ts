@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 /**
- * GET /api/beats/[canonicalId]
+ * GET /api/beats/canonical/[canonicalId]
  *
  * Returns the full beat record for a given canonical ID (B-XXXXXXXX),
  * including status, royalty splits, last provenance events, and
@@ -9,6 +9,11 @@ export const dynamic = "force-dynamic";
  *
  * Auth: any authenticated user may view; creator and reviewer may see
  * private fields (failureReasons, reviewReason).
+ *
+ * Moved 2026-08-05 from /api/beats/[canonicalId] — that path collided
+ * with the pre-existing /api/beats/[id] dynamic segment (Next.js
+ * requires all sibling dynamic routes to share one param name; this
+ * mismatch was failing the production build outright).
  */
 
 import { NextResponse } from "next/server";

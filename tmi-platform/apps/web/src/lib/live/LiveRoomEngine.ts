@@ -145,6 +145,69 @@ export function createLiveRoom(input: {
   return room;
 }
 
+
+/** Upsert a durable room with a stable roomId (Anchor Network, platform rooms). */
+export function ensureLiveRoom(input: {
+  roomId: string;
+  roomType: LiveRoomType;
+  title: string;
+  hostUserId: string;
+  description?: string;
+  venueId?: string;
+  eventId?: string;
+  genre?: string;
+  tags?: string[];
+  scheduledStartMs?: number;
+  configOverrides?: Partial<LiveRoomConfig>;
+  /** When true, room stays open/live for 24/7 anchors. */
+  forceLive?: boolean;
+}): LiveRoom {
+  const existing = liveRooms.get(input.roomId);
+  if (existing) {
+    existing.title = input.title;
+    existing.description = input.description ?? existing.description;
+    existing.genre = input.genre ?? existing.genre;
+    if (input.tags?.length) {
+      existing.tags = Array.from(new Set([...existing.tags, ...input.tags]));
+    }
+    if (input.forceLive && existing.status !== "live") {
+      existing.status = "live";
+      existing.openedAtMs = existing.openedAtMs ?? Date.now();
+      existing.startedAtMs = existing.startedAtMs ?? Date.now();
+    }
+    existing.updatedAtMs = Date.now();
+    return existing;
+  }
+
+  const room: LiveRoom = {
+    roomId: input.roomId,
+    roomType: input.roomType,
+    title: input.title,
+    description: input.description,
+    venueId: input.venueId,
+    eventId: input.eventId,
+    hostUserId: input.hostUserId,
+    status: input.forceLive ? "live" : input.scheduledStartMs ? "scheduled" : "open",
+    config: {
+      ...DEFAULT_CONFIG[input.roomType],
+      ...(input.configOverrides ?? {}),
+    },
+    scheduledStartMs: input.scheduledStartMs,
+    openedAtMs: Date.now(),
+    startedAtMs: input.forceLive ? Date.now() : undefined,
+    createdAtMs: Date.now(),
+    updatedAtMs: Date.now(),
+    genre: input.genre,
+    tags: input.tags ?? [],
+  };
+  liveRooms.set(room.roomId, room);
+  return room;
+}
+
+function isPermanentAnchorRoom(room: LiveRoom): boolean {
+  return room.tags.includes("anchor") || room.tags.includes("always-on");
+}
+
 export function openLiveRoom(roomId: string): LiveRoom | undefined {
   const room = liveRooms.get(roomId);
   if (!room) return undefined;
@@ -178,6 +241,7 @@ export function pauseLiveRoom(roomId: string): LiveRoom | undefined {
 
 export function closeLiveRoom(roomId: string): LiveRoom | undefined {
   const room = liveRooms.get(roomId);
+  if (room && isPermanentAnchorRoom(room)) return room; // anchors never shut down
   if (room && room.status !== "closed" && room.status !== "archived") {
     room.status = "closed";
     room.closedAtMs = Date.now();
@@ -188,6 +252,7 @@ export function closeLiveRoom(roomId: string): LiveRoom | undefined {
 
 export function archiveLiveRoom(roomId: string): LiveRoom | undefined {
   const room = liveRooms.get(roomId);
+  if (room && isPermanentAnchorRoom(room)) return room; // anchors never archive
   if (room?.status === "closed") {
     room.status = "archived";
     room.updatedAtMs = Date.now();
@@ -241,3 +306,4 @@ export function getActiveLiveRooms(): LiveRoom[] {
 export function isRoomLive(roomId: string): boolean {
   return liveRooms.get(roomId)?.status === "live";
 }
+

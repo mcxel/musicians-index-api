@@ -72,6 +72,7 @@ function scoreMosaic(r: LiveDiscoveryRecord): number {
   let score = r.humanViewerCount * 8 + (Date.now() - r.startedAt < 30 * 60 * 1000 ? 20 : 0);
   if (r.category === "fan_lobbies" || r.category === "lounges") score += 18;
   if (r.isNewEmpty) score += 12; // surface open rooms for social discovery
+  if (r.isAnchor) score += 30; // permanent 24/7 anchors always surface
   return score;
 }
 
@@ -81,6 +82,7 @@ function scoreArena(r: LiveDiscoveryRecord): number {
   if (r.category === "cyphers") score += 45;
   if (r.category === "challenges") score += 40;
   if (r.category === "games") score += 30;
+  if (r.isAnchor) score += 30;
   return score;
 }
 

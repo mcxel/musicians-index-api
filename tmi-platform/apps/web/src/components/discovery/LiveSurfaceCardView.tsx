@@ -24,6 +24,22 @@ export interface LiveSurfaceCardViewProps {
 const PLACEHOLDER =
   "linear-gradient(145deg, rgba(10,6,20,0.95), rgba(5,5,16,0.98) 40%, rgba(170,45,255,0.15))";
 
+function runtimeGlyph(runtimeType: LiveSurfaceCard["runtimeType"]): string {
+  switch (runtimeType) {
+    case "battle": return "⚔️";
+    case "cypher": return "🎤";
+    case "challenge": return "🎵";
+    case "dance": return "💃";
+    case "game": return "🎮";
+    case "fan_lobby": return "👥";
+    case "concert": return "🏟️";
+    case "comedy": return "😂";
+    case "dj": return "🎧";
+    default: return "📡";
+  }
+}
+
+
 export default function LiveSurfaceCardView({
   card,
   focused = false,
@@ -122,7 +138,7 @@ export default function LiveSurfaceCardView({
               opacity: 0.5,
             }}
           >
-            📡
+            {runtimeGlyph(card.runtimeType)}
           </div>
         )}
 

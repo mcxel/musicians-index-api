@@ -41,6 +41,11 @@ export interface PublishLiveRoomInput {
   entryPriceUsd?: number | null;
   startedAt?: number;
   listed?: boolean;
+  statusLine?: string;
+  isAnchor?: boolean;
+  anchorFamily?: string;
+  featuredCategory?: string;
+  categoryLocked?: boolean;
 }
 
 function normalizeVisibility(
@@ -114,11 +119,19 @@ export function toLiveDiscoveryRecord(input: PublishLiveRoomInput): LiveDiscover
     joinRoute,
     joinGate: resolveJoinGate(visibility, input.entryPriceUsd, input.joinGate),
     isLive: true,
-    isNewEmpty: humanViewerCount === 0 && Date.now() - startedAt < 15 * 60 * 1000,
+    isNewEmpty:
+      !input.isAnchor &&
+      humanViewerCount === 0 &&
+      Date.now() - startedAt < 15 * 60 * 1000,
     startedAt,
     updatedAt: Date.now(),
     experienceId: input.experienceId,
     entryPriceUsd: input.entryPriceUsd ?? null,
+    statusLine: input.statusLine?.trim() || undefined,
+    isAnchor: input.isAnchor === true,
+    anchorFamily: input.anchorFamily,
+    featuredCategory: input.featuredCategory,
+    categoryLocked: input.categoryLocked === true,
   };
 }
 
@@ -171,13 +184,30 @@ export function liveSessionToDiscoveryRecord(session: LiveSession): LiveDiscover
 
 /** Sync bus from an array of LiveSession (poll / SSE payload). Empty → honest empty wall. */
 export function syncDiscoveryFromSessions(sessions: readonly LiveSession[]): void {
-  const records: LiveDiscoveryRecord[] = [];
+  const byId = new Map<string, LiveDiscoveryRecord>();
   for (const s of sessions) {
     if (!s?.roomId) continue;
     const rec = liveSessionToDiscoveryRecord(s);
-    if (rec) records.push(rec);
+    if (rec) byId.set(rec.id, rec);
   }
-  DiscoveryBus.replaceAll(records);
+  // Permanent anchors always merge in — poll must never wipe the 24/7 wall
+  const { getAnchorDiscoveryRecords } = require("@/lib/live/AnchorRoomNetwork") as typeof import("@/lib/live/AnchorRoomNetwork");
+  for (const anchor of getAnchorDiscoveryRecords()) {
+    const existing = byId.get(anchor.id);
+    if (existing) {
+      byId.set(anchor.id, {
+        ...anchor,
+        humanViewerCount: Math.max(anchor.humanViewerCount, existing.humanViewerCount),
+        hostName: existing.hostName && existing.hostName !== "Host" ? existing.hostName : anchor.hostName,
+        previewUrl: existing.previewUrl ?? anchor.previewUrl,
+        posterUrl: existing.posterUrl ?? anchor.posterUrl,
+        startedAt: Math.min(existing.startedAt, anchor.startedAt),
+      });
+    } else {
+      byId.set(anchor.id, anchor);
+    }
+  }
+  DiscoveryBus.replaceAll([...byId.values()]);
 }
 
 /** Project sessions → LiveSurfaceCard[] without touching the bus (read-side only). */

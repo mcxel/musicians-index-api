@@ -101,8 +101,8 @@ export interface VenueAsset {
   hosts: VenueHostConfig;
 
   // --- AudienceScene venueIndex (maps to 3D crowd layout) ---
-  /** 0=Theater 1=Arena 2=Club 3=Outdoor 4=Studio — matches AudienceScene VenueIndex */
-  venueIndex: 0 | 1 | 2 | 3 | 4;
+  /** 0=Theater 1=Arena 2=Club 3=Outdoor 4=Studio 5=Contest — matches AudienceScene VenueIndex */
+  venueIndex: 0 | 1 | 2 | 3 | 4 | 5;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -141,10 +141,10 @@ const VENUE_REGISTRY: Record<VenueType, VenueAsset> = {
 
   "challenge": {
     type: "challenge",
-    label: "Challenge Arena",
-    tagline: "Accept the challenge. Prove it live.",
-    accentColor: "#00FFFF",
-    secondaryColor: "#AA2DFF",
+    label: "Song Challenge Contest Stage",
+    tagline: "Work vs work. Song vs song. Prove it live.",
+    accentColor: "#FFB000",
+    secondaryColor: "#00E5C8",
     ambientVideoUrl: "/assets/videos/rooms/challenge.mp4",
     audienceViewVideoUrl: "/assets/videos/seating/fans-view.mp4",
     performerViewVideoUrl: "/assets/videos/seating/performer-view-2.mp4",
@@ -165,7 +165,7 @@ const VENUE_REGISTRY: Record<VenueType, VenueAsset> = {
       primaryHostId: "big-ace",
       coHostIds: ["aura-pa"],
     },
-    venueIndex: 3,
+    venueIndex: 5,
   },
 
   "cypher": {
@@ -547,13 +547,14 @@ export function getAllVenueTypes(): VenueType[] {
 
 /** Maps ArenaEventShell event types to VenueType */
 export function arenaEventTypeToVenueType(
-  eventType: "concert" | "battle" | "cypher" | "challenge" | "live-show" | "monday-stage" | "deal-or-feud" | "lounge" | "world-dance-party"
+  eventType: "concert" | "battle" | "cypher" | "challenge" | "song-challenge" | "live-show" | "monday-stage" | "deal-or-feud" | "lounge" | "world-dance-party"
 ): VenueType {
   const map: Record<string, VenueType> = {
     concert:             "concert",
     battle:              "battle",
     cypher:              "cypher",
     challenge:           "challenge",
+    "song-challenge":      "challenge",
     "live-show":         "concert",
     "monday-stage":      "monday-night-stage",
     "deal-or-feud":      "deal-or-feud",
