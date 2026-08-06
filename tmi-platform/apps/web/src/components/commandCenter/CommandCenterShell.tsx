@@ -374,12 +374,21 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
           type="button"
           onClick={(e) => {
             const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect();
+            // Popover is ~220px wide — on narrow/mobile viewports, `rect.right + 8`
+            // pushes it off-screen for most rail buttons (reported 2026-08-05:
+            // only the buttons whose 20% chevron happened to get tapped directly
+            // "worked" — the 80% main-area quick panel was rendering off-screen).
+            // Clamp both axes to the viewport instead of assuming space exists.
+            const POPOVER_WIDTH = 220;
+            const POPOVER_MAX_HEIGHT = 260;
+            const left = Math.min(rect.right + 8, window.innerWidth - POPOVER_WIDTH - 12);
+            const top = Math.min(rect.top, window.innerHeight - POPOVER_MAX_HEIGHT - 12);
             setQuickPanel({
               label: opts.label,
               info: opts.info,
               accent,
-              top: rect.top,
-              left: rect.right + 8,
+              top: Math.max(12, top),
+              left: Math.max(12, left),
               onOpenFull: opts.onOpenFull,
             });
           }}
@@ -738,6 +747,7 @@ function CommandCenterShellInner({ role, userId, displayName }: CommandCenterShe
               left: quickPanel.left,
               zIndex: 500,
               width: 220,
+              maxWidth: "calc(100vw - 24px)",
               background: "#0d1117",
               border: `1px solid ${quickPanel.accent}55`,
               borderRadius: 10,
